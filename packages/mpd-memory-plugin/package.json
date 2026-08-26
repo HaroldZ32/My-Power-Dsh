@@ -1,0 +1,11 @@
+{
+  "name": "@mpd-dsh/memory",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Git/svn-backed memory engine with reflection (Plan C / C6)",
+  "scripts": {
+    "typecheck": "tsgo --noEmit -p tsconfig.json",
+    "test": "bun test"
+  }
+}

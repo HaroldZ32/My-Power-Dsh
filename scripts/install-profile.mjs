@@ -108,6 +108,10 @@ function buildPlan(o) {
     {
       id: "mpd-comment-checker", name: p("packages/mpd-comment-checker-plugin/dist/index.js"),
       config: { autoCheck: false }
+    },
+    {
+      id: "mpd-memory", name: p("packages/mpd-memory-plugin/dist/index.js"),
+      config: { vcs: "git" }
     }
   ]
   const agentTeamsRow = {

@@ -21,7 +21,7 @@ Legend: ✅ full / 🟡 partial / ❌ missing / ➖ not applicable (host-specifi
 | comment-checker | post-edit comment checks | ✅ | mpd_comment_check (opt-in binary @code-yeongyu/comment-checker, MIT; installer --with-comment-checker; autoCheck off by default; unit tests + plan-c-smoke) |
 | monitor / toast / TUI sidebar | session monitor + UI | ➖ | replaced by DSH session telemetry (otel), token-meter, web GUI |
 | Telemetry | posthog DAU | ✅ | DSH session-telemetry-otel replaces it (no posthog) |
-| Memory engine | git-backed MemFS + reflection | 🟡 | mpd_memory_save/recall (workspace .mpd/memory.json). Deferred: git versioning + reflection state machine |
+| Memory engine | git-backed MemFS + reflection | ✅ | mpd-memory-plugin: Markdown memo files (frontmatter), journal, reflection state machine (step-count/manual triggers, reservation), VCS abstraction with git AND svn backends (memory.vcs git|svn|both); tools mpd_memory_write/read/reflect/reflect_complete/status; evidence/plan-c/c6-memory + unit tests (git real commits, svn fake-CLI wiring) |
 | Boulder state | durable work state machine | ✅ | mpd_boulder_status/start/complete/task_timer/plan_progress/plans on .mpd/boulder.json (vendor boulder-state, dsh: session prefix; evidence/plan-c/plan-c-smoke + unit tests) |
 | Config (omo.json) | layered config schema | ✅ | minimal mpd.jsonc runtime layer (project .mpd/mpd.jsonc + user $DSH_HOME/mpd.jsonc, JSONC, deep merge; bundle patch stays composition truth; evidence/plan-c/plan-c-smoke + unit tests) |
 | LSP tooling | diagnostics/goto/refs/rename/symbols | ✅ | mcp__lsp__* (8 tools via offline-built daemon) |
@@ -33,7 +33,8 @@ Legend: ✅ full / 🟡 partial / ❌ missing / ➖ not applicable (host-specifi
 
 - Wave A: team adoption (dsh-agent-teams, MIT notice, live mailbox/DAG panel/archive), hashline plugin, boulder plugin, mpd.jsonc config layer, vision e2e proof;
 - Wave B: ultrawork v2 engine (waves/gates/ledger/hyperplan), comment-checker plugin (opt-in binary), skills corpus 17 -> 19 (ultrawork + hyperplan), vendor gate PASS;
-- Wave C (next): memory engine with git + svn versioning + reflection.
+- Wave C: memory engine with git + svn versioning + reflection (mpd-memory-plugin, live PASS + unit tests).
+- Plan C complete: all audited gaps closed except model-core depth (user decision D-C9) and the host-specific legacy set (intentionally out of scope).
 
 ## Remaining gaps / next items (tracked in docs/plan-c.md)
 

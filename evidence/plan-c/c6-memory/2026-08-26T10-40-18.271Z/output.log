@@ -1,0 +1,21 @@
+[mpd-codegraph] init status=no-binary binary=- cwd=/tmp/mpd-c6-vjuM3T/ws
+All three steps completed successfully:
+
+## Results
+
+**1. Note saved** — `mpd_memory_write` persisted the note:
+- Title: `qa-note`
+- Content: `alpha beta gamma`
+- Kind: `note`
+- Path: `.mpd/memory/agents/agent-ws/repo/memory/qa-note-mt9yrldq.md` (VCS: git, committed)
+
+**2. Query `alpha`** — **1 entry matches**:
+- `[note] qa-note: alpha beta gamma`
+
+**3. Memory status** — `mpd_memory_status` reports:
+- VCS mode: `git`
+- Root: `/tmp/mpd-c6-vjuM3T/ws/.mpd/memory/agents/agent-ws`
+- Entries: **1**
+- Journal: **1**
+- Reflection: 1 step since last successful reflection, no pending reflection triggered
+CodeGraph MCP skipped: project excluded by OMO CodeGraph policy.
