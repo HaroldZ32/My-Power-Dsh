@@ -49,3 +49,15 @@
   3. QA temporary project placed at the workspace root level (not .omo, not /tmp) to verify the full chain: init status=ok -> marker ->
      `mcp__codegraph__codegraph_explore` really returns byte-for-byte source (evidence/dsh-qa/codegraph/).
 - **User machine note**: production project paths must not contain a `.omo` segment or be under /tmp; clone from Gitee to a normal path (e.g. ~/dshProj/mpd-dsh).
+
+## Plan C decisions (2026-08-26, user-approved; full plan in docs/plan-c.md)
+
+- D-C1 team+visualization: adopt `@nanmicoder/dsh-agent-teams@0.1.13` as third-party bundle dependency (vendor namespace `agent_teams_*` retained; stateDir `.mpd/team`; MIT notice).
+- D-C2 ultrawork: upgrade `mpd_ulw` into a fixed-policy engine (waves/gates/verifiers/ledger); native workflow/goal/ralph rejected for documented reasons.
+- D-C3 hashline: port now (`mpd-hashline-plugin`, vendored hashline-core).
+- D-C4 comment-checker: port as opt-in plugin (native binary on demand, ~255 MB, default off).
+- D-C5 boulder: port this round (`mpd-boulder-plugin`, `.mpd/boulder.json`, `dsh:` session prefix).
+- D-C6 memory: port this round — git backing AND new svn backing (user: both required) + reflection state machine; svn via apt in QA sandbox.
+- D-C7 config: minimal `mpd.json` JSONC layer (runtime config only; bundle patch stays composition truth).
+- D-C8 vision: end-to-end image pipeline test.
+- D-C9 model-core depth: skipped (user: DeepSeek-only, official vs unofficial API).
