@@ -1,7 +1,20 @@
 # Plan C — Closing the audited gaps
 
-Status: approved for execution (user decisions 2026-08-26). Supersedes the "remaining gaps" tail of
-docs/feature-audit.md; each item below replaces the corresponding deferred line there as it lands.
+Status: **COMPLETE (2026-08-26)** — all items landed; evidence under `evidence/plan-c/`.
+
+| Item | Status | Evidence |
+|---|---|---|
+| C1 team+visualization | ✅ adopted dsh-agent-teams 0.1.13 (MIT notice, stateDir .mpd/team) | c1-team (compose + live team run + archive + web /state route) |
+| C2 ultrawork engine v2 | ✅ waves/gates/ledger/hyperplan + mpd_ulw alias | c2-ultrawork + deterministic engine tests |
+| C3 hashline | ✅ read/edit/format/restore + guard | plan-c-smoke + unit tests |
+| C4 comment-checker | ✅ opt-in binary (00 autoCheck off) | unit tests (binary present) + plan-c-smoke |
+| C5 boulder | ✅ .mpd/boulder.json + tasks/timers/plan progress | plan-c-smoke + unit tests |
+| C6 memory git+svn+reflection | ✅ VCS abstraction (git live, svn fake-CLI wiring) | c6-memory + unit tests |
+| C7 minimal mpd.json | ✅ JSONC layer + mpdConfig service + tools | plan-c-smoke + unit tests |
+| C8 vision e2e | ✅ fixture PNG + official vision API grounded answer | c8-vision |
+| D-C9 model-core depth | skipped by user decision (DeepSeek-only) | — |
+
+Delivered on `dev` (bae2792); master at v0.1.0 awaiting v0.2.0 release sign-off.
 
 ## 0. Decision record (user-approved)
 
