@@ -46,3 +46,44 @@
     includeDefaultRoots: true
     customSkillDirs:
       - !!js process.env.OMO_DSH_SKILLS_DIR || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-skills-plugin/skills'
+
+# ── P3: omo MCP 服务器（stdio，经 dsh-mcp-client 插件实例化；新行使用 insert）──
+- insert:
+    - id: mcp-astgrep
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: ast_grep
+        transport: stdio
+        command: node
+        args:
+          - !!js process.env.OMO_DSH_ASTGREP_CLI || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-mcp-astgrep/dist/cli.js'
+        toolCallTimeoutMs: 60000
+    - id: mcp-gitbash
+      name: '@deepseek-ai/dsh-mcp-client'
+      disabled: !!js process.platform === 'win32' ? false : true
+      config:
+        serverName: git_bash
+        transport: stdio
+        command: node
+        args:
+          - !!js process.env.OMO_DSH_GITBASH_CLI || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-mcp-gitbash/dist/cli.js'
+        toolCallTimeoutMs: 60000
+    - id: mcp-lsp
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: lsp
+        transport: stdio
+        command: node
+        args:
+          - !!js process.env.OMO_DSH_LSP_CLI || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-mcp-lsp/dist/cli.js'
+          - mcp
+        toolCallTimeoutMs: 60000
+    - id: mcp-codegraph
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: codegraph
+        transport: stdio
+        command: node
+        args:
+          - !!js process.env.OMO_DSH_CODEGRAPH_CLI || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-mcp-codegraph/dist/serve.js'
+        toolCallTimeoutMs: 60000

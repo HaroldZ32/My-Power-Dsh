@@ -1,0 +1,4 @@
+[build-mcp] ast-grep -> /home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-mcp-astgrep/dist/cli.js (84651 bytes)
+[build-mcp] git-bash -> /home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-mcp-gitbash/dist/cli.js (22651 bytes)
+[build-mcp] lsp -> /home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-mcp-lsp/dist/cli.js (234793 bytes)
+[build-mcp] PASS

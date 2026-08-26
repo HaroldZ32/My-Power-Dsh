@@ -1,0 +1,20 @@
+CodeGraph MCP skipped: project excluded by OMO CodeGraph policy.
+工具调用已完成，但未能执行扫描。以下是 `mcp__ast_grep__search` 返回的内容原样汇报：
+
+---
+
+**调用参数**（按工具 schema 给出）：
+
+- `pattern`: `int $NAME($$$) { $$$ }`
+- `language`: `c`
+- `paths`: `["tests/mcp-fixtures/sample.c"]`
+
+**工具返回内容（原样）**：
+
+```
+Error: {"schemaVersion":1,"ok":false,"error":{"code":"BINARY_NOT_FOUND","message":"ast-grep binary not found for linux: no candidate passed the --version probe across the env override, OMO runtime, skill bin cache, PATH, or Homebrew prefixes.","retryable":false,"phase":"preflight","details":{"hints":["npm install -g @ast-grep/cli","cargo install ast-grep --locked","brew install ast-grep  # linuxbrew","Start an OMO session so the bundled ast-grep skill provisions the pinned runtime automatically","Or point OMO_AST_GREP_SG_PATH at an existing ast-grep binary"]}}}
+```
+
+---
+
+**小结**：扫描未执行成功 —— 报错为 `BINARY_NOT_FOUND`（ast-grep 二进制在 linux 上未找到，preflight 阶段失败，不可重试）。返回中附带的解决提示包括：`npm install -g @ast-grep/cli`、`cargo install ast-grep --locked`、`brew install ast-grep`、启动 OMO 会话由技能自动提供固定版本运行时，或通过环境变量 `OMO_AST_GREP_SG_PATH` 指向已有二进制。按你的要求，本次未使用 bash 工具。

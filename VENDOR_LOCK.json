@@ -43,7 +43,27 @@
       "fileCount": 18,
       "source": "../packages/shared-skills/skills/ast-grep"
     },
-    "_note": "vendored from upstream shared-skills subdirs; 每目录计数为阻断项（verify-vendor）"
+    "_note": "vendored skills + built MCP dist artifacts; each asset count & dist SHA256 are blocking (verify-vendor)",
+    "packages/omo-mcp-astgrep/dist/cli.js": {
+      "fileCount": 1,
+      "source": "built offline via scripts/build-mcp.mjs from packages/ast-grep-mcp",
+      "sha256": "5a9ae80a4ef79b2efcd66dba27c82574f74e682c9bb84e465291dc0ba34aed7e"
+    },
+    "packages/omo-mcp-gitbash/dist/cli.js": {
+      "fileCount": 1,
+      "source": "built offline via scripts/build-mcp.mjs from packages/git-bash-mcp",
+      "sha256": "c8a2336d6e231d96497f1f74963c968b27de3c1a5ac082c58b23ddc3d04651dc"
+    },
+    "packages/omo-mcp-lsp/dist/cli.js": {
+      "fileCount": 1,
+      "source": "built offline via scripts/build-mcp.mjs from packages/lsp-daemon",
+      "sha256": "b82ce5fa8f69460b5f0222570e5d5852b94bd3b5e22facf0901653b555e798ee"
+    },
+    "packages/omo-mcp-codegraph/dist/serve.js": {
+      "fileCount": 1,
+      "source": "vendored prebuilt from packages/omo-codex/plugin/components/codegraph/dist (MIT, see LICENSE/NOTICE in pkg)",
+      "sha256": "6c53906e98bfa808b0404b4f5fab051b1c80a3cf359ff574c6c8edd6d0d2b666"
+    }
   },
   "verification": "node scripts/verify-vendor.mjs 比对 commit/version 为阻断项；stats 漂移为警告；资产计数为阻断项",
   "lockedAt": "2026-08-26T03:44:55.545Z"

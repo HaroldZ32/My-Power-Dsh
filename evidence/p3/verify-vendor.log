@@ -1,0 +1,16 @@
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] asset OK: packages/omo-skills-plugin/skills/ulw-plan 6 files
+[verify-vendor] asset OK: packages/omo-skills-plugin/skills/init-deep 1 files
+[verify-vendor] asset OK: packages/omo-skills-plugin/skills/lsp-setup 25 files
+[verify-vendor] asset OK: packages/omo-skills-plugin/skills/git-master 2 files
+[verify-vendor] asset OK: packages/omo-skills-plugin/skills/review-work 1 files
+[verify-vendor] asset OK: packages/omo-skills-plugin/skills/programming 75 files
+[verify-vendor] asset OK: packages/omo-skills-plugin/skills/ast-grep 18 files
+[verify-vendor] FAIL - asset missing: _note
+[verify-vendor] asset OK: packages/omo-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/omo-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/omo-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/omo-mcp-codegraph/dist/serve.js 1 files
+[exit code: 1]

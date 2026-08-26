@@ -1,0 +1,13 @@
+CodeGraph MCP skipped: project excluded by OMO CodeGraph policy.
+已调用 `mcp__lsp__status`（该工具 schema 无必填参数，未传参调用）。返回内容原样汇报如下：
+
+```
+Error: LSP daemon unreachable: ENOENT: no such file or directory, mkdir '/home/haroldzhao/.omo/lsp-daemon/v0.1.0'.
+The MCP server is a thin proxy and never runs language servers in-process.
+Socket: /home/haroldzhao/.omo/lsp-daemon/v0.1.0/daemon.sock
+Logs: /home/haroldzhao/.omo/lsp-daemon/v0.1.0/daemon.log
+The daemon is auto-started on demand and will be retried on the next request.
+```
+
+即：LSP daemon 不可达，原因是无法创建 `/home/haroldzhao/.omo/lsp-daemon/v0.1.0` 目录（ENOENT）。该 MCP 服务是薄代理，不在进程内运行语言服务器；daemon 会按需自动启动，下次请求时将重试。未使用 bash 工具。
+EXIT=0
