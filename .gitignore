@@ -3,3 +3,4 @@ node_modules/
 evidence/*.log.tmp
 .DS_Store
 .codegraph/
+.omo-dsh/

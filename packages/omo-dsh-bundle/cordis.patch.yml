@@ -97,3 +97,19 @@
         env:
           OMO_CODEGRAPH_BIN: !!js process.env.OMO_CODEGRAPH_BIN || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/.toolchain/node_modules/.bin/codegraph'
         toolCallTimeoutMs: 60000
+
+# ── B-line plugins (self-written; production uses @omo-dsh/<pkg> package names) ──
+- insert:
+    - id: omo-tools
+      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-tools-plugin/dist/index.js'
+      config:
+        writeGuard: true
+        truncateMaxBytes: 8192
+    - id: omo-modelchain
+      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-modelchain-plugin/dist/index.js'
+    - id: omo-ulw
+      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-ulw-plugin/dist/index.js'
+      config:
+        maxRounds: 3
+    - id: omo-team
+      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-team-plugin/dist/index.js'

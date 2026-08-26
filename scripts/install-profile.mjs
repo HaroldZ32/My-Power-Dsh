@@ -73,6 +73,22 @@ function buildPlan(o) {
     {
       id: "omo-codegraph", name: p("packages/omo-codegraph-plugin/dist/index.js"),
       config: { autoInit: true, initTimeoutMs: 60000, binary: cgCli }
+    },
+    {
+      id: "omo-tools", name: p("packages/omo-tools-plugin/dist/index.js"),
+      config: { writeGuard: true, truncateMaxBytes: 8192 }
+    },
+    {
+      id: "omo-modelchain", name: p("packages/omo-modelchain-plugin/dist/index.js"),
+      config: {}
+    },
+    {
+      id: "omo-ulw", name: p("packages/omo-ulw-plugin/dist/index.js"),
+      config: { maxRounds: 3 }
+    },
+    {
+      id: "omo-team", name: p("packages/omo-team-plugin/dist/index.js"),
+      config: {}
     }
   ]
   return {
