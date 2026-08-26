@@ -72,7 +72,7 @@ function loadMemory(p: string): Record<string, string> {
 }
 
 export function apply(ctx: Ctx, config: Config = {}): void {
-  const chains = config.chains ?? DEFAULT_CHAINS
+  const chains = config?.chains ?? DEFAULT_CHAINS
   const cwd = process.env.DSH_WORKSPACE_ROOT ?? process.cwd()
 
   ctx.tools.register({
