@@ -1,0 +1,21 @@
+CodeGraph MCP skipped: project excluded by OMO CodeGraph policy.
+三步全部执行完毕，汇报如下：
+
+## 1) omo_modelchain_resolve(role=oracle)
+
+- **provider/model**: `deepseek-official/deepseek-v4-pro`
+- 路由链条目数：`chain 2 entries`
+
+## 2) omo_memory_save / omo_memory_recall
+
+- `omo_memory_save(key='alpha', value='beta')` → 返回 `saved alpha`
+- `omo_memory_recall(key='alpha')` → 返回 `alpha = beta` ✅ 读写一致
+
+## 3) 用 write 覆盖 tests/mcp-fixtures/sample.c（已被守卫拒绝）
+
+- 尝试内容：`int x;`
+- **守卫拒绝消息（原样）**：
+  > Error: omo-tools guard: target file already exists with different content — use the edit tool (or read then rewrite deliberately via write with identical content) instead of overwriting.
+
+如您要求，该文件此后不再做任何修改；我没有改用 edit 或其他方式绕行，文件保持原样。
+EXIT=0
