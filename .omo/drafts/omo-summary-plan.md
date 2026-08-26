@@ -55,7 +55,7 @@ approach: 计划在 omo-skills-plugin 内自研 omo-summary 技能（SKILL.md：
 - 不写 tests/golden/fixtures（金标样例区只读）
 
 ## Open questions
-无（意图清晰；唯一语义分叉已用默认解决并在本台账记录，用户可在批准时否决）。
+无（意图清晰；唯一语义衍生移植已用默认解决并在本台账记录，用户可在批准时否决）。
 
 ## Approval gate
 status: awaiting-approval
