@@ -1,6 +1,40 @@
-# omo-dsh bundle 插件层
-# P1: 挂载 dsh-llm-deepseek / dsh-llm-pi-ai 双轨
-# P2: omo-skills-plugin（技能 provider）
-# P3: omo-mcp-astgrep / omo-mcp-gitbash / (D2) omo-mcp-lsp
-# P4: omo-presets-plugin / omo-hephaestus
-[]  # P0 占位：空层，P1 开始逐条插入
+# omo-dsh bundle 插件层（P1：DeepSeek 双轨显式声明）
+# 说明：本文件是 DSH bundle 的 patch 层（PatchOptions 列表，id 定位覆盖整段 config）。
+# 依赖 DSH 模板已有行：llm-deepseek / llm-pi-ai / agent-default-model（headless 与 web 模板均含）。
+# 后续阶段在文末追加：omo-skills-plugin、omo-mcp-*、omo-presets-plugin、omo-hephaestus。
+
+# ── 官方轨：DeepSeek API 原生适配（主轨）───────────────────────────────
+- id: llm-deepseek
+  name: '@deepseek-ai/dsh-llm-deepseek'
+  config:
+    apiKeyEnv: DEEPSEEK_API_KEY
+    baseURL: https://api.deepseek.com
+    thinking: enabled
+    reasoningEffort: high
+    maxTokens: 256000
+    streamIdleTimeoutMs: 300000
+    models:
+      - id: deepseek-v4-flash
+        name: DeepSeek-V4-Flash
+      - id: deepseek-v4-pro
+        name: DeepSeek-V4-Pro
+
+# ── 兼容轨：pi-ai deepseek 目录路由（双轨并存，可切换）──────────────────
+- id: llm-pi-ai
+  name: '@deepseek-ai/dsh-llm-pi-ai'
+  config:
+    providers:
+      deepseek:
+        apiKeyEnv: DEEPSEEK_API_KEY
+        modelOverrides:
+          deepseek-v4-flash:
+            reasoningEfforts:
+              off: off
+              max: max
+
+# ── 主轨默认模型（omo 主 agent 用 Pro；轻量 agent 用 Flash，P4 在预设层细化）─
+- id: agent-default-model
+  name: '@deepseek-ai/dsh-agent-default-model'
+  config:
+    provider: deepseek-official
+    model: deepseek-v4-flash

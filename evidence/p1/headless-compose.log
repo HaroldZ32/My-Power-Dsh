@@ -1,0 +1,16 @@
+- id: agent-default-model
+  name: '@deepseek-ai/dsh-agent-default-model'
+  config:
+    provider: deepseek-official
+    model: deepseek-v4-flash
+# == @deepseek-ai/dsh-base, patched by /home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-dsh-bundle/cordis.patch.yml
+- id: llm-deepseek
+  name: '@deepseek-ai/dsh-llm-deepseek'
+  config:
+    apiKeyEnv: DEEPSEEK_API_KEY
+    baseURL: https://api.deepseek.com
+    thinking: enabled
+    reasoningEffort: high
+    maxTokens: 256000
+    streamIdleTimeoutMs: 300000
+    models:

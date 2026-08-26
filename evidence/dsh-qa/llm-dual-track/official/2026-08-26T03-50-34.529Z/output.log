@@ -1,0 +1,3 @@
+我调用了 **bash** 工具两次（一次执行 `pwd`，一次执行 `ls -la`）。
+
+当前目录（`/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh`）顶层有 **8 个文件**：`.gitignore`、`AGENTS.md`、`LICENSE-NOTICES.md`、`PLAN.md`、`README.md`、`VENDOR_LOCK.json`、`package.json`、`tsconfig.json`（另有 7 个目录：`.git`、`evidence`、`packages`、`profiles`、`scripts`、`skills`、`tests`，不计入文件数）。
