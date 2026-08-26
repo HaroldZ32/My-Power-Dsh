@@ -1,0 +1,11 @@
+{
+  "name": "@mpd-dsh/comment-checker",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Comment/docstring detection plugin (Plan C / C4, opt-in binary)",
+  "scripts": {
+    "typecheck": "tsgo --noEmit -p tsconfig.json",
+    "test": "bun test"
+  }
+}
