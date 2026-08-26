@@ -1,0 +1,17 @@
+{
+  "upstream": "code-yeongyu/oh-my-openagent",
+  "upstreamCommitSha": "8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29",
+  "upstreamVersion": "5.0.0-beta.20",
+  "previousSnapshot": {
+    "commitSha": "f3642fcda303b214cc88784094da327fedab3fea",
+    "fileCount": 9009,
+    "loc": 151433,
+    "source": ".omo/init-deep.json"
+  },
+  "vendoredAssets": {
+    "packages/shared-skills/skills": "partial (per D5)",
+    "packages/*/core": "on demand (P4+)"
+  },
+  "verification": "scripts/verify-vendor.mjs 比对文件数/行数，失败即阻断",
+  "lockedAt": "2026-08-26T03:04:21.606Z"
+}
