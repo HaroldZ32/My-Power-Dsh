@@ -1,0 +1,13 @@
+当前会话中所有 mcp__ 前缀的工具名如下：
+- mcp__ast_grep__rewrite
+- mcp__ast_grep__scan
+- mcp__ast_grep__search
+- mcp__lsp__diagnostics
+- mcp__lsp__find_references
+- mcp__lsp__goto_definition
+- mcp__lsp__install_decision
+- mcp__lsp__prepare_rename
+- mcp__lsp__rename
+- mcp__lsp__status
+- mcp__lsp__symbols
+EXIT=0
