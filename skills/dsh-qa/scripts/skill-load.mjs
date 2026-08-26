@@ -23,8 +23,10 @@ function runReal() {
   const sandbox = mkdtempSync(join(tmpdir(), "omo-dsh-qa-"))
   cpSync(creds, join(sandbox, ".credentials.yaml"))
   const t0 = Date.now()
+  const env = { ...process.env, DSH_HOME: sandbox }
+  if (env.DSH_HOME !== sandbox) { console.error("[skill-load] 隔离断言失败：DSH_HOME 未指向沙盒"); process.exit(1) }
   const run = spawnSync("dsh", ["--profile", "headless", "--patch", join(repoRoot, "packages/omo-dsh-bundle/cordis.patch.yml"), JOB], {
-    env: { ...process.env, DSH_HOME: sandbox }, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 600000
+    env, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 600000
   })
   const ms = Date.now() - t0
   const out = (run.stdout || "") + (run.stderr || "")

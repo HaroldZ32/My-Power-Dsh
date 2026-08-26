@@ -30,8 +30,10 @@ function realRun(job, timeoutMs = 600000) {
   const logFile = join(sandbox, "run.log")
   const fd = openSync(logFile, "w")
   try {
+    const env = { ...process.env, DSH_HOME: sandbox }
+    if (env.DSH_HOME !== sandbox) { console.error("[mcp-call] 隔离断言失败：DSH_HOME 未指向沙盒"); process.exit(1) }
     const run = spawnSync("dsh", ["--profile", "headless", "--patch", join(repoRoot, "packages/omo-dsh-bundle/cordis.patch.yml"), job], {
-      env: { ...process.env, DSH_HOME: sandbox }, encoding: "utf8", timeout: timeoutMs, stdio: ["ignore", fd, fd]
+      env, encoding: "utf8", timeout: timeoutMs, stdio: ["ignore", fd, fd]
     })
     return { out: readFileSync(logFile, "utf8"), exit: run.status }
   } finally {

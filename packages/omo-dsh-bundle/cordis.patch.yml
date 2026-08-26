@@ -42,6 +42,7 @@
 # ── P2: omo 技能目录（保留默认 project/user 根，追加 vendor 的 omo skills）──
 - id: skill-filesystem
   name: '@deepseek-ai/dsh-skill-filesystem'
+  disabled: false
   config:
     includeDefaultRoots: true
     customSkillDirs:
@@ -58,9 +59,11 @@
         args:
           - !!js process.env.OMO_DSH_ASTGREP_CLI || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-mcp-astgrep/dist/cli.js'
         toolCallTimeoutMs: 60000
+    # git_bash 按 omo 原设计仅限 Windows（run 只在 native Windows 可用），本 bundle 默认禁用；
+    # Windows 部署可将本行改为 disabled: false 启用。
     - id: mcp-gitbash
       name: '@deepseek-ai/dsh-mcp-client'
-      disabled: !!js process.platform === 'win32' ? false : true
+      disabled: true
       config:
         serverName: git_bash
         transport: stdio

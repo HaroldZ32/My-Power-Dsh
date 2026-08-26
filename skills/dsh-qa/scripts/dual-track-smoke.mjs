@@ -38,7 +38,9 @@ function runReal() {
     for (const p of patchArgs) args.push("--patch", p)
     args.push(JOB)
     const t0 = Date.now()
-    const run = spawnSync("dsh", args, { env: { ...process.env, DSH_HOME: sandbox }, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 600000 })
+    const env = { ...process.env, DSH_HOME: sandbox }
+    if (env.DSH_HOME !== sandbox) { console.error("[llm-dual-track] 隔离断言失败：DSH_HOME 未指向沙盒"); process.exit(1) }
+    const run = spawnSync("dsh", args, { env, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 600000 })
     const ms = Date.now() - t0
     const out = (run.stdout || "") + (run.stderr || "")
     const ok = run.status === 0 && /bash|工具/.test(out)

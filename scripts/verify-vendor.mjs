@@ -44,14 +44,32 @@ if (tracked !== lock.upstreamStats.trackedFiles || loc !== lock.upstreamStats.tr
   console.log("[verify-vendor] stats OK:", tracked, "files /", loc, "loc")
 }
 
-// 4) 已 vendor 资产计数（阻断）
+// 4) 已 vendor 资产：计数 + sha256 双阻断
+import { createHash } from "node:crypto"
 for (const [rel, meta] of Object.entries(lock.assets || {})) {
+  if (String(rel).startsWith("_")) continue
   const dir = join(repoRoot, rel)
   if (!existsSync(dir)) { fail("asset missing: " + rel); continue }
   const files = execFileSync("find", ["-L", dir, "-type", "f", "-not", "-path", "*/node_modules/*"], { encoding: "utf8" })
     .split("\n").filter(Boolean).length
   if (files !== meta.fileCount) fail("asset " + rel + " count drifted: " + files + " vs " + meta.fileCount)
-  else console.log("[verify-vendor] asset OK:", rel, files, "files")
+  if (typeof meta.sha256 === "string") {
+    const actual = createHash("sha256").update(readFileSync(dir)).digest("hex")
+    if (actual !== meta.sha256) fail("asset " + rel + " sha256 mismatch")
+  }
+  if (typeof meta.treeSha === "string") {
+    const files2 = execFileSync("find", ["-L", dir, "-type", "f", "-not", "-path", "*/node_modules/*"], { encoding: "utf8" })
+      .split("\n").filter(Boolean).sort()
+    const h = createHash("sha256")
+    for (const f of files2) {
+      const rel = f.slice(dir.length + 1)
+      const fh = createHash("sha256").update(readFileSync(f)).digest("hex")
+      h.update(rel + "\n" + fh + "\n")
+    }
+    const actual = h.digest("hex")
+    if (actual !== meta.treeSha) fail("asset " + rel + " treeSha mismatch")
+  }
+  console.log("[verify-vendor] asset OK:", rel, files, "files")
 }
 
 if (failed) process.exit(1)

@@ -1,0 +1,13 @@
+{
+  "source": "oh-my-openagent",
+  "sourceDir": "packages/git-bash-mcp",
+  "builtAt": "2026-08-26T04:48:25.867Z",
+  "build": [
+    "bun build src/cli.ts --outdir dist --target node --format esm"
+  ],
+  "artifact": {
+    "file": "cli.js",
+    "sha256": "c8a2336d6e231d96497f1f74963c968b27de3c1a5ac082c58b23ddc3d04651dc",
+    "bytes": 22651
+  }
+}

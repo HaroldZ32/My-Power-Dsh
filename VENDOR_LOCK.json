@@ -17,33 +17,40 @@
   "assets": {
     "packages/omo-skills-plugin/skills/ulw-plan": {
       "fileCount": 6,
-      "source": "../packages/shared-skills/skills/ulw-plan"
+      "source": "../packages/shared-skills/skills/ulw-plan",
+      "treeSha": "c19049a5d88353963a8058bbd0febc86334387024d719528ccfe95bd6800bc55"
     },
     "packages/omo-skills-plugin/skills/init-deep": {
       "fileCount": 1,
-      "source": "../packages/shared-skills/skills/init-deep"
+      "source": "../packages/shared-skills/skills/init-deep",
+      "treeSha": "fcc7299a214383ad1fadcb71c800f9f32e599078d4b1d5b2f8275c863911f4f5"
     },
     "packages/omo-skills-plugin/skills/lsp-setup": {
       "fileCount": 25,
-      "source": "../packages/shared-skills/skills/lsp-setup"
+      "source": "../packages/shared-skills/skills/lsp-setup",
+      "treeSha": "ec9d22a0b41bf0acd0884b30cd56988dc833c537441fdd9c368da4048ce89e74"
     },
     "packages/omo-skills-plugin/skills/git-master": {
       "fileCount": 2,
-      "source": "../packages/shared-skills/skills/git-master"
+      "source": "../packages/shared-skills/skills/git-master",
+      "treeSha": "cadd26e9e0668ecb434d03622afdbdc0e4724a65ca35559cbb0e8742bb2d23d7"
     },
     "packages/omo-skills-plugin/skills/review-work": {
       "fileCount": 1,
-      "source": "../packages/shared-skills/skills/review-work"
+      "source": "../packages/shared-skills/skills/review-work",
+      "treeSha": "375670e574faa992de8f6db7b39c050ae99818f19e04487943c6814126c07842"
     },
     "packages/omo-skills-plugin/skills/programming": {
       "fileCount": 75,
-      "source": "../packages/shared-skills/skills/programming"
+      "source": "../packages/shared-skills/skills/programming",
+      "treeSha": "8155a5589da99ccfe3f106f27fc7543824aac98f7bdfc780657b1165acf16bac"
     },
     "packages/omo-skills-plugin/skills/ast-grep": {
       "fileCount": 18,
-      "source": "../packages/shared-skills/skills/ast-grep"
+      "source": "../packages/shared-skills/skills/ast-grep",
+      "treeSha": "a3d743016e3350cf31d67929769bf497931e879c7a85225d3587b43620915e80"
     },
-    "_note": "vendored skills + built MCP dist artifacts; each asset count & dist SHA256 are blocking (verify-vendor)",
+    "_note": "skills 目录: fileCount+treeSha(排序 relpath+每文件 sha256 聚合) 双阻断; dist: sha256 阻断",
     "packages/omo-mcp-astgrep/dist/cli.js": {
       "fileCount": 1,
       "source": "built offline via scripts/build-mcp.mjs from packages/ast-grep-mcp",

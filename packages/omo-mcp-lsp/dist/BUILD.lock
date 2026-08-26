@@ -1,0 +1,13 @@
+{
+  "source": "oh-my-openagent",
+  "sourceDir": "packages/lsp-daemon",
+  "builtAt": "2026-08-26T04:48:25.873Z",
+  "build": [
+    "bun build src/cli.ts --outdir dist --target node --format esm"
+  ],
+  "artifact": {
+    "file": "cli.js",
+    "sha256": "b82ce5fa8f69460b5f0222570e5d5852b94bd3b5e22facf0901653b555e798ee",
+    "bytes": 234793
+  }
+}

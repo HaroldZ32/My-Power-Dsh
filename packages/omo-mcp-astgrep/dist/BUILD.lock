@@ -1,0 +1,13 @@
+{
+  "source": "oh-my-openagent",
+  "sourceDir": "packages/ast-grep-mcp",
+  "builtAt": "2026-08-26T04:48:25.862Z",
+  "build": [
+    "bun build src/cli.ts --outdir dist --target node --format esm"
+  ],
+  "artifact": {
+    "file": "cli.js",
+    "sha256": "5a9ae80a4ef79b2efcd66dba27c82574f74e682c9bb84e465291dc0ba34aed7e",
+    "bytes": 84651
+  }
+}

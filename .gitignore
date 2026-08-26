@@ -1,4 +1,4 @@
 node_modules/
-dist/
+*.tmp
 evidence/*.log.tmp
 .DS_Store
