@@ -1,0 +1,152 @@
+// C3 mpd-hashline-plugin: hash-anchored edit discipline on the DSH tool seam.
+// Vendored core: upstream oh-my-openagent packages/hashline-core (base 8c57e46,
+// SUL-1.0 fork terms; see LICENSE.md). Adaptation: diff-utils.ts bundles a
+// minimal unified-diff generator instead of the npm "diff" dependency.
+// Model: files stay PLAIN on disk; the hashline layer is a ref view + anchored
+// edit discipline. Tools:
+//   1) mpd_hashline_read   - show the file as LINE#HASH|content (anchors for edits);
+//   2) mpd_hashline_edit   - apply anchored replace/append/prepend edits (validated
+//      against current hashes), write back plain content, report a unified diff;
+//   3) mpd_hashline_format - register the file for the discipline (idempotent, no disk change);
+//   4) mpd_hashline_restore- unregister the discipline;
+// plus a post-execute guard warning when plain edit/write touched a registered file.
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { dirname, join, resolve } from "node:path"
+import {
+  toHashlineContent,
+  applyHashlineEditsWithReport,
+  generateUnifiedDiff,
+  computeLineHash,
+  type HashlineEdit,
+} from "./vendor/index.ts"
+
+export const name = "mpd-hashline"
+export const inject = ["tools"]
+
+type Ctx = { tools: any; on: (ev: string, fn: (...a: any[]) => any) => void }
+type Config = { guardEditTools?: boolean; maxDiffChars?: number; registryFile?: string }
+type ToolExec = { name: string; arguments?: any }
+
+function textBlock(text: string): any { return [{ type: "text", text }] }
+
+function cwd(): string { return process.env.DSH_WORKSPACE_ROOT ?? process.cwd() }
+
+function registryPath(config: Config): string {
+  return config.registryFile ? resolve(config.registryFile) : join(cwd(), ".mpd", "hashline-files.json")
+}
+
+function readRegistry(p: string): string[] {
+  try { const v = JSON.parse(readFileSync(p, "utf8")); return Array.isArray(v) ? v : [] } catch { return [] }
+}
+
+function writeRegistry(p: string, files: string[]): void {
+  mkdirSync(dirname(p), { recursive: true })
+  writeFileSync(p, JSON.stringify([...new Set(files)], null, 2))
+}
+
+function registered(config: Config, fp: string): boolean {
+  const list = readRegistry(registryPath(config))
+  const target = resolve(fp)
+  return list.some((x) => resolve(x) === target)
+}
+
+function editFile(fp: string, edits: HashlineEdit[], maxDiffChars: number): any {
+  const raw = readFileSync(fp, "utf8")
+  const report = applyHashlineEditsWithReport(raw, edits)
+  writeFileSync(fp, report.content)
+  const diff = report.content === raw ? "" : generateUnifiedDiff(raw, report.content, fp).slice(0, maxDiffChars)
+  return {
+    path: fp,
+    lines: report.content === "" ? 0 : report.content.split("\n").length,
+    noopEdits: report.noopEdits,
+    deduplicatedEdits: report.deduplicatedEdits,
+    diff
+  }
+}
+
+export function apply(ctx: Ctx, config: Config = {}): void {
+  const maxDiffChars = config.maxDiffChars ?? 4000
+
+  ctx.tools.register({
+    name: "mpd_hashline_read",
+    description: "Show a file as hashline view: one 'LINE#HASH|content' line per source line, where LINE#HASH is the anchor to use with mpd_hashline_edit. Read-only; the file on disk stays plain.",
+    parameters: { type: "object", properties: { path: { type: "string" } }, required: ["path"] },
+    output: { schema: { type: "object", properties: { path: { type: "string" }, lines: { type: "integer" }, view: { type: "string" } }, required: ["path", "lines", "view"] }, render: (_a: unknown, v: any) => textBlock(v.view) },
+    execute: async (args: any) => {
+      const fp = resolve(String(args?.path))
+      if (!existsSync(fp)) throw new Error("mpd-hashline: file not found: " + fp)
+      const raw = readFileSync(fp, "utf8")
+      const out = toHashlineContent(raw)
+      return { path: fp, lines: out === "" ? 0 : out.split("\n").length, view: out }
+    }
+  })
+
+  ctx.tools.register({
+    name: "mpd_hashline_edit",
+    description: "Apply hash-anchored edits to a file: edits are {op: replace|append|prepend, pos: 'LINE#HASH' anchor, end?: 'LINE#HASH' (replace range), lines: 'new text' | ['line1', ...]}. Obtain anchors from mpd_hashline_read. Anchors are validated against current hashes (HashlineMismatchError on drift, with remapped refs); matched edits are applied to plain content and the file is written back plain. Returns noop/deduped counts and a unified diff.",
+    parameters: {
+      type: "object",
+      properties: {
+        path: { type: "string" },
+        edits: { type: "array", items: { type: "object", properties: { op: { type: "string", enum: ["replace", "append", "prepend"] }, pos: { type: "string" }, end: { type: "string" }, lines: { type: ["string", "array"], items: { type: "string" } } }, required: ["op"], additionalProperties: false } }
+      },
+      required: ["path", "edits"],
+      additionalProperties: false
+    },
+    output: {
+      schema: { type: "object", properties: { path: { type: "string" }, lines: { type: "integer" }, noopEdits: { type: "integer" }, deduplicatedEdits: { type: "integer" }, diff: { type: "string" } }, required: ["path", "lines"], additionalProperties: false },
+      render: (_a: unknown, v: any) => textBlock("hashline edited: " + v.path + " (" + v.lines + " lines, noop=" + v.noopEdits + ", deduped=" + v.deduplicatedEdits + ")\n" + (v.diff ?? ""))
+    },
+    execute: async (args: any) => {
+      const fp = resolve(String(args?.path))
+      if (!existsSync(fp)) throw new Error("mpd-hashline: file not found: " + fp)
+      const edits = Array.isArray(args?.edits) ? args.edits : []
+      if (edits.length === 0) throw new Error("mpd-hashline: at least one edit required")
+      return editFile(fp, edits, maxDiffChars)
+    }
+  })
+
+  ctx.tools.register({
+    name: "mpd_hashline_format",
+    description: "Register a file for the hashline discipline (idempotent; the file on disk is NOT changed). After registration the post-edit guard warns when plain edit/write tools change the file. The returned view is the hashline anchor view.",
+    parameters: { type: "object", properties: { path: { type: "string" } }, required: ["path"] },
+    output: { schema: { type: "object", properties: { path: { type: "string" }, lines: { type: "integer" }, view: { type: "string" } }, required: ["path", "lines", "view"] }, render: (_a: unknown, v: any) => textBlock("hashline disciplined: " + v.path + "\n" + v.view) },
+    execute: async (args: any) => {
+      const fp = resolve(String(args?.path))
+      if (!existsSync(fp)) throw new Error("mpd-hashline: file not found: " + fp)
+      const rp = registryPath(config)
+      writeRegistry(rp, [...readRegistry(rp), fp])
+      const raw = readFileSync(fp, "utf8")
+      const out = toHashlineContent(raw)
+      return { path: fp, lines: out === "" ? 0 : out.split("\n").length, view: out }
+    }
+  })
+
+  ctx.tools.register({
+    name: "mpd_hashline_restore",
+    description: "Unregister a file from the hashline discipline (the plain file content is untouched). After this, plain edits no longer trigger the hashline guard.",
+    parameters: { type: "object", properties: { path: { type: "string" } }, required: ["path"] },
+    output: { schema: { type: "object", properties: { path: { type: "string" } }, required: ["path"] }, render: (_a: unknown, v: any) => textBlock("hashline discipline removed: " + v.path) },
+    execute: async (args: any) => {
+      const fp = resolve(String(args?.path))
+      const rp = registryPath(config)
+      writeRegistry(rp, readRegistry(rp).filter((x) => resolve(x) !== fp))
+      return { path: fp }
+    }
+  })
+
+  // Guard: plain edit/write on a discipline-registered file silently invalidates anchors.
+  if (config.guardEditTools !== false) {
+    ctx.on("tools/post-execute", async (exec: ToolExec, result: any, next: any) => {
+      const out = await next()
+      if (out.kind !== "accept") return out
+      const isEdit = exec.name === "edit" || exec.name === "str_replace_editor" || exec.name === "write"
+      if (!isEdit) return out
+      const fp = exec.arguments?.file_path ?? exec.arguments?.path
+      if (typeof fp !== "string" || !registered(config, fp)) return out
+      const hint = "\n[mpd-hashline guard] " + fp + " is hashline-disciplined and was changed with a plain edit tool, so the LINE#HASH anchors you saw are now stale. Re-read with mpd_hashline_read and continue with mpd_hashline_edit, or run mpd_hashline_restore to drop the discipline."
+      const content = out.content ?? result?.content ?? ""
+      return { ...out, content: typeof content === "string" ? content + hint : content }
+    })
+  }
+}

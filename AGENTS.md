@@ -19,6 +19,11 @@ code-yeongyu/oh-my-openagent; base commit `8c57e46`, v5.0.0-beta.20) into the De
   and `OMO_CODEGRAPH_BIN` (codegraph serve) are read by upstream vendored code.
 - DSH plugin names (`@deepseek-ai/dsh-llm-deepseek`, `dsh-llm-pi-ai`, `dsh-mcp-client`, …) are the
   host's API and are never renamed.
+- **Adopted third-party plugins keep their vendor ids and tool names** (intentional namespace
+  exception, same rule as the `context7`/`grep_app` remote MCP rows): the `agent-teams`
+  plugin (tools `agent_teams_*`, Web activity panel) is adopted from
+  `@nanmicoder/dsh-agent-teams` (MIT) — see LICENSE-NOTICES.md. Its `stateDir` is overridden
+  to `.mpd/team` so all our state stays under one `.mpd` root.
 
 ---
 
@@ -60,6 +65,9 @@ mpd-dsh/
 │   ├── mpd-ulw-plugin/           # B3: mpd_ulw loop discipline
 │   ├── mpd-team-plugin/          # B2: mpd_team_spawn / mpd_team_status
 │   ├── mpd-codegraph-plugin/     # binary resolve + project init + mpd-codegraph command
+│   ├── mpd-hashline-plugin/      # C3: anchored edit discipline (vendor hashline-core)
+│   ├── mpd-boulder-plugin/       # C5: durable work ledger (vendor boulder-state)
+│   ├── mpd-config-plugin/        # C7: minimal mpd.jsonc runtime config layer
 │   └── mpd-qa-preset-probe/      # QA-only preset probe plugin
 ├── skills/dsh-qa/                # QA skill: SKILL.md + scripts (each with --self-test) + references/
 ├── tests/

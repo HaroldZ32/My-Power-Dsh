@@ -1,0 +1,3 @@
+[mpd-codegraph] init status=marker binary=/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-c1-fFRzaU/ws
+CodeGraph MCP skipped: project excluded by OMO CodeGraph policy.
+dsh web: http://127.0.0.1:3199

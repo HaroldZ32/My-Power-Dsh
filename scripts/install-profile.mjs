@@ -6,7 +6,7 @@
 //   2) $DSH_HOME/cordis.patch.yml (plugin rows with local absolute paths: llm dual track / skills / MCP / mpd-codegraph)
 //   3) $DSH_HOME/.agent-presets/omo-* (4 presets -> auto-scanned from the user root)
 //   4) .toolchain (network install of ast-grep + codegraph when missing)
-import { cpSync, existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs"
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -15,13 +15,15 @@ import { spawnSync } from "node:child_process"
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)))
 
 function parseArgs(argv) {
-  const o = { profile: "omo", yes: false, dshHome: null, selfTest: false, skipToolchain: false }
+  const o = { profile: "omo", yes: false, dshHome: null, selfTest: false, skipToolchain: false, agentTeams: true }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
     if (a === "--yes") o.yes = true
     else if (a === "--dry-run") o.yes = false
     else if (a === "--self-test") o.selfTest = true
     else if (a === "--skip-toolchain") o.skipToolchain = true
+    else if (a === "--with-agent-teams") o.agentTeams = true
+    else if (a === "--without-agent-teams") o.agentTeams = false
     else if (a === "--dsh-home") o.dshHome = argv[++i]
     else if (a === "--profile") o.profile = argv[++i]
   }
@@ -89,26 +91,46 @@ function buildPlan(o) {
     {
       id: "omo-team", name: p("packages/mpd-team-plugin/dist/index.js"),
       config: {}
+    },
+    {
+      id: "mpd-hashline", name: p("packages/mpd-hashline-plugin/dist/index.js"),
+      config: { guardEditTools: true }
+    },
+    {
+      id: "mpd-boulder", name: p("packages/mpd-boulder-plugin/dist/index.js"),
+      config: {}
+    },
+    {
+      id: "mpd-config", name: p("packages/mpd-config-plugin/dist/index.js"),
+      config: {}
     }
   ]
+  const agentTeamsRow = {
+    id: "agent-teams", name: "@nanmicoder/dsh-agent-teams",
+    config: { stateDir: ".mpd/team", memberProvider: "spawn", memberMaxDepth: 1 }
+  }
+  if (o.agentTeams !== false) rows.push(agentTeamsRow)
   return {
     dshHome, isHeadless, bundle0, bundle1, rows, skillsDir, presetsDir,
     profileDir: join(dshHome, "profiles", o.profile),
     homePatch: join(dshHome, "cordis.patch.yml"),
     userPresets: join(dshHome, ".agent-presets"),
-    needsToolchain: !existsSync(astCli) || !existsSync(cgCli)
+    needsToolchain: !existsSync(astCli) || !existsSync(cgCli),
+    agentTeams: o.agentTeams !== false,
+    agentTeamsRow
   }
 }
 
-const EXISTING_IDS = new Set(["llm-deepseek", "llm-pi-ai", "agent-default-model", "skill-filesystem"])
+const EXISTING_IDS = new Set(["llm-deepseek", "llm-pi-ai", "agent-default-model", "skill-filesystem", "agent-teams"])
 
 function renderRow(r, indent) {
   const body = []
   body.push(indent + "- id: " + r.id)
   body.push(indent + "  name: " + JSON.stringify(r.name))
   if (r.disabled !== undefined) body.push(indent + "  disabled: " + JSON.stringify(r.disabled))
-  if (r.config) body.push(indent + "  config:")
-  if (r.config) {
+  const hasConfig = r.config && Object.keys(r.config).length > 0
+  if (hasConfig) body.push(indent + "  config:")
+  if (hasConfig) {
     for (const [k, v] of Object.entries(r.config)) {
       if (v === undefined) continue
       if (Array.isArray(v)) {
@@ -135,11 +157,37 @@ function renderPatch(rows) {
 }
 
 function selfTest() {
-  const plan = buildPlan({ profile: "omo", yes: false, dshHome: join(homedir(), ".mpd-not-real") })
+  const plan = buildPlan({ profile: "omo", yes: false, dshHome: join(homedir(), ".mpd-not-real"), agentTeams: true })
   if (plan.homePatch !== join(plan.dshHome, "cordis.patch.yml")) { console.error("[install-profile self-test] FAIL: path model"); process.exit(1) }
   const rows = plan.rows.map((r) => r.id)
   if (!rows.includes("mcp-astgrep") || !rows.includes("mpd-codegraph") || !rows.includes("skill-filesystem")) { console.error("[install-profile self-test] FAIL: row set"); process.exit(1) }
-  console.log("[install-profile self-test] ok: path model + row set verified")
+  if (!rows.includes("agent-teams") || !EXISTING_IDS.has("agent-teams") || plan.agentTeamsRow.config.stateDir !== ".mpd/team") { console.error("[install-profile self-test] FAIL: agent-teams row/override"); process.exit(1) }
+  if (!rows.includes("mpd-hashline")) { console.error("[install-profile self-test] FAIL: mpd-hashline row"); process.exit(1) }
+  console.log("[install-profile self-test] ok: path model + row set + agent-teams override verified")
+}
+
+function installAgentTeams(profile, dshHome) {
+  // Materialize the adopted plugin into the profile dir with npm --prefix (the
+  // package marks its @deepseek-ai/* + react peers optional; the host's flat
+  // fallback $DSH_HOME/profiles/node_modules resolves them at boot), then
+  // reconcile dsh.profile.bundles exactly like `dsh plugin add` would.
+  const profileDir = join(dshHome, "profiles", profile)
+  const manifestPath = join(profileDir, "package.json")
+  const cache = join(profileDir, ".npm-cache")
+  const r = spawnSync("npm", ["install", "--prefix", profileDir, "--no-audit", "--no-fund", "--cache", cache, "@nanmicoder/dsh-agent-teams@0.1.13"], {
+    env: { ...process.env, npm_config_cache: cache },
+    stdio: "inherit"
+  })
+  if (r.status !== 0) return false
+  const pkgPath = join(profileDir, "node_modules", "@nanmicoder", "dsh-agent-teams", "package.json")
+  if (!existsSync(pkgPath)) return false
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"))
+  const pkg = JSON.parse(readFileSync(pkgPath, "utf8"))
+  const bundles = manifest.dsh?.profile?.bundles ?? []
+  if (pkg.dsh?.bundle?.patch && !bundles.includes("@nanmicoder/dsh-agent-teams")) bundles.push("@nanmicoder/dsh-agent-teams")
+  manifest.dsh = { ...(manifest.dsh ?? {}), profile: { ...(manifest.dsh?.profile ?? {}), bundles } }
+  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n")
+  return true
 }
 
 function main() {
@@ -164,11 +212,29 @@ function main() {
     dsh: { profile: { bundles: [plan.bundle0, plan.bundle1] } }
   }, null, 2) + "\n")
   writeFileSync(join(plan.profileDir, "cordis.patch.yml"), "[]\n")
-  writeFileSync(plan.homePatch, renderPatch(plan.rows) + "\n")
+  // Pass 1: home patch WITHOUT the agent-teams override, because an id-targeted
+  // override of a not-yet-present bundle row would fail patch composition.
+  // The override is appended in pass 2 only after `dsh plugin add` materializes
+  // the agent-teams bundle row.
+  const rowsPass1 = plan.rows.filter((r) => r.id !== "agent-teams")
+  writeFileSync(plan.homePatch, renderPatch(rowsPass1) + "\n")
   // copy presets
   const ids = readdirSync(plan.presetsDir).filter((d) => d.startsWith("mpd-"))
   for (const id of ids) cpSync(join(plan.presetsDir, id), join(plan.userPresets, id), { recursive: true })
   console.log("[install-profile] wrote profile/ home patch/ presets(" + ids.length + ")")
+  if (plan.agentTeams) {
+    const ok = installAgentTeams(o.profile, plan.dshHome)
+    if (ok) {
+      // Pass 2: append the id-targeted override now that the bundle row exists.
+      const patch = readFileSync(plan.homePatch, "utf8")
+      writeFileSync(plan.homePatch, patch.replace(/\n*$/, "\n") + "\n\n" + renderRow(plan.agentTeamsRow, "") + "\n")
+      console.log("[install-profile] agent-teams installed; override appended (stateDir=.mpd/team)")
+    } else {
+      console.error("[install-profile] agent-teams install FAILED; no override written. Fix dsh/pnpm/network, then re-run with --yes")
+      process.exitCode = 1
+      return
+    }
+  }
   if (plan.needsToolchain && !o.skipToolchain) {
     console.log("[install-profile] installing toolchain (@ast-grep/cli + @colbymchenry/codegraph@1.5.0)...")
     const r = spawnSync("npm", ["install", "--prefix", join(repoRoot, ".toolchain"), "--no-save", "--cache", join(repoRoot, ".toolchain/.npm-cache"), "@ast-grep/cli", "@colbymchenry/codegraph@1.5.0"], { stdio: "inherit" })

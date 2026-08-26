@@ -1,0 +1,54 @@
+{
+  "ok": false,
+  "sandbox": "/tmp/mpd-c1-VyAo6D",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "bundleRow": {
+      "ok": true,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-headless",
+        "@nanmicoder/dsh-agent-teams"
+      ]
+    },
+    "override": {
+      "ok": true,
+      "hasPatch": true
+    },
+    "compose": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": false,
+      "exit": 1
+    },
+    "teamState": {
+      "ok": false,
+      "teamIds": [],
+      "inbox": [],
+      "teamJson": []
+    },
+    "archive": {
+      "ok": false,
+      "archiveIds": []
+    },
+    "taskTerminal": {
+      "ok": false
+    },
+    "webInstaller": {
+      "ok": true,
+      "exit": 0
+    },
+    "webRoute": {
+      "ok": false,
+      "status": null,
+      "body": "",
+      "webLog": "/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/evidence/plan-c/c1-team/2026-08-26T09-06-05.804Z/web.log"
+    }
+  },
+  "totalSteps": 10
+}

@@ -6,7 +6,7 @@ Legend: ✅ full / 🟡 partial / ❌ missing / ➖ not applicable (host-specifi
 | Area | OMO spec | Status | Where / note |
 |---|---|---|---|
 | Agent roster (11) | sisyphus, sisyphus-junior, hephaestus, oracle, librarian, explore, metis, momus, atlas, multimodal-looker, prometheus | ✅ | mpd-presets-plugin: all 11 mpd-* presets with DeepSeek-adapted personas |
-| Team mode | 11-agent orchestration, mailbox, tasklist, state, worktree, tmux | 🟡 | mpd_team_spawn/status: parallel role members + mailbox state file + convergence report. Deferred: live mailbox polling between members, tmux viz, tasklist/worktree snapshots |
+| Team mode | 11-agent orchestration, mailbox, tasklist, state, worktree, tmux | ✅ | dsh-agent-teams v0.1.13 adopted (MIT): durable continuable members, per-member mailbox + wake, dependency-aware scheduler, task DAG Web panel, archive (stateDir .mpd/team; evidence/plan-c/c1-team). mpd_team_spawn/status remain as lightweight one-shot mode |
 | ultrawork / ulw loop | plan->execute->verify discipline, modes, hashline edits | 🟡 | mpd_ulw: fresh child per round, bounded structured handoff, state file, verification evidence. Deferred: hashline edit mode, hyperplan gate, wave-specific verifiers |
 | /goal & goal rounds | omo /goal with durable state | ✅ | DSH native goal + tool-goal + command-goal + goal-round-driver |
 | ralph loop | fresh-agent iteration | ✅ | DSH native tool-ralph |

@@ -1,0 +1,41 @@
+[mpd-codegraph] init status=marker binary=/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-c1-VyAo6D/ws
+CodeGraph MCP skipped: project excluded by OMO CodeGraph policy.
+file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1187
+		throw new Error(`${binName}: ${stage}: ${detail}${stack}`, { cause });
+		      ^
+
+Error: dsh: plugin tree failed to load: failed to apply loader entry include (cordis:include): failed to apply loader entry omo-modelchain (/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-modelchain-plugin/dist/index.js): Cannot read properties of null (reading 'chains')
+TypeError: Cannot read properties of null (reading 'chains')
+    at new apply (file:///home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-modelchain-plugin/dist/index.js:70:25)
+    at Fiber.execute (file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1067:24)
+    at file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1141:34
+    at file:///tmp/mpd-c1-VyAo6D/profiles/omo/#omo-modelchain
+    at file:///tmp/mpd-c1-VyAo6D/profiles/omo/#include
+    at boot (file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1187:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async runProfile (file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-DG5t9aNs.js:247:14)
+    at async file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:133:3 {
+  [cause]: Error: failed to apply loader entry include (cordis:include): failed to apply loader entry omo-modelchain (/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-modelchain-plugin/dist/index.js): Cannot read properties of null (reading 'chains')
+      at updateError (file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:299:9)
+      at Entry._init (file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:519:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    [cause]: Error: failed to apply loader entry omo-modelchain (/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-modelchain-plugin/dist/index.js): Cannot read properties of null (reading 'chains')
+        at updateError (file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:299:9)
+        at Entry._await (file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:506:10)
+        at async Entry.init (file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:500:3)
+        at async Entry.update (file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:416:37)
+        at async EntryGroup.create (file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:55:4)
+        at async Promise.allSettled (index 142)
+        at async EntryGroup.update (file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:87:21)
+        at async Include._apply (file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:238:3) {
+      [cause]: TypeError: Cannot read properties of null (reading 'chains')
+          at new apply (file:///home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-modelchain-plugin/dist/index.js:70:25)
+          at Fiber.execute (file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1067:24)
+          at file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1141:34
+          at file:///tmp/mpd-c1-VyAo6D/profiles/omo/#omo-modelchain
+          at file:///tmp/mpd-c1-VyAo6D/profiles/omo/#include
+    }
+  }
+}
+
+Node.js v24.19.0

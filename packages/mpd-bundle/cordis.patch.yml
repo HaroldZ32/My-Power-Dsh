@@ -113,6 +113,14 @@
         maxRounds: 3
     - id: omo-team
       name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-team-plugin/dist/index.js'
+    - id: mpd-hashline
+      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-hashline-plugin/dist/index.js'
+      config:
+        guardEditTools: true
+    - id: mpd-boulder
+      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-boulder-plugin/dist/index.js'
+    - id: mpd-config
+      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-config-plugin/dist/index.js'
 
 # ── Remote MCP rows (public services; network required, optional per use) ──
 - insert:

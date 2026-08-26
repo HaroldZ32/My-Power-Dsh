@@ -1,0 +1,34 @@
+{
+  "ok": true,
+  "sandbox": "/tmp/mpd-wa-Ac8NNQ",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "rows": {
+      "ok": true,
+      "patch": true
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "boulder": {
+      "ok": true,
+      "boulderWork": {
+        "work_id": "qa-faaf5733",
+        "status": "completed",
+        "tasks": 1
+      }
+    },
+    "hashline": {
+      "ok": true,
+      "note": "first\nsecond2\nthird\n"
+    },
+    "config": {
+      "ok": true,
+      "sawConfig": true
+    }
+  }
+}

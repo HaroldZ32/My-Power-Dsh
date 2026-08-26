@@ -67,7 +67,7 @@ function loadMemory(p) {
   }
 }
 function apply(ctx, config = {}) {
-  const chains = config.chains ?? DEFAULT_CHAINS;
+  const chains = config?.chains ?? DEFAULT_CHAINS;
   const cwd = process.env.DSH_WORKSPACE_ROOT ?? process.cwd();
   ctx.tools.register({
     name: "mpd_modelchain_resolve",
