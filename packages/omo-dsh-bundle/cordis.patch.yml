@@ -1,0 +1,6 @@
+# omo-dsh bundle 插件层
+# P1: 挂载 dsh-llm-deepseek / dsh-llm-pi-ai 双轨
+# P2: omo-skills-plugin（技能 provider）
+# P3: omo-mcp-astgrep / omo-mcp-gitbash / (D2) omo-mcp-lsp
+# P4: omo-presets-plugin / omo-hephaestus
+[]  # P0 占位：空层，P1 开始逐条插入

@@ -1,0 +1,26 @@
+#!/usr/bin/env node
+// P0 版 bootstrap：前置校验 + vendor 校验；P1 起扩展为从 profiles/* 模板初始化隔离 DSH_HOME。
+import { spawnSync } from "node:child_process"
+import { existsSync } from "node:fs"
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
+
+const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)))
+const step = (msg) => console.log("[bootstrap] " + msg)
+let failed = false
+
+for (const [bin, args] of [["node", ["--version"]], ["bun", ["--version"]], ["git", ["--version"]], ["dsh", ["--version"]]]) {
+  const r = spawnSync(bin, args, { encoding: "utf8" })
+  if (r.status !== 0) { console.error("[bootstrap] missing " + bin); failed = true }
+  else step(bin + " " + r.stdout.trim())
+}
+
+const verify = spawnSync("node", [join(repoRoot, "scripts", "verify-vendor.mjs")], { stdio: "inherit" })
+if (verify.status !== 0) failed = true
+
+for (const d of ["packages/omo-dsh-bundle", "packages/omo-skills-plugin", "profiles/omo-headless"]) {
+  if (!existsSync(join(repoRoot, d))) { console.warn("[bootstrap] not yet created: " + d + " (P1+)"); }
+}
+
+if (failed) { console.error("[bootstrap] FAIL"); process.exit(1) }
+step("PASS - 前置与 vendor 基线校验通过，可进入 P1")

@@ -1,0 +1,11 @@
+{
+  "name": "@omo-dsh/tools",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "工具/钩子插件（B1）",
+  "scripts": {
+    "typecheck": "tsgo --noEmit -p tsconfig.json",
+    "test": "bun test"
+  }
+}

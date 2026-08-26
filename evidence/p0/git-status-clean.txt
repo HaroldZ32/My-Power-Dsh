@@ -1,0 +1,5 @@
+原仓库 git status（P0 记录；2 个 modified 为检出时已存在的旧证据文件，与本仓库工作无关）
+ M .omo/evidence/20260816-remove-omo-telemetry-command/disclosure-tui/terminal-ansi.txt
+ M .omo/evidence/20260816-remove-omo-telemetry-command/tui-pass/terminal-ansi.txt
+---HEAD---
+8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29

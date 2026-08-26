@@ -1,0 +1,9 @@
+[bootstrap] node v24.19.0
+[bootstrap] bun 1.4.0
+[bootstrap] git git version 2.53.0
+[bootstrap] dsh 0.1.1-rc.2
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] PASS
+[bootstrap] PASS - 前置与 vendor 基线校验通过，可进入 P1

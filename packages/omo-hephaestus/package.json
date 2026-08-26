@@ -1,0 +1,11 @@
+{
+  "name": "@omo-dsh/hephaestus",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Hephaestus 配置管理 agent 插件（P4 最小版）",
+  "scripts": {
+    "typecheck": "tsgo --noEmit -p tsconfig.json",
+    "test": "bun test"
+  }
+}

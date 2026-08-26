@@ -1,0 +1,11 @@
+{
+  "name": "@omo-dsh/mcp-astgrep",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "ast-grep MCP 接入插件（P3）",
+  "scripts": {
+    "typecheck": "tsgo --noEmit -p tsconfig.json",
+    "test": "bun test"
+  }
+}

@@ -8,10 +8,13 @@
     "loc": 151433,
     "source": ".omo/init-deep.json"
   },
-  "vendoredAssets": {
-    "packages/shared-skills/skills": "partial (per D5)",
-    "packages/*/core": "on demand (P4+)"
+  "upstreamStats": {
+    "trackedFiles": 9131,
+    "trackedLoc": 1470231,
+    "recordedAt": "2026-08-26T03:46:26.867Z",
+    "note": "loc = Σ split('\\n').length over tracked files（与 verify-vendor 同法）"
   },
-  "verification": "scripts/verify-vendor.mjs 比对文件数/行数，失败即阻断",
-  "lockedAt": "2026-08-26T03:04:21.606Z"
+  "assets": {},
+  "verification": "node scripts/verify-vendor.mjs 比对 commit/version 为阻断项；stats 漂移为警告；资产计数为阻断项",
+  "lockedAt": "2026-08-26T03:44:55.545Z"
 }
