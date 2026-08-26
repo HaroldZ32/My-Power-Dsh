@@ -1,0 +1,34 @@
+{
+  "ok": true,
+  "sandbox": "/tmp/mpd-c2-oggFq3",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "state": {
+      "ok": true,
+      "stateAny": {
+        "id": "ulw-dfd20435",
+        "status": "max-rounds",
+        "verdict": "n/a",
+        "rounds": 2,
+        "planFile": null
+      }
+    },
+    "ledger": {
+      "ok": true,
+      "rows": 2
+    },
+    "planFile": {
+      "ok": true
+    },
+    "commentCheck": {
+      "ok": true
+    }
+  }
+}

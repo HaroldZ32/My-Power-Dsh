@@ -33,3 +33,11 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## @code-yeongyu/comment-checker (MIT) — opt-in check binary
+
+The optional comment/docstring detection binary used by mpd-comment-checker-plugin
+is the npm package `@code-yeongyu/comment-checker` 0.8.0
+(https://github.com/code-yeongyu/go-claude-code-comment-checker), distributed under
+the MIT License. It is not redistributed in this repository; it is installed on
+demand into `.toolchain` (installer flag `--with-comment-checker`).

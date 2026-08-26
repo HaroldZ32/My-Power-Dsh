@@ -121,6 +121,10 @@
       name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-boulder-plugin/dist/index.js'
     - id: mpd-config
       name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-config-plugin/dist/index.js'
+    - id: mpd-comment-checker
+      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-comment-checker-plugin/dist/index.js'
+      config:
+        autoCheck: false
 
 # ── Remote MCP rows (public services; network required, optional per use) ──
 - insert:

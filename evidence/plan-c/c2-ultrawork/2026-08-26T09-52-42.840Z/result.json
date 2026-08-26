@@ -1,0 +1,33 @@
+{
+  "ok": false,
+  "sandbox": "/tmp/mpd-c2-E9ocIu",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "state": {
+      "ok": false,
+      "stateAny": {
+        "id": "ulw-68e855b3",
+        "verdict": null,
+        "rounds": 0,
+        "planFile": null
+      }
+    },
+    "ledger": {
+      "ok": false,
+      "rows": 0
+    },
+    "planFile": {
+      "ok": false
+    },
+    "commentHint": {
+      "ok": false
+    }
+  }
+}
