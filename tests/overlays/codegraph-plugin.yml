@@ -1,0 +1,8 @@
+# QA 用: 插入自研 omo-codegraph 插件（绝对路径；生产以 @omo-dsh/omo-codegraph-plugin 包名引入）
+- insert:
+    - id: omo-codegraph
+      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-codegraph-plugin/dist/index.js'
+      config:
+        autoInit: true
+        initTimeoutMs: 60000
+        binary: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/.toolchain/node_modules/.bin/codegraph'

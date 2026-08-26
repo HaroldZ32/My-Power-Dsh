@@ -83,16 +83,17 @@
           - !!js process.env.OMO_DSH_LSP_CLI || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-mcp-lsp/dist/cli.js'
           - mcp
         toolCallTimeoutMs: 60000
-    # F10: codegraph 在二进制缺失时会尝试向 ~/.omo 自动 provision（沙盒/只读 HOME 下崩溃并把
-    # 栈写入会话日志，干扰模型）。默认禁用；如需启用：本地安装 codegraph（.toolchain），
-    # 设置 OMO_DSH_CODEGRAPH_CLI 环境变量，再把 disabled 改为 false。
+    # CodeGraph（F10 回归后重新启用）：通过 OMO_CODEGRAPH_BIN 指到本地 toolchain 的 codegraph，
+    # 避免 serve.js 尝试向 ~/.omo 自动 provision 崩溃；索引初始化由自研 omo-codegraph 插件负责
+    # （本 bundle 生产由 @omo-dsh/omo-codegraph-plugin 提供；QA 经 overlay 以绝对路径挂载）。
     - id: mcp-codegraph
       name: '@deepseek-ai/dsh-mcp-client'
-      disabled: true
       config:
         serverName: codegraph
         transport: stdio
         command: node
         args:
           - !!js process.env.OMO_DSH_CODEGRAPH_CLI || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-mcp-codegraph/dist/serve.js'
+        env:
+          OMO_CODEGRAPH_BIN: !!js process.env.OMO_CODEGRAPH_BIN || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/.toolchain/node_modules/.bin/codegraph'
         toolCallTimeoutMs: 60000

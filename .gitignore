@@ -2,3 +2,4 @@ node_modules/
 *.tmp
 evidence/*.log.tmp
 .DS_Store
+.codegraph/

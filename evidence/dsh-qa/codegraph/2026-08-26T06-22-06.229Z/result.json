@@ -1,0 +1,8 @@
+{
+  "ok": true,
+  "binary": "toolchain codegraph 1.5.0",
+  "init": "ok -> marker",
+  "tool": "mcp__codegraph__codegraph_explore",
+  "call": "returned verbatim source",
+  "projectPolicy": "cwd must not contain .omo segment nor be under /tmp (OMO exclusion)"
+}

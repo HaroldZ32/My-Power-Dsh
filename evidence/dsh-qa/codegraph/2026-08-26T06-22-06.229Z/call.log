@@ -1,0 +1,13 @@
+[omo-codegraph] init status=marker binary=.../toolchain/node_modules/.bin/codegraph cwd=/home/haroldzhao/dshProj/oh-my-openagent/.cg-qa
+已调用 mcp__codegraph__codegraph_explore（query: "norm function in src/util.ts"）。返回内容原样如下：
+
+Exploration: norm function in src/util.ts
+Found 1 symbol across 1 file.
+
+**Source Code**
+> verbatim, current on-disk source — re-read from disk, line-numbered, byte-for-byte identical to Read tool.
+
+**src/util.ts** — norm(function)
+1	export function norm(x:number){return x<0?0:x}
+
+EXIT=0

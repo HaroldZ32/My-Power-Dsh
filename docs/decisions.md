@@ -36,3 +36,16 @@
 - **预设内容**：oracle/librarian/prometheus/hephaestus 人格由 OMO 原版 prompt 抽取并做 DeepSeek 适配
   （删 Claude 专有措辞、工具名映射到 DSH 的 mcp__ast_grep__*/mcp__lsp__*/web 等），记录于 tests/prompt-adaptation-log.md；
   persona 冒烟 PASS（Prometheus 自识别正确）。
+
+## CodeGraph 回归（F10 关闭 → 方案定稿）
+
+- **根因**：① serve.js 二进制缺失时向 ~/.omo 自动 provision（只读 HOME 崩溃）；② OMO exclusion 策略排除
+  路径含 `.omo` 段或 /tmp 的项目（**我们的仓库临时位于 .omo/port/ 下，天然被排除**）。
+- **方案（已实证）**：
+  1. 自研 `omo-codegraph-plugin`（包名 @omo-dsh/omo-codegraph-plugin）：config.binary/env 解析（支持
+     OMO_CODEGRAPH_BIN + toolchain 兜底）-> exact-marker 探测 -> 原子锁 + 15min 冷却 + 60s 树超时的
+     `codegraph init`；注册 `omo-codegraph` 命令手动重跑；任何失败只记日志不崩 boot；
+  2. bundle 的 mcp-codegraph 行重新启用，env 注入 OMO_CODEGRAPH_BIN（toolchain 兜底）；
+  3. QA 临时项目置于 workspace 根层（非 .omo、非 /tmp）验证全链路：init status=ok -> marker ->
+     `mcp__codegraph__codegraph_explore` 真实返回逐字节源码（evidence/dsh-qa/codegraph/）。
+- **用户机器注意**：生产项目路径不得含 `.omo` 段或在 /tmp 下；Gitee 克隆到普通路径（如 ~/dshProj/omo-dsh）即可。

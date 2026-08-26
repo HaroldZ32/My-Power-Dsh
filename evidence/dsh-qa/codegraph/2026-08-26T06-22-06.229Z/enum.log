@@ -1,0 +1,3 @@
+[omo-codegraph] init status=ok binary=/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/.toolchain/node_modules/.bin/codegraph cwd=/home/haroldzhao/dshProj/oh-my-openagent/.cg-qa
+mcp__codegraph__codegraph_explore
+EXIT=0
