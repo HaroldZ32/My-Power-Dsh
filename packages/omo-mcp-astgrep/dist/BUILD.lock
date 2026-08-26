@@ -1,10 +1,15 @@
 {
   "source": "oh-my-openagent",
   "sourceDir": "packages/ast-grep-mcp",
-  "builtAt": "2026-08-26T04:48:25.862Z",
+  "builtAt": "2026-08-26T05:04:38.418Z",
   "build": [
     "bun build src/cli.ts --outdir dist --target node --format esm"
   ],
+  "externalDeps": {
+    "js-yaml": "js-yaml@4.3.1@@@1",
+    "jsonc-parser": "jsonc-parser@3.3.1@@@1",
+    "zod": "zod@4.4.3@@@1"
+  },
   "artifact": {
     "file": "cli.js",
     "sha256": "5a9ae80a4ef79b2efcd66dba27c82574f74e682c9bb84e465291dc0ba34aed7e",

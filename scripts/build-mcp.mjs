@@ -21,10 +21,19 @@ const SERVERS = [
 const CORE = ["mcp-stdio-core", "utils", "omo-config-core", "lsp-core"]
 const EXTERNAL = { "js-yaml": "js-yaml@4.3.1", "jsonc-parser": "jsonc-parser@3.3.1", "zod": "zod@4.4.3" }
 
+// F6 fix: 按包名前缀发现所有缓存条目，优先取“期望版本”精确匹配，否则取版本号最大者；
+// 实际解析到的条目写入 BUILD.lock 以便复现。
 function findCache(entry) {
   const prefix = entry.split("@")[0]
-  const match = readdirSync(cacheRoot).find((d) => d.startsWith(prefix + "@"))
-  return match ? join(cacheRoot, match) : null
+  const matches = readdirSync(cacheRoot).filter((d) => d.startsWith(prefix + "@"))
+  if (matches.length === 0) return null
+  const want = entry.split("@")[1]
+  const exact = matches.find((d) => d === entry)
+  const chosen = exact ?? [...matches].sort((a, b) => {
+    const va = a.slice(prefix.length + 1), vb = b.slice(prefix.length + 1)
+    return vb.localeCompare(va, undefined, { numeric: true })
+  })[0]
+  return { path: join(cacheRoot, chosen), entry: chosen }
 }
 
 function sha(p) { return createHash("sha256").update(readFileSync(p)).digest("hex") }
@@ -46,10 +55,13 @@ try {
     symlinkSync(join(srcRoot, c), join(nm, c), "dir")
   }
   const extNm = join(work, "node_modules")
+  const resolvedExternals = {}
   for (const [name, entry] of Object.entries(EXTERNAL)) {
     const from = findCache(entry)
     if (!from) { console.error("[build-mcp] bun cache 缺外部依赖: " + entry); process.exit(1) }
-    symlinkSync(from, join(extNm, name), "dir")
+    symlinkSync(from.path, join(extNm, name), "dir")
+    resolvedExternals[name] = from.entry
+    console.log("[build-mcp] ext dep: " + name + " <- " + from.entry)
   }
   for (const s of SERVERS) {
     const dir = join(srcRoot, s.src)
@@ -62,6 +74,7 @@ try {
     writeFileSync(join(out, "BUILD.lock"), JSON.stringify({
       source: "oh-my-openagent", sourceDir: "packages/" + s.src, builtAt: new Date().toISOString(),
       build: ["bun build " + s.entry + " --outdir dist --target node --format esm"],
+      externalDeps: resolvedExternals,
       artifact: { file: "cli.js", sha256: sha(join(out, "cli.js")), bytes: readFileSync(join(out, "cli.js")).length }
     }, null, 2) + "\n")
     console.log("[build-mcp] " + s.name + " -> " + join(out, "cli.js") + " (" + readFileSync(join(out, "cli.js")).length + " bytes)")

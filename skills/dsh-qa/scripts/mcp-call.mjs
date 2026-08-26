@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const ENUM_JOB = "请只做一件事：把你当前会话中所有以 mcp__ 前缀开头的可用工具名列出来（每行一个）。不要调用任何工具。"
-const CALL_JOB = "当前目录有 tests/mcp-fixtures/sample.c。请调用工具 mcp__ast_grep__search 扫描该文件（按工具 schema 给出参数），然后把工具返回的内容原样汇报给我。不要使用 bash 工具。"
+const CALL_JOB = "当前目录有 tests/mcp-fixtures/sample.c。请调用工具 mcp__ast_grep__search 扫描该文件中的模式 return 0（按工具 schema 给出参数），然后把工具返回内容原样汇报。不要使用 bash 工具。"
 const FIXTURE_LIST = "- mcp__ast_grep__search\n- mcp__lsp__status"
 
 function selfTest() {
@@ -32,6 +32,11 @@ function realRun(job, timeoutMs = 600000) {
   try {
     const env = { ...process.env, DSH_HOME: sandbox }
     if (env.DSH_HOME !== sandbox) { console.error("[mcp-call] 隔离断言失败：DSH_HOME 未指向沙盒"); process.exit(1) }
+    // 本机 toolchain：有网安装的 sg / codegraph（可选；存在则注入，使调用真成功）
+    const sg = join(repoRoot, ".toolchain/node_modules/.bin/ast-grep")
+    if (existsSync(sg)) env.OMO_AST_GREP_SG_PATH = sg
+    const cg = join(repoRoot, ".toolchain/node_modules/.bin/codegraph")
+    if (existsSync(cg)) env.OMO_CODEGRAPH_BIN = cg
     const run = spawnSync("dsh", ["--profile", "headless", "--patch", join(repoRoot, "packages/omo-dsh-bundle/cordis.patch.yml"), job], {
       env, encoding: "utf8", timeout: timeoutMs, stdio: ["ignore", fd, fd]
     })
@@ -48,7 +53,7 @@ function runReal() {
   const outDir = join(repoRoot, "evidence", "dsh-qa", "mcp-call", new Date().toISOString().replaceAll(":", "-"))
   mkdirSync(outDir, { recursive: true })
   const ok = enumRun.exit === 0 && /mcp__ast_grep__/.test(enumRun.out) && /mcp__lsp__/.test(enumRun.out)
-    && callRun.exit === 0 && /ast-grep|BINARY_NOT_FOUND|ast_grep/.test(callRun.out)
+    && callRun.exit === 0 && !/BINARY_NOT_FOUND/.test(callRun.out) && /ast-grep|ast_grep|匹配|match/.test(callRun.out)
   writeFileSync(join(outDir, "result.json"), JSON.stringify({
     ok, durationMs: Date.now() - t0,
     enum: { exit: enumRun.exit, toolListProof: /mcp__ast_grep__/.test(enumRun.out) && /mcp__lsp__/.test(enumRun.out) },

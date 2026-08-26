@@ -11,9 +11,12 @@
 | D7 插件边界 | 已落地：纯装配=官方插件实例化（含 !!js 路径解析）；有逻辑=自研 cordis 插件（P4 起：presets/hephaestus） | P2/P3 |
 | D3a（新增）运行时前置 | ast-grep 服务器需 sg 二进制（缺失返回 BINARY_NOT_FOUND 分类错误+安装提示）；codegraph 需 codegraph 二进制（缺失返回 skip hint）；lsp 需语言服务器（返回 daemon 缺失提示）；git-bash 按 omo 原设计仅 Windows（bundle 行已按平台门控） | evidence/p3/*-call.log |
 
-## 平台与前置说明
+## 平台与前置说明（更新 2026-08-26：本机有网）
 
-- 本机（linux-x64）缺：ast-grep(sg)、codegraph 二进制、各语言 LSP server —— 均为 omo 服务器设计内的环境前置，
-  不影响插件挂载与调用链路验证；安装建议由服务器响应文本直接给出。
+- 已安装本地 toolchain（.toolchain/，npm 网络安装，@ast-grep/cli 0.45.2 + @colbymchenry/codegraph 1.5.0）：
+  - ast-grep：真实调用已 PASS（evidence/dsh-qa/mcp-call/<ts>/call.log：ok=true, 1 match, 4ms）；
+  - codegraph：OMA_CODEGRAPH_BIN 已注入，但项目策略仍返回 skip hint（需在项目内按 omo 约定初始化，记录为后续项）；
+  - 各语言 LSP server：仍为运行时前置（status 已可达）。
+- 全局 npm 因沙盒缓存只读失败，故 toolchain 放仓库内（.toolchain/ 已被 gitignore）。
 - git_bash MCP 在 omo 中即 Windows-only（run 仅 native Windows 可用），本 bundle 以
   disabled: !!js process.platform === 'win32' ? false : true 门控。

@@ -1,10 +1,15 @@
 {
   "source": "oh-my-openagent",
   "sourceDir": "packages/lsp-daemon",
-  "builtAt": "2026-08-26T04:48:25.873Z",
+  "builtAt": "2026-08-26T05:04:38.428Z",
   "build": [
     "bun build src/cli.ts --outdir dist --target node --format esm"
   ],
+  "externalDeps": {
+    "js-yaml": "js-yaml@4.3.1@@@1",
+    "jsonc-parser": "jsonc-parser@3.3.1@@@1",
+    "zod": "zod@4.4.3@@@1"
+  },
   "artifact": {
     "file": "cli.js",
     "sha256": "b82ce5fa8f69460b5f0222570e5d5852b94bd3b5e22facf0901653b555e798ee",

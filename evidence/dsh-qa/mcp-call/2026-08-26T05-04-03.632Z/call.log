@@ -1,0 +1,8 @@
+CodeGraph MCP skipped: project excluded by OMO CodeGraph policy.
+已调用 `mcp__ast_grep__search` 扫描 `tests/mcp-fixtures/sample.c` 中的模式 `return 0`（language: c）。工具返回内容原样如下：
+
+```json
+{"schemaVersion":1,"ok":true,"kind":"search","workdir":"/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh","matches":[{"path":"tests/mcp-fixtures/sample.c","language":"c","text":"return 0;","range":{"start":{"line":1,"column":17,"byteOffset":17},"end":{"line":1,"column":26,"byteOffset":26}},"metavariables":{"single":{},"multi":{}}}],"counts":{"returnedMatches":1,"returnedFiles":1,"totalMatches":1,"totalFiles":1,"atLeastMatches":1},"truncation":{"truncated":false,"reason":null,"maxMatches":50,"maxPayloadBytes":4194304,"salvagedRecords":0},"warnings":[],"durationMs":4}
+```
+
+简要解读：扫描成功（`ok: true`），在该文件中命中 1 处匹配——`sample.c` 第 1 行第 17 列的 `return 0;`；未发生截断，无警告。
