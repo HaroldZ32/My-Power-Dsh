@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "dryRunDefault": true,
+  "sandboxInstall": true,
+  "bootTools": {
+    "ast_grep": 3,
+    "lsp": 8
+  },
+  "presetsCopied": 4,
+  "note": "codegraph 在 .omo 路径下按 OMO exclusion 自动跳过（正常路径已验证 codegraph-smoke）"
+}
