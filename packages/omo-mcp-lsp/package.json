@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "lsp MCP 接入插件（P3，视 D2）",
+  "description": "lsp MCP integration plugin (P3, pending D2)",
   "scripts": {
     "typecheck": "tsgo --noEmit -p tsconfig.json",
     "test": "bun test"

@@ -1,2 +1,2 @@
-name: OmO Hephaestus（配置管理）
-description: omo-dsh 配置管理预设：解释 profile/bundle/preset 配置，只读产出 diff。
+name: OmO Hephaestus (Configuration Management)
+description: omo-dsh configuration management preset: explain profile/bundle/preset configuration, and produce diffs read-only.

@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "ulw-loop/ultrawork 循环纪律插件（B3）",
+  "description": "ulw-loop/ultrawork loop discipline plugin (B3)",
   "scripts": {
     "typecheck": "tsgo --noEmit -p tsconfig.json",
     "test": "bun test"

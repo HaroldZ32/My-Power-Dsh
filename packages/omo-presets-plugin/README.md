@@ -1,5 +1,5 @@
 # omo-presets-plugin
 
-oracle/librarian/prometheus 预设 + persona 注册插件（P4）
+oracle/librarian/prometheus preset + persona registration plugin (P4)
 
-（骨架在 P0 创建；源代码、测试与 QA 证据随对应阶段落地。）
+(Skeleton created at P0; source code, tests, and QA evidence land with the corresponding phases.)

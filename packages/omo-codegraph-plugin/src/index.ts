@@ -1,6 +1,6 @@
-// omo-codegraph：CodeGraph 二进制解析 + 项目初始化（镜像 OMO 原版 session-start 纪律：
-// exact-marker 探测、原子锁、失败冷却 15min 封顶、60s 树超时），并注册 omo-codegraph 命令供手动重跑。
-// 零运行时依赖；任何失败只记日志，绝不崩溃 boot。
+// omo-codegraph: CodeGraph binary resolution + project initialization (mirrors the OMO original session-start discipline:
+// exact-marker probing, atomic lock, failure cooldown capped at 15 min, 60 s tree timeout), and registers the omo-codegraph command for manual re-runs.
+// Zero runtime dependencies; any failure is only logged and never crashes boot.
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, rmSync, statSync } from "node:fs"
 import { join } from "node:path"
@@ -70,16 +70,16 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   else { status = initProject(cwd, binary, timeoutMs) }
   console.log("[omo-codegraph] init status=" + status + " binary=" + (binary ?? "-") + " cwd=" + cwd)
 
-  // 手动重跑命令（有命令注册表才注册）
+  // Manual re-run command (registered only when a command registry is present)
   try {
     const commands = (ctx.get && ctx.get("commands")) as { register?: (d: Record<string, unknown>) => void } | undefined
     if (commands?.register) {
       commands.register({
         name: "omo-codegraph",
-        description: "初始化/重跑 CodeGraph 索引（.codegraph/codegraph.db）",
+        description: "Initialize/re-run the CodeGraph index (.codegraph/codegraph.db)",
         handler: async () => {
           const b = resolveBinary(config)
-          if (!b) return { success: false, error: "codegraph 二进制不可用：安装或设置 OMO_CODEGRAPH_BIN" }
+          if (!b) return { success: false, error: "codegraph binary unavailable: install it or set OMO_CODEGRAPH_BIN" }
           const s = existsSync(join(cwd, ".codegraph", "codegraph.db")) ? "marker" : initProject(cwd, b, timeoutMs)
           return { success: s === "ok" || s === "marker", text: "omo-codegraph init: " + s }
         }

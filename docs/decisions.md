@@ -1,51 +1,51 @@
-# 决策台账（P1–P3 已拍板）
+# Decision ledger (P1–P3 finalized)
 
-| 决策点 | 结论 | 依据 |
+| Decision point | Conclusion | Basis |
 |---|---|---|
-| D1 profile 形态 | 暂用"隔离 headless + --patch overlay"完成 QA；生产 profile 模板延到 P4/P5 需要真实会话时再建 | P1–P3 等价验证已充分；web 真实 profile 待用户决定何时并入 |
-| D2 lsp 构建策略 | **不延迟**：lsp-daemon 可离线 bun build（仅 workspace 源码，无外部 npm 依赖），已交付 | lsp-tools-mcp/lsp-daemon 依赖审计 |
-| D3 首批 agent | oracle + librarian + prometheus + hephaestus（最小版） | 沿用计划 |
-| D4 双轨主轨 | deepseek-official 主轨；pi-ai deepseek 兼容轨；双轨实测均 PASS（7.8s / 7.9s） | evidence/p1/dual-track.md |
-| D5 技能清单 | 7 个技能已 vendor（ulw-plan/init-deep/lsp-setup/git-master/review-work/programming/ast-grep） | P2 |
-| D6 tool-presentation | 待 P4 预设层决定 | — |
-| D7 插件边界 | 已落地：纯装配=官方插件实例化（含 !!js 路径解析）；有逻辑=自研 cordis 插件（P4 起：presets/hephaestus） | P2/P3 |
-| D3a（新增）运行时前置 | ast-grep 服务器需 sg 二进制（缺失返回 BINARY_NOT_FOUND 分类错误+安装提示）；codegraph 需 codegraph 二进制（缺失返回 skip hint）；lsp 需语言服务器（返回 daemon 缺失提示）；git-bash 按 omo 原设计仅 Windows（bundle 行已按平台门控） | evidence/p3/*-call.log |
+| D1 profile form | Temporarily use "isolated headless + --patch overlay" to complete QA; the production profile template is deferred until P4/P5 when real sessions are needed | P1–P3 equivalence verification is sufficient; the real web profile waits for the user to decide when to merge it in |
+| D2 lsp build strategy | **No delay**: lsp-daemon can be built offline with bun build (workspace source only, no external npm dependencies), already delivered | lsp-tools-mcp/lsp-daemon dependency audit |
+| D3 first batch of agents | oracle + librarian + prometheus + hephaestus (minimal version) | Follow the plan |
+| D4 dual-track primary | deepseek-official as primary track; pi-ai deepseek as compatible track; both tracks pass real smoke tests (7.8s / 7.9s) | evidence/p1/dual-track.md |
+| D5 skill list | 7 skills vendored (ulw-plan/init-deep/lsp-setup/git-master/review-work/programming/ast-grep) | P2 |
+| D6 tool-presentation | Pending decision at the P4 preset layer | — |
+| D7 plugin boundary | Landed: pure assembly = official plugin instantiation (including !!js path resolution); with logic = self-developed cordis plugin (from P4: presets/hephaestus) | P2/P3 |
+| D3a (new) runtime prerequisites | ast-grep server requires the sg binary (when missing returns BINARY_NOT_FOUND classified error + install hint); codegraph requires the codegraph binary (when missing returns skip hint); lsp requires a language server (returns daemon-missing hint); git-bash is Windows-only per omo's original design (bundle line gated by platform) | evidence/p3/*-call.log |
 
-## 平台与前置说明（更新 2026-08-26：本机有网）
+## Platform and prerequisite notes (updated 2026-08-26: this machine has network)
 
-- 已安装本地 toolchain（.toolchain/，npm 网络安装，@ast-grep/cli 0.45.2 + @colbymchenry/codegraph 1.5.0）：
-  - ast-grep：真实调用已 PASS（evidence/dsh-qa/mcp-call/<ts>/call.log：ok=true, 1 match, 4ms）；
-  - codegraph：OMA_CODEGRAPH_BIN 已注入，但项目策略仍返回 skip hint（需在项目内按 omo 约定初始化，记录为后续项）；
-  - 各语言 LSP server：仍为运行时前置（status 已可达）。
-- 全局 npm 因沙盒缓存只读失败，故 toolchain 放仓库内（.toolchain/ 已被 gitignore）。
-- git_bash MCP 在 omo 中即 Windows-only（run 仅 native Windows 可用），本 bundle 以
-  disabled: !!js process.platform === 'win32' ? false : true 门控。
+- Local toolchain installed (.toolchain/, npm network install, @ast-grep/cli 0.45.2 + @colbymchenry/codegraph 1.5.0):
+  - ast-grep: real call PASSed (evidence/dsh-qa/mcp-call/<ts>/call.log: ok=true, 1 match, 4ms);
+  - codegraph: OMA_CODEGRAPH_BIN injected, but project policy still returns skip hint (must be initialized inside the project per omo conventions, recorded as a follow-up item);
+  - per-language LSP servers: still runtime prerequisites (status is now reachable).
+- Global npm fails because the sandbox cache is read-only, so the toolchain is placed inside the repo (.toolchain/ is already gitignored).
+- git_bash MCP is Windows-only in omo (run only works on native Windows); this bundle gates it with
+  disabled: !!js process.platform === 'win32' ? false : true.
 
-## P5 批跑发现（F10/F11，已修）
+## P5 batch-run findings (F10/F11, fixed)
 
-- F10：codegraph 缺失时 provision 崩溃（~/.omo 只读）→ bundle 默认 disabled: true；启用步骤见注释。
-- F11：金标直跑未注入 sg 路径 → mcp-astgrep 行 env 注入 OMO_AST_GREP_SG_PATH（toolchain 兜底）。
+- F10: provision crashes when codegraph is missing (~/.omo read-only) → bundle defaults to disabled: true; see comments for enable steps.
+- F11: golden-test direct run didn't inject the sg path → the mcp-astgrep line's env injects OMO_AST_GREP_SG_PATH (toolchain fallback).
 
-## P4 补充决策（预设交付路径）
+## P4 supplementary decisions (preset delivery path)
 
-- **F9（研究项）**：headless 运行时 agent-presets 行的 config.roots 未生效（ROOTS 只含 shipped+user 根；probe 实证），
-  与 dump 组合结果不一致——疑似 boot 侧 patch/config 语义差异。**规避**：预设落地走 DSH 官方支持的用户根
-  '$DSH_HOME/.agent-presets'（自动扫描；copy() 即此路径）。
-- **P4 交付路径**：4 个预设随 omo-presets-plugin/presets/ 发布；bootstrap/安装步骤将其拷贝到 '$DSH_HOME/.agent-presets/'
-  （用户根 trust=user）；QA 在沙盒 .agent-presets 中验证（preset-register PASS）。
-- **预设内容**：oracle/librarian/prometheus/hephaestus 人格由 OMO 原版 prompt 抽取并做 DeepSeek 适配
-  （删 Claude 专有措辞、工具名映射到 DSH 的 mcp__ast_grep__*/mcp__lsp__*/web 等），记录于 tests/prompt-adaptation-log.md；
-  persona 冒烟 PASS（Prometheus 自识别正确）。
+- **F9 (research item)**: at headless runtime the agent-presets line's config.roots didn't take effect (ROOTS contains only shipped+user roots; proved by probe),
+  inconsistent with the combined dump result — suspected boot-side patch/config semantic difference. **Workaround**: preset delivery goes through DSH's officially supported user root
+  '$DSH_HOME/.agent-presets' (auto-scanned; copy() is this path).
+- **P4 delivery path**: the 4 presets ship with omo-presets-plugin/presets/; the bootstrap/install step copies them to '$DSH_HOME/.agent-presets/'
+  (user root trust=user); QA verifies in a sandbox .agent-presets (preset-register PASS).
+- **Preset content**: oracle/librarian/prometheus/hephaestus personas are extracted from the OMO original prompts and adapted for DeepSeek
+  (removing Claude-specific wording, mapping tool names to DSH's mcp__ast_grep__*/mcp__lsp__*/web etc.), recorded in tests/prompt-adaptation-log.md;
+  persona smoke PASS (Prometheus self-identifies correctly).
 
-## CodeGraph 回归（F10 关闭 → 方案定稿）
+## CodeGraph regression (F10 closed → plan finalized)
 
-- **根因**：① serve.js 二进制缺失时向 ~/.omo 自动 provision（只读 HOME 崩溃）；② OMO exclusion 策略排除
-  路径含 `.omo` 段或 /tmp 的项目（**我们的仓库临时位于 .omo/port/ 下，天然被排除**）。
-- **方案（已实证）**：
-  1. 自研 `omo-codegraph-plugin`（包名 @omo-dsh/omo-codegraph-plugin）：config.binary/env 解析（支持
-     OMO_CODEGRAPH_BIN + toolchain 兜底）-> exact-marker 探测 -> 原子锁 + 15min 冷却 + 60s 树超时的
-     `codegraph init`；注册 `omo-codegraph` 命令手动重跑；任何失败只记日志不崩 boot；
-  2. bundle 的 mcp-codegraph 行重新启用，env 注入 OMO_CODEGRAPH_BIN（toolchain 兜底）；
-  3. QA 临时项目置于 workspace 根层（非 .omo、非 /tmp）验证全链路：init status=ok -> marker ->
-     `mcp__codegraph__codegraph_explore` 真实返回逐字节源码（evidence/dsh-qa/codegraph/）。
-- **用户机器注意**：生产项目路径不得含 `.omo` 段或在 /tmp 下；Gitee 克隆到普通路径（如 ~/dshProj/omo-dsh）即可。
+- **Root cause**: ① serve.js auto-provisions into ~/.omo when the binary is missing (read-only HOME crash); ② the OMO exclusion policy excludes
+  projects whose path contains a `.omo` segment or /tmp (**our repo temporarily lives under .omo/port/, so it is naturally excluded**).
+- **Plan (verified)**:
+  1. Self-developed `omo-codegraph-plugin` (package name @omo-dsh/omo-codegraph-plugin): config.binary/env resolution (supporting
+     OMO_CODEGRAPH_BIN + toolchain fallback) -> exact-marker probe -> atomic lock + 15min cooldown + 60s tree timeout
+     `codegraph init`; registers the `omo-codegraph` command for manual rerun; any failure only logs and never crashes boot;
+  2. Re-enable the bundle's mcp-codegraph line, env injects OMO_CODEGRAPH_BIN (toolchain fallback);
+  3. QA temporary project placed at the workspace root level (not .omo, not /tmp) to verify the full chain: init status=ok -> marker ->
+     `mcp__codegraph__codegraph_explore` really returns byte-for-byte source (evidence/dsh-qa/codegraph/).
+- **User machine note**: production project paths must not contain a `.omo` segment or be under /tmp; clone from Gitee to a normal path (e.g. ~/dshProj/omo-dsh).

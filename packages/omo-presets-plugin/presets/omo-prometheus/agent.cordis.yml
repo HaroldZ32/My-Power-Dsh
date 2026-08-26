@@ -1,5 +1,5 @@
-# omo-prometheus — DeepSeek 原生预设（参照 DSH 内置 code/standard preset 结构）
-# 本文件是 AGENT-PLANE 组合：所有行挂在该预设的 scope 层，仅本 agent 会话可见。
+# omo-prometheus — DeepSeek-native preset (modeled on the DSH built-in code/standard preset structure)
+# This file is an AGENT-PLANE composition: all rows attach at this preset's scope layer and are visible only to this agent session.
 - id: persona
   name: '@deepseek-ai/dsh-persona'
   config:
@@ -18,7 +18,7 @@
   config:
     maxBytes: 65536
 
-# ── shell / fs / 搜索 ────────────────────────────────────────────────
+# ── shell / fs / search ────────────────────────────────────────────────
 - id: tool-bash
   name: '@deepseek-ai/dsh-tool-bash'
   disabled: !!js process.platform === 'win32'
@@ -29,7 +29,7 @@
 - id: tool-str-replace-editor
   name: '@deepseek-ai/dsh-tool-str-replace-editor'
 
-# ── skills（omo skills 目录，随预设解析；默认根关闭以免污染）────────────
+# ── skills (omo skills directory, resolved with the preset; default roots off to avoid pollution)────────────
 - id: skill-filesystem
   name: '@deepseek-ai/dsh-skill-filesystem'
   config:
@@ -39,7 +39,7 @@
 - id: tool-skill
   name: '@deepseek-ai/dsh-tool-skill'
 
-# ── 后台任务 / 子代理 / 日志与编排（按需；预设默认给全量只读能力）────────
+# ── background jobs / subagents / logging & orchestration (on demand; preset gives full read-only capability by default)────────
 - id: tool-jobs
   name: '@deepseek-ai/dsh-tool-jobs'
 - id: tool-subagent

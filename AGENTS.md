@@ -1,27 +1,37 @@
-# AGENTS.md — my-power-dsh 仓库门禁与 Git 工作流
+# AGENTS.md — my-power-dsh Repository Gates & Git Workflow
 
-## 1. Git 开发/发布/缺陷分离模型（本仓库纪律）
+## 1. Git Development/Release/Defect Separation Model
 
-| 分支 | 用途 | 规则 |
+| Branch | Purpose | Rules |
 |---|---|---|
-| `master` | **发布线**（只进发版合并） | 仅由 release 流程写入；禁止直接推送/开发提交 |
-| `dev` | **集成线** | feature/fix 合流至此；在 dev 上跑全量门禁 |
-| `feature/<slug>` | 新功能 | 从 dev 切出；命名 kebab-case；独立提交 + 证据 |
-| `fix/<slug>` | **缺陷修复** | 从 dev 切出；**一缺陷一分支**；修复必须附带复现证据 + QA 通过才合并；合并后按 `fix/<slug>-closed` 记录 |
-| `release/vX.Y.Z` | 发布准备 | 从 dev 切出；只做版本/文档修正；合并回 master 并打 tag |
+| `master` | **Release line** (merge-only) | Written only by release flow; no direct dev commits or pushes |
+| `dev` | **Integration line** | feature/fix branches converge here; full gates must pass on dev |
+| `feature/<slug>` | New capabilities | Branch from dev; kebab-case; self-contained commits + evidence |
+| `fix/<slug>` | **Defect fixes** | Branch from dev; one branch per defect; reproduction evidence + QA PASS required before merge |
+| `release/vX.Y.Z` | Release preparation | Branch from dev; version/doc-only fixes; merged to master with a tag |
 
-**硬规则**
-- 任何改动不得直接推到 `master`；先走 feature/fix → dev。
-- dev 全绿（bun test / tsgo / dsh-qa 证据齐备）才允许 release。
-- 提交信息：`<type>(<scope>): <summary>`，type ∈ feat/fix/docs/test/chore/release；修复类必须引用缺陷编号或描述。
-- 与 Gitee 远端同步按同样模型：push 只允许 feature/* → dev → release/v* → master（tag）。
+**Hard rules**
+- No change may ever be pushed straight to `master`: feature/fix → dev → release → master.
+- dev is green (bun test / tsgo / dsh-qa evidence) before any release.
+- Commit format: `<type>(<scope>): <summary>`, type in feat/fix/docs/test/chore/release; fixes cite defect id/description.
+- Remote pushes follow the same model: only feature/* → dev → release/v* → master (tags).
 
-## 2. 开发纪律（沿用已确立门禁）
+## 2. Engineering Gates
 
-1. **只在本仓库开发**：严禁修改/推送上游 oh-my-openagent 仓库；vendor 拷贝只读，基线由 VENDOR_LOCK.json 锁定。
-2. **插件形态铁律**：一切交付物为 cordis 插件（自研插件 或 bundle 内官方插件条目）；逻辑禁止散落 profile/脚本/用户家目录。
-3. **测试门禁**：每个插件包 `bun test` + `tsgo --noEmit` 全绿，方可提交。
-4. **QA 门禁**：运行时行为改动必须跑 `skills/dsh-qa` 对应用例（脚本带 `--self-test`），证据落盘 `evidence/<域名>/<slug>/`；无证据 = 未完成。
-5. **隔离纪律**：QA 使用隔离 DSH_HOME（临时目录），脚本内断言隔离生效，绝不读写用户真实 `~/.dsh`。
-6. **基线纪律**：omo 资产锁定 `VENDOR_LOCK.json`（commit + 计数 + sha/treeSha 双校验），不追新；更新基线先跑 `scripts/verify-vendor.mjs`。
-7. **安装器纪律**：`scripts/install-profile.mjs` 是唯一写入用户 DSH_HOME 的通道（--dry-run 默认；--yes 才写；--dsh-home 供隔离 QA）。
+1. **Work only in this repository**: never modify/push upstream oh-my-openagent; vendor copies are read-only and pinned by VENDOR_LOCK.json.
+2. **Plugin-form rule**: every deliverable is a cordis plugin (self-written plugin or an official-plugin instance in the bundle patch); no logic scattered in profiles, scripts, or the user home.
+3. **Test gate**: each plugin package passes `bun test` + `tsgo --noEmit` before commit.
+4. **QA gate**: runtime-behavior changes must run the matching `skills/dsh-qa` case (scripts ship `--self-test`); evidence goes to `evidence/<domain>/<slug>/`; no evidence = incomplete.
+5. **Isolation rule**: QA boots with an isolated DSH_HOME (temp dir) and asserts isolation; never touch the real `~/.dsh`.
+6. **Baseline rule**: OMO assets pinned by `VENDOR_LOCK.json` (commit + counts + sha/treeSha); verify with `scripts/verify-vendor.mjs` before any baseline change.
+7. **Installer rule**: `scripts/install-profile.mjs` is the only channel that writes the user DSH_HOME (default --dry-run; --yes to write; --dsh-home for isolated QA).
+8. **Language rule**: everything an agent reads — skills, docs, config comments, script output — is English; records may stay as produced.
+
+## 3. Language Policy (binding)
+
+- **From now on, all internal files are English-only**: docs, skills (SKILL.md + references), config
+  comments, script strings, commit messages, README, package descriptions — English only.
+- Chinese is allowed **only in external-facing documentation** (e.g., user-facing release notes or
+  translated READMEs) and must be explicitly marked as external-facing content.
+- Logs and evidence files are verbatim records (produced by runs) and keep whatever language the runs
+  produced; new evidence should be English.

@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Hephaestus 配置管理 agent 插件（P4 最小版）",
+  "description": "Hephaestus configuration-management agent plugin (P4 minimal version)",
   "scripts": {
     "typecheck": "tsgo --noEmit -p tsconfig.json",
     "test": "bun test"

@@ -1,5 +1,5 @@
 # omo-skills-plugin
 
-技能 provider 插件：封装 dsh-skill-filesystem 指向 bundle 内 skills 资产（P2）
+Skills provider plugin: wraps dsh-skill-filesystem to point at the skills assets inside the bundle (P2)
 
-（骨架在 P0 创建；源代码、测试与 QA 证据随对应阶段落地。）
+(Skeleton created at P0; source code, tests, and QA evidence land with the corresponding phases.)

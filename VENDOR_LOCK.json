@@ -12,7 +12,7 @@
     "trackedFiles": 9131,
     "trackedLoc": 1470231,
     "recordedAt": "2026-08-26T03:46:26.867Z",
-    "note": "loc = Σ split('\\n').length over tracked files（与 verify-vendor 同法）"
+    "note": "loc = Σ split('\\n').length over tracked files (same method as verify-vendor)"
   },
   "assets": {
     "packages/omo-skills-plugin/skills/ulw-plan": {
@@ -50,7 +50,7 @@
       "source": "../packages/shared-skills/skills/ast-grep",
       "treeSha": "a3d743016e3350cf31d67929769bf497931e879c7a85225d3587b43620915e80"
     },
-    "_note": "skills 目录: fileCount+treeSha(排序 relpath+每文件 sha256 聚合) 双阻断; dist: sha256 阻断",
+    "_note": "skills directory: fileCount+treeSha (sorted relpath + per-file sha256 aggregation) double gate; dist: sha256 gate",
     "packages/omo-mcp-astgrep/dist/cli.js": {
       "fileCount": 1,
       "source": "built offline via scripts/build-mcp.mjs from packages/ast-grep-mcp",
@@ -72,6 +72,6 @@
       "sha256": "6c53906e98bfa808b0404b4f5fab051b1c80a3cf359ff574c6c8edd6d0d2b666"
     }
   },
-  "verification": "node scripts/verify-vendor.mjs 比对 commit/version 为阻断项；stats 漂移为警告；资产计数为阻断项",
+  "verification": "node scripts/verify-vendor.mjs: commit/version mismatch is a blocker; stats drift is a warning; asset counts are a blocker",
   "lockedAt": "2026-08-26T03:44:55.545Z"
 }

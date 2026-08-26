@@ -1,4 +1,4 @@
-# QA 用: 覆盖系统 persona 为 omo Prometheus 文本，验证 DeepSeek 端人格适配
+# QA use: override the system persona with the omo Prometheus text, verifying DeepSeek-side persona adaptation
 - id: system-prompt
   name: '@deepseek-ai/dsh-system-prompt'
   config:
