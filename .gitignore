@@ -1,4 +1,5 @@
 node_modules/
+.npm-cache/
 *.tmp
 evidence/*.log.tmp
 .DS_Store
