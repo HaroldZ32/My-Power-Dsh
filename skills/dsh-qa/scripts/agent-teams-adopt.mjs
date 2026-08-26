@@ -92,22 +92,22 @@ async function runReal() {
   }
 
   // 1) install into the isolated home (headless profile)
-  const inst = runSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--yes", "--dsh-home", sandbox, "--profile", "omo-headless", "--skip-toolchain"], { timeout: 600000 })
+  const inst = runSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--yes", "--dsh-home", sandbox, "--profile", "mpd-headless", "--skip-toolchain"], { timeout: 600000 })
   steps.installer = { ok: inst.status === 0, exit: inst.status }
 
   // 2) manifest + home-patch asserts
-  const manifest = JSON.parse(readFileSync(join(sandbox, "profiles", "omo-headless", "package.json"), "utf8"))
+  const manifest = JSON.parse(readFileSync(join(sandbox, "profiles", "mpd-headless", "package.json"), "utf8"))
   steps.bundleRow = { ok: (manifest.dsh?.profile?.bundles ?? []).includes("@nanmicoder/dsh-agent-teams"), bundles: manifest.dsh?.profile?.bundles }
   const homePatch = readFileSync(join(sandbox, "cordis.patch.yml"), "utf8")
   steps.override = { ok: /id:\s*agent-teams/.test(homePatch) && homePatch.includes(".mpd/team"), hasPatch: homePatch.includes("agent-teams") }
 
   // 3) composed config
-  const dump = runSync("dsh", ["--profile", "omo-headless", "--dump-config"], { timeout: 120000 })
+  const dump = runSync("dsh", ["--profile", "mpd-headless", "--dump-config"], { timeout: 120000 })
   const composed = dump.out.includes("agent-teams") && dump.out.includes(".mpd/team")
   steps.compose = { ok: dump.status === 0 && composed, exit: dump.status }
 
   // 4) live headless AgentTeams run
-  const live = runSync("dsh", ["--profile", "omo-headless", PROMPT], { timeout: 900000, cwd: ws })
+  const live = runSync("dsh", ["--profile", "mpd-headless", PROMPT], { timeout: 900000, cwd: ws })
   const liveOut = live.out
   steps.live = { ok: live.status === 0, exit: live.status }
   steps.teamState = assessTeamState(ws)
@@ -115,12 +115,12 @@ async function runReal() {
   steps.taskTerminal = assessTaskTerminal(ws)
 
   // 5) web snapshot route (separate web profile in the same isolated home)
-  const instWeb = runSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--yes", "--dsh-home", sandbox, "--profile", "omo", "--skip-toolchain"], { timeout: 600000 })
+  const instWeb = runSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--yes", "--dsh-home", sandbox, "--profile", "mpd", "--skip-toolchain"], { timeout: 600000 })
   steps.webInstaller = { ok: instWeb.status === 0, exit: instWeb.status }
   const port = 3199
   const webLog = join(outDir, "web.log")
   const webFd = openSyncSafe(webLog)
-  const web = spawn("dsh", ["--profile", "omo", "--port", String(port), "--no-open"], { env, cwd: ws, detached: false, stdio: ["ignore", webFd, webFd] })
+  const web = spawn("dsh", ["--profile", "mpd", "--port", String(port), "--no-open"], { env, cwd: ws, detached: false, stdio: ["ignore", webFd, webFd] })
   let routeOk = false
   let routeStatus = null
   let routeBody = ""

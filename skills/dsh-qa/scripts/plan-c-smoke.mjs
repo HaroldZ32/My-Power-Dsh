@@ -45,7 +45,7 @@ async function runReal() {
   const env = { ...process.env, DSH_HOME: sandbox }
   const steps = {}
 
-  const inst = spawnSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--yes", "--dsh-home", sandbox, "--profile", "omo-headless", "--skip-toolchain"], { env, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 600000 })
+  const inst = spawnSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--yes", "--dsh-home", sandbox, "--profile", "mpd-headless", "--skip-toolchain"], { env, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 600000 })
   steps.installer = { ok: inst.status === 0, exit: inst.status }
   const patch = readFileSync(join(sandbox, "cordis.patch.yml"), "utf8")
   steps.rows = { ok: ["mpd-hashline", "mpd-boulder", "mpd-config"].every((id) => patch.includes(id)), patch: patch.includes("mpd-config") }
@@ -58,7 +58,7 @@ async function runReal() {
     "Report: the config value, the workId and status, and the final note.txt content."
   ].join(" ")
 
-  const live = spawnSync("dsh", ["--profile", "omo-headless", task], { env, cwd: ws, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 900000, stdio: ["ignore", "pipe", "pipe"] })
+  const live = spawnSync("dsh", ["--profile", "mpd-headless", task], { env, cwd: ws, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 900000, stdio: ["ignore", "pipe", "pipe"] })
   const out = (live.stdout || "") + (live.stderr || "")
   steps.live = { ok: live.status === 0, exit: live.status }
 

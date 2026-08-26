@@ -1,4 +1,4 @@
-// B2 omo-team-plugin: parallel role delegation ("team mode") on the DSH subagent seam.
+// B2 mpd-team-plugin: parallel role delegation ("team mode") on the DSH subagent seam.
 // Each member = one fresh child with role persona + per-role model route; members run in parallel;
 // outputs are collected and stored in the team state file (.mpd/team/<id>.json) as a mailbox;
 // the tool returns an aggregated convergence report for the main agent.
@@ -6,7 +6,7 @@ import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { randomUUID } from "node:crypto"
 
-export const name = "omo-team"
+export const name = "mpd-team"
 export const inject = ["tools", "subagents"]
 
 type Ctx = { tools: any; subagents: any; get?: (k: string) => any; [k: string]: any }
@@ -88,7 +88,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   ctx.tools.register({
     name: "mpd_team_status",
-    description: "Read the mailbox state file of a spawned omo team.",
+    description: "Read the mailbox state file of a spawned team.",
     parameters: { type: "object", properties: { teamId: { type: "string" } }, required: ["teamId"] },
     output: { schema: { type: "object", properties: { found: { type: "boolean" }, report: { type: "string" } }, required: ["found", "report"] }, render: (_a: unknown, v: any) => textBlock(v.report) },
     execute: async (args: any) => {

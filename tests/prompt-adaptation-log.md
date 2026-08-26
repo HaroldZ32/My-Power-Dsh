@@ -1,4 +1,4 @@
-# Prompt Adaptation Log (omo -> DeepSeek)
+# Prompt Adaptation Log (upstream -> DeepSeek)
 
 | Iteration | Target | Change | Basis |
 |---|---|---|---|

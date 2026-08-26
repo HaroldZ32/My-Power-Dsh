@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Case mcp-call: run real dsh headless under an isolated DSH_HOME, verifying the omo MCP mount and call path.
+// Case mcp-call: run real dsh headless under an isolated DSH_HOME, verifying the MCP mount and call path.
 // Assertion 1: the model sees the mcp__ast_grep__ and mcp__lsp__ tools; assertion 2: a real ast_grep search call returns the server's classified response.
 // --self-test is the offline self-test.
 import { spawnSync } from "node:child_process"

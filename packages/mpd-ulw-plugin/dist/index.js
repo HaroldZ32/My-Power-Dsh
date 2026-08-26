@@ -2,7 +2,7 @@
 import { mkdirSync, writeFileSync, appendFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
-var name = "omo-ulw";
+var name = "mpd-ulw";
 var inject = ["tools", "subagents"];
 var REPORT_SCHEMA = {
   type: "object",

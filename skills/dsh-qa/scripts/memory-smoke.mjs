@@ -36,9 +36,9 @@ async function runReal() {
   mkdirSync(ws, { recursive: true })
   const env = { ...process.env, DSH_HOME: sandbox }
   const steps = {}
-  const inst = spawnSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--yes", "--dsh-home", sandbox, "--profile", "omo-headless", "--skip-toolchain"], { env, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 600000 })
+  const inst = spawnSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--yes", "--dsh-home", sandbox, "--profile", "mpd-headless", "--skip-toolchain"], { env, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 600000 })
   steps.installer = { ok: inst.status === 0, exit: inst.status }
-  const run = spawnSync("dsh", ["--profile", "omo-headless", TASK], { env, cwd: ws, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 600000, stdio: ["ignore", "pipe", "pipe"] })
+  const run = spawnSync("dsh", ["--profile", "mpd-headless", TASK], { env, cwd: ws, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 600000, stdio: ["ignore", "pipe", "pipe"] })
   const out = (run.stdout || "") + (run.stderr || "")
   steps.live = { ok: run.status === 0, exit: run.status }
   const memRoot = join(ws, ".mpd", "memory", "agents")

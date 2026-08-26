@@ -14,9 +14,9 @@ const omoRoot = join(repoRoot, "..", "..", "..")
 const cacheRoot = join(homedir(), ".bun", "install", "cache")
 
 const SERVERS = [
-  { name: "ast-grep", src: "ast-grep-mcp", pkg: "omo-mcp-astgrep", entry: "src/cli.ts", argv: [] },
-  { name: "git-bash", src: "git-bash-mcp", pkg: "omo-mcp-gitbash", entry: "src/cli.ts", argv: [] },
-  { name: "lsp", src: "lsp-daemon", pkg: "omo-mcp-lsp", entry: "src/cli.ts", argv: ["mcp"] }
+  { name: "ast-grep", src: "ast-grep-mcp", pkg: "mpd-mcp-astgrep", entry: "src/cli.ts", argv: [] },
+  { name: "git-bash", src: "git-bash-mcp", pkg: "mpd-mcp-gitbash", entry: "src/cli.ts", argv: [] },
+  { name: "lsp", src: "lsp-daemon", pkg: "mpd-mcp-lsp", entry: "src/cli.ts", argv: ["mcp"] }
 ]
 const CORE = ["mcp-stdio-core", "utils", "omo-config-core", "lsp-core"]
 const EXTERNAL = { "js-yaml": "js-yaml@4.3.1", "jsonc-parser": "jsonc-parser@3.3.1", "zod": "zod@4.4.3" }
