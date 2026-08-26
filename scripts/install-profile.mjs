@@ -166,7 +166,7 @@ function main() {
   writeFileSync(join(plan.profileDir, "cordis.patch.yml"), "[]\n")
   writeFileSync(plan.homePatch, renderPatch(plan.rows) + "\n")
   // copy presets
-  const ids = readdirSync(plan.presetsDir).filter((d) => d.startsWith("omo-"))
+  const ids = readdirSync(plan.presetsDir).filter((d) => d.startsWith("mpd-"))
   for (const id of ids) cpSync(join(plan.presetsDir, id), join(plan.userPresets, id), { recursive: true })
   console.log("[install-profile] wrote profile/ home patch/ presets(" + ids.length + ")")
   if (plan.needsToolchain && !o.skipToolchain) {

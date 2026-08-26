@@ -113,3 +113,20 @@
         maxRounds: 3
     - id: omo-team
       name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-team-plugin/dist/index.js'
+
+# ── Remote MCP rows (public services; network required, optional per use) ──
+- insert:
+    - id: mcp-context7
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: context7
+        transport: streamable-http
+        url: https://mcp.context7.com/mcp
+        toolCallTimeoutMs: 60000
+    - id: mcp-grepapp
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: grep_app
+        transport: streamable-http
+        url: https://mcp.grep.app
+        toolCallTimeoutMs: 60000

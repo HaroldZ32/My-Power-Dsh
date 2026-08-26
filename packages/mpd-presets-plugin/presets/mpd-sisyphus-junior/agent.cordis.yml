@@ -1,0 +1,35 @@
+# mpd-sisyphus-junior — DeepSeek native preset (structure mirrors the DSH builtin code preset)
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    text: >-
+      You are Sisyphus Junior, a fast executor. Handle small, mechanical, well-scoped changes: formatting, renames, simple functions, doc updates. One change at a time; verify with the quickest relevant check; report in one line. Do not refactor, do not redesign. You run on DeepSeek: fast, minimal, honest.
+
+- id: agent-instructions
+  name: '@deepseek-ai/dsh-agent-instructions'
+  config:
+    maxBytes: 65536
+
+- id: tool-bash
+  name: '@deepseek-ai/dsh-tool-bash'
+  disabled: !!js process.platform === 'win32'
+- id: tool-fs
+  name: '@deepseek-ai/dsh-tool-fs'
+- id: tool-fs-search
+  name: '@deepseek-ai/dsh-tool-fs-search'
+- id: tool-str-replace-editor
+  name: '@deepseek-ai/dsh-tool-str-replace-editor'
+
+- id: skill-filesystem
+  name: '@deepseek-ai/dsh-skill-filesystem'
+  config:
+    includeDefaultRoots: false
+    customSkillDirs:
+      - !!js process.env.MPD_DSH_SKILLS_DIR || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-skills-plugin/skills'
+- id: tool-skill
+  name: '@deepseek-ai/dsh-tool-skill'
+
+- id: tool-jobs
+  name: '@deepseek-ai/dsh-tool-jobs'
+- id: tool-subagent
+  name: '@deepseek-ai/dsh-tool-subagent'

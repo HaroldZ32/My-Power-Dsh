@@ -7,7 +7,7 @@ export async function apply(ctx: { agentPresets: PresetsService; [key: string]: 
   console.log("[preset-probe] ROOTS=" + JSON.stringify(ctx.agentPresets.roots))
   const list = await ctx.agentPresets.list()
   console.log("[preset-probe] LIST=" + list.map((p) => p.id + (p.broken ? "(broken)" : "")).join(","))
-  const ids = ["mpd-oracle", "mpd-librarian", "mpd-prometheus", "mpd-hephaestus"]
+  const ids = ["mpd-oracle", "mpd-librarian", "mpd-prometheus", "mpd-hephaestus", "mpd-sisyphus", "mpd-atlas", "mpd-explore", "mpd-metis", "mpd-momus", "mpd-multimodal-looker", "mpd-sisyphus-junior"]
   const resolved: Record<string, boolean> = {}
   for (const id of ids) {
     try { resolved[id] = !(await ctx.agentPresets.resolve(id)).broken } catch { resolved[id] = false }
