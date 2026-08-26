@@ -1,0 +1,31 @@
+[mpd-codegraph] init status=no-binary binary=- cwd=/tmp/mpd-c2-oggFq3/ws
+The tool executed both times, but its return value was rejected by the harness at output serialization. Root cause confirmed from the plugin source:
+
+- `mpd-ulw-plugin/dist/index.js:111` — output schema declares `planFile: { type: "string" }`
+- `:284` — `execute` returns `planFile: null` whenever no plan file is generated (`plan=false` in light tier)
+
+So `mpd_ultrawork` ran the full discipline (fresh child rounds, file creation, state+ledger persisted under `.mpd/ulw/<id>/`), then the harness rejected `planFile: null` against the schema. The discipline itself did **not** fail — I verified the persisted state and the artifact directly.
+
+## Result
+
+**Tool invocation:** `mpd_ultrawork(tier=light, plan=false, maxRounds=2)` — ran end-to-end twice (first call, plus my retry after the serialization error); both wrote state, both errored only on the return-value validation (`"value.planFile" must be a string`).
+
+**Run 1 (first invocation) — state file: `.mpd/ulw/ulw-5784953a/state.json`**
+
+| Field | Value |
+|---|---|
+| status | `complete` |
+| rounds (used / configured) | **1** / 2 (completed early — all criteria clean after round 1, wave=1) |
+| verdict | `n/a` (verification gate skipped: no plan file, light tier, no strict review) |
+| criteria | `C1` "utils.txt exists with byte-exact content alpha\nbeta\ngamma\n" → **clean** (RED: file absent before write → GREEN: printf + cmp IDENTICAL → SURFACE: test -f + cmp PASS) |
+| | `C2` "Exactly 3 lines, order alpha→beta→gamma, no blank/stray lines or trailing whitespace" → **clean** (RED: absent → GREEN: cat -A alpha$/beta$/gamma$ → SURFACE: wc -l == 3, nl order, no stray whitespace) |
+
+**Run 2 (retry) — state file: `.mpd/ulw/ulw-dfd20435/state.json`** — status `max-rounds` (both rounds used, wave=2), criteria `file-exists` → green, `exact-content` → green; same verdict `n/a`.
+
+**Ledger (both):** `{"lane":"verification","verdict":"skipped","detail":"no plan file or light tier without strict review"}`
+
+**Artifact independently verified:** `utils.txt` = 17 bytes, `alpha\nbeta\ngamma\n`, `wc -l` = 3, `cat -A` shows exactly `alpha$ / beta$ / gamma$` — matches the objective.
+
+## Caveat
+You won't get a clean tool return for `plan=false` until the plugin bug is fixed (make `planFile` nullable in the output schema at `mpd-ulw-plugin/dist/index.js:111`, or return `""`/omit it when null). The light alias `mpd_ulw` (same engine, same params: tier=light, plan=false, hyperplan=false) returns cleanly since its schema omits `planFile` — happy to run that variant if you want a zero-error tool result.
+CodeGraph MCP skipped: project excluded by OMO CodeGraph policy.

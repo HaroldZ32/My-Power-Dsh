@@ -68,6 +68,7 @@ mpd-dsh/
 │   ├── mpd-hashline-plugin/      # C3: anchored edit discipline (vendor hashline-core)
 │   ├── mpd-boulder-plugin/       # C5: durable work ledger (vendor boulder-state)
 │   ├── mpd-config-plugin/        # C7: minimal mpd.jsonc runtime config layer
+│   ├── mpd-comment-checker-plugin/ # C4: comment/docstring detection (opt-in binary)
 │   └── mpd-qa-preset-probe/      # QA-only preset probe plugin
 ├── skills/dsh-qa/                # QA skill: SKILL.md + scripts (each with --self-test) + references/
 ├── tests/
