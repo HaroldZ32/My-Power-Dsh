@@ -1,0 +1,10 @@
+[preset-probe] ROOTS=[{"path":"/home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/config/agent-presets/","trust":"system"},{"path":"/tmp/omo-dsh-qa-JXlMYl/.agent-presets","trust":"user"}]
+[preset-probe] LIST=standard,code,minimal,cordis,omo-hephaestus,omo-librarian,omo-oracle,omo-prometheus
+[preset-probe] RESOLVED={"omo-oracle":true,"omo-librarian":true,"omo-prometheus":true,"omo-hephaestus":true}
+[preset-probe] PASS
+CodeGraph MCP skipped: project excluded by OMO CodeGraph policy.
+Got it — but I don't have any prior request in this session to act on yet. What would you like me to work on?
+
+For reference, I'm working in the omo-dsh port repository (`oh-my-openagent/.omo/port/omo-dsh`), subject to the AGENTS.md gates: cordis-plugin deliverables, bun test + tsgo green, QA evidence under `evidence/<domain>/<slug>/`, isolated DSH_HOME for QA, and the VENDOR_LOCK.json baseline discipline.
+
+Just point me at the task — e.g., a plugin feature, a fix, QA for some change, or a plan — and I'll get started.

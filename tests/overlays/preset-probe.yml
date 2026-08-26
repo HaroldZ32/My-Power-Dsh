@@ -1,0 +1,4 @@
+# QA 用：插入 preset 探针插件（绝对路径，仅 QA overlay 使用，不随 bundle 发布）
+- insert:
+    - id: preset-probe
+      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-dsh-qa-preset-probe/dist/index.js'

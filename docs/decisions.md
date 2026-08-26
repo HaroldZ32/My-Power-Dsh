@@ -20,3 +20,14 @@
 - 全局 npm 因沙盒缓存只读失败，故 toolchain 放仓库内（.toolchain/ 已被 gitignore）。
 - git_bash MCP 在 omo 中即 Windows-only（run 仅 native Windows 可用），本 bundle 以
   disabled: !!js process.platform === 'win32' ? false : true 门控。
+
+## P4 补充决策（预设交付路径）
+
+- **F9（研究项）**：headless 运行时 agent-presets 行的 config.roots 未生效（ROOTS 只含 shipped+user 根；probe 实证），
+  与 dump 组合结果不一致——疑似 boot 侧 patch/config 语义差异。**规避**：预设落地走 DSH 官方支持的用户根
+  '$DSH_HOME/.agent-presets'（自动扫描；copy() 即此路径）。
+- **P4 交付路径**：4 个预设随 omo-presets-plugin/presets/ 发布；bootstrap/安装步骤将其拷贝到 '$DSH_HOME/.agent-presets/'
+  （用户根 trust=user）；QA 在沙盒 .agent-presets 中验证（preset-register PASS）。
+- **预设内容**：oracle/librarian/prometheus/hephaestus 人格由 OMO 原版 prompt 抽取并做 DeepSeek 适配
+  （删 Claude 专有措辞、工具名映射到 DSH 的 mcp__ast_grep__*/mcp__lsp__*/web 等），记录于 tests/prompt-adaptation-log.md；
+  persona 冒烟 PASS（Prometheus 自识别正确）。

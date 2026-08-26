@@ -1,0 +1,9 @@
+# QA 用：headless 模板无 agent-presets 行 → 插入（字面量路径，验证 !!js 嵌套是否是根因）
+- insert:
+    - id: agent-presets
+      name: '@deepseek-ai/dsh-agent-presets'
+      config:
+        default: omo-oracle
+        roots:
+          - path: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-presets-plugin/presets'
+            trust: system
