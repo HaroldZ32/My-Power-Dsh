@@ -120,16 +120,6 @@
       "fileCount": 19,
       "source": "../packages/shared-skills/skills/visual-qa",
       "treeSha": "7014e1b9996184b923ad46e92217b6e43a4cfb891c5ef04e9a478e64727ce9a4"
-    },
-    "packages/mpd-skills-plugin/skills/ultrawork": {
-      "fileCount": 1,
-      "source": "../packages/omo-senpi/skills/ultrawork",
-      "treeSha": "a925452bc80ae8edf136279a44253ebbc580c288d5d68c17f3e23862788f36ee"
-    },
-    "packages/mpd-skills-plugin/skills/hyperplan": {
-      "fileCount": 1,
-      "source": "../packages/omo-senpi/skills/hyperplan",
-      "treeSha": "2d5d070997a9ceb95c15e66f98883187c6d264a085f618599580d754c42eaef3"
     }
   },
   "verification": "node scripts/verify-vendor.mjs: commit/version mismatch is a blocker; stats drift is a warning; asset counts are a blocker",
