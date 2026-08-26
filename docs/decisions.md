@@ -24,7 +24,7 @@
 ## P5 batch-run findings (F10/F11, fixed)
 
 - F10: provision crashes when codegraph is missing (~/.omo read-only) → bundle defaults to disabled: true; see comments for enable steps.
-- F11: golden-test direct run didn't inject the sg path → the mcp-astgrep line's env injects OMO_AST_GREP_SG_PATH (toolchain fallback).
+- F11: golden-test direct run didn't inject the sg path → the mcp-astgrep line's env injects Upstream_AST_GREP_SG_PATH (toolchain fallback).
 
 ## P4 supplementary decisions (preset delivery path)
 
@@ -33,19 +33,19 @@
   '$DSH_HOME/.agent-presets' (auto-scanned; copy() is this path).
 - **P4 delivery path**: the 4 presets ship with omo-presets-plugin/presets/; the bootstrap/install step copies them to '$DSH_HOME/.agent-presets/'
   (user root trust=user); QA verifies in a sandbox .agent-presets (preset-register PASS).
-- **Preset content**: oracle/librarian/prometheus/hephaestus personas are extracted from the OMO original prompts and adapted for DeepSeek
+- **Preset content**: oracle/librarian/prometheus/hephaestus personas are extracted from the upstream original prompts and adapted for DeepSeek
   (removing Claude-specific wording, mapping tool names to DSH's mcp__ast_grep__*/mcp__lsp__*/web etc.), recorded in tests/prompt-adaptation-log.md;
   persona smoke PASS (Prometheus self-identifies correctly).
 
 ## CodeGraph regression (F10 closed → plan finalized)
 
-- **Root cause**: ① serve.js auto-provisions into ~/.omo when the binary is missing (read-only HOME crash); ② the OMO exclusion policy excludes
+- **Root cause**: ① serve.js auto-provisions into ~/.omo when the binary is missing (read-only HOME crash); ② the upstream exclusion policy excludes
   projects whose path contains a `.omo` segment or /tmp (**our repo temporarily lives under .omo/port/, so it is naturally excluded**).
 - **Plan (verified)**:
-  1. Self-developed `omo-codegraph-plugin` (package name @omo-dsh/omo-codegraph-plugin): config.binary/env resolution (supporting
-     OMO_CODEGRAPH_BIN + toolchain fallback) -> exact-marker probe -> atomic lock + 15min cooldown + 60s tree timeout
-     `codegraph init`; registers the `omo-codegraph` command for manual rerun; any failure only logs and never crashes boot;
-  2. Re-enable the bundle's mcp-codegraph line, env injects OMO_CODEGRAPH_BIN (toolchain fallback);
+  1. Self-developed `mpd-codegraph-plugin` (package name @mpd-dsh/mpd-codegraph-plugin): config.binary/env resolution (supporting
+     Upstream_CODEGRAPH_BIN + toolchain fallback) -> exact-marker probe -> atomic lock + 15min cooldown + 60s tree timeout
+     `codegraph init`; registers the `mpd-codegraph` command for manual rerun; any failure only logs and never crashes boot;
+  2. Re-enable the bundle's mcp-codegraph line, env injects Upstream_CODEGRAPH_BIN (toolchain fallback);
   3. QA temporary project placed at the workspace root level (not .omo, not /tmp) to verify the full chain: init status=ok -> marker ->
      `mcp__codegraph__codegraph_explore` really returns byte-for-byte source (evidence/dsh-qa/codegraph/).
-- **User machine note**: production project paths must not contain a `.omo` segment or be under /tmp; clone from Gitee to a normal path (e.g. ~/dshProj/omo-dsh).
+- **User machine note**: production project paths must not contain a `.omo` segment or be under /tmp; clone from Gitee to a normal path (e.g. ~/dshProj/mpd-dsh).

@@ -6,7 +6,7 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)))
-const upstreamRoot = join(repoRoot, "..", "..", "..") // the original omo checkout (repoRoot is at .omo/port/omo-dsh)
+const upstreamRoot = join(repoRoot, "..", "..", "..") // the original omo checkout (repoRoot is at .omo/port/mpd-dsh)
 const lock = JSON.parse(readFileSync(join(repoRoot, "VENDOR_LOCK.json"), "utf8"))
 
 function git(args) {

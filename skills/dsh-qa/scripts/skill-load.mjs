@@ -20,12 +20,12 @@ function selfTest() {
 function runReal() {
   const creds = join(homedir(), ".dsh", ".credentials.yaml")
   if (!existsSync(creds)) { console.error("[skill-load] missing credentials: " + creds); process.exit(1) }
-  const sandbox = mkdtempSync(join(tmpdir(), "omo-dsh-qa-"))
+  const sandbox = mkdtempSync(join(tmpdir(), "mpd-dsh-qa-"))
   cpSync(creds, join(sandbox, ".credentials.yaml"))
   const t0 = Date.now()
   const env = { ...process.env, DSH_HOME: sandbox }
   if (env.DSH_HOME !== sandbox) { console.error("[skill-load] isolation assertion failed: DSH_HOME does not point to the sandbox"); process.exit(1) }
-  const run = spawnSync("dsh", ["--profile", "headless", "--patch", join(repoRoot, "packages/omo-dsh-bundle/cordis.patch.yml"), JOB], {
+  const run = spawnSync("dsh", ["--profile", "headless", "--patch", join(repoRoot, "packages/mpd-bundle/cordis.patch.yml"), JOB], {
     env, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 600000
   })
   const ms = Date.now() - t0

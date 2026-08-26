@@ -8,36 +8,36 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
-const FIXTURE_LIST = "omo-oracle,omo-librarian,omo-prometheus,omo-hephaestus"
+const FIXTURE_LIST = "mpd-oracle,mpd-librarian,mpd-prometheus,mpd-hephaestus"
 
 function selfTest() {
   const ids = FIXTURE_LIST.split(",")
-  if (ids.length !== 4 || !ids.every((s) => /^omo-[a-z-]+$/.test(s))) { console.error("[preset-register self-test] FAIL"); process.exit(1) }
+  if (ids.length !== 4 || !ids.every((s) => /^mpd-[a-z-]+$/.test(s))) { console.error("[preset-register self-test] FAIL"); process.exit(1) }
   console.log("[preset-register self-test] ok: id grammar verified on fixture")
 }
 
 function runReal() {
   const creds = join(homedir(), ".dsh", ".credentials.yaml")
   if (!existsSync(creds)) { console.error("[preset-register] missing credentials"); process.exit(1) }
-  const sandbox = mkdtempSync(join(tmpdir(), "omo-dsh-qa-"))
+  const sandbox = mkdtempSync(join(tmpdir(), "mpd-dsh-qa-"))
   cpSync(creds, join(sandbox, ".credentials.yaml"))
   const userPresets = join(sandbox, ".agent-presets")
   mkdirSync(userPresets, { recursive: true })
-  for (const id of ["omo-oracle", "omo-librarian", "omo-prometheus", "omo-hephaestus"]) {
-    cpSync(join(repoRoot, "packages/omo-presets-plugin/presets", id), join(userPresets, id), { recursive: true })
+  for (const id of ["mpd-oracle", "mpd-librarian", "mpd-prometheus", "mpd-hephaestus"]) {
+    cpSync(join(repoRoot, "packages/mpd-presets-plugin/presets", id), join(userPresets, id), { recursive: true })
   }
   const logFile = join(sandbox, "run.log")
   const fd = openSync(logFile, "w")
   const env = { ...process.env, DSH_HOME: sandbox }
   if (env.DSH_HOME !== sandbox) { console.error("[preset-register] isolation assertion failed"); process.exit(1) }
   const args = ["--profile", "headless",
-    "--patch", join(repoRoot, "packages/omo-dsh-bundle/cordis.patch.yml"),
+    "--patch", join(repoRoot, "packages/mpd-bundle/cordis.patch.yml"),
     "--patch", join(repoRoot, "tests/overlays/agent-presets-headless.yml"),
     "--patch", join(repoRoot, "tests/overlays/preset-probe.yml"), "ok"]
   const run = runDsh(args, env, fd)
   closeSync(fd)
   const out = readFileSync(logFile, "utf8")
-  const ok = run?.status === 0 && /preset-probe\] PASS/.test(out) && /RESOLVED=\{\"omo-oracle\":true/.test(out) && /LIST=.*omo-(oracle|librarian|prometheus|hephaestus)/.test(out)
+  const ok = run?.status === 0 && /preset-probe\] PASS/.test(out) && /RESOLVED=\{\"mpd-oracle\":true/.test(out) && /LIST=.*mpd-(oracle|librarian|prometheus|hephaestus)/.test(out)
   const outDir = join(repoRoot, "evidence", "dsh-qa", "preset-register", new Date().toISOString().replaceAll(":", "-"))
   mkdirSync(outDir, { recursive: true })
   writeFileSync(join(outDir, "result.json"), JSON.stringify({ ok, exit: run?.status, dshHomeSandbox: true, userRootPresets: true }, null, 2))

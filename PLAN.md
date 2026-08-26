@@ -1,10 +1,10 @@
-# omo-dsh porting implementation plan
+# mpd-dsh porting implementation plan
 
 > Bring oh-my-openagent's portable capabilities into DeepSeek Harness (DSH) as a third-party bundle,
 > with the DeepSeek official API as the primary track, achieving "DeepSeek all-in-one".
 >
 > **Two iron rules (new in this revision):**
-> 1. Test and development requirements strictly align with OMO's original discipline (bun test / type gates / isolated QA / evidence landing / stage gates);
+> 1. Test and development requirements strictly align with upstream's original discipline (bun test / type gates / isolated QA / evidence landing / stage gates);
 > 2. Everything developed is ultimately delivered as a DSH plugin (cordis plugin) — no loose scripts, no bare config.
 >
 > Status: draft v2 (enter P0 after confirmation)　Date: 2026-08-26
@@ -16,31 +16,31 @@
 ### 1.1 Background conclusions (from architecture reconnaissance)
 
 1. omo has completed "multi-host adapter" layering: 19 Core pure-TS packages + stdio MCP + SKILL.md skills are all host-agnostic and directly reusable;
-   host coupling is concentrated in three adapters: omo-opencode (2787 files/16MB), omo-codex, omo-senpi.
+   host coupling is concentrated in the upstream adapter packages (the largest being ~2787 files / 16MB).
 2. DSH's extension seams map one-to-one to omo capabilities: tools pipeline (pre/execute/post + guard), skills, persona/preset,
    subagent (supporting per-child persona/model/structured output/tool filtering), goal/ralph/workflow, jobs,
    dsh-mcp-client, dsh-agent-instructions (AGENTS.md injection), compaction, storage, Web GUI.
 3. DSH already ships a DeepSeek official API adapter (dsh-llm-deepseek, default models deepseek-v4-flash/pro);
-   omo's own fallback chain already has a deepseek-v4-flash entry; DSH's dsh-llm-pi-ai shares the same origin as omo's Senpi edition (pi-ai).
+   upstream's own fallback chain already has a deepseek-v4-flash entry; DSH's compat provider (dsh-llm-pi-ai) shares the same underlying engine as upstream's standalone edition.
 4. The biggest risk is not the wiring, but verifying prompt/behavior-layer adaptation to DeepSeek's thinking format.
 
 ### 1.2 Porting target definition (the object of this plan)
 
-> Create a new independent local repo omo-dsh, delivering a **plugin bundle** loadable by a DSH profile:
+> Create a new independent local repo mpd-dsh, delivering a **plugin bundle** loadable by a DSH profile:
 > - Each capability = one cordis plugin (self-developed plugin or official plugin instantiation entry); the bundle only does mounting/summary;
 > - Reuse omo's skills / MCP / agent prompt assets;
-> - All agents route to the DeepSeek official API (deepseek-official), with pi-ai's deepseek route as dual-track compatibility;
+> - All agents route to the DeepSeek official API (deepseek-official), with the compat provider's deepseek route as dual-track compatibility;
 > - The first milestone (Track A) is bounded by a minimal usable closed loop; deep porting (Team Mode/ultrawork) becomes the later B line.
 
 ### 1.3 Success criteria (measurable)
 
 | # | Standard | Measurement |
 |---|---|---|
-| S1 | omo-dsh repo can reproducibly build a DSH plugin bundle | Run the bootstrap script in a clean directory → dsh --dump-config passes |
+| S1 | mpd-dsh repo can reproducibly build a DSH plugin bundle | Run the bootstrap script in a clean directory → dsh --dump-config passes |
 | S2 | DeepSeek official routing works in both headless and web (thinking + tool call) | dsh --profile omo-headless smoke + manual test in this GUI |
 | S3 | ≥3 omo skills, ≥2 MCP, ≥3 agent presets run | tool/skill directory + real-call evidence |
 | S4 | Golden-task pass rate ≥ 80% (including ≥2 hardware code tasks) | scoring rubric landed |
-| S5 | Original repo zero changes, zero pushes; all changes only in the new omo-dsh repo | git status verification + remote check |
+| S5 | Original repo zero changes, zero pushes; all changes only in the new mpd-dsh repo | git status verification + remote check |
 | S6 | License and third-party notices compliant | LICENSE-NOTICES.md |
 | S7 | **All deliverables as plugins**: no loose scripts, no bare config; every plugin bun test + tsgo all green + QA evidence landed | repo structure review + CI-style script |
 
@@ -50,7 +50,7 @@
 (ast-grep/git-bash first, lsp per network decision), first-batch agent preset plugin (oracle/librarian/prometheus) +
 Hephaestus native minimal plugin, dsh-qa skill, behavior verification and prompt iteration.
 
-**Out of scope (explicitly not doing)**: modifying omo original repo source; porting the opencode TUI/installer/opencode-specific hooks (tui-sidebar,
+**Out of scope (explicitly not doing)**: modifying omo original repo source; porting the upstream TUI/installer/host-specific hooks (tui-sidebar,
 zauc-mocks, claude-code-*-loader, opengateway-provider, etc.); external release/commercial distribution; B-line deep porting (see 4.7).
 
 ---
@@ -63,9 +63,9 @@ zauc-mocks, claude-code-*-loader, opengateway-provider, etc.); external release/
 | DSH baseline | @deepseek-ai/dsh 0.1.1-rc.2, installed at ~/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh |
 | DSH host | ~/.dsh (web profile already includes base + web-app + dshmarket + @linxin666/dsh-web-all + nowledge-mem) |
 | Toolchain | bun 1.4.0 / node v24.19.0 / pnpm / git (all usable) |
-| Network constraints | Direct GitHub connections hang → install deps with bun install --ignore-scripts; build omo with OMO_SKIP_MATERIALIZE=1; reuse installed node_modules where possible |
+| Network constraints | Direct GitHub connections hang → install deps with bun install --ignore-scripts; build omo with Upstream_SKIP_MATERIALIZE=1; reuse installed node_modules where possible |
 | Process hard constraints | ① All changes go into a new local repo (this repo), never push the original repo; ② QA evidence for each stage lands in evidence/; ③ omo source read-only, only vendor copies |
-| Iron rule 1 | Tests and development align with the OMO original (see §5) |
+| Iron rule 1 | Tests and development align with the upstream original (see §5) |
 | Iron rule 2 | All deliverables as plugins (see §3.3) |
 
 ---
@@ -74,12 +74,12 @@ zauc-mocks, claude-code-*-loader, opengateway-provider, etc.); external release/
 
 ### 3.1 Repo location and isolation
 
-The repo is located at the original omo checkout's .omo/port/omo-dsh/ — the original repo's .gitignore already ignores .omo/*,
+The repo is located at the original omo checkout's .omo/port/mpd-dsh/ — the original repo's .gitignore already ignores .omo/*,
 so the original repo's git status stays completely clean, while the new repo has independent git history.
 
 ### 3.2 Directory structure (P0 landing, one package per plugin)
 
-    omo-dsh/
+    mpd-dsh/
     ├── PLAN.md                  # this file
     ├── README.md
     ├── LICENSE-NOTICES.md       # SUL-1.0 compliance notice + third-party notices
@@ -88,19 +88,19 @@ so the original repo's git status stays completely clean, while the new repo has
     ├── package.json             # root scripts mirror omo: typecheck / test / test:fast / test:qa
     ├── tsconfig.json
     ├── packages/                # one capability one plugin, structure aligned with omo packages/ (src + *.test.ts + AGENTS.md)
-    │   ├── omo-dsh-bundle/      # bundle package: cordis.patch.yml summarizes and mounts all the plugin entries below
+    │   ├── mpd-dsh-bundle/      # bundle package: cordis.patch.yml summarizes and mounts all the plugin entries below
     │   ├── omo-skills-plugin/   # plugin: skill provider (points at skills assets inside the bundle)
     │   ├── omo-mcp-astgrep/     # plugin: ast-grep MCP integration (including build artifacts and integration tests)
     │   ├── omo-mcp-gitbash/     # plugin: git-bash MCP integration
     │   ├── omo-mcp-lsp/         # plugin: lsp MCP integration (per decision D2)
     │   ├── omo-presets-plugin/  # plugin: oracle/librarian/prometheus presets + persona registration
-    │   ├── omo-hephaestus/      # plugin: Hephaestus config-management agent (minimal version, P4 starting point before B line)
+    │   ├── mpd-hephaestus/      # plugin: Hephaestus config-management agent (minimal version, P4 starting point before B line)
     │   └── omo-tools-plugin/    # (from B1) tool/hook plugin
     ├── profiles/
     │   ├── omo/                 # web profile template
     │   └── omo-headless/        # CI smoke profile template
     ├── skills/
-    │   └── dsh-qa/              # QA skill, same structure as omo opencode-qa (including --self-test scripts)
+    │   └── dsh-qa/              # QA skill, same structure as the upstream host QA skills (including --self-test scripts)
     ├── scripts/                 # bootstrap / build / smoke / evidence / verify-vendor
     ├── tests/                   # golden-task set + rubric + adaptation log
     └── evidence/                # single canonical evidence path (aligned with .omo/evidence/<domain>/<slug>/)
@@ -135,7 +135,7 @@ so the original repo's git status stays completely clean, while the new repo has
 2. **Gate docs**: write this repo's AGENTS.md, codifying §5's test/QA gates into rules (aligned with the gate spirit of omo's root AGENTS.md).
 3. Generate VENDOR_LOCK.json: omo commit sha + find/wc verification values; write scripts/verify-vendor.mjs.
 4. Root scripts mirror omo: typecheck (tsgo --noEmit per package), test (bun test), test:fast, test:qa; bootstrap.mjs reproducibly builds the bundle.
-5. **dsh-qa skill skeleton**: skills/dsh-qa/ (structure aligned with omo opencode-qa: SKILL.md + scripts/*.mjs all with --self-test + references/ domain reference), first version only includes the "bundle mount assertion" case.
+5. **dsh-qa skill skeleton**: skills/dsh-qa/ (structure aligned with the upstream host QA skills: SKILL.md + scripts/*.mjs all with --self-test + references/ domain reference), first version only includes the "bundle mount assertion" case.
 
 **Acceptance**: ① original repo git status shows no change; ② new repo first commit done; ③ bootstrap runs in a clean directory;
 ④ dsh-qa script --self-test passes.
@@ -147,13 +147,13 @@ so the original repo's git status stays completely clean, while the new repo has
 **Goal**: DeepSeek official API runs headless inside DSH, pi-ai track coexists and is switchable; all delivered as plugin entries.
 
 **Tasks**
-1. Create the profiles/omo-headless template (bundles: base + headless + omo-dsh-bundle); profiles/omo
-   (bundles: base + web-app + omo-dsh-bundle, UI third-party bundles merged in by the user as needed).
-2. omo-dsh-bundle's cordis.patch.yml mounts (as plugin entries):
+1. Create the profiles/omo-headless template (bundles: base + headless + mpd-dsh-bundle); profiles/omo
+   (bundles: base + web-app + mpd-dsh-bundle, UI third-party bundles merged in by the user as needed).
+2. mpd-dsh-bundle's cordis.patch.yml mounts (as plugin entries):
    - dsh-llm-deepseek: apiKeyEnv: DEEPSEEK_API_KEY, thinking: enabled, reasoningEffort: high;
-   - dsh-llm-pi-ai: deepseek directory routing (dual-track coexists, primary track = official).
+   - compat provider (dsh-llm-pi-ai): deepseek route; dual-track coexists, primary track = official.
 3. Smoke: dsh --profile omo-headless "use tools to list the current directory and reply ok", assert tool call + thinking + token-meter.
-4. Dual-track comparison: run the same task once on deepseek-official and once on pi-ai deepseek, record latency/format/tool-call success rate.
+4. Dual-track comparison: run the same task once on deepseek-official and once on the compat deepseek route, record latency/format/tool-call success rate.
 5. dsh-qa new case: "llm dual-track mounted" (assert on the --dump-config output).
 
 **Acceptance**: ① both routes complete the task under headless; ② --dump-config has no warnings and QA assertions pass; ③ comparison data landed.
@@ -203,7 +203,7 @@ so the original repo's git status stays completely clean, while the new repo has
 2. Delivery form: omo-presets-plugin — a self-developed plugin responsible for preset/persona registration (first investigate dsh-agent-presets' registration API:
    config declaration vs programmatic; if a programmatic API exists then code it all, otherwise publish as agent.cordis.yml inside the plugin package +
    bundle entries); persona text and prompts are assets inside the plugin, and must not scatter into user directories.
-3. omo-hephaestus plugin (minimal version): config-management agent — can read/edit the profile's cordis.patch.yml, presets, model routing,
+3. mpd-hephaestus plugin (minimal version): config-management agent — can read/edit the profile's cordis.patch.yml, presets, model routing,
    MCP registration, produce diffs; DeepSeek-native prompts; first round only requires "read config + explain" capability; read/write logic becomes plugin-internal tools.
 4. Run each preset through a corresponding golden task under headless; establish tests/prompt-adaptation-log.md (record reason/effect for every prompt change).
 5. Tests: plugin unit tests (bun test) + preset registration assertions + isolated DSH_HOME integration smoke.
@@ -238,15 +238,15 @@ so the original repo's git status stays completely clean, while the new repo has
 
 ---
 
-## 5. Test and development norms (strictly aligned with the OMO original)
+## 5. Test and development norms (aligned with upstream discipline)
 
 This section is the landing plan for iron rule 1. The left column is omo's original discipline, the right column is this repo's aligned implementation.
 
-| # | OMO original discipline | omo-dsh aligned implementation |
+| # | upstream original discipline | mpd-dsh aligned implementation |
 |---|---|---|
 | T1 | Test framework bun:test, test files co-located with source (*.test.ts) | Each plugin package places *.test.ts beside src/, root script test = bun test |
 | T2 | Type gate tsgo --noEmit per package (typecheck / typecheck:packages) | Root package.json mirrors the same-named scripts, runs tsgo per plugin package |
-| T3 | One QA skill per domain: opencode-qa / codex-qa / senpi-qa, including --self-test helper scripts and domain references | New dsh-qa skill (skills/dsh-qa/), same structure as omo's QA skills: SKILL.md + scripts (all with --self-test) + references/ |
+| T3 | One QA skill per domain (upstream ships host-specific QA skills, each with --self-test scripts and references) | One dsh-qa skill (skills/dsh-qa/) with the same structure: SKILL.md + scripts (all --self-test) + references/ |
 | T4 | Strict isolation: real binary + isolated home directory, never touch the user's real config (e.g. isolated CODEX_HOME / SENPI_CODING_AGENT_DIR) | QA always uses an isolated DSH_HOME (temp dir), boots the real dsh binary; scripts assert isolation is effective |
 | T5 | Provability: assert plugin hook/events actually fire (hook/started + hook/completed), not just "it runs" | dsh-qa asserts plugin entries are mounted (--dump-config output assertions) and self-developed plugin side-effect events/logs; smoke results landed |
 | T6 | Single canonical evidence path .omo/evidence/<domain>/<slug>/ | This repo's evidence/<domain>/<slug>/, same name and structure; no evidence = stage not complete |
@@ -262,7 +262,7 @@ Supplementary rules:
 ## 6. Track A definition of done (DoD)
 
 1. Run bootstrap in a clean directory → bundle builds successfully, dsh --dump-config passes;
-2. deepseek-official works on both headless and web; pi-ai dual-track switchable with comparison evidence;
+2. deepseek-official works on both headless and web; compat dual-track switchable with comparison evidence;
 3. ≥3 skills, ≥2 MCP, ≥3 presets + Hephaestus minimal version all run real tasks;
 4. Golden pass rate ≥80%, all evidence in evidence/;
 5. Original repo zero changes, zero pushes, new repo commit history complete;
@@ -275,7 +275,7 @@ Supplementary rules:
 ## 7. Quality gates
 
 - Stage gate: don't start the next stage before the previous stage's acceptance evidence lands (T7).
-- Alignment statement: omo's original opencode-qa gate only constrains omo-opencode source changes; this repo doesn't change omo source,
+- Alignment statement: the upstream QA gate only constrains upstream source changes; this repo doesn't change upstream source,
   and uses dsh-qa + plugin tests as the equivalent gate, with the same discipline and evidence path structure (§5).
 - Regression: after any bundle/plugin change, must rerun dsh --dump-config + one headless smoke, appending results to evidence/.
 
@@ -320,7 +320,7 @@ Supplementary rules:
 | P1 | Profile + DeepSeek dual-track (bundle entries) | 1–2 person-days | official API headless fully works + QA assertions |
 | P2 | omo-skills-plugin | 0.5–1 person-day | skill directory + load verification + tests all green |
 | P3 | omo-mcp-astgrep / omo-mcp-gitbash plugins | 1–2 person-days | real call succeeds + integration tests all green |
-| P4 | omo-presets-plugin + omo-hephaestus plugin | 2–4 person-days | three presets each pass 1 golden task |
+| P4 | omo-presets-plugin + mpd-hephaestus plugin | 2–4 person-days | three presets each pass 1 golden task |
 | P5 | behavior verification and tuning (full dsh-qa gate) | 3–5 person-days | Track A DoD fully achieved |
 | Total | | ≈ 9–16 person-days | |
 | B2 (largest) | omo-team-plugin | 2–4 weeks | defined separately |
@@ -330,7 +330,7 @@ Supplementary rules:
 ## 11. First batch of actions to start immediately (P0 checklist)
 
 1. git init + first commit for this repo (PLAN/README/LICENSE-NOTICES/VENDOR_LOCK/AGENTS.md skeleton);
-2. Confirm .omo/port/omo-dsh is not tracked by the original repo (git status clean);
+2. Confirm .omo/port/mpd-dsh is not tracked by the original repo (git status clean);
 3. Write VENDOR_LOCK.json + scripts/verify-vendor.mjs and run it;
 4. Create the skills/dsh-qa skeleton (SKILL.md + one mount assertion script with --self-test);
 5. After delivery, wait for user confirmation → enter P1 (create profile, mount DeepSeek official adapter, headless smoke).

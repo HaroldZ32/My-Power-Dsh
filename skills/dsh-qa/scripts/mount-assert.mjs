@@ -39,7 +39,7 @@ function main() {
   }
   if (expect.length === 0) { console.error("usage: mount-assert.mjs --expect=<substring> [--expect=...] | --self-test"); process.exit(2) }
 
-  const sandbox = mkdtempSync(join(tmpdir(), "omo-dsh-qa-"))
+  const sandbox = mkdtempSync(join(tmpdir(), "mpd-dsh-qa-"))
   const env = { ...process.env, DSH_HOME: sandbox }
   if (!env.DSH_HOME.startsWith(sandbox)) { console.error("[mount-assert] isolation assertion failed: DSH_HOME does not point to the temp directory"); process.exit(1) }
 

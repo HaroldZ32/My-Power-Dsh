@@ -1,0 +1,11 @@
+{
+  "name": "@mpd-dsh/mcp-lsp",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "lsp MCP integration plugin (P3, pending D2)",
+  "scripts": {
+    "typecheck": "tsgo --noEmit -p tsconfig.json",
+    "test": "bun test"
+  }
+}

@@ -15,11 +15,11 @@
 ## Leftovers (user-side / follow-up)
 
 1. Production profile install: dsh plugin --profile omo add this bundle + bootstrap copies presets to $DSH_HOME/.agent-presets (install script to be added);
-2. web GUI preset manual test: select omo-oracle/librarian/prometheus/hephaestus presets and run each once (DSH UI preset selector);
+2. web GUI preset manual test: select mpd-oracle/librarian/prometheus/hephaestus presets and run each once (DSH UI preset selector);
 3. add source-level unit tests inside plugin packages (bun test dir) — finish before line B;
 4. keep tracking F9 (config.roots semantic difference under headless); F12 golden design correction.
 
 ## Prompt adaptation conclusions
 
-- DeepSeek adapts OMO original personas well: Prometheus (planning discipline), Oracle (evidence-chain review + refusing overreach), task-level tool discipline all empirically verified;
+- DeepSeek adapts upstream original personas well: Prometheus (planning discipline), Oracle (evidence-chain review + refusing overreach), task-level tool discipline all empirically verified;
 - adaptation log in tests/prompt-adaptation-log.md; future iterations follow rubric failure items (no failures this round).

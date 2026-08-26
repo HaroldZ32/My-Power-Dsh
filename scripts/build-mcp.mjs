@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Offline build of ast-grep/git-bash MCP: copy source from the omo checkout (read-only) into a temp workspace,
-// use bun cache for external dependencies, then after bun build copy dist artifacts into the omo-dsh plugin package.
+// use bun cache for external dependencies, then after bun build copy dist artifacts into the mpd-dsh plugin package.
 // The original repo stays untouched; artifacts go into the plugin package (plugin-form) with SHA256 recorded in BUILD.lock.
 import { spawnSync } from "node:child_process"
 import { createHash, randomUUID } from "node:crypto"
@@ -38,7 +38,7 @@ function findCache(entry) {
 
 function sha(p) { return createHash("sha256").update(readFileSync(p)).digest("hex") }
 
-const work = mkdtempSync(join(tmpdir(), "omo-dsh-mcp-build-"))
+const work = mkdtempSync(join(tmpdir(), "mpd-dsh-mcp-build-"))
 try {
   const srcRoot = join(work, "src")
   mkdirSync(srcRoot, { recursive: true })

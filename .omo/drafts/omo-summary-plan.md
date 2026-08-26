@@ -13,9 +13,9 @@ approach: the plan self-develops the omo-summary skill inside omo-skills-plugin 
 ## Components (topology ledger)
 | id | outcome (one line) | status | evidence path |
 |---|---|---|---|
-| C1 | packages/omo-skills-plugin/skills/omo-summary/SKILL.md exists and frontmatter/rules compliant | active | evidence/dsh-qa/skill-summary-load/<ts>/result.json |
+| C1 | packages/mpd-skills-plugin/skills/omo-summary/SKILL.md exists and frontmatter/rules compliant | active | evidence/dsh-qa/skill-summary-load/<ts>/result.json |
 | C2 | skills/dsh-qa/scripts/skill-summary-load.mjs exists and --self-test PASS | active | same as above |
-| C3 | dsh-qa SKILL.md case-set table registers the new case | active | outside packages/omo-skills-plugin/skills/ulw-plan: skills/dsh-qa/SKILL.md |
+| C3 | dsh-qa SKILL.md case-set table registers the new case | active | outside packages/mpd-skills-plugin/skills/ulw-plan: skills/dsh-qa/SKILL.md |
 | C4 | isolated DSH_HOME boot asserts omo-summary is loadable (happy+failure) | active | evidence/dsh-qa/skill-summary-load/<ts>/output.log |
 
 ## Open assumptions (announced defaults)
@@ -27,15 +27,15 @@ approach: the plan self-develops the omo-summary skill inside omo-skills-plugin 
 | gate scope | pure markdown/script changes: bun test is unaffected (no new TS); tsgo is unaffected (root tsconfig only includes packages/*/src); QA = the new dsh-qa case | AGENTS.md gate + root tsconfig include scope | yes |
 
 ## Findings (cited - path:lines)
-- F1 a skill is a directory: all 7 skills are packages/omo-skills-plugin/skills/<name>/SKILL.md; the bundle uses skill-filesystem customSkillDirs to point at the whole skills directory → a new subdirectory is auto-discovered with no bundle change (packages/omo-dsh-bundle/cordis.patch.yml:41-48; P2 commit f8386d4 "vendor 7 omo skills … skill-filesystem(customSkillDirs)").
+- F1 a skill is a directory: all 7 skills are packages/mpd-skills-plugin/skills/<name>/SKILL.md; the bundle uses skill-filesystem customSkillDirs to point at the whole skills directory → a new subdirectory is auto-discovered with no bundle change (packages/mpd-bundle/cordis.patch.yml:41-48; P2 commit f8386d4 "vendor 7 omo skills … skill-filesystem(customSkillDirs)").
 - F2 upstream has no omo-summary: the GitHub API lists packages/shared-skills/skills (both the locked commit 8c57e463 and the dev branch) with no summary skill; a 9127-blob whole-tree search finds only evidence/qa-summary.md-style files and .github/scripts/write-job-summary.sh → self-developed rather than vendored (VENDOR_LOCK.json has no such asset, verify-vendor.mjs:49-70 only validates lock.assets).
-- F3 SKILL.md shape: YAML frontmatter name + description (trigger-word style per ast-grep/review-work), optional metadata.short-description (init-deep); the body is the usage description (packages/omo-skills-plugin/skills/*/SKILL.md).
+- F3 SKILL.md shape: YAML frontmatter name + description (trigger-word style per ast-grep/review-work), optional metadata.short-description (init-deep); the body is the usage description (packages/mpd-skills-plugin/skills/*/SKILL.md).
 - F4 QA convention: the case-set table in skills/dsh-qa/SKILL.md (mount-assert/llm-dual-track/skill-load/mcp-call/preset-register); scripts must isolate DSH_HOME (mktemp -d) + assert isolation + --self-test + write evidence to evidence/<domain>/<slug>/<ts>/ (T4/T6/T7, PLAN.md §5; skill-load.mjs is the template).
 - F5 gate impact surface: root tsconfig includes only packages/*/src/**/*.ts (tsconfig.json:16-18); omo-skills-plugin has no src/ and no tests → purely additive asset changes trigger no bun test/tsgo delta, and QA goes through the dsh-qa case (AGENTS.md gate 3-4; PLAN.md §5 T7 "prompt/asset changes are treated like code changes").
 - F6 output area: tests/golden/out/plans/ does not exist yet and is created when writing the plan (see git log 69fa9d9 "golden fixtures" for the tests/ structure; tests/golden/fixtures is the task sample area and is not touched).
 
 ## Decisions (with rationale)
-- D1 landing point packages/omo-skills-plugin/skills/omo-summary/SKILL.md: same shape as the 7 existing skills, auto-discovered, satisfies the plugin-shape iron rule (AGENTS.md #2).
+- D1 landing point packages/mpd-skills-plugin/skills/omo-summary/SKILL.md: same shape as the 7 existing skills, auto-discovered, satisfies the plugin-shape iron rule (AGENTS.md #2).
 - D2 the content spec is embedded into plan Todo 1 (exact frontmatter text + 5 usage rules), so the executor has zero judgment.
 - D3 QA uses a new script skill-summary-load.mjs (not modifying skill-load.mjs, to avoid regressing P2's existing assertions), and the case slug is registered in the dsh-qa table.
 - D4 commit strategy: a single commit (matching the repo's single-commit-per-phase convention, git log is all one-line phase commits).
@@ -49,7 +49,7 @@ approach: the plan self-develops the omo-summary skill inside omo-skills-plugin 
 ## Scope OUT (Must NOT have)
 - the planning phase never creates SKILL.md or any product files (this plan only writes the plan file and .omo/drafts)
 - do not change VENDOR_LOCK.json (not a vendored asset)
-- do not change packages/omo-dsh-bundle/cordis.patch.yml (found that no bundle change is needed)
+- do not change packages/mpd-bundle/cordis.patch.yml (found that no bundle change is needed)
 - do not change or upgrade any vendored skills, do not touch upstream
 - do not add any TS source/plugin code (pure markdown + one mjs QA script)
 - do not write tests/golden/fixtures (the golden sample area is read-only)

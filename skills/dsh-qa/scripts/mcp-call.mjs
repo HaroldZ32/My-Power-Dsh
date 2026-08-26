@@ -23,7 +23,7 @@ function selfTest() {
 function realRun(job, timeoutMs = 600000) {
   const creds = join(homedir(), ".dsh", ".credentials.yaml")
   if (!existsSync(creds)) { console.error("[mcp-call] missing credentials"); process.exit(1) }
-  const sandbox = mkdtempSync(join(tmpdir(), "omo-dsh-qa-"))
+  const sandbox = mkdtempSync(join(tmpdir(), "mpd-dsh-qa-"))
   cpSync(creds, join(sandbox, ".credentials.yaml"))
   // Write stdio to a file instead of a pipe: the dsh-mcp-client MCP subprocess inherits the fd and outlives dsh,
   // and a pipe would make spawnSync hang at EOF; writing to a file means the child only holds the log fd.
@@ -34,10 +34,10 @@ function realRun(job, timeoutMs = 600000) {
     if (env.DSH_HOME !== sandbox) { console.error("[mcp-call] isolation assertion failed: DSH_HOME does not point to the sandbox"); process.exit(1) }
     // Local toolchain: sg / codegraph installed with network access (optional; injected when present so the call truly succeeds)
     const sg = join(repoRoot, ".toolchain/node_modules/.bin/ast-grep")
-    if (existsSync(sg)) env.OMO_AST_GREP_SG_PATH = sg
+    if (existsSync(sg)) env.Upstream_AST_GREP_SG_PATH = sg
     const cg = join(repoRoot, ".toolchain/node_modules/.bin/codegraph")
-    if (existsSync(cg)) env.OMO_CODEGRAPH_BIN = cg
-    const run = spawnSync("dsh", ["--profile", "headless", "--patch", join(repoRoot, "packages/omo-dsh-bundle/cordis.patch.yml"), job], {
+    if (existsSync(cg)) env.Upstream_CODEGRAPH_BIN = cg
+    const run = spawnSync("dsh", ["--profile", "headless", "--patch", join(repoRoot, "packages/mpd-bundle/cordis.patch.yml"), job], {
       env, encoding: "utf8", timeout: timeoutMs, stdio: ["ignore", fd, fd]
     })
     return { out: readFileSync(logFile, "utf8"), exit: run.status }
