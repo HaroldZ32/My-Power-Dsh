@@ -1,15 +1,4 @@
-# QA/B-line plugins (absolute paths; production rows use @omo-dsh/<pkg> package names)
-- insert:
-    - id: omo-tools
-      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-tools-plugin/dist/index.js'
-      config:
-        writeGuard: true
-        truncateMaxBytes: 8192
-    - id: omo-modelchain
-      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-modelchain-plugin/dist/index.js'
-    - id: omo-ulw
-      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-ulw-plugin/dist/index.js'
-      config:
-        maxRounds: 3
-    - id: omo-team
-      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-team-plugin/dist/index.js'
+# B-line plugin rows now live in the bundle patch (packages/omo-dsh-bundle/cordis.patch.yml).
+# Keep this overlay empty to avoid duplicate entry ids; use it only for isolated dev of one plugin
+# (comment out the bundle rows temporarily or apply this overlay WITHOUT the bundle patch).
+[]
