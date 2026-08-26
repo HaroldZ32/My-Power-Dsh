@@ -1,7 +1,7 @@
 // src/index.ts
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-var name = "omo-modelchain";
+var name = "mpd-modelchain";
 var inject = ["tools"];
 var DEFAULT_CHAINS = {
   sisyphus: [
@@ -81,7 +81,7 @@ function apply(ctx, config = {}) {
   });
   ctx.tools.register({
     name: "mpd_memory_save",
-    description: "Persist a key/value note in the workspace-scoped omo memory (.mpd/memory.json).",
+    description: "Persist a key/value note in the workspace-scoped memory (.mpd/memory.json).",
     parameters: { type: "object", properties: { key: { type: "string" }, value: { type: "string" } }, required: ["key", "value"] },
     output: { schema: { type: "object", properties: { ok: { type: "boolean" }, key: { type: "string" } }, required: ["ok", "key"] }, render: (_a, v) => [{ type: "text", text: "saved " + v.key }] },
     execute: async (args) => {
@@ -96,7 +96,7 @@ function apply(ctx, config = {}) {
   });
   ctx.tools.register({
     name: "mpd_memory_recall",
-    description: "Recall a key from the workspace-scoped omo memory.",
+    description: "Recall a key from the workspace-scoped memory.",
     parameters: { type: "object", properties: { key: { type: "string" } }, required: ["key"] },
     output: { schema: { type: "object", properties: { key: { type: "string" }, value: { type: "string" }, found: { type: "boolean" } }, required: ["key", "found"] }, render: (_a, v) => [{ type: "text", text: v.found ? v.key + " = " + v.value : "not found: " + v.key }] },
     execute: async (args) => {

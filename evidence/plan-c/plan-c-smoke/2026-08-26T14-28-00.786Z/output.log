@@ -1,0 +1,27 @@
+[mpd-codegraph] init status=no-binary binary=- cwd=/tmp/mpd-wa-GOPsOi/ws
+All three parts of the Plan C Wave A self-test completed. Report:
+
+## 1. Config (`memory.vcs`)
+- Wrote `.mpd/mpd.jsonc` with `{ ulw: { maxRounds: 4 }, memory: { vcs: 'git' } }`.
+- ⚠️ Note: the loader parses the file as **strict JSON** — the initial JSON5-style unquoted keys (`ulw:`, `memory:`) produced a parse error on `mpd_config_reload`. I rewrote the file with quoted keys/double-quoted strings (same values) and it loaded cleanly.
+- `mpd_config_get key='memory.vcs'` → **`"git"`**
+
+## 2. Boulder work
+- Created `.mpd/plans/qa.md` with `# QA`, `## TODOs`, `- [ ] 1. First`, `- [x] 2. Second` (plan progress parsed: 2 total, 1 completed).
+- `mpd_boulder_start` → **workId `qa-22165d5b`** (note: the start response printed a different hash `qa-d76f6659`; the authoritative workId from `.mpd/boulder.json` is `qa-22165d5b` — timer calls with the printed hash failed, and succeeded with the state-file id).
+- Task timer for task `1`: start → running, end → completed.
+- `mpd_boulder_complete` → **status `completed`**, elapsedMs 64663.
+
+## 3. Hashline edit on `note.txt`
+- Created with lines `first` / `second` / `third`.
+- `mpd_hashline_read` → anchors `1#KM|first`, `2#BB|second`, `3#SS|third`.
+- `mpd_hashline_edit` replaced line 2 via anchor `2#BB` with `second2` (diff applied, noop=0).
+- Final `note.txt` content:
+```
+first
+second2
+third
+```
+
+**Summary:** config value = `"git"` · workId = `qa-22165d5b` (status `completed`) · note.txt = `first` / `second2` / `third`. One caveat surfaced: `mpd.jsonc` must be valid strict JSON (quoted keys), and the boulder workId should be read from `.mpd/boulder.json` rather than the start call's printed id.
+CodeGraph MCP skipped: project excluded by OMO CodeGraph policy.

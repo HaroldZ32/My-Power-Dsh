@@ -9,7 +9,7 @@ import { mkdirSync, writeFileSync, appendFileSync } from "node:fs"
 import { join } from "node:path"
 import { randomUUID } from "node:crypto"
 
-export const name = "omo-ulw"
+export const name = "mpd-ulw"
 export const inject = ["tools", "subagents"]
 
 type Ctx = { tools: any; subagents: any; [k: string]: any }

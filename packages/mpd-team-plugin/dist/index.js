@@ -5,7 +5,7 @@ var __require = /* @__PURE__ */ createRequire(import.meta.url);
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
-var name = "omo-team";
+var name = "mpd-team";
 var inject = ["tools", "subagents"];
 var ROLE_MODEL = {
   oracle: { provider: "deepseek-official", model: "deepseek-v4-pro" },
@@ -93,7 +93,7 @@ Work independently with tools; end with ONLY the structured report (role/summary
   });
   ctx.tools.register({
     name: "mpd_team_status",
-    description: "Read the mailbox state file of a spawned omo team.",
+    description: "Read the mailbox state file of a spawned team.",
     parameters: { type: "object", properties: { teamId: { type: "string" } }, required: ["teamId"] },
     output: { schema: { type: "object", properties: { found: { type: "boolean" }, report: { type: "string" } }, required: ["found", "report"] }, render: (_a, v) => textBlock(v.report) },
     execute: async (args) => {

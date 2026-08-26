@@ -1,4 +1,4 @@
-# mpd-ulw-plugin (omo-ulw)
+# mpd-ulw-plugin
 
 Plan C / C2 — fixed-policy ultrawork engine on the DSH subagent seam (v2,
 replaces the B3 loop; `mpd_ulw` remains as a lightweight compatibility alias).

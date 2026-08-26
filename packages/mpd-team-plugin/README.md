@@ -1,4 +1,4 @@
-# omo-team-plugin
+# mpd-team-plugin
 
 Team Mode adapter plugin (B2)
 

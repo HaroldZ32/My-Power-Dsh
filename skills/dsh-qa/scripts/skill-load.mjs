@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Case skill-load: under an isolated DSH_HOME, run real dsh headless to have the model load an omo skill via the skill tool and cite its identity.
+// Case skill-load: under an isolated DSH_HOME, run real dsh headless to have the model load an mpd skill via the skill tool and cite its identity.
 // --self-test is the offline self-test.
 import { spawnSync } from "node:child_process"
 import { cpSync, existsSync, mkdtempSync, mkdirSync, writeFileSync } from "node:fs"

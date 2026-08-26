@@ -1,8 +1,8 @@
-// B4 omo-modelchain-plugin: upstream fallback-chain resolution (DeepSeek-first) + workspace memory.
+// B4 mpd-modelchain-plugin: upstream fallback-chain resolution (DeepSeek-first) + workspace memory.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 
-export const name = "omo-modelchain"
+export const name = "mpd-modelchain"
 export const inject = ["tools"]
 
 type Ctx = { tools: any; get?: (k: string) => any; [k: string]: any }
@@ -88,7 +88,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   ctx.tools.register({
     name: "mpd_memory_save",
-    description: "Persist a key/value note in the workspace-scoped omo memory (.mpd/memory.json).",
+    description: "Persist a key/value note in the workspace-scoped memory (.mpd/memory.json).",
     parameters: { type: "object", properties: { key: { type: "string" }, value: { type: "string" } }, required: ["key", "value"] },
     output: { schema: { type: "object", properties: { ok: { type: "boolean" }, key: { type: "string" } }, required: ["ok", "key"] }, render: (_a: unknown, v: any) => [{ type: "text", text: "saved " + v.key }] },
     execute: async (args: any) => {
@@ -103,7 +103,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   ctx.tools.register({
     name: "mpd_memory_recall",
-    description: "Recall a key from the workspace-scoped omo memory.",
+    description: "Recall a key from the workspace-scoped memory.",
     parameters: { type: "object", properties: { key: { type: "string" } }, required: ["key"] },
     output: { schema: { type: "object", properties: { key: { type: "string" }, value: { type: "string" }, found: { type: "boolean" } }, required: ["key", "found"] }, render: (_a: unknown, v: any) => [{ type: "text", text: v.found ? v.key + " = " + v.value : "not found: " + v.key }] },
     execute: async (args: any) => {

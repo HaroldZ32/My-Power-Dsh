@@ -2,9 +2,9 @@
 // One-shot installer: install the my-power-dsh capabilities into the local DeepSeek Harness.
 // By default --dry-run only prints the plan; --yes writes to disk; --dsh-home overrides the target (for isolated QA); --self-test runs the offline self-test.
 // Target artifacts:
-//   1) $DSH_HOME/profiles/omo/{package.json,dsh.profile,cordis.patch.yml} (separate profiles for base + web-app)
+//   1) $DSH_HOME/profiles/mpd/{package.json,dsh.profile,cordis.patch.yml} (separate profiles for base + web-app)
 //   2) $DSH_HOME/cordis.patch.yml (plugin rows with local absolute paths: llm dual track / skills / MCP / mpd-codegraph)
-//   3) $DSH_HOME/.agent-presets/omo-* (4 presets -> auto-scanned from the user root)
+//   3) $DSH_HOME/.agent-presets/mpd-* (presets -> auto-scanned from the user root)
 //   4) .toolchain (network install of ast-grep + codegraph when missing)
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
@@ -15,7 +15,7 @@ import { spawnSync } from "node:child_process"
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)))
 
 function parseArgs(argv) {
-  const o = { profile: "omo", yes: false, dshHome: null, selfTest: false, skipToolchain: false, agentTeams: true, commentChecker: false }
+  const o = { profile: "mpd", yes: false, dshHome: null, selfTest: false, skipToolchain: false, agentTeams: true, commentChecker: false }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
     if (a === "--yes") o.yes = true
@@ -33,7 +33,7 @@ function parseArgs(argv) {
 
 function buildPlan(o) {
   const dshHome = o.dshHome ?? process.env.DSH_HOME ?? join(homedir(), ".dsh")
-  const isHeadless = o.profile === "omo-headless"
+  const isHeadless = o.profile === "mpd-headless"
   const bundle0 = "@deepseek-ai/dsh-base"
   const bundle1 = isHeadless ? "@deepseek-ai/dsh-headless" : "@deepseek-ai/dsh-web-app"
   const p = (r) => join(repoRoot, r)
@@ -78,19 +78,19 @@ function buildPlan(o) {
       config: { autoInit: true, initTimeoutMs: 60000, binary: cgCli }
     },
     {
-      id: "omo-tools", name: p("packages/mpd-tools-plugin/dist/index.js"),
+      id: "mpd-tools", name: p("packages/mpd-tools-plugin/dist/index.js"),
       config: { writeGuard: true, truncateMaxBytes: 8192 }
     },
     {
-      id: "omo-modelchain", name: p("packages/mpd-modelchain-plugin/dist/index.js"),
+      id: "mpd-modelchain", name: p("packages/mpd-modelchain-plugin/dist/index.js"),
       config: {}
     },
     {
-      id: "omo-ulw", name: p("packages/mpd-ulw-plugin/dist/index.js"),
+      id: "mpd-ulw", name: p("packages/mpd-ulw-plugin/dist/index.js"),
       config: { maxRounds: 3 }
     },
     {
-      id: "omo-team", name: p("packages/mpd-team-plugin/dist/index.js"),
+      id: "mpd-team", name: p("packages/mpd-team-plugin/dist/index.js"),
       config: {}
     },
     {
@@ -166,7 +166,7 @@ function renderPatch(rows) {
 }
 
 function selfTest() {
-  const plan = buildPlan({ profile: "omo", yes: false, dshHome: join(homedir(), ".mpd-not-real"), agentTeams: true })
+  const plan = buildPlan({ profile: "mpd", yes: false, dshHome: join(homedir(), ".mpd-not-real"), agentTeams: true })
   if (plan.homePatch !== join(plan.dshHome, "cordis.patch.yml")) { console.error("[install-profile self-test] FAIL: path model"); process.exit(1) }
   const rows = plan.rows.map((r) => r.id)
   if (!rows.includes("mcp-astgrep") || !rows.includes("mpd-codegraph") || !rows.includes("skill-filesystem")) { console.error("[install-profile self-test] FAIL: row set"); process.exit(1) }
@@ -206,7 +206,7 @@ function main() {
   console.log("[install-profile] dshHome=" + plan.dshHome + " profile=" + o.profile + " write=" + o.yes)
   console.log("[install-profile] profileDir=" + plan.profileDir)
   console.log("[install-profile] homePatch=" + plan.homePatch)
-  console.log("[install-profile] presets -> " + join(plan.userPresets, "omo-*"))
+  console.log("[install-profile] presets -> " + join(plan.userPresets, "mpd-*"))
   console.log("[install-profile] toolchain missing=" + plan.needsToolchain + " (use --skip-toolchain to skip)")
   console.log("[install-profile] rows about to be written to home patch: " + plan.rows.length)
   console.log(renderPatch(plan.rows))
@@ -254,7 +254,7 @@ function main() {
     const r = spawnSync("npm", ["install", "--prefix", join(repoRoot, ".toolchain"), "--no-save", "--no-audit", "--no-fund", "--cache", join(repoRoot, ".toolchain/.npm-cache"), "@code-yeongyu/comment-checker@0.8.0"], { stdio: "inherit" })
     if (r.status !== 0) { console.error("[install-profile] comment-checker install failed; install manually: npm install --prefix .toolchain @code-yeongyu/comment-checker@0.8.0"); process.exitCode = 1; return }
   }
-  console.log("[install-profile] done. Start with: dsh --profile " + o.profile + "   (the web preset selector will show the omo-* presets)")
+  console.log("[install-profile] done. Start with: dsh --profile " + o.profile + "   (the web preset selector will show the mpd-* presets)")
 }
 
 main()

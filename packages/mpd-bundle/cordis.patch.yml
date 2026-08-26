@@ -1,7 +1,7 @@
 # mpd-dsh bundle plugin layer (P1: explicit DeepSeek dual-track declaration)
 # Note: this file is the DSH bundle's patch layer (a PatchOptions list; id locates and replaces the whole config).
 # Depends on rows already present in DSH templates: llm-deepseek / llm-pi-ai / agent-default-model (included in both headless and web templates).
-# Later stages append at the end: omo-skills-plugin, omo-mcp-*, omo-presets-plugin, mpd-hephaestus.
+# Later stages append at the end: mpd-skills-plugin, mpd-mcp-*, mpd-presets-plugin, mpd-hephaestus.
 
 # ── Official track: DeepSeek API native adaptation (primary track)───────────────────────────────
 - id: llm-deepseek
@@ -32,14 +32,14 @@
               off: off
               max: max
 
-# ── Primary-track default model (omo main agent uses Pro; lightweight agents use Flash; P4 refines at preset layer)─
+# ── Primary-track default model (main agent uses Pro; lightweight agents use Flash; P4 refines at preset layer)─
 - id: agent-default-model
   name: '@deepseek-ai/dsh-agent-default-model'
   config:
     provider: deepseek-official
     model: deepseek-v4-flash
 
-# ── P2: omo skills directory (keep default project/user roots, append vendor omo skills)──
+# ── P2: skills directory (keep default project/user roots, append vendored skills)──
 - id: skill-filesystem
   name: '@deepseek-ai/dsh-skill-filesystem'
   disabled: false
@@ -48,7 +48,7 @@
     customSkillDirs:
       - !!js process.env.MPD_DSH_SKILLS_DIR || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-skills-plugin/skills'
 
-# ── P3: omo MCP servers (stdio, instantiated via the dsh-mcp-client plugin; new rows use insert)──
+# ── P3: MCP servers (stdio, instantiated via the dsh-mcp-client plugin; new rows use insert)──
 - insert:
     - id: mcp-astgrep
       name: '@deepseek-ai/dsh-mcp-client'
@@ -61,7 +61,7 @@
         env:
           Upstream_AST_GREP_SG_PATH: !!js process.env.Upstream_AST_GREP_SG_PATH || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/.toolchain/node_modules/.bin/ast-grep'
         toolCallTimeoutMs: 60000
-    # git_bash, by omo's original design, is Windows-only (run is available only on native Windows); this bundle disables it by default;
+    # git_bash, by the upstream original design, is Windows-only (run is available only on native Windows); this bundle disables it by default;
     # Windows deployments can change this row to disabled: false to enable it.
     - id: mcp-gitbash
       name: '@deepseek-ai/dsh-mcp-client'
@@ -100,18 +100,18 @@
 
 # ── B-line plugins (self-written; production uses @mpd-dsh/<pkg> package names) ──
 - insert:
-    - id: omo-tools
+    - id: mpd-tools
       name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-tools-plugin/dist/index.js'
       config:
         writeGuard: true
         truncateMaxBytes: 8192
-    - id: omo-modelchain
+    - id: mpd-modelchain
       name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-modelchain-plugin/dist/index.js'
-    - id: omo-ulw
+    - id: mpd-ulw
       name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-ulw-plugin/dist/index.js'
       config:
         maxRounds: 3
-    - id: omo-team
+    - id: mpd-team
       name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-team-plugin/dist/index.js'
     - id: mpd-hashline
       name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-hashline-plugin/dist/index.js'

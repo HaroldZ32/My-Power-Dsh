@@ -19,7 +19,7 @@ function selfTest() {
     if (!dist.includes(s)) { console.error("[ultrawork-smoke self-test] FAIL: missing " + s); process.exit(1) }
   }
   const bundle = readFileSync(join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
-  if (!bundle.includes("omo-ulw")) { console.error("[ultrawork-smoke self-test] FAIL: bundle row"); process.exit(1) }
+  if (!bundle.includes("mpd-ulw")) { console.error("[ultrawork-smoke self-test] FAIL: bundle row"); process.exit(1) }
   console.log("[ultrawork-smoke self-test] ok: engine symbols + bundle row verified")
 }
 
@@ -39,12 +39,12 @@ async function runReal() {
   const steps = {}
 
   console.log("[ultrawork-smoke] installing...")
-  const inst = spawnSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--yes", "--dsh-home", sandbox, "--profile", "omo-headless", "--skip-toolchain"], { env, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 600000 })
+  const inst = spawnSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--yes", "--dsh-home", sandbox, "--profile", "mpd-headless", "--skip-toolchain"], { env, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 600000 })
   steps.installer = { ok: inst.status === 0, exit: inst.status }
   console.log("[ultrawork-smoke] install done=" + steps.installer.ok)
 
   console.log("[ultrawork-smoke] live run starting...")
-  const run = spawnSync("dsh", ["--profile", "omo-headless", TASK2], { env, cwd: ws, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 900000, stdio: ["ignore", "pipe", "pipe"] })
+  const run = spawnSync("dsh", ["--profile", "mpd-headless", TASK2], { env, cwd: ws, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 900000, stdio: ["ignore", "pipe", "pipe"] })
   const out = (run.stdout || "") + (run.stderr || "")
   steps.live = { ok: run.status === 0, exit: run.status }
   console.log("[ultrawork-smoke] live done=" + steps.live.ok + " bytes=" + out.length)

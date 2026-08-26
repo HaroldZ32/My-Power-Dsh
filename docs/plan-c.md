@@ -122,4 +122,4 @@ QA-only: generate a local image fixture (waveform/schematic PNG), run the multim
 - Naming: self-written `mpd_*`; adopted third-party keeps vendor names (AGENTS.md addendum).
 - QA: every item ships a dsh-qa script with `--self-test`; live evidence under `evidence/plan-c/<slug>/<ts>/`; isolated DSH_HOME only, real `~/.dsh` never touched.
 - Branches: `feature/c1-team` … `feature/c8-vision-e2e`; merge `--no-ff` to `dev`; push Gitee (per-command header, no persisted token); master untouched until v0.2.0.
-- Out of scope (decided): model-core depth (D-C9), omo.json full port, team fork+rename, tmux-based team viz (superseded by the web activity panel).
+- Out of scope (decided): model-core depth (D-C9), upstream omo.json full port, team fork+rename, tmux-based team viz (superseded by the web activity panel).

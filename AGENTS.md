@@ -157,7 +157,7 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 
 ## 8. Installer & Profiles
 
-- `node scripts/install-profile.mjs --yes [--profile omo|omo-headless] [--dsh-home X] [--skip-toolchain]`.
+- `node scripts/install-profile.mjs --yes [--profile mpd|mpd-headless] [--dsh-home X] [--skip-toolchain]`.
   Default is `--dry-run`: print, never write. `--dsh-home` enables isolated QA installs.
 - What it writes: profile manifest (base + web-app/headless), home `cordis.patch.yml` with absolute
   paths (existing rows id-targeted, new rows via `insert:`), presets → `$DSH_HOME/.agent-presets/`,

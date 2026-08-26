@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Case preset-register: under an isolated DSH_HOME, copy the omo presets into the sandbox user root .agent-presets,
+// Case preset-register: under an isolated DSH_HOME, copy the mpd presets into the sandbox user root .agent-presets,
 // then after a real boot assert via the probe plugin that list()/resolve() all pass and nothing is broken.
 // --self-test is the offline self-test.
 import { cpSync, existsSync, mkdtempSync, mkdirSync, openSync, readFileSync, writeFileSync, closeSync } from "node:fs"

@@ -1,11 +1,11 @@
 // src/index.ts
 import { existsSync, readFileSync } from "node:fs";
-var name = "omo-tools";
+var name = "mpd-tools";
 var inject = ["tools"];
 function apply(ctx, config = {}) {
   const writeGuard = config.writeGuard ?? true;
   const maxBytes = config.truncateMaxBytes ?? 16384;
-  const recoveryHint = config.recoveryHint ?? "omo-tools recovery: read the file fresh with the read tool, re-check exact old_string/new_string (whitespace matters), then retry the edit against the current file content.";
+  const recoveryHint = config.recoveryHint ?? "mpd-tools recovery: read the file fresh with the read tool, re-check exact old_string/new_string (whitespace matters), then retry the edit against the current file content.";
   if (writeGuard) {
     ctx.tools.guard((exec) => {
       if (exec.name !== "write")
@@ -23,7 +23,7 @@ function apply(ctx, config = {}) {
       } catch {
         return;
       }
-      return "omo-tools guard: target file already exists with different content — use the edit tool (or read then rewrite deliberately via write with identical content) instead of overwriting.";
+      return "mpd-tools guard: target file already exists with different content — use the edit tool (or read then rewrite deliberately via write with identical content) instead of overwriting.";
     });
   }
   ctx.on("tools/post-execute", async (exec, result, next) => {
@@ -36,7 +36,7 @@ function apply(ctx, config = {}) {
     const head = content.slice(0, Math.floor(maxBytes * 0.7));
     const tail = content.slice(-Math.floor(maxBytes * 0.3));
     return { ...out, content: head + `
-... [omo-tools truncated ` + content.length + " bytes; keep " + maxBytes + ` budget; tail follows] ...
+... [mpd-tools truncated ` + content.length + " bytes; keep " + maxBytes + ` budget; tail follows] ...
 ` + tail };
   });
   ctx.on("tools/post-execute", async (exec, result, next) => {

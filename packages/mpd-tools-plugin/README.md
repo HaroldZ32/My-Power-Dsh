@@ -1,4 +1,4 @@
-# omo-tools-plugin
+# mpd-tools-plugin
 
 Tools/hooks plugin (B1)
 

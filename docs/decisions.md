@@ -31,7 +31,7 @@
 - **F9 (research item)**: at headless runtime the agent-presets line's config.roots didn't take effect (ROOTS contains only shipped+user roots; proved by probe),
   inconsistent with the combined dump result — suspected boot-side patch/config semantic difference. **Workaround**: preset delivery goes through DSH's officially supported user root
   '$DSH_HOME/.agent-presets' (auto-scanned; copy() is this path).
-- **P4 delivery path**: the 4 presets ship with omo-presets-plugin/presets/; the bootstrap/install step copies them to '$DSH_HOME/.agent-presets/'
+- **P4 delivery path**: the 4 presets ship with mpd-presets-plugin/presets/; the bootstrap/install step copies them to '$DSH_HOME/.agent-presets/'
   (user root trust=user); QA verifies in a sandbox .agent-presets (preset-register PASS).
 - **Preset content**: oracle/librarian/prometheus/hephaestus personas are extracted from the upstream original prompts and adapted for DeepSeek
   (removing Claude-specific wording, mapping tool names to DSH's mcp__ast_grep__*/mcp__lsp__*/web etc.), recorded in tests/prompt-adaptation-log.md;
