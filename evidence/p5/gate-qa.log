@@ -1,0 +1,5 @@
+[mount-assert self-test] ok: presence/absence detection verified on fixture
+[llm-dual-track self-test] ok: track fixture assertions verified
+[skill-load self-test] ok: identity/flag detection verified on fixture
+[mcp-call self-test] ok: tool-name detection verified on fixture
+[preset-register self-test] ok: id grammar verified on fixture

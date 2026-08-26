@@ -1,0 +1,9 @@
+已完成金标任务 G4。文档已创建，源码 `adder4.v` 未做任何修改（git status 中无该文件改动）。
+
+**输出文件路径：** `docs/adder4.md`（`/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/docs/adder4.md`）
+
+文档内容包含：
+- **端口表**：`a`/`b`/`cin`/`sum`/`cout` 的方向、位宽与说明，并标注 `cout` 为无符号溢出标志
+- **行为说明**：`{cout, sum} = a + b + cin`、行波进位链结构、各级全加器布尔方程、连续赋值可综合特性，以及补码运算与级联扩展的注意事项
+- **简单用法示例**：基础 4 位例化示例 + 8 位级联扩展示例（均含完整 Verilog 代码）
+EXIT=0

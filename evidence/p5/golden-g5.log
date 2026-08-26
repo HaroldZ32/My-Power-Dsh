@@ -1,0 +1,28 @@
+所有核查与自检通过。以下是按 ulw-plan Phase 4 交付格式的交接说明。
+
+---
+
+## 意图裁决
+
+**Intent: CLEAR**（金标任务已钉死交付物形态、frontmatter 模板与输出路径），`review_required: false`（无高精度修饰词）。任务声明"绝不向用户提问"，因此本次零访谈：唯一语义分叉（omo-summary 的内容语义）按最佳实践默认——上游锁定 commit 与 dev 分支均无 summary 技能，故自研，语义定为"任务/会话结构化总结（五节结构）"——已记录在草案台账，未提问。
+
+## 计划交接说明（Handoff）
+
+**1. 本计划驱动什么**：为 omo-dsh 新增自研技能 omo-summary——一份 SKILL.md（`name`/`description` frontmatter + 恰 5 条使用规则，DSH 原生措辞）+ 配套 dsh-qa 隔离加载用例与证据落盘，把"任务/会话结束输出结构化总结"固化为正式技能。
+
+**2. 终态**：`packages/omo-skills-plugin/skills/omo-summary/SKILL.md` 存在并被 bundle 的 customSkillDirs 自动发现（零 bundle 改动）；`skills/dsh-qa/scripts/skill-summary-load.mjs` 通过 `--self-test` 与真实隔离 boot（happy+failure 双断言）；`skills/dsh-qa/SKILL.md` 用例集表格新增 `skill-summary-load` 行；证据落盘 `evidence/dsh-qa/skill-summary-load/<ts>/`；单条 feat 提交。
+
+**3. 结构**：3 个执行波（Wave1 并行：Todo 1 SKILL.md + Todo 2 QA 脚本；Wave2：Todo 3 登记；Wave3：Todo 4 门禁收尾）= **4 个实现 todo + 4 个 F 验证任务**；执行分类 = `writing`×1（Todo 1）、`quick`×3（Todo 2/3/4）。
+
+**4. 超出请求的附加**：dsh-qa 隔离加载用例+证据（AGENTS.md 门禁 3-4 / PLAN.md §5 T7，纯资产改动视同代码改动必须 QA 证据化）；`--self-test` 离线自测（dsh-qa 铁律 4）；显式失败路径（负例 fixture、技能名缺失场景，含 ok=false 轮证据）。
+
+**5. 验证**：Final verification wave（F1 合规审计 / F2 代码质量 / F3 真实 QA / F4 范围保真）+ 关键命令（`--self-test`、真实隔离 run、根 `bun test`、`bun run typecheck`、`git status --porcelain` 白名单精确核对）。
+
+**6. 执行交接**：本计划由独立 worker 会话执行（`$ulw-execute omo-summary-plan`）；规划者不实现、不创建 SKILL.md（已核实 skills 目录零新增）。金标约束"绝不向用户提问"覆盖 ulw-plan 的 start-or-review 提问环节，故此处不问。
+
+**假设台账**（已记录于 `.omo/drafts/omo-summary-plan.md`）：输出路径 = 用户钉死的 `tests/golden/out/plans/omo-summary-plan.md`（覆盖 ulw-plan 默认 `.omo/plans/`）；omo-summary 语义 = 任务/会话总结；门禁 = 纯 markdown+一个 mjs 脚本，零 TS 增量。
+
+---
+
+**我是 Prometheus（omo-dsh 移植仓库的规划顾问，ulw-plan 规划模式）**；计划文件路径：`tests/golden/out/plans/omo-summary-plan.md`（草案/恢复点：`.omo/drafts/omo-summary-plan.md`，状态 plan-written）。
+EXIT=0

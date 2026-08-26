@@ -1,0 +1,26 @@
+两项工具调用已完成，以下为原样汇报关键输出（未使用 bash）。
+
+## 1) `mcp__lsp__status`（按 schema，无必填参数）
+
+调用两次（首次后按守护进程提示自动重试），两次均返回同一结果：
+
+```
+Error: LSP daemon unreachable: ENOENT: no such file or directory, mkdir '/home/haroldzhao/.omo/lsp-daemon/v0.1.0'.
+The MCP server is a thin proxy and never runs language servers in-process.
+Socket: /home/haroldzhao/.omo/lsp-daemon/v0.1.0/daemon.sock
+Logs: /home/haroldzhao/.omo/lsp-daemon/v0.1.0/daemon.log
+The daemon is auto-started on demand and will be retried on the next request.
+```
+
+**关键点**：LSP 守护进程不可达——`~/.omo/lsp-daemon/v0.1.0` 目录无法创建（ENOENT，疑似受文件沙箱限制，写入路径超出工作区），因此未能列出已配置/活动的语言服务器。
+
+## 2) `mcp__ast_grep__scan`（扫描 `tests/mcp-fixtures/sample.c`）
+
+参数：`paths=["tests/mcp-fixtures/sample.c"]`、`workdir=.../omo-dsh`、`inlineRules`（`language: c`，规则 `kind: function_definition`）。返回的关键输出：
+
+```json
+{"schemaVersion":1,"ok":true,"kind":"scan","workdir":"/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh","applied":false,"matches":[{"path":"tests/mcp-fixtures/sample.c","language":"c","text":"int main(void) { return 0; }","range":{"start":{"line":1,"column":0,"byteOffset":0},"end":{"line":1,"column":28,"byteOffset":28}},"metavariables":{"single":{},"multi":{}},"replacement":"","rule":{"ruleId":"sample-scan","severity":"hint","message":"","labels":[{"text":"int main(void) { return 0; }","range":{"byteOffset":{"start":0,"end":28},"start":{"line":0,"column":0},"end":{"line":0,"column":28}},"style":"primary"}]}}],"counts":{"plannedMatches":1,"plannedFiles":1},"truncation":{"truncated":false,"reason":null,"maxMatches":50,"maxPayloadBytes":4194304,"salvagedRecords":0},"application":{"requested":false,"performed":false,"countsArePreviewBased":true,"secondPassExitCode":null},"warnings":[],"durationMs":6}
+```
+
+**关键点**：`ok:true`、`applied:false`（dry-run）；命中 1 处 `function_definition`——`int main(void) { return 0; }`（第 1 行第 0–28 列）；`counts.plannedMatches:1 / plannedFiles:1`；`truncation.truncated:false`；`warnings:[]`；耗时 6ms。
+EXIT=0
