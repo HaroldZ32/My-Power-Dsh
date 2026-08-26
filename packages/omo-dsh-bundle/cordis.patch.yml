@@ -38,3 +38,11 @@
   config:
     provider: deepseek-official
     model: deepseek-v4-flash
+
+# ── P2: omo 技能目录（保留默认 project/user 根，追加 vendor 的 omo skills）──
+- id: skill-filesystem
+  name: '@deepseek-ai/dsh-skill-filesystem'
+  config:
+    includeDefaultRoots: true
+    customSkillDirs:
+      - !!js process.env.OMO_DSH_SKILLS_DIR || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-skills-plugin/skills'

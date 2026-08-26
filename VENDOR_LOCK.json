@@ -14,7 +14,37 @@
     "recordedAt": "2026-08-26T03:46:26.867Z",
     "note": "loc = Σ split('\\n').length over tracked files（与 verify-vendor 同法）"
   },
-  "assets": {},
+  "assets": {
+    "packages/omo-skills-plugin/skills/ulw-plan": {
+      "fileCount": 6,
+      "source": "../packages/shared-skills/skills/ulw-plan"
+    },
+    "packages/omo-skills-plugin/skills/init-deep": {
+      "fileCount": 1,
+      "source": "../packages/shared-skills/skills/init-deep"
+    },
+    "packages/omo-skills-plugin/skills/lsp-setup": {
+      "fileCount": 25,
+      "source": "../packages/shared-skills/skills/lsp-setup"
+    },
+    "packages/omo-skills-plugin/skills/git-master": {
+      "fileCount": 2,
+      "source": "../packages/shared-skills/skills/git-master"
+    },
+    "packages/omo-skills-plugin/skills/review-work": {
+      "fileCount": 1,
+      "source": "../packages/shared-skills/skills/review-work"
+    },
+    "packages/omo-skills-plugin/skills/programming": {
+      "fileCount": 75,
+      "source": "../packages/shared-skills/skills/programming"
+    },
+    "packages/omo-skills-plugin/skills/ast-grep": {
+      "fileCount": 18,
+      "source": "../packages/shared-skills/skills/ast-grep"
+    },
+    "_note": "vendored from upstream shared-skills subdirs; 每目录计数为阻断项（verify-vendor）"
+  },
   "verification": "node scripts/verify-vendor.mjs 比对 commit/version 为阻断项；stats 漂移为警告；资产计数为阻断项",
   "lockedAt": "2026-08-26T03:44:55.545Z"
 }

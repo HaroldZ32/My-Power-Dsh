@@ -1,0 +1,23 @@
+P2 vendored skill catalog (from packages/omo-skills-plugin/skills)
+
+- ast-grep/  (21 entries)
+  name: ast-grep
+  description: "Use ast-grep (sg) for AST-aware code search and rewrite across 25 languages. Trigger for structu
+- git-master/  (3 entries)
+  name: git-master
+  description: "MUST USE whenever a task needs a commit or git-history investigation. Covers atomic commits, sta
+- init-deep/  (1 entries)
+  name: init-deep
+  description: "(builtin) Initialize hierarchical AGENTS.md knowledge base"
+- lsp-setup/  (47 entries)
+  name: lsp-setup
+  description: "Configure a Language Server (LSP) for a specific language so editor/agent tooling — diagnostics,
+- programming/  (87 entries)
+  name: programming
+  description: "MUST USE for ANY work on .py .pyi .rs .ts .tsx .mts .cts .go files. One philosophy: strict types
+- review-work/  (1 entries)
+  name: review-work
+  description: "Post-implementation review orchestrator. Launches 5 parallel background sub-agents: Oracle (goal
+- ulw-plan/  (9 entries)
+  name: ulw-plan
+  description: "ACTIVATES ONLY on an explicit user request for the ulw-plan workflow: the user themselves saying
