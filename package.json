@@ -1,9 +1,9 @@
 {
-  "name": "omo-dsh",
+  "name": "my-power-dsh",
   "private": true,
   "type": "module",
   "version": "0.1.0",
-  "description": "oh-my-openagent → DeepSeek Harness 插件化移植仓库",
+  "description": "my-power-dsh: oh-my-openagent (OmO) 的 DeepSeek Harness 插件化分叉移植 — 继承 SUL-1.0",
   "scripts": {
     "typecheck": "tsgo --noEmit",
     "test": "bun test",
