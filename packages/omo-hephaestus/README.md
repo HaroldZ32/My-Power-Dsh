@@ -1,4 +1,4 @@
-# omo-hephaestus
+# mpd-hephaestus
 
 Hephaestus configuration-management agent plugin (P4 minimal version)
 

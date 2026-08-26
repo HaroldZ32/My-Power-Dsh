@@ -1,6 +1,6 @@
 # P0–P3 review report (2026-08-26)
 
-Review target: omo-dsh repo commits 80e5260..4d37934 (P0–P3 + review fixes)
+Review target: mpd-dsh repo commits 80e5260..4d37934 (P0–P3 + review fixes)
 Review method: iron-rule checks, item-by-item stage acceptance checks, config combination recomputation, script negative testing, credential leak scanning, deliverable completeness check.
 
 ## 1. Conclusion
@@ -13,10 +13,10 @@ Can proceed to P4; before P4, read the two leftover items in §5.
 
 | Iron rule | Conclusion |
 |---|---|
-| ① All changes go into the new repo, never push the original repo | ✅ Original repo HEAD stays at 8c57e46, git status shows only 2 old evidence files that were modified at checkout; omo-dsh has independent git history and no remote |
+| ① All changes go into the new repo, never push the original repo | ✅ Original repo HEAD stays at 8c57e46, git status shows only 2 old evidence files that were modified at checkout; mpd-dsh has independent git history and no remote |
 | ② QA evidence for each stage lands in evidence/ | ✅ evidence/p0|p1|p2|p3 + evidence/dsh-qa/<case>/<ts>/ all exist and are verifiable |
 | ③ omo source read-only, only vendor copies | ✅ Builds happen in a temp dir; original repo zero changes |
-| Tests align with the OMO original (T1–T7) | ✅ bun test framework reserved, QA skill dsh-qa (all 4 case scripts carry --self-test and pass), isolated DSH_HOME, provable assertions (dump-config assertion + real tool calls), single canonical evidence path, stage gates |
+| Tests align with the upstream original (T1–T7) | ✅ bun test framework reserved, QA skill dsh-qa (all 4 case scripts carry --self-test and pass), isolated DSH_HOME, provable assertions (dump-config assertion + real tool calls), single canonical evidence path, stage gates |
 | All deliverables as plugins | ✅ 10 plugin packages; P2/P3 capabilities delivered as official plugin instantiation entries + self-developed QA scripts; logic lives inside plugin packages, no loose scripts (debug probes cleaned up) |
 
 ## 3. Item-by-item stage acceptance check

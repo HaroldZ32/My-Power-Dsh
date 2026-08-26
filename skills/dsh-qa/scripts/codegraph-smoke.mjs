@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Case codegraph-smoke: verify the full path in a temp project at the workspace root (avoiding the OMO exclusion for the .omo segment and /tmp):
+// Case codegraph-smoke: verify the full path in a temp project at the workspace root (avoiding the upstream exclusion for the .omo segment and /tmp):
 // binary parse -> project init -> MCP serve -> a real call to mcp__codegraph__codegraph_explore.
 // Delete the temp project afterwards. --self-test is the offline self-test.
 import { spawnSync } from "node:child_process"
@@ -24,12 +24,12 @@ function runReal() {
   mkdirSync(join(PROJ, "src"), { recursive: true })
   writeFileSync(join(PROJ, "src/util.ts"), "export function norm(x:number){return x<0?0:x}\n")
   const creds = join(homedir(), ".dsh", ".credentials.yaml")
-  const sandbox = mkdtempSync(join(tmpdir(), "omo-dsh-qa-"))
+  const sandbox = mkdtempSync(join(tmpdir(), "mpd-dsh-qa-"))
   cpSync(creds, join(sandbox, ".credentials.yaml"))
-  const env = { ...process.env, DSH_HOME: sandbox, OMO_CODEGRAPH_PROJECT_CWD: PROJ }
+  const env = { ...process.env, DSH_HOME: sandbox, Upstream_CODEGRAPH_PROJECT_CWD: PROJ }
   const fd = openSync(join(sandbox, "run.log"), "w")
   const args = ["--profile", "headless",
-    "--patch", join(repoRoot, "packages/omo-dsh-bundle/cordis.patch.yml"),
+    "--patch", join(repoRoot, "packages/mpd-bundle/cordis.patch.yml"),
     "--patch", join(repoRoot, "tests/overlays/codegraph-plugin.yml"),
     "Call the tool mcp__codegraph__codegraph_explore (pass parameters per the tool schema, targeting the norm function in src/util.ts), and report the returned content verbatim. Do not use bash."]
   const run = spawnSync("dsh", args, { env, encoding: "utf8", timeout: 360000, stdio: ["ignore", fd, fd] })

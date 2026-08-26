@@ -1,8 +1,8 @@
-# QA use: insert the in-house omo-codegraph plugin (absolute path; production imports by package name @omo-dsh/omo-codegraph-plugin)
+# QA use: insert the in-house mpd-codegraph plugin (absolute path; production imports by package name @mpd-dsh/mpd-codegraph-plugin)
 - insert:
-    - id: omo-codegraph
-      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-codegraph-plugin/dist/index.js'
+    - id: mpd-codegraph
+      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-codegraph-plugin/dist/index.js'
       config:
         autoInit: true
         initTimeoutMs: 60000
-        binary: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/.toolchain/node_modules/.bin/codegraph'
+        binary: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/.toolchain/node_modules/.bin/codegraph'

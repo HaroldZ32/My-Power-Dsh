@@ -13,7 +13,7 @@ const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url))
 const JOB = "List the files in the current working directory (first use the bash tool with pwd and ls), then answer only: which tools you called and how many files are in the directory."
 const TRACKS = {
   official: { label: "deepseek-official (dsh-llm-deepseek)", provider: "deepseek-official", overlay: null },
-  deepseek: { label: "deepseek (dsh-llm-pi-ai)", provider: "deepseek", overlay: "tests/overlays/pi-ai-track.yml" }
+  deepseek: { label: "deepseek (dsh-llm-pi-ai)", provider: "deepseek", overlay: "tests/overlays/compat-track.yml" }
 }
 const FIXTURE_ROW = "- id: agent-default-model\n  config:\n    provider: deepseek-official\n"
 
@@ -29,10 +29,10 @@ function runReal() {
   const rows = []
   let failed = false
   for (const [key, t] of Object.entries(TRACKS)) {
-    const sandbox = mkdtempSync(join(tmpdir(), "omo-dsh-qa-"))
+    const sandbox = mkdtempSync(join(tmpdir(), "mpd-dsh-qa-"))
     if (existsSync(creds)) cpSync(creds, join(sandbox, ".credentials.yaml"))
     else { console.error("[llm-dual-track] missing credentials: " + creds); failed = true; continue }
-    const patchArgs = [join(repoRoot, "packages/omo-dsh-bundle/cordis.patch.yml")]
+    const patchArgs = [join(repoRoot, "packages/mpd-bundle/cordis.patch.yml")]
     if (t.overlay) patchArgs.push(join(repoRoot, t.overlay))
     const args = ["--profile", "headless"]
     for (const p of patchArgs) args.push("--patch", p)

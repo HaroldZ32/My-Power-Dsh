@@ -15,58 +15,58 @@
     "note": "loc = Σ split('\\n').length over tracked files (same method as verify-vendor)"
   },
   "assets": {
-    "packages/omo-skills-plugin/skills/ulw-plan": {
+    "packages/mpd-skills-plugin/skills/ulw-plan": {
       "fileCount": 6,
       "source": "../packages/shared-skills/skills/ulw-plan",
-      "treeSha": "c19049a5d88353963a8058bbd0febc86334387024d719528ccfe95bd6800bc55"
+      "treeSha": "febc587f433e7e857325063345739222b05f724768c32e8f97d39689ad0bd63c"
     },
-    "packages/omo-skills-plugin/skills/init-deep": {
+    "packages/mpd-skills-plugin/skills/init-deep": {
       "fileCount": 1,
       "source": "../packages/shared-skills/skills/init-deep",
       "treeSha": "fcc7299a214383ad1fadcb71c800f9f32e599078d4b1d5b2f8275c863911f4f5"
     },
-    "packages/omo-skills-plugin/skills/lsp-setup": {
+    "packages/mpd-skills-plugin/skills/lsp-setup": {
       "fileCount": 25,
       "source": "../packages/shared-skills/skills/lsp-setup",
-      "treeSha": "ec9d22a0b41bf0acd0884b30cd56988dc833c537441fdd9c368da4048ce89e74"
+      "treeSha": "8a8254db83037acde92659724c1d64eea1016442fc1ef06d30d004f152713954"
     },
-    "packages/omo-skills-plugin/skills/git-master": {
+    "packages/mpd-skills-plugin/skills/git-master": {
       "fileCount": 2,
       "source": "../packages/shared-skills/skills/git-master",
       "treeSha": "cadd26e9e0668ecb434d03622afdbdc0e4724a65ca35559cbb0e8742bb2d23d7"
     },
-    "packages/omo-skills-plugin/skills/review-work": {
+    "packages/mpd-skills-plugin/skills/review-work": {
       "fileCount": 1,
       "source": "../packages/shared-skills/skills/review-work",
-      "treeSha": "375670e574faa992de8f6db7b39c050ae99818f19e04487943c6814126c07842"
+      "treeSha": "4681139455f89e55ee5c1df2628b60cb8c7cc4c2a74f4f791fdf6cb2172b62b3"
     },
-    "packages/omo-skills-plugin/skills/programming": {
+    "packages/mpd-skills-plugin/skills/programming": {
       "fileCount": 75,
       "source": "../packages/shared-skills/skills/programming",
       "treeSha": "8155a5589da99ccfe3f106f27fc7543824aac98f7bdfc780657b1165acf16bac"
     },
-    "packages/omo-skills-plugin/skills/ast-grep": {
+    "packages/mpd-skills-plugin/skills/ast-grep": {
       "fileCount": 18,
       "source": "../packages/shared-skills/skills/ast-grep",
-      "treeSha": "a3d743016e3350cf31d67929769bf497931e879c7a85225d3587b43620915e80"
+      "treeSha": "2d6295020c3be33dbc8b9a751c92e8777c2fdcf3bb46f00a469e9e6b203d8392"
     },
     "_note": "skills directory: fileCount+treeSha (sorted relpath + per-file sha256 aggregation) double gate; dist: sha256 gate",
-    "packages/omo-mcp-astgrep/dist/cli.js": {
+    "packages/mpd-mcp-astgrep/dist/cli.js": {
       "fileCount": 1,
       "source": "built offline via scripts/build-mcp.mjs from packages/ast-grep-mcp",
       "sha256": "5a9ae80a4ef79b2efcd66dba27c82574f74e682c9bb84e465291dc0ba34aed7e"
     },
-    "packages/omo-mcp-gitbash/dist/cli.js": {
+    "packages/mpd-mcp-gitbash/dist/cli.js": {
       "fileCount": 1,
       "source": "built offline via scripts/build-mcp.mjs from packages/git-bash-mcp",
       "sha256": "c8a2336d6e231d96497f1f74963c968b27de3c1a5ac082c58b23ddc3d04651dc"
     },
-    "packages/omo-mcp-lsp/dist/cli.js": {
+    "packages/mpd-mcp-lsp/dist/cli.js": {
       "fileCount": 1,
       "source": "built offline via scripts/build-mcp.mjs from packages/lsp-daemon",
       "sha256": "b82ce5fa8f69460b5f0222570e5d5852b94bd3b5e22facf0901653b555e798ee"
     },
-    "packages/omo-mcp-codegraph/dist/serve.js": {
+    "packages/mpd-mcp-codegraph/dist/serve.js": {
       "fileCount": 1,
       "source": "vendored prebuilt from packages/omo-codex/plugin/components/codegraph/dist (MIT, see LICENSE/NOTICE in pkg)",
       "sha256": "6c53906e98bfa808b0404b4f5fab051b1c80a3cf359ff574c6c8edd6d0d2b666"

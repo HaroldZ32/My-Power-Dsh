@@ -3,7 +3,7 @@
     - id: agent-presets
       name: '@deepseek-ai/dsh-agent-presets'
       config:
-        default: omo-oracle
+        default: mpd-oracle
         roots:
-          - path: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-presets-plugin/presets'
+          - path: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-presets-plugin/presets'
             trust: system

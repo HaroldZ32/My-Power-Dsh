@@ -1,0 +1,115 @@
+# mpd-dsh bundle plugin layer (P1: explicit DeepSeek dual-track declaration)
+# Note: this file is the DSH bundle's patch layer (a PatchOptions list; id locates and replaces the whole config).
+# Depends on rows already present in DSH templates: llm-deepseek / llm-pi-ai / agent-default-model (included in both headless and web templates).
+# Later stages append at the end: omo-skills-plugin, omo-mcp-*, omo-presets-plugin, mpd-hephaestus.
+
+# ── Official track: DeepSeek API native adaptation (primary track)───────────────────────────────
+- id: llm-deepseek
+  name: '@deepseek-ai/dsh-llm-deepseek'
+  config:
+    apiKeyEnv: DEEPSEEK_API_KEY
+    baseURL: https://api.deepseek.com
+    thinking: enabled
+    reasoningEffort: high
+    maxTokens: 256000
+    streamIdleTimeoutMs: 300000
+    models:
+      - id: deepseek-v4-flash
+        name: DeepSeek-V4-Flash
+      - id: deepseek-v4-pro
+        name: DeepSeek-V4-Pro
+
+# ── Compatibility track: compat provider route (dsh-llm-pi-ai deepseek route; dual tracks coexist, switchable)──────────────────
+- id: llm-pi-ai
+  name: '@deepseek-ai/dsh-llm-pi-ai'
+  config:
+    providers:
+      deepseek:
+        apiKeyEnv: DEEPSEEK_API_KEY
+        modelOverrides:
+          deepseek-v4-flash:
+            reasoningEfforts:
+              off: off
+              max: max
+
+# ── Primary-track default model (omo main agent uses Pro; lightweight agents use Flash; P4 refines at preset layer)─
+- id: agent-default-model
+  name: '@deepseek-ai/dsh-agent-default-model'
+  config:
+    provider: deepseek-official
+    model: deepseek-v4-flash
+
+# ── P2: omo skills directory (keep default project/user roots, append vendor omo skills)──
+- id: skill-filesystem
+  name: '@deepseek-ai/dsh-skill-filesystem'
+  disabled: false
+  config:
+    includeDefaultRoots: true
+    customSkillDirs:
+      - !!js process.env.MPD_DSH_SKILLS_DIR || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-skills-plugin/skills'
+
+# ── P3: omo MCP servers (stdio, instantiated via the dsh-mcp-client plugin; new rows use insert)──
+- insert:
+    - id: mcp-astgrep
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: ast_grep
+        transport: stdio
+        command: node
+        args:
+          - !!js process.env.MPD_DSH_ASTGREP_CLI || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-mcp-astgrep/dist/cli.js'
+        env:
+          Upstream_AST_GREP_SG_PATH: !!js process.env.Upstream_AST_GREP_SG_PATH || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/.toolchain/node_modules/.bin/ast-grep'
+        toolCallTimeoutMs: 60000
+    # git_bash, by omo's original design, is Windows-only (run is available only on native Windows); this bundle disables it by default;
+    # Windows deployments can change this row to disabled: false to enable it.
+    - id: mcp-gitbash
+      name: '@deepseek-ai/dsh-mcp-client'
+      disabled: true
+      config:
+        serverName: git_bash
+        transport: stdio
+        command: node
+        args:
+          - !!js process.env.MPD_DSH_GITBASH_CLI || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-mcp-gitbash/dist/cli.js'
+        toolCallTimeoutMs: 60000
+    - id: mcp-lsp
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: lsp
+        transport: stdio
+        command: node
+        args:
+          - !!js process.env.MPD_DSH_LSP_CLI || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-mcp-lsp/dist/cli.js'
+          - mcp
+        toolCallTimeoutMs: 60000
+    # CodeGraph (re-enable after the F10 regression): point Upstream_CODEGRAPH_BIN to the local toolchain's codegraph,
+    # avoiding the serve.js crash when it tries to auto-provision to ~/.omo; index initialization is handled by the in-house mpd-codegraph plugin
+    # (in production this bundle provides it via @mpd-dsh/mpd-codegraph-plugin; QA mounts it by absolute path through an overlay).
+    - id: mcp-codegraph
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: codegraph
+        transport: stdio
+        command: node
+        args:
+          - !!js process.env.MPD_DSH_CODEGRAPH_CLI || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-mcp-codegraph/dist/serve.js'
+        env:
+          Upstream_CODEGRAPH_BIN: !!js process.env.Upstream_CODEGRAPH_BIN || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/.toolchain/node_modules/.bin/codegraph'
+        toolCallTimeoutMs: 60000
+
+# ── B-line plugins (self-written; production uses @mpd-dsh/<pkg> package names) ──
+- insert:
+    - id: omo-tools
+      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-tools-plugin/dist/index.js'
+      config:
+        writeGuard: true
+        truncateMaxBytes: 8192
+    - id: omo-modelchain
+      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-modelchain-plugin/dist/index.js'
+    - id: omo-ulw
+      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-ulw-plugin/dist/index.js'
+      config:
+        maxRounds: 3
+    - id: omo-team
+      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-team-plugin/dist/index.js'

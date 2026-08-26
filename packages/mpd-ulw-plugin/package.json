@@ -1,0 +1,11 @@
+{
+  "name": "@mpd-dsh/ulw",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "ulw-loop/ultrawork loop discipline plugin (B3)",
+  "scripts": {
+    "typecheck": "tsgo --noEmit -p tsconfig.json",
+    "test": "bun test"
+  }
+}

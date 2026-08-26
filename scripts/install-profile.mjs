@@ -3,7 +3,7 @@
 // By default --dry-run only prints the plan; --yes writes to disk; --dsh-home overrides the target (for isolated QA); --self-test runs the offline self-test.
 // Target artifacts:
 //   1) $DSH_HOME/profiles/omo/{package.json,dsh.profile,cordis.patch.yml} (separate profiles for base + web-app)
-//   2) $DSH_HOME/cordis.patch.yml (plugin rows with local absolute paths: llm dual track / skills / MCP / omo-codegraph)
+//   2) $DSH_HOME/cordis.patch.yml (plugin rows with local absolute paths: llm dual track / skills / MCP / mpd-codegraph)
 //   3) $DSH_HOME/.agent-presets/omo-* (4 presets -> auto-scanned from the user root)
 //   4) .toolchain (network install of ast-grep + codegraph when missing)
 import { cpSync, existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs"
@@ -34,8 +34,8 @@ function buildPlan(o) {
   const bundle0 = "@deepseek-ai/dsh-base"
   const bundle1 = isHeadless ? "@deepseek-ai/dsh-headless" : "@deepseek-ai/dsh-web-app"
   const p = (r) => join(repoRoot, r)
-  const skillsDir = p("packages/omo-skills-plugin/skills")
-  const presetsDir = p("packages/omo-presets-plugin/presets")
+  const skillsDir = p("packages/mpd-skills-plugin/skills")
+  const presetsDir = p("packages/mpd-presets-plugin/presets")
   const astCli = p(".toolchain/node_modules/.bin/ast-grep")
   const cgCli = p(".toolchain/node_modules/.bin/codegraph")
   const rows = [
@@ -54,40 +54,40 @@ function buildPlan(o) {
     },
     {
       id: "mcp-astgrep", name: "@deepseek-ai/dsh-mcp-client",
-      config: { serverName: "ast_grep", transport: "stdio", command: "node", args: [p("packages/omo-mcp-astgrep/dist/cli.js")],
-        env: existsSync(astCli) ? { OMO_AST_GREP_SG_PATH: astCli } : undefined }
+      config: { serverName: "ast_grep", transport: "stdio", command: "node", args: [p("packages/mpd-mcp-astgrep/dist/cli.js")],
+        env: existsSync(astCli) ? { Upstream_AST_GREP_SG_PATH: astCli } : undefined }
     },
     {
       id: "mcp-gitbash", name: "@deepseek-ai/dsh-mcp-client", disabled: true,
-      config: { serverName: "git_bash", transport: "stdio", command: "node", args: [p("packages/omo-mcp-gitbash/dist/cli.js")] }
+      config: { serverName: "git_bash", transport: "stdio", command: "node", args: [p("packages/mpd-mcp-gitbash/dist/cli.js")] }
     },
     {
       id: "mcp-lsp", name: "@deepseek-ai/dsh-mcp-client",
-      config: { serverName: "lsp", transport: "stdio", command: "node", args: [p("packages/omo-mcp-lsp/dist/cli.js"), "mcp"] }
+      config: { serverName: "lsp", transport: "stdio", command: "node", args: [p("packages/mpd-mcp-lsp/dist/cli.js"), "mcp"] }
     },
     {
       id: "mcp-codegraph", name: "@deepseek-ai/dsh-mcp-client",
-      config: { serverName: "codegraph", transport: "stdio", command: "node", args: [p("packages/omo-mcp-codegraph/dist/serve.js")],
-        env: existsSync(cgCli) ? { OMO_CODEGRAPH_BIN: cgCli } : undefined }
+      config: { serverName: "codegraph", transport: "stdio", command: "node", args: [p("packages/mpd-mcp-codegraph/dist/serve.js")],
+        env: existsSync(cgCli) ? { Upstream_CODEGRAPH_BIN: cgCli } : undefined }
     },
     {
-      id: "omo-codegraph", name: p("packages/omo-codegraph-plugin/dist/index.js"),
+      id: "mpd-codegraph", name: p("packages/mpd-codegraph-plugin/dist/index.js"),
       config: { autoInit: true, initTimeoutMs: 60000, binary: cgCli }
     },
     {
-      id: "omo-tools", name: p("packages/omo-tools-plugin/dist/index.js"),
+      id: "omo-tools", name: p("packages/mpd-tools-plugin/dist/index.js"),
       config: { writeGuard: true, truncateMaxBytes: 8192 }
     },
     {
-      id: "omo-modelchain", name: p("packages/omo-modelchain-plugin/dist/index.js"),
+      id: "omo-modelchain", name: p("packages/mpd-modelchain-plugin/dist/index.js"),
       config: {}
     },
     {
-      id: "omo-ulw", name: p("packages/omo-ulw-plugin/dist/index.js"),
+      id: "omo-ulw", name: p("packages/mpd-ulw-plugin/dist/index.js"),
       config: { maxRounds: 3 }
     },
     {
-      id: "omo-team", name: p("packages/omo-team-plugin/dist/index.js"),
+      id: "omo-team", name: p("packages/mpd-team-plugin/dist/index.js"),
       config: {}
     }
   ]
@@ -135,10 +135,10 @@ function renderPatch(rows) {
 }
 
 function selfTest() {
-  const plan = buildPlan({ profile: "omo", yes: false, dshHome: join(homedir(), ".omo-dsh-not-real") })
+  const plan = buildPlan({ profile: "omo", yes: false, dshHome: join(homedir(), ".mpd-not-real") })
   if (plan.homePatch !== join(plan.dshHome, "cordis.patch.yml")) { console.error("[install-profile self-test] FAIL: path model"); process.exit(1) }
   const rows = plan.rows.map((r) => r.id)
-  if (!rows.includes("mcp-astgrep") || !rows.includes("omo-codegraph") || !rows.includes("skill-filesystem")) { console.error("[install-profile self-test] FAIL: row set"); process.exit(1) }
+  if (!rows.includes("mcp-astgrep") || !rows.includes("mpd-codegraph") || !rows.includes("skill-filesystem")) { console.error("[install-profile self-test] FAIL: row set"); process.exit(1) }
   console.log("[install-profile self-test] ok: path model + row set verified")
 }
 

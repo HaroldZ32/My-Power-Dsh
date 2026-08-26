@@ -9,7 +9,7 @@ metadata:
 
 QA skill: verify my-power-dsh bundle/plugin behavior with the real `dsh` binary in a **strictly isolated**
 DSH_HOME, writing evidence to `evidence/<domain>/<slug>/`. Structure mirrors upstream
-`opencode-qa` / `codex-qa` / `senpi-qa`.
+the upstream host QA skills.
 
 ## Hard rules
 
