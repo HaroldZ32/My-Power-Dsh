@@ -1,0 +1,25 @@
+CodeGraph MCP skipped: project excluded by OMO CodeGraph policy.
+任务完成 ✅
+
+## 改动 diff
+
+```diff
+diff --git a/tests/golden/fixtures/math.js b/tests/golden/fixtures/math.js
+index 292d47f..5da5b63 100644
+--- a/tests/golden/fixtures/math.js
++++ b/tests/golden/fixtures/math.js
+@@ -1,2 +1,2 @@
+-export function add(a, b) { return a - b; }
++export function add(a, b) { return a + b; }
+ export function mul(a, b) { return a * b; }
+```
+
+## 测试结果
+
+```
+$ node tests/golden/fixtures/math.test.mjs
+ALL OK
+```
+
+**说明**：`add` 函数原本错误地返回 `a - b`，已仅修改该函数为 `return a + b`（`mul` 及其他内容未动）。测试断言 `add(2, 3) === 5` 与 `mul(4, 5) === 20` 全部通过，输出 `ALL OK`。
+EXIT=0

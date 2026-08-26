@@ -21,6 +21,11 @@
 - git_bash MCP 在 omo 中即 Windows-only（run 仅 native Windows 可用），本 bundle 以
   disabled: !!js process.platform === 'win32' ? false : true 门控。
 
+## P5 批跑发现（F10/F11，已修）
+
+- F10：codegraph 缺失时 provision 崩溃（~/.omo 只读）→ bundle 默认 disabled: true；启用步骤见注释。
+- F11：金标直跑未注入 sg 路径 → mcp-astgrep 行 env 注入 OMO_AST_GREP_SG_PATH（toolchain 兜底）。
+
 ## P4 补充决策（预设交付路径）
 
 - **F9（研究项）**：headless 运行时 agent-presets 行的 config.roots 未生效（ROOTS 只含 shipped+user 根；probe 实证），

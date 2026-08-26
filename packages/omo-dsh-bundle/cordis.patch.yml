@@ -58,6 +58,8 @@
         command: node
         args:
           - !!js process.env.OMO_DSH_ASTGREP_CLI || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-mcp-astgrep/dist/cli.js'
+        env:
+          OMO_AST_GREP_SG_PATH: !!js process.env.OMO_AST_GREP_SG_PATH || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/.toolchain/node_modules/.bin/ast-grep'
         toolCallTimeoutMs: 60000
     # git_bash 按 omo 原设计仅限 Windows（run 只在 native Windows 可用），本 bundle 默认禁用；
     # Windows 部署可将本行改为 disabled: false 启用。
@@ -81,8 +83,12 @@
           - !!js process.env.OMO_DSH_LSP_CLI || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-mcp-lsp/dist/cli.js'
           - mcp
         toolCallTimeoutMs: 60000
+    # F10: codegraph 在二进制缺失时会尝试向 ~/.omo 自动 provision（沙盒/只读 HOME 下崩溃并把
+    # 栈写入会话日志，干扰模型）。默认禁用；如需启用：本地安装 codegraph（.toolchain），
+    # 设置 OMO_DSH_CODEGRAPH_CLI 环境变量，再把 disabled 改为 false。
     - id: mcp-codegraph
       name: '@deepseek-ai/dsh-mcp-client'
+      disabled: true
       config:
         serverName: codegraph
         transport: stdio

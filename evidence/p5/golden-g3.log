@@ -1,0 +1,18 @@
+两项任务均已完成（全程未使用 bash），结果如下：
+
+## 结果 1：ast-grep 统计 `return` 匹配数
+
+- **实际文件路径**：`tests/mcp-fixtures/sample.c` 在仓库根目录下不存在，经 glob 定位，真实路径为 `.omo/port/omo-dsh/tests/mcp-fixtures/sample.c`，按此路径执行搜索。
+- **搜索参数**：`language: c`，pattern `return $$$;`，workdir `/home/haroldzhao/dshProj/oh-my-openagent`
+- **匹配结果**：**1 处**（`return 0;`，第 1 行）
+- **工具返回**：`totalMatches: 1, totalFiles: 1, truncated: false`
+- **核对**：文件全文仅 1 行 `int main(void) { return 0; }`，与 ast-grep 的 1 处匹配一致。
+
+## 结果 2：review-work 技能
+
+**用途（一句话）**：review-work 是"实现后评审编排器"，并行启动 5 个后台子代理（Goal Verifier / QA Executor / Code Reviewer / Security Auditor / Context Miner）从目标达成、实际运行、代码质量、安全、上下文遗漏五个角度全面审查已完成的工作，**5 项全部 PASS 评审才通过**。
+
+---
+
+**汇总**：`return` 匹配数 = **1**；`review-work` 技能用途如上所述。
+EXIT=0
