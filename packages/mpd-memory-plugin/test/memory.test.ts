@@ -39,6 +39,42 @@ test("git backend: write -> commit -> read -> reflection due", async () => {
   restore()
 })
 
+test("svn backend REAL svn CLI: repo create, checkout, commit, log", async () => {
+  const { spawnSync } = await import("node:child_process")
+  const probe = spawnSync("svn", ["--version", "--quiet"], { encoding: "utf8" })
+  if (probe.status !== 0) return // svn not installed: skip (documented)
+  const dir = mkdtempSync(join(tmpdir(), "mpd-mem-svn-real-"))
+  const { tools, restore } = makePlugin(dir, { vcs: "svn", dir: ".mpd", agentSlug: "t3" })
+  const write = tools.find((t) => t.name === "mpd_memory_write")
+  const res = await write.execute({ title: "real svn note", content: "hello svn" }, {})
+  expect(res.vcs).toBe("svn")
+  expect(res.committedTo).toEqual(["svn"])
+  expect(existsSync(res.file)).toBe(true)
+  const root = join(dir, ".mpd", "memory", "agents", "t3")
+  expect(existsSync(join(root, "svn-repo", "db"))).toBe(true)
+  expect(existsSync(join(root, "repo", ".svn"))).toBe(true)
+  const log = spawnSync("svn", ["log", "-l", "10", "file://" + join(root, "svn-repo")], { encoding: "utf8" })
+  expect(log.status).toBe(0)
+  expect(log.stdout).toContain("memory: real-svn-note-")
+  // read back through the plugin
+  const read = tools.find((t) => t.name === "mpd_memory_read")
+  const entries = await read.execute({ query: "hello svn" }, {})
+  expect(entries.count).toBe(1)
+  restore()
+})
+
+test("both vcs: commits to git and svn", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "mpd-mem-both-"))
+  const { tools, restore } = makePlugin(dir, { vcs: "both", dir: ".mpd", agentSlug: "t4" })
+  const write = tools.find((t) => t.name === "mpd_memory_write")
+  const res = await write.execute({ title: "both note", content: "dual" }, {})
+  expect(res.committedTo).toEqual(["git", "svn"])
+  const root = join(dir, ".mpd", "memory", "agents", "t4")
+  expect(existsSync(join(root, "repo", ".git"))).toBe(true)
+  expect(existsSync(join(root, "repo", ".svn"))).toBe(true)
+  restore()
+})
+
 test("svn backend wiring with fake svn CLIs", async () => {
   const dir = mkdtempSync(join(tmpdir(), "mpd-mem-svn-"))
   const fakeBin = join(dir, "fakebin")

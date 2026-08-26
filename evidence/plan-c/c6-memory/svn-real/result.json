@@ -1,0 +1,5 @@
+{
+  "ok": true,
+  "svn": "1.14.5",
+  "tests": "4 pass: git real, svn REAL (svnadmin create/checkout/commit/log), both, fake wiring"
+}

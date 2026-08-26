@@ -16,6 +16,8 @@ and a VCS abstraction with git AND svn backends.
 - `both`: commits to git AND svn (svn primaries under the svn-repo).
 - svn lives off the `svn` CLI (install: `apt install subversion` on Debian/Ubuntu,
   `brew install subversion` on macOS, or the TortoiseSVN CLI on Windows).
+- **Verified with real svn 1.14.5**: `svnadmin create` → checkout → write → `svn commit` →
+  `svn log` shows the memory commit (evidence/plan-c/c6-memory/svn-real).
 
 ## Paths
 
