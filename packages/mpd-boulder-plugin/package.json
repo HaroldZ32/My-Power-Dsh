@@ -1,0 +1,11 @@
+{
+  "name": "@mpd-dsh/boulder",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Boulder durable work-state machine plugin (Plan C / C5)",
+  "scripts": {
+    "typecheck": "tsgo --noEmit -p tsconfig.json",
+    "test": "bun test"
+  }
+}
