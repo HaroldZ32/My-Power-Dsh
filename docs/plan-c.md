@@ -75,7 +75,7 @@ Policy (fixed, no model-authored scripts; adapted from upstream ultrawork direct
 - Hyperplan gate wave (optional): 5 hostile reviewers (unspecified-low/high, deep, ultrabrain, artistry personas) × ≤3 critique rounds → insight bundle → planner.
 - Edit discipline hooks: hashline guard (C3) + comment-checker (C4) invoked in execute-verify when enabled.
 
-Deliverables: `packages/mpd-ulw-plugin` v2 (engine/gates/ledger); skill `mpd-ultrawork` (adapted directive, English) and `mpd-ulw-plan` (upstream ulw-plan translated to DSH tool names).
+Deliverables: `packages/mpd-ulw-plugin` v2 (engine/gates/ledger). The ultrawork/hyperplan disciplines live natively in the engine (directive + optional adversarial wave); no separate skills are vendored for them (the existing ulw-plan skill in the 17-skill corpus is retained).
 
 QA: `--self-test` for state machine + ledger; one bounded live run (small task: assert plan file + ledger rows + evidence file). Effort M (~700 LOC + skills).
 

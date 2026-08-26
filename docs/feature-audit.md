@@ -13,7 +13,7 @@ Legend: ✅ full / 🟡 partial / ❌ missing / ➖ not applicable (host-specifi
 | plan mode | planning-only mode | ✅ | DSH native plan-mode |
 | delegate / multi-model | delegate-task with fallback chains | 🟡 | subagent tools + mpd_modelchain_resolve (11 roles, 2-3 entry DeepSeek chains). Richer variant/effort mapping from upstream model-core not ported |
 | background agents | parallel background tasks | ✅ | DSH jobs + tool-jobs |
-| Skills corpus | 19 top-level skills | ✅ | 19 vendored (mpd-skills-plugin/skills: original 17 + ultrawork + hyperplan; vendor gate PASS) |
+| Skills corpus | 17 top-level skills | ✅ | 17 vendored (mpd-skills-plugin/skills; vendor gate PASS). ultrawork/hyperplan live natively as the mpd_ultrawork engine (waves/gates/ledger), not as skills |
 | Rules / AGENTS.md | nested rule discovery & injection | ✅ | DSH agent-instructions (baseline + nested + change tracking) |
 | Built-in MCPs (5) | git_bash, lsp, codegraph, context7, grep_app | ✅ | git_bash (win-gated), lsp (8 tools), codegraph (plugin+init), context7, grep_app (remote rows) + ast_grep extra |
 | Slash commands | /goal /ultrawork /team /hyperplan … | 🟡 | DSH native commands + mpd-codegraph command; omo modes delivered as tools (mpd_ulw/mpd_team_*) |
@@ -32,7 +32,7 @@ Legend: ✅ full / 🟡 partial / ❌ missing / ➖ not applicable (host-specifi
 ## Gap closure (Plan C waves)
 
 - Wave A: team adoption (dsh-agent-teams, MIT notice, live mailbox/DAG panel/archive), hashline plugin, boulder plugin, mpd.jsonc config layer, vision e2e proof;
-- Wave B: ultrawork v2 engine (waves/gates/ledger/hyperplan), comment-checker plugin (opt-in binary), skills corpus 17 -> 19 (ultrawork + hyperplan), vendor gate PASS;
+- Wave B: ultrawork v2 engine (waves/gates/ledger/hyperplan), comment-checker plugin (opt-in binary), vendor gate PASS;
 - Wave C: memory engine with git + svn versioning + reflection (mpd-memory-plugin, live PASS + unit tests).
 - Plan C complete: all audited gaps closed except model-core depth (user decision D-C9) and the host-specific legacy set (intentionally out of scope).
 
