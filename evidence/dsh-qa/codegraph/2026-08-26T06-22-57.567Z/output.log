@@ -1,0 +1,22 @@
+[omo-codegraph] init status=ok binary=/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/.toolchain/node_modules/.bin/codegraph cwd=/home/haroldzhao/dshProj/oh-my-openagent/.cg-qa
+调用完成，以下是 `mcp__codegraph__codegraph_explore` 的返回内容原样汇报：
+
+---
+
+**Exploration: norm src/util.ts**
+
+Found 1 symbol across 1 file.
+
+**Source Code**
+
+> The code below is the **verbatim, current on-disk source** of these files — re-read from disk on this call and line-numbered, byte-for-byte identical to what the Read tool returns. It is NOT a summary, outline, or stale cache. Treat each block as a Read you have already performed: do not Read a file shown here.
+
+**`src/util.ts`** — norm(function)
+
+```typescript
+1	export function norm(x:number){return x<0?0:x}
+```
+
+---
+
+本次调用参数：`query: "norm src/util.ts"`、`maxFiles: 12`（`projectPath` 省略，使用会话默认项目）。未使用 bash。
