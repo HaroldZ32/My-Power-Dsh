@@ -1,20 +1,24 @@
 # my-power-dsh
 
-将 oh-my-openagent（OmO）的可移植能力接入 DeepSeek Harness（DSH）的第三方插件 bundle。
+A DeepSeek-Harness plugin bundle that ports the portable capabilities of oh-my-openagent (OmO).
 
-> **Fork 声明**：本项目基于 [oh-my-openagent](https://github.com/code-yeongyu/oh-my-openagent)
-> （commit `8c57e46`，v5.0.0-beta.20）深度修改，继承上游 **Sustainable Use License 1.0（SUL-1.0）** 开源协议；
-> 上游版权归 code-yeongyu 与 OmO 项目贡献者所有。许可证全文见 [LICENSE.md](./LICENSE.md)。
+> **Fork declaration**: This project is a fork derived from
+> [oh-my-openagent](https://github.com/code-yeongyu/oh-my-openagent)
+> (commit `8c57e46`, v5.0.0-beta.20) with deep modifications; it inherits upstream
+> **Sustainable Use License 1.0 (SUL-1.0)**. Upstream copyright belongs to code-yeongyu and the OmO
+> contributors. Full license text: [LICENSE.md](./LICENSE.md).
 
-**两条铁律**
-1. 测试与开发严格对齐 OMO 原版纪律：bun test、tsgo 类型门禁、隔离 QA（不碰用户真实 ~/.dsh）、
-   证据落盘唯一规范路径 evidence/<域名>/<slug>/、阶段门禁。
-2. 一切交付物均为 DSH 插件（cordis plugin）形式：有逻辑即自研插件，纯装配即 bundle 内插件条目，
-   无游离脚本、无裸配置。
+**Two hard rules**
+1. Engineering matches the upstream OMO discipline: bun test / tsgo gates, isolated QA, evidence in
+   `evidence/<domain>/<slug>/`, phase gates.
+2. Every deliverable is a DSH plugin (self-written cordis plugin or official-plugin instance). No stray
+   scripts, no raw config.
 
-- 移植计划：见 [PLAN.md](./PLAN.md)
-- 基线锁定：见 [VENDOR_LOCK.json](./VENDOR_LOCK.json)
-- 许可声明：见 [LICENSE-NOTICES.md](./LICENSE-NOTICES.md)
-- 门禁规则：见 [AGENTS.md](./AGENTS.md)（P0 落盘）
+- Port plan: [PLAN.md](./PLAN.md)
+- Baseline lock: [VENDOR_LOCK.json](./VENDOR_LOCK.json)
+- Legal: [LICENSE.md](./LICENSE.md) / [LICENSE-NOTICES.md](./LICENSE-NOTICES.md)
+- Gates & branching model: [AGENTS.md](./AGENTS.md)
+- One-click install: `node scripts/install-profile.mjs --yes` (default dry-run; see --help)
 
-状态：计划 v2 已交付，待确认后进入 P0 实施。
+Status: v0.1.0 baseline on Gitee (dev/master/tag v0.1.0); DeepSeek dual-track, 7 skills, 4 presets,
+ast-grep/lsp/codegraph MCP, 9/9 golden tasks PASS.

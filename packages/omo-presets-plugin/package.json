@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "oracle/librarian/prometheus 预设 + persona 注册插件（P4）",
+  "description": "oracle/librarian/prometheus preset + persona registration plugin (P4)",
   "scripts": {
     "typecheck": "tsgo --noEmit -p tsconfig.json",
     "test": "bun test"

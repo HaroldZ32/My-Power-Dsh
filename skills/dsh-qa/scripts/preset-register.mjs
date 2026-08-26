@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// 用例 preset-register：隔离 DSH_HOME 下，把 omo 预设拷入沙盒用户根 .agent-presets，
-// 真实 boot 后由探针插件断言 list()/resolve() 全部通过且无 broken。
-// --self-test 为离线自测。
+// Case preset-register: under an isolated DSH_HOME, copy the omo presets into the sandbox user root .agent-presets,
+// then after a real boot assert via the probe plugin that list()/resolve() all pass and nothing is broken.
+// --self-test is the offline self-test.
 import { cpSync, existsSync, mkdtempSync, mkdirSync, openSync, readFileSync, writeFileSync, closeSync } from "node:fs"
 import { tmpdir, homedir } from "node:os"
 import { dirname, join } from "node:path"
@@ -18,7 +18,7 @@ function selfTest() {
 
 function runReal() {
   const creds = join(homedir(), ".dsh", ".credentials.yaml")
-  if (!existsSync(creds)) { console.error("[preset-register] 凭据缺失"); process.exit(1) }
+  if (!existsSync(creds)) { console.error("[preset-register] missing credentials"); process.exit(1) }
   const sandbox = mkdtempSync(join(tmpdir(), "omo-dsh-qa-"))
   cpSync(creds, join(sandbox, ".credentials.yaml"))
   const userPresets = join(sandbox, ".agent-presets")
@@ -29,7 +29,7 @@ function runReal() {
   const logFile = join(sandbox, "run.log")
   const fd = openSync(logFile, "w")
   const env = { ...process.env, DSH_HOME: sandbox }
-  if (env.DSH_HOME !== sandbox) { console.error("[preset-register] 隔离断言失败"); process.exit(1) }
+  if (env.DSH_HOME !== sandbox) { console.error("[preset-register] isolation assertion failed"); process.exit(1) }
   const args = ["--profile", "headless",
     "--patch", join(repoRoot, "packages/omo-dsh-bundle/cordis.patch.yml"),
     "--patch", join(repoRoot, "tests/overlays/agent-presets-headless.yml"),

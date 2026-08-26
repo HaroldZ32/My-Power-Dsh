@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// 离线构建 ast-grep/git-bash MCP：源码从 omo 检出（只读）拷入临时工作区，
-// 用 bun cache 提供外部依赖，bun build 后把 dist 产物拷入 omo-dsh 插件包。
-// 原仓库零改动；产物进插件包（plugin-form）+ SHA256 记录 BUILD.lock。
+// Offline build of ast-grep/git-bash MCP: copy source from the omo checkout (read-only) into a temp workspace,
+// use bun cache for external dependencies, then after bun build copy dist artifacts into the omo-dsh plugin package.
+// The original repo stays untouched; artifacts go into the plugin package (plugin-form) with SHA256 recorded in BUILD.lock.
 import { spawnSync } from "node:child_process"
 import { createHash, randomUUID } from "node:crypto"
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync, symlinkSync, mkdtempSync } from "node:fs"
@@ -21,8 +21,8 @@ const SERVERS = [
 const CORE = ["mcp-stdio-core", "utils", "omo-config-core", "lsp-core"]
 const EXTERNAL = { "js-yaml": "js-yaml@4.3.1", "jsonc-parser": "jsonc-parser@3.3.1", "zod": "zod@4.4.3" }
 
-// F6 fix: 按包名前缀发现所有缓存条目，优先取“期望版本”精确匹配，否则取版本号最大者；
-// 实际解析到的条目写入 BUILD.lock 以便复现。
+// F6 fix: discover all cache entries by package-name prefix, prefer an exact match for the "expected version", otherwise take the highest version;
+// write the actually resolved entries to BUILD.lock for reproducibility.
 function findCache(entry) {
   const prefix = entry.split("@")[0]
   const matches = readdirSync(cacheRoot).filter((d) => d.startsWith(prefix + "@"))
@@ -48,7 +48,7 @@ try {
   for (const s of SERVERS) {
     cpSync(join(omoRoot, "packages", s.src), join(srcRoot, s.src), { recursive: true, filter: (p) => !p.includes("node_modules") && !p.includes("dist") && !p.includes(".git") })
   }
-  // node_modules 布局（模仿 bun workspace）
+  // node_modules layout (mimic a bun workspace)
   const nm = join(work, "node_modules", "@oh-my-opencode")
   mkdirSync(nm, { recursive: true })
   for (const c of CORE) {
@@ -58,7 +58,7 @@ try {
   const resolvedExternals = {}
   for (const [name, entry] of Object.entries(EXTERNAL)) {
     const from = findCache(entry)
-    if (!from) { console.error("[build-mcp] bun cache 缺外部依赖: " + entry); process.exit(1) }
+    if (!from) { console.error("[build-mcp] bun cache missing external dependency: " + entry); process.exit(1) }
     symlinkSync(from.path, join(extNm, name), "dir")
     resolvedExternals[name] = from.entry
     console.log("[build-mcp] ext dep: " + name + " <- " + from.entry)

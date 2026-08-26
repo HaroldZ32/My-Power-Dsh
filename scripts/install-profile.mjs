@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// 一键安装器：把 my-power-dsh 的能力装进本机 DeepSeek Harness。
-// 默认 --dry-run 只打印计划；--yes 才落盘；--dsh-home 可覆盖目标（供隔离 QA）；--self-test 离线自测。
-// 目标产物：
-//   1) $DSH_HOME/profiles/omo/{package.json,dsh.profile,cordis.patch.yml}（base + web-app 的独立 profile）
-//   2) $DSH_HOME/cordis.patch.yml（本机绝对路径的插件行：llm 双轨 / skills / MCP / omo-codegraph）
-//   3) $DSH_HOME/.agent-presets/omo-*（4 个预设 → 用户根自动扫描）
-//   4) .toolchain（缺失时网络安装 ast-grep + codegraph）
+// One-shot installer: install the my-power-dsh capabilities into the local DeepSeek Harness.
+// By default --dry-run only prints the plan; --yes writes to disk; --dsh-home overrides the target (for isolated QA); --self-test runs the offline self-test.
+// Target artifacts:
+//   1) $DSH_HOME/profiles/omo/{package.json,dsh.profile,cordis.patch.yml} (separate profiles for base + web-app)
+//   2) $DSH_HOME/cordis.patch.yml (plugin rows with local absolute paths: llm dual track / skills / MCP / omo-codegraph)
+//   3) $DSH_HOME/.agent-presets/omo-* (4 presets -> auto-scanned from the user root)
+//   4) .toolchain (network install of ast-grep + codegraph when missing)
 import { cpSync, existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
@@ -134,14 +134,14 @@ function main() {
   console.log("[install-profile] profileDir=" + plan.profileDir)
   console.log("[install-profile] homePatch=" + plan.homePatch)
   console.log("[install-profile] presets -> " + join(plan.userPresets, "omo-*"))
-  console.log("[install-profile] toolchain missing=" + plan.needsToolchain + " (--skip-toolchain 可跳过)")
-  console.log("[install-profile] 即将写入 home patch 行数: " + plan.rows.length)
+  console.log("[install-profile] toolchain missing=" + plan.needsToolchain + " (use --skip-toolchain to skip)")
+  console.log("[install-profile] rows about to be written to home patch: " + plan.rows.length)
   console.log(renderPatch(plan.rows))
-  if (!o.yes) { console.log("[install-profile] DRY-RUN 完成（未写盘）；加 --yes 实际安装，加 --dsh-home 可覆盖目标"); return }
+  if (!o.yes) { console.log("[install-profile] DRY-RUN done (nothing written); add --yes to actually install, and --dsh-home to override the target"); return }
 
   mkdirSync(plan.profileDir, { recursive: true })
   mkdirSync(plan.userPresets, { recursive: true })
-  // profile manifest（bundle 仅用 DSH 自带，能力都走 home patch）
+  // profile manifest (bundles use only what ships with DSH; all capabilities go through the home patch)
   writeFileSync(join(plan.profileDir, "package.json"), JSON.stringify({
     name: "dsh-profile-" + o.profile, private: true,
     dependencies: {},
@@ -149,16 +149,16 @@ function main() {
   }, null, 2) + "\n")
   writeFileSync(join(plan.profileDir, "cordis.patch.yml"), "[]\n")
   writeFileSync(plan.homePatch, renderPatch(plan.rows) + "\n")
-  // 预设拷贝
+  // copy presets
   const ids = readdirSync(plan.presetsDir).filter((d) => d.startsWith("omo-"))
   for (const id of ids) cpSync(join(plan.presetsDir, id), join(plan.userPresets, id), { recursive: true })
-  console.log("[install-profile] 已写入 profile/ home patch/ presets(" + ids.length + ")")
+  console.log("[install-profile] wrote profile/ home patch/ presets(" + ids.length + ")")
   if (plan.needsToolchain && !o.skipToolchain) {
-    console.log("[install-profile] 安装 toolchain（@ast-grep/cli + @colbymchenry/codegraph@1.5.0）...")
+    console.log("[install-profile] installing toolchain (@ast-grep/cli + @colbymchenry/codegraph@1.5.0)...")
     const r = spawnSync("npm", ["install", "--prefix", join(repoRoot, ".toolchain"), "--no-save", "--cache", join(repoRoot, ".toolchain/.npm-cache"), "@ast-grep/cli", "@colbymchenry/codegraph@1.5.0"], { stdio: "inherit" })
-    if (r.status !== 0) { console.error("[install-profile] toolchain 安装失败，可先 --skip-toolchain 后手动装"); process.exitCode = 1; return }
+    if (r.status !== 0) { console.error("[install-profile] toolchain install failed; try --skip-toolchain and install manually"); process.exitCode = 1; return }
   }
-  console.log("[install-profile] 完成。启动： dsh --profile " + o.profile + "   （web 端预设选择器可见 omo-* 预设）")
+  console.log("[install-profile] done. Start with: dsh --profile " + o.profile + "   (the web preset selector will show the omo-* presets)")
 }
 
 main()

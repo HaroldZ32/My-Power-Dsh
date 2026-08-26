@@ -1,45 +1,46 @@
-# adder4 — 4-bit 行波进位加法器（Ripple-Carry Adder）
+# adder4 — 4-bit Ripple-Carry Adder
 
-源文件：`tests/golden/fixtures/verilog/modules/adder4.v`
+Source file: `tests/golden/fixtures/verilog/modules/adder4.v`
 
-`adder4` 是一个可综合、符合 Verilog-2001 的 4 位行波进位加法器。它由 4 个
-全加器级联而成，低位级的进位输出逐位"行波"传递到高位级的进位输入，
-不使用算术运算符实现加法本身，进位链结构显式可见。
+`adder4` is a synthesizable, Verilog-2001 compliant 4-bit ripple-carry adder. It is built from 4
+full adders cascaded together; the carry-out of each lower stage ripples bit by bit to the carry-in
+of the next higher stage. The addition itself is not implemented with arithmetic operators, and the
+carry chain structure is explicitly visible.
 
-**功能**：`{cout, sum} = a + b + cin`
+**Function**: `{cout, sum} = a + b + cin`
 
-## 端口表
+## Port table
 
-| 端口 | 方向 | 位宽 | 说明 |
+| Port | Direction | Width | Description |
 |---|---|---|---|
-| `a` | input | 4 | 操作数 A（被加数） |
-| `b` | input | 4 | 操作数 B（加数） |
-| `cin` | input | 1 | 进位输入（用于级联扩展或初始进位） |
-| `sum` | output | 4 | 4 位和结果（`a + b + cin` 的低 4 位） |
-| `cout` | output | 1 | 进位输出（无符号加法时的溢出标志） |
+| `a` | input | 4 | Operand A (augend) |
+| `b` | input | 4 | Operand B (addend) |
+| `cin` | input | 1 | Carry input (for cascade extension or initial carry) |
+| `sum` | output | 4 | 4-bit sum result (low 4 bits of `a + b + cin`) |
+| `cout` | output | 1 | Carry output (overflow flag for unsigned addition) |
 
-## 行为说明
+## Behavior
 
-- 加法结果由内部 5 位进位链 `carry[4:0]` 与 4 位 `sum` 共同构成：
-   `carry[0]` 绑定模块输入 `cin`，`carry[4]` 驱动模块输出 `cout`。
-- 每个全加器级 `i`（0 为最低位 LSB，3 为最高位 MSB）满足：
+- The addition result is formed by the internal 5-bit carry chain `carry[4:0]` and the 4-bit `sum`:
+  `carry[0]` is tied to the module input `cin`, and `carry[4]` drives the module output `cout`.
+- Each full-adder stage `i` (0 is the LSB, 3 is the MSB) satisfies:
 
   ```
   sum[i]     = a[i] ^ b[i] ^ carry[i]
   carry[i+1] = (a[i] & b[i]) | (a[i] & carry[i]) | (b[i] & carry[i])
   ```
 
-- 各级以连续赋值（`assign`）描述，级间通过显式进位线相连，纯组合逻辑、
-  无时序状态，可直接综合。
+- Stages are described with continuous assignments (`assign`), and stages are connected by explicit
+  carry wires: pure combinational logic, no sequential state, directly synthesizable.
 
-### 使用注意事项
+### Usage notes
 
-- `cout` 仅表示无符号加法溢出（结果 ≥ 16）。
-- 对补码（有符号）运算，`cout` 不能直接作为溢出标志；如需检测符号溢出，
-  应比较最高位进位（`carry[3]` 与 `carry[4]`）是否一致。
-- 级联扩展：将低模块的 `cout` 接到高模块的 `cin`，即可拼接成更宽的加法器。
+- `cout` only indicates unsigned addition overflow (result >= 16).
+- For two's-complement (signed) arithmetic, `cout` cannot be used directly as the overflow flag; to
+  detect signed overflow, compare whether the highest-bit carry (`carry[3]` and `carry[4]`) agree.
+- Cascade extension: connect a lower module's `cout` to a higher module's `cin` to compose a wider adder.
 
-## 简单用法示例
+## Simple usage example
 
 ```verilog
 module top (
@@ -50,7 +51,7 @@ module top (
     output wire       cout
 );
 
-    // 例化 adder4 完成 4 位带进位加法
+    // instantiate adder4 for 4-bit add with carry-in
     adder4 u_adder4 (
         .a    (a),
         .b    (b),
@@ -62,7 +63,7 @@ module top (
 endmodule
 ```
 
-### 级联示例（8 位加法器）
+### Cascade example (8-bit adder)
 
 ```verilog
 module adder8 (

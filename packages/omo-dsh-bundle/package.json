@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "DSH bundle 汇总包：cordis.patch.yml 挂载全部 omo-dsh 插件条目",
+  "description": "DSH bundle aggregation package: cordis.patch.yml mounts all omo-dsh plugin entries",
   "scripts": {
     "typecheck": "tsgo --noEmit -p tsconfig.json",
     "test": "bun test"

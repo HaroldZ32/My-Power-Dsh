@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "version": "0.1.0",
-  "description": "my-power-dsh: oh-my-openagent 能力的 DeepSeek Harness 插件化移植仓库",
+  "description": "my-power-dsh: DeepSeek Harness plugin-based port of oh-my-openagent capabilities",
   "scripts": {
     "typecheck": "tsgo --noEmit",
     "test": "bun test",

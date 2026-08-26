@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "技能 provider 插件：封装 dsh-skill-filesystem 指向 bundle 内 skills 资产（P2）",
+  "description": "Skills provider plugin: wraps dsh-skill-filesystem to point at the skills assets inside the bundle (P2)",
   "scripts": {
     "typecheck": "tsgo --noEmit -p tsconfig.json",
     "test": "bun test"

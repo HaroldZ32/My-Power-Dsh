@@ -1,4 +1,4 @@
-// QA-only preset 探针插件（诊断版）：列出/解析 omo 预设 + 打印 roots。
+// QA-only preset probe plugin (diagnostic version): lists/resolves omo presets + prints roots.
 export const name = "omo-dsh-qa-preset-probe"
 export const inject = ["agentPresets"]
 type Preset = { id: string; broken?: string }

@@ -1,47 +1,50 @@
-# cnt8 — 8 位二进制计数器（load / en / rst_n）
+# cnt8 — 8-bit binary counter (load / en / rst_n)
 
-源文件：`tests/golden/fixtures/verilog/modules/cnt8.v`
+Source file: `tests/golden/fixtures/verilog/modules/cnt8.v`
 
-`cnt8` 是一个可综合、符合 Verilog-2001 的 8 位二进制计数器，支持同步并行加载
-（load）、计数使能（en）与异步低有效复位（rst_n）。所有状态更新都在时钟上升沿
-发生（复位除外，见下方时序说明）。
+`cnt8` is a synthesizable, Verilog-2001 compliant 8-bit binary counter with synchronous parallel
+load (`load`), count enable (`en`), and asynchronous active-low reset (`rst_n`). All state updates
+occur on the clock rising edge (except reset; see the timing notes below).
 
-**功能**：在每个时钟上升沿按优先级依次判定 —— 复位 → 加载 → 计数 → 保持。
+**Function**: on each clock rising edge, decisions are made in priority order — reset → load → count → hold.
 
-## 端口表
+## Port table
 
-| 端口 | 方向 | 位宽 | 说明 |
+| Port | Direction | Width | Description |
 |---|---|---|---|
-| `clk` | input | 1 | 时钟；状态在上升沿更新 |
-| `rst_n` | input | 1 | 异步复位，低有效；优先级最高 |
-| `en` | input | 1 | 计数使能；为 1 时每个时钟沿计数值 +1 |
-| `load` | input | 1 | 同步加载使能；为 1 时在时钟沿捕获 `d` |
-| `d` | input | 8 | 并行加载数据，随 `clk` 上升沿采样 |
-| `q` | output | 8 | 计数器当前值（寄存器输出，始终有效） |
+| `clk` | input | 1 | Clock; state updates on the rising edge |
+| `rst_n` | input | 1 | Asynchronous reset, active-low; highest priority |
+| `en` | input | 1 | Count enable; when 1, increments by 1 on each clock edge |
+| `load` | input | 1 | Synchronous load enable; when 1, captures `d` on the clock edge |
+| `d` | input | 8 | Parallel load data, sampled on the `clk` rising edge |
+| `q` | output | 8 | Current counter value (register output, always valid) |
 
-## 时序说明
+## Timing notes
 
-控制信号优先级（从高到低）：`rst_n` > `load` > `en`。三者均为"空"时 `q` 保持。
+Control-signal priority (high to low): `rst_n` > `load` > `en`. When all three are inactive, `q` holds.
 
-| 情形 | 触发条件 | 行为 |
+| Case | Trigger condition | Behavior |
 |---|---|---|
-| 复位 | `rst_n` 拉低（任意时刻，无需等时钟） | `q <= 0`（异步） |
-| 同步加载 | `rst_n=1` 且 `clk` 上升沿时 `load=1` | `q <= d` |
-| 计数 | `rst_n=1`、`load=0` 且 `clk` 上升沿时 `en=1` | `q <= q + 1` |
-| 保持 | `rst_n=1`、`load=0`、`en=0` | `q` 不变 |
+| Reset | `rst_n` pulled low (any time, no clock required) | `q <= 0` (asynchronous) |
+| Synchronous load | `rst_n=1` and `load=1` at a `clk` rising edge | `q <= d` |
+| Count | `rst_n=1`, `load=0`, and `en=1` at a `clk` rising edge | `q <= q + 1` |
+| Hold | `rst_n=1`, `load=0`, `en=0` | `q` unchanged |
 
-### 关键时序点
+### Key timing points
 
-- **复位是异步的**：`rst_n` 一旦拉低，`q` 立即清零，不等待时钟沿；复位信号释放
-  （拉高）则须避开时钟上升沿附近（恢复时间），保证同步逻辑无亚稳态风险。
-- **加载是同步的**：`load` 只需在 `clk` 上升沿前满足建立时间、沿后满足保持时间，
-  `d` 在同一时钟沿被捕获进 `q`。`load=1` 时 `en` 被忽略（加载优先）。
-- **计数与回绕**：`en=1` 时每个时钟上升沿 `q` 增 1；`q` 为 8 位，从 `8'hFF`
-  再计数会回绕到 `8'h00`（模 256），无独立进位输出。
-- **建立/保持约束**：`d`、`load`、`en` 均须在 `clk` 上升沿附近满足建立/保持时间；
-  除复位外，输出变化只出现在时钟上升沿，属标准单时钟同步设计，可直接综合。
+- **Reset is asynchronous**: once `rst_n` is pulled low, `q` clears immediately without waiting for a
+  clock edge; releasing reset (pulling high) must avoid the region near the clock rising edge
+  (recovery time) so synchronous logic has no metastability risk.
+- **Load is synchronous**: `load` only needs to meet setup time before and hold time after the `clk`
+  rising edge; `d` is captured into `q` on that same clock edge. When `load=1`, `en` is ignored
+  (load takes priority).
+- **Counting and wraparound**: with `en=1`, `q` increments by 1 on every clock rising edge; `q` is
+  8 bits, so counting past `8'hFF` wraps to `8'h00` (modulo 256) with no separate carry output.
+- **Setup/hold constraints**: `d`, `load`, and `en` must satisfy setup/hold times near the `clk`
+  rising edge; except for reset, output changes occur only on the clock rising edge — standard
+  single-clock synchronous design, directly synthesizable.
 
-## 简单用法示例
+## Simple usage example
 
 ```verilog
 module top (
@@ -65,11 +68,11 @@ module top (
 endmodule
 ```
 
-### 典型控制序列
+### Typical control sequence
 
 ```
-复位    : rst_n = 0            -> q = 0
-计数    : rst_n = 1, en = 1    -> 每个时钟沿 q 依次为 0,1,2,...,255,0,...
-预置    : load = 1, d = 8'hA5  -> 下一个时钟沿 q = 8'hA5
-停表    : en = 0, load = 0     -> q 保持当前值不变
+Reset    : rst_n = 0            -> q = 0
+Count    : rst_n = 1, en = 1    -> each clock edge q goes 0,1,2,...,255,0,...
+Preset   : load = 1, d = 8'hA5  -> next clock edge q = 8'hA5
+Hold     : en = 0, load = 0     -> q holds its current value
 ```

@@ -1,4 +1,4 @@
-# QA 用：切到 pi-ai deepseek 兼容轨（provider key = dsh-llm-pi-ai 配置的目录路由名）
+# QA use: switch to the pi-ai deepseek compatibility track (provider key = directory route name configured by dsh-llm-pi-ai)
 - id: agent-default-model
   name: '@deepseek-ai/dsh-agent-default-model'
   config:

@@ -3,17 +3,17 @@
 ## TL;DR (For humans)
 <!-- Fill this LAST, after the detailed plan below is written, so it summarizes the REAL plan. -->
 
-**What you'll get:** 为 omo-dsh 仓库新增一个自研技能 omo-summary：一份 SKILL.md（含 name/description 头信息与 5 条使用规则），外加一个 dsh-qa 隔离加载用例（带离线自测），把"任务/会话结束后输出结构化总结"变成 agent 的一个正式技能。执行完，技能会被 DSH 自动发现并可在真实会话中加载。
+**What you'll get:** Add a new self-developed skill, omo-summary, to the omo-dsh repo: one SKILL.md (with name/description frontmatter and 5 usage rules), plus one isolated dsh-qa load case (with an offline self-test), turning "output a structured summary after a task/session ends" into a formal agent skill. Once done, the skill is auto-discovered by DSH and loadable in real sessions.
 
-**Why this approach:** 上游 oh-my-openagent（锁定 commit 与 dev 分支）都没有 omo-summary，所以这是自研新技能而非 vendor；仓库的技能目录已被 bundle 整体挂载（customSkillDirs），新技能放进 `packages/omo-skills-plugin/skills/` 即可零配置生效，并用仓库既有的 dsh-qa 纪律（隔离 + 证据落盘）验证，不改任何锁定资产。
+**Why this approach:** Neither upstream oh-my-openagent (the locked commit nor the dev branch) has omo-summary, so this is a self-developed new skill rather than a vendored one; the repo's skills directory is already mounted wholesale by the bundle (customSkillDirs), so putting the new skill under `packages/omo-skills-plugin/skills/` takes effect with zero config, and it is verified with the repo's existing dsh-qa discipline (isolation + evidence written to disk) without changing any locked assets.
 
-**What it will NOT do:** 不会改 VENDOR_LOCK.json / bundle 配置 / 任何 vendor 技能；不会新增任何 TS 源码或插件代码；不碰金标样例区；规划者（Prometheus）不会创建 SKILL.md 本身——SKILL.md 由执行计划的 worker 会话创建。
+**What it will NOT do:** Will not change VENDOR_LOCK.json / bundle config / any vendored skills; will not add any TS source or plugin code; will not touch the golden sample area; the planner (Prometheus) will not create SKILL.md itself — SKILL.md is created by the worker session that executes the plan.
 
 **Effort:** Short
-**Risk:** Low - 纯新增资产 + 一个 QA 脚本，无既有代码/配置改动面
-**Decisions to sanity-check:** omo-summary 语义默认=任务/会话总结（五节结构）；输出路径按指令钉在 tests/golden/out/plans/omo-summary-plan.md（覆盖 ulw-plan 默认 .omo/plans/）。
+**Risk:** Low - purely additive assets + one QA script, no existing code/config change surface
+**Decisions to sanity-check:** omo-summary semantics default to task/session summary (five-section structure); the output path is pinned by instruction to tests/golden/out/plans/omo-summary-plan.md (overriding the ulw-plan default .omo/plans/).
 
-Your next move: 批准本计划后由 worker 会话（`$ulw-execute omo-summary-plan`）执行。完整执行细节见下文。
+Your next move: after approving this plan, have the worker session (`$ulw-execute omo-summary-plan`) execute it. Full execution details are below.
 
 ---
 
@@ -21,33 +21,33 @@ Your next move: 批准本计划后由 worker 会话（`$ulw-execute omo-summary-
 
 ## Scope
 ### Must have
-- `packages/omo-skills-plugin/skills/omo-summary/SKILL.md`：YAML frontmatter（`name: omo-summary` + `description`）+ 正文恰含 **5 条编号使用规则**，措辞 DSH 原生（无 OpenCode-only 工具引用）。
-- `skills/dsh-qa/scripts/skill-summary-load.mjs`：dsh-qa 新用例，`--self-test` 离线自测 + 隔离 DSH_HOME 真实 boot，断言 omo-summary 目录可见且内容可加载，证据落盘 `evidence/dsh-qa/skill-summary-load/<ts>/`。
-- `skills/dsh-qa/SKILL.md` 用例集表格登记新行 `skill-summary-load`。
-- 门禁执行：根 `bun test`、根 `bun run typecheck`（tsgo --noEmit）、新 QA 用例真实跑、`git status` 差异核对，结果与证据入库。
+- `packages/omo-skills-plugin/skills/omo-summary/SKILL.md`: YAML frontmatter (`name: omo-summary` + `description`) + body containing exactly **5 numbered usage rules**, phrased natively for DSH (no OpenCode-only tool references).
+- `skills/dsh-qa/scripts/skill-summary-load.mjs`: a new dsh-qa case, with `--self-test` offline self-test + an isolated DSH_HOME real boot, asserting that the omo-summary directory is visible and its content is loadable, and writing evidence to `evidence/dsh-qa/skill-summary-load/<ts>/`.
+- Register a new `skill-summary-load` row in the case-set table of `skills/dsh-qa/SKILL.md`.
+- Gate execution: root `bun test`, root `bun run typecheck` (tsgo --noEmit), a real run of the new QA case, and `git status` diff review; results and evidence are checked in.
 
 ### Must NOT have (guardrails, anti-slop, scope boundaries)
-- 规划者（本计划阶段）绝不创建 SKILL.md 或任何产品文件；只产出计划文件与 `.omo/drafts/` 草案。
-- 不改 `VENDOR_LOCK.json`（omo-summary 非 vendor 资产；verify-vendor.mjs 只校验 lock.assets）。
-- 不改 `packages/omo-dsh-bundle/cordis.patch.yml`（customSkillDirs 已覆盖整个 skills 目录，零 bundle 改动）。
-- 不改/不升级任何已 vendor 技能（ulw-plan/init-deep/lsp-setup/git-master/review-work/programming/ast-grep）与上游仓库。
-- 不新增任何 TS 源码、插件代码或 package.json 依赖；唯一新脚本是 dsh-qa 的 mjs 用例。
-- 不写 `tests/golden/fixtures/`（金标样例区只读）；不创建 `.omo/plans/` 下的重复计划（规范路径由用户钉死）。
-- 不做语义扩展（如多语言翻译、模板文件、web UI 集成）。
+- The planner (this plan phase) never creates SKILL.md or any product files; it only produces the plan file and the `.omo/drafts/` draft.
+- Do not change `VENDOR_LOCK.json` (omo-summary is not a vendored asset; verify-vendor.mjs only validates lock.assets).
+- Do not change `packages/omo-dsh-bundle/cordis.patch.yml` (customSkillDirs already covers the whole skills directory; zero bundle changes).
+- Do not change or upgrade any already-vendored skills (ulw-plan/init-deep/lsp-setup/git-master/review-work/programming/ast-grep) or the upstream repo.
+- Do not add any TS source, plugin code, or package.json dependency; the only new script is the dsh-qa mjs case.
+- Do not write to `tests/golden/fixtures/` (the golden sample area is read-only); do not create a duplicate plan under `.omo/plans/` (the canonical path is pinned by the user).
+- Do not extend semantics (e.g. multilingual translation, template files, web UI integration).
 
 ## Verification strategy
 > Zero human intervention - all verification is agent-executed.
-- Test decision: tests-after + dedicated QA case（仓库惯例：纯资产改动视同代码改动走 dsh-qa，PLAN.md §5 T7）；无新 TS → bun test/tsgo 零增量（root tsconfig.json:16-18 仅 include packages/*/src/**/*.ts）。
-- Evidence: `evidence/dsh-qa/skill-summary-load/<ISO-ts>/result.json` + `output.log`（对齐 skills/dsh-qa/SKILL.md 铁律 3；T6 证据唯一规范路径 evidence/<域名>/<slug>/）。
-- 隔离纪律（T4）：QA 脚本强制 `DSH_HOME=$(mktemp -d)` 并在脚本内断言 `env.DSH_HOME === sandbox`，绝不读写用户真实 `~/.dsh`（范本 skills/dsh-qa/scripts/skill-load.mjs:20-27：沙盒创建 :23、DSH_HOME 注入 :26、隔离断言 :27）。
-- 可证明性（T5）：真实 run 断言 dsh 输出含 `omo-summary` 与至少一条使用规则文本，不允许只报"能跑通"。
+- Test decision: tests-after + dedicated QA case (repo convention: purely additive asset changes are treated like code changes and go through dsh-qa, PLAN.md §5 T7); no new TS → bun test/tsgo zero delta (root tsconfig.json:16-18 only includes packages/*/src/**/*.ts).
+- Evidence: `evidence/dsh-qa/skill-summary-load/<ISO-ts>/result.json` + `output.log` (aligned with skills/dsh-qa/SKILL.md iron rule 3; T6's single canonical evidence path evidence/<domain>/<slug>/).
+- Isolation discipline (T4): the QA script forces `DSH_HOME=$(mktemp -d)` and asserts inside the script that `env.DSH_HOME === sandbox`, never reading or writing the user's real `~/.dsh` (template skills/dsh-qa/scripts/skill-load.mjs:20-27: sandbox creation :23, DSH_HOME injection :26, isolation assertion :27).
+- Provability (T5): the real run asserts that dsh output contains `omo-summary` and at least one usage-rule text; reporting only "it runs" is not allowed.
 
 ## Execution strategy
 ### Parallel execution waves
-> 目标 5-8 todos/波；本任务标准级（1-5 文件），2 个执行波 + 收尾波。
-- **Wave 1**（并行）：Todo 1（SKILL.md 内容）+ Todo 2（QA 脚本）——互相独立。
-- **Wave 2**：Todo 3（dsh-qa 用例登记，依赖 1、2 的命名与断言文本）。
-- **Wave 3**（收尾）：Todo 4（门禁全跑 + 证据 + git 核对，依赖 1-3）。
+> Target 5-8 todos/wave; this task is standard-tier (1-5 files), 2 execution waves + a wrap-up wave.
+- **Wave 1** (parallel): Todo 1 (SKILL.md content) + Todo 2 (QA script) — independent of each other.
+- **Wave 2**: Todo 3 (register the dsh-qa case, depending on the naming and assertion text from 1 and 2).
+- **Wave 3** (wrap-up): Todo 4 (full gate run + evidence + git review, depending on 1-3).
 
 ### Dependency matrix
 | Todo | Depends on | Blocks | Can parallelize with |
@@ -60,73 +60,73 @@ Your next move: 批准本计划后由 worker 会话（`$ulw-execute omo-summary-
 ## Todos
 > Implementation + Test = ONE todo. Never separate.
 <!-- APPEND TASK BATCHES BELOW THIS LINE WITH edit/apply_patch - never rewrite the headers above. -->
-- [ ] 1. 在 omo-skills-plugin 内创建自研技能 omo-summary 的 SKILL.md（内容规格内嵌，零判断）
-  What to do / Must NOT do: 创建文件 `packages/omo-skills-plugin/skills/omo-summary/SKILL.md`，内容必须与下方"精确内容规格"逐字一致（仅 `description` 引号内与规则编号 1-5 文本允许原样抄录；不得增删规则条数）。Must NOT: 不创建同目录任何其他文件；不加 `metadata` 之外的新 frontmatter 键（`metadata.short-description` 可选但推荐）；正文不得出现 `task(`、`call_omo_agent`、`multi_agent`、`team_`、`background_output` 等 OpenCode/Codex 专用工具串；不改动任何既有技能文件。
-  Parallelization: Wave 1 | Blocked by: 无 | Blocks: 3
-  References: 目录语义 packages/omo-dsh-bundle/cordis.patch.yml:42-49（skill-filesystem 段，customSkillDirs 覆盖整个 skills 目录，新子目录自动发现）；frontmatter 风格范本 packages/omo-skills-plugin/skills/ast-grep/SKILL.md:1-4 与 packages/omo-skills-plugin/skills/review-work/SKILL.md:1-4；metadata 范本 packages/omo-skills-plugin/skills/ulw-plan/SKILL.md:1-6（frontmatter 含 metadata.short-description，:4-5）。
-  Acceptance criteria (agent-executable): `test -f packages/omo-skills-plugin/skills/omo-summary/SKILL.md` 且文件 frontmatter 可解析出 `name: omo-summary` 与非空 `description`；正文含恰 5 条编号 `1.`-`5.` 使用规则；`grep -E 'task\(|call_omo_agent|multi_agent|team_|background_output' <file>` 无匹配；运行 Todo 2 的 `--self-test`（其离线 fixture 覆盖 frontmatter/规则标记检测）exit 0。
-  QA scenarios (name the exact tool + invocation): happy（离线）= `node skills/dsh-qa/scripts/skill-summary-load.mjs --self-test` → exit 0，输出含 `ok: frontmatter/rule markers detected`；happy（真实）= Todo 2 真实 run 的 ok=true（见 Todo 2）；failure（离线）= `--self-test` 的负向 fixture（无 `name: omo-summary` 的字符串）必须被检测为"未加载"，检测失效则 exit 1。Evidence `evidence/dsh-qa/skill-summary-load/<ts>/result.json`、`output.log`（由 Todo 2 脚本写入）。
-  Commit: Y | 并入最终提交（见 Commit strategy），不单独提交
-  Recommended task executor category: writing — 纯 markdown 文案创作，内容规格已内嵌，无判断空间
+- [ ] 1. Create the SKILL.md for the self-developed skill omo-summary inside omo-skills-plugin (content spec embedded, zero judgment)
+  What to do / Must NOT do: Create the file `packages/omo-skills-plugin/skills/omo-summary/SKILL.md`; its content must match the "Exact content spec" below verbatim (only the text inside the `description` quotes and the rule items numbered 1-5 are allowed to be copied verbatim; do not add or remove rule items). Must NOT: do not create any other file in the same directory; do not add new frontmatter keys beyond `metadata` (`metadata.short-description` is optional but recommended); the body must not contain OpenCode/Codex-specific tool strings such as `task(`, `call_omo_agent`, `multi_agent`, `team_`, `background_output`; do not modify any existing skill files.
+  Parallelization: Wave 1 | Blocked by: none | Blocks: 3
+  References: directory semantics packages/omo-dsh-bundle/cordis.patch.yml:42-49 (the skill-filesystem section, customSkillDirs covers the whole skills directory, new subdirectories auto-discovered); frontmatter style templates packages/omo-skills-plugin/skills/ast-grep/SKILL.md:1-4 and packages/omo-skills-plugin/skills/review-work/SKILL.md:1-4; metadata template packages/omo-skills-plugin/skills/ulw-plan/SKILL.md:1-6 (frontmatter contains metadata.short-description, :4-5).
+  Acceptance criteria (agent-executable): `test -f packages/omo-skills-plugin/skills/omo-summary/SKILL.md` and the file's frontmatter parses to `name: omo-summary` and a non-empty `description`; the body contains exactly 5 numbered `1.`-`5.` usage rules; `grep -E 'task\(|call_omo_agent|multi_agent|team_|background_output' <file>` has no match; running Todo 2's `--self-test` (whose offline fixtures cover frontmatter/rule-marker detection) exits 0.
+  QA scenarios (name the exact tool + invocation): happy (offline) = `node skills/dsh-qa/scripts/skill-summary-load.mjs --self-test` → exit 0, output contains `ok: frontmatter/rule markers detected`; happy (real) = Todo 2's real run has ok=true (see Todo 2); failure (offline) = the negative fixture of `--self-test` (a string without `name: omo-summary`) must be detected as "not loaded"; if detection fails, exit 1. Evidence `evidence/dsh-qa/skill-summary-load/<ts>/result.json`, `output.log` (written by the Todo 2 script).
+  Commit: Y | included in the final commit (see Commit strategy), not committed separately
+  Recommended task executor category: writing — purely markdown copywriting, content spec already embedded, no room for judgment
 
-  **精确内容规格（原样抄录）：**
+  **Exact content spec (copy verbatim):**
   ```markdown
   ---
   name: omo-summary
-  description: "Produce a structured summary of completed work in omo-dsh: goal, what was done, result with evidence, risks and leftovers, next steps. Trigger on 'summary' / '总结' / 'summarize' / 'wrap up' / '写个总结' / end-of-task reports. Output follows the repo evidence/qa-summary convention: 5 short sections, repo-relative paths, one screen of plain text. Never invent facts missing from the session or evidence; mark them explicitly. Must NOT modify product code."
+  description: "Produce a structured summary of completed work in omo-dsh: goal, what was done, result with evidence, risks and leftovers, next steps. Trigger on 'summary' / 'recap' / 'summarize' / 'wrap up' / 'write a summary' / end-of-task reports. Output follows the repo evidence/qa-summary convention: 5 short sections, repo-relative paths, one screen of plain text. Never invent facts missing from the session or evidence; mark them explicitly. Must NOT modify product code."
   metadata:
     short-description: Structured end-of-task summary writer (goal / done / evidence / risks / next)
   ---
 
   # omo-summary
 
-  任务/会话总结技能：对已完成的工作输出结构化总结，供交接、证据归档与后续决策使用。
-  仅做只读总结，绝不修改产品代码。
+  A task/session summary skill: output a structured summary of completed work for handoff, evidence archiving, and later decision-making.
+  Only produces read-only summaries; never modifies product code.
 
-  ## 使用规则
+  ## Usage rules
 
-  1. **证据先行**：只总结会话内容、`evidence/<域名>/<slug>/` 与 git 历史中可引用的事实；
-     未出现的结论必须显式标注"无证据"，禁止编造。
-  2. **固定结构**：按「目标 / 做了什么 / 结果与证据 / 风险与遗留 / 下一步」五节输出，
-     每节 1-3 行，总长不超过一屏。
-  3. **路径引用**：涉及文件、证据、产物一律给仓库内相对路径（如
-     `evidence/dsh-qa/skill-summary-load/…`）；给不出路径的断言一律视为无证据。
-  4. **语言跟随**：用户中文→中文输出，英文→英文输出；专业术语保持原文不译。
-  5. **边界**：总结是只读行为——不修改产品代码、不写证据目录以外的文件；
-     总结落盘位置以用户指定为准。
+  1. **Evidence first**: summarize only citable facts from session content, `evidence/<domain>/<slug>/`, and git history;
+     conclusions that did not appear must be explicitly marked "no evidence"; fabrication is forbidden.
+  2. **Fixed structure**: output in the five sections "Goal / What was done / Result and evidence / Risks and leftovers / Next steps",
+     each section 1-3 lines, total length no more than one screen.
+  3. **Path references**: for files, evidence, and artifacts, always give a repo-relative path (e.g.
+     `evidence/dsh-qa/skill-summary-load/…`); assertions without a path are always treated as having no evidence.
+  4. **Follow the language**: respond in Chinese for a Chinese user and in English for an English user; keep technical terms in their original form without translating them.
+  5. **Boundaries**: summarizing is read-only — do not modify product code, do not write files outside the evidence directory;
+     the location where the summary is written follows what the user specifies.
   ```
 
-- [ ] 2. 新增 dsh-qa 隔离加载用例 skill-summary-load.mjs（含 --self-test 与 happy/failure 断言）
-  What to do / Must NOT do: 创建 `skills/dsh-qa/scripts/skill-summary-load.mjs`，以 `skills/dsh-qa/scripts/skill-load.mjs` 为范本改写：`JOB = "请先使用 skill 工具加载名为 omo-summary 的技能，然后引用它的名称与任意一条使用规则。不要使用 bash 等其他工具。"`；真实 run 用 `mktemp -d` 沙盒 DSH_HOME、拷贝 `~/.dsh/.credentials.yaml`、`spawnSync("dsh", ["--profile", "headless", "--patch", <repoRoot>/packages/omo-dsh-bundle/cordis.patch.yml, JOB])`，ok 条件 = `exit 0 && /omo-summary/ && /使用规则/`（输出中须含规则 1-5 任一标记文本）；证据写 `evidence/dsh-qa/skill-summary-load/<ISO-ts 无冒号>/result.json` + `output.log`；脚本内置 `--self-test`（离线）：正例 fixture（含 `name: omo-summary` 与 `使用规则` 标记）检测通过，负例 fixture（不含上述标记）必须判负。Must NOT: 修改既有 5 个 QA 脚本（mount-assert/skill-load/mcp-call/preset-register/dual-track-smoke）；不访问真实 `~/.dsh` 的读写（只读拷贝凭据）；不开网络依赖。
-  Parallelization: Wave 1 | Blocked by: 无 | Blocks: 3
-  References: 范本 skills/dsh-qa/scripts/skill-load.mjs（全文 45 行：--self-test :14-18、runReal 隔离 boot :20-43、沙盒创建 :23、隔离断言 :27、spawnSync --patch bundle :28-30、证据写盘 :36-37、入口分发 :44）；铁律 skills/dsh-qa/SKILL.md:13-20（隔离/可证明性/证据/--self-test 四条）；bundle patch 路径 packages/omo-dsh-bundle/cordis.patch.yml（--patch 挂载，同 skill-load.mjs:28 用法）。
-  Acceptance criteria (agent-executable): `node skills/dsh-qa/scripts/skill-summary-load.mjs --self-test` exit 0；真实 run（见 QA）exit 0 且 `result.json` 中 `ok=true`；`result.json` 与 `output.log` 存在于 `evidence/dsh-qa/skill-summary-load/<ts>/`；脚本内含 `DSH_HOME` 隔离断言（`env.DSH_HOME === sandbox` 否则 exit 1）。
-  QA scenarios: happy（离线）= `--self-test` exit 0；happy（真实，含 API 调用）=
-  `node skills/dsh-qa/scripts/skill-summary-load.mjs` → ok=true，输出含 `skill-summary-load] PASS`，证据文件落盘；failure（离线）= `--self-test` 负例 fixture 检测失败时 exit 1（自测即失败路径证据）；failure（真实）=
-  临时把 `JOB` 里的技能名改为不存在的 `omo-summary-absent` 再跑 → 脚本必须 ok=false exit 1 且 result.json 记录 `skillLoaded:false`（跑完改回原名并重跑 ok=true 留证）。Evidence `evidence/dsh-qa/skill-summary-load/<ts>/`（含上述 ok=true 与 ok=false 两轮）。
-  Commit: Y | 并入最终提交
-  Recommended task executor category: quick — 单文件机械改写，有现成范本与固定断言模板
+- [ ] 2. Add a new dsh-qa isolated load case, skill-summary-load.mjs (with --self-test and happy/failure assertions)
+  What to do / Must NOT do: Create `skills/dsh-qa/scripts/skill-summary-load.mjs`, rewriting `skills/dsh-qa/scripts/skill-load.mjs` as the template: `JOB = "First use the skill tool to load the skill named omo-summary, then reference its name and any one usage rule. Do not use other tools such as bash."`; the real run uses an `mktemp -d` sandbox DSH_HOME, copies `~/.dsh/.credentials.yaml`, and runs `spawnSync("dsh", ["--profile", "headless", "--patch", <repoRoot>/packages/omo-dsh-bundle/cordis.patch.yml, JOB])`; the ok condition = `exit 0 && /omo-summary/ && /Usage rules/` (the output must contain the marker text of any of rules 1-5); evidence is written to `evidence/dsh-qa/skill-summary-load/<ISO-ts without colons>/result.json` + `output.log`; the script has a built-in `--self-test` (offline): a positive fixture (containing the `name: omo-summary` and `Usage rules` markers) passes detection, and a negative fixture (without those markers) must be judged negative. Must NOT: modify the existing 5 QA scripts (mount-assert/skill-load/mcp-call/preset-register/dual-track-smoke); do not read or write the real `~/.dsh` (only copy credentials read-only); do not introduce network dependencies.
+  Parallelization: Wave 1 | Blocked by: none | Blocks: 3
+  References: template skills/dsh-qa/scripts/skill-load.mjs (45 lines total: --self-test :14-18, runReal isolated boot :20-43, sandbox creation :23, isolation assertion :27, spawnSync --patch bundle :28-30, evidence write-to-disk :36-37, entry dispatch :44); iron rules skills/dsh-qa/SKILL.md:13-20 (isolation/provability/evidence/--self-test, four rules); bundle patch path packages/omo-dsh-bundle/cordis.patch.yml (--patch mount, same usage as skill-load.mjs:28).
+  Acceptance criteria (agent-executable): `node skills/dsh-qa/scripts/skill-summary-load.mjs --self-test` exits 0; the real run (see QA) exits 0 and `result.json` has `ok=true`; `result.json` and `output.log` exist under `evidence/dsh-qa/skill-summary-load/<ts>/`; the script contains a `DSH_HOME` isolation assertion (`env.DSH_HOME === sandbox`, otherwise exit 1).
+  QA scenarios: happy (offline) = `--self-test` exits 0; happy (real, including an API call) =
+  `node skills/dsh-qa/scripts/skill-summary-load.mjs` → ok=true, output contains `skill-summary-load] PASS`, evidence files written to disk; failure (offline) = `--self-test` exits 1 when its negative fixture detection fails (the self-test is itself the failure-path evidence); failure (real) =
+  temporarily change the skill name in `JOB` to the nonexistent `omo-summary-absent` and rerun → the script must be ok=false and exit 1, and result.json must record `skillLoaded:false` (afterward change the name back and rerun ok=true to keep evidence). Evidence `evidence/dsh-qa/skill-summary-load/<ts>/` (containing both the ok=true and ok=false rounds above).
+  Commit: Y | included in the final commit
+  Recommended task executor category: quick — mechanical rewrite of a single file, with an existing template and a fixed assertion pattern
 
-- [ ] 3. 在 dsh-qa 用例集表格登记 skill-summary-load 行
-  What to do / Must NOT do: 在 `skills/dsh-qa/SKILL.md` 的"用例集（随阶段扩充）"表格（当前为 mount-assert/llm-dual-track/skill-load/mcp-call/preset-register 五行）末尾追加一行：
-  `| skill-summary-load | 技能 | omo-summary 目录可见 + 加载内容完整（隔离 boot 断言） | P2+（G5） |`
-  Must NOT: 改写/删除既有行；不动 `skills/dsh-qa/SKILL.md` 其他章节；不动 `packages/omo-skills-plugin/README.md`（骨架占位，无技能清单）。
+- [ ] 3. Register the skill-summary-load row in the dsh-qa case-set table
+  What to do / Must NOT do: append one row to the "Case set (expanded per phase)" table in `skills/dsh-qa/SKILL.md` (currently five rows: mount-assert/llm-dual-track/skill-load/mcp-call/preset-register):
+  `| skill-summary-load | Skill | omo-summary directory visible + load content complete (isolated boot assertion) | P2+ (G5) |`
+  Must NOT: rewrite/delete existing rows; do not touch other sections of `skills/dsh-qa/SKILL.md`; do not touch `packages/omo-skills-plugin/README.md` (skeleton placeholder, no skill list).
   Parallelization: Wave 2 | Blocked by: 1, 2 | Blocks: 4
-  References: 表格位置 skills/dsh-qa/SKILL.md:22-30（用例集表头 :24-25，既有五行 :26-30）；运行章节 skills/dsh-qa/SKILL.md:32-40。
-  Acceptance criteria (agent-executable): `grep -n 'skill-summary-load' skills/dsh-qa/SKILL.md` 恰命中 1 行（新行），且既有 5 行原样保留（`grep -c '^| mount-assert'` 等计数不变）。
-  QA scenarios: happy = 上述 grep 断言通过；failure = 无（文档行）；回归核对 = `git diff skills/dsh-qa/SKILL.md` 仅含新增行。Evidence `evidence/dsh-qa/skill-summary-load/<ts>/result.json` 备注字段记录 diff 行数。
-  Commit: Y | 并入最终提交
-  Recommended task executor category: quick — 表格单行追加，机械操作
+  References: table location skills/dsh-qa/SKILL.md:22-30 (case-set header :24-25, existing five rows :26-30); run section skills/dsh-qa/SKILL.md:32-40.
+  Acceptance criteria (agent-executable): `grep -n 'skill-summary-load' skills/dsh-qa/SKILL.md` matches exactly 1 line (the new row), and the existing 5 rows are preserved unchanged (`grep -c '^| mount-assert'` and similar counts stay the same).
+  QA scenarios: happy = the grep assertion above passes; failure = none (documentation row); regression check = `git diff skills/dsh-qa/SKILL.md` contains only the added row. Evidence `evidence/dsh-qa/skill-summary-load/<ts>/result.json` records the diff line count in a note field.
+  Commit: Y | included in the final commit
+  Recommended task executor category: quick — append a single table row, mechanical operation
 
-- [ ] 4. 门禁全跑与证据核对（bun test / tsgo / QA 真实 run / git status）
-  What to do / Must NOT do: 依次执行并记录：① `bun test`（根，应无失败；本改动无新 TS，bun 无测试文件时 exit 0）；② `bun run typecheck`（root tsgo --noEmit，应 exit 0——root tsconfig 仅 include `packages/*/src/**/*.ts`，本改动零增量）；③ `node skills/dsh-qa/scripts/skill-summary-load.mjs`（真实隔离 run，ok=true）；④ `node skills/dsh-qa/scripts/skill-summary-load.mjs --self-test`（exit 0）；⑤ `git status --porcelain` 核对：预期仅
-  `packages/omo-skills-plugin/skills/omo-summary/SKILL.md`（新）、`skills/dsh-qa/scripts/skill-summary-load.mjs`（新）、`skills/dsh-qa/SKILL.md`（改）、`evidence/dsh-qa/skill-summary-load/`（新证据），外加 `.omo/drafts/`（规划产物，可忽略）；出现任何其他路径 → 停下核对排除。⑥ 将 ①-④ 输出追加写入 `evidence/dsh-qa/skill-summary-load/<ts>/gates.log`。Must NOT: 触碰真实 `~/.dsh`；不修改 `VENDOR_LOCK.json`；不提交 `/tmp` 或沙盒外文件；不因"能跑通"替代 ③ 的断言结果。
-  Parallelization: Wave 3 | Blocked by: 1, 2, 3 | Blocks: 无（收尾）
-  References: 门禁 AGENTS.md 规则 3-4；根脚本 package.json:8-11（test:9 / typecheck:8 / test:qa:11）；tsconfig include 范围 tsconfig.json:13-14；证据路径约定 PLAN.md §5 T6（evidence/<域名>/<slug>/）。
-  Acceptance criteria (agent-executable): ①-④ 全部 exit 0；③ 的 result.json ok=true 且两文件落盘；⑤ 差异集合与预期完全一致（超集即失败）；⑥ gates.log 存在。
-  QA scenarios: happy = 全命令 exit 0 + 证据齐全 + diff 精确匹配（把 `git status --porcelain` 输出存 evidence 副本）；failure = 任一命令非 0 或 diff 超集 → 记录失败输出到 gates.log，修复后重跑全链直至全绿（两轮都留证）；隔离失败路径 = 若脚本断言到 DSH_HOME 非沙盒，立即 exit 1 且不写证据。Evidence `evidence/dsh-qa/skill-summary-load/<ts>/gates.log` + `result.json` + `output.log`。
-  Commit: Y | 最终提交（见 Commit strategy）
-  Recommended task executor category: quick — 命令序列机械执行 + 记录
+- [ ] 4. Full gate run and evidence review (bun test / tsgo / real QA run / git status)
+  What to do / Must NOT do: run and record in order: ① `bun test` (root, should have no failures; this change adds no new TS, bun exits 0 when there are no test files); ② `bun run typecheck` (root tsgo --noEmit, should exit 0 — root tsconfig only includes `packages/*/src/**/*.ts`, so this change has zero delta); ③ `node skills/dsh-qa/scripts/skill-summary-load.mjs` (real isolated run, ok=true); ④ `node skills/dsh-qa/scripts/skill-summary-load.mjs --self-test` (exit 0); ⑤ `git status --porcelain` review: expect only
+  `packages/omo-skills-plugin/skills/omo-summary/SKILL.md` (new), `skills/dsh-qa/scripts/skill-summary-load.mjs` (new), `skills/dsh-qa/SKILL.md` (modified), `evidence/dsh-qa/skill-summary-load/` (new evidence), plus `.omo/drafts/` (planning artifact, ignorable); if any other path appears → stop and review to exclude it. ⑥ append the ①-④ outputs to `evidence/dsh-qa/skill-summary-load/<ts>/gates.log`. Must NOT: touch the real `~/.dsh`; do not modify `VENDOR_LOCK.json`; do not commit `/tmp` or files outside the sandbox; do not substitute "it runs" for the assertion result of ③.
+  Parallelization: Wave 3 | Blocked by: 1, 2, 3 | Blocks: none (wrap-up)
+  References: gate rules AGENTS.md 3-4; root scripts package.json:8-11 (test:9 / typecheck:8 / test:qa:11); tsconfig include scope tsconfig.json:13-14; evidence path convention PLAN.md §5 T6 (evidence/<domain>/<slug>/).
+  Acceptance criteria (agent-executable): ①-④ all exit 0; ③'s result.json has ok=true and both files are written to disk; ⑤'s diff set matches expectations exactly (a superset is a failure); ⑥ gates.log exists.
+  QA scenarios: happy = all commands exit 0 + evidence complete + diff matches exactly (store a copy of the `git status --porcelain` output under evidence); failure = any command nonzero or a diff superset → record the failing output to gates.log, fix, and rerun the whole chain until all green (keep evidence from both rounds); isolation failure path = if the script asserts DSH_HOME is not the sandbox, exit 1 immediately and write no evidence. Evidence `evidence/dsh-qa/skill-summary-load/<ts>/gates.log` + `result.json` + `output.log`.
+  Commit: Y | final commit (see Commit strategy)
+  Recommended task executor category: quick — mechanical execution of a command sequence + recording
 
 ## Final verification wave
 > Runs in parallel after ALL todos. ALL must APPROVE. Surface results and wait for the user's explicit okay before declaring complete.
@@ -136,16 +136,16 @@ Your next move: 批准本计划后由 worker 会话（`$ulw-execute omo-summary-
 - [ ] F4. Scope fidelity
 
 ## Commit strategy
-- 单提交收尾（匹配仓库按阶段/功能单提交惯例，git log 全为一行描述式提交）：
-  `feat(skills): 自研 omo-summary 技能（SKILL.md + dsh-qa skill-summary-load 用例与证据）`
-- 提交内容：`packages/omo-skills-plugin/skills/omo-summary/`、`skills/dsh-qa/scripts/skill-summary-load.mjs`、`skills/dsh-qa/SKILL.md`、`evidence/dsh-qa/skill-summary-load/`。
-- 不提交：`.omo/drafts/`（规划产物）、`/tmp` 沙盒、任何 `VENDOR_LOCK.json`/bundle/上游改动（必须为零）。
-- 提交前跑 `git status` 确认上述白名单精确成立（AGENTS.md 规则 1、6）。
+- Wrap up with a single commit (matching the repo's single-commit-per-phase/feature convention; git log is all one-line descriptive commits):
+  `feat(skills): self-developed omo-summary skill (SKILL.md + dsh-qa skill-summary-load case and evidence)`
+- Commit contents: `packages/omo-skills-plugin/skills/omo-summary/`, `skills/dsh-qa/scripts/skill-summary-load.mjs`, `skills/dsh-qa/SKILL.md`, `evidence/dsh-qa/skill-summary-load/`.
+- Do not commit: `.omo/drafts/` (planning artifact), the `/tmp` sandbox, any `VENDOR_LOCK.json`/bundle/upstream changes (must be zero).
+- Before committing, run `git status` to confirm the allowlist above holds exactly (AGENTS.md rules 1, 6).
 
 ## Success criteria
-1. `packages/omo-skills-plugin/skills/omo-summary/SKILL.md` 存在，frontmatter 含 `name: omo-summary` + 非空 `description`，正文恰 5 条编号使用规则，无 OpenCode-only 工具串。
-2. `node skills/dsh-qa/scripts/skill-summary-load.mjs --self-test` exit 0（正/负 fixture 双断言）。
-3. 真实隔离 run ok=true，证据 `evidence/dsh-qa/skill-summary-load/<ts>/result.json` + `output.log` 落盘，`skillLoaded:true`。
-4. `skills/dsh-qa/SKILL.md` 用例集表格含 skill-summary-load 行，既有行零改动。
-5. 根 `bun test` 与 `bun run typecheck` exit 0；`git status --porcelain` 与预期白名单精确一致。
-6. 提交为单条 feat 提交；`VENDOR_LOCK.json`、`cordis.patch.yml`、vendor 技能、上游零改动（`git diff` 验证）。
+1. `packages/omo-skills-plugin/skills/omo-summary/SKILL.md` exists, frontmatter contains `name: omo-summary` + a non-empty `description`, the body has exactly 5 numbered usage rules, and no OpenCode-only tool strings.
+2. `node skills/dsh-qa/scripts/skill-summary-load.mjs --self-test` exits 0 (positive/negative fixture double assertion).
+3. The real isolated run has ok=true, evidence `evidence/dsh-qa/skill-summary-load/<ts>/result.json` + `output.log` is written to disk, and `skillLoaded:true`.
+4. The case-set table in `skills/dsh-qa/SKILL.md` contains the skill-summary-load row, with zero changes to existing rows.
+5. Root `bun test` and `bun run typecheck` exit 0; `git status --porcelain` matches the expected allowlist exactly.
+6. The commit is a single feat commit; `VENDOR_LOCK.json`, `cordis.patch.yml`, vendored skills, and upstream have zero changes (verified by `git diff`).

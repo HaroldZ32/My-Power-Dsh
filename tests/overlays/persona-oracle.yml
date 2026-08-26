@@ -1,4 +1,4 @@
-# QA 用: 覆盖系统 persona 为 omo Oracle 文本（保留决策框架与输出规范），验证 DeepSeek 端审查人格
+# QA use: override the system persona with the omo Oracle text (keeping the decision framework and output spec), verifying the DeepSeek-side review persona
 - id: system-prompt
   name: '@deepseek-ai/dsh-system-prompt'
   config:

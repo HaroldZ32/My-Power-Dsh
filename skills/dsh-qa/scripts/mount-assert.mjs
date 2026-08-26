@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-// 用例 mount-assert：隔离 DSH_HOME 下用真实 dsh --dump-config 断言插件行已挂载。
-// --self-test 为离线自测（fixture 文本，无网络、无真实 API）。
+// Case mount-assert: under an isolated DSH_HOME, use real dsh --dump-config to assert the plugin rows are mounted.
+// --self-test is the offline self-test (fixture text, no network, no real API).
 import { execFileSync, spawnSync } from "node:child_process"
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url))))) // scripts/<domain>/<slug>/<file> → 仓库根
+const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url))))) // scripts/<domain>/<slug>/<file> -> repo root
 const FIXTURE = `# == base
 - id: llm
   name: '@deepseek-ai/dsh-llm'
@@ -41,7 +41,7 @@ function main() {
 
   const sandbox = mkdtempSync(join(tmpdir(), "omo-dsh-qa-"))
   const env = { ...process.env, DSH_HOME: sandbox }
-  if (!env.DSH_HOME.startsWith(sandbox)) { console.error("[mount-assert] 隔离断言失败：DSH_HOME 未指向临时目录"); process.exit(1) }
+  if (!env.DSH_HOME.startsWith(sandbox)) { console.error("[mount-assert] isolation assertion failed: DSH_HOME does not point to the temp directory"); process.exit(1) }
 
   const run = spawnSync("dsh", ["--profile", "headless", "--dump-config"], { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })
   if (run.status !== 0) {

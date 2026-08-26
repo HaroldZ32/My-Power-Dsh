@@ -1,4 +1,4 @@
-# QA 用：headless 模板无 agent-presets 行 → 插入（字面量路径，验证 !!js 嵌套是否是根因）
+# QA use: headless template has no agent-presets row -> insert (literal path; verify whether nested !!js is the root cause)
 - insert:
     - id: agent-presets
       name: '@deepseek-ai/dsh-agent-presets'

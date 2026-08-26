@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// 校验 vendor 基线：上游 commit/version 为阻断项；stats 漂移为警告；资产计数为阻断项。
+// Verify the vendor baseline: upstream commit/version are blockers; stats drift is a warning; asset counts are blockers.
 import { execFileSync } from "node:child_process"
 import { existsSync, readFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)))
-const upstreamRoot = join(repoRoot, "..", "..", "..") // 原 omo 检出（repoRoot 位于 .omo/port/omo-dsh）
+const upstreamRoot = join(repoRoot, "..", "..", "..") // the original omo checkout (repoRoot is at .omo/port/omo-dsh)
 const lock = JSON.parse(readFileSync(join(repoRoot, "VENDOR_LOCK.json"), "utf8"))
 
 function git(args) {
@@ -17,7 +17,7 @@ let failed = false
 function fail(msg) { console.error("[verify-vendor] FAIL -", msg); failed = true }
 function warn(msg) { console.warn("[verify-vendor] WARN -", msg) }
 
-// 1) commit 锁定
+// 1) commit lock
 const head = git(["rev-parse", "HEAD"])
 if (head !== lock.upstreamCommitSha) {
   fail("upstream commit mismatch: HEAD=" + head + " lock=" + lock.upstreamCommitSha)
@@ -25,7 +25,7 @@ if (head !== lock.upstreamCommitSha) {
   console.log("[verify-vendor] commit OK:", head)
 }
 
-// 2) version 锁定
+// 2) version lock
 const upstreamPkg = JSON.parse(readFileSync(join(upstreamRoot, "package.json"), "utf8"))
 if (upstreamPkg.version !== lock.upstreamVersion) {
   fail("upstream version mismatch: " + upstreamPkg.version + " vs " + lock.upstreamVersion)
@@ -33,7 +33,7 @@ if (upstreamPkg.version !== lock.upstreamVersion) {
   console.log("[verify-vendor] version OK:", upstreamPkg.version)
 }
 
-// 3) stats 漂移（警告）
+// 3) stats drift (warning)
 const tracked = Number(git(["ls-files"]).split("\n").length)
 const loc = Number(git(["ls-files", "-z"]).split("\0").filter(Boolean)
   .map((f) => { try { return readFileSync(join(upstreamRoot, f), "utf8").split("\n").length } catch { return 0 } })
@@ -44,7 +44,7 @@ if (tracked !== lock.upstreamStats.trackedFiles || loc !== lock.upstreamStats.tr
   console.log("[verify-vendor] stats OK:", tracked, "files /", loc, "loc")
 }
 
-// 4) 已 vendor 资产：计数 + sha256 双阻断
+// 4) vendored assets: count + sha256, both blockers
 import { createHash } from "node:crypto"
 for (const [rel, meta] of Object.entries(lock.assets || {})) {
   if (String(rel).startsWith("_")) continue

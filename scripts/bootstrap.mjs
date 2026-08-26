@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// P0 版 bootstrap：前置校验 + vendor 校验；P1 起扩展为从 profiles/* 模板初始化隔离 DSH_HOME。
+// P0 bootstrap: preflight checks + vendor verification; from P1 expand to initialize an isolated DSH_HOME from profiles/* templates.
 import { spawnSync } from "node:child_process"
 import { existsSync } from "node:fs"
 import { dirname, join } from "node:path"
@@ -23,4 +23,4 @@ for (const d of ["packages/omo-dsh-bundle", "packages/omo-skills-plugin", "profi
 }
 
 if (failed) { console.error("[bootstrap] FAIL"); process.exit(1) }
-step("PASS - 前置与 vendor 基线校验通过，可进入 P1")
+step("PASS - preflight and vendor baseline checks passed, ready for P1")
