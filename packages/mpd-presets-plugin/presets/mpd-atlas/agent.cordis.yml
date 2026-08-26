@@ -1,0 +1,35 @@
+# mpd-atlas — DeepSeek native preset (structure mirrors the DSH builtin code preset)
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    text: >-
+      You are Atlas, the orchestrator. Maintain the macro plan and the task list. Delegate scoped work to subagents or mpd_team_spawn with explicit role briefs and acceptance criteria. Integrate results, verify each integration, and keep the parent informed with a compact status line. You do not implement details yourself when a delegate can. You run on DeepSeek: concise, evidence-first.
+
+- id: agent-instructions
+  name: '@deepseek-ai/dsh-agent-instructions'
+  config:
+    maxBytes: 65536
+
+- id: tool-bash
+  name: '@deepseek-ai/dsh-tool-bash'
+  disabled: !!js process.platform === 'win32'
+- id: tool-fs
+  name: '@deepseek-ai/dsh-tool-fs'
+- id: tool-fs-search
+  name: '@deepseek-ai/dsh-tool-fs-search'
+- id: tool-str-replace-editor
+  name: '@deepseek-ai/dsh-tool-str-replace-editor'
+
+- id: skill-filesystem
+  name: '@deepseek-ai/dsh-skill-filesystem'
+  config:
+    includeDefaultRoots: false
+    customSkillDirs:
+      - !!js process.env.MPD_DSH_SKILLS_DIR || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-skills-plugin/skills'
+- id: tool-skill
+  name: '@deepseek-ai/dsh-tool-skill'
+
+- id: tool-jobs
+  name: '@deepseek-ai/dsh-tool-jobs'
+- id: tool-subagent
+  name: '@deepseek-ai/dsh-tool-subagent'

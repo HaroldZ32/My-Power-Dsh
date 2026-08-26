@@ -8,11 +8,11 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
-const FIXTURE_LIST = "mpd-oracle,mpd-librarian,mpd-prometheus,mpd-hephaestus"
+const FIXTURE_LIST = "mpd-oracle,mpd-librarian,mpd-prometheus,mpd-hephaestus,mpd-sisyphus,mpd-atlas,mpd-explore,mpd-metis,mpd-momus,mpd-multimodal-looker,mpd-sisyphus-junior"
 
 function selfTest() {
   const ids = FIXTURE_LIST.split(",")
-  if (ids.length !== 4 || !ids.every((s) => /^mpd-[a-z-]+$/.test(s))) { console.error("[preset-register self-test] FAIL"); process.exit(1) }
+  if (ids.length !== 11 || !ids.every((s) => /^mpd-[a-z-]+$/.test(s))) { console.error("[preset-register self-test] FAIL"); process.exit(1) }
   console.log("[preset-register self-test] ok: id grammar verified on fixture")
 }
 
@@ -23,7 +23,7 @@ function runReal() {
   cpSync(creds, join(sandbox, ".credentials.yaml"))
   const userPresets = join(sandbox, ".agent-presets")
   mkdirSync(userPresets, { recursive: true })
-  for (const id of ["mpd-oracle", "mpd-librarian", "mpd-prometheus", "mpd-hephaestus"]) {
+  for (const id of FIXTURE_LIST.split(",")) {
     cpSync(join(repoRoot, "packages/mpd-presets-plugin/presets", id), join(userPresets, id), { recursive: true })
   }
   const logFile = join(sandbox, "run.log")

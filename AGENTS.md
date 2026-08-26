@@ -10,8 +10,7 @@ repository is English-only (see Language Policy).
 
 **my-power-dsh** ports the portable capabilities of **oh-my-openagent** (upstream, GitHub
 code-yeongyu/oh-my-openagent; base commit `8c57e46`, v5.0.0-beta.20) into the DeepSeek Harness
-(DSH) as a plugin bundle. It is a fork: it inherits upstream **Sustainable Use License 1.0
-(SUL-1.0)**; full text in `LICENSE.md`; inheritance is stated in `README.md`.
+(DSH) as a plugin bundle. The capability baseline is pinned to oh-my-openagent `8c57e46` (v5.0.0-beta.20); OMO-spec parity is the engineering target (see docs/feature-audit.md). License: SUL-1.0 (`LICENSE.md`); inheritance declared in `README.md`.
 
 - Upstream product names and repository paths stay upstream's (provenance only).
 - Our naming prefix is **`mpd`** (my-power-dsh): packages, plugin ids, tool names (`mpd_*`),
@@ -41,7 +40,7 @@ code-yeongyu/oh-my-openagent; base commit `8c57e46`, v5.0.0-beta.20) into the De
 ```
 mpd-dsh/
 ├── AGENTS.md                     # this manual
-├── README.md                     # public overview + fork declaration
+├── README.md                     # public overview (inheritance declared in README)
 ├── PLAN.md                       # port plan (Track A/B)
 ├── LICENSE.md / LICENSE-NOTICES.md
 ├── VENDOR_LOCK.json              # upstream commit/version/stats + vendored asset fingerprints
@@ -172,7 +171,7 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 - Evidence logs must not contain secret material (api key values, tokens).
 - Gitee pushes use the per-command `http.extraheader` token approach; no token in `.git/config`,
   no token in commit messages. Revoke tokens if leaked.
-- The repo is a fork under SUL-1.0: internal/personal use; distribution free & non-commercial only.
+- License: SUL-1.0 (LICENSE.md): internal/personal use; distribution free & non-commercial only.
 
 ---
 

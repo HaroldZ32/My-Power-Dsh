@@ -9,17 +9,56 @@ type Ctx = { tools: any; get?: (k: string) => any; [k: string]: any }
 type Config = { memoryFile?: string; chains?: Record<string, Array<{ provider: string; model: string }>> }
 
 export const DEFAULT_CHAINS: Record<string, Array<{ provider: string; model: string }>> = {
-  sisyphus: [{ provider: "deepseek-official", model: "deepseek-v4-pro" }, { provider: "deepseek-official", model: "deepseek-v4-flash" }],
-  oracle: [{ provider: "deepseek-official", model: "deepseek-v4-pro" }, { provider: "deepseek-official", model: "deepseek-v4-flash" }],
-  atlas: [{ provider: "deepseek-official", model: "deepseek-v4-pro" }],
-  prometheus: [{ provider: "deepseek-official", model: "deepseek-v4-pro" }],
-  librarian: [{ provider: "deepseek-official", model: "deepseek-v4-flash" }],
-  explore: [{ provider: "deepseek-official", model: "deepseek-v4-flash" }],
-  hephaestus: [{ provider: "deepseek-official", model: "deepseek-v4-flash" }]
+  sisyphus: [
+    { provider: "deepseek-official", model: "deepseek-v4-pro" },
+    { provider: "deepseek-official", model: "deepseek-v4-flash" },
+    { provider: "deepseek", model: "deepseek-v4-flash" }
+  ],
+  sisyphusJunior: [
+    { provider: "deepseek-official", model: "deepseek-v4-flash" },
+    { provider: "deepseek", model: "deepseek-v4-flash" }
+  ],
+  oracle: [
+    { provider: "deepseek-official", model: "deepseek-v4-pro" },
+    { provider: "deepseek-official", model: "deepseek-v4-flash" }
+  ],
+  atlas: [
+    { provider: "deepseek-official", model: "deepseek-v4-pro" },
+    { provider: "deepseek-official", model: "deepseek-v4-flash" }
+  ],
+  prometheus: [
+    { provider: "deepseek-official", model: "deepseek-v4-pro" },
+    { provider: "deepseek-official", model: "deepseek-v4-flash" }
+  ],
+  librarian: [
+    { provider: "deepseek-official", model: "deepseek-v4-flash" },
+    { provider: "deepseek", model: "deepseek-v4-flash" }
+  ],
+  explore: [
+    { provider: "deepseek-official", model: "deepseek-v4-flash" },
+    { provider: "deepseek", model: "deepseek-v4-flash" }
+  ],
+  metis: [
+    { provider: "deepseek-official", model: "deepseek-v4-pro" },
+    { provider: "deepseek-official", model: "deepseek-v4-flash" }
+  ],
+  momus: [
+    { provider: "deepseek-official", model: "deepseek-v4-flash" },
+    { provider: "deepseek-official", model: "deepseek-v4-pro" }
+  ],
+  multimodalLooker: [
+    { provider: "deepseek-official", model: "deepseek-v4-flash-vision-exp" },
+    { provider: "deepseek-official", model: "deepseek-v4-flash" }
+  ],
+  hephaestus: [
+    { provider: "deepseek-official", model: "deepseek-v4-flash" },
+    { provider: "deepseek", model: "deepseek-v4-flash" }
+  ]
 }
 
 export function resolveRole(role: string, chains: Record<string, Array<{ provider: string; model: string }>>): { provider: string; model: string; chain: Array<{ provider: string; model: string }>; skipped: boolean } {
-  const chain = chains[role] ?? DEFAULT_CHAINS[role] ?? DEFAULT_CHAINS.sisyphus
+  const key = role === "sisyphus-junior" ? "sisyphusJunior" : role === "multimodal-looker" ? "multimodalLooker" : role
+  const chain = chains[key] ?? chains[key] ?? DEFAULT_CHAINS[key] ?? DEFAULT_CHAINS.sisyphus
   const primary = chain[0]
   return { provider: primary.provider, model: primary.model, chain, skipped: false }
 }
