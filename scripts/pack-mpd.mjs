@@ -37,7 +37,8 @@ function cpDist() {
 
 function cpAssets() {
   mkdirSync(join(outDir, "packages"), { recursive: true })
-  cpSync(join(repoRoot, "packages", "mpd-skills-plugin", "skills"), join(outDir, "skills"), { recursive: true })
+  const skillsSrc = join(repoRoot, "packages", "mpd-skills-plugin", "skills")
+  if (existsSync(skillsSrc)) cpSync(skillsSrc, join(outDir, "skills"), { recursive: true })
   cpSync(join(repoRoot, "packages", "mpd-presets-plugin", "presets"), join(outDir, "presets"), { recursive: true })
   cpSync(join(repoRoot, "third-party"), join(outDir, "third-party"), { recursive: true })
   for (const f of ["LICENSE.md", "LICENSE-NOTICES.md", "README.md"]) {

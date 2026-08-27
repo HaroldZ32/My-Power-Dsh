@@ -49,8 +49,6 @@
   disabled: false
   config:
     includeDefaultRoots: true
-    customSkillDirs:
-      - !!js process.env.MPD_DSH_SKILLS_DIR || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-skills-plugin/skills'
 
 # ── P3: MCP servers (stdio, instantiated via the dsh-mcp-client plugin; new rows use insert)──
 - insert:

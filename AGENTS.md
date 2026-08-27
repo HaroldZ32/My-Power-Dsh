@@ -57,7 +57,7 @@ mpd-dsh/
 │   └── install-profile.mjs       # ONLY sanctioned writer to a user DSH_HOME (default dry-run)
 ├── packages/
 │   ├── mpd-bundle/               # cordis.patch.yml: llm dual-track, skills, MCPs, all mpd plugins
-│   ├── mpd-skills-plugin/        # vendored OMO skills (SKILL.md corpus)
+│   ├── mpd-skills-plugin/ (removed)
 │   ├── mpd-mcp-astgrep|gitbash|lsp|codegraph/
 │   ├── mpd-presets-plugin/       # preset dirs mpd-oracle|mpd-librarian|mpd-prometheus|mpd-hephaestus
 │   ├── mpd-tools-plugin/         # B1: write guard, truncation, edit-error recovery

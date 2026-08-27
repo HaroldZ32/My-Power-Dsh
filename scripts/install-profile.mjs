@@ -54,7 +54,6 @@ function buildPlan(o) {
     { id: "agent-default-model", name: "@deepseek-ai/dsh-agent-default-model", config: { provider: "deepseek-official", model: "deepseek-v4-flash" } },
     {
       id: "skill-filesystem", name: "@deepseek-ai/dsh-skill-filesystem", disabled: false,
-      config: { includeDefaultRoots: true, customSkillDirs: [skillsDir] }
     },
     {
       id: "mcp-astgrep", name: "@deepseek-ai/dsh-mcp-client",

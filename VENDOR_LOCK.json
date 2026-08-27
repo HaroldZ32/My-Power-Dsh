@@ -15,41 +15,6 @@
     "note": "loc = Σ split('\\n').length over tracked files (same method as verify-vendor)"
   },
   "assets": {
-    "packages/mpd-skills-plugin/skills/ulw-plan": {
-      "fileCount": 6,
-      "source": "../packages/shared-skills/skills/ulw-plan",
-      "treeSha": "febc587f433e7e857325063345739222b05f724768c32e8f97d39689ad0bd63c"
-    },
-    "packages/mpd-skills-plugin/skills/init-deep": {
-      "fileCount": 1,
-      "source": "../packages/shared-skills/skills/init-deep",
-      "treeSha": "fcc7299a214383ad1fadcb71c800f9f32e599078d4b1d5b2f8275c863911f4f5"
-    },
-    "packages/mpd-skills-plugin/skills/lsp-setup": {
-      "fileCount": 25,
-      "source": "../packages/shared-skills/skills/lsp-setup",
-      "treeSha": "8a8254db83037acde92659724c1d64eea1016442fc1ef06d30d004f152713954"
-    },
-    "packages/mpd-skills-plugin/skills/git-master": {
-      "fileCount": 2,
-      "source": "../packages/shared-skills/skills/git-master",
-      "treeSha": "f3a1fc3a3a1778fd245bf4930388eb374532c70763986caea799c37fc7e83d2a"
-    },
-    "packages/mpd-skills-plugin/skills/review-work": {
-      "fileCount": 1,
-      "source": "../packages/shared-skills/skills/review-work",
-      "treeSha": "6ebf5efe8d7607eb32dded0f61d89cdba70dde62e9a7e053d7c1f57e7af06a4e"
-    },
-    "packages/mpd-skills-plugin/skills/programming": {
-      "fileCount": 75,
-      "source": "../packages/shared-skills/skills/programming",
-      "treeSha": "8155a5589da99ccfe3f106f27fc7543824aac98f7bdfc780657b1165acf16bac"
-    },
-    "packages/mpd-skills-plugin/skills/ast-grep": {
-      "fileCount": 18,
-      "source": "../packages/shared-skills/skills/ast-grep",
-      "treeSha": "64600e661d767b4907f811c8ef5e38445549dcb9c2b8d27a696e769b160fa058"
-    },
     "_note": "skills directory: fileCount+treeSha (sorted relpath + per-file sha256 aggregation) double gate; dist: sha256 gate",
     "packages/mpd-mcp-astgrep/dist/cli.js": {
       "fileCount": 1,
@@ -70,56 +35,6 @@
       "fileCount": 1,
       "source": "vendored prebuilt from packages/omo-codex/plugin/components/codegraph/dist (MIT, see LICENSE/NOTICE in pkg)",
       "sha256": "6c53906e98bfa808b0404b4f5fab051b1c80a3cf359ff574c6c8edd6d0d2b666"
-    },
-    "packages/mpd-skills-plugin/skills/coding-agent-sessions": {
-      "fileCount": 34,
-      "source": "../packages/shared-skills/skills/coding-agent-sessions",
-      "treeSha": "245b8ba4b06642272f094c4c1c036323dd0dbb57dc791f7f8537f97231201845"
-    },
-    "packages/mpd-skills-plugin/skills/data-scientist": {
-      "fileCount": 9,
-      "source": "../packages/shared-skills/skills/data-scientist",
-      "treeSha": "e05c09d49e843e85b757f5ec604f91f596c1308350415b9b0f4eb6663670b890"
-    },
-    "packages/mpd-skills-plugin/skills/debugging": {
-      "fileCount": 20,
-      "source": "../packages/shared-skills/skills/debugging",
-      "treeSha": "a8be69cf2d11f6c7068901d37b6b01f6e1bd7fba872f05a26907daf9634d033e"
-    },
-    "packages/mpd-skills-plugin/skills/frontend": {
-      "fileCount": 28,
-      "source": "../packages/shared-skills/skills/frontend",
-      "treeSha": "c683a30ed9c463a9ebb534c7be2bd2b74769cfa9e7a7204c3c73bf2fdc151d9a"
-    },
-    "packages/mpd-skills-plugin/skills/refactor": {
-      "fileCount": 1,
-      "source": "../packages/shared-skills/skills/refactor",
-      "treeSha": "bf5293576b487cf3e36fbfb282a205326def61f69cf8863d75dc746de08a97ab"
-    },
-    "packages/mpd-skills-plugin/skills/remove-ai-slops": {
-      "fileCount": 1,
-      "source": "../packages/shared-skills/skills/remove-ai-slops",
-      "treeSha": "8a701b8e9c431bc2f9e163686292cad44e2fd6cb40a220d0e33b8e532fef7eb6"
-    },
-    "packages/mpd-skills-plugin/skills/ultimate-browsing": {
-      "fileCount": 57,
-      "source": "../packages/shared-skills/skills/ultimate-browsing",
-      "treeSha": "3a3f8069702b01e6f3f682bb13797f0690edb9a87e1dfddb9230c91c60e7733c"
-    },
-    "packages/mpd-skills-plugin/skills/ulw-execute": {
-      "fileCount": 1,
-      "source": "../packages/shared-skills/skills/ulw-execute",
-      "treeSha": "6662cb41baf0a1311036f6fb19b819e60c6596061972db4c5fa3dc340bb829d7"
-    },
-    "packages/mpd-skills-plugin/skills/ulw-research": {
-      "fileCount": 2,
-      "source": "../packages/shared-skills/skills/ulw-research",
-      "treeSha": "9901b05df9739166b28f43ebceed13b795006b4b694a4a1dea337370f7bb1dfe"
-    },
-    "packages/mpd-skills-plugin/skills/visual-qa": {
-      "fileCount": 19,
-      "source": "../packages/shared-skills/skills/visual-qa",
-      "treeSha": "7014e1b9996184b923ad46e92217b6e43a4cfb891c5ef04e9a478e64727ce9a4"
     }
   },
   "verification": "node scripts/verify-vendor.mjs: commit/version mismatch is a blocker; stats drift is a warning; asset counts are a blocker",

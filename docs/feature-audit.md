@@ -13,7 +13,7 @@ Legend: ✅ full / 🟡 partial / ❌ missing / ➖ not applicable (host-specifi
 | plan mode | planning-only mode | ✅ | DSH native plan-mode |
 | delegate / multi-model | delegate-task with fallback chains | 🟡 | subagent tools + mpd_modelchain_resolve (11 roles, 2-3 entry DeepSeek chains). Richer variant/effort mapping from upstream model-core not ported |
 | background agents | parallel background tasks | ✅ | DSH jobs + tool-jobs |
-| Skills corpus | 17 top-level skills | ✅ | 17 vendored (mpd-skills-plugin/skills; vendor gate PASS). ultrawork/hyperplan live natively as the mpd_ultrawork engine (waves/gates/ledger), not as skills |
+| Skills corpus | upstream OMO skill corpus | ➖ | removed by decision (2026-08-27): no omo-related content ships; the skill tool keeps DSH default + user roots (custom skills via `$DSH_HOME/.agent-presets`/skill dirs) |
 | Rules / AGENTS.md | nested rule discovery & injection | ✅ | DSH agent-instructions (baseline + nested + change tracking) |
 | Built-in MCPs (5) | git_bash, lsp, codegraph, context7, grep_app | ✅ | git_bash (win-gated), lsp (8 tools), codegraph (plugin+init), context7, grep_app (remote rows) + ast_grep extra |
 | Slash commands | /goal /ultrawork /team /hyperplan … | 🟡 | DSH native commands + mpd-codegraph command; omo modes delivered as tools (mpd_ulw/mpd_team_*) |
