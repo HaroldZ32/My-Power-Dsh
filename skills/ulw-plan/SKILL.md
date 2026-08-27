@@ -83,15 +83,15 @@ When producing the plan, encode every executable item as a column-zero Markdown 
 
 When exploration is exhausted and the unknowns are answered, record the gate in the draft (`status: awaiting-approval`, approach, and the next workflow action), present a short brief once, then **wait for the user's explicit okay**. Approval authorizes plan creation only; any already-required review runs afterward under its existing authorization. Full mechanics: `references/full-workflow.md`.
 
-## Delegation (OpenCode-native)
+## Delegation (DeepSeek Harness)
 
-Fan out read-only research before deciding. Every delegated prompt names TASK / DELIVERABLE / SCOPE / VERIFY, states the role inside the prompt, and includes only the context the child needs:
+Fan out read-only research before deciding. Every delegated prompt names TASK / DELIVERABLE / SCOPE / VERIFY, states the role inside the prompt, and includes only the context the child needs; pass the matching preset id as `persona` when the spawn surface exposes it:
 
 ```
-subagent(description="Map the implementation surface", prompt="TASK: act as an explorer. DELIVERABLE: ... SCOPE: ... VERIFY: ...")
+subagent(label="Map the implementation surface", persona: "mpd-explore", run_in_background: true, prompt="TASK: act as an explorer. DELIVERABLE: ... SCOPE: ... VERIFY: ...")
 ```
 
-Roles - the ONLY subagents you may spawn (all read-only, plus `oracle` for the high-accuracy review): `explore` (internal patterns/conventions/tests), `librarian` (external docs/contracts), `metis` (gap analysis), `momus` (high-accuracy plan review). Never dispatch with `category=` - categories spawn implementers - and never instruct a child to edit files. Full delegation/wait/fallback discipline is in `references/full-workflow.md`.
+Roles - the ONLY subagents you may spawn (all read-only, plus `oracle` for the high-accuracy review): `mpd-explore` (internal patterns/conventions/tests), `mpd-librarian` (external docs/contracts), `mpd-metis` (gap analysis), `mpd-momus` (high-accuracy plan review). Never dispatch an implementer persona (`mpd-hephaestus` / `mpd-sisyphus-junior`) - planning spawns no implementers - and never instruct a child to edit files. Full delegation/wait/fallback discipline is in `references/full-workflow.md`.
 
 ## Stop rules
 
