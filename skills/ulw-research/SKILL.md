@@ -3,33 +3,20 @@ name: ulw-research
 description: "Maximum-saturation research orchestration: ALWAYS proposes the final materials first (PDF+DOCX default), then parallel explore+librarian swarms across codebase, web, official docs, and OSS repos — max-roster teammode when the harness has it — with live journaling, a recursive EXPAND loop driven by leads workers return in message text, empirical verification by running code, and a cited synthesis with charts/Mermaid/assets behind a mandatory visual-QA gate. ACTIVATES ONLY on an explicit user demand for research — the word 'ulw-research' in any prefix form, any 'ulw' research wording including combined invocations like 'mass ulw research', 'ultradebate' or 'hyperdebate' research requests, or an explicit request for research / deep research / an ultra-precise investigation, in any language. Never self-activates for ordinary questions, debugging, or implementation context-gathering. While active it overrides exploration-bounding defaults: exhaustive coverage is the goal."
 ---
 
-## Codex Harness Tool Compatibility
+## DSH Harness Tool Compatibility
 
-This skill may include examples copied from the OpenCode harness. In Codex, do not call OpenCode-only tools such as `subagent(...)`, `task(...)`, `job_output(...)`, or `team_*(...)` literally. Translate those examples to Codex native tools:
+Translate any OpenCode/Codex-only tool name to its DeepSeek Harness equivalent:
 
-| OpenCode example | Codex tool to use |
+| OpenCode/Codex example | DSH tool to use |
 | --- | --- |
-| `subagent(sub...)` | `multi_agent_v1.spawn_agent({"message":"TASK: act as an explorer. ...","agent_type":"explorer","fork_context":false})` |
-| `subagent(sub...)` | `multi_agent_v1.spawn_agent({"message":"TASK: act as a librarian. ...","agent_type":"librarian","fork_context":false})` |
-| `subagent(description="plan", ...)` | `multi_agent_v1.spawn_agent({"message":"TASK: act as a planning agent. ...","agent_type":"plan","fork_context":false})` |
-| `subagent(description="oracle", ...)` for final verification | `multi_agent_v1.spawn_agent({"message":"TASK: act as a rigorous reviewer. ...","agent_type":"lazycodex-gate-reviewer","fork_context":false})` |
-| `task(category="...", ...)` for implementation or QA | `multi_agent_v1.spawn_agent({"message":"TASK: act as an implementation or QA worker. ...","fork_context":false})` |
-| `job_output(task_id="...")` | `multi_agent_v1.wait_agent(...)` for mailbox signals |
-| `team_*(...)` | Use Codex native subagents via `multi_agent_v1.spawn_agent` and `multi_agent_v1.wait_agent`; use `multi_agent_v1.send_input` and `multi_agent_v1.close_agent` only when exposed in the active tools list |
+| explorer/librarian `subagent(...)` | `subagent` — `run_in_background: true`, self-contained TASK/DELIVERABLE/SCOPE/VERIFY prompt |
+| planning agent | `subagent` with the planner role stated in the prompt (or `persona: "mpd-prometheus"` when the surface exposes it) |
+| rigorous reviewer | `subagent` with the reviewer role in the prompt (or `persona: "mpd-momus"` / `mpd-oracle`), `model: "deepseek-v4-pro"` |
+| implementation / QA worker | `subagent` (background) with the worker role in the prompt; `model: "deepseek-v4-flash"` |
+| `job_output(task_id="...")` | `job_output` (same name) |
+| `team_*(...)` | `mpd_team_spawn` + `mpd_team_status` |
 
-Role-specific behavior must be described in a self-contained `message`. Use `fork_context: false` to start the child with only the initial prompt (no parent history); use `fork_context: true` only when full parent history is truly required. Include any required conversation context, files, diffs, constraints, and requested skill names directly in the spawned agent's `message`. OMO installs these selectable agent roles into `~/.codex/agents/`: `explorer`, `librarian`, `plan`, `momus`, `metis`, `lazycodex-code-reviewer`, `lazycodex-qa-executor`, and `lazycodex-gate-reviewer` — pass the matching name as `agent_type` so the child gets that role's model and instructions. If the spawn tool exposes no `agent_type` parameter, omit it and describe the role inside `message`. If a code block below conflicts with this section, this section wins.
-
-Codex exposes ONE of two subagent tool surfaces per session; check your own tool list and route accordingly. If `multi_agent_v1.*` tools exist, use the table above as written. If instead a flat `spawn_agent` with a required `task_name` exists (`multi_agent_v2`), rewrite every `multi_agent_v1.*` example: `multi_agent_v1.spawn_agent({...,"fork_context":false})` becomes `spawn_agent({"task_name":"<lowercase_digits_underscores>","message":...,"agent_type":...,"fork_turns":"none"})` (`"all"` only when full parent history is truly required); `send_input` becomes `send_message`; do not call `close_agent`/`resume_agent` (finished agents end on their own; `followup_task` re-tasks one, `interrupt_agent` stops one); `wait_agent` takes only `timeout_ms` and returns on any child mailbox activity. `agent_type` works the same on both surfaces. If a code block below conflicts with this section, this section wins.
-
-For work likely to exceed one wait cycle, require the child to send `WORKING: <task> - <current phase>` before long passes and `BLOCKED: <reason>` only when progress stops. A `multi_agent_v1.wait_agent` timeout only means no new mailbox update arrived. Treat a running child as alive. Fallback only when the child is completed without the deliverable, ack-only after followup, explicitly `BLOCKED:`, or no longer running.
-
-When translating ``, include the requested skill names in the spawned agent's `message`. If a code block below conflicts with this section, this section wins.
-
----
-
-# ULW-RESEARCH — Maximum-Saturation Research
-
-You are the research orchestrator. The user has explicitly ordered exhaustive research: fan parallel worker swarms out over every relevant source, chase every lead they surface until the leads run dry, prove contested claims by running code, and deliver a synthesis in which every claim carries a citation or a proof. Exhaustive coverage is the assignment, not a risk to manage.
+Role-specific behavior goes in a self-contained prompt. `subagent` starts the child with only the initial prompt; `subagent_fork` is reserved for full-parent-history children. Include any required context, files, diffs, constraints, and skill names directly in the prompt. The mpd presets (mpd-explore / mpd-librarian / mpd-prometheus / mpd-momus / mpd-metis / mpd-hephaestus) are the selectable roles — pass the matching id as `persona` so the child gets that role's model and instructions, or state the role in the prompt when the surface has no `persona` parameter.
 
 ## Activation
 

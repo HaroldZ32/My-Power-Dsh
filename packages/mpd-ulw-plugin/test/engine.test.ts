@@ -7,6 +7,7 @@ import { apply } from "../src/index.ts"
 function makeCtx() {
   const tools: any[] = []
   const calls: string[] = []
+  const spawns: any[] = []
   const canned: Record<string, any> = {
     "-planner": { structured: { plan: "# plan\n1. do it", checklist: [{ key: "1", label: "create file" }], reviewRequired: false } },
     "-planrev0": { structured: { verdict: "approve", concerns: [] } },
@@ -23,6 +24,7 @@ function makeCtx() {
     subagents: {
       start(provider: string, opts: any) {
         calls.push("spawn:" + opts.label.split("-").pop())
+        spawns.push(opts)
         const key = Object.keys(canned).find((k) => opts.label.includes(k.replace("-", "").slice(0, 3)) && opts.label.endsWith(k.slice(1))) ?? opts.label
         const label = opts.label
         let match: any = null
@@ -31,7 +33,7 @@ function makeCtx() {
       }
     }
   }
-  return { ctx, tools, calls }
+  return { ctx, tools, calls, spawns }
 }
 
 test("engine policy: plan -> round -> verify -> quality gate with ledger", async () => {
@@ -73,4 +75,33 @@ test("engine alias and 2-fruitless-waves stop", async () => {
   const alias = tools.find((t) => t.name === "mpd_ulw")
   expect(alias).toBeTruthy()
   expect(res.status).toBe("complete")
+})
+
+test("DeepSeek V4 / DSH contract: role text in prompt (no persona field), pro for planner/reviewer, compact handoff", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "mpd-ulw3-"))
+  const planDir = join(dir, "plans")
+  const stateDir = join(dir, "state")
+  mkdirSync(planDir, { recursive: true })
+  const { ctx, tools, spawns } = makeCtx()
+  apply(ctx, { planDir, stateDir, provider: "deepseek-official", model: "deepseek-v4-flash" })
+  const tool = tools.find((t) => t.name === "mpd_ultrawork")
+  await tool.execute({ objective: "create utils.txt", tier: "light", plan: true, strictReview: true, maxRounds: 1 }, { agent: {} })
+  const planner = spawns.find((o) => o.label.includes("-planner"))
+  const round = spawns.find((o) => o.label.includes("-r1"))
+  const verifier = spawns.find((o) => o.label.includes("-verify0"))
+  // role persona text is folded into the child prompt, never passed as a preset id
+  expect(planner).toBeTruthy()
+  expect(planner.persona).toBeUndefined()
+  expect(String(planner.prompt?.[0]?.text ?? "")).toContain("exacting planner")
+  expect(round.persona).toBeUndefined()
+  expect(String(round.prompt?.[0]?.text ?? "")).toContain("ULTRAWORK DISCIPLINE")
+  // reasoning-heavy gates route to the pro model; execution rounds keep flash
+  expect(planner.agentOptions.model).toBe("deepseek-v4-pro")
+  expect(verifier.agentOptions.model).toBe("deepseek-v4-pro")
+  expect(round.agentOptions.model).toBe("deepseek-v4-flash")
+  // prompt tail carries durable-state references, not the whole recap
+  const rp = String(round.prompt?.[0]?.text ?? "")
+  expect(rp).toContain("Durable state:")
+  expect(rp).toContain("Recent handoff:")
+  expect(rp).not.toContain("Previous handoff:")
 })

@@ -59,21 +59,17 @@ function apply(ctx, config = {}) {
   const reviewerModel = config.reviewerModel ?? "deepseek-v4-pro";
   const maxReReviews = config.maxReReviews ?? 2;
   async function spawnChild(opts) {
+    const fullPrompt = [opts.persona, opts.prompt].filter(Boolean).join(String.fromCharCode(10, 10));
     const run = await ctx.subagents.start("spawn", {
       label: opts.label,
-      prompt: textBlock(opts.prompt),
+      prompt: textBlock(fullPrompt),
       parent: opts.parent,
       signal: opts.signal,
       agentOptions: { provider, model: opts.model ?? model },
       outputSchema: opts.schema,
-      persona: opts.persona,
       ...opts.maxDepth === undefined ? {} : { maxDepth: opts.maxDepth }
     });
     return run.result;
-  }
-  function reportText(r, recap) {
-    const crit = Array.isArray(r?.criteria) ? r.criteria : [];
-    return "summary: " + String(r?.summary ?? "-") + String.fromCharCode(10) + "wave: " + String(r?.wave ?? "-") + String.fromCharCode(10) + "criteria: " + JSON.stringify(crit.map((c) => ({ key: c.key, state: c.state }))) + String.fromCharCode(10) + "evidence:" + String.fromCharCode(10) + (Array.isArray(r?.evidence) ? r.evidence.map((e) => "  - " + e).join(String.fromCharCode(10)) : "") + String.fromCharCode(10) + "nextSteps:" + String.fromCharCode(10) + (Array.isArray(r?.nextSteps) ? r.nextSteps.map((s) => "  - " + s).join(String.fromCharCode(10)) : "") + String.fromCharCode(10) + recap.join(String.fromCharCode(10));
   }
   function upsertCriteria(acc, crit) {
     for (const c of crit ?? []) {
@@ -139,6 +135,7 @@ function apply(ctx, config = {}) {
           schema: { type: "object", properties: { concerns: { type: "array", items: { type: "string" } }, weakestAssumptions: { type: "array", items: { type: "string" } }, insights: { type: "array", items: { type: "string" } } }, required: ["concerns", "weakestAssumptions", "insights"] },
           parent: exec.agent,
           signal: exec.signal,
+          model: reviewerModel,
           prompt: "Adversarial category: " + c.persona + ". " + c.angle + String.fromCharCode(10) + "Objective: " + objective + String.fromCharCode(10) + "End with ONLY the structured report (concerns/weakestAssumptions/insights)."
         }).then((r) => r.structured ?? {}));
         const results = await Promise.all(starts);
@@ -159,6 +156,7 @@ function apply(ctx, config = {}) {
           schema: { type: "object", properties: { plan: { type: "string" }, checklist: { type: "array", items: { type: "object", properties: { key: { type: "string" }, label: { type: "string" } }, required: ["key", "label"] } }, reviewRequired: { type: "boolean" } }, required: ["plan", "checklist", "reviewRequired"] },
           parent: exec.agent,
           signal: exec.signal,
+          model: reviewerModel,
           prompt: "Objective: " + objective + String.fromCharCode(10) + (insights.length ? "Insight bundle: " + JSON.stringify(insights) : "") + String.fromCharCode(10) + "Write a decision-complete plan as markdown, list the checklist (criteria with key+label, one per success criterion incl. edge + regression + adversarial for HEAVY), set reviewRequired=true only when the tier is HEAVY or the change set is sensitive. End with ONLY the structured report."
         });
         const p = planner?.structured ?? {};
@@ -202,7 +200,8 @@ function apply(ctx, config = {}) {
       for (let round = 1;round <= rounds; round++) {
         used = round;
         const critNow = [...criteria.values()].map((c) => "- [" + c.key + "] " + c.label + " -> " + c.state);
-        const prompt = DIRECTIVE + String.fromCharCode(10, 10) + "ULW round " + round + "/" + rounds + String.fromCharCode(10) + "Objective: " + objective + String.fromCharCode(10) + (planFile ? "Plan file: " + planFile + String.fromCharCode(10) : "") + "Criteria:" + String.fromCharCode(10) + (critNow.join(String.fromCharCode(10)) || "(discover and pin criteria in this round)") + String.fromCharCode(10) + "Previous handoff:" + String.fromCharCode(10) + (recap.join(String.fromCharCode(10)) || "(none - first round)");
+        const recent = recap.slice(-3);
+        const prompt = DIRECTIVE + String.fromCharCode(10, 10) + "ULW round " + round + "/" + rounds + String.fromCharCode(10) + "Objective: " + objective + String.fromCharCode(10) + (planFile ? "Plan file: " + planFile + String.fromCharCode(10) : "") + "Durable state: " + stateFile + " (ledger: " + ledgerFile + " - read them for full history)" + String.fromCharCode(10) + "Criteria:" + String.fromCharCode(10) + (critNow.join(String.fromCharCode(10)) || "(discover and pin criteria in this round)") + String.fromCharCode(10) + "Recent handoff:" + String.fromCharCode(10) + (recent.join(String.fromCharCode(10)) || "(none - first round)");
         const run = await spawnChild({ label: id + "-r" + round, schema: REPORT_SCHEMA, parent: exec.agent, signal: exec.signal, prompt });
         const r = run?.structured ?? {};
         const crit = Array.isArray(r.criteria) ? r.criteria : [];
@@ -215,7 +214,7 @@ function apply(ctx, config = {}) {
         state.wave = round;
         state.criteria = [...criteria.values()];
         writeJson(stateFile, state);
-        recap.push("round " + round + ": " + reportText(r, []));
+        recap.push("round " + round + ": " + String(r?.summary ?? "no summary"));
         finalReport = "round " + round + ": " + String(r?.summary ?? "no summary");
         if (r?.status === "complete" && allClean(criteria)) {
           status = "complete";
