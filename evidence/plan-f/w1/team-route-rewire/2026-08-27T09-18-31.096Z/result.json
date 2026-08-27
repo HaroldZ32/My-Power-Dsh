@@ -1,0 +1,35 @@
+{
+  "ok": false,
+  "sandbox": "/home/haroldzhao/dshProj/my-power-dsh/.qa-reloc/home-rewire",
+  "steps": {
+    "install": {
+      "ok": false,
+      "exit": 1
+    },
+    "dump": {
+      "ok": false,
+      "exit": 0,
+      "leaked": false
+    },
+    "resolution": {
+      "ok": true,
+      "out": "FIRSTPARTY_OK /home/haroldzhao/dshProj/my-power-dsh/.qa-reloc/mpd-pkg-relocated/packages/mpd-agent-teams/package.json\nPKG_ABSENT"
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "bootstrap": {
+      "ok": true
+    },
+    "installedTexts": {
+      "ok": true,
+      "files": 4
+    },
+    "webRoute": {
+      "ok": false,
+      "status": 404,
+      "addExit": 1
+    }
+  }
+}

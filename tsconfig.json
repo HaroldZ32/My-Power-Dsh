@@ -12,5 +12,8 @@
   },
   "include": [
     "packages/*/src/**/*.ts"
+  ],
+  "exclude": [
+    "packages/mpd-agent-teams"
   ]
 }

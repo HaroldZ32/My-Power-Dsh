@@ -214,7 +214,7 @@ export function installMemberSelectionRuntime(ctx, stateDir) {
             const memberName = identity.slice(separator + 1);
             const workspace = child.session.header.cwd ?? process.cwd();
             const team = readTeamSync(join(workspace, stateDir), teamId);
-            if (team?.captainSessionId !== parentSessionId)
+            if (team === undefined || team.captainSessionId !== parentSessionId)
                 return () => undefined;
             const durableMember = team.members.find(member => member.name === memberName);
             selection = selectionFromMember(durableMember);

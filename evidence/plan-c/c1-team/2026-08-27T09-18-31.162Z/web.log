@@ -1,0 +1,16 @@
+file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:817
+		throw new Error(`${binName}: failed to read overlay ${file}: ${String(error)}`);
+		      ^
+
+Error: dsh: failed to read overlay /tmp/mpd-c1-VLzYVr/profiles/mpd/node_modules/@mpd-dsh/agent-teams/cordis.patch.yml: Error: ENOENT: no such file or directory, open '/tmp/mpd-c1-VLzYVr/profiles/mpd/node_modules/@mpd-dsh/agent-teams/cordis.patch.yml'
+    at loadOverlayPatches (file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:817:9)
+    at file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:555:13
+    at Array.map (<anonymous>)
+    at loadProfile (file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:546:117)
+    at prepareProfile (file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-DG5t9aNs.js:142:18)
+    at composeProfile (file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-DG5t9aNs.js:167:18)
+    at runProfile (file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-DG5t9aNs.js:221:19)
+    at file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:133:9
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+
+Node.js v24.19.0

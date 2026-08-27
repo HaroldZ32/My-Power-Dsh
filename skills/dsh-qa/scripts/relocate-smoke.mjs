@@ -37,7 +37,7 @@ async function runReal() {
   mkdirSync(profile, { recursive: true })
   cpSync(creds, join(home, ".credentials.yaml"))
   mkdirSync(join(reloc, "ws"), { recursive: true })
-  writeFileSync(join(profile, "package.json"), JSON.stringify({ name: "dsh-profile-t", private: true, dependencies: { ["@mpd-dsh/mpd"]: "file:" + staged, "@nanmicoder/dsh-agent-teams": "^0.1.13" }, dsh: { profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-headless"] } } }, null, 2) + "\n")
+  writeFileSync(join(profile, "package.json"), JSON.stringify({ name: "dsh-profile-t", private: true, dependencies: { ["@mpd-dsh/mpd"]: "file:" + staged }, dsh: { profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-headless"] } } }, null, 2) + "\n")
   const env = { ...process.env, DSH_HOME: home }
   const steps = {}
   console.log("[relocate-smoke] npm install (agent-teams + ast-grep + codegraph)...")

@@ -1,7 +1,8 @@
 {
-  "name": "@nanmicoder/dsh-agent-teams",
+  "name": "@mpd-dsh/agent-teams",
   "version": "0.1.14",
-  "description": "AgentTeams for DeepSeek Harness: multi-agent team collaboration (captain, members, tasks with dependencies, messaging) driven by natural language, with a tree monitor in the web GUI",
+  "description": "MPD first-party fork of AgentTeams for DeepSeek Harness: captain/members/tasks/messaging team protocol, Web tree monitor; source-integrated from NanmiCoder/dsh-agent-teams v0.1.14 (MIT) per docs/plan-f.md W1.",
+  "private": true,
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
@@ -25,7 +26,8 @@
     "cordis.patch.yml",
     "release-notes",
     "README.md",
-    "README_ZH.md"
+    "README_ZH.md",
+    "src"
   ],
   "license": "MIT",
   "author": {
@@ -54,9 +56,14 @@
   "engines": {
     "node": "^22.19.0 || >=24"
   },
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
+  "mpd": {
+    "provenance": {
+      "upstream": "NanmiCoder/dsh-agent-teams",
+      "upstreamTag": "v0.1.14",
+      "upstreamCommitSha": "5fe388f1a30da7b1374294b25bd6f8ad74ab6aa5",
+      "license": "MIT",
+      "note": "First-party source integration per docs/plan-f.md; pristine src snapshot tree-locked in VENDOR_LOCK.json (evidence/plan-f/w0/upstream-src)."
+    }
   },
   "dsh": {
     "bundle": {
@@ -74,12 +81,13 @@
     }
   },
   "scripts": {
-    "build": "node scripts/clean-build.mjs && tsc -p tsconfig.json && tsc -p tsconfig.client.json && tsdown",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.client.json --noEmit",
-    "sync:skill": "node scripts/sync-skill.mjs",
-    "verify:skill": "node scripts/sync-skill.mjs --check",
-    "verify": "node scripts/verify.mjs && node scripts/fallback-tdd.mjs && node scripts/quality-gates-tdd.mjs && node scripts/lifecycle-verify.mjs && node scripts/stress-verify.mjs && pnpm verify:skill",
-    "prepublishOnly": "pnpm build && pnpm verify"
+    "build": "node ../../scripts/build-agent-teams.mjs",
+    "typecheck": "tsgo --noEmit -p tsconfig.json",
+    "test": "node scripts/quality-gates-tdd.mjs && node scripts/fallback-tdd.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "typescript": "^5.9.3"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1-rc.1",
@@ -152,32 +160,5 @@
     "react": {
       "optional": true
     }
-  },
-  "devDependencies": {
-    "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-agent": "0.1.0-rc.8",
-    "@deepseek-ai/dsh-client-locale": "0.1.0-rc.8",
-    "@deepseek-ai/dsh-client-runtime": "0.1.0-rc.8",
-    "@deepseek-ai/dsh-client-ui-conversation": "0.1.0-rc.8",
-    "@deepseek-ai/dsh-client-ui-layout": "0.1.0-rc.8",
-    "@deepseek-ai/dsh-client-ui-model-selection": "0.1.0-rc.8",
-    "@deepseek-ai/dsh-client-ui-primitives": "0.1.0-rc.8",
-    "@deepseek-ai/dsh-client-ui-slots": "0.1.0-rc.8",
-    "@deepseek-ai/dsh-commands": "0.1.0-rc.8",
-    "@deepseek-ai/dsh-llm": "0.1.0-rc.8",
-    "@deepseek-ai/dsh-session": "0.1.0-rc.8",
-    "@deepseek-ai/dsh-subagent": "0.1.0-rc.8",
-    "@deepseek-ai/dsh-system-prompt": "0.1.0-rc.8",
-    "@deepseek-ai/dsh-tools": "0.1.0-rc.8",
-    "@deepseek-ai/dsh-workspace": "0.1.0-rc.8",
-    "@deepseek-ai/schemastery": "^3.18.1",
-    "@types/node": "^24.13.3",
-    "@types/react": "~18.3.1",
-    "@types/react-dom": "^18.3.7",
-    "lightningcss": "^1.33.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "tsdown": "0.22.2",
-    "typescript": "^5.9.3"
   }
 }

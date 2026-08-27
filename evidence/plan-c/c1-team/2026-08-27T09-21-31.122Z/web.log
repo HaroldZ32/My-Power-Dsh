@@ -1,0 +1,2 @@
+[mpd-codegraph] init status=marker binary=/home/haroldzhao/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-c1-jEqG8v/ws
+dsh web: http://127.0.0.1:3199

@@ -25,6 +25,25 @@ const PLUGIN_PKGS = [
   "mpd-bootstrap-plugin"
 ]
 const MCP_PKGS = ["mpd-mcp-astgrep", "mpd-mcp-gitbash", "mpd-mcp-lsp", "mpd-mcp-codegraph"]
+const AGENT_TEAMS_PKG = "mpd-agent-teams"
+
+// Agent-teams is first-party now: copy the built package (lib/_deps/assets/readme/
+// license + manifest). Source, dev toolchain, and upstream verify scripts stay out of
+// the staged bundle.
+function cpAgentTeams() {
+  const src = join(repoRoot, "packages", AGENT_TEAMS_PKG)
+  const dst = join(outDir, "packages", AGENT_TEAMS_PKG)
+  if (!existsSync(src)) throw new Error("packages/" + AGENT_TEAMS_PKG + " missing; run scripts/build-agent-teams.mjs first")
+  mkdirSync(dst, { recursive: true })
+  cpSync(src, dst, { recursive: true, filter: (f) => {
+    const rel = f.slice(src.length + 1).split(/[\\/]/).join("/")
+    if (rel === "") return true
+    const first = rel.split("/")[0]
+    if (["node_modules", "src", "scripts", "docs"].includes(first)) return false
+    if (rel === "tsconfig.json" || rel === "tsconfig.build.json") return false
+    return true
+  } })
+}
 
 function cpDist() {
   for (const p of [...PLUGIN_PKGS, ...MCP_PKGS]) {
@@ -42,7 +61,7 @@ function cpAssets() {
   const skillsSrc = join(repoRoot, "skills")
   if (existsSync(skillsSrc)) cpSync(skillsSrc, join(outDir, "skills"), { recursive: true })
   cpSync(join(repoRoot, "packages", "mpd-presets-plugin", "presets"), join(outDir, "presets"), { recursive: true })
-  cpSync(join(repoRoot, "third-party"), join(outDir, "third-party"), { recursive: true })
+  cpAgentTeams()
   for (const f of ["LICENSE.md", "LICENSE-NOTICES.md", "README.md"]) {
     if (existsSync(join(repoRoot, f))) cpSync(join(repoRoot, f), join(outDir, f))
   }
@@ -83,30 +102,29 @@ function writeManifest() {
       "./packages/*": "./packages/*",
       "./skills/*": "./skills/*",
       "./presets/*": "./presets/*",
-      "./client": "./third-party/dsh-agent-teams/lib/client.js",
-      "./third-party/dsh-agent-teams": "./third-party/dsh-agent-teams/lib/index.js",
-      "./third-party/dsh-agent-teams/*": "./third-party/dsh-agent-teams/*"
+      "./client": "./packages/mpd-agent-teams/lib/client.js",
+      "./packages/mpd-agent-teams": "./packages/mpd-agent-teams/lib/index.js",
+      "./packages/mpd-agent-teams/*": "./packages/mpd-agent-teams/*"
     },
     files: [
       "packages/**",
       "skills/**",
       "presets/**",
-      "third-party/**",
       "cordis.patch.yml",
       "LICENSE.md", "LICENSE-NOTICES.md", "README.md"
     ],
     dsh: {
       bundle: { patch: "./cordis.patch.yml" },
       client: {
-        inject: ["@deepseek-ai/dsh-client-locale", "@deepseek-ai/dsh-client-runtime", "@deepseek-ai/dsh-client-ui-conversation", "@deepseek-ai/dsh-client-ui-layout"],
+        inject: ["@deepseek-ai/dsh-client-locale", "@deepseek-ai/dsh-client-runtime", "@deepseek-ai/dsh-client-ui-conversation", "@deepseek-ai/dsh-client-ui-layout", "@deepseek-ai/dsh-client-ui-model-selection"],
         platform: "web"
       }
     },
-    // @nanmicoder/dsh-agent-teams (MIT, adopted team plugin) is VENDORED under
-    // third-party/dsh-agent-teams and loaded through the exports map above. A plain
-    // `dependencies` entry is NOT enough: pnpm (the engine behind `dsh plugin add`)
-    // never links a bundle's transitive deps into the profile root, so the plugin's
-    // row would silently self-disable at boot (repro: evidence/plan-e/e1-team-route
+    // agent-teams is FIRST-PARTY: built from source into packages/mpd-agent-teams/
+    // (lib + _deps runtime closure + assets) and loaded through the exports map above.
+    // No `dependencies` entry: pnpm (the engine behind `dsh plugin add`) never links
+    // a bundle's transitive deps into the profile root, so a plain package-name row
+    // would silently self-disable at boot (repro: evidence/plan-e/e1-team-route
     // 2026-08-27T07-38-13.142Z FAIL bundleDependency).
     // Toolchain binaries stay as optionalDependencies (installed separately):
     //  - @ast-grep/cli / @colbymchenry/codegraph / @code-yeongyu/comment-checker

@@ -96,17 +96,20 @@
 
 # ── Remote MCP rows (public services; network required, optional per use) ──
 - insert:
-    # The adopted team plugin is VENDORED at third-party/dsh-agent-teams (MIT,
-    # @nanmicoder/dsh-agent-teams 0.1.14) and loads through the bundle exports map:
-    # pnpm-driven `dsh plugin add` never links a bundle's transitive dependencies
-    # into the profile root, so a plain package-name row would silently self-disable.
-    # The row therefore needs NO self-disabling guard - the vendored code always exists.
+    # The team plugin is FIRST-PARTY (native): built from source into
+    # packages/mpd-agent-teams (src -> lib + _deps runtime closure + assets) and loaded
+    # through the bundle exports map; pnpm-driven `dsh plugin add` never links a
+    # bundle's transitive dependencies into the profile root, so a plain package-name
+    # row would silently self-disable. The row therefore needs NO self-disabling guard.
+    # Depth model (plan-f Q5): memberMaxDepth is user-configurable, default 3
+    # (captain 0 -> member 1 -> leaf 2 -> optional deeper); leaves deny further
+    # delegation at spawn time (W3 leaf toolFilter).
     - id: agent-teams
-      name: '@mpd-dsh/mpd/third-party/dsh-agent-teams'
+      name: '@mpd-dsh/mpd/packages/mpd-agent-teams'
       config:
         stateDir: .mpd/team
         memberProvider: spawn
-        memberMaxDepth: 1
+        memberMaxDepth: 3
 
 - insert:
     - id: mcp-context7

@@ -105,8 +105,8 @@ function buildPlan(o) {
     }
   ]
   const agentTeamsRow = {
-    id: "agent-teams", name: "@nanmicoder/dsh-agent-teams",
-    config: { stateDir: ".mpd/team", memberProvider: "spawn", memberMaxDepth: 1 }
+    id: "agent-teams", name: "@mpd-dsh/agent-teams",
+    config: { stateDir: ".mpd/team", memberProvider: "spawn", memberMaxDepth: 3 }
   }
   if (o.agentTeams !== false) rows.push(agentTeamsRow)
   // Compat track (dsh-llm-pi-ai, provider "deepseek") is OFF by default: the stock
@@ -173,26 +173,27 @@ function selfTest() {
 }
 
 function installAgentTeams(profile, dshHome) {
-  // Legacy dev/QA flow: materialize the adopted plugin into the profile dir with
-  // npm --prefix (the package marks its @deepseek-ai/* + react peers optional;
-  // the host's flat fallback $DSH_HOME/profiles/node_modules resolves them at
-  // boot), then reconcile dsh.profile.bundles exactly like `dsh plugin add`
-  // would. The PRIMARY (plan-d) bundle flow no longer needs this: the plugin is
-  // vendored at third-party/dsh-agent-teams and loaded via the bundle exports.
+  // Legacy dev/QA flow: materialize the FIRST-PARTY agent-teams package into the
+  // profile dir with npm --prefix using a local file: path (the package marks its
+  // @deepseek-ai/* + react peers optional; the host's flat fallback
+  // $DSH_HOME/profiles/node_modules resolves them at boot), then reconcile
+  // dsh.profile.bundles exactly like `dsh plugin add` would. The PRIMARY (plan-d)
+  // bundle flow no longer needs this: the plugin is built from source into
+  // packages/mpd-agent-teams and loaded via the bundle exports.
   const profileDir = join(dshHome, "profiles", profile)
   const manifestPath = join(profileDir, "package.json")
   const cache = join(profileDir, ".npm-cache")
-  const r = spawnSync("npm", ["install", "--prefix", profileDir, "--no-audit", "--no-fund", "--cache", cache, "@nanmicoder/dsh-agent-teams@0.1.14"], {
+  const r = spawnSync("npm", ["install", "--prefix", profileDir, "--no-audit", "--no-fund", "--cache", cache, "file:" + join(repoRoot, "packages", "mpd-agent-teams")], {
     env: { ...process.env, npm_config_cache: cache },
     stdio: "inherit"
   })
   if (r.status !== 0) return false
-  const pkgPath = join(profileDir, "node_modules", "@nanmicoder", "dsh-agent-teams", "package.json")
+  const pkgPath = join(profileDir, "node_modules", "@mpd-dsh", "agent-teams", "package.json")
   if (!existsSync(pkgPath)) return false
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"))
   const pkg = JSON.parse(readFileSync(pkgPath, "utf8"))
   const bundles = manifest.dsh?.profile?.bundles ?? []
-  if (pkg.dsh?.bundle?.patch && !bundles.includes("@nanmicoder/dsh-agent-teams")) bundles.push("@nanmicoder/dsh-agent-teams")
+  if (pkg.dsh?.bundle?.patch && !bundles.includes("@mpd-dsh/agent-teams")) bundles.push("@mpd-dsh/agent-teams")
   manifest.dsh = { ...(manifest.dsh ?? {}), profile: { ...(manifest.dsh?.profile ?? {}), bundles } }
   writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n")
   return true
