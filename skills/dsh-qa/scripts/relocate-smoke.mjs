@@ -37,7 +37,7 @@ async function runReal() {
   mkdirSync(profile, { recursive: true })
   cpSync(creds, join(home, ".credentials.yaml"))
   mkdirSync(join(reloc, "ws"), { recursive: true })
-  writeFileSync(join(profile, "package.json"), JSON.stringify({ name: "dsh-profile-t", private: true, dependencies: { ["@mpd-dsh/mpd"]: "file:" + staged, "@nanmicoder/dsh-agent-teams": "^0.1.13" }, dsh: { profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-headless"] } } }, null, 2) + "\n")
+  writeFileSync(join(profile, "package.json"), JSON.stringify({ name: "dsh-profile-t", private: true, dependencies: { ["@mpd-dsh/mpd"]: "file:" + staged }, dsh: { profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-headless"] } } }, null, 2) + "\n")
   const env = { ...process.env, DSH_HOME: home }
   const steps = {}
   console.log("[relocate-smoke] npm install (agent-teams + ast-grep + codegraph)...")
@@ -57,7 +57,7 @@ async function runReal() {
   steps.live = { ok: live.status === 0, exit: live.status }
   const presets = join(home, ".agent-presets")
   const presetIds = existsSync(presets) ? readdirSync(presets).filter((d) => d.startsWith("mpd-")) : []
-  steps.presets = { ok: presetIds.length === 11, count: presetIds.length }
+  steps.presets = { ok: presetIds.length === 12 && presetIds.includes("mpd-captain"), count: presetIds.length, ids: presetIds.sort() }
   const userSkills = join(home, "skills")
   const skillDirs = existsSync(userSkills) ? readdirSync(userSkills).filter((d) => { try { return existsSync(join(userSkills, d, "SKILL.md")) } catch { return false } }) : []
   steps.skills = { ok: skillDirs.length >= 18, count: skillDirs.length }

@@ -5,14 +5,19 @@
 - Third-party components keep their original licenses/notices in their source trees.
 - DSH packages (@deepseek-ai/*) are MIT licensed and referenced as dependencies only.
 
-## dsh-agent-teams (MIT) — adopted third-party plugin (vendored)
+## dsh-agent-teams (MIT) — adopted first-party plugin (source-integrated)
 
 The `agent-teams` plugin (tools `agent_teams_*`, Web activity panel, team scheduler)
-is adopted from the dsh-agent-teams project (v0.1.14,
+is adopted from the dsh-agent-teams project (v0.1.14, tag object
+637399ce6c4ef201284de05c79982e82b7a866b1, commit
+5fe388f1a30da7b1374294b25bd6f8ad74ab6aa5,
 https://github.com/NanmiCoder/dsh-agent-teams) and distributed under the MIT License.
-The plugin is **vendored** at `third-party/dsh-agent-teams/` (lib + assets + package
-manifest; loaded via the bundle exports map). Its server-side runtime closure is vendored
-under `third-party/dsh-agent-teams/_deps/` with each package's own LICENSE retained:
+The plugin is **native to this repository** at `packages/mpd-agent-teams/`: the upstream
+TypeScript source is imported (pristine snapshot under
+`evidence/plan-f/w0/upstream-src/`, tree-locked by `VENDOR_LOCK.json`), modified, and
+built from source by this repo (lib + assets + package manifest; loaded via the bundle
+exports map). Its server-side runtime closure is vendored under
+`packages/mpd-agent-teams/_deps/` with each package's own LICENSE retained:
 - `@deepseek-ai/schemastery`, `@deepseek-ai/cosmokit`, `@deepseek-ai/cordis`,
   `@deepseek-ai/dsh-scope`, `@deepseek-ai/dsh-timeout`, `@deepseek-ai/dsh-llm`,
   `@deepseek-ai/dsh-session`, `@deepseek-ai/dsh-subagent`, `@deepseek-ai/dsh-tools`,
@@ -22,8 +27,8 @@ under `third-party/dsh-agent-teams/_deps/` with each package's own LICENSE retai
 - `zod` (MIT) and `@standard-schema/spec` (MIT).
 Native package-name resolution cannot be relied on (pnpm never links a bundle's
 transitive deps into the profile root, and code outside the profile's node_modules
-cannot see `@deepseek-ai/*`), hence the vendoring. Original license text retained at
-`third-party/dsh-agent-teams/LICENSE`.
+cannot see `@deepseek-ai/*`), hence the runtime-closure vendoring under `_deps/`.
+Original license text retained at `packages/mpd-agent-teams/LICENSE`.
 
 MIT License
 

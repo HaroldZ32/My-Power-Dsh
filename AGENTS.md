@@ -21,14 +21,18 @@ License: SUL-1.0 (`LICENSE.md`); inheritance declared in `README.md`.
   and `MPD_CODEGRAPH_BIN` (codegraph serve) are read by upstream vendored code.
 - DSH plugin names (`@deepseek-ai/dsh-llm-deepseek`, `dsh-llm-pi-ai`, `dsh-mcp-client`, …) are the
   host's API and are never renamed.
-- **Adopted third-party plugins keep their vendor ids and tool names** (intentional namespace
-  exception, same rule as the `context7`/`grep_app` remote MCP rows): the `agent-teams`
-  plugin (tools `agent_teams_*`, Web activity panel) is adopted from
-  `@nanmicoder/dsh-agent-teams` (MIT, v0.1.14) and **vendored** at `third-party/dsh-agent-teams/`
-  (runtime deps under `_deps/`): it loads from the bundle exports map, so it needs no npm
-  dependency and works under every install layout (pnpm never links a bundle's transitive
-  deps into the profile root — see §12). See LICENSE-NOTICES.md. Its `stateDir` is overridden
-  to `.mpd/team` so all our state stays under one `.mpd` root.
+- **Adopted sources become first-party and keep their vendor ids and tool names** (intentional
+  namespace exception, same rule as the `context7`/`grep_app` remote MCP rows): the
+  `agent-teams` plugin (tools `agent_teams_*`, Web activity panel) is adopted from
+  `NanmiCoder/dsh-agent-teams` (MIT, v0.1.14, commit
+  `5fe388f1a30da7b1374294b25bd6f8ad74ab6aa5`) and is **source-integrated** at
+  `packages/mpd-agent-teams/` (upstream TS under `src/`, built to `lib/` by
+  `scripts/build-agent-teams.mjs`; runtime deps vendored under `_deps/`): it loads from
+  the bundle exports map, so it needs no npm dependency and works under every install layout
+  (pnpm never links a bundle's transitive deps into the profile root — see §12). Pristine
+  upstream snapshot tree-locked under `evidence/plan-f/w0/upstream-src/` (VENDOR_LOCK).
+  See LICENSE-NOTICES.md. Its `stateDir` is overridden to `.mpd/team` so all our state
+  stays under one `.mpd` root.
 
 ---
 
@@ -68,7 +72,9 @@ mpd-dsh/
 │   ├── mpd-tools-plugin/         # B1: write guard, truncation, edit-error recovery
 │   ├── mpd-modelchain-plugin/    # B4: mpd_modelchain_resolve + mpd_memory_save/recall
 │   ├── mpd-ulw-plugin/           # B3: mpd_ulw loop discipline
-│   ├── mpd-team-plugin/          # B2: mpd_team_spawn / mpd_team_status
+│   ├── mpd-agent-teams/          # plan-f: first-party agent-teams source (src + computed lib + _deps)
+│   ├── mpd-leaf-plugin/           # plan-f: mpd_leaf_iterate + mpd_gate_run (leaf layer)
+│   ├── mpd-team-plugin/          # B2: mpd_team_spawn / mpd_team_status (superseded by agent-teams)
 │   ├── mpd-codegraph-plugin/     # binary resolve + project init + mpd-codegraph command
 │   ├── mpd-hashline-plugin/      # C3: anchored edit discipline (vendor hashline-core)
 │   ├── mpd-boulder-plugin/       # C5: durable work ledger (vendor boulder-state)
@@ -92,7 +98,8 @@ mpd-dsh/
 | Gate | Command | When |
 |---|---|---|
 | Vendor | `node scripts/verify-vendor.mjs` | any baseline/asset change; before release |
-| Tests | `bun test` (per package) + `bun run typecheck` | every plugin change |
+| Tests | `bun test` (per package) + `bun run typecheck` + `bun run test:agent-teams` | every plugin change |
+| Agent-teams build | `node scripts/build-agent-teams.mjs` | any `packages/mpd-agent-teams/src` change (tsc emit + _deps rewrite; host lib import check) |
 | QA self-tests | `bun run test:qa` (all `--self-test`) | every plugin/QA-script change |
 | QA real cases | `node skills/dsh-qa/scripts/<case>.mjs` | runtime-behavior changes |
 | Installer | `node scripts/install-profile.mjs --dry-run` | any bundle-patch/installer change |
@@ -169,8 +176,8 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   plugin rows use the resolvable `name: '@mpd-dsh/mpd/packages/...'`, every path-bearing
   value uses the loader's `baseUrl` (the profile directory), binaries come from the
   package's `optionalDependencies` (`@ast-grep/cli`, `@colbymchenry/codegraph`),
-  `@nanmicoder/dsh-agent-teams` is a dependency, presets auto-copy at boot via
-  `mpd-bootstrap` (version-stamped, idempotent).
+  agent-teams is first-party source (`packages/mpd-agent-teams`, built before packing —
+  no npm dependency), presets auto-copy at boot via `mpd-bootstrap` (version-stamped, idempotent).
 - Install from a checkout: `cd <repo> && dsh plugin --profile web add .`
   (or from a published location / Gitee URL — the patch never names this repo).
 
@@ -228,7 +235,7 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 | preset not visible in web | presets not installed to `$DSH_HOME/.agent-presets/` — run installer |
 | installed presets stale / agents miss tools (e.g. bash) | `mpd-bootstrap` only re-copies presets when the package VERSION changes — bump `package.json` version, `node scripts/pack-mpd.mjs`, restart dsh |
 | agent tool call fails with UNKNOWN_TOOL in code-mode deployments | presets declare `tool-presentation { mode: native }` — every row tool (bash/read/edit/...) is exposed directly; in code mode the model may only call `run_code` directly |
-| boot fails with ERR_MODULE_NOT_FOUND @nanmicoder/dsh-agent-teams | the legacy profile still pins the old row; the bundle row is now vendored (`@mpd-dsh/mpd/third-party/dsh-agent-teams`) — reinstall the bundle (`dsh plugin --profile <p> add dist/mpd-package`) |
+| boot fails with ERR_MODULE_NOT_FOUND agent-teams | the legacy profile still pins the old row; the bundle row is now first-party (`@mpd-dsh/mpd/packages/mpd-agent-teams`) — rebuild + re-pack (`node scripts/build-agent-teams.mjs && node scripts/pack-mpd.mjs`), reinstall the bundle (`dsh plugin --profile <p> add dist/mpd-package`) |
 
 ---
 

@@ -1,0 +1,131 @@
+{
+  "ok": true,
+  "sandbox": "/tmp/mpd-c1-jEqG8v",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "bundleRow": {
+      "ok": true,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-headless",
+        "@mpd-dsh/agent-teams"
+      ]
+    },
+    "override": {
+      "ok": true,
+      "hasPatch": true
+    },
+    "compose": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "teamState": {
+      "ok": true,
+      "teamIds": [
+        "c1qa"
+      ],
+      "inbox": [
+        [
+          "captain.jsonl"
+        ]
+      ],
+      "teamJson": [
+        {
+          "name": "c1qa",
+          "id": "c1qa",
+          "description": "C1 adoption QA",
+          "captainSessionId": "session-201afab3-c9c1-416b-8d96-96e6f357fec7",
+          "createdAt": 1787822505448,
+          "members": [
+            {
+              "id": "a0147d33-c630-4d62-99f6-3a4927f05076",
+              "name": "oracle",
+              "role": "researcher",
+              "provider": "deepseek-official",
+              "model": "deepseek-v4-flash",
+              "reasoningEffort": "high",
+              "executionPrompt": "You are the oracle: an expert reviewer. Judge the librarian's one-line QA summary and output APPROVED or REJECTED with a one-line reason.",
+              "joinedAt": 1787822509252,
+              "status": "removed"
+            },
+            {
+              "id": "fd88c089-46f2-48ec-a6fe-d1eb7ed5a71a",
+              "name": "librarian",
+              "role": "researcher",
+              "provider": "deepseek-official",
+              "model": "deepseek-v4-flash",
+              "reasoningEffort": "high",
+              "executionPrompt": "You are the librarian: produce a concise one-line summary of the QA goal. Output only the summary line.",
+              "joinedAt": 1787822509258,
+              "status": "removed"
+            }
+          ],
+          "tasks": [
+            {
+              "id": "t1",
+              "subject": "Summarize the QA goal in one line",
+              "description": "Write a single-line summary of the QA goal: \"C1 adoption QA\". Output exactly one line.",
+              "status": "completed",
+              "assignee": "librarian",
+              "dependencies": [],
+              "attempt": 1,
+              "createdAt": 1787822513361,
+              "updatedAt": 1787822526669,
+              "kind": "work",
+              "attemptId": "3297f9e6-6d7b-44c4-af8a-55fd54e9f5cc",
+              "reassigning": false,
+              "output": "QA goal: verify that C1 is successfully adopted (integrated, functional, and accepted) in the target environment."
+            },
+            {
+              "id": "t2",
+              "subject": "Approve or reject the summary",
+              "description": "Review the one-line summary produced by the librarian in task t1. Output APPROVED or REJECTED with a one-line reason.",
+              "status": "completed",
+              "assignee": "oracle",
+              "dependencies": [
+                "t1"
+              ],
+              "attempt": 1,
+              "createdAt": 1787822516595,
+              "updatedAt": 1787822536785,
+              "kind": "work",
+              "attemptId": "b739cfad-f2e4-4c00-a2da-8db4af757752",
+              "reassigning": false,
+              "output": "APPROVED — the librarian's one-line summary accurately captures the QA goal (verify C1 is integrated, functional, and accepted in the target environment) and is concise and unambiguous."
+            }
+          ],
+          "taskSeq": 2
+        }
+      ]
+    },
+    "archive": {
+      "ok": true,
+      "archiveIds": [
+        "c1qa"
+      ]
+    },
+    "taskTerminal": {
+      "ok": true,
+      "tasks": 2,
+      "taskTerminal": true
+    },
+    "webInstaller": {
+      "ok": true,
+      "exit": 0
+    },
+    "webRoute": {
+      "ok": true,
+      "status": 200,
+      "body": "{\"teams\":[]}",
+      "webLog": "/home/haroldzhao/dshProj/my-power-dsh/evidence/plan-c/c1-team/2026-08-27T09-21-31.122Z/web.log"
+    }
+  },
+  "totalSteps": 10
+}

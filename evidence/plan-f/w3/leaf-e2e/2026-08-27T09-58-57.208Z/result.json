@@ -1,0 +1,34 @@
+{
+  "ok": true,
+  "sandbox": "/home/haroldzhao/dshProj/my-power-dsh/.qa-reloc/home-w3",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "teamState": {
+      "ok": true,
+      "ids": [
+        "e2e"
+      ],
+      "taskTerminal": true,
+      "inboxOk": true
+    },
+    "leafState": {
+      "ok": true,
+      "ids": [
+        "leaf-8f3d7176"
+      ],
+      "basePreset": "mpd-oracle",
+      "rounds": 1
+    }
+  }
+}

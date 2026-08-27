@@ -68,8 +68,14 @@
       name: '@mpd-dsh/mpd/packages/mpd-ulw-plugin/dist/index.js'
       config:
         maxRounds: 3
-    - id: mpd-team
-      name: '@mpd-dsh/mpd/packages/mpd-team-plugin/dist/index.js'
+    - id: mpd-leaf
+      name: '@mpd-dsh/mpd/packages/mpd-leaf-plugin/dist/index.js'
+      config:
+        provider: deepseek-official
+        model: deepseek-v4-pro
+        maxRounds: 3
+        gates:
+          - bun-test
     - id: mpd-hashline
       name: '@mpd-dsh/mpd/packages/mpd-hashline-plugin/dist/index.js'
       config:
@@ -96,17 +102,52 @@
 
 # ── Remote MCP rows (public services; network required, optional per use) ──
 - insert:
-    # The adopted team plugin is VENDORED at third-party/dsh-agent-teams (MIT,
-    # @nanmicoder/dsh-agent-teams 0.1.14) and loads through the bundle exports map:
-    # pnpm-driven `dsh plugin add` never links a bundle's transitive dependencies
-    # into the profile root, so a plain package-name row would silently self-disable.
-    # The row therefore needs NO self-disabling guard - the vendored code always exists.
+    # The team plugin is FIRST-PARTY (native): built from source into
+    # packages/mpd-agent-teams (src -> lib + _deps runtime closure + assets) and loaded
+    # through the bundle exports map; pnpm-driven `dsh plugin add` never links a
+    # bundle's transitive dependencies into the profile root, so a plain package-name
+    # row would silently self-disable. The row therefore needs NO self-disabling guard.
+    # Depth model (plan-f Q5): memberMaxDepth is user-configurable, default 3
+    # (captain 0 -> member 1 -> leaf 2 -> optional deeper); leaves deny further
+    # delegation at spawn time (W3 leaf toolFilter).
     - id: agent-teams
-      name: '@mpd-dsh/mpd/third-party/dsh-agent-teams'
+      name: '@mpd-dsh/mpd/packages/mpd-agent-teams'
       config:
         stateDir: .mpd/team
         memberProvider: spawn
-        memberMaxDepth: 1
+        memberMaxDepth: 3
+        # Built-in team profile (W2): executor members with OMO bases; advisors are
+        # leaves only (upstream OMO rule). The protocol says which mpd-* preset id
+        # each layer uses; deeper proxy bodies are spawned by members as leaves.
+        profiles:
+          mpd-default:
+            description: "MPD default: executor members + leaf-only advisors"
+            protocol: "Executors implement; advisors are leaves via one-shot subagent with mpd-* preset personas; gates run on completion."
+            executionPrompt: "You are an MPD team member. Base behavior: mpd-sisyphus (primary coder). Complete your assigned task, run mpd_gate_run where relevant, report with evidence. If a task needs a specialist, spawn it as a LEAF (one-shot subagent, persona = one of mpd-oracle/mpd-librarian/mpd-explore/mpd-metis/mpd-momus/mpd-prometheus/mpd-multimodal-looker; toolFilter denies delegation) and never re-delegate beyond that leaf."
+            members:
+              - name: engineer
+                role: member
+                provider: deepseek-official
+                model: deepseek-v4-pro
+                executionPrompt: "Implementer: base mpd-sisyphus; one project at a time; verify with mpd_gate_run before reporting."
+              - name: builder
+                role: member
+                provider: deepseek-official
+                model: deepseek-v4-flash
+                executionPrompt: "Worker: base mpd-sisyphus-junior; small scoped units only; never spawn."
+              - name: reviewer
+                role: member
+                provider: deepseek-official
+                model: deepseek-v4-pro
+                executionPrompt: "Reviewer: base mpd-oracle; verdict-based review; never implement."
+            taskPlanning: captain
+            reviewPolicy:
+              requirementsMinRounds: 1
+              requirementsMaxRounds: 2
+              codeMaxRounds: 3
+              maxRepairAttempts: 2
+              requiredReviewers:
+                - reviewer
 
 - insert:
     - id: mcp-context7

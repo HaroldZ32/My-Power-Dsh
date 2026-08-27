@@ -1,0 +1,165 @@
+{
+  "lockfileVersion": 2,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "my-power-dsh",
+      "devDependencies": {
+        "bun-types": "1.4.0",
+      },
+    },
+    "packages/mpd-agent-teams": {
+      "name": "@mpd-dsh/agent-teams",
+      "version": "0.1.14",
+      "devDependencies": {
+        "@types/node": "^24.13.3",
+        "typescript": "^5.9.3",
+      },
+      "peerDependencies": {
+        "@deepseek-ai/cordis": "^4.0.1-rc.1",
+        "@deepseek-ai/dsh-agent": "^0.1.0-rc.6",
+        "@deepseek-ai/dsh-client-locale": "^0.1.0-rc.6",
+        "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.6",
+        "@deepseek-ai/dsh-client-ui-conversation": "^0.1.0-rc.6",
+        "@deepseek-ai/dsh-client-ui-layout": "^0.1.0-rc.6",
+        "@deepseek-ai/dsh-client-ui-model-selection": "^0.1.0-rc.8",
+        "@deepseek-ai/dsh-client-ui-primitives": "^0.1.0-rc.6",
+        "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.6",
+        "@deepseek-ai/dsh-commands": "^0.1.0-rc.6",
+        "@deepseek-ai/dsh-llm": "^0.1.0-rc.6",
+        "@deepseek-ai/dsh-session": "^0.1.0-rc.6",
+        "@deepseek-ai/dsh-subagent": "^0.1.0-rc.6",
+        "@deepseek-ai/dsh-system-prompt": "^0.1.0-rc.6",
+        "@deepseek-ai/dsh-tools": "^0.1.0-rc.6",
+        "@deepseek-ai/schemastery": "^3.18.1-rc.1",
+        "react": "^18.2.0",
+      },
+      "optionalPeers": [
+        "@deepseek-ai/cordis",
+        "@deepseek-ai/dsh-agent",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-model-selection",
+        "@deepseek-ai/dsh-client-ui-primitives",
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-commands",
+        "@deepseek-ai/dsh-llm",
+        "@deepseek-ai/dsh-session",
+        "@deepseek-ai/dsh-subagent",
+        "@deepseek-ai/dsh-system-prompt",
+        "@deepseek-ai/dsh-tools",
+        "@deepseek-ai/schemastery",
+        "react",
+      ],
+    },
+    "packages/mpd-bootstrap-plugin": {
+      "name": "@mpd-dsh/bootstrap",
+      "version": "0.1.0",
+    },
+    "packages/mpd-boulder-plugin": {
+      "name": "@mpd-dsh/boulder",
+      "version": "0.1.0",
+    },
+    "packages/mpd-bundle": {
+      "name": "@mpd-dsh/dsh-bundle",
+      "version": "0.1.0",
+    },
+    "packages/mpd-comment-checker-plugin": {
+      "name": "@mpd-dsh/comment-checker",
+      "version": "0.1.0",
+    },
+    "packages/mpd-config-plugin": {
+      "name": "@mpd-dsh/config",
+      "version": "0.1.0",
+    },
+    "packages/mpd-hashline-plugin": {
+      "name": "@mpd-dsh/hashline",
+      "version": "0.1.0",
+    },
+    "packages/mpd-leaf-plugin": {
+      "name": "@mpd-dsh/leaf",
+      "version": "0.1.0",
+    },
+    "packages/mpd-mcp-astgrep": {
+      "name": "@mpd-dsh/mcp-astgrep",
+      "version": "0.1.0",
+    },
+    "packages/mpd-mcp-gitbash": {
+      "name": "@mpd-dsh/mcp-gitbash",
+      "version": "0.1.0",
+    },
+    "packages/mpd-mcp-lsp": {
+      "name": "@mpd-dsh/mcp-lsp",
+      "version": "0.1.0",
+    },
+    "packages/mpd-memory-plugin": {
+      "name": "@mpd-dsh/memory",
+      "version": "0.1.0",
+    },
+    "packages/mpd-presets-plugin": {
+      "name": "@mpd-dsh/presets",
+      "version": "0.1.0",
+    },
+    "packages/mpd-team-plugin": {
+      "name": "@mpd-dsh/team",
+      "version": "0.1.0",
+    },
+    "packages/mpd-tools-plugin": {
+      "name": "@mpd-dsh/tools",
+      "version": "0.1.0",
+    },
+    "packages/mpd-ulw-plugin": {
+      "name": "@mpd-dsh/ulw",
+      "version": "0.1.0",
+    },
+    "packages/omo-hephaestus": {
+      "name": "@mpd-dsh/hephaestus",
+      "version": "0.1.0",
+    },
+  },
+  "packages": {
+    "@mpd-dsh/agent-teams": ["@mpd-dsh/agent-teams@workspace:packages/mpd-agent-teams"],
+
+    "@mpd-dsh/bootstrap": ["@mpd-dsh/bootstrap@workspace:packages/mpd-bootstrap-plugin"],
+
+    "@mpd-dsh/boulder": ["@mpd-dsh/boulder@workspace:packages/mpd-boulder-plugin"],
+
+    "@mpd-dsh/comment-checker": ["@mpd-dsh/comment-checker@workspace:packages/mpd-comment-checker-plugin"],
+
+    "@mpd-dsh/config": ["@mpd-dsh/config@workspace:packages/mpd-config-plugin"],
+
+    "@mpd-dsh/dsh-bundle": ["@mpd-dsh/dsh-bundle@workspace:packages/mpd-bundle"],
+
+    "@mpd-dsh/hashline": ["@mpd-dsh/hashline@workspace:packages/mpd-hashline-plugin"],
+
+    "@mpd-dsh/hephaestus": ["@mpd-dsh/hephaestus@workspace:packages/omo-hephaestus"],
+
+    "@mpd-dsh/leaf": ["@mpd-dsh/leaf@workspace:packages/mpd-leaf-plugin"],
+
+    "@mpd-dsh/mcp-astgrep": ["@mpd-dsh/mcp-astgrep@workspace:packages/mpd-mcp-astgrep"],
+
+    "@mpd-dsh/mcp-gitbash": ["@mpd-dsh/mcp-gitbash@workspace:packages/mpd-mcp-gitbash"],
+
+    "@mpd-dsh/mcp-lsp": ["@mpd-dsh/mcp-lsp@workspace:packages/mpd-mcp-lsp"],
+
+    "@mpd-dsh/memory": ["@mpd-dsh/memory@workspace:packages/mpd-memory-plugin"],
+
+    "@mpd-dsh/presets": ["@mpd-dsh/presets@workspace:packages/mpd-presets-plugin"],
+
+    "@mpd-dsh/team": ["@mpd-dsh/team@workspace:packages/mpd-team-plugin"],
+
+    "@mpd-dsh/tools": ["@mpd-dsh/tools@workspace:packages/mpd-tools-plugin"],
+
+    "@mpd-dsh/ulw": ["@mpd-dsh/ulw@workspace:packages/mpd-ulw-plugin"],
+
+    "@types/node": ["@types/node@24.13.3", "", { "dependencies": { "undici-types": "~7.18.0" } }, "sha512-Dh8vAsV36ig5wa9OX4pXvMc9D3Veibfw2wix0CUwYODLD8nkj9UsLjASr49nPg+2eKzxhBV+v7L8pXvT4e639Q=="],
+
+    "bun-types": ["bun-types@1.4.0", "", { "dependencies": { "@types/node": "*" } }, "sha512-iIKw23BspnQQYd3prITOBxeUsxBHnwzX6YJfGMuNOZzeNcMmVqzIIVGRm1l69ogaPQmb4wB6BN8mA5bE9YuC5Q=="],
+
+    "typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
+
+    "undici-types": ["undici-types@7.18.2", "", {}, "sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w=="],
+  }
+}

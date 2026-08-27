@@ -1,0 +1,11 @@
+{
+  "name": "@mpd-dsh/leaf",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Leaf layer for Plan F: mpd_leaf_iterate (Ralph-style fresh-round loop, gate-terminated) + mpd_gate_run (repo gates as leaf completion criteria)",
+  "scripts": {
+    "typecheck": "tsgo --noEmit -p tsconfig.json",
+    "test": "bun test"
+  }
+}
