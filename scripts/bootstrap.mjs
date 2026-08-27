@@ -23,4 +23,4 @@ for (const d of ["packages/mpd-bundle", "packages/mpd-bootstrap-plugin", "packag
 }
 
 if (failed) { console.error("[bootstrap] FAIL"); process.exit(1) }
-step("PASS - preflight and vendor baseline checks passed (set MPD_UPSTREAM_ROOT if the omo checkout is not at repoRoot/../../..)")
+step("PASS - preflight and vendor baseline checks passed (set MPD_UPSTREAM_ROOT if the the upstream checkout is not at repoRoot/../../..)")

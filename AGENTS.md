@@ -8,15 +8,17 @@ repository is English-only (see Language Policy).
 
 ## 1. Overview & Provenance
 
-**my-power-dsh** ports the portable capabilities of **oh-my-openagent** (upstream, GitHub
-code-yeongyu/oh-my-openagent; base commit `8c57e46`, v5.0.0-beta.20) into the DeepSeek Harness
-(DSH) as a plugin bundle. The capability baseline is pinned to oh-my-openagent `8c57e46` (v5.0.0-beta.20); OMO-spec parity is the engineering target (see docs/feature-audit.md). License: SUL-1.0 (`LICENSE.md`); inheritance declared in `README.md`.
+**my-power-dsh** ports the portable capabilities of the upstream project (GitHub `code-yeongyu`;
+provenance and inheritance are declared in `README.md`; base commit `8c57e46`, v5.0.0-beta.20)
+into the DeepSeek Harness (DSH) as a plugin bundle. The capability baseline is pinned to upstream
+`8c57e46` (v5.0.0-beta.20); upstream spec parity is the engineering target (see docs/feature-audit.md).
+License: SUL-1.0 (`LICENSE.md`); inheritance declared in `README.md`.
 
 - Upstream product names and repository paths stay upstream's (provenance only).
 - Our naming prefix is **`mpd`** (my-power-dsh): packages, plugin ids, tool names (`mpd_*`),
   preset ids (`mpd-oracle` …), env keys (`MPD_DSH_*`), state dir (`.mpd`).
-- **Upstream binary-resolution env keys must NOT be renamed**: `OMO_AST_GREP_SG_PATH` (sg resolver)
-  and `OMO_CODEGRAPH_BIN` (codegraph serve) are read by upstream vendored code.
+- **Upstream binary-resolution env keys must NOT be renamed**: `MPD_AST_GREP_SG_PATH` (sg resolver)
+  and `MPD_CODEGRAPH_BIN` (codegraph serve) are read by upstream vendored code.
 - DSH plugin names (`@deepseek-ai/dsh-llm-deepseek`, `dsh-llm-pi-ai`, `dsh-mcp-client`, …) are the
   host's API and are never renamed.
 - **Adopted third-party plugins keep their vendor ids and tool names** (intentional namespace
@@ -215,11 +217,11 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 | `duplicate loader entry id` | same row in bundle patch and an overlay — remove from one |
 | `MISSING_CREDENTIAL` in isolated QA | sandbox has no `.credentials.yaml` — copy it |
 | `patch: entry ... not found` | id-targeted row for a row absent in that profile — use `insert:` for new rows |
-| codegraph `skipped: project excluded` | cwd contains an `.omo` segment or is under /tmp — use a normal project path |
-| codegraph provision crash | binary missing + read-only home — set `OMO_CODEGRAPH_BIN`/bundle env |
+| codegraph `skipped: project excluded` | cwd contains an `.mpd` segment or is under /tmp — use a normal project path |
+| codegraph provision crash | binary missing + read-only home — set `MPD_CODEGRAPH_BIN`/bundle env |
 | bash tool hangs after dsh | MCP children hold fds — stdio to files, or `setsid … > log` pattern |
-| ast-grep BINARY_NOT_FOUND | sg binary not installed — `.toolchain` via installer or `OMO_AST_GREP_SG_PATH` |
-| LSP daemon unreachable | `~/.omo` unwritable/missing — on real home it self-starts |
+| ast-grep BINARY_NOT_FOUND | sg binary not installed — `.toolchain` via installer or `MPD_AST_GREP_SG_PATH` |
+| LSP daemon unreachable | `~/.mpd` unwritable/missing — on real home it self-starts |
 | preset not visible in web | presets not installed to `$DSH_HOME/.agent-presets/` — run installer |
 | installed presets stale / agents miss tools (e.g. bash) | `mpd-bootstrap` only re-copies presets when the package VERSION changes — bump `package.json` version, `node scripts/pack-mpd.mjs`, restart dsh |
 | agent tool call fails with UNKNOWN_TOOL in code-mode deployments | presets declare `tool-presentation { mode: native }` — every row tool (bash/read/edit/...) is exposed directly; in code mode the model may only call `run_code` directly |

@@ -1,5 +1,5 @@
 // C4 mpd-comment-checker-plugin: comment-detection discipline on the DSH tool seam.
-// Vendored core: upstream oh-my-openagent packages/comment-checker-core parser
+// Vendored core: the upstream project packages/comment-checker-core parser
 // (base 8c57e46, SUL-1.0 fork terms). The check runner is adapted to a
 // spawnSync-based stdin JSON call against the @code-yeongyu/comment-checker
 // native binary (MIT, github.com/code-yeongyu/go-claude-code-comment-checker).

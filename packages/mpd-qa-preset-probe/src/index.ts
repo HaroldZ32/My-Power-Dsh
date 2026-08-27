@@ -1,4 +1,4 @@
-// QA-only preset probe plugin (diagnostic version): lists/resolves omo presets + prints roots.
+// QA-only preset probe plugin (diagnostic version): lists/resolves upstream presets + prints roots.
 export const name = "mpd-dsh-qa-preset-probe"
 export const inject = ["agentPresets"]
 type Preset = { id: string; broken?: string }

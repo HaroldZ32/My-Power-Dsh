@@ -2,8 +2,8 @@
 
 Plan C / C5 — durable work-state machine ("boulder") on the DSH tool seam.
 
-Vendored core: upstream oh-my-openagent `packages/boulder-state`. Adaptations:
-state root `.omo` → `.mpd` and the default session platform `opencode` → `dsh`
+Vendored core: the upstream project `packages/boulder-state`. Adaptations:
+state root `.mpd` → `.mpd` and the default session platform `upstream host` → `dsh`
 (see `src/vendor/constants.ts`, `src/vendor/storage/shared.ts`).
 
 ## Tools

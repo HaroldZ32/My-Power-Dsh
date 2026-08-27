@@ -15,7 +15,7 @@ Can proceed to P4; before P4, read the two leftover items in §5.
 |---|---|
 | ① All changes go into the new repo, never push the original repo | ✅ Original repo HEAD stays at 8c57e46, git status shows only 2 old evidence files that were modified at checkout; mpd-dsh has independent git history and no remote |
 | ② QA evidence for each stage lands in evidence/ | ✅ evidence/p0|p1|p2|p3 + evidence/dsh-qa/<case>/<ts>/ all exist and are verifiable |
-| ③ omo source read-only, only vendor copies | ✅ Builds happen in a temp dir; original repo zero changes |
+| ③ upstream source read-only, only vendor copies | ✅ Builds happen in a temp dir; original repo zero changes |
 | Tests align with the upstream original (T1–T7) | ✅ bun test framework reserved, QA skill dsh-qa (all 4 case scripts carry --self-test and pass), isolated DSH_HOME, provable assertions (dump-config assertion + real tool calls), single canonical evidence path, stage gates |
 | All deliverables as plugins | ✅ 10 plugin packages; P2/P3 capabilities delivered as official plugin instantiation entries + self-developed QA scripts; logic lives inside plugin packages, no loose scripts (debug probes cleaned up) |
 
@@ -33,13 +33,13 @@ Can proceed to P4; before P4, read the two leftover items in §5.
 - Evidence: evidence/p1/dual-track.md, evidence/dsh-qa/llm-dual-track/*.
 
 ### P2 ✅
-- 7 skills (128 files) vendored into omo-skills-plugin/skills, VENDOR_LOCK count + treeSha locked.
+- 7 skills (128 files) vendored into mpd-skills-plugin/skills, VENDOR_LOCK count + treeSha locked.
 - model really calls the skill tool to load ulw-plan and correctly references the Prometheus identity (7.9s PASS).
 - Evidence: evidence/p2/skill-catalog.txt, load-sample.log, evidence/dsh-qa/skill-load/*.
 
 ### P3 ✅ (acceptance definition revised, see §5)
 - offline bun build: ast-grep(84.6KB), git-bash(22.7KB), lsp-daemon(234.8KB); vendor codegraph serve.js(169KB).
-- bundle mounts 4 dsh-mcp-client entries (git-bash disabled by default — omo's original design is Windows-only).
+- bundle mounts 4 dsh-mcp-client entries (git-bash disabled by default — upstream's original design is Windows-only).
 - mcp-call QA: model enumerates mcp__ast_grep__{search,scan,rewrite} + mcp__lsp__ 8 tools; real calls to ast_grep search and lsp status both return spec-conformant server responses.
 - Evidence: evidence/p3/*, evidence/dsh-qa/mcp-call/*.
 
@@ -48,7 +48,7 @@ Can proceed to P4; before P4, read the two leftover items in §5.
 | # | Level | Issue | Status |
 |---|---|---|---|
 | F1 | HIGH | MCP dist artifacts excluded by .gitignore's dist/ rule, not committed — deliverable missing, a fresh clone cannot reproduce the bundle | ✅ Fixed: .gitignore narrowed, 4 dist artifacts + BUILD.lock committed |
-| F2 | HIGH | web template skill-filesystem defaults to disabled: true, bundle patch didn't explicitly enable it → omo skills invisible on web (headless QA didn't expose this difference) | ✅ Fixed: patch line adds disabled: false, web composition recomputation passes |
+| F2 | HIGH | web template skill-filesystem defaults to disabled: true, bundle patch didn't explicitly enable it → upstream skills invisible on web (headless QA didn't expose this difference) | ✅ Fixed: patch line adds disabled: false, web composition recomputation passes |
 | F3 | MEDIUM | verify-vendor only checks file count, not content (tampered skill content could pass) | ✅ Fixed: added sha256 (per file) + treeSha (directory, sorted relpath + per-file sha256 aggregate) double block; negative test tampering FAILs |
 | F4 | MEDIUM | git-bash platform gating used a !!js ternary, dump rendered abnormally ('[object Object]'), runtime semantics unprovable | ✅ Fixed: changed to deterministic disabled: true + comment (set false to enable on Windows deployment) |
 | F5 | MINOR | dual-track/skill-load/mcp-call lack explicit isolation assertions (mount-assert has them) | ✅ Fixed: three scripts add DSH_HOME points-to-sandbox assertions |
@@ -58,7 +58,7 @@ Can proceed to P4; before P4, read the two leftover items in §5.
 
 ## 5. P3 acceptance definition revision (as-is)
 
-P3's original acceptance "ast-grep/git-bash real call success" cannot be met on this machine — git-bash is Windows-only per omo's original design;
+P3's original acceptance "ast-grep/git-bash real call success" cannot be met on this machine — git-bash is Windows-only per upstream's original design;
 ast-grep/lsp/codegraph runtime binaries (sg / language server / codegraph) were not installed in the no-network environment.
 Revised to: **MCP plugin mounting + model actually calling tools + server returning spec-conformant responses (success or designed classified error)**,
 i.e. the strongest proof achievable in the current environment; once environment prerequisites are installed it is full functionality. This revision and the evidence are recorded together for later re-review.

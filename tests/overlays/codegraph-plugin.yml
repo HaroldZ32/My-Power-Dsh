@@ -1,8 +1,4 @@
-# QA use: insert the in-house mpd-codegraph plugin (absolute path; production imports by package name @mpd-dsh/mpd-codegraph-plugin)
-- insert:
-    - id: mpd-codegraph
-      name: '/home/haroldzhao/dshProj/my-power-dsh/packages/mpd-codegraph-plugin/dist/index.js'
-      config:
-        autoInit: true
-        initTimeoutMs: 60000
-        binary: '/home/haroldzhao/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph'
+# QA use: the mpd-codegraph row now lives in packages/mpd-bundle/cordis.patch.yml
+# (kept empty here — a second row with the same id fails the loader with
+# "duplicate loader entry id: mpd-codegraph").
+[]

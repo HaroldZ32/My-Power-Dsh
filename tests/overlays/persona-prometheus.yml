@@ -1,4 +1,4 @@
-# QA use: override the system persona with the omo Prometheus text, verifying DeepSeek-side persona adaptation
+# QA use: override the system persona with the upstream Prometheus text, verifying DeepSeek-side persona adaptation
 - id: system-prompt
   name: '@deepseek-ai/dsh-system-prompt'
   config:

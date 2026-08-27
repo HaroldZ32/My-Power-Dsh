@@ -68,14 +68,14 @@ var SAFE_CODEGRAPH_RUNTIME_ENV_KEYS = new Set([
   "CODEGRAPH_FAKE_LOG",
   "CODEGRAPH_NO_DAEMON",
   "CODEGRAPH_NODE_BIN",
-  "OMO_CODEGRAPH_BIN",
-  "OMO_CODEGRAPH_PROJECT_CWD",
-  "OMO_CODEGRAPH_SESSION_START_CWD"
+  "MPD_CODEGRAPH_BIN",
+  "MPD_CODEGRAPH_PROJECT_CWD",
+  "MPD_CODEGRAPH_SESSION_START_CWD"
 ]);
 function buildCodegraphEnv(options = {}) {
   const homeDir = options.homeDir ?? homedir();
   return {
-    [CODEGRAPH_INSTALL_DIR_ENV]: join(homeDir, ".omo", "codegraph"),
+    [CODEGRAPH_INSTALL_DIR_ENV]: join(homeDir, ".mpd", "codegraph"),
     ...options.daemon === false ? { [CODEGRAPH_NO_DAEMON_ENV]: "1" } : {},
     [CODEGRAPH_NO_DOWNLOAD_ENV]: "1",
     [CODEGRAPH_TELEMETRY_ENV]: "0",
@@ -243,7 +243,7 @@ function markerPath(installDir, version) {
   return join3(installDir, ".provisioned", `codegraph-${version}.json`);
 }
 function defaultInstallDir() {
-  return join3(homedir2(), ".omo", "codegraph");
+  return join3(homedir2(), ".mpd", "codegraph");
 }
 function sha256(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
@@ -481,7 +481,7 @@ function codegraphCommandRequiresSupportedLocalNode(resolution) {
   return resolution.source !== "bundled" && resolution.source !== "env" && resolution.source !== "provisioned";
 }
 var CODEGRAPH_PACKAGE = "@colbymchenry/codegraph";
-var CODEGRAPH_ENV_BIN = "OMO_CODEGRAPH_BIN";
+var CODEGRAPH_ENV_BIN = "MPD_CODEGRAPH_BIN";
 var CODEGRAPH_LEGACY_ENV_BIN = "CODEGRAPH_BIN";
 var CODEGRAPH_NODE_CANDIDATES = ["node24", "node22", "node20", "node"];
 var CODEGRAPH_NODE_PATH_CANDIDATES = [
@@ -556,7 +556,7 @@ function defaultNodeRuntime(env, fileExists, which, nodeVersion) {
   return null;
 }
 function defaultProvisionedBin(homeDir, fileExists) {
-  return resolvePinnedCodegraphBin(join5(homeDir, ".omo", "codegraph"), { fileExists });
+  return resolvePinnedCodegraphBin(join5(homeDir, ".mpd", "codegraph"), { fileExists });
 }
 function resolveBundledShim(requireResolve, fileExists) {
   try {
@@ -637,8 +637,8 @@ function pathIsWithin(path, root, platform) {
   const normalizedRoot = normalizeForComparison(root, platform);
   return candidate === normalizedRoot || candidate.startsWith(`${normalizedRoot}/`);
 }
-function hasOmoPathSegment(path) {
-  return path.split(/[\\/]+/).includes(".omo");
+function hasMpdPathSegment(path) {
+  return path.split(/[\\/]+/).includes(".mpd");
 }
 function defaultExcludedRoots(platform, tmpdir) {
   return platform === "win32" ? [tmpdir] : [...POSIX_DEFAULT_EXCLUDED_ROOTS, tmpdir];
@@ -648,8 +648,8 @@ function shouldExcludeCodegraphProject(workspace, options = {}) {
   const homeDir = options.homeDir ?? homedir4();
   const tmpdir = options.tmpdir ?? osTmpdir();
   const resolvedWorkspace = realpathIfPossible(resolve2(workspace));
-  if (hasOmoPathSegment(resolvedWorkspace)) {
-    return { excluded: true, matchedRoot: ".omo", reason: "omo-state" };
+  if (hasMpdPathSegment(resolvedWorkspace)) {
+    return { excluded: true, matchedRoot: ".mpd", reason: "mpd-state" };
   }
   for (const root of defaultExcludedRoots(platform, tmpdir)) {
     const resolvedRoot = realpathIfPossible(resolve2(root));
@@ -5601,7 +5601,7 @@ function preprocess(fn, schema) {
   });
 }
 
-// ../../../../omo-config-core/src/schema/reasoning-vocabulary.ts
+// ../../../../mpd-config-core/src/schema/reasoning-vocabulary.ts
 var REASONING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
 var REASONING_AUTO = "auto";
 var REASONING_LEVEL_SET = new Set(REASONING_LEVELS);
@@ -5639,28 +5639,28 @@ function splitReasoningSuffix(model, options) {
   return { base, level: token };
 }
 
-// ../../../../omo-config-core/src/schema/model-ref.ts
+// ../../../../mpd-config-core/src/schema/model-ref.ts
 var REASONING_LEVELS_OR_AUTO = [...REASONING_LEVELS, "auto"];
-var OmoReasoningSchema = union([
+var MpdReasoningSchema = union([
   _enum(REASONING_LEVELS_OR_AUTO),
   string2()
 ]);
-var OmoModelRefObjectSchema = object({
+var MpdModelRefObjectSchema = object({
   model: string2(),
-  reasoning: OmoReasoningSchema.optional(),
+  reasoning: MpdReasoningSchema.optional(),
   temperature: number2().min(0).max(2).optional(),
   top_p: number2().min(0).max(1).optional(),
   max_tokens: number2().int().positive().optional(),
   provider_options: record(string2(), unknown()).optional()
 }).strict();
-var OmoModelRefSchema = union([string2(), OmoModelRefObjectSchema]);
+var MpdModelRefSchema = union([string2(), MpdModelRefObjectSchema]);
 
-// ../../../../omo-config-core/src/schema/fallback-models.ts
-var OmoThinkingConfigSchema = object({
+// ../../../../mpd-config-core/src/schema/fallback-models.ts
+var MpdThinkingConfigSchema = object({
   type: _enum(["enabled", "disabled"]),
   budgetTokens: number2().optional()
 }).strict();
-var OmoReasoningEffortSchema = OmoReasoningSchema;
+var MpdReasoningEffortSchema = MpdReasoningSchema;
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -5714,41 +5714,41 @@ function normalizeLegacyModelFields(entry) {
     normalized["max_tokens"] = entry["maxTokens"];
   return normalized;
 }
-var OmoLegacyFallbackModelObjectInputSchema = object({
+var MpdLegacyFallbackModelObjectInputSchema = object({
   model: string2(),
-  reasoning: OmoReasoningSchema.optional(),
+  reasoning: MpdReasoningSchema.optional(),
   temperature: number2().min(0).max(2).optional(),
   top_p: number2().min(0).max(1).optional(),
   max_tokens: number2().int().positive().optional(),
   provider_options: record(string2(), unknown()).optional(),
   variant: string2().optional(),
-  reasoningEffort: OmoReasoningEffortSchema.optional(),
-  thinking: OmoThinkingConfigSchema.optional(),
+  reasoningEffort: MpdReasoningEffortSchema.optional(),
+  thinking: MpdThinkingConfigSchema.optional(),
   textVerbosity: _enum(["low", "medium", "high"]).optional(),
   maxTokens: number2().optional(),
   providerOptions: record(string2(), unknown()).optional()
 }).strict();
-var OmoFallbackModelObjectSchema = preprocess((value) => isRecord(value) ? normalizeLegacyModelFields(value) : value, OmoLegacyFallbackModelObjectInputSchema);
-var OmoFallbackModelsSchema = union([
+var MpdFallbackModelObjectSchema = preprocess((value) => isRecord(value) ? normalizeLegacyModelFields(value) : value, MpdLegacyFallbackModelObjectInputSchema);
+var MpdFallbackModelsSchema = union([
   string2(),
   array(string2()),
-  array(OmoFallbackModelObjectSchema),
-  array(union([string2(), OmoFallbackModelObjectSchema]))
+  array(MpdFallbackModelObjectSchema),
+  array(union([string2(), MpdFallbackModelObjectSchema]))
 ]);
 
-// ../../../../omo-config-core/src/schema/agent.ts
+// ../../../../mpd-config-core/src/schema/agent.ts
 function isRecord2(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-var OmoAgentModelEntrySchema = union([string2(), OmoFallbackModelObjectSchema]);
-var OmoAgentDefInputSchema = object({
+var MpdAgentModelEntrySchema = union([string2(), MpdFallbackModelObjectSchema]);
+var MpdAgentDefInputSchema = object({
   description: string2().optional(),
   prompt: string2().optional(),
   model: string2().optional(),
-  models: array(OmoAgentModelEntrySchema).optional(),
-  reasoning: OmoReasoningSchema.optional(),
+  models: array(MpdAgentModelEntrySchema).optional(),
+  reasoning: MpdReasoningSchema.optional(),
   variant: string2().optional(),
-  reasoningEffort: OmoReasoningEffortSchema.optional(),
+  reasoningEffort: MpdReasoningEffortSchema.optional(),
   tools: record(string2(), boolean2()).optional(),
   execution_mode: _enum(["in-process", "process"]).optional(),
   background: boolean2().optional(),
@@ -5759,27 +5759,27 @@ var OmoAgentDefInputSchema = object({
   temperature: number2().min(0).max(2).optional(),
   disable: boolean2().optional()
 }).strict();
-var OmoAgentDefSchema = preprocess((value) => isRecord2(value) ? normalizeLegacyModelFields(value) : value, OmoAgentDefInputSchema);
-var OmoAgentsConfigSchema = record(string2(), OmoAgentDefSchema);
+var MpdAgentDefSchema = preprocess((value) => isRecord2(value) ? normalizeLegacyModelFields(value) : value, MpdAgentDefInputSchema);
+var MpdAgentsConfigSchema = record(string2(), MpdAgentDefSchema);
 
-// ../../../../omo-config-core/src/schema/category.ts
+// ../../../../mpd-config-core/src/schema/category.ts
 function isRecord3(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-var OmoCategoryConfigObjectSchema = object({
+var MpdCategoryConfigObjectSchema = object({
   description: string2().optional(),
   model: string2().optional(),
-  models: array(union([string2(), OmoFallbackModelObjectSchema])).optional(),
-  reasoning: OmoReasoningSchema.optional(),
+  models: array(union([string2(), MpdFallbackModelObjectSchema])).optional(),
+  reasoning: MpdReasoningSchema.optional(),
   temperature: number2().min(0).max(2).optional(),
   top_p: number2().min(0).max(1).optional(),
   max_tokens: number2().int().positive().optional(),
   provider_options: record(string2(), unknown()).optional(),
-  fallback_models: OmoFallbackModelsSchema.optional(),
+  fallback_models: MpdFallbackModelsSchema.optional(),
   variant: string2().optional(),
   maxTokens: number2().optional(),
-  thinking: OmoThinkingConfigSchema.optional(),
-  reasoningEffort: OmoReasoningEffortSchema.optional(),
+  thinking: MpdThinkingConfigSchema.optional(),
+  reasoningEffort: MpdReasoningEffortSchema.optional(),
   textVerbosity: _enum(["low", "medium", "high"]).optional(),
   tools: record(string2(), boolean2()).optional(),
   prompt_append: string2().optional(),
@@ -5788,16 +5788,16 @@ var OmoCategoryConfigObjectSchema = object({
   disable: boolean2().optional(),
   warn_unavailable: boolean2().optional()
 }).strict();
-var OmoCategoryConfigSchema = preprocess((value) => isRecord3(value) ? normalizeLegacyModelFields(value) : value, OmoCategoryConfigObjectSchema);
-var OmoCategoriesConfigSchema = record(string2(), OmoCategoryConfigSchema);
+var MpdCategoryConfigSchema = preprocess((value) => isRecord3(value) ? normalizeLegacyModelFields(value) : value, MpdCategoryConfigObjectSchema);
+var MpdCategoriesConfigSchema = record(string2(), MpdCategoryConfigSchema);
 
-// ../../../../omo-config-core/src/schema/harness.ts
+// ../../../../mpd-config-core/src/schema/harness.ts
 var HARNESS_IDS = ["codex", "opencode", "omo"];
-var OMO_CONFIG_HARNESS_IDS = ["opencode", "senpi", "codex"];
-var OmoHarnessIdSchema = _enum(OMO_CONFIG_HARNESS_IDS);
+var MPD_CONFIG_HARNESS_IDS = ["opencode", "senpi", "codex"];
+var MpdHarnessIdSchema = _enum(MPD_CONFIG_HARNESS_IDS);
 
-// ../../../../omo-config-core/src/schema/codegraph.ts
-var OmoCodegraphSettingsShape = {
+// ../../../../mpd-config-core/src/schema/codegraph.ts
+var MpdCodegraphSettingsShape = {
   enabled: boolean2(),
   auto_provision: boolean2(),
   daemon: boolean2(),
@@ -5807,54 +5807,54 @@ var OmoCodegraphSettingsShape = {
   excluded_roots: array(string2()).optional(),
   session_start_cooldown_ms: number2().finite().min(60000).optional()
 };
-var OmoCodegraphSettingsLayerSchema = object(OmoCodegraphSettingsShape).partial().strict();
-var OmoCodegraphSettingsSchema = OmoCodegraphSettingsLayerSchema.extend({
+var MpdCodegraphSettingsLayerSchema = object(MpdCodegraphSettingsShape).partial().strict();
+var MpdCodegraphSettingsSchema = MpdCodegraphSettingsLayerSchema.extend({
   enabled: boolean2().default(true),
   auto_provision: boolean2().default(true),
   daemon: boolean2().default(true),
   telemetry: boolean2().default(false)
 }).strict();
 
-// ../../../../omo-config-core/src/schema/git-master.ts
-var OmoGitMasterSettingsShape = {
+// ../../../../mpd-config-core/src/schema/git-master.ts
+var MpdGitMasterSettingsShape = {
   commit_footer: union([boolean2(), string2()]),
   include_co_authored_by: boolean2()
 };
-var OmoGitMasterSettingsLayerSchema = object(OmoGitMasterSettingsShape).partial().strict();
-var OmoGitMasterSettingsSchema = OmoGitMasterSettingsLayerSchema.extend({
+var MpdGitMasterSettingsLayerSchema = object(MpdGitMasterSettingsShape).partial().strict();
+var MpdGitMasterSettingsSchema = MpdGitMasterSettingsLayerSchema.extend({
   commit_footer: union([boolean2(), string2()]).default(true),
   include_co_authored_by: boolean2().default(true)
 }).strict();
 
-// ../../../../omo-config-core/src/schema/memory.ts
-var OmoMemoryReflectionTriggerSchema = object({
+// ../../../../mpd-config-core/src/schema/memory.ts
+var MpdMemoryReflectionTriggerSchema = object({
   step_count: number2().int().nonnegative().default(25),
   on_compaction: boolean2().default(true)
 }).strict();
-var OmoMemoryReflectionSchema = object({
+var MpdMemoryReflectionSchema = object({
   enabled: boolean2().default(true),
-  trigger: OmoMemoryReflectionTriggerSchema.default({ step_count: 25, on_compaction: true }),
+  trigger: MpdMemoryReflectionTriggerSchema.default({ step_count: 25, on_compaction: true }),
   merge: _enum(["auto", "integration"]).default("auto"),
   category: string2().min(1).default("quick"),
   timeout_minutes: number2().int().positive().default(15),
   sandbox: _enum(["auto", "required", "off"]).default("auto")
 }).strict();
-var OmoMemorySyncSchema = object({
+var MpdMemorySyncSchema = object({
   remote: string2().min(1).optional(),
   enabled: boolean2().default(true)
 }).strict();
-var OmoMemorySearchSchema = object({
+var MpdMemorySearchSchema = object({
   enabled: boolean2().default(true)
 }).strict();
-var OmoMemoryNudgeSchema = object({
+var MpdMemoryNudgeSchema = object({
   enabled: boolean2().default(true),
   every_user_turns: number2().int().min(1).default(10)
 }).strict();
-var OmoMemoryFactsSchema = object({
+var MpdMemoryFactsSchema = object({
   enabled: boolean2().default(true),
   debounce_settles: number2().int().min(1).default(4)
 }).strict();
-var OmoMemoryDreamSchema = object({
+var MpdMemoryDreamSchema = object({
   enabled: boolean2().default(true),
   idle_minutes: number2().int().min(0).default(30),
   min_hours_between: number2().int().min(1).default(24),
@@ -5862,45 +5862,45 @@ var OmoMemoryDreamSchema = object({
   auto_select_max: number2().int().min(1).max(10).default(5),
   auto_select_max_chars: number2().int().min(1e4).default(150000)
 }).strict();
-var OmoMemoryPeopleSchema = object({
+var MpdMemoryPeopleSchema = object({
   enabled: boolean2().default(true),
   max_entries: number2().int().min(1).max(100).default(40),
   max_entry_chars: number2().int().min(50).max(500).default(200)
 }).strict();
-var OmoMemorySoulSchema = object({
+var MpdMemorySoulSchema = object({
   edit_notice: boolean2().default(true)
 }).strict();
-var OmoMemoryWriteNoticeSchema = object({
+var MpdMemoryWriteNoticeSchema = object({
   enabled: boolean2().default(true)
 }).strict();
-var OmoMemoryReflectionTriggerLayerSchema = object({
+var MpdMemoryReflectionTriggerLayerSchema = object({
   step_count: number2().int().nonnegative().optional(),
   on_compaction: boolean2().optional()
 }).strict();
-var OmoMemoryReflectionLayerSchema = object({
+var MpdMemoryReflectionLayerSchema = object({
   enabled: boolean2().optional(),
-  trigger: OmoMemoryReflectionTriggerLayerSchema.optional(),
+  trigger: MpdMemoryReflectionTriggerLayerSchema.optional(),
   merge: _enum(["auto", "integration"]).optional(),
   category: string2().min(1).optional(),
   timeout_minutes: number2().int().positive().optional(),
   sandbox: _enum(["auto", "required", "off"]).optional()
 }).strict();
-var OmoMemorySyncLayerSchema = object({
+var MpdMemorySyncLayerSchema = object({
   remote: string2().min(1).optional(),
   enabled: boolean2().optional()
 }).strict();
-var OmoMemorySearchLayerSchema = object({
+var MpdMemorySearchLayerSchema = object({
   enabled: boolean2().optional()
 }).strict();
-var OmoMemoryNudgeLayerSchema = object({
+var MpdMemoryNudgeLayerSchema = object({
   enabled: boolean2().optional(),
   every_user_turns: number2().int().min(1).optional()
 }).strict();
-var OmoMemoryFactsLayerSchema = object({
+var MpdMemoryFactsLayerSchema = object({
   enabled: boolean2().optional(),
   debounce_settles: number2().int().min(1).optional()
 }).strict();
-var OmoMemoryDreamLayerSchema = object({
+var MpdMemoryDreamLayerSchema = object({
   enabled: boolean2().optional(),
   idle_minutes: number2().int().min(0).optional(),
   min_hours_between: number2().int().min(1).optional(),
@@ -5908,36 +5908,36 @@ var OmoMemoryDreamLayerSchema = object({
   auto_select_max: number2().int().min(1).max(10).optional(),
   auto_select_max_chars: number2().int().min(1e4).optional()
 }).strict();
-var OmoMemoryPeopleLayerSchema = object({
+var MpdMemoryPeopleLayerSchema = object({
   enabled: boolean2().optional(),
   max_entries: number2().int().min(1).max(100).optional(),
   max_entry_chars: number2().int().min(50).max(500).optional()
 }).strict();
-var OmoMemorySoulLayerSchema = object({
+var MpdMemorySoulLayerSchema = object({
   edit_notice: boolean2().optional()
 }).strict();
-var OmoMemoryWriteNoticeLayerSchema = object({
+var MpdMemoryWriteNoticeLayerSchema = object({
   enabled: boolean2().optional()
 }).strict();
-var OmoMemoryAgentOverridesSchema = object({
+var MpdMemoryAgentOverridesSchema = object({
   enabled: boolean2().optional(),
   agent: string2().min(1).optional(),
-  reflection: OmoMemoryReflectionLayerSchema.optional(),
-  nudge: OmoMemoryNudgeLayerSchema.optional(),
-  facts: OmoMemoryFactsLayerSchema.optional(),
-  dream: OmoMemoryDreamLayerSchema.optional(),
-  people: OmoMemoryPeopleLayerSchema.optional(),
-  soul: OmoMemorySoulLayerSchema.optional(),
-  write_notice: OmoMemoryWriteNoticeLayerSchema.optional(),
-  sync: OmoMemorySyncLayerSchema.optional(),
-  search: OmoMemorySearchLayerSchema.optional(),
+  reflection: MpdMemoryReflectionLayerSchema.optional(),
+  nudge: MpdMemoryNudgeLayerSchema.optional(),
+  facts: MpdMemoryFactsLayerSchema.optional(),
+  dream: MpdMemoryDreamLayerSchema.optional(),
+  people: MpdMemoryPeopleLayerSchema.optional(),
+  soul: MpdMemorySoulLayerSchema.optional(),
+  write_notice: MpdMemoryWriteNoticeLayerSchema.optional(),
+  sync: MpdMemorySyncLayerSchema.optional(),
+  search: MpdMemorySearchLayerSchema.optional(),
   compile_warn_tokens: number2().int().positive().optional()
 }).strict();
-var OmoMemorySettingsSchema = object({
+var MpdMemorySettingsSchema = object({
   enabled: boolean2().default(true),
   agent: string2().min(1).default("auto"),
   tool_exposure: _enum(["direct", "search"]).default("direct"),
-  reflection: OmoMemoryReflectionSchema.default({
+  reflection: MpdMemoryReflectionSchema.default({
     enabled: true,
     trigger: { step_count: 25, on_compaction: true },
     merge: "auto",
@@ -5945,9 +5945,9 @@ var OmoMemorySettingsSchema = object({
     timeout_minutes: 15,
     sandbox: "auto"
   }),
-  nudge: OmoMemoryNudgeSchema.default({ enabled: true, every_user_turns: 10 }),
-  facts: OmoMemoryFactsSchema.default({ enabled: true, debounce_settles: 4 }),
-  dream: OmoMemoryDreamSchema.default({
+  nudge: MpdMemoryNudgeSchema.default({ enabled: true, every_user_turns: 10 }),
+  facts: MpdMemoryFactsSchema.default({ enabled: true, debounce_settles: 4 }),
+  dream: MpdMemoryDreamSchema.default({
     enabled: true,
     idle_minutes: 30,
     min_hours_between: 24,
@@ -5955,64 +5955,64 @@ var OmoMemorySettingsSchema = object({
     auto_select_max: 5,
     auto_select_max_chars: 150000
   }),
-  people: OmoMemoryPeopleSchema.default({ enabled: true, max_entries: 40, max_entry_chars: 200 }),
-  soul: OmoMemorySoulSchema.default({ edit_notice: true }),
-  write_notice: OmoMemoryWriteNoticeSchema.default({ enabled: true }),
-  sync: OmoMemorySyncSchema.default({ enabled: true }),
-  search: OmoMemorySearchSchema.default({ enabled: true }),
+  people: MpdMemoryPeopleSchema.default({ enabled: true, max_entries: 40, max_entry_chars: 200 }),
+  soul: MpdMemorySoulSchema.default({ edit_notice: true }),
+  write_notice: MpdMemoryWriteNoticeSchema.default({ enabled: true }),
+  sync: MpdMemorySyncSchema.default({ enabled: true }),
+  search: MpdMemorySearchSchema.default({ enabled: true }),
   compile_warn_tokens: number2().int().positive().default(30000),
-  agents: record(string2(), OmoMemoryAgentOverridesSchema).default({})
+  agents: record(string2(), MpdMemoryAgentOverridesSchema).default({})
 }).strict();
-var OmoMemorySettingsLayerSchema = object({
+var MpdMemorySettingsLayerSchema = object({
   enabled: boolean2().optional(),
   agent: string2().min(1).optional(),
   tool_exposure: _enum(["direct", "search"]).optional(),
-  reflection: OmoMemoryReflectionLayerSchema.optional(),
-  nudge: OmoMemoryNudgeLayerSchema.optional(),
-  facts: OmoMemoryFactsLayerSchema.optional(),
-  dream: OmoMemoryDreamLayerSchema.optional(),
-  people: OmoMemoryPeopleLayerSchema.optional(),
-  soul: OmoMemorySoulLayerSchema.optional(),
-  write_notice: OmoMemoryWriteNoticeLayerSchema.optional(),
-  sync: OmoMemorySyncLayerSchema.optional(),
-  search: OmoMemorySearchLayerSchema.optional(),
+  reflection: MpdMemoryReflectionLayerSchema.optional(),
+  nudge: MpdMemoryNudgeLayerSchema.optional(),
+  facts: MpdMemoryFactsLayerSchema.optional(),
+  dream: MpdMemoryDreamLayerSchema.optional(),
+  people: MpdMemoryPeopleLayerSchema.optional(),
+  soul: MpdMemorySoulLayerSchema.optional(),
+  write_notice: MpdMemoryWriteNoticeLayerSchema.optional(),
+  sync: MpdMemorySyncLayerSchema.optional(),
+  search: MpdMemorySearchLayerSchema.optional(),
   compile_warn_tokens: number2().int().positive().optional(),
-  agents: record(string2(), OmoMemoryAgentOverridesSchema).optional()
+  agents: record(string2(), MpdMemoryAgentOverridesSchema).optional()
 }).strict();
 
-// ../../../../omo-config-core/src/schema/model-catalog.ts
+// ../../../../mpd-config-core/src/schema/model-catalog.ts
 function isRecord4(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-var OmoModelCatalogEntryInputSchema = object({
+var MpdModelCatalogEntryInputSchema = object({
   model: string2(),
-  reasoning: OmoReasoningSchema.optional(),
+  reasoning: MpdReasoningSchema.optional(),
   variant: string2().optional(),
-  reasoningEffort: OmoReasoningEffortSchema.optional()
+  reasoningEffort: MpdReasoningEffortSchema.optional()
 }).strict();
-var OmoModelCatalogEntrySchema = preprocess((value) => isRecord4(value) ? normalizeLegacyModelFields(value) : value, OmoModelCatalogEntryInputSchema);
-var OmoModelCatalogSchema = record(string2(), OmoModelCatalogEntrySchema);
-var OmoModelCatalogEntryLayerInputSchema = OmoModelCatalogEntryInputSchema.partial();
-var OmoModelCatalogEntryLayerSchema = preprocess((value) => isRecord4(value) ? normalizeLegacyModelFields(value) : value, OmoModelCatalogEntryLayerInputSchema);
-var OmoModelCatalogLayerSchema = record(string2(), OmoModelCatalogEntryLayerSchema);
+var MpdModelCatalogEntrySchema = preprocess((value) => isRecord4(value) ? normalizeLegacyModelFields(value) : value, MpdModelCatalogEntryInputSchema);
+var MpdModelCatalogSchema = record(string2(), MpdModelCatalogEntrySchema);
+var MpdModelCatalogEntryLayerInputSchema = MpdModelCatalogEntryInputSchema.partial();
+var MpdModelCatalogEntryLayerSchema = preprocess((value) => isRecord4(value) ? normalizeLegacyModelFields(value) : value, MpdModelCatalogEntryLayerInputSchema);
+var MpdModelCatalogLayerSchema = record(string2(), MpdModelCatalogEntryLayerSchema);
 
-// ../../../../omo-config-core/src/schema/task.ts
+// ../../../../mpd-config-core/src/schema/task.ts
 import { availableParallelism } from "node:os";
 var ResidencyMaxChildrenInputSchema = union([number2().int().nonnegative(), literal("unlimited")]);
-var OmoTaskWaitSchema = object({
+var MpdTaskWaitSchema = object({
   min_ms: number2().int().positive().default(5000),
   default_ms: number2().int().positive().default(60000),
   max_ms: number2().int().positive().default(600000)
 }).strict();
-var OmoTaskTeamSettingsSchema = object({
+var MpdTaskTeamSettingsSchema = object({
   max_members: number2().int().min(1).max(8).default(8),
   max_parallel_members: number2().int().min(1).max(8).default(4),
   max_wall_clock_minutes: number2().int().positive().default(120)
 }).strict();
-var OmoTaskWarningsSchema = object({
+var MpdTaskWarningsSchema = object({
   unavailable_categories: boolean2().default(true)
 }).strict();
-var OmoTaskDagSettingsSchema = object({
+var MpdTaskDagSettingsSchema = object({
   max_nodes_per_run: number2().int().positive().default(64),
   max_runs_per_session: number2().int().positive().default(16),
   subscriber_ring: number2().int().positive().default(1000),
@@ -6022,7 +6022,7 @@ var OmoTaskDagSettingsSchema = object({
   retention_days: number2().int().positive().default(7),
   max_prompt_bytes: number2().int().positive().default(262144)
 }).strict();
-var OmoTaskSettingsSchema = object({
+var MpdTaskSettingsSchema = object({
   default_execution_mode: _enum(["in-process", "process"]).default("in-process"),
   default_concurrency: number2().int().nonnegative().default(5),
   global_concurrency: number2().int().nonnegative().default(8),
@@ -6034,16 +6034,16 @@ var OmoTaskSettingsSchema = object({
   state_dir: string2().optional(),
   reattach_on_reconcile: boolean2().optional(),
   resume_children: boolean2().default(true),
-  warnings: OmoTaskWarningsSchema.default({ unavailable_categories: true }),
-  wait: OmoTaskWaitSchema.default({ min_ms: 5000, default_ms: 60000, max_ms: 600000 }),
-  team: OmoTaskTeamSettingsSchema.default({
+  warnings: MpdTaskWarningsSchema.default({ unavailable_categories: true }),
+  wait: MpdTaskWaitSchema.default({ min_ms: 5000, default_ms: 60000, max_ms: 600000 }),
+  team: MpdTaskTeamSettingsSchema.default({
     max_members: 8,
     max_parallel_members: 4,
     max_wall_clock_minutes: 120
   }),
-  dag: OmoTaskDagSettingsSchema.optional()
+  dag: MpdTaskDagSettingsSchema.optional()
 }).strict();
-var OmoTaskDagSettingsLayerSchema = object({
+var MpdTaskDagSettingsLayerSchema = object({
   max_nodes_per_run: number2().int().positive().optional(),
   max_runs_per_session: number2().int().positive().optional(),
   subscriber_ring: number2().int().positive().optional(),
@@ -6053,20 +6053,20 @@ var OmoTaskDagSettingsLayerSchema = object({
   retention_days: number2().int().positive().optional(),
   max_prompt_bytes: number2().int().positive().optional()
 }).strict();
-var OmoTaskWaitLayerSchema = object({
+var MpdTaskWaitLayerSchema = object({
   min_ms: number2().int().positive().optional(),
   default_ms: number2().int().positive().optional(),
   max_ms: number2().int().positive().optional()
 }).strict();
-var OmoTaskTeamSettingsLayerSchema = object({
+var MpdTaskTeamSettingsLayerSchema = object({
   max_members: number2().int().min(1).max(8).optional(),
   max_parallel_members: number2().int().min(1).max(8).optional(),
   max_wall_clock_minutes: number2().int().positive().optional()
 }).strict();
-var OmoTaskWarningsLayerSchema = object({
+var MpdTaskWarningsLayerSchema = object({
   unavailable_categories: boolean2().optional()
 }).strict();
-var OmoTaskSettingsLayerSchema = object({
+var MpdTaskSettingsLayerSchema = object({
   default_execution_mode: _enum(["in-process", "process"]).optional(),
   default_concurrency: number2().int().nonnegative().optional(),
   global_concurrency: number2().int().nonnegative().optional(),
@@ -6078,22 +6078,22 @@ var OmoTaskSettingsLayerSchema = object({
   state_dir: string2().optional(),
   reattach_on_reconcile: boolean2().optional(),
   resume_children: boolean2().optional(),
-  warnings: OmoTaskWarningsLayerSchema.optional(),
-  wait: OmoTaskWaitLayerSchema.optional(),
-  team: OmoTaskTeamSettingsLayerSchema.optional(),
-  dag: OmoTaskDagSettingsLayerSchema.optional()
+  warnings: MpdTaskWarningsLayerSchema.optional(),
+  wait: MpdTaskWaitLayerSchema.optional(),
+  team: MpdTaskTeamSettingsLayerSchema.optional(),
+  dag: MpdTaskDagSettingsLayerSchema.optional()
 }).strict();
-function resolveOmoTaskSettings(input, resolveParallelism = availableParallelism) {
+function resolveMpdTaskSettings(input, resolveParallelism = availableParallelism) {
   const record2 = record(string2(), unknown()).parse(input);
-  return OmoTaskSettingsSchema.parse({
+  return MpdTaskSettingsSchema.parse({
     ...record2,
     residency_max_children: record2["residency_max_children"] ?? Math.max(8, resolveParallelism() * 3),
     global_concurrency: record2["global_concurrency"] ?? Math.max(8, resolveParallelism() * 2)
   });
 }
 
-// ../../../../omo-config-core/src/schema/team.ts
-var OmoTeamMemberBaseSchema = object({
+// ../../../../mpd-config-core/src/schema/team.ts
+var MpdTeamMemberBaseSchema = object({
   name: string2().min(1).regex(/^[a-z0-9-]+$/),
   cwd: string2().optional(),
   worktreePath: string2().optional(),
@@ -6102,21 +6102,21 @@ var OmoTeamMemberBaseSchema = object({
   color: string2().optional(),
   isActive: boolean2().default(true)
 }).strict();
-var OmoTeamCategoryMemberSchema = OmoTeamMemberBaseSchema.extend({
+var MpdTeamCategoryMemberSchema = MpdTeamMemberBaseSchema.extend({
   kind: literal("category"),
   category: string2().min(1),
   prompt: string2().min(1)
 });
-var OmoTeamSubagentMemberSchema = OmoTeamMemberBaseSchema.extend({
+var MpdTeamSubagentMemberSchema = MpdTeamMemberBaseSchema.extend({
   kind: literal("subagent_type"),
   subagent_type: string2().min(1),
   prompt: string2().optional()
 });
-var OmoTeamMemberSchema = discriminatedUnion("kind", [
-  OmoTeamCategoryMemberSchema,
-  OmoTeamSubagentMemberSchema
+var MpdTeamMemberSchema = discriminatedUnion("kind", [
+  MpdTeamCategoryMemberSchema,
+  MpdTeamSubagentMemberSchema
 ]);
-var OmoTeamSpecBaseSchema = object({
+var MpdTeamSpecBaseSchema = object({
   version: literal(1).default(1),
   name: string2().min(1).regex(/^[a-z0-9-]+$/).optional(),
   description: string2().optional(),
@@ -6124,9 +6124,9 @@ var OmoTeamSpecBaseSchema = object({
   leadAgentId: string2().optional(),
   teamAllowedPaths: array(string2()).optional(),
   sessionPermission: string2().optional(),
-  members: array(OmoTeamMemberSchema).min(1).max(8)
+  members: array(MpdTeamMemberSchema).min(1).max(8)
 }).strict();
-var OmoTeamSpecSchema = OmoTeamSpecBaseSchema.superRefine((teamSpec, ctx) => {
+var MpdTeamSpecSchema = MpdTeamSpecBaseSchema.superRefine((teamSpec, ctx) => {
   if (teamSpec.leadAgentId === undefined && teamSpec.members.length > 1) {
     ctx.addIssue({
       code: "custom",
@@ -6135,79 +6135,79 @@ var OmoTeamSpecSchema = OmoTeamSpecBaseSchema.superRefine((teamSpec, ctx) => {
     });
   }
 });
-var OmoTeamSpecLayerSchema = OmoTeamSpecBaseSchema.partial();
-var OmoTeamsConfigSchema = record(string2(), OmoTeamSpecSchema);
-var OmoTeamsConfigLayerSchema = record(string2(), OmoTeamSpecLayerSchema);
+var MpdTeamSpecLayerSchema = MpdTeamSpecBaseSchema.partial();
+var MpdTeamsConfigSchema = record(string2(), MpdTeamSpecSchema);
+var MpdTeamsConfigLayerSchema = record(string2(), MpdTeamSpecLayerSchema);
 
-// ../../../../omo-config-core/src/schema/telemetry.ts
-var OmoTelemetrySettingsShape = {
+// ../../../../mpd-config-core/src/schema/telemetry.ts
+var MpdTelemetrySettingsShape = {
   enabled: boolean2()
 };
-var OmoTelemetrySettingsLayerSchema = object(OmoTelemetrySettingsShape).partial().strict();
-var OmoTelemetrySettingsSchema = OmoTelemetrySettingsLayerSchema.extend({
+var MpdTelemetrySettingsLayerSchema = object(MpdTelemetrySettingsShape).partial().strict();
+var MpdTelemetrySettingsSchema = MpdTelemetrySettingsLayerSchema.extend({
   enabled: boolean2().default(true)
 }).strict();
 
-// ../../../../omo-config-core/src/schema/config.ts
-var OmoOpenCodeHarnessConfigSchema = record(string2(), unknown());
-var OmoTypedHarnessConfigSchema = object({
-  categories: OmoCategoriesConfigSchema.optional(),
-  agents: OmoAgentsConfigSchema.optional(),
-  codegraph: OmoCodegraphSettingsLayerSchema.optional(),
-  git_master: OmoGitMasterSettingsLayerSchema.optional(),
-  task: OmoTaskSettingsLayerSchema.optional(),
-  teams: OmoTeamsConfigLayerSchema.optional(),
-  models: OmoModelCatalogLayerSchema.optional(),
-  memory: OmoMemorySettingsLayerSchema.optional(),
-  telemetry: OmoTelemetrySettingsLayerSchema.optional()
+// ../../../../mpd-config-core/src/schema/config.ts
+var MpdOpenHostHarnessConfigSchema = record(string2(), unknown());
+var MpdTypedHarnessConfigSchema = object({
+  categories: MpdCategoriesConfigSchema.optional(),
+  agents: MpdAgentsConfigSchema.optional(),
+  codegraph: MpdCodegraphSettingsLayerSchema.optional(),
+  git_master: MpdGitMasterSettingsLayerSchema.optional(),
+  task: MpdTaskSettingsLayerSchema.optional(),
+  teams: MpdTeamsConfigLayerSchema.optional(),
+  models: MpdModelCatalogLayerSchema.optional(),
+  memory: MpdMemorySettingsLayerSchema.optional(),
+  telemetry: MpdTelemetrySettingsLayerSchema.optional()
 }).strict();
-var OmoConfigProfileSchema = object({
-  categories: OmoCategoriesConfigSchema.optional(),
-  agents: OmoAgentsConfigSchema.optional(),
-  codegraph: OmoCodegraphSettingsLayerSchema.optional(),
-  git_master: OmoGitMasterSettingsLayerSchema.optional(),
-  task: OmoTaskSettingsLayerSchema.optional(),
-  teams: OmoTeamsConfigLayerSchema.optional(),
-  models: OmoModelCatalogLayerSchema.optional(),
-  memory: OmoMemorySettingsLayerSchema.optional(),
-  telemetry: OmoTelemetrySettingsLayerSchema.optional(),
-  "[opencode]": OmoOpenCodeHarnessConfigSchema.optional(),
-  "[senpi]": OmoTypedHarnessConfigSchema.optional(),
-  "[codex]": OmoTypedHarnessConfigSchema.optional()
+var MpdConfigProfileSchema = object({
+  categories: MpdCategoriesConfigSchema.optional(),
+  agents: MpdAgentsConfigSchema.optional(),
+  codegraph: MpdCodegraphSettingsLayerSchema.optional(),
+  git_master: MpdGitMasterSettingsLayerSchema.optional(),
+  task: MpdTaskSettingsLayerSchema.optional(),
+  teams: MpdTeamsConfigLayerSchema.optional(),
+  models: MpdModelCatalogLayerSchema.optional(),
+  memory: MpdMemorySettingsLayerSchema.optional(),
+  telemetry: MpdTelemetrySettingsLayerSchema.optional(),
+  "[opencode]": MpdOpenHostHarnessConfigSchema.optional(),
+  "[senpi]": MpdTypedHarnessConfigSchema.optional(),
+  "[codex]": MpdTypedHarnessConfigSchema.optional()
 }).strict();
-var OmoConfigSchema = object({
+var MpdConfigSchema = object({
   $schema: string2().optional(),
-  categories: OmoCategoriesConfigSchema.optional(),
-  agents: OmoAgentsConfigSchema.optional(),
-  codegraph: OmoCodegraphSettingsSchema.optional(),
-  git_master: OmoGitMasterSettingsSchema.optional(),
-  task: OmoTaskSettingsSchema.optional(),
-  teams: OmoTeamsConfigSchema.optional(),
-  models: OmoModelCatalogSchema.optional(),
-  memory: OmoMemorySettingsSchema.optional(),
-  telemetry: OmoTelemetrySettingsSchema.optional(),
-  "[opencode]": OmoOpenCodeHarnessConfigSchema.optional(),
-  "[senpi]": OmoTypedHarnessConfigSchema.optional(),
-  "[codex]": OmoTypedHarnessConfigSchema.optional(),
-  profiles: record(string2(), OmoConfigProfileSchema).default({}),
+  categories: MpdCategoriesConfigSchema.optional(),
+  agents: MpdAgentsConfigSchema.optional(),
+  codegraph: MpdCodegraphSettingsSchema.optional(),
+  git_master: MpdGitMasterSettingsSchema.optional(),
+  task: MpdTaskSettingsSchema.optional(),
+  teams: MpdTeamsConfigSchema.optional(),
+  models: MpdModelCatalogSchema.optional(),
+  memory: MpdMemorySettingsSchema.optional(),
+  telemetry: MpdTelemetrySettingsSchema.optional(),
+  "[opencode]": MpdOpenHostHarnessConfigSchema.optional(),
+  "[senpi]": MpdTypedHarnessConfigSchema.optional(),
+  "[codex]": MpdTypedHarnessConfigSchema.optional(),
+  profiles: record(string2(), MpdConfigProfileSchema).default({}),
   _migrations: array(string2()).optional(),
   legacy_migrations: record(string2(), unknown()).optional()
 }).strict();
-var OmoConfigLayerSchema = object({
+var MpdConfigLayerSchema = object({
   $schema: string2().optional(),
-  categories: OmoCategoriesConfigSchema.optional(),
-  agents: OmoAgentsConfigSchema.optional(),
-  codegraph: OmoCodegraphSettingsLayerSchema.optional(),
-  git_master: OmoGitMasterSettingsLayerSchema.optional(),
-  task: OmoTaskSettingsLayerSchema.optional(),
-  teams: OmoTeamsConfigLayerSchema.optional(),
-  models: OmoModelCatalogLayerSchema.optional(),
-  memory: OmoMemorySettingsLayerSchema.optional(),
-  telemetry: OmoTelemetrySettingsLayerSchema.optional(),
-  "[opencode]": OmoOpenCodeHarnessConfigSchema.optional(),
-  "[senpi]": OmoTypedHarnessConfigSchema.optional(),
-  "[codex]": OmoTypedHarnessConfigSchema.optional(),
-  profiles: record(string2(), OmoConfigProfileSchema).optional(),
+  categories: MpdCategoriesConfigSchema.optional(),
+  agents: MpdAgentsConfigSchema.optional(),
+  codegraph: MpdCodegraphSettingsLayerSchema.optional(),
+  git_master: MpdGitMasterSettingsLayerSchema.optional(),
+  task: MpdTaskSettingsLayerSchema.optional(),
+  teams: MpdTeamsConfigLayerSchema.optional(),
+  models: MpdModelCatalogLayerSchema.optional(),
+  memory: MpdMemorySettingsLayerSchema.optional(),
+  telemetry: MpdTelemetrySettingsLayerSchema.optional(),
+  "[opencode]": MpdOpenHostHarnessConfigSchema.optional(),
+  "[senpi]": MpdTypedHarnessConfigSchema.optional(),
+  "[codex]": MpdTypedHarnessConfigSchema.optional(),
+  profiles: record(string2(), MpdConfigProfileSchema).optional(),
   _migrations: array(string2()).optional(),
   legacy_migrations: record(string2(), unknown()).optional()
 }).strict();
@@ -7572,7 +7572,7 @@ function applyEdits(text, edits) {
   return text;
 }
 
-// ../../../../omo-config-core/src/loader/merge.ts
+// ../../../../mpd-config-core/src/loader/merge.ts
 var DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 function isUnsafeObjectKey(key) {
   return DANGEROUS_KEYS.has(key);
@@ -7580,44 +7580,44 @@ function isUnsafeObjectKey(key) {
 function isPlainObject2(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value) && Object.prototype.toString.call(value) === "[object Object]";
 }
-function sanitizeOmoConfigValue(value) {
+function sanitizeMpdConfigValue(value) {
   if (Array.isArray(value))
-    return value.map((entry) => sanitizeOmoConfigValue(entry));
+    return value.map((entry) => sanitizeMpdConfigValue(entry));
   if (!isPlainObject2(value))
     return value;
   const sanitized = {};
   for (const [key, entry] of Object.entries(value)) {
     if (isUnsafeObjectKey(key))
       continue;
-    sanitized[key] = sanitizeOmoConfigValue(entry);
+    sanitized[key] = sanitizeMpdConfigValue(entry);
   }
   return sanitized;
 }
 function mergeCodegraphExcludedRoots(base, override) {
   return [...new Set([...base, ...override])];
 }
-function mergeOmoConfigRecords(base, override, parentKey) {
+function mergeMpdConfigRecords(base, override, parentKey) {
   const result = { ...base };
   for (const [key, value] of Object.entries(override)) {
     if (isUnsafeObjectKey(key))
       continue;
-    const safeValue = sanitizeOmoConfigValue(value);
+    const safeValue = sanitizeMpdConfigValue(value);
     const baseValue = result[key];
-    result[key] = key === "excluded_roots" && parentKey === "codegraph" && Array.isArray(baseValue) && Array.isArray(safeValue) ? mergeCodegraphExcludedRoots(baseValue, safeValue) : isPlainObject2(baseValue) && isPlainObject2(safeValue) ? mergeOmoConfigRecords(baseValue, safeValue, key) : safeValue;
+    result[key] = key === "excluded_roots" && parentKey === "codegraph" && Array.isArray(baseValue) && Array.isArray(safeValue) ? mergeCodegraphExcludedRoots(baseValue, safeValue) : isPlainObject2(baseValue) && isPlainObject2(safeValue) ? mergeMpdConfigRecords(baseValue, safeValue, key) : safeValue;
   }
   return result;
 }
 
-// ../../../../omo-config-core/src/loader/paths.ts
+// ../../../../mpd-config-core/src/loader/paths.ts
 import { userInfo } from "node:os";
 import { dirname as dirname2, join as join7, posix, resolve as resolve3 } from "node:path";
 
-// ../../../../omo-config-core/src/internal/posix-path.ts
+// ../../../../mpd-config-core/src/internal/posix-path.ts
 function toPosixPath(path) {
   return path.split("\\").join("/");
 }
 
-// ../../../../omo-config-core/src/loader/types.ts
+// ../../../../mpd-config-core/src/loader/types.ts
 import { existsSync as existsSync4, lstatSync, readFileSync as readFileSync2, realpathSync as realpathSync2 } from "node:fs";
 var DEFAULT_READ_FILE_SYSTEM = {
   existsSync: existsSync4,
@@ -7626,25 +7626,25 @@ var DEFAULT_READ_FILE_SYSTEM = {
   realpathSync: realpathSync2
 };
 
-// ../../../../omo-config-core/src/loader/paths.ts
+// ../../../../mpd-config-core/src/loader/paths.ts
 var MAX_PROJECT_CONFIG_DIRECTORY_DEPTH = 256;
 var ACCOUNT_HOME_DIR = userInfo().homedir;
 function resolveHomeDir(env = process.env) {
   const homeDir = env.HOME ?? env.USERPROFILE ?? process.cwd();
   return homeDir.startsWith("/") ? posix.resolve(homeDir) : toPosixPath(resolve3(homeDir));
 }
-function resolveUserOmoConfigPath(env = process.env) {
-  return join7(resolveUserOmoConfigDirectory(env), "omo.jsonc");
+function resolveUserMpdConfigPath(env = process.env) {
+  return join7(resolveUserMpdConfigDirectory(env), "config.jsonc");
 }
-function resolveUserOmoConfigDirectory(env = process.env) {
-  return join7(resolveHomeDir(env), ".omo");
+function resolveUserMpdConfigDirectory(env = process.env) {
+  return join7(resolveHomeDir(env), ".mpd");
 }
-function detectUserOmoJsonPath(env, fileSystem) {
-  const configDir = resolveUserOmoConfigDirectory(env);
-  const jsoncPath = join7(configDir, "omo.jsonc");
+function detectUserMpdJsonPath(env, fileSystem) {
+  const configDir = resolveUserMpdConfigDirectory(env);
+  const jsoncPath = join7(configDir, "config.jsonc");
   if (fileSystem.existsSync(jsoncPath))
     return jsoncPath;
-  const jsonPath = join7(configDir, "omo.json");
+  const jsonPath = join7(configDir, "config.json");
   return fileSystem.existsSync(jsonPath) ? jsonPath : jsoncPath;
 }
 function isSymlinkedProjectPath(path, fileSystem) {
@@ -7661,14 +7661,14 @@ function isSymlinkedProjectPath(path, fileSystem) {
 function isLoadableProjectConfigFile(path, fileSystem) {
   return fileSystem.existsSync(path) && !isSymlinkedProjectPath(path, fileSystem);
 }
-function detectOmoJsonPath(dir, fileSystem) {
-  const omoDir = join7(dir, ".omo");
-  if (isSymlinkedProjectPath(omoDir, fileSystem))
+function detectMpdJsonPath(dir, fileSystem) {
+  const mpdDir = join7(dir, ".mpd");
+  if (isSymlinkedProjectPath(mpdDir, fileSystem))
     return null;
-  const jsoncPath = join7(omoDir, "omo.jsonc");
+  const jsoncPath = join7(mpdDir, "config.jsonc");
   if (isLoadableProjectConfigFile(jsoncPath, fileSystem))
     return jsoncPath;
-  const jsonPath = join7(omoDir, "omo.json");
+  const jsonPath = join7(mpdDir, "config.json");
   return isLoadableProjectConfigFile(jsonPath, fileSystem) ? jsonPath : null;
 }
 function realpathOrSelf(path, fileSystem) {
@@ -7688,7 +7688,7 @@ function findProjectConfigPathsFarthestFirst(cwd, homeDir, fileSystem, accountHo
   let currentDir = startDir;
   for (let depth = 0;depth < MAX_PROJECT_CONFIG_DIRECTORY_DEPTH; depth += 1) {
     const isHomeDir = boundaryDirs.includes(currentDir) || realBoundaryDirs.has(realpathOrSelf(currentDir, fileSystem));
-    const configPath = isHomeDir ? null : detectOmoJsonPath(currentDir, fileSystem);
+    const configPath = isHomeDir ? null : detectMpdJsonPath(currentDir, fileSystem);
     if (configPath !== null)
       nearestFirst.push(configPath);
     if (isHomeDir)
@@ -7700,10 +7700,10 @@ function findProjectConfigPathsFarthestFirst(cwd, homeDir, fileSystem, accountHo
   }
   return nearestFirst.reverse();
 }
-function resolveOmoConfigPaths(options) {
+function resolveMpdConfigPaths(options) {
   const fileSystem = options.fileSystem ?? DEFAULT_READ_FILE_SYSTEM;
   const env = options.env ?? process.env;
-  const userPath = detectUserOmoJsonPath(env, fileSystem);
+  const userPath = detectUserMpdJsonPath(env, fileSystem);
   const projectPaths = findProjectConfigPathsFarthestFirst(options.cwd, resolveHomeDir(env), fileSystem, ACCOUNT_HOME_DIR);
   return [
     { path: userPath, scope: "user" },
@@ -7711,18 +7711,18 @@ function resolveOmoConfigPaths(options) {
   ];
 }
 
-// ../../../../omo-config-core/src/loader/resolution.ts
-var HARNESS_KEYS = [...new Set([...HARNESS_IDS, ...OMO_CONFIG_HARNESS_IDS])].map((harness) => `[${harness}]`);
+// ../../../../mpd-config-core/src/loader/resolution.ts
+var HARNESS_KEYS = [...new Set([...HARNESS_IDS, ...MPD_CONFIG_HARNESS_IDS])].map((harness) => `[${harness}]`);
 function profileName(value) {
   return value === "" ? undefined : value;
 }
-function profileNameFromOpenCodeConfigDir(path) {
+function profileNameFromLegacyConfigDir(path) {
   const match = path?.match(/(?:^|[\\/])profiles[\\/]([^\\/]+)[\\/]*$/);
   return profileName(match?.[1]);
 }
-function resolveOmoProfileName(options = {}) {
+function resolveMpdProfileName(options = {}) {
   const env = options.env ?? process.env;
-  return profileName(options.profile) ?? profileName(env["OMO_PROFILE"]) ?? profileName(env["OCX_PROFILE"]) ?? profileNameFromOpenCodeConfigDir(env["OPENCODE_CONFIG_DIR"]);
+  return profileName(options.profile) ?? profileName(env["MPD_PROFILE"]) ?? profileName(env["OCX_PROFILE"]) ?? profileNameFromLegacyConfigDir(env["OPENCODE_CONFIG_DIR"]);
 }
 function toRecord(value) {
   if (value === null || typeof value !== "object" || Array.isArray(value))
@@ -7743,12 +7743,12 @@ function harnessLayer(config2, harness) {
     return {};
   return toRecord(config2[`[${harness}]`]) ?? {};
 }
-function resolveOmoConfigView(options) {
+function resolveMpdConfigView(options) {
   const profiles = toRecord(options.config["profiles"]);
   const profile = options.profile === undefined ? undefined : toRecord(profiles?.[options.profile]);
   const diagnostics = profile === undefined && options.profile !== undefined ? [{
     kind: "profile",
-    message: `Activated omo profile "${options.profile}" does not exist; using the base configuration`,
+    message: `Activated upstream profile "${options.profile}" does not exist; using the base configuration`,
     path: `profiles.${options.profile}`
   }] : [];
   const layers = [
@@ -7759,7 +7759,7 @@ function resolveOmoConfigView(options) {
   ];
   let config2 = {};
   for (const layer of layers)
-    config2 = mergeOmoConfigRecords(config2, layer);
+    config2 = mergeMpdConfigRecords(config2, layer);
   const resolvedProfile = options.profile !== undefined && profile !== undefined ? options.profile : undefined;
   return {
     config: withoutControlKeys(config2),
@@ -7768,7 +7768,7 @@ function resolveOmoConfigView(options) {
   };
 }
 
-// ../../../../omo-config-core/src/loader/loader.ts
+// ../../../../mpd-config-core/src/loader/loader.ts
 function parseJsoncSafe(content) {
   const errors2 = [];
   const data = parse5(content.charCodeAt(0) === 65279 ? content.slice(1) : content, errors2, {
@@ -7786,8 +7786,8 @@ function parseJsoncSafe(content) {
 var DEFAULT_RAW_CONFIG = {
   agents: {},
   categories: {},
-  codegraph: OmoCodegraphSettingsSchema.parse({}),
-  task: resolveOmoTaskSettings({}),
+  codegraph: MpdCodegraphSettingsSchema.parse({}),
+  task: resolveMpdTaskSettings({}),
   teams: {}
 };
 function stripResolutionControlKeys(config2) {
@@ -7804,7 +7804,7 @@ function validationDiagnostic(path, issues) {
   const issuePaths = issues.map((issue2) => issue2.path.map((segment) => String(segment)).join("."));
   return {
     kind: "validation",
-    message: `Invalid omo config at ${path}: ${issuePaths.join(", ")}`,
+    message: `Invalid upstream config at ${path}: ${issuePaths.join(", ")}`,
     path,
     issuePaths
   };
@@ -7843,7 +7843,7 @@ function readConfigSource(path, scope, fileSystem) {
       source: { exists: true, loaded: false, path, scope }
     };
   }
-  const validation = OmoConfigLayerSchema.safeParse(parsed.data);
+  const validation = MpdConfigLayerSchema.safeParse(parsed.data);
   if (!validation.success) {
     return {
       diagnostic: validationDiagnostic(path, validation.error.issues),
@@ -7853,7 +7853,7 @@ function readConfigSource(path, scope, fileSystem) {
   const parsedRecord = toRecord2(parsed.data);
   if (parsedRecord === null) {
     return {
-      diagnostic: { kind: "validation", message: `Invalid omo config at ${path}: root must be an object`, path },
+      diagnostic: { kind: "validation", message: `Invalid upstream config at ${path}: root must be an object`, path },
       source: { exists: true, loaded: false, path, scope }
     };
   }
@@ -7862,14 +7862,14 @@ function readConfigSource(path, scope, fileSystem) {
     value: parsedRecord
   };
 }
-function loadOmoConfig(options = {}) {
+function loadMpdConfig(options = {}) {
   const fileSystem = options.fileSystem ?? DEFAULT_READ_FILE_SYSTEM;
   const cwd = options.cwd ?? process.cwd();
   let merged = {};
   const diagnostics = [];
   const layers = [];
   const sources = [];
-  for (const candidate of resolveOmoConfigPaths({
+  for (const candidate of resolveMpdConfigPaths({
     cwd,
     ...options.env === undefined ? {} : { env: options.env },
     fileSystem,
@@ -7881,19 +7881,19 @@ function loadOmoConfig(options = {}) {
       diagnostics.push(loaded.diagnostic);
     if (loaded.value !== undefined) {
       layers.push({ config: loaded.value, source: loaded.source });
-      merged = mergeOmoConfigRecords(merged, loaded.value);
+      merged = mergeMpdConfigRecords(merged, loaded.value);
     }
   }
-  const requestedProfile = resolveOmoProfileName({
+  const requestedProfile = resolveMpdProfileName({
     ...options.env === undefined ? {} : { env: options.env },
     ...options.profile === undefined ? {} : { profile: options.profile }
   });
-  const resolved = resolveOmoConfigView({
+  const resolved = resolveMpdConfigView({
     config: merged,
     ...options.harness === undefined ? {} : { harness: options.harness },
     ...requestedProfile === undefined ? {} : { profile: requestedProfile }
   });
-  const finalConfig = OmoConfigSchema.safeParse(mergeOmoConfigRecords(DEFAULT_RAW_CONFIG, resolved.config));
+  const finalConfig = MpdConfigSchema.safeParse(mergeMpdConfigRecords(DEFAULT_RAW_CONFIG, resolved.config));
   if (finalConfig.success) {
     return {
       config: stripResolutionControlKeys(finalConfig.data),
@@ -7904,15 +7904,15 @@ function loadOmoConfig(options = {}) {
     };
   }
   return {
-    config: stripResolutionControlKeys(OmoConfigSchema.parse(DEFAULT_RAW_CONFIG)),
-    diagnostics: [...diagnostics, ...resolved.diagnostics, validationDiagnostic("(merged omo config)", finalConfig.error.issues)],
+    config: stripResolutionControlKeys(MpdConfigSchema.parse(DEFAULT_RAW_CONFIG)),
+    diagnostics: [...diagnostics, ...resolved.diagnostics, validationDiagnostic("(merged upstream config)", finalConfig.error.issues)],
     layers,
     ...resolved.profile === undefined ? {} : { profile: resolved.profile },
     sources
   };
 }
 
-// ../../../../omo-config-core/src/writer/types.ts
+// ../../../../mpd-config-core/src/writer/types.ts
 import {
   copyFileSync,
   existsSync as existsSync5,
@@ -7939,23 +7939,23 @@ var DEFAULT_WRITE_FILE_SYSTEM = {
   writeFileSync
 };
 
-class OmoConfigWriteError extends Error {
+class MpdConfigWriteError extends Error {
   path;
   operation;
-  name = "OmoConfigWriteError";
+  name = "MpdConfigWriteError";
   constructor(path, operation, cause) {
     const detail = cause instanceof Error ? cause.message : String(cause);
-    super(`Failed to ${operation} omo config at ${path}: ${detail}`, { cause });
+    super(`Failed to ${operation} upstream config at ${path}: ${detail}`, { cause });
     this.path = path;
     this.operation = operation;
   }
 }
 
-// ../../../../omo-config-core/src/writer/writer.ts
+// ../../../../mpd-config-core/src/writer/writer.ts
 import { randomUUID as randomUUID2 } from "node:crypto";
 import { dirname as dirname3, join as join8, posix as posix2 } from "node:path";
 
-// ../../../../omo-config-core/src/internal/jsonc-parse.ts
+// ../../../../mpd-config-core/src/internal/jsonc-parse.ts
 function stripBom(content) {
   return content.charCodeAt(0) === 65279 ? content.slice(1) : content;
 }
@@ -7975,8 +7975,8 @@ function parseJsoncSafe2(content) {
   };
 }
 
-// ../../../../omo-config-core/src/writer/writer.ts
-var EMPTY_OMO_CONFIG = `// OMO configuration
+// ../../../../mpd-config-core/src/writer/writer.ts
+var EMPTY_MPD_CONFIG = `// MPD configuration
 {
 }
 `;
@@ -8015,16 +8015,16 @@ function resolveWritePath(options) {
     return options.targetPath;
   const fileSystem = options.fileSystem ?? DEFAULT_WRITE_FILE_SYSTEM;
   if (options.scope === "user") {
-    const jsoncPath2 = resolveUserOmoConfigPath(options.env);
+    const jsoncPath2 = resolveUserMpdConfigPath(options.env);
     if (fileSystem.existsSync(jsoncPath2))
       return jsoncPath2;
-    const jsonPath2 = join8(dirname3(jsoncPath2), "omo.json");
+    const jsonPath2 = join8(dirname3(jsoncPath2), "config.json");
     return fileSystem.existsSync(jsonPath2) ? jsonPath2 : jsoncPath2;
   }
-  const jsoncPath = join8(options.projectDir ?? process.cwd(), ".omo", "omo.jsonc");
+  const jsoncPath = join8(options.projectDir ?? process.cwd(), ".mpd", "config.jsonc");
   if (fileSystem.existsSync(jsoncPath))
     return jsoncPath;
-  const jsonPath = join8(dirname3(jsoncPath), "omo.json");
+  const jsonPath = join8(dirname3(jsoncPath), "config.json");
   return fileSystem.existsSync(jsonPath) ? jsonPath : jsoncPath;
 }
 function directoryPath(path) {
@@ -8045,29 +8045,29 @@ function writeAtomically(path, content, fileSystem) {
       if (!(cleanupError instanceof Error))
         throw cleanupError;
     }
-    throw new OmoConfigWriteError(path, "write", error);
+    throw new MpdConfigWriteError(path, "write", error);
   }
 }
 function assertConfigPathIsSafe(path, fileSystem) {
   try {
     if (fileSystem.lstatSync(path).isSymbolicLink()) {
-      throw new OmoConfigWriteError(path, "read", new Error("Refusing to edit symlinked omo config"));
+      throw new MpdConfigWriteError(path, "read", new Error("Refusing to edit symlinked upstream config"));
     }
   } catch (error) {
-    if (error instanceof OmoConfigWriteError)
+    if (error instanceof MpdConfigWriteError)
       throw error;
-    throw new OmoConfigWriteError(path, "read", error);
+    throw new MpdConfigWriteError(path, "read", error);
   }
 }
 function assertProjectConfigDirectoryIsSafe(directory, fileSystem) {
   try {
     if (fileSystem.lstatSync(directory).isSymbolicLink()) {
-      throw new OmoConfigWriteError(directory, "read", new Error("Refusing to edit config under symlinked project .omo directory"));
+      throw new MpdConfigWriteError(directory, "read", new Error("Refusing to edit config under symlinked project .mpd directory"));
     }
   } catch (error) {
-    if (error instanceof OmoConfigWriteError)
+    if (error instanceof MpdConfigWriteError)
       throw error;
-    throw new OmoConfigWriteError(directory, "read", error);
+    throw new MpdConfigWriteError(directory, "read", error);
   }
 }
 function assertJsoncCanBeModified(path, content) {
@@ -8075,9 +8075,9 @@ function assertJsoncCanBeModified(path, content) {
   if (parsed.errors.length === 0)
     return;
   const message = parsed.errors.map((error) => `${error.message} at offset ${error.offset}`).join(", ");
-  throw new OmoConfigWriteError(path, "parse", new SyntaxError(message));
+  throw new MpdConfigWriteError(path, "parse", new SyntaxError(message));
 }
-function updateOmoConfig(options) {
+function updateMpdConfig(options) {
   const fileSystem = options.fileSystem ?? DEFAULT_WRITE_FILE_SYSTEM;
   const path = resolveWritePath(options);
   const directory = directoryPath(path);
@@ -8092,9 +8092,9 @@ function updateOmoConfig(options) {
       content = fileSystem.readFileSync(path, "utf-8");
     }
   } catch (error) {
-    if (error instanceof OmoConfigWriteError)
+    if (error instanceof MpdConfigWriteError)
       throw error;
-    throw new OmoConfigWriteError(path, "read", error);
+    throw new MpdConfigWriteError(path, "read", error);
   }
   assertJsoncCanBeModified(path, content);
   let backupPath;
@@ -8103,9 +8103,9 @@ function updateOmoConfig(options) {
       assertConfigPathIsSafe(path, fileSystem);
       backupPath = writeBackup(path, content, fileSystem);
     } catch (error) {
-      if (error instanceof OmoConfigWriteError)
+      if (error instanceof MpdConfigWriteError)
         throw error;
-      throw new OmoConfigWriteError(path, "backup", error);
+      throw new MpdConfigWriteError(path, "backup", error);
     }
   }
   let nextContent = content;
@@ -8116,10 +8116,10 @@ function updateOmoConfig(options) {
   return backupPath === undefined ? { path } : { backupPath, path };
 }
 
-// ../../../../omo-config-core/src/migration/batch.ts
+// ../../../../mpd-config-core/src/migration/batch.ts
 import { dirname as dirname5, posix as posix3 } from "node:path";
 
-// ../../../../omo-config-core/src/internal/plain-object.ts
+// ../../../../mpd-config-core/src/internal/plain-object.ts
 var DANGEROUS_KEYS2 = new Set(["__proto__", "constructor", "prototype"]);
 function isUnsafeObjectKey2(key) {
   return DANGEROUS_KEYS2.has(key);
@@ -8128,7 +8128,7 @@ function isPlainObject3(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value) && Object.prototype.toString.call(value) === "[object Object]";
 }
 
-// ../../../../omo-config-core/src/migration/backup-move.ts
+// ../../../../mpd-config-core/src/migration/backup-move.ts
 function isCrossDeviceError(error) {
   return error instanceof Error && Reflect.get(error, "code") === "EXDEV";
 }
@@ -8143,10 +8143,10 @@ function moveMigrationBackup(fileSystem, sourcePath, backupPath) {
   }
 }
 
-// ../../../../omo-config-core/src/migration/commit.ts
+// ../../../../mpd-config-core/src/migration/commit.ts
 import { basename as basename3, dirname as dirname4, join as join9, resolve as resolve4 } from "node:path";
 
-// ../../../../omo-config-core/src/migration/merge.ts
+// ../../../../mpd-config-core/src/migration/merge.ts
 function displayValue(value) {
   const encoded = JSON.stringify(value);
   return encoded === undefined ? String(value) : encoded;
@@ -8227,7 +8227,7 @@ function collectMigrationEdits(value, path = []) {
   return edits;
 }
 
-// ../../../../omo-config-core/src/migration/predicate.ts
+// ../../../../mpd-config-core/src/migration/predicate.ts
 function hasMigrationMarker(target, migrationId) {
   const markers = target["_migrations"];
   return Array.isArray(markers) && markers.some((marker) => marker === migrationId);
@@ -8236,7 +8236,7 @@ function shouldRunMigration(input) {
   return input.legacySourcesExist && !hasMigrationMarker(input.target, input.migrationId);
 }
 
-// ../../../../omo-config-core/src/migration/types.ts
+// ../../../../mpd-config-core/src/migration/types.ts
 class MigrationValidationError extends Error {
   targetPath;
   name = "MigrationValidationError";
@@ -8288,7 +8288,7 @@ var DEFAULT_MIGRATION_FILE_SYSTEM = {
   }
 };
 
-// ../../../../omo-config-core/src/migration/commit.ts
+// ../../../../mpd-config-core/src/migration/commit.ts
 function parseDocument(path, content) {
   const parsed = parseJsoncSafe2(content);
   if (parsed.errors.length > 0 || !isPlainObject3(parsed.data)) {
@@ -8312,7 +8312,7 @@ function markerValue(target, migrationId, targetPath) {
   return hasMigrationMarker(target, migrationId) ? value : [...value, migrationId];
 }
 function validateTarget(targetPath, document) {
-  const result = OmoConfigSchema.safeParse(document);
+  const result = MpdConfigSchema.safeParse(document);
   if (result.success)
     return;
   const detail = result.error.issues.map((issue2) => `${issue2.path.join(".")}: ${issue2.message}`).join(", ");
@@ -8320,22 +8320,22 @@ function validateTarget(targetPath, document) {
 }
 function writerInput(targetPath, env) {
   const homeDir = resolveHomeDir(env);
-  const userDirectory = toPosixPath(join9(homeDir, ".omo"));
+  const userDirectory = toPosixPath(join9(homeDir, ".mpd"));
   const fileName = basename3(targetPath);
-  if (toPosixPath(dirname4(targetPath)) === userDirectory && (fileName === "omo.json" || fileName === "omo.jsonc")) {
+  if (toPosixPath(dirname4(targetPath)) === userDirectory && (fileName === "config.json" || fileName === "config.jsonc")) {
     return { scope: "user" };
   }
-  if (basename3(dirname4(targetPath)) === ".omo" && (fileName === "omo.json" || fileName === "omo.jsonc")) {
+  if (basename3(dirname4(targetPath)) === ".mpd" && (fileName === "config.json" || fileName === "config.jsonc")) {
     return { projectDir: dirname4(dirname4(targetPath)), scope: "project" };
   }
-  throw new MigrationTransactionError(`Migration target is not an omo config path: ${targetPath}`);
+  throw new MigrationTransactionError(`Migration target is not an upstream config path: ${targetPath}`);
 }
 function sameResolvedPath(a, b) {
   return toPosixPath(resolve4(a)) === toPosixPath(resolve4(b));
 }
-var writeOmoMigrationTarget = (input) => {
+var writeMpdMigrationTarget = (input) => {
   const options = writerInput(input.targetPath, input.env);
-  const result = updateOmoConfig({
+  const result = updateMpdConfig({
     ...options,
     edits: input.edits,
     env: input.env,
@@ -8380,10 +8380,10 @@ function writePreparedTarget(input) {
   });
 }
 
-// ../../../../omo-config-core/src/migration/journal.ts
+// ../../../../mpd-config-core/src/migration/journal.ts
 import { join as join10 } from "node:path";
 function migrationJournalPath(env) {
-  return toPosixPath(join10(resolveHomeDir(env), ".omo", ".migration-journal.json"));
+  return toPosixPath(join10(resolveHomeDir(env), ".mpd", ".migration-journal.json"));
 }
 function isFileExistsError2(error) {
   return error instanceof Error && Reflect.get(error, "code") === "EEXIST";
@@ -8470,7 +8470,7 @@ function removeMigrationJournal(fileSystem, env) {
     fileSystem.unlinkSync(path);
 }
 
-// ../../../../omo-config-core/src/migration/lock.ts
+// ../../../../mpd-config-core/src/migration/lock.ts
 import { join as join11 } from "node:path";
 var DEFAULT_LEASE_DURATION_MS = 30000;
 var GUARD_LEASE_DURATION_MS = 1000;
@@ -8478,7 +8478,7 @@ var LIVE_OWNER_STALE_LEASE_MULTIPLIER = 2;
 var MUTATION_GUARD_RETRY_DELAYS_MS = [2, 4, 8, 16, 32];
 var MUTATION_GUARD_SLEEP_VIEW = new Int32Array(new SharedArrayBuffer(4));
 function migrationLockPath(env) {
-  return toPosixPath(join11(resolveHomeDir(env), ".omo", ".migration.lock"));
+  return toPosixPath(join11(resolveHomeDir(env), ".mpd", ".migration.lock"));
 }
 function mutationGuardPath(env) {
   return `${migrationLockPath(env)}.guard`;
@@ -8555,7 +8555,7 @@ function releaseMutationGuard(input) {
 function acquireMigrationLock(input) {
   const leaseDurationMs = input.leaseDurationMs ?? DEFAULT_LEASE_DURATION_MS;
   const path = migrationLockPath(input.env);
-  input.fileSystem.mkdirSync(toPosixPath(join11(resolveHomeDir(input.env), ".omo")), { recursive: true });
+  input.fileSystem.mkdirSync(toPosixPath(join11(resolveHomeDir(input.env), ".mpd")), { recursive: true });
   for (let attempt = 0;attempt < 3; attempt += 1) {
     const currentContent = leaseContent(input.process, input.clock, leaseDurationMs);
     try {
@@ -8618,7 +8618,7 @@ function acquireMigrationLock(input) {
   return null;
 }
 
-// ../../../../omo-config-core/src/migration/recovery.ts
+// ../../../../mpd-config-core/src/migration/recovery.ts
 function resumeMigrationJournal(input) {
   const journal = readMigrationJournal(input.fileSystem, input.env);
   if (journal === null)
@@ -8666,7 +8666,7 @@ function resumeMigrationJournal(input) {
   return true;
 }
 
-// ../../../../omo-config-core/src/migration/batch.ts
+// ../../../../mpd-config-core/src/migration/batch.ts
 function parseSource(path, content) {
   const parsed = parseJsoncSafe2(content);
   if (parsed.errors.length > 0) {
@@ -8793,7 +8793,7 @@ function runMigrations(options) {
   const env = options.env ?? { ...home === undefined ? {} : { HOME: home }, ...userProfile === undefined ? {} : { USERPROFILE: userProfile } };
   const fileSystem = options.fileSystem ?? DEFAULT_MIGRATION_FILE_SYSTEM;
   const process3 = { isAlive: options.isProcessAlive ?? DEFAULT_MIGRATION_PROCESS.isAlive, pid: options.pid ?? DEFAULT_MIGRATION_PROCESS.pid };
-  const writeTarget = options.writeTarget ?? writeOmoMigrationTarget;
+  const writeTarget = options.writeTarget ?? writeMpdMigrationTarget;
   const lock = acquireMigrationLock({ clock, env, fileSystem, ...options.leaseDurationMs === undefined ? {} : { leaseDurationMs: options.leaseDurationMs }, process: process3 });
   if (lock === null)
     return { journalResumed: false, results: [], status: "locked" };
@@ -8824,7 +8824,7 @@ function runMigrations(options) {
 import { existsSync as existsSync6 } from "node:fs";
 import { posix as posix4, win32 } from "node:path";
 var MIGRATION_ID = "2026-07-codex-config-jsonc";
-var OMO_SCHEMA_URL = "https://raw.githubusercontent.com/code-yeongyu/oh-my-openagent/dev/assets/omo.schema.json";
+var MPD_SCHEMA_URL = "https://raw.githubusercontent.com/code-yeongyu/oh-my-openagent/dev/assets/omo.schema.json";
 function isRecord5(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -8852,17 +8852,17 @@ function migrationHistory(sources, configPath) {
 function transformConfigJsonc(configPath, sources) {
   const config2 = sources.find((source) => source.path === configPath);
   const legacy = config2 === undefined || !isRecord5(config2.value) ? {} : config2.value;
-  const omo = recordAt(legacy, "[omo]");
+  const upstream = recordAt(legacy, "[upstream]");
   const senpi = recordAt(legacy, "[senpi]");
   const history = migrationHistory(sources, configPath);
   return {
-    diagnostics: omo !== undefined && senpi !== undefined ? ["conflict: [senpi] legacy [omo] kept [senpi]"] : [],
+    diagnostics: upstream !== undefined && senpi !== undefined ? ["conflict: [senpi] legacy [upstream] kept [senpi]"] : [],
     document: {
-      $schema: OMO_SCHEMA_URL,
+      $schema: MPD_SCHEMA_URL,
       ...recordAt(legacy, "codegraph") === undefined ? {} : { codegraph: recordAt(legacy, "codegraph") },
       ...recordAt(legacy, "[opencode]") === undefined ? {} : { "[opencode]": recordAt(legacy, "[opencode]") },
       ...recordAt(legacy, "[codex]") === undefined ? {} : { "[codex]": recordAt(legacy, "[codex]") },
-      ...senpi === undefined && omo === undefined ? {} : { "[senpi]": senpi ?? omo },
+      ...senpi === undefined && upstream === undefined ? {} : { "[senpi]": senpi ?? upstream },
       ...Object.keys(history).length === 0 ? {} : { legacy_migrations: history }
     }
   };
@@ -8876,19 +8876,19 @@ function sourceExists(options, path) {
 function migrationPlan(homeDir, options) {
   const platform = options.platform ?? process.platform;
   const paths = options.pathOperations ?? (platform === "win32" ? win32 : posix4);
-  const configPath = paths.join(homeDir, ".omo", "config.jsonc");
+  const configPath = paths.join(homeDir, ".mpd", "config.jsonc");
   const sidecarPath = `${configPath}.migrations.json`;
   const sourcePaths = [configPath, sidecarPath].filter((path) => sourceExists(options, path));
   if (sourcePaths.length === 0)
     return;
-  const backupRoot = paths.join(homeDir, ".omo", `migration-backup-${timestamp(options.backupTimestamp)}-opencode-config`, ".omo");
+  const backupRoot = paths.join(homeDir, ".mpd", `migration-backup-${timestamp(options.backupTimestamp)}-legacy-config`, ".mpd");
   return {
     id: MIGRATION_ID,
     sources: sourcePaths.map((path) => ({
       backupPath: paths.join(backupRoot, path === configPath ? "config.jsonc" : "config.jsonc.migrations.json"),
       path
     })),
-    targetPath: paths.join(homeDir, ".omo", "omo.jsonc"),
+    targetPath: paths.join(homeDir, ".mpd", "config.jsonc"),
     transform: (sources) => transformConfigJsonc(configPath, sources)
   };
 }
@@ -8999,15 +8999,15 @@ function envOverrides(env, warnings) {
 function migrationWarnings(result) {
   const warnings = [];
   if (result.error !== undefined)
-    warnings.push(`omo-codex: configuration migration: ${result.error}`);
+    warnings.push(`mpd-codex: configuration migration: ${result.error}`);
   if (result.journalResumed)
-    warnings.push("omo-codex: recovered an interrupted configuration migration");
+    warnings.push("mpd-codex: recovered an interrupted configuration migration");
   if (result.migratedFrom.length > 0) {
-    warnings.push(`omo-codex: migrated legacy configuration from ${result.migratedFrom.join(", ")}`);
+    warnings.push(`mpd-codex: migrated legacy configuration from ${result.migratedFrom.join(", ")}`);
   }
   for (const migration of result.results) {
     for (const diagnostic of migration.diagnostics) {
-      warnings.push(`omo-codex: configuration migration: ${diagnostic}`);
+      warnings.push(`mpd-codex: configuration migration: ${diagnostic}`);
     }
   }
   return warnings;
@@ -9029,7 +9029,7 @@ function codexCodegraphConfig(value) {
     ...value.watch_debounce_ms === undefined ? {} : { watch_debounce_ms: value.watch_debounce_ms }
   };
 }
-function getCodexOmoConfig(options = {}) {
+function getCodexMpdConfig(options = {}) {
   const env = options.env ?? process.env;
   const homeDir = resolveHomeDir2(options);
   const environment = environmentWithHome(env, homeDir);
@@ -9040,7 +9040,7 @@ function getCodexOmoConfig(options = {}) {
     ...options.fileSystem === undefined ? {} : { fileSystem: options.fileSystem },
     ...options.platform === undefined ? {} : { platform: options.platform }
   });
-  const result = loadOmoConfig({
+  const result = loadMpdConfig({
     ...options.cwd === undefined ? {} : { cwd: options.cwd },
     env: environment,
     ...options.fileSystem === undefined ? {} : { fileSystem: options.fileSystem },
@@ -9048,7 +9048,7 @@ function getCodexOmoConfig(options = {}) {
     ...options.platform === undefined ? {} : { platform: options.platform },
     ...options.profile === undefined ? {} : { profile: options.profile }
   });
-  const trustedConfig = loadOmoConfig({
+  const trustedConfig = loadMpdConfig({
     cwd: homeDir,
     env: environment,
     ...options.fileSystem === undefined ? {} : { fileSystem: options.fileSystem },
@@ -9057,7 +9057,7 @@ function getCodexOmoConfig(options = {}) {
     ...options.profile === undefined ? {} : { profile: options.profile }
   });
   const envWarnings = [];
-  const config2 = OmoConfigSchema.parse(mergeOmoConfigRecords(result.config, envOverrides(env, envWarnings)));
+  const config2 = MpdConfigSchema.parse(mergeMpdConfigRecords(result.config, envOverrides(env, envWarnings)));
   const trustedCodegraphInstallDir = trustedConfig.config.codegraph?.install_dir;
   const { codegraph, ...resolvedConfig } = config2;
   const codexCodegraph = codexCodegraphConfig(codegraph);
@@ -9708,23 +9708,23 @@ var DEFAULT_SESSION_START_COOLDOWN_MS = 15 * 60 * 1000;
 var MAX_SESSION_START_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 // src/session-start-worker.ts
-var SESSION_START_CWD_ENV = "OMO_CODEGRAPH_SESSION_START_CWD";
+var SESSION_START_CWD_ENV = "MPD_CODEGRAPH_SESSION_START_CWD";
 
 // src/serve.ts
-var CODEGRAPH_SKIP_HINT = `CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set OMO_CODEGRAPH_BIN.
+var CODEGRAPH_SKIP_HINT = `CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.
 `;
 var CODEGRAPH_DISABLED_HINT = `CodeGraph MCP skipped: disabled by OMO SOT config. Set [codex].codegraph.enabled=true to enable it.
 `;
 var CODEGRAPH_EXCLUDED_HINT = `CodeGraph MCP skipped: project excluded by OMO CodeGraph policy.
 `;
 var CODEGRAPH_VERSION = CODEGRAPH_PINNED_VERSION;
-var PROJECT_CWD_ENV_KEYS = ["OMO_CODEGRAPH_PROJECT_CWD", SESSION_START_CWD_ENV, "PWD"];
+var PROJECT_CWD_ENV_KEYS = ["MPD_CODEGRAPH_PROJECT_CWD", SESSION_START_CWD_ENV, "PWD"];
 async function runCodegraphServe(options = {}) {
   const env = options.env ?? processEnv;
   const homeDir = options.homeDir ?? homedir6();
   const wrapperCwd = options.cwd ?? processCwd();
   const projectCwd = resolveProjectCwd(env, wrapperCwd);
-  const config2 = options.config ?? getCodexOmoConfig({ cwd: projectCwd, env, homeDir });
+  const config2 = options.config ?? getCodexMpdConfig({ cwd: projectCwd, env, homeDir });
   const codegraphConfig = config2.codegraph ?? {};
   if (codegraphConfig.enabled === false) {
     return runUnavailableMcp(CODEGRAPH_DISABLED_HINT, options);
@@ -9738,7 +9738,7 @@ async function runCodegraphServe(options = {}) {
     return runUnavailableMcp(CODEGRAPH_EXCLUDED_HINT, options);
   }
   const trustedInstallDir = config2.trustedCodegraphInstallDir;
-  const installDir = trustedInstallDir ?? join12(homeDir, ".omo", "codegraph");
+  const installDir = trustedInstallDir ?? join12(homeDir, ".mpd", "codegraph");
   const resolutionOptions = {
     env,
     homeDir,
@@ -9810,7 +9810,7 @@ async function provisionMissingCodegraph(options) {
     return null;
   if (options.config.auto_provision === false)
     return null;
-  const installDir = options.trustedInstallDir ?? join12(options.homeDir, ".omo", "codegraph");
+  const installDir = options.trustedInstallDir ?? join12(options.homeDir, ".mpd", "codegraph");
   const result = await options.ensureProvisioned({
     installDir,
     lockDir: join12(installDir, ".locks"),

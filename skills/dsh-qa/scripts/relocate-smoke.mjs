@@ -18,7 +18,7 @@ const DEV = process.env.MPD_DEV_ROOT || "/home/haroldzhao/dshProj/my-power-dsh"
 function selfTest() {
   if (!existsSync(join(repoRoot, "dist", "mpd-package", "package.json"))) { console.error("[relocate-smoke self-test] FAIL: run node scripts/pack-mpd.mjs first"); process.exit(1) }
   const patch = readFileSync(join(repoRoot, "dist", "mpd-package", "cordis.patch.yml"), "utf8")
-  if (patch.includes(DEV) || patch.includes("oh-my-openagent")) { console.error("[relocate-smoke self-test] FAIL: dev path leak in staged patch"); process.exit(1) }
+  if (patch.includes(DEV) || patch.includes("the upstream project")) { console.error("[relocate-smoke self-test] FAIL: dev path leak in staged patch"); process.exit(1) }
   console.log("[relocate-smoke self-test] ok: staged patch is path-clean")
 }
 

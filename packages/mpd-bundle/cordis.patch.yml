@@ -16,7 +16,7 @@
         args:
           - !!js 'process.env.MPD_DSH_ASTGREP_CLI || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-astgrep/dist/cli.js")'
         env:
-          OMO_AST_GREP_SG_PATH: !!js 'process.env.OMO_AST_GREP_SG_PATH || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/.bin/sg")'
+          MPD_AST_GREP_SG_PATH: !!js 'process.env.MPD_AST_GREP_SG_PATH || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/.bin/sg")'
         toolCallTimeoutMs: 60000
     # git_bash, by the upstream original design, is Windows-only (run is available only on native Windows); this bundle disables it by default;
     # Windows deployments can change this row to disabled: false to enable it.
@@ -40,7 +40,7 @@
           - !!js 'process.env.MPD_DSH_LSP_CLI || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-lsp/dist/cli.js")'
           - mcp
         toolCallTimeoutMs: 60000
-    # CodeGraph MCP (F10 closed): OMO_CODEGRAPH_BIN resolves via baseUrl to the
+    # CodeGraph MCP (F10 closed): MPD_CODEGRAPH_BIN resolves via baseUrl to the
     # node_modules/.bin/codegraph binary (optionalDependency @colbymchenry/codegraph);
     # project index init/skip-home discipline is handled by the mpd-codegraph plugin row below.
     - id: mcp-codegraph
@@ -52,7 +52,7 @@
         args:
           - !!js 'process.env.MPD_DSH_CODEGRAPH_CLI || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-codegraph/dist/serve.js")'
         env:
-          OMO_CODEGRAPH_BIN: !!js 'process.env.OMO_CODEGRAPH_BIN || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/.bin/codegraph")'
+          MPD_CODEGRAPH_BIN: !!js 'process.env.MPD_CODEGRAPH_BIN || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/.bin/codegraph")'
         toolCallTimeoutMs: 60000
 
 # ── B-line plugins (self-written; production uses @mpd-dsh/<pkg> package names) ──

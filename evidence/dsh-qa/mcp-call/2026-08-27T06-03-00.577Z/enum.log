@@ -1,0 +1,19 @@
+[mpd-codegraph] init status=marker binary=/home/haroldzhao/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/home/haroldzhao/dshProj/my-power-dsh
+[mpd-bootstrap] presets installed (0.2.1) -> /tmp/mpd-dsh-qa-vRlOSE/.agent-presets
+Here are all tool names in this session starting with the `mcp__` prefix:
+
+- mcp__ast_grep__rewrite
+- mcp__ast_grep__scan
+- mcp__ast_grep__search
+- mcp__codegraph__codegraph_explore
+- mcp__context7__query-docs
+- mcp__context7__resolve-library-id
+- mcp__grep_app__searchGitHub
+- mcp__lsp__diagnostics
+- mcp__lsp__find_references
+- mcp__lsp__goto_definition
+- mcp__lsp__install_decision
+- mcp__lsp__prepare_rename
+- mcp__lsp__rename
+- mcp__lsp__status
+- mcp__lsp__symbols

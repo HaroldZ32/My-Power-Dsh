@@ -1,5 +1,5 @@
 {
-  "source": "oh-my-openagent",
+  "source": "the upstream project",
   "sourceDir": "packages/git-bash-mcp",
   "builtAt": "2026-08-26T05:04:38.423Z",
   "build": [

@@ -1,4 +1,4 @@
-// mpd adaptation: state root .omo -> .mpd (my-power-dsh convention).
+// mpd adaptation: state root uses the .mpd convention (renamed from the legacy upstream layout).
 export const BOULDER_DIR = ".mpd"
 export const BOULDER_FILE = "boulder.json"
 export const BOULDER_STATE_PATH = `${BOULDER_DIR}/${BOULDER_FILE}`

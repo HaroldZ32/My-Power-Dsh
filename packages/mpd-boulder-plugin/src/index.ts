@@ -1,7 +1,7 @@
 // C5 mpd-boulder-plugin: durable work-state machine (boulder) on the DSH tool seam.
-// Vendored core: upstream oh-my-openagent packages/boulder-state (base 8c57e46,
-// SUL-1.0 fork terms; see LICENSE.md). Adaptations: state root .omo -> .mpd and
-// session platform default "opencode" -> "dsh" (see vendor/constants.ts, storage/shared.ts).
+// Vendored core: the upstream project packages/boulder-state (base 8c57e46,
+// SUL-1.0 fork terms; see LICENSE.md). Adaptations: state root -> .mpd convention and
+// session platform default -> "dsh" (legacy host prefixes still readable; see vendor/constants.ts, storage/shared.ts).
 import {
   readBoulderState,
   createBoulderState,

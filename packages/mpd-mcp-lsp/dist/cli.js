@@ -5271,7 +5271,7 @@ import {
   writeSync
 } from "node:fs";
 import { dirname as dirname8 } from "node:path";
-var OMO_DAEMON_PROTOCOL_VERSION = 1;
+var MPD_DAEMON_PROTOCOL_VERSION = 1;
 var AUTH_ERROR_CODE = -32001;
 var PROTOCOL_ERROR_CODE = -32002;
 var AUTH_TOKEN_BYTES = 32;
@@ -5286,7 +5286,7 @@ class UnsafePrivateDirectoryError extends Error {
   }
 }
 function authEnvelope(token) {
-  return { protocolVersion: OMO_DAEMON_PROTOCOL_VERSION, token };
+  return { protocolVersion: MPD_DAEMON_PROTOCOL_VERSION, token };
 }
 function readAuthToken(paths) {
   try {
@@ -5324,7 +5324,7 @@ function authenticateMessage(raw, expectedToken) {
   if (!isPlainRecord(envelope))
     return authError(id);
   const protocolVersion = envelope["protocolVersion"];
-  if (protocolVersion !== OMO_DAEMON_PROTOCOL_VERSION)
+  if (protocolVersion !== MPD_DAEMON_PROTOCOL_VERSION)
     return protocolError(id);
   const token = envelope["token"];
   if (typeof token !== "string" || !tokenMatches(token, expectedToken))
@@ -5460,9 +5460,9 @@ import { fileURLToPath as fileURLToPath3 } from "node:url";
 // src/runtime-contract.ts
 import { statSync as statSync4 } from "node:fs";
 import { isAbsolute as isAbsolute3 } from "node:path";
-var OMO_LSP_DAEMON_DIR = "OMO_LSP_DAEMON_DIR";
-var OMO_LSP_DAEMON_CLI = "OMO_LSP_DAEMON_CLI";
-var OMO_LSP_DAEMON_VERSION = "OMO_LSP_DAEMON_VERSION";
+var MPD_LSP_DAEMON_DIR = "MPD_LSP_DAEMON_DIR";
+var MPD_LSP_DAEMON_CLI = "MPD_LSP_DAEMON_CLI";
+var MPD_LSP_DAEMON_VERSION = "MPD_LSP_DAEMON_VERSION";
 var DAEMON_VERSION_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$/;
 
 class InvalidRuntimeOverrideError extends Error {
@@ -5488,12 +5488,12 @@ function validateDaemonVersion(version) {
   return version;
 }
 function resolveDaemonRuntime(env, defaults) {
-  const cliOverride = env[OMO_LSP_DAEMON_CLI];
-  const versionOverride = env[OMO_LSP_DAEMON_VERSION];
+  const cliOverride = env[MPD_LSP_DAEMON_CLI];
+  const versionOverride = env[MPD_LSP_DAEMON_VERSION];
   const hasCliOverride = cliOverride !== undefined;
   const hasVersionOverride = versionOverride !== undefined;
   if (hasCliOverride !== hasVersionOverride) {
-    throw new InvalidRuntimeOverrideError("paired_values_required", `${OMO_LSP_DAEMON_CLI} and ${OMO_LSP_DAEMON_VERSION} must be set together`);
+    throw new InvalidRuntimeOverrideError("paired_values_required", `${MPD_LSP_DAEMON_CLI} and ${MPD_LSP_DAEMON_VERSION} must be set together`);
   }
   if (!hasCliOverride || !hasVersionOverride) {
     if (!isAbsolute3(defaults.cliPath)) {
@@ -5502,7 +5502,7 @@ function resolveDaemonRuntime(env, defaults) {
     return { cliPath: defaults.cliPath, version: validateDaemonVersion(defaults.version) };
   }
   if (!isAbsolute3(cliOverride)) {
-    throw new InvalidRuntimeOverrideError("cli_must_be_absolute", `${OMO_LSP_DAEMON_CLI} must be an absolute path to an existing regular file`);
+    throw new InvalidRuntimeOverrideError("cli_must_be_absolute", `${MPD_LSP_DAEMON_CLI} must be an absolute path to an existing regular file`);
   }
   let cliStats;
   try {
@@ -5510,10 +5510,10 @@ function resolveDaemonRuntime(env, defaults) {
   } catch (error) {
     if (!(error instanceof Error))
       throw error;
-    throw new InvalidRuntimeOverrideError("cli_not_found", `${OMO_LSP_DAEMON_CLI} must name an existing regular file`);
+    throw new InvalidRuntimeOverrideError("cli_not_found", `${MPD_LSP_DAEMON_CLI} must name an existing regular file`);
   }
   if (!cliStats.isFile()) {
-    throw new InvalidRuntimeOverrideError("cli_not_file", `${OMO_LSP_DAEMON_CLI} must name an existing regular file`);
+    throw new InvalidRuntimeOverrideError("cli_not_file", `${MPD_LSP_DAEMON_CLI} must name an existing regular file`);
   }
   return { cliPath: cliOverride, version: validateDaemonVersion(versionOverride) };
 }
@@ -5524,7 +5524,7 @@ var MAX_SOCKET_PATH_LENGTH = 100;
 
 class InvalidDaemonDirectoryError extends Error {
   constructor(directory) {
-    super(`${OMO_LSP_DAEMON_DIR} must be an absolute path`);
+    super(`${MPD_LSP_DAEMON_DIR} must be an absolute path`);
     this.code = "invalid_daemon_directory";
     this.name = "InvalidDaemonDirectoryError";
     this.directory = directory;
@@ -5555,13 +5555,13 @@ function packagedRuntimeDefaults() {
   };
 }
 function daemonBaseDir(env = process.env, platform = defaultDaemonPlatform()) {
-  const override = env[OMO_LSP_DAEMON_DIR];
+  const override = env[MPD_LSP_DAEMON_DIR];
   if (override !== undefined) {
     if (!platform.path.isAbsolute(override))
       throw new InvalidDaemonDirectoryError(override);
     return platform.path.resolve(override);
   }
-  return platform.path.resolve(platform.path.join(platform.homedir(), ".omo", "lsp-daemon"));
+  return platform.path.resolve(platform.path.join(platform.homedir(), ".mpd", "lsp-daemon"));
 }
 function daemonPaths(env = process.env, runtimeDefaults = packagedRuntimeDefaults(), platform = defaultDaemonPlatform()) {
   const runtime = resolveDaemonRuntime(env, runtimeDefaults);
@@ -5595,12 +5595,12 @@ function resolveSocketPath(dir, version, platform) {
   if (platform.platform === "win32") {
     const currentUserDiscriminator = `${platform.getuid() ?? "win"}:${platform.username()}:${platform.path.resolve(platform.homedir())}`;
     const digest = shortDigest(`${canonicalVersionDir}\x00${currentUserDiscriminator}`);
-    return `\\\\.\\pipe\\omo-lsp-${version}-${digest}`;
+    return `\\\\.\\pipe\\mpd-lsp-${version}-${digest}`;
   }
   const natural = platform.path.join(canonicalVersionDir, "daemon.sock");
   if (natural.length < MAX_SOCKET_PATH_LENGTH)
     return natural;
-  return platform.path.join(platform.tmpdir(), `omo-lsp-${version}-${shortDigest(canonicalVersionDir)}`, "daemon.sock");
+  return platform.path.join(platform.tmpdir(), `mpd-lsp-${version}-${shortDigest(canonicalVersionDir)}`, "daemon.sock");
 }
 function shortDigest(value) {
   return createHash2("sha256").update(value).digest("hex").slice(0, 16);
@@ -5698,7 +5698,7 @@ function pingDaemon(paths, token, timeoutMs = PROBE_TIMEOUT_MS, signal) {
       finish(parsePingResponse(message));
     });
     socket.once("connect", () => {
-      socket.write(encodeJsonLine({ jsonrpc: "2.0", id: 1, method: "omo/ping", params: { _omo: authEnvelope(token) } }));
+      socket.write(encodeJsonLine({ jsonrpc: "2.0", id: 1, method: "mpd/ping", params: { _omo: authEnvelope(token) } }));
     });
     socket.on("data", (chunk) => decoder.push(chunk));
     socket.once("error", () => {
@@ -5861,11 +5861,11 @@ function handleDaemonMessage(raw, state) {
   const authenticated = authenticateMessage(raw, state.token);
   if ("error" in authenticated)
     return Promise.resolve(authenticated);
-  if (authenticated.method === "omo/ping") {
+  if (authenticated.method === "upstream/ping") {
     return Promise.resolve({
       jsonrpc: "2.0",
       id: authenticated.id,
-      result: { protocolVersion: OMO_DAEMON_PROTOCOL_VERSION, ...state.owner }
+      result: { protocolVersion: MPD_DAEMON_PROTOCOL_VERSION, ...state.owner }
     });
   }
   if (authenticated.method === "$/cancelRequest") {
@@ -6181,7 +6181,7 @@ function inferOpenCodeProjectCwd(projectConfigEnv) {
   if (!projectConfigEnv)
     return;
   for (const entry of projectConfigEnv.split(delimiter4)) {
-    const projectRoot = projectRootFromOpenCodeConfigPath(entry);
+    const projectRoot = projectRootFromLegacyConfigPath(entry);
     if (projectRoot)
       return projectRoot;
   }
@@ -6205,12 +6205,12 @@ function canonicalizePath(value) {
     return value;
   return realpathSync6(value);
 }
-function projectRootFromOpenCodeConfigPath(path2) {
+function projectRootFromLegacyConfigPath(path2) {
   if (basename4(path2) !== "lsp.json" && basename4(path2) !== "lsp-client.json")
     return;
   const configDir = dirname10(path2);
   const configDirName = basename4(configDir);
-  if (configDirName !== ".opencode" && configDirName !== ".omo")
+  if (configDirName !== ".opencode" && configDirName !== ".mpd")
     return;
   return dirname10(configDir);
 }
@@ -6503,7 +6503,7 @@ async function reapStaleDaemonVersions(ownPaths, deps = {}) {
     if (version === null || !entry.isDirectory())
       continue;
     const versionDir = join8(baseDir, entry.name);
-    const siblingPaths = daemonPaths({ [OMO_LSP_DAEMON_DIR]: baseDir }, { cliPath: ownPaths.cliPath, version });
+    const siblingPaths = daemonPaths({ [MPD_LSP_DAEMON_DIR]: baseDir }, { cliPath: ownPaths.cliPath, version });
     results.push(await reapOneVersion({
       version,
       versionDir,
@@ -6790,7 +6790,7 @@ async function main() {
     await runMcpStdioProxy();
     return;
   }
-  stderr.write(`Usage: omo-lsp-daemon [mcp | daemon]
+  stderr.write(`Usage: mpd-lsp-daemon [mcp | daemon]
 `);
   process.exitCode = 2;
 }

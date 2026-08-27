@@ -1,5 +1,5 @@
 // C3 mpd-hashline-plugin: hash-anchored edit discipline on the DSH tool seam.
-// Vendored core: upstream oh-my-openagent packages/hashline-core (base 8c57e46,
+// Vendored core: the upstream project packages/hashline-core (base 8c57e46,
 // SUL-1.0 fork terms; see LICENSE.md). Adaptation: diff-utils.ts bundles a
 // minimal unified-diff generator instead of the npm "diff" dependency.
 // Model: files stay PLAIN on disk; the hashline layer is a ref view + anchored

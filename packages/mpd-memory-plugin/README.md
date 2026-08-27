@@ -2,7 +2,7 @@
 
 Plan C / C6 — git/svn-backed memory engine with a reflection state machine.
 
-Focused port of upstream oh-my-openagent `memory-core` semantics (base 8c57e46,
+Focused port of the upstream project `memory-core` semantics (base 8c57e46,
 SUL-1.0 fork terms): markdown memory files with frontmatter
 (`description`/`kind`/`aliases`/`read_only`), journal + facts queues,
 reflection reducer (step-count / manual / dream triggers, reservation state),

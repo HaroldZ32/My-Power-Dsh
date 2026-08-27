@@ -1,4 +1,4 @@
-# omo-mcp-lsp
+# mpd-mcp-lsp
 
 lsp MCP integration plugin (P3, pending D2)
 

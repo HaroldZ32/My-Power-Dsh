@@ -21,7 +21,7 @@ function packageCodegraphPath() {
 function resolveBinary(config) {
   const candidates = [
     config?.binary,
-    process.env.OMO_CODEGRAPH_BIN ?? process.env.Upstream_CODEGRAPH_BIN,
+    process.env.MPD_CODEGRAPH_BIN ?? process.env.MPD_DSH_CODEGRAPH_BIN,
     process.env.MPD_DSH_CODEGRAPH_BIN
   ].filter((s) => !!s && s.length > 0);
   for (const c of candidates)
@@ -83,7 +83,7 @@ function apply(ctx, config = {}) {
   const autoInit = config.autoInit ?? true;
   const timeoutMs = config.initTimeoutMs ?? 60000;
   const cooldownMs = config.cooldownMs ?? 15 * 60000;
-  const cwd = (process.env.OMO_CODEGRAPH_PROJECT_CWD ?? process.env.Upstream_CODEGRAPH_PROJECT_CWD) || process.cwd();
+  const cwd = (process.env.MPD_CODEGRAPH_PROJECT_CWD ?? process.env.MPD_DSH_CODEGRAPH_PROJECT_CWD) || process.cwd();
   const binary = resolveBinary(config);
   let status;
   const home = resolve(homedir());
@@ -100,7 +100,7 @@ function apply(ctx, config = {}) {
   } else {
     status = initProject(cwd, binary, timeoutMs);
   }
-  console.log("[mpd-codegraph] init status=" + status + " binary=" + (binary ?? "-") + " cwd=" + cwd + (status === "skipped-home" ? " (workspace is the user home; start a session inside a project dir, or set Upstream_CODEGRAPH_PROJECT_CWD, or run /mpd-codegraph there)" : ""));
+  console.log("[mpd-codegraph] init status=" + status + " binary=" + (binary ?? "-") + " cwd=" + cwd + (status === "skipped-home" ? " (workspace is the user home; start a session inside a project dir, or set MPD_DSH_CODEGRAPH_PROJECT_CWD, or run /mpd-codegraph there)" : ""));
   try {
     const commands = ctx.get && ctx.get("commands");
     if (commands?.register) {
@@ -110,7 +110,7 @@ function apply(ctx, config = {}) {
         handler: async () => {
           const b = resolveBinary(config);
           if (!b)
-            return { success: false, error: "codegraph binary unavailable: install it or set Upstream_CODEGRAPH_BIN" };
+            return { success: false, error: "codegraph binary unavailable: install it or set MPD_DSH_CODEGRAPH_BIN" };
           const s = existsSync(join(cwd, ".codegraph", "codegraph.db")) ? "marker" : initProject(cwd, b, timeoutMs);
           return { success: s === "ok" || s === "marker", text: "mpd-codegraph init: " + s };
         }

@@ -6,7 +6,7 @@
     "commitSha": "f3642fcda303b214cc88784094da327fedab3fea",
     "fileCount": 9009,
     "loc": 151433,
-    "source": ".omo/init-deep.json"
+    "source": "legacy snapshot metadata (see README provenance)"
   },
   "upstreamStats": {
     "trackedFiles": 9131,
@@ -19,22 +19,22 @@
     "packages/mpd-mcp-astgrep/dist/cli.js": {
       "fileCount": 1,
       "source": "built offline via scripts/build-mcp.mjs from packages/ast-grep-mcp",
-      "sha256": "5a9ae80a4ef79b2efcd66dba27c82574f74e682c9bb84e465291dc0ba34aed7e"
+      "sha256": "f06bba310cad306b5638efb90a69e50b2c6a7416c0c536867f02c70f4b4fa4c5"
     },
     "packages/mpd-mcp-gitbash/dist/cli.js": {
       "fileCount": 1,
       "source": "built offline via scripts/build-mcp.mjs from packages/git-bash-mcp",
-      "sha256": "c8a2336d6e231d96497f1f74963c968b27de3c1a5ac082c58b23ddc3d04651dc"
+      "sha256": "cb9ce8f3f1749d9445d9ce5bc45d35f6e8d7d6450227a8665a6360ad38a3257a"
     },
     "packages/mpd-mcp-lsp/dist/cli.js": {
       "fileCount": 1,
       "source": "built offline via scripts/build-mcp.mjs from packages/lsp-daemon",
-      "sha256": "b82ce5fa8f69460b5f0222570e5d5852b94bd3b5e22facf0901653b555e798ee"
+      "sha256": "9b64bd1201986c592b4978e84d8cd7d8c65a359c747c0eab326b5a7026bf711a"
     },
     "packages/mpd-mcp-codegraph/dist/serve.js": {
       "fileCount": 1,
-      "source": "vendored prebuilt from packages/omo-codex/plugin/components/codegraph/dist (MIT, see LICENSE/NOTICE in pkg)",
-      "sha256": "6c53906e98bfa808b0404b4f5fab051b1c80a3cf359ff574c6c8edd6d0d2b666"
+      "source": "vendored prebuilt from the upstream codegraph dist (MIT, see packages/mpd-mcp-codegraph/LICENSE/NOTICE)",
+      "sha256": "4601ace8dbe0e15da2b122a60cecd4f91a6825ac5a3099227db3ddcf96913858"
     }
   },
   "verification": "node scripts/verify-vendor.mjs: commit/version mismatch is a blocker; stats drift is a warning; asset counts are a blocker",

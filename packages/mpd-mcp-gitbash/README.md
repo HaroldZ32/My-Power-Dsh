@@ -1,4 +1,4 @@
-# omo-mcp-gitbash
+# mpd-mcp-gitbash
 
 git-bash MCP integration plugin (P3)
 

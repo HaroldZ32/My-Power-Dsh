@@ -5,7 +5,8 @@ node_modules/
 evidence/*.log.tmp
 .DS_Store
 .codegraph/
-.omo-dsh/
+.mpd-dsh/
 dist/mpd-package/
 .bun-tmp/
 .qa-tov/
+.cg-qa/

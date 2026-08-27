@@ -14,7 +14,7 @@
 
 ## Leftovers (user-side / follow-up)
 
-1. Production profile install: dsh plugin --profile omo add this bundle + bootstrap copies presets to $DSH_HOME/.agent-presets (install script to be added);
+1. Production profile install: dsh plugin --profile upstream add this bundle + bootstrap copies presets to $DSH_HOME/.agent-presets (install script to be added);
 2. web GUI preset manual test: select mpd-oracle/librarian/prometheus/hephaestus presets and run each once (DSH UI preset selector);
 3. add source-level unit tests inside plugin packages (bun test dir) — finish before line B;
 4. keep tracking F9 (config.roots semantic difference under headless); F12 golden design correction.

@@ -6,8 +6,8 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)))
-// Legacy layout assumed repoRoot = <omo checkout>/.omo/port/mpd-dsh. The repo now lives
-// anywhere; point MPD_UPSTREAM_ROOT at the omo checkout explicitly (or keep the old relative default).
+// Legacy layout assumed repoRoot = <the upstream checkout>/.mpd/port/mpd-dsh. The repo now lives
+// anywhere; point MPD_UPSTREAM_ROOT at the the upstream checkout explicitly (or keep the old relative default).
 const upstreamRoot = process.env.MPD_UPSTREAM_ROOT || join(repoRoot, "..", "..", "..")
 const lock = JSON.parse(readFileSync(join(repoRoot, "VENDOR_LOCK.json"), "utf8"))
 

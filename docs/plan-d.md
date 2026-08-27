@@ -17,7 +17,7 @@ absolute paths tied to any fixed checkout.
 | 6 | Preset delivery | installer copies `mpd-*` into `$DSH_HOME/.agent-presets` | `mpd-bootstrap` plugin copies them at apply via the official `agentPresets` service (idempotent; user root trust) |
 | 7 | `mpd-codegraph` init | runs `codegraph init` against the session cwd; on the real machine cwd = `$HOME` → 60 s scan → `status=fail` every boot | skip when cwd is the user home (or too broad) with a one-line hint; init only in project dirs |
 | 8 | `llm-pi-ai` row | adds a second DeepSeek provider on top of the stock official one | `disabled: true` by default; `MPD_DSH_COMPAT_TRACK=1` env opt-in |
-| 9 | Preset display names | 4 presets still say `OmO …` | already fixed (names now `MPD …`); preset `skill-filesystem` no longer bakes a dev path (11/11 inherit the global row) |
+| 9 | Preset display names | 4 presets still say `MPD …` | already fixed (names now `MPD …`); preset `skill-filesystem` no longer bakes a dev path (11/11 inherit the global row) |
 | 10 | QA sandboxes under `/tmp` | `/tmp` is wiped between tool calls on this host (killed the long C2 run) | QA sandboxes must live under the workspace (gitignored) |
 
 ## 2. Mechanism verification (done this round)
@@ -91,5 +91,5 @@ P6. Docs: AGENTS.md install section, README quickstart, plan-c/decisions append;
 ## 6. Out of scope
 
 - npm publishing (optional future step; not required for relocation).
-- Removing the `omo`-named vendored upstream skill content inside the 17-skill corpus
+- Removing the `upstream`-named vendored upstream skill content inside the 17-skill corpus
   (provenance; separate decision if desired).

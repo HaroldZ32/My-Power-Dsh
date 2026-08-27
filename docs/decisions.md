@@ -9,21 +9,21 @@
 | D5 skill list | 7 skills vendored (ulw-plan/init-deep/lsp-setup/git-master/review-work/programming/ast-grep) | P2 |
 | D6 tool-presentation | Pending decision at the P4 preset layer | — |
 | D7 plugin boundary | Landed: pure assembly = official plugin instantiation (including !!js path resolution); with logic = self-developed cordis plugin (from P4: presets/hephaestus) | P2/P3 |
-| D3a (new) runtime prerequisites | ast-grep server requires the sg binary (when missing returns BINARY_NOT_FOUND classified error + install hint); codegraph requires the codegraph binary (when missing returns skip hint); lsp requires a language server (returns daemon-missing hint); git-bash is Windows-only per omo's original design (bundle line gated by platform) | evidence/p3/*-call.log |
+| D3a (new) runtime prerequisites | ast-grep server requires the sg binary (when missing returns BINARY_NOT_FOUND classified error + install hint); codegraph requires the codegraph binary (when missing returns skip hint); lsp requires a language server (returns daemon-missing hint); git-bash is Windows-only per upstream's original design (bundle line gated by platform) | evidence/p3/*-call.log |
 
 ## Platform and prerequisite notes (updated 2026-08-26: this machine has network)
 
 - Local toolchain installed (.toolchain/, npm network install, @ast-grep/cli 0.45.2 + @colbymchenry/codegraph 1.5.0):
   - ast-grep: real call PASSed (evidence/dsh-qa/mcp-call/<ts>/call.log: ok=true, 1 match, 4ms);
-  - codegraph: OMA_CODEGRAPH_BIN injected, but project policy still returns skip hint (must be initialized inside the project per omo conventions, recorded as a follow-up item);
+  - codegraph: OMA_CODEGRAPH_BIN injected, but project policy still returns skip hint (must be initialized inside the project per upstream conventions, recorded as a follow-up item);
   - per-language LSP servers: still runtime prerequisites (status is now reachable).
 - Global npm fails because the sandbox cache is read-only, so the toolchain is placed inside the repo (.toolchain/ is already gitignored).
-- git_bash MCP is Windows-only in omo (run only works on native Windows); this bundle gates it with
+- git_bash MCP is Windows-only in upstream (run only works on native Windows); this bundle gates it with
   disabled: !!js process.platform === 'win32' ? false : true.
 
 ## P5 batch-run findings (F10/F11, fixed)
 
-- F10: provision crashes when codegraph is missing (~/.omo read-only) → bundle defaults to disabled: true; see comments for enable steps.
+- F10: provision crashes when codegraph is missing (~/.mpd read-only) → bundle defaults to disabled: true; see comments for enable steps.
 - F11: golden-test direct run didn't inject the sg path → the mcp-astgrep line's env injects Upstream_AST_GREP_SG_PATH (toolchain fallback).
 
 ## P4 supplementary decisions (preset delivery path)
@@ -39,16 +39,16 @@
 
 ## CodeGraph regression (F10 closed → plan finalized)
 
-- **Root cause**: ① serve.js auto-provisions into ~/.omo when the binary is missing (read-only HOME crash); ② the upstream exclusion policy excludes
-  projects whose path contains a `.omo` segment or /tmp (**our repo temporarily lives under .omo/port/, so it is naturally excluded**).
+- **Root cause**: ① serve.js auto-provisions into ~/.mpd when the binary is missing (read-only HOME crash); ② the upstream exclusion policy excludes
+  projects whose path contains a `.mpd` segment or /tmp (**our repo temporarily lives under .mpd/port/, so it is naturally excluded**).
 - **Plan (verified)**:
   1. Self-developed `mpd-codegraph-plugin` (package name @mpd-dsh/mpd-codegraph-plugin): config.binary/env resolution (supporting
      Upstream_CODEGRAPH_BIN + toolchain fallback) -> exact-marker probe -> atomic lock + 15min cooldown + 60s tree timeout
      `codegraph init`; registers the `mpd-codegraph` command for manual rerun; any failure only logs and never crashes boot;
   2. Re-enable the bundle's mcp-codegraph line, env injects Upstream_CODEGRAPH_BIN (toolchain fallback);
-  3. QA temporary project placed at the workspace root level (not .omo, not /tmp) to verify the full chain: init status=ok -> marker ->
+  3. QA temporary project placed at the workspace root level (not .mpd, not /tmp) to verify the full chain: init status=ok -> marker ->
      `mcp__codegraph__codegraph_explore` really returns byte-for-byte source (evidence/dsh-qa/codegraph/).
-- **User machine note**: production project paths must not contain a `.omo` segment or be under /tmp; clone from Gitee to a normal path (e.g. ~/dshProj/mpd-dsh).
+- **User machine note**: production project paths must not contain a `.mpd` segment or be under /tmp; clone from Gitee to a normal path (e.g. ~/dshProj/mpd-dsh).
 
 ## Plan C decisions (2026-08-26, user-approved; full plan in docs/plan-c.md)
 

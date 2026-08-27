@@ -34,9 +34,19 @@ function realRun(job, timeoutMs = 600000) {
     if (env.DSH_HOME !== sandbox) { console.error("[mcp-call] isolation assertion failed: DSH_HOME does not point to the sandbox"); process.exit(1) }
     // Local toolchain: sg / codegraph installed with network access (optional; injected when present so the call truly succeeds)
     const sg = join(repoRoot, ".toolchain/node_modules/.bin/ast-grep")
-    if (existsSync(sg)) env.Upstream_AST_GREP_SG_PATH = sg
+    if (existsSync(sg)) env.MPD_AST_GREP_SG_PATH = sg
     const cg = join(repoRoot, ".toolchain/node_modules/.bin/codegraph")
-    if (existsSync(cg)) env.Upstream_CODEGRAPH_BIN = cg
+    if (existsSync(cg)) env.MPD_CODEGRAPH_BIN = cg
+    // The bundle patch references rows as @mpd-dsh/mpd/... (Plan D staged layout):
+    // stage the package into the sandbox profile with npm (relocate-smoke pattern;
+    // `dsh plugin add` uses pnpm whose store is not writable in this sandbox).
+    const staged = join(repoRoot, "dist", "mpd-package")
+    if (!existsSync(staged)) { console.error("[mcp-call] missing staged bundle; run node scripts/pack-mpd.mjs first"); process.exit(1) }
+    const profileDir = join(sandbox, "profiles", "headless")
+    mkdirSync(profileDir, { recursive: true })
+    writeFileSync(join(profileDir, "package.json"), JSON.stringify({ name: "dsh-profile-headless", private: true, dependencies: { ["@mpd-dsh/mpd"]: "file:" + staged }, dsh: { profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-headless"] } } }, null, 2) + "\n")
+    const inst = spawnSync("npm", ["install", "--prefix", profileDir, "--no-audit", "--no-fund", "--cache", join(sandbox, ".npm-cache")], { env, encoding: "utf8", timeout: 600000, maxBuffer: 32 * 1024 * 1024 })
+    if (inst.status !== 0) { console.error("[mcp-call] FAIL: staged install\n" + (inst.stdout || "") + (inst.stderr || "")); process.exit(1) }
     const run = spawnSync("dsh", ["--profile", "headless", "--patch", join(repoRoot, "packages/mpd-bundle/cordis.patch.yml"), job], {
       env, encoding: "utf8", timeout: timeoutMs, stdio: ["ignore", fd, fd]
     })
@@ -57,7 +67,7 @@ function runReal() {
   writeFileSync(join(outDir, "result.json"), JSON.stringify({
     ok, durationMs: Date.now() - t0,
     enum: { exit: enumRun.exit, toolListProof: /mcp__ast_grep__/.test(enumRun.out) && /mcp__lsp__/.test(enumRun.out) },
-    call: { exit: callRun.exit, astGrepCallProof: /BINARY_NOT_FOUND|ast-grep/.test(callRun.out) }
+    call: { exit: callRun.exit, astGrepCallProof: !/BINARY_NOT_FOUND/.test(callRun.out) && /ast_grep|ast-grep|match/.test(callRun.out) }
   }, null, 2))
   writeFileSync(join(outDir, "enum.log"), enumRun.out)
   writeFileSync(join(outDir, "call.log"), callRun.out)

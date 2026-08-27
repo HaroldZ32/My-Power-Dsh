@@ -1,4 +1,4 @@
-# QA use: override the system persona with the omo Oracle text (keeping the decision framework and output spec), verifying the DeepSeek-side review persona
+# QA use: override the system persona with the upstream Oracle text (keeping the decision framework and output spec), verifying the DeepSeek-side review persona
 - id: system-prompt
   name: '@deepseek-ai/dsh-system-prompt'
   config:

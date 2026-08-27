@@ -2,7 +2,7 @@
 
 Plan C / C4 — comment/docstring detection on the DSH tool seam (opt-in binary).
 
-Vendored parser: upstream oh-my-openagent `packages/comment-checker-core` (base
+Vendored parser: the upstream project `packages/comment-checker-core` (base
 8c57e46, SUL-1.0 fork terms; `isRecord` inlined). Check binary:
 `@code-yeongyu/comment-checker` 0.8.0 (MIT,
 github.com/code-yeongyu/go-claude-code-comment-checker) — native tree-sitter

@@ -402,10 +402,10 @@ function sgBinaryName(platform = process.platform) {
 }
 
 // ../utils/src/ast-grep/install-script.ts
-var AST_GREP_BIN_DIR_ENV_KEY = "OMO_AST_GREP_BIN_DIR";
+var AST_GREP_BIN_DIR_ENV_KEY = "MPD_AST_GREP_BIN_DIR";
 
 // ../utils/src/ast-grep/types.ts
-var SG_PATH_ENV_KEY = "OMO_AST_GREP_SG_PATH";
+var SG_PATH_ENV_KEY = "MPD_AST_GREP_SG_PATH";
 var SG_BINARY_NOT_FOUND = "BINARY_NOT_FOUND";
 
 // ../utils/src/ast-grep/sg-candidates.ts
@@ -428,7 +428,7 @@ function envOverrideCandidates(env) {
   const override = nonEmptyValue(env[SG_PATH_ENV_KEY]);
   return override === null ? [] : [candidate("env-override", override)];
 }
-function omoRuntimeCandidates(options) {
+function mpdRuntimeCandidates(options) {
   const binaryName = sgBinaryName(options.platform);
   const slug = runtimeSlug(options.platform, options.arch);
   const paths = [];
@@ -437,8 +437,8 @@ function omoRuntimeCandidates(options) {
   const codexHome = nonEmptyValue(options.env["CODEX_HOME"]);
   if (codexHome !== null)
     paths.push(join2(codexHome, "runtime", "ast-grep", slug, binaryName));
-  paths.push(join2(options.homeDir, ".omo", "runtime", "ast-grep", slug, binaryName));
-  return paths.map((path) => candidate("omo-runtime", path));
+  paths.push(join2(options.homeDir, ".mpd", "runtime", "ast-grep", slug, binaryName));
+  return paths.map((path) => candidate("mpd-runtime", path));
 }
 function skillBinCandidates(options) {
   const names = [astGrepBinaryName(options.platform), sgBinaryName(options.platform)];
@@ -464,7 +464,7 @@ function planSgCandidates(options) {
     afterPath: homebrewCandidates(platform),
     beforePath: [
       ...envOverrideCandidates(env),
-      ...omoRuntimeCandidates({ arch, env, homeDir, platform, runtimeDir: options.runtimeDir }),
+      ...mpdRuntimeCandidates({ arch, env, homeDir, platform, runtimeDir: options.runtimeDir }),
       ...skillBinCandidates({ env, packageDir: options.packageDir, platform })
     ],
     pathCommands: ["ast-grep", "sg"]
@@ -472,7 +472,7 @@ function planSgCandidates(options) {
 }
 
 // ../utils/src/ast-grep/sg-install-hints.ts
-var OMO_PROVISION_HINT = "Start an OMO session so the bundled ast-grep skill provisions the pinned runtime automatically";
+var MPD_PROVISION_HINT = "Start an MPD session so the bundled ast-grep skill provisions the pinned runtime automatically";
 var ENV_OVERRIDE_HINT = `Or point ${SG_PATH_ENV_KEY} at an existing ast-grep binary`;
 var DARWIN_HINTS = [
   "brew install ast-grep",
@@ -498,10 +498,10 @@ function platformHints(platform) {
   return LINUX_HINTS;
 }
 function sgInstallHints(platform = process.platform) {
-  return [...platformHints(platform), OMO_PROVISION_HINT, ENV_OVERRIDE_HINT];
+  return [...platformHints(platform), MPD_PROVISION_HINT, ENV_OVERRIDE_HINT];
 }
 function sgBinaryNotFoundMessage(platform = process.platform) {
-  return `ast-grep binary not found for ${platform}: no candidate passed the --version probe across the env override, OMO runtime, skill bin cache, PATH, or Homebrew prefixes.`;
+  return `ast-grep binary not found for ${platform}: no candidate passed the --version probe across the env override, MPD runtime, skill bin cache, PATH, or Homebrew prefixes.`;
 }
 
 // ../utils/src/ast-grep/sg-resolver.ts
@@ -1706,7 +1706,7 @@ async function executeRewrite(rawInput, sgPath, signal, hooks) {
   } catch (error) {
     return failure("INVALID_ARGUMENT", error instanceof Error ? error.message : String(error), "preflight", typeof rawInput?.language === "string" ? rawInput.language : "unknown", elapsed());
   }
-  const workdir = input.workdir ?? process.env.OMO_AST_GREP_PROJECT_CWD ?? process.cwd();
+  const workdir = input.workdir ?? process.env.MPD_AST_GREP_PROJECT_CWD ?? process.cwd();
   const validation = validateRewriteHints(input.pattern, input.rewrite, input.language, {
     force: input.force,
     paths: input.paths,
@@ -2019,7 +2019,7 @@ async function executeScan(rawInput, sgPath, signal) {
   } catch (error) {
     return failure2("INVALID_ARGUMENT", error instanceof Error ? error.message : String(error), "preflight", elapsed());
   }
-  const workdir = input.workdir ?? process.env.OMO_AST_GREP_PROJECT_CWD ?? process.cwd();
+  const workdir = input.workdir ?? process.env.MPD_AST_GREP_PROJECT_CWD ?? process.cwd();
   let preview;
   try {
     preview = await spawnSgRunner({
@@ -2413,7 +2413,7 @@ async function main() {
     await runMcpStdioServer(process.stdin, process.stdout);
     return;
   }
-  stderr.write(`Usage: omo-ast-grep [mcp]
+  stderr.write(`Usage: mpd-ast-grep [mcp]
 `);
   process.exitCode = 2;
 }

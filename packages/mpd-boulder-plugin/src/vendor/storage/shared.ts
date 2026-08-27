@@ -3,7 +3,9 @@ import type { BoulderState, BoulderWorkState, BoulderWorkStatus } from "../types
 export const RESERVED_KEYS = new Set(["__proto__", "prototype", "constructor"])
 
 // mpd adaptation: default platform is "dsh" (DeepSeek Harness); the legacy
-// codex/opencode/senpi prefixes are still accepted for cross-platform reads.
+// host-id prefixes below are still accepted for cross-platform reads.
+// Note: those literals are data-compatibility values for pre-existing boulder
+// records, not branding — keep them as-is.
 type SessionPlatform = "codex" | "opencode" | "senpi" | "dsh"
 
 const SESSION_ID_PREFIX_PATTERN = /^(codex|opencode|senpi|dsh):/

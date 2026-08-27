@@ -1,4 +1,4 @@
-# omo-mcp-astgrep
+# mpd-mcp-astgrep
 
 ast-grep MCP integration plugin (P3)
 

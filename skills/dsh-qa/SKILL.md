@@ -30,7 +30,7 @@ the upstream host QA skills.
 | llm-dual-track | DeepSeek dual-track | deepseek-official and pi-ai deepseek routes both serve a real headless task | P1 |
 | skill-load | skills | skill catalog visible + content loaded | P2 |
 | mcp-call | MCP | mcp__ast_grep__*/mcp__lsp__* callable with server responses | P3 |
-| preset-register | presets | omo-* presets resolve via user root .agent-presets | P4 |
+| preset-register | presets | mpd-* presets resolve via user root .agent-presets | P4 |
 | install-profile | installer | install-profile --yes into sandbox + boot auto-loads rows | P4 |
 | codegraph-smoke | codegraph | binary resolve -> init -> mcp__codegraph__explore real call | P4+ |
 | tool-output-validation | plugin tools | mpd_config_get / mpd_boulder_status return host-validated lossless JSON (no "not lossless JSON" / "must be an object" errors); evidence per defect under evidence/fix/<slug>/ | C5/C7 |

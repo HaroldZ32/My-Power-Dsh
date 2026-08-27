@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Offline build of ast-grep/git-bash MCP: copy source from the omo checkout (read-only) into a temp workspace,
+// Offline build of ast-grep/git-bash MCP: copy source from the the upstream checkout (read-only) into a temp workspace,
 // use bun cache for external dependencies, then after bun build copy dist artifacts into the mpd-dsh plugin package.
 // The original repo stays untouched; artifacts go into the plugin package (plugin-form) with SHA256 recorded in BUILD.lock.
 import { spawnSync } from "node:child_process"
@@ -10,9 +10,9 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)))
-// Legacy layout assumed repoRoot = <omo checkout>/.omo/port/mpd-dsh. Override with
-// MPD_UPSTREAM_ROOT when the repo lives elsewhere (e.g. /home/haroldzhao/dshProj/oh-my-openagent).
-const omoRoot = process.env.MPD_UPSTREAM_ROOT || join(repoRoot, "..", "..", "..")
+// Legacy layout assumed repoRoot = <the upstream checkout>/.mpd/port/mpd-dsh. Override with
+// MPD_UPSTREAM_ROOT when the repo lives elsewhere (e.g. /home/haroldzhao/dshProj/the upstream project).
+const mpdRoot = process.env.MPD_UPSTREAM_ROOT || join(repoRoot, "..", "..", "..")
 const cacheRoot = join(homedir(), ".bun", "install", "cache")
 
 const SERVERS = [
@@ -20,7 +20,7 @@ const SERVERS = [
   { name: "git-bash", src: "git-bash-mcp", pkg: "mpd-mcp-gitbash", entry: "src/cli.ts", argv: [] },
   { name: "lsp", src: "lsp-daemon", pkg: "mpd-mcp-lsp", entry: "src/cli.ts", argv: ["mcp"] }
 ]
-const CORE = ["mcp-stdio-core", "utils", "omo-config-core", "lsp-core"]
+const CORE = ["mcp-stdio-core", "utils", "mpd-config-core", "lsp-core"]
 const EXTERNAL = { "js-yaml": "js-yaml@4.3.1", "jsonc-parser": "jsonc-parser@3.3.1", "zod": "zod@4.4.3" }
 
 // F6 fix: discover all cache entries by package-name prefix, prefer an exact match for the "expected version", otherwise take the highest version;
@@ -45,13 +45,13 @@ try {
   const srcRoot = join(work, "src")
   mkdirSync(srcRoot, { recursive: true })
   for (const c of CORE) {
-    cpSync(join(omoRoot, "packages", c), join(srcRoot, c), { recursive: true, filter: (s) => !s.includes("node_modules") && !s.includes("dist") && !s.includes(".git") })
+    cpSync(join(mpdRoot, "packages", c), join(srcRoot, c), { recursive: true, filter: (s) => !s.includes("node_modules") && !s.includes("dist") && !s.includes(".git") })
   }
   for (const s of SERVERS) {
-    cpSync(join(omoRoot, "packages", s.src), join(srcRoot, s.src), { recursive: true, filter: (p) => !p.includes("node_modules") && !p.includes("dist") && !p.includes(".git") })
+    cpSync(join(mpdRoot, "packages", s.src), join(srcRoot, s.src), { recursive: true, filter: (p) => !p.includes("node_modules") && !p.includes("dist") && !p.includes(".git") })
   }
   // node_modules layout (mimic a bun workspace)
-  const nm = join(work, "node_modules", "@oh-my-opencode")
+  const nm = join(work, "node_modules", "@the upstream host")
   mkdirSync(nm, { recursive: true })
   for (const c of CORE) {
     symlinkSync(join(srcRoot, c), join(nm, c), "dir")
@@ -74,7 +74,7 @@ try {
     mkdirSync(out, { recursive: true })
     cpSync(cli, join(out, "cli.js"))
     writeFileSync(join(out, "BUILD.lock"), JSON.stringify({
-      source: "oh-my-openagent", sourceDir: "packages/" + s.src, builtAt: new Date().toISOString(),
+      source: "the upstream project", sourceDir: "packages/" + s.src, builtAt: new Date().toISOString(),
       build: ["bun build " + s.entry + " --outdir dist --target node --format esm"],
       externalDeps: resolvedExternals,
       artifact: { file: "cli.js", sha256: sha(join(out, "cli.js")), bytes: readFileSync(join(out, "cli.js")).length }

@@ -403,7 +403,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 async function runGitBashCommand(input) {
   return await new Promise((resolve, reject) => {
-    const outputDirectory = mkdtempSync(join(tmpdir(), "omo-git-bash-run-"));
+    const outputDirectory = mkdtempSync(join(tmpdir(), "mpd-git-bash-run-"));
     const stdoutPath = join(outputDirectory, "stdout");
     const stderrPath = join(outputDirectory, "stderr");
     const stdoutFd = openSync(stdoutPath, "w+");
@@ -502,13 +502,13 @@ async function callTool(id, name, args, options) {
   if (name === "which_bash")
     return toolResponse(id, whichBashPayload(resolve(options)));
   if (name === "diagnose")
-    return toolResponse(id, diagnosePayload(resolve(options), platformFromOptions(options)));
+    return toolResponse(id, diagnosePayload(resolve(options), platformFrmpdOptions(options)));
   if (name === "run")
     return await runToolResponse(id, args, options);
   return toolResponse(id, `Unknown git_bash tool: ${name}`, true);
 }
 async function runToolResponse(id, args, options) {
-  const platform = platformFromOptions(options);
+  const platform = platformFrmpdOptions(options);
   if (platform !== "win32")
     return toolResponse(id, "git_bash run is only available on native Windows.", true);
   const command = typeof args.command === "string" ? args.command.trim() : "";
@@ -577,7 +577,7 @@ function toolsForOptions(options) {
   ];
 }
 function canRunGitBash(options) {
-  if (platformFromOptions(options) !== "win32")
+  if (platformFrmpdOptions(options) !== "win32")
     return false;
   const resolution = resolve(options);
   return resolution.found && resolution.path !== null;
@@ -590,13 +590,13 @@ function resolve(options) {
     });
   }
   return resolveGitBash({
-    platform: platformFromOptions(options),
+    platform: platformFrmpdOptions(options),
     env: options.env ?? process.env,
     exists: options.exists ?? (() => false),
     where: options.where ?? (() => [])
   });
 }
-function platformFromOptions(options) {
+function platformFrmpdOptions(options) {
   return options.platform ?? process.platform;
 }
 function whichBashPayload(resolution) {
@@ -664,7 +664,7 @@ async function main() {
     await runMcpStdioServer(process.stdin, process.stdout);
     return;
   }
-  stderr.write(`Usage: omo-git-bash [mcp]
+  stderr.write(`Usage: mpd-git-bash [mcp]
 `);
   process.exitCode = 2;
 }

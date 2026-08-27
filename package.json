@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "version": "0.2.1",
-  "description": "my-power-dsh: DeepSeek Harness plugin-based port of oh-my-openagent capabilities",
+  "description": "my-power-dsh: DeepSeek Harness plugin-based port of the upstream project capabilities",
   "scripts": {
     "typecheck": "tsgo --noEmit",
     "test": "bun test packages",

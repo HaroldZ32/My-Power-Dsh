@@ -1,4 +1,4 @@
-# omo-presets-plugin
+# mpd-presets-plugin
 
 oracle/librarian/prometheus preset + persona registration plugin (P4)
 
