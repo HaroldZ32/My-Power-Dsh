@@ -16,6 +16,17 @@ This skill may include examples copied from the OpenCode harness. In Codex, do n
 | `job_output(task_id="...")` | `multi_agent_v1.wait_agent(...)` for mailbox signals |
 | `team_*(...)` | Use Codex native subagents via `multi_agent_v1.spawn_agent` and `multi_agent_v1.wait_agent`; use `multi_agent_v1.send_input` and `multi_agent_v1.close_agent` only when exposed in the active tools list |
 
+DSH (DeepSeek Harness): same rule — do not call OpenCode/Codex-only tools literally; translate to DSH native tools:
+
+| OpenCode example | DSH tool to use |
+| --- | --- |
+| `subagent(sub...)` | `subagent` — self-contained `prompt` (TASK/DELIVERABLE/SCOPE/VERIFY), `run_in_background: true` for parallel lanes; `subagent_fork` when the full parent history is required |
+| `task(category="...", ...)` for implementation or QA | `subagent` + `persona` (`mpd-hephaestus`/`mpd-sisyphus-junior` for implementers) + `agentOptions.model` (`deepseek-v4-pro` for deep reasoning, `deepseek-v4-flash` for fast lanes) |
+| `job_output(task_id="...")` | `job_output` (same name; completion notice arrives automatically); re-task one child with `send_message` |
+| `team_*(...)` | `agent_teams_*` (vendored dsh-agent-teams: captain = current session, members are continuable subagents, tasks with dependencies, `maxMembers` defaults to 8, web activity panel mirrors live state) |
+
+The `persona` parameter takes a preset id (`mpd-*`), never free text; route provider/model per `mpd_modelchain_resolve`; check the skill catalog before EVERY delegation and name the skills the child must load.
+
 Role-specific behavior must be described in a self-contained `message`. Use `fork_context: false` to start the child with only the initial prompt (no parent history); use `fork_context: true` only when full parent history is truly required. Include any required conversation context, files, diffs, constraints, and requested skill names directly in the spawned agent's `message`. OMO installs these selectable agent roles into `~/.codex/agents/`: `explorer`, `librarian`, `plan`, `momus`, `metis`, `lazycodex-code-reviewer`, `lazycodex-qa-executor`, and `lazycodex-gate-reviewer` — pass the matching name as `agent_type` so the child gets that role's model and instructions. If the spawn tool exposes no `agent_type` parameter, omit it and describe the role inside `message`. If a code block below conflicts with this section, this section wins.
 
 Codex exposes ONE of two subagent tool surfaces per session; check your own tool list and route accordingly. If `multi_agent_v1.*` tools exist, use the table above as written. If instead a flat `spawn_agent` with a required `task_name` exists (`multi_agent_v2`), rewrite every `multi_agent_v1.*` example: `multi_agent_v1.spawn_agent({...,"fork_context":false})` becomes `spawn_agent({"task_name":"<lowercase_digits_underscores>","message":...,"agent_type":...,"fork_turns":"none"})` (`"all"` only when full parent history is truly required); `send_input` becomes `send_message`; do not call `close_agent`/`resume_agent` (finished agents end on their own; `followup_task` re-tasks one, `interrupt_agent` stops one); `wait_agent` takes only `timeout_ms` and returns on any child mailbox activity. `agent_type` works the same on both surfaces. If a code block below conflicts with this section, this section wins.
@@ -204,6 +215,7 @@ This agent answers: "Does it actually work when you run it?"
 The QA agent follows a structured process: brainstorm scenarios exhaustively first, then self-review and augment, then create a task list, then execute systematically.
 
 ```
+DSH: subagent(description="<same as below>", persona="mpd-hephaestus", agentOptions={model: "deepseek-v4-pro"}, run_in_background: true, prompt="<TASK/DELIVERABLE/SCOPE/VERIFY + role>")
 task(
   category="unspecified-high",
   run_in_background=true,
@@ -447,6 +459,7 @@ OUTPUT FORMAT:
 This agent answers: "Did we miss any context that should have informed this implementation?"
 
 ```
+DSH: subagent(description="<same as below>", persona="mpd-hephaestus", agentOptions={model: "deepseek-v4-pro"}, run_in_background: true, prompt="<TASK/DELIVERABLE/SCOPE/VERIFY + role>")
 task(
   category="unspecified-high",
   run_in_background=true,

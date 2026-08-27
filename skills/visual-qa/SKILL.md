@@ -104,13 +104,15 @@ Static screenshots miss what moves. For every interactive element and every anim
 
 This independent review is REQUIRED before any "done" claim. Do not self-review inside the main agent and call the UI verified - a self-graded pass is the failure mode this step exists to stop. Dispatch it yourself, every time, without waiting to be told. Give each reviewer the captures for every enumerated page from Step 2, not a sample, and tell it the page count so it can confirm none were skipped.
 
-Dispatch through your harness's own subagent tool. In OpenCode: `subagent(description="oracle", ...)`. In Codex: `multi_agent_v1.spawn_agent({"message": "...", "agent_type": "lazycodex-gate-reviewer", "fork_context": false})` (the code blocks below are written in OpenCode `task(...)` form; translate them to that `spawn_agent` call, putting the full prompt in `message`).
+Dispatch through your harness's own subagent tool. In OpenCode: `subagent(description="oracle", ...)`. In Codex: `multi_agent_v1.spawn_agent({"message": "...", "agent_type": "lazycodex-gate-reviewer", "fork_context": false})` (the code blocks below are written in OpenCode `task(...)` form; translate them to that `spawn_agent` call, putting the full prompt in `message`). In DSH: `subagent(description=..., prompt=..., run_in_background: true, persona="mpd-oracle")`.
 
 Send BOTH calls in a single message so they run concurrently. Each oracle is read-only: it reviews and reports, it cannot modify files. Each returns PASS, REVISE, or FAIL with concrete, located findings. Pass A proves the surface is a real design-system implementation, not a mock-only or faked-image substitute. Pass B directly opens screenshots and inspects source/content for visual and CJK defects.
 
 Paste evidence directly into each prompt: source code, the plain-text TUI captures, the script JSON, and the screenshot paths plus your described observations for web. Never fork parent history into a reviewer - the message carries everything it needs. Require each blocking finding to be tagged `[product]` (the rendered UI is wrong) or `[evidence]` (the capture artifact is defective - wrong signature, partial compositing, stale file); the loop treats the two differently. The two passes differ in depth by charter, not by any model or effort setting, which cannot be pinned per call.
 
 ### Pass A - Design-system and functional integrity (deeper, strict)
+
+**DSH:** `subagent(description=..., prompt=<full prompt>, run_in_background: true, persona="mpd-oracle")`
 
 ```
 subagent(description="oracle",
@@ -160,6 +162,8 @@ BLOCKING: items that must be fixed; empty if PASS
 ```
 
 ### Pass B - Visual fidelity and CJK precision (focused)
+
+**DSH:** `subagent(description=..., prompt=<full prompt>, run_in_background: true, persona="mpd-oracle")`
 
 ```
 subagent(description="oracle",
@@ -266,6 +270,8 @@ node "$SKILL_DIR/scripts/visual-qa.mjs" image-diff <reference.png> <actual.png>
 
    **OpenCode:**
 
+   **DSH:** `subagent(description=..., prompt=<full prompt>, run_in_background: true, persona="mpd-oracle")`
+
    `````
    subagent(description="oracle",
      run_in_background=true,
@@ -295,6 +301,7 @@ node "$SKILL_DIR/scripts/visual-qa.mjs" image-diff <reference.png> <actual.png>
    `````
 
    **Codex:** `multi_agent_v1.spawn_agent({"message":"TASK: Act as a clone / design-system fidelity reviewer. ...","agent_type":"lazycodex-clone-fidelity-reviewer","fork_context":false})`
+   **DSH:** `subagent(description="Clone/design-system fidelity review", prompt=<full prompt>, run_in_background: true, persona="mpd-oracle")`
 
 RULE (mandatory, non-negotiable): the reference-fidelity task is NOT done until BOTH the pixel-compare AND the code-level design-system fidelity reviewer confirm that the **layer structure, the design system, and the design itself** match the target. If EITHER fails, it is a MANDATORY retry: re-implement the gaps and re-run BOTH verifications from the top. Repeat the retry loop until both pass on the same revision. Never declare reference-fidelity complete on a single pass, on visual-only evidence, or on code-only evidence - both oracles must confirm on the same build.
 

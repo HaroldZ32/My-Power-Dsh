@@ -178,11 +178,11 @@ Files are processed by `deep` category agents with the `remove-ai-slops` skill l
 **Per-file invocation** (one of the 5 in a batch):
 
 ```
-task(
-  category="deep",
-  ,
-  run_in_background=true,
+subagent(
   description="Slop removal: {filename}",
+  run_in_background=true,
+  persona="mpd-hephaestus",
+  agentOptions={model: "deepseek-v4-pro"},
   prompt="""
 Remove AI slops from: {file_path}
 
@@ -205,7 +205,7 @@ For each skipped issue, give reason.
 )
 ```
 
-**Batch failure handling**: a `multi_agent_v1.wait_agent` timeout only means no new mailbox update arrived, not that a `deep` agent failed. For long passes, require each child to send `WORKING: <file> - <current phase>` and `BLOCKED: <reason>` only when it cannot progress. Treat a running child as alive. Mark a file for retry only when the child is completed without the deliverable, ack-only after followup, explicitly `BLOCKED:`, or no longer running. Do NOT block the remaining 4 in that batch; collect successful results and retry the failed file once later. If retry also fails, escalate that file under "Issues Found & Fixed" in the final report.
+**Batch failure handling**: a DSH `job_output` read that is still `[status: running]` only means no new output arrived, not that a subagent failed. For long passes, require each child to send `WORKING: <file> - <current phase>` and `BLOCKED: <reason>` only when it cannot progress. Treat a running child as alive. Mark a file for retry only when the child is completed without the deliverable, ack-only after followup, explicitly `BLOCKED:`, or no longer running. Do NOT block the remaining 4 in that batch; collect successful results and retry the failed file once later. If retry also fails, escalate that file under "Issues Found & Fixed" in the final report.
 
 ### Phase 5: Verify with quality gates + critical review
 
