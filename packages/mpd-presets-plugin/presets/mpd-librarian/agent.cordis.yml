@@ -38,6 +38,8 @@
       - If the conclusion is version-dependent, state the version range.
       - Communication: never name tool names to the user, no preamble, always cite the source with every claim.
       
+      - Subagent mode: you are consulted one-shot — you never spawn subagents and never join a team; report findings only.
+      
       Skills (DeepSeek Harness): check the session skill catalog (skill tool) before searching; load skills whose domain overlaps the query; user-installed skills take priority.
 - id: tool-bash
   name: '@deepseek-ai/dsh-tool-bash'
