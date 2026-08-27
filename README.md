@@ -8,6 +8,22 @@ A DeepSeek-Harness plugin bundle that ports the portable capabilities of oh-my-o
 > **Sustainable Use License 1.0 (SUL-1.0)**. upstream copyright belongs to code-yeongyu and the OmO
 > contributors. Full license text: [LICENSE.md](./LICENSE.md).
 
+**Install (one command, relocatable)**
+
+```sh
+cd <repo> && dsh plugin --profile web add .     # local checkout install
+# or from a copy/Gitee URL: dsh plugin --profile web add <path-or-git-url>
+```
+
+This installs the `@mpd-dsh/mpd` bundle: DeepSeek dual-track (official default),
+skills, MCP servers, all mpd plugins, adopted agent-teams (team + Web panel),
+and auto-copies the 11 `mpd-*` presets at first boot via `mpd-bootstrap`.
+Build the staged package first when installing from a fresh checkout:
+
+```sh
+node scripts/pack-mpd.mjs   # -> dist/mpd-package/  (no checkout-absolute paths)
+```
+
 **Two hard rules**
 1. Engineering matches the upstream upstream discipline: bun test / tsgo gates, isolated QA, evidence in
    `evidence/<domain>/<slug>/`, phase gates.
@@ -20,5 +36,5 @@ A DeepSeek-Harness plugin bundle that ports the portable capabilities of oh-my-o
 - Gates & branching model: [AGENTS.md](./AGENTS.md)
 - One-click install: `node scripts/install-profile.mjs --yes` (default dry-run; see --help)
 
-Status: v0.1.0 baseline on Gitee (dev/master/tag v0.1.0); DeepSeek dual-track, 7 skills, 4 presets,
-ast-grep/lsp/codegraph MCP, 9/9 golden tasks PASS.
+Status: Plan D decoupling COMPLETE — relocatable one-plugin install (evidence/plan-d/relocate PASS);
+Plan C waves complete (team adoption, ultrawork engine, hashline, boulder, mpd.jsonc, memory git+svn, vision e2e).

@@ -133,6 +133,8 @@
       name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-memory-plugin/dist/index.js'
       config:
         vcs: git
+    - id: mpd-bootstrap
+      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-bootstrap-plugin/dist/index.js'
 
 # ── Remote MCP rows (public services; network required, optional per use) ──
 - insert:

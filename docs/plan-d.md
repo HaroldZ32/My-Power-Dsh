@@ -1,6 +1,6 @@
 # Plan D — Decouple the bundle from its checkout location (one-plugin install)
 
-Status: audited + mechanism-verified 2026-08-26; awaiting execution sign-off.
+Status: **COMPLETE (2026-08-27)** — staged bundle builds (`scripts/pack-mpd.mjs`), relocation QA PASS (evidence/plan-d/relocate: install -> compose (0 dev-path leaks) -> live headless -> 11/11 presets auto-copied by mpd-bootstrap). Install from a checkout: `dsh plugin --profile web add .`.
 Goal: the repo must be installable ANYWHERE and MOVABLE, through ONE `dsh plugin add`
 command (the same flow dsh-agent-teams and the web third-party bundles use), with zero
 absolute paths tied to any fixed checkout.

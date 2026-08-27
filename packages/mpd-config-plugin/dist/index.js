@@ -121,7 +121,7 @@ function apply(ctx, config = {}) {
     execute: async (args) => {
       const key = args?.key ? String(args.key) : undefined;
       const value = key ? key.split(".").reduce((acc, part) => acc == null ? undefined : acc[part], state.config) : undefined;
-      return { config: state.config, key, value };
+      return key === undefined ? { config: state.config } : { config: state.config, key, value };
     }
   });
   ctx.tools.register({

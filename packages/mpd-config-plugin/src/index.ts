@@ -109,7 +109,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     execute: async (args: any) => {
       const key = args?.key ? String(args.key) : undefined
       const value = key ? key.split(".").reduce((acc: any, part: string) => (acc == null ? undefined : acc[part]), state.config) : undefined
-      return { config: state.config, key, value }
+      return key === undefined ? { config: state.config } : { config: state.config, key, value }
     }
   })
 

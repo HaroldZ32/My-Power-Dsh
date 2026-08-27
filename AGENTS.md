@@ -157,11 +157,25 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 
 ## 8. Installer & Profiles
 
+### Primary flow (Plan D): one-plugin install, fully relocatable
+
+- `node scripts/pack-mpd.mjs` assembles the installable bundle `dist/mpd-package/`
+  (npm package `@mpd-dsh/mpd`, `dsh.bundle.patch`), with NO checkout-absolute paths:
+  plugin rows use the resolvable `name: '@mpd-dsh/mpd/packages/...'`, every path-bearing
+  value uses the loader's `baseUrl` (the profile directory), binaries come from the
+  package's `optionalDependencies` (`@ast-grep/cli`, `@colbymchenry/codegraph`),
+  `@nanmicoder/dsh-agent-teams` is a dependency, presets auto-copy at boot via
+  `mpd-bootstrap` (version-stamped, idempotent).
+- Install from a checkout: `cd <repo> && dsh plugin --profile web add .`
+  (or from a published location / Gitee URL — the patch never names this repo).
+
+### Dev/QA flow (legacy): `scripts/install-profile.mjs`
+
 - `node scripts/install-profile.mjs --yes [--profile mpd|mpd-headless] [--dsh-home X] [--skip-toolchain]`.
   Default is `--dry-run`: print, never write. `--dsh-home` enables isolated QA installs.
 - What it writes: profile manifest (base + web-app/headless), home `cordis.patch.yml` with absolute
   paths (existing rows id-targeted, new rows via `insert:`), presets → `$DSH_HOME/.agent-presets/`,
-  toolchain if missing.
+  toolchain if missing. Superseded by the packed bundle for user installs.
 - Never run the installer against the real home from a QA context; that is what `--dsh-home` is for.
 
 ---

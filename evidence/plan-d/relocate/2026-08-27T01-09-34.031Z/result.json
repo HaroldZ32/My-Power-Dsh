@@ -1,0 +1,25 @@
+{
+  "ok": false,
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0,
+      "leaked": false
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "presets": {
+      "ok": false,
+      "count": 0
+    },
+    "bootstrap": {
+      "ok": false
+    }
+  }
+}

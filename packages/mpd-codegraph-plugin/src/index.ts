@@ -4,7 +4,8 @@
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, rmSync, statSync } from "node:fs"
 import { homedir } from "node:os"
-import { join, resolve } from "node:path"
+import { createRequire } from "node:module"
+import { dirname, join, resolve } from "node:path"
 
 export const name = "mpd-codegraph"
 export const inject = []
@@ -12,11 +13,23 @@ export const inject = []
 type Ctx = { get?(key: string): unknown; [k: string]: unknown }
 type Config = { autoInit?: boolean; initTimeoutMs?: number; cooldownMs?: number }
 
+function packageCodegraphPath(): string | null {
+  try {
+    const req = createRequire(import.meta.url)
+    const p = req.resolve("@colbymchenry/codegraph/package.json")
+    const binEntry = JSON.parse(readFileSync(join(dirname(p), "package.json"), "utf8"))
+    const bin = typeof binEntry.bin === "string" ? binEntry.bin : (binEntry.bin?.codegraph ?? "codegraph")
+    return join(dirname(p), bin)
+  } catch { return null }
+}
+
 function resolveBinary(config?: Config): string | null {
   const candidates = [
     config?.binary, process.env.OMO_CODEGRAPH_BIN ?? process.env.Upstream_CODEGRAPH_BIN, process.env.MPD_DSH_CODEGRAPH_BIN
   ].filter((s): s is string => !!s && s.length > 0)
   for (const c of candidates) if (existsSync(c)) return c
+  const pkgBin = packageCodegraphPath()
+  if (pkgBin && existsSync(pkgBin)) return pkgBin
   for (const p of (process.env.PATH || "").split(":")) {
     const f = join(p, "codegraph")
     if (existsSync(f)) return f

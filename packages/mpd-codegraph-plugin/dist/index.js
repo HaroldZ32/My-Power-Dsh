@@ -2,10 +2,22 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, rmSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { createRequire } from "node:module";
+import { dirname, join, resolve } from "node:path";
 import { writeFileSync } from "node:fs";
 var name = "mpd-codegraph";
 var inject = [];
+function packageCodegraphPath() {
+  try {
+    const req = createRequire(import.meta.url);
+    const p = req.resolve("@colbymchenry/codegraph/package.json");
+    const binEntry = JSON.parse(readFileSync(join(dirname(p), "package.json"), "utf8"));
+    const bin = typeof binEntry.bin === "string" ? binEntry.bin : binEntry.bin?.codegraph ?? "codegraph";
+    return join(dirname(p), bin);
+  } catch {
+    return null;
+  }
+}
 function resolveBinary(config) {
   const candidates = [
     config?.binary,
@@ -15,6 +27,9 @@ function resolveBinary(config) {
   for (const c of candidates)
     if (existsSync(c))
       return c;
+  const pkgBin = packageCodegraphPath();
+  if (pkgBin && existsSync(pkgBin))
+    return pkgBin;
   for (const p of (process.env.PATH || "").split(":")) {
     const f = join(p, "codegraph");
     if (existsSync(f))

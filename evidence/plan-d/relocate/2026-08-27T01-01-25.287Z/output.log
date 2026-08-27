@@ -1,0 +1,26 @@
+
+
+--- dump ---
+file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:839
+		throw new Error(`${binName}: failed to parse ${label} ${file}: ${String(error)}`);
+		      ^
+
+Error: dsh: failed to parse overlay /home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/.qa-reloc/home/profiles/t/node_modules/@mpd-dsh/mpd/cordis.patch.yml: YAMLException: bad indentation of a mapping entry (64:143)
+
+ 61 |  ... 
+ 62 |  ... 
+ 63 |  ... 
+ 64 |  ... , "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd ...
+-----------------------------------------^
+ 65 |  ... 
+ 66 |  ... .replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node ...
+    at parsePatchList (file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:839:9)
+    at loadOverlayPatches (file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:819:9)
+    at file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:555:13
+    at Array.map (<anonymous>)
+    at loadProfile (file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:546:117)
+    at prepareProfile (file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-DG5t9aNs.js:142:18)
+    at runDumpConfig (file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/lib/dump-config-D-jtgwY3.js:24:17)
+    at file:///home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:148:3
+
+Node.js v24.19.0
