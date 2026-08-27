@@ -81,7 +81,7 @@ function vendorPackage(spec, c) {
   if (c.whole) {
     if (!existsSync(join(src, c.entry.split("/")[0]))) throw new Error("missing entry for " + spec + " at " + src)
     mkdirSync(dstDir, { recursive: true })
-    cpSync(src, dstDir, { recursive: true })
+    cpSync(src, dstDir, { recursive: true, filter: (f) => !/(^|\/)(src|tests|benchmarks|dist-cjs)(\/|$)/.test(f) })
   } else {
     const srcLib = join(src, "lib")
     if (!existsSync(srcLib)) throw new Error("missing lib for " + spec + " at " + src)
