@@ -2,7 +2,7 @@
   "name": "my-power-dsh",
   "private": true,
   "type": "module",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "my-power-dsh: DeepSeek Harness plugin-based port of the upstream project capabilities",
   "scripts": {
     "typecheck": "tsgo --noEmit && node packages/mpd-agent-teams/node_modules/.bin/tsc --noEmit -p packages/mpd-agent-teams/tsconfig.json",

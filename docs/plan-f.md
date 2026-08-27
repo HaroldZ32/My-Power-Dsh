@@ -1,6 +1,9 @@
 # Plan F — Native adoption of dsh-agent-teams as the primary invocation model
 
-Status: **PROPOSED (2026-08-27)** — design locked by owner decisions; waves start on approval.
+Status: **COMPLETE (2026-08-27)** — design locked by owner decisions; W0-W4 executed on
+`feature/plan-f-w1` (local commits e81b200, 32a7c63, + W2/W3/W4 commits; not pushed).
+Evidence: `evidence/plan-f/w0- w3/`; real QA PASS: relocate-smoke (12 presets), team-route-rewire,
+agent-teams-adopt, plan-f-captain-smoke, plan-f-leaf-e2e (captain -> member -> leaf tree).
 
 Owner decisions (2026-08-27 Q&A):
 - Q1 integration: **full native adoption** — upstream v0.1.14 TypeScript source moves into
