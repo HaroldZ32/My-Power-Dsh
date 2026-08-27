@@ -1,5 +1,5 @@
 window.__ModuleLoader__.load({
-	id: "@nanmicoder/dsh-agent-teams",
+	id: "@mpd-dsh/mpd/packages/mpd-agent-teams",
 	factory: (require) => {
 		var module = { exports: {} };
 		var exports = module.exports;

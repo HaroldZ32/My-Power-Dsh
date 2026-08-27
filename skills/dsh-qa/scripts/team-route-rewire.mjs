@@ -44,6 +44,10 @@ function selfTest() {
   checks.push(["patch row first-party + guard gone", patch.includes("name: '@mpd-dsh/mpd/packages/mpd-agent-teams'") && !patch.includes("Self-disabling guard") && !patch.includes("@nanmicoder/dsh-agent-teams'")])
   const pack = readFileSync(join(repoRoot, "scripts", "pack-mpd.mjs"), "utf8")
   checks.push(["pack exports + client + no deps entry", pack.includes('"./packages/mpd-agent-teams"') && pack.includes('"./client"') && pack.includes("first-party") && !pack.includes('dependencies: { "@nanmicoder')])
+  const clientHead = readFileSync(join(VENDOR, "lib", "client.js"), "utf8").slice(0, 400)
+  checks.push(["client registers under entry id", clientHead.includes('id: "@mpd-dsh/mpd/packages/mpd-agent-teams"') && !clientHead.includes('id: "@nanmicoder/dsh-agent-teams"')])
+  const buildScript = readFileSync(join(repoRoot, "scripts", "build-agent-teams.mjs"), "utf8")
+  checks.push(["build script rewrites client id", buildScript.includes("client registration id") && buildScript.includes('ENTRY_ID = "@mpd-dsh/mpd/packages/mpd-agent-teams"')])
   const bad = checks.filter(([, ok]) => !ok).map(([n]) => n)
   if (bad.length) { console.error("[team-route-rewire self-test] FAIL: " + bad.join(" | ")); process.exit(1) }
   if (!existsSync(join(repoRoot, "dist", "mpd-package", "package.json"))) { console.error("[team-route-rewire self-test] FAIL: run node scripts/pack-mpd.mjs first"); process.exit(1) }
@@ -108,7 +112,7 @@ async function runReal() {
   const webLog = join(outDir, "web.log")
   const webFd = openSync(webLog, "w")
   const web = spawn("dsh", ["--profile", "w", "--port", String(port), "--no-open"], { env, cwd: join(reloc, "ws-rewire"), detached: false, stdio: ["ignore", webFd, webFd] })
-  let routeOk = false, routeStatus = null
+  let routeOk = false, routeStatus = null, clientOk = false, clientId = ""
   const t0 = Date.now()
   while (Date.now() - t0 < 120000) {
     await new Promise((r) => setTimeout(r, 2000))
@@ -117,12 +121,18 @@ async function runReal() {
       routeStatus = res.status
       routeOk = res.status === 200
       await res.text()
+      const cres = await fetch("http://127.0.0.1:" + port + "/plugins/@mpd-dsh/mpd/packages/mpd-agent-teams/client.js", { signal: AbortSignal.timeout(8000) })
+      const ctext = await cres.text()
+      const m = ctext.match(/id:\s*"([^"]+)"/)
+      clientId = m ? m[1] : ""
+      clientOk = cres.status === 200 && clientId === "@mpd-dsh/mpd/packages/mpd-agent-teams"
       break
     } catch { /* not up yet */ }
   }
   web.kill("SIGTERM")
   try { await new Promise((r) => setTimeout(r, 1500)) } catch {}
   steps.webRoute = { ok: addWeb.status === 0 && routeOk, status: routeStatus, addExit: addWeb.status }
+  steps.clientBundle = { ok: clientOk, status: clientId ? 200 : null, registeredId: clientId }
   const allOk = Object.values(steps).every((s) => (typeof s === "object" && "ok" in s) ? s.ok : true)
   writeFileSync(join(outDir, "result.json"), JSON.stringify({ ok: allOk, sandbox: home, steps }, null, 2))
   writeFileSync(join(outDir, "output.log"), out.slice(0, 40000) + "\n\n--- dump ---\n" + dumpOut.slice(0, 30000))

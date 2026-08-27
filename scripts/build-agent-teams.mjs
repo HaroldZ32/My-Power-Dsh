@@ -5,7 +5,7 @@
 // The web client artifacts (lib/client.js, lib/client/*) are NOT rebuilt: they are
 // upstream-built and browser-bundler-resolved (see docs/plan-f.md W1).
 import { execFileSync, spawnSync } from "node:child_process"
-import { existsSync, readFileSync, readdirSync } from "node:fs"
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -34,6 +34,21 @@ if (build.status !== 0) fail("tsc exit " + build.status)
 
 const vendor = spawnSync(process.execPath, [join(repoRoot, "scripts", "vendor-agent-teams.mjs")], { stdio: "inherit" })
 if (vendor.status !== 0) fail("vendor-agent-teams exit " + vendor.status)
+
+// --- client registration id must equal the bundle ENTRY name --------------------
+// The web client-modules loader verifies that the served client bundle registers
+// itself under the exact plugin entry name of the bundle row
+// ('@mpd-dsh/mpd/packages/mpd-agent-teams'). Upstream built the artifact with its npm
+// package name; rewrite it here so the source-integrated entry matches.
+const ENTRY_ID = "@mpd-dsh/mpd/packages/mpd-agent-teams"
+const clientFile = join(pkgDir, "lib", "client.js")
+let clientSrc = readFileSync(clientFile, "utf8")
+if (clientSrc.includes('id: "@nanmicoder/dsh-agent-teams"')) {
+  clientSrc = clientSrc.replace('id: "@nanmicoder/dsh-agent-teams"', 'id: "' + ENTRY_ID + '"')
+  writeFileSync(clientFile, clientSrc)
+}
+if (!clientSrc.includes('id: "' + ENTRY_ID + '"')) fail("client.js registration id not rewritten to " + ENTRY_ID)
+console.log("[build-agent-teams] client registration id OK (" + ENTRY_ID + ")")
 
 // --- verification: host-plane lib must have no bare @deepseek-ai / zod imports ----
 const lib = join(pkgDir, "lib")
