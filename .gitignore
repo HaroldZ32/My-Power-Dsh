@@ -1,5 +1,6 @@
 node_modules/
 .mpd/
+__pycache__/
 .npm-cache/
 .qa-reloc/
 *.tmp
