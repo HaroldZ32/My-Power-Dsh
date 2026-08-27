@@ -15,6 +15,7 @@ import {
   getPlanProgress,
   getPlanChecklist,
 } from "../src/vendor/index.ts"
+import { apply } from "../src/index.ts"
 
 test("session ids are dsh-prefixed by default", () => {
   expect(normalizeSessionId("session-1")).toBe("dsh:session-1")
@@ -52,4 +53,26 @@ test("plan progress parses TODOs and verification wave", () => {
   expect(p).toEqual({ total: 3, completed: 1, isComplete: false })
   const checklist = getPlanChecklist(planPath)
   expect(checklist).toEqual({ completed: 1, remaining: 2, total: 3, nextTaskLabel: "1. A" })
+})
+
+test("mpd_boulder_status omits planProgress when null (lossless JSON contract)", async () => {
+  const prev = process.env.DSH_WORKSPACE_ROOT
+  process.env.DSH_WORKSPACE_ROOT = mkdtempSync(join(tmpdir(), "mpd-bl-ws-"))
+  try {
+    const tools: any[] = []
+    apply({ tools: { register: (t: any) => tools.push(t) } } as any, {})
+    const st = tools.find((t: any) => t.name === "mpd_boulder_status")
+    const noPlan = await st.execute({})
+    // schema declares planProgress as `type: object` and not required: a present
+    // null fails the host validator, so it must be omitted instead
+    expect(noPlan.planProgress).toBeUndefined()
+    expect(JSON.parse(JSON.stringify(noPlan))).toEqual(noPlan)
+    expect(Object.values(noPlan)).not.toContain(undefined)
+    const withPlan = await st.execute({ planPath: "/nonexistent/plan.md" })
+    expect(JSON.parse(JSON.stringify(withPlan))).toEqual(withPlan)
+    expect(withPlan.planProgress).toEqual({ total: 0, completed: 0, isComplete: false })
+    expect(typeof withPlan.planProgress).toBe("object")
+  } finally {
+    if (prev === undefined) delete process.env.DSH_WORKSPACE_ROOT; else process.env.DSH_WORKSPACE_ROOT = prev
+  }
 })
