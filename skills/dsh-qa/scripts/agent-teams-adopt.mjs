@@ -64,7 +64,7 @@ function selfTest() {
   if (!existsSync(join(repoRoot, "third-party", "dsh-agent-teams", "LICENSE"))) fail("vendored LICENSE copy missing")
   const vendorPkg = JSON.parse(readFileSync(join(repoRoot, "third-party", "dsh-agent-teams", "package.json"), "utf8"))
   if (vendorPkg.version !== "0.1.14") fail("vendored package version is not 0.1.14: " + vendorPkg.version)
-  if (!existsSync(join(repoRoot, "third-party", "dsh-agent-teams", "_deps", "schemastery", "index.mjs"))) fail("vendored _deps/schemastery missing")
+  if (!existsSync(join(repoRoot, "third-party", "dsh-agent-teams", "_deps", "schemastery", "lib", "index.mjs"))) fail("vendored _deps/schemastery missing")
   const ag = readFileSync(join(repoRoot, "AGENTS.md"), "utf8")
   if (!ag.includes(AGENTS_EXCEPTION)) fail("AGENTS.md naming exception missing")
   const st = spawnSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--self-test"], { encoding: "utf8" })
