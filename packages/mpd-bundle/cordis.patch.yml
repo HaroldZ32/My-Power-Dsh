@@ -14,9 +14,9 @@
         transport: stdio
         command: node
         args:
-          - !!js process.env.MPD_DSH_ASTGREP_CLI || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-mcp-astgrep/dist/cli.js'
+          - !!js 'process.env.MPD_DSH_ASTGREP_CLI || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-astgrep/dist/cli.js")'
         env:
-          OMO_AST_GREP_SG_PATH: !!js process.env.OMO_AST_GREP_SG_PATH || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/.toolchain/node_modules/.bin/sg'
+          OMO_AST_GREP_SG_PATH: !!js 'process.env.OMO_AST_GREP_SG_PATH || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/.bin/sg")'
         toolCallTimeoutMs: 60000
     # git_bash, by the upstream original design, is Windows-only (run is available only on native Windows); this bundle disables it by default;
     # Windows deployments can change this row to disabled: false to enable it.
@@ -28,7 +28,7 @@
         transport: stdio
         command: node
         args:
-          - !!js process.env.MPD_DSH_GITBASH_CLI || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-mcp-gitbash/dist/cli.js'
+          - !!js 'process.env.MPD_DSH_GITBASH_CLI || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-gitbash/dist/cli.js")'
         toolCallTimeoutMs: 60000
     - id: mcp-lsp
       name: '@deepseek-ai/dsh-mcp-client'
@@ -37,7 +37,7 @@
         transport: stdio
         command: node
         args:
-          - !!js process.env.MPD_DSH_LSP_CLI || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-mcp-lsp/dist/cli.js'
+          - !!js 'process.env.MPD_DSH_LSP_CLI || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-lsp/dist/cli.js")'
           - mcp
         toolCallTimeoutMs: 60000
     # CodeGraph (re-enable after the F10 regression): point OMO_CODEGRAPH_BIN to the local toolchain's codegraph,
@@ -50,44 +50,44 @@
         transport: stdio
         command: node
         args:
-          - !!js process.env.MPD_DSH_CODEGRAPH_CLI || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-mcp-codegraph/dist/serve.js'
+          - !!js 'process.env.MPD_DSH_CODEGRAPH_CLI || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-codegraph/dist/serve.js")'
         env:
-          OMO_CODEGRAPH_BIN: !!js process.env.OMO_CODEGRAPH_BIN || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/.toolchain/node_modules/.bin/codegraph'
+          OMO_CODEGRAPH_BIN: !!js 'process.env.OMO_CODEGRAPH_BIN || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/.bin/codegraph")'
         toolCallTimeoutMs: 60000
 
 # ── B-line plugins (self-written; production uses @mpd-dsh/<pkg> package names) ──
 - insert:
     - id: mpd-tools
-      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-tools-plugin/dist/index.js'
+      name: '@mpd-dsh/mpd/packages/mpd-tools-plugin/dist/index.js'
       config:
         writeGuard: true
         truncateMaxBytes: 8192
     - id: mpd-modelchain
-      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-modelchain-plugin/dist/index.js'
+      name: '@mpd-dsh/mpd/packages/mpd-modelchain-plugin/dist/index.js'
     - id: mpd-ulw
-      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-ulw-plugin/dist/index.js'
+      name: '@mpd-dsh/mpd/packages/mpd-ulw-plugin/dist/index.js'
       config:
         maxRounds: 3
     - id: mpd-team
-      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-team-plugin/dist/index.js'
+      name: '@mpd-dsh/mpd/packages/mpd-team-plugin/dist/index.js'
     - id: mpd-hashline
-      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-hashline-plugin/dist/index.js'
+      name: '@mpd-dsh/mpd/packages/mpd-hashline-plugin/dist/index.js'
       config:
         guardEditTools: true
     - id: mpd-boulder
-      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-boulder-plugin/dist/index.js'
+      name: '@mpd-dsh/mpd/packages/mpd-boulder-plugin/dist/index.js'
     - id: mpd-config
-      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-config-plugin/dist/index.js'
+      name: '@mpd-dsh/mpd/packages/mpd-config-plugin/dist/index.js'
     - id: mpd-comment-checker
-      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-comment-checker-plugin/dist/index.js'
+      name: '@mpd-dsh/mpd/packages/mpd-comment-checker-plugin/dist/index.js'
       config:
         autoCheck: false
     - id: mpd-memory
-      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-memory-plugin/dist/index.js'
+      name: '@mpd-dsh/mpd/packages/mpd-memory-plugin/dist/index.js'
       config:
         vcs: git
     - id: mpd-bootstrap
-      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-bootstrap-plugin/dist/index.js'
+      name: '@mpd-dsh/mpd/packages/mpd-bootstrap-plugin/dist/index.js'
 
 # ── Remote MCP rows (public services; network required, optional per use) ──
 - insert:
