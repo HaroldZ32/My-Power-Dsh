@@ -14,7 +14,7 @@ type Config = { autoInit?: boolean; initTimeoutMs?: number; cooldownMs?: number 
 
 function resolveBinary(config?: Config): string | null {
   const candidates = [
-    config?.binary, process.env.Upstream_CODEGRAPH_BIN, process.env.MPD_DSH_CODEGRAPH_BIN
+    config?.binary, process.env.OMO_CODEGRAPH_BIN ?? process.env.Upstream_CODEGRAPH_BIN, process.env.MPD_DSH_CODEGRAPH_BIN
   ].filter((s): s is string => !!s && s.length > 0)
   for (const c of candidates) if (existsSync(c)) return c
   for (const p of (process.env.PATH || "").split(":")) {
@@ -61,7 +61,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   const autoInit = config.autoInit ?? true
   const timeoutMs = config.initTimeoutMs ?? 60_000
   const cooldownMs = config.cooldownMs ?? 15 * 60_000
-  const cwd = process.env.Upstream_CODEGRAPH_PROJECT_CWD || process.cwd()
+  const cwd = (process.env.OMO_CODEGRAPH_PROJECT_CWD ?? process.env.Upstream_CODEGRAPH_PROJECT_CWD) || process.cwd()
   const binary = resolveBinary(config)
   let status: string
   const home = resolve(homedir())

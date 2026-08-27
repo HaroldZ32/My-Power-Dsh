@@ -40,7 +40,7 @@ function buildPlan(o) {
   const p = (r) => join(repoRoot, r)
   const skillsDir = p("packages/mpd-skills-plugin/skills")
   const presetsDir = p("packages/mpd-presets-plugin/presets")
-  const astCli = p(".toolchain/node_modules/.bin/ast-grep")
+  const astCli = p(".toolchain/node_modules/.bin/sg")
   const cgCli = p(".toolchain/node_modules/.bin/codegraph")
   const rows = [
     {
@@ -59,7 +59,7 @@ function buildPlan(o) {
     {
       id: "mcp-astgrep", name: "@deepseek-ai/dsh-mcp-client",
       config: { serverName: "ast_grep", transport: "stdio", command: "node", args: [p("packages/mpd-mcp-astgrep/dist/cli.js")],
-        env: existsSync(astCli) ? { Upstream_AST_GREP_SG_PATH: astCli } : undefined }
+        env: existsSync(astCli) ? { OMO_AST_GREP_SG_PATH: astCli } : undefined }
     },
     {
       id: "mcp-gitbash", name: "@deepseek-ai/dsh-mcp-client", disabled: true,
@@ -72,7 +72,7 @@ function buildPlan(o) {
     {
       id: "mcp-codegraph", name: "@deepseek-ai/dsh-mcp-client",
       config: { serverName: "codegraph", transport: "stdio", command: "node", args: [p("packages/mpd-mcp-codegraph/dist/serve.js")],
-        env: existsSync(cgCli) ? { Upstream_CODEGRAPH_BIN: cgCli } : undefined }
+        env: existsSync(cgCli) ? { OMO_CODEGRAPH_BIN: cgCli } : undefined }
     },
     {
       id: "mpd-codegraph", name: p("packages/mpd-codegraph-plugin/dist/index.js"),

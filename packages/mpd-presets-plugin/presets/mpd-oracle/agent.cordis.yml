@@ -59,7 +59,7 @@
 - id: tool-str-replace-editor
   name: '@deepseek-ai/dsh-tool-str-replace-editor'
 
-# ── skills (omo skills directory, resolved with the preset; default roots off to avoid pollution)────────────
+# ── skills (skills directory, resolved with the preset; default roots off to avoid pollution)────────────
 - id: skill-filesystem
   name: '@deepseek-ai/dsh-skill-filesystem'
   config:

@@ -9,7 +9,7 @@ var inject = [];
 function resolveBinary(config) {
   const candidates = [
     config?.binary,
-    process.env.Upstream_CODEGRAPH_BIN,
+    process.env.OMO_CODEGRAPH_BIN ?? process.env.Upstream_CODEGRAPH_BIN,
     process.env.MPD_DSH_CODEGRAPH_BIN
   ].filter((s) => !!s && s.length > 0);
   for (const c of candidates)
@@ -68,7 +68,7 @@ function apply(ctx, config = {}) {
   const autoInit = config.autoInit ?? true;
   const timeoutMs = config.initTimeoutMs ?? 60000;
   const cooldownMs = config.cooldownMs ?? 15 * 60000;
-  const cwd = process.env.Upstream_CODEGRAPH_PROJECT_CWD || process.cwd();
+  const cwd = (process.env.OMO_CODEGRAPH_PROJECT_CWD ?? process.env.Upstream_CODEGRAPH_PROJECT_CWD) || process.cwd();
   const binary = resolveBinary(config);
   let status;
   const home = resolve(homedir());

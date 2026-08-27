@@ -63,7 +63,7 @@
         args:
           - !!js process.env.MPD_DSH_ASTGREP_CLI || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-mcp-astgrep/dist/cli.js'
         env:
-          Upstream_AST_GREP_SG_PATH: !!js process.env.Upstream_AST_GREP_SG_PATH || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/.toolchain/node_modules/.bin/ast-grep'
+          OMO_AST_GREP_SG_PATH: !!js process.env.OMO_AST_GREP_SG_PATH || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/.toolchain/node_modules/.bin/sg'
         toolCallTimeoutMs: 60000
     # git_bash, by the upstream original design, is Windows-only (run is available only on native Windows); this bundle disables it by default;
     # Windows deployments can change this row to disabled: false to enable it.
@@ -87,7 +87,7 @@
           - !!js process.env.MPD_DSH_LSP_CLI || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-mcp-lsp/dist/cli.js'
           - mcp
         toolCallTimeoutMs: 60000
-    # CodeGraph (re-enable after the F10 regression): point Upstream_CODEGRAPH_BIN to the local toolchain's codegraph,
+    # CodeGraph (re-enable after the F10 regression): point OMO_CODEGRAPH_BIN to the local toolchain's codegraph,
     # avoiding the serve.js crash when it tries to auto-provision to ~/.omo; index initialization is handled by the in-house mpd-codegraph plugin
     # (in production this bundle provides it via @mpd-dsh/mpd-codegraph-plugin; QA mounts it by absolute path through an overlay).
     - id: mcp-codegraph
@@ -99,7 +99,7 @@
         args:
           - !!js process.env.MPD_DSH_CODEGRAPH_CLI || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-mcp-codegraph/dist/serve.js'
         env:
-          Upstream_CODEGRAPH_BIN: !!js process.env.Upstream_CODEGRAPH_BIN || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/.toolchain/node_modules/.bin/codegraph'
+          OMO_CODEGRAPH_BIN: !!js process.env.OMO_CODEGRAPH_BIN || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/.toolchain/node_modules/.bin/codegraph'
         toolCallTimeoutMs: 60000
 
 # ── B-line plugins (self-written; production uses @mpd-dsh/<pkg> package names) ──
