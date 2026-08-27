@@ -1,0 +1,14 @@
+[mpd-codegraph] init status=no-binary binary=- cwd=/home/haroldzhao/dshProj/my-power-dsh
+[mpd-bootstrap] presets installed (0.3.0) -> /home/haroldzhao/dshProj/my-power-dsh/.qa-reloc/home-golden/.agent-presets
+[mpd-bootstrap] skills installed (0.3.0) -> /home/haroldzhao/dshProj/my-power-dsh/.qa-reloc/home-golden/skills
+Golden verification complete. ✅
+
+**team_id:** `g`
+**leaf evidence path:** `/home/haroldzhao/dshProj/my-power-dsh/.mpd/leaf/leaf-164ea716/run.json`
+
+**Run summary:**
+- Team `g` (plan-f golden leaf soft-ts-tokenizer) — 1 member (`engineer`), 1 task (`t1`), created staged, approved, run, status-checked once, and archived via `agent_teams_delete`.
+- `mpd_leaf_iterate` (basePreset `mpd-sisyphus`, maxRounds 2) finished in **1 round** with `gatePassed=true`; leaf `leaf-164ea716`.
+- Finding: `tests/golden/soft-ts-tokenizer/tokenizer.ts` already implements SPEC.md exactly (verified against the acceptance test; no changes needed).
+- Gates passed: `bun test tests/golden/soft-ts-tokenizer` 5/5 (7 assertions, 0 fail) and `mpd_gate_run(bun-test)` exit=0, errors=0.
+CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.

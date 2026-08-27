@@ -1,0 +1,4 @@
+PASS  hw-verilog-adder8  (hardware/verilog)
+hw-verilog-adder8 OK (60 random + 4 edge vectors)
+
+exit=0

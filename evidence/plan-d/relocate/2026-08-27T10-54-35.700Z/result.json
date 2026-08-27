@@ -1,0 +1,43 @@
+{
+  "ok": true,
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0,
+      "leaked": false
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "presets": {
+      "ok": true,
+      "count": 12,
+      "ids": [
+        "mpd-atlas",
+        "mpd-captain",
+        "mpd-explore",
+        "mpd-hephaestus",
+        "mpd-librarian",
+        "mpd-metis",
+        "mpd-momus",
+        "mpd-multimodal-looker",
+        "mpd-oracle",
+        "mpd-prometheus",
+        "mpd-sisyphus",
+        "mpd-sisyphus-junior"
+      ]
+    },
+    "skills": {
+      "ok": true,
+      "count": 19
+    },
+    "bootstrap": {
+      "ok": true
+    }
+  }
+}

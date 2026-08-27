@@ -1,0 +1,7 @@
+{
+  "ok": true,
+  "task": "hw-verilog-adder8",
+  "base": "mpd-sisyphus",
+  "gates": ["golden:hw-verilog-adder8"],
+  "goldenTask": {"ok": true, "exit": 0, "tail": "hw-verilog-adder8 OK (60 random + 4 edge vectors)"}
+}

@@ -1,0 +1,9 @@
+{
+  "id": "hw-verilog-adder8",
+  "kind": "hardware",
+  "lang": "verilog",
+  "verify": [
+    "python3",
+    "tests/golden/hw-verilog-adder8/verify.py"
+  ]
+}

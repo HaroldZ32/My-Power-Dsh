@@ -1,0 +1,16 @@
+{
+  "id": "soft-c-ringbuf",
+  "kind": "software",
+  "lang": "c",
+  "verify": [
+    "gcc",
+    "-std=c11",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-o",
+    "/tmp/ringbuf-t",
+    "tests/golden/soft-c-ringbuf/ringbuf.c",
+    "tests/golden/soft-c-ringbuf/test.c"
+  ]
+}
