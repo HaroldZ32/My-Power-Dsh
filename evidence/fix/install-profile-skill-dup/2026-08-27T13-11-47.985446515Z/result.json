@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "defect": "duplicate loader entry id: skill-filesystem in legacy install-profile boot",
+  "repro": {
+    "found": true
+  },
+  "afterFix": {
+    "clean": true,
+    "replied": true
+  }
+}
