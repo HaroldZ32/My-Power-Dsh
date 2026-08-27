@@ -1,0 +1,12 @@
+[mpd-codegraph] init status=no-binary binary=- cwd=/tmp/mpd-tov-sRH9U9/ws
+Here are the exact tool results:
+
+**Call 1 — `mpd_config_get` with key `'memory.vcs'`:**
+```
+mpd config memory.vcs: null
+```
+
+**Call 2 — `mpd_config_get` with no arguments:**
+```
+mpd config: {}
+```
