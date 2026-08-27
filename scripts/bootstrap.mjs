@@ -18,9 +18,9 @@ for (const [bin, args] of [["node", ["--version"]], ["bun", ["--version"]], ["gi
 const verify = spawnSync("node", [join(repoRoot, "scripts", "verify-vendor.mjs")], { stdio: "inherit" })
 if (verify.status !== 0) failed = true
 
-for (const d of ["packages/mpd-bundle", "packages/mpd-skills-plugin", "profiles/mpd-headless"]) {
-  if (!existsSync(join(repoRoot, d))) { console.warn("[bootstrap] not yet created: " + d + " (P1+)"); }
+for (const d of ["packages/mpd-bundle", "packages/mpd-bootstrap-plugin", "packages/mpd-presets-plugin"]) {
+  if (!existsSync(join(repoRoot, d))) { console.warn("[bootstrap] missing: " + d); failed = true }
 }
 
 if (failed) { console.error("[bootstrap] FAIL"); process.exit(1) }
-step("PASS - preflight and vendor baseline checks passed, ready for P1")
+step("PASS - preflight and vendor baseline checks passed (set MPD_UPSTREAM_ROOT if the omo checkout is not at repoRoot/../../..)")

@@ -110,7 +110,11 @@ export function applyAppend(lines: string[], text: string | string[]): string[] 
   if (lines.length === 1 && lines[0] === "") {
     return [...normalized]
   }
-  return [...lines, ...normalized]
+  // A trailing "" element is the split() artifact of a trailing newline;
+  // keep it OUT of the middle of the joined output ("a\nb\n" + "c" must be
+  // "a\nb\nc", not "a\nb\n\nc").
+  const base = lines.length > 1 && lines[lines.length - 1] === "" ? lines.slice(0, -1) : lines
+  return [...base, ...normalized]
 }
 
 export function applyPrepend(lines: string[], text: string | string[]): string[] {

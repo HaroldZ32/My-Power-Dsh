@@ -52,7 +52,9 @@ var DEFAULT_CHAINS = {
 };
 function resolveRole(role, chains) {
   const key = role === "sisyphus-junior" ? "sisyphusJunior" : role === "multimodal-looker" ? "multimodalLooker" : role;
-  const chain = chains[key] ?? chains[key] ?? DEFAULT_CHAINS[key] ?? DEFAULT_CHAINS.sisyphus;
+  let chain = chains[key] ?? DEFAULT_CHAINS[key] ?? DEFAULT_CHAINS.sisyphus;
+  if (!Array.isArray(chain) || chain.length === 0)
+    chain = DEFAULT_CHAINS.sisyphus;
   const primary = chain[0];
   return { provider: primary.provider, model: primary.model, chain, skipped: false };
 }
@@ -71,7 +73,7 @@ function apply(ctx, config = {}) {
   const cwd = process.env.DSH_WORKSPACE_ROOT ?? process.cwd();
   ctx.tools.register({
     name: "mpd_modelchain_resolve",
-    description: "Resolve the DeepSeek provider/model route for an upstream role (sisyphus/oracle/atlas/prometheus/librarian/explore/hephaestus) from the adapted fallback chains.",
+    description: "Resolve the DeepSeek provider/model route for an upstream role (sisyphus/sisyphus-junior/oracle/atlas/prometheus/librarian/explore/metis/momus/multimodal-looker/hephaestus) from the adapted fallback chains.",
     parameters: { type: "object", properties: { role: { type: "string", description: "upstream agent role name" } }, required: ["role"] },
     output: {
       schema: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" }, chain: { type: "array", items: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" } }, required: [] } }, skipped: { type: "boolean" } }, required: ["provider", "model", "skipped"] },

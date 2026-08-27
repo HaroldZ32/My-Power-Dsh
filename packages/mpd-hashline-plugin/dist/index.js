@@ -649,7 +649,8 @@ function applyAppend(lines, text) {
   if (lines.length === 1 && lines[0] === "") {
     return [...normalized];
   }
-  return [...lines, ...normalized];
+  const base = lines.length > 1 && lines[lines.length - 1] === "" ? lines.slice(0, -1) : lines;
+  return [...base, ...normalized];
 }
 function applyPrepend(lines, text) {
   const normalized = toNewLines(text);
@@ -734,6 +735,83 @@ function applyHashlineEditsWithReport(content, edits) {
     noopEdits,
     deduplicatedEdits: dedupeResult.deduplicatedEdits
   };
+}
+// src/vendor/normalize-edits.ts
+function normalizeAnchor(value) {
+  if (typeof value !== "string")
+    return;
+  const trimmed = value.trim();
+  return trimmed === "" ? undefined : trimmed;
+}
+function requireLines(edit, index) {
+  if (edit.lines === undefined) {
+    throw new Error(`Edit ${index}: lines is required for ${edit.op ?? "unknown"}`);
+  }
+  if (edit.lines === null) {
+    return [];
+  }
+  return edit.lines;
+}
+function requireLine(anchor, index, op) {
+  if (!anchor) {
+    throw new Error(`Edit ${index}: ${op} requires at least one anchor line reference (pos or end)`);
+  }
+  return anchor;
+}
+function normalizeReplaceEdit(edit, index) {
+  const pos = normalizeAnchor(edit.pos);
+  const end = normalizeAnchor(edit.end);
+  const anchor = requireLine(pos ?? end, index, "replace");
+  const lines = requireLines(edit, index);
+  const normalized = {
+    op: "replace",
+    pos: anchor,
+    lines
+  };
+  if (end)
+    normalized.end = end;
+  return normalized;
+}
+function normalizeAppendEdit(edit, index) {
+  const pos = normalizeAnchor(edit.pos);
+  const end = normalizeAnchor(edit.end);
+  const anchor = pos ?? end;
+  const lines = requireLines(edit, index);
+  const normalized = {
+    op: "append",
+    lines
+  };
+  if (anchor)
+    normalized.pos = anchor;
+  return normalized;
+}
+function normalizePrependEdit(edit, index) {
+  const pos = normalizeAnchor(edit.pos);
+  const end = normalizeAnchor(edit.end);
+  const anchor = pos ?? end;
+  const lines = requireLines(edit, index);
+  const normalized = {
+    op: "prepend",
+    lines
+  };
+  if (anchor)
+    normalized.pos = anchor;
+  return normalized;
+}
+function normalizeHashlineEdits(rawEdits) {
+  return rawEdits.map((rawEdit, index) => {
+    const edit = rawEdit ?? {};
+    switch (edit.op) {
+      case "replace":
+        return normalizeReplaceEdit(edit, index);
+      case "append":
+        return normalizeAppendEdit(edit, index);
+      case "prepend":
+        return normalizePrependEdit(edit, index);
+      default:
+        throw new Error(`Edit ${index}: unsupported op "${String(edit.op)}". Legacy format was removed; use op/pos/end/lines.`);
+    }
+  });
 }
 // src/vendor/diff-utils.ts
 function toHashlineContent(content) {
@@ -875,9 +953,11 @@ function editFile(fp, edits, maxDiffChars) {
   const report = applyHashlineEditsWithReport(raw, edits);
   writeFileSync(fp, report.content);
   const diff = report.content === raw ? "" : generateUnifiedDiff(raw, report.content, fp).slice(0, maxDiffChars);
+  const contentForCount = report.content.endsWith(`
+`) ? report.content.slice(0, -1) : report.content;
   return {
     path: fp,
-    lines: report.content === "" ? 0 : report.content.split(`
+    lines: contentForCount === "" ? 0 : contentForCount.split(`
 `).length,
     noopEdits: report.noopEdits,
     deduplicatedEdits: report.deduplicatedEdits,
@@ -922,9 +1002,10 @@ function apply(ctx, config = {}) {
       const fp = resolve(String(args?.path));
       if (!existsSync(fp))
         throw new Error("mpd-hashline: file not found: " + fp);
-      const edits = Array.isArray(args?.edits) ? args.edits : [];
-      if (edits.length === 0)
+      const rawEdits = Array.isArray(args?.edits) ? args.edits : [];
+      if (rawEdits.length === 0)
         throw new Error("mpd-hashline: at least one edit required");
+      const edits = normalizeHashlineEdits(rawEdits);
       return editFile(fp, edits, maxDiffChars);
     }
   });
@@ -969,10 +1050,13 @@ function apply(ctx, config = {}) {
       const fp = exec.arguments?.file_path ?? exec.arguments?.path;
       if (typeof fp !== "string" || !registered(config, fp))
         return out;
-      const hint = `
-[mpd-hashline guard] ` + fp + " is hashline-disciplined and was changed with a plain edit tool, so the LINE#HASH anchors you saw are now stale. Re-read with mpd_hashline_read and continue with mpd_hashline_edit, or run mpd_hashline_restore to drop the discipline.";
-      const content = out.content ?? result?.content ?? "";
-      return { ...out, content: typeof content === "string" ? content + hint : content };
+      const hint = "[mpd-hashline guard] " + fp + " is hashline-disciplined and was changed with a plain edit tool, so the LINE#HASH anchors you saw are now stale. Re-read with mpd_hashline_read and continue with mpd_hashline_edit, or run mpd_hashline_restore to drop the discipline.";
+      const content = out.content ?? result?.content;
+      const text = typeof content === "string" ? content : Array.isArray(content) ? content.map((b) => b && b.type === "text" ? b.text : "").join(`
+`) : "";
+      return { ...out, content: [{ type: "text", text: (text ? text + `
+
+` : "") + hint }] };
     });
   }
 }

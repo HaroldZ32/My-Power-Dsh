@@ -10,7 +10,9 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)))
-const omoRoot = join(repoRoot, "..", "..", "..")
+// Legacy layout assumed repoRoot = <omo checkout>/.omo/port/mpd-dsh. Override with
+// MPD_UPSTREAM_ROOT when the repo lives elsewhere (e.g. /home/haroldzhao/dshProj/oh-my-openagent).
+const omoRoot = process.env.MPD_UPSTREAM_ROOT || join(repoRoot, "..", "..", "..")
 const cacheRoot = join(homedir(), ".bun", "install", "cache")
 
 const SERVERS = [

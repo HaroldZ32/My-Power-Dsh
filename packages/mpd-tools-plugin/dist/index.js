@@ -26,18 +26,26 @@ function apply(ctx, config = {}) {
       return "mpd-tools guard: target file already exists with different content — use the edit tool (or read then rewrite deliberately via write with identical content) instead of overwriting.";
     });
   }
+  function blocksToText(content) {
+    if (typeof content === "string")
+      return content;
+    if (Array.isArray(content))
+      return content.map((b) => b && b.type === "text" ? b.text : "").join(`
+`);
+    return "";
+  }
   ctx.on("tools/post-execute", async (exec, result, next) => {
     const out = await next();
     if (out.kind !== "accept")
       return out;
-    const content = out.content ?? result?.content;
-    if (typeof content !== "string" || content.length <= maxBytes)
+    const text = blocksToText(out.content ?? result?.content);
+    if (text.length <= maxBytes)
       return out;
-    const head = content.slice(0, Math.floor(maxBytes * 0.7));
-    const tail = content.slice(-Math.floor(maxBytes * 0.3));
-    return { ...out, content: head + `
-... [mpd-tools truncated ` + content.length + " bytes; keep " + maxBytes + ` budget; tail follows] ...
-` + tail };
+    const head = text.slice(0, Math.floor(maxBytes * 0.7));
+    const tail = text.slice(-Math.floor(maxBytes * 0.3));
+    return { ...out, content: [{ type: "text", text: head + `
+... [mpd-tools truncated ` + text.length + " chars; keep " + maxBytes + ` budget; tail follows] ...
+` + tail }] };
   });
   ctx.on("tools/post-execute", async (exec, result, next) => {
     const out = await next();
@@ -47,9 +55,11 @@ function apply(ctx, config = {}) {
     if (!isEdit || !result?.isError)
       return out;
     const msg = result?.error?.message ?? String(result?.error ?? "edit failed");
-    const content = out.content ?? result?.content ?? msg;
-    return { ...out, content: "Edit failed: " + msg + `
-` + recoveryHint };
+    const prior = blocksToText(out.content ?? result?.content);
+    return { ...out, content: [{ type: "text", text: (prior ? prior + `
+
+` : "") + "Edit failed: " + msg + `
+` + recoveryHint }] };
   });
 }
 export {

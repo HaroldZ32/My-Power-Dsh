@@ -221,6 +221,9 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 | ast-grep BINARY_NOT_FOUND | sg binary not installed — `.toolchain` via installer or `OMO_AST_GREP_SG_PATH` |
 | LSP daemon unreachable | `~/.omo` unwritable/missing — on real home it self-starts |
 | preset not visible in web | presets not installed to `$DSH_HOME/.agent-presets/` — run installer |
+| installed presets stale / agents miss tools (e.g. bash) | `mpd-bootstrap` only re-copies presets when the package VERSION changes — bump `package.json` version, `node scripts/pack-mpd.mjs`, restart dsh |
+| agent tool call fails with UNKNOWN_TOOL in code-mode deployments | presets declare `tool-presentation { mode: native }` — every row tool (bash/read/edit/...) is exposed directly; in code mode the model may only call `run_code` directly |
+| boot fails with ERR_MODULE_NOT_FOUND @nanmicoder/dsh-agent-teams | an interrupted `dsh plugin add` pruned the package; the bundle's agent-teams row now self-disables when the package is missing (boot-safe). Re-run `dsh plugin --profile <p> add dist/mpd-package` to restore it |
 
 ---
 

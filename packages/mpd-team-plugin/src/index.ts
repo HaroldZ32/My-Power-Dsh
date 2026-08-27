@@ -36,6 +36,7 @@ function textBlock(text: string): any { return [{ type: "text", text }] }
 
 export function apply(ctx: Ctx, config: Config = {}): void {
   const cwd = process.env.DSH_WORKSPACE_ROOT ?? process.cwd()
+  const stateDir = config.stateDir ?? join(cwd, ".mpd", "team")
 
   ctx.tools.register({
     name: "mpd_team_spawn",
@@ -55,7 +56,6 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       if (roles.length < 2) throw new Error("mpd_team_spawn: need 2..4 roles")
       const task = String(args.task)
       const id = "team-" + randomUUID().slice(0, 8)
-      const stateDir = join(cwd, ".mpd", "team")
       mkdirSync(stateDir, { recursive: true })
       const stateFile = join(stateDir, id + ".json")
 
@@ -95,7 +95,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       const id = String(args.teamId)
       try {
         const { readFileSync } = await import("node:fs")
-        const state = JSON.parse(readFileSync(join(cwd, ".mpd", "team", id + ".json"), "utf8"))
+        const state = JSON.parse(readFileSync(join(stateDir, id + ".json"), "utf8"))
         return { found: true, report: JSON.stringify(state.mailbox ?? {}) }
       } catch { return { found: false, report: "team state not found: " + id } }
     }

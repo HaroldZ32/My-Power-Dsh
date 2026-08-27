@@ -30,6 +30,7 @@ function textBlock(text) {
 }
 function apply(ctx, config = {}) {
   const cwd = process.env.DSH_WORKSPACE_ROOT ?? process.cwd();
+  const stateDir = config.stateDir ?? join(cwd, ".mpd", "team");
   ctx.tools.register({
     name: "mpd_team_spawn",
     description: "Spawn a small parallel team (2-4 roles among oracle/prometheus/librarian/hephaestus) for one task; each member runs with its role persona and model route; results land in the team mailbox state file and an aggregated report is returned.",
@@ -53,7 +54,6 @@ state: ` + v.stateFile)
         throw new Error("mpd_team_spawn: need 2..4 roles");
       const task = String(args.task);
       const id = "team-" + randomUUID().slice(0, 8);
-      const stateDir = join(cwd, ".mpd", "team");
       mkdirSync(stateDir, { recursive: true });
       const stateFile = join(stateDir, id + ".json");
       const starts = roles.map((r) => {
@@ -100,7 +100,7 @@ Work independently with tools; end with ONLY the structured report (role/summary
       const id = String(args.teamId);
       try {
         const { readFileSync } = await import("node:fs");
-        const state = JSON.parse(readFileSync(join(cwd, ".mpd", "team", id + ".json"), "utf8"));
+        const state = JSON.parse(readFileSync(join(stateDir, id + ".json"), "utf8"));
         return { found: true, report: JSON.stringify(state.mailbox ?? {}) };
       } catch {
         return { found: false, report: "team state not found: " + id };

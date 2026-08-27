@@ -1,8 +1,8 @@
 # QA use: insert the in-house mpd-codegraph plugin (absolute path; production imports by package name @mpd-dsh/mpd-codegraph-plugin)
 - insert:
     - id: mpd-codegraph
-      name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-codegraph-plugin/dist/index.js'
+      name: '/home/haroldzhao/dshProj/my-power-dsh/packages/mpd-codegraph-plugin/dist/index.js'
       config:
         autoInit: true
         initTimeoutMs: 60000
-        binary: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/.toolchain/node_modules/.bin/codegraph'
+        binary: '/home/haroldzhao/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph'

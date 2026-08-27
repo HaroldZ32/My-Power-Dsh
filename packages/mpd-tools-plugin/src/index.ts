@@ -32,15 +32,23 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     })
   }
 
+  // post-execute content is ContentBlock[] (official PostToolDecision shape);
+  // extract text, then replace with one text block.
+  function blocksToText(content: any): string {
+    if (typeof content === "string") return content
+    if (Array.isArray(content)) return content.map((b: any) => (b && b.type === "text" ? b.text : "")).join("\n")
+    return ""
+  }
+
   // 2) truncate oversized tool outputs (post-execute waterfall)
   ctx.on("tools/post-execute", async (exec: any, result: any, next: any) => {
     const out = await next()
     if (out.kind !== "accept") return out
-    const content = out.content ?? result?.content
-    if (typeof content !== "string" || content.length <= maxBytes) return out
-    const head = content.slice(0, Math.floor(maxBytes * 0.7))
-    const tail = content.slice(-Math.floor(maxBytes * 0.3))
-    return { ...out, content: head + "\n... [mpd-tools truncated " + content.length + " bytes; keep " + maxBytes + " budget; tail follows] ...\n" + tail }
+    const text = blocksToText(out.content ?? result?.content)
+    if (text.length <= maxBytes) return out
+    const head = text.slice(0, Math.floor(maxBytes * 0.7))
+    const tail = text.slice(-Math.floor(maxBytes * 0.3))
+    return { ...out, content: [{ type: "text", text: head + "\n... [mpd-tools truncated " + text.length + " chars; keep " + maxBytes + " budget; tail follows] ...\n" + tail }] }
   })
 
   // 3) edit-error recovery guidance
@@ -50,7 +58,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     const isEdit = exec.name === "edit" || exec.name === "str_replace_editor"
     if (!isEdit || !result?.isError) return out
     const msg = result?.error?.message ?? String(result?.error ?? "edit failed")
-    const content = out.content ?? result?.content ?? msg
-    return { ...out, content: "Edit failed: " + msg + "\n" + recoveryHint }
+    const prior = blocksToText(out.content ?? result?.content)
+    return { ...out, content: [{ type: "text", text: (prior ? prior + "\n\n" : "") + "Edit failed: " + msg + "\n" + recoveryHint }] }
   })
 }

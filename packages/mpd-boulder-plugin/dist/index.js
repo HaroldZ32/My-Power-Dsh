@@ -706,7 +706,13 @@ plan: ` + JSON.stringify(v.planProgress) : "")) },
       const planPath = String(args?.planPath);
       const sessionId = String(args?.sessionId ?? "current");
       const existing = readBoulderState(dir);
-      const next = existing ? addBoulderWork(dir, { planPath, sessionId, agent: args?.agent, worktreePath: args?.worktreePath }) : writeBoulderState(dir, createBoulderState(planPath, sessionId, args?.agent, args?.worktreePath)) ? createBoulderState(planPath, sessionId, args?.agent, args?.worktreePath) : null;
+      let next;
+      if (existing) {
+        next = addBoulderWork(dir, { planPath, sessionId, agent: args?.agent, worktreePath: args?.worktreePath });
+      } else {
+        const created = createBoulderState(planPath, sessionId, args?.agent, args?.worktreePath);
+        next = writeBoulderState(dir, created) ? created : null;
+      }
       if (!next)
         throw new Error("mpd-boulder: failed to start work on " + planPath);
       return { workId: next.active_work_id ?? "?", status: next.works?.[next.active_work_id ?? ""]?.status ?? "active", stateFile: dir + "/.mpd/boulder.json" };
@@ -764,7 +770,7 @@ plan: ` + JSON.stringify(v.planProgress) : "")) },
   });
   ctx.tools.register({
     name: "mpd_boulder_plans",
-    description: "List plan markdown files under .mpd/plans (and legacy .omo/plans) that can be started as boulder works.",
+    description: "List plan markdown files under .mpd/plans that can be started as boulder works.",
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { plans: { type: "array", items: { type: "string" } } }, required: ["plans"] }, render: (_a, v) => textBlock("plans: " + v.plans.join(`
 `)) },

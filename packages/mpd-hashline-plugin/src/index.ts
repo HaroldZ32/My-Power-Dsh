@@ -17,6 +17,7 @@ import {
   applyHashlineEditsWithReport,
   generateUnifiedDiff,
   computeLineHash,
+  normalizeHashlineEdits,
   type HashlineEdit,
 } from "./vendor/index.ts"
 
@@ -55,9 +56,10 @@ function editFile(fp: string, edits: HashlineEdit[], maxDiffChars: number): any 
   const report = applyHashlineEditsWithReport(raw, edits)
   writeFileSync(fp, report.content)
   const diff = report.content === raw ? "" : generateUnifiedDiff(raw, report.content, fp).slice(0, maxDiffChars)
+  const contentForCount = report.content.endsWith("\n") ? report.content.slice(0, -1) : report.content
   return {
     path: fp,
-    lines: report.content === "" ? 0 : report.content.split("\n").length,
+    lines: contentForCount === "" ? 0 : contentForCount.split("\n").length,
     noopEdits: report.noopEdits,
     deduplicatedEdits: report.deduplicatedEdits,
     diff
@@ -100,8 +102,12 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     execute: async (args: any) => {
       const fp = resolve(String(args?.path))
       if (!existsSync(fp)) throw new Error("mpd-hashline: file not found: " + fp)
-      const edits = Array.isArray(args?.edits) ? args.edits : []
-      if (edits.length === 0) throw new Error("mpd-hashline: at least one edit required")
+      const rawEdits = Array.isArray(args?.edits) ? args.edits : []
+      if (rawEdits.length === 0) throw new Error("mpd-hashline: at least one edit required")
+      // Normalize BEFORE applying: fills missing anchors (replace{end}-only becomes
+      // single-line replace), rejects unknown ops, and gives a clean error instead
+      // of an undefined.trim() crash inside applyReplaceLines.
+      const edits = normalizeHashlineEdits(rawEdits)
       return editFile(fp, edits, maxDiffChars)
     }
   })
@@ -144,9 +150,10 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       if (!isEdit) return out
       const fp = exec.arguments?.file_path ?? exec.arguments?.path
       if (typeof fp !== "string" || !registered(config, fp)) return out
-      const hint = "\n[mpd-hashline guard] " + fp + " is hashline-disciplined and was changed with a plain edit tool, so the LINE#HASH anchors you saw are now stale. Re-read with mpd_hashline_read and continue with mpd_hashline_edit, or run mpd_hashline_restore to drop the discipline."
-      const content = out.content ?? result?.content ?? ""
-      return { ...out, content: typeof content === "string" ? content + hint : content }
+      const hint = "[mpd-hashline guard] " + fp + " is hashline-disciplined and was changed with a plain edit tool, so the LINE#HASH anchors you saw are now stale. Re-read with mpd_hashline_read and continue with mpd_hashline_edit, or run mpd_hashline_restore to drop the discipline."
+      const content = out.content ?? result?.content
+      const text = typeof content === "string" ? content : (Array.isArray(content) ? content.map((b: any) => (b && b.type === "text" ? b.text : "")).join("\n") : "")
+      return { ...out, content: [{ type: "text", text: (text ? text + "\n\n" : "") + hint }] }
     })
   }
 }

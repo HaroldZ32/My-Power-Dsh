@@ -125,11 +125,14 @@ function apply(ctx, config = {}) {
       const res = runCheck(binary, hookInputFor(fp, content), timeoutMs);
       if (!res.hasComments)
         return out;
-      const hint = `
-[mpd-comment-checker] comments/docstrings detected in ` + fp + `:
+      const hint = "[mpd-comment-checker] comments/docstrings detected in " + fp + `:
 ` + res.message.slice(0, maxMessageChars);
-      const c = out.content ?? result?.content ?? "";
-      return { ...out, content: typeof c === "string" ? c + hint : c };
+      const c = out.content ?? result?.content;
+      const text = typeof c === "string" ? c : Array.isArray(c) ? c.map((b) => b && b.type === "text" ? b.text : "").join(`
+`) : "";
+      return { ...out, content: [{ type: "text", text: (text ? text + `
+
+` : "") + hint }] };
     });
   }
 }

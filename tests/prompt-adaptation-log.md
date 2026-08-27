@@ -4,7 +4,8 @@
 |---|---|---|---|
 | P4-1 | mpd-oracle | Extracted identity/expertise/decision framework/output spec from ORACLE_DEFAULT_PROMPT; XML->Markdown; removed Claude-specific phrasing; added deepseek_notes (internalize thinking, no chain-of-thought exposure, compact structure) | Aligned with the upstream original + DeepSeek thinking adaptation |
 | P4-1 | mpd-librarian | Extracted identity + evidence discipline + date awareness from the LIBRARIAN prompt; mapped the tools section to the existing DSH surface (mcp__ast_grep__*, mcp__lsp__*, web search, bash); kept the PHASE 0 classification (abbreviated version) and "conclusion-first + evidence citations + uncertainty annotation" | Aligned with the upstream original + the DSH tool surface |
-| P4-1 | mpd-prometheus | Ported prometheus/default.md essentially unchanged (its dependency, the ulw-plan skill, is already in the bundle) | The upstream original is already model-agnostic |
+| P4-1 | mpd-prometheus | Ported prometheus/default.md (its dependency, the ulw-plan skill, is already in the bundle) | The upstream original is already model-agnostic |
+| tool-guarantee | mpd-prometheus | Removed the `skill(name="ulw-plan")` first-action mandate: the vendored skill corpus was deleted, so the reference 404'd; planning loop is now self-contained inline | Tool-call guarantee audit (official dsh v0.1.1-rc.2 reference) |
 | P4-1 | mpd-hephaestus | Wrote a DeepSeek-native "configuration manager" persona based on the Hephaestus agent's responsibilities (read-only + diff + risk notes + DSH terminology) | Minimal definition |
 | P4-1 | All | Added: runs on DeepSeek; plans/output must be "decision-complete/compact"; no chain-of-thought exposure | persona smoke test (Prometheus self-identification) PASS |
 

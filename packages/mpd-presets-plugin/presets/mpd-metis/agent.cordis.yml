@@ -213,3 +213,14 @@
     fetch: false
     searchTimeoutMs: 60000
 
+# ── presentation ────────────────────────────────────────────────────────────
+
+# Native mode: every tool row above is exposed DIRECTLY to the model (no
+# run_code wrapper needed), so the persona's tool names (bash/read/edit/...)
+# always exist as callable tools regardless of the deployment's default
+# presentation. Switch to 'code'/'both' only on deployments with a codeRuntime.
+- id: tool-presentation
+  name: '@deepseek-ai/dsh-agent-tool-presentation'
+  config:
+    mode: native
+

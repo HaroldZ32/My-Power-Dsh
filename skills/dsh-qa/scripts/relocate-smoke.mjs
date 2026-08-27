@@ -13,7 +13,7 @@ import { join, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
-const DEV = process.env.MPD_DEV_ROOT || "/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh"
+const DEV = process.env.MPD_DEV_ROOT || "/home/haroldzhao/dshProj/my-power-dsh"
 
 function selfTest() {
   if (!existsSync(join(repoRoot, "dist", "mpd-package", "package.json"))) { console.error("[relocate-smoke self-test] FAIL: run node scripts/pack-mpd.mjs first"); process.exit(1) }

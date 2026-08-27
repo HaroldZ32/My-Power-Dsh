@@ -11,18 +11,19 @@ A DeepSeek-Harness plugin bundle that ports the portable capabilities of oh-my-o
 **Install (one command, relocatable)**
 
 ```sh
-cd <repo> && dsh plugin --profile web add .     # local checkout install
-# or from a copy/Gitee URL: dsh plugin --profile web add <path-or-git-url>
+node scripts/pack-mpd.mjs                          # -> dist/mpd-package/ (no checkout-absolute paths)
+dsh plugin --profile web add dist/mpd-package      # install the staged bundle
 ```
+
+> Note: `dsh plugin add` must point at the STAGED package (the root directory has no
+> `dsh.bundle.patch` entry). `dsh plugin add <path-or-git-url>` works the same way when the
+> target location contains the staged package.
 
 This installs the `@mpd-dsh/mpd` bundle: DeepSeek dual-track (official default),
-skills, MCP servers, all mpd plugins, adopted agent-teams (team + Web panel),
-and auto-copies the 11 `mpd-*` presets at first boot via `mpd-bootstrap`.
-Build the staged package first when installing from a fresh checkout:
-
-```sh
-node scripts/pack-mpd.mjs   # -> dist/mpd-package/  (no checkout-absolute paths)
-```
+MCP servers, all mpd plugins (including codegraph auto-init), adopted agent-teams
+(team + Web panel), and auto-copies the 11 `mpd-*` presets at first boot via
+`mpd-bootstrap` (version-stamped: bump the package version and re-pack to refresh
+already-installed presets).
 
 **Two hard rules**
 1. Engineering matches the upstream upstream discipline: bun test / tsgo gates, isolated QA, evidence in

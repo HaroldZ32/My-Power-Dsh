@@ -5,5 +5,5 @@
       config:
         default: mpd-oracle
         roots:
-          - path: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-presets-plugin/presets'
+          - path: '/home/haroldzhao/dshProj/my-power-dsh/packages/mpd-presets-plugin/presets'
             trust: system
