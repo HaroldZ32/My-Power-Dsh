@@ -42,9 +42,9 @@ function buildPlan(o) {
   const astCli = p(".toolchain/node_modules/.bin/sg")
   const cgCli = p(".toolchain/node_modules/.bin/codegraph")
   const rows = [
-    {
-      id: "skill-filesystem", name: "@deepseek-ai/dsh-skill-filesystem", disabled: false,
-    },
+    // NOTE: no root skill-filesystem row — the mpd-* presets already declare it
+    // (agent-plane, tool rows are preset-plane responsibility since 49b1288), and
+    // adding it here duplicates the loader entry id and fails every real boot.
     {
       id: "mcp-astgrep", name: "@deepseek-ai/dsh-mcp-client",
       config: { serverName: "ast_grep", transport: "stdio", command: "node", args: [p("packages/mpd-mcp-astgrep/dist/cli.js")],
