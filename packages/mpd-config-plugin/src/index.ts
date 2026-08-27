@@ -108,7 +108,10 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     output: { schema: { type: "object", properties: { config: { type: "object" }, key: { type: "string" }, value: {} }, required: ["config"] }, render: (_a: unknown, v: any) => textBlock(v.key ? "mpd config " + v.key + ": " + JSON.stringify(v.value, null, 1) : "mpd config: " + JSON.stringify(v.config, null, 1)) },
     execute: async (args: any) => {
       const key = args?.key ? String(args.key) : undefined
-      const value = key ? key.split(".").reduce((acc: any, part: string) => (acc == null ? undefined : acc[part]), state.config) : undefined
+      // `value` is a raw JSON value: an undefined field is dropped by JSON
+      // serialization, which breaks the host's lossless round-trip check
+      // ("value is not lossless JSON"). Missing keys resolve to null instead.
+      const value = key ? (key.split(".").reduce((acc: any, part: string) => (acc == null ? undefined : acc[part]), state.config) ?? null) : null
       return key === undefined ? { config: state.config } : { config: state.config, key, value }
     }
   })
