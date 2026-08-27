@@ -78,6 +78,10 @@
       "name": "@mpd-dsh/hashline",
       "version": "0.1.0",
     },
+    "packages/mpd-leaf-plugin": {
+      "name": "@mpd-dsh/leaf",
+      "version": "0.1.0",
+    },
     "packages/mpd-mcp-astgrep": {
       "name": "@mpd-dsh/mcp-astgrep",
       "version": "0.1.0",
@@ -131,6 +135,8 @@
     "@mpd-dsh/hashline": ["@mpd-dsh/hashline@workspace:packages/mpd-hashline-plugin"],
 
     "@mpd-dsh/hephaestus": ["@mpd-dsh/hephaestus@workspace:packages/omo-hephaestus"],
+
+    "@mpd-dsh/leaf": ["@mpd-dsh/leaf@workspace:packages/mpd-leaf-plugin"],
 
     "@mpd-dsh/mcp-astgrep": ["@mpd-dsh/mcp-astgrep@workspace:packages/mpd-mcp-astgrep"],
 

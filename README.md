@@ -20,10 +20,12 @@ dsh plugin --profile web add dist/mpd-package      # install the staged bundle
 > target location contains the staged package.
 
 This installs the `@mpd-dsh/mpd` bundle: DeepSeek dual-track (official default),
-MCP servers, all mpd plugins (including codegraph auto-init), adopted agent-teams
-(team + Web panel), and auto-copies the 11 `mpd-*` presets at first boot via
-`mpd-bootstrap` (version-stamped: bump the package version and re-pack to refresh
-already-installed presets).
+MCP servers, all mpd plugins (including codegraph auto-init), the first-party
+agent-teams (team protocol + Web panel; source-integrated at
+`packages/mpd-agent-teams` per Plan F), the leaf layer (`mpd_leaf_iterate` /
+`mpd_gate_run`), and auto-copies the 12 `mpd-*` presets (incl. `mpd-captain`,
+the team-first default) at first boot via `mpd-bootstrap` (version-stamped: bump
+the package version and re-pack to refresh already-installed presets).
 
 **Two hard rules**
 1. Engineering matches the upstream upstream discipline: bun test / tsgo gates, isolated QA, evidence in
@@ -37,5 +39,7 @@ already-installed presets).
 - Gates & branching model: [AGENTS.md](./AGENTS.md)
 - One-click install: `node scripts/install-profile.mjs --yes` (default dry-run; see --help)
 
-Status: Plan D decoupling COMPLETE — relocatable one-plugin install (evidence/plan-d/relocate PASS);
-Plan C waves complete (team adoption, ultrawork engine, hashline, boulder, mpd.jsonc, memory git+svn, vision e2e).
+Status: Plan F IN PROGRESS — W1 native integration COMPLETE (first-party agent-teams; relocate +
+team-route + adopt PASS), W2 captain preset COMPLETE (mpd-captain + team profile + captain smoke PASS),
+W3 leaf layer in progress (mpd_leaf_iterate / mpd_gate_run). Plan C and Plan D remain complete
+(team adoption, ultrawork engine, hashline, boulder, mpd.jsonc, memory git+svn, vision e2e, relocate).

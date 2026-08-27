@@ -73,6 +73,7 @@ mpd-dsh/
 │   ├── mpd-modelchain-plugin/    # B4: mpd_modelchain_resolve + mpd_memory_save/recall
 │   ├── mpd-ulw-plugin/           # B3: mpd_ulw loop discipline
 │   ├── mpd-agent-teams/          # plan-f: first-party agent-teams source (src + computed lib + _deps)
+│   ├── mpd-leaf-plugin/           # plan-f: mpd_leaf_iterate + mpd_gate_run (leaf layer)
 │   ├── mpd-team-plugin/          # B2: mpd_team_spawn / mpd_team_status (superseded by agent-teams)
 │   ├── mpd-codegraph-plugin/     # binary resolve + project init + mpd-codegraph command
 │   ├── mpd-hashline-plugin/      # C3: anchored edit discipline (vendor hashline-core)
@@ -97,7 +98,8 @@ mpd-dsh/
 | Gate | Command | When |
 |---|---|---|
 | Vendor | `node scripts/verify-vendor.mjs` | any baseline/asset change; before release |
-| Tests | `bun test` (per package) + `bun run typecheck` | every plugin change |
+| Tests | `bun test` (per package) + `bun run typecheck` + `bun run test:agent-teams` | every plugin change |
+| Agent-teams build | `node scripts/build-agent-teams.mjs` | any `packages/mpd-agent-teams/src` change (tsc emit + _deps rewrite; host lib import check) |
 | QA self-tests | `bun run test:qa` (all `--self-test`) | every plugin/QA-script change |
 | QA real cases | `node skills/dsh-qa/scripts/<case>.mjs` | runtime-behavior changes |
 | Installer | `node scripts/install-profile.mjs --dry-run` | any bundle-patch/installer change |

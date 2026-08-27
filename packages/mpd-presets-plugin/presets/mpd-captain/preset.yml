@@ -1,0 +1,2 @@
+name: "MPD Captain (team-first orchestrator)"
+description: "Primary default agent: team-first multi-agent execution (captain -> members -> leaves), upfront scale assessment, honest convergence."

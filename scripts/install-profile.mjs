@@ -80,8 +80,8 @@ function buildPlan(o) {
       config: { maxRounds: 3 }
     },
     {
-      id: "mpd-team", name: p("packages/mpd-team-plugin/dist/index.js"),
-      config: {}
+      id: "mpd-leaf", name: p("packages/mpd-leaf-plugin/dist/index.js"),
+      config: { provider: "deepseek-official", model: "deepseek-v4-pro", maxRounds: 3, gates: ["bun-test"] }
     },
     {
       id: "mpd-hashline", name: p("packages/mpd-hashline-plugin/dist/index.js"),
