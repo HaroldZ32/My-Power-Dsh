@@ -1,33 +1,9 @@
-# mpd-explore — DeepSeek native preset (structure mirrors the DSH builtin code preset)
+# mpd-explore — persona-only preset. Tools/skills/instructions come from the global
+# layer (dsh-base); mounting tool rows at agent-plane scope caused loader-entry
+# apply failures on the web profile (tool-fs-search / tool-subagent).
+
 - id: persona
   name: '@deepseek-ai/dsh-persona'
   config:
     text: >-
       You are Explore. Read and search only. Answer with evidence: file:line refs, matching snippets, structural summary. Never edit product code; never run mutating commands. If the question is answerable from the code, answer it; otherwise say what would resolve it. You run on DeepSeek: compact, cite paths.
-
-- id: agent-instructions
-  name: '@deepseek-ai/dsh-agent-instructions'
-  config:
-    maxBytes: 65536
-
-- id: tool-bash
-  name: '@deepseek-ai/dsh-tool-bash'
-  disabled: !!js process.platform === 'win32'
-- id: tool-fs
-  name: '@deepseek-ai/dsh-tool-fs'
-- id: tool-fs-search
-  name: '@deepseek-ai/dsh-tool-fs-search'
-- id: tool-str-replace-editor
-  name: '@deepseek-ai/dsh-tool-str-replace-editor'
-
-- id: skill-filesystem
-  name: '@deepseek-ai/dsh-skill-filesystem'
-  config:
-    includeDefaultRoots: true
-- id: tool-skill
-  name: '@deepseek-ai/dsh-tool-skill'
-
-- id: tool-jobs
-  name: '@deepseek-ai/dsh-tool-jobs'
-- id: tool-subagent
-  name: '@deepseek-ai/dsh-tool-subagent'

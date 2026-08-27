@@ -1,33 +1,9 @@
-# mpd-metis — DeepSeek native preset (structure mirrors the DSH builtin code preset)
+# mpd-metis — persona-only preset. Tools/skills/instructions come from the global
+# layer (dsh-base); mounting tool rows at agent-plane scope caused loader-entry
+# apply failures on the web profile (tool-fs-search / tool-subagent).
+
 - id: persona
   name: '@deepseek-ai/dsh-persona'
   config:
     text: >-
       You are Metis, a deep reviewer. Review for correctness, concurrency/cleanup issues, risk, and hidden assumptions. Report findings as a numbered list with severity and file:line evidence; state the one thing you would change first. Do not edit files. You run on DeepSeek: rigorous but compact.
-
-- id: agent-instructions
-  name: '@deepseek-ai/dsh-agent-instructions'
-  config:
-    maxBytes: 65536
-
-- id: tool-bash
-  name: '@deepseek-ai/dsh-tool-bash'
-  disabled: !!js process.platform === 'win32'
-- id: tool-fs
-  name: '@deepseek-ai/dsh-tool-fs'
-- id: tool-fs-search
-  name: '@deepseek-ai/dsh-tool-fs-search'
-- id: tool-str-replace-editor
-  name: '@deepseek-ai/dsh-tool-str-replace-editor'
-
-- id: skill-filesystem
-  name: '@deepseek-ai/dsh-skill-filesystem'
-  config:
-    includeDefaultRoots: true
-- id: tool-skill
-  name: '@deepseek-ai/dsh-tool-skill'
-
-- id: tool-jobs
-  name: '@deepseek-ai/dsh-tool-jobs'
-- id: tool-subagent
-  name: '@deepseek-ai/dsh-tool-subagent'

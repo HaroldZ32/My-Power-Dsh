@@ -48,7 +48,10 @@ async function runReal() {
   writeFileSync(join(profile, "package.json"), JSON.stringify(manifest, null, 2) + "\n")
   const dump = spawnSync("dsh", ["--profile", "t", "--dump-config"], { env, encoding: "utf8", timeout: 120000, maxBuffer: 32 * 1024 * 1024 })
   const dumpOut = (dump.stdout || "") + (dump.stderr || "")
-  steps.dump = { ok: dump.status === 0 && dumpOut.includes("@mpd-dsh/mpd") && !dumpOut.includes(DEV), exit: dump.status, leaked: dumpOut.includes(DEV) }
+  const dumpOutClean = dumpOut.split(home).join("<QAHOME>")
+  steps.dump = { ok: dump.status === 0 && dumpOut.includes("@mpd-dsh/mpd") && !dumpOutClean.includes(DEV), exit: dump.status, leaked: dumpOutClean.includes(DEV) }
+  // Repro: mount a failing preset as the default to reproduce agent-switch errors.
+  writeFileSync(join(profile, "cordis.patch.yml"), "- insert:\n    - id: agent-presets\n      name: '@deepseek-ai/dsh-agent-presets'\n      config:\n        default: mpd-oracle\n")
   const live = spawnSync("dsh", ["--profile", "t", "Use mpd_config_get with key 'memory.vcs' then mpd_memory_status; report both values in one line."], { env, cwd: join(reloc, "ws"), encoding: "utf8", timeout: 600000, maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] })
   const out = (live.stdout || "") + (live.stderr || "")
   steps.live = { ok: live.status === 0, exit: live.status }

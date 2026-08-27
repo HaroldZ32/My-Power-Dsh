@@ -1,5 +1,7 @@
-# mpd-librarian — DeepSeek-native preset (modeled on the DSH built-in code/standard preset structure)
-# This file is an AGENT-PLANE composition: all rows attach at this preset's scope layer and are visible only to this agent session.
+# mpd-librarian — persona-only preset. Tools/skills/instructions come from the global
+# layer (dsh-base); mounting tool rows at agent-plane scope caused loader-entry
+# apply failures on the web profile (tool-fs-search / tool-subagent).
+
 - id: persona
   name: '@deepseek-ai/dsh-persona'
   config:
@@ -37,34 +39,3 @@
       - Follow with Evidence: each item as repo permalink / docs URL / file:line excerpt.
       - Note uncertainty explicitly when evidence is inconclusive.
       - If the conclusion is version-dependent, state the version range.
-      
-
-- id: agent-instructions
-  name: '@deepseek-ai/dsh-agent-instructions'
-  config:
-    maxBytes: 65536
-
-# ── shell / fs / search ────────────────────────────────────────────────
-- id: tool-bash
-  name: '@deepseek-ai/dsh-tool-bash'
-  disabled: !!js process.platform === 'win32'
-- id: tool-fs
-  name: '@deepseek-ai/dsh-tool-fs'
-- id: tool-fs-search
-  name: '@deepseek-ai/dsh-tool-fs-search'
-- id: tool-str-replace-editor
-  name: '@deepseek-ai/dsh-tool-str-replace-editor'
-
-# ── skills (skills directory, resolved with the preset; default roots off to avoid pollution)────────────
-- id: skill-filesystem
-  name: '@deepseek-ai/dsh-skill-filesystem'
-  config:
-    includeDefaultRoots: true
-- id: tool-skill
-  name: '@deepseek-ai/dsh-tool-skill'
-
-# ── background jobs / subagents / logging & orchestration (on demand; preset gives full read-only capability by default)────────
-- id: tool-jobs
-  name: '@deepseek-ai/dsh-tool-jobs'
-- id: tool-subagent
-  name: '@deepseek-ai/dsh-tool-subagent'
