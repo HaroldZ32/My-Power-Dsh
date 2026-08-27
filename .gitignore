@@ -7,3 +7,4 @@ evidence/*.log.tmp
 .codegraph/
 .omo-dsh/
 dist/mpd-package/
+.bun-tmp/
