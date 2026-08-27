@@ -91,7 +91,11 @@ function writeManifest() {
     ],
     dsh: { bundle: { patch: "./cordis.patch.yml" } },
     dependencies: { "@nanmicoder/dsh-agent-teams": "^0.1.13" },
-    optionalDependencies: { "@ast-grep/cli": "0.45.2", "@colbymchenry/codegraph": "1.5.0" }
+    // Third-party packages used unmodified are DECLARED, never copied:
+    //  - @nanmicoder/dsh-agent-teams (adopted team plugin, MIT) -> dependencies
+    //  - @ast-grep/cli / @colbymchenry/codegraph : toolchain binaries -> optionalDependencies
+    //  - @code-yeongyu/comment-checker : native binary (~51MB) -> optionalDependencies
+    optionalDependencies: { "@ast-grep/cli": "0.45.2", "@colbymchenry/codegraph": "1.5.0", "@code-yeongyu/comment-checker": "0.8.0" }
   }
   writeFileSync(join(outDir, "package.json"), JSON.stringify(manifest, null, 2) + "\n")
 }

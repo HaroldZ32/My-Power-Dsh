@@ -6,8 +6,10 @@ Vendored parser: upstream oh-my-openagent `packages/comment-checker-core` (base
 8c57e46, SUL-1.0 fork terms; `isRecord` inlined). Check binary:
 `@code-yeongyu/comment-checker` 0.8.0 (MIT,
 github.com/code-yeongyu/go-claude-code-comment-checker) — native tree-sitter
-binary, resolved via `MPD_DSH_COMMENT_CHECKER_BIN` or
-`.toolchain/node_modules/@code-yeongyu/comment-checker/vendor/<platform>/comment-checker`.
+binary: used UNMODIFIED and declared as an optionalDependency of the `@mpd-dsh/mpd`
+bundle (policy: third-party packages are dependencies, never vendored copies).
+Resolution order: dependency (package-relative via createRequire) ->
+`MPD_DSH_COMMENT_CHECKER_BIN` -> dev-toolchain fallback for local checkout QA.
 
 ## Tools / hooks
 
@@ -18,9 +20,9 @@ binary, resolved via `MPD_DSH_COMMENT_CHECKER_BIN` or
 
 ## Install
 
-```sh
-node scripts/install-profile.mjs --yes --with-comment-checker   # ~51MB binary into .toolchain
-```
+No manual step: installing the bundle brings `@code-yeongyu/comment-checker` as an
+optionalDependency (~51MB). Set `autoCheck: true` in the plugin config to enable the
+post-edit hook (off by default).
 
 ## Build / test
 

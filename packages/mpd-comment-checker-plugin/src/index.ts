@@ -3,11 +3,14 @@
 // (base 8c57e46, SUL-1.0 fork terms). The check runner is adapted to a
 // spawnSync-based stdin JSON call against the @code-yeongyu/comment-checker
 // native binary (MIT, github.com/code-yeongyu/go-claude-code-comment-checker).
-// Binary resolution: MPD_DSH_COMMENT_CHECKER_BIN, then
-// <repo>/.toolchain/node_modules/@code-yeongyu/comment-checker/vendor/<platform>/comment-checker.
-// Opt-in by default (config.autoCheck=false; the binary is ~51MB per platform).
+// Binary resolution: dependency-first — @code-yeongyu/comment-checker is declared
+// as an optionalDependency of the bundle package (used UNMODIFIED, per policy),
+// resolved from the plugin's own package location via createRequire; then env /
+// dev-toolchain fallbacks for local checkout QA.
+// Opt-in behavior: config.autoCheck=false by default (the binary is ~51MB).
 import { existsSync, readFileSync } from "node:fs"
 import { spawnSync } from "node:child_process"
+import { createRequire } from "node:module"
 import { dirname, join, resolve } from "node:path"
 
 export const name = "mpd-comment-checker"
@@ -28,10 +31,22 @@ function platformKey(): string {
   return process.platform + "-" + arch
 }
 
+function dependencyBinary(): string | null {
+  // @code-yeongyu/comment-checker installed as a (optional) dependency of the
+  // enclosing @mpd-dsh/mpd package -> sibling node_modules parent-walk finds it.
+  try {
+    const req = createRequire(import.meta.url)
+    const p = req.resolve("@code-yeongyu/comment-checker/package.json")
+    return join(dirname(p), "vendor", platformKey(), "comment-checker")
+  } catch { return null }
+}
+
 export function resolveBinary(config: Config): string | null {
   if (config.binary && existsSync(resolve(config.binary))) return resolve(config.binary)
   const env = process.env.MPD_DSH_COMMENT_CHECKER_BIN
   if (env && existsSync(env)) return env
+  const dep = dependencyBinary()
+  if (dep && existsSync(dep)) return dep
   const candidates = [
     join(repoRoot(), ".toolchain", "node_modules", "@code-yeongyu", "comment-checker", "vendor", platformKey(), "comment-checker"),
     join(repoRoot(), ".toolchain", "node_modules", "@code-yeongyu", "comment-checker", "bin", "comment-checker")

@@ -1,6 +1,7 @@
 // src/index.ts
 import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 var name = "mpd-comment-checker";
 var inject = ["tools"];
@@ -14,12 +15,24 @@ function platformKey() {
   const arch = process.arch === "x64" ? "x64" : process.arch;
   return process.platform + "-" + arch;
 }
+function dependencyBinary() {
+  try {
+    const req = createRequire(import.meta.url);
+    const p = req.resolve("@code-yeongyu/comment-checker/package.json");
+    return join(dirname(p), "vendor", platformKey(), "comment-checker");
+  } catch {
+    return null;
+  }
+}
 function resolveBinary(config) {
   if (config.binary && existsSync(resolve(config.binary)))
     return resolve(config.binary);
   const env = process.env.MPD_DSH_COMMENT_CHECKER_BIN;
   if (env && existsSync(env))
     return env;
+  const dep = dependencyBinary();
+  if (dep && existsSync(dep))
+    return dep;
   const candidates = [
     join(repoRoot(), ".toolchain", "node_modules", "@code-yeongyu", "comment-checker", "vendor", platformKey(), "comment-checker"),
     join(repoRoot(), ".toolchain", "node_modules", "@code-yeongyu", "comment-checker", "bin", "comment-checker")

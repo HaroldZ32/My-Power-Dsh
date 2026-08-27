@@ -255,15 +255,14 @@ function main() {
       return
     }
   }
-  if (plan.needsToolchain && !o.skipToolchain) {
-    console.log("[install-profile] installing toolchain (@ast-grep/cli + @colbymchenry/codegraph@1.5.0)...")
-    const r = spawnSync("npm", ["install", "--prefix", join(repoRoot, ".toolchain"), "--no-save", "--cache", join(repoRoot, ".toolchain/.npm-cache"), "@ast-grep/cli", "@colbymchenry/codegraph@1.5.0"], { stdio: "inherit" })
+  // ONE npm install for ALL toolchain packages: separate --no-save installs prune
+  // each other (npm deletes packages absent from the single command).
+  const toolchainPkgs = ["@ast-grep/cli", "@colbymchenry/codegraph@1.5.0"]
+  if (o.commentChecker) toolchainPkgs.push("@code-yeongyu/comment-checker@0.8.0")
+  if ((plan.needsToolchain || o.commentChecker) && !o.skipToolchain) {
+    console.log("[install-profile] installing toolchain (" + toolchainPkgs.join(" + ") + ")...")
+    const r = spawnSync("npm", ["install", "--prefix", join(repoRoot, ".toolchain"), "--no-save", "--no-audit", "--no-fund", "--cache", join(repoRoot, ".toolchain/.npm-cache"), ...toolchainPkgs], { stdio: "inherit" })
     if (r.status !== 0) { console.error("[install-profile] toolchain install failed; try --skip-toolchain and install manually"); process.exitCode = 1; return }
-  }
-  if (o.commentChecker) {
-    console.log("[install-profile] installing comment-checker binary (@code-yeongyu/comment-checker@0.8.0, ~51MB)...")
-    const r = spawnSync("npm", ["install", "--prefix", join(repoRoot, ".toolchain"), "--no-save", "--no-audit", "--no-fund", "--cache", join(repoRoot, ".toolchain/.npm-cache"), "@code-yeongyu/comment-checker@0.8.0"], { stdio: "inherit" })
-    if (r.status !== 0) { console.error("[install-profile] comment-checker install failed; install manually: npm install --prefix .toolchain @code-yeongyu/comment-checker@0.8.0"); process.exitCode = 1; return }
   }
   console.log("[install-profile] done. Start with: dsh --profile " + o.profile + "   (the web preset selector will show the mpd-* presets)")
 }
