@@ -1,6 +1,11 @@
 # Plan E — Route team mode onto the adopted dsh-agent-teams protocol + rewrite delegation tendency
 
-Status: **DRAFT (2026-08-27)** — pending review items in §2 (E4 upgrade, mpd_team_spawn disposition, E2 scope).
+Status: **COMPLETE (2026-08-27)** — E1 (team trigger surface), E2 (persona delegation rewrite),
+E3 (ulw-* + skill corpus alignment), E4 (vendored dsh-agent-teams 0.1.14 defect fix),
+E5 (version 0.2.3 + all AGENTS.md gates green; evidence under `evidence/plan-e/`).
+Review decisions: E4 re-scoped to vendoring (dependency mechanism empirically broken — see E4);
+mpd_team_spawn/status kept as unreferenced one-shot tools (plan-c D-C1 unchanged);
+E2 scope = all 11 personas (7 got edits, 4 already conformant).
 
 Goal:
 1. **Team mode** stays on the already-adopted `@nanmicoder/dsh-agent-teams` plugin (vendor id
