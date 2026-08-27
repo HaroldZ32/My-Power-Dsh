@@ -82,7 +82,10 @@ function writeManifest() {
       "./package.json": "./package.json",
       "./packages/*": "./packages/*",
       "./skills/*": "./skills/*",
-      "./presets/*": "./presets/*"
+      "./presets/*": "./presets/*",
+      "./client": "./third-party/dsh-agent-teams/lib/client.js",
+      "./third-party/dsh-agent-teams": "./third-party/dsh-agent-teams/lib/index.js",
+      "./third-party/dsh-agent-teams/*": "./third-party/dsh-agent-teams/*"
     },
     files: [
       "packages/**",
@@ -92,12 +95,21 @@ function writeManifest() {
       "cordis.patch.yml",
       "LICENSE.md", "LICENSE-NOTICES.md", "README.md"
     ],
-    dsh: { bundle: { patch: "./cordis.patch.yml" } },
-    dependencies: { "@nanmicoder/dsh-agent-teams": "^0.1.13" },
-    // Third-party packages used unmodified are DECLARED, never copied:
-    //  - @nanmicoder/dsh-agent-teams (adopted team plugin, MIT) -> dependencies
-    //  - @ast-grep/cli / @colbymchenry/codegraph : toolchain binaries -> optionalDependencies
-    //  - @code-yeongyu/comment-checker : native binary (~51MB) -> optionalDependencies
+    dsh: {
+      bundle: { patch: "./cordis.patch.yml" },
+      client: {
+        inject: ["@deepseek-ai/dsh-client-locale", "@deepseek-ai/dsh-client-runtime", "@deepseek-ai/dsh-client-ui-conversation", "@deepseek-ai/dsh-client-ui-layout"],
+        platform: "web"
+      }
+    },
+    // @nanmicoder/dsh-agent-teams (MIT, adopted team plugin) is VENDORED under
+    // third-party/dsh-agent-teams and loaded through the exports map above. A plain
+    // `dependencies` entry is NOT enough: pnpm (the engine behind `dsh plugin add`)
+    // never links a bundle's transitive deps into the profile root, so the plugin's
+    // row would silently self-disable at boot (repro: evidence/plan-e/e1-team-route
+    // 2026-08-27T07-38-13.142Z FAIL bundleDependency).
+    // Toolchain binaries stay as optionalDependencies (installed separately):
+    //  - @ast-grep/cli / @colbymchenry/codegraph / @code-yeongyu/comment-checker
     optionalDependencies: { "@ast-grep/cli": "0.45.2", "@colbymchenry/codegraph": "1.5.0", "@code-yeongyu/comment-checker": "0.8.0" }
   }
   writeFileSync(join(outDir, "package.json"), JSON.stringify(manifest, null, 2) + "\n")

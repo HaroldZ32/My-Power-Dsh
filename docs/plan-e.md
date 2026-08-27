@@ -79,13 +79,23 @@ All edits are `packages/mpd-presets-plugin/presets/<persona>/agent.cordis.yml` p
 2. Full-file grep sweep of `skills/ulw-*` and the 17+1 skill corpus for `teammode|team_mode|category=|codex_app|MultiAgentV2|subagent(description=` — replace where the text is instruction;
    keep functional external-platform enumerations per the established scrub rule.
 
-### E4 — dsh-agent-teams 0.1.13 → 0.1.14 (default: upgrade)
+### E4 — VENDOR dsh-agent-teams 0.1.14 into the bundle (defect fix, re-scoped)
 
-- Pins: `scripts/pack-mpd.mjs:96` (`^0.1.13`) and `scripts/install-profile.mjs:183` (`@0.1.13`)
-  → 0.1.14. The npm copy already installed is 0.1.14 (adds multi-role team profiles + approval-staged
-  planning GUI, closer to upstream team spec + review flow).
-- Re-run `skills/dsh-qa/scripts/agent-teams-adopt.mjs` and the relocate smoke.
-- Option B (no upgrade): E1–E3 do not depend on 0.1.14 features; pins stay 0.1.13.
+The "bundle dependency pulls agent-teams" plan was empirically **broken**: `dsh plugin add`
+is pnpm-driven and pnpm never links a bundle's transitive dependencies into the profile
+root, so the package never resolved from the profile and the row's self-disabling guard
+kept it off (reproduction: `evidence/plan-e/e1-team-route/2026-08-27T07-38-13.142Z`
+bundleDependency FAIL + real profile analysis: `resolve('@nanmicoder/dsh-agent-teams/package.json')`
+from `~/.dsh/profiles/web` → MODULE_NOT_FOUND → row disabled at boot).
+
+Fix (implemented): vendor the plugin at `third-party/dsh-agent-teams/` (v0.1.14: multi-role
+team profiles + approval-staged planning GUI) with runtime deps under `_deps/`
+(`@deepseek-ai/schemastery` → `@deepseek-ai/cosmokit`, MIT); the bundle `exports` map serves
+the entry + `./client`, `dsh.client` declares the web panel, the row name is
+`@mpd-dsh/mpd/third-party/dsh-agent-teams`, and the self-disabling guard is gone.
+Legacy `scripts/install-profile.mjs` pin bumped to `@0.1.14` (kept as the dev flow).
+QA: `team-route-rewire` real case (official `dsh plugin add` flow, resolution proof,
+live boot, web route smoke) → `evidence/plan-e/e4-team-vendor/`.
 
 ### E5 — QA + delivery gates
 

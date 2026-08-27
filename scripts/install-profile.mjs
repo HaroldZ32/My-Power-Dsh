@@ -173,14 +173,16 @@ function selfTest() {
 }
 
 function installAgentTeams(profile, dshHome) {
-  // Materialize the adopted plugin into the profile dir with npm --prefix (the
-  // package marks its @deepseek-ai/* + react peers optional; the host's flat
-  // fallback $DSH_HOME/profiles/node_modules resolves them at boot), then
-  // reconcile dsh.profile.bundles exactly like `dsh plugin add` would.
+  // Legacy dev/QA flow: materialize the adopted plugin into the profile dir with
+  // npm --prefix (the package marks its @deepseek-ai/* + react peers optional;
+  // the host's flat fallback $DSH_HOME/profiles/node_modules resolves them at
+  // boot), then reconcile dsh.profile.bundles exactly like `dsh plugin add`
+  // would. The PRIMARY (plan-d) bundle flow no longer needs this: the plugin is
+  // vendored at third-party/dsh-agent-teams and loaded via the bundle exports.
   const profileDir = join(dshHome, "profiles", profile)
   const manifestPath = join(profileDir, "package.json")
   const cache = join(profileDir, ".npm-cache")
-  const r = spawnSync("npm", ["install", "--prefix", profileDir, "--no-audit", "--no-fund", "--cache", cache, "@nanmicoder/dsh-agent-teams@0.1.13"], {
+  const r = spawnSync("npm", ["install", "--prefix", profileDir, "--no-audit", "--no-fund", "--cache", cache, "@nanmicoder/dsh-agent-teams@0.1.14"], {
     env: { ...process.env, npm_config_cache: cache },
     stdio: "inherit"
   })
