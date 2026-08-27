@@ -62,11 +62,14 @@ function selfTest() {
   if (!notices.includes("dsh-agent-teams (MIT)") || !notices.includes(NOTICE_LINE)) fail("MIT notice block missing")
   if (!notices.includes("程序员阿江(Relakkes)")) fail("copyright line missing")
   if (!existsSync(join(repoRoot, "third-party", "dsh-agent-teams", "LICENSE"))) fail("vendored LICENSE copy missing")
+  const vendorPkg = JSON.parse(readFileSync(join(repoRoot, "third-party", "dsh-agent-teams", "package.json"), "utf8"))
+  if (vendorPkg.version !== "0.1.14") fail("vendored package version is not 0.1.14: " + vendorPkg.version)
+  if (!existsSync(join(repoRoot, "third-party", "dsh-agent-teams", "_deps", "schemastery", "index.mjs"))) fail("vendored _deps/schemastery missing")
   const ag = readFileSync(join(repoRoot, "AGENTS.md"), "utf8")
   if (!ag.includes(AGENTS_EXCEPTION)) fail("AGENTS.md naming exception missing")
   const st = spawnSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--self-test"], { encoding: "utf8" })
   if (st.status !== 0) fail("installer --self-test failed: " + st.stderr)
-  console.log("[agent-teams-adopt self-test] ok: notice + vendored LICENSE + AGENTS.md + installer self-test verified")
+  console.log("[agent-teams-adopt self-test] ok: notice + vendored LICENSE + 0.1.14 + _deps + AGENTS.md + installer self-test verified")
 }
 
 async function runReal() {

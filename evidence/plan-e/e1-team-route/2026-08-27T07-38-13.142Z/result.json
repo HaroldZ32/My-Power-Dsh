@@ -1,0 +1,31 @@
+{
+  "ok": false,
+  "sandbox": "/home/haroldzhao/dshProj/my-power-dsh/.qa-reloc/home-rewire",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "bundleDependency": {
+      "ok": false,
+      "version": null,
+      "min": "0.1.13"
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0,
+      "leaked": false
+    },
+    "installedTexts": {
+      "ok": false,
+      "files": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "bootstrap": {
+      "ok": true
+    }
+  }
+}

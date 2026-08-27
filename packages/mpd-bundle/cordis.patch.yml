@@ -96,14 +96,13 @@
 
 # ── Remote MCP rows (public services; network required, optional per use) ──
 - insert:
-    # Self-disabling guard: if the @nanmicoder/dsh-agent-teams package is missing
-    # from the profile's node_modules (e.g. an interrupted `dsh plugin add` pruned
-    # it), this row disables itself instead of failing the WHOLE boot with
-    # ERR_MODULE_NOT_FOUND. Re-running `dsh plugin --profile <p> add dist/mpd-package`
-    # restores the package and re-enables the row.
+    # The adopted team plugin is VENDORED at third-party/dsh-agent-teams (MIT,
+    # @nanmicoder/dsh-agent-teams 0.1.14) and loads through the bundle exports map:
+    # pnpm-driven `dsh plugin add` never links a bundle's transitive dependencies
+    # into the profile root, so a plain package-name row would silently self-disable.
+    # The row therefore needs NO self-disabling guard - the vendored code always exists.
     - id: agent-teams
-      name: '@nanmicoder/dsh-agent-teams'
-      disabled: !!js "!(function(){ try { process.getBuiltinModule('module').createRequire(baseUrl).resolve('@nanmicoder/dsh-agent-teams/package.json'); return true } catch { return false } })()"
+      name: '@mpd-dsh/mpd/third-party/dsh-agent-teams'
       config:
         stateDir: .mpd/team
         memberProvider: spawn

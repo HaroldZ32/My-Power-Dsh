@@ -24,7 +24,10 @@ License: SUL-1.0 (`LICENSE.md`); inheritance declared in `README.md`.
 - **Adopted third-party plugins keep their vendor ids and tool names** (intentional namespace
   exception, same rule as the `context7`/`grep_app` remote MCP rows): the `agent-teams`
   plugin (tools `agent_teams_*`, Web activity panel) is adopted from
-  `@nanmicoder/dsh-agent-teams` (MIT) — see LICENSE-NOTICES.md. Its `stateDir` is overridden
+  `@nanmicoder/dsh-agent-teams` (MIT, v0.1.14) and **vendored** at `third-party/dsh-agent-teams/`
+  (runtime deps under `_deps/`): it loads from the bundle exports map, so it needs no npm
+  dependency and works under every install layout (pnpm never links a bundle's transitive
+  deps into the profile root — see §12). See LICENSE-NOTICES.md. Its `stateDir` is overridden
   to `.mpd/team` so all our state stays under one `.mpd` root.
 
 ---
@@ -225,7 +228,7 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 | preset not visible in web | presets not installed to `$DSH_HOME/.agent-presets/` — run installer |
 | installed presets stale / agents miss tools (e.g. bash) | `mpd-bootstrap` only re-copies presets when the package VERSION changes — bump `package.json` version, `node scripts/pack-mpd.mjs`, restart dsh |
 | agent tool call fails with UNKNOWN_TOOL in code-mode deployments | presets declare `tool-presentation { mode: native }` — every row tool (bash/read/edit/...) is exposed directly; in code mode the model may only call `run_code` directly |
-| boot fails with ERR_MODULE_NOT_FOUND @nanmicoder/dsh-agent-teams | an interrupted `dsh plugin add` pruned the package; the bundle's agent-teams row now self-disables when the package is missing (boot-safe). Re-run `dsh plugin --profile <p> add dist/mpd-package` to restore it |
+| boot fails with ERR_MODULE_NOT_FOUND @nanmicoder/dsh-agent-teams | the legacy profile still pins the old row; the bundle row is now vendored (`@mpd-dsh/mpd/third-party/dsh-agent-teams`) — reinstall the bundle (`dsh plugin --profile <p> add dist/mpd-package`) |
 
 ---
 
