@@ -6,3 +6,4 @@ evidence/*.log.tmp
 .DS_Store
 .codegraph/
 .omo-dsh/
+dist/mpd-package/
