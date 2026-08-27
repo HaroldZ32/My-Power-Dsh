@@ -38,20 +38,10 @@ function buildPlan(o) {
   const bundle0 = "@deepseek-ai/dsh-base"
   const bundle1 = isHeadless ? "@deepseek-ai/dsh-headless" : "@deepseek-ai/dsh-web-app"
   const p = (r) => join(repoRoot, r)
-  const skillsDir = p("packages/mpd-skills-plugin/skills")
   const presetsDir = p("packages/mpd-presets-plugin/presets")
   const astCli = p(".toolchain/node_modules/.bin/sg")
   const cgCli = p(".toolchain/node_modules/.bin/codegraph")
   const rows = [
-    {
-      id: "llm-deepseek", name: "@deepseek-ai/dsh-llm-deepseek",
-      config: { apiKeyEnv: "DEEPSEEK_API_KEY", thinking: "enabled", reasoningEffort: "high", maxTokens: 256000 }
-    },
-    {
-      id: "llm-pi-ai", name: "@deepseek-ai/dsh-llm-pi-ai",
-      config: { providers: { deepseek: { apiKeyEnv: "DEEPSEEK_API_KEY" } } }
-    },
-    { id: "agent-default-model", name: "@deepseek-ai/dsh-agent-default-model", config: { provider: "deepseek-official", model: "deepseek-v4-flash" } },
     {
       id: "skill-filesystem", name: "@deepseek-ai/dsh-skill-filesystem", disabled: false,
     },
@@ -127,7 +117,7 @@ function buildPlan(o) {
     if (i >= 0) rows.splice(i, 1)
   }
   return {
-    dshHome, isHeadless, bundle0, bundle1, rows, skillsDir, presetsDir,
+    dshHome, isHeadless, bundle0, bundle1, rows, presetsDir,
     profileDir: join(dshHome, "profiles", o.profile),
     homePatch: join(dshHome, "cordis.patch.yml"),
     userPresets: join(dshHome, ".agent-presets"),
@@ -137,7 +127,7 @@ function buildPlan(o) {
   }
 }
 
-const EXISTING_IDS = new Set(["llm-deepseek", "llm-pi-ai", "agent-default-model", "skill-filesystem", "agent-teams"])
+const EXISTING_IDS = new Set(["agent-teams"])
 
 function renderRow(r, indent) {
   const body = []
@@ -176,11 +166,8 @@ function selfTest() {
   const plan = buildPlan({ profile: "mpd", yes: false, dshHome: join(homedir(), ".mpd-not-real"), agentTeams: true })
   if (plan.homePatch !== join(plan.dshHome, "cordis.patch.yml")) { console.error("[install-profile self-test] FAIL: path model"); process.exit(1) }
   const rows = plan.rows.map((r) => r.id)
-  if (!rows.includes("mcp-astgrep") || !rows.includes("mpd-codegraph") || !rows.includes("skill-filesystem")) { console.error("[install-profile self-test] FAIL: row set"); process.exit(1) }
+  if (!rows.includes("mcp-astgrep") || !rows.includes("mpd-codegraph") || !rows.includes("agent-teams")) { console.error("[install-profile self-test] FAIL: row set"); process.exit(1) }
   if (!rows.includes("agent-teams") || !EXISTING_IDS.has("agent-teams") || plan.agentTeamsRow.config.stateDir !== ".mpd/team") { console.error("[install-profile self-test] FAIL: agent-teams row/override"); process.exit(1) }
-  if (rows.includes("llm-pi-ai")) { console.error("[install-profile self-test] FAIL: compat track must be off by default"); process.exit(1) }
-  const planCompat = buildPlan({ profile: "mpd", yes: false, dshHome: join(homedir(), ".mpd-not-real"), agentTeams: true, compatTrack: true })
-  if (!planCompat.rows.some((r) => r.id === "llm-pi-ai")) { console.error("[install-profile self-test] FAIL: --with-compat-track missing"); process.exit(1) }
   if (!rows.includes("mpd-hashline")) { console.error("[install-profile self-test] FAIL: mpd-hashline row"); process.exit(1) }
   console.log("[install-profile self-test] ok: path model + row set + agent-teams override verified")
 }

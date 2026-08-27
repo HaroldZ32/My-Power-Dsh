@@ -1,56 +1,11 @@
-# mpd-dsh bundle plugin layer (P1: explicit DeepSeek dual-track declaration)
-# Note: this file is the DSH bundle's patch layer (a PatchOptions list; id locates and replaces the whole config).
-# Depends on rows already present in DSH templates: llm-deepseek / llm-pi-ai / agent-default-model (included in both headless and web templates).
-# Later stages append at the end: mpd-skills-plugin, mpd-mcp-*, mpd-presets-plugin, mpd-hephaestus.
+# mpd-dsh bundle plugin layer (Plan D): ADDITIVE-ONLY patch.
+# Policy: never id-target rows owned by the stock DSH templates (llm-deepseek /
+# agent-default-model / skill-filesystem / llm-pi-ai) — id-target replaces the
+# WHOLE stock config and would wipe the stock model list / provider defaults.
+# DeepSeek official provider ships with dsh-base as-is; this bundle adds only:
+# MCP servers, the mpd-* plugins, the adopted agent-teams plugin, and the
+# mpd-bootstrap preset provisioning.
 
-# ── Official track: DeepSeek API native adaptation (primary track)───────────────────────────────
-- id: llm-deepseek
-  name: '@deepseek-ai/dsh-llm-deepseek'
-  config:
-    apiKeyEnv: DEEPSEEK_API_KEY
-    baseURL: https://api.deepseek.com
-    thinking: enabled
-    reasoningEffort: high
-    maxTokens: 256000
-    streamIdleTimeoutMs: 300000
-    models:
-      - id: deepseek-v4-flash
-        name: DeepSeek-V4-Flash
-      - id: deepseek-v4-pro
-        name: DeepSeek-V4-Pro
-
-# ── Compatibility track: compat provider route (dsh-llm-pi-ai deepseek route) —
-# OFF by default: the stock official provider (deepseek-official) already ships with
-# dsh-base; a second DeepSeek entry confuses the model picker. Opt in by setting
-# MPD_DSH_COMPAT_TRACK=1 (or overriding the disabled flag in a later patch layer).──
-- id: llm-pi-ai
-  name: '@deepseek-ai/dsh-llm-pi-ai'
-  disabled: !!js process.env.MPD_DSH_COMPAT_TRACK !== '1'
-  config:
-    providers:
-      deepseek:
-        apiKeyEnv: DEEPSEEK_API_KEY
-        modelOverrides:
-          deepseek-v4-flash:
-            reasoningEfforts:
-              off: off
-              max: max
-
-# ── Primary-track default model (main agent uses Pro; lightweight agents use Flash; P4 refines at preset layer)─
-- id: agent-default-model
-  name: '@deepseek-ai/dsh-agent-default-model'
-  config:
-    provider: deepseek-official
-    model: deepseek-v4-flash
-
-# ── P2: skills directory (keep default project/user roots, append vendored skills)──
-- id: skill-filesystem
-  name: '@deepseek-ai/dsh-skill-filesystem'
-  disabled: false
-  config:
-    includeDefaultRoots: true
-
-# ── P3: MCP servers (stdio, instantiated via the dsh-mcp-client plugin; new rows use insert)──
 - insert:
     - id: mcp-astgrep
       name: '@deepseek-ai/dsh-mcp-client'
@@ -135,6 +90,14 @@
       name: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-bootstrap-plugin/dist/index.js'
 
 # ── Remote MCP rows (public services; network required, optional per use) ──
+- insert:
+    - id: agent-teams
+      name: '@nanmicoder/dsh-agent-teams'
+      config:
+        stateDir: .mpd/team
+        memberProvider: spawn
+        memberMaxDepth: 1
+
 - insert:
     - id: mcp-context7
       name: '@deepseek-ai/dsh-mcp-client'

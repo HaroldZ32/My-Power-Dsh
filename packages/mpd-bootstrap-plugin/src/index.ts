@@ -7,6 +7,7 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync
 import { homedir } from "node:os"
 import { createRequire } from "node:module"
 import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
 
 export const name = "mpd-bootstrap"
 export const inject = []
@@ -14,13 +15,10 @@ export const inject = []
 type Config = { presetsDir?: string; skipPresets?: boolean }
 
 function pkgRoot(): string {
-  try {
-    const req = createRequire(import.meta.url)
-    return dirname(req.resolve("@mpd-dsh/mpd/package.json"))
-  } catch {
-    // fallback: dist/packages/mpd-bootstrap-plugin/dist/index.js -> three up
-    return dirname(dirname(dirname(new URL(import.meta.url).pathname)))
-  }
+  // Location-derived, no package-name resolution: this file lives at
+  // <pkg-root>/packages/mpd-bootstrap-plugin/dist/index.js, so the package
+  // root is four directories up. Presets live at <pkg-root>/presets.
+  return dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 }
 
 function userPresetsDir(): string {
@@ -56,6 +54,6 @@ export function apply(ctx: any, config: Config = {}): void {
       console.log("[mpd-bootstrap] presets up to date (" + version + ")")
     }
   } else {
-    console.log("[mpd-bootstrap] no bundled presets found at " + presetsSrc)
+    console.log("[mpd-bootstrap] no bundled presets found at " + presetsSrc + " (package root: " + root + "; expected <pkg-root>/presets — check the installed package layout)")
   }
 }

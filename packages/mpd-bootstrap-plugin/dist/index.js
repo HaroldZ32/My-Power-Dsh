@@ -1,17 +1,12 @@
 // src/index.ts
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 var name = "mpd-bootstrap";
 var inject = [];
 function pkgRoot() {
-  try {
-    const req = createRequire(import.meta.url);
-    return dirname(req.resolve("@mpd-dsh/mpd/package.json"));
-  } catch {
-    return dirname(dirname(dirname(new URL(import.meta.url).pathname)));
-  }
+  return dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))));
 }
 function userPresetsDir() {
   const home = process.env.DSH_HOME || join(homedir(), ".dsh");
@@ -56,7 +51,7 @@ function apply(ctx, config = {}) {
       console.log("[mpd-bootstrap] presets up to date (" + version + ")");
     }
   } else {
-    console.log("[mpd-bootstrap] no bundled presets found at " + presetsSrc);
+    console.log("[mpd-bootstrap] no bundled presets found at " + presetsSrc + " (package root: " + root + "; expected <pkg-root>/presets — check the installed package layout)");
   }
 }
 export {
