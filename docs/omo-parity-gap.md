@@ -51,12 +51,15 @@ skills priority, name required skills in delegation prompts) and DSH-native tool
   (now codified in every persona's skills clause).
 
 ### Content gaps (deliberate or unported)
-- **Skills corpus (13 upstream skills not shipped)**: ast-grep, coding-agent-sessions,
-  data-scientist, debugging, frontend, git-master, init-deep, lsp-setup, programming, refactor,
-  remove-ai-slops, review-work, ulw-plan. Per prior decision (docs/feature-audit: skills corpus
-  removed, no upstream-derived content ships) the repo ships only `skills/dsh-qa`; the reference
-  QA case flows cover the same ground locally. Re-porting any of these is a deliberate baseline
-  change (VENDOR_LOCK-aware) — this audit only lists them.
+- **Skills corpus — RESOLVED (2026-08-27, ported)**: all 17 upstream shared-skills are now
+  ported into `skills/` (AGENTS.md layout): ast-grep, coding-agent-sessions, data-scientist,
+  debugging, frontend, git-master, init-deep, lsp-setup, programming, refactor, remove-ai-slops,
+  review-work, ultimate-browsing, ulw-execute, ulw-plan, ulw-research, visual-qa — plus a new
+  `svn-master`. OMO tool-API mapped to DSH (`task(subagent_type=...)` -> `subagent(...)`,
+  `load_skills` removed in favor of the skill clause, `call_omo_agent` -> `subagent`,
+  `background_output` -> `job_output`). `mpd-bootstrap` installs the corpus to
+  `$DSH_HOME/skills` (user-dsh root) so every session sees it; verified by skill-catalog-probe
+  (real headless `skill` load of svn-master).
 - **`ulw-plan` skill**: prometheus persona now bridges it (load-if-present; self-contained
   discipline otherwise).
 - **Model-variant prompt families** (sisyphus default/opus/gpt/kimi/…, hephaestus gpt-5.x):

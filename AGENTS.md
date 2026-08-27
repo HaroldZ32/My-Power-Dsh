@@ -73,8 +73,7 @@ mpd-dsh/
 │   ├── mpd-comment-checker-plugin/ # C4: comment/docstring detection (opt-in binary)
 │   ├── mpd-memory-plugin/        # C6: git/svn-backed memory + reflection state machine
 │   └── mpd-qa-preset-probe/      # QA-only preset probe plugin
-├── skills/dsh-qa/                # QA skill: SKILL.md + scripts (each with --self-test) + references/
-├── .agents/skills/              # project skill corpus (DSH project-agents root): 17 ported upstream skills + svn-master
+├── skills/                      # skill corpus: dsh-qa (QA skill) + 17 ported upstream skills + svn-master (installed to \$DSH_HOME/skills by mpd-bootstrap)
 ├── tests/
 │   ├── overlays/                 # QA patch overlays (keep empty when rows live in the bundle)
 │   ├── golden/                   # golden fixtures + Prometheus plan artifacts

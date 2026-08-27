@@ -1,0 +1,5 @@
+[mpd-codegraph] init status=no-binary binary=- cwd=/tmp/mpd-skill-XvhIMY/ws
+[mpd-bootstrap] presets installed (0.2.1) -> /tmp/mpd-skill-XvhIMY/.agent-presets
+[mpd-bootstrap] skills installed (0.2.1) -> /tmp/mpd-skill-XvhIMY/skills
+This skill governs Subversion (SVN) working-copy operations — commits, history/blame, branches/tags, merges, and repository properties — with exact, evidence-led discipline (use git-master for Git repos).
+CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.

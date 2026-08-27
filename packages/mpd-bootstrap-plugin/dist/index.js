@@ -12,46 +12,56 @@ function userPresetsDir() {
   const home = process.env.DSH_HOME || join(homedir(), ".dsh");
   return join(home, ".agent-presets");
 }
-function apply(ctx, config = {}) {
-  if (config.skipPresets === true) {
-    console.log("[mpd-bootstrap] presets skipped (config)");
+function userSkillsDir() {
+  const home = process.env.DSH_HOME || join(homedir(), ".dsh");
+  return join(home, "skills");
+}
+function syncTree(src, dest, version, label, filter) {
+  if (!existsSync(src)) {
+    console.log("[mpd-bootstrap] no bundled " + label + " at " + src);
     return;
   }
-  const root = pkgRoot();
-  const presetsSrc = config.presetsDir ? config.presetsDir : join(root, "presets");
-  const dest = userPresetsDir();
-  const stamp = join(dest, ".mpd-presets-version");
-  let version = "unknown";
-  try {
-    version = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version ?? "unknown";
-  } catch {}
+  mkdirSync(dest, { recursive: true });
+  const stamp = join(dest, ".mpd-" + label + "-version");
   let installed = "";
   try {
     installed = readFileSync(stamp, "utf8").trim();
   } catch {}
-  if (existsSync(presetsSrc) && readdirSync(presetsSrc).some((d) => d.startsWith("mpd-"))) {
-    mkdirSync(dest, { recursive: true });
-    if (installed !== version) {
-      for (const d of readdirSync(presetsSrc)) {
-        if (!d.startsWith("mpd-"))
-          continue;
-        const from = join(presetsSrc, d);
-        const to = join(dest, d);
-        try {
-          cpSync(from, to, { recursive: true, force: true });
-        } catch (e) {
-          console.log("[mpd-bootstrap] preset copy failed: " + d + " " + String(e?.message ?? e));
-        }
-      }
-      try {
-        writeFileSync(stamp, version);
-      } catch {}
-      console.log("[mpd-bootstrap] presets installed (" + version + ") -> " + dest);
-    } else {
-      console.log("[mpd-bootstrap] presets up to date (" + version + ")");
+  if (installed === version) {
+    console.log("[mpd-bootstrap] " + label + " up to date (" + version + ")");
+    return;
+  }
+  for (const d of readdirSync(src)) {
+    if (filter && !filter(d))
+      continue;
+    try {
+      cpSync(join(src, d), join(dest, d), { recursive: true, force: true });
+    } catch (e) {
+      console.log("[mpd-bootstrap] " + label + " copy failed: " + d + " " + String(e?.message ?? e));
     }
+  }
+  try {
+    writeFileSync(stamp, version);
+  } catch {}
+  console.log("[mpd-bootstrap] " + label + " installed (" + version + ") -> " + dest);
+}
+function apply(ctx, config = {}) {
+  const root = pkgRoot();
+  let version = "unknown";
+  try {
+    version = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version ?? "unknown";
+  } catch {}
+  if (config.skipPresets === true) {
+    console.log("[mpd-bootstrap] presets skipped (config)");
   } else {
-    console.log("[mpd-bootstrap] no bundled presets found at " + presetsSrc + " (package root: " + root + "; expected <pkg-root>/presets — check the installed package layout)");
+    const presetsSrc = config.presetsDir ? config.presetsDir : join(root, "presets");
+    syncTree(presetsSrc, userPresetsDir(), version, "presets", (d) => d.startsWith("mpd-"));
+  }
+  if (config.skipSkills === true) {
+    console.log("[mpd-bootstrap] skills skipped (config)");
+  } else {
+    const skillsSrc = config.skillsDir ? config.skillsDir : join(root, "skills");
+    syncTree(skillsSrc, userSkillsDir(), version, "skills");
   }
 }
 export {

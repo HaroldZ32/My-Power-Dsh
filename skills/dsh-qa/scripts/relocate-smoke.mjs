@@ -58,6 +58,9 @@ async function runReal() {
   const presets = join(home, ".agent-presets")
   const presetIds = existsSync(presets) ? readdirSync(presets).filter((d) => d.startsWith("mpd-")) : []
   steps.presets = { ok: presetIds.length === 11, count: presetIds.length }
+  const userSkills = join(home, "skills")
+  const skillDirs = existsSync(userSkills) ? readdirSync(userSkills).filter((d) => { try { return existsSync(join(userSkills, d, "SKILL.md")) } catch { return false } }) : []
+  steps.skills = { ok: skillDirs.length >= 18, count: skillDirs.length }
   steps.bootstrap = { ok: out.includes("mpd-bootstrap") }
   const allOk = Object.values(steps).every((s) => s.ok)
   writeFileSync(join(outDir, "result.json"), JSON.stringify({ ok: allOk, steps }, null, 2))

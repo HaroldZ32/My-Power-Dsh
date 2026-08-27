@@ -37,11 +37,10 @@ function cpDist() {
 
 function cpAssets() {
   mkdirSync(join(outDir, "packages"), { recursive: true })
-  const skillsSrc = join(repoRoot, "packages", "mpd-skills-plugin", "skills")
+  // skill corpus lives at the repo root skills/ per AGENTS.md layout; the
+  // mpd-bootstrap plugin copies it to $DSH_HOME/skills at boot (version-stamped)
+  const skillsSrc = join(repoRoot, "skills")
   if (existsSync(skillsSrc)) cpSync(skillsSrc, join(outDir, "skills"), { recursive: true })
-  // project skill corpus (.agents/skills, DSH project-agents root) ships with the staged package
-  const agentsSkills = join(repoRoot, ".agents", "skills")
-  if (existsSync(agentsSkills)) cpSync(agentsSkills, join(outDir, ".agents", "skills"), { recursive: true })
   cpSync(join(repoRoot, "packages", "mpd-presets-plugin", "presets"), join(outDir, "presets"), { recursive: true })
   cpSync(join(repoRoot, "third-party"), join(outDir, "third-party"), { recursive: true })
   for (const f of ["LICENSE.md", "LICENSE-NOTICES.md", "README.md"]) {
