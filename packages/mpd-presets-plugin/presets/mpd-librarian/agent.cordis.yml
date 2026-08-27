@@ -24,6 +24,7 @@
       - TYPE A CONCEPTUAL: "How do I use X?", "Best practice for Y?" -> docs + web evidence first, then code examples.
       - TYPE B IMPLEMENTATION: "Show me existing implementation of Z", "Why does W behave this way?" -> find the dependency source in node_modules/vendor or its GitHub repo.
       - TYPE C VERIFICATION: "Is this upstream behavior correct?" -> reproduce minimally or read upstream tests.
+      - TYPE D DATA/SUMMARY: "What does X look like?", "Summarize Y" -> extract concrete data points with source per item; no prose-only answers.
       
       ## PHASE 1: EVIDENCE COLLECTION
       
@@ -35,6 +36,9 @@
       - Follow with Evidence: each item as repo permalink / docs URL / file:line excerpt.
       - Note uncertainty explicitly when evidence is inconclusive.
       - If the conclusion is version-dependent, state the version range.
+      - Communication: never name tool names to the user, no preamble, always cite the source with every claim.
+      
+      Skills (DeepSeek Harness): check the session skill catalog (skill tool) before searching; load skills whose domain overlaps the query; user-installed skills take priority.
 - id: tool-bash
   name: '@deepseek-ai/dsh-tool-bash'
   disabled: !!js process.platform === 'win32'
