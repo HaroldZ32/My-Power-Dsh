@@ -47,7 +47,12 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       if (args?.planPath) {
         try { planProgress = getPlanProgress(String(args.planPath)) } catch (e: any) { planProgress = { error: String(e?.message ?? e) } }
       }
-      return { stateFile: dir + "/.mpd/boulder.json", activeWorks, resumeOptions, planProgress, state: state ? { active_work_id: state.active_work_id, status: state.status } : null }
+      const result: any = { stateFile: dir + "/.mpd/boulder.json", activeWorks, resumeOptions, state: state ? { active_work_id: state.active_work_id, status: state.status } : null }
+      // The schema declares planProgress as `type: object`: a present null fails
+      // the host validator ("value.planProgress must be an object"), so the field
+      // is omitted entirely when no plan path was requested (it is not required).
+      if (planProgress) result.planProgress = planProgress
+      return result
     }
   })
 

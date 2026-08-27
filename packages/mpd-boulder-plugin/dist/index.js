@@ -693,7 +693,10 @@ plan: ` + JSON.stringify(v.planProgress) : "")) },
           planProgress = { error: String(e?.message ?? e) };
         }
       }
-      return { stateFile: dir + "/.mpd/boulder.json", activeWorks, resumeOptions, planProgress, state: state ? { active_work_id: state.active_work_id, status: state.status } : null };
+      const result = { stateFile: dir + "/.mpd/boulder.json", activeWorks, resumeOptions, state: state ? { active_work_id: state.active_work_id, status: state.status } : null };
+      if (planProgress)
+        result.planProgress = planProgress;
+      return result;
     }
   });
   ctx.tools.register({

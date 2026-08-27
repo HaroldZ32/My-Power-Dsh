@@ -8,3 +8,4 @@ evidence/*.log.tmp
 .omo-dsh/
 dist/mpd-package/
 .bun-tmp/
+.qa-tov/
