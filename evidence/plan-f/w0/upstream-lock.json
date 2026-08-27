@@ -1,0 +1,14 @@
+{
+  "upstream": "NanmiCoder/dsh-agent-teams",
+  "upstreamTag": "v0.1.14",
+  "upstreamTagObjectSha": "637399ce6c4ef201284de05c79982e82b7a866b1",
+  "upstreamCommitSha": "5fe388f1a30da7b1374294b25bd6f8ad74ab6aa5",
+  "npmVersion": "0.1.14",
+  "tarballSha256": "baa0819aa3d4e0a12b926fe516f068071c0056b98f1117c33bb576ee4097c5ae",
+  "sourceDir": "evidence/plan-f/w0/upstream-src",
+  "fileCount": 26,
+  "treeSha": "9c5f67eb1a587ddf915c16dcd03fa10be12f60aa769dfe556e77540d24809610",
+  "license": "MIT (Copyright (c) 2026 程序员阿江(Relakkes)); original LICENSE retained at packages/mpd-agent-teams/LICENSE",
+  "note": "Pristine upstream src snapshot used as the modification base for packages/mpd-agent-teams; verify-vendor blocks any drift.",
+  "capturedAt": "2026-08-27T08:52:13.079Z"
+}
