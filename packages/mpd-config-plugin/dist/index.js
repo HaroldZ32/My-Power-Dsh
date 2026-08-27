@@ -120,7 +120,7 @@ function apply(ctx, config = {}) {
     output: { schema: { type: "object", properties: { config: { type: "object" }, key: { type: "string" }, value: {} }, required: ["config"] }, render: (_a, v) => textBlock(v.key ? "mpd config " + v.key + ": " + JSON.stringify(v.value, null, 1) : "mpd config: " + JSON.stringify(v.config, null, 1)) },
     execute: async (args) => {
       const key = args?.key ? String(args.key) : undefined;
-      const value = key ? key.split(".").reduce((acc, part) => acc == null ? undefined : acc[part], state.config) : undefined;
+      const value = key ? key.split(".").reduce((acc, part) => acc == null ? undefined : acc[part], state.config) ?? null : null;
       return key === undefined ? { config: state.config } : { config: state.config, key, value };
     }
   });
