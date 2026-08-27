@@ -1,6 +1,5 @@
 node_modules/
 .npm-cache/
-dist/
 .qa-reloc/
 *.tmp
 evidence/*.log.tmp
