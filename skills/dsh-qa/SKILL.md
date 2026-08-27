@@ -35,6 +35,7 @@ the upstream host QA skills.
 | codegraph-smoke | codegraph | binary resolve -> init -> mcp__codegraph__explore real call | P4+ |
 | tool-output-validation | plugin tools | mpd_config_get / mpd_boulder_status return host-validated lossless JSON (no "not lossless JSON" / "must be an object" errors); evidence per defect under evidence/fix/<slug>/ | C5/C7 |
 | skill-catalog-probe | plan-d install | staged install -> mpd-bootstrap copies skills to $DSH_HOME/skills -> real headless skill load of svn-master works | Plan D |
+| team-route-rewire | plan-e team route | staged install pulls @nanmicoder/dsh-agent-teams via bundle dependency (no direct dep); agent-teams row mounted (stateDir .mpd/team); installed skills/presets point at agent_teams_* and never name mpd_team_spawn; real headless boot passes | Plan E |
 
 ## Run
 

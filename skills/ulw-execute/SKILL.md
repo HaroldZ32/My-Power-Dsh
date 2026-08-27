@@ -16,7 +16,7 @@ Translate any OpenCode/Codex-only tool name in an inherited example to its DeepS
 | worker / reviewer `task(...)` | `subagent` — self-contained prompt; `run_in_background: true` for parallel lanes. `subagent_fork` only when full parent history is truly required |
 | `job_output(task_id="...")` | `job_output` (same name; completion notice arrives automatically) |
 | `task_id` continuation / re-task one child | `send_message` (continues the same child conversation) |
-| `team_*(...)` | `mpd_team_spawn` + `mpd_team_status` |
+| `team_*(...)` | `agent_teams_*` — `agent_teams_create` / `agent_teams_add_member` / `agent_teams_create_task` (+ dependencies) + `agent_teams_status` / `agent_teams_send_message` (dsh-agent-teams: captain = this session, members are continuable subagents, dependency DAG scheduler with auto-claim, web activity panel mirrors live state) |
 | stop one child | `job_kill` (jobs) / `interrupt_agent` (agents) |
 
 Role-specific behavior goes inside the `prompt` (self-contained `TASK / DELIVERABLE / SCOPE / VERIFY` blocks). Child agents keep their own `skill` tool — name the skills the child must load inside the prompt. Role preset ids (mpd-explore / mpd-librarian / mpd-prometheus / mpd-momus / mpd-metis / mpd-hephaestus) may be passed as `persona` when the spawn surface exposes it; otherwise describe the role in the prompt.

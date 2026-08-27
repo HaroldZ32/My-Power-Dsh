@@ -1,7 +1,7 @@
 import { createRequire } from "node:module";
 var __require = /* @__PURE__ */ createRequire(import.meta.url);
 
-// src/index.ts
+// packages/mpd-team-plugin/src/index.ts
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -17,7 +17,7 @@ var ROLE_PERSONA = {
   oracle: "You are a strategic technical advisor. Give one clear recommendation with rationale and watch-outs.",
   prometheus: "You are Prometheus, a planning consultant. Produce a decision-complete plan only.",
   librarian: "You are THE LIBRARIAN. Answer with evidence and citations.",
-  hephaestus: "You are Hephaestus, a configuration manager. Read-only analysis with minimal diffs."
+  hephaestus: "You are Hephaestus, an autonomous deep worker. Direct execution is your default; spawn explore/librarian/oracle for context, never delegate implementable work that stays within one coherent edit."
 };
 var MEMBER_SCHEMA = {
   type: "object",
