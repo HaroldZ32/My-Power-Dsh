@@ -15,7 +15,7 @@ import { spawnSync } from "node:child_process"
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)))
 
 function parseArgs(argv) {
-  const o = { profile: "mpd", yes: false, dshHome: null, selfTest: false, skipToolchain: false, agentTeams: true, commentChecker: false }
+  const o = { profile: "mpd", yes: false, dshHome: null, selfTest: false, skipToolchain: false, agentTeams: true, commentChecker: false, compatTrack: false }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
     if (a === "--yes") o.yes = true
@@ -25,6 +25,7 @@ function parseArgs(argv) {
     else if (a === "--with-agent-teams") o.agentTeams = true
     else if (a === "--without-agent-teams") o.agentTeams = false
     else if (a === "--with-comment-checker") o.commentChecker = true
+    else if (a === "--with-compat-track") o.compatTrack = true
     else if (a === "--dsh-home") o.dshHome = argv[++i]
     else if (a === "--profile") o.profile = argv[++i]
   }
@@ -119,6 +120,13 @@ function buildPlan(o) {
     config: { stateDir: ".mpd/team", memberProvider: "spawn", memberMaxDepth: 1 }
   }
   if (o.agentTeams !== false) rows.push(agentTeamsRow)
+  // Compat track (dsh-llm-pi-ai, provider "deepseek") is OFF by default: the stock
+  // official provider (deepseek-official) already exists in dsh-base, and adding a
+  // second DeepSeek entry confuses the model picker. Opt in with --with-compat-track.
+  if (o.compatTrack !== true) {
+    const i = rows.findIndex((r) => r.id === "llm-pi-ai")
+    if (i >= 0) rows.splice(i, 1)
+  }
   return {
     dshHome, isHeadless, bundle0, bundle1, rows, skillsDir, presetsDir,
     profileDir: join(dshHome, "profiles", o.profile),
@@ -171,6 +179,9 @@ function selfTest() {
   const rows = plan.rows.map((r) => r.id)
   if (!rows.includes("mcp-astgrep") || !rows.includes("mpd-codegraph") || !rows.includes("skill-filesystem")) { console.error("[install-profile self-test] FAIL: row set"); process.exit(1) }
   if (!rows.includes("agent-teams") || !EXISTING_IDS.has("agent-teams") || plan.agentTeamsRow.config.stateDir !== ".mpd/team") { console.error("[install-profile self-test] FAIL: agent-teams row/override"); process.exit(1) }
+  if (rows.includes("llm-pi-ai")) { console.error("[install-profile self-test] FAIL: compat track must be off by default"); process.exit(1) }
+  const planCompat = buildPlan({ profile: "mpd", yes: false, dshHome: join(homedir(), ".mpd-not-real"), agentTeams: true, compatTrack: true })
+  if (!planCompat.rows.some((r) => r.id === "llm-pi-ai")) { console.error("[install-profile self-test] FAIL: --with-compat-track missing"); process.exit(1) }
   if (!rows.includes("mpd-hashline")) { console.error("[install-profile self-test] FAIL: mpd-hashline row"); process.exit(1) }
   console.log("[install-profile self-test] ok: path model + row set + agent-teams override verified")
 }

@@ -43,9 +43,7 @@
 - id: skill-filesystem
   name: '@deepseek-ai/dsh-skill-filesystem'
   config:
-    includeDefaultRoots: false
-    customSkillDirs:
-      - !!js process.env.MPD_DSH_SKILLS_DIR || '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-skills-plugin/skills'
+    includeDefaultRoots: true
 - id: tool-skill
   name: '@deepseek-ai/dsh-tool-skill'
 

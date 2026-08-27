@@ -19,9 +19,13 @@
       - id: deepseek-v4-pro
         name: DeepSeek-V4-Pro
 
-# ── Compatibility track: compat provider route (dsh-llm-pi-ai deepseek route; dual tracks coexist, switchable)──────────────────
+# ── Compatibility track: compat provider route (dsh-llm-pi-ai deepseek route) —
+# OFF by default: the stock official provider (deepseek-official) already ships with
+# dsh-base; a second DeepSeek entry confuses the model picker. Opt in by setting
+# MPD_DSH_COMPAT_TRACK=1 (or overriding the disabled flag in a later patch layer).──
 - id: llm-pi-ai
   name: '@deepseek-ai/dsh-llm-pi-ai'
+  disabled: !!js process.env.MPD_DSH_COMPAT_TRACK !== '1'
   config:
     providers:
       deepseek:

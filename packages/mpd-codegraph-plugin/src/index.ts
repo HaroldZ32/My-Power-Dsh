@@ -3,7 +3,8 @@
 // Zero runtime dependencies; any failure is only logged and never crashes boot.
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, rmSync, statSync } from "node:fs"
-import { join } from "node:path"
+import { homedir } from "node:os"
+import { join, resolve } from "node:path"
 
 export const name = "mpd-codegraph"
 export const inject = []
@@ -63,12 +64,14 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   const cwd = process.env.Upstream_CODEGRAPH_PROJECT_CWD || process.cwd()
   const binary = resolveBinary(config)
   let status: string
+  const home = resolve(homedir())
   if (!binary) { status = "no-binary" }
   else if (existsSync(join(cwd, ".codegraph", "codegraph.db"))) { status = "marker" }
   else if (!autoInit) { status = "auto-init-disabled" }
+  else if (resolve(cwd) === home) { status = "skipped-home" }
   else if (cooldownFresh(cwd, cooldownMs)) { status = "cooldown" }
   else { status = initProject(cwd, binary, timeoutMs) }
-  console.log("[mpd-codegraph] init status=" + status + " binary=" + (binary ?? "-") + " cwd=" + cwd)
+  console.log("[mpd-codegraph] init status=" + status + " binary=" + (binary ?? "-") + " cwd=" + cwd + (status === "skipped-home" ? " (workspace is the user home; start a session inside a project dir, or set Upstream_CODEGRAPH_PROJECT_CWD, or run /mpd-codegraph there)" : ""))
 
   // Manual re-run command (registered only when a command registry is present)
   try {
