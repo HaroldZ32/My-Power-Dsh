@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "task": "soft-ts-tokenizer",
+  "base": "mpd-sisyphus",
+  "gates": [
+    "bun-test",
+    "golden:soft-ts-tokenizer"
+  ],
+  "maxRounds": 2,
+  "spec": "# Golden task: soft-ts-tokenizer (TypeScript) |  | Objective: implement `tests/golden/soft-ts-tokenizer/tokenizer.ts` exporting | `tokenize(src: string): Token[]` where | `type Token = { type: \"num\" | \"ident\" | \"op\" | \"lparen\" | \"rparen\" | \"string\"; value: string; pos: number }`. | ",
+  "sandbox": "/home/haroldzhao/dshProj/my-power-dsh/.qa-reloc/home-golden",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "teamState": {
+      "ok": true,
+      "ids": [],
+      "archived": [
+        "g"
+      ]
+    },
+    "leafState": {
+      "ok": true,
+      "id": "leaf-164ea716",
+      "basePreset": "mpd-sisyphus",
+      "rounds": 1,
+      "gatePassed": true
+    },
+    "goldenTask": {
+      "ok": true,
+      "exit": 0,
+      "tail": "PASS  soft-ts-tokenizer  (software/typescript)\nbun test v1.4.0 (34cbb9a40)\n\ntests/golden/soft-ts-tokenizer/tokenizer.test.ts:\n(pass) numbers and operations [0.32ms]\n(pass) identifiers and parens [0.02ms]\n(pass) string escapes [0.01ms]\n(pass) comparison and logic ops [0.02ms]\n(pass) positions are absolute\n\n 5 pass\n 0 fail\n 7 expect() calls\nRan 5 tests across 1 file. [52.00ms]\n\n"
+    }
+  }
+}

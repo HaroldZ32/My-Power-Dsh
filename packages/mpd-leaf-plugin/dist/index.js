@@ -36,8 +36,18 @@ var ADVISOR_DENY_EXTRA = ["bash", "write", "edit", "str_replace_editor", "create
 var GATE_DEFS = {
   "bun-test": { command: "bun test packages --test-timeout 60000", timeoutMs: 300000, allowErrors: 0 },
   tsgo: { command: "tsgo --noEmit", timeoutMs: 300000, allowErrors: 108, prependPath: ".toolchain/node_modules/.bin" },
-  "qa-self": { command: "node skills/dsh-qa/scripts/mount-assert.mjs --self-test", timeoutMs: 300000, allowErrors: 0 }
+  "qa-self": { command: "node skills/dsh-qa/scripts/mount-assert.mjs --self-test", timeoutMs: 300000, allowErrors: 0 },
+  golden: { command: "node tests/golden/run.mjs", timeoutMs: 300000, allowErrors: 0 }
 };
+function gateDef(name2) {
+  if (name2.startsWith("golden:")) {
+    return { command: "node tests/golden/run.mjs --task " + name2.slice("golden:".length), timeoutMs: 300000, allowErrors: 0 };
+  }
+  const d = GATE_DEFS[name2];
+  if (!d)
+    throw new Error("unknown gate: " + name2);
+  return d;
+}
 var ROUND_SCHEMA = {
   type: "object",
   properties: {
@@ -86,13 +96,16 @@ function presetPersona(basePreset) {
   }
   return;
 }
-function runGate(name2, prependPath) {
-  const def = GATE_DEFS[name2];
-  if (!def)
-    return { name: name2, ok: false, exit: null, errors: 0, tail: "unknown gate: " + name2 };
+function runGate(name2) {
+  let def;
+  try {
+    def = gateDef(name2);
+  } catch (e) {
+    return { name: name2, ok: false, exit: null, errors: 0, tail: String(e) };
+  }
   const env = { ...process.env };
-  if (def.prependPath ?? prependPath) {
-    const p = join(cwd(), def.prependPath ?? prependPath ?? "");
+  if (def.prependPath) {
+    const p = join(cwd(), def.prependPath);
     env.PATH = p + (process.platform === "win32" ? ";" : ":") + (env.PATH ?? "");
   }
   const r = spawnSync(def.command, [], { shell: true, cwd: cwd(), env, encoding: "utf8", timeout: def.timeoutMs, maxBuffer: 16 * 1024 * 1024 });
@@ -117,13 +130,12 @@ function apply(ctx, config = {}) {
   const provider = config.provider ?? "deepseek-official";
   const model = config.model ?? "deepseek-v4-pro";
   const maxRounds = Math.min(Math.max(config.maxRounds ?? 3, 1), 12);
-  const defaultGates = config.gates ?? ["bun-test"];
   ctx.tools.register({
     name: "mpd_gate_run",
     description: "Run the repository gate suite (bun test packages / tsgo with the 108-error debt baseline / dsh-qa self-test) in the current project and report structured results. Use as a leaf's completion criterion.",
     parameters: {
       type: "object",
-      properties: { gates: { type: "array", items: { type: "string", enum: Object.keys(GATE_DEFS) } } },
+      properties: { gates: { type: "array", items: { type: "string" } } },
       required: []
     },
     output: {
@@ -150,7 +162,8 @@ function apply(ctx, config = {}) {
         basePreset: { type: "string" },
         maxRounds: { type: "integer" },
         context: { type: "string" },
-        requireGate: { type: "boolean" }
+        requireGate: { type: "boolean" },
+        gates: { type: "array", items: { type: "string" } }
       },
       required: ["objective", "basePreset"]
     },
@@ -172,6 +185,7 @@ evidence: ` + v.evidenceFile)
       const advisor = ADVISOR_BASES.has(basePreset);
       const rounds = Math.min(Math.max(args?.maxRounds ?? maxRounds, 1), 12);
       const requireGate = Boolean(args?.requireGate ?? !advisor);
+      const runGatesNames = Array.isArray(args?.gates) ? args.gates.map(String) : config.gates ?? ["bun-test"];
       const deny = [...ALL_LEAF_DENY, ...advisor ? config.advisorDeny ?? ADVISOR_DENY_EXTRA : []];
       const id = "leaf-" + randomUUID().slice(0, 8);
       const root = stateRoot(config);
@@ -198,7 +212,8 @@ evidence: ` + v.evidenceFile)
           prior ? `PRIOR ROUNDS (compact):
 ` + prior : "",
           "",
-          advisor ? "Advisory leaf: read-only work. Do not modify files. Answer with evidence and citations; end with the structured report." : "Executor leaf: do the work IN THIS PROJECT, then call mpd_gate_run before finishing; if any gate fails, fix and re-run (bounded by this round). Stop when gates pass.",
+          "LEAF GATES: " + runGatesNames.join(", "),
+          advisor ? "Advisory leaf: read-only work. Do not modify files. Answer with evidence and citations; end with the structured report." : "Executor leaf: do the work IN THIS PROJECT, then call mpd_gate_run with gates: [" + runGatesNames.join(", ") + "] before finishing; if any gate fails, fix and re-run (bounded by this round). Stop when gates pass.",
           "",
           "End with ONLY the structured report {round, summary, changes, gates:{ran,passed}, uncertain}."
         ].filter(Boolean).join(`
@@ -218,7 +233,7 @@ evidence: ` + v.evidenceFile)
           const result = await run.result;
           const structured = result.structured ?? {};
           const tail = (result.output ?? []).map((b) => b.text ?? "").join("").slice(-1500);
-          const gates = requireGate ? runGates(defaultGates) : [];
+          const gates = requireGate ? runGates(runGatesNames) : [];
           const ok = !requireGate || gates.every((g) => g.ok);
           records.push({ round, structured, tail, gates: gates.map((g) => ({ name: g.name, ok: g.ok, errors: g.errors })), ok });
           summaries.push("r" + round + ": " + String(structured.summary ?? "no summary") + (ok ? " [gates PASS]" : " [gates FAIL]"));

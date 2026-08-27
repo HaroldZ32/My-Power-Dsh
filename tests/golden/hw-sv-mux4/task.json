@@ -1,0 +1,9 @@
+{
+  "id": "hw-sv-mux4",
+  "kind": "hardware",
+  "lang": "systemverilog",
+  "verify": [
+    "python3",
+    "tests/golden/hw-sv-mux4/verify.py"
+  ]
+}

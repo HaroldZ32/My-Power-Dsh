@@ -1,0 +1,9 @@
+{
+  "id": "soft-py-minijson",
+  "kind": "software",
+  "lang": "python",
+  "verify": [
+    "python3",
+    "tests/golden/soft-py-minijson/run_tests.py"
+  ]
+}

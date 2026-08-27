@@ -1,0 +1,44 @@
+{
+  "ok": true,
+  "task": "hw-verilog-adder8",
+  "base": "mpd-sisyphus",
+  "gates": [
+    "golden:hw-verilog-adder8"
+  ],
+  "maxRounds": 2,
+  "spec": "# Golden task: hw-verilog-adder8 (Verilog-2001, combinational) |  | Objective: implement `tests/golden/hw-verilog-adder8/adder8.v`: |  | ```verilog | module adder8(",
+  "sandbox": "/home/haroldzhao/dshProj/my-power-dsh/.qa-reloc/home-golden",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "teamState": {
+      "ok": true,
+      "ids": [],
+      "archived": [
+        "g"
+      ]
+    },
+    "leafState": {
+      "ok": true,
+      "id": "leaf-615da733",
+      "basePreset": "mpd-sisyphus",
+      "rounds": 1,
+      "gatePassed": true
+    },
+    "goldenTask": {
+      "ok": true,
+      "exit": 0,
+      "tail": "PASS  hw-verilog-adder8  (hardware/verilog)\nhw-verilog-adder8 OK (60 random + 4 edge vectors)\n\n"
+    }
+  }
+}

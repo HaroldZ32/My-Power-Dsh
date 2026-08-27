@@ -36,6 +36,7 @@ the upstream host QA skills.
 | tool-output-validation | plugin tools | mpd_config_get / mpd_boulder_status return host-validated lossless JSON (no "not lossless JSON" / "must be an object" errors); evidence per defect under evidence/fix/<slug>/ | C5/C7 |
 | skill-catalog-probe | plan-d install | staged install -> mpd-bootstrap copies skills to $DSH_HOME/skills -> real headless skill load of svn-master works | Plan D |
 | plan-f-captain-smoke | plan-f w2 captain | staged install; default mpd-captain; real team run (1 member, task terminal, archive) | Plan F W2 |
+| plan-f-golden-leaf | plan-f w3 golden leaf | staged install; member spawns leaf via mpd_leaf_iterate on a golden task (implement -> gates incl. golden:<task> -> PASS); leaf evidence .mpd/leaf + golden task verifier PASS | Plan F W3+ |
 | plan-f-leaf-e2e | plan-f w3 leaf tree | member spawns a leaf via mpd_leaf_iterate (mpd-oracle base); .mpd/leaf evidence lands; team archive | Plan F W3 |
 | team-route-rewire | plan-f first-party team route | staged install serves agent-teams from the FIRST-PARTY bundle path (@mpd-dsh/mpd/packages/mpd-agent-teams, no npm dep, memberMaxDepth 3); agent-teams row mounted (stateDir .mpd/team); installed skills/presets point at agent_teams_* and never name mpd_team_spawn; real headless boot + web route 200 pass | Plan F W1 |
 

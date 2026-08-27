@@ -172,5 +172,8 @@ gate evidence; cost/latency measurement for depth 2 vs depth 3. Evidence: `evide
   the upstream artifact is safer.
 - Prune unused agent-teams modules (fallback route, model-directory validation) toward the thin
   core.
+- Golden suite COMPLETE (this branch): tests/golden 5 tasks (TS/Python/C + Verilog/SV via
+  stdlib-Python restricted evaluators); soft-ts-tokenizer and hw-verilog-adder8 implemented
+  by REAL executor leaves (evidence/plan-f/w3/golden-leaf/).
 - Spike: goal-round-driver as an alternative leaf continuation (only if Ralph-style rounds show
   context-loss problems in golden runs).

@@ -1,0 +1,17 @@
+[mpd-codegraph] init status=no-binary binary=- cwd=/home/haroldzhao/dshProj/my-power-dsh
+[mpd-bootstrap] presets installed (0.3.0) -> /home/haroldzhao/dshProj/my-power-dsh/.qa-reloc/home-golden/.agent-presets
+[mpd-bootstrap] skills installed (0.3.0) -> /home/haroldzhao/dshProj/my-power-dsh/.qa-reloc/home-golden/skills
+Team archived. Golden verification complete.
+
+**Result:**
+- **team_id**: `g` (description: plan-f golden leaf soft-ts-tokenizer)
+- **Leaf evidence path**: `.mpd/leaf/leaf-007a538d/run.json`
+
+**Summary of the run:**
+1. Created team `g` (staged) with one member `engineer`.
+2. Created task `t1` assigned to `engineer`: call `mpd_leaf_iterate` with objective to implement the golden task per `tests/golden/soft-ts-tokenizer/SPEC.md`, basePreset `mpd-sisyphus`, maxRounds 2, gates `[bun-test, golden:soft-ts-tokenizer]`, and report the leaf evidence path.
+3. Approved and ran the team — `t1` **completed** (attempt 1).
+4. Called `agent_teams_status` once (delivery ok) and archived the team via `agent_teams_delete`.
+
+**Leaf outcome** (from the engineer's report): single leaf round succeeded — created `tests/golden/soft-ts-tokenizer/tokenizer.ts` (`Token` type + `tokenize()` per SPEC.md; SPEC.md and tokenizer.test.ts untouched). Verified: `bun test tests/golden/soft-ts-tokenizer` → 5 pass / 0 fail; `node tests/golden/run.mjs --task soft-ts-tokenizer` → exit 0. `rounds=1, gatePassed=true, requireGate=true`.
+CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.

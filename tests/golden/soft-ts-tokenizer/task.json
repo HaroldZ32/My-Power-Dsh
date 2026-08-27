@@ -1,0 +1,10 @@
+{
+  "id": "soft-ts-tokenizer",
+  "kind": "software",
+  "lang": "typescript",
+  "verify": [
+    "bun",
+    "test",
+    "tests/golden/soft-ts-tokenizer"
+  ]
+}
