@@ -127,7 +127,6 @@ gates pass and their evidence is committed with the change.
 
 - Commit format: `<type>(<scope>): <summary>` (feat/fix/docs/test/chore/release).
 - Fixes cite the defect. Every defect branch is merged only after its evidence lands.
-- Remote (Gitee) sync uses the same model: feature/* → dev → release/v* → master (tags).
 - Never rebase published branches; merge with `--no-ff` and a descriptive message.
 
 ---
@@ -190,7 +189,7 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   dependency), the `mpd` preset + skill corpus auto-copy at boot via
   `mpd-bootstrap` (version-stamped, idempotent).
 - Install from a checkout: `cd <repo> && dsh plugin --profile web add .`
-  (or from a published location / Gitee URL — the patch never names this repo).
+  (or from a published location — the patch never names this repo).
 
 ### Dev/QA flow (legacy): `scripts/install-profile.mjs`
 
@@ -216,8 +215,6 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 
 - Credentials: only ever copied into an ephemeral QA sandbox; never committed, logged, or echoed.
 - Evidence logs must not contain secret material (api key values, tokens).
-- Gitee pushes use the per-command `http.extraheader` token approach; no token in `.git/config`,
-  no token in commit messages. Revoke tokens if leaked.
 - License: SUL-1.0 (LICENSE.md): internal/personal use; distribution free & non-commercial only.
 
 ---
