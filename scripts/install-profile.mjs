@@ -98,6 +98,18 @@ function buildPlan(o) {
     {
       id: "mpd-memory", name: p("packages/mpd-memory-plugin/dist/index.js"),
       config: { vcs: "git" }
+    },
+    {
+      id: "mpd-roles", name: p("packages/mpd-roles-plugin/dist/index.js"),
+      config: {}
+    },
+    {
+      id: "mpd-workmate", name: p("packages/mpd-workmate-plugin/dist/index.js"),
+      config: {}
+    },
+    {
+      id: "mpd-bootstrap", name: p("packages/mpd-bootstrap-plugin/dist/index.js"),
+      config: {}
     }
   ]
   const agentTeamsRow = {
@@ -168,6 +180,7 @@ function selfTest() {
   if (!rows.includes("mcp-astgrep") || !rows.includes("mpd-codegraph") || !rows.includes("agent-teams")) { console.error("[install-profile self-test] FAIL: row set"); process.exit(1) }
   if (!rows.includes("agent-teams") || plan.agentTeamsRow.config.stateDir !== ".mpd/team") { console.error("[install-profile self-test] FAIL: agent-teams row/override"); process.exit(1) }
   if (!rows.includes("mpd-hashline")) { console.error("[install-profile self-test] FAIL: mpd-hashline row"); process.exit(1) }
+  if (!rows.includes("mpd-roles") || !rows.includes("mpd-workmate") || !rows.includes("mpd-bootstrap")) { console.error("[install-profile self-test] FAIL: mpd-roles/workmate/bootstrap rows"); process.exit(1) }
   if (!plan.agentTeamsRow.name.includes("packages/mpd-agent-teams-plugin/lib/index.js")) { console.error("[install-profile self-test] FAIL: agent-teams main-code path"); process.exit(1) }
   console.log("[install-profile self-test] ok: path model + row set + agent-teams main-code path verified")
 }

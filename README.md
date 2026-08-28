@@ -38,6 +38,15 @@ SUBAGENTS:
   (`taskPlanning: captain`) exposes the specialists above as teammate
   instantiation templates. The captain calls `agent_teams_create(profile="mpd")`,
   stages the plan in the panel, then the dependency-aware scheduler runs it.
+- **Workmate library** (`~/.mpd/workmate`): the roster specialists are BASE templates;
+  instantiate one into a durable, evolving copy with an independent name
+  (`mpd_workmate_init`). After each work session it self-summarizes
+  (`mpd_workmate_reflect`) — evolving its own persona + independent memory (size-capped)
+  and keeping a short note card. Reuse via `mpd_workmate_list` / `mpd_workmate_match`;
+  if no note matches well enough (`matched=false`), initialize a NEW workmate rather than
+  forcing a weak match. In a team, a member named after the workmate gets its
+  persona/memory injected automatically (patched `memberPersona` in
+  `packages/mpd-agent-teams-plugin`).
 - `mpd-bootstrap` auto-copies the `mpd` preset + skill corpus at first boot
   (version-stamped: bump the package version and re-pack to refresh
   already-installed copies).

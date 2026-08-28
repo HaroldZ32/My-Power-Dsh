@@ -22,7 +22,7 @@ const PLUGIN_PKGS = [
   "mpd-tools-plugin", "mpd-modelchain-plugin", "mpd-ulw-plugin",
   "mpd-codegraph-plugin", "mpd-hashline-plugin", "mpd-boulder-plugin",
   "mpd-config-plugin", "mpd-comment-checker-plugin", "mpd-memory-plugin",
-  "mpd-roles-plugin", "mpd-bootstrap-plugin"
+  "mpd-roles-plugin", "mpd-bootstrap-plugin", "mpd-workmate-plugin"
 ]
 const MCP_PKGS = ["mpd-mcp-astgrep", "mpd-mcp-gitbash", "mpd-mcp-lsp", "mpd-mcp-codegraph"]
 

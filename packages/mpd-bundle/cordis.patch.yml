@@ -93,6 +93,8 @@
       name: '@mpd-dsh/mpd/packages/mpd-memory-plugin/dist/index.js'
       config:
         vcs: git
+    - id: mpd-workmate
+      name: '@mpd-dsh/mpd/packages/mpd-workmate-plugin/dist/index.js'
     - id: mpd-bootstrap
       name: '@mpd-dsh/mpd/packages/mpd-bootstrap-plugin/dist/index.js'
 
@@ -121,7 +123,7 @@
         profiles:
           mpd:
             description: "The OMO-origin specialist roster surfaced as normal-named teammate templates — captain-planned (roster only; the captain designs the DAG during the staged plan)."
-            protocol: "Read-only members (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) take requirements/review/analysis tasks only and never edit files. Workers (Senior Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) take implementation/verification/integration. The captain leads, designs the DAG, and integrates results."
+            protocol: "Read-only members (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) take requirements/review/analysis tasks only and never edit files. Workers (Senior Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) take implementation/verification/integration. The captain leads, designs the DAG, and integrates results. Workmate reuse: before delegating a role task, consult mpd_workmate_list / mpd_workmate_match(task); if a workmate note matches well, delegate to that workmate (member name = workmate name, so its persona/memory are injected), otherwise initialize a fresh workmate with mpd_workmate_init — never force a weak note match."
             taskPlanning: captain
             members:
               - name: Architect

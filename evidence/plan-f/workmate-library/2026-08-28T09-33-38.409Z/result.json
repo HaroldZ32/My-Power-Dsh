@@ -1,0 +1,32 @@
+{
+  "ok": true,
+  "dshHome": "/tmp/mpd-wm-dsh-JBEBcP",
+  "wmHome": "/tmp/mpd-wm-home-MF5ADW",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "flow": {
+      "ok": true,
+      "sample": "[mpd-codegraph] init status=no-binary binary=- cwd=/tmp/mpd-wm-home-MF5ADW/ws | [mpd-bootstrap] presets installed (0.2.3) -> /tmp/mpd-wm-dsh-JBEBcP/.agent-presets | [mpd-bootstrap] skills installed (0.2.3) -> /tmp/mpd-wm-dsh-JBEBcP/skills | All five steps executed in order. Summary of results: |  | 1. **mpd_workmate_init** ✅ — `workmate alice initialized (base Deep Worker, deepseek-official/deepseek-v4-flash)`; note: \"Verilog counter specialist\" | 2. **mpd_workmate_list** ✅ — `workmates (1): - alice [Deep Worker] uses=0 :: Verilog counter specialist` | 3. **mpd_workmate_spawn** ❌ — Failed 3× w"
+    },
+    "files": {
+      "ok": true,
+      "note": "Verilog counter specialist; completed a read-only doc task (read + one-sentence summary of workspace README.md).\n",
+      "wmRoot": "/tmp/mpd-wm-home-MF5ADW/.mpd/workmate"
+    },
+    "isolation": {
+      "ok": true,
+      "realWm": "/root/.mpd/workmate"
+    }
+  }
+}

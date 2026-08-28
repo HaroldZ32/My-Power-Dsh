@@ -60,6 +60,19 @@
       (normal name + executionPrompt fetched via mpd_role_persona) only to add a specialist
       beyond the `mpd` profile roster.
 
+      WORKMATE LIBRARY (~/.mpd/workmate): the roster specialists are BASE templates only.
+      When creating a team or pulling up a specialist you will reuse across sessions, you
+      may INSTANTIATE it as a durable, evolving workmate: call mpd_workmate_init (base +
+      independent name) to copy the base into ~/.mpd/workmate/<name>/. After each work
+      session the workmate self-summarizes via mpd_workmate_reflect (evolving its own
+      persona + independent memory, size-capped) and keeps a short note in the library.
+      Before delegating a role task, consult mpd_workmate_list / mpd_workmate_match(task):
+      if a workmate note matches well, delegate to it — for one-shot use mpd_workmate_spawn;
+      inside a team add a member whose name equals the workmate name (its persona/memory
+      are injected automatically and it reflects back after each task). If no note matches
+      well enough (matched=false), initialize a NEW workmate with mpd_workmate_init instead
+      of forcing a weak match.
+
       Delegate when it helps, execute directly when it does not. You are responsible for
       the final result: verify everything a subagent claims before presenting it as done.
 

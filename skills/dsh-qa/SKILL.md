@@ -36,6 +36,7 @@ the upstream host QA skills.
 | tool-output-validation | plugin tools | mpd_config_get / mpd_boulder_status return host-validated lossless JSON (no "not lossless JSON" / "must be an object" errors); evidence per defect under evidence/fix/<slug>/ | C5/C7 |
 | skill-catalog-probe | plan-d install | staged install -> mpd-bootstrap copies skills to $DSH_HOME/skills -> real headless skill load of svn-master works | Plan D |
 | team-route-rewire | plan-e team route | staged install serves agent-teams from the bundle (first-class main code @mpd-dsh/mpd/packages/mpd-agent-teams-plugin, no @nanmicoder npm dep); agent-teams row mounted (stateDir .mpd/team, normal-named `mpd` roster profile); installed mpd preset carries the AGENT.md convention + specialist rosters (mpd_role_spawn) and routes team work to agent_teams_*; real headless boot passes | Plan E/refactor |
+| workmate-library | plan-f workmate | legacy install mounts mpd-roles/workmate/bootstrap; real headless boot runs init->list->spawn->reflect->match against a SANDBOX HOME; asserts ~/.mpd/workmate files in the sandbox and that the real home is untouched | Plan F/workmate |
 
 ## Run
 

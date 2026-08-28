@@ -15,11 +15,16 @@ import { installModelSelection } from '../_deps/dsh-agent/lib/index.js';
 // Declaration merge only: makes ctx.subagents visible.
 import { foldSubagentDescriptor, SubagentError } from '../_deps/dsh-subagent/lib/index.js';
 import { ReasoningEffortId } from '../_deps/dsh-llm/lib/index.js';
+import { existsSync, readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { readRetiredMemberIds, readTeamSync, readTeam, withTeamLock, writeTeam } from "./state.js";
 import { TERMINAL_TASK_STATUSES } from "./types.js";
 /** Persona snapshot of a profile protocol; the full text lives on team.json. */
 export const PERSONA_PROTOCOL_MAX_CHARS = 400;
+/** Bounded workmate context injected into a member persona (mirrors mpd-workmate caps). */
+const WORKMATE_PERSONA_MAX_CHARS = 8 * 1024;
+const WORKMATE_MEMORY_MAX_CHARS = 6 * 1024;
 /** Captain-only AgentTeams tools hidden from newly spawned members. */
 const MEMBER_DENIED_TOOLS = [
     'agent_teams_create',
@@ -30,6 +35,34 @@ const MEMBER_DENIED_TOOLS = [
     'agent_teams_resume',
     'agent_teams_delete',
 ];
+/**
+ * If a workmate instance with this member name exists in ~/.mpd/workmate, return
+ * its bounded persona + memory + note so the member is backed by the evolving
+ * workmate. Case-insensitive on the sanitized (lowercase-kebab) instance name.
+ */
+function workmateBacking(memberName) {
+    const key = String(memberName ?? '').trim().toLowerCase();
+    if (key === '')
+        return undefined;
+    const dir = join(homedir(), '.mpd', 'workmate', key);
+    const read = (f) => { try { const p = join(dir, f); return existsSync(p) ? readFileSync(p, 'utf8').trim() : ''; } catch { return ''; } };
+    const persona = read('persona.md');
+    const memory = read('memory.md');
+    const note = read('note.md');
+    if (persona === '' && memory === '' && note === '')
+        return undefined;
+    const bounded = (t, max) => t.length <= max ? t : `…[truncated]…\n` + t.slice(-max);
+    return {
+        name: key,
+        persona: bounded(persona, WORKMATE_PERSONA_MAX_CHARS),
+        memory: bounded(memory, WORKMATE_MEMORY_MAX_CHARS),
+        note,
+    };
+}
+/** Workmate reflection instruction appended to a backed member's persona. */
+function workmateReflectInstruction(name) {
+    return `- Durable workmate backing: you are backed by the workmate instance "${name}" in ~/.mpd/workmate/ (your evolved persona and memory below). After you finish a task (completed or failed), call mpd_workmate_reflect with a concise self-summary (task / outcome / what you learned / optional persona_delta / optional new note) so your workmate persona and memory evolve for next time.`;
+}
 /**
  * Restore the SessionId brand on a value that round-tripped through the
  * durable team file. The brand is erased by JSON serialization; the value
@@ -301,6 +334,7 @@ export function memberPersona(team, member, stateDir, executionPrompt) {
     const goal = team.description?.trim() || '(not provided)';
     const injectedPrompt = member.executionPrompt?.trim() || executionPrompt?.trim();
     const protocol = truncatedPersonaProtocol(team.profile?.protocol);
+    const wm = workmateBacking(member.name);
     return `You are ${member.name}, a member of the multi-agent team "${team.name}" running inside DeepSeek Harness AgentTeams. The captain leads the team; you are a worker member${member.role ? ` with the role: ${member.role}` : ''}.
 
 Team context:
@@ -308,7 +342,13 @@ Team context:
 - Your name inside the team (use it as \`from\`/identity): ${member.name}
 - Team goal: ${goal}
 - Profile protocol: ${protocol}
-${injectedPrompt === undefined || injectedPrompt === '' ? '' : `- Execution guidance:
+${wm === undefined ? '' : `- Durable workmate backing: you are backed by the workmate instance "${wm.name}" in ~/.mpd/workmate/ — this is YOUR evolved persona and memory, keep it in mind and update it after work:
+  Workmate persona:
+  ${wm.persona}
+  Workmate memory:
+  ${wm.memory === '' ? '(empty)' : wm.memory}
+  Workmate note: ${wm.note === '' ? '(none)' : wm.note}
+`}${injectedPrompt === undefined || injectedPrompt === '' ? '' : `- Execution guidance:
 ${injectedPrompt}
 `}- The team state lives under ${stateDir}/${team.id}/ (team.json and inbox/*.jsonl). You may inspect these files read-only for diagnostics, but never edit them directly; use the agent_teams_* tools so JSON escaping and concurrent updates stay safe.
 - The captain and your teammates reach you through messages. Each message you receive is a new turn: act on it and end your turn with a concise reply.
@@ -330,7 +370,7 @@ Working rules:
 7. If you already own an open attempt (claimed or in_progress) and receive mail, treat it as guidance for that same attempt_id unless the mail explicitly tells you to stop or fail. Do not claim a new task in that turn.
 8. Do not start a teammate's assigned task. Do not privately tell the next-stage member to start; the scheduler assigns unlocked work after you become idle.
 9. You are a worker: do not create or delete teams, reassign tasks, or add/remove members — that is the captain's job.
-10. Quality-gate kinds carry a contract (kind, objective, inScope, acceptance, verify). Stay inside inScope. Do not mark your own implementation as review pass. Review/requirements complete only with verdict=pass; needs_revision/reject must fail with findings. Mail is not a formal next review.`;
+10. Quality-gate kinds carry a contract (kind, objective, inScope, acceptance, verify). Stay inside inScope. Do not mark your own implementation as review pass. Review/requirements complete only with verdict=pass; needs_revision/reject must fail with findings. Mail is not a formal next review.${wm === undefined ? '' : `\n11. ${workmateReflectInstruction(wm.name)}`}`;
 }
 /**
  * The initial user message delivered when the member is created.
