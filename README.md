@@ -27,8 +27,8 @@ SUBAGENTS:
 - **Every project session on the `mpd` preset attempts to read `AGENT.md`**
   (falling back to `AGENTS.md`, then `CLAUDE.md`) via `dsh-agent-instructions`.
 - **The 11 OMO-origin agents are specialists and teammate templates, not presets**:
-  Architect, Researcher, Planner, Config Engineer, Senior Engineer, Lead,
-  Explorer, Reviewer, UX Critic, Vision Analyst and Junior Engineer live in the
+  Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead,
+  Explorer, Reviewer, Plan Reviewer, Vision Analyst and Junior Engineer live in the
   mpd-roles roster — one-shot consult one with `mpd_role_spawn`, list the roster
   with `mpd_roles_list`, fetch a persona text with `mpd_role_persona`. Read-only
   roles are mechanically denied write tools at spawn.

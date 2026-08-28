@@ -10,12 +10,12 @@ discipline.
 | oracle | Architect | yes |
 | librarian | Researcher | yes |
 | prometheus | Planner | yes |
-| hephaestus | Config Engineer | no |
+| hephaestus | Deep Worker | no |
 | sisyphus | Senior Engineer | no |
 | atlas | Lead | no |
 | explore | Explorer | yes |
 | metis | Reviewer | no |
-| momus | UX Critic | yes |
+| momus | Plan Reviewer | yes |
 | multimodal-looker | Vision Analyst | yes |
 | sisyphus-junior | Junior Engineer | no |
 
@@ -41,7 +41,7 @@ roster profile (`taskPlanning: captain`) whose members mirror the table above.
 The captain calls `agent_teams_create(profile="mpd")` to stage those teammates,
 designs the task DAG, and reuses the agent-teams Web plan panel + scheduler.
 
-Read-only roles (Architect, Researcher, Planner, Explorer, UX Critic, Vision
+Read-only roles (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision
 Analyst) get a write-tool deny filter at `mpd_role_spawn`; as team members the
 read-only discipline is expressed in the profile protocol / execution prompt
 (they take requirements/review/analysis tasks only).

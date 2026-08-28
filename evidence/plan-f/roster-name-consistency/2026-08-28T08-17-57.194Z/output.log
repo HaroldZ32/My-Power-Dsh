@@ -1,0 +1,24 @@
+[pack ok]
+[install ok]
+[mpd-bootstrap] presets installed (0.2.3) -> .../.agent-presets
+[mpd-bootstrap] skills installed (0.2.3) -> .../skills
+--- headless agent turn (real model, machine DEEPSEEK_API_KEY env) ---
+All three calls completed.
+(1) Number of roles: 11
+(2) Display names (id -> display name):
+  oracle -> Architect
+  librarian -> Researcher
+  prometheus -> Planner
+  hephaestus -> Deep Worker
+  sisyphus -> Senior Engineer
+  atlas -> Lead
+  explore -> Explorer
+  metis -> Reviewer
+  momus -> Plan Reviewer
+  multimodal-looker -> Vision Analyst
+  sisyphus-junior -> Junior Engineer
+(3) mpd_role_persona(role=hephaestus) first line:
+  "You are the Deep Worker, an autonomous deep worker for software engineering."
+  mpd_role_persona(role=momus) first line:
+  "You are the Plan Reviewer, a practical work plan review consultant."
+BOOT_EXIT=0

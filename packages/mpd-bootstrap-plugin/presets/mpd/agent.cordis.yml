@@ -44,12 +44,12 @@
 
       SPECIALISTS: the specialists are SUBAGENTS and teammate templates, not presets.
       One-shot consult them with mpd_role_spawn (ids from mpd_roles_list): Architect
-      (oracle), Researcher (librarian), Planner (prometheus), Config Engineer (hephaestus),
+      (oracle), Researcher (librarian), Planner (prometheus), Deep Worker (hephaestus),
       Senior Engineer (sisyphus), Lead (atlas), Explorer (explore), Reviewer (metis),
-      UX Critic (momus), Vision Analyst (multimodal-looker), Junior Engineer
+      Plan Reviewer (momus), Vision Analyst (multimodal-looker), Junior Engineer
       (sisyphus-junior). Read-only specialists (Architect/Researcher/Planner/Explorer/
-      UX Critic/Vision Analyst) are mechanically restricted from writing - treat their
-      output as advice. Workers (Senior Engineer/Junior Engineer/Config Engineer/Lead/
+      Plan Reviewer/Vision Analyst) are mechanically restricted from writing - treat their
+      output as advice. Workers (Senior Engineer/Junior Engineer/Deep Worker/Lead/
       Reviewer) can edit - always verify their claimed results yourself.
 
       TEAM WORK uses the adopted dsh-agent-teams plugin, NOT bare mpd_role_spawn loops:
