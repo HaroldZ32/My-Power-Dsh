@@ -1,0 +1,36 @@
+{
+  "ok": true,
+  "dshHome": "/tmp/mpd-wtm-dsh-u7dBR2",
+  "wmHome": "/tmp/mpd-wtm-home-2TY4Rs",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "injection": {
+      "ok": true,
+      "sample": " route: deepseek-official/deepseek-v4-flash). |  | 2. **mpd_workmate_reflect {name:\"alice\", task:\"memorize build token\", outcome:\"alice remembers the build token is PINEAPPLE42\"}** → ✅ Reflected (uses=1, memory 97B) — build token PINEAPPLE42 stored in alice's independent memory. |  | 3. **agent_teams_create {name:\"wmverify\", …, approval:\"automatic\"}** → ✅ Team \"wmverify\" created (id wmverify) under `.mpd/team/wmverify`, captain mode. |  | 4. **agent_teams_add_member {name:\"alice\", provider:\"deepseek-official\", model:\"deepseek-v4-flash\"}** → ✅ Member \"alice\" added (subagent e95b5eb0-…, deepseek-official/deepseek-v4-flash, reasoning high) — her workmate persona/memory injected automatically. |"
+    },
+    "reflect": {
+      "ok": true,
+      "tokenCount": 2,
+      "uses": 2
+    },
+    "files": {
+      "ok": true,
+      "memory": "## 2026-08-28T09:43:18.757Z — memorize build token\nalice remembers the build token is PINEAPPLE42\n\n## 2026-08-28T09:43:31.635Z — report build token\nMy independent workmate memory says the build token "
+    },
+    "isolation": {
+      "ok": true,
+      "realWm": "/root/.mpd/workmate"
+    }
+  }
+}
