@@ -21,17 +21,18 @@ import { join, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
-const DEV = process.env.MPD_DEV_ROOT || "/home/haroldzhao/dshProj/my-power-dsh"
+const DEV = process.env.MPD_DEV_ROOT || repoRoot
 const VENDOR = join(repoRoot, "third-party", "dsh-agent-teams")
 
 function selfTest() {
   const checks = []
-  const atlas = readFileSync(join(repoRoot, "packages", "mpd-presets-plugin", "presets", "mpd-atlas", "agent.cordis.yml"), "utf8")
+  const mpdPreset = readFileSync(join(repoRoot, "packages", "mpd-bootstrap-plugin", "presets", "mpd", "agent.cordis.yml"), "utf8")
   const execute = readFileSync(join(repoRoot, "skills", "ulw-execute", "SKILL.md"), "utf8")
   const research = readFileSync(join(repoRoot, "skills", "ulw-research", "SKILL.md"), "utf8")
-  checks.push(["atlas agent_teams_*, no mpd_team_spawn", atlas.includes("agent_teams_create") && !atlas.includes("mpd_team_spawn")])
-  checks.push(["ulw-execute row agent_teams_*", execute.includes("agent_teams_create") && !execute.includes("mpd_team_spawn")])
-  checks.push(["ulw-research row agent_teams_* + maxMembers", research.includes("agent_teams_create") && research.includes("maxMembers: 8") && !research.includes("mpd_team_spawn")])
+  checks.push(["mpd preset AGENT.md candidates", mpdPreset.includes("AGENT.md") && mpdPreset.includes("AGENTS.md") && mpdPreset.includes("instructionFileCandidates")])
+  checks.push(["mpd preset roster tool mentions", mpdPreset.includes("mpd_role_spawn") && mpdPreset.includes("mpd_team_spawn")])
+  checks.push(["ulw-execute row roster tools", execute.includes("mpd_role_spawn") && execute.includes("mpd_team_spawn")])
+  checks.push(["ulw-research row roster tools", research.includes("mpd_role_spawn") && research.includes("mpd_team_spawn") && !research.includes("selectable roles")])
   const vendorPkg = JSON.parse(readFileSync(join(VENDOR, "package.json"), "utf8"))
   checks.push(["vendored package 0.1.14", vendorPkg.version === "0.1.14" && vendorPkg.name === "@nanmicoder/dsh-agent-teams"])
   checks.push(["vendored lib + assets + closure present", existsSync(join(VENDOR, "lib", "index.js")) && existsSync(join(VENDOR, "assets", "ui.png")) && existsSync(join(VENDOR, "_deps", "schemastery", "lib", "index.mjs")) && existsSync(join(VENDOR, "_deps", "dsh-tools", "lib", "index.js")) && existsSync(join(VENDOR, "_deps", "dsh-llm", "lib", "index.js")) && existsSync(join(VENDOR, "_deps", "zod", "index.js"))])
@@ -82,7 +83,7 @@ async function runReal() {
   const resCode = "const {createRequire}=require('module');const r=createRequire(process.argv[1]);try{console.log('VENDORED_OK '+r.resolve('@mpd-dsh/mpd/third-party/dsh-agent-teams/package.json'))}catch(e){console.log('VENDORED_FAIL '+e.code)};try{r.resolve('@nanmicoder/dsh-agent-teams/package.json');console.log('PKG_PRESENT')}catch(e){console.log('PKG_ABSENT')}"
   const res = runSync("node", ["-e", resCode, join(profile, "x.js")])
   steps.resolution = { ok: res.status === 0 && res.out.includes("VENDORED_OK") && res.out.includes("PKG_ABSENT"), out: res.out.trim() }
-  writeFileSync(join(profile, "cordis.patch.yml"), "- insert:\n    - id: agent-presets\n      name: '@deepseek-ai/dsh-agent-presets'\n      config:\n        default: mpd-oracle\n")
+  writeFileSync(join(profile, "cordis.patch.yml"), "- insert:\n    - id: agent-presets\n      name: '@deepseek-ai/dsh-agent-presets'\n      config:\n        default: mpd\n")
   const live = runSync("dsh", ["--profile", "t", "Use mpd_config_get with key 'memory.vcs' then mpd_memory_status; report both values in one line."], { timeout: 600000, cwd: join(reloc, "ws-rewire") })
   const out = live.out
   steps.live = { ok: live.status === 0 && !out.includes("ERR_MODULE_NOT_FOUND") && !out.includes("@nanmicoder"), exit: live.status }
@@ -91,11 +92,10 @@ async function runReal() {
   const texts = [
     join(userSkills, "ulw-research", "SKILL.md"),
     join(userSkills, "ulw-execute", "SKILL.md"),
-    join(home, ".agent-presets", "mpd-atlas", "agent.cordis.yml"),
-    join(home, ".agent-presets", "mpd-hephaestus", "agent.cordis.yml")
+    join(home, ".agent-presets", "mpd", "agent.cordis.yml")
   ].filter((p) => existsSync(p)).map((p) => readFileSync(p, "utf8"))
   const allText = texts.join("\n")
-  steps.installedTexts = { ok: texts.length === 4 && allText.includes("agent_teams_create") && !allText.includes("mpd_team_spawn") && allText.includes("Team member mode"), files: texts.length }
+  steps.installedTexts = { ok: texts.length === 3 && allText.includes("AGENT.md") && allText.includes("mpd_role_spawn") && !allText.includes("selectable roles"), files: texts.length }
   const webProfile = join(home, "profiles", "w")
   mkdirSync(webProfile, { recursive: true })
   writeFileSync(join(webProfile, "package.json"), JSON.stringify({ name: "dsh-profile-w", private: true, dependencies: {}, dsh: { profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app"] } } }, null, 2) + "\n")

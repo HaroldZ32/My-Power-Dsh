@@ -38,7 +38,7 @@ function buildPlan(o) {
   const bundle0 = "@deepseek-ai/dsh-base"
   const bundle1 = isHeadless ? "@deepseek-ai/dsh-headless" : "@deepseek-ai/dsh-web-app"
   const p = (r) => join(repoRoot, r)
-  const presetsDir = p("packages/mpd-presets-plugin/presets")
+  const presetsDir = p("packages/mpd-bootstrap-plugin/presets")
   const astCli = p(".toolchain/node_modules/.bin/sg")
   const cgCli = p(".toolchain/node_modules/.bin/codegraph")
   const rows = [
@@ -227,7 +227,7 @@ function main() {
   const rowsPass1 = plan.rows.filter((r) => r.id !== "agent-teams")
   writeFileSync(plan.homePatch, renderPatch(rowsPass1) + "\n")
   // copy presets
-  const ids = readdirSync(plan.presetsDir).filter((d) => d.startsWith("mpd-"))
+  const ids = readdirSync(plan.presetsDir).filter((d) => d === "mpd" || d.startsWith("mpd-"))
   for (const id of ids) cpSync(join(plan.presetsDir, id), join(plan.userPresets, id), { recursive: true })
   console.log("[install-profile] wrote profile/ home patch/ presets(" + ids.length + ")")
   if (plan.agentTeams) {

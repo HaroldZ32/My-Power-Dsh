@@ -4,6 +4,22 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 var name = "mpd-ulw";
 var inject = ["tools", "subagents"];
+function mergedConfig(ctx, config) {
+  const svc = ctx.get?.("mpdConfig");
+  if (!svc?.get)
+    return config;
+  const v = (k) => svc.get(k);
+  return {
+    ...config,
+    maxRounds: typeof v("ulw.maxRounds") === "number" ? v("ulw.maxRounds") : config.maxRounds,
+    planDir: typeof v("ulw.planDir") === "string" ? v("ulw.planDir") : config.planDir,
+    stateDir: typeof v("ulw.stateDir") === "string" ? v("ulw.stateDir") : config.stateDir,
+    provider: typeof v("ulw.provider") === "string" ? v("ulw.provider") : config.provider,
+    model: typeof v("ulw.model") === "string" ? v("ulw.model") : config.model,
+    reviewerModel: typeof v("ulw.reviewerModel") === "string" ? v("ulw.reviewerModel") : config.reviewerModel,
+    maxReReviews: typeof v("ulw.maxReReviews") === "number" ? v("ulw.maxReReviews") : config.maxReReviews
+  };
+}
 var REPORT_SCHEMA = {
   type: "object",
   properties: {
@@ -51,13 +67,14 @@ function writeJson(p, v) {
   writeFileSync(p, JSON.stringify(v, null, 2));
 }
 function apply(ctx, config = {}) {
-  const maxRounds = config.maxRounds ?? 6;
-  const planDir = config.planDir ?? join(cwd(), ".mpd", "plans");
-  const stateDir = config.stateDir ?? join(cwd(), ".mpd", "ulw");
-  const provider = config.provider ?? "deepseek-official";
-  const model = config.model ?? "deepseek-v4-flash";
-  const reviewerModel = config.reviewerModel ?? "deepseek-v4-pro";
-  const maxReReviews = config.maxReReviews ?? 2;
+  const cfg = mergedConfig(ctx, config);
+  const maxRounds = cfg.maxRounds ?? 6;
+  const planDir = cfg.planDir ?? join(cwd(), ".mpd", "plans");
+  const stateDir = cfg.stateDir ?? join(cwd(), ".mpd", "ulw");
+  const provider = cfg.provider ?? "deepseek-official";
+  const model = cfg.model ?? "deepseek-v4-flash";
+  const reviewerModel = cfg.reviewerModel ?? "deepseek-v4-pro";
+  const maxReReviews = cfg.maxReReviews ?? 2;
   async function spawnChild(opts) {
     const fullPrompt = [opts.persona, opts.prompt].filter(Boolean).join(String.fromCharCode(10, 10));
     const run = await ctx.subagents.start("spawn", {
@@ -292,14 +309,14 @@ function apply(ctx, config = {}) {
       const tool = ctx.tools.get?.("mpd_ultrawork");
       if (!tool?.execute)
         throw new Error("mpd_ulw: engine not available");
-      const inner = { objective: String(args?.objective), tier: "light", plan: false, hyperplan: false, strictReview: false, maxRounds: Number(args?.maxRounds ?? config.maxRounds ?? 3) };
+      const inner = { objective: String(args?.objective), tier: "light", plan: false, hyperplan: false, strictReview: false, maxRounds: Number(args?.maxRounds ?? cfg.maxRounds ?? 3) };
       const res = await tool.execute(inner, exec);
       return { status: res.status, rounds: res.rounds, finalReport: res.finalReport, stateFile: res.stateFile };
     }
   });
 }
 export {
-  apply,
+  name,
   inject,
-  name
+  apply
 };

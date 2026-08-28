@@ -22,7 +22,7 @@ const PLUGIN_PKGS = [
   "mpd-tools-plugin", "mpd-modelchain-plugin", "mpd-ulw-plugin", "mpd-team-plugin",
   "mpd-codegraph-plugin", "mpd-hashline-plugin", "mpd-boulder-plugin",
   "mpd-config-plugin", "mpd-comment-checker-plugin", "mpd-memory-plugin",
-  "mpd-bootstrap-plugin"
+  "mpd-roles-plugin", "mpd-bootstrap-plugin"
 ]
 const MCP_PKGS = ["mpd-mcp-astgrep", "mpd-mcp-gitbash", "mpd-mcp-lsp", "mpd-mcp-codegraph"]
 
@@ -41,7 +41,13 @@ function cpAssets() {
   // mpd-bootstrap plugin copies it to $DSH_HOME/skills at boot (version-stamped)
   const skillsSrc = join(repoRoot, "skills")
   if (existsSync(skillsSrc)) cpSync(skillsSrc, join(outDir, "skills"), { recursive: true })
-  cpSync(join(repoRoot, "packages", "mpd-presets-plugin", "presets"), join(outDir, "presets"), { recursive: true })
+  // the main preset ships in mpd-bootstrap-plugin/presets (mpd-bootstrap copies
+  // it to $DSH_HOME/.agent-presets at boot) and the roles plugin's persona
+  // assets ship under packages/mpd-roles-plugin/personas
+  cpSync(join(repoRoot, "packages", "mpd-bootstrap-plugin", "presets"), join(outDir, "presets"), { recursive: true })
+  if (existsSync(join(repoRoot, "packages", "mpd-roles-plugin", "personas"))) {
+    cpSync(join(repoRoot, "packages", "mpd-roles-plugin", "personas"), join(outDir, "packages", "mpd-roles-plugin", "personas"), { recursive: true })
+  }
   cpSync(join(repoRoot, "third-party"), join(outDir, "third-party"), { recursive: true })
   for (const f of ["LICENSE.md", "LICENSE-NOTICES.md", "README.md"]) {
     if (existsSync(join(repoRoot, f))) cpSync(join(repoRoot, f), join(outDir, f))
@@ -59,7 +65,6 @@ function decouplePatch(srcPatch) {
   t = t.split("'" + dev + "/packages/mpd-mcp-codegraph/dist/serve.js'").join(pathExpr("/node_modules/" + PKG_NAME + "/packages/mpd-mcp-codegraph/dist/serve.js"))
   t = t.split("'" + dev + "/.toolchain/node_modules/.bin/sg'").join(pathExpr("/node_modules/.bin/sg"))
   t = t.split("'" + dev + "/.toolchain/node_modules/.bin/codegraph'").join(pathExpr("/node_modules/.bin/codegraph"))
-  t = t.split("'" + dev + "/packages/mpd-skills-plugin/skills'").join(pathExpr("/node_modules/" + PKG_NAME + "/packages/mpd-skills-plugin/skills"))
   // nested !!js (env || <expr>) fix: drop the inner YAML tag so the outer JS sees one expression
   t = t.replace(/\|\| !!js '([^']+)'/g, "|| ($1)")
   // generic YAML-safety: any remaining UNQUOTED !!js value containing ': ' breaks plain-scalar

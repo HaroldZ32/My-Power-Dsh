@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "domain": "plan-f",
+  "slug": "roles-subagent",
+  "gateSweep": "typecheck 0 errors; bun test 31 pass / 3 skip / 0 fail; test:qa ok; preset-register/team-route-rewire/relocate-smoke --self-test ok; verify-vendor PASS; installer dry-run ok; staged patch leak-free",
+  "bootCheck": "isolated DSH_HOME + staged bundle: dsh --profile web --dump-config exit 0, mpd-roles row mounted (12 mpd-* rows)",
+  "qaRealCase": "skills/dsh-qa/scripts/preset-register.mjs real run PASS (evidence/dsh-qa/preset-register/): mpd preset resolves unmounted-broken; mpdRoles roster serves all 11 roles",
+  "roleCount": 11,
+  "conventions": {
+    "agentMdPerProject": "mpd preset agent-instructions instructionFileCandidates: [AGENT.md, AGENTS.md, CLAUDE.md]",
+    "omoAgentsAsSubagents": "mpd-roles-plugin roster + mpd_roles_list/mpd_role_spawn/mpd_role_persona + mpd_team_spawn roster-backed members + mpd_modelchain_resolve roster chains"
+  }
+}

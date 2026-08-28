@@ -19,7 +19,7 @@ Translate any OpenCode/Codex-only tool name in an inherited example to its DeepS
 | `team_*(...)` | `agent_teams_*` — `agent_teams_create` / `agent_teams_add_member` / `agent_teams_create_task` (+ dependencies) + `agent_teams_status` / `agent_teams_send_message` (dsh-agent-teams: captain = this session, members are continuable subagents, dependency DAG scheduler with auto-claim, web activity panel mirrors live state) |
 | stop one child | `job_kill` (jobs) / `interrupt_agent` (agents) |
 
-Role-specific behavior goes inside the `prompt` (self-contained `TASK / DELIVERABLE / SCOPE / VERIFY` blocks). Child agents keep their own `skill` tool — name the skills the child must load inside the prompt. Role preset ids (mpd-explore / mpd-librarian / mpd-prometheus / mpd-momus / mpd-metis / mpd-hephaestus) may be passed as `persona` when the spawn surface exposes it; otherwise describe the role in the prompt.
+Role-specific behavior goes inside the `prompt` (self-contained `TASK / DELIVERABLE / SCOPE / VERIFY` blocks). Child agents keep their own `skill` tool — name the skills the child must load inside the prompt. The OMO-origin specialists live in the mpd-roles ROSTER (explore / librarian / prometheus / momus / metis / hephaestus / oracle / sisyphus / sisyphus-junior / atlas / multimodal-looker): `mpd_role_spawn(role=..., task=...)` applies the roster persona + model route + read-only discipline, and `mpd_team_spawn` assembles a parallel team whose members can spawn specialists themselves; for spawn surfaces that take the persona as text use `mpd_role_persona(role=...)`; otherwise describe the role in the prompt.
 
 ### Model tiering (DeepSeek V4)
 

@@ -10,13 +10,13 @@ Translate any OpenCode/Codex-only tool name to its DeepSeek Harness equivalent:
 | OpenCode/Codex example | DSH tool to use |
 | --- | --- |
 | explorer/librarian `subagent(...)` | `subagent` — `run_in_background: true`, self-contained TASK/DELIVERABLE/SCOPE/VERIFY prompt |
-| planning agent | `subagent` with the planner role stated in the prompt (or `persona: "mpd-prometheus"` when the surface exposes it) |
-| rigorous reviewer | `subagent` with the reviewer role in the prompt (or `persona: "mpd-momus"` / `mpd-oracle`), `model: "deepseek-v4-pro"` |
+| planning agent | `mpd_role_spawn(role="prometheus", task=...)` (or `subagent` with the planner role stated in the prompt when the roster tool is unavailable) |
+| rigorous reviewer | `mpd_role_spawn(role="momus" | "oracle", task=...)` (or `subagent` with the reviewer role in the prompt, `model: "deepseek-v4-pro"`) |
 | implementation / QA worker | `subagent` (background) with the worker role in the prompt; `model: "deepseek-v4-flash"` |
 | `job_output(task_id="...")` | `job_output` (same name) |
 | `team_*(...)` | `agent_teams_*` — `agent_teams_create` / `agent_teams_add_member` / `agent_teams_create_task` (+ dependencies) + `agent_teams_status` / `agent_teams_send_message` (dsh-agent-teams: captain = this session, members are continuable subagents, dependency DAG scheduler with auto-claim, web activity panel mirrors live state) |
 
-Role-specific behavior goes in a self-contained prompt. `subagent` starts the child with only the initial prompt; `subagent_fork` is reserved for full-parent-history children. Include any required context, files, diffs, constraints, and skill names directly in the prompt. The mpd presets (mpd-explore / mpd-librarian / mpd-prometheus / mpd-momus / mpd-metis / mpd-hephaestus) are the selectable roles — pass the matching id as `persona` so the child gets that role's model and instructions, or state the role in the prompt when the surface has no `persona` parameter.
+Role-specific behavior goes in a self-contained prompt. `subagent` starts the child with only the initial prompt; `subagent_fork` is reserved for full-parent-history children. Include any required context, files, diffs, constraints, and skill names directly in the prompt. The OMO-origin specialists live in the mpd-roles ROSTER (explore / librarian / prometheus / momus / metis / hephaestus / oracle / sisyphus / sisyphus-junior / atlas / multimodal-looker): spawn one with `mpd_role_spawn(role=..., task=...)` (roster persona + model route + read-only discipline applied automatically, legacy `mpd-` ids accepted), or `mpd_team_spawn` for a parallel team; when the spawn surface takes the persona as TEXT (e.g. `agent_teams_add_member`), fetch it with `mpd_role_persona(role=...)` first.
 
 ## Activation
 

@@ -73,7 +73,16 @@ function loadMemory(p: string): Record<string, string> {
 }
 
 export function apply(ctx: Ctx, config: Config = {}): void {
-  const chains = config?.chains ?? DEFAULT_CHAINS
+  const mpdConfig = ctx.get?.("mpdConfig") as { get: (k?: string) => any } | undefined
+  let chains = config?.chains ?? DEFAULT_CHAINS
+  if (mpdConfig?.get) {
+    const overlay: Record<string, Array<{ provider: string; model: string }>> = {}
+    for (const key of Object.keys(DEFAULT_CHAINS)) {
+      const v = mpdConfig.get("modelchain." + key)
+      if (Array.isArray(v) && v.length > 0 && v.every((c: any) => c && typeof c.provider === "string" && typeof c.model === "string")) overlay[key] = v
+    }
+    if (Object.keys(overlay).length > 0) chains = { ...DEFAULT_CHAINS, ...overlay }
+  }
   const cwd = process.env.DSH_WORKSPACE_ROOT ?? process.cwd()
 
   ctx.tools.register({
@@ -82,9 +91,18 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     parameters: { type: "object", properties: { role: { type: "string", description: "upstream agent role name" } }, required: ["role"] },
     output: {
       schema: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" }, chain: { type: "array", items: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" } }, required: [] } }, skipped: { type: "boolean" } }, required: ["provider", "model", "skipped"] },
-      render: (_args: unknown, value: any) => [{ type: "text", text: "role=" + _args?.role + " -> " + value.provider + "/" + value.model + " (chain " + value.chain.length + " entries)" }]
+      render: (_args: any, value: any) => [{ type: "text", text: "role=" + _args?.role + " -> " + value.provider + "/" + value.model + " (chain " + value.chain.length + " entries)" }]
     },
-    execute: async (args: any) => resolveRole(String(args?.role ?? "sisyphus"), chains)
+    execute: async (args: any) => {
+      const role = String(args?.role ?? "sisyphus")
+      // Source of truth: the mpd-roles roster chains (DEFAULT_CHAINS kept as fallback).
+      const rolesService = ctx.get?.("mpdRoles") as { get?: (k: string) => any } | undefined
+      const spec = rolesService?.get?.(role)
+      if (spec && Array.isArray(spec.chain) && spec.chain.length > 0) {
+        return { provider: spec.chain[0].provider, model: spec.chain[0].model, chain: spec.chain.map((c: any) => ({ ...c })), skipped: false }
+      }
+      return resolveRole(role, chains)
+    }
   })
 
   ctx.tools.register({

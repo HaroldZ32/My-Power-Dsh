@@ -1,7 +1,7 @@
 {
   "name": "@mpd-dsh/team",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.3",
   "type": "module",
   "description": "Team Mode adapter plugin (B2)",
   "scripts": {

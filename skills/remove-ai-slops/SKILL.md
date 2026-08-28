@@ -181,7 +181,7 @@ Files are processed by `deep` category agents with the `remove-ai-slops` skill l
 subagent(
   description="Slop removal: {filename}",
   run_in_background=true,
-  persona="mpd-hephaestus",
+  persona="<fetch via mpd_role_persona(role=hephaestus)>",
   agentOptions={model: "deepseek-v4-pro"},
   prompt="""
 Remove AI slops from: {file_path}

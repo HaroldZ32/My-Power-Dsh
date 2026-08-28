@@ -1,4 +1,0 @@
-# QA use: insert the preset probe plugin (absolute path, used only by QA overlays, not shipped with the bundle)
-- insert:
-    - id: preset-probe
-      name: '/home/haroldzhao/dshProj/my-power-dsh/packages/mpd-qa-preset-probe/dist/index.js'

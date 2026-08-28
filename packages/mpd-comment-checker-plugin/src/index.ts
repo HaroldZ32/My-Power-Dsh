@@ -16,8 +16,22 @@ import { dirname, join, resolve } from "node:path"
 export const name = "mpd-comment-checker"
 export const inject = ["tools"]
 
-type Ctx = { tools: any; on: (ev: string, fn: (...a: any[]) => any) => void }
+type Ctx = { tools: any; on: (ev: string, fn: (...a: any[]) => any) => void; get?: (k: string) => any }
 type Config = { autoCheck?: boolean; binary?: string; timeoutMs?: number; maxMessageChars?: number }
+
+/** Merge the row config with the mpdConfig runtime layer (mpd.jsonc wins per key). */
+function mergedConfig(ctx: Ctx, config: Config): Config {
+  const svc = ctx.get?.("mpdConfig") as { get: (k?: string) => any } | undefined
+  if (!svc?.get) return config
+  const v = (k: string) => svc.get(k)
+  return {
+    ...config,
+    autoCheck: typeof v("commentChecker.autoCheck") === "boolean" ? v("commentChecker.autoCheck") : config.autoCheck,
+    binary: typeof v("commentChecker.bin") === "string" ? v("commentChecker.bin") : config.binary,
+    timeoutMs: typeof v("commentChecker.timeoutMs") === "number" ? v("commentChecker.timeoutMs") : config.timeoutMs,
+    maxMessageChars: typeof v("commentChecker.maxMessageChars") === "number" ? v("commentChecker.maxMessageChars") : config.maxMessageChars,
+  }
+}
 
 function textBlock(text: string): any { return [{ type: "text", text }] }
 
@@ -79,8 +93,9 @@ function runCheck(binary: string, hookInput: any, timeoutMs: number): { hasComme
 export { hookInputFor, runCheck }
 
 export function apply(ctx: Ctx, config: Config = {}): void {
-  const timeoutMs = config.timeoutMs ?? 30000
-  const maxMessageChars = config.maxMessageChars ?? 12000
+  const cfg = mergedConfig(ctx, config)
+  const timeoutMs = cfg.timeoutMs ?? 30000
+  const maxMessageChars = cfg.maxMessageChars ?? 12000
 
   ctx.tools.register({
     name: "mpd_comment_check",
@@ -88,7 +103,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     parameters: { type: "object", properties: { files: { type: "array", items: { type: "object", properties: { path: { type: "string" }, content: { type: "string" } }, required: ["path"], additionalProperties: false } } }, required: ["files"] },
     output: { schema: { type: "object", properties: { binary: { type: "string" }, results: { type: "array", items: { type: "object" } } }, required: ["binary", "results"] }, render: (_a: unknown, v: any) => textBlock("comment-check binary=" + v.binary + "\n" + v.results.map((x: any) => (x.hasComments ? "DETECTED " + x.path + ": " + x.message.slice(0, maxMessageChars) : "clean " + x.path)).join("\n")) },
     execute: async (args: any) => {
-      const binary = resolveBinary(config)
+      const binary = resolveBinary(cfg)
       if (!binary) throw new Error("mpd-comment-checker: binary not found — run the installer with --with-comment-checker or set MPD_DSH_COMMENT_CHECKER_BIN")
       const files = Array.isArray(args?.files) ? args.files : []
       const results = []
@@ -106,7 +121,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     }
   })
 
-  if (config.autoCheck === true) {
+  if (cfg.autoCheck === true) {
     ctx.on("tools/post-execute", async (exec: any, result: any, next: any) => {
       const out = await next()
       if (out.kind !== "accept") return out
@@ -114,7 +129,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       if (!isEdit) return out
       const fp = exec.arguments?.file_path ?? exec.arguments?.path
       if (typeof fp !== "string") return out
-      const binary = resolveBinary(config)
+      const binary = resolveBinary(cfg)
       if (!binary) return out
       let content = ""
       try { content = readFileSync(fp, "utf8") } catch { return out }

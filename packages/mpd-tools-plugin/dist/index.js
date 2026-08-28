@@ -63,7 +63,7 @@ function apply(ctx, config = {}) {
   });
 }
 export {
-  apply,
+  name,
   inject,
-  name
+  apply
 };

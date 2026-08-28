@@ -30,12 +30,12 @@ the upstream host QA skills.
 | llm-dual-track | DeepSeek dual-track | deepseek-official and pi-ai deepseek routes both serve a real headless task | P1 |
 | skill-load | skills | skill catalog visible + content loaded | P2 |
 | mcp-call | MCP | mcp__ast_grep__*/mcp__lsp__* callable with server responses | P3 |
-| preset-register | presets | mpd-* presets resolve via user root .agent-presets | P4 |
+| preset-register | roster | mpd main preset resolves via user root .agent-presets + mpdRoles serves the 11-role OMO roster | P4/refactor |
 | install-profile | installer | install-profile --yes into sandbox + boot auto-loads rows | P4 |
 | codegraph-smoke | codegraph | binary resolve -> init -> mcp__codegraph__explore real call | P4+ |
 | tool-output-validation | plugin tools | mpd_config_get / mpd_boulder_status return host-validated lossless JSON (no "not lossless JSON" / "must be an object" errors); evidence per defect under evidence/fix/<slug>/ | C5/C7 |
 | skill-catalog-probe | plan-d install | staged install -> mpd-bootstrap copies skills to $DSH_HOME/skills -> real headless skill load of svn-master works | Plan D |
-| team-route-rewire | plan-e team route | staged install pulls @nanmicoder/dsh-agent-teams via bundle dependency (no direct dep); agent-teams row mounted (stateDir .mpd/team); installed skills/presets point at agent_teams_* and never name mpd_team_spawn; real headless boot passes | Plan E |
+| team-route-rewire | plan-e team route | staged install pulls @nanmicoder/dsh-agent-teams via bundle dependency (no direct dep); agent-teams row mounted (stateDir .mpd/team); installed mpd preset carries the AGENT.md convention and the roster spawn surfaces (mpd_role_spawn / mpd_team_spawn); real headless boot passes | Plan E/refactor |
 
 ## Run
 

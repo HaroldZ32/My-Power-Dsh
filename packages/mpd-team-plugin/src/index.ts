@@ -1,7 +1,10 @@
 // B2 mpd-team-plugin: parallel role delegation ("team mode") on the DSH subagent seam.
-// Each member = one fresh child with role persona + per-role model route; members run in parallel;
-// outputs are collected and stored in the team state file (.mpd/team/<id>.json) as a mailbox;
-// the tool returns an aggregated convergence report for the main agent.
+// Each member = one fresh child. Member roles resolve against the mpd-roles ROSTER
+// (ctx.get("mpdRoles")): roster roles get their real persona text, the role's model
+// chain and the read-only write-deny filter; unknown/custom roles fall back to the
+// caller prompt with a default specialist persona. Outputs are collected and stored
+// in the team state file (.mpd/team/<id>.json) as a mailbox; the tool returns an
+// aggregated convergence report for the main agent.
 import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { randomUUID } from "node:crypto"
@@ -12,18 +15,8 @@ export const inject = ["tools", "subagents"]
 type Ctx = { tools: any; subagents: any; get?: (k: string) => any; [k: string]: any }
 type Config = { provider?: string; model?: string; stateDir?: string }
 
-const ROLE_MODEL: Record<string, { provider: string; model: string }> = {
-  oracle: { provider: "deepseek-official", model: "deepseek-v4-pro" },
-  prometheus: { provider: "deepseek-official", model: "deepseek-v4-pro" },
-  librarian: { provider: "deepseek-official", model: "deepseek-v4-flash" },
-  hephaestus: { provider: "deepseek-official", model: "deepseek-v4-flash" }
-}
-const ROLE_PERSONA: Record<string, string> = {
-  oracle: "You are a strategic technical advisor. Give one clear recommendation with rationale and watch-outs.",
-  prometheus: "You are Prometheus, a planning consultant. Produce a decision-complete plan only.",
-  librarian: "You are THE LIBRARIAN. Answer with evidence and citations.",
-  hephaestus: "You are Hephaestus, an autonomous deep worker. Direct execution is your default; spawn explore/librarian/oracle for context, never delegate implementable work that stays within one coherent edit."
-}
+const DEFAULT_SPECIALIST_PERSONA = "You are a specialist working on a shared task."
+const WRITE_DENY = ["write", "edit", "str_replace_editor", "apply_patch", "mpd_hashline_edit"]
 
 const MEMBER_SCHEMA = {
   type: "object",
@@ -34,13 +27,28 @@ const MEMBER_SCHEMA = {
 
 function textBlock(text: string): any { return [{ type: "text", text }] }
 
+/** Normalize a member role key to the roster spelling (or null for custom roles). */
+function rosterKey(role: string): string | null {
+  const k = String(role ?? "").trim()
+  if (!k) return null
+  if (k.startsWith("mpd-")) return k.slice(4)
+  if (k === "sisyphusJunior") return "sisyphus-junior"
+  if (k === "multimodalLooker") return "multimodal-looker"
+  return k
+}
+
 export function apply(ctx: Ctx, config: Config = {}): void {
   const cwd = process.env.DSH_WORKSPACE_ROOT ?? process.cwd()
-  const stateDir = config.stateDir ?? join(cwd, ".mpd", "team")
+
+  function confStateDir(): string {
+    const mpdConfig = ctx.get?.("mpdConfig") as { get: (k?: string) => any } | undefined
+    const v = mpdConfig?.get?.("team.stateDir")
+    return typeof v === "string" && v ? v : (config.stateDir ?? join(cwd, ".mpd", "team"))
+  }
 
   ctx.tools.register({
     name: "mpd_team_spawn",
-    description: "Spawn a small parallel team (2-4 roles among oracle/prometheus/librarian/hephaestus) for one task; each member runs with its role persona and model route; results land in the team mailbox state file and an aggregated report is returned.",
+    description: "Spawn a small parallel team (2-4 members) for one task. Each member is either a roster role (oracle/prometheus/librarian/hephaestus/explore/metis/momus/atlas/sisyphus/sisyphus-junior/multimodal-looker - roster persona + model route + read-only discipline applied automatically; legacy mpd-<id> keys accepted) or a custom role with an explicit prompt. Results land in the team mailbox state file and an aggregated report is returned.",
     parameters: {
       type: "object",
       properties: {
@@ -56,21 +64,30 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       if (roles.length < 2) throw new Error("mpd_team_spawn: need 2..4 roles")
       const task = String(args.task)
       const id = "team-" + randomUUID().slice(0, 8)
+      const stateDir = confStateDir()
       mkdirSync(stateDir, { recursive: true })
       const stateFile = join(stateDir, id + ".json")
 
+      const rolesService = ctx.get?.("mpdRoles") as { get?: (k: string) => any } | undefined
+
       const starts = roles.map((r) => {
         const role = String(r.role)
-        const route = config?.provider ? { provider: config.provider, model: config.model ?? ROLE_MODEL[role]?.model } : (ROLE_MODEL[role] ?? { provider: "deepseek-official", model: "deepseek-v4-flash" })
-        const prompt = "TEAM ROLE: " + role + "\n" + (ROLE_PERSONA[role] ?? "") + "\n\nShared task: " + task + "\n\nYour brief: " + String(r.prompt) + "\n\nWork independently with tools; end with ONLY the structured report (role/summary/recommendation/evidence)."
+        const key = rosterKey(role)
+        const spec = key ? rolesService?.get?.(key) : null
+        const route = config?.provider
+          ? { provider: config.provider, model: config.model ?? spec?.chain?.[0]?.model ?? "deepseek-v4-flash" }
+          : (spec?.chain?.[0] ?? { provider: "deepseek-official", model: "deepseek-v4-flash" })
+        const persona = typeof spec?.persona === "string" && spec.persona ? spec.persona : DEFAULT_SPECIALIST_PERSONA
+        const prompt = "TEAM ROLE: " + role + "\n\nShared task: " + task + "\n\nYour brief: " + String(r.prompt) + "\n\nWork independently with tools" + (spec?.readonly ? " (read-only: never modify anything)" : "") + "; end with ONLY the structured report (role/summary/recommendation/evidence)."
         return ctx.subagents.start("spawn", {
           label: id + "-" + role,
           prompt: textBlock(prompt),
           parent: exec.agent,
           signal: exec.signal,
-          agentOptions: route,
-          persona: ROLE_PERSONA[role] ?? "You are a specialist working on a shared task.",
-          outputSchema: MEMBER_SCHEMA
+          agentOptions: { provider: route.provider, model: route.model },
+          persona,
+          outputSchema: MEMBER_SCHEMA,
+          ...(spec?.readonly ? { toolFilter: { deny: WRITE_DENY } } : {})
         }).then(async (run: any) => ({ role, result: await run.result }))
       })
 
@@ -95,7 +112,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       const id = String(args.teamId)
       try {
         const { readFileSync } = await import("node:fs")
-        const state = JSON.parse(readFileSync(join(stateDir, id + ".json"), "utf8"))
+        const state = JSON.parse(readFileSync(join(confStateDir(), id + ".json"), "utf8"))
         return { found: true, report: JSON.stringify(state.mailbox ?? {}) }
       } catch { return { found: false, report: "team state not found: " + id } }
     }

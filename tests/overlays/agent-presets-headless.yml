@@ -1,9 +1,9 @@
-# QA use: headless template has no agent-presets row -> insert (literal path; verify whether nested !!js is the root cause)
+# QA use: template — preset-register.mjs substitutes {{PRESETS}} with this repo's
+# presets dir at runtime (never commit checkout-absolute paths).
 - insert:
     - id: agent-presets
       name: '@deepseek-ai/dsh-agent-presets'
       config:
-        default: mpd-oracle
+        default: mpd
         roots:
-          - path: '/home/haroldzhao/dshProj/my-power-dsh/packages/mpd-presets-plugin/presets'
-            trust: system
+          - path: '{{PRESETS}}'

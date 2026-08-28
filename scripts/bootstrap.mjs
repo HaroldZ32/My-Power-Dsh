@@ -18,7 +18,7 @@ for (const [bin, args] of [["node", ["--version"]], ["bun", ["--version"]], ["gi
 const verify = spawnSync("node", [join(repoRoot, "scripts", "verify-vendor.mjs")], { stdio: "inherit" })
 if (verify.status !== 0) failed = true
 
-for (const d of ["packages/mpd-bundle", "packages/mpd-bootstrap-plugin", "packages/mpd-presets-plugin"]) {
+for (const d of ["packages/mpd-bundle", "packages/mpd-bootstrap-plugin", "packages/mpd-roles-plugin"]) {
   if (!existsSync(join(repoRoot, d))) { console.warn("[bootstrap] missing: " + d); failed = true }
 }
 

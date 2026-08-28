@@ -1,0 +1,3 @@
+name: "MPD (Main Working Agent)"
+description: "The my-power-dsh main agent: reads AGENT.md/AGENTS.md/CLAUDE.md for every project, works natively, and calls the OMO-origin specialists (oracle/librarian/prometheus/explore/metis/momus/atlas/hephaestus/sisyphus/sisyphus-junior/multimodal-looker) as subagents via mpd_role_spawn / mpd_team_spawn."
+order: 1

@@ -21,8 +21,16 @@ import {
 export const name = "mpd-boulder"
 export const inject = ["tools"]
 
-type Ctx = { tools: any }
+type Ctx = { tools: any; get?: (k: string) => any }
 type Config = { boulderDir?: string }
+
+/** Merge the row config with the mpdConfig runtime layer (mpd.jsonc wins per key). */
+function mergedConfig(ctx: Ctx, config: Config): Config {
+  const svc = ctx.get?.("mpdConfig") as { get: (k?: string) => any } | undefined
+  if (!svc?.get) return config
+  const v = svc.get("boulder.dir")
+  return typeof v === "string" ? { ...config, boulderDir: v } : config
+}
 
 function textBlock(text: string): any { return [{ type: "text", text }] }
 
@@ -31,7 +39,8 @@ function cwd(): string { return process.env.DSH_WORKSPACE_ROOT ?? process.cwd() 
 function boulderRoot(config: Config): string { return config.boulderDir ? config.boulderDir : cwd() }
 
 export function apply(ctx: Ctx, config: Config = {}): void {
-  const root = () => boulderRoot(config)
+  const merged = mergedConfig(ctx, config)
+  const root = () => boulderRoot(merged)
 
   ctx.tools.register({
     name: "mpd_boulder_status",

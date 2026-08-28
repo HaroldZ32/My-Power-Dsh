@@ -1,0 +1,126 @@
+// mpd-roles-plugin: the OMO-origin agents live as a SUBAGENT ROSTER, not as
+// standalone presets. Each roster role = { persona text, DeepSeek model chain,
+// read-only discipline }. Consumers: mpd_role_spawn (call a specialist from
+// anywhere, incl. team members), mpd_team_spawn (roles parameter), and the
+// mpdRoles service (mpd-modelchain chain lookup). Persona texts are assets
+// under personas/<id>.md resolved relative to this plugin's package location.
+import { existsSync, readFileSync } from "node:fs"
+import { dirname, join, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
+import { randomUUID } from "node:crypto"
+import { ROLES, ROLE_BY_ID, type MpdRoleSpec } from "./roles.data.ts"
+
+export const name = "mpd-roles"
+export const inject = ["tools", "subagents"]
+
+type Ctx = { tools: any; subagents: any; provide: (n: string, v: any, check?: any) => void; get?: (k: string) => any; [k: string]: any }
+type Config = { personasDir?: string }
+
+const READONLY_DENY = ["write", "edit", "str_replace_editor", "apply_patch", "mpd_hashline_edit"]
+
+const REPORT_SCHEMA = {
+  type: "object",
+  properties: {
+    role: { type: "string" },
+    summary: { type: "string" },
+    recommendation: { type: "string" },
+    details: { type: "string" },
+    evidence: { type: "array", items: { type: "string" } }
+  },
+  required: ["role", "summary"],
+  additionalProperties: false
+}
+
+function textBlock(text: string): any { return [{ type: "text", text }] }
+
+export function pkgRoot(): string {
+  // this file lives at <pkg-root>/packages/mpd-roles-plugin/dist/index.js
+  return dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
+}
+
+/** Resolve a role key: canonical id, modelchain-style chain key, or legacy "mpd-<id>" preset alias. */
+export function normalizeRoleKey(key: string): string | null {
+  const k = String(key ?? "").trim()
+  if (!k) return null
+  if (ROLE_BY_ID[k]) return k
+  if (k.startsWith("mpd-") && ROLE_BY_ID[k.slice(4)]) return k.slice(4)
+  if (k === "sisyphusJunior") return "sisyphus-junior"
+  if (k === "multimodalLooker") return "multimodal-looker"
+  return null
+}
+
+function personaPath(config: Config, spec: MpdRoleSpec): string {
+  return config.personasDir
+    ? join(resolve(config.personasDir), spec.id + ".md")
+    : join(pkgRoot(), "packages", "mpd-roles-plugin", "personas", spec.id + ".md")
+}
+
+export function readPersona(config: Config, spec: MpdRoleSpec): string {
+  const p = personaPath(config, spec)
+  try { if (existsSync(p)) { const t = readFileSync(p, "utf8").trim(); if (t) return t } } catch { /* fall through */ }
+  return spec.description
+}
+
+export function apply(ctx: Ctx, config: Config = {}): void {
+  ctx.provide("mpdRoles", {
+    list: () => ROLES.map((r) => ({ id: r.id, name: r.name, description: r.description, readonly: r.readonly, chain: r.chain.map((c) => ({ ...c })), personaFile: r.personaFile, persona: readPersona(config, r) })),
+    get: (key: string) => {
+      const id = normalizeRoleKey(key)
+      if (!id) return null
+      const spec = ROLE_BY_ID[id]
+      return { id: spec.id, name: spec.name, description: spec.description, readonly: spec.readonly, chain: spec.chain.map((c) => ({ ...c })), persona: readPersona(config, spec) }
+    }
+  })
+
+  ctx.tools.register({
+    name: "mpd_roles_list",
+    description: "List the OMO-origin specialist roster (subagent definitions): id, name, description, read-only flag and primary model route for oracle/librarian/prometheus/explore/metis/momus/atlas/hephaestus/sisyphus/sisyphus-junior/multimodal-looker. Use this before mpd_role_spawn / mpd_team_spawn.",
+    parameters: { type: "object", properties: {} },
+    output: { schema: { type: "object", properties: { roles: { type: "array", items: { type: "object" } }, count: { type: "integer" } }, required: ["roles", "count"] }, render: (_a: unknown, v: any) => textBlock("roster (" + v.count + "):\n" + v.roles.map((r: any) => "- " + r.id + " [" + r.model + (r.readonly ? " readonly" : "") + "] " + r.description).join("\n")) },
+    execute: async () => ({ roles: ROLES.map((r) => ({ id: r.id, name: r.name, description: r.description, readonly: r.readonly, provider: r.chain[0]?.provider ?? null, model: r.chain[0]?.model ?? null })), count: ROLES.length })
+  })
+
+  ctx.tools.register({
+    name: "mpd_role_spawn",
+    description: "Spawn one OMO-origin specialist as a subagent with its roster persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles: oracle (review/advisor), prometheus (planner), librarian (retrieval/citation), explore (read-only explorer), metis (gap analysis), momus (hostile reviewer), atlas (orchestrator), hephaestus (deep worker), sisyphus / sisyphus-junior (implementers), multimodal-looker (extract-only vision). Accepts the modelchain-style keys (oracle / sisyphus-junior) and legacy mpd-<id> aliases.",
+    parameters: { type: "object", properties: { role: { type: "string", description: "roster role id (mpd_roles_list)" }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" }, model: { type: "string", description: "optional model override (default: the role's primary route)" } }, required: ["role", "task"], additionalProperties: false },
+    output: { schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete", "error"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a: unknown, v: any) => textBlock("role " + v.role + " (" + v.status + ")\nsummary: " + v.summary + (v.recommendation ? "\nrecommendation: " + v.recommendation : "") + (v.details ? "\ndetails: " + v.details : "") + (v.evidence?.length ? "\nevidence:\n- " + v.evidence.join("\n- ") : "")) },
+    execute: async (args: any, exec: any) => {
+      const id = normalizeRoleKey(String(args?.role ?? ""))
+      if (!id) throw new Error("mpd_role_spawn: unknown role '" + String(args?.role) + "' — call mpd_roles_list first")
+      const spec = ROLE_BY_ID[id]
+      const task = String(args?.task ?? "").trim()
+      if (!task) throw new Error("mpd_role_spawn: task required")
+      const persona = readPersona(config, spec)
+      const provider = spec.chain[0]?.provider ?? "deepseek-official"
+      const model = typeof args?.model === "string" && args.model.trim() ? args.model.trim() : spec.chain[0]?.model
+      const prompt = persona + "\n\nTask: " + task + (args?.context ? "\n\nContext:\n" + String(args.context) : "") + "\n\nWork with the tools your role requires (read-only roles must never modify anything). End with ONLY the structured report (role/summary/recommendation/details/evidence)."
+      const run = await ctx.subagents.start("spawn", {
+        label: "role-" + id + "-" + randomUUID().slice(0, 8),
+        prompt: textBlock(prompt),
+        parent: exec.agent,
+        signal: exec.signal,
+        agentOptions: { provider, model },
+        persona,
+        outputSchema: REPORT_SCHEMA,
+        ...(spec.readonly ? { toolFilter: { deny: READONLY_DENY } } : {})
+      })
+      const result = run.result
+      const st = result.structured ?? {}
+      return { role: id, status: "complete", summary: String(st.summary ?? ""), recommendation: String(st.recommendation ?? ""), details: String(st.details ?? ""), evidence: Array.isArray(st.evidence) ? st.evidence.map(String) : [], stopReason: result.stopReason ?? null }
+    }
+  })
+
+  ctx.tools.register({
+    name: "mpd_role_persona",
+    description: "Return the full persona text of one roster role. Use it when a spawn surface takes the persona as TEXT (e.g. agent_teams_add_member persona=...), so the member gets the real role instructions instead of a bare id.",
+    parameters: { type: "object", properties: { role: { type: "string" } }, required: ["role"] },
+    output: { schema: { type: "object", properties: { role: { type: "string" }, persona: { type: "string" }, chars: { type: "integer" } }, required: ["role", "persona", "chars"] }, render: (_a: unknown, v: any) => textBlock("persona " + v.role + " (" + v.chars + " chars):\n" + v.persona) },
+    execute: async (args: any) => {
+      const id = normalizeRoleKey(String(args?.role ?? ""))
+      if (!id) throw new Error("mpd_role_persona: unknown role '" + String(args?.role) + "'")
+      const persona = readPersona(config, ROLE_BY_ID[id])
+      return { role: id, persona, chars: persona.length }
+    }
+  })
+}

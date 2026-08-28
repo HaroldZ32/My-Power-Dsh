@@ -1,2 +1,0 @@
-name: "MPD Prometheus (Planning)"
-description: "DeepSeek-adapted Prometheus planning advisor preset: produce only .mpd/plans plans, never implement."

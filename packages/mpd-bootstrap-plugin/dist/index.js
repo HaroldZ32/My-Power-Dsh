@@ -54,8 +54,10 @@ function apply(ctx, config = {}) {
   if (config.skipPresets === true) {
     console.log("[mpd-bootstrap] presets skipped (config)");
   } else {
-    const presetsSrc = config.presetsDir ? config.presetsDir : join(root, "presets");
-    syncTree(presetsSrc, userPresetsDir(), version, "presets", (d) => d.startsWith("mpd-"));
+    const packedSrc = join(root, "presets");
+    const devSrc = join(root, "packages", "mpd-bootstrap-plugin", "presets");
+    const presetsSrc = config.presetsDir ? config.presetsDir : existsSync(packedSrc) ? packedSrc : devSrc;
+    syncTree(presetsSrc, userPresetsDir(), version, "presets", (d) => d === "mpd" || d.startsWith("mpd-"));
   }
   if (config.skipSkills === true) {
     console.log("[mpd-bootstrap] skills skipped (config)");
@@ -65,7 +67,7 @@ function apply(ctx, config = {}) {
   }
 }
 export {
-  apply,
+  name,
   inject,
-  name
+  apply
 };
