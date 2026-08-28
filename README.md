@@ -26,13 +26,17 @@ SUBAGENTS:
 
 - **Every project session on the `mpd` preset attempts to read `AGENT.md`**
   (falling back to `AGENTS.md`, then `CLAUDE.md`) via `dsh-agent-instructions`.
-- **The 11 OMO-origin agents are subagents, not presets**: oracle, librarian,
-  prometheus, explore, metis, momus, atlas, hephaestus, sisyphus, sisyphus-junior
-  and multimodal-looker live in the mpd-roles roster — spawn one with
-  `mpd_role_spawn`, assemble a parallel team with `mpd_team_spawn` (team members
-  can spawn specialists themselves), list the roster with `mpd_roles_list`, and
-  fetch a persona text with `mpd_role_persona`. Read-only roles are mechanically
-  denied write tools at spawn.
+- **The 11 OMO-origin agents are specialists and teammate templates, not presets**:
+  Architect, Researcher, Planner, Config Engineer, Senior Engineer, Lead,
+  Explorer, Reviewer, UX Critic, Vision Analyst and Junior Engineer live in the
+  mpd-roles roster — one-shot consult one with `mpd_role_spawn`, list the roster
+  with `mpd_roles_list`, fetch a persona text with `mpd_role_persona`. Read-only
+  roles are mechanically denied write tools at spawn.
+- **Team mode is the adopted dsh-agent-teams plugin** (vendored, `agent_teams_*`
+  tools + Web activity panel): a normal-named `mpd` roster profile
+  (`taskPlanning: captain`) exposes the specialists above as teammate
+  instantiation templates. The captain calls `agent_teams_create(profile="mpd")`,
+  stages the plan in the panel, then the dependency-aware scheduler runs it.
 - `mpd-bootstrap` auto-copies the `mpd` preset + skill corpus at first boot
   (version-stamped: bump the package version and re-pack to refresh
   already-installed copies).

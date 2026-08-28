@@ -30,9 +30,9 @@ function selfTest() {
   const execute = readFileSync(join(repoRoot, "skills", "ulw-execute", "SKILL.md"), "utf8")
   const research = readFileSync(join(repoRoot, "skills", "ulw-research", "SKILL.md"), "utf8")
   checks.push(["mpd preset AGENT.md candidates", mpdPreset.includes("AGENT.md") && mpdPreset.includes("AGENTS.md") && mpdPreset.includes("instructionFileCandidates")])
-  checks.push(["mpd preset roster tool mentions", mpdPreset.includes("mpd_role_spawn") && mpdPreset.includes("mpd_team_spawn")])
-  checks.push(["ulw-execute row roster tools", execute.includes("mpd_role_spawn") && execute.includes("mpd_team_spawn")])
-  checks.push(["ulw-research row roster tools", research.includes("mpd_role_spawn") && research.includes("mpd_team_spawn") && !research.includes("selectable roles")])
+  checks.push(["mpd preset: roster spawn + agent-teams team, no bespoke team", mpdPreset.includes("mpd_role_spawn") && mpdPreset.includes("agent_teams_create") && !mpdPreset.includes("mpd_team_spawn")])
+  checks.push(["ulw-execute row: roster + agent-teams team, no bespoke team", execute.includes("mpd_role_spawn") && execute.includes("agent_teams_create") && !execute.includes("mpd_team_spawn")])
+  checks.push(["ulw-research row: roster + agent-teams team, no bespoke team", research.includes("mpd_role_spawn") && research.includes("agent_teams_create") && research.includes("profile=\"mpd\"") && !research.includes("mpd_team_spawn") && !research.includes("selectable roles")])
   const vendorPkg = JSON.parse(readFileSync(join(VENDOR, "package.json"), "utf8"))
   checks.push(["vendored package 0.1.14", vendorPkg.version === "0.1.14" && vendorPkg.name === "@nanmicoder/dsh-agent-teams"])
   checks.push(["vendored lib + assets + closure present", existsSync(join(VENDOR, "lib", "index.js")) && existsSync(join(VENDOR, "assets", "ui.png")) && existsSync(join(VENDOR, "_deps", "schemastery", "lib", "index.mjs")) && existsSync(join(VENDOR, "_deps", "dsh-tools", "lib", "index.js")) && existsSync(join(VENDOR, "_deps", "dsh-llm", "lib", "index.js")) && existsSync(join(VENDOR, "_deps", "zod", "index.js"))])
@@ -95,7 +95,7 @@ async function runReal() {
     join(home, ".agent-presets", "mpd", "agent.cordis.yml")
   ].filter((p) => existsSync(p)).map((p) => readFileSync(p, "utf8"))
   const allText = texts.join("\n")
-  steps.installedTexts = { ok: texts.length === 3 && allText.includes("AGENT.md") && allText.includes("mpd_role_spawn") && !allText.includes("selectable roles"), files: texts.length }
+  steps.installedTexts = { ok: texts.length === 3 && allText.includes("AGENT.md") && allText.includes("mpd_role_spawn") && allText.includes("agent_teams_create") && !allText.includes("selectable roles"), files: texts.length }
   const webProfile = join(home, "profiles", "w")
   mkdirSync(webProfile, { recursive: true })
   writeFileSync(join(webProfile, "package.json"), JSON.stringify({ name: "dsh-profile-w", private: true, dependencies: {}, dsh: { profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app"] } } }, null, 2) + "\n")

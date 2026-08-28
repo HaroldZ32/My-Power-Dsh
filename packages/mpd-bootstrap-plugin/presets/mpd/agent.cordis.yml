@@ -3,8 +3,10 @@
 #  1) AGENT.md / AGENTS.md / CLAUDE.md workspace instructions are discovered and
 #     injected for every project session (see the agent-instructions row below);
 #  2) tool presentation is native (every row tool exposed directly to the model);
-#  3) the OMO-origin specialists are NOT presets anymore: they exist as subagent
-#     roster roles (mpd-roles-plugin) callable via mpd_role_spawn / mpd_team_spawn.
+#  3) the OMO-origin specialists are NOT presets anymore: they are specialist
+#     subagents (mpd-roles-plugin, mpd_role_spawn) and teammate instantiation
+#     templates for the adopted dsh-agent-teams plugin (normal-named `mpd`
+#     roster profile; reuse its architecture + Web GUI for team work).
 #
 # This file is an AGENT-PLANE composition. The roster mounts it ONCE under a
 # standing scope; every session naming it joins by scope parentage, so the
@@ -40,15 +42,23 @@
       not skip this step even on workspaces you have seen before; instructions may have
       changed.
 
-      SPECIALISTS: the OMO-origin specialists (oracle, prometheus, librarian, explore,
-      metis, momus, atlas, hephaestus, sisyphus, sisyphus-junior, multimodal-looker) are
-      SUBAGENTS, not independent sessions. Consult them with mpd_role_spawn (single
-      specialist) or assemble a parallel team with mpd_team_spawn; team members are
-      themselves agents that can spawn specialists. Use mpd_roles_list to pick roles.
-      Read-only specialists (oracle/librarian/prometheus/momus/explore/multimodal-looker)
-      are mechanically restricted from writing - treat their output as advice. Implementers
-      (hephaestus/sisyphus/sisyphus-junior/atlas/metis) can work directly - always verify
-      their claimed results yourself.
+      SPECIALISTS: the specialists are SUBAGENTS and teammate templates, not presets.
+      One-shot consult them with mpd_role_spawn (ids from mpd_roles_list): Architect
+      (oracle), Researcher (librarian), Planner (prometheus), Config Engineer (hephaestus),
+      Senior Engineer (sisyphus), Lead (atlas), Explorer (explore), Reviewer (metis),
+      UX Critic (momus), Vision Analyst (multimodal-looker), Junior Engineer
+      (sisyphus-junior). Read-only specialists (Architect/Researcher/Planner/Explorer/
+      UX Critic/Vision Analyst) are mechanically restricted from writing - treat their
+      output as advice. Workers (Senior Engineer/Junior Engineer/Config Engineer/Lead/
+      Reviewer) can edit - always verify their claimed results yourself.
+
+      TEAM WORK uses the adopted dsh-agent-teams plugin, NOT bare mpd_role_spawn loops:
+      call agent_teams_create(approval="required", profile="mpd") to stage the normal-named
+      roster as teammates, design the task DAG while staged, then let the Web plan panel and
+      scheduler run it (reusing the agent-teams GUI). You are the captain: lead, guide with
+      agent_teams_send_message/status, and integrate results. Use agent_teams_add_member
+      (normal name + executionPrompt fetched via mpd_role_persona) only to add a specialist
+      beyond the `mpd` profile roster.
 
       Delegate when it helps, execute directly when it does not. You are responsible for
       the final result: verify everything a subagent claims before presenting it as done.

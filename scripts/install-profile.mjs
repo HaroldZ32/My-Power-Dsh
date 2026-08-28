@@ -80,10 +80,6 @@ function buildPlan(o) {
       config: { maxRounds: 3 }
     },
     {
-      id: "mpd-team", name: p("packages/mpd-team-plugin/dist/index.js"),
-      config: {}
-    },
-    {
       id: "mpd-hashline", name: p("packages/mpd-hashline-plugin/dist/index.js"),
       config: { guardEditTools: true }
     },
