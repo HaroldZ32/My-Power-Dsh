@@ -30,7 +30,12 @@ License: SUL-1.0 (`LICENSE.md`); inheritance declared in `README.md`.
   `packages/mpd-agent-teams-plugin`, `agent_teams_*` tools + Web activity
   panel): the bundle patch configures a normal-named `mpd` roster profile
   (`taskPlanning: captain`) that exposes these specialists as teammate
-  instantiation templates. The ONLY
+  instantiation templates. The roster specialists are also BASE templates for the
+  **workmate library** (`mpd-workmate-plugin`): a base can be instantiated into a
+  durable, evolving copy under `~/.mpd/workmate/` with an independent name, which
+  self-summarizes after each work (persona + memory, size-capped) and keeps a short
+  note; reuse is via `mpd_workmate_match` and weak matches must NOT be forced (initialize
+  a new workmate instead). The ONLY
   shipped preset is `mpd` — the main working agent — which also carries the
   project-instruction convention: every session MUST attempt to read `AGENT.md`
   (falling back to `AGENTS.md`, then `CLAUDE.md`) via `dsh-agent-instructions`.
@@ -95,7 +100,9 @@ mpd-dsh/
 │   ├── mpd-config-plugin/        # C7: minimal mpd.jsonc runtime config layer (consumed by the plugins above)
 │   ├── mpd-comment-checker-plugin/ # C4: comment/docstring detection (opt-in binary)
 │   ├── mpd-memory-plugin/        # C6: git/svn-backed memory + reflection state machine
+│   ├── mpd-workmate-plugin/      # durable evolving agent library (~/.mpd/workmate): base→instance, self-reflect (persona+memory capped), short note, reuse via mpd_workmate_* (no forced weak matches)
 │   ├── mpd-bootstrap-plugin/     # bundle provisioning: the mpd main preset (presets/mpd/) + skills copy to $DSH_HOME
+│   ├── mpd-agent-teams-plugin/   # adopted dsh-agent-teams (MIT, first-class main code): agent_teams_* + Web panel; memberPersona injects workmate backing
 │   └── mpd-qa-roles-probe/       # QA-only probe: mpd preset resolve + mpdRoles roster (overlay-mounted)
 ├── skills/                      # skill corpus: dsh-qa (QA skill) + 17 ported upstream skills + svn-master (installed to \$DSH_HOME/skills by mpd-bootstrap)
 ├── tests/
@@ -157,9 +164,12 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   signal: exec.signal, agentOptions:{provider,model}, outputSchema, persona, maxDepth, toolFilter})`
   → `run.result` (`{output, structured, stopReason}`).
 - **State**: workspace-scoped only (`.mpd/` under cwd); never write `~/.dsh` from a plugin.
-  The ONLY sanctioned exception is the `mpd-bootstrap` provisioning row at boot: it copies
-  the bundle's `mpd` preset into `$DSH_HOME/.agent-presets/` and the skill corpus into
-  `$DSH_HOME/skills` (idempotent, version-stamped — see §8).
+  Sanctioned exceptions: (1) the `mpd-bootstrap` provisioning row at boot copies the
+  bundle's `mpd` preset into `$DSH_HOME/.agent-presets/` and the skill corpus into
+  `$DSH_HOME/skills` (idempotent, version-stamped — see §8); (2) the **workmate library**
+  (`mpd-workmate-plugin`) deliberately lives under the user's HOME (`~/.mpd/workmate`) —
+  it is the user's cross-project, evolving agent library (QA must boot with
+  `HOME=<sandbox>` so tests never touch the real home).
 - **Build**: `bun build src/index.ts --target node --format esm --outfile dist/index.js`;
   zero runtime deps preferred (type-only imports).
 - **Load/test**: the committed bundle patch ships in PACKED form (`@mpd-dsh/mpd/...` —
@@ -255,6 +265,7 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 | agent tool call fails with UNKNOWN_TOOL in code-mode deployments | presets declare `tool-presentation { mode: native }` — every row tool (bash/read/edit/...) is exposed directly; in code mode the model may only call `run_code` directly |
 | boot fails with ERR_MODULE_NOT_FOUND @nanmicoder/dsh-agent-teams | the legacy profile still pins the old bundle row; the row is now main code (`@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib/index.js`) — reinstall the bundle (`dsh plugin --profile <p> add dist/mpd-package`) |
 | AGENT.md / AGENTS.md not injected into a session | the session runs a non-mpd preset; the `mpd` preset configures `instructionFileCandidates` (AGENT.md → AGENTS.md → CLAUDE.md) — switch the session to the `mpd` preset |
+| `mpd_workmate_*` reports "mpdRoles service unavailable" | the `mpd-roles` plugin row is not mounted (e.g. a legacy install without the roster) — add the `mpd-roles` row (bundle patch / install-profile); the workmate plugin resolves the service lazily at tool-execute time |
 | `mpd_role_spawn` reports unknown role | role ids are the roster ids (`oracle`, `sisyphus-junior`, `multimodal-looker`, …) — run `mpd_roles_list`; legacy `mpd-<id>` aliases are accepted |
 
 ---
@@ -270,5 +281,10 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   `mpd-roles-plugin` (`mpd_roles_list` / `mpd_role_spawn` / `mpd_role_persona`); the same
   specialists are exposed as normal-named teammate instantiation templates through the
   adopted dsh-agent-teams `mpd` roster profile.
+- workmate: a durable, evolving agent instance in `~/.mpd/workmate/` created by
+  `mpd-workmate-plugin` (`mpd_workmate_*`) from a roster BASE template with an
+  independent name; it self-summarizes after each work (persona + independent memory,
+  size-capped) and keeps a short note card. Reuse is via `mpd_workmate_match`; weak
+  matches must NOT be forced — initialize a new workmate instead.
 - mpd: our naming prefix (my-power-dsh).
 - golden: graded benchmark task set in `tests/golden`.

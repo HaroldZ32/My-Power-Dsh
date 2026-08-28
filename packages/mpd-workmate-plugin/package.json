@@ -1,0 +1,11 @@
+{
+  "name": "@mpd-dsh/workmate",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Durable evolving agent library (~/.mpd/workmate): instantiate a roster BASE specialist into an independently-named workmate copy, self-reflect after each work (persona + memory, size-capped), keep a short searchable note, reuse via note-matching without forcing weak matches",
+  "scripts": {
+    "typecheck": "tsgo --noEmit -p tsconfig.json",
+    "test": "bun test"
+  }
+}
