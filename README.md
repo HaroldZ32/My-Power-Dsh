@@ -32,7 +32,8 @@ SUBAGENTS:
   mpd-roles roster — one-shot consult one with `mpd_role_spawn`, list the roster
   with `mpd_roles_list`, fetch a persona text with `mpd_role_persona`. Read-only
   roles are mechanically denied write tools at spawn.
-- **Team mode is the adopted dsh-agent-teams plugin** (vendored, `agent_teams_*`
+- **Team mode is the adopted dsh-agent-teams plugin** (first-class main code at
+  `packages/mpd-agent-teams-plugin`, `agent_teams_*`
   tools + Web activity panel): a normal-named `mpd` roster profile
   (`taskPlanning: captain`) exposes the specialists above as teammate
   instantiation templates. The captain calls `agent_teams_create(profile="mpd")`,

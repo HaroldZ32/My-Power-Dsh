@@ -1,14 +1,15 @@
 #!/usr/bin/env node
-// Case team-route-rewire (Plan E / E4): prove the team-mode trigger surface points at the
-// adopted dsh-agent-teams protocol AND that the plugin is served by the BUNDLE, not by an
-// external npm dependency:
+// Case team-route-rewire (Plan E / E4, updated for main-code adoption): prove the
+// team-mode trigger surface points at the adopted dsh-agent-teams protocol AND that the
+// plugin is served by the BUNDLE, not by an external npm dependency:
 //   1) staged bundle install into an isolated profile via the official `dsh plugin add`
 //      flow (no direct @nanmicoder declaration anywhere in the profile);
-//   2) the agent-teams row loads the VENDORED entry (@mpd-dsh/mpd/third-party/dsh-agent-teams,
-//      no self-disabling guard) and composes with stateDir .mpd/team;
-//   3) profile-root resolution of the vendored entry succeeds (the guard expression would
-//      FAIL on @nanmicoder/dsh-agent-teams - that failure was the defect, evidence
-//      evidence/plan-e/e1-team-route/2026-08-27T07-38-13.142Z);
+//   2) the agent-teams row loads the FIRST-CLASS MAIN-CODE entry
+//      (@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib/index.js, no self-disabling
+//      guard) and composes with stateDir .mpd/team;
+//   3) profile-root resolution of the main-code entry succeeds (the guard expression
+//      would FAIL on @nanmicoder/dsh-agent-teams - that failure was the original defect,
+//      evidence evidence/plan-e/e1-team-route/2026-08-27T07-38-13.142Z);
 //   4) real headless boot: no module errors, mpd tools answer, mpd-bootstrap copies the
 //      rewired skills/presets to $DSH_HOME whose texts point at agent_teams_*;
 //   5) web profile route smoke: /plugins/dsh-agent-teams/state responds 200.
@@ -22,7 +23,7 @@ import { fileURLToPath } from "node:url"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const DEV = process.env.MPD_DEV_ROOT || repoRoot
-const VENDOR = join(repoRoot, "third-party", "dsh-agent-teams")
+const VENDOR = join(repoRoot, "packages", "mpd-agent-teams-plugin")
 
 function selfTest() {
   const checks = []
@@ -34,17 +35,17 @@ function selfTest() {
   checks.push(["ulw-execute row: roster + agent-teams team, no bespoke team", execute.includes("mpd_role_spawn") && execute.includes("agent_teams_create") && !execute.includes("mpd_team_spawn")])
   checks.push(["ulw-research row: roster + agent-teams team, no bespoke team", research.includes("mpd_role_spawn") && research.includes("agent_teams_create") && research.includes("profile=\"mpd\"") && !research.includes("mpd_team_spawn") && !research.includes("selectable roles")])
   const vendorPkg = JSON.parse(readFileSync(join(VENDOR, "package.json"), "utf8"))
-  checks.push(["vendored package 0.1.14", vendorPkg.version === "0.1.14" && vendorPkg.name === "@nanmicoder/dsh-agent-teams"])
-  checks.push(["vendored lib + assets + closure present", existsSync(join(VENDOR, "lib", "index.js")) && existsSync(join(VENDOR, "assets", "ui.png")) && existsSync(join(VENDOR, "_deps", "schemastery", "lib", "index.mjs")) && existsSync(join(VENDOR, "_deps", "dsh-tools", "lib", "index.js")) && existsSync(join(VENDOR, "_deps", "dsh-llm", "lib", "index.js")) && existsSync(join(VENDOR, "_deps", "zod", "index.js"))])
+  checks.push(["main-code package 0.1.14 (renamed @mpd-dsh/agent-teams)", vendorPkg.version === "0.1.14" && vendorPkg.name === "@mpd-dsh/agent-teams"])
+  checks.push(["lib + assets + closure present", existsSync(join(VENDOR, "lib", "index.js")) && existsSync(join(VENDOR, "assets", "ui.png")) && existsSync(join(VENDOR, "_deps", "schemastery", "lib", "index.mjs")) && existsSync(join(VENDOR, "_deps", "dsh-tools", "lib", "index.js")) && existsSync(join(VENDOR, "_deps", "dsh-llm", "lib", "index.js")) && existsSync(join(VENDOR, "_deps", "zod", "index.js"))])
   const libHead = readFileSync(join(VENDOR, "lib", "index.js"), "utf8").slice(0, 6000)
   checks.push(["no bare @deepseek-ai/schemastery import", !libHead.includes("from '@deepseek-ai/schemastery'") && libHead.includes("_deps/schemastery/lib/index.mjs")])
   const schemHead = readFileSync(join(VENDOR, "_deps", "schemastery", "lib", "index.mjs"), "utf8").slice(0, 600)
   checks.push(["schemastery cosmo import rewritten", !schemHead.includes('@deepseek-ai/cosmokit') && schemHead.includes("cosmokit/lib/index.js")])
   checks.push(["closure self-contained", !readFileSync(join(VENDOR, "_deps", "dsh-subagent", "lib", "index.js"), "utf8").includes('@deepseek-ai/dsh-tools') && !readFileSync(join(VENDOR, "lib", "index.js"), "utf8").slice(0, 60000).includes('from "@deepseek-ai')])
   const patch = readFileSync(join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
-  checks.push(["patch row vendored + guard gone", patch.includes("name: '@mpd-dsh/mpd/third-party/dsh-agent-teams'") && !patch.includes("Self-disabling guard") && !patch.includes("@nanmicoder/dsh-agent-teams'")])
+  checks.push(["patch row main-code + guard gone", patch.includes("name: '@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib/index.js'") && !patch.includes("Self-disabling guard") && !patch.includes("@nanmicoder/dsh-agent-teams'")])
   const pack = readFileSync(join(repoRoot, "scripts", "pack-mpd.mjs"), "utf8")
-  checks.push(["pack exports + client + no deps entry", pack.includes('"./third-party/dsh-agent-teams"') && pack.includes('"./client"') && pack.includes("dsh-agent-teams (MIT,") && !pack.includes('dependencies: { "@nanmicoder')])
+  checks.push(["pack exports + client + no deps entry", pack.includes('"./packages/mpd-agent-teams-plugin/lib/client.js"') && pack.includes('"./client"') && pack.includes("agent-teams plugin (MIT provenance") && !pack.includes('dependencies: { "@nanmicoder')])
   const bad = checks.filter(([, ok]) => !ok).map(([n]) => n)
   if (bad.length) { console.error("[team-route-rewire self-test] FAIL: " + bad.join(" | ")); process.exit(1) }
   if (!existsSync(join(repoRoot, "dist", "mpd-package", "package.json"))) { console.error("[team-route-rewire self-test] FAIL: run node scripts/pack-mpd.mjs first"); process.exit(1) }
@@ -79,10 +80,10 @@ async function runReal() {
   const dump = runSync("dsh", ["--profile", "t", "--dump-config"], { timeout: 120000 })
   const dumpOut = dump.out
   const dumpClean = dumpOut.split(home).join("<QAHOME>")
-  steps.dump = { ok: dump.status === 0 && dumpOut.includes("agent-teams") && dumpOut.includes(".mpd/team") && dumpOut.includes("@mpd-dsh/mpd/third-party/dsh-agent-teams") && !dumpOut.includes("@nanmicoder/dsh-agent-teams'") && !dumpClean.includes(DEV), exit: dump.status, leaked: dumpClean.includes(DEV) }
-  const resCode = "const {createRequire}=require('module');const r=createRequire(process.argv[1]);try{console.log('VENDORED_OK '+r.resolve('@mpd-dsh/mpd/third-party/dsh-agent-teams/package.json'))}catch(e){console.log('VENDORED_FAIL '+e.code)};try{r.resolve('@nanmicoder/dsh-agent-teams/package.json');console.log('PKG_PRESENT')}catch(e){console.log('PKG_ABSENT')}"
+  steps.dump = { ok: dump.status === 0 && dumpOut.includes("agent-teams") && dumpOut.includes(".mpd/team") && dumpOut.includes("@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib/index.js") && !dumpOut.includes("@nanmicoder/dsh-agent-teams'") && !dumpClean.includes(DEV), exit: dump.status, leaked: dumpClean.includes(DEV) }
+  const resCode = "const {createRequire}=require('module');const r=createRequire(process.argv[1]);try{console.log('MAINCODE_OK '+r.resolve('@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/package.json'))}catch(e){console.log('MAINCODE_FAIL '+e.code)};try{r.resolve('@nanmicoder/dsh-agent-teams/package.json');console.log('PKG_PRESENT')}catch(e){console.log('PKG_ABSENT')}"
   const res = runSync("node", ["-e", resCode, join(profile, "x.js")])
-  steps.resolution = { ok: res.status === 0 && res.out.includes("VENDORED_OK") && res.out.includes("PKG_ABSENT"), out: res.out.trim() }
+  steps.resolution = { ok: res.status === 0 && res.out.includes("MAINCODE_OK") && res.out.includes("PKG_ABSENT"), out: res.out.trim() }
   writeFileSync(join(profile, "cordis.patch.yml"), "- insert:\n    - id: agent-presets\n      name: '@deepseek-ai/dsh-agent-presets'\n      config:\n        default: mpd\n")
   const live = runSync("dsh", ["--profile", "t", "Use mpd_config_get with key 'memory.vcs' then mpd_memory_status; report both values in one line."], { timeout: 600000, cwd: join(reloc, "ws-rewire") })
   const out = live.out

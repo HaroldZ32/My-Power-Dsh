@@ -26,7 +26,8 @@ License: SUL-1.0 (`LICENSE.md`); inheritance declared in `README.md`.
   modelchain chain key. One-shot consult via `mpd-roles-plugin`
   (`mpd_roles_list` / `mpd_role_spawn` / `mpd_role_persona`, `mpdRoles` service
   consumed by `mpd_modelchain_resolve`). Team work uses the adopted
-  **dsh-agent-teams** plugin (vendored, `agent_teams_*` tools + Web activity
+  **dsh-agent-teams** plugin (first-class main code at
+  `packages/mpd-agent-teams-plugin`, `agent_teams_*` tools + Web activity
   panel): the bundle patch configures a normal-named `mpd` roster profile
   (`taskPlanning: captain`) that exposes these specialists as teammate
   instantiation templates. The ONLY
@@ -37,14 +38,15 @@ License: SUL-1.0 (`LICENSE.md`); inheritance declared in `README.md`.
   and `MPD_CODEGRAPH_BIN` (codegraph serve) are read by upstream vendored code.
 - DSH plugin names (`@deepseek-ai/dsh-llm-deepseek`, `dsh-llm-pi-ai`, `dsh-mcp-client`, …) are the
   host's API and are never renamed.
-- **Adopted third-party plugins keep their vendor ids and tool names** (intentional namespace
+- **Adopted plugins keep their plugin ids and tool names** (intentional namespace
   exception, same rule as the `context7`/`grep_app` remote MCP rows): the `agent-teams`
   plugin (tools `agent_teams_*`, Web activity panel) is adopted from
-  `@nanmicoder/dsh-agent-teams` (MIT, v0.1.14) and **vendored** at `third-party/dsh-agent-teams/`
-  (runtime deps under `_deps/`): it loads from the bundle exports map, so it needs no npm
-  dependency and works under every install layout (pnpm never links a bundle's transitive
-  deps into the profile root — see §12). See LICENSE-NOTICES.md. Its `stateDir` is overridden
-  to `.mpd/team` so all our state stays under one `.mpd` root.
+  `@nanmicoder/dsh-agent-teams` (MIT, v0.1.14) and ships as **first-class main code** at
+  `packages/mpd-agent-teams-plugin/` (runtime closure under `_deps/`): it loads from the
+  bundle exports map, so it needs no npm dependency and works under every install layout
+  (pnpm never links a bundle's transitive deps into the profile root — see §12). See
+  LICENSE-NOTICES.md. Its `stateDir` is overridden to `.mpd/team` so all our state stays
+  under one `.mpd` root.
 
 ---
 
@@ -192,8 +194,9 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   plugin rows use the resolvable `name: '@mpd-dsh/mpd/packages/...'`, every path-bearing
   value uses the loader's `baseUrl` (the profile directory), binaries come from the
   package's `optionalDependencies` (`@ast-grep/cli`, `@colbymchenry/codegraph`),
-  the adopted `agent-teams` plugin is vendored at `third-party/dsh-agent-teams` (no npm
-  dependency), the `mpd` preset + skill corpus auto-copy at boot via
+  the adopted `agent-teams` plugin is first-class main code at
+  `packages/mpd-agent-teams-plugin` (no npm dependency), the `mpd` preset + skill corpus
+  auto-copy at boot via
   `mpd-bootstrap` (version-stamped, idempotent).
 - Install from a checkout: `cd <repo> && dsh plugin --profile web add .`
   (or from a published location — the patch never names this repo).
@@ -250,7 +253,7 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 | preset not visible in web | presets not installed to `$DSH_HOME/.agent-presets/` — run installer |
 | installed presets stale / agents miss tools (e.g. bash) | `mpd-bootstrap` only re-copies presets when the package VERSION changes — bump `package.json` version, `node scripts/pack-mpd.mjs`, restart dsh |
 | agent tool call fails with UNKNOWN_TOOL in code-mode deployments | presets declare `tool-presentation { mode: native }` — every row tool (bash/read/edit/...) is exposed directly; in code mode the model may only call `run_code` directly |
-| boot fails with ERR_MODULE_NOT_FOUND @nanmicoder/dsh-agent-teams | the legacy profile still pins the old row; the bundle row is now vendored (`@mpd-dsh/mpd/third-party/dsh-agent-teams`) — reinstall the bundle (`dsh plugin --profile <p> add dist/mpd-package`) |
+| boot fails with ERR_MODULE_NOT_FOUND @nanmicoder/dsh-agent-teams | the legacy profile still pins the old bundle row; the row is now main code (`@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib/index.js`) — reinstall the bundle (`dsh plugin --profile <p> add dist/mpd-package`) |
 | AGENT.md / AGENTS.md not injected into a session | the session runs a non-mpd preset; the `mpd` preset configures `instructionFileCandidates` (AGENT.md → AGENTS.md → CLAUDE.md) — switch the session to the `mpd` preset |
 | `mpd_role_spawn` reports unknown role | role ids are the roster ids (`oracle`, `sisyphus-junior`, `multimodal-looker`, …) — run `mpd_roles_list`; legacy `mpd-<id>` aliases are accepted |
 

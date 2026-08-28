@@ -48,7 +48,10 @@ function cpAssets() {
   if (existsSync(join(repoRoot, "packages", "mpd-roles-plugin", "personas"))) {
     cpSync(join(repoRoot, "packages", "mpd-roles-plugin", "personas"), join(outDir, "packages", "mpd-roles-plugin", "personas"), { recursive: true })
   }
-  cpSync(join(repoRoot, "third-party"), join(outDir, "third-party"), { recursive: true })
+  // the adopted agent-teams plugin is FIRST-CLASS MAIN CODE under
+  // packages/mpd-agent-teams-plugin: copy its whole body (lib + _deps + assets +
+  // LICENSE + READMEs) so the bundle is self-contained under any install layout.
+  cpSync(join(repoRoot, "packages", "mpd-agent-teams-plugin"), join(outDir, "packages", "mpd-agent-teams-plugin"), { recursive: true })
   for (const f of ["LICENSE.md", "LICENSE-NOTICES.md", "README.md"]) {
     if (existsSync(join(repoRoot, f))) cpSync(join(repoRoot, f), join(outDir, f))
   }
@@ -88,15 +91,12 @@ function writeManifest() {
       "./packages/*": "./packages/*",
       "./skills/*": "./skills/*",
       "./presets/*": "./presets/*",
-      "./client": "./third-party/dsh-agent-teams/lib/client.js",
-      "./third-party/dsh-agent-teams": "./third-party/dsh-agent-teams/lib/index.js",
-      "./third-party/dsh-agent-teams/*": "./third-party/dsh-agent-teams/*"
+      "./client": "./packages/mpd-agent-teams-plugin/lib/client.js"
     },
     files: [
       "packages/**",
       "skills/**",
       "presets/**",
-      "third-party/**",
       "cordis.patch.yml",
       "LICENSE.md", "LICENSE-NOTICES.md", "README.md"
     ],
@@ -107,8 +107,10 @@ function writeManifest() {
         platform: "web"
       }
     },
-    // @nanmicoder/dsh-agent-teams (MIT, adopted team plugin) is VENDORED under
-    // third-party/dsh-agent-teams and loaded through the exports map above. A plain
+    // The adopted agent-teams plugin (MIT provenance, upstream @nanmicoder/
+    // dsh-agent-teams 0.1.14) is FIRST-CLASS MAIN CODE under
+    // packages/mpd-agent-teams-plugin and is copied wholesale into the bundle
+    // (lib + _deps + assets), loaded through the exports map above. A plain
     // `dependencies` entry is NOT enough: pnpm (the engine behind `dsh plugin add`)
     // never links a bundle's transitive deps into the profile root, so the plugin's
     // row would silently self-disable at boot (repro: evidence/plan-e/e1-team-route

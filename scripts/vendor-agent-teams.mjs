@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // vendor-agent-teams.mjs — materialize the @nanmicoder/dsh-agent-teams plugin (0.1.14)
-// and its SERVER-side runtime closure into third-party/dsh-agent-teams/_deps/ so the
-// vendored plugin is self-contained under any install layout.
+// and its SERVER-side runtime closure into packages/mpd-agent-teams-plugin/_deps/ so
+// the adopted (first-class main-code) plugin is self-contained under any install layout.
 //
 // Why: `dsh plugin add` is pnpm-driven; pnpm never links a bundle's transitive deps
 // into the profile root, and code physically located OUTSIDE the profile's node_modules
@@ -20,7 +20,7 @@ import { fileURLToPath } from "node:url"
 import process from "node:process"
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
-const VENDOR = join(repoRoot, "third-party", "dsh-agent-teams")
+const VENDOR = join(repoRoot, "packages", "mpd-agent-teams-plugin")
 const DEPS = join(VENDOR, "_deps")
 const HOST_NM = process.env.DSH_HOST_NM || "/home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/node_modules"
 
@@ -96,7 +96,7 @@ function vendorPackage(spec, c) {
 
 function main() {
   if (!existsSync(HOST_NM)) { console.error("[vendor-agent-teams] FAIL: DSH_HOST_NM not found: " + HOST_NM); process.exit(1) }
-  if (!existsSync(join(repoRoot, "third-party", "dsh-agent-teams", "lib", "index.js"))) { console.error("[vendor-agent-teams] FAIL: third-party/dsh-agent-teams/lib missing (restore the vendored plugin first)"); process.exit(1) }
+  if (!existsSync(join(repoRoot, "packages", "mpd-agent-teams-plugin", "lib", "index.js"))) { console.error("[vendor-agent-teams] FAIL: packages/mpd-agent-teams-plugin/lib missing (restore the adopted plugin first)"); process.exit(1) }
   rmSync(DEPS, { recursive: true, force: true })
   mkdirSync(DEPS, { recursive: true })
   for (const [spec, c] of Object.entries(CHAIN)) {

@@ -5,14 +5,16 @@
 - Third-party components keep their original licenses/notices in their source trees.
 - DSH packages (@deepseek-ai/*) are MIT licensed and referenced as dependencies only.
 
-## dsh-agent-teams (MIT) — adopted third-party plugin (vendored)
+## dsh-agent-teams (MIT) — adopted plugin, first-class main code
 
 The `agent-teams` plugin (tools `agent_teams_*`, Web activity panel, team scheduler)
 is adopted from the dsh-agent-teams project (v0.1.14,
 https://github.com/NanmiCoder/dsh-agent-teams) and distributed under the MIT License.
-The plugin is **vendored** at `third-party/dsh-agent-teams/` (lib + assets + package
-manifest; loaded via the bundle exports map). Its server-side runtime closure is vendored
-under `third-party/dsh-agent-teams/_deps/` with each package's own LICENSE retained:
+It ships as **first-class main code** at `packages/mpd-agent-teams-plugin/` (lib +
+assets + package manifest; loaded via the bundle exports map; plugin row id
+`agent-teams`, tools `agent_teams_*` kept stable). Its server-side runtime closure is
+vendored under `packages/mpd-agent-teams-plugin/_deps/` with each package's own LICENSE
+retained:
 - `@deepseek-ai/schemastery`, `@deepseek-ai/cosmokit`, `@deepseek-ai/cordis`,
   `@deepseek-ai/dsh-scope`, `@deepseek-ai/dsh-timeout`, `@deepseek-ai/dsh-llm`,
   `@deepseek-ai/dsh-session`, `@deepseek-ai/dsh-subagent`, `@deepseek-ai/dsh-tools`,
@@ -22,8 +24,8 @@ under `third-party/dsh-agent-teams/_deps/` with each package's own LICENSE retai
 - `zod` (MIT) and `@standard-schema/spec` (MIT).
 Native package-name resolution cannot be relied on (pnpm never links a bundle's
 transitive deps into the profile root, and code outside the profile's node_modules
-cannot see `@deepseek-ai/*`), hence the vendoring. Original license text retained at
-`third-party/dsh-agent-teams/LICENSE`.
+cannot see `@deepseek-ai/*`), hence the vendored closure. Original license text retained at
+`packages/mpd-agent-teams-plugin/LICENSE`.
 
 MIT License
 

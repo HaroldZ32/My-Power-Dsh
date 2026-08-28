@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const NOTICE_LINE = "Copyright (c) 2026 程序员阿江(Relakkes)"
-const AGENTS_EXCEPTION = "Adopted third-party plugins keep their vendor ids"
+const AGENTS_EXCEPTION = "Adopted plugins keep their plugin ids and tool names"
 const PROMPT = "Use AgentTeams for a tiny end-to-end verification: create team 'c1qa' (description 'C1 adoption QA'); add two members, oracle and librarian; create task t1 'Summarize the QA goal in one line' assigned to librarian; create task t2 'Approve or reject the summary' assigned to oracle with dependency on t1; let the scheduler run the tasks; call agent_teams_status before finishing; then archive the team with agent_teams_delete. End with the team_id and what the archive path is."
 
 const LOG = []
@@ -61,15 +61,15 @@ function selfTest() {
   const notices = readFileSync(join(repoRoot, "LICENSE-NOTICES.md"), "utf8")
   if (!notices.includes("dsh-agent-teams (MIT)") || !notices.includes(NOTICE_LINE)) fail("MIT notice block missing")
   if (!notices.includes("程序员阿江(Relakkes)")) fail("copyright line missing")
-  if (!existsSync(join(repoRoot, "third-party", "dsh-agent-teams", "LICENSE"))) fail("vendored LICENSE copy missing")
-  const vendorPkg = JSON.parse(readFileSync(join(repoRoot, "third-party", "dsh-agent-teams", "package.json"), "utf8"))
-  if (vendorPkg.version !== "0.1.14") fail("vendored package version is not 0.1.14: " + vendorPkg.version)
-  if (!existsSync(join(repoRoot, "third-party", "dsh-agent-teams", "_deps", "schemastery", "lib", "index.mjs"))) fail("vendored _deps/schemastery missing")
+  if (!existsSync(join(repoRoot, "packages", "mpd-agent-teams-plugin", "LICENSE"))) fail("adopted LICENSE copy missing")
+  const vendorPkg = JSON.parse(readFileSync(join(repoRoot, "packages", "mpd-agent-teams-plugin", "package.json"), "utf8"))
+  if (vendorPkg.version !== "0.1.14") fail("adopted package version is not 0.1.14: " + vendorPkg.version)
+  if (!existsSync(join(repoRoot, "packages", "mpd-agent-teams-plugin", "_deps", "schemastery", "lib", "index.mjs"))) fail("adopted _deps/schemastery missing")
   const ag = readFileSync(join(repoRoot, "AGENTS.md"), "utf8")
   if (!ag.includes(AGENTS_EXCEPTION)) fail("AGENTS.md naming exception missing")
   const st = spawnSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--self-test"], { encoding: "utf8" })
   if (st.status !== 0) fail("installer --self-test failed: " + st.stderr)
-  console.log("[agent-teams-adopt self-test] ok: notice + vendored LICENSE + 0.1.14 + _deps + AGENTS.md + installer self-test verified")
+  console.log("[agent-teams-adopt self-test] ok: notice + adopted LICENSE + 0.1.14 + _deps + AGENTS.md + installer self-test verified")
 }
 
 async function runReal() {
@@ -98,11 +98,12 @@ async function runReal() {
   const inst = runSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--yes", "--dsh-home", sandbox, "--profile", "mpd-headless", "--skip-toolchain"], { timeout: 600000 })
   steps.installer = { ok: inst.status === 0, exit: inst.status }
 
-  // 2) manifest + home-patch asserts
+  // 2) manifest + home-patch asserts (agent-teams is now a main-code path row in the
+  //    home patch — no profile bundle entry anymore)
   const manifest = JSON.parse(readFileSync(join(sandbox, "profiles", "mpd-headless", "package.json"), "utf8"))
-  steps.bundleRow = { ok: (manifest.dsh?.profile?.bundles ?? []).includes("@nanmicoder/dsh-agent-teams"), bundles: manifest.dsh?.profile?.bundles }
+  steps.bundleRow = { ok: !(manifest.dsh?.profile?.bundles ?? []).includes("@nanmicoder/dsh-agent-teams"), bundles: manifest.dsh?.profile?.bundles }
   const homePatch = readFileSync(join(sandbox, "cordis.patch.yml"), "utf8")
-  steps.override = { ok: /id:\s*agent-teams/.test(homePatch) && homePatch.includes(".mpd/team"), hasPatch: homePatch.includes("agent-teams") }
+  steps.override = { ok: /id:\s*agent-teams/.test(homePatch) && homePatch.includes(".mpd/team") && homePatch.includes("packages/mpd-agent-teams-plugin/lib/index.js"), hasPatch: homePatch.includes("agent-teams") }
 
   // 3) composed config
   const dump = runSync("dsh", ["--profile", "mpd-headless", "--dump-config"], { timeout: 120000 })
