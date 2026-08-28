@@ -54,8 +54,8 @@ export const ROLES: MpdRoleSpec[] = [
   },
   {
     "id": "hephaestus",
-    "name": "Config Engineer",
-    "description": "Configuration management: explain profile/bundle/preset config and produce read-only diffs.",
+    "name": "Deep Worker",
+    "description": "Autonomous deep worker: receives goals, executes them end-to-end with tools, verifies every change.",
     "readonly": false,
     "chain": [
       { "provider": "deepseek-official", "model": "deepseek-v4-flash" },
@@ -110,8 +110,8 @@ export const ROLES: MpdRoleSpec[] = [
   },
   {
     "id": "momus",
-    "name": "UX Critic",
-    "description": "UI/UX and interaction critic: concrete, testable critiques.",
+    "name": "Plan Reviewer",
+    "description": "Work-plan QA reviewer: verifies plans are executable and references valid, rejects only true blockers; UI/UX critique is a local extension.",
     "readonly": true,
     "chain": [
       { "provider": "deepseek-official", "model": "deepseek-v4-flash" },

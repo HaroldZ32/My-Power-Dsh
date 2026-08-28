@@ -19,9 +19,9 @@ License: SUL-1.0 (`LICENSE.md`); inheritance declared in `README.md`.
   preset id (`mpd`), env keys (`MPD_DSH_*`), state dir (`.mpd`).
 - **The OMO-origin agents are specialists and teammate templates, not presets**: the 11
   upstream roles ship as a specialist roster with normal display names —
-  Architect (oracle), Researcher (librarian), Planner (prometheus), Config
-  Engineer (hephaestus), Senior Engineer (sisyphus), Lead (atlas), Explorer
-  (explore), Reviewer (metis), UX Critic (momus), Vision Analyst
+  Architect (oracle), Researcher (librarian), Planner (prometheus), Deep
+  Worker (hephaestus), Senior Engineer (sisyphus), Lead (atlas), Explorer
+  (explore), Reviewer (metis), Plan Reviewer (momus), Vision Analyst
   (multimodal-looker), Junior Engineer (sisyphus-junior). The stable `id` is the
   modelchain chain key. One-shot consult via `mpd-roles-plugin`
   (`mpd_roles_list` / `mpd_role_spawn` / `mpd_role_persona`, `mpdRoles` service

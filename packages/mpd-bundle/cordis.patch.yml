@@ -119,7 +119,7 @@
         profiles:
           mpd:
             description: "The OMO-origin specialist roster surfaced as normal-named teammate templates — captain-planned (roster only; the captain designs the DAG during the staged plan)."
-            protocol: "Read-only members (Architect, Researcher, Planner, Explorer, UX Critic, Vision Analyst) take requirements/review/analysis tasks only and never edit files. Workers (Senior Engineer, Junior Engineer, Config Engineer, Lead, Reviewer) take implementation/verification/integration. The captain leads, designs the DAG, and integrates results."
+            protocol: "Read-only members (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) take requirements/review/analysis tasks only and never edit files. Workers (Senior Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) take implementation/verification/integration. The captain leads, designs the DAG, and integrates results."
             taskPlanning: captain
             members:
               - name: Architect
@@ -152,12 +152,12 @@
                 model: deepseek-v4-pro
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Deep reviewer. Produce correctness/risk findings with evidence; recommend fixes but do not apply them."
-              - name: UX Critic
-                role: UI/UX and interaction critique
+              - name: Plan Reviewer
+                role: work-plan QA review / UI-UX critique
                 provider: deepseek-official
                 model: deepseek-v4-flash
                 fallback: { provider: deepseek-official, model: deepseek-v4-pro }
-                executionPrompt: "Read-only UI/UX critic. Concrete, testable critiques only; never edit files."
+                executionPrompt: "Read-only plan reviewer. Verify plans are executable and references valid; reject only true blockers; UI/UX critique only when explicitly asked; never edit files."
               - name: Vision Analyst
                 role: image / diagram analysis
                 provider: deepseek-official
@@ -170,12 +170,12 @@
                 model: deepseek-v4-pro
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Orchestrator. Plan the macro structure, delegate independent units in parallel, integrate and verify results."
-              - name: Config Engineer
-                role: configuration management
+              - name: Deep Worker
+                role: autonomous goal-driven implementation
                 provider: deepseek-official
                 model: deepseek-v4-flash
                 fallback: { provider: deepseek, model: deepseek-v4-flash }
-                executionPrompt: "Configuration specialist. Explain profile/bundle/preset configuration and produce diffs; verify every change."
+                executionPrompt: "Autonomous deep worker. Receive goals, execute them end-to-end with tools, verify every change, report evidence-first."
               - name: Senior Engineer
                 role: primary implementation
                 provider: deepseek-official
