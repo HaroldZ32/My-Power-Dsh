@@ -8,192 +8,123 @@ import { randomUUID } from "node:crypto";
 var ROLES = [
   {
     id: "oracle",
-    name: "Oracle (Review/Architecture Advisor)",
-    description: "DeepSeek-adapted Oracle strategic technical advisor preset: architecture review, deep debugging, self-review.",
+    name: "Architect",
+    description: "Strategic technical advisor: architecture review, deep debugging, self-review.",
     readonly: true,
     chain: [
-      {
-        provider: "deepseek-official",
-        model: "deepseek-v4-pro"
-      },
-      {
-        provider: "deepseek-official",
-        model: "deepseek-v4-flash"
-      }
+      { provider: "deepseek-official", model: "deepseek-v4-pro" },
+      { provider: "deepseek-official", model: "deepseek-v4-flash" }
     ],
     personaFile: "personas/oracle.md"
   },
   {
     id: "librarian",
-    name: "Librarian (Open-Source Search)",
-    description: "DeepSeek-adapted Librarian evidence-based open-source code search preset (AST/LSP/web evidence collection).",
+    name: "Researcher",
+    description: "Evidence-based code/open-source search (AST/LSP/web evidence collection).",
     readonly: true,
     chain: [
-      {
-        provider: "deepseek-official",
-        model: "deepseek-v4-flash"
-      },
-      {
-        provider: "deepseek",
-        model: "deepseek-v4-flash"
-      }
+      { provider: "deepseek-official", model: "deepseek-v4-flash" },
+      { provider: "deepseek", model: "deepseek-v4-flash" }
     ],
     personaFile: "personas/librarian.md"
   },
   {
     id: "prometheus",
-    name: "Prometheus (Planning)",
-    description: "DeepSeek-adapted Prometheus planning advisor preset: produce only .mpd/plans plans, never implement.",
+    name: "Planner",
+    description: "Planning advisor: produces .mpd/plans plans only, never implements.",
     readonly: true,
     chain: [
-      {
-        provider: "deepseek-official",
-        model: "deepseek-v4-pro"
-      },
-      {
-        provider: "deepseek-official",
-        model: "deepseek-v4-flash"
-      }
+      { provider: "deepseek-official", model: "deepseek-v4-pro" },
+      { provider: "deepseek-official", model: "deepseek-v4-flash" }
     ],
     personaFile: "personas/prometheus.md"
   },
   {
     id: "hephaestus",
-    name: "Hephaestus (Configuration Management)",
-    description: "mpd-dsh configuration management preset: explain profile/bundle/preset configuration, and produce diffs read-only.",
+    name: "Config Engineer",
+    description: "Configuration management: explain profile/bundle/preset config and produce read-only diffs.",
     readonly: false,
     chain: [
-      {
-        provider: "deepseek-official",
-        model: "deepseek-v4-flash"
-      },
-      {
-        provider: "deepseek",
-        model: "deepseek-v4-flash"
-      }
+      { provider: "deepseek-official", model: "deepseek-v4-flash" },
+      { provider: "deepseek", model: "deepseek-v4-flash" }
     ],
     personaFile: "personas/hephaestus.md"
   },
   {
     id: "sisyphus",
-    name: "Sisyphus (primary coder)",
+    name: "Senior Engineer",
     description: "Primary engineering agent: plan small, execute with tools, verify, report honestly.",
     readonly: false,
     chain: [
-      {
-        provider: "deepseek-official",
-        model: "deepseek-v4-pro"
-      },
-      {
-        provider: "deepseek-official",
-        model: "deepseek-v4-flash"
-      },
-      {
-        provider: "deepseek",
-        model: "deepseek-v4-flash"
-      }
+      { provider: "deepseek-official", model: "deepseek-v4-pro" },
+      { provider: "deepseek-official", model: "deepseek-v4-flash" },
+      { provider: "deepseek", model: "deepseek-v4-flash" }
     ],
     personaFile: "personas/sisyphus.md"
   },
   {
     id: "atlas",
-    name: "Atlas (orchestrator)",
-    description: "Orchestrator: plan macro, delegate roles to subagents/teams, integrate results.",
+    name: "Lead",
+    description: "Orchestrator: macro planning, delegate roles, integrate results.",
     readonly: false,
     chain: [
-      {
-        provider: "deepseek-official",
-        model: "deepseek-v4-pro"
-      },
-      {
-        provider: "deepseek-official",
-        model: "deepseek-v4-flash"
-      }
+      { provider: "deepseek-official", model: "deepseek-v4-pro" },
+      { provider: "deepseek-official", model: "deepseek-v4-flash" }
     ],
     personaFile: "personas/atlas.md"
   },
   {
     id: "explore",
-    name: "Explore (read-only explorer)",
+    name: "Explorer",
     description: "Read-only codebase explorer: evidence-based answers, never edits.",
     readonly: true,
     chain: [
-      {
-        provider: "deepseek-official",
-        model: "deepseek-v4-flash"
-      },
-      {
-        provider: "deepseek",
-        model: "deepseek-v4-flash"
-      }
+      { provider: "deepseek-official", model: "deepseek-v4-flash" },
+      { provider: "deepseek", model: "deepseek-v4-flash" }
     ],
     personaFile: "personas/explore.md"
   },
   {
     id: "metis",
-    name: "Metis (deep reviewer)",
+    name: "Reviewer",
     description: "Deep reviewer: correctness/risk findings with evidence, no fixes.",
     readonly: false,
     chain: [
-      {
-        provider: "deepseek-official",
-        model: "deepseek-v4-pro"
-      },
-      {
-        provider: "deepseek-official",
-        model: "deepseek-v4-flash"
-      }
+      { provider: "deepseek-official", model: "deepseek-v4-pro" },
+      { provider: "deepseek-official", model: "deepseek-v4-flash" }
     ],
     personaFile: "personas/metis.md"
   },
   {
     id: "momus",
-    name: "Momus (UI/UX critic)",
+    name: "UX Critic",
     description: "UI/UX and interaction critic: concrete, testable critiques.",
     readonly: true,
     chain: [
-      {
-        provider: "deepseek-official",
-        model: "deepseek-v4-flash"
-      },
-      {
-        provider: "deepseek-official",
-        model: "deepseek-v4-pro"
-      }
+      { provider: "deepseek-official", model: "deepseek-v4-flash" },
+      { provider: "deepseek-official", model: "deepseek-v4-pro" }
     ],
     personaFile: "personas/momus.md"
   },
   {
     id: "multimodal-looker",
-    name: "Multimodal Looker (visual analyst)",
+    name: "Vision Analyst",
     description: "Image/diagram analyst: read screenshots/diagrams and describe precisely.",
     readonly: true,
     chain: [
-      {
-        provider: "deepseek-official",
-        model: "deepseek-v4-flash-vision-exp"
-      },
-      {
-        provider: "deepseek-official",
-        model: "deepseek-v4-flash"
-      }
+      { provider: "deepseek-official", model: "deepseek-v4-flash-vision-exp" },
+      { provider: "deepseek-official", model: "deepseek-v4-flash" }
     ],
     personaFile: "personas/multimodal-looker.md"
   },
   {
     id: "sisyphus-junior",
-    name: "Sisyphus Junior (fast executor)",
+    name: "Junior Engineer",
     description: "Fast executor: small, well-scoped mechanical changes with quick verification.",
     readonly: false,
     chain: [
-      {
-        provider: "deepseek-official",
-        model: "deepseek-v4-flash"
-      },
-      {
-        provider: "deepseek",
-        model: "deepseek-v4-flash"
-      }
+      { provider: "deepseek-official", model: "deepseek-v4-flash" },
+      { provider: "deepseek", model: "deepseek-v4-flash" }
     ],
     personaFile: "personas/sisyphus-junior.md"
   }
@@ -263,7 +194,7 @@ function apply(ctx, config = {}) {
   });
   ctx.tools.register({
     name: "mpd_roles_list",
-    description: "List the OMO-origin specialist roster (subagent definitions): id, name, description, read-only flag and primary model route for oracle/librarian/prometheus/explore/metis/momus/atlas/hephaestus/sisyphus/sisyphus-junior/multimodal-looker. Use this before mpd_role_spawn / mpd_team_spawn.",
+    description: "List the specialist roster (ids → normal display names): Architect(oracle), Researcher(librarian), Planner(prometheus), Config Engineer(hephaestus), Senior Engineer(sisyphus), Lead(atlas), Explorer(explore), Reviewer(metis), UX Critic(momus), Vision Analyst(multimodal-looker), Junior Engineer(sisyphus-junior). Use before mpd_role_spawn. Team mode uses the dsh-agent-teams profiles (agent_teams_create profile=mpd).",
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { roles: { type: "array", items: { type: "object" } }, count: { type: "integer" } }, required: ["roles", "count"] }, render: (_a, v) => textBlock("roster (" + v.count + `):
 ` + v.roles.map((r) => "- " + r.id + " [" + r.model + (r.readonly ? " readonly" : "") + "] " + r.description).join(`
@@ -272,7 +203,7 @@ function apply(ctx, config = {}) {
   });
   ctx.tools.register({
     name: "mpd_role_spawn",
-    description: "Spawn one OMO-origin specialist as a subagent with its roster persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles: oracle (review/advisor), prometheus (planner), librarian (retrieval/citation), explore (read-only explorer), metis (gap analysis), momus (hostile reviewer), atlas (orchestrator), hephaestus (deep worker), sisyphus / sisyphus-junior (implementers), multimodal-looker (extract-only vision). Accepts the modelchain-style keys (oracle / sisyphus-junior) and legacy mpd-<id> aliases.",
+    description: "Spawn one specialist as a one-shot subagent with its roster persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Use ids from mpd_roles_list: Architect(oracle), Researcher(librarian), Planner(prometheus), Config Engineer(hephaestus), Senior Engineer(sisyphus), Lead(atlas), Explorer(explore), Reviewer(metis), UX Critic(momus), Vision Analyst(multimodal-looker), Junior Engineer(sisyphus-junior). For multi-member team work prefer the adopted dsh-agent-teams protocol (agent_teams_create + agent_teams_add_member), not repeated one-shot spawns.",
     parameters: { type: "object", properties: { role: { type: "string", description: "roster role id (mpd_roles_list)" }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" }, model: { type: "string", description: "optional model override (default: the role's primary route)" } }, required: ["role", "task"], additionalProperties: false },
     output: { schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete", "error"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a, v) => textBlock("role " + v.role + " (" + v.status + `)
 summary: ` + v.summary + (v.recommendation ? `

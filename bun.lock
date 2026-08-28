@@ -53,10 +53,6 @@
       "name": "@mpd-dsh/presets",
       "version": "0.1.0",
     },
-    "packages/mpd-team-plugin": {
-      "name": "@mpd-dsh/team",
-      "version": "0.1.0",
-    },
     "packages/mpd-tools-plugin": {
       "name": "@mpd-dsh/tools",
       "version": "0.1.0",
@@ -94,8 +90,6 @@
     "@mpd-dsh/memory": ["@mpd-dsh/memory@workspace:packages/mpd-memory-plugin"],
 
     "@mpd-dsh/presets": ["@mpd-dsh/presets@workspace:packages/mpd-presets-plugin"],
-
-    "@mpd-dsh/team": ["@mpd-dsh/team@workspace:packages/mpd-team-plugin"],
 
     "@mpd-dsh/tools": ["@mpd-dsh/tools@workspace:packages/mpd-tools-plugin"],
 

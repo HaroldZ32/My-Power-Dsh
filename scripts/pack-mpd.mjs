@@ -19,7 +19,7 @@ function jsVal(expr) { return "!!js '" + expr + "'" }
 function pathExpr(rel) { return jsVal(BP + " + \"" + rel + "\"") }
 
 const PLUGIN_PKGS = [
-  "mpd-tools-plugin", "mpd-modelchain-plugin", "mpd-ulw-plugin", "mpd-team-plugin",
+  "mpd-tools-plugin", "mpd-modelchain-plugin", "mpd-ulw-plugin",
   "mpd-codegraph-plugin", "mpd-hashline-plugin", "mpd-boulder-plugin",
   "mpd-config-plugin", "mpd-comment-checker-plugin", "mpd-memory-plugin",
   "mpd-roles-plugin", "mpd-bootstrap-plugin"

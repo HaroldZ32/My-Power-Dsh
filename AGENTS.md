@@ -17,11 +17,19 @@ License: SUL-1.0 (`LICENSE.md`); inheritance declared in `README.md`.
 - Upstream product names and repository paths stay upstream's (provenance only).
 - Our naming prefix is **`mpd`** (my-power-dsh): packages, plugin ids, tool names (`mpd_*`),
   preset id (`mpd`), env keys (`MPD_DSH_*`), state dir (`.mpd`).
-- **The OMO-origin agents are SUBAGENTS, not presets**: the 11 upstream roles
-  (oracle / librarian / prometheus / explore / metis / momus / atlas / hephaestus /
-  sisyphus / sisyphus-junior / multimodal-looker) ship as a subagent roster
-  (`mpd-roles-plugin`: `mpd_roles_list` / `mpd_role_spawn` / `mpd_role_persona`,
-  consumed by `mpd-team-plugin` members and `mpd_modelchain_resolve`). The ONLY
+- **The OMO-origin agents are specialists and teammate templates, not presets**: the 11
+  upstream roles ship as a specialist roster with normal display names —
+  Architect (oracle), Researcher (librarian), Planner (prometheus), Config
+  Engineer (hephaestus), Senior Engineer (sisyphus), Lead (atlas), Explorer
+  (explore), Reviewer (metis), UX Critic (momus), Vision Analyst
+  (multimodal-looker), Junior Engineer (sisyphus-junior). The stable `id` is the
+  modelchain chain key. One-shot consult via `mpd-roles-plugin`
+  (`mpd_roles_list` / `mpd_role_spawn` / `mpd_role_persona`, `mpdRoles` service
+  consumed by `mpd_modelchain_resolve`). Team work uses the adopted
+  **dsh-agent-teams** plugin (vendored, `agent_teams_*` tools + Web activity
+  panel): the bundle patch configures a normal-named `mpd` roster profile
+  (`taskPlanning: captain`) that exposes these specialists as teammate
+  instantiation templates. The ONLY
   shipped preset is `mpd` — the main working agent — which also carries the
   project-instruction convention: every session MUST attempt to read `AGENT.md`
   (falling back to `AGENTS.md`, then `CLAUDE.md`) via `dsh-agent-instructions`.
@@ -75,11 +83,10 @@ mpd-dsh/
 │   ├── mpd-bundle/               # cordis.patch.yml: llm dual-track, skills, MCPs, all mpd plugins
 │   ├── mpd-skills-plugin/ (removed)
 │   ├── mpd-mcp-astgrep|gitbash|lsp|codegraph/
-│   ├── mpd-roles-plugin/         # OMO-origin agents as SUBAGENTS: roster (roles.data.ts) + personas/ + mpd_roles_list / mpd_role_spawn / mpd_role_persona + mpdRoles service
+│   ├── mpd-roles-plugin/         # OMO-origin specialists: roster (roles.data.ts, normal names + stable ids) + personas/ + mpd_roles_list / mpd_role_spawn / mpd_role_persona + mpdRoles service
 │   ├── mpd-tools-plugin/         # B1: write guard, truncation, edit-error recovery
 │   ├── mpd-modelchain-plugin/    # B4: mpd_modelchain_resolve + mpd_memory_save/recall
 │   ├── mpd-ulw-plugin/           # B3: mpd_ulw loop discipline
-│   ├── mpd-team-plugin/          # B2: mpd_team_spawn / mpd_team_status (roster-backed roles)
 │   ├── mpd-codegraph-plugin/     # binary resolve + project init + mpd-codegraph command
 │   ├── mpd-hashline-plugin/      # C3: anchored edit discipline (vendor hashline-core)
 │   ├── mpd-boulder-plugin/       # C5: durable work ledger (vendor boulder-state)
@@ -255,8 +262,10 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 - bundle: npm package with `dsh.bundle.patch` patch layer (here: `mpd-bundle`).
 - patch layer: id-targeted override or `insert:` list applied in order.
 - preset: directory with `preset.yml` + `agent.cordis.yml` (agent-plane composition).
-- roster: the OMO-origin agent definitions (persona + model chain + read-only discipline)
-  served by `mpd-roles-plugin` as subagents (`mpd_roles_list` / `mpd_role_spawn` /
-  `mpd_role_persona`); the canonical ids match the modelchain chain keys.
+- roster: the OMO-origin specialist definitions (stable id = modelchain chain key, normal
+  display name, persona + model chain + read-only discipline) served by
+  `mpd-roles-plugin` (`mpd_roles_list` / `mpd_role_spawn` / `mpd_role_persona`); the same
+  specialists are exposed as normal-named teammate instantiation templates through the
+  adopted dsh-agent-teams `mpd` roster profile.
 - mpd: our naming prefix (my-power-dsh).
 - golden: graded benchmark task set in `tests/golden`.

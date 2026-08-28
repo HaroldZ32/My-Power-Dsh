@@ -1,9 +1,12 @@
-// mpd-roles-plugin: the OMO-origin agents live as a SUBAGENT ROSTER, not as
-// standalone presets. Each roster role = { persona text, DeepSeek model chain,
-// read-only discipline }. Consumers: mpd_role_spawn (call a specialist from
-// anywhere, incl. team members), mpd_team_spawn (roles parameter), and the
-// mpdRoles service (mpd-modelchain chain lookup). Persona texts are assets
-// under personas/<id>.md resolved relative to this plugin's package location.
+// mpd-roles-plugin: the OMO-origin agents live as a SPECIALIST ROSTER, not as
+// presets. Each role = { stable id (chain key), normal display name, persona
+// text, DeepSeek model chain, read-only discipline }. Consumers: mpd_role_spawn
+// (one-shot specialist from anywhere), mpd_role_persona (text for spawn
+// surfaces like agent_teams_add_member), and the mpdRoles service (mpd-modelchain
+// chain lookup). Team mode lives in the adopted dsh-agent-teams plugin, whose
+// normal-named member templates are configured in the bundle patch.
+// Persona texts are assets under personas/<id>.md resolved relative to this
+// plugin's package location.
 import { existsSync, readFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -74,7 +77,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   ctx.tools.register({
     name: "mpd_roles_list",
-    description: "List the OMO-origin specialist roster (subagent definitions): id, name, description, read-only flag and primary model route for oracle/librarian/prometheus/explore/metis/momus/atlas/hephaestus/sisyphus/sisyphus-junior/multimodal-looker. Use this before mpd_role_spawn / mpd_team_spawn.",
+    description: "List the specialist roster (ids → normal display names): Architect(oracle), Researcher(librarian), Planner(prometheus), Config Engineer(hephaestus), Senior Engineer(sisyphus), Lead(atlas), Explorer(explore), Reviewer(metis), UX Critic(momus), Vision Analyst(multimodal-looker), Junior Engineer(sisyphus-junior). Use before mpd_role_spawn. Team mode uses the dsh-agent-teams profiles (agent_teams_create profile=mpd).",
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { roles: { type: "array", items: { type: "object" } }, count: { type: "integer" } }, required: ["roles", "count"] }, render: (_a: unknown, v: any) => textBlock("roster (" + v.count + "):\n" + v.roles.map((r: any) => "- " + r.id + " [" + r.model + (r.readonly ? " readonly" : "") + "] " + r.description).join("\n")) },
     execute: async () => ({ roles: ROLES.map((r) => ({ id: r.id, name: r.name, description: r.description, readonly: r.readonly, provider: r.chain[0]?.provider ?? null, model: r.chain[0]?.model ?? null })), count: ROLES.length })
@@ -82,7 +85,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   ctx.tools.register({
     name: "mpd_role_spawn",
-    description: "Spawn one OMO-origin specialist as a subagent with its roster persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles: oracle (review/advisor), prometheus (planner), librarian (retrieval/citation), explore (read-only explorer), metis (gap analysis), momus (hostile reviewer), atlas (orchestrator), hephaestus (deep worker), sisyphus / sisyphus-junior (implementers), multimodal-looker (extract-only vision). Accepts the modelchain-style keys (oracle / sisyphus-junior) and legacy mpd-<id> aliases.",
+    description: "Spawn one specialist as a one-shot subagent with its roster persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Use ids from mpd_roles_list: Architect(oracle), Researcher(librarian), Planner(prometheus), Config Engineer(hephaestus), Senior Engineer(sisyphus), Lead(atlas), Explorer(explore), Reviewer(metis), UX Critic(momus), Vision Analyst(multimodal-looker), Junior Engineer(sisyphus-junior). For multi-member team work prefer the adopted dsh-agent-teams protocol (agent_teams_create + agent_teams_add_member), not repeated one-shot spawns.",
     parameters: { type: "object", properties: { role: { type: "string", description: "roster role id (mpd_roles_list)" }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" }, model: { type: "string", description: "optional model override (default: the role's primary route)" } }, required: ["role", "task"], additionalProperties: false },
     output: { schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete", "error"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a: unknown, v: any) => textBlock("role " + v.role + " (" + v.status + ")\nsummary: " + v.summary + (v.recommendation ? "\nrecommendation: " + v.recommendation : "") + (v.details ? "\ndetails: " + v.details : "") + (v.evidence?.length ? "\nevidence:\n- " + v.evidence.join("\n- ") : "")) },
     execute: async (args: any, exec: any) => {

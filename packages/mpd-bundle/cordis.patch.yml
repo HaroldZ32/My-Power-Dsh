@@ -74,8 +74,6 @@
       name: '@mpd-dsh/mpd/packages/mpd-ulw-plugin/dist/index.js'
       config:
         maxRounds: 3
-    - id: mpd-team
-      name: '@mpd-dsh/mpd/packages/mpd-team-plugin/dist/index.js'
     - id: mpd-hashline
       name: '@mpd-dsh/mpd/packages/mpd-hashline-plugin/dist/index.js'
       config:
@@ -111,6 +109,85 @@
         stateDir: .mpd/team
         memberProvider: spawn
         memberMaxDepth: 1
+        maxMembers: 16
+        # The OMO-origin agents become teammate instantiation templates for the
+        # adopted dsh-agent-teams plugin (reusing its architecture + Web GUI).
+        # One named profile `mpd` holds the full normal-named roster and
+        # `taskPlanning: captain` means only the roster is fixed: the captain
+        # designs the task DAG after a staged plan the user reviews in the panel.
+        # /agent-teams --profile mpd <goal> instantiates the roster explicitly.
+        profiles:
+          mpd:
+            description: "The OMO-origin specialist roster surfaced as normal-named teammate templates — captain-planned (roster only; the captain designs the DAG during the staged plan)."
+            protocol: "Read-only members (Architect, Researcher, Planner, Explorer, UX Critic, Vision Analyst) take requirements/review/analysis tasks only and never edit files. Workers (Senior Engineer, Junior Engineer, Config Engineer, Lead, Reviewer) take implementation/verification/integration. The captain leads, designs the DAG, and integrates results."
+            taskPlanning: captain
+            members:
+              - name: Architect
+                role: architecture review / deep debugging / self-review
+                provider: deepseek-official
+                model: deepseek-v4-pro
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Read-only architecture advisor. You advise, others execute — never edit files. Favor simplicity and existing patterns; give one clear recommendation with concise rationale and evidence."
+              - name: Researcher
+                role: code / open-source evidence search
+                provider: deepseek-official
+                model: deepseek-v4-flash
+                fallback: { provider: deepseek, model: deepseek-v4-flash }
+                executionPrompt: "Read-only researcher. Gather evidence from the codebase, AST/LSP and web sources; cite file:line and URLs; never edit files or invent findings."
+              - name: Planner
+                role: planning / task decomposition
+                provider: deepseek-official
+                model: deepseek-v4-pro
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Read-only planner. Produce decision-complete, step-ordered plans with a checklist; never implement."
+              - name: Explorer
+                role: read-only codebase exploration
+                provider: deepseek-official
+                model: deepseek-v4-flash
+                fallback: { provider: deepseek, model: deepseek-v4-flash }
+                executionPrompt: "Read-only explorer. Answer with evidence and absolute file paths; never edit files."
+              - name: Reviewer
+                role: correctness / risk review
+                provider: deepseek-official
+                model: deepseek-v4-pro
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Deep reviewer. Produce correctness/risk findings with evidence; recommend fixes but do not apply them."
+              - name: UX Critic
+                role: UI/UX and interaction critique
+                provider: deepseek-official
+                model: deepseek-v4-flash
+                fallback: { provider: deepseek-official, model: deepseek-v4-pro }
+                executionPrompt: "Read-only UI/UX critic. Concrete, testable critiques only; never edit files."
+              - name: Vision Analyst
+                role: image / diagram analysis
+                provider: deepseek-official
+                model: deepseek-v4-flash-vision-exp
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Read-only vision analyst. Describe screenshots/diagrams precisely; never edit files or load anything by path."
+              - name: Lead
+                role: orchestration / integration
+                provider: deepseek-official
+                model: deepseek-v4-pro
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Orchestrator. Plan the macro structure, delegate independent units in parallel, integrate and verify results."
+              - name: Config Engineer
+                role: configuration management
+                provider: deepseek-official
+                model: deepseek-v4-flash
+                fallback: { provider: deepseek, model: deepseek-v4-flash }
+                executionPrompt: "Configuration specialist. Explain profile/bundle/preset configuration and produce diffs; verify every change."
+              - name: Senior Engineer
+                role: primary implementation
+                provider: deepseek-official
+                model: deepseek-v4-pro
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Primary engineer. Plan small, execute with tools, keep diffs minimal, verify every change, report honestly."
+              - name: Junior Engineer
+                role: small mechanical changes
+                provider: deepseek-official
+                model: deepseek-v4-flash
+                fallback: { provider: deepseek, model: deepseek-v4-flash }
+                executionPrompt: "Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny."
 
 - insert:
     - id: mcp-context7
