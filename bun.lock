@@ -1,0 +1,126 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "my-power-dsh",
+      "devDependencies": {
+        "@typescript/native-preview": "^7.0.0-dev.20260707.2",
+        "bun-types": "^1.4.0",
+      },
+    },
+    "packages/mpd-bootstrap-plugin": {
+      "name": "@mpd-dsh/bootstrap",
+      "version": "0.1.0",
+    },
+    "packages/mpd-boulder-plugin": {
+      "name": "@mpd-dsh/boulder",
+      "version": "0.1.0",
+    },
+    "packages/mpd-bundle": {
+      "name": "@mpd-dsh/dsh-bundle",
+      "version": "0.1.0",
+    },
+    "packages/mpd-comment-checker-plugin": {
+      "name": "@mpd-dsh/comment-checker",
+      "version": "0.1.0",
+    },
+    "packages/mpd-config-plugin": {
+      "name": "@mpd-dsh/config",
+      "version": "0.1.0",
+    },
+    "packages/mpd-hashline-plugin": {
+      "name": "@mpd-dsh/hashline",
+      "version": "0.1.0",
+    },
+    "packages/mpd-mcp-astgrep": {
+      "name": "@mpd-dsh/mcp-astgrep",
+      "version": "0.1.0",
+    },
+    "packages/mpd-mcp-gitbash": {
+      "name": "@mpd-dsh/mcp-gitbash",
+      "version": "0.1.0",
+    },
+    "packages/mpd-mcp-lsp": {
+      "name": "@mpd-dsh/mcp-lsp",
+      "version": "0.1.0",
+    },
+    "packages/mpd-memory-plugin": {
+      "name": "@mpd-dsh/memory",
+      "version": "0.1.0",
+    },
+    "packages/mpd-presets-plugin": {
+      "name": "@mpd-dsh/presets",
+      "version": "0.1.0",
+    },
+    "packages/mpd-team-plugin": {
+      "name": "@mpd-dsh/team",
+      "version": "0.1.0",
+    },
+    "packages/mpd-tools-plugin": {
+      "name": "@mpd-dsh/tools",
+      "version": "0.1.0",
+    },
+    "packages/mpd-ulw-plugin": {
+      "name": "@mpd-dsh/ulw",
+      "version": "0.1.0",
+    },
+    "packages/omo-hephaestus": {
+      "name": "@mpd-dsh/hephaestus",
+      "version": "0.1.0",
+    },
+  },
+  "packages": {
+    "@mpd-dsh/bootstrap": ["@mpd-dsh/bootstrap@workspace:packages/mpd-bootstrap-plugin"],
+
+    "@mpd-dsh/boulder": ["@mpd-dsh/boulder@workspace:packages/mpd-boulder-plugin"],
+
+    "@mpd-dsh/comment-checker": ["@mpd-dsh/comment-checker@workspace:packages/mpd-comment-checker-plugin"],
+
+    "@mpd-dsh/config": ["@mpd-dsh/config@workspace:packages/mpd-config-plugin"],
+
+    "@mpd-dsh/dsh-bundle": ["@mpd-dsh/dsh-bundle@workspace:packages/mpd-bundle"],
+
+    "@mpd-dsh/hashline": ["@mpd-dsh/hashline@workspace:packages/mpd-hashline-plugin"],
+
+    "@mpd-dsh/hephaestus": ["@mpd-dsh/hephaestus@workspace:packages/omo-hephaestus"],
+
+    "@mpd-dsh/mcp-astgrep": ["@mpd-dsh/mcp-astgrep@workspace:packages/mpd-mcp-astgrep"],
+
+    "@mpd-dsh/mcp-gitbash": ["@mpd-dsh/mcp-gitbash@workspace:packages/mpd-mcp-gitbash"],
+
+    "@mpd-dsh/mcp-lsp": ["@mpd-dsh/mcp-lsp@workspace:packages/mpd-mcp-lsp"],
+
+    "@mpd-dsh/memory": ["@mpd-dsh/memory@workspace:packages/mpd-memory-plugin"],
+
+    "@mpd-dsh/presets": ["@mpd-dsh/presets@workspace:packages/mpd-presets-plugin"],
+
+    "@mpd-dsh/team": ["@mpd-dsh/team@workspace:packages/mpd-team-plugin"],
+
+    "@mpd-dsh/tools": ["@mpd-dsh/tools@workspace:packages/mpd-tools-plugin"],
+
+    "@mpd-dsh/ulw": ["@mpd-dsh/ulw@workspace:packages/mpd-ulw-plugin"],
+
+    "@types/node": ["@types/node@26.4.0", "https://repo.huaweicloud.com/repository/npm/@types/node/-/node-26.4.0.tgz", { "dependencies": { "undici-types": "~8.3.0" } }, "sha512-faiGnoIrLH/V8cibOMEAZ8pMw6oXqSukl29ra4mN8GdaB2ZewzeaLj+INpV5N+Z1eKWzY+IzaIZH2EIR6YZRNQ=="],
+
+    "@typescript/native-preview": ["@typescript/native-preview@7.0.0-dev.20260707.2", "https://repo.huaweicloud.com/repository/npm/@typescript/native-preview/-/native-preview-7.0.0-dev.20260707.2.tgz", { "optionalDependencies": { "@typescript/native-preview-darwin-arm64": "7.0.0-dev.20260707.2", "@typescript/native-preview-darwin-x64": "7.0.0-dev.20260707.2", "@typescript/native-preview-linux-arm": "7.0.0-dev.20260707.2", "@typescript/native-preview-linux-arm64": "7.0.0-dev.20260707.2", "@typescript/native-preview-linux-x64": "7.0.0-dev.20260707.2", "@typescript/native-preview-win32-arm64": "7.0.0-dev.20260707.2", "@typescript/native-preview-win32-x64": "7.0.0-dev.20260707.2" }, "bin": { "tsgo": "bin/tsgo" } }, "sha512-oUGp+Rep/hqMhPunyinsALUwSlzHINSxitifPiSaeqoKOKD2OlR9NE3TaPqwsl4NlGslsOSUXI1JotWQzpYCPg=="],
+
+    "@typescript/native-preview-darwin-arm64": ["@typescript/native-preview-darwin-arm64@7.0.0-dev.20260707.2", "https://repo.huaweicloud.com/repository/npm/@typescript/native-preview-darwin-arm64/-/native-preview-darwin-arm64-7.0.0-dev.20260707.2.tgz", { "os": "darwin", "cpu": "arm64" }, "sha512-wny2pgKjGbiZtnOIHVa3tXC1UfDqxNEFzyPGmiqybedG8hipG2Nfp0l5UxbaKCjkLacUpH/W5bP2hBOMVhCOzg=="],
+
+    "@typescript/native-preview-darwin-x64": ["@typescript/native-preview-darwin-x64@7.0.0-dev.20260707.2", "https://repo.huaweicloud.com/repository/npm/@typescript/native-preview-darwin-x64/-/native-preview-darwin-x64-7.0.0-dev.20260707.2.tgz", { "os": "darwin", "cpu": "x64" }, "sha512-Afc7M5zOwo+GpfcYwz5Z8HMB2tPVsui7nNIqEuuFB73MPdVqNn/Wmpe4tP4MRri0AtJnJknoHBaTJ/VDAp/Jhw=="],
+
+    "@typescript/native-preview-linux-arm": ["@typescript/native-preview-linux-arm@7.0.0-dev.20260707.2", "https://repo.huaweicloud.com/repository/npm/@typescript/native-preview-linux-arm/-/native-preview-linux-arm-7.0.0-dev.20260707.2.tgz", { "os": "linux", "cpu": "arm" }, "sha512-hJm/UOqZTr9FHmR7uNm8VGX4oKtfWk0Jem0zPeJFNC8ckGUfSBueyiEYMZB+XmRc1aG4x1E46y3CplP4CLHvGQ=="],
+
+    "@typescript/native-preview-linux-arm64": ["@typescript/native-preview-linux-arm64@7.0.0-dev.20260707.2", "https://repo.huaweicloud.com/repository/npm/@typescript/native-preview-linux-arm64/-/native-preview-linux-arm64-7.0.0-dev.20260707.2.tgz", { "os": "linux", "cpu": "arm64" }, "sha512-iITBa2WjjTI5N9t5l7Z4KoOSI+2zBlhbvFzsD/f8qX8QoKjz/Y4DPyBDgezYi8nkqjjksbgSOJ3/ykzhwrB9cg=="],
+
+    "@typescript/native-preview-linux-x64": ["@typescript/native-preview-linux-x64@7.0.0-dev.20260707.2", "https://repo.huaweicloud.com/repository/npm/@typescript/native-preview-linux-x64/-/native-preview-linux-x64-7.0.0-dev.20260707.2.tgz", { "os": "linux", "cpu": "x64" }, "sha512-du0dzi6y97Po5vDNdPJTyyijHCpaS22JLRnKZEJXBDaO9gCIymOv/5QQokFRuOlQm0bWl3i9PF4OVdGP6uAOQA=="],
+
+    "@typescript/native-preview-win32-arm64": ["@typescript/native-preview-win32-arm64@7.0.0-dev.20260707.2", "https://repo.huaweicloud.com/repository/npm/@typescript/native-preview-win32-arm64/-/native-preview-win32-arm64-7.0.0-dev.20260707.2.tgz", { "os": "win32", "cpu": "arm64" }, "sha512-SsAwfhyHJ1akgBc+99z4+hwdbHsdWaKB8EwCNIMA6JfSLMeUjffrYvxu+vfMyxVtOVOz7RrRXRoiDiu4a2sCtg=="],
+
+    "@typescript/native-preview-win32-x64": ["@typescript/native-preview-win32-x64@7.0.0-dev.20260707.2", "https://repo.huaweicloud.com/repository/npm/@typescript/native-preview-win32-x64/-/native-preview-win32-x64-7.0.0-dev.20260707.2.tgz", { "os": "win32", "cpu": "x64" }, "sha512-DL4u27stv0fo71sVhOzHSwE+YMZsbBijVI+kg5dLDLilSH79WFTJ8RSQ46vJrCMt+Gjlv/JOZP1PuLJDfioYeQ=="],
+
+    "bun-types": ["bun-types@1.4.0", "https://repo.huaweicloud.com/repository/npm/bun-types/-/bun-types-1.4.0.tgz", { "dependencies": { "@types/node": "*" } }, "sha512-iIKw23BspnQQYd3prITOBxeUsxBHnwzX6YJfGMuNOZzeNcMmVqzIIVGRm1l69ogaPQmb4wB6BN8mA5bE9YuC5Q=="],
+
+    "undici-types": ["undici-types@8.3.0", "https://repo.huaweicloud.com/repository/npm/undici-types/-/undici-types-8.3.0.tgz", {}, "sha512-j375ScV60dom+YkPFIfTLcOiPxkN/buHz5GobjLhixFuANaNs3C9l4GmrWqejgXWJ7BbJcFYpTEUkS1Ge8bpZQ=="],
+  }
+}

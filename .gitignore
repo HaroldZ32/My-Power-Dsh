@@ -10,3 +10,5 @@ dist/mpd-package/
 .bun-tmp/
 .qa-tov/
 .cg-qa/
+.git-home/
+.tmp-cache/

@@ -1,6 +1,6 @@
 // src/index.ts
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
@@ -21,8 +21,7 @@ function packageCodegraphPath() {
 function resolveBinary(config) {
   const candidates = [
     config?.binary,
-    process.env.MPD_CODEGRAPH_BIN ?? process.env.MPD_DSH_CODEGRAPH_BIN,
-    process.env.MPD_DSH_CODEGRAPH_BIN
+    process.env.MPD_CODEGRAPH_BIN ?? process.env.MPD_DSH_CODEGRAPH_BIN
   ].filter((s) => !!s && s.length > 0);
   for (const c of candidates)
     if (existsSync(c))
@@ -119,7 +118,7 @@ function apply(ctx, config = {}) {
   } catch {}
 }
 export {
-  apply,
+  name,
   inject,
-  name
+  apply
 };

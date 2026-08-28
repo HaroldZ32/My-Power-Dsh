@@ -2,7 +2,7 @@
 // exact-marker probing, atomic lock, failure cooldown capped at 15 min, 60 s tree timeout), and registers the mpd-codegraph command for manual re-runs.
 // Zero runtime dependencies; any failure is only logged and never crashes boot.
 import { spawnSync } from "node:child_process"
-import { existsSync, mkdirSync, rmSync, statSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync } from "node:fs"
 import { homedir } from "node:os"
 import { createRequire } from "node:module"
 import { dirname, join, resolve } from "node:path"
@@ -11,7 +11,7 @@ export const name = "mpd-codegraph"
 export const inject = []
 
 type Ctx = { get?(key: string): unknown; [k: string]: unknown }
-type Config = { autoInit?: boolean; initTimeoutMs?: number; cooldownMs?: number }
+type Config = { autoInit?: boolean; initTimeoutMs?: number; cooldownMs?: number; binary?: string }
 
 function packageCodegraphPath(): string | null {
   try {
@@ -25,7 +25,7 @@ function packageCodegraphPath(): string | null {
 
 function resolveBinary(config?: Config): string | null {
   const candidates = [
-    config?.binary, process.env.MPD_CODEGRAPH_BIN ?? process.env.MPD_DSH_CODEGRAPH_BIN, process.env.MPD_DSH_CODEGRAPH_BIN
+    config?.binary, process.env.MPD_CODEGRAPH_BIN ?? process.env.MPD_DSH_CODEGRAPH_BIN
   ].filter((s): s is string => !!s && s.length > 0)
   for (const c of candidates) if (existsSync(c)) return c
   const pkgBin = packageCodegraphPath()

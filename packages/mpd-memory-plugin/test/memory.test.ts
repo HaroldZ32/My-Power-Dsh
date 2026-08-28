@@ -64,6 +64,9 @@ test("svn backend REAL svn CLI: repo create, checkout, commit, log", async () =>
 })
 
 test("both vcs: commits to git and svn", async () => {
+  const { spawnSync } = await import("node:child_process")
+  const probe = spawnSync("svnadmin", ["--version", "--quiet"], { encoding: "utf8" })
+  if (probe.status !== 0) return // svn not installed: skip (documented)
   const dir = mkdtempSync(join(tmpdir(), "mpd-mem-both-"))
   const { tools, restore } = makePlugin(dir, { vcs: "both", dir: ".mpd", agentSlug: "t4" })
   const write = tools.find((t) => t.name === "mpd_memory_write")

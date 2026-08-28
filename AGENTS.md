@@ -16,7 +16,15 @@ License: SUL-1.0 (`LICENSE.md`); inheritance declared in `README.md`.
 
 - Upstream product names and repository paths stay upstream's (provenance only).
 - Our naming prefix is **`mpd`** (my-power-dsh): packages, plugin ids, tool names (`mpd_*`),
-  preset ids (`mpd-oracle` …), env keys (`MPD_DSH_*`), state dir (`.mpd`).
+  preset id (`mpd`), env keys (`MPD_DSH_*`), state dir (`.mpd`).
+- **The OMO-origin agents are SUBAGENTS, not presets**: the 11 upstream roles
+  (oracle / librarian / prometheus / explore / metis / momus / atlas / hephaestus /
+  sisyphus / sisyphus-junior / multimodal-looker) ship as a subagent roster
+  (`mpd-roles-plugin`: `mpd_roles_list` / `mpd_role_spawn` / `mpd_role_persona`,
+  consumed by `mpd-team-plugin` members and `mpd_modelchain_resolve`). The ONLY
+  shipped preset is `mpd` — the main working agent — which also carries the
+  project-instruction convention: every session MUST attempt to read `AGENT.md`
+  (falling back to `AGENTS.md`, then `CLAUDE.md`) via `dsh-agent-instructions`.
 - **Upstream binary-resolution env keys must NOT be renamed**: `MPD_AST_GREP_SG_PATH` (sg resolver)
   and `MPD_CODEGRAPH_BIN` (codegraph serve) are read by upstream vendored code.
 - DSH plugin names (`@deepseek-ai/dsh-llm-deepseek`, `dsh-llm-pi-ai`, `dsh-mcp-client`, …) are the
@@ -59,23 +67,27 @@ mpd-dsh/
 │   ├── verify-vendor.mjs         # blocking vendor gate (commit/version/count/sha/treeSha)
 │   ├── build-mcp.mjs             # offline build of ast-grep/git-bash/lsp MCP servers
 │   ├── bootstrap.mjs             # preflight + vendor check (P0-era, kept as checks)
-│   └── install-profile.mjs       # ONLY sanctioned writer to a user DSH_HOME (default dry-run)
+│   ├── install-profile.mjs       # ONLY sanctioned writer to a user DSH_HOME (default dry-run)
+│   ├── pack-mpd.mjs              # Plan D: assemble the relocatable installable bundle
+│   ├── vendor-agent-teams.mjs    # materialize the adopted agent-teams plugin + closure
+│   └── gen-roles.mjs             # regenerate the OMO roster data/personas (mpd-roles-plugin)
 ├── packages/
 │   ├── mpd-bundle/               # cordis.patch.yml: llm dual-track, skills, MCPs, all mpd plugins
 │   ├── mpd-skills-plugin/ (removed)
 │   ├── mpd-mcp-astgrep|gitbash|lsp|codegraph/
-│   ├── mpd-presets-plugin/       # preset dirs mpd-oracle|mpd-librarian|mpd-prometheus|mpd-hephaestus
+│   ├── mpd-roles-plugin/         # OMO-origin agents as SUBAGENTS: roster (roles.data.ts) + personas/ + mpd_roles_list / mpd_role_spawn / mpd_role_persona + mpdRoles service
 │   ├── mpd-tools-plugin/         # B1: write guard, truncation, edit-error recovery
 │   ├── mpd-modelchain-plugin/    # B4: mpd_modelchain_resolve + mpd_memory_save/recall
 │   ├── mpd-ulw-plugin/           # B3: mpd_ulw loop discipline
-│   ├── mpd-team-plugin/          # B2: mpd_team_spawn / mpd_team_status
+│   ├── mpd-team-plugin/          # B2: mpd_team_spawn / mpd_team_status (roster-backed roles)
 │   ├── mpd-codegraph-plugin/     # binary resolve + project init + mpd-codegraph command
 │   ├── mpd-hashline-plugin/      # C3: anchored edit discipline (vendor hashline-core)
 │   ├── mpd-boulder-plugin/       # C5: durable work ledger (vendor boulder-state)
-│   ├── mpd-config-plugin/        # C7: minimal mpd.jsonc runtime config layer
+│   ├── mpd-config-plugin/        # C7: minimal mpd.jsonc runtime config layer (consumed by the plugins above)
 │   ├── mpd-comment-checker-plugin/ # C4: comment/docstring detection (opt-in binary)
 │   ├── mpd-memory-plugin/        # C6: git/svn-backed memory + reflection state machine
-│   └── mpd-qa-preset-probe/      # QA-only preset probe plugin
+│   ├── mpd-bootstrap-plugin/     # bundle provisioning: the mpd main preset (presets/mpd/) + skills copy to $DSH_HOME
+│   └── mpd-qa-roles-probe/       # QA-only probe: mpd preset resolve + mpdRoles roster (overlay-mounted)
 ├── skills/                      # skill corpus: dsh-qa (QA skill) + 17 ported upstream skills + svn-master (installed to \$DSH_HOME/skills by mpd-bootstrap)
 ├── tests/
 │   ├── overlays/                 # QA patch overlays (keep empty when rows live in the bundle)
@@ -136,12 +148,17 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 - **Subagents**: `ctx.subagents.start('spawn', {label, prompt:[{type:'text',text}], parent: exec.agent,
   signal: exec.signal, agentOptions:{provider,model}, outputSchema, persona, maxDepth, toolFilter})`
   → `run.result` (`{output, structured, stopReason}`).
-- **State**: workspace-scoped only (`.mpd/` under cwd); never write `~/.dsh` from a plugin
-  (the installer is the only sanctioned writer).
+- **State**: workspace-scoped only (`.mpd/` under cwd); never write `~/.dsh` from a plugin.
+  The ONLY sanctioned exception is the `mpd-bootstrap` provisioning row at boot: it copies
+  the bundle's `mpd` preset into `$DSH_HOME/.agent-presets/` and the skill corpus into
+  `$DSH_HOME/skills` (idempotent, version-stamped — see §8).
 - **Build**: `bun build src/index.ts --target node --format esm --outfile dist/index.js`;
   zero runtime deps preferred (type-only imports).
-- **Load/test**: add to bundle patch (insert row with absolute path here; npm packaging later uses
-  `@mpd-dsh/<pkg>`). Do NOT keep the same row in a QA overlay while it is already in the bundle —
+- **Load/test**: the committed bundle patch ships in PACKED form (`@mpd-dsh/mpd/...` —
+  resolvable only in an installed profile). QA boots it from a checkout through the
+  dev-flavor rewrite (`devPatch()` in `skills/dsh-qa/scripts/preset-register.mjs`:
+  rename rows to checkout-absolute paths, pin MCP binaries via `MPD_DSH_*` env).
+  Do NOT keep a bundle row in a QA overlay while it is already in the bundle —
   the loader rejects duplicate entry ids.
 - **Docstrings/comments**: English only.
 
@@ -169,7 +186,8 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   plugin rows use the resolvable `name: '@mpd-dsh/mpd/packages/...'`, every path-bearing
   value uses the loader's `baseUrl` (the profile directory), binaries come from the
   package's `optionalDependencies` (`@ast-grep/cli`, `@colbymchenry/codegraph`),
-  `@nanmicoder/dsh-agent-teams` is a dependency, presets auto-copy at boot via
+  the adopted `agent-teams` plugin is vendored at `third-party/dsh-agent-teams` (no npm
+  dependency), the `mpd` preset + skill corpus auto-copy at boot via
   `mpd-bootstrap` (version-stamped, idempotent).
 - Install from a checkout: `cd <repo> && dsh plugin --profile web add .`
   (or from a published location / Gitee URL — the patch never names this repo).
@@ -229,6 +247,8 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 | installed presets stale / agents miss tools (e.g. bash) | `mpd-bootstrap` only re-copies presets when the package VERSION changes — bump `package.json` version, `node scripts/pack-mpd.mjs`, restart dsh |
 | agent tool call fails with UNKNOWN_TOOL in code-mode deployments | presets declare `tool-presentation { mode: native }` — every row tool (bash/read/edit/...) is exposed directly; in code mode the model may only call `run_code` directly |
 | boot fails with ERR_MODULE_NOT_FOUND @nanmicoder/dsh-agent-teams | the legacy profile still pins the old row; the bundle row is now vendored (`@mpd-dsh/mpd/third-party/dsh-agent-teams`) — reinstall the bundle (`dsh plugin --profile <p> add dist/mpd-package`) |
+| AGENT.md / AGENTS.md not injected into a session | the session runs a non-mpd preset; the `mpd` preset configures `instructionFileCandidates` (AGENT.md → AGENTS.md → CLAUDE.md) — switch the session to the `mpd` preset |
+| `mpd_role_spawn` reports unknown role | role ids are the roster ids (`oracle`, `sisyphus-junior`, `multimodal-looker`, …) — run `mpd_roles_list`; legacy `mpd-<id>` aliases are accepted |
 
 ---
 
@@ -238,5 +258,8 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 - bundle: npm package with `dsh.bundle.patch` patch layer (here: `mpd-bundle`).
 - patch layer: id-targeted override or `insert:` list applied in order.
 - preset: directory with `preset.yml` + `agent.cordis.yml` (agent-plane composition).
+- roster: the OMO-origin agent definitions (persona + model chain + read-only discipline)
+  served by `mpd-roles-plugin` as subagents (`mpd_roles_list` / `mpd_role_spawn` /
+  `mpd_role_persona`); the canonical ids match the modelchain chain keys.
 - mpd: our naming prefix (my-power-dsh).
 - golden: graded benchmark task set in `tests/golden`.

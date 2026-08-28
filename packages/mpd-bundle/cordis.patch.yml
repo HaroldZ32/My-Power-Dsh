@@ -57,6 +57,10 @@
 
 # ── B-line plugins (self-written; production uses @mpd-dsh/<pkg> package names) ──
 - insert:
+    # mpd-config first: it provides the mpdConfig service that the rows below
+    # read (apply-time config merges for tools/waterfalls).
+    - id: mpd-config
+      name: '@mpd-dsh/mpd/packages/mpd-config-plugin/dist/index.js'
     - id: mpd-tools
       name: '@mpd-dsh/mpd/packages/mpd-tools-plugin/dist/index.js'
       config:
@@ -64,6 +68,8 @@
         truncateMaxBytes: 8192
     - id: mpd-modelchain
       name: '@mpd-dsh/mpd/packages/mpd-modelchain-plugin/dist/index.js'
+    - id: mpd-roles
+      name: '@mpd-dsh/mpd/packages/mpd-roles-plugin/dist/index.js'
     - id: mpd-ulw
       name: '@mpd-dsh/mpd/packages/mpd-ulw-plugin/dist/index.js'
       config:
@@ -76,8 +82,6 @@
         guardEditTools: true
     - id: mpd-boulder
       name: '@mpd-dsh/mpd/packages/mpd-boulder-plugin/dist/index.js'
-    - id: mpd-config
-      name: '@mpd-dsh/mpd/packages/mpd-config-plugin/dist/index.js'
     - id: mpd-comment-checker
       name: '@mpd-dsh/mpd/packages/mpd-comment-checker-plugin/dist/index.js'
       config:

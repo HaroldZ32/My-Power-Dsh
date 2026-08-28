@@ -922,6 +922,18 @@ function generateUnifiedDiff(oldContent, newContent, filePath) {
 // src/index.ts
 var name = "mpd-hashline";
 var inject = ["tools"];
+function mergedConfig(ctx, config) {
+  const svc = ctx.get?.("mpdConfig");
+  if (!svc?.get)
+    return config;
+  const v = (k) => svc.get(k);
+  return {
+    ...config,
+    guardEditTools: typeof v("hashline.guardEditTools") === "boolean" ? v("hashline.guardEditTools") : config.guardEditTools,
+    maxDiffChars: typeof v("hashline.maxDiffChars") === "number" ? v("hashline.maxDiffChars") : config.maxDiffChars,
+    registryFile: typeof v("hashline.registryFile") === "string" ? v("hashline.registryFile") : config.registryFile
+  };
+}
 function textBlock(text) {
   return [{ type: "text", text }];
 }
@@ -965,7 +977,8 @@ function editFile(fp, edits, maxDiffChars) {
   };
 }
 function apply(ctx, config = {}) {
-  const maxDiffChars = config.maxDiffChars ?? 4000;
+  const cfg = mergedConfig(ctx, config);
+  const maxDiffChars = cfg.maxDiffChars ?? 4000;
   ctx.tools.register({
     name: "mpd_hashline_read",
     description: "Show a file as hashline view: one 'LINE#HASH|content' line per source line, where LINE#HASH is the anchor to use with mpd_hashline_edit. Read-only; the file on disk stays plain.",
@@ -1019,7 +1032,7 @@ function apply(ctx, config = {}) {
       const fp = resolve(String(args?.path));
       if (!existsSync(fp))
         throw new Error("mpd-hashline: file not found: " + fp);
-      const rp = registryPath(config);
+      const rp = registryPath(cfg);
       writeRegistry(rp, [...readRegistry(rp), fp]);
       const raw = readFileSync(fp, "utf8");
       const out = toHashlineContent(raw);
@@ -1034,12 +1047,12 @@ function apply(ctx, config = {}) {
     output: { schema: { type: "object", properties: { path: { type: "string" } }, required: ["path"] }, render: (_a, v) => textBlock("hashline discipline removed: " + v.path) },
     execute: async (args) => {
       const fp = resolve(String(args?.path));
-      const rp = registryPath(config);
+      const rp = registryPath(cfg);
       writeRegistry(rp, readRegistry(rp).filter((x) => resolve(x) !== fp));
       return { path: fp };
     }
   });
-  if (config.guardEditTools !== false) {
+  if (cfg.guardEditTools !== false) {
     ctx.on("tools/post-execute", async (exec, result, next) => {
       const out = await next();
       if (out.kind !== "accept")
@@ -1048,7 +1061,7 @@ function apply(ctx, config = {}) {
       if (!isEdit)
         return out;
       const fp = exec.arguments?.file_path ?? exec.arguments?.path;
-      if (typeof fp !== "string" || !registered(config, fp))
+      if (typeof fp !== "string" || !registered(cfg, fp))
         return out;
       const hint = "[mpd-hashline guard] " + fp + " is hashline-disciplined and was changed with a plain edit tool, so the LINE#HASH anchors you saw are now stale. Re-read with mpd_hashline_read and continue with mpd_hashline_edit, or run mpd_hashline_restore to drop the discipline.";
       const content = out.content ?? result?.content;
@@ -1061,7 +1074,7 @@ function apply(ctx, config = {}) {
   }
 }
 export {
-  apply,
+  name,
   inject,
-  name
+  apply
 };

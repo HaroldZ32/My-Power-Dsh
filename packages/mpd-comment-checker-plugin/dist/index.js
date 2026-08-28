@@ -5,6 +5,19 @@ import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 var name = "mpd-comment-checker";
 var inject = ["tools"];
+function mergedConfig(ctx, config) {
+  const svc = ctx.get?.("mpdConfig");
+  if (!svc?.get)
+    return config;
+  const v = (k) => svc.get(k);
+  return {
+    ...config,
+    autoCheck: typeof v("commentChecker.autoCheck") === "boolean" ? v("commentChecker.autoCheck") : config.autoCheck,
+    binary: typeof v("commentChecker.bin") === "string" ? v("commentChecker.bin") : config.binary,
+    timeoutMs: typeof v("commentChecker.timeoutMs") === "number" ? v("commentChecker.timeoutMs") : config.timeoutMs,
+    maxMessageChars: typeof v("commentChecker.maxMessageChars") === "number" ? v("commentChecker.maxMessageChars") : config.maxMessageChars
+  };
+}
 function textBlock(text) {
   return [{ type: "text", text }];
 }
@@ -65,8 +78,9 @@ function runCheck(binary, hookInput, timeoutMs) {
   return { hasComments: false, message: "unexpected exit " + r.status + ": " + stderr.slice(0, 200) };
 }
 function apply(ctx, config = {}) {
-  const timeoutMs = config.timeoutMs ?? 30000;
-  const maxMessageChars = config.maxMessageChars ?? 12000;
+  const cfg = mergedConfig(ctx, config);
+  const timeoutMs = cfg.timeoutMs ?? 30000;
+  const maxMessageChars = cfg.maxMessageChars ?? 12000;
   ctx.tools.register({
     name: "mpd_comment_check",
     description: "Run the comment/docstring detector on one or more files (content in memory or read from disk). Returns per-file detection results; exit 2 means comments/docstrings found and the binary message spells the required action. The binary (@code-yeongyu/comment-checker, MIT) must be installed in .toolchain (installer flag --with-comment-checker) or set via MPD_DSH_COMMENT_CHECKER_BIN.",
@@ -75,7 +89,7 @@ function apply(ctx, config = {}) {
 ` + v.results.map((x) => x.hasComments ? "DETECTED " + x.path + ": " + x.message.slice(0, maxMessageChars) : "clean " + x.path).join(`
 `)) },
     execute: async (args) => {
-      const binary = resolveBinary(config);
+      const binary = resolveBinary(cfg);
       if (!binary)
         throw new Error("mpd-comment-checker: binary not found — run the installer with --with-comment-checker or set MPD_DSH_COMMENT_CHECKER_BIN");
       const files = Array.isArray(args?.files) ? args.files : [];
@@ -100,7 +114,7 @@ function apply(ctx, config = {}) {
       return { binary, results };
     }
   });
-  if (config.autoCheck === true) {
+  if (cfg.autoCheck === true) {
     ctx.on("tools/post-execute", async (exec, result, next) => {
       const out = await next();
       if (out.kind !== "accept")
@@ -111,7 +125,7 @@ function apply(ctx, config = {}) {
       const fp = exec.arguments?.file_path ?? exec.arguments?.path;
       if (typeof fp !== "string")
         return out;
-      const binary = resolveBinary(config);
+      const binary = resolveBinary(cfg);
       if (!binary)
         return out;
       let content = "";
@@ -137,10 +151,10 @@ function apply(ctx, config = {}) {
   }
 }
 export {
-  apply,
-  hookInputFor,
-  inject,
-  name,
+  runCheck,
   resolveBinary,
-  runCheck
+  name,
+  inject,
+  hookInputFor,
+  apply
 };

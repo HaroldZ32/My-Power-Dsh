@@ -13,7 +13,7 @@ import { join, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
-const DEV = process.env.MPD_DEV_ROOT || "/home/haroldzhao/dshProj/my-power-dsh"
+const DEV = process.env.MPD_DEV_ROOT || repoRoot
 
 function selfTest() {
   if (!existsSync(join(repoRoot, "dist", "mpd-package", "package.json"))) { console.error("[relocate-smoke self-test] FAIL: run node scripts/pack-mpd.mjs first"); process.exit(1) }
@@ -51,7 +51,7 @@ async function runReal() {
   const dumpOutClean = dumpOut.split(home).join("<QAHOME>")
   steps.dump = { ok: dump.status === 0 && dumpOut.includes("@mpd-dsh/mpd") && !dumpOutClean.includes(DEV), exit: dump.status, leaked: dumpOutClean.includes(DEV) }
   // Repro: mount a failing preset as the default to reproduce agent-switch errors.
-  writeFileSync(join(profile, "cordis.patch.yml"), "- insert:\n    - id: agent-presets\n      name: '@deepseek-ai/dsh-agent-presets'\n      config:\n        default: mpd-oracle\n")
+  writeFileSync(join(profile, "cordis.patch.yml"), "- insert:\n    - id: agent-presets\n      name: '@deepseek-ai/dsh-agent-presets'\n      config:\n        default: mpd\n")
   const live = spawnSync("dsh", ["--profile", "t", "Use mpd_config_get with key 'memory.vcs' then mpd_memory_status; report both values in one line."], { env, cwd: join(reloc, "ws"), encoding: "utf8", timeout: 600000, maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] })
   const out = (live.stdout || "") + (live.stderr || "")
   steps.live = { ok: live.status === 0, exit: live.status }

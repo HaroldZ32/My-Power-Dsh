@@ -12,8 +12,23 @@ import { basename, dirname, join, resolve } from "node:path"
 export const name = "mpd-memory"
 export const inject = ["tools"]
 
-type Ctx = { tools: any }
+type Ctx = { tools: any; get?: (k: string) => any }
 type Config = { vcs?: "git" | "svn" | "both"; dir?: string; agentSlug?: string; reflectionEvery?: number }
+
+/** Merge the row config with the mpdConfig runtime layer (mpd.jsonc wins per key). */
+function mergedConfig(ctx: Ctx, config: Config): Config {
+  const svc = ctx.get?.("mpdConfig") as { get: (k?: string) => any } | undefined
+  if (!svc?.get) return config
+  const v = (k: string) => svc.get(k)
+  const vcs = v("memory.vcs")
+  return {
+    ...config,
+    vcs: vcs === "git" || vcs === "svn" || vcs === "both" ? vcs : config.vcs,
+    dir: typeof v("memory.dir") === "string" ? v("memory.dir") : config.dir,
+    agentSlug: typeof v("memory.agentSlug") === "string" ? v("memory.agentSlug") : config.agentSlug,
+    reflectionEvery: typeof v("memory.reflectionEvery") === "number" ? v("memory.reflectionEvery") : config.reflectionEvery,
+  }
+}
 
 function textBlock(text: string): any { return [{ type: "text", text }] }
 
@@ -41,7 +56,7 @@ function ensureDirs(config: Config): { root: string; repo: string; runtime: stri
 }
 
 function run(cmd: string, args: string[], cwdDir: string): { ok: boolean; out: string } {
-  const r = spawnSync(cmd, args, { cwd: cwdDir, encoding: "utf8", timeout: 60000, maxBuffer: 8 * 1024 * 1024 })
+  const r = spawnSync(cmd, args, { cwd: cwdDir, encoding: "utf8", timeout: 60000, maxBuffer: 8 * 1024 * 1024, env: process.env })
   const out = (r.stdout ?? "") + (r.stderr ?? "")
   if (r.error) return { ok: false, out: "spawn error: " + String(r.error.message ?? r.error) }
   return { ok: r.status === 0, out }
@@ -120,7 +135,8 @@ function safeMemoryPath(memoryDir: string, name: string): string {
 }
 
 export function apply(ctx: Ctx, config: Config = {}): void {
-  const reflectionEvery = config.reflectionEvery ?? 10
+  const cfg = mergedConfig(ctx, config)
+  const reflectionEvery = cfg.reflectionEvery ?? 10
 
   function statePath(d: any): string { return join(d.runtime, "reflection.json") }
   function factsPath(d: any): string { return join(d.runtime, "facts.jsonl") }
@@ -143,22 +159,22 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     parameters: { type: "object", properties: { title: { type: "string" }, description: { type: "string" }, content: { type: "string" }, kind: { type: "string", enum: ["note", "fact", "reflection"] }, tags: { type: "array", items: { type: "string" } }, readOnly: { type: "boolean" } }, required: ["title", "content"], additionalProperties: false },
     output: { schema: { type: "object", properties: { file: { type: "string" }, committedTo: { type: "array", items: { type: "string" } }, reflectionDue: { type: "boolean" }, vcs: { type: "string" } }, required: ["file", "vcs"] }, render: (_a: unknown, v: any) => textBlock("memory written: " + v.file + " (vcs=" + v.vcs + " committed=" + v.committedTo.join(",") + " reflectionDue=" + v.reflectionDue + ")") },
     execute: async (args: any) => {
-      const d = ensureDirs(config)
-      ensureVcs(config, d)
+      const d = ensureDirs(cfg)
+      ensureVcs(cfg, d)
       const name = String(args?.title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) + "-" + Date.now().toString(36)
       const file = safeMemoryPath(d.memoryDir, name + ".md")
       const meta: any = { description: String(args?.description ?? args?.title ?? name), kind: String(args?.kind ?? "note"), tags: Array.isArray(args?.tags) ? args.tags : [] }
       if (args?.readOnly === true) meta.read_only = true
       const front = "---\n" + JSON.stringify(meta) + "\n---\n"
       writeFileSync(file, front + String(args?.content) + (String(args?.content).endsWith("\n") ? "" : "\n"))
-      const errs = commitAll(config, d, "memory: " + name + " (" + meta.kind + ")")
+      const errs = commitAll(cfg, d, "memory: " + name + " (" + meta.kind + ")")
       const ref = readReflection(d)
       ref.steps = (ref.steps ?? 0) + 1
       ref.steps_since_last_successful_reflection = (ref.steps_since_last_successful_reflection ?? 0) + 1
       if ((ref.steps_since_last_successful_reflection ?? 0) >= reflectionEvery) { ref.triggered = true; ref.reservation = { status: "pending", at: new Date().toISOString() } }
       writeReflection(d, ref)
-      appendJournal(d, "write", { file: basename(file), kind: meta.kind, vcs: config.vcs ?? "git" })
-      return { file, committedTo: (config.vcs ?? "git") === "both" ? ["git", "svn"] : [config.vcs ?? "git"], reflectionDue: ref.triggered === true, vcs: config.vcs ?? "git", errors: errs }
+      appendJournal(d, "write", { file: basename(file), kind: meta.kind, vcs: cfg.vcs ?? "git" })
+      return { file, committedTo: (cfg.vcs ?? "git") === "both" ? ["git", "svn"] : [cfg.vcs ?? "git"], reflectionDue: ref.triggered === true, vcs: cfg.vcs ?? "git", errors: errs }
     }
   })
 
@@ -168,7 +184,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     parameters: { type: "object", properties: { query: { type: "string" }, kind: { type: "string" }, limit: { type: "integer" } }, additionalProperties: false },
     output: { schema: { type: "object", properties: { entries: { type: "array", items: { type: "object" } }, count: { type: "integer" } }, required: ["entries", "count"] }, render: (_a: unknown, v: any) => textBlock("memory entries: " + v.count + "\n" + v.entries.map((e: any) => "- [" + (e.kind ?? "note") + "] " + e.description + ": " + e.content.slice(0, 200)).join("\n")) },
     execute: async (args: any) => {
-      const d = ensureDirs(config)
+      const d = ensureDirs(cfg)
       const files = existsSync(d.memoryDir) ? readdirSync(d.memoryDir).filter((f) => f.endsWith(".md")) : []
       let entries: any[] = []
       const kind = args?.kind ? String(args.kind) : null
@@ -195,7 +211,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { state: { type: "object" }, due: { type: "boolean" } }, required: ["state", "due"] }, render: (_a: unknown, v: any) => textBlock("reflection state: " + JSON.stringify(v.state, null, 1) + (v.due ? "\nREFLECTION DUE" : "")) },
     execute: async () => {
-      const d = ensureDirs(config)
+      const d = ensureDirs(cfg)
       const s = readReflection(d)
       return { state: s, due: s.triggered === true || s.reservation?.status === "pending" }
     }
@@ -207,13 +223,13 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     parameters: { type: "object", properties: { content: { type: "string" }, title: { type: "string" } }, required: ["content"], additionalProperties: false },
     output: { schema: { type: "object", properties: { completed: { type: "boolean" }, file: { type: "string" } }, required: ["completed", "file"] }, render: (_a: unknown, v: any) => textBlock("reflection completed: " + (v.completed ? "yes" : "no") + " " + v.file) },
     execute: async (args: any) => {
-      const d = ensureDirs(config)
-      ensureVcs(config, d)
+      const d = ensureDirs(cfg)
+      ensureVcs(cfg, d)
       const name = "reflection-" + Date.now().toString(36)
       const file = safeMemoryPath(d.memoryDir, name + ".md")
       const meta = { description: String(args?.title ?? "reflection"), kind: "reflection" }
       writeFileSync(file, "---\n" + JSON.stringify(meta) + "\n---\n" + String(args?.content) + "\n")
-      commitAll(config, d, "memory: reflection " + name)
+      commitAll(cfg, d, "memory: reflection " + name)
       const s = readReflection(d)
       s.reflected_completed_steps = (s.reflected_completed_steps ?? 0) + 1
       s.steps_since_last_successful_reflection = 0
@@ -231,10 +247,10 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { vcs: { type: "string" }, root: { type: "string" }, entries: { type: "integer" }, journalLines: { type: "integer" }, reflection: { type: "object" } }, required: ["vcs", "root", "entries"] }, render: (_a: unknown, v: any) => textBlock("memory status: vcs=" + v.vcs + " root=" + v.root + " entries=" + v.entries + " journal=" + v.journalLines + "\nreflection: " + JSON.stringify(v.reflection)) },
     execute: async () => {
-      const d = ensureDirs(config)
+      const d = ensureDirs(cfg)
       const files = existsSync(d.memoryDir) ? readdirSync(d.memoryDir).filter((f) => f.endsWith(".md")) : []
       const journalLines = existsSync(journalPath(d)) ? readFileSync(journalPath(d), "utf8").split("\n").filter(Boolean).length : 0
-      return { vcs: config.vcs ?? "git", root: d.root, entries: files.length, journalLines, reflection: readReflection(d) }
+      return { vcs: cfg.vcs ?? "git", root: d.root, entries: files.length, journalLines, reflection: readReflection(d) }
     }
   })
 }

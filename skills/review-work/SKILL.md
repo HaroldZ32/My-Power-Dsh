@@ -21,7 +21,7 @@ DSH (DeepSeek Harness): same rule — do not call OpenCode/Codex-only tools lite
 | OpenCode example | DSH tool to use |
 | --- | --- |
 | `subagent(sub...)` | `subagent` — self-contained `prompt` (TASK/DELIVERABLE/SCOPE/VERIFY), `run_in_background: true` for parallel lanes; `subagent_fork` when the full parent history is required |
-| `task(category="...", ...)` for implementation or QA | `subagent` + `persona` (`mpd-hephaestus`/`mpd-sisyphus-junior` for implementers) + `agentOptions.model` (`deepseek-v4-pro` for deep reasoning, `deepseek-v4-flash` for fast lanes) |
+| `task(category="...", ...)` for implementation or QA | `mpd_role_spawn(role="hephaestus"|"sisyphus-junior", ...)` for implementers (or `subagent` + `agentOptions.model`: `deepseek-v4-pro` for deep reasoning, `deepseek-v4-flash` for fast lanes) |
 | `job_output(task_id="...")` | `job_output` (same name; completion notice arrives automatically); re-task one child with `send_message` |
 | `team_*(...)` | `agent_teams_*` (vendored dsh-agent-teams: captain = current session, members are continuable subagents, tasks with dependencies, `maxMembers` defaults to 8, web activity panel mirrors live state) |
 
@@ -215,7 +215,7 @@ This agent answers: "Does it actually work when you run it?"
 The QA agent follows a structured process: brainstorm scenarios exhaustively first, then self-review and augment, then create a task list, then execute systematically.
 
 ```
-DSH: subagent(description="<same as below>", persona="mpd-hephaestus", agentOptions={model: "deepseek-v4-pro"}, run_in_background: true, prompt="<TASK/DELIVERABLE/SCOPE/VERIFY + role>")
+DSH: subagent(description="<same as below>", persona="<fetch via mpd_role_persona(role=hephaestus)>", agentOptions={model: "deepseek-v4-pro"}, run_in_background: true, prompt="<TASK/DELIVERABLE/SCOPE/VERIFY + role>")
 task(
   category="unspecified-high",
   run_in_background=true,
@@ -459,7 +459,7 @@ OUTPUT FORMAT:
 This agent answers: "Did we miss any context that should have informed this implementation?"
 
 ```
-DSH: subagent(description="<same as below>", persona="mpd-hephaestus", agentOptions={model: "deepseek-v4-pro"}, run_in_background: true, prompt="<TASK/DELIVERABLE/SCOPE/VERIFY + role>")
+DSH: subagent(description="<same as below>", persona="<fetch via mpd_role_persona(role=hephaestus)>", agentOptions={model: "deepseek-v4-pro"}, run_in_background: true, prompt="<TASK/DELIVERABLE/SCOPE/VERIFY + role>")
 task(
   category="unspecified-high",
   run_in_background=true,

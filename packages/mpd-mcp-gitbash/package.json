@@ -1,7 +1,7 @@
 {
   "name": "@mpd-dsh/mcp-gitbash",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.3",
   "type": "module",
   "description": "git-bash MCP integration plugin (P3)",
   "scripts": {

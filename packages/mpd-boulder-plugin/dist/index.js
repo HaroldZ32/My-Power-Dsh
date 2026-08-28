@@ -661,6 +661,13 @@ function endTaskTimer(directory, workId, taskKey, endedAt) {
 // src/index.ts
 var name = "mpd-boulder";
 var inject = ["tools"];
+function mergedConfig(ctx, config) {
+  const svc = ctx.get?.("mpdConfig");
+  if (!svc?.get)
+    return config;
+  const v = svc.get("boulder.dir");
+  return typeof v === "string" ? { ...config, boulderDir: v } : config;
+}
 function textBlock(text) {
   return [{ type: "text", text }];
 }
@@ -671,7 +678,8 @@ function boulderRoot(config) {
   return config.boulderDir ? config.boulderDir : cwd();
 }
 function apply(ctx, config = {}) {
-  const root = () => boulderRoot(config);
+  const merged = mergedConfig(ctx, config);
+  const root = () => boulderRoot(merged);
   ctx.tools.register({
     name: "mpd_boulder_status",
     description: "Show the boulder work ledger: active works, statuses, session ids, task timers, resume options and (optionally) the progress of one plan file. State lives in .mpd/boulder.json.",
@@ -781,7 +789,7 @@ plan: ` + JSON.stringify(v.planProgress) : "")) },
   });
 }
 export {
-  apply,
+  name,
   inject,
-  name
+  apply
 };

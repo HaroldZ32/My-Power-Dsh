@@ -21,9 +21,21 @@ dsh plugin --profile web add dist/mpd-package      # install the staged bundle
 
 This installs the `@mpd-dsh/mpd` bundle: DeepSeek dual-track (official default),
 MCP servers, all mpd plugins (including codegraph auto-init), adopted agent-teams
-(team + Web panel), and auto-copies the 11 `mpd-*` presets at first boot via
-`mpd-bootstrap` (version-stamped: bump the package version and re-pack to refresh
-already-installed presets).
+(team + Web panel), the `mpd` main-agent preset and the OMO-origin specialists as
+SUBAGENTS:
+
+- **Every project session on the `mpd` preset attempts to read `AGENT.md`**
+  (falling back to `AGENTS.md`, then `CLAUDE.md`) via `dsh-agent-instructions`.
+- **The 11 OMO-origin agents are subagents, not presets**: oracle, librarian,
+  prometheus, explore, metis, momus, atlas, hephaestus, sisyphus, sisyphus-junior
+  and multimodal-looker live in the mpd-roles roster — spawn one with
+  `mpd_role_spawn`, assemble a parallel team with `mpd_team_spawn` (team members
+  can spawn specialists themselves), list the roster with `mpd_roles_list`, and
+  fetch a persona text with `mpd_role_persona`. Read-only roles are mechanically
+  denied write tools at spawn.
+- `mpd-bootstrap` auto-copies the `mpd` preset + skill corpus at first boot
+  (version-stamped: bump the package version and re-pack to refresh
+  already-installed copies).
 
 **Two hard rules**
 1. Engineering matches the upstream upstream discipline: bun test / tsgo gates, isolated QA, evidence in
@@ -38,4 +50,6 @@ already-installed presets).
 - One-click install: `node scripts/install-profile.mjs --yes` (default dry-run; see --help)
 
 Status: Plan D decoupling COMPLETE — relocatable one-plugin install (evidence/plan-d/relocate PASS);
-Plan C waves complete (team adoption, ultrawork engine, hashline, boulder, mpd.jsonc, memory git+svn, vision e2e).
+Plan C waves complete (team adoption, ultrawork engine, hashline, boulder, mpd.jsonc, memory git+svn, vision e2e);
+Plan F COMPLETE — OMO agents as subagent roster (mpd-roles-plugin), single `mpd` main preset carrying the
+AGENT.md convention, mpd.jsonc wired into all runtime plugins (evidence/plan-f/roles-subagent PASS).

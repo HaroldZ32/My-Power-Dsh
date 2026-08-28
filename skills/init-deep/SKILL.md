@@ -244,7 +244,7 @@ Launch writing tasks for each location:
 
 ```
 for loc in AGENTS_LOCATIONS (except root):
-  subagent(description="Generate AGENTS.md", run_in_background=false, persona="mpd-hephaestus", agentOptions={model: "deepseek-v4-flash"}, prompt=`
+  subagent(description="Generate AGENTS.md", run_in_background=false, persona="<fetch via mpd_role_persona(role=hephaestus)>", agentOptions={model: "deepseek-v4-flash"}, prompt=`
     Generate AGENTS.md for: ${loc.path}
     - Reason: ${loc.reason}
     - 30-80 lines max

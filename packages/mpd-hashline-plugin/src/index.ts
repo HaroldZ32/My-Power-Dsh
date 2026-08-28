@@ -24,9 +24,22 @@ import {
 export const name = "mpd-hashline"
 export const inject = ["tools"]
 
-type Ctx = { tools: any; on: (ev: string, fn: (...a: any[]) => any) => void }
+type Ctx = { tools: any; on: (ev: string, fn: (...a: any[]) => any) => void; get?: (k: string) => any }
 type Config = { guardEditTools?: boolean; maxDiffChars?: number; registryFile?: string }
 type ToolExec = { name: string; arguments?: any }
+
+/** Merge the row config with the mpdConfig runtime layer (mpd.jsonc wins per key). */
+function mergedConfig(ctx: Ctx, config: Config): Config {
+  const svc = ctx.get?.("mpdConfig") as { get: (k?: string) => any } | undefined
+  if (!svc?.get) return config
+  const v = (k: string) => svc.get(k)
+  return {
+    ...config,
+    guardEditTools: typeof v("hashline.guardEditTools") === "boolean" ? v("hashline.guardEditTools") : config.guardEditTools,
+    maxDiffChars: typeof v("hashline.maxDiffChars") === "number" ? v("hashline.maxDiffChars") : config.maxDiffChars,
+    registryFile: typeof v("hashline.registryFile") === "string" ? v("hashline.registryFile") : config.registryFile,
+  }
+}
 
 function textBlock(text: string): any { return [{ type: "text", text }] }
 
@@ -67,7 +80,8 @@ function editFile(fp: string, edits: HashlineEdit[], maxDiffChars: number): any 
 }
 
 export function apply(ctx: Ctx, config: Config = {}): void {
-  const maxDiffChars = config.maxDiffChars ?? 4000
+  const cfg = mergedConfig(ctx, config)
+  const maxDiffChars = cfg.maxDiffChars ?? 4000
 
   ctx.tools.register({
     name: "mpd_hashline_read",
@@ -120,7 +134,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     execute: async (args: any) => {
       const fp = resolve(String(args?.path))
       if (!existsSync(fp)) throw new Error("mpd-hashline: file not found: " + fp)
-      const rp = registryPath(config)
+      const rp = registryPath(cfg)
       writeRegistry(rp, [...readRegistry(rp), fp])
       const raw = readFileSync(fp, "utf8")
       const out = toHashlineContent(raw)
@@ -135,21 +149,21 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     output: { schema: { type: "object", properties: { path: { type: "string" } }, required: ["path"] }, render: (_a: unknown, v: any) => textBlock("hashline discipline removed: " + v.path) },
     execute: async (args: any) => {
       const fp = resolve(String(args?.path))
-      const rp = registryPath(config)
+      const rp = registryPath(cfg)
       writeRegistry(rp, readRegistry(rp).filter((x) => resolve(x) !== fp))
       return { path: fp }
     }
   })
 
   // Guard: plain edit/write on a discipline-registered file silently invalidates anchors.
-  if (config.guardEditTools !== false) {
+  if (cfg.guardEditTools !== false) {
     ctx.on("tools/post-execute", async (exec: ToolExec, result: any, next: any) => {
       const out = await next()
       if (out.kind !== "accept") return out
       const isEdit = exec.name === "edit" || exec.name === "str_replace_editor" || exec.name === "write"
       if (!isEdit) return out
       const fp = exec.arguments?.file_path ?? exec.arguments?.path
-      if (typeof fp !== "string" || !registered(config, fp)) return out
+      if (typeof fp !== "string" || !registered(cfg, fp)) return out
       const hint = "[mpd-hashline guard] " + fp + " is hashline-disciplined and was changed with a plain edit tool, so the LINE#HASH anchors you saw are now stale. Re-read with mpd_hashline_read and continue with mpd_hashline_edit, or run mpd_hashline_restore to drop the discipline."
       const content = out.content ?? result?.content
       const text = typeof content === "string" ? content : (Array.isArray(content) ? content.map((b: any) => (b && b.type === "text" ? b.text : "")).join("\n") : "")

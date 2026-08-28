@@ -1,0 +1,5 @@
+# QA use: template — preset-register.mjs substitutes {{PROBE}} with this repo's
+# roles-probe dist at runtime (never commit checkout-absolute paths).
+- insert:
+    - id: roles-probe
+      name: '{{PROBE}}'

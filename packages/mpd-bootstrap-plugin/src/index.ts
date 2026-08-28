@@ -21,7 +21,7 @@ function pkgRoot(): string {
   // Location-derived, no package-name resolution: this file lives at
   // <pkg-root>/packages/mpd-bootstrap-plugin/dist/index.js, so the package
   // root is four directories up. Presets live at <pkg-root>/presets and the
-  // skill corpus at <pkg-root>/.agents/skills.
+  // skill corpus at <pkg-root>/skills.
   return dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 }
 
@@ -64,8 +64,11 @@ export function apply(ctx: any, config: Config = {}): void {
   if (config.skipPresets === true) {
     console.log("[mpd-bootstrap] presets skipped (config)")
   } else {
-    const presetsSrc = config.presetsDir ? config.presetsDir : join(root, "presets")
-    syncTree(presetsSrc, userPresetsDir(), version, "presets", (d) => d.startsWith("mpd-"))
+    // Packed layout: <root>/presets; checkout layout: <root>/packages/mpd-bootstrap-plugin/presets
+    const packedSrc = join(root, "presets")
+    const devSrc = join(root, "packages", "mpd-bootstrap-plugin", "presets")
+    const presetsSrc = config.presetsDir ? config.presetsDir : (existsSync(packedSrc) ? packedSrc : devSrc)
+    syncTree(presetsSrc, userPresetsDir(), version, "presets", (d) => d === "mpd" || d.startsWith("mpd-"))
   }
   if (config.skipSkills === true) {
     console.log("[mpd-bootstrap] skills skipped (config)")
