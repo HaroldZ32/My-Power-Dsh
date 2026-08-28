@@ -6,7 +6,7 @@
 //   2) $DSH_HOME/cordis.patch.yml (plugin rows with local absolute paths: llm dual track / skills / MCP / mpd-codegraph)
 //   3) $DSH_HOME/.agent-presets/mpd-* (presets -> auto-scanned from the user root)
 //   4) .toolchain (network install of ast-grep + codegraph when missing)
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
+import { cpSync, existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -101,7 +101,7 @@ function buildPlan(o) {
     }
   ]
   const agentTeamsRow = {
-    id: "agent-teams", name: "@nanmicoder/dsh-agent-teams",
+    id: "agent-teams", name: p("packages/mpd-agent-teams-plugin/lib/index.js"),
     config: { stateDir: ".mpd/team", memberProvider: "spawn", memberMaxDepth: 1 }
   }
   if (o.agentTeams !== false) rows.push(agentTeamsRow)
@@ -123,7 +123,10 @@ function buildPlan(o) {
   }
 }
 
-const EXISTING_IDS = new Set(["agent-teams"])
+// The agent-teams row is now a plain path row like every mpd-* row: the adopted
+// plugin is FIRST-CLASS MAIN CODE at packages/mpd-agent-teams-plugin (self-contained
+// _deps closure), so no "existing bundle id" semantics remain.
+const EXISTING_IDS = new Set([])
 
 function renderRow(r, indent) {
   const body = []
@@ -163,38 +166,14 @@ function selfTest() {
   if (plan.homePatch !== join(plan.dshHome, "cordis.patch.yml")) { console.error("[install-profile self-test] FAIL: path model"); process.exit(1) }
   const rows = plan.rows.map((r) => r.id)
   if (!rows.includes("mcp-astgrep") || !rows.includes("mpd-codegraph") || !rows.includes("agent-teams")) { console.error("[install-profile self-test] FAIL: row set"); process.exit(1) }
-  if (!rows.includes("agent-teams") || !EXISTING_IDS.has("agent-teams") || plan.agentTeamsRow.config.stateDir !== ".mpd/team") { console.error("[install-profile self-test] FAIL: agent-teams row/override"); process.exit(1) }
+  if (!rows.includes("agent-teams") || plan.agentTeamsRow.config.stateDir !== ".mpd/team") { console.error("[install-profile self-test] FAIL: agent-teams row/override"); process.exit(1) }
   if (!rows.includes("mpd-hashline")) { console.error("[install-profile self-test] FAIL: mpd-hashline row"); process.exit(1) }
-  console.log("[install-profile self-test] ok: path model + row set + agent-teams override verified")
-}
-
-function installAgentTeams(profile, dshHome) {
-  // Legacy dev/QA flow: materialize the adopted plugin into the profile dir with
-  // npm --prefix (the package marks its @deepseek-ai/* + react peers optional;
-  // the host's flat fallback $DSH_HOME/profiles/node_modules resolves them at
-  // boot), then reconcile dsh.profile.bundles exactly like `dsh plugin add`
-  // would. The PRIMARY (plan-d) bundle flow no longer needs this: the plugin is
-  // vendored at third-party/dsh-agent-teams and loaded via the bundle exports.
-  const profileDir = join(dshHome, "profiles", profile)
-  const manifestPath = join(profileDir, "package.json")
-  const cache = join(profileDir, ".npm-cache")
-  const r = spawnSync("npm", ["install", "--prefix", profileDir, "--no-audit", "--no-fund", "--cache", cache, "@nanmicoder/dsh-agent-teams@0.1.14"], {
-    env: { ...process.env, npm_config_cache: cache },
-    stdio: "inherit"
-  })
-  if (r.status !== 0) return false
-  const pkgPath = join(profileDir, "node_modules", "@nanmicoder", "dsh-agent-teams", "package.json")
-  if (!existsSync(pkgPath)) return false
-  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"))
-  const pkg = JSON.parse(readFileSync(pkgPath, "utf8"))
-  const bundles = manifest.dsh?.profile?.bundles ?? []
-  if (pkg.dsh?.bundle?.patch && !bundles.includes("@nanmicoder/dsh-agent-teams")) bundles.push("@nanmicoder/dsh-agent-teams")
-  manifest.dsh = { ...(manifest.dsh ?? {}), profile: { ...(manifest.dsh?.profile ?? {}), bundles } }
-  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n")
-  return true
+  if (!plan.agentTeamsRow.name.includes("packages/mpd-agent-teams-plugin/lib/index.js")) { console.error("[install-profile self-test] FAIL: agent-teams main-code path"); process.exit(1) }
+  console.log("[install-profile self-test] ok: path model + row set + agent-teams main-code path verified")
 }
 
 function main() {
+  // ONE npm install for ALL toolchain packages: separate --no-save installs prune
   const o = parseArgs(process.argv.slice(2))
   if (o.selfTest) { selfTest(); return }
   const plan = buildPlan(o)
@@ -216,29 +195,14 @@ function main() {
     dsh: { profile: { bundles: [plan.bundle0, plan.bundle1] } }
   }, null, 2) + "\n")
   writeFileSync(join(plan.profileDir, "cordis.patch.yml"), "[]\n")
-  // Pass 1: home patch WITHOUT the agent-teams override, because an id-targeted
-  // override of a not-yet-present bundle row would fail patch composition.
-  // The override is appended in pass 2 only after `dsh plugin add` materializes
-  // the agent-teams bundle row.
-  const rowsPass1 = plan.rows.filter((r) => r.id !== "agent-teams")
-  writeFileSync(plan.homePatch, renderPatch(rowsPass1) + "\n")
+  // Single-pass home patch: the agent-teams row is a plain path row now (the adopted
+  // plugin is first-class main code with its own _deps closure), so the old npm-install
+  // + two-pass override dance is obsolete.
+  writeFileSync(plan.homePatch, renderPatch(plan.rows) + "\n")
   // copy presets
   const ids = readdirSync(plan.presetsDir).filter((d) => d === "mpd" || d.startsWith("mpd-"))
   for (const id of ids) cpSync(join(plan.presetsDir, id), join(plan.userPresets, id), { recursive: true })
   console.log("[install-profile] wrote profile/ home patch/ presets(" + ids.length + ")")
-  if (plan.agentTeams) {
-    const ok = installAgentTeams(o.profile, plan.dshHome)
-    if (ok) {
-      // Pass 2: append the id-targeted override now that the bundle row exists.
-      const patch = readFileSync(plan.homePatch, "utf8")
-      writeFileSync(plan.homePatch, patch.replace(/\n*$/, "\n") + "\n\n" + renderRow(plan.agentTeamsRow, "") + "\n")
-      console.log("[install-profile] agent-teams installed; override appended (stateDir=.mpd/team)")
-    } else {
-      console.error("[install-profile] agent-teams install FAILED; no override written. Fix dsh/pnpm/network, then re-run with --yes")
-      process.exitCode = 1
-      return
-    }
-  }
   // ONE npm install for ALL toolchain packages: separate --no-save installs prune
   // each other (npm deletes packages absent from the single command).
   const toolchainPkgs = ["@ast-grep/cli", "@colbymchenry/codegraph@1.5.0"]

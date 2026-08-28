@@ -14,12 +14,13 @@ const FIXTURE_ROLES = "oracle,librarian,prometheus,hephaestus,sisyphus,sisyphus-
 
 // Dev-flavor rewrite of the bundle patch: the committed patch uses the packed
 // `@mpd-dsh/mpd/...` names (resolvable only in an installed profile); QA boots
-// from the checkout, so rows are rewritten to checkout-absolute paths and the
-// MCP command/env expressions are satisfied via MPD_DSH_* / MPD_*_BIN env pins.
+// from the checkout, so rows are rewritten to checkout-absolute paths (the
+// adopted agent-teams package is main code at packages/mpd-agent-teams-plugin,
+// so the generic rewrite covers it too) and the MCP command/env expressions are
+// satisfied via MPD_DSH_* / MPD_*_BIN env pins.
 function devPatch() {
   const t = readFileSync(join(repoRoot, "packages/mpd-bundle/cordis.patch.yml"), "utf8")
   return t
-    .split("'@mpd-dsh/mpd/third-party/dsh-agent-teams'").join("'" + join(repoRoot, "third-party/dsh-agent-teams/lib/index.js") + "'")
     .split("@mpd-dsh/mpd/").join(repoRoot + "/")
 }
 
