@@ -110,7 +110,7 @@ mpd-dsh/
 │   ├── overlays/                 # QA patch overlays (keep empty when rows live in the bundle)
 │   ├── golden/                   # golden fixtures + Prometheus plan artifacts
 │   └── prompt-adaptation-log.md  # persona adaptation iterations
-├── docs/                         # internal docs (English)
+├── docs/                         # internal docs (English): index.md (hub) / user-guide.md / architecture.md / development.md + plan records
 └── evidence/                     # QA evidence: <domain>/<slug>/<timestamp>/ (records, language as produced)
 ```
 

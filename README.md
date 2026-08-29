@@ -19,6 +19,19 @@ dsh plugin --profile web add dist/mpd-package      # install the staged bundle
 > `dsh.bundle.patch` entry). `dsh plugin add <path-or-git-url>` works the same way when the
 > target location contains the staged package.
 
+## Documentation
+
+Full documentation lives in [`docs/`](docs/index.md) — start at
+[`docs/index.md`](docs/index.md):
+
+- [`docs/user-guide.md`](docs/user-guide.md) — install, presets, specialists,
+  workmate library, team mode, GUI panels, configuration.
+- [`docs/architecture.md`](docs/architecture.md) — bundle assembly, boot chain,
+  plugin inventory, interaction flows, state layout, web-client wiring.
+- [`docs/development.md`](docs/development.md) — build/test/QA/pack/release.
+- [`AGENTS.md`](AGENTS.md) — the binding repository manual (conventions, gates, git
+  model, troubleshooting).
+
 This installs the `@mpd-dsh/mpd` bundle: DeepSeek dual-track (official default),
 MCP servers, all mpd plugins (including codegraph auto-init), adopted agent-teams
 (team + Web panel), the `mpd` main-agent preset and the OMO-origin specialists as
