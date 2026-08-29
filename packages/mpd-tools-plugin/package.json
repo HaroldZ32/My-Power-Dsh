@@ -5,7 +5,6 @@
   "type": "module",
   "description": "Tools/hooks plugin (B1)",
   "scripts": {
-    "typecheck": "tsgo --noEmit -p tsconfig.json",
     "test": "bun test"
   }
 }

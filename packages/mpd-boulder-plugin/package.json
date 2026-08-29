@@ -5,7 +5,6 @@
   "type": "module",
   "description": "Boulder durable work-state machine plugin (Plan C / C5)",
   "scripts": {
-    "typecheck": "tsgo --noEmit -p tsconfig.json",
     "test": "bun test"
   }
 }

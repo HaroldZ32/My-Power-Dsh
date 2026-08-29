@@ -5,7 +5,6 @@
   "type": "module",
   "description": "Minimal mpd.jsonc runtime config layer plugin (Plan C / C7)",
   "scripts": {
-    "typecheck": "tsgo --noEmit -p tsconfig.json",
     "test": "bun test"
   }
 }

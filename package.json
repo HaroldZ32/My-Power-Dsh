@@ -8,7 +8,7 @@
     "typecheck": "tsgo --noEmit",
     "test": "bun test packages",
     "test:fast": "bun test packages --test-timeout 30000",
-    "test:qa": "bun run skills/dsh-qa/scripts/mount-assert.mjs --self-test",
+    "test:qa": "for f in skills/dsh-qa/scripts/*.mjs; do echo \"[test:qa] $f\"; bun \"$f\" --self-test || { echo \"[test:qa] FAILED: $f\"; exit 1; }; done; echo \"[test:qa] all self-tests passed\"",
     "verify:vendor": "node scripts/verify-vendor.mjs",
     "bootstrap": "node scripts/bootstrap.mjs",
     "evidence:mount": "node skills/dsh-qa/scripts/mount-assert.mjs --expect \"name: '@deepseek-ai/dsh-llm'\""

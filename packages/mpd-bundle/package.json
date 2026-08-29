@@ -5,7 +5,6 @@
   "type": "module",
   "description": "DSH bundle aggregation package: cordis.patch.yml mounts all mpd-dsh plugin entries",
   "scripts": {
-    "typecheck": "tsgo --noEmit -p tsconfig.json",
     "test": "bun test"
   }
 }

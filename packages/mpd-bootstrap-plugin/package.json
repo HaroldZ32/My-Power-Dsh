@@ -3,8 +3,5 @@
   "private": true,
   "version": "0.2.3",
   "type": "module",
-  "description": "Bootstrap provisioning inside the bundle package (presets auto-copy)",
-  "scripts": {
-    "typecheck": "tsgo --noEmit -p tsconfig.json"
-  }
+  "description": "Bootstrap provisioning inside the bundle package (presets auto-copy)"
 }

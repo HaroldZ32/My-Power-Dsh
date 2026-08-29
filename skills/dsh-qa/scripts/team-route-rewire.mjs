@@ -8,8 +8,8 @@
 //      (@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib/index.js, no self-disabling
 //      guard) and composes with stateDir .mpd/team;
 //   3) profile-root resolution of the main-code entry succeeds (the guard expression
-//      would FAIL on @nanmicoder/dsh-agent-teams - that failure was the original defect,
-//      evidence evidence/plan-e/e1-team-route/2026-08-27T07-38-13.142Z);
+//      would FAIL on @nanmicoder/dsh-agent-teams - that failure was the original defect;
+//      current evidence -> evidence/plan-e/e4-team-vendor/<ts>/);
 //   4) real headless boot: no module errors, mpd tools answer, mpd-bootstrap copies the
 //      rewired skills/presets to $DSH_HOME whose texts point at agent_teams_*;
 //   5) web profile route smoke: /plugins/dsh-agent-teams/state responds 200.
