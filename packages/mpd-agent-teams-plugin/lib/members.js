@@ -36,15 +36,36 @@ const MEMBER_DENIED_TOOLS = [
     'agent_teams_delete',
 ];
 /**
+ * Normalize a member name to the workmate instance directory key, byte-for-byte
+ * identical to mpd-workmate-plugin's `sanitizeName`: lowercase, runs of
+ * non-[a-z0-9_-] collapse to "-", runs of "-" collapse to one, and leading /
+ * trailing "-" are trimmed. "Deep Worker" → "deep-worker", so multi-word member
+ * names resolve the same directory the workmate library creates.
+ */
+export function workmateKey(name) {
+    return String(name ?? '').trim().toLowerCase()
+        .replace(/[^a-z0-9_-]+/g, '-')
+        .replace(/-{2,}/g, '-')
+        .replace(/^-+|-+$/g, '');
+}
+/**
+ * Resolve the user home for the workmate library. Prefer $HOME (QA boots dsh
+ * with HOME=<sandbox>) over os.homedir() — bun caches os.homedir()'s initial
+ * value and would ignore a runtime HOME change (mirrors mpd-workmate homeDir).
+ */
+function homeDir() {
+    return process.env.HOME || homedir();
+}
+/**
  * If a workmate instance with this member name exists in ~/.mpd/workmate, return
  * its bounded persona + memory + note so the member is backed by the evolving
  * workmate. Case-insensitive on the sanitized (lowercase-kebab) instance name.
  */
 function workmateBacking(memberName) {
-    const key = String(memberName ?? '').trim().toLowerCase();
+    const key = workmateKey(memberName);
     if (key === '')
         return undefined;
-    const dir = join(homedir(), '.mpd', 'workmate', key);
+    const dir = join(homeDir(), '.mpd', 'workmate', key);
     const read = (f) => { try { const p = join(dir, f); return existsSync(p) ? readFileSync(p, 'utf8').trim() : ''; } catch { return ''; } };
     const persona = read('persona.md');
     const memory = read('memory.md');
