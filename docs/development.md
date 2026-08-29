@@ -1,5 +1,7 @@
 # Development Guide
 
+**English** | [中文](development.zh-CN.md)
+
 How to build, test, QA, pack and release this repository.
 
 ## 1. Repo layout

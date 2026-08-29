@@ -1,5 +1,7 @@
 # Architecture
 
+**English** | [中文](architecture.zh-CN.md)
+
 How my-power-dsh mounts inside the DeepSeek Harness (DSH), what each piece does, and
 how the pieces talk to each other. Reading order: bundle assembly → boot chain →
 plugin inventory → interaction flows → state layout → web client wiring.

@@ -1,5 +1,7 @@
 # mpd-mcp-gitbash
 
+**English** | [中文](./README.zh-CN.md)
+
 Offline-built MCP server exposing **Git Bash** (native Windows git operations) as
 `mcp__git_bash__*` tools. Wrapped by the bundle's `mcp-gitbash` row
 (`@deepseek-ai/dsh-mcp-client`, serverName `git_bash`, stdio).

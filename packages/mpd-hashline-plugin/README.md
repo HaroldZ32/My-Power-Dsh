@@ -1,4 +1,5 @@
 # mpd-hashline-plugin
+**English** | [中文](./README.zh-CN.md)
 
 Plan C / C3 — hash-anchored edit discipline on the DeepSeek Harness tool seam.
 

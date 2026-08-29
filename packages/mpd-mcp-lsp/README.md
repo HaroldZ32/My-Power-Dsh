@@ -1,5 +1,7 @@
 # mpd-mcp-lsp
 
+**English** | [中文](./README.zh-CN.md)
+
 Offline-built MCP server that drives language servers through the `lsp` transport
 (`mcp__lsp__*` tools) — definitions, references, diagnostics, hover. Wrapped by the
 bundle's `mcp-lsp` row (`@deepseek-ai/dsh-mcp-client`, serverName `lsp`, stdio).

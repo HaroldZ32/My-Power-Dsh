@@ -1,5 +1,7 @@
 # mpd-bundle-plugin
 
+**English** | [中文](./README.zh-CN.md)
+
 The `@mpd-dsh/mpd` bundle's own main plugin and web-client surface. Two jobs:
 
 1. **Web-compat main** — the bundle package's `main` / `exports["."]` points here. It

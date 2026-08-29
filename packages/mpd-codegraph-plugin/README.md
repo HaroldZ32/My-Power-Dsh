@@ -1,5 +1,7 @@
 # mpd-codegraph-plugin
 
+**English** | [中文](./README.zh-CN.md)
+
 CodeGraph (repository/code intelligence index) integration: resolves the `codegraph`
 binary, auto-initializes a project index on boot, and exposes the `/mpd-codegraph`
 command for manual (re)runs.

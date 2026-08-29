@@ -1,5 +1,7 @@
 # mpd-mcp-codegraph
 
+**English** | [中文](./README.zh-CN.md)
+
 Offline-built MCP server that serves the CodeGraph tool surface
 (`mcp__codegraph__*`). Wrapped by the bundle's `mcp-codegraph` row
 (`@deepseek-ai/dsh-mcp-client`, serverName `codegraph`, stdio).

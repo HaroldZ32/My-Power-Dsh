@@ -1,5 +1,7 @@
 # mpd-workmate-plugin
 
+**English** | [中文](./README.zh-CN.md)
+
 Durable, evolving agent library under the user's HOME (`~/.mpd/workmate`).
 
 The OMO roster specialists (`mpd-roles-plugin`) are **BASE templates only**. A

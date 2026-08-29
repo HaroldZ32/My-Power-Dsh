@@ -1,5 +1,7 @@
 # my-power-dsh
 
+**English** | [中文](./README.zh-CN.md)
+
 A DeepSeek-Harness plugin bundle that ports the portable capabilities of oh-my-openagent (OmO).
 
 > **Fork declaration**: This project is a fork derived from

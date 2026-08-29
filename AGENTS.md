@@ -4,6 +4,18 @@ This document is the binding operating manual for this repository. It is read by
 agents. Where this document and habit disagree, this document wins. Agent-facing content in this
 repository is English-only (see Language Policy).
 
+**Language policy (binding):**
+- Agent-facing content (this manual, code comments, QA scripts/logs) stays **English-only**.
+- **Human-facing documentation is BILINGUAL**: every doc a person reads — `README.md`,
+  `docs/*.md`, and every `packages/*/README.md` — ships BOTH an English file and a
+  **简体中文** (`*.zh-CN.md`) translation. Both versions must exist and stay in sync.
+- **Every bilingual doc carries a language switch link directly under its title**:
+  the English file links `[中文](./<name>.zh-CN.md)`, the Chinese file links
+  `[English](./<name>.md)`.
+- A change to a human-facing doc updates BOTH versions in the same commit. Adopted
+  third-party docs kept verbatim as provenance (e.g. the upstream
+  `mpd-agent-teams-plugin/README.md`) are exempt and stay untouched.
+
 ---
 
 ## 1. Overview & Provenance

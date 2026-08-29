@@ -1,5 +1,7 @@
 # mpd-bootstrap-plugin
 
+**English** | [中文](./README.zh-CN.md)
+
 Bundle provisioning: at boot, idempotently copies the `mpd` preset into
 `$DSH_HOME/.agent-presets/` and the skill corpus into `$DSH_HOME/skills`, stamped with
 the bundle version so already-installed copies refresh only when the package version

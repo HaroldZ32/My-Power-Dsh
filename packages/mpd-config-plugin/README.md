@@ -1,5 +1,7 @@
 # mpd-config-plugin
 
+**English** | [中文](./README.zh-CN.md)
+
 Plan C / C7 — minimal `mpd.jsonc` runtime config layer.
 
 Layers (deep-merged, project wins): project `<workspace>/.mpd/mpd.jsonc` and user

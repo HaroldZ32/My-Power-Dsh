@@ -1,5 +1,7 @@
 # User Guide
 
+**English** | [中文](user-guide.zh-CN.md)
+
 Everything a person using the my-power-dsh bundle needs, in workflow order.
 
 ## 1. Install

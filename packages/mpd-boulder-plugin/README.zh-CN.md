@@ -1,13 +1,11 @@
 # mpd-boulder-plugin
-**English** | [中文](./README.zh-CN.md)
+**中文** | [English](./README.md)
 
-Plan C / C5 — durable work-state machine ("boulder") on the DSH tool seam.
+Plan C / C5 — 在 DSH tool seam 上的持久化工作状态机（"boulder"）。
 
-Vendored core: the upstream project `packages/boulder-state`. Adaptations:
-state root `.mpd` → `.mpd` and the default session platform `upstream host` → `dsh`
-(see `src/vendor/constants.ts`, `src/vendor/storage/shared.ts`).
+Vendored core：上游项目 `packages/boulder-state`。改编：state root `.mpd` → `.mpd`，默认 session platform `upstream host` → `dsh`（见 `src/vendor/constants.ts`、`src/vendor/storage/shared.ts`）。
 
-## Tools
+## 工具
 
 | Tool | Purpose |
 |---|---|
@@ -18,7 +16,7 @@ state root `.mpd` → `.mpd` and the default session platform `upstream host` �
 | `mpd_boulder_plan_progress` | Parse TODOs + Final Verification Wave progress. |
 | `mpd_boulder_plans` | List plan files under `.mpd/plans`. |
 
-## Build / test
+## 构建 / 测试
 
 ```sh
 bun build src/index.ts --outdir dist --target node --format esm

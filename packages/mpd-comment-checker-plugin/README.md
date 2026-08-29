@@ -1,5 +1,7 @@
 # mpd-comment-checker-plugin
 
+**English** | [中文](./README.zh-CN.md)
+
 Plan C / C4 — comment/docstring detection on the DSH tool seam (opt-in binary).
 
 Vendored parser: the upstream project `packages/comment-checker-core` (base

@@ -1,4 +1,5 @@
 # mpd-bundle
+**English** | [中文](./README.zh-CN.md)
 
 DSH bundle aggregation package: `cordis.patch.yml` mounts every mpd-dsh plugin row —
 MCP servers (ast-grep/git-bash/lsp/codegraph + remote context7/grep.app), the B/C-line

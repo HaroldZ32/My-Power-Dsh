@@ -1,5 +1,7 @@
 # my-power-dsh Documentation
 
+**English** | [中文](index.zh-CN.md)
+
 This is the documentation index for the my-power-dsh DeepSeek Harness (DSH) bundle.
 Everything below is the authoritative documentation set; the repository manual is
 [`AGENTS.md`](../AGENTS.md) (binding rules for agents and humans) and the public

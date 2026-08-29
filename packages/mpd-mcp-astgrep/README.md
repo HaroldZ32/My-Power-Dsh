@@ -1,5 +1,7 @@
 # mpd-mcp-astgrep
 
+**English** | [中文](./README.zh-CN.md)
+
 Offline-built MCP server exposing **ast-grep** structural code search/rewrite as
 `mcp__ast_grep__*` tools. Wrapped by the bundle's `mcp-astgrep` row
 (`@deepseek-ai/dsh-mcp-client`, serverName `ast_grep`, stdio).

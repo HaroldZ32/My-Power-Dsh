@@ -1,5 +1,7 @@
 # mpd-qa-roles-probe
 
+**English** | [中文](./README.zh-CN.md)
+
 QA-only probe plugin (never shipped in the bundle): mounted by QA overlays
 (`tests/overlays/roles-probe.yml`) to assert in a real boot that (1) the `mpd` preset
 resolves unmounted-broken and (2) the `mpdRoles` roster answers with the full 11-role

@@ -1,4 +1,5 @@
 # mpd-memory-plugin
+**English** | [中文](./README.zh-CN.md)
 
 Plan C / C6 — git/svn-backed memory engine with a reflection state machine.
 

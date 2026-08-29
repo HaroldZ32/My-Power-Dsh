@@ -1,5 +1,7 @@
 # mpd-tools-plugin
 
+**English** | [中文](./README.zh-CN.md)
+
 Agent-safety hooks for the row tools (B1): three defenses layered onto tool
 execution, configured via the `mpd-tools` row.
 
