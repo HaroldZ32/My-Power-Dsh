@@ -72,7 +72,8 @@ mpd 插件（含 codegraph 自动初始化）、采纳的 agent-teams（团队 +
 - 基线锁：[VENDOR_LOCK.json](./VENDOR_LOCK.json)
 - 法律：[LICENSE.md](./LICENSE.md) / [LICENSE-NOTICES.md](./LICENSE-NOTICES.md)
 - 门禁与分支模型：[AGENTS.md](./AGENTS.md)
-- 一键安装：`node scripts/install-profile.mjs --yes`（默认 dry-run；见 --help）
+- 一键安装（主流程）：`node scripts/pack-mpd.mjs && dsh plugin --profile web add dist/mpd-package`；
+  旧开发流程：`node scripts/install-profile.mjs --yes`（默认 dry-run；见 --help）
 
 状态：Plan D 解耦完成 —— 可迁移的一插件安装（evidence/plan-d/relocate PASS）；
 Plan C 各波完成（团队采纳、ultrawork 引擎、hashline、boulder、mpd.jsonc、memory
