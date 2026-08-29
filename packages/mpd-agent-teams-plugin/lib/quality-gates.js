@@ -237,7 +237,20 @@ export function validateCreateTask(team, input) {
             return { ok: false, error: `source task "${input.sourceTaskId}" does not exist` };
         }
     }
-    const dependencies = input.dependencies ?? [];
+    let dependencies = (input.dependencies ?? []).slice();
+    // A review must wait for its reviewed task (the successful source): the
+    // protocol promises "reviews depend on the successful source, never the
+    // failed review". Auto-wire reviewedTaskId into the dependency list so a
+    // review can never dispatch before its source completes — otherwise a
+    // deps-empty review dispatches immediately, rejects the not-yet-existing
+    // implementation, and starts a false-reject loop. A repair likewise must
+    // wait for its source implementation before it can touch the same paths.
+    if (kind === 'review' && input.reviewedTaskId !== undefined && !dependencies.includes(input.reviewedTaskId)) {
+        dependencies.push(input.reviewedTaskId);
+    }
+    if (kind === 'repair' && input.sourceTaskId !== undefined && !dependencies.includes(input.sourceTaskId)) {
+        dependencies.push(input.sourceTaskId);
+    }
     for (const dependency of dependencies) {
         const upstream = team.tasks.find((item) => item.id === dependency);
         if (upstream === undefined) {
@@ -434,8 +447,22 @@ export function planQualityFollowUp(team, closed) {
     const kind = taskKindOf(closed);
     if ((kind !== 'review' && kind !== 'requirements') || closed.status !== 'failed')
         return empty;
-    if (closed.verdict === 'reject')
+    if (closed.verdict === 'reject') {
+        // "Implementation does not exist" class: the review rejected without a
+        // workable source (missing / failed / cancelled / still pending). No
+        // automatic repair can target such a premise — notify the captain only
+        // instead of escalating the whole team or spawning a repair.
+        const sourceId = closed.reviewedTaskId ?? closed.sourceTaskId;
+        const source = sourceId === undefined ? undefined : team.tasks.find((item) => item.id === sourceId);
+        const premiseBroken = source === undefined || source.status !== 'completed';
+        if (premiseBroken) {
+            return {
+                ...empty,
+                notifyCaptain: `Review ${closed.id} rejected (verdict=reject) but its reviewed task ${sourceId ?? '(missing)'} is not completed — no automatic repair was created; the captain must intervene before the review loop can continue.`,
+            };
+        }
         return { ...empty, escalated: true, status: 'escalated' };
+    }
     if (closed.verdict !== 'needs_revision')
         return empty;
     const policy = resolveReviewPolicy(team.reviewPolicy);
@@ -453,6 +480,7 @@ export function planQualityFollowUp(team, closed) {
             round: nextRound,
             objective: sanitizeReviewObjective(closed.objective, 'Converge remaining open questions'),
             acceptance: sanitizeReviewAcceptance(unresolvedFindings(closed).map((finding) => finding.requiredFix)),
+            reasonTaskId: closed.id,
         };
         return { created: [next], tasks: [next] };
     }
@@ -483,6 +511,7 @@ export function planQualityFollowUp(team, closed) {
         acceptance: findings.map((finding) => finding.requiredFix),
         sourceTaskId: sourceId,
         sourceFindingIds: findingIds,
+        reasonTaskId: closed.id,
     };
     const reviewer = schedulableAssignee(closed.assignee !== implementer ? closed.assignee : undefined, team, implementer);
     const review = {
@@ -495,6 +524,7 @@ export function planQualityFollowUp(team, closed) {
         objective: sanitizeReviewObjective(closed.objective, DEFAULT_REVIEW_OBJECTIVE),
         acceptance: sanitizeReviewAcceptance(closed.acceptance),
         reviewedTaskId: repair.id,
+        reasonTaskId: closed.id,
     };
     return { created: [repair, review], tasks: [repair, review] };
 }
@@ -612,6 +642,10 @@ export function hasValidQualityTaskFields(value) {
     if (value['reviewedTaskId'] !== undefined && !nonemptyString(value['reviewedTaskId']))
         return false;
     if (value['sourceTaskId'] !== undefined && !nonemptyString(value['sourceTaskId']))
+        return false;
+    if (value['reasonTaskId'] !== undefined && !nonemptyString(value['reasonTaskId']))
+        return false;
+    if (value['reassignReason'] !== undefined && !nonemptyString(value['reassignReason']))
         return false;
     if (value['reviewedAttempt'] !== undefined && !(Number.isSafeInteger(value['reviewedAttempt']) && value['reviewedAttempt'] >= 0)) {
         return false;

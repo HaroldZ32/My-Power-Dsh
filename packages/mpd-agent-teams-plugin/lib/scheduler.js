@@ -13,7 +13,7 @@
  */
 import { join } from 'node:path';
 import { deliverToMember } from "./members.js";
-import { acknowledgeMailbox, beginTaskAttempt, CAPTAIN_KEY, claimMailboxDelivery, findTeamByParticipant, invalidateTaskAttempt, readTeam, readUnreadMailbox, releaseMailboxDelivery, unsatisfiedDependencies, withTeamLock, writeTeam, } from "./state.js";
+import { acknowledgeMailbox, beginTaskAttempt, CAPTAIN_KEY, claimMailboxDelivery, findTeamByParticipant, invalidateTaskAttempt, readTeam, readUnreadMailbox, releaseMailboxDelivery, resolveCancelledDependencyDeadlocks, unsatisfiedDependencies, withTeamLock, writeTeam, } from "./state.js";
 /** Per-dependency output cap in the assignment prompt. */
 export const DEPENDENCY_OUTPUT_MAX_CHARS = 2_000;
 /** Combined dependency-output budget in the assignment prompt. */
@@ -28,6 +28,10 @@ function teamProfileProtocol(team) {
 /**
  * Recursively collect `status=completed` ancestors of `taskId` in topological
  * order (dependencies before dependents). Cycles stop that branch only.
+ * When the dispatched task names a `reasonTaskId` (a failed review whose
+ * findings justify a repair / follow-up review), a labeled reason item with
+ * that task's output and findings is appended — the reason must reach the
+ * repair prompt even though the failed review is deliberately not a dependency.
  */
 export function collectCompletedDependencyOutputs(tasks, taskId, warn) {
     const byId = new Map(tasks.map(task => [task.id, task]));
@@ -53,7 +57,7 @@ export function collectCompletedDependencyOutputs(tasks, taskId, warn) {
         visited.add(id);
     };
     walk(taskId);
-    return ordered
+    const items = ordered
         .filter(task => task.status === 'completed')
         .map((task) => {
         const profileSeedId = taskProfileSeedId(task);
@@ -64,6 +68,34 @@ export function collectCompletedDependencyOutputs(tasks, taskId, warn) {
             ...task.output === undefined ? {} : { output: task.output },
         };
     });
+    const task = byId.get(taskId);
+    const reasonId = task?.reasonTaskId;
+    if (reasonId !== undefined) {
+        const reason = byId.get(reasonId);
+        if (reason !== undefined) {
+            items.push({
+                id: reason.id,
+                subject: `${reason.subject} (reason, verdict=${reason.verdict ?? 'unknown'})`,
+                output: formatReasonTask(reason),
+            });
+        }
+    }
+    return items;
+}
+/** Format a failed review as reason material: its output plus unresolved findings. */
+function formatReasonTask(task) {
+    const lines = [];
+    if (task.output !== undefined && task.output !== '')
+        lines.push(`Output:\n${task.output}`);
+    const findings = (task.findings ?? []).filter((finding) => finding.resolved !== true);
+    if (findings.length > 0) {
+        lines.push(`Findings (${task.verdict ?? 'needs_revision'}):`);
+        for (const finding of findings) {
+            const where = finding.file === undefined ? '' : ` (${finding.file}${finding.line === undefined ? '' : ':' + finding.line})`;
+            lines.push(`- [${finding.severity}] ${finding.id}: ${finding.problem}${where}\n  Fix: ${finding.requiredFix}`);
+        }
+    }
+    return lines.length > 0 ? lines.join('\n') : '(no output recorded)';
 }
 /** Format completed-dependency outputs with per-item and total truncation. */
 export function formatDependencyOutputs(items) {
@@ -132,6 +164,7 @@ export function assignmentPrompt(ticket, stateDir, teamId) {
         ticket.acceptance === undefined || ticket.acceptance.length === 0 ? '' : `Acceptance: ${ticket.acceptance.join('; ')}`,
         ticket.verify === undefined || ticket.verify.length === 0 ? '' : `Verify: ${ticket.verify.join('; ')}`,
         ticket.reviewedTaskId === undefined ? '' : `Reviewed task: ${ticket.reviewedTaskId}`,
+        ticket.reassignReason === undefined || ticket.reassignReason === '' ? '' : `Reassignment reason: ${ticket.reassignReason}`,
     ].filter((line) => line !== '').join('\n');
     const structuredCompletion = ['implementation', 'repair', 'verification', 'integration'].includes(kind)
         ? `
@@ -156,7 +189,10 @@ ${executionPrompt}
 `}
 Completed dependency results:
 ${formatDependencyOutputs(ticket.dependencyOutputs)}
-
+${ticket.captainMessages === undefined || ticket.captainMessages.length === 0 ? '' : `
+Captain guidance (unread, delivered with this assignment):
+${ticket.captainMessages.map((message) => `- ${message.content}`).join('\n')}
+`}
 Task: ${ticket.taskId}${seed} — ${ticket.subject}${description}
 ${contract === '' ? '' : `\nContract:\n${contract}\n`}
 ${structuredCompletion}
@@ -251,6 +287,11 @@ export function installTeamScheduler(ctx, config) {
                     if (currentMember === undefined || currentMember.id === '' || !isMemberAvailable(ctx, currentMember))
                         return undefined;
                     const owned = ownedOpenTask(fresh.tasks, currentMember.name);
+                    // Resolve cancelled-dependency deadlocks before selecting the
+                    // next ready task: a pending task blocked only by cancelled
+                    // prerequisites would never become ready and would block
+                    // delivery forever (see state.resolveCancelledDependencyDeadlocks).
+                    const deadlockVictims = resolveCancelledDependencyDeadlocks(fresh.tasks, `dependency was cancelled; task released from the pending pool`);
                     // A resident idle member can intentionally leave an attempt open
                     // while waiting for guidance, or because the user paused its turn.
                     // Re-dispatching here would revoke still-valid work on every idle
@@ -265,7 +306,7 @@ export function installTeamScheduler(ctx, config) {
                         ? nextReadyTask(fresh.tasks, currentMember.name)
                         : undefined;
                     if (task === undefined) {
-                        if (currentMember.status !== 'idle') {
+                        if (currentMember.status !== 'idle' || deadlockVictims.length > 0) {
                             currentMember.status = 'idle';
                             await writeTeam(stateRoot, fresh);
                         }
@@ -275,6 +316,16 @@ export function installTeamScheduler(ctx, config) {
                     const attemptId = beginTaskAttempt(task, currentMember.name);
                     parkedAttempts.delete(currentMember.id);
                     currentMember.status = 'working';
+                    // Captain messages ride along with the assignment (digest in
+                    // the prompt) instead of delaying the task behind a mailbox
+                    // round-trip; they are claimed now and acknowledged only
+                    // after Harness accepts the delivery below.
+                    const captainUnread = (await readUnreadMailbox(stateRoot, fresh.id, currentMember.name))
+                        .filter((message) => message.from === CAPTAIN_KEY)
+                        .slice(-5);
+                    if (captainUnread.length > 0) {
+                        await claimMailboxDelivery(stateRoot, fresh.id, currentMember.name, captainUnread.map((message) => message.id));
+                    }
                     await writeTeam(stateRoot, fresh);
                     const profileSeedId = taskProfileSeedId(task);
                     const protocol = teamProfileProtocol(fresh);
@@ -301,20 +352,29 @@ export function installTeamScheduler(ctx, config) {
                         ...task.acceptance === undefined ? {} : { acceptance: task.acceptance },
                         ...task.verify === undefined ? {} : { verify: task.verify },
                         ...task.reviewedTaskId === undefined ? {} : { reviewedTaskId: task.reviewedTaskId },
+                        ...task.reassignReason === undefined ? {} : { reassignReason: task.reassignReason },
+                        ...captainUnread.length > 0 ? { captainMessages: captainUnread.map((message) => ({ id: message.id, content: message.content })) } : {},
                         dependencyOutputs: collectCompletedDependencyOutputs(fresh.tasks, task.id, (message) => ctx.logger.warn(message)),
                     };
                 });
                 if (ticket === undefined)
                     return;
                 const accepted = await deliverToMember(ctx, captain, ticket.memberId, assignmentPrompt(ticket, config.stateDir, team.id), new AbortController().signal);
-                if (accepted)
+                if (accepted) {
+                    if (ticket.captainMessages !== undefined && ticket.captainMessages.length > 0) {
+                        await withTeamLock(teamLockKey(stateRoot, team.id), () => (acknowledgeMailbox(stateRoot, team.id, ticket.memberName, ticket.captainMessages.map((message) => message.id))));
+                    }
                     return;
+                }
                 // Roll back only our exact failed dispatch. A concurrent captain
                 // handoff has already changed the capability and wins.
                 await withTeamLock(teamLockKey(stateRoot, team.id), async () => {
                     const fresh = await readTeam(stateRoot, team.id);
                     if (fresh === undefined)
                         return;
+                    if (ticket.captainMessages !== undefined && ticket.captainMessages.length > 0) {
+                        await releaseMailboxDelivery(stateRoot, team.id, ticket.memberName, ticket.captainMessages.map((message) => message.id));
+                    }
                     const task = fresh.tasks.find(candidate => candidate.id === ticket.taskId);
                     if (task?.attemptId !== ticket.attemptId)
                         return;

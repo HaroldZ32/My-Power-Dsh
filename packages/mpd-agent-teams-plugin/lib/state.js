@@ -91,7 +91,15 @@ export function sanitizeKey(name) {
  */
 export function unsatisfiedDependencies(tasks, dependencies) {
     const byId = new Map(tasks.map((task) => [task.id, task]));
-    return dependencies.filter((id) => byId.get(id)?.status !== 'completed');
+    // A cancelled dependency never blocks its dependents (deadlock rule): only
+    // completed counts as satisfied, and failed/unknown still block. Pending
+    // dependents of cancelled work are resolved by
+    // resolveCancelledDependencyDeadlocks instead of being dispatched on a
+    // cancelled premise.
+    return dependencies.filter((id) => {
+        const status = byId.get(id)?.status;
+        return status !== 'completed' && status !== 'cancelled';
+    });
 }
 /**
  * The allowed task status transitions, keyed by current status.
@@ -151,6 +159,54 @@ export function cancelUnfinishedTask(task, output) {
     if (output !== undefined)
         task.output = output;
     task.updatedAt = Date.now();
+}
+/**
+ * Break cancelled-dependency deadlocks. A pending task whose dependency is
+ * cancelled would otherwise never become ready (unsatisfiedDependencies never
+ * clears) while still blocking delivery and any downstream chain. Cascade the
+ * cancellation to PENDING dependents whose remaining dependencies are all
+ * completed/cancelled, transitively (claimed/in_progress work is left to its
+ * owner — only never-started dependents are released).
+ * @returns the ids cancelled by this pass.
+ */
+export function cancelCancelledDependents(tasks, cancelledId, reason) {
+    const cancelled = new Set([cancelledId]);
+    const victims = [];
+    let progressed = true;
+    while (progressed) {
+        progressed = false;
+        for (const task of tasks) {
+            if (cancelled.has(task.id) || task.status !== 'pending')
+                continue;
+            if (!task.dependencies.some((id) => cancelled.has(id)))
+                continue;
+            const outstanding = task.dependencies.some((id) => {
+                const dep = tasks.find((item) => item.id === id);
+                return dep === undefined || (dep.status !== 'completed' && dep.status !== 'cancelled');
+            });
+            if (outstanding)
+                continue;
+            cancelUnfinishedTask(task, reason);
+            cancelled.add(task.id);
+            victims.push(task.id);
+            progressed = true;
+        }
+    }
+    return victims;
+}
+/**
+ * Resolve every pending task blocked only by cancelled dependencies, seeding
+ * from all currently-cancelled tasks. Idempotent; safe to run on any dispatch
+ * or cancellation path (also covers cold-process recovery, where a cancellation
+ * may have happened before the process restarted).
+ * @returns the ids cancelled by this pass.
+ */
+export function resolveCancelledDependencyDeadlocks(tasks, reason = 'dependency was cancelled') {
+    const seeds = tasks.filter((task) => task.status === 'cancelled').map((task) => task.id);
+    const victims = [];
+    for (const seed of seeds)
+        victims.push(...cancelCancelledDependents(tasks, seed, reason));
+    return [...new Set(victims)];
 }
 export function invalidateTaskAttempt(task, nextAssignee, reassigning = false) {
     task.attemptId = undefined;

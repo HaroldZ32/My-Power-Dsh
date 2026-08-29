@@ -12,7 +12,7 @@ import { createUserMessage } from '../_deps/dsh-llm/lib/index.js';
 import { defineTool } from '../_deps/dsh-tools/lib/index.js';
 import { join } from 'node:path';
 import { appendTeamEvent, captainSessionOf } from "./events.js";
-import { acknowledgeMailbox, appendMailbox, archiveTeamDir, beginTaskAttempt, CAPTAIN_KEY, createMessage, createTeamDir, findTeamByCaptain, findTeamByParticipant, cancelUnfinishedTask, invalidateTaskAttempt, readUnreadMailbox, recordRetiredMemberIds, releaseMailboxDelivery, readTeam, sanitizeKey, transitionError, unsatisfiedDependencies, withTeamLock, writeTeam, removeTeamDir, validateCreateTask, evaluateQualityCompletion, planQualityFollowUp, resumeTeamState, buildCoverageMatrix, canDeclareDelivery, describeQualityLoop, sanitizeReviewAcceptance, sanitizeReviewObjective, taskKindOf, } from "./state.js";
+import { acknowledgeMailbox, appendMailbox, archiveTeamDir, beginTaskAttempt, CAPTAIN_KEY, createMessage, createTeamDir, findTeamByCaptain, findTeamByParticipant, cancelUnfinishedTask, invalidateTaskAttempt, readUnreadMailbox, recordRetiredMemberIds, releaseMailboxDelivery, readTeam, sanitizeKey, transitionError, unsatisfiedDependencies, withTeamLock, writeTeam, removeTeamDir, validateCreateTask, evaluateQualityCompletion, planQualityFollowUp, resumeTeamState, buildCoverageMatrix, canDeclareDelivery, describeQualityLoop, sanitizeReviewAcceptance, sanitizeReviewObjective, taskKindOf, resolveCancelledDependencyDeadlocks, } from "./state.js";
 import { deliverToMember, installRetiredMemberGuard, installMemberSelectionRuntime, interruptMember, memberActivity, resolveMemberLlmSelection, spawnMember, validateMemberLlmSelections, } from "./members.js";
 import { TERMINAL_TASK_STATUSES } from "./types.js";
 import { installTeamScheduler } from "./scheduler.js";
@@ -1118,7 +1118,10 @@ export function registerAgentTeamsTools(ctx, config) {
                         reason: args.resumeReason ?? '',
                     });
                 }
-                const dependencies = args.dependencies ?? [];
+                // Use the gate-normalized dependency list (a review's
+                // reviewedTaskId is auto-wired in, so it can never dispatch
+                // before its source completes).
+                const dependencies = gate.task.dependencies ?? args.dependencies ?? [];
                 for (const dependency of dependencies) {
                     if (!fresh.tasks.some((task) => task.id === dependency)) {
                         throw new Error(`dependency "${dependency}" does not exist in team "${fresh.name}"`);
@@ -1268,6 +1271,10 @@ export function registerAgentTeamsTools(ctx, config) {
                     throw new Error(`task ${task.id} changed during reassignment; refusing to overwrite the newer state`);
                 }
                 task.reassigning = false;
+                // Persist the retry/reassignment reason as structured state so
+                // the next assignee sees it in the assignment prompt.
+                if (args.reason !== undefined && args.reason.trim() !== '')
+                    task.reassignReason = args.reason.trim();
                 if (quiescenceError === undefined && target === CAPTAIN_KEY) {
                     beginTaskAttempt(task, CAPTAIN_KEY);
                     // The captain is already in the turn that requested takeover; there
@@ -1556,6 +1563,14 @@ export function registerAgentTeamsTools(ctx, config) {
                     : undefined;
                 if (followUp?.escalated === true) {
                     await appendMailbox(stateRoot, fresh.id, CAPTAIN_KEY, createMessage(CAPTAIN_KEY, CAPTAIN_KEY, `Quality-gate loop escalated after ${task.id} (${task.kind ?? 'review'} verdict=${task.verdict}). Automatic repair/review stopped.`));
+                }
+                if (followUp?.notifyCaptain !== undefined) {
+                    await appendMailbox(stateRoot, fresh.id, CAPTAIN_KEY, createMessage(CAPTAIN_KEY, CAPTAIN_KEY, followUp.notifyCaptain));
+                }
+                if (task.status === 'cancelled') {
+                    // Break dependency deadlocks: pending dependents blocked only
+                    // by the just-cancelled task are cancelled too (transitively).
+                    resolveCancelledDependencyDeadlocks(fresh.tasks, `dependency "${task.id}" was cancelled; task released from the pending pool`);
                 }
                 await writeTeam(stateRoot, fresh);
                 appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, caller.session), 'agent-teams/task-updated', {
@@ -2157,6 +2172,7 @@ export function applyQualityFollowUp(team, closed) {
             ...draft.sourceTaskId === undefined ? {} : { sourceTaskId: draft.sourceTaskId },
             ...draft.sourceFindingIds === undefined ? {} : { sourceFindingIds: draft.sourceFindingIds },
             ...draft.reviewedTaskId === undefined ? {} : { reviewedTaskId: idBySubject.get(draft.reviewedTaskId) ?? draft.reviewedTaskId },
+            ...draft.reasonTaskId === undefined ? {} : { reasonTaskId: idBySubject.get(draft.reasonTaskId) ?? draft.reasonTaskId },
         };
         team.tasks.push(next);
         created.push(next);
@@ -2175,7 +2191,7 @@ export function applyQualityFollowUp(team, closed) {
             task.updatedAt = now;
         }
     }
-    return { created, escalated: planned.escalated === true };
+    return { created, escalated: planned.escalated === true, ...planned.notifyCaptain === undefined ? {} : { notifyCaptain: planned.notifyCaptain } };
 }
 /** Build the `memberRuntime` config handed to member helpers. */
 function memberRuntime(config) {
