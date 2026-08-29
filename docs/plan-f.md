@@ -30,7 +30,8 @@ architecture decisions from the user:
 
 - `scripts/gen-roles.mjs` (new): one-time generator — preset personas →
   `packages/mpd-roles-plugin/personas/<id>.md`, metadata+chains →
-  `src/roles.data.ts`.
+  `src/roles.data.ts`. **[removed]**: the script was deleted (2026-08-28) —
+  roster data is now static `roles.data.ts`; no regeneration step remains.
 - `packages/mpd-roles-plugin` (new): roster plugin + tools + tests (7 pass).
 - `packages/mpd-team-plugin`: roster-backed member roles (persona/model/toolFilter),
   stateDir via mpdConfig (`team.stateDir`).
@@ -80,3 +81,5 @@ architecture decisions from the user:
   `mpd_role_persona`; the docs/skills now say so.
 - The OMO preset dirs are deleted; personas are assets under mpd-roles-plugin —
   regenerate with `node scripts/gen-roles.mjs` after a persona/chain change.
+  **[superseded]**: `gen-roles.mjs` was removed (2026-08-28); personas/chains are
+  maintained directly in `packages/mpd-roles-plugin` assets and `roles.data.ts`.

@@ -1,0 +1,49 @@
+# 功能审计 — 上游 spec vs my-power-dsh
+
+**中文** | [English](./feature-audit.md)
+
+本文档是移植的**当前基线/能力对照**：AGENTS.md §1 将其引用为工程目标。历史移植规划记录
+位于 `docs/plan-*`，属于 process 记录，不属于本审计范围。
+
+审计日期：2026-08-26。基线：上游项目 8c57e46（v5.0.0-beta.20）能力面。
+图例：✅ 完整 / 🟡 部分 / ❌ 缺失 / ➖ 不适用（宿主特定遗留）。
+
+| 领域 | 上游 spec | 状态 | 位置 / 说明 |
+|---|---|---|---|
+| Agent roster（11） | sisyphus, sisyphus-junior, hephaestus, oracle, librarian, explore, metis, momus, atlas, multimodal-looker, prometheus | ✅ | mpd-roles-plugin roster，使用常规显示名（Senior Engineer, Junior Engineer, Deep Worker, Architect, Researcher, Explorer, Reviewer, Plan Reviewer, Lead, Vision Analyst, Planner）；一次性咨询走 `mpd_role_spawn`，队友模板走 dsh-agent-teams 的 `mpd` profile |
+| 团队模式 | 11-agent 编排、mailbox、tasklist、state、worktree、tmux | ✅ | dsh-agent-teams v0.1.14 以 FIRST-CLASS MAIN CODE 采纳（MIT；packages/mpd-agent-teams-plugin 经 bundle exports 加载——pnpm 不会把 bundle 的传递依赖链进 profile root，普通 dependency row 会自禁用；server closure 置于 _deps/；evidence/plan-e/e4-team-vendor）：持久可续成员、每成员 mailbox + 唤醒、依赖感知调度器、任务 DAG Web 面板、归档（stateDir .mpd/team；evidence/plan-c/c1-team）。OMO 专家以常规命名 `mpd` roster profile 暴露（`taskPlanning: captain`）；定制 `mpd_team_spawn/status` 一次性模式已移除，改用采纳的团队插件（复用其架构 + GUI）；web client 适配：@mpd-dsh/mpd bundle client 现已加载（mpd-web-compat 自注册行 + 注册为 '@mpd-dsh/mpd' 的合并 client.js——采纳的 agent-teams 面板 + workmate 库浮层，经 /plugins/mpd-workmate/*；evidence/plan-f/web-client-adapt） |
+| Workmate 库 | 持久演化 agent 池（~/.mpd/workmate），base→instance、自反思、note 复用 | ✅ | mpd-workmate-plugin：roster BASE → 独立命名 instance（persona/memory/note，大小封顶：8/8/1.5 KiB）；工作后自总结（mpd_workmate_reflect）；note 匹配复用（mpd_workmate_match，阈值 0.35——弱匹配不得强用，应新建 workmate）；一次性复用走 mpd_workmate_spawn；团队集成经打过补丁的 memberPersona（以 workmate 命名的成员自动注入其 persona+memory + reflect 指令）。库按设计位于用户 HOME（QA 用 HOME=<sandbox> 启动）。Evidence：evidence/plan-f/workmate-library |
+| ultrawork / ulw loop | plan->execute->verify 纪律、模式、hashline 编辑 | ✅ | mpd_ultrawork v2 引擎：discovery waves（2 次无果即停）、逐 criterion PIN->RED->GREEN->SURFACE->CLEAN、plan gate + verification gate（最多 2 次 re-review）+ quality gate ledger、可选 hyperplan 对抗波、subagent barrier（evidence/plan-c/c2-ultrawork；确定性引擎测试）。mpd_ulw 保留为轻量别名；execute-verify 中可接 hashline/comment-checker 钩子 |
+| /goal 与 goal rounds | 上游 /goal 带持久状态 | ✅ | DSH 原生 goal + tool-goal + command-goal + goal-round-driver |
+| ralph loop | 全新 agent 迭代 | ✅ | DSH 原生 tool-ralph |
+| plan mode | 仅规划模式 | ✅ | DSH 原生 plan-mode |
+| delegate / multi-model | delegate-task 带 fallback chains | 🟡 | subagent 工具 + mpd_modelchain_resolve（11 roles，2-3 层 DeepSeek chains）。上游 model-core 更丰富的 variant/effort 映射未移植 |
+| 后台 agent | 并行后台任务 | ✅ | DSH jobs + tool-jobs |
+| Skills 语料 | 上游 skill corpus | ➖ | 决策移除（2026-08-27）：不随附任何上游衍生内容；skill 工具保留 DSH 默认 + 用户根（自定义 skills 经 `$DSH_HOME/.agent-presets`/skill 目录） |
+| Rules / AGENTS.md | 嵌套规则发现与注入 | ✅ | DSH agent-instructions（baseline + nested + change tracking） |
+| 内置 MCPs（5） | git_bash, lsp, codegraph, context7, grep_app | ✅ | git_bash（win-gated）、lsp（8 工具）、codegraph（plugin+init）、context7、grep_app（远程行）+ 额外 ast_grep |
+| Slash commands | /goal /ultrawork /team /hyperplan … | 🟡 | DSH 原生命令 + mpd-codegraph 命令；上游模式以工具交付（mpd_ulw/mpd_team_*） |
+| hashline 哈希编辑 | 保持哈希的编辑纪律 | ✅ | mpd_hashline_read/edit/format/restore + 注册文件 post-edit guard（vendor hashline-core；evidence/plan-c/plan-c-smoke + 单元测试） |
+| comment-checker | post-edit 注释检查 | ✅ | mpd_comment_check（opt-in 二进制 @code-yeongyu/comment-checker，MIT；installer --with-comment-checker；autoCheck 默认关闭；单元测试 + plan-c-smoke） |
+| monitor / toast / TUI sidebar | 会话监视器 + UI | ➖ | 由 DSH session telemetry（otel）、token-meter、web GUI 取代 |
+| Telemetry | posthog DAU | ✅ | 由 DSH session-telemetry-otel 取代（无 posthog） |
+| 记忆引擎 | git-backed MemFS + 反思 | ✅ | mpd-memory-plugin：Markdown memo 文件（frontmatter）、journal、反思状态机（step-count/manual 触发、reservation）、VCS 抽象支持 git 与 svn 后端（memory.vcs git\|svn\|both）；工具 mpd_memory_write/read/reflect/reflect_complete/status；evidence/plan-c/c6-memory + 单元测试（git 真实提交、svn fake-CLI 接线） |
+| Boulder state | 持久工作状态机 | ✅ | mpd_boulder_status/start/complete/task_timer/plan_progress/plans 于 .mpd/boulder.json（vendor boulder-state，dsh: session 前缀；evidence/plan-c/plan-c-smoke + 单元测试） |
+| Config（上游 config） | 分层 config schema | ✅ | 最小 mpd.jsonc 运行时层（项目 .mpd/mpd.jsonc + 用户 $DSH_HOME/mpd.jsonc，JSONC，深合并；bundle patch 仍是组合真相；evidence/plan-c/plan-c-smoke + 单元测试） |
+| LSP 工具 | diagnostics/goto/refs/rename/symbols | ✅ | mcp__lsp__*（8 工具，经离线构建的 daemon） |
+| 多模态 | 图像分析模型路由 | ✅ | modality 路由实测：fixture PNG -> deepseek-v4-flash-vision-exp 官方 API -> 接地答案（evidence/plan-c/c8-vision） |
+| 模型护栏 | capability 启发式/别名 | ✅ (scoped) | mpd_modelchain_resolve 中的 chains（11 roles，DeepSeek-first）。上游 model-core 深度有意跳过（用户决策：仅 DeepSeek，官方 vs 非官方 API；D-C9） |
+| 宿主特定遗留 | claude-code compat loaders、opengateway、mcp-oauth、上游宿主运行时 | ➖ | 对 DSH bundle 有意排除 |
+
+## 缺口闭合（Plan C waves）
+
+- Wave A：团队采纳（dsh-agent-teams，MIT 声明，实时 mailbox/DAG 面板/归档）、hashline 插件、boulder 插件、mpd.jsonc config 层、vision e2e 证明；
+- Wave B：ultrawork v2 引擎（waves/gates/ledger/hyperplan）、comment-checker 插件（opt-in 二进制）、vendor gate PASS；
+- Wave C：git + svn 版本化 + 反思的记忆引擎（mpd-memory-plugin，实测 PASS + 单元测试）。
+- Plan C 完成：除 model-core 深度（用户决策 D-C9）与宿主特定遗留集（有意排除）外，全部审计缺口已闭合。
+
+## 剩余缺口 / 后续项（在 docs/plan-c.md 跟踪）
+
+- C6（next）：git + svn 版本化 + 反思状态机的记忆引擎（用户：两种 VCS 都需要）。
+- model-core 深度：有意跳过（用户决策，D-C9）。
+- tmux 团队可视化：由采纳的 agent-teams Web activity 面板取代。

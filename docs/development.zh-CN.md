@@ -18,7 +18,7 @@
 │   ├── build-mcp.mjs      ast-grep/git-bash/lsp MCP 服务器离线构建
 │   ├── vendor-agent-teams.mjs  物化采纳的 agent-teams server closure（_deps/）
 │   ├── install-profile.mjs    旧式安装器（默认 dry-run；--dsh-home 供 QA）
-│   ├── gen-roles.mjs      重生成 roster 数据/personas（mpd-roles-plugin）
+│   ├── bootstrap.mjs      preflight + vendor 检查（P0 时代保留为检查项）
 │   └── verify-vendor.mjs  阻塞性 vendor 门禁
 ├── packages/              一个包一个插件（src/ + dist/ + README.md）
 ├── skills/                移植的 skill 语料 + dsh-qa（QA skill）

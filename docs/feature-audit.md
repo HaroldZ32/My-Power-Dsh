@@ -1,5 +1,11 @@
 # Feature Audit — upstream spec vs my-power-dsh
 
+**English** | [中文](./feature-audit.zh-CN.md)
+
+This document is the **current baseline/capability comparison** for the port:
+AGENTS.md §1 references it as the engineering target. Historical port-plan records
+live under `docs/plan-*` and are process records, not part of this audit.
+
 Audit date: 2026-08-26. Baseline: the upstream project 8c57e46 (v5.0.0-beta.20) capability surface.
 Legend: ✅ full / 🟡 partial / ❌ missing / ➖ not applicable (host-specific legacy).
 

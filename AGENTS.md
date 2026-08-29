@@ -14,7 +14,11 @@ repository is English-only (see Language Policy).
   `[English](./<name>.md)`.
 - A change to a human-facing doc updates BOTH versions in the same commit. Adopted
   third-party docs kept verbatim as provenance (e.g. the upstream
-  `mpd-agent-teams-plugin/README.md`) are exempt and stay untouched.
+  `mpd-agent-teams-plugin/README.md` and `README_ZH.md`) are exempt and stay
+  untouched. Internal QA/golden reference docs (e.g. `docs/adder4.md`,
+  `docs/cnt8.md`) and historical plan/process records (`docs/plan-*.md`,
+  `docs/decisions.md`) are process artifacts exempt from the bilingual
+  requirement (see §3).
 
 ---
 
@@ -97,7 +101,7 @@ mpd-dsh/
 │   ├── install-profile.mjs       # ONLY sanctioned writer to a user DSH_HOME (default dry-run)
 │   ├── pack-mpd.mjs              # Plan D: assemble the relocatable installable bundle
 │   ├── vendor-agent-teams.mjs    # materialize the adopted agent-teams plugin + closure
-│   └── gen-roles.mjs             # regenerate the OMO roster data/personas (mpd-roles-plugin)
+│   └── build-mpd-client.mjs      # build the combined bundle web client (client.js)
 ├── packages/
 │   ├── mpd-bundle/               # cordis.patch.yml: llm dual-track, skills, MCPs, all mpd plugins
 │   ├── mpd-skills-plugin/ (removed)
@@ -122,7 +126,7 @@ mpd-dsh/
 │   ├── overlays/                 # QA patch overlays (keep empty when rows live in the bundle)
 │   ├── golden/                   # golden fixtures + Prometheus plan artifacts
 │   └── prompt-adaptation-log.md  # persona adaptation iterations
-├── docs/                         # internal docs (English): index.md (hub) / user-guide.md / architecture.md / development.md + plan records
+├── docs/                         # human-facing docs (BILINGUAL EN + zh-CN): index.md (hub) / user-guide.md / architecture.md / development.md; historical plan records (plan-*.md, decisions.md) and internal QA/golden reference docs (adder4.md, cnt8.md) are process records exempt from bilingual
 └── evidence/                     # QA evidence: <domain>/<slug>/<timestamp>/ (records, language as produced)
 ```
 
@@ -133,7 +137,7 @@ mpd-dsh/
 | Gate | Command | When |
 |---|---|---|
 | Vendor | `node scripts/verify-vendor.mjs` | any baseline/asset change; before release |
-| Tests | `bun test` (per package) + `bun run typecheck` | every plugin change |
+| Tests | `bun test` (per package) + `bun run typecheck` (root) | every plugin change |
 | QA self-tests | `bun run test:qa` (all `--self-test`) | every plugin/QA-script change |
 | QA real cases | `node skills/dsh-qa/scripts/<case>.mjs` | runtime-behavior changes |
 | Installer | `node scripts/install-profile.mjs --dry-run` | any bundle-patch/installer change |

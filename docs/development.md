@@ -18,7 +18,7 @@ How to build, test, QA, pack and release this repository.
 │   ├── build-mcp.mjs      offline build of the ast-grep/git-bash/lsp MCP servers
 │   ├── vendor-agent-teams.mjs  materialize the adopted agent-teams server closure (_deps/)
 │   ├── install-profile.mjs    legacy installer (default dry-run; --dsh-home for QA)
-│   ├── gen-roles.mjs      regenerate roster data/personas (mpd-roles-plugin)
+│   ├── bootstrap.mjs      preflight + vendor check (P0-era, kept as checks)
 │   └── verify-vendor.mjs  blocking vendor gate
 ├── packages/              one package per plugin (src/ + dist/ + README.md)
 ├── skills/                ported skill corpus + dsh-qa (QA skill)

@@ -1,5 +1,9 @@
 # cnt8 — 8-bit binary counter (load / en / rst_n)
 
+> **Internal QA artifact** — golden-fixture reference doc (tests/golden/fixtures/verilog/modules/cnt8.v),
+> not a user-facing doc; exempt from the bilingual policy (see AGENTS.md Language Policy + §3). Keep in sync with the
+> fixture, not with product docs.
+
 Source file: `tests/golden/fixtures/verilog/modules/cnt8.v`
 
 `cnt8` is a synthesizable, Verilog-2001 compliant 8-bit binary counter with synchronous parallel

@@ -12,6 +12,7 @@ overview is [`README.md`](../README.md).
 | Doc | Audience | Contents |
 |---|---|---|
 | [`../README.md`](../README.md) | everyone | Short public overview: what the bundle provides, inheritance/provenance. |
+| [`feature-audit.md`](feature-audit.md) | engineers | Current engineering baseline: upstream `8c57e46` (v5.0.0-beta.20) spec vs port status (the capability target AGENTS.md §1 points at). |
 | [`user-guide.md`](user-guide.md) | users | Install, presets, specialists (roster), workmate library, team mode, GUI panels, configuration. |
 | [`architecture.md`](architecture.md) | engineers, curious users | How the bundle is assembled and mounts: patch layers, plugin inventory, model routing, state layout, web-client wiring, interaction flows. |
 | [`development.md`](development.md) | developers | Repo layout, build/test commands, QA case catalog, gates, packing/installing, vendoring, git model, common pitfalls. |
@@ -34,10 +35,10 @@ One README per package under `packages/<name>/README.md`:
 
 ## Historical planning docs
 
-`docs/plan-{c,d,e,f}.md`, `docs/feature-audit.md`, `docs/decisions.md` and the
+`docs/plan-{c,d,e,f}.md`, `docs/decisions.md` and the
 `track-a-report.md` / `bline-report.md` records document the port decisions and
-evidence timeline. They are history, not the current spec; `AGENTS.md` and the
-docs above are current.
+evidence timeline. They are history, not the current spec; `AGENTS.md`,
+`docs/feature-audit.md` and the docs above are current.
 
 ## QA evidence
 
