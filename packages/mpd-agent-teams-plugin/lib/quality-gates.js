@@ -90,6 +90,15 @@ export function normalizeWorkspacePath(path) {
     }
     return parts.join('/');
 }
+/**
+ * Match a workspace path against one inScope/outOfScope pattern with unified
+ * directory-prefix semantics (B5): a pattern matches its exact path AND every
+ * path beneath it, whether or not it carries a trailing slash. Callers never
+ * need to remember the slash — `packages/foo` and `packages/foo/` behave
+ * identically and both cover `packages/foo/bar.js`. File patterns are
+ * unaffected: the prefix boundary is a `/`, so `lib/a.js` does not match
+ * `lib/a.js.map`. `'.'` / `'./'` (the root) matches everything.
+ */
 export function pathMatchesScope(path, pattern) {
     const normalizedPath = normalizeWorkspacePath(path);
     if (normalizedPath === undefined)
@@ -97,19 +106,16 @@ export function pathMatchesScope(path, pattern) {
     const rawPattern = pattern.trim().replaceAll('\\', '/');
     if (rawPattern.startsWith('~') || rawPattern.startsWith('/') || /^[A-Za-z]:/.test(rawPattern))
         return false;
-    const directory = rawPattern.endsWith('/');
     const normalizedPattern = normalizeWorkspacePath(rawPattern);
     if (normalizedPattern === undefined) {
-        if (directory && (rawPattern === './' || rawPattern === '/' || rawPattern === '.'))
+        if (rawPattern === './' || rawPattern === '/' || rawPattern === '.')
             return true;
         return false;
     }
-    if (directory || rawPattern === './' || rawPattern === '.') {
-        if (normalizedPattern === '')
-            return true;
-        return normalizedPath === normalizedPattern || normalizedPath.startsWith(`${normalizedPattern}/`);
-    }
-    return normalizedPath === normalizedPattern;
+    if (normalizedPattern === '')
+        return true;
+    return normalizedPath === normalizedPattern
+        || normalizedPath.startsWith(`${normalizedPattern}/`);
 }
 function isDefaultExcluded(path) {
     const normalized = normalizeWorkspacePath(path);
@@ -401,11 +407,21 @@ export function evaluateQualityCompletion(task, update) {
             if (changed === undefined) {
                 return { ok: false, error: `${kind} completion requires changedPaths` };
             }
+            // Report EVERY out-of-scope path at once (B6) instead of failing on
+            // the first one, so the member can correct the whole set (or the
+            // inScope contract) in one pass instead of a fix-retry loop.
+            const offenders = [];
             for (const path of changed) {
                 const classification = classifyChangedPath(path, task.inScope ?? [], task.outOfScope ?? []);
-                if (classification !== 'in_scope') {
-                    return { ok: false, error: `${kind} cannot complete: ${path} is ${classification}` };
-                }
+                if (classification !== 'in_scope')
+                    offenders.push({ path, classification });
+            }
+            if (offenders.length > 0) {
+                const listed = offenders.map((item) => `  - ${item.path} is ${item.classification}`).join('\n');
+                return {
+                    ok: false,
+                    error: `${kind} ${task.id} cannot complete: ${offenders.length} changed path(s) not covered by inScope:\n${listed}\nFix: add the path(s) to inScope, or use a directory prefix pattern (e.g. "packages/foo" or "packages/foo/") that covers them.`,
+                };
             }
         }
     }
