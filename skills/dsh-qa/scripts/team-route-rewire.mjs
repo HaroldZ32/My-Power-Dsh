@@ -44,8 +44,9 @@ function selfTest() {
   checks.push(["closure self-contained", !readFileSync(join(VENDOR, "_deps", "dsh-subagent", "lib", "index.js"), "utf8").includes('@deepseek-ai/dsh-tools') && !readFileSync(join(VENDOR, "lib", "index.js"), "utf8").slice(0, 60000).includes('from "@deepseek-ai')])
   const patch = readFileSync(join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
   checks.push(["patch row main-code + guard gone", patch.includes("name: '@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib/index.js'") && !patch.includes("Self-disabling guard") && !patch.includes("@nanmicoder/dsh-agent-teams'")])
+  checks.push(["patch web-compat self-row", patch.includes("id: mpd-web-compat") && patch.includes("name: '@mpd-dsh/mpd'")])
   const pack = readFileSync(join(repoRoot, "scripts", "pack-mpd.mjs"), "utf8")
-  checks.push(["pack exports + client + no deps entry", pack.includes('"./packages/mpd-agent-teams-plugin/lib/client.js"') && pack.includes('"./client"') && pack.includes("agent-teams plugin (MIT provenance") && !pack.includes('dependencies: { "@nanmicoder')])
+  checks.push(["pack exports + combined client + no deps entry", pack.includes('"./packages/mpd-bundle-plugin/client.js"') && pack.includes('main: "packages/mpd-bundle-plugin/dist/index.js"') && pack.includes('".": "./packages/mpd-bundle-plugin/dist/index.js"') && pack.includes("agent-teams plugin (MIT provenance") && !pack.includes('dependencies: { "@nanmicoder')])
   const bad = checks.filter(([, ok]) => !ok).map(([n]) => n)
   if (bad.length) { console.error("[team-route-rewire self-test] FAIL: " + bad.join(" | ")); process.exit(1) }
   if (!existsSync(join(repoRoot, "dist", "mpd-package", "package.json"))) { console.error("[team-route-rewire self-test] FAIL: run node scripts/pack-mpd.mjs first"); process.exit(1) }

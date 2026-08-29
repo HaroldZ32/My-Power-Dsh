@@ -209,6 +209,30 @@ function apply(ctx) {
       return { id: byName.id, name: byName.name, description: byName.description, readonly: Boolean(byName.readonly), provider: byName.chain?.[0]?.provider ?? "deepseek-official", model: byName.chain?.[0]?.model ?? "", persona: String(byName.persona ?? "") };
     throw new Error(`mpd_workmate: unknown base "${k}" — run mpd_roles_list (ids or normal names like "Deep Worker")`);
   }
+  function initWorkmate(baseKey, nameArg, noteArg) {
+    const base = resolveBase(baseKey);
+    const given = sanitizeName(nameArg);
+    let name2 = given;
+    if (!name2) {
+      const n = listInstances().filter((i) => i.meta.baseId === base.id).length + 1;
+      name2 = `${base.id}-${n}`;
+    }
+    const dir = wmDir(name2);
+    if (existsSync(dir))
+      throw new Error(`mpd_workmate: "${name2}" already exists — pick another name or reuse it via mpd_workmate_spawn`);
+    mkdirSync(dir, { recursive: true });
+    const meta = { name: name2, baseId: base.id, baseName: base.name, description: base.description, provider: base.provider, model: base.model, readonly: base.readonly, createdAt: now(), updatedAt: now(), uses: 0, lastTask: null };
+    writeFileSync(join(dir, "meta.json"), JSON.stringify(meta, null, 2) + `
+`);
+    writeFileSync(join(dir, "persona.md"), capText(base.persona, PERSONA_CAP) + `
+`);
+    writeFileSync(join(dir, "memory.md"), "");
+    const note = capText(String(noteArg ?? "").trim() || autoNote(meta, base.persona, ""), NOTE_CAP);
+    writeFileSync(join(dir, "note.md"), note + `
+`);
+    writeIndexEntry(meta);
+    return { name: name2, baseId: base.id, baseName: base.name, readonly: base.readonly, provider: base.provider, model: base.model, path: dir, note };
+  }
   ctx.provide("mpdWorkmate", {
     list: () => listInstances().map(({ name: name2, meta, note }) => ({ name: name2, baseId: meta.baseId, baseName: meta.baseName, readonly: meta.readonly, uses: meta.uses, updatedAt: meta.updatedAt, note })),
     get: (name2) => {
@@ -246,30 +270,7 @@ function apply(ctx) {
     parameters: { type: "object", properties: { base: { type: "string", description: 'roster id or normal name (e.g. hephaestus or "Deep Worker")' }, name: { type: "string", description: "independent workmate name (lowercase kebab; auto-generated if omitted)" }, note: { type: "string", description: "optional initial note card" } }, required: ["base"], additionalProperties: false },
     output: { schema: { type: "object", properties: { name: { type: "string" }, baseId: { type: "string" }, baseName: { type: "string" }, readonly: { type: "boolean" }, provider: { type: "string" }, model: { type: "string" }, path: { type: "string" }, note: { type: "string" } }, required: ["name", "baseName"], additionalProperties: false }, render: (_a, v) => textBlock("workmate " + v.name + " initialized (base " + v.baseName + (v.readonly ? ", readonly" : "") + ", " + v.provider + "/" + v.model + `)
 note: ` + v.note) },
-    execute: async (args) => {
-      const base = resolveBase(String(args?.base ?? ""));
-      const given = sanitizeName(String(args?.name ?? ""));
-      let name2 = given;
-      if (!name2) {
-        const n = listInstances().filter((i) => i.meta.baseId === base.id).length + 1;
-        name2 = `${base.id}-${n}`;
-      }
-      const dir = wmDir(name2);
-      if (existsSync(dir))
-        throw new Error(`mpd_workmate: "${name2}" already exists — pick another name or reuse it via mpd_workmate_spawn`);
-      mkdirSync(dir, { recursive: true });
-      const meta = { name: name2, baseId: base.id, baseName: base.name, description: base.description, provider: base.provider, model: base.model, readonly: base.readonly, createdAt: now(), updatedAt: now(), uses: 0, lastTask: null };
-      writeFileSync(join(dir, "meta.json"), JSON.stringify(meta, null, 2) + `
-`);
-      writeFileSync(join(dir, "persona.md"), capText(base.persona, PERSONA_CAP) + `
-`);
-      writeFileSync(join(dir, "memory.md"), "");
-      const note = capText(String(args?.note ?? "").trim() || autoNote(meta, base.persona, ""), NOTE_CAP);
-      writeFileSync(join(dir, "note.md"), note + `
-`);
-      writeIndexEntry(meta);
-      return { name: name2, baseId: base.id, baseName: base.name, readonly: base.readonly, provider: base.provider, model: base.model, path: dir, note };
-    }
+    execute: async (args) => initWorkmate(String(args?.base ?? ""), String(args?.name ?? ""), String(args?.note ?? ""))
   });
   ctx.tools.register({
     name: "mpd_workmate_spawn",
@@ -365,6 +366,61 @@ ${capText(outcome, 1200)}`);
       return { matched, threshold: MATCH_THRESHOLD, matches, suggestion: matched ? `Delegate to "${best.name}" (score ${best.score}).` : "No note matches well enough — initialize a NEW workmate with mpd_workmate_init instead of forcing a weak match." };
     }
   });
+  let webRegistered = false;
+  const registerWebSurface = () => {
+    if (webRegistered)
+      return;
+    const webServer = (ctx.get ? ctx.get("webServer") : undefined) ?? (ctx.get ? ctx.get("httpServer") : undefined);
+    if (webServer === undefined || typeof ctx.effect !== "function")
+      return;
+    webRegistered = true;
+    ctx.effect(() => webServer.register({
+      kind: "exact",
+      path: "/plugins/mpd-workmate/list",
+      handler: async (_req, res) => {
+        const list = listInstances().map(({ name: name2, meta, note }) => ({ name: name2, baseId: meta.baseId, baseName: meta.baseName, readonly: meta.readonly, provider: meta.provider, model: meta.model, uses: meta.uses, updatedAt: meta.updatedAt, lastTask: meta.lastTask, note }));
+        res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+        res.end(JSON.stringify({ workmates: list }));
+      }
+    }), "mpd-workmate: list route");
+    ctx.effect(() => webServer.register({
+      kind: "exact",
+      path: "/plugins/mpd-workmate/init",
+      handler: async (req, res) => {
+        if (req.method !== "POST") {
+          res.writeHead(405, { allow: "POST", "cache-control": "no-store" });
+          res.end();
+          return;
+        }
+        let raw = "";
+        for await (const chunk of req)
+          raw += String(chunk);
+        let body = {};
+        try {
+          body = raw ? JSON.parse(raw) : {};
+        } catch {
+          res.writeHead(400, { "content-type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ error: "invalid JSON" }));
+          return;
+        }
+        try {
+          const created = initWorkmate(String(body?.base ?? ""), String(body?.name ?? ""), String(body?.note ?? ""));
+          res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+          res.end(JSON.stringify(created));
+        } catch (e) {
+          res.writeHead(400, { "content-type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ error: String(e?.message ?? e) }));
+        }
+      }
+    }), "mpd-workmate: init route");
+  };
+  registerWebSurface();
+  if (typeof ctx.on === "function") {
+    ctx.on("internal/service", (n) => {
+      if (n === "webServer" || n === "httpServer")
+        registerWebSurface();
+    });
+  }
 }
 export {
   scoreMatch,

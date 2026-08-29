@@ -42,6 +42,12 @@ function buildPlan(o) {
   const astCli = p(".toolchain/node_modules/.bin/sg")
   const cgCli = p(".toolchain/node_modules/.bin/codegraph")
   const rows = [
+    // Web-compat self-row (mirrors the bundle patch's mpd-web-compat): makes an
+    // entry named mpd-web-compat resolve to the bundle plugin's own no-op main.
+    {
+      id: "mpd-web-compat", name: p("packages/mpd-bundle-plugin/dist/index.js"),
+      config: {}
+    },
     // NOTE: no root skill-filesystem row — the mpd-* presets already declare it
     // (agent-plane, tool rows are preset-plane responsibility since 49b1288), and
     // adding it here duplicates the loader entry id and fails every real boot.

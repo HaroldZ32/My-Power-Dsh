@@ -1,0 +1,11 @@
+{
+  "name": "@mpd-dsh/bundle",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "mpd bundle web-compat main: the @mpd-dsh/mpd bundle self-registration row and the combined web client entry (adopted agent-teams panel + workmate library)",
+  "scripts": {
+    "typecheck": "tsgo --noEmit -p tsconfig.json",
+    "test": "bun test"
+  }
+}

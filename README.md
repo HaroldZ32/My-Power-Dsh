@@ -38,6 +38,13 @@ SUBAGENTS:
   (`taskPlanning: captain`) exposes the specialists above as teammate
   instantiation templates. The captain calls `agent_teams_create(profile="mpd")`,
   stages the plan in the panel, then the dependency-aware scheduler runs it.
+- **Web GUI** (`@mpd-dsh/mpd` client bundle, `packages/mpd-bundle-plugin`): the team
+  activity floater + team card (adopted agent-teams client, embedded unchanged) and a
+  **Workmate library** floater (sidebar-foot "Workmates" button): lists
+  `~/.mpd/workmate/` instances (base, uses, note) and initializes new ones from the
+  browser via `GET/POST /plugins/mpd-workmate/*`. The bundle patch ships the
+  `mpd-web-compat` self-row (`name: '@mpd-dsh/mpd'`) so the client-modules boot graph
+  carries the bundle's client entry — without it the panels never load.
 - **Workmate library** (`~/.mpd/workmate`): the roster specialists are BASE templates;
   instantiate one into a durable, evolving copy with an independent name
   (`mpd_workmate_init`). After each work session it self-summarizes

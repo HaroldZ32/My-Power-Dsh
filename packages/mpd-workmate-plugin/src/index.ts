@@ -18,7 +18,7 @@ import { randomUUID } from "node:crypto"
 export const name = "mpd-workmate"
 export const inject = ["tools", "subagents"]
 
-type Ctx = { tools: any; subagents: any; provide: (n: string, v: any) => void; get?: (k: string) => any; [k: string]: any }
+type Ctx = { tools: any; subagents: any; provide: (n: string, v: any) => void; effect?: (fn: () => unknown, label?: string) => any; on?: (event: string, handler: (...args: any[]) => any) => any; get?: (k: string) => any; [k: string]: any }
 
 // Size caps (bytes): keep every injected workmate context bounded.
 export const PERSONA_CAP = 8 * 1024
@@ -221,6 +221,27 @@ export function apply(ctx: Ctx): void {
     throw new Error(`mpd_workmate: unknown base "${k}" — run mpd_roles_list (ids or normal names like "Deep Worker")`)
   }
 
+  function initWorkmate(baseKey: string, nameArg: string, noteArg: string) {
+    const base = resolveBase(baseKey)
+    const given = sanitizeName(nameArg)
+    let name = given
+    if (!name) {
+      const n = listInstances().filter((i) => i.meta.baseId === base.id).length + 1
+      name = `${base.id}-${n}`
+    }
+    const dir = wmDir(name)
+    if (existsSync(dir)) throw new Error(`mpd_workmate: "${name}" already exists — pick another name or reuse it via mpd_workmate_spawn`)
+    mkdirSync(dir, { recursive: true })
+    const meta: Meta = { name, baseId: base.id, baseName: base.name, description: base.description, provider: base.provider, model: base.model, readonly: base.readonly, createdAt: now(), updatedAt: now(), uses: 0, lastTask: null }
+    writeFileSync(join(dir, "meta.json"), JSON.stringify(meta, null, 2) + "\n")
+    writeFileSync(join(dir, "persona.md"), capText(base.persona, PERSONA_CAP) + "\n")
+    writeFileSync(join(dir, "memory.md"), "")
+    const note = capText(String(noteArg ?? "").trim() || autoNote(meta, base.persona, ""), NOTE_CAP)
+    writeFileSync(join(dir, "note.md"), note + "\n")
+    writeIndexEntry(meta)
+    return { name, baseId: base.id, baseName: base.name, readonly: base.readonly, provider: base.provider, model: base.model, path: dir, note }
+  }
+
   ctx.provide("mpdWorkmate", {
     list: () => listInstances().map(({ name, meta, note }) => ({ name, baseId: meta.baseId, baseName: meta.baseName, readonly: meta.readonly, uses: meta.uses, updatedAt: meta.updatedAt, note })),
     get: (name: string) => {
@@ -250,26 +271,7 @@ export function apply(ctx: Ctx): void {
     description: "Instantiate a roster BASE specialist into a durable, evolving workmate copy under ~/.mpd/workmate/<name>/ (independent name). base = roster id or normal name (mpd_roles_list). The base template stays pristine; the workmate gets its own persona.md, memory.md and a short note.md. Use when creating a team or pulling up a specialist you will reuse across sessions.",
     parameters: { type: "object", properties: { base: { type: "string", description: "roster id or normal name (e.g. hephaestus or \"Deep Worker\")" }, name: { type: "string", description: "independent workmate name (lowercase kebab; auto-generated if omitted)" }, note: { type: "string", description: "optional initial note card" } }, required: ["base"], additionalProperties: false },
     output: { schema: { type: "object", properties: { name: { type: "string" }, baseId: { type: "string" }, baseName: { type: "string" }, readonly: { type: "boolean" }, provider: { type: "string" }, model: { type: "string" }, path: { type: "string" }, note: { type: "string" } }, required: ["name", "baseName"], additionalProperties: false }, render: (_a: unknown, v: any) => textBlock("workmate " + v.name + " initialized (base " + v.baseName + (v.readonly ? ", readonly" : "") + ", " + v.provider + "/" + v.model + ")\nnote: " + v.note) },
-    execute: async (args: any) => {
-      const base = resolveBase(String(args?.base ?? ""))
-      const given = sanitizeName(String(args?.name ?? ""))
-      let name = given
-      if (!name) {
-        const n = listInstances().filter((i) => i.meta.baseId === base.id).length + 1
-        name = `${base.id}-${n}`
-      }
-      const dir = wmDir(name)
-      if (existsSync(dir)) throw new Error(`mpd_workmate: "${name}" already exists — pick another name or reuse it via mpd_workmate_spawn`)
-      mkdirSync(dir, { recursive: true })
-      const meta: Meta = { name, baseId: base.id, baseName: base.name, description: base.description, provider: base.provider, model: base.model, readonly: base.readonly, createdAt: now(), updatedAt: now(), uses: 0, lastTask: null }
-      writeFileSync(join(dir, "meta.json"), JSON.stringify(meta, null, 2) + "\n")
-      writeFileSync(join(dir, "persona.md"), capText(base.persona, PERSONA_CAP) + "\n")
-      writeFileSync(join(dir, "memory.md"), "")
-      const note = capText(String(args?.note ?? "").trim() || autoNote(meta, base.persona, ""), NOTE_CAP)
-      writeFileSync(join(dir, "note.md"), note + "\n")
-      writeIndexEntry(meta)
-      return { name, baseId: base.id, baseName: base.name, readonly: base.readonly, provider: base.provider, model: base.model, path: dir, note }
-    }
+    execute: async (args: any) => initWorkmate(String(args?.base ?? ""), String(args?.name ?? ""), String(args?.note ?? ""))
   })
 
   ctx.tools.register({
@@ -349,4 +351,50 @@ export function apply(ctx: Ctx): void {
       return { matched, threshold: MATCH_THRESHOLD, matches, suggestion: matched ? `Delegate to "${best!.name}" (score ${best!.score}).` : "No note matches well enough — initialize a NEW workmate with mpd_workmate_init instead of forcing a weak match." }
     }
   })
+
+  // Web GUI data routes (mirrors the agent-teams web surface pattern): the browser
+  // workmate library floater polls /plugins/mpd-workmate/list and POSTs init from the
+  // form. Register lazily — try at apply, retry on service binding — so a webless
+  // profile stays tool-only; effect-owned.
+  let webRegistered = false
+  const registerWebSurface = () => {
+    if (webRegistered) return
+    const webServer = (ctx.get ? ctx.get("webServer") : undefined) ?? (ctx.get ? ctx.get("httpServer") : undefined)
+    if (webServer === undefined || typeof ctx.effect !== "function") return
+    webRegistered = true
+    ctx.effect(() => webServer.register({
+      kind: "exact",
+      path: "/plugins/mpd-workmate/list",
+      handler: async (_req: any, res: any) => {
+        const list = listInstances().map(({ name, meta, note }) => ({ name, baseId: meta.baseId, baseName: meta.baseName, readonly: meta.readonly, provider: meta.provider, model: meta.model, uses: meta.uses, updatedAt: meta.updatedAt, lastTask: meta.lastTask, note }))
+        res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" })
+        res.end(JSON.stringify({ workmates: list }))
+      }
+    }) as any, "mpd-workmate: list route")
+    ctx.effect(() => webServer.register({
+      kind: "exact",
+      path: "/plugins/mpd-workmate/init",
+      handler: async (req: any, res: any) => {
+        if (req.method !== "POST") { res.writeHead(405, { allow: "POST", "cache-control": "no-store" }); res.end(); return }
+        let raw = ""
+        for await (const chunk of req) raw += String(chunk)
+        let body: any = {}
+        try { body = raw ? JSON.parse(raw) : {} } catch { res.writeHead(400, { "content-type": "application/json; charset=utf-8" }); res.end(JSON.stringify({ error: "invalid JSON" })); return }
+        try {
+          const created = initWorkmate(String(body?.base ?? ""), String(body?.name ?? ""), String(body?.note ?? ""))
+          res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" })
+          res.end(JSON.stringify(created))
+        } catch (e: any) {
+          res.writeHead(400, { "content-type": "application/json; charset=utf-8" })
+          res.end(JSON.stringify({ error: String(e?.message ?? e) }))
+        }
+      }
+    }) as any, "mpd-workmate: init route")
+  }
+  registerWebSurface()
+  if (typeof ctx.on === "function") {
+    ctx.on("internal/service", (n: string) => {
+      if (n === "webServer" || n === "httpServer") registerWebSurface()
+    })
+  }
 }

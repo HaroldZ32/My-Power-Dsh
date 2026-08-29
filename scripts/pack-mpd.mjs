@@ -22,7 +22,8 @@ const PLUGIN_PKGS = [
   "mpd-tools-plugin", "mpd-modelchain-plugin", "mpd-ulw-plugin",
   "mpd-codegraph-plugin", "mpd-hashline-plugin", "mpd-boulder-plugin",
   "mpd-config-plugin", "mpd-comment-checker-plugin", "mpd-memory-plugin",
-  "mpd-roles-plugin", "mpd-bootstrap-plugin", "mpd-workmate-plugin"
+  "mpd-roles-plugin", "mpd-bootstrap-plugin", "mpd-workmate-plugin",
+  "mpd-bundle-plugin"
 ]
 const MCP_PKGS = ["mpd-mcp-astgrep", "mpd-mcp-gitbash", "mpd-mcp-lsp", "mpd-mcp-codegraph"]
 
@@ -52,6 +53,9 @@ function cpAssets() {
   // packages/mpd-agent-teams-plugin: copy its whole body (lib + _deps + assets +
   // LICENSE + READMEs) so the bundle is self-contained under any install layout.
   cpSync(join(repoRoot, "packages", "mpd-agent-teams-plugin"), join(outDir, "packages", "mpd-agent-teams-plugin"), { recursive: true })
+  // the bundle's combined web client (adopted agent-teams panel + workmate library),
+  // composed by scripts/build-mpd-client.mjs — served as @mpd-dsh/mpd's ./client
+  cpSync(join(repoRoot, "packages", "mpd-bundle-plugin", "client.js"), join(outDir, "packages", "mpd-bundle-plugin", "client.js"))
   for (const f of ["LICENSE.md", "LICENSE-NOTICES.md", "README.md"]) {
     if (existsSync(join(repoRoot, f))) cpSync(join(repoRoot, f), join(outDir, f))
   }
@@ -85,13 +89,14 @@ function writeManifest() {
     type: "module",
     description: root.description,
     license: "SEE LICENSE IN LICENSE.md",
-    main: "packages/mpd-bootstrap-plugin/dist/index.js",
+    main: "packages/mpd-bundle-plugin/dist/index.js",
     exports: {
+      ".": "./packages/mpd-bundle-plugin/dist/index.js",
       "./package.json": "./package.json",
       "./packages/*": "./packages/*",
       "./skills/*": "./skills/*",
       "./presets/*": "./presets/*",
-      "./client": "./packages/mpd-agent-teams-plugin/lib/client.js"
+      "./client": "./packages/mpd-bundle-plugin/client.js"
     },
     files: [
       "packages/**",
@@ -102,10 +107,10 @@ function writeManifest() {
     ],
     dsh: {
       bundle: { patch: "./cordis.patch.yml" },
-      client: {
-        inject: ["@deepseek-ai/dsh-client-locale", "@deepseek-ai/dsh-client-runtime", "@deepseek-ai/dsh-client-ui-conversation", "@deepseek-ai/dsh-client-ui-layout"],
-        platform: "web"
-      }
+      // The bundle's web client (the adopted agent-teams panel + workmate library)
+      // declares its own service injects inside the client factory; the bundle-level
+      // graph-row inject stays empty, mirroring @linxin666/dsh-web-ui-all.
+      client: { inject: [], platform: "web" }
     },
     // The adopted agent-teams plugin (MIT provenance, upstream @nanmicoder/
     // dsh-agent-teams 0.1.14) is FIRST-CLASS MAIN CODE under

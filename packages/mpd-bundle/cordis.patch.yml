@@ -57,6 +57,15 @@
 
 # ── B-line plugins (self-written; production uses @mpd-dsh/<pkg> package names) ──
 - insert:
+    # Web-compat self-registration (mirrors @linxin666/dsh-web-ui-all's web-ui-compat
+    # row): the bundle's web client loads only if a LOADER ENTRY named exactly
+    # `@mpd-dsh/mpd` exists — client-modules resolves client rows against
+    # `ctx.loader.entries()` entry names, and entry names come from a patch row's
+    # `name` field. This self-row (loading the bundle's own no-op main plugin)
+    # provides that entry; without it the agent-teams/workmate web client never
+    # appears in the boot graph.
+    - id: mpd-web-compat
+      name: '@mpd-dsh/mpd'
     # mpd-config first: it provides the mpdConfig service that the rows below
     # read (apply-time config merges for tools/waterfalls).
     - id: mpd-config

@@ -38,6 +38,7 @@ the upstream host QA skills.
 | team-route-rewire | plan-e team route | staged install serves agent-teams from the bundle (first-class main code @mpd-dsh/mpd/packages/mpd-agent-teams-plugin, no @nanmicoder npm dep); agent-teams row mounted (stateDir .mpd/team, normal-named `mpd` roster profile); installed mpd preset carries the AGENT.md convention + specialist rosters (mpd_role_spawn) and routes team work to agent_teams_*; real headless boot passes | Plan E/refactor |
 | workmate-library | plan-f workmate | legacy install mounts mpd-roles/workmate/bootstrap; real headless boot runs init->list->spawn->reflect->match against a SANDBOX HOME; asserts ~/.mpd/workmate files in the sandbox and that the real home is untouched | Plan F/workmate |
 | workmate-team-member | plan-f workmate team | real headless team run: workmate alice joins via agent_teams_add_member; asserts the member reports the injected memory (PINEAPPLE42) AND self-reflects (memory gains a second entry / uses>=2); real home untouched | Plan F/workmate |
+| web-client-adapt | plan-f web client | manual-copy web boot proves the @mpd-dsh/mpd client entry appears in the boot graph (mpd-web-compat self-row), /plugins/@mpd-dsh/mpd/client.js serves and registers the matching id, /plugins/mpd-workmate/list + /init answer and create under a SANDBOX HOME; real home untouched | Plan F/workmate |
 
 ## Run
 
