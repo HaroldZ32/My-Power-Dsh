@@ -1,4 +1,4 @@
-// src/index.ts
+// packages/mpd-modelchain-plugin/src/index.ts
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 var name = "mpd-modelchain";
@@ -7,11 +7,11 @@ var DEFAULT_CHAINS = {
   sisyphus: [
     { provider: "deepseek-official", model: "deepseek-v4-pro" },
     { provider: "deepseek-official", model: "deepseek-v4-flash" },
-    { provider: "deepseek", model: "deepseek-v4-flash" }
+    { provider: "deepseek-official", model: "deepseek-v4-flash" }
   ],
-  sisyphusJunior: [
+  "sisyphus-junior": [
     { provider: "deepseek-official", model: "deepseek-v4-flash" },
-    { provider: "deepseek", model: "deepseek-v4-flash" }
+    { provider: "deepseek-official", model: "deepseek-v4-flash" }
   ],
   oracle: [
     { provider: "deepseek-official", model: "deepseek-v4-pro" },
@@ -27,11 +27,11 @@ var DEFAULT_CHAINS = {
   ],
   librarian: [
     { provider: "deepseek-official", model: "deepseek-v4-flash" },
-    { provider: "deepseek", model: "deepseek-v4-flash" }
+    { provider: "deepseek-official", model: "deepseek-v4-flash" }
   ],
   explore: [
     { provider: "deepseek-official", model: "deepseek-v4-flash" },
-    { provider: "deepseek", model: "deepseek-v4-flash" }
+    { provider: "deepseek-official", model: "deepseek-v4-flash" }
   ],
   metis: [
     { provider: "deepseek-official", model: "deepseek-v4-pro" },
@@ -41,22 +41,29 @@ var DEFAULT_CHAINS = {
     { provider: "deepseek-official", model: "deepseek-v4-flash" },
     { provider: "deepseek-official", model: "deepseek-v4-pro" }
   ],
-  multimodalLooker: [
+  "multimodal-looker": [
     { provider: "deepseek-official", model: "deepseek-v4-flash-vision-exp" },
     { provider: "deepseek-official", model: "deepseek-v4-flash" }
   ],
   hephaestus: [
     { provider: "deepseek-official", model: "deepseek-v4-flash" },
-    { provider: "deepseek", model: "deepseek-v4-flash" }
+    { provider: "deepseek-official", model: "deepseek-v4-flash" }
   ]
 };
+var LEGACY_CHAIN_KEYS = {
+  "sisyphus-junior": "sisyphusJunior",
+  "multimodal-looker": "multimodalLooker"
+};
+function toKebabKey(role) {
+  return String(role ?? "").replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
+}
 function resolveRole(role, chains) {
-  const key = role === "sisyphus-junior" ? "sisyphusJunior" : role === "multimodal-looker" ? "multimodalLooker" : role;
+  const key = toKebabKey(role);
   let chain = chains[key] ?? DEFAULT_CHAINS[key] ?? DEFAULT_CHAINS.sisyphus;
   if (!Array.isArray(chain) || chain.length === 0)
     chain = DEFAULT_CHAINS.sisyphus;
   const primary = chain[0];
-  return { provider: primary.provider, model: primary.model, chain, skipped: false };
+  return { provider: primary.provider, model: primary.model, chain };
 }
 function memoryPath(cwd, config) {
   return config.memoryFile ? resolve(cwd, config.memoryFile) : join(cwd, ".mpd", "memory.json");
@@ -74,7 +81,8 @@ function apply(ctx, config = {}) {
   if (mpdConfig?.get) {
     const overlay = {};
     for (const key of Object.keys(DEFAULT_CHAINS)) {
-      const v = mpdConfig.get("modelchain." + key);
+      const legacy = LEGACY_CHAIN_KEYS[key];
+      const v = mpdConfig.get("modelchain." + key) ?? (legacy ? mpdConfig.get("modelchain." + legacy) : undefined);
       if (Array.isArray(v) && v.length > 0 && v.every((c) => c && typeof c.provider === "string" && typeof c.model === "string"))
         overlay[key] = v;
     }
@@ -87,7 +95,7 @@ function apply(ctx, config = {}) {
     description: "Resolve the DeepSeek provider/model route for an upstream role (sisyphus/sisyphus-junior/oracle/atlas/prometheus/librarian/explore/metis/momus/multimodal-looker/hephaestus) from the adapted fallback chains.",
     parameters: { type: "object", properties: { role: { type: "string", description: "upstream agent role name" } }, required: ["role"] },
     output: {
-      schema: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" }, chain: { type: "array", items: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" } }, required: [] } }, skipped: { type: "boolean" } }, required: ["provider", "model", "skipped"] },
+      schema: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" }, chain: { type: "array", items: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" } }, required: [] } } }, required: ["provider", "model"] },
       render: (_args, value) => [{ type: "text", text: "role=" + _args?.role + " -> " + value.provider + "/" + value.model + " (chain " + value.chain.length + " entries)" }]
     },
     execute: async (args) => {
@@ -95,7 +103,7 @@ function apply(ctx, config = {}) {
       const rolesService = ctx.get?.("mpdRoles");
       const spec = rolesService?.get?.(role);
       if (spec && Array.isArray(spec.chain) && spec.chain.length > 0) {
-        return { provider: spec.chain[0].provider, model: spec.chain[0].model, chain: spec.chain.map((c) => ({ ...c })), skipped: false };
+        return { provider: spec.chain[0].provider, model: spec.chain[0].model, chain: spec.chain.map((c) => ({ ...c })) };
       }
       return resolveRole(role, chains);
     }

@@ -25,7 +25,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       if (typeof fp !== "string" || typeof content !== "string") return undefined
       if (!existsSync(fp)) return undefined
       try {
-        const old = readFileSync(fp, "utf8").slice(0, 1_048_576)
+        const old = readFileSync(fp, "utf8")
         if (old === content) return undefined // idempotent rewrite passes
       } catch { return undefined }
       return "mpd-tools guard: target file already exists with different content — use the edit tool (or read then rewrite deliberately via write with identical content) instead of overwriting."

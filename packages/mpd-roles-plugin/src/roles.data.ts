@@ -37,7 +37,7 @@ export const ROLES: MpdRoleSpec[] = [
     "readonly": true,
     "chain": [
       { "provider": "deepseek-official", "model": "deepseek-v4-flash" },
-      { "provider": "deepseek", "model": "deepseek-v4-flash" }
+      { "provider": "deepseek-official", "model": "deepseek-v4-flash" }
     ],
     "personaFile": "personas/librarian.md"
   },
@@ -59,7 +59,7 @@ export const ROLES: MpdRoleSpec[] = [
     "readonly": false,
     "chain": [
       { "provider": "deepseek-official", "model": "deepseek-v4-flash" },
-      { "provider": "deepseek", "model": "deepseek-v4-flash" }
+      { "provider": "deepseek-official", "model": "deepseek-v4-flash" }
     ],
     "personaFile": "personas/hephaestus.md"
   },
@@ -71,7 +71,7 @@ export const ROLES: MpdRoleSpec[] = [
     "chain": [
       { "provider": "deepseek-official", "model": "deepseek-v4-pro" },
       { "provider": "deepseek-official", "model": "deepseek-v4-flash" },
-      { "provider": "deepseek", "model": "deepseek-v4-flash" }
+      { "provider": "deepseek-official", "model": "deepseek-v4-flash" }
     ],
     "personaFile": "personas/sisyphus.md"
   },
@@ -93,7 +93,7 @@ export const ROLES: MpdRoleSpec[] = [
     "readonly": true,
     "chain": [
       { "provider": "deepseek-official", "model": "deepseek-v4-flash" },
-      { "provider": "deepseek", "model": "deepseek-v4-flash" }
+      { "provider": "deepseek-official", "model": "deepseek-v4-flash" }
     ],
     "personaFile": "personas/explore.md"
   },
@@ -137,7 +137,7 @@ export const ROLES: MpdRoleSpec[] = [
     "readonly": false,
     "chain": [
       { "provider": "deepseek-official", "model": "deepseek-v4-flash" },
-      { "provider": "deepseek", "model": "deepseek-v4-flash" }
+      { "provider": "deepseek-official", "model": "deepseek-v4-flash" }
     ],
     "personaFile": "personas/sisyphus-junior.md"
   }

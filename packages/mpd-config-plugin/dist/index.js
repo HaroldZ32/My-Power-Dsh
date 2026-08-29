@@ -1,4 +1,4 @@
-// src/index.ts
+// packages/mpd-config-plugin/src/index.ts
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
@@ -109,7 +109,11 @@ function apply(ctx, config = {}) {
     return state.config;
   }
   ctx.provide("mpdConfig", {
-    get: (key) => key === undefined ? state.config : state.config[key],
+    get: (key) => {
+      if (key === undefined)
+        return state.config;
+      return key.split(".").reduce((acc, part) => acc == null ? undefined : acc[part], state.config);
+    },
     reload,
     states: () => ({ files: state.files, errors: state.errors })
   });

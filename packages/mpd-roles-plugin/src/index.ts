@@ -19,7 +19,17 @@ export const inject = ["tools", "subagents"]
 type Ctx = { tools: any; subagents: any; provide: (n: string, v: any, check?: any) => void; get?: (k: string) => any; [k: string]: any }
 type Config = { personasDir?: string }
 
-const READONLY_DENY = ["write", "edit", "str_replace_editor", "apply_patch", "mpd_hashline_edit"]
+export const READONLY_DENY = [
+  "write",
+  "edit",
+  "str_replace_editor",
+  "apply_patch",
+  "mpd_hashline_edit",
+  "bash",
+  "mcp__ast_grep__rewrite",
+  "mcp__ast_grep__scan",
+  "mcp__lsp__rename",
+]
 
 const REPORT_SCHEMA = {
   type: "object",
@@ -87,7 +97,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     name: "mpd_role_spawn",
     description: "Spawn one specialist as a one-shot subagent with its roster persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Use ids from mpd_roles_list: Architect(oracle), Researcher(librarian), Planner(prometheus), Deep Worker(hephaestus), Senior Engineer(sisyphus), Lead(atlas), Explorer(explore), Reviewer(metis), Plan Reviewer(momus), Vision Analyst(multimodal-looker), Junior Engineer(sisyphus-junior). For multi-member team work prefer the adopted dsh-agent-teams protocol (agent_teams_create + agent_teams_add_member), not repeated one-shot spawns.",
     parameters: { type: "object", properties: { role: { type: "string", description: "roster role id (mpd_roles_list)" }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" }, model: { type: "string", description: "optional model override (default: the role's primary route)" } }, required: ["role", "task"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete", "error"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a: unknown, v: any) => textBlock("role " + v.role + " (" + v.status + ")\nsummary: " + v.summary + (v.recommendation ? "\nrecommendation: " + v.recommendation : "") + (v.details ? "\ndetails: " + v.details : "") + (v.evidence?.length ? "\nevidence:\n- " + v.evidence.join("\n- ") : "")) },
+    output: { schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a: unknown, v: any) => textBlock("role " + v.role + " (" + v.status + ")\nsummary: " + v.summary + (v.recommendation ? "\nrecommendation: " + v.recommendation : "") + (v.details ? "\ndetails: " + v.details : "") + (v.evidence?.length ? "\nevidence:\n- " + v.evidence.join("\n- ") : "")) },
     execute: async (args: any, exec: any) => {
       const id = normalizeRoleKey(String(args?.role ?? ""))
       if (!id) throw new Error("mpd_role_spawn: unknown role '" + String(args?.role) + "' — call mpd_roles_list first")

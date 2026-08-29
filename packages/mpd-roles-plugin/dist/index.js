@@ -1,10 +1,10 @@
-// src/index.ts
+// packages/mpd-roles-plugin/src/index.ts
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 
-// src/roles.data.ts
+// packages/mpd-roles-plugin/src/roles.data.ts
 var ROLES = [
   {
     id: "oracle",
@@ -24,7 +24,7 @@ var ROLES = [
     readonly: true,
     chain: [
       { provider: "deepseek-official", model: "deepseek-v4-flash" },
-      { provider: "deepseek", model: "deepseek-v4-flash" }
+      { provider: "deepseek-official", model: "deepseek-v4-flash" }
     ],
     personaFile: "personas/librarian.md"
   },
@@ -46,7 +46,7 @@ var ROLES = [
     readonly: false,
     chain: [
       { provider: "deepseek-official", model: "deepseek-v4-flash" },
-      { provider: "deepseek", model: "deepseek-v4-flash" }
+      { provider: "deepseek-official", model: "deepseek-v4-flash" }
     ],
     personaFile: "personas/hephaestus.md"
   },
@@ -58,7 +58,7 @@ var ROLES = [
     chain: [
       { provider: "deepseek-official", model: "deepseek-v4-pro" },
       { provider: "deepseek-official", model: "deepseek-v4-flash" },
-      { provider: "deepseek", model: "deepseek-v4-flash" }
+      { provider: "deepseek-official", model: "deepseek-v4-flash" }
     ],
     personaFile: "personas/sisyphus.md"
   },
@@ -80,7 +80,7 @@ var ROLES = [
     readonly: true,
     chain: [
       { provider: "deepseek-official", model: "deepseek-v4-flash" },
-      { provider: "deepseek", model: "deepseek-v4-flash" }
+      { provider: "deepseek-official", model: "deepseek-v4-flash" }
     ],
     personaFile: "personas/explore.md"
   },
@@ -124,17 +124,27 @@ var ROLES = [
     readonly: false,
     chain: [
       { provider: "deepseek-official", model: "deepseek-v4-flash" },
-      { provider: "deepseek", model: "deepseek-v4-flash" }
+      { provider: "deepseek-official", model: "deepseek-v4-flash" }
     ],
     personaFile: "personas/sisyphus-junior.md"
   }
 ];
 var ROLE_BY_ID = Object.fromEntries(ROLES.map((r) => [r.id, r]));
 
-// src/index.ts
+// packages/mpd-roles-plugin/src/index.ts
 var name = "mpd-roles";
 var inject = ["tools", "subagents"];
-var READONLY_DENY = ["write", "edit", "str_replace_editor", "apply_patch", "mpd_hashline_edit"];
+var READONLY_DENY = [
+  "write",
+  "edit",
+  "str_replace_editor",
+  "apply_patch",
+  "mpd_hashline_edit",
+  "bash",
+  "mcp__ast_grep__rewrite",
+  "mcp__ast_grep__scan",
+  "mcp__lsp__rename"
+];
 var REPORT_SCHEMA = {
   type: "object",
   properties: {
@@ -205,7 +215,7 @@ function apply(ctx, config = {}) {
     name: "mpd_role_spawn",
     description: "Spawn one specialist as a one-shot subagent with its roster persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Use ids from mpd_roles_list: Architect(oracle), Researcher(librarian), Planner(prometheus), Deep Worker(hephaestus), Senior Engineer(sisyphus), Lead(atlas), Explorer(explore), Reviewer(metis), Plan Reviewer(momus), Vision Analyst(multimodal-looker), Junior Engineer(sisyphus-junior). For multi-member team work prefer the adopted dsh-agent-teams protocol (agent_teams_create + agent_teams_add_member), not repeated one-shot spawns.",
     parameters: { type: "object", properties: { role: { type: "string", description: "roster role id (mpd_roles_list)" }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" }, model: { type: "string", description: "optional model override (default: the role's primary route)" } }, required: ["role", "task"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete", "error"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a, v) => textBlock("role " + v.role + " (" + v.status + `)
+    output: { schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a, v) => textBlock("role " + v.role + " (" + v.status + `)
 summary: ` + v.summary + (v.recommendation ? `
 recommendation: ` + v.recommendation : "") + (v.details ? `
 details: ` + v.details : "") + (v.evidence?.length ? `
@@ -267,5 +277,6 @@ export {
   normalizeRoleKey,
   name,
   inject,
-  apply
+  apply,
+  READONLY_DENY
 };

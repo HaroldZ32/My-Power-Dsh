@@ -1,4 +1,4 @@
-// src/index.ts
+// packages/mpd-tools-plugin/src/index.ts
 import { existsSync, readFileSync } from "node:fs";
 var name = "mpd-tools";
 var inject = ["tools"];
@@ -17,7 +17,7 @@ function apply(ctx, config = {}) {
       if (!existsSync(fp))
         return;
       try {
-        const old = readFileSync(fp, "utf8").slice(0, 1048576);
+        const old = readFileSync(fp, "utf8");
         if (old === content)
           return;
       } catch {

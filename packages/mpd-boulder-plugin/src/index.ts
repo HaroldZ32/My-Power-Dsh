@@ -46,7 +46,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     name: "mpd_boulder_status",
     description: "Show the boulder work ledger: active works, statuses, session ids, task timers, resume options and (optionally) the progress of one plan file. State lives in .mpd/boulder.json.",
     parameters: { type: "object", properties: { planPath: { type: "string" } } },
-    output: { schema: { type: "object", properties: { stateFile: { type: "string" }, activeWorks: { type: "array", items: { type: "object" } }, resumeOptions: { type: "array", items: { type: "object" } }, planProgress: { type: "object" } }, required: ["stateFile", "activeWorks", "resumeOptions"] }, render: (_a: unknown, v: any) => textBlock("boulder status: " + v.stateFile + "\nactive works: " + JSON.stringify(v.activeWorks, null, 1) + "\nresume: " + JSON.stringify(v.resumeOptions, null, 1) + (v.planProgress ? "\nplan: " + JSON.stringify(v.planProgress) : "")) },
+    output: { schema: { type: "object", properties: { stateFile: { type: "string" }, activeWorks: { type: "array", items: { type: "object" } }, resumeOptions: { type: "array", items: { type: "object" } }, planProgress: { type: "object" }, state: { type: "object" } }, required: ["stateFile", "activeWorks", "resumeOptions"] }, render: (_a: unknown, v: any) => textBlock("boulder status: " + v.stateFile + "\nactive works: " + JSON.stringify(v.activeWorks, null, 1) + "\nresume: " + JSON.stringify(v.resumeOptions, null, 1) + (v.planProgress ? "\nplan: " + JSON.stringify(v.planProgress) : "")) },
     execute: async (args: any) => {
       const dir = root()
       const state = readBoulderState(dir)
@@ -56,7 +56,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       if (args?.planPath) {
         try { planProgress = getPlanProgress(String(args.planPath)) } catch (e: any) { planProgress = { error: String(e?.message ?? e) } }
       }
-      const result: any = { stateFile: dir + "/.mpd/boulder.json", activeWorks, resumeOptions, state: state ? { active_work_id: state.active_work_id, status: state.status } : null }
+      const result: any = { stateFile: dir + "/.mpd/boulder.json", activeWorks, resumeOptions }
+      if (state) result.state = { active_work_id: state.active_work_id, status: state.status }
       // The schema declares planProgress as `type: object`: a present null fails
       // the host validator ("value.planProgress must be an object"), so the field
       // is omitted entirely when no plan path was requested (it is not required).

@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test"
-import { mkdtempSync } from "node:fs"
+import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { stripJsonc, deepMerge, apply } from "../src/index.ts"
@@ -48,6 +48,27 @@ test("mpd_config_get result is lossless JSON for a missing key (value null, neve
     const noKey = await get.execute({})
     expect(JSON.parse(JSON.stringify(noKey))).toEqual(noKey)
     expect(noKey.value).toBeUndefined() // field omitted entirely when no key requested
+  } finally {
+    if (prevHome === undefined) delete process.env.DSH_HOME; else process.env.DSH_HOME = prevHome
+    if (prevRoot === undefined) delete process.env.DSH_WORKSPACE_ROOT; else process.env.DSH_WORKSPACE_ROOT = prevRoot
+  }
+})
+
+test("mpdConfig service get resolves dot-paths (consistent with mpd_config_get)", () => {
+  const prevHome = process.env.DSH_HOME
+  const prevRoot = process.env.DSH_WORKSPACE_ROOT
+  const dir = mkdtempSync(join(tmpdir(), "mpd-cfg-svc-"))
+  mkdirSync(join(dir, ".mpd"), { recursive: true })
+  writeFileSync(join(dir, ".mpd", "mpd.jsonc"), '{ "modelchain": { "sisyphus-junior": [{ "provider": "deepseek-official", "model": "deepseek-v4-pro" }] }, "memory": { "vcs": "svn" } }')
+  process.env.DSH_HOME = mkdtempSync(join(tmpdir(), "mpd-cfg-svc-home-"))
+  process.env.DSH_WORKSPACE_ROOT = dir
+  try {
+    let provided: any = null
+    apply({ tools: { register: () => {} }, provide: (n: string, v: any) => { provided = v } } as any, {})
+    expect(provided.get("memory.vcs")).toBe("svn")
+    expect(provided.get("modelchain.sisyphus-junior")).toEqual([{ provider: "deepseek-official", model: "deepseek-v4-pro" }])
+    expect(provided.get("memory.missing")).toBeUndefined()
+    expect(provided.get()).toEqual(expect.objectContaining({ memory: { vcs: "svn" } }))
   } finally {
     if (prevHome === undefined) delete process.env.DSH_HOME; else process.env.DSH_HOME = prevHome
     if (prevRoot === undefined) delete process.env.DSH_WORKSPACE_ROOT; else process.env.DSH_WORKSPACE_ROOT = prevRoot

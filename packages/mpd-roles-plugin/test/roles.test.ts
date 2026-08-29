@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test"
-import { apply, normalizeRoleKey, readPersona, pkgRoot } from "../src/index.ts"
+import { apply, normalizeRoleKey, readPersona, pkgRoot, READONLY_DENY } from "../src/index.ts"
 import { ROLES } from "../src/roles.data.ts"
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
@@ -78,7 +78,7 @@ test("mpd_role_spawn: read-only roles get write-deny toolFilter, workers none", 
   const { tools, spawned, exec } = makePlugin()
   const spawn = tools.find((t) => t.name === "mpd_role_spawn")
   const ro = await spawn.execute({ role: "oracle", task: "review X" }, exec)
-  expect(spawned[0].toolFilter).toEqual({ deny: ["write", "edit", "str_replace_editor", "apply_patch", "mpd_hashline_edit"] })
+  expect(spawned[0].toolFilter).toEqual({ deny: READONLY_DENY })
   expect(spawned[0].persona).toContain("read-only")
   expect(spawned[0].agentOptions.model).toBe("deepseek-v4-pro")
   expect(ro.status).toBe("complete")
@@ -100,4 +100,14 @@ test("mpd_roles_list returns the full roster summary", async () => {
   const oracle = res.roles.find((r: any) => r.id === "oracle")
   expect(oracle.readonly).toBe(true)
   expect(oracle.model).toBe("deepseek-v4-pro")
+})
+
+test("read-only deny list covers every write-capable tool (no shell/AST/LSP write bypass)", async () => {
+  const writeTools = ["write", "edit", "str_replace_editor", "apply_patch", "mpd_hashline_edit", "bash", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename"]
+  for (const t of writeTools) expect(READONLY_DENY).toContain(t)
+  const { tools, spawned, exec } = makePlugin()
+  const spawn = tools.find((t) => t.name === "mpd_role_spawn")
+  await spawn.execute({ role: "oracle", task: "review X" }, exec)
+  const deny = spawned[0].toolFilter.deny as string[]
+  for (const t of writeTools) expect(deny).toContain(t)
 })

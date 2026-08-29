@@ -1,11 +1,11 @@
-// src/vendor/constants.ts
+// packages/mpd-boulder-plugin/src/vendor/constants.ts
 var BOULDER_DIR = ".mpd";
 var BOULDER_FILE = "boulder.json";
 var BOULDER_STATE_PATH = `${BOULDER_DIR}/${BOULDER_FILE}`;
 var NOTEPAD_DIR = "notepads";
 var NOTEPAD_BASE_PATH = `${BOULDER_DIR}/${NOTEPAD_DIR}`;
 var PROMETHEUS_PLANS_DIR = ".mpd/plans";
-// src/vendor/plan-checklist.ts
+// packages/mpd-boulder-plugin/src/vendor/plan-checklist.ts
 var SIMPLE_CHECKBOX_PATTERN = /^[-*][ \t]*\[[ \t]*([xX]?)[ \t]*\][ \t]+(.+)$/;
 var TODO_HEADING_PATTERN = /^##[ \t]+TODOs(?:[ \t]+#+)?[ \t]*$/i;
 var FINAL_VERIFICATION_HEADING_PATTERN = /^##[ \t]+Final Verification Wave(?:[ \t]+#+)?[ \t]*$/i;
@@ -183,7 +183,7 @@ function isClosingFence(line, fence) {
   const run = line.match(/^[ \t]{0,3}(`{3,}|~{3,})[ \t]*$/)?.[1];
   return run?.charAt(0) === fence.marker && run.length >= fence.length;
 }
-// src/vendor/storage/path.ts
+// packages/mpd-boulder-plugin/src/vendor/storage/path.ts
 import { existsSync } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
 function getBoulderFilePath(directory) {
@@ -210,7 +210,7 @@ function resolveBoulderPlanPath(directory, state) {
 function resolveBoulderPlanPathForWork(directory, work) {
   return resolveBoulderPlanPath(directory, work);
 }
-// src/vendor/storage/plan-progress.ts
+// packages/mpd-boulder-plugin/src/vendor/storage/plan-progress.ts
 import { existsSync as existsSync2, readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, join as join2 } from "node:path";
 var LEGACY_PROMETHEUS_PLANS_DIR = ".sisyphus/plans";
@@ -247,7 +247,7 @@ function getPlanProgress(planPath) {
     return { total: 0, completed: 0, isComplete: false };
   }
 }
-// src/vendor/storage/shared.ts
+// packages/mpd-boulder-plugin/src/vendor/storage/shared.ts
 var RESERVED_KEYS = new Set(["__proto__", "prototype", "constructor"]);
 var SESSION_ID_PREFIX_PATTERN = /^(codex|opencode|senpi|dsh):/;
 function normalizeSessionId(sessionId, platform = "dsh") {
@@ -328,7 +328,7 @@ function selectMirrorWork(state) {
   });
   return sorted[0] ?? null;
 }
-// src/vendor/storage/read-state.ts
+// packages/mpd-boulder-plugin/src/vendor/storage/read-state.ts
 import { existsSync as existsSync3, readFileSync as readFileSync2 } from "node:fs";
 function readBoulderState(directory) {
   const filePath = getBoulderFilePath(directory);
@@ -434,7 +434,7 @@ function getWorkResumeOptions(directory) {
     };
   });
 }
-// src/vendor/storage/write-state.ts
+// packages/mpd-boulder-plugin/src/vendor/storage/write-state.ts
 import { existsSync as existsSync4, mkdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join as join3 } from "node:path";
 function writeBoulderState(directory, state) {
@@ -570,7 +570,7 @@ function completeBoulder(directory, workId, endedAt) {
   }
   return writeBoulderState(directory, state) ? state : null;
 }
-// src/vendor/storage/task.ts
+// packages/mpd-boulder-plugin/src/vendor/storage/task.ts
 function upsertTaskSessionStateForWork(directory, workId, input) {
   if (RESERVED_KEYS.has(input.taskKey)) {
     return null;
@@ -658,7 +658,7 @@ function endTaskTimer(directory, workId, taskKey, endedAt) {
   }
   return writeBoulderState(directory, state) ? state : null;
 }
-// src/index.ts
+// packages/mpd-boulder-plugin/src/index.ts
 var name = "mpd-boulder";
 var inject = ["tools"];
 function mergedConfig(ctx, config) {
@@ -684,7 +684,7 @@ function apply(ctx, config = {}) {
     name: "mpd_boulder_status",
     description: "Show the boulder work ledger: active works, statuses, session ids, task timers, resume options and (optionally) the progress of one plan file. State lives in .mpd/boulder.json.",
     parameters: { type: "object", properties: { planPath: { type: "string" } } },
-    output: { schema: { type: "object", properties: { stateFile: { type: "string" }, activeWorks: { type: "array", items: { type: "object" } }, resumeOptions: { type: "array", items: { type: "object" } }, planProgress: { type: "object" } }, required: ["stateFile", "activeWorks", "resumeOptions"] }, render: (_a, v) => textBlock("boulder status: " + v.stateFile + `
+    output: { schema: { type: "object", properties: { stateFile: { type: "string" }, activeWorks: { type: "array", items: { type: "object" } }, resumeOptions: { type: "array", items: { type: "object" } }, planProgress: { type: "object" }, state: { type: "object" } }, required: ["stateFile", "activeWorks", "resumeOptions"] }, render: (_a, v) => textBlock("boulder status: " + v.stateFile + `
 active works: ` + JSON.stringify(v.activeWorks, null, 1) + `
 resume: ` + JSON.stringify(v.resumeOptions, null, 1) + (v.planProgress ? `
 plan: ` + JSON.stringify(v.planProgress) : "")) },
@@ -701,7 +701,9 @@ plan: ` + JSON.stringify(v.planProgress) : "")) },
           planProgress = { error: String(e?.message ?? e) };
         }
       }
-      const result = { stateFile: dir + "/.mpd/boulder.json", activeWorks, resumeOptions, state: state ? { active_work_id: state.active_work_id, status: state.status } : null };
+      const result = { stateFile: dir + "/.mpd/boulder.json", activeWorks, resumeOptions };
+      if (state)
+        result.state = { active_work_id: state.active_work_id, status: state.status };
       if (planProgress)
         result.planProgress = planProgress;
       return result;

@@ -96,7 +96,10 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   function reload(): any { state = loadConfig(config); return state.config }
 
   ctx.provide("mpdConfig", {
-    get: (key?: string) => (key === undefined ? state.config : state.config[key]),
+    get: (key?: string) => {
+      if (key === undefined) return state.config
+      return key.split(".").reduce((acc: any, part: string) => (acc == null ? undefined : acc[part]), state.config)
+    },
     reload,
     states: () => ({ files: state.files, errors: state.errors }),
   })
