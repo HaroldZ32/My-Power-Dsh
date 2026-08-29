@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "dshHome": "/root/dshProj/my-power-dsh/.qa-web-client",
+  "wmHome": "/tmp/mpd-wm-web-fwmooQ",
+  "steps": {
+    "listUp": {
+      "ok": true
+    },
+    "bootEntry": {
+      "ok": true,
+      "id": "@mpd-dsh/mpd"
+    },
+    "clientJs": {
+      "ok": true,
+      "status": 200
+    },
+    "initRoute": {
+      "ok": true,
+      "note": "{\"name\":\"gui-alice\",\"baseId\":\"hephaestus\",\"baseName\":\"Deep Worker\",\"readonly\":false,\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"path\":\"/tmp/mpd-",
+      "filesOk": true
+    },
+    "isolation": {
+      "ok": true,
+      "realHome": "/root/.mpd/workmate"
+    }
+  }
+}

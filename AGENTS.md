@@ -103,6 +103,7 @@ mpd-dsh/
 │   ├── mpd-workmate-plugin/      # durable evolving agent library (~/.mpd/workmate): base→instance, self-reflect (persona+memory capped), short note, reuse via mpd_workmate_* (no forced weak matches)
 │   ├── mpd-bootstrap-plugin/     # bundle provisioning: the mpd main preset (presets/mpd/) + skills copy to $DSH_HOME
 │   ├── mpd-agent-teams-plugin/   # adopted dsh-agent-teams (MIT, first-class main code): agent_teams_* + Web panel; memberPersona injects workmate backing
+│   ├── mpd-bundle-plugin/        # bundle web-compat: the @mpd-dsh/mpd no-op main + the combined web client (client.js = adopted agent-teams panel + workmate library floater; built by scripts/build-mpd-client.mjs)
 │   └── mpd-qa-roles-probe/       # QA-only probe: mpd preset resolve + mpdRoles roster (overlay-mounted)
 ├── skills/                      # skill corpus: dsh-qa (QA skill) + 17 ported upstream skills + svn-master (installed to \$DSH_HOME/skills by mpd-bootstrap)
 ├── tests/
@@ -266,6 +267,7 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 | boot fails with ERR_MODULE_NOT_FOUND @nanmicoder/dsh-agent-teams | the legacy profile still pins the old bundle row; the row is now main code (`@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib/index.js`) — reinstall the bundle (`dsh plugin --profile <p> add dist/mpd-package`) |
 | AGENT.md / AGENTS.md not injected into a session | the session runs a non-mpd preset; the `mpd` preset configures `instructionFileCandidates` (AGENT.md → AGENTS.md → CLAUDE.md) — switch the session to the `mpd` preset |
 | `mpd_workmate_*` reports "mpdRoles service unavailable" | the `mpd-roles` plugin row is not mounted (e.g. a legacy install without the roster) — add the `mpd-roles` row (bundle patch / install-profile); the workmate plugin resolves the service lazily at tool-execute time |
+| web team/workmate panel never appears in the GUI | the bundle's web client has no loader entry named exactly `@mpd-dsh/mpd` — client-modules builds client rows from `ctx.loader.entries()` entry names, which come from patch rows' `name` field; keep the `mpd-web-compat` self-row (`name: '@mpd-dsh/mpd'`) and the bundle `main`/`exports["."]` pointing at `packages/mpd-bundle-plugin` (regenerate with `node scripts/build-mpd-client.mjs && node scripts/pack-mpd.mjs`) |
 | `mpd_role_spawn` reports unknown role | role ids are the roster ids (`oracle`, `sisyphus-junior`, `multimodal-looker`, …) — run `mpd_roles_list`; legacy `mpd-<id>` aliases are accepted |
 
 ---

@@ -17,10 +17,12 @@ const FIXTURE_ROLES = "oracle,librarian,prometheus,hephaestus,sisyphus,sisyphus-
 // from the checkout, so rows are rewritten to checkout-absolute paths (the
 // adopted agent-teams package is main code at packages/mpd-agent-teams-plugin,
 // so the generic rewrite covers it too) and the MCP command/env expressions are
-// satisfied via MPD_DSH_* / MPD_*_BIN env pins.
+// satisfied via MPD_DSH_* / MPD_*_BIN env pins. The web-compat self-row's bare
+// `name: '@mpd-dsh/mpd'` has no trailing slash, so it needs its own rewrite.
 function devPatch() {
   const t = readFileSync(join(repoRoot, "packages/mpd-bundle/cordis.patch.yml"), "utf8")
   return t
+    .split("name: '@mpd-dsh/mpd'").join("name: '" + join(repoRoot, "packages/mpd-bundle-plugin/dist/index.js") + "'")
     .split("@mpd-dsh/mpd/").join(repoRoot + "/")
 }
 
