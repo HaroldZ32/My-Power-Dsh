@@ -19,12 +19,12 @@
     "skills": {
       "fileCount": 320,
       "source": "skill corpus at repo root (17 ported upstream skills + dsh-qa + svn-master); whole-dir refresh from upstream, keep provenance links",
-      "treeSha": "0d7edcdcb57d7a2152233300cb9502e3f305df9ce168289c933b18c690a490cf"
+      "treeSha": "7c22a7c3eecfd44a0be888a2a5fec3bf5f55a40f5853cc4b1cea763db806f7ca"
     },
     "packages/mpd-agent-teams-plugin/_deps": {
       "fileCount": 635,
       "source": "server-side runtime closure of the adopted dsh-agent-teams plugin, materialized by scripts/vendor-agent-teams.mjs (exact host versions, bare imports rewritten)",
-      "treeSha": "e3b8207ecee2fd161c4118433f5c77664ff9301dbcfd3c016b996eb33bed5d05"
+      "treeSha": "d1d106032b198d2392ca2fe36ea4b563c3010496192791a6e4812638b7cf8e37"
     },
     "packages/mpd-mcp-astgrep/dist/cli.js": {
       "fileCount": 1,
@@ -39,7 +39,7 @@
     "packages/mpd-mcp-lsp/dist/cli.js": {
       "fileCount": 1,
       "source": "built offline via scripts/build-mcp.mjs from packages/lsp-daemon",
-      "sha256": "9b64bd1201986c592b4978e84d8cd7d8c65a359c747c0eab326b5a7026bf711a"
+      "sha256": "913da07408bac7f1c43433b0750f2f2d00ed20fc105aacd058963a95c545f22d"
     },
     "packages/mpd-mcp-codegraph/dist/serve.js": {
       "fileCount": 1,
@@ -48,5 +48,5 @@
     }
   },
   "verification": "node scripts/verify-vendor.mjs: commit/version mismatch is a blocker; stats drift is a warning; asset counts are a blocker",
-  "lockedAt": "2026-08-26T03:44:55.545Z"
+  "lockedAt": "2026-08-29T17:15:12.000Z"
 }

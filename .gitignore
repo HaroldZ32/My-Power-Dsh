@@ -12,6 +12,7 @@ dist/mpd-package/
 .cg-qa/
 .git-home/
 .tmp-cache/
+.credentials.yaml
 
 # workspace-scoped runtime state (team/memory/plans/config) — never committed
 .mpd/

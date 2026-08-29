@@ -659,6 +659,7 @@ function endTaskTimer(directory, workId, taskKey, endedAt) {
   return writeBoulderState(directory, state) ? state : null;
 }
 // packages/mpd-boulder-plugin/src/index.ts
+import { join as join4 } from "node:path";
 var name = "mpd-boulder";
 var inject = ["tools"];
 function mergedConfig(ctx, config) {
@@ -701,7 +702,7 @@ plan: ` + JSON.stringify(v.planProgress) : "")) },
           planProgress = { error: String(e?.message ?? e) };
         }
       }
-      const result = { stateFile: dir + "/.mpd/boulder.json", activeWorks, resumeOptions };
+      const result = { stateFile: join4(dir, ".mpd", "boulder.json"), activeWorks, resumeOptions };
       if (state)
         result.state = { active_work_id: state.active_work_id, status: state.status };
       if (planProgress)
@@ -728,7 +729,9 @@ plan: ` + JSON.stringify(v.planProgress) : "")) },
       }
       if (!next)
         throw new Error("mpd-boulder: failed to start work on " + planPath);
-      return { workId: next.active_work_id ?? "?", status: next.works?.[next.active_work_id ?? ""]?.status ?? "active", stateFile: dir + "/.mpd/boulder.json" };
+      const wid = next.active_work_id;
+      const status = wid ? next.works?.[wid]?.status ?? "active" : "active";
+      return { workId: wid ?? "?", status, stateFile: join4(dir, ".mpd", "boulder.json") };
     }
   });
   ctx.tools.register({

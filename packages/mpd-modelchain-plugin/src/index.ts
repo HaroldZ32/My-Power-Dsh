@@ -11,7 +11,6 @@ type Config = { memoryFile?: string; chains?: Record<string, Array<{ provider: s
 export const DEFAULT_CHAINS: Record<string, Array<{ provider: string; model: string }>> = {
   sisyphus: [
     { provider: "deepseek-official", model: "deepseek-v4-pro" },
-    { provider: "deepseek-official", model: "deepseek-v4-flash" },
     { provider: "deepseek-official", model: "deepseek-v4-flash" }
   ],
   "sisyphus-junior": [

@@ -1,0 +1,51 @@
+{
+  "task": "t9 — Fix cluster 4: scripts/vendor/installer/bundle-patch defects",
+  "agent": "Lead",
+  "date": "2026-08-30",
+  "report": ".mpd/findings/repo-scan-20260830/report.md",
+  "summary": "All cluster-4 findings (F-16..F-25) closed. build-mcp.mjs restored to runnable + correct (CORE omo-config-core, @oh-my-opencode scope, dead code removed, upstream-root auto-detect) — MCP dists now regenerable; pack-mpd fails loudly on missing dists and excludes agent-teams test dirs (also resolves F-20/C-3); vendor-agent-teams rewrites now cover require()/double-quoted forms and _deps re-materialized (schemastery CJS require fixed, treeSha re-locked); install-profile MCP rows gained toolCallTimeoutMs + mcp-context7/mcp-grepapp + wording fix; verify-vendor + bootstrap typos fixed; upstream-root auto-detect added; VENDOR_LOCK re-locked (skills treeSha from cluster-3 scrub repair + _deps treeSha) with evidence.",
+  "gates": {
+    "verify-vendor": "PASS exit 0 (verify-vendor.log, verify-vendor-final.log)",
+    "install-profile --dry-run": "PASS exit 0, real home untouched (install-dry-run.log)",
+    "install-profile --self-test": "PASS exit 0 (install-dry-run.log)",
+    "build-mcp": "PASS exit 0 (build-mcp.log)",
+    "pack-mpd": "PASS exit 0, no checkout-absolute paths, test dirs excluded, optionalDeps present (pack-mpd.log)",
+    "build-mpd-client": "PASS exit 0 (build-mpd-client.log)"
+  },
+  "per_finding_closure": {
+    "F-16": "build-mcp.mjs CORE 'mpd-config-core' -> 'omo-config-core' (upstream real package); script now runs, MCP dists regenerable",
+    "F-17": "build-mcp.mjs placeholder '@the upstream host' -> real npm scope '@oh-my-opencode'; script is now runnable (EXIT 0) and regenerates dists from the pinned upstream. NOTE: regenerated dists are NOT byte-identical to the committed baseline — committed dists were built with an older bun (ES2022 class-field syntax) and carry the scrub's manual OMO->MPD textual rename (incl. corruption such as 'platformFrmpdOptions', 'projectRootFromLegacyConfigPath', 'upstream/ping'). A clean upstream build cannot reproduce those scrubbed bytes; build-mcp stays contract-neutral (no rename step — a rename table would diverge further). Committed dists remain the locked VENDOR_LOCK baseline; regenerating+re-locking them is a deliberate baseline decision outside minimal-diff scope.",
+    "F-18": "pack-mpd.mjs cpDist now collects missing dists and exits 1 instead of silently continuing",
+    "F-19": "vendor-agent-teams.mjs rewriteFile covers require(\"...\"), require('...'), import \"...\", import('...'); residual-report regex extended; _deps re-materialized — schemastery/lib/index.cjs require('@deepseek-ai/cosmokit') now require('../../cosmokit/lib/index.js') (runtime-verified load OK); only web-client files keep bare @deepseek-ai imports (documented exempt)",
+    "F-20": "pack-mpd.mjs excludes test/ and self-fix-tests/ from the agent-teams wholesale copy -> packed bundle has no test dirs, removing the dist test-sweep duplication (root cause of C-3)",
+    "F-21": "verify-vendor.mjs:10 and bootstrap.mjs:26 'the the upstream' -> 'the upstream'",
+    "F-22": "build-mcp.mjs removed dead `const want = entry.split(\"@\")[1]`, unused randomUUID import, and unused sha() helper",
+    "F-23": "install-profile.mjs MCP rows now carry toolCallTimeoutMs: 60000; added mcp-context7 + mcp-grepapp rows matching bundle; success message 'mpd-* presets' -> 'mpd preset'; self-test extended to assert these",
+    "F-24": "VENDOR_LOCK.json re-locked: skills treeSha (7c22a7c3..., cluster-3 scrub repair) + _deps treeSha (d1d10603..., schemastery require fix) recomputed with verify-vendor's own algorithm; lockedAt refreshed; verify-vendor PASS",
+    "F-25": "build-mcp.mjs + verify-vendor.mjs auto-detect the pinned checkout at .mpd-dsh/upstream when MPD_UPSTREAM_ROOT unset"
+  },
+  "changedPaths": [
+    "scripts/build-mcp.mjs",
+    "scripts/pack-mpd.mjs",
+    "scripts/vendor-agent-teams.mjs",
+    "scripts/verify-vendor.mjs",
+    "scripts/bootstrap.mjs",
+    "scripts/install-profile.mjs",
+    "VENDOR_LOCK.json"
+  ],
+  "regenerated_artifacts_not_declared": [
+    {
+      "path": "packages/mpd-agent-teams-plugin/_deps/schemastery/lib/index.cjs",
+      "reason": "F-19 requires re-materializing the vendored _deps closure with the fixed vendor-agent-teams.mjs; only tree diff is this 1-line require() rewrite. Path belongs to another task's inScope per captain scope rule — listed here so review can verify the tree diff; not declared in changedPaths."
+    },
+    {
+      "path": "packages/mpd-mcp-{astgrep,gitbash,lsp}/dist/*",
+      "reason": "build-mcp.mjs run to PROVE F-16/F-17 (EXIT 0, dists built from pinned upstream), then dists restored to committed baseline (git clean) — they are VENDOR_LOCK-pinned assets. Regenerated products are NOT byte-identical to committed: committed dists were built with an older bun (ES2022 class-field syntax) and carry the scrub's manual OMO->MPD textual rename (incl. corruption such as 'platformFrmpdOptions', 'projectRootFromLegacyConfigPath', 'upstream/ping'); a clean upstream build cannot reproduce those scrubbed bytes, so build-mcp stays contract-neutral (no rename step). Committing regenerated bytes is a deliberate re-lock decision beyond this minimal-diff fix. Path belongs to another task's inScope."
+    },
+    {
+      "path": "dist/mpd-package/*",
+      "reason": "pack-mpd staging output (gitignored, never committed); inspected for acceptance: 0 checkout-absolute paths, rows resolvable via name/exports, binaries via optionalDependencies/MPD_DSH_* env, no test dirs."
+    }
+  ],
+  "notes": "MCP dists (packages/mpd-mcp-*/dist/cli.js) intentionally left at committed baseline — they are VENDOR_LOCK-pinned assets; regenerating and committing them is a deliberate baseline re-lock decision beyond this minimal-diff fix. build-mcp.mjs is now runnable (EXIT 0) and regenerates dists from the pinned upstream; regenerated products differ from the committed (scrub-patched) baseline, which is expected and documented above."
+}

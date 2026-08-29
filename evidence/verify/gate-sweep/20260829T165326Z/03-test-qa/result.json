@@ -1,0 +1,8 @@
+{
+  "gate": "03-test-qa",
+  "ok": true,
+  "exit": 0,
+  "command": "bun run test:qa",
+  "note": "all dsh-qa self-tests passed (17 scripts)",
+  "evidenceDir": "evidence/verify/gate-sweep/20260829T165326Z/03-test-qa"
+}

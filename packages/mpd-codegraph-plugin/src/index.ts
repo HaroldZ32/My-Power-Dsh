@@ -2,7 +2,7 @@
 // exact-marker probing, atomic lock, failure cooldown capped at 15 min, 60 s tree timeout), and registers the mpd-codegraph command for manual re-runs.
 // Zero runtime dependencies; any failure is only logged and never crashes boot.
 import { spawnSync } from "node:child_process"
-import { existsSync, mkdirSync, readFileSync, rmSync, statSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { createRequire } from "node:module"
 import { dirname, join, resolve } from "node:path"
@@ -65,7 +65,6 @@ function initProject(cwd: string, binary: string, timeoutMs: number): string {
   }
 }
 
-import { writeFileSync } from "node:fs"
 function writeCooldown(dir: string, file: string): void {
   try { writeFileSync(join(dir, file), String(Date.now())) } catch { /* ignore */ }
 }

@@ -80,20 +80,28 @@ function buildPlan(o) {
     {
       id: "mcp-astgrep", name: "@deepseek-ai/dsh-mcp-client",
       config: { serverName: "ast_grep", transport: "stdio", command: "node", args: [p("packages/mpd-mcp-astgrep/dist/cli.js")],
-        env: existsSync(astCli) ? { MPD_AST_GREP_SG_PATH: astCli } : undefined }
+        env: existsSync(astCli) ? { MPD_AST_GREP_SG_PATH: astCli } : undefined, toolCallTimeoutMs: 60000 }
     },
     {
       id: "mcp-gitbash", name: "@deepseek-ai/dsh-mcp-client", disabled: true,
-      config: { serverName: "git_bash", transport: "stdio", command: "node", args: [p("packages/mpd-mcp-gitbash/dist/cli.js")] }
+      config: { serverName: "git_bash", transport: "stdio", command: "node", args: [p("packages/mpd-mcp-gitbash/dist/cli.js")], toolCallTimeoutMs: 60000 }
     },
     {
       id: "mcp-lsp", name: "@deepseek-ai/dsh-mcp-client",
-      config: { serverName: "lsp", transport: "stdio", command: "node", args: [p("packages/mpd-mcp-lsp/dist/cli.js"), "mcp"] }
+      config: { serverName: "lsp", transport: "stdio", command: "node", args: [p("packages/mpd-mcp-lsp/dist/cli.js"), "mcp"], toolCallTimeoutMs: 60000 }
     },
     {
       id: "mcp-codegraph", name: "@deepseek-ai/dsh-mcp-client",
       config: { serverName: "codegraph", transport: "stdio", command: "node", args: [p("packages/mpd-mcp-codegraph/dist/serve.js")],
-        env: existsSync(cgCli) ? { MPD_CODEGRAPH_BIN: cgCli } : undefined }
+        env: existsSync(cgCli) ? { MPD_CODEGRAPH_BIN: cgCli } : undefined, toolCallTimeoutMs: 60000 }
+    },
+    {
+      id: "mcp-context7", name: "@deepseek-ai/dsh-mcp-client",
+      config: { serverName: "context7", transport: "streamable-http", url: "https://mcp.context7.com/mcp", toolCallTimeoutMs: 60000 }
+    },
+    {
+      id: "mcp-grepapp", name: "@deepseek-ai/dsh-mcp-client",
+      config: { serverName: "grep_app", transport: "streamable-http", url: "https://mcp.grep.app", toolCallTimeoutMs: 60000 }
     },
     {
       id: "mpd-codegraph", name: p("packages/mpd-codegraph-plugin/dist/index.js"),
@@ -230,6 +238,11 @@ function selfTest() {
   if (plan.homePatch !== join(plan.dshHome, "cordis.patch.yml")) { console.error("[install-profile self-test] FAIL: path model"); process.exit(1) }
   const rows = plan.rows.map((r) => r.id)
   if (!rows.includes("mcp-astgrep") || !rows.includes("mpd-codegraph") || !rows.includes("agent-teams")) { console.error("[install-profile self-test] FAIL: row set"); process.exit(1) }
+  if (!rows.includes("mcp-context7") || !rows.includes("mcp-grepapp")) { console.error("[install-profile self-test] FAIL: mcp-context7/mcp-grepapp rows"); process.exit(1) }
+  for (const mcp of ["mcp-astgrep", "mcp-gitbash", "mcp-lsp", "mcp-codegraph"]) {
+    const r = plan.rows.find((x) => x.id === mcp)
+    if (!r || r.config.toolCallTimeoutMs !== 60000) { console.error("[install-profile self-test] FAIL: " + mcp + " toolCallTimeoutMs"); process.exit(1) }
+  }
   if (!rows.includes("agent-teams") || plan.agentTeamsRow.config.stateDir !== ".mpd/team") { console.error("[install-profile self-test] FAIL: agent-teams row/override"); process.exit(1) }
   if (!rows.includes("mpd-hashline")) { console.error("[install-profile self-test] FAIL: mpd-hashline row"); process.exit(1) }
   if (!rows.includes("mpd-roles") || !rows.includes("mpd-workmate") || !rows.includes("mpd-bootstrap")) { console.error("[install-profile self-test] FAIL: mpd-roles/workmate/bootstrap rows"); process.exit(1) }
@@ -317,7 +330,7 @@ function main() {
     const r = spawnSync("npm", ["install", "--prefix", join(repoRoot, ".toolchain"), "--no-save", "--no-audit", "--no-fund", "--cache", join(repoRoot, ".toolchain/.npm-cache"), ...toolchainPkgs], { stdio: "inherit" })
     if (r.status !== 0) { console.error("[install-profile] toolchain install failed; try --skip-toolchain and install manually"); process.exitCode = 1; return }
   }
-  console.log("[install-profile] done. Start with: dsh --profile " + o.profile + "   (the web preset selector will show the mpd-* presets)")
+  console.log("[install-profile] done. Start with: dsh --profile " + o.profile + "   (the web preset selector will show the mpd preset)")
 }
 
 main()

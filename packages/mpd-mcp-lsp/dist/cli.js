@@ -5861,7 +5861,7 @@ function handleDaemonMessage(raw, state) {
   const authenticated = authenticateMessage(raw, state.token);
   if ("error" in authenticated)
     return Promise.resolve(authenticated);
-  if (authenticated.method === "upstream/ping") {
+  if (authenticated.method === "mpd/ping") {
     return Promise.resolve({
       jsonrpc: "2.0",
       id: authenticated.id,

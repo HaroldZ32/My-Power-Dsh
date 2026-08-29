@@ -1,4 +1,4 @@
-let _deepseek_ai_cosmokit = require("@deepseek-ai/cosmokit");
+let _deepseek_ai_cosmokit = require('../../cosmokit/lib/index.js');
 //#region lib/types/index.js
 const kSchema = Symbol.for("schemastery");
 const kValidationError = Symbol.for("ValidationError");

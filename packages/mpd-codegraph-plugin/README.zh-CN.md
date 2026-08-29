@@ -11,6 +11,10 @@ CodeGraph（仓库/代码智能索引）集成：解析 `codegraph` 二进制，
 - 跳过用户 home 作为项目（避免索引整台机器）；请使用真实的项目目录、`MPD_DSH_CODEGRAPH_PROJECT_CWD` 或 `/mpd-codegraph`。
 - 当存在命令注册表（command registry）时，注册 `/mpd-codegraph` 命令。
 
+## 状态（State）
+
+项目索引与初始化锁/冷却标记位于工作区下的 `.codegraph/` 目录（`.codegraph/codegraph.db`、`init.lock`、`init.cooldown`），沿用上游纪律并已加入 `.gitignore` 不会提交。这是与 `.mpd/` 并列的**第二个被认可的工作区状态根**（参见 AGENTS.md §6）——该插件从不在工作区之外写入。
+
 ## 配置
 
 | Key | Type | Default |

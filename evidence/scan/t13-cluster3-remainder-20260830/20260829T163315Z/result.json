@@ -1,0 +1,41 @@
+{
+  "task": "t13",
+  "cluster": 3,
+  "assignee": "Junior Engineer",
+  "date": "2026-08-29",
+  "kind": "declaration + verification (no re-modification)",
+  "scope": "Declare cluster-3 remainder: LICENSE/skills/gitignore hygiene (F-08..F-11, F-14)",
+  "verifications": {
+    "F-08": {
+      "check": "LICENSE.md:5 contains 'oh-my-opencode Software'",
+      "evidence": "sed -n '5p' LICENSE.md -> '- All third party components incorporated into the oh-my-opencode Software are licensed under the original license'"
+    },
+    "F-09": {
+      "check": "3 vendored ATTRIBUTION.md byte-identical to upstream (.mpd-dsh/upstream/packages/shared-skills/skills/)",
+      "evidence": "diff -q x3 (ultimate-browsing, ulw-research, frontend) -> ALL 3 ATTRIBUTION IDENTICAL"
+    },
+    "F-10": {
+      "check": "coding-agent-sessions/SKILL.md:20 + ast-grep/README.md:133 restored verbatim",
+      "evidence": "line 20 = 'OpenCode / oh-my-openagent (formerly oh-my-opencode) storage'; line 133 = '[`omo` (oh-my-opencode)](https://github.com/code-yeongyu/oh-my-opencode) - ...'"
+    },
+    "F-11": {
+      "check": ".gitignore ignores .credentials.yaml",
+      "evidence": "git check-ignore -v .credentials.yaml -> '.gitignore:15:.credentials.yaml	.credentials.yaml' (exit 0)"
+    },
+    "F-14": {
+      "check": ".gitattributes exists with EOL pinning",
+      "evidence": "cat .gitattributes -> '* text=auto' + '*.md/*.ts/*.yml text eol=lf'"
+    },
+    "scrubMarkersCleared": {
+      "check": "no 'the the upstream' / '@the upstream host' / 'formerly the upstream host' in the 7 declared files",
+      "evidence": "grep -> CLEAN (no matches)"
+    }
+  },
+  "gates": {
+    "bun run typecheck": {
+      "command": "bun run typecheck",
+      "exitCode": 0,
+      "result": "tsgo --noEmit: 0 errors (observed TYPECHECK_EXIT=0)"
+    }
+  }
+}

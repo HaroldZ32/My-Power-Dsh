@@ -17,6 +17,14 @@ command for manual (re)runs.
   project directory, `MPD_DSH_CODEGRAPH_PROJECT_CWD`, or `/mpd-codegraph`.
 - Registers the `/mpd-codegraph` command when a command registry is present.
 
+## State
+
+The project index and init lock/cooldown live in `.codegraph/` under the workspace
+(`.codegraph/codegraph.db`, `init.lock`, `init.cooldown`), mirroring upstream's
+discipline and kept out of git (`.gitignore`). This is a **sanctioned second workspace
+state root** alongside `.mpd/` (see AGENTS.md §6) — the plugin never writes outside the
+workspace.
+
 ## Config
 
 | Key | Type | Default |

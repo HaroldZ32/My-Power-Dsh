@@ -46,9 +46,11 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     if (out.kind !== "accept") return out
     const text = blocksToText(out.content ?? result?.content)
     if (text.length <= maxBytes) return out
-    const head = text.slice(0, Math.floor(maxBytes * 0.7))
-    const tail = text.slice(-Math.floor(maxBytes * 0.3))
-    return { ...out, content: [{ type: "text", text: head + "\n... [mpd-tools truncated " + text.length + " chars; keep " + maxBytes + " budget; tail follows] ...\n" + tail }] }
+    const banner = "\n... [mpd-tools truncated " + text.length + " chars; keep " + maxBytes + " budget; tail follows] ...\n"
+    const budget = Math.max(0, maxBytes - banner.length) // banner counts against the budget
+    const head = budget > 0 ? text.slice(0, Math.floor(budget * 0.7)) : ""
+    const tail = budget > 0 ? text.slice(-Math.floor(budget * 0.3)) : ""
+    return { ...out, content: [{ type: "text", text: head + banner + tail }] }
   })
 
   // 3) edit-error recovery guidance

@@ -17,6 +17,7 @@ import {
   startTaskTimer,
   endTaskTimer,
 } from "./vendor/index.ts"
+import { join } from "node:path"
 
 export const name = "mpd-boulder"
 export const inject = ["tools"]
@@ -56,7 +57,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       if (args?.planPath) {
         try { planProgress = getPlanProgress(String(args.planPath)) } catch (e: any) { planProgress = { error: String(e?.message ?? e) } }
       }
-      const result: any = { stateFile: dir + "/.mpd/boulder.json", activeWorks, resumeOptions }
+      const result: any = { stateFile: join(dir, ".mpd", "boulder.json"), activeWorks, resumeOptions }
       if (state) result.state = { active_work_id: state.active_work_id, status: state.status }
       // The schema declares planProgress as `type: object`: a present null fails
       // the host validator ("value.planProgress must be an object"), so the field
@@ -86,7 +87,9 @@ export function apply(ctx: Ctx, config: Config = {}): void {
         next = writeBoulderState(dir, created) ? created : null
       }
       if (!next) throw new Error("mpd-boulder: failed to start work on " + planPath)
-      return { workId: next.active_work_id ?? "?", status: next.works?.[next.active_work_id ?? ""]?.status ?? "active", stateFile: dir + "/.mpd/boulder.json" }
+      const wid = next.active_work_id
+      const status = wid ? next.works?.[wid]?.status ?? "active" : "active"
+      return { workId: wid ?? "?", status, stateFile: join(dir, ".mpd", "boulder.json") }
     }
   })
 

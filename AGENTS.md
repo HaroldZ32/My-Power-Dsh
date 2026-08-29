@@ -186,7 +186,9 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   `$DSH_HOME/skills` (idempotent, version-stamped — see §8); (2) the **workmate library**
   (`mpd-workmate-plugin`) deliberately lives under the user's HOME (`~/.mpd/workmate`) —
   it is the user's cross-project, evolving agent library (QA must boot with
-  `HOME=<sandbox>` so tests never touch the real home).
+  `HOME=<sandbox>` so tests never touch the real home); (3) the **`mpd-codegraph`** plugin
+  keeps its project index in `.codegraph/` under the workspace (upstream-mirrored second
+  state root, gitignored — see `packages/mpd-codegraph-plugin/README.md`).
 - **Build**: `bun build src/index.ts --target node --format esm --outfile dist/index.js`;
   zero runtime deps preferred (type-only imports).
 - **Load/test**: the committed bundle patch ships in PACKED form (`@mpd-dsh/mpd/...` —

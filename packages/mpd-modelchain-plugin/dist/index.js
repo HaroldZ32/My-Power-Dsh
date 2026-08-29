@@ -6,7 +6,6 @@ var inject = ["tools"];
 var DEFAULT_CHAINS = {
   sisyphus: [
     { provider: "deepseek-official", model: "deepseek-v4-pro" },
-    { provider: "deepseek-official", model: "deepseek-v4-flash" },
     { provider: "deepseek-official", model: "deepseek-v4-flash" }
   ],
   "sisyphus-junior": [

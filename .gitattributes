@@ -1,0 +1,5 @@
+# EOL normalization (preventive; repo currently has no CRLF)
+* text=auto
+*.md text eol=lf
+*.ts text eol=lf
+*.yml text eol=lf
