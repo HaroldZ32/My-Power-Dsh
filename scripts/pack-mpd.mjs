@@ -56,8 +56,19 @@ function cpAssets() {
   // the bundle's combined web client (adopted agent-teams panel + workmate library),
   // composed by scripts/build-mpd-client.mjs — served as @mpd-dsh/mpd's ./client
   cpSync(join(repoRoot, "packages", "mpd-bundle-plugin", "client.js"), join(outDir, "packages", "mpd-bundle-plugin", "client.js"))
-  for (const f of ["LICENSE.md", "LICENSE-NOTICES.md", "README.md"]) {
+  // Root bilingual README pair (AGENTS.md language policy: both files ship together
+  // and each carries the switch link to the other; copying only README.md would
+  // leave the [中文](./README.zh-CN.md) switch link dangling in the package).
+  for (const f of ["LICENSE.md", "LICENSE-NOTICES.md", "README.md", "README.zh-CN.md"]) {
     if (existsSync(join(repoRoot, f))) cpSync(join(repoRoot, f), join(outDir, f))
+  }
+  // Per-package bilingual README pair for every shipped plugin/MCP package
+  // (the adopted mpd-agent-teams-plugin is copied wholesale above, READMEs included).
+  for (const p of [...PLUGIN_PKGS, ...MCP_PKGS]) {
+    for (const f of ["README.md", "README.zh-CN.md"]) {
+      const s = join(repoRoot, "packages", p, f)
+      if (existsSync(s)) cpSync(s, join(outDir, "packages", p, f))
+    }
   }
 }
 
@@ -103,7 +114,7 @@ function writeManifest() {
       "skills/**",
       "presets/**",
       "cordis.patch.yml",
-      "LICENSE.md", "LICENSE-NOTICES.md", "README.md"
+      "LICENSE.md", "LICENSE-NOTICES.md", "README.md", "README.zh-CN.md"
     ],
     dsh: {
       bundle: { patch: "./cordis.patch.yml" },

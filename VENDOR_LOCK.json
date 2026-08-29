@@ -15,7 +15,17 @@
     "note": "loc = Σ split('\\n').length over tracked files (same method as verify-vendor)"
   },
   "assets": {
-    "_note": "skills directory: fileCount+treeSha (sorted relpath + per-file sha256 aggregation) double gate; dist: sha256 gate",
+    "_note": "skills corpus and agent-teams _deps closure: fileCount+treeSha (sorted relpath + per-file sha256 aggregation) double gate — verified by scripts/verify-vendor.mjs; dist: sha256 gate",
+    "skills": {
+      "fileCount": 320,
+      "source": "skill corpus at repo root (17 ported upstream skills + dsh-qa + svn-master); whole-dir refresh from upstream, keep provenance links",
+      "treeSha": "0d7edcdcb57d7a2152233300cb9502e3f305df9ce168289c933b18c690a490cf"
+    },
+    "packages/mpd-agent-teams-plugin/_deps": {
+      "fileCount": 635,
+      "source": "server-side runtime closure of the adopted dsh-agent-teams plugin, materialized by scripts/vendor-agent-teams.mjs (exact host versions, bare imports rewritten)",
+      "treeSha": "e3b8207ecee2fd161c4118433f5c77664ff9301dbcfd3c016b996eb33bed5d05"
+    },
     "packages/mpd-mcp-astgrep/dist/cli.js": {
       "fileCount": 1,
       "source": "built offline via scripts/build-mcp.mjs from packages/ast-grep-mcp",

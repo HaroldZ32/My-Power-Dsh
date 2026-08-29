@@ -10,8 +10,8 @@
 // and their bare imports rewritten to relative _deps paths.
 //
 // Usage: node scripts/vendor-agent-teams.mjs
-//   env DSH_HOST_NM  host's node_modules root (default: the dsh installation's nested
-//                    node_modules, e.g. <nvm>/lib/node_modules/@deepseek-ai/dsh/node_modules)
+//   env DSH_HOST_NM  host's node_modules root — REQUIRED (no machine-specific
+//                    default; e.g. <nvm>/lib/node_modules/@deepseek-ai/dsh/node_modules)
 // The client bundle (lib/client.js) keeps its bare @deepseek-ai imports: it is loaded by
 // the web app's own bundler, not by node.
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
@@ -22,7 +22,7 @@ import process from "node:process"
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const VENDOR = join(repoRoot, "packages", "mpd-agent-teams-plugin")
 const DEPS = join(VENDOR, "_deps")
-const HOST_NM = process.env.DSH_HOST_NM || "/home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/node_modules"
+const HOST_NM = process.env.DSH_HOST_NM
 
 // name -> { spec, entry } : bare specifier -> vendored subdir + entry file
 const CHAIN = {
@@ -95,6 +95,7 @@ function vendorPackage(spec, c) {
 }
 
 function main() {
+  if (!HOST_NM) { console.error("[vendor-agent-teams] FAIL: DSH_HOST_NM must point at the dsh installation's node_modules root (no built-in default; e.g. export DSH_HOST_NM=$(dirname $(dirname $(which dsh))) 2>/dev/null or <nvm>/lib/node_modules/@deepseek-ai/dsh/node_modules)"); process.exit(1) }
   if (!existsSync(HOST_NM)) { console.error("[vendor-agent-teams] FAIL: DSH_HOST_NM not found: " + HOST_NM); process.exit(1) }
   if (!existsSync(join(repoRoot, "packages", "mpd-agent-teams-plugin", "lib", "index.js"))) { console.error("[vendor-agent-teams] FAIL: packages/mpd-agent-teams-plugin/lib missing (restore the adopted plugin first)"); process.exit(1) }
   rmSync(DEPS, { recursive: true, force: true })

@@ -46,7 +46,16 @@ function selfTest() {
   if (!existsSync(probe)) { console.error("[preset-register self-test] FAIL: roles probe dist missing (bun build first)"); process.exit(1) }
   const data = readFileSync(join(repoRoot, "packages/mpd-roles-plugin/src/roles.data.ts"), "utf8")
   if (!data.includes('"id": "oracle"') || !data.includes('"id": "multimodal-looker"')) { console.error("[preset-register self-test] FAIL: roster data fixture"); process.exit(1) }
-  console.log("[preset-register self-test] ok: preset + roster fixtures verified")
+  // web-compat entry normalization: the bundle patch's web-compat self-row is
+  // `name: '@mpd-dsh/mpd'` (the exact loader entry name client-modules scans);
+  // the dev rewrite must map it to the checkout-absolute bundle-plugin main, and
+  // must NOT leave a bare '@mpd-dsh/mpd' row name behind (that specifier is only
+  // resolvable when the packed bundle is installed).
+  const src = readFileSync(join(repoRoot, "packages/mpd-bundle/cordis.patch.yml"), "utf8")
+  if (!src.includes("name: '@mpd-dsh/mpd'")) { console.error("[preset-register self-test] FAIL: bundle patch web-compat self-row missing bare '@mpd-dsh/mpd' entry"); process.exit(1) }
+  const dev = devPatch()
+  if (dev.includes("name: '@mpd-dsh/mpd'") || !dev.includes("name: '" + join(repoRoot, "packages/mpd-bundle-plugin/dist/index.js") + "'")) { console.error("[preset-register self-test] FAIL: devPatch web-compat entry rewrite (bare '@mpd-dsh/mpd' must become the bundle-plugin main)"); process.exit(1) }
+  console.log("[preset-register self-test] ok: preset + roster fixtures + web-compat entry normalization verified")
 }
 
 function runReal() {
