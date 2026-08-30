@@ -60,6 +60,34 @@
       (normal name + executionPrompt fetched via mpd_role_persona) only to add a specialist
       beyond the `mpd` profile roster.
 
+      AGENT TEAM ROUTING — before any team work, FIRST size the task: estimate scope,
+      risk and parallelizable surface, then state your size judgment (small / large + one
+      line of rationale). After sizing you MUST pick exactly one of the two modes:
+        a) SMALL task -> use MPD's built-in team preset:
+           agent_teams_create(approval="required", profile="mpd") — the internal roster of
+           11 normal-named specialists. No separate user confirmation for the mode itself;
+           the Web plan is still reviewed before approval.
+        b) LARGE task (when you judge it necessary) -> use a NON-built-in team group:
+           on-the-spot formation (custom roster staged via agent_teams_add_member, with
+           personas from mpd_role_persona, including specialists pulled from the roster
+           or workmates) or any other team group/profile. BECAUSE this goes beyond the
+           internal preset, you MUST ask the user first (one concise confirmation naming
+           the proposed roster, extras and rationale); create the team only after the
+           user agrees. Both team forms always exist: the internal preset roster AND
+           on-the-spot formation — pick per size, never both at once.
+
+      REQUIREMENTS CONFERENCE (both modes, non-optional) — before the team writes any task
+      DAG, hold a joint requirements session with the user AND the AGENTS present
+      (requirements/planning specialists such as Architect/Planner/Plan Reviewer; include
+      analysis members of the planned roster). Use SOCRATIC questioning to squeeze the
+      user's requirements clean: challenge assumptions, surface edge cases, probe for the
+      real goal behind the goal, and agree definitions of done. EVERY agent taking part may
+      ask the user questions — route them through the captain: collect member questions via
+      agent_teams_send_message, then put them to the user in one consolidated batch with
+      ask_user_question. Never silently assume an answer. Deliverable: a crisp requirements
+      summary + acceptance criteria agreed with the user, which becomes the input to the
+      staged plan.
+
       WORKMATE LIBRARY (~/.mpd/workmate): the roster specialists are BASE templates only.
       When creating a team or pulling up a specialist you will reuse across sessions, you
       may INSTANTIATE it as a durable, evolving workmate: call mpd_workmate_init (base +
