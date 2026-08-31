@@ -23,9 +23,11 @@ for invocation.
 | 数字验证 (digital verification): 验证计划/环境/用例/验证调试/回归 | Verification Engineer | yes |
 | 评审 (diamonds) | Reviewer / Plan Reviewer | no (findings only) |
 
-Gate semantics (per the swimlane chart colors): 🔴 **GATE** = manual user halt
-(red diamonds — 需求评审/规格评审/发布评审/缺陷评审); 🟢 = **reviewer-only**,
-no user halt (green diamonds — 设计评审/验证评审).
+Gate semantics (per the swimlane chart colors): **every diamond is passed by a
+Reviewer check — red and green alike** (Reviewer / Plan Reviewer findings must be
+clear before any review completes). The color only decides the extra step:
+🔴 GATE = REVIEWERS FIRST, then a manual **user halt** (需求评审/规格评审/发布评审/
+缺陷评审); 🟢 = reviewer-only, no user halt (设计评审/验证评审).
 
 ## Stage 0 — opening questions (before any work)
 
@@ -50,8 +52,8 @@ Record both answers in the requirements summary; they are binding for the whole 
   unambiguous (feature set, interface/bus, registers, clock/reset, performance, non-goals,
   acceptance criteria); produce the **可行性报告** and **需求追踪表**; settle the
   requirements specification (`templates/req-spec.md`).
-- 🔴 **GATE 需求评审** (manual, user halt): user + Reviewers confirm the request,
-  scenarios and trace; nothing proceeds without it.
+- 🔴 **GATE 需求评审** (Reviewer findings first, then manual user halt): user +
+  Reviewers confirm the request, scenarios and trace; nothing proceeds without it.
 
 ## Stage 2 — 规格设计 IP01 (spec design)
 
@@ -66,9 +68,10 @@ Record both answers in the requirements summary; they are binding for the whole 
   points / testability constraints annotated into the internal user manual sections
   and the verification plan); ③ produce 验证计划 + 验证方案 per
   `templates/verification-plan.md`.
-- 🔴 **GATE 规格评审** (manual, user halt): user reviews the internal manual + DFMEA +
-  verification plan/scheme; no code before it passes; revision loop repeats the
-  spec/manual, never the code.
+- 🔴 **GATE 规格评审** (Reviewer findings first, then manual user halt): Reviewer / Plan
+  Reviewer check internal manual + DFMEA + verification plan/scheme, then the user
+  reviews; no code before it passes; revision loop repeats the spec/manual, never
+  the code.
 - 🟢 验证评审 (reviewer-only): Plan Reviewer / Reviewer check the verification plan
   against the manual — automatic, no user halt.
 
@@ -97,9 +100,10 @@ Record both answers in the requirements summary; they are binding for the whole 
 - Track 2 — coverage per the detail design manual (verilator merge/report or VCS urg +
   fsdbreport; plan targets met or justified).
 - **设计发布**: 内部用户手册 + **外部用户手册** (public version, internal details and
-  DFMEA removed) per `templates/user-manual.md` → 🔴 **GATE 发布评审** (manual, user halt).
+  DFMEA removed) per `templates/user-manual.md` → 🔴 **GATE 发布评审** (Reviewer
+  findings first, then manual user halt).
 - **缺陷分析**: 缺陷报告 + Buglist per `templates/defect-report.md` → 🔴 **GATE 缺陷评审**
-  (Reviewer findings + user halt; closure criteria before IP10).
+  (Reviewer findings first, then user halt; closure criteria before IP10).
 - IP10 = release milestone: all reviews green, dual-track evidence committed.
 
 ## Document matrix (1. / 2. as in the swimlane chart)

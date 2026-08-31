@@ -18,8 +18,10 @@ with milestone tags 规格设计 IP01 → 代码设计 IP05 → 设计验证 IP0
 | 设计验证 IP08 | 缺陷解决 (fix defects) | 回归验证 (dual-track: functional + coverage) | — |
 | IP 发布 IP10 | 设计发布 (内部/外部用户手册) + 缺陷分析 (缺陷报告 + Buglist) | — | 🔶 发布评审 + 🔶 缺陷评审 |
 
-Gate colors match the chart: 🔴 **GATE** = manual user halt (需求评审 / 规格评审 /
-发布评审 / 缺陷评审); 🟢 = reviewer-only, no user halt (设计评审 / 验证评审).
+Every diamond is passed by a **Reviewer check first — red and green alike**; the color only
+decides the extra step: 🔴 **GATE** = Reviewer findings first, then a manual **user halt**
+(需求评审 / 规格评审 / 发布评审 / 缺陷评审); 🟢 = reviewer-only, no user halt
+(设计评审 / 验证评审).
 The verification engineer also front-loads verification content into 规格设计 IP01:
 Socratic verification questions at the Spec Designer (every feature point, interface
 signal, register field, boundary/exception, testability, coverage target explicit),
@@ -44,9 +46,11 @@ restarting the flow.
 
 ## Gates and the rollback rule
 
-- **🔴 GATE diamonds pause for you** — 需求评审 / 规格评审 / 发布评审 / 缺陷评审:
-  the team halts and waits for your confirmation. Revision loops repeat the
-  documents — never the code.
+- **Every diamond passes a Reviewer check** (red and green alike) — findings must
+  be clear before any review completes.
+- **🔴 GATE diamonds add a user halt** — 需求评审 / 规格评审 / 发布评审 / 缺陷评审:
+  Reviewer verdict first, then the team halts and waits for your confirmation.
+  Revision loops repeat the documents — never the code.
 - **🟢 diamonds run reviewer-only** — 设计评审 / 验证评审: Reviewer / Plan
   Reviewer check automatically (code + detail manual + validation debug /
   verification-plan consistency); no user halt.
