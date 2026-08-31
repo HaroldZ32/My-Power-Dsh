@@ -329,17 +329,18 @@ import { homedir } from "node:os";
 import { basename, delimiter, dirname, isAbsolute, join, relative, resolve } from "node:path";
 
 class LspRequestContextParseError extends Error {
+  code;
+  name = "LspRequestContextParseError";
   constructor(code, message) {
     super(message);
     this.code = code;
-    this.name = "LspRequestContextParseError";
   }
 }
 
 class LspRequestContextUnavailableError extends Error {
+  name = "LspRequestContextUnavailableError";
   constructor() {
     super("LSP request context is required. Standalone MCP startup must install one with runWithRequestContext(createStandaloneMcpRequestContext()).");
-    this.name = "LspRequestContextUnavailableError";
   }
 }
 var storage = new AsyncLocalStorage;
@@ -502,15 +503,22 @@ function effectiveExtension(filePath) {
 
 // ../lsp-core/src/lsp/errors.ts
 class LspConnectionClosedError extends Error {
+  serverId;
+  root;
+  name = "LspConnectionClosedError";
   constructor(serverId, root, message) {
     super(message ?? `LSP connection closed for ${serverId} at ${root}`);
     this.serverId = serverId;
     this.root = root;
-    this.name = "LspConnectionClosedError";
   }
 }
 
 class LspProcessExitedError extends Error {
+  serverId;
+  root;
+  exitCode;
+  stderrTail;
+  name = "LspProcessExitedError";
   constructor(serverId, root, exitCode, stderrTail) {
     const stderrSuffix = stderrTail ? `
 stderr tail: ${stderrTail}` : "";
@@ -519,49 +527,46 @@ stderr tail: ${stderrTail}` : "";
     this.root = root;
     this.exitCode = exitCode;
     this.stderrTail = stderrTail;
-    this.name = "LspProcessExitedError";
   }
 }
 
 class LspRequestTimeoutError extends Error {
+  method;
+  stderrTail;
+  name = "LspRequestTimeoutError";
   constructor(method, stderrTail) {
     const stderrSuffix = stderrTail ? `
 recent stderr: ${stderrTail}` : "";
     super(`LSP request timeout (method: ${method})${stderrSuffix}`);
     this.method = method;
     this.stderrTail = stderrTail;
-    this.name = "LspRequestTimeoutError";
   }
 }
 
 class LspInvalidPathError extends Error {
-  constructor() {
-    super(...arguments);
-    this.name = "LspInvalidPathError";
-  }
+  name = "LspInvalidPathError";
 }
 
 class LspServerLookupError extends Error {
+  lookup;
+  name = "LspServerLookupError";
   constructor(message, lookup) {
     super(message);
     this.lookup = lookup;
-    this.name = "LspServerLookupError";
   }
 }
 
 class LspServerInitializingError extends Error {
+  originalError;
+  name = "LspServerInitializingError";
   constructor(originalError) {
     super(`LSP server is still initializing. Please retry in a few seconds. Original error: ${originalError.message}`);
     this.originalError = originalError;
-    this.name = "LspServerInitializingError";
   }
 }
 
 class LspProcessSpawnError extends Error {
-  constructor() {
-    super(...arguments);
-    this.name = "LspProcessSpawnError";
-  }
+  name = "LspProcessSpawnError";
 }
 function isLspDeadConnectionError(err) {
   return err instanceof LspConnectionClosedError || err instanceof LspProcessExitedError;
@@ -606,31 +611,20 @@ var METHOD_NOT_FOUND = -32601;
 var INTERNAL_ERROR = -32603;
 
 class JsonRpcConnection {
+  reader;
+  writer;
+  pendingRequests = new Map;
+  notificationHandlers = new Map;
+  requestHandlers = new Map;
+  closeHandlers = [];
+  errorHandlers = [];
+  inputBuffer = Buffer.alloc(0);
+  nextRequestId = 1;
+  listening = false;
+  disposed = false;
   constructor(reader, writer) {
     this.reader = reader;
     this.writer = writer;
-    this.pendingRequests = new Map;
-    this.notificationHandlers = new Map;
-    this.requestHandlers = new Map;
-    this.closeHandlers = [];
-    this.errorHandlers = [];
-    this.inputBuffer = Buffer.alloc(0);
-    this.nextRequestId = 1;
-    this.listening = false;
-    this.disposed = false;
-    this.handleData = (chunk) => {
-      const chunkBuffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, "utf8");
-      this.inputBuffer = Buffer.concat([this.inputBuffer, chunkBuffer]);
-      this.drainInputBuffer();
-    };
-    this.handleClose = () => {
-      for (const handler of this.closeHandlers) {
-        handler();
-      }
-    };
-    this.handleStreamError = (error) => {
-      this.emitError(error);
-    };
   }
   listen() {
     if (this.listening)
@@ -751,6 +745,19 @@ class JsonRpcConnection {
     this.notificationHandlers.clear();
     this.requestHandlers.clear();
   }
+  handleData = (chunk) => {
+    const chunkBuffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, "utf8");
+    this.inputBuffer = Buffer.concat([this.inputBuffer, chunkBuffer]);
+    this.drainInputBuffer();
+  };
+  handleClose = () => {
+    for (const handler of this.closeHandlers) {
+      handler();
+    }
+  };
+  handleStreamError = (error) => {
+    this.emitError(error);
+  };
   drainInputBuffer() {
     while (true) {
       const headerEnd = this.inputBuffer.indexOf(HEADER_SEPARATOR2);
@@ -1098,25 +1105,31 @@ function isPosition(value) {
 
 // ../lsp-core/src/lsp/transport.ts
 class LspClientNotStartedError extends Error {
+  serverId;
+  root;
+  name = "LspClientNotStartedError";
   constructor(serverId, root) {
     super("LSP client not started");
     this.serverId = serverId;
     this.root = root;
-    this.name = "LspClientNotStartedError";
   }
 }
 
 class LspClientTransport {
+  root;
+  server;
+  proc = null;
+  connection = null;
+  stderrBuffer = [];
+  processExited = false;
+  diagnosticsStore = new Map;
+  requestTimeoutMs;
+  initializeTimeoutMs;
+  workspaceApplyEditHandler = null;
+  diagnosticPullSupported = false;
   constructor(root, server2, timeouts = {}) {
     this.root = root;
     this.server = server2;
-    this.proc = null;
-    this.connection = null;
-    this.stderrBuffer = [];
-    this.processExited = false;
-    this.diagnosticsStore = new Map;
-    this.workspaceApplyEditHandler = null;
-    this.diagnosticPullSupported = false;
     this.requestTimeoutMs = timeouts.requestTimeoutMs ?? REQUEST_TIMEOUT_MS;
     this.initializeTimeoutMs = timeouts.initializeTimeoutMs ?? INIT_TIMEOUT_MS;
   }
@@ -1586,7 +1599,11 @@ var EXT_TO_LANG = {
   ".objcpp": "objective-cpp",
   ".fish": "fish",
   ".graphql": "graphql",
-  ".gql": "graphql"
+  ".gql": "graphql",
+  ".v": "verilog",
+  ".vh": "verilog",
+  ".sv": "systemverilog",
+  ".svh": "systemverilog"
 };
 function getLanguageId(ext) {
   return EXT_TO_LANG[ext] ?? "plaintext";
@@ -1613,12 +1630,16 @@ function movedPath(candidate, oldPath, newPath) {
 }
 
 class WorkspaceDocumentState {
+  sendNotification;
+  clearDiagnostics;
+  openDocuments = new Map;
+  openByUri = new Map;
+  openPromises = new Map;
+  now;
+  versionlessPublishQuiescenceMs;
   constructor(sendNotification, clearDiagnostics, options = {}) {
     this.sendNotification = sendNotification;
     this.clearDiagnostics = clearDiagnostics;
-    this.openDocuments = new Map;
-    this.openByUri = new Map;
-    this.openPromises = new Map;
     this.now = options.now ?? (() => Date.now());
     this.versionlessPublishQuiescenceMs = options.versionlessPublishQuiescenceMs ?? DEFAULT_VERSIONLESS_PUBLISH_QUIESCENCE_MS;
   }
@@ -1882,11 +1903,13 @@ import { dirname as dirname2, isAbsolute as isAbsolute2, relative as relative3, 
 import { fileURLToPath } from "node:url";
 
 class WorkspaceEditPathError extends Error {
+  path;
+  detail;
+  name = "WorkspaceEditPathError";
   constructor(path, detail) {
     super(`${detail}: ${path}`);
     this.path = path;
     this.detail = detail;
-    this.name = "WorkspaceEditPathError";
   }
 }
 function isPathInsideWorkspace(filePath, workspaceRoot) {
@@ -2178,11 +2201,13 @@ function canonicalFingerprint(operations) {
 
 // ../lsp-core/src/lsp/workspace-edit-types.ts
 class WorkspaceEditValidationError extends Error {
+  changeIndex;
+  detail;
+  name = "WorkspaceEditValidationError";
   constructor(changeIndex, detail) {
     super(`change ${changeIndex}: ${detail}`);
     this.changeIndex = changeIndex;
     this.detail = detail;
-    this.name = "WorkspaceEditValidationError";
   }
 }
 
@@ -2680,9 +2705,10 @@ function simulateDelete(operation, virtual) {
 import { existsSync as existsSync5, lstatSync as lstatSync3, readdirSync as readdirSync2 } from "node:fs";
 import { dirname as dirname4, resolve as resolve5 } from "node:path";
 class WorkspaceSnapshotBuilder {
+  workspaceRoot;
+  snapshots = new Map;
   constructor(workspaceRoot) {
     this.workspaceRoot = workspaceRoot;
-    this.snapshots = new Map;
   }
   build(operations) {
     this.add(this.workspaceRoot, false);
@@ -2726,10 +2752,8 @@ function snapshotOperations(operations, workspaceRoot) {
 
 // ../lsp-core/src/lsp/workspace-edit-plan.ts
 class PlanPathIndex {
-  constructor() {
-    this.firstChangeByPath = new Map;
-    this.reportedPathByCanonical = new Map;
-  }
+  firstChangeByPath = new Map;
+  reportedPathByCanonical = new Map;
   build(operations) {
     for (const operation of operations) {
       switch (operation.kind) {
@@ -2818,11 +2842,14 @@ function isRecord4(value) {
 }
 
 class WorkspaceMutationController {
+  workspaceRoot;
+  documents;
+  activeLease = null;
+  nextLeaseId = 1;
+  io;
   constructor(workspaceRoot, documents) {
     this.workspaceRoot = workspaceRoot;
     this.documents = documents;
-    this.activeLease = null;
-    this.nextLeaseId = 1;
   }
   setIo(io) {
     this.io = io;
@@ -2935,9 +2962,12 @@ var DIAGNOSTICS_FRESHNESS_TIMEOUT_MS = 3000;
 var VERSIONLESS_PUBLISH_QUIESCENCE_MS = 250;
 
 class LspClient extends LspClientConnection {
+  diagnosticPullErrors = [];
+  documents;
+  workspaceMutations;
+  diagnosticsFreshnessTimeoutMs;
   constructor(root, server2, options = {}) {
     super(root, server2, options);
-    this.diagnosticPullErrors = [];
     this.diagnosticsFreshnessTimeoutMs = options.diagnosticsFreshnessTimeoutMs ?? DIAGNOSTICS_FRESHNESS_TIMEOUT_MS;
     this.documents = new WorkspaceDocumentState((method, params) => this.sendNotification(method, params), (uri) => this.diagnosticsStore.delete(uri), {
       versionlessPublishQuiescenceMs: options.versionlessPublishQuiescenceMs ?? VERSIONLESS_PUBLISH_QUIESCENCE_MS
@@ -3237,11 +3267,16 @@ function awaitWithSignal(promise, signal) {
 }
 
 class LspManager {
+  clients = new Map;
+  reaperHandle = null;
+  signalDisposer = null;
+  disposed = false;
+  idleTimeoutMs;
+  initTimeoutMs;
+  reaperIntervalMs;
+  clientFactory;
+  now;
   constructor(options = {}) {
-    this.clients = new Map;
-    this.reaperHandle = null;
-    this.signalDisposer = null;
-    this.disposed = false;
     this.idleTimeoutMs = options.idleTimeoutMs ?? IDLE_TIMEOUT_MS;
     this.initTimeoutMs = options.initTimeoutMs ?? INIT_TIMEOUT_MS;
     this.reaperIntervalMs = options.reaperIntervalMs ?? REAPER_INTERVAL_MS;
@@ -3604,7 +3639,9 @@ var LSP_INSTALL_HINTS = {
   bash: "npm install -g bash-language-server",
   "kotlin-ls": "See https://github.com/Kotlin/kotlin-lsp",
   julials: `julia -e 'using Pkg; Pkg.add("LanguageServer")'`,
-  razor: "Razor runs through the Roslyn language server (cohosting). " + "Install: dotnet tool install -g roslyn-language-server --prerelease (requires v5.8.0+). See https://github.com/dotnet/razor"
+  razor: "Razor runs through the Roslyn language server (cohosting). " + "Install: dotnet tool install -g roslyn-language-server --prerelease (requires v5.8.0+). See https://github.com/dotnet/razor",
+  verible: "download prebuilt binaries: https://github.com/chipsalliance/verible/releases",
+  "slang-server": "per-platform static binaries: https://github.com/hudson-trading/slang-server/releases"
 };
 var BUILTIN_SERVERS = {
   typescript: {
@@ -3705,7 +3742,9 @@ var BUILTIN_SERVERS = {
   razor: {
     command: ["roslyn-language-server", "--stdio"],
     extensions: [".razor", ".cshtml"]
-  }
+  },
+  verible: { command: ["verible-verilog-ls"], extensions: [".v", ".vh"] },
+  "slang-server": { command: ["slang-server"], extensions: [".sv", ".svh"] }
 };
 
 // ../lsp-core/src/lsp/config-loader.ts
@@ -5177,6 +5216,7 @@ import { connect } from "node:net";
 
 // src/daemon-request-error.ts
 class DaemonRequestError extends Error {
+  requestWritten;
   constructor(message, requestWritten) {
     super(message);
     this.name = "DaemonRequestError";
@@ -5199,6 +5239,7 @@ class DaemonRequestCancelledError extends DaemonRequestError {
 }
 
 class DaemonRequestTimedOutError extends DaemonRequestError {
+  timeoutMs;
   constructor(requestWritten, timeoutMs) {
     super("daemon request timed out", requestWritten);
     this.name = "DaemonRequestTimedOutError";
@@ -5277,12 +5318,14 @@ var PROTOCOL_ERROR_CODE = -32002;
 var AUTH_TOKEN_BYTES = 32;
 
 class UnsafePrivateDirectoryError extends Error {
+  path;
+  reason;
+  name = "UnsafePrivateDirectoryError";
+  code = "unsafe_private_directory";
   constructor(path, reason) {
     super(`unsafe private directory ${path}: ${reason}`);
     this.path = path;
     this.reason = reason;
-    this.name = "UnsafePrivateDirectoryError";
-    this.code = "unsafe_private_directory";
   }
 }
 function authEnvelope(token) {
@@ -5466,18 +5509,20 @@ var MPD_LSP_DAEMON_VERSION = "MPD_LSP_DAEMON_VERSION";
 var DAEMON_VERSION_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$/;
 
 class InvalidRuntimeOverrideError extends Error {
+  code = "invalid_runtime_override";
+  reason;
   constructor(reason, message) {
     super(message);
-    this.code = "invalid_runtime_override";
     this.name = "InvalidRuntimeOverrideError";
     this.reason = reason;
   }
 }
 
 class InvalidDaemonVersionError extends Error {
+  code = "invalid_daemon_version";
+  version;
   constructor(version) {
     super("LSP daemon version must match [A-Za-z0-9][A-Za-z0-9._+-]{0,127}");
-    this.code = "invalid_daemon_version";
     this.name = "InvalidDaemonVersionError";
     this.version = version;
   }
@@ -5523,9 +5568,10 @@ var requireFromHere = createRequire(import.meta.url);
 var MAX_SOCKET_PATH_LENGTH = 100;
 
 class InvalidDaemonDirectoryError extends Error {
+  code = "invalid_daemon_directory";
+  directory;
   constructor(directory) {
     super(`${MPD_LSP_DAEMON_DIR} must be an absolute path`);
-    this.code = "invalid_daemon_directory";
     this.name = "InvalidDaemonDirectoryError";
     this.directory = directory;
   }
@@ -5834,10 +5880,7 @@ function parsePingResponse(message) {
 var CONTEXT_KEY = "_context";
 
 class InvalidDaemonRequestError extends Error {
-  constructor() {
-    super(...arguments);
-    this.name = "InvalidDaemonRequestError";
-  }
+  name = "InvalidDaemonRequestError";
 }
 function extractRequestContext(raw) {
   if (!isPlainRecord(raw) || raw["method"] !== "tools/call")
@@ -5861,7 +5904,7 @@ function handleDaemonMessage(raw, state) {
   const authenticated = authenticateMessage(raw, state.token);
   if ("error" in authenticated)
     return Promise.resolve(authenticated);
-  if (authenticated.method === "upstream/ping") {
+  if (authenticated.method === "mpd/ping") {
     return Promise.resolve({
       jsonrpc: "2.0",
       id: authenticated.id,
@@ -6181,7 +6224,7 @@ function inferOpenCodeProjectCwd(projectConfigEnv) {
   if (!projectConfigEnv)
     return;
   for (const entry of projectConfigEnv.split(delimiter4)) {
-    const projectRoot = projectRootFromLegacyConfigPath(entry);
+    const projectRoot = projectRootFromOpenCodeConfigPath(entry);
     if (projectRoot)
       return projectRoot;
   }
@@ -6205,7 +6248,7 @@ function canonicalizePath(value) {
     return value;
   return realpathSync6(value);
 }
-function projectRootFromLegacyConfigPath(path2) {
+function projectRootFromOpenCodeConfigPath(path2) {
   if (basename4(path2) !== "lsp.json" && basename4(path2) !== "lsp-client.json")
     return;
   const configDir = dirname10(path2);
@@ -6296,19 +6339,17 @@ function errorCode3(error) {
 
 // src/ownership.ts
 class DaemonAlreadyRunningError extends Error {
-  constructor() {
-    super(...arguments);
-    this.name = "DaemonAlreadyRunningError";
-    this.code = "daemon_already_running";
-  }
+  name = "DaemonAlreadyRunningError";
+  code = "daemon_already_running";
 }
 
 class DaemonStartupDeferredError extends Error {
+  reason;
+  name = "DaemonStartupDeferredError";
+  code = "daemon_startup_deferred";
   constructor(reason) {
     super(`LSP daemon startup deferred: ${reason}`);
     this.reason = reason;
-    this.name = "DaemonStartupDeferredError";
-    this.code = "daemon_startup_deferred";
   }
 }
 async function acquireStartupLease(paths, pingOwner) {

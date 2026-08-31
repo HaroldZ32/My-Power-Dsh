@@ -1,0 +1,9 @@
+<testsuites name="results">
+  <testsuite name="all" package="all">
+    <property name="random_seed" value="1" />
+    <testcase name="test_cnt8_reset" classname="tb_cnt8" file="/root/dshProj/my-power-dsh/skills/rtl-verif/fixtures/cnt8/tb_cnt8.py" lineno="29" time="0.0010328292846679688" sim_time_ns="21.0" ratio_time="20332.498614958447" />
+    <testcase name="test_cnt8_count_enable" classname="tb_cnt8" file="/root/dshProj/my-power-dsh/skills/rtl-verif/fixtures/cnt8/tb_cnt8.py" lineno="37" time="0.0010488033294677734" sim_time_ns="111.0" ratio_time="105834.904296431" />
+    <testcase name="test_cnt8_load" classname="tb_cnt8" file="/root/dshProj/my-power-dsh/skills/rtl-verif/fixtures/cnt8/tb_cnt8.py" lineno="56" time="0.0005640983581542969" sim_time_ns="41.0" ratio_time="72682.36010143702" />
+    <testcase name="test_cnt8_wraparound" classname="tb_cnt8" file="/root/dshProj/my-power-dsh/skills/rtl-verif/fixtures/cnt8/tb_cnt8.py" lineno="69" time="0.0005517005920410156" sim_time_ns="51.0" ratio_time="92441.44511668108" />
+  </testsuite>
+</testsuites>

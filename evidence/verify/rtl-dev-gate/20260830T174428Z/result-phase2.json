@@ -1,0 +1,25 @@
+{
+  "stamp": "2026-08-30T17:56:26.855Z",
+  "checks": [
+    {
+      "name": "cocotb smoke (verilator) simple adder PASS",
+      "pass": true,
+      "detail": "cases=[\"smoke_add:pass\"] exit=0"
+    },
+    {
+      "name": "VCD waveform collected (captain note 1)",
+      "pass": true,
+      "detail": "[{\"file\":\"/tmp/rtl-t7b-pI6rUJ/work/sim/adder-20260831-015627-046/dump.vcd\",\"fmt\":\"vcd\"}]"
+    },
+    {
+      "name": "wave-mcp graceful-degrade (unwired)",
+      "pass": true,
+      "detail": "unavailable"
+    },
+    {
+      "name": "fake-vcs argv captured (uvm-1.2 + -cm line+cond+tgl + -f filelist + -o simv)",
+      "pass": true,
+      "detail": "/tmp/rtl-t7b-pI6rUJ/fakebin/vcs -sverilog +v2k -ntb_opts uvm-1.2 -cm line+cond+tgl -cm_dir /tmp/rtl-t7b-pI6rUJ/ws/ip_adder/work/cov/compile -f /tmp/rtl-t7b-pI6rUJ/ws/ip_adder/script/filelist.f -l /tmp/rtl-t7b-pI6rUJ/ws/ip_adder/work/vcs_compile.log -o /tmp/rtl-t7b-pI6rUJ/ws/ip_adder/work/simv"
+    }
+  ]
+}

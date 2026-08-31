@@ -17,9 +17,9 @@
   "assets": {
     "_note": "skills corpus and agent-teams _deps closure: fileCount+treeSha (sorted relpath + per-file sha256 aggregation) double gate — verified by scripts/verify-vendor.mjs; dist: sha256 gate",
     "skills": {
-      "fileCount": 320,
-      "source": "skill corpus at repo root (17 ported upstream skills + dsh-qa + svn-master); whole-dir refresh from upstream, keep provenance links",
-      "treeSha": "0d7edcdcb57d7a2152233300cb9502e3f305df9ce168289c933b18c690a490cf"
+      "fileCount": 350,
+      "source": "skill corpus at repo root (ported upstream skills + dsh-qa + svn-master + rtl-codestyle/rtl-verif (RTL dev phase-1)); whole-dir refresh from upstream, keep provenance links",
+      "treeSha": "f12adc192ca6b4c1b6240266bfaa43664b51fc60e4e8c834fed102b011b6799c"
     },
     "packages/mpd-agent-teams-plugin/_deps": {
       "fileCount": 635,
@@ -39,7 +39,7 @@
     "packages/mpd-mcp-lsp/dist/cli.js": {
       "fileCount": 1,
       "source": "built offline via scripts/build-mcp.mjs from packages/lsp-daemon",
-      "sha256": "9b64bd1201986c592b4978e84d8cd7d8c65a359c747c0eab326b5a7026bf711a"
+      "sha256": "04b49f8c192d03b5a9cdf1e1f17861d8f4c6741792a4c455e78d0ca8e0a973a9"
     },
     "packages/mpd-mcp-codegraph/dist/serve.js": {
       "fileCount": 1,
@@ -48,5 +48,5 @@
     }
   },
   "verification": "node scripts/verify-vendor.mjs: commit/version mismatch is a blocker; stats drift is a warning; asset counts are a blocker",
-  "lockedAt": "2026-08-26T03:44:55.545Z"
+  "lockedAt": "2026-08-31T03:09:32.000Z"
 }

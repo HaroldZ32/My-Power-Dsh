@@ -2,10 +2,13 @@
 **English** | [中文](./README.zh-CN.md)
 
 DSH bundle aggregation package: `cordis.patch.yml` mounts every mpd-dsh plugin row —
-MCP servers (ast-grep/git-bash/lsp/codegraph + remote context7/grep.app), the B/C-line
+MCP servers (ast-grep/git-bash/lsp/codegraph + remote context7/grep.app + the RTL
+waveform-read rows `mcp-wave-mcp`/`mcp-traceweave` — external tools resolved
+env-first via `MPD_DSH_*_BIN`, graceful degrade when absent, install policy
+documented in `docs/rtl-verif-guide.md`), the B/C-line
 plugins (mpd-config first so the mpdConfig service is visible to the rows below,
 mpd-tools / modelchain / roles / ulw / agent-teams / hashline / boulder /
-comment-checker / codegraph / memory / workmate), the `mpd-web-compat` self-row
+comment-checker / codegraph / memory / workmate / verif), the `mpd-web-compat` self-row
 (`name: '@mpd-dsh/mpd'` — the loader entry that carries the bundle's web client),
 and mpd-bootstrap provisioning.
 
@@ -14,3 +17,25 @@ The bundle ships ONE preset (`mpd`, the main working agent; assets under
 with `instructionFileCandidates: [AGENT.md, AGENTS.md, CLAUDE.md]` so every project
 session attempts to read AGENT.md, and it declares native tool presentation. The
 OMO-origin agents exist as a subagent roster (`mpd-roles-plugin`), not as presets.
+
+## Session-start team rule (binding)
+
+Every qualifying session MUST begin inside a team — either the auto-provisioned
+default team or one the captain creates. The rule is enforced mechanically by the
+adopted agent-teams plugin (`sessionTeamPolicy` config, implementation in
+`packages/mpd-agent-teams-plugin/lib/session-start.js`), not by prompt guidance alone:
+
+- On the first step of a session that leads no team, `mode: auto` provisions the
+  staged default team **"MPD Default"** (profile `mpd`, `approval: required` — members
+  are only roster rows and spawn after the user reviews and approves the Web plan), and
+  injects a startup notice into the conversation telling the captain the session runs
+  through that team. A session that already has a team (resume) simply stays in it.
+- Scope: `presets: [mpd]` covers mpd-preset sessions plus sessions without any preset
+  (headless direct runs); subagent/member sessions (`parentSession` set) never qualify.
+- The policy settles once per session: a team deleted mid-session is never recreated,
+  and a team the captain creates afterwards is never fought over.
+- The `mpd` preset persona carries the matching SESSION STARTUP RULE so the captain
+  behaves as captain from the first turn.
+
+Set `sessionTeamPolicy.mode: off` (or remove the key) to disable the rule entirely;
+`mode: instruct` keeps the mechanical startup notice but does not auto-create a team.

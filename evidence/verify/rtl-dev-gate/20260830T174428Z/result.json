@@ -1,0 +1,169 @@
+{
+  "stamp": "2026-08-30T17:57:36.460Z",
+  "team": "rtl-dev",
+  "task": "t7",
+  "evidenceDir": "/root/dshProj/my-power-dsh/evidence/verify/rtl-dev-gate/20260830T174428Z",
+  "checks": [
+    {
+      "name": "G0 isolated DSH_HOME (mktemp, never real ~/.dsh)",
+      "pass": true,
+      "detail": "phase1 harness set DSH_HOME to a mkdtemp sandbox; credentials copied ONCE (credCopied=true); real /root/.dsh untouched"
+    },
+    {
+      "name": "G0 credentials copied ONCE into sandbox",
+      "pass": true,
+      "detail": "phase1 check G0-cred passed"
+    },
+    {
+      "name": "G1 iverilog installed (PATH)",
+      "pass": true,
+      "detail": "/opt/osscad/oss-cad-suite/bin/iverilog — Icarus Verilog 14.0 (devel)"
+    },
+    {
+      "name": "G1 verilator installed (PATH)",
+      "pass": true,
+      "detail": "/opt/osscad/oss-cad-suite/bin/verilator — Verilator 5.051 devel"
+    },
+    {
+      "name": "G1 lint adder4 iverilog",
+      "pass": true,
+      "detail": "exit=0 (real log on disk)"
+    },
+    {
+      "name": "G1 lint adder4 verilator",
+      "pass": true,
+      "detail": "exit=0 diag=0 (real log on disk)"
+    },
+    {
+      "name": "G1 lint cnt8 iverilog",
+      "pass": true,
+      "detail": "exit=0 (real log on disk)"
+    },
+    {
+      "name": "G1 lint cnt8 verilator",
+      "pass": true,
+      "detail": "exit=0 diag=0 (real log on disk)"
+    },
+    {
+      "name": "G1 compile adder4/cnt8 iverilog",
+      "pass": false,
+      "detail": "DEFECT D1: exit=255 'simv_iverilog: No such file or directory' + 'error: Code generator failure: -1' — output dir <work>/build/<stamp> never created before spawn"
+    },
+    {
+      "name": "G1 compile adder4/cnt8 verilator",
+      "pass": false,
+      "detail": "DEFECT D1: exit=2 '/usr/bin/ld: cannot open output file .../Vsim: No such file or directory' — same missing outDir"
+    },
+    {
+      "name": "G2 project venv has cocotb 2.x (workspace .venv-rtl)",
+      "pass": true,
+      "detail": "verdict=ok venv=<repo>/.venv-rtl cocotb=2.0.1 python=Python 3.12.13 (reused; no system-python install)"
+    },
+    {
+      "name": "G2 cocotb smoke (verilator lane, VCD) simple adder PASS",
+      "pass": true,
+      "detail": "phase2 result-phase2.json: cases=[smoke_add:pass] exit=0"
+    },
+    {
+      "name": "G2 VCD waveform produced (captain note 1)",
+      "pass": true,
+      "detail": "phase2: wave .vcd collected; FST avoided (liblz4 missing)"
+    },
+    {
+      "name": "G2 sim confined to isolated work dir",
+      "pass": true,
+      "detail": "caseDir under MPD_DSH_VERIF_WORK sandbox"
+    },
+    {
+      "name": "G2 system python cocotb-free (zero pollution)",
+      "pass": true,
+      "detail": "python3 -c 'import cocotb' exit!=0"
+    },
+    {
+      "name": "G2 plugin refuses cocotb without venv (VERIF_E_NO_VENV)",
+      "pass": true,
+      "detail": "verifSim with MPD_DSH_VERIF_VENV=<nonexistent> threw VERIF_E_NO_VENV with exact setup command"
+    },
+    {
+      "name": "G2 golden cnt8 cocotb TB through plugin runner",
+      "pass": false,
+      "detail": "DEFECT D3+D2: real run exit=2 with 3/4 failures (count_enable q=0 want 1; load q=0 want 0xAB; wrap q=255 want 0) BUT plugin parseResultsXml reported all 4 as pass (D2); probe proved TB reads q before NBA settle (early=0 late=1) (D3)"
+    },
+    {
+      "name": "G3 fake-vcs argv captured (uvm-1.2 + -cm line+cond+tgl + -f filelist + -o simv)",
+      "pass": true,
+      "detail": "phase2 result-phase2.json: uvm.compile coverage=true argv contains uvm-1.2/-cm line+cond+tgl/-cm_dir/-f .../filelist.f/-o .../simv"
+    },
+    {
+      "name": "G4 rebuilt lsp dist registers verible-verilog-ls (.v/.vh)",
+      "pass": true,
+      "detail": "packages/mpd-mcp-lsp/dist/cli.js contains verible-verilog-ls + \".v\" + \".vh\""
+    },
+    {
+      "name": "G4 rebuilt lsp dist registers slang-server (.sv/.svh)",
+      "pass": true,
+      "detail": "contains slang-server + \".sv\" + \".svh\""
+    },
+    {
+      "name": "G4 lsp-setup skill refs present",
+      "pass": true,
+      "detail": "references/verilog + references/systemverilog README.md exist (t10)"
+    },
+    {
+      "name": "G4 lsp daemon launches (cli --help)",
+      "pass": true,
+      "detail": "exit=0 usage 'Usage: mpd-lsp-daemon [mcp | daemon]'"
+    },
+    {
+      "name": "G4 documented install path (verible/slang binaries absent)",
+      "pass": true,
+      "detail": "install path documented in skills/lsp-setup/references/{verilog,systemverilog}/README.md (chipsalliance/verible/releases, hudson-trading/slang-server/releases)"
+    },
+    {
+      "name": "G5 wave-mcp graceful-degrade when unwired",
+      "pass": true,
+      "detail": "phase2: waveHooks[0].status=unavailable, message contains 'wave-mcp MCP tool is not wired' + install hint; TraceWeave lane documented (get_sim_paths + separate venv)"
+    },
+    {
+      "name": "G6 evidence on disk (result.json + output.log)",
+      "pass": true,
+      "detail": "/root/dshProj/my-power-dsh/evidence/verify/rtl-dev-gate/20260830T174428Z (this run + phase1 harness + phase2 harness)"
+    },
+    {
+      "name": "G6 no secrets in logs",
+      "pass": true,
+      "detail": "credentials path only referenced as boolean; no secret material echoed"
+    },
+    {
+      "name": "G7 defect D1 documented",
+      "pass": true,
+      "detail": "blocker: mpd_verif_compile / verifCompile target='compile' NEVER creates <work>/build/<stamp> outDir before spawning, so both iverilog (exit 255 'No such file or directory') and verilator (exit 2 'cannot open output file .../Vsim → mkdirSync(outDir, {recursive:true}) before runPlan in the compile path (or in compilePlan); rebuild dist + re-run t4 smoke for compile target. t4 smoke only ever exercised lint + sim, never compile."
+    },
+    {
+      "name": "G7 defect D2 documented",
+      "pass": true,
+      "detail": "high: cocotb 2.0.1 writes self-closing <failure error_type=... error_msg=... /> inside <testcase>; shipped parser only matches <failure>...</failure> with body, so real failures are reported as 'pass' (reproduced: 3/4 cnt8 fai → also match self-closing <failure .../> (and <error .../>) tags, e.g. detect attributes; rebuild dist; add a unit test with a self-closing failure fixture."
+    },
+    {
+      "name": "G7 defect D3 documented",
+      "pass": true,
+      "detail": "high: TB reads dut.q.value.integer immediately after await RisingEdge(dut.clk) without a settle delta; on Verilator the NBA hasn't propagated → stale reads (probe: early q=0, late q=1), causing 3/4 tests to fail (count_enable, → await Timer(1, units='ns') (or ReadOnly()) after each RisingEdge before asserting; re-run cnt8 fixture on verilator."
+    },
+    {
+      "name": "G7 defect D4 documented",
+      "pass": true,
+      "detail": "medium: golden adder4.v ripple-carry chain (continuous assigns) triggers Verilator UNOPTFLAT (circular combinational logic) which is fatal under the cocotb verilator build → adder4+verilator sim cannot compile. iverilog lane OK; → decide per owner: add /* verilator lint_off UNOPTFLAT */ in the golden fixture or use -Wno-fatal/-Wno-UNOPTFLAT for the verilator lane, or keep adder4 sim on iverilog lane in docs. Not a plugin bug; fixture/verilator str"
+    },
+    {
+      "name": "G7 no fixes applied (verification-only)",
+      "pass": true,
+      "detail": "0 changed paths in packages/ or skills/ by t7"
+    }
+  ],
+  "summary": {
+    "total": 31,
+    "passed": 28,
+    "failed": 3
+  },
+  "defects": "D1,D2,D3,D4"
+}

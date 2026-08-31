@@ -31,6 +31,10 @@ module tb_adder4;
     // ---- Expected values from the reference model --------------------------
     reg  [4:0] expected;   // {cout, sum}
     integer    errors;
+    integer    ia, ib;     // bounded exhaustive-sweep counters (dead-loop
+                           // fix: looping the 4-bit regs themselves with
+                           // `a <= 4'hF` never terminates — the wrap at 15
+                           // back to 0 keeps the bound always true)
 
     // ---- Device under test -------------------------------------------------
     adder4 dut (
@@ -83,11 +87,14 @@ module tb_adder4;
         apply_and_check(0, 0, 0);    // (re-check the corner while the sweep
                                      //  below already covers it; kept for
                                      //  explicitness in the named list)
+        // Exhaustive sweep: all a in [0..15] x b in [0..15] with cin=0 and cin=1
+        // (bounded integer counters drive the regs — every one of the
+        //  2 * 16 * 16 = 512 points runs, then the loop terminates cleanly).
         $display("== tb_adder4: exhaustive sweep ==");
-        for (a = 0; a <= 4'hF; a = a + 1) begin
-            for (b = 0; b <= 4'hF; b = b + 1) begin
-                apply_and_check(a, b, 0);
-                apply_and_check(a, b, 1);
+        for (ia = 0; ia < 16; ia = ia + 1) begin
+            for (ib = 0; ib < 16; ib = ib + 1) begin
+                apply_and_check(ia[3:0], ib[3:0], 0);
+                apply_and_check(ia[3:0], ib[3:0], 1);
             end
         end
 

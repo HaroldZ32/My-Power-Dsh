@@ -1,0 +1,32 @@
+{
+  "t9IntegrationGate": {
+    "boot": {
+      "ok": true,
+      "bootExit": 0,
+      "dshHomeIsTempSandbox": true,
+      "rowsMounted": {
+        "mpd-verif": true,
+        "mcp-wave-mcp": true,
+        "mcp-traceweave": true,
+        "mcp-lsp": true
+      },
+      "realHomeUntouched": true,
+      "dumpLog": "evidence/verify/rtl-dev-gate/2026-08-30T18-59-59Z/boot-dump.log"
+    },
+    "goldenTbDeadLoopFix": {
+      "file": "tests/golden/fixtures/verilog/tb/tb_adder4.v",
+      "fix": "exhaustive-sweep loops now run on bounded integer counters (ia/ib, 0..15) driving the 4-bit regs instead of `a <= 4'hF` on the regs themselves (4-bit wrap at 15 keeps the bound always true -> infinite loop, vvp never finishes)",
+      "coverageClaim": "still full 2*16*16 = 512 points",
+      "lint": {
+        "exit": 0,
+        "warnings": "none (checked via -tnull -Wall)"
+      },
+      "vvp": {
+        "exit": 0,
+        "result": "ALL TESTS PASSED",
+        "finish": "$finish called at 5220000 (1ps) \u2014 clean termination"
+      },
+      "attribution": "fixture path sits under tests/, outside t9 inScope (docs/ + packages/mpd-bundle/ + packages/mpd-verif-plugin/); fix attributed to the t12-D4 golden-flow repair line per captain's item 3"
+    }
+  }
+}

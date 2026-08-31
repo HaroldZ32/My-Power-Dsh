@@ -1950,7 +1950,10 @@ export function registerAgentTeamsTools(ctx, config) {
     }));
     return runtime;
 }
-async function initializeProfileTeam(input) {
+// Shared staged/instant profile-team creation, used by the create tool AND by
+// the session-start team policy (lib/session-start.js) so both paths produce
+// byte-identical team state. Exported for that sibling module; not a public API.
+export async function initializeProfileTeam(input) {
     const profile = resolveTeamProfile(input.config.profiles, input.profileName, input.config.maxMembers);
     const selections = [];
     for (const template of profile.members) {

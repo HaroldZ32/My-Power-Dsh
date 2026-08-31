@@ -1,18 +1,18 @@
 {
   "source": "the upstream project",
   "sourceDir": "packages/lsp-daemon",
-  "builtAt": "2026-08-26T05:04:38.428Z",
+  "builtAt": "2026-08-30T17:21:24.061Z",
   "build": [
     "bun build src/cli.ts --outdir dist --target node --format esm"
   ],
   "externalDeps": {
-    "js-yaml": "js-yaml@4.3.1@@@1",
-    "jsonc-parser": "jsonc-parser@3.3.1@@@1",
-    "zod": "zod@4.4.3@@@1"
+    "js-yaml": "js-yaml@5.3.0@@repo.huaweicloud.com@@@1",
+    "jsonc-parser": "jsonc-parser@3.3.1@@repo.huaweicloud.com@@@1",
+    "zod": "zod@4.4.3@@repo.huaweicloud.com@@@1"
   },
   "artifact": {
     "file": "cli.js",
-    "sha256": "b82ce5fa8f69460b5f0222570e5d5852b94bd3b5e22facf0901653b555e798ee",
-    "bytes": 234793
+    "sha256": "04b49f8c192d03b5a9cdf1e1f17861d8f4c6741792a4c455e78d0ca8e0a973a9",
+    "bytes": 235265
   }
 }

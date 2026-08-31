@@ -30,3 +30,24 @@ serverName `lsp`，stdio）包装。
 
 - 精确的符号事实（定义/引用/诊断）优先用 LSP；结构性模式查询用 ast-grep；两者在限定
   范围时都很便宜。
+
+## RTL（Verilog / SystemVerilog）LSP 支持
+
+离线构建的 `dist/cli.js` 内置了两个 HDL 语言服务器的**内置（builtin）注册**
+（由 `scripts/build-mcp.mjs` 应用仓库内 overlay，锚点 `mpd-rtl-overlay-v1`）：
+
+- `verible` → `verible-verilog-ls`，扩展名 `.v .vh`
+- `slang-server` → `slang-server`，扩展名 `.sv .svh`
+
+可执行文件在 `PATH` 上时按文件扩展名自动解析；`lsp-setup` skill 将 `.v/.vh`
+路由到 `references/verilog/README.md`、`.sv/.svh` 路由到
+`references/systemverilog/README.md` 获取安装/验证步骤。
+
+### 自定义二进制逃生通道
+
+如果你手工构建了 `verible-verilog-ls` / `slang-server` 且它们**不在** `PATH`
+上，请在 **用户级** LSP 配置（`~/.codex/lsp-client.json`，或
+`LSP_TOOLS_MCP_USER_CONFIG` 指定的单一路径）中用显式 `command` 定义它们。
+现成模板位于 `templates/rtl-lsp-client.json` —— 将其 `"lsp"` 条目合并进该用户
+配置。**不要**把自定义命令放进项目 `.codex/lsp-client.json`：项目配置会忽略
+非内置 id。

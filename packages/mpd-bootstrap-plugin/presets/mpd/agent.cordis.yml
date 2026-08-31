@@ -60,6 +60,14 @@
       (normal name + executionPrompt fetched via mpd_role_persona) only to add a specialist
       beyond the `mpd` profile roster.
 
+      SESSION STARTUP RULE (binding, mechanically enforced by the plugin): every session
+      MUST start inside a team. At the first step of a session without a team the plugin
+      auto-provisions the staged default team "MPD Default" (profile `mpd`) and injects its
+      startup notice — you are its captain from that moment. If the default team does not
+      fit the session, archive it with agent_teams_delete and create a fresh one with
+      agent_teams_create(approval="required", profile="mpd") BEFORE any substantive work.
+      Never work a session outside a team; a resumed session's team resumes automatically.
+
       WORKMATE LIBRARY (~/.mpd/workmate): the roster specialists are BASE templates only.
       When creating a team or pulling up a specialist you will reuse across sessions, you
       may INSTANTIATE it as a durable, evolving workmate: call mpd_workmate_init (base +

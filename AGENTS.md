@@ -16,9 +16,11 @@ repository is English-only (see Language Policy).
   third-party docs kept verbatim as provenance (e.g. the upstream
   `mpd-agent-teams-plugin/README.md` and `README_ZH.md`) are exempt and stay
   untouched. Internal QA/golden reference docs (e.g. `docs/adder4.md`,
-  `docs/cnt8.md`) and historical plan/process records (`docs/plan-*.md`,
-  `docs/decisions.md`) are process artifacts exempt from the bilingual
-  requirement (see §3).
+  `docs/cnt8.md`) and historical/process records — plan files
+  (`docs/plan-*.md`, `docs/decisions.md`) **and** prior-phase reports
+  (`docs/bline-report.md`, `docs/omo-parity-gap.md`, `docs/review-p0-p3.md`,
+  `docs/track-a-report.md`, `docs/ulw-deepseek-optimization.md`) — are process
+  artifacts exempt from the bilingual requirement (see §3).
 
 ---
 

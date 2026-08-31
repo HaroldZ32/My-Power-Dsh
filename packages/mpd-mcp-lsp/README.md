@@ -30,3 +30,25 @@ bundle's `mcp-lsp` row (`@deepseek-ai/dsh-mcp-client`, serverName `lsp`, stdio).
 
 - Prefer LSP for exact symbol facts (definition/refs/diagnostics); ast-grep for
   structural pattern queries; both are cheap when scoped.
+
+## RTL (Verilog / SystemVerilog) LSP support
+
+Two HDL language servers ship as **builtin** registrations in the offline-built
+`dist/cli.js` (in-repo overlay applied by `scripts/build-mcp.mjs`, anchor
+`mpd-rtl-overlay-v1`):
+
+- `verible` → `verible-verilog-ls`, extensions `.v .vh`
+- `slang-server` → `slang-server`, extensions `.sv .svh`
+
+They resolve automatically by file extension once the executables are on `PATH`;
+the `lsp-setup` skill routes `.v/.vh` → `references/verilog/README.md` and
+`.sv/.svh` → `references/systemverilog/README.md` for install/verify steps.
+
+### Custom binary escape hatch
+
+If you built `verible-verilog-ls` / `slang-server` by hand and they are **not**
+on `PATH`, define them with an explicit `command` in the **user** LSP config
+(`~/.codex/lsp-client.json`, or the single path set by `LSP_TOOLS_MCP_USER_CONFIG`).
+A ready template lives at `templates/rtl-lsp-client.json` — merge its `"lsp"`
+entries into that user config. Do **not** put custom commands in a project
+`.codex/lsp-client.json`: project configs ignore non-builtin ids.

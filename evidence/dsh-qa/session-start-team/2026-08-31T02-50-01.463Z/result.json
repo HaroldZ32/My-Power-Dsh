@@ -1,0 +1,38 @@
+{
+  "ok": true,
+  "sandbox": "/tmp/mpd-sst-2KFjnP",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "patchRow": {
+      "ok": true,
+      "hasRow": true
+    },
+    "compose": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0,
+      "tail": "/mpd-mcp-codegraph/dist/serve.js:384:19)\n    at async provisionMissingCodegraph (file:///root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js:9814:18)\n    at async runCodegraphServe (file:///root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js:9769:25)\n    at async runCodegraphServeCli (file:///root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js:9852:22)\n"
+    },
+    "teamState": {
+      "ok": true,
+      "teamId": "mpd-default",
+      "phase": "staged",
+      "profile": "mpd",
+      "members": 11,
+      "captainSessionId": "session-c2985f29-04a5-4a90-8d52-859bd8ffc26a"
+    },
+    "noticeInLog": {
+      "ok": true,
+      "matched": [
+        "/tmp/mpd-sst-2KFjnP/sessions/--tmp-mpd-sst-2KFjnP-ws--/session-c2985f29-04a5-4a90-8d52-859bd8ffc26a/session.jsonl.zstd"
+      ]
+    }
+  },
+  "totalSteps": 6
+}
