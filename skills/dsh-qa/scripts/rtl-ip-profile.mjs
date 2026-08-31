@@ -21,7 +21,10 @@ const MEMBERS = [
   "Reviewer",
   "Plan Reviewer",
 ]
-const TEMPLATES = ["req-spec.md", "user-manual.md", "detail-design.md", "verification-plan.md"]
+const TEMPLATES = [
+  "req-spec.md", "user-manual.md", "detail-design.md", "verification-plan.md",
+  "dfmea.md", "validation-report.md", "validation-manual.md", "defect-report.md",
+]
 
 function fail(msg) { console.error("[rtl-ip-profile] FAIL: " + msg); process.exit(1) }
 
@@ -29,16 +32,17 @@ function selfTest() {
   const patch = readFileSync(PATCH, "utf8")
   if (!patch.includes("rtl-ip:")) fail("rtl-ip profile missing in bundle patch")
   for (const m of MEMBERS) if (!patch.includes("- name: " + m)) fail("member missing: " + m)
-  if (!patch.includes("STAGE 0") || !patch.toLowerCase().includes("gate 1") || !patch.includes("STAGE 4"))
+  if (!patch.includes("STAGE 0") || !patch.includes("IP01") || !patch.includes("STAGE 4"))
     fail("flow protocol markers missing")
   if (!existsSync(join(SKILL, "SKILL.md"))) fail("rtl-ip-flow SKILL.md missing")
   for (const t of TEMPLATES) if (!existsSync(join(SKILL, "templates", t))) fail("template missing: " + t)
   const sk = readFileSync(join(SKILL, "SKILL.md"), "utf8")
-  if (!sk.includes("rtl-ip-flow") || !sk.toLowerCase().includes("consistency checklist")) fail("skill contract markers missing")
+  if (!sk.includes("rtl-ip-flow") || !sk.toLowerCase().includes("consistency checklist") || !sk.includes("Swimlanes"))
+    fail("skill contract markers missing")
   const guide = join(repoRoot, "docs")
   for (const f of ["rtl-ip-flow-guide.md", "rtl-ip-flow-guide.zh-CN.md"])
     if (!existsSync(join(guide, f))) fail("bilingual guide missing: " + f)
-  console.log("[rtl-ip-profile self-test] ok: profile + 7 members + flow markers + skill + 4 templates + bilingual guide verified")
+  console.log("[rtl-ip-profile self-test] ok: profile + 7 members + swimlane/flow markers + skill + 8 templates + bilingual guide verified")
 }
 
 function runReal() {

@@ -17,9 +17,9 @@
   "assets": {
     "_note": "skills corpus and agent-teams _deps closure: fileCount+treeSha (sorted relpath + per-file sha256 aggregation) double gate — verified by scripts/verify-vendor.mjs; dist: sha256 gate",
     "skills": {
-      "fileCount": 356,
+      "fileCount": 360,
       "source": "skill corpus at repo root (ported upstream skills + dsh-qa + svn-master + rtl-codestyle/rtl-verif (RTL dev phase-1)); whole-dir refresh from upstream, keep provenance links",
-      "treeSha": "816add1f05e343359446c82538a32ed02fda80fbf79d986e34e151d0b9c5e7ea"
+      "treeSha": "7a708998b7d28270ce85ea5db75ba98d9a2307fb381295285ca60dc413d56971"
     },
     "packages/mpd-agent-teams-plugin/_deps": {
       "fileCount": 635,

@@ -1,31 +1,27 @@
 ---
 name: rtl-ip-flow
-description: "Four-stage RTL IP design workflow for the rtl-ip agent-teams roster profile: requirements analysis (Socratic clarification) → specification (user manual from templates/user-manual.md, manual review gate) → code design (RTL + detail design manual from templates/detail-design.md + verification code and verification plan from templates/verification-plan.md, consistency-gated with spec-diff rollback) → dual-track design verification (functional track per user manual, coverage track per design manual). Use whenever an agent-teams run starts with --profile rtl-ip, or any RTL IP work needs the staged manual-first flow with user-review gates."
+description: "RTL IP design workflow for the rtl-ip agent-teams roster profile, aligned to the four-swimlane flow (product market / system design / digital design / digital verification) with milestone gates (IP01 spec design / IP05 code design / IP08 design verification / IP10 release): requirements (app scenarios + feasibility + req trace) → specification (internal user manual + DFMEA initial + verification plan, reviews) → code design (RTL + detail design + env/case development + validation debug, reviews, spec-diff rollback) → verification and release (defect resolution + regression + design release + defect analysis). Use whenever an agent-teams run starts with --profile rtl-ip, or any RTL IP work needs the staged manual-first flow with review gates."
 metadata:
-  short-description: four-stage RTL-IP flow with user-manual gates and dual-track verification
+  short-description: four-swimlane RTL-IP flow with review gates, milestone numbering and dual-track verification
 ---
 
 # rtl-ip-flow
 
-Stage discipline for the `rtl-ip` agent-teams roster profile. This skill is the
-agent-facing execution contract for the captain and every member; section 7 of
-AGENTS.md (QA discipline) and the mpd-verif/mcp tools stay authoritative for tool
-invocation.
+Execution contract for the `rtl-ip` agent-teams roster profile, structured after
+the four-swimlane product flow: **产品市场 / 系统设计 / 数字设计 / 数字验证**, with
+milestone tags **规格设计 IP01 → 代码设计 IP05 → 设计验证 IP08 → IP 发布 IP10**
+and diamond review gates. AGENTS.md §7 and the mpd-verif tools stay authoritative
+for invocation.
 
-## Profile
+## Swimlanes and members
 
-The `rtl-ip` profile (bundle patch, agent-teams row) instantiates these normal-named
-members — pick per stage; reviewers needed only at gates:
-
-| Member | Stage | Writes files |
+| Swimlane | Owner | Writes files |
 | --- | --- | --- |
-| Requirement Analyst | 1 requirements | no (question list + summary only) |
-| Spec Designer | 1→2 handoff + 2 spec | yes (req spec + user manual) |
-| RTL Code Engineer — Verilog/SV | 3 code | yes (RTL + detail design) |
-| RTL Code Engineer — SpinalHDL | 3 code | yes (Scala RTL + detail design) |
-| Verification Engineer | 3 (parallel) + 4 verify | yes (TB + verification plan) |
-| Reviewer | gates + stage-4 review support | no (findings only) |
-| Plan Reviewer | spec/detail consistency review | no |
+| 产品市场 (product market): 需求制定 | the user (captain assists) | no |
+| 系统设计 (system design): 需求分析 | Requirement Analyst (read-only discipline) | no (reports + trace only) |
+| 数字设计 (digital design): 规格设计/代码设计/设计发布/缺陷分析 | Spec Designer + RTL Code Engineer (chosen lane) | yes |
+| 数字验证 (digital verification): 验证计划/环境/用例/验证调试/回归 | Verification Engineer | yes |
+| 评审 (diamonds) | Reviewer / Plan Reviewer | no (findings only) |
 
 ## Stage 0 — opening questions (before any work)
 
@@ -42,66 +38,79 @@ Ask the user once, batch together:
 
 Record both answers in the requirements summary; they are binding for the whole run.
 
-## Stage 1 — Requirements (Requirement Analyst)
+## Stage 1 — 需求阶段 (requirements; no milestone)
 
-- Read the user's request text and any input documents for the IP.
-- Ask **Socratic** clarification questions (what problem, which features, interface and
-  bus, register model, clock/reset, performance expectations, non-goals, acceptance
-  criteria) until the intent is unambiguous. Route every question to the user through
-  the captain in one consolidated batch.
-- Output: question list + answers summary + the requirements summary the Spec Designer
-  will formalize. Do not write files; do not start any design.
+- **需求制定 (product market)**: capture the initial request, then the **需求说明书**
+  and **应用场景** with the user (captain writes the summary; user confirms the scenarios).
+- **需求分析 (system design, Requirement Analyst)**: Socratic-question the user until
+  unambiguous (feature set, interface/bus, registers, clock/reset, performance, non-goals,
+  acceptance criteria); produce the **可行性报告** and **需求追踪表**; settle the
+  requirements specification (`templates/req-spec.md`).
+- 🔶 **需求评审 (requirements review, gate)**: user + Reviewers confirm the request,
+  scenarios and trace; nothing proceeds without it.
 
-## Stage 2 — Specification (Spec Designer)
+## Stage 2 — 规格设计 IP01 (spec design)
 
-- First settle `templates/req-spec.md` (requirements spec) from the answers.
-- Then write the **user manual** strictly per `templates/user-manual.md` (sections,
-  register overview + per-register tables, access semantics, software-config scenarios
-  without code, block diagram).
-- **Gate 1 (manual, non-optional)**: deliver the manual to the user, halt, and wait for
-  the user's review/confirmation. No code work may start before the user confirms. If
-  the user requires changes, revise the manual and show it again; repeat until
-  confirmed.
+- 数字设计 — Spec Designer: **内部用户手册** per `templates/user-manual.md` (full
+  product-manual granularity; the internal version is the authoritative one) +
+  **DFMEA 初版** per `templates/dfmea.md`.
+- 数字验证 (parallel) — Verification Engineer: **验证计划 + 验证方案** per
+  `templates/verification-plan.md` (functional points + coverage targets mapped to manual sections).
+- 🔶 **规格评审** then 🔶 **验证评审** — user reviews the internal manual AND the
+  verification plan in one halt; no code before both pass. Revision loop repeats the
+  spec/manual, not the code.
 
-## Stage 3 — Code design (chosen code engineer + Verification Engineer in parallel)
+## Stage 3 — 代码设计 IP05 (code design)
 
-- RTL code engineer: implement the IP per the user manual; keep the code style contract
-  (`rtl-codestyle` for Verilog/SV; project SpinalHDL conventions for Scala). After the
-  code is complete, write the **detail design manual** per
-  `templates/detail-design.md`, mapping every module/interface/state machine/parameter
-  to its code location (no code in the manual).
-- Verification engineer (parallel): write the **verification code** and the
-  **verification plan** (`templates/verification-plan.md`) deriving functional test
-  points from the user manual.
+- 数字设计 — RTL Code Engineer (chosen lane): implement per the confirmed internal user
+  manual under the style contract; write the **详细设计** per `templates/detail-design.md`
+  (one-to-one with the code, no code inside the doc).
+- 数字验证 (parallel) — Verification Engineer: 环境开发 → 用例开发 → **验证调试**
+  (验证报告 + 验证手册 per `templates/validation-report.md` / `templates/validation-manual.md`).
 - **Consistency rule**: the detail manual and the code must carry **no non-essential
-  difference** versus the user manual. If a real divergence is found (feature,
-  interface, register, or behavior): **stash the current work** (git stash / copy the
-  stage-3 files aside), **re-run stage 2** to correct the user manual, get the updated
-  manual confirmed, then return and redo stage 3. Never paper over the divergence.
-- **Gate 2 (manual)**: deliver code + detail manual + verification code/plan to the
-  user and the verification review; halt and wait for confirmation. The verification
-  engineer reports the manual-vs-code consistency check results first.
+  difference** versus the user manual. On real divergence: stash stage-3 files
+  (git stash / copy aside), re-run stage 2 to correct the internal manual, get it
+  confirmed, return and redo stage 3 — never paper over the divergence.
+- 🔶 **设计评审** then 🔶 **验证评审** — user + verification review of code, detail
+  manual, validation debug results; halt before release. The verification engineer
+  reports the manual-vs-code consistency check first.
 
-## Stage 4 — Verification (Verification Engineer, dual-track)
+## Stage 4 — 设计验证 IP08 → IP 发布 IP10 (verification and release)
 
-- **Track 1 — functional track** (per user manual): run the functional verification per
-  the verification plan (cocotb lane or UVM lane per backend choice), every scenario
-  from the manual's software-config section covered; all cases PASS.
-- **Track 2 — coverage track** (per detail design manual): collect and report coverage
-  — open-source: `mpd_verif_coverage backend=verilator merge/report`; VCS:
-  `mpd_verif_uvm merge-cov` (urg) + `fsdbreport` where available; the coverage plan
-  targets in the verification plan must be met or justified.
-- Report dual-track results (functional + coverage) with evidence paths; if the
-  coverage misses reveal a document-code mismatch, go back per the stage-3 consistency
-  rule instead of silently relaxing the target.
+- **缺陷解决 (design) ↔ 验证调试/回归 (verification)**: defects found in validation debug
+  are fixed by the RTL code engineer; the verification engineer reruns the affected cases
+  and then the full **回归验证** (dual-track).
+- Track 1 — functional per the internal user manual (cocotb lane or UVM lane per backend;
+  every scenario covered; all cases PASS).
+- Track 2 — coverage per the detail design manual (verilator merge/report or VCS urg +
+  fsdbreport; plan targets met or justified).
+- **设计发布**: 内部用户手册 + **外部用户手册** (public version, internal details and
+  DFMEA removed) per `templates/user-manual.md` → 🔶 **发布评审** (user review, halt).
+- **缺陷分析**: 缺陷报告 + Buglist per `templates/defect-report.md` → 🔶 **缺陷评审**
+  (Reviewer + user; closure criteria before IP10).
+- IP10 = release milestone: all reviews green, dual-track evidence committed.
+
+## Document matrix (1. / 2. as in the swimlane chart)
+
+| Deliverable | Stage | Template |
+| --- | --- | --- |
+| 需求说明书 / 应用场景 | 1 | `req-spec.md` (§背景与目标 / §应用场景) |
+| 可行性报告 / 需求追踪表 | 1 | `req-spec.md` (§可行性 / §需求追踪表) |
+| 内部用户手册 + DFMEA 初版 | 2 | `user-manual.md` / `dfmea.md` |
+| 验证计划 + 验证方案 | 2 | `verification-plan.md` |
+| 详细设计 | 3 | `detail-design.md` |
+| 验证报告 + 验证手册 | 3 | `validation-report.md` / `validation-manual.md` |
+| 内部/外部用户手册 | 4 | `user-manual.md` (internal + external variant) |
+| 缺陷报告 + Buglist | 4 | `defect-report.md` |
 
 ## Consistency checklist (every gate)
 
-- User manual ↔ requirements spec: every Req has a manual section; no orphan sections.
+- 需求追踪表 ↔ req spec ↔ user manual: every Req has a manual section; no orphans.
 - Detail manual ↔ code: interface list, module hierarchy, FSM states/transitions,
   parameters, clock/reset domains one-to-one.
-- Verification plan ↔ user manual: every manual feature point and every config
-  scenario has at least one test case id; every coverage item cites a design-manual
-  section.
+- Verification plan ↔ user manual: every feature point and config scenario has at least
+  one test case id; every coverage item cites a design-manual section.
+- DFMEA ↔ user manual: every failure mode maps to a feature or register behavior.
+- Internal vs external user manual: external is a pure subset (no internal details).
 - All human-facing deliverables of the flow are Chinese; agent-facing logs/commit
   messages stay English.
