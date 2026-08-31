@@ -175,7 +175,7 @@ export MPD_DSH_TRACEWEAVE_BIN="$HOME/.local/bin/traceweave-mcp"
 
 | 行 | 命令 | 附加 |
 | --- | --- | --- |
-| `mcp-wave-mcp` | `MPD_DSH_WAVE_MCP_BIN` 或 `wave-mcp` | `--session` 参数如上；`toolCallTimeoutMs: 120000` |
+| `mcp-wave-mcp` | `MPD_DSH_WAVE_MCP_BIN` 或 `wave-mcp` | **不传 `--session`**（wave-mcp 0.1.1 会因缺少 session manifest 启动失败）；会话由仿真后的 `prepare_session` hook 创建；`toolCallTimeoutMs: 120000` |
 | `mcp-traceweave` | `MPD_DSH_TRACEWEAVE_BIN` 或 `traceweave-mcp` | 无 `env` 块：`VERDI_HOME`/`NOVAS_HOME`/`VCS_HOME` + license 变量从启动 dsh 的 shell 继承 |
 
 **安装策略**（以文档为准；bundle 绝不代为安装 —— **不强制 venv**；每个工具独立 `pip --target`，两个 `mcp` SDK 版本永不冲突）：

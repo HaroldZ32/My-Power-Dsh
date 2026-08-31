@@ -185,7 +185,7 @@ Row resolution (env-first, `PATH` second — never vendored):
 
 | Row | Command | Extra |
 | --- | --- | --- |
-| `mcp-wave-mcp` | `MPD_DSH_WAVE_MCP_BIN` or `wave-mcp` | `--session` arg as above; `toolCallTimeoutMs: 120000` |
+| `mcp-wave-mcp` | `MPD_DSH_WAVE_MCP_BIN` or `wave-mcp` | **no `--session` at startup** (wave-mcp 0.1.1 dies on a missing session manifest); the session is created by the `prepare_session` hook after a sim run; `toolCallTimeoutMs: 120000` |
 | `mcp-traceweave` | `MPD_DSH_TRACEWEAVE_BIN` or `traceweave-mcp` | no `env` block: `VERDI_HOME`/`NOVAS_HOME`/`VCS_HOME` + license vars inherit from the dsh launching shell |
 
 **Install policy** (documented; the bundle never installs for you — no hand-made

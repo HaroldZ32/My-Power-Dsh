@@ -225,9 +225,10 @@ function waveRef(pipxBin = join(homedir(), ".local", "bin")) {
     "      serverName: wave_mcp",
     "      transport: stdio",
     "      command: !!js 'process.env.MPD_DSH_WAVE_MCP_BIN || \"" + waveBin + "\"'",
-    "      args:",
-    "        - \"--session\"",
-    "        - !!js 'process.env.MPD_DSH_WAVE_MCP_SESSION || (process.env.DSH_HOME ? process.env.DSH_HOME + \"/wave-mcp\" : \".wave-mcp\")'",
+    "      # No --session at startup: wave-mcp 0.1.1 treats --session as an",
+    "      # OPTIONAL auto-open, and a missing session.json makes it exit with",
+    "      # FileNotFoundError (session manifest not found). The plugin creates",
+    "      # the session later via mcp__wave_mcp__prepare_session after a sim run.",
     "      toolCallTimeoutMs: 120000",
     "  - id: mcp-traceweave",
     "    name: '@deepseek-ai/dsh-mcp-client'",
@@ -280,7 +281,7 @@ async function main() {
     console.log("[install-mcp] DRY-RUN — would:")
     console.log("  - npm toolchain:", NPM_TOOLCHAIN.join(" + "), "->", join(opts.toolchain, "node_modules/.bin"))
     for (const t of LSP_TARGETS) console.log("  - " + t.bin, "->", join(opts.toolchain, "bin"), "(" + t.repo + " latest)")
-    if (opts.withWave) console.log("  - isolated pip targets: wave-mcp (mcp>=2) + traceweave-mcp (mcp==1.27.0) ->", waveHome())
+    if (opts.withWave) console.log("  - pipx install wave-mcp (mcp>=2) + traceweave-mcp (mcp==1.27.0); bins ->", pipxBinDir())
     console.log("  - env ->", opts.envOut)
     if (opts.activateWave) console.log("  - wave overlay ->", WAVE_PATCH)
     console.log("\n" + envLines(opts.toolchain, opts.withWave, pipxBinDir()).join("\n"))
