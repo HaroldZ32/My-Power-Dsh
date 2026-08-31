@@ -208,6 +208,9 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 - Skill: `skills/dsh-qa` (SKILL.md + case scripts + references). Every script ships `--self-test`.
 - Isolation: `DSH_HOME=<mktemp>`; copy credentials ONCE into the sandbox; assert the sandbox path;
   never read/write real `~/.dsh`. Copy env prereqs (sg/codegraph paths) only when present.
+  Live-LLM cases must ALSO copy `settings.yaml` when present: homes whose keys come from
+  gateway providers (`llm-pi-ai` providers — opencode-go/scnet) configure the chain there, and
+  without it headless falls back to the base `deepseek-official` route → `MISSING_CREDENTIAL`.
 - Provability: assert `--dump-config` rows, or assert real tool results (never "it ran").
 - Evidence path: `evidence/<domain>/<slug>/<timestamp>/{result.json, output.log}`.
 - New case checklist: add row to SKILL.md case table; script + `--self-test`; real run; evidence dir.
@@ -274,7 +277,7 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 | Symptom | Cause / fix |
 |---|---|
 | `duplicate loader entry id` | same row in bundle patch and an overlay — remove from one |
-| `MISSING_CREDENTIAL` in isolated QA | sandbox has no `.credentials.yaml` — copy it |
+| `MISSING_CREDENTIAL` in isolated QA | sandbox has no `.credentials.yaml` — copy it; live-LLM cases also need `settings.yaml` when the home uses gateway providers (see §7) |
 | `patch: entry ... not found` | id-targeted row for a row absent in that profile — use `insert:` for new rows |
 | codegraph `skipped: project excluded` | cwd contains an `.mpd` segment or is under /tmp — use a normal project path |
 | codegraph provision crash | binary missing + read-only home — set `MPD_CODEGRAPH_BIN`/bundle env |

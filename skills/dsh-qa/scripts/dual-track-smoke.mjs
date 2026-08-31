@@ -32,6 +32,11 @@ function runReal() {
     const sandbox = mkdtempSync(join(tmpdir(), "mpd-dsh-qa-"))
     if (existsSync(creds)) cpSync(creds, join(sandbox, ".credentials.yaml"))
     else { console.error("[llm-dual-track] missing credentials: " + creds); failed = true; continue }
+    // Copy the live settings too: the gateway provider chain (llm-pi-ai +
+    // agent-default-model) lives there; without it headless falls back to the
+    // base deepseek-official route and dies MISSING_CREDENTIAL.
+    const settings = join(homedir(), ".dsh", "settings.yaml")
+    if (existsSync(settings)) cpSync(settings, join(sandbox, "settings.yaml"))
     const patchArgs = [join(repoRoot, "packages/mpd-bundle/cordis.patch.yml")]
     if (t.overlay) patchArgs.push(join(repoRoot, t.overlay))
     const args = ["--profile", "headless"]

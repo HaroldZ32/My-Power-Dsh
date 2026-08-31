@@ -56,6 +56,16 @@ if (tracked !== lock.upstreamStats.trackedFiles || loc !== lock.upstreamStats.tr
 import { createHash } from "node:crypto"
 import { readdirSync, statSync } from "node:fs"
 
+// Read a vendored file as bytes, normalizing text (no NUL) to LF. The repo's
+// .gitattributes declares eol=lf for text files, so tree hashes must be
+// computed on normalized bytes — otherwise a CRLF working copy drifts the lock
+// even though git sees a clean tree. Binary files hash raw.
+function readBytes(p) {
+  const buf = readFileSync(p)
+  if (!buf.includes(0)) return Buffer.from(buf.toString("utf8").replace(/\r\n?/g, "\n"))
+  return buf
+}
+
 function listFiles(dir) {
   // node-only file enumeration (no `find` dependency); handles single-file assets
   if (statSync(dir).isFile()) return [dir]
@@ -86,7 +96,7 @@ for (const [rel, meta] of Object.entries(lock.assets || {})) {
     const files2 = files.map((f) => f.slice(dir.length + 1)).sort()
     const h = createHash("sha256")
     for (const f of files2) {
-      const fh = createHash("sha256").update(readFileSync(join(dir, f))).digest("hex")
+      const fh = createHash("sha256").update(readBytes(join(dir, f))).digest("hex")
       h.update(f + "\n" + fh + "\n")
     }
     const actual = h.digest("hex")

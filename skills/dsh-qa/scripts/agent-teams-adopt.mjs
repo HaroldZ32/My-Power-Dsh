@@ -80,6 +80,13 @@ async function runReal() {
   mkdirSync(outDir, { recursive: true })
   const sandbox = mkdtempSync(join(tmpdir(), "mpd-c1-"))
   cpSync(creds, join(sandbox, ".credentials.yaml"))
+  // The live provider chain lives in settings.yaml (llm-pi-ai providers +
+  // agent-default-model). Without it the sandbox falls back to the base
+  // deepseek-official route and dies MISSING_CREDENTIAL on homes whose keys
+  // come from gateway providers (opencode-go/scnet). Copy the user's live
+  // settings so the headless run uses their actual provider chain.
+  const settings = join(homedir(), ".dsh", "settings.yaml")
+  if (existsSync(settings)) cpSync(settings, join(sandbox, "settings.yaml"))
   const ws = join(sandbox, "ws")
   mkdirSync(ws, { recursive: true })
   // QA isolation discipline (AGENTS.md §7): HOME must be the sandbox, not the real
@@ -120,13 +127,21 @@ async function runReal() {
   steps.archive = assessArchive(ws)
   steps.taskTerminal = assessTaskTerminal(ws)
 
-  // 5) web snapshot route (separate web profile in the same isolated home)
-  const instWeb = runSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--yes", "--dsh-home", sandbox, "--profile", "mpd", "--skip-toolchain"], { timeout: 600000 })
+  // 5) web snapshot route — install the web (mpd) profile into its OWN fresh
+  //    isolated home, mirroring the real single-profile install flow
+  //    (`dsh plugin add dist/mpd-package`), not a mixed headless+web home.
+  const webHome = mkdtempSync(join(tmpdir(), "mpd-c1-web-"))
+  cpSync(creds, join(webHome, ".credentials.yaml"))
+  if (existsSync(settings)) cpSync(settings, join(webHome, "settings.yaml"))
+  const webWs = join(webHome, "ws")
+  mkdirSync(webWs, { recursive: true })
+  const webEnv = { ...process.env, DSH_HOME: webHome, HOME: webHome }
+  const instWeb = runSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--yes", "--dsh-home", webHome, "--profile", "mpd", "--skip-toolchain"], { timeout: 600000 })
   steps.webInstaller = { ok: instWeb.status === 0, exit: instWeb.status }
   const port = 3199
   const webLog = join(outDir, "web.log")
   const webFd = openSyncSafe(webLog)
-  const web = spawn("dsh", ["--profile", "mpd", "--port", String(port), "--no-open"], { env, cwd: ws, detached: false, stdio: ["ignore", webFd, webFd] })
+  const web = spawn("dsh", ["--profile", "mpd", "--port", String(port), "--no-open"], { env: webEnv, cwd: webWs, detached: false, stdio: ["ignore", webFd, webFd] })
   let routeOk = false
   let routeStatus = null
   let routeBody = ""
@@ -137,8 +152,9 @@ async function runReal() {
       const res = await fetch("http://127.0.0.1:" + port + "/plugins/dsh-agent-teams/state", { signal: AbortSignal.timeout(4000) })
       routeStatus = res.status
       routeBody = (await res.text()).slice(0, 2000)
-      routeOk = res.status === 200
-      break
+      // Only a 200 settles the probe: the HTTP server can answer 404 before the
+      // agent-teams route lands (boot race), so anything else keeps retrying.
+      if (res.status === 200) { routeOk = true; break }
     } catch { /* not up yet */ }
   }
   web.kill("SIGTERM")
