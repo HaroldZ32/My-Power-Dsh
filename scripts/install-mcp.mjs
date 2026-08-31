@@ -62,6 +62,7 @@ function parseArgs(argv) {
     else if (a === "--wave-home") o.waveHome = resolve(argv[++i])
     else if (a === "--with-wave") o.withWave = true
     else if (a === "--activate-wave") { o.withWave = true; o.activateWave = true }
+    else if (a === "--check") o.check = true
     else if (a === "--dry-run") o.dryRun = true
     else if (a === "--self-test") o.selfTest = true
     else if (a === "--force") o.force = true
@@ -240,6 +241,45 @@ function waveRef(pipxBin = join(homedir(), ".local", "bin")) {
   ].join("\n") + "\n"
 }
 
+
+// --- diagnostic: scan every place a wave row could be loaded and report any
+//     that still carry --session (the wave-mcp boot crash source) -------------
+function check() {
+  const targets = [
+    ["generated overlay", join(homedir(), ".mpd", "mcp-wave.patch.yml")],
+    ["bundle patch (source)", join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml")],
+    ["bundle patch (dist)", join(repoRoot, "dist", "mpd-package", "cordis.patch.yml")],
+  ]
+  let bad = 0
+  for (const [label, file] of targets) {
+    let txt = ""
+    try { txt = readFileSync(file, "utf8") } catch { console.log("[install-mcp] " + label + ": missing (" + file + ")"); continue }
+    // a real --session row is an uncommented "args:" under a wave row; comments
+    // mentioning --session (docs) are fine.
+    const lines = txt.split("\n")
+    let inWave = false, hasArgs = false, badLines = []
+    for (const ln of lines) {
+      const t = ln.trim()
+      if (t.startsWith("- id: mcp-wave-mcp") || t.startsWith("- id: mcp-traceweave")) { inWave = true; continue }
+      if (inWave && /^#/.test(t)) { if (t.includes("id: mcp-")) inWave = false; continue }
+      if (inWave && t.includes("--session")) badLines.push(t)
+    }
+    if (badLines.length) { console.log("[install-mcp] " + label + ": *** STILL HAS --session ROW (" + file + "): " + badLines.join(" | ")); bad++ }
+    else console.log("[install-mcp] " + label + ": OK (no uncommented --session)")
+  }
+  const patchDirs = ["web", "tui", "mpd", "mpd-headless"]
+  for (const p of patchDirs) {
+    const f = join(homedir(), ".dsh", "profiles", p, "cordis.patch.yml")
+    if (!existsSync(f)) continue
+    const txt = readFileSync(f, "utf8")
+    if (txt.includes("--session") && (txt.includes("wave-mcp") || txt.includes("wave_mcp"))) {
+      console.log("[install-mcp] profile " + p + " patch: *** STILL HAS --session wave row"); bad++
+    } else console.log("[install-mcp] profile " + p + " patch: OK")
+  }
+  if (bad) { console.log("[install-mcp] check: FAIL — old --session wave config found; reinstall bundle + regenerate overlay + fully restart dsh"); process.exit(1) }
+  console.log("[install-mcp] check: PASS — every wave definition is session-free")
+}
+
 function act() {
   const env = envLines(opts.toolchain, opts.withWave, pipxBinDir())
   for (const [file, content] of [[opts.envOut, env.join("\n") + "\n"], ...(opts.activateWave ? [[WAVE_PATCH, waveRef(pipxBinDir())]] : [])]) {
@@ -277,6 +317,7 @@ function isDir(p) { try { return statSync(p).isDirectory() } catch { return fals
 function readdirSafe(d) { try { return readdirSync(d) } catch { return [] } }
 
 async function main() {
+  if (opts.check) { check(); return }
   if (opts.dryRun) {
     console.log("[install-mcp] DRY-RUN — would:")
     console.log("  - npm toolchain:", NPM_TOOLCHAIN.join(" + "), "->", join(opts.toolchain, "node_modules/.bin"))
