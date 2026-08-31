@@ -82,8 +82,10 @@ async function runReal() {
   cpSync(creds, join(sandbox, ".credentials.yaml"))
   const ws = join(sandbox, "ws")
   mkdirSync(ws, { recursive: true })
-  const env = { ...process.env, DSH_HOME: sandbox }
-  if (env.DSH_HOME !== sandbox) fail("isolation assertion failed")
+  // QA isolation discipline (AGENTS.md §7): HOME must be the sandbox, not the real
+  // home — plugins resolving ~/.mpd (e.g. mpd-codegraph) must never touch /root.
+  const env = { ...process.env, DSH_HOME: sandbox, HOME: sandbox }
+  if (env.DSH_HOME !== sandbox || env.HOME !== sandbox) fail("isolation assertion failed")
   const steps = {}
   let failed = false
 
