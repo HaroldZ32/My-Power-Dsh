@@ -6,7 +6,7 @@
 （Verible + slang-server）、verilog-generator 风格的编码模板、内置 **mpd-verif**
 插件（iverilog / Verilator / Synopsys VCS 统一验证流程，开源后端走 cocotb 通道，
 UVM 通道仅限 VCS），以及**波形查看 MCP 接线**（wave-mcp + TraceWeave）。
-文末是**工程流程建议**（仅建议 —— 见 §6 的草稿声明）与**延期待办清单**（§7）。
+文末是**工程流程建议**（owner 已确认，见 §6）与**延期待办清单**（§7）。
 
 ## 1. 交付内容
 
@@ -178,11 +178,10 @@ export MPD_DSH_TRACEWEAVE_BIN="$HOME/.venvs/traceweave/bin/traceweave-mcp"
    `mpd_verif_uvm(compile)` 校验目录契约，跑 `sanity_test` +
    `reg_access_test`，合并覆盖率，用 TraceWeave 复查波形。
 
-## 6. 工程流程建议 —— **草稿（DRAFT），owner 可行性征询进行中**
+## 6. 工程流程建议 —— **owner 已确认（2026-08-30）**
 
-> ⚠️ **仅建议，尚未定稿。** 以下七条为团队提出的工程流程建议。captain 正就
-> 可行性与 owner 征询意见；**owner 确认前任何一条都不具有规范效力。**
-> 本节保持 draft 标记；签署后可能修改或缩减。
+> ✅ **owner 已确认。** 以下七条已与 owner 逐条评审并确认可行，作为本阶段
+> RTL 工作的定稿工程流程建议。
 
 1. **Lint 进循环** —— LSP 诊断加 `mpd_verif_compile(..., lint)` 作为
    pre-commit 门禁。

@@ -7,7 +7,7 @@ bundle: HDL language-server support (Verible + slang-server), coding templates i
 the verilog-generator style, the built-in **mpd-verif** plugin (iverilog / Verilator /
 Synopsys VCS unified verification flow, cocotb lane for the open-source backends,
 VCS-only UVM lane), and the **waveform-read MCP wiring** (wave-mcp + TraceWeave).
-It ends with the **engineering-flow recommendations** (advice only — see the draft
+It ends with the **engineering-flow recommendations** (owner-confirmed, see
 notice in §6) and the **deferred to-do list** (§7).
 
 ## 1. What ships
@@ -185,12 +185,11 @@ export MPD_DSH_TRACEWEAVE_BIN="$HOME/.venvs/traceweave/bin/traceweave-mcp"
    layout contract with `mpd_verif_uvm(compile)`, run `sanity_test` +
    `reg_access_test`, merge coverage, review waves via TraceWeave.
 
-## 6. Engineering-flow recommendations — **DRAFT, owner consultation in progress**
+## 6. Engineering-flow recommendations — **confirmed by the owner (2026-08-30)**
 
-> ⚠️ **Advice only — not settled.** These seven items are the team's proposed
-> engineering-flow recommendations. The captain is consulting the owner on
-> feasibility; **none of this is normative until the owner confirms it.**
-> Treat this section as 草稿 (draft); it may change or shrink after sign-off.
+> ✅ **Owner-confirmed.** All seven items below were reviewed with the owner and
+> confirmed as feasible; they are the settled engineering-flow recommendations
+> for phase-1 RTL work.
 
 1. **Lint in the loop** — LSP diagnostics plus `mpd_verif_compile(..., lint)`
    as the pre-commit gate.
