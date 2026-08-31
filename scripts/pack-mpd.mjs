@@ -69,6 +69,10 @@ function cpAssets() {
   for (const f of ["LICENSE.md", "LICENSE-NOTICES.md", "README.md", "README.zh-CN.md"]) {
     if (existsSync(join(repoRoot, f))) cpSync(join(repoRoot, f), join(outDir, f))
   }
+  // MCP install/activation helper ships with the package so dist installs can
+  // bootstrap the sg/codegraph/verible/slang binaries + wave MCPs too.
+  mkdirSync(join(outDir, "scripts"), { recursive: true })
+  cpSync(join(repoRoot, "scripts", "install-mcp.mjs"), join(outDir, "scripts", "install-mcp.mjs"))
   // Per-package bilingual README pair for every shipped plugin/MCP package
   // (the adopted mpd-agent-teams-plugin is copied wholesale above, READMEs included).
   for (const p of [...PLUGIN_PKGS, ...MCP_PKGS]) {
@@ -120,6 +124,7 @@ function writeManifest() {
       "packages/**",
       "skills/**",
       "presets/**",
+      "scripts/**",
       "cordis.patch.yml",
       "LICENSE.md", "LICENSE-NOTICES.md", "README.md", "README.zh-CN.md"
     ],

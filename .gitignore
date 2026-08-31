@@ -1,6 +1,7 @@
 node_modules/
 .npm-cache/
 .qa-reloc/
+.toolchain/
 *.tmp
 evidence/*.log.tmp
 .DS_Store

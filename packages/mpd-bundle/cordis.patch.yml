@@ -54,22 +54,21 @@
         env:
           MPD_CODEGRAPH_BIN: !!js 'process.env.MPD_CODEGRAPH_BIN || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/.bin/codegraph")'
         toolCallTimeoutMs: 60000
-    # Waveform-read MCPs for RTL verification (RTL dev phase-1). Both are
     # Waveform-read MCP rows (mcp-wave-mcp / mcp-traceweave) are NOT mounted by
     # default: they wrap EXTERNAL Python MCP servers (wave-mcp / TraceWeave)
-    # that the user must install in a dedicated venv. A missing or mismatched
-    # mcp SDK on the launching python crashed the MCP client at boot
+    # that the user installs with pipx or plain pip — NO venv required (the
+    # venv iron rule belongs to cocotb only; pipx keeps the two tools isolated
+    # on its own if their mcp SDK versions ever conflict). A missing or
+    # mismatched mcp SDK on the launching python crashed the MCP client at boot
     # (ModuleNotFoundError: No module named 'mcp.server.mcpserver'), taking the
     # whole GUI/agent down → boot-safety rule: optional rows stay COMMENTED
-    # until the tools are installed and the env bins are pinned. To enable
-    # (steps in docs/rtl-verif-guide.md §4):
-    #   1) python3 -m venv ~/.venvs/wave-mcp && ~/.venvs/wave-mcp/bin/pip install "wave-mcp"
-    #      python3 -m venv ~/.venvs/traceweave && ~/.venvs/traceweave/bin/pip install "traceweave-mcp"
-    #   2) export MPD_DSH_WAVE_MCP_BIN=~/.venvs/wave-mcp/bin/wave-mcp
-    #      export MPD_DSH_TRACEWEAVE_BIN=~/.venvs/traceweave/bin/traceweave-mcp
+    # until the tools are installed and the env bins are pinned. To enable:
+    #   1) pipx install wave-mcp && pipx install traceweave-mcp
+    #      (or run node scripts/install-mcp.mjs --with-wave --activate-wave)
+    #   2) export MPD_DSH_WAVE_MCP_BIN=$(command -v wave-mcp)
+    #      export MPD_DSH_TRACEWEAVE_BIN=$(command -v traceweave-mcp)
     #   3) uncomment the two example rows below (command resolves env-first,
-    #      PATH second; keep SEPARATE venvs — SDK pin conflicts: wave-mcp needs
-    #      mcp>=2, TraceWeave pins mcp==1.27.0).
+    #      PATH second).
     # - id: mcp-wave-mcp
     #   name: '@deepseek-ai/dsh-mcp-client'
     #   config:
