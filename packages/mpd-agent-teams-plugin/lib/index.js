@@ -489,4 +489,20 @@ export function apply(ctx, config) {
             registerWebSurface();
         }
     });
+    // Bounded polling fallback: cordis' service-binding notifications are
+    // scope-filtered, so services that bind after this plugin in a different
+    // scope (e.g. a home that installed a headless profile before the web
+    // one) never reach the event listener above. Poll briefly so the surface
+    // still registers once both services exist.
+    const surfacePoll = setInterval(() => {
+        if (webRegistered) {
+            clearInterval(surfacePoll);
+            return;
+        }
+        try {
+            registerWebSurface();
+        }
+        catch { /* keep polling */ }
+    }, 2000);
+    ctx.effect(() => clearInterval(surfacePoll));
 }
