@@ -19,7 +19,7 @@
     "skills": {
       "fileCount": 356,
       "source": "skill corpus at repo root (ported upstream skills + dsh-qa + svn-master + rtl-codestyle/rtl-verif (RTL dev phase-1)); whole-dir refresh from upstream, keep provenance links",
-      "treeSha": "b7f23affcc181b6206ff1f3c98de8eeb8f9a7aa1892fad944120f628b09edec4"
+      "treeSha": "8da7f3aab4c26579df996cd0ba27f6caf316524c09dd445217e00b9c7d8d5a74"
     },
     "packages/mpd-agent-teams-plugin/_deps": {
       "fileCount": 635,
