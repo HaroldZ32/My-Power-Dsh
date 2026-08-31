@@ -4,8 +4,12 @@
 //   npm toolchain   @ast-grep/cli (sg) + @colbymchenry/codegraph  -> <toolchain>/node_modules/.bin
 //   LSP binaries    verible-verilog-ls (chipsalliance/verible) + slang-server
 //                   (hudson-trading/slang-server) latest GitHub releases -> <toolchain>/bin
-//   --with-wave     wave-mcp + traceweave-mcp via PIPX (NO venv — owner policy:
-//                   the venv iron rule belongs to cocotb only)
+//   --with-wave     wave-mcp + traceweave-mcp in ISOLATED pip --target dirs
+//                   (~/.mpd/mcp-servers/<cmd>; --wave-home to override) — NO venv
+//                   (owner policy); each target pins its own mcp SDK (wave-mcp
+//                   needs mcp>=2 → mcp.server.mcpserver; TraceWeave pins
+//                   mcp==1.27.0) so they can never clash at boot; install is
+//                   verified by importing the required SDK module
 //   activation      writes $HOME/.mpd/mcp.env (export lines; source it before dsh)
 //   --activate-wave additionally writes $HOME/.mpd/mcp-wave.patch.yml (dsh --patch overlay)
 //
@@ -54,6 +58,7 @@ function parseArgs(argv) {
     const a = argv[i]
     if (a === "--toolchain") o.toolchain = resolve(argv[++i])
     else if (a === "--env-out") o.envOut = resolve(argv[++i])
+    else if (a === "--wave-home") o.waveHome = resolve(argv[++i])
     else if (a === "--with-wave") o.withWave = true
     else if (a === "--activate-wave") { o.withWave = true; o.activateWave = true }
     else if (a === "--dry-run") o.dryRun = true
@@ -148,41 +153,48 @@ async function ensureLsp(target) {
   }
 }
 
-// --- 3) wave MCPs via pipx (NO venv, owner policy) -------------------------
+// --- 3) wave MCPs in ISOLATED pip --target dirs (NO venv, owner policy) ----
+// Each server gets its own directory with its own mcp SDK version: wave-mcp
+// needs mcp>=2 (module mcp.server.mcpserver), TraceWeave pins mcp==1.27.0 —
+// sharing one python (or one venv/pipx env) crashes the MCP client at boot with
+// ModuleNotFoundError: No module named 'mcp.server.mcpserver'. pip --target
+// dirs are not venvs (owner: no venv requirement outside cocotb).
+
+function waveHome() { return opts.waveHome || join(homedir(), ".mpd", "mcp-servers") }
+
 function ensureWave() {
-  const found = WAVE_ENV.map(([cmd]) => {
-    const ok = sh("sh", ["-c", "command -v " + cmd], { silent: true })
-    return ok.status === 0 && ok.stdout.trim() ? ok.stdout.trim() : null
-  })
-  if (found.every(Boolean)) {
-    for (const [i, [cmd]] of WAVE_ENV.entries()) console.log("[install-mcp] " + cmd + " already available:", found[i])
-    return true
-  }
-  const which = sh("sh", ["-c", "command -v pipx"], { silent: true })
-  let pipx = which.status === 0 ? "pipx" : null
-  if (!pipx) {
-    const pip = sh("sh", ["-c", "command -v pip3 || command -v pip"], { silent: true })
-    const runner = pip.status === 0 ? pip.stdout.trim() : null
-    if (!runner) { fail("no pipx/pip found for wave-mcp install; install pipx first (python3 -m pip install --user pipx)"); return false }
-    console.log("[install-mcp] pipx missing; installing via " + runner + " --user")
-    const r = sh(runner, ["install", "--user", "--quiet", "pipx"], { timeout: 300000 })
-    if (r.status !== 0) { fail("pipx install failed; install pipx manually then rerun --with-wave (or ensure wave-mcp/traceweave-mcp are on PATH)"); return false }
-    pipx = "pipx"
-  }
-  for (const [pkg, cmd] of WAVE_ENV) {
-    const ok = sh("sh", ["-c", "command -v " + cmd], { silent: true })
-    if (ok.status === 0 && ok.stdout.trim()) { console.log("[install-mcp] " + cmd + " already available:", ok.stdout.trim()); continue }
-    console.log("[install-mcp] pipx install " + pkg + " ...")
-    const r = sh("pipx", ["install", "--yes", pkg], { timeout: 600000 })
-    if (r.status !== 0) fail(pkg + " install failed; install it manually (pipx install " + pkg + ")")
+  // Resolve a REAL python (not a pyenv shim): pip under a shim triggers a
+  // pyenv rehash that can fail (read-only shims) and misreport install status.
+  const probe = sh("sh", ["-c", "command -v python3"], { silent: true })
+  const cmd = probe.status === 0 && probe.stdout.trim() ? probe.stdout.trim() : "python3"
+  const real = sh(cmd, ["-c", "import sys; print(sys.executable)"], { silent: true })
+  const py = process.env.MPD_DSH_VERIF_PYTHON3_CMD || (real.status === 0 && real.stdout.trim() ? real.stdout.trim() : cmd)
+  for (const w of WAVE_INSTALL) {
+    const target = join(waveHome(), w.cmd)
+    const bin = join(target, "bin", w.cmd)
+    const usable = existsSync(bin) && !opts.force
+    if (usable) {
+      console.log("[install-mcp] " + w.cmd + " already installed:", bin)
+      continue
+    }
+    console.log("[install-mcp] installing " + w.pkg + " into isolated target:", target, "(mcp " + w.mcpRe + ")")
+    const r = sh(py, ["-m", "pip", "install", "--quiet", "--target", target, w.mcpRe, w.pkg], { timeout: 600000 })
+    if (r.status !== 0) { fail(w.pkg + " install failed (pip network?); install manually: " + py + " -m pip install --target " + target + " \\\"" + w.mcpRe + "\\\" " + w.pkg); continue }
+    // verify the mcp SDK module the dsh MCP client needs actually imports
+    const v = sh(py, ["-c", "import sys; sys.path.insert(0, '" + target + "'); " + w.verify + "; print('verify OK')"], { silent: true })
+    if (v.status !== 0) { fail(w.cmd + " verify failed: mcp SDK in the target is missing/wrong (" + (v.stderr || "").slice(-200) + ")"); continue }
+    console.log("[install-mcp] " + w.cmd + " verify OK (mcp SDK present in its isolated target) ->", bin)
   }
   return true
 }
 
 // --- 4) activation artifacts ----------------------------------------------
-const WAVE_ENV = [["wave-mcp", "MPD_DSH_WAVE_MCP_BIN"], ["traceweave-mcp", "MPD_DSH_TRACEWEAVE_BIN"]]
+const WAVE_INSTALL = [
+  { pkg: "wave-mcp", cmd: "wave-mcp", envk: "MPD_DSH_WAVE_MCP_BIN", mcpRe: "mcp>=2", verify: "import mcp.server.mcpserver" },
+  { pkg: "traceweave-mcp", cmd: "traceweave-mcp", envk: "MPD_DSH_TRACEWEAVE_BIN", mcpRe: "mcp==1.27.0", verify: "import mcp" },
+]
 
-function envLines(toolchain, withWave = false) {
+function envLines(toolchain, withWave = false, waveHomeDir = opts.waveHome || join(homedir(), ".mpd", "mcp-servers")) {
   const l = [
     "# my-power-dsh MCP activation (generated by scripts/install-mcp.mjs; source before dsh)",
     'export MPD_AST_GREP_SG_PATH="' + join(toolchain, "node_modules/.bin/sg") + '"',
@@ -190,11 +202,7 @@ function envLines(toolchain, withWave = false) {
     'export PATH="' + join(toolchain, "bin") + ':$PATH"   # verible-verilog-ls / slang-server',
   ]
   if (!withWave) return l
-  for (const [cmd, envk] of WAVE_ENV) {
-    const r = sh("sh", ["-c", "command -v " + cmd], { silent: true })
-    const p = r.status === 0 ? r.stdout.trim() : cmd
-    l.push('export ' + envk + '="' + p + '"')
-  }
+  for (const w of WAVE_INSTALL) l.push('export ' + w.envk + '="' + join(waveHomeDir, w.cmd, "bin", w.cmd) + '"')
   return l
 }
 
@@ -233,7 +241,7 @@ function selfTest() {
   if (!NPM_TOOLCHAIN.includes("@ast-grep/cli") || !NPM_TOOLCHAIN.some((p) => p.includes("codegraph"))) errors.push("toolchain pkgs")
   if (!LSP_TARGETS.some((t) => t.bin === "verible-verilog-ls") || !LSP_TARGETS.some((t) => t.bin === "slang-server")) errors.push("lsp targets")
   if (!WAVE_ROW.includes("mcp-wave-mcp") || !WAVE_ROW.includes("mcp-traceweave") || !WAVE_ROW.includes("MPD_DSH_WAVE_MCP_BIN")) errors.push("wave rows")
-  if (!envLines(TOOLCHAIN).some((s) => s.includes("MPD_AST_GREP_SG_PATH"))) errors.push("env lines")
+  if (!envLines(TOOLCHAIN, false, join(homedir(), ".mpd", "mcp-servers")).some((s) => s.includes("MPD_AST_GREP_SG_PATH"))) errors.push("env lines")
   const ref = waveRef()
   if (!ref.includes("- id: mcp-wave-mcp") || !ref.includes("- id: mcp-traceweave") || !ref.includes("- insert:")) errors.push("overlay")
   if (errors.length) { console.error("[install-mcp self-test] FAIL: " + errors.join(", ")); process.exit(1) }
@@ -249,7 +257,7 @@ async function main() {
     console.log("[install-mcp] DRY-RUN — would:")
     console.log("  - npm toolchain:", NPM_TOOLCHAIN.join(" + "), "->", join(opts.toolchain, "node_modules/.bin"))
     for (const t of LSP_TARGETS) console.log("  - " + t.bin, "->", join(opts.toolchain, "bin"), "(" + t.repo + " latest)")
-    if (opts.withWave) console.log("  - pipx install wave-mcp + traceweave-mcp (no venv)")
+    if (opts.withWave) console.log("  - isolated pip targets: wave-mcp (mcp>=2) + traceweave-mcp (mcp==1.27.0) ->", waveHome())
     console.log("  - env ->", opts.envOut)
     if (opts.activateWave) console.log("  - wave overlay ->", WAVE_PATCH)
     console.log("\n" + envLines(opts.toolchain, opts.withWave).join("\n"))

@@ -89,14 +89,16 @@ message:
   `verif_root`, `case_name`, `sim_log`, `wave_file`).
 
 Suggested wiring (see the team docs for full notes; **no venv required** — the
-venv iron rule belongs to cocotb only; pipx keeps the two MCP tools isolated on its own):
+venv iron rule belongs to cocotb only). The two MCPs pin CONFLICTING mcp SDK
+versions (wave-mcp needs mcp>=2 → `mcp.server.mcpserver`; TraceWeave pins
+mcp==1.27.0), so each gets its own isolated `pip --target` dir:
 
 ```sh
-# wave-mcp (FST/VCD lane) — pipx or plain pip, your call
-pipx install wave-mcp          # or: pip install wave-mcp
-# TraceWeave (VCS/FSDB lane) — same pattern; pipx keeps them apart if the mcp
-# SDK versions ever conflict
-pipx install traceweave-mcp    # or: pip install traceweave-mcp
+python3 -m pip install --target "$HOME/.mpd/mcp-servers/wave-mcp" "mcp>=2" wave-mcp
+python3 -m pip install --target "$HOME/.mpd/mcp-servers/traceweave" "mcp==1.27.0" traceweave-mcp
+# or one-shot: node scripts/install-mcp.mjs --with-wave --activate-wave
+export MPD_DSH_WAVE_MCP_BIN="$HOME/.mpd/mcp-servers/wave-mcp/bin/wave-mcp"
+export MPD_DSH_TRACEWEAVE_BIN="$HOME/.mpd/mcp-servers/traceweave/bin/traceweave-mcp"
 ```
 
 ## Environment notes (verified on this machine, 2026-08)

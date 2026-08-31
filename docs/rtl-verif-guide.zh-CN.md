@@ -17,7 +17,7 @@ UVM 通道仅限 VCS），以及**波形查看 MCP 接线**（wave-mcp + TraceWe
 | 编码模板 | `skills/rtl-codestyle` | verilog-generator 风格：端口前缀 `i_/o_/io_`、参数前缀 `C_`、状态前缀 `ST_`、内部 `_o` + assign 桥接、ANSI 端口头、硬 3 段式状态机模板（`.vinc`） |
 | 验证插件 | `mpd-verif` bundle 行 | 八个内置工具 `mpd_verif_venv/backends/compile/lint/sim/coverage/uvm/regress`（§2） |
 | 验证脚手架 | `skills/rtl-verif` | cocotb TB/Makefile 模板 + 黄金 fixture + VCS-UVM 骨架树 |
-| 波形 MCP 行 | `mcp-wave-mcp`（wave-mcp）+ `mcp-traceweave`（TraceWeave）—— **可选，默认不挂载**（示例行保持注释） | pipx 或任意 Python 安装 —— **不强制 venv**；venv 铁律仅属 cocotb（§3） |
+| 波形 MCP 行 | `mcp-wave-mcp`（wave-mcp）+ `mcp-traceweave`（TraceWeave）—— **可选，默认不挂载**（示例行保持注释） | **隔离 `pip --target` 目录**安装（wave-mcp 需 mcp>=2，TraceWeave 锁 mcp==1.27.0）—— **不强制 venv**；venv 铁律仅属 cocotb（§3） |
 
 二进制策略：**绝不随包分发（no vendoring）**。工具二进制优先用 `MPD_DSH_*`
 环境变量覆盖解析，其次 `PATH`。QA 始终在隔离的 `DSH_HOME` 中启动。
@@ -136,17 +136,34 @@ test, uvmVer: "1.2", seed, coverage, waveFmt, verbosity)` —— **仅 VCS**。
 ## 4. 波形查看 MCP 接线
 
 **bundle 默认不挂载这两行**——它们包装外部 Python MCP 服务（wave-mcp /
-TraceWeave）。安装方式随你——**不强制 venv**（venv 铁律仅属于 cocotb，见 §3）；
-最省事的是 `pipx`（它自带每工具隔离，仅当两者 `mcp` SDK 版本冲突时才需要）。
-启动 python 上缺少或版本不匹配的 `mcp` SDK 会在 boot 时令 MCP client 崩溃
-（`ModuleNotFoundError: mcp.server.mcpserver`），因此这两行以**注释示例**形态
-随包提供（boot 安全）。按以下顺序启用：
+TraceWeave），且两者的 `mcp` SDK 版本**互相冲突**——wave-mcp 需要 `mcp>=2`
+（模块 `mcp.server.mcpserver`），TraceWeave 锁定 `mcp==1.27.0`——所以每个工具
+必须装在**独立隔离目录**（不强制 venv；各自的 `pip --target` 目录即可，venv
+铁律仅属 cocotb，见 §3）。启动 python 上缺少或版本不匹配的 `mcp` SDK 会在
+boot 时令 MCP client 崩溃（`ModuleNotFoundError: mcp.server.mcpserver`），因此
+这两行以**注释示例**形态随包提供（boot 安全）。
 
-1. 安装两个工具（见下方安装块）。
-2. 在启动 dsh 的 shell 中导出 `MPD_DSH_WAVE_MCP_BIN` /
-   `MPD_DSH_TRACEWEAVE_BIN`。
-3. 取消 `cordis.patch.yml` 中两个示例行（`mcp-wave-mcp` /
-   `mcp-traceweave`）的注释，然后重装 bundle profile 并重启 dsh。
+**最快修复 —— 用安装脚本**（一步完成隔离安装 + SDK 校验 + env + overlay）：
+
+```sh
+node scripts/install-mcp.mjs --with-wave --activate-wave
+source ~/.mpd/mcp.env
+# 之后启动 dsh（web GUI 合并 ~/.mpd/mcp-wave.patch.yml 两行，或用 --patch 加载）
+```
+
+手动等价做法 —— 两个隔离 target，绝不复用同一 Python/pipx 环境：
+
+```sh
+python3 -m pip install --target ~/.mpd/mcp-servers/wave-mcp "mcp>=2" wave-mcp
+python3 -m pip install --target ~/.mpd/mcp-servers/traceweave "mcp==1.27.0" traceweave-mcp
+export MPD_DSH_WAVE_MCP_BIN="$HOME/.mpd/mcp-servers/wave-mcp/bin/wave-mcp"
+export MPD_DSH_TRACEWEAVE_BIN="$HOME/.mpd/mcp-servers/traceweave/bin/traceweave-mcp"
+# 校验 wave-mcp 必须能 import mcp.server.mcpserver：
+#   PYTHONPATH="$HOME/.mpd/mcp-servers/wave-mcp" python3 -c "import mcp.server.mcpserver"
+```
+
+随后启用两行（取消 `cordis.patch.yml` 注释，或
+`dsh --profile web --patch ~/.mpd/mcp-wave.patch.yml`），重装 bundle profile 并重启 dsh。
 
 `mpd_verif_*` 仅在这些工具接好后才会调用；否则波形 hook 静默降级。带波形的
 运行（`.fst`/`.vcd`，VCS 通道为 `.fsdb` + 日志）结束后，插件交接：
@@ -163,17 +180,16 @@ TraceWeave）。安装方式随你——**不强制 venv**（venv 铁律仅属�
 | `mcp-wave-mcp` | `MPD_DSH_WAVE_MCP_BIN` 或 `wave-mcp` | `--session` 参数如上；`toolCallTimeoutMs: 120000` |
 | `mcp-traceweave` | `MPD_DSH_TRACEWEAVE_BIN` 或 `traceweave-mcp` | 无 `env` 块：`VERDI_HOME`/`NOVAS_HOME`/`VCS_HOME` + license 变量从启动 dsh 的 shell 继承 |
 
-**安装策略**（以文档为准；bundle 绝不代为安装 —— **不强制 venv**；pipx 自动隔离两个工具）：
+**安装策略**（以文档为准；bundle 绝不代为安装 —— **不强制 venv**；每个工具独立 `pip --target`，两个 `mcp` SDK 版本永不冲突）：
 
 ```sh
-# wave-mcp（FST/VCD 通道）—— pipx（自带隔离）或直接 pip，随你
-pipx install wave-mcp          # 或: pip install wave-mcp
-# TraceWeave（VCS/FSDB 通道）—— 同款；若两者装进同一 Python 且 mcp SDK 版本打架，
-# pipx 已自动隔离 —— 无需手工 venv
-pipx install traceweave-mcp    # 或: pip install traceweave-mcp
-# 把行指向二进制（PATH 可解析；或在启动 dsh 前 export）：
-export MPD_DSH_WAVE_MCP_BIN="$(command -v wave-mcp)"
-export MPD_DSH_TRACEWEAVE_BIN="$(command -v traceweave-mcp)"
+# wave-mcp（FST/VCD 通道）—— 隔离 target，mcp>=2
+python3 -m pip install --target "$HOME/.mpd/mcp-servers/wave-mcp" "mcp>=2" wave-mcp
+# TraceWeave（VCS/FSDB 通道）—— 隔离 target，锁定 mcp==1.27.0
+python3 -m pip install --target "$HOME/.mpd/mcp-servers/traceweave" "mcp==1.27.0" traceweave-mcp
+# 把行指向隔离目录的二进制（启动 dsh 前 export）：
+export MPD_DSH_WAVE_MCP_BIN="$HOME/.mpd/mcp-servers/wave-mcp/bin/wave-mcp"
+export MPD_DSH_TRACEWEAVE_BIN="$HOME/.mpd/mcp-servers/traceweave/bin/traceweave-mcp"
 # TraceWeave 还需在同一 shell 里导出 EDA 环境：
 #   export VERDI_HOME=... NOVAS_HOME=... VCS_HOME=...（另加 license 变量）
 ```
