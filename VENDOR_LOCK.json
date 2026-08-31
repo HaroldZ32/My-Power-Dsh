@@ -19,12 +19,12 @@
     "skills": {
       "fileCount": 350,
       "source": "skill corpus at repo root (ported upstream skills + dsh-qa + svn-master + rtl-codestyle/rtl-verif (RTL dev phase-1)); whole-dir refresh from upstream, keep provenance links",
-      "treeSha": "f12adc192ca6b4c1b6240266bfaa43664b51fc60e4e8c834fed102b011b6799c"
+      "treeSha": "c28c2c3dad186e569a3a4c07225a515b6b29b3f45a904111b178f37ff3ffaf3a"
     },
     "packages/mpd-agent-teams-plugin/_deps": {
       "fileCount": 635,
       "source": "server-side runtime closure of the adopted dsh-agent-teams plugin, materialized by scripts/vendor-agent-teams.mjs (exact host versions, bare imports rewritten)",
-      "treeSha": "e3b8207ecee2fd161c4118433f5c77664ff9301dbcfd3c016b996eb33bed5d05"
+      "treeSha": "d1d106032b198d2392ca2fe36ea4b563c3010496192791a6e4812638b7cf8e37"
     },
     "packages/mpd-mcp-astgrep/dist/cli.js": {
       "fileCount": 1,
@@ -48,5 +48,5 @@
     }
   },
   "verification": "node scripts/verify-vendor.mjs: commit/version mismatch is a blocker; stats drift is a warning; asset counts are a blocker",
-  "lockedAt": "2026-08-31T03:09:32.000Z"
+  "lockedAt": "2026-08-31T03:38:20.000Z"
 }
