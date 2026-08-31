@@ -17,7 +17,7 @@ UVM 通道仅限 VCS），以及**波形查看 MCP 接线**（wave-mcp + TraceWe
 | 编码模板 | `skills/rtl-codestyle` | verilog-generator 风格：端口前缀 `i_/o_/io_`、参数前缀 `C_`、状态前缀 `ST_`、内部 `_o` + assign 桥接、ANSI 端口头、硬 3 段式状态机模板（`.vinc`） |
 | 验证插件 | `mpd-verif` bundle 行 | 八个内置工具 `mpd_verif_venv/backends/compile/lint/sim/coverage/uvm/regress`（§2） |
 | 验证脚手架 | `skills/rtl-verif` | cocotb TB/Makefile 模板 + 黄金 fixture + VCS-UVM 骨架树 |
-| 波形 MCP 行 | `mcp-wave-mcp`（wave-mcp）+ `mcp-traceweave`（TraceWeave） | 外部工具，由你安装；二进制缺席时行自动降级（§4） |
+| 波形 MCP 行 | `mcp-wave-mcp`（wave-mcp）+ `mcp-traceweave`（TraceWeave）—— **可选，默认不挂载**（示例行保持注释） | 专用 venv 安装、导出 bin 后，取消注释示例行（§4） |
 
 二进制策略：**绝不随包分发（no vendoring）**。工具二进制优先用 `MPD_DSH_*`
 环境变量覆盖解析，其次 `PATH`。QA 始终在隔离的 `DSH_HOME` 中启动。
@@ -135,10 +135,20 @@ test, uvmVer: "1.2", seed, coverage, waveFmt, verbosity)` —— **仅 VCS**。
 
 ## 4. 波形查看 MCP 接线
 
-bundle 挂载两条 stdio MCP 行，背后是**外部**工具 —— 由你安装；二进制缺席时
-行优雅降级（正常挂载、保持静默），且 `mpd_verif_*` 只在用户接好之后才调用
-它们。带波形的运行（`.fst`/`.vcd`，VCS 通道为 `.fsdb` + 日志）结束后，插件
-交接：
+**bundle 默认不挂载这两行**——它们包装外部 Python MCP 服务（wave-mcp /
+TraceWeave），需你在专用 venv 中自行安装；启动 python 上缺少或版本不匹配的
+`mcp` SDK 会在 boot 时令 MCP client 崩溃（`ModuleNotFoundError:
+mcp.server.mcpserver`），因此这两行以**注释示例**形态随包提供（boot 安全）。
+按以下顺序启用：
+
+1. 创建两个专用 venv 并安装（见下方安装块）。
+2. 在启动 dsh 的 shell 中导出 `MPD_DSH_WAVE_MCP_BIN` /
+   `MPD_DSH_TRACEWEAVE_BIN`。
+3. 取消 `cordis.patch.yml` 中两个示例行（`mcp-wave-mcp` /
+   `mcp-traceweave`）的注释，然后重装 bundle profile 并重启 dsh。
+
+`mpd_verif_*` 仅在这些工具接好后才会调用；否则波形 hook 静默降级。带波形的
+运行（`.fst`/`.vcd`，VCS 通道为 `.fsdb` + 日志）结束后，插件交接：
 
 - OSS 通道 → `mcp__wave_mcp__prepare_session`（`out_dir`、`wave_path`、`top`）；
   session 目录 = `$DSH_HOME/wave-mcp`（覆盖 `MPD_DSH_WAVE_MCP_SESSION`）。

@@ -19,7 +19,7 @@ notice in §6) and the **deferred to-do list** (§7).
 | Coding templates | `skills/rtl-codestyle` | verilog-generator style: port prefixes `i_/o_/io_`, param prefix `C_`, state prefix `ST_`, internal `_o` + assign bridge, ANSI header, hard 3-process FSM templates (`.vinc`) |
 | Verification plugin | `mpd-verif` bundle row | Eight built-in tools `mpd_verif_venv/backends/compile/lint/sim/coverage/uvm/regress` (§2) |
 | Verification scaffolds | `skills/rtl-verif` | cocotb TB/Makefile templates + golden fixtures + VCS-UV-M skeleton tree |
-| Waveform MCP rows | `mcp-wave-mcp` (wave-mcp) + `mcp-traceweave` (TraceWeave) | External tools, installed by you; rows degrade gracefully when absent (§4) |
+| Waveform MCP rows | `mcp-wave-mcp` (wave-mcp) + `mcp-traceweave` (TraceWeave) — **optional, NOT mounted by default** (commented example rows) | Install in dedicated venvs, export bins, then uncomment the example rows (§4) |
 
 Binary policy: **nothing is vendored**. Tool binaries resolve env-first via
 `MPD_DSH_*` overrides, then `PATH`. QA always boots in an isolated `DSH_HOME`.
@@ -142,10 +142,22 @@ test, uvmVer: "1.2", seed, coverage, waveFmt, verbosity)` — **VCS only**.
 
 ## 4. Waveform-read MCP wiring
 
-The bundle mounts two stdio MCP rows backed by **external** tools — you install
-them; the rows degrade gracefully (they mount and stay silent) when the binary
-is absent, and `mpd_verif_*` only calls them when user-wired. After a run with
-waves (`.fst`/`.vcd`, or `.fsdb` + logs in the VCS lane), the plugin hands off:
+**The bundle does NOT mount these rows by default.** They wrap external Python
+MCP servers (wave-mcp / TraceWeave) that you install in dedicated venvs; a
+missing or mismatched `mcp` SDK on the launching python crashes the MCP client
+at boot (`ModuleNotFoundError: mcp.server.mcpserver`), so the rows ship as
+COMMENTED examples in `packages/mpd-bundle/cordis.patch.yml` (boot-safety).
+Enable them in this order:
+
+1. Create the two venvs and install (see the install block below).
+2. Export `MPD_DSH_WAVE_MCP_BIN` / `MPD_DSH_TRACEWEAVE_BIN` in the shell that
+   launches dsh.
+3. Uncomment the two `mcp-wave-mcp` / `mcp-traceweave` example rows in
+   `cordis.patch.yml`, then re-install the bundle profile and restart dsh.
+
+`mpd_verif_*` only calls these tools when they are wired; otherwise the
+waveform hooks degrade silently. After a run with waves (`.fst`/`.vcd`, or
+`.fsdb` + logs in the VCS lane), the plugin hands off:
 
 - OSS lane → `mcp__wave_mcp__prepare_session` (`out_dir`, `wave_path`, `top`);
   session dir = `$DSH_HOME/wave-mcp` (override `MPD_DSH_WAVE_MCP_SESSION`).

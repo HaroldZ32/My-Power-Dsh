@@ -3,12 +3,14 @@
 // isolated DSH_HOME. TWO-PHASE (deterministic; no LLM session needed, so the
 // case stays runnable on credential-less QA boxes):
 //   PHASE 1 (isolated boot mount) — dev-flavor checkout boot of the REAL
-//     bundle patch (t9 wired the mpd-verif row + mcp-wave-mcp/mcp-traceweave
-//     rows into cordis.patch.yml)
-//     `dsh --profile headless --dump-config` must show the mpd-verif,
-//     mcp-wave-mcp, mcp-traceweave AND mcp-lsp rows mounted; the segment-B LSP
-//     rebuild is asserted on the shipped cli.js (BOTH builtin definitions
-//     present: verible-verilog-ls + slang-server).
+//     bundle patch (t9 wired the mpd-verif row into cordis.patch.yml; the
+//     mcp-wave-mcp/mcp-traceweave rows are OPTIONAL and stay COMMENTED by
+//     default — boot-safety: an uninstalled/mismatched external Python MCP
+//     server crashed the client at boot).
+//     `dsh --profile headless --dump-config` must show the mpd-verif and
+//     mcp-lsp rows mounted (wave rows absent is the expected default); the
+//     segment-B LSP rebuild is asserted on the shipped cli.js (BOTH builtin
+//     definitions present: verible-verilog-ls + slang-server).
 //   PHASE 2 (real tool flow, same isolated env) — drive the mpd_verif_* core
 //     directly (same plugin dist, DSH_HOME/DSH_WORKSPACE_ROOT sandboxed) with
 //     REAL verilator on a golden adder fixture (3+4=7): backends probe, venv
@@ -78,12 +80,15 @@ function mcpEnv() {
 }
 
 function selfTest() {
-  // bundle patch wiring (t9): exactly one mpd-verif row in the committed patch,
-  // the two waveform rows present, no checkout-absolute paths in the patch
+  // bundle patch wiring (t9): exactly one ACTIVE mpd-verif row; the waveform-read
+  // rows must stay COMMENTED by default (boot-safety vs missing/mismatched
+  // external Python MCP SDK) — only their example text must be in the patch;
+  // no checkout-absolute paths anywhere
   const bundleSrc = readFileSync(join(repoRoot, "packages/mpd-bundle/cordis.patch.yml"), "utf8")
-  if ((bundleSrc.match(WIRED_ID_PATTERN) ?? []).length !== 1) { console.error("[rtl-verif self-test] FAIL: cordis.patch.yml must ship exactly one mpd-verif row"); process.exit(1) }
+  if ((bundleSrc.match(WIRED_ID_PATTERN) ?? []).length !== 1) { console.error("[rtl-verif self-test] FAIL: cordis.patch.yml must ship exactly one ACTIVE mpd-verif row"); process.exit(1) }
+  if (bundleSrc.match(/^\s*- id: mcp-(wave-mcp|traceweave)$/m) !== null) { console.error("[rtl-verif self-test] FAIL: mcp-wave-mcp/mcp-traceweave must stay commented (boot-safety; enable per guide §4)"); process.exit(1) }
   for (const row of ["mcp-wave-mcp", "mcp-traceweave"]) {
-    if ((bundleSrc.match(new RegExp("^\\s*- id: " + row + "$", "m")) ?? []).length !== 1) { console.error("[rtl-verif self-test] FAIL: cordis.patch.yml must ship the " + row + " row"); process.exit(1) }
+    if (!bundleSrc.includes("- id: " + row)) { console.error("[rtl-verif self-test] FAIL: cordis.patch.yml must carry the commented " + row + " example rows"); process.exit(1) }
   }
   if (bundleSrc.includes("/root/")) { console.error("[rtl-verif self-test] FAIL: checkout-absolute path in cordis.patch.yml"); process.exit(1) }
   // golden fixture semantics: 3+4 must equal 7 (the asserted value)
@@ -115,7 +120,7 @@ function selfTest() {
   // devPatch normalization (web-compat bare self-row must become checkout path)
   const dev = devPatch()
   if (dev.includes("name: '@mpd-dsh/mpd'")) { console.error("[rtl-verif self-test] FAIL: devPatch left a bare '@mpd-dsh/mpd' row"); process.exit(1) }
-  console.log("[rtl-verif self-test] ok: bundle wiring (mpd-verif + wave rows) + golden fixture + eight-tool dist surface + iron-rule strings + devPatch guard")
+  console.log("[rtl-verif self-test] ok: bundle wiring (mpd-verif active + wave rows commented) + golden fixture + eight-tool dist surface + iron-rule strings + devPatch guard")
 }
 
 function venvPreflight() {
@@ -173,7 +178,7 @@ async function runReal() {
   const boot = spawnSync("dsh", ["--profile", "headless", "--patch", bundlePatch, "--dump-config"], { env, encoding: "utf8", timeout: 180000, stdio: ["ignore", fd1, fd1], maxBuffer: 64 * 1024 * 1024 })
   closeSync(fd1)
   const dump = readFileSync(dumpLog, "utf8")
-  const mountOk = boot.status === 0 && /- id: mpd-verif\b/.test(dump) && /- id: mcp-wave-mcp\b/.test(dump) && /- id: mcp-traceweave\b/.test(dump) && /- id: mcp-lsp\b/.test(dump) && !dump.includes("MISSING_CREDENTIAL")
+  const mountOk = boot.status === 0 && /- id: mpd-verif\b/.test(dump) && /- id: mcp-lsp\b/.test(dump) && !dump.includes("MISSING_CREDENTIAL")
   // segment-B LSP rebuild: both builtin server definitions baked into the shipped cli.js
   const lspCli = readFileSync(join(repoRoot, "packages/mpd-mcp-lsp/dist/cli.js"), "utf8")
   const lspRegistry = [
