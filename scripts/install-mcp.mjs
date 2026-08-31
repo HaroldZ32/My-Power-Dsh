@@ -169,6 +169,14 @@ function ensureWave() {
   const cmd = probe.status === 0 && probe.stdout.trim() ? probe.stdout.trim() : "python3"
   const real = sh(cmd, ["-c", "import sys; print(sys.executable)"], { silent: true })
   const py = process.env.MPD_DSH_VERIF_PYTHON3_CMD || (real.status === 0 && real.stdout.trim() ? real.stdout.trim() : cmd)
+  // If the GLOBAL python already holds conflicting wave/traceweave packages,
+  // pip prints resolver ERROR noise (irrelevant for the isolated targets) — say
+  // so once so it never reads as a failure.
+  const glob = sh(py, ["-m", "pip", "list", "--format=freeze"], { silent: true })
+  const g = (glob.stdout || "")
+  if (g.includes("wave-mcp") || g.includes("traceweave-mcp")) {
+    console.log("[install-mcp] note: the GLOBAL python has wave-mcp/traceweave-mcp installed — pip may print dependency-conflict ERRORs; the isolated targets below are self-contained and unaffected. Optional cleanup: " + py + " -m pip uninstall -y wave-mcp traceweave-mcp")
+  }
   for (const w of WAVE_INSTALL) {
     const target = join(waveHome(), w.cmd)
     const bin = join(target, "bin", w.cmd)
@@ -178,8 +186,12 @@ function ensureWave() {
       continue
     }
     console.log("[install-mcp] installing " + w.pkg + " into isolated target:", target, "(mcp " + w.mcpRe + ")")
-    const r = sh(py, ["-m", "pip", "install", "--quiet", "--target", target, w.mcpRe, w.pkg], { timeout: 600000 })
-    if (r.status !== 0) { fail(w.pkg + " install failed (pip network?); install manually: " + py + " -m pip install --target " + target + " \\\"" + w.mcpRe + "\\\" " + w.pkg); continue }
+    // Silent install: pip prints "ERROR: dependency resolver" noise when the
+    // GLOBAL python already holds conflicting wave-mcp/traceweave-mcp packages;
+    // that noise is irrelevant — each --target dir is self-contained and is
+    // verified right below. Only surface pip stderr on an actual failure.
+    const r = sh(py, ["-m", "pip", "install", "--quiet", "--no-input", "--target", target, w.mcpRe, w.pkg], { timeout: 600000, silent: true })
+    if (r.status !== 0) { fail(w.pkg + " install failed (pip network?); install manually: " + py + " -m pip install --target " + target + " \"" + w.mcpRe + "\" " + w.pkg + "\n" + (r.stderr || "").slice(-400)); continue }
     // verify the mcp SDK module the dsh MCP client needs actually imports
     const v = sh(py, ["-c", "import sys; sys.path.insert(0, '" + target + "'); " + w.verify + "; print('verify OK')"], { silent: true })
     if (v.status !== 0) { fail(w.cmd + " verify failed: mcp SDK in the target is missing/wrong (" + (v.stderr || "").slice(-200) + ")"); continue }
