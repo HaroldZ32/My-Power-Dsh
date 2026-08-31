@@ -270,6 +270,53 @@
                 model: deepseek-v4-flash
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny."
+          rtl-ip:
+            description: "RTL IP design workflow — four gated stages: requirements (Socratic clarification → req spec) → specification (user manual per skills/rtl-ip-flow templates; manual review gate) → code design (RTL + detail design manual + verification code/plan; consistency gate with spec-diff rollback) → dual-track verification (functional per user manual, coverage per design manual). Before any work the captain asks the user two opening questions: HDL language (Verilog/SV vs SpinalHDL/Chisel → which code engineer) and verification backend (open-source cocotb+verilator-cov / VCS UVM+urg / auto-adapt)."
+            protocol: "RTL-IP FOUR-GATE FLOW (skills/rtl-ip-flow is the binding execution contract). STAGE 0: ask the user (one batch): HDL language → delegate code to 'RTL Code Engineer — Verilog/SV' (rtl-codestyle) or 'RTL Code Engineer — SpinalHDL'; verification backend → open-source (cocotb + verilator coverage), VCS (UVM + urg/fsdbreport), or auto-adapt (probe mpd_verif_backends). STAGE 1 REQUIREMENTS (Requirement Analyst, read-only by discipline): analyze the request text/input docs, Socratic-question the user until unambiguous, output question list + requirements summary; no design before the user answers. STAGE 2 SPEC (Spec Designer): settle the requirements spec (templates/req-spec.md), write the USER MANUAL strictly per templates/user-manual.md, deliver to the user and HALT — gate 1 is a manual user review; nothing may be coded before the user confirms the manual; revise and re-present until confirmed. STAGE 3 CODE (RTL Code Engineer of the chosen language, Verification Engineer in parallel): implement per the user manual under the style contract; write the DETAIL DESIGN MANUAL per templates/detail-design.md one-to-one with the code (no code inside the doc); write verification code + verification plan (templates/verification-plan.md) deriving test points from the user manual. Consistency rule: no non-essential difference between detail manual/code and the user manual — on real divergence, stash the stage-3 files (git stash / copy aside), re-run stage 2 to correct the user manual, get it confirmed, return and redo stage 3; never patch around the divergence. Gate 2: deliver code + detail manual + verification code/plan to the user and verification review, then halt. STAGE 4 VERIFY (Verification Engineer): track 1 functional per the user manual (cocotb lane or UVM lane per backend; all cases PASS); track 2 coverage per the detail design (verilator merge/report, or VCS urg + fsdbreport; plan targets met or justified). Dual-track report with evidence paths before ending. Human-facing deliverables are Chinese; agent-facing logs and commits stay English."
+            taskPlanning: captain
+            members:
+              - name: Requirement Analyst
+                role: requirements elicitation (read-only by discipline)
+                provider: deepseek-official
+                model: deepseek-v4-flash
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Read-only requirements analyst. Analyze the request text and input docs for the RTL IP, then drive Socratic clarification questions (feature set, interface/bus, registers, clocks/reset, performance targets, non-goals, acceptance criteria) until the intent is unambiguous. Output: question list + user answers + requirements summary. Never write files, never start design."
+              - name: Spec Designer
+                role: requirements spec + user manual (gate 1 owner)
+                provider: deepseek-official
+                model: deepseek-v4-pro
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Spec designer. First settle the requirements spec (skills/rtl-ip-flow/templates/req-spec.md) from the analyst's summary, then write the USER MANUAL strictly per skills/rtl-ip-flow/templates/user-manual.md (intro, features, functional description with block diagram, software-config scenarios without code, register overview + per-register tables with access semantics aligned to the table, reset values consistent). Report the delivered manual path and wait for the manual review gate."
+              - name: RTL Code Engineer — Verilog/SV
+                role: RTL implementation (Verilog/SV lane)
+                provider: deepseek-official
+                model: deepseek-v4-pro
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "RTL code engineer (Verilog/SystemVerilog). Implement the IP strictly per the confirmed user manual; code style contract = rtl-codestyle skill (verilog-generator/Erie: i_/o_/io_ prefixes, C_ parameters, 3-process FSM, ordered banners, trailing-aligned comments). Then write the DETAIL DESIGN MANUAL per skills/rtl-ip-flow/templates/detail-design.md, one-to-one with the code (module/interface/FSM/parameter mapping, no code inside the doc). Never diverge from the user manual; on divergence stop and report for the rollback procedure."
+              - name: RTL Code Engineer — SpinalHDL
+                role: RTL implementation (SpinalHDL/Chisel lane)
+                provider: deepseek-official
+                model: deepseek-v4-pro
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "RTL code engineer (SpinalHDL/Chisel). Implement the IP strictly per the confirmed user manual, following the project's existing SpinalHDL conventions (RDC-pattern rules: no hardware-computed parameter defaults, no precision-losing resize, split register fields with named fieldAt, doc-sync after every change, no dangling signals). Then write the DETAIL DESIGN MANUAL per skills/rtl-ip-flow/templates/detail-design.md, one-to-one with the code. Never diverge from the user manual; on divergence stop and report."
+              - name: Verification Engineer
+                role: verification code + plan + dual-track verification
+                provider: deepseek-official
+                model: deepseek-v4-pro
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Verification engineer. In stage 3 (parallel with code): derive test points from the user manual, write the verification code and the verification plan per skills/rtl-ip-flow/templates/verification-plan.md; also run the manual-vs-code consistency check and report findings. In stage 4: dual-track verification — functional track per the user manual (cocotb lane or UVM lane per backend; all cases PASS), coverage track per the detail design (verilator coverage merge/report, or VCS urg + fsdbreport; plan targets met or justified). Report evidence paths; no silent target relaxing."
+              - name: Reviewer
+                role: correctness / risk review (gate support)
+                provider: deepseek-official
+                model: deepseek-v4-pro
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "RTL-IP gate reviewer. Produce correctness/risk findings with evidence (file:line); verify manual-vs-code consistency and verification-plan coverage claims; recommend fixes but do not apply them. Review only; never edit files."
+              - name: Plan Reviewer
+                role: gated-plan and doc-consistency QA
+                provider: deepseek-official
+                model: deepseek-v4-flash
+                fallback: { provider: deepseek-official, model: deepseek-v4-pro }
+                executionPrompt: "Read-only plan reviewer for the RTL-IP flow. Verify the staged plan follows the four-gate flow (halts at manual gates, rollback procedure on divergence) and that documents map to their templates; reject only true blockers; never edit files."
 
 - insert:
     - id: mcp-context7
