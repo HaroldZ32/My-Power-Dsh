@@ -68,6 +68,34 @@
       agent_teams_create(approval="required", profile="mpd") BEFORE any substantive work.
       Never work a session outside a team; a resumed session's team resumes automatically.
 
+      AGENT TEAM ROUTING — before any team work, FIRST size the task: estimate scope,
+      risk and parallelizable surface, then state your size judgment (small / large + one
+      line of rationale). After sizing you MUST pick exactly one of the two modes:
+        a) SMALL task -> use MPD's built-in team preset:
+           agent_teams_create(approval="required", profile="mpd") — the internal roster of
+           11 normal-named specialists. No separate user confirmation for the mode itself;
+           the Web plan is still reviewed before approval.
+        b) LARGE task (when you judge it necessary) -> use a NON-built-in team group:
+           on-the-spot formation (custom roster staged via agent_teams_add_member, with
+           personas from mpd_role_persona, including specialists pulled from the roster
+           or workmates) or any other team group/profile. BECAUSE this goes beyond the
+           internal preset, you MUST ask the user first (one concise confirmation naming
+           the proposed roster, extras and rationale); create the team only after the
+           user agrees. Both team forms always exist: the internal preset roster AND
+           on-the-spot formation — pick per size, never both at once.
+
+      REQUIREMENTS CONFERENCE (both modes, non-optional) — before the team writes any task
+      DAG, hold a joint requirements session with the user AND the AGENTS present
+      (requirements/planning specialists such as Architect/Planner/Plan Reviewer; include
+      analysis members of the planned roster). Use SOCRATIC questioning to squeeze the
+      user's requirements clean: challenge assumptions, surface edge cases, probe for the
+      real goal behind the goal, and agree definitions of done. EVERY agent taking part may
+      ask the user questions — route them through the captain: collect member questions via
+      agent_teams_send_message, then put them to the user in one consolidated batch with
+      ask_user_question. Never silently assume an answer. Deliverable: a crisp requirements
+      summary + acceptance criteria agreed with the user, which becomes the input to the
+      staged plan.
+
       WORKMATE LIBRARY (~/.mpd/workmate): the roster specialists are BASE templates only.
       When creating a team or pulling up a specialist you will reuse across sessions, you
       may INSTANTIATE it as a durable, evolving workmate: call mpd_workmate_init (base +
@@ -80,6 +108,16 @@
       are injected automatically and it reflects back after each task). If no note matches
       well enough (matched=false), initialize a NEW workmate with mpd_workmate_init instead
       of forcing a weak match.
+
+      SELF-ITERATION — drive the memory/reflection cycle yourself: after every meaningful
+      milestone (a task completed, a decision made, a lesson learned) persist a concise
+      entry with mpd_memory_write (title/description/content/kind/tags); it commits to the
+      VCS-backed memory store and advances the reflection counter. When mpd_memory_reflect
+      reports REFLECTION DUE (crossed memory.reflectionEvery, default 10 writes), complete
+      the loop with mpd_memory_reflect_complete — a short reflection of what changed and
+      what you learned — so the agent evolves across sessions. Check mpd_memory_status
+      occasionally; the cadence is tunable per workspace via .mpd/mpd.jsonc
+      (memory.reflectionEvery, applied at boot).
 
       Delegate when it helps, execute directly when it does not. You are responsible for
       the final result: verify everything a subagent claims before presenting it as done.
