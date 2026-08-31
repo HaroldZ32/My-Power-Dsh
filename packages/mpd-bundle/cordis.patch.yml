@@ -55,33 +55,41 @@
           MPD_CODEGRAPH_BIN: !!js 'process.env.MPD_CODEGRAPH_BIN || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/.bin/codegraph")'
         toolCallTimeoutMs: 60000
     # Waveform-read MCPs for RTL verification (RTL dev phase-1). Both are
-    # EXTERNAL tools never vendored: the rows degrade gracefully at boot when
-    # the binaries are absent (proven by QA), and both resolve their commands
-    # env-first via MPD_DSH_*_BIN. Install policy (dedicated venvs, never
-    # system pip, never share one venv across the two — MCP SDK versions
-    # conflict) is documented in docs/rtl-verif-guide.md. Session dir default
-    # = $DSH_HOME/wave-mcp (matches mpd-verif-plugin's prepare_session
-    # handoff); per-workspace sessions come via MPD_DSH_WAVE_MCP_SESSION.
-    - id: mcp-wave-mcp
-      name: '@deepseek-ai/dsh-mcp-client'
-      config:
-        serverName: wave_mcp
-        transport: stdio
-        command: !!js 'process.env.MPD_DSH_WAVE_MCP_BIN || "wave-mcp"'
-        args:
-          - "--session"
-          - !!js 'process.env.MPD_DSH_WAVE_MCP_SESSION || (process.env.DSH_HOME ? process.env.DSH_HOME + "/wave-mcp" : ".wave-mcp")'
-        toolCallTimeoutMs: 120000
-    - id: mcp-traceweave
-      name: '@deepseek-ai/dsh-mcp-client'
-      config:
-        serverName: traceweave
-        transport: stdio
-        command: !!js 'process.env.MPD_DSH_TRACEWEAVE_BIN || "traceweave-mcp"'
-        # No env block: the EDA environment (VERDI_HOME/NOVAS_HOME/VCS_HOME +
-        # license vars) is inherited from the dsh launching shell; docs instruct
-        # exporting them there before starting dsh.
-        toolCallTimeoutMs: 120000
+    # Waveform-read MCP rows (mcp-wave-mcp / mcp-traceweave) are NOT mounted by
+    # default: they wrap EXTERNAL Python MCP servers (wave-mcp / TraceWeave)
+    # that the user must install in a dedicated venv. A missing or mismatched
+    # mcp SDK on the launching python crashed the MCP client at boot
+    # (ModuleNotFoundError: No module named 'mcp.server.mcpserver'), taking the
+    # whole GUI/agent down → boot-safety rule: optional rows stay COMMENTED
+    # until the tools are installed and the env bins are pinned. To enable
+    # (steps in docs/rtl-verif-guide.md §4):
+    #   1) python3 -m venv ~/.venvs/wave-mcp && ~/.venvs/wave-mcp/bin/pip install "wave-mcp"
+    #      python3 -m venv ~/.venvs/traceweave && ~/.venvs/traceweave/bin/pip install "traceweave-mcp"
+    #   2) export MPD_DSH_WAVE_MCP_BIN=~/.venvs/wave-mcp/bin/wave-mcp
+    #      export MPD_DSH_TRACEWEAVE_BIN=~/.venvs/traceweave/bin/traceweave-mcp
+    #   3) uncomment the two example rows below (command resolves env-first,
+    #      PATH second; keep SEPARATE venvs — SDK pin conflicts: wave-mcp needs
+    #      mcp>=2, TraceWeave pins mcp==1.27.0).
+    # - id: mcp-wave-mcp
+    #   name: '@deepseek-ai/dsh-mcp-client'
+    #   config:
+    #     serverName: wave_mcp
+    #     transport: stdio
+    #     command: !!js 'process.env.MPD_DSH_WAVE_MCP_BIN || "wave-mcp"'
+    #     args:
+    #       - "--session"
+    #       - !!js 'process.env.MPD_DSH_WAVE_MCP_SESSION || (process.env.DSH_HOME ? process.env.DSH_HOME + "/wave-mcp" : ".wave-mcp")'
+    #     toolCallTimeoutMs: 120000
+    # - id: mcp-traceweave
+    #   name: '@deepseek-ai/dsh-mcp-client'
+    #   config:
+    #     serverName: traceweave
+    #     transport: stdio
+    #     command: !!js 'process.env.MPD_DSH_TRACEWEAVE_BIN || "traceweave-mcp"'
+    #     # No env block: the EDA environment (VERDI_HOME/NOVAS_HOME/VCS_HOME +
+    #     # license vars) is inherited from the dsh launching shell; docs instruct
+    #     # exporting them there before starting dsh.
+    #     toolCallTimeoutMs: 120000
 
 # ── B-line plugins (self-written; production uses @mpd-dsh/<pkg> package names) ──
 - insert:
