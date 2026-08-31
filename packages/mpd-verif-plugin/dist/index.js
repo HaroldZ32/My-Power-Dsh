@@ -662,8 +662,8 @@ import { dirname as dirname3, isAbsolute, join as join8 } from "node:path";
 import { join as join7 } from "node:path";
 var WAVE_MCP_PREPARE = "mcp__wave_mcp__prepare_session";
 var TRACEWEAVE_GET_PATHS = "mcp__traceweave__get_sim_paths";
-var WAVE_MCP_INSTALL_HINT = "install in a dedicated venv: python3 -m venv ~/.venvs/wave-mcp && ~/.venvs/wave-mcp/bin/pip install wave-mcp, then wire the dsh-mcp-client row (command: <venv>/bin/wave-mcp, serverName: wave_mcp) or set MPD_DSH_WAVE_MCP_BIN";
-var TRACEWEAVE_INSTALL_HINT = "install in a SEPARATE venv (never shared with wave-mcp — MCP SDK versions conflict): python3 -m venv ~/.venvs/traceweave && ~/.venvs/traceweave/bin/pip install traceweave-mcp, export VERDI_HOME/NOVAS_HOME/VCS_HOME + license vars, then wire the dsh-mcp-client row (serverName: traceweave) or set MPD_DSH_TRACEWEAVE_BIN";
+var WAVE_MCP_INSTALL_HINT = "install wave-mcp with pipx or any Python (NO venv required — pipx install wave-mcp, or pip install wave-mcp), then wire the dsh-mcp-client row (command: wave-mcp/<bin>, serverName: wave_mcp) or set MPD_DSH_WAVE_MCP_BIN";
+var TRACEWEAVE_INSTALL_HINT = "install traceweave-mcp with pipx or any Python (NO venv required; pipx keeps each tool isolated if the MCP SDK versions ever conflict), export VERDI_HOME/NOVAS_HOME/VCS_HOME + license vars, then wire the dsh-mcp-client row (serverName: traceweave) or set MPD_DSH_TRACEWEAVE_BIN";
 async function runWaveHooks(tools, req) {
   const out = [];
   const lane = req.lane ?? inferLane(req);

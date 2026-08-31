@@ -19,7 +19,7 @@ notice in §6) and the **deferred to-do list** (§7).
 | Coding templates | `skills/rtl-codestyle` | verilog-generator style: port prefixes `i_/o_/io_`, param prefix `C_`, state prefix `ST_`, internal `_o` + assign bridge, ANSI header, hard 3-process FSM templates (`.vinc`) |
 | Verification plugin | `mpd-verif` bundle row | Eight built-in tools `mpd_verif_venv/backends/compile/lint/sim/coverage/uvm/regress` (§2) |
 | Verification scaffolds | `skills/rtl-verif` | cocotb TB/Makefile templates + golden fixtures + VCS-UV-M skeleton tree |
-| Waveform MCP rows | `mcp-wave-mcp` (wave-mcp) + `mcp-traceweave` (TraceWeave) — **optional, NOT mounted by default** (commented example rows) | Install in dedicated venvs, export bins, then uncomment the example rows (§4) |
+| Waveform MCP rows | `mcp-wave-mcp` (wave-mcp) + `mcp-traceweave` (TraceWeave) — **optional, NOT mounted by default** (commented example rows) | Install with pipx or any Python — **no venv required**; the venv iron rule applies to cocotb only (§3) |
 
 Binary policy: **nothing is vendored**. Tool binaries resolve env-first via
 `MPD_DSH_*` overrides, then `PATH`. QA always boots in an isolated `DSH_HOME`.
@@ -143,13 +143,16 @@ test, uvmVer: "1.2", seed, coverage, waveFmt, verbosity)` — **VCS only**.
 ## 4. Waveform-read MCP wiring
 
 **The bundle does NOT mount these rows by default.** They wrap external Python
-MCP servers (wave-mcp / TraceWeave) that you install in dedicated venvs; a
-missing or mismatched `mcp` SDK on the launching python crashes the MCP client
-at boot (`ModuleNotFoundError: mcp.server.mcpserver`), so the rows ship as
-COMMENTED examples in `packages/mpd-bundle/cordis.patch.yml` (boot-safety).
-Enable them in this order:
+MCP servers (wave-mcp / TraceWeave). Install them however you like — **no venv
+is required** (the venv iron rule belongs to cocotb only, §3); `pipx` is the
+handiest option because it keeps each tool's environment isolated by itself
+(needed only if the `mcp` SDK versions of the two ever conflict). A missing or
+mismatched `mcp` SDK on the launching python crashes the MCP client at boot
+(`ModuleNotFoundError: mcp.server.mcpserver`), so the rows ship as COMMENTED
+examples in `packages/mpd-bundle/cordis.patch.yml` (boot-safety). Enable them in
+this order:
 
-1. Create the two venvs and install (see the install block below).
+1. Install the two tools (see the install block below).
 2. Export `MPD_DSH_WAVE_MCP_BIN` / `MPD_DSH_TRACEWEAVE_BIN` in the shell that
    launches dsh.
 3. Uncomment the two `mcp-wave-mcp` / `mcp-traceweave` example rows in
@@ -171,17 +174,18 @@ Row resolution (env-first, `PATH` second — never vendored):
 | `mcp-wave-mcp` | `MPD_DSH_WAVE_MCP_BIN` or `wave-mcp` | `--session` arg as above; `toolCallTimeoutMs: 120000` |
 | `mcp-traceweave` | `MPD_DSH_TRACEWEAVE_BIN` or `traceweave-mcp` | no `env` block: `VERDI_HOME`/`NOVAS_HOME`/`VCS_HOME` + license vars inherit from the dsh launching shell |
 
-**Install policy** (documented; the bundle never installs for you):
+**Install policy** (documented; the bundle never installs for you — no venv
+required; pipx keeps the two tools isolated automatically):
 
 ```sh
-# wave-mcp (FST/VCD lane) — dedicated venv
-python3 -m venv ~/.venvs/wave-mcp && ~/.venvs/wave-mcp/bin/pip install wave-mcp
-# TraceWeave (VCS/FSDB lane) — SEPARATE venv: MCP SDK versions conflict with
-# wave-mcp, so the two must never share one venv
-python3 -m venv ~/.venvs/traceweave && ~/.venvs/traceweave/bin/pip install traceweave-mcp
-# then point the rows at the venv binaries (export before starting dsh):
-export MPD_DSH_WAVE_MCP_BIN="$HOME/.venvs/wave-mcp/bin/wave-mcp"
-export MPD_DSH_TRACEWEAVE_BIN="$HOME/.venvs/traceweave/bin/traceweave-mcp"
+# wave-mcp (FST/VCD lane) — pipx (isolated by itself) or plain pip, your call
+pipx install wave-mcp          # or: pip install wave-mcp
+# TraceWeave (VCS/FSDB lane) — same pattern; if both go into ONE python and the
+# mcp SDK versions ever fight, pipx already keeps them apart — no manual venvs
+pipx install traceweave-mcp    # or: pip install traceweave-mcp
+# point the rows at binaries (resolve via PATH, or export before starting dsh):
+export MPD_DSH_WAVE_MCP_BIN="$(command -v wave-mcp)"
+export MPD_DSH_TRACEWEAVE_BIN="$(command -v traceweave-mcp)"
 # TraceWeave additionally needs the EDA env in the same shell:
 #   export VERDI_HOME=... NOVAS_HOME=... VCS_HOME=... (plus license vars)
 ```

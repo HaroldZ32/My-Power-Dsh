@@ -84,13 +84,13 @@ sim/regress/uvm 运行后，插件会把产出的波形交给已注册的用户 
 - VCS 通道（`.fsdb` + 日志）→ `mcp__traceweave__get_sim_paths`（TraceWeave；
   传 `verif_root`、`case_name`、`sim_log`、`wave_file`）。
 
-建议接线（完整说明见团队文档）：
+建议接线（完整说明见团队文档；**不强制 venv** —— venv 铁律仅属 cocotb，pipx 自动隔离两个工具）：
 
 ```sh
-# wave-mcp（FST/VCD 通道）—— 专用虚拟环境
-python3 -m venv ~/.venvs/wave-mcp && ~/.venvs/wave-mcp/bin/pip install wave-mcp
-# TraceWeave（VCS/FSDB 通道）—— 独立虚拟环境（与 wave-mcp 的 MCP SDK 版本冲突）
-python3 -m venv ~/.venvs/traceweave && ~/.venvs/traceweave/bin/pip install traceweave-mcp
+# wave-mcp（FST/VCD 通道）—— pipx 或直接 pip，随你
+pipx install wave-mcp          # 或: pip install wave-mcp
+# TraceWeave（VCS/FSDB 通道）—— 同款；若 mcp SDK 版本冲突，pipx 已自动隔离
+pipx install traceweave-mcp    # 或: pip install traceweave-mcp
 ```
 
 ## 环境备注（本机实测，2026-08）

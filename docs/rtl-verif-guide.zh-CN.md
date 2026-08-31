@@ -17,7 +17,7 @@ UVM 通道仅限 VCS），以及**波形查看 MCP 接线**（wave-mcp + TraceWe
 | 编码模板 | `skills/rtl-codestyle` | verilog-generator 风格：端口前缀 `i_/o_/io_`、参数前缀 `C_`、状态前缀 `ST_`、内部 `_o` + assign 桥接、ANSI 端口头、硬 3 段式状态机模板（`.vinc`） |
 | 验证插件 | `mpd-verif` bundle 行 | 八个内置工具 `mpd_verif_venv/backends/compile/lint/sim/coverage/uvm/regress`（§2） |
 | 验证脚手架 | `skills/rtl-verif` | cocotb TB/Makefile 模板 + 黄金 fixture + VCS-UVM 骨架树 |
-| 波形 MCP 行 | `mcp-wave-mcp`（wave-mcp）+ `mcp-traceweave`（TraceWeave）—— **可选，默认不挂载**（示例行保持注释） | 专用 venv 安装、导出 bin 后，取消注释示例行（§4） |
+| 波形 MCP 行 | `mcp-wave-mcp`（wave-mcp）+ `mcp-traceweave`（TraceWeave）—— **可选，默认不挂载**（示例行保持注释） | pipx 或任意 Python 安装 —— **不强制 venv**；venv 铁律仅属 cocotb（§3） |
 
 二进制策略：**绝不随包分发（no vendoring）**。工具二进制优先用 `MPD_DSH_*`
 环境变量覆盖解析，其次 `PATH`。QA 始终在隔离的 `DSH_HOME` 中启动。
@@ -136,12 +136,13 @@ test, uvmVer: "1.2", seed, coverage, waveFmt, verbosity)` —— **仅 VCS**。
 ## 4. 波形查看 MCP 接线
 
 **bundle 默认不挂载这两行**——它们包装外部 Python MCP 服务（wave-mcp /
-TraceWeave），需你在专用 venv 中自行安装；启动 python 上缺少或版本不匹配的
-`mcp` SDK 会在 boot 时令 MCP client 崩溃（`ModuleNotFoundError:
-mcp.server.mcpserver`），因此这两行以**注释示例**形态随包提供（boot 安全）。
-按以下顺序启用：
+TraceWeave）。安装方式随你——**不强制 venv**（venv 铁律仅属于 cocotb，见 §3）；
+最省事的是 `pipx`（它自带每工具隔离，仅当两者 `mcp` SDK 版本冲突时才需要）。
+启动 python 上缺少或版本不匹配的 `mcp` SDK 会在 boot 时令 MCP client 崩溃
+（`ModuleNotFoundError: mcp.server.mcpserver`），因此这两行以**注释示例**形态
+随包提供（boot 安全）。按以下顺序启用：
 
-1. 创建两个专用 venv 并安装（见下方安装块）。
+1. 安装两个工具（见下方安装块）。
 2. 在启动 dsh 的 shell 中导出 `MPD_DSH_WAVE_MCP_BIN` /
    `MPD_DSH_TRACEWEAVE_BIN`。
 3. 取消 `cordis.patch.yml` 中两个示例行（`mcp-wave-mcp` /
@@ -162,17 +163,17 @@ mcp.server.mcpserver`），因此这两行以**注释示例**形态随包提供�
 | `mcp-wave-mcp` | `MPD_DSH_WAVE_MCP_BIN` 或 `wave-mcp` | `--session` 参数如上；`toolCallTimeoutMs: 120000` |
 | `mcp-traceweave` | `MPD_DSH_TRACEWEAVE_BIN` 或 `traceweave-mcp` | 无 `env` 块：`VERDI_HOME`/`NOVAS_HOME`/`VCS_HOME` + license 变量从启动 dsh 的 shell 继承 |
 
-**安装策略**（以文档为准；bundle 绝不代为安装）：
+**安装策略**（以文档为准；bundle 绝不代为安装 —— **不强制 venv**；pipx 自动隔离两个工具）：
 
 ```sh
-# wave-mcp（FST/VCD 通道）—— 专用 venv
-python3 -m venv ~/.venvs/wave-mcp && ~/.venvs/wave-mcp/bin/pip install wave-mcp
-# TraceWeave（VCS/FSDB 通道）—— 独立的另一个 venv：两者 MCP SDK 版本冲突，
-# 绝不允许共用一个 venv
-python3 -m venv ~/.venvs/traceweave && ~/.venvs/traceweave/bin/pip install traceweave-mcp
-# 然后把行指向 venv 二进制（启动 dsh 前 export）：
-export MPD_DSH_WAVE_MCP_BIN="$HOME/.venvs/wave-mcp/bin/wave-mcp"
-export MPD_DSH_TRACEWEAVE_BIN="$HOME/.venvs/traceweave/bin/traceweave-mcp"
+# wave-mcp（FST/VCD 通道）—— pipx（自带隔离）或直接 pip，随你
+pipx install wave-mcp          # 或: pip install wave-mcp
+# TraceWeave（VCS/FSDB 通道）—— 同款；若两者装进同一 Python 且 mcp SDK 版本打架，
+# pipx 已自动隔离 —— 无需手工 venv
+pipx install traceweave-mcp    # 或: pip install traceweave-mcp
+# 把行指向二进制（PATH 可解析；或在启动 dsh 前 export）：
+export MPD_DSH_WAVE_MCP_BIN="$(command -v wave-mcp)"
+export MPD_DSH_TRACEWEAVE_BIN="$(command -v traceweave-mcp)"
 # TraceWeave 还需在同一 shell 里导出 EDA 环境：
 #   export VERDI_HOME=... NOVAS_HOME=... VCS_HOME=...（另加 license 变量）
 ```

@@ -22,7 +22,9 @@
 
 - DUT 顶层、TB 语言/框架（cocotb / UVM VCS）、时钟/复位模型、接口驱动（总线/自定义时序）、
   参考模型（若用）与统计量（scoreboard）说明。
-- 环境搭建步骤（`mpd_verif_venv` VENV-first 规则；Makefile 流；UVM 目录契约）。
+- 环境搭建步骤：**cocotb lane** 需要项目本地 venv（`mpd_verif_venv` VENV-first
+  铁律，仅此一处强制）；**UVM/VCS lane 与其余后端、MCP 工具都不需要 venv**。
+  其余按工具流：Makefile 流；UVM 目录契约。
 
 ## 3. 用例列表（映射用户手册）
 
@@ -43,7 +45,10 @@
 
 ## 5. 执行与报告
 
-- 命令与先后顺序：`mpd_verif_venv create/status` → `mpd_verif_compile/lint` → `mpd_verif_sim`（功能轨）→ `mpd_verif_regress`（回归）→ `mpd_verif_coverage merge/report`（覆盖轨）→（VCS）`mpd_verif_uvm regress/merge-cov`。
+- 命令与先后顺序：cocotb lane 先 `mpd_verif_venv create/status`（venv 仅 cocotb 需要）→
+  `mpd_verif_backends` → `mpd_verif_compile/lint` → `mpd_verif_sim`（功能轨）→
+  `mpd_verif_regress`（回归）→ `mpd_verif_coverage merge/report`（覆盖轨）；
+  VCS lane 走 `mpd_verif_uvm compile/run/regress/merge-cov`（无需 venv）。
 - 产物路径：仿真日志、波形（fst/vcd/fsdb）、coverage 报告（`<work>/.mpd/verif/...` 或工程约定目录）。
 - 回归标准：全部用例 PASS + 覆盖率达标；失败处理（修 DUT/TB 后回归；文档-代码不一致走回退流程）。
 

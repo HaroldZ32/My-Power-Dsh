@@ -88,13 +88,15 @@ message:
 - VCS lane (`.fsdb` + logs) → `mcp__traceweave__get_sim_paths` (TraceWeave;
   `verif_root`, `case_name`, `sim_log`, `wave_file`).
 
-Suggested wiring (see the team docs for full notes):
+Suggested wiring (see the team docs for full notes; **no venv required** — the
+venv iron rule belongs to cocotb only; pipx keeps the two MCP tools isolated on its own):
 
 ```sh
-# wave-mcp (FST/VCD lane) — dedicated venv
-python3 -m venv ~/.venvs/wave-mcp && ~/.venvs/wave-mcp/bin/pip install wave-mcp
-# TraceWeave (VCS/FSDB lane) — SEPARATE venv (MCP SDK versions conflict with wave-mcp)
-python3 -m venv ~/.venvs/traceweave && ~/.venvs/traceweave/bin/pip install traceweave-mcp
+# wave-mcp (FST/VCD lane) — pipx or plain pip, your call
+pipx install wave-mcp          # or: pip install wave-mcp
+# TraceWeave (VCS/FSDB lane) — same pattern; pipx keeps them apart if the mcp
+# SDK versions ever conflict
+pipx install traceweave-mcp    # or: pip install traceweave-mcp
 ```
 
 ## Environment notes (verified on this machine, 2026-08)

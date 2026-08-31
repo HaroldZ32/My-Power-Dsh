@@ -24,7 +24,7 @@ test("wave-mcp not wired -> unavailable with the exact install/wire hint (gracef
   expect(res.length).toBe(1)
   expect(res[0].status).toBe("unavailable")
   expect(res[0].server).toBe("wave_mcp")
-  expect(res[0].message).toContain("python3 -m venv ~/.venvs/wave-mcp")
+  expect(res[0].message).toContain("pipx install wave-mcp")
   expect(res[0].message).toContain("serverName: wave_mcp")
 })
 
@@ -54,10 +54,10 @@ test("wired vcs lane -> TraceWeave get_sim_paths with verif_root/case_name/sim_l
   expect(calls[0].arguments).toMatchObject({ verif_root: "/ip", case_name: "sanity_test", sim_log: "/c/run.log", wave_file: "/w/x.fsdb" })
 })
 
-test("TraceWeave not wired -> unavailable with the separate-venv hint", async () => {
+test("TraceWeave not wired -> unavailable with the no-venv install hint", async () => {
   const res = await runWaveHooks({}, { wavefile: null, top: "t", sessionDir: "/s", caseDir: "/c", lane: "vcs" })
   expect(res[0].status).toBe("unavailable")
-  expect(res[0].message).toContain("SEPARATE venv")
+  expect(res[0].message).toContain("NO venv required")
   expect(res[0].message).toContain("traceweave")
 })
 
