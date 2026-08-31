@@ -17,7 +17,7 @@ UVM 通道仅限 VCS），以及**波形查看 MCP 接线**（wave-mcp + TraceWe
 | 编码模板 | `skills/rtl-codestyle` | verilog-generator 风格：端口前缀 `i_/o_/io_`、参数前缀 `C_`、状态前缀 `ST_`、内部 `_o` + assign 桥接、ANSI 端口头、硬 3 段式状态机模板（`.vinc`） |
 | 验证插件 | `mpd-verif` bundle 行 | 八个内置工具 `mpd_verif_venv/backends/compile/lint/sim/coverage/uvm/regress`（§2） |
 | 验证脚手架 | `skills/rtl-verif` | cocotb TB/Makefile 模板 + 黄金 fixture + VCS-UVM 骨架树 |
-| 波形 MCP 行 | `mcp-wave-mcp`（wave-mcp）+ `mcp-traceweave`（TraceWeave）—— **可选，默认不挂载**（示例行保持注释） | **隔离 `pip --target` 目录**安装（wave-mcp 需 mcp>=2，TraceWeave 锁 mcp==1.27.0）—— **不强制 venv**；venv 铁律仅属 cocotb（§3） |
+| 波形 MCP 行 | `mcp-wave-mcp`（wave-mcp）+ `mcp-traceweave`（TraceWeave）—— **可选，默认不挂载**（示例行保持注释） | **pipx 隔离安装**（wave-mcp 自带 mcp>=2，TraceWeave 自带 mcp==1.27.0）—— **不强制手工 venv**；venv 铁律仅属 cocotb（§3） |
 
 二进制策略：**绝不随包分发（no vendoring）**。工具二进制优先用 `MPD_DSH_*`
 环境变量覆盖解析，其次 `PATH`。QA 始终在隔离的 `DSH_HOME` 中启动。
@@ -143,7 +143,7 @@ TraceWeave），且两者的 `mcp` SDK 版本**互相冲突**——wave-mcp 需�
 boot 时令 MCP client 崩溃（`ModuleNotFoundError: mcp.server.mcpserver`），因此
 这两行以**注释示例**形态随包提供（boot 安全）。
 
-**最快修复 —— 用安装脚本**（一步完成隔离安装 + SDK 校验 + env + overlay）：
+**最快修复 —— 用安装脚本**（一步完成 pipx 隔离安装 + SDK 校验 + env + overlay）：
 
 ```sh
 node scripts/install-mcp.mjs --with-wave --activate-wave
@@ -151,15 +151,13 @@ source ~/.mpd/mcp.env
 # 之后启动 dsh（web GUI 合并 ~/.mpd/mcp-wave.patch.yml 两行，或用 --patch 加载）
 ```
 
-手动等价做法 —— 两个隔离 target，绝不复用同一 Python/pipx 环境：
+手动等价做法 —— 每个工具走 pipx（各自独立环境、各自 mcp SDK，互不冲突）：
 
 ```sh
-python3 -m pip install --target ~/.mpd/mcp-servers/wave-mcp "mcp>=2" wave-mcp
-python3 -m pip install --target ~/.mpd/mcp-servers/traceweave "mcp==1.27.0" traceweave-mcp
-export MPD_DSH_WAVE_MCP_BIN="$HOME/.mpd/mcp-servers/wave-mcp/bin/wave-mcp"
-export MPD_DSH_TRACEWEAVE_BIN="$HOME/.mpd/mcp-servers/traceweave/bin/traceweave-mcp"
-# 校验 wave-mcp 必须能 import mcp.server.mcpserver：
-#   PYTHONPATH="$HOME/.mpd/mcp-servers/wave-mcp" python3 -c "import mcp.server.mcpserver"
+pipx install wave-mcp            # 自带 mcp>=2（mcp.server.mcpserver）
+pipx install traceweave-mcp      # 自带 mcp==1.27.0
+export MPD_DSH_WAVE_MCP_BIN="$HOME/.local/bin/wave-mcp"
+export MPD_DSH_TRACEWEAVE_BIN="$HOME/.local/bin/traceweave-mcp"
 ```
 
 随后启用两行（取消 `cordis.patch.yml` 注释，或

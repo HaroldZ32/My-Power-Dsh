@@ -88,17 +88,17 @@ message:
 - VCS lane (`.fsdb` + logs) → `mcp__traceweave__get_sim_paths` (TraceWeave;
   `verif_root`, `case_name`, `sim_log`, `wave_file`).
 
-Suggested wiring (see the team docs for full notes; **no venv required** — the
+Suggested wiring (see the team docs for full notes; **no hand-made venv** — the
 venv iron rule belongs to cocotb only). The two MCPs pin CONFLICTING mcp SDK
 versions (wave-mcp needs mcp>=2 → `mcp.server.mcpserver`; TraceWeave pins
-mcp==1.27.0), so each gets its own isolated `pip --target` dir:
+mcp==1.27.0), so each goes through pipx into its own isolated env:
 
 ```sh
-python3 -m pip install --target "$HOME/.mpd/mcp-servers/wave-mcp" "mcp>=2" wave-mcp
-python3 -m pip install --target "$HOME/.mpd/mcp-servers/traceweave" "mcp==1.27.0" traceweave-mcp
+pipx install wave-mcp            # FST/VCD lane; mcp>=2
+pipx install traceweave-mcp      # VCS/FSDB lane; mcp==1.27.0
 # or one-shot: node scripts/install-mcp.mjs --with-wave --activate-wave
-export MPD_DSH_WAVE_MCP_BIN="$HOME/.mpd/mcp-servers/wave-mcp/bin/wave-mcp"
-export MPD_DSH_TRACEWEAVE_BIN="$HOME/.mpd/mcp-servers/traceweave/bin/traceweave-mcp"
+export MPD_DSH_WAVE_MCP_BIN="$(command -v wave-mcp)"
+export MPD_DSH_TRACEWEAVE_BIN="$(command -v traceweave-mcp)"
 ```
 
 ## Environment notes (verified on this machine, 2026-08)

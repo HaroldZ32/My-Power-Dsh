@@ -151,7 +151,7 @@ missing or mismatched `mcp` SDK on the launching python crashes the MCP client
 at boot (`ModuleNotFoundError: mcp.server.mcpserver`), so the rows ship as
 COMMENTED examples in `packages/mpd-bundle/cordis.patch.yml` (boot-safety).
 
-**Quickest fix — the installer** (isolated install + SDK verify + env + overlay in one shot):
+**Quickest fix — the installer** (pipx install + SDK verify + env + overlay in one shot):
 
 ```sh
 node scripts/install-mcp.mjs --with-wave --activate-wave
@@ -159,13 +159,13 @@ source ~/.mpd/mcp.env
 # then boot dsh (web GUI: merge ~/.mpd/mcp-wave.patch.yml rows, or --patch it)
 ```
 
-Manual equivalent — two isolated targets, never one shared python/pipx env:
+Manual equivalent — each tool via pipx (each gets its own isolated env + mcp SDK):
 
 ```sh
-python3 -m pip install --target ~/.mpd/mcp-servers/wave-mcp "mcp>=2" wave-mcp
-python3 -m pip install --target ~/.mpd/mcp-servers/traceweave "mcp==1.27.0" traceweave-mcp
-export MPD_DSH_WAVE_MCP_BIN="$HOME/.mpd/mcp-servers/wave-mcp/bin/wave-mcp"
-export MPD_DSH_TRACEWEAVE_BIN="$HOME/.mpd/mcp-servers/traceweave/bin/traceweave-mcp"
+pipx install wave-mcp            # brings mcp>=2 (mcp.server.mcpserver)
+pipx install traceweave-mcp      # brings mcp==1.27.0
+export MPD_DSH_WAVE_MCP_BIN="$HOME/.local/bin/wave-mcp"
+export MPD_DSH_TRACEWEAVE_BIN="$HOME/.local/bin/traceweave-mcp"
 ```
 
 Then enable the rows (uncomment in `cordis.patch.yml`, or boot with
@@ -188,20 +188,18 @@ Row resolution (env-first, `PATH` second — never vendored):
 | `mcp-wave-mcp` | `MPD_DSH_WAVE_MCP_BIN` or `wave-mcp` | `--session` arg as above; `toolCallTimeoutMs: 120000` |
 | `mcp-traceweave` | `MPD_DSH_TRACEWEAVE_BIN` or `traceweave-mcp` | no `env` block: `VERDI_HOME`/`NOVAS_HOME`/`VCS_HOME` + license vars inherit from the dsh launching shell |
 
-**Install policy** (documented; the bundle never installs for you — no venv
-required; each tool gets its own `pip --target` dir so the two `mcp` SDK pins
-can never clash):
+**Install policy** (documented; the bundle never installs for you — no hand-made
+venv; pipx gives each tool its own isolated env so the two `mcp` SDK pins can
+never clash):
 
 ```sh
-# wave-mcp (FST/VCD lane) — isolated target with mcp>=2
-python3 -m pip install --target "$HOME/.mpd/mcp-servers/wave-mcp" "mcp>=2" wave-mcp
-# TraceWeave (VCS/FSDB lane) — isolated target pinned to mcp==1.27.0
-python3 -m pip install --target "$HOME/.mpd/mcp-servers/traceweave" "mcp==1.27.0" traceweave-mcp
-# point the rows at the isolated bins (export before starting dsh):
-export MPD_DSH_WAVE_MCP_BIN="$HOME/.mpd/mcp-servers/wave-mcp/bin/wave-mcp"
-export MPD_DSH_TRACEWEAVE_BIN="$HOME/.mpd/mcp-servers/traceweave/bin/traceweave-mcp"
+pipx install wave-mcp            # FST/VCD lane; brings mcp>=2 (mcp.server.mcpserver)
+pipx install traceweave-mcp      # VCS/FSDB lane; brings mcp==1.27.0
+# point the rows at the pipx bins (export before starting dsh):
+export MPD_DSH_WAVE_MCP_BIN="$(command -v wave-mcp)"
+export MPD_DSH_TRACEWEAVE_BIN="$(command -v traceweave-mcp)"
 # sanity (wave-mcp must see mcp.server.mcpserver):
-#   PYTHONPATH="$HOME/.mpd/mcp-servers/wave-mcp" python3 -c "import mcp.server.mcpserver"
+#   pipx runpip wave-mcp python -c "import mcp.server.mcpserver"
 # TraceWeave additionally needs the EDA env in the same shell:
 #   export VERDI_HOME=... NOVAS_HOME=... VCS_HOME=... (plus license vars)
 ```

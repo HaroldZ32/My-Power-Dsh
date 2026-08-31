@@ -84,16 +84,16 @@ sim/regress/uvm 运行后，插件会把产出的波形交给已注册的用户 
 - VCS 通道（`.fsdb` + 日志）→ `mcp__traceweave__get_sim_paths`（TraceWeave；
   传 `verif_root`、`case_name`、`sim_log`、`wave_file`）。
 
-建议接线（完整说明见团队文档；**不强制 venv** —— venv 铁律仅属 cocotb）。两个 MCP
+建议接线（完整说明见团队文档；**不强制手工 venv** —— venv 铁律仅属 cocotb）。两个 MCP
 的 `mcp` SDK 版本互相冲突（wave-mcp 需 mcp>=2 → `mcp.server.mcpserver`；TraceWeave
-锁定 mcp==1.27.0），所以各自装进独立 `pip --target` 目录：
+锁定 mcp==1.27.0），所以各自走 pipx 独立环境：
 
 ```sh
-python3 -m pip install --target "$HOME/.mpd/mcp-servers/wave-mcp" "mcp>=2" wave-mcp
-python3 -m pip install --target "$HOME/.mpd/mcp-servers/traceweave" "mcp==1.27.0" traceweave-mcp
+pipx install wave-mcp            # FST/VCD 通道；mcp>=2
+pipx install traceweave-mcp      # VCS/FSDB 通道；mcp==1.27.0
 # 或一键：node scripts/install-mcp.mjs --with-wave --activate-wave
-export MPD_DSH_WAVE_MCP_BIN="$HOME/.mpd/mcp-servers/wave-mcp/bin/wave-mcp"
-export MPD_DSH_TRACEWEAVE_BIN="$HOME/.mpd/mcp-servers/traceweave/bin/traceweave-mcp"
+export MPD_DSH_WAVE_MCP_BIN="$(command -v wave-mcp)"
+export MPD_DSH_TRACEWEAVE_BIN="$(command -v traceweave-mcp)"
 ```
 
 ## 环境备注（本机实测，2026-08）
