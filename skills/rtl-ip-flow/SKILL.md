@@ -23,6 +23,10 @@ for invocation.
 | 数字验证 (digital verification): 验证计划/环境/用例/验证调试/回归 | Verification Engineer | yes |
 | 评审 (diamonds) | Reviewer / Plan Reviewer | no (findings only) |
 
+Gate semantics (per the swimlane chart colors): 🔴 **GATE** = manual user halt
+(red diamonds — 需求评审/规格评审/发布评审/缺陷评审); 🟢 = **reviewer-only**,
+no user halt (green diamonds — 设计评审/验证评审).
+
 ## Stage 0 — opening questions (before any work)
 
 Ask the user once, batch together:
@@ -46,7 +50,7 @@ Record both answers in the requirements summary; they are binding for the whole 
   unambiguous (feature set, interface/bus, registers, clock/reset, performance, non-goals,
   acceptance criteria); produce the **可行性报告** and **需求追踪表**; settle the
   requirements specification (`templates/req-spec.md`).
-- 🔶 **需求评审 (requirements review, gate)**: user + Reviewers confirm the request,
+- 🔴 **GATE 需求评审** (manual, user halt): user + Reviewers confirm the request,
   scenarios and trace; nothing proceeds without it.
 
 ## Stage 2 — 规格设计 IP01 (spec design)
@@ -54,11 +58,19 @@ Record both answers in the requirements summary; they are binding for the whole 
 - 数字设计 — Spec Designer: **内部用户手册** per `templates/user-manual.md` (full
   product-manual granularity; the internal version is the authoritative one) +
   **DFMEA 初版** per `templates/dfmea.md`.
-- 数字验证 (parallel) — Verification Engineer: **验证计划 + 验证方案** per
-  `templates/verification-plan.md` (functional points + coverage targets mapped to manual sections).
-- 🔶 **规格评审** then 🔶 **验证评审** — user reviews the internal manual AND the
-  verification plan in one halt; no code before both pass. Revision loop repeats the
-  spec/manual, not the code.
+- 数字验证 (parallel, **verification content front-loaded into this stage**) —
+  Verification Engineer: ① drive **Socratic verification questions** at the Spec
+  Designer until the design is verifiable — every feature point, interface signal,
+  register field, boundary/exception, testability and coverage target must be
+  explicit; ② **write the conclusions back into the spec documents** (verification
+  points / testability constraints annotated into the internal user manual sections
+  and the verification plan); ③ produce 验证计划 + 验证方案 per
+  `templates/verification-plan.md`.
+- 🔴 **GATE 规格评审** (manual, user halt): user reviews the internal manual + DFMEA +
+  verification plan/scheme; no code before it passes; revision loop repeats the
+  spec/manual, never the code.
+- 🟢 验证评审 (reviewer-only): Plan Reviewer / Reviewer check the verification plan
+  against the manual — automatic, no user halt.
 
 ## Stage 3 — 代码设计 IP05 (code design)
 
@@ -71,9 +83,9 @@ Record both answers in the requirements summary; they are binding for the whole 
   difference** versus the user manual. On real divergence: stash stage-3 files
   (git stash / copy aside), re-run stage 2 to correct the internal manual, get it
   confirmed, return and redo stage 3 — never paper over the divergence.
-- 🔶 **设计评审** then 🔶 **验证评审** — user + verification review of code, detail
-  manual, validation debug results; halt before release. The verification engineer
-  reports the manual-vs-code consistency check first.
+- 🟢 **设计评审** + 🟢 **验证评审** (reviewer-only, no user halt): Reviewer / Plan
+  Reviewer check code + detail manual + validation debug results; the verification
+  engineer reports the manual-vs-code consistency check first.
 
 ## Stage 4 — 设计验证 IP08 → IP 发布 IP10 (verification and release)
 
@@ -85,9 +97,9 @@ Record both answers in the requirements summary; they are binding for the whole 
 - Track 2 — coverage per the detail design manual (verilator merge/report or VCS urg +
   fsdbreport; plan targets met or justified).
 - **设计发布**: 内部用户手册 + **外部用户手册** (public version, internal details and
-  DFMEA removed) per `templates/user-manual.md` → 🔶 **发布评审** (user review, halt).
-- **缺陷分析**: 缺陷报告 + Buglist per `templates/defect-report.md` → 🔶 **缺陷评审**
-  (Reviewer + user; closure criteria before IP10).
+  DFMEA removed) per `templates/user-manual.md` → 🔴 **GATE 发布评审** (manual, user halt).
+- **缺陷分析**: 缺陷报告 + Buglist per `templates/defect-report.md` → 🔴 **GATE 缺陷评审**
+  (Reviewer findings + user halt; closure criteria before IP10).
 - IP10 = release milestone: all reviews green, dual-track evidence committed.
 
 ## Document matrix (1. / 2. as in the swimlane chart)

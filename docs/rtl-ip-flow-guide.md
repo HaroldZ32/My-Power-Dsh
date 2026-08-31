@@ -18,8 +18,13 @@ with milestone tags 规格设计 IP01 → 代码设计 IP05 → 设计验证 IP0
 | 设计验证 IP08 | 缺陷解决 (fix defects) | 回归验证 (dual-track: functional + coverage) | — |
 | IP 发布 IP10 | 设计发布 (内部/外部用户手册) + 缺陷分析 (缺陷报告 + Buglist) | — | 🔶 发布评审 + 🔶 缺陷评审 |
 
-All diamond gates are manual: the team halts and waits for your confirmation
-(and the verification review at the design/validation gates) before continuing.
+Gate colors match the chart: 🔴 **GATE** = manual user halt (需求评审 / 规格评审 /
+发布评审 / 缺陷评审); 🟢 = reviewer-only, no user halt (设计评审 / 验证评审).
+The verification engineer also front-loads verification content into 规格设计 IP01:
+Socratic verification questions at the Spec Designer (every feature point, interface
+signal, register field, boundary/exception, testability, coverage target explicit),
+then writes the conclusions back into the spec documents. Green reviews never stop
+the flow for the user.
 
 ## Starting the flow
 
@@ -39,9 +44,12 @@ restarting the flow.
 
 ## Gates and the rollback rule
 
-- **Every 🔶 diamond is a manual gate**: the team halts and waits for your
-  confirmation (plus the verification review at the design/validation gates).
-  Revision loops repeat the documents — never the code.
+- **🔴 GATE diamonds pause for you** — 需求评审 / 规格评审 / 发布评审 / 缺陷评审:
+  the team halts and waits for your confirmation. Revision loops repeat the
+  documents — never the code.
+- **🟢 diamonds run reviewer-only** — 设计评审 / 验证评审: Reviewer / Plan
+  Reviewer check automatically (code + detail manual + validation debug /
+  verification-plan consistency); no user halt.
 - **Consistency rule**: the detail design manual and the code must carry **no
   non-essential difference** from the internal user manual. On a real divergence
   the team stashes the stage-3 files, re-runs the specification stage to correct
