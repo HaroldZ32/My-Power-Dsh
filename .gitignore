@@ -15,3 +15,19 @@ dist/mpd-package/
 
 # workspace-scoped runtime state (team/memory/plans/config) — never committed
 .mpd/
+
+# RTL phase-1 scratch: research clones (.research/) and the workspace-local cocotb venv (.venv-rtl/, .venv*)
+.research/
+.venv-rtl/
+.venv*/
+
+# verilator/cocotb build artifacts (never commit compiled objects)
+.sim_build/
+sim_build/
+obj_dir/
+*.o
+*.a
+simv_iverilog
+compile.log
+.review-tmp2/
+.review-tmp*/

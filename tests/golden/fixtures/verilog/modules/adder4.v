@@ -21,23 +21,36 @@ module adder4 (
     output wire       cout   // carry-out (overflow flag for unsigned add)
 );
 
-    // Internal carry chain. carry[0] is the module's carry-in; carry[4] is
-    // the module's carry-out. Stage i receives carry[i] and produces
-    // carry[i+1] together with sum[i].
-    wire [4:0] carry;
+    // Internal carry chain. carry0 is the module's carry-in; carry4 is the
+    // module's carry-out. Stage i receives carry<i> and produces carry<i+1>
+    // together with sum[i]. Named 1-bit wires (not slices of one vector):
+    // multiple narrow slice drivers on a single vector trip Verilator
+    // UNOPTFLAT under --coverage even for a pure DAG (review D4).
+    wire carry0, carry1, carry2, carry3, carry4;
 
     // ------------------------------------------------------------------------
     // Full adder stage i:
     //   sum[i]   = a[i] ^ b[i] ^ carry[i]
     //   carry[i+1] = (a[i] & b[i]) | (a[i] & carry[i]) | (b[i] & carry[i])
     // ------------------------------------------------------------------------
-    assign carry[0] = cin;
+    assign carry0 = cin;
 
-    assign {carry[1], sum[0]} = a[0] + b[0] + carry[0]; // stage 0 (LSB)
-    assign {carry[2], sum[1]} = a[1] + b[1] + carry[1]; // stage 1
-    assign {carry[3], sum[2]} = a[2] + b[2] + carry[2]; // stage 2
-    assign {carry[4], sum[3]} = a[3] + b[3] + carry[3]; // stage 3 (MSB)
+    // D4 fix (review round 1): the mixed concatenation-LHS + arithmetic form
+    // ({carry[i+1],sum[i]} = a+b+cin) makes Verilator see the whole carry
+    // vector as circular combinational logic (UNOPTFLAT) under --coverage,
+    // fataling the sim. The explicit ripple gate form below is the same
+    // truth table, stays Verilog-2001, matches this file's header claim
+    // ("no arithmetic operator") and stays dual-compatible with both the
+    // icarus and verilator toolchains used by the golden QA flow.
+    assign sum[0] = a[0] ^ b[0] ^ carry0;                               // stage 0 (LSB)
+    assign carry1 = (a[0] & b[0]) | (a[0] & carry0) | (b[0] & carry0);
+    assign sum[1] = a[1] ^ b[1] ^ carry1;                               // stage 1
+    assign carry2 = (a[1] & b[1]) | (a[1] & carry1) | (b[1] & carry1);
+    assign sum[2] = a[2] ^ b[2] ^ carry2;                               // stage 2
+    assign carry3 = (a[2] & b[2]) | (a[2] & carry2) | (b[2] & carry2);
+    assign sum[3] = a[3] ^ b[3] ^ carry3;                               // stage 3 (MSB)
+    assign carry4 = (a[3] & b[3]) | (a[3] & carry3) | (b[3] & carry3);
 
-    assign cout = carry[4];
+    assign cout = carry4;
 
 endmodule

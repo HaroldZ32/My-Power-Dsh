@@ -1,0 +1,4 @@
+    31.00ns WARNING  cocotb.cnt8                        PROBE early q=0 late q=1 (want 1)  -> PASS
+    31.00ns WARNING  cocotb.cnt8                        PROBE early q=0 late q=1 (want 1)  -> PASS
+                                                        ** tb_probe.probe                 PASS          31.00           0.00      26998.22  **
+                                                        ** TESTS=1 PASS=1 FAIL=0 SKIP=0                 31.00           0.00      15262.76  **

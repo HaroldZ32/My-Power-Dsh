@@ -153,7 +153,10 @@ function buildPlan(o) {
   const profiles = extractAgentTeamsProfiles(bundlePatch)
   const agentTeamsRow = {
     id: "agent-teams", name: p("packages/mpd-agent-teams-plugin/lib/index.js"),
-    config: { stateDir: ".mpd/team", memberProvider: "spawn", memberMaxDepth: 1, maxMembers: 16 },
+    config: { stateDir: ".mpd/team", memberProvider: "spawn", memberMaxDepth: 1, maxMembers: 16,
+      // SESSION-START TEAM RULE: mechanically enforce a team per mpd session
+      // (mirrors the bundle patch; see packages/mpd-agent-teams-plugin/lib/session-start.js).
+      sessionTeamPolicy: { mode: "auto", profile: "mpd", presets: ["mpd"], name: "MPD Default", approval: "required" } },
     configYaml: profiles
   }
   if (o.agentTeams !== false) rows.push(agentTeamsRow)
@@ -231,6 +234,9 @@ function selfTest() {
   const rows = plan.rows.map((r) => r.id)
   if (!rows.includes("mcp-astgrep") || !rows.includes("mpd-codegraph") || !rows.includes("agent-teams")) { console.error("[install-profile self-test] FAIL: row set"); process.exit(1) }
   if (!rows.includes("agent-teams") || plan.agentTeamsRow.config.stateDir !== ".mpd/team") { console.error("[install-profile self-test] FAIL: agent-teams row/override"); process.exit(1) }
+  // session-start team policy must ship in the agent-teams row config
+  const policy = plan.agentTeamsRow.config.sessionTeamPolicy
+  if (!policy || policy.mode !== "auto" || policy.profile !== "mpd" || !Array.isArray(policy.presets) || !policy.presets.includes("mpd")) { console.error("[install-profile self-test] FAIL: agent-teams sessionTeamPolicy"); process.exit(1) }
   if (!rows.includes("mpd-hashline")) { console.error("[install-profile self-test] FAIL: mpd-hashline row"); process.exit(1) }
   if (!rows.includes("mpd-roles") || !rows.includes("mpd-workmate") || !rows.includes("mpd-bootstrap")) { console.error("[install-profile self-test] FAIL: mpd-roles/workmate/bootstrap rows"); process.exit(1) }
   if (!plan.agentTeamsRow.name.includes("packages/mpd-agent-teams-plugin/lib/index.js")) { console.error("[install-profile self-test] FAIL: agent-teams main-code path"); process.exit(1) }

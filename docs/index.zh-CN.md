@@ -15,6 +15,7 @@
 | [`user-guide.zh-CN.md`](user-guide.zh-CN.md) | 用户 | 安装、预设、专家（roster）、workmate 库、团队模式、GUI 面板、配置。 |
 | [`architecture.zh-CN.md`](architecture.zh-CN.md) | 工程师、好奇的用户 | bundle 如何组装与挂载：patch 层、插件清单、模型路由、状态布局、web client 接线、交互流程。 |
 | [`development.zh-CN.md`](development.zh-CN.md) | 开发者 | 仓库布局、构建/测试命令、QA case 目录、门禁、打包/安装、vendor、git 模型、常见坑。 |
+| [`rtl-verif-guide.zh-CN.md`](rtl-verif-guide.zh-CN.md) | RTL 工程师、代理 | RTL 开发 Phase-1：Verible/slang-server LSP、rtl-codestyle 模板、mpd-verif 插件（iverilog/Verilator/VCS + cocotb 铁律 + 仅 VCS 的 UVM）、波形 MCP 接线、工程流程建议（草稿）、延期待办清单。 |
 | [`../AGENTS.md`](../AGENTS.md) | 代理 + 维护者 | 仓库约束手册：约定、门禁、git 模型、排障。 |
 | [`../LICENSE.md`](../LICENSE.md)、[`../LICENSE-NOTICES.md`](../LICENSE-NOTICES.md) | 所有人 | SUL-1.0 许可 + 第三方声明（采纳的 dsh-agent-teams、comment-checker）。 |
 
@@ -25,7 +26,8 @@
 - **Host 插件** —— `mpd-config-plugin`、`mpd-tools-plugin`、`mpd-modelchain-plugin`、
   `mpd-roles-plugin`、`mpd-ulw-plugin`、`mpd-hashline-plugin`、`mpd-boulder-plugin`、
   `mpd-comment-checker-plugin`、`mpd-memory-plugin`、`mpd-codegraph-plugin`、
-  `mpd-workmate-plugin`、`mpd-bootstrap-plugin`、`mpd-agent-teams-plugin`（采纳）、
+  `mpd-workmate-plugin`、`mpd-bootstrap-plugin`、`mpd-verif-plugin`（RTL 验证，
+  Plan A）、`mpd-agent-teams-plugin`（采纳）、
   `mpd-bundle-plugin`（bundle web-compat + 合并 web client）、`mpd-qa-roles-probe`（仅 QA）。
 - **MCP 服务器** —— `mpd-mcp-astgrep`、`mpd-mcp-gitbash`、`mpd-mcp-lsp`、
   `mpd-mcp-codegraph`。

@@ -26,6 +26,7 @@ import { collectArchivedTeamsActivity, collectTeamsActivity } from "./snapshot.j
 import { findTeamByCaptain } from "./state.js";
 import { formatProfilesForPrompt } from "./profiles.js";
 import { qualityPlanningPrompt } from "./quality-gates.js";
+import { installSessionTeamPolicy } from "./session-start.js";
 /** Web-server service key candidates, newest first. */
 const WEB_SERVER_KEYS = ['webServer', 'httpServer'];
 /** Workspace registry service key candidates, newest first. */
@@ -79,6 +80,18 @@ export const Config = z.object({
     maxMembers: z.natural().min(1).default(8),
     promptSectionOrder: z.natural().default(117),
     slashCommand: z.boolean().default(true),
+    // Session-start team policy: mechanically guarantee every qualifying
+    // session begins inside a team (see lib/session-start.js). Off by default
+    // so the adopted plugin keeps its upstream behavior unless a profile
+    // explicitly enables the rule.
+    sessionTeamPolicy: z.object({
+        mode: z.union([z.const('off'), z.const('auto'), z.const('instruct')]).default('off'),
+        profile: z.string(),
+        presets: z.array(z.string()),
+        name: z.string().default('MPD Default'),
+        description: z.string(),
+        approval: z.union([z.const('required'), z.const('automatic')]).default('required'),
+    }).default({ mode: 'off' }),
 });
 /** The model-facing usage policy: when and how to drive AgentTeams. */
 export function usageSectionText(toolNames, profilesText = '') {
@@ -106,6 +119,14 @@ export function apply(ctx, config) {
         memberMaxDepth: config.memberMaxDepth ?? 1,
         maxMembers: config.maxMembers ?? 8,
         profiles: config.profiles ?? {},
+        sessionTeamPolicy: {
+            mode: config.sessionTeamPolicy?.mode ?? 'off',
+            profile: config.sessionTeamPolicy?.profile,
+            presets: config.sessionTeamPolicy?.presets ?? [],
+            name: config.sessionTeamPolicy?.name ?? 'MPD Default',
+            description: config.sessionTeamPolicy?.description,
+            approval: config.sessionTeamPolicy?.approval ?? 'required',
+        },
     };
     // Provider registration is a sibling plugin's effect (`subagent-spawn` /
     // `subagent-fork` rows), which can land after this mount under the Loader's
@@ -134,6 +155,10 @@ export function apply(ctx, config) {
     });
     // Exported for TDD / docs checks. Not a public runtime API.
     const agentTeamsRuntime = registerAgentTeamsTools(ctx, resolved);
+    // Session-start team policy (off by default; the bundle enables it for the
+    // MPD main agent). Installed AFTER tool registration so the shared profile
+    // init path is available for provisioning.
+    installSessionTeamPolicy(ctx, resolved);
     // Deterministic activation surfaces: the closed-namespace `/agent-teams`
     // host command (surfaces in the Web GUI slash menu via the Harness
     // ui-commands client) and the plain-text gesture boundary for surfaces
