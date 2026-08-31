@@ -75,9 +75,10 @@
     #     serverName: wave_mcp
     #     transport: stdio
     #     command: !!js 'process.env.MPD_DSH_WAVE_MCP_BIN || "wave-mcp"'
-    #     args:
-    #       - "--session"
-    #       - !!js 'process.env.MPD_DSH_WAVE_MCP_SESSION || (process.env.DSH_HOME ? process.env.DSH_HOME + "/wave-mcp" : ".wave-mcp")'
+    #     # NO --session at startup: wave-mcp 0.1.1 treats --session as an
+    #     # OPTIONAL auto-open and exits with FileNotFoundError when the dir has
+    #     # no session.json yet. The plugin creates the session after a sim run
+    #     # via mcp__wave_mcp__prepare_session.
     #     toolCallTimeoutMs: 120000
     # - id: mcp-traceweave
     #   name: '@deepseek-ai/dsh-mcp-client'
