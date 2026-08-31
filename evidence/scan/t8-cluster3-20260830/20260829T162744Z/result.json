@@ -1,0 +1,60 @@
+{
+  "task": "t8",
+  "cluster": 3,
+  "assignee": "Junior Engineer",
+  "date": "2026-08-29",
+  "scope": "root docs bilingual pairs & repo hygiene",
+  "findingsFixed": {
+    "F-08": {
+      "severity": "high",
+      "fix": "LICENSE.md:5 restored 'oh-my-opencode Software' (upstream verbatim; pre-scrub 7d8f910^ text). dist/mpd-package copy left to cluster-4 repack per report.",
+      "evidence": "git diff LICENSE.md shows 1-line change; matches upstream LICENSE.md:5 and 7d8f910^:LICENSE.md:5"
+    },
+    "F-09": {
+      "severity": "high",
+      "fix": "Restored 3 vendored ATTRIBUTION.md files to byte-identical upstream text: skills/ultimate-browsing (lines 3,41), skills/ulw-research (lines 3-4), skills/frontend (lines 3,6). @the upstream host/shared-skills -> @oh-my-opencode/shared-skills; 'the the upstream project project' -> 'the oh-my-openagent project'.",
+      "evidence": "diff -q vs .mpd-dsh/upstream/packages/shared-skills/skills/<name>/ATTRIBUTION.md = identical (verified ALL VERBATIM RESTORES OK)"
+    },
+    "F-10": {
+      "severity": "high",
+      "fix": "skills/coding-agent-sessions/SKILL.md:20 restored upstream table row 'OpenCode / oh-my-openagent (formerly oh-my-opencode) storage'; skills/ast-grep/README.md:133 restored upstream acknowledgment line '[`omo` (oh-my-opencode)](...)'. Note: SKILL.md:123 keeps intentional port adaptation (~/.mpd state dir, consistent with references/senpi.md + all-platforms.md).",
+      "evidence": "diff vs upstream: ast-grep README identical; SKILL.md differs only at line 123 (intentional .mpd port adaptation)"
+    },
+    "F-11": {
+      "severity": "medium",
+      "fix": ".gitignore gains '.credentials.yaml' (security hardening; scrub claim was false — git check-ignore previously exit 1).",
+      "evidence": "git check-ignore -v .credentials.yaml now matches .gitignore"
+    },
+    "F-12": {
+      "severity": "low",
+      "fix": "tests/golden/out/plans/mpd-summary-plan.md:8 garbled prose 'Neither upstream the upstream project...' -> 'Neither upstream oh-my-openagent...' (pre-scrub original name). hello.txt + integration-review.md: DOCUMENTED as intentional tracked artifacts (hello.txt cited as ULW-loop evidence in docs/bline-report.md; integration-review.md reviews sample.c fixture still used by mcp-call.mjs) — not residue, kept.",
+      "evidence": "git ls-files tests/golden/out/ shows both tracked; docs/bline-report.md:11 references hello.txt; skills/dsh-qa/scripts/mcp-call.mjs:13 references sample.c"
+    },
+    "F-13": {
+      "severity": "low",
+      "fix": "Deleted 3 stale local branches fully merged into dev and never pushed: feature/plan-f-roles-subagent, feature/team-agent-teams-roster, fix/roster-name-consistency (git branch -d).",
+      "evidence": "git merge-base --is-ancestor <b> dev = merged for all 3; git branch -r shows no remote refs; post-delete git branch shows only dev"
+    },
+    "F-14": {
+      "severity": "low",
+      "fix": "Added .gitattributes pinning '* text=auto' + '*.md/*.ts/*.yml text eol=lf' (preventive EOL normalization; repo had no CRLF).",
+      "evidence": ".gitattributes created (new file)"
+    },
+    "F-15": {
+      "severity": "low",
+      "fix": "RECORD ONLY (no repo change): git author identity mixed — 96 commits 'haroldzhao' vs 25 'Harold Zhao'; recommend setting user.name consistently in local git config.",
+      "evidence": "recommendation recorded, no file changed"
+    }
+  },
+  "cleanConfirmations": {
+    "docsBilingual": "t1 PASS — all 24 human-facing EN+zh-CN pairs present with switch links under title; no missing pairs to add at root level",
+    "cjkLeak": "grep -nP '[\\x{4e00}-\\x{9fff}]' on all changed files = NO CJK; English-only agent-facing content holds"
+  },
+  "gates": {
+    "bun run typecheck": {
+      "command": "bun run typecheck",
+      "exitCode": 0,
+      "result": "tsgo --noEmit: 0 errors (root typecheck gate PASS)"
+    }
+  }
+}

@@ -5,7 +5,7 @@
 
 **What you'll get:** Add a new self-developed skill, mpd-summary, to the mpd-dsh repo: one SKILL.md (with name/description frontmatter and 5 usage rules), plus one isolated dsh-qa load case (with an offline self-test), turning "output a structured summary after a task/session ends" into a formal agent skill. Once done, the skill is auto-discovered by DSH and loadable in real sessions.
 
-**Why this approach:** Neither upstream the upstream project (the locked commit nor the dev branch) has mpd-summary, so this is a self-developed new skill rather than a vendored one; the repo's skills directory (repo-root `skills/`, provisioned into $DSH_HOME/skills by mpd-bootstrap) is already the active skill corpus, so putting the new skill under `skills/` takes effect with zero config, and it is verified with the repo's existing dsh-qa discipline (isolation + evidence written to disk) without changing any locked assets.
+**Why this approach:** Neither upstream oh-my-openagent (the locked commit nor the dev branch) has mpd-summary, so this is a self-developed new skill rather than a vendored one; the repo's skills directory (repo-root `skills/`, provisioned into $DSH_HOME/skills by mpd-bootstrap) is already the active skill corpus, so putting the new skill under `skills/` takes effect with zero config, and it is verified with the repo's existing dsh-qa discipline (isolation + evidence written to disk) without changing any locked assets.
 
 **What it will NOT do:** Will not change VENDOR_LOCK.json / bundle config / any vendored skills; will not add any TS source or plugin code; will not touch the golden sample area; the planner (Prometheus) will not create SKILL.md itself — SKILL.md is created by the worker session that executes the plan.
 

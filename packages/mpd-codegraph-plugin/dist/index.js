@@ -1,10 +1,9 @@
-// src/index.ts
+// packages/mpd-codegraph-plugin/src/index.ts
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
-import { writeFileSync } from "node:fs";
 var name = "mpd-codegraph";
 var inject = [];
 function packageCodegraphPath() {

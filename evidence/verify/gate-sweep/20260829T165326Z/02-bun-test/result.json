@@ -1,0 +1,8 @@
+{
+  "gate": "02-bun-test",
+  "ok": true,
+  "exit": 0,
+  "command": "bun test packages",
+  "note": "64 pass / 3 skip / 0 fail, 422 expect (13 files)",
+  "evidenceDir": "evidence/verify/gate-sweep/20260829T165326Z/02-bun-test"
+}

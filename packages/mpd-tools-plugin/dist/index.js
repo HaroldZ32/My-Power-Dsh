@@ -1,4 +1,4 @@
-// packages/mpd-tools-plugin/src/index.ts
+// src/index.ts
 import { existsSync, readFileSync } from "node:fs";
 var name = "mpd-tools";
 var inject = ["tools"];
@@ -41,11 +41,13 @@ function apply(ctx, config = {}) {
     const text = blocksToText(out.content ?? result?.content);
     if (text.length <= maxBytes)
       return out;
-    const head = text.slice(0, Math.floor(maxBytes * 0.7));
-    const tail = text.slice(-Math.floor(maxBytes * 0.3));
-    return { ...out, content: [{ type: "text", text: head + `
+    const banner = `
 ... [mpd-tools truncated ` + text.length + " chars; keep " + maxBytes + ` budget; tail follows] ...
-` + tail }] };
+`;
+    const budget = Math.max(0, maxBytes - banner.length);
+    const head = budget > 0 ? text.slice(0, Math.floor(budget * 0.7)) : "";
+    const tail = budget > 0 ? text.slice(-Math.floor(budget * 0.3)) : "";
+    return { ...out, content: [{ type: "text", text: head + banner + tail }] };
   });
   ctx.on("tools/post-execute", async (exec, result, next) => {
     const out = await next();

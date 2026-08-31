@@ -1,7 +1,7 @@
 # ATTRIBUTION / NOTICE
 
-This skill (`ulw-research`, part of `@the upstream host/shared-skills`) is authored by
-the the upstream project project. One design idea is adapted from a third-party project,
+This skill (`ulw-research`, part of `@oh-my-opencode/shared-skills`) is authored by
+the oh-my-openagent project. One design idea is adapted from a third-party project,
 credited below. No third-party source is vendored here — only the verification idea
 is adapted into this skill's prompt contract.
 

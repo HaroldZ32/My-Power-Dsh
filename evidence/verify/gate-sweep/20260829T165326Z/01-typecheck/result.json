@@ -1,0 +1,8 @@
+{
+  "gate": "01-typecheck",
+  "ok": true,
+  "exit": 0,
+  "command": "bun run typecheck",
+  "note": "tsgo --noEmit, 0 errors",
+  "evidenceDir": "evidence/verify/gate-sweep/20260829T165326Z/01-typecheck"
+}

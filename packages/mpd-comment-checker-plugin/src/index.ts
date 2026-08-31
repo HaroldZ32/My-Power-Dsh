@@ -12,6 +12,7 @@ import { existsSync, readFileSync } from "node:fs"
 import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
 import { dirname, join, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
 
 export const name = "mpd-comment-checker"
 export const inject = ["tools"]
@@ -37,7 +38,7 @@ function textBlock(text: string): any { return [{ type: "text", text }] }
 
 function repoRoot(): string {
   // this plugin's dist is <root>/packages/mpd-comment-checker-plugin/dist/index.js
-  return dirname(dirname(dirname(dirname(new URL(import.meta.url).pathname))))
+  return dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 }
 
 function platformKey(): string {

@@ -6,9 +6,10 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)))
-// Legacy layout assumed repoRoot = <the upstream checkout>/.mpd/port/mpd-dsh. The repo now lives
-// anywhere; point MPD_UPSTREAM_ROOT at the the upstream checkout explicitly (or keep the old relative default).
-const upstreamRoot = process.env.MPD_UPSTREAM_ROOT || join(repoRoot, "..", "..", "..")
+// Legacy layout assumed repoRoot = <the upstream checkout>/.mpd/port/mpd-dsh. Auto-detect the
+// pinned checkout at .mpd-dsh/upstream; point MPD_UPSTREAM_ROOT at the checkout explicitly
+// when it lives elsewhere (or keep the old relative default).
+const upstreamRoot = process.env.MPD_UPSTREAM_ROOT || (existsSync(join(repoRoot, ".mpd-dsh", "upstream", ".git")) ? join(repoRoot, ".mpd-dsh", "upstream") : join(repoRoot, "..", "..", ".."))
 if (!existsSync(join(upstreamRoot, ".git"))) {
   console.error("[verify-vendor] FAIL - upstream checkout not found at " + upstreamRoot)
   console.error("[verify-vendor] set MPD_UPSTREAM_ROOT to the oh-my-openagent checkout pinned to " + JSON.parse(readFileSync(join(repoRoot, "VENDOR_LOCK.json"), "utf8")).upstreamCommitSha)

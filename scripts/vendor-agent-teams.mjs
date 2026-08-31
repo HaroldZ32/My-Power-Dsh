@@ -60,7 +60,11 @@ function rewriteFile(file) {
     out = out.split(`from '${spec}'`).join(`from '${target}'`)
     out = out.split(`from "${spec}"`).join(`from '${target}'`)
     out = out.split(`import '${spec}'`).join(`import '${target}'`)
+    out = out.split(`import "${spec}"`).join(`import '${target}'`)
     out = out.split(`import("${spec}")`).join(`import('${target}')`)
+    out = out.split(`import('${spec}')`).join(`import('${target}')`)
+    out = out.split(`require("${spec}")`).join(`require('${target}')`)
+    out = out.split(`require('${spec}')`).join(`require('${target}')`)
   }
   if (out !== src) writeFileSync(file, out)
 }
@@ -111,9 +115,9 @@ function main() {
   }
   // report any residual bare imports (should be only the client bundle + type-only)
   const residual = walk(join(VENDOR, "lib")).concat(walk(DEPS)).filter((f) => !f.includes("client.js"))
-    .map((f) => ({ f, m: readFileSync(f, "utf8").match(/from ["']([^"'][^"']*?)["']/g) || [] }))
+    .map((f) => ({ f, m: readFileSync(f, "utf8").match(/(?:from|require\()\s*["']([^"'][^"']*?)["']/g) || [] }))
     .flatMap(({ f, m }) => m.map((x) => f.replace(repoRoot, "<repo>") + " :: " + x))
-    .filter((x) => /from ['"]@|from ['"]zod|from ['"]@standard/.test(x))
+    .filter((x) => /(?:from|require\()\s*["']@|(?:from|require\()\s*["']zod|(?:from|require\()\s*["']@standard/.test(x))
   console.log("[vendor-agent-teams] residual bare imports (excluding client): " + residual.length)
   residual.forEach((x) => console.log("  " + x))
 }

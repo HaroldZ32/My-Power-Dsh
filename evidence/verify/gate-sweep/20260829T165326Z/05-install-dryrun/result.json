@@ -1,0 +1,8 @@
+{
+  "gate": "05-install-dryrun",
+  "ok": true,
+  "exit": 0,
+  "command": "node scripts/install-profile.mjs --dry-run",
+  "note": "DRY-RUN done (nothing written)",
+  "evidenceDir": "evidence/verify/gate-sweep/20260829T165326Z/05-install-dryrun"
+}

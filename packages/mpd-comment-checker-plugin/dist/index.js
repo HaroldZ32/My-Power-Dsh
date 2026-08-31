@@ -1,8 +1,9 @@
-// src/index.ts
+// packages/mpd-comment-checker-plugin/src/index.ts
 import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 var name = "mpd-comment-checker";
 var inject = ["tools"];
 function mergedConfig(ctx, config) {
@@ -22,7 +23,7 @@ function textBlock(text) {
   return [{ type: "text", text }];
 }
 function repoRoot() {
-  return dirname(dirname(dirname(dirname(new URL(import.meta.url).pathname))));
+  return dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))));
 }
 function platformKey() {
   const arch = process.arch === "x64" ? "x64" : process.arch;

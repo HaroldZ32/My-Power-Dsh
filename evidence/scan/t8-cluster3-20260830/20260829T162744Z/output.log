@@ -1,0 +1,36 @@
+[2026-08-29T16:27:44Z] t8 cluster-3 fixes (Junior Engineer) — output log
+============================================================
+
+## Changes applied (8 files + 1 new, 11 insertions / 10 deletions)
+
+  M .gitignore                                  (+1)  F-11: add .credentials.yaml
+  M LICENSE.md                                  (2±)  F-08: "oh-my-opencode Software" restored
+  M skills/ast-grep/README.md                   (2±)  F-10: upstream acknowledgment line 133
+  M skills/coding-agent-sessions/SKILL.md       (2±)  F-10: upstream table row line 20
+  M skills/frontend/ATTRIBUTION.md              (4±)  F-09: verbatim restore (lines 3,6)
+  M skills/ultimate-browsing/ATTRIBUTION.md     (4±)  F-09: verbatim restore (lines 3,41)
+  M skills/ulw-research/ATTRIBUTION.md          (4±)  F-09: verbatim restore (lines 3-4)
+  M tests/golden/out/plans/mpd-summary-plan.md  (2±)  F-12: prose fix line 8
+  A .gitattributes                                    F-14: EOL pinning (new)
+
+## Verifications
+
+1. Verbatim restore check (vs .mpd-dsh/upstream/packages/shared-skills/skills/):
+   - ultimate-browsing/ATTRIBUTION.md  diff -q -> identical
+   - ulw-research/ATTRIBUTION.md       diff -q -> identical
+   - frontend/ATTRIBUTION.md           diff -q -> identical
+   - ast-grep/README.md                diff -q -> identical
+   - coding-agent-sessions/SKILL.md    differs only at line 123 (~/.mpd) = INTENTIONAL port adaptation (references/senpi.md, all-platforms.md consistent)
+2. LICENSE.md:5 now == upstream LICENSE.md:5 and == pre-scrub 7d8f910^:LICENSE.md:5.
+3. .gitignore: git check-ignore -v .credentials.yaml now matches.
+4. Branch hygiene: 3 stale branches (feature/plan-f-roles-subagent, feature/team-agent-teams-roster, fix/roster-name-consistency) verified merged into dev (git merge-base --is-ancestor) and never pushed (no remote refs) -> deleted via git branch -d. Remaining: dev only.
+5. CJK leak check: grep -P [\x{4e00}-\x{9fff}] over all changed files -> NO matches (English-only holds).
+6. Gate: bun run typecheck -> tsgo --noEmit exit 0 (0 errors).
+
+## Recorded-only recommendations (no repo change)
+- F-15: git author identity mixed (96x haroldzhao / 25x Harold Zhao) — set user.name consistently in local config.
+
+## Notes
+- dist/mpd-package/LICENSE.md sync is cluster-4 repack (F-08 note) — not hand-edited here.
+- VENDOR_LOCK re-lock (F-24) belongs to cluster 4 after skills treeSha changes — not done here.
+- tests/golden/out/hello.txt + integration-review.md are TRACKED, referenced artifacts (ULW-loop evidence in docs/bline-report.md; sample.c review for mcp-call.mjs) — kept, documented, not residue.

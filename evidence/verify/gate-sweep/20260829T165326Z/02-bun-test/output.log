@@ -1,0 +1,108 @@
+### gate 02: bun test packages
+start: 2026-08-29T16:53:54Z
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-ulw-plugin/test/engine.test.ts:
+(pass) engine policy: plan -> round -> verify -> quality gate with ledger [14.48ms]
+(pass) engine alias and 2-fruitless-waves stop [0.53ms]
+(pass) DeepSeek V4 / DSH contract: role text in prompt (no persona field), pro for planner/reviewer, compact handoff [3.45ms]
+
+packages/mpd-memory-plugin/test/memory.test.ts:
+(pass) git backend: write -> commit -> read -> reflection due [59.02ms]
+(pass) svn backend REAL svn CLI: repo create, checkout, commit, log [143.40ms]
+(pass) both vcs: commits to git and svn [188.79ms]
+(pass) svn backend wiring with fake svn CLIs [14.16ms]
+
+packages/mpd-config-plugin/test/config.test.ts:
+(pass) stripJsonc removes comments and trailing commas [0.53ms]
+(pass) stripJsonc keeps comments inside strings [0.07ms]
+(pass) deepMerge project wins, nested merged, pollution safe [0.30ms]
+(pass) mpd_config_get result is lossless JSON for a missing key (value null, never undefined) [1.20ms]
+(pass) mpdConfig service get resolves dot-paths (consistent with mpd_config_get) [0.62ms]
+
+packages/mpd-roles-plugin/test/roles.test.ts:
+(pass) roster: 11 roles, unique ids, non-empty chains and fields [0.18ms]
+(pass) persona assets exist for every role and contain real instructions [0.70ms]
+(pass) normalizeRoleKey: canonical, chain keys and legacy mpd- ids [0.12ms]
+(pass) mpdRoles service: list 11, get resolves aliases, unknown is null [0.78ms]
+(pass) mpd_role_persona returns the extracted persona text [0.30ms]
+(pass) mpd_role_spawn: read-only roles get write-deny toolFilter, workers none [1.83ms]
+(pass) mpd_roles_list returns the full roster summary [0.40ms]
+(pass) read-only deny list covers every write-capable tool (no shell/AST/LSP write bypass) [0.34ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/scope-semantics.test.mjs:
+(pass) B5: a directory pattern covers its contents WITHOUT a trailing slash [0.32ms]
+(pass) B5: trailing slash and non-trailing slash are equivalent [0.06ms]
+(pass) B5: exact file patterns still match exactly, siblings and suffixes do not [0.07ms]
+(pass) B5: root pattern matches everything; illegal/absolute patterns never match [0.07ms]
+(pass) B5: classifyChangedPath — directory inScope covers files, outOfScope wins [0.42ms]
+(pass) B6: completion reports ALL undeclared paths at once with the owning task id and a fix hint [0.71ms]
+(pass) B6: completion passes when a directory pattern (no trailing slash) covers every changed path [0.12ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/quality-loop.test.mjs:
+(pass) Fix1: review auto-wires reviewedTaskId into dependencies (premature dispatch) [0.83ms]
+(pass) Fix1: repair auto-wires sourceTaskId into dependencies [0.14ms]
+(pass) Fix2: unsatisfiedDependencies treats cancelled as satisfied, failed still blocks [0.09ms]
+(pass) Fix2: pending dependents blocked only by cancelled deps are cascaded (no deadlock) [0.45ms]
+(pass) Fix3: planQualityFollowUp links reasonTaskId and reason reaches the repair prompt [1.48ms]
+(pass) Fix4: reject without a completed source notifies the captain only (no repair, no escalation) [0.11ms]
+(pass) Fix4: genuine reject of a completed source still escalates [0.07ms]
+(pass) Fix3b: reasonTaskId / reassignReason survive task validation [0.21ms]
+(pass) Fix3c: assignmentPrompt renders reassignReason and captain guidance digest [0.43ms]
+
+packages/mpd-agent-teams-plugin/test/workmate-key.test.ts:
+(pass) workmateKey maps the five multi-word roster members to kebab keys [0.13ms]
+(pass) workmateKey mirrors sanitizeName edge cases [0.05ms]
+
+packages/mpd-boulder-plugin/test/boulder.test.ts:
+(pass) session ids are dsh-prefixed by default [0.12ms]
+(pass) start, timer, complete lifecycle [2.40ms]
+(pass) plan progress parses TODOs and verification wave [1.60ms]
+(pass) mpd_boulder_status omits planProgress when null (lossless JSON contract) [0.96ms]
+
+packages/mpd-workmate-plugin/test/workmate.test.ts:
+(pass) sanitizeName / capText / autoNote / scoreMatch units [0.75ms]
+(pass) init → list → reflect → match lifecycle with a sandbox HOME [5.64ms]
+(pass) spawn carries persona+memory+note, reflect instruction, readonly deny, own route [1.42ms]
+(pass) workmate library root is under HOME and not in cwd [0.33ms]
+
+packages/mpd-modelchain-plugin/test/modelchain.test.ts:
+(pass) DEFAULT_CHAINS uses kebab-case keys and only deepseek-official providers [0.13ms]
+(pass) resolveRole resolves kebab-case and legacy camelCase keys to the same chain [0.27ms]
+(pass) mpd_modelchain_resolve resolves kebab keys and drops the dead skipped field [0.62ms]
+(pass) modelchain.sisyphus-junior config key is resolved through the mpdConfig service [0.36ms]
+
+packages/mpd-tools-plugin/test/tools.test.ts:
+(pass) write-guard allows first write to a new file [0.35ms]
+(pass) write-guard allows idempotent rewrite of identical content [0.12ms]
+(pass) write-guard denies silent overwrite of differing content [0.12ms]
+(pass) write-guard allows idempotent rewrite of a >1MB file (full-file compare) [4.21ms]
+(pass) truncation output (incl. banner) never exceeds truncateMaxBytes [0.83ms]
+(pass) truncation with a budget smaller than the banner adds no head/tail slices [0.10ms]
+(pass) truncation keeps head and tail slices plus the banner [0.10ms]
+(pass) truncation passes through outputs within the budget unchanged [0.16ms]
+
+packages/mpd-hashline-plugin/test/hashline.test.ts:
+(pass) hashline view shows LINE#HASH|content [0.68ms]
+(pass) anchored replace on plain content [1.89ms]
+(pass) mismatched anchor throws [0.43ms]
+(pass) append and prepend anchored [0.29ms]
+(pass) replace range with end anchor [0.49ms]
+(pass) unified diff shape [0.39ms]
+
+packages/mpd-comment-checker-plugin/test/comment-checker.test.ts:
+(skip) binary resolves from toolchain
+(skip) comment file triggers detection (exit 2)
+(skip) clean file passes (exit 0)
+
+3 tests skipped:
+(skip) binary resolves from toolchain
+(skip) comment file triggers detection (exit 2)
+(skip) clean file passes (exit 0)
+
+ 64 pass
+ 3 skip
+ 0 fail
+ 422 expect() calls
+Ran 67 tests across 13 files. [686.00ms]
+gate02_exit=0

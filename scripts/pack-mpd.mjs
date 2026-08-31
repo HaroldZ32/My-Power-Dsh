@@ -28,11 +28,16 @@ const PLUGIN_PKGS = [
 const MCP_PKGS = ["mpd-mcp-astgrep", "mpd-mcp-gitbash", "mpd-mcp-lsp", "mpd-mcp-codegraph"]
 
 function cpDist() {
+  const missing = []
   for (const p of [...PLUGIN_PKGS, ...MCP_PKGS]) {
     const src = join(repoRoot, "packages", p, "dist")
-    if (!existsSync(src)) continue
+    if (!existsSync(src)) { missing.push(p); continue }
     mkdirSync(join(outDir, "packages", p), { recursive: true })
     cpSync(src, join(outDir, "packages", p, "dist"), { recursive: true })
+  }
+  if (missing.length > 0) {
+    console.error("[pack-mpd] FAIL: missing dist for " + missing.join(", ") + " — run bun build / scripts/build-mcp.mjs first; a bundle must never ship without a plugin")
+    process.exit(1)
   }
 }
 
@@ -52,7 +57,9 @@ function cpAssets() {
   // the adopted agent-teams plugin is FIRST-CLASS MAIN CODE under
   // packages/mpd-agent-teams-plugin: copy its whole body (lib + _deps + assets +
   // LICENSE + READMEs) so the bundle is self-contained under any install layout.
-  cpSync(join(repoRoot, "packages", "mpd-agent-teams-plugin"), join(outDir, "packages", "mpd-agent-teams-plugin"), { recursive: true })
+  // Exclude test/self-fix-tests dirs: they are dev-only and must not ship in the
+  // bundle (avoids packing bloat AND the dist test-sweep duplication).
+  cpSync(join(repoRoot, "packages", "mpd-agent-teams-plugin"), join(outDir, "packages", "mpd-agent-teams-plugin"), { recursive: true, filter: (s) => !/(^|\/)(test|self-fix-tests)(\/|$)/.test(s) })
   // the bundle's combined web client (adopted agent-teams panel + workmate library),
   // composed by scripts/build-mpd-client.mjs — served as @mpd-dsh/mpd's ./client
   cpSync(join(repoRoot, "packages", "mpd-bundle-plugin", "client.js"), join(outDir, "packages", "mpd-bundle-plugin", "client.js"))

@@ -130,7 +130,7 @@ CI runs the matrix on every push: `{macos-latest, ubuntu-latest, ubuntu-22.04, w
 
 ## Acknowledgments
 
-- [`the upstream project` (GitHub `code-yeongyu`, see README provenance)](https://github.com/code-yeongyu/oh-my-openagent) — `src/tools/ast-grep/` is the original tool implementation; this skill is a port of its pattern-hint detection and two-pass-write strategy.
+- [`omo` (oh-my-opencode)](https://github.com/code-yeongyu/oh-my-opencode) — `src/tools/ast-grep/` is the original tool implementation; this skill is a port of its pattern-hint detection and two-pass-write strategy.
 - [`pi-extensions/pi-ast-grep`](https://github.com/code-yeongyu/pi-extensions) — sibling Node port; the helper's binary-resolution cascade is modelled on it.
 - [ast-grep](https://github.com/ast-grep/ast-grep) — the CLI. All structural matching power comes from it.
 - [Anthropic skills](https://docs.anthropic.com/en/docs/claude-code/skills) — the `SKILL.md` + `references/` packaging convention.

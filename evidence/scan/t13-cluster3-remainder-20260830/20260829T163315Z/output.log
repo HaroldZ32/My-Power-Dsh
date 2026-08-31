@@ -1,0 +1,31 @@
+[2026-08-29T16:33:15Z] t13 declaration + verification (Junior Engineer) — output log
+============================================================
+
+Task kind: declaration of the cluster-3 remainder (F-08..F-11, F-14). No files were
+re-modified: all fixes were already in the tree (applied earlier in this cluster) and are
+here verified and declared.
+
+## Verification results
+
+1. F-08 LICENSE.md:5 -> "All third party components incorporated into the oh-my-opencode
+   Software are licensed under the original license"  [PASS]
+2. F-09 ATTRIBUTION verbatim: diff -q vs upstream .mpd-dsh/upstream/packages/shared-skills/skills/
+   for ultimate-browsing, ulw-research, frontend -> "ALL 3 ATTRIBUTION IDENTICAL"  [PASS]
+3. F-10 SKILL.md:20 -> "OpenCode / oh-my-openagent (formerly oh-my-opencode) storage";
+   ast-grep README:133 -> "[`omo` (oh-my-opencode)](...)"  [PASS]
+4. F-11 git check-ignore -v .credentials.yaml -> ".gitignore:15:.credentials.yaml" (exit 0)  [PASS]
+5. F-14 .gitattributes present with "* text=auto" + "*.md/*.ts/*.yml text eol=lf"  [PASS]
+6. Scrub-marker sweep ("the the upstream", "@the upstream host", "formerly the upstream host")
+   over all 7 declared files -> CLEAN (no matches)  [PASS]
+
+## Gate
+
+- bun run typecheck (tsgo --noEmit): EXIT 0, 0 errors.  [PASS]
+
+## Notes
+
+- Declared paths: LICENSE.md, .gitignore, .gitattributes, skills/ultimate-browsing,
+  skills/ulw-research, skills/frontend, skills/coding-agent-sessions, skills/ast-grep.
+- F-12 (golden prose) declared by t7; F-13 (branch deletion) done with evidence; F-15 recorded
+  as recommendation only. VENDOR_LOCK re-lock (F-24) belongs to cluster 4 (skills treeSha
+  changed by F-09/F-10) — not touched here.

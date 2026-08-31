@@ -1,0 +1,31 @@
+[2026-08-29T16:53-16:57Z] t10 full gate sweep (Junior Engineer) — summary log
+============================================================================
+
+All 6 AGENTS.md §4 gates PASS (exit 0). No defects found. Evidence per gate:
+evidence/verify/gate-sweep/20260829T165326Z/<gate>/{result.json, output.log}
+
+Gate results:
+1. 01-typecheck   bun run typecheck          exit 0 — tsgo --noEmit, 0 errors
+2. 02-bun-test    bun test packages          exit 0 — 64 pass / 3 skip / 0 fail, 422 expect (13 files)
+   (3 skips = comment-checker binary-dependent tests, consistent with t3 baseline)
+3. 03-test-qa     bun run test:qa            exit 0 — all 17 dsh-qa --self-test scripts passed
+4. 04-verify-vendor node scripts/verify-vendor.mjs  exit 0 — [verify-vendor] PASS, all 6 assets OK
+   (confirms F-24 re-lock by cluster 4: VENDOR_LOCK treeSha/sha256 match .mpd-dsh/upstream)
+5. 05-install-dryrun node scripts/install-profile.mjs --dry-run  exit 0 — "DRY-RUN done (nothing
+   written)"; no writes performed (git status shows no installer-staged files outside known changes)
+6. 06-boot-check  dsh --profile headless --dump-config  exit 0 — isolated DSH_HOME (mktemp,
+   mpd-gatesweep-*), credentials copied ONCE, dev-flavor bundle patch overlay + MPD_DSH_* env pins;
+   19/19 expected bundle rows mounted (mcp-astgrep, mcp-lsp, mcp-codegraph, mpd-web-compat,
+   mpd-config, mpd-tools, mpd-modelchain, mpd-roles, mpd-ulw, mpd-hashline, mpd-boulder,
+   mpd-comment-checker, mpd-codegraph, mpd-memory, mpd-workmate, mpd-bootstrap, agent-teams,
+   mcp-context7, mcp-grepapp); dump 20752 bytes
+
+Isolation & secrets:
+- Boot check ran with DSH_HOME=sandbox (asserted dshHomeSandbox:true, sandboxPrefix:true,
+  realHomeUntouched:true in 06-boot-check/result.json); real ~/.dsh never read/written beyond
+  the sanctioned one-time credentials copy.
+- Secrets scan: grep -rInE '(api[_-]?key|token|secret|sk-...) ' over all gate logs — only the
+  'token-meter' plugin row id in the boot dump matched (a cordis plugin name, not a credential);
+  no key values echoed anywhere.
+
+Defects: NONE (empty list). The fixed tree passes the full §4 gate sweep.
