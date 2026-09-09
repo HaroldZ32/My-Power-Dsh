@@ -60,8 +60,11 @@ mpd 插件（含 codegraph 自动初始化）、采纳的 agent-teams（团队 +
   note 匹配得足够好（`matched=false`），应新建一个 workmate 而不是强行弱匹配。
   在团队里，以 workmate 命名的成员会自动获得其 persona/memory 注入（
   `packages/mpd-agent-teams-plugin` 中打过补丁的 `memberPersona`）。
-- `mpd-bootstrap` 首次启动自动复制 `mpd` 预设 + skill 语料（版本戳：升级包版本并重新
-  打包即可刷新已安装副本）。
+- **整体安装、整体卸载。** 一条 `dsh plugin add dist/mpd-package` 同时装好全部插件行与资产：
+  `mpd` preset 由 `<bundle>/presets` 供给（patch 把 preset 名册的根指向该目录），skill 语料库由
+  `<bundle>/skills` 供给（`mpd-bootstrap` 行注册 `ctx.skills` provider）。不再向 `$DSH_HOME` 复制任何内容，
+  因此 `dsh plugin remove @mpd-dsh/mpd` 会连同行、preset 与 skills 一起移除，不留残留；只有 workmate 库
+  （`~/.mpd/workmate`，属于你自己的演化 agent）保留。
 
 **两条硬规则**
 1. 工程遵循上游纪律：bun test / tsgo 门禁、隔离 QA、证据落在

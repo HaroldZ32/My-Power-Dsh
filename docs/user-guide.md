@@ -17,6 +17,27 @@ dsh plugin --profile web add <path-or-name-of-@mpd-dsh/mpd>
 
 Then start DSH and select the **MPD (Main Working Agent)** preset.
 
+### Uninstall (one command, no residue)
+
+```bash
+dsh plugin --profile <mpd|web> remove @mpd-dsh/mpd
+```
+
+The bundle installs as ONE unit and uninstalls as ONE unit, skills included: the
+plugin rows come from the bundle patch, the `mpd` preset is served from
+`<bundle>/presets` (the patch roots the preset roster there) and the skill corpus
+from `<bundle>/skills` (the `mpd-bootstrap` row registers a `ctx.skills`
+provider). Nothing is copied into `$DSH_HOME`, so removal takes the rows, the
+preset and the skills with it — the stock preset roster (`default: standard`)
+returns and `$DSH_HOME/skills` / `$DSH_HOME/.agent-presets` stay as they were.
+What deliberately survives is YOUR data: the workmate library (`~/.mpd/workmate`)
+and per-workspace `.mpd/` state.
+
+Upgrading from a bundle `<= 0.2.6` (which copied presets + skills into
+`$DSH_HOME`): the first boot of `>= 0.3.0` removes those stamped copies itself.
+Unstamped copies left by the legacy `scripts/install-profile.mjs` flow are not
+touched — delete them by hand if you used that flow.
+
 ### Legacy installer (dev/QA only)
 
 ```bash

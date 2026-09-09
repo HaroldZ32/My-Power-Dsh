@@ -119,11 +119,11 @@ mpd-dsh/
 │   ├── mpd-comment-checker-plugin/ # C4: comment/docstring detection (opt-in binary)
 │   ├── mpd-memory-plugin/        # C6: git/svn-backed memory + reflection state machine
 │   ├── mpd-workmate-plugin/      # durable evolving agent library (~/.mpd/workmate): base→instance, self-reflect (persona+memory capped), short note, reuse via mpd_workmate_* (no forced weak matches)
-│   ├── mpd-bootstrap-plugin/     # bundle provisioning: the mpd main preset (presets/mpd/) + skills copy to $DSH_HOME
+│   ├── mpd-bootstrap-plugin/     # bundle provisioning BY REFERENCE: serves <bundle>/skills via a ctx.skills provider; cleans legacy (<=0.2.6) home copies
 │   ├── mpd-agent-teams-plugin/   # adopted dsh-agent-teams (MIT, first-class main code): agent_teams_* + Web panel; memberPersona injects workmate backing
 │   ├── mpd-bundle-plugin/        # bundle web-compat: the @mpd-dsh/mpd no-op main + the combined web client (client.js = adopted agent-teams panel + workmate library floater; built by scripts/build-mpd-client.mjs)
 │   └── mpd-qa-roles-probe/       # QA-only probe: mpd preset resolve + mpdRoles roster (overlay-mounted)
-├── skills/                      # skill corpus: dsh-qa (QA skill) + 17 ported upstream skills + svn-master (installed to \$DSH_HOME/skills by mpd-bootstrap)
+├── skills/                      # skill corpus: dsh-qa (QA skill) + 17 ported upstream skills + svn-master + rtl-* (SERVED from the bundle by mpd-bootstrap; never copied to \$DSH_HOME)
 ├── tests/
 │   ├── overlays/                 # QA patch overlays (keep empty when rows live in the bundle)
 │   ├── golden/                   # golden fixtures + Prometheus plan artifacts
@@ -183,9 +183,11 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   signal: exec.signal, agentOptions:{provider,model}, outputSchema, persona, maxDepth, toolFilter})`
   → `run.result` (`{output, structured, stopReason}`).
 - **State**: workspace-scoped only (`.mpd/` under cwd); never write `~/.dsh` from a plugin.
-  Sanctioned exceptions: (1) the `mpd-bootstrap` provisioning row at boot copies the
-  bundle's `mpd` preset into `$DSH_HOME/.agent-presets/` and the skill corpus into
-  `$DSH_HOME/skills` (idempotent, version-stamped — see §8); (2) the **workmate library**
+  Sanctioned exceptions: (1) the bundle writes NOTHING to the home any more — the
+  `mpd-bootstrap` row serves `<bundle>/skills` through a `ctx.skills` provider and the
+  bundle patch roots the `agent-presets` roster at `<bundle>/presets`, so both assets
+  exist exactly while the bundle is installed (§8); the row only REMOVES the
+  version-stamped copies that bundle `<= 0.2.6` wrote; (2) the **workmate library**
   (`mpd-workmate-plugin`) deliberately lives under the user's HOME (`~/.mpd/workmate`) —
   it is the user's cross-project, evolving agent library (QA must boot with
   `HOME=<sandbox>` so tests never touch the real home); (3) the **`mpd-codegraph`** plugin
@@ -229,9 +231,10 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   value uses the loader's `baseUrl` (the profile directory), binaries come from the
   package's `optionalDependencies` (`@ast-grep/cli`, `@colbymchenry/codegraph`),
   the adopted `agent-teams` plugin is first-class main code at
-  `packages/mpd-agent-teams-plugin` (no npm dependency), the `mpd` preset + skill corpus
-  auto-copy at boot via
-  `mpd-bootstrap` (version-stamped, idempotent).
+  `packages/mpd-agent-teams-plugin` (no npm dependency), and the `mpd` preset + skill
+  corpus are SERVED from the package by reference (`agent-presets` root in the patch +
+  the `mpd-bootstrap` skill provider) — no home copy, so `dsh plugin remove` leaves no
+  residue. Only user data stays: the workmate library under `~/.mpd/workmate`.
 - Install from a checkout: `cd <repo> && dsh plugin --profile web add .`
   (or from a published location — the patch never names this repo).
 
@@ -284,8 +287,10 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 | bash tool hangs after dsh | MCP children hold fds — stdio to files, or `setsid … > log` pattern |
 | ast-grep BINARY_NOT_FOUND | sg binary not installed — `.toolchain` via installer or `MPD_AST_GREP_SG_PATH` |
 | LSP daemon unreachable | `~/.mpd` unwritable/missing — on real home it self-starts |
-| preset not visible in web | presets not installed to `$DSH_HOME/.agent-presets/` — run installer |
-| installed presets stale / agents miss tools (e.g. bash) | `mpd-bootstrap` only re-copies presets when the package VERSION changes — bump `package.json` version, `node scripts/pack-mpd.mjs`, restart dsh |
+| preset not visible in web | the bundle patch's `agent-presets` id-target row is not composed — check `dsh --profile web --dump-config` shows `id: agent-presets` with `default: mpd` + the `<bundle>/presets` root, and that `dsh.profile.bundles` contains `@mpd-dsh/mpd` |
+| installed presets stale / agents miss tools (e.g. bash) | the profile still points at an OLD bundle version — bump `package.json` version, `node scripts/pack-mpd.mjs`, `dsh plugin --profile <p> add dist/mpd-package`, restart dsh |
+| skills missing in a session | the corpus is served, not copied: check the boot log for `[mpd-bootstrap] skill corpus served from <bundle>/skills`; if absent the `mpd-bootstrap` row is not mounted (or its `dist/index.js` is stale — rebuild) |
+| leftover `$DSH_HOME/skills` or `.agent-presets/mpd*` after upgrading from <=0.2.6 | the first 0.3.0 boot removes the stamped copies; unstamped copies (legacy `install-profile.mjs`) are left on purpose — delete them by hand |
 | agent tool call fails with UNKNOWN_TOOL in code-mode deployments | presets declare `tool-presentation { mode: native }` — every row tool (bash/read/edit/...) is exposed directly; in code mode the model may only call `run_code` directly |
 | boot fails with ERR_MODULE_NOT_FOUND @nanmicoder/dsh-agent-teams | the legacy profile still pins the old bundle row; the row is now main code (`@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib/index.js`) — reinstall the bundle (`dsh plugin --profile <p> add dist/mpd-package`) |
 | AGENT.md / AGENTS.md not injected into a session | the session runs a non-mpd preset; the `mpd` preset configures `instructionFileCandidates` (AGENT.md → AGENTS.md → CLAUDE.md) — switch the session to the `mpd` preset |

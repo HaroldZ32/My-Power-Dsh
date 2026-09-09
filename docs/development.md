@@ -67,8 +67,11 @@ The QA skill is `skills/dsh-qa` (`SKILL.md`). Every case script ships `--self-te
 | Case | Proves | How to run (from an approved permission context) |
 |---|---|---|
 | `mount-assert` | bundle rows present/absent in `--dump-config` | `bun run test:qa` (all self-tests) |
-| `preset-register` | mpd preset resolves + roster serves 11 roles | `node skills/dsh-qa/scripts/preset-register.mjs` |
-| `team-route-rewire` | staged bundle install → agent-teams row composed → live boot → web `/plugins/dsh-agent-teams/state` 200 | `node skills/dsh-qa/scripts/team-route-rewire.mjs` |
+| `preset-register` | mpd preset resolves FROM the bundle-served root (no `$DSH_HOME/.agent-presets` copy) + roster serves 11 roles | `node skills/dsh-qa/scripts/preset-register.mjs` |
+| `bundle-lifecycle` | `dsh plugin add` installs the whole unit → real boot serves preset + skills from the installed bundle → `dsh plugin remove` leaves no residue | `node skills/dsh-qa/scripts/bundle-lifecycle.mjs` |
+| `skill-catalog-probe` | installed bundle serves the skill catalog (22 bundled skills, fixture loads) with no `$DSH_HOME/skills` copy | `node skills/dsh-qa/scripts/skill-catalog-probe.mjs` |
+| `relocate-smoke` | relocated bundle serves preset + corpus, no dev-path leak, no home copy | `node skills/dsh-qa/scripts/relocate-smoke.mjs` |
+| `team-route-rewire` | staged bundle install → agent-teams row composed → probe boot → web `/plugins/dsh-agent-teams/state` 200 | `node skills/dsh-qa/scripts/team-route-rewire.mjs` |
 | `workmate-library` | init→list→spawn→reflect→match against a sandbox HOME | `node skills/dsh-qa/scripts/workmate-library.mjs` |
 | `workmate-team-member` | workmate-backed member injection + self-reflect in a live team | `node skills/dsh-qa/scripts/workmate-team-member.mjs` |
 | `web-client-adapt` | the `@mpd-dsh/mpd` boot-graph client entry + client.js ids + workmate host routes | `node skills/dsh-qa/scripts/web-client-adapt.mjs` |

@@ -2,38 +2,46 @@
 
 **English** | [中文](./README.zh-CN.md)
 
-Bundle provisioning: at boot, idempotently copies the `mpd` preset into
-`$DSH_HOME/.agent-presets/` and the skill corpus into `$DSH_HOME/skills`, stamped with
-the bundle version so already-installed copies refresh only when the package version
-changes.
+Bundle asset provisioning, by REFERENCE: the row serves the bundle's own skill corpus
+to every session through a `ctx.skills` provider and cleans up the home copies written
+by older bundle versions. Nothing is copied into `$DSH_HOME` any more, so installing
+the bundle installs its skills and removing the bundle removes them.
 
 ## What it does
 
 - Resolves the package root by file location (no package-name resolution — the plugin
-  must work under any install layout, including `link:` checkouts).
-- `syncTree(presets, userPresetsDir, version, ...)` copies preset dirs matching
-  `mpd`/`mpd-*`; `syncTree(skills, userSkillsDir, version)` copies the whole `skills/`
-  corpus.
-- Version-stamped: the copy is skipped when the installed stamp equals the bundle
-  version (bump `package.json` version → `node scripts/pack-mpd.mjs` → restart to
-  refresh).
+  must work under any install layout, including `link:` checkouts and relocation).
+- Registers a skill provider (`name: mpd-bundle`, `source: bundled`,
+  `rank: 600 = BUNDLED_SKILL_RANK`) over `<pkg-root>/skills`: directory bundles
+  (`<name>/SKILL.md`) and flat `*.md` files, frontmatter parsed in-process. The corpus
+  is therefore visible exactly while the bundle is installed and disappears when the
+  row unloads — no version stamp, no stale copy.
+- Serves the `mpd` preset by the SAME rule: the bundle patch points the `agent-presets`
+  roster at `<pkg-root>/presets` (see `packages/mpd-bundle/cordis.patch.yml`).
+- Migrates legacy installs: the version-stamped copies that bundle `<= 0.2.6` wrote
+  into `$DSH_HOME/skills` and `$DSH_HOME/.agent-presets` are removed on the first boot
+  of `>= 0.3.0`. The stamp file is the ownership proof — unstamped content (for example
+  copies made by the legacy `scripts/install-profile.mjs` flow) and user-authored
+  skills/presets are never touched.
+- Re-reads an edited skill on the next catalog read (`fs/observed` invalidation for
+  model-facing `write`/`edit` inside the corpus).
 
 ## Config
 
 | Key | Type | Default |
 |---|---|---|
-| `presetsDir` | string | `<pkg-root>/presets` |
-| `skipPresets` | boolean | `false` |
 | `skillsDir` | string | `<pkg-root>/skills` |
-| `skipSkills` | boolean | `false` |
+| `skipSkills` | boolean | `false` (skip registering the corpus provider) |
+| `skipPresets` | boolean | `false` (skip the legacy preset-copy cleanup) |
+| `skipLegacyCleanup` | boolean | `false` (skip all legacy home-copy cleanup) |
 
 ## Why it exists
 
-The packed bundle is installed without writing to `$DSH_HOME`; this row is the ONE
-sanctioned boot-time writer to `$DSH_HOME` (AGENTS.md §6). It makes the shipped preset
-and skills available to every profile the bundle is added to.
+AGENTS.md §2 requires every capability to be a plugin, and §6 forbids logic in the
+user home. Serving the corpus by reference is what makes `dsh plugin add` /
+`dsh plugin remove` a whole-unit install/uninstall for the bundle, skills included.
 
 ## Usage
 
 No user-facing tools. Install the bundle and start DSH; the preset appears in the
-selector after the first boot.
+selector and the corpus appears in every session's skill catalog.

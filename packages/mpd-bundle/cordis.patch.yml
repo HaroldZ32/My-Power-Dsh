@@ -1,10 +1,35 @@
-# mpd-dsh bundle plugin layer (Plan D): ADDITIVE-ONLY patch.
+# mpd-dsh bundle plugin layer (Plan D): ADDITIVE-ONLY patch, plus ONE id-target
+# (the preset roster row below, whose stock config is a single `default` key).
 # Policy: never id-target rows owned by the stock DSH templates (llm-deepseek /
 # agent-default-model / skill-filesystem / llm-pi-ai) — id-target replaces the
 # WHOLE stock config and would wipe the stock model list / provider defaults.
 # DeepSeek official provider ships with dsh-base as-is; this bundle adds only:
 # MCP servers, the mpd-* plugins, the adopted agent-teams plugin, and the
-# mpd-bootstrap preset provisioning.
+# bundle-served preset root (the skill corpus is served by the mpd-bootstrap
+# row's ctx.skills provider — nothing is copied into $DSH_HOME any more).
+
+# ── preset roster: serve the bundle's own presets (no $DSH_HOME copy) ───────
+# The bundle ships its presets at <bundle>/presets and serves them from there by
+# adding a `system`-trust root, so ONE `dsh plugin add` makes the mpd preset
+# selectable and ONE `dsh plugin remove` takes it away with the bundle — no
+# $DSH_HOME/.agent-presets copy, no stale-copy refresh dance.
+#
+# This is an id-target (replace), not an insert: dsh-web-app's own patch already
+# inserts this row with `default: standard`, and a second insert would be a
+# duplicate loader entry id (fatal at boot). The stock row's whole config is
+# exactly `default` — its own comment says "This row only names the default and
+# any deployment-added roots" — so restating it here is complete, and both keys
+# are required to keep the roster working.
+#
+# Profiles WITHOUT the row (headless) log "patch: entry agent-presets not found"
+# and skip it: headless never had a preset roster, so nothing regresses.
+- id: agent-presets
+  name: '@deepseek-ai/dsh-agent-presets'
+  config:
+    default: mpd
+    roots:
+      - path: !!js '(typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/presets"'
+        trust: system
 
 - insert:
     - id: mcp-astgrep
@@ -140,6 +165,11 @@
         vcs: git
     - id: mpd-workmate
       name: '@mpd-dsh/mpd/packages/mpd-workmate-plugin/dist/index.js'
+    # Bundle asset provisioning (no home writes since 0.3.0): registers the
+    # <bundle>/skills corpus as a ctx.skills provider (rank 600 "bundled", below
+    # project/custom/user roots) and removes the version-stamped copies that
+    # bundle <= 0.2.6 left in $DSH_HOME/skills + $DSH_HOME/.agent-presets.
+    # The preset side is served by the agent-presets row at the top of this file.
     - id: mpd-bootstrap
       name: '@mpd-dsh/mpd/packages/mpd-bootstrap-plugin/dist/index.js'
     # RTL verification (Plan A, verification side): eight mpd_verif_* tools,

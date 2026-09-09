@@ -36,7 +36,7 @@ The OMO-origin 11 agents are **not presets**: they live as a specialist roster
 | plugin dists | `packages/<pkg>/dist/index.js` | host rows reference them via `@mpd-dsh/mpd/packages/...` (the exports map) |
 | adopted agent-teams | `packages/mpd-agent-teams-plugin/` (lib + `_deps/` + assets) | copied wholesale so the bundle is self-contained under any install layout |
 | combined web client | `packages/mpd-bundle-plugin/client.js` | served as `@mpd-dsh/mpd`'s `./client` export |
-| presets + skills | `presets/`, `skills/` | copied to `$DSH_HOME` by `mpd-bootstrap` at boot |
+| presets + skills | `presets/`, `skills/` | SERVED from the package: the patch roots the preset roster at `presets/`, `mpd-bootstrap` registers `skills/` as a skill provider — nothing is copied into `$DSH_HOME` |
 | `cordis.patch.yml` | package root | the `dsh.bundle.patch` layer |
 
 Manifest invariants (why they exist):
@@ -98,7 +98,7 @@ to bare package names.
 | `mpd-memory` | mpd-memory-plugin | VCS-backed memory (git/svn) + reflection state machine | `mpd_memory_write`, `mpd_memory_read`, `mpd_memory_reflect`, `mpd_memory_reflect_complete`, `mpd_memory_status` | `vcs`, `dir`, `agentSlug`, `reflectionEvery` |
 | `mpd-codegraph` | mpd-codegraph-plugin | codegraph binary resolve + project index init | effect (auto init) + `/mpd-codegraph` command | `autoInit`, `initTimeoutMs`, `cooldownMs`, `binary` |
 | `mpd-workmate` | mpd-workmate-plugin | durable evolving agent library under `~/.mpd/workmate/` | `mpd_workmate_list/init/spawn/reflect/match`; service `mpdWorkmate`; web routes `/plugins/mpd-workmate/{list,init}` | — |
-| `mpd-bootstrap` | mpd-bootstrap-plugin | provisioning: copy the `mpd` preset → `$DSH_HOME/.agent-presets`, skill corpus → `$DSH_HOME/skills` (version-stamped, idempotent) | effect only | `presetsDir`, `skipPresets`, `skillsDir`, `skipSkills` |
+| `mpd-bootstrap` | mpd-bootstrap-plugin | provisioning BY REFERENCE: registers `<bundle>/skills` as a `ctx.skills` provider (rank 600 `bundled`) and removes the version-stamped home copies written by bundle <= 0.2.6 | effect only | `skillsDir`, `skipSkills`, `skipPresets`, `skipLegacyCleanup` |
 | `mpd-web-compat` | mpd-bundle-plugin | web-compat self-row: makes `@mpd-dsh/mpd` a loader entry; hosts the combined web client | no-op apply; `./client` | — |
 | `agent-teams` | mpd-agent-teams-plugin (adopted, MIT) | multi-agent team collaboration (captain, members, tasks, scheduler, Web panel) | `agent_teams_*` | `stateDir`, `memberProvider`, `memberMaxDepth`, `maxMembers`, `profiles` |
 | `mcp-astgrep/gitbash/lsp/codegraph/context7/grepapp` | dsh-mcp-client instances | tool servers | `mcp__*` | per-row |
@@ -147,7 +147,7 @@ yet.
 | `<workspace>/.mpd/` (VCS-backed memory dir) | mpd-memory | git/svn-backed memory + reflection |
 | `<workspace>/.mpd/mpd.jsonc` | mpd-config | project config layer |
 | **`~/.mpd/workmate/`** (user HOME) | mpd-workmate | the cross-project workmate library — deliberate user-approved exception to workspace-scoped state (§ AGENTS.md §6); QA boots with `HOME=<sandbox>` |
-| `$DSH_HOME/.agent-presets/mpd`, `$DSH_HOME/skills` | mpd-bootstrap | version-stamped, idempotent copies |
+| `$DSH_HOME/.agent-presets/mpd*`, `$DSH_HOME/skills/*` | mpd-bootstrap | LEGACY only (bundle <= 0.2.6 stamped copies); removed on the first 0.3.0 boot — the bundle writes nothing to the home |
 
 ## 7. Web client wiring (the subtle part)
 

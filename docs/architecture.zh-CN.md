@@ -32,7 +32,7 @@ OMO 起源的 11 个代理**不是预设**：它们作为专家 roster（`mpd-ro
 | 插件 dist | `packages/<pkg>/dist/index.js` | host 行通过 `@mpd-dsh/mpd/packages/...`（exports map）引用它们 |
 | 采纳的 agent-teams | `packages/mpd-agent-teams-plugin/`（lib + `_deps/` + assets） | 整体复制，使 bundle 在任何安装布局下自包含 |
 | 合并的 web client | `packages/mpd-bundle-plugin/client.js` | 作为 `@mpd-dsh/mpd` 的 `./client` export 提供 |
-| 预设 + skills | `presets/`、`skills/` | 由 `mpd-bootstrap` 启动时复制到 `$DSH_HOME` |
+| 预设 + skills | `presets/`、`skills/` | 由包内直接供给：patch 把 preset 名册根指向 `presets/`，`mpd-bootstrap` 把 `skills/` 注册为 skill provider——不向 `$DSH_HOME` 复制 |
 | `cordis.patch.yml` | 包根 | `dsh.bundle.patch` 层 |
 
 Manifest 不变式（为什么存在）：
@@ -89,7 +89,7 @@ client 永远不会出现在 boot graph 中（可复现验证；证据
 | `mpd-memory` | mpd-memory-plugin | VCS 支撑的记忆（git/svn）+ 反思状态机 | `mpd_memory_write`、`mpd_memory_read`、`mpd_memory_reflect`、`mpd_memory_reflect_complete`、`mpd_memory_status` | `vcs`、`dir`、`agentSlug`、`reflectionEvery` |
 | `mpd-codegraph` | mpd-codegraph-plugin | codegraph 二进制解析 + 工程索引初始化 | effect（自动初始化）+ `/mpd-codegraph` 命令 | `autoInit`、`initTimeoutMs`、`cooldownMs`、`binary` |
 | `mpd-workmate` | mpd-workmate-plugin | `~/.mpd/workmate/` 下的持久化可演化代理库 | `mpd_workmate_list/init/spawn/reflect/match`；服务 `mpdWorkmate`；web 路由 `/plugins/mpd-workmate/{list,init}` | — |
-| `mpd-bootstrap` | mpd-bootstrap-plugin | 供给：复制 `mpd` 预设 → `$DSH_HOME/.agent-presets`、skill 语料 → `$DSH_HOME/skills`（版本戳，幂等） | 仅 effect | `presetsDir`、`skipPresets`、`skillsDir`、`skipSkills` |
+| `mpd-bootstrap` | mpd-bootstrap-plugin | 按引用供给：把 `<bundle>/skills` 注册为 `ctx.skills` provider（rank 600 `bundled`），并清理 bundle <= 0.2.6 写入 home 的带版本戳副本 | 仅 effect | `skillsDir`、`skipSkills`、`skipPresets`、`skipLegacyCleanup` |
 | `mpd-web-compat` | mpd-bundle-plugin | web-compat 自引用行：使 `@mpd-dsh/mpd` 成为 loader entry；承载合并 web client | no-op apply；`./client` | — |
 | `agent-teams` | mpd-agent-teams-plugin（采纳，MIT） | 多代理团队协作（captain、成员、任务、调度器、Web 面板） | `agent_teams_*` | `stateDir`、`memberProvider`、`memberMaxDepth`、`maxMembers`、`profiles` |
 | `mcp-astgrep/gitbash/lsp/codegraph/context7/grepapp` | dsh-mcp-client 实例 | 工具服务器 | `mcp__*` | 每行 |
@@ -133,7 +133,7 @@ key**。
 | `<workspace>/.mpd/`（VCS 记忆目录） | mpd-memory | git/svn 支撑的记忆 + 反思 |
 | `<workspace>/.mpd/mpd.jsonc` | mpd-config | 工程配置层 |
 | **`~/.mpd/workmate/`**（用户 HOME） | mpd-workmate | 跨工程 workmate 库 —— 用户批准的对 workspace-scoped 状态规则的刻意例外（AGENTS.md §6）；QA 以 `HOME=<sandbox>` 启动 |
-| `$DSH_HOME/.agent-presets/mpd`、`$DSH_HOME/skills` | mpd-bootstrap | 版本戳，幂等 |
+| `$DSH_HOME/.agent-presets/mpd*`、`$DSH_HOME/skills/*` | mpd-bootstrap | 仅历史遗留（bundle <= 0.2.6 的带版本戳副本），首次 0.3.0 启动时删除——新版本不再写 home |
 
 ## 7. Web client 接线（微妙之处）
 

@@ -17,6 +17,24 @@ dsh plugin --profile web add <path-or-name-of-@mpd-dsh/mpd>
 
 然后启动 DSH，选择 **MPD (Main Working Agent)** 预设。
 
+### 卸载（一条命令，无残留）
+
+```bash
+dsh plugin --profile <mpd|web> remove @mpd-dsh/mpd
+```
+
+bundle 以“整体”安装、也以“整体”卸载，且包含 skills：插件行来自 bundle patch，
+`mpd` preset 由 `<bundle>/presets` 供给（patch 把 preset 名册根指向该目录），
+skill 语料库由 `<bundle>/skills` 供给（`mpd-bootstrap` 行注册 `ctx.skills` provider）。
+不向 `$DSH_HOME` 复制任何内容，因此卸载会连同行、preset 与 skills 一起移除——
+preset 名册回到出厂状态（`default: standard`），`$DSH_HOME/skills` 与
+`$DSH_HOME/.agent-presets` 保持原样。刻意保留的是**你自己的数据**：workmate 库
+（`~/.mpd/workmate`）与各工作区的 `.mpd/` 状态。
+
+从 bundle `<= 0.2.6`（会把 presets + skills 复制进 `$DSH_HOME`）升级：`>= 0.3.0`
+首次启动会自行删除这些带版本戳的副本。旧式 `scripts/install-profile.mjs` 流程写入的
+无版本戳副本不会被触碰——如用过该流程，请手动删除。
+
 ### 旧式安装器（仅开发/QA）
 
 ```bash
