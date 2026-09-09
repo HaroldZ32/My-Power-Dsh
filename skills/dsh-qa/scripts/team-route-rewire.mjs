@@ -28,7 +28,7 @@ const VENDOR = join(repoRoot, "packages", "mpd-agent-teams-plugin")
 
 function selfTest() {
   const checks = []
-  const mpdPreset = readFileSync(join(repoRoot, "packages", "mpd-bootstrap-plugin", "presets", "mpd", "agent.cordis.yml"), "utf8")
+  const mpdPreset = readFileSync(join(repoRoot, "presets", "mpd", "agent.cordis.yml"), "utf8")
   const execute = readFileSync(join(repoRoot, "skills", "ulw-execute", "SKILL.md"), "utf8")
   const research = readFileSync(join(repoRoot, "skills", "ulw-research", "SKILL.md"), "utf8")
   checks.push(["mpd preset AGENT.md candidates", mpdPreset.includes("AGENT.md") && mpdPreset.includes("AGENTS.md") && mpdPreset.includes("instructionFileCandidates")])

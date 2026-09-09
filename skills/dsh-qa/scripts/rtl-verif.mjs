@@ -69,7 +69,7 @@ const PACKED_PRESETS_EXPR = '"/node_modules/@mpd-dsh/mpd/presets"'
 function devPatch() {
   const t = readFileSync(join(repoRoot, "packages/mpd-bundle/cordis.patch.yml"), "utf8")
   return t
-    .split(PACKED_PRESETS_EXPR).join(JSON.stringify(join(repoRoot, "packages", "mpd-bootstrap-plugin", "presets")))
+    .split(PACKED_PRESETS_EXPR).join(JSON.stringify(join(repoRoot, "presets")))
     .split("name: '@mpd-dsh/mpd'").join("name: '" + join(repoRoot, "packages/mpd-bundle-plugin/dist/index.js") + "'")
     .split("@mpd-dsh/mpd/").join(repoRoot + "/")
 }

@@ -34,7 +34,7 @@ function selfTest() {
   checks.push(["bundle profile protocol workmate guidance", patch.includes("mpd_workmate_match") && patch.includes("never force a weak note match")])
   const members = readFileSync(join(repoRoot, "packages", "mpd-agent-teams-plugin", "lib", "members.js"), "utf8")
   checks.push(["memberPersona workmate injection", members.includes("function workmateBacking") && members.includes("mpd_workmate_reflect") && members.includes("Durable workmate backing")])
-  const preset = readFileSync(join(repoRoot, "packages", "mpd-bootstrap-plugin", "presets", "mpd", "agent.cordis.yml"), "utf8")
+  const preset = readFileSync(join(repoRoot, "presets", "mpd", "agent.cordis.yml"), "utf8")
   checks.push(["mpd preset WORKMATE guidance", preset.includes("WORKMATE LIBRARY") && preset.includes("mpd_workmate_init")])
   const pkg = JSON.parse(readFileSync(join(repoRoot, "packages", "mpd-workmate-plugin", "package.json"), "utf8"))
   checks.push(["package name @mpd-dsh/workmate", pkg.name === "@mpd-dsh/workmate"])

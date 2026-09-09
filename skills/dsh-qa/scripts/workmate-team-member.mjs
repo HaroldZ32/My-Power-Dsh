@@ -39,7 +39,7 @@ function selfTest() {
   checks.push(["agent_teams_create param name", tools.includes("agent_teams_create") && tools.includes("name: { type: 'string', required: true, description: 'Name for the new team")])
   checks.push(["agent_teams_add_member param name", tools.includes("agent_teams_add_member") && tools.includes("Unique member name inside the team")])
   checks.push(["agent_teams_create_task subject", tools.includes("agent_teams_create_task") && tools.includes("Required non-empty title for this task")])
-  const preset = readFileSync(join(repoRoot, "packages", "mpd-bootstrap-plugin", "presets", "mpd", "agent.cordis.yml"), "utf8")
+  const preset = readFileSync(join(repoRoot, "presets", "mpd", "agent.cordis.yml"), "utf8")
   checks.push(["mpd preset TEAM WORK + WORKMATE guidance", preset.includes("agent_teams_create") && preset.includes("WORKMATE LIBRARY")])
   const bad = checks.filter(([, ok]) => !ok).map(([n]) => n)
   if (bad.length) fail("self-test: " + bad.join(" | "))

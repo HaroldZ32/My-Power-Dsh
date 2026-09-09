@@ -19,7 +19,7 @@
     "skills": {
       "fileCount": 361,
       "source": "skill corpus at repo root (ported upstream skills + dsh-qa + svn-master + rtl-codestyle/rtl-verif (RTL dev phase-1) + bundle-lifecycle QA case); whole-dir refresh from upstream, keep provenance links",
-      "treeSha": "6c2061de3434f4a2e41f9192ce1b9b98706d0d55222b3854c3bd09337de1cca8"
+      "treeSha": "1bdd10f0764605f7e2a73efe465802d4301da45baf69c4d01ff85b0f063e456a"
     },
     "packages/mpd-agent-teams-plugin/_deps": {
       "fileCount": 635,
@@ -48,5 +48,5 @@
     }
   },
   "verification": "node scripts/verify-vendor.mjs: commit/version mismatch is a blocker; stats drift is a warning; asset counts are a blocker",
-  "lockedAt": "2026-09-09T08:54:53.000Z"
+  "lockedAt": "2026-09-09T10:20:20.000Z"
 }

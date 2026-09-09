@@ -3,7 +3,7 @@
   "exit": 1,
   "dshHomeSandbox": true,
   "bundleServedPreset": true,
-  "presetPath": "/root/dshProj/my-power-dsh/packages/mpd-bootstrap-plugin/presets/mpd/agent.cordis.yml",
+  "presetPath": "/root/dshProj/my-power-dsh/presets/mpd/agent.cordis.yml",
   "trust": "system",
   "homePresetCopies": [],
   "roster": 11

@@ -1,13 +1,18 @@
 #!/usr/bin/env node
 // Case bundle-lifecycle: prove @mpd-dsh/mpd installs and uninstalls as ONE unit,
-// skills included, with no residue in the harness home.
-//   1) offline self-test: the patch ships the bundle-served preset root, the
+// skills included, with no residue in the harness home — and that the install is
+// ONE command straight from the checkout (`dsh plugin add <repo>`), with no
+// separate pack/build step.
+//   1) offline self-test: the repo-root manifest IS the bundle (dsh.bundle.patch +
+//      dsh.client + exports), the patch ships the bundle-served preset root, the
 //      provisioning row registers a skill provider (no copy), pnpm is available;
-//   2) real install through the OFFICIAL flow — `dsh plugin add` into an isolated
-//      profile: the dependency lands AND the bundle joins dsh.profile.bundles;
+//   2) real install through the OFFICIAL flow — `dsh plugin add <repo root>` into an
+//      isolated profile: the dependency lands (link:<repo>) AND the bundle joins
+//      dsh.profile.bundles; no pack-mpd run happens anywhere in this case;
 //   3) real boot (web, sandboxed DSH_HOME + HOME) with the QA preset probe: the
 //      mpd preset resolves FROM THE INSTALLED BUNDLE, the skill corpus is served
-//      from the installed bundle, and $DSH_HOME holds NO skills/presets copy;
+//      from the installed bundle, the adapter surface answers, and $DSH_HOME holds
+//      NO skills/presets copy;
 //   4) real uninstall — `dsh plugin remove`: dependency, bundle entry, installed
 //      tree and the composed rows all go away, the stock preset row returns, and
 //      the harness home + HOME keep no bundle residue.
@@ -26,20 +31,29 @@ const PROBE = join(repoRoot, "packages", "mpd-qa-roles-probe", "dist", "index.js
 function fail(message) { console.error("[bundle-lifecycle] FAIL: " + message); process.exit(1) }
 
 function selfTest() {
-  const staged = join(repoRoot, "dist", "mpd-package")
-  if (!existsSync(join(staged, "package.json"))) fail("self-test: run node scripts/pack-mpd.mjs first")
-  const patch = readFileSync(join(staged, "cordis.patch.yml"), "utf8")
-  if (!/^- id: agent-presets$/m.test(patch) || !patch.includes("default: mpd")) fail("self-test: bundle-served preset row missing from the staged patch")
-  if (!patch.includes('"/node_modules/@mpd-dsh/mpd/presets"')) fail("self-test: preset root expression missing from the staged patch")
-  if (!patch.includes("id: mpd-bootstrap")) fail("self-test: mpd-bootstrap row missing from the staged patch")
-  if (!patch.includes("id: mpd-dsh-adapter")) fail("self-test: mpd-dsh-adapter row missing from the staged patch")
+  // The installable unit is the REPO ROOT manifest itself: no pack step is used
+  // or required by this case.
+  const rootManifest = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"))
+  if (rootManifest.name !== PKG) fail("self-test: repo root package must be named " + PKG + " (got " + String(rootManifest.name) + ")")
+  if (rootManifest.dsh?.bundle?.patch !== "./packages/mpd-bundle/cordis.patch.yml") fail("self-test: repo root must declare dsh.bundle.patch")
+  if (rootManifest.dsh?.client?.platform !== "web") fail("self-test: repo root must declare dsh.client (web)")
+  for (const key of [".", "./packages/*", "./skills/*", "./presets/*", "./client"]) {
+    if (rootManifest.exports?.[key] === undefined) fail("self-test: repo root exports missing " + key)
+  }
+  const patch = readFileSync(join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
+  if (!/^- id: agent-presets$/m.test(patch) || !patch.includes("default: mpd")) fail("self-test: bundle-served preset row missing from the patch")
+  if (!patch.includes('"/node_modules/@mpd-dsh/mpd/presets"')) fail("self-test: preset root expression missing from the patch")
+  if (!patch.includes("id: mpd-bootstrap")) fail("self-test: mpd-bootstrap row missing from the patch")
+  if (!patch.includes("id: mpd-dsh-adapter")) fail("self-test: mpd-dsh-adapter row missing from the patch")
+  if (!existsSync(join(repoRoot, "presets", "mpd", "agent.cordis.yml"))) fail("self-test: repo-root presets/mpd missing")
+  if (!existsSync(join(repoRoot, "skills", "svn-master", "SKILL.md"))) fail("self-test: repo-root skills corpus missing")
   const adapterDist = readFileSync(join(repoRoot, "packages", "mpd-dsh-adapter-plugin", "dist", "index.js"), "utf8")
   if (!adapterDist.includes("createDshAdapter") || !adapterDist.includes("registerTool")) fail("self-test: adapter dist missing its tool-plane surface")
   const dist = readFileSync(join(repoRoot, "packages", "mpd-bootstrap-plugin", "dist", "index.js"), "utf8")
   if (!dist.includes("registerProvider") || dist.includes("syncTree")) fail("self-test: mpd-bootstrap must serve the corpus (registerProvider), not copy it")
   if (!existsSync(PROBE)) fail("self-test: roles probe dist missing (bun build first)")
   if (spawnSync("pnpm", ["--version"], { encoding: "utf8" }).status !== 0) fail("self-test: pnpm is required for the official install flow")
-  console.log("[bundle-lifecycle self-test] ok: bundle-served preset row + provider wiring + probe + pnpm")
+  console.log("[bundle-lifecycle self-test] ok: repo root IS the bundle + bundle-served preset row + provider wiring + probe + pnpm")
 }
 
 function runSync(cmd, args, env, opts = {}) {
@@ -58,10 +72,8 @@ async function runReal() {
   const userHome = join(sandbox, "userhome")    // HOME (workmate library isolation)
   const store = join(sandbox, "pnpm-store")
   const profile = join(home, "profiles", "w")
-  const staged = join(sandbox, "mpd-pkg-relocated")
   mkdirSync(profile, { recursive: true })
   mkdirSync(userHome, { recursive: true })
-  cpSync(join(repoRoot, "dist", "mpd-package"), staged, { recursive: true })
   cpSync(creds, join(home, ".credentials.yaml"))
   const env = { ...process.env, DSH_HOME: home, HOME: userHome }
   const probePatch = join(sandbox, "probe.yml")
@@ -71,15 +83,18 @@ async function runReal() {
   writeFileSync(join(profile, "package.json"), JSON.stringify({ name: "dsh-profile-w", private: true, dependencies: {}, dsh: { profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app"] } } }, null, 2) + "\n")
   const steps = {}
 
-  // ── 2) real install through the official flow ──────────────────────────────
-  const add = runSync("dsh", ["plugin", "--profile", "w", "add", "--store-dir", store, staged], env)
+  // ── 2) ONE-COMMAND install straight from the checkout ──────────────────────
+  // No `node scripts/pack-mpd.mjs` anywhere: the repo root IS the bundle package.
+  const add = runSync("dsh", ["plugin", "--profile", "w", "add", "--store-dir", store, repoRoot], env)
   const manifestAfterAdd = JSON.parse(readFileSync(join(profile, "package.json"), "utf8"))
   const installedBundle = join(profile, "node_modules", PKG)
   steps.install = {
-    ok: add.status === 0 && manifestAfterAdd.dependencies?.[PKG] !== undefined && (manifestAfterAdd.dsh?.profile?.bundles ?? []).includes(PKG) && existsSync(installedBundle),
+    ok: add.status === 0 && String(manifestAfterAdd.dependencies?.[PKG] ?? "").startsWith("link:")
+      && (manifestAfterAdd.dsh?.profile?.bundles ?? []).includes(PKG) && existsSync(installedBundle),
     exit: add.status,
     dependency: manifestAfterAdd.dependencies?.[PKG] ?? null,
     bundles: manifestAfterAdd.dsh?.profile?.bundles ?? [],
+    oneCommand: "dsh plugin --profile w add <repo root>",
   }
   if (!steps.install.ok) fail("install step failed: " + add.out.slice(-1500))
   // The composed tree is part of the unit too: every bundle row lands at once.

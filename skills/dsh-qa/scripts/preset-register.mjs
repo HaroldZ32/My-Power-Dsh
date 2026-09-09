@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url"
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const FIXTURE_PRESET = "mpd"
 const FIXTURE_ROLES = "oracle,librarian,prometheus,hephaestus,sisyphus,sisyphus-junior,atlas,explore,metis,momus,multimodal-looker"
-const PRESETS_DIR = join(repoRoot, "packages", "mpd-bootstrap-plugin", "presets")
+const PRESETS_DIR = join(repoRoot, "presets")
 // The packed patch serves presets from <profile>/node_modules/@mpd-dsh/mpd/presets
 // through a baseUrl expression; a checkout boot must point at the checkout copy.
 const PACKED_PRESETS_EXPR = '"/node_modules/@mpd-dsh/mpd/presets"'
@@ -66,7 +66,7 @@ function selfTest() {
   if (dev.includes("name: '@mpd-dsh/mpd'") || !dev.includes("name: '" + join(repoRoot, "packages/mpd-bundle-plugin/dist/index.js") + "'")) { console.error("[preset-register self-test] FAIL: devPatch web-compat entry rewrite (bare '@mpd-dsh/mpd' must become the bundle-plugin main)"); process.exit(1) }
   if (dev.includes(PACKED_PRESETS_EXPR) || !dev.includes(JSON.stringify(PRESETS_DIR))) { console.error("[preset-register self-test] FAIL: devPatch preset root rewrite (packed expression must become the checkout presets dir)"); process.exit(1) }
   // the rewritten root must be a bare checkout path, never spliced under /node_modules
-  if (/\/node_modules\/[^"']*packages\/mpd-bootstrap-plugin\/presets/.test(dev)) { console.error("[preset-register self-test] FAIL: devPatch spliced the checkout presets dir under /node_modules"); process.exit(1) }
+  if (/\/node_modules\/[^"']*\/presets/.test(dev)) { console.error("[preset-register self-test] FAIL: devPatch spliced the checkout presets dir under /node_modules"); process.exit(1) }
   console.log("[preset-register self-test] ok: preset + roster fixtures + web-compat/preset-root normalization verified")
 }
 

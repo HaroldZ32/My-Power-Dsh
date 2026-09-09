@@ -85,7 +85,7 @@ function selfTest() {
   if (!patch.includes("sessionTeamPolicy") || !patch.includes("mode: auto") || !patch.includes("profile: mpd")) fail("bundle patch sessionTeamPolicy missing")
   const installer = readFileSync(join(repoRoot, "scripts", "install-profile.mjs"), "utf8")
   if (!installer.includes("sessionTeamPolicy")) fail("installer row config missing sessionTeamPolicy")
-  const persona = readFileSync(join(repoRoot, "packages", "mpd-bootstrap-plugin", "presets", "mpd", "agent.cordis.yml"), "utf8")
+  const persona = readFileSync(join(repoRoot, "presets", "mpd", "agent.cordis.yml"), "utf8")
   if (!persona.includes("SESSION STARTUP RULE")) fail("preset persona missing SESSION STARTUP RULE")
   console.log("[session-start-team self-test] ok: policy module + bundle patch + installer + persona verified")
 }
