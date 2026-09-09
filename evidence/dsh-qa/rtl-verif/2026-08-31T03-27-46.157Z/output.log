@@ -1,34 +1,18 @@
-[mpd-codegraph] init status=no-binary binary=- cwd=/root/dshProj/my-power-dsh/.qa-reloc/ws
-[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/.qa-reloc/mpd-pkg-relocated/skills (provider mpd-bundle, bundle 0.3.0)
-[roles-probe] PRESET_MPD=ok
-[roles-probe] PRESET_PATH=/root/dshProj/my-power-dsh/.qa-reloc/mpd-pkg-relocated/presets/mpd/agent.cordis.yml trust=system
-[roles-probe] ROSTER=oracle,librarian,prometheus,hephaestus,sisyphus,atlas,explore,metis,momus,multimodal-looker,sisyphus-junior
-[roles-probe] SKILLS=28 BUNDLED=22
-[roles-probe] SKILL_FIXTURE=ok name=svn-master base=/root/dshProj/my-power-dsh/.qa-reloc/mpd-pkg-relocated/skills/svn-master bytes=5210
-[roles-probe] PASS
-
-CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.
-dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-official"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment
-
-
---- dump ---
 # == @deepseek-ai/dsh-base
 - id: timer
   name: '@deepseek-ai/cordis-plugin-timer'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-headless
 - id: hmr
   name: '@deepseek-ai/cordis-plugin-hmr'
-  disabled: true
   config:
     root:
       - .
+  disabled: true
+# == @deepseek-ai/dsh-base
 - id: llm
   name: '@deepseek-ai/dsh-llm'
-- id: deepseek-llm-api-extensions
-  name: '@deepseek-ai/dsh-deepseek-llm-api-extensions'
 - id: session
   name: '@deepseek-ai/dsh-session'
-- id: session-log-deepseek
-  name: '@deepseek-ai/dsh-session-log-deepseek'
 - id: typert
   name: '@deepseek-ai/dsh-typert-registry'
 - id: typert-loader
@@ -53,8 +37,6 @@ dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-o
   name: '@deepseek-ai/dsh-user-questions'
 - id: agent
   name: '@deepseek-ai/dsh-agent'
-- id: plugin-package-inventory-deepseek
-  name: '@deepseek-ai/dsh-plugin-package-inventory-deepseek'
 - id: agent-default-model
   name: '@deepseek-ai/dsh-agent-default-model'
   config:
@@ -83,25 +65,10 @@ dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-o
     openAt: never
 - id: session-projection
   name: '@deepseek-ai/dsh-session-projection'
-- id: storage
-  name: '@deepseek-ai/dsh-storage'
-- id: storage-json
-  name: '@deepseek-ai/dsh-storage-json'
-  config:
-    root: !!js dshHomePath('storages')
-- id: storage-domain
-  name: '@deepseek-ai/dsh-storage-domain'
-  config:
-    backend: json
-- id: session-projection-cache
-  name: '@deepseek-ai/dsh-session-projection-cache'
-  config:
-    writeEveryEvents: 200
-    writeIntervalMs: 5000
 - id: session-telemetry-otel
   name: '@deepseek-ai/dsh-session-telemetry-otel'
   config:
-    mode: !!js process.env.DSH_TELEMETRY_MODE || 'FEEDBACK_ONLY'
+    mode: !!js process.env.DSH_TELEMETRY_MODE || 'DISABLED'
     shutdownTimeoutMillis: 3000
     exporter:
       url: !!js >-
@@ -273,6 +240,8 @@ dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-o
     provider: fork
     toolName: subagent_fork
     backgroundMode: one-shot
+- id: tool-subagent-report
+  name: '@deepseek-ai/dsh-tool-subagent-report'
 - id: workflow-worker-thread
   name: '@deepseek-ai/dsh-workflow-worker-thread'
   config:
@@ -322,17 +291,14 @@ dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-o
   name: '@deepseek-ai/dsh-web'
   config:
     searchProvider: deepseek-official
-    fetchProvider: http
 - id: web-search-deepseek
   name: '@deepseek-ai/dsh-web-search-deepseek'
   config:
     apiKeyEnv: DEEPSEEK_API_KEY
-- id: web-fetch-http
-  name: '@deepseek-ai/dsh-web-fetch-http'
 - id: tool-web
   name: '@deepseek-ai/dsh-tool-web'
   config:
-    fetch: true
+    fetch: false
     searchTimeoutMs: 60000
 # == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-headless
 - id: tools
@@ -365,7 +331,7 @@ dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-o
     - headlessStartup
   config:
     task: !!js ctx.headlessStartup.task
-# == @mpd-dsh/mpd
+# == /tmp/mpd-dsh-qa-ayKC8h/bundle.dev.patch.yml
 - id: mcp-astgrep
   name: '@deepseek-ai/dsh-mcp-client'
   config:
@@ -376,7 +342,7 @@ dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-o
       - !!js >-
         process.env.MPD_DSH_ASTGREP_CLI || ((typeof baseUrl === "string" ?
         baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") +
-        "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-astgrep/dist/cli.js")
+        "/node_modules//root/dshProj/my-power-dsh/packages/mpd-mcp-astgrep/dist/cli.js")
     env:
       MPD_AST_GREP_SG_PATH: !!js >-
         process.env.MPD_AST_GREP_SG_PATH || ((typeof baseUrl === "string" ?
@@ -394,7 +360,7 @@ dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-o
       - !!js >-
         process.env.MPD_DSH_GITBASH_CLI || ((typeof baseUrl === "string" ?
         baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") +
-        "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-gitbash/dist/cli.js")
+        "/node_modules//root/dshProj/my-power-dsh/packages/mpd-mcp-gitbash/dist/cli.js")
     toolCallTimeoutMs: 60000
 - id: mcp-lsp
   name: '@deepseek-ai/dsh-mcp-client'
@@ -406,7 +372,7 @@ dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-o
       - !!js >-
         process.env.MPD_DSH_LSP_CLI || ((typeof baseUrl === "string" ?
         baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") +
-        "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-lsp/dist/cli.js")
+        "/node_modules//root/dshProj/my-power-dsh/packages/mpd-mcp-lsp/dist/cli.js")
       - mcp
     toolCallTimeoutMs: 60000
 - id: mcp-codegraph
@@ -419,7 +385,7 @@ dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-o
       - !!js >-
         process.env.MPD_DSH_CODEGRAPH_CLI || ((typeof baseUrl === "string" ?
         baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") +
-        "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-codegraph/dist/serve.js")
+        "/node_modules//root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js")
     env:
       MPD_CODEGRAPH_BIN: !!js >-
         process.env.MPD_CODEGRAPH_BIN || ((typeof baseUrl === "string" ?
@@ -427,49 +393,49 @@ dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-o
         "/node_modules/.bin/codegraph")
     toolCallTimeoutMs: 60000
 - id: mpd-web-compat
-  name: '@mpd-dsh/mpd'
+  name: /root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/dist/index.js
 - id: mpd-config
-  name: '@mpd-dsh/mpd/packages/mpd-config-plugin/dist/index.js'
+  name: /root/dshProj/my-power-dsh/packages/mpd-config-plugin/dist/index.js
 - id: mpd-tools
-  name: '@mpd-dsh/mpd/packages/mpd-tools-plugin/dist/index.js'
+  name: /root/dshProj/my-power-dsh/packages/mpd-tools-plugin/dist/index.js
   config:
     writeGuard: true
     truncateMaxBytes: 8192
 - id: mpd-modelchain
-  name: '@mpd-dsh/mpd/packages/mpd-modelchain-plugin/dist/index.js'
+  name: /root/dshProj/my-power-dsh/packages/mpd-modelchain-plugin/dist/index.js
 - id: mpd-roles
-  name: '@mpd-dsh/mpd/packages/mpd-roles-plugin/dist/index.js'
+  name: /root/dshProj/my-power-dsh/packages/mpd-roles-plugin/dist/index.js
 - id: mpd-ulw
-  name: '@mpd-dsh/mpd/packages/mpd-ulw-plugin/dist/index.js'
+  name: /root/dshProj/my-power-dsh/packages/mpd-ulw-plugin/dist/index.js
   config:
     maxRounds: 3
 - id: mpd-hashline
-  name: '@mpd-dsh/mpd/packages/mpd-hashline-plugin/dist/index.js'
+  name: /root/dshProj/my-power-dsh/packages/mpd-hashline-plugin/dist/index.js
   config:
     guardEditTools: true
 - id: mpd-boulder
-  name: '@mpd-dsh/mpd/packages/mpd-boulder-plugin/dist/index.js'
+  name: /root/dshProj/my-power-dsh/packages/mpd-boulder-plugin/dist/index.js
 - id: mpd-comment-checker
-  name: '@mpd-dsh/mpd/packages/mpd-comment-checker-plugin/dist/index.js'
+  name: /root/dshProj/my-power-dsh/packages/mpd-comment-checker-plugin/dist/index.js
   config:
     autoCheck: false
 - id: mpd-codegraph
-  name: '@mpd-dsh/mpd/packages/mpd-codegraph-plugin/dist/index.js'
+  name: /root/dshProj/my-power-dsh/packages/mpd-codegraph-plugin/dist/index.js
   config:
     autoInit: true
     initTimeoutMs: 60000
 - id: mpd-memory
-  name: '@mpd-dsh/mpd/packages/mpd-memory-plugin/dist/index.js'
+  name: /root/dshProj/my-power-dsh/packages/mpd-memory-plugin/dist/index.js
   config:
     vcs: git
 - id: mpd-workmate
-  name: '@mpd-dsh/mpd/packages/mpd-workmate-plugin/dist/index.js'
+  name: /root/dshProj/my-power-dsh/packages/mpd-workmate-plugin/dist/index.js
 - id: mpd-bootstrap
-  name: '@mpd-dsh/mpd/packages/mpd-bootstrap-plugin/dist/index.js'
+  name: /root/dshProj/my-power-dsh/packages/mpd-bootstrap-plugin/dist/index.js
 - id: mpd-verif
-  name: '@mpd-dsh/mpd/packages/mpd-verif-plugin/dist/index.js'
+  name: /root/dshProj/my-power-dsh/packages/mpd-verif-plugin/dist/index.js
 - id: agent-teams
-  name: '@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib/index.js'
+  name: /root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/index.js
   config:
     stateDir: .mpd/team
     memberProvider: spawn
@@ -593,4 +559,41 @@ dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-o
               model: deepseek-v4-flash
             executionPrompt: >-
               Autonomous deep worker. Receive goals, execute them end-to-end
-              with tool
+              with tools, verify every change, report evidence-first.
+          - name: Senior Engineer
+            role: primary implementation
+            provider: deepseek-official
+            model: deepseek-v4-pro
+            fallback:
+              provider: deepseek-official
+              model: deepseek-v4-flash
+            executionPrompt: >-
+              Primary engineer. Plan small, execute with tools, keep diffs
+              minimal, verify every change, report honestly.
+          - name: Junior Engineer
+            role: small mechanical changes
+            provider: deepseek-official
+            model: deepseek-v4-flash
+            fallback:
+              provider: deepseek-official
+              model: deepseek-v4-flash
+            executionPrompt: >-
+              Fast executor. Small, well-scoped mechanical changes with quick
+              verification; keep diffs tiny.
+- id: mcp-context7
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: context7
+    transport: streamable-http
+    url: https://mcp.context7.com/mcp
+    toolCallTimeoutMs: 60000
+- id: mcp-grepapp
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: grep_app
+    transport: streamable-http
+    url: https://mcp.grep.app
+    toolCallTimeoutMs: 60000
+
+=== PHASE2 detail ===
+verilator=true lint=true sim=true regress=true

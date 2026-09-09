@@ -1,7 +1,10 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
 [mpd-codegraph] init status=marker binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/root/dshProj/my-power-dsh
 [mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.0)
 [roles-probe] PRESET_MPD=ok
 [roles-probe] PRESET_PATH=/root/dshProj/my-power-dsh/packages/mpd-bootstrap-plugin/presets/mpd/agent.cordis.yml trust=system
+[roles-probe] ADAPTER_SEAMS=tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets
+[roles-probe] ADAPTER_TOOL_CALL=ok
 [roles-probe] ROSTER=oracle,librarian,prometheus,hephaestus,sisyphus,atlas,explore,metis,momus,multimodal-looker,sisyphus-junior
 [roles-probe] SKILLS=28 BUNDLED=22
 [roles-probe] SKILL_FIXTURE=ok name=svn-master base=/root/dshProj/my-power-dsh/skills/svn-master bytes=5210

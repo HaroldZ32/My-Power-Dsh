@@ -32,6 +32,9 @@ function selfTest() {
   if (!/^- id: agent-presets$/m.test(patch) || !patch.includes("default: mpd")) fail("self-test: bundle-served preset row missing from the staged patch")
   if (!patch.includes('"/node_modules/@mpd-dsh/mpd/presets"')) fail("self-test: preset root expression missing from the staged patch")
   if (!patch.includes("id: mpd-bootstrap")) fail("self-test: mpd-bootstrap row missing from the staged patch")
+  if (!patch.includes("id: mpd-dsh-adapter")) fail("self-test: mpd-dsh-adapter row missing from the staged patch")
+  const adapterDist = readFileSync(join(repoRoot, "packages", "mpd-dsh-adapter-plugin", "dist", "index.js"), "utf8")
+  if (!adapterDist.includes("createDshAdapter") || !adapterDist.includes("registerTool")) fail("self-test: adapter dist missing its tool-plane surface")
   const dist = readFileSync(join(repoRoot, "packages", "mpd-bootstrap-plugin", "dist", "index.js"), "utf8")
   if (!dist.includes("registerProvider") || dist.includes("syncTree")) fail("self-test: mpd-bootstrap must serve the corpus (registerProvider), not copy it")
   if (!existsSync(PROBE)) fail("self-test: roles probe dist missing (bun build first)")
@@ -84,7 +87,7 @@ async function runReal() {
   const composed = dumpAfterInstall.out
   steps.composed = {
     ok: dumpAfterInstall.status === 0
-      && ["mpd-bootstrap", "mpd-web-compat", "mpd-tools", "mpd-roles", "mpd-workmate", "agent-teams", "mcp-astgrep"].every((id) => composed.includes("id: " + id))
+      && ["mpd-dsh-adapter", "mpd-bootstrap", "mpd-web-compat", "mpd-tools", "mpd-roles", "mpd-workmate", "agent-teams", "mcp-astgrep"].every((id) => composed.includes("id: " + id))
       && composed.includes("id: agent-presets") && composed.includes("default: mpd")
       && composed.includes('"/node_modules/@mpd-dsh/mpd/presets"'),
     exit: dumpAfterInstall.status,
@@ -116,12 +119,17 @@ async function runReal() {
   const presetPath = /PRESET_PATH=([^\s]+) trust=(\w+)/.exec(boot)
   const corpusPath = String(served?.[1] ?? "")
   const presetFile = String(presetPath?.[1] ?? "")
+  const seams = /ADAPTER_SEAMS=([^\s]+)/.exec(boot)?.[1] ?? ""
   steps.boot = {
     ok: up && /roles-probe\] PASS/.test(boot) && /PRESET_MPD=ok/.test(boot)
+      && /\[mpd-dsh-adapter\] mpdDsh provided/.test(boot)
+      && seams.includes("toolsRegister") && seams.includes("subagentsSpawn") && seams.includes("skillsProvider")
+      && /ADAPTER_TOOL_CALL=ok/.test(boot)
       && corpusPath.startsWith(bundleReal)
       && (presetFile.startsWith(bundleReal) || presetFile.includes(join("node_modules", "@mpd-dsh", "mpd", "presets")))
       && presetPath?.[2] === "system",
     http: up, corpus: served?.[1] ?? null, preset: presetPath?.[1] ?? null, trust: presetPath?.[2] ?? null, bundleReal,
+    adapterSeams: seams || null,
   }
   const homeSkills = join(home, "skills")
   const homePresets = join(home, ".agent-presets")
@@ -146,6 +154,7 @@ async function runReal() {
       && manifestAfterRemove.dependencies?.[PKG] === undefined
       && !(manifestAfterRemove.dsh?.profile?.bundles ?? []).includes(PKG)
       && !dumpAfter.out.includes("id: mpd-bootstrap")
+      && !dumpAfter.out.includes("id: mpd-dsh-adapter")
       && !dumpAfter.out.includes("id: mpd-web-compat")
       && /default: standard/.test(dumpAfter.out)
       && residue.length === 0

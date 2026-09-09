@@ -1,0 +1,321 @@
+{
+  "ok": false,
+  "sandbox": "/tmp/mpd-c1-C7R0Ou",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "bundleRow": {
+      "ok": true,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-headless"
+      ]
+    },
+    "override": {
+      "ok": true,
+      "hasPatch": true
+    },
+    "compose": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "teamState": {
+      "ok": true,
+      "teamIds": [
+        "c1qa",
+        "mpd-default"
+      ],
+      "inbox": [
+        [
+          "captain.jsonl"
+        ],
+        []
+      ],
+      "teamJson": [
+        {
+          "name": "c1qa",
+          "id": "c1qa",
+          "description": "C1 adoption QA",
+          "captainSessionId": "session-2b4f1a3b-3afa-4395-a8a0-a84d84cc56db",
+          "createdAt": 1788150513813,
+          "members": [
+            {
+              "id": "9885900f-75ee-41de-a40b-d2bbf2e25b99",
+              "name": "oracle",
+              "role": "oracle",
+              "provider": "opencode-go",
+              "model": "deepseek-v4-flash",
+              "reasoningEffort": "max",
+              "joinedAt": 1788150517346,
+              "status": "removed"
+            },
+            {
+              "id": "74d4f301-7ed1-4f9e-ab6c-27be88c3c7e2",
+              "name": "librarian",
+              "role": "librarian",
+              "provider": "opencode-go",
+              "model": "deepseek-v4-flash",
+              "reasoningEffort": "max",
+              "joinedAt": 1788150517362,
+              "status": "removed"
+            }
+          ],
+          "tasks": [
+            {
+              "id": "t1",
+              "subject": "Summarize the QA goal in one line",
+              "description": "This team's purpose is \"C1 adoption QA\": a tiny end-to-end verification that AgentTeams works. Produce a single one-line summary of this QA goal (what the team is verifying). Do not create or edit files. As your completion output, write the summary as one line, e.g. OUTPUT: <one-line summary>. Also persist it to workspace memory with mpd_memory_save (key: qa_summary, value: the summary) so the next task can read it.",
+              "status": "completed",
+              "assignee": "librarian",
+              "dependencies": [],
+              "attempt": 1,
+              "createdAt": 1788150520478,
+              "updatedAt": 1788150536304,
+              "kind": "work",
+              "attemptId": "0eee3450-7de8-4d9a-85eb-8eb35c66849e",
+              "reassigning": false,
+              "output": "OUTPUT: C1 adoption QA: a tiny end-to-end verification that the AgentTeams multi-agent workflow works."
+            },
+            {
+              "id": "t2",
+              "subject": "Approve or reject the summary",
+              "description": "Review the one-line summary produced by task t1 (librarian). Get the summary from t1's completion output, or fall back to mpd_memory_recall key qa_summary. If it is a single sentence that accurately states the team's QA goal (tiny end-to-end AgentTeams verification), approve it; otherwise reject it. Do not edit files. Complete with output starting \"APPROVED: <summary>\" or \"REJECTED: <reason>\". Be decisive.",
+              "status": "completed",
+              "assignee": "oracle",
+              "dependencies": [
+                "t1"
+              ],
+              "attempt": 1,
+              "createdAt": 1788150523457,
+              "updatedAt": 1788150547872,
+              "kind": "work",
+              "attemptId": "25ad4920-8d1b-433d-b264-458bf53dfe31",
+              "reassigning": false,
+              "output": "APPROVED: C1 adoption QA: a tiny end-to-end verification that the AgentTeams multi-agent workflow works.\n\nReasoning: It is a single sentence and accurately mirrors the team goal (C1 adoption QA = tiny end-to-end verification of the AgentTeams multi-agent workflow)."
+            }
+          ],
+          "taskSeq": 2
+        },
+        {
+          "name": "MPD Default",
+          "id": "mpd-default",
+          "description": "Auto-provisioned default team for this session (session-start team policy; staged — the captain designs the roster/DAG, then the user reviews and approves the plan in the Web panel).",
+          "profile": {
+            "name": "mpd",
+            "description": "The OMO-origin specialist roster surfaced as normal-named teammate templates — captain-planned (roster only; the captain designs the DAG during the staged plan).",
+            "protocol": "Read-only members (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) take requirements/review/analysis tasks only and never edit files. Workers (Senior Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) take implementation/verification/integration. The captain leads, designs the DAG, and integrates results. Workmate reuse: before delegating a role task, consult mpd_workmate_list / mpd_workmate_match(task); if a workmate note matches well, delegate to that workmate (member name = workmate name, so its persona/memory are injected), otherwise initialize a fresh workmate with mpd_workmate_init — never force a weak note match.",
+            "taskPlanning": "captain",
+            "reviewPolicy": {
+              "requiredReviewers": []
+            }
+          },
+          "reviewPolicy": {
+            "requiredReviewers": []
+          },
+          "captainSessionId": "session-2b4f1a3b-3afa-4395-a8a0-a84d84cc56db",
+          "createdAt": 1788150357675,
+          "phase": "staged",
+          "planReviewState": "awaiting_review",
+          "members": [
+            {
+              "id": "",
+              "name": "Architect",
+              "role": "architecture review / deep debugging / self-review",
+              "provider": "deepseek-official",
+              "model": "deepseek-v4-pro",
+              "reasoningEffort": "high",
+              "executionPrompt": "Read-only architecture advisor. You advise, others execute — never edit files. Favor simplicity and existing patterns; give one clear recommendation with concise rationale and evidence.",
+              "fallback": {
+                "provider": "deepseek-official",
+                "model": "deepseek-v4-flash"
+              },
+              "joinedAt": 1788150357675,
+              "status": "removed"
+            },
+            {
+              "id": "",
+              "name": "Researcher",
+              "role": "code / open-source evidence search",
+              "provider": "deepseek-official",
+              "model": "deepseek-v4-flash",
+              "reasoningEffort": "high",
+              "executionPrompt": "Read-only researcher. Gather evidence from the codebase, AST/LSP and web sources; cite file:line and URLs; never edit files or invent findings.",
+              "fallback": {
+                "provider": "deepseek-official",
+                "model": "deepseek-v4-flash"
+              },
+              "joinedAt": 1788150357675,
+              "status": "removed"
+            },
+            {
+              "id": "",
+              "name": "Planner",
+              "role": "planning / task decomposition",
+              "provider": "deepseek-official",
+              "model": "deepseek-v4-pro",
+              "reasoningEffort": "high",
+              "executionPrompt": "Read-only planner. Produce decision-complete, step-ordered plans with a checklist; never implement.",
+              "fallback": {
+                "provider": "deepseek-official",
+                "model": "deepseek-v4-flash"
+              },
+              "joinedAt": 1788150357675,
+              "status": "removed"
+            },
+            {
+              "id": "",
+              "name": "Explorer",
+              "role": "read-only codebase exploration",
+              "provider": "deepseek-official",
+              "model": "deepseek-v4-flash",
+              "reasoningEffort": "high",
+              "executionPrompt": "Read-only explorer. Answer with evidence and absolute file paths; never edit files.",
+              "fallback": {
+                "provider": "deepseek-official",
+                "model": "deepseek-v4-flash"
+              },
+              "joinedAt": 1788150357675,
+              "status": "removed"
+            },
+            {
+              "id": "",
+              "name": "Reviewer",
+              "role": "correctness / risk review",
+              "provider": "deepseek-official",
+              "model": "deepseek-v4-pro",
+              "reasoningEffort": "high",
+              "executionPrompt": "Deep reviewer. Produce correctness/risk findings with evidence; recommend fixes but do not apply them.",
+              "fallback": {
+                "provider": "deepseek-official",
+                "model": "deepseek-v4-flash"
+              },
+              "joinedAt": 1788150357675,
+              "status": "removed"
+            },
+            {
+              "id": "",
+              "name": "Plan Reviewer",
+              "role": "work-plan QA review / UI-UX critique",
+              "provider": "deepseek-official",
+              "model": "deepseek-v4-flash",
+              "reasoningEffort": "high",
+              "executionPrompt": "Read-only plan reviewer. Verify plans are executable and references valid; reject only true blockers; UI/UX critique only when explicitly asked; never edit files.",
+              "fallback": {
+                "provider": "deepseek-official",
+                "model": "deepseek-v4-pro"
+              },
+              "joinedAt": 1788150357675,
+              "status": "removed"
+            },
+            {
+              "id": "",
+              "name": "Vision Analyst",
+              "role": "image / diagram analysis",
+              "provider": "deepseek-official",
+              "model": "deepseek-v4-flash-vision-exp",
+              "reasoningEffort": "high",
+              "executionPrompt": "Read-only vision analyst. Describe screenshots/diagrams precisely; never edit files or load anything by path.",
+              "fallback": {
+                "provider": "deepseek-official",
+                "model": "deepseek-v4-flash"
+              },
+              "joinedAt": 1788150357675,
+              "status": "removed"
+            },
+            {
+              "id": "",
+              "name": "Lead",
+              "role": "orchestration / integration",
+              "provider": "deepseek-official",
+              "model": "deepseek-v4-pro",
+              "reasoningEffort": "high",
+              "executionPrompt": "Orchestrator. Plan the macro structure, delegate independent units in parallel, integrate and verify results.",
+              "fallback": {
+                "provider": "deepseek-official",
+                "model": "deepseek-v4-flash"
+              },
+              "joinedAt": 1788150357675,
+              "status": "removed"
+            },
+            {
+              "id": "",
+              "name": "Deep Worker",
+              "role": "autonomous goal-driven implementation",
+              "provider": "deepseek-official",
+              "model": "deepseek-v4-flash",
+              "reasoningEffort": "high",
+              "executionPrompt": "Autonomous deep worker. Receive goals, execute them end-to-end with tools, verify every change, report evidence-first.",
+              "fallback": {
+                "provider": "deepseek-official",
+                "model": "deepseek-v4-flash"
+              },
+              "joinedAt": 1788150357675,
+              "status": "removed"
+            },
+            {
+              "id": "",
+              "name": "Senior Engineer",
+              "role": "primary implementation",
+              "provider": "deepseek-official",
+              "model": "deepseek-v4-pro",
+              "reasoningEffort": "high",
+              "executionPrompt": "Primary engineer. Plan small, execute with tools, keep diffs minimal, verify every change, report honestly.",
+              "fallback": {
+                "provider": "deepseek-official",
+                "model": "deepseek-v4-flash"
+              },
+              "joinedAt": 1788150357675,
+              "status": "removed"
+            },
+            {
+              "id": "",
+              "name": "Junior Engineer",
+              "role": "small mechanical changes",
+              "provider": "deepseek-official",
+              "model": "deepseek-v4-flash",
+              "reasoningEffort": "high",
+              "executionPrompt": "Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny.",
+              "fallback": {
+                "provider": "deepseek-official",
+                "model": "deepseek-v4-flash"
+              },
+              "joinedAt": 1788150357675,
+              "status": "removed"
+            }
+          ],
+          "tasks": [],
+          "taskSeq": 0
+        }
+      ]
+    },
+    "archive": {
+      "ok": true,
+      "archiveIds": [
+        "c1qa",
+        "mpd-default"
+      ]
+    },
+    "taskTerminal": {
+      "ok": true,
+      "tasks": 2,
+      "taskTerminal": true
+    },
+    "webInstaller": {
+      "ok": true,
+      "exit": 0
+    },
+    "webRoute": {
+      "ok": false,
+      "status": 404,
+      "body": "",
+      "webLog": "/root/dshProj/my-power-dsh/evidence/plan-c/c1-team/2026-08-31T04-25-14.530Z/web.log"
+    }
+  },
+  "totalSteps": 10
+}

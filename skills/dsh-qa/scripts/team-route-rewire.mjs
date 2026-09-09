@@ -84,7 +84,9 @@ async function runReal() {
   steps.install = { ok: add.status === 0, exit: add.status }
   const dump = runSync("dsh", ["--profile", "t", "--dump-config"], { timeout: 120000 })
   const dumpOut = dump.out
-  const dumpClean = dumpOut.split(home).join("<QAHOME>")
+  // The QA probe row legitimately names the checkout; mask it so the leak check
+  // only fails on a real bundle row carrying a dev path.
+  const dumpClean = dumpOut.split(home).join("<QAHOME>").split(join(repoRoot, "packages", "mpd-qa-roles-probe")).join("<QAPROBE>")
   steps.dump = { ok: dump.status === 0 && dumpOut.includes("agent-teams") && dumpOut.includes(".mpd/team") && dumpOut.includes("@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib/index.js") && !dumpOut.includes("@nanmicoder/dsh-agent-teams'") && !dumpClean.includes(DEV), exit: dump.status, leaked: dumpClean.includes(DEV) }
   const resCode = "const {createRequire}=require('module');const r=createRequire(process.argv[1]);try{console.log('MAINCODE_OK '+r.resolve('@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/package.json'))}catch(e){console.log('MAINCODE_FAIL '+e.code)};try{r.resolve('@nanmicoder/dsh-agent-teams/package.json');console.log('PKG_PRESENT')}catch(e){console.log('PKG_ABSENT')}"
   const res = runSync("node", ["-e", resCode, join(profile, "x.js")])

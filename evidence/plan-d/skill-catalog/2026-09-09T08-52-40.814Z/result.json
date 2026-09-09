@@ -8,11 +8,11 @@
     "noHomeCopy": {
       "ok": true,
       "count": 0,
-      "path": "/tmp/mpd-skill-URAxD5/skills"
+      "path": "/tmp/mpd-skill-ORXwcH/skills"
     },
     "noPresetCopy": {
       "ok": true,
-      "path": "/tmp/mpd-skill-URAxD5/.agent-presets"
+      "path": "/tmp/mpd-skill-ORXwcH/.agent-presets"
     },
     "servedFromBundle": {
       "ok": true,

@@ -1,9 +1,0 @@
-[mpd-codegraph] init status=no-binary binary=- cwd=/root/dshProj/my-power-dsh/.qa-reloc/bundle-lifecycle-2026-09-09T08-05-44.345Z
-[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/.qa-reloc/bundle-lifecycle-2026-09-09T08-05-44.345Z/mpd-pkg-relocated/skills (provider mpd-bundle, bundle 0.3.0)
-CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.
-[roles-probe] PRESET_MPD=ok
-[roles-probe] PRESET_PATH=/root/dshProj/my-power-dsh/.qa-reloc/bundle-lifecycle-2026-09-09T08-05-44.345Z/home/profiles/w/node_modules/@mpd-dsh/mpd/presets/mpd/agent.cordis.yml trust=system
-[roles-probe] ROSTER=oracle,librarian,prometheus,hephaestus,sisyphus,atlas,explore,metis,momus,multimodal-looker,sisyphus-junior
-[roles-probe] SKILLS=22 BUNDLED=22
-[roles-probe] SKILL_FIXTURE=ok name=svn-master base=/root/dshProj/my-power-dsh/.qa-reloc/bundle-lifecycle-2026-09-09T08-05-44.345Z/mpd-pkg-relocated/skills/svn-master bytes=5210
-[roles-probe] PASS
