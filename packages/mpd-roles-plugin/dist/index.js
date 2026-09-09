@@ -131,6 +131,207 @@ var ROLES = [
 ];
 var ROLE_BY_ID = Object.fromEntries(ROLES.map((r) => [r.id, r]));
 
+// packages/mpd-dsh-adapter-plugin/src/index.ts
+var OBJECT_SCHEMA = { type: "object", properties: {} };
+var DEFAULT_TOOL_TIMEOUT_MS = 120000;
+function textBlock(content) {
+  return [{ type: "text", text: typeof content === "string" ? content : String(content ?? "") }];
+}
+function message(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+function noop() {}
+function createDshAdapter(ctx, config = {}) {
+  const defaultTimeoutMs = config.defaultTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS;
+  const service = (serviceName) => {
+    if (typeof ctx?.get === "function") {
+      try {
+        const viaGet = ctx.get(serviceName);
+        if (viaGet !== undefined && viaGet !== null)
+          return viaGet;
+      } catch {}
+    }
+    try {
+      return ctx?.[serviceName];
+    } catch {
+      return;
+    }
+  };
+  function requireService(serviceName, needed) {
+    const found = service(serviceName);
+    if (found === undefined || found === null) {
+      throw new Error(`mpd-dsh-adapter: harness service "${serviceName}" is unavailable — ${needed}`);
+    }
+    return found;
+  }
+  function timeoutSignal(timeoutMs) {
+    try {
+      if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function")
+        return AbortSignal.timeout(timeoutMs);
+    } catch {}
+    return;
+  }
+  const adapter = {
+    capabilities() {
+      const tools = service("tools");
+      const subagents = service("subagents");
+      const skills = service("skills");
+      const presets = service("agentPresets");
+      return {
+        tools: tools !== undefined,
+        toolsRegister: typeof tools?.register === "function",
+        toolsGuard: typeof tools?.guard === "function",
+        toolsGet: typeof tools?.get === "function",
+        toolsExecute: typeof tools?.execute === "function",
+        toolsPostExecute: typeof ctx?.on === "function",
+        subagents: subagents !== undefined,
+        subagentsSpawn: typeof subagents?.start === "function",
+        skills: skills !== undefined,
+        skillsProvider: typeof skills?.registerProvider === "function",
+        agentPresets: typeof presets?.resolve === "function"
+      };
+    },
+    registerTool(definition) {
+      const tools = requireService("tools", 'cannot register tool "' + String(definition?.name) + '"');
+      if (typeof tools.register !== "function")
+        throw new Error("mpd-dsh-adapter: the harness tools service exposes no register()");
+      const output = definition.output ?? {};
+      const render = typeof output.render === "function" ? output.render : (_args, value) => textBlock(value);
+      const schema = output.schema ?? OBJECT_SCHEMA;
+      return tools.register({
+        name: definition.name,
+        description: definition.description,
+        parameters: definition.parameters ?? OBJECT_SCHEMA,
+        output: { ...output, schema, render },
+        ...definition.timeoutMs === undefined ? {} : { timeoutMs: definition.timeoutMs },
+        execute: async (args, exec) => definition.execute(args ?? {}, exec ?? {})
+      });
+    },
+    registerTools(definitions) {
+      const disposers = definitions.map((definition) => adapter.registerTool(definition));
+      return () => {
+        for (const dispose of disposers)
+          dispose();
+      };
+    },
+    guardTool(guard) {
+      const tools = requireService("tools", "cannot install a tool guard");
+      if (typeof tools.guard !== "function")
+        throw new Error("mpd-dsh-adapter: the harness tools service exposes no guard()");
+      return tools.guard((exec) => guard(exec ?? {}));
+    },
+    onPostToolExecute(listener) {
+      if (typeof ctx?.on !== "function")
+        return noop;
+      return ctx.on("tools/post-execute", async (exec, result, next) => {
+        const downstream = typeof next === "function" ? await next() ?? { kind: "accept" } : { kind: "accept" };
+        const decided = await listener(exec ?? {}, result ?? {}, downstream);
+        return decided ?? downstream;
+      });
+    },
+    hasTool(toolName) {
+      const tools = service("tools");
+      if (typeof tools?.get !== "function")
+        return false;
+      try {
+        return tools.get(toolName) !== undefined;
+      } catch {
+        return false;
+      }
+    },
+    toolRuntime() {
+      const tools = service("tools");
+      return {
+        get: (toolName) => typeof tools?.get === "function" ? tools.get(toolName) : undefined,
+        execute: (input) => adapter.executeTool({ ...input, timeoutMs: defaultTimeoutMs }).then((result) => result.raw)
+      };
+    },
+    async executeTool(input) {
+      const tools = service("tools");
+      if (tools === undefined || typeof tools.execute !== "function") {
+        return { ok: false, isError: true, error: "the harness tool runtime has no execute()" };
+      }
+      const callId = input.callId ?? "mpd-" + Math.random().toString(36).slice(2, 10);
+      const signal = input.signal ?? timeoutSignal(input.timeoutMs ?? defaultTimeoutMs);
+      try {
+        const raw = await tools.execute({
+          name: input.name,
+          arguments: input.arguments ?? {},
+          callId,
+          ...signal === undefined ? {} : { signal }
+        });
+        const isError = raw?.isError === true;
+        if (isError) {
+          const error = raw?.error;
+          return { ok: false, isError: true, error: error?.message ?? error ?? "tool error", raw };
+        }
+        return { ok: true, isError: false, value: raw?.value, raw };
+      } catch (error) {
+        return { ok: false, isError: true, error: message(error) };
+      }
+    },
+    async spawnAgent(spec) {
+      const subagents = requireService("subagents", 'cannot spawn subagent "' + String(spec?.label) + '"');
+      if (typeof subagents.start !== "function")
+        throw new Error("mpd-dsh-adapter: the harness subagent service exposes no start()");
+      const route = {
+        ...spec.provider === undefined ? {} : { provider: spec.provider },
+        ...spec.model === undefined ? {} : { model: spec.model },
+        ...spec.agentOptions ?? {}
+      };
+      const run = await subagents.start(spec.mode ?? "spawn", {
+        label: spec.label,
+        prompt: typeof spec.prompt === "string" ? textBlock(spec.prompt) : spec.prompt,
+        ...spec.parent === undefined ? {} : { parent: spec.parent },
+        ...spec.signal === undefined ? {} : { signal: spec.signal },
+        ...Object.keys(route).length === 0 ? {} : { agentOptions: route },
+        ...spec.persona === undefined ? {} : { persona: spec.persona },
+        ...spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema },
+        ...spec.toolFilter === undefined ? {} : { toolFilter: spec.toolFilter },
+        ...spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }
+      });
+      const result = await (run?.result ?? {});
+      return {
+        output: typeof result.output === "string" ? result.output : "",
+        structured: result.structured,
+        stopReason: result.stopReason ?? null
+      };
+    },
+    registerSkillProvider(provider) {
+      const skills = requireService("skills", "cannot register a skill provider");
+      if (typeof skills.registerProvider !== "function")
+        throw new Error("mpd-dsh-adapter: the harness skills service exposes no registerProvider()");
+      return skills.registerProvider(provider);
+    },
+    async listSkills(options = {}) {
+      const skills = requireService("skills", "cannot list skills");
+      if (typeof skills.list !== "function")
+        throw new Error("mpd-dsh-adapter: the harness skills service exposes no list()");
+      return await skills.list(options) ?? [];
+    },
+    async loadSkill(skillName, options = {}) {
+      const skills = requireService("skills", 'cannot load skill "' + skillName + '"');
+      if (typeof skills.get !== "function")
+        throw new Error("mpd-dsh-adapter: the harness skills service exposes no get()");
+      return skills.get(skillName, options);
+    },
+    async resolvePreset(presetId) {
+      const presets = requireService("agentPresets", 'cannot resolve preset "' + presetId + '"');
+      if (typeof presets.resolve !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agent-presets service exposes no resolve()");
+      const preset = await presets.resolve(presetId);
+      return {
+        id: String(preset?.id ?? presetId),
+        ...preset?.path === undefined ? {} : { path: String(preset.path) },
+        ...preset?.trust === undefined ? {} : { trust: String(preset.trust) },
+        ...preset?.broken === undefined ? {} : { broken: String(preset.broken) }
+      };
+    },
+    text: textBlock
+  };
+  return adapter;
+}
+
 // packages/mpd-roles-plugin/src/index.ts
 var name = "mpd-roles";
 var inject = ["tools", "subagents"];
@@ -157,7 +358,7 @@ var REPORT_SCHEMA = {
   required: ["role", "summary"],
   additionalProperties: false
 };
-function textBlock(text) {
+function textBlock2(text) {
   return [{ type: "text", text }];
 }
 function pkgRoot() {
@@ -192,6 +393,7 @@ function readPersona(config, spec) {
   return spec.description;
 }
 function apply(ctx, config = {}) {
+  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx);
   ctx.provide("mpdRoles", {
     list: () => ROLES.map((r) => ({ id: r.id, name: r.name, description: r.description, readonly: r.readonly, chain: r.chain.map((c) => ({ ...c })), personaFile: r.personaFile, persona: readPersona(config, r) })),
     get: (key) => {
@@ -202,20 +404,20 @@ function apply(ctx, config = {}) {
       return { id: spec.id, name: spec.name, description: spec.description, readonly: spec.readonly, chain: spec.chain.map((c) => ({ ...c })), persona: readPersona(config, spec) };
     }
   });
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_roles_list",
     description: "List the specialist roster (ids → normal display names): Architect(oracle), Researcher(librarian), Planner(prometheus), Deep Worker(hephaestus), Senior Engineer(sisyphus), Lead(atlas), Explorer(explore), Reviewer(metis), Plan Reviewer(momus), Vision Analyst(multimodal-looker), Junior Engineer(sisyphus-junior). Use before mpd_role_spawn. Team mode uses the dsh-agent-teams profiles (agent_teams_create profile=mpd).",
     parameters: { type: "object", properties: {} },
-    output: { schema: { type: "object", properties: { roles: { type: "array", items: { type: "object" } }, count: { type: "integer" } }, required: ["roles", "count"] }, render: (_a, v) => textBlock("roster (" + v.count + `):
+    output: { schema: { type: "object", properties: { roles: { type: "array", items: { type: "object" } }, count: { type: "integer" } }, required: ["roles", "count"] }, render: (_a, v) => textBlock2("roster (" + v.count + `):
 ` + v.roles.map((r) => "- " + r.id + " [" + r.model + (r.readonly ? " readonly" : "") + "] " + r.description).join(`
 `)) },
     execute: async () => ({ roles: ROLES.map((r) => ({ id: r.id, name: r.name, description: r.description, readonly: r.readonly, provider: r.chain[0]?.provider ?? null, model: r.chain[0]?.model ?? null })), count: ROLES.length })
   });
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_role_spawn",
     description: "Spawn one specialist as a one-shot subagent with its roster persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Use ids from mpd_roles_list: Architect(oracle), Researcher(librarian), Planner(prometheus), Deep Worker(hephaestus), Senior Engineer(sisyphus), Lead(atlas), Explorer(explore), Reviewer(metis), Plan Reviewer(momus), Vision Analyst(multimodal-looker), Junior Engineer(sisyphus-junior). For multi-member team work prefer the adopted dsh-agent-teams protocol (agent_teams_create + agent_teams_add_member), not repeated one-shot spawns.",
     parameters: { type: "object", properties: { role: { type: "string", description: "roster role id (mpd_roles_list)" }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" }, model: { type: "string", description: "optional model override (default: the role's primary route)" } }, required: ["role", "task"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a, v) => textBlock("role " + v.role + " (" + v.status + `)
+    output: { schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a, v) => textBlock2("role " + v.role + " (" + v.status + `)
 summary: ` + v.summary + (v.recommendation ? `
 recommendation: ` + v.recommendation : "") + (v.details ? `
 details: ` + v.details : "") + (v.evidence?.length ? `
@@ -241,26 +443,26 @@ Context:
 ` + String(args.context) : "") + `
 
 Work with the tools your role requires (read-only roles must never modify anything). End with ONLY the structured report (role/summary/recommendation/details/evidence).`;
-      const run = await ctx.subagents.start("spawn", {
+      const result = await dsh.spawnAgent({
         label: "role-" + id + "-" + randomUUID().slice(0, 8),
-        prompt: textBlock(prompt),
+        prompt,
         parent: exec.agent,
         signal: exec.signal,
-        agentOptions: { provider, model },
+        provider,
+        model,
         persona,
         outputSchema: REPORT_SCHEMA,
         ...spec.readonly ? { toolFilter: { deny: READONLY_DENY } } : {}
       });
-      const result = run.result;
       const st = result.structured ?? {};
       return { role: id, status: "complete", summary: String(st.summary ?? ""), recommendation: String(st.recommendation ?? ""), details: String(st.details ?? ""), evidence: Array.isArray(st.evidence) ? st.evidence.map(String) : [], stopReason: result.stopReason ?? null };
     }
   });
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_role_persona",
     description: "Return the full persona text of one roster role. Use it when a spawn surface takes the persona as TEXT (e.g. agent_teams_add_member persona=...), so the member gets the real role instructions instead of a bare id.",
     parameters: { type: "object", properties: { role: { type: "string" } }, required: ["role"] },
-    output: { schema: { type: "object", properties: { role: { type: "string" }, persona: { type: "string" }, chars: { type: "integer" } }, required: ["role", "persona", "chars"] }, render: (_a, v) => textBlock("persona " + v.role + " (" + v.chars + ` chars):
+    output: { schema: { type: "object", properties: { role: { type: "string" }, persona: { type: "string" }, chars: { type: "integer" } }, required: ["role", "persona", "chars"] }, render: (_a, v) => textBlock2("persona " + v.role + " (" + v.chars + ` chars):
 ` + v.persona) },
     execute: async (args) => {
       const id = normalizeRoleKey(String(args?.role ?? ""));

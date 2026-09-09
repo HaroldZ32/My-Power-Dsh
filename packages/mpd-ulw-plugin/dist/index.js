@@ -1,7 +1,210 @@
-// src/index.ts
+// packages/mpd-ulw-plugin/src/index.ts
 import { mkdirSync, writeFileSync, appendFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
+
+// packages/mpd-dsh-adapter-plugin/src/index.ts
+var OBJECT_SCHEMA = { type: "object", properties: {} };
+var DEFAULT_TOOL_TIMEOUT_MS = 120000;
+function textBlock(content) {
+  return [{ type: "text", text: typeof content === "string" ? content : String(content ?? "") }];
+}
+function message(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+function noop() {}
+function createDshAdapter(ctx, config = {}) {
+  const defaultTimeoutMs = config.defaultTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS;
+  const service = (serviceName) => {
+    if (typeof ctx?.get === "function") {
+      try {
+        const viaGet = ctx.get(serviceName);
+        if (viaGet !== undefined && viaGet !== null)
+          return viaGet;
+      } catch {}
+    }
+    try {
+      return ctx?.[serviceName];
+    } catch {
+      return;
+    }
+  };
+  function requireService(serviceName, needed) {
+    const found = service(serviceName);
+    if (found === undefined || found === null) {
+      throw new Error(`mpd-dsh-adapter: harness service "${serviceName}" is unavailable — ${needed}`);
+    }
+    return found;
+  }
+  function timeoutSignal(timeoutMs) {
+    try {
+      if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function")
+        return AbortSignal.timeout(timeoutMs);
+    } catch {}
+    return;
+  }
+  const adapter = {
+    capabilities() {
+      const tools = service("tools");
+      const subagents = service("subagents");
+      const skills = service("skills");
+      const presets = service("agentPresets");
+      return {
+        tools: tools !== undefined,
+        toolsRegister: typeof tools?.register === "function",
+        toolsGuard: typeof tools?.guard === "function",
+        toolsGet: typeof tools?.get === "function",
+        toolsExecute: typeof tools?.execute === "function",
+        toolsPostExecute: typeof ctx?.on === "function",
+        subagents: subagents !== undefined,
+        subagentsSpawn: typeof subagents?.start === "function",
+        skills: skills !== undefined,
+        skillsProvider: typeof skills?.registerProvider === "function",
+        agentPresets: typeof presets?.resolve === "function"
+      };
+    },
+    registerTool(definition) {
+      const tools = requireService("tools", 'cannot register tool "' + String(definition?.name) + '"');
+      if (typeof tools.register !== "function")
+        throw new Error("mpd-dsh-adapter: the harness tools service exposes no register()");
+      const output = definition.output ?? {};
+      const render = typeof output.render === "function" ? output.render : (_args, value) => textBlock(value);
+      const schema = output.schema ?? OBJECT_SCHEMA;
+      return tools.register({
+        name: definition.name,
+        description: definition.description,
+        parameters: definition.parameters ?? OBJECT_SCHEMA,
+        output: { ...output, schema, render },
+        ...definition.timeoutMs === undefined ? {} : { timeoutMs: definition.timeoutMs },
+        execute: async (args, exec) => definition.execute(args ?? {}, exec ?? {})
+      });
+    },
+    registerTools(definitions) {
+      const disposers = definitions.map((definition) => adapter.registerTool(definition));
+      return () => {
+        for (const dispose of disposers)
+          dispose();
+      };
+    },
+    guardTool(guard) {
+      const tools = requireService("tools", "cannot install a tool guard");
+      if (typeof tools.guard !== "function")
+        throw new Error("mpd-dsh-adapter: the harness tools service exposes no guard()");
+      return tools.guard((exec) => guard(exec ?? {}));
+    },
+    onPostToolExecute(listener) {
+      if (typeof ctx?.on !== "function")
+        return noop;
+      return ctx.on("tools/post-execute", async (exec, result, next) => {
+        const downstream = typeof next === "function" ? await next() ?? { kind: "accept" } : { kind: "accept" };
+        const decided = await listener(exec ?? {}, result ?? {}, downstream);
+        return decided ?? downstream;
+      });
+    },
+    hasTool(toolName) {
+      const tools = service("tools");
+      if (typeof tools?.get !== "function")
+        return false;
+      try {
+        return tools.get(toolName) !== undefined;
+      } catch {
+        return false;
+      }
+    },
+    toolRuntime() {
+      const tools = service("tools");
+      return {
+        get: (toolName) => typeof tools?.get === "function" ? tools.get(toolName) : undefined,
+        execute: (input) => adapter.executeTool({ ...input, timeoutMs: defaultTimeoutMs }).then((result) => result.raw)
+      };
+    },
+    async executeTool(input) {
+      const tools = service("tools");
+      if (tools === undefined || typeof tools.execute !== "function") {
+        return { ok: false, isError: true, error: "the harness tool runtime has no execute()" };
+      }
+      const callId = input.callId ?? "mpd-" + Math.random().toString(36).slice(2, 10);
+      const signal = input.signal ?? timeoutSignal(input.timeoutMs ?? defaultTimeoutMs);
+      try {
+        const raw = await tools.execute({
+          name: input.name,
+          arguments: input.arguments ?? {},
+          callId,
+          ...signal === undefined ? {} : { signal }
+        });
+        const isError = raw?.isError === true;
+        if (isError) {
+          const error = raw?.error;
+          return { ok: false, isError: true, error: error?.message ?? error ?? "tool error", raw };
+        }
+        return { ok: true, isError: false, value: raw?.value, raw };
+      } catch (error) {
+        return { ok: false, isError: true, error: message(error) };
+      }
+    },
+    async spawnAgent(spec) {
+      const subagents = requireService("subagents", 'cannot spawn subagent "' + String(spec?.label) + '"');
+      if (typeof subagents.start !== "function")
+        throw new Error("mpd-dsh-adapter: the harness subagent service exposes no start()");
+      const route = {
+        ...spec.provider === undefined ? {} : { provider: spec.provider },
+        ...spec.model === undefined ? {} : { model: spec.model },
+        ...spec.agentOptions ?? {}
+      };
+      const run = await subagents.start(spec.mode ?? "spawn", {
+        label: spec.label,
+        prompt: typeof spec.prompt === "string" ? textBlock(spec.prompt) : spec.prompt,
+        ...spec.parent === undefined ? {} : { parent: spec.parent },
+        ...spec.signal === undefined ? {} : { signal: spec.signal },
+        ...Object.keys(route).length === 0 ? {} : { agentOptions: route },
+        ...spec.persona === undefined ? {} : { persona: spec.persona },
+        ...spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema },
+        ...spec.toolFilter === undefined ? {} : { toolFilter: spec.toolFilter },
+        ...spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }
+      });
+      const result = await (run?.result ?? {});
+      return {
+        output: typeof result.output === "string" ? result.output : "",
+        structured: result.structured,
+        stopReason: result.stopReason ?? null
+      };
+    },
+    registerSkillProvider(provider) {
+      const skills = requireService("skills", "cannot register a skill provider");
+      if (typeof skills.registerProvider !== "function")
+        throw new Error("mpd-dsh-adapter: the harness skills service exposes no registerProvider()");
+      return skills.registerProvider(provider);
+    },
+    async listSkills(options = {}) {
+      const skills = requireService("skills", "cannot list skills");
+      if (typeof skills.list !== "function")
+        throw new Error("mpd-dsh-adapter: the harness skills service exposes no list()");
+      return await skills.list(options) ?? [];
+    },
+    async loadSkill(skillName, options = {}) {
+      const skills = requireService("skills", 'cannot load skill "' + skillName + '"');
+      if (typeof skills.get !== "function")
+        throw new Error("mpd-dsh-adapter: the harness skills service exposes no get()");
+      return skills.get(skillName, options);
+    },
+    async resolvePreset(presetId) {
+      const presets = requireService("agentPresets", 'cannot resolve preset "' + presetId + '"');
+      if (typeof presets.resolve !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agent-presets service exposes no resolve()");
+      const preset = await presets.resolve(presetId);
+      return {
+        id: String(preset?.id ?? presetId),
+        ...preset?.path === undefined ? {} : { path: String(preset.path) },
+        ...preset?.trust === undefined ? {} : { trust: String(preset.trust) },
+        ...preset?.broken === undefined ? {} : { broken: String(preset.broken) }
+      };
+    },
+    text: textBlock
+  };
+  return adapter;
+}
+
+// packages/mpd-ulw-plugin/src/index.ts
 var name = "mpd-ulw";
 var inject = ["tools", "subagents"];
 function mergedConfig(ctx, config) {
@@ -57,7 +260,7 @@ var DIRECTIVE = [
   "Subagent barrier: no done/final answer while children are non-terminal.",
   "End with ONLY the structured report (status=continue|complete|blocked; wave label; criteria states; evidence; nextSteps; blocker). continue requires nextSteps; complete requires all evidence and empty nextSteps; blocked requires a concrete blocker."
 ].join(String.fromCharCode(10));
-function textBlock(text) {
+function textBlock2(text) {
   return [{ type: "text", text }];
 }
 function cwd() {
@@ -67,6 +270,7 @@ function writeJson(p, v) {
   writeFileSync(p, JSON.stringify(v, null, 2));
 }
 function apply(ctx, config = {}) {
+  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx);
   const cfg = mergedConfig(ctx, config);
   const maxRounds = cfg.maxRounds ?? 6;
   const planDir = cfg.planDir ?? join(cwd(), ".mpd", "plans");
@@ -77,16 +281,16 @@ function apply(ctx, config = {}) {
   const maxReReviews = cfg.maxReReviews ?? 2;
   async function spawnChild(opts) {
     const fullPrompt = [opts.persona, opts.prompt].filter(Boolean).join(String.fromCharCode(10, 10));
-    const run = await ctx.subagents.start("spawn", {
+    return await dsh.spawnAgent({
       label: opts.label,
-      prompt: textBlock(fullPrompt),
+      prompt: fullPrompt,
       parent: opts.parent,
       signal: opts.signal,
-      agentOptions: { provider, model: opts.model ?? model },
+      provider,
+      model: opts.model ?? model,
       outputSchema: opts.schema,
       ...opts.maxDepth === undefined ? {} : { maxDepth: opts.maxDepth }
     });
-    return run.result;
   }
   function upsertCriteria(acc, crit) {
     for (const c of crit ?? []) {
@@ -104,7 +308,7 @@ function apply(ctx, config = {}) {
         return false;
     return true;
   }
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_ultrawork",
     description: "Run the fixed ultrawork discipline: optional adversarial hyperplan wave, plan gate (planner + plan review), execution rounds (fresh child per round, per-criterion PIN->RED->GREEN->SURFACE->CLEAN, discovery waves stop after 2 fruitless), verification gate (momus reviewer, max 2 re-reviews) when a plan exists AND (tier=heavy OR strictReview), final quality gate with per-lane ledger, subagent barrier. State + ledger under .mpd/ulw/<id>.",
     parameters: {
@@ -122,7 +326,7 @@ function apply(ctx, config = {}) {
     },
     output: {
       schema: { type: "object", properties: { status: { type: "string" }, rounds: { type: "integer" }, planFile: { type: "string" }, verdict: { type: "string" }, ledger: { type: "array", items: { type: "object" } }, finalReport: { type: "string" }, stateFile: { type: "string" } }, required: ["status", "rounds", "finalReport", "stateFile"] },
-      render: (_a, v) => textBlock("ultrawork status=" + v.status + " rounds=" + v.rounds + " verdict=" + (v.verdict ?? "-") + String.fromCharCode(10) + v.finalReport + String.fromCharCode(10) + "state: " + v.stateFile)
+      render: (_a, v) => textBlock2("ultrawork status=" + v.status + " rounds=" + v.rounds + " verdict=" + (v.verdict ?? "-") + String.fromCharCode(10) + v.finalReport + String.fromCharCode(10) + "state: " + v.stateFile)
     },
     execute: async (args, exec) => {
       const objective = String(args?.objective);
@@ -300,13 +504,13 @@ function apply(ctx, config = {}) {
       return { status, rounds: used, planFile, verdict, ledger: gateLedger, finalReport, stateFile };
     }
   });
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_ulw",
     description: "Lightweight ulw-loop alias: same engine as mpd_ultrawork with tier=light, plan=false, hyperplan=false. Returns the B3-shaped result.",
     parameters: { type: "object", properties: { objective: { type: "string" }, maxRounds: { type: "integer", description: "1..8" } }, required: ["objective"] },
-    output: { schema: { type: "object", properties: { status: { type: "string" }, rounds: { type: "integer" }, finalReport: { type: "string" }, stateFile: { type: "string" } }, required: ["status", "rounds", "finalReport", "stateFile"] }, render: (_a, v) => textBlock("mpd_ulw status=" + v.status + " rounds=" + v.rounds + String.fromCharCode(10) + v.finalReport + String.fromCharCode(10) + "state: " + v.stateFile) },
+    output: { schema: { type: "object", properties: { status: { type: "string" }, rounds: { type: "integer" }, finalReport: { type: "string" }, stateFile: { type: "string" } }, required: ["status", "rounds", "finalReport", "stateFile"] }, render: (_a, v) => textBlock2("mpd_ulw status=" + v.status + " rounds=" + v.rounds + String.fromCharCode(10) + v.finalReport + String.fromCharCode(10) + "state: " + v.stateFile) },
     execute: async (args, exec) => {
-      const tool = ctx.tools.get?.("mpd_ultrawork");
+      const tool = dsh.hasTool("mpd_ultrawork") ? dsh.toolRuntime().get("mpd_ultrawork") : undefined;
       if (!tool?.execute)
         throw new Error("mpd_ulw: engine not available");
       const inner = { objective: String(args?.objective), tier: "light", plan: false, hyperplan: false, strictReview: false, maxRounds: Number(args?.maxRounds ?? cfg.maxRounds ?? 3) };

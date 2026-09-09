@@ -13,6 +13,7 @@ import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-comment-checker"
 export const inject = ["tools"]
@@ -94,11 +95,13 @@ function runCheck(binary: string, hookInput: any, timeoutMs: number): { hasComme
 export { hookInputFor, runCheck }
 
 export function apply(ctx: Ctx, config: Config = {}): void {
+  // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
+  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
   const cfg = mergedConfig(ctx, config)
   const timeoutMs = cfg.timeoutMs ?? 30000
   const maxMessageChars = cfg.maxMessageChars ?? 12000
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_comment_check",
     description: "Run the comment/docstring detector on one or more files (content in memory or read from disk). Returns per-file detection results; exit 2 means comments/docstrings found and the binary message spells the required action. The binary (@code-yeongyu/comment-checker, MIT) must be installed in .toolchain (installer flag --with-comment-checker) or set via MPD_DSH_COMMENT_CHECKER_BIN.",
     parameters: { type: "object", properties: { files: { type: "array", items: { type: "object", properties: { path: { type: "string" }, content: { type: "string" } }, required: ["path"], additionalProperties: false } } }, required: ["files"] },
@@ -123,8 +126,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   })
 
   if (cfg.autoCheck === true) {
-    ctx.on("tools/post-execute", async (exec: any, result: any, next: any) => {
-      const out = await next()
+    dsh.onPostToolExecute(async (exec: any, result: any, out: any) => {
       if (out.kind !== "accept") return out
       const isEdit = exec.name === "edit" || exec.name === "str_replace_editor" || exec.name === "write"
       if (!isEdit) return out

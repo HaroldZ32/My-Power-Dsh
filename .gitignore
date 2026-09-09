@@ -1,6 +1,7 @@
 node_modules/
 .npm-cache/
 .qa-reloc/
+.qa-tmp/
 .toolchain/
 *.tmp
 evidence/*.log.tmp

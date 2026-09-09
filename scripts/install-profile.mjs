@@ -128,6 +128,12 @@ function buildPlan(o) {
       config: {}
     },
     {
+      // The bundle's single contact surface with the harness seams: every row
+      // below calls through it (see packages/mpd-dsh-adapter-plugin/README.md).
+      id: "mpd-dsh-adapter", name: p("packages/mpd-dsh-adapter-plugin/dist/index.js"),
+      config: {}
+    },
+    {
       id: "mpd-config", name: p("packages/mpd-config-plugin/dist/index.js"),
       config: {}
     },

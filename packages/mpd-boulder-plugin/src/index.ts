@@ -18,6 +18,7 @@ import {
   endTaskTimer,
 } from "./vendor/index.ts"
 import { join } from "node:path"
+import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-boulder"
 export const inject = ["tools"]
@@ -40,10 +41,12 @@ function cwd(): string { return process.env.DSH_WORKSPACE_ROOT ?? process.cwd() 
 function boulderRoot(config: Config): string { return config.boulderDir ? config.boulderDir : cwd() }
 
 export function apply(ctx: Ctx, config: Config = {}): void {
+  // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
+  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
   const merged = mergedConfig(ctx, config)
   const root = () => boulderRoot(merged)
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_boulder_status",
     description: "Show the boulder work ledger: active works, statuses, session ids, task timers, resume options and (optionally) the progress of one plan file. State lives in .mpd/boulder.json.",
     parameters: { type: "object", properties: { planPath: { type: "string" } } },
@@ -67,7 +70,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     }
   })
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_boulder_start",
     description: "Start a boulder work bound to a plan markdown file (e.g. .mpd/plans/<slug>.md). Creates .mpd/boulder.json if absent; the work becomes active with status active and the calling session recorded.",
     parameters: { type: "object", properties: { planPath: { type: "string" }, agent: { type: "string" }, worktreePath: { type: "string" }, sessionId: { type: "string" } }, required: ["planPath"], additionalProperties: false },
@@ -93,7 +96,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     }
   })
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_boulder_complete",
     description: "Complete the active boulder work (or one given by workId): sets status completed, records ended_at + elapsed_ms and persists .mpd/boulder.json.",
     parameters: { type: "object", properties: { workId: { type: "string" } } },
@@ -108,7 +111,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     }
   })
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_boulder_task_timer",
     description: "Start or end a per-task session timer inside a boulder work (taskKey = TODO id in the plan, e.g. '1' or 'F1'). action=start marks running; action=end marks completed and records elapsed_ms.",
     parameters: { type: "object", properties: { workId: { type: "string" }, taskKey: { type: "string" }, action: { type: "string", enum: ["start", "end"] }, taskLabel: { type: "string" }, taskTitle: { type: "string" }, sessionId: { type: "string" } }, required: ["workId", "taskKey", "action"], additionalProperties: false },
@@ -130,7 +133,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     }
   })
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_boulder_plan_progress",
     description: "Parse a plan markdown file for its checklist progress: '## TODOs' items (N.) and '## Final Verification Wave' items (F<n>.), returning done/remaining with the plan path resolution.",
     parameters: { type: "object", properties: { planPath: { type: "string" } }, required: ["planPath"] },
@@ -143,7 +146,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     }
   })
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_boulder_plans",
     description: "List plan markdown files under .mpd/plans that can be started as boulder works.",
     parameters: { type: "object", properties: {} },

@@ -8,6 +8,7 @@
 import { mkdirSync, writeFileSync, appendFileSync } from "node:fs"
 import { join } from "node:path"
 import { randomUUID } from "node:crypto"
+import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-ulw"
 export const inject = ["tools", "subagents"]
@@ -82,6 +83,8 @@ function writeJson(p: string, v: any): void { writeFileSync(p, JSON.stringify(v,
 
 
 export function apply(ctx: Ctx, config: Config = {}): void {
+  // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
+  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
   const cfg = mergedConfig(ctx, config)
   const maxRounds = cfg.maxRounds ?? 6
   const planDir = cfg.planDir ?? join(cwd(), ".mpd", "plans")
@@ -97,16 +100,16 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     // is exactly what DeepSeek V4 prefix caching keys on) and never pass them
     // to the spawn persona field.
     const fullPrompt = [opts.persona, opts.prompt].filter(Boolean).join(String.fromCharCode(10, 10))
-    const run = await ctx.subagents.start("spawn", {
+    return await dsh.spawnAgent({
       label: opts.label,
-      prompt: textBlock(fullPrompt),
+      prompt: fullPrompt,
       parent: opts.parent,
       signal: opts.signal,
-      agentOptions: { provider, model: opts.model ?? model },
+      provider,
+      model: opts.model ?? model,
       outputSchema: opts.schema,
       ...(opts.maxDepth === undefined ? {} : { maxDepth: opts.maxDepth })
     })
-    return run.result
   }
 
   function upsertCriteria(acc: Map<string, any>, crit: any[]): void {
@@ -124,7 +127,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     return true
   }
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_ultrawork",
     description: "Run the fixed ultrawork discipline: optional adversarial hyperplan wave, plan gate (planner + plan review), execution rounds (fresh child per round, per-criterion PIN->RED->GREEN->SURFACE->CLEAN, discovery waves stop after 2 fruitless), verification gate (momus reviewer, max 2 re-reviews) when a plan exists AND (tier=heavy OR strictReview), final quality gate with per-lane ledger, subagent barrier. State + ledger under .mpd/ulw/<id>.",
     parameters: {
@@ -287,13 +290,13 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     }
   })
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_ulw",
     description: "Lightweight ulw-loop alias: same engine as mpd_ultrawork with tier=light, plan=false, hyperplan=false. Returns the B3-shaped result.",
     parameters: { type: "object", properties: { objective: { type: "string" }, maxRounds: { type: "integer", description: "1..8" } }, required: ["objective"] },
     output: { schema: { type: "object", properties: { status: { type: "string" }, rounds: { type: "integer" }, finalReport: { type: "string" }, stateFile: { type: "string" } }, required: ["status", "rounds", "finalReport", "stateFile"] }, render: (_a: unknown, v: any) => textBlock("mpd_ulw status=" + v.status + " rounds=" + v.rounds + String.fromCharCode(10) + v.finalReport + String.fromCharCode(10) + "state: " + v.stateFile) },
     execute: async (args: any, exec: any) => {
-      const tool = (ctx.tools as any).get?.("mpd_ultrawork")
+      const tool = dsh.hasTool("mpd_ultrawork") ? dsh.toolRuntime().get("mpd_ultrawork") : undefined
       if (!tool?.execute) throw new Error("mpd_ulw: engine not available")
       const inner = { objective: String(args?.objective), tier: "light", plan: false, hyperplan: false, strictReview: false, maxRounds: Number(args?.maxRounds ?? cfg.maxRounds ?? 3) }
       const res = await tool.execute(inner, exec)

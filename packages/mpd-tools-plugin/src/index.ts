@@ -3,6 +3,7 @@
 // 2) tool-output truncation (post-execute, token budget protection)
 // 3) edit-error recovery guidance (post-execute)
 import { existsSync, readFileSync } from "node:fs"
+import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-tools"
 export const inject = ["tools"]
@@ -11,6 +12,8 @@ type Ctx = { tools: any; on: (ev: string, fn: (...args: any[]) => any) => void; 
 type Config = { writeGuard?: boolean; truncateMaxBytes?: number; recoveryHint?: string }
 
 export function apply(ctx: Ctx, config: Config = {}): void {
+  // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
+  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
   const writeGuard = config.writeGuard ?? true
   const maxBytes = config.truncateMaxBytes ?? 16384
   const recoveryHint = config.recoveryHint ??
@@ -18,7 +21,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   // 1) guard: no silent overwrite via write
   if (writeGuard) {
-    ctx.tools.guard((exec: any) => {
+    dsh.guardTool((exec: any) => {
       if (exec.name !== "write") return undefined
       const fp = exec.arguments?.file_path
       const content = exec.arguments?.content
@@ -41,8 +44,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   }
 
   // 2) truncate oversized tool outputs (post-execute waterfall)
-  ctx.on("tools/post-execute", async (exec: any, result: any, next: any) => {
-    const out = await next()
+  dsh.onPostToolExecute(async (exec: any, result: any, out: any) => {
     if (out.kind !== "accept") return out
     const text = blocksToText(out.content ?? result?.content)
     if (text.length <= maxBytes) return out
@@ -54,8 +56,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   })
 
   // 3) edit-error recovery guidance
-  ctx.on("tools/post-execute", async (exec: any, result: any, next: any) => {
-    const out = await next()
+  dsh.onPostToolExecute(async (exec: any, result: any, out: any) => {
     if (out.kind !== "accept") return out
     const isEdit = exec.name === "edit" || exec.name === "str_replace_editor"
     if (!isEdit || !result?.isError) return out

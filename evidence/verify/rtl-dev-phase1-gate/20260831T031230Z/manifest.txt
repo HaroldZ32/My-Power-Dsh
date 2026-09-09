@@ -1,0 +1,18 @@
+EV=evidence/verify/rtl-dev-phase1-gate/20260831T031230Z
+exit 0
+exit 0
+ 159 pass
+ 0 fail
+exit 0
+[workmate-team-member self-test] ok: 6 checks
+[test:qa] all self-tests passed
+exit 0
+[verify-vendor] PASS
+exit 0
+[install-profile] DRY-RUN done (nothing written); add --yes to actually install, and --dsh-home to override the target
+G6 exit 1
+[rtl-verif] venv preflight failed (/root/dshProj/my-power-dsh/.venv-rtl): venv python missing
+[rtl-verif] bootstrap once (iron-rule legal): python3 -m venv .venv-rtl && .venv-rtl/bin/pip install "cocotb>=2.0" — or call mpd_verif_venv(action:'create')
+G6 exit 0
+[rtl-verif] ok=true -> /root/dshProj/my-power-dsh/evidence/dsh-qa/rtl-verif/2026-08-31T03-14-14.810Z
+[rtl-verif] PASS

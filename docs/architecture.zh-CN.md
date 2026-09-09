@@ -13,10 +13,11 @@ bundle**（`@mpd-dsh/mpd`）交付，其 `dsh.bundle.patch`
 （`packages/mpd-bundle/cordis.patch.yml`）向它安装到的任意 profile 添加行。它贡献：
 
 - 8 个 MCP 服务器（ast-grep、git-bash [默认禁用]、LSP、codegraph + 远端 context7 / grep.app），
-- 12 个 host 插件（config、tools、modelchain、roles、ulw、hashline、boulder、
+- Harness 适配器（`mpd-dsh-adapter`）：所有其他行都经由它调用，
+- 13 个 host 插件（adapter、config、tools、modelchain、roles、ulw、hashline、boulder、
   comment-checker、memory、codegraph、workmate、bootstrap）+ 采纳的 agent-teams
   插件 + bundle 自己的 web-compat/client 插件，
-- 一个 agent 预设（`mpd`）和一份 skill 语料，启动时自动复制，
+- 一个 agent 预设（`mpd`）和一份 skill 语料，由 bundle 直接供给（不复制到 home），
 - 一个合并的 web client（agent-teams 活动面板 + workmate 库）。
 
 OMO 起源的 11 个代理**不是预设**：它们作为专家 roster（`mpd-roles-plugin`）存在，
@@ -32,7 +33,7 @@ OMO 起源的 11 个代理**不是预设**：它们作为专家 roster（`mpd-ro
 | 插件 dist | `packages/<pkg>/dist/index.js` | host 行通过 `@mpd-dsh/mpd/packages/...`（exports map）引用它们 |
 | 采纳的 agent-teams | `packages/mpd-agent-teams-plugin/`（lib + `_deps/` + assets） | 整体复制，使 bundle 在任何安装布局下自包含 |
 | 合并的 web client | `packages/mpd-bundle-plugin/client.js` | 作为 `@mpd-dsh/mpd` 的 `./client` export 提供 |
-| 预设 + skills | `presets/`、`skills/` | 由 `mpd-bootstrap` 启动时复制到 `$DSH_HOME` |
+| 预设 + skills | `presets/`、`skills/` | 由包内直接供给：patch 把 preset 名册根指向 `presets/`，`mpd-bootstrap` 把 `skills/` 注册为 skill provider——不向 `$DSH_HOME` 复制 |
 | `cordis.patch.yml` | 包根 | `dsh.bundle.patch` 层 |
 
 Manifest 不变式（为什么存在）：
@@ -81,6 +82,7 @@ client 永远不会出现在 boot graph 中（可复现验证；证据
 | `mpd-config` | mpd-config-plugin | 最小 `mpd.jsonc` 运行时配置层（工程 `.mpd/mpd.jsonc` 覆盖用户 `$DSH_HOME/mpd.jsonc`） | `mpd_config_get`、`mpd_config_reload`；服务 `mpdConfig` | `projectFile`、`userFile` |
 | `mpd-tools` | mpd-tools-plugin | 写保护（禁止静默覆盖）、工具输出截断（token 预算）、编辑错误恢复提示 | 仅 waterfall | `writeGuard`、`truncateMaxBytes`、`recoveryHint` |
 | `mpd-modelchain` | mpd-modelchain-plugin | roster 角色的 DeepSeek 路由解析 + 键值记忆注释 | `mpd_modelchain_resolve`、`mpd_memory_save`、`mpd_memory_recall` | — |
+| `mpd-dsh-adapter` | mpd-dsh-adapter-plugin | 与 Harness 接缝的**唯一**接触面：工具注册/guard/post-execute/execute、子代理 spawn、skill provider + 目录、preset 解析、能力探测 | 服务 `mpdDsh` | `defaultTimeoutMs`、`quiet` |
 | `mpd-roles` | mpd-roles-plugin | 11 个 OMO 起源专家 roster（id/正常名/persona/模型链/只读） | `mpd_roles_list`、`mpd_role_spawn`、`mpd_role_persona`；服务 `mpdRoles` | `personasDir` |
 | `mpd-ulw` | mpd-ulw-plugin | 固定 plan→execute→verify 循环纪律 | `mpd_ultrawork`、`mpd_ulw`（轻量别名） | `maxRounds`、`maxReReviews`、`provider/model/reviewerModel`、`planDir`、`stateDir` |
 | `mpd-hashline` | mpd-hashline-plugin | 哈希锚定编辑纪律（`LINE#HASH` 锚点） | `mpd_hashline_read`、`mpd_hashline_edit`、`mpd_hashline_format`、`mpd_hashline_restore` | `guardEditTools`、`maxDiffChars`、`registryFile` |
@@ -89,7 +91,7 @@ client 永远不会出现在 boot graph 中（可复现验证；证据
 | `mpd-memory` | mpd-memory-plugin | VCS 支撑的记忆（git/svn）+ 反思状态机 | `mpd_memory_write`、`mpd_memory_read`、`mpd_memory_reflect`、`mpd_memory_reflect_complete`、`mpd_memory_status` | `vcs`、`dir`、`agentSlug`、`reflectionEvery` |
 | `mpd-codegraph` | mpd-codegraph-plugin | codegraph 二进制解析 + 工程索引初始化 | effect（自动初始化）+ `/mpd-codegraph` 命令 | `autoInit`、`initTimeoutMs`、`cooldownMs`、`binary` |
 | `mpd-workmate` | mpd-workmate-plugin | `~/.mpd/workmate/` 下的持久化可演化代理库 | `mpd_workmate_list/init/spawn/reflect/match`；服务 `mpdWorkmate`；web 路由 `/plugins/mpd-workmate/{list,init}` | — |
-| `mpd-bootstrap` | mpd-bootstrap-plugin | 供给：复制 `mpd` 预设 → `$DSH_HOME/.agent-presets`、skill 语料 → `$DSH_HOME/skills`（版本戳，幂等） | 仅 effect | `presetsDir`、`skipPresets`、`skillsDir`、`skipSkills` |
+| `mpd-bootstrap` | mpd-bootstrap-plugin | 按引用供给：经由适配器把 `<bundle>/skills` 注册为 skill provider（rank 600 `bundled`），并清理 bundle <= 0.2.6 写入 home 的带版本戳副本 | 仅 effect | `skillsDir`、`skipSkills`、`skipPresets`、`skipLegacyCleanup` |
 | `mpd-web-compat` | mpd-bundle-plugin | web-compat 自引用行：使 `@mpd-dsh/mpd` 成为 loader entry；承载合并 web client | no-op apply；`./client` | — |
 | `agent-teams` | mpd-agent-teams-plugin（采纳，MIT） | 多代理团队协作（captain、成员、任务、调度器、Web 面板） | `agent_teams_*` | `stateDir`、`memberProvider`、`memberMaxDepth`、`maxMembers`、`profiles` |
 | `mcp-astgrep/gitbash/lsp/codegraph/context7/grepapp` | dsh-mcp-client 实例 | 工具服务器 | `mcp__*` | 每行 |
@@ -98,7 +100,7 @@ client 永远不会出现在 boot graph 中（可复现验证；证据
 
 ### Roster → 单发专家
 `mpd_role_spawn` 读取 roster 规格（`mpdRoles`），构造 `persona + task`，然后
-`ctx.subagents.start("spawn", { agentOptions: { provider, model }, persona,
+`dsh.spawnAgent({ provider, model, persona,
 outputSchema, toolFilter (只读 deny) })`。模型路由来自角色链
 （`roles.data.ts` chain[0]）；**凭据由 DSH 自身的凭据机制解析 —— 插件从不接触 API
 key**。
@@ -133,7 +135,31 @@ key**。
 | `<workspace>/.mpd/`（VCS 记忆目录） | mpd-memory | git/svn 支撑的记忆 + 反思 |
 | `<workspace>/.mpd/mpd.jsonc` | mpd-config | 工程配置层 |
 | **`~/.mpd/workmate/`**（用户 HOME） | mpd-workmate | 跨工程 workmate 库 —— 用户批准的对 workspace-scoped 状态规则的刻意例外（AGENTS.md §6）；QA 以 `HOME=<sandbox>` 启动 |
-| `$DSH_HOME/.agent-presets/mpd`、`$DSH_HOME/skills` | mpd-bootstrap | 版本戳，幂等 |
+| `$DSH_HOME/.agent-presets/mpd*`、`$DSH_HOME/skills/*` | mpd-bootstrap | 仅历史遗留（bundle <= 0.2.6 的带版本戳副本），首次 0.3.0 启动时删除——新版本不再写 home |
+
+## 6b. Harness 适配器（唯一的接缝接触面）
+
+`packages/mpd-dsh-adapter-plugin` 是本 bundle 与 DeepSeek Harness 服务之间的**唯一**接触面。所有 mpd 行都调用
+`dsh.registerTool` / `dsh.guardTool` / `dsh.onPostToolExecute` / `dsh.executeTool` /
+`dsh.spawnAgent` / `dsh.registerSkillProvider` / `dsh.loadSkill` / `dsh.resolvePreset`，
+而不是直接使用 `ctx.tools` / `ctx.subagents` / `ctx.skills` / `ctx.agentPresets`；因此 Harness
+更名或改变某个接缝时，只需改一个文件（AGENTS.md §6）。
+
+- 该行插在所有 mpd 行之前，提供 `mpdDsh` 服务；消费方写
+  `ctx.get("mpdDsh") ?? createDshAdapter(ctx)`，因此插件在单元测试中也能独立工作。
+- 适配器不声明 `inject`，所有接缝都在调用时惰性解析：loader 会并发应用同级行（在 `apply`
+  时取快照会漏报），且 Cordis 中把未注入的服务当属性读取会抛错。`capabilities()`
+  为每个接缝返回布尔值，供调用方优雅降级。
+- 原先散落在各插件里的归一化逻辑集中于此：缺省对象根 `parameters`、缺省文本
+  `output.render`、始终对象化的 `(args, exec)`、由适配器调用 `next()` 的
+  `tools/post-execute` 瀑布、`run.result` 无论 Promise 还是对象都会 await、
+  `{ok, isError, value, error}` 工具调用结果、`{output, structured, stopReason}` spawn 结果。
+- QA 证明：`bundle-lifecycle` 断言组合后的行、启动日志行、探针的 `ADAPTER_SEAMS=…`
+  快照与 `ADAPTER_TOOL_CALL=ok`（通过归一化路径真实调用一次 `mpd_config_get`）。
+- **边界：** 采纳的 `agent-teams` 插件（`packages/mpd-agent-teams-plugin`，MIT，升级时从上游重新
+  vendor）**不**经过适配器——其 `lib/` 是上游主代码，重新 vendor 会覆盖改动。它保留自己的
+  `ctx.*` 调用，外加唯一一处本地适配：`lib/members.js` 中的 `registerContinuableSetup`
+  启动安全守卫（见 LICENSE-NOTICES.md）。
 
 ## 7. Web client 接线（微妙之处）
 

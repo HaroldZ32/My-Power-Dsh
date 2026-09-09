@@ -69,9 +69,17 @@ SUBAGENTS:
   forcing a weak match. In a team, a member named after the workmate gets its
   persona/memory injected automatically (patched `memberPersona` in
   `packages/mpd-agent-teams-plugin`).
-- `mpd-bootstrap` auto-copies the `mpd` preset + skill corpus at first boot
-  (version-stamped: bump the package version and re-pack to refresh
-  already-installed copies).
+- **One harness adapter.** Every mpd row calls `packages/mpd-dsh-adapter-plugin`
+  (`mpdDsh` service) for tool registration/guards/post-execute, internal tool calls,
+  subagent spawn, skill delivery and preset resolution — so a DeepSeek Harness release
+  that reshapes a seam is fixed in one file, not across every plugin (AGENTS.md §6).
+- **Whole-unit install, whole-unit uninstall.** One `dsh plugin add dist/mpd-package`
+  installs every row AND the assets: the `mpd` preset is served from
+  `<bundle>/presets` (the patch roots the preset roster there) and the skill corpus
+  from `<bundle>/skills` (the `mpd-bootstrap` row registers a `ctx.skills` provider).
+  Nothing is copied into `$DSH_HOME`, so `dsh plugin remove @mpd-dsh/mpd` takes the
+  rows, the preset and the skills away with it and leaves no residue. Only the
+  workmate library (`~/.mpd/workmate`, your own evolving agents) stays.
 
 **Two hard rules**
 1. Engineering matches the upstream discipline: bun test / tsgo gates, isolated QA, evidence in

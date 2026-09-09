@@ -245,6 +245,20 @@ export async function resolveMemberLlmSelection(ctx, captain, request, signal) {
  */
 export function installMemberSelectionRuntime(ctx, stateDir) {
     const pending = new Map();
+    // LOCAL ADAPTATION (mpd bundle, boot-safety): a host harness build may not
+    // expose the registerContinuableSetup seam (dsh 0.1.2-rc.1 dropped it). The
+    // seam only bridges the team-recorded model selection into continuable
+    // children; without it members still spawn through startContinuable and keep
+    // the Harness descriptor provider/model. Aborting here would take the whole
+    // plugin tree (and the boot) down, so degrade instead.
+    if (typeof ctx.subagents?.registerContinuableSetup !== 'function') {
+        ctx.logger?.warn?.('agent-teams: host subagent service has no registerContinuableSetup; member model-selection bridge disabled');
+        return {
+            async withPending(_parentSessionId, _label, _selection, operation) {
+                return await operation();
+            },
+        };
+    }
     ctx.subagents.registerContinuableSetup((childCtx) => {
         const child = childCtx.agent;
         if (child === undefined)

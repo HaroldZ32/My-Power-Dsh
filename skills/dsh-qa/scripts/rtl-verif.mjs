@@ -62,10 +62,14 @@ const WIRED_ID_PATTERN = /^\s*- id: mpd-verif$/m
 
 // Dev-flavor rewrite of the bundle patch (mirrors preset-register.mjs): the
 // committed patch uses packed `@mpd-dsh/mpd/...` names; QA boots the checkout,
-// so rows resolve to checkout-absolute paths and MCP binaries pin via env.
+// so rows resolve to checkout-absolute paths and MCP binaries pin via env. The
+// preset root expression is rewritten FIRST: the generic rule would otherwise
+// splice the checkout path under /node_modules and the roster root would miss.
+const PACKED_PRESETS_EXPR = '"/node_modules/@mpd-dsh/mpd/presets"'
 function devPatch() {
   const t = readFileSync(join(repoRoot, "packages/mpd-bundle/cordis.patch.yml"), "utf8")
   return t
+    .split(PACKED_PRESETS_EXPR).join(JSON.stringify(join(repoRoot, "packages", "mpd-bootstrap-plugin", "presets")))
     .split("name: '@mpd-dsh/mpd'").join("name: '" + join(repoRoot, "packages/mpd-bundle-plugin/dist/index.js") + "'")
     .split("@mpd-dsh/mpd/").join(repoRoot + "/")
 }

@@ -106,6 +106,7 @@ mpd-dsh/
 │   └── build-mpd-client.mjs      # build the combined bundle web client (client.js)
 ├── packages/
 │   ├── mpd-bundle/               # cordis.patch.yml: llm dual-track, skills, MCPs, all mpd plugins
+│   ├── mpd-dsh-adapter-plugin/   # THE single contact surface with harness seams (tools/subagents/skills/presets); every other plugin calls through it
 │   ├── mpd-skills-plugin/ (removed)
 │   ├── mpd-mcp-astgrep|gitbash|lsp|codegraph/
 │   ├── mpd-roles-plugin/         # OMO-origin specialists: roster (roles.data.ts, normal names + stable ids) + personas/ + mpd_roles_list / mpd_role_spawn / mpd_role_persona + mpdRoles service
@@ -119,11 +120,11 @@ mpd-dsh/
 │   ├── mpd-comment-checker-plugin/ # C4: comment/docstring detection (opt-in binary)
 │   ├── mpd-memory-plugin/        # C6: git/svn-backed memory + reflection state machine
 │   ├── mpd-workmate-plugin/      # durable evolving agent library (~/.mpd/workmate): base→instance, self-reflect (persona+memory capped), short note, reuse via mpd_workmate_* (no forced weak matches)
-│   ├── mpd-bootstrap-plugin/     # bundle provisioning: the mpd main preset (presets/mpd/) + skills copy to $DSH_HOME
+│   ├── mpd-bootstrap-plugin/     # bundle provisioning BY REFERENCE: serves <bundle>/skills via a ctx.skills provider; cleans legacy (<=0.2.6) home copies
 │   ├── mpd-agent-teams-plugin/   # adopted dsh-agent-teams (MIT, first-class main code): agent_teams_* + Web panel; memberPersona injects workmate backing
 │   ├── mpd-bundle-plugin/        # bundle web-compat: the @mpd-dsh/mpd no-op main + the combined web client (client.js = adopted agent-teams panel + workmate library floater; built by scripts/build-mpd-client.mjs)
 │   └── mpd-qa-roles-probe/       # QA-only probe: mpd preset resolve + mpdRoles roster (overlay-mounted)
-├── skills/                      # skill corpus: dsh-qa (QA skill) + 17 ported upstream skills + svn-master (installed to \$DSH_HOME/skills by mpd-bootstrap)
+├── skills/                      # skill corpus: dsh-qa (QA skill) + 17 ported upstream skills + svn-master + rtl-* (SERVED from the bundle by mpd-bootstrap; never copied to \$DSH_HOME)
 ├── tests/
 │   ├── overlays/                 # QA patch overlays (keep empty when rows live in the bundle)
 │   ├── golden/                   # golden fixtures + Prometheus plan artifacts
@@ -171,21 +172,47 @@ gates pass and their evidence is committed with the change.
 Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `dist/index.js`
 (bun build), `README.md`, optional `package.json` with `@mpd-dsh/<name>` naming.
 
-- **Tools**: `ctx.tools.register({name, description, parameters, output:{schema, render}, execute})`.
-  `parameters` is object-rooted JSON Schema; `output.schema` the canonical value contract; `render`
-  returns `[{type:'text', text}]` blocks. `execute` receives `(args, exec)` with
-  `exec.signal` for cancellation.
-- **Guards**: `ctx.tools.guard(fn)` where `fn(exec) => string | undefined` (string denies).
+- **Harness seams go through `mpd-dsh-adapter` — binding.** No plugin row may touch a
+  harness service directly (`ctx.tools`, `ctx.subagents`, `ctx.skills`,
+  `ctx.agentPresets`); `packages/mpd-dsh-adapter-plugin` is the ONE file allowed to,
+  so a harness release that renames or reshapes a seam is absorbed there instead of
+  across every plugin. Resolve it with
+  `const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)`
+  (`ctx.get("mpdDsh")` is the mounted instance; the fallback keeps a plugin standalone
+  in unit tests). QA proves the surface: `bundle-lifecycle` asserts the row, the boot
+  log line and the probe's `ADAPTER_SEAMS`/`ADAPTER_TOOL_CALL=ok`.
+  **One documented exception:** `packages/mpd-agent-teams-plugin/lib` is adopted
+  upstream main code (MIT) that a `scripts/vendor-agent-teams.mjs` refresh overwrites,
+  so it keeps its own `ctx.*` calls; its only local adaptation is the
+  `registerContinuableSetup` boot-safety guard in `lib/members.js`. Everything else —
+  including every future mpd plugin — goes through the adapter.
+- **Tools**: `dsh.registerTool({name, description, parameters, output:{schema, render}, execute})`.
+  The adapter defaults `parameters` to an object-rooted schema and `output.render` to a
+  text block, and always calls `execute(args, exec)` with objects. `parameters` is
+  object-rooted JSON Schema; `output.schema` the canonical value contract; `render`
+  returns `[{type:'text', text}]` blocks; `exec.signal` cancels.
+- **Guards**: `dsh.guardTool(fn)` where `fn(exec) => string | undefined` (string denies).
   Keep guards monotonic and non-throwing; read only, never mutate.
-- **Waterfalls**: `ctx.on('tools/post-execute', async (exec, result, next) => decision)`;
-  accept with `{kind:'accept', content?}`, block with `{kind:'block', reason?}`.
-- **Subagents**: `ctx.subagents.start('spawn', {label, prompt:[{type:'text',text}], parent: exec.agent,
-  signal: exec.signal, agentOptions:{provider,model}, outputSchema, persona, maxDepth, toolFilter})`
-  → `run.result` (`{output, structured, stopReason}`).
+- **Waterfalls**: `dsh.onPostToolExecute(async (exec, result, downstream) => decision | undefined)`;
+  the adapter owns `next()`, so the listener only decides: return `{...downstream, content}`
+  to replace, `undefined` to pass through. Accept with `{kind:'accept', content?}`, block
+  with `{kind:'block', feedback}` (the harness key is `feedback`; `decision.block(reason)`
+  builds it).
+- **Subagents**: `dsh.spawnAgent({label, prompt, parent: exec.agent, signal: exec.signal,
+  provider, model, outputSchema, persona, maxDepth, toolFilter})` → `{output, structured,
+  stopReason}`. Flat `provider`/`model` and harness-shaped `agentOptions` both work, and
+  `run.result` is awaited whether it is a promise or an object.
+- **Internal tool calls**: `dsh.hasTool(name)` / `dsh.executeTool({name, arguments, callId?, signal?})`
+  (→ `{ok, isError, value, error}`) — never `ctx.tools.get`/`ctx.tools.execute` directly.
+- **Capability probing**: `dsh.capabilities()` reports one boolean per seam; degrade with a
+  warning instead of aborting a plugin tree (a missing optional seam must never take the
+  boot down — see the `registerContinuableSetup` guard in the adopted agent-teams plugin).
 - **State**: workspace-scoped only (`.mpd/` under cwd); never write `~/.dsh` from a plugin.
-  Sanctioned exceptions: (1) the `mpd-bootstrap` provisioning row at boot copies the
-  bundle's `mpd` preset into `$DSH_HOME/.agent-presets/` and the skill corpus into
-  `$DSH_HOME/skills` (idempotent, version-stamped — see §8); (2) the **workmate library**
+  Sanctioned exceptions: (1) the bundle writes NOTHING to the home any more — the
+  `mpd-bootstrap` row serves `<bundle>/skills` through a `ctx.skills` provider and the
+  bundle patch roots the `agent-presets` roster at `<bundle>/presets`, so both assets
+  exist exactly while the bundle is installed (§8); the row only REMOVES the
+  version-stamped copies that bundle `<= 0.2.6` wrote; (2) the **workmate library**
   (`mpd-workmate-plugin`) deliberately lives under the user's HOME (`~/.mpd/workmate`) —
   it is the user's cross-project, evolving agent library (QA must boot with
   `HOME=<sandbox>` so tests never touch the real home); (3) the **`mpd-codegraph`** plugin
@@ -229,9 +256,10 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   value uses the loader's `baseUrl` (the profile directory), binaries come from the
   package's `optionalDependencies` (`@ast-grep/cli`, `@colbymchenry/codegraph`),
   the adopted `agent-teams` plugin is first-class main code at
-  `packages/mpd-agent-teams-plugin` (no npm dependency), the `mpd` preset + skill corpus
-  auto-copy at boot via
-  `mpd-bootstrap` (version-stamped, idempotent).
+  `packages/mpd-agent-teams-plugin` (no npm dependency), and the `mpd` preset + skill
+  corpus are SERVED from the package by reference (`agent-presets` root in the patch +
+  the `mpd-bootstrap` skill provider) — no home copy, so `dsh plugin remove` leaves no
+  residue. Only user data stays: the workmate library under `~/.mpd/workmate`.
 - Install from a checkout: `cd <repo> && dsh plugin --profile web add .`
   (or from a published location — the patch never names this repo).
 
@@ -277,6 +305,7 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 | Symptom | Cause / fix |
 |---|---|
 | `duplicate loader entry id` | same row in bundle patch and an overlay — remove from one |
+| a plugin crashes with `cannot get property "x" without inject` / `... is not a function` | a harness seam changed shape — fix it in `packages/mpd-dsh-adapter-plugin/src/index.ts` only, rebuild, re-pack; plugin rows must not touch `ctx.tools`/`ctx.subagents`/`ctx.skills`/`ctx.agentPresets` directly (§6) |
 | `MISSING_CREDENTIAL` in isolated QA | sandbox has no `.credentials.yaml` — copy it; live-LLM cases also need `settings.yaml` when the home uses gateway providers (see §7) |
 | `patch: entry ... not found` | id-targeted row for a row absent in that profile — use `insert:` for new rows |
 | codegraph `skipped: project excluded` | cwd contains an `.mpd` segment or is under /tmp — use a normal project path |
@@ -284,8 +313,10 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 | bash tool hangs after dsh | MCP children hold fds — stdio to files, or `setsid … > log` pattern |
 | ast-grep BINARY_NOT_FOUND | sg binary not installed — `.toolchain` via installer or `MPD_AST_GREP_SG_PATH` |
 | LSP daemon unreachable | `~/.mpd` unwritable/missing — on real home it self-starts |
-| preset not visible in web | presets not installed to `$DSH_HOME/.agent-presets/` — run installer |
-| installed presets stale / agents miss tools (e.g. bash) | `mpd-bootstrap` only re-copies presets when the package VERSION changes — bump `package.json` version, `node scripts/pack-mpd.mjs`, restart dsh |
+| preset not visible in web | the bundle patch's `agent-presets` id-target row is not composed — check `dsh --profile web --dump-config` shows `id: agent-presets` with `default: mpd` + the `<bundle>/presets` root, and that `dsh.profile.bundles` contains `@mpd-dsh/mpd` |
+| installed presets stale / agents miss tools (e.g. bash) | the profile still points at an OLD bundle version — bump `package.json` version, `node scripts/pack-mpd.mjs`, `dsh plugin --profile <p> add dist/mpd-package`, restart dsh |
+| skills missing in a session | the corpus is served, not copied: check the boot log for `[mpd-bootstrap] skill corpus served from <bundle>/skills`; if absent the `mpd-bootstrap` row is not mounted (or its `dist/index.js` is stale — rebuild) |
+| leftover `$DSH_HOME/skills` or `.agent-presets/mpd*` after upgrading from <=0.2.6 | the first 0.3.0 boot removes the stamped copies; unstamped copies (legacy `install-profile.mjs`) are left on purpose — delete them by hand |
 | agent tool call fails with UNKNOWN_TOOL in code-mode deployments | presets declare `tool-presentation { mode: native }` — every row tool (bash/read/edit/...) is exposed directly; in code mode the model may only call `run_code` directly |
 | boot fails with ERR_MODULE_NOT_FOUND @nanmicoder/dsh-agent-teams | the legacy profile still pins the old bundle row; the row is now main code (`@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib/index.js`) — reinstall the bundle (`dsh plugin --profile <p> add dist/mpd-package`) |
 | AGENT.md / AGENTS.md not injected into a session | the session runs a non-mpd preset; the `mpd` preset configures `instructionFileCandidates` (AGENT.md → AGENTS.md → CLAUDE.md) — switch the session to the `mpd` preset |

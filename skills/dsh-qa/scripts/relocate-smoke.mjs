@@ -4,7 +4,8 @@
 //   1) pack -> copy the staged package to an unrelated location;
 //   2) npm-install it into an isolated profile (file: dependency, bundle reconcile);
 //   3) dump-config: no dev-path leak, @mpd-dsh/mpd rows present;
-//   4) real headless boot: mpd-bootstrap auto-copies presets, tools answer.
+//   4) real headless boot: the RELOCATED bundle serves its preset root + skill
+//      corpus by reference, with ZERO writes into the harness home.
 // Evidence -> evidence/plan-d/relocate/<ts>/. --self-test is offline.
 import { spawnSync } from "node:child_process"
 import { cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
@@ -48,19 +49,38 @@ async function runReal() {
   writeFileSync(join(profile, "package.json"), JSON.stringify(manifest, null, 2) + "\n")
   const dump = spawnSync("dsh", ["--profile", "t", "--dump-config"], { env, encoding: "utf8", timeout: 120000, maxBuffer: 32 * 1024 * 1024 })
   const dumpOut = (dump.stdout || "") + (dump.stderr || "")
-  const dumpOutClean = dumpOut.split(home).join("<QAHOME>")
+  // The QA scratch root (.qa-reloc) legitimately appears in the composed tree —
+  // the profile overlay roots the roster at the RELOCATED package — so the leak
+  // check masks it and only fails on a real checkout path.
+  const dumpOutClean = dumpOut.split(home).join("<QAHOME>").split(reloc).join("<QARELOC>")
+    .split(join(repoRoot, "packages", "mpd-qa-roles-probe")).join("<QAPROBE>")
   steps.dump = { ok: dump.status === 0 && dumpOut.includes("@mpd-dsh/mpd") && !dumpOutClean.includes(DEV), exit: dump.status, leaked: dumpOutClean.includes(DEV) }
-  // Repro: mount a failing preset as the default to reproduce agent-switch errors.
-  writeFileSync(join(profile, "cordis.patch.yml"), "- insert:\n    - id: agent-presets\n      name: '@deepseek-ai/dsh-agent-presets'\n      config:\n        default: mpd\n")
-  const live = spawnSync("dsh", ["--profile", "t", "Use mpd_config_get with key 'memory.vcs' then mpd_memory_status; report both values in one line."], { env, cwd: join(reloc, "ws"), encoding: "utf8", timeout: 600000, maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] })
+  // Repro: mount the RELOCATED bundle's own preset root as the default (the
+  // headless profile has no stock agent-presets row) — a broken/absent root
+  // would surface as agent-preset/not-found or a broken preset on agent switch.
+  writeFileSync(join(profile, "cordis.patch.yml"), "- insert:\n    - id: agent-presets\n      name: '@deepseek-ai/dsh-agent-presets'\n      config:\n        default: mpd\n        roots:\n          - path: " + JSON.stringify(join(staged, "presets")) + "\n            trust: system\n"
+    + "    - id: roles-probe\n      name: " + JSON.stringify(join(repoRoot, "packages", "mpd-qa-roles-probe", "dist", "index.js")) + "\n")
+  // Deterministic boot proof (no model call: the QA machine has no model key):
+  // the probe reads the LIVE preset + skill catalog out of the relocated package.
+  const live = spawnSync("dsh", ["--profile", "t", "ok"], { env, cwd: join(reloc, "ws"), encoding: "utf8", timeout: 600000, maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] })
   const out = (live.stdout || "") + (live.stderr || "")
-  steps.live = { ok: live.status === 0, exit: live.status }
+  const presetPath = /PRESET_PATH=([^\s]+) trust=(\w+)/.exec(out)
+  const fixture = /SKILL_FIXTURE=(\w+) name=(\S+) base=(\S+) bytes=(\d+)/.exec(out)
+  steps.live = {
+    ok: /roles-probe\] PASS/.test(out) && /PRESET_MPD=ok/.test(out)
+      && String(presetPath?.[1] ?? "").startsWith(staged) && presetPath?.[2] === "system"
+      && fixture !== null && fixture[1] === "ok" && String(fixture[3]).startsWith(staged),
+    exit: live.status, preset: presetPath?.[1] ?? null, fixtureBase: fixture?.[3] ?? null,
+  }
+  // bundle-served model: NOTHING is copied into the harness home …
   const presets = join(home, ".agent-presets")
-  const presetIds = existsSync(presets) ? readdirSync(presets).filter((d) => d.startsWith("mpd-")) : []
-  steps.presets = { ok: presetIds.length === 11, count: presetIds.length }
+  const presetCopies = existsSync(presets) ? readdirSync(presets) : []
+  steps.noPresetCopy = { ok: presetCopies.length === 0, count: presetCopies.length }
   const userSkills = join(home, "skills")
   const skillDirs = existsSync(userSkills) ? readdirSync(userSkills).filter((d) => { try { return existsSync(join(userSkills, d, "SKILL.md")) } catch { return false } }) : []
-  steps.skills = { ok: skillDirs.length >= 18, count: skillDirs.length }
+  steps.noSkillCopy = { ok: skillDirs.length === 0, count: skillDirs.length }
+  // … and both assets are served from the RELOCATED package.
+  steps.servedFromRelocated = { ok: out.includes(join(staged, "skills")) && out.includes("provider mpd-bundle"), staged }
   steps.bootstrap = { ok: out.includes("mpd-bootstrap") }
   const allOk = Object.values(steps).every((s) => s.ok)
   writeFileSync(join(outDir, "result.json"), JSON.stringify({ ok: allOk, steps }, null, 2))

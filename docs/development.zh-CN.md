@@ -43,6 +43,14 @@ node scripts/pack-mpd.mjs          # 重新生成 dist/mpd-package/
 
 MCP 服务器由 `node scripts/build-mcp.mjs` 构建（从仓库内源码离线构建）。
 
+**Harness 接缝（约束性规则，AGENTS.md §6）：** 插件行不得直接调用 `ctx.tools`、
+`ctx.subagents`、`ctx.skills`、`ctx.agentPresets`。所有行都经由
+`packages/mpd-dsh-adapter-plugin`（`const dsh = ctx.get("mpdDsh") ?? createDshAdapter(ctx)`），
+因此 Harness 改变某个接缝时只需改这一个包：编辑
+`packages/mpd-dsh-adapter-plugin/src/index.ts`、重新构建、重新 pack——消费方无需改动即可
+拿到新的已挂载实例。它的单元测试（`packages/mpd-dsh-adapter-plugin/test/adapter.test.ts`）
+同时伪造“完整 Harness”和“空 Harness”，是新增接缝最快的入口。
+
 ## 3. 测试
 
 ```bash
@@ -66,8 +74,11 @@ QA skill 是 `skills/dsh-qa`（`SKILL.md`）。每个 case 脚本都带 `--self-
 | Case | 证明什么 | 运行方式（在已批准的权限上下文里） |
 |---|---|---|
 | `mount-assert` | bundle 行在 `--dump-config` 中出现/缺失 | `bun run test:qa`（全部 self-test） |
-| `preset-register` | mpd 预设可解析 + roster 提供 11 角色 | `node skills/dsh-qa/scripts/preset-register.mjs` |
-| `team-route-rewire` | 暂存 bundle 安装 → agent-teams 行组合 → live 启动 → web `/plugins/dsh-agent-teams/state` 200 | `node skills/dsh-qa/scripts/team-route-rewire.mjs` |
+| `preset-register` | mpd 预设从 bundle 供给的根解析（无 `$DSH_HOME/.agent-presets` 副本）+ roster 提供 11 角色 | `node skills/dsh-qa/scripts/preset-register.mjs` |
+| `bundle-lifecycle` | `dsh plugin add` 整体安装 → 真实启动从已安装 bundle 供给 preset + skills，并验证 Harness 适配器（`ADAPTER_SEAMS`、`ADAPTER_TOOL_CALL=ok`）→ `dsh plugin remove` 无残留 | `node skills/dsh-qa/scripts/bundle-lifecycle.mjs` |
+| `skill-catalog-probe` | 已安装 bundle 供给技能目录（22 个 bundled 技能，fixture 可加载），且无 `$DSH_HOME/skills` 副本 | `node skills/dsh-qa/scripts/skill-catalog-probe.mjs` |
+| `relocate-smoke` | 迁移后的 bundle 供给 preset + 语料库，无 dev 路径泄漏、无 home 副本 | `node skills/dsh-qa/scripts/relocate-smoke.mjs` |
+| `team-route-rewire` | 暂存 bundle 安装 → agent-teams 行组合 → probe 启动 → web `/plugins/dsh-agent-teams/state` 200 | `node skills/dsh-qa/scripts/team-route-rewire.mjs` |
 | `workmate-library` | 针对沙箱 HOME 的 init→list→spawn→reflect→match | `node skills/dsh-qa/scripts/workmate-library.mjs` |
 | `workmate-team-member` | workmate 支撑成员注入 + 真实团队中的自我反思 | `node skills/dsh-qa/scripts/workmate-team-member.mjs` |
 | `web-client-adapt` | `@mpd-dsh/mpd` 的 boot-graph client entry + client.js id + workmate host 路由 | `node skills/dsh-qa/scripts/web-client-adapt.mjs` |

@@ -19,6 +19,7 @@ function jsVal(expr) { return "!!js '" + expr + "'" }
 function pathExpr(rel) { return jsVal(BP + " + \"" + rel + "\"") }
 
 const PLUGIN_PKGS = [
+  "mpd-dsh-adapter-plugin",
   "mpd-tools-plugin", "mpd-modelchain-plugin", "mpd-ulw-plugin",
   "mpd-codegraph-plugin", "mpd-hashline-plugin", "mpd-boulder-plugin",
   "mpd-config-plugin", "mpd-comment-checker-plugin", "mpd-memory-plugin",
@@ -43,13 +44,14 @@ function cpDist() {
 
 function cpAssets() {
   mkdirSync(join(outDir, "packages"), { recursive: true })
-  // skill corpus lives at the repo root skills/ per AGENTS.md layout; the
-  // mpd-bootstrap plugin copies it to $DSH_HOME/skills at boot (version-stamped)
+  // skill corpus lives at the repo root skills/ per AGENTS.md layout; the bundle
+  // SERVES it from <pkg>/skills at runtime (mpd-bootstrap registers it as a
+  // ctx.skills provider) — nothing is copied into $DSH_HOME any more.
   const skillsSrc = join(repoRoot, "skills")
   if (existsSync(skillsSrc)) cpSync(skillsSrc, join(outDir, "skills"), { recursive: true })
-  // the main preset ships in mpd-bootstrap-plugin/presets (mpd-bootstrap copies
-  // it to $DSH_HOME/.agent-presets at boot) and the roles plugin's persona
-  // assets ship under packages/mpd-roles-plugin/personas
+  // the main preset ships in mpd-bootstrap-plugin/presets and is SERVED from
+  // <pkg>/presets by the bundle patch's agent-presets root (no $DSH_HOME copy);
+  // the roles plugin's persona assets ship under packages/mpd-roles-plugin/personas
   cpSync(join(repoRoot, "packages", "mpd-bootstrap-plugin", "presets"), join(outDir, "presets"), { recursive: true })
   if (existsSync(join(repoRoot, "packages", "mpd-roles-plugin", "personas"))) {
     cpSync(join(repoRoot, "packages", "mpd-roles-plugin", "personas"), join(outDir, "packages", "mpd-roles-plugin", "personas"), { recursive: true })

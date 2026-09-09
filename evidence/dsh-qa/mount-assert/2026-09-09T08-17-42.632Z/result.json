@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "missing": [],
+  "expectations": [
+    "name: '@deepseek-ai/dsh-llm'"
+  ],
+  "dshHomeSandbox": true,
+  "dumpBytes": 11147
+}
