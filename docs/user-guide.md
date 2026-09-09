@@ -9,11 +9,18 @@ Everything a person using the my-power-dsh bundle needs, in workflow order.
 ### Packed bundle (primary, Plan D)
 
 ```bash
-# from this repo (installs the relocatable bundle into the profile)
+# from this repo: assemble the installable package first
+node scripts/pack-mpd.mjs                          # -> dist/mpd-package/
 dsh plugin --profile <mpd|web> add dist/mpd-package
-# or from any published location
+# or from any published location (already packed — no pack step)
 dsh plugin --profile web add <path-or-name-of-@mpd-dsh/mpd>
 ```
+
+The repo root itself is not installable: it is the source monorepo (`my-power-dsh`, no
+`dsh.bundle`), so `dsh plugin add .` would add a plain dependency and no rows. `pack-mpd`
+assembles `@mpd-dsh/mpd` (built plugin dists + adopted agent-teams main code + skill corpus
+and presets + combined web client + packed-form patch). Re-run it after any source, dist,
+skill or preset change.
 
 Then start DSH and select the **MPD (Main Working Agent)** preset.
 

@@ -17,9 +17,12 @@ node scripts/pack-mpd.mjs                          # -> dist/mpd-package/ (no ch
 dsh plugin --profile web add dist/mpd-package      # install the staged bundle
 ```
 
-> Note: `dsh plugin add` must point at the STAGED package (the root directory has no
-> `dsh.bundle.patch` entry). `dsh plugin add <path-or-git-url>` works the same way when the
-> target location contains the staged package.
+> Note: `dsh plugin add` must point at the STAGED package. The repo root is the source
+> monorepo (`my-power-dsh`, no `dsh.bundle`) — installing it adds a plain dependency and no
+> profile layer. `pack-mpd` is what assembles the installable `@mpd-dsh/mpd`: built plugin
+> dists, the adopted agent-teams main code, the skill corpus + presets, the combined web
+> client, and the packed-form patch. Re-run it after any source/dist/skill/preset change;
+> installing an already-published `@mpd-dsh/mpd` needs no pack step.
 
 ## Documentation
 

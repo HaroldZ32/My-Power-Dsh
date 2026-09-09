@@ -9,11 +9,17 @@
 ### 打包 bundle（主要方式，Plan D）
 
 ```bash
-# 从本仓库（把可迁移 bundle 安装进 profile）
+# 从本仓库：先组装可安装包
+node scripts/pack-mpd.mjs                          # -> dist/mpd-package/
 dsh plugin --profile <mpd|web> add dist/mpd-package
-# 或从任意发布位置
+# 或从任意发布位置（已打包，无需再 pack）
 dsh plugin --profile web add <path-or-name-of-@mpd-dsh/mpd>
 ```
+
+仓库根目录本身不可安装：它是源码 monorepo（`my-power-dsh`，没有 `dsh.bundle`），因此
+`dsh plugin add .` 只会加一个普通依赖、不会加入任何行。`pack-mpd` 负责组装 `@mpd-dsh/mpd`
+（各插件已构建的 dist + 采纳的 agent-teams 主代码 + skill 语料库与 presets + 合并的 web client
++ 打包形态 patch）。任何源码、dist、skill 或 preset 变更后都要重新执行。
 
 然后启动 DSH，选择 **MPD (Main Working Agent)** 预设。
 

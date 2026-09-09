@@ -260,8 +260,21 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   corpus are SERVED from the package by reference (`agent-presets` root in the patch +
   the `mpd-bootstrap` skill provider) — no home copy, so `dsh plugin remove` leaves no
   residue. Only user data stays: the workmate library under `~/.mpd/workmate`.
-- Install from a checkout: `cd <repo> && dsh plugin --profile web add .`
+- Install from a checkout: `node scripts/pack-mpd.mjs && dsh plugin --profile web add dist/mpd-package`
   (or from a published location — the patch never names this repo).
+  `dsh plugin add .` on the repo root does NOT install the bundle: the root manifest
+  (`my-power-dsh`) is the source monorepo and declares no `dsh.bundle`, so the CLI
+  installs it as a plain dependency and adds no profile layer ("declares no dsh.bundle
+  — installed as a plain dependency"). The installable unit is the packed
+  `@mpd-dsh/mpd` package only.
+- **Why the pack step exists.** The repo root holds SOURCES (`src/`, `skills/`,
+  `presets/`, the adopted agent-teams main code, MCP sources); the runtime needs the
+  assembled package: built `dist/index.js` per plugin, the combined web client, the
+  skill corpus + presets, the bilingual docs/licences, the packed-form patch
+  (`@mpd-dsh/mpd/...` row names + `baseUrl` path expressions) and a manifest that
+  declares `dsh.bundle.patch` + `dsh.client`. `pack-mpd` is also the gate that refuses
+  to ship a package with a missing `dist/`. Re-run it after ANY `src/`/`dist/`/skill/
+  preset change; installing an already-published `@mpd-dsh/mpd` needs no pack.
 
 ### Dev/QA flow (legacy): `scripts/install-profile.mjs`
 

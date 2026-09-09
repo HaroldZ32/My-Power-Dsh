@@ -16,8 +16,11 @@ node scripts/pack-mpd.mjs                          # -> dist/mpd-package/（无 
 dsh plugin --profile web add dist/mpd-package      # 安装打包后的 bundle
 ```
 
-> 注意：`dsh plugin add` 必须指向**打包后的**包（仓库根目录没有 `dsh.bundle.patch` 条目）。
-> 当目标位置包含打包后的包时，`dsh plugin add <path-or-git-url>` 同理可用。
+> 注意：`dsh plugin add` 必须指向**打包后的**包。仓库根目录是源码 monorepo（`my-power-dsh`，
+> 没有 `dsh.bundle`）——安装它只会加一个普通依赖，不会加任何 profile 层。`pack-mpd` 负责把
+> 可安装的 `@mpd-dsh/mpd` 组装出来：各插件已构建的 dist、采纳的 agent-teams 主代码、skill 语料库
+> 与 presets、合并的 web client，以及打包形态的 patch。任何源码/dist/skill/preset 变更后都要重新
+> 打包；而安装已发布的 `@mpd-dsh/mpd` 则不需要打包步骤。
 
 ## 文档
 
