@@ -10,13 +10,14 @@
 //   3) profile-root resolution of the main-code entry succeeds (the guard expression
 //      would FAIL on @nanmicoder/dsh-agent-teams - that failure was the original defect;
 //      current evidence -> evidence/plan-e/e4-team-vendor/<ts>/);
-//   4) real headless boot: no module errors, mpd tools answer, mpd-bootstrap copies the
-//      rewired skills/presets to $DSH_HOME whose texts point at agent_teams_*;
+//   4) real headless boot with the QA probe (deterministic, no model call): the
+//      INSTALLED bundle serves the rewired preset + skill catalog (no $DSH_HOME
+//      copy) and its texts point at agent_teams_*;
 //   5) web profile route smoke: /plugins/dsh-agent-teams/state responds 200.
 // Evidence -> evidence/plan-e/e4-team-vendor/<ts>/. --self-test is offline.
 // Never touches the real ~/.dsh.
 import { spawnSync, spawn } from "node:child_process"
-import { cpSync, existsSync, mkdirSync, openSync, readFileSync, writeFileSync } from "node:fs"
+import { cpSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { join, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -76,7 +77,10 @@ async function runReal() {
   }
 
   writeFileSync(join(profile, "package.json"), JSON.stringify({ name: "dsh-profile-t", private: true, dependencies: {}, dsh: { profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-headless"] } } }, null, 2) + "\n")
-  const add = runSync("dsh", ["plugin", "--profile", "t", "add", staged], { timeout: 600000 })
+  // --store-dir keeps pnpm's store inside the sandbox (the machine's global store
+  // may be unwritable under the QA sandbox policy).
+  const store = join(reloc, "pnpm-store")
+  const add = runSync("dsh", ["plugin", "--profile", "t", "add", "--store-dir", store, staged], { timeout: 600000 })
   steps.install = { ok: add.status === 0, exit: add.status }
   const dump = runSync("dsh", ["--profile", "t", "--dump-config"], { timeout: 120000 })
   const dumpOut = dump.out
@@ -85,37 +89,70 @@ async function runReal() {
   const resCode = "const {createRequire}=require('module');const r=createRequire(process.argv[1]);try{console.log('MAINCODE_OK '+r.resolve('@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/package.json'))}catch(e){console.log('MAINCODE_FAIL '+e.code)};try{r.resolve('@nanmicoder/dsh-agent-teams/package.json');console.log('PKG_PRESENT')}catch(e){console.log('PKG_ABSENT')}"
   const res = runSync("node", ["-e", resCode, join(profile, "x.js")])
   steps.resolution = { ok: res.status === 0 && res.out.includes("MAINCODE_OK") && res.out.includes("PKG_ABSENT"), out: res.out.trim() }
-  writeFileSync(join(profile, "cordis.patch.yml"), "- insert:\n    - id: agent-presets\n      name: '@deepseek-ai/dsh-agent-presets'\n      config:\n        default: mpd\n")
-  const live = runSync("dsh", ["--profile", "t", "Use mpd_config_get with key 'memory.vcs' then mpd_memory_status; report both values in one line."], { timeout: 600000, cwd: join(reloc, "ws-rewire") })
+  const installedBundle = join(profile, "node_modules", "@mpd-dsh", "mpd")
+  // The headless profile has no stock agent-presets row: insert one rooted at the
+  // INSTALLED bundle (bundle-served model — no $DSH_HOME/.agent-presets copy).
+  // Deterministic boot proof (no model call: the QA machine has no model key):
+  // the QA probe reads the live preset + roster + skill catalog out of the
+  // INSTALLED package, so a broken route/row surfaces as a failed boot.
+  writeFileSync(join(profile, "cordis.patch.yml"), "- insert:\n    - id: agent-presets\n      name: '@deepseek-ai/dsh-agent-presets'\n      config:\n        default: mpd\n        roots:\n          - path: " + JSON.stringify(join(installedBundle, "presets")) + "\n            trust: system\n"
+    + "    - id: roles-probe\n      name: " + JSON.stringify(join(repoRoot, "packages", "mpd-qa-roles-probe", "dist", "index.js")) + "\n")
+  const live = runSync("dsh", ["--profile", "t", "ok"], { timeout: 600000, cwd: join(reloc, "ws-rewire") })
   const out = live.out
-  steps.live = { ok: live.status === 0 && !out.includes("ERR_MODULE_NOT_FOUND") && !out.includes("@nanmicoder"), exit: live.status }
-  steps.bootstrap = { ok: out.includes("mpd-bootstrap") }
-  const userSkills = join(home, "skills")
+  steps.live = {
+    ok: /roles-probe\] PASS/.test(out) && /PRESET_MPD=ok/.test(out)
+      && !out.includes("ERR_MODULE_NOT_FOUND") && !out.includes("@nanmicoder") && !/agent-preset\/(not-found|invalid)/.test(out),
+    exit: live.status,
+  }
+  // The installed package is a pnpm link: the provider resolves its own realpath,
+  // so accept either the node_modules path or the linked package dir.
+  steps.bootstrap = {
+    ok: out.includes("mpd-bootstrap")
+      && (out.includes(join(installedBundle, "skills")) || out.includes(join(staged, "skills"))),
+  }
+  // bundle-served: the texts come from the INSTALLED package, and the harness
+  // home holds no skills/presets copy at all.
   const texts = [
-    join(userSkills, "ulw-research", "SKILL.md"),
-    join(userSkills, "ulw-execute", "SKILL.md"),
-    join(home, ".agent-presets", "mpd", "agent.cordis.yml")
+    join(installedBundle, "skills", "ulw-research", "SKILL.md"),
+    join(installedBundle, "skills", "ulw-execute", "SKILL.md"),
+    join(installedBundle, "presets", "mpd", "agent.cordis.yml")
   ].filter((p) => existsSync(p)).map((p) => readFileSync(p, "utf8"))
   const allText = texts.join("\n")
   steps.installedTexts = { ok: texts.length === 3 && allText.includes("AGENT.md") && allText.includes("mpd_role_spawn") && allText.includes("agent_teams_create") && !allText.includes("selectable roles"), files: texts.length }
+  const homeSkills = join(home, "skills")
+  const homePresets = join(home, ".agent-presets")
+  steps.noHomeCopy = {
+    ok: (!existsSync(homeSkills) || readdirSync(homeSkills).length === 0) && (!existsSync(homePresets) || readdirSync(homePresets).length === 0),
+    skills: existsSync(homeSkills) ? readdirSync(homeSkills) : [],
+    presets: existsSync(homePresets) ? readdirSync(homePresets) : []
+  }
   const webProfile = join(home, "profiles", "w")
   mkdirSync(webProfile, { recursive: true })
   writeFileSync(join(webProfile, "package.json"), JSON.stringify({ name: "dsh-profile-w", private: true, dependencies: {}, dsh: { profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app"] } } }, null, 2) + "\n")
-  const addWeb = runSync("dsh", ["plugin", "--profile", "w", "add", staged], { timeout: 600000 })
+  const addWeb = runSync("dsh", ["plugin", "--profile", "w", "add", "--store-dir", store, staged], { timeout: 600000 })
   const port = 3198
+  // The route under test is registered by the agent-teams row alone, so the MCP
+  // rows are disabled for this boot: a cold LSP daemon + codegraph init can push
+  // the first web boot past any sane poll window on a clean sandbox.
+  const webOverlay = join(reloc, "web-no-mcp.yml")
+  writeFileSync(webOverlay, ["mcp-astgrep", "mcp-gitbash", "mcp-lsp", "mcp-codegraph", "mcp-context7", "mcp-grepapp"]
+    .map((id) => "- id: " + id + "\n  disabled: true").join("\n") + "\n")
   const webLog = join(outDir, "web.log")
   const webFd = openSync(webLog, "w")
-  const web = spawn("dsh", ["--profile", "w", "--port", String(port), "--no-open"], { env, cwd: join(reloc, "ws-rewire"), detached: false, stdio: ["ignore", webFd, webFd] })
+  const web = spawn("dsh", ["--profile", "w", "--patch", webOverlay, "--port", String(port), "--no-open"], { env, cwd: join(reloc, "ws-rewire"), detached: false, stdio: ["ignore", webFd, webFd] })
   let routeOk = false, routeStatus = null
   const t0 = Date.now()
-  while (Date.now() - t0 < 120000) {
+  // Cold web boots in this sandbox (MCP servers + LSP daemon + client modules)
+  // have been observed past two minutes; the poll is generous on purpose.
+  while (Date.now() - t0 < 240000) {
     await new Promise((r) => setTimeout(r, 2000))
     try {
       const res = await fetch("http://127.0.0.1:" + port + "/plugins/dsh-agent-teams/state", { signal: AbortSignal.timeout(4000) })
       routeStatus = res.status
-      routeOk = res.status === 200
       await res.text()
-      break
+      // The web app listens before the client plugin mounts its routes, so a
+      // non-200 answer is "not ready yet", not a verdict: keep polling.
+      if (res.status === 200) { routeOk = true; break }
     } catch { /* not up yet */ }
   }
   web.kill("SIGTERM")

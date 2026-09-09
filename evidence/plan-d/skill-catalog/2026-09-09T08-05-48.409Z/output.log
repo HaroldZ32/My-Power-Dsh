@@ -1,0 +1,11 @@
+[mpd-codegraph] init status=no-binary binary=- cwd=/tmp/mpd-skill-URAxD5/ws
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/dist/mpd-package/skills (provider mpd-bundle, bundle 0.3.0)
+[roles-probe] PRESET_MPD=ok
+[roles-probe] PRESET_PATH=/tmp/mpd-skill-URAxD5/profiles/t/node_modules/@mpd-dsh/mpd/presets/mpd/agent.cordis.yml trust=system
+[roles-probe] ROSTER=oracle,librarian,prometheus,hephaestus,sisyphus,atlas,explore,metis,momus,multimodal-looker,sisyphus-junior
+[roles-probe] SKILLS=28 BUNDLED=22
+[roles-probe] SKILL_FIXTURE=ok name=svn-master base=/root/dshProj/my-power-dsh/dist/mpd-package/skills/svn-master bytes=5210
+[roles-probe] PASS
+
+CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.
+dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-official"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment
