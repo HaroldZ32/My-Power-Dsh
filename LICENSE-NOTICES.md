@@ -27,6 +27,15 @@ transitive deps into the profile root, and code outside the profile's node_modul
 cannot see `@deepseek-ai/*`), hence the vendored closure. Original license text retained at
 `packages/mpd-agent-teams-plugin/LICENSE`.
 
+Local adaptations in the adopted main code (all marked in-source with `LOCAL ADAPTATION`):
+- `memberPersona` injects the workmate library's persona/memory for members named after a
+  workmate;
+- `lib/members.js` degrades instead of aborting when the host harness build does not expose
+  `ctx.subagents.registerContinuableSetup` (dsh 0.1.2-rc.1 dropped the seam): the member
+  model-selection bridge is disabled with a warning, and members keep the Harness
+  descriptor provider/model. Without this guard a single missing optional seam aborted the
+  whole plugin tree at boot, so no bundle row (skills, preset, tools) could load.
+
 MIT License
 
 Copyright (c) 2026 程序员阿江(Relakkes)
