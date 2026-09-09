@@ -69,6 +69,10 @@ SUBAGENTS:
   forcing a weak match. In a team, a member named after the workmate gets its
   persona/memory injected automatically (patched `memberPersona` in
   `packages/mpd-agent-teams-plugin`).
+- **One harness adapter.** Every mpd row calls `packages/mpd-dsh-adapter-plugin`
+  (`mpdDsh` service) for tool registration/guards/post-execute, internal tool calls,
+  subagent spawn, skill delivery and preset resolution — so a DeepSeek Harness release
+  that reshapes a seam is fixed in one file, not across every plugin (AGENTS.md §6).
 - **Whole-unit install, whole-unit uninstall.** One `dsh plugin add dist/mpd-package`
   installs every row AND the assets: the `mpd` preset is served from
   `<bundle>/presets` (the patch roots the preset roster there) and the skill corpus

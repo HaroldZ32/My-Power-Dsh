@@ -26,6 +26,7 @@
 - **Host 插件** —— `mpd-config-plugin`、`mpd-tools-plugin`、`mpd-modelchain-plugin`、
   `mpd-roles-plugin`、`mpd-ulw-plugin`、`mpd-hashline-plugin`、`mpd-boulder-plugin`、
   `mpd-comment-checker-plugin`、`mpd-memory-plugin`、`mpd-codegraph-plugin`、
+  `mpd-dsh-adapter-plugin`（所有行都经由它调用 Harness 接缝的唯一适配器）、
   `mpd-workmate-plugin`、`mpd-bootstrap-plugin`、`mpd-verif-plugin`（RTL 验证，
   Plan A）、`mpd-agent-teams-plugin`（采纳）、
   `mpd-bundle-plugin`（bundle web-compat + 合并 web client）、`mpd-qa-roles-probe`（仅 QA）。

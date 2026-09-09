@@ -1,6 +1,7 @@
 // B4 mpd-modelchain-plugin: upstream fallback-chain resolution (DeepSeek-first) + workspace memory.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join, resolve } from "node:path"
+import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-modelchain"
 export const inject = ["tools"]
@@ -83,6 +84,8 @@ function loadMemory(p: string): Record<string, string> {
 }
 
 export function apply(ctx: Ctx, config: Config = {}): void {
+  // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
+  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
   const mpdConfig = ctx.get?.("mpdConfig") as { get: (k?: string) => any } | undefined
   let chains = config?.chains ?? DEFAULT_CHAINS
   if (mpdConfig?.get) {
@@ -96,7 +99,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   }
   const cwd = process.env.DSH_WORKSPACE_ROOT ?? process.cwd()
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_modelchain_resolve",
     description: "Resolve the DeepSeek provider/model route for an upstream role (sisyphus/sisyphus-junior/oracle/atlas/prometheus/librarian/explore/metis/momus/multimodal-looker/hephaestus) from the adapted fallback chains.",
     parameters: { type: "object", properties: { role: { type: "string", description: "upstream agent role name" } }, required: ["role"] },
@@ -116,7 +119,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     }
   })
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_memory_save",
     description: "Persist a key/value note in the workspace-scoped memory (.mpd/memory.json).",
     parameters: { type: "object", properties: { key: { type: "string" }, value: { type: "string" } }, required: ["key", "value"] },
@@ -131,7 +134,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     }
   })
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_memory_recall",
     description: "Recall a key from the workspace-scoped memory.",
     parameters: { type: "object", properties: { key: { type: "string" } }, required: ["key"] },

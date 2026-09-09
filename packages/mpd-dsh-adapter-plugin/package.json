@@ -1,0 +1,10 @@
+{
+  "name": "@mpd-dsh/dsh-adapter",
+  "private": true,
+  "version": "0.3.0",
+  "type": "module",
+  "description": "Single adapter over every DeepSeek Harness seam the bundle uses (tools registry, tool execution, subagent spawn, skills registry, preset roster)",
+  "scripts": {
+    "test": "bun test"
+  }
+}

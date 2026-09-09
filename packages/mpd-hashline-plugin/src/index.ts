@@ -20,6 +20,7 @@ import {
   normalizeHashlineEdits,
   type HashlineEdit,
 } from "./vendor/index.ts"
+import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-hashline"
 export const inject = ["tools"]
@@ -80,10 +81,12 @@ function editFile(fp: string, edits: HashlineEdit[], maxDiffChars: number): any 
 }
 
 export function apply(ctx: Ctx, config: Config = {}): void {
+  // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
+  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
   const cfg = mergedConfig(ctx, config)
   const maxDiffChars = cfg.maxDiffChars ?? 4000
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_hashline_read",
     description: "Show a file as hashline view: one 'LINE#HASH|content' line per source line, where LINE#HASH is the anchor to use with mpd_hashline_edit. Read-only; the file on disk stays plain.",
     parameters: { type: "object", properties: { path: { type: "string" } }, required: ["path"] },
@@ -97,7 +100,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     }
   })
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_hashline_edit",
     description: "Apply hash-anchored edits to a file: edits are {op: replace|append|prepend, pos: 'LINE#HASH' anchor, end?: 'LINE#HASH' (replace range), lines: 'new text' | ['line1', ...]}. Obtain anchors from mpd_hashline_read. Anchors are validated against current hashes (HashlineMismatchError on drift, with remapped refs); matched edits are applied to plain content and the file is written back plain. Returns noop/deduped counts and a unified diff.",
     parameters: {
@@ -126,7 +129,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     }
   })
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_hashline_format",
     description: "Register a file for the hashline discipline (idempotent; the file on disk is NOT changed). After registration the post-edit guard warns when plain edit/write tools change the file. The returned view is the hashline anchor view.",
     parameters: { type: "object", properties: { path: { type: "string" } }, required: ["path"] },
@@ -142,7 +145,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     }
   })
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_hashline_restore",
     description: "Unregister a file from the hashline discipline (the plain file content is untouched). After this, plain edits no longer trigger the hashline guard.",
     parameters: { type: "object", properties: { path: { type: "string" } }, required: ["path"] },
@@ -157,8 +160,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   // Guard: plain edit/write on a discipline-registered file silently invalidates anchors.
   if (cfg.guardEditTools !== false) {
-    ctx.on("tools/post-execute", async (exec: ToolExec, result: any, next: any) => {
-      const out = await next()
+    dsh.onPostToolExecute(async (exec: ToolExec, result: any, out: any) => {
       if (out.kind !== "accept") return out
       const isEdit = exec.name === "edit" || exec.name === "str_replace_editor" || exec.name === "write"
       if (!isEdit) return out

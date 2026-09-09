@@ -8,6 +8,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, readdirSync, statSync } from "node:fs"
 import { spawnSync } from "node:child_process"
 import { basename, dirname, join, resolve } from "node:path"
+import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-memory"
 export const inject = ["tools"]
@@ -135,6 +136,8 @@ function safeMemoryPath(memoryDir: string, name: string): string {
 }
 
 export function apply(ctx: Ctx, config: Config = {}): void {
+  // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
+  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
   const cfg = mergedConfig(ctx, config)
   const reflectionEvery = cfg.reflectionEvery ?? 10
 
@@ -153,7 +156,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     appendFileSync(journalPath(d), JSON.stringify({ at: new Date().toISOString(), kind, ...detail }) + "\n")
   }
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_memory_write",
     description: "Persist a memory entry (markdown file with frontmatter description/kind/aliases/read_only) into the VCS-backed memory store and commit. Increments the reflection step counter; when the reflection threshold is crossed the result announces a reflection is due. kind: note | fact | reflection.",
     parameters: { type: "object", properties: { title: { type: "string" }, description: { type: "string" }, content: { type: "string" }, kind: { type: "string", enum: ["note", "fact", "reflection"] }, tags: { type: "array", items: { type: "string" } }, readOnly: { type: "boolean" } }, required: ["title", "content"], additionalProperties: false },
@@ -178,7 +181,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     }
   })
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_memory_read",
     description: "Read memory entries by optional kind filter and/or a substring query (matched against description/content/tags/aliases), limited to `limit` entries; returns normalized entries with frontmatter metadata and body content.",
     parameters: { type: "object", properties: { query: { type: "string" }, kind: { type: "string" }, limit: { type: "integer" } }, additionalProperties: false },
@@ -205,7 +208,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     }
   })
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_memory_reflect",
     description: "Inspect the reflection state machine: trigger status, reservation, step counters; returns the due hint when a reflection is pending. Crossing the step-count threshold marks a pending reflection; completeTransition equivalent is mpd_memory_reflect_complete.",
     parameters: { type: "object", properties: {} },
@@ -217,7 +220,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     }
   })
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_memory_reflect_complete",
     description: "Complete a pending reflection transition: writes the reflection content as a memory entry (kind=reflection), advances reflected_completed_steps / resets steps_since_last_successful_reflection, clears the reservation and commits.",
     parameters: { type: "object", properties: { content: { type: "string" }, title: { type: "string" } }, required: ["content"], additionalProperties: false },
@@ -241,7 +244,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     }
   })
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_memory_status",
     description: "Show memory engine status: vcs mode, repo paths, entry count, journal/facts line counts, reflection counters.",
     parameters: { type: "object", properties: {} },

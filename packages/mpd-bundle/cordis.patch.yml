@@ -127,7 +127,14 @@
     # appears in the boot graph.
     - id: mpd-web-compat
       name: '@mpd-dsh/mpd'
-    # mpd-config first: it provides the mpdConfig service that the rows below
+    # mpd-dsh-adapter FIRST: it is the bundle's ONLY contact surface with the
+    # harness tool/agent/skill/preset seams (ctx.tools register/guard/execute/
+    # post-execute, ctx.subagents.start, ctx.skills.registerProvider,
+    # ctx.agentPresets.resolve). Every mpd row below calls through it, so a
+    # harness release that reshapes a seam is absorbed in that one package.
+    - id: mpd-dsh-adapter
+      name: '@mpd-dsh/mpd/packages/mpd-dsh-adapter-plugin/dist/index.js'
+    # mpd-config next: it provides the mpdConfig service that the rows below
     # read (apply-time config merges for tools/waterfalls).
     - id: mpd-config
       name: '@mpd-dsh/mpd/packages/mpd-config-plugin/dist/index.js'

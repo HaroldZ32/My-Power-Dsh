@@ -13,10 +13,11 @@ bundle**（`@mpd-dsh/mpd`）交付，其 `dsh.bundle.patch`
 （`packages/mpd-bundle/cordis.patch.yml`）向它安装到的任意 profile 添加行。它贡献：
 
 - 8 个 MCP 服务器（ast-grep、git-bash [默认禁用]、LSP、codegraph + 远端 context7 / grep.app），
-- 12 个 host 插件（config、tools、modelchain、roles、ulw、hashline、boulder、
+- Harness 适配器（`mpd-dsh-adapter`）：所有其他行都经由它调用，
+- 13 个 host 插件（adapter、config、tools、modelchain、roles、ulw、hashline、boulder、
   comment-checker、memory、codegraph、workmate、bootstrap）+ 采纳的 agent-teams
   插件 + bundle 自己的 web-compat/client 插件，
-- 一个 agent 预设（`mpd`）和一份 skill 语料，启动时自动复制，
+- 一个 agent 预设（`mpd`）和一份 skill 语料，由 bundle 直接供给（不复制到 home），
 - 一个合并的 web client（agent-teams 活动面板 + workmate 库）。
 
 OMO 起源的 11 个代理**不是预设**：它们作为专家 roster（`mpd-roles-plugin`）存在，
@@ -81,6 +82,7 @@ client 永远不会出现在 boot graph 中（可复现验证；证据
 | `mpd-config` | mpd-config-plugin | 最小 `mpd.jsonc` 运行时配置层（工程 `.mpd/mpd.jsonc` 覆盖用户 `$DSH_HOME/mpd.jsonc`） | `mpd_config_get`、`mpd_config_reload`；服务 `mpdConfig` | `projectFile`、`userFile` |
 | `mpd-tools` | mpd-tools-plugin | 写保护（禁止静默覆盖）、工具输出截断（token 预算）、编辑错误恢复提示 | 仅 waterfall | `writeGuard`、`truncateMaxBytes`、`recoveryHint` |
 | `mpd-modelchain` | mpd-modelchain-plugin | roster 角色的 DeepSeek 路由解析 + 键值记忆注释 | `mpd_modelchain_resolve`、`mpd_memory_save`、`mpd_memory_recall` | — |
+| `mpd-dsh-adapter` | mpd-dsh-adapter-plugin | 与 Harness 接缝的**唯一**接触面：工具注册/guard/post-execute/execute、子代理 spawn、skill provider + 目录、preset 解析、能力探测 | 服务 `mpdDsh` | `defaultTimeoutMs`、`quiet` |
 | `mpd-roles` | mpd-roles-plugin | 11 个 OMO 起源专家 roster（id/正常名/persona/模型链/只读） | `mpd_roles_list`、`mpd_role_spawn`、`mpd_role_persona`；服务 `mpdRoles` | `personasDir` |
 | `mpd-ulw` | mpd-ulw-plugin | 固定 plan→execute→verify 循环纪律 | `mpd_ultrawork`、`mpd_ulw`（轻量别名） | `maxRounds`、`maxReReviews`、`provider/model/reviewerModel`、`planDir`、`stateDir` |
 | `mpd-hashline` | mpd-hashline-plugin | 哈希锚定编辑纪律（`LINE#HASH` 锚点） | `mpd_hashline_read`、`mpd_hashline_edit`、`mpd_hashline_format`、`mpd_hashline_restore` | `guardEditTools`、`maxDiffChars`、`registryFile` |
@@ -134,6 +136,26 @@ key**。
 | `<workspace>/.mpd/mpd.jsonc` | mpd-config | 工程配置层 |
 | **`~/.mpd/workmate/`**（用户 HOME） | mpd-workmate | 跨工程 workmate 库 —— 用户批准的对 workspace-scoped 状态规则的刻意例外（AGENTS.md §6）；QA 以 `HOME=<sandbox>` 启动 |
 | `$DSH_HOME/.agent-presets/mpd*`、`$DSH_HOME/skills/*` | mpd-bootstrap | 仅历史遗留（bundle <= 0.2.6 的带版本戳副本），首次 0.3.0 启动时删除——新版本不再写 home |
+
+## 6b. Harness 适配器（唯一的接缝接触面）
+
+`packages/mpd-dsh-adapter-plugin` 是本 bundle 与 DeepSeek Harness 服务之间的**唯一**接触面。所有 mpd 行都调用
+`dsh.registerTool` / `dsh.guardTool` / `dsh.onPostToolExecute` / `dsh.executeTool` /
+`dsh.spawnAgent` / `dsh.registerSkillProvider` / `dsh.loadSkill` / `dsh.resolvePreset`，
+而不是直接使用 `ctx.tools` / `ctx.subagents` / `ctx.skills` / `ctx.agentPresets`；因此 Harness
+更名或改变某个接缝时，只需改一个文件（AGENTS.md §6）。
+
+- 该行插在所有 mpd 行之前，提供 `mpdDsh` 服务；消费方写
+  `ctx.get("mpdDsh") ?? createDshAdapter(ctx)`，因此插件在单元测试中也能独立工作。
+- 适配器不声明 `inject`，所有接缝都在调用时惰性解析：loader 会并发应用同级行（在 `apply`
+  时取快照会漏报），且 Cordis 中把未注入的服务当属性读取会抛错。`capabilities()`
+  为每个接缝返回布尔值，供调用方优雅降级。
+- 原先散落在各插件里的归一化逻辑集中于此：缺省对象根 `parameters`、缺省文本
+  `output.render`、始终对象化的 `(args, exec)`、由适配器调用 `next()` 的
+  `tools/post-execute` 瀑布、`run.result` 无论 Promise 还是对象都会 await、
+  `{ok, isError, value, error}` 工具调用结果、`{output, structured, stopReason}` spawn 结果。
+- QA 证明：`bundle-lifecycle` 断言组合后的行、启动日志行、探针的 `ADAPTER_SEAMS=…`
+  快照与 `ADAPTER_TOOL_CALL=ok`（通过归一化路径真实调用一次 `mpd_config_get`）。
 
 ## 7. Web client 接线（微妙之处）
 

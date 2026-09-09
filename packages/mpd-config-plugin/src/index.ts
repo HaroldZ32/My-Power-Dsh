@@ -8,11 +8,12 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { dirname, join, resolve } from "node:path"
+import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-config"
 export const inject = ["tools"]
 
-type Ctx = { tools: any; provide: (name: string, value: any, check?: any) => void }
+type Ctx = { tools: any; provide: (name: string, value: any, check?: any) => void; get?: (serviceName: string) => any; [k: string]: any }
 type Config = { projectFile?: string; userFile?: string }
 
 function textBlock(text: string): any { return [{ type: "text", text }] }
@@ -91,6 +92,8 @@ function loadConfig(config: Config): { config: any; files: string[]; errors: str
 export { stripJsonc, parseJsonc, deepMerge }
 
 export function apply(ctx: Ctx, config: Config = {}): void {
+  // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
+  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
   let state = loadConfig(config)
 
   function reload(): any { state = loadConfig(config); return state.config }
@@ -104,7 +107,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     states: () => ({ files: state.files, errors: state.errors }),
   })
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_config_get",
     description: "Read the resolved mpd.jsonc runtime config (project .mpd/mpd.jsonc merged over user $DSH_HOME/mpd.jsonc). Consumed keys: memory.vcs/memory.dir/memory.agentSlug/memory.reflectionEvery, team.stateDir, hashline.guardEditTools/hashline.maxDiffChars/hashline.registryFile, commentChecker.autoCheck/commentChecker.bin/commentChecker.timeoutMs/commentChecker.maxMessageChars, modelchain.<chainKey>, boulder.dir, ulw.maxRounds/ulw.planDir/ulw.stateDir/ulw.provider/ulw.model/ulw.reviewerModel/ulw.maxReReviews.",
     parameters: { type: "object", properties: { key: { type: "string", description: "Optional dot-path to a single key, e.g. memory.vcs" } }, additionalProperties: false },
@@ -119,7 +122,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     }
   })
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_config_reload",
     description: "Re-read the mpd.jsonc layers and refresh the resolved config (returns files found and any parse errors).",
     parameters: { type: "object", properties: {} },

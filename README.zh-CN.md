@@ -60,6 +60,9 @@ mpd 插件（含 codegraph 自动初始化）、采纳的 agent-teams（团队 +
   note 匹配得足够好（`matched=false`），应新建一个 workmate 而不是强行弱匹配。
   在团队里，以 workmate 命名的成员会自动获得其 persona/memory 注入（
   `packages/mpd-agent-teams-plugin` 中打过补丁的 `memberPersona`）。
+- **唯一的 Harness 适配器。** 所有 mpd 行都通过 `packages/mpd-dsh-adapter-plugin`（`mpdDsh` 服务）
+  完成工具注册/guard/post-execute、内部工具调用、子代理 spawn、skill 供给与 preset 解析——因此
+  DeepSeek Harness 改变某个接缝时，只需改一个文件，而不是改遍所有插件（AGENTS.md §6）。
 - **整体安装、整体卸载。** 一条 `dsh plugin add dist/mpd-package` 同时装好全部插件行与资产：
   `mpd` preset 由 `<bundle>/presets` 供给（patch 把 preset 名册的根指向该目录），skill 语料库由
   `<bundle>/skills` 供给（`mpd-bootstrap` 行注册 `ctx.skills` provider）。不再向 `$DSH_HOME` 复制任何内容，

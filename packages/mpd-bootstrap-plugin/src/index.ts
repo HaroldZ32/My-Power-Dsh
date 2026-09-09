@@ -21,6 +21,7 @@ import { readdir, readFile } from "node:fs/promises"
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-bootstrap"
 // The skills registry is a host-plane service shipped by dsh-base; declaring it
@@ -40,7 +41,7 @@ type Config = {
 
 type Ctx = { skills: any; logger?: any; on?: (event: string, fn: (...args: any[]) => any) => void; [k: string]: any }
 
-/** Provider name registered on `ctx.skills`; must be unique process-wide. */
+/** Provider name registered on the skill registry; must be unique process-wide. */
 const PROVIDER_NAME = "mpd-bundle"
 /** Standard precedence rank for packaged skill providers (mirrors @deepseek-ai/dsh-skill). */
 const BUNDLED_SKILL_RANK = 600
@@ -406,6 +407,8 @@ function listCorpusSync(root: string): string[] {
 // ── plugin entry ────────────────────────────────────────────────────────────
 
 export function apply(ctx: Ctx, config: Config = {}): void {
+  // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
+  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
   const root = bundleRoot()
   const corpus = config.skillsDir ? config.skillsDir : join(root, "skills")
   const presets = presetsSource(root)
@@ -415,7 +418,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   if (config.skipSkills === true) {
     console.log("[mpd-bootstrap] skill corpus provider skipped (config)")
   } else {
-    ctx.skills.registerProvider((control: any) =>
+    dsh.registerSkillProvider((control: any) =>
       createProvider(corpus, ctx, () => control?.invalidate?.()),
     )
     console.log("[mpd-bootstrap] skill corpus served from " + corpus + " (provider " + PROVIDER_NAME + ", bundle " + version + ")")

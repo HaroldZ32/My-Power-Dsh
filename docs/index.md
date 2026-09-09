@@ -27,6 +27,7 @@ One README per package under `packages/<name>/README.md`:
 - **Host plugins** — `mpd-config-plugin`, `mpd-tools-plugin`, `mpd-modelchain-plugin`,
   `mpd-roles-plugin`, `mpd-ulw-plugin`, `mpd-hashline-plugin`, `mpd-boulder-plugin`,
   `mpd-comment-checker-plugin`, `mpd-memory-plugin`, `mpd-codegraph-plugin`,
+  `mpd-dsh-adapter-plugin` (the single harness-seam adapter every row calls through),
   `mpd-workmate-plugin`, `mpd-bootstrap-plugin`, `mpd-verif-plugin` (RTL
   verification, Plan A), `mpd-agent-teams-plugin` (adopted),
   `mpd-bundle-plugin` (bundle web-compat + combined web client),

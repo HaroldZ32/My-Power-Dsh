@@ -14,6 +14,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import { homedir } from "node:os"
 import { join } from "node:path"
 import { randomUUID } from "node:crypto"
+import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-workmate"
 export const inject = ["tools", "subagents"]
@@ -201,6 +202,8 @@ export function scoreMatch(task: string, wm: { note: string; baseName: string; d
 }
 
 export function apply(ctx: Ctx): void {
+  // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
+  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
   // The roster BASE templates come from mpdRoles (mpd-roles-plugin). Resolve the
   // service LAZILY inside tool execution (not at apply time): by the time a tool runs,
   // every bundle plugin has applied, so the sibling-provided mpdRoles service is
@@ -255,7 +258,7 @@ export function apply(ctx: Ctx): void {
     }
   })
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_workmate_list",
     description: "List the workmate library (~/.mpd/workmate): each durable evolving agent instance with its base specialist, use count, last-updated time and note summary. Use before delegating a task: if a workmate's note matches well you can reuse it; otherwise initialize a new one.",
     parameters: { type: "object", properties: {} },
@@ -266,7 +269,7 @@ export function apply(ctx: Ctx): void {
     }
   })
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_workmate_init",
     description: "Instantiate a roster BASE specialist into a durable, evolving workmate copy under ~/.mpd/workmate/<name>/ (independent name). base = roster id or normal name (mpd_roles_list). The base template stays pristine; the workmate gets its own persona.md, memory.md and a short note.md. Use when creating a team or pulling up a specialist you will reuse across sessions.",
     parameters: { type: "object", properties: { base: { type: "string", description: "roster id or normal name (e.g. hephaestus or \"Deep Worker\")" }, name: { type: "string", description: "independent workmate name (lowercase kebab; auto-generated if omitted)" }, note: { type: "string", description: "optional initial note card" } }, required: ["base"], additionalProperties: false },
@@ -274,7 +277,7 @@ export function apply(ctx: Ctx): void {
     execute: async (args: any) => initWorkmate(String(args?.base ?? ""), String(args?.name ?? ""), String(args?.note ?? ""))
   })
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_workmate_spawn",
     description: "Reuse a workmate instance: spawn it as a one-shot subagent carrying its evolved persona + independent memory + note, on its own model route (readonly bases are mechanically denied write tools). The subagent must call mpd_workmate_reflect with a self-summary before finishing. For team work, instead add a member whose name equals the workmate name (its persona/memory are injected automatically).",
     parameters: { type: "object", properties: { name: { type: "string", description: "workmate instance name" }, task: { type: "string" }, context: { type: "string", description: "optional context block" } }, required: ["name", "task"], additionalProperties: false },
@@ -293,23 +296,23 @@ export function apply(ctx: Ctx): void {
         + (args?.context ? "\n\nContext:\n" + String(args.context) : "")
         + "\n\nWork with the tools your role requires (read-only workmates must never modify anything)."
         + " BEFORE your final report, call mpd_workmate_reflect with a concise self-summary (task / outcome / what you learned / optional persona_delta / optional new note) so your workmate persona and memory evolve. Then end with ONLY the structured report (name/summary/recommendation/details/evidence)."
-      const run = await ctx.subagents.start("spawn", {
+      const result = await dsh.spawnAgent({
         label: "workmate-" + meta.name + "-" + randomUUID().slice(0, 8),
-        prompt: textBlock(prompt),
+        prompt,
         parent: exec.agent,
         signal: exec.signal,
-        agentOptions: { provider: meta.provider, model: meta.model },
+        provider: meta.provider,
+        model: meta.model,
         persona,
         outputSchema: REPORT_SCHEMA,
         ...(meta.readonly ? { toolFilter: { deny: READONLY_DENY } } : {})
       })
-      const result = run.result
       const st = result.structured ?? {}
       return { name: meta.name, status: "complete", summary: String(st.summary ?? ""), recommendation: String(st.recommendation ?? ""), details: String(st.details ?? ""), evidence: Array.isArray(st.evidence) ? st.evidence.map(String) : [], stopReason: result.stopReason ?? null }
     }
   })
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_workmate_reflect",
     description: "Self-evolve a workmate after a completed work session: append a bounded memory entry (oldest evicted past the cap), merge an optional persona revision, regenerate its short note, and bump the use count. Call this at the end of every task a workmate did — the workmate itself is instructed to do so; the caller may also call it on its behalf.",
     parameters: { type: "object", properties: { name: { type: "string" }, task: { type: "string" }, outcome: { type: "string" }, persona_delta: { type: "string", description: "optional persona revision text (merged, capped)" }, note: { type: "string", description: "optional replacement note card; auto-generated if omitted" } }, required: ["name", "task", "outcome"], additionalProperties: false },
@@ -333,7 +336,7 @@ export function apply(ctx: Ctx): void {
     }
   })
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_workmate_match",
     description: "Score every workmate note against a task and return the ranked matches. If the best score is below the threshold, matched=false and you should initialize a NEW workmate (mpd_workmate_init) instead of forcing a weak match. If matched=true, delegate to the best workmate (mpd_workmate_spawn, or a team member named after it).",
     parameters: { type: "object", properties: { task: { type: "string" } }, required: ["task"], additionalProperties: false },

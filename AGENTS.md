@@ -106,6 +106,7 @@ mpd-dsh/
 │   └── build-mpd-client.mjs      # build the combined bundle web client (client.js)
 ├── packages/
 │   ├── mpd-bundle/               # cordis.patch.yml: llm dual-track, skills, MCPs, all mpd plugins
+│   ├── mpd-dsh-adapter-plugin/   # THE single contact surface with harness seams (tools/subagents/skills/presets); every other plugin calls through it
 │   ├── mpd-skills-plugin/ (removed)
 │   ├── mpd-mcp-astgrep|gitbash|lsp|codegraph/
 │   ├── mpd-roles-plugin/         # OMO-origin specialists: roster (roles.data.ts, normal names + stable ids) + personas/ + mpd_roles_list / mpd_role_spawn / mpd_role_persona + mpdRoles service
@@ -171,17 +172,36 @@ gates pass and their evidence is committed with the change.
 Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `dist/index.js`
 (bun build), `README.md`, optional `package.json` with `@mpd-dsh/<name>` naming.
 
-- **Tools**: `ctx.tools.register({name, description, parameters, output:{schema, render}, execute})`.
-  `parameters` is object-rooted JSON Schema; `output.schema` the canonical value contract; `render`
-  returns `[{type:'text', text}]` blocks. `execute` receives `(args, exec)` with
-  `exec.signal` for cancellation.
-- **Guards**: `ctx.tools.guard(fn)` where `fn(exec) => string | undefined` (string denies).
+- **Harness seams go through `mpd-dsh-adapter` — binding.** No plugin row may touch a
+  harness service directly (`ctx.tools`, `ctx.subagents`, `ctx.skills`,
+  `ctx.agentPresets`); `packages/mpd-dsh-adapter-plugin` is the ONE file allowed to,
+  so a harness release that renames or reshapes a seam is absorbed there instead of
+  across every plugin. Resolve it with
+  `const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)`
+  (`ctx.get("mpdDsh")` is the mounted instance; the fallback keeps a plugin standalone
+  in unit tests). QA proves the surface: `bundle-lifecycle` asserts the row, the boot
+  log line and the probe's `ADAPTER_SEAMS`/`ADAPTER_TOOL_CALL=ok`.
+- **Tools**: `dsh.registerTool({name, description, parameters, output:{schema, render}, execute})`.
+  The adapter defaults `parameters` to an object-rooted schema and `output.render` to a
+  text block, and always calls `execute(args, exec)` with objects. `parameters` is
+  object-rooted JSON Schema; `output.schema` the canonical value contract; `render`
+  returns `[{type:'text', text}]` blocks; `exec.signal` cancels.
+- **Guards**: `dsh.guardTool(fn)` where `fn(exec) => string | undefined` (string denies).
   Keep guards monotonic and non-throwing; read only, never mutate.
-- **Waterfalls**: `ctx.on('tools/post-execute', async (exec, result, next) => decision)`;
-  accept with `{kind:'accept', content?}`, block with `{kind:'block', reason?}`.
-- **Subagents**: `ctx.subagents.start('spawn', {label, prompt:[{type:'text',text}], parent: exec.agent,
-  signal: exec.signal, agentOptions:{provider,model}, outputSchema, persona, maxDepth, toolFilter})`
-  → `run.result` (`{output, structured, stopReason}`).
+- **Waterfalls**: `dsh.onPostToolExecute(async (exec, result, downstream) => decision | undefined)`;
+  the adapter owns `next()`, so the listener only decides: return `{...downstream, content}`
+  to replace, `undefined` to pass through. Accept with `{kind:'accept', content?}`, block
+  with `{kind:'block', feedback}` (the harness key is `feedback`; `decision.block(reason)`
+  builds it).
+- **Subagents**: `dsh.spawnAgent({label, prompt, parent: exec.agent, signal: exec.signal,
+  provider, model, outputSchema, persona, maxDepth, toolFilter})` → `{output, structured,
+  stopReason}`. Flat `provider`/`model` and harness-shaped `agentOptions` both work, and
+  `run.result` is awaited whether it is a promise or an object.
+- **Internal tool calls**: `dsh.hasTool(name)` / `dsh.executeTool({name, arguments, callId?, signal?})`
+  (→ `{ok, isError, value, error}`) — never `ctx.tools.get`/`ctx.tools.execute` directly.
+- **Capability probing**: `dsh.capabilities()` reports one boolean per seam; degrade with a
+  warning instead of aborting a plugin tree (a missing optional seam must never take the
+  boot down — see the `registerContinuableSetup` guard in the adopted agent-teams plugin).
 - **State**: workspace-scoped only (`.mpd/` under cwd); never write `~/.dsh` from a plugin.
   Sanctioned exceptions: (1) the bundle writes NOTHING to the home any more — the
   `mpd-bootstrap` row serves `<bundle>/skills` through a `ctx.skills` provider and the
@@ -280,6 +300,7 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 | Symptom | Cause / fix |
 |---|---|
 | `duplicate loader entry id` | same row in bundle patch and an overlay — remove from one |
+| a plugin crashes with `cannot get property "x" without inject` / `... is not a function` | a harness seam changed shape — fix it in `packages/mpd-dsh-adapter-plugin/src/index.ts` only, rebuild, re-pack; plugin rows must not touch `ctx.tools`/`ctx.subagents`/`ctx.skills`/`ctx.agentPresets` directly (§6) |
 | `MISSING_CREDENTIAL` in isolated QA | sandbox has no `.credentials.yaml` — copy it; live-LLM cases also need `settings.yaml` when the home uses gateway providers (see §7) |
 | `patch: entry ... not found` | id-targeted row for a row absent in that profile — use `insert:` for new rows |
 | codegraph `skipped: project excluded` | cwd contains an `.mpd` segment or is under /tmp — use a normal project path |

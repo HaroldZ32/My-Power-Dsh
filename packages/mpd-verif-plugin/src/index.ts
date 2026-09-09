@@ -17,11 +17,12 @@ import { verifSim } from "./sim"
 import { verifUvm } from "./uvm"
 import { verifRegress } from "./regress"
 import { refusalOf } from "./errors"
+import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-verif"
 export const inject = ["tools"]
 
-type Ctx = { tools: any }
+type Ctx = { tools: any; get?: (serviceName: string) => any; [k: string]: any }
 
 function textBlock(text: string): { type: "text"; text: string }[] {
   return [{ type: "text", text }]
@@ -30,8 +31,10 @@ function textBlock(text: string): { type: "text"; text: string }[] {
 const scalar = (desc: string) => ({ type: "string", description: desc })
 
 export function apply(ctx: Ctx): void {
+  // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
+  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
   // --- 1. mpd_verif_venv: cocotb venv iron-rule manager ---
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_verif_venv",
     description: "Manage the project-local cocotb venv (iron rule: default <workspace>/.venv-rtl or MPD_DSH_VERIF_VENV). action=status reports {ok, verdict, cocotbVersion}; action=create bootstraps via 'python3 -m venv' and installs cocotb>=2.0 with the venv's own pip (system python/pip are NEVER used).",
     parameters: {
@@ -71,7 +74,7 @@ export function apply(ctx: Ctx): void {
   })
 
   // --- 2. mpd_verif_backends: probe surface (auto-detect + QA probe) ---
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_verif_backends",
     description: "Probe RTL backend availability: for iverilog|verilator|vcs (or all) resolves the effective binary via PATH or MPD_DSH_VERIF_* env, reports presence/version and (vcs) license env hints.",
     parameters: {
@@ -99,7 +102,7 @@ export function apply(ctx: Ctx): void {
   })
 
   // --- 3. mpd_verif_compile: full compile (builds a sim binary) ---
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_verif_compile",
     description: "Compile RTL to a sim binary with one backend: iverilog (-g2012 -o simv_iverilog) | verilator (--binary) | vcs (-sverilog +v2k -f filelist -o simv, auto-resolved via PATH/MPD_DSH_VERIF_*). Returns structured diagnostics {file,line,severity,code,message} parsed from the log on failure (VERIF_E_COMPILE).",
     parameters: {
@@ -136,7 +139,7 @@ export function apply(ctx: Ctx): void {
   })
 
   // --- 3b. mpd_verif_lint: lint-only pass (owner DP-4 eight-tool surface) ---
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_verif_lint",
     description: "Lint RTL with one backend (auto-resolved): iverilog -g2012 -tnull -Wall | verilator --lint-only -Wall | vcs -lca -sverilog +lint=all -f <filelist>. Returns structured diagnostics {file,line,severity,code,message} parsed from the log (VERIF_E_COMPILE on failure).",
     parameters: {
@@ -173,7 +176,7 @@ export function apply(ctx: Ctx): void {
   })
 
   // --- 3c. mpd_verif_coverage: coverage merge/report across lanes (owner DP-4) ---
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_verif_coverage",
     description: "Merge/report code coverage across lanes (owner DP-4): verilator — merge Verilator coverage .dat files (verilator_coverage --write merged.dat) or annotate a report (--annotate --all <dir> <merged.dat>); vcs — urg merge+report over per-case -cm_dir payloads (urg -dir ... -report ...); iverilog regions refused (VERIF_E_UNSUPPORTED, no native coverage). Binaries resolve via MPD_DSH_VERIF_* / VCS_HOME / VERDI_HOME / NOVAS_HOME / PATH.",
     parameters: {
@@ -209,7 +212,7 @@ export function apply(ctx: Ctx): void {
   })
 
   // --- 4. mpd_verif_sim: cocotb lane (iverilog | verilator ONLY) ---
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_verif_sim",
     description: "Run a cocotb simulation on iverilog or verilator. IRON RULE: refuses (VERIF_E_NO_VENV) unless the project venv exists AND cocotb imports inside it — the refusal carries the exact setup command; every run uses <venv>/bin/python runner.py. Generates a cocotb.runner script, executes it, parses results.xml into per-case statuses, collects waves (.fst/.vcd), and optionally hands the waveform to the wired wave-mcp MCP tool.",
     parameters: {
@@ -260,7 +263,7 @@ export function apply(ctx: Ctx): void {
             timeoutSec: typeof args?.timeoutSec === "number" ? args.timeoutSec : undefined,
             waveHook: args?.waveHook ?? true,
           },
-          { tools: ctx.tools },
+          { tools: dsh.toolRuntime() },
         )
       } catch (e) {
         return refusalOf(e)
@@ -269,7 +272,7 @@ export function apply(ctx: Ctx): void {
   })
 
   // --- 5. mpd_verif_uvm: UVM methodology lane, VCS ONLY ---
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_verif_uvm",
     description: "UVM methodology lane FOR VCS ONLY (owner decision; cocotb owns the open-source backends). Orchestrates a user-scaffolded UVM tree (<ip>/{rtl,script,tb,top,test,work}) — the plugin ships no template content, it validates the layout contract (tb_api_primitives.svh shared BFM, *_test.sv naming, mandatory sanity_test + reg_access_test) and drives the makefile-style contract: uvm-1.2, seed control, per-case work dirs, coverage -cm line+cond+tgl with urg merge, capped compile-fix attempts with unresolved.md. Methodology grounded in gen-tb-skill (structure) + raysalemi/uvmprimer (patterns) — no code reused from either.",
     parameters: {
@@ -320,7 +323,7 @@ export function apply(ctx: Ctx): void {
             timeoutSec: typeof args?.timeoutSec === "number" ? args.timeoutSec : undefined,
             waveHook: args?.waveHook ?? true,
           },
-          (ctx.tools as any) ?? {},
+          dsh.toolRuntime(),
         )
       } catch (e) {
         return refusalOf(e)
@@ -329,7 +332,7 @@ export function apply(ctx: Ctx): void {
   })
 
   // --- 6. mpd_verif_regress: multi-case regression + report ---
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_verif_regress",
     description: "Run a regression across cases on one backend: cocotb lane (iverilog|verilator, per-case seed = seedBase+idx, results aggregated from results.xml) or the UVM lane (vcs, per-case work dirs). Writes <work>/regress/<stamp>/results.json + results.md report; waves can be handed to wave-mcp/TraceWeave when wired.",
     parameters: {
@@ -387,7 +390,7 @@ export function apply(ctx: Ctx): void {
               coverage: args.sim.coverage ?? false,
             } : undefined,
           },
-          (ctx.tools as any) ?? {},
+          dsh.toolRuntime(),
         )
       } catch (e) {
         return refusalOf(e)

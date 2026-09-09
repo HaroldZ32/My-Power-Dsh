@@ -2,7 +2,7 @@
   "name": "my-power-dsh",
   "private": true,
   "type": "module",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "my-power-dsh: DeepSeek Harness plugin-based port of the upstream project capabilities",
   "scripts": {
     "typecheck": "tsgo --noEmit",

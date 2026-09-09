@@ -43,6 +43,15 @@ node scripts/pack-mpd.mjs          # regenerate dist/mpd-package/
 
 MCP servers are built by `node scripts/build-mcp.mjs` (offline from in-repo sources).
 
+**Harness seams (binding, AGENTS.md §6):** a plugin row must not call `ctx.tools`,
+`ctx.subagents`, `ctx.skills` or `ctx.agentPresets` directly. Every row goes through
+`packages/mpd-dsh-adapter-plugin` (`const dsh = ctx.get("mpdDsh") ?? createDshAdapter(ctx)`),
+so a harness release that reshapes a seam is fixed in that one package: edit
+`packages/mpd-dsh-adapter-plugin/src/index.ts`, rebuild it, re-pack — consumers pick the
+new mounted instance up without changes. Its unit tests
+(`packages/mpd-dsh-adapter-plugin/test/adapter.test.ts`) fake both a full and an empty
+harness, which is the fastest way to add a seam.
+
 ## 3. Tests
 
 ```bash
@@ -68,7 +77,7 @@ The QA skill is `skills/dsh-qa` (`SKILL.md`). Every case script ships `--self-te
 |---|---|---|
 | `mount-assert` | bundle rows present/absent in `--dump-config` | `bun run test:qa` (all self-tests) |
 | `preset-register` | mpd preset resolves FROM the bundle-served root (no `$DSH_HOME/.agent-presets` copy) + roster serves 11 roles | `node skills/dsh-qa/scripts/preset-register.mjs` |
-| `bundle-lifecycle` | `dsh plugin add` installs the whole unit → real boot serves preset + skills from the installed bundle → `dsh plugin remove` leaves no residue | `node skills/dsh-qa/scripts/bundle-lifecycle.mjs` |
+| `bundle-lifecycle` | `dsh plugin add` installs the whole unit → real boot serves preset + skills from the installed bundle and proves the harness adapter (`ADAPTER_SEAMS`, `ADAPTER_TOOL_CALL=ok`) → `dsh plugin remove` leaves no residue | `node skills/dsh-qa/scripts/bundle-lifecycle.mjs` |
 | `skill-catalog-probe` | installed bundle serves the skill catalog (22 bundled skills, fixture loads) with no `$DSH_HOME/skills` copy | `node skills/dsh-qa/scripts/skill-catalog-probe.mjs` |
 | `relocate-smoke` | relocated bundle serves preset + corpus, no dev-path leak, no home copy | `node skills/dsh-qa/scripts/relocate-smoke.mjs` |
 | `team-route-rewire` | staged bundle install → agent-teams row composed → probe boot → web `/plugins/dsh-agent-teams/state` 200 | `node skills/dsh-qa/scripts/team-route-rewire.mjs` |

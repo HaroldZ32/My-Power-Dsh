@@ -16,10 +16,11 @@ is installed into. It contributes:
 
 - 8 MCP servers (ast-grep, git-bash [disabled by default], LSP, codegraph + remote
   context7 / grep.app),
-- 12 host plugins (config, tools, modelchain, roles, ulw, hashline, boulder,
+- the harness adapter (`mpd-dsh-adapter`) every other row calls through,
+- 13 host plugins (adapter, config, tools, modelchain, roles, ulw, hashline, boulder,
   comment-checker, memory, codegraph, workmate, bootstrap) + the adopted agent-teams
   plugin and the bundle's own web-compat/client plugin,
-- one agent preset (`mpd`) and a skill corpus, auto-copied at boot,
+- one agent preset (`mpd`) and a skill corpus, served from the bundle (no home copy),
 - a combined web client (the agent-teams activity panel + the workmate library).
 
 The OMO-origin 11 agents are **not presets**: they live as a specialist roster
@@ -87,6 +88,7 @@ to bare package names.
 
 | Row id | Package | Purpose | Tools / service | Key config |
 |---|---|---|---|---|
+| `mpd-dsh-adapter` | mpd-dsh-adapter-plugin | THE single contact surface with harness seams: tool registration/guard/post-execute/execute, subagent spawn, skill provider + catalog, preset resolve, capability probing | service `mpdDsh` | `defaultTimeoutMs`, `quiet` |
 | `mpd-config` | mpd-config-plugin | minimal `mpd.jsonc` runtime config layer (project `.mpd/mpd.jsonc` merged over user `$DSH_HOME/mpd.jsonc`) | `mpd_config_get`, `mpd_config_reload`; service `mpdConfig` | `projectFile`, `userFile` |
 | `mpd-tools` | mpd-tools-plugin | write guard (no silent clobber), tool-output truncation (token budget), edit-error recovery guidance | waterfalls only | `writeGuard`, `truncateMaxBytes`, `recoveryHint` |
 | `mpd-modelchain` | mpd-modelchain-plugin | DeepSeek route resolution for roster roles + key/value memory notes | `mpd_modelchain_resolve`, `mpd_memory_save`, `mpd_memory_recall` | — |
@@ -148,6 +150,31 @@ yet.
 | `<workspace>/.mpd/mpd.jsonc` | mpd-config | project config layer |
 | **`~/.mpd/workmate/`** (user HOME) | mpd-workmate | the cross-project workmate library — deliberate user-approved exception to workspace-scoped state (§ AGENTS.md §6); QA boots with `HOME=<sandbox>` |
 | `$DSH_HOME/.agent-presets/mpd*`, `$DSH_HOME/skills/*` | mpd-bootstrap | LEGACY only (bundle <= 0.2.6 stamped copies); removed on the first 0.3.0 boot — the bundle writes nothing to the home |
+
+## 6b. Harness adapter (the only seam contact)
+
+`packages/mpd-dsh-adapter-plugin` is the bundle's ONLY contact surface with DeepSeek
+Harness services. Every mpd row calls `dsh.registerTool` / `dsh.guardTool` /
+`dsh.onPostToolExecute` / `dsh.executeTool` / `dsh.spawnAgent` /
+`dsh.registerSkillProvider` / `dsh.loadSkill` / `dsh.resolvePreset` instead of the raw
+`ctx.tools` / `ctx.subagents` / `ctx.skills` / `ctx.agentPresets`, so a harness release
+that renames or reshapes a seam is absorbed in one file (AGENTS.md §6).
+
+- The row is inserted before every other mpd row and provides the `mpdDsh` service;
+  consumers use `ctx.get("mpdDsh") ?? createDshAdapter(ctx)`, so a plugin still works
+  standalone in unit tests.
+- The adapter is `inject`-free and resolves every seam lazily: the loader applies
+  sibling rows concurrently (a snapshot at `apply` would under-report) and reading an
+  uninjected service as a property throws in Cordis. `capabilities()` reports one
+  boolean per seam for graceful degradation.
+- Normalizations that used to be per-plugin: default object-rooted `parameters`,
+  default text `output.render`, always-object `(args, exec)`, the adapter owning
+  `next()` in the `tools/post-execute` waterfall, `run.result` awaited whether it is a
+  promise or an object, `{ok, isError, value, error}` tool-call results, and
+  `{output, structured, stopReason}` spawn results.
+- QA proof: `bundle-lifecycle` asserts the composed row, the boot log line, the probe's
+  `ADAPTER_SEAMS=…` snapshot and `ADAPTER_TOOL_CALL=ok` (a real `mpd_config_get` call
+  through the normalized path).
 
 ## 7. Web client wiring (the subtle part)
 

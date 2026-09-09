@@ -12,6 +12,7 @@ import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { randomUUID } from "node:crypto"
 import { ROLES, ROLE_BY_ID, type MpdRoleSpec } from "./roles.data.ts"
+import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-roles"
 export const inject = ["tools", "subagents"]
@@ -75,6 +76,8 @@ export function readPersona(config: Config, spec: MpdRoleSpec): string {
 }
 
 export function apply(ctx: Ctx, config: Config = {}): void {
+  // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
+  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
   ctx.provide("mpdRoles", {
     list: () => ROLES.map((r) => ({ id: r.id, name: r.name, description: r.description, readonly: r.readonly, chain: r.chain.map((c) => ({ ...c })), personaFile: r.personaFile, persona: readPersona(config, r) })),
     get: (key: string) => {
@@ -85,7 +88,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     }
   })
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_roles_list",
     description: "List the specialist roster (ids → normal display names): Architect(oracle), Researcher(librarian), Planner(prometheus), Deep Worker(hephaestus), Senior Engineer(sisyphus), Lead(atlas), Explorer(explore), Reviewer(metis), Plan Reviewer(momus), Vision Analyst(multimodal-looker), Junior Engineer(sisyphus-junior). Use before mpd_role_spawn. Team mode uses the dsh-agent-teams profiles (agent_teams_create profile=mpd).",
     parameters: { type: "object", properties: {} },
@@ -93,7 +96,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     execute: async () => ({ roles: ROLES.map((r) => ({ id: r.id, name: r.name, description: r.description, readonly: r.readonly, provider: r.chain[0]?.provider ?? null, model: r.chain[0]?.model ?? null })), count: ROLES.length })
   })
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_role_spawn",
     description: "Spawn one specialist as a one-shot subagent with its roster persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Use ids from mpd_roles_list: Architect(oracle), Researcher(librarian), Planner(prometheus), Deep Worker(hephaestus), Senior Engineer(sisyphus), Lead(atlas), Explorer(explore), Reviewer(metis), Plan Reviewer(momus), Vision Analyst(multimodal-looker), Junior Engineer(sisyphus-junior). For multi-member team work prefer the adopted dsh-agent-teams protocol (agent_teams_create + agent_teams_add_member), not repeated one-shot spawns.",
     parameters: { type: "object", properties: { role: { type: "string", description: "roster role id (mpd_roles_list)" }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" }, model: { type: "string", description: "optional model override (default: the role's primary route)" } }, required: ["role", "task"], additionalProperties: false },
@@ -108,23 +111,23 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       const provider = spec.chain[0]?.provider ?? "deepseek-official"
       const model = typeof args?.model === "string" && args.model.trim() ? args.model.trim() : spec.chain[0]?.model
       const prompt = persona + "\n\nTask: " + task + (args?.context ? "\n\nContext:\n" + String(args.context) : "") + "\n\nWork with the tools your role requires (read-only roles must never modify anything). End with ONLY the structured report (role/summary/recommendation/details/evidence)."
-      const run = await ctx.subagents.start("spawn", {
+      const result = await dsh.spawnAgent({
         label: "role-" + id + "-" + randomUUID().slice(0, 8),
-        prompt: textBlock(prompt),
+        prompt,
         parent: exec.agent,
         signal: exec.signal,
-        agentOptions: { provider, model },
+        provider,
+        model,
         persona,
         outputSchema: REPORT_SCHEMA,
         ...(spec.readonly ? { toolFilter: { deny: READONLY_DENY } } : {})
       })
-      const result = run.result
       const st = result.structured ?? {}
       return { role: id, status: "complete", summary: String(st.summary ?? ""), recommendation: String(st.recommendation ?? ""), details: String(st.details ?? ""), evidence: Array.isArray(st.evidence) ? st.evidence.map(String) : [], stopReason: result.stopReason ?? null }
     }
   })
 
-  ctx.tools.register({
+  dsh.registerTool({
     name: "mpd_role_persona",
     description: "Return the full persona text of one roster role. Use it when a spawn surface takes the persona as TEXT (e.g. agent_teams_add_member persona=...), so the member gets the real role instructions instead of a bare id.",
     parameters: { type: "object", properties: { role: { type: "string" } }, required: ["role"] },

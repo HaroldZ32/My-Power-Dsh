@@ -1,9 +1,15 @@
 // packages/mpd-dsh-adapter-plugin/src/index.ts
+var name = "mpd-dsh-adapter";
+var inject = [];
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 function textBlock(content) {
   return [{ type: "text", text: typeof content === "string" ? content : String(content ?? "") }];
 }
+var decision = {
+  accept: (content) => content === undefined ? { kind: "accept" } : { kind: "accept", content },
+  block: (feedback) => ({ kind: "block", feedback })
+};
 function message(error) {
   return error instanceof Error ? error.message : String(error);
 }
@@ -198,58 +204,20 @@ function createDshAdapter(ctx, config = {}) {
   };
   return adapter;
 }
-
-// packages/mpd-qa-roles-probe/src/index.ts
-var name = "mpd-dsh-qa-roles-probe";
-var inject = ["agentPresets"];
-var ROSTER_IDS = ["oracle", "librarian", "prometheus", "hephaestus", "sisyphus", "sisyphus-junior", "atlas", "explore", "metis", "momus", "multimodal-looker"];
-var FIXTURE_SKILL = "svn-master";
-async function apply(ctx) {
-  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx);
-  let presetOk = false;
-  try {
-    const preset = await dsh.resolvePreset("mpd");
-    presetOk = !preset.broken;
-    console.log("[roles-probe] PRESET_MPD=" + (presetOk ? "ok" : "broken:" + String(preset.broken)));
-    console.log("[roles-probe] PRESET_PATH=" + String(preset.path ?? "unknown") + " trust=" + String(preset.trust ?? "unknown"));
-  } catch (e) {
-    console.log("[roles-probe] PRESET_MPD=fail:" + String(e?.message ?? e));
+var SERVICE_NAME = "mpdDsh";
+function apply(ctx, config = {}) {
+  const adapter = createDshAdapter(ctx, { ...config.defaultTimeoutMs === undefined ? {} : { defaultTimeoutMs: config.defaultTimeoutMs } });
+  ctx.provide(SERVICE_NAME, adapter);
+  if (config.quiet !== true) {
+    console.log("[mpd-dsh-adapter] " + SERVICE_NAME + " provided (harness seams resolved lazily, inject-free)");
   }
-  const caps = dsh.capabilities();
-  const present = Object.entries(caps).filter(([, value]) => value === true).map(([key]) => key);
-  const absent = Object.entries(caps).filter(([, value]) => value === false).map(([key]) => key);
-  console.log("[roles-probe] ADAPTER_SEAMS=" + (present.join(",") || "none") + (absent.length === 0 ? "" : " ABSENT=" + absent.join(",")));
-  let toolCallOk = false;
-  try {
-    const call = await dsh.executeTool({ name: "mpd_config_get", arguments: {} });
-    console.log("[roles-probe] ADAPTER_TOOL_CALL=" + (call.ok ? "ok" : "fail:" + String(call.error)));
-    toolCallOk = call.ok === true;
-  } catch (e) {
-    console.log("[roles-probe] ADAPTER_TOOL_CALL=fail:" + String(e?.message ?? e));
-  }
-  const roles = ctx.get?.("mpdRoles");
-  const ids = (roles?.list?.() ?? []).map((r) => r.id);
-  console.log("[roles-probe] ROSTER=" + ids.join(","));
-  let catalogOk = false;
-  try {
-    const summaries = await dsh.listSkills();
-    const bundled = summaries.filter((summary) => summary.source === "bundled");
-    console.log("[roles-probe] SKILLS=" + summaries.length + " BUNDLED=" + bundled.length);
-    const fixture = await dsh.loadSkill(FIXTURE_SKILL);
-    const base = fixture?.resourceBase?.path ?? "unknown";
-    const bytes = fixture?.content?.length ?? 0;
-    console.log("[roles-probe] SKILL_FIXTURE=" + (fixture === undefined ? "missing" : "ok") + " name=" + String(fixture?.name ?? "-") + " base=" + base + " bytes=" + String(bytes));
-    catalogOk = fixture !== undefined && bytes > 100 && bundled.length >= 20;
-  } catch (e) {
-    console.log("[roles-probe] SKILLS=fail:" + String(e?.message ?? e));
-  }
-  const ok = presetOk && toolCallOk && ids.length === ROSTER_IDS.length && ROSTER_IDS.every((id) => ids.includes(id)) && catalogOk;
-  console.log("[roles-probe] " + (ok ? "PASS" : "FAIL"));
-  if (!ok)
-    process.exitCode = 1;
 }
 export {
+  textBlock,
   name,
   inject,
-  apply
+  decision,
+  createDshAdapter,
+  apply,
+  SERVICE_NAME
 };
