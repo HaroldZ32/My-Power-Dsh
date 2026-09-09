@@ -100,7 +100,7 @@ to bare package names.
 | `mpd-memory` | mpd-memory-plugin | VCS-backed memory (git/svn) + reflection state machine | `mpd_memory_write`, `mpd_memory_read`, `mpd_memory_reflect`, `mpd_memory_reflect_complete`, `mpd_memory_status` | `vcs`, `dir`, `agentSlug`, `reflectionEvery` |
 | `mpd-codegraph` | mpd-codegraph-plugin | codegraph binary resolve + project index init | effect (auto init) + `/mpd-codegraph` command | `autoInit`, `initTimeoutMs`, `cooldownMs`, `binary` |
 | `mpd-workmate` | mpd-workmate-plugin | durable evolving agent library under `~/.mpd/workmate/` | `mpd_workmate_list/init/spawn/reflect/match`; service `mpdWorkmate`; web routes `/plugins/mpd-workmate/{list,init}` | — |
-| `mpd-bootstrap` | mpd-bootstrap-plugin | provisioning BY REFERENCE: registers `<bundle>/skills` as a `ctx.skills` provider (rank 600 `bundled`) and removes the version-stamped home copies written by bundle <= 0.2.6 | effect only | `skillsDir`, `skipSkills`, `skipPresets`, `skipLegacyCleanup` |
+| `mpd-bootstrap` | mpd-bootstrap-plugin | provisioning BY REFERENCE: registers `<bundle>/skills` as a skill provider through the adapter (rank 600 `bundled`) and removes the version-stamped home copies written by bundle <= 0.2.6 | effect only | `skillsDir`, `skipSkills`, `skipPresets`, `skipLegacyCleanup` |
 | `mpd-web-compat` | mpd-bundle-plugin | web-compat self-row: makes `@mpd-dsh/mpd` a loader entry; hosts the combined web client | no-op apply; `./client` | — |
 | `agent-teams` | mpd-agent-teams-plugin (adopted, MIT) | multi-agent team collaboration (captain, members, tasks, scheduler, Web panel) | `agent_teams_*` | `stateDir`, `memberProvider`, `memberMaxDepth`, `maxMembers`, `profiles` |
 | `mcp-astgrep/gitbash/lsp/codegraph/context7/grepapp` | dsh-mcp-client instances | tool servers | `mcp__*` | per-row |
@@ -109,8 +109,8 @@ to bare package names.
 
 ### Roster → one-shot specialist
 `mpd_role_spawn` reads the roster spec (`mpdRoles`), builds `persona + task`, then
-`ctx.subagents.start("spawn", { agentOptions: { provider, model }, persona,
-outputSchema, toolFilter (read-only deny) })`. The model route comes from the role's
+`dsh.spawnAgent({ provider, model, persona, outputSchema, toolFilter (read-only deny) })`
+(the adapter's normalized form of the harness spawn). The model route comes from the role's
 chain (`roles.data.ts` chain[0]); **credentials resolve through DSH's own credential
 mechanism — the plugin never touches API keys**.
 
@@ -175,6 +175,11 @@ that renames or reshapes a seam is absorbed in one file (AGENTS.md §6).
 - QA proof: `bundle-lifecycle` asserts the composed row, the boot log line, the probe's
   `ADAPTER_SEAMS=…` snapshot and `ADAPTER_TOOL_CALL=ok` (a real `mpd_config_get` call
   through the normalized path).
+- **Boundary:** the adopted `agent-teams` plugin (`packages/mpd-agent-teams-plugin`, MIT,
+  re-vendored from upstream on upgrades) is NOT routed through the adapter — its `lib/`
+  is upstream main code that a vendor refresh would overwrite. It keeps its own `ctx.*`
+  calls plus exactly one local adaptation, the `registerContinuableSetup` boot-safety
+  guard in `lib/members.js` (see LICENSE-NOTICES.md).
 
 ## 7. Web client wiring (the subtle part)
 

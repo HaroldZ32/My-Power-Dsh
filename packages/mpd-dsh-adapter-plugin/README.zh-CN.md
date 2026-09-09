@@ -21,6 +21,10 @@
 
 Harness 更新是常态，但“每次更新都改所有调用点”不是。本包是仓库中**唯一**允许直接触碰 Harness 服务的文件。该规则具有约束力（AGENTS.md §6）：**插件行不得自行调用 `ctx.tools`、`ctx.subagents`、`ctx.skills`、`ctx.agentPresets`。**
 
+**边界：** 采纳的 `agent-teams` 插件（`packages/mpd-agent-teams-plugin`）是升级时会从上游重新
+vendor 的 MIT 主代码，因此保留自己的 `ctx.*` 调用（唯一本地适配是 `registerContinuableSetup`
+启动安全守卫）。所有自研 mpd 插件都经由本适配器。
+
 适配器刻意不声明 `inject`：每个接缝都在调用时惰性解析并做防御性探测——因为 loader 会并发应用同级行（在 `apply` 时取快照会漏报），且 Cordis 中把未注入的服务当属性读取会抛错。接缝缺失时：调用点给出可操作的错误，或由 `capabilities()` 暴露标志供调用方分支处理。
 
 ## 用法

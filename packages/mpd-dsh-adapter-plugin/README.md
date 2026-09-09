@@ -27,6 +27,11 @@ package is the only file in the repository allowed to touch a harness service di
 The rule is binding (AGENTS.md §6): **a plugin row must not call `ctx.tools`,
 `ctx.subagents`, `ctx.skills` or `ctx.agentPresets` itself.**
 
+**Boundary:** the adopted `agent-teams` plugin (`packages/mpd-agent-teams-plugin`) is
+upstream MIT main code re-vendored from upstream on upgrades, so it keeps its own
+`ctx.*` calls (its one local adaptation is the `registerContinuableSetup` boot-safety
+guard). Every self-written mpd plugin goes through this adapter.
+
 The adapter is deliberately `inject`-free: every seam is resolved lazily at call time
 and probed defensively, because the loader applies sibling rows concurrently (a
 snapshot taken at `apply` would under-report) and because reading an uninjected

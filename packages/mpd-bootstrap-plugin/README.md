@@ -3,7 +3,7 @@
 **English** | [中文](./README.zh-CN.md)
 
 Bundle asset provisioning, by REFERENCE: the row serves the bundle's own skill corpus
-to every session through a `ctx.skills` provider and cleans up the home copies written
+to every session through the harness adapter's skill provider and cleans up the home copies written
 by older bundle versions. Nothing is copied into `$DSH_HOME` any more, so installing
 the bundle installs its skills and removing the bundle removes them.
 
@@ -11,8 +11,8 @@ the bundle installs its skills and removing the bundle removes them.
 
 - Resolves the package root by file location (no package-name resolution — the plugin
   must work under any install layout, including `link:` checkouts and relocation).
-- Registers a skill provider (`name: mpd-bundle`, `source: bundled`,
-  `rank: 600 = BUNDLED_SKILL_RANK`) over `<pkg-root>/skills`: directory bundles
+- Registers a skill provider through `mpd-dsh-adapter` (`name: mpd-bundle`,
+  `source: bundled`, `rank: 600 = BUNDLED_SKILL_RANK`) over `<pkg-root>/skills`: directory bundles
   (`<name>/SKILL.md`) and flat `*.md` files, frontmatter parsed in-process. The corpus
   is therefore visible exactly while the bundle is installed and disappears when the
   row unloads — no version stamp, no stale copy.

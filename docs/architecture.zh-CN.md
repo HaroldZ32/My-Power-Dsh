@@ -91,7 +91,7 @@ client 永远不会出现在 boot graph 中（可复现验证；证据
 | `mpd-memory` | mpd-memory-plugin | VCS 支撑的记忆（git/svn）+ 反思状态机 | `mpd_memory_write`、`mpd_memory_read`、`mpd_memory_reflect`、`mpd_memory_reflect_complete`、`mpd_memory_status` | `vcs`、`dir`、`agentSlug`、`reflectionEvery` |
 | `mpd-codegraph` | mpd-codegraph-plugin | codegraph 二进制解析 + 工程索引初始化 | effect（自动初始化）+ `/mpd-codegraph` 命令 | `autoInit`、`initTimeoutMs`、`cooldownMs`、`binary` |
 | `mpd-workmate` | mpd-workmate-plugin | `~/.mpd/workmate/` 下的持久化可演化代理库 | `mpd_workmate_list/init/spawn/reflect/match`；服务 `mpdWorkmate`；web 路由 `/plugins/mpd-workmate/{list,init}` | — |
-| `mpd-bootstrap` | mpd-bootstrap-plugin | 按引用供给：把 `<bundle>/skills` 注册为 `ctx.skills` provider（rank 600 `bundled`），并清理 bundle <= 0.2.6 写入 home 的带版本戳副本 | 仅 effect | `skillsDir`、`skipSkills`、`skipPresets`、`skipLegacyCleanup` |
+| `mpd-bootstrap` | mpd-bootstrap-plugin | 按引用供给：经由适配器把 `<bundle>/skills` 注册为 skill provider（rank 600 `bundled`），并清理 bundle <= 0.2.6 写入 home 的带版本戳副本 | 仅 effect | `skillsDir`、`skipSkills`、`skipPresets`、`skipLegacyCleanup` |
 | `mpd-web-compat` | mpd-bundle-plugin | web-compat 自引用行：使 `@mpd-dsh/mpd` 成为 loader entry；承载合并 web client | no-op apply；`./client` | — |
 | `agent-teams` | mpd-agent-teams-plugin（采纳，MIT） | 多代理团队协作（captain、成员、任务、调度器、Web 面板） | `agent_teams_*` | `stateDir`、`memberProvider`、`memberMaxDepth`、`maxMembers`、`profiles` |
 | `mcp-astgrep/gitbash/lsp/codegraph/context7/grepapp` | dsh-mcp-client 实例 | 工具服务器 | `mcp__*` | 每行 |
@@ -100,7 +100,7 @@ client 永远不会出现在 boot graph 中（可复现验证；证据
 
 ### Roster → 单发专家
 `mpd_role_spawn` 读取 roster 规格（`mpdRoles`），构造 `persona + task`，然后
-`ctx.subagents.start("spawn", { agentOptions: { provider, model }, persona,
+`dsh.spawnAgent({ provider, model, persona,
 outputSchema, toolFilter (只读 deny) })`。模型路由来自角色链
 （`roles.data.ts` chain[0]）；**凭据由 DSH 自身的凭据机制解析 —— 插件从不接触 API
 key**。
@@ -156,6 +156,10 @@ key**。
   `{ok, isError, value, error}` 工具调用结果、`{output, structured, stopReason}` spawn 结果。
 - QA 证明：`bundle-lifecycle` 断言组合后的行、启动日志行、探针的 `ADAPTER_SEAMS=…`
   快照与 `ADAPTER_TOOL_CALL=ok`（通过归一化路径真实调用一次 `mpd_config_get`）。
+- **边界：** 采纳的 `agent-teams` 插件（`packages/mpd-agent-teams-plugin`，MIT，升级时从上游重新
+  vendor）**不**经过适配器——其 `lib/` 是上游主代码，重新 vendor 会覆盖改动。它保留自己的
+  `ctx.*` 调用，外加唯一一处本地适配：`lib/members.js` 中的 `registerContinuableSetup`
+  启动安全守卫（见 LICENSE-NOTICES.md）。
 
 ## 7. Web client 接线（微妙之处）
 

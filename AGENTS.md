@@ -181,6 +181,11 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   (`ctx.get("mpdDsh")` is the mounted instance; the fallback keeps a plugin standalone
   in unit tests). QA proves the surface: `bundle-lifecycle` asserts the row, the boot
   log line and the probe's `ADAPTER_SEAMS`/`ADAPTER_TOOL_CALL=ok`.
+  **One documented exception:** `packages/mpd-agent-teams-plugin/lib` is adopted
+  upstream main code (MIT) that a `scripts/vendor-agent-teams.mjs` refresh overwrites,
+  so it keeps its own `ctx.*` calls; its only local adaptation is the
+  `registerContinuableSetup` boot-safety guard in `lib/members.js`. Everything else —
+  including every future mpd plugin — goes through the adapter.
 - **Tools**: `dsh.registerTool({name, description, parameters, output:{schema, render}, execute})`.
   The adapter defaults `parameters` to an object-rooted schema and `output.render` to a
   text block, and always calls `execute(args, exec)` with objects. `parameters` is
