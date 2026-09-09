@@ -9,18 +9,20 @@ my-power-dsh 是一个 DeepSeek-Harness 插件 bundle，移植了 oh-my-openagen
 > **Sustainable Use License 1.0 (SUL-1.0)**。上游版权归 code-yeongyu 与 OmO 贡献者所有。
 > 完整许可文本： [LICENSE.md](./LICENSE.md)。
 
-**安装（一条命令，可整体迁移）**
+**安装（一条命令，直接在检出目录执行）**
 
 ```sh
-node scripts/pack-mpd.mjs                          # -> dist/mpd-package/（无 checkout 绝对路径）
-dsh plugin --profile web add dist/mpd-package      # 安装打包后的 bundle
+dsh plugin --profile web add .        # 在仓库根目录执行
 ```
 
-> 注意：`dsh plugin add` 必须指向**打包后的**包。仓库根目录是源码 monorepo（`my-power-dsh`，
-> 没有 `dsh.bundle`）——安装它只会加一个普通依赖，不会加任何 profile 层。`pack-mpd` 负责把
-> 可安装的 `@mpd-dsh/mpd` 组装出来：各插件已构建的 dist、采纳的 agent-teams 主代码、skill 语料库
-> 与 presets、合并的 web client，以及打包形态的 patch。任何源码/dist/skill/preset 变更后都要重新
-> 打包；而安装已发布的 `@mpd-dsh/mpd` 则不需要打包步骤。
+> 仓库根目录**就是** bundle 包（`@mpd-dsh/mpd`）：其 manifest 声明了 `dsh.bundle.patch`、
+> `dsh.client` 以及各行的解析所依赖的 `exports` 映射，因此这一条命令就会装好全部插件行、
+> `mpd` preset 与整个 skill 语料库——无需打包步骤、无需复制步骤。
+> `dsh plugin remove @mpd-dsh/mpd` 同样干净地反向卸载。
+>
+> `node scripts/pack-mpd.mjs`（`npm run pack`）现在只是**发布**步骤：为发布或 tarball 安装组装
+> 可迁移的 `dist/mpd-package/`（`dsh plugin --profile web add dist/mpd-package`）。
+> 本地检出安装完全不需要它。
 
 ## 文档
 

@@ -10,19 +10,20 @@ A DeepSeek-Harness plugin bundle that ports the portable capabilities of oh-my-o
 > **Sustainable Use License 1.0 (SUL-1.0)**. upstream copyright belongs to code-yeongyu and the OmO
 > contributors. Full license text: [LICENSE.md](./LICENSE.md).
 
-**Install (one command, relocatable)**
+**Install (ONE command, straight from the checkout)**
 
 ```sh
-node scripts/pack-mpd.mjs                          # -> dist/mpd-package/ (no checkout-absolute paths)
-dsh plugin --profile web add dist/mpd-package      # install the staged bundle
+dsh plugin --profile web add .        # run it in the repo root
 ```
 
-> Note: `dsh plugin add` must point at the STAGED package. The repo root is the source
-> monorepo (`my-power-dsh`, no `dsh.bundle`) — installing it adds a plain dependency and no
-> profile layer. `pack-mpd` is what assembles the installable `@mpd-dsh/mpd`: built plugin
-> dists, the adopted agent-teams main code, the skill corpus + presets, the combined web
-> client, and the packed-form patch. Re-run it after any source/dist/skill/preset change;
-> installing an already-published `@mpd-dsh/mpd` needs no pack step.
+> The repo root IS the bundle package (`@mpd-dsh/mpd`): its manifest declares
+> `dsh.bundle.patch`, `dsh.client` and the `exports` map the rows resolve through, so this
+> single command installs every plugin row, the `mpd` preset and the whole skill corpus —
+> no pack step, no copy step. `dsh plugin remove @mpd-dsh/mpd` reverses it just as cleanly.
+>
+> `node scripts/pack-mpd.mjs` (`npm run pack`) is now only the RELEASE step: it assembles
+> the relocatable `dist/mpd-package/` for publishing or tarball installs
+> (`dsh plugin --profile web add dist/mpd-package`). A local checkout install never needs it.
 
 ## Documentation
 

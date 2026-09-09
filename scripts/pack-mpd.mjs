@@ -49,10 +49,10 @@ function cpAssets() {
   // ctx.skills provider) — nothing is copied into $DSH_HOME any more.
   const skillsSrc = join(repoRoot, "skills")
   if (existsSync(skillsSrc)) cpSync(skillsSrc, join(outDir, "skills"), { recursive: true })
-  // the main preset ships in mpd-bootstrap-plugin/presets and is SERVED from
+  // the main preset ships at the repo root presets/ and is SERVED from
   // <pkg>/presets by the bundle patch's agent-presets root (no $DSH_HOME copy);
   // the roles plugin's persona assets ship under packages/mpd-roles-plugin/personas
-  cpSync(join(repoRoot, "packages", "mpd-bootstrap-plugin", "presets"), join(outDir, "presets"), { recursive: true })
+  cpSync(join(repoRoot, "presets"), join(outDir, "presets"), { recursive: true })
   if (existsSync(join(repoRoot, "packages", "mpd-roles-plugin", "personas"))) {
     cpSync(join(repoRoot, "packages", "mpd-roles-plugin", "personas"), join(outDir, "packages", "mpd-roles-plugin", "personas"), { recursive: true })
   }

@@ -29,7 +29,12 @@ The OMO-origin 11 agents are **not presets**: they live as a specialist roster
 
 ## 2. Bundle assembly (Plan D)
 
-`scripts/pack-mpd.mjs` assembles `dist/mpd-package/` — a relocatable npm package with
+**The repo root IS the bundle package.** `package.json` is named `@mpd-dsh/mpd` and
+declares `dsh.bundle.patch` (`./packages/mpd-bundle/cordis.patch.yml`), `dsh.client`,
+the `exports` map the rows resolve through and the toolchain `optionalDependencies`, so
+`dsh plugin add .` in the repo root installs the whole unit in ONE command (no pack
+step). `scripts/pack-mpd.mjs` is the RELEASE step: it assembles the relocatable
+`dist/mpd-package/` for publishing / tarball installs — a self-contained npm package with
 **no checkout-absolute paths**:
 
 | Piece | Where it goes | Why |

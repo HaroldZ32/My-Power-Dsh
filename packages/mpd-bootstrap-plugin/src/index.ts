@@ -52,8 +52,7 @@ function bundleRoot(): string {
   // Location-derived, no package-name resolution: this file lives at
   // <pkg-root>/packages/mpd-bootstrap-plugin/dist/index.js, so the package root
   // is four directories up. The skill corpus is <pkg-root>/skills and the
-  // presets are <pkg-root>/presets (packed) or
-  // <pkg-root>/packages/mpd-bootstrap-plugin/presets (checkout).
+  // presets are <pkg-root>/presets in BOTH layouts (repo root and packed root).
   return dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 }
 
@@ -62,6 +61,8 @@ function harnessHome(): string {
 }
 
 function presetsSource(root: string): string {
+  // Both layouts ship presets at <pkg-root>/presets; keep the legacy checkout
+  // fallback so an older working copy still resolves.
   const packed = join(root, "presets")
   return existsSync(packed) ? packed : join(root, "packages", "mpd-bootstrap-plugin", "presets")
 }

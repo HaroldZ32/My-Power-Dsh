@@ -1,0 +1,10 @@
+{
+  "name": "@mpd-dsh/qa-roles-probe",
+  "private": true,
+  "version": "0.3.2",
+  "type": "module",
+  "description": "QA-only probe: mpd preset resolve + mpdRoles roster + served skill catalog + adapter capability snapshot (mounted by QA overlays only)",
+  "scripts": {
+    "test": "bun test"
+  }
+}

@@ -95,7 +95,10 @@ mpd-dsh/
 ├── PLAN.md                       # port plan (Track A/B)
 ├── LICENSE.md / LICENSE-NOTICES.md
 ├── VENDOR_LOCK.json              # upstream commit/version/stats + vendored asset fingerprints
-├── package.json / tsconfig.json  # root scripts: build/test/typecheck/test:qa/verify:vendor
+├── package.json                  # THE BUNDLE MANIFEST (name @mpd-dsh/mpd): dsh.bundle.patch
+│                                 #   + dsh.client + exports -> `dsh plugin add .` is the whole install
+├── tsconfig.json                 # root tsgo config (covers packages/*/src/**/*.ts)
+├── presets/                      # the shipped `mpd` preset (served at <bundle>/presets)
 ├── scripts/
 │   ├── verify-vendor.mjs         # blocking vendor gate (commit/version/count/sha/treeSha)
 │   ├── build-mcp.mjs             # offline build of ast-grep/git-bash/lsp MCP servers
@@ -120,7 +123,7 @@ mpd-dsh/
 │   ├── mpd-comment-checker-plugin/ # C4: comment/docstring detection (opt-in binary)
 │   ├── mpd-memory-plugin/        # C6: git/svn-backed memory + reflection state machine
 │   ├── mpd-workmate-plugin/      # durable evolving agent library (~/.mpd/workmate): base→instance, self-reflect (persona+memory capped), short note, reuse via mpd_workmate_* (no forced weak matches)
-│   ├── mpd-bootstrap-plugin/     # bundle provisioning BY REFERENCE: serves <bundle>/skills via a ctx.skills provider; cleans legacy (<=0.2.6) home copies
+│   ├── mpd-bootstrap-plugin/     # bundle provisioning BY REFERENCE: serves <bundle>/skills via the adapter; cleans legacy (<=0.2.6) home copies
 │   ├── mpd-agent-teams-plugin/   # adopted dsh-agent-teams (MIT, first-class main code): agent_teams_* + Web panel; memberPersona injects workmate backing
 │   ├── mpd-bundle-plugin/        # bundle web-compat: the @mpd-dsh/mpd no-op main + the combined web client (client.js = adopted agent-teams panel + workmate library floater; built by scripts/build-mpd-client.mjs)
 │   └── mpd-qa-roles-probe/       # QA-only probe: mpd preset resolve + mpdRoles roster (overlay-mounted)
@@ -220,10 +223,13 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   state root, gitignored — see `packages/mpd-codegraph-plugin/README.md`).
 - **Build**: `bun build src/index.ts --target node --format esm --outfile dist/index.js`;
   zero runtime deps preferred (type-only imports).
-- **Load/test**: the committed bundle patch ships in PACKED form (`@mpd-dsh/mpd/...` —
-  resolvable only in an installed profile). QA boots it from a checkout through the
-  dev-flavor rewrite (`devPatch()` in `skills/dsh-qa/scripts/preset-register.mjs`:
-  rename rows to checkout-absolute paths, pin MCP binaries via `MPD_DSH_*` env).
+- **Load/test**: the committed patch names rows as `@mpd-dsh/mpd/packages/...`, which
+  resolve in BOTH install layouts (the repo root IS `@mpd-dsh/mpd`, so a checkout
+  install resolves them through the link; the packed package resolves them through its
+  own name). QA boots it straight from a checkout through the dev-flavor rewrite
+  (`devPatch()` in `skills/dsh-qa/scripts/preset-register.mjs`: rename rows to
+  checkout-absolute paths, rewrite the preset-root expression, pin MCP binaries via
+  `MPD_DSH_*` env) because a QA sandbox has no installed profile.
   Do NOT keep a bundle row in a QA overlay while it is already in the bundle —
   the loader rejects duplicate entry ids.
 - **Docstrings/comments**: English only.
@@ -248,33 +254,31 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 
 ## 8. Installer & Profiles
 
-### Primary flow (Plan D): one-plugin install, fully relocatable
+### Primary flow: ONE command, no extra step
 
-- `node scripts/pack-mpd.mjs` assembles the installable bundle `dist/mpd-package/`
-  (npm package `@mpd-dsh/mpd`, `dsh.bundle.patch`), with NO checkout-absolute paths:
-  plugin rows use the resolvable `name: '@mpd-dsh/mpd/packages/...'`, every path-bearing
-  value uses the loader's `baseUrl` (the profile directory), binaries come from the
-  package's `optionalDependencies` (`@ast-grep/cli`, `@colbymchenry/codegraph`),
-  the adopted `agent-teams` plugin is first-class main code at
-  `packages/mpd-agent-teams-plugin` (no npm dependency), and the `mpd` preset + skill
-  corpus are SERVED from the package by reference (`agent-presets` root in the patch +
-  the `mpd-bootstrap` skill provider) — no home copy, so `dsh plugin remove` leaves no
-  residue. Only user data stays: the workmate library under `~/.mpd/workmate`.
-- Install from a checkout: `node scripts/pack-mpd.mjs && dsh plugin --profile web add dist/mpd-package`
-  (or from a published location — the patch never names this repo).
-  `dsh plugin add .` on the repo root does NOT install the bundle: the root manifest
-  (`my-power-dsh`) is the source monorepo and declares no `dsh.bundle`, so the CLI
-  installs it as a plain dependency and adds no profile layer ("declares no dsh.bundle
-  — installed as a plain dependency"). The installable unit is the packed
-  `@mpd-dsh/mpd` package only.
-- **Why the pack step exists.** The repo root holds SOURCES (`src/`, `skills/`,
-  `presets/`, the adopted agent-teams main code, MCP sources); the runtime needs the
-  assembled package: built `dist/index.js` per plugin, the combined web client, the
-  skill corpus + presets, the bilingual docs/licences, the packed-form patch
-  (`@mpd-dsh/mpd/...` row names + `baseUrl` path expressions) and a manifest that
-  declares `dsh.bundle.patch` + `dsh.client`. `pack-mpd` is also the gate that refuses
-  to ship a package with a missing `dist/`. Re-run it after ANY `src/`/`dist/`/skill/
-  preset change; installing an already-published `@mpd-dsh/mpd` needs no pack.
+- **`cd <repo> && dsh plugin --profile web add .`** is the whole install. The repo root
+  IS the bundle package: `package.json` is named `@mpd-dsh/mpd` and declares
+  `dsh.bundle.patch` (`./packages/mpd-bundle/cordis.patch.yml`), `dsh.client`
+  (`platform: web`), the `exports` map the rows resolve through (`./packages/*`,
+  `./skills/*`, `./presets/*`, `./client`) and the toolchain `optionalDependencies`.
+  `dsh plugin remove @mpd-dsh/mpd` is the matching one-command uninstall.
+- Every path-bearing patch value resolves through the loader's `baseUrl` (the profile
+  directory), so the same patch works for a checkout install (`node_modules/@mpd-dsh/mpd`
+  → the repo) and for a packed install. The adopted `agent-teams` plugin is first-class
+  main code at `packages/mpd-agent-teams-plugin` (no npm dependency); the `mpd` preset
+  and the skill corpus are SERVED by reference (`agent-presets` root → `<bundle>/presets`,
+  `mpd-bootstrap` → `<bundle>/skills`) — no home copy, so uninstall leaves no residue.
+  Only user data stays: the workmate library under `~/.mpd/workmate`.
+- **`node scripts/pack-mpd.mjs` (alias `npm run pack`) is the RELEASE step, not an install
+  step.** It assembles the relocatable `dist/mpd-package/` for publishing / tarball
+  installs (`dsh plugin --profile web add dist/mpd-package`): it copies the built plugin
+  dists, the adopted agent-teams main code, `skills/` + `presets/`, the combined web
+  client and the docs/licences, and writes the packed-form manifest + patch — and it
+  refuses to ship a package with a missing `dist/`. A checkout install never needs it;
+  run it when publishing, shipping a tarball, or testing relocation.
+- **After a code change:** rebuild the touched package's `dist/` (`bun build …`) and
+  restart dsh — a `link:` install reads the checkout directly. Re-pack only when the
+  distribution artifact must be refreshed, and bump `package.json` version for releases.
 
 ### Dev/QA flow (legacy): `scripts/install-profile.mjs`
 
@@ -327,7 +331,8 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 | ast-grep BINARY_NOT_FOUND | sg binary not installed — `.toolchain` via installer or `MPD_AST_GREP_SG_PATH` |
 | LSP daemon unreachable | `~/.mpd` unwritable/missing — on real home it self-starts |
 | preset not visible in web | the bundle patch's `agent-presets` id-target row is not composed — check `dsh --profile web --dump-config` shows `id: agent-presets` with `default: mpd` + the `<bundle>/presets` root, and that `dsh.profile.bundles` contains `@mpd-dsh/mpd` |
-| installed presets stale / agents miss tools (e.g. bash) | the profile still points at an OLD bundle version — bump `package.json` version, `node scripts/pack-mpd.mjs`, `dsh plugin --profile <p> add dist/mpd-package`, restart dsh |
+| installed presets stale / agents miss tools (e.g. bash) | the profile points at an old bundle — for a checkout (`link:`) install rebuild the touched `dist/` and restart dsh; for a packed/registry install bump the version, `npm run pack`, `dsh plugin --profile <p> add dist/mpd-package` |
+| `dsh plugin add .` says "declares no dsh.bundle" | you ran it outside the bundle package root — run it in the repo root (the manifest there IS `@mpd-dsh/mpd` with `dsh.bundle.patch`) |
 | skills missing in a session | the corpus is served, not copied: check the boot log for `[mpd-bootstrap] skill corpus served from <bundle>/skills`; if absent the `mpd-bootstrap` row is not mounted (or its `dist/index.js` is stale — rebuild) |
 | leftover `$DSH_HOME/skills` or `.agent-presets/mpd*` after upgrading from <=0.2.6 | the first 0.3.0 boot removes the stamped copies; unstamped copies (legacy `install-profile.mjs`) are left on purpose — delete them by hand |
 | agent tool call fails with UNKNOWN_TOOL in code-mode deployments | presets declare `tool-presentation { mode: native }` — every row tool (bash/read/edit/...) is exposed directly; in code mode the model may only call `run_code` directly |

@@ -25,8 +25,11 @@ OMO 起源的 11 个代理**不是预设**：它们作为专家 roster（`mpd-ro
 
 ## 2. Bundle 组装（Plan D）
 
-`scripts/pack-mpd.mjs` 组装 `dist/mpd-package/` —— 一个**没有任何 checkout 绝对路径**
-的可迁移 npm 包：
+**仓库根目录就是 bundle 包。** `package.json` 名为 `@mpd-dsh/mpd`，声明了
+`dsh.bundle.patch`（`./packages/mpd-bundle/cordis.patch.yml`）、`dsh.client`、各行解析所依赖的
+`exports` 映射以及工具链 `optionalDependencies`，因此在仓库根执行 `dsh plugin add .` 一条命令即可
+完成整体安装（无需打包步骤）。`scripts/pack-mpd.mjs` 是**发布**步骤：为发布/tarball 安装组装
+可迁移的 `dist/mpd-package/` —— 一个**没有任何 checkout 绝对路径**的自包含 npm 包：
 
 | 部件 | 去向 | 原因 |
 |---|---|---|

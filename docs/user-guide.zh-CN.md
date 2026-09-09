@@ -6,20 +6,28 @@
 
 ## 1. 安装
 
-### 打包 bundle（主要方式，Plan D）
+### 一条命令，直接在检出目录安装
 
 ```bash
-# 从本仓库：先组装可安装包
-node scripts/pack-mpd.mjs                          # -> dist/mpd-package/
+cd <仓库> && dsh plugin --profile <mpd|web> add .
+```
+
+仓库根目录**就是** bundle 包（`@mpd-dsh/mpd`）：`dsh.bundle.patch`、`dsh.client` 与 `exports`
+映射都在它的 manifest 里，因此这一条命令会装好全部插件行、`mpd` preset 与整个 skill 语料库。
+不需要任何其他步骤——没有打包步骤，也没有复制步骤。`dsh plugin remove @mpd-dsh/mpd` 反向卸载同一单元。
+
+### 打包产物（发布/分发）
+
+```bash
+node scripts/pack-mpd.mjs                          # -> dist/mpd-package/（可迁移）
 dsh plugin --profile <mpd|web> add dist/mpd-package
-# 或从任意发布位置（已打包，无需再 pack）
+# 或从任意发布位置
 dsh plugin --profile web add <path-or-name-of-@mpd-dsh/mpd>
 ```
 
-仓库根目录本身不可安装：它是源码 monorepo（`my-power-dsh`，没有 `dsh.bundle`），因此
-`dsh plugin add .` 只会加一个普通依赖、不会加入任何行。`pack-mpd` 负责组装 `@mpd-dsh/mpd`
-（各插件已构建的 dist + 采纳的 agent-teams 主代码 + skill 语料库与 presets + 合并的 web client
-+ 打包形态 patch）。任何源码、dist、skill 或 preset 变更后都要重新执行。
+`pack-mpd` 用于**分发**：组装一个自包含、不依赖检出目录的 `@mpd-dsh/mpd`（各插件已构建的 dist +
+采纳的 agent-teams 主代码 + skill 语料库与 presets + 合并的 web client + 打包形态 patch）。
+发布、交付 tarball 或验证可迁移性时才需要；本地安装永远不需要它。
 
 然后启动 DSH，选择 **MPD (Main Working Agent)** 预设。
 

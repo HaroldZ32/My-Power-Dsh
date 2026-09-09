@@ -1,9 +1,27 @@
 {
-  "name": "my-power-dsh",
+  "name": "@mpd-dsh/mpd",
   "private": true,
   "type": "module",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "my-power-dsh: DeepSeek Harness plugin-based port of the upstream project capabilities",
+  "main": "packages/mpd-bundle-plugin/dist/index.js",
+  "exports": {
+    ".": "./packages/mpd-bundle-plugin/dist/index.js",
+    "./package.json": "./package.json",
+    "./packages/*": "./packages/*",
+    "./skills/*": "./skills/*",
+    "./presets/*": "./presets/*",
+    "./client": "./packages/mpd-bundle-plugin/client.js"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./packages/mpd-bundle/cordis.patch.yml"
+    },
+    "client": {
+      "inject": [],
+      "platform": "web"
+    }
+  },
   "scripts": {
     "typecheck": "tsgo --noEmit",
     "test": "bun test packages",
@@ -11,11 +29,17 @@
     "test:qa": "for f in skills/dsh-qa/scripts/*.mjs; do echo \"[test:qa] $f\"; bun \"$f\" --self-test || { echo \"[test:qa] FAILED: $f\"; exit 1; }; done; echo \"[test:qa] all self-tests passed\"",
     "verify:vendor": "node scripts/verify-vendor.mjs",
     "bootstrap": "node scripts/bootstrap.mjs",
-    "evidence:mount": "node skills/dsh-qa/scripts/mount-assert.mjs --expect \"name: '@deepseek-ai/dsh-llm'\""
+    "evidence:mount": "node skills/dsh-qa/scripts/mount-assert.mjs --expect \"name: '@deepseek-ai/dsh-llm'\"",
+    "pack": "node scripts/pack-mpd.mjs"
   },
   "workspaces": [
     "packages/*"
   ],
+  "optionalDependencies": {
+    "@ast-grep/cli": "0.45.2",
+    "@colbymchenry/codegraph": "1.5.0",
+    "@code-yeongyu/comment-checker": "0.8.0"
+  },
   "devDependencies": {
     "@typescript/native-preview": "^7.0.0-dev.20260707.2",
     "bun-types": "^1.4.0"

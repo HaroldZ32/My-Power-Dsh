@@ -58,7 +58,7 @@ function buildPlan(o) {
   const bundle0 = "@deepseek-ai/dsh-base"
   const bundle1 = isHeadless ? "@deepseek-ai/dsh-headless" : "@deepseek-ai/dsh-web-app"
   const p = (r) => join(repoRoot, r)
-  const presetsDir = p("packages/mpd-bootstrap-plugin/presets")
+  const presetsDir = p("presets")
   const astCli = p(".toolchain/node_modules/.bin/sg")
   const cgCli = p(".toolchain/node_modules/.bin/codegraph")
   const rows = [

@@ -38,8 +38,11 @@ bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packa
 
 ```bash
 node scripts/build-mpd-client.mjs   # 重新生成 packages/mpd-bundle-plugin/client.js（agent-teams client 变更后）
-node scripts/pack-mpd.mjs          # 重新生成 dist/mpd-package/
+node scripts/pack-mpd.mjs          # 仅发布用：重新生成可迁移的 dist/mpd-package/
 ```
+
+本地安装不需要打包：仓库根 manifest **就是** bundle 包，在仓库根执行 `dsh plugin add .` 即可装好全部内容；
+改完代码后重建对应包的 `dist/` 并重启 dsh 即可。
 
 MCP 服务器由 `node scripts/build-mcp.mjs` 构建（从仓库内源码离线构建）。
 
@@ -75,7 +78,7 @@ QA skill 是 `skills/dsh-qa`（`SKILL.md`）。每个 case 脚本都带 `--self-
 |---|---|---|
 | `mount-assert` | bundle 行在 `--dump-config` 中出现/缺失 | `bun run test:qa`（全部 self-test） |
 | `preset-register` | mpd 预设从 bundle 供给的根解析（无 `$DSH_HOME/.agent-presets` 副本）+ roster 提供 11 角色 | `node skills/dsh-qa/scripts/preset-register.mjs` |
-| `bundle-lifecycle` | `dsh plugin add` 整体安装 → 真实启动从已安装 bundle 供给 preset + skills，并验证 Harness 适配器（`ADAPTER_SEAMS`、`ADAPTER_TOOL_CALL=ok`）→ `dsh plugin remove` 无残留 | `node skills/dsh-qa/scripts/bundle-lifecycle.mjs` |
+| `bundle-lifecycle` | 从检出目录一条命令（`dsh plugin add <仓库根>`，无打包步骤）整体安装 → 真实启动从已安装 bundle 供给 preset + skills，并验证 Harness 适配器（`ADAPTER_SEAMS`、`ADAPTER_TOOL_CALL=ok`）→ `dsh plugin remove` 无残留 | `node skills/dsh-qa/scripts/bundle-lifecycle.mjs` |
 | `skill-catalog-probe` | 已安装 bundle 供给技能目录（22 个 bundled 技能，fixture 可加载），且无 `$DSH_HOME/skills` 副本 | `node skills/dsh-qa/scripts/skill-catalog-probe.mjs` |
 | `relocate-smoke` | 迁移后的 bundle 供给 preset + 语料库，无 dev 路径泄漏、无 home 副本 | `node skills/dsh-qa/scripts/relocate-smoke.mjs` |
 | `team-route-rewire` | 暂存 bundle 安装 → agent-teams 行组合 → probe 启动 → web `/plugins/dsh-agent-teams/state` 200 | `node skills/dsh-qa/scripts/team-route-rewire.mjs` |

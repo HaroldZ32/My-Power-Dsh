@@ -6,21 +6,30 @@ Everything a person using the my-power-dsh bundle needs, in workflow order.
 
 ## 1. Install
 
-### Packed bundle (primary, Plan D)
+### One command, from the checkout
 
 ```bash
-# from this repo: assemble the installable package first
-node scripts/pack-mpd.mjs                          # -> dist/mpd-package/
+cd <repo> && dsh plugin --profile <mpd|web> add .
+```
+
+The repo root IS the bundle package (`@mpd-dsh/mpd`): `dsh.bundle.patch`, `dsh.client` and
+the `exports` map live in its manifest, so this one command installs every plugin row, the
+`mpd` preset and the whole skill corpus. Nothing else to run — no pack step, no copy step.
+`dsh plugin remove @mpd-dsh/mpd` uninstalls the same unit.
+
+### Packed package (release / publishing)
+
+```bash
+node scripts/pack-mpd.mjs                          # -> dist/mpd-package/ (relocatable)
 dsh plugin --profile <mpd|web> add dist/mpd-package
-# or from any published location (already packed — no pack step)
+# or from any published location
 dsh plugin --profile web add <path-or-name-of-@mpd-dsh/mpd>
 ```
 
-The repo root itself is not installable: it is the source monorepo (`my-power-dsh`, no
-`dsh.bundle`), so `dsh plugin add .` would add a plain dependency and no rows. `pack-mpd`
-assembles `@mpd-dsh/mpd` (built plugin dists + adopted agent-teams main code + skill corpus
-and presets + combined web client + packed-form patch). Re-run it after any source, dist,
-skill or preset change.
+`pack-mpd` exists for DISTRIBUTION: it assembles a self-contained `@mpd-dsh/mpd` (built
+plugin dists + adopted agent-teams main code + skill corpus and presets + combined web
+client + packed-form patch) that does not depend on a checkout. Use it when publishing,
+shipping a tarball, or testing relocation; a local install never needs it.
 
 Then start DSH and select the **MPD (Main Working Agent)** preset.
 
