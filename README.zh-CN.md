@@ -52,12 +52,17 @@ mpd 插件（含 codegraph 自动初始化）、采纳的 agent-teams（团队 +
   工具 + Web 活动面板）：一个正常命名的 `mpd` roster profile
   （`taskPlanning: captain`）把上述专家暴露为队友实例化模板。captain 调用
   `agent_teams_create(profile="mpd")`，在面板中暂存计划，然后由依赖感知调度器执行。
-- **Web GUI**（`@mpd-dsh/mpd` client bundle，`packages/mpd-bundle-plugin`）：团队
-  活动浮窗 + 团队卡片（采纳的 agent-teams client，原样内嵌）以及一个
-  **Workmate 库**浮窗（侧边栏脚部 "Workmates" 按钮）：列出 `~/.mpd/workmate/` 实例
-  （base、uses、note），并可在浏览器中通过 `GET/POST /plugins/mpd-workmate/*` 新建。
-  bundle patch 带有 `mpd-web-compat` 自引用行（`name: '@mpd-dsh/mpd'`），使
-  client-modules boot graph 包含本 bundle 的 client entry —— 没有它面板永远不会加载。
+- **Web GUI**（`@mpd-dsh/mpd` client bundle，`packages/mpd-bundle-plugin`）：
+  **Workmates** 页面通过 `ctx.betterSidebar.registerTab` 注册为 **DSH-better-sidebar**
+  （社区 `dsh-better-sidebar` bundle）的一个 Tab —— 列出 `~/.mpd/workmate/` 实例
+  （base、uses、更新时间、note），点开查看 persona/memory/note，并用由 roster 填充的
+  base 选择器新建；数据来自 `GET /plugins/mpd-workmate/{list,roster,get}` 与
+  `POST /plugins/mpd-workmate/init`。若 profile 中没有该侧边栏，同一页面会以 bundle 自带的
+  🤖 浮窗 + 侧栏脚部按钮挂载。采纳的 agent-teams 团队卡片/活动浮窗依赖 harness 的
+  `conversationEvents` 服务，而当前 DSH 版本已不再提供，因此不挂载（团队协作通过
+  `agent_teams_*` 工具进行）。bundle patch 带有 `mpd-web-compat` 自引用行
+  （`name: '@mpd-dsh/mpd'`），使 client-modules boot graph 包含本 bundle 的 client entry
+  —— 没有它面板永远不会加载。
 - **Workmate 库**（`~/.mpd/workmate`）：roster 专家只是 BASE 模板；用 `mpd_workmate_init`
   将其实例化为一个独立命名的持久化、可演化副本。每次工作会话后它会自我总结
   （`mpd_workmate_reflect`）—— 演化自己的 persona + 独立 memory（带大小上限）并保留

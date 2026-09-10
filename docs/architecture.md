@@ -194,14 +194,31 @@ one script:
 1. the adopted agent-teams `lib/client.js` **verbatim** — it self-registers
    `@nanmicoder/dsh-agent-teams` (activity floater + team card + command view);
 2. a second `__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory })` whose factory
-   `require("@nanmicoder/dsh-agent-teams")` and mounts `agentTeams.apply(ctx)` plus the
-   **workmate library** floater (`shell.overlay`, order 90) and a sidebar-foot toggle
-   (`sidebar.footer.action`, "Workmates").
+   `require("@nanmicoder/dsh-agent-teams")`, awaits the agent-teams seams and
+   contributes the **workmate library**.
 
-Host data for the workmate floater comes from lazy-registered routes on the
-`mpd-workmate` host plugin (`GET /plugins/mpd-workmate/list`, `POST
+**Seam policy (the failure this file exists to prevent).** The web boot asserts, for
+every entry, that every declared `inject` service is registered; a declared-but-missing
+service leaves the entry `pending` and throws `Failed to load plugins`, which blanks the
+whole GUI. The bundle factory therefore declares only `slots` + `locale` and awaits the
+drift-prone seams (`sessions`, `conversationEvents`, `modelDirectories`) with
+`ctx.inject(deps, cb)` — a callback that simply never runs when the service is absent —
+while probing `betterSidebar` with `ctx.get`. The adopted panel mounts only when its
+seams exist (current DSH releases dropped `conversationEvents` for `conversationViews`),
+and every optional mount is contained in try/catch.
+
+**The workmate page has two hosts and one view.** `WorkmateLibraryView` is host-agnostic;
+`registerSidebarTab` contributes it as a **DSH-better-sidebar** tab
+(`ctx.betterSidebar.registerTab({id: "mpd-workmate", …})`, `single: true`, order 90) when
+that sidebar is installed, and otherwise the bundle mounts its own `shell.overlay`
+floater plus the `sidebar.footer.action` toggle. When the sidebar owns the tab, the
+bundle mounts no slots at all.
+
+Host data comes from lazy-registered routes on the `mpd-workmate` host plugin
+(`GET /plugins/mpd-workmate/list`, `GET /plugins/mpd-workmate/roster` — the roster-backed
+base picker, `GET /plugins/mpd-workmate/get?name=` — persona/memory/note detail, `POST
 /plugins/mpd-workmate/init`); the agent-teams floater uses
-`/plugins/dsh-agent-teams/{state,halt,plan,assets}`. Both register via
+`/plugins/dsh-agent-teams/{state,halt,plan,assets}`. All register via
 `webServer.register` and retry on `internal/service` binding (a webless profile stays
 tool-only).
 

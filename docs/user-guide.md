@@ -152,11 +152,21 @@ agent_teams_status / agent_teams_send_message / agent_teams_reassign_task
 
 ## 6. Web GUI
 
-- **Team activity floater** (agent-teams): live team tree (members, tasks, activity)
-  while a team runs; opened from the in-conversation team card.
-- **🤖 Workmates button** (sidebar foot) → **Workmate library floater**: lists
-  `~/.mpd/workmate/` instances (base, uses, note) and initializes new ones from the
-  form (base + optional name) via the host routes `/plugins/mpd-workmate/{list,init}`.
+- **Workmates sidebar tab** (primary): the workmate library is contributed as a tab
+  to **DSH-better-sidebar** (`dsh-better-sidebar`, the community sidebar bundle), so it
+  lives where that sidebar's own pages do — tab strip, `+` menu, and the sidebar's own
+  enable/disable switch in its settings. The page lists `~/.mpd/workmate/` instances
+  (base, uses, updated, note), filters them, opens one for its persona/memory/note, and
+  initializes a new one from a roster-backed **base picker** (no id typing) plus optional
+  name and note. It reads the host routes
+  `/plugins/mpd-workmate/{list,roster,get,init}`.
+- **Fallback**: in a profile without DSH-better-sidebar the bundle mounts its own
+  🤖 overlay floater + sidebar-foot button instead — the same page, no sidebar needed.
+- **Team members and activity**: the adopted agent-teams plugin contributes
+  `agent_teams_*` tools and the `.mpd/team` state; its in-conversation team card and
+  activity floater need the harness `conversationEvents` seam, which current DSH
+  releases no longer provide (they expose `conversationViews` instead), so those two
+  surfaces stay unmounted and the team is driven through the tools.
 
 ## 7. Configuration (`mpd.jsonc`)
 

@@ -141,11 +141,17 @@ agent_teams_status / agent_teams_send_message / agent_teams_reassign_task
 
 ## 6. Web GUI
 
-- **团队活动浮窗**（agent-teams）：团队运行时的实时团队树（成员、任务、活动）；从对话
-  中的团队卡片打开。
-- **🤖 Workmates 按钮**（侧边栏脚部）→ **Workmate 库浮窗**：列出 `~/.mpd/workmate/`
-  实例（base、uses、note），并可通过表单（base + 可选 name）经 host 路由
-  `/plugins/mpd-workmate/{list,init}` 新建。
+- **Workmates 侧边栏页（主入口）**：workmate 库作为 **DSH-better-sidebar**
+  （`dsh-better-sidebar`，社区侧边栏 bundle）的一个 Tab 注册，因此它就位于该侧边栏自己的页面
+  所在之处 —— Tab 条、`+` 菜单、以及在侧边栏设置里的启用/禁用开关。页面列出
+  `~/.mpd/workmate/` 实例（base、uses、更新时间、note），支持筛选、点开查看
+  persona/memory/note，并通过**由 roster 填充的 base 选择器**（无需手打 id）加可选
+  name/note 新建。数据来自 host 路由 `/plugins/mpd-workmate/{list,roster,get,init}`。
+- **回退**：若 profile 里没有 DSH-better-sidebar，bundle 会挂载自带的 🤖 浮窗 +
+  侧栏脚部按钮 —— 同一个页面，不依赖该侧边栏。
+- **团队成员与活动**：adopted agent-teams 插件提供 `agent_teams_*` 工具与 `.mpd/team`
+  状态；它的对话内团队卡片与活动浮窗依赖 harness 的 `conversationEvents` 服务，而当前 DSH
+  版本已不再提供（改用 `conversationViews`），因此这两个界面不挂载，团队通过工具驱动。
 
 ## 7. 配置（`mpd.jsonc`）
 

@@ -172,13 +172,28 @@ key**。
 1. 采纳的 agent-teams `lib/client.js` **逐字**内嵌 —— 它自注册
    `@nanmicoder/dsh-agent-teams`（活动浮窗 + 团队卡片 + 命令视图）；
 2. 第二个 `__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory })`，其 factory
-   `require("@nanmicoder/dsh-agent-teams")` 并挂载 `agentTeams.apply(ctx)` 外加
-   **workmate 库**浮窗（`shell.overlay`，order 90）与侧边栏脚部切换按钮
-   （`sidebar.footer.action`，"Workmates"）。
+   `require("@nanmicoder/dsh-agent-teams")`、等待 agent-teams 的 seam，并贡献
+   **workmate 库**。
 
-workmate 浮窗的 host 数据来自 `mpd-workmate` host 插件上懒注册的路由
-（`GET /plugins/mpd-workmate/list`、`POST /plugins/mpd-workmate/init`）；
-agent-teams 浮窗使用 `/plugins/dsh-agent-teams/{state,halt,plan,assets}`。两者都通过
+**Seam 策略（这个文件存在的意义就是防止这类故障）**：web boot 会为每个条目断言其声明的
+每个 `inject` 服务都已注册；声明了但缺失的服务会让该条目停留在 `pending` 并抛出
+`Failed to load plugins`，整个 GUI 直接白屏。因此 bundle factory 只声明 `slots` +
+`locale`，用 `ctx.inject(deps, cb)` 等待易漂移的 seam（`sessions`、`conversationEvents`、
+`modelDirectories`）—— 服务不存在时该回调根本不会运行 —— 并用 `ctx.get` 探测
+`betterSidebar`。采纳的面板仅在其 seam 存在时挂载（当前 DSH 版本已用
+`conversationViews` 取代 `conversationEvents`），且每个可选挂载都包在 try/catch 内。
+
+**workmate 页面有两个宿主、一份视图**：`WorkmateLibraryView` 与宿主无关；
+`registerSidebarTab` 在装有 **DSH-better-sidebar** 时把它注册为一个 Tab
+（`ctx.betterSidebar.registerTab({id: "mpd-workmate", …})`，`single: true`，order 90），
+否则 bundle 挂载自带的 `shell.overlay` 浮窗与 `sidebar.footer.action` 切换按钮。由侧边栏
+接管 Tab 时，bundle 不再挂载任何 slot。
+
+host 数据来自 `mpd-workmate` host 插件上懒注册的路由
+（`GET /plugins/mpd-workmate/list`；`GET /plugins/mpd-workmate/roster` —— 由 roster 填充的
+base 选择器；`GET /plugins/mpd-workmate/get?name=` —— persona/memory/note 详情；`POST
+/plugins/mpd-workmate/init`）；agent-teams 浮窗使用
+`/plugins/dsh-agent-teams/{state,halt,plan,assets}`。全部通过
 `webServer.register` 注册并在 `internal/service` 绑定时重试（无 web 的 profile 保持
 纯工具模式）。
 
