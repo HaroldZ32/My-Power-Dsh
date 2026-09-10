@@ -245,7 +245,7 @@ export function apply(ctx: Ctx): void {
     return { name, baseId: base.id, baseName: base.name, readonly: base.readonly, provider: base.provider, model: base.model, path: dir, note }
   }
 
-  ctx.provide("mpdWorkmate", {
+  const workmateLibrary = {
     list: () => listInstances().map(({ name, meta, note }) => ({ name, baseId: meta.baseId, baseName: meta.baseName, readonly: meta.readonly, uses: meta.uses, updatedAt: meta.updatedAt, note })),
     get: (name: string) => {
       try { const { meta } = ensureInstance(name); return { ...meta, note: readNote(meta.name) } } catch { return null }
@@ -256,7 +256,8 @@ export function apply(ctx: Ctx): void {
         return { ...meta, persona: readPersona(meta.name), memory: readMemory(meta.name), note: readNote(meta.name) }
       } catch { return null }
     }
-  })
+  }
+  ctx.provide("mpdWorkmate", workmateLibrary)
 
   dsh.registerTool({
     name: "mpd_workmate_list",
@@ -374,6 +375,41 @@ export function apply(ctx: Ctx): void {
         res.end(JSON.stringify({ workmates: list }))
       }
     }) as any, "mpd-workmate: list route")
+    // Roster route: the sidebar tab's base picker reads the same roster the tools
+    // use, so the GUI never asks the user to type a base id from memory.
+    ctx.effect(() => webServer.register({
+      kind: "exact",
+      path: "/plugins/mpd-workmate/roster",
+      handler: async (_req: any, res: any) => {
+        const roles = (ctx.get ? ctx.get("mpdRoles") : undefined) as any
+        let bases: any[] = []
+        try {
+          bases = (typeof roles?.list === "function" ? roles.list() : []).map((r: any) => ({ id: String(r.id), name: String(r.name), description: String(r.description ?? ""), readonly: Boolean(r.readonly) }))
+        } catch (e: any) {
+          res.writeHead(500, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" })
+          res.end(JSON.stringify({ error: String(e?.message ?? e) }))
+          return
+        }
+        res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" })
+        res.end(JSON.stringify({ bases }))
+      }
+    }) as any, "mpd-workmate: roster route")
+    // Detail route: persona + memory + note of one workmate, for the tab's detail view.
+    ctx.effect(() => webServer.register({
+      kind: "exact",
+      path: "/plugins/mpd-workmate/get",
+      handler: async (req: any, res: any) => {
+        const name = String(new URL(String(req.url ?? "/"), "http://dsh.invalid").searchParams.get("name") ?? "").trim()
+        const detail = name === "" ? null : workmateLibrary.read(name)
+        if (detail == null) {
+          res.writeHead(404, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" })
+          res.end(JSON.stringify({ error: "unknown workmate: " + name }))
+          return
+        }
+        res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" })
+        res.end(JSON.stringify(detail))
+      }
+    }) as any, "mpd-workmate: get route")
     ctx.effect(() => webServer.register({
       kind: "exact",
       path: "/plugins/mpd-workmate/init",

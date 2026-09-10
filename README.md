@@ -57,11 +57,16 @@ SUBAGENTS:
   (`taskPlanning: captain`) exposes the specialists above as teammate
   instantiation templates. The captain calls `agent_teams_create(profile="mpd")`,
   stages the plan in the panel, then the dependency-aware scheduler runs it.
-- **Web GUI** (`@mpd-dsh/mpd` client bundle, `packages/mpd-bundle-plugin`): the team
-  activity floater + team card (adopted agent-teams client, embedded unchanged) and a
-  **Workmate library** floater (sidebar-foot "Workmates" button): lists
-  `~/.mpd/workmate/` instances (base, uses, note) and initializes new ones from the
-  browser via `GET/POST /plugins/mpd-workmate/*`. The bundle patch ships the
+- **Web GUI** (`@mpd-dsh/mpd` client bundle, `packages/mpd-bundle-plugin`): the
+  **Workmates** page is contributed as a tab to **DSH-better-sidebar** (the community
+  `dsh-better-sidebar` bundle) via `ctx.betterSidebar.registerTab` — it lists
+  `~/.mpd/workmate/` instances (base, uses, updated, note), opens one for its
+  persona/memory/note, and initializes new ones with a roster-backed base picker, reading
+  `GET /plugins/mpd-workmate/{list,roster,get}` + `POST /plugins/mpd-workmate/init`.
+  Without that sidebar the same page mounts as the bundle's own 🤖 floater + sidebar-foot
+  button. The adopted agent-teams team card/activity panel needs the harness
+  `conversationEvents` seam, which current DSH releases no longer expose, so it stays
+  unmounted (team work runs through `agent_teams_*`). The bundle patch ships the
   `mpd-web-compat` self-row (`name: '@mpd-dsh/mpd'`) so the client-modules boot graph
   carries the bundle's client entry — without it the panels never load.
 - **Workmate library** (`~/.mpd/workmate`): the roster specialists are BASE templates;

@@ -40,6 +40,17 @@ function selfTest() {
   checks.push(["package name @mpd-dsh/workmate", pkg.name === "@mpd-dsh/workmate"])
   const pack = readFileSync(join(repoRoot, "scripts", "pack-mpd.mjs"), "utf8")
   checks.push(["pack PLUGIN_PKGS includes workmate", pack.includes('"mpd-workmate-plugin"')])
+  // Sidebar surface: the library is contributed as a DSH-better-sidebar tab, so the
+  // host must publish the roster + detail routes the tab reads and the client must
+  // register that tab through the sidebar service.
+  const wmSource = readFileSync(join(repoRoot, "packages", "mpd-workmate-plugin", "src", "index.ts"), "utf8")
+  checks.push(["host roster route", wmSource.includes('path: "/plugins/mpd-workmate/roster"') && wmSource.includes('ctx.get ? ctx.get("mpdRoles") : undefined')])
+  checks.push(["host detail route", wmSource.includes('path: "/plugins/mpd-workmate/get"') && wmSource.includes("workmateLibrary.read(name)")])
+  const client = readFileSync(join(repoRoot, "packages", "mpd-bundle-plugin", "client.js"), "utf8")
+  checks.push(["client registers a better-sidebar tab", client.includes('const SIDEBAR_TAB_ID = "mpd-workmate"')
+    && client.includes("sidebar.registerTab") && client.includes("registerSidebarTab")])
+  checks.push(["client keeps a floater fallback", client.includes("better-sidebar not installed")
+    && client.includes('inject("shell.overlay"') && client.includes('inject("sidebar.footer.action"')])
   const bad = checks.filter(([, ok]) => !ok).map(([n]) => n)
   if (bad.length) fail("self-test: " + bad.join(" | "))
   console.log("[workmate-library self-test] ok: " + checks.length + " checks")
@@ -57,6 +68,11 @@ function runReal() {
   const ws = join(wmHome, "ws")
   mkdirSync(ws, { recursive: true })
   cpSync(creds, join(dshHome, ".credentials.yaml"))
+  // Live-LLM case: a home whose keys come from gateway providers configures the model
+  // chain in settings.yaml too — without it the sandbox falls back to the base
+  // deepseek-official route and the run dies with MISSING_CREDENTIAL (§7).
+  const settings = join(homedir(), ".dsh", "settings.yaml")
+  if (existsSync(settings)) cpSync(settings, join(dshHome, "settings.yaml"))
   writeFileSync(join(ws, "README.md"), "# my-power-dsh\nworkmate e2e workspace\n")
   const env = { ...process.env, DSH_HOME: dshHome, HOME: wmHome }
   const steps = {}
