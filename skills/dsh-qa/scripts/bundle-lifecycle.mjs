@@ -88,12 +88,17 @@ async function runReal() {
   const add = runSync("dsh", ["plugin", "--profile", "w", "add", "--store-dir", store, repoRoot], env)
   const manifestAfterAdd = JSON.parse(readFileSync(join(profile, "package.json"), "utf8"))
   const installedBundle = join(profile, "node_modules", PKG)
+  const bundlesAfterAdd = manifestAfterAdd.dsh?.profile?.bundles ?? []
   steps.install = {
     ok: add.status === 0 && String(manifestAfterAdd.dependencies?.[PKG] ?? "").startsWith("link:")
-      && (manifestAfterAdd.dsh?.profile?.bundles ?? []).includes(PKG) && existsSync(installedBundle),
+      && bundlesAfterAdd.includes(PKG) && existsSync(installedBundle)
+      // the box bundles are NOT profile dependencies, so the layer list must only
+      // ever be APPENDED to. A reconcile that recomputes the list from the
+      // dependency set silently drops the base layers — the defect this asserts.
+      && ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app"].every((layer) => bundlesAfterAdd.includes(layer)),
     exit: add.status,
     dependency: manifestAfterAdd.dependencies?.[PKG] ?? null,
-    bundles: manifestAfterAdd.dsh?.profile?.bundles ?? [],
+    bundles: bundlesAfterAdd,
     oneCommand: "dsh plugin --profile w add <repo root>",
   }
   if (!steps.install.ok) fail("install step failed: " + add.out.slice(-1500))
@@ -152,6 +157,26 @@ async function runReal() {
     ok: (!existsSync(homeSkills) || readdirSync(homeSkills).length === 0) && (!existsSync(homePresets) || readdirSync(homePresets).length === 0),
     skills: existsSync(homeSkills) ? readdirSync(homeSkills) : [],
     presets: existsSync(homePresets) ? readdirSync(homePresets) : [],
+  }
+
+  // ── 3b) the layer survives an unrelated install in the SAME profile ────────
+  // The profile is a pnpm project: a manifest that no longer lists the bundle
+  // loses it on the next install, and `dsh plugin` never re-adds a layer on its
+  // own. This is the shape of the reported defect (our rows gone after another
+  // dependency was installed), so the case asserts the layer is still composed.
+  const plainInstall = runSync("pnpm", ["install", "--prefer-offline", "--store-dir", store], env, { cwd: profile })
+  const manifestAfterPlain = JSON.parse(readFileSync(join(profile, "package.json"), "utf8"))
+  const dumpAfterPlain = runSync("dsh", ["--profile", "w", "--dump-config"], env)
+  steps.layerDurability = {
+    ok: plainInstall.status === 0
+      && manifestAfterPlain.dependencies?.[PKG] !== undefined
+      && (manifestAfterPlain.dsh?.profile?.bundles ?? []).includes(PKG)
+      && dumpAfterPlain.out.includes("id: mpd-dsh-adapter")
+      && dumpAfterPlain.out.includes("id: agent-presets")
+      && dumpAfterPlain.out.includes('"/node_modules/@mpd-dsh/mpd/presets"'),
+    exit: plainInstall.status,
+    dependency: typeof manifestAfterPlain.dependencies?.[PKG] === "string",
+    bundles: manifestAfterPlain.dsh?.profile?.bundles ?? [],
   }
 
   // ── 4) real uninstall: everything goes, nothing is left behind ─────────────
