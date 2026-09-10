@@ -9,7 +9,62 @@
   Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
   let react = require("react");
   const agentTeams = require("@nanmicoder/dsh-agent-teams");
-  const inject = ["slots", "conversationEvents", "sessions", "locale", "modelDirectories"];
+
+  // ── Version-tolerant client seams ──────────────────────────────────────────
+  // The web boot hard-fails the WHOLE page when one entry stays `pending`:
+  // `assertEntriesActive` reports `entry: pending (waiting for service: X)` and
+  // throws "Failed to load plugins". A service that this harness release does not
+  // mount must therefore never sit in `inject` — it would take the GUI down even
+  // though the surface it feeds is optional. The candidate set is intersected with
+  // the services that are actually registered at apply time, and each optional
+  // mount point also degrades on its own.
+  //
+  // Observed drift (dsh 0.1.2-rc.1): the frontend exposes `slots`, `locale`,
+  // `sessions`, `layout`, `theme`, `timer`, `uiWorkspace`, `workspaces`; it does NOT
+  // expose `conversationEvents` (the adopted panel's rc.9 seam, where the harness
+  // now speaks `conversationViews`) and does NOT mount `modelDirectories`.
+  const REQUIRED_SERVICES = ["slots", "locale"];
+  const OPTIONAL_SERVICES = ["sessions", "conversationEvents", "modelDirectories"];
+
+  /** Whether a client service is resolvable now (never throws, never activates). */
+  function serviceAvailable(ctx, name) {
+    try {
+      return ctx.get(name) !== undefined;
+    } catch {
+      return false;
+    }
+  }
+
+  /** The optional seams this runtime actually provides, in candidate order. */
+  function presentOptional(ctx) {
+    return OPTIONAL_SERVICES.filter((name) => serviceAvailable(ctx, name));
+  }
+
+  /**
+  * Declared hard dependencies only. The web boot's `assertEntriesActive` turns any
+  * declared-but-unregistered service into a fatal `pending` entry, so an optional
+  * seam must be awaited with `ctx.inject` instead of being declared here.
+  */
+  const inject = REQUIRED_SERVICES.slice();
+
+  /**
+  * Mount the adopted agent-teams panel once every seam it needs is live, and mount
+  * nothing (with one warning) when this harness never provides them. Every failure
+  * is contained: an optional surface must never take the boot down.
+  */
+  function mountAgentTeams(ctx) {
+    const present = presentOptional(ctx);
+    const missing = OPTIONAL_SERVICES.filter((name) => !present.includes(name));
+    if (missing.length > 0) {
+      console.warn("[mpd] agent-teams panel unavailable — harness does not provide: " + missing.join(", "));
+      return;
+    }
+    try {
+      agentTeams.apply(ctx);
+    } catch (error) {
+      console.warn("[mpd] agent-teams panel failed to mount: " + String(error));
+    }
+  }
 
   const LIST_URL = "/plugins/mpd-workmate/list";
   const INIT_URL = "/plugins/mpd-workmate/init";
@@ -188,8 +243,11 @@
   }
 
   function apply(ctx) {
-    // Adopted agent-teams client half: team activity floater + team card + command view.
-    agentTeams.apply(ctx);
+    // Adopted agent-teams client half (team activity floater + team card + command
+    // view). It is the only part of this client with version-drifted seams, so it
+    // waits for them instead of being a declared hard dependency: `ctx.inject`
+    // re-runs when the services appear and simply never runs when they do not.
+    ctx.inject(OPTIONAL_SERVICES, (scoped) => mountAgentTeams(scoped));
     // Register the workmate panel locale dictionaries (zh/en), mirroring the
     // agent-teams client locale registration.
     ctx.effect(() => ctx.locale.register(WORKMATE_LOCALE_NAMESPACE, { zh, en }), "mpd-workmate: dictionaries");

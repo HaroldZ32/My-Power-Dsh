@@ -33,6 +33,15 @@ function selfTest() {
   const client = readFileSync(join(ROOT, "packages", "mpd-bundle-plugin", "client.js"), "utf8")
   checks.push(["combined client registers both ids", client.includes('id: "@nanmicoder/dsh-agent-teams"') && client.includes('id: "@mpd-dsh/mpd"')])
   checks.push(["combined client mounts workmate slots", client.includes("mpd-workmate-library") && client.includes("mpd-workmate-toggle") && client.includes("agentTeams.apply(ctx)")])
+  // A declared-but-unregistered client service is FATAL: the web boot's
+  // assertEntriesActive reports `entry: pending (waiting for service: X)` and throws
+  // "Failed to load plugins", taking the whole page down. Drift-prone seams must
+  // therefore be awaited with ctx.inject, never declared in the inject list.
+  checks.push(["mpd client declares only stable seams", client.includes("const inject = REQUIRED_SERVICES.slice()")
+    && client.includes('const REQUIRED_SERVICES = ["slots", "locale"]')])
+  checks.push(["drift-prone seams are awaited, not declared", /const OPTIONAL_SERVICES = \["sessions", "conversationEvents", "modelDirectories"\]/.test(client)
+    && client.includes("ctx.inject(OPTIONAL_SERVICES") && client.includes("serviceAvailable(ctx, name)")])
+  checks.push(["agent-teams mount is contained", client.includes("agent-teams panel unavailable") && client.includes("failed to mount")])
   const wm = readFileSync(join(ROOT, "packages", "mpd-workmate-plugin", "src", "index.ts"), "utf8")
   checks.push(["workmate host routes", wm.includes("/plugins/mpd-workmate/list") && wm.includes("/plugins/mpd-workmate/init") && wm.includes("internal/service")])
   const bad = checks.filter(([, ok]) => !ok).map(([n]) => n)
@@ -66,27 +75,55 @@ async function runReal() {
     } catch { /* not up yet */ }
   }
   if (!steps.listUp) steps.listUp = { ok: false }
-  // boot graph: the client entry exist + client.js serves with the matching id
-  let entry = null, clientBody = "", clientStatus = 0
-  try {
-    const res = await fetch("http://127.0.0.1:" + PORT + "/", { signal: AbortSignal.timeout(4000) })
-    const html = await res.text()
-    const bi = html.indexOf('globalThis["__DSH_BOOT__"]')
-    if (bi >= 0) {
-      const start = html.indexOf("{", bi)
-      let depth = 0, end = -1
-      for (let i = start; i < html.length; i++) { const c = html[i]; if (c === "{") depth++; else if (c === "}") { depth--; if (depth === 0) { end = i + 1; break } } }
-      const boot = JSON.parse(html.slice(start, end))
-      entry = boot.entries.find((e) => e.id === "@mpd-dsh/mpd") ?? null
-      if (entry) {
-        const cres = await fetch("http://127.0.0.1:" + PORT + entry.url.split("?")[0], { signal: AbortSignal.timeout(4000) })
-        clientStatus = cres.status
-        clientBody = await cres.text()
+  // The root page is token-protected AND only becomes servable after the web
+  // frontend finishes booting, so poll for it: a bare fetch returns 401/404 and
+  // used to hide the whole assertion (this case reported `bootEntry: null` forever).
+  let token = ""
+  let entry = null, clientBody = "", clientStatus = 0, unregistered = [], rootHttp = 0
+  // Client services this harness registers (verified against the live client Service
+  // catalog). A boot row key that looks like a bare service name but is absent here is
+  // exactly the drift that leaves an entry `pending`; `@scope/pkg` keys are module
+  // dependencies, not services.
+  const SERVICES = new Set(["layout", "locale", "sessions", "slots", "theme", "timer", "uiWorkspace", "workspaces"])
+  const bootDeadline = Date.now() + 60000
+  while (Date.now() < bootDeadline && entry === null) {
+    try { token = /token=([A-Za-z0-9_-]+)/.exec(readFileSync(log, "utf8"))?.[1] ?? token } catch { /* log not flushed yet */ }
+    try {
+      const res = await fetch("http://127.0.0.1:" + PORT + "/?token=" + token, { signal: AbortSignal.timeout(8000) })
+      rootHttp = res.status
+      const html = await res.text()
+      const bi = html.indexOf('globalThis["__DSH_BOOT__"]')
+      if (bi >= 0) {
+        const start = html.indexOf("{", bi)
+        let depth = 0, end = -1
+        for (let i = start; i < html.length; i++) { const c = html[i]; if (c === "{") depth++; else if (c === "}") { depth--; if (depth === 0) { end = i + 1; break } } }
+        const boot = JSON.parse(html.slice(start, end))
+        entry = boot.entries.find((e) => e.id === "@mpd-dsh/mpd") ?? null
+        for (const e of boot.entries) {
+          for (const key of e.inject ?? []) {
+            if (!key.startsWith("@") && !SERVICES.has(key)) unregistered.push(e.id + ":" + key)
+          }
+        }
+        if (entry) {
+          // The combo route is revision-validated: dropping the rev query answers 404.
+          const cres = await fetch("http://127.0.0.1:" + PORT + entry.url, { signal: AbortSignal.timeout(8000) })
+          clientStatus = cres.status
+          clientBody = await cres.text()
+        }
       }
-    }
-  } catch (e) { console.log("  boot fetch err:", e.message) }
+    } catch (e) { console.log("  boot fetch err:", e.message) }
+    if (entry === null) await new Promise((r) => setTimeout(r, 2000))
+  }
+  steps.rootStatus = { ok: rootHttp === 200 && token !== "", http: rootHttp, tokenSeen: token !== "" }
   steps.bootEntry = { ok: entry !== null, id: entry?.id ?? null }
-  steps.clientJs = { ok: clientStatus === 200 && clientBody.includes('id: "@mpd-dsh/mpd"') && clientBody.includes('id: "@nanmicoder/dsh-agent-teams"'), status: clientStatus }
+  steps.clientJs = {
+    ok: clientStatus === 200 && clientBody.includes('id: "@mpd-dsh/mpd"') && clientBody.includes('id: "@nanmicoder/dsh-agent-teams"')
+      && clientBody.includes("const inject = REQUIRED_SERVICES.slice()"),
+    status: clientStatus,
+  }
+  // No entry may declare a service this harness does not register: that is the
+  // `pending (waiting for service: X)` → "Failed to load plugins" failure.
+  steps.noUnregisteredService = { ok: unregistered.length === 0, unregistered }
   // init route: POST creates the workmate under the SANDBOX HOME
   let initOk = false, initNote = ""
   try {

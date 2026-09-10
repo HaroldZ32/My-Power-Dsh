@@ -2,6 +2,7 @@ node_modules/
 .npm-cache/
 .qa-reloc/
 .qa-tmp/
+.qa-web-client/
 .toolchain/
 *.tmp
 evidence/*.log.tmp
