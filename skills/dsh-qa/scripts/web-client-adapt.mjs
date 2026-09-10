@@ -79,7 +79,12 @@ async function runReal() {
   // frontend finishes booting, so poll for it: a bare fetch returns 401/404 and
   // used to hide the whole assertion (this case reported `bootEntry: null` forever).
   let token = ""
-  let entry = null, clientBody = "", clientStatus = 0, pending = [], rootHttp = 0
+  let entry = null, clientBody = "", clientStatus = 0, unregistered = [], rootHttp = 0
+  // Client services this harness registers (verified against the live client Service
+  // catalog). A boot row key that looks like a bare service name but is absent here is
+  // exactly the drift that leaves an entry `pending`; `@scope/pkg` keys are module
+  // dependencies, not services.
+  const SERVICES = new Set(["layout", "locale", "sessions", "slots", "theme", "timer", "uiWorkspace", "workspaces"])
   const bootDeadline = Date.now() + 60000
   while (Date.now() < bootDeadline && entry === null) {
     try { token = /token=([A-Za-z0-9_-]+)/.exec(readFileSync(log, "utf8"))?.[1] ?? token } catch { /* log not flushed yet */ }
@@ -94,11 +99,14 @@ async function runReal() {
         for (let i = start; i < html.length; i++) { const c = html[i]; if (c === "{") depth++; else if (c === "}") { depth--; if (depth === 0) { end = i + 1; break } } }
         const boot = JSON.parse(html.slice(start, end))
         entry = boot.entries.find((e) => e.id === "@mpd-dsh/mpd") ?? null
-        // Every declared service must be one this harness actually registers: the web
-        // boot throws "Failed to load plugins" when an entry stays pending on one.
-        for (const e of boot.entries) for (const key of e.inject ?? []) pending.push(e.id + ":" + key)
+        for (const e of boot.entries) {
+          for (const key of e.inject ?? []) {
+            if (!key.startsWith("@") && !SERVICES.has(key)) unregistered.push(e.id + ":" + key)
+          }
+        }
         if (entry) {
-          const cres = await fetch("http://127.0.0.1:" + PORT + entry.url.split("?")[0], { signal: AbortSignal.timeout(8000) })
+          // The combo route is revision-validated: dropping the rev query answers 404.
+          const cres = await fetch("http://127.0.0.1:" + PORT + entry.url, { signal: AbortSignal.timeout(8000) })
           clientStatus = cres.status
           clientBody = await cres.text()
         }
@@ -108,13 +116,14 @@ async function runReal() {
   }
   steps.rootStatus = { ok: rootHttp === 200 && token !== "", http: rootHttp, tokenSeen: token !== "" }
   steps.bootEntry = { ok: entry !== null, id: entry?.id ?? null }
-  steps.clientJs = { ok: clientStatus === 200 && clientBody.includes('id: "@mpd-dsh/mpd"') && clientBody.includes('id: "@nanmicoder/dsh-agent-teams"'), status: clientStatus }
-  // The mpd entry declares only seams this release provides (no fatal `pending`).
-  const declared = entry?.inject ?? []
-  steps.declaredSeams = {
-    ok: declared.length > 0 && declared.every((key) => !pending.includes("@mpd-dsh/mpd:" + key)),
-    declared,
+  steps.clientJs = {
+    ok: clientStatus === 200 && clientBody.includes('id: "@mpd-dsh/mpd"') && clientBody.includes('id: "@nanmicoder/dsh-agent-teams"')
+      && clientBody.includes("const inject = REQUIRED_SERVICES.slice()"),
+    status: clientStatus,
   }
+  // No entry may declare a service this harness does not register: that is the
+  // `pending (waiting for service: X)` → "Failed to load plugins" failure.
+  steps.noUnregisteredService = { ok: unregistered.length === 0, unregistered }
   // init route: POST creates the workmate under the SANDBOX HOME
   let initOk = false, initNote = ""
   try {
