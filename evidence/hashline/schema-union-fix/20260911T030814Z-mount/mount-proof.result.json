@@ -1,0 +1,17 @@
+{
+  "proof": "real boot that MOUNTS the rows (registration instrumentation via a --patch probe row)",
+  "isolation": {
+    "HOME": "temp sandbox",
+    "DSH_HOME": "temp sandbox"
+  },
+  "apply_crash_signatures": 0,
+  "probe_reached_final_marker": true,
+  "hashline_tools_registered": "4/4",
+  "live_registered_schema_type_array": "absent",
+  "real_read": "READ=ok",
+  "real_edit_lines_string": "ok",
+  "real_edit_lines_array": "ok",
+  "boot_exit": 124,
+  "passed": true,
+  "note": "no --dump-config result is cited as load evidence; the mount probe reads the LIVE tool registry after a settle window and then makes real tool calls"
+}

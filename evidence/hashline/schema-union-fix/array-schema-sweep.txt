@@ -1,0 +1,57 @@
+# B4 (t4) array-typed schema sweep — command transcript
+# date: 2026-09-11T03:09:23Z   HEAD: 98680b1
+
+$ git ls-files packages/mpd-hashline-plugin/dist packages/mpd-hashline-plugin/src
+packages/mpd-hashline-plugin/dist/index.js
+packages/mpd-hashline-plugin/src/index.ts
+packages/mpd-hashline-plugin/src/vendor/autocorrect-replacement-lines.ts
+packages/mpd-hashline-plugin/src/vendor/constants.ts
+packages/mpd-hashline-plugin/src/vendor/diff-utils.ts
+packages/mpd-hashline-plugin/src/vendor/edit-deduplication.ts
+packages/mpd-hashline-plugin/src/vendor/edit-operation-primitives.ts
+packages/mpd-hashline-plugin/src/vendor/edit-operations.ts
+packages/mpd-hashline-plugin/src/vendor/edit-ordering.ts
+packages/mpd-hashline-plugin/src/vendor/edit-text-normalization.ts
+packages/mpd-hashline-plugin/src/vendor/file-text-canonicalization.ts
+packages/mpd-hashline-plugin/src/vendor/hash-computation.ts
+packages/mpd-hashline-plugin/src/vendor/hashline-chunk-formatter.ts
+packages/mpd-hashline-plugin/src/vendor/hashline-edit-diff.ts
+packages/mpd-hashline-plugin/src/vendor/index.ts
+packages/mpd-hashline-plugin/src/vendor/normalize-edits.ts
+packages/mpd-hashline-plugin/src/vendor/types.ts
+packages/mpd-hashline-plugin/src/vendor/validation.ts
+packages/mpd-hashline-plugin/src/vendor/xxhash32.ts
+
+$ grep -nE 'type:\s*\[' packages/mpd-hashline-plugin/src/index.ts packages/mpd-hashline-plugin/dist/index.js
+(no match -> exit 1: no array-typed schema form in hashline src or committed dist)
+
+$ grep -rnE '"?type"?\s*:\s*\[\s*"' packages/*/src packages/*/dist
+(no match -> exit 1: no array-typed schema form in ANY plugin src or committed dist)
+
+$ grep -rlE '"?type"?\s*:\s*\[\s*"' . --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.qa-tmp --exclude-dir=.qa-reloc --exclude-dir=.mpd  (repo-wide, non-source hits listed below)
+./AGENTS.md
+./dist/mpd-package/packages/mpd-hashline-plugin/dist/index.js
+./evidence/agent-teams/scheduler-wakeup-fix/2026-09-10T10-16-23Z/captain-session-f333e946.jsonl
+./evidence/fix/readonly-deny/2026-09-10T13-18-51.548Z/live-probe-raw.txt
+./evidence/hashline/schema-union-fix/schema-subset-check.mjs
+./evidence/scan/t3-20260829/build/mpd-hashline-plugin.js
+./evidence/workmate/rename-delete-core/boot-route-probe.sh
+./evidence/workmate/rename-delete-core/NOTES.md
+./evidence/workmate/rename-delete-integration/2026-09-10T14-40-00Z/contract.md
+./evidence/workmate/rename-delete-integration/2026-09-10T14-40-00Z/contract-t1-validation.md
+./evidence/workmate/rename-delete-integration/2026-09-10T14-40-00Z/DELIVERY-REPORT.md
+./evidence/workmate/roles-readonly/2026-09-10T13-18-51.548Z/live-probe-raw.txt
+./evidence/workmate/roles-readonly/2026-09-10T13-21-58.233Z/live-probe-raw.txt
+./evidence/workmate/roles-readonly/2026-09-10T13-28-17.170Z/live-probe-raw.txt
+./.mpd-dsh/upstream/bun.lock
+./.mpd-dsh/upstream/packages/web/bun.lock
+./packages/mpd-hashline-plugin/test/tool-schema.test.ts
+./packages/mpd-workmate-plugin/test/rename-delete.test.ts
+
+# tracked/untracked status of the non-source hits:
+dist/mpd-package/packages/mpd-hashline-plugin/dist/index.js            tracked=no
+evidence/scan/t3-20260829/build/mpd-hashline-plugin.js                 tracked=yes
+
+$ grep -n 'oneOf' packages/mpd-hashline-plugin/src/index.ts packages/mpd-hashline-plugin/dist/index.js   (the fix in both)
+packages/mpd-hashline-plugin/src/index.ts:110:        edits: { type: "array", items: { type: "object", properties: { op: { type: "string", enum: ["replace", "append", "prepend"] }, pos: { type: "string" }, end: { type: "string" }, lines: { oneOf: [{ type: "string" }, { type: "array", items: { type: "string" } }] } }, required: ["op"], additionalProperties: false } }
+packages/mpd-hashline-plugin/dist/index.js:1206:        edits: { type: "array", items: { type: "object", properties: { op: { type: "string", enum: ["replace", "append", "prepend"] }, pos: { type: "string" }, end: { type: "string" }, lines: { oneOf: [{ type: "string" }, { type: "array", items: { type: "string" } }] } }, required: ["op"], additionalProperties: false } }

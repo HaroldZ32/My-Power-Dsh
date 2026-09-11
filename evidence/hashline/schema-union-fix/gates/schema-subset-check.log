@@ -1,0 +1,16 @@
+# extra check: bun evidence/hashline/schema-union-fix/schema-subset-check.mjs
+# date: 2026-09-11T03:11:03Z
+[schema-subset] validator = /root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-tools/lib/types/json-schema.js
+[schema-subset] ACCEPTED mpd_hashline_read.parameters
+[schema-subset] ACCEPTED mpd_hashline_read.output
+[schema-subset] ACCEPTED mpd_hashline_edit.parameters
+[schema-subset] ACCEPTED mpd_hashline_edit.output
+[schema-subset] ACCEPTED mpd_hashline_format.parameters
+[schema-subset] ACCEPTED mpd_hashline_format.output
+[schema-subset] ACCEPTED mpd_hashline_restore.parameters
+[schema-subset] ACCEPTED mpd_hashline_restore.output
+[schema-subset] NEGATIVE_CONTROL(pre-fix type array) = rejected
+[schema-subset] NEGATIVE_CONTROL_MESSAGE = "unsupported JSON schema: schema.properties.edits.items.properties.lines.type must be a single type string (type arrays are not supported)"
+[schema-subset] FIXED_LINES_NODE = {"oneOf":[{"type":"string"},{"type":"array","items":{"type":"string"}}]}
+[schema-subset] RESULT = PASS
+[exit code: 0]

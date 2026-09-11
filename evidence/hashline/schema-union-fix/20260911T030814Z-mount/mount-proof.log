@@ -1,0 +1,71 @@
+=== t4 (B4) MOUNT proof (profile: mpd) ===
+repo=/root/dshProj/my-power-dsh
+sandbox DSH_HOME=/tmp/mpd-hl-mnt-dsh-9MoYHf
+sandbox HOME=/tmp/mpd-hl-mnt-home-R1bGHF
+HEAD=98680b1fb2bbf5c10c28cfbe44419e91595e1cb7
+probe=/root/dshProj/my-power-dsh/evidence/hashline/schema-union-fix/mount-probe.mjs
+src type-array occurrences : 0
+dist type-array occurrences: 0
+lines node (src): lines: { oneOf: [{ type: "string" }, { type: "array", items: { type: "string" } }]
+
+[exit=0] dsh plugin --profile mpd add <repo>
+[patch] /tmp/mpd-hl-mnt-dsh-9MoYHf/mount-probe.yml:
+- insert:
+    - id: hashline-mount-probe
+      name: "/root/dshProj/my-power-dsh/evidence/hashline/schema-union-fix/mount-probe.mjs"
+
+### real boot with registration instrumentation: dsh --profile mpd --patch <probe>
+[exit=124] real boot (124 = alive at the 75s cap, normal for a serving profile)
+apply-crash signatures : 0 (MUST be 0)
+probe completed        : 1 (1 = the probe reached its final marker)
+hashline tools present : HASHLINE_TOOLS_PRESENT=4/4
+live schema type array : LIVE_SCHEMA_TYPE_ARRAY=absent (must be LIVE_SCHEMA_TYPE_ARRAY=absent)
+real read              : READ=ok
+real edit (string)     : EDIT_LINES_STRING=ok
+real edit (array)      : EDIT_LINES_ARRAY=ok
+--- mount-probe lines, verbatim ---
+[hashline-probe] HASHLINE_TOOLS_PRESENT=4/4
+[hashline-probe] HASHLINE_TOOLS=mpd_hashline_read:ok,mpd_hashline_edit:ok,mpd_hashline_format:ok,mpd_hashline_restore:ok
+[hashline-probe] LIVE_PARAMS_BYTES=417
+[hashline-probe] LIVE_SCHEMA_TYPE_ARRAY=absent
+[hashline-probe] LIVE_LINES_NODE={"oneOf":[{"type":"string"},{"type":"array","items":{"type":"string"}}]}
+[hashline-probe] READ=ok lines=4
+[hashline-probe] EDIT_LINES_STRING=ok lines=3
+[hashline-probe] EDIT_LINES_ARRAY=ok lines=4
+[hashline-probe] FINAL_CONTENT="alpha\nBETA\nGAMMA-1\nGAMMA-2\n"
+[hashline-probe] DONE
+--- boot log, verbatim ---
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=no-binary binary=- cwd=/root/dshProj/my-power-dsh
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.
+[hashline-probe] HASHLINE_TOOLS_PRESENT=4/4
+[hashline-probe] HASHLINE_TOOLS=mpd_hashline_read:ok,mpd_hashline_edit:ok,mpd_hashline_format:ok,mpd_hashline_restore:ok
+[hashline-probe] LIVE_PARAMS_BYTES=417
+[hashline-probe] LIVE_SCHEMA_TYPE_ARRAY=absent
+[hashline-probe] LIVE_LINES_NODE={"oneOf":[{"type":"string"},{"type":"array","items":{"type":"string"}}]}
+[hashline-probe] READ=ok lines=4
+[hashline-probe] EDIT_LINES_STRING=ok lines=3
+[hashline-probe] EDIT_LINES_ARRAY=ok lines=4
+[hashline-probe] FINAL_CONTENT="alpha\nBETA\nGAMMA-1\nGAMMA-2\n"
+[hashline-probe] DONE
+--- end ---
+[exit=0] MOUNT proof: tree applied AND 4/4 hashline tools registered AND real read/edit ok
+{
+  "proof": "real boot that MOUNTS the rows (registration instrumentation via a --patch probe row)",
+  "isolation": {
+    "HOME": "temp sandbox",
+    "DSH_HOME": "temp sandbox"
+  },
+  "apply_crash_signatures": 0,
+  "probe_reached_final_marker": true,
+  "hashline_tools_registered": "4/4",
+  "live_registered_schema_type_array": "absent",
+  "real_read": "READ=ok",
+  "real_edit_lines_string": "ok",
+  "real_edit_lines_array": "ok",
+  "boot_exit": 124,
+  "passed": true,
+  "note": "no --dump-config result is cited as load evidence; the mount probe reads the LIVE tool registry after a settle window and then makes real tool calls"
+}
+DONE
