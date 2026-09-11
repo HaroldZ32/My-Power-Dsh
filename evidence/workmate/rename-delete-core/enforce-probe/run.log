@@ -1,0 +1,7 @@
+[readonly-deny] ok=true -> /root/dshProj/my-power-dsh/evidence/workmate/roles-readonly/2026-09-10T13-29-04.520Z
+  positive: {"exit":0,"restrictError":false,"missingCredential":false,"authFailed":false,"stubCalls":4,"stubTrace":[{"call":1,"hasTools":true,"bytes":110690,"toolCount":87,"writeCapableSeen":["bash","edit","mcp__ast_grep__rewrite","mcp__ast_grep__scan","mcp__lsp__rename","mpd_hashline_edit","write"]},{"call":2,
+  positiveOk: {"ok":true,"note":"the seven-name list reached tools.restrict() and the harness accepted it: the child was created and answered, with no unknown-tool refusal"}
+  reinjectionDiagnostic: {"exit":0,"restrictError":false,"missingCredential":false,"authFailed":false,"stubCalls":3,"stubTrace":[{"call":1,"hasTools":true,"bytes":110646,"toolCount":87,"writeCapableSeen":["bash","edit","mcp__ast_grep__rewrite","mcp__ast_grep__scan","mcp__lsp__rename","mpd_hashline_edit","write"]},{"call":2,
+  reinjectionNote: "with the unregistered names re-injected, the sandbox boot still composed the child and emitted no refusal (refusalSeen=false) — the refusal is therefore NOT reproducible in this profile, so the positive lane carries the proof"
+  isolation: {"ok":true,"realWorkmateUntouched":true,"realWm":"/root/.mpd/workmate"}
+[readonly-deny] PASS

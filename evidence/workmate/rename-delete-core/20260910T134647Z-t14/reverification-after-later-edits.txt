@@ -1,0 +1,28 @@
+t14 RE-VERIFICATION AFTER LATER `skills/**` EDITS (post-completion follow-up, reviewer side)
+
+Why: the case was edited again at 13:52:31 UTC and the lock recomputed at 13:52:44, both AFTER the
+t14 measurement window (13:51:12-13:51:38). Rather than assume the verification transfers, I re-ran it.
+
+A) ASSERTION LOGIC UNCHANGED (the code I verified is still the code that shipped):
+   line 357  const isChildReq = (c) => c !== parentReq && c.toolCount > 0 && c.writeCapableVisible.length === 0 && c._toolNames.includes("structured_output")
+   line 366  ok: childSpy.length > 0 && parentShowsAllSeven && childSpy.every((c) => c.writeCapableVisible.length === 0)
+   line 404  const diagChild = diagTrace.filter((c) => c !== diagParent && c.toolCount > 0 && c.writeCapableVisible.length === 0 && c._toolNames.includes("structured_output"))
+   line 406  ok: diagChild.length === 0 && (diagParent?.writeCapableVisible.length ?? 0) === WRITE_CAPABLE.length && steps.reinjectionDiagnostic.restrictError === false
+
+B) FRESH RUN on the current bytes: `node skills/dsh-qa/scripts/readonly-deny.mjs` -> exit 0, ok=true, PASS
+   (case evidence evidence/workmate/roles-readonly/2026-09-10T13-53-34.274Z)
+
+C) FRESH PER-REQUEST READINGS (identical to the t14 window):
+   POSITIVE   call#1 parent 87 tools / all seven write-capable · call#2 0 tools · call#3 CHILD 81 tools / writeCapable [] /
+              structured_output TRUE · call#4 parent 87 / all seven
+   RE-INJECT  call#1 parent 87 / all seven · call#2 0 tools · call#3 CHILD 87 tools / ALL SEVEN / structured_output FALSE
+   enforcement.ok=true (childRequests=1, childToolCounts=[81], childLeaksWriteCapable=[], parentHasAllSeven=true)
+   reinjectionControl.ok=true (childRequestsUnderRestriction=0, refusalSeen=false)
+   reviewer-applied predicate: positive -> childRequests=1 -> ok=TRUE ; re-injection -> childRequests=0 -> ok=FALSE
+
+D) GATE AT THIS RE-VERIFICATION: verify-vendor exit 0 PASS, lock mtime 13:52:44 newer than the newest
+   skills/** file 13:52:31; lock `skills` treeSha is now 1499dc30... (a FIFTH distinct value in one
+   session: 81620614 -> ca9dfa77 -> (13:50:28 refresh) -> 2c11c7a9 -> 1499dc30). No constant is citable.
+
+Conclusion: t14's verdict (assertion passes on the shipped list, fails in the re-injection lane) holds on
+the CURRENT bytes as well as on the window it was completed in.

@@ -1,0 +1,72 @@
+{
+  "task": "t5 — fix read-only deny lists so read-only spawn works on the real harness",
+  "slug": "readonly-deny",
+  "status": "completed_with_one_environment_blocked_check",
+  "rawRunRecord": "live-probe-blocked.json (the case's own untouched output for this run)",
+  "baseline": {
+    "head": "f697088 (merge(feature): workmate library as a DSH-better-sidebar tab)",
+    "treeState": "dirty by design: 33 pre-existing entries at claim time; never committed, stashed or reverted",
+    "myDelta": [
+      "packages/mpd-roles-plugin/src/index.ts",
+      "packages/mpd-roles-plugin/dist/index.js",
+      "packages/mpd-roles-plugin/test/roles.test.ts",
+      "skills/dsh-qa/scripts/readonly-deny.mjs",
+      "skills/dsh-qa/SKILL.md",
+      "AGENTS.md",
+      "VENDOR_LOCK.json",
+      "evidence/fix/readonly-deny/**"
+    ]
+  },
+  "defect": {
+    "signature": "tools.restrict() names unknown global tools \"...\"; known global tools: ...",
+    "why": "READONLY_DENY listed two tool names this profile does not register. The harness validates the WHOLE restriction list before creating a child, so every read-only spawn died with no child ever created.",
+    "rootCauseProof": [
+      "@deepseek-ai/dsh-tool-str-replace-editor ships in the harness closure and its row is even composed into the profile, but it is ABSENT from every preset — and the agent plane's preset composition is what registers tools, so str_replace_editor never registers. A patch row is not proof of runtime registration.",
+      "apply_patch has no package anywhere in the harness runtime closure.",
+      "The seven retained names all map to composed, live sources: tool-bash→bash, tool-fs→write/edit, mpd-hashline→mpd_hashline_edit, mcp-astgrep→rewrite/scan, mcp-lsp→rename."
+    ]
+  },
+  "fix": {
+    "rolesDenyList": ["write", "edit", "mpd_hashline_edit", "bash", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename"],
+    "removedOnly": "the two unregistered legacy editor tool names",
+    "deliberatelyKept": "bash (a shell can write files; read/glob/grep stay available) and the three live-registered MCP write tools",
+    "forbiddenFixRespected": "no dsh.hasTool filtering was applied — it reads the global tool view only and would silently un-guard write/edit/bash",
+    "distRebuilt": "packages/mpd-roles-plugin/dist/index.js rebuilt; both dead names verified absent there (the repo loads dist, not src)",
+    "testsRewritten": "the assertion that PINNED the two dead names now pins the seven live names; added a dead-name guard on the list, a dead-name guard that scans src AND the built dist, and the roles/workmate parity guard (strict toEqual)",
+    "parityGuard": "the workmate plugin now exports the same seven names (sibling task t3), so the guard runs as strict equality and passes; it prints an explicit SKIP marker with a reason if that export ever goes missing"
+  },
+  "acceptance": [
+    { "criterion": "roles deny list carries exactly the seven live-registered names (src + built dist)", "status": "passed", "evidence": "case self-test checks 1-3; roles suite green" },
+    { "criterion": "the two unregistered names appear in no source or built dist of either package", "status": "passed", "evidence": "case self-test dead-name checks + roles.test dead-name guards" },
+    { "criterion": "roles and workmate deny lists are equal (drift guard)", "status": "passed", "evidence": "roles suite 11/11 — parity guard strict toEqual" },
+    { "criterion": "every retained name maps to a live-registered tool", "status": "passed", "evidence": "9 registry checks in the case self-test (agent-plane composition + MCP server tool names)" },
+    { "criterion": "live proof: a read-only mpd_role_spawn really starts a child", "status": "failed", "evidence": "environment blocker, not a code failure — see liveProof" }
+  ],
+  "liveProof": {
+    "command": "node skills/dsh-qa/scripts/readonly-deny.mjs",
+    "result": "blocked",
+    "blocker": "dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route \"deepseek-official\"",
+    "why": "no provider credential is reachable in this deployment: ~/.dsh/.credentials.yaml carries only a client-connection/browser-session grant, no DEEPSEEK_API_KEY exists in the environment, and there is no .env fallback. The case reports status=blocked with the remedy and exits 2 instead of reporting a false failure.",
+    "remedy": "launch the case with a provider key available (export DEEPSEEK_API_KEY=<key>, or store one through the Models page) and it completes unattended — the case needs no change",
+    "caseAssertionsWhenUnblocked": [
+      "mpd_role_spawn(role:\"oracle\") returns a completed child",
+      "the child's answer carries a sentinel only the child could return (RETURN-OK), so a fabricated parent answer cannot pass",
+      "the harness tools.restrict() unknown-tool signature is absent from the output",
+      "no unknown-global-tools error of any kind appears"
+    ],
+    "priorBlockerNowResolved": "the profile could not boot while this proof was being attempted because packages/mpd-workmate-plugin failed loader apply (JsonSchemaError on a type array). Reported to its owner with the exact location and a one-line fix; the row now applies and an isolated DSH_HOME boot composes mpd-roles, mpd-workmate, mpd-hashline, mcp-astgrep and mcp-lsp."
+  },
+  "gates": [
+    { "command": "bun run typecheck", "status": "passed", "exitCode": 0 },
+    { "command": "bun test packages/mpd-roles-plugin", "status": "passed", "evidence": "11 pass / 0 fail / 139 expect calls" },
+    { "command": "bun test packages", "status": "passed_with_unrelated_failures", "evidence": "284 pass / 3 skip / 4 fail — all four failures are mpd-bundle-plugin workmate-page UI tests owned by sibling task t4, none in the roles package" },
+    { "command": "node scripts/verify-vendor.mjs", "status": "passed", "exitCode": 0, "evidence": "commit/version/stats + all 6 assets OK after refreshing the skills fingerprint (363→364 files, new treeSha) for the new QA case; hash computed with the gate's own algorithm including its LF normalization" },
+    { "command": "node skills/dsh-qa/scripts/readonly-deny.mjs --self-test", "status": "passed", "evidence": "23 checks" },
+    { "command": "isolated DSH_HOME boot: dsh --profile mpd-headless --dump-config", "status": "passed", "evidence": "all five relevant rows compose (mpd-roles, mpd-workmate, mpd-hashline, mcp-astgrep, mcp-lsp)" }
+  ],
+  "isolation": {
+    "assertion": "the REAL ~/.mpd/workmate bytes are unchanged across the run (name+size+mtime fingerprint before/after) instead of asserting the directory is absent",
+    "why": "the real library legitimately pre-exists (earlier runs left oracle-1 there), so an absence assertion was wrong — caught and fixed during this task",
+    "result": "passed — realWorkmateUntouched: true"
+  }
+}

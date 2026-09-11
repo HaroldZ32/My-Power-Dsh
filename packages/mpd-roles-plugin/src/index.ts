@@ -20,11 +20,18 @@ export const inject = ["tools", "subagents"]
 type Ctx = { tools: any; subagents: any; provide: (n: string, v: any, check?: any) => void; get?: (k: string) => any; [k: string]: any }
 type Config = { personasDir?: string }
 
+// Every entry must be a tool this profile actually registers: the harness
+// validates the WHOLE deny list at spawn time and rejects the child when any
+// name is unknown, so one dead entry breaks EVERY read-only spawn. That was the
+// defect here: two legacy editor patch-row names were listed although their row
+// is not composed into this profile. The remaining names are live-registered and
+// deliberately kept — `bash` can write files, so it stays denied (that is the
+// read-only guarantee, not an oversight). roles.test.ts pins all three
+// properties: the coverage, the absence of the dead names, and parity with the
+// workmate plugin's list.
 export const READONLY_DENY = [
   "write",
   "edit",
-  "str_replace_editor",
-  "apply_patch",
   "mpd_hashline_edit",
   "bash",
   "mcp__ast_grep__rewrite",

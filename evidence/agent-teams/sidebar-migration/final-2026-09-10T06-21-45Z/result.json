@@ -1,0 +1,75 @@
+{
+  "case": "sidebar AgentTeams/Workmates panels INVISIBLE in the live GUI — root cause, fix, and live-browser proof",
+  "capturedAt": "2026-09-10T15:45:00Z",
+  "supersedes": "the earlier result-parity-round.json in this directory, which recorded the visual-parity work but NOT the fact that the tabs never registered at all in the live GUI",
+  "userReport": "目前我是完全看不见面板，都别说测试了 — the sidebar shows no AgentTeams/Workmates panel at all",
+  "tree": "branch dev, uncommitted working tree; hashes.txt describes exactly this revision",
+
+  "rootCause": {
+    "symptom": "Live GUI (127.0.0.1:3080): the better-sidebar `+` menu offered only Files / Changes / Tasks / Side Chat (beta) / Terminal / Browser, and the console carried two warnings of our own: `[mpd] better-sidebar not installed — the AgentTeams page has no host` and the same for `the workmate library has no host`.",
+    "why": "packages/mpd-bundle-plugin/src/web-client.js probed `ctx.get('betterSidebar')` ONCE during apply() and gave up. DSH-better-sidebar publishes that service from its OWN plugin fiber, which activates later than our entry, and cordis resolves services through the fiber scope and only re-evaluates fibers that DECLARE the dependency — so the probe can never see it and can never be retried.",
+    "evidence": [
+      "playwright against the LIVE GUI: after expanding the panel, the `+` menu had no mpd row; console showed our two 'not installed' warnings while dsh-better-sidebar's own UI (Expand sidebar toggle, Files tab, nArs4W_* classes) was demonstrably rendering in the SAME page",
+      "temporary journaled diagnostic in the shipped client: `[mpd-diag] apply: ctx.get(betterSidebar)=false ctx.betterSidebar=THREW: cannot get property \"betterSidebar\" without inject` ... `[mpd-diag] +8s: ctx.get(betterSidebar)=true typeof=object` — the service EXISTS, it simply is not there YET",
+      "cordis source (@deepseek-ai/cordis/src): `reflect.get` -> `const key = this.ctx[symbols.isolate][name]`; `provide()` does `this.ctx.root[symbols.isolate][name] ??= Symbol(name)`; `notify()` skips any fiber where `!(name in fiber.inject)`",
+      "boot graph of the live server: entry `@mpd-dsh/mpd` present, `dsh-better-sidebar` present and ACTIVE"
+    ],
+    "note": "The 'no fallback by design' warning text was actively misleading: the sidebar WAS installed. The probe was refused, not the installation absent."
+  },
+
+  "fix": {
+    "packages/mpd-bundle-plugin/src/web-client.js": "`mountSidebarPages(ctx, teamPage)` registers both pages from `ctx.inject(['betterSidebar'], (sidebarCtx) => ...)` — the runtime's own pattern for a service that mounts asynchronously (better-sidebar uses exactly this for its `remote.session`). It waits for the provider, re-runs after a provider remount, and never parks this entry, so a profile without the sidebar simply never fires the callback instead of becoming a fatal `pending` row. The old `serviceAvailable` probe helper and the `PROBED_SERVICES` note were deleted; the page module is loaded through a contained `loadTeamPage()` so a broken team page cannot take the workmate page with it.",
+    "packages/mpd-bundle-plugin/src/team-page.js": "`registerTeamSidebarTab(ctx, service)` now takes the ALREADY-RESOLVED service (never probes), and warns only when a caller passes a service without `registerTab`.",
+    "packages/mpd-bundle-plugin/test/client-harness.mjs": "Models the race BY DEFAULT: `betterSidebar` is NOT in the registry while apply() runs, `ctx.inject` parks callbacks until every dependency is published (exactly like cordis), `provide()` wakes them, and `provideSidebar()`/`provideService()` publish afterwards. A probe-based implementation now fails the suite — proven by mutation (below).",
+    "QA cases": "agent-teams-sidebar.mjs rewired to the same injection semantics (the service is provided AFTER the client applies); web-client-adapt.mjs self-test pins `ctx.inject(['betterSidebar']` and forbids `serviceAvailable(`; workmate-library.mjs pins the injection and scans the mpd SOURCE (not the artifact, which carries the adopted bundle's own dormant `shell.overlay` registration).",
+    "docs": "docs/architecture.md section 7 (+ zh-CN) gained 'The other half of the rule — and the bug that hid behind it'; AGENTS.md gained a troubleshooting row naming the trap and forbidding both wrong fixes."
+  },
+
+  "failingFirstProof": {
+    "method": "The SHIPPED artifact was mutated in place to the old behaviour (one-shot `ctx.get` probe at apply, no injection), the suite was run, then the artifact was restored byte-for-byte (sha256 verified) and re-run.",
+    "mutant": "30 of 39 tests FAIL (see live-gui/mutant-failures.txt), including every tab-registration test: 'registers the AgentTeams page and the workmate library', 'both tab descriptors are valid sidebar pages', 'workmate page > renders the library from the host routes', and all four auto-open policy tests.",
+    "restored": "39 pass, 0 fail; artifact sha256 57f96022c5e5a925344a0c5a67f3dc384605a5e5f76891547ceb58e14fa4157b"
+  },
+
+  "liveGuiProofAfterFix": {
+    "harness": "live-gui/final-live-drive.mjs (Playwright + a browser-session cookie minted from the durable credential secret; read-only: navigate, expand, open the menu, open the two tabs)",
+    "log": "live-gui/final-live-drive.log",
+    "before": "{ collapsed: true, pills: 2 } — better-sidebar's panel starts COLLAPSED, but both mpd tabs are registered",
+    "sidebarPlusMenu": ["Files", "Changes", "Tasks", "Terminal", "Browser", "🐳 AgentTeams", "🤖 Workmates"],
+    "agentTeamsPanel": {
+      "cls": "aYQbCq_panel",
+      "head": "aYQbCq_panelHead",
+      "title": "AgentTeams activity",
+      "teamsBody": "aYQbCq_teams",
+      "visiblePixels": { "w": 559, "h": 915 },
+      "aliasVarResolved": "#e9ecf2"
+    },
+    "workmatesPanel": { "title": "Workmate library (~/.mpd/workmate)" },
+    "mpdWarnings": [],
+    "reading": "The panel is VISIBLE and sized, carries the adopted panel/panelHead/teams class names, shows the adopted 'AgentTeams activity' title, and the adopted `--dsw-alias-line-normal` custom property RESOLVES inside it — i.e. the sections are styled exactly like the removed floater. data-team-count is 0 because the team belongs to a different conversation: the page is correctly scoped to its own session."
+  },
+
+  "gates": {
+    "node scripts/build-mpd-client.mjs": { "exit": 0, "note": "242635 bytes" },
+    "bun test packages": { "exit": 0, "note": "218 tests, 0 fail" },
+    "bun run typecheck": { "exit": 0 },
+    "bun run test:qa": { "exit": 0, "note": "all self-tests passed" },
+    "node scripts/verify-vendor.mjs": { "exit": 0, "note": "PASS after the deliberate skills re-pin (362 files)" },
+    "node scripts/pack-mpd.mjs": { "exit": 0 },
+    "node skills/dsh-qa/scripts/agent-teams-sidebar.mjs": { "exit": 0, "note": "PASS, 16 checks incl. panelInteriorParity on the shipped artifact" },
+    "node skills/dsh-qa/scripts/web-client-adapt.mjs": { "exit": 0, "note": "PASS, real web boot + served-surface assertions" }
+  },
+
+  "howToSeeIt": [
+    "Refresh the page (the client bundle rev is a content hash, so a plain refresh picks up the new bytes).",
+    "Click the sidebar toggle (top-right) — the better-sidebar panel starts COLLAPSED; that default belongs to the sidebar plugin, not to this bundle.",
+    "Click `+` in the tab strip: the menu now ends with `🐳 AgentTeams` and `🤖 Workmates`.",
+    "The AgentTeams tab auto-opens by itself once when a NEW team appears in the conversation (plugin setting autoOpenOnTeamActivity, default ON)."
+  ],
+
+  "limits": [
+    "The live drive used a headless Chromium with a minted session cookie; the user's own browser session was not touched and no prompt was submitted.",
+    "Screenshots were taken during the drive but are not kept (the PNGs from the earlier round were removed together with the debug artifacts); the DOM assertions in final-live-drive.log carry the proof.",
+    "Every debug artifact created for this investigation was removed at Phase 9: .debug-journal.md, .debug-probe.mjs, .debug-browser-probe.mjs, .debug-live-*.{html,js,png}, .debug-web-client.js.bak, .debug-mutation/, and their .git/info/exclude lines."
+  ]
+}

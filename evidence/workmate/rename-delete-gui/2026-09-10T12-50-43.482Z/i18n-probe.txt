@@ -1,0 +1,56 @@
+added keys: 27 | zh/en key parity: true
+  zh mutate.renameTitle             重命名
+  zh mutate.renameLabel             新名称（仅限 [a-z0-9_-]）
+  zh mutate.renamePlaceholder       新名称
+  zh mutate.rename                  重命名
+  zh mutate.renameBusy              重命名中…
+  zh mutate.renameHint              目录名即标识，重命名会同步更新 meta、note 与索引。
+  zh mutate.deleteTitle             删除
+  zh mutate.delete                  删除
+  zh mutate.archiveHint             默认先归档：实例移入 ~/.mpd/workmate/.archive/，之后仍可恢复。
+  zh mutate.archive                 归档
+  zh mutate.archiveBusy             归档中…
+  zh mutate.purgeHint               彻底删除会永久移除该实例，无法恢复。
+  zh mutate.purge                   彻底删除
+  zh mutate.purgeConfirmLabel       输入名称以确认彻底删除
+  zh mutate.purgeConfirm            确认彻底删除
+  zh mutate.purgeBusy               删除中…
+  zh mutate.cancel                  取消
+  zh mutate.renamed                 已重命名 {from} → {to}
+  zh mutate.archived                已归档 {name}
+  zh mutate.purged                  已彻底删除 {name}
+  zh mutate.reason.invalidName      名称无效：只能使用小写字母、数字、下划线和连字符（[a-z0-9_-]）
+  zh mutate.reason.sameKey          新名称与当前名称相同
+  zh mutate.reason.confirmRequired  彻底删除需要输入完整名称确认
+  zh mutate.reason.unknown          找不到该 workmate：它可能已被删除或归档，请刷新列表。
+  zh mutate.reason.collision        该名称已被占用，请换一个名称。
+  zh mutate.reason.inUse            该 workmate 正在被使用，已拒绝操作；请先结束或归档这些团队： {blocking}
+  zh mutate.reason.failed           操作失败
+  en mutate.renameTitle             Rename
+  en mutate.renameLabel             New name ([a-z0-9_-] only)
+  en mutate.renamePlaceholder       new name
+  en mutate.rename                  Rename
+  en mutate.renameBusy              Renaming…
+  en mutate.renameHint              The directory name is the key: a rename also updates meta, note and index.
+  en mutate.deleteTitle             Delete
+  en mutate.delete                  Delete
+  en mutate.archiveHint             Archive-first by default: the instance moves to ~/.mpd/workmate/.archive/ and stays restorable.
+  en mutate.archive                 Archive
+  en mutate.archiveBusy             Archiving…
+  en mutate.purgeHint               Purge removes the instance permanently and cannot be undone.
+  en mutate.purge                   Purge
+  en mutate.purgeConfirmLabel       Type the name to confirm the purge
+  en mutate.purgeConfirm            Confirm purge
+  en mutate.purgeBusy               Deleting…
+  en mutate.cancel                  Cancel
+  en mutate.renamed                 Renamed {from} → {to}
+  en mutate.archived                Archived {name}
+  en mutate.purged                  Purged {name}
+  en mutate.reason.invalidName      Invalid name: use lower-case letters, digits, underscores or hyphens ([a-z0-9_-])
+  en mutate.reason.sameKey          The new name equals the current name
+  en mutate.reason.confirmRequired  A purge must be confirmed with the exact name
+  en mutate.reason.unknown          No such workmate: it may already be deleted or archived — refresh the list.
+  en mutate.reason.collision        That name is already taken — pick another one.
+  en mutate.reason.inUse            Refused: the workmate is in use. Finish or archive these teams first: {blocking}
+  en mutate.reason.failed           The operation failed
+UI markers in the committed client.js: true,true,true,true,true,true

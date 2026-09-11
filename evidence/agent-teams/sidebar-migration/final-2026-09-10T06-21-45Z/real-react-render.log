@@ -1,0 +1,333 @@
+adopted bridge exports: TeamSection=true ACTIVITY_PANEL_CSS=true zh=true en=true
+style tags injected at eval: 2
+react hooks shimmed for eager effects: yes
+
+=== rendered markup ===
+<aside class="aYQbCq_panel" style="position:relative;top:auto;left:auto;width:100%;height:100%;min-height:0;max-height:none;flex:1 1 auto;transform:none;will-change:auto;animation:none;border:none;border-radius:0;background:transparent;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none" data-agent-teams-page="true" data-agent-teams-activity="true" data-team-count="1" data-compact="true" aria-label="AgentTeams activity panel">
+<header class="aYQbCq_panelHead">
+<span class="aYQbCq_panelTitle">AgentTeams activity<span class="aYQbCq_panelDot" data-busy="true" aria-hidden="true">
+</span>
+</span>
+<span class="aYQbCq_panelControls">
+<button type="button" class="aYQbCq_iconButton" data-control="collapse" aria-label="Collapse activity panel" title="Collapse activity panel">
+<svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+<path d="M11.8486 5.5L11.4238 5.92383L8.69727 8.65137C8.44157 8.90706 8.21562 9.13382 8.01172 9.29785C7.79912 9.46883 7.55595 9.61756 7.25 9.66602C7.08435 9.69222 6.91565 9.69222 6.75 9.66602C6.44405 9.61756 6.20088 9.46883 5.98828 9.29785C5.78438 9.13382 5.55843 8.90706 5.30273 8.65137L2.57617 5.92383L2.15137 5.5L3 4.65137L3.42383 5.07617L6.15137 7.80273C6.42595 8.07732 6.59876 8.24849 6.74023 8.3623C6.87291 8.46904 6.92272 8.47813 6.9375 8.48047C6.97895 8.48703 7.02105 8.48703 7.0625 8.48047C7.07728 8.47813 7.12709 8.46904 7.25977 8.3623C7.40124 8.24849 7.57405 8.07732 7.84863 7.80273L10.5762 5.07617L11 4.65137L11.8486 5.5Z" fill="currentColor">
+</path>
+</svg>
+</button>
+</span>
+</header>
+<div class="aYQbCq_teams">
+<section class="aYQbCq_team" data-team-id="alpha">
+<header class="aYQbCq_teamHead">
+<span class="aYQbCq_teamName" title="Alpha team">Alpha team</span>
+<span class="aYQbCq_teamStats">
+<span data-stat="members">2 members</span>
+<span data-stat="tasks">0/2 completed</span>
+<span data-stat="messages">4 messages</span>
+</span>
+<button type="button" class="aYQbCq_teamStopButton" aria-label="Stop team" title="Stop team">
+<svg width="16" height="16" viewBox="0 0 16 16" data-icon="stub">
+</svg>
+</button>
+</header>
+<section class="aYQbCq_delegationSection" aria-label="Captain delegation map" data-delegation-map="true">
+<div class="aYQbCq_captainNode">
+<span class="aYQbCq_captainAvatar">
+<img class="aYQbCq_leadAvatar" src="/plugins/dsh-agent-teams/assets/team-lead-v2.png" alt="" aria-hidden="true"/>
+</span>
+<span class="aYQbCq_captainInfo">
+<span class="aYQbCq_captainLine">
+<span class="aYQbCq_captainName">Captain</span>
+<span class="aYQbCq_captainRole">Break down · Delegate · Synthesize</span>
+</span>
+<span class="aYQbCq_captainSummary">Assigned 2 tasks to 2 members</span>
+</span>
+<span class="aYQbCq_captainState" data-busy="true">
+<svg class="aYQbCq_workGlyph" data-active="true" width="11" height="11" viewBox="0 0 11 11" fill="currentColor" aria-hidden="true">
+<rect x="0" y="0" width="2.6" height="2.6" rx=".6" style="animation-delay:0s">
+</rect>
+<rect x="4.2" y="0" width="2.6" height="2.6" rx=".6" style="animation-delay:0.15s">
+</rect>
+<rect x="8.4" y="0" width="2.6" height="2.6" rx=".6" style="animation-delay:0.3s">
+</rect>
+<rect x="0" y="4.2" width="2.6" height="2.6" rx=".6" style="animation-delay:0.44999999999999996s">
+</rect>
+<rect x="4.2" y="4.2" width="2.6" height="2.6" rx=".6" style="animation-delay:0.6s">
+</rect>
+<rect x="8.4" y="4.2" width="2.6" height="2.6" rx=".6" style="animation-delay:0.75s">
+</rect>
+</svg>1 active</span>
+</div>
+<section class="aYQbCq_progressOverview" aria-label="Overall team progress" data-progress-summary="true">
+<span class="aYQbCq_progressTitle">Overall progress</span>
+<span class="aYQbCq_progressSegments" aria-hidden="true">
+<span data-state="running">
+</span>
+<span data-state="open">
+</span>
+</span>
+<span class="aYQbCq_progressLegend">
+<span data-state="running">■ In progress 1</span>
+<span data-state="blocked">■ Waiting 0</span>
+<span data-state="completed">■ Delivered 0</span>
+</span>
+<span class="aYQbCq_progressSummary" data-state="running">
+<span class="aYQbCq_progressSummaryDot">
+</span>
+<span>t1 in progress</span>
+</span>
+</section>
+<button type="button" class="aYQbCq_membersToggle" aria-expanded="true" data-members-toggle="true">
+<span>
+<svg class="aYQbCq_chevron" data-open="true" width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+<path d="M3.5 2l3 3-3 3">
+</path>
+</svg>Members 2</span>
+<span>Collapse</span>
+</button>
+<div class="aYQbCq_delegationTree">
+<div class="aYQbCq_memberBlock" data-activity="working">
+<span class="aYQbCq_memberBranch" aria-hidden="true">
+<span>
+</span>
+</span>
+<button type="button" class="aYQbCq_memberRow" data-activity="working">
+<span class="aYQbCq_memberAvatar" data-unread="false">
+<img class="aYQbCq_memberArt" src="/plugins/dsh-agent-teams/assets/member-engineer-v2.png" alt="" aria-hidden="true"/>
+<img class="aYQbCq_stateArt" data-activity="working" src="/plugins/dsh-agent-teams/assets/action-working-v2.png" alt="" aria-hidden="true"/>
+</span>
+<span class="aYQbCq_memberInfo">
+<span class="aYQbCq_memberLine">
+<span class="aYQbCq_memberName">senior-eng</span>
+<span class="aYQbCq_memberRole">engineer</span>
+<span class="aYQbCq_memberState" data-activity="working">
+<svg class="aYQbCq_workGlyph" data-active="true" width="11" height="11" viewBox="0 0 11 11" fill="currentColor" aria-hidden="true">
+<rect x="0" y="0" width="2.6" height="2.6" rx=".6" style="animation-delay:0s">
+</rect>
+<rect x="4.2" y="0" width="2.6" height="2.6" rx=".6" style="animation-delay:0.15s">
+</rect>
+<rect x="8.4" y="0" width="2.6" height="2.6" rx=".6" style="animation-delay:0.3s">
+</rect>
+<rect x="0" y="4.2" width="2.6" height="2.6" rx=".6" style="animation-delay:0.44999999999999996s">
+</rect>
+<rect x="4.2" y="4.2" width="2.6" height="2.6" rx=".6" style="animation-delay:0.6s">
+</rect>
+<rect x="8.4" y="4.2" width="2.6" height="2.6" rx=".6" style="animation-delay:0.75s">
+</rect>
+</svg>Working</span>
+</span>
+<span class="aYQbCq_memberStatusLine">Working on t1</span>
+</span>
+<span class="aYQbCq_memberCount">1/2</span>
+</button>
+<div class="aYQbCq_assignmentLine">
+<span class="aYQbCq_assignmentLabel">Captain assigned</span>
+<span class="aYQbCq_assignmentTasks">
+<span class="aYQbCq_assignmentChip" data-state="running" title="t1 · build the page · implementation">t1</span>
+</span>
+</div>
+</div>
+<div class="aYQbCq_memberBlock" data-activity="idle">
+<span class="aYQbCq_memberBranch" aria-hidden="true">
+<span>
+</span>
+</span>
+<button type="button" class="aYQbCq_memberRow" data-activity="idle">
+<span class="aYQbCq_memberAvatar" data-unread="false">
+<img class="aYQbCq_memberArt" src="/plugins/dsh-agent-teams/assets/member-security-v2.png" alt="" aria-hidden="true"/>
+<img class="aYQbCq_stateArt" data-activity="idle" src="/plugins/dsh-agent-teams/assets/action-sleeping-v2.png" alt="" aria-hidden="true"/>
+</span>
+<span class="aYQbCq_memberInfo">
+<span class="aYQbCq_memberLine">
+<span class="aYQbCq_memberName">reviewer</span>
+<span class="aYQbCq_memberRole">reviewer</span>
+<span class="aYQbCq_memberState" data-activity="idle">
+<svg class="aYQbCq_workGlyph" data-active="false" width="11" height="11" viewBox="0 0 11 11" fill="currentColor" aria-hidden="true">
+<rect x="0" y="0" width="2.6" height="2.6" rx=".6" style="animation-delay:0s">
+</rect>
+<rect x="4.2" y="0" width="2.6" height="2.6" rx=".6" style="animation-delay:0.15s">
+</rect>
+<rect x="8.4" y="0" width="2.6" height="2.6" rx=".6" style="animation-delay:0.3s">
+</rect>
+<rect x="0" y="4.2" width="2.6" height="2.6" rx=".6" style="animation-delay:0.44999999999999996s">
+</rect>
+<rect x="4.2" y="4.2" width="2.6" height="2.6" rx=".6" style="animation-delay:0.6s">
+</rect>
+<rect x="8.4" y="4.2" width="2.6" height="2.6" rx=".6" style="animation-delay:0.75s">
+</rect>
+</svg>Pending</span>
+</span>
+<span class="aYQbCq_memberStatusLine">Waiting for the captain to assign work</span>
+</span>
+<span class="aYQbCq_memberCount">0/0</span>
+</button>
+<div class="aYQbCq_assignmentLine">
+<span class="aYQbCq_assignmentLabel">Captain assigned</span>
+<span class="aYQbCq_assignmentTasks">
+<span class="aYQbCq_assignmentChip" data-state="open" title="t2 · review it · review">t2</span>
+</span>
+</div>
+</div>
+</div>
+</section>
+<section class="aYQbCq_dependencySection" aria-label="Task dependency chain" data-dependency-map="true">
+<header class="aYQbCq_sectionHead">
+<button type="button" class="aYQbCq_sectionToggleTitle" aria-expanded="true">
+<svg class="aYQbCq_chevron" data-open="true" width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+<path d="M3.5 2l3 3-3 3">
+</path>
+</svg>
+<svg width="16" height="16" viewBox="0 0 16 16" data-icon="stub">
+</svg> Task dependencies</button>
+<span class="aYQbCq_sectionHint">Hover to highlight dependencies · Click to pin</span>
+</header>
+<div class="aYQbCq_dagViewport">
+<div class="aYQbCq_dagCanvas" data-layout="dependency" style="width:92px;height:68px">
+<svg class="aYQbCq_dagEdges" width="92" height="68" aria-hidden="true">
+<path d="M92 15C106 15,-14 53,0 53" data-active="false" data-dimmed="false">
+</path>
+</svg>
+<button type="button" class="aYQbCq_dagNode" style="left:0;top:0;width:92px;height:30px" data-task-id="t1" data-state="running" data-focused="false" data-dimmed="false" aria-pressed="false" title="t1 · build the page · implementation">
+<span class="aYQbCq_dagNodeHead">
+<span class="aYQbCq_dagNodeDot">
+</span>t1</span>
+<span class="aYQbCq_dagNodeLabel">build the page</span>
+<span class="aYQbCq_dagRunningState" aria-label="Running">
+<svg class="aYQbCq_workGlyph" data-active="true" width="11" height="11" viewBox="0 0 11 11" fill="currentColor" aria-hidden="true">
+<rect x="0" y="0" width="2.6" height="2.6" rx=".6" style="animation-delay:0s">
+</rect>
+<rect x="4.2" y="0" width="2.6" height="2.6" rx=".6" style="animation-delay:0.15s">
+</rect>
+<rect x="8.4" y="0" width="2.6" height="2.6" rx=".6" style="animation-delay:0.3s">
+</rect>
+<rect x="0" y="4.2" width="2.6" height="2.6" rx=".6" style="animation-delay:0.44999999999999996s">
+</rect>
+<rect x="4.2" y="4.2" width="2.6" height="2.6" rx=".6" style="animation-delay:0.6s">
+</rect>
+<rect x="8.4" y="4.2" width="2.6" height="2.6" rx=".6" style="animation-delay:0.75s">
+</rect>
+</svg>
+</span>
+</button>
+<button type="button" class="aYQbCq_dagNode" style="left:0;top:38px;width:92px;height:30px" data-task-id="t2" data-state="open" data-focused="false" data-dimmed="false" aria-pressed="false" title="t2 · review it · review">
+<span class="aYQbCq_dagNodeHead">
+<span class="aYQbCq_dagNodeDot">
+</span>t2</span>
+<span class="aYQbCq_dagNodeLabel">review it</span>
+</button>
+</div>
+</div>
+<section class="aYQbCq_taskDetail" data-task-detail="t1">
+<span class="aYQbCq_taskDetailHead">
+<span class="aYQbCq_taskDetailId">t1</span>
+<span class="aYQbCq_taskDetailSubject" title="build the page">build the page</span>
+<span class="aYQbCq_taskDetailBadge" data-state="running">In progress</span>
+</span>
+<span class="aYQbCq_taskDetailLine">senior-eng · No prerequisites; ready to start</span>
+<span class="aYQbCq_taskDetailMeta">Unlocks t2 when complete</span>
+</section>
+</section>
+</section>
+<svg width="16" height="16" viewBox="0 0 16 16" data-icon="stub">
+</svg>
+<div data-team-id="old" data-historic="true">
+<span class="aYQbCq_archiveLabel">Ended · Archived history</span>
+<section class="aYQbCq_team" data-team-id="old">
+<header class="aYQbCq_teamHead">
+<span class="aYQbCq_teamName" title="Old team">Old team</span>
+<span class="aYQbCq_historicPill">Ended</span>
+<span class="aYQbCq_teamStats">
+<span data-stat="members">0 members</span>
+<span data-stat="tasks">0/0 completed</span>
+<span data-stat="messages">0 messages</span>
+</span>
+</header>
+<section class="aYQbCq_delegationSection" aria-label="Captain delegation map" data-delegation-map="true">
+<div class="aYQbCq_captainNode">
+<span class="aYQbCq_captainAvatar">
+<img class="aYQbCq_leadAvatar" src="/plugins/dsh-agent-teams/assets/team-lead-v2.png" alt="" aria-hidden="true"/>
+</span>
+<span class="aYQbCq_captainInfo">
+<span class="aYQbCq_captainLine">
+<span class="aYQbCq_captainName">Captain</span>
+<span class="aYQbCq_captainRole">Break down · Delegate · Synthesize</span>
+</span>
+<span class="aYQbCq_captainSummary">Assigned 0 tasks to 0 members</span>
+</span>
+<span class="aYQbCq_captainState" data-busy="false">
+<svg class="aYQbCq_workGlyph" data-active="false" width="11" height="11" viewBox="0 0 11 11" fill="currentColor" aria-hidden="true">
+<rect x="0" y="0" width="2.6" height="2.6" rx=".6" style="animation-delay:0s">
+</rect>
+<rect x="4.2" y="0" width="2.6" height="2.6" rx=".6" style="animation-delay:0.15s">
+</rect>
+<rect x="8.4" y="0" width="2.6" height="2.6" rx=".6" style="animation-delay:0.3s">
+</rect>
+<rect x="0" y="4.2" width="2.6" height="2.6" rx=".6" style="animation-delay:0.44999999999999996s">
+</rect>
+<rect x="4.2" y="4.2" width="2.6" height="2.6" rx=".6" style="animation-delay:0.6s">
+</rect>
+<rect x="8.4" y="4.2" width="2.6" height="2.6" rx=".6" style="animation-delay:0.75s">
+</rect>
+</svg>Waiting for reports</span>
+</div>
+<section class="aYQbCq_progressOverview" aria-label="Overall team progress" data-progress-summary="true">
+<span class="aYQbCq_progressTitle">Overall progress</span>
+<span class="aYQbCq_progressEmpty">
+</span>
+<span class="aYQbCq_progressLegend">
+<span data-state="running">■ In progress 0</span>
+<span data-state="blocked">■ Waiting 0</span>
+<span data-state="completed">■ Delivered 0</span>
+</span>
+<span class="aYQbCq_progressSummary" data-state="running">
+<span class="aYQbCq_progressSummaryDot">
+</span>
+<span>Waiting for the captain to break down the work</span>
+</span>
+</section>
+<button type="button" class="aYQbCq_membersToggle" aria-expanded="true" data-members-toggle="true">
+<span>
+<svg class="aYQbCq_chevron" data-open="true" width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+<path d="M3.5 2l3 3-3 3">
+</path>
+</svg>Members 0</span>
+<span>Collapse</span>
+</button>
+<div class="aYQbCq_delegationTree">
+<span class="aYQbCq_emptyHint">No members yet; waiting for the captain to assemble the team</span>
+</div>
+</section>
+</section>
+<svg width="16" height="16" viewBox="0 0 16 16" data-icon="stub">
+</svg>
+</div>
+</div>
+</aside>
+
+=== adopted class map (subset) ===
+{
+ "panel": "aYQbCq_panel",
+ "panelHead": "aYQbCq_panelHead",
+ "panelTitle": "aYQbCq_panelTitle",
+ "panelDot": "aYQbCq_panelDot",
+ "panelControls": "aYQbCq_panelControls",
+ "iconButton": "aYQbCq_iconButton",
+ "teams": "aYQbCq_teams",
+ "emptyHint": "aYQbCq_emptyHint"
+}
+
+=== parity checks ===
+PASS root carries adopted panel class
+PASS head carries adopted panelHead class
+PASS title carries adopted panelTitle class
+PASS busy dot rendered with data-busy
+PASS controls carry adopted panelControls class
+PASS collapse button carries adopted iconButton class
+PASS collapse glyph is the platform chevron path
+PASS body carries adopted teams class
+PASS archived wrapper mirrors the adopted class (absent upstream)
+PASS panel marker present
+PASS no absolute positioning inline
+
+ALL PARITY CHECKS PASS (real React render)

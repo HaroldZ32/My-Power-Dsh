@@ -1,0 +1,85 @@
+{
+  "task": "t5 — fix the read-only deny lists so read-only spawn works on the real harness",
+  "slug": "readonly-deny",
+  "status": "completed",
+  "rawCaseResult": "the case's own result.json content is preserved verbatim in case-result.json (same directory); output.log holds both full dsh transcripts",
+
+  "defect": {
+    "harnessMessage": "tools.restrict() names unknown global tool[s] \"…\"; known global tools: …",
+    "where": "packages/mpd-harness dsh-tools/lib/index.js:2802 — `restrict()` validates the WHOLE list against view(scope).restrictableNames and throws before creating anything",
+    "appliedAt": "dsh-subagent/lib/index.js:711 inside applyChildComposition (called from the child's setup, i.e. before the child runs)",
+    "effect": "with two unregistered names in READONLY_DENY, EVERY read-only spawn died and no child was ever created"
+  },
+
+  "fix": {
+    "rolesDenyList": ["write", "edit", "mpd_hashline_edit", "bash", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename"],
+    "removedOnly": "the two unregistered legacy editor names",
+    "deliberatelyKept": "bash (a shell can write files; read/glob/grep stay available) and the three live-registered MCP write tools",
+    "forbiddenFixRespected": "no dsh.hasTool filtering — it reads the global tool view only and would silently un-guard write/edit/bash",
+    "distRebuilt": "packages/mpd-roles-plugin/dist/index.js rebuilt; the seven names verified there (the repo loads dist, not src)",
+    "testChanges": "the assertion that PINNED the two unregistered names now pins the seven live names, plus a guard on the list, a guard scanning src AND the built dist, and the roles/workmate parity guard (strict toEqual)"
+  },
+
+  "liveProof": {
+    "method": "a local OpenAI-shaped stub answers the PARENT model step with one mpd_role_spawn tool call, driving the child-composition path in a FRESH dsh process with a throwaway key — no provider credential exists in this deployment",
+    "positiveResult": {
+      "ok": true,
+      "evidence": "the parent was driven into one mpd_role_spawn; the CHILD then made its own model request carrying a small child system prompt (stub trace call #2, no tools array) and answered `probe-child-answered`, which is only reachable after the child was created",
+      "significance": "the child can only be created after the harness validates the restriction list, so a created, answering child proves the seven-name list was ACCEPTED",
+      "restrictErrorSeen": false,
+      "authFailed": false,
+      "missingCredentialSeen": false,
+      "exitCode": 0
+    },
+    "whyThisReplacedTheEarlierPlan": {
+      "inSessionCalls": "cannot prove the fix: plugin code is loaded at BOOT, so a running session keeps the pre-fix module in memory (captain's correction, contract §N2)",
+      "missingCredentialAsSignal": "REFUTED by measurement: authentication happens BEFORE the child is composed. With a dummy key the run dies at `AUTH: Authentication Fails` and mpd_role_spawn is never attempted (restrict error absent, spawn never reached). Therefore a credential error is NOT positive evidence that the list was accepted, and the captain's assumption on this point does not hold.",
+      "reinjectionToReproduce": "also measured and NOT reproduced: re-injecting the two unregistered names into a sandbox copy of the built plugin (confirmed loaded, and the filter was confirmed passed to spawnAgent) did NOT produce the refusal in the mpd-headless profile. Recorded as `reinjectionDiagnostic` in the case, not asserted, so the case never fakes certainty about a condition that does not hold here."
+    }
+  },
+
+  "gates": [
+    { "command": "bun test packages/mpd-roles-plugin", "status": "passed", "exitCode": 0, "evidence": "11 pass / 0 fail / 139 expect calls" },
+    { "command": "bun run typecheck", "status": "passed", "exitCode": 0 },
+    { "command": "node scripts/verify-vendor.mjs", "status": "passed", "exitCode": 0, "evidence": "commit/version/stats + all assets OK; the skills fingerprint refresh (363→364 files, treeSha) is required because the new QA case grows the corpus and is computed with the gate's own LF-normalising algorithm" },
+    { "command": "node skills/dsh-qa/scripts/readonly-deny.mjs --self-test", "status": "passed", "exitCode": 0, "evidence": "23 offline checks" },
+    { "command": "node skills/dsh-qa/scripts/readonly-deny.mjs", "status": "passed", "exitCode": 0, "evidence": "positive lane green (child created + answered, no refusal), isolation green (real ~/.mpd/workmate bytes unchanged)" },
+    { "command": "isolated DSH_HOME boot: dsh --profile mpd-headless --dump-config", "status": "passed", "exitCode": 0, "evidence": "composes mpd-roles, mpd-workmate, mpd-hashline, mcp-astgrep, mcp-lsp" }
+  ],
+
+  "offlineRegistryProof": {
+    "why": "the harness validates against the tools the agent plane composes, so the reasoning is executable",
+    "facts": [
+      "@deepseek-ai/dsh-tool-str-replace-editor ships in the harness closure and its row is composed into the profile, yet it is absent from every preset — a patch row is not proof of runtime registration",
+      "apply_patch has no package anywhere in the harness runtime closure",
+      "the seven retained names map to composed sources: tool-bash→bash, tool-fs→write/edit, mpd-hashline→mpd_hashline_edit, mcp-astgrep→rewrite/scan, mcp-lsp→rename"
+    ]
+  },
+
+  "knownBlockerForOthers": {
+    "what": "packages/mpd-workmate-plugin/src/index.ts:664 AND its rebuilt dist use `archived: { type: [\"string\", \"null\"] }`; this harness rejects schema type arrays, so the whole plugin tree fails to load (`JsonSchemaError` → `dsh: plugin tree failed to load`) and NO profile that mounts that row can boot",
+    "owner": "t3 (captain has it as P1)",
+    "measurementNote": "`dsh --dump-config` still reports exit 0 for such a profile: dumping composes rows without executing plugin code, so it is NOT a health signal. My case neutralises this row in its sandbox copy so an unrelated in-flight defect cannot mask the measurement.",
+    "proofOfMechanism": "pointing the mpd-roles row at a sandbox copy that throws proves row repointing is honoured (`failed to import loader entry mpd-roles … PROBE-COPY-LOADED`)"
+  },
+
+  "isolation": {
+    "assertion": "the real ~/.mpd/workmate bytes are unchanged across the run (name+size+mtime fingerprint before/after), not that the directory is absent — it legitimately pre-exists",
+    "sandboxEdits": "only the sandbox's own cordis.patch.yml and files under the sandbox HOME; the live packages are never modified",
+    "result": "passed"
+  },
+
+  "baseline": {
+    "head": "f697088 with 33 pre-existing dirty entries at claim time — never committed, stashed, reverted or tidied",
+    "myDelta": [
+      "packages/mpd-roles-plugin/src/index.ts",
+      "packages/mpd-roles-plugin/dist/index.js",
+      "packages/mpd-roles-plugin/test/roles.test.ts",
+      "skills/dsh-qa/scripts/readonly-deny.mjs",
+      "skills/dsh-qa/SKILL.md",
+      "AGENTS.md",
+      "VENDOR_LOCK.json",
+      "evidence/fix/readonly-deny/**"
+    ]
+  }
+}

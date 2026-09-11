@@ -138,7 +138,7 @@ function writeManifest() {
       client: { inject: [], platform: "web" }
     },
     // The adopted agent-teams plugin (MIT provenance, upstream @nanmicoder/
-    // dsh-agent-teams 0.1.14) is FIRST-CLASS MAIN CODE under
+    // dsh-agent-teams 0.1.16-rc.3-mpd) is FIRST-CLASS MAIN CODE under
     // packages/mpd-agent-teams-plugin and is copied wholesale into the bundle
     // (lib + _deps + assets), loaded through the exports map above. A plain
     // `dependencies` entry is NOT enough: pnpm (the engine behind `dsh plugin add`)

@@ -1,0 +1,306 @@
+{
+  "ok": false,
+  "slug": "rename-delete-verify/focused",
+  "mode": "real-boot+probe2",
+  "sandbox": "/tmp/mpd-t6-focus-y35Wtu",
+  "userHome": "/tmp/mpd-t6-focus-y35Wtu/user-home",
+  "dshExit": 0,
+  "total": 22,
+  "passed": 21,
+  "failed": 1,
+  "checks": [
+    {
+      "id": "probe2.executed",
+      "ok": true,
+      "detail": "RESULT found"
+    },
+    {
+      "id": "FIX.rename-tool-output-accepted",
+      "ok": true,
+      "detail": "{\"id\":\"rename.raw\",\"ok\":true,\"value\":{\"ok\":true,\"name\":\"probe-b\",\"from\":\"probe-a\",\"renamedFrom\":[\"probe-a\"]}}"
+    },
+    {
+      "id": "FIX.delete-archive-tool-output-accepted",
+      "ok": true,
+      "detail": "{\"id\":\"delete.archive.raw\",\"ok\":true,\"value\":{\"ok\":true,\"name\":\"probe-b\",\"archived\":\"/tmp/mpd-t6-focus-y35Wtu/user-home/.mpd/workmate/.archive/probe-b-2026-09-10T141359Z\",\"purged\":false}}"
+    },
+    {
+      "id": "FIX.delete-purge-tool-output-accepted",
+      "ok": true,
+      "detail": "{\"id\":\"delete.purge.raw\",\"ok\":true,\"value\":{\"ok\":true,\"name\":\"probe-c\",\"archived\":null,\"purged\":true}}"
+    },
+    {
+      "id": "FIX.no-invalid-output-error-anywhere",
+      "ok": true,
+      "detail": "{}"
+    },
+    {
+      "id": "FIX.rename-tool-returns-ok-and-name",
+      "ok": true,
+      "detail": "{\"ok\":true,\"name\":\"probe-b\",\"from\":\"probe-a\",\"renamedFrom\":[\"probe-a\"]}"
+    },
+    {
+      "id": "FIX.delete-tool-returns-ok-and-purged",
+      "ok": true,
+      "detail": "{\"ok\":true,\"name\":\"probe-c\",\"archived\":null,\"purged\":true}"
+    },
+    {
+      "id": "control.init-tool-accepted",
+      "ok": true,
+      "detail": "{\"id\":\"init\",\"ok\":true,\"value\":{\"name\":\"probe-a\",\"baseId\":\"hephaestus\",\"baseName\":\"Deep Worker\",\"readonly\":false,\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"path\":\"/tmp/mpd-t6-focus-y35Wtu/user-home/.mpd/workmate/probe-a\",\"note\":\"t6 probe2 fixture\"}}"
+    },
+    {
+      "id": "control.reflect-tool-accepted",
+      "ok": true,
+      "detail": "{\"name\":\"probe-b\",\"updated\":true,\"uses\":1,\"personaChars\":1996,\"memoryChars\":60,\"noteChars\":114}"
+    },
+    {
+      "id": "hazard.rename-mutation-applied",
+      "ok": true,
+      "detail": "{\"id\":\"service.get.after-rename\",\"name\":\"probe-b\",\"uses\":0,\"createdAt\":\"2026-09-10T14:13:59.179Z\",\"renamedFrom\":[\"probe-a\"],\"oldKey\":null}"
+    },
+    {
+      "id": "hazard.delete-archive-applied",
+      "ok": true,
+      "detail": "{\"dir\":false,\"archive\":[\"probe-b-2026-09-10T141359Z\"]}"
+    },
+    {
+      "id": "hazard.purge-applied",
+      "ok": true,
+      "detail": "{\"present\":false}"
+    },
+    {
+      "id": "rename preserves uses (tool path)",
+      "ok": true,
+      "detail": "{\"before\":0,\"after\":0}"
+    },
+    {
+      "id": "rename preserves createdAt (tool path)",
+      "ok": true,
+      "detail": "{\"before\":\"2026-09-10T14:13:59.179Z\",\"after\":\"2026-09-10T14:13:59.179Z\"}"
+    },
+    {
+      "id": "A4 renamedFrom survives reflect (tool path)",
+      "ok": true,
+      "detail": "{\"id\":\"service.get.after-reflect\",\"name\":\"probe-b\",\"uses\":1,\"createdAt\":\"2026-09-10T14:13:59.179Z\",\"renamedFrom\":[\"probe-a\"]}"
+    },
+    {
+      "id": "service.get exposes rename history",
+      "ok": true,
+      "detail": "{\"keys\":[\"id\",\"name\",\"uses\",\"createdAt\",\"renamedFrom\"]}"
+    },
+    {
+      "id": "confirm-required refusal via tool",
+      "ok": true,
+      "detail": "mpd_workmate: purging \"probe-c\" requires confirm to equal the name exactly"
+    },
+    {
+      "id": "deny.ab-inconclusive (recorded, never a pass)",
+      "ok": true,
+      "detail": "{\"A\":\"Cannot read properties of undefined (reading 'aborted')\",\"B\":\"Cannot read properties of undefined (reading 'aborted')\",\"C\":\"Cannot read properties of undefined (reading 'aborted')\",\"D\":\"Cannot read properties of undefined (reading 'aborted')\"}"
+    },
+    {
+      "id": "deny.lists-are-identical-seven",
+      "ok": true,
+      "detail": "{\"id\":\"deny.lists\",\"roles\":[\"write\",\"edit\",\"mpd_hashline_edit\",\"bash\",\"mcp__ast_grep__rewrite\",\"mcp__ast_grep__scan\",\"mcp__lsp__rename\"],\"workmate\":[\"write\",\"edit\",\"mpd_hashline_edit\",\"bash\",\"mcp__ast_grep__rewrite\",\"mcp__ast_grep__scan\",\"mcp__lsp__rename\"]}"
+    },
+    {
+      "id": "deny.all-seven-names-are-live-registered",
+      "ok": true,
+      "detail": "{\"write\":true,\"edit\":true,\"mpd_hashline_edit\":true,\"bash\":true,\"mcp__ast_grep__rewrite\":true,\"mcp__ast_grep__scan\":true,\"mcp__lsp__rename\":true}"
+    },
+    {
+      "id": "deny.both-dead-names-are-unregistered",
+      "ok": false,
+      "detail": "{\"str_replace_editor\":true,\"apply_patch\":false}"
+    },
+    {
+      "id": "deny.read-tools-not-denied",
+      "ok": true,
+      "detail": "{\"read\":true,\"glob\":true,\"grep\":true}"
+    }
+  ],
+  "probeResult": {
+    "steps": [
+      {
+        "id": "init",
+        "ok": true,
+        "value": {
+          "name": "probe-a",
+          "baseId": "hephaestus",
+          "baseName": "Deep Worker",
+          "readonly": false,
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "path": "/tmp/mpd-t6-focus-y35Wtu/user-home/.mpd/workmate/probe-a",
+          "note": "t6 probe2 fixture"
+        }
+      },
+      {
+        "id": "service.get.after-init",
+        "keys": [
+          "name",
+          "baseId",
+          "baseName",
+          "description",
+          "provider",
+          "model",
+          "readonly",
+          "createdAt",
+          "updatedAt",
+          "uses",
+          "lastTask",
+          "renamedFrom",
+          "note"
+        ],
+        "name": "probe-a",
+        "uses": 0,
+        "createdAt": "2026-09-10T14:13:59.179Z",
+        "renamedFrom": []
+      },
+      {
+        "id": "rename.raw",
+        "ok": true,
+        "value": {
+          "ok": true,
+          "name": "probe-b",
+          "from": "probe-a",
+          "renamedFrom": [
+            "probe-a"
+          ]
+        }
+      },
+      {
+        "id": "service.get.after-rename",
+        "name": "probe-b",
+        "uses": 0,
+        "createdAt": "2026-09-10T14:13:59.179Z",
+        "renamedFrom": [
+          "probe-a"
+        ],
+        "oldKey": null
+      },
+      {
+        "id": "reflect.raw",
+        "ok": true,
+        "value": {
+          "name": "probe-b",
+          "updated": true,
+          "uses": 1,
+          "personaChars": 1996,
+          "memoryChars": 60,
+          "noteChars": 114
+        }
+      },
+      {
+        "id": "service.get.after-reflect",
+        "name": "probe-b",
+        "uses": 1,
+        "createdAt": "2026-09-10T14:13:59.179Z",
+        "renamedFrom": [
+          "probe-a"
+        ]
+      },
+      {
+        "id": "delete.archive.raw",
+        "ok": true,
+        "value": {
+          "ok": true,
+          "name": "probe-b",
+          "archived": "/tmp/mpd-t6-focus-y35Wtu/user-home/.mpd/workmate/.archive/probe-b-2026-09-10T141359Z",
+          "purged": false
+        }
+      },
+      {
+        "id": "init2",
+        "ok": true,
+        "value": {
+          "name": "probe-c",
+          "baseId": "hephaestus",
+          "baseName": "Deep Worker",
+          "readonly": false,
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "path": "/tmp/mpd-t6-focus-y35Wtu/user-home/.mpd/workmate/probe-c",
+          "note": "purge fixture"
+        }
+      },
+      {
+        "id": "delete.purge.raw",
+        "ok": true,
+        "value": {
+          "ok": true,
+          "name": "probe-c",
+          "archived": null,
+          "purged": true
+        }
+      },
+      {
+        "id": "delete.confirm-missing.raw",
+        "ok": false,
+        "error": "mpd_workmate: purging \"probe-c\" requires confirm to equal the name exactly"
+      },
+      {
+        "id": "deny.lists",
+        "roles": [
+          "write",
+          "edit",
+          "mpd_hashline_edit",
+          "bash",
+          "mcp__ast_grep__rewrite",
+          "mcp__ast_grep__scan",
+          "mcp__lsp__rename"
+        ],
+        "workmate": [
+          "write",
+          "edit",
+          "mpd_hashline_edit",
+          "bash",
+          "mcp__ast_grep__rewrite",
+          "mcp__ast_grep__scan",
+          "mcp__lsp__rename"
+        ]
+      },
+      {
+        "id": "deny.registry-inclusion",
+        "live": {
+          "write": true,
+          "edit": true,
+          "mpd_hashline_edit": true,
+          "bash": true,
+          "mcp__ast_grep__rewrite": true,
+          "mcp__ast_grep__scan": true,
+          "mcp__lsp__rename": true
+        },
+        "dead": {
+          "str_replace_editor": true,
+          "apply_patch": false
+        },
+        "runCode": false,
+        "read": true,
+        "glob": true,
+        "grep": true
+      },
+      {
+        "id": "deny.A.roles-real",
+        "resolved": false,
+        "error": "Cannot read properties of undefined (reading 'aborted')"
+      },
+      {
+        "id": "deny.B.roles-plus-dead-name",
+        "resolved": false,
+        "error": "Cannot read properties of undefined (reading 'aborted')"
+      },
+      {
+        "id": "deny.C.workmate-real",
+        "resolved": false,
+        "error": "Cannot read properties of undefined (reading 'aborted')"
+      },
+      {
+        "id": "deny.D.workmate-plus-dead-name",
+        "resolved": false,
+        "error": "Cannot read properties of undefined (reading 'aborted')"
+      }
+    ]
+  }
+}

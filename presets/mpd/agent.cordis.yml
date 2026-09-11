@@ -6,7 +6,14 @@
 #  3) the OMO-origin specialists are NOT presets anymore: they are specialist
 #     subagents (mpd-roles-plugin, mpd_role_spawn) and teammate instantiation
 #     templates for the adopted dsh-agent-teams plugin (normal-named `mpd`
-#     roster profile; reuse its architecture + Web GUI for team work).
+#     roster profile; reuse its architecture + Web GUI for team work);
+#  4) ROW SET = the shipped `standard` preset's. The harness moves capabilities
+#     between the host plane and the preset plane between releases (the Web
+#     overlay disables the host `tool-goal`/`command-goal` rows, and `present`
+#     only exists from 0.1.5-alpha.2 on), so this preset is kept row-for-row in
+#     step with `standard` — a missing row is a missing capability for every mpd
+#     session. `skills/dsh-qa/scripts/preset-conformance.mjs` checks both the
+#     row set and every row config against the INSTALLED harness at gate time.
 #
 # This file is an AGENT-PLANE composition. The roster mounts it ONCE under a
 # standing scope; every session naming it joins by scope parentage, so the
@@ -29,10 +36,20 @@
 
 # The preset's own persona, shadowing the deployment default for this agent.
 # `{{model}}` and `{{cwd}}` resolve from the agent's own route and workspace.
+#
+# HARNESS CONTRACT: `dsh-persona` takes `prefix` (+ optional `suffix`), NOT the
+# single `text` key this row used through harness 0.1.2-rc.1 — that generation
+# registered one persona section. From 0.1.3-alpha.2 on the row is split into
+# the deployment persona prefix/suffix sections and `prefix` is REQUIRED, so a
+# `text:` row does not merely lose its persona: the config fails validation and
+# `dsh-agent-presets` refuses to mount THIS WHOLE PRESET (`agent-preset/invalid:
+# failed to apply loader entry persona … $.prefix missing required value`), i.e.
+# every mpd session fails to start. The long persona text therefore lives in
+# `prefix` and `suffix` keeps its empty default.
 - id: persona
   name: '@deepseek-ai/dsh-persona'
   config:
-    text: >-
+    prefix: >-
       You are MPD, the main working agent of the my-power-dsh DeepSeek Harness bundle,
       powered by the {{model}} model. Your working directory is {{cwd}}.
 
@@ -107,7 +124,11 @@
       inside a team add a member whose name equals the workmate name (its persona/memory
       are injected automatically and it reflects back after each task). If no note matches
       well enough (matched=false), initialize a NEW workmate with mpd_workmate_init instead
-      of forcing a weak match.
+      of forcing a weak match. Keep the library tidy with mpd_workmate_rename and
+      mpd_workmate_delete: delete is ARCHIVE-FIRST (the instance moves to
+      ~/.mpd/workmate/.archive/ and only an explicit purge with confirm=<name> destroys
+      it), both are REFUSED while the workmate is in use by a member or a running spawn,
+      and names are ASCII-only [a-z0-9_-].
 
       SELF-ITERATION — drive the memory/reflection cycle yourself: after every meaningful
       milestone (a task completed, a decision made, a lesson learned) persist a concise
@@ -187,12 +208,19 @@
 
 # ── goals ───────────────────────────────────────────────────────────────────
 
-# Only the model-facing tool. The goal SERVICE, its session driver, and the
-# `/goal` command stay on the host plane: the Gateway serves the goal domain as
-# Remote endpoints whose receiver comes from a generated descriptor, so it
-# resolves `goals` on the host and an entry-local realm here would hide it. The
-# registry is keyed by session anyway, so one host instance serves every
-# session. What a preset chooses is whether its agent can call the goal tool.
+# The goal SERVICE and its session driver stay on the host plane: the Gateway
+# serves the goal domain as Remote endpoints whose receiver comes from a
+# generated descriptor, so it resolves `goals` on the host and an entry-local
+# realm here would hide it. The registry is keyed by session anyway, so one host
+# instance serves every session.
+#
+# Both MODEL-FACING rows are the preset's, exactly as in the shipped `standard`
+# preset: the web overlay disables the host `tool-goal` AND `command-goal` rows
+# ("Presets own the human command and model-facing tool"), so a preset that
+# mounts only `tool-goal` leaves its sessions without the human `/goal` command.
+- id: command-goal
+  name: '@deepseek-ai/dsh-command-goal'
+
 - id: tool-goal
   name: '@deepseek-ai/dsh-tool-goal'
 
@@ -349,3 +377,10 @@
   config:
     fetch: false
     searchTimeoutMs: 60000
+
+# Declare produced files to the user. The shipped `standard` preset gained this
+# row when `present` first shipped (harness 0.1.5-alpha.2) and the Web surface
+# renders a deliverables row under the closing assistant message from it; a
+# preset without it leaves its agent unable to declare an output at all.
+- id: present
+  name: '@deepseek-ai/dsh-tool-present'

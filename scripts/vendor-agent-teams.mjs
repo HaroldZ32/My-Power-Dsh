@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// vendor-agent-teams.mjs — materialize the @nanmicoder/dsh-agent-teams plugin (0.1.14)
+// vendor-agent-teams.mjs — materialize the server-side runtime closure of the adopted
+// @nanmicoder/dsh-agent-teams plugin (0.1.14 body + backported 0.1.16-rc.3 upstream deltas)
 // and its SERVER-side runtime closure into packages/mpd-agent-teams-plugin/_deps/ so
 // the adopted (first-class main-code) plugin is self-contained under any install layout.
 //
@@ -18,6 +19,7 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, write
 import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import process from "node:process"
+import { applyExportBridge } from "./patch-agent-teams-client.mjs"
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const VENDOR = join(repoRoot, "packages", "mpd-agent-teams-plugin")
@@ -113,6 +115,13 @@ function main() {
     if (f.endsWith("client.js") || f.endsWith("client.js.map")) continue
     rewriteFile(f)
   }
+  // The client bundle is excluded from the import rewrite above (it is loaded by the web
+  // app's own bundler), but mpd-owned client code composes its views/store/locales/CSS
+  // through the pinned additive export bridge. Re-apply it so a refresh of the adopted
+  // bundle can never silently ship an unbridged client.
+  const bridge = applyExportBridge({ write: true })
+  console.log("[vendor-agent-teams] client export bridge " + (bridge.status === "applied" ? "applied" : "already applied")
+    + " (" + bridge.symbols + " symbols, " + bridge.bytes + " bytes)")
   // report any residual bare imports (should be only the client bundle + type-only)
   const residual = walk(join(VENDOR, "lib")).concat(walk(DEPS)).filter((f) => !f.includes("client.js"))
     .map((f) => ({ f, m: readFileSync(f, "utf8").match(/(?:from|require\()\s*["']([^"'][^"']*?)["']/g) || [] }))

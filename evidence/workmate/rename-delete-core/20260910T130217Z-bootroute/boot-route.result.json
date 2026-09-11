@@ -1,0 +1,14 @@
+{
+  "probe": "real boot + HTTP route (dump-config cannot detect a loader-apply abort)",
+  "isolation": {
+    "HOME": "temp sandbox",
+    "DSH_HOME": "temp sandbox",
+    "credentials_copied_once": true
+  },
+  "install_exit": 0,
+  "loader_apply_errors": 0,
+  "get_list_status": "000000",
+  "post_rename_invalid_name_status": "000000",
+  "row_mounted_and_route_live": false,
+  "contract_d_reason_live": false
+}

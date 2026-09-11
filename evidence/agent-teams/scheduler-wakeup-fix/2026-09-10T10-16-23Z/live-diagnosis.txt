@@ -1,0 +1,135 @@
+# LIVE DIAGNOSIS - team "workmate-rename-delete" (captain session-f333e946-e284-414f-b043-65a349cbe480)
+# generated from the durable team record + the real session logs on this machine
+
+## 1. Durable task graph after the stall
+  t1  completed  assignee=Planner          attempt=1  deps=[]  Validate the preserved rename/delete contract against the real code and live harness
+  t2  completed  assignee=Researcher       attempt=1  deps=[]  Project traversal dossier: the workmate system in full bundle context
+  t3  pending    assignee=Senior Engineer  attempt=0  deps=[t1]  Implement workmate rename + delete core: tools, service, routes, safety, tests
+  t4  pending    assignee=Junior Engineer  attempt=0  deps=[t1]  Workmates sidebar tab: rename + delete controls (zh/en) and rebuilt client
+  t5  pending    assignee=Deep Worker      attempt=0  deps=[t1]  Fix read-only deny lists so read-only spawn works on the real harness
+  t6  pending    assignee=Reviewer         attempt=0  deps=[t3,t4,t5]  Independent verification: rename/delete end-to-end, negative cases, full gate sweep
+  t7  pending    assignee=Architect        attempt=0  deps=[t3]  Review: core rename/delete implementation (safety, identity, atomicity, races)
+  t8  pending    assignee=Plan Reviewer    attempt=0  deps=[t4]  Review: Workmates tab rename/delete UI, zh/en strings, rebuilt client
+  t9  pending    assignee=Senior Engineer  attempt=0  deps=[t5]  Review: read-only deny-list fix and its real-harness proof
+  t10  pending    assignee=Lead             attempt=0  deps=[t1,t3,t4,t5,t6]  Bilingual docs + QA assertion sync for workmate rename/delete
+  t11  pending    assignee=Lead             attempt=0  deps=[t1,t2,t6,t7,t8,t9,t10]  Integrate and report: rename/delete + read-only fix + docs as one coherent change
+
+  t1 (Planner) and t2 (Researcher) completed; t3/t4/t5 depend only on the completed t1
+  and stayed 'pending' with attempt=0: the scheduler never even created a claim for them.
+
+## 2. Member activity (real session logs): assignment prompts delivered vs not
+  Architect        turns=1  spawn-join-msg=true  SCHEDULER ASSIGNMENTS=0
+  Researcher       turns=1  spawn-join-msg=true  SCHEDULER ASSIGNMENTS=0
+  Planner          turns=1  spawn-join-msg=true  SCHEDULER ASSIGNMENTS=0
+  Explorer         turns=1  spawn-join-msg=true  SCHEDULER ASSIGNMENTS=0
+  Reviewer         turns=1  spawn-join-msg=true  SCHEDULER ASSIGNMENTS=0
+  Plan Reviewer    turns=1  spawn-join-msg=true  SCHEDULER ASSIGNMENTS=0
+  Vision Analyst   turns=1  spawn-join-msg=true  SCHEDULER ASSIGNMENTS=0
+  Lead             turns=1  spawn-join-msg=true  SCHEDULER ASSIGNMENTS=0
+  Deep Worker      turns=1  spawn-join-msg=true  SCHEDULER ASSIGNMENTS=0
+  Senior Engineer  turns=1  spawn-join-msg=true  SCHEDULER ASSIGNMENTS=0
+  Junior Engineer  turns=1  spawn-join-msg=true  SCHEDULER ASSIGNMENTS=0
+
+  Every member received the spawn prompt only. Planner/Researcher claimed t1/t2 by themselves
+  (the spawn prompt lists the assigned task count); no member ever received a scheduler
+  assignment, so the second batch could never start.
+
+## 3. Captain's own delivery attempts (agent_teams_send_message results)
+  [07:52:39Z] CALL agent_teams_status "{}"
+  [07:59:38Z] CALL agent_teams_status "{}"
+  [07:59:55Z] CALL agent_teams_status "{}"
+  [08:00:12Z] CALL agent_teams_status "{}"
+  [08:00:24Z] CALL agent_teams_status "{}"
+  [08:01:19Z] CALL agent_teams_status "{}"
+  [08:02:56Z] CALL agent_teams_status "{}"
+  [08:03:53Z] CALL agent_teams_send_message "{\"to\": \"Junior Engineer\", \"content\": \"Captain → Junior Engineer. Answer to your baseline question (the team went
+  [08:03:53Z]   -> Message 9d1e4c9a-8e5a-43fe-89c6-d38fb2cc772d captain → Junior Engineer delivered via mailbox.
+  [08:03:53Z] CALL agent_teams_send_message "{\"to\": \"Reviewer\", \"content\": \"Captain → Reviewer. Pre-task guidance for t18 (verification), so your evidence is
+  [08:03:53Z]   -> Message e43a4b8b-1f2e-423b-b273-434680572811 captain → Reviewer delivered via mailbox.
+  [08:04:00Z] CALL agent_teams_send_message "{\"content\": \"Captain → Lead. Pre-task guidance for t22 (docs/QA sync) and t23 (integration report).\\n\\n1) BASELINE
+  [08:04:00Z]   -> Message dddeb4e1-3192-4474-a346-fc9d33c61655 captain → Lead delivered via mailbox.
+  [08:09:20Z] CALL agent_teams_send_message "{\"content\": \"Captain → Deep Worker. CORRECTION to finding #1 of the t1 contract — this overrides it for t17. I verif
+  [08:09:20Z]   -> Message 84054ec1-1e21-4361-8504-6753906b0f3a captain → Deep Worker delivered via mailbox.
+  [08:09:20Z] CALL agent_teams_send_message "{\"content\": \"Captain → Senior Engineer. CORRECTION affecting t15 (workmate-side READONLY_DENY at packages/mpd-workma
+  [08:09:20Z]   -> Message f81cd919-6819-4540-aa53-029c1307b71b captain → Senior Engineer delivered via mailbox.
+  [08:09:28Z] CALL agent_teams_status "{}"
+  [08:30:24Z] CALL agent_teams_status "{}"
+  [08:30:42Z] CALL agent_teams_send_message "{\"content\": \"Captain → Researcher. You now own t2 (project traversal dossier), reassigned from Explorer whose attemp
+  [08:30:42Z]   -> Message 7df51eac-67d1-43fa-8fbf-f8a938a3a209 captain → Researcher delivered via mailbox.
+  [08:30:46Z] CALL agent_teams_status "{}"
+  [08:31:10Z] CALL agent_teams_status "{}"
+  [08:31:19Z] CALL agent_teams_send_message "{\"content\": \"Captain → Junior Engineer. ACTION NOW: claim t16 and execute it end-to-end in this turn.\\n\\nt16 (\\\"
+  [08:31:19Z]   -> Message ff733a06-091f-4004-a826-cc9bf412ba06 captain → Junior Engineer delivered via mailbox.
+  [08:31:23Z] CALL agent_teams_status "{}"
+  [08:31:36Z] CALL agent_teams_send_message "{\"content\": \"Captain → Senior Engineer. ACTION NOW: claim t15 and execute it end-to-end in this turn. Its dependency
+  [08:31:36Z]   -> Message d4397d1a-ab07-4ead-84f7-9b4d18a370c3 captain → Senior Engineer delivered via mailbox.
+  [08:31:36Z] CALL agent_teams_send_message "{\"content\": \"Captain → Deep Worker. ACTION NOW: claim t17 and execute it end-to-end in this turn. Its dependency t1 
+  [08:31:36Z]   -> Message 71c82425-72d1-44b2-81e6-4588009c7921 captain → Deep Worker delivered via mailbox.
+  [08:33:00Z] CALL agent_teams_status "{}"
+  [08:39:37Z] CALL agent_teams_status "{}"
+  [08:40:38Z] CALL agent_teams_send_message "{\"content\": \"Captain → Vision Analyst. Standing answer, so you do not need to ask again: there is NO image/screensho
+  [08:40:38Z]   -> Message 276bced0-955d-43fc-b7ab-1d56cec179d6 captain → Vision Analyst delivered via mailbox.
+  [08:40:38Z] CALL agent_teams_status "{}"
+  [08:42:07Z] CALL agent_teams_send_message "{\"content\": \"Captain → Deep Worker (t5 owner). Two things, both urgent for your fix.\\n\\n1) YOUR PINNING WAS RIGHT,
+  [08:42:07Z]   -> Message 4c4be68e-b9cc-46d1-8874-4184b8bdf779 captain → Deep Worker delivered via mailbox.
+  [08:42:07Z] CALL agent_teams_send_message "{\"content\": \"Captain → Senior Engineer (t3 owner, later t9 reviewer). Three things you need before you start; two of
+  [08:42:07Z]   -> Message ae820f99-b219-497c-b629-b8955aa1112b captain → Senior Engineer delivered via mailbox.
+  [08:42:16Z] CALL agent_teams_send_message "{\"content\": \"Captain → Junior Engineer (t4 owner). Your recon is confirmed and five review checkpoints are forwarded
+  [08:42:16Z]   -> Message 5f2fec41-29ac-4724-b1ff-f40b57af1a49 captain → Junior Engineer delivered via mailbox.
+  [08:45:14Z] CALL agent_teams_send_message "{\"content\": \"Captain → Senior Engineer (t3). The t1 validation landed and changed your scope in five concrete ways. 
+  [08:45:14Z]   -> Message 9460979c-995b-477e-a9c4-f86579dc2809 captain → Senior Engineer delivered via mailbox.
+  [08:45:14Z] CALL agent_teams_send_message "{\"content\": \"Captain → Deep Worker (t5). The t1 validator independently reproduced the defect live and confirmed you
+  [08:45:14Z]   -> Message 3a4dd15c-c2b0-4c23-aa01-1987d8c8feea captain → Deep Worker delivered via mailbox.
+  [08:45:24Z] CALL agent_teams_send_message "{\"content\": \"Captain → Reviewer (t6). Your pre-finding was correct and is now folded into the binding contract as se
+  [08:45:24Z]   -> Message 393ef907-08c7-4289-92ba-c12e2d1da862 captain → Reviewer delivered via mailbox.
+  [08:47:24Z] CALL agent_teams_send_message "{\"content\": \"Captain → Senior Engineer (t3). The t2 dossier landed and I have decided all five gaps it surfaced; the
+  [08:47:24Z]   -> Message 26953df1-d8b4-43a9-9d28-cf0f915703f3 captain → Senior Engineer delivered via mailbox.
+  [08:47:24Z] CALL agent_teams_send_message "{\"content\": \"Captain → Junior Engineer (t4). The t2 dossier found two hard blockers in your test path; both are now 
+  [08:47:24Z]   -> Message 31d0d16f-9495-467c-84f2-cb3c92428cc9 captain → Junior Engineer delivered via mailbox.
+  [08:47:29Z] CALL agent_teams_status "{}"
+
+  Every captain -> member message reports 'delivered via mailbox', i.e. deliverToMember
+  returned false. The mailbox records carry no deliveryClaimedAt/readAt afterwards:
+  deep-worker.jsonl: 2 message(s) still unclaimed/unread (never delivered)
+  junior-engineer.jsonl: 2 message(s) still unclaimed/unread (never delivered)
+  reviewer.jsonl: 1 message(s) still unclaimed/unread (never delivered)
+  senior-engineer.jsonl: 3 message(s) still unclaimed/unread (never delivered)
+  vision-analyst.jsonl: 1 message(s) still unclaimed/unread (never delivered)
+
+## 4. Host contract on THIS machine (dsh 0.1.2-rc.1)
+  installed @deepseek-ai/dsh-subagent service face (lib/typert.host.js) members:
+    - startContinuable
+    - sendMessage
+    - interrupt
+    - drainContinuableDescendants
+    - drainContinuableChildren
+    - listChildren
+    - listDescendants
+    - remoteExportList
+    - prompt
+    - interruptByParent
+    - registerProvider
+    - getProvider
+    - list
+    - start
+    - param
+    - dshScopeScan
+    - mode
+    - param
+    - mode
+    - param
+    - mode
+    - param
+    - dshScopeScan
+    - mode
+
+  followup method on the service: ABSENT
+  symbol queue: PRESENT (Symbol.for('dsh.subagent.queuePrompt'))
+  `Agent` interface method: followup(message: UserMessage): void  (an Agent method, not a service method)
+
+## 5. Root cause
+  lib/members.js#deliverToMember called ctx.subagents.followup(parent, childId, content, options) --
+  a method this Harness generation does not expose. It threw TypeError inside the catch,
+  returning false, so EVERY scheduler wakeup (task assignment AND captain guidance) was
+  dropped: the claim rolled back to pending, the member stayed idle, and the second batch
+  was never dispatched. The first batch ran only because the spawn prompt lists the tasks.

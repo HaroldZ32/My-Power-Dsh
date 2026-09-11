@@ -3695,18 +3695,619 @@ window.__ModuleLoader__.load({
 		//#endregion
 		exports.apply = apply;
 		exports.inject = inject;
+		//#region mpd-export-bridge (mpd-owned; re-applied by scripts/vendor-agent-teams.mjs)
+		// Additive re-exports only: mpd-owned client code composes the adopted views,
+		// the monitor store, the locale dictionaries and the panel CSS-module classes.
+		// Adopted behaviour is untouched (apply/inject and every registration stay as-is).
+		exports.TeamSection = TeamSection;
+		exports.historicCardTeam = historicCardTeam;
+		exports.memberArtUrl = memberArtUrl;
+		exports.LEAD_ART = LEAD_ART;
+		exports.ACTIVITY_PANEL_CSS = ActivityPanel_module_css_default;
+		exports.AGENT_TEAMS_LOCALE_NAMESPACE = AGENT_TEAMS_LOCALE_NAMESPACE;
+		exports.zh = zh;
+		exports.en = en;
+		exports.teamIsActive = teamIsActive;
+		exports.startActivityPolling = startActivityPolling;
+		exports.subscribeActivitySnapshots = subscribeActivitySnapshots;
+		exports.getActivitySnapshotsSnapshot = getActivitySnapshotsSnapshot;
+		exports.updateActivitySnapshots = updateActivitySnapshots;
+		exports.ACTIVITY_POLL_MS = ACTIVITY_POLL_MS;
+		exports.ACTIVITY_PROBE_MS = ACTIVITY_PROBE_MS;
+		exports.ACTIVITY_STATE_URL = ACTIVITY_STATE_URL;
+		exports.ACTIVITY_HALT_URL = ACTIVITY_HALT_URL;
+		//#endregion mpd-export-bridge
 		return module.exports;
 	}
 });
 
 //# sourceMappingURL=client.js.map
 
-// ==== @mpd-dsh/mpd bundled client: adopted agent-teams panel + workmate library ====
+// ==== @mpd-dsh/team-page: AgentTeams rendered inside a DSH-better-sidebar tab ====
+window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd AgentTeams sidebar page (factory body, inlined into the combined client.js by
+// scripts/build-mpd-client.mjs as the module id "@mpd-dsh/team-page").
+//
+// DSH-better-sidebar is the ONLY GUI surface for AgentTeams now: this page renders
+// everything the adopted in-conversation card and the top-right floating panel used to
+// render — the conversation's teams with members/live activity, task rows, the
+// dependency map, the stop-team control and the staged-plan approval editor — inside a
+// sidebar tab, for the tab's own conversation scope.
+//
+// VISUAL PARITY IS A REQUIREMENT, so the page reproduces the floater's own composition
+// instead of inventing a layout: the same `aside` root carrying the adopted
+// `panel`/`panelHead`/`panelTitle`/`panelDot`/`panelControls`/`iconButton`/`teams`/
+// `emptyHint`/`archivedWrap`/`archiveLabel` class names, the same header markup
+// (title + busy dot + collapse control) and the same TeamSections. Carrying `panel` is
+// not cosmetic: that class is where the adopted CSS declares the `--dsw-alias-*` custom
+// properties every team/member/task rule reads, so without it the sections render
+// unstyled. Only two things are NOT reproduced, both by decision: the window-manager
+// half (inline overrides below) and the historic-card branch — it was fed by the
+// removed in-conversation card's registry, so it is unreachable by construction.
+//
+// It deliberately does NOT render the adopted ActivityPanel component itself: that
+// component IS the window manager (it measures the shell overlay, writes the
+// conversation-column shift and drags/resizes itself), which is exactly what the
+// sidebar replaces. It composes the adopted VIEWS and CSS-module classes instead —
+// TeamSection / the monitor store / the locale dictionaries — all reached through the
+// additive export bridge (scripts/patch-agent-teams-client.mjs).
+//
+// Plain JS, React.createElement only: there is no JSX transform in this bundle.
+(require) => {
+  var module = { exports: {} };
+  var exports = module.exports;
+  Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+  let react = require("react");
+  const adopted = require("@nanmicoder/dsh-agent-teams");
+
+  const TEAM_TAB_ID = "mpd-agent-teams";
+  const TEAM_TAB_ORDER = 85;
+  const TEAM_LOCALE_NAMESPACE = "mpdAgentTeams";
+  const AUTO_OPEN_KEY = "autoOpenOnTeamActivity";
+  // Content seed: only a `path`/`url` seed makes the sidebar expand the collapsed panel
+  // and land the tab in sight (a type-only open never expands). The descriptor mints its
+  // own tab through createTab, so this marker is never written onto the tab.
+  const AUTO_OPEN_SEED_PATH = "team-activity";
+  /** Page-settle window: teams restored on page load must never auto-open the panel. */
+  const AUTO_OPEN_SETTLE_MS = 2500;
+
+  // Page-owned keys only. Everything the panel itself shows (title, empty hint,
+  // collapse, panel aria) resolves through the adopted dictionaries, so the sidebar page
+  // says exactly what the floater said.
+  const zh = {
+    "tab.title": "AgentTeams",
+    "page.error": "团队状态读取失败：{message}",
+    "page.unavailable": "团队视图不可用：{reason}",
+    "settings.autoOpen.title": "团队出现时自动打开",
+    "settings.autoOpen.desc": "本对话新建团队或有团队开始工作时，自动在侧栏打开 AgentTeams 页面。",
+  };
+  const en = {
+    "tab.title": "AgentTeams",
+    "page.error": "Failed to read team state: {message}",
+    "page.unavailable": "Team view unavailable: {reason}",
+    "settings.autoOpen.title": "Auto-open when a team appears",
+    "settings.autoOpen.desc": "Open the AgentTeams page in the sidebar when this conversation creates a team or a team starts working.",
+  };
+  /** Inline SVG path of the platform's `IconChevronDownOutline14` (see chevronDown14). */
+  const CHEVRON_DOWN_14_PATH = "M11.8486 5.5L11.4238 5.92383L8.69727 8.65137C8.44157 8.90706 8.21562 9.13382 8.01172 9.29785C7.79912 9.46883 7.55595 9.61756 7.25 9.66602C7.08435 9.69222 6.91565 9.69222 6.75 9.66602C6.44405 9.61756 6.20088 9.46883 5.98828 9.29785C5.78438 9.13382 5.55843 8.90706 5.30273 8.65137L2.57617 5.92383L2.15137 5.5L3 4.65137L3.42383 5.07617L6.15137 7.80273C6.42595 8.07732 6.59876 8.24849 6.74023 8.3623C6.87291 8.46904 6.92272 8.47813 6.9375 8.48047C6.97895 8.48703 7.02105 8.48703 7.0625 8.48047C7.07728 8.47813 7.12709 8.46904 7.25977 8.3623C7.40124 8.24849 7.57405 8.07732 7.84863 7.80273L10.5762 5.07617L11 4.65137L11.8486 5.5Z";
+
+  function interpolate(template, params) {
+    return String(template).replace(/\{(\w+)\}/g, (_match, key) =>
+      params && params[key] !== undefined ? String(params[key]) : "{" + key + "}");
+  }
+
+  /** The host's active locale, tolerating a minimal ctx (tests, older runtimes). */
+  function activeLocale(ctx) {
+    try {
+      const active = ctx && ctx.locale && ctx.locale.getSnapshot && ctx.locale.getSnapshot().active;
+      return active === "zh" ? "zh" : "en";
+    } catch {
+      return "en";
+    }
+  }
+
+  /**
+   * Translator for the page AND the adopted views it renders: our page keys plus the
+   * adopted dictionaries (which is what TeamSection/StagingPlanEditor look up).
+   */
+  function translatorFor(ctx) {
+    const locale = activeLocale(ctx);
+    const adoptedDict = (locale === "zh" ? adopted.zh : adopted.en) || {};
+    const ownDict = locale === "zh" ? zh : en;
+    return (key, params) => {
+      const value = ownDict[key] !== undefined ? ownDict[key] : adoptedDict[key];
+      return interpolate(value === undefined ? key : value, params);
+    };
+  }
+
+  // ── Shared team state (module-level singleton) ──────────────────────────────
+  // One polling controller for the whole client: the adopted startActivityPolling is
+  // NOT reference counted, so a second caller would double every request. The store is
+  // also what the tab badge reads — the badge runs on every tab-bar render, including
+  // while the sidebar is collapsed, so it must never fetch.
+  let store = { teams: [], archivedTeams: [], error: undefined, sessionId: undefined };
+  const storeListeners = new Set();
+  let pollController = null;
+  let pollSessionId = undefined;
+  let pollUnsubscribe = null;
+  // Auto-open bookkeeping: ids seen in a settled snapshot never auto-open (that is the
+  // restore pass), and an id only ever opens once.
+  let autoOpenArmed = false;
+  let autoOpenTimer = null;
+  const autoOpenSeen = new Set();
+  const autoOpenFired = new Set();
+
+  function publishSnapshot() {
+    const snapshot = adopted.getActivitySnapshotsSnapshot();
+    const next = {
+      ...store,
+      teams: Array.isArray(snapshot.teams) ? snapshot.teams : [],
+      archivedTeams: Array.isArray(snapshot.archivedTeams) ? snapshot.archivedTeams : [],
+      error: undefined,
+    };
+    store = next;
+    for (const listener of storeListeners) listener();
+  }
+
+  function subscribeStore(listener) {
+    storeListeners.add(listener);
+    return () => { storeListeners.delete(listener); };
+  }
+
+  function getStoreSnapshot() {
+    return store;
+  }
+
+  function stopPolling() {
+    if (pollController !== null) {
+      try { pollController.stop(); } catch { /* already stopped */ }
+      pollController = null;
+    }
+    if (pollUnsubscribe !== null) {
+      try { pollUnsubscribe(); } catch { /* already disposed */ }
+      pollUnsubscribe = null;
+    }
+    pollSessionId = undefined;
+  }
+
+  /**
+   * Point the single controller at one conversation. The adopted controller performs an
+   * immediate live+archive restore for a discovery session, then probes at a low
+   * cadence and upgrades to the live cadence once that session owns a team.
+   */
+  function ensurePolling(sessionId) {
+    const id = typeof sessionId === "string" ? sessionId.trim() : "";
+    if (id === "") return;
+    if (pollController !== null && pollSessionId === id) return;
+    stopPolling();
+    pollSessionId = id;
+    try {
+      pollUnsubscribe = adopted.subscribeActivitySnapshots(() => { publishSnapshot(); });
+      pollController = adopted.startActivityPolling([], { discoverySessionId: id });
+      store = { ...store, sessionId: id };
+      void pollController.firstTick.then(
+        () => { publishSnapshot(); armAutoOpen(); },
+        (error) => {
+          store = { ...store, error: String(error && error.message ? error.message : error) };
+          for (const listener of storeListeners) listener();
+        },
+      );
+    } catch (error) {
+      store = { ...store, error: String(error) };
+      for (const listener of storeListeners) listener();
+    }
+  }
+
+  /** After the settle window, the current team set becomes the restore baseline. */
+  function armAutoOpen(delayMs) {
+    if (autoOpenTimer !== null) return;
+    autoOpenTimer = setTimeout(() => {
+      autoOpenTimer = null;
+      for (const team of store.teams) autoOpenSeen.add(team.teamId);
+      autoOpenArmed = true;
+    }, delayMs === undefined ? AUTO_OPEN_SETTLE_MS : delayMs);
+    if (typeof autoOpenTimer === "object" && autoOpenTimer !== null && typeof autoOpenTimer.unref === "function") {
+      autoOpenTimer.unref();
+    }
+  }
+
+  /** The auto-open policy lives in the descriptor's own plugin settings (no default there). */
+  let autoOpenPolicyService = undefined;
+  function autoOpenEnabled() {
+    try {
+      const snapshot = autoOpenPolicyService && typeof autoOpenPolicyService.getSnapshot === "function"
+        ? autoOpenPolicyService.getSnapshot()
+        : undefined;
+      const prefs = snapshot ? snapshot.prefs : undefined;
+      const settings = prefs && prefs.pluginSettings ? prefs.pluginSettings[TEAM_TAB_ID] : undefined;
+      const value = settings ? settings[AUTO_OPEN_KEY] : undefined;
+      // The sidebar declares no default for plugin-owned keys: an unwritten key is ON.
+      return value === undefined ? true : value !== false;
+    } catch {
+      return true;
+    }
+  }
+
+  /** Open the tab once for a team that appeared after the restore baseline. */
+  function maybeAutoOpen() {
+    if (!autoOpenArmed || autoOpenPolicyService === undefined) return;
+    if (autoOpenEnabled() === false) return;
+    try {
+      if (autoOpenPolicyService.isTabEnabled && autoOpenPolicyService.isTabEnabled(TEAM_TAB_ID) === false) return;
+    } catch {
+      return;
+    }
+    for (const team of store.teams) {
+      if (autoOpenSeen.has(team.teamId) || autoOpenFired.has(team.teamId)) continue;
+      autoOpenSeen.add(team.teamId);
+      autoOpenFired.add(team.teamId);
+      try {
+        autoOpenPolicyService.openTab({ type: TEAM_TAB_ID, path: AUTO_OPEN_SEED_PATH });
+      } catch (error) {
+        console.warn("[mpd] AgentTeams auto-open failed: " + String(error));
+      }
+      return;
+    }
+  }
+
+  // ── Adopted-view helpers ────────────────────────────────────────────────────
+  /** Live team count for one conversation — cheap, cached, never throws (badge path). */
+  function liveTeamCount(sessionId) {
+    if (typeof sessionId !== "string" || sessionId === "") return 0;
+    let count = 0;
+    for (const team of store.teams) {
+      if (team.captainSessionId === sessionId) count += 1;
+    }
+    return count;
+  }
+
+  /**
+   * The staged-plan approval editor needs a model directory, and the adopted
+   * directoryFor() THROWS for an unknown session while StagingPlanEditor calls it during
+   * render — so it is resolved defensively and degrades to no editor, never to a crash.
+   */
+  function directoryForTeam(ctx, team) {
+    if (team === undefined || team.phase !== "staged") return undefined;
+    try {
+      const directories = ctx && typeof ctx.get === "function" ? ctx.get("modelDirectories") : undefined;
+      if (directories === undefined || typeof directories.directoryFor !== "function") return undefined;
+      return directories.directoryFor(team.captainSessionId);
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** Best-effort composer focus, mirroring the floater's "return to the conversation". */
+  function focusComposer() {
+    try {
+      window.requestAnimationFrame(() => {
+        const composer = document.querySelector("[data-composer-card] textarea");
+        if (composer !== null) composer.focus();
+      });
+    } catch { /* no DOM (offline harness) */ }
+  }
+
+  /** Open one member's transcript, mirroring the adopted session-navigation helper. */
+  function openMember(ctx, parentSessionId, childSessionId) {
+    const sessions = ctx ? ctx.sessions : undefined;
+    if (sessions === undefined || typeof sessions.open !== "function") return;
+    if (sessions.openSubagent === undefined || sessions.refreshSubagents === undefined) {
+      try { sessions.open(childSessionId); } catch (error) { console.warn("[mpd] member open failed: " + String(error)); }
+      return;
+    }
+    Promise.resolve(sessions.refreshSubagents(parentSessionId)).then(() => {
+      const retained = typeof sessions.subagentAddress === "function" ? sessions.subagentAddress(childSessionId) : undefined;
+      sessions.openSubagent(retained && retained.parentSessionId === parentSessionId
+        ? retained
+        : { parentSessionId, childSessionId, mode: "continuable" });
+    }).catch((error) => {
+      console.warn("[mpd] member open failed: " + String(error));
+      try { sessions.open(childSessionId); } catch { /* nothing else to do */ }
+    });
+  }
+
+  // ── Shared helpers for the page ─────────────────────────────────────────────
+  let chevronIcon = undefined;
+
+  /**
+   * The collapse control's glyph: the platform's own `IconChevronDownOutline14`, the
+   * exact component the adopted panel renders, reached through the same client
+   * externals module the adopted bundle (and DSH-better-sidebar itself) requires. If
+   * that module cannot be resolved, the identical 14×14 path is rendered inline, so the
+   * control is never glyph-less.
+   */
+  function ChevronDown14(props) {
+    if (chevronIcon === undefined) {
+      try {
+        const primitives = require("@deepseek-ai/dsh-client-ui-primitives");
+        chevronIcon = primitives && primitives.IconChevronDownOutline14 ? primitives.IconChevronDownOutline14 : null;
+      } catch {
+        chevronIcon = null;
+      }
+    }
+    if (chevronIcon !== null) return react.createElement(chevronIcon, props || {});
+    return react.createElement("svg", {
+      width: 14, height: 14, viewBox: "0 0 14 14", fill: "none", xmlns: "http://www.w3.org/2000/svg",
+    }, react.createElement("path", { d: CHEVRON_DOWN_14_PATH, fill: "currentColor" }));
+  }
+
+  /**
+   * Close the sidebar panel — the sidebar's equivalent of the floater's "collapse
+   * activity panel" button, since the tab is only visible while the panel is open.
+   * Guarded so a store-less render (offline harness) still produces the same markup.
+   */
+  function collapsePanel(store) {
+    try {
+      if (store !== undefined && store !== null && typeof store.reduce === "function") {
+        // The same next-state shape DSH-better-sidebar's own togglePanel computes.
+        store.reduce((state) => ({ ...state, panelOpen: false }));
+      }
+    } catch (error) {
+      console.warn("[mpd] AgentTeams collapse failed: " + String(error));
+    }
+  }
+
+  // ── The page ────────────────────────────────────────────────────────────────
+  // Everything the adopted floater's own `.panel` rule declares, minus the window
+  // manager: the sidebar pane owns the box, so position/size are pinned to it, the
+  // drag/resize affordances are gone (no handles are rendered and `data-compact`
+  // selects the head's non-draggable cursor), and the floating frame —
+  // border/radius/shadow/backdrop blur — is dropped because the pane is already a
+  // framed surface. The class still has to stay on the root: it is what scopes the
+  // adopted `--dsw-alias-*` custom properties for the whole subtree.
+  const PANE_STYLE = {
+    position: "relative", top: "auto", left: "auto",
+    width: "100%", height: "100%", minHeight: 0, maxHeight: "none",
+    flex: "1 1 auto",
+    transform: "none", willChange: "auto", animation: "none",
+    border: "none", borderRadius: 0, background: "transparent",
+    boxShadow: "none", backdropFilter: "none", WebkitBackdropFilter: "none",
+  };
+  const UNAVAILABLE_STYLE = {
+    padding: 10, fontSize: 12, lineHeight: 1.5, color: "rgba(128,128,128,0.95)",
+    fontFamily: "system-ui, sans-serif", boxSizing: "border-box",
+  };
+
+  /**
+   * The AgentTeams sidebar page: the adopted panel's interior, in the conversation the
+   * tab belongs to. Live teams first, then the server-side archive, then — exactly like
+   * the floater — the panel's own empty hint.
+   */
+  function TeamPageView(props) {
+    const ctx = props.ctx;
+    const scope = props.scope || {};
+    const t = translatorFor(ctx);
+    const state = react.useSyncExternalStore(subscribeStore, getStoreSnapshot);
+    const sessionId = scope.sessionId;
+
+    react.useEffect(() => { ensurePolling(sessionId); }, [sessionId]);
+
+    // A hidden tab keeps no live view (the sidebar CSS-hides collapsed tabs rather than
+    // unmounting them); the badge still reads the cached store.
+    if (props.visible === false) return null;
+    if (adopted.TeamSection === undefined || adopted.ACTIVITY_PANEL_CSS === undefined) {
+      return react.createElement("div", { style: UNAVAILABLE_STYLE, "data-agent-teams-unavailable": true },
+        t("page.unavailable", { reason: "adopted views missing" }));
+    }
+
+    const css = adopted.ACTIVITY_PANEL_CSS;
+    const live = state.teams.filter((team) => team.captainSessionId === sessionId);
+    const archived = state.archivedTeams.filter((team) =>
+      team.captainSessionId === sessionId && !live.some((candidate) => candidate.teamId === team.teamId));
+    const busy = live.some((team) => Array.isArray(team.members)
+      && team.members.some((member) => member.activity === "working"));
+
+    const body = [];
+    if (state.error !== undefined) {
+      // A failure mode the floater could not represent either (it simply had no teams):
+      // the notice keeps the original body shape and styling.
+      body.push(react.createElement("span", { key: "error", className: css.emptyHint, "data-agent-teams-error": true },
+        t("page.error", { message: state.error })));
+    } else if (live.length === 0 && archived.length === 0) {
+      body.push(react.createElement("span", { key: "empty", className: css.emptyHint, "data-agent-teams-empty": true },
+        t("activity.empty")));
+    } else {
+      for (const team of live) {
+        body.push(react.createElement(adopted.TeamSection, {
+          key: team.teamId,
+          team,
+          modelDirectory: directoryForTeam(ctx, team),
+          onContinuePlanning: focusComposer,
+          onDiscarded: focusComposer,
+          onNavigate: (parentId, childId) => { openMember(ctx, parentId, childId); },
+          t,
+        }));
+      }
+      for (const team of archived) {
+        // Historic conversation cards are INTENTIONALLY not rendered: the adopted panel's
+        // historic-card branch was fed by the removed in-conversation card's
+        // conversationEvents registry, which this harness does not provide, so no historic
+        // card can exist any more (the bridge still exports historicCardTeam for parity).
+        // Ended teams reach this page through the server-side archive below instead.
+        //
+        // `archivedWrap` is absent from the adopted class map although the adopted panel
+        // reads it too, so the original renders a CLASS-LESS wrapper div — performing the
+        // same lookup is what keeps this markup identical, and an upstream fix flows through
+        // by itself (pinned by packages/mpd-agent-teams-plugin/test/export-bridge.test.mjs).
+        body.push(react.createElement("div", {
+          key: team.captainSessionId + ":" + team.teamId,
+          className: css.archivedWrap,
+          "data-team-id": team.teamId,
+          "data-historic": true,
+        },
+          react.createElement("span", { className: css.archiveLabel },
+            t(team.phase === "staged" ? "archive.discardedLabel" : "archive.label")),
+          react.createElement(adopted.TeamSection, {
+            team,
+            onNavigate: (parentId, childId) => { openMember(ctx, parentId, childId); },
+            t,
+            historic: true,
+          }),
+        ));
+      }
+    }
+
+    return react.createElement("aside", {
+      className: css.panel,
+      style: PANE_STYLE,
+      "data-agent-teams-page": true,
+      "data-agent-teams-activity": true,
+      "data-team-count": String(live.length),
+      // The floater's head is a drag handle; here it must not advertise a drag.
+      "data-compact": true,
+      "aria-label": t("activity.panelAria"),
+    },
+      react.createElement("header", { className: css.panelHead },
+        react.createElement("span", { className: css.panelTitle },
+          t("activity.title"),
+          react.createElement("span", { className: css.panelDot, "data-busy": busy, "aria-hidden": true }),
+        ),
+        react.createElement("span", { className: css.panelControls },
+          react.createElement("button", {
+            type: "button",
+            className: css.iconButton,
+            "data-control": "collapse",
+            onClick: () => { collapsePanel(props.store); },
+            "aria-label": t("activity.collapse"),
+            title: t("activity.collapse"),
+          }, react.createElement(ChevronDown14, {})),
+        ),
+      ),
+      react.createElement("div", { className: css.teams }, body),
+    );
+  }
+
+  // ── Sidebar contribution ────────────────────────────────────────────────────
+  /** Resolve a client service without ever declaring it (a pending entry kills the page). */
+  function probe(ctx, name) {
+    let viaGet;
+    try {
+      viaGet = ctx && typeof ctx.get === "function" ? ctx.get(name) : undefined;
+    } catch {
+      viaGet = undefined;
+    }
+    if (viaGet !== undefined) return viaGet;
+    try {
+      return ctx ? ctx[name] : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Register the single AgentTeams sidebar tab against an ALREADY-RESOLVED sidebar
+   * service. The service is a parameter, never a probe: DSH-better-sidebar is provided by
+   * another plugin whose fiber activates later than ours, so a `ctx.get` probe here answers
+   * undefined (measured live) and the tab would never register. The caller resolves it
+   * through `ctx.inject(['betterSidebar'], …)` — see mountSidebarPages in src/web-client.js.
+   */
+  function registerTeamSidebarTab(ctx, service) {
+    try {
+      if (service === undefined || service === null || typeof service.registerTab !== "function") {
+        console.warn("[mpd] better-sidebar exposes no registerTab — the AgentTeams page has no host (no floating fallback by design)");
+        return false;
+      }
+      autoOpenPolicyService = service;
+      const t = translatorFor(ctx);
+      ctx.effect(() => ctx.locale.register(TEAM_LOCALE_NAMESPACE, { zh, en }), "mpd-agent-teams: dictionaries");
+      ctx.effect(() => service.registerTab({
+        id: TEAM_TAB_ID,
+        title: () => "AgentTeams",
+        icon: (size) => react.createElement("span", {
+          "aria-hidden": true,
+          style: { fontSize: size, lineHeight: 1 },
+        }, "\u{1F433}"),
+        order: TEAM_TAB_ORDER,
+        single: true,
+        // Mint the tab ourselves so the auto-open content seed never lands on it.
+        createTab: () => ({ tab: { id: TEAM_TAB_ID, type: TEAM_TAB_ID, title: "AgentTeams" } }),
+        // Called on every tab-bar render, including while the panel is collapsed:
+        // a cached count only — no fetch, no throw.
+        badge: (_ctx, scope) => {
+          try {
+            const count = liveTeamCount(scope ? scope.sessionId : undefined);
+            return count > 0 ? count : undefined;
+          } catch {
+            return undefined;
+          }
+        },
+        settings: {
+          pluginToggles: [{
+            key: AUTO_OPEN_KEY,
+            title: () => t("settings.autoOpen.title"),
+            desc: () => t("settings.autoOpen.desc"),
+            type: "switch",
+          }],
+        },
+        component: (props) => react.createElement(TeamPageView, props),
+      }), "mpd-agent-teams: sidebar tab");
+      const pollCurrentSession = () => {
+        try {
+          const sessions = probe(ctx, "sessions");
+          const current = sessions && sessions.list ? sessions.list.getSnapshot().current : undefined;
+          ensurePolling(current);
+        } catch { /* no sessions service: the page starts polling on mount instead */ }
+      };
+      ctx.effect(() => {
+        pollCurrentSession();
+        const sessions = probe(ctx, "sessions");
+        if (sessions === undefined || sessions.list === undefined || typeof sessions.list.subscribe !== "function") {
+          return () => { stopPolling(); };
+        }
+        const unsubscribe = sessions.list.subscribe(() => {
+          pollCurrentSession();
+          maybeAutoOpen();
+        });
+        return () => {
+          unsubscribe();
+          stopPolling();
+        };
+      }, "mpd-agent-teams: activity polling");
+      ctx.effect(() => {
+        const unsubscribe = subscribeStore(() => { maybeAutoOpen(); });
+        return unsubscribe;
+      }, "mpd-agent-teams: auto-open watcher");
+      return true;
+    } catch (error) {
+      console.warn("[mpd] AgentTeams sidebar tab registration failed: " + String(error));
+      return false;
+    }
+  }
+
+  exports.registerTeamSidebarTab = registerTeamSidebarTab;
+  exports.TeamPageView = TeamPageView;
+  exports.SIDEBAR_TAB_ID = TEAM_TAB_ID;
+  exports.SIDEBAR_TAB_ORDER = TEAM_TAB_ORDER;
+  // Test seams: the offline harness pins the auto-open policy and the single-controller
+  // rule against these instead of reaching into module internals.
+  exports.__resetTeamPageForTests = () => {
+    if (autoOpenTimer !== null) {
+      try { clearTimeout(autoOpenTimer); } catch { /* ignore */ }
+    }
+    stopPolling();
+    store = { teams: [], archivedTeams: [], error: undefined, sessionId: undefined };
+    autoOpenArmed = false;
+    autoOpenTimer = null;
+    autoOpenSeen.clear();
+    autoOpenFired.clear();
+    autoOpenPolicyService = undefined;
+    chevronIcon = undefined;
+  };
+  exports.__armAutoOpen = armAutoOpen;
+  exports.__maybeAutoOpen = maybeAutoOpen;
+  return module.exports;
+} });
+
+// ==== @mpd-dsh/mpd bundled client: team page + workmate library ====
 window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web client (factory body, inlined into the combined client.js by
-// scripts/build-mpd-client.mjs). Loaded as the client half of the @mpd-dsh/mpd
-// bundle entry: mounts the adopted agent-teams activity panel + team card (via
-// require of the embedded @nanmicoder/dsh-agent-teams factory) and adds the
-// WORKMATE LIBRARY floater + sidebar toggle. Plain JS, React.createElement only.
+// scripts/build-mpd-client.mjs). Loaded as the client half of the @mpd-dsh/mpd bundle
+// entry. It contributes the AgentTeams GUI as ONE DSH-better-sidebar tab (the page lives
+// in src/team-page.js, module id @mpd-dsh/team-page, composing the adopted views through
+// the export bridge) plus the null slash-command admission row, and the WORKMATE LIBRARY
+// as its own sidebar tab. Both features are sidebar-only: this file registers NO
+// overlay, NO chat node and no footer toggle. The adopted agent-teams client is required
+// for its views/store/locales/CSS, but its apply() is never called: that is what used to
+// register the removed in-conversation card and the removed overlay activity floater.
+// Plain JS, React.createElement only.
 (require) => {
   var module = { exports: {} };
   var exports = module.exports;
@@ -3717,59 +4318,105 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   // ── Version-tolerant client seams ──────────────────────────────────────────
   // The web boot hard-fails the WHOLE page when one entry stays `pending`:
   // `assertEntriesActive` reports `entry: pending (waiting for service: X)` and
-  // throws "Failed to load plugins". A service that this harness release does not
-  // mount must therefore never sit in `inject` — it would take the GUI down even
-  // though the surface it feeds is optional. The candidate set is intersected with
-  // the services that are actually registered at apply time, and each optional
-  // mount point also degrades on its own.
+  // throws "Failed to load plugins". A service this profile does not mount must
+  // therefore never sit in `inject` — it would take the GUI down even though the
+  // surface it feeds is optional.
+  //
+  // The other half of the rule is easy to get wrong and cost us the entire sidebar GUI:
+  // cordis resolves services through the fiber's own scope, so a plugin-provided service
+  // is INVISIBLE to a plain `ctx.get` probe — and because `notify()` only re-evaluates
+  // fibers that DECLARE a dependency, a one-shot probe can never recover either. Services
+  // owned by another plugin are reached with `ctx.inject` (mountSidebarPages), which waits
+  // for the provider without parking this entry.
   //
   // Observed drift (dsh 0.1.2-rc.1): the frontend exposes `slots`, `locale`,
-  // `sessions`, `layout`, `theme`, `timer`, `uiWorkspace`, `workspaces`; it does NOT
-  // expose `conversationEvents` (the adopted panel's rc.9 seam, where the harness
-  // now speaks `conversationViews`) and does NOT mount `modelDirectories`.
+  // `sessions`, `layout`, `theme`, `timer`, `uiWorkspace`, `workspaces`,
+  // `modelDirectories`; it does NOT expose `conversationEvents` (the adopted panel's
+  // rc.9 seam, where the harness now speaks `conversationViews`). That missing seam is
+  // why the adopted client half is no longer applied at all — its only use of
+  // `conversationEvents` was the removed in-conversation card, and the sidebar team
+  // page covers the same ground without it.
   const REQUIRED_SERVICES = ["slots", "locale"];
-  const OPTIONAL_SERVICES = ["sessions", "conversationEvents", "modelDirectories"];
-  // Services we consume opportunistically: never declared (a missing provider would
-  // make the entry `pending` and fail the whole page), always probed with ctx.get.
-  const PROBED_SERVICES = ["betterSidebar"];
-
-  /** Whether a client service is resolvable now (never throws, never activates). */
-  function serviceAvailable(ctx, name) {
-    try {
-      return ctx.get(name) !== undefined;
-    } catch {
-      return false;
-    }
-  }
-
-  /** The optional seams this runtime actually provides, in candidate order. */
-  function presentOptional(ctx) {
-    return OPTIONAL_SERVICES.filter((name) => serviceAvailable(ctx, name));
-  }
 
   /**
   * Declared hard dependencies only. The web boot's `assertEntriesActive` turns any
-  * declared-but-unregistered service into a fatal `pending` entry, so an optional
-  * seam must be awaited with `ctx.inject` instead of being declared here.
+  * declared-but-unregistered service into a fatal `pending` entry, so a seam this profile
+  * may not mount must NOT be declared here.
+  *
+  * That restriction does NOT extend to services provided by another PLUGIN, which must be
+  * reached through `ctx.inject` (see mountSidebarPages) — a one-shot `ctx.get` probe cannot
+  * see them.
   */
   const inject = REQUIRED_SERVICES.slice();
 
   /**
-  * Mount the adopted agent-teams panel once every seam it needs is live, and mount
-  * nothing (with one warning) when this harness never provides them. Every failure
-  * is contained: an optional surface must never take the boot down.
+  * Mount the AgentTeams GUI's non-sidebar surface: the null `conversation.chat.commandview`
+  * row that hides the `/agent-teams` command result (the slash command's own result row would
+  * duplicate the replayed user message; the adopted client hid it the same way). The team
+  * PANEL is not mounted here — see mountSidebarPages.
   */
   function mountAgentTeams(ctx) {
-    const present = presentOptional(ctx);
-    const missing = OPTIONAL_SERVICES.filter((name) => !present.includes(name));
-    if (missing.length > 0) {
-      console.warn("[mpd] agent-teams panel unavailable — harness does not provide: " + missing.join(", "));
+    // Contained like every other optional surface: a broken registration must degrade to one
+    // warning, never throw out of the client entry (that would fail the whole web page).
+    try {
+      ctx.slots.inject("conversation.chat.commandview", () => ctx.slots.register({
+        name: "conversation.chat.commandview",
+        key: "agent-teams",
+      }, () => null));
+    } catch (error) {
+      console.warn("[mpd] AgentTeams command view failed to mount: " + String(error));
+    }
+  }
+
+  /**
+  * Register both sidebar pages once DSH-better-sidebar is actually available.
+  *
+  * `betterSidebar` is provided by the better-sidebar plugin, whose fiber activates
+  * independently of ours. A one-shot probe at apply() time therefore RACES it and loses:
+  * measured on the live GUI, `ctx.get('betterSidebar')` answered `false` during apply and
+  * `true` eight seconds later, so both pages silently registered nothing and the sidebar's
+  * "+" menu offered no AgentTeams/Workmates row at all.
+  *
+  * `ctx.inject` is the runtime's own answer (better-sidebar uses exactly this for its
+  * asynchronously-mounted `remote.session`): the callback runs when the service appears and
+  * again after a provider remount, and it does NOT park this boot entry — a profile without
+  * the sidebar simply never fires it, instead of becoming a fatal `pending` row.
+  */
+  function mountSidebarPages(ctx, teamPage) {
+    let fiber;
+    try {
+      fiber = ctx.inject(["betterSidebar"], (sidebarCtx) => {
+        const service = readService(sidebarCtx, "betterSidebar");
+        if (service === undefined || typeof service.registerTab !== "function") {
+          console.warn("[mpd] better-sidebar exposes no registerTab — no mpd page is registered");
+          return;
+        }
+        try {
+          teamPage.registerTeamSidebarTab(sidebarCtx, service);
+        } catch (error) {
+          console.warn("[mpd] AgentTeams sidebar file failed to mount: " + String(error));
+        }
+        try {
+          registerWorkmateSidebarTab(sidebarCtx, service);
+        } catch (error) {
+          console.warn("[mpd] workmate sidebar tab registration failed: " + String(error));
+        }
+      });
+    } catch (error) {
+      console.warn("[mpd] sidebar pages could not be wired: " + String(error));
       return;
     }
+    if (fiber !== undefined && typeof fiber.dispose === "function") {
+      ctx.effect(() => () => { fiber.dispose(); }, "mpd: sidebar page injection");
+    }
+  }
+
+  /** Read one service from a context that has it in scope (never throws). */
+  function readService(ctx, name) {
     try {
-      agentTeams.apply(ctx);
-    } catch (error) {
-      console.warn("[mpd] agent-teams panel failed to mount: " + String(error));
+      return ctx.get(name);
+    } catch {
+      return undefined;
     }
   }
 
@@ -3777,9 +4424,12 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   const INIT_URL = "/plugins/mpd-workmate/init";
   const ROSTER_URL = "/plugins/mpd-workmate/roster";
   const GET_URL = "/plugins/mpd-workmate/get";
-  const TOGGLE_EVENT = "mpd:workmate:toggle";
+  // Contract §D: mutations are POST-only and answer with a machine-readable `reason`,
+  // which is what the page branches on (see failureReason).
+  const RENAME_URL = "/plugins/mpd-workmate/rename";
+  const DELETE_URL = "/plugins/mpd-workmate/delete";
   const WORKMATE_LOCALE_NAMESPACE = "mpdWorkmate";
-  // The DSH-better-sidebar tab type this bundle registers. It is the primary GUI
+  // The DSH-better-sidebar tab type this bundle registers. It is the ONLY GUI
   // surface for the workmate library: the sidebar owns layout/opening, we only
   // contribute the page.
   const SIDEBAR_TAB_ID = "mpd-workmate";
@@ -3788,13 +4438,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   // every tab in the same place.
   const SIDEBAR_TAB_TITLE = "Workmates";
 
-  // Dictionary namespace for the workmate panel + sidebar toggle. zh is the
-  // key-set source of truth; en is checked complete against it.
+  // Dictionary namespace for the workmate page. zh is the key-set source of truth;
+  // en is checked complete against it.
   const zh = {
     "tab.title": "Workmates",
     "panel.title": "Workmate 库（~/.mpd/workmate）",
-    "panel.badgeAria": "打开 Workmate 库",
-    "panel.close": "关闭",
     "panel.refresh": "刷新",
     "panel.loading": "加载中…",
     "panel.empty": "暂无 workmate — 请在下方初始化一个。",
@@ -3819,14 +4467,37 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     "panel.updated": "更新",
     "panel.model": "模型",
     "panel.rosterUnavailable": "roster 不可用，请手填 base id",
-    "toggle.aria": "Workmate 库",
-    "toggle.label": "Workmates"
+    "mutate.renameTitle": "重命名",
+    "mutate.renameLabel": "新名称（仅限 [a-z0-9_-]）",
+    "mutate.renamePlaceholder": "新名称",
+    "mutate.rename": "重命名",
+    "mutate.renameBusy": "重命名中…",
+    "mutate.renameHint": "目录名即标识，重命名会同步更新 meta、note 与索引。",
+    "mutate.deleteTitle": "删除",
+    "mutate.delete": "删除",
+    "mutate.archiveHint": "默认先归档：实例移入 ~/.mpd/workmate/.archive/，之后仍可恢复。",
+    "mutate.archive": "归档",
+    "mutate.archiveBusy": "归档中…",
+    "mutate.purgeHint": "彻底删除会永久移除该实例，无法恢复。",
+    "mutate.purge": "彻底删除",
+    "mutate.purgeConfirmLabel": "输入名称以确认彻底删除",
+    "mutate.purgeConfirm": "确认彻底删除",
+    "mutate.purgeBusy": "彻底删除中…",
+    "mutate.cancel": "取消",
+    "mutate.renamed": "已重命名 {from} → {to}",
+    "mutate.archived": "已归档 {name}",
+    "mutate.purged": "已彻底删除 {name}",
+    "mutate.reason.invalidName": "名称无效：只能使用小写字母、数字、下划线和连字符（[a-z0-9_-]）",
+    "mutate.reason.sameKey": "新名称与当前名称相同",
+    "mutate.reason.confirmRequired": "彻底删除需要输入完整名称以确认",
+    "mutate.reason.unknown": "找不到该 workmate：它可能已被删除或归档，请刷新列表。",
+    "mutate.reason.collision": "该名称已被占用，请换一个名称。",
+    "mutate.reason.inUse": "该 workmate 正在被使用，已拒绝操作；请先结束或归档这些团队：{blocking}",
+    "mutate.reason.failed": "操作失败"
   };
   const en = {
     "tab.title": "Workmates",
     "panel.title": "Workmate library (~/.mpd/workmate)",
-    "panel.badgeAria": "Open Workmate library",
-    "panel.close": "Close",
     "panel.refresh": "Refresh",
     "panel.loading": "Loading…",
     "panel.empty": "No workmates yet — initialize one below.",
@@ -3851,13 +4522,34 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     "panel.updated": "Updated",
     "panel.model": "Model",
     "panel.rosterUnavailable": "roster unavailable — type the base id",
-    "toggle.aria": "Workmate library",
-    "toggle.label": "Workmates"
+    "mutate.renameTitle": "Rename",
+    "mutate.renameLabel": "New name ([a-z0-9_-] only)",
+    "mutate.renamePlaceholder": "new name",
+    "mutate.rename": "Rename",
+    "mutate.renameBusy": "Renaming…",
+    "mutate.renameHint": "The directory name is the key: a rename also updates meta, note and index.",
+    "mutate.deleteTitle": "Delete",
+    "mutate.delete": "Delete",
+    "mutate.archiveHint": "Archive-first by default: the instance moves to ~/.mpd/workmate/.archive/ and stays restorable.",
+    "mutate.archive": "Archive",
+    "mutate.archiveBusy": "Archiving…",
+    "mutate.purgeHint": "Purge removes the instance permanently and cannot be undone.",
+    "mutate.purge": "Purge",
+    "mutate.purgeConfirmLabel": "Type the name to confirm the purge",
+    "mutate.purgeConfirm": "Confirm purge",
+    "mutate.purgeBusy": "Purging…",
+    "mutate.cancel": "Cancel",
+    "mutate.renamed": "Renamed {from} → {to}",
+    "mutate.archived": "Archived {name}",
+    "mutate.purged": "Purged {name}",
+    "mutate.reason.invalidName": "Invalid name: use lower-case letters, digits, underscores or hyphens ([a-z0-9_-])",
+    "mutate.reason.sameKey": "The new name equals the current name",
+    "mutate.reason.confirmRequired": "A purge must be confirmed with the exact name",
+    "mutate.reason.unknown": "No such workmate: it may already be deleted or archived — refresh the list.",
+    "mutate.reason.collision": "That name is already taken — pick another one.",
+    "mutate.reason.inUse": "Refused: the workmate is in use. Finish or archive these teams first: {blocking}",
+    "mutate.reason.failed": "The operation failed"
   };
-
-  // Shared open state (single source of truth) between the overlay floater and
-  // the sidebar-foot toggle, which render in different slot trees.
-  let workmateOpen = false;
 
   function interpolate(template, params) {
     return String(template).replace(/\{(\w+)\}/g, (_m, key) =>
@@ -3871,21 +4563,94 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   function request(url, options) {
     return fetch(url, options).then(async (res) => {
       if (!res.ok) {
-        let message = "HTTP " + res.status;
+        let body = null;
         try {
-          const body = await res.json();
-          if (body && typeof body.error === "string" && body.error.trim() !== "") message = body.error;
-        } catch {}
-        throw new Error(message);
+          body = await res.json();
+        } catch {
+          body = null;
+        }
+        // The wire protocol (contract §D) carries a machine-readable `reason` — and, for an
+        // in-use refusal, the blocking team/member list. Collapsing the body into a bare
+        // message here is what made the page unable to branch or to name the blocker, so the
+        // whole body plus the status ride on the error.
+        throw requestError(res.status, body);
       }
       return res.json();
     });
   }
 
-  // ── Workmate library: one view, two hosts ──────────────────────────────────
-  // The library is contributed as a DSH-better-sidebar tab (the primary surface:
-  // the sidebar owns layout, opening and enable/disable) and, when that sidebar is
-  // absent, as the bundle's own floating overlay. Both render the same view.
+  /** One failed response as an error carrying status + reason + the rest of the body. */
+  function requestError(status, body) {
+    const payload = body !== null && typeof body === "object" ? body : {};
+    const described = typeof payload.error === "string" && payload.error.trim() !== "";
+    const error = new Error(described ? payload.error : "HTTP " + String(status));
+    error.status = status;
+    error.body = payload;
+    if (typeof payload.reason === "string") error.reason = payload.reason;
+    if (Array.isArray(payload.blocking)) error.blocking = payload.blocking;
+    return error;
+  }
+
+  /** The §D reason code of a failure (undefined for anything else). */
+  function failureReason(error) {
+    if (error === null || error === undefined) return undefined;
+    if (typeof error.reason === "string" && error.reason !== "") return error.reason;
+    const body = error.body;
+    if (body !== null && typeof body === "object" && typeof body.reason === "string" && body.reason !== "") return body.reason;
+    return undefined;
+  }
+
+  /** The §E blocking team/member list of an in-use refusal, as plain `team/member` pairs. */
+  function blockingEntries(error) {
+    const raw = error !== null && error !== undefined && Array.isArray(error.blocking)
+      ? error.blocking
+      : (error?.body !== null && typeof error?.body === "object" && Array.isArray(error.body.blocking) ? error.body.blocking : []);
+    return raw
+      .map((entry) => {
+        const teamId = entry !== null && typeof entry === "object" && entry.teamId !== undefined ? String(entry.teamId) : "";
+        const member = entry !== null && typeof entry === "object" && entry.member !== undefined ? String(entry.member) : "";
+        if (teamId !== "" && member !== "") return teamId + "/" + member;
+        return teamId !== "" ? teamId : member;
+      })
+      .filter((pair) => pair !== "");
+  }
+
+  /**
+   * Turn one failed mutation into a readable, REASON-SPECIFIC message. The five wire
+   * failures are 400 invalid-name (which includes the same-key rename), 400
+   * confirm-required, 404 unknown, 409 collision and 409 in-use — the last one names the
+   * blocking teams, because a refusal nobody can act on is not a refusal (§E).
+   */
+  function describeFailure(error, t) {
+    const reason = failureReason(error);
+    // `""` is not text: the page must fall back to its own dictionary instead of rendering
+    // an empty alert.
+    const server = typeof error?.message === "string" && error.message !== "" ? error.message : "";
+    const blocking = blockingEntries(error);
+    switch (reason) {
+      case "invalid-name":
+        // The server also uses this reason for a same-key rename; its own text says which.
+        return server !== "" && server !== "HTTP " + String(error?.status) ? server : t("mutate.reason.invalidName");
+      case "confirm-required":
+        return t("mutate.reason.confirmRequired");
+      case "unknown":
+        return t("mutate.reason.unknown");
+      case "collision":
+        return t("mutate.reason.collision");
+      case "in-use":
+        return blocking.length > 0
+          ? t("mutate.reason.inUse", { blocking: blocking.join(", ") })
+          : t("mutate.reason.inUse", { blocking: t("mutate.reason.failed") });
+      default:
+        return server !== "" ? server : t("mutate.reason.failed");
+    }
+  }
+
+  // ── Workmate library ───────────────────────────────────────────────────────
+  // The library is contributed as a DSH-better-sidebar tab — the ONLY host, exactly
+  // like the AgentTeams page: the sidebar owns layout, opening and enable/disable, and
+  // this bundle contributes nothing else (no overlay floater, no footer toggle). A
+  // profile without DSH-better-sidebar simply has no workmate GUI.
   const SURFACE_STYLE = {
     display: "flex", flexDirection: "column", gap: 8, minHeight: 0, height: "100%",
     padding: 10, fontSize: 13, color: "inherit", fontFamily: "system-ui, sans-serif", boxSizing: "border-box",
@@ -3907,6 +4672,15 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     const [busy, setBusy] = react.useState(false);
     const [selected, setSelected] = react.useState(null);
     const [detail, setDetail] = react.useState(null);
+    // Mutation surface: rename input, the explicit delete confirmation step (D1) and the
+    // two message lanes. A mutation message outlives a refresh — only the next mutation
+    // clears it — so it cannot share the load-error state.
+    const [renameTo, setRenameTo] = react.useState("");
+    const [confirming, setConfirming] = react.useState(null);
+    const [purgeText, setPurgeText] = react.useState("");
+    const [mutating, setMutating] = react.useState(false);
+    const [mutationError, setMutationError] = react.useState(null);
+    const [notice, setNotice] = react.useState(null);
 
     const refresh = react.useCallback(() => {
       request(LIST_URL)
@@ -3921,9 +4695,22 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     const openDetail = (workmateName) => {
       setSelected(workmateName);
       setDetail(null);
+      // A fresh load clears the previous failure: the pane renders its error state whenever
+      // `detail` is null, so a stale error must not outlive the retry that fixes it (t8 L4).
+      setError(null);
+      // The rename field starts AT the current key: the directory name IS the key, so the
+      // useful thing to show is the name being changed, not an empty box.
+      setRenameTo(workmateName);
+      setConfirming(null);
       request(GET_URL + "?name=" + encodeURIComponent(workmateName))
         .then((data) => setDetail(data))
-        .catch((e) => setError(String(e?.message ?? e)));
+        .catch((e) => {
+          setError(String(e?.message ?? e));
+          // A key that no longer resolves must not stay selected (contract §H: no stale
+          // selection) — the rename/delete response is authoritative and lands here when
+          // the instance is gone.
+          if (failureReason(e) === "unknown") closeDetail();
+        });
     };
     const submit = (ev) => {
       ev.preventDefault();
@@ -3934,6 +4721,72 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       request(INIT_URL, { method: "POST", headers: { "content-type": "application/json" }, body })
         .then(() => { setBusy(false); setName(""); setNote(""); refresh(); })
         .catch((e) => { setBusy(false); setError(String(e?.message ?? e)); });
+    };
+
+    /** Leave the detail pane and reset the mutation surface (per-workmate state). */
+    const closeDetail = () => {
+      setSelected(null);
+      setDetail(null);
+      setRenameTo("");
+      setConfirming(null);
+      setPurgeText("");
+      setMutationError(null);
+    };
+
+    /**
+     * Run one library mutation. The detail pane must never keep pointing at a key that no
+     * longer exists (contract §H): a rename follows the new key, a delete leaves detail.
+     */
+    const runMutation = (url, body, onSuccess) => {
+      if (mutating) return;
+      setMutating(true);
+      setMutationError(null);
+      setNotice(null);
+      request(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
+        .then((data) => {
+          setMutating(false);
+          setConfirming(null);
+          setPurgeText("");
+          setRenameTo("");
+          onSuccess(data ?? {});
+          refresh();
+        })
+        .catch((e) => {
+          setMutating(false);
+          setMutationError(describeFailure(e, t));
+        });
+    };
+
+    const submitRename = (ev) => {
+      ev.preventDefault();
+      if (selected === null) return;
+      const next = renameTo.trim();
+      if (next === "") return;
+      // The same-key rename is refused HERE, which is what makes `mutate.reason.sameKey`
+      // reachable: the server answers 400 invalid-name for this case, so without a local
+      // check its dictionary entry could never be shown (t8 L1). A name that merely
+      // SANITIZES to the current key (e.g. `GUI-alice`) still goes to the server, whose own
+      // text is authoritative there (§M2).
+      if (next === selected) {
+        setNotice(null);
+        setMutationError(t("mutate.reason.sameKey"));
+        return;
+      }
+      const from = selected;
+      runMutation(RENAME_URL, { name: from, new_name: next }, (data) => {
+        const to = typeof data.name === "string" && data.name !== "" ? data.name : next;
+        setNotice(t("mutate.renamed", { from, to }));
+        openDetail(to);
+      });
+    };
+
+    const submitDelete = (purge) => {
+      if (selected === null) return;
+      const from = selected;
+      runMutation(DELETE_URL, purge ? { name: from, purge: true, confirm: purgeText.trim() } : { name: from }, () => {
+        setNotice(purge ? t("mutate.purged", { name: from }) : t("mutate.archived", { name: from }));
+        closeDetail();
+      });
     };
 
     const needle = filter.trim().toLowerCase();
@@ -3951,11 +4804,76 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           );
       return react.createElement("div", { style: SURFACE_STYLE },
         react.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
-          react.createElement("button", { type: "button", onClick: () => { setSelected(null); setDetail(null); }, style: BUTTON_STYLE }, "← " + t("panel.back")),
+          react.createElement("button", { type: "button", onClick: closeDetail, style: BUTTON_STYLE }, "← " + t("panel.back")),
           react.createElement("span", { style: { fontWeight: 700 } }, selected),
         ),
         error ? react.createElement("div", { role: "alert", style: { color: "#c33", fontSize: 12 } }, String(error)) : null,
-        d === null ? react.createElement("div", { style: MUTED }, t("panel.loading")) : react.createElement("div", { style: { overflowY: "auto" } },
+        notice !== null ? react.createElement("div", { role: "status", style: { ...MUTED, fontSize: 12 } }, String(notice)) : null,
+        // ── Library administration (contract §D/§F/§M1) ──────────────────────
+        // Rename and delete target THIS instance. A readonly workmate is a valid target:
+        // the readonly discipline governs its own spawn, not the library it lives in.
+        react.createElement("form", { onSubmit: submitRename, style: { display: "flex", flexDirection: "column", gap: 4, borderTop: "1px solid rgba(128,128,128,0.25)", paddingTop: 8 } },
+          react.createElement("div", { style: { fontWeight: 600, fontSize: 12 } }, t("mutate.renameTitle")),
+          react.createElement("div", { style: { ...MUTED, fontSize: 11 } }, t("mutate.renameHint")),
+          react.createElement("input", {
+            value: renameTo, onChange: (e) => setRenameTo(e.target.value),
+            placeholder: t("mutate.renamePlaceholder"), "aria-label": t("mutate.renameLabel"), style: INPUT_STYLE,
+          }),
+          react.createElement("button", {
+            type: "submit", disabled: mutating || renameTo.trim() === "",
+            style: { ...BUTTON_STYLE, opacity: mutating || renameTo.trim() === "" ? 0.5 : 1 },
+          }, mutating ? t("mutate.renameBusy") : t("mutate.rename")),
+        ),
+        react.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 4, borderTop: "1px solid rgba(128,128,128,0.25)", paddingTop: 8 } },
+          react.createElement("div", { style: { fontWeight: 600, fontSize: 12 } }, t("mutate.deleteTitle")),
+          // D1: nothing is removed on the FIRST click — the confirmation step is explicit
+          // and says which of the two outcomes the button performs.
+          confirming === null
+            ? react.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 4 } },
+                react.createElement("button", { type: "button", disabled: mutating, onClick: () => { setConfirming("archive"); setPurgeText(""); setMutationError(null); }, style: BUTTON_STYLE }, t("mutate.delete")),
+              )
+            : confirming === "archive"
+              ? react.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 4 } },
+                  react.createElement("div", { style: { ...MUTED, fontSize: 11 } }, t("mutate.archiveHint")),
+                  react.createElement("div", { style: { display: "flex", gap: 6 } },
+                    react.createElement("button", { type: "button", disabled: mutating, onClick: () => submitDelete(false), style: BUTTON_STYLE },
+                      mutating ? t("mutate.archiveBusy") : t("mutate.archive")),
+                    react.createElement("button", { type: "button", disabled: mutating, onClick: () => { setConfirming(null); setPurgeText(""); }, style: BUTTON_STYLE }, t("mutate.cancel")),
+                  ),
+                )
+              : react.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 4 } },
+                  react.createElement("div", { style: { ...MUTED, fontSize: 11 } }, t("mutate.purgeHint")),
+                  react.createElement("input", {
+                    value: purgeText, onChange: (e) => setPurgeText(e.target.value),
+                    placeholder: t("mutate.purgeConfirmLabel"), "aria-label": t("mutate.purgeConfirmLabel"), style: INPUT_STYLE,
+                  }),
+                  react.createElement("div", { style: { display: "flex", gap: 6 } },
+                    react.createElement("button", {
+                      type: "button", disabled: mutating || purgeText.trim() !== selected,
+                      "aria-disabled": mutating || purgeText.trim() !== selected,
+                      onClick: () => submitDelete(true),
+                      style: { ...BUTTON_STYLE, opacity: mutating || purgeText.trim() !== selected ? 0.5 : 1 },
+                    }, mutating ? t("mutate.purgeBusy") : t("mutate.purgeConfirm")),
+                    react.createElement("button", { type: "button", disabled: mutating, onClick: () => { setConfirming("archive"); setPurgeText(""); }, style: BUTTON_STYLE }, t("mutate.archive")),
+                    react.createElement("button", { type: "button", disabled: mutating, onClick: () => { setConfirming(null); setPurgeText(""); }, style: BUTTON_STYLE }, t("mutate.cancel")),
+                  ),
+                ),
+          react.createElement("button", {
+            type: "button",
+            onClick: () => { setConfirming("purge"); setPurgeText(""); setMutationError(null); },
+            style: { ...BUTTON_STYLE, borderColor: "rgba(200,60,60,0.5)" },
+          }, t("mutate.purge")),
+        ),
+        mutationError !== null ? react.createElement("div", { role: "alert", style: { color: "#c33", fontSize: 12 } }, String(mutationError)) : null,
+        // t8 L4: a detail load that FAILED must say so. Rendering the loading text whenever
+        // `detail` is null left the pane spinning forever beside the error banner for every
+        // failure reason other than `unknown` — that one alone closes the pane (no stale
+        // selection, contract §H), so every other reason needed its own visible outcome.
+        d === null
+          ? (error === null
+            ? react.createElement("div", { style: MUTED }, t("panel.loading"))
+            : react.createElement("div", { role: "alert", style: { color: "#c33", fontSize: 12 } }, String(error)))
+          : react.createElement("div", { style: { overflowY: "auto" } },
           react.createElement("div", { style: MUTED },
             String(d.baseName ?? d.baseId ?? ""),
             d.readonly ? " · " + t("panel.readonly") : "",
@@ -3979,6 +4897,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         react.createElement("button", { type: "button", onClick: refresh, style: BUTTON_STYLE, title: t("panel.refresh") }, t("panel.refresh")),
       ),
       error ? react.createElement("div", { role: "alert", style: { color: "#c33", fontSize: 12 } }, String(error)) : null,
+      notice !== null ? react.createElement("div", { role: "status", style: { ...MUTED, fontSize: 12 } }, String(notice)) : null,
       react.createElement("input", {
         value: filter, onChange: (e) => setFilter(e.target.value), placeholder: t("panel.filter"),
         "aria-label": t("panel.filter"), style: INPUT_STYLE,
@@ -4024,19 +4943,14 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   }
 
   /**
-  * Register the library as a DSH-better-sidebar tab. The sidebar publishes
-  * `ctx.betterSidebar` with `registerTab(descriptor)`; the descriptor owns the tab
-  * type, its + menu entry and its page component. Absent sidebar → not our problem
-  * (the floater below still mounts).
+  * Register the library as a DSH-better-sidebar tab. The sidebar service is passed in
+  * because it must be RESOLVED through `ctx.inject` (see mountSidebarPages) — a probe at
+  * apply() time races the provider and always loses. The descriptor owns the tab type, its
+  * + menu entry and its page component; there is no floating fallback by decision,
+  * mirroring the AgentTeams page.
   */
-  function registerSidebarTab(ctx) {
-    const sidebar = serviceAvailable(ctx, "betterSidebar")
-      ? ctx.get("betterSidebar")
-      : (() => { try { return ctx.betterSidebar; } catch { return undefined; } })();
-    if (sidebar === undefined || typeof sidebar.registerTab !== "function") {
-      console.warn("[mpd] better-sidebar not installed — keeping the workmate floater");
-      return false;
-    }
+  function registerWorkmateSidebarTab(ctx, sidebar) {
+    if (typeof sidebar.registerTab !== "function") return false;
     try {
       ctx.effect(() => sidebar.registerTab({
         id: SIDEBAR_TAB_ID,
@@ -4053,100 +4967,43 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     }
   }
 
-  /** The bundle's own floating overlay, used only when the sidebar is absent. */
-  function WorkmatePanel(props) {
-    const t = translateFor(props);
-    const [open, setOpen] = react.useState(false);
-    react.useEffect(() => {
-      const onToggle = (event) => {
-        const detail = event && event.detail;
-        const next = detail && typeof detail.open === "boolean" ? detail.open : !workmateOpen;
-        workmateOpen = next;
-        setOpen(next);
-      };
-      window.addEventListener(TOGGLE_EVENT, onToggle);
-      return () => window.removeEventListener(TOGGLE_EVENT, onToggle);
-    }, []);
-    if (!open) {
-      return react.createElement("button", {
-        type: "button",
-        onClick: () => { workmateOpen = true; setOpen(true); },
-        "aria-label": t("panel.badgeAria"),
-        title: t("panel.badgeAria"),
-        style: { position: "absolute", top: 12, right: 12, zIndex: 20, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(128,128,128,0.35)", borderRadius: 18, background: "var(--color-bg-1, #fff)", color: "var(--color-text-1, #222)", cursor: "pointer", fontSize: 16, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontFamily: "system-ui, sans-serif" }
-      }, "\u{1F916}");
+  /**
+  * Load the AgentTeams page module defensively: a missing or broken module must cost the
+  * team page ONLY — never the workmate page beside it, and never the client entry.
+  */
+  function loadTeamPage() {
+    try {
+      const teamPage = require("@mpd-dsh/team-page");
+      if (teamPage !== undefined && teamPage !== null && typeof teamPage.registerTeamSidebarTab === "function") {
+        return teamPage;
+      }
+      console.warn("[mpd] AgentTeams sidebar file exposes no registerTeamSidebarTab — the team page is unavailable");
+    } catch (error) {
+      console.warn("[mpd] AgentTeams sidebar file failed to load: " + String(error));
     }
-    return react.createElement("div", {
-      role: "dialog",
-      "aria-modal": "false",
-      "aria-label": t("panel.title"),
-      style: { position: "absolute", top: 12, right: 12, zIndex: 20, width: 420, maxWidth: "90vw", maxHeight: "80vh", display: "flex", borderRadius: 10, background: "var(--color-bg-1, #fff)", color: "var(--color-text-1, #222)", boxShadow: "0 8px 32px rgba(0,0,0,0.2)", fontFamily: "system-ui, sans-serif" }
-    },
-      react.createElement("div", { style: { flex: 1, minWidth: 0, display: "flex", flexDirection: "column" } },
-        react.createElement(WorkmateLibraryView, { t }),
-      ),
-      react.createElement("button", {
-        type: "button",
-        onClick: () => { workmateOpen = false; setOpen(false); },
-        "aria-label": t("panel.close"), title: t("panel.close"),
-        style: { position: "absolute", top: 6, right: 8, border: "none", background: "none", cursor: "pointer", fontSize: 14, color: "inherit" },
-      }, "\u2715"),
-    );
-  }
-
-  function WorkmateToggle(props) {
-    const t = translateFor(props);
-    const wide = props && props.wide !== false;
-    return react.createElement("button", {
-      type: "button",
-      style: { background: "none", border: "none", cursor: "pointer", color: "inherit", display: "flex", alignItems: "center", gap: 6, padding: "4px 6px" },
-      title: t("toggle.aria"),
-      "aria-label": t("toggle.aria"),
-      onClick: () => {
-        const next = !workmateOpen;
-        window.dispatchEvent(new CustomEvent(TOGGLE_EVENT, { detail: { open: next } }));
-      },
-    },
-      react.createElement("span", { "aria-hidden": true, style: { fontSize: 16 } }, "\u{1F916}"),
-      wide ? react.createElement("span", null, t("toggle.label")) : null,
-    );
+    return { registerTeamSidebarTab: () => false };
   }
 
   function apply(ctx) {
-    // Adopted agent-teams client half (team activity floater + team card + command
-    // view). It is the only part of this client with version-drifted seams, so it
-    // waits for them instead of being a declared hard dependency: `ctx.inject`
-    // re-runs when the services appear and simply never runs when they do not.
-    ctx.inject(OPTIONAL_SERVICES, (scoped) => mountAgentTeams(scoped));
-    // Register the workmate panel locale dictionaries (zh/en), mirroring the
-    // agent-teams client locale registration.
+    // The slash-command admission row (not a GUI panel) goes in immediately: `slots` is a
+    // declared dependency, so it is present.
+    mountAgentTeams(ctx);
+    // Register both page locale dictionaries (zh/en).
     ctx.effect(() => ctx.locale.register(WORKMATE_LOCALE_NAMESPACE, { zh, en }), "mpd-workmate: dictionaries");
-    // PRIMARY SURFACE — a DSH-better-sidebar tab, so the library lives where the
-    // sidebar's own pages do (tab strip, + menu, enable/disable in its settings).
-    const onSidebar = registerSidebarTab(ctx);
-    if (onSidebar) return;
-    // FALLBACK — no DSH-better-sidebar in this profile: keep the bundle's own
-    // frame-wide floater + sidebar-foot toggle (additive slots, no shipped-ui
-    // replacement). Both hosts render the same WorkmateLibraryView.
-    ctx.slots.inject("shell.overlay", () => ctx.slots.register({
-      name: "shell.overlay",
-      id: "mpd-workmate-library",
-      order: 90,
-      label: "Workmate library",
-      locale: WORKMATE_LOCALE_NAMESPACE,
-    }, (props) => react.createElement(WorkmatePanel, props)));
-    ctx.slots.inject("sidebar.footer.action", () => ctx.slots.register({
-      name: "sidebar.footer.action",
-      id: "mpd-workmate-toggle",
-      order: 90,
-      label: "Workmates",
-      locale: WORKMATE_LOCALE_NAMESPACE,
-    }, (props) => react.createElement(WorkmateToggle, props)));
+    // The AgentTeams page and the workmate library are BOTH DSH-better-sidebar tabs, and
+    // that sidebar arrives later than this entry — so both are registered from the
+    // ctx.inject callback, never from a probe here (that race is what left the sidebar's
+    // "+" menu with no mpd row at all). A profile without the sidebar fires nothing.
+    mountSidebarPages(ctx, loadTeamPage());
   }
 
-  // `inject`/`apply` are the client-module contract; the extra views are exported so
-  // the offline harness (packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs) can
-  // render the real page component without a browser.
-  module.exports = { inject, apply, WorkmateLibraryView, WorkmatePanel, WorkmateToggle, SIDEBAR_TAB_ID };
+  // zh is the key-set source of truth; en must stay key-complete against it. Exported so
+  // the offline harness can assert that without a browser (contract §L A7).
+  const dictionaries = { zh: Object.freeze({ ...zh }), en: Object.freeze({ ...en }) };
+
+  // `inject`/`apply` are the client-module contract; the view plus the two pure helpers
+  // (dictionaries and the §D failure mapper) are exported so the offline harness
+  // (packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs) can pin them without a browser.
+  module.exports = { inject, apply, WorkmateLibraryView, SIDEBAR_TAB_ID, describeFailure, failureReason, dictionaries };
   return module.exports;
 } });

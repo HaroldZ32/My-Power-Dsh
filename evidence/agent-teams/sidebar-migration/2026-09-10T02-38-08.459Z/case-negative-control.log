@@ -1,0 +1,11 @@
+=== case-level negative control: does agent-teams-sidebar --self-test actually catch a re-introduced legacy registration? ===
+mutation: reintroduce the removed in-conversation card slot under a gate-blind spelling (renamed local)
+mutation applied
+[build-mpd-client] wrote packages/mpd-bundle-plugin/client.js (237763 bytes)
+[agent-teams-sidebar] FAIL: self-test: noLegacyRegistration :: {"moduleIds":{"ok":true,"ids":["@nanmicoder/dsh-agent-teams","@mpd-dsh/team-page","@mpd-dsh/mpd"]},"teamPageModuleInArtifact":{"ok":true},"exactlyOneTeamTab":{"ok":true,"teamTabIds":["mpd-agent-teams"],"allTabIds":["mpd-agent-teams","mpd-workmate"]},"teamTabShape":{"ok":true,"order":85,"single":true,"toggle":"autoOpenOnTeamActivity"},"noLegacyRegistration":{"ok":false,"registeredDefinitions":["conversation.chat.commandview","conversation.chat.node"]},"adoptedNeverApplied":{"ok":true,"artifactStillContainsAdoptedStrings":true},"noFloaterDefined":{"ok":true},"commandViewKept":{"ok":true,"slots":["conversation.chat.commandview","conversation.chat.node"]},"sourcesRegisterNoRemovedSurface":{"ok":true,"hits":[]},"commandViewStillRegisteredBySource":{"ok":true},"buildGatePresent":{"ok":true},"serverHalfMountedByRow":{"ok":true,"note":"row mounted by the bundle patch + server half registering the route"},"adoptedClientBridged":{"ok":true,"missing":[]},"artifactCarriesBridge":{"ok":true,"missing":[]},"bridgePatchGuarded":{"ok":true}}
+[self-test exit: 1]
+[build-mpd-client] wrote packages/mpd-bundle-plugin/client.js (237582 bytes)
+eededdd6594800c5b052980cd0a712c9808e855ffc4a9572934426d171ad311a  packages/mpd-bundle-plugin/src/web-client.js
+0aaa08347d81783e0724b07d7b689ce0a972b7d1afdab34d93632e7298378f15  packages/mpd-bundle-plugin/client.js
+[agent-teams-sidebar self-test] ok: 15 checks (mpd-agent-teams,mpd-workmate; @nanmicoder/dsh-agent-teams,@mpd-dsh/team-page,@mpd-dsh/mpd)
+[self-test exit after revert: 0]

@@ -1,0 +1,222 @@
+{
+  "task": "t14 - independent falsifiability check of the t13 F1 assertion",
+  "verdict": "PASS on the substance: assertion holds on the shipped list and fails in the re-injection lane",
+  "shipped_case": {
+    "exit": 0,
+    "enforcement": {
+      "ok": true,
+      "childRequests": 1,
+      "parentRequests": 3,
+      "childToolCounts": [
+        81
+      ],
+      "parentToolCount": 87,
+      "childLeaksWriteCapable": [],
+      "childHasStructuredOutput": true,
+      "parentHasAllSeven": true,
+      "note": "read-only authority is ENFORCED: the child's own requests cannot see any of the seven write-capable tools, while the parent's sees all of them"
+    },
+    "reinjectionControl": {
+      "ok": true,
+      "childRequestsUnderRestriction": 0,
+      "parentToolCount": 87,
+      "parentSeesWriteCapable": [
+        "write",
+        "edit",
+        "mpd_hashline_edit",
+        "bash",
+        "mcp__ast_grep__rewrite",
+        "mcp__ast_grep__scan",
+        "mcp__lsp__rename"
+      ],
+      "refusalSeen": false,
+      "note": "control: with the unregistered names re-injected no request is a strictly-smaller restricted child and no refusal is raised \u2014 the restriction silently stops applying, which is the exact degradation the enforcement assertion above exists to catch"
+    },
+    "positive_calls": [
+      {
+        "call": 1,
+        "toolCount": 87,
+        "writeCapableVisible": [
+          "bash",
+          "edit",
+          "mcp__ast_grep__rewrite",
+          "mcp__ast_grep__scan",
+          "mcp__lsp__rename",
+          "mpd_hashline_edit",
+          "write"
+        ],
+        "structured_output": false
+      },
+      {
+        "call": 2,
+        "toolCount": 0,
+        "writeCapableVisible": [],
+        "structured_output": null
+      },
+      {
+        "call": 3,
+        "toolCount": 81,
+        "writeCapableVisible": [],
+        "structured_output": true
+      },
+      {
+        "call": 4,
+        "toolCount": 87,
+        "writeCapableVisible": [
+          "bash",
+          "edit",
+          "mcp__ast_grep__rewrite",
+          "mcp__ast_grep__scan",
+          "mcp__lsp__rename",
+          "mpd_hashline_edit",
+          "write"
+        ],
+        "structured_output": false
+      }
+    ],
+    "control_calls": [
+      {
+        "call": 1,
+        "toolCount": 87,
+        "writeCapableVisible": [
+          "bash",
+          "edit",
+          "mcp__ast_grep__rewrite",
+          "mcp__ast_grep__scan",
+          "mcp__lsp__rename",
+          "mpd_hashline_edit",
+          "write"
+        ],
+        "structured_output": false
+      },
+      {
+        "call": 2,
+        "toolCount": 0,
+        "writeCapableVisible": [],
+        "structured_output": null
+      },
+      {
+        "call": 3,
+        "toolCount": 87,
+        "writeCapableVisible": [
+          "bash",
+          "edit",
+          "mcp__ast_grep__rewrite",
+          "mcp__ast_grep__scan",
+          "mcp__lsp__rename",
+          "mpd_hashline_edit",
+          "write"
+        ],
+        "structured_output": false
+      }
+    ]
+  },
+  "reviewer_instrument": {
+    "exit": 0,
+    "positive_calls": [
+      {
+        "call": 1,
+        "toolCount": 87,
+        "writeCapableVisible": [
+          "bash",
+          "edit",
+          "mcp__ast_grep__rewrite",
+          "mcp__ast_grep__scan",
+          "mcp__lsp__rename",
+          "mpd_hashline_edit",
+          "write"
+        ],
+        "structured_output": null
+      },
+      {
+        "call": 2,
+        "toolCount": 0,
+        "writeCapableVisible": [],
+        "structured_output": null
+      },
+      {
+        "call": 3,
+        "toolCount": 81,
+        "writeCapableVisible": [],
+        "structured_output": null
+      },
+      {
+        "call": 4,
+        "toolCount": 87,
+        "writeCapableVisible": [
+          "bash",
+          "edit",
+          "mcp__ast_grep__rewrite",
+          "mcp__ast_grep__scan",
+          "mcp__lsp__rename",
+          "mpd_hashline_edit",
+          "write"
+        ],
+        "structured_output": null
+      }
+    ],
+    "control_calls": [
+      {
+        "call": 1,
+        "toolCount": 87,
+        "writeCapableVisible": [
+          "bash",
+          "edit",
+          "mcp__ast_grep__rewrite",
+          "mcp__ast_grep__scan",
+          "mcp__lsp__rename",
+          "mpd_hashline_edit",
+          "write"
+        ],
+        "structured_output": null
+      },
+      {
+        "call": 2,
+        "toolCount": 0,
+        "writeCapableVisible": [],
+        "structured_output": null
+      },
+      {
+        "call": 3,
+        "toolCount": 87,
+        "writeCapableVisible": [
+          "bash",
+          "edit",
+          "mcp__ast_grep__rewrite",
+          "mcp__ast_grep__scan",
+          "mcp__lsp__rename",
+          "mpd_hashline_edit",
+          "write"
+        ],
+        "structured_output": null
+      }
+    ],
+    "note": "older copy: records toolCount + writeCapableSeen only, so the structured_output clause of t13's predicate is unevaluable here; the tool-set halves reproduce exactly"
+  },
+  "predicate_on_shipped_traces": {
+    "positive": {
+      "parentTools": 87,
+      "parentHasSeven": true,
+      "childRequests": 1,
+      "enforcement_ok": true
+    },
+    "reinjection": {
+      "parentTools": 87,
+      "parentHasSeven": true,
+      "childRequests": 0,
+      "enforcement_ok": false
+    }
+  },
+  "sequencing_precondition": {
+    "VENDOR_LOCK_mtime_utc": "13:37:16",
+    "newest_skills_file_utc": "13:44:19",
+    "lock_newer_than_skills": false,
+    "verify_vendor_exit": 1,
+    "verify_vendor": "FAIL - asset skills treeSha mismatch",
+    "note": "the lock is STALE relative to t13's last case edit; re-running the gate does not clear a stale fingerprint (owner: t10 per the captain's \u00a7Y2; VENDOR_LOCK.json is out of t14's scope)"
+  },
+  "isolation": {
+    "read_only": true,
+    "edited_paths": "none - skills/** and VENDOR_LOCK.json untouched"
+  }
+}

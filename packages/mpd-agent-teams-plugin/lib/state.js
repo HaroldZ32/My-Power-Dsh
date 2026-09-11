@@ -17,8 +17,8 @@ import { readFileSync } from 'node:fs';
 import { mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { TERMINAL_TASK_STATUSES } from "./types.js";
-import { hasValidQualityTaskFields, isReviewPolicy } from "./quality-gates.js";
-export { buildCoverageMatrix, canDeclareDelivery, classifyChangedPath, collectChangedPaths, defaultQualityDeliveryGraph, describeQualityLoop, evaluateQualityCompletion, hasValidQualityTaskFields, isQualityKind, pathMatchesScope, planQualityFollowUp, qualityPlanningPrompt, resumeTeamState, sanitizeReviewAcceptance, sanitizeReviewObjective, taskKindOf, validateCreateTask, } from "./quality-gates.js";
+import { hasValidQualityTaskFields, isReviewPolicy, normalizeBlankOptionalTaskFields } from "./quality-gates.js";
+export { buildCoverageMatrix, canDeclareDelivery, classifyChangedPath, collectChangedPaths, defaultQualityDeliveryGraph, describeQualityLoop, evaluateQualityCompletion, hasValidQualityTaskFields, isQualityKind, normalizeBlankOptionalTaskFields, pathMatchesScope, planQualityFollowUp, qualityPlanningPrompt, resumeTeamState, sanitizeReviewAcceptance, sanitizeReviewObjective, taskKindOf, validateCreateTask, } from "./quality-gates.js";
 /** Mailbox key of the captain. */
 export const CAPTAIN_KEY = 'captain';
 /** A crashed live-delivery attempt becomes retryable after this interval. */
@@ -37,14 +37,28 @@ export async function withTeamLock(key, fn) {
     const previous = locks.get(key) ?? Promise.resolve();
     let release;
     const gate = new Promise((resolve) => { release = resolve; });
-    locks.set(key, previous.then(() => gate));
+    const tail = previous.then(() => gate);
+    locks.set(key, tail);
     await previous;
     try {
         return await fn();
     }
     finally {
         release();
+        // Drop this key's queue entry once we are still its tail, so settled
+        // teams do not leave one resolved promise chained forever (the same
+        // cleanup discipline as the scheduler's serializeMember). A successor
+        // that already appended itself owns the map slot; keep its entry.
+        if (locks.get(key) === tail)
+            locks.delete(key);
     }
+}
+/**
+ * Keys with an in-process lock queue (held or waiting), snapshot for
+ * diagnostics and leak checks. The queue promises themselves stay private.
+ */
+export function teamLockQueueKeys() {
+    return [...locks.keys()];
 }
 /** Longest key emitted before truncating and appending a digest. */
 const MAX_KEY_LENGTH = 48;
@@ -283,14 +297,34 @@ export function readTeamSync(stateRoot, teamId) {
 export async function writeTeam(stateRoot, state) {
     await atomicWriteText(join(stateRoot, state.id, 'team.json'), JSON.stringify(state, null, 2));
 }
+/** Parse the durable retired-member index, rejecting malformed content. */
+function parseRetiredMemberIds(raw) {
+    const parsed = JSON.parse(stripLeadingBom(raw));
+    if (!Array.isArray(parsed) || parsed.some(value => typeof value !== 'string' || value === '')) {
+        throw new Error('invalid AgentTeams retired member index');
+    }
+    return new Set(parsed);
+}
+/**
+ * Synchronous role hydration before the host's first prompt assembly: a
+ * cold-resumed member must be known to be a member before it can be denied
+ * captain-only tools or shown the member instructions.
+ */
+export function readRetiredMemberIdsSync(stateRoot) {
+    try {
+        return parseRetiredMemberIds(readFileSync(join(stateRoot, RETIRED_MEMBERS_FILE), 'utf8'));
+    }
+    catch (error) {
+        if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+            return new Set();
+        }
+        throw error;
+    }
+}
 /** Read the durable set of member session ids retired by remove/delete. */
 export async function readRetiredMemberIds(stateRoot) {
     try {
-        const parsed = JSON.parse(stripLeadingBom(await readFile(join(stateRoot, RETIRED_MEMBERS_FILE), 'utf8')));
-        if (!Array.isArray(parsed) || parsed.some(value => typeof value !== 'string' || value === '')) {
-            throw new Error('invalid AgentTeams retired member index');
-        }
-        return new Set(parsed);
+        return parseRetiredMemberIds(await readFile(join(stateRoot, RETIRED_MEMBERS_FILE), 'utf8'));
     }
     catch (error) {
         if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
@@ -682,12 +716,17 @@ function coerceTeamState(value, expectedId) {
     const tasks = value['tasks'].map((task) => {
         if (!isRecord(task))
             return task;
-        if (task['profileSeedId'] !== undefined && (typeof task['profileSeedId'] !== 'string' || task['profileSeedId'].trim() === '')) {
-            const next = { ...task };
+        // Tolerate legacy dirty records instead of bricking the whole team on
+        // reload: blank optional fields written by older builds (or by models
+        // that materialize optionals as "") are normalized to omitted, matching
+        // the tool-input normalization.
+        const cleaned = normalizeBlankOptionalTaskFields(task);
+        if (cleaned['profileSeedId'] !== undefined && (typeof cleaned['profileSeedId'] !== 'string' || cleaned['profileSeedId'].trim() === '')) {
+            const next = { ...cleaned };
             delete next['profileSeedId'];
             return next;
         }
-        return task;
+        return cleaned;
     });
     const coerced = { ...value, tasks };
     return isTeamState(coerced, expectedId) ? coerced : undefined;

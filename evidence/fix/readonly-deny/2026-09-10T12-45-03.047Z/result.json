@@ -1,0 +1,34 @@
+{
+  "ok": false,
+  "slug": "readonly-deny",
+  "status": "blocked",
+  "blockedBy": "no DEEPSEEK_API_KEY / provider credential in this deployment (the sandbox .credentials.yaml carries only a browser-session grant), so node-level validation can be exercised but no model step can run",
+  "remedy": "export DEEPSEEK_API_KEY=<key> (or store it through the Models page) in the environment that launches this case, then re-run it; the case is complete and needs no change",
+  "defect": "tools.restrict() names unknown global tools",
+  "expectedDenyList": [
+    "write",
+    "edit",
+    "mpd_hashline_edit",
+    "bash",
+    "mcp__ast_grep__rewrite",
+    "mcp__ast_grep__scan",
+    "mcp__lsp__rename"
+  ],
+  "deadNames": [
+    "str_replace_editor",
+    "apply_patch"
+  ],
+  "dshHome": "/tmp/mpd-rd-dsh-bt5QSs",
+  "runHome": "/tmp/mpd-rd-home-3MqYKW",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "rolesRow": true
+    },
+    "credentialBlocked": true
+  }
+}

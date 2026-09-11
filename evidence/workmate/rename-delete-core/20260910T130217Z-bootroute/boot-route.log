@@ -1,0 +1,36 @@
+=== real-boot route probe ===
+repo=/root/dshProj/my-power-dsh port=45761
+sandbox DSH_HOME=/tmp/mpd-wm-rt-dsh-18GuNi
+sandbox HOME=/tmp/mpd-wm-rt-home-R17BoZ
+HEAD=f69708809ed63a57461aa6730d297afc09e772a3
+
+[setup] copied .credentials.yaml into the sandbox
+[setup] copied settings.yaml into the sandbox
+[exit=0] dsh plugin --profile w add <repo>
+[exit=0] install
+GET /plugins/mpd-workmate/list -> 000000
+  body: 
+POST /plugins/mpd-workmate/rename (invalid name) -> 000000
+  body: 
+loader-apply errors: 0 (must be 0)
+--- boot stdout ---
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=no-binary binary=- cwd=/root/dshProj/my-power-dsh
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.
+[exit=1] tree applied + workmate route live
+{
+  "probe": "real boot + HTTP route (dump-config cannot detect a loader-apply abort)",
+  "isolation": {
+    "HOME": "temp sandbox",
+    "DSH_HOME": "temp sandbox",
+    "credentials_copied_once": true
+  },
+  "install_exit": 0,
+  "loader_apply_errors": 0,
+  "get_list_status": "000000",
+  "post_rename_invalid_name_status": "000000",
+  "row_mounted_and_route_live": false,
+  "contract_d_reason_live": false
+}
+SWEEP_DONE

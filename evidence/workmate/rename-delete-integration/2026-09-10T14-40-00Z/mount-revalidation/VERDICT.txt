@@ -1,0 +1,4 @@
+apply-crash signatures : 0 (MUST be 0)
+probe completed        : 1
+workmate tools present : WORKMATE_TOOLS_PRESENT=7/7
+boot exit              : 124 (alive at the 60s cap — normal for a serving profile)

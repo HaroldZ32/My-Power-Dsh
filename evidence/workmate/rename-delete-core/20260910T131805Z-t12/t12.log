@@ -1,0 +1,102 @@
+=== t12: plugin tree cannot boot — JSON-schema type array in mpd_workmate_delete ===
+repo=/root/dshProj/my-power-dsh
+sandbox DSH_HOME=/tmp/t12-dsh-bKSeZE
+sandbox HOME=/tmp/t12-home-GCfyaI
+HEAD=f69708809ed63a57461aa6730d297afc09e772a3
+src type-array occurrences : 0
+dist type-array occurrences: 0
+src mtime=2026-09-10T12:55:53Z  dist mtime=2026-09-10T13:16:59Z
+
+### verify 1: bun test packages/mpd-workmate-plugin/test
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-workmate-plugin/test/workmate.test.ts:
+(pass) sanitizeName / capText / autoNote / scoreMatch units [2.76ms]
+(pass) init → list → reflect → match lifecycle with a sandbox HOME [6.80ms]
+(pass) spawn carries persona+memory+note, reflect instruction, readonly deny, own route [2.04ms]
+(pass) workmate library root is under HOME and not in cwd [0.39ms]
+
+packages/mpd-workmate-plugin/test/rename-delete.test.ts:
+(pass) rename moves the evolved identity and preserves every byte of it [3.18ms]
+(pass) renamedFrom accumulates, dedupes, survives a later reflect and is capped [4.04ms]
+(pass) A5 note rule: only a LEADING autoNote prefix is rewritten, a custom note keeps its bytes [1.51ms]
+(pass) invalid names are rejected BEFORE any filesystem call, on both argument positions [1.63ms]
+(pass) same-key rename and case-only rename are refused with no side effect (M2) [0.72ms]
+(pass) the library ROOT can never be addressed as an instance (§B) [0.64ms]
+(pass) collision guard: ANY lstat hit on the target is a 409 collision and nothing is overwritten (M5) [1.00ms]
+(pass) a symlinked instance directory is refused, not resolved (§H) [0.82ms]
+(pass) unknown and orphan directories are never touched (M3), repeat delete is 404 [1.31ms]
+(pass) delete archives by default: hidden immediately, restorable, index key dropped [1.71ms]
+(pass) purge requires confirm === name, then removes the instance for good (D1) [1.16ms]
+(pass) a READONLY instance is a valid mutation target: library administration, not self-editing (M1) [0.85ms]
+(pass) delete never touches another workmate's bytes and leaves no partial instance [1.34ms]
+(pass) in-use gate: a name a team member holds blocks BOTH the rename target and the source (§E, A6) [2.36ms]
+(pass) busyTeams reads <cwd>/.mpd/team, skips archived teams and non-directory entries, fails open [0.61ms]
+(pass) A3: a stale meta.name cannot shadow the directory key, and a legacy key cannot resurrect a dir [1.55ms]
+(pass) an interrupted rename is rolled back: no half-moved instance, the key stays addressable [1.05ms]
+(pass) a throwing spawn releases the in-use counter, so it cannot block a later rename [1.10ms]
+(pass) no registered output schema uses a type ARRAY, and purge keeps §D null on the wire only [3.13ms]
+(pass) routes: §D status/reason matrix, headers, no path leakage [4.22ms]
+(pass) a headless profile stays tool-only: no webServer, no route work, tools still function [0.75ms]
+(pass) the workmate deny list denies bash and the write-capable MCP tools, and carries no dead name [1.04ms]
+
+ 26 pass
+ 0 fail
+ 313 expect() calls
+Ran 26 tests across 2 files. [108.00ms]
+[exit=0] bun test packages/mpd-workmate-plugin/test
+
+### verify 2: bun run typecheck
+$ tsgo --noEmit
+[exit=0] bun run typecheck
+
+### acceptance 3: fresh-process APPLY proof (profile mpd, isolated DSH_HOME)
+[install exit=0] dsh plugin --profile mpd add <repo>
+[exit=124] real boot (124 = alive at the 90s cap, normal for a serving profile)
+apply-crash signatures found: 0 (MUST be 0)
+--- evidence/workmate/rename-delete-core/20260910T131805Z-t12/apply-boot.log, verbatim ---
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=no-binary binary=- cwd=/root/dshProj/my-power-dsh
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.
+--- end ---
+
+### acceptance 4: bun skills/dsh-qa/scripts/readonly-deny.mjs (raw output)
+[exit=0] readonly-deny.mjs
+apply-crash signatures in its output: 0 (MUST be 0)
+registerTool/new-apply stack frames in its output: 0
+--- evidence/workmate/rename-delete-core/20260910T131805Z-t12/readonly-deny.log, verbatim (first 60 lines) ---
+[readonly-deny] ok=true -> /root/dshProj/my-power-dsh/evidence/fix/readonly-deny/2026-09-10T13-19-43.601Z
+  positive: {"exit":0,"restrictError":false,"missingCredential":false,"authFailed":false,"stubCalls":4,"stubTrace":[{"call":1,"hasTools":true,"bytes":105748},{"call":2,"hasTools":false,"bytes":6895},{"call":3,"hasTools":true,"bytes":99868},{"call":4,"hasTools":true,"bytes":106024}],"spawnDriven":true,"rejectedN
+  positiveOk: {"ok":true,"note":"the seven-name list reached tools.restrict() and the harness accepted it: the child was created and answered, with no unknown-tool refusal"}
+  reinjectionDiagnostic: {"exit":0,"restrictError":false,"missingCredential":false,"authFailed":false,"stubCalls":3,"stubTrace":[{"call":1,"hasTools":true,"bytes":105704},{"call":2,"hasTools":false,"bytes":6851},{"call":3,"hasTools":true,"bytes":107498}],"spawnDriven":true,"rejectedName":null,"filterSent":{"deny":["str_repl
+  reinjectionNote: "with the unregistered names re-injected, the sandbox boot still composed the child and emitted no refusal (refusalSeen=false) — the refusal is therefore NOT reproducible in this profile, so the positive lane carries the proof"
+  isolation: {"ok":true,"realWorkmateUntouched":true,"realWm":"/root/.mpd/workmate"}
+[readonly-deny] PASS
+--- end ---
+{
+  "task": "t12 - plugin tree cannot boot (type array in mpd_workmate_delete output schema)",
+  "schema_fix_present": {
+    "src_type_arrays": 0,
+    "dist_type_arrays": 0,
+    "archived_single_type": true
+  },
+  "acceptance_3_fresh_process_apply": {
+    "apply_crash_signatures": 0,
+    "passed": true,
+    "evidence": "apply-boot.log (isolated DSH_HOME, full profile, real boot)"
+  },
+  "acceptance_4_live_probe_signature": {
+    "probe_apply_crash_signatures": 0,
+    "registerTool_stack_frames": 0,
+    "signature_changed_away_from_apply_crash": true,
+    "evidence": "readonly-deny.log (raw)"
+  },
+  "verify": {
+    "bun test packages/mpd-workmate-plugin/test": 0,
+    "bun run typecheck": 0,
+    "bun skills/dsh-qa/scripts/readonly-deny.mjs": 0
+  },
+  "all_passed": true
+}
+DONE

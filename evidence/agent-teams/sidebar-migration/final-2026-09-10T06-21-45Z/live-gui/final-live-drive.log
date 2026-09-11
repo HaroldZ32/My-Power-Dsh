@@ -1,0 +1,30 @@
+{
+ "before": {
+  "collapsed": true,
+  "pills": 2
+ },
+ "sidebarMenuIds": [
+  "Files",
+  "Changes",
+  "Tasks",
+  "Terminal",
+  "Browser",
+  "🐳\nAgentTeams",
+  "🤖\nWorkmates"
+ ],
+ "panel": {
+  "cls": "aYQbCq_panel",
+  "head": "aYQbCq_panelHead",
+  "title": "AgentTeams activity",
+  "teamsBody": "aYQbCq_teams",
+  "visiblePx": {
+   "w": 559,
+   "h": 915
+  },
+  "aliasVar": "#e9ecf2"
+ },
+ "wm": {
+  "title": "Workmate library (~/.mpd/workmate)"
+ },
+ "mpdWarnings": []
+}

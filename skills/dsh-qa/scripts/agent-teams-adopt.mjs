@@ -63,13 +63,13 @@ function selfTest() {
   if (!notices.includes("程序员阿江(Relakkes)")) fail("copyright line missing")
   if (!existsSync(join(repoRoot, "packages", "mpd-agent-teams-plugin", "LICENSE"))) fail("adopted LICENSE copy missing")
   const vendorPkg = JSON.parse(readFileSync(join(repoRoot, "packages", "mpd-agent-teams-plugin", "package.json"), "utf8"))
-  if (vendorPkg.version !== "0.1.14") fail("adopted package version is not 0.1.14: " + vendorPkg.version)
+  if (vendorPkg.version !== "0.1.16-rc.3-mpd") fail("adopted package version is not 0.1.16-rc.3-mpd: " + vendorPkg.version)
   if (!existsSync(join(repoRoot, "packages", "mpd-agent-teams-plugin", "_deps", "schemastery", "lib", "index.mjs"))) fail("adopted _deps/schemastery missing")
   const ag = readFileSync(join(repoRoot, "AGENTS.md"), "utf8")
   if (!ag.includes(AGENTS_EXCEPTION)) fail("AGENTS.md naming exception missing")
   const st = spawnSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--self-test"], { encoding: "utf8" })
   if (st.status !== 0) fail("installer --self-test failed: " + st.stderr)
-  console.log("[agent-teams-adopt self-test] ok: notice + adopted LICENSE + 0.1.14 + _deps + AGENTS.md + installer self-test verified")
+  console.log("[agent-teams-adopt self-test] ok: notice + adopted LICENSE + 0.1.16-rc.3-mpd + _deps + AGENTS.md + installer self-test verified")
 }
 
 async function runReal() {

@@ -1,0 +1,23 @@
+t14 WITNESS ADDENDUM — Deep Worker's comment-only edit after my verification
+
+HASH DELTA, PROVEN COMMENT-ONLY BY DIFF AGAINST MY RETAINED VERIFIED COPY:
+  verified copy (evidence/workmate/rename-delete-core/witness-case.mjs) : 6daf888401025bc058cdf437ede6999cb96ee9af964cc34748c34b3a858e2918
+  shipped now                                                            : e540d0d9c34341d6c5b32f89ae02f32b3f7e8aa5ab54e0a6d268550b2ab433be
+  diff: +6 comment lines only (the positional hazard I reported); NON-COMMENT diff lines = 0
+  four verified assertion lines all present: isChildReq x1, 'ok: childSpy.length > 0' x1, diagChild x1, 'ok: diagChild.length === 0' x1
+
+FRESH WITNESS RUN ON THE SHIPPED BYTES (my copy verified byte-identical: both e540d0d9...):
+  exit 0 -> ok=true, PASS  (case evidence evidence/workmate/roles-readonly/2026-09-10T14-00-41.902Z)
+  enforcement       : {"ok": true, "childRequests": 1, "childToolCounts": [81], "childLeaksWriteCapable": [], "childHasStructuredOutput": true, "parentToolCount": 87, "parentHasAllSeven": true}
+  reinjectionControl: {"ok": true, "childRequestsUnderRestriction": 0, "parentToolCount": 87, "refusalSeen": false}
+  [positive] call#1: 87 tools, writeCapable=['bash', 'edit', 'mcp__ast_grep__rewrite', 'mcp__ast_grep__scan', 'mcp__lsp__rename', 'mpd_hashline_edit', 'write'], structured_output=False | call#2: 0 tools, writeCapable=[], structured_output=False | call#3: 81 tools, writeCapable=[], structured_output=True | call#4: 87 tools, writeCapable=['bash', 'edit', 'mcp__ast_grep__rewrite', 'mcp__ast_grep__scan', 'mcp__lsp__rename', 'mpd_hashline_edit', 'write'], structured_output=False
+  [reinjectionDiagnostic] call#1: 87 tools, writeCapable=['bash', 'edit', 'mcp__ast_grep__rewrite', 'mcp__ast_grep__scan', 'mcp__lsp__rename', 'mpd_hashline_edit', 'write'], structured_output=False | call#2: 0 tools, writeCapable=[], structured_output=False | call#3: 87 tools, writeCapable=['bash', 'edit', 'mcp__ast_grep__rewrite', 'mcp__ast_grep__scan', 'mcp__lsp__rename', 'mpd_hashline_edit', 'write'], structured_output=False
+
+LOCK / GATE, INDEPENDENTLY REPRODUCED (their CHECK 1 + CHECK 2):
+  lock skills treeSha 0fffd8fcc0776583f47e577e9e26c3d75b09c17908a4122411500ab29ac1c717 (364 files), mtime 13:59:54, lock sha256 05402cd86700bcde...
+  CHECK 1 verify-vendor exit 0 PASS, 'asset OK: skills 364 files'
+  CHECK 2 find skills -newer VENDOR_LOCK.json -type f -> prints nothing
+
+SHA CHAIN (never a constant): 81620614 -> ca9dfa77 -> [13:50:28] -> 2c11c7a9 -> 1499dc30 -> 0fffd8fc
+CONCLUSION: the verification transfers to the shipped bytes by diff proof AND is re-confirmed by a
+fresh witness run; the enforcement assertion passes on the seven-name list and fails in the control lane.

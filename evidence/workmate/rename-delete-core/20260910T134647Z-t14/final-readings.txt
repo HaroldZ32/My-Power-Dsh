@@ -1,0 +1,15 @@
+final case evidence dir: evidence/workmate/roles-readonly/2026-09-10T13-51-14.403Z
+[positive] exit=0 restrictError=False
+   call#1: tools=87 writeCapable=['bash', 'edit', 'mcp__ast_grep__rewrite', 'mcp__ast_grep__scan', 'mcp__lsp__rename', 'mpd_hashline_edit', 'write'] structured_output=False
+   call#2: tools=0 writeCapable=[] structured_output=False
+   call#3: tools=81 writeCapable=[] structured_output=True
+   call#4: tools=87 writeCapable=['bash', 'edit', 'mcp__ast_grep__rewrite', 'mcp__ast_grep__scan', 'mcp__lsp__rename', 'mpd_hashline_edit', 'write'] structured_output=False
+[reinjectionDiagnostic] exit=0 restrictError=False
+   call#1: tools=87 writeCapable=['bash', 'edit', 'mcp__ast_grep__rewrite', 'mcp__ast_grep__scan', 'mcp__lsp__rename', 'mpd_hashline_edit', 'write'] structured_output=False
+   call#2: tools=0 writeCapable=[] structured_output=False
+   call#3: tools=87 writeCapable=['bash', 'edit', 'mcp__ast_grep__rewrite', 'mcp__ast_grep__scan', 'mcp__lsp__rename', 'mpd_hashline_edit', 'write'] structured_output=False
+enforcement       : {"ok": true, "childRequests": 1, "childToolCounts": [81], "childLeaksWriteCapable": [], "childHasStructuredOutput": true, "parentToolCount": 87, "parentHasAllSeven": true}
+reinjectionControl: {"ok": true, "childRequestsUnderRestriction": 0, "parentToolCount": 87, "refusalSeen": false}
+reviewer-applied predicate [positive]: parentTools=87 parentHasSeven=True childRequests=1 -> enforcement.ok=True
+reviewer-applied predicate [reinjectionDiagnostic]: parentTools=87 parentHasSeven=True childRequests=0 -> enforcement.ok=False
+wrote evidence/workmate/rename-delete-core/20260910T134647Z-t14/t14.final.json

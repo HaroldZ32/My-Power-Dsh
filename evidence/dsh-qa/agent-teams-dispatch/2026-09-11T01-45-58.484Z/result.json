@@ -1,0 +1,32 @@
+{
+  "ok": false,
+  "sandbox": "/tmp/mpd-dispatch-sHYszx",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "captainRun": {
+      "ok": true,
+      "exit": 0,
+      "tail": "d and third sleep calls per the instructions. The user said: three separate calls, then end turn. Do not message members.\n\nLet me continue with sleep 2 and sleep 3.\ndsh: reasoning:\nAll three sleeps done. The tasks completed. End turn now. Do not message members. Report briefly.\n\nNote step 1's approve returned an error (\"add at least one task before approving the plan\") — I should report that faithfully: the first approve call failed with that error, tasks were created, and the subsequent approve succeeded with both tasks pending. That's a deviation forced by the runtime, not by me.\n\nEnd turn.\n"
+    },
+    "tasks": {
+      "a": "completed",
+      "b": "completed",
+      "total": 2
+    },
+    "memberAssignments": {
+      "count": 1,
+      "sessions": [
+        "5753d766-9710-4371-b11d-526549d55e0e"
+      ]
+    },
+    "secondBatchDispatched": {
+      "ok": true
+    },
+    "assignmentDelivery": {
+      "ok": false
+    }
+  }
+}

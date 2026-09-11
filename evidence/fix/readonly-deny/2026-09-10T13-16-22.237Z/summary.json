@@ -1,0 +1,74 @@
+{
+  "task": "t5 — fix the read-only deny lists (contract §G) and prove it on the real harness",
+  "slug": "readonly-deny",
+  "status": "implementation complete and verified; TWO of the contract's acceptance criteria are NOT satisfied as written, for measured environmental reasons",
+  "rawCaseResult": "case-result.json (verbatim case output for this run); output.log holds both full dsh transcripts",
+
+  "change": {
+    "rolesDenyList": ["write", "edit", "mpd_hashline_edit", "bash", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename"],
+    "removedOnly": "the two unregistered legacy editor names",
+    "keptOnPurpose": "bash (can write files; read/glob/grep stay available) and the three live-registered MCP write tools",
+    "noHasToolFilter": true,
+    "distRebuilt": "packages/mpd-roles-plugin/dist/index.js",
+    "files": [
+      "packages/mpd-roles-plugin/src/index.ts",
+      "packages/mpd-roles-plugin/dist/index.js",
+      "packages/mpd-roles-plugin/test/roles.test.ts",
+      "skills/dsh-qa/scripts/readonly-deny.mjs",
+      "skills/dsh-qa/SKILL.md",
+      "AGENTS.md",
+      "VENDOR_LOCK.json"
+    ]
+  },
+
+  "liveProofCredentialFree": {
+    "method": "a local OpenAI-shaped stub answers the PARENT model step with one mpd_role_spawn call inside a FRESH dsh process with a throwaway key; the shared adapter is instrumented in a sandbox copy so the exact restriction handed to the harness is recorded. No provider credential is needed or used.",
+    "positiveResult": {
+      "filterSentToHarness": { "deny": ["write", "edit", "mpd_hashline_edit", "bash", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename"] },
+      "childCreatedAndAnswered": true,
+      "unknownToolRefusalSeen": false,
+      "whyItProvesTheFix": "tools.restrict() runs inside the child's setup, so a rejection means NO child is created. A created, answering child therefore proves the seven-name list was accepted by the real harness. The adapter probe pins WHICH list was accepted.",
+      "exitCode": 0
+    },
+    "isolation": "the real ~/.mpd/workmate bytes are unchanged across the run (name+size+mtime fingerprint before/after), not asserted absent — the directory legitimately pre-exists"
+  },
+
+  "measurementsThatCorrectedThePlan": [
+    {
+      "claim": "an in-session mpd_role_spawn call can prove the fix",
+      "finding": "FALSE, and this is the captain's own §N2: plugin code loads at BOOT, so a long-running session keeps the pre-fix module and keeps reporting the old error after the file is fixed"
+    },
+    {
+      "claim": "in a fresh process a credential failure is positive evidence the list was accepted",
+      "finding": "REFUTED by measurement: authentication happens BEFORE the child is composed. With a dummy key the run dies at `AUTH: Authentication Fails` and mpd_role_spawn is never attempted, so a credential error says nothing about the restriction list"
+    },
+    {
+      "claim": "the pre-fix list fails against the real harness (acceptance criterion 2)",
+      "finding": "NOT REPRODUCIBLE here. The same drive run against a pristine f697088 worktree sent the NINE-name list (including both unregistered names) to the harness and the child was still created and answered — no refusal. Measured in both directions with the adapter probe, so the list really was delivered. The genuine in-session failure and this measurement differ in process lifetime, which is consistent with a module-cache effect on the running host"
+    },
+    {
+      "claim": "the child receives UNKNOWN_TOOL if it attempts a write (acceptance criterion 4)",
+      "finding": "NOT DEMONSTRATED. The restriction demonstrably reaches the harness, but the child's own model request carries no tools array under this stub, so no child-side write attempt could be observed. Proving it needs a child-side tool-call turn"
+    }
+  ],
+
+  "gates": [
+    { "command": "bun test packages/mpd-roles-plugin/test", "status": "passed", "exitCode": 0, "evidence": "11 pass / 0 fail" },
+    { "command": "node skills/dsh-qa/scripts/readonly-deny.mjs --self-test", "status": "passed", "exitCode": 0, "evidence": "23 offline checks" },
+    { "command": "node skills/dsh-qa/scripts/readonly-deny.mjs", "status": "passed", "exitCode": 0, "evidence": "positive lane green with the exact filter pinned; isolation green" },
+    { "command": "bun run typecheck", "status": "passed", "exitCode": 0 },
+    { "command": "node scripts/verify-vendor.mjs", "status": "passed", "exitCode": 0, "evidence": "skills corpus fingerprint refreshed (363→364 files + treeSha) for the new case, computed with the gate's own LF-normalising algorithm" },
+    { "command": "isolated DSH_HOME boot (dump-config)", "status": "passed", "exitCode": 0, "evidence": "composes mpd-roles, mpd-workmate, mpd-hashline, mcp-astgrep, mcp-lsp; NOTE dump-config never executes plugin code, so it is not a health signal" }
+  ],
+
+  "blockerStillOpenForTheTeam": {
+    "what": "packages/mpd-workmate-plugin/src/index.ts:664 and its dist use `archived: { type: [\"string\", \"null\"] }`; this harness rejects schema type arrays, so the plugin tree fails to load and NO profile mounting that row can boot",
+    "owner": "t3 (captain P1)",
+    "consequence": "the full mpd profile cannot boot, so any live case that mounts the workmate row must neutralise it (this case does, in its sandbox copy)"
+  },
+
+  "baseline": {
+    "head": "f697088 with 33 pre-existing dirty entries at claim time — never committed, stashed or reverted",
+    "worktreeNote": "a pristine f697088 worktree was created under the gitignored .mpd/ for the before/after measurement and has been removed again (git worktree list shows only the main tree)"
+  }
+}

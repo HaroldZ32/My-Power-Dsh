@@ -1,0 +1,159 @@
+=== t10 (Lead) docs-sync gate sweep (FINAL, post-copy-edit) — 2026-09-10T14:30:34Z ===
+
+### git baseline
+HEAD before task: f69708809ed63a57461aa6730d297afc09e772a3 (porcelain 65, recorded at task start)
+HEAD now:         f69708809ed63a57461aa6730d297afc09e772a3
+porcelain now:    71 top-level entries (delta = untracked evidence produced by the team)
+
+### 1) bun run test:qa
+$ for f in skills/dsh-qa/scripts/*.mjs; do echo "[test:qa] $f"; bun "$f" --self-test || { echo "[test:qa] FAILED: $f"; exit 1; }; done; echo "[test:qa] all self-tests passed"
+[test:qa] skills/dsh-qa/scripts/agent-teams-adopt.mjs
+[agent-teams-adopt self-test] ok: notice + adopted LICENSE + 0.1.16-rc.3-mpd + _deps + AGENTS.md + installer self-test verified
+[test:qa] skills/dsh-qa/scripts/agent-teams-dispatch.mjs
+  ok   installed host exposes no subagent followup member
+  ok   installed host owns the symbol-keyed prompt queue
+  ok   member delivery uses the audited boundary
+  ok   no call site uses ctx.subagents.followup
+  ok   legacy followup is used only when the host really has it
+  ok   the modern queue is the rc.1 symbol
+  ok   task mutations kick the whole team
+  ok   member idle edges kick that member
+  ok   delivery failure rolls the claim back instead of stranding it
+  ok   capabilities deny all captain-only tools for members
+  ok   members receive member instructions, not the captain protocol
+[agent-teams-dispatch self-test] ok: 11 checks
+[test:qa] skills/dsh-qa/scripts/agent-teams-sidebar.mjs
+[agent-teams-sidebar self-test] ok: 16 checks (mpd-agent-teams,mpd-workmate; @nanmicoder/dsh-agent-teams,@mpd-dsh/team-page,@mpd-dsh/mpd)
+[test:qa] skills/dsh-qa/scripts/bundle-lifecycle.mjs
+[bundle-lifecycle self-test] ok: repo root IS the bundle + bundle-served preset row + provider wiring + probe + pnpm
+[test:qa] skills/dsh-qa/scripts/codegraph-smoke.mjs
+[codegraph-smoke self-test] ok: project-path precondition verified on fixture
+[test:qa] skills/dsh-qa/scripts/dual-track-smoke.mjs
+[llm-dual-track self-test] ok: track fixture assertions verified
+[test:qa] skills/dsh-qa/scripts/mcp-call.mjs
+[mcp-call self-test] ok: tool-name detection verified on fixture
+[test:qa] skills/dsh-qa/scripts/memory-smoke.mjs
+[memory-smoke self-test] ok: bundle row + dist symbols + unit suite verified
+[test:qa] skills/dsh-qa/scripts/mount-assert.mjs
+[mount-assert self-test] ok: presence/absence detection verified on fixture
+[test:qa] skills/dsh-qa/scripts/plan-c-smoke.mjs
+[plan-c-smoke self-test] ok: rows + unit suites verified
+[test:qa] skills/dsh-qa/scripts/preset-register.mjs
+[preset-register self-test] ok: preset + roster fixtures + web-compat/preset-root normalization verified
+[test:qa] skills/dsh-qa/scripts/readonly-deny.mjs
+[readonly-deny self-test] ok: 23 checks
+[test:qa] skills/dsh-qa/scripts/relocate-smoke.mjs
+[relocate-smoke self-test] ok: staged patch is path-clean
+[test:qa] skills/dsh-qa/scripts/rtl-ip-profile.mjs
+[rtl-ip-profile self-test] ok: profile + 7 members + swimlane/flow markers + skill + 8 templates + bilingual guide verified
+[test:qa] skills/dsh-qa/scripts/rtl-verif.mjs
+[rtl-verif self-test] ok: bundle wiring (mpd-verif active + wave rows commented) + golden fixture + eight-tool dist surface + iron-rule strings + devPatch guard
+[test:qa] skills/dsh-qa/scripts/session-start-team.mjs
+[session-start-team self-test] ok: policy module + bundle patch + installer + persona verified
+[test:qa] skills/dsh-qa/scripts/skill-catalog-probe.mjs
+[skill-catalog-probe self-test] ok: staged skill corpus present + provider wiring verified
+[test:qa] skills/dsh-qa/scripts/team-route-rewire.mjs
+[team-route-rewire self-test] ok: 12 checks + staged bundle present
+[test:qa] skills/dsh-qa/scripts/tool-output-validation.mjs
+[tool-output-validation self-test] ok: bundle rows + dist symbols + unit suites verified
+[test:qa] skills/dsh-qa/scripts/ultrawork-smoke.mjs
+[ultrawork-smoke self-test] ok: engine symbols + bundle row verified
+[test:qa] skills/dsh-qa/scripts/vision-smoke.mjs
+[vision-e2e self-test] ok: fixture generator verified (155 bytes)
+[test:qa] skills/dsh-qa/scripts/web-client-adapt.mjs
+[web-client-adapt self-test] ok: 14 checks
+[test:qa] skills/dsh-qa/scripts/workmate-library.mjs
+[workmate-library self-test] ok: 18 checks
+[test:qa] skills/dsh-qa/scripts/workmate-team-member.mjs
+[workmate-team-member self-test] ok: 6 checks
+[test:qa] all self-tests passed
+bun run test:qa exit=0
+
+### 2) bun test packages/mpd-bundle-plugin/test
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs:
+(pass) client seam policy > declares only services this profile is guaranteed to mount [0.52ms]
+(pass) client seam policy > never declares the sidebar statically (that would park the whole entry) [0.24ms]
+(pass) client seam policy > waits for the sidebar through ctx.inject instead of a one-shot probe [0.05ms]
+(pass) with DSH-better-sidebar installed > registers the AgentTeams page and the workmate library, and no legacy floater [0.22ms]
+(pass) with DSH-better-sidebar installed > the adopted client half is never applied (it would re-register the removed surfaces) [0.02ms]
+(pass) with DSH-better-sidebar installed > both tab descriptors are valid sidebar pages [0.33ms]
+(pass) with DSH-better-sidebar installed > keeps the locale namespaces registered [0.03ms]
+(pass) workmate page > renders the library from the host routes [7.69ms]
+(pass) workmate page dictionaries > registers the workmate namespace with both dictionaries [0.95ms]
+(pass) workmate page dictionaries > zh is the key-set source of truth and en matches it key for key (§L A7) [1.10ms]
+(pass) workmate page dictionaries > the mutation surface is localized in BOTH languages, not hardcoded English [0.80ms]
+(pass) workmate page dictionaries > the tab-strip label stays hardcoded English (contract §K, deliberate deferral) [0.88ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > every reason code maps to a distinct, readable message [0.72ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > an in-use refusal names the blocking team and member (§E, user decision D2) [0.26ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > an unknown failure falls back to the server text, never to a raw reason key [0.08ms]
+(pass) workmate page mutation controls > delete is an explicit two-step confirmation, never one destructive click (D1) [19.18ms]
+(pass) workmate page mutation controls > purge cannot be submitted without typing the exact name (§D confirm-required) [27.22ms]
+(pass) workmate page mutation controls > the archive confirmation posts that workmate and reports the archived outcome [15.32ms]
+(pass) workmate page mutation controls > a rename posts { name, new_name } and follows the new key (§H no stale selection) [15.00ms]
+(pass) workmate page mutation controls > an in-use refusal is shown with the blocking team/member, not a generic failure (§E) [15.36ms]
+(pass) workmate page mutation controls > a 409 collision is reported as taken, and an unknown key drops the stale selection [14.89ms]
+(pass) without DSH-better-sidebar > registers no sidebar surface at all — there is no floating fallback [0.80ms]
+
+packages/mpd-bundle-plugin/test/team-page.test.mjs:
+(pass) AgentTeams sidebar tab descriptor > registers one single-instance tab with the pinned id and order [0.67ms]
+(pass) AgentTeams sidebar tab descriptor > createTab mints a clean tab so the auto-open seed never lands on it [0.81ms]
+(pass) AgentTeams sidebar tab descriptor > offers the auto-open switch as a plugin-owned setting [1.00ms]
+(pass) AgentTeams page rendering > renders the conversation's teams, members, tasks and archived section [7.37ms]
+(pass) AgentTeams page rendering > reproduces the floater's panel interior, class for class [5.22ms]
+(pass) AgentTeams page rendering > the head's collapse control closes the sidebar panel through the store [5.37ms]
+(pass) AgentTeams page rendering > a missing store still renders the same markup and never throws [5.89ms]
+(pass) AgentTeams page rendering > the head's busy dot follows live member activity [10.09ms]
+(pass) AgentTeams page rendering > renders the collapse glyph with the platform's own icon component [5.82ms]
+(pass) AgentTeams page rendering > falls back to the identical inline chevron when the platform icons are absent [5.20ms]
+(pass) AgentTeams page rendering > renders the archived section with the archived label [5.14ms]
+(pass) AgentTeams page rendering > filters by the tab's own conversation scope [5.76ms]
+(pass) AgentTeams page rendering > shows the floater's own empty hint inside the panel body [5.12ms]
+(pass) AgentTeams page rendering > a hidden tab renders no live view (the sidebar CSS-hides collapsed tabs) [4.90ms]
+(pass) AgentTeams page rendering > a failing host route degrades to the empty state instead of throwing [5.76ms]
+(pass) AgentTeams page rendering > a rejecting poll shows a readable error notice, not a crash [5.35ms]
+(pass) staged plan approval > passes a model directory to a staged team when the service provides one [5.08ms]
+(pass) staged plan approval > a throwing directoryFor degrades instead of crashing the page [5.93ms]
+(pass) badge and polling > badge reports the cached live-team count for its session only [5.41ms]
+(pass) badge and polling > mounting the page twice keeps a single polling controller [7.57ms]
+(pass) auto-open policy > opens the tab once, with a content seed, for a team that appears after the baseline [2709.52ms]
+(pass) auto-open policy > teams restored with the page never auto-open [2706.09ms]
+(pass) auto-open policy > the plugin switch turns auto-open off [2707.57ms]
+(pass) auto-open policy > a disabled tab type is never auto-opened [2707.74ms]
+(pass) boot safety > a missing page module degrades to one warning instead of throwing out of apply [1.53ms]
+(pass) boot safety > without better-sidebar nothing is registered and nothing is warned about [0.64ms]
+
+packages/mpd-bundle-plugin/test/sidebar-migration-artifact.test.mjs:
+(pass) shipped bundle client after the AgentTeams sidebar migration > registers exactly the three loader modules, including the sidebar page [0.63ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > carries the mpd export bridge with every pinned export [0.52ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > no mpd client source registers a removed surface [0.63ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > the page module keeps the pinned tab id and order [0.80ms]
+
+ 52 pass
+ 0 fail
+ 452 expect() calls
+Ran 52 tests across 3 files. [11.15s]
+bun test exit=0
+
+### 3) bun run typecheck
+$ tsgo --noEmit
+bun run typecheck exit=0
+
+### 4) node scripts/verify-vendor.mjs
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] asset OK: skills 364 files
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+verify-vendor exit=0
+
+### lock freshness (standing rule §V3: lock mtime must be NEWER than every skills/** file)
+-rw-r--r-- 1 root root 2776 2026-09-10 22:24:52.986269619 +0800 VENDOR_LOCK.json
+skills files newer than the lock (must be empty):
+(end)

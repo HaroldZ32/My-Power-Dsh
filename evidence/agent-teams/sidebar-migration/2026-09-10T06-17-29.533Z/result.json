@@ -1,0 +1,137 @@
+{
+  "ok": true,
+  "case": "agent-teams-sidebar",
+  "checkedAt": "2026-09-10T06-17-29.533Z",
+  "repoRoot": "/root/dshProj/my-power-dsh",
+  "sandbox": "/tmp/mpd-atsb-IeNS8c",
+  "artifact": {
+    "path": "packages/mpd-bundle-plugin/client.js",
+    "sha256": "2e651877f799a4e4d28ce1d1ba47e2a1256dbf835d1960b96c17c61e35efc3b3",
+    "bytes": 239891
+  },
+  "steps": {
+    "artifactCopyFaithful": {
+      "ok": true,
+      "repoSha": "2e651877f799a4e4d28ce1d1ba47e2a1256dbf835d1960b96c17c61e35efc3b3",
+      "copySha": "2e651877f799a4e4d28ce1d1ba47e2a1256dbf835d1960b96c17c61e35efc3b3",
+      "bytes": 239891
+    },
+    "moduleIds": {
+      "ok": true,
+      "ids": [
+        "@nanmicoder/dsh-agent-teams",
+        "@mpd-dsh/team-page",
+        "@mpd-dsh/mpd"
+      ]
+    },
+    "teamPageModuleInArtifact": {
+      "ok": true
+    },
+    "exactlyOneTeamTab": {
+      "ok": true,
+      "teamTabIds": [
+        "mpd-agent-teams"
+      ],
+      "allTabIds": [
+        "mpd-agent-teams",
+        "mpd-workmate"
+      ]
+    },
+    "teamTabShape": {
+      "ok": true,
+      "order": 85,
+      "single": true,
+      "toggle": "autoOpenOnTeamActivity"
+    },
+    "noLegacyRegistration": {
+      "ok": true,
+      "registeredDefinitions": [
+        "conversation.chat.commandview"
+      ]
+    },
+    "adoptedNeverApplied": {
+      "ok": true,
+      "artifactStillContainsAdoptedStrings": true
+    },
+    "noFloaterDefined": {
+      "ok": true
+    },
+    "commandViewKept": {
+      "ok": true,
+      "slots": [
+        "conversation.chat.commandview"
+      ]
+    },
+    "panelInteriorParity": {
+      "ok": true,
+      "mismatched": [],
+      "observed": {
+        "root": "aYQbCq_panel",
+        "head": "aYQbCq_panelHead",
+        "title": "aYQbCq_panelTitle",
+        "dot": "aYQbCq_panelDot",
+        "controls": "aYQbCq_panelControls",
+        "collapse": "aYQbCq_iconButton",
+        "teams": "aYQbCq_teams",
+        "empty": "aYQbCq_emptyHint",
+        "panelMarker": true,
+        "emptyMarker": true,
+        "glyph": "IconChevronDownOutline14"
+      },
+      "windowManagerDropped": true,
+      "storeReduced": true
+    },
+    "sourcesRegisterNoRemovedSurface": {
+      "ok": true,
+      "hits": []
+    },
+    "commandViewStillRegisteredBySource": {
+      "ok": true
+    },
+    "buildGatePresent": {
+      "ok": true
+    },
+    "serverHalfMountedByRow": {
+      "ok": true,
+      "note": "row mounted by the bundle patch + server half registering the route"
+    },
+    "adoptedClientBridged": {
+      "ok": true,
+      "missing": []
+    },
+    "artifactCarriesBridge": {
+      "ok": true,
+      "missing": []
+    },
+    "bridgePatchGuarded": {
+      "ok": true
+    },
+    "bridgePatchIdempotent": {
+      "ok": true,
+      "exit": 0,
+      "output": "[patch-agent-teams-client] already applied: packages/mpd-agent-teams-plugin/lib/client.js (17 symbols, 196972 bytes)",
+      "restored": false
+    },
+    "hostRouteMounted": {
+      "ok": true,
+      "mode": "real-boot",
+      "servedClient": {
+        "url": "/plugins/??@mpd-dsh/mpd/client.js&rev=179c4350158142a0-48",
+        "status": 200,
+        "bytes": 239976,
+        "teamPageModule": true,
+        "teamTabId": true,
+        "bridge": true,
+        "atLeastRepoArtifactBytes": true,
+        "carriesRepoArtifact": true
+      },
+      "stateRoute": {
+        "status": 200,
+        "body": "{\"teams\":[]}",
+        "teamsArray": true
+      },
+      "honestNote": "asserted on a REAL offline web boot: the served @mpd-dsh/mpd client bundle + HTTP state route"
+    }
+  },
+  "realHomeUntouched": true
+}

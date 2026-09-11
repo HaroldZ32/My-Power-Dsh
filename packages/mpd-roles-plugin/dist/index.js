@@ -1,10 +1,10 @@
-// packages/mpd-roles-plugin/src/index.ts
+// src/index.ts
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 
-// packages/mpd-roles-plugin/src/roles.data.ts
+// src/roles.data.ts
 var ROLES = [
   {
     id: "oracle",
@@ -131,7 +131,7 @@ var ROLES = [
 ];
 var ROLE_BY_ID = Object.fromEntries(ROLES.map((r) => [r.id, r]));
 
-// packages/mpd-dsh-adapter-plugin/src/index.ts
+// ../mpd-dsh-adapter-plugin/src/index.ts
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 function textBlock(content) {
@@ -332,14 +332,12 @@ function createDshAdapter(ctx, config = {}) {
   return adapter;
 }
 
-// packages/mpd-roles-plugin/src/index.ts
+// src/index.ts
 var name = "mpd-roles";
 var inject = ["tools", "subagents"];
 var READONLY_DENY = [
   "write",
   "edit",
-  "str_replace_editor",
-  "apply_patch",
   "mpd_hashline_edit",
   "bash",
   "mcp__ast_grep__rewrite",

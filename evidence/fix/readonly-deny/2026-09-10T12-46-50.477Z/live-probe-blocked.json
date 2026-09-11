@@ -1,0 +1,57 @@
+{
+  "ok": false,
+  "slug": "readonly-deny",
+  "defect": "tools.restrict() names unknown global tools",
+  "sentinel": "RETURN-OK",
+  "denyList": [
+    "write",
+    "edit",
+    "mpd_hashline_edit",
+    "bash",
+    "mcp__ast_grep__rewrite",
+    "mcp__ast_grep__scan",
+    "mcp__lsp__rename"
+  ],
+  "deadNames": [
+    "str_replace_editor",
+    "apply_patch"
+  ],
+  "dshHome": "/tmp/mpd-rd-dsh-Noo6En",
+  "runHome": "/tmp/mpd-rd-home-LieFT4",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0,
+      "rolesRow": true
+    },
+    "live": {
+      "ok": false,
+      "exit": 1
+    },
+    "childStarted": {
+      "ok": false,
+      "defectSignature": false,
+      "sentinelPresent": false,
+      "sample": "k-ai/cordis/lib/index.js:120:36) at Object.registerTool (file:///root/dshProj/my-power-dsh/packages/mpd-dsh-adapter-plugin/dist/index.js:74:20) at new apply (file:///root/dshProj/my-power-dsh/packages/mpd-workmate-plugin/dist/index.js:809:7) at Fiber.execute (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1067:24) at file://"
+    },
+    "noDeadNameError": {
+      "ok": true,
+      "sawUnknownGlobalTools": false
+    },
+    "spawnReported": {
+      "ok": false,
+      "sawChildWord": false
+    },
+    "isolation": {
+      "ok": true,
+      "realWm": "/root/.mpd/workmate",
+      "realWorkmateUntouched": true,
+      "dshHome": "/tmp/mpd-rd-dsh-Noo6En",
+      "runHome": "/tmp/mpd-rd-home-LieFT4"
+    }
+  }
+}

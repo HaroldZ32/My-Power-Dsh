@@ -192,7 +192,7 @@
 - insert:
     # The adopted team plugin is FIRST-CLASS MAIN CODE at
     # packages/mpd-agent-teams-plugin (MIT provenance; upstream
-    # @nanmicoder/dsh-agent-teams 0.1.14) and loads through the bundle exports map:
+    # @nanmicoder/dsh-agent-teams 0.1.16-rc.3-mpd) and loads through the bundle exports map:
     # pnpm-driven `dsh plugin add` never links a bundle's transitive dependencies
     # into the profile root, so a plain package-name row would silently self-disable.
     # Its server runtime closure is vendored at packages/mpd-agent-teams-plugin/_deps

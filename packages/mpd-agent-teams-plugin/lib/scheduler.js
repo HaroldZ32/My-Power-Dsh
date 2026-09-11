@@ -214,10 +214,11 @@ function fallbackMailboxPrompt(messages) {
 /** Install one scheduler and its member activity observer. */
 export function installTeamScheduler(ctx, config) {
     const memberQueues = new Map();
-    // An idle edge in this process proves that the resident member ended its
-    // turn while the current attempt was still open. Remember that capability
-    // even after Harness disposes the continuable AgentHandle: later status or
-    // graph kicks must keep it parked. A cold process starts with an empty map,
+    // An idle edge observed by this scheduler parks the exact open capability.
+    // Harness may dispose its AgentHandle after settlement, so registry absence
+    // is not evidence that the owner was lost. Keep the marker sticky across
+    // later kicks; only a durable attempt that this process has not observed is
+    // eligible for one cold recovery. A cold process starts with an empty map,
     // so durable open attempts are still recovered after restart.
     const parkedAttempts = new Map();
     const memberQueueKey = (stateRoot, teamId, memberName) => (`${stateRoot}\u0000${teamId}\u0000${memberName}`);
@@ -295,7 +296,7 @@ export function installTeamScheduler(ctx, config) {
                     // A resident idle member can intentionally leave an attempt open
                     // while waiting for guidance, or because the user paused its turn.
                     // Re-dispatching here would revoke still-valid work on every idle
-                    // edge and every status kick. The idle observer remembers that exact
+                    // edge and every status kick. The idle observer parks that exact
                     // capability across normal continuable disposal; only an unobserved
                     // durable capability (cold process recovery) or a legacy open task
                     // with no capability is retried.
@@ -313,8 +314,18 @@ export function installTeamScheduler(ctx, config) {
                         return undefined;
                     }
                     const previousAssignee = task.assignee;
+                    const previousStatus = recoverOwned ? task.status : undefined;
+                    const previousAttempt = recoverOwned ? task.attempt : undefined;
+                    const previousAttemptId = recoverOwned ? task.attemptId : undefined;
                     const attemptId = beginTaskAttempt(task, currentMember.name);
-                    parkedAttempts.delete(currentMember.id);
+                    // A recovered generation is parked before delivery. This makes each
+                    // (member, attempt) recovery idempotent even if every status poll
+                    // sees a disposed handle. Fresh pending work remains unparked so a
+                    // genuinely lost first delivery can be recovered once.
+                    if (recoverOwned)
+                        parkedAttempts.set(currentMember.id, attemptId);
+                    else
+                        parkedAttempts.delete(currentMember.id);
                     currentMember.status = 'working';
                     // Captain messages ride along with the assignment (digest in
                     // the prompt) instead of delaying the task behind a mailbox
@@ -336,6 +347,10 @@ export function installTeamScheduler(ctx, config) {
                         attempt: task.attempt ?? 1,
                         attemptId,
                         previousAssignee,
+                        recoveredOwned: recoverOwned,
+                        ...previousStatus === undefined ? {} : { previousStatus },
+                        ...previousAttempt === undefined ? {} : { previousAttempt },
+                        ...previousAttemptId === undefined ? {} : { previousAttemptId },
                         subject: task.subject,
                         description: task.description,
                         teamDescription: fresh.description,
@@ -378,9 +393,22 @@ export function installTeamScheduler(ctx, config) {
                     const task = fresh.tasks.find(candidate => candidate.id === ticket.taskId);
                     if (task?.attemptId !== ticket.attemptId)
                         return;
-                    task.status = 'pending';
-                    task.assignee = ticket.previousAssignee;
-                    task.attemptId = undefined;
+                    if (ticket.recoveredOwned === true && ticket.previousStatus !== undefined && ticket.previousAttemptId !== undefined) {
+                        // Recovery delivery failed. Restore the durable generation instead
+                        // of returning it to pending, then keep it parked so later status
+                        // kicks cannot spend an unbounded sequence of fresh attempts.
+                        task.status = ticket.previousStatus;
+                        task.assignee = ticket.previousAssignee;
+                        task.attempt = ticket.previousAttempt;
+                        task.attemptId = ticket.previousAttemptId;
+                        parkedAttempts.set(ticket.memberId, ticket.previousAttemptId);
+                    }
+                    else {
+                        task.status = 'pending';
+                        task.assignee = ticket.previousAssignee;
+                        task.attemptId = undefined;
+                        parkedAttempts.delete(ticket.memberId);
+                    }
                     task.handoffId = undefined;
                     task.reassigning = false;
                     task.updatedAt = Date.now();

@@ -1,0 +1,96 @@
+{
+  "ok": true,
+  "slug": "preset-mount",
+  "defect": "the shipped `mpd` preset could not MOUNT on the installed harness, so every mpd session failed to start",
+  "harness": {
+    "cli": "0.1.5-rc.1 (dist-tag latest)",
+    "packages": "0.1.5-rc.2 (the caret range installed with it; @deepseek-ai/dsh-persona 0.1.5-rc.2)",
+    "installed": "/root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh"
+  },
+  "rootCause": "`presets/mpd/agent.cordis.yml` still configured the persona row with the single `text:` key that `@deepseek-ai/dsh-persona` accepted through 0.1.2-rc.1. From 0.1.3-alpha.2 that row registers the deployment persona PREFIX/SUFFIX prompt sections and `prefix` is REQUIRED, so the row's config fails validation; `dsh-agent-presets.mountPreset` treats any inactive row as a preset-level failure (`inactiveRows`) and refuses the WHOLE preset, which rejects the session creation that triggered it.",
+  "reproduction": {
+    "how": "git show HEAD:presets/mpd/agent.cordis.yml into a QA preset root, boot the web profile in an isolated DSH_HOME/HOME, POST /api/session/create with agentPreset=mpd",
+    "status": 200,
+    "code": "agent-preset/invalid",
+    "message": "agent-presets: preset \"mpd\" failed to mount: failed to apply loader entry persona (@deepseek-ai/dsh-persona): invalid config:\n  - $.prefix missing required value (at prefix) (/tmp/mpd-head-preset/mpd/agent.cordis.yml)",
+    "artifact": "head-repro.json + head-boot.log (this directory)",
+    "permanent_case": "node skills/dsh-qa/scripts/preset-conformance.mjs — its negative control boots the same sandbox with the retired `text:` form and must fail"
+  },
+  "why_no_gate_saw_it": [
+    "`dsh --profile <p> --dump-config` composes rows and never executes plugin code (AGENTS.md §4).",
+    "`agentPresets.list`/`resolve` parse the composition for YAML shape + row resolvability only; config schemas are validated at MOUNT.",
+    "`preset-register` and `bundle-lifecycle` boot the profile but never create a SESSION, so the preset's standing mount never ran."
+  ],
+  "fix": {
+    "presets/mpd/agent.cordis.yml": [
+      "persona row: `text:` -> `prefix:` (long persona text unchanged)",
+      "add row `command-goal` (@deepseek-ai/dsh-command-goal): the Web overlay disables the HOST row, so presets own the human /goal command",
+      "add row `present` (@deepseek-ai/dsh-tool-present): new in 0.1.5-alpha.2 and part of the shipped standard preset (Web deliverables row)",
+      "header: convention 4 — the preset is kept row-for-row equal to the installed shipped `standard` preset"
+    ],
+    "tests/overlays/persona-oracle.yml + persona-prometheus.yml": [
+      "`persona:` -> `personaPrefix:` (dsh-system-prompt schema; schemastery keeps unknown keys, so the old key was silently ignored)"
+    ],
+    "skills/dsh-qa/scripts/preset-conformance.mjs": [
+      "new case: offline conformance of every @deepseek-ai row config (preset + bundle patch + QA overlays) against the INSTALLED schemas, unknown keys included, `!!js` nodes materialized; row-id parity with the installed standard preset; real web boot + `session/create` with agentPreset=mpd as the mount proof; negative control"
+    ]
+  },
+  "after": {
+    "case": "evidence/dsh-qa/preset-conformance/2026-09-11T02-32-58.611Z/result.json",
+    "steps": {
+      "conformance": {
+        "ok": true,
+        "checked": 30,
+        "schemaFree": 6,
+        "parity": {
+          "reference": 31,
+          "ours": 31,
+          "missing": [],
+          "extra": []
+        },
+        "problems": []
+      },
+      "auth": {
+        "ok": true,
+        "tokenSeen": true,
+        "cookieSession": true
+      },
+      "sessionCreate": {
+        "ok": true,
+        "status": 200,
+        "sessionId": "session-a4453d09-d118-4a1c-9ef8-2dd14d10ef55",
+        "agentPreset": "mpd"
+      },
+      "sessionHeader": {
+        "ok": true,
+        "agentPreset": "mpd",
+        "log": "/tmp/mpd-preset-main-kIn065/home/sessions/--root-dshProj-my-power-dsh--/session-a4453d09-d118-4a1c-9ef8-2dd14d10ef55/session.v3.jsonl.zstd"
+      },
+      "bootLog": {
+        "ok": true,
+        "signatures": []
+      },
+      "negativeControl": {
+        "ok": true,
+        "code": "agent-preset/invalid",
+        "message": "agent-presets: preset \"mpd\" failed to mount: failed to apply loader entry persona (@deepseek-ai/dsh-persona): invalid config:\n  - $.prefix missing required value (at prefix) (/tmp/mpd-preset-control-2026-09-11T02-32-58.611Z/mpd/agent.cordis.yml)",
+        "mutations": [
+          "persona prefix: -> text:"
+        ]
+      }
+    }
+  },
+  "gates": {
+    "vendor": "node scripts/verify-vendor.mjs — PASS",
+    "unit_tests": "bun test packages — 296 pass / 3 skip / 0 fail",
+    "typecheck": "bun run typecheck — clean",
+    "qa_self_tests": "bun run test:qa — all self-tests passed (now includes preset-conformance --self-test)",
+    "mount_gate": "node skills/dsh-qa/scripts/preset-conformance.mjs — PASS (mount proof + falsifiable negative control)",
+    "regression": "node skills/dsh-qa/scripts/web-client-adapt.mjs — PASS with the re-packed dist/mpd-package",
+    "release_artifact": "node scripts/pack-mpd.mjs — dist/mpd-package/presets/mpd/agent.cordis.yml now carries `prefix:`"
+  },
+  "residual": [
+    "The mpd preset still deviates from the installed standard preset in one config value, not a row: `tool-web { fetch: false }` (standard uses `true`). It predates this change, is a deliberate-looking local policy, and is left untouched (minimal diff); flag it if web_fetch is wanted for mpd sessions.",
+    "`tool-subagent { modelSelectionSettings }` is likewise not enabled (standard enables it) — long-standing, left as-is."
+  ]
+}

@@ -1,0 +1,4 @@
+sandbox DSH_HOME=/tmp/wmdsh-PfJW0x HOME=/tmp/wmhome-ZY4eqk
+   │                                         │
+   ╰─────────────────────────────────────────╯
+

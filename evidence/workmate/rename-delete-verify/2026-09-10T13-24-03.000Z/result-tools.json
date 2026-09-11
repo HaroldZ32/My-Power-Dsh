@@ -1,0 +1,237 @@
+{
+  "ok": false,
+  "slug": "rename-delete-verify/tools",
+  "mode": "real-boot+probe",
+  "sandbox": "/tmp/mpd-t6-tools-EJAJN6",
+  "dshHome": "/tmp/mpd-t6-tools-EJAJN6/dsh-home",
+  "userHome": "/tmp/mpd-t6-tools-EJAJN6/user-home",
+  "dshExit": 0,
+  "total": 19,
+  "passed": 15,
+  "failed": 4,
+  "failedChecks": [
+    "tool.rename 200-equivalent :: tool \"mpd_workmate_rename\" returned invalid output: \"value.ok\" is not a declared property (additionalProperties: false)",
+    "A4 name/uses/createdAt after reflect :: {\"name\":\"probe-2\",\"uses\":1,\"createdAt\":\"2026-09-10T13:27:49.914Z\",\"before\":{\"uses\":0,\"createdAt\":\"2026-09-10T13:27:49.914Z\"}}",
+    "reflect wrote memory :: {\"memoryLen\":null}",
+    "tool.delete purge with confirm ok :: tool \"mpd_workmate_delete\" returned invalid output: \"value.ok\" is not a declared property (additionalProperties: false)"
+  ],
+  "checks": [
+    {
+      "id": "probe.executed-in-fresh-process",
+      "ok": true,
+      "detail": "RESULT line found"
+    },
+    {
+      "id": "tools.rename+delete+init+reflect registered",
+      "ok": true,
+      "detail": "{\"id\":\"probe.tools-registered\",\"ready\":true,\"hasInit\":true,\"hasRename\":true,\"hasDelete\":true}"
+    },
+    {
+      "id": "service.exposes rename+delete+get+read",
+      "ok": true,
+      "detail": "{\"id\":\"probe.service-present\",\"present\":true,\"hasRename\":true,\"hasDelete\":true,\"hasGet\":true,\"hasRead\":true}"
+    },
+    {
+      "id": "tool.init (sandbox HOME)",
+      "ok": true,
+      "detail": "{\"name\":\"probe-1\",\"baseId\":\"hephaestus\",\"baseName\":\"Deep Worker\",\"readonly\":false,\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"path\":\"/tmp/mpd-t6-tools-EJAJN6/user-home/.mpd/workmate/probe-1\",\"note\":\"t6 probe fixture\"}"
+    },
+    {
+      "id": "service.get.before",
+      "ok": true,
+      "detail": "{\"id\":\"service.get.before\",\"name\":\"probe-1\",\"uses\":0,\"createdAt\":\"2026-09-10T13:27:49.914Z\",\"renamedFrom\":[]}"
+    },
+    {
+      "id": "tool.rename 200-equivalent",
+      "ok": false,
+      "detail": "tool \"mpd_workmate_rename\" returned invalid output: \"value.ok\" is not a declared property (additionalProperties: false)"
+    },
+    {
+      "id": "service.get.old-key-freed",
+      "ok": true,
+      "detail": "{\"id\":\"service.get.old-key-freed\",\"value\":null}"
+    },
+    {
+      "id": "tool.reflect.after-rename ok",
+      "ok": true,
+      "detail": "{\"name\":\"probe-2\",\"updated\":true,\"uses\":1,\"personaChars\":1996,\"memoryChars\":124,\"noteChars\":173}"
+    },
+    {
+      "id": "A4 renamedFrom survives reflect (service.get)",
+      "ok": true,
+      "detail": "{\"id\":\"service.get.after-reflect\",\"name\":\"probe-2\",\"uses\":1,\"createdAt\":\"2026-09-10T13:27:49.914Z\",\"renamedFrom\":[\"probe-1\"],\"memoryLen\":null,\"noteLen\":173}"
+    },
+    {
+      "id": "A4 name/uses/createdAt after reflect",
+      "ok": false,
+      "detail": "{\"name\":\"probe-2\",\"uses\":1,\"createdAt\":\"2026-09-10T13:27:49.914Z\",\"before\":{\"uses\":0,\"createdAt\":\"2026-09-10T13:27:49.914Z\"}}"
+    },
+    {
+      "id": "reflect wrote memory",
+      "ok": false,
+      "detail": "{\"memoryLen\":null}"
+    },
+    {
+      "id": "M4 stale key stays dead after reflect",
+      "ok": true,
+      "detail": "{\"id\":\"service.get.stale-key-after-reflect\",\"value\":null}"
+    },
+    {
+      "id": "tool.delete purge without confirm refused",
+      "ok": true,
+      "detail": "{\"id\":\"tool.delete.purge-without-confirm\",\"ok\":false,\"error\":\"mpd_workmate: purging \\\"probe-2\\\" requires confirm to equal the name exactly\"}"
+    },
+    {
+      "id": "tool.delete purge with confirm ok",
+      "ok": false,
+      "detail": "tool \"mpd_workmate_delete\" returned invalid output: \"value.ok\" is not a declared property (additionalProperties: false)"
+    },
+    {
+      "id": "service.get.after-purge null",
+      "ok": true,
+      "detail": "{\"id\":\"service.get.after-purge\",\"value\":null}"
+    },
+    {
+      "id": "fs.probe-2 purged from library",
+      "ok": true,
+      "detail": "{\"present\":false}"
+    },
+    {
+      "id": "fs.index has no probe keys after purge",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "id": "isolation.real-library-untouched",
+      "ok": true,
+      "detail": "{\"before\":{\"files\":5,\"sha\":\"ce635a4d2d5b3f6688054cccc65f7f09b1e7cfbdf85e8b4988caef67a1457aee\"},\"after\":{\"files\":5,\"sha\":\"ce635a4d2d5b3f6688054cccc65f7f09b1e7cfbdf85e8b4988caef67a1457aee\"}}"
+    },
+    {
+      "id": "isolation.sandbox-home-used",
+      "ok": true,
+      "detail": "{\"lib\":\"/tmp/mpd-t6-tools-EJAJN6/user-home/.mpd/workmate\",\"userHome\":\"/tmp/mpd-t6-tools-EJAJN6/user-home\"}"
+    }
+  ],
+  "probeResult": {
+    "steps": [
+      {
+        "id": "probe.tools-registered",
+        "ready": true,
+        "hasInit": true,
+        "hasRename": true,
+        "hasDelete": true
+      },
+      {
+        "id": "probe.service-present",
+        "present": true,
+        "hasRename": true,
+        "hasDelete": true,
+        "hasGet": true,
+        "hasRead": true
+      },
+      {
+        "id": "tool.init",
+        "ok": true,
+        "value": {
+          "name": "probe-1",
+          "baseId": "hephaestus",
+          "baseName": "Deep Worker",
+          "readonly": false,
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "path": "/tmp/mpd-t6-tools-EJAJN6/user-home/.mpd/workmate/probe-1",
+          "note": "t6 probe fixture"
+        }
+      },
+      {
+        "id": "service.get.before",
+        "name": "probe-1",
+        "uses": 0,
+        "createdAt": "2026-09-10T13:27:49.914Z",
+        "renamedFrom": []
+      },
+      {
+        "id": "tool.rename",
+        "ok": false,
+        "error": "tool \"mpd_workmate_rename\" returned invalid output: \"value.ok\" is not a declared property (additionalProperties: false)"
+      },
+      {
+        "id": "service.get.old-key-freed",
+        "value": null
+      },
+      {
+        "id": "tool.reflect.after-rename",
+        "ok": true,
+        "value": {
+          "name": "probe-2",
+          "updated": true,
+          "uses": 1,
+          "personaChars": 1996,
+          "memoryChars": 124,
+          "noteChars": 173
+        }
+      },
+      {
+        "id": "service.get.after-reflect",
+        "name": "probe-2",
+        "uses": 1,
+        "createdAt": "2026-09-10T13:27:49.914Z",
+        "renamedFrom": [
+          "probe-1"
+        ],
+        "memoryLen": null,
+        "noteLen": 173
+      },
+      {
+        "id": "service.get.stale-key-after-reflect",
+        "value": null
+      },
+      {
+        "id": "tool.list",
+        "ok": true,
+        "value": {
+          "workmates": [
+            {
+              "name": "probe-2",
+              "baseId": "hephaestus",
+              "baseName": "Deep Worker",
+              "readonly": false,
+              "provider": "deepseek-official",
+              "model": "deepseek-v4-flash",
+              "uses": 1,
+              "updatedAt": "2026-09-10T13:27:49.928Z",
+              "lastTask": "t6 verification of reflect-after-rename",
+              "renamedFrom": [
+                "probe-1"
+              ],
+              "note": "Deep Worker-based workmate \"probe-2\". t6 probe fixture Last task: t6 verification of reflect-after-rename. 2026-09-10T13:27:49.927Z — t6 verification of reflect-after-rename"
+            }
+          ],
+          "count": 1
+        }
+      },
+      {
+        "id": "tool.delete.purge-without-confirm",
+        "ok": false,
+        "error": "mpd_workmate: purging \"probe-2\" requires confirm to equal the name exactly"
+      },
+      {
+        "id": "tool.delete.purge-with-confirm",
+        "ok": false,
+        "error": "tool \"mpd_workmate_delete\" returned invalid output: \"value.ok\" is not a declared property (additionalProperties: false)"
+      },
+      {
+        "id": "tool.list.after-purge",
+        "ok": true,
+        "value": {
+          "workmates": [],
+          "count": 0
+        }
+      },
+      {
+        "id": "service.get.after-purge",
+        "value": null
+      }
+    ]
+  }
+}

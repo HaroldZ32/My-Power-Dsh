@@ -3695,6 +3695,28 @@ window.__ModuleLoader__.load({
 		//#endregion
 		exports.apply = apply;
 		exports.inject = inject;
+		//#region mpd-export-bridge (mpd-owned; re-applied by scripts/vendor-agent-teams.mjs)
+		// Additive re-exports only: mpd-owned client code composes the adopted views,
+		// the monitor store, the locale dictionaries and the panel CSS-module classes.
+		// Adopted behaviour is untouched (apply/inject and every registration stay as-is).
+		exports.TeamSection = TeamSection;
+		exports.historicCardTeam = historicCardTeam;
+		exports.memberArtUrl = memberArtUrl;
+		exports.LEAD_ART = LEAD_ART;
+		exports.ACTIVITY_PANEL_CSS = ActivityPanel_module_css_default;
+		exports.AGENT_TEAMS_LOCALE_NAMESPACE = AGENT_TEAMS_LOCALE_NAMESPACE;
+		exports.zh = zh;
+		exports.en = en;
+		exports.teamIsActive = teamIsActive;
+		exports.startActivityPolling = startActivityPolling;
+		exports.subscribeActivitySnapshots = subscribeActivitySnapshots;
+		exports.getActivitySnapshotsSnapshot = getActivitySnapshotsSnapshot;
+		exports.updateActivitySnapshots = updateActivitySnapshots;
+		exports.ACTIVITY_POLL_MS = ACTIVITY_POLL_MS;
+		exports.ACTIVITY_PROBE_MS = ACTIVITY_PROBE_MS;
+		exports.ACTIVITY_STATE_URL = ACTIVITY_STATE_URL;
+		exports.ACTIVITY_HALT_URL = ACTIVITY_HALT_URL;
+		//#endregion mpd-export-bridge
 		return module.exports;
 	}
 });

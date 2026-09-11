@@ -12,8 +12,9 @@ import { createUserMessage } from '../_deps/dsh-llm/lib/index.js';
 import { defineTool } from '../_deps/dsh-tools/lib/index.js';
 import { join } from 'node:path';
 import { appendTeamEvent, captainSessionOf } from "./events.js";
-import { acknowledgeMailbox, appendMailbox, archiveTeamDir, beginTaskAttempt, CAPTAIN_KEY, createMessage, createTeamDir, findTeamByCaptain, findTeamByParticipant, cancelUnfinishedTask, invalidateTaskAttempt, readUnreadMailbox, recordRetiredMemberIds, releaseMailboxDelivery, readTeam, sanitizeKey, transitionError, unsatisfiedDependencies, withTeamLock, writeTeam, removeTeamDir, validateCreateTask, evaluateQualityCompletion, planQualityFollowUp, resumeTeamState, buildCoverageMatrix, canDeclareDelivery, describeQualityLoop, sanitizeReviewAcceptance, sanitizeReviewObjective, taskKindOf, resolveCancelledDependencyDeadlocks, } from "./state.js";
-import { deliverToMember, installRetiredMemberGuard, installMemberSelectionRuntime, interruptMember, memberActivity, resolveMemberLlmSelection, spawnMember, validateMemberLlmSelections, } from "./members.js";
+import { acknowledgeMailbox, appendMailbox, archiveTeamDir, beginTaskAttempt, CAPTAIN_KEY, createMessage, createTeamDir, findTeamByCaptain, findTeamByParticipant, cancelUnfinishedTask, invalidateTaskAttempt, readUnreadMailbox, recordRetiredMemberIds, releaseMailboxDelivery, readTeam, sanitizeKey, transitionError, unsatisfiedDependencies, withTeamLock, writeTeam, removeTeamDir, validateCreateTask, evaluateQualityCompletion, planQualityFollowUp, resumeTeamState, buildCoverageMatrix, canDeclareDelivery, describeQualityLoop, sanitizeReviewAcceptance, sanitizeReviewObjective, taskKindOf, resolveCancelledDependencyDeadlocks, normalizeBlankOptionalTaskFields, } from "./state.js";
+import { deliverToMember, installRetiredMemberGuard, installMemberSelectionRuntime, interruptMember, memberActivity, resolveMemberLlmSelection, spawnMember, steerCaptainReport, validateMemberLlmSelections, } from "./members.js";
+export { steerCaptainReport } from "./members.js";
 import { TERMINAL_TASK_STATUSES } from "./types.js";
 import { installTeamScheduler } from "./scheduler.js";
 import { resolveTeamProfile } from "./profiles.js";
@@ -275,18 +276,14 @@ export async function haltTeamWork(input) {
         alreadyHalted: halted.alreadyHalted,
     };
 }
-export function steerCaptainReport(captain, from, content) {
-    try {
-        captain.steer(createUserMessage({
-            content: [{ type: 'text', text: `AgentTeams message from member ${from}:\n\n${content}` }],
-            source: { kind: 'plugin', plugin: 'dsh-agent-teams' },
-        }));
-        return true;
-    }
-    catch {
-        // The plugin mailbox was persisted before this best-effort live delivery.
-        return false;
-    }
+/** Context queued after the human approves a staged plan from the Web UI. */
+export function stagedPlanApprovedContext(teamName) {
+    return [
+        `The user approved the staged AgentTeams plan "${teamName}" from the pre-run review UI.`,
+        'Approval has committed; the scheduler owns dispatch of the approved team. Do not approve again, recreate the roster, or send messages merely to start assigned tasks.',
+        'Acknowledge the approval and handle any reports or user work already pending. Yield only when waiting for members is the remaining action. Their reports will wake you automatically; do not busy-poll status or keep a turn running just to wait.',
+        'On a report, inspect the result and coordinate the next necessary action. If work has since been halted, respect that state and resume only on an explicit user request.',
+    ].join('\n');
 }
 /** Context queued after the human rejects a staged plan. */
 export function stagedPlanDiscardContext(teamName) {
@@ -313,7 +310,9 @@ export function stagedPlanFeedbackContext(teamName) {
  */
 export function registerAgentTeamsTools(ctx, config) {
     installRetiredMemberGuard(ctx, config.stateDir);
-    const memberSelections = installMemberSelectionRuntime(ctx, config.stateDir);
+    const memberSelections = installMemberSelectionRuntime(ctx, config.stateDir, (workspace, teamId, memberName) => (
+        scheduler.kickMember(workspace, teamId, memberName)
+    ));
     const scheduler = installTeamScheduler(ctx, { stateDir: config.stateDir, executionPrompt: config.executionPrompt });
     const updateStagedPlanBatch = async (captain, teamId, mutations, signal) => {
         if (mutations.length === 0)
@@ -536,6 +535,7 @@ export function registerAgentTeamsTools(ctx, config) {
         return { teamId: discarded.teamId };
     };
     const runtime = {
+        isPendingMember: memberSelections.isPendingMember,
         updateStagedPlan,
         updateStagedPlanBatch,
         approveStagedTeam,
@@ -586,15 +586,21 @@ export function registerAgentTeamsTools(ctx, config) {
                 throw new Error('team name must not be empty');
             const teamId = sanitizeKey(teamName);
             const staged = args.approval === 'required';
-            const profileName = args.profile?.trim();
-            if (args.profile !== undefined && profileName === '') {
-                throw new Error('AgentTeams profile name must not be empty');
-            }
+            // Some models materialize optional parameters as "" instead of
+            // omitting them (issue #99). The profile is optional, so treat a
+            // blank value exactly like an omitted one instead of failing every
+            // create call.
+            const profileName = args.profile !== undefined && args.profile.trim() !== ''
+                ? args.profile.trim()
+                : undefined;
             const created = await withTeamLock(captainLockKey(stateRoot, captain.id), async () => {
                 const current = await findTeamByParticipant(stateRoot, captain.id);
                 if (current !== undefined) {
                     const relationship = current.captainSessionId === captain.id ? 'lead' : 'belong to';
-                    throw new Error(`you already ${relationship} team "${current.name}" — end or leave it before creating another`);
+                    const guidance = current.captainSessionId === captain.id
+                        ? 'Use agent_teams_status and continue the existing team. Do not delete and recreate it merely to continue work. End it only when the user explicitly wants a separate new team.'
+                        : 'Continue your assigned member work and report to your captain; do not create a separate team.';
+                    throw new Error(`you already ${relationship} team "${current.name}" (id ${current.id}). ${guidance}`);
                 }
                 return withTeamLock(teamLockKey(stateRoot, teamId), async () => {
                     const existing = await readTeam(stateRoot, teamId);
@@ -1081,28 +1087,34 @@ export function registerAgentTeamsTools(ctx, config) {
             const workspace = workspaceOf(captain);
             const stateRoot = stateRootOf(workspace, config);
             const team = await requireCaptainTeam(workspace, config, captain);
+            // Some models materialize optional parameters as "" instead of
+            // omitting them (issue #105). Normalize blank optional fields to
+            // omitted before validation so a blank value can neither be rejected
+            // spuriously nor be persisted into team.json, where it would brick
+            // the team on reload.
+            const input = normalizeBlankOptionalTaskFields(args);
             const created = await withTeamLock(teamLockKey(stateRoot, team.id), async () => {
                 const fresh = await requireFreshCaptainTeam(stateRoot, team.id, captain.id);
                 const gate = validateCreateTask(fresh, {
-                    subject: args.subject,
-                    description: args.description,
-                    dependencies: args.dependencies,
-                    assignee: args.assignee,
-                    kind: args.kind,
-                    round: args.round,
-                    objective: args.objective,
-                    inScope: args.inScope,
-                    outOfScope: args.outOfScope,
-                    acceptance: args.acceptance,
-                    verify: args.verify,
-                    deliverables: args.deliverables,
-                    nonGoals: args.nonGoals,
-                    reviewedTaskId: args.reviewedTaskId,
-                    sourceTaskId: args.sourceTaskId,
-                    sourceFindingIds: args.sourceFindingIds,
-                    coverageOf: args.coverageOf,
-                    resume: args.resume,
-                    resumeReason: args.resumeReason,
+                    subject: input.subject,
+                    description: input.description,
+                    dependencies: input.dependencies,
+                    assignee: input.assignee,
+                    kind: input.kind,
+                    round: input.round,
+                    objective: input.objective,
+                    inScope: input.inScope,
+                    outOfScope: input.outOfScope,
+                    acceptance: input.acceptance,
+                    verify: input.verify,
+                    deliverables: input.deliverables,
+                    nonGoals: input.nonGoals,
+                    reviewedTaskId: input.reviewedTaskId,
+                    sourceTaskId: input.sourceTaskId,
+                    sourceFindingIds: input.sourceFindingIds,
+                    coverageOf: input.coverageOf,
+                    resume: input.resume,
+                    resumeReason: input.resumeReason,
                 });
                 if (!gate.ok)
                     throw new Error(gate.error ?? 'create_task rejected by quality gates');
@@ -1131,11 +1143,11 @@ export function registerAgentTeamsTools(ctx, config) {
                     requireMember(fresh, args.assignee);
                 const kind = gate.kind ?? 'work';
                 const objective = kind === 'review' || kind === 'requirements'
-                    ? sanitizeReviewObjective(args.objective)
-                    : args.objective;
+                    ? sanitizeReviewObjective(input.objective)
+                    : input.objective;
                 const acceptance = kind === 'review' || kind === 'requirements'
-                    ? sanitizeReviewAcceptance(args.acceptance)
-                    : args.acceptance;
+                    ? sanitizeReviewAcceptance(input.acceptance)
+                    : input.acceptance;
                 const task = {
                     id: `t${fresh.taskSeq + 1}`,
                     subject: args.subject,
@@ -1149,16 +1161,16 @@ export function registerAgentTeamsTools(ctx, config) {
                     kind,
                     ...args.round === undefined ? {} : { round: args.round },
                     ...objective === undefined ? {} : { objective },
-                    ...args.inScope === undefined ? {} : { inScope: args.inScope },
-                    ...args.outOfScope === undefined ? {} : { outOfScope: args.outOfScope },
+                    ...input.inScope === undefined ? {} : { inScope: input.inScope },
+                    ...input.outOfScope === undefined ? {} : { outOfScope: input.outOfScope },
                     ...acceptance === undefined ? {} : { acceptance },
-                    ...args.verify === undefined ? {} : { verify: args.verify },
-                    ...args.deliverables === undefined ? {} : { deliverables: args.deliverables },
-                    ...args.nonGoals === undefined ? {} : { nonGoals: args.nonGoals },
-                    ...args.reviewedTaskId === undefined ? {} : { reviewedTaskId: args.reviewedTaskId },
-                    ...args.sourceTaskId === undefined ? {} : { sourceTaskId: args.sourceTaskId },
-                    ...args.sourceFindingIds === undefined ? {} : { sourceFindingIds: args.sourceFindingIds },
-                    ...args.coverageOf === undefined ? {} : { coverageOf: args.coverageOf },
+                    ...input.verify === undefined ? {} : { verify: input.verify },
+                    ...input.deliverables === undefined ? {} : { deliverables: input.deliverables },
+                    ...input.nonGoals === undefined ? {} : { nonGoals: input.nonGoals },
+                    ...input.reviewedTaskId === undefined ? {} : { reviewedTaskId: input.reviewedTaskId },
+                    ...input.sourceTaskId === undefined ? {} : { sourceTaskId: input.sourceTaskId },
+                    ...input.sourceFindingIds === undefined ? {} : { sourceFindingIds: input.sourceFindingIds },
+                    ...input.coverageOf === undefined ? {} : { coverageOf: input.coverageOf },
                 };
                 fresh.taskSeq += 1;
                 fresh.tasks.push(task);
@@ -1311,10 +1323,10 @@ export function registerAgentTeamsTools(ctx, config) {
     }));
     ctx.tools.register(defineTool({
         name: 'agent_teams_claim_task',
-        description: 'Claim one ready task for a member (or yourself). A member cannot own a second unfinished task. The returned attempt_id is required for that member\'s updates and becomes stale after retry/reassignment.',
+        description: 'Members claim their own ready task or read their existing attempt_id. Captains must use reassign_task to assign and wake a member; claim_task does not dispatch work. A member cannot own a second unfinished task. The returned attempt_id is required for updates and becomes stale after retry/reassignment.',
         parameters: {
             task_id: { type: 'string', required: true, description: 'The task id to claim.' },
-            assignee: { type: 'string', description: 'Member to claim for (captain only; defaults to the task\'s assignee).' },
+            assignee: { type: 'string', description: 'Deprecated: claim_task only supports a member claiming its own task. Captains must use reassign_task.' },
         },
         output: {
             schema: {
@@ -1346,9 +1358,12 @@ export function registerAgentTeamsTools(ctx, config) {
                 }
                 let assignee = task.assignee;
                 if (identity.kind === 'captain') {
-                    if (args.assignee !== undefined) {
-                        requireMember(fresh, args.assignee);
-                        assignee = args.assignee;
+                    // A captain may read the capability of its already-started takeover,
+                    // but must never create a member claim without dispatching it (#125):
+                    // a claim with no assignment prompt leaves the member idle forever.
+                    if (args.assignee !== undefined || task.assignee !== CAPTAIN_KEY
+                        || (task.status !== 'claimed' && task.status !== 'in_progress')) {
+                        throw new Error('claim_task is for members claiming their own task; captains must use agent_teams_reassign_task to assign and wake a member');
                     }
                 }
                 else {
@@ -1525,6 +1540,10 @@ export function registerAgentTeamsTools(ctx, config) {
                         ...task.output !== undefined ? { output: task.output } : {},
                     };
                 }
+                // Blank optional list entries (e.g. changedPaths:[""]) must not be
+                // persisted: hasValidQualityTaskFields rejects them on reload and
+                // would brick the whole team state (issue #105 class).
+                const input = normalizeBlankOptionalTaskFields(args);
                 const findings = parseFindings(args.findings);
                 const acceptanceResults = parseAcceptanceResults(args.acceptanceResults);
                 const commandsRun = parseCommandResults(args.commandsRun);
@@ -1533,7 +1552,7 @@ export function registerAgentTeamsTools(ctx, config) {
                     output: args.output,
                     verdict: args.verdict,
                     findings,
-                    changedPaths: args.changedPaths,
+                    changedPaths: input.changedPaths,
                     acceptanceResults,
                     commandsRun,
                 });
@@ -1551,8 +1570,8 @@ export function registerAgentTeamsTools(ctx, config) {
                     task.verdict = args.verdict;
                 if (findings !== undefined)
                     task.findings = findings;
-                if (args.changedPaths !== undefined)
-                    task.changedPaths = args.changedPaths;
+                if (input.changedPaths !== undefined)
+                    task.changedPaths = input.changedPaths;
                 if (acceptanceResults !== undefined)
                     task.acceptanceResults = acceptanceResults;
                 if (commandsRun !== undefined)
@@ -1713,7 +1732,7 @@ export function registerAgentTeamsTools(ctx, config) {
     }));
     ctx.tools.register(defineTool({
         name: 'agent_teams_status',
-        description: 'Team snapshot: members with live activity and tasks with status/assignee/dependencies/output. Captains also see every team mailbox; members see only their own inbox. Poll this to watch progress.',
+        description: 'Team snapshot: members with live activity and tasks with status/assignee/dependencies/output. Captains also see every team mailbox; members see only their own inbox. Use after mailbox progress deliveries or for an explicit status request. After dispatch, end your turn while members work; do not repeatedly poll.',
         parameters: {},
         output: {
             schema: { type: 'object', additionalProperties: true, properties: {} },
@@ -1886,7 +1905,7 @@ export function registerAgentTeamsTools(ctx, config) {
     }));
     ctx.tools.register(defineTool({
         name: 'agent_teams_delete',
-        description: 'End your team: interrupts all members (best effort) and deletes the team\'s state directory (team file, tasks, mailboxes). Use when the team\'s work is done or abandoned.',
+        description: 'End and archive your team: interrupts members and moves the current tasks and mailboxes out of active state for later inspection. Use when the work is done or explicitly abandoned. A same-name archive replaces its previous generation.',
         parameters: {},
         output: {
             schema: {
@@ -1899,7 +1918,7 @@ export function registerAgentTeamsTools(ctx, config) {
             },
             render: (args, value) => [{
                     type: 'text',
-                    text: `Team "${value.team_name}" deleted.`,
+                    text: `Team "${value.team_name}" ended and archived.`,
                 }],
         },
         async execute(_args, exec) {
@@ -2083,7 +2102,9 @@ function parseFindings(value) {
             severity: raw['severity'],
             problem: raw['problem'],
             requiredFix: raw['requiredFix'],
-            ...typeof raw['file'] === 'string' ? { file: raw['file'] } : {},
+            // A blank optional file must be omitted, not persisted: durable-state
+            // validation requires non-empty optional strings (issue #105 class).
+            ...typeof raw['file'] === 'string' && raw['file'].trim() !== '' ? { file: raw['file'] } : {},
             ...typeof raw['line'] === 'number' ? { line: raw['line'] } : {},
             ...typeof raw['resolved'] === 'boolean' ? { resolved: raw['resolved'] } : {},
         };

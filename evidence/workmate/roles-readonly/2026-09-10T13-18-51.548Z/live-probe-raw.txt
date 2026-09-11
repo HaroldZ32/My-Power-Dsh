@@ -1,0 +1,55 @@
+RAW LIVE EVIDENCE (fresh dsh processes, isolated DSH_HOME + sandbox HOME, sandbox profile patch only)
+The mpd-workmate row is neutralised in the sandbox copy so t3's outstanding schema abort
+(`archived: { type: ["string","null"] }`, packages/mpd-workmate-plugin src:664 + dist) cannot mask
+this measurement. That boot failure belongs to t3, not to this fix.
+
+LANE A — fresh boot, NO provider key (what a credential error would look like):
+  dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-official";
+       store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it),
+       or export DEEPSEEK_API_KEY in the launching environment
+  restrict error present: 0
+
+LANE B — fresh boot, DUMMY key (does authentication really precede child composition?):
+  dsh: AUTH: Authentication Fails, Your api key: ****real is invalid
+  restrict error present: 0
+
+INTERPRETATION (measured, not assumed): lane A and lane B both fail at the PARENT's first model
+step, BEFORE mpd_role_spawn is ever invoked, so neither can confirm or deny anything about the
+restriction list. `tools.restrict()` is not "evaluated before model authentication" in this build:
+the tool call that would evaluate it never happens without a working parent model step. Therefore a
+MISSING_CREDENTIAL result is NOT positive evidence that the seven-name list was accepted.
+
+LANE C — the credential-free live proof that IS binding (what the case asserts, raw case result in
+case-result.json and the transcripts in output.log):
+  filter handed to the harness (instrumented sandbox copy of the shared adapter):
+    {"deny":["write","edit","mpd_hashline_edit","bash","mcp__ast_grep__rewrite","mcp__ast_grep__scan","mcp__lsp__rename"]}
+  stub trace: call#1 hasTools=true, call#2 hasTools=false (the CHILD's own model request),
+              call#3 and call#4 hasTools=true
+  child created and answered: true
+  unknown-tool refusal seen: false
+  exit code: 0
+  Why this is positive evidence: tools.restrict() runs inside the child's setup, so a rejection
+  means NO child agent is ever created. A created, answering child therefore proves the harness
+  accepted the seven-name list, and the adapter probe pins WHICH list was accepted.
+
+RESIDUAL (explicit, not a verify slot): the criterion "a spawned read-only child EXECUTES a turn"
+is NOT met in this environment — the child never reaches a model turn because no provider credential
+is reachable anywhere. Remedy: export DEEPSEEK_API_KEY and re-run
+`node skills/dsh-qa/scripts/readonly-deny.mjs`; the case needs no change.
+
+=== FINAL UPDATE (t5 attempt 3) ===
+DECLARED VERIFY COMMANDS, all green on this attempt:
+  bun test packages/mpd-roles-plugin/test -> 11 pass / 0 fail / 140 expect calls
+  bun run test:qa                        -> [test:qa] all self-tests passed (exit 0)
+  bun run typecheck                      -> exit 0
+
+t6 REVIEW FINDING FOLDED IN (low severity, fixed): the roles/workmate parity guard used to
+`console.warn` and RETURN when the workmate export was missing — a drift guard that could silently
+disengage and still report green. It now asserts `Array.isArray(workmateDeny)` first, so it fails
+loudly instead. Verified engaged: the suite reports 140 expect calls (up from 139) and no SKIP warn.
+
+IN-SESSION PROBES REMAIN INVALID EVIDENCE (t6 independently measured): this running host booted
+before the roles/workmate dist rebuilds and holds the old module in memory, so an in-session
+mpd_role_spawn still reports the old error even though src and dist are clean. The live profile is a
+link: to this checkout, so there is no stale mirror — it is pure module caching, and the fix goes
+live on the next dsh restart. A FRESH boot is the only valid vehicle, which is what the case does.

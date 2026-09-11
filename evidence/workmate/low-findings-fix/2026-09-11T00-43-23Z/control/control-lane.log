@@ -1,0 +1,92 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs:
+(pass) client seam policy > declares only services this profile is guaranteed to mount [0.53ms]
+(pass) client seam policy > never declares the sidebar statically (that would park the whole entry) [0.24ms]
+(pass) client seam policy > waits for the sidebar through ctx.inject instead of a one-shot probe [0.05ms]
+(pass) with DSH-better-sidebar installed > registers the AgentTeams page and the workmate library, and no legacy floater [0.25ms]
+(pass) with DSH-better-sidebar installed > the adopted client half is never applied (it would re-register the removed surfaces) [0.03ms]
+(pass) with DSH-better-sidebar installed > both tab descriptors are valid sidebar pages [0.33ms]
+(pass) with DSH-better-sidebar installed > keeps the locale namespaces registered [0.03ms]
+(pass) workmate page > renders the library from the host routes [7.84ms]
+(pass) workmate page dictionaries > registers the workmate namespace with both dictionaries [1.02ms]
+(pass) workmate page dictionaries > zh is the key-set source of truth and en matches it key for key (§L A7) [1.04ms]
+(pass) workmate page dictionaries > the mutation surface is localized in BOTH languages, not hardcoded English [0.79ms]
+(pass) workmate page dictionaries > the tab-strip label stays hardcoded English (contract §K, deliberate deferral) [0.84ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > every reason code maps to a distinct, readable message [0.74ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > an in-use refusal names the blocking team and member (§E, user decision D2) [0.25ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > an unknown failure falls back to the server text, never to a raw reason key [0.08ms]
+(pass) workmate page mutation controls > delete is an explicit two-step confirmation, never one destructive click (D1) [19.48ms]
+(pass) workmate page mutation controls > purge cannot be submitted without typing the exact name (§D confirm-required) [27.81ms]
+(pass) workmate page mutation controls > the archive confirmation posts that workmate and reports the archived outcome [15.35ms]
+(pass) workmate page mutation controls > a rename posts { name, new_name } and follows the new key (§H no stale selection) [15.60ms]
+(pass) workmate page mutation controls > an in-use refusal is shown with the blocking team/member, not a generic failure (§E) [16.24ms]
+(pass) workmate page mutation controls > a 409 collision is reported as taken, and an unknown key drops the stale selection [15.66ms]
+504 |     expect(findInput(detail).props.value).toBe("gui-alice");
+505 |     findForm(detail).props.onSubmit({ preventDefault() {} });
+506 |     await client.hooks.act(client.exports.WorkmateLibraryView, props);
+507 |     const after = await client.hooks.act(client.exports.WorkmateLibraryView, props);
+508 | 
+509 |     expect(flatText(after)).toContain("mutate.reason.sameKey");
+                                  ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "mutate.reason.sameKey"
+Received: "← panel.back gui-alice-2  mutate.renamed{\"from\":\"gui-alice\",\"to\":\"gui-alice-2\"} mutate.renameTitle mutate.renameHint  mutate.rename mutate.deleteTitle mutate.delete mutate.purge  panel.loading"
+
+      at <anonymous> (/root/dshProj/my-power-dsh/control-lowfindings/packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs:509:29)
+(fail) workmate page mutation controls > a same-key rename is refused locally and explains itself (t8 L1) [13.23ms]
+518 |     // D1's whole point is that archive and purge are DIFFERENT outcomes, so the busy label
+519 |     // must not blur them mid-operation: zh "彻底删除" used to turn into "删除中…".
+520 |     // English inflects ("Purge" → "Purging" drops the e), so compare the shared stem;
+521 |     // Chinese does not inflect ("彻底删除" → "彻底删除中…").
+522 |     const stem = (word) => (word.toLowerCase().endsWith("e") ? word.slice(0, -1) : word).toLowerCase();
+523 |     expect(zh["mutate.purgeBusy"]).toContain(zh["mutate.purge"]);
+                                         ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "彻底删除"
+Received: "删除中…"
+
+      at <anonymous> (/root/dshProj/my-power-dsh/control-lowfindings/packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs:523:36)
+(fail) workmate page mutation controls > a purge never reports itself as a plain delete (t8 L2) [0.81ms]
+529 | 
+530 |   test("the zh reason strings are complete sentences without a stray gap (t8 L3)", () => {
+531 |     const client = loadMpdClient({ responses: LIST_ONLY, requestResponses: MUTATION_RESPONSES });
+532 |     const zh = client.exports.dictionaries.zh;
+533 |     // "…完整名称确认" read as clipped — the 以 was missing.
+534 |     expect(zh["mutate.reason.confirmRequired"]).toContain("以确认");
+                                                      ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "以确认"
+Received: "彻底删除需要输入完整名称确认"
+
+      at <anonymous> (/root/dshProj/my-power-dsh/control-lowfindings/packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs:534:49)
+(fail) workmate page mutation controls > the zh reason strings are complete sentences without a stray gap (t8 L3) [0.85ms]
+549 |       },
+550 |     });
+551 |     const after = await client.hooks.act(client.exports.WorkmateLibraryView, props);
+552 |     const text = flatText(after);
+553 | 
+554 |     expect(text).not.toContain("panel.loading");
+                           ^
+error: expect(received).not.toContain(expected)
+
+Expected to not contain: "panel.loading"
+Received: "← panel.back gui-alice detail exploded  mutate.renameTitle mutate.renameHint  mutate.rename mutate.deleteTitle mutate.delete mutate.purge  panel.loading"
+
+      at <anonymous> (/root/dshProj/my-power-dsh/control-lowfindings/packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs:554:22)
+(fail) workmate page mutation controls > a detail load that fails stops claiming to load (t8 L4) [10.21ms]
+(pass) without DSH-better-sidebar > registers no sidebar surface at all — there is no floating fallback [1.74ms]
+
+4 tests failed:
+(fail) workmate page mutation controls > a same-key rename is refused locally and explains itself (t8 L1) [13.23ms]
+(fail) workmate page mutation controls > a purge never reports itself as a plain delete (t8 L2) [0.81ms]
+(fail) workmate page mutation controls > the zh reason strings are complete sentences without a stray gap (t8 L3) [0.85ms]
+(fail) workmate page mutation controls > a detail load that fails stops claiming to load (t8 L4) [10.21ms]
+
+ 22 pass
+ 4 fail
+ 357 expect() calls
+Ran 26 tests across 1 file. [195.00ms]

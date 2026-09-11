@@ -109,12 +109,41 @@ mpd_workmate_init   { base: <roster id 或正常名>, name?: <独立名字>, not
 | `mpd_workmate_list` | 列实例（名字、base、uses、updatedAt、note） |
 | `mpd_workmate_spawn { name, task, context? }` | 一次性复用：workmate 携带其演化的 persona + 独立 memory + note，走自身模型路由；它被指示在最终报告前调用 `mpd_workmate_reflect` |
 | `mpd_workmate_reflect { name, task, outcome, persona_delta?, note? }` | 工作后自我演化：有界 memory 追加（最旧淘汰）、persona 修订合并、note 重生成、`uses++` |
-| `mpd_workmate_match { task }` | 按任务对 note 打分；低于阈值 → `matched: false`，建议是**新建一个 workmate** —— 绝不强行弱匹配 | 
+| `mpd_workmate_match { task }` | 按任务对 note 打分；低于阈值 → `matched: false`，建议是**新建一个 workmate** —— 绝不强行弱匹配 |
+| `mpd_workmate_rename { name, new_name }` | 重命名实例（搬移其已演化的身份） |
+| `mpd_workmate_delete { name, purge?, confirm? }` | 删除实例——默认先归档；只有 `purge: true` + `confirm: <name>` 才彻底移除 |
 
 大小上限保证注入上下文有界：persona ≤ 8 KiB、memory ≤ 8 KiB、note ≤ 1.5 KiB。
 
 Workmate 是你的代理的*演化记忆*：每次任务后 workmate 自己总结（通过 spawn 指令或团队
 成员 persona），所以以后的会话从它上次停下的地方继续。
+
+### 重命名与删除 workmate
+
+**名称仅限 ASCII**（`[a-z0-9_-]`，小写）。`Alice`、CJK 名称、`a/b` 或 `..` 都会在一开始就被
+`400 invalid-name` 拒绝——磁盘上什么都不会被改动。Unicode 名称是已列出的后续项，不是缺陷。
+
+**重命名**（`mpd_workmate_rename { name, new_name }`）是**搬移**而不是重建：目录键、
+`meta.json`、库索引、note 的自引用以及先前名称历史（`renamedFrom`）一起搬移，而 persona、
+memory、使用次数与创建时间都逐字节保留。重命名到一个已存在的名称会被拒绝（`409 collision`），
+重命名到当前名称同样被拒绝。
+
+**删除**（`mpd_workmate_delete { name }`）默认**先归档**：实例移入
+`~/.mpd/workmate/.archive/<name>-<stamp>/`，立即从 `list` 与 `match` 中消失，并且可以手动恢复：
+
+```bash
+mv ~/.mpd/workmate/.archive/<name>-<stamp> ~/.mpd/workmate/<name>
+```
+
+只有显式的 purge 才会销毁任何东西：`mpd_workmate_delete { name, purge: true, confirm: "<name>" }`
+——必须给出确切的名称，否则调用被拒绝且什么都不删除。产品内没有恢复按钮：先归档在界面上刻意是
+单向的，恢复就是上面的 `mv`。
+
+**两种变更在该 workmate 正在被使用时都会被拒绝**——被某个团队成员占用（`.mpd/team/` 下某个
+未归档的团队记录里出现了它），或被一个正在进行的 `mpd_workmate_spawn` 占用。拒绝为 `409 in-use`，
+并列出阻塞的团队 id 与成员，因此可据此处理：结束/归档那些团队，然后重试。同一道门也覆盖重命名的
+*目标*，所以把一个 workmate 重命名**为**某个正被团队使用的 roster 名称（例如 `architect`）也会
+被同样拒绝。
 
 ## 5. 团队模式（采纳的 dsh-agent-teams）
 
@@ -141,17 +170,30 @@ agent_teams_status / agent_teams_send_message / agent_teams_reassign_task
 
 ## 6. Web GUI
 
-- **Workmates 侧边栏页（主入口）**：workmate 库作为 **DSH-better-sidebar**
-  （`dsh-better-sidebar`，社区侧边栏 bundle）的一个 Tab 注册，因此它就位于该侧边栏自己的页面
+- **AgentTeams 侧边栏页（唯一的团队界面）**：整个团队 GUI 是 **DSH-better-sidebar**
+  （`dsh-better-sidebar`，社区侧边栏 bundle；Tab id `mpd-agent-teams`）中的一个 Tab。它列出
+  *本对话* 的团队 —— 先进行中的（成员及其实时活动、带状态的任务行、依赖图、captain 上下文、
+  停止团队控件），再已归档的 —— 并在此承载暂存计划审批编辑器，计划就在它被创建的地方审查与编辑。
+  Tab 角标显示本对话进行中的团队数量，且该 Tab 为 `single: true`：切换对话时复用同一个 Tab
+  而不是再开一个。团队出现时该 Tab 会自动打开一次；可在侧边栏设置页用
+  **Auto-open when a team appears** 开关关闭（插件设置 `autoOpenOnTeamActivity`，默认开启）。
+  该 Tab 渲染的正是被移除浮窗自己的内部结构 —— 带标题、实时活动圆点与收起控件的面板头、
+  可滚动的团队主体、采纳的空态提示与归档标签 —— 因此看起来与被它取代的面板完全一致；
+  收起控件关闭的就是侧栏面板本身。原来的对话内团队卡片与右上角活动浮窗**已删除**，且没有回退：
+  没有 DSH-better-sidebar 的 profile 只会输出一条警告，并且完全没有团队 GUI —— 团队协作仍通过
+  `agent_teams_*` 工具与 `.mpd/team` 状态进行。
+- **Workmates 侧边栏页**：workmate 库作为 **DSH-better-sidebar**
+  （`dsh-better-sidebar`，社区侧边栏 bundle）的第二个 Tab 注册，因此它就位于该侧边栏自己的页面
   所在之处 —— Tab 条、`+` 菜单、以及在侧边栏设置里的启用/禁用开关。页面列出
   `~/.mpd/workmate/` 实例（base、uses、更新时间、note），支持筛选、点开查看
   persona/memory/note，并通过**由 roster 填充的 base 选择器**（无需手打 id）加可选
-  name/note 新建。数据来自 host 路由 `/plugins/mpd-workmate/{list,roster,get,init}`。
-- **回退**：若 profile 里没有 DSH-better-sidebar，bundle 会挂载自带的 🤖 浮窗 +
-  侧栏脚部按钮 —— 同一个页面，不依赖该侧边栏。
-- **团队成员与活动**：adopted agent-teams 插件提供 `agent_teams_*` 工具与 `.mpd/team`
-  状态；它的对话内团队卡片与活动浮窗依赖 harness 的 `conversationEvents` 服务，而当前 DSH
-  版本已不再提供（改用 `conversationViews`），因此这两个界面不挂载，团队通过工具驱动。
+  name/note 新建。它还可以**重命名**与**删除**所选实例 —— 删除流程是显式的（确认步骤、归档，
+  以及再一步需要输入确切名称的彻底删除），两种操作都已本地化（zh/en）。数据来自 / 提交到 host
+  路由 `GET /plugins/mpd-workmate/{list,roster,get}` + `POST /plugins/mpd-workmate/{init,rename,delete}`。
+  侧边栏**标签栏文字**本身仍是英文 `Workmates`（有记录的延后项——标签栏文字在注册处解析，
+  那里没有可用的本地化翻译函数，与 AgentTeams Tab 一致）；页面主体跟随你的语言。
+- **两个页面都只在侧边栏**：都没有回退。没有 DSH-better-sidebar 时各自只输出一条警告且不注册
+  任何东西，并且 bundle 不再附带 workmate 的 🤖 浮窗与侧栏脚部按钮。
 
 ## 7. 配置（`mpd.jsonc`）
 
@@ -174,8 +216,25 @@ agent_teams_status / agent_teams_send_message / agent_teams_reassign_task
   `mpd_roles_list`。
 - `mpd_workmate_*` 报 "mpdRoles service unavailable" → `mpd-roles` 行未挂载（重装
   bundle / 加行）。
-- GUI 里没有团队/workmate 面板 → `mpd-web-compat` 自引用行必须存在且重装 bundle
+- workmate 重命名/删除**因正在被使用而被拒绝** → `.mpd/team/` 下某个未归档的团队记录里出现了
+  它，或某个 `mpd_workmate_spawn` 仍在运行。拒绝信息会列出阻塞的团队；在 AgentTeams Tab 里
+  归档（或退休）那些团队并等运行中的 spawn 结束，然后重试。重命名为某个正被使用的 roster
+  名称（`architect`、`lead`、…）会被同样拒绝。
+- workmate 被误删 → 默认删除只是**归档**：把 `~/.mpd/workmate/.archive/<name>-<stamp>` 搬回
+  `~/.mpd/workmate/<name>` 即可。产品内没有恢复功能，而 `purge`（需 `confirm: <name>`）
+  无法恢复。
+- workmate 名称被拒绝（`400 invalid-name`）→ 名称仅限 ASCII、小写 `[a-z0-9_-]`：大写、空格、
+  标点、`/` 与 CJK 名称都会在改动任何东西之前被拒绝。请改用 ASCII 名称；Unicode 名称是已列出的
+  后续项。
+- 侧边栏里没有 AgentTeams Tab → 重新构建发布的 client
+  （`node scripts/build-mpd-client.mjs`，然后刷新页面），并确认 profile 装有
+  `dsh-better-sidebar`（没有它团队页面只输出一条警告，且没有宿主）。
+- GUI 里完全没有客户端界面 → `mpd-web-compat` 自引用行必须存在且重装 bundle
   （`dsh plugin --profile <p> add dist/mpd-package`）。
 - `MISSING_CREDENTIAL` → provider 路由需要你 DSH 凭据中的 key；本 bundle 从不配置
   key。
 - AGENT.md 未注入 → 会话运行的是非 `mpd` 预设；切换预设。
+- **创建 `mpd` 会话总是失败，报错为 `agent-preset/invalid … $.prefix missing required value`**
+  → 已安装的 Harness 改了 `dsh-persona` 的约定（现在取 `prefix`，不再是废弃的 `text`），
+  因而拒绝挂载整个预设。更新 bundle 即可（`git pull` 后执行
+  `dsh plugin --profile <p> add <仓库路径>`）—— 这是 Harness 版本兼容性修复，不是你侧配置问题。

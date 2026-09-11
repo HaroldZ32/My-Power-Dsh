@@ -1,0 +1,51 @@
+{
+  "pass": "post-delivery fix of the six low findings (t8 L1-L4, t9 F3)",
+  "timestamp_utc": "2026-09-11T00:43:23Z",
+  "actor": "captain (MPD), on explicit user instruction: fix now rather than carry",
+  "findings_closed": ["t8.L1", "t8.L2", "t8.L3", "t8.L4", "t9.F3"],
+  "changed_paths": [
+    "packages/mpd-bundle-plugin/src/web-client.js",
+    "packages/mpd-bundle-plugin/client.js",
+    "packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs",
+    "packages/mpd-bundle-plugin/test/client-harness.mjs",
+    ".mpd/plans/workmate-rename-delete-contract.md",
+    "evidence/workmate/rename-delete-integration/2026-09-10T14-40-00Z/DELIVERY-REPORT.md"
+  ],
+  "fixes": {
+    "t8.L1": "submitRename refuses a same-key rename locally with mutate.reason.sameKey (0 round-trips); a name that merely sanitizes to the current key still goes to the server",
+    "t8.L2": "zh mutate.purgeBusy 删除中… -> 彻底删除中…; en Deleting… -> Purging…",
+    "t8.L3": "zh mutate.reason.confirmRequired gains 以; the half-width space before {blocking} in mutate.reason.inUse is gone",
+    "t8.L4": "the detail pane renders the failure instead of the loading text whenever a load it started did not succeed; a fresh load clears the previous error so a retry is not shadowed; only a gone key stops the pane (contract §H)",
+    "t9.F3": "contract §O4 carries an inline [PATH SUPERSEDED -> §Z4] pointer; §R1 no longer names the old slug and skills/dsh-qa/SKILL.md was already corrected by t17, so no skills/ edit (hence no fingerprint refresh) was owed"
+  },
+  "artifact_sizes": {
+    "client_js_bytes_before_this_pass": 261792,
+    "client_js_bytes_after": 263080,
+    "control_client_bytes": 261792,
+    "note": "build-mpd-client prints 258868 for the 263080-byte file: it reports CHARACTERS, the file is UTF-8 BYTES (CJK = 3 bytes each). Recorded because a size-based freshness claim would be wrong."
+  },
+  "falsifiability": {
+    "method": "the four new assertions were run against a control client BUILT FROM PRE-FIX SOURCE (control/revert.mjs applied to the current source, then a real build-mpd-client), a separate tree so the real suite could not be contaminated",
+    "control_lane": { "tests": 26, "pass": 22, "fail": 4, "failing_are_exactly": ["t8 L1", "t8 L2", "t8 L3", "t8 L4"], "log": "control/control-lane.log" },
+    "fixed_lane": { "tests": 26, "pass": 26, "fail": 0, "log": "real-lane.log" },
+    "builder": "control/revert.mjs"
+  },
+  "harness_defect_found_by_the_control_lane": {
+    "file": "packages/mpd-bundle-plugin/test/client-harness.mjs",
+    "defect": "loadBundleClient resolved its repo root at MODULE EVALUATION time while the test file sets MPD_REPO_ROOT after its (hoisted) import, so the override was dead code and the harness loaded the REAL client.js from cwd",
+    "observed_consequence": "the first control run PASSED all 26 tests against a supposedly pre-fix client - a falsifiability lane that cannot fail",
+    "fix": "the root is now resolved at CALL time inside loadBundleClient()"
+  },
+  "gates_on_final_bytes": {
+    "bun test packages": { "pass": 294, "skip": 3, "fail": 0, "tests": 297, "files": 33, "log": "full-suite.log" },
+    "bun run typecheck": { "exit": 0, "log": "typecheck.log" },
+    "bun run test:qa": { "exit": 0, "verdict": "all self-tests passed", "log": "test-qa.log" },
+    "node scripts/verify-vendor.mjs": { "exit": 0, "verdict": "PASS", "log": "verify-vendor.log" },
+    "find skills -newer VENDOR_LOCK.json -type f": { "output": "", "log": "freshness.log" }
+  },
+  "not_done": [
+    "npm run pack (dist/mpd-package mirror left stale by user decision; it is gitignored and untracked)",
+    "Unicode/CJK workmate names (D5 deferral, unchanged)",
+    "packages/mpd-hashline-plugin/src/index.ts:110 latent parameter-schema type array (unchanged, own scoped change)"
+  ]
+}

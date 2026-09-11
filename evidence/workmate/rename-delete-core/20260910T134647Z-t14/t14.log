@@ -1,0 +1,38 @@
+=== t14: independent falsifiability check of the F1 assertion ===
+repo=/root/dshProj/my-power-dsh
+HEAD=f69708809ed63a57461aa6730d297afc09e772a3
+measured_at_utc=13:46:47
+
+--- sequencing precondition: lock newer than newest skills/** file? ---
+VENDOR_LOCK.json      mtime 13:37:16
+skills newest         mtime 13:44:19  skills/dsh-qa/scripts/readonly-deny.mjs
+skills newest         mtime 13:10:47  skills/dsh-qa/SKILL.md
+skills newest         mtime 10:19:59  skills/dsh-qa/scripts/agent-teams-sidebar.mjs
+
+### A) node skills/dsh-qa/scripts/readonly-deny.mjs  (the shipped guard)
+[exit=0] shipped case
+[readonly-deny] ok=true -> /root/dshProj/my-power-dsh/evidence/workmate/roles-readonly/2026-09-10T13-46-47.749Z
+[readonly-deny] PASS
+
+### B) bun evidence/workmate/rename-delete-core/probe-enforce.mjs  (reviewer instrument)
+[exit=0] reviewer probe
+[readonly-deny] ok=true -> /root/dshProj/my-power-dsh/evidence/workmate/roles-readonly/2026-09-10T13-47-11.236Z
+[readonly-deny] PASS
+
+### C) node scripts/verify-vendor.mjs
+[exit=1] verify-vendor
+[verify-vendor] FAIL - asset skills treeSha mismatch
+VENDOR_LOCK.json mtime now: 13:37:16
+newest skills file now:     13:44:19  skills/dsh-qa/scripts/readonly-deny.mjs
+
+--- reviewer probe raw trace (per-request tool sets) ---
+"stubTrace":[{"call":1,"hasTools":true,"bytes":110690,"toolCount":87,"writeCapableSeen":["bash","edit","mcp__ast_grep__rewrite","mcp__ast_grep__scan","mcp__lsp__rename","mpd_hashline_edit","write"]
+"stubTrace":[{"call":1,"hasTools":true,"bytes":110646,"toolCount":87,"writeCapableSeen":["bash","edit","mcp__ast_grep__rewrite","mcp__ast_grep__scan","mcp__lsp__rename","mpd_hashline_edit","write"]
+{
+  "task": "t14 - independent falsifiability check of the F1 assertion",
+  "shipped_case_exit": 0,
+  "reviewer_probe_exit": 0,
+  "verify_vendor_exit": 1,
+  "reviewer_probe_lanes": {}
+}
+DONE
