@@ -8,12 +8,15 @@
 //   subagents.start (spawn)                       -> spawnAgent
 //   skills.registerProvider / skills.list / skills.get
 //   agentPresets.resolve
+//   agents.list (session cwds)                    -> workspaceRoot / workspaceRootsAll
 //
 // Consumers use `createDshAdapter(ctx)` directly (works standalone, e.g. in
 // unit tests) or `ctx.get("mpdDsh")` for the mounted instance provided by the
 // `mpd-dsh-adapter` row. The adapter never mutates harness state on import and
 // never throws at construction: a missing seam surfaces as an actionable error
 // at call time, or as a `capabilities()` flag a caller can degrade on.
+import { resolve } from "node:path"
+
 export const name = "mpd-dsh-adapter"
 // No hard service dependency: every seam is resolved lazily through ctx.get()
 // so the row mounts in any composition order and in partial installs.
@@ -129,6 +132,21 @@ export interface DshCapabilities {
 
 export interface DshAdapter {
   capabilities(): DshCapabilities
+  /**
+   * Authoritative workspace root for one call. Precedence, highest first:
+   *   1. the CALLING SESSION's workspace  (exec.agent.session.header.cwd)
+   *   2. `DSH_WORKSPACE_ROOT`             (process override: operator/QA only)
+   *   3. `process.cwd()`                  (last resort: boot, unit tests)
+   * The session fact outranks the process-wide env because one host serves
+   * many sessions with different workspaces.
+   */
+  workspaceRoot(exec?: DshToolExec): string
+  /**
+   * Workspace roots of every LIVE session, deduplicated, in registration order.
+   * `[]` when the harness exposes no agent registry — callers then fall back to
+   * the exec-less `workspaceRoot()`. For agentless surfaces (web routes) only.
+   */
+  workspaceRootsAll(): string[]
   registerTool(definition: DshToolDef): () => void
   registerTools(definitions: DshToolDef[]): () => void
   guardTool(guard: (exec: DshToolExec) => string | undefined): () => void
@@ -161,6 +179,53 @@ function message(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
+// ── workspace root: the ONE resolution every mpd plugin (and only it) uses ────
+// The harness never defines DSH_WORKSPACE_ROOT; a session's header cwd is the
+// authoritative workspace (dsh-tool-bash resolves its workdir the same way:
+// explicit workdir -> session header.cwd -> executor default). Precedence,
+// highest first: session -> DSH_WORKSPACE_ROOT (operator/QA override) ->
+// process.cwd() (boot, unit tests). Never cached: one host serves many sessions
+// with different workspaces.
+/** One agent's session workspace, or undefined when absent/not a usable string. */
+function sessionCwdOf(agent: any): string | undefined {
+  try {
+    const cwd = agent?.session?.header?.cwd
+    return typeof cwd === "string" && cwd.length > 0 ? cwd : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/** The authoritative workspace root for a call (see precedence above). */
+export function workspaceRootOf(exec?: DshToolExec): string {
+  const session = sessionCwdOf(exec?.agent)
+  if (session !== undefined) return resolve(session)
+  const override = process.env.DSH_WORKSPACE_ROOT
+  if (typeof override === "string" && override.length > 0) return resolve(override)
+  return process.cwd()
+}
+
+/**
+ * Workspace roots of every live session, deduplicated, registration order.
+ * `[]` when the agent registry is absent — the caller then falls back to the
+ * exec-less {@link workspaceRootOf}.
+ */
+export function workspaceRootsOf(agents: any): string[] {
+  if (agents === undefined || agents === null || typeof agents.list !== "function") return []
+  try {
+    const list = agents.list()
+    if (!Array.isArray(list)) return []
+    const roots = new Set<string>()
+    for (const agent of list) {
+      const cwd = sessionCwdOf(agent)
+      if (cwd !== undefined) roots.add(resolve(cwd))
+    }
+    return [...roots]
+  } catch {
+    return []
+  }
+}
+
 function noop(): void { /* seam absent: nothing was registered */ }
 
 export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number } = {}): DshAdapter {
@@ -187,6 +252,11 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     }
     return found
   }
+
+  // The workspace plane forwards to the ONE module-level resolution below; the
+  // instance form exists so plugins with a ctx still go through the adapter surface.
+  const workspaceRoot = (exec?: DshToolExec): string => workspaceRootOf(exec)
+  const workspaceRootsAll = (): string[] => workspaceRootsOf(service("agents"))
 
   function timeoutSignal(timeoutMs: number): AbortSignal | undefined {
     try {
@@ -215,6 +285,10 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         agentPresets: typeof presets?.resolve === "function",
       }
     },
+
+    // ── workspace plane ─────────────────────────────────────────────────────
+    workspaceRoot,
+    workspaceRootsAll,
 
     // ── tool plane ──────────────────────────────────────────────────────────
     registerTool(definition: DshToolDef): () => void {
