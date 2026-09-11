@@ -254,7 +254,15 @@ one script:
    AgentTeams page (`src/team-page.js`): it composes those adopted views into one
    DSH-better-sidebar tab (id `mpd-agent-teams`, order 85, `single: true`) listing the
    conversation's live + archived teams with the staged-plan approval editor, the
-   live-team-count badge and the `autoOpenOnTeamActivity` switch. **Visual parity is a
+   live-team-count badge and the `autoOpenOnTeamActivity` switch. Its auto-open is
+   **seedless** (`openTab({ type })`): from dsh-better-sidebar 0.19 a seed carrying
+   `path`/`url` is routed to DSH's NATIVE right column (`surface.openResource(
+   fileAddress(sessionId, cwd, path))`) instead of this registered tab type, so the
+   throwaway marker path it used to carry made the host resolve `<cwd>/team-activity`,
+   fail `realpath` and raise `cannot resolve target …` in the GUI without ever opening
+   the tab — a type-only open lands the tab in its own surface and expands it, which is
+   what auto-open means here (`seedlessAutoOpen` in `agent-teams-sidebar` pins the
+   shipped and the served bytes; `team-page.test.mjs` drives the real client). **Visual parity is a
    requirement**: the page renders the floater's own interior — the same `aside` root
    carrying the adopted `panel` class (which is where that stylesheet declares the
    `--dsw-alias-*` custom properties every adopted rule reads, so dropping it renders the

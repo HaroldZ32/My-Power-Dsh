@@ -2,7 +2,10 @@
 // the floater's OWN interior (the same `aside` panel root, the same panelHead title +
 // busy dot + collapse control, the same `teams` body, the same empty hint) for the
 // conversation's teams (members, tasks, archived) from the host state route, the badge is
-// a cached count, auto-open uses a content seed exactly once per new team, and the
+// a cached count, auto-open opens the tab ONCE per new team carrying NO content seed
+// (dsh-better-sidebar >= 0.19 routes any `path`/`url` seed to DSH's native right column
+// instead of this tab type, where a throwaway marker path fails `realpath` and raises
+// `cannot resolve target …`), and the
 // removed in-conversation card / overlay floater can never come back.
 // Runs the REAL combined client.js through the offline harness — no browser, no server.
 import { describe, expect, test } from "bun:test";
@@ -366,17 +369,20 @@ describe("badge and polling", () => {
 });
 
 describe("auto-open policy", () => {
-  test("opens the tab once, with a content seed, for a team that appears after the baseline", async () => {
+  test("opens the tab once, with NO content seed, for a team that appears after the baseline", async () => {
     const client = mountClient({ teams: [], archivedTeams: [] });
     await renderPage(client, { ctx: client.ctx, scope: SCOPE, tab: {}, visible: true });
     await waitSettle();
 
-    // A team appears after the restore baseline: exactly one content-seeded open.
+    // A team appears after the restore baseline: exactly one open, and it carries no
+    // `path`/`url` — a seeded open is routed to DSH's native right column by
+    // dsh-better-sidebar >= 0.19 and never reaches this tab type (the seed path used to
+    // be a marker that failed `realpath`: `cannot resolve target …/team-activity`).
     client.adoptedStub.updateActivitySnapshots({ teams: [TEAM_ALPHA] });
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(client.calls.openTab.length).toBe(1);
-    expect(client.calls.openTab[0].seed.type).toBe("mpd-agent-teams");
-    expect(typeof client.calls.openTab[0].seed.path).toBe("string");
+    expect(client.calls.openTab[0].seed).toEqual({ type: "mpd-agent-teams" });
+    expect(client.calls.openTab[0].seed.path).toBeUndefined();
     expect(client.calls.openTab[0].seed.url).toBeUndefined();
     expect(client.calls.openTab[0].scope).toBeUndefined();
 

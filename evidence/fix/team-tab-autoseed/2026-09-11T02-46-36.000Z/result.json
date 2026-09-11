@@ -1,0 +1,167 @@
+{
+  "ok": true,
+  "slug": "team-tab-autoseed",
+  "defect": "the GUI/sidebar raised `cannot resolve target \"<cwd>/team-activity\": ENOENT: no such file or directory, realpath '<cwd>/team-activity'` when the AgentTeams tab auto-opened",
+  "reported": "user-reported live GUI error (web profile; DSH 0.1.5-rc.1 CLI + rc.2 packages; dsh-better-sidebar 0.19.0-alpha.1)",
+  "rootCause": "packages/mpd-bundle-plugin/src/team-page.js auto-opened the tab WITH a content seed (`openTab({ type, path: \"team-activity\" })`). dsh-better-sidebar >= 0.19 routes any seed carrying `path`/`url` to DSH's NATIVE right column instead of the registered tab type, so the host resolved <cwd>/team-activity through path-security, failed realpath and threw - while the tab never opened at all.",
+  "vendorEvidence": {
+    "package": "dsh-better-sidebar@0.19.0-alpha.1",
+    "path": "/root/.dsh/profiles/web/node_modules/dsh-better-sidebar",
+    "dispatchRule": {
+      "file": "lib/client.js",
+      "line": 1238,
+      "code": "if (seed.path !== void 0) surface.openResource({ sessionId, address: surface.fileAddress(targetSessionId, scope?.cwd, seed.path), revealIfOpened: true })"
+    },
+    "throwSite": {
+      "file": "src/path-security.ts",
+      "line": 72
+    },
+    "doc": "OpenTabSeed.target: 'right' (default) = DSH's right Sidebar; a `path`/`url` seed goes through the native surface instead of the registered tab type"
+  },
+  "fix": {
+    "packages/mpd-bundle-plugin/src/team-page.js": "drop AUTO_OPEN_SEED_PATH; open seedless: `openTab({ type: TEAM_TAB_ID })` (a type-only open lands the tab in its own surface and expands it)",
+    "packages/mpd-bundle-plugin/client.js": "rebuilt with `node scripts/build-mpd-client.mjs` and re-packed into dist/mpd-package",
+    "packages/mpd-bundle-plugin/test/team-page.test.mjs": "the auto-open test asserted a STRING seed.path (the old contract); it now asserts the seed is exactly { type: 'mpd-agent-teams' }",
+    "skills/dsh-qa/scripts/agent-teams-sidebar.mjs": "new `seedlessAutoOpen` check on the shipped AND the served bytes"
+  },
+  "falsifiability": "re-injecting `path: AUTO_OPEN_SEED_PATH` into the built client makes `agent-teams-sidebar --self-test` fail on seedlessAutoOpen (measured; reverted by rebuilding).",
+  "gates": {
+    "unit": "bun test packages/mpd-bundle-plugin - 56 pass / 0 fail (the real client is driven through the auto-open)",
+    "qa_self_tests": "bun run test:qa - all self-tests passed (agent-teams-sidebar now 17 checks)",
+    "mount_gate": "node skills/dsh-qa/scripts/agent-teams-sidebar.mjs - PASS; hostRouteMounted mode=real-boot; the SERVED client carries the seedless call",
+    "pack": "node scripts/pack-mpd.mjs - dist/mpd-package refreshed"
+  },
+  "after": {
+    "case": "evidence/agent-teams/sidebar-migration/2026-09-11T02-45-06.671Z/result.json",
+    "steps": {
+      "artifactCopyFaithful": {
+        "ok": true,
+        "repoSha": "0d20f4f9be2d3c9fa5d86626cb6eddb14550dc65f590da30f72ec4bdea1676f8",
+        "copySha": "0d20f4f9be2d3c9fa5d86626cb6eddb14550dc65f590da30f72ec4bdea1676f8",
+        "bytes": 259205
+      },
+      "moduleIds": {
+        "ok": true,
+        "ids": [
+          "@nanmicoder/dsh-agent-teams",
+          "@mpd-dsh/team-page",
+          "@mpd-dsh/mpd"
+        ]
+      },
+      "teamPageModuleInArtifact": {
+        "ok": true
+      },
+      "exactlyOneTeamTab": {
+        "ok": true,
+        "teamTabIds": [
+          "mpd-agent-teams"
+        ],
+        "allTabIds": [
+          "mpd-agent-teams",
+          "mpd-workmate"
+        ]
+      },
+      "teamTabShape": {
+        "ok": true,
+        "order": 85,
+        "single": true,
+        "toggle": "autoOpenOnTeamActivity"
+      },
+      "seedlessAutoOpen": {
+        "ok": true,
+        "call": "openTab({ type: TEAM_TAB_ID })"
+      },
+      "noLegacyRegistration": {
+        "ok": true,
+        "registeredDefinitions": [
+          "conversation.chat.commandview"
+        ]
+      },
+      "adoptedNeverApplied": {
+        "ok": true,
+        "artifactStillContainsAdoptedStrings": true
+      },
+      "noFloaterDefined": {
+        "ok": true
+      },
+      "commandViewKept": {
+        "ok": true,
+        "slots": [
+          "conversation.chat.commandview"
+        ]
+      },
+      "panelInteriorParity": {
+        "ok": true,
+        "mismatched": [],
+        "observed": {
+          "root": "aYQbCq_panel",
+          "head": "aYQbCq_panelHead",
+          "title": "aYQbCq_panelTitle",
+          "dot": "aYQbCq_panelDot",
+          "controls": "aYQbCq_panelControls",
+          "collapse": "aYQbCq_iconButton",
+          "teams": "aYQbCq_teams",
+          "empty": "aYQbCq_emptyHint",
+          "panelMarker": true,
+          "emptyMarker": true,
+          "glyph": "IconChevronDownOutline14"
+        },
+        "windowManagerDropped": true,
+        "storeReduced": true
+      },
+      "sourcesRegisterNoRemovedSurface": {
+        "ok": true,
+        "hits": []
+      },
+      "commandViewStillRegisteredBySource": {
+        "ok": true
+      },
+      "buildGatePresent": {
+        "ok": true
+      },
+      "serverHalfMountedByRow": {
+        "ok": true,
+        "note": "row mounted by the bundle patch + server half registering the route"
+      },
+      "adoptedClientBridged": {
+        "ok": true,
+        "missing": []
+      },
+      "artifactCarriesBridge": {
+        "ok": true,
+        "missing": []
+      },
+      "bridgePatchGuarded": {
+        "ok": true
+      },
+      "bridgePatchIdempotent": {
+        "ok": true,
+        "exit": 0,
+        "output": "[patch-agent-teams-client] already applied: packages/mpd-agent-teams-plugin/lib/client.js (17 symbols, 196972 bytes)",
+        "restored": false
+      },
+      "hostRouteMounted": {
+        "ok": true,
+        "mode": "real-boot",
+        "servedClient": {
+          "url": "/plugins/??@mpd-dsh/mpd/client.js&rev=551500940f7cee00-46",
+          "status": 200,
+          "bytes": 259290,
+          "teamPageModule": true,
+          "teamTabId": true,
+          "bridge": true,
+          "atLeastRepoArtifactBytes": true,
+          "carriesRepoArtifact": true
+        },
+        "stateRoute": {
+          "status": 200,
+          "anonymousStatus": 401,
+          "gated": true,
+          "body": "{\"teams\":[]}",
+          "teamsArray": true
+        },
+        "honestNote": "asserted on a REAL offline web boot: the served @mpd-dsh/mpd client bundle + HTTP state route"
+      }
+    }
+  }
+}
