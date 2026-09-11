@@ -36,6 +36,40 @@ exemption), so this fork-owned note lives here next to the tests.
    `task.reassignReason`; the assignment prompt renders it plus a digest of the
    member's unread captain messages (claimed on dispatch, acknowledged on
    delivery, released on rollback).
+6. **`**` inScope expansion + contract consistency + contract readability**
+   (wave-2 `t4`) — `lib/quality-gates.js` `pathMatchesScope` now expands globs
+   (`**` crosses separators, `*`/`?` stay inside one segment) while every
+   wildcard-free declaration keeps the exact/dir-prefix semantics bit-identical;
+   `contractContradiction` rejects a create-time contract no path can satisfy
+   (`inScope` forbidden by its own `outOfScope`) and `repairScopeFromFindings`
+   generates the repair scope so one path can never sit in both lists (the t13
+   defect); `lib/tools.js` registers the read-only `agent_teams_task_contract`
+   so a RUNNING task's contract is readable. Deltas are bracketed by
+   `//#region mpd-delta <id>` markers, registered in `lib/mpd-deltas.js`, and
+   re-applied/verified by `scripts/patch-agent-teams-fixes.mjs` (invoked from
+   `scripts/vendor-agent-teams.mjs`); `scope-glob-and-contract.test.mjs` pins
+   both the behaviour and the guard's refusal when a delta is dropped (see also
+   `test/task-contract-tool.test.mjs` for the tool-level read path).
+7. **Order-dependent region healing + marker prefix ambiguity** (wave-3 `t2`) —
+   the registry no longer addresses a region by a LINE key (`anchor` /
+   `anchorOccurrence` / `anchorMarker`); each entry carries the CONTEXT PAIR
+   (`beforeContext` / `afterContext`) that brackets its seam, both windows
+   measured on the region-STRIPPED skeleton of the file and required to be
+   unique. That makes the heal exact under any insertion history: wave 2 left
+   `tools.js` 60 diff lines away from canonical (`task-contract` re-inserted at
+   1970 where canonical was 1733) because a line-keyed rule is order-dependent.
+   `findRegion` now compares markers WHOLE-LINE, so the three prefix collisions
+   (`scope-overlap` ⊂ `scope-overlap-normalize`, `repair-scope` ⊂
+   `repair-scope-fields`, `task-contract` ⊂ `task-contract-render`) can no
+   longer misdiagnose a partially stripped region as a `half-open marker pair`,
+   and a partially stripped region is re-bracketed in place (byte-faithful)
+   instead of being duplicated. `registry-context-heal.test.mjs` holds the
+   permanent byte-fidelity assertion for BOTH adopted files, the
+   insertion-history cases and one fixture per colliding pair;
+   `test/update-task-diagnostics.test.mjs` pins the two
+   `agent_teams_update_task` diagnostics (an omitted `attempt_id` reports it as
+   REQUIRED instead of claiming stale ownership; `status` is a REQUIRED
+   parameter so an oversized payload can no longer silently drop it).
 
 ## Run
 
@@ -46,5 +80,13 @@ bun test packages/mpd-agent-teams-plugin/self-fix-tests
 Covers: review/repair dependency auto-wiring, cancelled-as-satisfied
 `unsatisfiedDependencies`, deadlock cascade + idempotence, `reasonTaskId`
 linkage and reason rendering, reject-without-premise captain notification,
-`reasonTaskId`/`reassignReason` persistence validation, and prompt injection of
-`reassignReason` + captain guidance digest.
+`reasonTaskId`/`reassignReason` persistence validation, prompt injection of
+`reassignReason` + captain guidance digest, `**` inScope expansion with its
+over-match negative controls, the B5 no-wildcard regression set, the
+contradiction guard (reject + legitimate-carve-out falsifiability), the
+generated repair scope never listing a path in both lists, the vendor-refresh
+guard's refusal/restore/idempotence paths, the context-pair registry's
+byte-identical strip-heal for BOTH adopted files under partial insertion
+histories, and the colliding-marker-pair fixtures (dangling begin / dangling
+end / nested / intact control).
+

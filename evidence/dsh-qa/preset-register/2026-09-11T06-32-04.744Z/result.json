@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "exit": 1,
+  "dshHomeSandbox": true,
+  "bundleServedPreset": true,
+  "presetPath": "/root/dshProj/my-power-dsh/presets/mpd/agent.cordis.yml",
+  "trust": "system",
+  "homePresetCopies": [],
+  "roster": 11
+}

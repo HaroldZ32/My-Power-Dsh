@@ -15,7 +15,7 @@ import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync
 import { homedir } from "node:os"
 import { join } from "node:path"
 import { randomUUID } from "node:crypto"
-import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { createDshAdapter, workspaceRootOf, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-workmate"
 export const inject = ["tools", "subagents"]
@@ -327,26 +327,34 @@ function noteSpawnEnd(key: string): void {
  * live under `.mpd/team/archive/**` (no `team.json`) and `retired-members.json` is a file, so both
  * are excluded by construction. Reading this state is permitted; WRITING it is not (that is the
  * agent-teams plugin's state). Fail-open on any read error: an unreadable record is not a block. */
-export function busyTeams(key: string): { teamId: string; member: string }[] {
+export function busyTeams(key: string, roots?: string[]): { teamId: string; member: string }[] {
   const hits: { teamId: string; member: string }[] = []
-  try {
-    // §M6: the team state dir is hardcoded; this deployment has no config lookup for it.
-    const teamRoot = join(process.cwd(), ".mpd", "team")
-    if (!existsSync(teamRoot)) return hits
-    for (const entry of readdirSync(teamRoot, { withFileTypes: true })) {
-      if (!entry.isDirectory()) continue
-      const file = join(teamRoot, entry.name, "team.json")
-      if (!existsSync(file)) continue
-      try {
-        const team = JSON.parse(readFileSync(file, "utf8"))
-        const members = Array.isArray(team?.members) ? team.members : []
-        for (const m of members) {
-          const memberName = typeof m?.name === "string" ? m.name : ""
-          if (memberName !== "" && sanitizeName(memberName) === key) hits.push({ teamId: String(team?.id ?? entry.name), member: memberName })
-        }
-      } catch { /* fail-open */ }
-    }
-  } catch { /* fail-open */ }
+  // `roots` are the WORKSPACE roots whose .mpd/team records are scanned; the team state dir itself
+  // stays hardcoded (§M6). Callers pass the calling session's workspace (tool path), an explicit
+  // root (service path), or the union of live session workspaces (GUI path). The default keeps
+  // direct/module-level callers on the adapter's ONE resolution (env -> process.cwd()).
+  const scanRoots = roots && roots.length > 0 ? roots : [workspaceRootOf()]
+  for (const root of scanRoots) {
+    try {
+      const teamRoot = join(root, ".mpd", "team")
+      if (!existsSync(teamRoot)) continue
+      for (const entry of readdirSync(teamRoot, { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue
+        const file = join(teamRoot, entry.name, "team.json")
+        if (!existsSync(file)) continue
+        try {
+          const team = JSON.parse(readFileSync(file, "utf8"))
+          const members = Array.isArray(team?.members) ? team.members : []
+          for (const m of members) {
+            const memberName = typeof m?.name === "string" ? m.name : ""
+            if (memberName !== "" && sanitizeName(memberName) === key && !hits.some((h) => h.teamId === String(team?.id ?? entry.name) && h.member === memberName)) {
+              hits.push({ teamId: String(team?.id ?? entry.name), member: memberName })
+            }
+          }
+        } catch { /* fail-open */ }
+      }
+    } catch { /* fail-open */ }
+  }
   return hits
 }
 
@@ -356,11 +364,11 @@ export function busyTeams(key: string): { teamId: string; member: string }[] {
  * take over (§E's documented consequence is exactly "renaming oracle-1 to architect is refused while
  * such a team record exists", and A6 uses that case as the deterministic 409). The refusal names the
  * blocking team id AND member so it is actionable. */
-function assertNotBusy(keys: string[]): void {
+function assertNotBusy(keys: string[], roots?: string[]): void {
   const hits: { teamId: string; member: string }[] = []
   const running: string[] = []
   for (const key of keys) {
-    for (const h of busyTeams(key)) {
+    for (const h of busyTeams(key, roots)) {
       if (!hits.some((x) => x.teamId === h.teamId && x.member === h.member)) hits.push(h)
     }
     const n = inUseCount(key)
@@ -371,6 +379,14 @@ function assertNotBusy(keys: string[]): void {
   if (hits.length > 0) parts.push(`team member(s) ${hits.map((h) => `${h.teamId}/${h.member}`).join(", ")}`)
   if (running.length > 0) parts.push(running.join(", "))
   throw new WorkmateError("in-use", `mpd_workmate: ${keys.map((k) => `"${k}"`).join(" / ")} is in use by ${parts.join(" and ")} — archive or retire those teams and let running spawns finish first`, 409, hits)
+}
+
+/** Team-state roots for an AGENTLESS surface (web route, service without an explicit root): the
+ * union of every live session workspace, or the adapter's env -> process.cwd() form when none is
+ * registered. Never cached: one host serves many sessions. */
+function agentlessRoots(dsh: DshAdapter): string[] {
+  const all = dsh.workspaceRootsAll()
+  return all.length > 0 ? all : [dsh.workspaceRoot()]
 }
 
 /** UTC stamp for archive directory names: colons stripped and milliseconds dropped, so the name is
@@ -407,7 +423,7 @@ function rewriteNoteIdentity(dir: string, baseName: string, oldKey: string, newK
  *
  * The gate, the collision guard and the mutation run in ONE synchronous block (§E, §J): no `await`
  * appears between them, so no spawn or reflect can interleave. */
-export function renameWorkmate(nameArg: unknown, newNameArg: unknown) {
+export function renameWorkmate(nameArg: unknown, newNameArg: unknown, teamRoots?: string[]) {
   const oldKey = nameKey(nameArg, "name")
   const newKey = nameKey(newNameArg, "new_name")
   if (newKey === oldKey) throw new WorkmateError("invalid-name", `mpd_workmate: new_name "${newKey}" equals the current key — nothing to rename`, 400)
@@ -418,7 +434,7 @@ export function renameWorkmate(nameArg: unknown, newNameArg: unknown) {
   // renameSync silently overwrites an existing EMPTY directory, and a dangling symlink is invisible
   // to existsSync. Mapping every hit to `collision` also keeps raw fs errors out of the response.
   if (lstatOrNull(dst) != null) throw new WorkmateError("collision", `mpd_workmate: rename target "${newKey}" already exists`, 409)
-  assertNotBusy([oldKey, newKey])
+  assertNotBusy([oldKey, newKey], teamRoots)
   const renamedFrom = unique([...meta.renamedFrom, oldKey]).slice(-10)
   const nextMeta: Meta = { ...meta, name: newKey, renamedFrom, updatedAt: now() }
   renameSync(dir, dst)
@@ -440,7 +456,7 @@ export function renameWorkmate(nameArg: unknown, newNameArg: unknown) {
 /** Delete = ARCHIVE-FIRST (D1): the instance leaves the library (hidden from list/match, restorable)
  * into `.archive/`. Real removal requires `purge: true` AND `confirm === name`. The index key is
  * dropped on BOTH paths, and a failed delete leaves the instance fully intact. */
-export function deleteWorkmate(nameArg: unknown, purgeArg: unknown, confirmArg: unknown) {
+export function deleteWorkmate(nameArg: unknown, purgeArg: unknown, confirmArg: unknown, teamRoots?: string[]) {
   const key = nameKey(nameArg, "name")
   // Strictly boolean: a non-true `purge` archives instead of destroying, which is the safe direction.
   const purge = purgeArg === true
@@ -449,7 +465,7 @@ export function deleteWorkmate(nameArg: unknown, purgeArg: unknown, confirmArg: 
   }
   // ── one synchronous block (§E): gate + mutation, no await between ──────────────────────────────
   const { dir } = resolveTarget(key)
-  assertNotBusy([key])
+  assertNotBusy([key], teamRoots)
   let previous: IndexEntry | undefined
   let removed = false
   try {
@@ -534,8 +550,11 @@ export function apply(ctx: Ctx): void {
     },
     // `rename` / `delete` are the service half of the mutation surface (§C). `delete` MUST be an
     // object-literal property: a bare `delete(...)` member is a parse error.
-    rename: (name: string, newName: string) => renameWorkmate(name, newName),
-    delete: (name: string, purge = false, confirm = "") => deleteWorkmate(name, purge, confirm)
+    // The service has no calling agent, so its default roots are the union of live session
+    // workspaces (`workspaceRootsAll`), falling back to the adapter's env -> process.cwd() form
+    // when no session is registered. A caller that knows its workspace passes it explicitly.
+    rename: (name: string, newName: string, roots?: string[]) => renameWorkmate(name, newName, roots ?? agentlessRoots(dsh)),
+    delete: (name: string, purge = false, confirm = "", roots?: string[]) => deleteWorkmate(name, purge, confirm, roots ?? agentlessRoots(dsh))
   }
   ctx.provide("mpdWorkmate", workmateLibrary)
 
@@ -660,7 +679,7 @@ export function apply(ctx: Ctx): void {
     // the service, these tests and the §D route bodies all speak one shape, and the success flag is
     // the first thing any consumer reads. Kept required so the flag cannot silently disappear.
     output: { schema: { type: "object", properties: { ok: { type: "boolean" }, name: { type: "string" }, from: { type: "string" }, renamedFrom: { type: "array", items: { type: "string" } } }, required: ["ok", "name", "from"], additionalProperties: false }, render: (_a: unknown, v: any) => textBlock("workmate \"" + v.from + "\" renamed to \"" + v.name + "\"" + (Array.isArray(v.renamedFrom) && v.renamedFrom.length ? "\nprevious names: " + v.renamedFrom.join(", ") : "")) },
-    execute: async (args: any) => renameWorkmate(args?.name, args?.new_name)
+    execute: async (args: any, exec: any) => renameWorkmate(args?.name, args?.new_name, [dsh.workspaceRoot(exec)])
   })
 
   dsh.registerTool({
@@ -675,7 +694,7 @@ export function apply(ctx: Ctx): void {
     // t15: `ok` is declared and required here too — the same missing-property defect rejected both
     // archive and purge results (the value has always carried `ok: true`, like the §D route body).
     output: { schema: { type: "object", properties: { ok: { type: "boolean" }, name: { type: "string" }, archived: { oneOf: [{ type: "string" }, { type: "null" }] }, purged: { type: "boolean" } }, required: ["ok", "name", "archived", "purged"], additionalProperties: false }, render: (_a: unknown, v: any) => textBlock("workmate \"" + v.name + "\" " + (v.purged ? "PURGED (permanently removed)" : "archived (gone from the library, still restorable)")) },
-    execute: async (args: any) => deleteWorkmate(args?.name, args?.purge, args?.confirm)
+    execute: async (args: any, exec: any) => deleteWorkmate(args?.name, args?.purge, args?.confirm, [dsh.workspaceRoot(exec)])
   })
 
   // Web GUI data routes (mirrors the agent-teams web surface pattern): the browser
@@ -783,7 +802,7 @@ export function apply(ctx: Ctx): void {
         }
         const parsed = await readBody(req)
         if (!parsed.ok) return json(res, 400, { error: "invalid JSON" })
-        try { json(res, 200, renameWorkmate(parsed.body?.name, parsed.body?.new_name)) } catch (e) { failure(res, e) }
+        try { json(res, 200, renameWorkmate(parsed.body?.name, parsed.body?.new_name, agentlessRoots(dsh))) } catch (e) { failure(res, e) }
       }
     }) as any, "mpd-workmate: rename route")
     ctx.effect(() => webServer.register({
@@ -797,7 +816,7 @@ export function apply(ctx: Ctx): void {
         }
         const parsed = await readBody(req)
         if (!parsed.ok) return json(res, 400, { error: "invalid JSON" })
-        try { json(res, 200, deleteWorkmate(parsed.body?.name, parsed.body?.purge, parsed.body?.confirm)) } catch (e) { failure(res, e) }
+        try { json(res, 200, deleteWorkmate(parsed.body?.name, parsed.body?.purge, parsed.body?.confirm, agentlessRoots(dsh))) } catch (e) { failure(res, e) }
       }
     }) as any, "mpd-workmate: delete route")
   }

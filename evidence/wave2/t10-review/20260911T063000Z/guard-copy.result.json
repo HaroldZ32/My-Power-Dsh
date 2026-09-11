@@ -1,0 +1,159 @@
+{
+  "task": "t10 independent vendor-refresh durability test on a COPY",
+  "stamp": "2026-09-11T07:14:56.444Z",
+  "scratch": "/root/dshProj/my-power-dsh/evidence/wave2/t10-review/20260911T063000Z/guard-copy",
+  "registryIds": [
+    "mpd-delta scope-glob",
+    "mpd-delta scope-overlap",
+    "mpd-delta scope-overlap-normalize",
+    "mpd-delta contract-contradiction",
+    "mpd-delta create-contract-gate",
+    "mpd-delta repair-scope",
+    "mpd-delta repair-scope-fields",
+    "mpd-delta task-contract",
+    "mpd-delta task-contract-render"
+  ],
+  "markerFile": {
+    "mpd-delta scope-glob": "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+    "mpd-delta scope-overlap": "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+    "mpd-delta scope-overlap-normalize": "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+    "mpd-delta contract-contradiction": "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+    "mpd-delta create-contract-gate": "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+    "mpd-delta repair-scope": "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+    "mpd-delta repair-scope-fields": "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+    "mpd-delta task-contract": "packages/mpd-agent-teams-plugin/lib/tools.js",
+    "mpd-delta task-contract-render": "packages/mpd-agent-teams-plugin/lib/tools.js"
+  },
+  "baselineCheck": {
+    "exit": 0,
+    "output": [
+      "[patch-agent-teams-fixes] already applied: 9 mpd delta region(s) across 2 adopted file(s)"
+    ]
+  },
+  "perDelta": [
+    {
+      "id": "mpd-delta scope-glob",
+      "rel": "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+      "strippedCheckExit": 1,
+      "strippedCheckNamed": true,
+      "healExit": 0,
+      "healedIdentical": true,
+      "lineDelta": 0,
+      "healOutput": "[patch-agent-teams-fixes] applied: 9 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta scope-glob)",
+      "failOutput": "[patch-agent-teams-fixes] FAIL: delta \"mpd-delta scope-glob\" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js"
+    },
+    {
+      "id": "mpd-delta scope-overlap",
+      "rel": "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+      "strippedCheckExit": 1,
+      "strippedCheckNamed": true,
+      "healExit": 1,
+      "healedIdentical": false,
+      "lineDelta": -19,
+      "healOutput": "",
+      "failOutput": "[patch-agent-teams-fixes] FAIL: region \"mpd-delta scope-overlap\" has a half-open marker pair (begin@-1, end@249) — refusing to guess the intended span"
+    },
+    {
+      "id": "mpd-delta scope-overlap-normalize",
+      "rel": "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+      "strippedCheckExit": 1,
+      "strippedCheckNamed": true,
+      "healExit": 0,
+      "healedIdentical": true,
+      "lineDelta": 0,
+      "healOutput": "[patch-agent-teams-fixes] applied: 9 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta scope-overlap-normalize)",
+      "failOutput": "[patch-agent-teams-fixes] FAIL: delta \"mpd-delta scope-overlap-normalize\" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js"
+    },
+    {
+      "id": "mpd-delta contract-contradiction",
+      "rel": "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+      "strippedCheckExit": 1,
+      "strippedCheckNamed": true,
+      "healExit": 0,
+      "healedIdentical": true,
+      "lineDelta": 0,
+      "healOutput": "[patch-agent-teams-fixes] applied: 9 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta contract-contradiction)",
+      "failOutput": "[patch-agent-teams-fixes] FAIL: delta \"mpd-delta contract-contradiction\" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js"
+    },
+    {
+      "id": "mpd-delta create-contract-gate",
+      "rel": "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+      "strippedCheckExit": 1,
+      "strippedCheckNamed": true,
+      "healExit": 0,
+      "healedIdentical": true,
+      "lineDelta": 0,
+      "healOutput": "[patch-agent-teams-fixes] applied: 9 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta create-contract-gate)",
+      "failOutput": "[patch-agent-teams-fixes] FAIL: delta \"mpd-delta create-contract-gate\" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js"
+    },
+    {
+      "id": "mpd-delta repair-scope",
+      "rel": "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+      "strippedCheckExit": 1,
+      "strippedCheckNamed": true,
+      "healExit": 1,
+      "healedIdentical": false,
+      "lineDelta": -8,
+      "healOutput": "",
+      "failOutput": "[patch-agent-teams-fixes] FAIL: region \"mpd-delta repair-scope\" has a half-open marker pair (begin@-1, end@723) — refusing to guess the intended span"
+    },
+    {
+      "id": "mpd-delta repair-scope-fields",
+      "rel": "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+      "strippedCheckExit": 1,
+      "strippedCheckNamed": true,
+      "healExit": 0,
+      "healedIdentical": true,
+      "lineDelta": 0,
+      "healOutput": "[patch-agent-teams-fixes] applied: 9 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta repair-scope-fields)",
+      "failOutput": "[patch-agent-teams-fixes] FAIL: delta \"mpd-delta repair-scope-fields\" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js"
+    },
+    {
+      "id": "mpd-delta task-contract",
+      "rel": "packages/mpd-agent-teams-plugin/lib/tools.js",
+      "strippedCheckExit": 1,
+      "strippedCheckNamed": true,
+      "healExit": 1,
+      "healedIdentical": false,
+      "lineDelta": -29,
+      "healOutput": "",
+      "failOutput": "[patch-agent-teams-fixes] FAIL: region \"mpd-delta task-contract\" has a half-open marker pair (begin@-1, end@2305) — refusing to guess the intended span"
+    },
+    {
+      "id": "mpd-delta task-contract-render",
+      "rel": "packages/mpd-agent-teams-plugin/lib/tools.js",
+      "strippedCheckExit": 1,
+      "strippedCheckNamed": true,
+      "healExit": 0,
+      "healedIdentical": true,
+      "lineDelta": 0,
+      "healOutput": "[patch-agent-teams-fixes] applied: 9 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta task-contract-render)",
+      "failOutput": "[patch-agent-teams-fixes] FAIL: delta \"mpd-delta task-contract-render\" is MISSING from packages/mpd-agent-teams-plugin/lib/tools.js (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js"
+    }
+  ],
+  "checks": [
+    {
+      "name": "baseline --check on the copy exits 0 (all registered regions present and byte-identical)",
+      "pass": true,
+      "detail": "exit=0 [patch-agent-teams-fixes] already applied: 9 mpd delta region(s) across 2 adopted file(s)"
+    },
+    {
+      "name": "every registered delta: a stripped region makes --check exit NON-ZERO and name the delta",
+      "pass": true,
+      "detail": "[{\"id\":\"mpd-delta scope-glob\",\"exit\":1,\"named\":true},{\"id\":\"mpd-delta scope-overlap\",\"exit\":1,\"named\":true},{\"id\":\"mpd-delta scope-overlap-normalize\",\"exit\":1,\"named\":true},{\"id\":\"mpd-delta contract-contradiction\",\"exit\":1,\"named\":true},{\"id\":\"mpd-delta create-contract-gate\",\"exit\":1,\"named\":true},{\"id\":\"mpd-delta repair-scope\",\"exit\":1,\"named\":true},{\"id\":\"mpd-delta repair-scope-fields\",\"exit\":1,\"named\":true},{\"id\":\"mpd-delta task-contract\",\"exit\":1,\"named\":true},{\"id\":\"mpd-delta task-contract-render\",\"exit\":1,\"named\":true}]"
+    },
+    {
+      "name": "quality-gates.js: every stripped region heals back BYTE-IDENTICAL (the durability claim)",
+      "pass": false,
+      "detail": "[{\"id\":\"mpd-delta scope-glob\",\"identical\":true,\"lineDelta\":0},{\"id\":\"mpd-delta scope-overlap\",\"identical\":false,\"lineDelta\":-19},{\"id\":\"mpd-delta scope-overlap-normalize\",\"identical\":true,\"lineDelta\":0},{\"id\":\"mpd-delta contract-contradiction\",\"identical\":true,\"lineDelta\":0},{\"id\":\"mpd-delta create-contract-gate\",\"identical\":true,\"lineDelta\":0},{\"id\":\"mpd-delta repair-scope\",\"identical\":false,\"lineDelta\":-8},{\"id\":\"mpd-delta repair-scope-fields\",\"identical\":true,\"lineDelta\":0}]"
+    },
+    {
+      "name": "tools.js: every stripped region heals back BYTE-IDENTICAL",
+      "pass": false,
+      "detail": "[{\"id\":\"mpd-delta task-contract\",\"identical\":false,\"lineDelta\":-29},{\"id\":\"mpd-delta task-contract-render\",\"identical\":true,\"lineDelta\":0}]"
+    }
+  ],
+  "qualityGatesAllByteIdentical": false,
+  "toolsAllByteIdentical": false,
+  "allPass": false
+}

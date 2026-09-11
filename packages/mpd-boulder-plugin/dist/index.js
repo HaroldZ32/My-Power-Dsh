@@ -662,6 +662,7 @@ function endTaskTimer(directory, workId, taskKey, endedAt) {
 import { join as join4 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
+import { resolve as resolve2 } from "node:path";
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 function textBlock(content) {
@@ -669,6 +670,41 @@ function textBlock(content) {
 }
 function message(error) {
   return error instanceof Error ? error.message : String(error);
+}
+function sessionCwdOf(agent) {
+  try {
+    const cwd = agent?.session?.header?.cwd;
+    return typeof cwd === "string" && cwd.length > 0 ? cwd : undefined;
+  } catch {
+    return;
+  }
+}
+function workspaceRootOf(exec) {
+  const session = sessionCwdOf(exec?.agent);
+  if (session !== undefined)
+    return resolve2(session);
+  const override = process.env.DSH_WORKSPACE_ROOT;
+  if (typeof override === "string" && override.length > 0)
+    return resolve2(override);
+  return process.cwd();
+}
+function workspaceRootsOf(agents) {
+  if (agents === undefined || agents === null || typeof agents.list !== "function")
+    return [];
+  try {
+    const list = agents.list();
+    if (!Array.isArray(list))
+      return [];
+    const roots = new Set;
+    for (const agent of list) {
+      const cwd = sessionCwdOf(agent);
+      if (cwd !== undefined)
+        roots.add(resolve2(cwd));
+    }
+    return [...roots];
+  } catch {
+    return [];
+  }
 }
 function noop() {}
 function createDshAdapter(ctx, config = {}) {
@@ -694,6 +730,8 @@ function createDshAdapter(ctx, config = {}) {
     }
     return found;
   }
+  const workspaceRoot = (exec) => workspaceRootOf(exec);
+  const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
   function timeoutSignal(timeoutMs) {
     try {
       if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function")
@@ -721,6 +759,8 @@ function createDshAdapter(ctx, config = {}) {
         agentPresets: typeof presets?.resolve === "function"
       };
     },
+    workspaceRoot,
+    workspaceRootsAll,
     registerTool(definition) {
       const tools = requireService("tools", 'cannot register tool "' + String(definition?.name) + '"');
       if (typeof tools.register !== "function")
@@ -875,16 +915,13 @@ function mergedConfig(ctx, config) {
 function textBlock2(text) {
   return [{ type: "text", text }];
 }
-function cwd() {
-  return process.env.DSH_WORKSPACE_ROOT ?? process.cwd();
-}
-function boulderRoot(config) {
-  return config.boulderDir ? config.boulderDir : cwd();
+function boulderRoot(config, dsh, exec) {
+  return config.boulderDir ? config.boulderDir : dsh.workspaceRoot(exec);
 }
 function apply(ctx, config = {}) {
   const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx);
   const merged = mergedConfig(ctx, config);
-  const root = () => boulderRoot(merged);
+  const root = (exec) => boulderRoot(merged, dsh, exec);
   dsh.registerTool({
     name: "mpd_boulder_status",
     description: "Show the boulder work ledger: active works, statuses, session ids, task timers, resume options and (optionally) the progress of one plan file. State lives in .mpd/boulder.json.",
@@ -893,8 +930,8 @@ function apply(ctx, config = {}) {
 active works: ` + JSON.stringify(v.activeWorks, null, 1) + `
 resume: ` + JSON.stringify(v.resumeOptions, null, 1) + (v.planProgress ? `
 plan: ` + JSON.stringify(v.planProgress) : "")) },
-    execute: async (args) => {
-      const dir = root();
+    execute: async (args, exec) => {
+      const dir = root(exec);
       const state = readBoulderState(dir);
       const activeWorks = getActiveWorks(dir);
       const resumeOptions = getWorkResumeOptions(dir);
@@ -919,8 +956,8 @@ plan: ` + JSON.stringify(v.planProgress) : "")) },
     description: "Start a boulder work bound to a plan markdown file (e.g. .mpd/plans/<slug>.md). Creates .mpd/boulder.json if absent; the work becomes active with status active and the calling session recorded.",
     parameters: { type: "object", properties: { planPath: { type: "string" }, agent: { type: "string" }, worktreePath: { type: "string" }, sessionId: { type: "string" } }, required: ["planPath"], additionalProperties: false },
     output: { schema: { type: "object", properties: { workId: { type: "string" }, status: { type: "string" }, stateFile: { type: "string" } }, required: ["workId", "status"] }, render: (_a, v) => textBlock2("boulder started: " + v.workId + " (" + v.status + ") " + v.stateFile) },
-    execute: async (args) => {
-      const dir = root();
+    execute: async (args, exec) => {
+      const dir = root(exec);
       const planPath = String(args?.planPath);
       const sessionId = String(args?.sessionId ?? "current");
       const existing = readBoulderState(dir);
@@ -943,8 +980,8 @@ plan: ` + JSON.stringify(v.planProgress) : "")) },
     description: "Complete the active boulder work (or one given by workId): sets status completed, records ended_at + elapsed_ms and persists .mpd/boulder.json.",
     parameters: { type: "object", properties: { workId: { type: "string" } } },
     output: { schema: { type: "object", properties: { workId: { type: "string" }, status: { type: "string" }, elapsedMs: { type: "integer" } }, required: ["workId", "status"] }, render: (_a, v) => textBlock2("boulder completed: " + v.workId + " status=" + v.status + " elapsedMs=" + v.elapsedMs) },
-    execute: async (args) => {
-      const dir = root();
+    execute: async (args, exec) => {
+      const dir = root(exec);
       const state = completeBoulder(dir, args?.workId);
       if (!state)
         throw new Error("mpd-boulder: no work to complete (start one first with mpd_boulder_start)");
@@ -958,8 +995,8 @@ plan: ` + JSON.stringify(v.planProgress) : "")) },
     description: "Start or end a per-task session timer inside a boulder work (taskKey = TODO id in the plan, e.g. '1' or 'F1'). action=start marks running; action=end marks completed and records elapsed_ms.",
     parameters: { type: "object", properties: { workId: { type: "string" }, taskKey: { type: "string" }, action: { type: "string", enum: ["start", "end"] }, taskLabel: { type: "string" }, taskTitle: { type: "string" }, sessionId: { type: "string" } }, required: ["workId", "taskKey", "action"], additionalProperties: false },
     output: { schema: { type: "object", properties: { workId: { type: "string" }, taskKey: { type: "string" }, status: { type: "string" } }, required: ["workId", "taskKey", "status"] }, render: (_a, v) => textBlock2("boulder timer: " + v.taskKey + " (" + v.status + ") in " + v.workId) },
-    execute: async (args) => {
-      const dir = root();
+    execute: async (args, exec) => {
+      const dir = root(exec);
       const workId = String(args?.workId);
       const taskKey = String(args?.taskKey);
       let next;
@@ -981,8 +1018,8 @@ plan: ` + JSON.stringify(v.planProgress) : "")) },
     description: "Parse a plan markdown file for its checklist progress: '## TODOs' items (N.) and '## Final Verification Wave' items (F<n>.), returning done/remaining with the plan path resolution.",
     parameters: { type: "object", properties: { planPath: { type: "string" } }, required: ["planPath"] },
     output: { schema: { type: "object", properties: { planPath: { type: "string" }, progress: { type: "object" } }, required: ["planPath", "progress"] }, render: (_a, v) => textBlock2("plan progress " + v.planPath + ": " + JSON.stringify(v.progress, null, 1)) },
-    execute: async (args) => {
-      const dir = root();
+    execute: async (args, exec) => {
+      const dir = root(exec);
       const planPath = String(args?.planPath);
       const progress = getPlanProgress(planPath);
       return { planPath, progress };
@@ -994,7 +1031,7 @@ plan: ` + JSON.stringify(v.planProgress) : "")) },
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { plans: { type: "array", items: { type: "string" } } }, required: ["plans"] }, render: (_a, v) => textBlock2("plans: " + v.plans.join(`
 `)) },
-    execute: async () => ({ plans: findPrometheusPlans(root()) })
+    execute: async (_args, exec) => ({ plans: findPrometheusPlans(root(exec)) })
   });
 }
 export {

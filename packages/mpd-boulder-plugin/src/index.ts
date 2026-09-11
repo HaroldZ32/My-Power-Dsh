@@ -18,7 +18,7 @@ import {
   endTaskTimer,
 } from "./vendor/index.ts"
 import { join } from "node:path"
-import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { createDshAdapter, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-boulder"
 export const inject = ["tools"]
@@ -36,23 +36,25 @@ function mergedConfig(ctx: Ctx, config: Config): Config {
 
 function textBlock(text: string): any { return [{ type: "text", text }] }
 
-function cwd(): string { return process.env.DSH_WORKSPACE_ROOT ?? process.cwd() }
-
-function boulderRoot(config: Config): string { return config.boulderDir ? config.boulderDir : cwd() }
+// Explicit override (config.boulderDir / mpd.jsonc boulder.dir) wins; otherwise the
+// CALLING SESSION's workspace (adapter workspaceRoot) — never the dsh process cwd.
+function boulderRoot(config: Config, dsh: DshAdapter, exec?: any): string {
+  return config.boulderDir ? config.boulderDir : dsh.workspaceRoot(exec)
+}
 
 export function apply(ctx: Ctx, config: Config = {}): void {
   // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
   const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
   const merged = mergedConfig(ctx, config)
-  const root = () => boulderRoot(merged)
+  const root = (exec?: any) => boulderRoot(merged, dsh, exec)
 
   dsh.registerTool({
     name: "mpd_boulder_status",
     description: "Show the boulder work ledger: active works, statuses, session ids, task timers, resume options and (optionally) the progress of one plan file. State lives in .mpd/boulder.json.",
     parameters: { type: "object", properties: { planPath: { type: "string" } } },
     output: { schema: { type: "object", properties: { stateFile: { type: "string" }, activeWorks: { type: "array", items: { type: "object" } }, resumeOptions: { type: "array", items: { type: "object" } }, planProgress: { type: "object" }, state: { type: "object" } }, required: ["stateFile", "activeWorks", "resumeOptions"] }, render: (_a: unknown, v: any) => textBlock("boulder status: " + v.stateFile + "\nactive works: " + JSON.stringify(v.activeWorks, null, 1) + "\nresume: " + JSON.stringify(v.resumeOptions, null, 1) + (v.planProgress ? "\nplan: " + JSON.stringify(v.planProgress) : "")) },
-    execute: async (args: any) => {
-      const dir = root()
+    execute: async (args: any, exec: any) => {
+      const dir = root(exec)
       const state = readBoulderState(dir)
       const activeWorks = getActiveWorks(dir)
       const resumeOptions = getWorkResumeOptions(dir)
@@ -75,8 +77,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     description: "Start a boulder work bound to a plan markdown file (e.g. .mpd/plans/<slug>.md). Creates .mpd/boulder.json if absent; the work becomes active with status active and the calling session recorded.",
     parameters: { type: "object", properties: { planPath: { type: "string" }, agent: { type: "string" }, worktreePath: { type: "string" }, sessionId: { type: "string" } }, required: ["planPath"], additionalProperties: false },
     output: { schema: { type: "object", properties: { workId: { type: "string" }, status: { type: "string" }, stateFile: { type: "string" } }, required: ["workId", "status"] }, render: (_a: unknown, v: any) => textBlock("boulder started: " + v.workId + " (" + v.status + ") " + v.stateFile) },
-    execute: async (args: any) => {
-      const dir = root()
+    execute: async (args: any, exec: any) => {
+      const dir = root(exec)
       const planPath = String(args?.planPath)
       const sessionId = String(args?.sessionId ?? "current")
       const existing = readBoulderState(dir)
@@ -101,8 +103,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     description: "Complete the active boulder work (or one given by workId): sets status completed, records ended_at + elapsed_ms and persists .mpd/boulder.json.",
     parameters: { type: "object", properties: { workId: { type: "string" } } },
     output: { schema: { type: "object", properties: { workId: { type: "string" }, status: { type: "string" }, elapsedMs: { type: "integer" } }, required: ["workId", "status"] }, render: (_a: unknown, v: any) => textBlock("boulder completed: " + v.workId + " status=" + v.status + " elapsedMs=" + v.elapsedMs) },
-    execute: async (args: any) => {
-      const dir = root()
+    execute: async (args: any, exec: any) => {
+      const dir = root(exec)
       const state = completeBoulder(dir, args?.workId)
       if (!state) throw new Error("mpd-boulder: no work to complete (start one first with mpd_boulder_start)")
       const workId = args?.workId ?? state.active_work_id ?? "?"
@@ -116,8 +118,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     description: "Start or end a per-task session timer inside a boulder work (taskKey = TODO id in the plan, e.g. '1' or 'F1'). action=start marks running; action=end marks completed and records elapsed_ms.",
     parameters: { type: "object", properties: { workId: { type: "string" }, taskKey: { type: "string" }, action: { type: "string", enum: ["start", "end"] }, taskLabel: { type: "string" }, taskTitle: { type: "string" }, sessionId: { type: "string" } }, required: ["workId", "taskKey", "action"], additionalProperties: false },
     output: { schema: { type: "object", properties: { workId: { type: "string" }, taskKey: { type: "string" }, status: { type: "string" } }, required: ["workId", "taskKey", "status"] }, render: (_a: unknown, v: any) => textBlock("boulder timer: " + v.taskKey + " (" + v.status + ") in " + v.workId) },
-    execute: async (args: any) => {
-      const dir = root()
+    execute: async (args: any, exec: any) => {
+      const dir = root(exec)
       const workId = String(args?.workId)
       const taskKey = String(args?.taskKey)
       let next: any
@@ -138,8 +140,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     description: "Parse a plan markdown file for its checklist progress: '## TODOs' items (N.) and '## Final Verification Wave' items (F<n>.), returning done/remaining with the plan path resolution.",
     parameters: { type: "object", properties: { planPath: { type: "string" } }, required: ["planPath"] },
     output: { schema: { type: "object", properties: { planPath: { type: "string" }, progress: { type: "object" } }, required: ["planPath", "progress"] }, render: (_a: unknown, v: any) => textBlock("plan progress " + v.planPath + ": " + JSON.stringify(v.progress, null, 1)) },
-    execute: async (args: any) => {
-      const dir = root()
+    execute: async (args: any, exec: any) => {
+      const dir = root(exec)
       const planPath = String(args?.planPath)
       const progress = getPlanProgress(planPath)
       return { planPath, progress }
@@ -151,6 +153,6 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     description: "List plan markdown files under .mpd/plans that can be started as boulder works.",
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { plans: { type: "array", items: { type: "string" } } }, required: ["plans"] }, render: (_a: unknown, v: any) => textBlock("plans: " + v.plans.join("\n")) },
-    execute: async () => ({ plans: findPrometheusPlans(root()) })
+    execute: async (_args: any, exec: any) => ({ plans: findPrometheusPlans(root(exec)) })
   })
 }

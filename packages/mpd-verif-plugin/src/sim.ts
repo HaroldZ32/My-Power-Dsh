@@ -10,7 +10,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs"
 import { dirname, isAbsolute, join } from "node:path"
 import { run, writeLog, DEFAULT_TIMEOUT_MS } from "./run"
-import { workDir, runStamp } from "./env"
+import { workspaceRoot, workDir, runStamp } from "./env"
 import { probeBackend, normalizeDefines } from "./backends"
 import { requireCocotbVenv } from "./venv"
 import { VerifError } from "./errors"
@@ -188,7 +188,7 @@ export function collectWaves(caseDir: string): Wavefile[] {
   return out.slice(0, 50)
 }
 
-export async function verifSim(a: VerifSimArgs, deps: SimDeps = {}): Promise<VerifSimResult> {
+export async function verifSim(a: VerifSimArgs, deps: SimDeps = {}, exec?: any): Promise<VerifSimResult> {
   // Lane gate: cocotb lane owns iverilog/verilator; vcs is the UVM lane.
   if (a.backend === "vcs") {
     throw new VerifError("VERIF_E_UNSUPPORTED", "mpd_verif_sim is the cocotb lane (iverilog|verilator); vcs is handled by mpd_verif_uvm", "call mpd_verif_uvm for the VCS/UVM flow")
@@ -197,7 +197,7 @@ export async function verifSim(a: VerifSimArgs, deps: SimDeps = {}): Promise<Ver
     throw new VerifError("VERIF_E_RUN", "no sources given", "pass sources[] (RTL files) for the simulation")
   }
   // IRON GATE (refusal lists the exact setup command).
-  const gate = requireCocotbVenv()
+  const gate = requireCocotbVenv(undefined, exec)
   const probe = probeBackend(a.backend)
   if (!probe.present) {
     throw new VerifError("VERIF_E_NO_BACKEND", `backend '${a.backend}' not found on this machine`, `install it or set MPD_DSH_VERIF_${a.backend.toUpperCase()} to the tool path`)
@@ -205,16 +205,16 @@ export async function verifSim(a: VerifSimArgs, deps: SimDeps = {}): Promise<Ver
   const backend = a.backend
   const waves = a.waves ?? true
   const stamp = runStamp()
-  const caseDir = join(workDir(), "sim", `${a.top}-${stamp}`)
+  const caseDir = join(workDir(exec), "sim", `${a.top}-${stamp}`)
   mkdirSync(caseDir, { recursive: true })
   const resultsXml = join(caseDir, "results.xml")
   const tbModules = a.tbModules && a.tbModules.length > 0 ? a.tbModules : [a.top + "_tb"]
-  const tbPathDirs = resolveTbPathDirs(tbModules, a.sources, wsResolved())
+  const tbPathDirs = resolveTbPathDirs(tbModules, a.sources, workspaceRoot(exec))
   const makePy = buildSimMakefile({
     backend,
     top: a.top,
-    sources: a.sources.map((s) => (isAbsolute(s) ? s : join(process.env.DSH_WORKSPACE_ROOT ?? process.cwd(), s))),
-    includes: (a.includes ?? []).map((i) => (isAbsolute(i) ? i : join(process.env.DSH_WORKSPACE_ROOT ?? process.cwd(), i))),
+    sources: a.sources.map((s) => (isAbsolute(s) ? s : join(workspaceRoot(exec), s))),
+    includes: (a.includes ?? []).map((i) => (isAbsolute(i) ? i : join(workspaceRoot(exec), i))),
     defines: normalizeDefines(a.defines),
     waves,
     traceFst: a.traceFst,
@@ -276,10 +276,6 @@ export async function verifSim(a: VerifSimArgs, deps: SimDeps = {}): Promise<Ver
       },
     }),
   }
-}
-
-function wsResolved(): string {
-  return process.env.DSH_WORKSPACE_ROOT ?? process.cwd()
 }
 
 // TB python modules must be importable by cocotb's embedded interpreter:

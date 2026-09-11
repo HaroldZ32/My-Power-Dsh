@@ -1,9 +1,10 @@
 // packages/mpd-memory-plugin/src/index.ts
 import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve as resolve2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
+import { resolve } from "node:path";
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 function textBlock(content) {
@@ -11,6 +12,41 @@ function textBlock(content) {
 }
 function message(error) {
   return error instanceof Error ? error.message : String(error);
+}
+function sessionCwdOf(agent) {
+  try {
+    const cwd = agent?.session?.header?.cwd;
+    return typeof cwd === "string" && cwd.length > 0 ? cwd : undefined;
+  } catch {
+    return;
+  }
+}
+function workspaceRootOf(exec) {
+  const session = sessionCwdOf(exec?.agent);
+  if (session !== undefined)
+    return resolve(session);
+  const override = process.env.DSH_WORKSPACE_ROOT;
+  if (typeof override === "string" && override.length > 0)
+    return resolve(override);
+  return process.cwd();
+}
+function workspaceRootsOf(agents) {
+  if (agents === undefined || agents === null || typeof agents.list !== "function")
+    return [];
+  try {
+    const list = agents.list();
+    if (!Array.isArray(list))
+      return [];
+    const roots = new Set;
+    for (const agent of list) {
+      const cwd = sessionCwdOf(agent);
+      if (cwd !== undefined)
+        roots.add(resolve(cwd));
+    }
+    return [...roots];
+  } catch {
+    return [];
+  }
 }
 function noop() {}
 function createDshAdapter(ctx, config = {}) {
@@ -36,6 +72,8 @@ function createDshAdapter(ctx, config = {}) {
     }
     return found;
   }
+  const workspaceRoot = (exec) => workspaceRootOf(exec);
+  const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
   function timeoutSignal(timeoutMs) {
     try {
       if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function")
@@ -63,6 +101,8 @@ function createDshAdapter(ctx, config = {}) {
         agentPresets: typeof presets?.resolve === "function"
       };
     },
+    workspaceRoot,
+    workspaceRootsAll,
     registerTool(definition) {
       const tools = requireService("tools", 'cannot register tool "' + String(definition?.name) + '"');
       if (typeof tools.register !== "function")
@@ -224,21 +264,18 @@ function mergedConfig(ctx, config) {
 function textBlock2(text) {
   return [{ type: "text", text }];
 }
-function cwd() {
-  return process.env.DSH_WORKSPACE_ROOT ?? process.cwd();
-}
-function slugOf(config) {
+function slugOf(config, dsh, exec) {
   if (config.agentSlug)
     return config.agentSlug;
-  const base = basename(cwd());
+  const base = basename(dsh.workspaceRoot(exec));
   return "agent-" + base.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 24) || "agent";
 }
-function bumpRoot(config, slug) {
-  return join(cwd(), config.dir ?? ".mpd", "memory", "agents", slug);
+function bumpRoot(config, slug, dsh, exec) {
+  return join(dsh.workspaceRoot(exec), config.dir ?? ".mpd", "memory", "agents", slug);
 }
-function ensureDirs(config) {
-  const slug = slugOf(config);
-  const root = bumpRoot(config, slug);
+function ensureDirs(config, dsh, exec) {
+  const slug = slugOf(config, dsh, exec);
+  const root = bumpRoot(config, slug, dsh, exec);
   const repo = join(root, "repo");
   const runtime = join(root, "runtime");
   const memoryDir = join(repo, "memory");
@@ -335,8 +372,8 @@ function normalizeLogEntry(meta, file, body) {
   return { ...meta, description: meta.description ?? "", content: body.trim(), file: basename(file) };
 }
 function safeMemoryPath(memoryDir, name2) {
-  const target = resolve(memoryDir, name2);
-  if (!target.startsWith(resolve(memoryDir) + "/"))
+  const target = resolve2(memoryDir, name2);
+  if (!target.startsWith(resolve2(memoryDir) + "/"))
     throw new Error("mpd-memory: path escapes memory dir: " + name2);
   return target;
 }
@@ -372,8 +409,8 @@ function apply(ctx, config = {}) {
     description: "Persist a memory entry (markdown file with frontmatter description/kind/aliases/read_only) into the VCS-backed memory store and commit. Increments the reflection step counter; when the reflection threshold is crossed the result announces a reflection is due. kind: note | fact | reflection.",
     parameters: { type: "object", properties: { title: { type: "string" }, description: { type: "string" }, content: { type: "string" }, kind: { type: "string", enum: ["note", "fact", "reflection"] }, tags: { type: "array", items: { type: "string" } }, readOnly: { type: "boolean" } }, required: ["title", "content"], additionalProperties: false },
     output: { schema: { type: "object", properties: { file: { type: "string" }, committedTo: { type: "array", items: { type: "string" } }, reflectionDue: { type: "boolean" }, vcs: { type: "string" }, errors: { type: "array", items: { type: "string" } } }, required: ["file", "vcs"] }, render: (_a, v) => textBlock2("memory written: " + v.file + " (vcs=" + v.vcs + " committed=" + v.committedTo.join(",") + " reflectionDue=" + v.reflectionDue + ")") },
-    execute: async (args) => {
-      const d = ensureDirs(cfg);
+    execute: async (args, exec) => {
+      const d = ensureDirs(cfg, dsh, exec);
       ensureVcs(cfg, d);
       const name2 = String(args?.title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) + "-" + Date.now().toString(36);
       const file = safeMemoryPath(d.memoryDir, name2 + ".md");
@@ -407,8 +444,8 @@ function apply(ctx, config = {}) {
     output: { schema: { type: "object", properties: { entries: { type: "array", items: { type: "object" } }, count: { type: "integer" } }, required: ["entries", "count"] }, render: (_a, v) => textBlock2("memory entries: " + v.count + `
 ` + v.entries.map((e) => "- [" + (e.kind ?? "note") + "] " + e.description + ": " + e.content.slice(0, 200)).join(`
 `)) },
-    execute: async (args) => {
-      const d = ensureDirs(cfg);
+    execute: async (args, exec) => {
+      const d = ensureDirs(cfg, dsh, exec);
       const files = existsSync(d.memoryDir) ? readdirSync(d.memoryDir).filter((f) => f.endsWith(".md")) : [];
       let entries = [];
       const kind = args?.kind ? String(args.kind) : null;
@@ -436,8 +473,8 @@ function apply(ctx, config = {}) {
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { state: { type: "object" }, due: { type: "boolean" } }, required: ["state", "due"] }, render: (_a, v) => textBlock2("reflection state: " + JSON.stringify(v.state, null, 1) + (v.due ? `
 REFLECTION DUE` : "")) },
-    execute: async () => {
-      const d = ensureDirs(cfg);
+    execute: async (_args, exec) => {
+      const d = ensureDirs(cfg, dsh, exec);
       const s = readReflection(d);
       return { state: s, due: s.triggered === true || s.reservation?.status === "pending" };
     }
@@ -447,8 +484,8 @@ REFLECTION DUE` : "")) },
     description: "Complete a pending reflection transition: writes the reflection content as a memory entry (kind=reflection), advances reflected_completed_steps / resets steps_since_last_successful_reflection, clears the reservation and commits.",
     parameters: { type: "object", properties: { content: { type: "string" }, title: { type: "string" } }, required: ["content"], additionalProperties: false },
     output: { schema: { type: "object", properties: { completed: { type: "boolean" }, file: { type: "string" } }, required: ["completed", "file"] }, render: (_a, v) => textBlock2("reflection completed: " + (v.completed ? "yes" : "no") + " " + v.file) },
-    execute: async (args) => {
-      const d = ensureDirs(cfg);
+    execute: async (args, exec) => {
+      const d = ensureDirs(cfg, dsh, exec);
       ensureVcs(cfg, d);
       const name2 = "reflection-" + Date.now().toString(36);
       const file = safeMemoryPath(d.memoryDir, name2 + ".md");
@@ -475,8 +512,8 @@ REFLECTION DUE` : "")) },
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { vcs: { type: "string" }, root: { type: "string" }, entries: { type: "integer" }, journalLines: { type: "integer" }, reflection: { type: "object" } }, required: ["vcs", "root", "entries"] }, render: (_a, v) => textBlock2("memory status: vcs=" + v.vcs + " root=" + v.root + " entries=" + v.entries + " journal=" + v.journalLines + `
 reflection: ` + JSON.stringify(v.reflection)) },
-    execute: async () => {
-      const d = ensureDirs(cfg);
+    execute: async (_args, exec) => {
+      const d = ensureDirs(cfg, dsh, exec);
       const files = existsSync(d.memoryDir) ? readdirSync(d.memoryDir).filter((f) => f.endsWith(".md")) : [];
       const journalLines = existsSync(journalPath(d)) ? readFileSync(journalPath(d), "utf8").split(`
 `).filter(Boolean).length : 0;

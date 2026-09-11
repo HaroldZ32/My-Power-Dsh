@@ -1,4 +1,5 @@
 // packages/mpd-dsh-adapter-plugin/src/index.ts
+import { resolve } from "node:path";
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 function textBlock(content) {
@@ -6,6 +7,41 @@ function textBlock(content) {
 }
 function message(error) {
   return error instanceof Error ? error.message : String(error);
+}
+function sessionCwdOf(agent) {
+  try {
+    const cwd = agent?.session?.header?.cwd;
+    return typeof cwd === "string" && cwd.length > 0 ? cwd : undefined;
+  } catch {
+    return;
+  }
+}
+function workspaceRootOf(exec) {
+  const session = sessionCwdOf(exec?.agent);
+  if (session !== undefined)
+    return resolve(session);
+  const override = process.env.DSH_WORKSPACE_ROOT;
+  if (typeof override === "string" && override.length > 0)
+    return resolve(override);
+  return process.cwd();
+}
+function workspaceRootsOf(agents) {
+  if (agents === undefined || agents === null || typeof agents.list !== "function")
+    return [];
+  try {
+    const list = agents.list();
+    if (!Array.isArray(list))
+      return [];
+    const roots = new Set;
+    for (const agent of list) {
+      const cwd = sessionCwdOf(agent);
+      if (cwd !== undefined)
+        roots.add(resolve(cwd));
+    }
+    return [...roots];
+  } catch {
+    return [];
+  }
 }
 function noop() {}
 function createDshAdapter(ctx, config = {}) {
@@ -31,6 +67,8 @@ function createDshAdapter(ctx, config = {}) {
     }
     return found;
   }
+  const workspaceRoot = (exec) => workspaceRootOf(exec);
+  const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
   function timeoutSignal(timeoutMs) {
     try {
       if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function")
@@ -58,6 +96,8 @@ function createDshAdapter(ctx, config = {}) {
         agentPresets: typeof presets?.resolve === "function"
       };
     },
+    workspaceRoot,
+    workspaceRootsAll,
     registerTool(definition) {
       const tools = requireService("tools", 'cannot register tool "' + String(definition?.name) + '"');
       if (typeof tools.register !== "function")

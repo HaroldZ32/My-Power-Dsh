@@ -1,0 +1,17 @@
+## t14 round 2 — final exec-less root-resolution scan (2026-09-11T04:25:24Z)
+
+### root-dependent helper calls without exec (migrated plugins)
+packages/mpd-config-plugin/src/index.ts:102:  let state = loadConfig(config, dsh.workspaceRoot())
+packages/mpd-verif-plugin/src/index.ts:52:          const p = paths(args?.path ? String(args.path) : undefined, exec)
+packages/mpd-verif-plugin/src/index.ts:65:          const res = venvCreate(args?.path ? String(args.path) : undefined, undefined, exec)
+packages/mpd-verif-plugin/src/index.ts:68:        const st = venvStatus(args?.path ? String(args.path) : undefined, exec)
+packages/mpd-verif-plugin/src/regress.ts:135:  const gate = requireCocotbVenv(undefined, exec)
+packages/mpd-verif-plugin/src/sim.ts:200:  const gate = requireCocotbVenv(undefined, exec)
+packages/mpd-workmate-plugin/src/index.ts:389:  return all.length > 0 ? all : [dsh.workspaceRoot()]
+
+### workspaceRootOf / workspaceRootsOf definition site (the ONE helper)
+200:export function workspaceRootOf(exec?: DshToolExec): string {
+213:export function workspaceRootsOf(agents: any): string[] {
+
+### explicit documented exceptions still in place
+76:  const cwd = (process.env.MPD_CODEGRAPH_PROJECT_CWD ?? process.env.MPD_DSH_CODEGRAPH_PROJECT_CWD) || process.cwd()

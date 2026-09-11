@@ -1,0 +1,48 @@
+{
+  "task": "t6 B8 deterministic MCP gate — packed layout",
+  "stamp": "2026-09-11T06:06:15.966Z",
+  "layout": "packed (dist/mpd-package installed with npm into a sandbox profile)",
+  "checks": [
+    {
+      "name": "packed bundle ships both launchers + the shared resolver",
+      "pass": true,
+      "detail": "dist/mpd-package/packages/mpd-mcp-astgrep/launch.mjs=true dist/mpd-package/packages/mpd-mcp-codegraph/launch.mjs=true dist/mpd-package/packages/mpd-mcp-shared/bin-resolve.mjs=true"
+    },
+    {
+      "name": "packed bundle: npm pack succeeds and the tarball ships the launchers",
+      "pass": true,
+      "detail": "exit=0 tgz=mpd-dsh-mpd-0.3.2.tgz npm notice\nnpm notice 📦  @mpd-dsh/mpd@0.3.2\nnpm notice Tarball Contents\nnpm notice 5.2kB LICENSE-NOTICES.md\nnpm notice 4.0kB LICENSE.md\nnpm notice 8.9kB README.md\nnpm notice 8.9kB README.zh-CN.md\nnpm"
+    },
+    {
+      "name": "packed install: bundle + launchers present under node_modules/@mpd-dsh/mpd",
+      "pass": true,
+      "detail": "/tmp/b8-packed-wr3mfj/profiles/b8-packed/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-astgrep/launch.mjs exists=true"
+    },
+    {
+      "name": "packed layout: ast-grep resolves through createRequire (packed optionalDependency), not the checkout toolchain",
+      "pass": true,
+      "detail": "{\"binary\":\"/tmp/b8-packed-wr3mfj/profiles/b8-packed/node_modules/@ast-grep/cli/ast-grep\",\"source\":\"require\"}"
+    },
+    {
+      "name": "packed layout: codegraph resolves through createRequire (packed optionalDependency)",
+      "pass": true,
+      "detail": "{\"binary\":\"/tmp/b8-packed-wr3mfj/profiles/b8-packed/node_modules/@colbymchenry/codegraph/npm-shim.js\",\"source\":\"require\"}"
+    },
+    {
+      "name": "packed layout: real ast-grep search through the installed launcher returns a real match",
+      "pass": true,
+      "detail": "ok=true text={\"schemaVersion\":1,\"ok\":true,\"kind\":\"search\",\"workdir\":\"/root/dshProj/my-power-dsh/.b8-packed-cwd-Ww422q\",\"matches\":[{\"path\":\"/root/dshProj/my-power-dsh/tests/mcp-fixtures/sample.c\",\"language\":\"c\",\"te"
+    },
+    {
+      "name": "packed layout: codegraph launcher serves the real tool surface",
+      "pass": true,
+      "detail": "tools=[\"codegraph_explore\"] stderr="
+    },
+    {
+      "name": "packed layout negative control: a wrong caller pin still yields BINARY_NOT_FOUND",
+      "pass": true,
+      "detail": "{\"schemaVersion\":1,\"ok\":false,\"error\":{\"code\":\"BINARY_NOT_FOUND\",\"message\":\"ast-grep binary not found for linux: no candidate passed the --version probe across the env override, MPD runtime, skill bin"
+    }
+  ],
+  "allPass": true
+}

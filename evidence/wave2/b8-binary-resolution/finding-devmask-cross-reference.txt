@@ -1,0 +1,5 @@
+preset-register-style devPatch() MCP args expressions:
+  # packages/mpd-mcp-astgrep/launch.mjs, which resolves the binary
+  - !!js 'process.env.MPD_DSH_ASTGREP_CLI || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules//root/dshProj/my-power-dsh/packages/mpd-mcp-astgrep/launch.mjs")'
+  # launches packages/mpd-mcp-codegraph/launch.mjs, which resolves the binary
+  - !!js 'process.env.MPD_DSH_CODEGRAPH_CLI || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules//root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/launch.mjs")'

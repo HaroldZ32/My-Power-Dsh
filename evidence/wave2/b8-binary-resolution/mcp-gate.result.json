@@ -1,0 +1,37 @@
+{
+  "task": "t6 B8 deterministic MCP gate",
+  "stamp": "2026-09-11T05:55:55.054Z",
+  "layout": "checkout (link:)",
+  "launchers": {
+    "astGrep": "/root/dshProj/my-power-dsh/packages/mpd-mcp-astgrep/launch.mjs",
+    "codegraph": "/root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/launch.mjs"
+  },
+  "checks": [
+    {
+      "name": "ast-grep launcher: real mcp search returns a real match (no env pin, cwd outside the bundle)",
+      "pass": true,
+      "detail": "ok=true tools=[\"search\",\"rewrite\",\"scan\"] text={\"schemaVersion\":1,\"ok\":true,\"kind\":\"search\",\"workdir\":\"/root/dshProj/my-power-dsh/.b8-gate-cwd-Et88Xy\",\"matches\":[{\"path\":\"/root/dshProj/my-power-dsh/tests/mcp-fixtures/sample.c\",\"language\":\"c\",\"text"
+    },
+    {
+      "name": "ast-grep negative control: MPD_AST_GREP_SG_PATH=/nonexistent/sg -> BINARY_NOT_FOUND (launcher must not override a caller pin)",
+      "pass": true,
+      "detail": "isError=true text={\"schemaVersion\":1,\"ok\":false,\"error\":{\"code\":\"BINARY_NOT_FOUND\",\"message\":\"ast-grep binary not found for linux: no candidate passed the --version probe across the env override, MPD runtime, skill bin cache, PATH, or Hom"
+    },
+    {
+      "name": "codegraph launcher: real tool surface (not the 'skipped' stub)",
+      "pass": true,
+      "detail": "ok=true tools=[\"codegraph_explore\"] stderr="
+    },
+    {
+      "name": "codegraph launcher: real codegraph_explore answers with content",
+      "pass": true,
+      "detail": "ok=true text=**Exploration: norm**\n\nFound 26 symbols across 4 files.\n\n**Blast radius — what depends on these (update/verify before editing)**\n\n- `NormalizedProfileTask` (pac"
+    },
+    {
+      "name": "codegraph negative control: MPD_CODEGRAPH_BIN=/nonexistent/codegraph -> unavailable/skipped, never a live tool surface",
+      "pass": true,
+      "detail": "tools=[] stderr=CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.\n error=null"
+    }
+  ],
+  "allPass": true
+}

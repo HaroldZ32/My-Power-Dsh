@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
+import { resolve } from "node:path";
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 function textBlock(content) {
@@ -11,6 +12,41 @@ function textBlock(content) {
 }
 function message(error) {
   return error instanceof Error ? error.message : String(error);
+}
+function sessionCwdOf(agent) {
+  try {
+    const cwd = agent?.session?.header?.cwd;
+    return typeof cwd === "string" && cwd.length > 0 ? cwd : undefined;
+  } catch {
+    return;
+  }
+}
+function workspaceRootOf(exec) {
+  const session = sessionCwdOf(exec?.agent);
+  if (session !== undefined)
+    return resolve(session);
+  const override = process.env.DSH_WORKSPACE_ROOT;
+  if (typeof override === "string" && override.length > 0)
+    return resolve(override);
+  return process.cwd();
+}
+function workspaceRootsOf(agents) {
+  if (agents === undefined || agents === null || typeof agents.list !== "function")
+    return [];
+  try {
+    const list = agents.list();
+    if (!Array.isArray(list))
+      return [];
+    const roots = new Set;
+    for (const agent of list) {
+      const cwd = sessionCwdOf(agent);
+      if (cwd !== undefined)
+        roots.add(resolve(cwd));
+    }
+    return [...roots];
+  } catch {
+    return [];
+  }
 }
 function noop() {}
 function createDshAdapter(ctx, config = {}) {
@@ -36,6 +72,8 @@ function createDshAdapter(ctx, config = {}) {
     }
     return found;
   }
+  const workspaceRoot = (exec) => workspaceRootOf(exec);
+  const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
   function timeoutSignal(timeoutMs) {
     try {
       if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function")
@@ -63,6 +101,8 @@ function createDshAdapter(ctx, config = {}) {
         agentPresets: typeof presets?.resolve === "function"
       };
     },
+    workspaceRoot,
+    workspaceRootsAll,
     registerTool(definition) {
       const tools = requireService("tools", 'cannot register tool "' + String(definition?.name) + '"');
       if (typeof tools.register !== "function")
@@ -263,8 +303,11 @@ var DIRECTIVE = [
 function textBlock2(text) {
   return [{ type: "text", text }];
 }
-function cwd() {
-  return process.env.DSH_WORKSPACE_ROOT ?? process.cwd();
+function planRoot(cfg, dsh, exec) {
+  return cfg.planDir ?? join(dsh.workspaceRoot(exec), ".mpd", "plans");
+}
+function stateRoot(cfg, dsh, exec) {
+  return cfg.stateDir ?? join(dsh.workspaceRoot(exec), ".mpd", "ulw");
 }
 function writeJson(p, v) {
   writeFileSync(p, JSON.stringify(v, null, 2));
@@ -273,8 +316,6 @@ function apply(ctx, config = {}) {
   const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx);
   const cfg = mergedConfig(ctx, config);
   const maxRounds = cfg.maxRounds ?? 6;
-  const planDir = cfg.planDir ?? join(cwd(), ".mpd", "plans");
-  const stateDir = cfg.stateDir ?? join(cwd(), ".mpd", "ulw");
   const provider = cfg.provider ?? "deepseek-official";
   const model = cfg.model ?? "deepseek-v4-flash";
   const reviewerModel = cfg.reviewerModel ?? "deepseek-v4-pro";
@@ -329,6 +370,8 @@ function apply(ctx, config = {}) {
       render: (_a, v) => textBlock2("ultrawork status=" + v.status + " rounds=" + v.rounds + " verdict=" + (v.verdict ?? "-") + String.fromCharCode(10) + v.finalReport + String.fromCharCode(10) + "state: " + v.stateFile)
     },
     execute: async (args, exec) => {
+      const planDir = planRoot(cfg, dsh, exec);
+      const stateDir = stateRoot(cfg, dsh, exec);
       const objective = String(args?.objective);
       if (!objective)
         throw new Error("mpd_ultrawork: objective required");

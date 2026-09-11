@@ -1,0 +1,4 @@
+branch: dev
+HEAD: 98680b1fb2bbf5c10c28cfbe44419e91595e1cb7
+porcelain: 1109 entries (67 modified, 1042 untracked)
+diffstat tail:  67 files changed, 2755 insertions(+), 745 deletions(-)

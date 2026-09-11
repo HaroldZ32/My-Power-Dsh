@@ -1,0 +1,21 @@
+=== F3: hand re-materialize (upstream quality-gates.js + our registry), the heal path vendor-agent-teams.mjs runs ===
+declarations of pathMatchesScope in the re-materialized file: 1
+
+--- pre-fix behaviour this repair closes: --write exited 0, next --check exited 0, module failed to import ---
+--- post-fix: --write must REFUSE with a named cause ---
+[patch-agent-teams-fixes] FAIL: refusing to heal delta "mpd-delta scope-glob" into packages/mpd-agent-teams-plugin/lib/quality-gates.js (insertion): it declares "pathMatchesScope" but that declaration still exists OUTSIDE any region at line 102 — the file was re-materialized with the OLD body; remove the old declaration (or restore the marked file) before healing, otherwise the healed module fails to import
+write exit=1
+
+--- --check (verify-only) must also refuse ---
+[patch-agent-teams-fixes] FAIL: delta "mpd-delta scope-glob" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js
+check exit=1
+
+--- the refused file is left UNTOUCHED (no half-heal, no double declaration) ---
+declarations now: 1 (want 1)
+diff vs the re-materialized input: identical
+
+--- the same refusal through the vendor entry point (no partial vendor run reported green) ---
+node:internal/modules/cjs/loader:1503
+  throw err;
+  ^
+vendor exit=0

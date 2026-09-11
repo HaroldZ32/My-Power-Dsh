@@ -1,0 +1,11 @@
+# gate: bun skills/dsh-qa/scripts/bundle-lifecycle.mjs (final state, exit code 0)
+# date: 2026-09-11T03:32:18Z
+[bundle-lifecycle] ok=true -> /root/dshProj/my-power-dsh/evidence/dsh-qa/bundle-lifecycle/2026-09-11T03-32-18.464Z
+  install: {"ok":true,"exit":0,"dependency":"link:/root/dshProj/my-power-dsh","bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"],"oneCommand":"dsh plugin --profile w add <repo root>"}
+  composed: {"ok":true,"exit":0}
+  boot: {"ok":true,"http":true,"corpus":"/root/dshProj/my-power-dsh/skills","preset":".../node_modules/@mpd-dsh/mpd/presets/mpd/agent.cordis.yml","trust":"system"}
+  noHomeCopy: {"ok":true,"skills":[],"presets":[]}
+  layerDurability: {"ok":true,"exit":0,"dependency":true,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"]}
+  uninstall: {"ok":true,"exit":0,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app"],"residue":[],"mpdState":[]}
+[bundle-lifecycle] PASS
+[exit code: 0]

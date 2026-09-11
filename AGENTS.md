@@ -71,12 +71,14 @@ License: SUL-1.0 (`LICENSE.md`); inheritance declared in `README.md`.
 - **Adopted plugins keep their plugin ids and tool names** (intentional namespace
   exception, same rule as the `context7`/`grep_app` remote MCP rows): the `agent-teams`
   plugin (tools `agent_teams_*`, Web activity panel) is adopted from
-  `@nanmicoder/dsh-agent-teams` (MIT, v0.1.14) and ships as **first-class main code** at
-  `packages/mpd-agent-teams-plugin/` (runtime closure under `_deps/`): it loads from the
-  bundle exports map, so it needs no npm dependency and works under every install layout
-  (pnpm never links a bundle's transitive deps into the profile root — see §12). See
-  LICENSE-NOTICES.md. Its `stateDir` is overridden to `.mpd/team` so all our state stays
-  under one `.mpd` root.
+  `@nanmicoder/dsh-agent-teams` (MIT; adopted package version `0.1.16-rc.3-mpd`) and ships
+  as **first-class main code** at `packages/mpd-agent-teams-plugin/` (runtime closure under
+  `_deps/`): it loads from the bundle exports map, so it needs no npm dependency and works
+  under every install layout (pnpm never links a bundle's transitive deps into the profile
+  root — see §12). That version is a **0.1.14 body with the audited 0.1.16-rc.3 deltas
+  backported**, and `lib/client.js` is still the 0.1.14 client build — so the 0.1.14 body is
+  real provenance, never a stale claim; LICENSE-NOTICES.md is the authoritative record.
+  Its `stateDir` is overridden to `.mpd/team` so all our state stays under one `.mpd` root.
 
 ---
 
@@ -203,9 +205,70 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   in unit tests). QA proves the surface: `bundle-lifecycle` asserts the row, the boot
   log line and the probe's `ADAPTER_SEAMS`/`ADAPTER_TOOL_CALL=ok`.
   **One documented exception:** `packages/mpd-agent-teams-plugin/lib` is adopted
-  upstream main code (MIT) that a `scripts/vendor-agent-teams.mjs` refresh overwrites,
-  so it keeps its own `ctx.*` calls; its only local adaptation is the
-  `registerContinuableSetup` boot-safety guard in `lib/members.js`. Everything else —
+  upstream main code (MIT) that keeps its own `ctx.*` calls. The refresh script
+  `scripts/vendor-agent-teams.mjs` does **not** re-copy that tree: it rewrites bare
+  import specifiers in place (`rewriteFile` writes back only when the text changed),
+  its `rmSync`/`cpSync` work inside `_deps/`, and it asserts that OUR
+  `packages/mpd-agent-teams-plugin/lib/index.js` still exists — so `lib/` survives a
+  vendor run untouched. The risk is a **human re-vendor** (hand re-materializing the
+  upstream tree over ours), which is exactly what the delta applier now makes loud:
+  `scripts/patch-agent-teams-fixes.mjs` refuses to heal a file that still carries an
+  upstream declaration a region would re-define, and `scripts/vendor-agent-teams.mjs`
+  runs that guard with `--write` and exits 1 on refusal (wave-2 t15 measured the
+  residual: on a hand re-materialize of `tools.js` a line-keyed anchor can still land a
+  region one statement late — see the carry-forward list in the wave-2 report).
+  **The local adaptations, transcribed from t4's authoritative enumeration**
+  (`evidence/wave2/adopted-tooling/result.json`, `adaptation_list`) — the pre-existing
+  six, only A1 of which this section used to name:
+
+  | Id | File · function/line | Marker | Purpose |
+  |---|---|---|---|
+  | A1 | `lib/members.js` `installContinuableSetup` | no | Live-Setup guard / legacy `registerContinuableSetup` fallback |
+  | A2 | `lib/members.js` `installMemberSelectionRuntime` | no | takes the live Agent from the harness payload, never `childCtx.agent` |
+  | A3 | `lib/harness-compat.js:16` delivery probe | no | does not throw when no delivery contract exists; prefers the public `prompt` seam |
+  | A4 | `lib/members.js:28-78,499` workmate persona injection | no | injects `~/.mpd/workmate` persona/memory (HOME resolved per call, name sanitized) |
+  | A5 | `lib/session-start.js:170-200` notices | no | default team profile name `mpd` |
+  | A6 | `lib/client.js` export bridge region | region + own patcher | additive re-exports consumed by mpd client code (`scripts/patch-agent-teams-client.mjs`) |
+  | D1 | `lib/quality-gates.js` `pathMatchesScope` + glob helpers | `mpd-delta scope-glob` | `**` crosses separators, `*`/`?` single segment |
+  | D2 | `lib/quality-gates.js` `pathMatchesScopeNormalized` | `mpd-delta scope-glob-core` | B5 exact/dir-prefix kept bit-identical — **now merged into `scope-glob`** (post-t4, so a re-materialize cannot strand an upstream copy of the function) |
+  | D3 | `lib/quality-gates.js` `contractContradiction` + `repairScopeFromFindings` | `mpd-delta contract-contradiction` | rejects an unsatisfiable contract; generates a contradiction-free repair scope that carves the required path out of the inherited `outOfScope` |
+  | D4 | `lib/quality-gates.js` `planQualityFollowUp` scope build | `mpd-delta repair-scope` | routes the generated repair scope through D3 |
+  | D5 | `lib/quality-gates.js` repair object scope fields | `mpd-delta repair-scope-fields` | spreads the generated scope onto the repair task |
+  | D6 | `lib/tools.js` `agent_teams_task_contract` registration | `mpd-delta task-contract` | the read-only contract surface |
+  | D7 | `lib/tools.js` `taskContractView` + `renderTaskContract` | `mpd-delta task-contract-render` | the view/render pair behind D6 |
+  | D8 | `lib/mpd-deltas.js` | generated | registry of the regions, each keyed by a `beforeContext`/`afterContext` **CONTEXT PAIR** measured on the region-stripped skeleton — the wave-2 line-keyed `anchor`/`anchorOccurrence`/`anchorMarker` fields are GONE, and uniqueness is required at BOTH emit and heal time (regenerate with `--write-registry`, never hand-edit) |
+  | D9 | `scripts/patch-agent-teams-fixes.mjs` | n/a | idempotent applier (`--check` / `--write` / `--write-registry`) |
+  | D10 | `scripts/vendor-agent-teams.mjs` | n/a | invokes D9 with `--write` and exits 1 on refusal, so a vendor run cannot silently drop a delta |
+  | D11 | `self-fix-tests/scope-glob-and-contract.test.mjs` | n/a | behaviour, guard-refusal and byte-fidelity tests |
+  | D12 | `test/task-contract-tool.test.mjs` | n/a | tool-level readable-while-running tests |
+  | D13 | `lib/tools.js` `agent_teams_update_task` contract text | `mpd-delta update-task-contract` | wave-3: `status` REQUIRED + the minimal terminal-call shape. **REPLACEMENT-shaped** — the upstream `description:` line lives INSIDE the block, so after a full re-materialize it is NOT self-healable: the heal REFUSES loudly (never a bare TypeError) and leaves the file byte-untouched, the same class as `scope-glob` under F3. Remedy: restore the marked region, or re-author it and run `--write-registry`. |
+  | D14 | `lib/tools.js` `agent_teams_update_task` `status` parameter | `mpd-delta update-task-required-status-param` | wave-3: an omitted `status` fails loudly at the tool boundary. **REPLACEMENT-shaped** for the same reason (the single top-level `status:` line) → re-materialize + `--write` REFUSES; it cannot silently leave the key duplicated with last-wins semantics. |
+  | D15 | `lib/tools.js` `agent_teams_update_task` attempt-id branch | `mpd-delta update-task-required-attempt-id` | wave-3: an omitted `attempt_id` says REQUIRED; the stale wording stays for a mismatch. **Purely ADDITIVE → DOES self-heal** after a re-materialize. |
+
+  After wave 3 the registry holds **12** regions (5 in `lib/tools.js`, 7 in
+  `lib/quality-gates.js`): D2 merged into `scope-glob`; wave 2 added
+  `mpd-delta scope-overlap` + `mpd-delta scope-overlap-normalize` (the B7 overlap rule's
+  glob-aware rewrite) and `mpd-delta create-contract-gate` (the create-time contradiction gate in
+  `validateCreateTask`); wave 3 added `mpd-delta update-task-contract`,
+  `mpd-delta update-task-required-status-param` and `mpd-delta update-task-required-attempt-id`
+  (the `agent_teams_update_task` diagnostics, D13–D15). **Addressing is by a CONTEXT PAIR, not by a
+  line key:** each entry carries `beforeContext`/`afterContext` — the shortest windows measured on
+  the region-STRIPPED skeleton that occur exactly once (k ≤ 6, emitter FAILS rather than falling back
+  to a far-away anchor) and that bracket the seam from outside every region, so the heal is exact
+  under ANY insertion history (the wave-2 line-keyed anchors were order-dependent: `tools.js` healed
+  to 60 diff lines). The applier additionally refuses an OLD anchor-format registry (converted with
+  `--write-registry`), a drifted orphan body, and any region that would re-declare a symbol the file
+  still carries. Proof: `evidence/wave3/t5-verify/20260911T083206Z/` (strip BOTH files from the same
+  state → one heal → 0 diff lines each) and the permanent suite
+  `packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs`. **Absolute line
+  numbers are NOT part of any contract:** the canonical `mpd-delta task-contract` region moved
+  1733 → **1757** when the three wave-3 regions were inserted above it, and the heal keys on the
+  context pair, never on a line — re-read the registry after any region change instead of reusing a
+  remembered line. **Two wave-2 driver scripts are deliberately UNPATCHED historical records:**
+  `evidence/wave2/t10-review/20260911T063000Z/{guard-copy.mjs,guard-fullstrip.mjs}` still import the
+  OLD anchor-format registry, so they now fail with the old-format refusal by design — a future
+  reader must NOT "fix" them (editing them would rewrite evidence); write a new driver instead.
+  Everything else —
   including every future mpd plugin — goes through the adapter.
 - **Tools**: `dsh.registerTool({name, description, parameters, output:{schema, render}, execute})`.
   The adapter defaults `parameters` to an object-rooted schema and `output.render` to a
@@ -228,7 +291,18 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 - **Capability probing**: `dsh.capabilities()` reports one boolean per seam; degrade with a
   warning instead of aborting a plugin tree (a missing optional seam must never take the
   boot down — see the `registerContinuableSetup` guard in the adopted agent-teams plugin).
-- **State**: workspace-scoped only (`.mpd/` under cwd); never write `~/.dsh` from a plugin.
+- **State**: workspace-scoped only (`.mpd/` under the **calling session's workspace**, never the
+  dsh process cwd); never write `~/.dsh` from a plugin. Every plugin resolves that root through
+  the ONE adapter helper — `dsh.workspaceRoot(exec)` with precedence
+  **session header cwd → `DSH_WORKSPACE_ROOT` → `process.cwd()`** — plus `dsh.workspaceRootsAll()`
+  (union of live session cwds, `[]` when the agent registry is absent) for agentless surfaces such
+  as web routes. The session fact outranks the process-wide env because one host serves many
+  sessions with different workspaces; an explicit row/config override (`boulder.dir`,
+  `hashline.registryFile`, `memory.dir`, `ulw.planDir`, `config.projectFile`,
+  `MPD_DSH_VERIF_VENV|WORK`) still wins over all of them. Resolve it PER CALL: never cache the root
+  in a module-level const, never `chdir`, and never set `DSH_WORKSPACE_ROOT` from a row — each of
+  those would "fix" one session by breaking the multi-session host. Evidence:
+  `evidence/session-workspace-root/b1-resolution/`.
   Sanctioned exceptions: (1) the bundle writes NOTHING to the home any more — the
   `mpd-bootstrap` row serves `<bundle>/skills` through a `ctx.skills` provider and the
   bundle patch roots the `agent-presets` roster at `<bundle>/presets`, so both assets
@@ -259,6 +333,17 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 - Skill: `skills/dsh-qa` (SKILL.md + case scripts + references). Every script ships `--self-test`.
 - Isolation: `DSH_HOME=<mktemp>`; copy credentials ONCE into the sandbox; assert the sandbox path;
   never read/write real `~/.dsh`. Copy env prereqs (sg/codegraph paths) only when present.
+  **`DSH_HOME`/`HOME` do NOT isolate WORKSPACE state — sandbox the workspace too.** Every
+  workspace-scoped root resolves from the session workspace (`agent.session.header.cwd ?? process.cwd()`
+  in the adopted agent-teams plugin; `dsh.workspaceRoot(exec)` in ours, where the session cwd outranks
+  `DSH_WORKSPACE_ROOT`), so the env cannot protect a case. Every dsh spawn and every `session/create`
+  payload carries an explicit sandbox cwd (`sandboxWorkspace(sandbox)` from
+  `skills/dsh-qa/scripts/lib/workspace-isolation.mjs`) and each live case asserts that no
+  `<DSH_HOME>/sessions/<projectKey(realCwd)>` key exists (`assertSessionsSandboxed`, e.g. no
+  `--root-dshProj-my-power-dsh--`). Without it an "isolated" boot writes real
+  `<repo>/.mpd/team/mpd-default-*` records — exactly the records the `mpd_workmate_rename/delete`
+  in-use gate scans — plus `.mpd/{memory,boulder.json,hashline-files.json,verif,plans,ulw}` and
+  `.codegraph`.
   Live-LLM cases must ALSO copy `settings.yaml` when present: homes whose keys come from
   gateway providers (`llm-pi-ai` providers — opencode-go/scnet) configure the chain there, and
   without it headless falls back to the base `deepseek-official` route → `MISSING_CREDENTIAL`.
@@ -280,6 +365,11 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   capability every mpd session loses. `--dump-config`, `agentPresets.list`/`resolve` and every
   `--self-test` that never creates a session are all blind to this class — only a real mount is not.
 - New case checklist: add row to SKILL.md case table; script + `--self-test`; real run; evidence dir.
+- **Verify on SETTLED hashes.** An edit/revert that is still landing is measurable: wave 2's first
+  verification pass ran while a revert was in flight and measured a half-reverted tree (a
+  half-open-marker failure that no longer existed minutes later). Pin the revision by hash, re-check
+  that the hash is stable after a short settle window (wave 2 used 50 s), and only then run the
+  contract — and anchor every verdict to the hashes you measured.
 - Shell caveat: long-lived MCP children hold inherited fds — run dsh with stdio to FILES
   (`spawnSync` with `stdio: ['ignore', fd, fd]`) or background + log-file redirection, never pipes.
 
@@ -330,6 +420,12 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   or `treeSha` (dir, sorted relpath + per-file sha256). Item counts and fingerprints are blocking.
 - Update policy: never chase upstream; a baseline change requires a deliberate branch + evidence.
 - Vendored skill corpus: refresh as whole-dir replacements from upstream, keep provenance links.
+- **`skills/**` has ONE writer per wave (single-skills-writer rule).** Every `skills/**` edit
+  invalidates the corpus `treeSha` in `VENDOR_LOCK.json`, and the re-pin must land in the SAME
+  commit as the change that invalidated it (§11). Two writers therefore force two coupled
+  commits, a mid-wave re-pin, and a `verify-vendor` failure on anyone who commits in between.
+  Serialize all `skills/**` edits of a wave through a single writer and re-pin exactly once;
+  wave 3 has exactly one re-pin (t3), and that is the invariant a reviewer checks.
 
 ---
 
@@ -345,6 +441,10 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 
 1. From dev: `git checkout -b release/vX.Y.Z`; bump version (package.json + changelog note).
 2. Full gate sweep: verify-vendor, bun test, typecheck, `test:qa`, real smoke (dual-track/mcp-call).
+   - **Release-checklist line (VENDOR_LOCK pairing rule):** `VENDOR_LOCK.json` lands in the SAME
+     commit as every `skills/**` change that invalidates its `treeSha`; with the single-skills-writer
+     rule (§9) that is exactly ONE re-pin per wave — verify the wave's single re-pin is present and
+     that no `skills/**` change is committed without it.
 3. Merge `--no-ff` to master with `release: vX.Y.Z …`; annotated tag `vX.Y.Z`.
 4. Push master + tag; announce with evidence links.
 
@@ -354,15 +454,19 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 
 | Symptom | Cause / fix |
 |---|---|
+| an adopted-plugin / plugin-module edit does not show up in a running session (e.g. `agent_teams_update_task` still answers with the pre-fix wording) | the module was loaded into the live process at session start — ESM caches it, so an edit on disk is NOT hot-reloaded into a session that already loaded the plugin. Measured in wave 3: a member session spawned 07:35Z kept the pre-fix diagnostic after `lib/tools.js` was rewritten at 08:23Z, while a fresh node process and a fresh mounted boot registered the new contract (`evidence/wave3/t5-verify/20260911T083206Z/`). **Restart `dsh` (or start the session from a fresh process) before judging any plugin-module semantics on a live session** — neither the running session nor `--dump-config` reads the edited file. |
+| a scratch file written under `/tmp` in an earlier bash call is gone in the next call | every bash tool call gets a FRESH `/tmp` (measured in wave 3: a `mktemp -d` sandbox and a background job's `/tmp` log did not survive the call that created them). Keep cross-call state inside the workspace (e.g. `<evidence>/…/raw/`) or finish the work in one call — never assume `/tmp` persistence between calls. |
+| a wave's `skills/**` change needs a SECOND `VENDOR_LOCK.json` re-pin | `skills/**` has **ONE writer per wave**: each `skills/**` edit invalidates the corpus `treeSha`, and the re-pin must ride in the SAME commit as the change, so two writers force two coupled commits. Serialize every `skills/**` edit through a single writer and re-pin once per wave (wave 3: exactly one re-pin, t3). |
+| `agent_teams_update_task` "did not keep my status / my trailing field" on a long payload | the trailing key was never emitted by the model (wave-2 DEFECT 6, re-measured in wave 3: the raw provider fragment stream is byte-identical to the assembled arguments and the harness parse is a key-lossless `JSON.parse`, with no size cap anywhere). The tool now REQUIRES `status` on EVERY call — a payload-only update must repeat the current status explicitly — so the t6-style omission is refused loudly instead of silently leaving the task unchanged; an omitted `attempt_id` is reported as REQUIRED (never as a stale attempt). Field-proven shape: split a large payload into several small calls and end with a minimal `{task_id, status, attempt_id[, verdict]}` call. A model-side omission of `output`/`changedPaths` stays undetectable by the plugin — bound it by splitting. |
 | `duplicate loader entry id` | same row in bundle patch and an overlay — remove from one |
 | a plugin crashes with `cannot get property "x" without inject` / `... is not a function` | a harness seam changed shape — fix it in `packages/mpd-dsh-adapter-plugin/src/index.ts` only, rebuild, re-pack; plugin rows must not touch `ctx.tools`/`ctx.subagents`/`ctx.skills`/`ctx.agentPresets` directly (§6) |
 | `MISSING_CREDENTIAL` in isolated QA | sandbox has no `.credentials.yaml` — copy it; live-LLM cases also need `settings.yaml` when the home uses gateway providers (see §7) |
 | `patch: entry ... not found` | id-targeted row for a row absent in that profile — use `insert:` for new rows |
-| a plugin change looks green in `--dump-config` but the plugin does nothing at runtime (tools missing, routes 404, or the whole tree dead) | `--dump-config` only COMPOSES rows — it never executes plugin code, so it cannot see an apply/schema abort (§4). Reproduce with a boot that MOUNTS the rows in an isolated `DSH_HOME` + sandbox `HOME` (registration instrumentation; the `mount-proof.sh` pattern, or `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs`) and read the boot log for the apply-crash signatures (`unsupported JSON schema`, `JsonSchemaError`, `plugin tree failed to load`, `failed to apply loader entry`). The measured instance of this class: a `type: ["string","null"]` ARRAY in an **output** schema is REJECTED by this harness and takes the whole plugin tree down (the accepted null form is `oneOf: [{type:"string"},{type:"null"}]`, proven by booting). **Known latent issue, deliberately NOT fixed here:** `packages/mpd-hashline-plugin/src/index.ts:110` declares `lines: { type: ["string","array"] }` in tool PARAMETERS and ships it in its dist — measured harmless today (a real boot composes that row with 0 loader-apply errors, i.e. this harness validates output schemas but not parameter schemas, which matches the validator error text naming only output-schema paths), but it is one harness release away from aborting the tree the same way. Record it; do NOT "clean it up" inside an unrelated change — it belongs in its own scoped change with its own mount proof |
-| codegraph `skipped: project excluded` | cwd contains an `.mpd` segment or is under /tmp — use a normal project path |
-| codegraph provision crash | binary missing + read-only home — set `MPD_CODEGRAPH_BIN`/bundle env |
+| a plugin change looks green in `--dump-config` but the plugin does nothing at runtime (tools missing, routes 404, or the whole tree dead) | `--dump-config` only COMPOSES rows — it never executes plugin code, so it cannot see an apply/schema abort (§4). Reproduce with a boot that MOUNTS the rows in an isolated `DSH_HOME` + sandbox `HOME` (registration instrumentation; the `mount-proof.sh` pattern, or `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs`) and read the boot log for the apply-crash signatures (`unsupported JSON schema`, `JsonSchemaError`, `plugin tree failed to load`, `failed to apply loader entry`). The measured instance of this class: a `type: ["string","null"]` ARRAY (and likewise `["string","array"]`) is REJECTED by this harness and takes the whole plugin tree down — the validator's own error text is `type must be a single type string (type arrays are not supported)`, and the accepted union spelling is `oneOf: [{type:"string"},{type:"null"}]` (or the matching `items:` variant), proven by booting. **RESOLVED instance (was the `lines` parameter of `mpd_hashline_edit`):** `packages/mpd-hashline-plugin/src/index.ts:110` now declares `lines: { oneOf: [{type:"string"},{type:"array",items:{type:"string"}}] }` in tool PARAMETERS and the committed `dist/index.js` carries the same form after its rebuild; the scoped change was B4/t4 with its own proof at `evidence/hashline/schema-union-fix/` — a mounting boot with 0 apply-crash signatures plus `schema-subset-check`, which proves the installed `assertSupportedJsonSchema` ACCEPTS the new form and REJECTS the pre-fix form (`NEGATIVE_CONTROL_MESSAGE = "unsupported JSON schema: schema.properties.edits.items.properties.lines.type must be a single type string (type arrays are not supported)"`). It stayed latent only because this harness release asserts OUTPUT schemas and not parameter schemas (measured, t4 `RESULT.json`) — never rely on that asymmetry: **the standing rule for FUTURE instances of this class is to record it, do NOT "clean it up" inside an unrelated change — it belongs in its own scoped change with its own mount proof** |
+| codegraph `skipped: project excluded` | the project root contains an `.mpd` segment or is under /tmp — use a normal project path. Note the root itself: `mpd-codegraph` is the ONE workspace consumer that still resolves at APPLY time (§6 State), so it uses `MPD_CODEGRAPH_PROJECT_CWD` / `MPD_DSH_CODEGRAPH_PROJECT_CWD` → `process.cwd()`, NOT the calling session's workspace — set the env override to index a specific project (routing it through the exec-less `dsh.workspaceRoot()` is a listed follow-up, `evidence/session-workspace-root/t8-verify/attempt-2/repair-t13/`) |
+| ast-grep BINARY_NOT_FOUND | the bundle patch no longer names a binary path (wave-2 B8): each MCP row launches `packages/mpd-mcp-<name>/launch.mjs`, which resolves the binary through the ONE shared resolver `packages/mpd-mcp-shared/bin-resolve.mjs` and sets the upstream env key only when the caller left it unset. Precedence: caller `MPD_AST_GREP_SG_PATH` → `MPD_AST_GREP_BIN_DIR` → `createRequire(<optionalDependency>)` → `<bundle>/.toolchain/node_modules/.bin/{ast-grep,sg}` → (unset) the adopted chain's own fallback. **The measured trap: in ast-grep 0.45.x the npm `sg` entry is a deprecated wrapper that FAILS `--version` (exit 1; the working binary is `ast-grep`, exit 0 printing `ast-grep 0.45.3`)**, so `ast-grep` is tried before `sg` in every tier and a candidate is accepted only when `--version` prints `ast-grep` — a resolution order that prefers `sg` silently ships a dead tool. Fix a real failure by installing the toolchain (`--with-*` installer / `.toolchain`) or setting `MPD_AST_GREP_SG_PATH` to an `ast-grep` binary, never to the wrapper |
+| codegraph provision crash | **RESOLVED in wave 3 (t4) — kept for the diagnosis.** Symptom (measured wave-2 t9): the B8 launcher resolves `codegraph` and the patch no longer pins `MPD_CODEGRAPH_BIN`, so a packed install with no `.toolchain` and an unwritable `$HOME/.mpd` reached the adopted provisioning path and DIED with an uncaught `ENOENT: mkdir '<home>/.mpd/codegraph'` instead of degrading to "unavailable" (`/root/.mpd` is a read-only filesystem in this sandbox). The fix is LAUNCHER-SIDE in `packages/mpd-mcp-codegraph/launch.mjs`: it catches the throw, writes it to stderr, pins `MPD_CODEGRAPH_BIN` to the sentinel `/nonexistent/mpd-codegraph-unavailable` and retries ONCE, so the adopted resolver takes its `source:"env"` route and the child instead serves the unavailable MCP surface (0 tools, alive, exit 0) — the retry is skipped once any byte has reached stdout, so the MCP stream is never corrupted. The adopted code itself still throws; only our launcher degrades it, so setting `MPD_CODEGRAPH_BIN` (or a writable `$HOME/.mpd`) remains the manual override when the launcher is bypassed. Proof: `evidence/wave3/codegraph-degrade-and-applytime/20260911T081649Z/` (RED exit 1 / 0 stdout bytes before, GREEN exit 0 answering `initialize` + `tools/list` after), re-measured independently by t6 from the stale staged pre-fix launcher bytes, and the LIVE path was exercised in a real boot whose log carries `[CodeGraph MCP] Shared daemon unavailable; serving this session in-process (degraded)` (t4 `RESULT.json`, t6 supplement). |
 | bash tool hangs after dsh | MCP children hold fds — stdio to files, or `setsid … > log` pattern |
-| ast-grep BINARY_NOT_FOUND | sg binary not installed — `.toolchain` via installer or `MPD_AST_GREP_SG_PATH` |
 | LSP daemon unreachable | `~/.mpd` unwritable/missing — on real home it self-starts |
 | preset not visible in web | the bundle patch's `agent-presets` id-target row is not composed — check `dsh --profile web --dump-config` shows `id: agent-presets` with `default: mpd` + the `<bundle>/presets` root, and that `dsh.profile.bundles` contains `@mpd-dsh/mpd` |
 | **EVERY mpd session fails to start**: `agent-preset/invalid: agent-presets: preset "mpd" failed to mount: failed to apply loader entry persona (@deepseek-ai/dsh-persona): invalid config: - $.prefix missing required value (at prefix)` | the persona row's config no longer matches the installed harness. `dsh-persona` took ONE `text` key through 0.1.2-rc.1; from 0.1.3-alpha.2 it registers the deployment persona PREFIX/SUFFIX sections and `prefix` is REQUIRED, so a `text:` row fails the row and `dsh-agent-presets` refuses the WHOLE preset (`mountPreset` → `inactiveRows`). Fix: write the persona into `prefix:` (and `suffix:` only when a suffix is wanted). Measured 2026-09-11 (0.1.5-rc.1 CLI + rc.2 packages) by creating a session over the gateway (`POST /api/session/create` with `agentPreset: "mpd"`): red before the fix, green after. Gate: `node skills/dsh-qa/scripts/preset-conformance.mjs` |

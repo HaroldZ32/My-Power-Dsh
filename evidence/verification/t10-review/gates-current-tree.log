@@ -1,0 +1,21 @@
+## t10 review: full gate sweep on the CURRENT (post-t12) tree (2026-09-11T04:06:11Z)
+HEAD=98680b1fb2bbf5c10c28cfbe44419e91595e1cb7
+
+### bun run typecheck
+$ tsgo --noEmit
+TYPECHECK_EXIT=0
+
+### bun test packages
+(pass) clean file passes (exit 0) [4.72ms]
+
+ 308 pass
+ 0 fail
+ 2025 expect() calls
+Ran 308 tests across 35 files. [12.47s]
+TEST_EXIT=0
+
+### bun run test:qa
+[test:qa] skills/dsh-qa/scripts/workmate-team-member.mjs
+[workmate-team-member self-test] ok: 6 checks
+[test:qa] all self-tests passed
+TESTQA_EXIT=0

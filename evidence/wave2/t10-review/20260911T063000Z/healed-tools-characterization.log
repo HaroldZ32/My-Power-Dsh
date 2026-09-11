@@ -1,0 +1,5 @@
+stripped regions: ["mpd-delta task-contract","mpd-delta task-contract-render"]
+heal exit: 1  | Node.js v24.16.0
+changed lines: 106
+canonical region line: 1733  healed region line: 0
+--check on healed: 1 Node.js v24.16.0

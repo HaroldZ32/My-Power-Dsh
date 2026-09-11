@@ -1,0 +1,118 @@
+=== target store git log ===
+98680b1 merge(fix): AgentTeams tab auto-opens seedless — no phantom team-activity path
+fea8b39 fix(web): the AgentTeams tab auto-opens seedless (no phantom team-activity path)
+3c3f1fb merge(fix): harness 0.1.5-rc.2 adaptation — mpd preset mounts again (persona prefix), row parity with standard, preset-conformance gate
+--- git status --porcelain (target store) ---
+ M AGENTS.md
+ M VENDOR_LOCK.json
+ M evidence/dsh-qa/llm-dual-track/dual-track.tsv
+ M packages/mpd-agent-teams-plugin/lib/quality-gates.js
+ M packages/mpd-agent-teams-plugin/lib/tools.js
+ M packages/mpd-agent-teams-plugin/self-fix-tests/README.md
+ M packages/mpd-bootstrap-plugin/dist/index.js
+ M packages/mpd-boulder-plugin/dist/index.js
+ M packages/mpd-boulder-plugin/src/index.ts
+ M packages/mpd-bundle/cordis.patch.yml
+ M packages/mpd-codegraph-plugin/README.md
+ M packages/mpd-codegraph-plugin/README.zh-CN.md
+ M packages/mpd-codegraph-plugin/dist/index.js
+ M packages/mpd-codegraph-plugin/src/index.ts
+ M packages/mpd-comment-checker-plugin/README.md
+ M packages/mpd-comment-checker-plugin/README.zh-CN.md
+ M packages/mpd-comment-checker-plugin/dist/index.js
+ M packages/mpd-comment-checker-plugin/src/index.ts
+ M packages/mpd-config-plugin/dist/index.js
+ M packages/mpd-config-plugin/src/index.ts
+ M packages/mpd-dsh-adapter-plugin/dist/index.js
+ M packages/mpd-dsh-adapter-plugin/src/index.ts
+ M packages/mpd-hashline-plugin/dist/index.js
+ M packages/mpd-hashline-plugin/src/index.ts
+ M packages/mpd-mcp-astgrep/README.md
+ M packages/mpd-mcp-astgrep/README.zh-CN.md
+ M packages/mpd-mcp-codegraph/README.md
+ M packages/mpd-mcp-codegraph/README.zh-CN.md
+ M packages/mpd-memory-plugin/dist/index.js
+ M packages/mpd-memory-plugin/src/index.ts
+ M packages/mpd-modelchain-plugin/dist/index.js
+ M packages/mpd-modelchain-plugin/src/index.ts
+ M packages/mpd-qa-roles-probe/dist/index.js
+ M packages/mpd-roles-plugin/dist/index.js
+ M packages/mpd-tools-plugin/dist/index.js
+ M packages/mpd-ulw-plugin/dist/index.js
+ M packages/mpd-ulw-plugin/src/index.ts
+ M packages/mpd-verif-plugin/dist/index.js
+ M packages/mpd-verif-plugin/src/backends.ts
+ M packages/mpd-verif-plugin/src/compile.ts
+ M packages/mpd-verif-plugin/src/coverage.ts
+ M packages/mpd-verif-plugin/src/env.ts
+ M packages/mpd-verif-plugin/src/index.ts
+ M packages/mpd-verif-plugin/src/regress.ts
+ M packages/mpd-verif-plugin/src/sim.ts
+ M packages/mpd-verif-plugin/src/uvm.ts
+ M packages/mpd-verif-plugin/src/venv.ts
+ M packages/mpd-verif-plugin/test/helpers.ts
+ M packages/mpd-verif-plugin/test/index.test.ts
+ M packages/mpd-verif-plugin/test/regress.test.ts
+ M packages/mpd-workmate-plugin/dist/index.js
+ M packages/mpd-workmate-plugin/src/index.ts
+ M scripts/install-profile.mjs
+ M scripts/pack-mpd.mjs
+ M scripts/vendor-agent-teams.mjs
+ M scripts/verify-vendor.mjs
+ M skills/dsh-qa/SKILL.md
+ M skills/dsh-qa/scripts/agent-teams-sidebar.mjs
+ M skills/dsh-qa/scripts/codegraph-smoke.mjs
+ M skills/dsh-qa/scripts/dual-track-smoke.mjs
+ M skills/dsh-qa/scripts/mcp-call.mjs
+ M skills/dsh-qa/scripts/preset-conformance.mjs
+ M skills/dsh-qa/scripts/preset-register.mjs
+ M skills/dsh-qa/scripts/web-client-adapt.mjs
+ M skills/dsh-qa/scripts/workmate-library.mjs
+?? evidence/agent-teams/provenance-version-align/
+?? evidence/dsh-qa/bundle-lifecycle/2026-09-11T03-29-26.635Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-09-11T03-32-18.464Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-09-11T03-38-25.172Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-09-11T04-00-12.771Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-09-11T04-16-09.053Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-09-11T04-26-31.637Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-09-11T05-59-54.071Z/
+?? evidence/dsh-qa/llm-dual-track/deepseek/2026-09-11T05-48-46.492Z/
+?? evidence/dsh-qa/llm-dual-track/deepseek/2026-09-11T05-56-59.321Z/
+?? evidence/dsh-qa/llm-dual-track/official/2026-09-11T05-48-42.431Z/
+?? evidence/dsh-qa/llm-dual-track/official/2026-09-11T05-56-52.220Z/
+?? evidence/dsh-qa/mcp-call/2026-09-11T05-53-04.879Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-11T03-08-17.241Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-11T03-10-07.166Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-11T03-30-10.841Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-11T03-32-48.261Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-11T03-37-55.669Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-11T03-59-43.412Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-11T04-07-17.781Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-11T04-15-34.783Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-11T04-24-47.580Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-11T04-26-47.314Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-11T05-52-59.888Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-11T05-59-13.776Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-11T06-14-10.184Z/
+?? evidence/dsh-qa/preset-register/2026-09-11T05-49-11.448Z/
+?? evidence/dsh-qa/preset-register/2026-09-11T05-52-39.122Z/
+?? evidence/fix/verif-tool-lossless/
+?? evidence/hashline/
+?? evidence/session-workspace-root/
+?? evidence/verification/
+?? evidence/wave2/
+?? packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+?? packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs
+?? packages/mpd-agent-teams-plugin/test/task-contract-tool.test.mjs
+?? packages/mpd-hashline-plugin/test/tool-schema.test.ts
+?? packages/mpd-mcp-astgrep/launch.mjs
+?? packages/mpd-mcp-codegraph/launch.mjs
+?? packages/mpd-mcp-shared/
+?? packages/mpd-verif-plugin/test/lossless.test.ts
+?? scripts/patch-agent-teams-fixes.mjs
+?? scripts/verify-rows-parity.mjs
+?? skills/dsh-qa/scripts/lib/
+--- show --stat of migration commit ---
+fatal: ambiguous argument '8635a6e': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'

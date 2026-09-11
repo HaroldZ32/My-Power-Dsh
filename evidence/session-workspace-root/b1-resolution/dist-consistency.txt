@@ -1,0 +1,14 @@
+# B1 (t7) dist consistency: each committed dist/index.js is byte-identical to a fresh rebuild
+# date: 2026-09-11T03:29:41Z
+# command per package: bun build packages/<p>/src/index.ts --target node --format esm --outfile <tmp>/<p>.js ; diff <tmp>/<p>.js packages/<p>/dist/index.js
+mpd-dsh-adapter-plugin           IDENTICAL to fresh rebuild
+mpd-boulder-plugin               IDENTICAL to fresh rebuild
+mpd-memory-plugin                IDENTICAL to fresh rebuild
+mpd-ulw-plugin                   IDENTICAL to fresh rebuild
+mpd-hashline-plugin              IDENTICAL to fresh rebuild
+mpd-config-plugin                IDENTICAL to fresh rebuild
+mpd-comment-checker-plugin       IDENTICAL to fresh rebuild
+mpd-modelchain-plugin            IDENTICAL to fresh rebuild
+mpd-verif-plugin                 IDENTICAL to fresh rebuild
+mpd-workmate-plugin              IDENTICAL to fresh rebuild
+exit=0

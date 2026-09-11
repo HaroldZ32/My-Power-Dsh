@@ -1,0 +1,23 @@
+# gate: bun test packages/mpd-hashline-plugin
+# date: 2026-09-11T03:10:03Z
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-hashline-plugin/test/hashline.test.ts:
+(pass) hashline view shows LINE#HASH|content [0.99ms]
+(pass) anchored replace on plain content [2.44ms]
+(pass) mismatched anchor throws [0.65ms]
+(pass) append and prepend anchored [0.29ms]
+(pass) replace range with end anchor [0.76ms]
+(pass) unified diff shape [0.39ms]
+
+packages/mpd-hashline-plugin/test/tool-schema.test.ts:
+(pass) no registered hashline schema uses a type ARRAY (parameters or output) [1.01ms]
+(pass) edit.lines is a oneOf union of the string and array-of-string shapes [0.20ms]
+(pass) read then edit works with lines as a single string AND as an array of strings [2.14ms]
+(pass) the committed src AND dist carry no array-typed schema form, and the dist carries the oneOf fix [0.45ms]
+
+ 10 pass
+ 0 fail
+ 34 expect() calls
+Ran 10 tests across 2 files. [86.00ms]
+[exit code: 0]

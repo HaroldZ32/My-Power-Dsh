@@ -1,0 +1,52 @@
+=== skills/** modified vs HEAD ===
+ M skills/dsh-qa/SKILL.md
+ M skills/dsh-qa/scripts/agent-teams-sidebar.mjs
+ M skills/dsh-qa/scripts/codegraph-smoke.mjs
+ M skills/dsh-qa/scripts/dual-track-smoke.mjs
+ M skills/dsh-qa/scripts/mcp-call.mjs
+ M skills/dsh-qa/scripts/preset-conformance.mjs
+ M skills/dsh-qa/scripts/preset-register.mjs
+ M skills/dsh-qa/scripts/web-client-adapt.mjs
+ M skills/dsh-qa/scripts/workmate-library.mjs
+?? skills/dsh-qa/scripts/lib/
+--- skills files with mtime 13:35-13:55 local (t2 window) ---
+skills/dsh-qa/SKILL.md
+skills/dsh-qa/scripts/web-client-adapt.mjs
+skills/dsh-qa/scripts/codegraph-smoke.mjs
+skills/dsh-qa/scripts/preset-conformance.mjs
+skills/dsh-qa/scripts/dual-track-smoke.mjs
+skills/dsh-qa/scripts/agent-teams-sidebar.mjs
+skills/dsh-qa/scripts/mcp-call.mjs
+skills/dsh-qa/scripts/preset-register.mjs
+--- any reference to the new guard in skills/ ---
+none (good)
+=== exact mtimes (local) ===
+2026-09-11 10:34:08.377790313 skills/dsh-qa/scripts/agent-teams-adopt.mjs
+2026-09-11 10:34:08.377790313 skills/dsh-qa/scripts/agent-teams-dispatch.mjs
+2026-09-11 13:52:13.798224498 skills/dsh-qa/scripts/agent-teams-sidebar.mjs
+2026-09-10 08:52:33.213960125 skills/dsh-qa/scripts/bundle-lifecycle.mjs
+2026-09-11 13:50:26.287513126 skills/dsh-qa/scripts/codegraph-smoke.mjs
+2026-09-11 13:50:16.203259688 skills/dsh-qa/scripts/dual-track-smoke.mjs
+2026-09-11 13:56:16.147368747 skills/dsh-qa/scripts/lib/workspace-isolation.mjs
+2026-09-11 13:50:07.100030903 skills/dsh-qa/scripts/mcp-call.mjs
+2026-08-28 10:46:09.779652678 skills/dsh-qa/scripts/memory-smoke.mjs
+2026-08-28 10:46:09.779652678 skills/dsh-qa/scripts/mount-assert.mjs
+2026-08-28 10:46:09.779652678 skills/dsh-qa/scripts/plan-c-smoke.mjs
+2026-09-11 13:51:10.533626520 skills/dsh-qa/scripts/preset-conformance.mjs
+2026-09-11 13:50:35.639748163 skills/dsh-qa/scripts/preset-register.mjs
+2026-09-11 10:34:08.378790338 skills/dsh-qa/scripts/readonly-deny.mjs
+2026-09-09 17:20:30.285562060 skills/dsh-qa/scripts/relocate-smoke.mjs
+2026-08-31 16:20:34.688605983 skills/dsh-qa/scripts/rtl-ip-profile.mjs
+2026-09-09 18:14:40.596683661 skills/dsh-qa/scripts/rtl-verif.mjs
+2026-09-09 18:14:40.596683661 skills/dsh-qa/scripts/session-start-team.mjs
+2026-09-09 17:20:30.285562060 skills/dsh-qa/scripts/skill-catalog-probe.mjs
+2026-09-11 10:34:08.378790338 skills/dsh-qa/scripts/team-route-rewire.mjs
+2026-08-28 10:46:09.780652704 skills/dsh-qa/scripts/tool-output-validation.mjs
+2026-08-28 10:46:09.780652704 skills/dsh-qa/scripts/ultrawork-smoke.mjs
+2026-08-28 10:46:09.780652704 skills/dsh-qa/scripts/vision-smoke.mjs
+2026-09-11 13:51:42.405431563 skills/dsh-qa/scripts/web-client-adapt.mjs
+2026-09-11 11:36:38.219830228 skills/dsh-qa/scripts/workmate-library.mjs
+2026-09-09 18:14:40.597683687 skills/dsh-qa/scripts/workmate-team-member.mjs
+2026-09-11 13:53:55.376798264 skills/dsh-qa/SKILL.md
+=== does any skills diff mention B9 artifacts? ===
+none (good)

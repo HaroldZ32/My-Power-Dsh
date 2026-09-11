@@ -1,0 +1,279 @@
+{
+  "driver": "marker-fixtures",
+  "repo": "/root/dshProj/my-power-dsh",
+  "measuredAt": "2026-09-11T08:33:22.736Z",
+  "canonicalSha": {
+    "quality-gates.js": "4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5",
+    "tools.js": "7cb899a72b06a023c25bb25681f3dd75d59c1e911573bf82a5a8da809a3f5c07"
+  },
+  "results": [
+    {
+      "scenario": "intact-collision",
+      "file": "quality-gates.js",
+      "outer": "mpd-delta scope-overlap",
+      "inner": "mpd-delta scope-overlap-normalize",
+      "outerOwn": {
+        "begin": 243,
+        "end": 261
+      },
+      "innerOwn": {
+        "begin": 262,
+        "end": 268
+      },
+      "substring": {
+        "begin": 243,
+        "end": 261,
+        "resolvesToInnerEnd": false
+      },
+      "wholeLineRule": {
+        "begin": 243,
+        "end": 261
+      },
+      "innerContainsOuterEnd": true,
+      "passed": true
+    },
+    {
+      "scenario": "intact-collision",
+      "file": "quality-gates.js",
+      "outer": "mpd-delta repair-scope",
+      "inner": "mpd-delta repair-scope-fields",
+      "outerOwn": {
+        "begin": 713,
+        "end": 720
+      },
+      "innerOwn": {
+        "begin": 729,
+        "end": 731
+      },
+      "substring": {
+        "begin": 713,
+        "end": 720,
+        "resolvesToInnerEnd": false
+      },
+      "wholeLineRule": {
+        "begin": 713,
+        "end": 720
+      },
+      "innerContainsOuterEnd": true,
+      "passed": true
+    },
+    {
+      "scenario": "intact-collision",
+      "file": "tools.js",
+      "outer": "mpd-delta task-contract",
+      "inner": "mpd-delta task-contract-render",
+      "outerOwn": {
+        "begin": 1756,
+        "end": 1784
+      },
+      "innerOwn": {
+        "begin": 2282,
+        "end": 2358
+      },
+      "substring": {
+        "begin": 1756,
+        "end": 1784,
+        "resolvesToInnerEnd": false
+      },
+      "wholeLineRule": {
+        "begin": 1756,
+        "end": 1784
+      },
+      "innerContainsOuterEnd": true,
+      "passed": true
+    },
+    {
+      "scenario": "partial-strip-begin",
+      "file": "quality-gates.js",
+      "outer": "mpd-delta scope-overlap",
+      "removedLine": "//#region mpd-delta scope-overlap (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)",
+      "removedAtLine": 244,
+      "resolved": {
+        "begin": -1,
+        "end": 260,
+        "orphan": "begin"
+      },
+      "substringOnEdited": {
+        "begin": -1,
+        "end": 260,
+        "substringBeginUnresolved": true,
+        "substringEndIsOuterOwn": true
+      },
+      "verifyOnlyMessage": "[patch-agent-teams-fixes] FAIL: delta \"mpd-delta scope-overlap\" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (partially stripped: an orphan begin marker is still present at line 261) (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js",
+      "heal": {
+        "status": "applied",
+        "inserted": [
+          "mpd-delta scope-overlap"
+        ]
+      },
+      "byteIdentical": true,
+      "canonicalSha": "4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5",
+      "healedSha": "4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5",
+      "passed": true
+    },
+    {
+      "scenario": "partial-strip-end",
+      "file": "quality-gates.js",
+      "outer": "mpd-delta scope-overlap",
+      "removedLine": "//#endregion mpd-delta scope-overlap",
+      "removedAtLine": 262,
+      "resolved": {
+        "begin": 243,
+        "end": -1,
+        "orphan": "end"
+      },
+      "substringOnEdited": {
+        "begin": 243,
+        "end": 267,
+        "substringEndResolvesToInnerEnd": true
+      },
+      "verifyOnlyMessage": "[patch-agent-teams-fixes] FAIL: delta \"mpd-delta scope-overlap\" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (partially stripped: an orphan end marker is still present at line 244) (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js",
+      "heal": {
+        "status": "applied",
+        "inserted": [
+          "mpd-delta scope-overlap"
+        ]
+      },
+      "byteIdentical": true,
+      "canonicalSha": "4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5",
+      "healedSha": "4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5",
+      "passed": true
+    },
+    {
+      "scenario": "partial-strip-begin",
+      "file": "quality-gates.js",
+      "outer": "mpd-delta repair-scope",
+      "removedLine": "//#region mpd-delta repair-scope (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)",
+      "removedAtLine": 714,
+      "resolved": {
+        "begin": -1,
+        "end": 719,
+        "orphan": "begin"
+      },
+      "substringOnEdited": {
+        "begin": -1,
+        "end": 719,
+        "substringBeginUnresolved": true,
+        "substringEndIsOuterOwn": true
+      },
+      "verifyOnlyMessage": "[patch-agent-teams-fixes] FAIL: delta \"mpd-delta repair-scope\" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (partially stripped: an orphan begin marker is still present at line 720) (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js",
+      "heal": {
+        "status": "applied",
+        "inserted": [
+          "mpd-delta repair-scope"
+        ]
+      },
+      "byteIdentical": true,
+      "canonicalSha": "4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5",
+      "healedSha": "4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5",
+      "passed": true
+    },
+    {
+      "scenario": "partial-strip-end",
+      "file": "quality-gates.js",
+      "outer": "mpd-delta repair-scope",
+      "removedLine": "//#endregion mpd-delta repair-scope",
+      "removedAtLine": 721,
+      "resolved": {
+        "begin": 713,
+        "end": -1,
+        "orphan": "end"
+      },
+      "substringOnEdited": {
+        "begin": 713,
+        "end": 730,
+        "substringEndResolvesToInnerEnd": true
+      },
+      "verifyOnlyMessage": "[patch-agent-teams-fixes] FAIL: delta \"mpd-delta repair-scope\" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (partially stripped: an orphan end marker is still present at line 714) (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js",
+      "heal": {
+        "status": "applied",
+        "inserted": [
+          "mpd-delta repair-scope"
+        ]
+      },
+      "byteIdentical": true,
+      "canonicalSha": "4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5",
+      "healedSha": "4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5",
+      "passed": true
+    },
+    {
+      "scenario": "partial-strip-begin",
+      "file": "tools.js",
+      "outer": "mpd-delta task-contract",
+      "removedLine": "//#region mpd-delta task-contract (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)",
+      "removedAtLine": 1757,
+      "resolved": {
+        "begin": -1,
+        "end": 1783,
+        "orphan": "begin"
+      },
+      "substringOnEdited": {
+        "begin": -1,
+        "end": 1783,
+        "substringBeginUnresolved": true,
+        "substringEndIsOuterOwn": true
+      },
+      "verifyOnlyMessage": "[patch-agent-teams-fixes] FAIL: delta \"mpd-delta task-contract\" is MISSING from packages/mpd-agent-teams-plugin/lib/tools.js (partially stripped: an orphan begin marker is still present at line 1784) (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js",
+      "heal": {
+        "status": "applied",
+        "inserted": [
+          "mpd-delta task-contract"
+        ]
+      },
+      "byteIdentical": true,
+      "canonicalSha": "7cb899a72b06a023c25bb25681f3dd75d59c1e911573bf82a5a8da809a3f5c07",
+      "healedSha": "7cb899a72b06a023c25bb25681f3dd75d59c1e911573bf82a5a8da809a3f5c07",
+      "passed": true
+    },
+    {
+      "scenario": "partial-strip-end",
+      "file": "tools.js",
+      "outer": "mpd-delta task-contract",
+      "removedLine": "//#endregion mpd-delta task-contract",
+      "removedAtLine": 1785,
+      "resolved": {
+        "begin": 1756,
+        "end": -1,
+        "orphan": "end"
+      },
+      "substringOnEdited": {
+        "begin": 1756,
+        "end": 2357,
+        "substringEndResolvesToInnerEnd": true
+      },
+      "verifyOnlyMessage": "[patch-agent-teams-fixes] FAIL: delta \"mpd-delta task-contract\" is MISSING from packages/mpd-agent-teams-plugin/lib/tools.js (partially stripped: an orphan end marker is still present at line 1757) (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js",
+      "heal": {
+        "status": "applied",
+        "inserted": [
+          "mpd-delta task-contract"
+        ]
+      },
+      "byteIdentical": true,
+      "canonicalSha": "7cb899a72b06a023c25bb25681f3dd75d59c1e911573bf82a5a8da809a3f5c07",
+      "healedSha": "7cb899a72b06a023c25bb25681f3dd75d59c1e911573bf82a5a8da809a3f5c07",
+      "passed": true
+    },
+    {
+      "scenario": "inverted-pair-negative-control",
+      "file": "quality-gates.js",
+      "outer": "mpd-delta scope-overlap",
+      "refusalMessage": "[patch-agent-teams-fixes] FAIL: region \"mpd-delta scope-overlap\" has a half-open marker pair (begin@244, end@0) — both markers exist but the end precedes the begin; refusing to guess the intended span",
+      "passed": true
+    },
+    {
+      "scenario": "inverted-pair-negative-control",
+      "file": "quality-gates.js",
+      "outer": "mpd-delta repair-scope",
+      "refusalMessage": "[patch-agent-teams-fixes] FAIL: region \"mpd-delta repair-scope\" has a half-open marker pair (begin@714, end@0) — both markers exist but the end precedes the begin; refusing to guess the intended span",
+      "passed": true
+    },
+    {
+      "scenario": "inverted-pair-negative-control",
+      "file": "tools.js",
+      "outer": "mpd-delta task-contract",
+      "refusalMessage": "[patch-agent-teams-fixes] FAIL: region \"mpd-delta task-contract\" has a half-open marker pair (begin@1757, end@0) — both markers exist but the end precedes the begin; refusing to guess the intended span",
+      "passed": true
+    }
+  ],
+  "passed": true
+}

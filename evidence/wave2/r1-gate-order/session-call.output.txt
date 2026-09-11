@@ -1,0 +1,8 @@
+PASS call 1 (no backend): refusal code is VERIF_E_NO_BACKEND (gate passed on the session venv; no filesystem error) — code=VERIF_E_NO_BACKEND message=backend 'iverilog' not found
+PASS call 1: NO regress dir created in the session workspace (R1 ordering) — /tmp/mpd-r1-real-z2wXw2/session-ws/.mpd/verif/regress
+PASS call 1: NO work tree created in the unrelated DSH_WORKSPACE_ROOT workspace — /tmp/mpd-r1-real-z2wXw2/other-ws/real-workspace/.mpd
+PASS call 2: the regress-level gate passed (work dir now legitimately created under the SESSION workspace) — resultsJson=/tmp/mpd-r1-real-z2wXw2/session-ws/.mpd/verif/regress/20260911-134720-035/results.json reportPath=/tmp/mpd-r1-real-z2wXw2/session-ws/.mpd/verif/regress/20260911-134720-035/results.md
+PASS call 2: the aggregated results.json/report live under the SESSION workspace, never the DSH_WORKSPACE_ROOT one — /tmp/mpd-r1-real-z2wXw2/session-ws/.mpd/verif/regress/20260911-134720-035/results.json
+PASS call 2: report markdown aggregated the case — # RTL regression report (iverilog) /  / - seedBase: 20260911 / - cases: 1, passed: 0, failed: 1, skipped: 0 /  / | case | seed | status | time(ms) | wave | notes |
+
+written: /root/dshProj/my-power-dsh/evidence/wave2/r1-gate-order/session-call.result.json

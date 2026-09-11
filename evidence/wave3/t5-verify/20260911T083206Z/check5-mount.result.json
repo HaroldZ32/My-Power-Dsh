@@ -1,0 +1,52 @@
+{
+  "driver": "check5-mount",
+  "isolation": {
+    "DSH_HOME": "temp sandbox",
+    "HOME": "temp sandbox",
+    "workspace": "temp sandbox (cwd of the boot)"
+  },
+  "expected_tools_from_own_source_scan": [
+    "agent_teams_create",
+    "agent_teams_edit_plan",
+    "agent_teams_approve",
+    "agent_teams_add_member",
+    "agent_teams_remove_member",
+    "agent_teams_create_task",
+    "agent_teams_reassign_task",
+    "agent_teams_claim_task",
+    "agent_teams_update_task",
+    "agent_teams_send_message",
+    "agent_teams_task_contract",
+    "agent_teams_status",
+    "agent_teams_resume",
+    "agent_teams_delete"
+  ],
+  "install": {
+    "exit": 0
+  },
+  "mounted_boot": {
+    "exit": 124,
+    "apply_crash_signatures": 0,
+    "probe_reached_done": true,
+    "agent_teams_tools_present": "14/14",
+    "update_task_status_required": true,
+    "update_task_required_wording": true,
+    "t4_tool_agent_teams_task_contract": "REGISTERED",
+    "probe_lines": [
+      "[t5-mount-probe] AGENT_TEAMS_TOOLS_PRESENT=14/14",
+      "[t5-mount-probe] AGENT_TEAMS_TOOLS=agent_teams_create:ok,agent_teams_edit_plan:ok,agent_teams_approve:ok,agent_teams_add_member:ok,agent_teams_remove_member:ok,agent_teams_create_task:ok,agent_teams_reassign_task:ok,agent_teams_claim_task:ok,agent_teams_update_task:ok,agent_teams_send_message:ok,agent_teams_task_contract:ok,agent_teams_status:ok,agent_teams_resume:ok,agent_teams_delete:ok",
+      "[t5-mount-probe] UPDATE_TASK_REQUIRED=[\"task_id\",\"status\"]",
+      "[t5-mount-probe] UPDATE_TASK_STATUS_REQUIRED=true",
+      "[t5-mount-probe] UPDATE_TASK_DESCRIPTION_HAS_REQUIRED_WORDING=true",
+      "[t5-mount-probe] T4_TOOL_agent_teams_task_contract=REGISTERED",
+      "[t5-mount-probe] DEFINITION_KEYS=[\"name\",\"description\",\"parameters\",\"output\",\"execute\"]",
+      "[t5-mount-probe] DONE"
+    ]
+  },
+  "isolation_assertions": {
+    "records_attributable_to_this_boot": 0,
+    "real_workspace_session_keys_in_sandbox": 0
+  },
+  "note": "no --dump-config result is cited as load evidence; the probe reads the live tool registry of a mounted boot after a settle window",
+  "passed": true
+}

@@ -1,0 +1,156 @@
+{
+  "task": "t2 + t9 (repair round 2)",
+  "subject": "Registry redesign + marker prefix fix + the two update_task diagnostics; repair: OLD-format guard + the drifted-body orphan row",
+  "evidence_dir": "evidence/wave3/registry-redesign/20260911T082439Z",
+  "repair_source": "t7 review round 1 (verdict needs_revision): T7-F1 (missing OLD-format guard) and T7-F2 (begin present + end absent + drifted body not implemented as ruled)",
+  "headline": {
+    "tools_js_strip_heal_diff_lines_wave2": 60,
+    "tools_js_strip_heal_diff_lines": 0,
+    "quality_gates_strip_heal_diff_lines": 0,
+    "strip_both_tools_js_diff_lines": 0,
+    "strip_both_quality_gates_js_diff_lines": 0,
+    "strip_both_byte_identical": true
+  },
+  "t9_acceptance": {
+    "OLD-format registry guard + fixture": {
+      "unit_fixture": "t9 (A): assertRegistryFormat refuses the OLD anchor format with the migration message",
+      "cli_fixture": "t9 (A): the CLI refuses a pre-migration registry by name, and --write-registry still migrates",
+      "driver": "check4j",
+      "driver_result": {
+        "check_exit": 1,
+        "write_exit": 1,
+        "migrate_exit": 0,
+        "post_check_exit": 0,
+        "names_migration": true,
+        "bare_typeerror_present": false,
+        "adopted_files_untouched": true,
+        "migrated_entries_with_pair": 12,
+        "residual_old_keys": 0
+      },
+      "guard_placement": "top of applyAgentTeamsFixes, deliberately NOT module load — --write-registry is the one-time migration and must stay usable (proved by check4j leg B)"
+    },
+    "orphan drifted-body row + five canon-row fixtures": {
+      "rows": [
+        "R1 half-open inverted",
+        "R2 begin present + end absent + body byte-equal -> re-bracket",
+        "R3 begin present + end absent + body drifted -> FAIL naming region + line + remedy",
+        "R4 end present + begin absent + body byte-equal -> re-bracket",
+        "R5 end present + begin absent + nothing survived -> drop orphan line + heal"
+      ],
+      "fixtures": "self-fix-tests/registry-context-heal.test.mjs (tests prefixed 't9 R1'..'t9 R5')",
+      "rows_recorded_in": "this directory's README.md",
+      "extra_agreed_items": [
+        "4-way shared-seam matrix (seam 149)",
+        "two replacement-shape refusal fixtures",
+        "remedy tail on both drifted-site refusals",
+        "actionable recovery phrase in the required-attempt_id branch"
+      ]
+    }
+  },
+  "drivers": {
+    "passed": {
+      "check4e": true,
+      "check4f": true,
+      "check4g": true,
+      "check4h": true,
+      "check4i": true,
+      "check4j": true,
+      "check5": true,
+      "check4k": true
+    },
+    "check4h_cases": [
+      {
+        "case": "scope-overlap-begin",
+        "check_exit": 1,
+        "write_exit": 0,
+        "byte_identical": true,
+        "half_open_wording": false
+      },
+      {
+        "case": "scope-overlap-end",
+        "check_exit": 1,
+        "write_exit": 0,
+        "byte_identical": true,
+        "half_open_wording": false
+      },
+      {
+        "case": "repair-scope-begin",
+        "check_exit": 1,
+        "write_exit": 0,
+        "byte_identical": true,
+        "half_open_wording": false
+      },
+      {
+        "case": "repair-scope-end",
+        "check_exit": 1,
+        "write_exit": 0,
+        "byte_identical": true,
+        "half_open_wording": false
+      },
+      {
+        "case": "task-contract-begin",
+        "check_exit": 1,
+        "write_exit": 0,
+        "byte_identical": true,
+        "half_open_wording": false
+      },
+      {
+        "case": "task-contract-end",
+        "check_exit": 1,
+        "write_exit": 0,
+        "byte_identical": true,
+        "half_open_wording": false
+      }
+    ],
+    "check4h_control_spans_match_grep": 3,
+    "check5_tools_present": "14/14",
+    "check5_apply_crash_signatures": 0,
+    "check5_isolation": {
+      "new_team_dirs_in_real_workspace": 0,
+      "real_workspace_session_keys_in_sandbox": 0
+    },
+    "check4k": {
+      "precondition_bodyTailEqualsBeforeContext": [],
+      "r3": {
+        "total": 12,
+        "refused": 12,
+        "namesRegion": 12,
+        "namesLine": 12,
+        "namesRemedy": 12,
+        "untouched": 12
+      },
+      "r5": {
+        "total": 12,
+        "applied": 12,
+        "byteIdentical": 12
+      },
+      "note": "no silent deletion is reproducible: R3 refuses without writing (file byte-untouched) in every region, and the precondition shows the silent-relocation coincidence does not exist"
+    }
+  },
+  "gates": {
+    "bun test packages/mpd-agent-teams-plugin": {
+      "exit": 0,
+      "tail": "116 pass / 0 fail, 664 expect() calls, 26 files (bun writes the summary to stderr; captured in check5-plugin-suite.log)"
+    },
+    "bun test packages": {
+      "exit": 0,
+      "tail": "376 pass / 0 fail, 2519 expect() calls, 82 files"
+    },
+    "bun run typecheck": {
+      "exit": 0,
+      "tail": "tsgo --noEmit, no diagnostics"
+    },
+    "node scripts/patch-agent-teams-fixes.mjs --check": {
+      "exit": 0,
+      "tail": "[patch-agent-teams-fixes] already applied: 12 mpd delta region(s) across 2 adopted file(s)"
+    },
+    "bun run test:qa": {
+      "exit": 0,
+      "note": "see test-qa.log: all self-tests passed"
+    }
+  },
+  "boundary": "the oversized-payload trailing-key drop is model-side; the plugin-side fix is the REQUIRED status parameter plus the attempt_id diagnostic; output/changedPaths omissions stay undetectable",
+  "restart_required": "a dsh restart is required for the repaired update_task semantics to act on a live session (no plugin-module hot reload)",
+  "passed": true,
+  "repair_scope_note": "t7 binding precision: this repair closes the canon ROW and its DIAGNOSIS, not a data-loss path. Measured across all 12 regions by check4k: no silent deletion is reproducible (R3 refuses without writing, file byte-untouched, 12/12, naming region+line+remedy 12/12), R5 heals byte-identically 12/12, and the silent-relocation precondition does not exist (0/12 body tails equal their own beforeContext). No data-loss claim is made."
+}

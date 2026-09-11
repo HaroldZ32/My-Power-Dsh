@@ -1,0 +1,19 @@
+=== t9 lossless-json positive control (real boot) ===
+repo=/root/dshProj/my-power-dsh
+HEAD=98680b1fb2bbf5c10c28cfbe44419e91595e1cb7
+sandbox DSH_HOME=/tmp/t9-ctl-dsh-x4Fh23 sandbox HOME=/tmp/t9-ctl-home-uTEYvM
+
+[exit=0] dsh plugin --profile mpd add --store-dir <sb> <repo>
+[exit=124] real boot (124 = still alive at the 90s cap)
+apply-crash signatures : 0 (MUST be 0)
+--- t9-control lines, verbatim ---
+[t9-control] LOSSY_OK=false
+[t9-control] LOSSY_ISERROR=true
+[t9-control] LOSSY_ERROR=tool "t9_lossy_control" returned invalid output: value is not lossless JSON
+[t9-control] LOSSY_VALUE=null
+[t9-control] CLEAN_OK=true
+[t9-control] CLEAN_ISERROR=false
+[t9-control] CLEAN_ERROR=
+[t9-control] CLEAN_VALUE={"present":true,"hidden":null}
+[t9-control] DONE=ok
+--- end ---

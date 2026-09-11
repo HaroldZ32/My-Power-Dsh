@@ -1,0 +1,38 @@
+{
+  "driver": "check5-mount",
+  "isolation": {
+    "DSH_HOME": "temp sandbox",
+    "HOME": "temp sandbox",
+    "workspace": "temp sandbox (cwd of the boot)"
+  },
+  "plugin_suite": {
+    "exit": 0,
+    "tail": [
+      " 0 fail",
+      " 343 expect() calls",
+      "Ran 87 tests across 11 files. [425.00ms]"
+    ]
+  },
+  "install": {
+    "exit": 0
+  },
+  "mounted_boot": {
+    "exit": 124,
+    "apply_crash_signatures": 0,
+    "probe_reached_done": true,
+    "agent_teams_tools_present": "14/14",
+    "t4_tool_agent_teams_task_contract": "REGISTERED",
+    "probe_lines": [
+      "[mount-probe] AGENT_TEAMS_TOOLS_PRESENT=14/14",
+      "[mount-probe] AGENT_TEAMS_TOOLS=agent_teams_create:ok,agent_teams_approve:ok,agent_teams_edit_plan:ok,agent_teams_add_member:ok,agent_teams_remove_member:ok,agent_teams_create_task:ok,agent_teams_reassign_task:ok,agent_teams_claim_task:ok,agent_teams_update_task:ok,agent_teams_send_message:ok,agent_teams_status:ok,agent_teams_resume:ok,agent_teams_delete:ok,agent_teams_task_contract:ok",
+      "[mount-probe] T4_TOOL_agent_teams_task_contract=REGISTERED",
+      "[mount-probe] DONE"
+    ]
+  },
+  "isolation_assertions": {
+    "new_team_dirs_in_real_workspace": 0,
+    "real_workspace_session_keys_in_sandbox": 0
+  },
+  "note": "no --dump-config result is cited as load evidence; the probe reads the live tool registry after a settle window",
+  "passed": true
+}

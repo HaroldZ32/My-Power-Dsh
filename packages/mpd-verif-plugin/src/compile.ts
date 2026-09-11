@@ -26,24 +26,26 @@ export interface VerifCompileResult {
   timedOut: boolean
   diagnostics: Diagnostic[]
   logPath: string
+  /** Present only when the plan produced a filelist (vcs lanes); never undefined. */
   filelistPath?: string
+  /** Present only when the target produced a binary (compile target); never undefined. */
   outBinary?: string
   logLines: string[]
   error?: { code: string; message: string; hint: string }
 }
 
-export function verifCompile(a: VerifCompileArgs): VerifCompileResult {
+export function verifCompile(a: VerifCompileArgs, exec?: any): VerifCompileResult {
   if (!a.sources || a.sources.length === 0) {
     throw new VerifError("VERIF_E_COMPILE", "no sources given", "pass sources[] (at least one .v/.sv file)")
   }
   const stamp = runStamp()
-  const logRoot = join(workDir(), "logs")
+  const logRoot = join(workDir(exec), "logs")
   const defines = a.defines ? (Array.isArray(a.defines) ? normalizeDefines(a.defines) : a.defines) : undefined
   const src: SourceSet = { sources: a.sources, top: a.top, includes: a.includes, defines }
   const target = a.target === "compile" ? "compile" : "lint"
   // backend gate with stable taxonomy
   requireBackend(a.backend, "install it or pin MPD_DSH_VERIF_" + a.backend.toUpperCase())
-  const plan = target === "lint" ? lintPlan(a.backend, src, logRoot, stamp) : compilePlan(a.backend, src, workDir(), stamp)
+  const plan = target === "lint" ? lintPlan(a.backend, src, logRoot, stamp) : compilePlan(a.backend, src, workDir(exec), stamp)
   const r = runPlan(plan, (a.timeoutSec ?? DEFAULT_TIMEOUT_MS / 1000) * 1000)
   writeLog(plan.logPath, r.combined)
   if (r.timedOut) {
@@ -64,8 +66,11 @@ export function verifCompile(a: VerifCompileArgs): VerifCompileResult {
     timedOut: r.timedOut,
     diagnostics,
     logPath: plan.logPath,
-    filelistPath: plan.filelistPath,
-    outBinary: plan.outBinary,
+    // Lossless-JSON rule: an optional key is added only when the plan really
+    // carries it. Assigning `undefined` here would make the host reject the
+    // whole tool result with "value is not lossless JSON".
+    ...(plan.filelistPath === undefined ? {} : { filelistPath: plan.filelistPath }),
+    ...(plan.outBinary === undefined ? {} : { outBinary: plan.outBinary }),
     logLines: r.combined.split("\n").filter((l) => l.trim().length > 0).slice(-50),
     ...(ok ? {} : {
       error: {

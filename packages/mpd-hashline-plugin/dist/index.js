@@ -1,6 +1,6 @@
 // packages/mpd-hashline-plugin/src/index.ts
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, resolve as resolve2 } from "node:path";
 
 // packages/mpd-hashline-plugin/src/vendor/constants.ts
 var NIBBLE_STR = "ZPMQVRWSNKTXJBYH";
@@ -920,6 +920,7 @@ function generateUnifiedDiff(oldContent, newContent, filePath) {
 `;
 }
 // packages/mpd-dsh-adapter-plugin/src/index.ts
+import { resolve } from "node:path";
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 function textBlock(content) {
@@ -927,6 +928,41 @@ function textBlock(content) {
 }
 function message(error) {
   return error instanceof Error ? error.message : String(error);
+}
+function sessionCwdOf(agent) {
+  try {
+    const cwd = agent?.session?.header?.cwd;
+    return typeof cwd === "string" && cwd.length > 0 ? cwd : undefined;
+  } catch {
+    return;
+  }
+}
+function workspaceRootOf(exec) {
+  const session = sessionCwdOf(exec?.agent);
+  if (session !== undefined)
+    return resolve(session);
+  const override = process.env.DSH_WORKSPACE_ROOT;
+  if (typeof override === "string" && override.length > 0)
+    return resolve(override);
+  return process.cwd();
+}
+function workspaceRootsOf(agents) {
+  if (agents === undefined || agents === null || typeof agents.list !== "function")
+    return [];
+  try {
+    const list = agents.list();
+    if (!Array.isArray(list))
+      return [];
+    const roots = new Set;
+    for (const agent of list) {
+      const cwd = sessionCwdOf(agent);
+      if (cwd !== undefined)
+        roots.add(resolve(cwd));
+    }
+    return [...roots];
+  } catch {
+    return [];
+  }
 }
 function noop() {}
 function createDshAdapter(ctx, config = {}) {
@@ -952,6 +988,8 @@ function createDshAdapter(ctx, config = {}) {
     }
     return found;
   }
+  const workspaceRoot = (exec) => workspaceRootOf(exec);
+  const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
   function timeoutSignal(timeoutMs) {
     try {
       if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function")
@@ -979,6 +1017,8 @@ function createDshAdapter(ctx, config = {}) {
         agentPresets: typeof presets?.resolve === "function"
       };
     },
+    workspaceRoot,
+    workspaceRootsAll,
     registerTool(definition) {
       const tools = requireService("tools", 'cannot register tool "' + String(definition?.name) + '"');
       if (typeof tools.register !== "function")
@@ -1138,11 +1178,11 @@ function mergedConfig(ctx, config) {
 function textBlock2(text) {
   return [{ type: "text", text }];
 }
-function cwd() {
-  return process.env.DSH_WORKSPACE_ROOT ?? process.cwd();
+function registryPath(config, dsh, exec) {
+  return config.registryFile ? resolve2(config.registryFile) : join(dsh.workspaceRoot(exec), ".mpd", "hashline-files.json");
 }
-function registryPath(config) {
-  return config.registryFile ? resolve(config.registryFile) : join(cwd(), ".mpd", "hashline-files.json");
+function sessionPath(target, dsh, exec) {
+  return isAbsolute(target) ? resolve2(target) : resolve2(dsh.workspaceRoot(exec), target);
 }
 function readRegistry(p) {
   try {
@@ -1156,10 +1196,10 @@ function writeRegistry(p, files) {
   mkdirSync(dirname(p), { recursive: true });
   writeFileSync(p, JSON.stringify([...new Set(files)], null, 2));
 }
-function registered(config, fp) {
-  const list = readRegistry(registryPath(config));
-  const target = resolve(fp);
-  return list.some((x) => resolve(x) === target);
+function registered(config, dsh, fp, exec) {
+  const list = readRegistry(registryPath(config, dsh, exec));
+  const target = sessionPath(fp, dsh, exec);
+  return list.some((x) => sessionPath(x, dsh, exec) === target);
 }
 function editFile(fp, edits, maxDiffChars) {
   const raw = readFileSync(fp, "utf8");
@@ -1186,8 +1226,8 @@ function apply(ctx, config = {}) {
     description: "Show a file as hashline view: one 'LINE#HASH|content' line per source line, where LINE#HASH is the anchor to use with mpd_hashline_edit. Read-only; the file on disk stays plain.",
     parameters: { type: "object", properties: { path: { type: "string" } }, required: ["path"] },
     output: { schema: { type: "object", properties: { path: { type: "string" }, lines: { type: "integer" }, view: { type: "string" } }, required: ["path", "lines", "view"] }, render: (_a, v) => textBlock2(v.view) },
-    execute: async (args) => {
-      const fp = resolve(String(args?.path));
+    execute: async (args, exec) => {
+      const fp = sessionPath(String(args?.path), dsh, exec);
       if (!existsSync(fp))
         throw new Error("mpd-hashline: file not found: " + fp);
       const raw = readFileSync(fp, "utf8");
@@ -1203,7 +1243,7 @@ function apply(ctx, config = {}) {
       type: "object",
       properties: {
         path: { type: "string" },
-        edits: { type: "array", items: { type: "object", properties: { op: { type: "string", enum: ["replace", "append", "prepend"] }, pos: { type: "string" }, end: { type: "string" }, lines: { type: ["string", "array"], items: { type: "string" } } }, required: ["op"], additionalProperties: false } }
+        edits: { type: "array", items: { type: "object", properties: { op: { type: "string", enum: ["replace", "append", "prepend"] }, pos: { type: "string" }, end: { type: "string" }, lines: { oneOf: [{ type: "string" }, { type: "array", items: { type: "string" } }] } }, required: ["op"], additionalProperties: false } }
       },
       required: ["path", "edits"],
       additionalProperties: false
@@ -1213,8 +1253,8 @@ function apply(ctx, config = {}) {
       render: (_a, v) => textBlock2("hashline edited: " + v.path + " (" + v.lines + " lines, noop=" + v.noopEdits + ", deduped=" + v.deduplicatedEdits + `)
 ` + (v.diff ?? ""))
     },
-    execute: async (args) => {
-      const fp = resolve(String(args?.path));
+    execute: async (args, exec) => {
+      const fp = sessionPath(String(args?.path), dsh, exec);
       if (!existsSync(fp))
         throw new Error("mpd-hashline: file not found: " + fp);
       const rawEdits = Array.isArray(args?.edits) ? args.edits : [];
@@ -1230,11 +1270,11 @@ function apply(ctx, config = {}) {
     parameters: { type: "object", properties: { path: { type: "string" } }, required: ["path"] },
     output: { schema: { type: "object", properties: { path: { type: "string" }, lines: { type: "integer" }, view: { type: "string" } }, required: ["path", "lines", "view"] }, render: (_a, v) => textBlock2("hashline disciplined: " + v.path + `
 ` + v.view) },
-    execute: async (args) => {
-      const fp = resolve(String(args?.path));
+    execute: async (args, exec) => {
+      const fp = sessionPath(String(args?.path), dsh, exec);
       if (!existsSync(fp))
         throw new Error("mpd-hashline: file not found: " + fp);
-      const rp = registryPath(cfg);
+      const rp = registryPath(cfg, dsh, exec);
       writeRegistry(rp, [...readRegistry(rp), fp]);
       const raw = readFileSync(fp, "utf8");
       const out = toHashlineContent(raw);
@@ -1247,10 +1287,10 @@ function apply(ctx, config = {}) {
     description: "Unregister a file from the hashline discipline (the plain file content is untouched). After this, plain edits no longer trigger the hashline guard.",
     parameters: { type: "object", properties: { path: { type: "string" } }, required: ["path"] },
     output: { schema: { type: "object", properties: { path: { type: "string" } }, required: ["path"] }, render: (_a, v) => textBlock2("hashline discipline removed: " + v.path) },
-    execute: async (args) => {
-      const fp = resolve(String(args?.path));
-      const rp = registryPath(cfg);
-      writeRegistry(rp, readRegistry(rp).filter((x) => resolve(x) !== fp));
+    execute: async (args, exec) => {
+      const fp = sessionPath(String(args?.path), dsh, exec);
+      const rp = registryPath(cfg, dsh, exec);
+      writeRegistry(rp, readRegistry(rp).filter((x) => resolve2(x) !== fp));
       return { path: fp };
     }
   });
@@ -1262,7 +1302,7 @@ function apply(ctx, config = {}) {
       if (!isEdit)
         return out;
       const fp = exec.arguments?.file_path ?? exec.arguments?.path;
-      if (typeof fp !== "string" || !registered(cfg, fp))
+      if (typeof fp !== "string" || !registered(cfg, dsh, fp, exec))
         return out;
       const hint = "[mpd-hashline guard] " + fp + " is hashline-disciplined and was changed with a plain edit tool, so the LINE#HASH anchors you saw are now stale. Re-read with mpd_hashline_read and continue with mpd_hashline_edit, or run mpd_hashline_restore to drop the discipline.";
       const content = out.content ?? result?.content;

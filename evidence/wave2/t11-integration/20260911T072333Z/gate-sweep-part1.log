@@ -1,0 +1,46 @@
+=== t11 FINAL GATE SWEEP (frozen tree) ===
+started: 2026-09-11T07:26:33Z
+4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5  packages/mpd-agent-teams-plugin/lib/quality-gates.js
+fd106fdbf12a7379672452a321b79bd5156990454b233617621338821deb387c  packages/mpd-agent-teams-plugin/lib/tools.js
+9680c7b816fa129773ceabffc55305b34a74653dc23128de85ee7058ea85c558  packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+aedb9198e1328d2a216f382ac73e13ef71141367167eac07df76cedb0f6a0576  scripts/patch-agent-teams-fixes.mjs
+2d358a30a7fdb5c4ce14c3b2fb6b638ad69027319138cd64639bfc609370d5f5  VENDOR_LOCK.json
+88ad2cb2d08ab7f5419e894ebd86b17dc6791794835325653ceeff294ca353fb  packages/mpd-bundle/cordis.patch.yml
+
+### 1) node scripts/verify-vendor.mjs
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] asset OK: skills 366 files
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+exit=0
+
+### 2) bun run verify:rows (new B9 guard)
+$ node scripts/verify-rows-parity.mjs
+[verify-rows-parity] ok: 22 row ids match the bundle patch insert list (mpd-verif included)
+exit=0
+
+### 3) bun run typecheck
+$ tsgo --noEmit
+exit=0
+
+### 4) bun test packages
+(pass) clean file passes (exit 0) [3.60ms]
+
+ 343 pass
+ 0 fail
+ 2194 expect() calls
+Ran 343 tests across 38 files. [12.68s]
+exit=0
+
+### 5) bun run test:qa
+[workmate-library self-test] ok: 18 checks
+[test:qa] skills/dsh-qa/scripts/workmate-team-member.mjs
+[workmate-team-member self-test] ok: 6 checks
+[test:qa] all self-tests passed
+exit=0

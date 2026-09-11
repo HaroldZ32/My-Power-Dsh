@@ -1,0 +1,5 @@
+=== A6 memory: reflection hash + target sha + source intact + read ===
+7ee2e20805ec59fe8cb06981cadc278a81e3b2e6d30412a3845eb73f04799efc  .mpd/memory/agents/agent-my-power-dsh/runtime/reflection.json
+source entries: 7 | target entries: 27
+8635a6e memory: wave-2 t5 migration of 7 entries orphaned by the cwd-root bug
+git status lines: 0

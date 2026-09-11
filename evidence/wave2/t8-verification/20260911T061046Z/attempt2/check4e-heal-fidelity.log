@@ -1,0 +1,39 @@
+=== clean heal fidelity (strip every region from OUR file, then heal) ===
+canonical sha256 = 4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5
+
+--- strip every mpd-delta region (markers + bodies) ---
+stripped: 7 regions -> mpd-delta scope-glob, mpd-delta scope-overlap, mpd-delta scope-overlap-normalize, mpd-delta contract-contradiction, mpd-delta create-contract-gate, mpd-delta repair-scope, mpd-delta repair-scope-fields
+stripped sha256 = 0c0d812258e5d198901bb0a797b3da7249c58ab7a4d255b44777253a183355b2
+
+--- --write (the heal) ---
+[patch-agent-teams-fixes] applied: 9 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta scope-glob, mpd-delta scope-overlap, mpd-delta scope-overlap-normalize, mpd-delta contract-contradiction, mpd-delta create-contract-gate, mpd-delta repair-scope, mpd-delta repair-scope-fields)
+exit=0
+
+--- --check after the heal ---
+[patch-agent-teams-fixes] already applied: 9 mpd delta region(s) across 2 adopted file(s)
+exit=0
+
+--- healed sha256 = 4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5
+byte-identical-to-canonical=yes
+
+--- diff healed vs canonical (line count first, then the diff) ---
+diff-lines=0
+diff-exit=0
+
+--- which region moved? (region begin lines in each file) ---
+canonical:
+  102://#region mpd-delta scope-glob (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+  244://#region mpd-delta scope-overlap (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+  263://#region mpd-delta scope-overlap-normalize (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+  276://#region mpd-delta contract-contradiction (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+  410:    //#region mpd-delta create-contract-gate (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+  714:    //#region mpd-delta repair-scope (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+  730:        //#region mpd-delta repair-scope-fields (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+healed:
+  102://#region mpd-delta scope-glob (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+  244://#region mpd-delta scope-overlap (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+  263://#region mpd-delta scope-overlap-normalize (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+  276://#region mpd-delta contract-contradiction (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+  410:    //#region mpd-delta create-contract-gate (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+  714:    //#region mpd-delta repair-scope (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+  730:        //#region mpd-delta repair-scope-fields (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)

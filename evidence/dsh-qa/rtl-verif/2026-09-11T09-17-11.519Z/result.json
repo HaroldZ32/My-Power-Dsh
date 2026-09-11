@@ -1,0 +1,20 @@
+{
+  "ok": true,
+  "bootExit": 0,
+  "dshHomeSandbox": true,
+  "mountMpdVerifRow": true,
+  "mountWaveMcpRow": false,
+  "mountTraceweaveRow": false,
+  "mountMcpLspRow": true,
+  "lspBuiltinDual": true,
+  "venvCocotb": "2.1.0",
+  "backend": "verilator",
+  "flow": "verilator=true lint=true sim=true regress=true",
+  "resultsXml": true,
+  "vcd": true,
+  "makefileFlow": true,
+  "regressPassed": 1,
+  "noFst": true,
+  "systemPythonCocotbFree": true,
+  "realHomeUntouched": true
+}

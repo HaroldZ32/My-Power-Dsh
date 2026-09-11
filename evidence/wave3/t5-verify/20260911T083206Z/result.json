@@ -1,0 +1,425 @@
+{
+  "task": "t5",
+  "driver": "verify-registry-redesign",
+  "measuredAt": "2026-09-11T08:41:20.600Z",
+  "subjectRevision": {
+    "head": "98680b1fb2bbf5c10c28cfbe44419e91595e1cb7",
+    "toolsJsSha256": "7cb899a72b06a023c25bb25681f3dd75d59c1e911573bf82a5a8da809a3f5c07",
+    "qualityGatesJsSha256": "4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5",
+    "registrySha256": "d3a1d4adce41992b9eb7faf37dd145dbaf4df0352a1b29c8b39038e1a7285ffb",
+    "registryRegions": 12,
+    "patcherSha256": "6f56e6814f5e03d044fa647f345405fbbc4d1abf51d34544af1660d570619a38",
+    "note": "lib/mpd-deltas.js, scripts/patch-agent-teams-fixes.mjs and the two wave-3 test files are still UNTRACKED in git (wave-3 commit plan is t8); the verification measures the working tree at these hashes"
+  },
+  "decisive": {
+    "scenario": "strip BOTH adopted files from the same state, one heal, byte-compare each",
+    "rounds": 3,
+    "insertedRegions": [
+      12,
+      12,
+      12
+    ],
+    "toolsJsDiffLines": [
+      0,
+      0,
+      0
+    ],
+    "qualityGatesDiffLines": [
+      0,
+      0,
+      0
+    ],
+    "toolsJsByteIdentical": [
+      true,
+      true,
+      true
+    ],
+    "qualityGatesByteIdentical": [
+      true,
+      true,
+      true
+    ],
+    "strippedLinesRemoved": [
+      {
+        "file": "tools.js",
+        "regions": 5,
+        "lines": 136
+      },
+      {
+        "file": "quality-gates.js",
+        "regions": 7,
+        "lines": 249
+      }
+    ],
+    "cliScenario": {
+      "exit": 0,
+      "stdout": "[patch-agent-teams-fixes] applied: 12 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta scope-glob, mpd-delta scope-overlap, mpd-delta scope-overlap-normalize, mpd-delta contract-contradiction, mpd-delta create-contract-gate, mpd-delta repair-scope, mpd-delta repair-scope-fields, mpd-delta update-task-contract, mpd-delta update-task-required-status-param, mpd-delta update-task-required-attempt-id, mpd-delta task-contract, mpd-delta task-contract-render)",
+      "stderr": ""
+    },
+    "partialHistory": [
+      {
+        "file": "tools.js",
+        "byteIdentical": true,
+        "exit": 0,
+        "added": 0,
+        "deleted": 0,
+        "diffLines": 0,
+        "raw": ""
+      },
+      {
+        "file": "quality-gates.js",
+        "byteIdentical": true,
+        "exit": 0,
+        "added": 0,
+        "deleted": 0,
+        "diffLines": 0,
+        "raw": ""
+      }
+    ],
+    "negativeControl": {
+      "scenario": "negative-control-perturbed-seam",
+      "delta": "mpd-delta scope-glob",
+      "victimFile": "quality-gates.js",
+      "perturbedLine": "function isDefaultExcluded(path) {",
+      "refusalMessage": "[patch-agent-teams-fixes] FAIL: delta \"mpd-delta scope-glob\" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js and its registered afterContext window occurs 0 time(s) OUTSIDE every region (must be exactly 1) — the adopted file drifted; refusing to guess the insertion site",
+      "victimUnchanged": true,
+      "passed": true
+    }
+  },
+  "markerFixtures": {
+    "checks": 12,
+    "collidingPairs": [
+      "scope-overlap ⊂ scope-overlap-normalize",
+      "repair-scope ⊂ repair-scope-fields",
+      "task-contract ⊂ task-contract-render"
+    ],
+    "partialStripShapes": [
+      "begin",
+      "end"
+    ],
+    "substringLiveness": [
+      {
+        "file": "quality-gates.js",
+        "outer": "mpd-delta scope-overlap",
+        "shape": "begin",
+        "resolved": {
+          "begin": -1,
+          "end": 260,
+          "orphan": "begin"
+        },
+        "substring": {
+          "begin": -1,
+          "end": 260,
+          "substringBeginUnresolved": true,
+          "substringEndIsOuterOwn": true
+        }
+      },
+      {
+        "file": "quality-gates.js",
+        "outer": "mpd-delta scope-overlap",
+        "shape": "end",
+        "resolved": {
+          "begin": 243,
+          "end": -1,
+          "orphan": "end"
+        },
+        "substring": {
+          "begin": 243,
+          "end": 267,
+          "substringEndResolvesToInnerEnd": true
+        }
+      },
+      {
+        "file": "quality-gates.js",
+        "outer": "mpd-delta repair-scope",
+        "shape": "begin",
+        "resolved": {
+          "begin": -1,
+          "end": 719,
+          "orphan": "begin"
+        },
+        "substring": {
+          "begin": -1,
+          "end": 719,
+          "substringBeginUnresolved": true,
+          "substringEndIsOuterOwn": true
+        }
+      },
+      {
+        "file": "quality-gates.js",
+        "outer": "mpd-delta repair-scope",
+        "shape": "end",
+        "resolved": {
+          "begin": 713,
+          "end": -1,
+          "orphan": "end"
+        },
+        "substring": {
+          "begin": 713,
+          "end": 730,
+          "substringEndResolvesToInnerEnd": true
+        }
+      },
+      {
+        "file": "tools.js",
+        "outer": "mpd-delta task-contract",
+        "shape": "begin",
+        "resolved": {
+          "begin": -1,
+          "end": 1783,
+          "orphan": "begin"
+        },
+        "substring": {
+          "begin": -1,
+          "end": 1783,
+          "substringBeginUnresolved": true,
+          "substringEndIsOuterOwn": true
+        }
+      },
+      {
+        "file": "tools.js",
+        "outer": "mpd-delta task-contract",
+        "shape": "end",
+        "resolved": {
+          "begin": 1756,
+          "end": -1,
+          "orphan": "end"
+        },
+        "substring": {
+          "begin": 1756,
+          "end": 2357,
+          "substringEndResolvesToInnerEnd": true
+        }
+      }
+    ],
+    "invertedNegativeControl": [
+      "[patch-agent-teams-fixes] FAIL: region \"mpd-delta scope-overlap\" has a half-open marker pair (begin@244, end@0) — both markers exist but the end precedes the begin; refusing to guess the intended span",
+      "[patch-agent-teams-fixes] FAIL: region \"mpd-delta repair-scope\" has a half-open marker pair (begin@714, end@0) — both markers exist but the end precedes the begin; refusing to guess the intended span",
+      "[patch-agent-teams-fixes] FAIL: region \"mpd-delta task-contract\" has a half-open marker pair (begin@1757, end@0) — both markers exist but the end precedes the begin; refusing to guess the intended span"
+    ]
+  },
+  "updateTaskDiagnostics": {
+    "inProcess": [
+      {
+        "scenario": "omitted-attempt_id",
+        "passed": true,
+        "outcome": "attempt_id is required for task t2: call agent_teams_claim_task to read the current attempt_id and repeat this update with it"
+      },
+      {
+        "scenario": "wrong-attempt_id",
+        "passed": true,
+        "message": "stale attempt for task t2: expected the current attempt_id; stop work and request fresh assignment"
+      },
+      {
+        "scenario": "omitted-status",
+        "passed": true,
+        "message": "invalid arguments: missing required property \"status\""
+      },
+      {
+        "scenario": "contract-and-happy-path",
+        "passed": true
+      }
+    ],
+    "liveCallObservation": {
+      "observation": "the LIVE agent_teams_update_task of this member session (started with the team at 2026-09-11T07:35:05.704Z) returned the PRE-FIX wording for an omitted attempt_id; the on-disk adopted file was written at 2026-09-11T08:23:52Z (16:23:52 +0800), i.e. 48 minutes AFTER this session's plugin tree was loaded into memory",
+      "liveCall": {
+        "tool": "agent_teams_update_task",
+        "arguments": {
+          "task_id": "t5",
+          "status": "in_progress"
+        },
+        "result": "Error: stale attempt for task t5: expected the current attempt_id; stop work and request fresh assignment"
+      },
+      "why": "lib/tools.js is adopted main code loaded once per process; a member session spawned before the write keeps the pre-fix module in memory. The profile install is a symlink (~/.dsh/profiles/node_modules/@mpd-dsh/mpd -> /root/dshProj/my-power-dsh), so the NEXT session/boot reads the fixed file.",
+      "freshLoadProofs": [
+        "drivers/update-task-diagnostics.result.json — a fresh node process importing the on-disk lib/tools.js reports `attempt_id is required …` for the same call shape",
+        "check5-mount.result.json — a fresh MOUNTING boot registers UPDATE_TASK_STATUS_REQUIRED=true and UPDATE_TASK_DESCRIPTION_HAS_REQUIRED_WORDING=true (probe_lines)",
+        "bun-test-plugin.log — the standing plugin suite runs the permanent diagnostics tests green"
+      ],
+      "consequence": "an operational note for t8, not a defect in the change: after this wave lands, team sessions must be restarted to pick up the new diagnostics; a session created before the write still shows the wave-2 wording."
+    }
+  },
+  "oversizedPayloadBoundary": {
+    "driver": "harness-arg-boundary",
+    "hostNm": "/root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules",
+    "measuredAt": "2026-09-11T08:34:01.890Z",
+    "results": [
+      {
+        "scenario": "harness-assembler-oversized-stop",
+        "payloadBytes": 16241,
+        "deltaCount": 74,
+        "assembledBlocks": 1,
+        "assembledEqualsRaw": true,
+        "assembledSha": "5d886425afd87cd3c7ba8f9feb91911f1cc44290b77d9945af769d15148478b5",
+        "rawSha": "5d886425afd87cd3c7ba8f9feb91911f1cc44290b77d9945af769d15148478b5",
+        "parsedKeys": [
+          "task_id",
+          "output",
+          "changedPaths",
+          "verdict",
+          "attempt_id",
+          "status"
+        ],
+        "trailingStatusSurvived": true,
+        "attemptIdSurvived": true,
+        "passed": true
+      },
+      {
+        "scenario": "harness-assembler-maxtokens-control",
+        "truncatedBytes": 16181,
+        "blocksAfterMaxTokens": [],
+        "toolCallDropped": true,
+        "passed": true
+      },
+      {
+        "scenario": "static-parse-rule",
+        "sourceFile": "/root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js",
+        "parseFunctionSource": "function parseArguments(raw) {\n\ttry {\n\t\treturn raw ? JSON.parse(raw) : {};\n\t} catch {\n\t\treturn raw;\n\t}\n}\n/**\n* Run one exclusive barrier or parallel pool. Later calls are reclassif",
+        "hasSizeCap": false,
+        "isPlainJsonParse": true,
+        "passed": true
+      }
+    ],
+    "passed": true,
+    "boundary": "the installed harness concatenates tool-call argument deltas verbatim, drops the WHOLE call on a max-tokens finish, and parses with a plain JSON.parse (no size cap, no key filter) — so a trailing key lost inside a dispatched call cannot have been dropped by this layer; it was never emitted by the model, and the plugin-side REQUIRED-parameter contract is the only honest guard"
+  },
+  "f3": {
+    "legs": [
+      {
+        "leg": "A-write-unmarked-body",
+        "exit": 1,
+        "byteIdenticalToInput": true,
+        "passed": true
+      },
+      {
+        "leg": "B-check-unmarked-body",
+        "exit": 1,
+        "byteIdenticalToInput": true,
+        "passed": true
+      },
+      {
+        "leg": "C-write-duplicate-declaration",
+        "exit": 1,
+        "byteIdenticalToInput": true,
+        "passed": true
+      },
+      {
+        "leg": "D-write-control-stripped",
+        "exit": 0,
+        "byteIdenticalToInput": false,
+        "passed": true
+      }
+    ],
+    "guardCheckOnRealTree": "already applied: 12 mpd delta region(s) across 2 adopted file(s) (exit 0)"
+  },
+  "vendorRefusal": "=== case=refusal exit=1 ===\nquality-gates.js sha before=75227aa2631ab8f1268983d6beafaeefe26896247f166d476b1e4023d013acb2 after=75227aa2631ab8f1268983d6beafaeefe26896247f166d476b1e4023d013acb2\nguard-refusal line(s):\n1\n[vendor-agent-teams] FAIL: mpd delta guard refused the healed tree — [patch-agent-teams-fixes] FAIL: refusing to heal delta \"mpd-delta scope-glob\" into packages/mpd-agent-teams-plugin/lib/quality-gates.js (insertion): it declares \"pathMatchesScope\" but that declaration still exists OUTSIDE any region at line 102 — the file was re-materialized with the OLD body; remove the old declaration (or restore the marked file) before healing, otherwise the healed module fails to import\ntail:\n[vendor-agent-teams] vendored zod -> _deps/zod\n[vendor-agent-teams] vendored @standard-schema/spec -> _deps/standard-schema\n[vendor-agent-teams] FAIL: mpd delta guard refused the healed tree — [patch-agent-teams-fixes] FAIL: refusing to heal delta \"mpd-delta scope-glob\" into packages/mpd-agent-teams-plugin/lib/quality-gates.js (insertion): it declares \"pathMatchesScope\" but that declaration still exists OUTSIDE any region at line 102 — the file was re-materialized with the OLD body; remove the old declaration (or restore the marked file) before healing, otherwise the healed module fails to import\n\n=== case=control exit=0 ===\nquality-gates.js sha before=4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5 after=4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5\nguard-refusal line(s):\n0\ntail:\n  <repo>/packages/mpd-agent-teams-plugin/_deps/dsh-tools/lib/types/json-schema.js :: from '@deepseek-ai/dsh-util-values'\n  <repo>/packages/mpd-agent-teams-plugin/_deps/dsh-tools/lib/types/ptc.js :: from '@deepseek-ai/dsh-brand'\n  <repo>/packages/mpd-agent-teams-plugin/_deps/dsh-tools/lib/types/ptc.js :: from '@deepseek-ai/dsh-util-values'",
+  "registryDeterminism": [
+    {
+      "round": 1,
+      "stdout": "[patch-agent-teams-fixes] registry regenerated: packages/mpd-agent-teams-plugin/lib/mpd-deltas.js (12 regions)",
+      "sha256": "d3a1d4adce41992b9eb7faf37dd145dbaf4df0352a1b29c8b39038e1a7285ffb",
+      "byteIdenticalToCommitted": true
+    },
+    {
+      "round": 2,
+      "stdout": "[patch-agent-teams-fixes] registry regenerated: packages/mpd-agent-teams-plugin/lib/mpd-deltas.js (12 regions)",
+      "sha256": "d3a1d4adce41992b9eb7faf37dd145dbaf4df0352a1b29c8b39038e1a7285ffb",
+      "byteIdenticalToCommitted": true
+    }
+  ],
+  "permanentTests": {
+    "pluginSuite": [
+      " 106 pass",
+      " 0 fail",
+      " 571 expect() calls",
+      "Ran 106 tests across 13 files. [1082.00ms]"
+    ],
+    "selfFixSuite": [
+      " 43 pass",
+      " 0 fail",
+      " 349 expect() calls",
+      "Ran 43 tests across 4 files. [930.00ms]"
+    ],
+    "discoveredDecisiveTests": [
+      "(pass) t2: strip-healing BOTH adopted files from the same state is byte-identical [56.13ms]",
+      "(pass) t2: a stripped tools.js heals byte-for-byte and the task-contract region lands at its canonical line [34.53ms]",
+      "(pass) t2: quality-gates.js strip-heal stays byte-identical (no trade between the two files) [36.97ms]",
+      "(pass) t2: a dangling outer END marker is a partially stripped region, never a half-open pair [10.57ms]",
+      "(pass) t2: a dangling outer BEGIN marker is a partially stripped region, never a half-open pair [10.55ms]",
+      "(pass) DEFECT 5: an OMITTED attempt_id is reported as required, never as stale ownership [17.42ms]",
+      "(pass) DEFECT 5: a PRESENT but mismatched attempt_id still reports stale ownership [4.44ms]",
+      "(pass) DEFECT 6: an omitted status is rejected instead of silently persisting the rest [3.49ms]",
+      "(pass) DEFECT 6: a blank or out-of-enum status is refused loudly, never persisted [3.03ms]",
+      "(pass) DEFECT 6: the tool contract marks status required and documents the minimal terminal call [3.92ms]"
+    ]
+  },
+  "mountedBoot": {
+    "installExit": 0,
+    "bootExit": 124,
+    "applyCrashSignatures": 0,
+    "probeReachedDone": true,
+    "toolsPresent": "14/14",
+    "expectedFromOwnSourceScan": [
+      "agent_teams_create",
+      "agent_teams_edit_plan",
+      "agent_teams_approve",
+      "agent_teams_add_member",
+      "agent_teams_remove_member",
+      "agent_teams_create_task",
+      "agent_teams_reassign_task",
+      "agent_teams_claim_task",
+      "agent_teams_update_task",
+      "agent_teams_send_message",
+      "agent_teams_task_contract",
+      "agent_teams_status",
+      "agent_teams_resume",
+      "agent_teams_delete"
+    ],
+    "updateTaskStatusRequired": true,
+    "updateTaskRequiredWording": true,
+    "taskContractTool": "REGISTERED",
+    "isolation": {
+      "records_attributable_to_this_boot": 0,
+      "real_workspace_session_keys_in_sandbox": 0
+    },
+    "dumpConfigCited": false
+  },
+  "criteria": [
+    {
+      "criterion": "decisive: strip BOTH adopted files from the same state, heal, byte identity for each (3 rounds)",
+      "status": "passed",
+      "evidence": "tools.js diff-lines 0/0/0 (wave 2: 60), quality-gates.js diff-lines 0/0/0, 12/12 regions inserted, sha256 of each healed file equals canonical"
+    },
+    {
+      "criterion": "tools.js reaches 0 diff lines, quality-gates.js STAYS at 0, byte fidelity is permanent",
+      "status": "passed",
+      "evidence": "the standing suite `bun test packages/mpd-agent-teams-plugin` runs the decisive both-files test plus both per-file byte-fidelity tests (106 pass / 0 fail, 13 files); CLI leg and partial-history leg also 0 diff lines"
+    },
+    {
+      "criterion": "colliding-pair marker fixtures with partial strips; no half-open misdiagnosis",
+      "status": "passed",
+      "evidence": "12/12: per pair a dangling BEGIN and a dangling END resolve to orphan 'begin'/'end' (never 'half-open'), heal byte-identically, and the substring rule is shown resolving the outer id's end to the INNER id's end line on the end-dropped fixture; a genuinely inverted pair still raises half-open"
+    },
+    {
+      "criterion": "update_task diagnostics judged behaviourally; oversized-drop boundary confirmed not accepted",
+      "status": "passed",
+      "evidence": "omitted attempt_id -> `attempt_id is required … agent_teams_claim_task` with the record untouched; wrong id -> stale wording; omitted status -> `invalid arguments: missing required property \"status\"`; installed-harness run: 16,241-byte arguments payload assembled byte-identically with all 6 keys incl. trailing status, and a max-tokens finish DROPS the tool call entirely (no partial dispatch), parse rule is plain JSON.parse with no size cap"
+    },
+    {
+      "criterion": "F3 non-regression + every region applied + vendor exits 1 on refusal",
+      "status": "passed",
+      "evidence": "CLI legs A-D: heal refuses a re-materialized OLD body naming pathMatchesScope@line 102, post-heal validation refuses a duplicate declaration, control heals byte-identically, refused files byte-identical; vendor-agent-teams.mjs exit 1 with the guard message (green control exit 0); `--check` on the real tree: 12 regions across 2 files, exit 0"
+    },
+    {
+      "criterion": "re-derived from raw verifier output; non-reproducible criteria reported as failures",
+      "status": "passed",
+      "evidence": "all six drivers + mount probe + suites ran in this evidence dir; the one thing NOT reproducible as stated is recorded instead of waved through: the live session's tool returned the pre-fix wording because its module was loaded 48 min before the write (live-call-observation.json), while a fresh process and a fresh mounted boot show the fixed contract"
+    },
+    {
+      "criterion": "isolated boot: 14/14 tools, 0 apply-crash signatures, no --dump-config load evidence",
+      "status": "passed",
+      "evidence": "temp DSH_HOME/HOME/workspace; install exit 0; boot exit 124; crash signatures 0; probe DONE; expected list derived from this run's own scan of lib/tools.js; no --dump-config result cited"
+    }
+  ],
+  "passed": true
+}

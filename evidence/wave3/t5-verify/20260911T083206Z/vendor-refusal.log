@@ -1,0 +1,19 @@
+=== case=refusal exit=1 ===
+quality-gates.js sha before=75227aa2631ab8f1268983d6beafaeefe26896247f166d476b1e4023d013acb2 after=75227aa2631ab8f1268983d6beafaeefe26896247f166d476b1e4023d013acb2
+guard-refusal line(s):
+1
+[vendor-agent-teams] FAIL: mpd delta guard refused the healed tree — [patch-agent-teams-fixes] FAIL: refusing to heal delta "mpd-delta scope-glob" into packages/mpd-agent-teams-plugin/lib/quality-gates.js (insertion): it declares "pathMatchesScope" but that declaration still exists OUTSIDE any region at line 102 — the file was re-materialized with the OLD body; remove the old declaration (or restore the marked file) before healing, otherwise the healed module fails to import
+tail:
+[vendor-agent-teams] vendored zod -> _deps/zod
+[vendor-agent-teams] vendored @standard-schema/spec -> _deps/standard-schema
+[vendor-agent-teams] FAIL: mpd delta guard refused the healed tree — [patch-agent-teams-fixes] FAIL: refusing to heal delta "mpd-delta scope-glob" into packages/mpd-agent-teams-plugin/lib/quality-gates.js (insertion): it declares "pathMatchesScope" but that declaration still exists OUTSIDE any region at line 102 — the file was re-materialized with the OLD body; remove the old declaration (or restore the marked file) before healing, otherwise the healed module fails to import
+
+=== case=control exit=0 ===
+quality-gates.js sha before=4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5 after=4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5
+guard-refusal line(s):
+0
+tail:
+  <repo>/packages/mpd-agent-teams-plugin/_deps/dsh-tools/lib/types/json-schema.js :: from '@deepseek-ai/dsh-util-values'
+  <repo>/packages/mpd-agent-teams-plugin/_deps/dsh-tools/lib/types/ptc.js :: from '@deepseek-ai/dsh-brand'
+  <repo>/packages/mpd-agent-teams-plugin/_deps/dsh-tools/lib/types/ptc.js :: from '@deepseek-ai/dsh-util-values'
+

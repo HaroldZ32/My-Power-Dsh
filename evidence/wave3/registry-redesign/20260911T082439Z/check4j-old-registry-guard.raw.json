@@ -1,0 +1,15 @@
+{
+  "driver": "check4j-old-registry-guard",
+  "scenario": "pre-migration registry: the applier must refuse by NAME (never a bare TypeError), --write-registry must still migrate, and the migrated tree must verify",
+  "check_exit": 1,
+  "write_exit": 1,
+  "migrate_exit": 0,
+  "post_check_exit": 0,
+  "names_migration": true,
+  "bare_typeerror_present": false,
+  "adopted_files_untouched": true,
+  "migrated_entries_with_pair": 12,
+  "residual_old_keys": 0,
+  "fixture": "",
+  "passed": true
+}

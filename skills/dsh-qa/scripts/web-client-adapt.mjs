@@ -17,6 +17,7 @@ import { homedir, tmpdir } from "node:os"
 import { join, dirname } from "node:path"
 
 import { fileURLToPath } from "node:url"
+import { assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isolation.mjs"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = dirname(dirname(dirname(__dirname)))
@@ -110,6 +111,10 @@ async function runReal() {
   mkdirSync(outDir, { recursive: true })
   const home = join(ROOT, ".qa-web-client")
   const wmHome = mkdtempSync(join(tmpdir(), "mpd-wm-web-"))
+  // Workspace isolation: the web boot's session workspace is its cwd, so it must be a
+  // sandbox dir — never the real checkout (DSH_HOME/HOME do not cover workspace state).
+  const wsRoot = mkdtempSync(join(tmpdir(), "mpd-wc-ws-"))
+  const ws = sandboxWorkspace(wsRoot)
   const profile = join(home, "profiles", "w")
   mkdirSync(profile, { recursive: true }); mkdirSync(join(home, ".agent-presets"), { recursive: true })
   mkdirSync(join(profile, "node_modules", "@mpd-dsh"), { recursive: true })
@@ -119,7 +124,7 @@ async function runReal() {
   const env = { ...process.env, DSH_HOME: home, HOME: wmHome }
   const log = join(outDir, "web.log")
   const fd = openSync(log, "w")
-  const web = spawn("dsh", ["--profile", "w", "--port", String(PORT), "--no-open"], { env, cwd: ROOT, detached: false, stdio: ["ignore", fd, fd] })
+  const web = spawn("dsh", ["--profile", "w", "--port", String(PORT), "--no-open"], { env, cwd: ws, detached: false, stdio: ["ignore", fd, fd] })
   const steps = {}
   const t0 = Date.now()
   while (Date.now() - t0 < 90000) {
@@ -146,7 +151,14 @@ async function runReal() {
   // exactly the drift that leaves an entry `pending`; `@scope/pkg` keys are module
   // dependencies, not services.
   const SERVICES = new Set(["layout", "locale", "sessions", "slots", "theme", "timer", "uiWorkspace", "workspaces"])
-  const bootDeadline = Date.now() + 60000
+  // The web frontend's boot under concurrent load was measured at ~69s (red twice
+  // at ~69s, green solo) against the old hard 60s deadline, so a slow-but-healthy
+  // boot read as a capability failure. The deadline is now 150s and overridable
+  // (MPD_DSH_QA_WEB_BOOT_DEADLINE_MS); the elapsed/deadline/timedOut triple is
+  // recorded on bootEntry so a timing miss is visibly BOUNDED and cannot
+  // masquerade as "@mpd-dsh/mpd is not in the boot graph".
+  const BOOT_DEADLINE_MS = Number(process.env.MPD_DSH_QA_WEB_BOOT_DEADLINE_MS ?? 150000)
+  const bootDeadline = Date.now() + BOOT_DEADLINE_MS
   while (Date.now() < bootDeadline && entry === null) {
     try { token = /token=([A-Za-z0-9_-]+)/.exec(readFileSync(log, "utf8"))?.[1] ?? token } catch { /* log not flushed yet */ }
     try {
@@ -178,7 +190,7 @@ async function runReal() {
     if (entry === null) await new Promise((r) => setTimeout(r, 2000))
   }
   steps.rootStatus = { ok: rootHttp === 200 && token !== "" && cookie !== "", http: rootHttp, tokenSeen: token !== "", cookieSession: cookie !== "" }
-  steps.bootEntry = { ok: entry !== null, id: entry?.id ?? null }
+  steps.bootEntry = { ok: entry !== null, id: entry?.id ?? null, elapsedMs: Date.now() - t0, deadlineMs: BOOT_DEADLINE_MS, timedOut: entry === null }
   // The SERVED bytes must carry both sidebar pages and none of the removed surfaces —
   // the real-boot counterpart of the build gate and of agent-teams-sidebar's
   // panelInteriorParity step.
@@ -229,6 +241,9 @@ async function runReal() {
     realLibraryPreExisting: realEntriesBefore.length,
     createdInSandbox: existsSync(alice),
   }
+  // Falsifiable workspace-isolation proof: no session-store key may carry the real
+  // checkout as its workspace (DSH_HOME/HOME isolation does not cover that).
+  assertSessionsSandboxed(home, wsRoot, { label: "web-client-adapt" })
   const allOk = Object.values(steps).every((s) => s.ok)
   writeFileSync(join(outDir, "result.json"), JSON.stringify({ ok: allOk, dshHome: home, wmHome, steps }, null, 2))
   writeFileSync(join(outDir, "output.log"), readFileSync(log, "utf8").slice(0, 30000) + "\n--- client ids ---\n" + [...clientBody.matchAll(/id:\s*"([^"]+)"/g)].map((m) => m[1]).join(","))

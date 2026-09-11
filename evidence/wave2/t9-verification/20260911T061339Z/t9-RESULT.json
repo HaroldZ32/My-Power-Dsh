@@ -1,0 +1,151 @@
+{
+  "task": "t9 independent verification (Reviewer)",
+  "stamp": "2026-09-11T06:34:44.520Z",
+  "repoRoot": "/root/dshProj/my-power-dsh",
+  "revisions": {
+    "verifDist": "d0aee5c79476dfe92ccb1747da6292ea0802a6fdc7d2319735defa8dcabd120e",
+    "b8Launchers": [
+      "packages/mpd-mcp-astgrep/launch.mjs",
+      "packages/mpd-mcp-codegraph/launch.mjs",
+      "packages/mpd-mcp-shared/bin-resolve.mjs"
+    ]
+  },
+  "acceptanceResults": [
+    {
+      "criterion": "B9: the parity guard is re-run independently and exits 0; the verifier reproduces falsifiability itself (remove the row, see non-zero with the id named, restore) rather than trusting the implementer's control; `node scripts/install-profile.mjs --dry-run` is shown to include the row",
+      "status": "passed",
+      "evidence": "guard 22 ids match (exit 0) -> I removed the row myself: exit 1 naming \"MISSING from scripts/install-profile.mjs: mpd-verif\" -> restored byte-identically (sha256sum -c OK) -> exit 0; dry-run lists the row; all skills/** mtimes 13:50-13:56 = t7's window and no skills diff mentions B9 artifacts (b9-skills-attribution.txt)"
+    },
+    {
+      "criterion": "R1: the verifier's OWN no-session `mpd_verif_regress` call now reports VERIF_E_NO_VENV, and a session-scoped call passes the gate — the ordering is checked in source AND behaviourally; the dist sweep reports 0 STALE / 16 FRESH",
+      "status": "passed",
+      "evidence": "own calls on dist d0aee5c79476dfe92ccb1747da6292ea0802a6fdc7d2319735defa8dcabd120e: no-session -> VERIF_E_NO_VENV with no work dir; session-scoped -> gate passes, next refusal VERIF_E_NO_BACKEND, no work dir in either workspace; per-case sim now resolves the SESSION venv (t12); source gate at regress.ts:143-154 before createRegressDir; my own pre-fix control on a disposable copy: baseline 10 pass/0 fail, flipped 7 pass/3 fail; sweep STALE: 0 | clean-room pass1==pass2 byte-identical: 16/16 | clean-room committed==pass2 byte-identical: 16/16"
+    },
+    {
+      "criterion": "Memory migration: per-file sha256 of all seven entries match between source and target, the target store's git log shows the commit and `git status` is clean, the SOURCE directory is intact, `runtime/reflection.json` is unchanged, and a real read call surfaces the entries from the correct root",
+      "status": "passed",
+      "evidence": "7/7 sha256 MATCH (memory-sha256.txt); target store git HEAD=8635a6e \"memory: wave-2 t5 migration...\" 7 files/117 insertions, status --porcelain empty; source still 7 files; reflection.json 7ee2e208... unchanged; read calls: mpd_memory_status root=...agent-my-power-dsh entries=27, mpd_memory_read 27 entries with all 7 migrated files, query=workmate 6"
+    },
+    {
+      "criterion": "B8: a real MCP call for the ast-grep tool returns a real result instead of BINARY_NOT_FOUND, in a boot whose process cwd differs from the session workspace; the codegraph status is checked to the same standard if t1 scoped it here",
+      "status": "passed",
+      "evidence": "own gate 20/20: checkout + packed-tarball launchers driven as real MCP stdio servers from a cwd outside the bundle with all pins scrubbed -> real search match (totalMatches:1) and real codegraph_explore; negatives /nonexistent/sg -> BINARY_NOT_FOUND, /nonexistent/codegraph -> no tool surface; ast-grep preferred over sg, deprecated .bin/sg rejected by --version; supplementary mount boot 4/4 (pins scrubbed): rows mount, no MODULE_NOT_FOUND, mpd-codegraph init status=ok. Patch names no binary path, 0 env: keys in the whole patch. Caveat stated explicitly: MCP path driven deterministically, not by a model turn (MISSING_CREDENTIAL here)"
+    },
+    {
+      "criterion": "QA isolation: a before/after comparison of `<repo>/.mpd/team` shows no new record after running the affected QA case(s), and the verifier reproduces the negative control (without the isolation, a record IS created)",
+      "status": "passed",
+      "evidence": "positive: preset-conformance + bun test + mcp-call + web-client-adapt + agent-teams-sidebar + bundle-lifecycle, team 28 -> 28, zero new dirs; frozen-tree re-run: preset-register PASS, web-client-adapt, bundle-lifecycle with team 28 -> 28 and zero new dirs; negative control I built myself: a pre-fix copy of preset-register.mjs (repo cwd, assertion removed) exited 0/PASS and created .mpd/team/mpd-default-587132ea (27 -> 28), then the fixed case exited 0/PASS with NO new record. NOTE: this control added one real record (mpd-default-587132ea) — archive it in the AgentTeams tab; t7's earlier mpd-default-0bc1738e is still there too"
+    },
+    {
+      "criterion": "Full gates on the integrated tree: bun test packages, bun run typecheck, bun run test:qa, node scripts/verify-vendor.mjs (exit 0), preset-conformance PASS including its negative control",
+      "status": "passed",
+      "evidence": "bun test packages exit=0, bun run typecheck exit=0, bun run test:qa exit=0, node scripts/verify-vendor.mjs exit=0; preset-conformance 0 (negative control red as designed)"
+    },
+    {
+      "criterion": "Each result comes from raw output the verifier produced; the implementers' summaries are not acceptable as evidence",
+      "status": "passed",
+      "evidence": "every check above cites an artifact under evidence/wave2/t9-verification/20260911T061339Z/ produced by my own drivers (b8-own-gate.mjs, b8-mount-boot.mjs, r1-own-calls.mjs, r1-prefix-control.mjs, memory-read-call.mjs, the pre-fix preset-register copy, raw gate logs)"
+    }
+  ],
+  "commandsRun": [
+    {
+      "command": "node scripts/verify-rows-parity.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "baseline: PARITY_PRE_EXIT_CLEAN=0; after my restore: RESTORED_EXIT=0"
+    },
+    {
+      "command": "node scripts/install-profile.mjs --dry-run",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "dry-run lists `- id: mpd-verif` -> packages/mpd-verif-plugin/dist/index.js (b9-installer-dry-run.log)"
+    },
+    {
+      "command": "a no-session and a session-scoped mpd_verif_regress call",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "own driver r1-own-calls.mjs on dist d0aee5c79476dfe92ccb1747da6292ea0802a6fdc7d2319735defa8dcabd120e: "
+    },
+    {
+      "command": "node evidence/session-workspace-root/dist-repair/sweep.mjs --clean-room",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "FRESH banner-only: 0 | STALE: 0 | clean-room pass1==pass2 byte-identical: 16/16 | clean-room committed==pass2 byte-identical: 16/16"
+    },
+    {
+      "command": "a real ast-grep MCP call",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "own b8 gate 20/20 + supplementary mount boot 4/4; deterministic MCP stdio drive (no model turn — MISSING_CREDENTIAL)"
+    },
+    {
+      "command": "before/after hash of <repo>/.mpd/team",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "affected-case sweep: team-before 28 -> after 28, new dirs none (team_json=28 | team_json=28 | new team dirs: | [none above = no new records])"
+    },
+    {
+      "command": "bun test packages",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": " 340 pass |  0 fail |  2181 expect() calls | Ran 340 tests across 38 files. [12.69s]"
+    },
+    {
+      "command": "bun run typecheck",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "$ tsgo --noEmit"
+    },
+    {
+      "command": "bun run test:qa",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "[test:qa] skills/dsh-qa/scripts/workmate-team-member.mjs | [workmate-team-member self-test] ok: 6 checks | [test:qa] all self-tests passed"
+    },
+    {
+      "command": "node scripts/verify-vendor.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files | [verify-vendor] PASS"
+    },
+    {
+      "command": "node skills/dsh-qa/scripts/preset-conformance.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "  sessionHeader: {\"ok\":true,\"agentPreset\":\"mpd\",\"log\":\"/tmp/mpd-preset-main-NPeY7f/home/sessions/--tmp-mpd-preset-main-NPeY7f-ws--/session-97c212dd-d002-46f5-9285-903b5da15ff7/session.v3.jsonl.zstd\"} |   bootLog: {\"ok\":true,\"signatures\":[]} |   negativeControl: {\"ok\":true,\"code\":\"agent-preset/invalid\",\"message\":\"agent-presets: preset \\\"mpd\\\" failed to mount: failed to apply loader entry persona (@deepseek-ai/dsh-persona): invalid config:\\n  - $.prefix missing required value (at prefix) (/tmp/mpd-preset-control-2026-09-11T06-29-49.026Z/mpd/agent.cordis.yml) | [preset-conformance] PASS"
+    },
+    {
+      "command": "affected QA cases on the FROZEN tree (web-client-adapt, preset-register, bundle-lifecycle)",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "team_json=28 | web-client-adapt EXIT=1 | preset-register EXIT=0 | bundle-lifecycle EXIT=0 | team_json=28 | new team dirs: | [end] ;; web-client-adapt solo re-run: [web-client-adapt] PASS | SOLO_EXIT=0"
+    }
+  ],
+  "allPass": true,
+  "findings": [
+    {
+      "id": "F-QA-2",
+      "severity": "low",
+      "problem": "web-client-adapt is timing-sensitive: it gives the web boot a hard 60 s deadline to PRINT its auth token (`web-client-adapt.mjs:154` bootDeadline) and then asserts tokenSeen/cookieSession. Under concurrent load (my gate battery running in parallel) the boot printed its token at ~69 s, so the case went red twice (2026-09-11T06:21:10Z and 06:30:49Z) with an identical 5-line boot log and the same code path; a solo re-run at 06:33:32Z PASSED with tokenSeen/cookieSession/bootEntry/clientJs all ok. Not a wave-2 regression — a load-dependent flake.",
+      "requiredFix": "Case-level hardening (skills/**): widen the boot deadline or treat a late token as a retry rather than a hard failure."
+    },
+    {
+      "id": "F-B8-1",
+      "severity": "medium",
+      "problem": "In a layout where codegraph is unresolvable (packed `file:` install without optionalDependencies, no .toolchain, not on PATH) and $HOME/.mpd is not writable, the codegraph MCP child now reaches the adopted provisioning path and dies with an uncaught `ENOENT: mkdir '<home>/.mpd/codegraph'` instead of the previous graceful 'unavailable' stub (the old wrong env pin made resolution.source === 'env', which skips provisioning). Observed in mcp-call at 2026-09-11T06-21-10Z.",
+      "requiredFix": "Out of t9's scope (adopted serve.js + QA HOME isolation). Recommend a follow-up: either make mcp-call sandbox HOME (AGENTS.md §7) so the provider path is exercised in a writable home, or have the launcher fall back to a `runUnavailableMcp`-style stub when resolution fails and provisioning is impossible."
+    },
+    {
+      "id": "F-QA-1",
+      "severity": "medium",
+      "problem": "The QA dev-flavor patch rewrite (`skills/dsh-qa/scripts/preset-register.mjs:30-36` devPatch + `mcpEnv` 38-46, duplicated in `rtl-verif.mjs:69-77,168,176`) leaves the `baseUrl + \"/node_modules/\"` operand in front of the checkout path, so MCP row args become `<baseUrl>/node_modules/<abs-repo-path>/...`; they only resolve because `MPD_DSH_*_CLI` is pre-set. With the CLI pins unset (the whole point of B8) the MCP children die with MODULE_NOT_FOUND — reproduced in my first mount boot. `mcpEnv()` also still pre-pins MPD_AST_GREP_SG_PATH to the deprecated `.bin/sg` wrapper.",
+      "requiredFix": "Out of t9's scope (skills/**, VENDOR_LOCK-fingerprinted; t7 terminal). Recommend a scoped follow-up that rewrites the whole operand (as my b8-mount-boot.mjs does) and drops the two binary pins from mcpEnv."
+    },
+    {
+      "id": "F-ENV-1",
+      "severity": "low",
+      "problem": "mcp-call spawns dsh with the real HOME and copies only `.credentials.yaml`; under this environment the real `~/.mpd` is a read-only filesystem, so any plugin touching the home fails, and live LLM turns end at MISSING_CREDENTIAL (AGENTS.md §7 requires settings.yaml for gateway homes).",
+      "requiredFix": "Case-level fix (skills/**): sandbox HOME and copy settings.yaml when present."
+    }
+  ]
+}

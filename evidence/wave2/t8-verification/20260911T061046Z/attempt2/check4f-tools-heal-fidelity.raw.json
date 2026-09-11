@@ -1,0 +1,9 @@
+{
+  "driver": "check4f-tools-heal-fidelity",
+  "scenario": "strip BOTH tools.js regions from our own file, then --write; canonical = working tree",
+  "byte_identical": false,
+  "diff_lines": 60,
+  "heal_exit": 0,
+  "check_exit": 0,
+  "passed": false
+}

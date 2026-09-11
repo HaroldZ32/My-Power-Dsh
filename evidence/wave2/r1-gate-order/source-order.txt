@@ -1,0 +1,18 @@
+=== fixed order in packages/mpd-verif-plugin/src/regress.ts (gate first, dir later)
+6:import { mkdirSync, writeFileSync, existsSync, readdirSync } from "node:fs"
+10:import { requireCocotbVenv } from "./venv"
+98:// error (ENOENT/EROFS) from mkdirSync. Mirrors sim.ts: gate first, then the dir.
+99:function createRegressDir(exec?: any): string {
+101:  mkdirSync(regressDir, { recursive: true })
+128:    const regressDir = createRegressDir(exec)
+144:  const gate = requireCocotbVenv(undefined, exec)
+154:  const regressDir = createRegressDir(exec)
+
+=== reference order in packages/mpd-verif-plugin/src/sim.ts (already correct)
+15:import { requireCocotbVenv } from "./venv"
+200:  const gate = requireCocotbVenv(undefined, exec)
+209:  mkdirSync(caseDir, { recursive: true })
+
+=== vcs lane: dir creation after probe/uvm
+128:    const regressDir = createRegressDir(exec)
+154:  const regressDir = createRegressDir(exec)

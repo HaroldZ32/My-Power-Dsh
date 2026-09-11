@@ -73,11 +73,13 @@ function deepMerge(base: any, over: any): any {
   return out
 }
 
-function loadConfig(config: Config): { config: any; files: string[]; errors: string[] } {
-  const cwd = process.env.DSH_WORKSPACE_ROOT ?? process.cwd()
+// `root` is the workspace whose .mpd/mpd.jsonc project layer is read. Apply time has no
+// session, so it resolves through the adapter's exec-less form (env -> process.cwd); the
+// two TOOLS pass the calling session's workspace instead. config.projectFile still wins.
+function loadConfig(config: Config, root: string): { config: any; files: string[]; errors: string[] } {
   const dshHome = process.env.DSH_HOME ?? join(homedir(), ".dsh")
   const userFile = config.userFile ? resolve(config.userFile) : join(dshHome, "mpd.jsonc")
-  const projectFile = config.projectFile ? resolve(config.projectFile) : join(cwd, ".mpd", "mpd.jsonc")
+  const projectFile = config.projectFile ? resolve(config.projectFile) : join(root, ".mpd", "mpd.jsonc")
   const files = [userFile, projectFile]
   let merged: any = {}
   const errors: string[] = []
@@ -94,9 +96,12 @@ export { stripJsonc, parseJsonc, deepMerge }
 export function apply(ctx: Ctx, config: Config = {}): void {
   // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
   const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
-  let state = loadConfig(config)
+  // Apply-time snapshot: mpd-config mounts before its consumers and they merge config at
+  // apply, so the process-scoped layer must exist then (documented limitation: it cannot
+  // see a project layer that lives in a session workspace different from the process root).
+  let state = loadConfig(config, dsh.workspaceRoot())
 
-  function reload(): any { state = loadConfig(config); return state.config }
+  function reload(exec?: any): any { state = loadConfig(config, dsh.workspaceRoot(exec)); return state.config }
 
   ctx.provide("mpdConfig", {
     get: (key?: string) => {
@@ -112,7 +117,10 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     description: "Read the resolved mpd.jsonc runtime config (project .mpd/mpd.jsonc merged over user $DSH_HOME/mpd.jsonc). Consumed keys: memory.vcs/memory.dir/memory.agentSlug/memory.reflectionEvery, team.stateDir, hashline.guardEditTools/hashline.maxDiffChars/hashline.registryFile, commentChecker.autoCheck/commentChecker.bin/commentChecker.timeoutMs/commentChecker.maxMessageChars, modelchain.<chainKey>, boulder.dir, ulw.maxRounds/ulw.planDir/ulw.stateDir/ulw.provider/ulw.model/ulw.reviewerModel/ulw.maxReReviews.",
     parameters: { type: "object", properties: { key: { type: "string", description: "Optional dot-path to a single key, e.g. memory.vcs" } }, additionalProperties: false },
     output: { schema: { type: "object", properties: { config: { type: "object" }, key: { type: "string" }, value: {} }, required: ["config"] }, render: (_a: unknown, v: any) => textBlock(v.key ? "mpd config " + v.key + ": " + JSON.stringify(v.value, null, 1) : "mpd config: " + JSON.stringify(v.config, null, 1)) },
-    execute: async (args: any) => {
+    execute: async (args: any, exec: any) => {
+      // Re-read with the CALLING SESSION's workspace so a project layer in the session
+      // workspace is visible even when it differs from the dsh process cwd.
+      reload(exec)
       const key = args?.key ? String(args.key) : undefined
       // `value` is a raw JSON value: an undefined field is dropped by JSON
       // serialization, which breaks the host's lossless round-trip check
@@ -127,8 +135,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     description: "Re-read the mpd.jsonc layers and refresh the resolved config (returns files found and any parse errors).",
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { files: { type: "array", items: { type: "string" } }, errors: { type: "array", items: { type: "string" } } }, required: ["files", "errors"] }, render: (_a: unknown, v: any) => textBlock("mpd config reloaded: " + v.files.join(", ") + (v.errors.length ? " ERRORS: " + v.errors.join("; ") : "")) },
-    execute: async () => {
-      const cfg = reload()
+    execute: async (_args: any, exec: any) => {
+      const cfg = reload(exec)
       return { files: state.files, errors: state.errors, config: cfg }
     }
   })

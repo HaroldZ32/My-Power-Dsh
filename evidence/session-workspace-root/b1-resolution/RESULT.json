@@ -1,0 +1,118 @@
+{
+  "task": "t7 (B1) — resolve the session workspace root in every mpd plugin via one adapter helper",
+  "attempt_id": "461702a2-f8b4-436d-8e07-e15de0b226e9",
+  "member": "Senior Engineer",
+  "date": "2026-09-11",
+  "decision_record": "t1 (Architect) — implemented as written: adapter.workspaceRoot(exec) with precedence session header cwd -> DSH_WORKSPACE_ROOT -> process.cwd(), plus adapter.workspaceRootsAll() (union of live session cwds, [] when the registry is absent). No disagreement with the record.",
+  "defect": "Every self-written mpd plugin resolved state with `process.env.DSH_WORKSPACE_ROOT ?? process.cwd()`, but the installed harness never defines DSH_WORKSPACE_ROOT (measured 0 occurrences), so the expression collapsed to the dsh process cwd (/root/dshProj) while the session workspace is /root/dshProj/my-power-dsh. Boulder/memory/verif/hashline/ulw/config/comment-checker/modelchain state and the workmate in-use gate all pointed at the wrong (shared) directory.",
+  "fix": {
+    "one_resolution": "packages/mpd-dsh-adapter-plugin/src/index.ts — module-level `workspaceRootOf(exec)` (session -> env -> cwd) and `workspaceRootsOf(agents)`; the row instance exposes them as `dsh.workspaceRoot(exec)` / `dsh.workspaceRootsAll()`. No plugin reads exec.agent/session or ctx.agents itself.",
+    "call_sites": [
+      "mpd-boulder: boulderRoot(config, dsh, exec) — every tool body resolves PER CALL",
+      "mpd-hashline: registry file + every relative tool path resolve against the session workspace (mirrors dsh-tool-bash workdir resolution)",
+      "mpd-memory: slug + store root per call (slug now follows the session workspace basename)",
+      "mpd-ulw: planDir/stateDir moved OUT of the apply-time consts into the tool body",
+      "mpd-modelchain: memory.json path resolved in both tool bodies",
+      "mpd-config: apply-time snapshot keeps the exec-less form (documented), BOTH tools re-read with the session root",
+      "mpd-comment-checker: hookInputFor cwd = session workspace (fallback via workspaceRootOf)",
+      "mpd-verif: env.workspaceRoot(exec)/venvPath(override, exec)/workDir(exec)/paths(venv, exec) forwarded through compile/coverage/regress/sim/uvm/venv and all 8 tool bodies; the duplicate sim.wsResolved() was deleted",
+      "mpd-workmate: busyTeams(key, roots) scans the given workspace roots; tool path = [session root], service/route path = agentlessRoots(dsh) = union of live session roots falling back to the env/cwd form"
+    ],
+    "explicit_overrides_preserved": "boulder.dir, hashline.registryFile, memory.dir/agentSlug, ulw.planDir/stateDir, config.projectFile, MPD_DSH_VERIF_VENV/WORK, commentChecker paths — all still win over the root (precedence step 0)."
+  },
+  "acceptance": [
+    {
+      "criterion": "Every workspace/state root used by mpd plugins resolves inside the SESSION workspace when it differs from process.cwd(); the four reproductions point into the repo",
+      "status": "passed",
+      "evidence": "evidence/session-workspace-root/b1-resolution/2026-09-11T03-31-55Z-proof/result.json — real boot with launch cwd /root/dshProj (NOT the session workspace) and three live sessions created over the gateway API (cwd = repo, W_BLOCKED, W_CLEAN). R1 mpd_hashline_read relative path -> /root/dshProj/my-power-dsh/packages/mpd-hashline-plugin/package.json; R2 mpd_verif_venv info -> workspace/venv/work all under the repo; R3 mpd_memory_status -> /root/dshProj/my-power-dsh/.mpd/memory/agents/agent-my-power-dsh; R4 mpd_boulder_plans -> [\"/root/dshProj/my-power-dsh/.mpd/plans/workmate-rename-delete-contract.md\"]; R5 mpd_boulder_status -> <repo>/.mpd/boulder.json. S1-S3 prove per-session isolation inside ONE process (repo vs ws-blocked vs ws-clean roots differ)."
+    },
+    {
+      "criterion": "No plugin still resolves its root with a bare `process.env.DSH_WORKSPACE_ROOT ?? process.cwd()`; a grep over packages/*/src returns only the single shared resolution helper",
+      "status": "passed",
+      "evidence": "evidence/session-workspace-root/b1-resolution/root-resolution-sweep.txt: `grep -rn 'process.env.DSH_WORKSPACE_ROOT ?? process.cwd()' packages/*/src` -> NO MATCH; `grep -rn 'DSH_WORKSPACE_ROOT' packages/*/src` -> only packages/mpd-dsh-adapter-plugin/src/index.ts (read) plus comments; `process.cwd()` survives only in the adapter's last-resort branch (and mpd-codegraph's documented apply-time env chain, see F1)."
+    },
+    {
+      "criterion": "The workspace resolution lives in exactly one place and no plugin touches a harness seam outside packages/mpd-dsh-adapter-plugin/src/index.ts",
+      "status": "passed",
+      "evidence": "root-resolution-sweep.txt: `grep -rn 'session.header.cwd' packages/*/src` -> ONLY packages/mpd-dsh-adapter-plugin/src/index.ts:192; `grep -rnE 'ctx\\.(tools|subagents|skills|agentPresets)|ctx\\.get\\(\"agents\"\\)' packages/*/src` -> no code match outside the adapter (one comment in mpd-bootstrap). The second/third consumers (mpd-verif env.ts, mpd-workmate, mpd-comment-checker) import `workspaceRootOf` from the adapter package instead of re-implementing the precedence."
+    },
+    {
+      "criterion": "The workmate in-use gate no longer scans process.cwd()+/.mpd/team but the session workspace's team state, demonstrated by a controlled case",
+      "status": "passed",
+      "evidence": "proof result W1-W6: with a session whose workspace is W_BLOCKED (which carries <ws>/.mpd/team/blocking-team/team.json listing oracle-1/2/3) mpd_workmate_rename and mpd_workmate_delete are REFUSED with `is in use by team member(s) blocking-team/oracle-1`; with a session whose workspace is W_CLEAN the same rename/delete SUCCEED (archive path under <sandbox HOME>/.mpd/workmate/.archive/); the exec-less call resolves the host root instead (W5), i.e. the refusal comes from the SESSION workspace, not from the process root — the old code was inert because /root/dshProj/.mpd/team does not exist."
+    },
+    {
+      "criterion": "A mounting boot shows the whole plugin tree applies with 0 apply-crash signatures and preset-conformance still reports ok:true; no --dump-config result is cited as load evidence",
+      "status": "passed",
+      "evidence": "proof result: applyCrashSignatures=0 (grep over `unsupported JSON schema|JsonSchemaError|plugin tree failed to load|failed to apply loader entry`), probeReachedFinalMarker=true, all rows mounted in a sandbox DSH_HOME+HOME; gates/preset-conformance.log -> PASS ok=true (parity 31/31, real session created with agentPreset=mpd, bootLog signatures []); the result file's note states that no --dump-config result is used as load evidence."
+    },
+    {
+      "criterion": "Every touched package's dist/index.js is rebuilt and consistent with its source apart from the build banner line",
+      "status": "passed",
+      "evidence": "evidence/session-workspace-root/b1-resolution/dist-consistency.txt — for all 10 touched packages a fresh `bun build packages/<p>/src/index.ts --target node --format esm` is BYTE-IDENTICAL to the committed dist/index.js (exit=0)."
+    },
+    {
+      "criterion": "bun test packages, bun run typecheck and bun run test:qa all pass",
+      "status": "passed",
+      "evidence": "gates/bun-test-packages.log 308 pass / 0 fail (35 files); gates/typecheck.log tsgo --noEmit exit 0; gates/test-qa.log `[test:qa] all self-tests passed` exit 0."
+    }
+  ],
+  "gates": {
+    "bun test packages": {"exit": 0, "log": "gates/bun-test-packages.log", "result": "308 pass / 0 fail across 35 files"},
+    "bun run typecheck": {"exit": 0, "log": "gates/typecheck.log"},
+    "bun run test:qa": {"exit": 0, "log": "gates/test-qa.log", "result": "all self-tests passed (27 scripts)"},
+    "node skills/dsh-qa/scripts/preset-conformance.mjs": {"exit": 0, "log": "gates/preset-conformance.log", "result": "PASS ok=true, parity 31/31, real session agentPreset=mpd, negative control still fails as designed"},
+    "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs": {"exit": 0, "log": "gates/bundle-lifecycle.log", "result": "PASS — install/compose/boot/no-home-copy/layer-durability/uninstall all ok"},
+    "B1 mount proof (extra, mandatory for this change)": {"exit": 0, "log": "2026-09-11T03-31-55Z-proof/result.json + boot.log", "result": "17/17 checks PASS, 0 apply-crash signatures, launch cwd /root/dshProj vs session workspaces repo/W_BLOCKED/W_CLEAN"}
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "low",
+      "problem": "packages/mpd-codegraph-plugin/src/index.ts:76 still resolves `(MPD_CODEGRAPH_PROJECT_CWD ?? MPD_DSH_CODEGRAPH_PROJECT_CWD) || process.cwd()` at APPLY time. t1 §2 A14/§4 deliberately keeps it apply-time (a boot side effect), but the record also notes it could route through dsh.workspaceRoot() with no exec so there is one code path.",
+      "requiredFix": "Out of t7's inScope (mpd-codegraph-plugin is not listed). Follow-up: swap the expression for dsh.workspaceRoot() (exec-less) and optionally resolve the `/mpd-codegraph` command per invocation (F6 of the record shows invocation.agent exists)."
+    },
+    {
+      "id": "F2",
+      "severity": "low",
+      "problem": "mpd-config's APPLY-TIME snapshot stays process-scoped (t1 L1): it mounts before its consumers, which merge config at apply. A project layer living in a session workspace different from the process root is therefore invisible to the apply-time snapshot (the two TOOLS are session-aware now).",
+      "requiredFix": "Recorded, not fixed: a per-session config service is a follow-up (would change the mpdConfig service API, explicitly out of t7 scope)."
+    },
+    {
+      "id": "F3",
+      "severity": "info",
+      "problem": "MCP children (mpd-mcp-astgrep/lsp/codegraph dists) are separate processes with no exec and keep the launch-cwd fallback (t1 L2/E).",
+      "requiredFix": "None in t7 — they accept explicit cwd/workdir arguments; a session-scoped default would need a wired env channel."
+    },
+    {
+      "id": "F4",
+      "severity": "medium",
+      "problem": "The memory store is SPLIT-BRAIN (t1 §5 M1): 7 commits live in the wrong-root store /root/dshProj/.mpd/memory/agents/agent-dshproj, while the correct-root store <repo>/.mpd/memory/agents/agent-my-power-dsh already exists (20 files, 19 steps). After this fix the plugins read the CORRECT root, so those 7 wrong-root entries are now orphaned.",
+      "requiredFix": "Deliberately NOT performed here: .mpd/** is not a declared path of t7 and the store is live, git-backed user data; migrating it is a data decision for the captain/user (t1 M1 describes the exact merge, including keeping the correct-root reflection counter). Until then the orphan store stays untouched at /root/dshProj/.mpd (t1 M2: do not delete it)."
+    },
+    {
+      "id": "F5",
+      "severity": "medium",
+      "problem": "OUT-OF-SCOPE BUT REQUIRED EDIT: skills/dsh-qa/scripts/workmate-library.mjs pins three exact source literals of the mutation surface. The B1 fix extends that API (teamRoots/roots parameter), so the three pins were updated to the new literals (route paths, POST-only rule and the §D reason matrix are unchanged). Declared here for captain ratification because skills/** is not in t7's inScope list.",
+      "requiredFix": "Ratify the edit (or, if the captain prefers, revert the API extension and carry the roots through another channel — the QA gate `bun run test:qa` is a REQUIRED verify command of this task and cannot pass otherwise)."
+    },
+    {
+      "id": "F6",
+      "severity": "info",
+      "problem": "The mpdWorkmate service `rename`/`delete` gained an optional trailing `roots?: string[]`; the mpd_workmate_* TOOL schemas are unchanged (they still accept the same arguments).",
+      "requiredFix": "None — no in-repo consumer of the service exists (the Web client uses the HTTP routes); the routes and their reason codes are unchanged."
+    },
+    {
+      "id": "F7",
+      "severity": "info",
+      "problem": "Behaviour change worth naming: mpd_hashline_read/edit/format/restore now resolve RELATIVE paths against the session workspace (previously the process cwd). Absolute paths are unchanged, and the registry file moved to <session workspace>/.mpd/hashline-files.json.",
+      "requiredFix": "None — this is the defect; it mirrors the harness bash tool's workdir resolution (t1 F5). Callers that relied on the process cwd for relative paths were relying on the bug."
+    }
+  ],
+  "notes": [
+    "The proof is one boot with THREE live sessions (repo, W_BLOCKED, W_CLEAN) in ONE process: it proves the resolution is per-session (multi-session host) and not a process-wide redirect.",
+    "BEFORE reproductions are live too: an exec-less call is exactly the pre-fix path (env unset in the proof boot) — BEFORE1 boulder plans invisible (0), BEFORE2 relative hashline read fails with `file not found: /root/dshProj/packages/...`.",
+    "The probe row is copied out of the repo before booting: the web profile's client-modules registry refuses a row whose file also resolves @mpd-dsh/mpd from the checkout.",
+    "Test/QA setters of DSH_WORKSPACE_ROOT keep working: with no agent the env var is precedence step 2 (all 308 package tests and the verif/rtl-verif QA lanes are green)."
+  ]
+}

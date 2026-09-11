@@ -1,0 +1,615 @@
+{
+  "task": "t12 repair: rebuild every stale plugin dist that inlines the pre-fix adapter",
+  "attemptId": "1e080a43-a537-44e7-9f78-ee666470d14b",
+  "measuredAt": "2026-09-11T03:58:28.189Z",
+  "method": {
+    "sweep": "for every packages/*/dist/index.js: `bun build --target node --format esm <repo-relative src/index.ts> --outfile <tmp>` from the repo root, then diff against the committed bytes, ignoring only the leading build-banner comment line",
+    "bannerNote": "the committed dists (and the t8 verifier's method) build from the repo root with the repo-relative entry path, so BOTH the leading banner and the inlined-adapter banner (`// packages/mpd-dsh-adapter-plugin/src/index.ts`) reproduce exactly. A package-dir build emits `// src/index.ts` + `// ../mpd-dsh-adapter-plugin/src/index.ts` and would NOT reproduce them, so the package-dir form is not used for the rebuild: measured, both invocations differ only in those two comment lines.",
+    "rebuildCommand": "bun build --target node --format esm packages/<p>/src/index.ts --outfile packages/<p>/dist/index.js  (run from the repo root)",
+    "runner": "evidence/session-workspace-root/dist-repair/sweep.mjs (--apply rebuilds STALE dists in place; --clean-room runs a second independent build pass)",
+    "verifierCrossCheck": "the 12 packages that were already fresh report the SAME sha256 prefix as evidence/session-workspace-root/t8-verify/dist-consistency.txt (e.g. boulder a15872148b34caee, hashline 7152de89783e4018, verif 2958504a65f4603d), so this sweep reproduces the verifier's method byte for byte"
+  },
+  "sweepBefore": {
+    "stale": [
+      "mpd-bootstrap-plugin",
+      "mpd-qa-roles-probe",
+      "mpd-roles-plugin",
+      "mpd-tools-plugin"
+    ],
+    "freshByteIdentical": 12,
+    "perPackage": [
+      {
+        "pkg": "mpd-bootstrap-plugin",
+        "verdict": "STALE",
+        "cmd": "bun build --target node --format esm packages/mpd-bootstrap-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-bootstrap-plugin.js",
+        "committedSha16": "f48553d0131a883d",
+        "freshSha16": "c817928406387c07",
+        "committedBytes": 22193,
+        "freshBytes": 23332
+      },
+      {
+        "pkg": "mpd-boulder-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-boulder-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-boulder-plugin.js",
+        "committedSha16": "a15872148b34caee",
+        "freshSha16": "a15872148b34caee",
+        "committedBytes": 41295,
+        "freshBytes": 41295
+      },
+      {
+        "pkg": "mpd-bundle-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-bundle-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-bundle-plugin.js",
+        "committedSha16": "d30b30fa7dcbe247",
+        "freshSha16": "d30b30fa7dcbe247",
+        "committedBytes": 145,
+        "freshBytes": 145
+      },
+      {
+        "pkg": "mpd-codegraph-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-codegraph-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-codegraph-plugin.js",
+        "committedSha16": "d66079901dd8942e",
+        "freshSha16": "d66079901dd8942e",
+        "committedBytes": 4267,
+        "freshBytes": 4267
+      },
+      {
+        "pkg": "mpd-comment-checker-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-comment-checker-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-comment-checker-plugin.js",
+        "committedSha16": "e27dd3cececbe6bf",
+        "freshSha16": "e27dd3cececbe6bf",
+        "committedBytes": 16857,
+        "freshBytes": 16857
+      },
+      {
+        "pkg": "mpd-config-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-config-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-config-plugin.js",
+        "committedSha16": "189d76a6cca3e4e4",
+        "freshSha16": "189d76a6cca3e4e4",
+        "committedBytes": 15491,
+        "freshBytes": 15491
+      },
+      {
+        "pkg": "mpd-dsh-adapter-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-dsh-adapter-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-dsh-adapter-plugin.js",
+        "committedSha16": "fe3ea3015bcc391e",
+        "freshSha16": "fe3ea3015bcc391e",
+        "committedBytes": 10520,
+        "freshBytes": 10520
+      },
+      {
+        "pkg": "mpd-hashline-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-hashline-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-hashline-plugin.js",
+        "committedSha16": "7152de89783e4018",
+        "freshSha16": "7152de89783e4018",
+        "committedBytes": 48155,
+        "freshBytes": 48155
+      },
+      {
+        "pkg": "mpd-memory-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-memory-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-memory-plugin.js",
+        "committedSha16": "0f9e3a53273b40d6",
+        "freshSha16": "0f9e3a53273b40d6",
+        "committedBytes": 23756,
+        "freshBytes": 23756
+      },
+      {
+        "pkg": "mpd-modelchain-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-modelchain-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-modelchain-plugin.js",
+        "committedSha16": "e3c0b2466c54f32c",
+        "freshSha16": "e3c0b2466c54f32c",
+        "committedBytes": 16324,
+        "freshBytes": 16324
+      },
+      {
+        "pkg": "mpd-qa-roles-probe",
+        "verdict": "STALE",
+        "cmd": "bun build --target node --format esm packages/mpd-qa-roles-probe/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-qa-roles-probe.js",
+        "committedSha16": "42563acbf46310f1",
+        "freshSha16": "37d0693a8b7f76e7",
+        "committedBytes": 11433,
+        "freshBytes": 12572
+      },
+      {
+        "pkg": "mpd-roles-plugin",
+        "verdict": "STALE",
+        "cmd": "bun build --target node --format esm packages/mpd-roles-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-roles-plugin.js",
+        "committedSha16": "570549bea4ced0c4",
+        "freshSha16": "741605f62225fb41",
+        "committedBytes": 20813,
+        "freshBytes": 22049
+      },
+      {
+        "pkg": "mpd-tools-plugin",
+        "verdict": "STALE",
+        "cmd": "bun build --target node --format esm packages/mpd-tools-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-tools-plugin.js",
+        "committedSha16": "fcca03d8291fe095",
+        "freshSha16": "07c539987450e064",
+        "committedBytes": 11375,
+        "freshBytes": 12514
+      },
+      {
+        "pkg": "mpd-ulw-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-ulw-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-ulw-plugin.js",
+        "committedSha16": "e116ee3e8017450a",
+        "freshSha16": "e116ee3e8017450a",
+        "committedBytes": 30024,
+        "freshBytes": 30024
+      },
+      {
+        "pkg": "mpd-verif-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-verif-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-verif-plugin.js",
+        "committedSha16": "2958504a65f4603d",
+        "freshSha16": "2958504a65f4603d",
+        "committedBytes": 96452,
+        "freshBytes": 96452
+      },
+      {
+        "pkg": "mpd-workmate-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-workmate-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-workmate-plugin.js",
+        "committedSha16": "e10a87fcf2fe3096",
+        "freshSha16": "e10a87fcf2fe3096",
+        "committedBytes": 47773,
+        "freshBytes": 47773
+      }
+    ]
+  },
+  "sweepAfter": {
+    "stale": [],
+    "freshByteIdentical": 16,
+    "perPackage": [
+      {
+        "pkg": "mpd-bootstrap-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-bootstrap-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-bootstrap-plugin.js",
+        "committedSha16": "c817928406387c07",
+        "freshSha16": "c817928406387c07",
+        "committedBytes": 23332,
+        "freshBytes": 23332
+      },
+      {
+        "pkg": "mpd-boulder-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-boulder-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-boulder-plugin.js",
+        "committedSha16": "a15872148b34caee",
+        "freshSha16": "a15872148b34caee",
+        "committedBytes": 41295,
+        "freshBytes": 41295
+      },
+      {
+        "pkg": "mpd-bundle-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-bundle-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-bundle-plugin.js",
+        "committedSha16": "d30b30fa7dcbe247",
+        "freshSha16": "d30b30fa7dcbe247",
+        "committedBytes": 145,
+        "freshBytes": 145
+      },
+      {
+        "pkg": "mpd-codegraph-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-codegraph-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-codegraph-plugin.js",
+        "committedSha16": "d66079901dd8942e",
+        "freshSha16": "d66079901dd8942e",
+        "committedBytes": 4267,
+        "freshBytes": 4267
+      },
+      {
+        "pkg": "mpd-comment-checker-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-comment-checker-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-comment-checker-plugin.js",
+        "committedSha16": "e27dd3cececbe6bf",
+        "freshSha16": "e27dd3cececbe6bf",
+        "committedBytes": 16857,
+        "freshBytes": 16857
+      },
+      {
+        "pkg": "mpd-config-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-config-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-config-plugin.js",
+        "committedSha16": "189d76a6cca3e4e4",
+        "freshSha16": "189d76a6cca3e4e4",
+        "committedBytes": 15491,
+        "freshBytes": 15491
+      },
+      {
+        "pkg": "mpd-dsh-adapter-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-dsh-adapter-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-dsh-adapter-plugin.js",
+        "committedSha16": "fe3ea3015bcc391e",
+        "freshSha16": "fe3ea3015bcc391e",
+        "committedBytes": 10520,
+        "freshBytes": 10520
+      },
+      {
+        "pkg": "mpd-hashline-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-hashline-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-hashline-plugin.js",
+        "committedSha16": "7152de89783e4018",
+        "freshSha16": "7152de89783e4018",
+        "committedBytes": 48155,
+        "freshBytes": 48155
+      },
+      {
+        "pkg": "mpd-memory-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-memory-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-memory-plugin.js",
+        "committedSha16": "0f9e3a53273b40d6",
+        "freshSha16": "0f9e3a53273b40d6",
+        "committedBytes": 23756,
+        "freshBytes": 23756
+      },
+      {
+        "pkg": "mpd-modelchain-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-modelchain-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-modelchain-plugin.js",
+        "committedSha16": "e3c0b2466c54f32c",
+        "freshSha16": "e3c0b2466c54f32c",
+        "committedBytes": 16324,
+        "freshBytes": 16324
+      },
+      {
+        "pkg": "mpd-qa-roles-probe",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-qa-roles-probe/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-qa-roles-probe.js",
+        "committedSha16": "37d0693a8b7f76e7",
+        "freshSha16": "37d0693a8b7f76e7",
+        "committedBytes": 12572,
+        "freshBytes": 12572
+      },
+      {
+        "pkg": "mpd-roles-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-roles-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-roles-plugin.js",
+        "committedSha16": "741605f62225fb41",
+        "freshSha16": "741605f62225fb41",
+        "committedBytes": 22049,
+        "freshBytes": 22049
+      },
+      {
+        "pkg": "mpd-tools-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-tools-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-tools-plugin.js",
+        "committedSha16": "07c539987450e064",
+        "freshSha16": "07c539987450e064",
+        "committedBytes": 12514,
+        "freshBytes": 12514
+      },
+      {
+        "pkg": "mpd-ulw-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-ulw-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-ulw-plugin.js",
+        "committedSha16": "e116ee3e8017450a",
+        "freshSha16": "e116ee3e8017450a",
+        "committedBytes": 30024,
+        "freshBytes": 30024
+      },
+      {
+        "pkg": "mpd-verif-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-verif-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-verif-plugin.js",
+        "committedSha16": "2958504a65f4603d",
+        "freshSha16": "2958504a65f4603d",
+        "committedBytes": 96452,
+        "freshBytes": 96452
+      },
+      {
+        "pkg": "mpd-workmate-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-workmate-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-workmate-plugin.js",
+        "committedSha16": "e10a87fcf2fe3096",
+        "freshSha16": "e10a87fcf2fe3096",
+        "committedBytes": 47773,
+        "freshBytes": 47773
+      }
+    ]
+  },
+  "cleanRoom": {
+    "pass1VsPass2ByteIdentical": "16/16",
+    "committedVsPass2ByteIdentical": "16/16",
+    "perPackage": [
+      {
+        "pkg": "mpd-bootstrap-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-bootstrap-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-bootstrap-plugin.js",
+        "committedSha16": "c817928406387c07",
+        "freshSha16": "c817928406387c07",
+        "committedBytes": 23332,
+        "freshBytes": 23332,
+        "pass2Sha16": "c817928406387c07",
+        "pass1VsPass2": true,
+        "committedVsPass2": true
+      },
+      {
+        "pkg": "mpd-boulder-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-boulder-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-boulder-plugin.js",
+        "committedSha16": "a15872148b34caee",
+        "freshSha16": "a15872148b34caee",
+        "committedBytes": 41295,
+        "freshBytes": 41295,
+        "pass2Sha16": "a15872148b34caee",
+        "pass1VsPass2": true,
+        "committedVsPass2": true
+      },
+      {
+        "pkg": "mpd-bundle-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-bundle-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-bundle-plugin.js",
+        "committedSha16": "d30b30fa7dcbe247",
+        "freshSha16": "d30b30fa7dcbe247",
+        "committedBytes": 145,
+        "freshBytes": 145,
+        "pass2Sha16": "d30b30fa7dcbe247",
+        "pass1VsPass2": true,
+        "committedVsPass2": true
+      },
+      {
+        "pkg": "mpd-codegraph-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-codegraph-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-codegraph-plugin.js",
+        "committedSha16": "d66079901dd8942e",
+        "freshSha16": "d66079901dd8942e",
+        "committedBytes": 4267,
+        "freshBytes": 4267,
+        "pass2Sha16": "d66079901dd8942e",
+        "pass1VsPass2": true,
+        "committedVsPass2": true
+      },
+      {
+        "pkg": "mpd-comment-checker-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-comment-checker-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-comment-checker-plugin.js",
+        "committedSha16": "e27dd3cececbe6bf",
+        "freshSha16": "e27dd3cececbe6bf",
+        "committedBytes": 16857,
+        "freshBytes": 16857,
+        "pass2Sha16": "e27dd3cececbe6bf",
+        "pass1VsPass2": true,
+        "committedVsPass2": true
+      },
+      {
+        "pkg": "mpd-config-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-config-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-config-plugin.js",
+        "committedSha16": "189d76a6cca3e4e4",
+        "freshSha16": "189d76a6cca3e4e4",
+        "committedBytes": 15491,
+        "freshBytes": 15491,
+        "pass2Sha16": "189d76a6cca3e4e4",
+        "pass1VsPass2": true,
+        "committedVsPass2": true
+      },
+      {
+        "pkg": "mpd-dsh-adapter-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-dsh-adapter-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-dsh-adapter-plugin.js",
+        "committedSha16": "fe3ea3015bcc391e",
+        "freshSha16": "fe3ea3015bcc391e",
+        "committedBytes": 10520,
+        "freshBytes": 10520,
+        "pass2Sha16": "fe3ea3015bcc391e",
+        "pass1VsPass2": true,
+        "committedVsPass2": true
+      },
+      {
+        "pkg": "mpd-hashline-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-hashline-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-hashline-plugin.js",
+        "committedSha16": "7152de89783e4018",
+        "freshSha16": "7152de89783e4018",
+        "committedBytes": 48155,
+        "freshBytes": 48155,
+        "pass2Sha16": "7152de89783e4018",
+        "pass1VsPass2": true,
+        "committedVsPass2": true
+      },
+      {
+        "pkg": "mpd-memory-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-memory-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-memory-plugin.js",
+        "committedSha16": "0f9e3a53273b40d6",
+        "freshSha16": "0f9e3a53273b40d6",
+        "committedBytes": 23756,
+        "freshBytes": 23756,
+        "pass2Sha16": "0f9e3a53273b40d6",
+        "pass1VsPass2": true,
+        "committedVsPass2": true
+      },
+      {
+        "pkg": "mpd-modelchain-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-modelchain-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-modelchain-plugin.js",
+        "committedSha16": "e3c0b2466c54f32c",
+        "freshSha16": "e3c0b2466c54f32c",
+        "committedBytes": 16324,
+        "freshBytes": 16324,
+        "pass2Sha16": "e3c0b2466c54f32c",
+        "pass1VsPass2": true,
+        "committedVsPass2": true
+      },
+      {
+        "pkg": "mpd-qa-roles-probe",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-qa-roles-probe/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-qa-roles-probe.js",
+        "committedSha16": "37d0693a8b7f76e7",
+        "freshSha16": "37d0693a8b7f76e7",
+        "committedBytes": 12572,
+        "freshBytes": 12572,
+        "pass2Sha16": "37d0693a8b7f76e7",
+        "pass1VsPass2": true,
+        "committedVsPass2": true
+      },
+      {
+        "pkg": "mpd-roles-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-roles-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-roles-plugin.js",
+        "committedSha16": "741605f62225fb41",
+        "freshSha16": "741605f62225fb41",
+        "committedBytes": 22049,
+        "freshBytes": 22049,
+        "pass2Sha16": "741605f62225fb41",
+        "pass1VsPass2": true,
+        "committedVsPass2": true
+      },
+      {
+        "pkg": "mpd-tools-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-tools-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-tools-plugin.js",
+        "committedSha16": "07c539987450e064",
+        "freshSha16": "07c539987450e064",
+        "committedBytes": 12514,
+        "freshBytes": 12514,
+        "pass2Sha16": "07c539987450e064",
+        "pass1VsPass2": true,
+        "committedVsPass2": true
+      },
+      {
+        "pkg": "mpd-ulw-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-ulw-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-ulw-plugin.js",
+        "committedSha16": "e116ee3e8017450a",
+        "freshSha16": "e116ee3e8017450a",
+        "committedBytes": 30024,
+        "freshBytes": 30024,
+        "pass2Sha16": "e116ee3e8017450a",
+        "pass1VsPass2": true,
+        "committedVsPass2": true
+      },
+      {
+        "pkg": "mpd-verif-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-verif-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-verif-plugin.js",
+        "committedSha16": "2958504a65f4603d",
+        "freshSha16": "2958504a65f4603d",
+        "committedBytes": 96452,
+        "freshBytes": 96452,
+        "pass2Sha16": "2958504a65f4603d",
+        "pass1VsPass2": true,
+        "committedVsPass2": true
+      },
+      {
+        "pkg": "mpd-workmate-plugin",
+        "verdict": "FRESH (byte-identical)",
+        "cmd": "bun build --target node --format esm packages/mpd-workmate-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-workmate-plugin.js",
+        "committedSha16": "e10a87fcf2fe3096",
+        "freshSha16": "e10a87fcf2fe3096",
+        "committedBytes": 47773,
+        "freshBytes": 47773,
+        "pass2Sha16": "e10a87fcf2fe3096",
+        "pass1VsPass2": true,
+        "committedVsPass2": true
+      }
+    ]
+  },
+  "rebuiltInPlace": [
+    {
+      "pkg": "mpd-tools-plugin",
+      "path": "packages/mpd-tools-plugin/dist/index.js",
+      "sha256Before": "fcca03d8291fe09513046acda94267eddeb03be2d622cc52a4d5a0981d86ac8b",
+      "sha256After": "07c539987450e064c4b0961ae7eefd77b5cc014341708a0896ad651d7e9070ac",
+      "bannerAfter": "// packages/mpd-tools-plugin/src/index.ts",
+      "diffStat": "see git diff --stat for the four paths; banner-only change for roles (was `// src/index.ts`)"
+    },
+    {
+      "pkg": "mpd-roles-plugin",
+      "path": "packages/mpd-roles-plugin/dist/index.js",
+      "sha256Before": "570549bea4ced0c47bee44854ef3a5ade582f2160c9b96a67d87dd57141ee1c3",
+      "sha256After": "741605f62225fb417b7de08a937be49e1489c7021e5612104336a7485a9ce307",
+      "bannerAfter": "// packages/mpd-roles-plugin/src/index.ts",
+      "diffStat": "see git diff --stat for the four paths; banner-only change for roles (was `// src/index.ts`)"
+    },
+    {
+      "pkg": "mpd-bootstrap-plugin",
+      "path": "packages/mpd-bootstrap-plugin/dist/index.js",
+      "sha256Before": "f48553d0131a883d49f9cbfdb257ce799dacbd7e2bd020efa61e0d94b8c4a29e",
+      "sha256After": "c817928406387c07069651b326ce9ab8bbd77d5e2db9bfcb4770ce2e4a0cc298",
+      "bannerAfter": "// packages/mpd-bootstrap-plugin/src/index.ts",
+      "diffStat": "see git diff --stat for the four paths; banner-only change for roles (was `// src/index.ts`)"
+    },
+    {
+      "pkg": "mpd-qa-roles-probe",
+      "path": "packages/mpd-qa-roles-probe/dist/index.js",
+      "sha256Before": "42563acbf46310f16cd14e9649d3415685763404c1b60a26a3192c07eae461a7",
+      "sha256After": "37d0693a8b7f76e778d74229d22d1dbd80ce7722254814ceadd2a45ba2fcb639",
+      "bannerAfter": "// packages/mpd-dsh-adapter-plugin/src/index.ts",
+      "diffStat": "see git diff --stat for the four paths; banner-only change for roles (was `// src/index.ts`)"
+    }
+  ],
+  "adapterHelperGrep": {
+    "mpd-tools-plugin": {
+      "sessionCwdOf": 3,
+      "workspaceRootOf": 2,
+      "workspaceRootsOf": 2,
+      "workspaceRoot member": 1,
+      "workspaceRootsAll": 2
+    },
+    "mpd-roles-plugin": {
+      "sessionCwdOf": 3,
+      "workspaceRootOf": 2,
+      "workspaceRootsOf": 2,
+      "workspaceRoot member": 1,
+      "workspaceRootsAll": 2
+    },
+    "mpd-bootstrap-plugin": {
+      "sessionCwdOf": 3,
+      "workspaceRootOf": 2,
+      "workspaceRootsOf": 2,
+      "workspaceRoot member": 1,
+      "workspaceRootsAll": 2
+    },
+    "mpd-qa-roles-probe": {
+      "sessionCwdOf": 3,
+      "workspaceRootOf": 2,
+      "workspaceRootsOf": 2,
+      "workspaceRoot member": 1,
+      "workspaceRootsAll": 2
+    }
+  },
+  "gates": {
+    "bunTestPackages": "308 pass / 0 fail / 2025 expect() calls / 35 files (exit 0) — evidence: bun-test-packages.txt",
+    "typecheck": "bun run typecheck -> tsgo --noEmit, exit 0 — evidence: typecheck.txt",
+    "vendorGate": "scripts/verify-vendor.mjs and VENDOR_LOCK.json are out of scope for t12 and were NOT touched by it"
+  },
+  "srcEdits": "NONE — `find packages -path '*/src/*' -name '*.ts' -newer evidence/session-workspace-root/dist-repair/sweep.mjs` is empty; the four rebuilt dists mtime 11:57:28 vs the newest src under those four packages 10:34. All src modifications in the worktree belong to t3/t4/t7 (verif, hashline, adapter and the 12 migrated plugins).",
+  "findings": [
+    {
+      "id": "F-pack",
+      "severity": "medium",
+      "outOfScope": true,
+      "problem": "the gitignored pack artifact dist/mpd-package/ still carries PRE-FIX copies of mpd-tools-plugin, mpd-roles-plugin and mpd-bootstrap-plugin (workspaceRootOf=0; differs from the repaired dists). mpd-qa-roles-probe is correctly absent from the pack (QA-only row).",
+      "requiredFix": "integration task t11 should re-run `npm run pack` after this repair so the shipped package inlines the current adapter (dist/mpd-package/ is gitignored at .gitignore:12, so it is not part of any commit)"
+    },
+    {
+      "id": "F-roles-banner",
+      "severity": "info",
+      "outOfScope": false,
+      "problem": "mpd-roles-plugin/dist/index.js was the one committed dist built from the package directory, so its leading banner was `// src/index.ts`; the rebuild normalizes it to the repo convention `// packages/mpd-roles-plugin/src/index.ts`",
+      "requiredFix": "none — the banner line is the tolerated diff, and normalizing removes the last outlier"
+    }
+  ],
+  "evidenceFiles": [
+    "RESULT.json",
+    "adapter-helper-grep.txt",
+    "bun-test-packages.txt",
+    "clean-room.txt",
+    "post-rebuild-sha256.txt",
+    "pre-rebuild-sha256.txt",
+    "scope-and-banner-evidence.txt",
+    "sweep-after.txt",
+    "sweep-apply.txt",
+    "sweep-before.txt",
+    "sweep.mjs",
+    "typecheck.txt"
+  ]
+}

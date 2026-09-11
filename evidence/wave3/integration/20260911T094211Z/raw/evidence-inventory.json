@@ -1,0 +1,92 @@
+[
+ {
+  "dir": "evidence/wave3/codegraph-degrade-and-applytime/20260911T081649Z",
+  "files": 18,
+  "records": [
+   "RESULT.json"
+  ],
+  "logs": 16,
+  "emptyDirs": 2,
+  "emptyExamples": [
+   "evidence/wave3/codegraph-degrade-and-applytime/20260911T081649Z/mcp-run/home/.mpd",
+   "evidence/wave3/codegraph-degrade-and-applytime/20260911T081649Z/mcp-run/project"
+  ]
+ },
+ {
+  "dir": "evidence/wave3/integration/20260911T094211Z",
+  "files": 2,
+  "records": [],
+  "logs": 2,
+  "emptyDirs": 0,
+  "emptyExamples": []
+ },
+ {
+  "dir": "evidence/wave3/registry-redesign/20260911T082439Z",
+  "files": 38,
+  "records": [
+   "README.md",
+   "result.json"
+  ],
+  "logs": 38,
+  "emptyDirs": 0,
+  "emptyExamples": []
+ },
+ {
+  "dir": "evidence/wave3/t1-requirements/20260911T081617Z",
+  "files": 2,
+  "records": [
+   "result.json"
+  ],
+  "logs": 2,
+  "emptyDirs": 0,
+  "emptyExamples": []
+ },
+ {
+  "dir": "evidence/wave3/t2-captain-independent-verification/20260911T083025Z",
+  "files": 2,
+  "records": [],
+  "logs": 2,
+  "emptyDirs": 0,
+  "emptyExamples": []
+ },
+ {
+  "dir": "evidence/wave3/t5-verify/20260911T083206Z",
+  "files": 32,
+  "records": [
+   "README.md",
+   "result.json"
+  ],
+  "logs": 32,
+  "emptyDirs": 0,
+  "emptyExamples": []
+ },
+ {
+  "dir": "evidence/wave3/t6-verify/20260911T090649Z",
+  "files": 73,
+  "records": [],
+  "logs": 53,
+  "emptyDirs": 0,
+  "emptyExamples": []
+ },
+ {
+  "dir": "evidence/wave3/t7-review/20260911T092206Z",
+  "files": 91,
+  "records": [
+   "REVIEW-round2.md",
+   "REVIEW.md",
+   "result-round2.json",
+   "result.json"
+  ],
+  "logs": 57,
+  "emptyDirs": 0,
+  "emptyExamples": []
+ },
+ {
+  "dir": "evidence/wave3/t9-captain-independent-verification/20260911T093618Z",
+  "files": 2,
+  "records": [],
+  "logs": 2,
+  "emptyDirs": 0,
+  "emptyExamples": []
+ }
+]

@@ -1,0 +1,21 @@
+=== tools.js strip-heal fidelity (F4 class follow-up, measured after t14) ===
+canonical sha=fd106fdbf12a7379672452a321b79bd5156990454b233617621338821deb387c
+[patch-agent-teams-fixes] applied: 9 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta task-contract, mpd-delta task-contract-render)
+heal exit=0
+[patch-agent-teams-fixes] already applied: 9 mpd delta region(s) across 2 adopted file(s)
+check exit=0
+healed sha=c3d7407e615b8c36594fec3d29ea6d73fada527734f917670786936606f76c9d
+byte-identical: NO
+diff-lines: 60
+
+--- task-contract registration line in each file ---
+canonical: 1735:        name: 'agent_teams_task_contract',
+healed:    1972:        name: 'agent_teams_task_contract',
+
+--- region begin lines ---
+canonical:
+  1733:    //#region mpd-delta task-contract (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+  2259://#region mpd-delta task-contract-render (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+healed:
+  1970:    //#region mpd-delta task-contract (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+  2259://#region mpd-delta task-contract-render (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)

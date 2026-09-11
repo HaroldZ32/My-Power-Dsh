@@ -1,0 +1,143 @@
+{
+  "task": "t4",
+  "title": "Adopted tooling: expand inScope patterns, forbid contradictory contracts, expose a running task's contract (durable across vendor refresh)",
+  "attempt": 1,
+  "attempt_id": "59d0c609-d28d-40fe-a34e-eef73ec1d288",
+  "executed_by": "Senior Engineer",
+  "host_restart_required": "Yes — no hot reload of plugin modules: the live session keeps running the pre-fix matcher until dsh restarts, so all `**` behaviour here is proven by direct module import, never by the live completion gate.",
+  "defects": {
+    "DEFECT 1 (inScope `**` not expanded)": {
+      "wave1_citation": "t3, t4, t7, t13 completed with incomplete changedPaths because a declaration like packages/mpd-verif-plugin/test/** was not honoured",
+      "pre_fix_measurement": {
+        "pathMatchesScope('src/a.ts','src/**')": false,
+        "classifyChangedPath('src/a.ts',['src/**'])": "undeclared"
+      },
+      "post_fix_measurement": {
+        "pathMatchesScope('src/a.ts','src/**')": true,
+        "pathMatchesScope('srcx/a.ts','src/**')": false,
+        "pathMatchesScope('src/a.md','**/*.ts')": false,
+        "classifyChangedPath('packages/mpd-verif-plugin/test/a.ts',['packages/mpd-verif-plugin/test/**'])": "in_scope",
+        "evaluateQualityCompletion(glob task, changedPath under the glob)": "ok=true"
+      }
+    },
+    "DEFECT 2 (self-contradicting contract generation)": {
+      "wave1_citation": "t13's auto-generated repair listed AGENTS.md in BOTH inScope and outOfScope, so the gate rejected the edit its own acceptance REQUIRED as out_of_scope",
+      "pre_fix_reproduction": "pre-fix shape {inScope:['AGENTS.md'],outOfScope:['AGENTS.md']} classifies AGENTS.md as out_of_scope and validateCreateTask returns ok=true",
+      "post_fix": {
+        "validateCreateTask(inScope=['AGENTS.md'],outOfScope=['AGENTS.md'])": "ok=false, error names the unsatisfiable pair",
+        "validateCreateTask(inScope=['packages/foo'],outOfScope=['packages/foo/vendor'])": "ok=true (carve-out stays legal — falsifiability)",
+        "repairScopeFromFindings(t13 shape)": "no path in both lists; contradiction-free"
+      }
+    },
+    "DEFECT 3 (running task's contract unreadable)": {
+      "surface": "agent_teams_task_contract (read-only; any status; captain or member)",
+      "live_demonstration": "test/task-contract-tool.test.mjs drives the REAL registration and reads a REAL team.json task with status=in_progress; every declared field round-trips (in_scope, out_of_scope, dependencies, acceptance, verify, attempt_id) and the record is byte-identical after the read",
+      "registered_tool_count": 14
+    }
+  },
+  "gates": [
+    {
+      "command": "bun test packages/mpd-agent-teams-plugin",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "83 pass / 0 fail / 312 expect() calls — tests/plugin-suite.log"
+    },
+    {
+      "command": "bun test packages/mpd-agent-teams-plugin/self-fix-tests",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "26 pass / 0 fail / 117 expect() calls — tests/self-fix-tests.log"
+    },
+    {
+      "command": "bun test packages",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "335 pass / 0 fail across 38 files / 2142 expect() calls (two consecutive clean runs) — tests/full-suite.log"
+    },
+    {
+      "command": "bun run typecheck",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "tsgo --noEmit clean — tests/typecheck.log"
+    },
+    {
+      "command": "node scripts/patch-agent-teams-fixes.mjs --check",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "already applied: 7 mpd delta region(s) across 2 adopted file(s) — fix/guard-check.log"
+    },
+    {
+      "command": "node scripts/vendor-agent-teams.mjs (guarded re-apply exercise)",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "real refresh with DSH_HOST_NM: '[vendor-agent-teams] mpd deltas already-applied (7 region(s) across 2 adopted file(s))'; the run's out-of-scope _deps/ rewrite was reverted with git checkout -- packages/mpd-agent-teams-plugin/_deps"
+    },
+    {
+      "command": "guard failure-mode exercise (driver in fix/guard-failure-exercise.log)",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "verify-only on a dropped-delta tree REFUSES; anchor-gone REFUSES naming the drift; --write restores 7 regions then verifies byte-identical; restored module still expands globs and rejects contradictions"
+    },
+    {
+      "command": "isolated mount boot (mpd-headless profile, temp DSH_HOME + HOME; mount/server-boot.log)",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "0 apply-crash signatures (unsupported JSON schema | JsonSchemaError | plugin tree failed to load | failed to apply loader entry | without inject); boot then stops at MISSING_CREDENTIAL because the sandbox holds no LLM key (its .credentials.yaml carries only an unrelated browser-session grant), so no live LLM tool call was possible without copying the real credential store"
+    }
+  ],
+  "changed_paths": [
+    "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+    "packages/mpd-agent-teams-plugin/lib/tools.js",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/README.md",
+    "packages/mpd-agent-teams-plugin/test/task-contract-tool.test.mjs",
+    "scripts/patch-agent-teams-fixes.mjs",
+    "scripts/vendor-agent-teams.mjs",
+    "evidence/wave2/adopted-tooling/README.md",
+    "evidence/wave2/adopted-tooling/result.json"
+  ],
+  "declared_but_unmatched": [
+    {
+      "path": "scripts/patch-agent-teams-fixes.mjs",
+      "reason": "the durability mechanism itself (the task text asks for an equivalent of scripts/patch-agent-teams-client.mjs, which is the only patcher in the recorded inScope)"
+    },
+    {
+      "path": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "reason": "the fork-maintenance test home (its README is the record t10/t11 transcribe); the recorded inScope lists test/ only"
+    },
+    {
+      "path": "packages/mpd-agent-teams-plugin/self-fix-tests/README.md",
+      "reason": "same fork-maintenance home; documents the new defect class and the durability mechanism"
+    }
+  ],
+  "adaptation_list": {
+    "pre_existing": {
+      "A1": "lib/members.js installContinuableSetup — Live-Setup guard / legacy registerContinuableSetup fallback (no mpd-delta marker)",
+      "A2": "lib/members.js installMemberSelectionRuntime — takes the live Agent from the payload, never childCtx.agent",
+      "A3": "lib/harness-compat.js:16 — delivery probe does not throw when no contract exists (no marker)",
+      "A4": "lib/members.js:28-78,499 — workmate persona/memory injection from ~/.mpd/workmate (no marker)",
+      "A5": "lib/session-start.js:170-200 — default team profile name 'mpd' (no marker)",
+      "A6": "lib/client.js — additive export bridge region (own patcher: scripts/patch-agent-teams-client.mjs)"
+    },
+    "t4_deltas": {
+      "D1": "lib/quality-gates.js pathMatchesScope + glob helpers — marker mpd-delta scope-glob",
+      "D2": "lib/quality-gates.js pathMatchesScopeNormalized — marker mpd-delta scope-glob-core",
+      "D3": "lib/quality-gates.js contractContradiction + repairScopeFromFindings — marker mpd-delta contract-contradiction",
+      "D4": "lib/quality-gates.js planQualityFollowUp repair scope — marker mpd-delta repair-scope",
+      "D5": "lib/quality-gates.js repair object scope fields — marker mpd-delta repair-scope-fields",
+      "D6": "lib/tools.js agent_teams_task_contract tool registration — marker mpd-delta task-contract",
+      "D7": "lib/tools.js taskContractView + renderTaskContract — marker mpd-delta task-contract-render",
+      "D8": "lib/mpd-deltas.js — generated registry of the 7 regions + insertion anchors",
+      "D9": "scripts/patch-agent-teams-fixes.mjs — idempotent applier (--check / --write / --write-registry)",
+      "D10": "scripts/vendor-agent-teams.mjs — invokes D9 so a vendor run cannot silently drop a delta",
+      "D11": "self-fix-tests/scope-glob-and-contract.test.mjs — behaviour + guard-refusal tests",
+      "D12": "test/task-contract-tool.test.mjs — tool-level readable-while-running tests"
+    }
+  },
+  "out_of_scope_observation": {
+    "what": "Booting the WEB profile from a legacy install-profile.mjs home aborts in dsh-client-modules: 'package @mpd-dsh/mpd resolves from multiple active Loader sources'",
+    "where": "scripts/install-profile.mjs absolute-path row colliding with the bundle client row; NOT agent-teams, NOT these three defects",
+    "handling": "recorded and reported to the captain; not folded into t4 (packages/mpd-bundle + installer are out of inScope)"
+  }
+}

@@ -1,0 +1,33 @@
+=== A5a adapter seam rule: direct harness-seam use outside the adopted lib ===
+packages/mpd-bootstrap-plugin/src/index.ts:6://   1) Skill corpus: this row registers a `ctx.skills` provider over
+=== A5b VENDOR_LOCK diff (which assets changed) ===
+-      "fileCount": 364,
+-      "treeSha": "29a6877c558997f4a1e766454a902ee7a246dd04f841d798c34b4c89ffb62c51"
++      "fileCount": 366,
++      "treeSha": "54155e41f2965acc2b953085696f8be147f761d8fe596ca918ca47bf2ec98c12"
+=== A5c anti-patterns: chdir / cached workspace root / DSH_WORKSPACE_ROOT writes ===
+--- module-level workspaceRoot caching candidates (const ... = ...workspaceRoot( ---
+packages/mpd-memory-plugin/src/index.ts:40:  const base = basename(dsh.workspaceRoot(exec))
+packages/mpd-verif-plugin/src/sim.ts:212:  const tbPathDirs = resolveTbPathDirs(tbModules, a.sources, workspaceRoot(exec))
+=== VENDOR_LOCK full diff stat ===
+ VENDOR_LOCK.json | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+--- which asset keys changed ---
+-      "fileCount": 364,
+-      "source": "skill corpus at repo root (ported upstream skills + dsh-qa + svn-master + rtl-codestyle/rtl-verif (RTL dev phase-1) + bundle-lifecycle, agent-teams-dispatch, agent-teams-sidebar, workmate-library, workmate-team-member and readonly-deny QA cases); whole-dir refresh from upstream, keep provenance links",
+-      "treeSha": "29a6877c558997f4a1e766454a902ee7a246dd04f841d798c34b4c89ffb62c51"
++      "fileCount": 366,
++      "source": "skill corpus at repo root (ported upstream skills + dsh-qa + svn-master + rtl-codestyle/rtl-verif (RTL dev phase-1) + bundle-lifecycle, agent-teams-dispatch, agent-teams-sidebar, workmate-library, workmate-team-member and readonly-deny QA cases + the dsh-qa scripts/lib/workspace-isolation.mjs QA sandbox helper); whole-dir refresh from upstream, keep provenance links",
++      "treeSha": "54155e41f2965acc2b953085696f8be147f761d8fe596ca918ca47bf2ec98c12"
+=== A5d English-only: CJK in changed agent-facing code ===
+[scan done]
+=== A5d(2) English-only, full untracked expansion (code files only) ===
+[done]
+=== A5e bilingual pairs for changed human-facing docs ===
+AGENTS.md                                                              base=yes sib=NO switchB=0 switchS=0
+packages/mpd-agent-teams-plugin/self-fix-tests/README.md               base=yes sib=NO switchB=0 switchS=0
+packages/mpd-codegraph-plugin/README.md                                base=yes sib=yes switchB=1 switchS=1
+packages/mpd-comment-checker-plugin/README.md                          base=yes sib=yes switchB=1 switchS=1
+packages/mpd-mcp-astgrep/README.md                                     base=yes sib=yes switchB=1 switchS=1
+packages/mpd-mcp-codegraph/README.md                                   base=yes sib=yes switchB=1 switchS=1
+skills/dsh-qa/SKILL.md                                                 base=yes sib=NO switchB=0 switchS=0

@@ -1,0 +1,22 @@
+fixture: registry rewritten to the OLD anchor format (12 entries, beforeContext removed: True)
+
+--- A. --check against the OLD registry (must refuse by name, never TypeError) ---
+exit=1
+    [patch-agent-teams-fixes] FAIL: lib/mpd-deltas.js is in the OLD anchor format — run: node scripts/patch-agent-teams-fixes.mjs --write-registry (one-time migration)
+    names_migration=1
+    bare_typeerror=0
+
+--- A2. --write against the OLD registry (same refusal, no partial write) ---
+exit=1
+    [patch-agent-teams-fixes] FAIL: lib/mpd-deltas.js is in the OLD anchor format — run: node scripts/patch-agent-teams-fixes.mjs --write-registry (one-time migration)
+    adopted_files_untouched=yes
+
+--- B. --write-registry migrates the OLD registry ---
+exit=0
+    [patch-agent-teams-fixes] registry regenerated: packages/mpd-agent-teams-plugin/lib/mpd-deltas.js (12 regions)
+    migrated_entries_with_pair=12
+    residual_old_keys=0
+
+--- C. the migrated tree verifies ---
+exit=0
+    [patch-agent-teams-fixes] already applied: 12 mpd delta region(s) across 2 adopted file(s)

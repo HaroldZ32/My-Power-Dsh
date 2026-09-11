@@ -7,6 +7,7 @@ import { cpSync, existsSync, mkdirSync, openSync, readFileSync, writeFileSync, c
 import { tmpdir, homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isolation.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 // The temp project lives inside this checkout (sandbox-writable, and its path
@@ -32,6 +33,12 @@ function runReal() {
   // rename): isolate HOME too, and mirror the creds at the DSH home location.
   mkdirSync(join(sandbox, ".dsh"), { recursive: true })
   cpSync(creds, join(sandbox, ".dsh", ".credentials.yaml"))
+  // MPD_CODEGRAPH_BIN is pinned here BY DESIGN, not as a masked defect: this case
+  // exists to exercise the codegraph binary + MCP server + a real tool call, so it
+  // deliberately points the adopted code at the known-good toolchain binary. Its
+  // green therefore says NOTHING about the bundle's own B8 resolution chain — a
+  // case that must prove THAT is mcp-call (no binary/CLI pin) and the launcher
+  // resolver's own tests. Do not "clean this pin up": it is the documented intent.
   const env = { ...process.env, DSH_HOME: sandbox, HOME: sandbox, MPD_CODEGRAPH_PROJECT_CWD: PROJ, MPD_CODEGRAPH_BIN: TOOLCHAIN_BIN }
   // The bundle patch references rows as @mpd-dsh/mpd/... (Plan D staged layout):
   // stage the package into the sandbox profile with npm before booting.
@@ -47,8 +54,11 @@ function runReal() {
     "--patch", join(repoRoot, "packages/mpd-bundle/cordis.patch.yml"),
     "--patch", join(repoRoot, "tests/overlays/codegraph-plugin.yml"),
     "Call the tool mcp__codegraph__codegraph_explore (pass parameters per the tool schema, targeting the norm function in src/util.ts), and report the returned content verbatim. Do not use bash."]
-  const run = spawnSync("dsh", args, { env, encoding: "utf8", timeout: 360000, stdio: ["ignore", fd, fd] })
+  const run = spawnSync("dsh", args, { env, cwd: sandboxWorkspace(sandbox), encoding: "utf8", timeout: 360000, stdio: ["ignore", fd, fd] })
   closeSync(fd)
+  // Workspace isolation: the session workspace is the spawn cwd, so the boot must not
+  // leave a session-store key for the real repo (DSH_HOME/HOME do not cover it).
+  assertSessionsSandboxed(sandbox, sandbox, { label: "codegraph-smoke" })
   const out = readFileSync(join(sandbox, "run.log"), "utf8")
   const ok = run.status === 0 && /init status=(ok|marker)/.test(out) && /mcp__codegraph__codegraph_explore/.test(out) && /norm|x<0/.test(out)
   const outDir = join(repoRoot, "evidence/dsh-qa/codegraph", new Date().toISOString().replaceAll(":", "-"))

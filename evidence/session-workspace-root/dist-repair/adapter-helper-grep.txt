@@ -1,0 +1,63 @@
+=== adapter-helper grep over the four rebuilt dists ===
+mpd-tools-plugin:
+  sessionCwdOf       3
+  workspaceRootOf    2
+  workspaceRootsOf   2
+  workspaceRoot(     0
+  workspaceRootsAll  2
+mpd-roles-plugin:
+  sessionCwdOf       3
+  workspaceRootOf    2
+  workspaceRootsOf   2
+  workspaceRoot(     0
+  workspaceRootsAll  2
+mpd-bootstrap-plugin:
+  sessionCwdOf       3
+  workspaceRootOf    2
+  workspaceRootsOf   2
+  workspaceRoot(     0
+  workspaceRootsAll  2
+mpd-qa-roles-probe:
+  sessionCwdOf       3
+  workspaceRootOf    2
+  workspaceRootsOf   2
+  workspaceRoot(     0
+  workspaceRootsAll  2
+
+=== exact occurrences (workspaceRoot/workspaceRootsAll members) ===
+--- packages/mpd-tools-plugin/dist/index.js
+14:function sessionCwdOf(agent) {
+22:function workspaceRootOf(exec) {
+23:  const session = sessionCwdOf(exec?.agent);
+31:function workspaceRootsOf(agents) {
+40:      const cwd = sessionCwdOf(agent);
+73:  const workspaceRoot = (exec) => workspaceRootOf(exec);
+74:  const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
+103:    workspaceRootsAll,
+--- packages/mpd-roles-plugin/dist/index.js
+144:function sessionCwdOf(agent) {
+152:function workspaceRootOf(exec) {
+153:  const session = sessionCwdOf(exec?.agent);
+161:function workspaceRootsOf(agents) {
+170:      const cwd = sessionCwdOf(agent);
+203:  const workspaceRoot = (exec) => workspaceRootOf(exec);
+204:  const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
+233:    workspaceRootsAll,
+--- packages/mpd-bootstrap-plugin/dist/index.js
+18:function sessionCwdOf(agent) {
+26:function workspaceRootOf(exec) {
+27:  const session = sessionCwdOf(exec?.agent);
+35:function workspaceRootsOf(agents) {
+44:      const cwd = sessionCwdOf(agent);
+77:  const workspaceRoot = (exec) => workspaceRootOf(exec);
+78:  const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
+107:    workspaceRootsAll,
+--- packages/mpd-qa-roles-probe/dist/index.js
+11:function sessionCwdOf(agent) {
+19:function workspaceRootOf(exec) {
+20:  const session = sessionCwdOf(exec?.agent);
+28:function workspaceRootsOf(agents) {
+37:      const cwd = sessionCwdOf(agent);
+70:  const workspaceRoot = (exec) => workspaceRootOf(exec);
+71:  const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
+100:    workspaceRootsAll,

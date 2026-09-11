@@ -49,10 +49,13 @@ function selfTest() {
   // Mutation surface: rename + delete are POST-only routes that branch on a reason code, and
   // the docs describe exactly these literals — so pin them (a rename of either route or of a
   // reason string must fail the case, not silently invalidate the documentation).
+  // B1/t7 recap: the mutation API gained a trailing `teamRoots` argument (the in-use gate must
+  // scan the CALLING SESSION's workspace, not the dsh process cwd), so the pinned literals carry
+  // it; the route paths and the reason matrix below are unchanged.
   checks.push(["host rename route", wmSource.includes('path: "/plugins/mpd-workmate/rename"')
-    && wmSource.includes("renameWorkmate(parsed.body?.name, parsed.body?.new_name)")])
+    && wmSource.includes("renameWorkmate(parsed.body?.name, parsed.body?.new_name, agentlessRoots(dsh))")])
   checks.push(["host delete route", wmSource.includes('path: "/plugins/mpd-workmate/delete"')
-    && wmSource.includes("deleteWorkmate(parsed.body?.name, parsed.body?.purge, parsed.body?.confirm)")])
+    && wmSource.includes("deleteWorkmate(parsed.body?.name, parsed.body?.purge, parsed.body?.confirm, agentlessRoots(dsh))")])
   checks.push(["mutation routes are POST-only with allow: POST", (wmSource.match(/allow: "POST"/g) ?? []).length >= 2])
   // The §D refusal matrix the GUI branches on: every reason the docs publish must exist here.
   const REASONS = ["invalid-name", "unknown", "collision", "in-use", "confirm-required"]
@@ -62,8 +65,8 @@ function selfTest() {
   // the only destructive path (it must keep requiring the exact name).
   checks.push(["delete is archive-first with a confirmed purge", wmSource.includes('join(workmateRoot(), ".archive")')
     && wmSource.includes("archived: null, purged: true")])
-  checks.push(["service exposes rename + delete", wmSource.includes("rename: (name: string, newName: string)")
-    && wmSource.includes("delete: (name: string, purge = false, confirm = \"\")")])
+  checks.push(["service exposes rename + delete", wmSource.includes("rename: (name: string, newName: string, roots?: string[])")
+    && wmSource.includes("delete: (name: string, purge = false, confirm = \"\", roots?: string[])")])
   const client = readFileSync(join(repoRoot, "packages", "mpd-bundle-plugin", "client.js"), "utf8")
   checks.push(["client registers a better-sidebar tab", client.includes('const SIDEBAR_TAB_ID = "mpd-workmate"')
     && client.includes("sidebar.registerTab") && client.includes("registerWorkmateSidebarTab")])

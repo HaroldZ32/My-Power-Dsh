@@ -1,0 +1,21 @@
+# t13 F1 raw proof — reviewer's harness extended with exec (fixed tree, FINAL)
+# command: bun evidence/session-workspace-root/t8-verify/attempt-2/repair-t13/repro-venv-gate-t13.ts
+# date: 2026-09-11T04:20:16Z
+[t13-repro] process_cwd=/root/dshProj
+[t13-repro] session_ws=/root/dshProj/my-power-dsh/.t13-repro-ws
+[t13-repro] DSH_WORKSPACE_ROOT=null
+[t13-repro] venvStatus_WITH_exec.ok=true
+[t13-repro] venvStatus_WITH_exec.venv=/root/dshProj/my-power-dsh/.t13-repro-ws/.venv-rtl
+[t13-repro] requireCocotbVenv_WITH_exec.error_code=(no throw)
+[t13-repro] requireCocotbVenv_WITH_exec.venv=/root/dshProj/my-power-dsh/.t13-repro-ws/.venv-rtl
+[t13-repro] requireCocotbVenv_WITH_exec.cocotb=2.0.1
+[t13-repro] requireCocotbVenv_WITH_exec.message=(no throw)
+[t13-repro] verifSim_with_exec.error_code=VERIF_E_NO_BACKEND
+[t13-repro] verifSim_with_exec.message=backend 'iverilog' not found on this machine
+[t13-repro] verifSim_with_exec.is_venv_refusal=false
+[t13-repro] requireCocotbVenv_NO_exec.error_code=VERIF_E_NO_VENV
+[t13-repro] requireCocotbVenv_NO_exec.message=cocotb venv missing at /root/dshProj/.venv-rtl (iron rule: project-local venv required, system python is never used)
+[t13-repro] requireCocotbVenv_with_env_override=passed (/root/dshProj/my-power-dsh/.t13-repro-ws/.venv-rtl)
+[t13-repro] fake_venv_exists_after=true
+[t13-repro] cleanup=removed
+[exit code: 0]

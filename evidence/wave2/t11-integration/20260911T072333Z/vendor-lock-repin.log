@@ -1,0 +1,12 @@
+{
+ "asset": "skills",
+ "before": {
+  "fileCount": 366,
+  "treeSha": "54155e41f2965acc2b953085696f8be147f761d8fe596ca918ca47bf2ec98c12"
+ },
+ "after": {
+  "fileCount": 366,
+  "treeSha": "5b13e92091e38ed8a001c08b11cd8fc73f650041260ad7fc519c782ab6a6ef45"
+ },
+ "changed": true
+}

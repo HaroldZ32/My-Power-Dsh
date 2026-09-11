@@ -1,0 +1,11 @@
+REAL wave-1 replay (team mpd-default-7332aba4, t7 + t10)
+source t7 inScope  : ["packages/mpd-dsh-adapter-plugin/src/index.ts","packages/mpd-boulder-plugin/src/**","packages/mpd-memory-plugin/src/**"]
+source t7 outOfScope: ["presets/**","packages/mpd-bundle/cordis.patch.yml","VENDOR_LOCK.json","AGENTS.md","README.md","README.zh-CN.md"]
+finding files       : ["packages/mpd-verif-plugin/src/venv.ts","AGENTS.md"]
+generated inScope   : ["packages/mpd-dsh-adapter-plugin/src/index.ts","packages/mpd-boulder-plugin/src/**","packages/mpd-memory-plugin/src/**","packages/mpd-verif-plugin/src/venv.ts","AGENTS.md"]
+generated outOfScope: ["presets/**","packages/mpd-bundle/cordis.patch.yml","VENDOR_LOCK.json","README.md","README.zh-CN.md"]
+  PASS  classifyChangedPath(AGENTS.md) = in_scope (want in_scope)
+  PASS  classifyChangedPath(packages/mpd-verif-plugin/src/venv.ts) = in_scope (want in_scope)
+  PASS  classifyChangedPath(VENDOR_LOCK.json) = out_of_scope (want out_of_scope)
+  PASS  classifyChangedPath(presets/mpd/agent.cordis.yml) = out_of_scope (want out_of_scope)
+contradiction in the generated scope: none

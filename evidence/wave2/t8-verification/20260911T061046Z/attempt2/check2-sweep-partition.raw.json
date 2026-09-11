@@ -1,0 +1,160 @@
+{
+  "driver": "check2-sweep-partition",
+  "note": "generated scopes partitioned by whether the SOURCE contract is itself satisfiable",
+  "satisfiableSource": {
+    "combos": 36,
+    "contradictoryScopes": 0,
+    "samples": []
+  },
+  "unsatisfiableSource": {
+    "combos": 24,
+    "contradictoryScopes": 6,
+    "samples": [
+      {
+        "source": {
+          "inScope": [
+            "packages/foo"
+          ],
+          "outOfScope": [
+            "packages/foo"
+          ]
+        },
+        "file": "AGENTS.md",
+        "generated": {
+          "inScope": [
+            "packages/foo",
+            "AGENTS.md"
+          ],
+          "outOfScope": [
+            "packages/foo"
+          ]
+        },
+        "hit": {
+          "inScope": "packages/foo",
+          "outOfScope": "packages/foo"
+        }
+      },
+      {
+        "source": {
+          "inScope": [
+            "packages/foo"
+          ],
+          "outOfScope": [
+            "packages/foo"
+          ]
+        },
+        "file": "docs/new.md",
+        "generated": {
+          "inScope": [
+            "packages/foo",
+            "docs/new.md"
+          ],
+          "outOfScope": [
+            "packages/foo"
+          ]
+        },
+        "hit": {
+          "inScope": "packages/foo",
+          "outOfScope": "packages/foo"
+        }
+      },
+      {
+        "source": {
+          "inScope": [
+            "packages/foo/src"
+          ],
+          "outOfScope": [
+            "packages/foo"
+          ]
+        },
+        "file": "AGENTS.md",
+        "generated": {
+          "inScope": [
+            "packages/foo/src",
+            "AGENTS.md"
+          ],
+          "outOfScope": [
+            "packages/foo"
+          ]
+        },
+        "hit": {
+          "inScope": "packages/foo/src",
+          "outOfScope": "packages/foo"
+        }
+      },
+      {
+        "source": {
+          "inScope": [
+            "packages/foo/src"
+          ],
+          "outOfScope": [
+            "packages/foo"
+          ]
+        },
+        "file": "docs/new.md",
+        "generated": {
+          "inScope": [
+            "packages/foo/src",
+            "docs/new.md"
+          ],
+          "outOfScope": [
+            "packages/foo"
+          ]
+        },
+        "hit": {
+          "inScope": "packages/foo/src",
+          "outOfScope": "packages/foo"
+        }
+      },
+      {
+        "source": {
+          "inScope": [
+            "packages/foo/**"
+          ],
+          "outOfScope": [
+            "packages/foo"
+          ]
+        },
+        "file": "AGENTS.md",
+        "generated": {
+          "inScope": [
+            "packages/foo/**",
+            "AGENTS.md"
+          ],
+          "outOfScope": [
+            "packages/foo"
+          ]
+        },
+        "hit": {
+          "inScope": "packages/foo/**",
+          "outOfScope": "packages/foo"
+        }
+      },
+      {
+        "source": {
+          "inScope": [
+            "packages/foo/**"
+          ],
+          "outOfScope": [
+            "packages/foo"
+          ]
+        },
+        "file": "docs/new.md",
+        "generated": {
+          "inScope": [
+            "packages/foo/**",
+            "docs/new.md"
+          ],
+          "outOfScope": [
+            "packages/foo"
+          ]
+        },
+        "hit": {
+          "inScope": "packages/foo/**",
+          "outOfScope": "packages/foo"
+        }
+      }
+    ]
+  },
+  "passed": true
+}

@@ -38,6 +38,7 @@ import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, openSync, rea
 import { homedir, tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isolation.mjs"
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = dirname(dirname(dirname(HERE)))
@@ -486,8 +487,11 @@ async function bootProbe(sandbox, artifactText) {
   }, null, 2))
   const log = join(home, "web.log")
   const fd = openSync(log, "w")
+  // Workspace isolation: the web boot's session workspace is its cwd, so it must be a
+  // sandbox dir — never the real checkout (DSH_HOME/HOME do not cover workspace state).
+  const ws = sandboxWorkspace(sandbox)
   const web = spawn("dsh", ["--profile", "w", "--port", String(PORT), "--no-open"], {
-    env: { ...process.env, DSH_HOME: home, HOME: userHome }, cwd: ROOT, stdio: ["ignore", fd, fd],
+    env: { ...process.env, DSH_HOME: home, HOME: userHome }, cwd: ws, stdio: ["ignore", fd, fd],
   })
   const base = "http://127.0.0.1:" + PORT
   const result = { ok: false, mode: "real-boot", dshHome: home, userHome, port: PORT }
@@ -555,6 +559,10 @@ async function bootProbe(sandbox, artifactText) {
     // Isolation: the booted home lives inside the sandbox, never in the real DSH home.
     result.realHomeUntouched = home.startsWith(sandbox) && !home.startsWith(join(homedir(), ".dsh"))
     result.realHome = join(homedir(), ".dsh")
+    // Falsifiable workspace-isolation proof: no session-store key may carry the real
+    // checkout as its workspace (DSH_HOME/HOME isolation does not cover that).
+    try { result.sessionsSandboxed = assertSessionsSandboxed(home, sandbox, { label: "agent-teams-sidebar" }) }
+    catch (error) { result.sessionsSandboxed = { ok: false, error: String(error?.message ?? error) } }
   } finally {
     web.kill("SIGTERM")
     await new Promise((resolve) => setTimeout(resolve, 1500))
@@ -589,6 +597,13 @@ async function runReal() {
   say("offline artifact steps: " + Object.entries(steps).map(([name, value]) => name + "=" + value.ok).join(" "))
 
   const boot = await bootProbe(sandbox, artifactText)
+  // Workspace isolation (wave 2): a real boot must leave no session-store key for the
+  // real checkout. Offline fallback (no boot) has no session store, so it is trivially ok.
+  steps.workspaceIsolation = {
+    ok: boot.mode === "real-boot" ? boot.sessionsSandboxed?.ok === true : true,
+    mode: boot.mode,
+    detail: boot.sessionsSandboxed ?? null,
+  }
   steps.hostRouteMounted = {
     ok: boot.mode === "real-boot" ? boot.ok === true : steps.serverHalfMountedByRow.ok,
     mode: boot.mode,

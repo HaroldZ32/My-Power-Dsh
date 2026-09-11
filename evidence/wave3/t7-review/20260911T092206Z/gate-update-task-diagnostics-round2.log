@@ -1,0 +1,18 @@
+cmd: bun test packages/mpd-agent-teams-plugin/test/update-task-diagnostics.test.mjs
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-agent-teams-plugin/test/update-task-diagnostics.test.mjs:
+(pass) DEFECT 5: an OMITTED attempt_id is reported as required, never as stale ownership [18.20ms]
+(pass) DEFECT 5: a PRESENT but mismatched attempt_id still reports stale ownership [3.48ms]
+(pass) DEFECT 6: an omitted status is rejected instead of silently persisting the rest [3.74ms]
+(pass) DEFECT 6: a blank or out-of-enum status is refused loudly, never persisted [3.45ms]
+(pass) DEFECT 6: the tool contract marks status required and documents the minimal terminal call [2.88ms]
+(pass) the happy path still works: status + current attempt_id completes the task [8.90ms]
+
+packages/mpd-agent-teams-plugin/test/update-task-diagnostics.test.mjs:
+
+ 6 pass
+ 0 fail
+ 28 expect() calls
+Ran 6 tests across 2 files. [181.00ms]
+EXIT=0

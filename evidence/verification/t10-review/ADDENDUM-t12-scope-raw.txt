@@ -1,0 +1,70 @@
+# t10 addendum — raw transcript (regenerated 2026-09-11T04:12Z; the previous version's (a) section
+# was polluted by a repair that started at 04:10Z and its (f) section ran the repo-root build form
+# from the wrong cwd — both are superseded by the checks below).
+
+### (a) t12 edited no src — mtime-window proof (robust; independent of the polluted find probe)
+$ find packages -path '*/src/*' -name '*.ts' -newermt '2026-09-11 11:57:00' ! -newermt '2026-09-11 11:59:00'
+(empty = no src touched inside t12's 11:57-11:59 rebuild window)
+
+changed-src mtimes (two clusters only: t3/t4/t7 at 11:07-11:24, post-t10 repair at 12:10):
+2026-09-11 11:07:37  packages/mpd-verif-plugin/src/backends.ts
+2026-09-11 11:20:32  packages/mpd-boulder-plugin/src/index.ts
+2026-09-11 11:20:54  packages/mpd-memory-plugin/src/index.ts
+2026-09-11 11:21:07  packages/mpd-ulw-plugin/src/index.ts
+2026-09-11 11:21:14  packages/mpd-modelchain-plugin/src/index.ts
+2026-09-11 11:21:27  packages/mpd-config-plugin/src/index.ts
+2026-09-11 11:22:55  packages/mpd-verif-plugin/src/compile.ts
+2026-09-11 11:22:55  packages/mpd-verif-plugin/src/coverage.ts
+2026-09-11 11:22:55  packages/mpd-verif-plugin/src/env.ts
+2026-09-11 11:22:55  packages/mpd-verif-plugin/src/uvm.ts
+2026-09-11 11:23:09  packages/mpd-verif-plugin/src/index.ts
+2026-09-11 11:23:52  packages/mpd-workmate-plugin/src/index.ts
+2026-09-11 11:24:02  packages/mpd-comment-checker-plugin/src/index.ts
+2026-09-11 11:24:27  packages/mpd-dsh-adapter-plugin/src/index.ts
+2026-09-11 12:10:13  packages/mpd-verif-plugin/src/regress.ts      <- post-t10 repair (F1)
+2026-09-11 12:10:13  packages/mpd-verif-plugin/src/sim.ts          <- post-t10 repair (F1)
+2026-09-11 12:10:13  packages/mpd-verif-plugin/src/venv.ts         <- post-t10 repair (F1)
+2026-09-11 12:10:51  packages/mpd-hashline-plugin/src/index.ts     <- post-t10 repair (F2)
+
+t12's four dist rebuilds: 2026-09-11 11:57:28 (mpd-tools / mpd-roles / mpd-bootstrap / mpd-qa-roles-probe)
+
+### (b) 16/16 dists byte-identical to a fresh repo-root build
+see dist-consistency-full.txt (my own sweep, run from the repo root, entry 'packages/<p>/src/index.ts')
+
+### (c)/(e) HEAD vs current, four repaired dists
+mpd-tools-plugin      HEAD_workspaceRootOf=0 NOW=2 sessionCwdOf=3 banner=// packages/mpd-tools-plugin/src/index.ts
+mpd-roles-plugin      HEAD_workspaceRootOf=0 NOW=2 sessionCwdOf=3 banner=// packages/mpd-roles-plugin/src/index.ts
+mpd-bootstrap-plugin  HEAD_workspaceRootOf=0 NOW=2 sessionCwdOf=3 banner=// packages/mpd-bootstrap-plugin/src/index.ts
+mpd-qa-roles-probe    HEAD_workspaceRootOf=0 NOW=2 sessionCwdOf=3 banner=// packages/mpd-dsh-adapter-plugin/src/index.ts
+
+roles dist, non-banner ('^//' stripped) HEAD vs worktree -> NOT banner-only:
+2c2
+< import { dirname, join, resolve } from "node:path";
+---
+> import { dirname, join, resolve as resolve2 } from "node:path";
+131a132
+> import { resolve } from "node:path";
+139a141,175
+> function sessionCwdOf(agent) { ... }
+> function workspaceRootOf(exec) { ... }
+> function workspaceRootsOf(agents) { ... }
+163a200,201
+>   const workspaceRoot = (exec) => workspaceRootOf(exec);
+>   const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
+
+### (f2) TRUE repo-root vs TRUE package-dir build form (corrected)
+repo-root form (cwd=repo root, entry 'packages/mpd-roles-plugin/src/index.ts'):
+  banner: // packages/mpd-roles-plugin/src/index.ts
+  byte-identical to committed dist: YES
+package-dir form (cwd=packages/mpd-roles-plugin, entry 'src/index.ts'):
+  banner: // src/index.ts
+  byte-identical to committed dist: NO
+  non-banner diff lines vs committed: 0
+
+### (f) vendor gate re-confirmed (not re-pinned)
+[verify-vendor] asset OK: skills 365 files
+[verify-vendor] PASS
+VENDOR_EXIT=0
+
+### (h) scratch
+no .t10-* / t10-role scratch left in the tree

@@ -1,0 +1,26 @@
+=== strip-BOTH heal fidelity (both adopted files stripped in the SAME state, ONE heal) ===
+canonical tools.js         sha256 = 7cb899a72b06a023c25bb25681f3dd75d59c1e911573bf82a5a8da809a3f5c07
+canonical quality-gates.js sha256 = 4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5
+
+--- strip every mpd-delta region from BOTH files ---
+quality-gates.js: stripped 7 regions -> mpd-delta scope-glob, mpd-delta scope-overlap, mpd-delta scope-overlap-normalize, mpd-delta contract-contradiction, mpd-delta create-contract-gate, mpd-delta repair-scope, mpd-delta repair-scope-fields
+tools.js: stripped 5 regions -> mpd-delta update-task-contract, mpd-delta update-task-required-status-param, mpd-delta update-task-required-attempt-id, mpd-delta task-contract, mpd-delta task-contract-render
+
+--- --write (the single heal of the stripped state) ---
+[patch-agent-teams-fixes] applied: 12 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta scope-glob, mpd-delta scope-overlap, mpd-delta scope-overlap-normalize, mpd-delta contract-contradiction, mpd-delta create-contract-gate, mpd-delta repair-scope, mpd-delta repair-scope-fields, mpd-delta update-task-contract, mpd-delta update-task-required-status-param, mpd-delta update-task-required-attempt-id, mpd-delta task-contract, mpd-delta task-contract-render)
+exit=0
+
+--- --check after the heal ---
+[patch-agent-teams-fixes] already applied: 12 mpd delta region(s) across 2 adopted file(s)
+exit=0
+
+--- tools.js ---
+diff-lines=0
+byte-identical-to-canonical=yes
+task-contract region line healed:    1757
+task-contract region line canonical: 1757
+--- quality-gates.js ---
+diff-lines=0
+byte-identical-to-canonical=yes
+task-contract region line healed:    
+task-contract region line canonical: 

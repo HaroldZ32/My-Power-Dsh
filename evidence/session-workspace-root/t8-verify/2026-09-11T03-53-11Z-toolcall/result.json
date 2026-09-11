@@ -1,0 +1,150 @@
+{
+  "task": "t8 (Lead) — independent verification of B1: session workspace root resolution",
+  "task_kind": "verification",
+  "method": "real boot that MOUNTS the plugin tree (--patch probe row, registration instrumentation) with the launch cwd deliberately different from the session workspace; three REAL gateway sessions; every assertion is a tool call through the harness runtime carrying that session's LIVE agent",
+  "isolation": {
+    "HOME": "<sandbox>",
+    "DSH_HOME": "<sandbox>"
+  },
+  "launchCwd": "/root/dshProj",
+  "bootChildCwd": "/root/dshProj",
+  "sessionWorkspaces": {
+    "repo": "/root/dshProj/my-power-dsh",
+    "blocked": "/tmp/mpd-t8-toolcall-U9ssKu/ws-blocked",
+    "clean": "/tmp/mpd-t8-toolcall-U9ssKu/ws-clean"
+  },
+  "note": "no --dump-config result is cited as load evidence; the mounting boot log (boot.log) plus the real tool results are the load evidence",
+  "probeInfo": {
+    "HOST_CWD": "/root/dshProj",
+    "REPO": "/root/dshProj/my-power-dsh W_BLOCKED=/tmp/mpd-t8-toolcall-U9ssKu/ws-blocked W_CLEAN=/tmp/mpd-t8-toolcall-U9ssKu/ws-clean",
+    "SESSION_CWDS": "[\"/root/dshProj/my-power-dsh\",\"/tmp/mpd-t8-toolcall-U9ssKu/ws-blocked\",\"/tmp/mpd-t8-toolcall-U9ssKu/ws-clean\"]",
+    "REPO_AGENT_HEADER_CWD": "/root/dshProj/my-power-dsh",
+    "AGENTS_FOUND": "{\"repo\":true,\"blocked\":true,\"clean\":true}",
+    "ROOTS_ALL": "[\"/root/dshProj/my-power-dsh\",\"/tmp/mpd-t8-toolcall-U9ssKu/ws-blocked\",\"/tmp/mpd-t8-toolcall-U9ssKu/ws-clean\"]",
+    "ADAPTER_SEAMS": "{\"tools\":true,\"toolsRegister\":true,\"toolsGuard\":true,\"toolsGet\":true,\"toolsExecute\":true,\"toolsPostExecute\":true,\"subagents\":true,\"subagentsSpawn\":true,\"skills\":true,\"skillsProvider\":true,\"agentPresets\":true}"
+  },
+  "applyCrashSignatures": [],
+  "probeReachedFinalMarker": true,
+  "sessions": {
+    "repo": {
+      "sessionId": "session-8f63a1a5-c2ce-46b7-9732-a3b796afbe43",
+      "status": 200,
+      "cwd": "/root/dshProj/my-power-dsh"
+    },
+    "blocked": {
+      "sessionId": "session-7d5a34aa-94dc-4280-8efa-10e52e36615d",
+      "status": 200,
+      "cwd": "/tmp/mpd-t8-toolcall-U9ssKu/ws-blocked"
+    },
+    "clean": {
+      "sessionId": "session-7514ae35-8068-457d-8085-02323e498d54",
+      "status": 200,
+      "cwd": "/tmp/mpd-t8-toolcall-U9ssKu/ws-clean"
+    }
+  },
+  "checks": [
+    {
+      "id": "R1_HASHLINE_RELATIVE_READ",
+      "status": "PASS",
+      "detail": "ok=true path=/root/dshProj/my-power-dsh/.mpd/hashline-files.json"
+    },
+    {
+      "id": "R2_VERIF_INFO_RESOLVES_REPO",
+      "status": "PASS",
+      "detail": "workspace=/root/dshProj/my-power-dsh venv=/root/dshProj/my-power-dsh/.venv-rtl work=/root/dshProj/my-power-dsh/.mpd/verif"
+    },
+    {
+      "id": "R3_MEMORY_STATUS_RESOLVES_REPO",
+      "status": "PASS",
+      "detail": "root=/root/dshProj/my-power-dsh/.mpd/memory/agents/agent-my-power-dsh"
+    },
+    {
+      "id": "R4_BOULDER_PLANS_LISTS_REPO_PLAN",
+      "status": "PASS",
+      "detail": "count=1 plans=[\"/root/dshProj/my-power-dsh/.mpd/plans/workmate-rename-delete-contract.md\"]"
+    },
+    {
+      "id": "R5_BOULDER_STATUS_FILE",
+      "status": "PASS",
+      "detail": "stateFile=/root/dshProj/my-power-dsh/.mpd/boulder.json"
+    },
+    {
+      "id": "S1_TWO_SESSIONS_RESOLVE_DIFFERENTLY",
+      "status": "PASS",
+      "detail": "blocked=/tmp/mpd-t8-toolcall-U9ssKu/ws-blocked/.mpd/memory/agents/agent-ws-blocked clean=/tmp/mpd-t8-toolcall-U9ssKu/ws-clean/.mpd/memory/agents/agent-ws-clean"
+    },
+    {
+      "id": "S2_OTHER_SESSION_DOES_NOT_SEE_REPO_PLAN",
+      "status": "PASS",
+      "detail": "count=0"
+    },
+    {
+      "id": "N1_NO_AGENT_FALLS_BACK_TO_HOST_CWD",
+      "status": "PASS",
+      "detail": "workspace=/root/dshProj hostCwd=/root/dshProj"
+    },
+    {
+      "id": "N2_WITHOUT_SESSION_REPO_PLAN_INVISIBLE",
+      "status": "PASS",
+      "detail": "count=0"
+    },
+    {
+      "id": "N3_WITHOUT_SESSION_RELATIVE_READ_FAILS_AT_HOST_CWD",
+      "status": "PASS",
+      "detail": "ok=false err=mpd-hashline: file not found: /root/dshProj/.mpd/hashline-files.json"
+    },
+    {
+      "id": "W1_INIT_CONTROLLED_FIXTURE",
+      "status": "PASS",
+      "detail": "ok=true err="
+    },
+    {
+      "id": "W2_CONTROLLED_BLOCKED_WS_REFUSES",
+      "status": "PASS",
+      "detail": "ok=false err=mpd_workmate: \"t8wm1\" / \"t8wm2\" is in use by team member(s) blocking-team/t8wm1, blocking-team/t8wm2 — archive or retire those teams and let running spawns finish first"
+    },
+    {
+      "id": "W3_CLEAN_WS_ALLOWS",
+      "status": "PASS",
+      "detail": "init=true rename=true name=t8wm4"
+    },
+    {
+      "id": "W4_UNRELATED_KEY_ALLOWED_IN_BLOCKED_WS",
+      "status": "PASS",
+      "detail": "ok=true err="
+    },
+    {
+      "id": "W5_INIT_LIVE_TEAM_KEY",
+      "status": "PASS",
+      "detail": "ok=true err="
+    },
+    {
+      "id": "W6_LIVE_REPO_TEAM_RECORD_BLOCKS_SOURCE_KEY",
+      "status": "PASS",
+      "detail": "ok=false err=mpd_workmate: \"lead\" / \"lead-x\" is in use by team member(s) agent-teams-sidebar-migration/Lead, mpd-default/Lead, mpd-default-19f64d11/Lead, mpd-default-1f285182/Lead, mpd-default-2d2445da/Lead, mpd-default-47c350bf/Lead, mpd-default-4a3d20e1/Lead, mpd-default-53380813/Lead, mpd-default-5b99df58/Lead, mpd-default-7332aba4/Lead, mpd-default-84e50f06/Lead, mpd-default-98620900/Lead, mpd-default-9b7de114/Lead, mpd-default-b550f267/Lead, mpd-default-c146a414/Lead, mpd-default-c2be0a8a/L"
+    },
+    {
+      "id": "W7_LIVE_REPO_TEAM_RECORD_BLOCKS_TARGET_KEY",
+      "status": "PASS",
+      "detail": "initFive=true ok=false err=mpd_workmate: \"t8wm5\" / \"architect\" is in use by team member(s) agent-teams-sidebar-migration/Architect, mpd-default/Architect, mpd-default-19f64d11/Architect, mpd-default-1f285182/Architect, mpd-default-2d2445da/Architect, mpd-default-47c350bf/Architect, mpd-default-4a3d20e1/Architect, mpd-default-53380813/Architect, mpd-default-5b99df58/Architect, mpd-default-7332aba4/Architect, mpd-default-84e50f06/Architect, mpd-default-98620900/Architect, mpd-default-9b7de114/Arch"
+    },
+    {
+      "id": "W8_OTHER_WS_DOES_NOT_SEE_REPO_TEAM",
+      "status": "PASS",
+      "detail": "ok=true err="
+    },
+    {
+      "id": "X1_TEAM_STATE_READ_ONLY",
+      "status": "PASS",
+      "detail": "{\"repoDelta\":{\"changed\":[],\"removed\":[],\"added\":[]},\"repoDeltaOutsideLiveTeam\":{\"changed\":[],\"removed\":[],\"added\":[]},\"blockedDelta\":{\"changed\":[],\"removed\":[],\"added\":[]},\"cleanDelta\":{\"changed\":[],\"removed\":[],\"added\":[]},\"attribution\":\"changes inside mpd-default-7332aba4/ belong to the LIVE agent-teams plugin of the running team, not to the workmate gate\"}"
+    }
+  ],
+  "workmateLibrary": [
+    ".archive",
+    "index.json",
+    "t8wm1",
+    "t8wm5"
+  ],
+  "failedChecks": [],
+  "passed": true
+}

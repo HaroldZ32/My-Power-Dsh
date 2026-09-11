@@ -1,0 +1,110 @@
+{
+  "task": "t7 — QA isolation: keep isolated QA boots from polluting the real workspace .mpd/team",
+  "attempt": 1,
+  "attemptId": "177ca114-ed0e-423b-9a72-a0d286b8f108",
+  "member": "Junior Engineer",
+  "timestampUtc": "20260911T054831Z",
+  "kind": "implementation",
+  "mechanism": {
+    "decision": "t1 (§7): isolation covers the WORKSPACE, not just the homes. Every workspace-scoped root follows the SESSION workspace (agent.session.header.cwd ?? process.cwd() — 8 sites in the adopted plugin — and dsh.workspaceRoot(exec) in ours, where the session cwd outranks DSH_WORKSPACE_ROOT), so only an explicit sandbox cwd on the dsh spawn and on every session/create payload isolates a case.",
+    "helperAdded": "skills/dsh-qa/scripts/lib/workspace-isolation.mjs — sandboxWorkspace(sandbox) + assertSessionsSandboxed(dshHome, sandboxRoot) + a port of the harness's own projectKey() encoder, with its own --self-test (entry-module guarded so importing cases never trigger it).",
+    "adoptedPluginModified": false,
+    "adoptedPluginNote": "packages/mpd-agent-teams-plugin/** was NOT touched (t4 owns that directory and the adopted cwd resolution is correct). Isolation was achieved entirely in the QA harness: skills/dsh-qa/scripts/** + the new lib helper. stateDir .mpd/team and the adapter precedence are unchanged.",
+    "pollutersFixed": [
+      "skills/dsh-qa/scripts/mcp-call.mjs: dsh spawn now cwd=sandboxWorkspace(sandbox); fixture copied into the sandbox ws (the prompt still says 'the current directory has tests/mcp-fixtures/sample.c'); assertSessionsSandboxed after each of the two runs; the B8 env MASK (MPD_AST_GREP_SG_PATH / MPD_CODEGRAPH_BIN pre-set to the checkout toolchain) was REMOVED.",
+      "skills/dsh-qa/scripts/dual-track-smoke.mjs: spawn cwd=sandboxWorkspace(sandbox) + assertion per track.",
+      "skills/dsh-qa/scripts/codegraph-smoke.mjs: spawn cwd=sandboxWorkspace(sandbox) (MPD_CODEGRAPH_PROJECT_CWD=PROJ kept for the codegraph exclusion precondition) + assertion.",
+      "skills/dsh-qa/scripts/preset-register.mjs: runDsh() gains a cwd argument; spawn cwd=sandboxWorkspace(sandbox) + assertion."
+    ],
+    "latentFixed": [
+      "skills/dsh-qa/scripts/preset-conformance.mjs: makeSandbox() creates ws; boot() uses cwd: sandbox.ws; createSession(cookie, presetId, cwd) sends the sandbox ws in the session/create payload; assertions on both the main and the control sandbox.",
+      "skills/dsh-qa/scripts/web-client-adapt.mjs: web boot cwd was ROOT -> now a sandbox ws (mkdtemp root); assertion against the case's DSH_HOME.",
+      "skills/dsh-qa/scripts/agent-teams-sidebar.mjs: web boot cwd was ROOT -> now sandboxWorkspace(sandbox); assertion recorded as a result step (offline fallback is trivially ok, real boot must pass)."
+    ],
+    "docsUpdated": [
+      "skills/dsh-qa/SKILL.md: Hard rule 1 now states that DSH_HOME/HOME do not isolate workspace state, names the resolution rule, the helper, the assertion and the leaky roots; the intro no longer claims 'isolated DSH_HOME' alone; the Run block mentions the sandbox workspace cwd.",
+      "AGENTS.md §7 only: same contract sentence added to the Isolation bullet. §6 and §12 were NOT touched (routed to t11)."
+    ]
+  },
+  "negativeControl": {
+    "realRun": {
+      "case": "skills/dsh-qa/scripts/preset-register.mjs (pre-fix code, launched from the repo so the spawn inherited the repo cwd)",
+      "result": "PASS (exit 0) AND created a REAL workspace-scoped record: .mpd/team/mpd-default-0bc1738e (captainSessionId session-13638987-a729-4757-b952-1c0983380daa, phase staged, 11 roster members, createdAt 2026-09-11T05:49:11Z)",
+      "before": "20 entries in <repo>/.mpd/team (team-before-negative-control.json)",
+      "after": "21 entries (team-after-prefix-dualtrack.json shows the pre-existing set + only mpd-wave-2 mutating, then team-before-postfix.json carries mpd-default-0bc1738e)",
+      "log": "negative-control-prefix-preset-register.log"
+    },
+    "assertionFalsifiability": {
+      "offlineProbe": "a dshHome containing sessions/--root-dshProj-my-power-dsh-- makes assertSessionsSandboxed THROW ('workspace isolation violated: --root-dshProj-my-power-dsh--'); a sandbox-keyed store passes",
+      "helperSelfTest": "node skills/dsh-qa/scripts/lib/workspace-isolation.mjs --self-test -> ok (projectKey vectors incl. the measured --root-dshProj-my-power-dsh-- key + repo-key rejection + sandbox-key acceptance)"
+    },
+    "repin": {
+      "before": "stale lock (365 / ea1f001f…) with the edited tree -> node scripts/verify-vendor.mjs exit 1: 'asset skills count drifted: 366 vs 365' + 'asset skills treeSha mismatch' (repin-negative-control.log)",
+      "after": "re-pinned lock (366 / 54155e41…) -> verify-vendor exit 0 PASS (repin-restored.log)"
+    }
+  },
+  "postFixRuns": [
+    {
+      "case": "preset-register",
+      "exit": 0,
+      "observed": "PASS (ok=true); sandbox session store contains exactly --tmp-mpd-dsh-qa-2WsdIf-ws-- and NO --root-dshProj-my-power-dsh-- key; 0 new <repo>/.mpd/team records (before=21 after=21)",
+      "log": "postfix-preset-register.log"
+    },
+    {
+      "case": "preset-conformance",
+      "exit": 0,
+      "observed": "PASS, all steps ok (mount proof + negative control). sessionHeader.log is now /tmp/mpd-preset-main-KdGEud/home/sessions/--tmp-mpd-preset-main-KdGEud-ws--/<id>/session.v3.jsonl.zstd — the same lane previously wrote the real repo key --root-dshProj-my-power-dsh-- (t1 §6)",
+      "log": "postfix-preset-conformance.log"
+    },
+    {
+      "case": "mcp-call",
+      "exit": 1,
+      "observed": "isolation assertion PASSED for both sandboxes (no throw) and no team record was created; the case's own call assertion still fails, for reasons outside this change and recorded honestly: (a) the staged dist/mpd-package (mtime 12:15) predates t6's launcher work and lacks packages/mpd-mcp-astgrep|codegraph/launch.mjs, so the MCP child dies MODULE_NOT_FOUND — the committed patch (already carrying launch.mjs) needs t11's re-pack; (b) the sandbox has no base-route credential -> 'MISSING_CREDENTIAL: no API key for provider route deepseek-official'. Neither is caused by removing the env mask, and the case now tells the truth instead of masking it.",
+      "log": "postfix-mcp-call.log"
+    },
+    {
+      "case": "llm-dual-track (dual-track-smoke)",
+      "exit": 1,
+      "observed": "0 new <repo>/.mpd/team records; the pre-existing boot failure (ERR_MODULE_NOT_FOUND @mpd-dsh/mpd — it boots the committed @mpd-dsh/mpd/... patch without staging the bundle) is unchanged and predates this task; the isolation assertion passed.",
+      "log": "postfix-dual-track.log"
+    }
+  ],
+  "casesHardenedButNotReRun": [
+    {
+      "case": "codegraph-smoke",
+      "why": "needs the .toolchain codegraph binary, a staged bundle install and a codegraph init; the same stale dist/mpd-package (missing launch.mjs) blocks the MCP call today. cwd + assertion are applied; t9 can re-run after t11 re-packs."
+    },
+    {
+      "case": "web-client-adapt",
+      "why": "real web boot against the stale staged bundle; cwd + assertion applied. Its offline --self-test (14 checks) passes."
+    },
+    {
+      "case": "agent-teams-sidebar",
+      "why": "real web boot; cwd + assertion applied, offline self-test (17 checks) passes and the real-boot lane reports mode=real-boot only when a boot happens."
+    }
+  ],
+  "vendorRepin": {
+    "assetsSkillsBefore": { "fileCount": 365, "treeSha": "ea1f001f6d6c49347816280aa125ece5873b8fa9fb4b181c9b6a079144824153" },
+    "assetsSkillsAfter": { "fileCount": 366, "treeSha": "54155e41f2965acc2b953085696f8be147f761d8fe596ca918ca47bf2ec98c12" },
+    "derivation": "node .qa-reloc/t7/derive-skills-lock.mjs skills — the fileCount/listFiles/readBytes/sorted-relpath+per-file-sha256 chain copied verbatim from scripts/verify-vendor.mjs (copy preserved here as derive-skills-lock.mjs).",
+    "note": "The pre-existing skills/dsh-qa/scripts/workmate-library.mjs modification (mtime 11:36, untouched by this task) was already inside the previous lock (verify-vendor passed at 13:47 with lock ea1f001f… while that file was already modified), so this re-pin accounts only for this task's files."
+  },
+  "gates": {
+    "verifyVendor": "exit 0 PASS (skills 366 files OK, _deps 635 files OK, 4 dist assets OK)",
+    "testQa": "exit 0 — all 25 case self-tests pass (test-qa-final.log)",
+    "editedCaseSelfTests": "mcp-call, dual-track-smoke, codegraph-smoke, preset-register, preset-conformance, web-client-adapt, agent-teams-sidebar, lib/workspace-isolation.mjs — all exit 0"
+  },
+  "observedState": {
+    "newRealRecordFromNegativeControl": ".mpd/team/mpd-default-0bc1738e",
+    "leftInPlace": true,
+    "why": "t1 §7: the accumulated mpd-default-* records are real workspace state (user data); QA must not auto-delete them. The captain/user should archive or retire them in the AgentTeams tab at integration time.",
+    "recordCount": "20 directories at t7 start -> 21 after the single negative-control run; unchanged by every post-fix run"
+  },
+  "outOfScopeUntouched": [
+    "packages/mpd-agent-teams-plugin/**",
+    "packages/mpd-bundle/cordis.patch.yml",
+    "packages/mpd-codegraph-plugin/**",
+    "packages/mpd-verif-plugin/**",
+    "AGENTS.md §6 and §12 (routed to t11)"
+  ]
+}

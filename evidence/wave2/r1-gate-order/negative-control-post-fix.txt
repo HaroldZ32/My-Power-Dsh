@@ -1,0 +1,12 @@
+bun test v1.3.14 (0d9b296a)
+
+test/regress.test.ts:
+(pass) R1 ordering: with NO session the iron gate refuses BEFORE any work-dir creation (blocked work root) [2.86ms]
+(pass) R1 ordering: a session-scoped call passes the gate, stops at backend resolution, and creates no work dir [4.99ms]
+(pass) R1 ordering: the vcs lane also refuses before any work-dir creation [0.37ms]
+
+ 3 pass
+ 6 filtered out
+ 0 fail
+ 7 expect() calls
+Ran 3 tests across 1 file. [47.00ms]

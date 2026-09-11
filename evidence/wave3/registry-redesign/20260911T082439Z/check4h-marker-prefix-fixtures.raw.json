@@ -1,0 +1,69 @@
+{
+  "driver": "check4h-marker-prefix-fixtures",
+  "scenario": "one fixture per colliding marker pair, both dangling shapes, plus the intact control",
+  "cases": [
+    {
+      "case": "scope-overlap-begin",
+      "check_exit": 1,
+      "write_exit": 0,
+      "post_exit": 0,
+      "missing_diagnostic": true,
+      "half_open_wording": false,
+      "diff_lines": 0,
+      "byte_identical": true
+    },
+    {
+      "case": "scope-overlap-end",
+      "check_exit": 1,
+      "write_exit": 0,
+      "post_exit": 0,
+      "missing_diagnostic": true,
+      "half_open_wording": false,
+      "diff_lines": 0,
+      "byte_identical": true
+    },
+    {
+      "case": "repair-scope-begin",
+      "check_exit": 1,
+      "write_exit": 0,
+      "post_exit": 0,
+      "missing_diagnostic": true,
+      "half_open_wording": false,
+      "diff_lines": 0,
+      "byte_identical": true
+    },
+    {
+      "case": "repair-scope-end",
+      "check_exit": 1,
+      "write_exit": 0,
+      "post_exit": 0,
+      "missing_diagnostic": true,
+      "half_open_wording": false,
+      "diff_lines": 0,
+      "byte_identical": true
+    },
+    {
+      "case": "task-contract-begin",
+      "check_exit": 1,
+      "write_exit": 0,
+      "post_exit": 0,
+      "missing_diagnostic": true,
+      "half_open_wording": false,
+      "diff_lines": 0,
+      "byte_identical": true
+    },
+    {
+      "case": "task-contract-end",
+      "check_exit": 1,
+      "write_exit": 0,
+      "post_exit": 0,
+      "missing_diagnostic": true,
+      "half_open_wording": false,
+      "diff_lines": 0,
+      "byte_identical": true
+    }
+  ],
+  "control_spans_match_grep": 3,
+  "control_check_exit": 0,
+  "passed": true
+}

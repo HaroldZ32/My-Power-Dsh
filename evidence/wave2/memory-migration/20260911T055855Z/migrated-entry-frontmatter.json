@@ -1,0 +1,37 @@
+[
+  {
+    "file": "agentteams-gui-dsh-better-sidebar-agent-teams-si-mtuviju2.md",
+    "kind": "fact",
+    "description": "agent-teams 的对话内卡片+右上浮窗迁到 better-sidebar tab 的可行性侦察结论、用户拍板的四项决策、以及给实现用的关键机制事实"
+  },
+  {
+    "file": "agentteams-gui-dsh-better-sidebar-mtuyguxk.md",
+    "kind": "reflection",
+    "description": "agent-teams GUI 迁入 better-sidebar 的交付要点、agent-teams 团队在本环境不派活的教训、以及可复用的 better-sidebar 集成事实"
+  },
+  {
+    "file": "agentteams-scheduler-stall-symptoms-salvage-and--mtva0wbm.md",
+    "kind": "note",
+    "description": "Runbook for the AgentTeams scheduler stall: symptoms, what does and does not revive it, how to rebuild the team without losing deliverables, and the plan-authoring traps hit while rebuilding."
+  },
+  {
+    "file": "live-tool-registry-vs-patch-rows-how-to-test-too-mtv8xwzy.md",
+    "kind": "fact",
+    "description": "Lesson: a patch row or installed package is not proof of live tool registration; the restrict() error's known-tools list is ground truth. Both str_replace_editor and apply_patch must leave READONLY_DENY."
+  },
+  {
+    "file": "six-low-findings-closed-and-a-falsifiability-lan-mtw8i46k.md",
+    "kind": "fact",
+    "description": "Record the low-findings pass and the harness falsifiability trap"
+  },
+  {
+    "file": "workmate-rename-delete-agreed-requirements-2026--mtv8l9rl.md",
+    "kind": "note",
+    "description": "User-approved requirements for adding workmate rename + delete to mpd-workmate-plugin, including five binding decisions and the discovered read-only deny-list defect."
+  },
+  {
+    "file": "workmate-rename-delete-delivery-closed-two-traps-mtvngffj.md",
+    "kind": "fact",
+    "description": "Closed the workmate rename/delete + read-only deny-list delivery; recorded the output-schema 'ok' trap and the cross-lineage mtime trap as reusable lessons."
+  }
+]

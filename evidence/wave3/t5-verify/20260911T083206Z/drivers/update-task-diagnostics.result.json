@@ -1,0 +1,66 @@
+{
+  "driver": "update-task-diagnostics",
+  "repo": "/root/dshProj/my-power-dsh",
+  "measuredAt": "2026-09-11T08:34:16.886Z",
+  "results": [
+    {
+      "scenario": "omitted-attempt_id",
+      "outcome": {
+        "ok": false,
+        "message": "attempt_id is required for task t2: call agent_teams_claim_task to read the current attempt_id and repeat this update with it"
+      },
+      "recordUnchanged": true,
+      "saysRequired": true,
+      "namesClaimTool": true,
+      "saysStale": false,
+      "saysStopWork": false,
+      "passed": true
+    },
+    {
+      "scenario": "wrong-attempt_id",
+      "message": "stale attempt for task t2: expected the current attempt_id; stop work and request fresh assignment",
+      "recordUnchanged": true,
+      "saysStale": true,
+      "saysRequired": false,
+      "passed": true
+    },
+    {
+      "scenario": "omitted-status",
+      "message": "invalid arguments: missing required property \"status\"",
+      "recordUnchanged": true,
+      "complainsAboutStatus": true,
+      "passed": true
+    },
+    {
+      "scenario": "contract-and-happy-path",
+      "registeredTools": 14,
+      "requiredList": [
+        "task_id",
+        "status"
+      ],
+      "statusProperty": {
+        "type": "string",
+        "description": "New status (in_progress, completed, failed, cancelled). REQUIRED: a payload-only update repeats the current status; an omitted status cannot silently leave the task unchanged.",
+        "enum": [
+          "in_progress",
+          "completed",
+          "failed",
+          "cancelled"
+        ]
+      },
+      "statusRequiredInSchema": true,
+      "descriptionMentionsRequired": true,
+      "commandShapedHint": true,
+      "happyPath": {
+        "status": "completed",
+        "persisted": {
+          "status": "completed",
+          "output": "done",
+          "attemptId": "attempt-live-1"
+        }
+      },
+      "passed": true
+    }
+  ],
+  "passed": true
+}

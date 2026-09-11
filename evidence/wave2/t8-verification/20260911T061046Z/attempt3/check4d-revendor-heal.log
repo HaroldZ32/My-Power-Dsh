@@ -1,0 +1,28 @@
+=== re-vendor heal simulation (attempt 2) ===
+sandbox=/tmp/mpd-t8-heal-fw4fxQ
+re-vendored quality-gates.js = HEAD revision (98680b1:packages/mpd-agent-teams-plugin/lib/quality-gates.js)
+input sha256 = 4907ff10a45351af8080b0a6203239012e25028c8175bd7588d31a7aa7481b57
+
+--- --check before healing (verify-only refuses) ---
+[patch-agent-teams-fixes] FAIL: delta "mpd-delta scope-glob" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js
+exit=1
+
+--- --write (what vendor-agent-teams.mjs runs: applyAgentTeamsFixes({write:true})) ---
+[patch-agent-teams-fixes] FAIL: refusing to heal delta "mpd-delta scope-glob" into packages/mpd-agent-teams-plugin/lib/quality-gates.js (insertion): it declares "pathMatchesScope" but that declaration still exists OUTSIDE any region at line 102 — the file was re-materialized with the OLD body; remove the old declaration (or restore the marked file) before healing, otherwise the healed module fails to import
+exit=1
+
+--- --check after the refused heal ---
+[patch-agent-teams-fixes] FAIL: delta "mpd-delta scope-glob" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js
+exit=1
+
+--- did the refused pass change the file? ---
+sha256 after = 4907ff10a45351af8080b0a6203239012e25028c8175bd7588d31a7aa7481b57
+file-unchanged=yes
+
+--- declared pathMatchesScope occurrences in the (refused) file ---
+1
+
+--- refusal diagnostic, verbatim ---
+[patch-agent-teams-fixes] FAIL: refusing to heal delta "mpd-delta scope-glob" into packages/mpd-agent-teams-plugin/lib/quality-gates.js (insertion): it declares "pathMatchesScope" but that declaration still exists OUTSIDE any region at line 102 — the file was re-materialized with the OLD body; remove the old declaration (or restore the marked file) before healing, otherwise the healed module fails to import
+input_sha=4907ff10a45351af8080b0a6203239012e25028c8175bd7588d31a7aa7481b57
+output_sha=4907ff10a45351af8080b0a6203239012e25028c8175bd7588d31a7aa7481b57

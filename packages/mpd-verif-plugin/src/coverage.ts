@@ -57,9 +57,9 @@ function resolveVerilatorCoverage(): { binary: string; source: string } {
   throw new VerifError("VERIF_E_NO_BACKEND", "verilator_coverage not resolvable", VERILATOR_COVERAGE_HINT)
 }
 
-export function verifCoverage(a: VerifCoverageArgs): VerifCoverageResult {
-  const scanRoot = a.dir ?? workDir()
-  const reportDir = a.reportDir ?? join(workDir(), "cov_report")
+export function verifCoverage(a: VerifCoverageArgs, exec?: any): VerifCoverageResult {
+  const scanRoot = a.dir ?? workDir(exec)
+  const reportDir = a.reportDir ?? join(workDir(exec), "cov_report")
   const timeoutMs = (a.timeoutSec ?? DEFAULT_TIMEOUT_MS / 1000) * 1000
   mkdirSync(reportDir, { recursive: true })
 

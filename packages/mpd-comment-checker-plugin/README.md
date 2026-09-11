@@ -26,6 +26,13 @@ No manual step: installing the bundle brings `@code-yeongyu/comment-checker` as 
 optionalDependency (~51MB). Set `autoCheck: true` in the plugin config to enable the
 post-edit hook (off by default).
 
+When that optional dependency is absent (a local checkout), provision the same pinned
+binary into the repo-local toolchain with `node scripts/install-profile.mjs
+--with-comment-checker` (or `npm install --prefix .toolchain --no-save
+@code-yeongyu/comment-checker@0.8.0`); the plugin then falls back to
+`.toolchain/node_modules/@code-yeongyu/comment-checker/vendor/<platform>/comment-checker`.
+Set `MPD_DSH_COMMENT_CHECKER_BIN` to an absolute path to override the resolution order.
+
 ## Build / test
 
 ```sh

@@ -1,0 +1,57 @@
+{
+  "task": "t2 — B9 legacy-installer mpd-verif row parity + falsifiable row-parity guard",
+  "attempt": 1,
+  "attemptId": "48d3fb1c-838f-4267-ab99-866657c631bc",
+  "member": "Junior Engineer",
+  "timestampUtc": "20260911T054527Z",
+  "defect": "scripts/install-profile.mjs declared 21 row ids; packages/mpd-bundle/cordis.patch.yml declares 22 insert rows. The only difference was mpd-verif, so any install-profile install mounted none of the eight mpd_verif_* tools while --dump-config still looked composed.",
+  "changedPaths": [
+    "scripts/install-profile.mjs",
+    "scripts/verify-rows-parity.mjs",
+    "evidence/wave2/b9-installer-parity/20260911T054527Z/"
+  ],
+  "installerRowAdded": {
+    "id": "mpd-verif",
+    "name": "<repo>/packages/mpd-verif-plugin/dist/index.js",
+    "config": {},
+    "patchRowMirrored": {
+      "id": "mpd-verif",
+      "name": "@mpd-dsh/mpd/packages/mpd-verif-plugin/dist/index.js",
+      "config": null,
+      "source": "packages/mpd-bundle/cordis.patch.yml:188-189 (leading comments 182-187)"
+    },
+    "note": "Installer uses its standard repo-absolute path form; the patch uses the bundle-relative specifier. Both resolve to the same plugin entry (packages/mpd-verif-plugin/dist/index.js) and both carry no config, matching the patch row verbatim."
+  },
+  "guard": {
+    "path": "scripts/verify-rows-parity.mjs",
+    "mechanism": "Runs `node scripts/install-profile.mjs --dry-run --dsh-home <mkdtemp>` and parses the row ids from the printed patch (the exact bytes a legacy install writes), then parses the bundpatch's `- insert:` blocks (4-space-indented `- id:` entries; commented-out rows and the column-0 agent-presets id-target excluded). Compares the two id sets in both directions and also rejects duplicate ids. Exit 0 = parity, exit 1 = drift listed by direction.",
+    "notUnderSkills": "Lives in scripts/ so skills/** (VENDOR_LOCK-fingerprinted) is never touched.",
+    "packageJson": "NOT changed: package.json is outside this change's in-scope paths. Gate story: run `node scripts/verify-rows-parity.mjs` alongside `node scripts/verify-vendor.mjs`; the integration step may add `\"verify:rows\": \"node scripts/verify-rows-parity.mjs\"` to package.json scripts."
+  },
+  "commands": [
+    { "command": "node scripts/verify-rows-parity.mjs", "exitCode": 0, "log": "parity-ok.log", "observed": "[verify-rows-parity] ok: 22 row ids match the bundle patch insert list (mpd-verif included)" },
+    { "command": "node .qa-reloc/b9-negctl/remove-verif-row.mjs && node scripts/verify-rows-parity.mjs", "exitCode": 1, "log": "parity-negative-control.log", "observed": "FAIL - installer vs bundle patch row ids differ; bundle patch inserts (22) vs installer rows (21); MISSING from scripts/install-profile.mjs: mpd-verif" },
+    { "command": "restore installer from backup + sha256sum -c + node scripts/verify-rows-parity.mjs", "exitCode": 0, "log": "parity-restored.log", "observed": "scripts/install-profile.mjs: OK (sha256 unchanged); guard ok again" },
+    { "command": "node scripts/install-profile.mjs --self-test", "exitCode": 0, "log": "installer-self-test.log", "observed": "[install-profile self-test] ok: path model + row set + agent-teams main-code path + profiles.mpd + web-compat entry + id-target render verified" },
+    { "command": "node scripts/install-profile.mjs --dry-run", "exitCode": 0, "log": "installer-dry-run.log", "observed": "rows about to be written to home patch: 22 (id-target=0, insert=22); line 107 `- id: mpd-verif`, line 108 its absolute entry path" },
+    { "command": "node scripts/verify-vendor.mjs", "exitCode": 0, "log": "verify-vendor.log", "observed": "[verify-vendor] PASS" },
+    { "command": "cd /tmp && node /root/dshProj/my-power-dsh/scripts/verify-rows-parity.mjs", "exitCode": 0, "log": "parity-cwd-independent.log", "observed": "guard is cwd-independent (resolves repoRoot from import.meta.url)" }
+  ],
+  "negativeControl": {
+    "procedure": "cp scripts/install-profile.mjs .qa-reloc/b9-negctl/install-profile.mjs.bak; node .qa-reloc/b9-negctl/remove-verif-row.mjs (removes the row block from the installed copy only); node scripts/verify-rows-parity.mjs; cp backup back; sha256sum -c",
+    "result": "guard exited 1 and named `MISSING from scripts/install-profile.mjs: mpd-verif`; after restore the sha256 of scripts/install-profile.mjs matched the pre-control value and the guard exited 0",
+    "helper": "negative-control-helper.mjs (copy of the gitignored .qa-reloc helper)",
+    "scratch": ".qa-reloc/b9-negctl/ (gitignored via .gitignore:3)"
+  },
+  "skillsScope": {
+    "modifiedByThisTask": [],
+    "preExistingModifiedEntry": "skills/dsh-qa/scripts/workmate-library.mjs (mtime 2026-09-11 11:36:38 +0800; present in `git status` before this task started, untouched here — this task's edits are scripts/install-profile.mjs 13:45:37 and scripts/verify-rows-parity.mjs 13:45:17)",
+    "verifyVendor": "exits 0 — the skills fingerprint is unaffected by this task"
+  },
+  "outOfScopeUntouched": [
+    "skills/**",
+    "packages/mpd-bundle/cordis.patch.yml",
+    "VENDOR_LOCK.json",
+    "package.json"
+  ]
+}

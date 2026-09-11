@@ -1,0 +1,3 @@
+efd078291817cf5396ef10a1477fde33fd71ec72778ff013db4685992df6f3ea  packages/mpd-verif-plugin/src/regress.ts
+d0aee5c79476dfe92ccb1747da6292ea0802a6fdc7d2319735defa8dcabd120e  packages/mpd-verif-plugin/dist/index.js
+e9705e1baf072e8d7192c3bbcd6092881ba7d52eccad9d8a559c0c0ac2f58cb5  packages/mpd-verif-plugin/test/regress.test.ts

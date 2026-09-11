@@ -1,0 +1,5 @@
+[t14-r1] no-session verifRegress code=EROFS
+[t14-r1] message=EROFS: read-only file system, mkdir '/root/dshProj/.mpd/verif'
+[t14-r1] hint=
+[t14-r1] is_VERIF_E_NO_VENV=false
+[t14-r1] mentions_host_workdir=true

@@ -1,0 +1,98 @@
+{
+  "task": "t8",
+  "attempt": 2,
+  "attempt_id": "ab227500-f5bf-4c71-a7a4-992c001d1863",
+  "executed_by": "Lead (independent verification; no implementation performed by this task)",
+  "verdict": "failed",
+  "verdict_reason": "F1, F2 and F3 are closed and every other criterion passes on re-derived raw output, but the clean heal is no longer byte-faithful: after the t13 repair, stripping every region from our own file and healing produces a file that differs from the canonical adoption by 22 diff lines while BOTH guard passes exit 0. The `mpd-delta create-contract-gate` region is inserted at its ANCHOR's indentation (4 spaces) instead of its canonical block indentation (8 spaces), which moves the gate outside `if (WRITE_KINDS.includes(kind)) {` and was invisible to the repair's own clean-heal test.",
+  "tracked_revision": {
+    "packages/mpd-agent-teams-plugin/lib/quality-gates.js": "d808e8a69a423e50f02249887d98b13b8e7dab38f7c7501e61b918c116557464",
+    "packages/mpd-agent-teams-plugin/lib/tools.js": "fd106fdbf12a7379672452a321b79bd5156990454b233617621338821deb387c",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "f71ac0815898954ded40dcd1ffc6e0988d73941512beb3b588e17dc63e41d830",
+    "scripts/patch-agent-teams-fixes.mjs": "94cb50c589bc8ee772e352ab7b0d628f11d6092e6e29d47a1c1c2cbae1323052",
+    "scripts/vendor-agent-teams.mjs": "0c6d097afaead13c3e2ab62e60a49fb94f348adc84cc5dd8e77727b7289b5237"
+  },
+  "host_restart_required": "Yes — no hot reload: the live session still runs the pre-fix matcher, so every module-level claim is a direct import (pre-fix from git HEAD 98680b1f, post-fix from the working tree) plus a mounting boot.",
+  "checks": [
+    {
+      "id": "C1",
+      "criterion": "inScope `**` reproduced PRE-FIX and honoured POST-FIX",
+      "result": "passed",
+      "raw": ["check1-prefix.raw.json", "check1-postfix.raw.json"],
+      "detail": "Identical to attempt 1 on the repaired tree: pre-fix `pathMatchesScope('packages/foo/test/a.test.mjs','packages/foo/test/**')=false`, classify `undeclared`, completion `ok=false`; post-fix `true`/`in_scope`/`ok=true`; negative controls stable (srcx/a.ts~src/**=false, src/a.md~**/*.ts=false, lib/a.js.map~lib/a.js=false, packages/foo/lib stays out_of_scope) and an undeclared path stays rejected; real wave-1 t7 replay flips from `ok=false` (2 uncovered src paths) to `ok=true`."
+    },
+    {
+      "id": "C2",
+      "criterion": "Contract contradiction reproduced pre-fix, impossible post-fix, and the required edit actually permitted (F1)",
+      "result": "passed",
+      "raw": ["check2-prefix.raw.json", "check2-postfix.raw.json", "check2-sweep-partition.raw.json"],
+      "detail": "Pre-fix still reproduces the recorded t13 contract byte-for-byte with AGENTS.md in BOTH lists, create gate ok=true, 24/60 sweep contradictions. POST-FIX, on the SAME real archived inputs (mpd-default-7332aba4 t7+t10): generated scope contradiction-free; demandedButNotInScope=[]; all seven required finding files classify in_scope (AGENTS.md included); and the falsifiability control holds — every prohibition no finding requires ({presets/**, packages/mpd-bundle/cordis.patch.yml, VENDOR_LOCK.json, README.md, README.zh-CN.md}) is still forbidden, so nothing was over-carved. Sweep partition: of 36 combinations whose SOURCE contract is satisfiable, 0 generated scopes are contradictory; the only 6 contradictory generated scopes all inherit a source that is itself unsatisfiable (inScope and outOfScope overlapping), which the create-time gate now refuses."
+    },
+    {
+      "id": "C3",
+      "criterion": "LIVE running task's contract readable and field-by-field identical",
+      "result": "passed",
+      "raw": ["check3-t8-captain.raw.json", "check3-t13-captain.raw.json"],
+      "detail": "REAL registration against a byte-identical copy of the live record: 14/14 tools incl. agent_teams_task_contract; t8 (in_progress, mine) and t13 (just completed) each report 13/13 compared fields identical to the durable record; member read OK; unknown id and blank id refused; live team.json and the sandbox copy byte-identical after every read."
+    },
+    {
+      "id": "C4",
+      "criterion": "Guard failure modes exercised with non-zero exits, then restored",
+      "result": "passed",
+      "raw": ["check4-guard.raw.json", "check4-guard.log"],
+      "detail": "Real tree --check exit 0 ('already applied: 9 mpd delta region(s) across 2 adopted file(s)'); region stripped -> exit 1 naming the delta; region + anchor removed -> --write exit 1 naming the lost anchor; region body edited (driver now discovers the target region instead of hard-coding scope-glob-core) -> exit 1 naming the region and line; pristine restore -> exit 0. Live tree sha256 unchanged."
+    },
+    {
+      "id": "C4b",
+      "criterion": "No executable added line outside a registered region (F2)",
+      "result": "passed",
+      "raw": ["check4b-region-coverage.raw.json"],
+      "detail": "9 registered regions (7 in quality-gates.js, 2 in tools.js); git diff --unified=0 HEAD maps 212 added lines, of which 0 fall outside a region span (attempt 1: 17 outside). The three groups the verifier named are now regions: scope-overlap L244-262, scope-overlap-normalize L263-269, create-contract-gate L417-426."
+    },
+    {
+      "id": "C4d",
+      "criterion": "The re-vendor heal path refuses loudly (F3)",
+      "result": "passed",
+      "raw": ["check4d-revendor-heal.raw.json", "check4d-revendor-heal.log"],
+      "detail": "Hand re-materialize simulation (upstream quality-gates.js + our registry): --check exit 1; --write exit 1 with 'refusing to heal delta \"mpd-delta scope-glob\" ... it declares \"pathMatchesScope\" but that declaration still exists OUTSIDE any region at line 102 - the file was re-materialized with the OLD body; ... otherwise the healed module fails to import'; the refused file is byte-identical to its input (sha256 unchanged, exactly one pathMatchesScope declaration)."
+    },
+    {
+      "id": "C4e",
+      "criterion": "Clean heal still restores the canonical file byte-for-byte",
+      "result": "failed",
+      "raw": ["check4e-heal-fidelity.raw.json", "check4e-heal-fidelity.log"],
+      "detail": "Strip EVERY region (markers + bodies) from our own quality-gates.js, then --write: exit 0, next --check exit 0, all 9 regions reported applied - but the healed file differs from the canonical adoption by 22 diff lines: `mpd-delta create-contract-gate` is re-inserted at its ANCHOR's indentation (4 spaces; anchor \"    if (kind === 'review') {\") instead of its canonical block indentation (8 spaces, registered block base \"        \"), so the gate lands outside `if (WRITE_KINDS.includes(kind)) {`. The healed module still imports and still refuses contradictions, so the divergence is silent. The repair's own test 'a clean (region-carrying) tree still heals successfully' asserts only status/insertion-count/one-declaration, never byte identity."
+    },
+    {
+      "id": "C5",
+      "criterion": "No regression: suite green + mounting boot with 0 apply-crash signatures",
+      "result": "passed",
+      "raw": ["check5-plugin-suite.log", "check5-mount.raw.json", "check5-mount.log"],
+      "detail": "bun test packages/mpd-agent-teams-plugin: 87 tests, 0 fail, 343 expect() calls, exit 0. Isolated DSH_HOME+HOME+workspace install-and-boot with a registration probe: 0 apply-crash signatures, probe DONE, 14/14 agent-teams tools incl. agent_teams_task_contract=REGISTERED, exit 124 (alive at the 90s cap). Isolation is now ATTRIBUTED: the only real-workspace record in the window (mpd-default-587132ea) belongs to captain session session-8954c880-..., not to this boot (0 attributable), and there are 0 real-workspace session keys in the sandbox. No --dump-config cited as load evidence."
+    }
+  ],
+  "t4_acceptance_map": [
+    "1. inScope glob honoured — PASS (C1)",
+    "2. Contract generation cannot list a path in both lists; defect reproduced first; falsifiable — PASS (C2: exact real-input replay + 0/36 satisfiable-source combos + create gate refuses + carve-outs legal; F1's outcome is now prevented, not merely narrowed)",
+    "3. Running task's contract readable and matching — PASS (C3)",
+    "4. Every adopted-code change marked LOCAL ADAPTATION at the point of change — PASS (C4b: 0 added lines outside 9 regions)",
+    "5. Changes survive a vendor refresh; guard failure mode exercised — PARTIAL: the re-materialize refusal is correct and loud (C4d) and every failure mode exits non-zero (C4), but the clean heal is NOT byte-faithful (C4e/F4), i.e. a heal can silently rewrite a region's placement",
+    "6. No regression — PASS (C5)",
+    "7. Wave-1 defect cited — PASS (unchanged from attempt 1: t4 output + evidence cite t3/t4/t7/t13 and the t13 contradiction)"
+  ],
+  "findings": [
+    {
+      "id": "F4-clean-heal-not-byte-faithful",
+      "severity": "medium",
+      "file": "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+      "line": 1,
+      "problem": "The new `mpd-delta create-contract-gate` region is registered with a block indented 8 spaces but an anchor indented 4 spaces (`\"    if (kind === 'review') {\"`). `applyAgentTeamsFixes` inserts a missing region at the ANCHOR's indentation, so healing a stripped file places the gate at 4 spaces - outside `if (WRITE_KINDS.includes(kind)) {` - and the file no longer matches the canonical adoption (22 diff lines). Both passes still exit 0 (`--write` then `--check`), and the repair's clean-heal test asserts only status/insertion-count/declaration-count, so the divergence is silent and untested. This breaks the F3 success condition the captain stated for attempt 2 ('clean re-materialize still heals byte-identically') and the 'cannot silently ... rewrite them' half of t4 acceptance 5.",
+      "requiredFix": "Make the clean heal byte-faithful for this region: either give `create-contract-gate` an ANCHOR with the region's own indentation (e.g. the unique 8-space line `        if (!nonemptyStringList(input.verify)) {` inside the WRITE_KINDS block) or teach the applier to insert at the registered block's canonical indentation when it is deeper than the anchor's, then extend the clean-heal test to strip every region, heal, and assert the healed file is byte-identical to the canonical file (readFileSync comparison), not merely `already-applied`."
+    }
+  ],
+  "notes": [
+    "The live tree was never mutated: guard exercises run on sha256-identical sandbox copies; check3 reads a copy of the live record and confirms both the live file and the copy are byte-identical after the read.",
+    "Attempt 1's driver expectations were NOT transferable and were updated, not reported as regressions: check4's S5 now discovers its target region from the file (scope-glob-core was merged into scope-glob), and check5's workspace counter now attributes records to this boot's sessions instead of counting everyone's (the session-start team policy auto-provisions records for concurrent sessions).",
+    "Still required: a dsh restart before any of these adopted-tooling fixes act on a live session (no module hot reload)."
+  ]
+}

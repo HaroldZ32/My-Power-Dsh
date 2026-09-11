@@ -1,0 +1,33 @@
+{
+  "ok": true,
+  "steps": {
+    "unit tests vs PRE-FIX src (negative control)": {
+      "ok": true,
+      "evidence": "4 of 5 new tests fail; the deep scanner names the lossy keys value.licenseHint and value.filelistPath/value.outBinary"
+    },
+    "unit tests vs FIXED src (positive)": {
+      "ok": true,
+      "evidence": "74 pass / 0 fail (lossless.test.ts 5 pass)"
+    },
+    "mounted session, FIXED dist: mpd_verif_backends {iverilog, all, vcs}": {
+      "ok": true,
+      "evidence": "all three selectors returned rendered results; the string 'not lossless JSON' is absent from the whole log"
+    },
+    "mounted session, FIXED dist: mpd_verif_lint + mpd_verif_compile {iverilog}": {
+      "ok": true,
+      "evidence": "authorized compile.ts extension verified through the host boundary on the open-source lane"
+    },
+    "mounted session, PRE-FIX dist (negative control)": {
+      "ok": true,
+      "evidence": "same mounted path rejects the pre-fix artifact exactly as the task described (iverilog+all red, vcs green)"
+    },
+    "dist rebuilt from fixed source": {
+      "ok": true,
+      "evidence": "dist carries ': null' for licenseHint and the conditional spreads in verifCompile"
+    },
+    "dist restore is byte-identical to the fixed backup": {
+      "ok": true,
+      "evidence": "sha256 159ac075987876b5df9fc3e75d1bbf87ffecb23de36c7925795e9318b271d7eb"
+    }
+  }
+}

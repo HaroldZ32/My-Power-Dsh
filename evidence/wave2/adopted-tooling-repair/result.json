@@ -1,0 +1,99 @@
+{
+  "task": "t13",
+  "title": "Repair t4's durability gap: carve repair scope out of the source outOfScope, register the 17 unmarked lines, and make the vendor heal path refuse a double declaration",
+  "attempt": 1,
+  "attempt_id": "63cb19fe-bf18-4dad-8c9d-0f2b9070bd82",
+  "executed_by": "Senior Engineer",
+  "verdict": "completed",
+  "host_restart_required": "Yes — no module hot reload in this harness: the live session keeps the PRE-FIX repairScopeFromFindings/matcher until dsh restarts. Every semantic claim here is proven by direct module import or by the guard CLI, never by a live completion gate.",
+  "findings_repaired": {
+    "F1": {
+      "status": "closed",
+      "pre_fix": "repairScopeFromFindings dropped a finding's file from inScope when the source outOfScope covered it but KEPT the prohibition, so the required edit stayed out_of_scope (the t13 shape)",
+      "fix": "the covering patterns are carved out of the generated outOfScope and the file is admitted to inScope; unrelated prohibitions preserved; admissions deduplicated",
+      "docs_defect_closed": "the repairScopeFromFindings doc comment now describes the carve-out, and the self-fix test comment/assertion pair that contradicted itself was corrected to assert in_scope",
+      "real_inputs": "team mpd-default-7332aba4 t7 + t10 (AGENTS.md required by t10 F3, forbidden by t7)",
+      "evidence": [
+        "f1/real-inputs-replay.log",
+        "f2/self-fix-suite.log"
+      ]
+    },
+    "F2": {
+      "status": "closed",
+      "fix": "the three named groups are inside registered regions (scope-overlap, scope-overlap-normalize, create-contract-gate) and the whole pathMatchesScope function now lives inside scope-glob; lib/mpd-deltas.js regenerated to 9 regions",
+      "guard_defects_also_closed": [
+        "writeRegistry could pick an anchor living inside another region (the old scope-glob anchor was a helper declared by scope-glob-core), so a dropped region took its own anchor with it; anchors are now selected outside every region span",
+        "--write-registry no longer runs a same-process verification, which could only see the pre-write registry"
+      ],
+      "evidence": [
+        "f2/region-inventory.log",
+        "f2/self-fix-suite.log"
+      ]
+    },
+    "F3": {
+      "status": "closed",
+      "pre_fix": "applyAgentTeamsFixes({write:true}) inserted a region before its anchor without noticing the file still carried the declaration the region replaces; --write and the next --check both exited 0 while the healed file had two `export function pathMatchesScope` and failed to import",
+      "fix": "insertion refuses when a module-scope name the region declares is still declared OUTSIDE every existing region; the healed file is re-validated (each region exactly once, no region-declared name declared outside it); vendor-agent-teams.mjs turns the refusal into exit 1",
+      "verifier_scenario": "upstream quality-gates.js + our tools.js/mpd-deltas.js, then the heal path",
+      "post_fix": "write exit 1 naming pathMatchesScope and line 102; check exit 1; refused file byte-identical to the input with exactly 1 declaration; a clean re-materialize still heals and verifies byte-identical",
+      "evidence": [
+        "f3/hand-rematerialize.log",
+        "f2/self-fix-suite.log"
+      ]
+    }
+  },
+  "gates": [
+    {
+      "command": "bun test packages/mpd-agent-teams-plugin",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "87 pass / 0 fail — gates/plugin-suite.log"
+    },
+    {
+      "command": "bun test packages",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "340 pass / 0 fail across 38 files — gates/full-suite.log"
+    },
+    {
+      "command": "bun run typecheck",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "tsgo --noEmit clean — gates/typecheck.log"
+    },
+    {
+      "command": "the t8 driver in evidence/wave2/t8-verification/20260911T061046Z/ (F1 real-inputs replay, F2 delta-region sweep, F3 double-declaration scenario)",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "F1 replay reproduces the archived t7+t10 inputs and classifies AGENTS.md in_scope (f1/real-inputs-replay.log); the F2 LCS sweep reports zero executable lines outside a region (f2/self-fix-suite.log); the F3 scenario refuses with a named cause (f3/hand-rematerialize.log). Driver reruns: check4-guard (gates/guard-driver-rerun.log) and check5-mount (gates/mount-driver-rerun.raw.json); two stale driver expectations note: it hard-codes 7 regions and mutates the merged-away scope-glob-core region, so S5 skips its mutation and S1 prints 9"
+    },
+    {
+      "command": "an isolated boot registering 14/14 tools with 0 apply-crash signatures",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "check5-mount driver re-run: AGENT_TEAMS_TOOLS_PRESENT=14/14, T4_TOOL_agent_teams_task_contract=REGISTERED, apply_crash_signatures=0, probe reached DONE — gates/mount-driver-rerun.raw.json"
+    }
+  ],
+  "changed_paths": [
+    "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/README.md",
+    "scripts/patch-agent-teams-fixes.mjs",
+    "scripts/vendor-agent-teams.mjs",
+    "evidence/wave2/adopted-tooling-repair/README.md",
+    "evidence/wave2/adopted-tooling-repair/result.json"
+  ],
+  "notes": {
+    "mount_driver_passed_false": "the driver's own passed=false is its workspace-isolation counter: the flagged .mpd/team/mpd-default-587132ea was created by captain session session-8954c880-eee (a concurrent teammate), not by this boot, whose leak counters are 0. That item belongs to t7/t9.",
+    "in_region_drift_verified_directly": "mutating one line inside the scope-glob region makes --check exit 1 naming the line, while the pristine tree exits 0",
+    "not_touched": [
+      "skills/**",
+      "VENDOR_LOCK.json",
+      "AGENTS.md",
+      "packages/mpd-verif-plugin/**",
+      "packages/mpd-bundle/cordis.patch.yml"
+    ],
+    "deps_untouched": "the live tree's _deps/ was never rewritten by this task (git status: 0 changes)"
+  }
+}

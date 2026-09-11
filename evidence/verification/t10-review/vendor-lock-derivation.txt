@@ -1,0 +1,9 @@
+=== vendor lock: independent recomputation of the algorithm ===
+on-disk fileCount = 365  lock fileCount = 365  match=true
+recomputed treeSha = ea1f001f6d6c49347816280aa125ece5873b8fa9fb4b181c9b6a079144824153
+lock treeSha       = ea1f001f6d6c49347816280aa125ece5873b8fa9fb4b181c9b6a079144824153
+match=true
+=== vendor gate ===
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS

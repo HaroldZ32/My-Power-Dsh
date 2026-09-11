@@ -1,0 +1,12 @@
+[t14-f6] workspaceRootsOf_two_sessions_dedup=["/root/dshProj/my-power-dsh/.t14-f6-a","/root/dshProj/my-power-dsh/.t14-f6-b"]
+[t14-f6] workspaceRootsOf_no_registry=[]
+[t14-f6] workspaceRootsOf_non_list=[]
+[t14-f6] workspaceRootOf_session_precedence="/root/dshProj/my-power-dsh/.t14-f6-a"
+[t14-f6] busyTeams_union[A,B]=[{"teamId":"team-a","member":"t14wm"},{"teamId":"team-b","member":"t14wm"}]
+[t14-f6] busyTeams_only_B=[{"teamId":"team-b","member":"t14wm"}]
+[t14-f6] busyTeams_unrelated_key=[{"teamId":"team-b","member":"other"}]
+[t14-f6] busyTeams_no_roots_falls_back_to_host_cwd=[]
+[t14-f6] service_rename_uses_agentlessRoots=true
+[t14-f6] service_delete_uses_agentlessRoots=true
+[t14-f6] tool_path_passes_session_root_only=true
+[t14-f6] cleanup="removed"

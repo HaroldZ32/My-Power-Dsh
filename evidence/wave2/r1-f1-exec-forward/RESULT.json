@@ -1,0 +1,65 @@
+{
+  "task": "t12 — R1-F1: forward exec from verifRegress into its per-case verifSim calls",
+  "attemptId": "375eb9e1-f1ce-4f70-84f4-d90aa4bfb282",
+  "member": "Deep Worker",
+  "measuredAt": "2026-09-11T06:20:00.000Z",
+  "fix": {
+    "file": "packages/mpd-verif-plugin/src/regress.ts",
+    "line": 178,
+    "before": "      }, {})",
+    "after": "      }, {}, exec)",
+    "note": "one argument, no refactor; sim.ts:191 declares verifSim(a, deps = {}, exec?) and sim.ts:200 uses that exec in the iron gate"
+  },
+  "dist": {
+    "path": "packages/mpd-verif-plugin/dist/index.js",
+    "sha256": "d0aee5c79476dfe92ccb1747da6292ea0802a6fdc7d2319735defa8dcabd120e",
+    "buildForm": "bun build --target node --format esm packages/mpd-verif-plugin/src/index.ts --outfile packages/mpd-verif-plugin/dist/index.js (repo root)",
+    "bundleEvidence": "the shipped bundle carries `}, {}, exec);` at line 1731",
+    "packageDirCounterfactual": "reference only — recorded by t3 in evidence/wave2/r1-gate-order/dist-order.txt: the package-dir form emits package-relative inlined banner comments and makes the sweep report mpd-verif-plugin STALE"
+  },
+  "negativeControl": {
+    "driver": "evidence/wave2/r1-f1-exec-forward/pre-fix-exec.mjs (--apply flips regress.ts back to `}, {}) // PRE-FIX SIMULATION`; --restore reproduces the fixed source byte-for-byte: the marker is gone, the fixed line is back, no .bak remains)",
+    "preFix": "negative-control-pre-fix.txt — the new argument-pinning test FAILS (the per-case case status is `fail`), and per-case-probe-pre-fix.json pins WHY: perCaseFailure = `cocotb venv missing at <DSH_WORKSPACE_ROOT>/other/.venv-rtl (iron rule: ...)`, i.e. the per-case sim resolved the wrong root; the session python was probed ONCE (regress-level gate only).",
+    "postFix": "negative-control-post-fix.txt — the same test PASSES; per-case-probe-post-fix.json: perCaseStatus pass, perCaseFailure null, and the session python probe list grows from 2 to 4 lines (regress-level gate + per-case gate).",
+    "pinningKind": "argument pinning, not message matching: the discriminator is that a second gate round hits the SESSION venv only when exec is forwarded, and the per-case outcome flips fail -> pass"
+  },
+  "realCall": {
+    "script": "evidence/wave2/r1-f1-exec-forward/session-call.mjs (adapted from t3's r1-gate-order/session-call.mjs; drives the SHIPPED dist tool mpd_verif_regress with exec.agent.session.header.cwd = session workspace while DSH_WORKSPACE_ROOT = a DIFFERENT workspace)",
+    "distSha256Measured": "d0aee5c79476dfe92ccb1747da6292ea0802a6fdc7d2319735defa8dcabd120e",
+    "call1": "no backend: gate passes on the SESSION venv, refusal is VERIF_E_NO_BACKEND, no regress dir in either workspace",
+    "call2": "backend present: the regression PASSES (ok=true, passed=1, failed=0, failureMsg null), 6 session-venv probes recorded (regress gate + per-case gate), results.json/results.md under the SESSION workspace only, never DSH_WORKSPACE_ROOT",
+    "result": "session-call.result.json — 7/7 checks pass, exit 0"
+  },
+  "gates": {
+    "packageTests": "bun-test-package.txt — 78 pass / 0 fail (77 pre-change, +1 new R1-F1 test)",
+    "repoTests": "bun-test-packages.txt — 336 pass / 0 fail across 38 files",
+    "typecheck": "typecheck.txt — exit 0",
+    "distSweep": "sweep-clean-room.txt — 16 FRESH byte-identical, 0 banner-only, 0 STALE; clean-room pass1==pass2 16/16 and committed==pass2 16/16",
+    "commentChecker": "clean for regress.ts, regress.test.ts, pre-fix-exec.mjs, session-call.mjs, per-case-probe.ts"
+  },
+  "boundaries": {
+    "untouched": [
+      "packages/mpd-verif-plugin/src/sim.ts",
+      "packages/mpd-verif-plugin/src/venv.ts",
+      "skills/**",
+      "VENDOR_LOCK.json",
+      "packages/mpd-agent-teams-plugin/**"
+    ]
+  },
+  "evidenceFiles": [
+    "RESULT.json",
+    "pre-fix-exec.mjs",
+    "negative-control-pre-fix.txt",
+    "negative-control-post-fix.txt",
+    "per-case-probe.ts",
+    "per-case-probe-pre-fix.json",
+    "per-case-probe-post-fix.json",
+    "session-call.mjs",
+    "session-call.output.txt",
+    "session-call.result.json",
+    "bun-test-package.txt",
+    "bun-test-packages.txt",
+    "typecheck.txt",
+    "sweep-clean-room.txt"
+  ]
+}

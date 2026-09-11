@@ -1,0 +1,12 @@
+{
+  "sessionWorkspace": "/tmp/mpd-verif-test-6PYEMx/ws",
+  "dshWorkspaceRoot": "/tmp/mpd-verif-test-6PYEMx/other",
+  "perCaseStatus": "fail",
+  "perCaseFailure": "cocotb venv missing at /tmp/mpd-verif-test-6PYEMx/other/.venv-rtl (iron rule: project-local venv required, system python is never used)",
+  "passed": 0,
+  "ok": false,
+  "sessionPythonProbed": [
+    "/tmp/mpd-verif-test-6PYEMx/ws/.venv-rtl/bin/python --version",
+    "/tmp/mpd-verif-test-6PYEMx/ws/.venv-rtl/bin/python -c import cocotb, json; print(json.dumps({\"v\": cocotb.__version__, \"ok\": True}))"
+  ]
+}

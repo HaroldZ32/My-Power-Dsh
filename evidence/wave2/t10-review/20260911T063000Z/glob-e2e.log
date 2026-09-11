@@ -1,0 +1,61 @@
+PASS classifyChangedPath: a `dir/**` declaration keeps every file beneath it (and the boundary controls still reject) — ["ok packages/foo/test/a.test.mjs ~ packages/foo/test/** -> in_scope","ok packages/foo/test/deep/case.ts ~ packages/foo/test/** -> in_scope","ok packages/mpd-verif-plugin/test/case_a.py ~ packages/mpd-verif-plugin/test/** -> in_scope","ok packages/foo/testx/a.mjs ~ packages/foo/test/** -> undeclared","ok src/a.md ~ **/*.ts -> undeclared","ok srcx/a.ts ~ src/** -> undeclared","ok packages/foo/src/a.ts ~ packages/foo -> in_scope","ok packages/foo-bar/a.ts ~ packages/foo -> undeclared"]
+PASS REAL wave-1 replay: every recorded changedPath of a glob-declaring task classifies as in_scope (the wave-1 defect would show as undeclared/dropped) — 4 archived task(s) with glob declarations replayed :: [{"team":"mpd-default-7332aba4","task":"t3","status":"completed","globbed":["packages/mpd-verif-plugin/test/**"],"changedCount":2,"inScopeCount":2,"dropped":[]},{"team":"mpd-default-7332aba4","task":"t4","status":"completed","globbed":["packages/mpd-hashline-plugin/test/**"],"changedCount":2,"inScopeCount":2,"dropped":[]},{"team":"mpd-default-7332aba4","task":"t5","status":"completed","globbed":[".toolchain/**"],"changedCount":2,"inScopeCount":2,"dropped":[]},{"team":"mpd-default-7332aba4","task":"t7","status":"completed","globbed":["packages/mpd-boulder-plugin/src/**","packages/mpd-memory-plugin/src/**","packages/mpd-ulw-plugin/src/**","packages/mpd-config-plugin/src/**","packages/mpd-comme
+PASS matcher negative controls hold — ["ok srcx/a.ts ~ src/**","ok src/a.md ~ **/*.ts","ok lib/a.js.map ~ lib/a.js"]
+
+{
+  "allPass": true,
+  "replay": [
+    {
+      "team": "mpd-default-7332aba4",
+      "task": "t3",
+      "status": "completed",
+      "globbed": [
+        "packages/mpd-verif-plugin/test/**"
+      ],
+      "changedCount": 2,
+      "inScopeCount": 2,
+      "dropped": []
+    },
+    {
+      "team": "mpd-default-7332aba4",
+      "task": "t4",
+      "status": "completed",
+      "globbed": [
+        "packages/mpd-hashline-plugin/test/**"
+      ],
+      "changedCount": 2,
+      "inScopeCount": 2,
+      "dropped": []
+    },
+    {
+      "team": "mpd-default-7332aba4",
+      "task": "t5",
+      "status": "completed",
+      "globbed": [
+        ".toolchain/**"
+      ],
+      "changedCount": 2,
+      "inScopeCount": 2,
+      "dropped": []
+    },
+    {
+      "team": "mpd-default-7332aba4",
+      "task": "t7",
+      "status": "completed",
+      "globbed": [
+        "packages/mpd-boulder-plugin/src/**",
+        "packages/mpd-memory-plugin/src/**",
+        "packages/mpd-ulw-plugin/src/**",
+        "packages/mpd-config-plugin/src/**",
+        "packages/mpd-comment-checker-plugin/src/**",
+        "packages/mpd-modelchain-plugin/src/**",
+        "packages/mpd-verif-plugin/src/**",
+        "packages/mpd-workmate-plugin/src/**",
+        "evidence/**"
+      ],
+      "changedCount": 12,
+      "inScopeCount": 12,
+      "dropped": []
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+PASS call 1 (no backend): refusal code is VERIF_E_NO_BACKEND (gate passed on the session venv; no filesystem error) — code=VERIF_E_NO_BACKEND message=backend 'iverilog' not found
+PASS call 1: NO regress dir created in the session workspace (R1 ordering) — /tmp/mpd-r1f1-real-QgAytQ/session-ws/.mpd/verif/regress
+PASS call 1: NO work tree created in the unrelated DSH_WORKSPACE_ROOT workspace — /tmp/mpd-r1f1-real-QgAytQ/other-ws/real-workspace/.mpd
+PASS call 2: the regression PASSES (every per-case sim got past its venv gate) — ok=true passed=1 failed=0 cases=["a:pass:null"]
+PASS call 2: the per-case sim gated on the SESSION venv (>=2 probe rounds: regress gate + per-case gate), never the DSH_WORKSPACE_ROOT one — /tmp/mpd-r1f1-real-QgAytQ/session-ws/.venv-rtl/bin/python --version | /tmp/mpd-r1f1-real-QgAytQ/session-ws/.venv-rtl/bin/python -c import cocotb, json; print(json.dumps({"v": cocotb.__version__, "ok":
+PASS call 2: results live under the SESSION workspace, never the DSH_WORKSPACE_ROOT one — /tmp/mpd-r1f1-real-QgAytQ/session-ws/.mpd/verif/regress/20260911-141702-562/results.json
+PASS call 2: report markdown aggregated the case as passed — # RTL regression report (iverilog) /  / - seedBase: 20260911 / - cases: 1, passed: 1, failed: 0, skipped: 0 / 
+
+written: /root/dshProj/my-power-dsh/evidence/wave2/r1-f1-exec-forward/session-call.result.json

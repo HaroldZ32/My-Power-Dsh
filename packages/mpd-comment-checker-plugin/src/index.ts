@@ -13,7 +13,7 @@ import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { createDshAdapter, workspaceRootOf } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-comment-checker"
 export const inject = ["tools"]
@@ -71,12 +71,14 @@ export function resolveBinary(config: Config): string | null {
   return null
 }
 
-function hookInputFor(path: string, content: string): any {
+// `root` is the CALLING SESSION's workspace (adapter workspaceRoot); it is only metadata
+// for the detector binary, so an omitted value degrades to the process default.
+function hookInputFor(path: string, content: string, root?: string): any {
   return {
     session_id: "mpd",
     tool_name: "Write",
     transcript_path: "",
-    cwd: process.env.DSH_WORKSPACE_ROOT ?? process.cwd(),
+    cwd: root ?? workspaceRootOf(),
     hook_event_name: "PostToolUse",
     tool_input: { file_path: path, content },
     tool_response: { content: [{ type: "text", text: "file content" }], details: null, isError: false }
@@ -106,7 +108,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     description: "Run the comment/docstring detector on one or more files (content in memory or read from disk). Returns per-file detection results; exit 2 means comments/docstrings found and the binary message spells the required action. The binary (@code-yeongyu/comment-checker, MIT) must be installed in .toolchain (installer flag --with-comment-checker) or set via MPD_DSH_COMMENT_CHECKER_BIN.",
     parameters: { type: "object", properties: { files: { type: "array", items: { type: "object", properties: { path: { type: "string" }, content: { type: "string" } }, required: ["path"], additionalProperties: false } } }, required: ["files"] },
     output: { schema: { type: "object", properties: { binary: { type: "string" }, results: { type: "array", items: { type: "object" } } }, required: ["binary", "results"] }, render: (_a: unknown, v: any) => textBlock("comment-check binary=" + v.binary + "\n" + v.results.map((x: any) => (x.hasComments ? "DETECTED " + x.path + ": " + x.message.slice(0, maxMessageChars) : "clean " + x.path)).join("\n")) },
-    execute: async (args: any) => {
+    execute: async (args: any, exec: any) => {
       const binary = resolveBinary(cfg)
       if (!binary) throw new Error("mpd-comment-checker: binary not found — run the installer with --with-comment-checker or set MPD_DSH_COMMENT_CHECKER_BIN")
       const files = Array.isArray(args?.files) ? args.files : []
@@ -116,7 +118,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
         const content = typeof f.content === "string" ? f.content : (existsSync(path) ? readFileSync(path, "utf8") : "")
         if (!content) { results.push({ path, hasComments: false, message: "no content to check" }); continue }
         try {
-          const res = runCheck(binary, hookInputFor(path, content), timeoutMs)
+          const res = runCheck(binary, hookInputFor(path, content, dsh.workspaceRoot(exec)), timeoutMs)
           if (!res.hasComments && res.message) results.push({ path, hasComments: false, message: res.message })
           else results.push({ path, ...res })
         } catch (e: any) { results.push({ path, hasComments: false, message: "error: " + String(e?.message ?? e) }) }
@@ -137,7 +139,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       let content = ""
       try { content = readFileSync(fp, "utf8") } catch { return out }
       if (!content) return out
-      const res = runCheck(binary, hookInputFor(fp, content), timeoutMs)
+      const res = runCheck(binary, hookInputFor(fp, content, dsh.workspaceRoot(exec)), timeoutMs)
       if (!res.hasComments) return out
       const hint = "[mpd-comment-checker] comments/docstrings detected in " + fp + ":\n" + res.message.slice(0, maxMessageChars)
       const c = out.content ?? result?.content

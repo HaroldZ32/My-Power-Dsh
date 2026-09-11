@@ -1,9 +1,10 @@
 // packages/mpd-config-plugin/src/index.ts
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { join, resolve as resolve2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
+import { resolve } from "node:path";
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 function textBlock(content) {
@@ -11,6 +12,41 @@ function textBlock(content) {
 }
 function message(error) {
   return error instanceof Error ? error.message : String(error);
+}
+function sessionCwdOf(agent) {
+  try {
+    const cwd = agent?.session?.header?.cwd;
+    return typeof cwd === "string" && cwd.length > 0 ? cwd : undefined;
+  } catch {
+    return;
+  }
+}
+function workspaceRootOf(exec) {
+  const session = sessionCwdOf(exec?.agent);
+  if (session !== undefined)
+    return resolve(session);
+  const override = process.env.DSH_WORKSPACE_ROOT;
+  if (typeof override === "string" && override.length > 0)
+    return resolve(override);
+  return process.cwd();
+}
+function workspaceRootsOf(agents) {
+  if (agents === undefined || agents === null || typeof agents.list !== "function")
+    return [];
+  try {
+    const list = agents.list();
+    if (!Array.isArray(list))
+      return [];
+    const roots = new Set;
+    for (const agent of list) {
+      const cwd = sessionCwdOf(agent);
+      if (cwd !== undefined)
+        roots.add(resolve(cwd));
+    }
+    return [...roots];
+  } catch {
+    return [];
+  }
 }
 function noop() {}
 function createDshAdapter(ctx, config = {}) {
@@ -36,6 +72,8 @@ function createDshAdapter(ctx, config = {}) {
     }
     return found;
   }
+  const workspaceRoot = (exec) => workspaceRootOf(exec);
+  const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
   function timeoutSignal(timeoutMs) {
     try {
       if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function")
@@ -63,6 +101,8 @@ function createDshAdapter(ctx, config = {}) {
         agentPresets: typeof presets?.resolve === "function"
       };
     },
+    workspaceRoot,
+    workspaceRootsAll,
     registerTool(definition) {
       const tools = requireService("tools", 'cannot register tool "' + String(definition?.name) + '"');
       if (typeof tools.register !== "function")
@@ -286,11 +326,10 @@ function deepMerge(base, over) {
   }
   return out;
 }
-function loadConfig(config) {
-  const cwd = process.env.DSH_WORKSPACE_ROOT ?? process.cwd();
+function loadConfig(config, root) {
   const dshHome = process.env.DSH_HOME ?? join(homedir(), ".dsh");
-  const userFile = config.userFile ? resolve(config.userFile) : join(dshHome, "mpd.jsonc");
-  const projectFile = config.projectFile ? resolve(config.projectFile) : join(cwd, ".mpd", "mpd.jsonc");
+  const userFile = config.userFile ? resolve2(config.userFile) : join(dshHome, "mpd.jsonc");
+  const projectFile = config.projectFile ? resolve2(config.projectFile) : join(root, ".mpd", "mpd.jsonc");
   const files = [userFile, projectFile];
   let merged = {};
   const errors = [];
@@ -307,9 +346,9 @@ function loadConfig(config) {
 }
 function apply(ctx, config = {}) {
   const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx);
-  let state = loadConfig(config);
-  function reload() {
-    state = loadConfig(config);
+  let state = loadConfig(config, dsh.workspaceRoot());
+  function reload(exec) {
+    state = loadConfig(config, dsh.workspaceRoot(exec));
     return state.config;
   }
   ctx.provide("mpdConfig", {
@@ -326,7 +365,8 @@ function apply(ctx, config = {}) {
     description: "Read the resolved mpd.jsonc runtime config (project .mpd/mpd.jsonc merged over user $DSH_HOME/mpd.jsonc). Consumed keys: memory.vcs/memory.dir/memory.agentSlug/memory.reflectionEvery, team.stateDir, hashline.guardEditTools/hashline.maxDiffChars/hashline.registryFile, commentChecker.autoCheck/commentChecker.bin/commentChecker.timeoutMs/commentChecker.maxMessageChars, modelchain.<chainKey>, boulder.dir, ulw.maxRounds/ulw.planDir/ulw.stateDir/ulw.provider/ulw.model/ulw.reviewerModel/ulw.maxReReviews.",
     parameters: { type: "object", properties: { key: { type: "string", description: "Optional dot-path to a single key, e.g. memory.vcs" } }, additionalProperties: false },
     output: { schema: { type: "object", properties: { config: { type: "object" }, key: { type: "string" }, value: {} }, required: ["config"] }, render: (_a, v) => textBlock2(v.key ? "mpd config " + v.key + ": " + JSON.stringify(v.value, null, 1) : "mpd config: " + JSON.stringify(v.config, null, 1)) },
-    execute: async (args) => {
+    execute: async (args, exec) => {
+      reload(exec);
       const key = args?.key ? String(args.key) : undefined;
       const value = key ? key.split(".").reduce((acc, part) => acc == null ? undefined : acc[part], state.config) ?? null : null;
       return key === undefined ? { config: state.config } : { config: state.config, key, value };
@@ -337,8 +377,8 @@ function apply(ctx, config = {}) {
     description: "Re-read the mpd.jsonc layers and refresh the resolved config (returns files found and any parse errors).",
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { files: { type: "array", items: { type: "string" } }, errors: { type: "array", items: { type: "string" } } }, required: ["files", "errors"] }, render: (_a, v) => textBlock2("mpd config reloaded: " + v.files.join(", ") + (v.errors.length ? " ERRORS: " + v.errors.join("; ") : "")) },
-    execute: async () => {
-      const cfg = reload();
+    execute: async (_args, exec) => {
+      const cfg = reload(exec);
       return { files: state.files, errors: state.errors, config: cfg };
     }
   });

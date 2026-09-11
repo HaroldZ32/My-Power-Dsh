@@ -1,0 +1,42 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-agent-teams-plugin/self-fix-tests/scope-semantics.test.mjs:
+(pass) B5: a directory pattern covers its contents WITHOUT a trailing slash [0.62ms]
+(pass) B5: trailing slash and non-trailing slash are equivalent [0.15ms]
+(pass) B5: exact file patterns still match exactly, siblings and suffixes do not [0.19ms]
+(pass) B5: root pattern matches everything; illegal/absolute patterns never match [0.15ms]
+(pass) B5: classifyChangedPath — directory inScope covers files, outOfScope wins [0.47ms]
+(pass) B6: completion reports ALL undeclared paths at once with the owning task id and a fix hint [0.70ms]
+(pass) B6: completion passes when a directory pattern (no trailing slash) covers every changed path [0.12ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs:
+(pass) DEFECT 1: a declared glob covers the files beneath it [1.68ms]
+(pass) DEFECT 1 negative control: globs do not over-match [0.13ms]
+(pass) DEFECT 1: every no-wildcard declaration keeps the pre-delta B5 semantics [0.16ms]
+(pass) DEFECT 1: the completion gate accepts a glob-declared changedPath and still rejects an undeclared one [0.29ms]
+(pass) DEFECT 2 reproduction: the pre-fix generator listed one path in BOTH lists [0.85ms]
+(pass) DEFECT 2 fix: the finding's required path is CARVED OUT of the inherited prohibition [0.51ms]
+(pass) DEFECT 2 fix, REAL wave-1 inputs (team mpd-default-7332aba4 t7 + t10): the required edit is in scope [0.66ms]
+(pass) DEFECT 2 falsifiability: the contradiction guard must not reject legitimate carve-outs [0.18ms]
+(pass) DEFECT 2 falsifiability: the write-task overlap guard still separates colliding declarations [0.21ms]
+(pass) durability: the guard refuses when a delta region is missing (observed failure) [4.01ms]
+(pass) durability: the guard is idempotent on the real tree and restores a stripped tree [57.67ms]
+(pass) F2: every t4-changed line in lib/quality-gates.js sits inside a registered mpd-delta region [74.50ms]
+(pass) F3: healing a RE-MATERIALIZED upstream file refuses instead of emitting a broken module [5.71ms]
+(pass) F3: a clean (region-carrying) tree still heals successfully [35.16ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/quality-loop.test.mjs:
+(pass) Fix1: review auto-wires reviewedTaskId into dependencies (premature dispatch) [0.44ms]
+(pass) Fix1: repair auto-wires sourceTaskId into dependencies [0.13ms]
+(pass) Fix2: unsatisfiedDependencies treats cancelled as satisfied, failed still blocks [0.09ms]
+(pass) Fix2: pending dependents blocked only by cancelled deps are cascaded (no deadlock) [0.45ms]
+(pass) Fix3: planQualityFollowUp links reasonTaskId and reason reaches the repair prompt [1.46ms]
+(pass) Fix4: reject without a completed source notifies the captain only (no repair, no escalation) [0.12ms]
+(pass) Fix4: genuine reject of a completed source still escalates [0.06ms]
+(pass) Fix3b: reasonTaskId / reassignReason survive task validation [0.24ms]
+(pass) Fix3c: assignmentPrompt renders reassignReason and captain guidance digest [0.38ms]
+
+ 30 pass
+ 0 fail
+ 148 expect() calls
+Ran 30 tests across 3 files. [331.00ms]

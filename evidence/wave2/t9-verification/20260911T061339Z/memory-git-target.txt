@@ -1,0 +1,26 @@
+=== target store git (correct root: .mpd/memory/agents/agent-my-power-dsh/repo) ===
+--- log --oneline -3 ---
+8635a6e memory: wave-2 t5 migration of 7 entries orphaned by the cwd-root bug
+c710adb memory: xlsx-word-btlr-mtqzjv46 (fact)
+597dee9 memory: xlsx-word-regexcel-xlsx-template-docx-mtmsbjh2 (fact)
+--- status --porcelain (empty = clean) ---
+[status lines: 0]
+--- HEAD ---
+8635a6ea0f46581810733251a8d3cf53c4d82034
+--- show --stat HEAD ---
+commit 8635a6ea0f46581810733251a8d3cf53c4d82034
+Author: mpd-memory <mpd-memory@local>
+Date:   Fri Sep 11 13:59:13 2026 +0800
+
+    memory: wave-2 t5 migration of 7 entries orphaned by the cwd-root bug
+    
+    Copied (not moved) from /root/dshProj/.mpd/memory/agents/agent-dshproj/repo/memory: wave-1 B1 moved the memory root to the session workspace, so these seven entries were written under the old process-cwd root and became invisible. Additive and reversible: the source store is left completely intact. Content byte-identical (per-file sha256 verified before/after). reflection.json untouched.
+
+ ...i-dsh-better-sidebar-agent-teams-si-mtuviju2.md | 20 ++++++++++++++++++++
+ .../agentteams-gui-dsh-better-sidebar-mtuyguxk.md  | 22 ++++++++++++++++++++++
+ ...heduler-stall-symptoms-salvage-and--mtva0wbm.md | 19 +++++++++++++++++++
+ ...istry-vs-patch-rows-how-to-test-too-mtv8xwzy.md | 16 ++++++++++++++++
+ ...ngs-closed-and-a-falsifiability-lan-mtw8i46k.md | 12 ++++++++++++
+ ...me-delete-agreed-requirements-2026--mtv8l9rl.md | 15 +++++++++++++++
+ ...me-delete-delivery-closed-two-traps-mtvngffj.md | 13 +++++++++++++
+ 7 files changed, 117 insertions(+)

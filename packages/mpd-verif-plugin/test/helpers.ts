@@ -94,6 +94,27 @@ export function captureLines(capturePath: string): string[] {
   return readFileSync(capturePath, "utf8").split("\n").filter((l) => l.length > 0)
 }
 
+// Deep-scan a tool result for JSON-lossy properties: every property whose value
+// is `undefined` (JSON drops it) and every sparse array slot. The harness
+// snapshots a tool's value before schema validation and rejects such results
+// with "value is not lossless JSON", so tests assert [] here. Do NOT use
+// `toEqual` for this invariant: it ignores undefined-valued keys, which is
+// exactly how a lossy result can pass a test and still fail in the host.
+export function undefinedPaths(value: unknown, path = "value"): string[] {
+  const found: string[] = []
+  const walk = (v: unknown, p: string): void => {
+    if (v === undefined) { found.push(p); return }
+    if (v === null || typeof v !== "object") return
+    if (Array.isArray(v)) {
+      for (let i = 0; i < v.length; i++) walk(v[i], `${p}[${i}]`)
+      return
+    }
+    for (const key of Object.keys(v as Record<string, unknown>)) walk((v as Record<string, unknown>)[key], `${p}.${key}`)
+  }
+  walk(value, path)
+  return found
+}
+
 // Fake make (DP-6 Makefile flow): records argv + the iron-rule env evidence
 // (PATH head must be the venv bin; COCOTB_RESULTS_FILE etc.) and fabricates the
 // sim outputs that real cocotb make would produce.

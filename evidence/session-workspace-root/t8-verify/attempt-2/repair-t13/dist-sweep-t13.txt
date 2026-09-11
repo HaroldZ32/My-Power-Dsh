@@ -1,0 +1,12 @@
+# t13 — t12's dist sweep (mandated after any src change)
+# command: node evidence/session-workspace-root/dist-repair/sweep.mjs --clean-room
+# date: 2026-09-11T04:19:42Z
+
+=== summary ===
+packages with dist/index.js: 16
+FRESH byte-identical: 16
+FRESH banner-only: 0
+STALE: 0
+clean-room pass1==pass2 byte-identical: 16/16
+clean-room committed==pass2 byte-identical: 16/16
+[exit code: 0]

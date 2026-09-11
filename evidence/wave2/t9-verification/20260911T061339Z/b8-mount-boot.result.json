@@ -1,0 +1,47 @@
+{
+  "task": "t9 supplementary B8 mount boot (pins scrubbed, devPatch operand repaired)",
+  "stamp": "2026-09-11T06:22:47.646Z",
+  "bootExit": 1,
+  "envScrubbed": [
+    "MPD_AST_GREP_SG_PATH",
+    "MPD_AST_GREP_BIN_DIR",
+    "MPD_DSH_ASTGREP_CLI",
+    "MPD_CODEGRAPH_BIN",
+    "MPD_DSH_CODEGRAPH_CLI"
+  ],
+  "rewriteStats": {
+    "presetsExpr": 1,
+    "operand": 4
+  },
+  "patchPath": "/root/dshProj/my-power-dsh/evidence/wave2/t9-verification/20260911T061339Z/b8-mount.dev.patch.yml",
+  "checks": [
+    {
+      "name": "mount: the corrected operand rewrite actually landed in the MCP row args (the QA devPatch defect is repaired for this boot)",
+      "pass": true,
+      "detail": "operandFixes=4"
+    },
+    {
+      "name": "mount: no MODULE_NOT_FOUND for either launcher",
+      "pass": true,
+      "detail": "none"
+    },
+    {
+      "name": "mount: no MCP child spawn failure / BINARY_NOT_FOUND at boot",
+      "pass": true,
+      "detail": "none"
+    },
+    {
+      "name": "mount: mpd-codegraph resolved a binary (no `init status=no-binary`)",
+      "pass": true,
+      "detail": "[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/t9-b8-mount-RetpsG/ws"
+    }
+  ],
+  "allPass": true,
+  "logPath": "/root/dshProj/my-power-dsh/evidence/wave2/t9-verification/20260911T061339Z/b8-mount-boot.log",
+  "logExcerpt": [
+    "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)",
+    "[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/t9-b8-mount-RetpsG/ws",
+    "[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)",
+    "dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route \"deepseek-official\"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment"
+  ]
+}

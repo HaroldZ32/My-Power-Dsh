@@ -1,0 +1,149 @@
+=== HEAD / branch ===
+
+=== git status (porcelain, verbatim) ===
+ M AGENTS.md
+ M VENDOR_LOCK.json
+ M packages/mpd-bootstrap-plugin/dist/index.js
+ M packages/mpd-boulder-plugin/dist/index.js
+ M packages/mpd-boulder-plugin/src/index.ts
+ M packages/mpd-comment-checker-plugin/README.md
+ M packages/mpd-comment-checker-plugin/README.zh-CN.md
+ M packages/mpd-comment-checker-plugin/dist/index.js
+ M packages/mpd-comment-checker-plugin/src/index.ts
+ M packages/mpd-config-plugin/dist/index.js
+ M packages/mpd-config-plugin/src/index.ts
+ M packages/mpd-dsh-adapter-plugin/dist/index.js
+ M packages/mpd-dsh-adapter-plugin/src/index.ts
+ M packages/mpd-hashline-plugin/dist/index.js
+ M packages/mpd-hashline-plugin/src/index.ts
+ M packages/mpd-memory-plugin/dist/index.js
+ M packages/mpd-memory-plugin/src/index.ts
+ M packages/mpd-modelchain-plugin/dist/index.js
+ M packages/mpd-modelchain-plugin/src/index.ts
+ M packages/mpd-qa-roles-probe/dist/index.js
+ M packages/mpd-roles-plugin/dist/index.js
+ M packages/mpd-tools-plugin/dist/index.js
+ M packages/mpd-ulw-plugin/dist/index.js
+ M packages/mpd-ulw-plugin/src/index.ts
+ M packages/mpd-verif-plugin/dist/index.js
+ M packages/mpd-verif-plugin/src/backends.ts
+ M packages/mpd-verif-plugin/src/compile.ts
+ M packages/mpd-verif-plugin/src/coverage.ts
+ M packages/mpd-verif-plugin/src/env.ts
+ M packages/mpd-verif-plugin/src/index.ts
+ M packages/mpd-verif-plugin/src/regress.ts
+ M packages/mpd-verif-plugin/src/sim.ts
+ M packages/mpd-verif-plugin/src/uvm.ts
+ M packages/mpd-verif-plugin/src/venv.ts
+ M packages/mpd-verif-plugin/test/helpers.ts
+ M packages/mpd-verif-plugin/test/index.test.ts
+ M packages/mpd-workmate-plugin/dist/index.js
+ M packages/mpd-workmate-plugin/src/index.ts
+ M scripts/verify-vendor.mjs
+ M skills/dsh-qa/scripts/workmate-library.mjs
+?? evidence/agent-teams/provenance-version-align/
+?? evidence/dsh-qa/bundle-lifecycle/2026-09-11T03-29-26.635Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-09-11T03-32-18.464Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-09-11T03-38-25.172Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-09-11T04-00-12.771Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-09-11T04-16-09.053Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-09-11T04-26-31.637Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-11T03-08-17.241Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-11T03-10-07.166Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-11T03-30-10.841Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-11T03-32-48.261Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-11T03-37-55.669Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-11T03-59-43.412Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-11T04-07-17.781Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-11T04-15-34.783Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-11T04-24-47.580Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-11T04-26-47.314Z/
+?? evidence/fix/verif-tool-lossless/
+?? evidence/hashline/
+?? evidence/session-workspace-root/
+?? evidence/verification/
+?? packages/mpd-hashline-plugin/test/tool-schema.test.ts
+?? packages/mpd-verif-plugin/test/lossless.test.ts
+
+=== git status (human, verbatim) ===
+On branch dev
+Your branch is ahead of 'origin/dev' by 4 commits.
+  (use "git push" to publish your local commits)
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   AGENTS.md
+	modified:   VENDOR_LOCK.json
+	modified:   packages/mpd-bootstrap-plugin/dist/index.js
+	modified:   packages/mpd-boulder-plugin/dist/index.js
+	modified:   packages/mpd-boulder-plugin/src/index.ts
+	modified:   packages/mpd-comment-checker-plugin/README.md
+	modified:   packages/mpd-comment-checker-plugin/README.zh-CN.md
+	modified:   packages/mpd-comment-checker-plugin/dist/index.js
+	modified:   packages/mpd-comment-checker-plugin/src/index.ts
+	modified:   packages/mpd-config-plugin/dist/index.js
+	modified:   packages/mpd-config-plugin/src/index.ts
+	modified:   packages/mpd-dsh-adapter-plugin/dist/index.js
+	modified:   packages/mpd-dsh-adapter-plugin/src/index.ts
+	modified:   packages/mpd-hashline-plugin/dist/index.js
+	modified:   packages/mpd-hashline-plugin/src/index.ts
+	modified:   packages/mpd-memory-plugin/dist/index.js
+	modified:   packages/mpd-memory-plugin/src/index.ts
+	modified:   packages/mpd-modelchain-plugin/dist/index.js
+	modified:   packages/mpd-modelchain-plugin/src/index.ts
+	modified:   packages/mpd-qa-roles-probe/dist/index.js
+	modified:   packages/mpd-roles-plugin/dist/index.js
+	modified:   packages/mpd-tools-plugin/dist/index.js
+	modified:   packages/mpd-ulw-plugin/dist/index.js
+	modified:   packages/mpd-ulw-plugin/src/index.ts
+	modified:   packages/mpd-verif-plugin/dist/index.js
+	modified:   packages/mpd-verif-plugin/src/backends.ts
+	modified:   packages/mpd-verif-plugin/src/compile.ts
+	modified:   packages/mpd-verif-plugin/src/coverage.ts
+	modified:   packages/mpd-verif-plugin/src/env.ts
+	modified:   packages/mpd-verif-plugin/src/index.ts
+	modified:   packages/mpd-verif-plugin/src/regress.ts
+	modified:   packages/mpd-verif-plugin/src/sim.ts
+	modified:   packages/mpd-verif-plugin/src/uvm.ts
+	modified:   packages/mpd-verif-plugin/src/venv.ts
+	modified:   packages/mpd-verif-plugin/test/helpers.ts
+	modified:   packages/mpd-verif-plugin/test/index.test.ts
+	modified:   packages/mpd-workmate-plugin/dist/index.js
+	modified:   packages/mpd-workmate-plugin/src/index.ts
+	modified:   scripts/verify-vendor.mjs
+	modified:   skills/dsh-qa/scripts/workmate-library.mjs
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	evidence/agent-teams/provenance-version-align/
+	evidence/dsh-qa/bundle-lifecycle/2026-09-11T03-29-26.635Z/
+	evidence/dsh-qa/bundle-lifecycle/2026-09-11T03-32-18.464Z/
+	evidence/dsh-qa/bundle-lifecycle/2026-09-11T03-38-25.172Z/
+	evidence/dsh-qa/bundle-lifecycle/2026-09-11T04-00-12.771Z/
+	evidence/dsh-qa/bundle-lifecycle/2026-09-11T04-16-09.053Z/
+	evidence/dsh-qa/bundle-lifecycle/2026-09-11T04-26-31.637Z/
+	evidence/dsh-qa/preset-conformance/2026-09-11T03-08-17.241Z/
+	evidence/dsh-qa/preset-conformance/2026-09-11T03-10-07.166Z/
+	evidence/dsh-qa/preset-conformance/2026-09-11T03-30-10.841Z/
+	evidence/dsh-qa/preset-conformance/2026-09-11T03-32-48.261Z/
+	evidence/dsh-qa/preset-conformance/2026-09-11T03-37-55.669Z/
+	evidence/dsh-qa/preset-conformance/2026-09-11T03-59-43.412Z/
+	evidence/dsh-qa/preset-conformance/2026-09-11T04-07-17.781Z/
+	evidence/dsh-qa/preset-conformance/2026-09-11T04-15-34.783Z/
+	evidence/dsh-qa/preset-conformance/2026-09-11T04-24-47.580Z/
+	evidence/dsh-qa/preset-conformance/2026-09-11T04-26-47.314Z/
+	evidence/fix/verif-tool-lossless/
+	evidence/hashline/
+	evidence/session-workspace-root/
+	evidence/verification/
+	packages/mpd-hashline-plugin/test/tool-schema.test.ts
+	packages/mpd-verif-plugin/test/lossless.test.ts
+
+no changes added to commit (use "git add" and/or "git commit -a")
+=== tracked diff stat ===
+ packages/mpd-workmate-plugin/dist/index.js         | 114 +++--
+ packages/mpd-workmate-plugin/src/index.ts          |  83 +--
+ scripts/verify-vendor.mjs                          |  13 +-
+ skills/dsh-qa/scripts/workmate-library.mjs         |  11 +-
+ 40 files changed, 1355 insertions(+), 590 deletions(-)

@@ -1,0 +1,73 @@
+{
+  "task": "t3 R1 real session-scoped call proof",
+  "stamp": "2026-09-11T05:47:20.037Z",
+  "sandbox": "/tmp/mpd-r1-real-z2wXw2",
+  "sessionWorkspace": "/tmp/mpd-r1-real-z2wXw2/session-ws",
+  "dshWorkspaceRootOverride": "/tmp/mpd-r1-real-z2wXw2/other-ws/real-workspace",
+  "checks": [
+    {
+      "name": "call 1 (no backend): refusal code is VERIF_E_NO_BACKEND (gate passed on the session venv; no filesystem error)",
+      "pass": true,
+      "detail": "code=VERIF_E_NO_BACKEND message=backend 'iverilog' not found"
+    },
+    {
+      "name": "call 1: NO regress dir created in the session workspace (R1 ordering)",
+      "pass": true,
+      "detail": "/tmp/mpd-r1-real-z2wXw2/session-ws/.mpd/verif/regress"
+    },
+    {
+      "name": "call 1: NO work tree created in the unrelated DSH_WORKSPACE_ROOT workspace",
+      "pass": true,
+      "detail": "/tmp/mpd-r1-real-z2wXw2/other-ws/real-workspace/.mpd"
+    },
+    {
+      "name": "call 2: the regress-level gate passed (work dir now legitimately created under the SESSION workspace)",
+      "pass": true,
+      "detail": "resultsJson=/tmp/mpd-r1-real-z2wXw2/session-ws/.mpd/verif/regress/20260911-134720-035/results.json reportPath=/tmp/mpd-r1-real-z2wXw2/session-ws/.mpd/verif/regress/20260911-134720-035/results.md"
+    },
+    {
+      "name": "call 2: the aggregated results.json/report live under the SESSION workspace, never the DSH_WORKSPACE_ROOT one",
+      "pass": true,
+      "detail": "/tmp/mpd-r1-real-z2wXw2/session-ws/.mpd/verif/regress/20260911-134720-035/results.json"
+    },
+    {
+      "name": "call 2: report markdown aggregated the case",
+      "pass": true,
+      "detail": "# RTL regression report (iverilog) /  / - seedBase: 20260911 / - cases: 1, passed: 0, failed: 1, skipped: 0 /  / | case | seed | status | time(ms) | wave | notes |"
+    }
+  ],
+  "call1": {
+    "error": {
+      "code": "VERIF_E_NO_BACKEND",
+      "message": "backend 'iverilog' not found",
+      "hint": "install it or set MPD_DSH_VERIF_IVERILOG"
+    }
+  },
+  "call2": {
+    "ok": false,
+    "total": 1,
+    "passed": 0,
+    "resultsJson": "/tmp/mpd-r1-real-z2wXw2/session-ws/.mpd/verif/regress/20260911-134720-035/results.json",
+    "reportPath": "/tmp/mpd-r1-real-z2wXw2/session-ws/.mpd/verif/regress/20260911-134720-035/results.md",
+    "perCaseFailure": "cocotb venv missing at /tmp/mpd-r1-real-z2wXw2/other-ws/real-workspace/.venv-rtl (iron rule: project-local venv required, system python is never used)"
+  },
+  "findings": [
+    {
+      "id": "F1-exec-not-forwarded-to-sim",
+      "severity": "medium",
+      "inR1Objective": false,
+      "observed": "regress-level gate passed (session venv), but the per-case sim refused: cocotb venv missing at /tmp/mpd-r1-real-z2wXw2/other-ws/real-workspace/.venv-rtl (iron rule: project-local venv required, system python is never used)",
+      "cause": "packages/mpd-verif-plugin/src/regress.ts calls `verifSim({...}, {})` — the third `exec` argument is omitted, so sim.ts resolves its gate + case dir from DSH_WORKSPACE_ROOT/process.cwd() instead of the calling session.",
+      "proposedFix": "forward the regress `exec`: `await verifSim({...}, {}, exec)` (one line; regression tests are exec-less and unaffected)."
+    }
+  ],
+  "debug": {
+    "workTree": [
+      "/tmp/mpd-r1-real-z2wXw2/session-ws/.mpd/verif/regress/20260911-134720-035/results.md",
+      "/tmp/mpd-r1-real-z2wXw2/session-ws/.mpd/verif/regress/20260911-134720-035/results.json"
+    ],
+    "simLog": null,
+    "resultsXml": null
+  },
+  "allPass": true
+}

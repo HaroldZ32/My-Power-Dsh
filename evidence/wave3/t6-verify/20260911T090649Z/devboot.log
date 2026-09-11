@@ -1,0 +1,9 @@
+PASS FIXED dev patch carries no packed operand and no baseUrl concat — lines=383
+PASS FIXED dev patch names all four MCP operands as existing checkout-absolute launchers — 
+PASS FIXED boot (no MPD_DSH_*_CLI / MPD_AST_GREP_SG_PATH / MPD_CODEGRAPH_BIN pre-set) answers the MCP tool call — [t6-mcp-probe] MCP_TOOL_CALL=ok attempt=1 value={"content":[{"type":"text","text":"{\"schemaVersion\":1,\"ok\":true,\"kind\":\"search\",\"workdir\":\"/root/dshProj/my-power-dsh\",\"matches\":[{\"path\
+PASS FIXED boot log contains no MODULE_NOT_FOUND / BINARY_NOT_FOUND — 
+PASS PRE-FIX dev patch reproduces the wave-2 failure shape (<baseUrl>/node_modules/<abs-repo>/...) — process.env.MPD_DSH_ASTGREP_CLI || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules//root/dshProj/my-power-dsh/packages/mpd-mcp-astgrep/laun
+PASS PRE-FIX boot dies with MODULE_NOT_FOUND on the spliced path and the MCP tool is unknown — [t6-mcp-probe] MCP_TOOL_CALL=fail last=not-ok:"unknown tool \"mcp__ast_grep__search\""
+PASS RTL-VERIF's own devPatch copy produces the same fixed operand shape and boots the MCP tool — 
+
+PASS — devboot.result.json (7/7)

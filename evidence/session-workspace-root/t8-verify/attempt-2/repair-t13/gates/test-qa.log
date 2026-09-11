@@ -1,0 +1,8 @@
+# gate: bun run test:qa
+# date: 2026-09-11T04:15:31Z
+[test:qa] skills/dsh-qa/scripts/workmate-library.mjs
+[workmate-library self-test] ok: 18 checks
+[test:qa] skills/dsh-qa/scripts/workmate-team-member.mjs
+[workmate-team-member self-test] ok: 6 checks
+[test:qa] all self-tests passed
+[exit code: 0]

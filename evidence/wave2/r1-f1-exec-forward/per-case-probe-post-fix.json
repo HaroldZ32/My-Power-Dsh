@@ -1,0 +1,14 @@
+{
+  "sessionWorkspace": "/tmp/mpd-verif-test-JHIa7j/ws",
+  "dshWorkspaceRoot": "/tmp/mpd-verif-test-JHIa7j/other",
+  "perCaseStatus": "pass",
+  "perCaseFailure": null,
+  "passed": 1,
+  "ok": true,
+  "sessionPythonProbed": [
+    "/tmp/mpd-verif-test-JHIa7j/ws/.venv-rtl/bin/python --version",
+    "/tmp/mpd-verif-test-JHIa7j/ws/.venv-rtl/bin/python -c import cocotb, json; print(json.dumps({\"v\": cocotb.__version__, \"ok\": True}))",
+    "/tmp/mpd-verif-test-JHIa7j/ws/.venv-rtl/bin/python --version",
+    "/tmp/mpd-verif-test-JHIa7j/ws/.venv-rtl/bin/python -c import cocotb, json; print(json.dumps({\"v\": cocotb.__version__, \"ok\": True}))"
+  ]
+}

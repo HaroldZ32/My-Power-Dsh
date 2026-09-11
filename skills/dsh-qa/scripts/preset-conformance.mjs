@@ -41,6 +41,7 @@ import { createRequire } from "node:module"
 import { homedir, tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isolation.mjs"
 
 const ROOT = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const PORT = Number(process.env.MPD_QA_PRESET_PORT ?? 3198)
@@ -303,7 +304,10 @@ function makeSandbox(tag, presetRoot) {
     patches.push("--patch", overlay)
   }
   if (join(home).startsWith(join(homedir(), ".dsh"))) fail("isolation assertion: DSH_HOME points at the real home")
-  return { sandbox, home, userHome, profile, patches, env: { ...process.env, DSH_HOME: home, HOME: userHome } }
+  // Workspace isolation: sessions must be created inside a sandbox workspace, never
+  // with the real checkout as their cwd (DSH_HOME/HOME do not cover workspace state).
+  const ws = sandboxWorkspace(sandbox)
+  return { sandbox, home, userHome, profile, ws, patches, env: { ...process.env, DSH_HOME: home, HOME: userHome } }
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -324,7 +328,7 @@ async function boot(sandbox, logPath) {
   // Launcher flags (`--patch`) come BEFORE the profile app's own flags: the
   // launcher hands everything after its first unrecognized argument to the app.
   const child = spawn("dsh", ["--profile", "w", ...sandbox.patches, "--port", String(PORT), "--no-open"], {
-    env: sandbox.env, cwd: ROOT, stdio: ["ignore", fd, fd],
+    env: sandbox.env, cwd: sandbox.ws, stdio: ["ignore", fd, fd],
   })
   const readLog = () => { try { return readFileSync(logPath, "utf8") } catch { return "" } }
   let token = ""
@@ -345,15 +349,15 @@ async function boot(sandbox, logPath) {
   return { child, readLog, token, cookie }
 }
 
-/** Create one session through the gateway's own RPC envelope. */
-async function createSession(cookie, presetId) {
+/** Create one session through the gateway's own RPC envelope, inside the sandbox workspace. */
+async function createSession(cookie, presetId, cwd) {
   const rpcId = "preset-conformance-" + String(Date.now())
   const response = await fetch(`http://127.0.0.1:${PORT}/api/session/create`, {
     method: "POST",
     headers: { "content-type": "application/json", ...(cookie === "" ? {} : { cookie }) },
     body: JSON.stringify({
       type: "client-request", rpcId, method: "session/create",
-      payload: { args: { request: { cwd: ROOT, agentPreset: presetId } } },
+      payload: { args: { request: { cwd, agentPreset: presetId } } },
     }),
     signal: AbortSignal.timeout(60000),
   }).catch((error) => ({ status: 0, json: async () => ({ transport: String(error?.cause?.code ?? error?.message ?? error) }) }))
@@ -382,7 +386,7 @@ async function runReal() {
   const logPath = join(outDir, "boot.log")
   const web = await boot(sandbox, logPath)
   steps.auth = { ok: web.token !== "" && web.cookie !== "", tokenSeen: web.token !== "", cookieSession: web.cookie !== "" }
-  const created = await createSession(web.cookie, "mpd")
+  const created = await createSession(web.cookie, "mpd", sandbox.ws)
   const value = created.result?.value ?? null
   steps.sessionCreate = {
     ok: created.result?.ok === true && value?.agentPreset === "mpd",
@@ -416,6 +420,9 @@ async function runReal() {
   const signatures = FAILURE_SIGNATURES.filter((needle) => bootLog.includes(needle))
   steps.bootLog = { ok: signatures.length === 0, signatures }
   await stop(web.child)
+  // Falsifiable workspace-isolation proof: every session-store key left by this lane
+  // must belong to the sandbox workspace, never to the real checkout.
+  assertSessionsSandboxed(sandbox.home, sandbox.sandbox, { label: "preset-conformance/main" })
 
   // ── negative control: the retired `text:` form must really fail to mount ───
   const controlRoot = join(tmpdir(), "mpd-preset-control-" + ts)
@@ -428,7 +435,7 @@ async function runReal() {
   const controlSandbox = makeSandbox("control", controlRoot)
   const controlLog = join(outDir, "control-boot.log")
   const controlWeb = await boot(controlSandbox, controlLog)
-  const controlCreated = await createSession(controlWeb.cookie, "mpd")
+  const controlCreated = await createSession(controlWeb.cookie, "mpd", controlSandbox.ws)
   const controlError = controlCreated.result?.ok === false ? controlCreated.result.error : null
   steps.negativeControl = {
     ok: controlError?.code === "agent-preset/invalid" && String(controlError.message).includes("$.prefix missing required value"),
@@ -437,6 +444,7 @@ async function runReal() {
     mutations: ["persona prefix: -> text:"],
   }
   await stop(controlWeb.child)
+  assertSessionsSandboxed(controlSandbox.home, controlSandbox.sandbox, { label: "preset-conformance/control" })
   rmSync(controlRoot, { recursive: true, force: true })
 
   const allOk = Object.values(steps).every((step) => step.ok)

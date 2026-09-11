@@ -8,9 +8,16 @@ Offline-built MCP server exposing **ast-grep** structural code search/rewrite as
 
 ## What it does
 
-- `dist/cli.js` (built offline by `scripts/build-mcp.mjs`) bridges MCP to the
-  `@ast-grep/cli` binary, resolved via `MPD_AST_GREP_SG_PATH` or the bundle's
-  optional dependency `node_modules/.bin/sg`.
+- `launch.mjs` is the row's entry point (B8). It resolves the binary
+  **bundle-relatively**: a caller env pin → `$MPD_AST_GREP_BIN_DIR/{ast-grep,sg}` →
+  `createRequire` of the `@ast-grep/cli` optional dependency (packed layout, any node
+  linker) → `<bundle>/.toolchain/node_modules/.bin/{ast-grep,sg}` (checkout `link:`
+  install). It sets `MPD_AST_GREP_SG_PATH` only when the caller left it unset, then
+  starts `dist/cli.js` (built offline by `scripts/build-mcp.mjs`), which bridges MCP to
+  the adopted ast-grep server.
+- `ast-grep` is preferred over `sg` in every tier: a candidate is accepted only when
+  `--version` prints `ast-grep`, which rejects the deprecated `.bin/sg` wrapper (it
+  exits 1).
 - Best for structural/pattern queries ("find every `fn` without error handling"),
   refactor candidates, and whole-repo rule checks — far cheaper than blind greps.
 
@@ -23,14 +30,17 @@ Offline-built MCP server exposing **ast-grep** structural code search/rewrite as
     serverName: ast_grep
     transport: stdio
     command: node
-    args: [<bundle>/packages/mpd-mcp-astgrep/dist/cli.js]
-    env: { MPD_AST_GREP_SG_PATH: <bundle>/node_modules/.bin/sg }
+    args: [<bundle>/packages/mpd-mcp-astgrep/launch.mjs]
     toolCallTimeoutMs: 60000
 ```
+
+The row names **no binary path** (B8): resolution lives in `launch.mjs` +
+`packages/mpd-mcp-shared/bin-resolve.mjs`, so it works in both install layouts, and a
+wrong caller pin is never silently overridden.
 
 ## Notes
 
 - Env key `MPD_AST_GREP_SG_PATH` is read by upstream vendored code — never rename it
-  (AGENTS.md §1).
+  (AGENTS.md §1). When the caller sets it, the launcher leaves it untouched.
 - Missing binary symptom: `ast-grep BINARY_NOT_FOUND` — install the toolchain
-  (`node scripts/install-profile.mjs --yes`) or set the env path.
+  (`node scripts/install-mcp.mjs` or `install-profile.mjs --yes`) or set the env path.

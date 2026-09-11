@@ -1,0 +1,89 @@
+=== clean heal fidelity (strip every region from OUR file, then heal) ===
+canonical sha256 = fd106fdbf12a7379672452a321b79bd5156990454b233617621338821deb387c
+
+--- strip every mpd-delta region (markers + bodies) ---
+stripped: 2 regions -> mpd-delta task-contract, mpd-delta task-contract-render
+stripped sha256 = ba1f6ab20d18285956c1cf206762f5a751eacd584513fa0d0f0c798e8bfc9ce7
+
+--- --write (the heal) ---
+[patch-agent-teams-fixes] applied: 9 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta task-contract, mpd-delta task-contract-render)
+exit=0
+
+--- --check after the heal ---
+[patch-agent-teams-fixes] already applied: 9 mpd delta region(s) across 2 adopted file(s)
+exit=0
+
+--- healed sha256 = c3d7407e615b8c36594fec3d29ea6d73fada527734f917670786936606f76c9d
+byte-identical-to-canonical=NO
+
+--- diff healed vs canonical (line count first, then the diff) ---
+diff-lines=60
+1732a1733,1761
+>     //#region mpd-delta task-contract (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+>     ctx.tools.register(defineTool({
+>         name: 'agent_teams_task_contract',
+>         description: 'Read ONE task\'s contract exactly as it was declared: kind/round/objective, inScope/outOfScope, acceptance/verify, dependencies, assignee, attempt id, plus the completion payload it will be judged on. Read-only, works for any status including a task that is already running, and available to the captain and to any member of the team. Use it instead of guessing a running task\'s contract from its subject.',
+>         parameters: {
+>             task_id: { type: 'string', description: 'Task id from the shared task list, e.g. "t4".' },
+>         },
+>         output: {
+>             schema: { type: 'object', additionalProperties: true, properties: {} },
+>             render: (_args, value) => [{ type: 'text', text: renderTaskContract(value) }],
+>         },
+>         async execute(args, exec) {
+>             const caller = requireCaptain(exec);
+>             const workspace = workspaceOf(caller);
+>             const stateRoot = stateRootOf(workspace, config);
+>             const located = await requireParticipantTeam(workspace, config, caller);
+>             const taskId = args.task_id?.trim() ?? '';
+>             if (taskId === '')
+>                 throw new Error('task_id is required');
+>             const { team } = await withTeamLock(teamLockKey(stateRoot, located.id), () => requireFreshParticipant(stateRoot, located.id, caller.id));
+>             const task = team.tasks.find((item) => item.id === taskId);
+>             if (task === undefined) {
+>                 const known = team.tasks.map((item) => item.id).join(', ');
+>                 throw new Error(`task "${taskId}" does not exist in team "${team.name}" (known tasks: ${known || 'none'})`);
+>             }
+>             return taskContractView(task);
+>         },
+>     }));
+>     //#endregion mpd-delta task-contract
+1970,1998d1998
+<     //#region mpd-delta task-contract (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+<     ctx.tools.register(defineTool({
+<         name: 'agent_teams_task_contract',
+<         description: 'Read ONE task\'s contract exactly as it was declared: kind/round/objective, inScope/outOfScope, acceptance/verify, dependencies, assignee, attempt id, plus the completion payload it will be judged on. Read-only, works for any status including a task that is already running, and available to the captain and to any member of the team. Use it instead of guessing a running task\'s contract from its subject.',
+<         parameters: {
+<             task_id: { type: 'string', description: 'Task id from the shared task list, e.g. "t4".' },
+<         },
+<         output: {
+<             schema: { type: 'object', additionalProperties: true, properties: {} },
+<             render: (_args, value) => [{ type: 'text', text: renderTaskContract(value) }],
+<         },
+<         async execute(args, exec) {
+<             const caller = requireCaptain(exec);
+<             const workspace = workspaceOf(caller);
+<             const stateRoot = stateRootOf(workspace, config);
+<             const located = await requireParticipantTeam(workspace, config, caller);
+<             const taskId = args.task_id?.trim() ?? '';
+<             if (taskId === '')
+<                 throw new Error('task_id is required');
+<             const { team } = await withTeamLock(teamLockKey(stateRoot, located.id), () => requireFreshParticipant(stateRoot, located.id, caller.id));
+<             const task = team.tasks.find((item) => item.id === taskId);
+<             if (task === undefined) {
+<                 const known = team.tasks.map((item) => item.id).join(', ');
+<                 throw new Error(`task "${taskId}" does not exist in team "${team.name}" (known tasks: ${known || 'none'})`);
+<             }
+<             return taskContractView(task);
+<         },
+<     }));
+<     //#endregion mpd-delta task-contract
+diff-exit=1
+
+--- which region moved? (region begin lines in each file) ---
+canonical:
+  1733:    //#region mpd-delta task-contract (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+  2259://#region mpd-delta task-contract-render (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+healed:
+  1970:    //#region mpd-delta task-contract (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+  2259://#region mpd-delta task-contract-render (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)

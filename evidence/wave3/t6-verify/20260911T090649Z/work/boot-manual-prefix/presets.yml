@@ -1,0 +1,13 @@
+# QA use: template — preset-register.mjs substitutes /root/dshProj/my-power-dsh/presets with this repo's
+# presets dir at runtime (never commit checkout-absolute paths). Mirrors the
+# bundle patch's own agent-presets id-target row: bundle-rooted `system` root +
+# the mpd default, so the headless QA boot exercises the same config shape the
+# web profile gets from the patch.
+- insert:
+    - id: agent-presets
+      name: '@deepseek-ai/dsh-agent-presets'
+      config:
+        default: mpd
+        roots:
+          - path: '/root/dshProj/my-power-dsh/presets'
+            trust: system

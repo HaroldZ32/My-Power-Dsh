@@ -1,0 +1,57 @@
+=== t8 durability guard exercise ===
+repo=/root/dshProj/my-power-dsh
+sandbox=/tmp/mpd-t8-guard-XMOdLD
+live    sha256 quality-gates.js = d808e8a69a423e50f02249887d98b13b8e7dab38f7c7501e61b918c116557464
+sandbox sha256 quality-gates.js = d808e8a69a423e50f02249887d98b13b8e7dab38f7c7501e61b918c116557464
+sandbox-binds-live=yes
+
+### S1 real tree --check (read-only)
+cmd: node scripts/patch-agent-teams-fixes.mjs --check   (cwd=/root/dshProj/my-power-dsh)
+exit=0
+[patch-agent-teams-fixes] already applied: 9 mpd delta region(s) across 2 adopted file(s)
+
+### S2 sandbox pristine --check
+cmd: node scripts/patch-agent-teams-fixes.mjs --check   (cwd=/tmp/mpd-t8-guard-XMOdLD)
+exit=0
+[patch-agent-teams-fixes] already applied: 9 mpd delta region(s) across 2 adopted file(s)
+
+stripped regions: mpd-delta scope-glob, mpd-delta scope-overlap, mpd-delta scope-overlap-normalize, mpd-delta contract-contradiction, mpd-delta create-contract-gate, mpd-delta repair-scope, mpd-delta repair-scope-fields
+### S3 sandbox, scope-glob region STRIPPED, --check must REFUSE
+cmd: node scripts/patch-agent-teams-fixes.mjs --check   (cwd=/tmp/mpd-t8-guard-XMOdLD)
+exit=1
+[patch-agent-teams-fixes] FAIL: delta "mpd-delta scope-glob" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js
+
+### S3b same stripped tree, --write must RESTORE it
+cmd: node scripts/patch-agent-teams-fixes.mjs --write   (cwd=/tmp/mpd-t8-guard-XMOdLD)
+exit=0
+[patch-agent-teams-fixes] applied: 9 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta scope-glob, mpd-delta scope-overlap, mpd-delta scope-overlap-normalize, mpd-delta contract-contradiction, mpd-delta create-contract-gate, mpd-delta repair-scope, mpd-delta repair-scope-fields)
+
+### S3c restored tree, --check must verify byte-identical
+cmd: node scripts/patch-agent-teams-fixes.mjs --check   (cwd=/tmp/mpd-t8-guard-XMOdLD)
+exit=0
+[patch-agent-teams-fixes] already applied: 9 mpd delta region(s) across 2 adopted file(s)
+
+stripped regions: mpd-delta scope-glob, mpd-delta scope-overlap, mpd-delta scope-overlap-normalize, mpd-delta contract-contradiction, mpd-delta create-contract-gate, mpd-delta repair-scope, mpd-delta repair-scope-fields | anchor line removed: 1 | anchor= 'function isDefaultExcluded(path) {'
+### S4 drift: region + anchor gone, --check
+cmd: node scripts/patch-agent-teams-fixes.mjs --check   (cwd=/tmp/mpd-t8-guard-XMOdLD)
+exit=1
+[patch-agent-teams-fixes] FAIL: delta "mpd-delta scope-glob" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js
+
+### S4b drift: region + anchor gone, --write must REFUSE naming the drift
+cmd: node scripts/patch-agent-teams-fixes.mjs --write   (cwd=/tmp/mpd-t8-guard-XMOdLD)
+exit=1
+[patch-agent-teams-fixes] FAIL: delta "mpd-delta scope-glob" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js and its anchor line is gone too ("function isDefaultExcluded(path) {") — the adopted file drifted; restore the delta by hand before re-vendoring
+
+scope-glob-core region not found
+### S5 region present but body edited, --check must REFUSE a mismatch
+cmd: node scripts/patch-agent-teams-fixes.mjs --check   (cwd=/tmp/mpd-t8-guard-XMOdLD)
+exit=0
+[patch-agent-teams-fixes] already applied: 9 mpd delta region(s) across 2 adopted file(s)
+
+### S6 pristine restored, --check green again
+cmd: node scripts/patch-agent-teams-fixes.mjs --check   (cwd=/tmp/mpd-t8-guard-XMOdLD)
+exit=0
+[patch-agent-teams-fixes] already applied: 9 mpd delta region(s) across 2 adopted file(s)
+
+live    sha256 AFTER all exercises = d808e8a69a423e50f02249887d98b13b8e7dab38f7c7501e61b918c116557464
+sandbox sha256 AFTER all exercises = d808e8a69a423e50f02249887d98b13b8e7dab38f7c7501e61b918c116557464

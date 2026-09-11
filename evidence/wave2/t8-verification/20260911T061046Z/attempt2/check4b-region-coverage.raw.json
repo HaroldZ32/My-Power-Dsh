@@ -1,0 +1,64 @@
+{
+  "driver": "check4b-region-coverage",
+  "files": {
+    "packages/mpd-agent-teams-plugin/lib/quality-gates.js": {
+      "regions": [
+        {
+          "id": "mpd-delta scope-glob",
+          "begin": 102,
+          "end": 195
+        },
+        {
+          "id": "mpd-delta scope-overlap",
+          "begin": 244,
+          "end": 262
+        },
+        {
+          "id": "mpd-delta scope-overlap-normalize",
+          "begin": 263,
+          "end": 269
+        },
+        {
+          "id": "mpd-delta contract-contradiction",
+          "begin": 276,
+          "end": 375
+        },
+        {
+          "id": "mpd-delta create-contract-gate",
+          "begin": 410,
+          "end": 427
+        },
+        {
+          "id": "mpd-delta repair-scope",
+          "begin": 714,
+          "end": 721
+        },
+        {
+          "id": "mpd-delta repair-scope-fields",
+          "begin": 730,
+          "end": 732
+        }
+      ],
+      "added_lines": 212,
+      "outside": []
+    },
+    "packages/mpd-agent-teams-plugin/lib/tools.js": {
+      "regions": [
+        {
+          "id": "mpd-delta task-contract",
+          "begin": 1733,
+          "end": 1761
+        },
+        {
+          "id": "mpd-delta task-contract-render",
+          "begin": 2259,
+          "end": 2335
+        }
+      ],
+      "added_lines": 106,
+      "outside": []
+    }
+  },
+  "added_lines_outside_regions": 0,
+  "passed": true
+}

@@ -1,0 +1,42 @@
+{
+  "task": "t6 vendor re-pin audit",
+  "stamp": "2026-09-11T09:38:02.096Z",
+  "enumeratedFiles": 366,
+  "lockedFileCount": 366,
+  "recomputedTreeSha": "3259d07a613c0bb9cf4a0ae8478adcbbb6247ec8bd361fb2075c3092c1c00621",
+  "committedTreeSha": "3259d07a613c0bb9cf4a0ae8478adcbbb6247ec8bd361fb2075c3092c1c00621",
+  "wave2Final": "5b13e920",
+  "checks": [
+    {
+      "name": "skills fileCount in VENDOR_LOCK equals the script's own enumeration",
+      "pass": true,
+      "detail": "enumerated=366 locked=366"
+    },
+    {
+      "name": "skills treeSha recomputed with verify-vendor's own algorithm matches the committed value",
+      "pass": true,
+      "detail": "recomputed=3259d07a613c0bb9cf4a0ae8478adcbbb6247ec8bd361fb2075c3092c1c00621 committed=3259d07a613c0bb9cf4a0ae8478adcbbb6247ec8bd361fb2075c3092c1c00621"
+    },
+    {
+      "name": "wave-2 baseline recorded the same skill COUNT (366) — this wave changed contents, not file count",
+      "pass": true,
+      "detail": "wave2Pair=true lockedCount=366"
+    },
+    {
+      "name": "exactly ONE skills re-pin separates the wave-2 final state from the committed lock",
+      "pass": true,
+      "detail": "wave2Final=5b13e920 before=5b13e92091e38ed8a001c08b11cd8fc73f650041260ad7fc519c782ab6a6ef45 after=3259d07a613c0bb9cf4a0ae8478adcbbb6247ec8bd361fb2075c3092c1c00621 committed=3259d07a613c0bb9cf4a0ae8478adcbbb6247ec8bd361fb2075c3092c1c00621"
+    },
+    {
+      "name": "the committed treeSha equals the recomputation (the re-pin is the algorithm's output, not hand-written)",
+      "pass": true,
+      "detail": "recomputed=3259d07a613c0bb9cf4a0ae8478adcbbb6247ec8bd361fb2075c3092c1c00621 committed=3259d07a613c0bb9cf4a0ae8478adcbbb6247ec8bd361fb2075c3092c1c00621"
+    },
+    {
+      "name": "VENDOR_LOCK diff touches only the `skills` entry inside assets",
+      "pass": true,
+      "detail": "[\"fileCount\",\"source\",\"treeSha\",\"fileCount\",\"source\",\"treeSha\"]"
+    }
+  ],
+  "allPass": true
+}

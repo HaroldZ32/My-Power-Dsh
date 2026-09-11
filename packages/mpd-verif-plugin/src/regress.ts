@@ -5,7 +5,7 @@
 // vcs lane: delegates to the UVM regress action (per-case work dirs contract).
 import { mkdirSync, writeFileSync, existsSync, readdirSync } from "node:fs"
 import { join } from "node:path"
-import { dateSeedBase, workDir, runStamp, type BackendId } from "./env"
+import { dateSeedBase, workspaceRoot, workDir, runStamp, type BackendId } from "./env"
 import { probeBackend } from "./backends"
 import { requireCocotbVenv } from "./venv"
 import { verifSim, type SimCase } from "./sim"
@@ -63,13 +63,13 @@ export interface RegressArgs {
 // Expand case names: explicit cases[]; else a glob over the workspace when
 // provided; else for the cocotb lane a single "all" pass (cocotb runs every
 // @cocotb.test in the tb module).
-function expandCases(args: RegressArgs): { kind: "explicit"; names: string[] } {
+function expandCases(args: RegressArgs, exec?: any): { kind: "explicit"; names: string[] } {
   if (args.cases && args.cases.length > 0) return { kind: "explicit", names: args.cases }
   if (args.glob) {
     // cocotb lane glob: tb .py files under the workspace (basename = test module marker);
     // actual filtering still happens inside cocotb, names here are directory-local
     // entries for per-case seeding.
-    const root = process.env.DSH_WORKSPACE_ROOT ?? process.cwd()
+    const root = workspaceRoot(exec)
     return { kind: "explicit", names: globFiles(root, args.glob) }
   }
   return { kind: "explicit", names: ["all"] }
@@ -91,15 +91,23 @@ function globFiles(root: string, pattern: string): string[] {
   return out.slice(0, 100)
 }
 
-export async function verifRegress(args: RegressArgs, tools?: WaveTools): Promise<RegressResult> {
+// R1 (gate ordering): the regress work directory is created ONLY after every
+// lane gate has passed. A refusal (iron-rule venv gate, backend resolution, bad
+// args) must never leave a directory behind, and a no-session call must surface
+// the actionable VERIF_E_NO_VENV instead of an opaque host-root filesystem
+// error (ENOENT/EROFS) from mkdirSync. Mirrors sim.ts: gate first, then the dir.
+function createRegressDir(exec?: any): string {
+  const regressDir = join(workDir(exec), "regress", runStamp())
+  mkdirSync(regressDir, { recursive: true })
+  return regressDir
+}
+
+export async function verifRegress(args: RegressArgs, tools?: WaveTools, exec?: any): Promise<RegressResult> {
   const backend = args.backend
   if (!["iverilog", "verilator", "vcs"].includes(backend) || (backend as string) === "") {
     throw new VerifError("VERIF_E_UNSUPPORTED", "unsupported regression backend: " + String(backend), "use iverilog | verilator (cocotb lane) or vcs (UVM lane)")
   }
   const seedBase = args.seedBase ?? dateSeedBase()
-  const stamp = runStamp()
-  const regressDir = join(workDir(), "regress", stamp)
-  mkdirSync(regressDir, { recursive: true })
 
   if (backend === "vcs") {
     // UVM lane: require the vcs gate + top (ip root) — ipRoot reuses sim.top
@@ -117,6 +125,7 @@ export async function verifRegress(args: RegressArgs, tools?: WaveTools): Promis
     }, tools)
     const cases: RegressCase[] = uvmRes.cases.map((c) => ({ backend: "vcs", test: c.test, seed: c.seed, status: c.status === "pass" ? "pass" : "fail", timeMs: 0, wave: c.wavefile ?? null, failureMsg: null }))
     const rep = buildReport("vcs", cases, seedBase)
+    const regressDir = createRegressDir(exec)
     const resultsJson = join(regressDir, "results.json")
     writeFileSync(resultsJson, JSON.stringify({ backend, seedBase, total: cases.length, passed: cases.filter((c) => c.status === "pass").length, failed: cases.filter((c) => c.status === "fail").length, skipped: 0, cases }, null, 2))
     const reportPath = join(regressDir, "results.md")
@@ -132,13 +141,17 @@ export async function verifRegress(args: RegressArgs, tools?: WaveTools): Promis
   }
 
   // cocotb lane (iverilog | verilator): iron-rule gate ONCE for the whole regression.
-  const gate = requireCocotbVenv()
+  const gate = requireCocotbVenv(undefined, exec)
   const probe = probeBackend(backend)
   if (!probe.present) throw new VerifError("VERIF_E_NO_BACKEND", `backend '${backend}' not found`, `install it or set MPD_DSH_VERIF_${backend.toUpperCase()}`)
   const expanded = expandCases(args)
   if (expanded.names.length === 0) throw new VerifError("VERIF_E_RUN", "no regression cases matched", "pass cases[] or a glob that matches tb modules")
   if (!args.sim?.top) throw new VerifError("VERIF_E_RUN", "regression needs sim.top (hdl_toplevel)", "pass sim.top=<toplevel-module>")
   if (!args.sim?.sources || args.sim.sources.length === 0) throw new VerifError("VERIF_E_RUN", "regression needs sim.sources", "pass sim.sources=[RTL files]")
+
+  // Every refusal above happened BEFORE this point (R1): only a regression that
+  // is certain to run creates its work directory.
+  const regressDir = createRegressDir(exec)
 
   const cases: RegressCase[] = []
   const waveHooks: WaveHookResult[] = []
@@ -162,12 +175,12 @@ export async function verifRegress(args: RegressArgs, tools?: WaveTools): Promis
         coverage: args.sim.coverage ?? false,
         timeoutSec: args.timeoutSec,
         waveHook: false,
-      }, {})
+      }, {}, exec)
       const status: RegressCase["status"] = r.ok && r.cases.length > 0 && r.cases.every((c: SimCase) => c.status === "pass") ? "pass" : "fail"
       const wave = r.wavesfiles[0] ? { file: r.wavesfiles[0].file, fmt: r.wavesfiles[0].fmt } : null
       cases.push({ backend, test: name, seed, status, timeMs: r.cases.reduce((s2, c) => s2 + c.timeMs, 0), wave, failureMsg: r.error?.message ?? null })
       if (args.waveHook !== false && wave) {
-        waveHooks.push(...await runWaveHooks(tools ?? {}, { wavefile: { file: wave.file, fmt: wave.fmt as "fst" | "vcd" | "fsdb" }, top: args.sim.top, sessionDir: waveSessionDir(join(workDir(), "sim")), caseDir: r.caseDir, lane: "oss" }))
+        waveHooks.push(...await runWaveHooks(tools ?? {}, { wavefile: { file: wave.file, fmt: wave.fmt as "fst" | "vcd" | "fsdb" }, top: args.sim.top, sessionDir: waveSessionDir(join(workDir(exec), "sim")), caseDir: r.caseDir, lane: "oss" }))
       }
     } catch (e) {
       const re = refusalOfLike(e)

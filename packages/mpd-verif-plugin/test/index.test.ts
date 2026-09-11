@@ -4,7 +4,7 @@
 import { test, expect } from "bun:test"
 import { join } from "node:path"
 import { apply } from "../src/index"
-import { guardEnv, makeSandbox, withSandboxEnv, writeBin } from "./helpers"
+import { guardEnv, makeSandbox, undefinedPaths, withSandboxEnv, writeBin } from "./helpers"
 
 function registerAll(): { name: string; definition: any }[] {
   const regs: any[] = []
@@ -39,8 +39,10 @@ test("mpd_verif_backends renders and returns structured probes", async () => {
   const rendered = t.definition.output.render({}, res)
   expect(rendered[0].type).toBe("text")
   expect(rendered[0].text).toContain("iverilog=")
-  // lossless JSON host contract
-  expect(JSON.parse(JSON.stringify(res))).toEqual(res)
+  // lossless JSON host contract: `toEqual` ignores undefined-valued keys, so
+  // assert the strict invariant instead (see test/lossless.test.ts).
+  expect(undefinedPaths(res)).toEqual([])
+  expect(JSON.parse(JSON.stringify(res))).toStrictEqual(res)
 })
 
 test("tool failures cross the seam as structured refusals (never exceptions)", async () => {

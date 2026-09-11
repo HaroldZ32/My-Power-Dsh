@@ -4,6 +4,7 @@
 // Work state: <workspace>/.mpd/verif or MPD_DSH_VERIF_WORK. Never touches ~/.dsh.
 import { existsSync } from "node:fs"
 import { join, resolve } from "node:path"
+import { workspaceRootOf } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const BACKEND_IDS = ["iverilog", "verilator", "vcs"] as const
 export type BackendId = (typeof BACKEND_IDS)[number]
@@ -26,22 +27,25 @@ export interface VerifPaths {
   work: string
 }
 
-// The session workspace root; DSH_WORKSPACE_ROOT is the host-provided value
-// (mirrors mpd-config-plugin), falling back to process.cwd().
-export function workspaceRoot(): string {
-  return resolve(process.env.DSH_WORKSPACE_ROOT ?? process.cwd())
+// The workspace root is owned by the ONE resolution in mpd-dsh-adapter
+// (session header cwd -> DSH_WORKSPACE_ROOT -> process.cwd()); this module only
+// forwards the calling call's `exec` so every verif root follows the CALLING
+// SESSION's workspace. Module-level caching is forbidden: one host serves many
+// sessions with different workspaces.
+export function workspaceRoot(exec?: any): string {
+  return resolve(workspaceRootOf(exec))
 }
 
-export function venvPath(override?: string): string {
-  return resolve(override || process.env.MPD_DSH_VERIF_VENV || join(workspaceRoot(), ".venv-rtl"))
+export function venvPath(override?: string, exec?: any): string {
+  return resolve(override || process.env.MPD_DSH_VERIF_VENV || join(workspaceRoot(exec), ".venv-rtl"))
 }
 
-export function workDir(): string {
-  return resolve(process.env.MPD_DSH_VERIF_WORK || join(workspaceRoot(), ".mpd", "verif"))
+export function workDir(exec?: any): string {
+  return resolve(process.env.MPD_DSH_VERIF_WORK || join(workspaceRoot(exec), ".mpd", "verif"))
 }
 
-export function paths(overrideVenv?: string): VerifPaths {
-  return { workspace: workspaceRoot(), venv: venvPath(overrideVenv), work: workDir() }
+export function paths(overrideVenv?: string, exec?: any): VerifPaths {
+  return { workspace: workspaceRoot(exec), venv: venvPath(overrideVenv, exec), work: workDir(exec) }
 }
 
 // Binary resolution: explicit env override wins even when the file is missing

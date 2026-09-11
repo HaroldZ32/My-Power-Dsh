@@ -1,0 +1,264 @@
+{
+  "task": "t8 (attempt 2) — Verify B1: workspace roots resolve into the session workspace",
+  "task_kind": "verification",
+  "attempt_id": "45e01c27-73b3-4bcc-934f-67d11ed9f8fe",
+  "member": "Lead",
+  "date": "2026-09-11",
+  "retry_reason": "attempt 1 failed on required check 6 only (4 stale dists); repair task t12 rebuilt them",
+  "verdict": "passed",
+  "verdict_reason": "Re-verified on the CURRENT tree (after t12). Required check 6 now passes with the SAME documented method: 16/16 packages byte-identical to a fresh build (0 stale, 0 banner-only). The other five required checks and all six acceptance criteria re-pass on this tree: fresh-boot tool-call proof 19/19 with 0 apply-crash signatures (three real gateway sessions, per-session discrimination, no-agent falsifiability control), preset-conformance ok=true + negative control, bundle-lifecycle PASS, bun test packages 308/0, test:qa all self-tests, grep clean.",
+  "required_checks": [
+    {
+      "id": 1,
+      "name": "four captain reproductions re-run in the original shape",
+      "status": "passed",
+      "evidence": "R1 ok=true path=/root/dshProj/my-power-dsh/.mpd/hashline-files.json | R2 workspace=/root/dshProj/my-power-dsh venv=/root/dshProj/my-power-dsh/.venv-rtl work=/root/dshProj/my-power-dsh/.mpd/verif | R3 root=/root/dshProj/my-power-dsh/.mpd/memory/agents/agent-my-power-dsh | R4 count=1 plans=[\"/root/dshProj/my-power-dsh/.mpd/plans/workmate-rename-delete-contract.md\"] | R5 stateFile=/root/dshProj/my-power-dsh/.mpd/boulder.json"
+    },
+    {
+      "id": 2,
+      "name": "mounting boot, isolated DSH_HOME + sandbox HOME, 0 apply-crash signatures, no --dump-config cited",
+      "status": "passed",
+      "evidence": "applyCrashSignatures=[]; probeReachedFinalMarker=true; bootChildCwd=/root/dshProj (launch cwd /root/dshProj); no --dump-config was run or cited"
+    },
+    {
+      "id": 3,
+      "name": "preset-conformance ok:true + negative control",
+      "status": "passed",
+      "evidence": "[preset-conformance] ok=true -> /root/dshProj/my-power-dsh/evidence/dsh-qa/preset-conformance/2026-09-11T03-59-43.412Z\n  conformance: {\"ok\":true,\"checked\":30,\"schemaFree\":6,\"parity\":{\"reference\":31,\"ours\":31,\"missing\":[],\"extra\":[]},\"problems\":[]}\n  auth: {\"ok\":true,\"tokenSeen\":true,\"cookieSession\":true}\n  sessionCreate: {\"ok\":true,\"status\":200,\"sessionId\":\"session-5381d27e-82ec-409f-b12a-9a22e7584282\",\"agentPreset\":\"mpd\"}\n  sessionHeader: {\"ok\":true,\"agentPreset\":\"mpd\",\"log\":\"/tmp/mpd-preset-main-gqulZA/home/sessions/--root-dshProj-my-power-dsh--/session-5381d27e-82ec-409f-b12a-9a22e7584282/session.v3.jsonl.zstd\"}\n  bootLog: {\"ok\":true,\"signatures\":[]}\n  negativeControl: {\"ok\":true,\"code\":\"agent-preset/invalid\",\"message\":\"agent-presets: preset \\\"mpd\\\" failed to mount: failed to apply loader entry persona (@deepseek-ai/dsh-persona): invalid config:\\n  - $.prefix missing required value (at prefix) (/tmp/mpd-preset-control-2026-09-11T03-59-43.412Z/mpd/agent.cordis.yml)\n[preset-conformance] PASS"
+    },
+    {
+      "id": 4,
+      "name": "workmate in-use gate: controlled case + live team records + read-only",
+      "status": "passed",
+      "evidence": "W2 PASS: ok=false err=mpd_workmate: \"t8wm1\" / \"t8wm2\" is in use by team member(s) blocking-team/t8wm1, blocking-team/t8wm2 — archive or retire those teams and let running spawns finish first | W6 PASS | W7 PASS | X1 PASS: {\"repoDelta\":{\"changed\":[],\"removed\":[],\"added\":[]},\"repoDeltaOutsideLiveTeam\":{\"changed\":[],\"removed\":[],\"added\":[]},\"blockedDelta\":{\"changed\":[],\"removed\":[],\"added\":[]},\"cleanDelta\":{\"changed\":[],\"removed\":[],\"added\":[]},\"attribution\":\"changes inside mpd-default-7332aba4/ belong to the LIVE agent-teams plugin of the running team, not to the workmate gate\"}"
+    },
+    {
+      "id": 5,
+      "name": "grep packages/*/src: bare expression only in the shared helper",
+      "status": "passed",
+      "evidence": "see grep-root-resolution-attempt2.txt: adapter helper 203-205 (the ONE resolution); all other hits are doc comments; the lone other code hit is mpd-codegraph-plugin/src/index.ts:76 (different expression, apply-time, explicit override)"
+    },
+    {
+      "id": 6,
+      "name": "each dist matches its source apart from the build banner",
+      "status": "passed",
+      "evidence": "mpd-bootstrap-plugin: IDENTICAL (sha256 c817928406387c07) | mpd-boulder-plugin: IDENTICAL (sha256 a15872148b34caee) | mpd-bundle-plugin: IDENTICAL (sha256 d30b30fa7dcbe247) | mpd-codegraph-plugin: IDENTICAL (sha256 d66079901dd8942e) | mpd-comment-checker-plugin: IDENTICAL (sha256 e27dd3cececbe6bf) | mpd-config-plugin: IDENTICAL (sha256 189d76a6cca3e4e4) | mpd-dsh-adapter-plugin: IDENTICAL (sha256 fe3ea3015bcc391e) | mpd-hashline-plugin: IDENTICAL (sha256 7152de89783e4018) | mpd-memory-plugin: IDENTICAL (sha256 0f9e3a53273b40d6) | mpd-modelchain-plugin: IDENTICAL (sha256 e3c0b2466c54f32c) | mpd-qa-roles-probe: IDENTICAL (sha256 37d0693a8b7f76e7) | mpd-roles-plugin: IDENTICAL (sha256 741605f62225fb41) | mpd-tools-plugin: IDENTICAL (sha256 07c539987450e064) | mpd-ulw-plugin: IDENTICAL (sha256 e116ee3e8017450a) | mpd-verif-plugin: IDENTICAL (sha256 2958504a65f4603d) | mpd-workmate-plugin: IDENTICAL (sha256 e10a87fcf2fe3096) | --- packages checked: 16 with src/index.ts; byte-identical=16 banner-only=0 REAL-DIFF(stale)=0; fail=0"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "Four reproductions re-run independently and resolve INSIDE the session workspace, raw output quoted",
+      "status": "passed",
+      "evidence": "R1_HASHLINE_RELATIVE_READ: ok=true path=/root/dshProj/my-power-dsh/.mpd/hashline-files.json || R2_VERIF_INFO_RESOLVES_REPO: workspace=/root/dshProj/my-power-dsh venv=/root/dshProj/my-power-dsh/.venv-rtl work=/root/dshProj/my-power-dsh/.mpd/verif || R3_MEMORY_STATUS_RESOLVES_REPO: root=/root/dshProj/my-power-dsh/.mpd/memory/agents/agent-my-power-dsh || R4_BOULDER_PLANS_LISTS_REPO_PLAN: count=1 plans=[\"/root/dshProj/my-power-dsh/.mpd/plans/workmate-rename-delete-contract.md\"]"
+    },
+    {
+      "criterion": "Mounting boot with 0 apply-crash signatures; no --dump-config cited as load evidence",
+      "status": "passed",
+      "evidence": "applyCrashSignatures=[]; probe DONE=true; three gateway sessions created in the same boot; boot.log is the load evidence"
+    },
+    {
+      "criterion": "preset-conformance ok:true including its negative control",
+      "status": "passed",
+      "evidence": "[preset-conformance] ok=true + negativeControl ok (agent-preset/invalid, $.prefix missing required value) + PASS; --self-test ok (30 rows, parity 31/31); bundle-lifecycle PASS"
+    },
+    {
+      "criterion": "Workmate in-use gate exercised: sees the session workspace's team records, writes nothing",
+      "status": "passed",
+      "evidence": "W1-W8 PASS; X1 PASS {\"repoDelta\":{\"changed\":[],\"removed\":[],\"added\":[]},\"repoDeltaOutsideLiveTeam\":{\"changed\":[],\"removed\":[],\"added\":[]},\"blockedDelta\":{\"changed\":[],\"removed\":[],\"added\":[]},\"cleanDelta\":{\"changed\":[],\"removed\":[],\"added\":[]},\"attribution\":\"changes inside mpd-default-7332aba4/ belong to the LIVE agent"
+    },
+    {
+      "criterion": "grep shows the bare expression only in the single shared helper",
+      "status": "passed",
+      "evidence": "no plugin carries `process.env.DSH_WORKSPACE_ROOT ?? process.cwd()`; only the adapter helper (203-205)"
+    },
+    {
+      "criterion": "Unreproducible criteria reported as failure with raw evidence, not waved through",
+      "status": "passed",
+      "evidence": "attempt 1's failure is preserved in evidence/session-workspace-root/t8-verify/{RESULT.json,dist-consistency.txt}; this attempt re-ran the same method and recorded the before/after sha256 prefixes (12 previously-fresh packages unchanged: boulder a15872148b34caee, hashline 7152de89783e4018, verif 2958504a65f4603d)"
+    }
+  ],
+  "commands": [
+    {
+      "command": "node skills/dsh-qa/scripts/preset-conformance.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "ok=true; conformance 30 checked / parity 31/31; sessionCreate ok; sessionHeader ok; bootLog signatures []; negativeControl ok; PASS"
+    },
+    {
+      "command": "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "install/composed/boot/noHomeCopy/layerDurability/uninstall all ok; PASS (74s)"
+    },
+    {
+      "command": "bun test packages",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "308 pass, 0 fail, 2025 expect() calls, 35 files"
+    },
+    {
+      "command": "bun run test:qa",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "[test:qa] all self-tests passed"
+    },
+    {
+      "command": "grep -rn 'DSH_WORKSPACE_ROOT\\|process.cwd()' packages/*/src",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "13 hits; classification in grep-root-resolution-attempt2.txt"
+    },
+    {
+      "command": "node evidence/session-workspace-root/t8-verify/run-toolcall-proof.mjs (T8_OUT=attempt-2/toolcall-proof)",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "19/19 checks PASS, 0 apply-crash signatures, launch cwd /root/dshProj != session workspace"
+    },
+    {
+      "command": "bun build <pkg>/src/index.ts --target node --format esm --outfile <tmp> (dist-consistency, 16 packages)",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "16/16 byte-identical; stale=0"
+    },
+    {
+      "command": "bun run typecheck",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "tsgo --noEmit clean"
+    }
+  ],
+  "t12_cross_check": {
+    "note": "independent confirmation of the repair, not a re-run of its script",
+    "preRepairStale": [
+      "mpd-bootstrap-plugin",
+      "mpd-qa-roles-probe",
+      "mpd-roles-plugin",
+      "mpd-tools-plugin"
+    ],
+    "repairedSha16": {
+      "mpd-bootstrap-plugin": "c817928406387c07",
+      "mpd-qa-roles-probe": "37d0693a8b7f76e7",
+      "mpd-roles-plugin": "741605f62225fb41",
+      "mpd-tools-plugin": "07c539987450e064"
+    },
+    "freshlyStableSha16": {
+      "mpd-boulder-plugin": "a15872148b34caee",
+      "mpd-hashline-plugin": "7152de89783e4018",
+      "mpd-verif-plugin": "2958504a65f4603d",
+      "mpd-workmate-plugin": "e10a87fcf2fe3096"
+    },
+    "bannerDeviation": "mpd-roles-plugin's dist was rebuilt with the repo-root form (t12), which normalizes the banner to the repo convention; my documented method passes the repo-relative src path, so committed vs fresh are now byte-identical (previously a banner-only outlier). Accounted for, not flagged."
+  },
+  "artifacts": {
+    "probe_result": "evidence/session-workspace-root/t8-verify/attempt-2/toolcall-proof/result.json",
+    "probe_boot_log": "evidence/session-workspace-root/t8-verify/attempt-2/toolcall-proof/boot.log",
+    "dist_consistency": "evidence/session-workspace-root/t8-verify/attempt-2/dist-consistency-attempt2.txt",
+    "grep": "evidence/session-workspace-root/t8-verify/attempt-2/grep-root-resolution-attempt2.txt",
+    "gates": "evidence/session-workspace-root/t8-verify/attempt-2/gates/",
+    "attempt1_failure": "evidence/session-workspace-root/t8-verify/{RESULT.json,RESULT.md,dist-consistency.txt}",
+    "repair_evidence": "evidence/session-workspace-root/dist-repair/"
+  },
+  "probe_checks_raw": [
+    {
+      "id": "R1_HASHLINE_RELATIVE_READ",
+      "status": "PASS",
+      "detail": "ok=true path=/root/dshProj/my-power-dsh/.mpd/hashline-files.json"
+    },
+    {
+      "id": "R2_VERIF_INFO_RESOLVES_REPO",
+      "status": "PASS",
+      "detail": "workspace=/root/dshProj/my-power-dsh venv=/root/dshProj/my-power-dsh/.venv-rtl work=/root/dshProj/my-power-dsh/.mpd/verif"
+    },
+    {
+      "id": "R3_MEMORY_STATUS_RESOLVES_REPO",
+      "status": "PASS",
+      "detail": "root=/root/dshProj/my-power-dsh/.mpd/memory/agents/agent-my-power-dsh"
+    },
+    {
+      "id": "R4_BOULDER_PLANS_LISTS_REPO_PLAN",
+      "status": "PASS",
+      "detail": "count=1 plans=[\"/root/dshProj/my-power-dsh/.mpd/plans/workmate-rename-delete-contract.md\"]"
+    },
+    {
+      "id": "R5_BOULDER_STATUS_FILE",
+      "status": "PASS",
+      "detail": "stateFile=/root/dshProj/my-power-dsh/.mpd/boulder.json"
+    },
+    {
+      "id": "S1_TWO_SESSIONS_RESOLVE_DIFFERENTLY",
+      "status": "PASS",
+      "detail": "blocked=/tmp/mpd-t8-toolcall-zroz6F/ws-blocked/.mpd/memory/agents/agent-ws-blocked clean=/tmp/mpd-t8-toolcall-zroz6F/ws-clean/.mpd/memory/agents/agent-ws-clean"
+    },
+    {
+      "id": "S2_OTHER_SESSION_DOES_NOT_SEE_REPO_PLAN",
+      "status": "PASS",
+      "detail": "count=0"
+    },
+    {
+      "id": "N1_NO_AGENT_FALLS_BACK_TO_HOST_CWD",
+      "status": "PASS",
+      "detail": "workspace=/root/dshProj hostCwd=/root/dshProj"
+    },
+    {
+      "id": "N2_WITHOUT_SESSION_REPO_PLAN_INVISIBLE",
+      "status": "PASS",
+      "detail": "count=0"
+    },
+    {
+      "id": "N3_WITHOUT_SESSION_RELATIVE_READ_FAILS_AT_HOST_CWD",
+      "status": "PASS",
+      "detail": "ok=false err=mpd-hashline: file not found: /root/dshProj/.mpd/hashline-files.json"
+    },
+    {
+      "id": "W1_INIT_CONTROLLED_FIXTURE",
+      "status": "PASS",
+      "detail": "ok=true err="
+    },
+    {
+      "id": "W2_CONTROLLED_BLOCKED_WS_REFUSES",
+      "status": "PASS",
+      "detail": "ok=false err=mpd_workmate: \"t8wm1\" / \"t8wm2\" is in use by team member(s) blocking-team/t8wm1, blocking-team/t8wm2 — archive or retire those teams and let running spawns finish first"
+    },
+    {
+      "id": "W3_CLEAN_WS_ALLOWS",
+      "status": "PASS",
+      "detail": "init=true rename=true name=t8wm4"
+    },
+    {
+      "id": "W4_UNRELATED_KEY_ALLOWED_IN_BLOCKED_WS",
+      "status": "PASS",
+      "detail": "ok=true err="
+    },
+    {
+      "id": "W5_INIT_LIVE_TEAM_KEY",
+      "status": "PASS",
+      "detail": "ok=true err="
+    },
+    {
+      "id": "W6_LIVE_REPO_TEAM_RECORD_BLOCKS_SOURCE_KEY",
+      "status": "PASS",
+      "detail": "ok=false err=mpd_workmate: \"lead\" / \"lead-x\" is in use by team member(s) agent-teams-sidebar-migration/Lead, mpd-default/Lead, mpd-default-19f64d11/Lead, mpd-default-1f285182/Lead, mpd-default-2d2445da/Lead, mpd-default-47c350bf/Lead, mpd-default-4a3d20e1/Lead, mpd-default-53380813/Lead, mpd-default-5b99df58/Lead, mpd-default-7332aba4/Lead, mpd-default-84e50f06/Lead, mpd-default-98620900/Lead, mpd-default-9b7de114/Lead, mpd-default-b550f267/Lead, mpd-default-c146a414/Lead, mpd-default-c2be0a8a/L"
+    },
+    {
+      "id": "W7_LIVE_REPO_TEAM_RECORD_BLOCKS_TARGET_KEY",
+      "status": "PASS",
+      "detail": "initFive=true ok=false err=mpd_workmate: \"t8wm5\" / \"architect\" is in use by team member(s) agent-teams-sidebar-migration/Architect, mpd-default/Architect, mpd-default-19f64d11/Architect, mpd-default-1f285182/Architect, mpd-default-2d2445da/Architect, mpd-default-47c350bf/Architect, mpd-default-4a3d20e1/Architect, mpd-default-53380813/Architect, mpd-default-5b99df58/Architect, mpd-default-7332aba4/Architect, mpd-default-84e50f06/Architect, mpd-default-98620900/Architect, mpd-default-9b7de114/Arch"
+    },
+    {
+      "id": "W8_OTHER_WS_DOES_NOT_SEE_REPO_TEAM",
+      "status": "PASS",
+      "detail": "ok=true err="
+    },
+    {
+      "id": "X1_TEAM_STATE_READ_ONLY",
+      "status": "PASS",
+      "detail": "{\"repoDelta\":{\"changed\":[],\"removed\":[],\"added\":[]},\"repoDeltaOutsideLiveTeam\":{\"changed\":[],\"removed\":[],\"added\":[]},\"blockedDelta\":{\"changed\":[],\"removed\":[],\"added\":[]},\"cleanDelta\":{\"changed\":[],\"removed\":[],\"added\":[]},\"attribution\":\"changes inside mpd-default-7332aba4/ belong to the LIVE agent-teams plugin of the running team, not to the workmate gate\"}"
+    }
+  ],
+  "gates_summary_raw": "=== typecheck: bun run typecheck ===\nexit=0 elapsed=0s\n=== preset-conformance: node skills/dsh-qa/scripts/preset-conformance.mjs ===\nexit=0 elapsed=29s\n=== preset-conformance-selftest: node skills/dsh-qa/scripts/preset-conformance.mjs --self-test ===\nexit=0 elapsed=0s\n=== bundle-lifecycle: bun skills/dsh-qa/scripts/bundle-lifecycle.mjs ===\nexit=0 elapsed=74s\n=== bun-test-packages: bun test packages ===\nexit=0 elapsed=12s\n=== test-qa: bun run test:qa ===\nexit=0 elapsed=3s\n",
+  "dist_consistency_raw": "# t8 attempt-2, required check 6 — SAME method as evidence/session-workspace-root/t8-verify/dist-consistency.txt\n#   for every packages/*/dist/index.js: 'bun build src/index.ts --target node --format esm' (package-relative src path, run from the repo root),\n#   compare committed bytes; if they differ, compare again with all build-banner comment lines (^// .*\\.ts$) stripped.\n\nmpd-bootstrap-plugin: IDENTICAL (sha256 c817928406387c07)\nmpd-boulder-plugin: IDENTICAL (sha256 a15872148b34caee)\nmpd-bundle-plugin: IDENTICAL (sha256 d30b30fa7dcbe247)\nmpd-codegraph-plugin: IDENTICAL (sha256 d66079901dd8942e)\nmpd-comment-checker-plugin: IDENTICAL (sha256 e27dd3cececbe6bf)\nmpd-config-plugin: IDENTICAL (sha256 189d76a6cca3e4e4)\nmpd-dsh-adapter-plugin: IDENTICAL (sha256 fe3ea3015bcc391e)\nmpd-hashline-plugin: IDENTICAL (sha256 7152de89783e4018)\nmpd-memory-plugin: IDENTICAL (sha256 0f9e3a53273b40d6)\nmpd-modelchain-plugin: IDENTICAL (sha256 e3c0b2466c54f32c)\nmpd-qa-roles-probe: IDENTICAL (sha256 37d0693a8b7f76e7)\nmpd-roles-plugin: IDENTICAL (sha256 741605f62225fb41)\nmpd-tools-plugin: IDENTICAL (sha256 07c539987450e064)\nmpd-ulw-plugin: IDENTICAL (sha256 e116ee3e8017450a)\nmpd-verif-plugin: IDENTICAL (sha256 2958504a65f4603d)\nmpd-workmate-plugin: IDENTICAL (sha256 e10a87fcf2fe3096)\n--- packages checked: 16 with src/index.ts; byte-identical=16 banner-only=0 REAL-DIFF(stale)=0; fail=0\n",
+  "grep_raw": "# t8 attempt-2, required check 5 — every remaining root-resolution hit in packages/*/src (current tree)\n\n## raw: grep -rn 'DSH_WORKSPACE_ROOT|process.cwd()' packages/*/src\npackages/mpd-codegraph-plugin/src/index.ts:76:  const cwd = (process.env.MPD_CODEGRAPH_PROJECT_CWD ?? process.env.MPD_DSH_CODEGRAPH_PROJECT_CWD) || process.cwd()\npackages/mpd-dsh-adapter-plugin/src/index.ts:138:   *   2. `DSH_WORKSPACE_ROOT`             (process override: operator/QA only)\npackages/mpd-dsh-adapter-plugin/src/index.ts:139:   *   3. `process.cwd()`                  (last resort: boot, unit tests)\npackages/mpd-dsh-adapter-plugin/src/index.ts:183:// The harness never defines DSH_WORKSPACE_ROOT; a session's header cwd is the\npackages/mpd-dsh-adapter-plugin/src/index.ts:186:// highest first: session -> DSH_WORKSPACE_ROOT (operator/QA override) ->\npackages/mpd-dsh-adapter-plugin/src/index.ts:187:// process.cwd() (boot, unit tests). Never cached: one host serves many sessions\npackages/mpd-dsh-adapter-plugin/src/index.ts:203:  const override = process.env.DSH_WORKSPACE_ROOT\npackages/mpd-dsh-adapter-plugin/src/index.ts:205:  return process.cwd()\npackages/mpd-verif-plugin/src/env.ts:31:// (session header cwd -> DSH_WORKSPACE_ROOT -> process.cwd()); this module only\npackages/mpd-workmate-plugin/src/index.ts:335:  // direct/module-level callers on the adapter's ONE resolution (env -> process.cwd()).\npackages/mpd-workmate-plugin/src/index.ts:385: * union of every live session workspace, or the adapter's env -> process.cwd() form when none is\npackages/mpd-workmate-plugin/src/index.ts:554:    // workspaces (`workspaceRootsAll`), falling back to the adapter's env -> process.cwd() form\n\n## raw: literal B1 expression 'process.env.DSH_WORKSPACE_ROOT ?? process.cwd()'\n(none — the helper splits it into a const + two returns; no plugin carries it)\n\n## classification (unchanged from attempt 1; the tree changed only in the four repaired dists + banner)\n1. packages/mpd-dsh-adapter-plugin/src/index.ts:203-205 — THE single shared helper (workspaceRootOf).\n2. packages/mpd-dsh-adapter-plugin/src/index.ts:138,139,183,186,187 — doc comments of that same precedence.\n3. packages/mpd-verif-plugin/src/env.ts:31 — doc comment pointing at the adapter's ONE resolution.\n4. packages/mpd-workmate-plugin/src/index.ts:335,385,554 — doc comments (tool/agentless paths).\n5. packages/mpd-codegraph-plugin/src/index.ts:76 — residual, different expression, apply-time, explicit override wins\n   (const cwd = (process.env.MPD_CODEGRAPH_PROJECT_CWD ?? process.env.MPD_DSH_CODEGRAPH_PROJECT_CWD) || process.cwd()).\n   Outside B1's migrated call-site set; reported as a low observation, unchanged.\n",
+  "probe_checks_pass_count": 19,
+  "probe_checks_total": 19,
+  "count_correction": "t13 recomputed the probe check count from probe_checks_raw itself: 19/19 PASS (the prose previously said 18/18; the raw list always carried 19 entries). Verdict unchanged."
+}

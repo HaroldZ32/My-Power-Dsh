@@ -87,10 +87,15 @@ for (const [rel, meta] of Object.entries(lock.assets || {})) {
   const dir = join(repoRoot, rel)
   if (!existsSync(dir)) { fail("asset missing: " + rel); continue }
   const files = listFiles(dir)
-  if (files.length !== meta.fileCount) fail("asset " + rel + " count drifted: " + files.length + " vs " + meta.fileCount)
+  // An asset that failed any of its gates must never also report OK.
+  let assetOk = true
+  if (files.length !== meta.fileCount) {
+    fail("asset " + rel + " count drifted: " + files.length + " vs " + meta.fileCount)
+    assetOk = false
+  }
   if (typeof meta.sha256 === "string") {
     const actual = createHash("sha256").update(readFileSync(dir)).digest("hex")
-    if (actual !== meta.sha256) fail("asset " + rel + " sha256 mismatch")
+    if (actual !== meta.sha256) { fail("asset " + rel + " sha256 mismatch"); assetOk = false }
   }
   if (typeof meta.treeSha === "string") {
     const files2 = files.map((f) => f.slice(dir.length + 1)).sort()
@@ -100,9 +105,9 @@ for (const [rel, meta] of Object.entries(lock.assets || {})) {
       h.update(f + "\n" + fh + "\n")
     }
     const actual = h.digest("hex")
-    if (actual !== meta.treeSha) fail("asset " + rel + " treeSha mismatch")
+    if (actual !== meta.treeSha) { fail("asset " + rel + " treeSha mismatch"); assetOk = false }
   }
-  console.log("[verify-vendor] asset OK:", rel, files.length, "files")
+  if (assetOk) console.log("[verify-vendor] asset OK:", rel, files.length, "files")
 }
 
 if (failed) process.exit(1)
