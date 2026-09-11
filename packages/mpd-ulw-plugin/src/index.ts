@@ -8,7 +8,7 @@
 import { mkdirSync, writeFileSync, appendFileSync } from "node:fs"
 import { join } from "node:path"
 import { randomUUID } from "node:crypto"
-import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { createDshAdapter, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-ulw"
 export const inject = ["tools", "subagents"]
@@ -77,7 +77,17 @@ const DIRECTIVE = [
 
 function textBlock(text: string): any { return [{ type: "text", text }] }
 
-function cwd(): string { return process.env.DSH_WORKSPACE_ROOT ?? process.cwd() }
+// Explicit config (ulw.planDir / ulw.stateDir) wins; otherwise both roots live under the
+// CALLING SESSION's workspace (adapter workspaceRoot) — never the dsh process cwd. They are
+// resolved PER CALL, never captured in an apply-time const, because one host serves many
+// sessions with different workspaces.
+function planRoot(cfg: Config, dsh: DshAdapter, exec?: any): string {
+  return cfg.planDir ?? join(dsh.workspaceRoot(exec), ".mpd", "plans")
+}
+
+function stateRoot(cfg: Config, dsh: DshAdapter, exec?: any): string {
+  return cfg.stateDir ?? join(dsh.workspaceRoot(exec), ".mpd", "ulw")
+}
 
 function writeJson(p: string, v: any): void { writeFileSync(p, JSON.stringify(v, null, 2)) }
 
@@ -87,8 +97,6 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
   const cfg = mergedConfig(ctx, config)
   const maxRounds = cfg.maxRounds ?? 6
-  const planDir = cfg.planDir ?? join(cwd(), ".mpd", "plans")
-  const stateDir = cfg.stateDir ?? join(cwd(), ".mpd", "ulw")
   const provider = cfg.provider ?? "deepseek-official"
   const model = cfg.model ?? "deepseek-v4-flash"
   const reviewerModel = cfg.reviewerModel ?? "deepseek-v4-pro"
@@ -148,6 +156,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       render: (_a: unknown, v: any) => textBlock("ultrawork status=" + v.status + " rounds=" + v.rounds + " verdict=" + (v.verdict ?? "-") + String.fromCharCode(10) + v.finalReport + String.fromCharCode(10) + "state: " + v.stateFile)
     },
     execute: async (args: any, exec: any) => {
+      const planDir = planRoot(cfg, dsh, exec)
+      const stateDir = stateRoot(cfg, dsh, exec)
       const objective = String(args?.objective)
       if (!objective) throw new Error("mpd_ultrawork: objective required")
       const tier = args?.tier === "heavy" ? "heavy" : "light"

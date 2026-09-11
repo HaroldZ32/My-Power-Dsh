@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
+import { resolve } from "node:path";
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 function textBlock(content) {
@@ -12,6 +13,41 @@ function textBlock(content) {
 }
 function message(error) {
   return error instanceof Error ? error.message : String(error);
+}
+function sessionCwdOf(agent) {
+  try {
+    const cwd = agent?.session?.header?.cwd;
+    return typeof cwd === "string" && cwd.length > 0 ? cwd : undefined;
+  } catch {
+    return;
+  }
+}
+function workspaceRootOf(exec) {
+  const session = sessionCwdOf(exec?.agent);
+  if (session !== undefined)
+    return resolve(session);
+  const override = process.env.DSH_WORKSPACE_ROOT;
+  if (typeof override === "string" && override.length > 0)
+    return resolve(override);
+  return process.cwd();
+}
+function workspaceRootsOf(agents) {
+  if (agents === undefined || agents === null || typeof agents.list !== "function")
+    return [];
+  try {
+    const list = agents.list();
+    if (!Array.isArray(list))
+      return [];
+    const roots = new Set;
+    for (const agent of list) {
+      const cwd = sessionCwdOf(agent);
+      if (cwd !== undefined)
+        roots.add(resolve(cwd));
+    }
+    return [...roots];
+  } catch {
+    return [];
+  }
 }
 function noop() {}
 function createDshAdapter(ctx, config = {}) {
@@ -37,6 +73,8 @@ function createDshAdapter(ctx, config = {}) {
     }
     return found;
   }
+  const workspaceRoot = (exec) => workspaceRootOf(exec);
+  const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
   function timeoutSignal(timeoutMs) {
     try {
       if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function")
@@ -64,6 +102,8 @@ function createDshAdapter(ctx, config = {}) {
         agentPresets: typeof presets?.resolve === "function"
       };
     },
+    workspaceRoot,
+    workspaceRootsAll,
     registerTool(definition) {
       const tools = requireService("tools", 'cannot register tool "' + String(definition?.name) + '"');
       if (typeof tools.register !== "function")
@@ -488,36 +528,40 @@ function noteSpawnEnd(key) {
   else
     inUse.set(key, left);
 }
-function busyTeams(key) {
+function busyTeams(key, roots) {
   const hits = [];
-  try {
-    const teamRoot = join(process.cwd(), ".mpd", "team");
-    if (!existsSync(teamRoot))
-      return hits;
-    for (const entry of readdirSync(teamRoot, { withFileTypes: true })) {
-      if (!entry.isDirectory())
+  const scanRoots = roots && roots.length > 0 ? roots : [workspaceRootOf()];
+  for (const root of scanRoots) {
+    try {
+      const teamRoot = join(root, ".mpd", "team");
+      if (!existsSync(teamRoot))
         continue;
-      const file = join(teamRoot, entry.name, "team.json");
-      if (!existsSync(file))
-        continue;
-      try {
-        const team = JSON.parse(readFileSync(file, "utf8"));
-        const members = Array.isArray(team?.members) ? team.members : [];
-        for (const m of members) {
-          const memberName = typeof m?.name === "string" ? m.name : "";
-          if (memberName !== "" && sanitizeName(memberName) === key)
-            hits.push({ teamId: String(team?.id ?? entry.name), member: memberName });
-        }
-      } catch {}
-    }
-  } catch {}
+      for (const entry of readdirSync(teamRoot, { withFileTypes: true })) {
+        if (!entry.isDirectory())
+          continue;
+        const file = join(teamRoot, entry.name, "team.json");
+        if (!existsSync(file))
+          continue;
+        try {
+          const team = JSON.parse(readFileSync(file, "utf8"));
+          const members = Array.isArray(team?.members) ? team.members : [];
+          for (const m of members) {
+            const memberName = typeof m?.name === "string" ? m.name : "";
+            if (memberName !== "" && sanitizeName(memberName) === key && !hits.some((h) => h.teamId === String(team?.id ?? entry.name) && h.member === memberName)) {
+              hits.push({ teamId: String(team?.id ?? entry.name), member: memberName });
+            }
+          }
+        } catch {}
+      }
+    } catch {}
+  }
   return hits;
 }
-function assertNotBusy(keys) {
+function assertNotBusy(keys, roots) {
   const hits = [];
   const running = [];
   for (const key of keys) {
-    for (const h of busyTeams(key)) {
+    for (const h of busyTeams(key, roots)) {
       if (!hits.some((x) => x.teamId === h.teamId && x.member === h.member))
         hits.push(h);
     }
@@ -533,6 +577,10 @@ function assertNotBusy(keys) {
   if (running.length > 0)
     parts.push(running.join(", "));
   throw new WorkmateError("in-use", `mpd_workmate: ${keys.map((k) => `"${k}"`).join(" / ")} is in use by ${parts.join(" and ")} — archive or retire those teams and let running spawns finish first`, 409, hits);
+}
+function agentlessRoots(dsh) {
+  const all = dsh.workspaceRootsAll();
+  return all.length > 0 ? all : [dsh.workspaceRoot()];
 }
 function compactUtcStamp() {
   return new Date().toISOString().replace(/:/g, "").replace(/\.\d+Z$/, "Z");
@@ -559,7 +607,7 @@ function rewriteNoteIdentity(dir, baseName, oldKey, newKey) {
     return;
   writeFileSync(path, `${baseName}-based workmate "${newKey}".` + raw.slice(prefix.length));
 }
-function renameWorkmate(nameArg, newNameArg) {
+function renameWorkmate(nameArg, newNameArg, teamRoots) {
   const oldKey = nameKey(nameArg, "name");
   const newKey = nameKey(newNameArg, "new_name");
   if (newKey === oldKey)
@@ -568,7 +616,7 @@ function renameWorkmate(nameArg, newNameArg) {
   const dst = wmDir(newKey);
   if (lstatOrNull(dst) != null)
     throw new WorkmateError("collision", `mpd_workmate: rename target "${newKey}" already exists`, 409);
-  assertNotBusy([oldKey, newKey]);
+  assertNotBusy([oldKey, newKey], teamRoots);
   const renamedFrom = unique([...meta.renamedFrom, oldKey]).slice(-10);
   const nextMeta = { ...meta, name: newKey, renamedFrom, updatedAt: now() };
   renameSync(dir, dst);
@@ -587,14 +635,14 @@ function renameWorkmate(nameArg, newNameArg) {
   } catch {}
   return { ok: true, name: newKey, from: oldKey, renamedFrom };
 }
-function deleteWorkmate(nameArg, purgeArg, confirmArg) {
+function deleteWorkmate(nameArg, purgeArg, confirmArg, teamRoots) {
   const key = nameKey(nameArg, "name");
   const purge = purgeArg === true;
   if (purge && String(confirmArg ?? "") !== key) {
     throw new WorkmateError("confirm-required", `mpd_workmate: purging "${key}" requires confirm to equal the name exactly`, 400);
   }
   const { dir } = resolveTarget(key);
-  assertNotBusy([key]);
+  assertNotBusy([key], teamRoots);
   let previous;
   let removed = false;
   try {
@@ -683,8 +731,8 @@ function apply(ctx) {
         return null;
       }
     },
-    rename: (name2, newName) => renameWorkmate(name2, newName),
-    delete: (name2, purge = false, confirm = "") => deleteWorkmate(name2, purge, confirm)
+    rename: (name2, newName, roots) => renameWorkmate(name2, newName, roots ?? agentlessRoots(dsh)),
+    delete: (name2, purge = false, confirm = "", roots) => deleteWorkmate(name2, purge, confirm, roots ?? agentlessRoots(dsh))
   };
   ctx.provide("mpdWorkmate", workmateLibrary);
   dsh.registerTool({
@@ -813,14 +861,14 @@ ${capText(outcome, 1200)}`);
     parameters: { type: "object", properties: { name: { type: "string", description: "current workmate name (its directory key)" }, new_name: { type: "string", description: "new name — ASCII, lowercase, [a-z0-9_-]" } }, required: ["name", "new_name"], additionalProperties: false },
     output: { schema: { type: "object", properties: { ok: { type: "boolean" }, name: { type: "string" }, from: { type: "string" }, renamedFrom: { type: "array", items: { type: "string" } } }, required: ["ok", "name", "from"], additionalProperties: false }, render: (_a, v) => textBlock2('workmate "' + v.from + '" renamed to "' + v.name + '"' + (Array.isArray(v.renamedFrom) && v.renamedFrom.length ? `
 previous names: ` + v.renamedFrom.join(", ") : "")) },
-    execute: async (args) => renameWorkmate(args?.name, args?.new_name)
+    execute: async (args, exec) => renameWorkmate(args?.name, args?.new_name, [dsh.workspaceRoot(exec)])
   });
   dsh.registerTool({
     name: "mpd_workmate_delete",
     description: "Delete a workmate instance. ARCHIVE-FIRST by default: the instance leaves the library (no longer listed or matchable, and restorable) into ~/.mpd/workmate/.archive/. Real removal requires purge: true together with confirm set to the exact name — without both, nothing is destroyed. Refused while the workmate is in use by a team member or an in-flight spawn.",
     parameters: { type: "object", properties: { name: { type: "string", description: "workmate name to delete" }, purge: { type: "boolean", description: "true = permanently remove instead of archiving (requires confirm)" }, confirm: { type: "string", description: "must equal name exactly when purge is true" } }, required: ["name"], additionalProperties: false },
     output: { schema: { type: "object", properties: { ok: { type: "boolean" }, name: { type: "string" }, archived: { oneOf: [{ type: "string" }, { type: "null" }] }, purged: { type: "boolean" } }, required: ["ok", "name", "archived", "purged"], additionalProperties: false }, render: (_a, v) => textBlock2('workmate "' + v.name + '" ' + (v.purged ? "PURGED (permanently removed)" : "archived (gone from the library, still restorable)")) },
-    execute: async (args) => deleteWorkmate(args?.name, args?.purge, args?.confirm)
+    execute: async (args, exec) => deleteWorkmate(args?.name, args?.purge, args?.confirm, [dsh.workspaceRoot(exec)])
   });
   let webRegistered = false;
   const registerWebSurface = () => {
@@ -935,7 +983,7 @@ previous names: ` + v.renamedFrom.join(", ") : "")) },
         if (!parsed.ok)
           return json(res, 400, { error: "invalid JSON" });
         try {
-          json(res, 200, renameWorkmate(parsed.body?.name, parsed.body?.new_name));
+          json(res, 200, renameWorkmate(parsed.body?.name, parsed.body?.new_name, agentlessRoots(dsh)));
         } catch (e) {
           failure(res, e);
         }
@@ -954,7 +1002,7 @@ previous names: ` + v.renamedFrom.join(", ") : "")) },
         if (!parsed.ok)
           return json(res, 400, { error: "invalid JSON" });
         try {
-          json(res, 200, deleteWorkmate(parsed.body?.name, parsed.body?.purge, parsed.body?.confirm));
+          json(res, 200, deleteWorkmate(parsed.body?.name, parsed.body?.purge, parsed.body?.confirm, agentlessRoots(dsh)));
         } catch (e) {
           failure(res, e);
         }

@@ -8,7 +8,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, readdirSync, statSync } from "node:fs"
 import { spawnSync } from "node:child_process"
 import { basename, dirname, join, resolve } from "node:path"
-import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { createDshAdapter, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-memory"
 export const inject = ["tools"]
@@ -33,21 +33,21 @@ function mergedConfig(ctx: Ctx, config: Config): Config {
 
 function textBlock(text: string): any { return [{ type: "text", text }] }
 
-function cwd(): string { return process.env.DSH_WORKSPACE_ROOT ?? process.cwd() }
-
-function slugOf(config: Config): string {
+// Explicit config (memory.dir / memory.agentSlug) wins; otherwise the memory store lives
+// under the CALLING SESSION's workspace (adapter workspaceRoot), never the dsh process cwd.
+function slugOf(config: Config, dsh: DshAdapter, exec?: any): string {
   if (config.agentSlug) return config.agentSlug
-  const base = basename(cwd())
+  const base = basename(dsh.workspaceRoot(exec))
   return "agent-" + base.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 24) || "agent"
 }
 
-function bumpRoot(config: Config, slug: string): string {
-  return join(cwd(), config.dir ?? ".mpd", "memory", "agents", slug)
+function bumpRoot(config: Config, slug: string, dsh: DshAdapter, exec?: any): string {
+  return join(dsh.workspaceRoot(exec), config.dir ?? ".mpd", "memory", "agents", slug)
 }
 
-function ensureDirs(config: Config): { root: string; repo: string; runtime: string; memoryDir: string; slug: string } {
-  const slug = slugOf(config)
-  const root = bumpRoot(config, slug)
+function ensureDirs(config: Config, dsh: DshAdapter, exec?: any): { root: string; repo: string; runtime: string; memoryDir: string; slug: string } {
+  const slug = slugOf(config, dsh, exec)
+  const root = bumpRoot(config, slug, dsh, exec)
   const repo = join(root, "repo")
   const runtime = join(root, "runtime")
   const memoryDir = join(repo, "memory")
@@ -161,8 +161,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     description: "Persist a memory entry (markdown file with frontmatter description/kind/aliases/read_only) into the VCS-backed memory store and commit. Increments the reflection step counter; when the reflection threshold is crossed the result announces a reflection is due. kind: note | fact | reflection.",
     parameters: { type: "object", properties: { title: { type: "string" }, description: { type: "string" }, content: { type: "string" }, kind: { type: "string", enum: ["note", "fact", "reflection"] }, tags: { type: "array", items: { type: "string" } }, readOnly: { type: "boolean" } }, required: ["title", "content"], additionalProperties: false },
     output: { schema: { type: "object", properties: { file: { type: "string" }, committedTo: { type: "array", items: { type: "string" } }, reflectionDue: { type: "boolean" }, vcs: { type: "string" }, errors: { type: "array", items: { type: "string" } } }, required: ["file", "vcs"] }, render: (_a: unknown, v: any) => textBlock("memory written: " + v.file + " (vcs=" + v.vcs + " committed=" + v.committedTo.join(",") + " reflectionDue=" + v.reflectionDue + ")") },
-    execute: async (args: any) => {
-      const d = ensureDirs(cfg)
+    execute: async (args: any, exec: any) => {
+      const d = ensureDirs(cfg, dsh, exec)
       ensureVcs(cfg, d)
       const name = String(args?.title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) + "-" + Date.now().toString(36)
       const file = safeMemoryPath(d.memoryDir, name + ".md")
@@ -186,8 +186,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     description: "Read memory entries by optional kind filter and/or a substring query (matched against description/content/tags/aliases), limited to `limit` entries; returns normalized entries with frontmatter metadata and body content.",
     parameters: { type: "object", properties: { query: { type: "string" }, kind: { type: "string" }, limit: { type: "integer" } }, additionalProperties: false },
     output: { schema: { type: "object", properties: { entries: { type: "array", items: { type: "object" } }, count: { type: "integer" } }, required: ["entries", "count"] }, render: (_a: unknown, v: any) => textBlock("memory entries: " + v.count + "\n" + v.entries.map((e: any) => "- [" + (e.kind ?? "note") + "] " + e.description + ": " + e.content.slice(0, 200)).join("\n")) },
-    execute: async (args: any) => {
-      const d = ensureDirs(cfg)
+    execute: async (args: any, exec: any) => {
+      const d = ensureDirs(cfg, dsh, exec)
       const files = existsSync(d.memoryDir) ? readdirSync(d.memoryDir).filter((f) => f.endsWith(".md")) : []
       let entries: any[] = []
       const kind = args?.kind ? String(args.kind) : null
@@ -213,8 +213,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     description: "Inspect the reflection state machine: trigger status, reservation, step counters; returns the due hint when a reflection is pending. Crossing the step-count threshold marks a pending reflection; completeTransition equivalent is mpd_memory_reflect_complete.",
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { state: { type: "object" }, due: { type: "boolean" } }, required: ["state", "due"] }, render: (_a: unknown, v: any) => textBlock("reflection state: " + JSON.stringify(v.state, null, 1) + (v.due ? "\nREFLECTION DUE" : "")) },
-    execute: async () => {
-      const d = ensureDirs(cfg)
+    execute: async (_args: any, exec: any) => {
+      const d = ensureDirs(cfg, dsh, exec)
       const s = readReflection(d)
       return { state: s, due: s.triggered === true || s.reservation?.status === "pending" }
     }
@@ -225,8 +225,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     description: "Complete a pending reflection transition: writes the reflection content as a memory entry (kind=reflection), advances reflected_completed_steps / resets steps_since_last_successful_reflection, clears the reservation and commits.",
     parameters: { type: "object", properties: { content: { type: "string" }, title: { type: "string" } }, required: ["content"], additionalProperties: false },
     output: { schema: { type: "object", properties: { completed: { type: "boolean" }, file: { type: "string" } }, required: ["completed", "file"] }, render: (_a: unknown, v: any) => textBlock("reflection completed: " + (v.completed ? "yes" : "no") + " " + v.file) },
-    execute: async (args: any) => {
-      const d = ensureDirs(cfg)
+    execute: async (args: any, exec: any) => {
+      const d = ensureDirs(cfg, dsh, exec)
       ensureVcs(cfg, d)
       const name = "reflection-" + Date.now().toString(36)
       const file = safeMemoryPath(d.memoryDir, name + ".md")
@@ -249,8 +249,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     description: "Show memory engine status: vcs mode, repo paths, entry count, journal/facts line counts, reflection counters.",
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { vcs: { type: "string" }, root: { type: "string" }, entries: { type: "integer" }, journalLines: { type: "integer" }, reflection: { type: "object" } }, required: ["vcs", "root", "entries"] }, render: (_a: unknown, v: any) => textBlock("memory status: vcs=" + v.vcs + " root=" + v.root + " entries=" + v.entries + " journal=" + v.journalLines + "\nreflection: " + JSON.stringify(v.reflection)) },
-    execute: async () => {
-      const d = ensureDirs(cfg)
+    execute: async (_args: any, exec: any) => {
+      const d = ensureDirs(cfg, dsh, exec)
       const files = existsSync(d.memoryDir) ? readdirSync(d.memoryDir).filter((f) => f.endsWith(".md")) : []
       const journalLines = existsSync(journalPath(d)) ? readFileSync(journalPath(d), "utf8").split("\n").filter(Boolean).length : 0
       return { vcs: cfg.vcs ?? "git", root: d.root, entries: files.length, journalLines, reflection: readReflection(d) }

@@ -1,8 +1,9 @@
 // packages/mpd-modelchain-plugin/src/index.ts
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join, resolve as resolve2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
+import { resolve } from "node:path";
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 function textBlock(content) {
@@ -10,6 +11,41 @@ function textBlock(content) {
 }
 function message(error) {
   return error instanceof Error ? error.message : String(error);
+}
+function sessionCwdOf(agent) {
+  try {
+    const cwd = agent?.session?.header?.cwd;
+    return typeof cwd === "string" && cwd.length > 0 ? cwd : undefined;
+  } catch {
+    return;
+  }
+}
+function workspaceRootOf(exec) {
+  const session = sessionCwdOf(exec?.agent);
+  if (session !== undefined)
+    return resolve(session);
+  const override = process.env.DSH_WORKSPACE_ROOT;
+  if (typeof override === "string" && override.length > 0)
+    return resolve(override);
+  return process.cwd();
+}
+function workspaceRootsOf(agents) {
+  if (agents === undefined || agents === null || typeof agents.list !== "function")
+    return [];
+  try {
+    const list = agents.list();
+    if (!Array.isArray(list))
+      return [];
+    const roots = new Set;
+    for (const agent of list) {
+      const cwd = sessionCwdOf(agent);
+      if (cwd !== undefined)
+        roots.add(resolve(cwd));
+    }
+    return [...roots];
+  } catch {
+    return [];
+  }
 }
 function noop() {}
 function createDshAdapter(ctx, config = {}) {
@@ -35,6 +71,8 @@ function createDshAdapter(ctx, config = {}) {
     }
     return found;
   }
+  const workspaceRoot = (exec) => workspaceRootOf(exec);
+  const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
   function timeoutSignal(timeoutMs) {
     try {
       if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function")
@@ -62,6 +100,8 @@ function createDshAdapter(ctx, config = {}) {
         agentPresets: typeof presets?.resolve === "function"
       };
     },
+    workspaceRoot,
+    workspaceRootsAll,
     registerTool(definition) {
       const tools = requireService("tools", 'cannot register tool "' + String(definition?.name) + '"');
       if (typeof tools.register !== "function")
@@ -268,7 +308,7 @@ function resolveRole(role, chains) {
   return { provider: primary.provider, model: primary.model, chain };
 }
 function memoryPath(cwd, config) {
-  return config.memoryFile ? resolve(cwd, config.memoryFile) : join(cwd, ".mpd", "memory.json");
+  return config.memoryFile ? resolve2(cwd, config.memoryFile) : join(cwd, ".mpd", "memory.json");
 }
 function loadMemory(p) {
   try {
@@ -292,7 +332,6 @@ function apply(ctx, config = {}) {
     if (Object.keys(overlay).length > 0)
       chains = { ...DEFAULT_CHAINS, ...overlay };
   }
-  const cwd = process.env.DSH_WORKSPACE_ROOT ?? process.cwd();
   dsh.registerTool({
     name: "mpd_modelchain_resolve",
     description: "Resolve the DeepSeek provider/model route for an upstream role (sisyphus/sisyphus-junior/oracle/atlas/prometheus/librarian/explore/metis/momus/multimodal-looker/hephaestus) from the adapted fallback chains.",
@@ -316,8 +355,8 @@ function apply(ctx, config = {}) {
     description: "Persist a key/value note in the workspace-scoped memory (.mpd/memory.json).",
     parameters: { type: "object", properties: { key: { type: "string" }, value: { type: "string" } }, required: ["key", "value"] },
     output: { schema: { type: "object", properties: { ok: { type: "boolean" }, key: { type: "string" } }, required: ["ok", "key"] }, render: (_a, v) => [{ type: "text", text: "saved " + v.key }] },
-    execute: async (args) => {
-      const p = memoryPath(cwd, config);
+    execute: async (args, exec) => {
+      const p = memoryPath(dsh.workspaceRoot(exec), config);
       if (!existsSync(p))
         mkdirSync(join(p, ".."), { recursive: true });
       const mem = loadMemory(p);
@@ -331,8 +370,8 @@ function apply(ctx, config = {}) {
     description: "Recall a key from the workspace-scoped memory.",
     parameters: { type: "object", properties: { key: { type: "string" } }, required: ["key"] },
     output: { schema: { type: "object", properties: { key: { type: "string" }, value: { type: "string" }, found: { type: "boolean" } }, required: ["key", "found"] }, render: (_a, v) => [{ type: "text", text: v.found ? v.key + " = " + v.value : "not found: " + v.key }] },
-    execute: async (args) => {
-      const mem = loadMemory(memoryPath(cwd, config));
+    execute: async (args, exec) => {
+      const mem = loadMemory(memoryPath(dsh.workspaceRoot(exec), config));
       const k = String(args.key);
       return { key: k, value: mem[k] ?? "", found: Object.prototype.hasOwnProperty.call(mem, k) };
     }

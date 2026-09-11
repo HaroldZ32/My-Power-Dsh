@@ -2,10 +2,11 @@
 import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, resolve as resolve2 } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
+import { resolve } from "node:path";
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 function textBlock(content) {
@@ -13,6 +14,41 @@ function textBlock(content) {
 }
 function message(error) {
   return error instanceof Error ? error.message : String(error);
+}
+function sessionCwdOf(agent) {
+  try {
+    const cwd = agent?.session?.header?.cwd;
+    return typeof cwd === "string" && cwd.length > 0 ? cwd : undefined;
+  } catch {
+    return;
+  }
+}
+function workspaceRootOf(exec) {
+  const session = sessionCwdOf(exec?.agent);
+  if (session !== undefined)
+    return resolve(session);
+  const override = process.env.DSH_WORKSPACE_ROOT;
+  if (typeof override === "string" && override.length > 0)
+    return resolve(override);
+  return process.cwd();
+}
+function workspaceRootsOf(agents) {
+  if (agents === undefined || agents === null || typeof agents.list !== "function")
+    return [];
+  try {
+    const list = agents.list();
+    if (!Array.isArray(list))
+      return [];
+    const roots = new Set;
+    for (const agent of list) {
+      const cwd = sessionCwdOf(agent);
+      if (cwd !== undefined)
+        roots.add(resolve(cwd));
+    }
+    return [...roots];
+  } catch {
+    return [];
+  }
 }
 function noop() {}
 function createDshAdapter(ctx, config = {}) {
@@ -38,6 +74,8 @@ function createDshAdapter(ctx, config = {}) {
     }
     return found;
   }
+  const workspaceRoot = (exec) => workspaceRootOf(exec);
+  const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
   function timeoutSignal(timeoutMs) {
     try {
       if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function")
@@ -65,6 +103,8 @@ function createDshAdapter(ctx, config = {}) {
         agentPresets: typeof presets?.resolve === "function"
       };
     },
+    workspaceRoot,
+    workspaceRootsAll,
     registerTool(definition) {
       const tools = requireService("tools", 'cannot register tool "' + String(definition?.name) + '"');
       if (typeof tools.register !== "function")
@@ -242,8 +282,8 @@ function dependencyBinary() {
   }
 }
 function resolveBinary(config) {
-  if (config.binary && existsSync(resolve(config.binary)))
-    return resolve(config.binary);
+  if (config.binary && existsSync(resolve2(config.binary)))
+    return resolve2(config.binary);
   const env = process.env.MPD_DSH_COMMENT_CHECKER_BIN;
   if (env && existsSync(env))
     return env;
@@ -259,12 +299,12 @@ function resolveBinary(config) {
       return c;
   return null;
 }
-function hookInputFor(path, content) {
+function hookInputFor(path, content, root) {
   return {
     session_id: "mpd",
     tool_name: "Write",
     transcript_path: "",
-    cwd: process.env.DSH_WORKSPACE_ROOT ?? process.cwd(),
+    cwd: root ?? workspaceRootOf(),
     hook_event_name: "PostToolUse",
     tool_input: { file_path: path, content },
     tool_response: { content: [{ type: "text", text: "file content" }], details: null, isError: false }
@@ -293,7 +333,7 @@ function apply(ctx, config = {}) {
     output: { schema: { type: "object", properties: { binary: { type: "string" }, results: { type: "array", items: { type: "object" } } }, required: ["binary", "results"] }, render: (_a, v) => textBlock2("comment-check binary=" + v.binary + `
 ` + v.results.map((x) => x.hasComments ? "DETECTED " + x.path + ": " + x.message.slice(0, maxMessageChars) : "clean " + x.path).join(`
 `)) },
-    execute: async (args) => {
+    execute: async (args, exec) => {
       const binary = resolveBinary(cfg);
       if (!binary)
         throw new Error("mpd-comment-checker: binary not found — run the installer with --with-comment-checker or set MPD_DSH_COMMENT_CHECKER_BIN");
@@ -307,7 +347,7 @@ function apply(ctx, config = {}) {
           continue;
         }
         try {
-          const res = runCheck(binary, hookInputFor(path, content), timeoutMs);
+          const res = runCheck(binary, hookInputFor(path, content, dsh.workspaceRoot(exec)), timeoutMs);
           if (!res.hasComments && res.message)
             results.push({ path, hasComments: false, message: res.message });
           else
@@ -340,7 +380,7 @@ function apply(ctx, config = {}) {
       }
       if (!content)
         return out;
-      const res = runCheck(binary, hookInputFor(fp, content), timeoutMs);
+      const res = runCheck(binary, hookInputFor(fp, content, dsh.workspaceRoot(exec)), timeoutMs);
       if (!res.hasComments)
         return out;
       const hint = "[mpd-comment-checker] comments/docstrings detected in " + fp + `:

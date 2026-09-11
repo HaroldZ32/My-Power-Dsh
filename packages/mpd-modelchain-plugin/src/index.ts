@@ -97,7 +97,6 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     }
     if (Object.keys(overlay).length > 0) chains = { ...DEFAULT_CHAINS, ...overlay }
   }
-  const cwd = process.env.DSH_WORKSPACE_ROOT ?? process.cwd()
 
   dsh.registerTool({
     name: "mpd_modelchain_resolve",
@@ -124,8 +123,9 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     description: "Persist a key/value note in the workspace-scoped memory (.mpd/memory.json).",
     parameters: { type: "object", properties: { key: { type: "string" }, value: { type: "string" } }, required: ["key", "value"] },
     output: { schema: { type: "object", properties: { ok: { type: "boolean" }, key: { type: "string" } }, required: ["ok", "key"] }, render: (_a: unknown, v: any) => [{ type: "text", text: "saved " + v.key }] },
-    execute: async (args: any) => {
-      const p = memoryPath(cwd, config)
+    execute: async (args: any, exec: any) => {
+      // Root resolved PER CALL: the calling session's workspace (never the dsh process cwd).
+      const p = memoryPath(dsh.workspaceRoot(exec), config)
       if (!existsSync(p)) mkdirSync(join(p, ".."), { recursive: true })
       const mem = loadMemory(p)
       mem[String(args.key)] = String(args.value)
@@ -139,8 +139,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     description: "Recall a key from the workspace-scoped memory.",
     parameters: { type: "object", properties: { key: { type: "string" } }, required: ["key"] },
     output: { schema: { type: "object", properties: { key: { type: "string" }, value: { type: "string" }, found: { type: "boolean" } }, required: ["key", "found"] }, render: (_a: unknown, v: any) => [{ type: "text", text: v.found ? v.key + " = " + v.value : "not found: " + v.key }] },
-    execute: async (args: any) => {
-      const mem = loadMemory(memoryPath(cwd, config))
+    execute: async (args: any, exec: any) => {
+      const mem = loadMemory(memoryPath(dsh.workspaceRoot(exec), config))
       const k = String(args.key)
       return { key: k, value: mem[k] ?? "", found: Object.prototype.hasOwnProperty.call(mem, k) }
     }
