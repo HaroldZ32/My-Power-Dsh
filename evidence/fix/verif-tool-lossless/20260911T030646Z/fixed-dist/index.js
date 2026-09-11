@@ -1,256 +1,13 @@
-// packages/mpd-verif-plugin/src/compile.ts
+// src/compile.ts
 import { join as join3 } from "node:path";
 
-// packages/mpd-verif-plugin/src/backends.ts
+// src/backends.ts
 import { writeFileSync as writeFileSync2, mkdirSync as mkdirSync2 } from "node:fs";
 import { dirname as dirname2, join as join2 } from "node:path";
 
-// packages/mpd-verif-plugin/src/env.ts
+// src/env.ts
 import { existsSync } from "node:fs";
-import { join, resolve as resolve2 } from "node:path";
-
-// packages/mpd-dsh-adapter-plugin/src/index.ts
-import { resolve } from "node:path";
-var OBJECT_SCHEMA = { type: "object", properties: {} };
-var DEFAULT_TOOL_TIMEOUT_MS = 120000;
-function textBlock(content) {
-  return [{ type: "text", text: typeof content === "string" ? content : String(content ?? "") }];
-}
-function message(error) {
-  return error instanceof Error ? error.message : String(error);
-}
-function sessionCwdOf(agent) {
-  try {
-    const cwd = agent?.session?.header?.cwd;
-    return typeof cwd === "string" && cwd.length > 0 ? cwd : undefined;
-  } catch {
-    return;
-  }
-}
-function workspaceRootOf(exec) {
-  const session = sessionCwdOf(exec?.agent);
-  if (session !== undefined)
-    return resolve(session);
-  const override = process.env.DSH_WORKSPACE_ROOT;
-  if (typeof override === "string" && override.length > 0)
-    return resolve(override);
-  return process.cwd();
-}
-function workspaceRootsOf(agents) {
-  if (agents === undefined || agents === null || typeof agents.list !== "function")
-    return [];
-  try {
-    const list = agents.list();
-    if (!Array.isArray(list))
-      return [];
-    const roots = new Set;
-    for (const agent of list) {
-      const cwd = sessionCwdOf(agent);
-      if (cwd !== undefined)
-        roots.add(resolve(cwd));
-    }
-    return [...roots];
-  } catch {
-    return [];
-  }
-}
-function noop() {}
-function createDshAdapter(ctx, config = {}) {
-  const defaultTimeoutMs = config.defaultTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS;
-  const service = (serviceName) => {
-    if (typeof ctx?.get === "function") {
-      try {
-        const viaGet = ctx.get(serviceName);
-        if (viaGet !== undefined && viaGet !== null)
-          return viaGet;
-      } catch {}
-    }
-    try {
-      return ctx?.[serviceName];
-    } catch {
-      return;
-    }
-  };
-  function requireService(serviceName, needed) {
-    const found = service(serviceName);
-    if (found === undefined || found === null) {
-      throw new Error(`mpd-dsh-adapter: harness service "${serviceName}" is unavailable — ${needed}`);
-    }
-    return found;
-  }
-  const workspaceRoot = (exec) => workspaceRootOf(exec);
-  const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
-  function timeoutSignal(timeoutMs) {
-    try {
-      if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function")
-        return AbortSignal.timeout(timeoutMs);
-    } catch {}
-    return;
-  }
-  const adapter = {
-    capabilities() {
-      const tools = service("tools");
-      const subagents = service("subagents");
-      const skills = service("skills");
-      const presets = service("agentPresets");
-      return {
-        tools: tools !== undefined,
-        toolsRegister: typeof tools?.register === "function",
-        toolsGuard: typeof tools?.guard === "function",
-        toolsGet: typeof tools?.get === "function",
-        toolsExecute: typeof tools?.execute === "function",
-        toolsPostExecute: typeof ctx?.on === "function",
-        subagents: subagents !== undefined,
-        subagentsSpawn: typeof subagents?.start === "function",
-        skills: skills !== undefined,
-        skillsProvider: typeof skills?.registerProvider === "function",
-        agentPresets: typeof presets?.resolve === "function"
-      };
-    },
-    workspaceRoot,
-    workspaceRootsAll,
-    registerTool(definition) {
-      const tools = requireService("tools", 'cannot register tool "' + String(definition?.name) + '"');
-      if (typeof tools.register !== "function")
-        throw new Error("mpd-dsh-adapter: the harness tools service exposes no register()");
-      const output = definition.output ?? {};
-      const render = typeof output.render === "function" ? output.render : (_args, value) => textBlock(value);
-      const schema = output.schema ?? OBJECT_SCHEMA;
-      return tools.register({
-        name: definition.name,
-        description: definition.description,
-        parameters: definition.parameters ?? OBJECT_SCHEMA,
-        output: { ...output, schema, render },
-        ...definition.timeoutMs === undefined ? {} : { timeoutMs: definition.timeoutMs },
-        execute: async (args, exec) => definition.execute(args ?? {}, exec ?? {})
-      });
-    },
-    registerTools(definitions) {
-      const disposers = definitions.map((definition) => adapter.registerTool(definition));
-      return () => {
-        for (const dispose of disposers)
-          dispose();
-      };
-    },
-    guardTool(guard) {
-      const tools = requireService("tools", "cannot install a tool guard");
-      if (typeof tools.guard !== "function")
-        throw new Error("mpd-dsh-adapter: the harness tools service exposes no guard()");
-      return tools.guard((exec) => guard(exec ?? {}));
-    },
-    onPostToolExecute(listener) {
-      if (typeof ctx?.on !== "function")
-        return noop;
-      return ctx.on("tools/post-execute", async (exec, result, next) => {
-        const downstream = typeof next === "function" ? await next() ?? { kind: "accept" } : { kind: "accept" };
-        const decided = await listener(exec ?? {}, result ?? {}, downstream);
-        return decided ?? downstream;
-      });
-    },
-    hasTool(toolName) {
-      const tools = service("tools");
-      if (typeof tools?.get !== "function")
-        return false;
-      try {
-        return tools.get(toolName) !== undefined;
-      } catch {
-        return false;
-      }
-    },
-    toolRuntime() {
-      const tools = service("tools");
-      return {
-        get: (toolName) => typeof tools?.get === "function" ? tools.get(toolName) : undefined,
-        execute: (input) => adapter.executeTool({ ...input, timeoutMs: defaultTimeoutMs }).then((result) => result.raw)
-      };
-    },
-    async executeTool(input) {
-      const tools = service("tools");
-      if (tools === undefined || typeof tools.execute !== "function") {
-        return { ok: false, isError: true, error: "the harness tool runtime has no execute()" };
-      }
-      const callId = input.callId ?? "mpd-" + Math.random().toString(36).slice(2, 10);
-      const signal = input.signal ?? timeoutSignal(input.timeoutMs ?? defaultTimeoutMs);
-      try {
-        const raw = await tools.execute({
-          name: input.name,
-          arguments: input.arguments ?? {},
-          callId,
-          ...signal === undefined ? {} : { signal }
-        });
-        const isError = raw?.isError === true;
-        if (isError) {
-          const error = raw?.error;
-          return { ok: false, isError: true, error: error?.message ?? error ?? "tool error", raw };
-        }
-        return { ok: true, isError: false, value: raw?.value, raw };
-      } catch (error) {
-        return { ok: false, isError: true, error: message(error) };
-      }
-    },
-    async spawnAgent(spec) {
-      const subagents = requireService("subagents", 'cannot spawn subagent "' + String(spec?.label) + '"');
-      if (typeof subagents.start !== "function")
-        throw new Error("mpd-dsh-adapter: the harness subagent service exposes no start()");
-      const route = {
-        ...spec.provider === undefined ? {} : { provider: spec.provider },
-        ...spec.model === undefined ? {} : { model: spec.model },
-        ...spec.agentOptions ?? {}
-      };
-      const run = await subagents.start(spec.mode ?? "spawn", {
-        label: spec.label,
-        prompt: typeof spec.prompt === "string" ? textBlock(spec.prompt) : spec.prompt,
-        ...spec.parent === undefined ? {} : { parent: spec.parent },
-        ...spec.signal === undefined ? {} : { signal: spec.signal },
-        ...Object.keys(route).length === 0 ? {} : { agentOptions: route },
-        ...spec.persona === undefined ? {} : { persona: spec.persona },
-        ...spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema },
-        ...spec.toolFilter === undefined ? {} : { toolFilter: spec.toolFilter },
-        ...spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }
-      });
-      const result = await (run?.result ?? {});
-      return {
-        output: typeof result.output === "string" ? result.output : "",
-        structured: result.structured,
-        stopReason: result.stopReason ?? null
-      };
-    },
-    registerSkillProvider(provider) {
-      const skills = requireService("skills", "cannot register a skill provider");
-      if (typeof skills.registerProvider !== "function")
-        throw new Error("mpd-dsh-adapter: the harness skills service exposes no registerProvider()");
-      return skills.registerProvider(provider);
-    },
-    async listSkills(options = {}) {
-      const skills = requireService("skills", "cannot list skills");
-      if (typeof skills.list !== "function")
-        throw new Error("mpd-dsh-adapter: the harness skills service exposes no list()");
-      return await skills.list(options) ?? [];
-    },
-    async loadSkill(skillName, options = {}) {
-      const skills = requireService("skills", 'cannot load skill "' + skillName + '"');
-      if (typeof skills.get !== "function")
-        throw new Error("mpd-dsh-adapter: the harness skills service exposes no get()");
-      return skills.get(skillName, options);
-    },
-    async resolvePreset(presetId) {
-      const presets = requireService("agentPresets", 'cannot resolve preset "' + presetId + '"');
-      if (typeof presets.resolve !== "function")
-        throw new Error("mpd-dsh-adapter: the harness agent-presets service exposes no resolve()");
-      const preset = await presets.resolve(presetId);
-      return {
-        id: String(preset?.id ?? presetId),
-        ...preset?.path === undefined ? {} : { path: String(preset.path) },
-        ...preset?.trust === undefined ? {} : { trust: String(preset.trust) },
-        ...preset?.broken === undefined ? {} : { broken: String(preset.broken) }
-      };
-    },
-    text: textBlock
-  };
-  return adapter;
-}
-
-// packages/mpd-verif-plugin/src/env.ts
+import { join, resolve } from "node:path";
 var BACKEND_IDS = ["iverilog", "verilator", "vcs"];
 var BACKEND_BIN = {
   iverilog: "iverilog",
@@ -262,22 +19,22 @@ var BACKEND_ENV = {
   verilator: "MPD_DSH_VERIF_VERILATOR",
   vcs: "MPD_DSH_VERIF_VCS"
 };
-function workspaceRoot(exec) {
-  return resolve2(workspaceRootOf(exec));
+function workspaceRoot() {
+  return resolve(process.env.DSH_WORKSPACE_ROOT ?? process.cwd());
 }
-function venvPath(override, exec) {
-  return resolve2(override || process.env.MPD_DSH_VERIF_VENV || join(workspaceRoot(exec), ".venv-rtl"));
+function venvPath(override) {
+  return resolve(override || process.env.MPD_DSH_VERIF_VENV || join(workspaceRoot(), ".venv-rtl"));
 }
-function workDir(exec) {
-  return resolve2(process.env.MPD_DSH_VERIF_WORK || join(workspaceRoot(exec), ".mpd", "verif"));
+function workDir() {
+  return resolve(process.env.MPD_DSH_VERIF_WORK || join(workspaceRoot(), ".mpd", "verif"));
 }
-function paths(overrideVenv, exec) {
-  return { workspace: workspaceRoot(exec), venv: venvPath(overrideVenv, exec), work: workDir(exec) };
+function paths(overrideVenv) {
+  return { workspace: workspaceRoot(), venv: venvPath(overrideVenv), work: workDir() };
 }
 function resolveBackendBinary(backend) {
   const envVal = process.env[BACKEND_ENV[backend]];
   if (envVal && envVal.trim().length > 0)
-    return { binary: resolve2(envVal.trim()), source: "env" };
+    return { binary: resolve(envVal.trim()), source: "env" };
   const bin = BACKEND_BIN[backend];
   for (const dir of (process.env.PATH ?? "").split(":")) {
     if (dir.length === 0)
@@ -297,7 +54,7 @@ function dateSeedBase(now = new Date) {
   return Number(`${now.getFullYear()}${p(now.getMonth() + 1)}${p(now.getDate())}`);
 }
 
-// packages/mpd-verif-plugin/src/run.ts
+// src/run.ts
 import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
@@ -334,19 +91,19 @@ function writeLog(logPath, content) {
   return logPath;
 }
 
-// packages/mpd-verif-plugin/src/errors.ts
+// src/errors.ts
 class VerifError extends Error {
   code;
   hint;
-  constructor(code, message2, hint) {
-    super(message2);
+  constructor(code, message, hint) {
+    super(message);
     this.name = "VerifError";
     this.code = code;
     this.hint = hint;
   }
 }
-function refusal(code, message2, hint) {
-  return { ok: false, error: { code, message: message2, hint: hint || "see the message" } };
+function refusal(code, message, hint) {
+  return { ok: false, error: { code, message, hint: hint || "see the message" } };
 }
 function refusalOf(e) {
   if (e instanceof VerifError)
@@ -354,7 +111,7 @@ function refusalOf(e) {
   return refusal("VERIF_E_RUN", "unexpected internal error: " + String(e), "check the plugin log or retry with a narrower request");
 }
 
-// packages/mpd-verif-plugin/src/backends.ts
+// src/backends.ts
 var LICENSE_ENV = {
   iverilog: [],
   verilator: [],
@@ -543,18 +300,18 @@ function runPlan(plan, timeoutMs) {
   return run(plan.binary, plan.args, { timeoutMs });
 }
 
-// packages/mpd-verif-plugin/src/compile.ts
-function verifCompile(a, exec) {
+// src/compile.ts
+function verifCompile(a) {
   if (!a.sources || a.sources.length === 0) {
     throw new VerifError("VERIF_E_COMPILE", "no sources given", "pass sources[] (at least one .v/.sv file)");
   }
   const stamp = runStamp();
-  const logRoot = join3(workDir(exec), "logs");
+  const logRoot = join3(workDir(), "logs");
   const defines = a.defines ? Array.isArray(a.defines) ? normalizeDefines(a.defines) : a.defines : undefined;
   const src = { sources: a.sources, top: a.top, includes: a.includes, defines };
   const target = a.target === "compile" ? "compile" : "lint";
   requireBackend(a.backend, "install it or pin MPD_DSH_VERIF_" + a.backend.toUpperCase());
-  const plan = target === "lint" ? lintPlan(a.backend, src, logRoot, stamp) : compilePlan(a.backend, src, workDir(exec), stamp);
+  const plan = target === "lint" ? lintPlan(a.backend, src, logRoot, stamp) : compilePlan(a.backend, src, workDir(), stamp);
   const r = runPlan(plan, (a.timeoutSec ?? DEFAULT_TIMEOUT_MS / 1000) * 1000);
   writeLog(plan.logPath, r.combined);
   if (r.timedOut) {
@@ -589,11 +346,11 @@ function verifCompile(a, exec) {
   };
 }
 
-// packages/mpd-verif-plugin/src/coverage.ts
+// src/coverage.ts
 import { existsSync as existsSync3, mkdirSync as mkdirSync3 } from "node:fs";
 import { join as join5 } from "node:path";
 
-// packages/mpd-verif-plugin/src/eda-tools.ts
+// src/eda-tools.ts
 import { existsSync as existsSync2, readdirSync } from "node:fs";
 import { join as join4 } from "node:path";
 function resolveEdaTool(name) {
@@ -685,7 +442,7 @@ function collectDatFiles(root, max = 100) {
   return out.slice(0, max);
 }
 
-// packages/mpd-verif-plugin/src/coverage.ts
+// src/coverage.ts
 var VERILATOR_COVERAGE_HINT = "verilator_coverage not found — it ships with Verilator (oss-cad-suite on PATH or MPD_DSH_VERIF_VERILATOR_COVERAGE)";
 function resolveVerilatorCoverage() {
   const envVal = process.env.MPD_DSH_VERIF_VERILATOR_COVERAGE;
@@ -700,9 +457,9 @@ function resolveVerilatorCoverage() {
   }
   throw new VerifError("VERIF_E_NO_BACKEND", "verilator_coverage not resolvable", VERILATOR_COVERAGE_HINT);
 }
-function verifCoverage(a, exec) {
-  const scanRoot = a.dir ?? workDir(exec);
-  const reportDir = a.reportDir ?? join5(workDir(exec), "cov_report");
+function verifCoverage(a) {
+  const scanRoot = a.dir ?? workDir();
+  const reportDir = a.reportDir ?? join5(workDir(), "cov_report");
   const timeoutMs = (a.timeoutSec ?? DEFAULT_TIMEOUT_MS / 1000) * 1000;
   mkdirSync3(reportDir, { recursive: true });
   if (a.backend === "iverilog") {
@@ -786,7 +543,7 @@ function verifCoverage(a, exec) {
   };
 }
 
-// packages/mpd-verif-plugin/src/venv.ts
+// src/venv.ts
 import { existsSync as existsSync4 } from "node:fs";
 import { join as join6 } from "node:path";
 function venvPython(v) {
@@ -816,8 +573,8 @@ function venvRefusal(v, cocotbVersion) {
     }
   };
 }
-function venvStatus(override, exec) {
-  const v = venvPath(override, exec);
+function venvStatus(override) {
+  const v = venvPath(override);
   const py = venvPython(v);
   const envOverride = process.env.MPD_DSH_VERIF_VENV ?? null;
   if (!existsSync4(py)) {
@@ -858,8 +615,8 @@ function venvStatus(override, exec) {
     message: cocotbVersion ? `venv ready: python ${pythonVersion ?? "?"} with cocotb ${cocotbVersion}` : `venv incomplete: ${SETUP_COMMAND}`
   };
 }
-function venvCreate(override, _configureTimeoutMs = 600000, exec) {
-  const v = venvPath(override, exec);
+function venvCreate(override, _configureTimeoutMs = 600000) {
+  const v = venvPath(override);
   const steps = [];
   const python3 = process.env.MPD_DSH_VERIF_PYTHON3_CMD ?? "python3";
   const r1 = run(python3, ["-m", "venv", v], { timeoutMs: 120000 });
@@ -881,15 +638,15 @@ function venvCreate(override, _configureTimeoutMs = 600000, exec) {
   if (r2.status !== 0) {
     return { ok: false, venv: v, steps, message: `pip install inside ${v} failed (status ${r2.status}): ${tailOf(r2.combined)} — rerun mpd_verif_venv(action:"create") or check network/proxy` };
   }
-  const st = venvStatus(override, exec);
+  const st = venvStatus(override);
   return { ok: st.ok, venv: v, steps, message: `venv ready at ${v} — cocotb ${st.cocotbVersion ?? "unknown"}` };
 }
 function tailOf(s, n = 400) {
   const t = s.trim();
   return t.length <= n ? t : "..." + t.slice(t.length - n);
 }
-function requireCocotbVenv(override, exec) {
-  const st = venvStatus(override, exec);
+function requireCocotbVenv(override) {
+  const st = venvStatus(override);
   if (!st.ok) {
     const r = venvRefusal(st.venv, st.cocotbVersion);
     throw new VerifError(r.error.code, r.error.message, r.error.hint);
@@ -897,11 +654,11 @@ function requireCocotbVenv(override, exec) {
   return { venv: st.venv, cocotbVersion: st.cocotbVersion ?? "unknown" };
 }
 
-// packages/mpd-verif-plugin/src/sim.ts
+// src/sim.ts
 import { existsSync as existsSync5, mkdirSync as mkdirSync4, readdirSync as readdirSync2, readFileSync, statSync, writeFileSync as writeFileSync3 } from "node:fs";
 import { dirname as dirname3, isAbsolute, join as join8 } from "node:path";
 
-// packages/mpd-verif-plugin/src/wave.ts
+// src/wave.ts
 import { join as join7 } from "node:path";
 var WAVE_MCP_PREPARE = "mcp__wave_mcp__prepare_session";
 var TRACEWEAVE_GET_PATHS = "mcp__traceweave__get_sim_paths";
@@ -1004,7 +761,7 @@ function waveSessionDir(caseDir) {
   return join7(caseDir, "wave-mcp");
 }
 
-// packages/mpd-verif-plugin/src/sim.ts
+// src/sim.ts
 function buildSimMakefile(a) {
   const lines = [
     "# Generated by mpd_verif_sim (cocotb Makefile flow). Regenerated on every run — do not edit.",
@@ -1108,14 +865,14 @@ function collectWaves(caseDir) {
   walk(caseDir);
   return out.slice(0, 50);
 }
-async function verifSim(a, deps = {}, exec) {
+async function verifSim(a, deps = {}) {
   if (a.backend === "vcs") {
     throw new VerifError("VERIF_E_UNSUPPORTED", "mpd_verif_sim is the cocotb lane (iverilog|verilator); vcs is handled by mpd_verif_uvm", "call mpd_verif_uvm for the VCS/UVM flow");
   }
   if (!a.sources || a.sources.length === 0) {
     throw new VerifError("VERIF_E_RUN", "no sources given", "pass sources[] (RTL files) for the simulation");
   }
-  const gate = requireCocotbVenv(undefined, exec);
+  const gate = requireCocotbVenv();
   const probe = probeBackend(a.backend);
   if (!probe.present) {
     throw new VerifError("VERIF_E_NO_BACKEND", `backend '${a.backend}' not found on this machine`, `install it or set MPD_DSH_VERIF_${a.backend.toUpperCase()} to the tool path`);
@@ -1123,16 +880,16 @@ async function verifSim(a, deps = {}, exec) {
   const backend = a.backend;
   const waves = a.waves ?? true;
   const stamp = runStamp();
-  const caseDir = join8(workDir(exec), "sim", `${a.top}-${stamp}`);
+  const caseDir = join8(workDir(), "sim", `${a.top}-${stamp}`);
   mkdirSync4(caseDir, { recursive: true });
   const resultsXml = join8(caseDir, "results.xml");
   const tbModules = a.tbModules && a.tbModules.length > 0 ? a.tbModules : [a.top + "_tb"];
-  const tbPathDirs = resolveTbPathDirs(tbModules, a.sources, workspaceRoot(exec));
+  const tbPathDirs = resolveTbPathDirs(tbModules, a.sources, wsResolved());
   const makePy = buildSimMakefile({
     backend,
     top: a.top,
-    sources: a.sources.map((s) => isAbsolute(s) ? s : join8(workspaceRoot(exec), s)),
-    includes: (a.includes ?? []).map((i) => isAbsolute(i) ? i : join8(workspaceRoot(exec), i)),
+    sources: a.sources.map((s) => isAbsolute(s) ? s : join8(process.env.DSH_WORKSPACE_ROOT ?? process.cwd(), s)),
+    includes: (a.includes ?? []).map((i) => isAbsolute(i) ? i : join8(process.env.DSH_WORKSPACE_ROOT ?? process.cwd(), i)),
     defines: normalizeDefines(a.defines),
     waves,
     traceFst: a.traceFst,
@@ -1194,6 +951,9 @@ EXIT: ` + String(r.status));
     }
   };
 }
+function wsResolved() {
+  return process.env.DSH_WORKSPACE_ROOT ?? process.cwd();
+}
 function resolveTbPathDirs(tbModules, sources, wsRoot) {
   const dirs = new Set([wsRoot]);
   const candidates = new Set([wsRoot, join8(wsRoot, "tb")]);
@@ -1221,7 +981,7 @@ async function runWaveHooksSafe(tools, waves, top, caseDir) {
   }
 }
 
-// packages/mpd-verif-plugin/src/uvm.ts
+// src/uvm.ts
 import { existsSync as existsSync6, mkdirSync as mkdirSync5, readdirSync as readdirSync3, readFileSync as readFileSync2, rmSync, writeFileSync as writeFileSync4 } from "node:fs";
 import { join as join9 } from "node:path";
 var LAYOUT_DIRS = ["rtl", "script", "tb", "top", "test", "work"];
@@ -1376,7 +1136,7 @@ function writeCompileState(wdir, s) {
     writeFileSync4(join9(wdir, "compile-state.json"), JSON.stringify(s));
   } catch {}
 }
-async function verifUvm(a, tools, exec) {
+async function verifUvm(a, tools) {
   const vcs = resolveVcsBinary();
   if (a.action === "wave")
     envGate(["VERDI_HOME", "NOVAS_HOME"].filter((k) => k && k.length > 0), "wave dumping (fsdb)");
@@ -1612,14 +1372,14 @@ async function safeHooks(tools, req) {
   }
 }
 
-// packages/mpd-verif-plugin/src/regress.ts
+// src/regress.ts
 import { mkdirSync as mkdirSync6, writeFileSync as writeFileSync5, existsSync as existsSync7, readdirSync as readdirSync4 } from "node:fs";
 import { join as join10 } from "node:path";
-function expandCases(args, exec) {
+function expandCases(args) {
   if (args.cases && args.cases.length > 0)
     return { kind: "explicit", names: args.cases };
   if (args.glob) {
-    const root = workspaceRoot(exec);
+    const root = process.env.DSH_WORKSPACE_ROOT ?? process.cwd();
     return { kind: "explicit", names: globFiles(root, args.glob) };
   }
   return { kind: "explicit", names: ["all"] };
@@ -1645,17 +1405,15 @@ function globFiles(root, pattern) {
   walk(root);
   return out.slice(0, 100);
 }
-function createRegressDir(exec) {
-  const regressDir = join10(workDir(exec), "regress", runStamp());
-  mkdirSync6(regressDir, { recursive: true });
-  return regressDir;
-}
-async function verifRegress(args, tools, exec) {
+async function verifRegress(args, tools) {
   const backend = args.backend;
   if (!["iverilog", "verilator", "vcs"].includes(backend) || backend === "") {
     throw new VerifError("VERIF_E_UNSUPPORTED", "unsupported regression backend: " + String(backend), "use iverilog | verilator (cocotb lane) or vcs (UVM lane)");
   }
   const seedBase = args.seedBase ?? dateSeedBase();
+  const stamp = runStamp();
+  const regressDir = join10(workDir(), "regress", stamp);
+  mkdirSync6(regressDir, { recursive: true });
   if (backend === "vcs") {
     const top = args.sim?.top;
     if (!top)
@@ -1673,10 +1431,9 @@ async function verifRegress(args, tools, exec) {
     }, tools);
     const cases2 = uvmRes.cases.map((c) => ({ backend: "vcs", test: c.test, seed: c.seed, status: c.status === "pass" ? "pass" : "fail", timeMs: 0, wave: c.wavefile ?? null, failureMsg: null }));
     const rep2 = buildReport("vcs", cases2, seedBase);
-    const regressDir2 = createRegressDir(exec);
-    const resultsJson2 = join10(regressDir2, "results.json");
+    const resultsJson2 = join10(regressDir, "results.json");
     writeFileSync5(resultsJson2, JSON.stringify({ backend, seedBase, total: cases2.length, passed: cases2.filter((c) => c.status === "pass").length, failed: cases2.filter((c) => c.status === "fail").length, skipped: 0, cases: cases2 }, null, 2));
-    const reportPath2 = join10(regressDir2, "results.md");
+    const reportPath2 = join10(regressDir, "results.md");
     writeFileSync5(reportPath2, rep2);
     return {
       ok: uvmRes.ok,
@@ -1694,7 +1451,7 @@ async function verifRegress(args, tools, exec) {
       ...uvmRes.ok ? {} : { error: uvmRes.error }
     };
   }
-  const gate = requireCocotbVenv(undefined, exec);
+  const gate = requireCocotbVenv();
   const probe = probeBackend(backend);
   if (!probe.present)
     throw new VerifError("VERIF_E_NO_BACKEND", `backend '${backend}' not found`, `install it or set MPD_DSH_VERIF_${backend.toUpperCase()}`);
@@ -1705,7 +1462,6 @@ async function verifRegress(args, tools, exec) {
     throw new VerifError("VERIF_E_RUN", "regression needs sim.top (hdl_toplevel)", "pass sim.top=<toplevel-module>");
   if (!args.sim?.sources || args.sim.sources.length === 0)
     throw new VerifError("VERIF_E_RUN", "regression needs sim.sources", "pass sim.sources=[RTL files]");
-  const regressDir = createRegressDir(exec);
   const cases = [];
   const waveHooks = [];
   let stop = false;
@@ -1728,12 +1484,12 @@ async function verifRegress(args, tools, exec) {
         coverage: args.sim.coverage ?? false,
         timeoutSec: args.timeoutSec,
         waveHook: false
-      }, {}, exec);
+      }, {});
       const status = r.ok && r.cases.length > 0 && r.cases.every((c) => c.status === "pass") ? "pass" : "fail";
       const wave = r.wavesfiles[0] ? { file: r.wavesfiles[0].file, fmt: r.wavesfiles[0].fmt } : null;
       cases.push({ backend, test: name, seed, status, timeMs: r.cases.reduce((s2, c) => s2 + c.timeMs, 0), wave, failureMsg: r.error?.message ?? null });
       if (args.waveHook !== false && wave) {
-        waveHooks.push(...await runWaveHooks(tools ?? {}, { wavefile: { file: wave.file, fmt: wave.fmt }, top: args.sim.top, sessionDir: waveSessionDir(join10(workDir(exec), "sim")), caseDir: r.caseDir, lane: "oss" }));
+        waveHooks.push(...await runWaveHooks(tools ?? {}, { wavefile: { file: wave.file, fmt: wave.fmt }, top: args.sim.top, sessionDir: waveSessionDir(join10(workDir(), "sim")), caseDir: r.caseDir, lane: "oss" }));
       }
     } catch (e) {
       const re = refusalOfLike(e);
@@ -1796,7 +1552,208 @@ function esc(s) {
   return s.replace(/\|/g, "\\|").replace(/\n/g, " ").slice(0, 160);
 }
 
-// packages/mpd-verif-plugin/src/index.ts
+// ../mpd-dsh-adapter-plugin/src/index.ts
+var OBJECT_SCHEMA = { type: "object", properties: {} };
+var DEFAULT_TOOL_TIMEOUT_MS = 120000;
+function textBlock(content) {
+  return [{ type: "text", text: typeof content === "string" ? content : String(content ?? "") }];
+}
+function message(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+function noop() {}
+function createDshAdapter(ctx, config = {}) {
+  const defaultTimeoutMs = config.defaultTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS;
+  const service = (serviceName) => {
+    if (typeof ctx?.get === "function") {
+      try {
+        const viaGet = ctx.get(serviceName);
+        if (viaGet !== undefined && viaGet !== null)
+          return viaGet;
+      } catch {}
+    }
+    try {
+      return ctx?.[serviceName];
+    } catch {
+      return;
+    }
+  };
+  function requireService(serviceName, needed) {
+    const found = service(serviceName);
+    if (found === undefined || found === null) {
+      throw new Error(`mpd-dsh-adapter: harness service "${serviceName}" is unavailable — ${needed}`);
+    }
+    return found;
+  }
+  function timeoutSignal(timeoutMs) {
+    try {
+      if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function")
+        return AbortSignal.timeout(timeoutMs);
+    } catch {}
+    return;
+  }
+  const adapter = {
+    capabilities() {
+      const tools = service("tools");
+      const subagents = service("subagents");
+      const skills = service("skills");
+      const presets = service("agentPresets");
+      return {
+        tools: tools !== undefined,
+        toolsRegister: typeof tools?.register === "function",
+        toolsGuard: typeof tools?.guard === "function",
+        toolsGet: typeof tools?.get === "function",
+        toolsExecute: typeof tools?.execute === "function",
+        toolsPostExecute: typeof ctx?.on === "function",
+        subagents: subagents !== undefined,
+        subagentsSpawn: typeof subagents?.start === "function",
+        skills: skills !== undefined,
+        skillsProvider: typeof skills?.registerProvider === "function",
+        agentPresets: typeof presets?.resolve === "function"
+      };
+    },
+    registerTool(definition) {
+      const tools = requireService("tools", 'cannot register tool "' + String(definition?.name) + '"');
+      if (typeof tools.register !== "function")
+        throw new Error("mpd-dsh-adapter: the harness tools service exposes no register()");
+      const output = definition.output ?? {};
+      const render = typeof output.render === "function" ? output.render : (_args, value) => textBlock(value);
+      const schema = output.schema ?? OBJECT_SCHEMA;
+      return tools.register({
+        name: definition.name,
+        description: definition.description,
+        parameters: definition.parameters ?? OBJECT_SCHEMA,
+        output: { ...output, schema, render },
+        ...definition.timeoutMs === undefined ? {} : { timeoutMs: definition.timeoutMs },
+        execute: async (args, exec) => definition.execute(args ?? {}, exec ?? {})
+      });
+    },
+    registerTools(definitions) {
+      const disposers = definitions.map((definition) => adapter.registerTool(definition));
+      return () => {
+        for (const dispose of disposers)
+          dispose();
+      };
+    },
+    guardTool(guard) {
+      const tools = requireService("tools", "cannot install a tool guard");
+      if (typeof tools.guard !== "function")
+        throw new Error("mpd-dsh-adapter: the harness tools service exposes no guard()");
+      return tools.guard((exec) => guard(exec ?? {}));
+    },
+    onPostToolExecute(listener) {
+      if (typeof ctx?.on !== "function")
+        return noop;
+      return ctx.on("tools/post-execute", async (exec, result, next) => {
+        const downstream = typeof next === "function" ? await next() ?? { kind: "accept" } : { kind: "accept" };
+        const decided = await listener(exec ?? {}, result ?? {}, downstream);
+        return decided ?? downstream;
+      });
+    },
+    hasTool(toolName) {
+      const tools = service("tools");
+      if (typeof tools?.get !== "function")
+        return false;
+      try {
+        return tools.get(toolName) !== undefined;
+      } catch {
+        return false;
+      }
+    },
+    toolRuntime() {
+      const tools = service("tools");
+      return {
+        get: (toolName) => typeof tools?.get === "function" ? tools.get(toolName) : undefined,
+        execute: (input) => adapter.executeTool({ ...input, timeoutMs: defaultTimeoutMs }).then((result) => result.raw)
+      };
+    },
+    async executeTool(input) {
+      const tools = service("tools");
+      if (tools === undefined || typeof tools.execute !== "function") {
+        return { ok: false, isError: true, error: "the harness tool runtime has no execute()" };
+      }
+      const callId = input.callId ?? "mpd-" + Math.random().toString(36).slice(2, 10);
+      const signal = input.signal ?? timeoutSignal(input.timeoutMs ?? defaultTimeoutMs);
+      try {
+        const raw = await tools.execute({
+          name: input.name,
+          arguments: input.arguments ?? {},
+          callId,
+          ...signal === undefined ? {} : { signal }
+        });
+        const isError = raw?.isError === true;
+        if (isError) {
+          const error = raw?.error;
+          return { ok: false, isError: true, error: error?.message ?? error ?? "tool error", raw };
+        }
+        return { ok: true, isError: false, value: raw?.value, raw };
+      } catch (error) {
+        return { ok: false, isError: true, error: message(error) };
+      }
+    },
+    async spawnAgent(spec) {
+      const subagents = requireService("subagents", 'cannot spawn subagent "' + String(spec?.label) + '"');
+      if (typeof subagents.start !== "function")
+        throw new Error("mpd-dsh-adapter: the harness subagent service exposes no start()");
+      const route = {
+        ...spec.provider === undefined ? {} : { provider: spec.provider },
+        ...spec.model === undefined ? {} : { model: spec.model },
+        ...spec.agentOptions ?? {}
+      };
+      const run2 = await subagents.start(spec.mode ?? "spawn", {
+        label: spec.label,
+        prompt: typeof spec.prompt === "string" ? textBlock(spec.prompt) : spec.prompt,
+        ...spec.parent === undefined ? {} : { parent: spec.parent },
+        ...spec.signal === undefined ? {} : { signal: spec.signal },
+        ...Object.keys(route).length === 0 ? {} : { agentOptions: route },
+        ...spec.persona === undefined ? {} : { persona: spec.persona },
+        ...spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema },
+        ...spec.toolFilter === undefined ? {} : { toolFilter: spec.toolFilter },
+        ...spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }
+      });
+      const result = await (run2?.result ?? {});
+      return {
+        output: typeof result.output === "string" ? result.output : "",
+        structured: result.structured,
+        stopReason: result.stopReason ?? null
+      };
+    },
+    registerSkillProvider(provider) {
+      const skills = requireService("skills", "cannot register a skill provider");
+      if (typeof skills.registerProvider !== "function")
+        throw new Error("mpd-dsh-adapter: the harness skills service exposes no registerProvider()");
+      return skills.registerProvider(provider);
+    },
+    async listSkills(options = {}) {
+      const skills = requireService("skills", "cannot list skills");
+      if (typeof skills.list !== "function")
+        throw new Error("mpd-dsh-adapter: the harness skills service exposes no list()");
+      return await skills.list(options) ?? [];
+    },
+    async loadSkill(skillName, options = {}) {
+      const skills = requireService("skills", 'cannot load skill "' + skillName + '"');
+      if (typeof skills.get !== "function")
+        throw new Error("mpd-dsh-adapter: the harness skills service exposes no get()");
+      return skills.get(skillName, options);
+    },
+    async resolvePreset(presetId) {
+      const presets = requireService("agentPresets", 'cannot resolve preset "' + presetId + '"');
+      if (typeof presets.resolve !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agent-presets service exposes no resolve()");
+      const preset = await presets.resolve(presetId);
+      return {
+        id: String(preset?.id ?? presetId),
+        ...preset?.path === undefined ? {} : { path: String(preset.path) },
+        ...preset?.trust === undefined ? {} : { trust: String(preset.trust) },
+        ...preset?.broken === undefined ? {} : { broken: String(preset.broken) }
+      };
+    },
+    text: textBlock
+  };
+  return adapter;
+}
+
+// src/index.ts
 var name = "mpd-verif";
 var inject = ["tools"];
 function textBlock2(text) {
@@ -1817,11 +1774,11 @@ function apply(ctx) {
       render: (_a, v) => textBlock2("mpd_verif_venv: " + v.message + (v.error ? `
 ERROR(` + v.error.code + "): " + v.error.hint : ""))
     },
-    execute: async (args, exec) => {
+    execute: async (args) => {
       try {
         const action = (args?.action ?? "status") === "create" ? "create" : (args?.action ?? "status") === "info" ? "info" : "status";
         if (action === "info") {
-          const p = paths(args?.path ? String(args.path) : undefined, exec);
+          const p = paths(args?.path ? String(args.path) : undefined);
           const envKeys = Object.fromEntries(BACKEND_IDS.map((b) => ["MPD_DSH_VERIF_" + b.toUpperCase(), process.env["MPD_DSH_VERIF_" + b.toUpperCase()] ?? null]));
           return {
             ok: true,
@@ -1834,10 +1791,10 @@ ERROR(` + v.error.code + "): " + v.error.hint : ""))
           };
         }
         if (action === "create") {
-          const res = venvCreate(args?.path ? String(args.path) : undefined, undefined, exec);
+          const res = venvCreate(args?.path ? String(args.path) : undefined);
           return { ...res, action: "create" };
         }
-        const st = venvStatus(args?.path ? String(args.path) : undefined, exec);
+        const st = venvStatus(args?.path ? String(args.path) : undefined);
         return { ...st, action: "status" };
       } catch (e) {
         return refusalOf(e);
@@ -1856,7 +1813,7 @@ ERROR(` + v.error.code + "): " + v.error.hint : ""))
       render: (_a, v) => textBlock2("mpd_verif_backends: " + (v.backends ?? []).map((b) => `${b.backend}=${b.present ? "present(" + (b.version ?? "?") + ")" : "absent"} @${b.binary ?? "-"}`).join("; ") + (v.note ? `
 ` + v.note : ""))
     },
-    execute: async (args, exec) => {
+    execute: async (args) => {
       try {
         const want = String(args?.backend ?? "all");
         const list = want === "all" ? probeAll() : BACKEND_IDS.filter((b) => b === want).map((b) => probeAll().find((p) => p.backend === b)).filter(Boolean);
@@ -1895,7 +1852,7 @@ first errors:
 ` + (v.diagnostics ?? []).slice(0, 8).map((d) => `  ${d.file}:${d.line ?? "?"} [${d.severity}] ${d.message}`).join(`
 `))
     },
-    execute: async (args, exec) => {
+    execute: async (args) => {
       try {
         return verifCompile({
           backend: String(args?.backend),
@@ -1905,7 +1862,7 @@ first errors:
           defines: args?.defines ?? undefined,
           target: "compile",
           timeoutSec: typeof args?.timeoutSec === "number" ? args.timeoutSec : undefined
-        }, exec);
+        });
       } catch (e) {
         return refusalOf(e);
       }
@@ -1934,7 +1891,7 @@ first errors:
 ` + (v.diagnostics ?? []).slice(0, 8).map((d) => `  ${d.file}:${d.line ?? "?"} [${d.severity}] ${d.message}`).join(`
 `))
     },
-    execute: async (args, exec) => {
+    execute: async (args) => {
       try {
         return verifCompile({
           backend: String(args?.backend),
@@ -1944,7 +1901,7 @@ first errors:
           defines: args?.defines ?? undefined,
           target: "lint",
           timeoutSec: typeof args?.timeoutSec === "number" ? args.timeoutSec : undefined
-        }, exec);
+        });
       } catch (e) {
         return refusalOf(e);
       }
@@ -1971,7 +1928,7 @@ first errors:
 hint: ${v.error.hint}` : `mpd_verif_coverage OK (${v.backend}) — ${(v.messages ?? []).join("; ") || "done"}
 report: ${v.reportDir ?? "-"}`)
     },
-    execute: async (args, exec) => {
+    execute: async (args) => {
       try {
         return verifCoverage({
           backend: String(args?.backend),
@@ -1980,7 +1937,7 @@ report: ${v.reportDir ?? "-"}`)
           reportDir: args?.reportDir ? String(args.reportDir) : undefined,
           mergedDat: args?.mergedDat ? String(args.mergedDat) : undefined,
           timeoutSec: typeof args?.timeoutSec === "number" ? args.timeoutSec : undefined
-        }, exec);
+        });
       } catch (e) {
         return refusalOf(e);
       }
@@ -2030,7 +1987,7 @@ wave hooks:
 log: ${v.simLog}`);
       }
     },
-    execute: async (args, exec) => {
+    execute: async (args) => {
       try {
         return await verifSim({
           backend: String(args?.backend),
@@ -2046,7 +2003,7 @@ log: ${v.simLog}`);
           coverage: args?.coverage ?? false,
           timeoutSec: typeof args?.timeoutSec === "number" ? args.timeoutSec : undefined,
           waveHook: args?.waveHook ?? true
-        }, { tools: dsh.toolRuntime() }, exec);
+        }, { tools: dsh.toolRuntime() });
       } catch (e) {
         return refusalOf(e);
       }
@@ -2094,7 +2051,7 @@ fsdb reports:
 log: ` + v.logPath : ""}`);
       }
     },
-    execute: async (args, exec) => {
+    execute: async (args) => {
       try {
         return await verifUvm({
           action: String(args?.action ?? "compile"),
@@ -2110,7 +2067,7 @@ log: ` + v.logPath : ""}`);
           verbosity: args?.verbosity ? String(args.verbosity) : undefined,
           timeoutSec: typeof args?.timeoutSec === "number" ? args.timeoutSec : undefined,
           waveHook: args?.waveHook ?? true
-        }, dsh.toolRuntime(), exec);
+        }, dsh.toolRuntime());
       } catch (e) {
         return refusalOf(e);
       }
@@ -2155,7 +2112,7 @@ report: ${v.reportPath}
 ` + (v.cases ?? []).map((c) => `  ${c.test} [${c.status}] seed ${c.seed}${c.wave ? " wave:" + c.wave.fmt : ""}`).join(`
 `))
     },
-    execute: async (args, exec) => {
+    execute: async (args) => {
       try {
         return await verifRegress({
           backend: String(args?.backend),
@@ -2176,7 +2133,7 @@ report: ${v.reportPath}
             traceFst: args.sim.traceFst ?? true,
             coverage: args.sim.coverage ?? false
           } : undefined
-        }, dsh.toolRuntime(), exec);
+        }, dsh.toolRuntime());
       } catch (e) {
         return refusalOf(e);
       }

@@ -45,11 +45,11 @@ export function apply(ctx: Ctx): void {
       schema: { type: "object", properties: { ok: { type: "boolean" }, verdict: { type: "string" }, venv: { type: "string" }, something: {} } },
       render: (_a: unknown, v: any) => textBlock("mpd_verif_venv: " + v.message + (v.error ? "\nERROR(" + v.error.code + "): " + v.error.hint : "")),
     },
-    execute: async (args: any) => {
+    execute: async (args: any, exec: any) => {
       try {
         const action = (args?.action ?? "status") === "create" ? "create" : (args?.action ?? "status") === "info" ? "info" : "status"
         if (action === "info") {
-          const p = paths(args?.path ? String(args.path) : undefined)
+          const p = paths(args?.path ? String(args.path) : undefined, exec)
           const envKeys = Object.fromEntries(BACKEND_IDS.map((b) => ["MPD_DSH_VERIF_" + b.toUpperCase(), process.env["MPD_DSH_VERIF_" + b.toUpperCase()] ?? null]))
           return {
             ok: true,
@@ -62,10 +62,10 @@ export function apply(ctx: Ctx): void {
           }
         }
         if (action === "create") {
-          const res = venvCreate(args?.path ? String(args.path) : undefined)
+          const res = venvCreate(args?.path ? String(args.path) : undefined, undefined, exec)
           return { ...res, action: "create" }
         }
-        const st = venvStatus(args?.path ? String(args.path) : undefined)
+        const st = venvStatus(args?.path ? String(args.path) : undefined, exec)
         return { ...st, action: "status" }
       } catch (e) {
         return refusalOf(e)
@@ -85,7 +85,7 @@ export function apply(ctx: Ctx): void {
       schema: { type: "object", properties: { ok: { type: "boolean" }, backends: { type: "array" } } },
       render: (_a: unknown, v: any) => textBlock("mpd_verif_backends: " + (v.backends ?? []).map((b: BackendProbe) => `${b.backend}=${b.present ? "present(" + (b.version ?? "?") + ")" : "absent"} @${b.binary ?? "-"}`).join("; ") + (v.note ? "\n" + v.note : "")),
     },
-    execute: async (args: any) => {
+    execute: async (args: any, exec: any) => {
       try {
         const want = String(args?.backend ?? "all")
         const list = want === "all" ? probeAll() : BACKEND_IDS.filter((b) => b === want).map((b) => probeAll().find((p) => p.backend === b)!).filter(Boolean)
@@ -121,7 +121,7 @@ export function apply(ctx: Ctx): void {
       schema: { type: "object", properties: { ok: { type: "boolean" }, backend: { type: "string" }, diagnostics: { type: "array" }, something: {} } },
       render: (_a: unknown, v: any) => textBlock(v.ok ? `mpd_verif_compile OK — ${v.backend} → ${v.outBinary ?? "binary"}\nlog: ${v.logPath}` : `mpd_verif_compile FAILED (${v.backend}, exit ${v.exitCode}) — ${(v.diagnostics ?? []).length} diagnostics\nlog: ${v.logPath}\nfirst errors:\n` + (v.diagnostics ?? []).slice(0, 8).map((d: any) => `  ${d.file}:${d.line ?? "?"} [${d.severity}] ${d.message}`).join("\n")),
     },
-    execute: async (args: any) => {
+    execute: async (args: any, exec: any) => {
       try {
         return verifCompile({
           backend: String(args?.backend) as BackendId,
@@ -131,7 +131,7 @@ export function apply(ctx: Ctx): void {
           defines: args?.defines ?? undefined,
           target: "compile",
           timeoutSec: typeof args?.timeoutSec === "number" ? args.timeoutSec : undefined,
-        })
+        }, exec)
       } catch (e) {
         return refusalOf(e)
       }
@@ -158,7 +158,7 @@ export function apply(ctx: Ctx): void {
       schema: { type: "object", properties: { ok: { type: "boolean" }, backend: { type: "string" }, diagnostics: { type: "array" }, something: {} } },
       render: (_a: unknown, v: any) => textBlock(v.ok ? `mpd_verif_lint OK (${v.backend}) — log: ${v.logPath}` : `mpd_verif_lint FAILED (${v.backend}, exit ${v.exitCode}) — ${(v.diagnostics ?? []).length} diagnostics\nlog: ${v.logPath}\nfirst errors:\n` + (v.diagnostics ?? []).slice(0, 8).map((d: any) => `  ${d.file}:${d.line ?? "?"} [${d.severity}] ${d.message}`).join("\n")),
     },
-    execute: async (args: any) => {
+    execute: async (args: any, exec: any) => {
       try {
         return verifCompile({
           backend: String(args?.backend) as BackendId,
@@ -168,7 +168,7 @@ export function apply(ctx: Ctx): void {
           defines: args?.defines ?? undefined,
           target: "lint",
           timeoutSec: typeof args?.timeoutSec === "number" ? args.timeoutSec : undefined,
-        })
+        }, exec)
       } catch (e) {
         return refusalOf(e)
       }
@@ -195,7 +195,7 @@ export function apply(ctx: Ctx): void {
       schema: { type: "object", properties: { ok: { type: "boolean" }, backend: { type: "string" }, reportDir: { type: "string" }, something: {} } },
       render: (_a: unknown, v: any) => textBlock(v.error ? `mpd_verif_coverage FAILED: ${v.error.message}\nhint: ${v.error.hint}` : `mpd_verif_coverage OK (${v.backend}) — ${(v.messages ?? []).join("; ") || "done"}\nreport: ${v.reportDir ?? "-"}`),
     },
-    execute: async (args: any) => {
+    execute: async (args: any, exec: any) => {
       try {
         return verifCoverage({
           backend: String(args?.backend) as "iverilog" | "verilator" | "vcs",
@@ -204,7 +204,7 @@ export function apply(ctx: Ctx): void {
           reportDir: args?.reportDir ? String(args.reportDir) : undefined,
           mergedDat: args?.mergedDat ? String(args.mergedDat) : undefined,
           timeoutSec: typeof args?.timeoutSec === "number" ? args.timeoutSec : undefined,
-        })
+        }, exec)
       } catch (e) {
         return refusalOf(e)
       }
@@ -245,7 +245,7 @@ export function apply(ctx: Ctx): void {
         return textBlock(`mpd_verif_sim ${v.ok ? "PASS" : "FAIL"} (${v.backend}, ${v.top}, seed ${v.seed ?? "auto"}) — ${cases.length} case(s)\n${body}${waves ? "\nwaves:\n" + waves : ""}${hook ? "\nwave hooks:\n" + hook : ""}\nlog: ${v.simLog}`)
       },
     },
-    execute: async (args: any) => {
+    execute: async (args: any, exec: any) => {
       try {
         return await verifSim(
           {
@@ -264,6 +264,7 @@ export function apply(ctx: Ctx): void {
             waveHook: args?.waveHook ?? true,
           },
           { tools: dsh.toolRuntime() },
+          exec,
         )
       } catch (e) {
         return refusalOf(e)
@@ -305,7 +306,7 @@ export function apply(ctx: Ctx): void {
         return textBlock(`mpd_verif_uvm ${v.action} ${v.ok ? "OK" : "FAILED"}${attempt}\n${cases}${fsdb ? "\nfsdb reports:\n" + fsdb : ""}${cov}${v.logPath ? "\nlog: " + v.logPath : ""}`)
       },
     },
-    execute: async (args: any) => {
+    execute: async (args: any, exec: any) => {
       try {
         return await verifUvm(
           {
@@ -324,6 +325,7 @@ export function apply(ctx: Ctx): void {
             waveHook: args?.waveHook ?? true,
           },
           dsh.toolRuntime(),
+          exec,
         )
       } catch (e) {
         return refusalOf(e)
@@ -367,7 +369,7 @@ export function apply(ctx: Ctx): void {
       schema: { type: "object", properties: { ok: { type: "boolean" }, backend: { type: "string" }, total: { type: "number" }, passed: { type: "number" }, failed: { type: "number" }, reportMarkdown: { type: "string" } } },
       render: (_a: unknown, v: any) => textBlock(v.error ? `mpd_verif_regress FAILED: ${v.error.message}\nhint: ${v.error.hint}` : `mpd_verif_regress (${v.backend}): ${v.passed}/${v.total} passed, ${v.failed} failed, ${v.skipped} skipped (seedBase ${v.seedBase})\nreport: ${v.reportPath}\n` + (v.cases ?? []).map((c: any) => `  ${c.test} [${c.status}] seed ${c.seed}${c.wave ? " wave:" + c.wave.fmt : ""}`).join("\n")),
     },
-    execute: async (args: any) => {
+    execute: async (args: any, exec: any) => {
       try {
         return await verifRegress(
           {
@@ -391,6 +393,7 @@ export function apply(ctx: Ctx): void {
             } : undefined,
           },
           dsh.toolRuntime(),
+          exec,
         )
       } catch (e) {
         return refusalOf(e)

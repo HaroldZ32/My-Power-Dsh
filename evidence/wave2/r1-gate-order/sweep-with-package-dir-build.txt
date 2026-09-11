@@ -1,0 +1,163 @@
+=== dist sweep ===
+repoRoot=/root/dshProj/my-power-dsh  mode=clean-room
+
+mpd-bootstrap-plugin: FRESH (byte-identical)
+  cmd: bun build --target node --format esm packages/mpd-bootstrap-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-bootstrap-plugin.js
+  sha256 committed=c817928406387c07 fresh=c817928406387c07 (23332B vs 23332B)
+  clean-room: pass2sha=c817928406387c07 pass1==pass2=true committed==pass2=true
+
+mpd-boulder-plugin: FRESH (byte-identical)
+  cmd: bun build --target node --format esm packages/mpd-boulder-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-boulder-plugin.js
+  sha256 committed=a15872148b34caee fresh=a15872148b34caee (41295B vs 41295B)
+  clean-room: pass2sha=a15872148b34caee pass1==pass2=true committed==pass2=true
+
+mpd-bundle-plugin: FRESH (byte-identical)
+  cmd: bun build --target node --format esm packages/mpd-bundle-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-bundle-plugin.js
+  sha256 committed=d30b30fa7dcbe247 fresh=d30b30fa7dcbe247 (145B vs 145B)
+  clean-room: pass2sha=d30b30fa7dcbe247 pass1==pass2=true committed==pass2=true
+
+mpd-codegraph-plugin: FRESH (byte-identical)
+  cmd: bun build --target node --format esm packages/mpd-codegraph-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-codegraph-plugin.js
+  sha256 committed=d66079901dd8942e fresh=d66079901dd8942e (4267B vs 4267B)
+  clean-room: pass2sha=d66079901dd8942e pass1==pass2=true committed==pass2=true
+
+mpd-comment-checker-plugin: FRESH (byte-identical)
+  cmd: bun build --target node --format esm packages/mpd-comment-checker-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-comment-checker-plugin.js
+  sha256 committed=e27dd3cececbe6bf fresh=e27dd3cececbe6bf (16857B vs 16857B)
+  clean-room: pass2sha=e27dd3cececbe6bf pass1==pass2=true committed==pass2=true
+
+mpd-config-plugin: FRESH (byte-identical)
+  cmd: bun build --target node --format esm packages/mpd-config-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-config-plugin.js
+  sha256 committed=189d76a6cca3e4e4 fresh=189d76a6cca3e4e4 (15491B vs 15491B)
+  clean-room: pass2sha=189d76a6cca3e4e4 pass1==pass2=true committed==pass2=true
+
+mpd-dsh-adapter-plugin: FRESH (byte-identical)
+  cmd: bun build --target node --format esm packages/mpd-dsh-adapter-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-dsh-adapter-plugin.js
+  sha256 committed=fe3ea3015bcc391e fresh=fe3ea3015bcc391e (10520B vs 10520B)
+  clean-room: pass2sha=fe3ea3015bcc391e pass1==pass2=true committed==pass2=true
+
+mpd-hashline-plugin: FRESH (byte-identical)
+  cmd: bun build --target node --format esm packages/mpd-hashline-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-hashline-plugin.js
+  sha256 committed=8359fc944661ff03 fresh=8359fc944661ff03 (48183B vs 48183B)
+  clean-room: pass2sha=8359fc944661ff03 pass1==pass2=true committed==pass2=true
+
+mpd-memory-plugin: FRESH (byte-identical)
+  cmd: bun build --target node --format esm packages/mpd-memory-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-memory-plugin.js
+  sha256 committed=0f9e3a53273b40d6 fresh=0f9e3a53273b40d6 (23756B vs 23756B)
+  clean-room: pass2sha=0f9e3a53273b40d6 pass1==pass2=true committed==pass2=true
+
+mpd-modelchain-plugin: FRESH (byte-identical)
+  cmd: bun build --target node --format esm packages/mpd-modelchain-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-modelchain-plugin.js
+  sha256 committed=e3c0b2466c54f32c fresh=e3c0b2466c54f32c (16324B vs 16324B)
+  clean-room: pass2sha=e3c0b2466c54f32c pass1==pass2=true committed==pass2=true
+
+mpd-qa-roles-probe: FRESH (byte-identical)
+  cmd: bun build --target node --format esm packages/mpd-qa-roles-probe/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-qa-roles-probe.js
+  sha256 committed=37d0693a8b7f76e7 fresh=37d0693a8b7f76e7 (12572B vs 12572B)
+  clean-room: pass2sha=37d0693a8b7f76e7 pass1==pass2=true committed==pass2=true
+
+mpd-roles-plugin: FRESH (byte-identical)
+  cmd: bun build --target node --format esm packages/mpd-roles-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-roles-plugin.js
+  sha256 committed=741605f62225fb41 fresh=741605f62225fb41 (22049B vs 22049B)
+  clean-room: pass2sha=741605f62225fb41 pass1==pass2=true committed==pass2=true
+
+mpd-tools-plugin: FRESH (byte-identical)
+  cmd: bun build --target node --format esm packages/mpd-tools-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-tools-plugin.js
+  sha256 committed=07c539987450e064 fresh=07c539987450e064 (12514B vs 12514B)
+  clean-room: pass2sha=07c539987450e064 pass1==pass2=true committed==pass2=true
+
+mpd-ulw-plugin: FRESH (byte-identical)
+  cmd: bun build --target node --format esm packages/mpd-ulw-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-ulw-plugin.js
+  sha256 committed=e116ee3e8017450a fresh=e116ee3e8017450a (30024B vs 30024B)
+  clean-room: pass2sha=e116ee3e8017450a pass1==pass2=true committed==pass2=true
+
+mpd-verif-plugin: STALE
+  cmd: bun build --target node --format esm packages/mpd-verif-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-verif-plugin.js
+  sha256 committed=8cb817de1834fec7 fresh=13ad3e3e45a1a768 (96155B vs 96629B)
+  RAW BODY DIFF (banner line excepted):
+    3c3
+    < // src/backends.ts
+    ---
+    > // packages/mpd-verif-plugin/src/backends.ts
+    7c7
+    < // src/env.ts
+    ---
+    > // packages/mpd-verif-plugin/src/env.ts
+    11c11
+    < // ../mpd-dsh-adapter-plugin/src/index.ts
+    ---
+    > // packages/mpd-dsh-adapter-plugin/src/index.ts
+    252c252
+    < // src/env.ts
+    ---
+    > // packages/mpd-verif-plugin/src/env.ts
+    299c299
+    < // src/run.ts
+    ---
+    > // packages/mpd-verif-plugin/src/run.ts
+    336c336
+    < // src/errors.ts
+    ---
+    > // packages/mpd-verif-plugin/src/errors.ts
+    356c356
+    < // src/backends.ts
+    ---
+    > // packages/mpd-verif-plugin/src/backends.ts
+    545c545
+    < // src/compile.ts
+    ---
+    > // packages/mpd-verif-plugin/src/compile.ts
+    591c591
+    < // src/coverage.ts
+    ---
+    > // packages/mpd-verif-plugin/src/coverage.ts
+    595c595
+    < // src/eda-tools.ts
+    ---
+    > // packages/mpd-verif-plugin/src/eda-tools.ts
+    687c687
+    < // src/coverage.ts
+    ---
+    > // packages/mpd-verif-plugin/src/coverage.ts
+    788c788
+    < // src/venv.ts
+    ---
+    > // packages/mpd-verif-plugin/src/venv.ts
+    899c899
+    < // src/sim.ts
+    ---
+    > // packages/mpd-verif-plugin/src/sim.ts
+    903c903
+    < // src/wave.ts
+    ---
+    > // packages/mpd-verif-plugin/src/wave.ts
+    1006c1006
+    < // src/sim.ts
+    ---
+    > // packages/mpd-verif-plugin/src/sim.ts
+    1223c1223
+    < // src/uvm.ts
+    ---
+    > // packages/mpd-verif-plugin/src/uvm.ts
+    1614c1614
+    < // src/regress.ts
+    ---
+    > // packages/mpd-verif-plugin/src/regress.ts
+    1798c1798
+    < // src/index.ts
+    ---
+    > // packages/mpd-verif-plugin/src/index.ts
+  clean-room: pass2sha=13ad3e3e45a1a768 pass1==pass2=true committed==pass2=false
+
+mpd-workmate-plugin: FRESH (byte-identical)
+  cmd: bun build --target node --format esm packages/mpd-workmate-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-workmate-plugin.js
+  sha256 committed=e10a87fcf2fe3096 fresh=e10a87fcf2fe3096 (47773B vs 47773B)
+  clean-room: pass2sha=e10a87fcf2fe3096 pass1==pass2=true committed==pass2=true
+
+=== summary ===
+packages with dist/index.js: 16
+FRESH byte-identical: 15
+FRESH banner-only: 0
+STALE: 1 -> mpd-verif-plugin
+clean-room pass1==pass2 byte-identical: 16/16
+clean-room committed==pass2 byte-identical: 15/16

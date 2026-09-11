@@ -34,18 +34,18 @@ export interface VerifCompileResult {
   error?: { code: string; message: string; hint: string }
 }
 
-export function verifCompile(a: VerifCompileArgs, exec?: any): VerifCompileResult {
+export function verifCompile(a: VerifCompileArgs): VerifCompileResult {
   if (!a.sources || a.sources.length === 0) {
     throw new VerifError("VERIF_E_COMPILE", "no sources given", "pass sources[] (at least one .v/.sv file)")
   }
   const stamp = runStamp()
-  const logRoot = join(workDir(exec), "logs")
+  const logRoot = join(workDir(), "logs")
   const defines = a.defines ? (Array.isArray(a.defines) ? normalizeDefines(a.defines) : a.defines) : undefined
   const src: SourceSet = { sources: a.sources, top: a.top, includes: a.includes, defines }
   const target = a.target === "compile" ? "compile" : "lint"
   // backend gate with stable taxonomy
   requireBackend(a.backend, "install it or pin MPD_DSH_VERIF_" + a.backend.toUpperCase())
-  const plan = target === "lint" ? lintPlan(a.backend, src, logRoot, stamp) : compilePlan(a.backend, src, workDir(exec), stamp)
+  const plan = target === "lint" ? lintPlan(a.backend, src, logRoot, stamp) : compilePlan(a.backend, src, workDir(), stamp)
   const r = runPlan(plan, (a.timeoutSec ?? DEFAULT_TIMEOUT_MS / 1000) * 1000)
   writeLog(plan.logPath, r.combined)
   if (r.timedOut) {

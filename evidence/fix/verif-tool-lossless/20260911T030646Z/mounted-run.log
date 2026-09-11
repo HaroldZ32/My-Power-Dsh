@@ -1,0 +1,15 @@
+bash: cannot set terminal process group (-1): Inappropriate ioctl for device
+bash: no job control in this shell
+pyenv: cannot rehash: /root/.pyenv/shims isn't writable
+sandbox: /tmp/mpd-t3-mount-tCPLPI
+install-profile exit: 0
+- id: mpd-verif
+  name: file:///root/dshProj/my-power-dsh/packages/mpd-verif-plugin/dist/index.js
+  config: {}
+mounted backends exit: 0
+mounted lint/compile exit: 0
+precondition:
+  iverilog -> /opt/osscad/oss-cad-suite/bin/iverilog
+  verilator -> /opt/osscad/oss-cad-suite/bin/verilator
+  vcs -> ABSENT
+sandbox kept for inspection: /tmp/mpd-t3-mount-tCPLPI

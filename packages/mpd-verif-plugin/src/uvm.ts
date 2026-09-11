@@ -244,7 +244,7 @@ function writeCompileState(wdir: string, s: CompileState): void {
   try { writeFileSync(join(wdir, "compile-state.json"), JSON.stringify(s)) } catch { /* state is best-effort */ }
 }
 
-export async function verifUvm(a: VerifUvmArgs, tools?: WaveTools): Promise<VerifUvmResult> {
+export async function verifUvm(a: VerifUvmArgs, tools?: WaveTools, exec?: any): Promise<VerifUvmResult> {
   const vcs = resolveVcsBinary()
   if (a.action === "wave") envGate(["VERDI_HOME", "NOVAS_HOME"].filter((k) => k && k.length > 0), "wave dumping (fsdb)")
   const ipRoot = a.top

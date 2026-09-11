@@ -1,0 +1,10 @@
+bun test v1.3.14 (0d9b296a)
+
+test/regress.test.ts:
+(pass) R1-F1: verifRegress forwards exec so the per-case sim gates on the SESSION venv, not DSH_WORKSPACE_ROOT [18.10ms]
+
+ 1 pass
+ 9 filtered out
+ 0 fail
+ 8 expect() calls
+Ran 1 test across 1 file. [56.00ms]

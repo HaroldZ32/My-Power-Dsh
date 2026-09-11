@@ -2,7 +2,7 @@
 // per-case work dirs, results.json + markdown report on disk, failure
 // aggregation, stopOnError; plus the vcs-lane delegation path.
 import { test, expect } from "bun:test"
-import { readFileSync, existsSync } from "node:fs"
+import { readFileSync, existsSync, mkdirSync } from "node:fs"
 import { join } from "node:path"
 import { verifRegress } from "../src/regress"
 import { captureLines, guardEnv, fakeMakeScript, makeFakeVenv, makeSandbox, PASS_XML, withSandboxEnv, writeBin, writeText } from "./helpers"
@@ -145,6 +145,137 @@ test("regress: bad backend id refuses with VERIF_E_UNSUPPORTED", async () => {
     let code = ""
     try { await verifRegress({ backend: "xrun" as never, cases: ["a"] }) } catch (e) { code = (e as { code: string }).code }
     expect(code).toBe("VERIF_E_UNSUPPORTED")
+  } finally {
+    g.restore()
+  }
+})
+
+// R1 ordering (negative control). Pre-fix, verifRegress ran runStamp()/mkdirSync
+// BEFORE the iron gate, so the two tests below would fail: the first escapes as
+// a raw ENOTDIR filesystem error instead of VERIF_E_NO_VENV, the second leaves a
+// stray regress work dir behind. Both are asserted directly, so the ordering —
+// not merely the message — is pinned.
+test("R1 ordering: with NO session the iron gate refuses BEFORE any work-dir creation (blocked work root)", async () => {
+  const s = makeSandbox()
+  const g = guardEnv()
+  try {
+    withSandboxEnv(s, { venv: join(s, "no-venv") })
+    // Block the work root with a REGULAR FILE: any pre-gate mkdirSync of
+    // <work>/regress/<stamp> throws ENOTDIR, which is exactly the opaque
+    // host-root filesystem failure R1 reported in the field.
+    const blockedWork = join(s, "blocked-work")
+    writeText(blockedWork, "regular file, not a directory")
+    process.env.MPD_DSH_VERIF_WORK = blockedWork
+    // Sanity: the blocker really blocks the pre-fix code path.
+    expect(() => mkdirSync(join(blockedWork, "regress", "x"))).toThrow()
+    let code = ""
+    let message = ""
+    try {
+      await verifRegress({ backend: "iverilog", cases: ["a"], sim: { top: "t", sources: ["t.v"] } })
+    } catch (e) {
+      code = (e as { code: string }).code
+      message = String((e as Error).message)
+    }
+    expect(code).toBe("VERIF_E_NO_VENV")
+    expect(message).toContain("iron rule")
+  } finally {
+    g.restore()
+  }
+})
+
+test("R1 ordering: a session-scoped call passes the gate, stops at backend resolution, and creates no work dir", async () => {
+  const s = makeSandbox()
+  const g = guardEnv()
+  try {
+    const { venv } = makeFakeVenv(s)
+    withSandboxEnv(s, { venv })
+    process.env.FAKE_COCOTB_VERSION = "2.0.1"
+    // Unresolvable backend: no env override and an empty PATH entry list.
+    delete process.env.MPD_DSH_VERIF_IVERILOG
+    process.env.PATH = join(s, "empty-bin")
+    let code = ""
+    try {
+      await verifRegress({ backend: "iverilog", cases: ["a"], sim: { top: "t", sources: ["t.v"] } })
+    } catch (e) {
+      code = (e as { code: string }).code
+    }
+    expect(code).toBe("VERIF_E_NO_BACKEND")
+    expect(existsSync(join(s, "work", "regress"))).toBe(false)
+  } finally {
+    g.restore()
+  }
+})
+
+test("R1 ordering: the vcs lane also refuses before any work-dir creation", async () => {
+  const s = makeSandbox()
+  const g = guardEnv()
+  try {
+    withSandboxEnv(s)
+    let code = ""
+    try {
+      await verifRegress({ backend: "vcs" })
+    } catch (e) {
+      code = (e as { code: string }).code
+    }
+    expect(code).toBe("VERIF_E_RUN")
+    expect(existsSync(join(s, "work", "regress"))).toBe(false)
+  } finally {
+    g.restore()
+  }
+})
+
+// R1-F1 (argument pinning, NOT message matching). The session workspace holds the
+// venv while DSH_WORKSPACE_ROOT points at a DIFFERENT directory with no venv, and
+// the fake venv python records EVERY invocation. The pre-fix call shape
+// (`verifSim({...}, {})`, exec not forwarded) makes the per-case iron gate resolve
+// DSH_WORKSPACE_ROOT -> missing -> the case fails with the venv refusal, and the
+// session python is never executed. With `exec` forwarded, the gate resolves the
+// session cwd: the session python IS executed (recorded) and the case runs to
+// completion. Both assertions therefore pin the forwarded argument.
+test("R1-F1: verifRegress forwards exec so the per-case sim gates on the SESSION venv, not DSH_WORKSPACE_ROOT", async () => {
+  const s = makeSandbox()
+  const g = guardEnv()
+  try {
+    const sessionWs = join(s, "ws")
+    const sessionVenv = join(sessionWs, ".venv-rtl")
+    const sessionPy = join(sessionVenv, "bin", "python")
+    const pyCapture = join(s, "session-py.log")
+    writeBin(join(sessionVenv, "bin"), "python", `#!/bin/sh
+echo "$0 $*" >> "${pyCapture}"
+if [ "$1" = "--version" ]; then echo "Python 3.12.1 (fake)"; exit 0; fi
+if [ "$1" = "-c" ]; then echo '{"v": "2.0.1", "ok": true}'; exit 0; fi
+exit 0
+`)
+    // The session workspace and DSH_WORKSPACE_ROOT DISAGREE on purpose.
+    process.env.DSH_WORKSPACE_ROOT = join(s, "other")
+    process.env.MPD_DSH_VERIF_WORK = join(s, "work")
+    delete process.env.MPD_DSH_VERIF_VENV
+    // A resolvable backend, so the REGRESS-level probe does not stop the lane
+    // before the per-case sim (the defect lives in that per-case call).
+    process.env.MPD_DSH_VERIF_IVERILOG = writeBin(join(s, "fakebin"), "iverilog", `#!/bin/sh
+if [ "$1" = "-V" ]; then echo "Icarus Verilog version 12.0"; exit 0; fi
+exit 0
+`)
+    writeBin(join(s, "fakebin"), "make", fakeMakeScript({ capture: join(s, "fake-make.log") }))
+    process.env.PATH = join(s, "fakebin") + ":" + (process.env.PATH ?? "")
+    process.env.FAKE_COCOTB_VERSION = "2.0.1"
+    process.env.FAKE_RESULTS_XML_FILE = writeText(join(s, "pass.xml"), PASS_XML)
+    writeText(join(sessionWs, "adder.v"), "module adder; endmodule")
+    const exec = { agent: { session: { header: { cwd: sessionWs } } } }
+
+    const r = await verifRegress({ backend: "iverilog", cases: ["case_a"], sim: { top: "adder", sources: ["adder.v"], tbModules: ["adder_tb"] } }, undefined, exec)
+
+    // Direct proof that the exec-derived path was probed by the per-case sim.
+    expect(existsSync(pyCapture)).toBe(true)
+    const probed = readFileSync(pyCapture, "utf8")
+    expect(probed).toContain(sessionPy)
+    expect(probed).not.toContain(join(s, "other"))
+    // ... and the per-case sim got past its gate and ran to completion.
+    expect(r.cases).toHaveLength(1)
+    expect(r.cases[0].status).toBe("pass")
+    expect(r.cases[0].failureMsg).toBeNull()
+    expect(r.passed).toBe(1)
+    expect(r.ok).toBe(true)
   } finally {
     g.restore()
   }

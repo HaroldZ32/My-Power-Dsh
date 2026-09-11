@@ -1,0 +1,51 @@
+bun test v1.3.14 (0d9b296a)
+
+test/regress.test.ts:
+174 |       await verifRegress({ backend: "iverilog", cases: ["a"], sim: { top: "t", sources: ["t.v"] } })
+175 |     } catch (e) {
+176 |       code = (e as { code: string }).code
+177 |       message = String((e as Error).message)
+178 |     }
+179 |     expect(code).toBe("VERIF_E_NO_VENV")
+                       ^
+error: expect(received).toBe(expected)
+
+Expected: "VERIF_E_NO_VENV"
+Received: "ENOTDIR"
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-verif-plugin/test/regress.test.ts:179:18)
+(fail) R1 ordering: with NO session the iron gate refuses BEFORE any work-dir creation (blocked work root) [3.40ms]
+198 |       await verifRegress({ backend: "iverilog", cases: ["a"], sim: { top: "t", sources: ["t.v"] } })
+199 |     } catch (e) {
+200 |       code = (e as { code: string }).code
+201 |     }
+202 |     expect(code).toBe("VERIF_E_NO_BACKEND")
+203 |     expect(existsSync(join(s, "work", "regress"))).toBe(false)
+                                                         ^
+error: expect(received).toBe(expected)
+
+Expected: false
+Received: true
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-verif-plugin/test/regress.test.ts:203:52)
+(fail) R1 ordering: a session-scoped call passes the gate, stops at backend resolution, and creates no work dir [6.22ms]
+216 |       await verifRegress({ backend: "vcs" })
+217 |     } catch (e) {
+218 |       code = (e as { code: string }).code
+219 |     }
+220 |     expect(code).toBe("VERIF_E_RUN")
+221 |     expect(existsSync(join(s, "work", "regress"))).toBe(false)
+                                                         ^
+error: expect(received).toBe(expected)
+
+Expected: false
+Received: true
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-verif-plugin/test/regress.test.ts:221:52)
+(fail) R1 ordering: the vcs lane also refuses before any work-dir creation [0.66ms]
+
+ 0 pass
+ 6 filtered out
+ 3 fail
+ 6 expect() calls
+Ran 3 tests across 1 file. [52.00ms]

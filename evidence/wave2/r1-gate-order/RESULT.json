@@ -1,0 +1,64 @@
+{
+  "task": "t3 — R1: check the cocotb iron gate before creating the regress work directory",
+  "attemptId": "cd4068ae-bc47-4407-8ede-c10cd5b3adef",
+  "member": "Deep Worker",
+  "measuredAt": "2026-09-11T05:48:27.770Z",
+  "defect": {
+    "id": "R1",
+    "symptom": "a no-session mpd_verif_regress created its work dir before the cocotb iron gate, surfacing an opaque host-root filesystem error (ENOENT mkdir '/root/dshProj/.mpd/verif/...' / EROFS mkdir '/root/dshProj/.mpd/verif') instead of VERIF_E_NO_VENV",
+    "fix": "packages/mpd-verif-plugin/src/regress.ts: the work dir is now created by createRegressDir(exec) only after every lane gate has passed — cocotb lane: after requireCocotbVenv + probeBackend + the top/sources arg checks; vcs lane: after the top/probe checks and the UVM run. Mirrors sim.ts (gate line 200, case dir mkdir line 209).",
+    "distRebuilt": "packages/mpd-verif-plugin/dist/index.js (13ad3e3e45a1a768ffc6746dc0e2cf809a27d3f2baaf93f92ba44fce577cb75a)"
+  },
+  "changedPaths": [
+    "packages/mpd-verif-plugin/src/regress.ts",
+    "packages/mpd-verif-plugin/test/regress.test.ts",
+    "packages/mpd-verif-plugin/dist/index.js",
+    "evidence/wave2/r1-gate-order"
+  ],
+  "negativeControl": {
+    "method": "evidence/wave2/r1-gate-order/pre-fix-order.mjs --apply flips src/regress.ts back to the pre-fix order (work dir at function entry); the three R1 tests are then run and must fail; --restore returns the fixed source byte-for-byte (verified: no marker, no backup left, git diff back to the fixed 22-insert/9-delete delta).",
+    "preFixRun": "negative-control-pre-fix.txt — 3 fail / 0 pass; the decisive assertion is code 'ENOTDIR' instead of 'VERIF_E_NO_VENV' (the measured field face), plus a stray work dir left behind in the two other tests.",
+    "postFixRun": "negative-control-post-fix.txt — 3 pass / 0 fail."
+  },
+  "realCall": {
+    "script": "evidence/wave2/r1-gate-order/session-call.mjs (drives the SHIPPED dist tool mpd_verif_regress with exec.agent.session.header.cwd = sandbox session workspace while DSH_WORKSPACE_ROOT points at a DIFFERENT workspace)",
+    "call1": "gate resolves the SESSION .venv-rtl and passes, then refuses VERIF_E_NO_BACKEND; no regress dir and no .mpd tree in either workspace (R1 ordering).",
+    "call2": "same session exec with a backend on PATH: the gate passes, the regress dir is created under the SESSION workspace only, and results.json/results.md are aggregated there; the unrelated DSH_WORKSPACE_ROOT workspace is never touched.",
+    "result": "session-call.result.json — all 6 acceptance-level checks pass, script exit 0."
+  },
+  "findings": [
+    {
+      "id": "F1-exec-not-forwarded-to-sim",
+      "severity": "medium",
+      "inR1Objective": false,
+      "preExisting": true,
+      "problem": "verifRegress calls `await verifSim({...}, {})` without its own `exec` (pre-existing at HEAD too), so the per-case sim re-resolves the venv/work dir from DSH_WORKSPACE_ROOT/process.cwd() instead of the calling session. In the sandboxed real call the regress-level gate passed on the session venv while the per-case sim refused VERIF_E_NO_VENV.",
+      "evidence": "session-call.result.json .findings[] and .call2.perCaseFailure",
+      "requiredFix": "forward the regress exec: `await verifSim({...}, {}, exec)` (one line, in scope of regress.ts). Deliberately NOT applied here: it is outside the R1 objective, so it is reported for the captain to schedule rather than folded into this scoped change."
+    }
+  ],
+  "gates": {
+    "packageTests": "bun-test-package.txt — 77 pass / 0 fail (74 pre-change, +3 new R1 order tests)",
+    "repoTests": "bun-test-packages.txt — 312 pass / 0 fail across 35 files (wave-1 recorded baseline: 308)",
+    "typecheck": "typecheck.txt — exit 0",
+    "distSweep": "sweep-clean-room.txt — 16 FRESH byte-identical, 0 FRESH banner-only, 0 STALE; clean-room pass1==pass2 16/16 and committed==pass2 16/16",
+    "rebuildFormNote": "dist-order.txt — the sweep-reproducible rebuild is the repo-root form (packages/mpd-verif-plugin/src/index.ts → dist/index.js). The contract's literal package-dir form emits package-relative inlined banner comments and makes the sweep report the package STALE (measured counterfactual in sweep-with-package-dir-build.txt), i.e. exactly the wave-1 failure mode; it was not used.",
+    "commentChecker": "comment-check clean for src/regress.ts, test/regress.test.ts and both evidence scripts"
+  },
+  "evidenceFiles": [
+    "RESULT.json",
+    "source-order.txt",
+    "pre-fix-order.mjs",
+    "negative-control-pre-fix.txt",
+    "negative-control-post-fix.txt",
+    "session-call.mjs",
+    "session-call.output.txt",
+    "session-call.result.json",
+    "sweep-clean-room.txt",
+    "sweep-with-package-dir-build.txt",
+    "dist-order.txt",
+    "bun-test-package.txt",
+    "bun-test-packages.txt",
+    "typecheck.txt"
+  ]
+}

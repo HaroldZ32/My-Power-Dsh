@@ -1,0 +1,85 @@
+bun test v1.3.14 (0d9b296a)
+
+test/lossless.test.ts:
+47 | 
+48 | // The strict host contract: no undefined-valued property anywhere, and a JSON
+49 | // round trip that keeps every key (`toStrictEqual` distinguishes an absent key
+50 | // from a key present with value undefined; `toEqual` does not).
+51 | function expectLossless(value: unknown): void {
+52 |   expect(undefinedPaths(value)).toEqual([])
+                                     ^
+error: expect(received).toEqual(expected)
+
+- []
++ [
++   "value.licenseHint",
++ ]
+
+- Expected  - 1
++ Received  + 3
+
+      at expectLossless (/root/dshProj/my-power-dsh/packages/mpd-verif-plugin/test/lossless.test.ts:52:33)
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-verif-plugin/test/lossless.test.ts:65:7)
+(fail) probeBackend is lossless for a PRESENT backend of every kind (the B3 trigger) [4.93ms]
+(pass) probeBackend is lossless for an ABSENT backend of every kind [0.41ms]
+47 | 
+48 | // The strict host contract: no undefined-valued property anywhere, and a JSON
+49 | // round trip that keeps every key (`toStrictEqual` distinguishes an absent key
+50 | // from a key present with value undefined; `toEqual` does not).
+51 | function expectLossless(value: unknown): void {
+52 |   expect(undefinedPaths(value)).toEqual([])
+                                     ^
+error: expect(received).toEqual(expected)
+
+- []
++ [
++   "value.backends[0].licenseHint",
++   "value.backends[1].licenseHint",
++ ]
+
+- Expected  - 1
++ Received  + 4
+
+      at expectLossless (/root/dshProj/my-power-dsh/packages/mpd-verif-plugin/test/lossless.test.ts:52:33)
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-verif-plugin/test/lossless.test.ts:108:7)
+(fail) mpd_verif_backends tool result is lossless for every backend selector [6.50ms]
+47 | 
+48 | // The strict host contract: no undefined-valued property anywhere, and a JSON
+49 | // round trip that keeps every key (`toStrictEqual` distinguishes an absent key
+50 | // from a key present with value undefined; `toEqual` does not).
+51 | function expectLossless(value: unknown): void {
+52 |   expect(undefinedPaths(value)).toEqual([])
+                                     ^
+error: expect(received).toEqual(expected)
+
+- []
++ [
++   "value.filelistPath",
++   "value.outBinary",
++ ]
+
+- Expected  - 1
++ Received  + 4
+
+      at expectLossless (/root/dshProj/my-power-dsh/packages/mpd-verif-plugin/test/lossless.test.ts:52:33)
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-verif-plugin/test/lossless.test.ts:129:9)
+(fail) verifCompile lint/compile results are lossless for all three backends [3.36ms]
+145 |     const lintIvl = verifCompile({ backend: "iverilog", sources: [src], target: "lint" })
+146 |     const lintVcs = verifCompile({ backend: "vcs", sources: [src], target: "lint" })
+147 |     const compIvl = verifCompile({ backend: "iverilog", sources: [src], target: "compile" })
+148 |     const compVcs = verifCompile({ backend: "vcs", sources: [src], target: "compile" })
+149 |     // lint never has a binary; only the vcs lint writes a filelist
+150 |     expect("outBinary" in lintIvl).toBe(false)
+                                         ^
+error: expect(received).toBe(expected)
+
+Expected: false
+Received: true
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-verif-plugin/test/lossless.test.ts:150:36)
+(fail) the lane truth table is preserved: optional keys appear only when real [5.82ms]
+
+ 1 pass
+ 4 fail
+ 20 expect() calls
+Ran 5 tests across 1 file. [64.00ms]

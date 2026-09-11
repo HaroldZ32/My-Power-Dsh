@@ -65,8 +65,8 @@ export function venvRefusal(v: string, cocotbVersion: string | null): { ok: fals
 
 // Probe the venv: existence + python version + cocotb import. The cocotb
 // probe itself runs `<venv>/bin/python -c ...` — never a bare python.
-export function venvStatus(override?: string): VenvStatus {
-  const v = venvPath(override)
+export function venvStatus(override?: string, exec?: any): VenvStatus {
+  const v = venvPath(override, exec)
   const py = venvPython(v)
   const envOverride = process.env.MPD_DSH_VERIF_VENV ?? null
   if (!existsSync(py)) {
@@ -103,8 +103,8 @@ export function venvStatus(override?: string): VenvStatus {
 // Create the venv (the ONLY sanctioned use of system python3) and install
 // cocotb via the venv's own pip. The installer argv is fully assertable in QA
 // (fake-python3 capture): ["-m","venv",<path>] then [<venv>/bin/pip,"install","cocotb>=2.0"].
-export function venvCreate(override?: string, _configureTimeoutMs = 600_000): VenvCreate {
-  const v = venvPath(override)
+export function venvCreate(override?: string, _configureTimeoutMs = 600_000, exec?: any): VenvCreate {
+  const v = venvPath(override, exec)
   const steps: CreateStep[] = []
   const python3 = process.env.MPD_DSH_VERIF_PYTHON3_CMD ?? "python3"
   const r1 = run(python3, ["-m", "venv", v], { timeoutMs: 120_000 })
@@ -124,7 +124,7 @@ export function venvCreate(override?: string, _configureTimeoutMs = 600_000): Ve
   if (r2.status !== 0) {
     return { ok: false, venv: v, steps, message: `pip install inside ${v} failed (status ${r2.status}): ${tailOf(r2.combined)} — rerun mpd_verif_venv(action:"create") or check network/proxy` }
   }
-  const st = venvStatus(override)
+  const st = venvStatus(override, exec)
   return { ok: st.ok, venv: v, steps, message: `venv ready at ${v} — cocotb ${st.cocotbVersion ?? "unknown"}` }
 }
 
@@ -135,8 +135,10 @@ function tailOf(s: string, n = 400): string {
 
 // Require the iron-rule gate, throwing a structured VerifError (converted to a
 // structured refusal at the tool boundary, never across the DSH seam).
-export function requireCocotbVenv(override?: string): { venv: string; cocotbVersion: string } {
-  const st = venvStatus(override)
+// `exec` carries the CALLING SESSION, so the gate probes <session>/.venv-rtl (mpd_verif_sim /
+// mpd_verif_regress run it before any other work; without exec it would probe the dsh process cwd).
+export function requireCocotbVenv(override?: string, exec?: any): { venv: string; cocotbVersion: string } {
+  const st = venvStatus(override, exec)
   if (!st.ok) {
     const r = venvRefusal(st.venv, st.cocotbVersion)
     throw new VerifError(r.error.code as "VERIF_E_NO_VENV" | "VERIF_E_COCOTB_ABSENT", r.error.message, r.error.hint)

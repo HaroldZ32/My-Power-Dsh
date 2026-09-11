@@ -1,0 +1,13 @@
+bun test v1.3.14 (0d9b296a)
+
+test/lossless.test.ts:
+(pass) probeBackend is lossless for a PRESENT backend of every kind (the B3 trigger) [7.38ms]
+(pass) probeBackend is lossless for an ABSENT backend of every kind [0.39ms]
+(pass) mpd_verif_backends tool result is lossless for every backend selector [13.92ms]
+(pass) verifCompile lint/compile results are lossless for all three backends [8.65ms]
+(pass) the lane truth table is preserved: optional keys appear only when real [4.19ms]
+
+ 5 pass
+ 0 fail
+ 70 expect() calls
+Ran 5 tests across 1 file. [70.00ms]
