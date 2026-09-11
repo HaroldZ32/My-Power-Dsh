@@ -8,9 +8,14 @@ serverName `ast_grep`，stdio）包装。
 
 ## 功能
 
-- `dist/cli.js`（由 `scripts/build-mcp.mjs` 离线构建）将 MCP 桥接到
-  `@ast-grep/cli` 二进制，经由 `MPD_AST_GREP_SG_PATH` 或 bundle 的可选依赖
-  `node_modules/.bin/sg` 解析。
+- `launch.mjs` 是该 row 的入口（B8）：它以**相对 bundle 的方式**解析二进制——调用方
+  env 固定值 → `$MPD_AST_GREP_BIN_DIR/{ast-grep,sg}` → 通过 `createRequire` 解析
+  `@ast-grep/cli` 可选依赖（packed 布局，适用于任意 node linker）→
+  `<bundle>/.toolchain/node_modules/.bin/{ast-grep,sg}`（checkout `link:` 安装）。
+  仅当调用方未设置 `MPD_AST_GREP_SG_PATH` 时才写入它，随后启动 `dist/cli.js`
+  （由 `scripts/build-mcp.mjs` 离线构建），把 MCP 桥接到上游 ast-grep server。
+- 每个层级都优先 `ast-grep` 而非 `sg`：候选必须通过 `--version` 输出包含
+  `ast-grep` 的探测，从而拒绝已废弃的 `.bin/sg` wrapper（它以 1 退出）。
 - 最适合结构性/模式查询（“找出所有没有错误处理的 `fn`”）、重构候选和全仓库规则检查
   ——远比盲目的 grep 便宜。
 
@@ -23,13 +28,17 @@ serverName `ast_grep`，stdio）包装。
     serverName: ast_grep
     transport: stdio
     command: node
-    args: [<bundle>/packages/mpd-mcp-astgrep/dist/cli.js]
-    env: { MPD_AST_GREP_SG_PATH: <bundle>/node_modules/.bin/sg }
+    args: [<bundle>/packages/mpd-mcp-astgrep/launch.mjs]
     toolCallTimeoutMs: 60000
 ```
+
+该 row **不再指定任何二进制路径**（B8）：解析逻辑位于 `launch.mjs` +
+`packages/mpd-mcp-shared/bin-resolve.mjs`，因此在两种安装布局下都可用，且调用方的
+错误固定值不会被静默覆盖。
 
 ## 注意事项
 
 - Env 键 `MPD_AST_GREP_SG_PATH` 由上游 vendored 代码读取——切勿重命名（AGENTS.md §1）。
+  当调用方设置了它时，launcher 不会改动它。
 - 缺少二进制的症状：`ast-grep BINARY_NOT_FOUND`——安装 toolchain
-  （`node scripts/install-profile.mjs --yes`）或设置该 env 路径。
+  （`node scripts/install-mcp.mjs` 或 `install-profile.mjs --yes`）或设置该 env 路径。

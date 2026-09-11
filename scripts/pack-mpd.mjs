@@ -4,7 +4,7 @@
 // with dsh.bundle.patch, whose cordis.patch.yml references plugins via the resolvable
 // name '@mpd-dsh/mpd/packages/...' and every path-bearing value via the loader's
 // baseUrl (the profile directory) — no checkout-absolute paths anywhere.
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { chmodSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -83,6 +83,19 @@ function cpAssets() {
       if (existsSync(s)) cpSync(s, join(outDir, "packages", p, f))
     }
   }
+  // B8 (wave 2): the two MCP rows launch <pkg>/launch.mjs, which resolves the
+  // binary bundle-relatively and hands it to the adopted server. A packed bundle
+  // that omits a launcher ships a row that cannot start, so this is a hard FAIL
+  // (the new failure mode t1 §5 item 4 says the gate must catch).
+  cpSync(join(repoRoot, "packages", "mpd-mcp-shared"), join(outDir, "packages", "mpd-mcp-shared"), { recursive: true, filter: (s) => !/\.test\.mjs$/.test(s) })
+  for (const p of ["mpd-mcp-astgrep", "mpd-mcp-codegraph"]) {
+    const launch = join(repoRoot, "packages", p, "launch.mjs")
+    if (!existsSync(launch)) {
+      console.error("[pack-mpd] FAIL: missing " + launch + " — the " + p + " MCP row launches it; a bundle must never ship without it")
+      process.exit(1)
+    }
+    cpSync(launch, join(outDir, "packages", p, "launch.mjs"))
+  }
 }
 
 function decouplePatch(srcPatch) {
@@ -94,8 +107,10 @@ function decouplePatch(srcPatch) {
     t = t.split("'" + dev + "/packages/" + p + "/dist/cli.js'").join(pathExpr("/node_modules/" + PKG_NAME + "/packages/" + p + "/dist/cli.js"))
   }
   t = t.split("'" + dev + "/packages/mpd-mcp-codegraph/dist/serve.js'").join(pathExpr("/node_modules/" + PKG_NAME + "/packages/mpd-mcp-codegraph/dist/serve.js"))
-  t = t.split("'" + dev + "/.toolchain/node_modules/.bin/sg'").join(pathExpr("/node_modules/.bin/sg"))
-  t = t.split("'" + dev + "/.toolchain/node_modules/.bin/codegraph'").join(pathExpr("/node_modules/.bin/codegraph"))
+  // B8 (wave 2): the `.toolchain` -> `<baseUrl>/node_modules/.bin/*` rewrites were
+  // removed together with the env pins they served — the patch no longer names a
+  // binary path at all (the launchers resolve it), so those splits could only ever
+  // be no-ops that imply a resolution that no longer exists.
   // nested !!js (env || <expr>) fix: drop the inner YAML tag so the outer JS sees one expression
   t = t.replace(/\|\| !!js '([^']+)'/g, "|| ($1)")
   // generic YAML-safety: any remaining UNQUOTED !!js value containing ': ' breaks plain-scalar
@@ -152,6 +167,36 @@ function writeManifest() {
   writeFileSync(join(outDir, "package.json"), JSON.stringify(manifest, null, 2) + "\n")
 }
 
+/**
+ * Normalize the packed artifact's file modes.
+ *
+ * `cpSync` copies the SOURCE mode verbatim, so a working tree that carries 600
+ * bits (git normalizes modes to 644, so the committed files are fine — but an
+ * editor/umask can still leave the checkout at 600) would ship an install source
+ * whose files a non-root consumer cannot read. The artifact is what users install,
+ * so the mode is fixed here rather than in the working tree: regular files become
+ * 644 and anything already executable STAYS 755 (stat first, never a blind chmod).
+ */
+function normalizeModes(root) {
+  const counts = { files: 0, made644: 0, kept755: 0, other: 0 }
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir)) {
+      const p = join(dir, entry)
+      const st = statSync(p)
+      if (st.isDirectory()) { walk(p); continue }
+      counts.files += 1
+      const mode = st.mode & 0o777
+      if ((mode & 0o111) !== 0) {
+        if (mode !== 0o755) { chmodSync(p, 0o755); counts.kept755 += 1 } else counts.kept755 += 1
+        continue
+      }
+      if (mode !== 0o644) { chmodSync(p, 0o644); counts.made644 += 1 } else counts.made644 += 1
+    }
+  }
+  walk(root)
+  return counts
+}
+
 function main() {
   rmSync(outDir, { recursive: true, force: true })
   mkdirSync(outDir, { recursive: true })
@@ -161,6 +206,8 @@ function main() {
   writeManifest()
   const raw = readFileSync(join(outDir, "cordis.patch.yml"), "utf8")
   if (raw.includes(dev)) { console.error("[pack-mpd] FAIL: dev path leaked into staged patch"); process.exit(1) }
+  const modes = normalizeModes(outDir)
+  console.log("[pack-mpd] modes normalized: " + modes.files + " files (644: " + modes.made644 + ", 755: " + modes.kept755 + ")")
   console.log("[pack-mpd] staged package -> " + outDir)
 }
 

@@ -1,0 +1,48 @@
+{
+  "stamp": "2026-09-11T08:54:45.384Z",
+  "checks": {
+    "serve-layer repro throws the filesystem error": true,
+    "pre-fix launcher dies uncaught with no MCP response": true,
+    "post-fix launcher exits 0 and answers MCP": true,
+    "post-fix launcher reports the original error + skip hint": true,
+    "a resolvable pin still reaches the real child (no degrade)": true,
+    "writable HOME resolves/provisions normally": true
+  },
+  "failures": [],
+  "results": {
+    "serveLayerRepro": {
+      "threw": true,
+      "error": "Error: ENOENT: no such file or directory, mkdir '/root/.mpd/codegraph'"
+    },
+    "launcherRed": {
+      "exitCode": 1,
+      "stdoutBytes": 0,
+      "uncaughtSignature": true,
+      "uncaughtLine": "Error: ENOENT: no such file or directory, mkdir '/root/.mpd/codegraph'",
+      "stderrHead": "node:internal/fs/promises:859\n  return await PromisePrototypeThen(\n         ^\n"
+    },
+    "launcherGreen": {
+      "exitCode": 0,
+      "hasMcpInitialize": true,
+      "hasToolsList": true,
+      "carriesOriginalError": true,
+      "carriesSkipHint": true,
+      "stdoutBytes": 213
+    },
+    "launcherControl": {
+      "reachedChild": true,
+      "tookDegradePath": false,
+      "exitCode": 0,
+      "killedAfterTimeout": false
+    },
+    "serveLayerControl": {
+      "exitCode": 0,
+      "ranProcess": true,
+      "command": "/root/dshProj/my-power-dsh/evidence/wave3/codegraph-degrade-and-applytime/20260911T081649Z/mcp-run/codegraph-stub",
+      "args": [
+        "serve",
+        "--mcp"
+      ]
+    }
+  }
+}

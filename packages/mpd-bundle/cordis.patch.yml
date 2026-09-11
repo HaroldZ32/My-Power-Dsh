@@ -32,6 +32,14 @@
         trust: system
 
 - insert:
+    # B8 (wave 2): this row names NO binary path any more. It launches
+    # packages/mpd-mcp-astgrep/launch.mjs, which resolves the binary
+    # bundle-relatively (env pin -> $MPD_AST_GREP_BIN_DIR -> createRequire of the
+    # optionalDependency -> <bundle>/.toolchain/node_modules/.bin/ast-grep|sg) and
+    # sets MPD_AST_GREP_SG_PATH only when the caller left it unset, before the
+    # adopted server reads it. The old `env.MPD_AST_GREP_SG_PATH = <baseUrl>/node_modules/.bin/sg`
+    # pin was packed-layout-only AND named the deprecated `sg` wrapper (exit 1);
+    # a mounting boot with no env pin is the gate (never `--dump-config`).
     - id: mcp-astgrep
       name: '@deepseek-ai/dsh-mcp-client'
       config:
@@ -39,9 +47,7 @@
         transport: stdio
         command: node
         args:
-          - !!js 'process.env.MPD_DSH_ASTGREP_CLI || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-astgrep/dist/cli.js")'
-        env:
-          MPD_AST_GREP_SG_PATH: !!js 'process.env.MPD_AST_GREP_SG_PATH || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/.bin/sg")'
+          - !!js 'process.env.MPD_DSH_ASTGREP_CLI || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-astgrep/launch.mjs")'
         toolCallTimeoutMs: 60000
     # git_bash, by the upstream original design, is Windows-only (run is available only on native Windows); this bundle disables it by default;
     # Windows deployments can change this row to disabled: false to enable it.
@@ -65,9 +71,15 @@
           - !!js 'process.env.MPD_DSH_LSP_CLI || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-lsp/dist/cli.js")'
           - mcp
         toolCallTimeoutMs: 60000
-    # CodeGraph MCP (F10 closed): MPD_CODEGRAPH_BIN resolves via baseUrl to the
-    # node_modules/.bin/codegraph binary (optionalDependency @colbymchenry/codegraph);
-    # project index init/skip-home discipline is handled by the mpd-codegraph plugin row below.
+    # CodeGraph MCP (B8, wave 2): this row names NO binary path any more. It
+    # launches packages/mpd-mcp-codegraph/launch.mjs, which resolves the binary
+    # bundle-relatively (env pin -> createRequire of the optionalDependency ->
+    # <bundle>/.toolchain/node_modules/.bin/codegraph) and sets MPD_CODEGRAPH_BIN
+    # only when the caller left it unset, then calls runCodegraphServe() (serve.js
+    # self-starts only when IT is argv[1]). The old env pin was packed-layout-only,
+    # and a wrong MPD_CODEGRAPH_BIN disables the adopted bundled/provisioned/PATH/
+    # download chain entirely. Project index init/skip-home discipline is handled
+    # by the mpd-codegraph plugin row below.
     - id: mcp-codegraph
       name: '@deepseek-ai/dsh-mcp-client'
       config:
@@ -75,9 +87,7 @@
         transport: stdio
         command: node
         args:
-          - !!js 'process.env.MPD_DSH_CODEGRAPH_CLI || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-codegraph/dist/serve.js")'
-        env:
-          MPD_CODEGRAPH_BIN: !!js 'process.env.MPD_CODEGRAPH_BIN || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/.bin/codegraph")'
+          - !!js 'process.env.MPD_DSH_CODEGRAPH_CLI || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-codegraph/launch.mjs")'
         toolCallTimeoutMs: 60000
     # Waveform-read MCP rows (mcp-wave-mcp / mcp-traceweave) are NOT mounted by
     # default: they wrap EXTERNAL Python MCP servers (wave-mcp / TraceWeave)

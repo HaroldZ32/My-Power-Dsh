@@ -1,0 +1,43 @@
+{
+  "task": "t6 B8 boot probe (dev-flavor patch, checkout layout)",
+  "stamp": "2026-09-11T06:07:55.887Z",
+  "isolation": {
+    "dshHome": "<sandbox>",
+    "home": "<sandbox>",
+    "cwd": "<repo-local temp workspace>",
+    "scrubbedEnv": [
+      "MPD_AST_GREP_SG_PATH",
+      "MPD_AST_GREP_BIN_DIR",
+      "MPD_CODEGRAPH_BIN",
+      "MPD_DSH_ASTGREP_CLI",
+      "MPD_DSH_CODEGRAPH_CLI"
+    ]
+  },
+  "envLimits": {
+    "liveLlmToolCall": "not runnable here: both boots end at MISSING_CREDENTIAL — headless live-LLM runs are unavailable on this machine (same class as evidence/dsh-qa/llm-dual-track ok=false). The real MCP call path is proven deterministically in b8-mcp-gate.mjs and b8-packed-gate.mjs.",
+    "fullTreeMountGates": "bundle-lifecycle (link: install + real web boot, PASS) and preset-conformance (ok=true, 0 bootLog signatures, negative control ok) are the sanctioned MOUNT gates for this patch change."
+  },
+  "checks": [
+    {
+      "name": "boot A (current patch): 0 apply-crash signatures in an isolated DSH_HOME + sandbox HOME",
+      "pass": true,
+      "detail": "none"
+    },
+    {
+      "name": "boot A (current patch): the mcp-* rows apply with no MCP child spawn failure and no BINARY_NOT_FOUND",
+      "pass": true,
+      "detail": "no MCP child failure"
+    },
+    {
+      "name": "boot A (current patch): mpd-codegraph plugin resolved a binary (no `init status=no-binary`)",
+      "pass": true,
+      "detail": "[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/root/dshProj/my-power-dsh/.b8-boot-current-ws-2FpVWE"
+    },
+    {
+      "name": "boot B (HEAD pre-change patch, control): the same boot environment applies the tree with 0 crash signatures — any boot-A failure would be attributable to this change",
+      "pass": true,
+      "detail": "head log=679 bytes; crash=none"
+    }
+  ],
+  "allPass": true
+}
