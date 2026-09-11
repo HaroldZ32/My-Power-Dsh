@@ -259,6 +259,19 @@ function runtimeChecks(artifactText, factories) {
       && teamTab.settings.pluginToggles[0]?.type === "switch",
     order: teamTab?.order, single: teamTab?.single, toggle: teamTab?.settings?.pluginToggles?.[0]?.key,
   }
+  // Auto-open must carry NO content seed. dsh-better-sidebar >= 0.19 routes any seed
+  // holding `path`/`url` to DSH's NATIVE right column (`surface.openResource(
+  // fileAddress(sessionId, cwd, path))`) instead of this registered tab type, so the
+  // throwaway marker this call used to carry ("team-activity") made the host resolve
+  // `<cwd>/team-activity`, fail `realpath` with ENOENT and raise
+  // `cannot resolve target "<cwd>/team-activity"` into the GUI — without ever opening
+  // the tab. A type-only seed lands the tab in its own surface and expands it.
+  steps.seedlessAutoOpen = {
+    ok: !artifactText.includes("AUTO_OPEN_SEED_PATH")
+      && artifactText.includes("openTab({ type: TEAM_TAB_ID })")
+      && !/openTab\(\{[^}]*\bpath:/.test(artifactText),
+    call: (artifactText.match(/openTab\(\{[^)]*\)/) ?? [""])[0].slice(0, 90),
+  }
   const definitions = client.calls.slotsRegistered
   // No removed surface is REGISTERED, and no floating fallback is contributed: BOTH GUIs
   // have exactly one host (their sidebar tab) by the user's decision.

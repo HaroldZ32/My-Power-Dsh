@@ -234,6 +234,10 @@ agent_teams_status / agent_teams_send_message / agent_teams_reassign_task
 - `MISSING_CREDENTIAL` → provider 路由需要你 DSH 凭据中的 key；本 bundle 从不配置
   key。
 - AGENT.md 未注入 → 会话运行的是非 `mpd` 预设；切换预设。
+- 侧边栏报 `cannot resolve target "…/team-activity"` → AgentTeams tab 的"自动打开"过去会给侧边栏一个
+  占位文件路径；从 `dsh-better-sidebar` 0.19 起，带路径的 open 会被路由到 DSH 原生右栏，而右栏会真的解析文件。
+  更新 bundle 即可（`git pull` 后执行 `dsh plugin --profile <p> add <仓库路径>`）并刷新页面 —— 现在自动打开
+  不带 seed，tab 会直接打开。
 - **创建 `mpd` 会话总是失败，报错为 `agent-preset/invalid … $.prefix missing required value`**
   → 已安装的 Harness 改了 `dsh-persona` 的约定（现在取 `prefix`，不再是废弃的 `text`），
   因而拒绝挂载整个预设。更新 bundle 即可（`git pull` 后执行

@@ -262,6 +262,11 @@ agent_teams_status / agent_teams_send_message / agent_teams_reassign_task
 - `MISSING_CREDENTIAL` → the provider route needs a key in your DSH credentials; keys
   are never configured by this bundle.
 - AGENT.md not injected → the session runs a non-`mpd` preset; switch presets.
+- The sidebar shows `cannot resolve target "…/team-activity"` → the AgentTeams tab's auto-open
+  used to hand the sidebar a marker file path; from `dsh-better-sidebar` 0.19 a seeded open is
+  routed to DSH's native right column, which resolves real files. Update the bundle
+  (`git pull`, then `dsh plugin --profile <p> add <repo>`) and reload the page — the auto-open is
+  seedless now, so the tab simply opens.
 - **No `mpd` session can be created and the error says `agent-preset/invalid … $.prefix missing
   required value`** → the installed harness changed the `dsh-persona` contract (it takes `prefix`,
   not the retired `text`) and refuses to mount the whole preset. Update the bundle

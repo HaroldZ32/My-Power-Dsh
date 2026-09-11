@@ -218,7 +218,13 @@ Harness 所附 `standard` 预设的逐行镜像**，而这种镜像关系是承�
 2. 一个 `__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory })` —— mpd 自有的
    AgentTeams 页面（`src/team-page.js`）：它把上述采纳视图组合为一个 DSH-better-sidebar Tab
    （id `mpd-agent-teams`，order 85，`single: true`），列出本对话的进行中与已归档团队，并带上
-   暂存计划审批编辑器、进行中团队数角标与 `autoOpenOnTeamActivity` 开关。**视觉一致是硬性要求**：
+   暂存计划审批编辑器、进行中团队数角标与 `autoOpenOnTeamActivity` 开关。其自动打开是**无 seed** 的（`openTab({ type })`）：
+   从 dsh-better-sidebar 0.19 起，带 `path`/`url` 的 seed 会被路由到 DSH 原生右栏
+   （`surface.openResource(fileAddress(sessionId, cwd, path))`），而不会打开本 tab 类型；因此旧实现携带的
+   占位路径会让宿主去解析 `<cwd>/team-activity`，`realpath` 失败并在 GUI 抛
+   `cannot resolve target …`，同时 tab 根本不会打开 —— 仅带 type 的 open 才会落到本 tab 自己的表面并展开，
+   这正是"自动打开"应有的语义（`agent-teams-sidebar` 的 `seedlessAutoOpen` 锁定已发布与已服务字节；
+   `team-page.test.mjs` 驱动真实 client）。**视觉一致是硬性要求**：
    页面渲染的是浮窗自己的内部结构 —— 同一个带采纳 `panel` 类的 `aside` 根（该类正是那份样式表
    声明 `--dsw-alias-*` 自定义属性的地方，而每条采纳规则都读这些变量，去掉它整个团队区就会失去
    样式）、同一个 `panelHead`（标题 + 忙碌圆点 + 收起控件，用平台自带的

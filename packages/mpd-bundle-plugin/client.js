@@ -3763,10 +3763,14 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd AgentTe
   const TEAM_TAB_ORDER = 85;
   const TEAM_LOCALE_NAMESPACE = "mpdAgentTeams";
   const AUTO_OPEN_KEY = "autoOpenOnTeamActivity";
-  // Content seed: only a `path`/`url` seed makes the sidebar expand the collapsed panel
-  // and land the tab in sight (a type-only open never expands). The descriptor mints its
-  // own tab through createTab, so this marker is never written onto the tab.
-  const AUTO_OPEN_SEED_PATH = "team-activity";
+  // NO content seed. dsh-better-sidebar >= 0.19 routes any seed carrying `path` (or
+  // `url`) to DSH's NATIVE right column through `surface.openResource(fileAddress(…))`
+  // instead of opening this registered tab type ("An open carrying a `path` or `url`
+  // goes through the native surface instead"), so the throwaway marker path this call
+  // used to carry (`team-activity`) made the host resolve `<cwd>/team-activity`, fail
+  // `realpath` with ENOENT and raise `cannot resolve target …` into the GUI — while
+  // never opening the tab at all. A type-only seed lands the tab in its own surface and
+  // expands it, which is exactly what auto-open means here.
   /** Page-settle window: teams restored on page load must never auto-open the panel. */
   const AUTO_OPEN_SETTLE_MS = 2500;
 
@@ -3941,7 +3945,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd AgentTe
       autoOpenSeen.add(team.teamId);
       autoOpenFired.add(team.teamId);
       try {
-        autoOpenPolicyService.openTab({ type: TEAM_TAB_ID, path: AUTO_OPEN_SEED_PATH });
+        autoOpenPolicyService.openTab({ type: TEAM_TAB_ID });
       } catch (error) {
         console.warn("[mpd] AgentTeams auto-open failed: " + String(error));
       }
