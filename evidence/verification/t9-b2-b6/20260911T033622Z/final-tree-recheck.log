@@ -1,0 +1,24 @@
+## final-tree re-run (2026-09-11T03:45:16Z)
+
+### bun run typecheck
+$ tsgo --noEmit
+TYPECHECK_EXIT=0
+
+### node scripts/verify-vendor.mjs (final)
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] asset OK: skills 365 files
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+EXIT=0
+
+### tree fingerprint NOW vs at-verification
+before: git-diff-sha256: b38e7b539b8de30fe724c41b40cf532ab7babecb2e0203c136c12bb0a05e831a untracked: 8fc63eeca52e5042c6ea1d37983f3645e0b6b91875c024abc84ab3d5afe1af03 VENDOR_LOCK-sha256: f1dd4e2ed32d58f931476a09519758a7ca6dac6fbcf494846616e5caa36a3e44 
+now-git-diff: b38e7b539b8de30fe724c41b40cf532ab7babecb2e0203c136c12bb0a05e831a
+now-untracked: 8fc63eeca52e5042c6ea1d37983f3645e0b6b91875c024abc84ab3d5afe1af03
+now-VENDOR_LOCK: f1dd4e2ed32d58f931476a09519758a7ca6dac6fbcf494846616e5caa36a3e44

@@ -61,26 +61,22 @@ async def smoke_add(dut):
 const WIRED_ID_PATTERN = /^\s*- id: mpd-verif$/m
 
 // Dev-flavor rewrite of the bundle patch (mirrors preset-register.mjs): the
-// committed patch uses packed `@mpd-dsh/mpd/...` names; QA boots the checkout,
-// so rows resolve to checkout-absolute paths and MCP binaries pin via env. The
-// preset root expression is rewritten FIRST: the generic rule would otherwise
-// splice the checkout path under /node_modules and the roster root would miss.
+// committed patch uses packed `@mpd-dsh/mpd/...` names; QA boots the checkout, so
+// every row resolves to checkout-absolute paths. Wave-3 fidelity fix, identical
+// to preset-register's: the rewrite must consume the WHOLE packed operand —
+// dropping only the `@mpd-dsh/mpd/` tail left `<baseUrl>/node_modules/<abs-repo>/…`,
+// which only appeared to work because stub pins masked it. No MCP CLI/binary env
+// pin is pre-set here any more, so the B8 launcher chain is what actually runs.
 const PACKED_PRESETS_EXPR = '"/node_modules/@mpd-dsh/mpd/presets"'
+const BASEURL_PREFIX = '(typeof baseUrl === "string" ? baseUrl.replace(/^file:\\/\\//, "").replace(/\\/+$/, "") : "") + '
 function devPatch() {
   const t = readFileSync(join(repoRoot, "packages/mpd-bundle/cordis.patch.yml"), "utf8")
   return t
     .split(PACKED_PRESETS_EXPR).join(JSON.stringify(join(repoRoot, "presets")))
+    .split(BASEURL_PREFIX).join("")
+    .split('"/node_modules/@mpd-dsh/mpd/').join('"' + repoRoot + "/")
     .split("name: '@mpd-dsh/mpd'").join("name: '" + join(repoRoot, "packages/mpd-bundle-plugin/dist/index.js") + "'")
     .split("@mpd-dsh/mpd/").join(repoRoot + "/")
-}
-
-function mcpEnv() {
-  return {
-    MPD_DSH_LSP_CLI: join(repoRoot, "packages/mpd-mcp-lsp/dist/cli.js"),
-    MPD_DSH_ASTGREP_CLI: join(repoRoot, "packages/mpd-mcp-astgrep/dist/cli.js"),
-    MPD_DSH_GITBASH_CLI: join(repoRoot, "packages/mpd-mcp-gitbash/dist/cli.js"),
-    MPD_DSH_CODEGRAPH_CLI: join(repoRoot, "packages/mpd-mcp-codegraph/dist/serve.js"),
-  }
 }
 
 function selfTest() {
@@ -121,10 +117,17 @@ function selfTest() {
   for (const reg of registryChecks) {
     if (!lspCli.includes(reg)) { console.error("[rtl-verif self-test] FAIL: lsp registry entry missing: " + reg.slice(0, 80)); process.exit(1) }
   }
-  // devPatch normalization (web-compat bare self-row must become checkout path)
+  // devPatch normalization (web-compat bare self-row must become checkout path,
+  // and the packed `/node_modules/...` MCP operand must be consumed entirely)
   const dev = devPatch()
   if (dev.includes("name: '@mpd-dsh/mpd'")) { console.error("[rtl-verif self-test] FAIL: devPatch left a bare '@mpd-dsh/mpd' row"); process.exit(1) }
-  console.log("[rtl-verif self-test] ok: bundle wiring (mpd-verif active + wave rows commented) + golden fixture + eight-tool dist surface + iron-rule strings + devPatch guard")
+  if (dev.includes("typeof baseUrl") || dev.includes("/node_modules/@mpd-dsh/mpd/")) { console.error("[rtl-verif self-test] FAIL: devPatch left the packed /node_modules operand or a baseUrl concat"); process.exit(1) }
+  for (const mcp of ["mpd-mcp-astgrep/launch.mjs", "mpd-mcp-gitbash/dist/cli.js", "mpd-mcp-lsp/dist/cli.js", "mpd-mcp-codegraph/launch.mjs"]) {
+    const target = join(repoRoot, "packages", mcp)
+    if (!existsSync(target)) { console.error("[rtl-verif self-test] FAIL: MCP launcher missing on disk: " + mcp); process.exit(1) }
+    if (!dev.includes('"' + target + '"')) { console.error("[rtl-verif self-test] FAIL: devPatch MCP operand is not the checkout-absolute " + mcp); process.exit(1) }
+  }
+  console.log("[rtl-verif self-test] ok: bundle wiring (mpd-verif active + wave rows commented) + golden fixture + eight-tool dist surface + iron-rule strings + devPatch operand guard")
 }
 
 function venvPreflight() {
@@ -173,7 +176,6 @@ async function runReal() {
     HOME: sandbox,
     DSH_WORKSPACE_ROOT: proj,
     MPD_DSH_VERIF_VENV: venv.venv,
-    ...mcpEnv(),
   })
   const env = { ...process.env }
   // PHASE 1: isolated boot mount (no model; dump-config must succeed and list rows)

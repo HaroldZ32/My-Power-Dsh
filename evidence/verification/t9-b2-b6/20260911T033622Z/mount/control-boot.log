@@ -1,0 +1,13 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=no-binary binary=- cwd=/root/dshProj/my-power-dsh
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.
+[t9-control] LOSSY_OK=false
+[t9-control] LOSSY_ISERROR=true
+[t9-control] LOSSY_ERROR=tool "t9_lossy_control" returned invalid output: value is not lossless JSON
+[t9-control] LOSSY_VALUE=null
+[t9-control] CLEAN_OK=true
+[t9-control] CLEAN_ISERROR=false
+[t9-control] CLEAN_ERROR=
+[t9-control] CLEAN_VALUE={"present":true,"hidden":null}
+[t9-control] DONE=ok

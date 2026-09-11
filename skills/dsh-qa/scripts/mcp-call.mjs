@@ -7,6 +7,7 @@ import { closeSync, cpSync, existsSync, mkdtempSync, mkdirSync, openSync, readFi
 import { tmpdir, homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isolation.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const ENUM_JOB = "Do only one thing: list all available tool names in your current session that start with the mcp__ prefix (one per line). Do not call any tools."
@@ -25,18 +26,41 @@ function realRun(job, timeoutMs = 600000) {
   if (!existsSync(creds)) { console.error("[mcp-call] missing credentials"); process.exit(1) }
   const sandbox = mkdtempSync(join(tmpdir(), "mpd-dsh-qa-"))
   cpSync(creds, join(sandbox, ".credentials.yaml"))
+  // Live-LLM cases must ALSO copy settings.yaml when present (AGENTS.md §7): homes whose
+  // keys come from gateway providers (llm-pi-ai — opencode-go/scnet) configure the chain
+  // there, and without it headless falls back to the base `deepseek-official` route and
+  // dies with MISSING_CREDENTIAL — which masks the real result of the call this case
+  // exists to make. (Copied, never moved; the sandbox is ephemeral either way.)
+  const settings = join(homedir(), ".dsh", "settings.yaml")
+  const hasSettings = existsSync(settings)
+  if (hasSettings) cpSync(settings, join(sandbox, "settings.yaml"))
+  // HOME is sandboxed too (wave-3, F-ENV-1): the MCP chain this case asserts is
+  // resolved bundle-relatively by the B8 launcher (require chain -> <bundle>/
+  // .toolchain) and the credentials come from DSH_HOME, so nothing under test
+  // lives in the real HOME — but plugin state does (`~/.mpd`: codegraph's lock,
+  // LSP daemon). With the real HOME the case could read/write real state (and on
+  // a read-only `$HOME/.mpd` the codegraph child died before the assertion, see
+  // F-B8-1); with it sandboxed the case is hermetic. Mirror credentials/settings
+  // at the HOME-shaped location too (codegraph-smoke pattern) so either lookup
+  // path finds them.
+  mkdirSync(join(sandbox, ".dsh"), { recursive: true })
+  cpSync(creds, join(sandbox, ".dsh", ".credentials.yaml"))
+  if (hasSettings) cpSync(settings, join(sandbox, ".dsh", "settings.yaml"))
   // Write stdio to a file instead of a pipe: the dsh-mcp-client MCP subprocess inherits the fd and outlives dsh,
   // and a pipe would make spawnSync hang at EOF; writing to a file means the child only holds the log fd.
   const logFile = join(sandbox, "run.log")
   const fd = openSync(logFile, "w")
   try {
-    const env = { ...process.env, DSH_HOME: sandbox }
+    const env = { ...process.env, DSH_HOME: sandbox, HOME: sandbox }
     if (env.DSH_HOME !== sandbox) { console.error("[mcp-call] isolation assertion failed: DSH_HOME does not point to the sandbox"); process.exit(1) }
-    // Local toolchain: sg / codegraph installed with network access (optional; injected when present so the call truly succeeds)
-    const sg = join(repoRoot, ".toolchain/node_modules/.bin/ast-grep")
-    if (existsSync(sg)) env.MPD_AST_GREP_SG_PATH = sg
-    const cg = join(repoRoot, ".toolchain/node_modules/.bin/codegraph")
-    if (existsSync(cg)) env.MPD_CODEGRAPH_BIN = cg
+    // NO MPD_AST_GREP_SG_PATH / MPD_CODEGRAPH_BIN pre-setting here (B8): this case
+    // used to pin both to the checkout toolchain, which is exactly why it stayed
+    // green while the deployed MCP tools were dead — the case manufactured its own
+    // pass. It must exercise the real resolution chain instead.
+    // Workspace isolation: the session workspace is the spawn cwd, so boot inside a
+    // sandbox workspace (DSH_HOME alone does not isolate workspace-scoped state).
+    const ws = sandboxWorkspace(sandbox)
+    cpSync(join(repoRoot, "tests", "mcp-fixtures"), join(ws, "tests", "mcp-fixtures"), { recursive: true })
     // The bundle patch references rows as @mpd-dsh/mpd/... (Plan D staged layout):
     // stage the package into the sandbox profile with npm (relocate-smoke pattern;
     // `dsh plugin add` uses pnpm whose store is not writable in this sandbox).
@@ -48,8 +72,9 @@ function realRun(job, timeoutMs = 600000) {
     const inst = spawnSync("npm", ["install", "--prefix", profileDir, "--no-audit", "--no-fund", "--cache", join(sandbox, ".npm-cache")], { env, encoding: "utf8", timeout: 600000, maxBuffer: 32 * 1024 * 1024 })
     if (inst.status !== 0) { console.error("[mcp-call] FAIL: staged install\n" + (inst.stdout || "") + (inst.stderr || "")); process.exit(1) }
     const run = spawnSync("dsh", ["--profile", "headless", "--patch", join(repoRoot, "packages/mpd-bundle/cordis.patch.yml"), job], {
-      env, encoding: "utf8", timeout: timeoutMs, stdio: ["ignore", fd, fd]
+      env, cwd: ws, encoding: "utf8", timeout: timeoutMs, stdio: ["ignore", fd, fd]
     })
+    assertSessionsSandboxed(sandbox, sandbox, { label: "mcp-call" })
     return { out: readFileSync(logFile, "utf8"), exit: run.status }
   } finally {
     closeSync(fd)

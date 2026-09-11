@@ -1,0 +1,106 @@
+{
+  "task": "t9 — Verify B2-B6: full gate sweep plus each fix's negative control",
+  "verifier": "Reviewer (independent; every result below was produced by the verifier's own runs)",
+  "head": "98680b1fb2bbf5c10c28cfbe44419e91595e1cb7",
+  "verdict": "pass",
+  "tree_state": {
+    "note": "The gate was RED when t9 started (exit 1, 'asset skills treeSha mismatch'; lock ca3df247 vs actual ea1f001f) because t7 edited skills/dsh-qa/scripts/workmate-library.mjs after B2's re-pin. The captain re-pinned VENDOR_LOCK.json at 11:35:09 (ca3df247 -> ea1f001f) mid-verification. All results below were then produced on, and re-confirmed against, that post-re-pin tree.",
+    "fingerprint_at_verification": "git-diff-sha256 b38e7b539b8de30fe724c41b40cf532ab7babecb2e0203c136c12bb0a05e831a; untracked(non-evidence) 8fc63eeca52e5042c6ea1d37983f3645e0b6b91875c024abc84ab3d5afe1af03; VENDOR_LOCK f1dd4e2ed32d58f931476a09519758a7ca6dac6fbcf494846616e5caa36a3e44",
+    "fingerprint_at_completion": "identical (no source drift between verification and completion)"
+  },
+  "evidence_files": {
+    "vendor_baseline_and_mutations": "b2-verify-vendor.log, b2-mutation-fresh.log, b2-mutation-raw.log",
+    "b3_negative_control": "b3-negative-control.log",
+    "b5_preprovisioning_control": "b5-preprovision-skip.log",
+    "unit_suite": "bun-test-packages.log",
+    "qa_self_tests": "test-qa.log",
+    "independent_mount_proof": "mount/mount-proof.log, mount/mount-boot.log, mount/result.json, mount/t9-mount-probe.mjs, mount/run-mount-proof.sh",
+    "lossless_json_positive_control": "mount/lossless-control.log, mount/t9-lossless-control-probe.mjs, mount/run-lossless-control.sh",
+    "final_recheck": "final-verify-commands.log, final-tree-recheck.log"
+  },
+  "results": {
+    "B2_vendor_gate": {
+      "status": "passed",
+      "gate": "node scripts/verify-vendor.mjs -> exit 0, '[verify-vendor] PASS', 'asset OK: skills 365 files'",
+      "falsifiability_mutation_1": "append one byte to skills/dsh-qa/SKILL.md -> exit 1 'FAIL - asset skills treeSha mismatch', 0 'asset OK: skills' lines in the fresh log; reverted, sha256 identical",
+      "falsifiability_mutation_2": "add a temp file under skills/ -> exit 1 'FAIL - asset skills count drifted: 366 vs 365' + treeSha mismatch; removed",
+      "misreport_fix": "a failing skills asset no longer prints 'asset OK: skills' (fresh-log count = 0)",
+      "b2_own_diff_paths": ["VENDOR_LOCK.json", "scripts/verify-vendor.mjs"]
+    },
+    "B3_verif_backends_lossless": {
+      "status": "passed",
+      "precondition": "iverilog /opt/osscad/oss-cad-suite/bin/iverilog and verilator .../verilator PRESENT on PATH; vcs ABSENT (asserted in mount/mount-proof.log)",
+      "mounted_real_calls": {
+        "iverilog": "ok=true isError=false error= count=1 undef=[]; licenseHint=null; version='Icarus Verilog version 14.0 (devel)'",
+        "verilator": "ok=true isError=false error= count=1 undef=[]; licenseHint=null; version='Verilator 5.051 devel'",
+        "all": "ok=true isError=false error= count=3 undef=[]; iverilog/verilator licenseHint=null, absent vcs licenseHint=[install hint]",
+        "vcs": "ok=true isError=false error= count=1 undef=[]; present=false with the install-hint array"
+      },
+      "no_lossy_json_rejection": "error empty on all four selectors; deep undefined-path scan = []",
+      "negative_control": "lossless.test.ts against HEAD (pre-fix) backends.ts + compile.ts -> exit 1, 4 fail / 1 pass (fails on value.filelistPath / value.outBinary and on the pre-fix licenseHint: undefined)",
+      "dist_carries_fix": "packages/mpd-verif-plugin/dist/index.js:380 'licenseHint = backend === \"vcs\" ? ... : null'; :578-579 conditional spread for filelistPath/outBinary",
+      "positive_control": "synthetic tool with an undefined-valued property executed through the same adapter path -> 'tool \"t9_lossy_control\" returned invalid output: value is not lossless JSON'; the null-valued twin -> ok=true. This proves the green B3 result is not vacuous."
+    },
+    "B4_hashline_array_schema": {
+      "status": "passed",
+      "grep_src_dist": "grep -rn 'type: [\"' packages/mpd-hashline-plugin/src packages/mpd-hashline-plugin/dist -> 0 matches (exit 1); whitespace-flexible rerun also 0",
+      "live_registered_schema": "LIVE_TYPE_ARRAY=absent; live lines node = {\"oneOf\":[{\"type\":\"string\"},{\"type\":\"array\",\"items\":{\"type\":\"string\"}}]}; live params undefined-path scan = []",
+      "mount_proof": "independent real boot, full bundle patch + probe row: 0 apply-crash signatures, 4/4 target tools registered",
+      "real_calls": "mpd_hashline_read ok (lines=4); edit with `lines` as a STRING ok (lines=3); edit with `lines` as an ARRAY ok (lines=4); final content 'alpha\\nBETA\\nGAMMA-1\\nGAMMA-2\\n'",
+      "new_test_file": "packages/mpd-hashline-plugin/test/tool-schema.test.ts 4 tests pass",
+      "repo_wide_sweep": "0 array-typed schemas remain in packages/*/src + packages/*/dist (the whole B4 defect class, not only hashline)"
+    },
+    "B5_comment_checker": {
+      "status": "passed",
+      "real_tool_call": "mpd_comment_check -> binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/@code-yeongyu/comment-checker/vendor/linux-x64/comment-checker; comment-bearing input hasComments=true with 'COMMENT/DOCSTRING DETECTED'; clean input hasComments=false",
+      "previously_skipped_tests": "isolated copy with no .toolchain -> 3 skip / 0 pass; in-repo run -> 3 pass / 0 skip; full suite has 0 skip lines",
+      "environment_change_is_untracked": ".toolchain/ is gitignored, so the provisioning cannot be committed; a fresh clone has no binary and those 3 tests skip silently unless the installer flag runs"
+    },
+    "B6_provenance_version": {
+      "status": "passed",
+      "stale_claim_gone": "AGENTS.md no longer says '(MIT, v0.1.14)'; it now states adopted package version `0.1.16-rc.3-mpd` with the 0.1.14 body/backported deltas explained",
+      "agreement": "AGENTS.md:74 == packages/mpd-agent-teams-plugin/package.json version == LICENSE-NOTICES.md:16 == docs/feature-audit.md(+zh-CN) == 0.1.16-rc.3-mpd",
+      "remaining_0_1_14_mentions": "only explanatory (0.1.14 body / 0.1.14 client build), no version claim",
+      "upstream_readmes_untouched": "git hash-object worktree == HEAD for packages/mpd-agent-teams-plugin/README.md (5e707be1...) and README_ZH.md (08d84188...)",
+      "tracked_qa_pin": "skills/dsh-qa/scripts/agent-teams-adopt.mjs:66 already asserts 0.1.16-rc.3-mpd"
+    },
+    "full_gate_sweep": {
+      "status": "passed",
+      "typecheck": "bun run typecheck -> exit 0 (tsgo --noEmit, no diagnostics)",
+      "unit": "bun test packages -> exit 0, 308 pass / 0 fail / 0 skip across 35 files",
+      "qa_self_tests": "bun run test:qa -> exit 0, 26 scripts, 'all self-tests passed'"
+    }
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "info",
+      "problem": "The vendor gate was RED at t9 start (exit 1, lock ca3df247 vs actual ea1f001f) because t7 edited a file inside the VENDOR_LOCK-tracked skills/ tree after B2's re-pin. The captain re-pinned VENDOR_LOCK.json at 11:35:09, mid-verification; all t9 results are on the post-re-pin tree with a fingerprint re-checked at completion.",
+      "requiredFix": "none in this wave (captain-ratified); t11 should keep the lock in sync with any later skills/ edit."
+    },
+    {
+      "id": "F2",
+      "severity": "low",
+      "problem": "skills/** is a hashed vendor asset, so ANY edit under skills/ silently reds the release gate until VENDOR_LOCK.json is re-pinned. The t7/B2 interaction is the second occurrence of this class in one wave.",
+      "requiredFix": "recommend a documented convention: a change touching skills/** must include the verify-vendor re-pin in the same change (and quote the gate in its evidence)."
+    },
+    {
+      "id": "F3",
+      "severity": "info",
+      "problem": "t9 required-check item 1's clause 'confirm the final diff touches no file under skills/' is not literally true for the whole worktree: skills/dsh-qa/scripts/workmate-library.mjs IS modified (t7, captain-ratified F5), which is exactly why the lock needed the second re-pin.",
+      "requiredFix": "none: B2's own diff is exactly VENDOR_LOCK.json + scripts/verify-vendor.mjs (no skills/ path), and the ratified t7 edit is covered by the re-pin."
+    },
+    {
+      "id": "F4",
+      "severity": "medium",
+      "problem": "Independently confirmed the captain-reported installer gap: scripts/install-profile.mjs declares 21 row ids and 0 `mpd-verif` hits, while packages/mpd-bundle/cordis.patch.yml declares 22 ids with 3 `mpd-verif` hits. A profile installed through the legacy installer mounts NO mpd_verif_* tool at all.",
+      "requiredFix": "deliberately out of scope for this wave; carry it into t10/t11 as a separate defect (add the mpd-verif row to scripts/install-profile.mjs with its own installer dry-run + mount evidence)."
+    },
+    {
+      "id": "F5",
+      "severity": "low",
+      "problem": "The B5 provisioning (.toolchain/node_modules/@code-yeongyu/comment-checker) is untracked/gitignored, so it cannot be carried by a commit and the 3 comment-checker unit tests silently SKIP on a fresh clone (measured: 3 skip without it).",
+      "requiredFix": "recommend recording the provisioning command in the release checklist (already documented in the plugin README pair) and treating '0 skip' as the CI expectation."
+    }
+  ]
+}

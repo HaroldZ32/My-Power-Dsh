@@ -8,6 +8,7 @@ import { cpSync, existsSync, mkdtempSync, mkdirSync, openSync, readdirSync, read
 import { tmpdir, homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isolation.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const FIXTURE_PRESET = "mpd"
@@ -19,30 +20,27 @@ const PACKED_PRESETS_EXPR = '"/node_modules/@mpd-dsh/mpd/presets"'
 
 // Dev-flavor rewrite of the bundle patch: the committed patch uses the packed
 // `@mpd-dsh/mpd/...` names (resolvable only in an installed profile); QA boots
-// from the checkout, so rows are rewritten to checkout-absolute paths (the
+// from the checkout, so every row is rewritten to a checkout-absolute path (the
 // adopted agent-teams package is main code at packages/mpd-agent-teams-plugin,
-// so the generic rewrite covers it too) and the MCP command/env expressions are
-// satisfied via MPD_DSH_* / MPD_*_BIN env pins. The web-compat self-row's bare
-// `name: '@mpd-dsh/mpd'` has no trailing slash, so it needs its own rewrite, and
-// the preset root expression must be rewritten BEFORE the generic rule (which
-// would otherwise splice the repo path into /node_modules/<repo>).
+// so the generic rewrite covers it too).
+//
+// Wave-3 fidelity fix: the rewrite must consume the WHOLE packed operand, not
+// just the `@mpd-dsh/mpd/` tail. Leaving the `+ "/node_modules/"` half produced
+// `<baseUrl>/node_modules/<abs-repo>/packages/...`, which exists nowhere; the
+// boot only survived because this file ALSO pre-set the MPD_DSH_*_CLI env keys
+// and pinned the deprecated `.bin/sg` wrapper plus MPD_CODEGRAPH_BIN — and a
+// caller pin wins untouched in the B8 launcher, so those pins bypassed exactly
+// the resolution chain a dev boot exists to exercise. Both halves are removed:
+// the operand becomes the bare checkout path and no CLI/binary pin is pre-set.
+const BASEURL_PREFIX = '(typeof baseUrl === "string" ? baseUrl.replace(/^file:\\/\\//, "").replace(/\\/+$/, "") : "") + '
 function devPatch() {
   const t = readFileSync(join(repoRoot, "packages/mpd-bundle/cordis.patch.yml"), "utf8")
   return t
     .split(PACKED_PRESETS_EXPR).join(JSON.stringify(PRESETS_DIR))
+    .split(BASEURL_PREFIX).join("")
+    .split('"/node_modules/@mpd-dsh/mpd/').join('"' + repoRoot + "/")
     .split("name: '@mpd-dsh/mpd'").join("name: '" + join(repoRoot, "packages/mpd-bundle-plugin/dist/index.js") + "'")
     .split("@mpd-dsh/mpd/").join(repoRoot + "/")
-}
-
-function mcpEnv() {
-  return {
-    MPD_DSH_ASTGREP_CLI: join(repoRoot, "packages/mpd-mcp-astgrep/dist/cli.js"),
-    MPD_DSH_GITBASH_CLI: join(repoRoot, "packages/mpd-mcp-gitbash/dist/cli.js"),
-    MPD_DSH_LSP_CLI: join(repoRoot, "packages/mpd-mcp-lsp/dist/cli.js"),
-    MPD_DSH_CODEGRAPH_CLI: join(repoRoot, "packages/mpd-mcp-codegraph/dist/serve.js"),
-    MPD_AST_GREP_SG_PATH: join(repoRoot, ".toolchain/node_modules/.bin/sg"),
-    MPD_CODEGRAPH_BIN: join(repoRoot, ".toolchain/node_modules/.bin/codegraph")
-  }
 }
 
 function selfTest() {
@@ -67,7 +65,17 @@ function selfTest() {
   if (dev.includes(PACKED_PRESETS_EXPR) || !dev.includes(JSON.stringify(PRESETS_DIR))) { console.error("[preset-register self-test] FAIL: devPatch preset root rewrite (packed expression must become the checkout presets dir)"); process.exit(1) }
   // the rewritten root must be a bare checkout path, never spliced under /node_modules
   if (/\/node_modules\/[^"']*\/presets/.test(dev)) { console.error("[preset-register self-test] FAIL: devPatch spliced the checkout presets dir under /node_modules"); process.exit(1) }
-  console.log("[preset-register self-test] ok: preset + roster fixtures + web-compat/preset-root normalization verified")
+  // devPatch must consume the packed `/node_modules/...` operand entirely: no
+  // `<baseUrl>/node_modules/<abs-repo>` splice, no baseUrl concat left, and every
+  // MCP row command must be the bare checkout-absolute launcher that a dev boot
+  // resolves through the B8 chain (the old operand only "worked" via mcpEnv pins).
+  if (dev.includes("typeof baseUrl") || dev.includes("/node_modules/@mpd-dsh/mpd/")) { console.error("[preset-register self-test] FAIL: devPatch left the packed /node_modules operand or a baseUrl concat"); process.exit(1) }
+  for (const mcp of ["mpd-mcp-astgrep/launch.mjs", "mpd-mcp-gitbash/dist/cli.js", "mpd-mcp-lsp/dist/cli.js", "mpd-mcp-codegraph/launch.mjs"]) {
+    const target = join(repoRoot, "packages", mcp)
+    if (!existsSync(target)) { console.error("[preset-register self-test] FAIL: MCP launcher missing on disk: " + mcp); process.exit(1) }
+    if (!dev.includes('"' + target + '"')) { console.error("[preset-register self-test] FAIL: devPatch MCP operand is not the checkout-absolute " + mcp); process.exit(1) }
+  }
+  console.log("[preset-register self-test] ok: preset + roster fixtures + web-compat/preset-root/MCP-operand normalization verified")
 }
 
 function runReal() {
@@ -83,7 +91,10 @@ function runReal() {
   writeFileSync(probeOverlay, readFileSync(join(repoRoot, "tests/overlays/roles-probe.yml"), "utf8").split("{{PROBE}}").join(join(repoRoot, "packages/mpd-qa-roles-probe/dist/index.js")))
   const logFile = join(sandbox, "run.log")
   const fd = openSync(logFile, "w")
-  const env = { ...process.env, DSH_HOME: sandbox, ...mcpEnv() }
+  // NO MPD_DSH_*_CLI / MPD_*_BIN pins: the dev patch points each MCP row at the
+  // checkout launcher, so the boot exercises the real B8 resolution chain (a pin
+  // would short-circuit `process.env.X || <launcher>` and hide a broken operand).
+  const env = { ...process.env, DSH_HOME: sandbox }
   if (env.DSH_HOME !== sandbox) { console.error("[preset-register] isolation assertion failed"); process.exit(1) }
   const bundlePatch = join(sandbox, "bundle.dev.patch.yml")
   writeFileSync(bundlePatch, devPatch())
@@ -91,8 +102,11 @@ function runReal() {
     "--patch", bundlePatch,
     "--patch", presetsOverlay,
     "--patch", probeOverlay, "ok"]
-  const run = runDsh(args, env, fd)
+  const run = runDsh(args, env, fd, sandboxWorkspace(sandbox))
   closeSync(fd)
+  // Workspace isolation: the session workspace is the spawn cwd, so the boot must not
+  // leave a session-store key for the real repo (DSH_HOME/HOME do not cover it).
+  assertSessionsSandboxed(sandbox, sandbox, { label: "preset-register" })
   const out = readFileSync(logFile, "utf8")
   // Provability is the probe output (mount + roster + served path), not the CLI
   // exit code: the trailing headless prompt needs a model credential that may be
@@ -115,8 +129,8 @@ function runReal() {
 }
 
 import { spawnSync } from "node:child_process"
-function runDsh(args, env, fd) {
-  return spawnSync("dsh", args, { env, encoding: "utf8", timeout: 180000, stdio: ["ignore", fd, fd] })
+function runDsh(args, env, fd, cwd) {
+  return spawnSync("dsh", args, { env, cwd, encoding: "utf8", timeout: 180000, stdio: ["ignore", fd, fd] })
 }
 
 const argv = process.argv.slice(2)

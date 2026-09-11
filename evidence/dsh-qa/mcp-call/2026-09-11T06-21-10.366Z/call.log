@@ -1,0 +1,77 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=no-binary binary=- cwd=/tmp/mpd-dsh-qa-wQJtbM/ws
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/dist/mpd-package/skills (provider mpd-bundle, bundle 0.3.2)
+node:internal/fs/promises:859
+  return await PromisePrototypeThen(
+         ^
+
+Error: ENOENT: no such file or directory, mkdir '/root/.mpd/codegraph'
+    at async mkdir (node:internal/fs/promises:859:10)
+    at async acquireLock (file:///root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-mcp-codegraph/dist/serve.js:308:3)
+    at async Object.ensureCodegraphProvisioned [as ensureProvisioned] (file:///root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-mcp-codegraph/dist/serve.js:384:19)
+    at async provisionMissingCodegraph (file:///root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-mcp-codegraph/dist/serve.js:9814:18)
+    at async Module.runCodegraphServe (file:///root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-mcp-codegraph/dist/serve.js:9769:25)
+    at async file:///root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-mcp-codegraph/launch.mjs:27:20 {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'mkdir',
+  path: '/root/.mpd/codegraph'
+}
+
+Node.js v24.16.0
+node:internal/fs/promises:859
+  return await PromisePrototypeThen(
+         ^
+
+Error: ENOENT: no such file or directory, mkdir '/root/.mpd/codegraph'
+    at async mkdir (node:internal/fs/promises:859:10)
+    at async acquireLock (file:///root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-mcp-codegraph/dist/serve.js:308:3)
+    at async Object.ensureCodegraphProvisioned [as ensureProvisioned] (file:///root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-mcp-codegraph/dist/serve.js:384:19)
+    at async provisionMissingCodegraph (file:///root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-mcp-codegraph/dist/serve.js:9814:18)
+    at async Module.runCodegraphServe (file:///root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-mcp-codegraph/dist/serve.js:9769:25)
+    at async file:///root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-mcp-codegraph/launch.mjs:27:20 {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'mkdir',
+  path: '/root/.mpd/codegraph'
+}
+
+Node.js v24.16.0
+node:internal/fs/promises:859
+  return await PromisePrototypeThen(
+         ^
+
+Error: ENOENT: no such file or directory, mkdir '/root/.mpd/codegraph'
+    at async mkdir (node:internal/fs/promises:859:10)
+    at async acquireLock (file:///root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-mcp-codegraph/dist/serve.js:308:3)
+    at async Object.ensureCodegraphProvisioned [as ensureProvisioned] (file:///root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-mcp-codegraph/dist/serve.js:384:19)
+    at async provisionMissingCodegraph (file:///root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-mcp-codegraph/dist/serve.js:9814:18)
+    at async Module.runCodegraphServe (file:///root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-mcp-codegraph/dist/serve.js:9769:25)
+    at async file:///root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-mcp-codegraph/launch.mjs:27:20 {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'mkdir',
+  path: '/root/.mpd/codegraph'
+}
+
+Node.js v24.16.0
+node:internal/fs/promises:859
+  return await PromisePrototypeThen(
+         ^
+
+Error: ENOENT: no such file or directory, mkdir '/root/.mpd/codegraph'
+    at async mkdir (node:internal/fs/promises:859:10)
+    at async acquireLock (file:///root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-mcp-codegraph/dist/serve.js:308:3)
+    at async Object.ensureCodegraphProvisioned [as ensureProvisioned] (file:///root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-mcp-codegraph/dist/serve.js:384:19)
+    at async provisionMissingCodegraph (file:///root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-mcp-codegraph/dist/serve.js:9814:18)
+    at async Module.runCodegraphServe (file:///root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-mcp-codegraph/dist/serve.js:9769:25)
+    at async file:///root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-mcp-codegraph/launch.mjs:27:20 {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'mkdir',
+  path: '/root/.mpd/codegraph'
+}
+
+Node.js v24.16.0
+
+dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-official"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment

@@ -17,9 +17,9 @@
   "assets": {
     "_note": "skills corpus and agent-teams _deps closure: fileCount+treeSha (sorted relpath + per-file sha256 aggregation) double gate — verified by scripts/verify-vendor.mjs; dist: sha256 gate",
     "skills": {
-      "fileCount": 364,
-      "source": "skill corpus at repo root (ported upstream skills + dsh-qa + svn-master + rtl-codestyle/rtl-verif (RTL dev phase-1) + bundle-lifecycle, agent-teams-dispatch, agent-teams-sidebar, workmate-library, workmate-team-member and readonly-deny QA cases); whole-dir refresh from upstream, keep provenance links",
-      "treeSha": "29a6877c558997f4a1e766454a902ee7a246dd04f841d798c34b4c89ffb62c51"
+      "fileCount": 366,
+      "source": "skill corpus at repo root (ported upstream skills + dsh-qa + svn-master + rtl-codestyle/rtl-verif (RTL dev phase-1) + bundle-lifecycle, agent-teams-dispatch, agent-teams-sidebar, workmate-library, workmate-team-member and readonly-deny QA cases + the dsh-qa scripts/lib/workspace-isolation.mjs QA sandbox helper); whole-dir refresh from upstream, keep provenance links",
+      "treeSha": "3259d07a613c0bb9cf4a0ae8478adcbbb6247ec8bd361fb2075c3092c1c00621"
     },
     "packages/mpd-agent-teams-plugin/_deps": {
       "fileCount": 635,

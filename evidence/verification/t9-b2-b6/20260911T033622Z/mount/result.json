@@ -1,0 +1,64 @@
+{
+  "proof": "real boot that MOUNTS the rows (registration instrumentation via a --patch probe row)",
+  "isolation": {
+    "DSH_HOME": "temp sandbox",
+    "HOME": "temp sandbox"
+  },
+  "verifier": "Reviewer (t9), probe written independently of the implementers' evidence",
+  "apply_crash_signatures": 0,
+  "probe_final_marker": true,
+  "boot_exit": 124,
+  "b3_backends": {
+    "IVERILOG": {
+      "raw": "ok=true isError=false error= count=1 undef=[]",
+      "ok": "true",
+      "isError": "false",
+      "error": "",
+      "count": 1,
+      "undef_paths": [],
+      "shape": "iverilog{source=path,present=true,version=\"Icarus Verilog version 14.0 (devel) (s20260301-300-g3c3f46099-dirty)\",licenseHint=null,bin=/opt/osscad/oss-cad-suite/bin/iverilog}"
+    },
+    "VERILATOR": {
+      "raw": "ok=true isError=false error= count=1 undef=[]",
+      "ok": "true",
+      "isError": "false",
+      "error": "",
+      "count": 1,
+      "undef_paths": [],
+      "shape": "verilator{source=path,present=true,version=\"Verilator 5.051 devel rev v5.050-79-gf7ce38dbc (mod)\",licenseHint=null,bin=/opt/osscad/oss-cad-suite/bin/verilator}"
+    },
+    "ALL": {
+      "raw": "ok=true isError=false error= count=3 undef=[]",
+      "ok": "true",
+      "isError": "false",
+      "error": "",
+      "count": 3,
+      "undef_paths": [],
+      "shape": "iverilog{source=path,present=true,version=\"Icarus Verilog version 14.0 (devel) (s20260301-300-g3c3f46099-dirty)\",licenseHint=null,bin=/opt/osscad/oss-cad-suite/bin/iverilog} | verilator{source=path,present=true,version=\"Verilator 5.051 devel rev v5.050-79-gf7ce38dbc (mod)\",licenseHint=null,bin=/opt/osscad/oss-cad-suite/bin/verilator} | vcs{source=null,present=false,version=null,licenseHint=[\"vcs not found \u2014 set MPD_DSH_VERIF_VCS, or add $VCS_HOME/bin to PATH; license vars: VCS_HOME, LM_LICENSE_FILE, SNPSLMD_LICENSE_FILE\"],bin=null}"
+    },
+    "VCS": {
+      "raw": "ok=true isError=false error= count=1 undef=[]",
+      "ok": "true",
+      "isError": "false",
+      "error": "",
+      "count": 1,
+      "undef_paths": [],
+      "shape": "vcs{source=null,present=false,version=null,licenseHint=[\"vcs not found \u2014 set MPD_DSH_VERIF_VCS, or add $VCS_HOME/bin to PATH; license vars: VCS_HOME, LM_LICENSE_FILE, SNPSLMD_LICENSE_FILE\"],bin=null}"
+    }
+  },
+  "b4": {
+    "live_type_array": "absent",
+    "live_lines_node": "{\"oneOf\":[{\"type\":\"string\"},{\"type\":\"array\",\"items\":{\"type\":\"string\"}}]}",
+    "live_params_undef_paths": "[]",
+    "read": "ok=true isError=false error= lines=4",
+    "edit_lines_string": "ok=true isError=false error= lines=3",
+    "edit_lines_array": "ok=true isError=false error= lines=4",
+    "final_content": "\"alpha\\nBETA\\nGAMMA-1\\nGAMMA-2\\n\""
+  },
+  "b5": {
+    "main": "ok=true isError=false error=",
+    "main_value": "{\"binary\":\"/root/dshProj/my-power-dsh/.toolchain/node_modules/@code-yeongyu/comment-checker/vendor/linux-x64/comment-checker\",\"results\":[{\"path\":\"/tmp/t9-probe-FiBpjY/comment_bearing.js\",\"hasComments\":true,\"message\":\"COMMENT/DOCSTRING DETECTED - IMMEDIATE ACTION REQUIRED\\n\\nYour recent changes contain comments or docstrings, which triggered this hook.\\nYou need to take immediate action. You must follow the conditions below.\\n(Listed in priority order - you must always act according to this priority order)\\n\\nCRITICAL WARNING: This hook message MUST NEVER be ignored, even if you receive it multiple times.\\nYou MUST provide corresponding explanation or action for EACH occurrence of this message.\\nIgnoring this message or failing to respond appropriately is strictly prohibited.\\n\\nPRIORITY-BASED ACTION GUIDELINES:\\n\\n1. This is a comment/docstring that already existed before\\n\\t-> Explain to the user that this is an existing comment/docstring and proceed (justify it)\\n\\n2. This is a newly written comment: but it's in given, when, then format\\n\\t-> Tell the user it's a BDD comment and proceed (justify it)\\n\\t-> Note: This applies to comments only, not docstrings\\n\\n3. This is a newly w",
+    "on_disk_no_content": "ok=true isError=false error= value={\"binary\":\"/root/dshProj/my-power-dsh/.toolchain/node_modules/@code-yeongyu/comment-checker/vendor/linux-x64/comment-checker\",\"results\":[{\"path\":\"on-disk.js\",\"hasComments\":false,\"message\":\"no content to check\"}]}"
+  },
+  "note": "no --dump-config result is cited as load evidence"
+}

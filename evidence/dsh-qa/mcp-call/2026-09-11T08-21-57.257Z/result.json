@@ -1,0 +1,12 @@
+{
+  "ok": false,
+  "durationMs": 124627,
+  "enum": {
+    "exit": 1,
+    "toolListProof": false
+  },
+  "call": {
+    "exit": 1,
+    "astGrepCallProof": false
+  }
+}

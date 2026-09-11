@@ -1,0 +1,110 @@
+=== t9 independent MOUNT proof ===
+repo=/root/dshProj/my-power-dsh
+HEAD=98680b1fb2bbf5c10c28cfbe44419e91595e1cb7
+date=2026-09-11T03:38:18Z
+sandbox DSH_HOME=/tmp/t9-mnt-dsh-BPu1K4
+sandbox HOME=/tmp/t9-mnt-home-FaBfzw
+precondition iverilog=/opt/osscad/oss-cad-suite/bin/iverilog verilator=/opt/osscad/oss-cad-suite/bin/verilator vcs=absent
+VENDOR_LOCK skills treeSha=ea1f001f6d6c49347816280aa125ece5873b8fa9fb4b181c9b6a079144824153
+VENDOR_LOCK mtime=2026-09-11 11:35:09.434555311 +0800
+
+[exit=0] dsh plugin --profile mpd add --store-dir <sb> <repo>
+[patch] /tmp/t9-mnt-dsh-BPu1K4/t9-probe.yml:
+- insert:
+    - id: t9-mount-probe
+      name: "/root/dshProj/my-power-dsh/evidence/verification/t9-b2-b6/20260911T033622Z/mount/t9-mount-probe.mjs"
+
+### real boot with the probe row: dsh --profile mpd --patch <probe> 'say ok'
+[exit=124] real boot (124 = still alive at the 150s cap, normal for a serving profile)
+apply-crash signatures : 0 (MUST be 0)
+probe final marker     : 1 (1 = probe ran to its end)
+live tools             : mpd_verif_backends:ok,mpd_comment_check:ok,mpd_hashline_read:ok,mpd_hashline_edit:ok
+--- t9-probe lines, verbatim ---
+[t9-probe] TOOLS=mpd_verif_backends:ok,mpd_comment_check:ok,mpd_hashline_read:ok,mpd_hashline_edit:ok
+[t9-probe] ADAPTER_EXECUTE_TOOL=ok
+[t9-probe] B3_IVERILOG=ok=true isError=false error= count=1 undef=[]
+[t9-probe] B3_IVERILOG_SHAPE=iverilog{source=path,present=true,version="Icarus Verilog version 14.0 (devel) (s20260301-300-g3c3f46099-dirty)",licenseHint=null,bin=/opt/osscad/oss-cad-suite/bin/iverilog}
+[t9-probe] B3_VERILATOR=ok=true isError=false error= count=1 undef=[]
+[t9-probe] B3_VERILATOR_SHAPE=verilator{source=path,present=true,version="Verilator 5.051 devel rev v5.050-79-gf7ce38dbc (mod)",licenseHint=null,bin=/opt/osscad/oss-cad-suite/bin/verilator}
+[t9-probe] B3_ALL=ok=true isError=false error= count=3 undef=[]
+[t9-probe] B3_ALL_SHAPE=iverilog{source=path,present=true,version="Icarus Verilog version 14.0 (devel) (s20260301-300-g3c3f46099-dirty)",licenseHint=null,bin=/opt/osscad/oss-cad-suite/bin/iverilog} | verilator{source=path,present=true,version="Verilator 5.051 devel rev v5.050-79-gf7ce38dbc (mod)",licenseHint=null,bin=/opt/osscad/oss-cad-suite/bin/verilator} | vcs{source=null,present=false,version=null,licenseHint=["vcs not found — set MPD_DSH_VERIF_VCS, or add $VCS_HOME/bin to PATH; license vars: VCS_HOME, LM_LICENSE_FILE, SNPSLMD_LICENSE_FILE"],bin=null}
+[t9-probe] B3_VCS=ok=true isError=false error= count=1 undef=[]
+[t9-probe] B3_VCS_SHAPE=vcs{source=null,present=false,version=null,licenseHint=["vcs not found — set MPD_DSH_VERIF_VCS, or add $VCS_HOME/bin to PATH; license vars: VCS_HOME, LM_LICENSE_FILE, SNPSLMD_LICENSE_FILE"],bin=null}
+[t9-probe] B4_LIVE_PARAMS_BYTES=417
+[t9-probe] B4_LIVE_TYPE_ARRAY=absent
+[t9-probe] B4_LIVE_LINES_NODE={"oneOf":[{"type":"string"},{"type":"array","items":{"type":"string"}}]}
+[t9-probe] B4_LIVE_PARAMS_UNDEF_PATHS=[]
+[t9-probe] B4_READ=ok=true isError=false error= lines=4
+[t9-probe] B4_EDIT_LINES_STRING=ok=true isError=false error= lines=3
+[t9-probe] B4_EDIT_LINES_ARRAY=ok=true isError=false error= lines=4
+[t9-probe] B4_FINAL_CONTENT="alpha\nBETA\nGAMMA-1\nGAMMA-2\n"
+[t9-probe] B5_MAIN=ok=true isError=false error=
+[t9-probe] B5_MAIN_VALUE={"binary":"/root/dshProj/my-power-dsh/.toolchain/node_modules/@code-yeongyu/comment-checker/vendor/linux-x64/comment-checker","results":[{"path":"/tmp/t9-probe-FiBpjY/comment_bearing.js","hasComments":true,"message":"COMMENT/DOCSTRING DETECTED - IMMEDIATE ACTION REQUIRED\n\nYour recent changes contain comments or docstrings, which triggered this hook.\nYou need to take immediate action. You must follow the conditions below.\n(Listed in priority order - you must always act according to this priority order)\n\nCRITICAL WARNING: This hook message MUST NEVER be ignored, even if you receive it multiple times.\nYou MUST provide corresponding explanation or action for EACH occurrence of this message.\nIgnoring this message or failing to respond appropriately is strictly prohibited.\n\nPRIORITY-BASED ACTION GUIDELINES:\n\n1. This is a comment/docstring that already existed before\n\t-> Explain to the user that this is an existing comment/docstring and proceed (justify it)\n\n2. This is a newly written comment: but it's in given, when, then format\n\t-> Tell the user it's a BDD comment and proceed (justify it)\n\t-> Note: This applies to comments only, not docstrings\n\n3. This is a newly w
+[t9-probe] B5_ONDISK_NO_CONTENT=ok=true isError=false error= value={"binary":"/root/dshProj/my-power-dsh/.toolchain/node_modules/@code-yeongyu/comment-checker/vendor/linux-x64/comment-checker","results":[{"path":"on-disk.js","hasComments":false,"message":"no content to check"}]}
+[t9-probe] DONE=ok
+--- end ---
+{
+  "proof": "real boot that MOUNTS the rows (registration instrumentation via a --patch probe row)",
+  "isolation": {
+    "DSH_HOME": "temp sandbox",
+    "HOME": "temp sandbox"
+  },
+  "verifier": "Reviewer (t9), probe written independently of the implementers' evidence",
+  "apply_crash_signatures": 0,
+  "probe_final_marker": true,
+  "boot_exit": 124,
+  "b3_backends": {
+    "IVERILOG": {
+      "raw": "ok=true isError=false error= count=1 undef=[]",
+      "ok": "true",
+      "isError": "false",
+      "error": "",
+      "count": 1,
+      "undef_paths": [],
+      "shape": "iverilog{source=path,present=true,version=\"Icarus Verilog version 14.0 (devel) (s20260301-300-g3c3f46099-dirty)\",licenseHint=null,bin=/opt/osscad/oss-cad-suite/bin/iverilog}"
+    },
+    "VERILATOR": {
+      "raw": "ok=true isError=false error= count=1 undef=[]",
+      "ok": "true",
+      "isError": "false",
+      "error": "",
+      "count": 1,
+      "undef_paths": [],
+      "shape": "verilator{source=path,present=true,version=\"Verilator 5.051 devel rev v5.050-79-gf7ce38dbc (mod)\",licenseHint=null,bin=/opt/osscad/oss-cad-suite/bin/verilator}"
+    },
+    "ALL": {
+      "raw": "ok=true isError=false error= count=3 undef=[]",
+      "ok": "true",
+      "isError": "false",
+      "error": "",
+      "count": 3,
+      "undef_paths": [],
+      "shape": "iverilog{source=path,present=true,version=\"Icarus Verilog version 14.0 (devel) (s20260301-300-g3c3f46099-dirty)\",licenseHint=null,bin=/opt/osscad/oss-cad-suite/bin/iverilog} | verilator{source=path,present=true,version=\"Verilator 5.051 devel rev v5.050-79-gf7ce38dbc (mod)\",licenseHint=null,bin=/opt/osscad/oss-cad-suite/bin/verilator} | vcs{source=null,present=false,version=null,licenseHint=[\"vcs not found \u2014 set MPD_DSH_VERIF_VCS, or add $VCS_HOME/bin to PATH; license vars: VCS_HOME, LM_LICENSE_FILE, SNPSLMD_LICENSE_FILE\"],bin=null}"
+    },
+    "VCS": {
+      "raw": "ok=true isError=false error= count=1 undef=[]",
+      "ok": "true",
+      "isError": "false",
+      "error": "",
+      "count": 1,
+      "undef_paths": [],
+      "shape": "vcs{source=null,present=false,version=null,licenseHint=[\"vcs not found \u2014 set MPD_DSH_VERIF_VCS, or add $VCS_HOME/bin to PATH; license vars: VCS_HOME, LM_LICENSE_FILE, SNPSLMD_LICENSE_FILE\"],bin=null}"
+    }
+  },
+  "b4": {
+    "live_type_array": "absent",
+    "live_lines_node": "{\"oneOf\":[{\"type\":\"string\"},{\"type\":\"array\",\"items\":{\"type\":\"string\"}}]}",
+    "live_params_undef_paths": "[]",
+    "read": "ok=true isError=false error= lines=4",
+    "edit_lines_string": "ok=true isError=false error= lines=3",
+    "edit_lines_array": "ok=true isError=false error= lines=4",
+    "final_content": "\"alpha\\nBETA\\nGAMMA-1\\nGAMMA-2\\n\""
+  },
+  "b5": {
+    "main": "ok=true isError=false error=",
+    "main_value": "{\"binary\":\"/root/dshProj/my-power-dsh/.toolchain/node_modules/@code-yeongyu/comment-checker/vendor/linux-x64/comment-checker\",\"results\":[{\"path\":\"/tmp/t9-probe-FiBpjY/comment_bearing.js\",\"hasComments\":true,\"message\":\"COMMENT/DOCSTRING DETECTED - IMMEDIATE ACTION REQUIRED\\n\\nYour recent changes contain comments or docstrings, which triggered this hook.\\nYou need to take immediate action. You must follow the conditions below.\\n(Listed in priority order - you must always act according to this priority order)\\n\\nCRITICAL WARNING: This hook message MUST NEVER be ignored, even if you receive it multiple times.\\nYou MUST provide corresponding explanation or action for EACH occurrence of this message.\\nIgnoring this message or failing to respond appropriately is strictly prohibited.\\n\\nPRIORITY-BASED ACTION GUIDELINES:\\n\\n1. This is a comment/docstring that already existed before\\n\\t-> Explain to the user that this is an existing comment/docstring and proceed (justify it)\\n\\n2. This is a newly written comment: but it's in given, when, then format\\n\\t-> Tell the user it's a BDD comment and proceed (justify it)\\n\\t-> Note: This applies to comments only, not docstrings\\n\\n3. This is a newly w",
+    "on_disk_no_content": "ok=true isError=false error= value={\"binary\":\"/root/dshProj/my-power-dsh/.toolchain/node_modules/@code-yeongyu/comment-checker/vendor/linux-x64/comment-checker\",\"results\":[{\"path\":\"on-disk.js\",\"hasComments\":false,\"message\":\"no content to check\"}]}"
+  },
+  "note": "no --dump-config result is cited as load evidence"
+}
+DONE
