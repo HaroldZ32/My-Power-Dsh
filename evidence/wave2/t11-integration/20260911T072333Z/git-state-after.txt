@@ -1,0 +1,16 @@
+### branch/HEAD after the sweep (nothing pushed/tagged/released)
+dev
+98680b1fb2bbf5c10c28cfbe44419e91595e1cb7
+tags pointing at HEAD: []
+recent reflog (no new local commits expected):
+98680b1 HEAD@{0}: merge fix/team-tab-autoseed: Merge made by the 'ort' strategy.
+3c3f1fb HEAD@{1}: checkout: moving from fix/team-tab-autoseed to dev
+fea8b39 HEAD@{2}: commit: fix(web): the AgentTeams tab auto-opens seedless (no phantom team-activity path)
+
+### frozen hashes re-checked now
+4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5  packages/mpd-agent-teams-plugin/lib/quality-gates.js
+fd106fdbf12a7379672452a321b79bd5156990454b233617621338821deb387c  packages/mpd-agent-teams-plugin/lib/tools.js
+9680c7b816fa129773ceabffc55305b34a74653dc23128de85ee7058ea85c558  packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+aedb9198e1328d2a216f382ac73e13ef71141367167eac07df76cedb0f6a0576  scripts/patch-agent-teams-fixes.mjs
+2d358a30a7fdb5c4ce14c3b2fb6b638ad69027319138cd64639bfc609370d5f5  VENDOR_LOCK.json
+88ad2cb2d08ab7f5419e894ebd86b17dc6791794835325653ceeff294ca353fb  packages/mpd-bundle/cordis.patch.yml

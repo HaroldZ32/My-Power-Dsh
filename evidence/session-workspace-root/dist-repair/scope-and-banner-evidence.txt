@@ -1,0 +1,24 @@
+=== banner of the four rebuilt dists (after) ===
+mpd-tools-plugin         // packages/mpd-tools-plugin/src/index.ts
+mpd-roles-plugin         // packages/mpd-roles-plugin/src/index.ts
+mpd-bootstrap-plugin     // packages/mpd-bootstrap-plugin/src/index.ts
+mpd-qa-roles-probe       // packages/mpd-dsh-adapter-plugin/src/index.ts
+
+=== banner before (from git HEAD copies) ===
+mpd-tools-plugin         // packages/mpd-tools-plugin/src/index.ts
+mpd-roles-plugin         // src/index.ts
+mpd-bootstrap-plugin     // packages/mpd-bootstrap-plugin/src/index.ts
+mpd-qa-roles-probe       // packages/mpd-dsh-adapter-plugin/src/index.ts
+
+=== src files newer than this task's first artifact (must be empty = t12 edited no src) ===
+(end)
+
+=== mtimes: four rebuilt dists vs src trees ===
+2026-09-11 11:57:28.413723393 +0800  packages/mpd-tools-plugin/dist/index.js
+2026-09-11 11:57:28.405723188 +0800  packages/mpd-roles-plugin/dist/index.js
+2026-09-11 11:57:28.387722727 +0800  packages/mpd-bootstrap-plugin/dist/index.js
+2026-09-11 11:57:28.396722957 +0800  packages/mpd-qa-roles-probe/dist/index.js
+--- newest src file under those four packages ---
+2026-09-09+17:20:30.2835620070  packages/mpd-tools-plugin/src/index.ts
+2026-09-09+18:14:48.4498886150  packages/mpd-bootstrap-plugin/src/index.ts
+2026-09-11+10:34:08.3757902610  packages/mpd-roles-plugin/src/index.ts

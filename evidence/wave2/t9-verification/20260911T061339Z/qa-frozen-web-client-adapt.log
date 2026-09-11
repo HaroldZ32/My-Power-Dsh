@@ -1,0 +1,8 @@
+[web-client-adapt] ok=false -> /root/dshProj/my-power-dsh/evidence/plan-f/web-client-adapt/2026-09-11T06-30-49.502Z
+  listUp: {"ok":true}
+  rootStatus: {"ok":false,"http":401,"tokenSeen":false,"cookieSession":false}
+  bootEntry: {"ok":false,"id":null}
+  clientJs: {"ok":false,"status":0,"servedSurface":{"teamPageModule":false,"teamPanelParity":false,"workmateTab":false,"noWorkmateFloater":true}}
+  noUnregisteredService: {"ok":true,"unregistered":[]}
+  initRoute: {"ok":true,"note":"{\"name\":\"gui-alice\",\"baseId\":\"hephaestus\",\"baseName\":\"Deep Worker\",\"readonly\":false,\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"path\":\"/tmp/mpd-","filesOk":true}
+  isolation: {"ok":true,"realHome":"/root/.mpd/workmate","realLibraryPreExisting":2,"createdInSandbox":true}

@@ -1,0 +1,88 @@
+{
+  "task": "t11",
+  "title": "Wave-2 integration: evidence consolidation, final gates, pack refresh, commit plan, carry-forward report",
+  "attempt": 1,
+  "attempt_id": "7943900a-b73d-454d-88d6-736b205ba042",
+  "executed_by": "Lead",
+  "verdict": "passed",
+  "nothing_pushed_tagged_or_released": {
+    "branch": "dev",
+    "head": "98680b1fb2bbf5c10c28cfbe44419e91595e1cb7",
+    "tags_pointing_at_head": [],
+    "reflog_head": "98680b1 HEAD@{0}: merge fix/team-tab-autoseed: Merge made by the 'ort' strategy.",
+    "note": "No commit, push, tag or release-branch operation was performed by this task; the git model's write steps are left to the captain."
+  },
+  "frozen_tree": {
+    "packages/mpd-agent-teams-plugin/lib/quality-gates.js": "4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5",
+    "packages/mpd-agent-teams-plugin/lib/tools.js": "fd106fdbf12a7379672452a321b79bd5156990454b233617621338821deb387c",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "9680c7b816fa129773ceabffc55305b34a74653dc23128de85ee7058ea85c558",
+    "scripts/patch-agent-teams-fixes.mjs": "aedb9198e1328d2a216f382ac73e13ef71141367167eac07df76cedb0f6a0576",
+    "VENDOR_LOCK.json": "2d358a30a7fdb5c4ce14c3b2fb6b638ad69027319138cd64639bfc609370d5f5",
+    "packages/mpd-bundle/cordis.patch.yml": "88ad2cb2d08ab7f5419e894ebd86b17dc6791794835325653ceeff294ca353fb",
+    "hashes_rechecked_after_every_t11_edit": true
+  },
+  "deliverables": {
+    "evidence_consolidation": {
+      "file": "evidence-consolidation.md",
+      "raw": ["evidence-consolidation.log", "evidence-consolidation-detail.log"],
+      "result": "Every wave-2 case directory (t2/t3/t4/t5/t6/t7/t9/t10/t12/t13/t14/t15-analysis + t8) holds its record file plus raw logs; no empty case directory; the only zero-byte files are empty *.err captures (proof of no stderr), listed and kept; no partial/orphan directory to remove."
+    },
+    "gate_sweep": {
+      "raw": ["gate-sweep-part1.log", "gate-sweep-part2.log"],
+      "commands": [
+        { "command": "node scripts/verify-vendor.mjs", "exit": 0, "evidence": "PASS — commit 8c57e463/5.0.0-beta.20/stats 9131 files, 6 assets OK incl. skills 366 files" },
+        { "command": "bun run verify:rows", "exit": 0, "evidence": "ok: 22 row ids match the bundle patch insert list (mpd-verif included)" },
+        { "command": "bun run typecheck", "exit": 0, "evidence": "tsgo --noEmit clean" },
+        { "command": "bun test packages", "exit": 0, "evidence": "343 pass / 0 fail / 2194 expect() calls / 38 files" },
+        { "command": "bun run test:qa", "exit": 0, "evidence": "all self-tests passed" },
+        { "command": "node skills/dsh-qa/scripts/preset-conformance.mjs", "exit": 0, "evidence": "PASS — conformance ok 30 checked, parity 31/31 missing[] extra[], auth ok, session/create 200 agentPreset=mpd, mount log signatures[], NEGATIVE CONTROL fired (agent-preset/invalid … $.prefix missing required value)" },
+        { "command": "node evidence/session-workspace-root/dist-repair/sweep.mjs --clean-room", "exit": 0, "evidence": "0 STALE / 16 FRESH; clean-room pass1==pass2 16/16 and committed==pass2 16/16" }
+      ]
+    },
+    "pack": {
+      "raw": ["pack-compare.log", "mcp-call-real-run.log"],
+      "re_run": "yes — the wave rebuilt dists (t3 verif, t6 codegraph) and the staged pack predated t6's launchers",
+      "byte_identical": "19 packed dist JS files compared against the working tree: 0 mismatches",
+      "b8_artifacts": "mpd-mcp-astgrep/launch.mjs, mpd-mcp-codegraph/launch.mjs, mpd-mcp-shared/bin-resolve.mjs present (644); bin-resolve.test.mjs excluded by design",
+      "mode_normalization": "pre-pack census 1118x644 + 30x600 + 12x755 -> post-pack 1148x644 + 12x755, zero 600s; pack-mpd.mjs now normalizes (regular files 644, executables preserved at 755) and prints the counts",
+      "mcp_call_after_pack": "exit 1, ok=false. Cause 1: F-B8-1 reproduced on the fresh pack — codegraph child dies with uncaught ENOENT mkdir '/root/.mpd/codegraph' from dist/mpd-package/packages/mpd-mcp-codegraph/dist/serve.js:308 acquireLock (7 occurrences); /root/.mpd is read-only here. Cause 2: MISSING_CREDENTIAL for deepseek-official — this environment holds no LLM key (settings.yaml has llm-deepseek:{} and no llm-pi-ai gateway; .credentials.yaml has only a browser-session grant). The MODULE_NOT_FOUND t7 measured is GONE, which is the B8 pack-route proof; the credential-free B8 proof remains t9's own 20/20 launcher gate."
+    },
+    "commit_plan": {
+      "file": "commit-plan.md",
+      "commits": 10,
+      "reconciled_with_wave1": true,
+      "vendor_lock_pairing": "commit 5 carries EVERY skills/** change from both waves AND the re-pinned VENDOR_LOCK.json (skills 366 files, treeSha 54155e41 -> 5b13e920) plus scripts/verify-vendor.mjs; the rule is quoted verbatim in the plan as a release-checklist line",
+      "memory_migration_note": "t5 wrote only under .mpd/memory/** (the memory store's own git repo, committed there as 8635a6e) — no path in this repo's plan"
+    },
+    "carry_forward": {
+      "file": "carry-forward.md",
+      "items": 22,
+      "groups": ["A: adopted agent-teams tooling incl. the wave-3 registry redesign and the prefix-ambiguous markers", "B: the two update_task diagnostics (stale-naming A, silent drop B)", "C: three QA-harness-fidelity defects + the codegraph-smoke doc-gap (deferred with the VENDOR_LOCK reason)", "D: F-B8-1, F-QA-2, F-ENV-1, dual-track-smoke boot", "E: wave-1 items incl. O-1 still open", "F: process notes (fresh /tmp, no hot reload, revert-in-flight)", "G: user actions"]
+    },
+    "final_report": { "file": "final-report.md" },
+    "git_status_verbatim": { "file": "git-status.txt", "modified": 66, "untracked": 59, "diffstat": "66 files changed, 2199 insertions(+), 678 deletions(-)" }
+  },
+  "t11_edits_by_this_task": [
+    "AGENTS.md — §6 exception rewritten (what vendor-agent-teams.mjs actually does + the human-re-vendor risk + the A1-A6/D1-D12 adaptation list transcribed from t4's authoritative enumeration + the 9-region post-t4 note); §12 ast-grep and codegraph rows rewritten for the B8 launcher mechanism incl. the `sg` 0.45.x `--version` trap and the codegraph ENOENT degradation gap",
+    "package.json — added `\"verify:rows\": \"node scripts/verify-rows-parity.mjs\"`",
+    "skills/dsh-qa/scripts/mcp-call.mjs — copies `settings.yaml` into the sandbox when present (AGENTS.md §7), matching the pattern the other live cases use",
+    "scripts/pack-mpd.mjs — post-copy mode normalization (regular files 644, executables preserved at 755) + a printed census",
+    "VENDOR_LOCK.json — skills re-pinned with verify-vendor.mjs's own algorithm after the skills edit (fileCount 366 unchanged, treeSha 54155e41… -> 5b13e920…)"
+  ],
+  "evidence_files_created": [
+    "evidence/wave2/t11-integration/20260911T072333Z/result.json",
+    "evidence/wave2/t11-integration/20260911T072333Z/evidence-consolidation.md",
+    "evidence/wave2/t11-integration/20260911T072333Z/gate-sweep-part1.log",
+    "evidence/wave2/t11-integration/20260911T072333Z/gate-sweep-part2.log",
+    "evidence/wave2/t11-integration/20260911T072333Z/pack-compare.log",
+    "evidence/wave2/t11-integration/20260911T072333Z/mcp-call-real-run.log",
+    "evidence/wave2/t11-integration/20260911T072333Z/commit-plan.md",
+    "evidence/wave2/t11-integration/20260911T072333Z/carry-forward.md",
+    "evidence/wave2/t11-integration/20260911T072333Z/final-report.md",
+    "evidence/wave2/t11-integration/20260911T072333Z/git-status.txt",
+    "evidence/wave2/t11-integration/20260911T072333Z/git-state-after.txt",
+    "evidence/wave2/t11-integration/20260911T072333Z/vendor-lock-repin.log",
+    "evidence/wave2/t11-integration/20260911T072333Z/evidence-consolidation.log",
+    "evidence/wave2/t11-integration/20260911T072333Z/evidence-consolidation-detail.log"
+  ]
+}

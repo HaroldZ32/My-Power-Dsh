@@ -1,0 +1,18 @@
+=== FULL dist consistency (all packages with dist/index.js) ===
+mpd-bootstrap-plugin             BYTE-IDENTICAL
+mpd-boulder-plugin               BYTE-IDENTICAL
+mpd-bundle-plugin                BYTE-IDENTICAL
+mpd-codegraph-plugin             BYTE-IDENTICAL
+mpd-comment-checker-plugin       BYTE-IDENTICAL
+mpd-config-plugin                BYTE-IDENTICAL
+mpd-dsh-adapter-plugin           BYTE-IDENTICAL
+mpd-hashline-plugin              BYTE-IDENTICAL
+mpd-memory-plugin                BYTE-IDENTICAL
+mpd-modelchain-plugin            BYTE-IDENTICAL
+mpd-qa-roles-probe               BYTE-IDENTICAL
+mpd-roles-plugin                 BYTE-IDENTICAL
+mpd-tools-plugin                 BYTE-IDENTICAL
+mpd-ulw-plugin                   BYTE-IDENTICAL
+mpd-verif-plugin                 BYTE-IDENTICAL
+mpd-workmate-plugin              BYTE-IDENTICAL
+identical=16 diff=0

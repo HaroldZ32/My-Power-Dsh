@@ -1,0 +1,64 @@
+{
+  "proof": "real boot that MOUNTS the rows (registration instrumentation via a --patch probe row)",
+  "isolation": {
+    "DSH_HOME": "temp sandbox",
+    "HOME": "temp sandbox"
+  },
+  "verifier": "Reviewer (t9), probe written independently of the implementers' evidence",
+  "apply_crash_signatures": 0,
+  "probe_final_marker": false,
+  "boot_exit": 124,
+  "b3_backends": {
+    "IVERILOG": {
+      "raw": null,
+      "ok": null,
+      "isError": null,
+      "error": null,
+      "count": null,
+      "undef_paths": null,
+      "shape": null
+    },
+    "VERILATOR": {
+      "raw": null,
+      "ok": null,
+      "isError": null,
+      "error": null,
+      "count": null,
+      "undef_paths": null,
+      "shape": null
+    },
+    "ALL": {
+      "raw": null,
+      "ok": null,
+      "isError": null,
+      "error": null,
+      "count": null,
+      "undef_paths": null,
+      "shape": null
+    },
+    "VCS": {
+      "raw": null,
+      "ok": null,
+      "isError": null,
+      "error": null,
+      "count": null,
+      "undef_paths": null,
+      "shape": null
+    }
+  },
+  "b4": {
+    "live_type_array": null,
+    "live_lines_node": null,
+    "live_params_undef_paths": null,
+    "read": null,
+    "edit_lines_string": null,
+    "edit_lines_array": null,
+    "final_content": null
+  },
+  "b5": {
+    "main": null,
+    "main_value": null,
+    "on_disk_no_content": null
+  },
+  "note": "no --dump-config result is cited as load evidence"
+}

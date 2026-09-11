@@ -1,0 +1,23 @@
+{
+  "driver": "registry-determinism",
+  "repo": "/root/dshProj/my-power-dsh",
+  "measuredAt": "2026-09-11T08:37:33.355Z",
+  "committedRegistrySha": "d3a1d4adce41992b9eb7faf37dd145dbaf4df0352a1b29c8b39038e1a7285ffb",
+  "committedHasAnchorFields": false,
+  "rounds": [
+    {
+      "round": 1,
+      "stdout": "[patch-agent-teams-fixes] registry regenerated: packages/mpd-agent-teams-plugin/lib/mpd-deltas.js (12 regions)",
+      "sha256": "d3a1d4adce41992b9eb7faf37dd145dbaf4df0352a1b29c8b39038e1a7285ffb",
+      "byteIdenticalToCommitted": true
+    },
+    {
+      "round": 2,
+      "stdout": "[patch-agent-teams-fixes] registry regenerated: packages/mpd-agent-teams-plugin/lib/mpd-deltas.js (12 regions)",
+      "sha256": "d3a1d4adce41992b9eb7faf37dd145dbaf4df0352a1b29c8b39038e1a7285ffb",
+      "byteIdenticalToCommitted": true
+    }
+  ],
+  "checkAfterRegeneration": "[patch-agent-teams-fixes] already applied: 12 mpd delta region(s) across 2 adopted file(s)",
+  "passed": true
+}

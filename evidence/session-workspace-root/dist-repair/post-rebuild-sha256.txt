@@ -1,0 +1,4 @@
+c817928406387c07069651b326ce9ab8bbd77d5e2db9bfcb4770ce2e4a0cc298  packages/mpd-bootstrap-plugin/dist/index.js
+37d0693a8b7f76e778d74229d22d1dbd80ce7722254814ceadd2a45ba2fcb639  packages/mpd-qa-roles-probe/dist/index.js
+741605f62225fb417b7de08a937be49e1489c7021e5612104336a7485a9ce307  packages/mpd-roles-plugin/dist/index.js
+07c539987450e064c4b0961ae7eefd77b5cc014341708a0896ad651d7e9070ac  packages/mpd-tools-plugin/dist/index.js

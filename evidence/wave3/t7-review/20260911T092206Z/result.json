@@ -1,0 +1,46 @@
+{
+  "task": "t7 review round 1",
+  "stamp": "2026-09-11T09:30:00Z",
+  "reviewer": "Reviewer",
+  "verdict": "needs_revision",
+  "subject": "t2 (registry redesign + marker prefix + update_task diagnostics), reviewed with t3/t4 as one cumulative change set",
+  "revision": { "head": "98680b1", "registry": "d3a1d4adce41992b9eb7faf37dd145dbaf4df0352a1b29c8b39038e1a7285ffb", "registryRegions": 12, "applier": "scripts/patch-agent-teams-fixes.mjs (536 lines)" },
+  "findings": [
+    {
+      "id": "T7-F1",
+      "severity": "high",
+      "file": "scripts/patch-agent-teams-fixes.mjs",
+      "line": 360,
+      "problem": "No OLD-format-registry guard. With a pre-migration registry (anchor/anchorOccurrence/anchorMarker, no beforeContext/afterContext) and one missing region, `--write` exits 1 with the bare `TypeError: Cannot read properties of undefined (reading 'length')` (first use: locateSeam, applier:155/158) instead of the canon's named migration message. Raw: orphan-rows.result.json R6.",
+      "requiredFix": "Guard at module load or the top of applyAgentTeamsFixes: every MPD_DELTAS entry must carry array beforeContext/afterContext and no anchor/anchorOccurrence/anchorMarker; fail with `[patch-agent-teams-fixes] FAIL: lib/mpd-deltas.js is in the OLD anchor format — run: node scripts/patch-agent-teams-fixes.mjs --write-registry (one-time migration)`; never fall back to the old line-keyed rule; add a fixture."
+    },
+    {
+      "id": "T7-F2",
+      "severity": "high",
+      "file": "scripts/patch-agent-teams-fixes.mjs",
+      "line": 392,
+      "problem": "The canon orphan row `begin present + end absent + body drifted` is not implemented: applyAgentTeamsFixes:382-394 drops the orphan begin marker (reBracketOrphan returns undefined) and only fails later in locateSeam:180 with a misdiagnosis — no line, wrong shape; in --check it names the line but blames 'a re-vendor dropped it; re-run with --write'. Measured file byte-untouched and exit 1 in every shape; the silent-heal hazard is unreachable for all 12 regions (no body tail equals its beforeContext) — the gap is the missing canon diagnosis + fixture, not a measured silent loss. Raw: orphan-rows.result.json R3/R3b/R3c, hazard-reachability.log.",
+      "requiredFix": "When findRegion returns orphan === 'end' and the surviving body is not byte-equal to the registered block, FAIL naming the region AND the orphan begin marker's line with the remedy (restore the marked region, or fix it and run --write-registry); keep drop+heal only for the orphan-'begin' row where nothing survived; add one fixture per canon row and record the rows in the evidence README."
+    }
+  ],
+  "passing": {
+    "decisive_strip_both": "my own R7: all 12 regions stripped from BOTH files in one state -> one --write heals both byte-identically, --check exit 0",
+    "f3_refusal_observed": "re-materialize fixture -> --write exit 1 naming pathMatchesScope@977, fixture sha unchanged",
+    "diagnostics": "bun test packages/mpd-agent-teams-plugin/test/update-task-diagnostics.test.mjs 6 pass; omitted attempt_id -> required message, never stale/stop; omitted status -> rejected",
+    "suites": "plugin 106 pass / 0 fail, self-fix 43 pass / 0 fail",
+    "applier_check_on_tree": "exit 0, 12 regions",
+    "rules": "one VENDOR_LOCK skills re-pin; no CJK in agent-facing files; README EN+zh-CN pairs moved together; no chdir / no row-set DSH_WORKSPACE_ROOT",
+    "hygiene": "no stray/partial wave-3 evidence dirs; no credential copies; no unredacted secrets; t4 mcp-run has two empty sandbox dirs (informational for t8)"
+  },
+  "t8_plan_judgment": {
+    "R1_pack": "absorbed: t8 acceptance requires `npm run pack` when any dist changed and packed dists byte-identical; recommend widening the assertion to launchers + skills/dsh-qa scripts",
+    "R4_untracked": "absorbed: t8 acceptance requires every untracked path to be assigned to a commit or explicitly justified"
+  },
+  "raw_artifacts": {
+    "matrix": "t7-orphan-rows.mjs / orphan-rows.log / orphan-rows.result.json (9 rows)",
+    "hazard": "hazard-reachability.log (12/12 regions: body tail != beforeContext)",
+    "f3": "f3-refusal.log, work/f3-pre.txt == work/f3-post.txt",
+    "suites": "gate-plugin-suite.log, gate-self-fix-suite.log, gate-update-task-diagnostics.log",
+    "narrative": "REVIEW.md"
+  }
+}

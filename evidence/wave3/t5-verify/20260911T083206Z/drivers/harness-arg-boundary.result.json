@@ -1,0 +1,44 @@
+{
+  "driver": "harness-arg-boundary",
+  "hostNm": "/root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules",
+  "measuredAt": "2026-09-11T08:34:01.890Z",
+  "results": [
+    {
+      "scenario": "harness-assembler-oversized-stop",
+      "payloadBytes": 16241,
+      "deltaCount": 74,
+      "assembledBlocks": 1,
+      "assembledEqualsRaw": true,
+      "assembledSha": "5d886425afd87cd3c7ba8f9feb91911f1cc44290b77d9945af769d15148478b5",
+      "rawSha": "5d886425afd87cd3c7ba8f9feb91911f1cc44290b77d9945af769d15148478b5",
+      "parsedKeys": [
+        "task_id",
+        "output",
+        "changedPaths",
+        "verdict",
+        "attempt_id",
+        "status"
+      ],
+      "trailingStatusSurvived": true,
+      "attemptIdSurvived": true,
+      "passed": true
+    },
+    {
+      "scenario": "harness-assembler-maxtokens-control",
+      "truncatedBytes": 16181,
+      "blocksAfterMaxTokens": [],
+      "toolCallDropped": true,
+      "passed": true
+    },
+    {
+      "scenario": "static-parse-rule",
+      "sourceFile": "/root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js",
+      "parseFunctionSource": "function parseArguments(raw) {\n\ttry {\n\t\treturn raw ? JSON.parse(raw) : {};\n\t} catch {\n\t\treturn raw;\n\t}\n}\n/**\n* Run one exclusive barrier or parallel pool. Later calls are reclassif",
+      "hasSizeCap": false,
+      "isPlainJsonParse": true,
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "boundary": "the installed harness concatenates tool-call argument deltas verbatim, drops the WHOLE call on a max-tokens finish, and parses with a plain JSON.parse (no size cap, no key filter) — so a trailing key lost inside a dispatched call cannot have been dropped by this layer; it was never emitted by the model, and the plugin-side REQUIRED-parameter contract is the only honest guard"
+}

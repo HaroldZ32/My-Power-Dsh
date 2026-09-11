@@ -1,0 +1,22 @@
+--- BEFORE (pre-fix run) ---
+team_json=27
+4a9acc0dad3a633189bf98fb2878b6453bf6987aaf13a24e3761b3ef123a3a6d  -
+PREFIX_EXIT=0
+[preset-register] ok=true -> /root/dshProj/my-power-dsh/evidence/dsh-qa/preset-register/2026-09-11T06-19-47.427Z
+[preset-register] PASS
+--- AFTER (pre-fix run) ---
+team_json=28
+8898314f119ac2778213f6d9c69b2848523679380bfcbdc538a3a377f872b17b  -
+--- new team dirs ---
+.mpd/team/mpd-default-587132ea
+--- run the FIXED case (current skills/ script) ---
+FIXED_EXIT=0
+[preset-register] ok=true -> /root/dshProj/my-power-dsh/evidence/dsh-qa/preset-register/2026-09-11T06-20-00.439Z
+[preset-register] PASS
+--- AFTER fixed run ---
+team_json=28
+new team dirs vs pre-fix state:
+--- leak-mechanism proof: sandbox session keys from the PRE-FIX run ---
+prefix run log tail:
+[preset-register] ok=true -> /root/dshProj/my-power-dsh/evidence/dsh-qa/preset-register/2026-09-11T06-19-47.427Z
+[preset-register] PASS

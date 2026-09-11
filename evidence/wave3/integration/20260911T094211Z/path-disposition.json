@@ -1,0 +1,122 @@
+{
+  "branch": "dev",
+  "head": "98680b1fb2bbf5c10c28cfbe44419e91595e1cb7",
+  "totalPaths": 1124,
+  "modified": 67,
+  "untracked": 1057,
+  "perCommit": [
+    {
+      "commit": 1,
+      "scope": "adapter workspace root",
+      "paths": 6,
+      "sample": [
+        "packages/mpd-bootstrap-plugin/dist/index.js",
+        "packages/mpd-dsh-adapter-plugin/dist/index.js"
+      ]
+    },
+    {
+      "commit": 2,
+      "scope": "bline session workspace",
+      "paths": 16,
+      "sample": [
+        "packages/mpd-boulder-plugin/dist/index.js",
+        "packages/mpd-boulder-plugin/src/index.ts"
+      ]
+    },
+    {
+      "commit": 3,
+      "scope": "verif",
+      "paths": 62,
+      "sample": [
+        "packages/mpd-verif-plugin/dist/index.js",
+        "packages/mpd-verif-plugin/src/backends.ts"
+      ]
+    },
+    {
+      "commit": 4,
+      "scope": "hashline",
+      "paths": 16,
+      "sample": [
+        "packages/mpd-hashline-plugin/dist/index.js",
+        "packages/mpd-hashline-plugin/src/index.ts"
+      ]
+    },
+    {
+      "commit": 5,
+      "scope": "qa + skills re-pin",
+      "paths": 222,
+      "sample": [
+        "VENDOR_LOCK.json",
+        "evidence/dsh-qa/llm-dual-track/dual-track.tsv"
+      ]
+    },
+    {
+      "commit": 6,
+      "scope": "mcp + codegraph",
+      "paths": 49,
+      "sample": [
+        "packages/mpd-bundle/cordis.patch.yml",
+        "packages/mpd-codegraph-plugin/README.md"
+      ]
+    },
+    {
+      "commit": 7,
+      "scope": "installer parity",
+      "paths": 13,
+      "sample": [
+        "package.json",
+        "scripts/install-profile.mjs"
+      ]
+    },
+    {
+      "commit": 8,
+      "scope": "agent-teams adopted deltas",
+      "paths": 107,
+      "sample": [
+        "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+        "packages/mpd-agent-teams-plugin/lib/tools.js"
+      ]
+    },
+    {
+      "commit": 9,
+      "scope": "AGENTS.md",
+      "paths": 1,
+      "sample": [
+        "AGENTS.md"
+      ]
+    },
+    {
+      "commit": 10,
+      "scope": "evidence bulk",
+      "paths": 632,
+      "sample": [
+        "evidence/agent-teams/provenance-version-align/20260911T032030Z/AGENTS.diff",
+        "evidence/agent-teams/provenance-version-align/20260911T032030Z/result.json"
+      ]
+    }
+  ],
+  "unassigned": [],
+  "nonCommittable": [
+    {
+      "path": ".mpd/team/mpd-wave-3/team.json",
+      "ignored": true,
+      "rule": ".gitignore:21:.mpd/"
+    },
+    {
+      "path": ".mpd/memory",
+      "ignored": true,
+      "rule": ".gitignore:21:.mpd/"
+    },
+    {
+      "path": "dist/mpd-package/package.json",
+      "ignored": true,
+      "rule": ".gitignore:12:dist/mpd-package/"
+    },
+    {
+      "path": ".codegraph/x",
+      "ignored": true,
+      "rule": ".gitignore:10:.codegraph/"
+    }
+  ],
+  "passed": true
+}

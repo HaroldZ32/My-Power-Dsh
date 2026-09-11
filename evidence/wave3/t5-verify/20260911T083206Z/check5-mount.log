@@ -1,0 +1,43 @@
+[t5] source scan expected tools: 14 -> agent_teams_create, agent_teams_edit_plan, agent_teams_approve, agent_teams_add_member, agent_teams_remove_member, agent_teams_create_task, agent_teams_reassign_task, agent_teams_claim_task, agent_teams_update_task, agent_teams_send_message, agent_teams_task_contract, agent_teams_status, agent_teams_resume, agent_teams_delete
+=== t5 MOUNT verification ===
+repo=/root/dshProj/my-power-dsh HEAD=98680b1fb2bbf5c10c28cfbe44419e91595e1cb7
+sandbox DSH_HOME=/tmp/mpd-t5-mnt-dsh-RlVsmR HOME=/tmp/mpd-t5-mnt-home-LOOh1U WORKSPACE=/tmp/mpd-t5-mnt-ws-ipwiUb
+live tools.js sha256=7cb899a72b06a023c25bb25681f3dd75d59c1e911573bf82a5a8da809a3f5c07
+live registry sha256=d3a1d4adce41992b9eb7faf37dd145dbaf4df0352a1b29c8b39038e1a7285ffb
+
+[exit=0] dsh plugin --profile mpd add <repo>
+
+### mounted boot (profile mpd, cwd=/tmp/mpd-t5-mnt-ws-ipwiUb)
+[exit=124] (124 = still alive at the 90s cap)
+apply-crash signatures : 0 (MUST be 0)
+probe reached DONE     : 1 (1 = registration read completed)
+agent-teams tools      : AGENT_TEAMS_TOOLS_PRESENT=14/14
+update_task status req : UPDATE_TASK_STATUS_REQUIRED=true
+required wording       : UPDATE_TASK_DESCRIPTION_HAS_REQUIRED_WORDING=true
+t4 tool (task contract): T4_TOOL_agent_teams_task_contract=REGISTERED
+--- probe lines ---
+[t5-mount-probe] AGENT_TEAMS_TOOLS_PRESENT=14/14
+[t5-mount-probe] AGENT_TEAMS_TOOLS=agent_teams_create:ok,agent_teams_edit_plan:ok,agent_teams_approve:ok,agent_teams_add_member:ok,agent_teams_remove_member:ok,agent_teams_create_task:ok,agent_teams_reassign_task:ok,agent_teams_claim_task:ok,agent_teams_update_task:ok,agent_teams_send_message:ok,agent_teams_task_contract:ok,agent_teams_status:ok,agent_teams_resume:ok,agent_teams_delete:ok
+[t5-mount-probe] UPDATE_TASK_REQUIRED=["task_id","status"]
+[t5-mount-probe] UPDATE_TASK_STATUS_REQUIRED=true
+[t5-mount-probe] UPDATE_TASK_DESCRIPTION_HAS_REQUIRED_WORDING=true
+[t5-mount-probe] T4_TOOL_agent_teams_task_contract=REGISTERED
+[t5-mount-probe] DEFINITION_KEYS=["name","description","parameters","output","execute"]
+[t5-mount-probe] DONE
+--- boot log head ---
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-t5-mnt-ws-ipwiUb
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+CodeGraph MCP skipped: project excluded by OMO CodeGraph policy.
+[t5-mount-probe] AGENT_TEAMS_TOOLS_PRESENT=14/14
+[t5-mount-probe] AGENT_TEAMS_TOOLS=agent_teams_create:ok,agent_teams_edit_plan:ok,agent_teams_approve:ok,agent_teams_add_member:ok,agent_teams_remove_member:ok,agent_teams_create_task:ok,agent_teams_reassign_task:ok,agent_teams_claim_task:ok,agent_teams_update_task:ok,agent_teams_send_message:ok,agent_teams_task_contract:ok,agent_teams_status:ok,agent_teams_resume:ok,agent_teams_delete:ok
+[t5-mount-probe] UPDATE_TASK_REQUIRED=["task_id","status"]
+[t5-mount-probe] UPDATE_TASK_STATUS_REQUIRED=true
+[t5-mount-probe] UPDATE_TASK_DESCRIPTION_HAS_REQUIRED_WORDING=true
+[t5-mount-probe] T4_TOOL_agent_teams_task_contract=REGISTERED
+[t5-mount-probe] DEFINITION_KEYS=["name","description","parameters","output","execute"]
+[t5-mount-probe] DONE
+isolation: sandbox sessions = 
+isolation: recent real-workspace team records and captains:
+isolation: records attributable to this boot (want 0) = 0
+isolation: real-workspace session keys inside the sandbox (want 0) = 0

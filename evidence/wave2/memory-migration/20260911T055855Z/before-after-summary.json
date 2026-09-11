@@ -1,0 +1,28 @@
+{
+  "sourceEntries": {
+    "before": 7,
+    "after": 7,
+    "unchanged": true
+  },
+  "targetEntries": {
+    "before": 20,
+    "after": 27,
+    "added": 7,
+    "lost": 0
+  },
+  "addedFiles": [
+    "agentteams-gui-dsh-better-sidebar-agent-teams-si-mtuviju2.md",
+    "agentteams-gui-dsh-better-sidebar-mtuyguxk.md",
+    "agentteams-scheduler-stall-symptoms-salvage-and--mtva0wbm.md",
+    "live-tool-registry-vs-patch-rows-how-to-test-too-mtv8xwzy.md",
+    "six-low-findings-closed-and-a-falsifiability-lan-mtw8i46k.md",
+    "workmate-rename-delete-agreed-requirements-2026--mtv8l9rl.md",
+    "workmate-rename-delete-delivery-closed-two-traps-mtvngffj.md"
+  ],
+  "lostFiles": [],
+  "reflectionJson": {
+    "before": "7ee2e20805ec59fe8cb06981cadc278a81e3b2e6d30412a3845eb73f04799efc",
+    "after": "7ee2e20805ec59fe8cb06981cadc278a81e3b2e6d30412a3845eb73f04799efc",
+    "unchanged": true
+  }
+}

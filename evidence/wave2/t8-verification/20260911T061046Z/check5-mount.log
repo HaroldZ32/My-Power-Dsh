@@ -1,0 +1,38 @@
+=== t8 MOUNT verification ===
+repo=/root/dshProj/my-power-dsh  HEAD=98680b1fb2bbf5c10c28cfbe44419e91595e1cb7
+sandbox DSH_HOME=/tmp/mpd-t8-mnt-dsh-orU0oD HOME=/tmp/mpd-t8-mnt-home-zTqhOG WORKSPACE=/tmp/mpd-t8-mnt-ws-EhijSR
+live quality-gates.js sha256=4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5
+live registered-tool count (source scan): 14
+
+[exit=0] bun test packages/mpd-agent-teams-plugin
+
+ 90 pass
+ 0 fail
+ 356 expect() calls
+Ran 90 tests across 11 files. [495.00ms]
+[exit=0] dsh plugin --profile mpd add <repo>
+
+### mounted boot (profile mpd, cwd=/tmp/mpd-t8-mnt-ws-EhijSR)
+[exit=124] (124 = still alive at the 90s cap)
+apply-crash signatures : 0 (MUST be 0)
+probe reached DONE     : 1 (1 = registration read completed)
+agent-teams tools      : AGENT_TEAMS_TOOLS_PRESENT=14/14
+t4 tool (task contract): T4_TOOL_agent_teams_task_contract=REGISTERED
+--- mount-probe lines ---
+[mount-probe] AGENT_TEAMS_TOOLS_PRESENT=14/14
+[mount-probe] AGENT_TEAMS_TOOLS=agent_teams_create:ok,agent_teams_approve:ok,agent_teams_edit_plan:ok,agent_teams_add_member:ok,agent_teams_remove_member:ok,agent_teams_create_task:ok,agent_teams_reassign_task:ok,agent_teams_claim_task:ok,agent_teams_update_task:ok,agent_teams_send_message:ok,agent_teams_status:ok,agent_teams_resume:ok,agent_teams_delete:ok,agent_teams_task_contract:ok
+[mount-probe] T4_TOOL_agent_teams_task_contract=REGISTERED
+[mount-probe] DONE
+--- boot log head ---
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-t8-mnt-ws-EhijSR
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+CodeGraph MCP skipped: project excluded by OMO CodeGraph policy.
+[mount-probe] AGENT_TEAMS_TOOLS_PRESENT=14/14
+[mount-probe] AGENT_TEAMS_TOOLS=agent_teams_create:ok,agent_teams_approve:ok,agent_teams_edit_plan:ok,agent_teams_add_member:ok,agent_teams_remove_member:ok,agent_teams_create_task:ok,agent_teams_reassign_task:ok,agent_teams_claim_task:ok,agent_teams_update_task:ok,agent_teams_send_message:ok,agent_teams_status:ok,agent_teams_resume:ok,agent_teams_delete:ok,agent_teams_task_contract:ok
+[mount-probe] T4_TOOL_agent_teams_task_contract=REGISTERED
+[mount-probe] DONE
+isolation: sandbox sessions created by this boot = 
+isolation: real-workspace records created in the window, with their captain sessions:
+isolation: records ATTRIBUTABLE to this boot (want 0) = 0
+isolation: session keys for the real workspace in the sandbox = 0 (want 0)

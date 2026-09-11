@@ -1,0 +1,66 @@
+{
+  "task": "t6 own F-B8-1 harness",
+  "stamp": "2026-09-11T09:13:29.241Z",
+  "preFixLauncherSource": "/root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-mcp-codegraph/launch.mjs",
+  "fixedLauncherSource": "/root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/launch.mjs",
+  "homeUsed": "/root (read-only /root/.mpd)",
+  "scrubbedEnvKeys": [
+    "MPD_CODEGRAPH_BIN",
+    "MPD_DSH_CODEGRAPH_CLI",
+    "MPD_CODEGRAPH_PROJECT_CWD",
+    "MPD_DSH_CODEGRAPH_PROJECT_CWD",
+    "DSH_WORKSPACE_ROOT"
+  ],
+  "preFix": {
+    "exit": {
+      "code": 1,
+      "signal": null
+    },
+    "stdoutBytes": 0,
+    "initAnswered": false,
+    "stderrHead": "node:internal/fs/promises:859\n  return await PromisePrototypeThen(\n         ^\n\nError: ENOENT: no such file or directory, mkdir '/root/.mpd/codegraph'\n    at async mkdir (node:internal/fs/promises:859:10)\n    at async acquireLock (file:///tmp/t6-fb8-EX2Ybc/pre-fix/fakebundle/packages/mpd-mcp-codegraph/dist/serve.js:308:3)\n    at async Object.ensureCodegraphProvisioned [as ensureProvisioned] (file:///tmp/t6-fb8-EX2Ybc/pre-fix/fakebundle/packages/mpd-mcp-codegraph/dist/serve.js:384:19)\n    at async"
+  },
+  "fixed": {
+    "exit": {
+      "code": 0,
+      "signal": null
+    },
+    "stdoutBytes": 213,
+    "initAnswered": true,
+    "tools": [],
+    "stderrHead": "[mpd-mcp-codegraph] unavailable fallback: Error: ENOENT: no such file or directory, mkdir '/root/.mpd/codegraph'\n    at async mkdir (node:internal/fs/promises:859:10)\n    at async acquireLock (file:///tmp/t6-fb8-EX2Ybc/fixed/fakebundle/packages/mpd-mcp-codegraph/dist/serve.js:308:3)\n    at async Object.ensureCodegraphProvisioned [as ensureProvisioned] (file:///tmp/t6-fb8-EX2Ybc/fixed/fakebundle/packages/mpd-mcp-codegraph/dist/serve.js:384:19)\n    at async provisionMissingCodegraph (file:///tmp/t"
+  },
+  "checks": [
+    {
+      "name": "pre-fix bytes are the stale staged package copy and carry NO degradation branch",
+      "pass": true,
+      "detail": "preFixBytes=1238 fixedBytes=3792 preFixHasFallback=false"
+    },
+    {
+      "name": "HOME precondition: /root/.mpd is genuinely unwritable in this sandbox",
+      "pass": true,
+      "detail": "mkdir attempt exit=1"
+    },
+    {
+      "name": "F-B8-1 RED: pre-fix launcher dies uncaught on an unresolvable binary + read-only $HOME/.mpd",
+      "pass": true,
+      "detail": "exit={\"code\":1,\"signal\":null} stdoutBytes=0 stderr=node:internal/fs/promises:859\n  return await PromisePrototypeThen(\n         ^\n\nError: ENOENT: no such file or directory, mkdir '/root/.mpd/codegraph'\n    at async mkdir (node:internal/fs/promises:859:10)\n    at async acquireLock (file:///tmp/t6-fb8-EX2Ybc/pre-fix/fakebundle/packages/mpd-mcp-codegrap"
+    },
+    {
+      "name": "F-B8-1 RED: the crash is uncaught (stack escapes runCodegraphServe), no MCP answer",
+      "pass": true,
+      "detail": "init=null"
+    },
+    {
+      "name": "F-B8-1 GREEN: fixed launcher degrades — answers the MCP handshake with 0 tools, exit 0",
+      "pass": true,
+      "detail": "exit={\"code\":0,\"signal\":null} init=answered tools=[] stderr=[mpd-mcp-codegraph] unavailable fallback: Error: ENOENT: no such file or directory, mkdir '/root/.mpd/codegraph'\n    at async mkdir (node:internal/fs/promises:859:10)\n    at async acquireLock (file:///tmp/t6-fb8-EX2Ybc/f"
+    },
+    {
+      "name": "F-B8-1 GREEN: the degradation names the original error and the skip reason on stderr",
+      "pass": true,
+      "detail": "[mpd-mcp-codegraph] unavailable fallback: Error: ENOENT: no such file or directory, mkdir '/root/.mpd/codegraph'\n    at async mkdir (node:internal/fs/promises:859:10)\n    at async acquireLock (file:///tmp/t6-fb8-EX2Ybc/fixed/fakebundle/packages/mpd-mcp-codegraph/dist/serve.js:308:3)\n    at async Object.ensureCodegraphProvisioned [as ensureProvisioned] (file:///tmp/t6-fb8-EX2Ybc/fixed/fakebundle/pa"
+    }
+  ],
+  "allPass": true
+}

@@ -1,0 +1,64 @@
+{
+  "task": "wave-3 t6 SUPPLEMENT — live-LLM lane invariants, disclosed adjacent changes, canon cross-check",
+  "stamp": "2026-09-11T09:22:00Z",
+  "note": "t6 is terminal; this supplement records additional raw output produced after completion, in response to the captain's context. It changes no verdict.",
+  "live_lane_invariants": {
+    "claim": "EVIDENCE GAP, stated plainly: the live-LLM lanes cannot be green on this box (no LLM key in the credential store). What IS measured is the structural invariant of the repaired dev-flavour boot.",
+    "dual_track_smoke": {
+      "command": "node skills/dsh-qa/scripts/dual-track-smoke.mjs",
+      "exit": 1,
+      "verdict": "ok=false both lanes, MISSING_CREDENTIAL after reaching the model step",
+      "lanes": {
+        "official": {
+          "log": "evidence/dsh-qa/llm-dual-track/official/2026-09-11T09-19-10.796Z/output.log",
+          "err_module_not_found": 0,
+          "cannot_find_module": 0,
+          "root_mpd_occurrences": 0,
+          "child_evidence": "[CodeGraph MCP] Shared daemon unavailable; serving this session in-process (degraded). — the codegraph MCP child DID start through the launcher",
+          "terminal": "dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route \"deepseek-official\""
+        },
+        "deepseek": {
+          "log": "evidence/dsh-qa/llm-dual-track/deepseek/2026-09-11T09-19-15.293Z/output.log",
+          "err_module_not_found": 0,
+          "cannot_find_module": 0,
+          "root_mpd_occurrences": 0,
+          "terminal": "dsh: MISSING_CREDENTIAL: … route \"deepseek-official\""
+        }
+      },
+      "tsv": "evidence/dsh-qa/llm-dual-track/dual-track.tsv (official false 9325 1; deepseek false 4494 1)"
+    },
+    "mcp_call": {
+      "command": "node skills/dsh-qa/scripts/mcp-call.mjs",
+      "exit": 1,
+      "verdict": "ok=false; MISSING_CREDENTIAL after reaching the model step; NOT green",
+      "lanes": {
+        "enum": { "log": "evidence/dsh-qa/mcp-call/2026-09-11T09-16-28.387Z/enum.log", "err_module_not_found": 0, "cannot_find_module": 0, "root_mpd_occurrences": 0, "node_modules_splice_occurrences": 0 },
+        "call": { "log": "evidence/dsh-qa/mcp-call/2026-09-11T09-16-28.387Z/call.log", "err_module_not_found": 0, "cannot_find_module": 0, "root_mpd_occurrences": 0, "node_modules_splice_occurrences": 0 }
+      }
+    },
+    "other_lanes_checked": [
+      { "lane": "preset-register", "log": "evidence/dsh-qa/preset-register/2026-09-11T09-09-38.435Z/output.log", "verdict": "PASS (probe)", "err_module_not_found": 0, "root_mpd_occurrences": 0 },
+      { "lane": "rtl-verif (real case)", "log": "evidence/dsh-qa/rtl-verif/2026-09-11T09-17-11.519Z/output.log", "verdict": "PASS", "err_module_not_found": 0, "root_mpd_occurrences": 0 },
+      { "lane": "bundle-lifecycle", "log": "evidence/dsh-qa/bundle-lifecycle/2026-09-11T09-15-31.554Z/boot.log", "verdict": "PASS", "err_module_not_found": 0, "root_mpd_occurrences": 0 },
+      { "lane": "preset-conformance (boot + control)", "log": "evidence/dsh-qa/preset-conformance/2026-09-11T09-15-31.519Z/", "verdict": "PASS incl. negative control", "err_module_not_found": 0, "root_mpd_occurrences": 0 },
+      { "lane": "t6 own dev/rl/dual-track boots", "log": "evidence/wave3/t6-verify/20260911T090649Z/work/boot-manual,boot-rtlverif,boot-dualtrack/boot.log", "verdict": "probe ok", "err_module_not_found": 0, "root_mpd_occurrences": 0 }
+    ],
+    "not_run": "codegraph-smoke.mjs (live-LLM: would also stop at MISSING_CREDENTIAL; its MPD_CODEGRAPH_BIN pin is documented by design across t3, and its packed staging is stale per risk R1)"
+  },
+  "disclosed_adjacent_changes": {
+    "command_result_shape": "VERIFIED independently in t6-o1.mjs: the shipped dist's /mpd-codegraph handler returns {kind:'success',text} and never {success,error} (assertion `callResultShape.success === undefined`).",
+    "new_package_test": {
+      "command": "bun test packages/mpd-codegraph-plugin",
+      "exit": 0,
+      "raw": "gate-codegraph-package-test.log — 7 pass / 0 fail / 17 expect() / 2 files, EXIT=0",
+      "context": "git ls-tree HEAD packages/mpd-codegraph-plugin/src/ lists only index.ts; src/index.test.ts is untracked (new) — consistent with t4's disclosure that the package gate previously matched no test file (exit 1)."
+    }
+  },
+  "canon_cross_check": {
+    "source": "evidence/wave3/t1-requirements/20260911T081617Z/t1-decision-record.md (full file read, not the clipped prompt copy)",
+    "A4": "launcher-side fix is the canon decision (serve.js is a sha-pinned prebuilt behind the vendor gate); t4's implementation matches it, and my F-B8-1 harness reproduces exactly the acceptance t4 describes (read-only HOME + unresolvable binary → initialize/tools/list answered, exit 0, stderr error + skip hint) plus the mcp-call log invariant '0 uncaught-ENOENT signatures' (R3 lane: 0 ERR_MODULE_NOT_FOUND, 0 module-resolution errors).",
+    "A5": "the canon records the wave-3 'before' fingerprint as treeSha 5b13e920… — identical to the wave-2 final value my vendor audit used as the single re-pin baseline.",
+    "O1_advisory": "route call-time consumers through dsh.workspaceRoot(exec), keep MPD_CODEGRAPH_PROJECT_CWD as the documented escape hatch — matches the behaviour verified in t6-o1.mjs."
+  },
+  "comment_checker": "mpd_comment_check was NOT used as evidence anywhere in t6 (the known un-checked-file-renders-clean defect therefore has no impact on this task's claims; no report against it)."
+}

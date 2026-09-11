@@ -1,0 +1,10 @@
+=== dist consistency spot-check (rebuild + compare) ===
+mpd-dsh-adapter-plugin         BYTE-IDENTICAL
+mpd-verif-plugin               BYTE-IDENTICAL
+mpd-bootstrap-plugin           BYTE-IDENTICAL
+mpd-roles-plugin               BYTE-IDENTICAL
+mpd-tools-plugin               BYTE-IDENTICAL
+mpd-workmate-plugin            BYTE-IDENTICAL
+mpd-hashline-plugin            BYTE-IDENTICAL
+=== repo-root build deviation check (t12's method) ===
+repo-root build (mpd-bootstrap): BYTE-IDENTICAL

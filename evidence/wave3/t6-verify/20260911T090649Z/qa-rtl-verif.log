@@ -1,0 +1,4 @@
+cmd: node skills/dsh-qa/scripts/rtl-verif.mjs
+[rtl-verif] ok=true -> /root/dshProj/my-power-dsh/evidence/dsh-qa/rtl-verif/2026-09-11T09-17-11.519Z
+[rtl-verif] PASS
+EXIT=0

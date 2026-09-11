@@ -1,0 +1,28 @@
+{
+  "task": "t6 falsifiability controls for the devPatch guards",
+  "stamp": "2026-09-11T09:14:44.571Z",
+  "farm": "/root/dshProj/my-power-dsh/evidence/wave3/t6-verify/20260911T090649Z/work/negfarm",
+  "checks": [
+    {
+      "name": "preset-register.mjs: unmodified --self-test passes in the same farm (farm itself is sound)",
+      "pass": true,
+      "detail": "exit=0 out=[preset-register self-test] ok: preset + roster fixtures + web-compat/preset-root/MCP-operand normalization verified"
+    },
+    {
+      "name": "preset-register.mjs: --self-test FAILS when the devPatch fix is reverted (guard is falsifiable, not vacuous)",
+      "pass": true,
+      "detail": "exit=1 out=[preset-register self-test] FAIL: devPatch left the packed /node_modules operand or a baseUrl concat"
+    },
+    {
+      "name": "rtl-verif.mjs: unmodified --self-test passes in the same farm (farm itself is sound)",
+      "pass": true,
+      "detail": "exit=0 out=[rtl-verif self-test] ok: bundle wiring (mpd-verif active + wave rows commented) + golden fixture + eight-tool dist surface + iron-rule strings + devPatch operand guard"
+    },
+    {
+      "name": "rtl-verif.mjs: --self-test FAILS when the devPatch fix is reverted (guard is falsifiable, not vacuous)",
+      "pass": true,
+      "detail": "exit=1 out=[rtl-verif self-test] FAIL: devPatch left the packed /node_modules operand or a baseUrl concat"
+    }
+  ],
+  "allPass": true
+}

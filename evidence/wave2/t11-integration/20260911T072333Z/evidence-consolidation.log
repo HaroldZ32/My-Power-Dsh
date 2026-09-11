@@ -1,0 +1,18 @@
+=== WAVE-2 EVIDENCE CONSOLIDATION ===
+evidence/wave2/adopted-tooling/ files=12 record=[evidence/wave2/adopted-tooling/result.json evidence/wave2/adopted-tooling/README.md ]
+evidence/wave2/adopted-tooling-repair/ files=17 record=[evidence/wave2/adopted-tooling-repair/result.json evidence/wave2/adopted-tooling-repair/README.md ]
+evidence/wave2/adopted-tooling-repair-f4/ files=25 record=[evidence/wave2/adopted-tooling-repair-f4/result.json evidence/wave2/adopted-tooling-repair-f4/README.md ]
+evidence/wave2/adopted-tooling-repair-f4-sibling/ files=1 record=[evidence/wave2/adopted-tooling-repair-f4-sibling/README.md ]
+evidence/wave2/b8-binary-resolution/ files=16 record=[evidence/wave2/b8-binary-resolution/RESULT.json evidence/wave2/b8-binary-resolution/t1-decision-record.md ]
+evidence/wave2/b9-installer-parity/ files=10 record=[]
+evidence/wave2/memory-migration/ files=11 record=[]
+evidence/wave2/qa-workspace-isolation/ files=20 record=[]
+evidence/wave2/r1-f1-exec-forward/ files=14 record=[evidence/wave2/r1-f1-exec-forward/RESULT.json ]
+evidence/wave2/r1-gate-order/ files=14 record=[evidence/wave2/r1-gate-order/RESULT.json ]
+evidence/wave2/t10-review/ files=31 record=[]
+evidence/wave2/t11-integration/ files=7 record=[]
+evidence/wave2/t8-verification/ files=111 record=[]
+evidence/wave2/t9-verification/ files=86 record=[]
+
+=== evidence dirs with no files anywhere under evidence/wave2 ===
+(end)

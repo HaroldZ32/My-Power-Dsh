@@ -1,0 +1,138 @@
+{
+  "task": "wave-3 t6 — independent verification of t3 (QA-harness fidelity) and t4 (codegraph degradation + O-1)",
+  "stamp": "2026-09-11T09:20:00Z",
+  "producer": "Reviewer (independent verification)",
+  "repo": "/root/dshProj/my-power-dsh",
+  "head": "98680b1",
+  "evidence_dir": "evidence/wave3/t6-verify/20260911T090649Z",
+  "principle": "Every claim below is raw output produced in this session by harnesses in this directory. Implementer summaries are not cited as evidence.",
+  "criteria": [
+    {
+      "id": "C1-devPatch-fix",
+      "status": "passed",
+      "raw": [
+        "devboot.result.json (7/7): FIXED patch from skills/dsh-qa/scripts/preset-register.mjs carries no `typeof baseUrl` and no `/node_modules/@mpd-dsh/mpd/`, names all four MCP operands as existing checkout-absolute paths",
+        "work/boot-manual/boot.log: `[t6-mcp-probe] MCP_TOOL_CALL=ok attempt=1` with a REAL ast-grep match (totalMatches 1) in a boot launched with MPD_DSH_*_CLI / MPD_AST_GREP_SG_PATH / MPD_CODEGRAPH_BIN scrubbed",
+        "work/boot-manual-prefix/boot.log: pre-fix patch (extracted from `git show HEAD:…/preset-register.mjs` with the same extractor) → `Cannot find module '<dsh-home>/profiles/headless/node_modules/root/dshProj/…/mpd-mcp-astgrep/launch.mjs'`, code MODULE_NOT_FOUND, MCP tool unknown → the fix is what closed it",
+        "qa-preset-register.log: shipped case PASS (ok=true → evidence/dsh-qa/preset-register/2026-09-11T09-09-38.435Z)"
+      ]
+    },
+    {
+      "id": "C2-rtl-verif-duplicate",
+      "status": "passed",
+      "raw": [
+        "source: skills/dsh-qa/scripts/rtl-verif.mjs devPatch consumes the whole operand (BASEURL_PREFIX split + `\"/node_modules/@mpd-dsh/mpd/` rewrite); no mcpEnv() anywhere in skills/ (grep)",
+        "behaviour: work/dev-rtlverif.yml extracted from rtl-verif.mjs itself → work/boot-rtlverif/boot.log `MCP_TOOL_CALL=ok attempt=1` (same probe, pins scrubbed)",
+        "qa-rtl-verif.log: shipped rtl-verif case PASS (real verilator sim/regress; result.json ok=true)",
+        "negative-controls.result.json (4/4): reverting ONLY the devPatch fix in a symlink-farm copy makes both preset-register and rtl-verif `--self-test` FAIL with `devPatch left the packed /node_modules operand or a baseUrl concat` — the new guards are falsifiable, not vacuous"
+      ]
+    },
+    {
+      "id": "C3-deprecated-pins-gone",
+      "status": "passed",
+      "raw": [
+        "grep over skills/dsh-qa/scripts: zero MPD_DSH_*_CLI assignments, zero `.bin/sg` pins, MPD_CODEGRAPH_BIN only in codegraph-smoke.mjs (by design) and comments",
+        "b8-own-gate.result.json: resolver returns {binary: .toolchain/…/ast-grep, source: toolchain}; `.bin/sg` probe === false; wrong caller pin → BINARY_NOT_FOUND (the launcher never overrides a caller pin)",
+        "boot env of the fixed dev boot was scrubbed with `env -u` and the shell inherited no MPD_* keys (recorded: `env | grep '^MPD_'` empty)"
+      ]
+    },
+    {
+      "id": "C4-codegraph-smoke-pin-documented",
+      "status": "passed",
+      "raw": [
+        "skills/dsh-qa/scripts/codegraph-smoke.mjs:36-41 — comment states the pin is BY DESIGN and that its green says nothing about the bundle's B8 chain",
+        "skills/dsh-qa/SKILL.md case-table row for codegraph-smoke carries the same statement (`Do not remove the pin as if it were a masked defect`)",
+        "gate-test-qa.log: codegraph-smoke --self-test green inside `bun run test:qa`"
+      ]
+    },
+    {
+      "id": "C5-F-B8-1",
+      "status": "passed",
+      "raw": [
+        "fb8-own.result.json (6/6) — independent harness, pre-fix bytes taken from the STALE STAGED PACKAGE (dist/mpd-package/…/mpd-mcp-codegraph/launch.mjs, built 07:27Z, no degradation branch), not from the implementer's copy",
+        "RED: exit 1, 0 stdout bytes, uncaught `Error: ENOENT: no such file or directory, mkdir '/root/.mpd/codegraph'` (stack acquireLock → runCodegraphServe), no MCP answer",
+        "GREEN: exit 0, initialize+tools answered with tools=[], stderr carries `[mpd-mcp-codegraph] unavailable fallback: …` and `CodeGraph MCP skipped`",
+        "precondition measured: `mkdir /root/.mpd/…` → `Read-only file system`",
+        "durability: fix lives in our own packages/mpd-mcp-codegraph/launch.mjs; `git status` shows dist/serve.js (sha-pinned prebuilt) untouched; scripts/pack-mpd.mjs copies both launchers and hard-FAILs when one is missing; verify-vendor exits 0"
+      ]
+    },
+    {
+      "id": "C6-O-1",
+      "status": "passed",
+      "raw": [
+        "o1-own.result.json (9/9): THREE real headless MOUNT boots of the dev patch (isolated DSH_HOME + sandbox HOME), reading the shipped `[mpd-codegraph] init … cwd=` line",
+        "apply-time: DSH_WORKSPACE_ROOT=<session ws> != process cwd → cwd=<session ws>; without override → process.cwd(); with MPD_CODEGRAPH_PROJECT_CWD → the explicit override wins",
+        "call-time: the shipped dist's /mpd-codegraph handler resolves the INVOCATION session cwd, falls back to process.cwd() with no invocation, honours the env override, and returns a CommandResult `{kind}`",
+        "0 apply-crash signatures in all three boots"
+      ]
+    },
+    {
+      "id": "C7-vendor-repin",
+      "status": "passed",
+      "raw": [
+        "vendor-repin.result.json (6/6): 366 files enumerated == locked; treeSha recomputed with verify-vendor's own algorithm == committed 3259d07a…; exactly one re-pin separates wave-2's final 5b13e920… from 3259d07a… (fileCount unchanged); VENDOR_LOCK diff touches only the skills entry",
+        "gate-verify-vendor.log: PASS, EXIT=0 (`asset OK: skills 366 files`)"
+      ]
+    },
+    {
+      "id": "C8-full-gates",
+      "status": "passed",
+      "raw": [
+        "bun test packages: 366 pass / 0 fail (41 files), EXIT=0",
+        "bun run typecheck: EXIT=0 (no output)",
+        "bun run test:qa: all self-tests passed, EXIT=0",
+        "preset-conformance: PASS, EXIT=0; negativeControl ok=true (`agent-preset/invalid … $.prefix missing required value`), parity 31/31, bootLog signatures []",
+        "bundle-lifecycle: PASS, EXIT=0; its boot.log has 0 apply-crash signatures",
+        "0 apply-crash signatures also in the 3 O-1 boots, the dev boots and the dual-track/rtl-verif dev boots"
+      ]
+    },
+    {
+      "id": "C9-raw-output-only",
+      "status": "passed",
+      "raw": [
+        "harnesses written for this task: t6-devpatch.mjs, t6-devboot-assert.mjs, t6-b8-gate.mjs, t6-fb8.mjs, t6-o1.mjs, t6-negative-controls.mjs, t6-vendor-repin.mjs; logs and result JSONs live beside them"
+      ]
+    }
+  ],
+  "findings_risks": [
+    {
+      "id": "R1",
+      "severity": "medium",
+      "problem": "dist/mpd-package (the staged packed bundle) was built 2026-09-11 07:27Z and predates t3/t4: its codegraph launcher has NO F-B8-1 degradation branch, its mpd-codegraph-plugin dist has no O-1 resolution, and its skills/dsh-qa scripts are the pre-fix copies. Any packed-install case (mcp-call, codegraph-smoke) or release artifact cited before a re-pack describes older code.",
+      "evidence": "diff dist/mpd-package/packages/mpd-mcp-codegraph/launch.mjs packages/mpd-mcp-codegraph/launch.mjs (degradation block absent); mcp-call boot log shows `[mpd-bootstrap] skill corpus served from …/dist/mpd-package/skills`",
+      "recommendation": "t8 runs `node scripts/pack-mpd.mjs` before citing/refreshing packed-install evidence; the release artifact must be re-packed."
+    },
+    {
+      "id": "R2",
+      "severity": "low",
+      "problem": "The legacy dev installer scripts/install-profile.mjs still bypasses both launchers and pre-pins the deprecated wrapper: mcp-astgrep args=packages/mpd-mcp-astgrep/dist/cli.js with `MPD_AST_GREP_SG_PATH: <repo>/.toolchain/node_modules/.bin/sg` (the wrapper that exits 1 on --version), and mcp-codegraph args=packages/mpd-mcp-codegraph/dist/serve.js with MPD_CODEGRAPH_BIN. So a legacy-installed profile keeps the deprecated sg pin and the uncaught F-B8-1 crash path.",
+      "evidence": "scripts/install-profile.mjs:62-63,82-83,94-96",
+      "recommendation": "carry-forward line (legacy flow is superseded per AGENTS.md §8, but the installer is still a listed gate); route those two rows through the launchers when the installer is next touched."
+    },
+    {
+      "id": "R3",
+      "severity": "low",
+      "problem": "No LLM credential exists on this box (`~/.dsh/.credentials.yaml` holds only client-connection/browser-session), so the shipped live-LLM cases (mcp-call, dual-track-smoke, codegraph-smoke) cannot reach their assertions: mcp-call measured `MISSING_CREDENTIAL: llm-deepseek: no API key for provider route \"deepseek-official\"` after a clean boot.",
+      "evidence": "qa-mcp-call.log + evidence/dsh-qa/mcp-call/2026-09-11T09-16-28.387Z/{result.json,enum.log,call.log}",
+      "recommendation": "keep the MCP-answer proof at the boot/child level (this task's t6 boot probe + b8 gate) and do not treat a red mcp-call on a credential-less box as a regression; re-run it where a key is hostable."
+    },
+    {
+      "id": "R4",
+      "severity": "low",
+      "problem": "Untracked source files that the three-wave commit plan must stage, or the wave-2/3 fixes and the QA helper are lost: packages/mpd-mcp-{astgrep,codegraph}/launch.mjs, packages/mpd-mcp-shared/, skills/dsh-qa/scripts/lib/workspace-isolation.mjs, packages/mpd-agent-teams-plugin/{lib/mpd-deltas.js,self-fix-tests/*,test/*}, scripts/patch-agent-teams-fixes.mjs, scripts/verify-rows-parity.mjs, packages/*/test/*.",
+      "evidence": "git status --porcelain (filtered `^??` excl. evidence/)",
+      "recommendation": "t8's commit plan must `git add` the untracked source files by name (not `git add -A` over evidence)."
+    },
+    {
+      "id": "R5",
+      "severity": "info",
+      "problem": "dsh.hasTool(\"mcp__ast_grep__search\") returned false at plugin apply time while dsh.executeTool on the same name answered with a real match — hasTool reads the global tool view and must not be used as an MCP-registration gate.",
+      "evidence": "work/boot-manual/boot.log (`HAS_TOOL=false` followed by `MCP_TOOL_CALL=ok`)",
+      "recommendation": "informational; matches the AGENTS.md warning about hasTool."
+    }
+  ],
+  "limitations": [
+    "This sandbox's $HOME=cannot be made unwritable by permissions (root bypasses mode bits), so F-B8-1's unwritable-state-dir arm uses the genuinely read-only /root/.mpd (EROFS), same as t4.",
+    "Live-LLM assertions are impossible here (R3). No --dump-config result is cited as load evidence anywhere in this task; every behavioural claim comes from a boot that MOUNTS the rows (probe output / apply lines) or from a real MCP stdio child."
+  ]
+}

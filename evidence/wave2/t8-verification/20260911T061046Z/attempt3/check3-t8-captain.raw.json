@@ -1,0 +1,257 @@
+{
+  "driver": "check3-live-contract",
+  "liveTeamJson": ".mpd/team/mpd-wave-2/team.json",
+  "sandbox": "/tmp/mpd-t8-contract-nXtQqc",
+  "caller": {
+    "kind": "captain",
+    "id": "session-aded9c07-4cd3-4c82-ac31-22ce8c47c5be"
+  },
+  "registeredToolCount": 14,
+  "registeredToolNames": [
+    "agent_teams_add_member",
+    "agent_teams_approve",
+    "agent_teams_claim_task",
+    "agent_teams_create",
+    "agent_teams_create_task",
+    "agent_teams_delete",
+    "agent_teams_edit_plan",
+    "agent_teams_reassign_task",
+    "agent_teams_remove_member",
+    "agent_teams_resume",
+    "agent_teams_send_message",
+    "agent_teams_status",
+    "agent_teams_task_contract",
+    "agent_teams_update_task"
+  ],
+  "liveSha256Before": "12dbf0a0cdd2f201584639ba8e61978cbe6f71eb1e2801e282a721f9828d6692",
+  "sandboxSha256Before": "12dbf0a0cdd2f201584639ba8e61978cbe6f71eb1e2801e282a721f9828d6692",
+  "toolRegistered": true,
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "task_id": {
+        "type": "string",
+        "description": "Task id from the shared task list, e.g. \"t4\"."
+      }
+    }
+  },
+  "hasRender": true,
+  "view": {
+    "task_id": "t8",
+    "subject": "Verify the adopted-tooling fixes: `**` expansion, contract consistency, contract readability, vendor-refresh durability",
+    "kind": "verification",
+    "status": "in_progress",
+    "assignee": "Lead",
+    "attempt": 3,
+    "attempt_id": "45f32c34-4926-4556-9a42-ed5f3f582e02",
+    "dependencies": [
+      "t4"
+    ],
+    "objective": "Independently verify that the adopted agent-teams tooling fixes actually close the inScope `**` gap, prevent contradictory contract generation, expose a running task's contract, and survive a vendor refresh.",
+    "in_scope": [],
+    "out_of_scope": [],
+    "acceptance": [
+      "The `**` defect is reproduced against the PRE-FIX code (a declared directory-prefix pattern fails to cover the files beneath it) and then shown to be honored after the fix — a driven fixture or test, not an assertion",
+      "The contract contradiction is reproduced against pre-fix generation and shown to be impossible after the fix, with the reproduction raw output recorded",
+      "A LIVE running task's contract is read through the new surface and compared field-by-field against what was actually declared for it — inScope, outOfScope, dependencies and acceptance — and a field-level mismatch is reported rather than glossed",
+      "The vendor-refresh durability claim is tested by actually exercising the re-apply guard's failure mode (remove/rename its anchor and show it fails loudly), then restoring",
+      "No agent-teams regression: the plugin's own suite is green and a boot applying the agent-teams row shows 0 apply-crash signatures, with no --dump-config result cited as load evidence",
+      "Every acceptance criterion of t4 is checked against raw output the verifier produced; anything unreproducible is reported as a failure, not waved through"
+    ],
+    "verify": [
+      "bun test packages/mpd-agent-teams-plugin",
+      "a mounted boot applying the agent-teams row (0 apply-crash signatures)",
+      "the vendor-refresh guard exercised with its anchor removed",
+      "a live-task contract read compared against its declaration"
+    ],
+    "deliverables": [],
+    "non_goals": [],
+    "reassign_reason": "RETRY with an EXPLICIT RE-SCOPE — read this before you verdict, because it changes what t8 judges and you were right that the criterion as originally written cannot be satisfied by this tree.\n\nWHAT CHANGED: t15 (the repair I opened for the `tools.js` sibling) FAILED, and its owner deliberately REVERTED to t14's verified state rather than ship an unproven registry. That revert was correct. The attempt also proved the residual is NOT repairable by re-anchoring — it needs a REGISTRY DESIGN CHANGE — so I have re-scoped it out of wave 2 and cancelled t15 with that reasoning recorded. The tree is deliberately back on t14's semantics, verified after the revert: `check4e-heal-fidelity` = `{\"identical\": true, \"diff_lines\": 0}`; plugin 90/0; self-fix 33/0; guard 9 regions applied.\n\nYOUR CRITERION 4 IS RE-SCOPED — explicitly, by captain ruling:\n- What it NOW verifies: the re-apply guard exercises its failure mode on **`quality-gates.js`** (the file t4's acceptance is anchored to) and its restore is BYTE-FAITHFUL there — i.e. `check4e` reports `identical: true`, `diff_lines: 0`, and a canonical-vs-healed region line agreement.\n- What it EXCLUDES from the verdict: the `tools.js` sibling. It is a KNOWN LIMITATION, not a pass/fail item. The reason is not convenience: four approaches were measured and all failed (a self-anchoring wrap does not transfer because `task-contract` registers a new tool; insert-before produced `region \"mpd-delta scope-overlap\" has a half-open marker pair (begin@230, end@229)` and damaged the file t14 proved faithful; `anchorMarker` is structurally absent in the strip case because it IS the region's first line; a blind index is excluded and measurably wrong — the anchor occurs 14 times). A residual that requires a design change, is unreachable in normal operation (nothing strips regions day to day), and cannot touch the live tree does not justify blocking the wave's close.\n- Add `check4f-tools-heal-fidelity` to your runs as a KNOWN-FAILURE BASELINE: expect `byte-identical: false` for `tools.js` (it heals `task-contract` at line 545 where canonical is 1734). Record it; do NOT let it decide the verdict.\n\nREQUIRED HONESTY IN YOUR VERDICT — this is the condition on the re-scope, and I am holding you to it:\nState plainly that t4 acceptance 5 is **MET for `quality-gates.js` and NOT MET for `tools.js`**, that a full strip-heal of `tools.js` still diverges from canonical, that it is unreachable in normal operation and cannot affect the live tree, and that the four measurements plus two candidate designs live at `evidence/wave2/adopted-tooling-repair-f4-sibling/README.md` with wave 3 owning the redesign. Do NOT describe the class as closed or acceptance 5 as fully satisfied. A pass that overstates this is worse than a failure that states it.\n\nEVERYTHING ELSE IS UNCHANGED: run your full contract on this revision — check1 (pre-fix from `git archive HEAD` + post-fix), check2 with the real archived t7+t10 inputs plus the falsifiability probe on `VENDOR_LOCK.json` / `presets/mpd/agent.cordis.yml` and the over-carve control, check3 against the live record, check4 (failure modes + dynamic S5), check4b region coverage, check4d re-materialize refusal, check4e byte fidelity, check5 (suite + isolated mount with attributed isolation counters). Re-derive every gate yourself rather than accepting the reported 90/0 + 33/0 + 343/0. No `--dump-config` as load evidence. Keep the restart caveat in the verdict.",
+    "acceptance_results": [
+      {
+        "criterion": "The `**` defect is reproduced against the PRE-FIX code (a declared directory-prefix pattern fails to cover the files beneath it) and then shown to be honored after the fix — a driven fixture or test, not an assertion",
+        "status": "passed",
+        "evidence": "check1-prefix/postfix.raw.json on the repaired tree (pre-fix modules from git HEAD 98680b1f): pre-fix pathMatchesScope('packages/foo/test/a.test.mjs','packages/foo/test/**')=false, classifyChangedPath=undeclared, completion gate ok=false; post-fix true/in_scope/ok=true; negative controls identical in both; real wave-1 t7 replay flips from ok=false (2 uncovered src paths) to ok=true."
+      },
+      {
+        "criterion": "The contract contradiction is reproduced against pre-fix generation and shown to be impossible after the fix, with the reproduction raw output recorded",
+        "status": "passed",
+        "evidence": "check2-prefix/postfix.raw.json + check2-sweep-partition.raw.json: pre-fix replay of the REAL archived inputs (mpd-default-7332aba4 t7+t10) still reproduces the recorded t13 contract byte-for-byte with AGENTS.md in BOTH lists (24/60 sweep contradictions, create gate ok=true). Post-fix: contradiction-free, demandedButNotInScope=[], all seven required finding files in_scope, and the falsifiability control holds — every prohibition no finding requires (presets/**, cordis.patch.yml, VENDOR_LOCK.json, README.md, README.zh-CN.md) is still forbidden; 0/36 contradictory scopes from satisfiable sources (the 6 remaining all inherit a source the create-time gate now refuses). F1 is now prevented, not narrowed."
+      },
+      {
+        "criterion": "A LIVE running task's contract is read through the new surface and compared field-by-field against what was actually declared for it — inScope, outOfScope, dependencies and acceptance — and a field-level mismatch is reported rather than glossed",
+        "status": "passed",
+        "evidence": "check3-t8/t13-captain.raw.json: REAL registration against a byte-identical copy of the live record; 14/14 tools incl. agent_teams_task_contract; t8 (in_progress) and t13 (just completed) 13/13 compared fields identical to the durable record; member read OK; unknown+blank ids refused; live team.json and sandbox copy byte-identical after every read."
+      },
+      {
+        "criterion": "The vendor-refresh durability claim is tested by actually exercising the re-apply guard's failure mode (remove/rename its anchor and show it fails loudly with a non-zero exit), then restoring",
+        "status": "failed",
+        "evidence": "FAILED on the restore half. check4-guard.raw.json: real-tree --check exit 0 (9 regions); region stripped -> exit 1; region+anchor removed -> --write exit 1 naming the anchor; region body edited (target discovered dynamically) -> exit 1 naming region+line; pristine restore -> exit 0; live tree sha256 unchanged. BUT check4e-heal-fidelity.raw.json: stripping every region from OUR file and healing leaves the file 22 diff lines away from the canonical adoption while --write and the next --check both exit 0 — the create-contract-gate region is re-inserted at its anchor's 4-space indentation instead of its canonical 8-space block, moving the gate outside `if (WRITE_KINDS.includes(kind)) {`. See finding F4."
+      },
+      {
+        "criterion": "No agent-teams regression: the plugin's own suite is green and a boot applying the agent-teams row shows 0 apply-crash signatures, with no --dump-config result cited as load evidence",
+        "status": "passed",
+        "evidence": "check5-plugin-suite.log: 87 tests, 0 fail, 343 expect() calls, exit 0. check5-mount.raw.json: isolated DSH_HOME+HOME+workspace install-and-boot with a --patch registration probe -> 0 apply-crash signatures, probe DONE, AGENT_TEAMS_TOOLS_PRESENT=14/14 with agent_teams_task_contract=REGISTERED, exit 124 (alive at cap); isolation now attributed to this boot's sessions (0 attributable records, 0 real-workspace session keys). No --dump-config cited."
+      },
+      {
+        "criterion": "Every acceptance criterion of t4 is checked against raw output the verifier produced; anything unreproducible is reported as a failure, not waved through",
+        "status": "passed",
+        "evidence": "result.json t4_acceptance_map: 1 PASS (C1), 2 PASS (C2), 3 PASS (C3), 4 PASS (C4b: 0 of 212 added lines outside the 9 regions), 5 PARTIAL -> F4 (the re-materialize refusal is correct and loud per C4d, and every failure mode exits non-zero per C4, but the clean heal silently rewrites a region's placement), 6 PASS (C5), 7 PASS. F1/F2/F3 confirmed closed on raw output; F4 is new and reported rather than waved through."
+      }
+    ],
+    "commands_run": [
+      {
+        "command": "bun test packages/mpd-agent-teams-plugin",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "87 tests, 0 fail, 343 expect() calls — check5-plugin-suite.log"
+      },
+      {
+        "command": "a mounted boot applying the agent-teams row (0 apply-crash signatures)",
+        "status": "passed",
+        "exitCode": 124,
+        "evidence": "isolated DSH_HOME+HOME+sandbox workspace, dsh plugin add + boot with registration probe: apply-crash signatures 0, probe DONE, 14/14 tools incl. the t4 tool, exit 124 at the 90s cap, isolation attributed (0 records from this boot) — check5-mount.log / check5-mount.raw.json"
+      },
+      {
+        "command": "the vendor-refresh guard exercised with its anchor removed",
+        "status": "passed",
+        "exitCode": 1,
+        "evidence": "region+anchor removed -> --write exit 1 'its anchor line is gone too (\"function isDefaultExcluded(path) {\")'; region stripped -> exit 1; body edited -> exit 1 naming the region and line 118; clean restore exits 0 but is NOT byte-faithful (F4, check4e-heal-fidelity) — check4-guard.log / check4e-heal-fidelity.log"
+      },
+      {
+        "command": "a live-task contract read compared against its declaration",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "t8 (in_progress) and t13 (just completed) read through the REAL agent_teams_task_contract registration against a byte-identical copy of the live record: 13/13 fields match; live file byte-identical after the read — check3-t8-captain.raw.json / check3-t13-captain.raw.json"
+      }
+    ],
+    "changed_paths": [
+      "evidence/wave2/t8-verification/20260911T061046Z/attempt2/result.json",
+      "evidence/wave2/t8-verification/20260911T061046Z/attempt2/drivers/check4e-heal-fidelity.sh",
+      "evidence/wave2/t8-verification/20260911T061046Z/attempt2/drivers/check4b-region-coverage.sh"
+    ],
+    "findings_open": 1
+  },
+  "rendered": "Task t8 [in_progress] verification — Verify the adopted-tooling fixes: `**` expansion, contract consistency, contract readability, vendor-refresh durability\nAssignee: Lead (attempt 3, attempt_id 45f32c34-4926-4556-9a42-ed5f3f582e02)\nDependencies: t4\nContract:\n  Objective: Independently verify that the adopted agent-teams tooling fixes actually close the inScope `**` gap, prevent contradictory contract generation, expose a running task's contract, and survive a vendor refresh.\n  In scope: (none)\n  Out of scope: (none)\n  Acceptance: The `**` defect is reproduced against the PRE-FIX code (a declared directory-prefix pattern fails to cover the files beneath it) and then shown to be honored after the fix — a driven fixture or test, not an assertion, The contract contradiction is reproduced against pre-fix generation and shown to be impossible after the fix, with the reproduction raw output recorded, A LIVE running task's contract is read through the new surface and compared field-by-field against what was actually declared for it — inScope, outOfScope, dependencies and acceptance — and a field-level mismatch is reported rather than glossed, The vendor-refresh durability claim is tested by actually exercising the re-apply guard's failure mode (remove/rename its anchor and show it fails loudly), then restoring, No agent-teams regression: the plugin's own suite is green and a boot applying the agent-teams row shows 0 apply-crash signatures, with no --dump-config result cited as load evidence, Every acceptance criterion of t4 is checked against raw output the verifier produced; anything unreproducible is reported as a failure, not waved through\n  Verify: bun test packages/mpd-agent-teams-plugin, a mounted boot applying the agent-teams row (0 apply-crash signatures), the vendor-refresh guard exercised with its anchor removed, a live-task contract read compared against its declaration\n  Reassignment reason: RETRY with an EXPLICIT RE-SCOPE — read this before you verdict, because it changes what t8 judges and you were right that the criterion as originally written cannot be satisfied by this tree.\n\nWHAT CHANGED: t15 (the repair I opened for the `tools.js` sibling) FAILED, and its owner deliberately REVERTED to t14's verified state rather than ship an unproven registry. That revert was correct. The attempt also proved the residual is NOT repairable by re-anchoring — it needs a REGISTRY DESIGN CHANGE — so I have re-scoped it out of wave 2 and cancelled t15 with that reasoning recorded. The tree is deliberately back on t14's semantics, verified after the revert: `check4e-heal-fidelity` = `{\"identical\": true, \"diff_lines\": 0}`; plugin 90/0; self-fix 33/0; guard 9 regions applied.\n\nYOUR CRITERION 4 IS RE-SCOPED — explicitly, by captain ruling:\n- What it NOW verifies: the re-apply guard exercises its failure mode on **`quality-gates.js`** (the file t4's acceptance is anchored to) and its restore is BYTE-FAITHFUL there — i.e. `check4e` reports `identical: true`, `diff_lines: 0`, and a canonical-vs-healed region line agreement.\n- What it EXCLUDES from the verdict: the `tools.js` sibling. It is a KNOWN LIMITATION, not a pass/fail item. The reason is not convenience: four approaches were measured and all failed (a self-anchoring wrap does not transfer because `task-contract` registers a new tool; insert-before produced `region \"mpd-delta scope-overlap\" has a half-open marker pair (begin@230, end@229)` and damaged the file t14 proved faithful; `anchorMarker` is structurally absent in the strip case because it IS the region's first line; a blind index is excluded and measurably wrong — the anchor occurs 14 times). A residual that requires a design change, is unreachable in normal operation (nothing strips regions day to day), and cannot touch the live tree does not justify blocking the wave's close.\n- Add `check4f-tools-heal-fidelity` to your runs as a KNOWN-FAILURE BASELINE: expect `byte-identical: false` for `tools.js` (it heals `task-contract` at line 545 where canonical is 1734). Record it; do NOT let it decide the verdict.\n\nREQUIRED HONESTY IN YOUR VERDICT — this is the condition on the re-scope, and I am holding you to it:\nState plainly that t4 acceptance 5 is **MET for `quality-gates.js` and NOT MET for `tools.js`**, that a full strip-heal of `tools.js` still diverges from canonical, that it is unreachable in normal operation and cannot affect the live tree, and that the four measurements plus two candidate designs live at `evidence/wave2/adopted-tooling-repair-f4-sibling/README.md` with wave 3 owning the redesign. Do NOT describe the class as closed or acceptance 5 as fully satisfied. A pass that overstates this is worse than a failure that states it.\n\nEVERYTHING ELSE IS UNCHANGED: run your full contract on this revision — check1 (pre-fix from `git archive HEAD` + post-fix), check2 with the real archived t7+t10 inputs plus the falsifiability probe on `VENDOR_LOCK.json` / `presets/mpd/agent.cordis.yml` and the over-carve control, check3 against the live record, check4 (failure modes + dynamic S5), check4b region coverage, check4d re-materialize refusal, check4e byte fidelity, check5 (suite + isolated mount with attributed isolation counters). Re-derive every gate yourself rather than accepting the reported 90/0 + 33/0 + 343/0. No `--dump-config` as load evidence. Keep the restart caveat in the verdict.\nCompletion payload so far:\n  acceptanceResults: [{\"criterion\":\"The `**` defect is reproduced against the PRE-FIX code (a declared directory-prefix pattern fails to cover the files beneath it) and then shown to be honored after the fix — a driven fixture or test, not an assertion\",\"status\":\"passed\",\"evidence\":\"check1-prefix/postfix.raw.json on the repaired tree (pre-fix modules from git HEAD 98680b1f): pre-fix pathMatchesScope('packages/foo/test/a.test.mjs','packages/foo/test/**')=false, classifyChangedPath=undeclared, completion gate ok=false; post-fix true/in_scope/ok=true; negative controls identical in both; real wave-1 t7 replay flips from ok=false (2 uncovered src paths) to ok=true.\"},{\"criterion\":\"The contract contradiction is reproduced against pre-fix generation and shown to be impossible after the fix, with the reproduction raw output recorded\",\"status\":\"passed\",\"evidence\":\"check2-prefix/postfix.raw.json + check2-sweep-partition.raw.json: pre-fix replay of the REAL archived inputs (mpd-default-7332aba4 t7+t10) still reproduces the recorded t13 contract byte-for-byte with AGENTS.md in BOTH lists (24/60 sweep contradictions, create gate ok=true). Post-fix: contradiction-free, demandedButNotInScope=[], all seven required finding files in_scope, and the falsifiability control holds — every prohibition no finding requires (presets/**, cordis.patch.yml, VENDOR_LOCK.json, README.md, README.zh-CN.md) is still forbidden; 0/36 contradictory scopes from satisfiable sources (the 6 remaining all inherit a source the create-time gate now refuses). F1 is now prevented, not narrowed.\"},{\"criterion\":\"A LIVE running task's contract is read through the new surface and compared field-by-field against what was actually declared for it — inScope, outOfScope, dependencies and acceptance — and a field-level mismatch is reported rather than glossed\",\"status\":\"passed\",\"evidence\":\"check3-t8/t13-captain.raw.json: REAL registration against a byte-identical copy of the live record; 14/14 tools incl. agent_teams_task_contract; t8 (in_progress) and t13 (just completed) 13/13 compared fields identical to the durable record; member read OK; unknown+blank ids refused; live team.json and sandbox copy byte-identical after every read.\"},{\"criterion\":\"The vendor-refresh durability claim is tested by actually exercising the re-apply guard's failure mode (remove/rename its anchor and show it fails loudly with a non-zero exit), then restoring\",\"status\":\"failed\",\"evidence\":\"FAILED on the restore half. check4-guard.raw.json: real-tree --check exit 0 (9 regions); region stripped -> exit 1; region+anchor removed -> --write exit 1 naming the anchor; region body edited (target discovered dynamically) -> exit 1 naming region+line; pristine restore -> exit 0; live tree sha256 unchanged. BUT check4e-heal-fidelity.raw.json: stripping every region from OUR file and healing leaves the file 22 diff lines away from the canonical adoption while --write and the next --check both exit 0 — the create-contract-gate region is re-inserted at its anchor's 4-space indentation instead of its canonical 8-space block, moving the gate outside `if (WRITE_KINDS.includes(kind)) {`. See finding F4.\"},{\"criterion\":\"No agent-teams regression: the plugin's own suite is green and a boot applying the agent-teams row shows 0 apply-crash signatures, with no --dump-config result cited as load evidence\",\"status\":\"passed\",\"evidence\":\"check5-plugin-suite.log: 87 tests, 0 fail, 343 expect() calls, exit 0. check5-mount.raw.json: isolated DSH_HOME+HOME+workspace install-and-boot with a --patch registration probe -> 0 apply-crash signatures, probe DONE, AGENT_TEAMS_TOOLS_PRESENT=14/14 with agent_teams_task_contract=REGISTERED, exit 124 (alive at cap); isolation now attributed to this boot's sessions (0 attributable records, 0 real-workspace session keys). No --dump-config cited.\"},{\"criterion\":\"Every acceptance criterion of t4 is checked against raw output the verifier produced; anything unreproducible is reported as a failure, not waved through\",\"status\":\"passed\",\"evidence\":\"result.json t4_acceptance_map: 1 PASS (C1), 2 PASS (C2), 3 PASS (C3), 4 PASS (C4b: 0 of 212 added lines outside the 9 regions), 5 PARTIAL -> F4 (the re-materialize refusal is correct and loud per C4d, and every failure mode exits non-zero per C4, but the clean heal silently rewrites a region's placement), 6 PASS (C5), 7 PASS. F1/F2/F3 confirmed closed on raw output; F4 is new and reported rather than waved through.\"}]\n  commandsRun: [{\"command\":\"bun test packages/mpd-agent-teams-plugin\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"87 tests, 0 fail, 343 expect() calls — check5-plugin-suite.log\"},{\"command\":\"a mounted boot applying the agent-teams row (0 apply-crash signatures)\",\"status\":\"passed\",\"exitCode\":124,\"evidence\":\"isolated DSH_HOME+HOME+sandbox workspace, dsh plugin add + boot with registration probe: apply-crash signatures 0, probe DONE, 14/14 tools incl. the t4 tool, exit 124 at the 90s cap, isolation attributed (0 records from this boot) — check5-mount.log / check5-mount.raw.json\"},{\"command\":\"the vendor-refresh guard exercised with its anchor removed\",\"status\":\"passed\",\"exitCode\":1,\"evidence\":\"region+anchor removed -> --write exit 1 'its anchor line is gone too (\\\"function isDefaultExcluded(path) {\\\")'; region stripped -> exit 1; body edited -> exit 1 naming the region and line 118; clean restore exits 0 but is NOT byte-faithful (F4, check4e-heal-fidelity) — check4-guard.log / check4e-heal-fidelity.log\"},{\"command\":\"a live-task contract read compared against its declaration\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"t8 (in_progress) and t13 (just completed) read through the REAL agent_teams_task_contract registration against a byte-identical copy of the live record: 13/13 fields match; live file byte-identical after the read — check3-t8-captain.raw.json / check3-t13-captain.raw.json\"}]\n  changedPaths: [\"evidence/wave2/t8-verification/20260911T061046Z/attempt2/result.json\",\"evidence/wave2/t8-verification/20260911T061046Z/attempt2/drivers/check4e-heal-fidelity.sh\",\"evidence/wave2/t8-verification/20260911T061046Z/attempt2/drivers/check4b-region-coverage.sh\"]\nOpen findings: 1",
+  "unknownId": "task \"t-does-not-exist\" does not exist in team \"MPD Wave 2\" (known tasks: t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15)",
+  "blankId": "task_id is required",
+  "memberRead": {
+    "ok": true,
+    "in_scope": [],
+    "out_of_scope": [],
+    "acceptance_len": 6
+  },
+  "liveSha256After": "12dbf0a0cdd2f201584639ba8e61978cbe6f71eb1e2801e282a721f9828d6692",
+  "sandboxSha256After": "12dbf0a0cdd2f201584639ba8e61978cbe6f71eb1e2801e282a721f9828d6692",
+  "liveUntouched": true,
+  "sandboxUntouched": true,
+  "declared": {
+    "subject": "Verify the adopted-tooling fixes: `**` expansion, contract consistency, contract readability, vendor-refresh durability",
+    "kind": "verification",
+    "status": "in_progress",
+    "assignee": "Lead",
+    "attempt": 3,
+    "attemptId": "45f32c34-4926-4556-9a42-ed5f3f582e02",
+    "dependencies": [
+      "t4"
+    ],
+    "objective": "Independently verify that the adopted agent-teams tooling fixes actually close the inScope `**` gap, prevent contradictory contract generation, expose a running task's contract, and survive a vendor refresh.",
+    "inScope": [],
+    "outOfScope": [],
+    "acceptance": [
+      "The `**` defect is reproduced against the PRE-FIX code (a declared directory-prefix pattern fails to cover the files beneath it) and then shown to be honored after the fix — a driven fixture or test, not an assertion",
+      "The contract contradiction is reproduced against pre-fix generation and shown to be impossible after the fix, with the reproduction raw output recorded",
+      "A LIVE running task's contract is read through the new surface and compared field-by-field against what was actually declared for it — inScope, outOfScope, dependencies and acceptance — and a field-level mismatch is reported rather than glossed",
+      "The vendor-refresh durability claim is tested by actually exercising the re-apply guard's failure mode (remove/rename its anchor and show it fails loudly), then restoring",
+      "No agent-teams regression: the plugin's own suite is green and a boot applying the agent-teams row shows 0 apply-crash signatures, with no --dump-config result cited as load evidence",
+      "Every acceptance criterion of t4 is checked against raw output the verifier produced; anything unreproducible is reported as a failure, not waved through"
+    ],
+    "verify": [
+      "bun test packages/mpd-agent-teams-plugin",
+      "a mounted boot applying the agent-teams row (0 apply-crash signatures)",
+      "the vendor-refresh guard exercised with its anchor removed",
+      "a live-task contract read compared against its declaration"
+    ]
+  },
+  "fieldComparison": [
+    {
+      "field": "task_id",
+      "match": true,
+      "reported": "t8",
+      "declared": "t8"
+    },
+    {
+      "field": "subject",
+      "match": true,
+      "reported": "Verify the adopted-tooling fixes: `**` expansion, contract consistency, contract readability, vendor-refresh durability",
+      "declared": "Verify the adopted-tooling fixes: `**` expansion, contract consistency, contract readability, vendor-refresh durability"
+    },
+    {
+      "field": "kind",
+      "match": true,
+      "reported": "verification",
+      "declared": "verification"
+    },
+    {
+      "field": "status",
+      "match": true,
+      "reported": "in_progress",
+      "declared": "in_progress"
+    },
+    {
+      "field": "assignee",
+      "match": true,
+      "reported": "Lead",
+      "declared": "Lead"
+    },
+    {
+      "field": "attempt",
+      "match": true,
+      "reported": "3",
+      "declared": "3"
+    },
+    {
+      "field": "attempt_id",
+      "match": true,
+      "reported": "45f32c34-4926-4556-9a42-ed5f3f582e02",
+      "declared": "45f32c34-4926-4556-9a42-ed5f3f582e02"
+    },
+    {
+      "field": "dependencies",
+      "match": true,
+      "reported": "[\"t4\"]",
+      "declared": "[\"t4\"]"
+    },
+    {
+      "field": "objective",
+      "match": true,
+      "reported": "Independently verify that the adopted agent-teams tooling fixes actually close the inScope `**` gap, prevent contradictory contract generation, expose a running",
+      "declared": "Independently verify that the adopted agent-teams tooling fixes actually close the inScope `**` gap, prevent contradictory contract generation, expose a running"
+    },
+    {
+      "field": "in_scope",
+      "match": true,
+      "reported": "[]",
+      "declared": "[]"
+    },
+    {
+      "field": "out_of_scope",
+      "match": true,
+      "reported": "[]",
+      "declared": "[]"
+    },
+    {
+      "field": "acceptance",
+      "match": true,
+      "reported": "[\"The `**` defect is reproduced against the PRE-FIX code (a declared directory-prefix pattern fails to cover the files beneath it) and then shown to be honored ",
+      "declared": "[\"The `**` defect is reproduced against the PRE-FIX code (a declared directory-prefix pattern fails to cover the files beneath it) and then shown to be honored "
+    },
+    {
+      "field": "verify",
+      "match": true,
+      "reported": "[\"bun test packages/mpd-agent-teams-plugin\",\"a mounted boot applying the agent-teams row (0 apply-crash signatures)\",\"the vendor-refresh guard exercised with it",
+      "declared": "[\"bun test packages/mpd-agent-teams-plugin\",\"a mounted boot applying the agent-teams row (0 apply-crash signatures)\",\"the vendor-refresh guard exercised with it"
+    }
+  ],
+  "allFieldsMatch": true
+}

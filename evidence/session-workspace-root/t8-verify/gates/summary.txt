@@ -1,0 +1,12 @@
+=== typecheck: bun run typecheck ===
+exit=0 elapsed=0s
+=== preset-conformance: node skills/dsh-qa/scripts/preset-conformance.mjs ===
+exit=0 elapsed=29s
+=== preset-conformance-selftest: node skills/dsh-qa/scripts/preset-conformance.mjs --self-test ===
+exit=0 elapsed=1s
+=== bundle-lifecycle: bun skills/dsh-qa/scripts/bundle-lifecycle.mjs ===
+exit=0 elapsed=15s
+=== bun-test-packages: bun test packages ===
+exit=0 elapsed=12s
+=== test-qa: bun run test:qa ===
+exit=0 elapsed=3s

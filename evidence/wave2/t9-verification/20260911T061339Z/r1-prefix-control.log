@@ -1,0 +1,30 @@
+{
+  "baseline": {
+    "exit": 0,
+    "pass": "10",
+    "fail": "0"
+  },
+  "flipped": {
+    "exit": 1,
+    "pass": "7",
+    "fail": "3"
+  },
+  "shippedSha": "efd078291817cf5396ef10a1477fde33fd71ec72778ff013db4685992df6f3ea",
+  "pass": true
+}
+baseline tail:
+(pass) R1-F1: verifRegress forwards exec so the per-case sim gates on the SESSION venv, not DSH_WORKSPACE_ROOT [10.34ms]
+
+ 10 pass
+ 0 fail
+ 43 expect() calls
+Ran 10 tests across 1 file. [132.00ms]
+flipped tail:
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/wave2/t9-verification/20260911T061339Z/scratch/mpd-verif-plugin-prefix/test/regress.test.ts:221:52)
+(fail) R1 ordering: the vcs lane also refuses before any work-dir creation [0.61ms]
+(pass) R1-F1: verifRegress forwards exec so the per-case sim gates on the SESSION venv, not DSH_WORKSPACE_ROOT [10.69ms]
+
+ 7 pass
+ 3 fail
+ 42 expect() calls
+Ran 10 tests across 1 file. [120.00ms]

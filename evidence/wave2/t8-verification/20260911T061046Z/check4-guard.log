@@ -1,0 +1,57 @@
+=== t8 durability guard exercise ===
+repo=/root/dshProj/my-power-dsh
+sandbox=/tmp/mpd-t8-guard-iRjQeT
+live    sha256 quality-gates.js = 4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5
+sandbox sha256 quality-gates.js = 4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5
+sandbox-binds-live=yes
+
+### S1 real tree --check (read-only)
+cmd: node scripts/patch-agent-teams-fixes.mjs --check   (cwd=/root/dshProj/my-power-dsh)
+exit=0
+[patch-agent-teams-fixes] already applied: 9 mpd delta region(s) across 2 adopted file(s)
+
+### S2 sandbox pristine --check
+cmd: node scripts/patch-agent-teams-fixes.mjs --check   (cwd=/tmp/mpd-t8-guard-iRjQeT)
+exit=0
+[patch-agent-teams-fixes] already applied: 9 mpd delta region(s) across 2 adopted file(s)
+
+stripped regions: mpd-delta scope-glob, mpd-delta scope-overlap, mpd-delta scope-overlap-normalize, mpd-delta contract-contradiction, mpd-delta create-contract-gate, mpd-delta repair-scope, mpd-delta repair-scope-fields
+### S3 sandbox, scope-glob region STRIPPED, --check must REFUSE
+cmd: node scripts/patch-agent-teams-fixes.mjs --check   (cwd=/tmp/mpd-t8-guard-iRjQeT)
+exit=1
+[patch-agent-teams-fixes] FAIL: delta "mpd-delta scope-glob" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js
+
+### S3b same stripped tree, --write must RESTORE it
+cmd: node scripts/patch-agent-teams-fixes.mjs --write   (cwd=/tmp/mpd-t8-guard-iRjQeT)
+exit=0
+[patch-agent-teams-fixes] applied: 9 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta scope-glob, mpd-delta scope-overlap, mpd-delta scope-overlap-normalize, mpd-delta contract-contradiction, mpd-delta create-contract-gate, mpd-delta repair-scope, mpd-delta repair-scope-fields)
+
+### S3c restored tree, --check must verify byte-identical
+cmd: node scripts/patch-agent-teams-fixes.mjs --check   (cwd=/tmp/mpd-t8-guard-iRjQeT)
+exit=0
+[patch-agent-teams-fixes] already applied: 9 mpd delta region(s) across 2 adopted file(s)
+
+stripped regions: mpd-delta scope-glob, mpd-delta scope-overlap, mpd-delta scope-overlap-normalize, mpd-delta contract-contradiction, mpd-delta create-contract-gate, mpd-delta repair-scope, mpd-delta repair-scope-fields | anchor line removed: 1 | anchor= 'function isDefaultExcluded(path) {'
+### S4 drift: region + anchor gone, --check
+cmd: node scripts/patch-agent-teams-fixes.mjs --check   (cwd=/tmp/mpd-t8-guard-iRjQeT)
+exit=1
+[patch-agent-teams-fixes] FAIL: delta "mpd-delta scope-glob" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js
+
+### S4b drift: region + anchor gone, --write must REFUSE naming the drift
+cmd: node scripts/patch-agent-teams-fixes.mjs --write   (cwd=/tmp/mpd-t8-guard-iRjQeT)
+exit=1
+[patch-agent-teams-fixes] FAIL: delta "mpd-delta scope-glob" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js and its anchor line is gone too ("function isDefaultExcluded(path) {") — the adopted file drifted; restore the delta by hand before re-vendoring
+
+mutated region mpd-delta scope-glob body at line 106 -> return /*drift*/ false;
+### S5 region present but body edited, --check must REFUSE a mismatch
+cmd: node scripts/patch-agent-teams-fixes.mjs --check   (cwd=/tmp/mpd-t8-guard-iRjQeT)
+exit=1
+[patch-agent-teams-fixes] FAIL: delta "mpd-delta scope-glob" in packages/mpd-agent-teams-plugin/lib/quality-gates.js (lines 102-195) no longer matches this script's registered block — first difference at line 106; either the delta was edited without regenerating lib/mpd-deltas.js (run --write-registry) or a re-vendor rewrote it
+
+### S6 pristine restored, --check green again
+cmd: node scripts/patch-agent-teams-fixes.mjs --check   (cwd=/tmp/mpd-t8-guard-iRjQeT)
+exit=0
+[patch-agent-teams-fixes] already applied: 9 mpd delta region(s) across 2 adopted file(s)
+
+live    sha256 AFTER all exercises = 4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5
+sandbox sha256 AFTER all exercises = 4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5

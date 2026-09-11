@@ -1,0 +1,12 @@
+# t13 F1 FALSIFIABILITY — same harness with the pre-fix gate body restored (venvStatus(override))
+# date: 2026-09-11T04:20:08Z
+[t13-repro] requireCocotbVenv_WITH_exec.error_code=VERIF_E_NO_VENV
+[t13-repro] requireCocotbVenv_WITH_exec.venv=(none)
+[t13-repro] requireCocotbVenv_WITH_exec.cocotb=(none)
+[t13-repro] requireCocotbVenv_WITH_exec.message=cocotb venv missing at /root/dshProj/.venv-rtl (iron rule: project-local venv required, system python is never used)
+[t13-repro] verifSim_with_exec.error_code=VERIF_E_NO_VENV
+[t13-repro] verifSim_with_exec.message=cocotb venv missing at /root/dshProj/.venv-rtl (iron rule: project-local venv required, system python is never used)
+[t13-repro] verifSim_with_exec.is_venv_refusal=true
+[t13-repro] requireCocotbVenv_NO_exec.error_code=VERIF_E_NO_VENV
+[t13-repro] requireCocotbVenv_NO_exec.message=cocotb venv missing at /root/dshProj/.venv-rtl (iron rule: project-local venv required, system python is never used)
+[exit code: 0]

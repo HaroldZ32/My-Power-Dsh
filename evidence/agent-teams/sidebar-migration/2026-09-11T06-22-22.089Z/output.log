@@ -1,0 +1,13 @@
+[agent-teams-sidebar] ts=2026-09-11T06-22-22.089Z
+sandbox=/tmp/mpd-atsb-JRU7wn (isolated; the artifact under test is the sandbox COPY)
+offline artifact steps: artifactCopyFaithful=true moduleIds=true teamPageModuleInArtifact=true exactlyOneTeamTab=true teamTabShape=true seedlessAutoOpen=true noLegacyRegistration=true adoptedNeverApplied=true noFloaterDefined=true commandViewKept=true panelInteriorParity=true sourcesRegisterNoRemovedSurface=true commandViewStillRegisteredBySource=true buildGatePresent=true serverHalfMountedByRow=true adoptedClientBridged=true artifactCarriesBridge=true bridgePatchGuarded=true bridgePatchIdempotent=true
+host route: mode=real-boot ok=true
+  served client: {"url":"/plugins/??@mpd-dsh/mpd/client.js&rev=507a65f6f37e26e6-46","status":200,"bytes":259290,"teamPageModule":true,"teamTabId":true,"bridge":true,"atLeastRepoArtifactBytes":true,"carriesRepoArtifact":true}
+  state route: {"status":200,"anonymousStatus":401,"gated":true,"body":"{\"teams\":[]}","teamsArray":true}
+
+--- web boot log (tail) ---
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-atsb-JRU7wn/ws
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+dsh web: http://127.0.0.1:3194/?token=iR9P6x1qIhKMkR9u-39N03RwZoUeeFeqBJ5gtv285cc
+

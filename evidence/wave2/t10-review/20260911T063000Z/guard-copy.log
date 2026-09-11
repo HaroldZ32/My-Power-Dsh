@@ -1,0 +1,10 @@
+PASS baseline --check on the copy exits 0 (all registered regions present and byte-identical) — exit=0 [patch-agent-teams-fixes] already applied: 9 mpd delta region(s) across 2 adopted file(s)
+PASS every registered delta: a stripped region makes --check exit NON-ZERO and name the delta — [{"id":"mpd-delta scope-glob","exit":1,"named":true},{"id":"mpd-delta scope-overlap","exit":1,"named":true},{"id":"mpd-delta scope-overlap-normalize","exit":1,"named":true},{"id":"mpd-delta contract-contradiction","exit"
+FAIL quality-gates.js: every stripped region heals back BYTE-IDENTICAL (the durability claim) — [{"id":"mpd-delta scope-glob","identical":true,"lineDelta":0},{"id":"mpd-delta scope-overlap","identical":false,"lineDelta":-19},{"id":"mpd-delta scope-overlap-normalize","identical":true,"lineDelta":0},{"id":"mpd-delta 
+FAIL tools.js: every stripped region heals back BYTE-IDENTICAL — [{"id":"mpd-delta task-contract","identical":false,"lineDelta":-29},{"id":"mpd-delta task-contract-render","identical":true,"lineDelta":0}]
+
+{
+  "qualityGatesAllByteIdentical": false,
+  "toolsAllByteIdentical": false,
+  "allPass": false
+}

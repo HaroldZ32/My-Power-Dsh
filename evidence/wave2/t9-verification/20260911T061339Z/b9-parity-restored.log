@@ -1,0 +1,2 @@
+[verify-rows-parity] ok: 22 row ids match the bundle patch insert list (mpd-verif included)
+RESTORED_EXIT=0

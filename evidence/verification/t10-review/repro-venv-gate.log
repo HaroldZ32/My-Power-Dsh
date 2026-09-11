@@ -1,0 +1,15 @@
+[t10-repro] process_cwd=/root/dshProj/my-power-dsh
+[t10-repro] session_ws=/root/dshProj/my-power-dsh/.t10-repro-ws
+[t10-repro] DSH_WORKSPACE_ROOT=null
+[t10-repro] venvStatus_WITH_exec.ok=true
+[t10-repro] venvStatus_WITH_exec.venv=/root/dshProj/my-power-dsh/.t10-repro-ws/.venv-rtl
+[t10-repro] requireCocotbVenv.error_code=VERIF_E_NO_VENV
+[t10-repro] requireCocotbVenv.message=cocotb venv missing at /root/dshProj/.venv-rtl (iron rule: project-local venv required, system python is never used)
+[t10-repro] verifSim.error_code=VERIF_E_NO_VENV
+[t10-repro] verifSim.message=cocotb venv missing at /root/dshProj/.venv-rtl (iron rule: project-local venv required, system python is never used)
+[t10-repro] verifSim.names_session_ws=false
+[t10-repro] verifSim.names_process_cwd=false
+[t10-repro] requireCocotbVenv_with_env_override=passed (/root/dshProj/my-power-dsh/.t10-repro-ws/.venv-rtl)
+[t10-repro] fake_venv_exists_after=true
+[t10-repro] cleanup=removed
+REPRO_EXIT=0

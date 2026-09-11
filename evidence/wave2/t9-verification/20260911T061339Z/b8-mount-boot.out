@@ -1,0 +1,26 @@
+{
+  "bootExit": 1,
+  "rewriteStats": {
+    "presetsExpr": 1,
+    "operand": 4
+  },
+  "allPass": true,
+  "checks": [
+    {
+      "PASS": "mount: the corrected operand rewrite actually landed in the MCP row args (the QA devPatch defect is repaired for this boot)",
+      "detail": "operandFixes=4"
+    },
+    {
+      "PASS": "mount: no MODULE_NOT_FOUND for either launcher",
+      "detail": "none"
+    },
+    {
+      "PASS": "mount: no MCP child spawn failure / BINARY_NOT_FOUND at boot",
+      "detail": "none"
+    },
+    {
+      "PASS": "mount: mpd-codegraph resolved a binary (no `init status=no-binary`)",
+      "detail": "[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/t9-b8-mount-RetpsG/ws"
+    }
+  ]
+}

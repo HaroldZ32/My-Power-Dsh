@@ -1,0 +1,59 @@
+{
+  "task": "t9 memory-migration raw read evidence (dist-driven)",
+  "stamp": "2026-09-11T06:17:50.540Z",
+  "registeredTools": [
+    "mpd_memory_read",
+    "mpd_memory_reflect",
+    "mpd_memory_reflect_complete",
+    "mpd_memory_status",
+    "mpd_memory_write"
+  ],
+  "execWorkspace": "/root/dshProj/my-power-dsh",
+  "status": "{\"vcs\":\"git\",\"root\":\"/root/dshProj/my-power-dsh/.mpd/memory/agents/agent-my-power-dsh\",\"entries\":27,\"journalLines\":20,\"reflection\":{\"steps\":19,\"reflected_completed_steps\":1,\"steps_since_last_successful_reflection\":9,\"reservation\":{\"status\":\"completed\",\"at\":\"2026-08-30T13:26:39.667Z\"},\"triggered\":false}}",
+  "allReadEntryCount": 27,
+  "queryWorkmateEntryCount": 6,
+  "migratedSurfaced": [
+    {
+      "file": "agentteams-gui-dsh-better-sidebar-agent-teams-si-mtuviju2.md",
+      "surfaced": true
+    },
+    {
+      "file": "agentteams-gui-dsh-better-sidebar-mtuyguxk.md",
+      "surfaced": true
+    },
+    {
+      "file": "agentteams-scheduler-stall-symptoms-salvage-and--mtva0wbm.md",
+      "surfaced": true
+    },
+    {
+      "file": "live-tool-registry-vs-patch-rows-how-to-test-too-mtv8xwzy.md",
+      "surfaced": true
+    },
+    {
+      "file": "six-low-findings-closed-and-a-falsifiability-lan-mtw8i46k.md",
+      "surfaced": true
+    },
+    {
+      "file": "workmate-rename-delete-agreed-requirements-2026--mtv8l9rl.md",
+      "surfaced": true
+    },
+    {
+      "file": "workmate-rename-delete-delivery-closed-two-traps-mtvngffj.md",
+      "surfaced": true
+    }
+  ],
+  "migratedInWorkmateQuery": [
+    "agentteams-gui-dsh-better-sidebar-mtuyguxk.md",
+    "live-tool-registry-vs-patch-rows-how-to-test-too-mtv8xwzy.md",
+    "six-low-findings-closed-and-a-falsifiability-lan-mtw8i46k.md",
+    "workmate-rename-delete-agreed-requirements-2026--mtv8l9rl.md",
+    "workmate-rename-delete-delivery-closed-two-traps-mtvngffj.md"
+  ],
+  "allPass": true,
+  "allReadExcerpt": [
+    "live-tool-registry-vs-patch-rows-how-to-test-too-mtv8xwzy.md",
+    "xlsx-word-regexcel-xlsx-template-docx-mtmsbjh2.md",
+    "agentteams-scheduler-stall-symptoms-salvage-and--mtva0wbm.md",
+    "vs-mtigdaii.md"
+  ]
+}

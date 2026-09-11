@@ -1,0 +1,3 @@
+cmd: node skills/dsh-qa/scripts/mcp-call.mjs
+[mcp-call] ok=false -> /root/dshProj/my-power-dsh/evidence/dsh-qa/mcp-call/2026-09-11T09-16-28.387Z
+EXIT=1

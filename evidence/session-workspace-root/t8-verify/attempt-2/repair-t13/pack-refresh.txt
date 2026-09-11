@@ -1,0 +1,15 @@
+# t13 A3 — packed artifact refresh (npm run pack) after the repaired dists
+# date: 2026-09-11T04:15:07Z
+
+$ npm run pack   -> exit 0, dist/mpd-package regenerated
+
+# the three B1/t13 markers inside the PACKED copies (0 before this re-pack, per t10 F4):
+dist/mpd-package/packages/mpd-verif-plugin/dist/index.js               workspaceRootOf=3 requireCocotbVenv(exec)=2 sessionPath=0 requireCocotbVenv(override, exec)=1
+dist/mpd-package/packages/mpd-hashline-plugin/dist/index.js            workspaceRootOf=2 requireCocotbVenv(exec)=0 sessionPath=1 requireCocotbVenv(override, exec)=0
+dist/mpd-package/packages/mpd-boulder-plugin/dist/index.js             workspaceRootOf=2 requireCocotbVenv(exec)=0 sessionPath=0 requireCocotbVenv(override, exec)=0
+
+# packed vs source-built dist byte comparison (pack copies the dists verbatim):
+mpd-verif-plugin packed == committed dist
+mpd-hashline-plugin packed == committed dist
+
+# git tracking: dist/mpd-package is gitignored (dist/mpd-package) so it cannot enter the integration commit

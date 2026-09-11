@@ -1,0 +1,190 @@
+{
+  "task": "t11 — Integration: B7 team-record audit, evidence consolidation, final gates, commit plan",
+  "task_kind": "integration",
+  "attempt_id": "07545b85-c395-454e-ad50-3fa72b08ddb1",
+  "member": "Lead",
+  "date": "2026-09-11",
+  "head": "98680b1fb2bbf5c10c28cfbe44419e91595e1cb7",
+  "branch": "dev",
+  "verdict": "passed",
+  "b7_audit": {
+    "nonArchived": 19,
+    "archivedDirs": 6,
+    "readOnlyUnchanged": true,
+    "treeSha256": "f2a0f57a3e4f93d4b310624ce1ffeb5bf73b946a6b2e00d057f155934943e8e5",
+    "treeFiles": 99,
+    "active": [
+      "mpd-default-7332aba4"
+    ],
+    "stuck": [
+      {
+        "teamId": "agent-teams-sidebar-migration",
+        "phase": "running",
+        "createdAt": "2026-09-10T01:39:05.000Z",
+        "tasks": 10,
+        "open": 1
+      }
+    ],
+    "staleWithOpenTasks": [
+      {
+        "teamId": "mpd-default-84e50f06",
+        "createdAt": "2026-09-10T07:04:56.000Z",
+        "open": 8
+      }
+    ],
+    "staleEmpty": [
+      "mpd-default",
+      "mpd-default-c2be0a8a",
+      "mpd-default-53380813",
+      "mpd-default-c146a414",
+      "mpd-default-9b7de114",
+      "mpd-default-cc23f374",
+      "mpd-default-1f285182",
+      "mpd-default-98620900",
+      "mpd-default-19f64d11",
+      "mpd-default-4a3d20e1",
+      "mpd-default-47c350bf",
+      "mpd-default-5b99df58",
+      "mpd-default-b550f267",
+      "mpd-default-2d2445da",
+      "mpd-default-d3943705",
+      "mpd-default-e35e7807"
+    ],
+    "plusOneDisclosure": "mpd-default-e35e7807 (staged, 0 tasks, 2026-09-11T03:51:32) was auto-provisioned by the session-start team policy during the t8 verifier's isolated probe boot, because the probe session's WORKSPACE is this repo (DSH_HOME isolation does not isolate .mpd/team). Disclosed, not deleted.",
+    "writes": 0,
+    "inventory": "evidence/verification/t11-integration/b7-team-inventory.md"
+  },
+  "evidence_consolidation": {
+    "complete": [
+      "evidence/hashline/schema-union-fix",
+      "evidence/fix/verif-tool-lossless/20260911T030646Z",
+      "evidence/agent-teams/provenance-version-align/20260911T032030Z",
+      "evidence/session-workspace-root/b1-resolution",
+      "evidence/session-workspace-root/dist-repair",
+      "evidence/session-workspace-root/t8-verify",
+      "evidence/session-workspace-root/t8-verify/attempt-2",
+      "evidence/session-workspace-root/t8-verify/attempt-2/repair-t13",
+      "evidence/verification/t9-b2-b6/20260911T033622Z",
+      "evidence/verification/t14-review",
+      "evidence/dsh-qa/preset-conformance/2026-09-11T03-08-17.241Z",
+      "evidence/dsh-qa/preset-conformance/2026-09-11T03-10-07.166Z"
+    ],
+    "emptyDirsUnderEvidence": 0,
+    "findings": [
+      "F-cons-1 info: t2 and t5 produced no standalone evidence directory; their proof lives in their task outputs and in t9's dir (b2-*.log, b5-preprovision-skip.log). Reported, not patched.",
+      "F-cons-2 info: evidence/fix/typecheck-baseline/2026-08-27T13-14-57.802330615Z (result, no log) and .../sidebar-migration/final-2026-09-10T06-21-45Z/live-gui (supporting sub-tree) predate this delivery."
+    ],
+    "captainRemovedDir": "evidence/dsh-qa/preset-conformance/2026-09-11T02-51-22.844Z absent as intended (not reported missing)"
+  },
+  "gates": {
+    "verifyVendor": {
+      "exit": 0,
+      "raw": "[verify-vendor] version OK: 5.0.0-beta.20\n[verify-vendor] stats OK: 9131 files / 1470231 loc\n[verify-vendor] asset OK: skills 365 files\n[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files\n[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files\n[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files\n[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files\n[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files\n[verify-vendor] PASS"
+    },
+    "typecheck": {
+      "exit": 0,
+      "raw": "$ tsgo --noEmit"
+    },
+    "bunTestPackages": {
+      "exit": 0,
+      "raw": " 309 pass\n 0 fail\n 2032 expect() calls\nRan 309 tests across 35 files. [12.94s]"
+    },
+    "testQa": {
+      "exit": 0,
+      "raw": "[workmate-team-member self-test] ok: 6 checks\n[test:qa] all self-tests passed"
+    },
+    "bundleLifecycle": {
+      "exit": 0,
+      "raw": "[bundle-lifecycle] ok=true -> /root/dshProj/my-power-dsh/evidence/dsh-qa/bundle-lifecycle/2026-09-11T04-26-31.637Z\n  install: {\"ok\":true,\"exit\":0,\"dependency\":\"link:/root/dshProj/my-power-dsh\",\"bundles\":[\"@deepseek-ai/dsh-base\",\"@deepseek-ai/dsh-web-app\",\"@mpd-dsh/mpd\"],\"oneCommand\":\"dsh plugin --profile w add <repo root>\"}\n  composed: {\"ok\":true,\"exit\":0}\n  boot: {\"ok\":true,\"http\":true,\"corpus\":\"/root/dshProj/my-power-dsh/skills\",\"preset\":\"/root/dshProj/my-power-dsh/.qa-reloc/bundle-lifecycle-2026-09-11T04-26-31.637Z/home/profiles/w/node_modules/@mpd-dsh/mpd/presets/mpd/agent.cordis.yml\",\"trust\":\"system\",\"bundleReal\":\"\n  noHomeCopy: {\"ok\":true,\"skills\":[],\"presets\":[]}\n  layerDurability: {\"ok\":true,\"exit\":0,\"dependency\":true,\"bundles\":[\"@deepseek-ai/dsh-base\",\"@deepseek-ai/dsh-web-app\",\"@mpd-dsh/mpd\"]}\n  uninstall: {\"ok\":true,\"exit\":0,\"bundles\":[\"@deepseek-ai/dsh-base\",\"@deepseek-ai/dsh-web-app\"],\"residue\":[],\"mpdState\":[]}\n[bundle-lifecycle] PASS"
+    },
+    "presetConformance": {
+      "exit": 0,
+      "raw": "[preset-conformance] ok=true -> /root/dshProj/my-power-dsh/evidence/dsh-qa/preset-conformance/2026-09-11T04-26-47.314Z\n  conformance: {\"ok\":true,\"checked\":30,\"schemaFree\":6,\"parity\":{\"reference\":31,\"ours\":31,\"missing\":[],\"extra\":[]},\"problems\":[]}\n  auth: {\"ok\":true,\"tokenSeen\":true,\"cookieSession\":true}\n  sessionCreate: {\"ok\":true,\"status\":200,\"sessionId\":\"session-4e090970-88fe-4e22-aa18-8580b59e3bc9\",\"agentPreset\":\"mpd\"}\n  sessionHeader: {\"ok\":true,\"agentPreset\":\"mpd\",\"log\":\"/tmp/mpd-preset-main-Jpgp1o/home/sessions/--root-dshProj-my-power-dsh--/session-4e090970-88fe-4e22-aa18-8580b59e3bc9/session.v3.jsonl.zstd\"}\n  bootLog: {\"ok\":true,\"signatures\":[]}\n  negativeControl: {\"ok\":true,\"code\":\"agent-preset/invalid\",\"message\":\"agent-presets: preset \\\"mpd\\\" failed to mount: failed to apply loader entry persona (@deepseek-ai/dsh-persona): invalid config:\\n  - $.prefix missing required value (at prefix) (/tmp/mpd-preset-control-2026-09-11T04-26-47.314Z/mpd/agent.cordis.yml)\n[preset-conformance] PASS"
+    },
+    "mountBoot": {
+      "exit": 0,
+      "raw": "[t8-driver] session/repo cwd=/root/dshProj/my-power-dsh status=200 sessionId=session-22d54295-f542-49a5-b596-06f0d42f6e59\n[t8-driver] session/blocked cwd=/tmp/mpd-t8-toolcall-KYcgMg/ws-blocked status=200 sessionId=session-5a730f92-3f94-4c9d-9ea5-f80c400bcc3c\n[t8-driver] session/clean cwd=/tmp/mpd-t8-toolcall-KYcgMg/ws-clean status=200 sessionId=session-ecba5da8-6b21-4dbd-bc7c-7d05032eefdb\n[t8-driver] evidence -> /root/dshProj/my-power-dsh/evidence/session-workspace-root/t8-verify/2026-09-11T04-27-19Z-toolcall\n[t8-driver] passed=true checks=18 failed=[]",
+      "evidence": "evidence/session-workspace-root/t8-verify/2026-09-11T04-27-19Z-toolcall/"
+    }
+  },
+  "commit_plan": {
+    "branch": "fix/bline-b1-b6 (from dev)",
+    "commits": 8,
+    "plan": "evidence/verification/t11-integration/commit-plan.md",
+    "pairing_rules": [
+      "VENDOR_LOCK.json + skills/dsh-qa/scripts/workmate-library.mjs in the SAME commit (commit 5)",
+      "scripts/verify-vendor.mjs + VENDOR_LOCK.json in the same commit (B2)",
+      "any skills/** edit carries its own re-pin AND its gate evidence in the same commit (release checklist)",
+      "dist/mpd-package is gitignored; re-packed at 12:15, 8/8 spot-checked byte-identical to the committed dists"
+    ],
+    "pushed": false,
+    "tagged": false,
+    "releaseBranch": false,
+    "commitsCreated": 0
+  },
+  "carry_forward": [
+    "B8 open: ast-grep/codegraph MCPs unusable here (MPD_AST_GREP_SG_PATH unset; no <profile>/node_modules/.bin/sg for a link: install) -> live BINARY_NOT_FOUND",
+    "B9 open: scripts/install-profile.mjs declares 21 row ids vs the bundle patch's 22 (only mpd-verif missing) -> legacy-installer profiles mount no mpd_verif_* tool",
+    "contract matcher does not expand ** -> changedPaths incomplete for t3/t4/t7 (tooling, report only)",
+    "split-brain memory store: 7 orphaned entries under /root/dshProj/.mpd/memory/agents/agent-dshproj; migration awaits the user",
+    "release checklist: skills/** re-pin rule; .toolchain comment-checker binary is gitignored so a fresh clone skips 3 tests instead of failing",
+    "O-1 low: mpd-codegraph-plugin/src/index.ts:76 keeps its apply-time process.cwd() fallback (documented in AGENTS.md 12)",
+    "contract-generation defect: AGENTS.md in both inScope and out-of-scope; gate rejected the edit while acceptance required it",
+    "no tool exposes a running task's contract -> structural root of the four declared-but-unmatched completions (t3/t4/t7/t13)",
+    "R1 low: mpd-verif-plugin/src/regress.ts creates its work dir before the cocotb gate -> NO-SESSION mpd_verif_regress returns VERIF_E_RUN with a host-root ENOENT mkdir instead of VERIF_E_NO_VENV"
+  ],
+  "artifacts": {
+    "result": "evidence/verification/t11-integration/RESULT.md",
+    "machine": "evidence/verification/t11-integration/RESULT.json",
+    "git_status": "evidence/verification/t11-integration/git-status-verbatim.txt",
+    "b7_inventory": "evidence/verification/t11-integration/b7-team-inventory.md",
+    "b7_json": "evidence/verification/t11-integration/b7-team-audit.json",
+    "consolidation": "evidence/verification/t11-integration/evidence-consolidation.md",
+    "commit_plan": "evidence/verification/t11-integration/commit-plan.md",
+    "gates": "evidence/verification/t11-integration/"
+  },
+  "addendum": {
+    "at": "2026-09-11 post-t14",
+    "note": "additions/corrections applied after the captain's addendum; snapshot re-derived by Lead, not cited",
+    "final_green_snapshot": {
+      "artifact": "evidence/verification/t11-integration/final-green-snapshot.txt",
+      "tree": "98680b1",
+      "verify_vendor": {
+        "exit": 0,
+        "verdict": "PASS",
+        "raw": "## 1. node scripts/verify-vendor.mjs\n[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29\n[verify-vendor] version OK: 5.0.0-beta.20\n[verify-vendor] stats OK: 9131 files / 1470231 loc\n[verify-vendor] asset OK: skills 365 files\n[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files\n[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files\n[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files\n[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files\n[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files\n[verify-vendor] PASS\nexit=0"
+      },
+      "typecheck": {
+        "exit": 0
+      },
+      "bun_test_packages": {
+        "exit": 0,
+        "raw": "309 pass / 0 fail / 2032 expect() calls / 35 files"
+      },
+      "dist_sweep": {
+        "fresh": 16,
+        "stale": 0,
+        "raw": "--- packages: 16 | FRESH=16 STALE=0\n\n## 5. t8 attempt-2 probe check count (all must be PASS)\nchecks: 19 | PASS: 19 | FAIL: 0\nids: R1_HASHLINE_RELATIVE_READ,R2_VERIF_INFO_RESOLVES_REPO,R3_MEMORY_STATUS_RESOLVES_REPO,R4_BOULDER_PLANS_LISTS_REPO_PLAN,R5_BOULDER_STATUS_FILE,S1_TWO_SESSIONS_RESOLVE_DIFFERENTLY,S2_OTHER_SESSION_DOES_NOT_SEE_REPO_PLAN,N1_NO_AGENT_FALLS_BACK_TO_HOST_CWD,N2_WITHOUT_SESSION_REPO_PLAN_INVISIBLE,N3_WITHOUT_SESSION_RELATIVE_READ_FAILS_AT_HOST_CWD,W1_INIT_CONTROLLED_FIXTURE,W2_CONTROLLED_BLOCKED_WS_REFUSES,W3_CLEAN_WS_ALLOWS,W4_UNRELATED_KEY_ALLOWED_IN_BLOCKED_WS,W5_INIT_LIVE_TEAM_KEY,W6_LIVE_REPO_TEAM_RECORD_BLOCKS_SOURCE_KEY,W7_LIVE_REPO_TEAM_RECORD_BLOCKS_TARGET_KEY,W8_OTHER_WS_DOES_NOT_SEE_REPO_TEAM,X1_TEAM_STATE_READ_ONLY\napplyCrashSignatures: [] | probeReachedFinalMarker: True\n\n## 6. empty evidence directories (no files, no subdirs)\nempty dirs: 0"
+      },
+      "t8_attempt2_probe": {
+        "checks": 19,
+        "passed": 19,
+        "failed": 0,
+        "applyCrashSignatures": []
+      },
+      "empty_evidence_dirs": 0,
+      "sha_shifts_explained": {
+        "mpd_hashline_plugin": "7152de89783e4018 -> 8359fc944661ff03 (t13 source change + rebuild; still FRESH)",
+        "mpd_verif_plugin": "2958504a65f4603d -> b4b702c5cbd9847a (t13 source change + rebuild; still FRESH)"
+      }
+    },
+    "pack_correction": "dist/mpd-package is CURRENT: t13 re-ran `npm run pack` as part of its acceptance and t14 verified the packed verif/hashline dists carry the repaired code. My own 8/8 spot-check shows packed == committed. No pack re-run was needed during integration (no dist changed); re-run only if a dist changes. No pre-fix bytes were restored.",
+    "new_findings": [
+      "Contract-generation defect (tooling): a repair task's auto-generated contract listed AGENTS.md in BOTH inScope and out-of-scope; the update gate rejected the edit as out_of_scope while the same contract's acceptance REQUIRED it. Same family as the ** matcher gap.",
+      "Captain cannot read a running task's contract: no tool exposes it - the structural root of this wave's four declared-but-unmatched completions (t3, t4, t7, t13).",
+      "R1 (low, deliberately unscheduled): packages/mpd-verif-plugin/src/regress.ts creates its regress work dir BEFORE the cocotb iron gate, so a NO-SESSION mpd_verif_regress surfaces a host-root ENOENT mkdir under VERIF_E_RUN instead of VERIF_E_NO_VENV; session-scoped calls unaffected. Not fixed during t14 to avoid moving the tree under the reviewer."
+    ],
+    "live_process_caveat": "The running GUI process still executes pre-fix code (old dists loaded at boot); all proof comes from isolated boots. A dsh restart is required before citing any live tool output as proof of the fix."
+  },
+  "pack_artifact_status": "CURRENT (t13 re-packed; t14 verified; my 8/8 spot-check packed == committed). Re-run npm run pack only if a dist changes."
+}

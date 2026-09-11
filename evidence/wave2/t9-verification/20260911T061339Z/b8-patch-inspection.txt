@@ -1,0 +1,32 @@
+=== B8: patch mechanical inspection ===
+{"id":"mcp-astgrep","hasEnvKey":false,"referencesLaunchMjs":true,"nonCommentOldBinPath":false,"nonCommentEnvAssignment":false,"configLines":7}
+{"id":"mcp-codegraph","hasEnvKey":false,"referencesLaunchMjs":true,"nonCommentOldBinPath":false,"nonCommentEnvAssignment":false,"configLines":20}
+non-comment occurrences of MPD_AST_GREP_SG_PATH assignment: 0
+non-comment occurrences of MPD_CODEGRAPH_BIN assignment: 0
+non-comment occurrences of /node_modules/.bin/sg: 0
+=== all 'env:' occurrences in the patch with line numbers ===
+[total: 0]
+=== row boundaries ===
+26:- id: agent-presets
+43:    - id: mcp-astgrep
+54:    - id: mcp-gitbash
+64:    - id: mcp-lsp
+83:    - id: mcp-codegraph
+138:    - id: mpd-web-compat
+145:    - id: mpd-dsh-adapter
+149:    - id: mpd-config
+151:    - id: mpd-tools
+156:    - id: mpd-modelchain
+158:    - id: mpd-roles
+160:    - id: mpd-ulw
+164:    - id: mpd-hashline
+168:    - id: mpd-boulder
+170:    - id: mpd-comment-checker
+174:    - id: mpd-codegraph
+179:    - id: mpd-memory
+183:    - id: mpd-workmate
+190:    - id: mpd-bootstrap
+198:    - id: mpd-verif
+210:    - id: agent-teams
+369:    - id: mcp-context7
+376:    - id: mcp-grepapp

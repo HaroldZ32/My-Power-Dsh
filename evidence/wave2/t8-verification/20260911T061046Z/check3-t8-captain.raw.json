@@ -1,0 +1,196 @@
+{
+  "driver": "check3-live-contract",
+  "liveTeamJson": ".mpd/team/mpd-wave-2/team.json",
+  "sandbox": "/tmp/mpd-t8-contract-1t48Bs",
+  "caller": {
+    "kind": "captain",
+    "id": "session-aded9c07-4cd3-4c82-ac31-22ce8c47c5be"
+  },
+  "registeredToolCount": 14,
+  "registeredToolNames": [
+    "agent_teams_add_member",
+    "agent_teams_approve",
+    "agent_teams_claim_task",
+    "agent_teams_create",
+    "agent_teams_create_task",
+    "agent_teams_delete",
+    "agent_teams_edit_plan",
+    "agent_teams_reassign_task",
+    "agent_teams_remove_member",
+    "agent_teams_resume",
+    "agent_teams_send_message",
+    "agent_teams_status",
+    "agent_teams_task_contract",
+    "agent_teams_update_task"
+  ],
+  "liveSha256Before": "37b12d8f907f86eb428fd93b135a5532e6f1d2ad6f17f4576a45a6d70d1a54af",
+  "sandboxSha256Before": "37b12d8f907f86eb428fd93b135a5532e6f1d2ad6f17f4576a45a6d70d1a54af",
+  "toolRegistered": true,
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "task_id": {
+        "type": "string",
+        "description": "Task id from the shared task list, e.g. \"t4\"."
+      }
+    }
+  },
+  "hasRender": true,
+  "view": {
+    "task_id": "t8",
+    "subject": "Verify the adopted-tooling fixes: `**` expansion, contract consistency, contract readability, vendor-refresh durability",
+    "kind": "verification",
+    "status": "in_progress",
+    "assignee": "Lead",
+    "attempt": 1,
+    "attempt_id": "9180b59e-635a-4bf3-be3d-e6949f7a4c84",
+    "dependencies": [
+      "t4"
+    ],
+    "objective": "Independently verify that the adopted agent-teams tooling fixes actually close the inScope `**` gap, prevent contradictory contract generation, expose a running task's contract, and survive a vendor refresh.",
+    "in_scope": [],
+    "out_of_scope": [],
+    "acceptance": [
+      "The `**` defect is reproduced against the PRE-FIX code (a declared directory-prefix pattern fails to cover the files beneath it) and then shown to be honored after the fix — a driven fixture or test, not an assertion",
+      "The contract contradiction is reproduced against pre-fix generation and shown to be impossible after the fix, with the reproduction raw output recorded",
+      "A LIVE running task's contract is read through the new surface and compared field-by-field against what was actually declared for it — inScope, outOfScope, dependencies and acceptance — and a field-level mismatch is reported rather than glossed",
+      "The vendor-refresh durability claim is tested by actually exercising the re-apply guard's failure mode (remove/rename its anchor and show it fails loudly), then restoring",
+      "No agent-teams regression: the plugin's own suite is green and a boot applying the agent-teams row shows 0 apply-crash signatures, with no --dump-config result cited as load evidence",
+      "Every acceptance criterion of t4 is checked against raw output the verifier produced; anything unreproducible is reported as a failure, not waved through"
+    ],
+    "verify": [
+      "bun test packages/mpd-agent-teams-plugin",
+      "a mounted boot applying the agent-teams row (0 apply-crash signatures)",
+      "the vendor-refresh guard exercised with its anchor removed",
+      "a live-task contract read compared against its declaration"
+    ],
+    "deliverables": [],
+    "non_goals": [],
+    "acceptance_results": [],
+    "commands_run": [],
+    "changed_paths": [],
+    "findings_open": 0
+  },
+  "rendered": "Task t8 [in_progress] verification — Verify the adopted-tooling fixes: `**` expansion, contract consistency, contract readability, vendor-refresh durability\nAssignee: Lead (attempt 1, attempt_id 9180b59e-635a-4bf3-be3d-e6949f7a4c84)\nDependencies: t4\nContract:\n  Objective: Independently verify that the adopted agent-teams tooling fixes actually close the inScope `**` gap, prevent contradictory contract generation, expose a running task's contract, and survive a vendor refresh.\n  In scope: (none)\n  Out of scope: (none)\n  Acceptance: The `**` defect is reproduced against the PRE-FIX code (a declared directory-prefix pattern fails to cover the files beneath it) and then shown to be honored after the fix — a driven fixture or test, not an assertion, The contract contradiction is reproduced against pre-fix generation and shown to be impossible after the fix, with the reproduction raw output recorded, A LIVE running task's contract is read through the new surface and compared field-by-field against what was actually declared for it — inScope, outOfScope, dependencies and acceptance — and a field-level mismatch is reported rather than glossed, The vendor-refresh durability claim is tested by actually exercising the re-apply guard's failure mode (remove/rename its anchor and show it fails loudly), then restoring, No agent-teams regression: the plugin's own suite is green and a boot applying the agent-teams row shows 0 apply-crash signatures, with no --dump-config result cited as load evidence, Every acceptance criterion of t4 is checked against raw output the verifier produced; anything unreproducible is reported as a failure, not waved through\n  Verify: bun test packages/mpd-agent-teams-plugin, a mounted boot applying the agent-teams row (0 apply-crash signatures), the vendor-refresh guard exercised with its anchor removed, a live-task contract read compared against its declaration\nCompletion payload so far:\n  acceptanceResults: []\n  commandsRun: []\n  changedPaths: []\nOpen findings: 0",
+  "unknownId": "task \"t-does-not-exist\" does not exist in team \"MPD Wave 2\" (known tasks: t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12)",
+  "blankId": "task_id is required",
+  "memberRead": {
+    "ok": true,
+    "in_scope": [],
+    "out_of_scope": [],
+    "acceptance_len": 6
+  },
+  "liveSha256After": "37b12d8f907f86eb428fd93b135a5532e6f1d2ad6f17f4576a45a6d70d1a54af",
+  "sandboxSha256After": "37b12d8f907f86eb428fd93b135a5532e6f1d2ad6f17f4576a45a6d70d1a54af",
+  "liveUntouched": true,
+  "sandboxUntouched": true,
+  "declared": {
+    "subject": "Verify the adopted-tooling fixes: `**` expansion, contract consistency, contract readability, vendor-refresh durability",
+    "kind": "verification",
+    "status": "in_progress",
+    "assignee": "Lead",
+    "attempt": 1,
+    "attemptId": "9180b59e-635a-4bf3-be3d-e6949f7a4c84",
+    "dependencies": [
+      "t4"
+    ],
+    "objective": "Independently verify that the adopted agent-teams tooling fixes actually close the inScope `**` gap, prevent contradictory contract generation, expose a running task's contract, and survive a vendor refresh.",
+    "inScope": [],
+    "outOfScope": [],
+    "acceptance": [
+      "The `**` defect is reproduced against the PRE-FIX code (a declared directory-prefix pattern fails to cover the files beneath it) and then shown to be honored after the fix — a driven fixture or test, not an assertion",
+      "The contract contradiction is reproduced against pre-fix generation and shown to be impossible after the fix, with the reproduction raw output recorded",
+      "A LIVE running task's contract is read through the new surface and compared field-by-field against what was actually declared for it — inScope, outOfScope, dependencies and acceptance — and a field-level mismatch is reported rather than glossed",
+      "The vendor-refresh durability claim is tested by actually exercising the re-apply guard's failure mode (remove/rename its anchor and show it fails loudly), then restoring",
+      "No agent-teams regression: the plugin's own suite is green and a boot applying the agent-teams row shows 0 apply-crash signatures, with no --dump-config result cited as load evidence",
+      "Every acceptance criterion of t4 is checked against raw output the verifier produced; anything unreproducible is reported as a failure, not waved through"
+    ],
+    "verify": [
+      "bun test packages/mpd-agent-teams-plugin",
+      "a mounted boot applying the agent-teams row (0 apply-crash signatures)",
+      "the vendor-refresh guard exercised with its anchor removed",
+      "a live-task contract read compared against its declaration"
+    ]
+  },
+  "fieldComparison": [
+    {
+      "field": "task_id",
+      "match": true,
+      "reported": "t8",
+      "declared": "t8"
+    },
+    {
+      "field": "subject",
+      "match": true,
+      "reported": "Verify the adopted-tooling fixes: `**` expansion, contract consistency, contract readability, vendor-refresh durability",
+      "declared": "Verify the adopted-tooling fixes: `**` expansion, contract consistency, contract readability, vendor-refresh durability"
+    },
+    {
+      "field": "kind",
+      "match": true,
+      "reported": "verification",
+      "declared": "verification"
+    },
+    {
+      "field": "status",
+      "match": true,
+      "reported": "in_progress",
+      "declared": "in_progress"
+    },
+    {
+      "field": "assignee",
+      "match": true,
+      "reported": "Lead",
+      "declared": "Lead"
+    },
+    {
+      "field": "attempt",
+      "match": true,
+      "reported": "1",
+      "declared": "1"
+    },
+    {
+      "field": "attempt_id",
+      "match": true,
+      "reported": "9180b59e-635a-4bf3-be3d-e6949f7a4c84",
+      "declared": "9180b59e-635a-4bf3-be3d-e6949f7a4c84"
+    },
+    {
+      "field": "dependencies",
+      "match": true,
+      "reported": "[\"t4\"]",
+      "declared": "[\"t4\"]"
+    },
+    {
+      "field": "objective",
+      "match": true,
+      "reported": "Independently verify that the adopted agent-teams tooling fixes actually close the inScope `**` gap, prevent contradictory contract generation, expose a running",
+      "declared": "Independently verify that the adopted agent-teams tooling fixes actually close the inScope `**` gap, prevent contradictory contract generation, expose a running"
+    },
+    {
+      "field": "in_scope",
+      "match": true,
+      "reported": "[]",
+      "declared": "[]"
+    },
+    {
+      "field": "out_of_scope",
+      "match": true,
+      "reported": "[]",
+      "declared": "[]"
+    },
+    {
+      "field": "acceptance",
+      "match": true,
+      "reported": "[\"The `**` defect is reproduced against the PRE-FIX code (a declared directory-prefix pattern fails to cover the files beneath it) and then shown to be honored ",
+      "declared": "[\"The `**` defect is reproduced against the PRE-FIX code (a declared directory-prefix pattern fails to cover the files beneath it) and then shown to be honored "
+    },
+    {
+      "field": "verify",
+      "match": true,
+      "reported": "[\"bun test packages/mpd-agent-teams-plugin\",\"a mounted boot applying the agent-teams row (0 apply-crash signatures)\",\"the vendor-refresh guard exercised with it",
+      "declared": "[\"bun test packages/mpd-agent-teams-plugin\",\"a mounted boot applying the agent-teams row (0 apply-crash signatures)\",\"the vendor-refresh guard exercised with it"
+    }
+  ],
+  "allFieldsMatch": true
+}

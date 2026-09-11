@@ -1,0 +1,339 @@
+{
+  "driver": "check3-live-contract",
+  "liveTeamJson": ".mpd/team/mpd-wave-2/team.json",
+  "sandbox": "/tmp/mpd-t8-contract-bxSv8d",
+  "caller": {
+    "kind": "captain",
+    "id": "session-aded9c07-4cd3-4c82-ac31-22ce8c47c5be"
+  },
+  "registeredToolCount": 14,
+  "registeredToolNames": [
+    "agent_teams_add_member",
+    "agent_teams_approve",
+    "agent_teams_claim_task",
+    "agent_teams_create",
+    "agent_teams_create_task",
+    "agent_teams_delete",
+    "agent_teams_edit_plan",
+    "agent_teams_reassign_task",
+    "agent_teams_remove_member",
+    "agent_teams_resume",
+    "agent_teams_send_message",
+    "agent_teams_status",
+    "agent_teams_task_contract",
+    "agent_teams_update_task"
+  ],
+  "liveSha256Before": "12dbf0a0cdd2f201584639ba8e61978cbe6f71eb1e2801e282a721f9828d6692",
+  "sandboxSha256Before": "12dbf0a0cdd2f201584639ba8e61978cbe6f71eb1e2801e282a721f9828d6692",
+  "toolRegistered": true,
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "task_id": {
+        "type": "string",
+        "description": "Task id from the shared task list, e.g. \"t4\"."
+      }
+    }
+  },
+  "hasRender": true,
+  "view": {
+    "task_id": "t14",
+    "subject": "Repair F4: make the clean heal byte-faithful (create-contract-gate is registered at an 8-space block with a 4-space anchor)",
+    "kind": "repair",
+    "status": "completed",
+    "assignee": "Senior Engineer",
+    "attempt": 1,
+    "attempt_id": "0889f283-991f-4ae1-aef5-36764ba9e69d",
+    "dependencies": [
+      "t1",
+      "t13"
+    ],
+    "objective": "Make the CLEAN heal byte-faithful: place the create-contract-gate delta where the canonical adoption places it, assert byte equality after stripping and healing every region, and make the applier refuse or correct a misindented insertion so the class cannot recur silently.",
+    "in_scope": [
+      "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+      "packages/mpd-agent-teams-plugin/self-fix-tests",
+      "scripts/patch-agent-teams-fixes.mjs",
+      "scripts/vendor-agent-teams.mjs",
+      "evidence/wave2/adopted-tooling-repair-f4"
+    ],
+    "out_of_scope": [
+      "skills/**",
+      "VENDOR_LOCK.json",
+      "AGENTS.md",
+      "packages/mpd-verif-plugin/**",
+      "packages/mpd-bundle/cordis.patch.yml"
+    ],
+    "acceptance": [
+      "The misindented region is corrected: `create-contract-gate` is registered against an anchor at the REGION'S OWN indentation so the inserted gate lands INSIDE `if (WRITE_KINDS.includes(kind)) {` — e.g. the unique 8-space `        if (!nonemptyStringList(input.verify)) {` inside that block — OR the applier is made indent-aware so it inserts at the registered block's canonical indent when that is deeper than the anchor's. Either way, the healed file must place the gate where the canonical adoption places it",
+      "CLEAN-HEAL BYTE FIDELITY is asserted, which is what F4 is really about: strip every region from our own `quality-gates.js`, run `--write`, then assert `readFileSync(healed) === readFileSync(canonical)` — byte-for-byte, not merely status + insertion count + one declaration. This assertion is the missing half of t4 acceptance 5 ('cannot silently rewrite them') and must exist in the clean-heal test",
+      "The applier refuses rather than silently misplacing when it would insert at an indent shallower than the registered block's canonical indent, OR it corrects the indent — and whichever is chosen is exercised by a deliberately misindented fixture so the guard is observed working",
+      "The clean-heal path is re-verified end to end: strip every region, `--write` exits 0, the next `--check` exits 0, AND the file is byte-identical to the canonical adoption (the exact 22-diff-line divergence the verifier measured is gone)",
+      "No regression in the three already-closed findings: F1 still yields `demandedButNotInScope: []` with AGENTS.md `in_scope` and the five prohibitions no finding needs still forbidden (no over-carve); F2 still shows 0 added lines outside a region span; F3 still refuses the impossible heal with the named cause and leaves the refused file byte-identical",
+      "Gates: the plugin suite and the self-fix suite stay green, the full repo suite stays green, typecheck exits 0, and an isolated boot still registers 14/14 tools with 0 apply-crash signatures",
+      "The verifier's UPDATED drivers (attempt2) are re-run where they apply rather than a parallel harness being invented, and the output states that a dsh restart is still required for the repaired semantics to act on a live session"
+    ],
+    "verify": [
+      "bun test packages/mpd-agent-teams-plugin",
+      "bun test packages",
+      "bun run typecheck",
+      "the clean-heal byte-fidelity assertion: strip every region, --write, then readFileSync(healed) === readFileSync(canonical)",
+      "the verifier's updated attempt2 drivers",
+      "an isolated boot registering 14/14 tools with 0 apply-crash signatures"
+    ],
+    "deliverables": [],
+    "non_goals": [],
+    "source_task_id": "t13",
+    "source_finding_ids": [
+      "F4"
+    ],
+    "acceptance_results": [
+      {
+        "criterion": "The misindented region is corrected: `create-contract-gate` is registered against an anchor at the REGION'S OWN indentation so the inserted gate lands INSIDE `if (WRITE_KINDS.includes(kind)) {` — e.g. the unique 8-space `        if (!nonemptyStringList(input.verify)) {` inside that block — OR the applier is made indent-aware so it inserts at the registered block's canonical indent when that is deeper than the anchor's. Either way, the healed file must place the gate where the canonical adoption places it",
+        "status": "passed",
+        "evidence": "Did BOTH halves. Structural: the create-contract-gate region now WRAPS the whole `if (WRITE_KINDS.includes(kind)) { … }` block, so the region is self-anchoring — registered anchor indent `\"    \"` equals registered block indent `\"    \"` (the 8-space-block/4-space-anchor mismatch is gone), and the anchor is `    if (kind === 'review') {`. Measured after a full strip+heal: `gate inside WRITE_KINDS block: true` and the healed file is byte-identical to the canonical adoption. Class guard: `effectiveInsertionIndent(delta, anchor)` returns the block's canonical indent whenever the anchor would place it shallower and the applier surfaces every correction (result.corrected[], CLI `(indent corrected: …)`); on the deliberately misindented fixture (8-space block / 4-space anchor) it returns `{indent: \"        \", correctedFrom: \"    \"}`. The candidate anchor the recipe named was checked and rejected for a measured reason: it sits INSIDE the region (it is one of the region's own body lines), so it cannot also be an insertion point for that region. Raw: f4/byte-fidelity.log; permanent tests in gates/self-fix-suite.log."
+      },
+      {
+        "criterion": "CLEAN-HEAL BYTE FIDELITY is asserted, which is what F4 is really about: strip every region from our own `quality-gates.js`, run `--write`, then assert `readFileSync(healed) === readFileSync(canonical)` — byte-for-byte, not merely status + insertion count + one declaration. This assertion is the missing half of t4 acceptance 5 ('cannot silently rewrite them') and must exist in the clean-heal test",
+        "status": "passed",
+        "evidence": "`stripDeltas()` (whole regions, markers+bodies) followed by `applyAgentTeamsFixes({write:true})` then `expect(readFileSync(file,'utf8')).toBe(canonical)` is now a permanent self-fix test: 'F4: stripping every region and healing reproduces the canonical file byte-for-byte' (33 pass / 0 fail). Measured raw: 7 regions stripped from quality-gates.js, `--write` applied with 7 inserted and 0 indent corrections, next `--check` already-applied, and `healed === canonical (byte-for-byte): true` — the 22-diff-line divergence the verifier measured is gone. The same test additionally asserts the gate lands INSIDE the WRITE_KINDS block rather than merely existing somewhere. Raw: f4/byte-fidelity.log."
+      },
+      {
+        "criterion": "The applier refuses rather than silently misplacing when it would insert at an indent shallower than the registered block's canonical indent, OR it corrects the indent — and whichever is chosen is exercised by a deliberately misindented fixture so the guard is observed working",
+        "status": "passed",
+        "evidence": "Chosen behaviour: CORRECT and report, never silent. `effectiveInsertionIndent` is exported and exercised by the test 'F4: the applier CORRECTS a shallower anchor indent so the class cannot recur silently': the deliberately misindented fixture (block authored at 8 spaces, anchor at 4) yields `{indent: \"        \", correctedFrom: \"    \"}`, and the aligned case (anchor at the block's own indent) is a no-op `{indent: \"        \"}`. In production the applier records every such correction in `result.corrected` and prints `(indent corrected: …)` in the CLI, so a correction can never be mistaken for a canonical placement. Observed on the real tree: 0 corrections needed (the anchor now matches), which is why the byte-fidelity assertion is the decisive evidence."
+      },
+      {
+        "criterion": "The clean-heal path is re-verified end to end: strip every region, `--write` exits 0, the next `--check` exits 0, AND the file is byte-identical to the canonical adoption (the exact 22-diff-line divergence the verifier measured is gone)",
+        "status": "passed",
+        "evidence": "End-to-end in f4/byte-fidelity.log: 7 regions stripped → `--write` = applied (exit 0) → next `--check` = already-applied (exit 0) → `readFileSync(healed) === readFileSync(canonical)` TRUE, with the create-time gate inside the WRITE_KINDS block. Gate logs: gates/guard-check.log on the live tree (9 regions, already applied). The verifier's clean-heal counterpart driver also reports green (check4-guard `passed: true`, live_untouched true)."
+      },
+      {
+        "criterion": "No regression in the three already-closed findings: F1 still yields `demandedButNotInScope: []` with AGENTS.md `in_scope` and the five prohibitions no finding needs still forbidden (no over-carve); F2 still shows 0 added lines outside a region span; F3 still refuses the impossible heal with the named cause and leaves the refused file byte-identical",
+        "status": "passed",
+        "evidence": "F1 — check2-contract (verifier's driver, re-run): `demandedButNotInScope: []`, `agentsMdClassificationUnderGeneratedScope: \"in_scope\"`, `contradictionInGeneratedScope: none`, `generatedMatchesRecordedPreFix: false` (drivers/check2-contract.post-f4.json). F2 — check1-glob 13/13 and the self-fix LCS sweep still reports zero executable lines outside a region span; the F2 test also asserts the three formerly-unmarked groups sit inside regions. F3 — check4d-revendor-heal now `passed: true` with `exit_codes {check_before_heal: 1, heal_write: 1, check_after_heal: 1}`, `file-unchanged=yes`, `pathMatchesScope_declarations: 1` (drivers/check4d-revendor-heal.post-f4.raw.json), and check4-guard `passed: true` with `live_untouched: true`."
+      },
+      {
+        "criterion": "Gates: the plugin suite and the self-fix suite stay green, the full repo suite stays green, typecheck exits 0, and an isolated boot still registers 14/14 tools with 0 apply-crash signatures",
+        "status": "passed",
+        "evidence": "plugin suite 90 pass / 0 fail (gates/plugin-suite.log); self-fix suite 33 pass / 0 fail (gates/self-fix-suite.log); full repo 343 pass / 0 fail across 38 files (gates/full-suite.log); `bun run typecheck` exit 0 (gates/typecheck.log); isolated mount driver re-run: AGENT_TEAMS_TOOLS_PRESENT=14/14, T4_TOOL_agent_teams_task_contract=REGISTERED, apply_crash_signatures=0, probe DONE, isolation counters 0/0 (drivers/check5-mount.post-f4.raw.json — no --dump-config cited as load evidence)."
+      },
+      {
+        "criterion": "The verifier's UPDATED drivers (attempt2) are re-run where they apply rather than a parallel harness being invented, and the output states that a dsh restart is still required for the repaired semantics to act on a live session",
+        "status": "passed",
+        "evidence": "All five of the verifier's drivers were re-run in place on the repaired tree and their raw outputs archived under drivers/ (check1-glob, check2-contract, check4-guard, check4d-revendor-heal, check5-mount). check4d and check5 are the updated attempt2 versions: check4d now reports `passed: true` with explicit `exit_codes`, `file_unchanged_by_refused_pass`, `pathMatchesScope_declarations` and `refusal_diagnostic`; check4-guard reports `passed: true` and `live_untouched: true` after the registry regeneration (its stale 7-regions/S5-scope-glob-core expectations from attempt 1 are gone). The clean-heal byte-fidelity assertion reuses the verifier's own reproduction (strip every region from quality-gates.js, heal, compare), not a parallel surrogate. The restart requirement is stated in README.md's callout, in result.json.host_restart_required, and in this output."
+      }
+    ],
+    "commands_run": [
+      {
+        "command": "bun test packages/mpd-agent-teams-plugin",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "90 pass / 0 fail / 356 expect() calls across 11 files — evidence/wave2/adopted-tooling-repair-f4/gates/plugin-suite.log"
+      },
+      {
+        "command": "bun test packages",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "343 pass / 0 fail / 2194 expect() calls across 38 files — evidence/wave2/adopted-tooling-repair-f4/gates/full-suite.log"
+      },
+      {
+        "command": "bun run typecheck",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "tsgo --noEmit clean — evidence/wave2/adopted-tooling-repair-f4/gates/typecheck.log"
+      },
+      {
+        "command": "the clean-heal byte-fidelity assertion: strip every region, --write, then readFileSync(healed) === readFileSync(canonical)",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "7 regions stripped → --write applied (7 inserted, 0 indent corrections) → next --check already-applied → healed === canonical BYTE-FOR-BYTE true, gate inside the WRITE_KINDS block true — evidence/wave2/adopted-tooling-repair-f4/f4/byte-fidelity.log; also a permanent self-fix test in gates/self-fix-suite.log"
+      },
+      {
+        "command": "the verifier's updated attempt2 drivers",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "check1-glob 13/13 cases pass (drivers/check1-glob.post-f4.json); check2-contract demandedButNotInScope [] + AGENTS.md in_scope + no contradiction (drivers/check2-contract.post-f4.json); check4d-revendor-heal passed:true, exit codes {1,1,1}, file-unchanged yes, 1 declaration, refusal names pathMatchesScope (drivers/check4d-revendor-heal.post-f4.raw.json); check4-guard passed:true, live_untouched true (drivers/check4-guard.post-f4.log); check5-mount 14/14 tools + 0 crash signatures (drivers/check5-mount.post-f4.raw.json)"
+      },
+      {
+        "command": "an isolated boot registering 14/14 tools with 0 apply-crash signatures",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "check5-mount re-run: AGENT_TEAMS_TOOLS_PRESENT=14/14, T4_TOOL_agent_teams_task_contract=REGISTERED, apply_crash_signatures=0, probe reached DONE, isolation counters 0/0 — evidence/wave2/adopted-tooling-repair-f4/drivers/check5-mount.post-f4.raw.json"
+      },
+      {
+        "command": "bun test packages/mpd-agent-teams-plugin/self-fix-tests",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "33 pass / 0 fail / 161 expect() calls (includes the new F4 byte-fidelity test, the anchor-indent test and the misindented-fixture guard test) — evidence/wave2/adopted-tooling-repair-f4/gates/self-fix-suite.log"
+      },
+      {
+        "command": "node scripts/patch-agent-teams-fixes.mjs --check",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "already applied: 9 mpd delta region(s) across 2 adopted file(s) — evidence/wave2/adopted-tooling-repair-f4/gates/guard-check.log"
+      }
+    ],
+    "changed_paths": [
+      "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+      "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "scripts/patch-agent-teams-fixes.mjs",
+      "evidence/wave2/adopted-tooling-repair-f4/README.md",
+      "evidence/wave2/adopted-tooling-repair-f4/result.json"
+    ],
+    "findings_open": 0
+  },
+  "rendered": "Task t14 [completed] repair — Repair F4: make the clean heal byte-faithful (create-contract-gate is registered at an 8-space block with a 4-space anchor)\nAssignee: Senior Engineer (attempt 1, attempt_id 0889f283-991f-4ae1-aef5-36764ba9e69d)\nDependencies: t1, t13\nContract:\n  Objective: Make the CLEAN heal byte-faithful: place the create-contract-gate delta where the canonical adoption places it, assert byte equality after stripping and healing every region, and make the applier refuse or correct a misindented insertion so the class cannot recur silently.\n  In scope: packages/mpd-agent-teams-plugin/lib/quality-gates.js, packages/mpd-agent-teams-plugin/lib/mpd-deltas.js, packages/mpd-agent-teams-plugin/self-fix-tests, scripts/patch-agent-teams-fixes.mjs, scripts/vendor-agent-teams.mjs, evidence/wave2/adopted-tooling-repair-f4\n  Out of scope: skills/**, VENDOR_LOCK.json, AGENTS.md, packages/mpd-verif-plugin/**, packages/mpd-bundle/cordis.patch.yml\n  Acceptance: The misindented region is corrected: `create-contract-gate` is registered against an anchor at the REGION'S OWN indentation so the inserted gate lands INSIDE `if (WRITE_KINDS.includes(kind)) {` — e.g. the unique 8-space `        if (!nonemptyStringList(input.verify)) {` inside that block — OR the applier is made indent-aware so it inserts at the registered block's canonical indent when that is deeper than the anchor's. Either way, the healed file must place the gate where the canonical adoption places it, CLEAN-HEAL BYTE FIDELITY is asserted, which is what F4 is really about: strip every region from our own `quality-gates.js`, run `--write`, then assert `readFileSync(healed) === readFileSync(canonical)` — byte-for-byte, not merely status + insertion count + one declaration. This assertion is the missing half of t4 acceptance 5 ('cannot silently rewrite them') and must exist in the clean-heal test, The applier refuses rather than silently misplacing when it would insert at an indent shallower than the registered block's canonical indent, OR it corrects the indent — and whichever is chosen is exercised by a deliberately misindented fixture so the guard is observed working, The clean-heal path is re-verified end to end: strip every region, `--write` exits 0, the next `--check` exits 0, AND the file is byte-identical to the canonical adoption (the exact 22-diff-line divergence the verifier measured is gone), No regression in the three already-closed findings: F1 still yields `demandedButNotInScope: []` with AGENTS.md `in_scope` and the five prohibitions no finding needs still forbidden (no over-carve); F2 still shows 0 added lines outside a region span; F3 still refuses the impossible heal with the named cause and leaves the refused file byte-identical, Gates: the plugin suite and the self-fix suite stay green, the full repo suite stays green, typecheck exits 0, and an isolated boot still registers 14/14 tools with 0 apply-crash signatures, The verifier's UPDATED drivers (attempt2) are re-run where they apply rather than a parallel harness being invented, and the output states that a dsh restart is still required for the repaired semantics to act on a live session\n  Verify: bun test packages/mpd-agent-teams-plugin, bun test packages, bun run typecheck, the clean-heal byte-fidelity assertion: strip every region, --write, then readFileSync(healed) === readFileSync(canonical), the verifier's updated attempt2 drivers, an isolated boot registering 14/14 tools with 0 apply-crash signatures\n  Source task: t13\nCompletion payload so far:\n  acceptanceResults: [{\"criterion\":\"The misindented region is corrected: `create-contract-gate` is registered against an anchor at the REGION'S OWN indentation so the inserted gate lands INSIDE `if (WRITE_KINDS.includes(kind)) {` — e.g. the unique 8-space `        if (!nonemptyStringList(input.verify)) {` inside that block — OR the applier is made indent-aware so it inserts at the registered block's canonical indent when that is deeper than the anchor's. Either way, the healed file must place the gate where the canonical adoption places it\",\"status\":\"passed\",\"evidence\":\"Did BOTH halves. Structural: the create-contract-gate region now WRAPS the whole `if (WRITE_KINDS.includes(kind)) { … }` block, so the region is self-anchoring — registered anchor indent `\\\"    \\\"` equals registered block indent `\\\"    \\\"` (the 8-space-block/4-space-anchor mismatch is gone), and the anchor is `    if (kind === 'review') {`. Measured after a full strip+heal: `gate inside WRITE_KINDS block: true` and the healed file is byte-identical to the canonical adoption. Class guard: `effectiveInsertionIndent(delta, anchor)` returns the block's canonical indent whenever the anchor would place it shallower and the applier surfaces every correction (result.corrected[], CLI `(indent corrected: …)`); on the deliberately misindented fixture (8-space block / 4-space anchor) it returns `{indent: \\\"        \\\", correctedFrom: \\\"    \\\"}`. The candidate anchor the recipe named was checked and rejected for a measured reason: it sits INSIDE the region (it is one of the region's own body lines), so it cannot also be an insertion point for that region. Raw: f4/byte-fidelity.log; permanent tests in gates/self-fix-suite.log.\"},{\"criterion\":\"CLEAN-HEAL BYTE FIDELITY is asserted, which is what F4 is really about: strip every region from our own `quality-gates.js`, run `--write`, then assert `readFileSync(healed) === readFileSync(canonical)` — byte-for-byte, not merely status + insertion count + one declaration. This assertion is the missing half of t4 acceptance 5 ('cannot silently rewrite them') and must exist in the clean-heal test\",\"status\":\"passed\",\"evidence\":\"`stripDeltas()` (whole regions, markers+bodies) followed by `applyAgentTeamsFixes({write:true})` then `expect(readFileSync(file,'utf8')).toBe(canonical)` is now a permanent self-fix test: 'F4: stripping every region and healing reproduces the canonical file byte-for-byte' (33 pass / 0 fail). Measured raw: 7 regions stripped from quality-gates.js, `--write` applied with 7 inserted and 0 indent corrections, next `--check` already-applied, and `healed === canonical (byte-for-byte): true` — the 22-diff-line divergence the verifier measured is gone. The same test additionally asserts the gate lands INSIDE the WRITE_KINDS block rather than merely existing somewhere. Raw: f4/byte-fidelity.log.\"},{\"criterion\":\"The applier refuses rather than silently misplacing when it would insert at an indent shallower than the registered block's canonical indent, OR it corrects the indent — and whichever is chosen is exercised by a deliberately misindented fixture so the guard is observed working\",\"status\":\"passed\",\"evidence\":\"Chosen behaviour: CORRECT and report, never silent. `effectiveInsertionIndent` is exported and exercised by the test 'F4: the applier CORRECTS a shallower anchor indent so the class cannot recur silently': the deliberately misindented fixture (block authored at 8 spaces, anchor at 4) yields `{indent: \\\"        \\\", correctedFrom: \\\"    \\\"}`, and the aligned case (anchor at the block's own indent) is a no-op `{indent: \\\"        \\\"}`. In production the applier records every such correction in `result.corrected` and prints `(indent corrected: …)` in the CLI, so a correction can never be mistaken for a canonical placement. Observed on the real tree: 0 corrections needed (the anchor now matches), which is why the byte-fidelity assertion is the decisive evidence.\"},{\"criterion\":\"The clean-heal path is re-verified end to end: strip every region, `--write` exits 0, the next `--check` exits 0, AND the file is byte-identical to the canonical adoption (the exact 22-diff-line divergence the verifier measured is gone)\",\"status\":\"passed\",\"evidence\":\"End-to-end in f4/byte-fidelity.log: 7 regions stripped → `--write` = applied (exit 0) → next `--check` = already-applied (exit 0) → `readFileSync(healed) === readFileSync(canonical)` TRUE, with the create-time gate inside the WRITE_KINDS block. Gate logs: gates/guard-check.log on the live tree (9 regions, already applied). The verifier's clean-heal counterpart driver also reports green (check4-guard `passed: true`, live_untouched true).\"},{\"criterion\":\"No regression in the three already-closed findings: F1 still yields `demandedButNotInScope: []` with AGENTS.md `in_scope` and the five prohibitions no finding needs still forbidden (no over-carve); F2 still shows 0 added lines outside a region span; F3 still refuses the impossible heal with the named cause and leaves the refused file byte-identical\",\"status\":\"passed\",\"evidence\":\"F1 — check2-contract (verifier's driver, re-run): `demandedButNotInScope: []`, `agentsMdClassificationUnderGeneratedScope: \\\"in_scope\\\"`, `contradictionInGeneratedScope: none`, `generatedMatchesRecordedPreFix: false` (drivers/check2-contract.post-f4.json). F2 — check1-glob 13/13 and the self-fix LCS sweep still reports zero executable lines outside a region span; the F2 test also asserts the three formerly-unmarked groups sit inside regions. F3 — check4d-revendor-heal now `passed: true` with `exit_codes {check_before_heal: 1, heal_write: 1, check_after_heal: 1}`, `file-unchanged=yes`, `pathMatchesScope_declarations: 1` (drivers/check4d-revendor-heal.post-f4.raw.json), and check4-guard `passed: true` with `live_untouched: true`.\"},{\"criterion\":\"Gates: the plugin suite and the self-fix suite stay green, the full repo suite stays green, typecheck exits 0, and an isolated boot still registers 14/14 tools with 0 apply-crash signatures\",\"status\":\"passed\",\"evidence\":\"plugin suite 90 pass / 0 fail (gates/plugin-suite.log); self-fix suite 33 pass / 0 fail (gates/self-fix-suite.log); full repo 343 pass / 0 fail across 38 files (gates/full-suite.log); `bun run typecheck` exit 0 (gates/typecheck.log); isolated mount driver re-run: AGENT_TEAMS_TOOLS_PRESENT=14/14, T4_TOOL_agent_teams_task_contract=REGISTERED, apply_crash_signatures=0, probe DONE, isolation counters 0/0 (drivers/check5-mount.post-f4.raw.json — no --dump-config cited as load evidence).\"},{\"criterion\":\"The verifier's UPDATED drivers (attempt2) are re-run where they apply rather than a parallel harness being invented, and the output states that a dsh restart is still required for the repaired semantics to act on a live session\",\"status\":\"passed\",\"evidence\":\"All five of the verifier's drivers were re-run in place on the repaired tree and their raw outputs archived under drivers/ (check1-glob, check2-contract, check4-guard, check4d-revendor-heal, check5-mount). check4d and check5 are the updated attempt2 versions: check4d now reports `passed: true` with explicit `exit_codes`, `file_unchanged_by_refused_pass`, `pathMatchesScope_declarations` and `refusal_diagnostic`; check4-guard reports `passed: true` and `live_untouched: true` after the registry regeneration (its stale 7-regions/S5-scope-glob-core expectations from attempt 1 are gone). The clean-heal byte-fidelity assertion reuses the verifier's own reproduction (strip every region from quality-gates.js, heal, compare), not a parallel surrogate. The restart requirement is stated in README.md's callout, in result.json.host_restart_required, and in this output.\"}]\n  commandsRun: [{\"command\":\"bun test packages/mpd-agent-teams-plugin\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"90 pass / 0 fail / 356 expect() calls across 11 files — evidence/wave2/adopted-tooling-repair-f4/gates/plugin-suite.log\"},{\"command\":\"bun test packages\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"343 pass / 0 fail / 2194 expect() calls across 38 files — evidence/wave2/adopted-tooling-repair-f4/gates/full-suite.log\"},{\"command\":\"bun run typecheck\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"tsgo --noEmit clean — evidence/wave2/adopted-tooling-repair-f4/gates/typecheck.log\"},{\"command\":\"the clean-heal byte-fidelity assertion: strip every region, --write, then readFileSync(healed) === readFileSync(canonical)\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"7 regions stripped → --write applied (7 inserted, 0 indent corrections) → next --check already-applied → healed === canonical BYTE-FOR-BYTE true, gate inside the WRITE_KINDS block true — evidence/wave2/adopted-tooling-repair-f4/f4/byte-fidelity.log; also a permanent self-fix test in gates/self-fix-suite.log\"},{\"command\":\"the verifier's updated attempt2 drivers\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"check1-glob 13/13 cases pass (drivers/check1-glob.post-f4.json); check2-contract demandedButNotInScope [] + AGENTS.md in_scope + no contradiction (drivers/check2-contract.post-f4.json); check4d-revendor-heal passed:true, exit codes {1,1,1}, file-unchanged yes, 1 declaration, refusal names pathMatchesScope (drivers/check4d-revendor-heal.post-f4.raw.json); check4-guard passed:true, live_untouched true (drivers/check4-guard.post-f4.log); check5-mount 14/14 tools + 0 crash signatures (drivers/check5-mount.post-f4.raw.json)\"},{\"command\":\"an isolated boot registering 14/14 tools with 0 apply-crash signatures\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"check5-mount re-run: AGENT_TEAMS_TOOLS_PRESENT=14/14, T4_TOOL_agent_teams_task_contract=REGISTERED, apply_crash_signatures=0, probe reached DONE, isolation counters 0/0 — evidence/wave2/adopted-tooling-repair-f4/drivers/check5-mount.post-f4.raw.json\"},{\"command\":\"bun test packages/mpd-agent-teams-plugin/self-fix-tests\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"33 pass / 0 fail / 161 expect() calls (includes the new F4 byte-fidelity test, the anchor-indent test and the misindented-fixture guard test) — evidence/wave2/adopted-tooling-repair-f4/gates/self-fix-suite.log\"},{\"command\":\"node scripts/patch-agent-teams-fixes.mjs --check\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"already applied: 9 mpd delta region(s) across 2 adopted file(s) — evidence/wave2/adopted-tooling-repair-f4/gates/guard-check.log\"}]\n  changedPaths: [\"packages/mpd-agent-teams-plugin/lib/quality-gates.js\",\"packages/mpd-agent-teams-plugin/lib/mpd-deltas.js\",\"packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs\",\"scripts/patch-agent-teams-fixes.mjs\",\"evidence/wave2/adopted-tooling-repair-f4/README.md\",\"evidence/wave2/adopted-tooling-repair-f4/result.json\"]\nOpen findings: 0",
+  "unknownId": "task \"t-does-not-exist\" does not exist in team \"MPD Wave 2\" (known tasks: t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15)",
+  "blankId": "task_id is required",
+  "memberRead": {
+    "ok": true,
+    "in_scope": [
+      "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+      "packages/mpd-agent-teams-plugin/self-fix-tests",
+      "scripts/patch-agent-teams-fixes.mjs",
+      "scripts/vendor-agent-teams.mjs",
+      "evidence/wave2/adopted-tooling-repair-f4"
+    ],
+    "out_of_scope": [
+      "skills/**",
+      "VENDOR_LOCK.json",
+      "AGENTS.md",
+      "packages/mpd-verif-plugin/**",
+      "packages/mpd-bundle/cordis.patch.yml"
+    ],
+    "acceptance_len": 7
+  },
+  "liveSha256After": "12dbf0a0cdd2f201584639ba8e61978cbe6f71eb1e2801e282a721f9828d6692",
+  "sandboxSha256After": "12dbf0a0cdd2f201584639ba8e61978cbe6f71eb1e2801e282a721f9828d6692",
+  "liveUntouched": true,
+  "sandboxUntouched": true,
+  "declared": {
+    "subject": "Repair F4: make the clean heal byte-faithful (create-contract-gate is registered at an 8-space block with a 4-space anchor)",
+    "kind": "repair",
+    "status": "completed",
+    "assignee": "Senior Engineer",
+    "attempt": 1,
+    "attemptId": "0889f283-991f-4ae1-aef5-36764ba9e69d",
+    "dependencies": [
+      "t1",
+      "t13"
+    ],
+    "objective": "Make the CLEAN heal byte-faithful: place the create-contract-gate delta where the canonical adoption places it, assert byte equality after stripping and healing every region, and make the applier refuse or correct a misindented insertion so the class cannot recur silently.",
+    "inScope": [
+      "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+      "packages/mpd-agent-teams-plugin/self-fix-tests",
+      "scripts/patch-agent-teams-fixes.mjs",
+      "scripts/vendor-agent-teams.mjs",
+      "evidence/wave2/adopted-tooling-repair-f4"
+    ],
+    "outOfScope": [
+      "skills/**",
+      "VENDOR_LOCK.json",
+      "AGENTS.md",
+      "packages/mpd-verif-plugin/**",
+      "packages/mpd-bundle/cordis.patch.yml"
+    ],
+    "acceptance": [
+      "The misindented region is corrected: `create-contract-gate` is registered against an anchor at the REGION'S OWN indentation so the inserted gate lands INSIDE `if (WRITE_KINDS.includes(kind)) {` — e.g. the unique 8-space `        if (!nonemptyStringList(input.verify)) {` inside that block — OR the applier is made indent-aware so it inserts at the registered block's canonical indent when that is deeper than the anchor's. Either way, the healed file must place the gate where the canonical adoption places it",
+      "CLEAN-HEAL BYTE FIDELITY is asserted, which is what F4 is really about: strip every region from our own `quality-gates.js`, run `--write`, then assert `readFileSync(healed) === readFileSync(canonical)` — byte-for-byte, not merely status + insertion count + one declaration. This assertion is the missing half of t4 acceptance 5 ('cannot silently rewrite them') and must exist in the clean-heal test",
+      "The applier refuses rather than silently misplacing when it would insert at an indent shallower than the registered block's canonical indent, OR it corrects the indent — and whichever is chosen is exercised by a deliberately misindented fixture so the guard is observed working",
+      "The clean-heal path is re-verified end to end: strip every region, `--write` exits 0, the next `--check` exits 0, AND the file is byte-identical to the canonical adoption (the exact 22-diff-line divergence the verifier measured is gone)",
+      "No regression in the three already-closed findings: F1 still yields `demandedButNotInScope: []` with AGENTS.md `in_scope` and the five prohibitions no finding needs still forbidden (no over-carve); F2 still shows 0 added lines outside a region span; F3 still refuses the impossible heal with the named cause and leaves the refused file byte-identical",
+      "Gates: the plugin suite and the self-fix suite stay green, the full repo suite stays green, typecheck exits 0, and an isolated boot still registers 14/14 tools with 0 apply-crash signatures",
+      "The verifier's UPDATED drivers (attempt2) are re-run where they apply rather than a parallel harness being invented, and the output states that a dsh restart is still required for the repaired semantics to act on a live session"
+    ],
+    "verify": [
+      "bun test packages/mpd-agent-teams-plugin",
+      "bun test packages",
+      "bun run typecheck",
+      "the clean-heal byte-fidelity assertion: strip every region, --write, then readFileSync(healed) === readFileSync(canonical)",
+      "the verifier's updated attempt2 drivers",
+      "an isolated boot registering 14/14 tools with 0 apply-crash signatures"
+    ]
+  },
+  "fieldComparison": [
+    {
+      "field": "task_id",
+      "match": true,
+      "reported": "t14",
+      "declared": "t14"
+    },
+    {
+      "field": "subject",
+      "match": true,
+      "reported": "Repair F4: make the clean heal byte-faithful (create-contract-gate is registered at an 8-space block with a 4-space anchor)",
+      "declared": "Repair F4: make the clean heal byte-faithful (create-contract-gate is registered at an 8-space block with a 4-space anchor)"
+    },
+    {
+      "field": "kind",
+      "match": true,
+      "reported": "repair",
+      "declared": "repair"
+    },
+    {
+      "field": "status",
+      "match": true,
+      "reported": "completed",
+      "declared": "completed"
+    },
+    {
+      "field": "assignee",
+      "match": true,
+      "reported": "Senior Engineer",
+      "declared": "Senior Engineer"
+    },
+    {
+      "field": "attempt",
+      "match": true,
+      "reported": "1",
+      "declared": "1"
+    },
+    {
+      "field": "attempt_id",
+      "match": true,
+      "reported": "0889f283-991f-4ae1-aef5-36764ba9e69d",
+      "declared": "0889f283-991f-4ae1-aef5-36764ba9e69d"
+    },
+    {
+      "field": "dependencies",
+      "match": true,
+      "reported": "[\"t1\",\"t13\"]",
+      "declared": "[\"t1\",\"t13\"]"
+    },
+    {
+      "field": "objective",
+      "match": true,
+      "reported": "Make the CLEAN heal byte-faithful: place the create-contract-gate delta where the canonical adoption places it, assert byte equality after stripping and healing",
+      "declared": "Make the CLEAN heal byte-faithful: place the create-contract-gate delta where the canonical adoption places it, assert byte equality after stripping and healing"
+    },
+    {
+      "field": "in_scope",
+      "match": true,
+      "reported": "[\"packages/mpd-agent-teams-plugin/lib/quality-gates.js\",\"packages/mpd-agent-teams-plugin/lib/mpd-deltas.js\",\"packages/mpd-agent-teams-plugin/self-fix-tests\",\"sc",
+      "declared": "[\"packages/mpd-agent-teams-plugin/lib/quality-gates.js\",\"packages/mpd-agent-teams-plugin/lib/mpd-deltas.js\",\"packages/mpd-agent-teams-plugin/self-fix-tests\",\"sc"
+    },
+    {
+      "field": "out_of_scope",
+      "match": true,
+      "reported": "[\"skills/**\",\"VENDOR_LOCK.json\",\"AGENTS.md\",\"packages/mpd-verif-plugin/**\",\"packages/mpd-bundle/cordis.patch.yml\"]",
+      "declared": "[\"skills/**\",\"VENDOR_LOCK.json\",\"AGENTS.md\",\"packages/mpd-verif-plugin/**\",\"packages/mpd-bundle/cordis.patch.yml\"]"
+    },
+    {
+      "field": "acceptance",
+      "match": true,
+      "reported": "[\"The misindented region is corrected: `create-contract-gate` is registered against an anchor at the REGION'S OWN indentation so the inserted gate lands INSIDE ",
+      "declared": "[\"The misindented region is corrected: `create-contract-gate` is registered against an anchor at the REGION'S OWN indentation so the inserted gate lands INSIDE "
+    },
+    {
+      "field": "verify",
+      "match": true,
+      "reported": "[\"bun test packages/mpd-agent-teams-plugin\",\"bun test packages\",\"bun run typecheck\",\"the clean-heal byte-fidelity assertion: strip every region, --write, then r",
+      "declared": "[\"bun test packages/mpd-agent-teams-plugin\",\"bun test packages\",\"bun run typecheck\",\"the clean-heal byte-fidelity assertion: strip every region, --write, then r"
+    }
+  ],
+  "allFieldsMatch": true
+}

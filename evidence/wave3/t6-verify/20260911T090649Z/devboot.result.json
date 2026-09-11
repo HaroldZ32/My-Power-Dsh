@@ -1,0 +1,50 @@
+{
+  "task": "t6 dev-flavour boot attribution (devPatch fixed vs pre-fix)",
+  "stamp": "2026-09-11T09:16:26.551Z",
+  "artifacts": {
+    "fixedPatch": "work/dev-fixed.yml (extracted from skills/dsh-qa/scripts/preset-register.mjs)",
+    "prefixPatch": "work/dev-prefix.yml (extracted from `git show HEAD:skills/dsh-qa/scripts/preset-register.mjs`)",
+    "fixedBootLog": "work/boot-manual/boot.log",
+    "prefixBootLog": "work/boot-manual-prefix/boot.log",
+    "rtlVerifPatch": "work/dev-rtlverif.yml",
+    "rtlVerifBootLog": "work/boot-rtlverif/boot.log"
+  },
+  "checks": [
+    {
+      "name": "FIXED dev patch carries no packed operand and no baseUrl concat",
+      "pass": true,
+      "detail": "lines=383"
+    },
+    {
+      "name": "FIXED dev patch names all four MCP operands as existing checkout-absolute launchers",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "FIXED boot (no MPD_DSH_*_CLI / MPD_AST_GREP_SG_PATH / MPD_CODEGRAPH_BIN pre-set) answers the MCP tool call",
+      "pass": true,
+      "detail": "[t6-mcp-probe] MCP_TOOL_CALL=ok attempt=1 value={\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"search\\\",\\\"workdir\\\":\\\"/root/dshProj/my-power-dsh\\\",\\\"matches\\\":[{\\\"path\\"
+    },
+    {
+      "name": "FIXED boot log contains no MODULE_NOT_FOUND / BINARY_NOT_FOUND",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "PRE-FIX dev patch reproduces the wave-2 failure shape (<baseUrl>/node_modules/<abs-repo>/...)",
+      "pass": true,
+      "detail": "process.env.MPD_DSH_ASTGREP_CLI || ((typeof baseUrl === \"string\" ? baseUrl.replace(/^file:\\/\\//, \"\").replace(/\\/+$/, \"\") : \"\") + \"/node_modules//root/dshProj/my-power-dsh/packages/mpd-mcp-astgrep/laun"
+    },
+    {
+      "name": "PRE-FIX boot dies with MODULE_NOT_FOUND on the spliced path and the MCP tool is unknown",
+      "pass": true,
+      "detail": "[t6-mcp-probe] MCP_TOOL_CALL=fail last=not-ok:\"unknown tool \\\"mcp__ast_grep__search\\\"\""
+    },
+    {
+      "name": "RTL-VERIF's own devPatch copy produces the same fixed operand shape and boots the MCP tool",
+      "pass": true,
+      "detail": ""
+    }
+  ],
+  "allPass": true
+}

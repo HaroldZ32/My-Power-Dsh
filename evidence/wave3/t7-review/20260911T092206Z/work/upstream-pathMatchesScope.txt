@@ -1,0 +1,18 @@
+export function pathMatchesScope(path, pattern) {
+    const normalizedPath = normalizeWorkspacePath(path);
+    if (normalizedPath === undefined)
+        return false;
+    const rawPattern = pattern.trim().replaceAll('\\', '/');
+    if (rawPattern.startsWith('~') || rawPattern.startsWith('/') || /^[A-Za-z]:/.test(rawPattern))
+        return false;
+    const normalizedPattern = normalizeWorkspacePath(rawPattern);
+    if (normalizedPattern === undefined) {
+        if (rawPattern === './' || rawPattern === '/' || rawPattern === '.')
+            return true;
+        return false;
+    }
+    if (normalizedPattern === '')
+        return true;
+    return normalizedPath === normalizedPattern
+        || normalizedPath.startsWith(`${normalizedPattern}/`);
+}

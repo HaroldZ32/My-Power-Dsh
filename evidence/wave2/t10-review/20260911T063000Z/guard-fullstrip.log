@@ -1,0 +1,11 @@
+PASS prefix collision confirmed: stripping the OUTER delta of a prefix pair makes --check report a misdiagnosed 'half-open marker pair' (its own end marker is gone; the INNER sibling's end marker still matches the prefix search) — [{"outer":"mpd-delta scope-overlap","inner":"mpd-delta scope-overlap-normalize","outerRemovedLines":19,"checkExit":1,"message":"[patch-agent-teams-fixes] FAIL: region \"mpd-delta scope-overlap\" has a half-open marker pair (begin@-1, end@249) — refusing to gue
+PASS quality-gates.js: a full-strip then --write heal restores CANONICAL BYTES (t4 A5's vendor-refresh claim) — stripped=7 healExit=0 identical=true 0 diff lines
+FAIL tools.js: a full-strip then --write heal restores CANONICAL BYTES — stripped=2 healExit=0 identical=false 58 changed lines
+
+{
+  "collisionConfirmed": true,
+  "qgIdentical": true,
+  "qgDiff": "0 diff lines",
+  "toolsIdentical": false,
+  "toolsDiff": "58 changed lines"
+}

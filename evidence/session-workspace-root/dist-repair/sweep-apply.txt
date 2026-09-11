@@ -1,0 +1,277 @@
+=== dist sweep ===
+repoRoot=/root/dshProj/my-power-dsh  mode=apply
+
+mpd-bootstrap-plugin: STALE
+  cmd: bun build --target node --format esm packages/mpd-bootstrap-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-bootstrap-plugin.js
+  sha256 committed=f48553d0131a883d fresh=c817928406387c07 (22193B vs 23332B)
+  RAW BODY DIFF (banner line excepted):
+    7a8
+    > import { resolve } from "node:path";
+    15a17,51
+    > function sessionCwdOf(agent) {
+    >   try {
+    >     const cwd = agent?.session?.header?.cwd;
+    >     return typeof cwd === "string" && cwd.length > 0 ? cwd : undefined;
+    >   } catch {
+    >     return;
+    >   }
+    > }
+    > function workspaceRootOf(exec) {
+    >   const session = sessionCwdOf(exec?.agent);
+    >   if (session !== undefined)
+    >     return resolve(session);
+    >   const override = process.env.DSH_WORKSPACE_ROOT;
+    >   if (typeof override === "string" && override.length > 0)
+    >     return resolve(override);
+    >   return process.cwd();
+    > }
+    > function workspaceRootsOf(agents) {
+    >   if (agents === undefined || agents === null || typeof agents.list !== "function")
+    >     return [];
+    >   try {
+    >     const list = agents.list();
+    >     if (!Array.isArray(list))
+    >       return [];
+    >     const roots = new Set;
+    >     for (const agent of list) {
+    >       const cwd = sessionCwdOf(agent);
+    >       if (cwd !== undefined)
+    >         roots.add(resolve(cwd));
+    >     }
+    >     return [...roots];
+    >   } catch {
+    >     return [];
+    >   }
+    > }
+    39a76,77
+    >   const workspaceRoot = (exec) => workspaceRootOf(exec);
+    >   const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
+    66a105,106
+    >     workspaceRoot,
+    >     workspaceRootsAll,
+
+mpd-boulder-plugin: FRESH (byte-identical)
+  cmd: bun build --target node --format esm packages/mpd-boulder-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-boulder-plugin.js
+  sha256 committed=a15872148b34caee fresh=a15872148b34caee (41295B vs 41295B)
+
+mpd-bundle-plugin: FRESH (byte-identical)
+  cmd: bun build --target node --format esm packages/mpd-bundle-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-bundle-plugin.js
+  sha256 committed=d30b30fa7dcbe247 fresh=d30b30fa7dcbe247 (145B vs 145B)
+
+mpd-codegraph-plugin: FRESH (byte-identical)
+  cmd: bun build --target node --format esm packages/mpd-codegraph-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-codegraph-plugin.js
+  sha256 committed=d66079901dd8942e fresh=d66079901dd8942e (4267B vs 4267B)
+
+mpd-comment-checker-plugin: FRESH (byte-identical)
+  cmd: bun build --target node --format esm packages/mpd-comment-checker-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-comment-checker-plugin.js
+  sha256 committed=e27dd3cececbe6bf fresh=e27dd3cececbe6bf (16857B vs 16857B)
+
+mpd-config-plugin: FRESH (byte-identical)
+  cmd: bun build --target node --format esm packages/mpd-config-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-config-plugin.js
+  sha256 committed=189d76a6cca3e4e4 fresh=189d76a6cca3e4e4 (15491B vs 15491B)
+
+mpd-dsh-adapter-plugin: FRESH (byte-identical)
+  cmd: bun build --target node --format esm packages/mpd-dsh-adapter-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-dsh-adapter-plugin.js
+  sha256 committed=fe3ea3015bcc391e fresh=fe3ea3015bcc391e (10520B vs 10520B)
+
+mpd-hashline-plugin: FRESH (byte-identical)
+  cmd: bun build --target node --format esm packages/mpd-hashline-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-hashline-plugin.js
+  sha256 committed=7152de89783e4018 fresh=7152de89783e4018 (48155B vs 48155B)
+
+mpd-memory-plugin: FRESH (byte-identical)
+  cmd: bun build --target node --format esm packages/mpd-memory-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-memory-plugin.js
+  sha256 committed=0f9e3a53273b40d6 fresh=0f9e3a53273b40d6 (23756B vs 23756B)
+
+mpd-modelchain-plugin: FRESH (byte-identical)
+  cmd: bun build --target node --format esm packages/mpd-modelchain-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-modelchain-plugin.js
+  sha256 committed=e3c0b2466c54f32c fresh=e3c0b2466c54f32c (16324B vs 16324B)
+
+mpd-qa-roles-probe: STALE
+  cmd: bun build --target node --format esm packages/mpd-qa-roles-probe/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-qa-roles-probe.js
+  sha256 committed=42563acbf46310f1 fresh=37d0693a8b7f76e7 (11433B vs 12572B)
+  RAW BODY DIFF (banner line excepted):
+    0a1
+    > import { resolve } from "node:path";
+    8a10,44
+    > function sessionCwdOf(agent) {
+    >   try {
+    >     const cwd = agent?.session?.header?.cwd;
+    >     return typeof cwd === "string" && cwd.length > 0 ? cwd : undefined;
+    >   } catch {
+    >     return;
+    >   }
+    > }
+    > function workspaceRootOf(exec) {
+    >   const session = sessionCwdOf(exec?.agent);
+    >   if (session !== undefined)
+    >     return resolve(session);
+    >   const override = process.env.DSH_WORKSPACE_ROOT;
+    >   if (typeof override === "string" && override.length > 0)
+    >     return resolve(override);
+    >   return process.cwd();
+    > }
+    > function workspaceRootsOf(agents) {
+    >   if (agents === undefined || agents === null || typeof agents.list !== "function")
+    >     return [];
+    >   try {
+    >     const list = agents.list();
+    >     if (!Array.isArray(list))
+    >       return [];
+    >     const roots = new Set;
+    >     for (const agent of list) {
+    >       const cwd = sessionCwdOf(agent);
+    >       if (cwd !== undefined)
+    >         roots.add(resolve(cwd));
+    >     }
+    >     return [...roots];
+    >   } catch {
+    >     return [];
+    >   }
+    > }
+    32a69,70
+    >   const workspaceRoot = (exec) => workspaceRootOf(exec);
+    >   const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
+    59a98,99
+    >     workspaceRoot,
+    >     workspaceRootsAll,
+
+mpd-roles-plugin: STALE
+  cmd: bun build --target node --format esm packages/mpd-roles-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-roles-plugin.js
+  sha256 committed=570549bea4ced0c4 fresh=741605f62225fb41 (20813B vs 22049B)
+  RAW BODY DIFF (banner line excepted):
+    2c2
+    < import { dirname, join, resolve } from "node:path";
+    ---
+    > import { dirname, join, resolve as resolve2 } from "node:path";
+    6c6
+    < // src/roles.data.ts
+    ---
+    > // packages/mpd-roles-plugin/src/roles.data.ts
+    133c133,134
+    < // ../mpd-dsh-adapter-plugin/src/index.ts
+    ---
+    > // packages/mpd-dsh-adapter-plugin/src/index.ts
+    > import { resolve } from "node:path";
+    141a143,177
+    > function sessionCwdOf(agent) {
+    >   try {
+    >     const cwd = agent?.session?.header?.cwd;
+    >     return typeof cwd === "string" && cwd.length > 0 ? cwd : undefined;
+    >   } catch {
+    >     return;
+    >   }
+    > }
+    > function workspaceRootOf(exec) {
+    >   const session = sessionCwdOf(exec?.agent);
+    >   if (session !== undefined)
+    >     return resolve(session);
+    >   const override = process.env.DSH_WORKSPACE_ROOT;
+    >   if (typeof override === "string" && override.length > 0)
+    >     return resolve(override);
+    >   return process.cwd();
+    > }
+    > function workspaceRootsOf(agents) {
+    >   if (agents === undefined || agents === null || typeof agents.list !== "function")
+    >     return [];
+    >   try {
+    >     const list = agents.list();
+    >     if (!Array.isArray(list))
+    >       return [];
+    >     const roots = new Set;
+    >     for (const agent of list) {
+    >       const cwd = sessionCwdOf(agent);
+    >       if (cwd !== undefined)
+    >         roots.add(resolve(cwd));
+    >     }
+    >     return [...roots];
+    >   } catch {
+    >     return [];
+    >   }
+    > }
+    165a202,203
+    >   const workspaceRoot = (exec) => workspaceRootOf(exec);
+    >   const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
+    192a231,232
+    >     workspaceRoot,
+    >     workspaceRootsAll,
+    334c374
+    < // src/index.ts
+    ---
+    > // packages/mpd-roles-plugin/src/index.ts
+    379c419
+    <   return config.personasDir ? join(resolve(config.personasDir), spec.id + ".md") : join(pkgRoot(), "packages", "mpd-roles-plugin", "personas", spec.id + ".md");
+    ---
+    >   return config.personasDir ? join(resolve2(config.personasDir), spec.id + ".md") : join(pkgRoot(), "packages", "mpd-roles-plugin", "personas", spec.id + ".md");
+
+mpd-tools-plugin: STALE
+  cmd: bun build --target node --format esm packages/mpd-tools-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-tools-plugin.js
+  sha256 committed=fcca03d8291fe095 fresh=07c539987450e064 (11375B vs 12514B)
+  RAW BODY DIFF (banner line excepted):
+    3a4
+    > import { resolve } from "node:path";
+    11a13,47
+    > function sessionCwdOf(agent) {
+    >   try {
+    >     const cwd = agent?.session?.header?.cwd;
+    >     return typeof cwd === "string" && cwd.length > 0 ? cwd : undefined;
+    >   } catch {
+    >     return;
+    >   }
+    > }
+    > function workspaceRootOf(exec) {
+    >   const session = sessionCwdOf(exec?.agent);
+    >   if (session !== undefined)
+    >     return resolve(session);
+    >   const override = process.env.DSH_WORKSPACE_ROOT;
+    >   if (typeof override === "string" && override.length > 0)
+    >     return resolve(override);
+    >   return process.cwd();
+    > }
+    > function workspaceRootsOf(agents) {
+    >   if (agents === undefined || agents === null || typeof agents.list !== "function")
+    >     return [];
+    >   try {
+    >     const list = agents.list();
+    >     if (!Array.isArray(list))
+    >       return [];
+    >     const roots = new Set;
+    >     for (const agent of list) {
+    >       const cwd = sessionCwdOf(agent);
+    >       if (cwd !== undefined)
+    >         roots.add(resolve(cwd));
+    >     }
+    >     return [...roots];
+    >   } catch {
+    >     return [];
+    >   }
+    > }
+    35a72,73
+    >   const workspaceRoot = (exec) => workspaceRootOf(exec);
+    >   const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
+    62a101,102
+    >     workspaceRoot,
+    >     workspaceRootsAll,
+
+mpd-ulw-plugin: FRESH (byte-identical)
+  cmd: bun build --target node --format esm packages/mpd-ulw-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-ulw-plugin.js
+  sha256 committed=e116ee3e8017450a fresh=e116ee3e8017450a (30024B vs 30024B)
+
+mpd-verif-plugin: FRESH (byte-identical)
+  cmd: bun build --target node --format esm packages/mpd-verif-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-verif-plugin.js
+  sha256 committed=2958504a65f4603d fresh=2958504a65f4603d (96452B vs 96452B)
+
+mpd-workmate-plugin: FRESH (byte-identical)
+  cmd: bun build --target node --format esm packages/mpd-workmate-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-workmate-plugin.js
+  sha256 committed=e10a87fcf2fe3096 fresh=e10a87fcf2fe3096 (47773B vs 47773B)
+
+=== summary ===
+packages with dist/index.js: 16
+FRESH byte-identical: 12
+FRESH banner-only: 0
+STALE: 4 -> mpd-bootstrap-plugin, mpd-qa-roles-probe, mpd-roles-plugin, mpd-tools-plugin
+
+=== applying rebuild to 4 STALE package(s) ===
+  rebuilt packages/mpd-bootstrap-plugin/dist/index.js (23332B)
+  rebuilt packages/mpd-qa-roles-probe/dist/index.js (12572B)
+  rebuilt packages/mpd-roles-plugin/dist/index.js (22049B)
+  rebuilt packages/mpd-tools-plugin/dist/index.js (12514B)

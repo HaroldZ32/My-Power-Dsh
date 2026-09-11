@@ -1,0 +1,36 @@
+# Real memory-plugin reads after the migration (verbatim observed tool output)
+
+## 1. mpd_memory_status
+
+    memory status: vcs=git root=/root/dshProj/my-power-dsh/.mpd/memory/agents/agent-my-power-dsh entries=27 journal=20
+    reflection: {"steps":19,"reflected_completed_steps":1,"steps_since_last_successful_reflection":9,"reservation":{"status":"completed","at":"2026-08-30T13:26:39.667Z"},"triggered":false}
+
+entry count went 20 -> 27; the root is the CORRECT store (session-workspace root), not the orphaned one.
+
+## 2. mpd_memory_read (no query, limit 40) -> "memory entries: 27"
+
+The 27 returned entries include all seven migrated ones. Their frontmatter descriptions
+(cross-checked against `migrated-entry-frontmatter.json`, extracted from the copied files) appear
+verbatim among the returned entries:
+
+1. [fact] "agent-teams 的对话内卡片+右上浮窗迁到 better-sidebar tab 的可行性侦察结论、用户拍板的四项决策、以及给实现用的关键机制事实"
+2. [reflection] "agent-teams GUI 迁入 better-sidebar 的交付要点、agent-teams 团队在本环境不派活的教训、以及可复用的 better-sidebar 集成事实"
+3. [note] "Runbook for the AgentTeams scheduler stall: symptoms, what does and does not revive it, how to rebuild the team without losing deliverables, and the plan-authoring traps hit while rebuilding."
+4. [fact] "Lesson: a patch row or installed package is not proof of live tool registration; the restrict() error's known-tools list is ground truth. Both str_replace_editor and apply_patch must leave READONLY_DENY."
+5. [fact] "Record the low-findings pass and the harness falsifiability trap"
+6. [note] "User-approved requirements for adding workmate rename + delete to mpd-workmate-plugin, including five binding decisions and the discovered read-only deny-list defect."
+7. [fact] "Closed the workmate rename/delete + read-only deny-list delivery; recorded the output-schema 'ok' trap and the cross-lineage mtime trap as reusable lessons."
+
+(The reflection entry carries the orphaned store's own reflection content — a plain entry file, read
+like any other; no reflection.json edit was involved.)
+
+## 3. mpd_memory_read (query="workmate", limit 5) -> "memory entries: 6"
+
+Returned descriptions include two of the migrated entries:
+
+- "User-approved requirements for adding workmate rename + delete to mpd-workmate-plugin, including five binding decisions and the discovered read-only deny-list defect."
+- "Closed the workmate rename/delete + read-only deny-list delivery; recorded the output-schema 'ok' trap and the cross-lineage mtime trap as reusable lessons."
+
+Note: the multi-word query "workmate rename delete" returned 0 entries while the single-token query
+"workmate" returned 6 — the plugin's query matcher is not a whitespace-token AND; that is pre-existing
+matcher behaviour, not a migration effect (the same entries are returned by the no-query listing).

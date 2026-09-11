@@ -1,0 +1,315 @@
+{
+  "driver": "check3-live-contract",
+  "liveTeamJson": ".mpd/team/mpd-wave-2/team.json",
+  "sandbox": "/tmp/mpd-t8-contract-6zGMXU",
+  "caller": {
+    "kind": "captain",
+    "id": "session-aded9c07-4cd3-4c82-ac31-22ce8c47c5be"
+  },
+  "registeredToolCount": 14,
+  "registeredToolNames": [
+    "agent_teams_add_member",
+    "agent_teams_approve",
+    "agent_teams_claim_task",
+    "agent_teams_create",
+    "agent_teams_create_task",
+    "agent_teams_delete",
+    "agent_teams_edit_plan",
+    "agent_teams_reassign_task",
+    "agent_teams_remove_member",
+    "agent_teams_resume",
+    "agent_teams_send_message",
+    "agent_teams_status",
+    "agent_teams_task_contract",
+    "agent_teams_update_task"
+  ],
+  "liveSha256Before": "37b12d8f907f86eb428fd93b135a5532e6f1d2ad6f17f4576a45a6d70d1a54af",
+  "sandboxSha256Before": "37b12d8f907f86eb428fd93b135a5532e6f1d2ad6f17f4576a45a6d70d1a54af",
+  "toolRegistered": true,
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "task_id": {
+        "type": "string",
+        "description": "Task id from the shared task list, e.g. \"t4\"."
+      }
+    }
+  },
+  "hasRender": true,
+  "view": {
+    "task_id": "t4",
+    "subject": "Adopted tooling: expand inScope patterns, forbid contradictory contracts, expose a running task's contract (durable across vendor refresh)",
+    "kind": "implementation",
+    "status": "completed",
+    "assignee": "Senior Engineer",
+    "attempt": 1,
+    "attempt_id": "59d0c609-d28d-40fe-a34e-eef73ec1d288",
+    "dependencies": [
+      "t1"
+    ],
+    "objective": "Fix the three captain-facing tooling defects in the adopted agent-teams plugin — inScope `**` expansion, contradictory contract generation, and unreadable running-task contracts — and make the fixes durable through a vendor refresh.",
+    "in_scope": [
+      "packages/mpd-agent-teams-plugin/lib",
+      "packages/mpd-agent-teams-plugin/test",
+      "packages/mpd-agent-teams-plugin/package.json",
+      "scripts/vendor-agent-teams.mjs",
+      "scripts/patch-agent-teams-client.mjs",
+      "evidence/wave2/adopted-tooling"
+    ],
+    "out_of_scope": [
+      "skills/**",
+      "VENDOR_LOCK.json",
+      "packages/mpd-bundle/cordis.patch.yml",
+      "presets/**"
+    ],
+    "acceptance": [
+      "The inScope matcher honors a directory-prefix declaration such as `packages/foo/test/**` (or its documented expansion): a task declaring that pattern can complete with files under it, demonstrated by a test or a driven fixture, not by assertion",
+      "Contract generation can no longer produce a contract that lists one path in BOTH inScope and outOfScope: the defect is reproduced against the current code first, then fixed, and the fix is falsifiable",
+      "The captain (or any caller) can READ a running task's contract — the exact inScope/outOfScope/dependencies/acceptance — through an existing or new read-only surface, demonstrated by showing the contract of a live task and comparing it against what was declared",
+      "Every change to adopted code is marked in-source as a LOCAL ADAPTATION at the point of change, in the established style",
+      "The changes survive a vendor refresh: a re-apply guard (or an equivalent, explicitly stated mechanism in `scripts/vendor-agent-teams.mjs`) is added or extended so a `vendor-agent-teams.mjs` run cannot silently drop them, and the guard's failure mode is exercised",
+      "Existing agent-teams behavior is not regressed: the plugin's own test suite is green and a boot applying the agent-teams row shows 0 apply-crash signatures",
+      "The wave-1 defect is cited: `**` non-expansion caused declared-but-unmatched completions on t3, t4, t7 and t13, and the contract contradiction rejected a REQUIRED edit on t13"
+    ],
+    "verify": [
+      "bun test packages/mpd-agent-teams-plugin",
+      "bun test packages",
+      "bun run typecheck",
+      "node scripts/vendor-agent-teams.mjs (guarded re-apply exercise)"
+    ],
+    "deliverables": [],
+    "non_goals": [],
+    "acceptance_results": [
+      {
+        "criterion": "The inScope matcher honors a directory-prefix declaration such as `packages/foo/test/**` (or its documented expansion): a task declaring that pattern can complete with files under it, demonstrated by a test or a driven fixture, not by assertion",
+        "status": "passed",
+        "evidence": "Pre-fix measurement: pathMatchesScope('src/a.ts','src/**')=false and classifyChangedPath('src/a.ts',['src/**'])='undeclared'. Post-fix: pathMatchesScope('packages/mpd-verif-plugin/test/a.ts','packages/mpd-verif-plugin/test/**')=true, classifyChangedPath(...)='in_scope', and the driven completion gate evaluateQualityCompletion(glob task, changedPaths=['packages/foo/test/deep/a.test.ts']).ok=true while 'packages/other/a.ts' stays rejected as undeclared. Tests: self-fix-tests/scope-glob-and-contract.test.mjs 'DEFECT 1: a declared glob covers the files beneath it' + '...completion gate accepts a glob-declared changedPath'. Negative controls: 'srcx/a.ts' vs 'src/**'=false, 'src/a.md' vs '**/*.ts'=false, 'src2/a.ts' vs 'src/*'=false. B5 regression: every wildcard-free declaration keeps exact/dir-prefix semantics (9-row table asserted)."
+      },
+      {
+        "criterion": "Contract generation can no longer produce a contract that lists one path in BOTH inScope and outOfScope: the defect is reproduced against the current code first, then fixed, and the fix is falsifiable",
+        "status": "passed",
+        "evidence": "Reproduced against the pre-fix shape {inScope:['AGENTS.md'],outOfScope:['AGENTS.md']} (the t13 contract): classifyChangedPath('AGENTS.md', both lists)='out_of_scope' — the gate rejected the edit the same contract's acceptance REQUIRED; the pre-fix generator produced exactly that shape because planQualityFollowUp set inScope=files and outOfScope=source.outOfScope. Fixed twice over: (a) validateCreateTask now returns ok=false with 'unsatisfiable ... in scope ... outOfScope' for that pair, for inScope=['packages/foo/**'] vs outOfScope=['packages/foo'], and for outOfScope=['**']; (b) repairScopeFromFindings generates the repair scope so a path can never land in both lists (forbidden finding dropped, unrelated carve-out preserved, new finding admitted, contradiction-free). Falsifiability: legitimate carve-outs stay accepted (packages/foo + packages/foo/vendor, glob carve-out, sibling dirs). Tests: 'DEFECT 2 reproduction', 'DEFECT 2 fix', two 'DEFECT 2 falsifiability' blocks."
+      },
+      {
+        "criterion": "The captain (or any caller) can READ a running task's contract — the exact inScope/outOfScope/dependencies/acceptance — through an existing or new read-only surface, demonstrated by showing the contract of a live task and comparing it against what was declared",
+        "status": "passed",
+        "evidence": "New read-only tool agent_teams_task_contract (registered alongside status; the established 13-tool set now registers 14). test/task-contract-tool.test.mjs drives the REAL registration against a REAL team.json whose task t4 is status=in_progress and asserts every declared field round-trips exactly (in_scope=['packages/foo/test/**'], out_of_scope=['packages/foo/lib'], dependencies=['t1'], acceptance=['glob declarations are honoured'], verify=['bun test packages/foo'], attempt_id='attempt-live-1') plus the rendered block ('Task t4 [in_progress] implementation round 1 ... In scope: ... Out of scope: ... Acceptance: ... Verify: ... Dependencies: t1'). Read-only proven: team.json is byte-identical after the read, for a captain read and for a member read; unknown/blank ids are rejected. Suite: 83 pass / 0 fail."
+      },
+      {
+        "criterion": "Every change to adopted code is marked in-source as a LOCAL ADAPTATION at the point of change, in the established style",
+        "status": "passed",
+        "evidence": "7 marked regions across 2 adopted files, each bracketed by '//#region mpd-delta <id> (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)' ... '//#endregion mpd-delta <id>': scope-glob, scope-glob-core, contract-contradiction, repair-scope, repair-scope-fields (lib/quality-gates.js) and task-contract, task-contract-render (lib/tools.js). `node scripts/patch-agent-teams-fixes.mjs --check` reports 'already applied: 7 mpd delta region(s) across 2 adopted file(s)'."
+      },
+      {
+        "criterion": "The changes survive a vendor refresh: a re-apply guard (or an equivalent, explicitly stated mechanism in `scripts/vendor-agent-teams.mjs`) is added or extended so a `vendor-agent-teams.mjs` run cannot silently drop them, and the guard's failure mode is exercised",
+        "status": "passed",
+        "evidence": "scripts/patch-agent-teams-fixes.mjs (idempotent; --check/--write/--write-registry) is invoked from scripts/vendor-agent-teams.mjs right after the client export bridge; the real refresh ran with DSH_HOST_NM=<dsh node_modules> and printed '[vendor-agent-teams] mpd deltas already-applied (7 region(s) across 2 adopted file(s))'. Failure mode exercised on a fixture whose deltas were dropped (303 lines removed): verify-only REFUSES with 'delta \"mpd-delta scope-glob\" is MISSING ... (verify-only mode)'; with the anchor line gone too it REFUSES naming the drift; --write restores 7 regions, the next pass verifies byte-identical, and the restored module still expands globs and rejects contradictions. Log: evidence/wave2/adopted-tooling/fix/guard-failure-exercise.log."
+      },
+      {
+        "criterion": "Existing agent-teams behavior is not regressed: the plugin's own test suite is green and a boot applying the agent-teams row shows 0 apply-crash signatures",
+        "status": "passed",
+        "evidence": "bun test packages/mpd-agent-teams-plugin = 83 pass / 0 fail (11 files); bun test packages/mpd-agent-teams-plugin/self-fix-tests = 26 pass / 0 fail; bun test packages = 335 pass / 0 fail across 38 files in two consecutive clean runs (a transient 1-error run was caused by a concurrent teammate edit, cleared on re-run and re-recorded); bun run typecheck exit 0. Isolated mount boot (mpd-headless profile in a temp DSH_HOME + HOME): 0 apply-crash signatures for 'unsupported JSON schema', 'JsonSchemaError', 'plugin tree failed to load', 'failed to apply loader entry', 'without inject' (evidence/wave2/adopted-tooling/mount/server-boot.log). --dump-config is recorded only as COMPOSITION evidence (id: agent-teams -> packages/mpd-agent-teams-plugin/lib/index.js), never cited as load evidence."
+      },
+      {
+        "criterion": "The wave-1 defect is cited: `**` non-expansion caused declared-but-unmatched completions on t3, t4, t7 and t13, and the contract contradiction rejected a REQUIRED edit on t13",
+        "status": "passed",
+        "evidence": "Cited in the task prompt, in self-fix-tests/README.md (defect-class entry 6), in evidence/wave2/adopted-tooling/README.md ('Defects and wave-1 citations' table), and in result.json.defects[*].wave1_citation: DEFECT 1 -> t3/t4/t7/t13 completed with incomplete changedPaths and required four captain-authorized 'complete with covered paths only' workarounds; DEFECT 2 -> t13's auto-generated repair listed AGENTS.md in both lists so the gate rejected the edit its own acceptance required as out_of_scope."
+      }
+    ],
+    "commands_run": [
+      {
+        "command": "bun test packages/mpd-agent-teams-plugin",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "83 pass / 0 fail / 312 expect() calls across 11 files — evidence/wave2/adopted-tooling/tests/plugin-suite.log"
+      },
+      {
+        "command": "bun test packages",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "335 pass / 0 fail / 2142 expect() calls across 38 files, two consecutive clean runs — evidence/wave2/adopted-tooling/tests/full-suite.log"
+      },
+      {
+        "command": "bun run typecheck",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "tsgo --noEmit clean — evidence/wave2/adopted-tooling/tests/typecheck.log"
+      },
+      {
+        "command": "node scripts/vendor-agent-teams.mjs (guarded re-apply exercise)",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "real refresh (DSH_HOST_NM=<dsh node_modules>) exited 0 and printed '[vendor-agent-teams] mpd deltas already-applied (7 region(s) across 2 adopted file(s))'; its out-of-scope _deps/ rewrite was reverted with `git checkout -- packages/mpd-agent-teams-plugin/_deps` (verified 0 diff afterwards). Guard failure modes additionally exercised on a fixture: evidence/wave2/adopted-tooling/fix/guard-failure-exercise.log"
+      },
+      {
+        "command": "bun test packages/mpd-agent-teams-plugin/self-fix-tests",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "26 pass / 0 fail / 117 expect() calls — evidence/wave2/adopted-tooling/tests/self-fix-tests.log"
+      },
+      {
+        "command": "node scripts/patch-agent-teams-fixes.mjs --check",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "already applied: 7 mpd delta region(s) across 2 adopted file(s) — evidence/wave2/adopted-tooling/fix/guard-check.log"
+      }
+    ],
+    "changed_paths": [
+      "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+      "packages/mpd-agent-teams-plugin/lib/tools.js",
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+      "packages/mpd-agent-teams-plugin/test/task-contract-tool.test.mjs",
+      "scripts/vendor-agent-teams.mjs",
+      "evidence/wave2/adopted-tooling/README.md",
+      "evidence/wave2/adopted-tooling/result.json"
+    ],
+    "findings_open": 0
+  },
+  "rendered": "Task t4 [completed] implementation — Adopted tooling: expand inScope patterns, forbid contradictory contracts, expose a running task's contract (durable across vendor refresh)\nAssignee: Senior Engineer (attempt 1, attempt_id 59d0c609-d28d-40fe-a34e-eef73ec1d288)\nDependencies: t1\nContract:\n  Objective: Fix the three captain-facing tooling defects in the adopted agent-teams plugin — inScope `**` expansion, contradictory contract generation, and unreadable running-task contracts — and make the fixes durable through a vendor refresh.\n  In scope: packages/mpd-agent-teams-plugin/lib, packages/mpd-agent-teams-plugin/test, packages/mpd-agent-teams-plugin/package.json, scripts/vendor-agent-teams.mjs, scripts/patch-agent-teams-client.mjs, evidence/wave2/adopted-tooling\n  Out of scope: skills/**, VENDOR_LOCK.json, packages/mpd-bundle/cordis.patch.yml, presets/**\n  Acceptance: The inScope matcher honors a directory-prefix declaration such as `packages/foo/test/**` (or its documented expansion): a task declaring that pattern can complete with files under it, demonstrated by a test or a driven fixture, not by assertion, Contract generation can no longer produce a contract that lists one path in BOTH inScope and outOfScope: the defect is reproduced against the current code first, then fixed, and the fix is falsifiable, The captain (or any caller) can READ a running task's contract — the exact inScope/outOfScope/dependencies/acceptance — through an existing or new read-only surface, demonstrated by showing the contract of a live task and comparing it against what was declared, Every change to adopted code is marked in-source as a LOCAL ADAPTATION at the point of change, in the established style, The changes survive a vendor refresh: a re-apply guard (or an equivalent, explicitly stated mechanism in `scripts/vendor-agent-teams.mjs`) is added or extended so a `vendor-agent-teams.mjs` run cannot silently drop them, and the guard's failure mode is exercised, Existing agent-teams behavior is not regressed: the plugin's own test suite is green and a boot applying the agent-teams row shows 0 apply-crash signatures, The wave-1 defect is cited: `**` non-expansion caused declared-but-unmatched completions on t3, t4, t7 and t13, and the contract contradiction rejected a REQUIRED edit on t13\n  Verify: bun test packages/mpd-agent-teams-plugin, bun test packages, bun run typecheck, node scripts/vendor-agent-teams.mjs (guarded re-apply exercise)\nCompletion payload so far:\n  acceptanceResults: [{\"criterion\":\"The inScope matcher honors a directory-prefix declaration such as `packages/foo/test/**` (or its documented expansion): a task declaring that pattern can complete with files under it, demonstrated by a test or a driven fixture, not by assertion\",\"status\":\"passed\",\"evidence\":\"Pre-fix measurement: pathMatchesScope('src/a.ts','src/**')=false and classifyChangedPath('src/a.ts',['src/**'])='undeclared'. Post-fix: pathMatchesScope('packages/mpd-verif-plugin/test/a.ts','packages/mpd-verif-plugin/test/**')=true, classifyChangedPath(...)='in_scope', and the driven completion gate evaluateQualityCompletion(glob task, changedPaths=['packages/foo/test/deep/a.test.ts']).ok=true while 'packages/other/a.ts' stays rejected as undeclared. Tests: self-fix-tests/scope-glob-and-contract.test.mjs 'DEFECT 1: a declared glob covers the files beneath it' + '...completion gate accepts a glob-declared changedPath'. Negative controls: 'srcx/a.ts' vs 'src/**'=false, 'src/a.md' vs '**/*.ts'=false, 'src2/a.ts' vs 'src/*'=false. B5 regression: every wildcard-free declaration keeps exact/dir-prefix semantics (9-row table asserted).\"},{\"criterion\":\"Contract generation can no longer produce a contract that lists one path in BOTH inScope and outOfScope: the defect is reproduced against the current code first, then fixed, and the fix is falsifiable\",\"status\":\"passed\",\"evidence\":\"Reproduced against the pre-fix shape {inScope:['AGENTS.md'],outOfScope:['AGENTS.md']} (the t13 contract): classifyChangedPath('AGENTS.md', both lists)='out_of_scope' — the gate rejected the edit the same contract's acceptance REQUIRED; the pre-fix generator produced exactly that shape because planQualityFollowUp set inScope=files and outOfScope=source.outOfScope. Fixed twice over: (a) validateCreateTask now returns ok=false with 'unsatisfiable ... in scope ... outOfScope' for that pair, for inScope=['packages/foo/**'] vs outOfScope=['packages/foo'], and for outOfScope=['**']; (b) repairScopeFromFindings generates the repair scope so a path can never land in both lists (forbidden finding dropped, unrelated carve-out preserved, new finding admitted, contradiction-free). Falsifiability: legitimate carve-outs stay accepted (packages/foo + packages/foo/vendor, glob carve-out, sibling dirs). Tests: 'DEFECT 2 reproduction', 'DEFECT 2 fix', two 'DEFECT 2 falsifiability' blocks.\"},{\"criterion\":\"The captain (or any caller) can READ a running task's contract — the exact inScope/outOfScope/dependencies/acceptance — through an existing or new read-only surface, demonstrated by showing the contract of a live task and comparing it against what was declared\",\"status\":\"passed\",\"evidence\":\"New read-only tool agent_teams_task_contract (registered alongside status; the established 13-tool set now registers 14). test/task-contract-tool.test.mjs drives the REAL registration against a REAL team.json whose task t4 is status=in_progress and asserts every declared field round-trips exactly (in_scope=['packages/foo/test/**'], out_of_scope=['packages/foo/lib'], dependencies=['t1'], acceptance=['glob declarations are honoured'], verify=['bun test packages/foo'], attempt_id='attempt-live-1') plus the rendered block ('Task t4 [in_progress] implementation round 1 ... In scope: ... Out of scope: ... Acceptance: ... Verify: ... Dependencies: t1'). Read-only proven: team.json is byte-identical after the read, for a captain read and for a member read; unknown/blank ids are rejected. Suite: 83 pass / 0 fail.\"},{\"criterion\":\"Every change to adopted code is marked in-source as a LOCAL ADAPTATION at the point of change, in the established style\",\"status\":\"passed\",\"evidence\":\"7 marked regions across 2 adopted files, each bracketed by '//#region mpd-delta <id> (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)' ... '//#endregion mpd-delta <id>': scope-glob, scope-glob-core, contract-contradiction, repair-scope, repair-scope-fields (lib/quality-gates.js) and task-contract, task-contract-render (lib/tools.js). `node scripts/patch-agent-teams-fixes.mjs --check` reports 'already applied: 7 mpd delta region(s) across 2 adopted file(s)'.\"},{\"criterion\":\"The changes survive a vendor refresh: a re-apply guard (or an equivalent, explicitly stated mechanism in `scripts/vendor-agent-teams.mjs`) is added or extended so a `vendor-agent-teams.mjs` run cannot silently drop them, and the guard's failure mode is exercised\",\"status\":\"passed\",\"evidence\":\"scripts/patch-agent-teams-fixes.mjs (idempotent; --check/--write/--write-registry) is invoked from scripts/vendor-agent-teams.mjs right after the client export bridge; the real refresh ran with DSH_HOST_NM=<dsh node_modules> and printed '[vendor-agent-teams] mpd deltas already-applied (7 region(s) across 2 adopted file(s))'. Failure mode exercised on a fixture whose deltas were dropped (303 lines removed): verify-only REFUSES with 'delta \\\"mpd-delta scope-glob\\\" is MISSING ... (verify-only mode)'; with the anchor line gone too it REFUSES naming the drift; --write restores 7 regions, the next pass verifies byte-identical, and the restored module still expands globs and rejects contradictions. Log: evidence/wave2/adopted-tooling/fix/guard-failure-exercise.log.\"},{\"criterion\":\"Existing agent-teams behavior is not regressed: the plugin's own test suite is green and a boot applying the agent-teams row shows 0 apply-crash signatures\",\"status\":\"passed\",\"evidence\":\"bun test packages/mpd-agent-teams-plugin = 83 pass / 0 fail (11 files); bun test packages/mpd-agent-teams-plugin/self-fix-tests = 26 pass / 0 fail; bun test packages = 335 pass / 0 fail across 38 files in two consecutive clean runs (a transient 1-error run was caused by a concurrent teammate edit, cleared on re-run and re-recorded); bun run typecheck exit 0. Isolated mount boot (mpd-headless profile in a temp DSH_HOME + HOME): 0 apply-crash signatures for 'unsupported JSON schema', 'JsonSchemaError', 'plugin tree failed to load', 'failed to apply loader entry', 'without inject' (evidence/wave2/adopted-tooling/mount/server-boot.log). --dump-config is recorded only as COMPOSITION evidence (id: agent-teams -> packages/mpd-agent-teams-plugin/lib/index.js), never cited as load evidence.\"},{\"criterion\":\"The wave-1 defect is cited: `**` non-expansion caused declared-but-unmatched completions on t3, t4, t7 and t13, and the contract contradiction rejected a REQUIRED edit on t13\",\"status\":\"passed\",\"evidence\":\"Cited in the task prompt, in self-fix-tests/README.md (defect-class entry 6), in evidence/wave2/adopted-tooling/README.md ('Defects and wave-1 citations' table), and in result.json.defects[*].wave1_citation: DEFECT 1 -> t3/t4/t7/t13 completed with incomplete changedPaths and required four captain-authorized 'complete with covered paths only' workarounds; DEFECT 2 -> t13's auto-generated repair listed AGENTS.md in both lists so the gate rejected the edit its own acceptance required as out_of_scope.\"}]\n  commandsRun: [{\"command\":\"bun test packages/mpd-agent-teams-plugin\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"83 pass / 0 fail / 312 expect() calls across 11 files — evidence/wave2/adopted-tooling/tests/plugin-suite.log\"},{\"command\":\"bun test packages\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"335 pass / 0 fail / 2142 expect() calls across 38 files, two consecutive clean runs — evidence/wave2/adopted-tooling/tests/full-suite.log\"},{\"command\":\"bun run typecheck\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"tsgo --noEmit clean — evidence/wave2/adopted-tooling/tests/typecheck.log\"},{\"command\":\"node scripts/vendor-agent-teams.mjs (guarded re-apply exercise)\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"real refresh (DSH_HOST_NM=<dsh node_modules>) exited 0 and printed '[vendor-agent-teams] mpd deltas already-applied (7 region(s) across 2 adopted file(s))'; its out-of-scope _deps/ rewrite was reverted with `git checkout -- packages/mpd-agent-teams-plugin/_deps` (verified 0 diff afterwards). Guard failure modes additionally exercised on a fixture: evidence/wave2/adopted-tooling/fix/guard-failure-exercise.log\"},{\"command\":\"bun test packages/mpd-agent-teams-plugin/self-fix-tests\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"26 pass / 0 fail / 117 expect() calls — evidence/wave2/adopted-tooling/tests/self-fix-tests.log\"},{\"command\":\"node scripts/patch-agent-teams-fixes.mjs --check\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"already applied: 7 mpd delta region(s) across 2 adopted file(s) — evidence/wave2/adopted-tooling/fix/guard-check.log\"}]\n  changedPaths: [\"packages/mpd-agent-teams-plugin/lib/quality-gates.js\",\"packages/mpd-agent-teams-plugin/lib/tools.js\",\"packages/mpd-agent-teams-plugin/lib/mpd-deltas.js\",\"packages/mpd-agent-teams-plugin/test/task-contract-tool.test.mjs\",\"scripts/vendor-agent-teams.mjs\",\"evidence/wave2/adopted-tooling/README.md\",\"evidence/wave2/adopted-tooling/result.json\"]\nOpen findings: 0",
+  "unknownId": "task \"t-does-not-exist\" does not exist in team \"MPD Wave 2\" (known tasks: t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12)",
+  "blankId": "task_id is required",
+  "memberRead": {
+    "ok": true,
+    "in_scope": [
+      "packages/mpd-agent-teams-plugin/lib",
+      "packages/mpd-agent-teams-plugin/test",
+      "packages/mpd-agent-teams-plugin/package.json",
+      "scripts/vendor-agent-teams.mjs",
+      "scripts/patch-agent-teams-client.mjs",
+      "evidence/wave2/adopted-tooling"
+    ],
+    "out_of_scope": [
+      "skills/**",
+      "VENDOR_LOCK.json",
+      "packages/mpd-bundle/cordis.patch.yml",
+      "presets/**"
+    ],
+    "acceptance_len": 7
+  },
+  "liveSha256After": "37b12d8f907f86eb428fd93b135a5532e6f1d2ad6f17f4576a45a6d70d1a54af",
+  "sandboxSha256After": "37b12d8f907f86eb428fd93b135a5532e6f1d2ad6f17f4576a45a6d70d1a54af",
+  "liveUntouched": true,
+  "sandboxUntouched": true,
+  "declared": {
+    "subject": "Adopted tooling: expand inScope patterns, forbid contradictory contracts, expose a running task's contract (durable across vendor refresh)",
+    "kind": "implementation",
+    "status": "completed",
+    "assignee": "Senior Engineer",
+    "attempt": 1,
+    "attemptId": "59d0c609-d28d-40fe-a34e-eef73ec1d288",
+    "dependencies": [
+      "t1"
+    ],
+    "objective": "Fix the three captain-facing tooling defects in the adopted agent-teams plugin — inScope `**` expansion, contradictory contract generation, and unreadable running-task contracts — and make the fixes durable through a vendor refresh.",
+    "inScope": [
+      "packages/mpd-agent-teams-plugin/lib",
+      "packages/mpd-agent-teams-plugin/test",
+      "packages/mpd-agent-teams-plugin/package.json",
+      "scripts/vendor-agent-teams.mjs",
+      "scripts/patch-agent-teams-client.mjs",
+      "evidence/wave2/adopted-tooling"
+    ],
+    "outOfScope": [
+      "skills/**",
+      "VENDOR_LOCK.json",
+      "packages/mpd-bundle/cordis.patch.yml",
+      "presets/**"
+    ],
+    "acceptance": [
+      "The inScope matcher honors a directory-prefix declaration such as `packages/foo/test/**` (or its documented expansion): a task declaring that pattern can complete with files under it, demonstrated by a test or a driven fixture, not by assertion",
+      "Contract generation can no longer produce a contract that lists one path in BOTH inScope and outOfScope: the defect is reproduced against the current code first, then fixed, and the fix is falsifiable",
+      "The captain (or any caller) can READ a running task's contract — the exact inScope/outOfScope/dependencies/acceptance — through an existing or new read-only surface, demonstrated by showing the contract of a live task and comparing it against what was declared",
+      "Every change to adopted code is marked in-source as a LOCAL ADAPTATION at the point of change, in the established style",
+      "The changes survive a vendor refresh: a re-apply guard (or an equivalent, explicitly stated mechanism in `scripts/vendor-agent-teams.mjs`) is added or extended so a `vendor-agent-teams.mjs` run cannot silently drop them, and the guard's failure mode is exercised",
+      "Existing agent-teams behavior is not regressed: the plugin's own test suite is green and a boot applying the agent-teams row shows 0 apply-crash signatures",
+      "The wave-1 defect is cited: `**` non-expansion caused declared-but-unmatched completions on t3, t4, t7 and t13, and the contract contradiction rejected a REQUIRED edit on t13"
+    ],
+    "verify": [
+      "bun test packages/mpd-agent-teams-plugin",
+      "bun test packages",
+      "bun run typecheck",
+      "node scripts/vendor-agent-teams.mjs (guarded re-apply exercise)"
+    ]
+  },
+  "fieldComparison": [
+    {
+      "field": "task_id",
+      "match": true,
+      "reported": "t4",
+      "declared": "t4"
+    },
+    {
+      "field": "subject",
+      "match": true,
+      "reported": "Adopted tooling: expand inScope patterns, forbid contradictory contracts, expose a running task's contract (durable across vendor refresh)",
+      "declared": "Adopted tooling: expand inScope patterns, forbid contradictory contracts, expose a running task's contract (durable across vendor refresh)"
+    },
+    {
+      "field": "kind",
+      "match": true,
+      "reported": "implementation",
+      "declared": "implementation"
+    },
+    {
+      "field": "status",
+      "match": true,
+      "reported": "completed",
+      "declared": "completed"
+    },
+    {
+      "field": "assignee",
+      "match": true,
+      "reported": "Senior Engineer",
+      "declared": "Senior Engineer"
+    },
+    {
+      "field": "attempt",
+      "match": true,
+      "reported": "1",
+      "declared": "1"
+    },
+    {
+      "field": "attempt_id",
+      "match": true,
+      "reported": "59d0c609-d28d-40fe-a34e-eef73ec1d288",
+      "declared": "59d0c609-d28d-40fe-a34e-eef73ec1d288"
+    },
+    {
+      "field": "dependencies",
+      "match": true,
+      "reported": "[\"t1\"]",
+      "declared": "[\"t1\"]"
+    },
+    {
+      "field": "objective",
+      "match": true,
+      "reported": "Fix the three captain-facing tooling defects in the adopted agent-teams plugin — inScope `**` expansion, contradictory contract generation, and unreadable runni",
+      "declared": "Fix the three captain-facing tooling defects in the adopted agent-teams plugin — inScope `**` expansion, contradictory contract generation, and unreadable runni"
+    },
+    {
+      "field": "in_scope",
+      "match": true,
+      "reported": "[\"packages/mpd-agent-teams-plugin/lib\",\"packages/mpd-agent-teams-plugin/test\",\"packages/mpd-agent-teams-plugin/package.json\",\"scripts/vendor-agent-teams.mjs\",\"s",
+      "declared": "[\"packages/mpd-agent-teams-plugin/lib\",\"packages/mpd-agent-teams-plugin/test\",\"packages/mpd-agent-teams-plugin/package.json\",\"scripts/vendor-agent-teams.mjs\",\"s"
+    },
+    {
+      "field": "out_of_scope",
+      "match": true,
+      "reported": "[\"skills/**\",\"VENDOR_LOCK.json\",\"packages/mpd-bundle/cordis.patch.yml\",\"presets/**\"]",
+      "declared": "[\"skills/**\",\"VENDOR_LOCK.json\",\"packages/mpd-bundle/cordis.patch.yml\",\"presets/**\"]"
+    },
+    {
+      "field": "acceptance",
+      "match": true,
+      "reported": "[\"The inScope matcher honors a directory-prefix declaration such as `packages/foo/test/**` (or its documented expansion): a task declaring that pattern can comp",
+      "declared": "[\"The inScope matcher honors a directory-prefix declaration such as `packages/foo/test/**` (or its documented expansion): a task declaring that pattern can comp"
+    },
+    {
+      "field": "verify",
+      "match": true,
+      "reported": "[\"bun test packages/mpd-agent-teams-plugin\",\"bun test packages\",\"bun run typecheck\",\"node scripts/vendor-agent-teams.mjs (guarded re-apply exercise)\"]",
+      "declared": "[\"bun test packages/mpd-agent-teams-plugin\",\"bun test packages\",\"bun run typecheck\",\"node scripts/vendor-agent-teams.mjs (guarded re-apply exercise)\"]"
+    }
+  ],
+  "allFieldsMatch": true
+}

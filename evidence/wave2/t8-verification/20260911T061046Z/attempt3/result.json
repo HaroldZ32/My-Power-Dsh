@@ -1,0 +1,90 @@
+{
+  "task": "t8",
+  "attempt": 3,
+  "attempt_id": "45f32c34-4926-4556-9a42-ed5f3f582e02",
+  "executed_by": "Lead (independent verification; no implementation performed)",
+  "verdict": "passed",
+  "scope": "Captain re-scope applied: criterion 4 verifies the guard's failure mode AND byte-faithful restore on quality-gates.js; the tools.js sibling is a KNOWN LIMITATION measured as a baseline and excluded from the verdict.",
+  "settled_revision": {
+    "note": "The first pass of this attempt ran while the t15 revert was still in flight (an intermediate revision produced `region \"mpd-delta scope-overlap\" has a half-open marker pair (begin@230, end@229)` in S3b and `heal_exit=1 / 255 diff lines` in check4e). Those results were DISCARDED. Stability was then confirmed (combined hash of the five adopted files identical at T0 / T+25s / T+50s, and no other task active) and the whole contract was re-run on the settled revision below.",
+    "packages/mpd-agent-teams-plugin/lib/quality-gates.js": "4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5",
+    "packages/mpd-agent-teams-plugin/lib/tools.js": "fd106fdbf12a7379672452a321b79bd5156990454b233617621338821deb387c",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "9680c7b816fa129773ceabffc55305b34a74653dc23128de85ee7058ea85c558",
+    "scripts/patch-agent-teams-fixes.mjs": "aedb9198e1328d2a216f382ac73e13ef71141367167eac07df76cedb0f6a0576",
+    "scripts/vendor-agent-teams.mjs": "0c6d097afaead13c3e2ab62e60a49fb94f348adc84cc5dd8e77727b7289b5237"
+  },
+  "checks": [
+    {
+      "id": "C1",
+      "criterion": "inScope `**` reproduced PRE-FIX, honoured POST-FIX",
+      "result": "passed",
+      "raw": ["check1-prefix.raw.json", "check1-postfix.raw.json"],
+      "detail": "PRE-FIX (git archive HEAD 98680b1f): pathMatchesScope('packages/foo/test/a.test.mjs','packages/foo/test/**')=false; classifyChangedPath=undeclared for that file and a deeper one; the completion gate rejects ok=false. POST-FIX: true / in_scope / ok=true. Negative controls identical both sides (srcx/a.ts~src/** false, src/a.md~**/*.ts false, lib/a.js.map~lib/a.js false, packages/foo/lib stays out_of_scope) and an undeclared path stays rejected. Real wave-1 t7 replay: pre-fix ok=false (2 uncovered src paths), post-fix ok=true."
+    },
+    {
+      "id": "C2",
+      "criterion": "Contradiction reproduced pre-fix, impossible post-fix, required edit permitted, prohibitions preserved",
+      "result": "passed",
+      "raw": ["check2-prefix.raw.json", "check2-postfix.raw.json", "check2-sweep-partition.raw.json", "check2b-falsifiability.raw.json"],
+      "detail": "PRE-FIX replay of the real archived inputs (mpd-default-7332aba4 t7+t10) reproduces the recorded t13 contract byte-for-byte, AGENTS.md in BOTH lists, create gate ok=true, 24/60 sweep contradictions. POST-FIX: contradiction=null, demandedButNotInScope=[], AGENTS.md=in_scope, all seven required finding files in_scope. Sweep partition: 0/36 contradictory generated scopes from satisfiable sources; the 6 remaining inherit a source that is itself unsatisfiable (refused at create time). Falsifiability probe (check2b, passed=true): VENDOR_LOCK.json, presets/mpd/agent.cordis.yml, presets/mpd/agent.cordis.yml.bak, README.md, README.zh-CN.md and packages/mpd-bundle/cordis.patch.yml all remain out_of_scope; only the finding-required AGENTS.md is admitted — no over-carve."
+    },
+    {
+      "id": "C3",
+      "criterion": "LIVE task contract readable and field-by-field identical",
+      "result": "passed",
+      "raw": ["check3-t8-captain.raw.json", "check3-t14-captain.raw.json"],
+      "detail": "REAL registration against a byte-identical copy of the live record: 14/14 tools incl. agent_teams_task_contract; t8 (in_progress, mine) and t14 (just completed) each 13/13 compared fields identical to the durable record; member read OK; unknown and blank ids refused; live team.json and the sandbox copy byte-identical after every read."
+    },
+    {
+      "id": "C4",
+      "criterion": "Guard failure mode exercised AND restore byte-faithful on quality-gates.js (re-scoped)",
+      "result": "passed",
+      "raw": ["check4-guard.raw.json", "check4-guard.log", "check4e-heal-fidelity.raw.json"],
+      "detail": "Failure modes, all non-zero and named: region stripped -> --check exit 1 naming the delta; region + anchor removed -> --write exit 1 naming the lost anchor; region body edited (target region discovered dynamically) -> exit 1 naming the region and the first differing line; pristine -> exit 0. Restore half: S3b --write exit 0, S3c --check exit 0, restored file BYTE-IDENTICAL to the sandbox pristine copy; check4e on the required file reports identical=true, diff_lines=0, heal_exit=0, check_exit=0 with canonical-vs-healed region line agreement. Live tree sha256 unchanged by every driver."
+    },
+    {
+      "id": "C4b",
+      "criterion": "No executable added line outside a registered region",
+      "result": "passed",
+      "raw": ["check4b-region-coverage.raw.json"],
+      "detail": "9 registered regions (7 quality-gates.js, 2 tools.js); 212 added lines in the adopted diff, 0 outside a region span."
+    },
+    {
+      "id": "C4d",
+      "criterion": "Re-vendor heal path refuses loudly",
+      "result": "passed",
+      "raw": ["check4d-revendor-heal.raw.json"],
+      "detail": "Upstream quality-gates.js + our registry: --check exit 1; --write exit 1 with `refusing to heal delta \"mpd-delta scope-glob\" ... it declares \"pathMatchesScope\" but that declaration still exists OUTSIDE any region at line 102 ... otherwise the healed module fails to import`; the refused file is byte-identical to its input and carries exactly one declaration. Production wiring confirmed at source: scripts/vendor-agent-teams.mjs:126-131 exits 1 on a guard refusal."
+    },
+    {
+      "id": "C4f",
+      "criterion": "KNOWN LIMITATION baseline: tools.js clean heal (excluded from the verdict by captain re-scope)",
+      "result": "known-failure (not a verdict item)",
+      "raw": ["check4f-tools-heal-fidelity.raw.json", "check4f-tools-heal-fidelity.log"],
+      "detail": "Strip both tools.js regions -> --write exit 0 -> --check exit 0 -> byte-identical=NO, 60 diff lines: `mpd-delta task-contract` heals at line 1970 where canonical is 1733 (task-contract-render heals correctly at 2259). Measured, recorded, not allowed to decide the verdict."
+    },
+    {
+      "id": "C5",
+      "criterion": "No regression: suites green + mounting boot with 0 apply-crash signatures",
+      "result": "passed",
+      "raw": ["check5-plugin-suite.log", "check5-self-fix-suite.log", "check5-full-suite.log", "check5-typecheck.log", "check5-mount.raw.json"],
+      "detail": "Re-derived by the verifier: plugin suite 90 tests / 0 fail; self-fix suite 33 tests / 0 fail; full repo `bun test packages` 343 pass / 0 fail / 38 files; `bun run typecheck` exit 0. Isolated DSH_HOME+HOME+workspace install-and-boot with a registration probe: 0 apply-crash signatures, probe reached DONE, 14/14 agent-teams tools incl. agent_teams_task_contract=REGISTERED, exit 124 (alive at the 90s cap); isolation attributed to this boot (0 records attributable, 0 real-workspace session keys). No --dump-config cited as load evidence."
+    }
+  ],
+  "honesty_statement": "Per the captain's re-scope condition, stated plainly: **t4 acceptance 5 is MET for `quality-gates.js` and NOT MET for `tools.js`.** A full strip-heal of `tools.js` still diverges from canonical (60 diff lines; `mpd-delta task-contract` re-inserted at line 1970 instead of 1733) while both guard passes exit 0. It is unreachable in normal operation (nothing strips regions day to day), cannot affect the live tree, and the four measured approaches plus two candidate designs live at `evidence/wave2/adopted-tooling-repair-f4-sibling/README.md`, with the redesign owned by wave 3. The class is NOT closed and acceptance 5 is NOT fully satisfied.",
+  "t4_acceptance_map": [
+    "1. inScope glob honoured — PASS (C1)",
+    "2. Contradiction impossible; defect reproduced first; fix falsifiable — PASS (C2 + check2b)",
+    "3. Running task's contract readable and matching — PASS (C3)",
+    "4. Every adopted-code change marked LOCAL ADAPTATION at the point of change — PASS (C4b: 0 of 212 added lines outside 9 regions)",
+    "5. Durability across a vendor refresh — MET for quality-gates.js (C4 failure modes + C4d refusal + C4e byte-faithful restore); NOT MET for tools.js (known limitation, C4f)",
+    "6. No regression — PASS (C5: 90/0, 33/0, 343/0, typecheck 0, mount 0 crash signatures)",
+    "7. Wave-1 defect cited — PASS (t4 output and evidence/wave2/adopted-tooling cite t3/t4/t7/t13 and the t13 contradiction)"
+  ],
+  "observations": [
+    "The settled revision still carries the t15 indent-correction machinery rather than being byte-identical to the revision I measured immediately after t14: anchorMarker (9 in the registry, 9 in the applier), anchorOccurrence (11), effectiveInsertionIndent (2) and the CLI `(indent corrected: ...)` report (1) are all present. That is fine for the re-scoped criteria — the behaviour is what I verified — but t10/t11 should know the revert was semantic, not byte-level.",
+    "The verifier's own drivers were re-run, not trusted: every gate number in C5 was produced in this session on the settled revision, and the two fidelity drivers (check4e for the required file, check4f as the baseline) decide the claim rather than exit codes, because both F4 and the tools.js residual were invisible to exit codes and to region-level assertions.",
+    "The live tree was never mutated: guard exercises run on sha256-identical sandbox copies; the live adopted files and .mpd/team/mpd-wave-2/team.json are byte-identical after every driver.",
+    "A dsh restart is still required before the repaired semantics act on a live session (no plugin-module hot reload), so every claim here is a direct module import or a mounted boot, never a live-gate result."
+  ]
+}

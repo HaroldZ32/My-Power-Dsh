@@ -1,0 +1,3 @@
+- insert:
+    - id: t6-mcp-probe
+      name: '/root/dshProj/my-power-dsh/evidence/wave3/t6-verify/20260911T090649Z/work/mcp-probe.mjs'

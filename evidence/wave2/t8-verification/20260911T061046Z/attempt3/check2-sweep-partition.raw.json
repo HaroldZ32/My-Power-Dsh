@@ -1,0 +1,13 @@
+{
+  "driver": "check2-sweep-partition",
+  "settled_revision": true,
+  "satisfiableSource": {
+    "combos": 36,
+    "contradictoryScopes": 0
+  },
+  "unsatisfiableSource": {
+    "combos": 24,
+    "contradictoryScopes": 6
+  },
+  "passed": true
+}

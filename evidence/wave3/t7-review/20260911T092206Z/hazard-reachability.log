@@ -1,0 +1,63 @@
+[
+ {
+  "id": "mpd-delta scope-glob",
+  "k": 2,
+  "bodyTailEqualsBeforeContext": false
+ },
+ {
+  "id": "mpd-delta scope-overlap",
+  "k": 2,
+  "bodyTailEqualsBeforeContext": false
+ },
+ {
+  "id": "mpd-delta scope-overlap-normalize",
+  "k": 2,
+  "bodyTailEqualsBeforeContext": false
+ },
+ {
+  "id": "mpd-delta contract-contradiction",
+  "k": 2,
+  "bodyTailEqualsBeforeContext": false
+ },
+ {
+  "id": "mpd-delta create-contract-gate",
+  "k": 3,
+  "bodyTailEqualsBeforeContext": false
+ },
+ {
+  "id": "mpd-delta repair-scope",
+  "k": 1,
+  "bodyTailEqualsBeforeContext": false
+ },
+ {
+  "id": "mpd-delta repair-scope-fields",
+  "k": 1,
+  "bodyTailEqualsBeforeContext": false
+ },
+ {
+  "id": "mpd-delta update-task-contract",
+  "k": 1,
+  "bodyTailEqualsBeforeContext": false
+ },
+ {
+  "id": "mpd-delta update-task-required-status-param",
+  "k": 1,
+  "bodyTailEqualsBeforeContext": false
+ },
+ {
+  "id": "mpd-delta update-task-required-attempt-id",
+  "k": 2,
+  "bodyTailEqualsBeforeContext": false
+ },
+ {
+  "id": "mpd-delta task-contract",
+  "k": 4,
+  "bodyTailEqualsBeforeContext": false
+ },
+ {
+  "id": "mpd-delta task-contract-render",
+  "k": 1,
+  "bodyTailEqualsBeforeContext": false
+ }
+]
+reachable (body tail == beforeContext): 0

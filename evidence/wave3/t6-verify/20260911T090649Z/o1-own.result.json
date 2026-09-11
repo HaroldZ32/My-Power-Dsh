@@ -1,0 +1,92 @@
+{
+  "task": "t6 own O-1 harness",
+  "stamp": "2026-09-11T09:14:14.007Z",
+  "boots": [
+    {
+      "label": "session-root",
+      "status": "marker",
+      "binary": "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph",
+      "cwd": "/root/dshProj/my-power-dsh/evidence/wave3/t6-verify/20260911T090649Z/work/o1-run/sessionWS",
+      "ms": 3822,
+      "exit": 1
+    },
+    {
+      "label": "no-override",
+      "status": "marker",
+      "binary": "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph",
+      "cwd": "/root/dshProj/my-power-dsh/evidence/wave3/t6-verify/20260911T090649Z/work/o1-run/projectA",
+      "ms": 3887,
+      "exit": 1
+    },
+    {
+      "label": "override-wins",
+      "status": "marker",
+      "binary": "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph",
+      "cwd": "/root/dshProj/my-power-dsh/evidence/wave3/t6-verify/20260911T090649Z/work/o1-run/explicitC",
+      "ms": 3801,
+      "exit": 1
+    }
+  ],
+  "callTime": {
+    "session": {
+      "kind": "success",
+      "text": "mpd-codegraph init: marker (/root/dshProj/my-power-dsh/evidence/wave3/t6-verify/20260911T090649Z/work/o1-run/sessionWS)"
+    },
+    "noInvocation": {
+      "kind": "success",
+      "text": "mpd-codegraph init: marker (/root/dshProj/my-power-dsh)"
+    },
+    "override": {
+      "kind": "success",
+      "text": "mpd-codegraph init: marker (/root/dshProj/my-power-dsh/evidence/wave3/t6-verify/20260911T090649Z/work/o1-run/explicitC)"
+    }
+  },
+  "checks": [
+    {
+      "name": "O-1 apply-time: session workspace (DSH_WORKSPACE_ROOT) != process cwd -> the SESSION root is used",
+      "pass": true,
+      "detail": "line cwd=/root/dshProj/my-power-dsh/evidence/wave3/t6-verify/20260911T090649Z/work/o1-run/sessionWS sessionWS=/root/dshProj/my-power-dsh/evidence/wave3/t6-verify/20260911T090649Z/work/o1-run/sessionWS processCwd=/root/dshProj/my-power-dsh/evidence/wave3/t6-verify/20260911T090649Z/work/o1-run/projectA status=marker ms=3822"
+    },
+    {
+      "name": "O-1 apply-time: no session override -> the documented last tier (process.cwd) holds",
+      "pass": true,
+      "detail": "line cwd=/root/dshProj/my-power-dsh/evidence/wave3/t6-verify/20260911T090649Z/work/o1-run/projectA expected=/root/dshProj/my-power-dsh/evidence/wave3/t6-verify/20260911T090649Z/work/o1-run/projectA status=marker ms=3887"
+    },
+    {
+      "name": "O-1 apply-time: explicit MPD_CODEGRAPH_PROJECT_CWD still wins over the workspace plane",
+      "pass": true,
+      "detail": "line cwd=/root/dshProj/my-power-dsh/evidence/wave3/t6-verify/20260911T090649Z/work/o1-run/explicitC expected=/root/dshProj/my-power-dsh/evidence/wave3/t6-verify/20260911T090649Z/work/o1-run/explicitC status=marker ms=3801"
+    },
+    {
+      "name": "O-1 call-time: the plugin registers /mpd-codegraph on a commands seam",
+      "pass": true,
+      "detail": "function"
+    },
+    {
+      "name": "O-1 call-time: handler resolves the INVOCATION's session cwd (not process.cwd)",
+      "pass": true,
+      "detail": "{\"kind\":\"success\",\"text\":\"mpd-codegraph init: marker (/root/dshProj/my-power-dsh/evidence/wave3/t6-verify/20260911T090649Z/work/o1-run/sessionWS)\"}"
+    },
+    {
+      "name": "O-1 call-time: no invocation -> process.cwd() fallback (documented last tier)",
+      "pass": true,
+      "detail": "{\"kind\":\"success\",\"text\":\"mpd-codegraph init: marker (/root/dshProj/my-power-dsh)\"}"
+    },
+    {
+      "name": "O-1 call-time: explicit override wins over the invocation session cwd",
+      "pass": true,
+      "detail": "{\"kind\":\"success\",\"text\":\"mpd-codegraph init: marker (/root/dshProj/my-power-dsh/evidence/wave3/t6-verify/20260911T090649Z/work/o1-run/explicitC)\"}"
+    },
+    {
+      "name": "O-1 call-time: handler returns the harness CommandResult shape ({kind}), never {success,error}",
+      "pass": true,
+      "detail": "{\"kind\":\"success\",\"text\":\"mpd-codegraph init: marker (/root/dshProj/my-power-dsh/evidence/wave3/t6-verify/20260911T090649Z/work/o1-run/sessionWS)\"}"
+    },
+    {
+      "name": "mount health: 0 apply-crash signatures across the three boots",
+      "pass": true,
+      "detail": "signatures=0"
+    }
+  ],
+  "allPass": true
+}

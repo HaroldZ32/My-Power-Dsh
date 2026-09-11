@@ -1,0 +1,6 @@
+PASS preset-register.mjs: unmodified --self-test passes in the same farm (farm itself is sound) — exit=0 out=[preset-register self-test] ok: preset + roster fixtures + web-compat/preset-root/MCP-operand normalization verified
+PASS preset-register.mjs: --self-test FAILS when the devPatch fix is reverted (guard is falsifiable, not vacuous) — exit=1 out=[preset-register self-test] FAIL: devPatch left the packed /node_modules operand or a baseUrl concat
+PASS rtl-verif.mjs: unmodified --self-test passes in the same farm (farm itself is sound) — exit=0 out=[rtl-verif self-test] ok: bundle wiring (mpd-verif active + wave rows commented) + golden fixture + eight-tool dist surface + iron-rule strings + devPatch operand guard
+PASS rtl-verif.mjs: --self-test FAILS when the devPatch fix is reverted (guard is falsifiable, not vacuous) — exit=1 out=[rtl-verif self-test] FAIL: devPatch left the packed /node_modules operand or a baseUrl concat
+
+PASS — negative-controls.result.json (4/4)

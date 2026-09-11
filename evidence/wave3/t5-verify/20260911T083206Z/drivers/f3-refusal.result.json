@@ -1,0 +1,58 @@
+{
+  "driver": "f3-refusal",
+  "repo": "/root/dshProj/my-power-dsh",
+  "measuredAt": "2026-09-11T08:36:03.080Z",
+  "fixture": {
+    "canonicalSha": {
+      "quality-gates.js": "4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5",
+      "tools.js": "7cb899a72b06a023c25bb25681f3dd75d59c1e911573bf82a5a8da809a3f5c07"
+    }
+  },
+  "results": [
+    {
+      "leg": "A-write-unmarked-body",
+      "args": [
+        "--write"
+      ],
+      "exit": 1,
+      "message": "\n[patch-agent-teams-fixes] FAIL: refusing to heal delta \"mpd-delta scope-glob\" into packages/mpd-agent-teams-plugin/lib/quality-gates.js (insertion): it declares \"pathMatchesScope\" but that declaration still exists OUTSIDE any region at line 102 — the file was re-materialized with the OLD body; remove the old declaration (or restore the marked file) before healing, otherwise the healed module fails to import",
+      "byteIdenticalToInput": true,
+      "expects": "exit 1, refusing to heal, names pathMatchesScope + a line, input untouched",
+      "passed": true
+    },
+    {
+      "leg": "B-check-unmarked-body",
+      "args": [
+        "--check"
+      ],
+      "exit": 1,
+      "message": "\n[patch-agent-teams-fixes] FAIL: delta \"mpd-delta scope-glob\" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js",
+      "byteIdenticalToInput": true,
+      "expects": "exit 1, MISSING refusal, input untouched",
+      "passed": true
+    },
+    {
+      "leg": "C-write-duplicate-declaration",
+      "args": [
+        "--write"
+      ],
+      "exit": 1,
+      "message": "\n[patch-agent-teams-fixes] FAIL: post-heal validation of packages/mpd-agent-teams-plugin/lib/quality-gates.js: \"pathMatchesScope\" is declared both inside region \"mpd-delta scope-glob\" and 1 time(s) outside it (line(s) 1) — the healed module cannot import",
+      "byteIdenticalToInput": true,
+      "expects": "exit 1, post-heal validation names pathMatchesScope + the outside line, input untouched",
+      "passed": true
+    },
+    {
+      "leg": "D-write-control-stripped",
+      "args": [
+        "--write"
+      ],
+      "exit": 0,
+      "message": "[patch-agent-teams-fixes] applied: 12 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta scope-glob, mpd-delta scope-overlap, mpd-delta scope-overlap-normalize, mpd-delta contract-contradiction, mpd-delta create-contract-gate, mpd-delta repair-scope, mpd-delta repair-scope-fields, mpd-delta update-task-contract, mpd-delta update-task-required-status-param, mpd-delta update-task-required-attempt-id, mpd-delta task-contract, mpd-delta task-contract-render)\n",
+      "byteIdenticalToInput": false,
+      "expects": "exit 0, byte-identical heal from the same fixture family",
+      "passed": true
+    }
+  ],
+  "passed": true
+}

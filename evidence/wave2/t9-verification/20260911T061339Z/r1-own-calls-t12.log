@@ -1,0 +1,9 @@
+PASS A: no-session call refuses VERIF_E_NO_VENV (not an mkdir filesystem error) — code=VERIF_E_NO_VENV message=cocotb venv missing at /tmp/t9-r1-own-TxIwhk/other-ws/unrelated-root/.venv-rtl (iron rule: project-local venv required, system python is never used)
+PASS A: no work dir created by the refused call — /tmp/t9-r1-own-TxIwhk/.mpd/verif/regress
+PASS B: session-scoped call passes the venv gate then refuses VERIF_E_NO_BACKEND — code=VERIF_E_NO_BACKEND message=backend 'iverilog' not found
+PASS B: NO regress dir in the session workspace (ordering held) — /tmp/t9-r1-own-TxIwhk/session-ws/.mpd/verif/regress
+PASS B: NO work tree in the unrelated DSH_WORKSPACE_ROOT workspace — /tmp/t9-r1-own-TxIwhk/other-ws/unrelated-root/.mpd
+PASS C: regress-level gate passed and the work dir is created under the SESSION workspace — sessionDir=/tmp/t9-r1-own-TxIwhk/session-ws/.mpd/verif/regress otherMpd=false
+PASS C: per-case sim resolves from the SESSION workspace (no venv/workspace-resolution refusal) — t12 exec forwarding — perCaseFailure=sim exited (status 0) but no results.xml was produced by cocotb
+
+written: r1-own-calls.result.json  allPass=true

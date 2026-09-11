@@ -1,0 +1,40 @@
+{
+  "unitOut": [
+    " 10 pass",
+    " 0 fail",
+    " 22 expect() calls",
+    "Ran 10 tests across 1 file. [42.00ms]"
+  ],
+  "sgProbe": {
+    "status": 1,
+    "stdout": "",
+    "stderr": "========================================================================\nWARNING: `sg` is deprecated. Use `ast-grep` instead.\n========================================================================\nError: Os { code: 2, kind: NotFound, message: \"No such file or directory\" }\n"
+  },
+  "astProbe": {
+    "status": 0,
+    "stdout": "ast-grep 0.45.3\n"
+  },
+  "resolved": {
+    "astGrep": {
+      "binary": "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/ast-grep",
+      "source": "toolchain"
+    },
+    "codegraph": {
+      "binary": "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph",
+      "source": "toolchain"
+    }
+  },
+  "ord": {
+    "both": {
+      "binary": "/tmp/t9-b8-mw2Mrh/bin-dir/ast-grep",
+      "source": "bin-dir"
+    },
+    "only": {
+      "binary": "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/ast-grep",
+      "source": "toolchain"
+    }
+  },
+  "unitTail": [
+    "bun test v1.3.14 (0d9b296a)"
+  ]
+}

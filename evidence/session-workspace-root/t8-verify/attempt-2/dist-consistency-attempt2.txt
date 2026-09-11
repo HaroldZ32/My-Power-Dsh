@@ -1,0 +1,21 @@
+# t8 attempt-2, required check 6 — SAME method as evidence/session-workspace-root/t8-verify/dist-consistency.txt
+#   for every packages/*/dist/index.js: 'bun build src/index.ts --target node --format esm' (package-relative src path, run from the repo root),
+#   compare committed bytes; if they differ, compare again with all build-banner comment lines (^// .*\.ts$) stripped.
+
+mpd-bootstrap-plugin: IDENTICAL (sha256 c817928406387c07)
+mpd-boulder-plugin: IDENTICAL (sha256 a15872148b34caee)
+mpd-bundle-plugin: IDENTICAL (sha256 d30b30fa7dcbe247)
+mpd-codegraph-plugin: IDENTICAL (sha256 d66079901dd8942e)
+mpd-comment-checker-plugin: IDENTICAL (sha256 e27dd3cececbe6bf)
+mpd-config-plugin: IDENTICAL (sha256 189d76a6cca3e4e4)
+mpd-dsh-adapter-plugin: IDENTICAL (sha256 fe3ea3015bcc391e)
+mpd-hashline-plugin: IDENTICAL (sha256 7152de89783e4018)
+mpd-memory-plugin: IDENTICAL (sha256 0f9e3a53273b40d6)
+mpd-modelchain-plugin: IDENTICAL (sha256 e3c0b2466c54f32c)
+mpd-qa-roles-probe: IDENTICAL (sha256 37d0693a8b7f76e7)
+mpd-roles-plugin: IDENTICAL (sha256 741605f62225fb41)
+mpd-tools-plugin: IDENTICAL (sha256 07c539987450e064)
+mpd-ulw-plugin: IDENTICAL (sha256 e116ee3e8017450a)
+mpd-verif-plugin: IDENTICAL (sha256 2958504a65f4603d)
+mpd-workmate-plugin: IDENTICAL (sha256 e10a87fcf2fe3096)
+--- packages checked: 16 with src/index.ts; byte-identical=16 banner-only=0 REAL-DIFF(stale)=0; fail=0

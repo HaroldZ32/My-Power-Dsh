@@ -1,0 +1,15 @@
+{
+  "observation": "the LIVE agent_teams_update_task of this member session (started with the team at 2026-09-11T07:35:05.704Z) returned the PRE-FIX wording for an omitted attempt_id; the on-disk adopted file was written at 2026-09-11T08:23:52Z (16:23:52 +0800), i.e. 48 minutes AFTER this session's plugin tree was loaded into memory",
+  "liveCall": {
+    "tool": "agent_teams_update_task",
+    "arguments": { "task_id": "t5", "status": "in_progress" },
+    "result": "Error: stale attempt for task t5: expected the current attempt_id; stop work and request fresh assignment"
+  },
+  "why": "lib/tools.js is adopted main code loaded once per process; a member session spawned before the write keeps the pre-fix module in memory. The profile install is a symlink (~/.dsh/profiles/node_modules/@mpd-dsh/mpd -> /root/dshProj/my-power-dsh), so the NEXT session/boot reads the fixed file.",
+  "freshLoadProofs": [
+    "drivers/update-task-diagnostics.result.json — a fresh node process importing the on-disk lib/tools.js reports `attempt_id is required …` for the same call shape",
+    "check5-mount.result.json — a fresh MOUNTING boot registers UPDATE_TASK_STATUS_REQUIRED=true and UPDATE_TASK_DESCRIPTION_HAS_REQUIRED_WORDING=true (probe_lines)",
+    "bun-test-plugin.log — the standing plugin suite runs the permanent diagnostics tests green"
+  ],
+  "consequence": "an operational note for t8, not a defect in the change: after this wave lands, team sessions must be restarted to pick up the new diagnostics; a session created before the write still shows the wave-2 wording."
+}

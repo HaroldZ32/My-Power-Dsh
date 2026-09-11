@@ -1,0 +1,11 @@
+[t14-repro] host_cwd=/root/dshProj
+[t14-repro] session_ws=/root/dshProj/my-power-dsh/.t14-repro-ws
+[t14-repro] DSH_WORKSPACE_ROOT=null
+[t14-repro] A1_venvStatus_exec.ok=true
+[t14-repro] A1_venvStatus_exec.venv=/root/dshProj/my-power-dsh/.t14-repro-ws/.venv-rtl
+[t14-repro] A2_requireCocotbVenv_exec=PASSED venv=/root/dshProj/my-power-dsh/.t14-repro-ws/.venv-rtl
+[t14-repro] A3_verifSim_exec.code=VERIF_E_RUN
+[t14-repro] A3_verifSim_exec.passed_the_gate=YES (gate passed; stopped later)
+[t14-repro] A4_verifRegress_exec.passed_the_gate=YES (code=VERIF_E_RUN)
+[t14-repro] A5_requireCocotbVenv_noExec=THREW VERIF_E_NO_VENV :: cocotb venv missing at /root/dshProj/.venv-rtl (iron rule: project-local venv required, system python is never used)
+[t14-repro] cleanup=removed

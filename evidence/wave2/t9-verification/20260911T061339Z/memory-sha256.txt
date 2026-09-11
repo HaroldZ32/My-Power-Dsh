@@ -1,0 +1,9 @@
+=== per-file sha256 (source vs target) for the 7 ===
+MATCH      agentteams-gui-dsh-better-sidebar-agent-teams-si-mtuviju2.md
+MATCH      agentteams-gui-dsh-better-sidebar-mtuyguxk.md
+MATCH      agentteams-scheduler-stall-symptoms-salvage-and--mtva0wbm.md
+MATCH      live-tool-registry-vs-patch-rows-how-to-test-too-mtv8xwzy.md
+MATCH      six-low-findings-closed-and-a-falsifiability-lan-mtw8i46k.md
+MATCH      workmate-rename-delete-agreed-requirements-2026--mtv8l9rl.md
+MATCH      workmate-rename-delete-delivery-closed-two-traps-mtvngffj.md
+counts: source=7 target=27

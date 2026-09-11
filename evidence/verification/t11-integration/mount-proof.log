@@ -1,0 +1,6 @@
+[t8-driver] boot child pid = 795 | child /proc cwd = /root/dshProj | session workspace = /root/dshProj/my-power-dsh
+[t8-driver] session/repo cwd=/root/dshProj/my-power-dsh status=200 sessionId=session-22d54295-f542-49a5-b596-06f0d42f6e59
+[t8-driver] session/blocked cwd=/tmp/mpd-t8-toolcall-KYcgMg/ws-blocked status=200 sessionId=session-5a730f92-3f94-4c9d-9ea5-f80c400bcc3c
+[t8-driver] session/clean cwd=/tmp/mpd-t8-toolcall-KYcgMg/ws-clean status=200 sessionId=session-ecba5da8-6b21-4dbd-bc7c-7d05032eefdb
+[t8-driver] evidence -> /root/dshProj/my-power-dsh/evidence/session-workspace-root/t8-verify/2026-09-11T04-27-19Z-toolcall
+[t8-driver] passed=true checks=18 failed=[]

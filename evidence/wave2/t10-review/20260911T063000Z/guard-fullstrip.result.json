@@ -1,0 +1,77 @@
+{
+  "task": "t10 guard ambiguity + full-strip heal fidelity",
+  "stamp": "2026-09-11T07:15:48.062Z",
+  "collisionProbe": [
+    {
+      "outer": "mpd-delta scope-overlap",
+      "inner": "mpd-delta scope-overlap-normalize",
+      "outerRemovedLines": 19,
+      "checkExit": 1,
+      "message": "[patch-agent-teams-fixes] FAIL: region \"mpd-delta scope-overlap\" has a half-open marker pair (begin@-1, end@249) — refusing to guess the intended span"
+    },
+    {
+      "outer": "mpd-delta repair-scope",
+      "inner": "mpd-delta repair-scope-fields",
+      "outerRemovedLines": 8,
+      "checkExit": 1,
+      "message": "[patch-agent-teams-fixes] FAIL: region \"mpd-delta repair-scope\" has a half-open marker pair (begin@-1, end@723) — refusing to guess the intended span"
+    }
+  ],
+  "collisionConfirmed": true,
+  "healResults": {
+    "qg": {
+      "regionsStripped": 7,
+      "strippedCheckExit": 1,
+      "healExit": 0,
+      "identical": true,
+      "diffStat": "0 diff lines",
+      "diffHead": [
+        ""
+      ],
+      "healOutput": "[patch-agent-teams-fixes] applied: 9 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta scope-glob, mpd-delta scope-overlap, mpd-delta scope-overlap-normalize, mpd-delta contract-contradiction, mpd-delta create-contract-gate, mpd-delta repair-scope, mpd-delta repair-scope-fields)",
+      "checkAfter": "[patch-agent-teams-fixes] already applied: 9 mpd delta region(s) across 2 adopted file(s)"
+    },
+    "tools": {
+      "regionsStripped": 2,
+      "strippedCheckExit": 1,
+      "healExit": 0,
+      "identical": false,
+      "diffStat": "58 changed lines",
+      "diffHead": [
+        "--- /root/dshProj/my-power-dsh/evidence/wave2/t10-review/20260911T063000Z/guard-fullstrip/.a\t2026-09-11 15:15:47.957304110 +0800",
+        "+++ /root/dshProj/my-power-dsh/evidence/wave2/t10-review/20260911T063000Z/guard-fullstrip/.b\t2026-09-11 15:15:47.957304110 +0800",
+        "@@ -1730,35 +1730,6 @@",
+        "             };",
+        "         },",
+        "     }));",
+        "-    //#region mpd-delta task-contract (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)",
+        "-    ctx.tools.register(defineTool({",
+        "-        name: 'agent_teams_task_contract',",
+        "-        description: 'Read ONE task\\'s contract exactly as it was declared: kind/round/objective, inScope/outOfScope, acceptance/verify, dependencies, assignee, attempt id, plus the completion payload it will be judged on. Read-only, works for any status including a task that is already running, and available to the captain and to any member of the team. Use it instead of guessing a running task\\'s contract from its subject.',",
+        "-        parameters: {",
+        "-            task_id: { type: 'string', description: 'Task id from the shared task list, e.g. \"t4\".' },",
+        "-        },",
+        "-        output: {"
+      ],
+      "healOutput": "[patch-agent-teams-fixes] applied: 9 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta task-contract, mpd-delta task-contract-render)",
+      "checkAfter": "[patch-agent-teams-fixes] already applied: 9 mpd delta region(s) across 2 adopted file(s)"
+    }
+  },
+  "checks": [
+    {
+      "name": "prefix collision confirmed: stripping the OUTER delta of a prefix pair makes --check report a misdiagnosed 'half-open marker pair' (its own end marker is gone; the INNER sibling's end marker still matches the prefix search)",
+      "pass": true,
+      "detail": "[{\"outer\":\"mpd-delta scope-overlap\",\"inner\":\"mpd-delta scope-overlap-normalize\",\"outerRemovedLines\":19,\"checkExit\":1,\"message\":\"[patch-agent-teams-fixes] FAIL: region \\\"mpd-delta scope-overlap\\\" has a half-open marker pair (begin@-1, end@249) — refusing to guess the intended span\"},{\"outer\":\"mpd-delta repair-scope\",\"inner\":\"mpd-delta repair-scope-fields\",\"outerRemovedLines\":8,\"checkExit\":1,\"message\":\"[patch-agent-teams-fixes] FAIL: region \\\"mpd-delta repair-scope\\\" has a half-open marker pair (begin@-1, end@723) — refusing to guess the intended span\"}]"
+    },
+    {
+      "name": "quality-gates.js: a full-strip then --write heal restores CANONICAL BYTES (t4 A5's vendor-refresh claim)",
+      "pass": true,
+      "detail": "stripped=7 healExit=0 identical=true 0 diff lines"
+    },
+    {
+      "name": "tools.js: a full-strip then --write heal restores CANONICAL BYTES",
+      "pass": false,
+      "detail": "stripped=2 healExit=0 identical=false 58 changed lines"
+    }
+  ]
+}
