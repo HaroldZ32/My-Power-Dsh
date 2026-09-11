@@ -1,0 +1,31 @@
+=== clean heal fidelity (strip every region from OUR file, then heal) ===
+canonical sha256 = 406e086e19f712802b6a519f9efed998b818ab08736e4173b2885e9d2a510c85
+
+--- strip every mpd-delta region (markers + bodies) ---
+stripped: 5 regions -> mpd-delta update-task-contract, mpd-delta update-task-required-status-param, mpd-delta update-task-required-attempt-id, mpd-delta task-contract, mpd-delta task-contract-render
+stripped sha256 = 13976fa44e1b1dab7eeb7d60cfd99d2e9de11a04b846d4ee59dcf42bdb50145a
+
+--- --write (the heal) ---
+[patch-agent-teams-fixes] applied: 12 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta update-task-contract, mpd-delta update-task-required-status-param, mpd-delta update-task-required-attempt-id, mpd-delta task-contract, mpd-delta task-contract-render)
+exit=0
+
+--- --check after the heal ---
+[patch-agent-teams-fixes] already applied: 12 mpd delta region(s) across 2 adopted file(s)
+exit=0
+
+--- healed sha256 = 406e086e19f712802b6a519f9efed998b818ab08736e4173b2885e9d2a510c85
+byte-identical-to-canonical=yes
+
+--- diff healed vs canonical (line count first, then the diff) ---
+diff-lines=0
+diff-exit=0
+
+--- which region moved? (region begin lines in each file) ---
+canonical:
+  1426:        //#region mpd-delta update-task-contract (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+  1757:    //#region mpd-delta task-contract (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+  2283://#region mpd-delta task-contract-render (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+healed:
+  1426:        //#region mpd-delta update-task-contract (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+  1757:    //#region mpd-delta task-contract (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+  2283://#region mpd-delta task-contract-render (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)

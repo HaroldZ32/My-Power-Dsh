@@ -1,0 +1,12 @@
+{
+  "driver": "check4e-heal-fidelity",
+  "scenario": "our own file with EVERY region stripped (markers + bodies), then the guard's --write; the canonical adoption is the working-tree file",
+  "identical": true,
+  "diff_lines": 0,
+  "heal_exit": 0,
+  "check_exit": 0,
+  "passed": true
+}
+diff (first 1200 chars):
+diff-lines=0
+diff-exit=0

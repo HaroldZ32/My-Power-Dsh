@@ -1423,14 +1423,27 @@ export function registerAgentTeamsTools(ctx, config) {
     }));
     ctx.tools.register(defineTool({
         name: 'agent_teams_update_task',
-        description: 'Update a task status/output. Members must supply the current attempt_id returned by claim_task; stale attempts are rejected after takeover/reassignment. Terminal results are immutable. A captain must use reassign_task(assignee="captain") before updating member-owned work.',
+        //#region mpd-delta update-task-contract (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+        description: 'Update a task status/output. `status` is REQUIRED on every call: a payload-only update repeats the current status explicitly, because an omitted status persists the rest of the payload while leaving the task unchanged (wave-2 DEFECT 6). Members must supply the current attempt_id returned by claim_task; an omitted attempt_id is rejected as missing (never misreported as a stale attempt) and a stale attempt is rejected after takeover/reassignment. Split an oversized update into several small calls and end with a minimal {task_id, status, attempt_id[, verdict]} call. Terminal results are immutable. A captain must use reassign_task(assignee="captain") before updating member-owned work.',
+        //#endregion mpd-delta update-task-contract
         parameters: {
             task_id: { type: 'string', required: true, description: 'The task id to update.' },
+            //#region mpd-delta update-task-required-status-param (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+            // Wave-2 DEFECT 6: an OVERSIZED arguments payload lost its trailing `status` key at
+            // emission time, so the rest of the payload persisted while the task stayed in
+            // `in_progress` and the tool reported the unchanged state back. The key was never
+            // emitted — the raw provider fragment stream is byte-identical to the assembled
+            // arguments and the harness parse is key-lossless, so no layer inside the plugin can
+            // size-check the loss. REQUIRING the parameter makes the omission loud at the tool
+            // boundary (the argument validator answers `missing required property "status"`),
+            // and a payload-only update now repeats the current status explicitly.
             status: {
                 type: 'string',
                 enum: ['in_progress', 'completed', 'failed', 'cancelled'],
-                description: 'New status (in_progress, completed, failed, cancelled).',
+                required: true,
+                description: 'New status (in_progress, completed, failed, cancelled). REQUIRED: a payload-only update repeats the current status; an omitted status cannot silently leave the task unchanged.',
             },
+            //#endregion mpd-delta update-task-required-status-param
             output: { type: 'string', description: 'Result summary; set when completing or failing.' },
             attempt_id: { type: 'string', description: 'Current execution capability returned by claim_task (required for members when present on the task).' },
             verdict: {
@@ -1522,6 +1535,17 @@ export function registerAgentTeamsTools(ctx, config) {
                     if (task.assignee !== identity.name) {
                         throw new Error(`task ${task.id} is assigned to "${task.assignee ?? 'nobody'}", not you`);
                     }
+                    //#region mpd-delta update-task-required-attempt-id (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                    // Wave-2 DEFECT 5: `task.attemptId !== undefined && args.attempt_id !== task.attemptId`
+                    // compares an OMITTED attempt_id as unequal, so a payload that dropped the parameter
+                    // surfaced as `stale attempt … stop work and request fresh assignment` and cost a
+                    // captain reassign cycle while the attempt was actually current. Branch on the
+                    // omission FIRST and say the parameter is required; the stale wording stays reserved
+                    // for a present-but-mismatched id.
+                    if (task.attemptId !== undefined && (args.attempt_id === undefined || args.attempt_id === '')) {
+                        throw new Error(`attempt_id is required for task ${task.id}: call agent_teams_claim_task to read the current attempt_id, then repeat this update with attempt_id="<value>"`);
+                    }
+                    //#endregion mpd-delta update-task-required-attempt-id
                     if (task.attemptId !== undefined && args.attempt_id !== task.attemptId) {
                         throw new Error(`stale attempt for task ${task.id}: expected the current attempt_id; stop work and request fresh assignment`);
                     }
@@ -1730,6 +1754,35 @@ export function registerAgentTeamsTools(ctx, config) {
             };
         },
     }));
+    //#region mpd-delta task-contract (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+    ctx.tools.register(defineTool({
+        name: 'agent_teams_task_contract',
+        description: 'Read ONE task\'s contract exactly as it was declared: kind/round/objective, inScope/outOfScope, acceptance/verify, dependencies, assignee, attempt id, plus the completion payload it will be judged on. Read-only, works for any status including a task that is already running, and available to the captain and to any member of the team. Use it instead of guessing a running task\'s contract from its subject.',
+        parameters: {
+            task_id: { type: 'string', description: 'Task id from the shared task list, e.g. "t4".' },
+        },
+        output: {
+            schema: { type: 'object', additionalProperties: true, properties: {} },
+            render: (_args, value) => [{ type: 'text', text: renderTaskContract(value) }],
+        },
+        async execute(args, exec) {
+            const caller = requireCaptain(exec);
+            const workspace = workspaceOf(caller);
+            const stateRoot = stateRootOf(workspace, config);
+            const located = await requireParticipantTeam(workspace, config, caller);
+            const taskId = args.task_id?.trim() ?? '';
+            if (taskId === '')
+                throw new Error('task_id is required');
+            const { team } = await withTeamLock(teamLockKey(stateRoot, located.id), () => requireFreshParticipant(stateRoot, located.id, caller.id));
+            const task = team.tasks.find((item) => item.id === taskId);
+            if (task === undefined) {
+                const known = team.tasks.map((item) => item.id).join(', ');
+                throw new Error(`task "${taskId}" does not exist in team "${team.name}" (known tasks: ${known || 'none'})`);
+            }
+            return taskContractView(task);
+        },
+    }));
+    //#endregion mpd-delta task-contract
     ctx.tools.register(defineTool({
         name: 'agent_teams_status',
         description: 'Team snapshot: members with live activity and tasks with status/assignee/dependencies/output. Captains also see every team mailbox; members see only their own inbox. Use after mailbox progress deliveries or for an explicit status request. After dispatch, end your turn while members work; do not repeatedly poll.',
@@ -2227,6 +2280,83 @@ function memberRuntime(config) {
     };
 }
 /** Render the status snapshot as compact text for the model. */
+//#region mpd-delta task-contract-render (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/** A contract list rendered in the SAME spelling the assignment prompt uses. */
+function contractList(value) {
+    if (!Array.isArray(value) || value.length === 0)
+        return [];
+    return value.filter((item) => typeof item === 'string' && item.trim() !== '');
+}
+/**
+ * The read-only contract view returned by `agent_teams_task_contract`.
+ * Deliberately mirrors the `Contract:` block of the assignment prompt
+ * (`scheduler.js` `assignmentPrompt`) so the captain reads exactly what the
+ * member received, and includes the completion payload the task will be judged
+ * on so the gate can be checked before the member finishes.
+ */
+function taskContractView(task) {
+    const list = (value) => contractList(value);
+    return {
+        task_id: task.id,
+        subject: task.subject,
+        kind: taskKindOf(task),
+        ...task.round === undefined ? {} : { round: task.round },
+        status: task.status,
+        assignee: task.assignee ?? '',
+        attempt: task.attempt ?? 0,
+        attempt_id: task.attemptId ?? '',
+        dependencies: task.dependencies ?? [],
+        objective: task.objective ?? '',
+        in_scope: list(task.inScope),
+        out_of_scope: list(task.outOfScope),
+        acceptance: list(task.acceptance),
+        verify: list(task.verify),
+        deliverables: list(task.deliverables),
+        non_goals: list(task.nonGoals),
+        ...task.reviewedTaskId === undefined ? {} : { reviewed_task_id: task.reviewedTaskId },
+        ...task.sourceTaskId === undefined ? {} : { source_task_id: task.sourceTaskId },
+        ...task.sourceFindingIds === undefined ? {} : { source_finding_ids: task.sourceFindingIds },
+        ...task.coverageOf === undefined ? {} : { coverage_of: task.coverageOf },
+        ...task.reasonTaskId === undefined ? {} : { reason_task_id: task.reasonTaskId },
+        ...task.reassignReason === undefined ? {} : { reassign_reason: task.reassignReason },
+        acceptance_results: task.acceptanceResults ?? [],
+        commands_run: task.commandsRun ?? [],
+        changed_paths: task.changedPaths ?? [],
+        ...task.verdict === undefined ? {} : { verdict: task.verdict },
+        findings_open: (task.findings ?? []).filter((finding) => finding.resolved !== true).length,
+    };
+}
+/** Render a `taskContractView` for the model: contract first, evidence second. */
+function renderTaskContract(value) {
+    const contract = value;
+    const list = (items) => (Array.isArray(items) && items.length > 0 ? items.join(', ') : '(none)');
+    const lines = [
+        `Task ${contract.task_id} [${contract.status}] ${contract.kind}${contract.round === undefined ? '' : ` round ${contract.round}`} — ${contract.subject}`,
+        `Assignee: ${contract.assignee || 'unassigned'} (attempt ${contract.attempt}${contract.attempt_id === '' ? '' : `, attempt_id ${contract.attempt_id}`})`,
+        `Dependencies: ${list(contract.dependencies)}`,
+        'Contract:',
+        `  Objective: ${contract.objective === '' ? '(none)' : contract.objective}`,
+        `  In scope: ${list(contract.in_scope)}`,
+        `  Out of scope: ${list(contract.out_of_scope)}`,
+        `  Acceptance: ${list(contract.acceptance)}`,
+        `  Verify: ${list(contract.verify)}`,
+        ...contract.deliverables.length === 0 ? [] : [`  Deliverables: ${list(contract.deliverables)}`],
+        ...contract.non_goals.length === 0 ? [] : [`  Non-goals: ${list(contract.non_goals)}`],
+        ...contract.reviewed_task_id === undefined ? [] : [`  Reviewed task: ${contract.reviewed_task_id}`],
+        ...contract.source_task_id === undefined ? [] : [`  Source task: ${contract.source_task_id}`],
+        ...contract.reason_task_id === undefined ? [] : [`  Reason task: ${contract.reason_task_id}`],
+        ...contract.coverage_of === undefined ? [] : [`  Coverage of: ${list(contract.coverage_of)}`],
+        ...contract.reassign_reason === undefined ? [] : [`  Reassignment reason: ${contract.reassign_reason}`],
+        'Completion payload so far:',
+        `  acceptanceResults: ${JSON.stringify(contract.acceptance_results)}`,
+        `  commandsRun: ${JSON.stringify(contract.commands_run)}`,
+        `  changedPaths: ${JSON.stringify(contract.changed_paths)}`,
+        ...contract.verdict === undefined ? [] : [`Verdict: ${contract.verdict}`],
+        `Open findings: ${contract.findings_open}`,
+    ];
+    return lines.join('\n');
+}
+//#endregion mpd-delta task-contract-render
 function renderStatus(value) {
     const team = value;
     const flags = [

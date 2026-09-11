@@ -1,0 +1,23 @@
+{
+  "driver": "check4i-f3-refusal",
+  "scenario": "re-materialized upstream file: --write must refuse (exit 1) instead of emitting a duplicate declaration, and must leave the file untouched",
+  "cases": [
+    {
+      "case": "A: upstream quality-gates.js, no markers",
+      "write_exit": 1,
+      "refuses_redeclaration": true,
+      "refusal_message": "refusing to heal delta \"mpd-delta scope-glob\" into packages/mpd-agent-teams-plugin/lib/quality-gates.js (insertion): it declares \"pathMatchesScope\" but that declaration still exists OUTSIDE any region at line 102 \u2014 the file was re-materialized with the OLD body; remove the old declaration (or restore the marked file) before healing, otherwise the healed module fails to import",
+      "file_untouched": true,
+      "path_matches_scope_declarations": 1
+    },
+    {
+      "case": "B: upstream quality-gates.js + a dangling outer begin marker",
+      "write_exit": 1,
+      "refuses_redeclaration": false,
+      "refusal_message": "unterminated region \"mpd-delta scope-overlap\"",
+      "file_untouched": true,
+      "path_matches_scope_declarations": 1
+    }
+  ],
+  "passed": true
+}

@@ -1,0 +1,12 @@
+--- A: upstream quality-gates.js, no markers ---
+upstream re-materialize sha256 = 4907ff10a45351af8080b0a6203239012e25028c8175bd7588d31a7aa7481b57
+write_exit=1
+    [patch-agent-teams-fixes] FAIL: refusing to heal delta "mpd-delta scope-glob" into packages/mpd-agent-teams-plugin/lib/quality-gates.js (insertion): it declares "pathMatchesScope" but that declaration still exists OUTSIDE any region at line 102 — the file was re-materialized with the OLD body; remove the old declaration (or restore the marked file) before healing, otherwise the healed module fails to import
+file_untouched=yes
+pathMatchesScope declarations=1
+--- B: upstream quality-gates.js + a dangling outer begin marker ---
+upstream re-materialize sha256 = 3483eb6ad2060090a719fff6fe2876463ad2fbc94df6ffacbcd1ba7b226ad6c3
+write_exit=1
+    [patch-agent-teams-fixes] FAIL: unterminated region "mpd-delta scope-overlap"
+file_untouched=yes
+pathMatchesScope declarations=1

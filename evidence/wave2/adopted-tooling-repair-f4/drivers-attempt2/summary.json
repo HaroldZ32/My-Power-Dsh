@@ -1,0 +1,58 @@
+{
+  "note": "The verifier's attempt-2 drivers re-run against the t14-repaired tree (read-only). check4e is the F4 acceptance driver.",
+  "results": {
+    "check4e-heal-fidelity": {
+      "driver": "check4e-heal-fidelity",
+      "scenario": "our own file with EVERY region stripped (markers + bodies), then the guard's --write; the canonical adoption is the working-tree file",
+      "strip": "stripped: 7 regions -> mpd-delta scope-glob, mpd-delta scope-overlap, mpd-delta scope-overlap-normalize, mpd-delta contract-contradiction, mpd-delta create-contract-gate, mpd-delta repair-scope, mpd-delta repair-scope-fields\nstripped sha256 = 0c0d812258e5d198901bb0a797b3da7249c58ab7a4d255b44777253a183355b2",
+      "heal_write": "[patch-agent-teams-fixes] applied: 9 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta scope-glob, mpd-delta scope-overlap, mpd-delta scope-overlap-normalize, mpd-delta contract-contradiction, mpd-delta create-contract-gate, mpd-delta repair-scope, mpd-delta repair-scope-fields)\nexit=0",
+      "check_after_heal": "[patch-agent-teams-fixes] already applied: 9 mpd delta region(s) across 2 adopted file(s)\nexit=0",
+      "identical": true,
+      "diff": "diff-lines=0\ndiff-exit=0",
+      "regions_canonical": "canonical:\n  102://#region mpd-delta scope-glob (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n  244://#region mpd-delta scope-overlap (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n  263://#region mpd-delta scope-overlap-normalize (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n  276://#region mpd-delta contract-contradiction (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n  410:    //#region mpd-delta create-contract-gate (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n  714:    //#region mpd-delta repair-scope (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n  730:        //#region mpd-delta repair-scope-fields (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\nhealed:\n  102://#region mpd-delta scope-glob (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n  244://#region mpd-delta scope-overlap (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n  263://#region mpd-delta scope-overlap-normalize (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n  276://#region mpd-delta contract-contradiction (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n  410:    //#region mpd-delta create-contract-gate (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n  714:    //#region mpd-delta repair-scope (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n  730:        //#region mpd-delta repair-scope-fields (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)",
+      "diff_lines": 0,
+      "heal_exit": 0,
+      "check_exit": 0,
+      "passed": true
+    },
+    "check5-mount": {
+      "driver": "check5-mount",
+      "isolation": {
+        "DSH_HOME": "temp sandbox",
+        "HOME": "temp sandbox",
+        "workspace": "temp sandbox (cwd of the boot)"
+      },
+      "plugin_suite": {
+        "exit": 0,
+        "tail": [
+          " 0 fail",
+          " 356 expect() calls",
+          "Ran 90 tests across 11 files. [451.00ms]"
+        ]
+      },
+      "install": {
+        "exit": 0
+      },
+      "mounted_boot": {
+        "exit": 124,
+        "apply_crash_signatures": 0,
+        "probe_reached_done": true,
+        "agent_teams_tools_present": "14/14",
+        "t4_tool_agent_teams_task_contract": "REGISTERED",
+        "probe_lines": [
+          "[mount-probe] AGENT_TEAMS_TOOLS_PRESENT=14/14",
+          "[mount-probe] AGENT_TEAMS_TOOLS=agent_teams_create:ok,agent_teams_approve:ok,agent_teams_edit_plan:ok,agent_teams_add_member:ok,agent_teams_remove_member:ok,agent_teams_create_task:ok,agent_teams_reassign_task:ok,agent_teams_claim_task:ok,agent_teams_update_task:ok,agent_teams_send_message:ok,agent_teams_status:ok,agent_teams_resume:ok,agent_teams_delete:ok,agent_teams_task_contract:ok",
+          "[mount-probe] T4_TOOL_agent_teams_task_contract=REGISTERED",
+          "[mount-probe] DONE"
+        ]
+      },
+      "isolation_assertions": {
+        "new_team_dirs_in_real_workspace": 0,
+        "real_workspace_session_keys_in_sandbox": 0
+      },
+      "note": "no --dump-config result is cited as load evidence; the probe reads the live tool registry after a settle window",
+      "passed": true
+    },
+    "check4b-region-coverage": "{\"passed\": true, \"added_lines_outside_regions\": 0}"
+  }
+}

@@ -99,6 +99,7 @@ export function normalizeWorkspacePath(path) {
  * unaffected: the prefix boundary is a `/`, so `lib/a.js` does not match
  * `lib/a.js.map`. `'.'` / `'./'` (the root) matches everything.
  */
+//#region mpd-delta scope-glob (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
 export function pathMatchesScope(path, pattern) {
     const normalizedPath = normalizeWorkspacePath(path);
     if (normalizedPath === undefined)
@@ -114,9 +115,84 @@ export function pathMatchesScope(path, pattern) {
     }
     if (normalizedPattern === '')
         return true;
-    return normalizedPath === normalizedPattern
-        || normalizedPath.startsWith(`${normalizedPattern}/`);
+    return pathMatchesScopeNormalized(normalizedPath, normalizedPattern);
 }
+const SCOPE_SEGMENT_WILDCARD = /[*?]/u;
+/** Whether one pattern segment carries a `*` / `?` wildcard. */
+function scopeSegmentHasWildcard(segment) {
+    return SCOPE_SEGMENT_WILDCARD.test(segment);
+}
+/**
+ * Match ONE path segment against ONE pattern segment. `*` and `?` never cross
+ * the segment separator, which is what keeps `srcx/a.ts` out of `src/**`.
+ */
+function scopeSegmentMatches(name, pattern) {
+    let nameAt = 0;
+    let patternAt = 0;
+    let star = -1;
+    let starName = 0;
+    while (nameAt < name.length) {
+        const ch = pattern[patternAt];
+        if (ch !== undefined && (ch === '?' || ch === name[nameAt])) {
+            nameAt += 1;
+            patternAt += 1;
+            continue;
+        }
+        if (ch === '*') {
+            star = patternAt;
+            patternAt += 1;
+            starName = nameAt;
+            continue;
+        }
+        if (star !== -1) {
+            starName += 1;
+            nameAt = starName;
+            patternAt = star + 1;
+            continue;
+        }
+        return false;
+    }
+    while (pattern[patternAt] === '*')
+        patternAt += 1;
+    return patternAt === pattern.length;
+}
+/** Recursive segment matcher with memoization (`**` crosses zero or more segments). */
+function scopeSegmentsMatch(segments, pattern, pathAt, patternAt, memo) {
+    const key = `${pathAt}:${patternAt}`;
+    const cached = memo.get(key);
+    if (cached !== undefined)
+        return cached;
+    let result;
+    if (patternAt === pattern.length) {
+        result = pathAt === segments.length;
+    }
+    else if (pattern[patternAt] === '**') {
+        result = scopeSegmentsMatch(segments, pattern, pathAt, patternAt + 1, memo)
+            || (pathAt < segments.length && scopeSegmentsMatch(segments, pattern, pathAt + 1, patternAt, memo));
+    }
+    else {
+        result = pathAt < segments.length
+            && scopeSegmentMatches(segments[pathAt], pattern[patternAt])
+            && scopeSegmentsMatch(segments, pattern, pathAt + 1, patternAt + 1, memo);
+    }
+    memo.set(key, result);
+    return result;
+}
+/**
+ * The B5 no-wildcard semantics (exact path OR directory prefix) kept first and
+ * bit-identical, so every declaration that worked before this delta still
+ * resolves the same way; a wildcard pattern additionally supports `**`
+ * (crosses separators), `*` and `?` (single segment only).
+ */
+function pathMatchesScopeNormalized(normalizedPath, normalizedPattern) {
+    const patternSegments = normalizedPattern.split('/');
+    if (!patternSegments.some(scopeSegmentHasWildcard)) {
+        return normalizedPath === normalizedPattern
+            || normalizedPath.startsWith(`${normalizedPattern}/`);
+    }
+    return scopeSegmentsMatch(normalizedPath.split('/'), patternSegments, 0, 0, new Map());
+}
+//#endregion mpd-delta scope-glob
 function isDefaultExcluded(path) {
     const normalized = normalizeWorkspacePath(path);
     if (normalized === undefined)
@@ -165,13 +241,17 @@ export function collectChangedPaths(gitStatusText) {
     }
     return paths;
 }
+//#region mpd-delta scope-overlap (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
 export function inScopeOverlap(left, right) {
     if (left === undefined || right === undefined)
         return [];
     const hits = [];
     for (const a of left) {
         for (const b of right) {
-            if (pathMatchesScope(a, b) || pathMatchesScope(b, a) || a === b) {
+            const hit = a === b
+                ? true
+                : scopePatternsOverlap(normalizeScopePattern(a), normalizeScopePattern(b));
+            if (hit) {
                 if (!hits.includes(a))
                     hits.push(a);
             }
@@ -179,12 +259,120 @@ export function inScopeOverlap(left, right) {
     }
     return hits;
 }
+//#endregion mpd-delta scope-overlap
+//#region mpd-delta scope-overlap-normalize (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/** Normalize a scope pattern for the overlap relation (`undefined` -> empty). */
+function normalizeScopePattern(pattern) {
+    const normalized = normalizeWorkspacePath(pattern.trim().replaceAll('\\', '/'));
+    return normalized === undefined || normalized === '' ? '.' : normalized;
+}
+//#endregion mpd-delta scope-overlap-normalize
 function nonemptyString(value) {
     return typeof value === 'string' && value.trim() !== '';
 }
 function nonemptyStringList(value) {
     return Array.isArray(value) && value.length > 0 && value.every(nonemptyString);
 }
+//#region mpd-delta contract-contradiction (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/** Whether a scope pattern matches EVERY path (root / `**` spellings). */
+function isMatchEverythingPattern(pattern) {
+    const raw = pattern.trim().replaceAll('\\', '/');
+    return raw === '.' || raw === './' || raw === '/' || raw === '**' || raw === '**/';
+}
+/**
+ * A scope pair (inScope, outOfScope) that no path can satisfy, or undefined.
+ * The wave-1 defect this closes: an auto-generated repair contract listed one
+ * path in BOTH lists, so the edit its own acceptance REQUIRED was classified
+ * `out_of_scope` by the update gate (t13). Either the inScope declaration is
+ * itself forbidden by outOfScope (`pathMatchesScope(allowed, forbidden)`), or
+ * outOfScope forbids everything.
+ */
+export function contractContradiction(inScope = [], outOfScope = []) {
+    const universal = outOfScope.find((pattern) => isMatchEverythingPattern(pattern));
+    if (universal !== undefined)
+        return { inScope: inScope[0] ?? '', outOfScope: universal };
+    for (const allowed of inScope) {
+        for (const forbidden of outOfScope) {
+            // pathMatchesScope(path, pattern): `path` is the candidate changed
+            // path. A carve-out (`packages/foo` allowed + `packages/foo/vendor`
+            // forbidden) stays satisfiable because the forbidden pattern does
+            // not cover the allowed DECLARATION itself.
+            if (pathMatchesScope(allowed, forbidden))
+                return { inScope: allowed, outOfScope: forbidden };
+        }
+    }
+    return undefined;
+}
+/**
+ * The scope part of an auto-generated repair contract, contradiction-free.
+ *
+ * A finding's file that the source contract FORBIDS is CARVED OUT of the
+ * inherited outOfScope: the covering patterns are dropped from the result and
+ * the file is admitted to inScope, so a `needs_revision` verdict can always be
+ * acted on. The repair's own acceptance text is the authority for the paths it
+ * requires — leaving the prohibition in place would make the verdict
+ * unsatisfiable and deadlock the automatic repair loop (the wave-1 t13 defect:
+ * the generated repair listed `AGENTS.md` in BOTH lists because t10's finding
+ * required an edit that the source t7 contract's outOfScope forbade).
+ * Admissions are deduplicated against the source declaration, a path the repair
+ * is NOT required to touch keeps its prohibition, and a path the source already
+ * declared inScope does not get a second scope entry.
+ */
+export function repairScopeFromFindings(findings, source) {
+    const sourceInScope = (source?.inScope ?? []).filter((pattern) => nonemptyString(pattern));
+    const sourceOutOfScope = (source?.outOfScope ?? []).filter((pattern) => nonemptyString(pattern));
+    const allowed = [];
+    const allow = (path) => {
+        if (allowed.includes(path))
+            return;
+        allowed.push(path);
+    };
+    for (const pattern of sourceInScope)
+        allow(pattern);
+    const required = [];
+    for (const finding of findings) {
+        const file = finding.file;
+        if (!nonemptyString(file) || normalizeWorkspacePath(file) === undefined)
+            continue;
+        if (!required.includes(file))
+            required.push(file);
+        if (allowed.some((pattern) => pathMatchesScope(file, pattern)))
+            continue;
+        allow(file);
+    }
+    if (allowed.length === 0)
+        return undefined;
+    // A pattern the repair now requires a path through stops being a prohibition
+    // (it is dropped); a pattern unrelated to any finding file is preserved as-is.
+    const carved = sourceOutOfScope.filter((pattern) => !required.some((file) => pathMatchesScope(file, pattern)));
+    return { inScope: allowed, ...(carved.length > 0 ? { outOfScope: carved } : {}) };
+}
+/**
+ * The B7 overlap test. It keeps the original collision rule — two declarations
+ * can match the same path when their `/`-bounded prefixes collide — for every
+ * overlap position that is literal on both sides, and adds the glob positions
+ * this delta introduced: a collision exists only when at least one colliding
+ * segment is literal on both sides and the literals differ (a wildcard can
+ * always be narrowed to avoid the other declaration). A parent declaration and
+ * a directory beneath it (`packages/foo` + `packages/foo/vendor`, the documented
+ * carve-out shape) are therefore NOT a collision, while two same-depth
+ * declarations (`packages/foo/lib` + `packages/foo/test`) are.
+ */
+function scopePatternsOverlap(left, right) {
+    const leftSegments = left.split('/');
+    const rightSegments = right.split('/');
+    const shared = Math.min(leftSegments.length, rightSegments.length);
+    for (let index = 0; index < shared; index += 1) {
+        const one = leftSegments[index];
+        const other = rightSegments[index];
+        if (one === other)
+            continue;
+        if (!scopeSegmentHasWildcard(one) && !scopeSegmentHasWildcard(other))
+            return true;
+    }
+    return false;
+}
+//#endregion mpd-delta contract-contradiction
 function dependencyClosureContains(tasks, dependencies, targetId) {
     const byId = new Map(tasks.map((task) => [task.id, task]));
     const pending = [...dependencies];
@@ -219,6 +407,7 @@ export function validateCreateTask(team, input) {
             return { ok: false, error: `${kind} tasks require at least one acceptance criterion` };
         }
     }
+    //#region mpd-delta create-contract-gate (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
     if (WRITE_KINDS.includes(kind)) {
         if (!nonemptyStringList(input.inScope)) {
             return { ok: false, error: `${kind} tasks require a non-empty inScope` };
@@ -226,7 +415,16 @@ export function validateCreateTask(team, input) {
         if (!nonemptyStringList(input.verify)) {
             return { ok: false, error: `${kind} tasks require a non-empty verify list` };
         }
+        const contradiction = contractContradiction(input.inScope, input.outOfScope ?? []);
+        if (contradiction !== undefined) {
+            return {
+                ok: false,
+                error: `${kind} contract is unsatisfiable: no path can ever be in scope — declared "${contradiction.inScope}" is forbidden by outOfScope "${contradiction.outOfScope}"`
+                    + `\nFix: drop the duplicate from outOfScope or narrow it (e.g. outOfScope "packages/foo/vendor" instead of "packages/foo").`,
+            };
+        }
     }
+    //#endregion mpd-delta create-contract-gate
     if (kind === 'review') {
         if (!nonemptyString(input.reviewedTaskId)) {
             return { ok: false, error: 'review tasks require reviewedTaskId' };
@@ -513,6 +711,14 @@ export function planQualityFollowUp(team, closed) {
     }
     const files = findings.map((finding) => finding.file).filter((file) => nonemptyString(file));
     const implementer = schedulableAssignee(source?.assignee, team);
+    //#region mpd-delta repair-scope (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+    // The generated scope never lists a path in both lists: a finding's file is
+    // carved out of outOfScope by repairScopeFromFindings instead of being added
+    // to inScope beside it (the t13 defect this delta closes).
+    const repairScope = files.length > 0
+        ? repairScopeFromFindings(findings, source)
+        : { ...(source?.inScope === undefined ? {} : { inScope: source.inScope }), ...(source?.outOfScope === undefined ? {} : { outOfScope: source.outOfScope }) };
+    //#endregion mpd-delta repair-scope
     const repair = {
         id: `repair-round-${nextRound}`,
         kind: 'repair',
@@ -521,8 +727,9 @@ export function planQualityFollowUp(team, closed) {
         dependencies: [sourceId],
         round: nextRound,
         objective: source?.objective ?? closed.objective ?? `Fix findings from ${sourceId}`,
-        inScope: files.length > 0 ? files : source?.inScope,
-        outOfScope: source?.outOfScope,
+        //#region mpd-delta repair-scope-fields (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+        ...repairScope,
+        //#endregion mpd-delta repair-scope-fields
         verify: source?.verify,
         acceptance: findings.map((finding) => finding.requiredFix),
         sourceTaskId: sourceId,

@@ -20,6 +20,7 @@ import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import process from "node:process"
 import { applyExportBridge } from "./patch-agent-teams-client.mjs"
+import { applyAgentTeamsFixes } from "./patch-agent-teams-fixes.mjs"
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const VENDOR = join(repoRoot, "packages", "mpd-agent-teams-plugin")
@@ -115,6 +116,21 @@ function main() {
     if (f.endsWith("client.js") || f.endsWith("client.js.map")) continue
     rewriteFile(f)
   }
+  // The adopted SERVER lib/ is never re-copied by this script (only import-rewritten above),
+  // but our mpd LOCAL ADAPTATION deltas in it live in marked regions. Heal + verify them here so
+  // a re-vendor / hand re-materialize of the tree cannot silently drop or rewrite them. A
+  // refusal (missing region, ambiguous anchor, or a region that would re-declare a symbol the
+  // file still carries) is a FAILURE of this run, not a warning: a silently broken adopted
+  // module is exactly what the guard exists to prevent.
+  let fixes
+  try {
+    fixes = applyAgentTeamsFixes({ write: true })
+  } catch (error) {
+    console.error("[vendor-agent-teams] FAIL: mpd delta guard refused the healed tree — " + String(error instanceof Error ? error.message : error))
+    process.exit(1)
+  }
+  console.log("[vendor-agent-teams] mpd deltas " + fixes.status + " (" + fixes.regions + " region(s) across " + fixes.files.length + " adopted file(s)"
+    + (fixes.inserted.length > 0 ? ", inserted: " + fixes.inserted.join(", ") : "") + ")")
   // The client bundle is excluded from the import rewrite above (it is loaded by the web
   // app's own bundler), but mpd-owned client code composes its views/store/locales/CSS
   // through the pinned additive export bridge. Re-apply it so a refresh of the adopted

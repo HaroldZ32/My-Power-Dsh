@@ -1,0 +1,7 @@
+mpd-delta scope-glob               lines  102- 195 | anchor: "function isDefaultExcluded(path) {"
+mpd-delta scope-overlap            lines  244- 262 | anchor: "function nonemptyString(value) {"
+mpd-delta scope-overlap-normalize  lines  263- 269 | anchor: "function nonemptyString(value) {"
+mpd-delta contract-contradiction   lines  276- 375 | anchor: "function dependencyClosureContains(tasks, depend"
+mpd-delta create-contract-gate     lines  417- 426 | anchor: "if (kind === 'review') {"
+mpd-delta repair-scope             lines  714- 721 | anchor: "const repair = {"
+mpd-delta repair-scope-fields      lines  730- 732 | anchor: "verify: source?.verify,"
