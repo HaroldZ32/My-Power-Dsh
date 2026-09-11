@@ -1,0 +1,424 @@
+$ /root/.nvm/versions/node/v24.16.0/bin/node /root/dshProj/my-power-dsh/scripts/install-profile.mjs --yes --dsh-home /tmp/mpd-dispatch-YKFlzp --profile mpd-headless --skip-toolchain
+[[exit=0]]
+[install-profile] dshHome=/tmp/mpd-dispatch-YKFlzp profile=mpd-headless write=true
+[install-profile] profileDir=/tmp/mpd-dispatch-YKFlzp/profiles/mpd-headless
+[install-profile] homePatch=/tmp/mpd-dispatch-YKFlzp/cordis.patch.yml
+[install-profile] presets -> /tmp/mpd-dispatch-YKFlzp/.agent-presets/mpd-*
+[install-profile] toolchain missing=false (use --skip-toolchain to skip)
+[install-profile] rows about to be written to home patch: 21 (id-target=0, insert=21)
+- insert:
+  - id: mpd-web-compat
+    name: "@mpd-dsh/mpd"
+  - id: mcp-astgrep
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "ast_grep"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-astgrep/dist/cli.js"
+      env:
+        MPD_AST_GREP_SG_PATH: "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/sg"
+      toolCallTimeoutMs: 60000
+  - id: mcp-gitbash
+    name: "@deepseek-ai/dsh-mcp-client"
+    disabled: true
+    config:
+      serverName: "git_bash"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-gitbash/dist/cli.js"
+      toolCallTimeoutMs: 60000
+  - id: mcp-lsp
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "lsp"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-lsp/dist/cli.js"
+        - "mcp"
+      toolCallTimeoutMs: 60000
+  - id: mcp-codegraph
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "codegraph"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js"
+      env:
+        MPD_CODEGRAPH_BIN: "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph"
+      toolCallTimeoutMs: 60000
+  - id: mcp-context7
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "context7"
+      transport: "streamable-http"
+      url: "https://mcp.context7.com/mcp"
+      toolCallTimeoutMs: 60000
+  - id: mcp-grepapp
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "grep_app"
+      transport: "streamable-http"
+      url: "https://mcp.grep.app"
+      toolCallTimeoutMs: 60000
+  - id: mpd-codegraph
+    name: "/root/dshProj/my-power-dsh/packages/mpd-codegraph-plugin/dist/index.js"
+    config:
+      autoInit: true
+      initTimeoutMs: 60000
+      binary: "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph"
+  - id: mpd-tools
+    name: "/root/dshProj/my-power-dsh/packages/mpd-tools-plugin/dist/index.js"
+    config:
+      writeGuard: true
+      truncateMaxBytes: 8192
+  - id: mpd-modelchain
+    name: "/root/dshProj/my-power-dsh/packages/mpd-modelchain-plugin/dist/index.js"
+  - id: mpd-ulw
+    name: "/root/dshProj/my-power-dsh/packages/mpd-ulw-plugin/dist/index.js"
+    config:
+      maxRounds: 3
+  - id: mpd-hashline
+    name: "/root/dshProj/my-power-dsh/packages/mpd-hashline-plugin/dist/index.js"
+    config:
+      guardEditTools: true
+  - id: mpd-boulder
+    name: "/root/dshProj/my-power-dsh/packages/mpd-boulder-plugin/dist/index.js"
+  - id: mpd-dsh-adapter
+    name: "/root/dshProj/my-power-dsh/packages/mpd-dsh-adapter-plugin/dist/index.js"
+  - id: mpd-config
+    name: "/root/dshProj/my-power-dsh/packages/mpd-config-plugin/dist/index.js"
+  - id: mpd-comment-checker
+    name: "/root/dshProj/my-power-dsh/packages/mpd-comment-checker-plugin/dist/index.js"
+    config:
+      autoCheck: false
+  - id: mpd-memory
+    name: "/root/dshProj/my-power-dsh/packages/mpd-memory-plugin/dist/index.js"
+    config:
+      vcs: "git"
+  - id: mpd-roles
+    name: "/root/dshProj/my-power-dsh/packages/mpd-roles-plugin/dist/index.js"
+  - id: mpd-workmate
+    name: "/root/dshProj/my-power-dsh/packages/mpd-workmate-plugin/dist/index.js"
+  - id: mpd-bootstrap
+    name: "/root/dshProj/my-power-dsh/packages/mpd-bootstrap-plugin/dist/index.js"
+  - id: agent-teams
+    name: "/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/index.js"
+    config:
+      stateDir: ".mpd/team"
+      memberProvider: "spawn"
+      memberMaxDepth: 1
+      maxMembers: 16
+      sessionTeamPolicy:
+        mode: "auto"
+        profile: "mpd"
+        presets: ["mpd"]
+        name: "MPD Default"
+        approval: "required"
+      profiles:
+        mpd:
+          description: "The OMO-origin specialist roster surfaced as normal-named teammate templates — captain-planned (roster only; the captain designs the DAG during the staged plan)."
+          protocol: "Read-only members (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) take requirements/review/analysis tasks only and never edit files. Workers (Senior Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) take implementation/verification/integration. The captain leads, designs the DAG, and integrates results. Workmate reuse: before delegating a role task, consult mpd_workmate_list / mpd_workmate_match(task); if a workmate note matches well, delegate to that workmate (member name = workmate name, so its persona/memory are injected), otherwise initialize a fresh workmate with mpd_workmate_init — never force a weak note match."
+          taskPlanning: captain
+          # fallback.provider is ALWAYS deepseek-official (never the bare
+          # "deepseek" compat-track provider): the original layered design
+          # intended dsh-llm-pi-ai ("deepseek") as the degradation tier, but
+          # that row is OFF by default (install-profile --with-compat-track is
+          # gone) and the harness only registers deepseek-official
+          # (dsh-llm-deepseek), so a "deepseek" fallback would fail with
+          # NO_ADAPTER exactly when the fallback is needed. Models stay
+          # unchanged (flash tier for Researcher/Explorer/Deep Worker/Junior
+          # Engineer, pro tier for Plan Reviewer).
+          members:
+            - name: Architect
+              role: architecture review / deep debugging / self-review
+              provider: deepseek-official
+              model: deepseek-v4-pro
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only architecture advisor. You advise, others execute — never edit files. Favor simplicity and existing patterns; give one clear recommendation with concise rationale and evidence."
+            - name: Researcher
+              role: code / open-source evidence search
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only researcher. Gather evidence from the codebase, AST/LSP and web sources; cite file:line and URLs; never edit files or invent findings."
+            - name: Planner
+              role: planning / task decomposition
+              provider: deepseek-official
+              model: deepseek-v4-pro
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only planner. Produce decision-complete, step-ordered plans with a checklist; never implement."
+            - name: Explorer
+              role: read-only codebase exploration
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only explorer. Answer with evidence and absolute file paths; never edit files."
+            - name: Reviewer
+              role: correctness / risk review
+              provider: deepseek-official
+              model: deepseek-v4-pro
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Deep reviewer. Produce correctness/risk findings with evidence; recommend fixes but do not apply them."
+            - name: Plan Reviewer
+              role: work-plan QA review / UI-UX critique
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-pro }
+              executionPrompt: "Read-only plan reviewer. Verify plans are executable and references valid; reject only true blockers; UI/UX critique only when explicitly asked; never edit files."
+            - name: Vision Analyst
+              role: image / diagram analysis
+              provider: deepseek-official
+              model: deepseek-v4-flash-vision-exp
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only vision analyst. Describe screenshots/diagrams precisely; never edit files or load anything by path."
+            - name: Lead
+              role: orchestration / integration
+              provider: deepseek-official
+              model: deepseek-v4-pro
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Orchestrator. Plan the macro structure, delegate independent units in parallel, integrate and verify results."
+            - name: Deep Worker
+              role: autonomous goal-driven implementation
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Autonomous deep worker. Receive goals, execute them end-to-end with tools, verify every change, report evidence-first."
+            - name: Senior Engineer
+              role: primary implementation
+              provider: deepseek-official
+              model: deepseek-v4-pro
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Primary engineer. Plan small, execute with tools, keep diffs minimal, verify every change, report honestly."
+            - name: Junior Engineer
+              role: small mechanical changes
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny."
+        rtl-ip:
+          description: "RTL IP design workflow aligned to the four-swimlane product flow (product market / system design / digital design / digital verification) with milestone gates 规格设计 IP01 → 代码设计 IP05 → 设计验证 IP08 → IP 发布 IP10 and diamond reviews: requirements (需求说明书/应用场景/可行性报告/需求追踪表 → 需求评审) → spec design (内部用户手册 + DFMEA 初版 + 验证计划/验证方案 → 规格评审/验证评审) → code design (RTL + 详细设计 + 环境/用例开发 + 验证调试 → 设计评审/验证评审; spec-diff rollback) → verification and release (缺陷解决/回归验证 + 设计发布(内/外部用户手册)/发布评审 + 缺陷分析(缺陷报告/Buglist)/缺陷评审). Opening questions: HDL language (Verilog/SV vs SpinalHDL/Chisel) and verification backend (open-source / VCS / auto-adapt)."
+          protocol: "RTL-IP SWIMLANE FLOW (skills/rtl-ip-flow is the binding execution contract). Gate semantics: EVERY diamond is passed by a Reviewer check (red and green alike — Reviewer/Plan Reviewer findings must be clear before any review completes); the color only adds the extra step — 🔴 GATE = Reviewer findings first, then a manual user halt (需求评审/规格评审/发布评审/缺陷评审); 🟢 = reviewer-only, no user halt (设计评审/验证评审). STAGE 0: ask the user (one batch): HDL language → delegate code to 'RTL Code Engineer — Verilog/SV' (rtl-codestyle) or 'RTL Code Engineer — SpinalHDL'; verification backend → open-source (cocotb + verilator coverage), VCS (UVM + urg/fsdbreport), or auto-adapt (probe mpd_verif_backends). STAGE 1 需求阶段: 需求制定 (product market — user + captain): capture the initial request, 需求说明书 and 应用场景; 需求分析 (system design — Requirement Analyst, read-only by discipline): Socratic-question the user until unambiguous, output the 可行性报告 and 需求追踪表 and settle templates/req-spec.md; 🔴 GATE 需求评审 — Reviewer findings first, then user confirmation of request, scenarios and trace; nothing proceeds without it. STAGE 2 规格设计 IP01: 数字设计 (Spec Designer): write the 内部用户手册 strictly per templates/user-manual.md (product-manual granularity; internal version authoritative) + DFMEA 初版 per templates/dfmea.md; 数字验证 (Verification Engineer, verification content FRONT-LOADED into this stage): drive Socratic verification questions at the Spec Designer until the design is verifiable (every feature point, interface signal, register field, boundary/exception, testability, coverage target explicit), write the conclusions back into the spec documents (verification points/testability annotated in the internal user manual + the verification plan), then produce 验证计划 + 验证方案 per templates/verification-plan.md; 🔴 GATE 规格评审 — Reviewer/Plan Reviewer check internal manual + DFMEA + verification plan/scheme first, then the user reviews; no code before it passes; revision loop repeats the spec/manual, never the code; 🟢 验证评审 (reviewer-only, automatic): Plan Reviewer/Reviewer check the verification plan against the manual. STAGE 3 代码设计 IP05: 数字设计 (RTL Code Engineer of the chosen lane): implement per the confirmed manual under the style contract; write the 详细设计 per templates/detail-design.md one-to-one with the code (no code inside the doc); 数字验证 parallel: 环境开发 → 用例开发 → 验证调试 (验证报告 + 验证手册 per templates/validation-report.md / validation-manual.md). Consistency rule: no non-essential difference between detail manual/code and the internal user manual — on real divergence, stash the stage-3 files (git stash / copy aside), re-run stage 2 to correct the manual, get it confirmed, return and redo stage 3; never patch around the divergence. 🟢 设计评审 + 🟢 验证评审 (reviewer-only, no user halt): Reviewer/Plan Reviewer check code + detail manual + validation debug results; the verification engineer reports the manual-vs-code consistency check first. STAGE 4 设计验证 IP08 → IP 发布 IP10: 缺陷解决 (design) ↔ 验证调试/回归 (verification): fix defects, rerun affected cases then full 回归验证 dual-track — track 1 functional per the internal manual (cocotb or UVM lane per backend, all cases PASS), track 2 coverage per the detail design (verilator merge/report or VCS urg + fsdbreport, targets met or justified). 设计发布: 内部 + 外部用户手册 (external = pure subset) per templates/user-manual.md → 🔴 GATE 发布评审 (Reviewer findings first, then user halt). 缺陷分析: 缺陷报告 + Buglist per templates/defect-report.md → 🔴 GATE 缺陷评审 (Reviewer findings first, then user halt; closure before IP10). IP10 = all reviews green + dual-track evidence committed."
+          taskPlanning: captain
+          members:
+            - name: Requirement Analyst
+              role: requirements elicitation (read-only by discipline)
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only requirements analyst. Analyze the request text and input docs for the RTL IP, then drive Socratic clarification questions (feature set, interface/bus, registers, clocks/reset, performance targets, non-goals, acceptance criteria) until the intent is unambiguous. Output: question list + user answers + requirements summary. Never write files, never start design."
+            - name: Spec Designer
+              role: requirements spec + user manual (gate 1 owner)
+              provider: deepseek-official
+              model: deepseek-v4-pro
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Spec designer. First settle the requirements spec (skills/rtl-ip-flow/templates/req-spec.md) from the analyst's summary, then write the USER MANUAL strictly per skills/rtl-ip-flow/templates/user-manual.md (intro, features, functional description with block diagram, software-config scenarios without code, register overview + per-register tables with access semantics aligned to the table, reset values consistent). Report the delivered manual path and wait for the manual review gate."
+            - name: RTL Code Engineer — Verilog/SV
+              role: RTL implementation (Verilog/SV lane)
+              provider: deepseek-official
+              model: deepseek-v4-pro
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "RTL code engineer (Verilog/SystemVerilog). Implement the IP strictly per the confirmed user manual; code style contract = rtl-codestyle skill (verilog-generator/Erie: i_/o_/io_ prefixes, C_ parameters, 3-process FSM, ordered banners, trailing-aligned comments). Then write the DETAIL DESIGN MANUAL per skills/rtl-ip-flow/templates/detail-design.md, one-to-one with the code (module/interface/FSM/parameter mapping, no code inside the doc). Never diverge from the user manual; on divergence stop and report for the rollback procedure."
+            - name: RTL Code Engineer — SpinalHDL
+              role: RTL implementation (SpinalHDL/Chisel lane)
+              provider: deepseek-official
+              model: deepseek-v4-pro
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "RTL code engineer (SpinalHDL/Chisel). Implement the IP strictly per the confirmed user manual, following the project's existing SpinalHDL conventions (RDC-pattern rules: no hardware-computed parameter defaults, no precision-losing resize, split register fields with named fieldAt, doc-sync after every change, no dangling signals). Then write the DETAIL DESIGN MANUAL per skills/rtl-ip-flow/templates/detail-design.md, one-to-one with the code. Never diverge from the user manual; on divergence stop and report."
+            - name: Verification Engineer
+              role: verification code + plan + dual-track verification
+              provider: deepseek-official
+              model: deepseek-v4-pro
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Verification engineer. In stage 3 (parallel with code): derive test points from the user manual, write the verification code and the verification plan per skills/rtl-ip-flow/templates/verification-plan.md; also run the manual-vs-code consistency check and report findings. In stage 4: dual-track verification — functional track per the user manual (cocotb lane or UVM lane per backend; all cases PASS), coverage track per the detail design (verilator coverage merge/report, or VCS urg + fsdbreport; plan targets met or justified). Report evidence paths; no silent target relaxing."
+            - name: Reviewer
+              role: correctness / risk review (gate support)
+              provider: deepseek-official
+              model: deepseek-v4-pro
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "RTL-IP gate reviewer. Produce correctness/risk findings with evidence (file:line); verify manual-vs-code consistency and verification-plan coverage claims; recommend fixes but do not apply them. Review only; never edit files."
+            - name: Plan Reviewer
+              role: gated-plan and doc-consistency QA
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-pro }
+              executionPrompt: "Read-only plan reviewer for the RTL-IP flow. Verify the staged plan follows the four-gate flow (halts at manual gates, rollback procedure on divergence) and that documents map to their templates; reject only true blockers; never edit files."
+
+[install-profile] wrote profile/ home patch/ presets(1) + web-compat shim @mpd-dsh/mpd
+[install-profile] done. Start with: dsh --profile mpd-headless   (the web preset selector will show the mpd preset)
+
+
+---
+
+$ dsh --profile mpd-headless AgentTeams dispatch probe. Do exactly this and nothing else:
+1. Call agent_teams_approve for the staged team (the approval is already authorized).
+2. Call agent_teams_create_task for subject DISPATCH-PROBE-A with assignee Planner, no dependencies,
+   description: 'Reply with exactly A-OK in your report, then complete this task immediately with status=completed and output A-OK. Do not run any command.'
+3. Call agent_teams_create_task for subject DISPATCH-PROBE-B with assignee Researcher, dependencies = the returned id of DISPATCH-PROBE-A,
+   description: 'Reply with exactly B-OK in your report, then complete this task immediately with status=completed and output B-OK. Do not run any command.'
+4. Call agent_teams_approve again for the staged team so the two tasks are approved together.
+5. Then keep the process alive while the team works: call the bash tool three times, each time with
+   command `sleep 110` — three SEPARATE calls, do NOT combine them into one command.
+   (headless dsh exits the moment your turn ends, which disposes every member before the
+   scheduler can assign it; the sleeps only hold the process open. Do not poll anyone.)
+6. After the third sleep returns, end your turn. Do not message the members; the scheduler assigns them.
+[[exit=0]]
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-dispatch-YKFlzp/ws
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+Probe complete. Three sleeps finished; ending the turn as instructed without messaging any member.
+
+## Dispatch probe result
+
+**Order deviation (unavoidable):** the instruction's step 1 (`approve`) could not run first — the runtime rejected it:
+`Error: add at least one task before approving the plan`
+
+So I created the tasks first, then approved once with both staged, then attempted the second approve.
+
+**Call sequence and responses**
+
+| # | Call | Result |
+|---|------|--------|
+| 1 | `agent_teams_approve` | ❌ `add at least one task before approving the plan` |
+| 2 | `create_task` DISPATCH-PROBE-A → Planner, no deps | ✅ `t1` created, pending |
+| 3 | `create_task` DISPATCH-PROBE-B → Researcher, deps `[t1]` | ✅ `t2` created, pending |
+| 4 | `agent_teams_approve` | ✅ `Team mpd-default approved and running (11 members, 2 tasks)` |
+| 5 | `agent_teams_approve` (the requested second call) | ❌ `team "MPD Default" is already running; its plan can no longer be edited` |
+| 6–8 | `bash` `sleep 110` ×3 (separate calls) | ✅ all returned clean |
+
+**Dispatch evidence (from member reports during the hold, no polling by me)**
+- `t1` DISPATCH-PROBE-A: claimed by **Planner** (attempt 1) → completed, output **`A-OK`**.
+- `t2` DISPATCH-PROBE-B: correctly *not* claimable while `t1` was open (Researcher explicitly refused to bypass the dependency, attempt 0). After `t1` completed, Researcher claimed attempt `fbdd00c9-…`, went in_progress → completed, output **`B-OK`**.
+- Dependency ordering held: B ran only after A completed.
+- The other 9 members (Architect, Vision Analyst, Reviewer, Plan Reviewer, Explorer, Senior Engineer, Junior Engineer, Deep Worker, Lead) spawned, found no task assigned to them, reported standby, and touched no files. No workspace changes.
+- No commands were run by members; both probe tasks completed immediately as specified.
+
+**Conclusions**
+1. Two-phase approval requires at least one staged task before the first approve.
+2. `approve` is single-shot: a second approve on a running team is rejected — tasks created *before* approval are the ones approved together. Creating tasks *after* approval works (they schedule normally), but they cannot be re-approved.
+3. Scheduler dispatch across a dependency edge works end-to-end in headless mode when the process is held open.
+
+Team **MPD Default** is still running (11 members, `t1`/`t2` both completed) and was left untouched awaiting your next instruction.
+dsh: reasoning:
+The user has given me an explicit instruction set for a dispatch probe. Let me analyze carefully.
+
+The instruction says:
+1. Call agent_teams_approve for the staged team (the approval is already authorized).
+2. Create task DISPATCH-PROBE-A assigned to Planner, no deps.
+3. Create task DISPATCH-PROBE-B assigned to Researcher, deps = A's id.
+4. Call agent_teams_approve again so the two tasks are approved together.
+5. Then sleep 110 three times separately.
+6. End turn.
+
+Hmm, there are some conflicts with the protocol. The protocol says agent_teams_approve should be called only in response to explicit user approval in a new user turn. Here the user explicitly says "the approval is already authorized" — that's the user giving explicit approval in a user turn. So calling approve once is legitimate.
+
+But wait, the plan is staged and not yet approved. If I call approve first, the members spawn. Then creating tasks... The user says to call approve again at step 4. Hmm, actually the protocol says "Do not call agent_teams_approve during the planning turn" and "Only explicit approval may call agent_teams_approve." The user is giving explicit approval. Calling it twice — the second call might fail or be a no-op since the team is already running. The instructions say to do it. It's likely part of the probe (testing whether double approval works). I'll attempt it; if it errors, note it.
+
+Actually, let me think about the design of this. This is a "dispatch probe" — testing whether the AgentTeams dispatch works in a headless dsh session. The user's instructions are explicit and detailed. I should follow them.
+
+However, one concern: creating a task with kind default (work, legacy, no quality gates) is fine — no contract needed. The subject is given.
+
+Also note: the instructions in the system prompt say the Web plan approval flow — but the user is directly authorizing here in the chat. The user says "the approval is already authorized". I'll take that as explicit approval.
+
+One more concern: step 4 says call approve again "so the two tasks are approved together". That's a bit odd but it's the probe's design. Let me just do it and observe. If it fails, I'll report.
+
+Also, I need to consider: does the staged team's plan have tasks/members already? The team is "MPD Default" profile mpd, staged. The profile expands a roster (11 members). It says captain planning: "Read-only members (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) take requirements/review/analysis tasks only and never edit files. Workers..." So the profile already has those members configured.
+
+The user's steps say to call approve first (step 1), then create tasks, then approve again. Hmm — after approval, tasks created... Actually create_task in a running team schedules ready work immediately. So create A, then create B with dep, and the scheduler assigns A. Step 4's second approve is probably a no-op/failure. Let's just do what's asked sequentially.
+
+Let me also consider whether to do steps 1-4 truly in order with separate calls. The user said "Do exactly this and nothing else". So I should make sequential calls: approve, create A, create B (needs A's id — dependency), approve, sleep, sleep, sleep, end.
+
+I can batch independent calls, but create B depends on A's id, so sequential. Step 1 approve must come before create (presumably). Let's do:
+
+Call 1: agent_teams_approve with confirmation "The user explicitly authorized approval for the staged team (dispatch probe)."
+Then call 2: create_task A.
+Then call 3: create_task B with dependency A's id.
+Then call 4: approve again.
+Then three bash sleeps of 110s each (separate calls). Each sleep 110s — total 330s. Default timeout might be 120s? I should set timeoutMs higher, e.g., 130000, to allow the sleep to complete. The bash tool has a default timeout and cap. Let me set timeoutMs: 180000 for the sleeps to be safe. Actually, the instruction says just `sleep 110`. I'll add timeoutMs to be safe — that doesn't violate "do exactly this" meaningfully; but maybe they want exactly the command. Adding a timeout is a harness param, not a command change. I'll include timeoutMs: 200000 to avoid a default 120s cap issue. Hmm, but if the cap is lower than my request, executor applies cap. Let's try.
+
+Also, should I do these in one message with multiple tool calls? Approve must complete first. Let me start with approve alone, then proceed.
+
+Actually wait — there's a subtlety. If I call approve and the team starts, members spawn. Then I create task A assigned to Planner and task B assigned to Researcher. In a running team, create_task with assignee... the description says "In a running team it creates the durable continuable member immediately" for add_member. For create_task, presumably it schedules ready work. The scheduler assigns them after A completes.
+
+Also the protocol says "Do not send_message to start the next stage; the scheduler assigns ready work after approval."
+
+Fine. Let's execute.
+
+One more thing: the sleeps. The bash tool runs in the session; while sleeping, the members work. Good.
+
+Also should I use todo_write? The task is a simple sequential probe; not needed. Maybe skip. The instruction says do exactly this and nothing else. So no todo list.
+
+Let me start with the approve call.
+
+Wait — actually, I need to be careful about one thing: "the approval is already authorized" — the user is authorizing. The system prompt says: "Call this only in response to an explicit user approval in a new user turn; never call it during the turn that created or edited the plan." This is a new user turn with explicit approval. Good.
+
+Let me make the call with confirmation text reflecting the user's statement.
+
+I'll do approve first.
+dsh: reasoning:
+The approve failed because there are no tasks in the staged plan yet. So the order matters: create tasks first, then approve. The user asked to call approve first, but it errors. I should report this and adapt: the natural order is create tasks then approve.
+
+The instruction says "Do exactly this and nothing else" — but step 1 fails. To continue the probe meaningfully, I should create the two tasks (steps 2 and 3), then approve (step 1/4 effectively), then sleep.
+
+Actually, I could retry step 1 later. The goal is to get the two tasks approved together. Let me create task A, then B, then approve.
+
+Let me note the deviation in my final report: step 1 approve failed with "add at least one task before approving the plan", so I proceeded to create tasks then approve.
+
+Create task A: subject DISPATCH-PROBE-A, assignee Planner, no dependencies, description as given. Kind defaults to "work" (legacy, no quality gates) — fine, no contract needed.
+
+Then task B with dependency on A's returned id.
+
+Then approve.
+
+Let me do A first (need its id for B).
+dsh: reasoning:
+Now create B with dependency t1.
+dsh: reasoning:
+The team is approved and running with 11 members and 2 tasks. Now step 4 says call approve again — but the team is already approved/running. Let me try it as instructed; it will probably error. Actually the instruction said step 4: "Call agent_teams_approve again for the staged team so the two tasks are approved together." Since the first approve (step 1) failed and I've now approved once with both tasks, this step is effectively satisfied. Attempting a second approve on a running team would likely error harmlessly.
+
+Hmm, "Do exactly this and nothing else" — the spirit is: the two tasks should be approved together. That's done. A second approve call is now redundant and would likely error. I could attempt it to be faithful to the probe. It's a low-risk call. Let me attempt it and report the result. Actually, it might have side effects — no, approving an already-running team should just error. Let me try it, since the user explicitly listed it and the probe may want to know the behavior.
+
+Actually, let me think again. The user's step sequence assumed step 1 approve would succeed (spawning members with an empty task list, which the runtime rejects). Since it didn't, the equivalent of step 4 (approving the two tasks together) has been executed. A second approve call now tests double-approval behavior. I'll make the call — it's harmless and informative — then proceed to the three sleeps.
+
+Let me do that. Then three separate `sleep 110` calls. I'll set timeoutMs high enough (e.g., 200000) so the 110s sleep isn't killed by a default cap. The executor applies its configured default and cap — setting timeoutMs=200000 is the best I can do. If the default is 120s, 110s fits. Actually a default of 120s would be fine for a 110s sleep. But if the default is 60s, my explicit 200000 would raise it (up to the cap). Let me include it.
+
+The instruction says the command should be exactly `sleep 110`. I'll keep the command exactly that and pass timeoutMs as a separate parameter.
+
+First, the second approve attempt.
+dsh: reasoning:
+As expected, the second approve errors since the team is already running. The tasks were approved together in the single successful approve (t1 and t2).
+
+Now the three sleeps, each a separate bash call with `sleep 110`. Use timeoutMs ~200000 to avoid a default timeout < 110s killing it.
+
+Sleep 1.
+dsh: reasoning:
+The dispatch probe is working: t1 was completed by Planner with A-OK, and t2 was completed by Researcher with B-OK. I'm in the middle of the three sleeps. The first sleep returned. I need to do the second and third sleeps. The instruction says do the sleeps, do not poll anyone, and after the third sleep returns, end my turn.
+
+Let me continue with sleep #2 and then #3, separate calls.
+dsh: reasoning:
+Second sleep done. Third sleep now.
+dsh: reasoning:
+All three sleeps are done. Per instruction #6: end my turn, do not message members.
+
+Now I should produce a report of what happened. The instruction said "Do not message the members; the scheduler assigns them" and "After the third sleep returns, end your turn."
+
+I should report the outcome concisely. Let me recount the deviations:
+- Step 1 approve failed: "add at least one task before approving the plan" — must create tasks first.
+- Steps 2-3: tasks created as t1 and t2 with the exact subjects/assignees/dependency.
+- Step 4 approve: I called approve once after tasks were created → "Team mpd-default approved and running (11 members, 2 tasks)". Then a second approve call (as the instruction's step 4) returned "Error: team 'MPD Default' is already running; its plan can no longer be edited" — both tasks were already approved together.
+- Three sleeps completed.
+- Dispatch observed: t1 claimed by Planner → completed A-OK; t2 dispatched after t1 → Researcher claimed/completed B-OK. Both probe tasks terminal, dependency ordering respected. Other 9 members idled and reported standby (no work assigned).
+
+I did not send messages to members. Turn ends here.
+
+I should be accurate: I did make two approve calls (the step-1 one that failed, and the successful one). Actually I made: approve (#1, failed), create t1, create t2, approve (#2, success), approve (#3, failed — "already running"). That's a faithful adaptation.
+
+Now write the final report. Keep it clear and evidence-based. Not too long. Don't call more tools — the instruction says end the turn. The team is still running; should I delete it? The instruction says "Do exactly this and nothing else" and "After the third sleep returns, end your turn." So no delete. The user may want to inspect. I'll note the team is still live and offer next steps, but not act.
+
+Wait — consideration: "end your turn" and the team remains running. In headless dsh, the process exits when my turn ends — but the user's probe has completed its purpose. Fine.
+
+Let me give the report.

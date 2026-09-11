@@ -1,0 +1,323 @@
+{
+  "ok": true,
+  "slug": "rename-delete-verify",
+  "what": "outside-in route/lifecycle verification of workmate rename+delete against a real dsh web boot",
+  "mode": "real-boot",
+  "startedAt": "2026-09-10T14:24:22.665Z",
+  "sandbox": "/tmp/mpd-t6-qc4mCY",
+  "dshHome": "/tmp/mpd-t6-qc4mCY/dsh-home",
+  "userHome": "/tmp/mpd-t6-qc4mCY/user-home",
+  "port": 3097,
+  "sandboxHomeAsserted": "/tmp/mpd-t6-qc4mCY/user-home",
+  "total": 59,
+  "passed": 59,
+  "failed": 0,
+  "failedChecks": [],
+  "checks": [
+    {
+      "id": "sandbox.library-seeded",
+      "ok": true,
+      "detail": "{\"lib\":\"/tmp/mpd-t6-qc4mCY/user-home/.mpd/workmate\",\"oracle1\":true}"
+    },
+    {
+      "id": "boot.web-server-up",
+      "ok": true,
+      "detail": "token acquired in 15s"
+    },
+    {
+      "id": "boot.workmate-row-mounted",
+      "ok": true,
+      "detail": "bundle row is composed by the profile patch (see dump-config evidence)"
+    },
+    {
+      "id": "route.list.200+headers",
+      "ok": true,
+      "detail": "{\"status\":200,\"ct\":\"application/json; charset=utf-8\",\"cc\":\"no-store\"}"
+    },
+    {
+      "id": "route.list.shows-oracle-1",
+      "ok": true,
+      "detail": "[\"oracle-1\"]"
+    },
+    {
+      "id": "route.roster.200",
+      "ok": true,
+      "detail": "{\"status\":200,\"bases\":11}"
+    },
+    {
+      "id": "route.get.oracle-1.200",
+      "ok": true,
+      "detail": "{\"status\":200}"
+    },
+    {
+      "id": "route.rename.wrong-verb.405+allow",
+      "ok": true,
+      "detail": "{\"status\":405,\"allow\":\"POST\",\"body\":\"\"}"
+    },
+    {
+      "id": "route.rename.invalid-json.400",
+      "ok": true,
+      "detail": "{\"status\":400,\"body\":{\"error\":\"invalid JSON\"}}"
+    },
+    {
+      "id": "negative.rename.invalid-name[<empty>]",
+      "ok": true,
+      "detail": "{\"status\":400,\"reason\":\"invalid-name\",\"error\":\"mpd_workmate: invalid name \\\"\\\" — names are ASCII, lowercase, [a-z0-9_-] only and must already be sanitized\"}"
+    },
+    {
+      "id": "negative.rename.invalid-name[Alice]",
+      "ok": true,
+      "detail": "{\"status\":400,\"reason\":\"invalid-name\",\"error\":\"mpd_workmate: invalid name \\\"Alice\\\" — names are ASCII, lowercase, [a-z0-9_-] only and must already be sanitized\"}"
+    },
+    {
+      "id": "negative.rename.invalid-name[测试]",
+      "ok": true,
+      "detail": "{\"status\":400,\"reason\":\"invalid-name\",\"error\":\"mpd_workmate: invalid name \\\"测试\\\" — names are ASCII, lowercase, [a-z0-9_-] only and must already be sanitized\"}"
+    },
+    {
+      "id": "negative.rename.invalid-name[a/b]",
+      "ok": true,
+      "detail": "{\"status\":400,\"reason\":\"invalid-name\",\"error\":\"mpd_workmate: invalid name \\\"a/b\\\" — names are ASCII, lowercase, [a-z0-9_-] only and must already be sanitized\"}"
+    },
+    {
+      "id": "negative.rename.invalid-name[..]",
+      "ok": true,
+      "detail": "{\"status\":400,\"reason\":\"invalid-name\",\"error\":\"mpd_workmate: invalid name \\\"..\\\" — names are ASCII, lowercase, [a-z0-9_-] only and must already be sanitized\"}"
+    },
+    {
+      "id": "negative.rename.invalid-name[.archive]",
+      "ok": true,
+      "detail": "{\"status\":400,\"reason\":\"invalid-name\",\"error\":\"mpd_workmate: invalid name \\\".archive\\\" — names are ASCII, lowercase, [a-z0-9_-] only and must already be sanitized\"}"
+    },
+    {
+      "id": "negative.rename.invalid-name[!!!]",
+      "ok": true,
+      "detail": "{\"status\":400,\"reason\":\"invalid-name\",\"error\":\"mpd_workmate: invalid name \\\"!!!\\\" — names are ASCII, lowercase, [a-z0-9_-] only and must already be sanitized\"}"
+    },
+    {
+      "id": "negative.rename.invalid-name[xxxxxxxx…(len 300)]",
+      "ok": true,
+      "detail": "{\"status\":400,\"reason\":\"invalid-name\",\"error\":\"mpd_workmate: invalid name \\\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\\" — names are ASCII, lowercase, [a-z0-9_-] only and must already be sanitized\"}"
+    },
+    {
+      "id": "negative.delete.empty-name",
+      "ok": true,
+      "detail": "{\"status\":400,\"reason\":\"invalid-name\"}"
+    },
+    {
+      "id": "negative.library-root-untouched",
+      "ok": true,
+      "detail": "{\"before\":[\"index.json\",\"oracle-1\"],\"after\":[\"index.json\",\"oracle-1\"]}"
+    },
+    {
+      "id": "negative.rename.unknown.404",
+      "ok": true,
+      "detail": "{\"status\":404,\"reason\":\"unknown\"}"
+    },
+    {
+      "id": "negative.delete.unknown.404",
+      "ok": true,
+      "detail": "{\"status\":404,\"reason\":\"unknown\"}"
+    },
+    {
+      "id": "negative.get.unknown.404-not-200",
+      "ok": true,
+      "detail": "{\"status\":404}"
+    },
+    {
+      "id": "edge.orphan.404+untouched",
+      "ok": true,
+      "detail": "{\"rename\":404,\"del\":404,\"dirStillThere\":true}"
+    },
+    {
+      "id": "edge.in-use.409+named-blocker",
+      "ok": true,
+      "detail": "{\"status\":409,\"reason\":\"in-use\",\"blocking\":[{\"teamId\":\"agent-teams-sidebar-migration\",\"member\":\"Architect\"},{\"teamId\":\"mpd-default\",\"member\":\"Architect\"},{\"teamId\":\"mpd-default-19f64d11\",\"member\":\"Architect\"},{\"teamId\":\"mpd-default-1f285182\",\"member\":\"Architect\"},{\"teamId\":\"mpd-default-2d2445da\",\"member\":\"Architect\"},{\"teamId\":\"mpd-default-47c350bf\",\"member\":\"Architect\"},{\"teamId\":\"mpd-default-4a3d20e1\",\"member\":\"Architect\"},{\"teamId\":\"mpd-default-53380813\",\"member\":\"Architect\"},{\"teamId\":\"mpd-default-5b99df58\",\"member\":\"Architect\"},{\"teamId\":\"mpd-default-84e50f06\",\"member\":\"Architect\"},{\"teamId\":\"mpd-default-98620900\",\"member\":\"Architect\"},{\"teamId\":\"mpd-default-9b7de114\",\"member\":\"Architect\"},{\"teamId\":\"mpd-default-b550f267\",\"member\":\"Architect\"},{\"teamId\":\"mpd-default-c146a414\",\"member\":\"Architect\"},{\"teamId\":\"mpd-default-c2be0a8a\",\"member\":\"Architect\"},{\"teamId\":\"mpd-default-cc23f374\",\"member\":\"Architect\"},{\"teamId\":\"mpd-default-d3943705\",\"member\":\"Architect\"},{\"teamId\":\"workmate-rename-delete\",\"member\":\"Architect\"}]}"
+    },
+    {
+      "id": "edge.in-use.no-side-effect",
+      "ok": true,
+      "detail": "{\"oracle1\":true,\"architect\":false}"
+    },
+    {
+      "id": "rename.happy.200",
+      "ok": true,
+      "detail": "{\"status\":200,\"body\":{\"ok\":true,\"name\":\"oracle-2\",\"from\":\"oracle-1\",\"renamedFrom\":[\"oracle-1\"]}}"
+    },
+    {
+      "id": "rename.old-key-freed.404",
+      "ok": true,
+      "detail": "{\"status\":404}"
+    },
+    {
+      "id": "rename.new-key-resolves.200",
+      "ok": true,
+      "detail": "{\"status\":200}"
+    },
+    {
+      "id": "rename.preserves-persona-bytes",
+      "ok": true,
+      "detail": "{\"before\":2517,\"after\":2517}"
+    },
+    {
+      "id": "rename.preserves-memory-bytes",
+      "ok": true,
+      "detail": "{\"before\":0,\"after\":0}"
+    },
+    {
+      "id": "rename.preserves-uses",
+      "ok": true,
+      "detail": "{\"before\":0,\"after\":0}"
+    },
+    {
+      "id": "rename.preserves-createdAt",
+      "ok": true,
+      "detail": "{\"before\":\"2026-09-10T03:30:56.619Z\",\"after\":\"2026-09-10T03:30:56.619Z\"}"
+    },
+    {
+      "id": "rename.meta.name-mirrors-new-key",
+      "ok": true,
+      "detail": "{\"name\":\"oracle-2\"}"
+    },
+    {
+      "id": "rename.renamedFrom-recorded",
+      "ok": true,
+      "detail": "[\"oracle-1\"]"
+    },
+    {
+      "id": "rename.note-self-reference-updated",
+      "ok": true,
+      "detail": "{\"note\":\"Architect-based workmate \\\"oracle-2\\\". No task history yet.\\n\"}"
+    },
+    {
+      "id": "rename.list-reflects-immediately",
+      "ok": true,
+      "detail": "[\"oracle-2\"]"
+    },
+    {
+      "id": "rename.index-key-moved",
+      "ok": true,
+      "detail": "[\"oracle-2\"]"
+    },
+    {
+      "id": "rename.fs-shape",
+      "ok": true,
+      "detail": "{\"new\":true,\"old\":false}"
+    },
+    {
+      "id": "edge.same-key.400-invalid-name",
+      "ok": true,
+      "detail": "{\"status\":400,\"reason\":\"invalid-name\"}"
+    },
+    {
+      "id": "route.init.200",
+      "ok": true,
+      "detail": "{\"status\":200,\"body\":{\"name\":\"qa-alpha\",\"baseId\":\"hephaestus\",\"baseName\":\"Deep Worker\",\"readonly\":false,\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"path\":\"/tmp/mpd-t6-qc4mCY/user-home/.mpd/workmate/qa-alpha\",\"note\":\"t6 fixture\"}}"
+    },
+    {
+      "id": "edge.collision.409",
+      "ok": true,
+      "detail": "{\"status\":409,\"reason\":\"collision\"}"
+    },
+    {
+      "id": "edge.collision.no-side-effect",
+      "ok": true,
+      "detail": "{\"alpha\":true,\"oracle2\":true}"
+    },
+    {
+      "id": "edge.symlinked-instance.refused",
+      "ok": true,
+      "detail": "{\"status\":404,\"reason\":\"unknown\",\"targetTouched\":0}"
+    },
+    {
+      "id": "delete.archive.200-body",
+      "ok": true,
+      "detail": "{\"status\":200,\"body\":{\"ok\":true,\"name\":\"qa-alpha\",\"archived\":\"/tmp/mpd-t6-qc4mCY/user-home/.mpd/workmate/.archive/qa-alpha-2026-09-10T142437Z\",\"purged\":false}}"
+    },
+    {
+      "id": "delete.archive.path-exists-under-sandbox",
+      "ok": true,
+      "detail": "{\"archived\":\"/tmp/mpd-t6-qc4mCY/user-home/.mpd/workmate/.archive/qa-alpha-2026-09-10T142437Z\",\"exists\":true}"
+    },
+    {
+      "id": "delete.archive.is-restorable-instance",
+      "ok": true,
+      "detail": "{\"entries\":[\"memory.md\",\"meta.json\",\"note.md\",\"persona.md\"]}"
+    },
+    {
+      "id": "delete.leaves-library+index",
+      "ok": true,
+      "detail": "{\"dir\":false,\"get\":404,\"indexKeys\":[\"oracle-2\"]}"
+    },
+    {
+      "id": "delete.repeat.404",
+      "ok": true,
+      "detail": "{\"status\":404,\"reason\":\"unknown\"}"
+    },
+    {
+      "id": "purge.requires-exact-confirm.400",
+      "ok": true,
+      "detail": "{\"noConfirm\":{\"s\":400,\"r\":\"confirm-required\"},\"wrong\":{\"s\":400,\"r\":\"confirm-required\"}}"
+    },
+    {
+      "id": "purge.refusal.no-side-effect",
+      "ok": true,
+      "detail": "{\"init\":200,\"stillThere\":true}"
+    },
+    {
+      "id": "purge.200-body",
+      "ok": true,
+      "detail": "{\"status\":200,\"body\":{\"ok\":true,\"name\":\"qa-beta\",\"archived\":null,\"purged\":true}}"
+    },
+    {
+      "id": "purge.removes-instance-and-archive-copy",
+      "ok": true,
+      "detail": "{\"dir\":false,\"archive\":[\"qa-alpha-2026-09-10T142437Z\"]}"
+    },
+    {
+      "id": "isolation.real-library-untouched",
+      "ok": true,
+      "detail": "{\"before\":{\"files\":5,\"sha\":\"ce635a4d2d5b3f6688054cccc65f7f09b1e7cfbdf85e8b4988caef67a1457aee\"},\"after\":{\"files\":5,\"sha\":\"ce635a4d2d5b3f6688054cccc65f7f09b1e7cfbdf85e8b4988caef67a1457aee\"}}"
+    },
+    {
+      "id": "isolation.sandbox-home-asserted",
+      "ok": true,
+      "detail": "{\"lib\":\"/tmp/mpd-t6-qc4mCY/user-home/.mpd/workmate\",\"userHome\":\"/tmp/mpd-t6-qc4mCY/user-home\",\"sandbox\":\"/tmp/mpd-t6-qc4mCY\",\"realHome\":\"/root\"}"
+    },
+    {
+      "id": "contract.no-home-path-in-error-bodies",
+      "ok": true,
+      "detail": "{\"leaked\":[]}"
+    },
+    {
+      "id": "isolation.real-dsh-home-untouched",
+      "ok": true,
+      "detail": "real .archive/ still absent"
+    },
+    {
+      "id": "deny.roles-dist-clean-of-dead-names",
+      "ok": true,
+      "detail": "{\"dead\":[\"str_replace_editor\",\"apply_patch\"]}"
+    },
+    {
+      "id": "deny.workmate-dist-clean-of-dead-names",
+      "ok": true,
+      "detail": "{\"dead\":[\"str_replace_editor\",\"apply_patch\"]}"
+    },
+    {
+      "id": "deny.seven-live-names-present",
+      "ok": true,
+      "detail": "{\"expected\":[\"write\",\"edit\",\"mpd_hashline_edit\",\"bash\",\"mcp__ast_grep__rewrite\",\"mcp__ast_grep__scan\",\"mcp__lsp__rename\"]}"
+    }
+  ],
+  "isolation": {
+    "realLibraryBefore": {
+      "files": 5,
+      "sha": "ce635a4d2d5b3f6688054cccc65f7f09b1e7cfbdf85e8b4988caef67a1457aee"
+    },
+    "realLibraryAfter": {
+      "files": 5,
+      "sha": "ce635a4d2d5b3f6688054cccc65f7f09b1e7cfbdf85e8b4988caef67a1457aee"
+    }
+  }
+}

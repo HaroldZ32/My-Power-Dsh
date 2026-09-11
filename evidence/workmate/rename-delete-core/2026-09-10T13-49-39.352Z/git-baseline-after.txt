@@ -1,0 +1,66 @@
+ M LICENSE-NOTICES.md
+ M README.md
+ M README.zh-CN.md
+ M VENDOR_LOCK.json
+ M docs/architecture.md
+ M docs/architecture.zh-CN.md
+ M docs/feature-audit.md
+ M docs/feature-audit.zh-CN.md
+ M docs/user-guide.md
+ M docs/user-guide.zh-CN.md
+ M packages/mpd-agent-teams-plugin/lib/client.js
+ M packages/mpd-agent-teams-plugin/lib/index.js
+ M packages/mpd-agent-teams-plugin/lib/members.js
+ M packages/mpd-agent-teams-plugin/lib/quality-gates.js
+ M packages/mpd-agent-teams-plugin/lib/scheduler.js
+ M packages/mpd-agent-teams-plugin/lib/state.js
+ M packages/mpd-agent-teams-plugin/lib/tools.js
+ M packages/mpd-agent-teams-plugin/package.json
+ M packages/mpd-bundle-plugin/README.md
+ M packages/mpd-bundle-plugin/README.zh-CN.md
+ M packages/mpd-bundle-plugin/client.js
+ M packages/mpd-bundle-plugin/src/web-client.js
+ M packages/mpd-bundle-plugin/test/client-harness.mjs
+ M packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs
+ M packages/mpd-bundle/cordis.patch.yml
+ M packages/mpd-roles-plugin/dist/index.js
+ M packages/mpd-roles-plugin/src/index.ts
+ M packages/mpd-roles-plugin/test/roles.test.ts
+ M packages/mpd-workmate-plugin/README.md
+ M packages/mpd-workmate-plugin/dist/index.js
+ M packages/mpd-workmate-plugin/src/index.ts
+ M scripts/build-mpd-client.mjs
+ M scripts/pack-mpd.mjs
+ M scripts/vendor-agent-teams.mjs
+ M skills/dsh-qa/SKILL.md
+ M skills/dsh-qa/scripts/agent-teams-adopt.mjs
+ M skills/dsh-qa/scripts/team-route-rewire.mjs
+ M skills/dsh-qa/scripts/web-client-adapt.mjs
+ M skills/dsh-qa/scripts/workmate-library.mjs
+?? evidence/agent-teams/
+?? evidence/dsh-qa/session-start-team/2026-09-10T10-11-31.320Z/
+?? evidence/dsh-qa/session-start-team/2026-09-10T10-18-07.896Z/
+?? evidence/fix/readonly-deny/
+?? evidence/plan-f/web-client-adapt/2026-09-10T06-12-56.349Z/
+?? evidence/plan-f/web-client-adapt/2026-09-10T06-22-09.080Z/
+?? evidence/plan-f/web-client-adapt/2026-09-10T07-37-28.295Z/
+?? evidence/plan-f/web-client-adapt/2026-09-10T10-19-05.265Z/
+?? evidence/plan-f/web-client-adapt/2026-09-10T10-21-34.087Z/
+?? evidence/workmate/
+?? packages/mpd-agent-teams-plugin/lib/capabilities.js
+?? packages/mpd-agent-teams-plugin/lib/harness-compat.js
+?? packages/mpd-agent-teams-plugin/lib/tool-names.js
+?? packages/mpd-agent-teams-plugin/lib/web-routes.js
+?? packages/mpd-agent-teams-plugin/test/backports.test.ts
+?? packages/mpd-agent-teams-plugin/test/capabilities.test.ts
+?? packages/mpd-agent-teams-plugin/test/export-bridge.test.mjs
+?? packages/mpd-agent-teams-plugin/test/harness-compat.test.ts
+?? packages/mpd-agent-teams-plugin/test/scheduler-dispatch.test.ts
+?? packages/mpd-bundle-plugin/src/team-page.js
+?? packages/mpd-bundle-plugin/test/sidebar-migration-artifact.test.mjs
+?? packages/mpd-bundle-plugin/test/team-page.test.mjs
+?? packages/mpd-workmate-plugin/test/rename-delete.test.ts
+?? scripts/patch-agent-teams-client.mjs
+?? skills/dsh-qa/scripts/agent-teams-dispatch.mjs
+?? skills/dsh-qa/scripts/agent-teams-sidebar.mjs
+?? skills/dsh-qa/scripts/readonly-deny.mjs

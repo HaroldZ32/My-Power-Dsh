@@ -1,0 +1,112 @@
+{
+  "task": "t10 — Bilingual docs + QA assertion sync for workmate rename/delete",
+  "member": "Lead",
+  "attempt": 1,
+  "timestamp": "2026-09-10T14-26-06Z",
+  "startedFrom": {
+    "t6Verification": "evidence/workmate/rename-delete-verify/attempt2-2026-09-10T13-59-50.000Z/result.json",
+    "contract": ".mpd/plans/workmate-rename-delete-contract.md",
+    "t3Evidence": "evidence/workmate/rename-delete-core/20260910T125201Z/",
+    "t4Evidence": "evidence/workmate/rename-delete-gui/",
+    "t5Evidence": "evidence/workmate/roles-readonly/"
+  },
+  "gitBaseline": {
+    "headBefore": "f69708809ed63a57461aa6730d297afc09e772a3",
+    "headAfter": "f69708809ed63a57461aa6730d297afc09e772a3",
+    "porcelainBefore": 65,
+    "porcelainAfter": 71,
+    "porcelainDeltaExplanation": "the +6 top-level entries are untracked evidence produced by the team itself (evidence/workmate/** etc.); `git status --porcelain -uall` resolves my own addition to evidence/workmate/rename-delete-docs/**. No commit, stash, revert or tidy was performed (contract §I baseline rule)."
+  },
+  "docsSynced": {
+    "note": "Only docs that GENUINELY enumerate workmate capability were touched. docs/index.md + docs/index.zh-CN.md were inspected and deliberately left alone: they only point at the user guide by name and enumerate no workmate capability.",
+    "bilingualPairs": [
+      "packages/mpd-workmate-plugin/README.md + README.zh-CN.md (the core deliverable)",
+      "README.md + README.zh-CN.md (root)",
+      "docs/user-guide.md + docs/user-guide.zh-CN.md",
+      "docs/architecture.md + docs/architecture.zh-CN.md",
+      "docs/development.md + docs/development.zh-CN.md (QA case table)",
+      "docs/feature-audit.md + docs/feature-audit.zh-CN.md (workmate capability row)",
+      "packages/mpd-bundle-plugin/README.md + README.zh-CN.md (routes)",
+      "packages/mpd-bundle/README.md + README.zh-CN.md (inspected: names the plugin row only, enumerates no workmate capability — correctly left unchanged)"
+    ],
+    "englishOnly": ["AGENTS.md", "presets/mpd/agent.cordis.yml", "skills/dsh-qa/SKILL.md"],
+    "languageSwitchLinks": "verified under each title for all 15 touched bilingual files (EN links [中文](./<name>.zh-CN.md), zh links [English](./<name>.md))"
+  },
+  "agentFacing": {
+    "AGENTS.md": [
+      "§1: workmate tool surface now names all seven tools, archive-first delete, in-use refusal, ASCII-only naming",
+      "§3: mpd-workmate-plugin layout line carries the rename/delete capability",
+      "§12: three new troubleshooting rows (refused-while-in-use + how to clear it, restoring an archived instance, rejected invalid/CJK name)",
+      "§13: workmate glossary entry extended (seven tools, directory-name-is-key identity, archive-first + manual mv recovery, purge needs confirm) and roster glossary entry now documents the seven-name deny list with the two removed names as DO-NOT-RE-ADD (unregistered in this profile) incl. why dsh.hasTool filtering is forbidden"
+    ],
+    "presets/mpd/agent.cordis.yml": [
+      "WORKMATE LIBRARY block gains the library-hygiene sentence: rename/delete, archive-first, refused-while-in-use, ASCII-only"
+    ],
+    "skills/dsh-qa/SKILL.md": [
+      "workmate-library case-table row extended with the rename/delete surface (POST-only routes + allow: POST, §D reason matrix incl. blocking, .archive root + purge shape, service rename/delete properties)",
+      "web-client-adapt case-table row extended with the client URL/host-route match + §D reason branching assertions",
+      "the readonly-deny row was NOT modified (t5 owns it, §U2 says it is current)"
+    ]
+  },
+  "qaAssertions": {
+    "skills/dsh-qa/scripts/workmate-library.mjs": {
+      "before": "11 self-test checks (working tree at task start; same count in the committed HEAD baseline)",
+      "after": "18 self-test checks (+7)",
+      "added": [
+        "host rename route (route literal + the exact service call)",
+        "host delete route (route literal + the exact service call with purge/confirm)",
+        "mutation routes are POST-only (>=2 `allow: POST` refusals)",
+        "§D refusal reason matrix (invalid-name, unknown, collision, in-use, confirm-required + `{ blocking: e.blocking }`)",
+        "delete is archive-first with a confirmed purge (.archive root + `archived: null, purged: true`)",
+        "service exposes rename + delete as object-literal properties"
+      ]
+    },
+    "skills/dsh-qa/scripts/web-client-adapt.mjs": {
+      "before": "10 self-test checks in the working tree at task start (8 in the committed HEAD baseline; the previous session had already grown it)",
+      "after": "14 self-test checks (+4)",
+      "added": [
+        "workmate host mutation route literals (/rename + /delete)",
+        "client RENAME_URL / DELETE_URL match the host route literals",
+        "client branches on every §D refusal reason",
+        "zh/en dictionaries have identical, non-empty key sets incl. the six mutate.reason keys (53 keys each)"
+      ]
+    }
+  },
+  "vendorLock": {
+    "file": "VENDOR_LOCK.json",
+    "authorization": "contract §T1 — outside t10's declared inScope, pre-authorized (same class as §O3/§O4); skills/** is edited by t10 and the fingerprint must be refreshed in the same unit of work (§R3)",
+    "skillsfileCount": "364 -> 364 (no new skills file; only edits, so the count stays)",
+    "skillsTreeSha": "0f45bf1f8d28d2174e9249edb9ba26105f4c301ee6987199cb0644bcf890579e -> c66efeef901841546c2118455ef1058dc0aa39343387cf26fb21e0938033effb",
+    "algorithm": "the gate's own LF-normalising algorithm, reimplemented 1:1 in evidence/workmate/rename-delete-docs/refresh-skills-fingerprint.mjs (dry-run by default, --write to apply)",
+    "freshnessRule": "§V3 standing rule satisfied: VENDOR_LOCK.json mtime 2026-09-10 22:24:52 is NEWER than every file under skills/**; `find skills -type f -newer VENDOR_LOCK.json` returns nothing (recorded in output.log)"
+  },
+  "claimsCheckedAgainstSource": [
+    "7 tools registered in src AND dist: list/init/spawn/reflect/match/rename/delete",
+    "rename args {name, new_name}; delete args {name, purge?, confirm?}; purge strictly `purge === true`",
+    "rename result {ok,name,from,renamedFrom} (schema requires ok, name, from); delete result {ok,name,archived,purged} with archived oneOf string|null",
+    "service props list/get/read/rename/delete; delete is an object-literal property; list+get+read expose renamedFrom and are disk-derived (no cache)",
+    "routes: GET /list, /roster, /get?name=; POST /init, /rename, /delete; long-poll lazily registered behind webRegistered + internal/service retry",
+    "405 + allow: POST on a wrong verb; 400 invalid JSON; 400 invalid-name; 404 unknown; 409 collision; 409 in-use + blocking[]; 400 confirm-required; 500 internal (code only, no path)",
+    "shared headers on every response: content-type application/json; charset=utf-8 + cache-control: no-store",
+    "name predicate raw === sanitizeName(raw) && non-empty, length <= 255, applied to both rename args and to delete BEFORE any fs call; wmDir(\"\") guarded so the library root is unaddressable",
+    "collision guard is lstat-based; symlinked/non-directory/meta-less targets answer 404 unknown; orphan dirs are never touched",
+    "rename: metadata whitelist carries renamedFrom (dedup, capped at 10), updatedAt bumped, persona/memory/note/uses/lastTask/createdAt preserved; note self-reference rewritten only for a LEADING `<baseName>-based workmate \"<old>\"` prefix; post-move write failure rolls the directory back",
+    "delete: archive path ~/.mpd/workmate/.archive/<key>-<compactUtcStamp>/, numeric suffix on same-second repeats, index key dropped on both paths and restored on a pre-move failure, purge stashes then rm",
+    "in-use gate: in-process Map<key,count> around dsh.spawnAgent (released in finally) + READ-ONLY scan of direct children of <cwd>/.mpd/team/<teamId>/team.json, archived teams excluded, fail-open; rename gates BOTH keys; refusal names teamId/member",
+    "GUI: first delete click opens the confirmation only; archive step explains archive-first + restorability; purge requires the exact typed name (disabled until equal); rename input PRE-FILLED with the current key; success reselects the new key / leaves the detail pane on delete; zh/en dictionaries 53 keys each, identical sets, {blocking} interpolated",
+    "tab-strip label stays hardcoded English `Workmates` (contract §K deferral, documented as such — not as an oversight)",
+    "read-only deny lists are exactly the seven live names in BOTH roles and workmate (equality asserted by packages/mpd-roles-plugin/test/roles.test.ts) and neither `str_replace_editor` nor `apply_patch` appears in src or dist",
+    "§N1(i) shape split does NOT exist (contract §V1): the delete tool returns the service's null verbatim, so no doc mentions an `archived: \"\"` wart",
+    "§N3 residual: docs never claim a real-credential child turn; the archive-first delete is documented as ONE-WAY in-product with a manual mv recovery (contract §N1(ii))"
+  ],
+  "gates": {
+    "bun run test:qa": { "exit": 0, "evidence": "all self-tests passed; web-client-adapt 14 checks, workmate-library 18 checks" },
+    "bun test packages/mpd-bundle-plugin/test": { "exit": 0, "evidence": "52 pass / 0 fail / 452 expect() calls, 3 files" },
+    "bun run typecheck": { "exit": 0, "evidence": "tsgo --noEmit clean" },
+    "node scripts/verify-vendor.mjs": { "exit": 0, "evidence": "[verify-vendor] PASS on the refreshed skills fingerprint" }
+  },
+  "residuals": [
+    "The credential-gated live QA lanes (workmate-library.mjs real boot, web-client-adapt.mjs real web boot) were NOT run: this environment has no reachable provider key (contract §N3). They are not commandsRun entries; the docs describe verified behaviour regardless, and the offline self-tests that pin the route/reason literals were run.",
+    "t2 (project traversal dossier) never produced output, so no doc-vs-code contradiction it may have flagged could be folded in. I instead cross-checked every claim I documented directly against the shipped sources (see claimsCheckedAgainstSource) — no contradiction found; the one that existed (the §N1(i) `archived: \"\"` split) is already withdrawn by §V1 and is therefore NOT documented."
+  ]
+}

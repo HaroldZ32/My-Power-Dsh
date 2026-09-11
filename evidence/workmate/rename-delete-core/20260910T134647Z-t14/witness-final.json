@@ -1,0 +1,40 @@
+{
+  "witness_case_sha256": "6daf888401025bc058cdf437ede6999cb96ee9af964cc34748c34b3a858e2918",
+  "witness_case_exit": 0,
+  "probe_exit": 0,
+  "enforcement": {
+    "ok": true,
+    "childRequests": 1,
+    "parentRequests": 3,
+    "childToolCounts": [
+      81
+    ],
+    "parentToolCount": 87,
+    "childLeaksWriteCapable": [],
+    "childHasStructuredOutput": true,
+    "parentHasAllSeven": true,
+    "note": "read-only authority is ENFORCED: the child's own requests cannot see any of the seven write-capable tools, while the parent's sees all of them"
+  },
+  "reinjectionControl": {
+    "ok": true,
+    "childRequestsUnderRestriction": 0,
+    "parentToolCount": 87,
+    "parentSeesWriteCapable": [
+      "write",
+      "edit",
+      "mpd_hashline_edit",
+      "bash",
+      "mcp__ast_grep__rewrite",
+      "mcp__ast_grep__scan",
+      "mcp__lsp__rename"
+    ],
+    "refusalSeen": false,
+    "note": "control: with the unregistered names re-injected no request is a strictly-smaller restricted child and no refusal is raised \u2014 the restriction silently stops applying, which is the exact degradation the enforcement assertion above exists to catch"
+  },
+  "predicate_positive_ok": true,
+  "predicate_reinjection_ok": false,
+  "sequencing": {
+    "verify_vendor_exit": 0,
+    "find_skills_newer_than_lock": "prints nothing"
+  }
+}

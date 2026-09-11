@@ -21,7 +21,7 @@ is installed into. It contributes:
   comment-checker, memory, codegraph, workmate, bootstrap) + the adopted agent-teams
   plugin and the bundle's own web-compat/client plugin,
 - one agent preset (`mpd`) and a skill corpus, served from the bundle (no home copy),
-- a combined web client (the agent-teams activity panel + the workmate library).
+- a combined web client (the AgentTeams sidebar page + the workmate library).
 
 The OMO-origin 11 agents are **not presets**: they live as a specialist roster
 (`mpd-roles-plugin`) and as teammate instantiation templates in the adopted
@@ -104,10 +104,10 @@ to bare package names.
 | `mpd-comment-checker` | mpd-comment-checker-plugin | comment/docstring detection (opt-in binary) | `mpd_comment_check` | `autoCheck`, `binary`, `timeoutMs`, `maxMessageChars` |
 | `mpd-memory` | mpd-memory-plugin | VCS-backed memory (git/svn) + reflection state machine | `mpd_memory_write`, `mpd_memory_read`, `mpd_memory_reflect`, `mpd_memory_reflect_complete`, `mpd_memory_status` | `vcs`, `dir`, `agentSlug`, `reflectionEvery` |
 | `mpd-codegraph` | mpd-codegraph-plugin | codegraph binary resolve + project index init | effect (auto init) + `/mpd-codegraph` command | `autoInit`, `initTimeoutMs`, `cooldownMs`, `binary` |
-| `mpd-workmate` | mpd-workmate-plugin | durable evolving agent library under `~/.mpd/workmate/` | `mpd_workmate_list/init/spawn/reflect/match`; service `mpdWorkmate`; web routes `/plugins/mpd-workmate/{list,init}` | — |
+| `mpd-workmate` | mpd-workmate-plugin | durable evolving agent library under `~/.mpd/workmate/` (mutations rename/delete, archive-first) | `mpd_workmate_list/init/spawn/reflect/match/rename/delete`; service `mpdWorkmate` (`list`/`get`/`read`/`rename`/`delete`); web routes `GET /plugins/mpd-workmate/{list,roster,get}` + `POST /plugins/mpd-workmate/{init,rename,delete}` | — |
 | `mpd-bootstrap` | mpd-bootstrap-plugin | provisioning BY REFERENCE: registers `<bundle>/skills` as a skill provider through the adapter (rank 600 `bundled`) and removes the version-stamped home copies written by bundle <= 0.2.6 | effect only | `skillsDir`, `skipSkills`, `skipPresets`, `skipLegacyCleanup` |
 | `mpd-web-compat` | mpd-bundle-plugin | web-compat self-row: makes `@mpd-dsh/mpd` a loader entry; hosts the combined web client | no-op apply; `./client` | — |
-| `agent-teams` | mpd-agent-teams-plugin (adopted, MIT) | multi-agent team collaboration (captain, members, tasks, scheduler, Web panel) | `agent_teams_*` | `stateDir`, `memberProvider`, `memberMaxDepth`, `maxMembers`, `profiles` |
+| `agent-teams` | mpd-agent-teams-plugin (adopted, MIT) | multi-agent team collaboration (captain, members, tasks, scheduler; its views back the AgentTeams sidebar tab) | `agent_teams_*` | `stateDir`, `memberProvider`, `memberMaxDepth`, `maxMembers`, `profiles` |
 | `mcp-astgrep/gitbash/lsp/codegraph/context7/grepapp` | dsh-mcp-client instances | tool servers | `mcp__*` | per-row |
 
 ## 5. Interaction flows
@@ -132,6 +132,25 @@ mechanism — the plugin never touches API keys**.
 - `mpd_workmate_match` scores notes (keyword overlap + base-name boost, threshold 0.35);
   below threshold → `matched: false` + "initialize a new workmate" (never force a weak
   match).
+- `mpd_workmate_rename { name, new_name }` MOVES the evolved identity — the directory key
+  IS the identity, so `resolveTarget` keys on the directory, `meta.name` is only a repaired
+  display mirror, and `renamedFrom` (deduped, capped at 10) carries the previous keys
+  through `readMeta`'s whitelist. The collision guard uses `lstat` (a silent overwrite of an
+  empty directory and a dangling symlink are both invisible to `existsSync`), and a
+  post-move write failure rolls the directory back.
+- `mpd_workmate_delete { name, purge?, confirm? }` is ARCHIVE-FIRST: the directory is moved
+  to `~/.mpd/workmate/.archive/<key>-<compactUtcStamp>/` (hidden from `list`/`match` by
+  construction — the archive root has no `meta.json` and is not an addressable key), the
+  index key is dropped on BOTH paths, and purge additionally requires `confirm === name`.
+  A failed delete restores the index key, so it never leaves a partially removed instance.
+- **In-use gate (one synchronous block)**: `assertNotBusy` checks an in-process
+  `Map<key, count>` incremented around `dsh.spawnAgent` in `mpd_workmate_spawn` (released in
+  `finally`) plus a READ-ONLY scan of direct children of `<cwd>/.mpd/team/<teamId>/team.json`
+  (archived teams live under `.mpd/team/archive/**` and are excluded by construction);
+  rename gates the target key too. The gate, the collision guard and the mutation run with no
+  `await` between them, so no spawn or reflect can interleave — no lock file. Writing
+  `.mpd/team` state is never done here (that is the agent-teams plugin's state), and a read
+  error fails OPEN.
 - Team mode: `agent_teams_create(profile="mpd")` stages the normal-named roster as
   teammate templates. The patched `memberPersona()` in the adopted plugin checks
   `~/.mpd/workmate/<member-name>`: if an instance exists, the member's system prompt
@@ -153,7 +172,7 @@ yet.
 | `<workspace>/.mpd/memory.json` | mpd-modelchain | key/value notes |
 | `<workspace>/.mpd/` (VCS-backed memory dir) | mpd-memory | git/svn-backed memory + reflection |
 | `<workspace>/.mpd/mpd.jsonc` | mpd-config | project config layer |
-| **`~/.mpd/workmate/`** (user HOME) | mpd-workmate | the cross-project workmate library — deliberate user-approved exception to workspace-scoped state (§ AGENTS.md §6); QA boots with `HOME=<sandbox>` |
+| **`~/.mpd/workmate/`** (user HOME) | mpd-workmate | the cross-project workmate library (`<key>/` instances + `.archive/` — deleted instances moved out of the library, restorable by a manual `mv` back) — deliberate user-approved exception to workspace-scoped state (§ AGENTS.md §6); QA boots with `HOME=<sandbox>` |
 | `$DSH_HOME/.agent-presets/mpd*`, `$DSH_HOME/skills/*` | mpd-bootstrap | LEGACY only (bundle <= 0.2.6 stamped copies); removed on the first 0.3.0 boot — the bundle writes nothing to the home |
 
 ## 6b. Harness adapter (the only seam contact)
@@ -186,39 +205,111 @@ that renames or reshapes a seam is absorbed in one file (AGENTS.md §6).
   calls plus exactly one local adaptation, the `registerContinuableSetup` boot-safety
   guard in `lib/members.js` (see LICENSE-NOTICES.md).
 
+## 6c. Agent preset plane (the `mpd` preset)
+
+`presets/mpd/agent.cordis.yml` is the agent-plane composition every `mpd` session joins.
+It is a **row-for-row mirror of the shipped `standard` preset** of the harness that is
+actually installed, and that mirroring is load-bearing:
+
+- The harness moves model-facing rows between the host plane and the preset plane between
+  releases. The Web overlay disables the HOST `tool-goal` / `command-goal` rows ("presets
+  own the human command and model-facing tool"), so a preset that mounts only `tool-goal`
+  leaves its sessions without `/goal`; `present` first shipped in 0.1.5-alpha.2 and is the
+  tool behind the Web deliverables row. A missing row is therefore a missing capability —
+  it produces no error at all.
+- A row's `config` is validated against the installed plugin's own schemastery schema when
+  the row is applied. The two failure modes differ in visibility: a **missing required key**
+  fails the row, and `dsh-agent-presets.mountPreset` then refuses the WHOLE preset
+  (`agent-preset/invalid: … row(s) did not activate`), so every session on that preset fails
+  to start; an **unknown key** is silently KEPT by schemastery, so the row applies and the
+  setting it was supposed to carry never takes effect.
+- Measured incident (2026-09-11, harness 0.1.5-rc.1 CLI + rc.2 packages): the persona row
+  still used the single `text:` key that `dsh-persona` accepted through 0.1.2-rc.1. From
+  0.1.3-alpha.2 that row registers the deployment persona prefix/suffix sections and
+  `prefix` is REQUIRED, so the row failed and the whole preset refused to mount —
+  `$.prefix missing required value` on every `mpd` session creation. Nothing in the gate set
+  saw it: `--dump-config` never executes plugin code, `agentPresets.list`/`resolve` parse the
+  composition for YAML shape and row resolvability only, and no case created a session.
+- The gate is `skills/dsh-qa/scripts/preset-conformance.mjs`: its `--self-test` validates
+  every `@deepseek-ai/*` row of the preset, the bundle patch and the QA overlays against the
+  INSTALLED schemas (unknown keys included, `!!js` nodes materialized) and pins row-id parity
+  with the installed `standard` preset; its real run boots the web profile in an isolated
+  `DSH_HOME`/`HOME` and creates a session with `agentPreset: "mpd"` over the gateway — where
+  `session/create` mounts the preset's standing composition and refuses on any inactive row —
+  and a negative control boots the same sandbox with the retired `text:` persona form and
+  must fail, so the assertion cannot pass vacuously.
+
 ## 7. Web client wiring (the subtle part)
 
 `packages/mpd-bundle-plugin/client.js` (generated by `scripts/build-mpd-client.mjs`) is
 one script:
 
 1. the adopted agent-teams `lib/client.js` **verbatim** — it self-registers
-   `@nanmicoder/dsh-agent-teams` (activity floater + team card + command view);
-2. a second `__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory })` whose factory
-   `require("@nanmicoder/dsh-agent-teams")`, awaits the agent-teams seams and
-   contributes the **workmate library**.
+   `@nanmicoder/dsh-agent-teams`. It is now used strictly as a **view library**:
+   `scripts/patch-agent-teams-client.mjs` additively exports its views (`TeamSection`,
+   historic cards), monitor store, zh/en dictionaries and CSS through a pinned export
+   bridge that `scripts/vendor-agent-teams.mjs` re-applies after every refresh, and the
+   adopted `apply(ctx)` is **never called** — that is what registered the removed surfaces;
+2. a `__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory })` — the mpd-owned
+   AgentTeams page (`src/team-page.js`): it composes those adopted views into one
+   DSH-better-sidebar tab (id `mpd-agent-teams`, order 85, `single: true`) listing the
+   conversation's live + archived teams with the staged-plan approval editor, the
+   live-team-count badge and the `autoOpenOnTeamActivity` switch. **Visual parity is a
+   requirement**: the page renders the floater's own interior — the same `aside` root
+   carrying the adopted `panel` class (which is where that stylesheet declares the
+   `--dsw-alias-*` custom properties every adopted rule reads, so dropping it renders the
+   sections unstyled), the same `panelHead` (title + busy dot + collapse control, using
+   the platform's own `IconChevronDownOutline14`), the same `teams` scroll body, the same
+   `emptyHint`/`archivedWrap`/`archiveLabel` markup. Only the window-manager half is
+   overridden inline (position/size pinned to the pane, no drag/resize handles, no
+   border/radius/shadow/backdrop blur) and the collapse control drives the sidebar's own
+   `store.reduce` panel flag;
+3. a third `__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory })` whose factory
+   contributes the **workmate library** as its own sidebar tab and the null
+   `conversation.chat.commandview` row that hides the `/agent-teams` command result.
 
 **Seam policy (the failure this file exists to prevent).** The web boot asserts, for
 every entry, that every declared `inject` service is registered; a declared-but-missing
 service leaves the entry `pending` and throws `Failed to load plugins`, which blanks the
-whole GUI. The bundle factory therefore declares only `slots` + `locale` and awaits the
-drift-prone seams (`sessions`, `conversationEvents`, `modelDirectories`) with
-`ctx.inject(deps, cb)` — a callback that simply never runs when the service is absent —
-while probing `betterSidebar` with `ctx.get`. The adopted panel mounts only when its
-seams exist (current DSH releases dropped `conversationEvents` for `conversationViews`),
-and every optional mount is contained in try/catch.
+whole GUI. The bundle factory therefore declares only `slots` + `locale`. The drift that
+forced the first half of this: current DSH releases dropped `conversationEvents` for
+`conversationViews`, and since the adopted client half used that seam only for the removed
+in-conversation card, the client half is not applied at all any more. Every optional mount
+stays contained in try/catch.
 
-**The workmate page has two hosts and one view.** `WorkmateLibraryView` is host-agnostic;
-`registerSidebarTab` contributes it as a **DSH-better-sidebar** tab
-(`ctx.betterSidebar.registerTab({id: "mpd-workmate", …})`, `single: true`, order 90) when
-that sidebar is installed, and otherwise the bundle mounts its own `shell.overlay`
-floater plus the `sidebar.footer.action` toggle. When the sidebar owns the tab, the
-bundle mounts no slots at all.
+**The other half of the rule — and the bug that hid behind it.** "Never declare an optional
+seam" does NOT mean "probe it with `ctx.get`": cordis resolves services through the fiber's
+own scope, so a service owned by ANOTHER plugin is invisible to a one-shot probe, and
+`notify()` only re-evaluates fibers that DECLARE the name, so a probe can never recover
+either. Measured on the live GUI: `ctx.get('betterSidebar')` answered `false` inside
+`apply()` and `true` eight seconds later, both sidebar pages silently registered nothing,
+and the sidebar's `+` menu offered no mpd row at all. The fix is the runtime's own pattern —
+`ctx.inject(['betterSidebar'], cb)` (the same call better-sidebar uses for its
+asynchronously-mounted `remote.session`) — which waits for the provider, re-runs after a
+provider remount, and never parks this entry: a profile without the sidebar simply never
+fires the callback. `packages/mpd-bundle-plugin/test/client-harness.mjs` models that race by
+default (the sidebar service is published AFTER `apply()`), so the suite fails loudly if a
+probe ever comes back.
+
+**Both GUIs are sidebar-only — no fallback anywhere.** `WorkmateLibraryView` is contributed
+by `registerSidebarTab` as a **DSH-better-sidebar** tab
+(`ctx.betterSidebar.registerTab({id: "mpd-workmate", …})`, `single: true`, order 90) and the
+AgentTeams page by `registerTeamSidebarTab`. Without DSH-better-sidebar each logs exactly one
+warning (`… has no host (no floating fallback by design)`) and registers nothing, so no
+surface exists outside the sidebar. `scripts/build-mpd-client.mjs` enforces this at build
+time: it fails if any mpd client source registers `agent-teams-activity`,
+`conversation.chat.node`, `shell.overlay` or `sidebar.footer.action` — the removed card, the
+removed activity floater and the removed workmate floater/footer toggle.
 
 Host data comes from lazy-registered routes on the `mpd-workmate` host plugin
 (`GET /plugins/mpd-workmate/list`, `GET /plugins/mpd-workmate/roster` — the roster-backed
 base picker, `GET /plugins/mpd-workmate/get?name=` — persona/memory/note detail, `POST
-/plugins/mpd-workmate/init`); the agent-teams floater uses
-`/plugins/dsh-agent-teams/{state,halt,plan,assets}`. All register via
+/plugins/mpd-workmate/init`, and the two mutation routes `POST /plugins/mpd-workmate/rename`
++ `POST /plugins/mpd-workmate/delete`, which answer the same reason-coded refusals the
+tools raise — `400 invalid-name` / `400 confirm-required` / `404 unknown` / `409 collision` /
+`409 in-use` with the `blocking` team list, plus `405` + `allow: POST` on a wrong verb);
+the AgentTeams page drives the adopted monitor store, which
+polls `/plugins/dsh-agent-teams/{state,halt,plan,assets}`. All register via
 `webServer.register` and retry on `internal/service` binding (a webless profile stays
 tool-only).
 

@@ -646,6 +646,41 @@ export function isCommandResult(value) {
         && (value['exitCode'] === undefined || (Number.isSafeInteger(value['exitCode'])))
         && (value['evidence'] === undefined || typeof value['evidence'] === 'string');
 }
+// Optional fields whose persisted values must be non-empty when present
+// (mirrors the checks in hasValidQualityTaskFields). Some models materialize
+// optional tool parameters as "" instead of omitting them (e.g. sending
+// reviewedTaskId:"" or profile:""), which would otherwise be written to
+// team.json and then brick the whole team state on reload.
+const BLANK_SENSITIVE_STRING_FIELDS = ['objective', 'reviewedTaskId', 'sourceTaskId'];
+const BLANK_SENSITIVE_STRING_LIST_FIELDS = ['inScope', 'outOfScope', 'acceptance', 'verify', 'deliverables', 'nonGoals', 'changedPaths', 'sourceFindingIds', 'coverageOf'];
+/**
+ * Normalize blank optional task fields to omitted ("blank means absent").
+ * Blank string scalars are deleted; string lists have blank entries filtered
+ * out, and a list that only contained blanks is omitted entirely. Non-blank
+ * values and every other field are passed through untouched, so durable-state
+ * validation stays strict.
+ */
+export function normalizeBlankOptionalTaskFields(task) {
+    const next = { ...task };
+    for (const key of BLANK_SENSITIVE_STRING_FIELDS) {
+        const value = next[key];
+        if (typeof value === 'string' && value.trim() === '')
+            delete next[key];
+    }
+    for (const key of BLANK_SENSITIVE_STRING_LIST_FIELDS) {
+        const value = next[key];
+        if (!Array.isArray(value))
+            continue;
+        const kept = value.filter((item) => !(typeof item === 'string' && item.trim() === ''));
+        if (kept.length === value.length)
+            continue;
+        if (kept.length === 0)
+            delete next[key];
+        else
+            next[key] = kept;
+    }
+    return next;
+}
 export function hasValidQualityTaskFields(value) {
     if (value['kind'] !== undefined && !TASK_KINDS.includes(value['kind']))
         return false;

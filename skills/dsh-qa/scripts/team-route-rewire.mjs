@@ -36,7 +36,7 @@ function selfTest() {
   checks.push(["ulw-execute row: roster + agent-teams team, no bespoke team", execute.includes("mpd_role_spawn") && execute.includes("agent_teams_create") && !execute.includes("mpd_team_spawn")])
   checks.push(["ulw-research row: roster + agent-teams team, no bespoke team", research.includes("mpd_role_spawn") && research.includes("agent_teams_create") && research.includes("profile=\"mpd\"") && !research.includes("mpd_team_spawn") && !research.includes("selectable roles")])
   const vendorPkg = JSON.parse(readFileSync(join(VENDOR, "package.json"), "utf8"))
-  checks.push(["main-code package 0.1.14 (renamed @mpd-dsh/agent-teams)", vendorPkg.version === "0.1.14" && vendorPkg.name === "@mpd-dsh/agent-teams"])
+  checks.push(["main-code package 0.1.16-rc.3-mpd (renamed @mpd-dsh/agent-teams)", vendorPkg.version === "0.1.16-rc.3-mpd" && vendorPkg.name === "@mpd-dsh/agent-teams"])
   checks.push(["lib + assets + closure present", existsSync(join(VENDOR, "lib", "index.js")) && existsSync(join(VENDOR, "assets", "ui.png")) && existsSync(join(VENDOR, "_deps", "schemastery", "lib", "index.mjs")) && existsSync(join(VENDOR, "_deps", "dsh-tools", "lib", "index.js")) && existsSync(join(VENDOR, "_deps", "dsh-llm", "lib", "index.js")) && existsSync(join(VENDOR, "_deps", "zod", "index.js"))])
   const libHead = readFileSync(join(VENDOR, "lib", "index.js"), "utf8").slice(0, 6000)
   checks.push(["no bare @deepseek-ai/schemastery import", !libHead.includes("from '@deepseek-ai/schemastery'") && libHead.includes("_deps/schemastery/lib/index.mjs")])

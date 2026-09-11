@@ -1,0 +1,84 @@
+{
+  "task": "t11 — Integrate and report: rename/delete + read-only fix + docs as one coherent change",
+  "member": "Lead",
+  "attempt": 1,
+  "timestamp": "2026-09-10T14-40-00Z",
+  "deliveryReport": "DELIVERY-REPORT.md (this directory)",
+  "gitBaseline": {
+    "head": "f69708809ed63a57461aa6730d297afc09e772a3",
+    "headUnchangedByTeam": true,
+    "preExistingUncommittedEntries": 33,
+    "note": "the tree was dirty before the team started (contract §I). Nothing was committed, stashed, reverted or tidied; the team's own delta is enumerated in the delivery report §2."
+  },
+  "reasoningPersisted": {
+    "mechanism": "persist-reasoning.mjs — frozen copies + SHA-256 provenance, so the reasoning survives the session without moving the live agent-teams records",
+    "artifacts": [
+      { "label": "contract", "snapshot": "contract.md", "source": ".mpd/plans/workmate-rename-delete-contract.md", "bytes": 68080 },
+      { "label": "t1-contract-validation", "note": "the t1 validation is folded into the preserved contract by the captain; same frozen source", "snapshot": "contract-t1-validation.md", "bytes": 68080 },
+      { "label": "t2-traversal-dossier + all task records", "note": "team.json verbatim, which embeds the t2 dossier, the t6 verification result and every review's structured findings", "snapshot": "team-task-records.json", "bytes": 288284 }
+    ],
+    "truncatedOrMissing": []
+  },
+  "gateSweep": {
+    "log": "gate-sweep.log",
+    "bun test packages": { "exit": 0, "evidence": "290 pass / 3 skip / 0 fail, Ran 293 tests across 33 files" },
+    "bun run typecheck": { "exit": 0, "evidence": "tsgo --noEmit clean" },
+    "bun run test:qa": { "exit": 0, "evidence": "all self-tests passed (workmate-library 18 checks, web-client-adapt 14 checks)" },
+    "node scripts/verify-vendor.mjs": { "exit": 0, "evidence": "[verify-vendor] PASS, re-run AFTER t17's SKILL.md edit" }
+  },
+  "fingerprintState": {
+    "rule": "a PASS is only valid if VENDOR_LOCK.json's mtime is newer than the newest file under skills/**",
+    "lockMtime": "2026-09-10 22:36:44",
+    "newestSkillsFile": "skills/dsh-qa/SKILL.md @ 2026-09-10 22:35:49",
+    "skillsNewerThanLock": [],
+    "skillsTreeSha": "d4a05ae26a0ead30912565f7fd8c2fbe120645c4cc3558e6ce53db103dadc606",
+    "note": "t10 recomputed the fingerprint with the gate's own readBytes/listFiles algorithm as the last action after its own last skills/** write; t17 then edited SKILL.md and discharged its own same-unit refresh. The final verify-vendor PASS above was measured after both."
+  },
+  "artifactCoherence": {
+    "workmateDist": "dist/index.js newer than src/index.ts; carries mpd_workmate_rename + mpd_workmate_delete + renamedFrom",
+    "rolesDist": "0 occurrences of str_replace_editor and 0 of apply_patch",
+    "liveClientJs": "carries RENAME_URL, DELETE_URL, SIDEBAR_TAB_ID = \"mpd-workmate\" and the purge-confirmation strings",
+    "verdict": "a later `npm run pack` would ship what was verified"
+  },
+  "watchPointsResolved": [
+    {
+      "watchPoint": "SKILL.md's readonly-deny row must describe the CURRENT per-request tool-name-set method, not the old sentinel method, and must name silent un-guarding as the measured failure mode",
+      "status": "RESOLVED — split ownership, both landed",
+      "detail": "t13 had already replaced the pass condition with the per-request enforcement assertion (and 'sentinel' appears nowhere in SKILL.md). t10 added the missing SILENT UN-GUARDING framing with the two harness source anchors; t17 then completed its own repair of the same row. The row on disk carries BOTH (verified by grep: 'SILENT UN-GUARDING' = 1, 'EXPOSE NONE of the seven write-capable names' = 1)."
+    },
+    {
+      "watchPoint": "AGENTS.md must stop presenting --dump-config as the boot gate / as provability",
+      "status": "RESOLVED",
+      "detail": "§4's Boot check row is now 'Boot check (MOUNT)' (a boot that really applies the rows, e.g. bundle-lifecycle.mjs or the full-profile-boot.sh / mount-proof.sh pattern) with an explicit paragraph: --dump-config proves COMPOSITION ONLY and never a plugin load, citing the measured pair (mpd_workmate_row_present: true with real_boot_exit: 124 / loader_apply_errors: 0) and the named evidence files. §7's Provability bullet now separates composition-only questions from plugin BEHAVIOUR questions. A new §12 row makes the failure actionable, and records the latent mpd-hashline-plugin:110 parameter-schema issue accurately as measured HARMLESS today."
+    },
+    {
+      "watchPoint": "Do NOT claim in-product archive restore",
+      "status": "CONFIRMED ABSENT",
+      "detail": "scanned all 11 bilingual/EN doc files for restore claims: every workmate hit is a 'NO in-product restore' statement or the manual `mv ~/.mpd/workmate/.archive/<key>-<stamp> ~/.mpd/workmate/<key>` path. The only unrelated hits are the mpd_hashline_restore TOOL (a different feature) and one line about delete restoring the index key on failure."
+    }
+  ],
+  "findingsDisposition": {
+    "resolved": [
+      "t7 L1 — the delete tool's archived:\"\" vs null shape split: CLOSED by t12/§V1 (the tool returns the service's null verbatim). NOT documented, because documenting it would now be false (§N1(i) is withdrawn).",
+      "t7 L2 — the undocumented manual restore path: CLOSED by t10 across the workmate README pair, the user-guide pair, the feature-audit pair and AGENTS.md.",
+      "t9 F1 — the case asserted delivery, not enforcement: CLOSED by t13, independently falsifiability-checked by t14.",
+      "t9 F2 — the described failure mode did not match the measured one: CLOSED in the case header and the SKILL.md row (both routes documented)."
+    ],
+    "openLow": [
+      "t8 L1 — mutate.reason.sameKey is unreachable dead weight in both dictionaries (packages/mpd-bundle-plugin/src/web-client.js). OPEN: the fix needs a client rebuild, outside t11's inScope.",
+      "t8 L2 — the purge busy label disagrees with its button label (zh \"彻底删除\" -> \"删除中…\"; en \"Purge\" -> \"Deleting…\"). OPEN: same out-of-scope file; suggested zh \"彻底删除中…\", en \"Purging…\".",
+      "t8 L3 — two Chinese wording nits (clipped confirmRequired, stray half-width space before {blocking} in inUse). OPEN (cosmetic): same out-of-scope file.",
+      "t8 L4 — pre-existing: a non-'unknown' detail-GET failure leaves the pane spinning beside the error banner. OPEN (pre-existing hardening).",
+      "t9 F3 — evidence-path drift (§R1 references evidence/fix/readonly-deny/** while the case writes evidence/workmate/roles-readonly/**). OPEN (description-only): this report is the reconciliation point; treat evidence/workmate/roles-readonly/<ts>/ as current and evidence/fix/readonly-deny/** as historical."
+    ],
+    "requiredReviewsAtIntegrationTime": "t7 verdict=pass (0 blocker/high), t8 verdict=pass, t9 verdict=pass; t6 verification attempt 2 = PASS. No required review carries an unresolved blocker or high finding, and no verification is failed."
+  },
+  "deliberatelyNotDone": [
+    "dist/mpd-package/** was NOT refreshed: pack-mpd is AGENTS.md §8's RELEASE step, so a stale packed mirror is reported as an open item for the user (§Q1) — a checkout install reads the live tree and is unaffected.",
+    "The latent mpd-hashline-plugin/src/index.ts:110 parameter-schema construct (type: [\"string\",\"array\"]) was NOT fixed: measured harmless today, out of this change's scope, and it belongs in its own change with its own mount proof (§X3).",
+    "No in-product restore/unarchive surface was added: archive-first delete stays one-way by design (D1).",
+    "The t8 low findings in the client source were NOT silently fixed (outside t11's inScope); they are reported above.",
+    "No commit, stash, revert or tidy was performed on the pre-existing dirty tree."
+  ],
+  "verdict": "The feature is shipped and integrated: rename + delete with archive-first semantics and an in-use gate, the read-only deny-list defect fixed with a falsifiable enforcement guard, both surfaces localized, every documentation and QA surface synced to verified behaviour, and the gate sweep green on the final tree with a current vendored fingerprint. Residuals (no real-provider turn for the read-only child; the pre-fix loud refusal not reproducible in a fresh process) and the open items are stated in the delivery report rather than hidden."
+}

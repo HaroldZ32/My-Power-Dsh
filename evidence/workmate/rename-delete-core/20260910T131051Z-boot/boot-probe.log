@@ -1,0 +1,36 @@
+=== real-boot probe: does the plugin tree APPLY? ===
+repo=/root/dshProj/my-power-dsh
+sandbox DSH_HOME=/tmp/mpd-wm-boot-dsh-tdZUQ7
+sandbox HOME=/tmp/mpd-wm-boot-home-fVsFwE
+HEAD=f69708809ed63a57461aa6730d297afc09e772a3
+
+[setup] copied .credentials.yaml into the sandbox
+[setup] copied settings.yaml into the sandbox
+[exit=0] dsh plugin --profile w add <repo>
+
+### boot: dsh --profile w (isolated DSH_HOME + sandbox HOME)
+[exit=124] raw boot exit code (124 = still alive at the 90s cap, which is normal for the web profile)
+
+loader-apply errors : 0 (must be 0)
+MISSING_CREDENTIAL  : 0 (nonzero is acceptable: it still proves apply succeeded)
+mpd-workmate mention: 0
+--- stdout tail ---
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=no-binary binary=- cwd=/root/dshProj/my-power-dsh
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.
+[exit=0] plugin tree APPLIED (no loader-apply error and the turn ran)
+{
+  "probe": "real boot (applies loader entries, unlike --dump-config)",
+  "isolation": {
+    "HOME": "temp sandbox",
+    "DSH_HOME": "temp sandbox",
+    "credentials_copied_once": true
+  },
+  "raw_boot_exit": 124,
+  "install_exit": 0,
+  "loader_apply_errors": 0,
+  "missing_credential": 0,
+  "plugin_tree_applied": true
+}
+SWEEP_DONE

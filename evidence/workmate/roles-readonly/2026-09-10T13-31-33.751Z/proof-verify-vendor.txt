@@ -1,0 +1,32 @@
+=== PROOF PACKET 2026-09-10T13:36:45Z ===
+pwd: /root/dshProj/my-power-dsh
+git rev-parse HEAD: f697088
+
+--- VENDOR_LOCK.json ---
+-rw-r--r-- 1 root root 2776 21:33:47 VENDOR_LOCK.json
+790fbae886e02ba82f0ea98a33a3d7760d921890a0ebb03afaafe81b64a2007f  VENDOR_LOCK.json
+locked skills values:
+  fileCount: 364
+  treeSha  : ca9dfa77663f26c1cd05e832bb17ae744ab5852aba80acffb3dab0754f5cb1ba
+
+--- the two files the captain cited as newer ---
+-rw------- 1 root root 23341 21:33:33 skills/dsh-qa/scripts/readonly-deny.mjs
+-rw-r--r-- 1 root root 10634 21:10:47 skills/dsh-qa/SKILL.md
+sha256 (readonly-deny.mjs): 27e7dff606c37a3596971afbdb45e77d7adf9a8fbbae8a0a15354cd683463c42
+sha256 (SKILL.md): 8b2fa8ca9fcbae8c9f3da3f5561526847be0a79ec0e4b5a1825291504f50914c
+
+--- any skills file newer than the lock? ---
+(empty above = lock is current)
+
+--- gate, full output ---
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] asset OK: skills 364 files
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+gate exit=0

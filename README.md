@@ -40,8 +40,8 @@ Full documentation lives in [`docs/`](docs/index.md) — start at
 
 This installs the `@mpd-dsh/mpd` bundle: DeepSeek dual-track (official default),
 MCP servers, all mpd plugins (including codegraph auto-init), adopted agent-teams
-(team + Web panel), the `mpd` main-agent preset and the OMO-origin specialists as
-SUBAGENTS:
+(team tools + the sidebar team page), the `mpd` main-agent preset and the OMO-origin
+specialists as SUBAGENTS:
 
 - **Every project session on the `mpd` preset attempts to read `AGENT.md`**
   (falling back to `AGENTS.md`, then `CLAUDE.md`) via `dsh-agent-instructions`.
@@ -53,31 +53,53 @@ SUBAGENTS:
   roles are mechanically denied write tools at spawn.
 - **Team mode is the adopted dsh-agent-teams plugin** (first-class main code at
   `packages/mpd-agent-teams-plugin`, `agent_teams_*`
-  tools + Web activity panel): a normal-named `mpd` roster profile
+  tools + the AgentTeams sidebar tab): a normal-named `mpd` roster profile
   (`taskPlanning: captain`) exposes the specialists above as teammate
   instantiation templates. The captain calls `agent_teams_create(profile="mpd")`,
-  stages the plan in the panel, then the dependency-aware scheduler runs it.
-- **Web GUI** (`@mpd-dsh/mpd` client bundle, `packages/mpd-bundle-plugin`): the
-  **Workmates** page is contributed as a tab to **DSH-better-sidebar** (the community
-  `dsh-better-sidebar` bundle) via `ctx.betterSidebar.registerTab` — it lists
-  `~/.mpd/workmate/` instances (base, uses, updated, note), opens one for its
-  persona/memory/note, and initializes new ones with a roster-backed base picker, reading
-  `GET /plugins/mpd-workmate/{list,roster,get}` + `POST /plugins/mpd-workmate/init`.
-  Without that sidebar the same page mounts as the bundle's own 🤖 floater + sidebar-foot
-  button. The adopted agent-teams team card/activity panel needs the harness
-  `conversationEvents` seam, which current DSH releases no longer expose, so it stays
-  unmounted (team work runs through `agent_teams_*`). The bundle patch ships the
-  `mpd-web-compat` self-row (`name: '@mpd-dsh/mpd'`) so the client-modules boot graph
-  carries the bundle's client entry — without it the panels never load.
+  stages the plan in the AgentTeams tab, then the dependency-aware scheduler runs it.
+- **Web GUI** (`@mpd-dsh/mpd` client bundle, `packages/mpd-bundle-plugin`) — the whole
+  AgentTeams GUI is **one DSH-better-sidebar tab** (`dsh-better-sidebar`, the community
+  sidebar bundle; tab id `mpd-agent-teams`, order 85). It lists the conversation's live and
+  archived teams (members and live activity, task rows, the dependency map, the stop-team
+  control, and the staged-plan approval editor), badges the conversation's live-team count,
+  and auto-opens once when a team appears — plugin setting `autoOpenOnTeamActivity`, default
+  ON, switchable in the sidebar settings page. **Visual parity with the original panel is a
+  requirement**: the tab renders the removed floater's own interior — the `panelHead` with
+  its title, busy dot and collapse control (the platform's own chevron), the `teams` body,
+  the adopted empty hint and archive labels, all through the adopted CSS-module classes, so
+  the `--dsw-alias-*` variables the team/member/task rules read resolve exactly as they did
+  in the floater; only the window manager (drag, resize, floating frame) is gone. The
+  in-conversation team card and the top-right activity floater were **removed**. The
+  **Workmates** page is a second tab in the same sidebar, contributed via
+  `ctx.betterSidebar.registerTab` — it lists `~/.mpd/workmate/` instances
+  (base, uses, updated, note), opens one for its persona/memory/note, initializes new
+  ones with a roster-backed base picker, and renames or deletes an instance (zh/en, with an
+  explicit archive-vs-purge confirmation), reading
+  `GET /plugins/mpd-workmate/{list,roster,get}` + `POST /plugins/mpd-workmate/{init,rename,delete}`. Both
+  pages are **sidebar-only**: without that sidebar each logs one warning and registers
+  nothing (the workmate 🤖 floater and its sidebar-foot button were removed too), and
+  `scripts/build-mpd-client.mjs` fails the build if any client source registers one of the
+  removed surfaces. The bundle patch ships the `mpd-web-compat` self-row
+  (`name: '@mpd-dsh/mpd'`) so the client-modules boot graph carries the bundle's
+  client entry — without it no client surface loads.
 - **Workmate library** (`~/.mpd/workmate`): the roster specialists are BASE templates;
   instantiate one into a durable, evolving copy with an independent name
   (`mpd_workmate_init`). After each work session it self-summarizes
   (`mpd_workmate_reflect`) — evolving its own persona + independent memory (size-capped)
   and keeping a short note card. Reuse via `mpd_workmate_list` / `mpd_workmate_match`;
   if no note matches well enough (`matched=false`), initialize a NEW workmate rather than
-  forcing a weak match. In a team, a member named after the workmate gets its
+  forcing a weak match. **Rename** an instance with `mpd_workmate_rename` (it moves the
+  evolved identity — directory key, metadata, index key, note self-reference, previous
+  names — never re-instantiates it), and **delete** it with `mpd_workmate_delete`, which is
+  **archive-first**: the instance moves to `~/.mpd/workmate/.archive/` (out of
+  `list`/`match`, restorable by a manual `mv` back) and only `purge: true` +
+  `confirm: <name>` removes it for real. Both mutations are **refused while the workmate is
+  in use** by a team member or an in-flight spawn, and they name the blocking teams so the
+  block is actionable. Names are ASCII-only (`[a-z0-9_-]`); CJK/upper-case names are
+  refused up front. In a team, a member named after the workmate gets its
   persona/memory injected automatically (patched `memberPersona` in
-  `packages/mpd-agent-teams-plugin`).
+  `packages/mpd-agent-teams-plugin`). Details:
+  [`packages/mpd-workmate-plugin/README.md`](packages/mpd-workmate-plugin/README.md).
 - **One harness adapter.** Every mpd row calls `packages/mpd-dsh-adapter-plugin`
   (`mpdDsh` service) for tool registration/guards/post-execute, internal tool calls,
   subagent spawn, skill delivery and preset resolution — so a DeepSeek Harness release

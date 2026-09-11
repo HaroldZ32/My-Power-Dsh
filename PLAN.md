@@ -60,9 +60,9 @@ zauc-mocks, claude-code-*-loader, opengateway-provider, etc.); external release/
 | Item | Value |
 |---|---|
 | upstream baseline | Checkout HEAD 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29 (2026-08-26), package 5.0.0-beta.20; historical snapshot f3642fcd for reference only |
-| DSH baseline | @deepseek-ai/dsh 0.1.1-rc.2, installed at ~/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh |
+| DSH baseline | @deepseek-ai/dsh 0.1.5-rc.1 (npm `latest`), installed at ~/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh; its bundled @deepseek-ai/dsh-subagent resolves to 0.1.5-rc.2 (`next`), whose public `ctx.subagents.prompt(request, signal)` seam is the team-delivery contract |
 | DSH host | ~/.dsh (web profile already includes base + web-app + dshmarket + @linxin666/dsh-web-all + nowledge-mem) |
-| Toolchain | bun 1.4.0 / node v24.19.0 / pnpm / git (all usable) |
+| Toolchain | bun 1.3.14 / node v24.16.0 / pnpm / git (all usable) |
 | Network constraints | Direct GitHub connections hang → install deps with bun install --ignore-scripts; build upstream with Upstream_SKIP_MATERIALIZE=1; reuse installed node_modules where possible |
 | Process hard constraints | ① All changes go into a new local repo (this repo), never push the original repo; ② QA evidence for each stage lands in evidence/; ③ upstream source read-only, only vendor copies |
 | Iron rule 1 | Tests and development align with the upstream original (see §5) |

@@ -1,0 +1,25 @@
+{
+  "task": "t12 - plugin tree cannot boot (type array in mpd_workmate_delete output schema)",
+  "schema_fix_present": {
+    "src_type_arrays": 0,
+    "dist_type_arrays": 0,
+    "archived_single_type": true
+  },
+  "acceptance_3_fresh_process_apply": {
+    "apply_crash_signatures": 0,
+    "passed": true,
+    "evidence": "apply-boot.log (isolated DSH_HOME, full profile, real boot)"
+  },
+  "acceptance_4_live_probe_signature": {
+    "probe_apply_crash_signatures": 0,
+    "registerTool_stack_frames": 0,
+    "signature_changed_away_from_apply_crash": true,
+    "evidence": "readonly-deny.log (raw)"
+  },
+  "verify": {
+    "bun test packages/mpd-workmate-plugin/test": 0,
+    "bun run typecheck": 0,
+    "bun skills/dsh-qa/scripts/readonly-deny.mjs": 0
+  },
+  "all_passed": true
+}

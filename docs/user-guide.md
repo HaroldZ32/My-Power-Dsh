@@ -118,12 +118,46 @@ mpd_workmate_init   { base: <roster id or normal name>, name?: <independent name
 | `mpd_workmate_spawn { name, task, context? }` | one-shot reuse: the workmate runs with its evolved persona + independent memory + note on its own model route; it is instructed to call `mpd_workmate_reflect` before its final report |
 | `mpd_workmate_reflect { name, task, outcome, persona_delta?, note? }` | self-evolve after work: bounded memory append (oldest evicted), persona revision merge, note regenerate, `uses++` |
 | `mpd_workmate_match { task }` | rank notes against a task; below threshold → `matched: false` and the suggestion is to **initialize a NEW workmate** — never force a weak match |
+| `mpd_workmate_rename { name, new_name }` | rename an instance (moves its evolved identity) |
+| `mpd_workmate_delete { name, purge?, confirm? }` | delete an instance — archive-first; permanent only with `purge: true` + `confirm: <name>` |
 
 Size caps keep injected context bounded: persona ≤ 8 KiB, memory ≤ 8 KiB, note ≤ 1.5 KiB.
 
 Workmates are your agents' *evolving memory*: after each task the workmate itself
 summarizes (via the spawn instruction or the team-member persona), so future sessions
 start from where it left off.
+
+### Renaming and deleting a workmate
+
+**Names are ASCII-only** (`[a-z0-9_-]`, lower-case). `Alice`, a CJK name, `a/b` or `..` is
+refused up front with `400 invalid-name` — nothing on disk is touched. Unicode names are a
+listed follow-up, not a bug.
+
+**Rename** (`mpd_workmate_rename { name, new_name }`) MOVES the workmate instead of
+rebuilding it: the directory key, `meta.json`, the library index, the note's self-reference
+and its previous-name history (`renamedFrom`) all move together, while persona, memory,
+use count and creation date are preserved byte-for-byte. Renaming onto an existing name is
+refused (`409 collision`), and so is renaming to the current name.
+
+**Delete** (`mpd_workmate_delete { name }`) is **archive-first**: the instance moves to
+`~/.mpd/workmate/.archive/<name>-<stamp>/`, disappears from `list` and `match`
+immediately, and can be brought back by hand:
+
+```bash
+mv ~/.mpd/workmate/.archive/<name>-<stamp> ~/.mpd/workmate/<name>
+```
+
+Only the explicit purge destroys anything: `mpd_workmate_delete { name, purge: true,
+confirm: "<name>" }` — the exact name is required, and without it the call is refused and
+nothing is removed. There is no in-product restore button: archive-first is deliberately
+one-way in the UI, and recovery is the `mv` above.
+
+**Both mutations are refused while the workmate is in use** — by a team member (a
+non-archived team record under `.mpd/team/` names it) or by an in-flight
+`mpd_workmate_spawn`. The refusal is `409 in-use` and names the blocking team ids and
+members, so it is actionable: finish/archive those teams, then repeat the mutation. The
+same gate covers the rename *target*, so renaming a workmate **to** a roster name in use
+by a team (e.g. `architect`) is refused the same way.
 
 ## 5. Team mode (adopted dsh-agent-teams)
 
@@ -152,21 +186,40 @@ agent_teams_status / agent_teams_send_message / agent_teams_reassign_task
 
 ## 6. Web GUI
 
-- **Workmates sidebar tab** (primary): the workmate library is contributed as a tab
+- **AgentTeams sidebar tab** (the only team surface): the whole team GUI is one tab in
+  **DSH-better-sidebar** (`dsh-better-sidebar`, the community sidebar bundle; tab id
+  `mpd-agent-teams`). It lists the teams of *this conversation* — live teams first (members
+  and their live activity, task rows with status, the dependency map, the captain context,
+  the stop-team control) and then archived ones — and it hosts the staged-plan approval
+  editor, so a plan is reviewed and edited where it was created. The tab badge shows how
+  many teams are live in this conversation, and the tab `single: true` re-scopes instead of
+  opening a second copy. When a team appears the tab opens once by itself; turn that off
+  with the **Auto-open when a team appears** switch in the sidebar settings page (plugin
+  setting `autoOpenOnTeamActivity`, default ON). The tab renders the removed floater's own
+  interior — the panel head with its title, live-activity dot and collapse control, the
+  scrolling team body, the adopted empty hint and the archived labels — so it looks exactly
+  like the panel it replaced; the collapse control closes the sidebar panel itself. The
+  former in-conversation team card and top-right activity floater **no longer exist**, and
+  there is no fallback: a profile without DSH-better-sidebar logs one warning and has no team
+  GUI at all — team work still runs through the `agent_teams_*` tools and the `.mpd/team`
+  state.
+- **Workmates sidebar tab**: the workmate library is contributed as a second tab
   to **DSH-better-sidebar** (`dsh-better-sidebar`, the community sidebar bundle), so it
   lives where that sidebar's own pages do — tab strip, `+` menu, and the sidebar's own
   enable/disable switch in its settings. The page lists `~/.mpd/workmate/` instances
   (base, uses, updated, note), filters them, opens one for its persona/memory/note, and
   initializes a new one from a roster-backed **base picker** (no id typing) plus optional
-  name and note. It reads the host routes
-  `/plugins/mpd-workmate/{list,roster,get,init}`.
-- **Fallback**: in a profile without DSH-better-sidebar the bundle mounts its own
-  🤖 overlay floater + sidebar-foot button instead — the same page, no sidebar needed.
-- **Team members and activity**: the adopted agent-teams plugin contributes
-  `agent_teams_*` tools and the `.mpd/team` state; its in-conversation team card and
-  activity floater need the harness `conversationEvents` seam, which current DSH
-  releases no longer provide (they expose `conversationViews` instead), so those two
-  surfaces stay unmounted and the team is driven through the tools.
+  name and note. It also **renames** and **deletes** the selected instance — the delete flow
+  is explicit (a confirmation step, then archive, and a further step that requires typing the
+  exact name for a permanent purge), and both operations are localized zh/en. It reads and
+  posts to the host routes
+  `GET /plugins/mpd-workmate/{list,roster,get}` + `POST /plugins/mpd-workmate/{init,rename,delete}`.
+  The sidebar **tab-strip label** itself stays the English `Workmates` (a documented
+  deferral — the strip label is resolved where no localized translator is in scope, like the
+  AgentTeams tab); the page body follows your language.
+- **Sidebar-only, for both pages**: neither page has a fallback. Without DSH-better-sidebar
+  each logs exactly one warning and registers nothing, and the bundle no longer ships the
+  workmate 🤖 overlay floater or its sidebar-foot button.
 
 ## 7. Configuration (`mpd.jsonc`)
 
@@ -190,8 +243,27 @@ agent_teams_status / agent_teams_send_message / agent_teams_reassign_task
   run `mpd_roles_list`.
 - `mpd_workmate_*` says "mpdRoles service unavailable" → the `mpd-roles` row is not
   mounted (reinstall the bundle / add the row).
-- Team/workmate panel missing in the GUI → the `mpd-web-compat` self-row must exist and
+- A workmate rename/delete is **refused because it is in use** → a non-archived team
+  record under `.mpd/team/` names it, or an `mpd_workmate_spawn` is still running. The
+  refusal lists the blocking teams; archive (or retire) those teams in the AgentTeams tab
+  and let running spawns finish, then repeat. Renaming *to* a roster name in use
+  (`architect`, `lead`, …) is refused the same way.
+- A workmate was deleted by accident → its default delete only ARCHIVED it: move
+  `~/.mpd/workmate/.archive/<name>-<stamp>` back to `~/.mpd/workmate/<name>`. There is no
+  in-product restore, and a `purge` (run with `confirm: <name>`) is unrecoverable.
+- A workmate name is rejected (`400 invalid-name`) → names are ASCII-only,
+  lower-case `[a-z0-9_-]`: uppercase, spaces, punctuation, `/` and CJK names are refused
+  before anything is touched. Pick an ASCII name; Unicode names are a listed follow-up.
+- AgentTeams tab missing from the sidebar → rebuild the shipped client
+  (`node scripts/build-mpd-client.mjs`, then reload) and confirm the profile has
+  `dsh-better-sidebar` (without it the team page logs one warning and has no host).
+- Client surface missing entirely in the GUI → the `mpd-web-compat` self-row must exist and
   the bundle must be reinstalled (`dsh plugin --profile <p> add dist/mpd-package`).
 - `MISSING_CREDENTIAL` → the provider route needs a key in your DSH credentials; keys
   are never configured by this bundle.
 - AGENT.md not injected → the session runs a non-`mpd` preset; switch presets.
+- **No `mpd` session can be created and the error says `agent-preset/invalid … $.prefix missing
+  required value`** → the installed harness changed the `dsh-persona` contract (it takes `prefix`,
+  not the retired `text`) and refuses to mount the whole preset. Update the bundle
+  (`git pull`, then `dsh plugin --profile <p> add <repo>`) — this is a harness-version compatibility
+  fix, not a configuration problem on your side.

@@ -53,7 +53,14 @@ License: SUL-1.0 (`LICENSE.md`); inheritance declared in `README.md`.
   durable, evolving copy under `~/.mpd/workmate/` with an independent name, which
   self-summarizes after each work (persona + memory, size-capped) and keeps a short
   note; reuse is via `mpd_workmate_match` and weak matches must NOT be forced (initialize
-  a new workmate instead). The ONLY
+  a new workmate instead). Its agent tool surface is exactly seven tools:
+  `mpd_workmate_list`, `mpd_workmate_init`, `mpd_workmate_spawn`, `mpd_workmate_reflect`,
+  `mpd_workmate_match`, `mpd_workmate_rename` (moves the instance's whole evolved identity —
+  directory key, meta, index key, note self-reference, `renamedFrom`) and
+  `mpd_workmate_delete` (ARCHIVE-FIRST into `.archive/<key>-<stamp>/`; permanent removal only
+  with `purge: true` + `confirm === name`, and recovery is a manual `mv` back — there is no
+  in-product restore). Both mutations are refused while the workmate is in use (see §12) and
+  names are ASCII-only `[a-z0-9_-]` before any filesystem call. The ONLY
   shipped preset is `mpd` — the main working agent — which also carries the
   project-instruction convention: every session MUST attempt to read `AGENT.md`
   (falling back to `AGENTS.md`, then `CLAUDE.md`) via `dsh-agent-instructions`.
@@ -122,7 +129,7 @@ mpd-dsh/
 │   ├── mpd-config-plugin/        # C7: minimal mpd.jsonc runtime config layer (consumed by the plugins above)
 │   ├── mpd-comment-checker-plugin/ # C4: comment/docstring detection (opt-in binary)
 │   ├── mpd-memory-plugin/        # C6: git/svn-backed memory + reflection state machine
-│   ├── mpd-workmate-plugin/      # durable evolving agent library (~/.mpd/workmate): base→instance, self-reflect (persona+memory capped), short note, reuse via mpd_workmate_* (no forced weak matches)
+│   ├── mpd-workmate-plugin/      # durable evolving agent library (~/.mpd/workmate): base→instance, self-reflect (persona+memory capped), short note, reuse via mpd_workmate_* (no forced weak matches); rename/delete (archive-first, refused while in use)
 │   ├── mpd-bootstrap-plugin/     # bundle provisioning BY REFERENCE: serves <bundle>/skills via the adapter; cleans legacy (<=0.2.6) home copies
 │   ├── mpd-agent-teams-plugin/   # adopted dsh-agent-teams (MIT, first-class main code): agent_teams_* + Web panel; memberPersona injects workmate backing
 │   ├── mpd-bundle-plugin/        # bundle web-compat: the @mpd-dsh/mpd no-op main + the combined web client (client.js = adopted agent-teams panel + the workmate library registered as a DSH-better-sidebar tab, with the bundle floater as fallback; built by scripts/build-mpd-client.mjs)
@@ -147,7 +154,18 @@ mpd-dsh/
 | QA self-tests | `bun run test:qa` (all `--self-test`) | every plugin/QA-script change |
 | QA real cases | `node skills/dsh-qa/scripts/<case>.mjs` | runtime-behavior changes |
 | Installer | `node scripts/install-profile.mjs --dry-run` | any bundle-patch/installer change |
-| Boot check | `dsh --profile headless --dump-config` (isolated DSH_HOME) | any patch change |
+| Boot check (MOUNT) | a boot that really applies the rows in an isolated `DSH_HOME` + sandbox `HOME` — e.g. `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs` (host rows) and `node skills/dsh-qa/scripts/preset-conformance.mjs` (the `mpd` preset's standing mount + every harness-owned row config; its negative control proves the assertion is falsifiable), or the `full-profile-boot.sh` / `mount-proof.sh` pattern with registration instrumentation | any patch change, any preset/row change, and REQUIRED for any tool-schema change |
+
+`--dump-config` is NOT this gate: it only COMPOSES rows and never executes plugin code, so a
+schema/apply abort that takes the whole plugin tree down is invisible to it. Measured:
+`dsh --profile mpd --dump-config` exited 0 with the `mpd-workmate` row present while the real
+boot of the same profile could not load the tree; the decisive check was a mounting boot with
+registration instrumentation (`WORKMATE_TOOLS` 7/7 ok, 0 apply-crash signatures) —
+`evidence/workmate/rename-delete-core/20260910T131415Z-fullboot/full-boot.result.json` and
+`…/20260910T132303Z-mount/mount-proof.result.json`, both carrying the note that no
+`--dump-config` result is cited as load evidence. **`--dump-config` proves COMPOSITION ONLY —
+never a plugin load.** Use it to check that rows/presets are composed and that an id-targeted
+patch landed; never as a health signal for plugin code.
 
 No evidence on disk for a gate = the change is not complete. Merge to dev only after the relevant
 gates pass and their evidence is committed with the change.
@@ -244,8 +262,23 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   Live-LLM cases must ALSO copy `settings.yaml` when present: homes whose keys come from
   gateway providers (`llm-pi-ai` providers — opencode-go/scnet) configure the chain there, and
   without it headless falls back to the base `deepseek-official` route → `MISSING_CREDENTIAL`.
-- Provability: assert `--dump-config` rows, or assert real tool results (never "it ran").
+- Provability: assert a REAL tool result (never just "it ran"), or — for composition-only questions —
+  `--dump-config` rows. `--dump-config` proves COMPOSITION ONLY and never a plugin load (§4): it does
+  not execute plugin code, so it cannot witness an apply/schema abort. Anything about plugin BEHAVIOUR
+  (a tool registered, a route answering, a schema accepted) needs a boot that MOUNTS the rows in an
+  isolated `DSH_HOME` with registration instrumentation, or a real tool call.
 - Evidence path: `evidence/<domain>/<slug>/<timestamp>/{result.json, output.log}`.
+- **Preset/row conformance against the INSTALLED harness** (`preset-conformance`, required for any
+  preset, patch or overlay change): a row config is validated with the installed plugin's own
+  schemastery `Config`, because that is what the loader runs. Two failure modes exist and only one
+  is loud: a MISSING REQUIRED key fails the row, and `dsh-agent-presets` then refuses to mount the
+  whole preset (`agent-preset/invalid … row(s) did not activate`), while an UNKNOWN key is silently
+  KEPT by schemastery — the row applies and quietly loses that setting. The case also pins the
+  `mpd` preset's row set against the installed shipped `standard` preset: the harness moves rows
+  between the host plane and the preset plane between releases (the Web overlay disables the host
+  `tool-goal`/`command-goal`; `present` only exists from 0.1.5-alpha.2), so a missing row is a
+  capability every mpd session loses. `--dump-config`, `agentPresets.list`/`resolve` and every
+  `--self-test` that never creates a session are all blind to this class — only a real mount is not.
 - New case checklist: add row to SKILL.md case table; script + `--self-test`; real run; evidence dir.
 - Shell caveat: long-lived MCP children hold inherited fds — run dsh with stdio to FILES
   (`spawnSync` with `stdio: ['ignore', fd, fd]`) or background + log-file redirection, never pipes.
@@ -325,20 +358,29 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 | a plugin crashes with `cannot get property "x" without inject` / `... is not a function` | a harness seam changed shape — fix it in `packages/mpd-dsh-adapter-plugin/src/index.ts` only, rebuild, re-pack; plugin rows must not touch `ctx.tools`/`ctx.subagents`/`ctx.skills`/`ctx.agentPresets` directly (§6) |
 | `MISSING_CREDENTIAL` in isolated QA | sandbox has no `.credentials.yaml` — copy it; live-LLM cases also need `settings.yaml` when the home uses gateway providers (see §7) |
 | `patch: entry ... not found` | id-targeted row for a row absent in that profile — use `insert:` for new rows |
+| a plugin change looks green in `--dump-config` but the plugin does nothing at runtime (tools missing, routes 404, or the whole tree dead) | `--dump-config` only COMPOSES rows — it never executes plugin code, so it cannot see an apply/schema abort (§4). Reproduce with a boot that MOUNTS the rows in an isolated `DSH_HOME` + sandbox `HOME` (registration instrumentation; the `mount-proof.sh` pattern, or `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs`) and read the boot log for the apply-crash signatures (`unsupported JSON schema`, `JsonSchemaError`, `plugin tree failed to load`, `failed to apply loader entry`). The measured instance of this class: a `type: ["string","null"]` ARRAY in an **output** schema is REJECTED by this harness and takes the whole plugin tree down (the accepted null form is `oneOf: [{type:"string"},{type:"null"}]`, proven by booting). **Known latent issue, deliberately NOT fixed here:** `packages/mpd-hashline-plugin/src/index.ts:110` declares `lines: { type: ["string","array"] }` in tool PARAMETERS and ships it in its dist — measured harmless today (a real boot composes that row with 0 loader-apply errors, i.e. this harness validates output schemas but not parameter schemas, which matches the validator error text naming only output-schema paths), but it is one harness release away from aborting the tree the same way. Record it; do NOT "clean it up" inside an unrelated change — it belongs in its own scoped change with its own mount proof |
 | codegraph `skipped: project excluded` | cwd contains an `.mpd` segment or is under /tmp — use a normal project path |
 | codegraph provision crash | binary missing + read-only home — set `MPD_CODEGRAPH_BIN`/bundle env |
 | bash tool hangs after dsh | MCP children hold fds — stdio to files, or `setsid … > log` pattern |
 | ast-grep BINARY_NOT_FOUND | sg binary not installed — `.toolchain` via installer or `MPD_AST_GREP_SG_PATH` |
 | LSP daemon unreachable | `~/.mpd` unwritable/missing — on real home it self-starts |
 | preset not visible in web | the bundle patch's `agent-presets` id-target row is not composed — check `dsh --profile web --dump-config` shows `id: agent-presets` with `default: mpd` + the `<bundle>/presets` root, and that `dsh.profile.bundles` contains `@mpd-dsh/mpd` |
+| **EVERY mpd session fails to start**: `agent-preset/invalid: agent-presets: preset "mpd" failed to mount: failed to apply loader entry persona (@deepseek-ai/dsh-persona): invalid config: - $.prefix missing required value (at prefix)` | the persona row's config no longer matches the installed harness. `dsh-persona` took ONE `text` key through 0.1.2-rc.1; from 0.1.3-alpha.2 it registers the deployment persona PREFIX/SUFFIX sections and `prefix` is REQUIRED, so a `text:` row fails the row and `dsh-agent-presets` refuses the WHOLE preset (`mountPreset` → `inactiveRows`). Fix: write the persona into `prefix:` (and `suffix:` only when a suffix is wanted). Measured 2026-09-11 (0.1.5-rc.1 CLI + rc.2 packages) by creating a session over the gateway (`POST /api/session/create` with `agentPreset: "mpd"`): red before the fix, green after. Gate: `node skills/dsh-qa/scripts/preset-conformance.mjs` |
+| a preset/patch row applies but SILENTLY loses a setting (no error anywhere) | schemastery KEEPS unknown config keys, so a renamed/retired key (`persona:` on `dsh-system-prompt` — the schema says `personaPrefix`; `text:` on `dsh-persona`) is accepted and ignored, and the capability it configured simply never appears. Only a key the schema REQUIRES can fail loudly. Check every `@deepseek-ai/*` row against the INSTALLED schemas with `node skills/dsh-qa/scripts/preset-conformance.mjs --self-test` (it validates the preset, the bundle patch and the QA overlays, materializing `!!js` nodes) |
+| an mpd session has no `present` tool, or the user's `/goal` does not resolve | the harness moves model-facing rows between the host plane and the preset plane between releases, and this preset is kept row-for-row equal to the shipped `standard` preset: the Web overlay disables the HOST `tool-goal` AND `command-goal` rows ("presets own the human command and model-facing tool"), and `present` only exists from 0.1.5-alpha.2. Add the missing row to `presets/mpd/agent.cordis.yml`; `preset-conformance --self-test` fails with the exact missing/extra row list against the installed `standard` preset |
 | installed presets stale / agents miss tools (e.g. bash) | the profile points at an old bundle — for a checkout (`link:`) install rebuild the touched `dist/` and restart dsh; for a packed/registry install bump the version, `npm run pack`, `dsh plugin --profile <p> add dist/mpd-package` |
 | `dsh plugin add .` says "declares no dsh.bundle" | you ran it outside the bundle package root — run it in the repo root (the manifest there IS `@mpd-dsh/mpd` with `dsh.bundle.patch`) |
 | skills missing in a session | the corpus is served, not copied: check the boot log for `[mpd-bootstrap] skill corpus served from <bundle>/skills`; if absent the `mpd-bootstrap` row is not mounted (or its `dist/index.js` is stale — rebuild) |
 | leftover `$DSH_HOME/skills` or `.agent-presets/mpd*` after upgrading from <=0.2.6 | the first 0.3.0 boot removes the stamped copies; unstamped copies (legacy `install-profile.mjs`) are left on purpose — delete them by hand |
-| agent tool call fails with UNKNOWN_TOOL in code-mode deployments | presets declare `tool-presentation { mode: native }` — every row tool (bash/read/edit/...) is exposed directly; in code mode the model may only call `run_code` directly |
+| agent tool call fails with UNKNOWN_TOOL in code-mode deployments | the process-wide presentation switch is the HOST `tools` row `mode` (`native` \| `ptc` \| `both`; the Web overlay feeds it `DSH_TOOLS_MODE`), and under `ptc` the model may only call `run_code` directly — that is the deployment's choice, not a preset's. A preset that must PIN its own presentation carries one `@deepseek-ai/dsh-agent-tool-presentation` row (`{ mode }`, one per composition: it calls `ctx.tools.presentAs()` for the preset's scope); neither the shipped `standard` preset nor ours mounts one today, and the `mpd` preset is row-for-row parity-checked against `standard`, so adding it is a deliberate deviation |
 | boot fails with ERR_MODULE_NOT_FOUND @nanmicoder/dsh-agent-teams | the legacy profile still pins the old bundle row; the row is now main code (`@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib/index.js`) — reinstall the bundle (`dsh plugin --profile <p> add dist/mpd-package`) |
+| agent-teams members never receive the second batch; captain messages all read "delivered via mailbox" while member logs show only the spawn prompt | the Harness delivery seam drifted. `packages/mpd-agent-teams-plugin/lib/harness-compat.js` is the ONLY adaptation point and probes three generations in order: 0.1.5-rc.2+ public `ctx.subagents.prompt(request, signal)` (`{requestId, parentSessionId, childSessionId, mode:'continuable', delivery:'queue', content}` → `{messageId}`), Alpha.2 receiver-bound `followup`, then the Alpha.5…0.1.2-rc.1 symbol-keyed FIFO queue `Symbol.for('dsh.subagent.queuePrompt')`. The public `prompt` seam is preferred; `sendMessage` steers a RUNNING agent and must never carry team work. The retired-member guard wraps every face. `node skills/dsh-qa/scripts/agent-teams-dispatch.mjs --self-test` asserts the installed host's seam and the plugin's preference order. **Second cause, measured 2026-09-11 — the captain process exited before members settled:** the scheduler is driven by live `agent/status` idle edges, so it only wakes a member that has *become idle in this process*. `dsh --profile headless "<prompt>"` is ONE-SHOT: the prompt becomes a single captain turn and the process exits, and process exit disposes every continuable member. Measured: the captain called `agent_teams_approve`, the 11 members were spawned, `turn/end {reason:completed}` fired ~3.7s later and the process left; every member log then held only `turn/start` + `request/header` with no `turn/end` and no first assistant message, tasks stayed `pending`/attempt 0, and no idle edge was ever emitted (so `kickMember` never ran). This is a limitation of the one-shot headless driver, NOT a delivery bug — the plugin works under the long-lived Web/TUI captain session it is designed for. Any headless QA case that expects scheduler wakes must hold its captain process open until members settle (the dispatch probe runs three separate `sleep 110` bash calls after approving); the dispatch case also reads the current `session.v3.jsonl.zstd` log name (legacy `session.jsonl.zstd` kept as fallback) and asserts the assignment marker on the DEPENDENT task's assignee only, because the first-batch member legitimately finishes inside its spawn turn from the join prompt without a scheduler wake |
+| `dsh: UNKNOWN: agent-teams: member initialization failed: Error: cannot get property "agent" without inject` (team mode dead: captain session has only a header, 11 members idle, `tasks: []`) | the member setup read `childCtx.agent`. An agent-scoped ctx is a Cordis proxy that throws on ANY property not in `inject` (`cordis/src/reflect.ts`), and there is no `agent` service to inject — the host only registers `agents` (plural, an id→Agent registry); `dsh-agent-loop` likewise declares `inject = ["agents", …]`. The listener fires for the **captain's own** `agent/session-start` too, so the throw aborted member initialization team-wide (boot prints the error, exit 1). Fix: `installContinuableMemberSetup` calls `setup(agent.ctx, agent)` — the harness payload already carries the live Agent — and `installMemberSelectionRuntime` takes it as `hostChild ?? childCtx.agent` (second arg is absent only on the legacy `registerContinuableSetup` path, whose ctx does carry `agent`). Guarded by `bun test packages/mpd-agent-teams-plugin/test/harness-compat.test.ts` (the modern fixture's ctx THROWS on `.agent`, exactly like production) and by the `--self-test` check "modern member setup receives the live Agent instead of reading childCtx.agent" |
 | AGENT.md / AGENTS.md not injected into a session | the session runs a non-mpd preset; the `mpd` preset configures `instructionFileCandidates` (AGENT.md → AGENTS.md → CLAUDE.md) — switch the session to the `mpd` preset |
 | `mpd_workmate_*` reports "mpdRoles service unavailable" | the `mpd-roles` plugin row is not mounted (e.g. a legacy install without the roster) — add the `mpd-roles` row (bundle patch / install-profile); the workmate plugin resolves the service lazily at tool-execute time |
+| `mpd_workmate_rename` / `mpd_workmate_delete` is refused "is in use by …" (409 `in-use`) | the gate found a NON-archived team record under `<cwd>/.mpd/team/<teamId>/team.json` whose members include the workmate's key, or an `mpd_workmate_spawn` of it still running in this process. The refusal names every blocking `<teamId>/<member>`. Clear it by archiving (or retiring) those teams in the AgentTeams tab **and** letting the running spawn finish, then repeat. Consequence worth knowing: a record whose member is a roster name (e.g. `architect`) blocks that same key, so renaming a workmate *to* it is refused too. The gate is a READ-ONLY scan — never write `.mpd/team` to bypass it (that state belongs to the agent-teams plugin) |
+| an archived workmate must come back | archive-first delete moved it to `~/.mpd/workmate/.archive/<key>-<stamp>/`, which is hidden from `list`/`match` by construction (no `meta.json` there, and `.archive` is not an addressable key). There is deliberately NO in-product restore: move the directory back with `mv ~/.mpd/workmate/.archive/<key>-<stamp> ~/.mpd/workmate/<key>` (the directory name IS the key) and it is listed again. A `purge` — `mpd_workmate_delete { name, purge: true, confirm: "<key>" }`, i.e. the same call plus the exact name — is unrecoverable, so a lost workmate can only be missing because it was purged |
+| a workmate name is rejected (`400 invalid-name`) | names are ASCII-only, lower-case `[a-z0-9_-]`, and must already be in sanitized form: `Alice`, `my agent`, CJK names, `a/b`, `..` and `.archive` are all refused BEFORE any filesystem call (a superset of every key the library has ever written, so no existing instance becomes un-addressable). Pick an ASCII name; Unicode/CJK workmate names are a listed follow-up, not a bug. Renaming to the current key (including a case-only rename, which sanitizes to the same key) is refused with the same reason |
 | the Workmates tab is missing from the DSH-better-sidebar tab strip | the tab is contributed at client-apply time through `ctx.betterSidebar.registerTab` — check the boot log/console for `[mpd] better-sidebar not installed` (the sidebar bundle is not composed) and that `packages/mpd-bundle-plugin/client.js` contains `SIDEBAR_TAB_ID = "mpd-workmate"` (rebuild with `node scripts/build-mpd-client.mjs`). A profile without that sidebar intentionally falls back to the bundle floater + sidebar-foot toggle, so the page is still reachable. `bun test packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs` pins both hosts |
 | web team/workmate panel never appears in the GUI | the bundle's web client has no loader entry named exactly `@mpd-dsh/mpd` — client-modules builds client rows from `ctx.loader.entries()` entry names, which come from patch rows' `name` field; keep the `mpd-web-compat` self-row (`name: '@mpd-dsh/mpd'`) and the bundle `main`/`exports["."]` pointing at `packages/mpd-bundle-plugin` (regenerate with `node scripts/build-mpd-client.mjs && node scripts/pack-mpd.mjs`) |
 | the GUI shows a red "Failed to load plugins" banner: `web boot: 1 entry did not activate` / `@mpd-dsh/mpd: pending (waiting for service: X)` | the CLIENT half declared a service this harness release does not register — `assertEntriesActive` treats a declared-but-unregistered service as a fatal `pending` entry and the entire page fails to mount (the GUI never renders). Observed drift: `conversationEvents` (this harness speaks `conversationViews`) and `modelDirectories` (not mounted). Fix in `packages/mpd-bundle-plugin/src/web-client.js`: declare ONLY stable seams (`slots`, `locale`) and await drift-prone ones with `ctx.inject(deps, cb)` — it simply never runs when they are absent — wrap the optional mount in try/catch, then `node scripts/build-mpd-client.mjs` and reload the page. `web-client-adapt --self-test` asserts both rules |
@@ -358,11 +400,30 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   display name, persona + model chain + read-only discipline) served by
   `mpd-roles-plugin` (`mpd_roles_list` / `mpd_role_spawn` / `mpd_role_persona`); the same
   specialists are exposed as normal-named teammate instantiation templates through the
-  adopted dsh-agent-teams `mpd` roster profile.
+  adopted dsh-agent-teams `mpd` roster profile. The **read-only discipline is the exported
+  deny list** — exactly seven names, identical in `mpd-roles-plugin` and
+  `mpd-workmate-plugin` (asserted equal by `roles.test.ts`): `write`, `edit`,
+  `mpd_hashline_edit`, `bash`, `mcp__ast_grep__rewrite`, `mcp__ast_grep__scan`,
+  `mcp__lsp__rename`. `bash` is denied on purpose (a shell can write files), and
+  `read`/`glob`/`grep` stay available. **Do NOT re-add `str_replace_editor` or
+  `apply_patch`**: both were REMOVED because they are not registered in this profile —
+  the harness validates the WHOLE list at spawn time and rejects the child when any single
+  name is unknown, so one dead entry breaks every read-only spawn (an installed
+  `dsh-tool-str-replace-editor` package or a `dsh-base` patch row is NOT proof of runtime
+  registration, and `dsh --dump-config` composes rows without mounting them). Do not filter
+  the list with `dsh.hasTool` either: it reads the global tool view, where `write`/`edit`/`bash`
+  answer false, so filtering would silently DROP the entries that are the guarantee.
 - workmate: a durable, evolving agent instance in `~/.mpd/workmate/` created by
   `mpd-workmate-plugin` (`mpd_workmate_*`) from a roster BASE template with an
   independent name; it self-summarizes after each work (persona + independent memory,
   size-capped) and keeps a short note card. Reuse is via `mpd_workmate_match`; weak
-  matches must NOT be forced — initialize a new workmate instead.
+  matches must NOT be forced — initialize a new workmate instead. The tool surface is
+  `mpd_workmate_list` / `mpd_workmate_init` / `mpd_workmate_spawn` / `mpd_workmate_reflect` /
+  `mpd_workmate_match` / `mpd_workmate_rename` / `mpd_workmate_delete`; **the directory name
+  IS the instance key** (`meta.name` is only a display mirror), which is what makes a rename
+  a directory move and an interrupted one harmless. `delete` is archive-first
+  (`~/.mpd/workmate/.archive/<key>-<stamp>/`, no in-product restore — recover by hand with
+  `mv`), permanent only with `purge: true` + `confirm === name`; both mutations are refused
+  while the workmate is in use and names are ASCII-only `[a-z0-9_-]`.
 - mpd: our naming prefix (my-power-dsh).
 - golden: graded benchmark task set in `tests/golden`.

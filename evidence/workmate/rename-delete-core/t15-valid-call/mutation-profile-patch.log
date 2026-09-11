@@ -1,0 +1,23 @@
+file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1163
+		throw new Error(`${binName}: failed to parse ${label} ${file}: ${String(error)}`);
+		      ^
+
+Error: dsh: failed to parse overlay /tmp/vcp-dsh-98GXWS/profiles/mpd/cordis.patch.yml: YAMLException: end of the stream or a document separator is expected (5:1)
+
+ 2 | # a top-level YAML array of load ...
+ 3 | # overrides, disables, and inser ...
+ 4 | []
+ 5 | - id: mpd-workmate
+-----^
+ 6 |   name: "/tmp/vcp-dsh-98GXWS/mut ...
+ 7 | - insert:
+    at parsePatchList (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1163:9)
+    at loadOverlayPatches (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1133:9)
+    at loadProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:877:67)
+    at prepareProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-BTzzdrGY.js:162:18)
+    at composeProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-BTzzdrGY.js:187:18)
+    at runProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-BTzzdrGY.js:234:25)
+    at file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:130:9
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+
+Node.js v24.16.0

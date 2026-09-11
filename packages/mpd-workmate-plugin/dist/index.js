@@ -1,5 +1,5 @@
 // packages/mpd-workmate-plugin/src/index.ts
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -212,7 +212,36 @@ var PERSONA_CAP = 8 * 1024;
 var MEMORY_CAP = 8 * 1024;
 var NOTE_CAP = 1536;
 var MATCH_THRESHOLD = 0.35;
-var READONLY_DENY = ["write", "edit", "str_replace_editor", "apply_patch", "mpd_hashline_edit"];
+var READONLY_DENY = [
+  "write",
+  "edit",
+  "mpd_hashline_edit",
+  "bash",
+  "mcp__ast_grep__rewrite",
+  "mcp__ast_grep__scan",
+  "mcp__lsp__rename"
+];
+
+class WorkmateError extends Error {
+  code;
+  status;
+  blocking;
+  constructor(code, message2, status, blocking = []) {
+    super(message2);
+    this.name = "WorkmateError";
+    this.code = code;
+    this.status = status;
+    this.blocking = blocking;
+  }
+}
+function nameKey(raw, label) {
+  const s = String(raw ?? "");
+  const key = sanitizeName(s);
+  if (s === "" || s !== key || key.length > 255) {
+    throw new WorkmateError("invalid-name", `mpd_workmate: invalid ${label} "${s}" — names are ASCII, lowercase, [a-z0-9_-] only and must already be sanitized`, 400);
+  }
+  return key;
+}
 var REPORT_SCHEMA = {
   type: "object",
   properties: {
@@ -238,7 +267,10 @@ function workmateRoot() {
   return join(homeDir(), ".mpd", "workmate");
 }
 function wmDir(name2) {
-  return join(workmateRoot(), sanitizeName(name2));
+  const key = sanitizeName(name2);
+  if (key === "")
+    throw new WorkmateError("invalid-name", "mpd_workmate: empty workmate name — the library root is not an instance", 400);
+  return join(workmateRoot(), key);
 }
 function sanitizeName(s) {
   const t = String(s ?? "").trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/-{2,}/g, "-").replace(/^-+|-+$/g, "");
@@ -258,7 +290,7 @@ function readMeta(dir) {
     if (!existsSync(join(dir, "meta.json")))
       return null;
     const m = JSON.parse(readFileSync(join(dir, "meta.json"), "utf8"));
-    return { name: String(m.name ?? ""), baseId: String(m.baseId ?? ""), baseName: String(m.baseName ?? ""), description: String(m.description ?? ""), provider: String(m.provider ?? ""), model: String(m.model ?? ""), readonly: Boolean(m.readonly), createdAt: String(m.createdAt ?? ""), updatedAt: String(m.updatedAt ?? ""), uses: Number(m.uses ?? 0), lastTask: m.lastTask == null ? null : String(m.lastTask) };
+    return { name: String(m.name ?? ""), baseId: String(m.baseId ?? ""), baseName: String(m.baseName ?? ""), description: String(m.description ?? ""), provider: String(m.provider ?? ""), model: String(m.model ?? ""), readonly: Boolean(m.readonly), createdAt: String(m.createdAt ?? ""), updatedAt: String(m.updatedAt ?? ""), uses: Number(m.uses ?? 0), lastTask: m.lastTask == null ? null : String(m.lastTask), renamedFrom: Array.isArray(m.renamedFrom) ? m.renamedFrom.map(String) : [] };
   } catch {
     return null;
   }
@@ -281,21 +313,47 @@ function readIndex() {
     return {};
   }
 }
-function writeIndexEntry(meta) {
-  const idx = readIndex();
-  idx[meta.name] = { name: meta.name, baseId: meta.baseId, baseName: meta.baseName, uses: meta.uses, updatedAt: meta.updatedAt };
+function writeIndex(idx) {
   writeJson(indexPath(), idx);
 }
-function readNote(name2) {
+function indexEntryOf(key, meta) {
+  return { name: key, baseId: meta.baseId, baseName: meta.baseName, uses: meta.uses, updatedAt: meta.updatedAt };
+}
+function writeIndexEntry(key, meta) {
+  const idx = readIndex();
+  idx[key] = indexEntryOf(key, meta);
+  writeIndex(idx);
+}
+function renameIndexKey(oldKey, newKey, meta) {
+  const idx = readIndex();
+  delete idx[oldKey];
+  idx[newKey] = indexEntryOf(newKey, meta);
+  writeIndex(idx);
+}
+function dropIndexKey(key) {
+  const idx = readIndex();
+  if (!(key in idx))
+    return;
+  const prev = idx[key];
+  delete idx[key];
+  writeIndex(idx);
+  return prev;
+}
+function restoreIndexEntry(key, entry) {
+  const idx = readIndex();
+  idx[key] = entry;
+  writeIndex(idx);
+}
+function readNote(key) {
   try {
-    return readFileSync(join(wmDir(name2), "note.md"), "utf8").trim();
+    return readFileSync(join(wmDir(key), "note.md"), "utf8").trim();
   } catch {
     return "";
   }
 }
-function readMemory(name2, tailBytes = MEMORY_CAP) {
+function readMemory(key, tailBytes = MEMORY_CAP) {
   try {
-    const t = readFileSync(join(wmDir(name2), "memory.md"), "utf8").trim();
+    const t = readFileSync(join(wmDir(key), "memory.md"), "utf8").trim();
     if (t.length <= tailBytes)
       return t;
     return `…[earlier memory trimmed]…
@@ -304,9 +362,9 @@ function readMemory(name2, tailBytes = MEMORY_CAP) {
     return "";
   }
 }
-function readPersona(name2) {
+function readPersona(key) {
   try {
-    return readFileSync(join(wmDir(name2), "persona.md"), "utf8").trim();
+    return readFileSync(join(wmDir(key), "persona.md"), "utf8").trim();
   } catch {
     return "";
   }
@@ -320,8 +378,8 @@ function autoNote(meta, persona, memory, previous = "") {
   const task = meta.lastTask ? "Last task: " + meta.lastTask : "No task history yet";
   return capText(`${identity} ${task}.${last ? " " + last.replace(/^##\s*/, "") : ""}`, NOTE_CAP);
 }
-function appendMemory(name2, entry) {
-  const path = join(wmDir(name2), "memory.md");
+function appendMemory(key, entry) {
+  const path = join(wmDir(key), "memory.md");
   const existing = (existsSync(path) ? readFileSync(path, "utf8") : "").trim();
   const next = (existing ? existing + `
 
@@ -348,8 +406,8 @@ function appendMemory(name2, entry) {
 `);
   return out;
 }
-function mergePersona(name2, revision) {
-  const path = join(wmDir(name2), "persona.md");
+function mergePersona(key, revision) {
+  const path = join(wmDir(key), "persona.md");
   const existing = (existsSync(path) ? readFileSync(path, "utf8") : "").trim();
   const merged = capText(existing + (revision ? `
 
@@ -360,10 +418,32 @@ ${revision.trim()}` : ""), PERSONA_CAP);
   return merged;
 }
 function ensureInstance(name2) {
-  const dir = wmDir(name2);
+  const key = sanitizeName(name2);
+  const dir = wmDir(key);
   const meta = readMeta(dir);
   if (!meta)
-    throw new Error(`mpd_workmate: no workmate named "${sanitizeName(name2)}" — run mpd_workmate_init first`);
+    throw new Error(`mpd_workmate: no workmate named "${key}" — run mpd_workmate_init first`);
+  return { meta, dir, key };
+}
+function lstatOrNull(path) {
+  try {
+    return lstatSync(path);
+  } catch {
+    return null;
+  }
+}
+function resolveTarget(key) {
+  const dir = wmDir(key);
+  const st = lstatOrNull(dir);
+  if (st == null)
+    throw new WorkmateError("unknown", `mpd_workmate: no workmate named "${key}"`, 404);
+  if (st.isSymbolicLink())
+    throw new WorkmateError("unknown", `mpd_workmate: "${key}" is a symlink — the library refuses to mutate through a link (replace it by hand)`, 404);
+  if (!st.isDirectory())
+    throw new WorkmateError("unknown", `mpd_workmate: "${key}" is not a directory`, 404);
+  const meta = readMeta(dir);
+  if (!meta)
+    throw new WorkmateError("unknown", `mpd_workmate: "${key}" has no meta.json (orphan directory — remove it by hand)`, 404);
   return { meta, dir };
 }
 function listInstances() {
@@ -371,8 +451,9 @@ function listInstances() {
   if (!existsSync(root))
     return [];
   return readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory() && existsSync(join(root, e.name, "meta.json"))).map((e) => {
-    const meta = readMeta(join(root, e.name));
-    return { name: meta.name, meta, note: readNote(meta.name) };
+    const key = e.name;
+    const meta = readMeta(join(root, key));
+    return { name: key, meta, note: readNote(key) };
   }).sort((a, b) => b.meta.updatedAt.localeCompare(a.meta.updatedAt));
 }
 function tokenize(s) {
@@ -392,6 +473,153 @@ function scoreMatch(task, wm) {
   if (baseWords.some((w) => taskTokens.includes(w)))
     score += 0.15;
   return Math.min(1, score);
+}
+var inUse = new Map;
+function inUseCount(key) {
+  return inUse.get(key) ?? 0;
+}
+function noteSpawnStart(key) {
+  inUse.set(key, inUseCount(key) + 1);
+}
+function noteSpawnEnd(key) {
+  const left = inUseCount(key) - 1;
+  if (left <= 0)
+    inUse.delete(key);
+  else
+    inUse.set(key, left);
+}
+function busyTeams(key) {
+  const hits = [];
+  try {
+    const teamRoot = join(process.cwd(), ".mpd", "team");
+    if (!existsSync(teamRoot))
+      return hits;
+    for (const entry of readdirSync(teamRoot, { withFileTypes: true })) {
+      if (!entry.isDirectory())
+        continue;
+      const file = join(teamRoot, entry.name, "team.json");
+      if (!existsSync(file))
+        continue;
+      try {
+        const team = JSON.parse(readFileSync(file, "utf8"));
+        const members = Array.isArray(team?.members) ? team.members : [];
+        for (const m of members) {
+          const memberName = typeof m?.name === "string" ? m.name : "";
+          if (memberName !== "" && sanitizeName(memberName) === key)
+            hits.push({ teamId: String(team?.id ?? entry.name), member: memberName });
+        }
+      } catch {}
+    }
+  } catch {}
+  return hits;
+}
+function assertNotBusy(keys) {
+  const hits = [];
+  const running = [];
+  for (const key of keys) {
+    for (const h of busyTeams(key)) {
+      if (!hits.some((x) => x.teamId === h.teamId && x.member === h.member))
+        hits.push(h);
+    }
+    const n = inUseCount(key);
+    if (n > 0)
+      running.push(`${key} (${n} in-flight mpd_workmate_spawn)`);
+  }
+  if (hits.length === 0 && running.length === 0)
+    return;
+  const parts = [];
+  if (hits.length > 0)
+    parts.push(`team member(s) ${hits.map((h) => `${h.teamId}/${h.member}`).join(", ")}`);
+  if (running.length > 0)
+    parts.push(running.join(", "));
+  throw new WorkmateError("in-use", `mpd_workmate: ${keys.map((k) => `"${k}"`).join(" / ")} is in use by ${parts.join(" and ")} — archive or retire those teams and let running spawns finish first`, 409, hits);
+}
+function compactUtcStamp() {
+  return new Date().toISOString().replace(/:/g, "").replace(/\.\d+Z$/, "Z");
+}
+function archivePathFor(key) {
+  const archiveRoot = join(workmateRoot(), ".archive");
+  mkdirSync(archiveRoot, { recursive: true });
+  const stamp = compactUtcStamp();
+  let candidate = join(archiveRoot, `${key}-${stamp}`);
+  for (let i = 2;lstatOrNull(candidate) != null && i < 1000; i++)
+    candidate = join(archiveRoot, `${key}-${stamp}-${i}`);
+  return candidate;
+}
+function rewriteNoteIdentity(dir, baseName, oldKey, newKey) {
+  const path = join(dir, "note.md");
+  let raw;
+  try {
+    raw = readFileSync(path, "utf8");
+  } catch {
+    return;
+  }
+  const prefix = `${baseName}-based workmate "${oldKey}".`;
+  if (!raw.startsWith(prefix))
+    return;
+  writeFileSync(path, `${baseName}-based workmate "${newKey}".` + raw.slice(prefix.length));
+}
+function renameWorkmate(nameArg, newNameArg) {
+  const oldKey = nameKey(nameArg, "name");
+  const newKey = nameKey(newNameArg, "new_name");
+  if (newKey === oldKey)
+    throw new WorkmateError("invalid-name", `mpd_workmate: new_name "${newKey}" equals the current key — nothing to rename`, 400);
+  const { meta, dir } = resolveTarget(oldKey);
+  const dst = wmDir(newKey);
+  if (lstatOrNull(dst) != null)
+    throw new WorkmateError("collision", `mpd_workmate: rename target "${newKey}" already exists`, 409);
+  assertNotBusy([oldKey, newKey]);
+  const renamedFrom = unique([...meta.renamedFrom, oldKey]).slice(-10);
+  const nextMeta = { ...meta, name: newKey, renamedFrom, updatedAt: now() };
+  renameSync(dir, dst);
+  try {
+    writeFileSync(join(dst, "meta.json"), JSON.stringify(nextMeta, null, 2) + `
+`);
+    renameIndexKey(oldKey, newKey, nextMeta);
+  } catch (e) {
+    try {
+      renameSync(dst, dir);
+    } catch {}
+    throw new WorkmateError("internal", `mpd_workmate: rename of "${oldKey}" failed (${String(e?.code ?? "error")}) and was rolled back`, 500);
+  }
+  try {
+    rewriteNoteIdentity(dst, meta.baseName, oldKey, newKey);
+  } catch {}
+  return { ok: true, name: newKey, from: oldKey, renamedFrom };
+}
+function deleteWorkmate(nameArg, purgeArg, confirmArg) {
+  const key = nameKey(nameArg, "name");
+  const purge = purgeArg === true;
+  if (purge && String(confirmArg ?? "") !== key) {
+    throw new WorkmateError("confirm-required", `mpd_workmate: purging "${key}" requires confirm to equal the name exactly`, 400);
+  }
+  const { dir } = resolveTarget(key);
+  assertNotBusy([key]);
+  let previous;
+  let removed = false;
+  try {
+    previous = dropIndexKey(key);
+    if (purge) {
+      const stash = join(workmateRoot(), ".archive", `.purging-${key}-${compactUtcStamp()}`);
+      mkdirSync(join(workmateRoot(), ".archive"), { recursive: true });
+      renameSync(dir, stash);
+      removed = true;
+      rmSync(stash, { recursive: true, force: true });
+      return { ok: true, name: key, archived: null, purged: true };
+    }
+    const archived = archivePathFor(key);
+    renameSync(dir, archived);
+    removed = true;
+    return { ok: true, name: key, archived, purged: false };
+  } catch (e) {
+    if (!removed && previous !== undefined) {
+      try {
+        restoreIndexEntry(key, previous);
+      } catch {}
+    }
+    const fate = removed ? "the workmate left the library but leftover bytes may remain under the archive directory" : "the workmate is unchanged";
+    throw new WorkmateError("internal", `mpd_workmate: delete of "${key}" failed (${String(e?.code ?? "error")}) — ${fate}`, 500);
+  }
 }
 function apply(ctx) {
   const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx);
@@ -425,7 +653,7 @@ function apply(ctx) {
     if (existsSync(dir))
       throw new Error(`mpd_workmate: "${name2}" already exists — pick another name or reuse it via mpd_workmate_spawn`);
     mkdirSync(dir, { recursive: true });
-    const meta = { name: name2, baseId: base.id, baseName: base.name, description: base.description, provider: base.provider, model: base.model, readonly: base.readonly, createdAt: now(), updatedAt: now(), uses: 0, lastTask: null };
+    const meta = { name: name2, baseId: base.id, baseName: base.name, description: base.description, provider: base.provider, model: base.model, readonly: base.readonly, createdAt: now(), updatedAt: now(), uses: 0, lastTask: null, renamedFrom: [] };
     writeFileSync(join(dir, "meta.json"), JSON.stringify(meta, null, 2) + `
 `);
     writeFileSync(join(dir, "persona.md"), capText(base.persona, PERSONA_CAP) + `
@@ -434,27 +662,29 @@ function apply(ctx) {
     const note = capText(String(noteArg ?? "").trim() || autoNote(meta, base.persona, ""), NOTE_CAP);
     writeFileSync(join(dir, "note.md"), note + `
 `);
-    writeIndexEntry(meta);
+    writeIndexEntry(name2, meta);
     return { name: name2, baseId: base.id, baseName: base.name, readonly: base.readonly, provider: base.provider, model: base.model, path: dir, note };
   }
   const workmateLibrary = {
-    list: () => listInstances().map(({ name: name2, meta, note }) => ({ name: name2, baseId: meta.baseId, baseName: meta.baseName, readonly: meta.readonly, uses: meta.uses, updatedAt: meta.updatedAt, note })),
+    list: () => listInstances().map(({ name: name2, meta, note }) => ({ name: name2, baseId: meta.baseId, baseName: meta.baseName, readonly: meta.readonly, uses: meta.uses, updatedAt: meta.updatedAt, renamedFrom: meta.renamedFrom, note })),
     get: (name2) => {
       try {
-        const { meta } = ensureInstance(name2);
-        return { ...meta, note: readNote(meta.name) };
+        const { meta, key } = ensureInstance(name2);
+        return { ...meta, name: key, note: readNote(key) };
       } catch {
         return null;
       }
     },
     read: (name2) => {
       try {
-        const { meta } = ensureInstance(name2);
-        return { ...meta, persona: readPersona(meta.name), memory: readMemory(meta.name), note: readNote(meta.name) };
+        const { meta, key } = ensureInstance(name2);
+        return { ...meta, name: key, persona: readPersona(key), memory: readMemory(key), note: readNote(key) };
       } catch {
         return null;
       }
-    }
+    },
+    rename: (name2, newName) => renameWorkmate(name2, newName),
+    delete: (name2, purge = false, confirm = "") => deleteWorkmate(name2, purge, confirm)
   };
   ctx.provide("mpdWorkmate", workmateLibrary);
   dsh.registerTool({
@@ -465,7 +695,7 @@ function apply(ctx) {
 ` + v.workmates.map((w) => "- " + w.name + " [" + w.baseName + (w.readonly ? " readonly" : "") + "] uses=" + w.uses + " :: " + String(w.note).slice(0, 140)).join(`
 `) || "(empty)") },
     execute: async () => {
-      const list = listInstances().map(({ name: name2, meta, note }) => ({ name: name2, baseId: meta.baseId, baseName: meta.baseName, readonly: meta.readonly, provider: meta.provider, model: meta.model, uses: meta.uses, updatedAt: meta.updatedAt, lastTask: meta.lastTask, note }));
+      const list = listInstances().map(({ name: name2, meta, note }) => ({ name: name2, baseId: meta.baseId, baseName: meta.baseName, readonly: meta.readonly, provider: meta.provider, model: meta.model, uses: meta.uses, updatedAt: meta.updatedAt, lastTask: meta.lastTask, renamedFrom: meta.renamedFrom, note }));
       return { workmates: list, count: list.length };
     }
   });
@@ -486,13 +716,13 @@ summary: ` + v.summary + (v.recommendation ? `
 recommendation: ` + v.recommendation : "") + (v.details ? `
 details: ` + v.details : "")) },
     execute: async (args, exec) => {
-      const { meta } = ensureInstance(String(args?.name ?? ""));
+      const { meta, key } = ensureInstance(String(args?.name ?? ""));
       const task = String(args?.task ?? "").trim();
       if (!task)
         throw new Error("mpd_workmate_spawn: task required");
-      const persona = readPersona(meta.name);
-      const memory = readMemory(meta.name);
-      const note = readNote(meta.name);
+      const persona = readPersona(key);
+      const memory = readMemory(key);
+      const note = readNote(key);
       const prompt = persona + `
 
 Your independent memory (bounded, latest first):
@@ -507,19 +737,24 @@ Context:
 ` + String(args.context) : "") + `
 
 Work with the tools your role requires (read-only workmates must never modify anything).` + " BEFORE your final report, call mpd_workmate_reflect with a concise self-summary (task / outcome / what you learned / optional persona_delta / optional new note) so your workmate persona and memory evolve. Then end with ONLY the structured report (name/summary/recommendation/details/evidence).";
-      const result = await dsh.spawnAgent({
-        label: "workmate-" + meta.name + "-" + randomUUID().slice(0, 8),
-        prompt,
-        parent: exec.agent,
-        signal: exec.signal,
-        provider: meta.provider,
-        model: meta.model,
-        persona,
-        outputSchema: REPORT_SCHEMA,
-        ...meta.readonly ? { toolFilter: { deny: READONLY_DENY } } : {}
-      });
-      const st = result.structured ?? {};
-      return { name: meta.name, status: "complete", summary: String(st.summary ?? ""), recommendation: String(st.recommendation ?? ""), details: String(st.details ?? ""), evidence: Array.isArray(st.evidence) ? st.evidence.map(String) : [], stopReason: result.stopReason ?? null };
+      noteSpawnStart(key);
+      try {
+        const result = await dsh.spawnAgent({
+          label: "workmate-" + key + "-" + randomUUID().slice(0, 8),
+          prompt,
+          parent: exec.agent,
+          signal: exec.signal,
+          provider: meta.provider,
+          model: meta.model,
+          persona,
+          outputSchema: REPORT_SCHEMA,
+          ...meta.readonly ? { toolFilter: { deny: READONLY_DENY } } : {}
+        });
+        const st = result.structured ?? {};
+        return { name: key, status: "complete", summary: String(st.summary ?? ""), recommendation: String(st.recommendation ?? ""), details: String(st.details ?? ""), evidence: Array.isArray(st.evidence) ? st.evidence.map(String) : [], stopReason: result.stopReason ?? null };
+      } finally {
+        noteSpawnEnd(key);
+      }
     }
   });
   dsh.registerTool({
@@ -528,25 +763,26 @@ Work with the tools your role requires (read-only workmates must never modify an
     parameters: { type: "object", properties: { name: { type: "string" }, task: { type: "string" }, outcome: { type: "string" }, persona_delta: { type: "string", description: "optional persona revision text (merged, capped)" }, note: { type: "string", description: "optional replacement note card; auto-generated if omitted" } }, required: ["name", "task", "outcome"], additionalProperties: false },
     output: { schema: { type: "object", properties: { name: { type: "string" }, updated: { type: "boolean" }, uses: { type: "integer" }, personaChars: { type: "integer" }, memoryChars: { type: "integer" }, noteChars: { type: "integer" } }, required: ["name", "updated"], additionalProperties: false }, render: (_a, v) => textBlock2("workmate " + v.name + " reflected (uses=" + v.uses + ", persona " + v.personaChars + "B / memory " + v.memoryChars + "B / note " + v.noteChars + "B)") },
     execute: async (args) => {
-      const { meta } = ensureInstance(String(args?.name ?? ""));
+      const { meta, key } = ensureInstance(String(args?.name ?? ""));
       const task = String(args?.task ?? "").trim();
       const outcome = String(args?.outcome ?? "").trim();
       if (!task || !outcome)
         throw new Error("mpd_workmate_reflect: task and outcome required");
-      appendMemory(meta.name, `## ${now()} — ${capText(task, 200)}
+      appendMemory(key, `## ${now()} — ${capText(task, 200)}
 ${capText(outcome, 1200)}`);
-      const persona = mergePersona(meta.name, String(args?.persona_delta ?? "").trim());
-      const memory = readMemory(meta.name);
+      const persona = mergePersona(key, String(args?.persona_delta ?? "").trim());
+      const memory = readMemory(key);
       meta.uses += 1;
       meta.lastTask = task;
       meta.updatedAt = now();
-      writeFileSync(join(wmDir(meta.name), "meta.json"), JSON.stringify(meta, null, 2) + `
+      meta.name = key;
+      writeFileSync(join(wmDir(key), "meta.json"), JSON.stringify(meta, null, 2) + `
 `);
-      const note = capText(String(args?.note ?? "").trim() || autoNote(meta, persona, memory, readNote(meta.name)), NOTE_CAP);
-      writeFileSync(join(wmDir(meta.name), "note.md"), note + `
+      const note = capText(String(args?.note ?? "").trim() || autoNote(meta, persona, memory, readNote(key)), NOTE_CAP);
+      writeFileSync(join(wmDir(key), "note.md"), note + `
 `);
-      writeIndexEntry(meta);
-      return { name: meta.name, updated: true, uses: meta.uses, personaChars: persona.length, memoryChars: memory.length, noteChars: note.length };
+      writeIndexEntry(key, meta);
+      return { name: key, updated: true, uses: meta.uses, personaChars: persona.length, memoryChars: memory.length, noteChars: note.length };
     }
   });
   dsh.registerTool({
@@ -571,6 +807,21 @@ ${capText(outcome, 1200)}`);
       return { matched, threshold: MATCH_THRESHOLD, matches, suggestion: matched ? `Delegate to "${best.name}" (score ${best.score}).` : "No note matches well enough — initialize a NEW workmate with mpd_workmate_init instead of forcing a weak match." };
     }
   });
+  dsh.registerTool({
+    name: "mpd_workmate_rename",
+    description: "Rename a workmate instance: MOVES its evolved identity (directory key, metadata, index key, note self-reference, previous-name history) instead of re-instantiating it — persona, memory, caps, use count and history are preserved byte-for-byte. Refused while the workmate is in use by a team member or an in-flight spawn, and refused if the target name already exists. Names are ASCII [a-z0-9_-] only: uppercase, CJK, spaces and punctuation are rejected before anything is touched.",
+    parameters: { type: "object", properties: { name: { type: "string", description: "current workmate name (its directory key)" }, new_name: { type: "string", description: "new name — ASCII, lowercase, [a-z0-9_-]" } }, required: ["name", "new_name"], additionalProperties: false },
+    output: { schema: { type: "object", properties: { ok: { type: "boolean" }, name: { type: "string" }, from: { type: "string" }, renamedFrom: { type: "array", items: { type: "string" } } }, required: ["ok", "name", "from"], additionalProperties: false }, render: (_a, v) => textBlock2('workmate "' + v.from + '" renamed to "' + v.name + '"' + (Array.isArray(v.renamedFrom) && v.renamedFrom.length ? `
+previous names: ` + v.renamedFrom.join(", ") : "")) },
+    execute: async (args) => renameWorkmate(args?.name, args?.new_name)
+  });
+  dsh.registerTool({
+    name: "mpd_workmate_delete",
+    description: "Delete a workmate instance. ARCHIVE-FIRST by default: the instance leaves the library (no longer listed or matchable, and restorable) into ~/.mpd/workmate/.archive/. Real removal requires purge: true together with confirm set to the exact name — without both, nothing is destroyed. Refused while the workmate is in use by a team member or an in-flight spawn.",
+    parameters: { type: "object", properties: { name: { type: "string", description: "workmate name to delete" }, purge: { type: "boolean", description: "true = permanently remove instead of archiving (requires confirm)" }, confirm: { type: "string", description: "must equal name exactly when purge is true" } }, required: ["name"], additionalProperties: false },
+    output: { schema: { type: "object", properties: { ok: { type: "boolean" }, name: { type: "string" }, archived: { oneOf: [{ type: "string" }, { type: "null" }] }, purged: { type: "boolean" } }, required: ["ok", "name", "archived", "purged"], additionalProperties: false }, render: (_a, v) => textBlock2('workmate "' + v.name + '" ' + (v.purged ? "PURGED (permanently removed)" : "archived (gone from the library, still restorable)")) },
+    execute: async (args) => deleteWorkmate(args?.name, args?.purge, args?.confirm)
+  });
   let webRegistered = false;
   const registerWebSurface = () => {
     if (webRegistered)
@@ -579,11 +830,32 @@ ${capText(outcome, 1200)}`);
     if (webServer === undefined || typeof ctx.effect !== "function")
       return;
     webRegistered = true;
+    const json = (res, status, body, headers = {}) => {
+      res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...headers });
+      res.end(JSON.stringify(body));
+    };
+    const failure = (res, e) => {
+      if (e instanceof WorkmateError) {
+        json(res, e.status, { error: e.message, reason: e.code, ...e.blocking.length > 0 ? { blocking: e.blocking } : {} });
+        return;
+      }
+      json(res, 500, { error: `mpd_workmate: internal error (${String(e?.code ?? "error")})`, reason: "internal" });
+    };
+    const readBody = async (req) => {
+      let raw = "";
+      for await (const chunk of req)
+        raw += String(chunk);
+      try {
+        return { ok: true, body: raw ? JSON.parse(raw) : {} };
+      } catch {
+        return { ok: false };
+      }
+    };
     ctx.effect(() => webServer.register({
       kind: "exact",
       path: "/plugins/mpd-workmate/list",
       handler: async (_req, res) => {
-        const list = listInstances().map(({ name: name2, meta, note }) => ({ name: name2, baseId: meta.baseId, baseName: meta.baseName, readonly: meta.readonly, provider: meta.provider, model: meta.model, uses: meta.uses, updatedAt: meta.updatedAt, lastTask: meta.lastTask, note }));
+        const list = listInstances().map(({ name: name2, meta, note }) => ({ name: name2, baseId: meta.baseId, baseName: meta.baseName, readonly: meta.readonly, provider: meta.provider, model: meta.model, uses: meta.uses, updatedAt: meta.updatedAt, lastTask: meta.lastTask, renamedFrom: meta.renamedFrom, note }));
         res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
         res.end(JSON.stringify({ workmates: list }));
       }
@@ -650,6 +922,44 @@ ${capText(outcome, 1200)}`);
         }
       }
     }), "mpd-workmate: init route");
+    ctx.effect(() => webServer.register({
+      kind: "exact",
+      path: "/plugins/mpd-workmate/rename",
+      handler: async (req, res) => {
+        if (req.method !== "POST") {
+          res.writeHead(405, { allow: "POST", "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+          res.end();
+          return;
+        }
+        const parsed = await readBody(req);
+        if (!parsed.ok)
+          return json(res, 400, { error: "invalid JSON" });
+        try {
+          json(res, 200, renameWorkmate(parsed.body?.name, parsed.body?.new_name));
+        } catch (e) {
+          failure(res, e);
+        }
+      }
+    }), "mpd-workmate: rename route");
+    ctx.effect(() => webServer.register({
+      kind: "exact",
+      path: "/plugins/mpd-workmate/delete",
+      handler: async (req, res) => {
+        if (req.method !== "POST") {
+          res.writeHead(405, { allow: "POST", "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+          res.end();
+          return;
+        }
+        const parsed = await readBody(req);
+        if (!parsed.ok)
+          return json(res, 400, { error: "invalid JSON" });
+        try {
+          json(res, 200, deleteWorkmate(parsed.body?.name, parsed.body?.purge, parsed.body?.confirm));
+        } catch (e) {
+          failure(res, e);
+        }
+      }
+    }), "mpd-workmate: delete route");
   };
   registerWebSurface();
   if (typeof ctx.on === "function") {
@@ -662,11 +972,17 @@ ${capText(outcome, 1200)}`);
 export {
   scoreMatch,
   sanitizeName,
+  renameWorkmate,
+  nameKey,
   name,
   inject,
+  deleteWorkmate,
   capText,
+  busyTeams,
   autoNote,
   apply,
+  WorkmateError,
+  READONLY_DENY,
   PERSONA_CAP,
   NOTE_CAP,
   MEMORY_CAP,

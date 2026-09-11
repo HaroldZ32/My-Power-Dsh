@@ -1,0 +1,44 @@
+t15 WITNESS BY THE t3 AUTHOR (the defect was mine; this is the non-author check Junior Engineer asked for)
+
+BOTH HALVES, WITNESSED BY RE-RUNNING THEIR ARTIFACTS MYSELF (no boot burned; all commands re-executed)
+
+1) FAILING HALF — the OLD shape is rejected, by the REAL harness validator:
+   cmd: bun test evidence/workmate/rename-delete-core/2026-09-10T13-49-39.352Z/failing-first.test.ts
+   out: OLD-SCHEMA VIOLATIONS: ["\"value.ok\" is not a declared property (additionalProperties: false)"]
+        (fail) FAILING FIRST: the old schema rejects the value the tool returns  -> 0 pass / 1 fail, exit 1
+   The validator is imported from the INSTALLED dsh-tools (validateJsonSchemaValue), not a stub, and the
+   value is the tool's real return (`{ok:true, name, from, renamedFrom}`), so this control fails for the
+   right reason and would pass only if the defect were absent.
+
+2) PASSING HALF — the repaired shape is accepted, through the same real validator:
+   cmd: bun test packages/mpd-workmate-plugin/test
+   out: 28 pass / 0 fail / 331 expect() calls
+   The package case imports the real validator too and states it "cannot be skipped, it IS the regression
+   lock" (rename-delete.test.ts ~line 646-677).
+
+3) PRE-FIX REAL-BOOT REJECTION IS ON DISK (their strongest artifact, read and confirmed):
+   evidence/workmate/rename-delete-core/2026-09-10T13-49-39.352Z/boot-before.log shows a real boot where
+   `tool.rename`, `tool.rename.retry-after-reported-failure`, `tool.delete.archive` and `tool.delete.purge`
+   all return `tool "mpd_workmate_*" returned invalid output: "value.ok" is not a declared property
+   (additionalProperties: false)` — WHILE the mutation landed (`state.after-rename: oldKey null,
+   newKeyExists true`; `state.after-archive: get null, listContains false`). That is the value-level
+   pre-fix rejection at real boot, measured before the repair, so the failing half is covered at BOTH
+   levels (real-validator control + real-boot log).
+
+4) REBINDING PROOF (the mechanism my two overlay attempts lacked), read and confirmed:
+   REBINDING-PROOF.txt shows the loader NAMING the mutated copy as the applied entry —
+   `failed to apply loader entry mpd-workmate (/root/.../.mpd/t15-outer/t15-inner/packages/mpd-workmate-plugin/dist/index.js):
+   unsupported JSON schema: schema.required names "ok" which is not in properties` — while the live dist
+   stayed healthy. So a mutation CAN be mounted by rewriting the row TEXT in the profile's composed
+   patch ($DSH_HOME/cordis.patch.yml), which is exactly why my id-target overlay attempts were inert
+   (an overlay applies config, it cannot rebind a row's module).
+
+REMAINING GAP, NARROWER THAN REPORTED: the single-lane combination "mount the OLD shape AND drive valid
+calls in one boot" is still not demonstrated (their rebinding lane hits MISSING_CREDENTIAL in an
+install-profile sandbox). That is a methodological nicety rather than an evidence gap, because the
+value-level pre-fix rejection is already on disk from a real boot (item 3) and the real-validator control
+covers the schema/value pair directly (item 1).
+
+VERDICT (reviewer side, non-author): t15's repair is verified on the frozen bytes (src 24cd41f4f83cca28,
+dist a7b558e9bc62ebcb — hashes unchanged since my earlier valid-input probe, whose INVALID_OUTPUT_ERRORS=0
+also stands), and the defect class is locked by a control that demonstrably fails on the old shape.

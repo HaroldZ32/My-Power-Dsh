@@ -1,0 +1,32 @@
+=== verify-vendor on a PRISTINE detached worktree (proves the skills treeSha failure pre-dates the migration) ===
+worktree: /tmp/vv-dfbfd2
+date: 2026-09-10T02:39:42Z
+HEAD: f69708809ed63a57461aa6730d297afc09e772a3 (branch dev)
+Preparing worktree (detached HEAD f697088)
+HEAD is now at f697088 merge(feature): workmate library as a DSH-better-sidebar tab
+--- pristine worktree: MPD_UPSTREAM_ROOT=... node scripts/verify-vendor.mjs
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] FAIL - asset skills treeSha mismatch
+[verify-vendor] asset OK: skills 361 files
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[pristine exit code: 1]
+--- main repo (uncommitted migration present, same env): node scripts/verify-vendor.mjs
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] FAIL - asset skills count drifted: 362 vs 361
+[verify-vendor] FAIL - asset skills treeSha mismatch
+[verify-vendor] asset OK: skills 362 files
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[main exit code: 1]
+[worktree removed]

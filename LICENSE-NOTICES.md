@@ -7,9 +7,14 @@
 
 ## dsh-agent-teams (MIT) — adopted plugin, first-class main code
 
-The `agent-teams` plugin (tools `agent_teams_*`, Web activity panel, team scheduler)
-is adopted from the dsh-agent-teams project (v0.1.14,
-https://github.com/NanmiCoder/dsh-agent-teams) and distributed under the MIT License.
+The `agent-teams` plugin (tools `agent_teams_*`, team scheduler; its Web views back the
+AgentTeams sidebar tab contributed by `mpd-bundle-plugin`)
+is adopted from the dsh-agent-teams project (0.1.14 body, with the audited upstream
+0.1.16-rc.3 deltas backported into `lib/` — Harness subagent boundary, agent-scoped
+capabilities, tool names, authenticated web routes, member turn-failure handling and the
+durability fixes; https://github.com/NanmiCoder/dsh-agent-teams) and distributed under the
+MIT License. The adopted package version is recorded as `0.1.16-rc.3-mpd`; the browser
+bundle (`lib/client.js`) is still the 0.1.14 build.
 It ships as **first-class main code** at `packages/mpd-agent-teams-plugin/` (lib +
 assets + package manifest; loaded via the bundle exports map; plugin row id
 `agent-teams`, tools `agent_teams_*` kept stable). Its server-side runtime closure is
@@ -31,10 +36,20 @@ Local adaptations in the adopted main code (all marked in-source with `LOCAL ADA
 - `memberPersona` injects the workmate library's persona/memory for members named after a
   workmate;
 - `lib/members.js` degrades instead of aborting when the host harness build does not expose
-  `ctx.subagents.registerContinuableSetup` (dsh 0.1.2-rc.1 dropped the seam): the member
-  model-selection bridge is disabled with a warning, and members keep the Harness
-  descriptor provider/model. Without this guard a single missing optional seam aborted the
-  whole plugin tree at boot, so no bundle row (skills, preset, tools) could load.
+  `ctx.subagents.registerContinuableSetup` (dsh 0.1.2-rc.1 and every later host, incl.
+  0.1.5-rc.2, dropped the seam): the member model-selection bridge is disabled with a
+  warning, and members keep the Harness descriptor provider/model. Without this guard a
+  single missing optional seam aborted the whole plugin tree at boot, so no bundle row
+  (skills, preset, tools) could load.
+- `lib/harness-compat.js` + `lib/members.js` take the live child Agent from the
+  `agent/session-start` payload (`setup(agent.ctx, agent)`) instead of reading
+  `childCtx.agent`. An agent-scoped Cordis ctx refuses undeclared property reads, so the
+  ctx read threw `cannot get property "agent" without inject` on dsh 0.1.5; because the
+  listener also fires for the captain's own session-start, that disabled team mode entirely
+  (boot exited 1 with "member initialization failed"). `agent` is not a registerable
+  service — the host only injects `agents` (plural registry) — so the Agent must come from
+  the payload. The legacy `registerContinuableSetup` path keeps `childCtx.agent` as a
+  fallback, where that ctx does carry it.
 
 MIT License
 

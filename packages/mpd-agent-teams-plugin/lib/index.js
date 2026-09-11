@@ -17,7 +17,8 @@
  * @module dsh-agent-teams
  */
 import z from '../_deps/schemastery/lib/index.mjs';
-import { haltTeamWork, registerAgentTeamsTools, } from "./tools.js";
+import { createUserMessage } from '../_deps/dsh-llm/lib/index.js';
+import { haltTeamWork, registerAgentTeamsTools, stagedPlanApprovedContext, } from "./tools.js";
 import { installAgentTeamsGestureBoundary, registerAgentTeamsCommand } from "./command.js";
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -27,6 +28,9 @@ import { findTeamByCaptain } from "./state.js";
 import { formatProfilesForPrompt } from "./profiles.js";
 import { qualityPlanningPrompt } from "./quality-gates.js";
 import { installSessionTeamPolicy } from "./session-start.js";
+import { installTeamCapabilities } from "./capabilities.js";
+import { TEAM_TOOL_NAMES } from "./tool-names.js";
+import { RequestBodyError, authenticatedWebRoutes, readJsonRequest } from "./web-routes.js";
 /** Web-server service key candidates, newest first. */
 const WEB_SERVER_KEYS = ['webServer', 'httpServer'];
 /** Workspace registry service key candidates, newest first. */
@@ -133,28 +137,19 @@ export function apply(ctx, config) {
     // concurrent activation — so capability validation happens at the first
     // member spawn (`spawnMember`), the earliest point the provider list is
     // settled, rather than here.
-    const toolNames = [
-        'agent_teams_create',
-        'agent_teams_approve',
-        'agent_teams_edit_plan',
-        'agent_teams_add_member',
-        'agent_teams_remove_member',
-        'agent_teams_create_task',
-        'agent_teams_reassign_task',
-        'agent_teams_claim_task',
-        'agent_teams_update_task',
-        'agent_teams_send_message',
-        'agent_teams_status',
-        'agent_teams_resume',
-        'agent_teams_delete',
-    ].join(', ');
-    ctx.systemPrompt.section({
-        name: 'agent-teams:usage',
-        order: config.promptSectionOrder ?? 117,
-        text: () => usageSectionText(toolNames, formatProfilesForPrompt(config.profiles ?? {})),
-    });
     // Exported for TDD / docs checks. Not a public runtime API.
     const agentTeamsRuntime = registerAgentTeamsTools(ctx, resolved);
+    // Agent-scoped usage section + member tool restriction. Installed after all
+    // business definitions registered: the captain prefix is snapshotted once,
+    // and a member is identified from durable state (pending spawn, retired
+    // index, or live team record) before its first prompt assembly.
+    installTeamCapabilities(ctx, {
+        stateDir: resolved.stateDir,
+        isPendingMember: agentTeamsRuntime.isPendingMember,
+        order: config.promptSectionOrder ?? 117,
+        // Keep the bounded profile directory available without extra tool calls.
+        captainPrompt: () => usageSectionText(TEAM_TOOL_NAMES.join(', '), formatProfilesForPrompt(config.profiles ?? {})),
+    });
     // Session-start team policy (off by default; the bundle enables it for the
     // MPD main agent). Installed AFTER tool registration so the shared profile
     // init path is available for provisioning.
@@ -184,10 +179,14 @@ export function apply(ctx, config) {
     const registerWebSurface = () => {
         if (webRegistered)
             return;
-        const webServer = (ctx.get(WEB_SERVER_KEYS[0]) ?? ctx.get(WEB_SERVER_KEYS[1]));
+        const rawWebServer = (ctx.get(WEB_SERVER_KEYS[0]) ?? ctx.get(WEB_SERVER_KEYS[1]));
         const workspaceRegistry = (ctx.get(WORKSPACE_KEYS[0]) ?? ctx.get(WORKSPACE_KEYS[1]));
-        if (webServer === undefined || workspaceRegistry === undefined)
+        if (rawWebServer === undefined || workspaceRegistry === undefined)
             return;
+        // These routes serve workspace team state and accept plan mutations, so
+        // they run inside the host's browser-authentication fence and fail
+        // closed (503) when the Connection service is unavailable.
+        const webServer = authenticatedWebRoutes(rawWebServer, () => ctx.get('connection'));
         webRegistered = true;
         // Activity panel data route: the browser floater polls this for team
         // snapshots (disk truth + live subagent activity). Mirrors the Claude
@@ -222,27 +221,13 @@ export function apply(ctx, config) {
                     res.end();
                     return;
                 }
-                let raw = '';
-                try {
-                    raw = await new Promise((resolve, reject) => {
-                        const chunks = [];
-                        req.on('data', (chunk) => { chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)); });
-                        req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
-                        req.on('error', reject);
-                    });
-                }
-                catch {
-                    res.writeHead(400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
-                    res.end(JSON.stringify({ error: 'invalid request body' }));
-                    return;
-                }
                 let payload;
                 try {
-                    payload = raw.trim() === '' ? {} : JSON.parse(raw);
+                    payload = await readJsonRequest(req);
                 }
-                catch {
-                    res.writeHead(400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
-                    res.end(JSON.stringify({ error: 'invalid JSON' }));
+                catch (error) {
+                    res.writeHead(error instanceof RequestBodyError ? error.status : 400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+                    res.end(JSON.stringify({ error: error instanceof Error ? error.message : 'invalid request body' }));
                     return;
                 }
                 const sessionId = typeof payload.sessionId === 'string' ? payload.sessionId.trim() : '';
@@ -294,28 +279,10 @@ export function apply(ctx, config) {
                 }
                 let payload;
                 try {
-                    const chunks = [];
-                    const raw = await new Promise((resolve, reject) => {
-                        let size = 0;
-                        req.on('data', (chunk) => {
-                            const part = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-                            size += part.length;
-                            if (size > 1_000_000) {
-                                reject(new Error('request body is too large'));
-                                return;
-                            }
-                            chunks.push(part);
-                        });
-                        req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
-                        req.on('error', reject);
-                    });
-                    const parsed = raw.trim() === '' ? {} : JSON.parse(raw);
-                    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed))
-                        throw new Error('body must be an object');
-                    payload = parsed;
+                    payload = await readJsonRequest(req);
                 }
                 catch (error) {
-                    res.writeHead(400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+                    res.writeHead(error instanceof RequestBodyError ? error.status : 400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
                     res.end(JSON.stringify({ error: error instanceof Error ? error.message : 'invalid request body' }));
                     return;
                 }
@@ -344,6 +311,20 @@ export function apply(ctx, config) {
                 try {
                     if (action === 'approve') {
                         const approved = await agentTeamsRuntime.approveStagedTeam(captain, teamId);
+                        // The browser receives the HTTP result, so the model needs its own
+                        // control message. steer wakes an idle captain or joins its next
+                        // step; the tool approve path already returns to the model itself.
+                        try {
+                            captain.steer(createUserMessage({
+                                content: [{ type: 'text', text: stagedPlanApprovedContext(team.name) }],
+                                source: { kind: 'plugin', plugin: 'dsh-agent-teams' },
+                            }));
+                        }
+                        catch (error) {
+                            // Approval is already committed. Do not report a failed approval
+                            // and invite a retry that could duplicate the user's action.
+                            ctx.logger.warn(`agent-teams: approval notification failed for ${teamId}: ${String(error)}`);
+                        }
                         res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
                         res.end(JSON.stringify({ ok: true, phase: 'running', ...approved }));
                         return;

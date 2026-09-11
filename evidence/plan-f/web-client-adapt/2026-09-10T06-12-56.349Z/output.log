@@ -1,0 +1,7 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=no-binary binary=- cwd=/root/dshProj/my-power-dsh
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/.qa-web-client/profiles/w/node_modules/@mpd-dsh/mpd/skills (provider mpd-bundle, bundle 0.3.2)
+CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.
+dsh web: http://127.0.0.1:3185/?token=j5BgB0IMC0-YyfifOYQgWmbVZG8U8P6hh48R0-HJSlE
+
+--- client ids ---

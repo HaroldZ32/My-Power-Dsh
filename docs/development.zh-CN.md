@@ -82,9 +82,10 @@ QA skill 是 `skills/dsh-qa`（`SKILL.md`）。每个 case 脚本都带 `--self-
 | `skill-catalog-probe` | 已安装 bundle 供给技能目录（22 个 bundled 技能，fixture 可加载），且无 `$DSH_HOME/skills` 副本 | `node skills/dsh-qa/scripts/skill-catalog-probe.mjs` |
 | `relocate-smoke` | 迁移后的 bundle 供给 preset + 语料库，无 dev 路径泄漏、无 home 副本 | `node skills/dsh-qa/scripts/relocate-smoke.mjs` |
 | `team-route-rewire` | 暂存 bundle 安装 → agent-teams 行组合 → probe 启动 → web `/plugins/dsh-agent-teams/state` 200 | `node skills/dsh-qa/scripts/team-route-rewire.mjs` |
-| `workmate-library` | 针对沙箱 HOME 的 init→list→spawn→reflect→match | `node skills/dsh-qa/scripts/workmate-library.mjs` |
+| `workmate-library` | 针对沙箱 HOME 的 init→list→spawn→reflect→match；self-test 同时钉住重命名/删除 host 路由、服务面与 §D reason 矩阵 | `node skills/dsh-qa/scripts/workmate-library.mjs` |
 | `workmate-team-member` | workmate 支撑成员注入 + 真实团队中的自我反思 | `node skills/dsh-qa/scripts/workmate-team-member.mjs` |
-| `web-client-adapt` | `@mpd-dsh/mpd` 的 boot-graph client entry + client.js id + workmate host 路由 | `node skills/dsh-qa/scripts/web-client-adapt.mjs` |
+| `web-client-adapt` | `@mpd-dsh/mpd` 的 boot-graph client entry + client.js id + workmate host 路由（含 client 的重命名/删除 URL） | `node skills/dsh-qa/scripts/web-client-adapt.mjs` |
+| `preset-conformance` | 每一个 Harness 自有行配置（preset + bundle patch + QA overlay）都与**已安装**的 Harness schema 相符，`mpd` preset 的行集合与已安装 `standard` preset 完全一致，并且以 `agentPreset: "mpd"` 真实创建的会话确实**挂载成功** —— 并带一个必须失败的负向对照 | `node skills/dsh-qa/scripts/preset-conformance.mjs` |
 | `agent-teams-adopt`（历史 C1） | MIT 声明 + 采纳接线 | `node skills/dsh-qa/scripts/agent-teams-adopt.mjs` |
 
 **QA 硬规则**（AGENTS.md §7）：沙箱 `DSH_HOME=<mktemp>`；只复制一次凭据；断言沙箱
@@ -107,7 +108,7 @@ shell 子进程没有 —— 在 case 命令里显式导出）。
 | QA self-tests | `bun run test:qa` + 每个 case `--self-test` |
 | QA 真实 case | `node skills/dsh-qa/scripts/<case>.mjs` |
 | 安装器 | `node scripts/install-profile.mjs --dry-run` / `--self-test` |
-| 启动检查 | 隔离 DSH_HOME 下 `dsh --profile <p> --dump-config` |
+| 启动检查（MOUNT） | 在隔离 `DSH_HOME` + 沙箱 `HOME` 中真正 apply 各行的启动：`bun skills/dsh-qa/scripts/bundle-lifecycle.mjs`（host 行）/ `node skills/dsh-qa/scripts/preset-conformance.mjs`（`mpd` preset 的 standing 挂载）。`dsh --profile <p> --dump-config` 只组合行，**不是**该门禁（AGENTS.md §4） |
 
 门禁没有磁盘上的证据 = 变更不算完成。
 

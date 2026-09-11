@@ -1,0 +1,13 @@
+{
+  "proof": "real boot that MOUNTS the rows (registration instrumentation via a --patch probe row)",
+  "isolation": {
+    "HOME": "temp sandbox",
+    "DSH_HOME": "temp sandbox"
+  },
+  "apply_crash_signatures": 0,
+  "probe_reached_final_marker": true,
+  "workmate_tools_registered": "7/7",
+  "boot_exit": 124,
+  "passed": true,
+  "note": "no --dump-config result is cited as load evidence; the mount probe reads the live tool registry after a settle window"
+}

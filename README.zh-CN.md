@@ -37,7 +37,7 @@ dsh plugin --profile web add .        # 在仓库根目录执行
 - [`AGENTS.md`](AGENTS.md) —— 仓库约束手册（约定、门禁、git 模型、排障）。
 
 本 bundle 安装后提供 `@mpd-dsh/mpd`：DeepSeek 双轨（官方默认）、MCP 服务器、全部
-mpd 插件（含 codegraph 自动初始化）、采纳的 agent-teams（团队 + Web 面板）、`mpd`
+mpd 插件（含 codegraph 自动初始化）、采纳的 agent-teams（团队工具 + 侧边栏团队页）、`mpd`
 主代理预设，以及作为 SUBAGENTS 的 OMO 起源专家：
 
 - **`mpd` 预设的每个工程会话都会尝试读取 `AGENT.md`**（依次回退 `AGENTS.md`、
@@ -49,27 +49,41 @@ mpd 插件（含 codegraph 自动初始化）、采纳的 agent-teams（团队 +
   被机制上禁用写工具。
 - **团队模式采用采纳的 dsh-agent-teams 插件**（主代码位于
   `packages/mpd-agent-teams-plugin`，`agent_teams_*`
-  工具 + Web 活动面板）：一个正常命名的 `mpd` roster profile
+  工具 + AgentTeams 侧边栏 Tab）：一个正常命名的 `mpd` roster profile
   （`taskPlanning: captain`）把上述专家暴露为队友实例化模板。captain 调用
-  `agent_teams_create(profile="mpd")`，在面板中暂存计划，然后由依赖感知调度器执行。
-- **Web GUI**（`@mpd-dsh/mpd` client bundle，`packages/mpd-bundle-plugin`）：
-  **Workmates** 页面通过 `ctx.betterSidebar.registerTab` 注册为 **DSH-better-sidebar**
-  （社区 `dsh-better-sidebar` bundle）的一个 Tab —— 列出 `~/.mpd/workmate/` 实例
-  （base、uses、更新时间、note），点开查看 persona/memory/note，并用由 roster 填充的
-  base 选择器新建；数据来自 `GET /plugins/mpd-workmate/{list,roster,get}` 与
-  `POST /plugins/mpd-workmate/init`。若 profile 中没有该侧边栏，同一页面会以 bundle 自带的
-  🤖 浮窗 + 侧栏脚部按钮挂载。采纳的 agent-teams 团队卡片/活动浮窗依赖 harness 的
-  `conversationEvents` 服务，而当前 DSH 版本已不再提供，因此不挂载（团队协作通过
-  `agent_teams_*` 工具进行）。bundle patch 带有 `mpd-web-compat` 自引用行
+  `agent_teams_create(profile="mpd")`，在 AgentTeams Tab 中暂存计划，然后由依赖感知调度器执行。
+- **Web GUI**（`@mpd-dsh/mpd` client bundle，`packages/mpd-bundle-plugin`）—— 整个
+  AgentTeams GUI 就是 **DSH-better-sidebar 的一个 Tab**（`dsh-better-sidebar`，社区侧边栏
+  bundle；Tab id `mpd-agent-teams`，order 85）。它列出本对话的进行中与已归档团队（成员与实时活动、
+  任务行、依赖图、停止团队控件、暂存计划审批编辑器），在角标上显示本对话的进行中团队数，并在团队出现时
+  自动打开一次 —— 插件设置 `autoOpenOnTeamActivity`，默认开启，可在侧边栏设置页关闭。**与原版面板
+  视觉一致是硬性要求**：该 Tab 渲染的是被移除浮窗自己的内部结构 —— 带标题、忙碌圆点与收起控件
+  （平台自带的 chevron）的 `panelHead`、`teams` 主体、采纳的空态提示与归档标签，全部走采纳的
+  CSS-module 类名，因此团队/成员/任务规则读取的 `--dsw-alias-*` 变量与当初在浮窗里完全一致；
+  只有窗口管理器部分（拖拽、改宽、浮动外框）被去掉。对话内团队卡片与右上角活动浮窗已**移除**。
+  **Workmates** 页面是同一侧边栏的第二个 Tab，由 `ctx.betterSidebar.registerTab` 注册 ——
+  列出 `~/.mpd/workmate/` 实例（base、uses、更新时间、note），点开查看 persona/memory/note，
+  用由 roster 填充的 base 选择器新建，并可重命名或删除实例（zh/en，带显式的归档/彻底删除确认
+  步骤）；数据来自 `GET /plugins/mpd-workmate/{list,roster,get}` 与
+  `POST /plugins/mpd-workmate/{init,rename,delete}`。两个页面都**只在侧边栏**存在：没有该侧边栏时各自只输出一条警告
+  且不注册任何东西（workmate 的 🤖 浮窗与侧栏脚部按钮也已移除），并且只要有 client 源注册了任一被移除
+  的界面，`scripts/build-mpd-client.mjs` 就会让构建失败。bundle patch 带有 `mpd-web-compat` 自引用行
   （`name: '@mpd-dsh/mpd'`），使 client-modules boot graph 包含本 bundle 的 client entry
-  —— 没有它面板永远不会加载。
+  —— 没有它任何客户端界面都不会加载。
 - **Workmate 库**（`~/.mpd/workmate`）：roster 专家只是 BASE 模板；用 `mpd_workmate_init`
   将其实例化为一个独立命名的持久化、可演化副本。每次工作会话后它会自我总结
   （`mpd_workmate_reflect`）—— 演化自己的 persona + 独立 memory（带大小上限）并保留
   一张简短 note 卡。通过 `mpd_workmate_list` / `mpd_workmate_match` 复用；若没有
   note 匹配得足够好（`matched=false`），应新建一个 workmate 而不是强行弱匹配。
-  在团队里，以 workmate 命名的成员会自动获得其 persona/memory 注入（
-  `packages/mpd-agent-teams-plugin` 中打过补丁的 `memberPersona`）。
+  **重命名**用 `mpd_workmate_rename`（搬移已演化的身份——目录键、元数据、索引键、note
+  自引用、先前名称——绝不重新实例化），**删除**用 `mpd_workmate_delete`，默认**先归档**：
+  实例移入 `~/.mpd/workmate/.archive/`（从 `list`/`match` 消失，手动 `mv` 搬回即可恢复），
+  只有 `purge: true` + `confirm: <name>` 才会真正移除。两种变更在该 workmate **正在被使用**
+  （被团队成员或进行中的 spawn 占用）时都会被**拒绝**，并列出阻塞的团队以便处理。名称仅限
+  ASCII（`[a-z0-9_-]`），CJK/大写名称会被直接拒绝。在团队里，以 workmate 命名的成员会自动
+  获得其 persona/memory 注入（`packages/mpd-agent-teams-plugin` 中打过补丁的
+  `memberPersona`）。细节见
+  [`packages/mpd-workmate-plugin/README.zh-CN.md`](packages/mpd-workmate-plugin/README.zh-CN.md)。
 - **唯一的 Harness 适配器。** 所有 mpd 行都通过 `packages/mpd-dsh-adapter-plugin`（`mpdDsh` 服务）
   完成工具注册/guard/post-execute、内部工具调用、子代理 spawn、skill 供给与 preset 解析——因此
   DeepSeek Harness 改变某个接缝时，只需改一个文件，而不是改遍所有插件（AGENTS.md §6）。

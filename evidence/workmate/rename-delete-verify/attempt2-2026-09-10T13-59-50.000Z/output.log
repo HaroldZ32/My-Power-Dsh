@@ -1,0 +1,62 @@
+[t6] sandbox=/tmp/mpd-t6-qc4mCY dshHome=/tmp/mpd-t6-qc4mCY/dsh-home HOME=/tmp/mpd-t6-qc4mCY/user-home port=3097
+PASS sandbox.library-seeded :: {"lib":"/tmp/mpd-t6-qc4mCY/user-home/.mpd/workmate","oracle1":true}
+[t6] launched dsh web pid=12
+PASS boot.web-server-up :: token acquired in 15s
+[t6] authorized status=303 cookie=set
+PASS boot.workmate-row-mounted :: bundle row is composed by the profile patch (see dump-config evidence)
+PASS route.list.200+headers :: {"status":200,"ct":"application/json; charset=utf-8","cc":"no-store"}
+PASS route.list.shows-oracle-1 :: ["oracle-1"]
+PASS route.roster.200 :: {"status":200,"bases":11}
+PASS route.get.oracle-1.200 :: {"status":200}
+PASS route.rename.wrong-verb.405+allow :: {"status":405,"allow":"POST","body":""}
+PASS route.rename.invalid-json.400 :: {"status":400,"body":{"error":"invalid JSON"}}
+PASS negative.rename.invalid-name[<empty>] :: {"status":400,"reason":"invalid-name","error":"mpd_workmate: invalid name \"\" — names are ASCII, lowercase, [a-z0-9_-] only and must already be sanitized"}
+PASS negative.rename.invalid-name[Alice] :: {"status":400,"reason":"invalid-name","error":"mpd_workmate: invalid name \"Alice\" — names are ASCII, lowercase, [a-z0-9_-] only and must already be sanitized"}
+PASS negative.rename.invalid-name[测试] :: {"status":400,"reason":"invalid-name","error":"mpd_workmate: invalid name \"测试\" — names are ASCII, lowercase, [a-z0-9_-] only and must already be sanitized"}
+PASS negative.rename.invalid-name[a/b] :: {"status":400,"reason":"invalid-name","error":"mpd_workmate: invalid name \"a/b\" — names are ASCII, lowercase, [a-z0-9_-] only and must already be sanitized"}
+PASS negative.rename.invalid-name[..] :: {"status":400,"reason":"invalid-name","error":"mpd_workmate: invalid name \"..\" — names are ASCII, lowercase, [a-z0-9_-] only and must already be sanitized"}
+PASS negative.rename.invalid-name[.archive] :: {"status":400,"reason":"invalid-name","error":"mpd_workmate: invalid name \".archive\" — names are ASCII, lowercase, [a-z0-9_-] only and must already be sanitized"}
+PASS negative.rename.invalid-name[!!!] :: {"status":400,"reason":"invalid-name","error":"mpd_workmate: invalid name \"!!!\" — names are ASCII, lowercase, [a-z0-9_-] only and must already be sanitized"}
+PASS negative.rename.invalid-name[xxxxxxxx…(len 300)] :: {"status":400,"reason":"invalid-name","error":"mpd_workmate: invalid name \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\" — names are ASCII, lowercase, [a-z0-9_-] only and must already be sanitized"}
+PASS negative.delete.empty-name :: {"status":400,"reason":"invalid-name"}
+PASS negative.library-root-untouched :: {"before":["index.json","oracle-1"],"after":["index.json","oracle-1"]}
+PASS negative.rename.unknown.404 :: {"status":404,"reason":"unknown"}
+PASS negative.delete.unknown.404 :: {"status":404,"reason":"unknown"}
+PASS negative.get.unknown.404-not-200 :: {"status":404}
+PASS edge.orphan.404+untouched :: {"rename":404,"del":404,"dirStillThere":true}
+PASS edge.in-use.409+named-blocker :: {"status":409,"reason":"in-use","blocking":[{"teamId":"agent-teams-sidebar-migration","member":"Architect"},{"teamId":"mpd-default","member":"Architect"},{"teamId":"mpd-default-19f64d11","member":"Architect"},{"teamId":"mpd-default-1f285182","member":"Architect"},{"teamId":"mpd-default-2d2445da","member":"Architect"},{"teamId":"mpd-default-47c350bf","member":"Architect"},{"teamId":"mpd-default-4a3d20e1","member":"Architect"},{"teamId":"mpd-default-53380813","member":"Architect"},{"teamId":"mpd-default-5b99df58","member":"Architect"},{"teamId":"mpd-default-84e50f06","member":"Architect"},{"teamId":"mpd-default-98620900","member":"Architect"},{"teamId":"mpd-default-9b7de114","member":"Architect"},{"teamId":"mpd-default-b550f267","member":"Architect"},{"teamId":"mpd-default-c146a414","member":"Architect"},{"teamId":"mpd-default-c2be0a8a","member":"Architect"},{"teamId":"mpd-default-cc23f374","member":"Architect"},{"teamId":"mpd-default-d3943705","member":"Architect"},{"teamId":"workmate-rename-delete","member":"Architect"}]}
+PASS edge.in-use.no-side-effect :: {"oracle1":true,"architect":false}
+PASS rename.happy.200 :: {"status":200,"body":{"ok":true,"name":"oracle-2","from":"oracle-1","renamedFrom":["oracle-1"]}}
+PASS rename.old-key-freed.404 :: {"status":404}
+PASS rename.new-key-resolves.200 :: {"status":200}
+PASS rename.preserves-persona-bytes :: {"before":2517,"after":2517}
+PASS rename.preserves-memory-bytes :: {"before":0,"after":0}
+PASS rename.preserves-uses :: {"before":0,"after":0}
+PASS rename.preserves-createdAt :: {"before":"2026-09-10T03:30:56.619Z","after":"2026-09-10T03:30:56.619Z"}
+PASS rename.meta.name-mirrors-new-key :: {"name":"oracle-2"}
+PASS rename.renamedFrom-recorded :: ["oracle-1"]
+PASS rename.note-self-reference-updated :: {"note":"Architect-based workmate \"oracle-2\". No task history yet.\n"}
+PASS rename.list-reflects-immediately :: ["oracle-2"]
+PASS rename.index-key-moved :: ["oracle-2"]
+PASS rename.fs-shape :: {"new":true,"old":false}
+PASS edge.same-key.400-invalid-name :: {"status":400,"reason":"invalid-name"}
+PASS route.init.200 :: {"status":200,"body":{"name":"qa-alpha","baseId":"hephaestus","baseName":"Deep Worker","readonly":false,"provider":"deepseek-official","model":"deepseek-v4-flash","path":"/tmp/mpd-t6-qc4mCY/user-home/.mpd/workmate/qa-alpha","note":"t6 fixture"}}
+PASS edge.collision.409 :: {"status":409,"reason":"collision"}
+PASS edge.collision.no-side-effect :: {"alpha":true,"oracle2":true}
+PASS edge.symlinked-instance.refused :: {"status":404,"reason":"unknown","targetTouched":0}
+PASS delete.archive.200-body :: {"status":200,"body":{"ok":true,"name":"qa-alpha","archived":"/tmp/mpd-t6-qc4mCY/user-home/.mpd/workmate/.archive/qa-alpha-2026-09-10T142437Z","purged":false}}
+PASS delete.archive.path-exists-under-sandbox :: {"archived":"/tmp/mpd-t6-qc4mCY/user-home/.mpd/workmate/.archive/qa-alpha-2026-09-10T142437Z","exists":true}
+PASS delete.archive.is-restorable-instance :: {"entries":["memory.md","meta.json","note.md","persona.md"]}
+PASS delete.leaves-library+index :: {"dir":false,"get":404,"indexKeys":["oracle-2"]}
+PASS delete.repeat.404 :: {"status":404,"reason":"unknown"}
+PASS purge.requires-exact-confirm.400 :: {"noConfirm":{"s":400,"r":"confirm-required"},"wrong":{"s":400,"r":"confirm-required"}}
+PASS purge.refusal.no-side-effect :: {"init":200,"stillThere":true}
+PASS purge.200-body :: {"status":200,"body":{"ok":true,"name":"qa-beta","archived":null,"purged":true}}
+PASS purge.removes-instance-and-archive-copy :: {"dir":false,"archive":["qa-alpha-2026-09-10T142437Z"]}
+PASS isolation.real-library-untouched :: {"before":{"files":5,"sha":"ce635a4d2d5b3f6688054cccc65f7f09b1e7cfbdf85e8b4988caef67a1457aee"},"after":{"files":5,"sha":"ce635a4d2d5b3f6688054cccc65f7f09b1e7cfbdf85e8b4988caef67a1457aee"}}
+PASS isolation.sandbox-home-asserted :: {"lib":"/tmp/mpd-t6-qc4mCY/user-home/.mpd/workmate","userHome":"/tmp/mpd-t6-qc4mCY/user-home","sandbox":"/tmp/mpd-t6-qc4mCY","realHome":"/root"}
+PASS contract.no-home-path-in-error-bodies :: {"leaked":[]}
+PASS isolation.real-dsh-home-untouched :: real .archive/ still absent
+PASS deny.roles-dist-clean-of-dead-names :: {"dead":["str_replace_editor","apply_patch"]}
+PASS deny.workmate-dist-clean-of-dead-names :: {"dead":["str_replace_editor","apply_patch"]}
+PASS deny.seven-live-names-present :: {"expected":["write","edit","mpd_hashline_edit","bash","mcp__ast_grep__rewrite","mcp__ast_grep__scan","mcp__lsp__rename"]}

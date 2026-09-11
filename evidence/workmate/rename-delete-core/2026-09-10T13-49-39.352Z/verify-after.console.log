@@ -1,0 +1,25 @@
+=== t15 output-schema after-fix real-boot verification ===
+repo=/root/dshProj/my-power-dsh  HEAD=f697088
+sandbox=/tmp/mpd-t15-WAJy9O  DSH_HOME=/tmp/mpd-t15-WAJy9O/dsh-home  HOME=/tmp/mpd-t15-WAJy9O/user-home
+phase=after  (before = the schema defect is expected; after = it must be gone)
+[setup] copied .credentials.yaml into the sandbox
+[setup] copied settings.yaml into the sandbox
+[install] exit=0 :: dsh: initialized profile h at /tmp/mpd-t15-WAJy9O/dsh-home/profiles/h
+[boot] dsh exit=0 (killed at the cap is normal)
+PASS probe.executed-in-fresh-process :: RESULT line found
+PASS tools.rename+delete registered :: {"id":"probe.tools-registered","ready":true,"hasRename":true,"hasDelete":true}
+PASS fixture init (sandbox HOME) :: {"name":"t15-probe","baseId":"hephaestus","baseName":"Deep Worker","readonly":false,"provider":"deepseek-official","model":"deepseek-v4-flash","path":"/tmp/mpd-t15-WAJy9O/user-home/.mpd/workmate/t15-probe","note":"t15 output-schema fixture"}
+PASS rename: NO invalid-output error :: {"ok":true,"name":"t15-probe-2","from":"t15-probe","renamedFrom":["t15-probe"]}
+PASS delete archive: NO invalid-output error :: {"ok":true,"name":"t15-probe-2","archived":"/tmp/mpd-t15-WAJy9O/user-home/.mpd/workmate/.archive/t15-probe-2-2026-09-10T141015Z","purged":false}
+PASS delete purge: NO invalid-output error :: {"ok":true,"name":"t15-purge","archived":null,"purged":true}
+PASS rename value agrees with the schema (ok, name, from) :: {"ok":true,"name":"t15-probe-2","from":"t15-probe","renamedFrom":["t15-probe"]}
+PASS archive value agrees with the schema (ok, name, archived, purged) :: {"ok":true,"name":"t15-probe-2","archived":"/tmp/mpd-t15-WAJy9O/user-home/.mpd/workmate/.archive/t15-probe-2-2026-09-10T141015Z","purged":false}
+PASS purge value agrees with the schema (ok, name, archived:null, purged) :: {"ok":true,"name":"t15-purge","archived":null,"purged":true}
+PASS report and mutation AGREE: old key freed :: {"id":"state.after-rename","oldKey":null,"newKeyExists":true}
+PASS report and mutation AGREE: archived instance is out of the library :: {"id":"state.after-archive","get":null,"listContains":false}
+PASS report and mutation AGREE: purged instance is out of the library :: {"id":"state.after-purge","get":null,"listContains":false}
+PASS a blind retry is now an explicit error (no silent double mutation) :: mpd_workmate: no workmate named "t15-probe"
+PASS filesystem: the archived instance is under .archive/ :: ["t15-probe-2-2026-09-10T141015Z"]
+PASS filesystem: the purged instance left no bytes (not in the library, not in .archive/) :: {"archivedNames":["t15-probe-2-2026-09-10T141015Z"],"libEntries":[".archive","index.json"]}
+PASS real ~/.mpd/workmate untouched :: {"files":5,"sha":"ce635a4d2d5b3f6688054cccc65f7f09b1e7cfbdf85e8b4988caef67a1457aee"}
+=== after: PASS (16/16 checks) ===

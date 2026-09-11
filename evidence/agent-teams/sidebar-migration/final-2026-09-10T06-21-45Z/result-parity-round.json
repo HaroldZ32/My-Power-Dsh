@@ -1,0 +1,40 @@
+{
+  "case": "agent-teams + workmate sidebar migration — 1:1 replica of the original panel interior, and both GUIs sidebar-only",
+  "capturedAt": "2026-09-10T06:24:00Z",
+  "tree": "branch dev, uncommitted working tree (follows the earlier migration round; the hashes in hashes.txt describe exactly this revision)",
+  "userDecisions": {
+    "parityScope": "1:1 replica of the removed floater's panel INTERIOR — panelHead (title + busy dot + collapse control), the `teams` scroll body, the adopted emptyHint/empty text, archivedWrap/archiveLabel, every adopted CSS-module class. The floating-window half (absolute positioning, drag, resize, dock, border/radius/shadow/backdrop blur) is deliberately NOT reproduced: the sidebar pane owns the box.",
+    "workmateScope": "Remove the workmate overlay floater and the sidebar-footer toggle. The sidebar tab is the only host, exactly like the AgentTeams page."
+  },
+  "frozenTreeHashes": "see hashes.txt (sha256 per file)",
+  "whatChanged": {
+    "AgentTeams page (packages/mpd-bundle-plugin/src/team-page.js)": "Renders the adopted panel's interior instead of a bespoke inline-styled wrapper: an `aside` root carrying the adopted `panel` class — which is what scopes the `--dsw-alias-*` custom properties every adopted team/member/task rule reads, so without it the sections render unstyled — a `panelHead` with `panelTitle` + `data-busy` `panelDot` + a `panelControls`/`iconButton` collapse control using the platform's own IconChevronDownOutline14, the `teams` scroll body, the adopted `emptyHint` carrying the adopted `activity.empty` text, and the original archived markup. Window-manager half overridden inline (PANE_STYLE) and `data-compact` set so the head does not advertise a drag. The collapse control closes the sidebar panel through `store.reduce(state => ({...state, panelOpen: false}))` — the same next-state shape as the sidebar's own togglePanel. The dead `loaded` store flag was removed.",
+    "Workmate page (packages/mpd-bundle-plugin/src/web-client.js)": "The `shell.overlay` floater (WorkmatePanel), the `sidebar.footer.action` toggle (WorkmateToggle), their shared `workmateOpen` state, the `mpd:workmate:toggle` window event and the now-unused dictionary keys were deleted. `apply()` registers the sidebar tab unconditionally and warns once when the sidebar is absent.",
+    "Build gate (scripts/build-mpd-client.mjs)": "LEGACY_SURFACES now names all four removed registrations and fails the build by name. Patterns are registration-shaped, so the page's legitimate `data-agent-teams-activity` marker and the explanatory comments stay legal.",
+    "Tests": "team-page.test.mjs gained 8 parity tests; client-harness.mjs gained the full adopted class map, the activity locale keys, a platform-primitives stub and a DSH-better-sidebar store stub; sidebar-tab.test.mjs asserts the workmate tab is the ONLY host; sidebar-migration-artifact.test.mjs extends its legacy-registration scan to the workmate surfaces; export-bridge.test.mjs pins the real adopted class map (including the archivedWrap quirk below).",
+    "QA cases": "agent-teams-sidebar.mjs gained a `panelInteriorParity` step that RENDERS the registered tab component taken from the shipped artifact and asserts every adopted class, the panel marker, the platform chevron, the dropped window-manager style and the store-driven collapse (16 checks). web-client-adapt.mjs was repaired for this harness release — the web server now authenticates with a COOKIE session, so it captures Set-Cookie and sends it (it was answering 401 and reporting bootEntry/clientJs false regardless of the artifact); `isolation` now asserts a DELTA against the real host library instead of its absence; and it asserts the SERVED client bytes (team-page module, panel-parity markup, workmate tab id, no floater ids). workmate-library.mjs now pins the ABSENT fallback."
+  },
+  "gates": {
+    "node scripts/build-mpd-client.mjs": { "exit": 0, "evidence": "build.log", "note": "240271 bytes" },
+    "node scripts/patch-agent-teams-client.mjs --check": { "exit": 0, "evidence": "bridge-check.log", "note": "bridge present, 17 symbols" },
+    "bun test packages": { "exit": 0, "evidence": "bun-test-packages.log", "note": "214 pass, 3 skip, 0 fail (217 tests / 28 files)" },
+    "bun run typecheck": { "exit": 0, "evidence": "typecheck.log" },
+    "bun run test:qa": { "exit": 0, "evidence": "test-qa.log", "note": "all self-tests passed" },
+    "node scripts/verify-vendor.mjs": { "exit": 0, "evidence": "verify-vendor.log", "note": "PASS after the deliberate skills re-pin (362 files, treeSha d523ecfe…)" },
+    "node scripts/pack-mpd.mjs": { "exit": 0, "evidence": "pack.log" },
+    "node scripts/install-profile.mjs --dry-run": { "exit": 0, "evidence": "install-dry-run.log", "note": "nothing written" },
+    "node skills/dsh-qa/scripts/agent-teams-sidebar.mjs": { "exit": 0, "evidence": "agent-teams-sidebar.log", "note": "PASS — panelInteriorParity true on the sandbox copy of the shipped artifact; real offline web boot served the client (200) and /plugins/dsh-agent-teams/state (200, teams[])" },
+    "node skills/dsh-qa/scripts/web-client-adapt.mjs": { "exit": 0, "evidence": "web-client-adapt.log", "note": "PASS — real web boot: entry @mpd-dsh/mpd present, served client 200 with teamPageModule+panelParity+workmateTab and no floater ids, workmate init route created the instance under the SANDBOX home, real host library untouched" },
+    "node .qa-run/real-render-parity.cjs": { "exit": 0, "evidence": "real-react-render.log", "note": "MANUAL verification harness (copied in as real-react-render-harness.cjs): REAL React 18 renderToStaticMarkup of the shipped page with the REAL adopted TeamSection + the REAL class map. All 11 parity checks pass; the printed markup matches the floater's interior element for element" }
+  },
+  "upstreamQuirkRecorded": {
+    "archivedWrap": "The adopted CSS-module class map has NO `archivedWrap` key, while the adopted panel still reads `ActivityPanel_module_css_default.archivedWrap` (packages/mpd-agent-teams-plugin/lib/client.js:3087). The ORIGINAL therefore renders a class-less wrapper div. The sidebar page performs the same lookup, so its markup is identical; if upstream ever adds the key the class flows through with no change here. Pinned by packages/mpd-agent-teams-plugin/test/export-bridge.test.mjs and asserted in the real-render harness."
+  },
+  "limits": [
+    "No browser click-through and no screenshot comparison: the acceptance contract the user approved is offline (harness + dsh-qa evidence). Visual parity is pinned structurally — every adopted class name, the adopted locale strings, the platform icon component, the dropped window-manager properties, and a real-React render of the real adopted views — rather than pixel-diffed. The user confirms visually after a page refresh.",
+    "The historic-card branch of the adopted panel stays unreachable by construction (its registry came from the removed in-conversation card) and is therefore not rendered; `historicCardTeam` remains bridged for parity.",
+    "The panel head's dock/float control is NOT reproduced: it is window-manager machinery with no sidebar counterpart, which the approved scope covers ('interior only'). The collapse control IS reproduced and drives the sidebar's panel state.",
+    "The adopted panel head has no member-count element (that lives on the removed card header); none was invented, so the head matches the original exactly.",
+    "The real-render harness stubs @deepseek-ai/dsh-client-ui-primitives (the package is ESM and imports katex CSS, which Node cannot load) and shims useSyncExternalStore/useEffect for SSR; the page itself does not depend on either shim."
+  ]
+}

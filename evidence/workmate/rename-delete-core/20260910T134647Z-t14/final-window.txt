@@ -1,0 +1,8 @@
+=== FINAL MEASUREMENT WINDOW (after the 13:50:28 lock recompute) ===
+window_start_utc=13:51:12
+VENDOR_LOCK.json mtime 13:50:28
+newest skills/**  mtime 13:44:19  skills/dsh-qa/scripts/readonly-deny.mjs
+[gate before] exit=0 PASS
+[shipped case] exit=0 [readonly-deny] ok=true [readonly-deny] PASS 
+[gate after ] exit=0 PASS
+window_end_utc=13:51:38

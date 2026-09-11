@@ -1,0 +1,210 @@
+=== t15 gate sweep: output-schema repair ===
+repo=/root/dshProj/my-power-dsh
+sandbox DSH_HOME=/tmp/mpd-t15-gate-dsh-7h2zCo
+sandbox HOME=/tmp/mpd-t15-gate-home-BkzIEz
+HEAD=f69708809ed63a57461aa6730d297afc09e772a3
+
+=== git status --porcelain (t15 delta) ===
+ M packages/mpd-workmate-plugin/dist/index.js
+ M packages/mpd-workmate-plugin/src/index.ts
+?? packages/mpd-workmate-plugin/test/rename-delete.test.ts
+
+### [build] bun build packages/mpd-workmate-plugin/src/index.ts --target node --format esm --outfile packages/mpd-workmate-plugin/dist/index.js
+Bundled 2 modules in 6ms
+
+  index.js  46.0 KB  (entry point)
+
+[exit=0] build
+
+[dist] 'ok: { type: "boolean" }' declarations in the rebuilt dist: 2 (must be 2)
+### [tests] bun test packages/mpd-workmate-plugin/test
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-workmate-plugin/test/workmate.test.ts:
+(pass) sanitizeName / capText / autoNote / scoreMatch units [3.31ms]
+(pass) init → list → reflect → match lifecycle with a sandbox HOME [7.02ms]
+(pass) spawn carries persona+memory+note, reflect instruction, readonly deny, own route [3.13ms]
+(pass) workmate library root is under HOME and not in cwd [0.42ms]
+
+packages/mpd-workmate-plugin/test/rename-delete.test.ts:
+(pass) rename moves the evolved identity and preserves every byte of it [3.13ms]
+(pass) renamedFrom accumulates, dedupes, survives a later reflect and is capped [4.10ms]
+(pass) A5 note rule: only a LEADING autoNote prefix is rewritten, a custom note keeps its bytes [1.49ms]
+(pass) invalid names are rejected BEFORE any filesystem call, on both argument positions [1.57ms]
+(pass) same-key rename and case-only rename are refused with no side effect (M2) [0.71ms]
+(pass) the library ROOT can never be addressed as an instance (§B) [0.68ms]
+(pass) collision guard: ANY lstat hit on the target is a 409 collision and nothing is overwritten (M5) [1.00ms]
+(pass) a symlinked instance directory is refused, not resolved (§H) [0.76ms]
+(pass) unknown and orphan directories are never touched (M3), repeat delete is 404 [1.12ms]
+(pass) delete archives by default: hidden immediately, restorable, index key dropped [1.54ms]
+(pass) purge requires confirm === name, then removes the instance for good (D1) [1.18ms]
+(pass) a READONLY instance is a valid mutation target: library administration, not self-editing (M1) [0.90ms]
+(pass) delete never touches another workmate's bytes and leaves no partial instance [1.40ms]
+(pass) in-use gate: a name a team member holds blocks BOTH the rename target and the source (§E, A6) [1.99ms]
+(pass) busyTeams reads <cwd>/.mpd/team, skips archived teams and non-directory entries, fails open [0.60ms]
+(pass) A3: a stale meta.name cannot shadow the directory key, and a legacy key cannot resurrect a dir [1.60ms]
+(pass) an interrupted rename is rolled back: no half-moved instance, the key stays addressable [1.02ms]
+(pass) a throwing spawn releases the in-use counter, so it cannot block a later rename [0.96ms]
+(pass) no registered output schema uses a type ARRAY, and every surface reports archived: null on purge [3.37ms]
+(pass) routes: §D status/reason matrix, headers, no path leakage [4.13ms]
+(pass) a headless profile stays tool-only: no webServer, no route work, tools still function [0.76ms]
+(pass) the mutation tools' declared output schemas accept the values they return (t15) [37.14ms]
+(pass) the OLD return shape is rejected by the harness validator, so this lock can actually fail (t15) [3.62ms]
+(pass) the workmate deny list denies bash and the write-capable MCP tools, and carries no dead name [0.99ms]
+
+ 28 pass
+ 0 fail
+ 331 expect() calls
+Ran 28 tests across 2 files. [159.00ms]
+[exit=0] tests
+
+### [typecheck] bun run typecheck
+$ tsgo --noEmit
+[exit=0] typecheck
+
+### [routes] bun test packages/mpd-workmate-plugin/test/rename-delete.test.ts -t §D status/reason matrix
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-workmate-plugin/test/rename-delete.test.ts:
+(pass) routes: §D status/reason matrix, headers, no path leakage [10.99ms]
+
+ 1 pass
+ 23 filtered out
+ 0 fail
+ 62 expect() calls
+Ran 1 test across 1 file. [69.00ms]
+[exit=0] routes
+
+dsh: initialized profile h at /tmp/mpd-t15-gate-dsh-7h2zCo/profiles/h
+
+dependencies:
++ @mpd-dsh/mpd link:/root/dshProj/my-power-dsh
+
+Already up to date
+Done in 153ms using pnpm v11.23.0
+
+   ╭─────────────────────────────────────────╮
+   │                                         │
+   │   Update available! 11.23.0 → 12.3.4.   │
+   │   Changelog: https://pnpm.io/v/12.3.4   │
+   │    To update, run: pnpm self-update     │
+   │                                         │
+   ╰─────────────────────────────────────────╯
+
+### [boot] dump-config exit=0 bytes=32246
+workmate row: packages/mpd-workmate-plugin/dist/index.js
+bundle row:   @mpd-dsh/mpd
+[exit=0] boot (bundle + workmate row resolved to its dist)
+[exit=0] isolation (temp HOME/DSH_HOME, real workmate library unchanged)
+=== git status --porcelain (after) ===
+ M LICENSE-NOTICES.md
+ M README.md
+ M README.zh-CN.md
+ M VENDOR_LOCK.json
+ M docs/architecture.md
+ M docs/architecture.zh-CN.md
+ M docs/feature-audit.md
+ M docs/feature-audit.zh-CN.md
+ M docs/user-guide.md
+ M docs/user-guide.zh-CN.md
+ M packages/mpd-agent-teams-plugin/lib/client.js
+ M packages/mpd-agent-teams-plugin/lib/index.js
+ M packages/mpd-agent-teams-plugin/lib/members.js
+ M packages/mpd-agent-teams-plugin/lib/quality-gates.js
+ M packages/mpd-agent-teams-plugin/lib/scheduler.js
+ M packages/mpd-agent-teams-plugin/lib/state.js
+ M packages/mpd-agent-teams-plugin/lib/tools.js
+ M packages/mpd-agent-teams-plugin/package.json
+ M packages/mpd-bundle-plugin/README.md
+ M packages/mpd-bundle-plugin/README.zh-CN.md
+ M packages/mpd-bundle-plugin/client.js
+ M packages/mpd-bundle-plugin/src/web-client.js
+ M packages/mpd-bundle-plugin/test/client-harness.mjs
+ M packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs
+ M packages/mpd-bundle/cordis.patch.yml
+ M packages/mpd-roles-plugin/dist/index.js
+ M packages/mpd-roles-plugin/src/index.ts
+ M packages/mpd-roles-plugin/test/roles.test.ts
+ M packages/mpd-workmate-plugin/dist/index.js
+ M packages/mpd-workmate-plugin/src/index.ts
+ M scripts/build-mpd-client.mjs
+ M scripts/pack-mpd.mjs
+ M scripts/vendor-agent-teams.mjs
+ M skills/dsh-qa/SKILL.md
+ M skills/dsh-qa/scripts/agent-teams-adopt.mjs
+ M skills/dsh-qa/scripts/team-route-rewire.mjs
+ M skills/dsh-qa/scripts/web-client-adapt.mjs
+ M skills/dsh-qa/scripts/workmate-library.mjs
+?? evidence/agent-teams/
+?? evidence/dsh-qa/session-start-team/2026-09-10T10-11-31.320Z/
+?? evidence/dsh-qa/session-start-team/2026-09-10T10-18-07.896Z/
+?? evidence/fix/readonly-deny/
+?? evidence/plan-f/web-client-adapt/2026-09-10T06-12-56.349Z/
+?? evidence/plan-f/web-client-adapt/2026-09-10T06-22-09.080Z/
+?? evidence/plan-f/web-client-adapt/2026-09-10T07-37-28.295Z/
+?? evidence/plan-f/web-client-adapt/2026-09-10T10-19-05.265Z/
+?? evidence/plan-f/web-client-adapt/2026-09-10T10-21-34.087Z/
+?? evidence/workmate/
+?? packages/mpd-agent-teams-plugin/lib/capabilities.js
+?? packages/mpd-agent-teams-plugin/lib/harness-compat.js
+?? packages/mpd-agent-teams-plugin/lib/tool-names.js
+?? packages/mpd-agent-teams-plugin/lib/web-routes.js
+?? packages/mpd-agent-teams-plugin/test/backports.test.ts
+?? packages/mpd-agent-teams-plugin/test/capabilities.test.ts
+?? packages/mpd-agent-teams-plugin/test/export-bridge.test.mjs
+?? packages/mpd-agent-teams-plugin/test/harness-compat.test.ts
+?? packages/mpd-agent-teams-plugin/test/scheduler-dispatch.test.ts
+?? packages/mpd-bundle-plugin/src/team-page.js
+?? packages/mpd-bundle-plugin/test/sidebar-migration-artifact.test.mjs
+?? packages/mpd-bundle-plugin/test/team-page.test.mjs
+?? packages/mpd-workmate-plugin/test/rename-delete.test.ts
+?? scripts/patch-agent-teams-client.mjs
+?? skills/dsh-qa/scripts/agent-teams-dispatch.mjs
+?? skills/dsh-qa/scripts/agent-teams-sidebar.mjs
+?? skills/dsh-qa/scripts/readonly-deny.mjs
+{
+  "task": "t15 - repair: workmate mutation tools conform to their declared output schemas",
+  "contract": ".mpd/plans/workmate-rename-delete-contract.md sections C (tool surface) and D (wire protocol)",
+  "fix": "declare `ok: { type: \"boolean\" }` in both mutation tools' output.schema and require it (rename: ok,name,from / delete: ok,name,archived,purged); the value keeps `ok`, the \u00a7D route bodies keep their own `ok`",
+  "changed_paths": [
+    "packages/mpd-workmate-plugin/src/index.ts",
+    "packages/mpd-workmate-plugin/dist/index.js",
+    "packages/mpd-workmate-plugin/test/rename-delete.test.ts"
+  ],
+  "gates": {
+    "bun build src/index.ts -> dist/index.js (rebuilt, dist declares ok twice)": {
+      "exit": 0,
+      "pass": true
+    },
+    "bun test packages/mpd-workmate-plugin/test (incl. the harness-validator regression lock)": {
+      "exit": 0,
+      "pass": true
+    },
+    "bun run typecheck": {
+      "exit": 0,
+      "pass": true
+    },
+    "route matrix unchanged (\u00a7D status/reason/headers)": {
+      "exit": 0,
+      "pass": true
+    },
+    "dsh plugin --profile h add <repo> (isolated DSH_HOME)": {
+      "exit": 0,
+      "pass": true
+    },
+    "dsh --profile h --dump-config (bundle + workmate row at dist)": {
+      "exit": 0,
+      "pass": true
+    },
+    "isolation: temp HOME/DSH_HOME, real workmate library unchanged": {
+      "exit": 0,
+      "pass": true
+    }
+  },
+  "isolation": {
+    "HOME": "temp sandbox",
+    "DSH_HOME": "temp sandbox",
+    "real_home_untouched": true
+  },
+  "all_passed": true
+}

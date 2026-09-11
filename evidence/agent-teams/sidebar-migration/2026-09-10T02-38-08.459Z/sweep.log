@@ -1,0 +1,383 @@
+=== full gate sweep (raw) ===
+date: 2026-09-10T02:38:58Z
+git: f697088 branch dev
+node: v24.16.0 bun: 1.3.14
+
+########## $ bun test packages
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-ulw-plugin/test/engine.test.ts:
+(pass) engine policy: plan -> round -> verify -> quality gate with ledger [6.44ms]
+(pass) engine alias and 2-fruitless-waves stop [0.56ms]
+(pass) DeepSeek V4 / DSH contract: role text in prompt (no persona field), pro for planner/reviewer, compact handoff [0.81ms]
+
+packages/mpd-memory-plugin/test/memory.test.ts:
+(pass) git backend: write -> commit -> read -> reflection due [24.64ms]
+(pass) svn backend REAL svn CLI: repo create, checkout, commit, log [90.98ms]
+(pass) both vcs: commits to git and svn [135.33ms]
+(pass) svn backend wiring with fake svn CLIs [10.88ms]
+
+packages/mpd-config-plugin/test/config.test.ts:
+(pass) stripJsonc removes comments and trailing commas [0.50ms]
+(pass) stripJsonc keeps comments inside strings [0.05ms]
+(pass) deepMerge project wins, nested merged, pollution safe [0.33ms]
+(pass) mpd_config_get result is lossless JSON for a missing key (value null, never undefined) [1.18ms]
+(pass) mpdConfig service get resolves dot-paths (consistent with mpd_config_get) [0.66ms]
+
+packages/mpd-roles-plugin/test/roles.test.ts:
+(pass) roster: 11 roles, unique ids, non-empty chains and fields [0.17ms]
+(pass) persona assets exist for every role and contain real instructions [0.75ms]
+(pass) normalizeRoleKey: canonical, chain keys and legacy mpd- ids [0.13ms]
+(pass) mpdRoles service: list 11, get resolves aliases, unknown is null [0.93ms]
+(pass) mpd_role_persona returns the extracted persona text [0.36ms]
+(pass) mpd_role_spawn: read-only roles get write-deny toolFilter, workers none [0.94ms]
+(pass) mpd_roles_list returns the full roster summary [0.36ms]
+(pass) read-only deny list covers every write-capable tool (no shell/AST/LSP write bypass) [0.41ms]
+
+packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs:
+(pass) client seam policy > declares only services this harness registers [0.45ms]
+(pass) client seam policy > declares only stable seams and probes everything else [0.48ms]
+(pass) client seam policy > probes betterSidebar without declaring it [0.19ms]
+(pass) with DSH-better-sidebar installed > registers the AgentTeams page and the workmate library, and no legacy floater [0.13ms]
+(pass) with DSH-better-sidebar installed > the adopted client half is never applied (it would re-register the removed surfaces) [0.02ms]
+(pass) with DSH-better-sidebar installed > both tab descriptors are valid sidebar pages [0.29ms]
+(pass) with DSH-better-sidebar installed > keeps the locale namespaces registered [0.04ms]
+(pass) workmate page > renders the library from the host routes [8.66ms]
+[mpd] better-sidebar not installed — the AgentTeams page has no host (no floating fallback by design)
+[mpd] better-sidebar not installed — keeping the workmate floater
+(pass) without DSH-better-sidebar > falls back to the bundle-owned floater and footer toggle [0.77ms]
+
+packages/mpd-bundle-plugin/test/team-page.test.mjs:
+(pass) AgentTeams sidebar tab descriptor > registers one single-instance tab with the pinned id and order [0.63ms]
+(pass) AgentTeams sidebar tab descriptor > createTab mints a clean tab so the auto-open seed never lands on it [0.47ms]
+(pass) AgentTeams sidebar tab descriptor > offers the auto-open switch as a plugin-owned setting [0.89ms]
+(pass) AgentTeams page rendering > renders the conversation's teams, members, tasks and archived section [7.08ms]
+(pass) AgentTeams page rendering > renders the archived section with the archived label [5.16ms]
+(pass) AgentTeams page rendering > filters by the tab's own conversation scope [5.14ms]
+(pass) AgentTeams page rendering > shows the empty state when the conversation has no team [5.68ms]
+(pass) AgentTeams page rendering > a hidden tab renders no live view (the sidebar CSS-hides collapsed tabs) [4.97ms]
+(pass) AgentTeams page rendering > a failing host route degrades to the empty state instead of throwing [5.18ms]
+(pass) AgentTeams page rendering > a rejecting poll shows a readable error notice, not a crash [5.84ms]
+(pass) staged plan approval > passes a model directory to a staged team when the service provides one [5.29ms]
+(pass) staged plan approval > a throwing directoryFor degrades instead of crashing the page [5.18ms]
+(pass) badge and polling > badge reports the cached live-team count for its session only [6.00ms]
+(pass) badge and polling > mounting the page twice keeps a single polling controller [7.22ms]
+(pass) auto-open policy > opens the tab once, with a content seed, for a team that appears after the baseline [2708.12ms]
+(pass) auto-open policy > teams restored with the page never auto-open [2705.83ms]
+(pass) auto-open policy > the plugin switch turns auto-open off [2707.42ms]
+(pass) auto-open policy > a disabled tab type is never auto-opened [2707.23ms]
+(pass) boot safety > without better-sidebar the client warns once and registers no legacy surface [1.45ms]
+
+packages/mpd-bundle-plugin/test/sidebar-migration-artifact.test.mjs:
+(pass) shipped bundle client after the AgentTeams sidebar migration > registers exactly the three loader modules, including the sidebar page [0.57ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > carries the mpd export bridge with every pinned export [0.58ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > no mpd client source registers a removed surface [0.31ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > the page module keeps the pinned tab id and order [0.69ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/scope-semantics.test.mjs:
+(pass) B5: a directory pattern covers its contents WITHOUT a trailing slash [0.34ms]
+(pass) B5: trailing slash and non-trailing slash are equivalent [0.08ms]
+(pass) B5: exact file patterns still match exactly, siblings and suffixes do not [0.09ms]
+(pass) B5: root pattern matches everything; illegal/absolute patterns never match [0.08ms]
+(pass) B5: classifyChangedPath — directory inScope covers files, outOfScope wins [0.33ms]
+(pass) B6: completion reports ALL undeclared paths at once with the owning task id and a fix hint [0.72ms]
+(pass) B6: completion passes when a directory pattern (no trailing slash) covers every changed path [0.12ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/quality-loop.test.mjs:
+(pass) Fix1: review auto-wires reviewedTaskId into dependencies (premature dispatch) [0.92ms]
+(pass) Fix1: repair auto-wires sourceTaskId into dependencies [0.20ms]
+(pass) Fix2: unsatisfiedDependencies treats cancelled as satisfied, failed still blocks [0.18ms]
+(pass) Fix2: pending dependents blocked only by cancelled deps are cascaded (no deadlock) [0.68ms]
+(pass) Fix3: planQualityFollowUp links reasonTaskId and reason reaches the repair prompt [1.80ms]
+(pass) Fix4: reject without a completed source notifies the captain only (no repair, no escalation) [0.16ms]
+(pass) Fix4: genuine reject of a completed source still escalates [0.07ms]
+(pass) Fix3b: reasonTaskId / reassignReason survive task validation [0.24ms]
+(pass) Fix3c: assignmentPrompt renders reassignReason and captain guidance digest [0.39ms]
+
+packages/mpd-agent-teams-plugin/test/workmate-key.test.ts:
+(pass) workmateKey maps the five multi-word roster members to kebab keys [0.17ms]
+(pass) workmateKey mirrors sanitizeName edge cases [0.06ms]
+
+packages/mpd-agent-teams-plugin/test/session-start.test.ts:
+(pass) policyEnabled: off disables, auto/instruct enable [0.13ms]
+(pass) policyQualifies: child sessions never qualify [0.14ms]
+(pass) policyQualifies: allow-list scoping and preset-less coverage [0.09ms]
+(pass) availableTeamId: free base, deterministic per-captain suffix, exhaustion [3.81ms]
+(pass) notices carry the startup marker, mention the team, and are user-role messages [0.55ms]
+(pass) spliceNotice inserts after the last claimed message and preserves the decision [0.30ms]
+
+packages/mpd-agent-teams-plugin/test/export-bridge.test.mjs:
+(pass) adopted client export bridge > registers under the adopted module id and keeps apply/inject [0.07ms]
+(pass) adopted client export bridge > exposes every bridged symbol at load time [0.14ms]
+(pass) adopted client export bridge > exports the panel CSS-module class map, not a renamed copy [0.09ms]
+(pass) adopted client export bridge > locale dictionaries and monitor store survive the bridge [0.12ms]
+(pass) adopted client export bridge > the bridge is purely additive: exports grow by exactly the pinned list [1.70ms]
+(pass) adopted client export bridge > re-running the bridge is a no-op that leaves the file byte-identical [2.49ms]
+(pass) adopted client export bridge > drift guard: an unknown symbol is reported as undeclared [0.96ms]
+(pass) adopted client export bridge > a re-vendor re-applies the bridge [0.08ms]
+
+packages/mpd-boulder-plugin/test/boulder.test.ts:
+(pass) session ids are dsh-prefixed by default [0.12ms]
+(pass) start, timer, complete lifecycle [2.30ms]
+(pass) plan progress parses TODOs and verification wave [1.35ms]
+(pass) mpd_boulder_status omits planProgress when null (lossless JSON contract) [1.02ms]
+
+packages/mpd-workmate-plugin/test/workmate.test.ts:
+(pass) sanitizeName / capText / autoNote / scoreMatch units [0.71ms]
+(pass) init → list → reflect → match lifecycle with a sandbox HOME [5.67ms]
+(pass) spawn carries persona+memory+note, reflect instruction, readonly deny, own route [1.56ms]
+(pass) workmate library root is under HOME and not in cwd [0.34ms]
+
+packages/mpd-dsh-adapter-plugin/test/adapter.test.ts:
+(pass) capabilities > reports every seam of a full harness [0.31ms]
+(pass) capabilities > reports absent seams without throwing [0.11ms]
+(pass) tool plane > registerTool normalizes schema, render and the (args, exec) call shape [0.34ms]
+(pass) tool plane > registerTool keeps a caller-supplied schema and render [0.08ms]
+(pass) tool plane > services resolve through ctx.get OR a plain ctx property [0.10ms]
+(pass) tool plane > registerTools registers every definition and disposes them together [0.17ms]
+(pass) tool plane > registerTool without a tools service fails with an actionable error [0.11ms]
+(pass) tool plane > guardTool passes the exec through and installs on the tools service [0.22ms]
+(pass) tool plane > onPostToolExecute owns next() and passes the downstream decision through [0.38ms]
+(pass) tool plane > onPostToolExecute lets a listener replace the decision [0.19ms]
+(pass) tool plane > onPostToolExecute is a no-op when the harness has no event bus [0.06ms]
+(pass) tool plane > hasTool + toolRuntime expose internal tool calls without raw ctx access [0.62ms]
+(pass) tool plane > executeTool normalizes success, tool error, thrown error and a missing runtime [0.40ms]
+(pass) agent plane > spawnAgent normalizes prompt, flat route and the result shape [0.32ms]
+(pass) agent plane > spawnAgent accepts pre-built prompt blocks and agentOptions [0.19ms]
+(pass) agent plane > spawnAgent tolerates a harness that returns no result [0.18ms]
+(pass) agent plane > spawnAgent without a subagent service fails with an actionable error [0.17ms]
+(pass) skill + preset plane > skill provider registration, catalog read and body load [0.44ms]
+(pass) skill + preset plane > skill calls without a skills service fail with actionable errors [0.20ms]
+(pass) skill + preset plane > resolvePreset returns a normalized preset record [0.27ms]
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+(pass) row entry > apply provides the mpdDsh service [0.14ms]
+(pass) row entry > decision helpers use the harness feedback key [0.10ms]
+
+packages/mpd-modelchain-plugin/test/modelchain.test.ts:
+(pass) DEFAULT_CHAINS uses kebab-case keys and only deepseek-official providers [0.11ms]
+(pass) resolveRole resolves kebab-case and legacy camelCase keys to the same chain [0.19ms]
+(pass) mpd_modelchain_resolve resolves kebab keys and drops the dead skipped field [0.55ms]
+(pass) modelchain.sisyphus-junior config key is resolved through the mpdConfig service [0.30ms]
+
+packages/mpd-tools-plugin/test/tools.test.ts:
+(pass) write-guard allows first write to a new file [0.34ms]
+(pass) write-guard allows idempotent rewrite of identical content [0.14ms]
+(pass) write-guard denies silent overwrite of differing content [0.10ms]
+(pass) write-guard allows idempotent rewrite of a >1MB file (full-file compare) [4.44ms]
+(pass) truncation output (incl. banner) never exceeds truncateMaxBytes [0.73ms]
+(pass) truncation with a budget smaller than the banner adds no head/tail slices [0.11ms]
+(pass) truncation keeps head and tail slices plus the banner [0.12ms]
+(pass) truncation passes through outputs within the budget unchanged [0.18ms]
+
+packages/mpd-hashline-plugin/test/hashline.test.ts:
+(pass) hashline view shows LINE#HASH|content [0.59ms]
+(pass) anchored replace on plain content [1.91ms]
+(pass) mismatched anchor throws [0.48ms]
+(pass) append and prepend anchored [0.27ms]
+(pass) replace range with end anchor [0.46ms]
+(pass) unified diff shape [0.38ms]
+
+packages/mpd-verif-plugin/test/wave.test.ts:
+(pass) wave-mcp not wired -> unavailable with the exact install/wire hint (graceful degrade) [0.49ms]
+(pass) no wave file produced -> unavailable with a 'waves on?' message [0.10ms]
+(pass) wired wave-mcp -> calls mcp__wave_mcp__prepare_session with out_dir/wave_path/top [0.54ms]
+(pass) wired vcs lane -> TraceWeave get_sim_paths with verif_root/case_name/sim_log/wave_file [0.35ms]
+(pass) TraceWeave not wired -> unavailable with the no-venv install hint [0.12ms]
+(pass) MCP call throws / returns no value -> failed (still graceful, never an exception) [0.29ms]
+(pass) DP-8: wave session dir defaults to $DSH_HOME/wave-mcp (MPD_DSH_WAVE_MCP_SESSION wins) [0.16ms]
+(pass) partial tool runtime (no get/execute) degrades like absent wiring [0.09ms]
+
+packages/mpd-verif-plugin/test/uvm.test.ts:
+(pass) layoutCheck: full contract passes; missing pieces are listed [1.33ms]
+(pass) verifUvm compile: fake-vcs captures uvm-1.2 makefile contract argv [6.80ms]
+(pass) verifUvm compile failure: capped attempts + unresolved.md on exhaustion (honest handoff) [11.72ms]
+(pass) verifUvm run: per-case work dir + +UVM_TESTNAME/seed/verbosity args (fake simv capture) [4.50ms]
+(pass) verifUvm run: UVM_ERROR in log -> case fail (exit 0 is not enough) [3.14ms]
+(pass) verifUvm: non-vcs environment refuses with VERIF_E_NO_BACKEND + license hints [0.90ms]
+(pass) verifUvm wave: env gate requires VERDI_HOME/NOVAS_HOME (VERIF_E_ENV checklist) [1.84ms]
+(pass) verifUvm layout contract violated -> VERIF_E_TEMPLATE with expected-file list [1.61ms]
+(pass) verifUvm regress: compiles when simv missing, runs every test/*_test.sv with per-case dirs [10.25ms]
+(pass) verifUvm merge-cov: urg merge argv over per-case cov dirs + VERIF_E_RUN when cov missing [4.24ms]
+(pass) verifUvm run: fsdbreport non-GUI verification hook fires on FEBD output (owner DP-11) [2.93ms]
+(pass) verifUvm run with fsdb wave triggers fsdbreport capture (argv asserted) [3.40ms]
+(pass) verifUvm run: fsdbreport missing → hook degrades with install hint [3.03ms]
+(pass) verifUvm clean removes the work dir; ipDir expands <ip> templates [1.84ms]
+
+packages/mpd-verif-plugin/test/coverage.test.ts:
+(pass) iverilog coverage is refused (VERIF_E_UNSUPPORTED with lane hint) [0.80ms]
+(pass) verilator merge: verilator_coverage --write merged.dat over discovered .dat files [2.10ms]
+(pass) verilator merge without datasets refuses with VERIF_E_RUN + actionable hint [0.34ms]
+(pass) verilator report: annotates a given/merged dataset (--annotate <dir> <dat>) [1.51ms]
+(pass) vcs coverage: urg merge argv over discovered cov dirs (fake urg capture) [1.92ms]
+(pass) vcs coverage: missing urg resolves to VERIF_E_NO_BACKEND with hint [0.29ms]
+(pass) vcs coverage: no cov payloads refuses with VERIF_E_RUN [0.35ms]
+
+packages/mpd-verif-plugin/test/venv.test.ts:
+(pass) venvStatus: missing venv -> verdict missing with exact setup command [0.45ms]
+(pass) venvStatus: venv present but cocotb absent -> setup-required (iron rule) [3.40ms]
+(pass) venvStatus: cocotb importable inside venv -> ok + version [2.29ms]
+(pass) venvCreate: python3 -m venv + <venv>/bin/pip install cocotb>=2.0 (argv captured, no --user/--system) [9.52ms]
+(pass) requireCocotbVenv throws VERIF_E_NO_VENV with the setup command in the hint [0.40ms]
+
+packages/mpd-verif-plugin/test/sim.test.ts:
+(pass) parseResultsXml: pass xml -> per-case statuses + summary [0.76ms]
+(pass) D2 regress: self-closing <failure .../> (cocotb 2.0.1 xUnit) — 3/4 failures must NOT parse as pass [0.38ms]
+(pass) D2 regress: self-closing <error .../> and body-form failure/error variants [0.15ms]
+(pass) parseResultsXml: failure block -> fail status + failure message [0.08ms]
+(pass) verifSim: vcs backend is refused (VERIF_E_UNSUPPORTED -> use mpd_verif_uvm) [1.07ms]
+(pass) verifSim: missing venv -> VERIF_E_NO_VENV with exact setup command (iron rule) [0.38ms]
+(pass) verifSim: venv without cocotb -> VERIF_E_COCOTB_ABSENT [2.77ms]
+(pass) verifSim happy path: runner.py generated, executed via <venv>/bin/python, results parsed, waves collected [8.98ms]
+(pass) verifSim: failing case -> ok=false with VERIF_E_RUN details [7.96ms]
+(pass) verifSim: vvp/runner non-zero exit WITHOUT results.xml -> VERIF_E_RUN with actionable hint [5.28ms]
+(pass) verifSim: backend binary absent (env pinned to missing path) -> VERIF_E_NO_BACKEND [3.26ms]
+(pass) buildSimMakefile: DP-6 Makefile contract (SIM/COCOTB_TOPLEVEL/FST/defines) [0.23ms]
+(pass) collectWaves finds fst/vcd recursively and classifies fmt [0.53ms]
+(pass) verifSim leaves ALL state under workspace work dir (never ~/.dsh) [7.62ms]
+
+packages/mpd-verif-plugin/test/regress.test.ts:
+(pass) cocotb regression: 2 cases, seedBase+idx seeds, results.json + results.md on disk [21.43ms]
+(pass) cocotb regression: missing venv refuses with the iron-rule code [0.58ms]
+(pass) cocotb regression: stopOnError halts after the first failing case [11.97ms]
+(pass) cocotb regression: maxFailures bound also stops the loop [18.76ms]
+(pass) vcs regression delegates to the UVM lane (layout-driven case discovery) [9.81ms]
+(pass) regress: bad backend id refuses with VERIF_E_UNSUPPORTED [0.37ms]
+
+packages/mpd-verif-plugin/test/index.test.ts:
+(pass) exactly the owner eight-tool surface (DP-4) is registered [1.09ms]
+(pass) every tool carries parameters + output schema + render + execute [0.18ms]
+(pass) mpd_verif_backends renders and returns structured probes [97.64ms]
+(pass) tool failures cross the seam as structured refusals (never exceptions) [3.12ms]
+(pass) mpd_verif_venv execute: status action returns verdict without exceptions [312.32ms]
+
+packages/mpd-verif-plugin/test/core.test.ts:
+(pass) resolveBackendBinary: MPD_DSH_* env override wins over PATH [0.29ms]
+(pass) resolveBackendBinary: PATH fallback finds real tooling or null [0.18ms]
+(pass) dateSeedBase is an 8-digit YYYYMMDD int (deterministic per calendar day) [0.14ms]
+(pass) D1 regress: compilePlan creates the build dir BEFORE the tool would spawn (preflight-backed) [5.72ms]
+(pass) D1 regress: verilator compile target also pre-creates the build dir [0.32ms]
+(pass) lintPlan argv contracts per backend (t2 design) [1.15ms]
+(pass) compilePlan argv contracts and vcs simv output [0.53ms]
+(pass) parseDiagnostics: iverilog / verilator / vcs dialects [0.41ms]
+(pass) writeVcsFilelist emits the vcs-native -f file format [0.24ms]
+(pass) refusalOf: VerifError keeps code/message/hint; unknown becomes VERIF_E_RUN [0.20ms]
+
+packages/mpd-bootstrap-plugin/test/bootstrap.test.ts:
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+[mpd-bootstrap] legacy home-copy cleanup skipped (config)
+(pass) bundle skill corpus provider > serves every shipped skill as a bundled-rank candidate [6.72ms]
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+[mpd-bootstrap] legacy home-copy cleanup skipped (config)
+(pass) bundle skill corpus provider > get() loads the skill body and keeps the resource base [3.44ms]
+[mpd-bootstrap] skill corpus served from /tmp/mpd-corpus-EKGAPy (provider mpd-bundle, bundle 0.3.2)
+[mpd-bootstrap] legacy home-copy cleanup skipped (config)
+(pass) bundle skill corpus provider > frontmatter subset: quoted, folded, nested metadata and invocation policy [2.63ms]
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+[mpd-bootstrap] legacy home-copy cleanup skipped (config)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+[mpd-bootstrap] legacy home-copy cleanup skipped (config)
+(pass) bundle skill corpus provider > registers an fs/observed invalidator scoped to the corpus [0.58ms]
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+(pass) legacy home-copy migration > removes only stamped bundle copies and leaves user content alone [1.47ms]
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+(pass) legacy home-copy migration > never touches an unstamped home (legacy installer copies survive) [0.44ms]
+
+packages/mpd-comment-checker-plugin/test/comment-checker.test.ts:
+(skip) binary resolves from toolchain
+(skip) comment file triggers detection (exit 2)
+(skip) clean file passes (exit 0)
+
+3 tests skipped:
+(skip) binary resolves from toolchain
+(skip) comment file triggers detection (exit 2)
+(skip) clean file passes (exit 0)
+
+ 207 pass
+ 3 skip
+ 0 fail
+ 1173 expect() calls
+Ran 210 tests across 28 files. [12.12s]
+[exit code: 0]
+
+########## $ bun run typecheck
+$ tsgo --noEmit
+[exit code: 0]
+
+########## $ bun run test:qa
+$ for f in skills/dsh-qa/scripts/*.mjs; do echo "[test:qa] $f"; bun "$f" --self-test || { echo "[test:qa] FAILED: $f"; exit 1; }; done; echo "[test:qa] all self-tests passed"
+[test:qa] skills/dsh-qa/scripts/agent-teams-adopt.mjs
+[agent-teams-adopt self-test] ok: notice + adopted LICENSE + 0.1.14 + _deps + AGENTS.md + installer self-test verified
+[test:qa] skills/dsh-qa/scripts/agent-teams-sidebar.mjs
+[agent-teams-sidebar self-test] ok: 15 checks (mpd-agent-teams,mpd-workmate; @nanmicoder/dsh-agent-teams,@mpd-dsh/team-page,@mpd-dsh/mpd)
+[test:qa] skills/dsh-qa/scripts/bundle-lifecycle.mjs
+[bundle-lifecycle self-test] ok: repo root IS the bundle + bundle-served preset row + provider wiring + probe + pnpm
+[test:qa] skills/dsh-qa/scripts/codegraph-smoke.mjs
+[codegraph-smoke self-test] ok: project-path precondition verified on fixture
+[test:qa] skills/dsh-qa/scripts/dual-track-smoke.mjs
+[llm-dual-track self-test] ok: track fixture assertions verified
+[test:qa] skills/dsh-qa/scripts/mcp-call.mjs
+[mcp-call self-test] ok: tool-name detection verified on fixture
+[test:qa] skills/dsh-qa/scripts/memory-smoke.mjs
+[memory-smoke self-test] ok: bundle row + dist symbols + unit suite verified
+[test:qa] skills/dsh-qa/scripts/mount-assert.mjs
+[mount-assert self-test] ok: presence/absence detection verified on fixture
+[test:qa] skills/dsh-qa/scripts/plan-c-smoke.mjs
+[plan-c-smoke self-test] ok: rows + unit suites verified
+[test:qa] skills/dsh-qa/scripts/preset-register.mjs
+[preset-register self-test] ok: preset + roster fixtures + web-compat/preset-root normalization verified
+[test:qa] skills/dsh-qa/scripts/relocate-smoke.mjs
+[relocate-smoke self-test] ok: staged patch is path-clean
+[test:qa] skills/dsh-qa/scripts/rtl-ip-profile.mjs
+[rtl-ip-profile self-test] ok: profile + 7 members + swimlane/flow markers + skill + 8 templates + bilingual guide verified
+[test:qa] skills/dsh-qa/scripts/rtl-verif.mjs
+[rtl-verif self-test] ok: bundle wiring (mpd-verif active + wave rows commented) + golden fixture + eight-tool dist surface + iron-rule strings + devPatch guard
+[test:qa] skills/dsh-qa/scripts/session-start-team.mjs
+[session-start-team self-test] ok: policy module + bundle patch + installer + persona verified
+[test:qa] skills/dsh-qa/scripts/skill-catalog-probe.mjs
+[skill-catalog-probe self-test] ok: staged skill corpus present + provider wiring verified
+[test:qa] skills/dsh-qa/scripts/team-route-rewire.mjs
+[team-route-rewire self-test] ok: 12 checks + staged bundle present
+[test:qa] skills/dsh-qa/scripts/tool-output-validation.mjs
+[tool-output-validation self-test] ok: bundle rows + dist symbols + unit suites verified
+[test:qa] skills/dsh-qa/scripts/ultrawork-smoke.mjs
+[ultrawork-smoke self-test] ok: engine symbols + bundle row verified
+[test:qa] skills/dsh-qa/scripts/vision-smoke.mjs
+[vision-e2e self-test] ok: fixture generator verified (155 bytes)
+[test:qa] skills/dsh-qa/scripts/web-client-adapt.mjs
+[web-client-adapt] FAIL: self-test: combined client mounts workmate slots | drift-prone seams are awaited, not declared | agent-teams mount is contained
+[test:qa] FAILED: skills/dsh-qa/scripts/web-client-adapt.mjs
+error: script "test:qa" exited with code 1
+[exit code: 1]
+
+########## $ node scripts/verify-vendor.mjs
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] FAIL - asset skills count drifted: 362 vs 361
+[verify-vendor] FAIL - asset skills treeSha mismatch
+[verify-vendor] asset OK: skills 362 files
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[exit code: 1]
+
+########## $ node scripts/build-mpd-client.mjs
+[build-mpd-client] wrote packages/mpd-bundle-plugin/client.js (237582 bytes)
+[exit code: 0]
+
+########## follow-up: scripts AFTER web-client-adapt (the loop aborted there) run individually
+--- workmate-library.mjs
+[workmate-library self-test] ok: 11 checks
+[exit code: 0]
+--- workmate-team-member.mjs
+[workmate-team-member self-test] ok: 6 checks
+[exit code: 0]
+
+########## attribution: skills tree file count
+git status skills/ :
+ M skills/dsh-qa/SKILL.md
+?? skills/dsh-qa/scripts/agent-teams-sidebar.mjs
+find skills -type f | wc -l : 362
+HEAD tree skills count : 361

@@ -1,0 +1,32 @@
+{
+  "task": "t11 integration — persisted reasoning artifacts",
+  "persistedAt": "2026-09-10T14:39:03.456Z",
+  "note": "Frozen copies for the delivery record. The contract is the binding interface document (preserved by the captain from the first team's t1 verdict=pass plus live corrections). The t2 dossier is the Researcher's traversal record; both are also preserved in the agent-teams task records, whose task outputs are embedded in team-task-records.json (the whole team.json, hence the t2 dossier, the t1 validation record, the t6 verification result and every review's findings).",
+  "sources": [
+    {
+      "label": "contract",
+      "source": ".mpd/plans/workmate-rename-delete-contract.md",
+      "snapshot": "contract.md",
+      "present": true,
+      "bytes": 68080,
+      "sha256": "999e79fd838d36d8b7d9b7ae6f25fe698ad62ecbc66ae1d47023d1fa6f597445"
+    },
+    {
+      "label": "t1-contract-validation",
+      "source": ".mpd/plans/workmate-rename-delete-contract.md",
+      "snapshot": "contract-t1-validation.md",
+      "present": true,
+      "bytes": 68080,
+      "sha256": "999e79fd838d36d8b7d9b7ae6f25fe698ad62ecbc66ae1d47023d1fa6f597445"
+    },
+    {
+      "label": "t2-traversal-dossier",
+      "source": ".mpd/team/workmate-rename-delete/team.json",
+      "snapshot": "team-task-records.json",
+      "present": true,
+      "bytes": 288284,
+      "sha256": "a2b280f7a91fc61a846c355bb72a5be2fcfa814215961be9aa4629b4b94280e2"
+    }
+  ],
+  "truncatedOrMissing": []
+}

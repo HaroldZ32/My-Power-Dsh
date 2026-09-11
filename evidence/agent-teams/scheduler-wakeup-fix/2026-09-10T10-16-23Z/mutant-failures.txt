@@ -1,0 +1,45 @@
+# FAILING-FIRST PROOF — mutate lib/members.js back to the pre-fix one-shot followup call
+
+$ bun test packages/mpd-agent-teams-plugin/test/harness-compat.test.ts packages/mpd-agent-teams-plugin/test/scheduler-dispatch.test.ts
+
+(pass) queueMemberPrompt: delivery follows the host generation > modern host: the symbol-keyed FIFO queue carries the team turn [0.43ms]
+(pass) queueMemberPrompt: delivery follows the host generation > modern host: public sendMessage is never used for team work [0.14ms]
+(pass) queueMemberPrompt: delivery follows the host generation > legacy host: the receiver-bound followup still wins when present [0.22ms]
+(pass) queueMemberPrompt: delivery follows the host generation > neither contract: refuses instead of silently dropping the turn [2.64ms]
+error: expect(received).toBe(expected)
+(fail) deliverToMember: the scheduler's wakeup path > rc.1 runtime delivers through the queue and reports success [0.50ms]
+(pass) deliverToMember: the scheduler's wakeup path > a host without any delivery contract reports failure instead of throwing [0.20ms]
+(pass) installContinuableMemberSetup: setup follows the host generation > legacy host registers the seam directly, never the session-start listener [0.18ms]
+(pass) installContinuableMemberSetup: setup follows the host generation > modern host runs the setup synchronously on agent/session-start, once per agent [0.45ms]
+(pass) installContinuableMemberSetup: setup follows the host generation > a host without either seam degrades with a warning instead of aborting apply() [0.07ms]
+(pass) sessionOwnEvents: child history excludes the inherited prefix > prefers the modern ownEvents() [0.08ms]
+(pass) sessionOwnEvents: child history excludes the inherited prefix > legacy session logs are sliced at seedLength [0.04ms]
+(pass) sessionOwnEvents: child history excludes the inherited prefix > an unreadable log is refused loudly [0.05ms]
+(pass) retired-member guard covers every resumable face > modern host: the FIFO queue rejects a retired member and passes others [0.70ms]
+(pass) retired-member guard covers every resumable face > legacy host: followup is guarded without inventing the method [0.34ms]
+(pass) retired-member guard covers every resumable face > a runtime with no delivery face no longer pretends to guard one [3.14ms]
+error: expect(received).toHaveLength(expected)
+Expected length: 1
+Received length: 0
+(fail) scheduler dispatch across a dependency boundary > the first batch is delivered and dependents stay parked [13.97ms]
+error: expect(received).toHaveLength(expected)
+Expected length: 1
+Received length: 0
+(fail) scheduler dispatch across a dependency boundary > completing the first batch dispatches the next batch to its idle members [10.32ms]
+error: expect(received).toHaveLength(expected)
+Expected length: 1
+Received length: 0
+(fail) scheduler dispatch across a dependency boundary > a member's idle edge delivers its own newly unblocked task [265.51ms]
+(pass) scheduler dispatch across a dependency boundary > a real delivery failure is reported, not swallowed as success [2.60ms]
+ 15 pass
+ 4 fail
+Ran 19 tests across 2 files. [511.00ms]
+packages/mpd-agent-teams-plugin/lib/members.js: OK
+
+=== restored artifact re-run ===
+$ bun test packages/mpd-agent-teams-plugin/test/harness-compat.test.ts packages/mpd-agent-teams-plugin/test/scheduler-dispatch.test.ts
+
+ 19 pass
+ 0 fail
+ 50 expect() calls
+Ran 19 tests across 2 files. [249.00ms]

@@ -1,0 +1,46 @@
+{
+  "task": "t15 - repair: workmate mutation tools conform to their declared output schemas",
+  "contract": ".mpd/plans/workmate-rename-delete-contract.md sections C (tool surface) and D (wire protocol)",
+  "fix": "declare `ok: { type: \"boolean\" }` in both mutation tools' output.schema and require it (rename: ok,name,from / delete: ok,name,archived,purged); the value keeps `ok`, the \u00a7D route bodies keep their own `ok`",
+  "changed_paths": [
+    "packages/mpd-workmate-plugin/src/index.ts",
+    "packages/mpd-workmate-plugin/dist/index.js",
+    "packages/mpd-workmate-plugin/test/rename-delete.test.ts"
+  ],
+  "gates": {
+    "bun build src/index.ts -> dist/index.js (rebuilt, dist declares ok twice)": {
+      "exit": 0,
+      "pass": true
+    },
+    "bun test packages/mpd-workmate-plugin/test (incl. the harness-validator regression lock)": {
+      "exit": 0,
+      "pass": true
+    },
+    "bun run typecheck": {
+      "exit": 0,
+      "pass": true
+    },
+    "route matrix unchanged (\u00a7D status/reason/headers)": {
+      "exit": 0,
+      "pass": true
+    },
+    "dsh plugin --profile h add <repo> (isolated DSH_HOME)": {
+      "exit": 0,
+      "pass": true
+    },
+    "dsh --profile h --dump-config (bundle + workmate row at dist)": {
+      "exit": 0,
+      "pass": true
+    },
+    "isolation: temp HOME/DSH_HOME, real workmate library unchanged": {
+      "exit": 0,
+      "pass": true
+    }
+  },
+  "isolation": {
+    "HOME": "temp sandbox",
+    "DSH_HOME": "temp sandbox",
+    "real_home_untouched": true
+  },
+  "all_passed": true
+}

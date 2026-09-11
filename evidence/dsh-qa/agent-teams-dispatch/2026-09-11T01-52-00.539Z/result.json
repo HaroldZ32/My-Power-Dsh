@@ -1,0 +1,34 @@
+{
+  "ok": true,
+  "sandbox": "/tmp/mpd-dispatch-YKFlzp",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "captainRun": {
+      "ok": true,
+      "exit": 0,
+      "tail": "rite the final report. Keep it clear and evidence-based. Not too long. Don't call more tools — the instruction says end the turn. The team is still running; should I delete it? The instruction says \"Do exactly this and nothing else\" and \"After the third sleep returns, end your turn.\" So no delete. The user may want to inspect. I'll note the team is still live and offer next steps, but not act.\n\nWait — consideration: \"end your turn\" and the team remains running. In headless dsh, the process exits when my turn ends — but the user's probe has completed its purpose. Fine.\n\nLet me give the report.\n"
+    },
+    "tasks": {
+      "a": "completed",
+      "b": "completed",
+      "total": 2
+    },
+    "memberAssignments": {
+      "count": 1,
+      "sessions": 12,
+      "labels": [
+        "agent-teams:mpd-default:Researcher"
+      ]
+    },
+    "secondBatchDispatched": {
+      "ok": true
+    },
+    "assignmentDelivery": {
+      "ok": true,
+      "dependentAssignee": "Researcher"
+    }
+  }
+}

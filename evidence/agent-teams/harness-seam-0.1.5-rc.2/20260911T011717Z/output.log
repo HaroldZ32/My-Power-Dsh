@@ -1,0 +1,61 @@
+===== HOST VERSIONS (2026-09-11T01:17:17Z) =====
+node: v24.16.0  bun: 1.3.14
+dsh:   "version": "0.1.5-rc.1",
+dsh-subagent:   "version": "0.1.5-rc.2",
+dist-tags:
+{ alpha: '0.1.5-alpha.2', next: '0.1.5-rc.2', latest: '0.1.5-rc.1' }
+
+===== INSTALLED HOST SEAM: control schema + prompt method =====
+41:	"subagent.prompt": z.object({
+44:		mode: z.literal("continuable"),
+45:		delivery: z.enum(["queue", "steer"])
+50:		mode: z.literal("continuable")
+108:	if (isCancellation(error, signal)) throw new RemoteError("gateway/cancelled", "subagent prompt was cancelled", {}, { cause: error });
+120:	throw new RemoteError("gateway/internal", "subagent prompt failed", {}, { cause: error });
+1435:	mode: z.literal("one-shot"),
+1442:	mode: z.literal("continuable"),
+2405:	mode: z.literal("one-shot"),
+2409:	mode: z.literal("continuable"),
+3040:		async prompt(request, signal) {
+1546:const deliverSubagentPrompt = Symbol.for("dsh.subagent.deliverPrompt");
+old symbol dsh.subagent.queuePrompt present? 0
+
+===== GATE: typecheck (tsgo --noEmit) =====
+$ tsgo --noEmit
+exit=0
+
+===== GATE: bun test packages =====
+(skip) comment file triggers detection (exit 2)
+(skip) clean file passes (exit 0)
+
+ 296 pass
+ 3 skip
+ 0 fail
+ 1929 expect() calls
+Ran 299 tests across 33 files. [12.67s]
+exit=0
+
+===== GATE: bun run test:qa =====
+[web-client-adapt self-test] ok: 14 checks
+[test:qa] skills/dsh-qa/scripts/workmate-library.mjs
+[workmate-library self-test] ok: 18 checks
+[test:qa] skills/dsh-qa/scripts/workmate-team-member.mjs
+[workmate-team-member self-test] ok: 6 checks
+[test:qa] all self-tests passed
+exit=0
+
+===== GATE: agent-teams-dispatch --self-test =====
+  ok   installed host exposes no subagent followup member
+  ok   installed host owns the public subagent prompt seam
+  ok   installed host face declares the prompt request/receipt contract
+  ok   member delivery uses the audited boundary
+  ok   no call site uses ctx.subagents.followup
+  ok   modern delivery prefers the public prompt seam
+  ok   legacy followup/queue remain only as older-generation fallbacks
+  ok   task mutations kick the whole team
+  ok   member idle edges kick that member
+  ok   delivery failure rolls the claim back instead of stranding it
+  ok   capabilities deny all captain-only tools for members
+  ok   members receive member instructions, not the captain protocol
+[agent-teams-dispatch self-test] ok: 12 checks
+exit=0

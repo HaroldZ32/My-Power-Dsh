@@ -1,0 +1,10 @@
+57f96022c5e5a925344a0c5a67f3dc384605a5e5f76891547ceb58e14fa4157b  packages/mpd-bundle-plugin/client.js
+d5cbcf1e400962fb05fb76e7dd56b08f66aa5054c2a06186ee1d8bc70da4aef6  packages/mpd-bundle-plugin/src/team-page.js
+94ee94149479162480055c6fe912e43bc863a5e01f149cb0e11751222e71e03b  packages/mpd-bundle-plugin/src/web-client.js
+1205d241dc4fedc65a6006bdc9030f9a1d8f41a0714b4d44e10411b3abf79954  packages/mpd-bundle-plugin/test/client-harness.mjs
+1b2fce51288cb998c717bc7bfc4a018f2c4770b4fbc28dc02bc72a2c902e7cc1  packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs
+db44214483ec05601c7a8b6f849d2d948cbf15de3f937bb019f21c104e5dc804  packages/mpd-bundle-plugin/test/team-page.test.mjs
+c0fbef03243e343a919c11a336ed349de82613b2dbca9973e2d716de32064559  skills/dsh-qa/scripts/agent-teams-sidebar.mjs
+bc720d865eb79c15eaf70a3f09af0c7148f1ff6848e4ea2de1766de9df82bf42  skills/dsh-qa/scripts/web-client-adapt.mjs
+e22aae1162e93a27b43b0847a1f8e253badb009ff58c759c9d9ceacc79eae0f3  skills/dsh-qa/scripts/workmate-library.mjs
+b3fe3e4969ec05111e67ec537cfda44cde247646873f5b41a551b46a06e1e21b  VENDOR_LOCK.json

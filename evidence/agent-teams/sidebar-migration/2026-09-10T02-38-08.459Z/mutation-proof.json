@@ -1,0 +1,78 @@
+{
+  "pristineSrcSha": "eededdd6594800c5b052980cd0a712c9808e855ffc4a9572934426d171ad311a",
+  "pristineClientSha": "0aaa08347d81783e0724b07d7b689ce0a972b7d1afdab34d93632e7298378f15",
+  "results": [
+    {
+      "mutation": "A-literal-conversation-chat-node",
+      "code": "ctx.slots.inject(\"conversation.chat.node\", () => ctx.slots.register({ name: \"conversation.chat.node\", key: \"agent-teams\" }, () => null));",
+      "buildExit": 1,
+      "buildOutput": "[build-mpd-client] FAIL: legacy agent-teams surface (inject(\"conversation.chat.node\") is still registered by an mpd client source",
+      "artifactRebuilt": false,
+      "artifactSha": "0aaa08347d81783e0724b07d7b689ce0a972b7d1afdab34d93632e7298378f15",
+      "testExit": 0,
+      "failingExcerpt": [],
+      "testSummary": [
+        " 28 pass",
+        " 0 fail",
+        "Ran 28 tests across 2 files. [11.03s]"
+      ]
+    },
+    {
+      "mutation": "A2-gate-blind-conversation-chat-node",
+      "code": "const LEGACY_CARD_SLOT = \"conversation.chat.node\";\n    ctx.slots.inject(LEGACY_CARD_SLOT, () => ctx.slots.register({ name: LEGACY_CARD_SLOT, key: \"agent-teams\" }, () => null));",
+      "buildExit": 0,
+      "buildOutput": "[build-mpd-client] wrote packages/mpd-bundle-plugin/client.js (237763 bytes)",
+      "artifactRebuilt": true,
+      "artifactSha": "1dc07810a74334f17a158da458d81acda8255a18d672a1d14eca619309169901",
+      "testExit": 1,
+      "failingExcerpt": [
+        "error: expect(received).toBe(expected)",
+        "Expected: false",
+        "Received: true",
+        "(fail) with DSH-better-sidebar installed > registers the AgentTeams page and the workmate library, and no legacy floater [0.38ms]",
+        "error: expect(received).toBe(expected)",
+        "Expected: false",
+        "Received: true",
+        "(fail) without DSH-better-sidebar > falls back to the bundle-owned floater and footer toggle [1.17ms]",
+        "error: expect(received).toBe(expected)",
+        "Expected: false",
+        "Received: true",
+        "(fail) boot safety > without better-sidebar the client warns once and registers no legacy surface [1.29ms]",
+        "(fail) with DSH-better-sidebar installed > registers the AgentTeams page and the workmate library, and no legacy floater [0.38ms]",
+        "(fail) without DSH-better-sidebar > falls back to the bundle-owned floater and footer toggle [1.17ms]",
+        "(fail) boot safety > without better-sidebar the client warns once and registers no legacy surface [1.29ms]",
+        " 3 fail"
+      ],
+      "testSummary": [
+        " 25 pass",
+        " 3 fail",
+        "Ran 28 tests across 2 files. [11.00s]"
+      ]
+    },
+    {
+      "mutation": "B-adopted-client-apply",
+      "code": "agentTeams.apply(ctx);",
+      "buildExit": 0,
+      "buildOutput": "[build-mpd-client] wrote packages/mpd-bundle-plugin/client.js (237609 bytes)",
+      "artifactRebuilt": true,
+      "artifactSha": "51cac085b6a3d00fd72763469ff9969d9985e811d4596e80256e31090944b061",
+      "testExit": 1,
+      "failingExcerpt": [
+        "error: expect(received).toBeUndefined()",
+        "Received: true",
+        "(fail) with DSH-better-sidebar installed > the adopted client half is never applied (it would re-register the removed surfaces) [0.13ms]",
+        "(fail) with DSH-better-sidebar installed > the adopted client half is never applied (it would re-register the removed surfaces) [0.13ms]",
+        " 1 fail"
+      ],
+      "testSummary": [
+        " 27 pass",
+        " 1 fail",
+        "Ran 28 tests across 2 files. [10.99s]"
+      ]
+    }
+  ],
+  "control": {
+    "buildExit": 0,
+    "testExit": 0
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "ok": false,
+  "slug": "readonly-deny",
+  "defect": "tools.restrict() names unknown global tools",
+  "expectedDenyList": [
+    "write",
+    "edit",
+    "mpd_hashline_edit",
+    "bash",
+    "mcp__ast_grep__rewrite",
+    "mcp__ast_grep__scan",
+    "mcp__lsp__rename"
+  ],
+  "deadNames": [
+    "str_replace_editor",
+    "apply_patch"
+  ],
+  "method": "local OpenAI-shaped stub drives the parent into one mpd_role_spawn in a FRESH dsh process (throwaway key), with a negative control that re-injects the pre-fix names in the sandbox copy",
+  "steps": {
+    "positive": {
+      "exit": 0,
+      "restrictError": false,
+      "missingCredential": false,
+      "authFailed": false,
+      "stubCalls": 4,
+      "stubTrace": [
+        {
+          "call": 1,
+          "hasTools": true,
+          "bytes": 105798
+        },
+        {
+          "call": 2,
+          "hasTools": false,
+          "bytes": 6945
+        },
+        {
+          "call": 3,
+          "hasTools": true,
+          "bytes": 99918
+        },
+        {
+          "call": 4,
+          "hasTools": true,
+          "bytes": 106074
+        }
+      ],
+      "spawnDriven": true,
+      "rejectedName": null,
+      "sample": "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)\n[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-rd-pos-home-2C4Ccb/ws\n[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)\nprobe-child-answered\n"
+    },
+    "positiveOk": {
+      "ok": true,
+      "note": "restriction accepted: the parent was driven into one mpd_role_spawn in a fresh process, the child composed, and the harness never reported an unknown tool"
+    },
+    "negative": {
+      "exit": 0,
+      "restrictError": false,
+      "missingCredential": false,
+      "authFailed": false,
+      "stubCalls": 3,
+      "stubTrace": [
+        {
+          "call": 1,
+          "hasTools": true,
+          "bytes": 105754
+        },
+        {
+          "call": 2,
+          "hasTools": false,
+          "bytes": 6901
+        },
+        {
+          "call": 3,
+          "hasTools": true,
+          "bytes": 107548
+        }
+      ],
+      "spawnDriven": true,
+      "rejectedName": null,
+      "sample": "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)\n[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-rd-neg-home-89GYru/ws\n[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)\nprobe-child-answered\n"
+    },
+    "negativeOk": {
+      "ok": false,
+      "note": "control: with the two unregistered names back in the sandbox copy the harness refuses the list, which proves the positive run really reached tools.restrict()"
+    },
+    "isolation": {
+      "ok": true,
+      "realWorkmateUntouched": true,
+      "realWm": "/root/.mpd/workmate"
+    }
+  }
+}

@@ -1,0 +1,112 @@
+===== HARNESS ADAPTATION: SCHEDULER WAKE UNDER A ONE-SHOT HEADLESS CAPTAIN (2026-09-11T01:58:31Z) =====
+node: v24.16.0  bun: 1.3.14
+dsh: 0.1.5-rc.1
+dsh-subagent: 0.1.5-rc.2
+
+SCOPE
+-----
+Follow-up to evidence/agent-teams/harness-seam-0.1.5-rc.2/20260911T012022Z-frozen.
+That freeze proved the 0.1.5-rc.2 delivery seam (`ctx.subagents.prompt(request, signal)`)
+and a green static gate sweep, but its live case (agent-teams-dispatch) still exited 1
+with BOTH tasks `pending`/attempt 0 and NO member ever receiving the automatic assignment.
+This record resolves that live defect. It is a QA-driver defect plus one QA assertion
+defect, NOT a plugin delivery bug: the plugin's scheduler/wake path is unchanged.
+
+SYMPTOM (measured, sandbox /tmp/mpd-dispatch-fdZtqu)
+---------------------------------------------------
+The captain executed approve -> create_task DISPATCH-PROBE-A (t1) -> create_task
+DISPATCH-PROBE-B (t2, depends t1) -> approve (ok, "approved and running (11 members,
+2 tasks)"). All 11 members were spawned (subagent/catalog lines 01:30:06.706-07.198).
+The captain's single turn then ended at 01:30:10.958 `turn/end {reason: completed}` and
+the one-shot process exited. Durable team state (ws/.mpd/team/mpd-default/team.json)
+afterwards: phase=running, approvedAt set, t1/t2 both `pending`, attempt 0.
+Every member session log held only `turn/start` + `request/header` (15-25 lines), with NO
+`turn/end` and NO first assistant message, i.e. every member was disposed during its first
+LLM step.
+
+ROOT CAUSE
+----------
+`packages/mpd-agent-teams-plugin/lib/scheduler.js` is driven by live `agent/status` idle
+edges: installTeamScheduler registers
+  ctx.on('agent/status', ({ agent, status }) => void syncMemberStatus(...))
+and only the `idle` branch calls `runtime.kickMember(...)`. `kickMember` also gates on
+`isMemberAvailable(ctx, member)` = (live handle missing) || (live.status === 'idle').
+A member that the harness disposes before it ever settles never emits an idle edge in this
+process, so the initial `kickTeam` (task mutation) and the idle-edge wake both find nobody
+available and dispatch nothing.
+
+`dsh --profile headless "<prompt>"` is ONE-SHOT: the prompt becomes exactly one captain
+turn and the process exits the moment that turn ends; process exit disposes every
+continuable member. So the headless driver, not the plugin, was starving the scheduler of
+the idle edges it keys on. Under the long-lived Web/TUI captain session the plugin is
+designed for, members do settle and emit idle edges, so the second batch dispatches (this
+record proves it end-to-end below).
+
+QA FIX 1 - hold the captain process open (skills/dsh-qa/scripts/agent-teams-dispatch.mjs)
+----------------------------------------------------------------------------------------
+The probe prompt now has the captain, after approving both tasks, call the bash tool THREE
+SEPARATE times with `sleep 110` (not one combined command), then end its turn. The sleeps
+only hold the process open; they change no plugin behaviour. Measured on the passing run:
+the captain observed "Both tasks completed during the first sleep" and aborted the
+remaining sleeps on the third call's return, then ended the turn.
+
+QA FIX 2 - assert the wake on the DEPENDENT assignee, not both members
+---------------------------------------------------------------------
+The old assertion required the `AgentTeams automatic task assignment` marker (the literal
+opening of scheduler.assignmentPrompt) in BOTH member logs and read the session log under
+the wrong name. Two measured corrections:
+  * log name: this harness writes `session.v3.jsonl.zstd`; the case read only
+    `session.jsonl.zstd`, so it scored 0 deliveries on a correct run. Now both names are
+    tried (current first, legacy fallback).
+  * false negative: on the passing run the first-batch member (Planner, owns
+    DISPATCH-PROBE-A, no deps) received only the spawn/join prompt
+    ("Current team status: 2 task(s), 1 pending task(s) assigned to you"), self-claimed t1
+    with agent_teams_claim_task, and completed it inside its FIRST turn - it is never
+    woken again, and that is correct. The member the scheduler must actually wake is the
+    dependent one (Researcher, owns DISPATCH-PROBE-B, deps [t1]); it idled after its spawn
+    turn and then received the assignment prompt. The case now records each session's
+    subagent descriptor label, resolves the dependent task's assignee from live team state,
+    and asserts the marker exactly on that assignee's session. Offline self-test grew from
+    13 to 14 checks (new check: "real run asserts the wake on the dependent task's assignee
+    only").
+
+LIVE PROOF (evidence/dsh-qa/agent-teams-dispatch/2026-09-11T01-52-00.539Z)
+--------------------------------------------------------------------------
+[agent-teams-dispatch] ok=true
+  installer:            {"ok":true,"exit":0}
+  captainRun:           {"ok":true,"exit":0}
+  tasks:                {"a":"completed","b":"completed","total":2}
+  memberAssignments:    {"count":1,"sessions":12,"labels":["agent-teams:mpd-default:Researcher"]}
+  secondBatchDispatched:{"ok":true}
+  assignmentDelivery:   {"ok":true,"dependentAssignee":"Researcher"}
+[agent-teams-dispatch] PASS
+
+Member session traces (passing sandbox /tmp/mpd-dispatch-YKFlzp):
+  Researcher (owns dependent DISPATCH-PROBE-B): spawn turn idle -> scheduler idle-edge wake
+    delivers `AgentTeams automatic task assignment ... Task: t2 - DISPATCH-PROBE-B` -> second
+    turn -> agent_teams_update_task status=completed output B-OK.
+  Planner (owns DISPATCH-PROBE-A): completed t1 inside its spawn turn from the join prompt
+    (no scheduler wake needed), which is why a both-logs marker assertion is a false negative.
+
+COMPARISON (superseded run, 2026-09-11T01-45-58.484Z; pre-edit QA assertion)
+----------------------------------------------------------------------------
+  tasks:                {"a":"completed","b":"completed","total":2}
+  secondBatchDispatched:{"ok":true}
+  assignmentDelivery:   {"ok":false}   <- old both-members marker assertion
+The tasks completed and the dependent member WAS woken (Researcher session carried the
+marker); only the over-broad assertion failed. This is the run that exposed QA FIX 2.
+
+GATE SWEEP AFTER THE QA CHANGES
+-------------------------------
+typecheck (tsgo --noEmit): exit 0
+bun test packages:         296 pass / 3 skip / 0 fail / 1929 expect / 299 tests / 33 files
+bun run test:qa:           all self-tests passed (agent-teams-dispatch self-test 14 checks)
+agent-teams-dispatch:      real run PASS (above)
+MOUNT bundle-lifecycle:    evidence/dsh-qa/bundle-lifecycle/2026-09-11T01-48-08.977Z ok=true
+verify:vendor:             PASS (skills treeSha refreshed: b5c3907e -> 29a6877c, fileCount 364)
+
+NOTE ON --dump-config
+---------------------
+No `--dump-config` result is cited as load evidence anywhere above. The MOUNT row is a real
+install + boot + uninstall in an isolated DSH_HOME (bundle-lifecycle), and the dispatch
+result comes from a real headless boot driving real agents.

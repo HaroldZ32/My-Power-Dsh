@@ -1,0 +1,13 @@
+{
+  "probe": "real boot (applies loader entries, unlike --dump-config)",
+  "isolation": {
+    "HOME": "temp sandbox",
+    "DSH_HOME": "temp sandbox",
+    "credentials_copied_once": true
+  },
+  "raw_boot_exit": 124,
+  "install_exit": 0,
+  "loader_apply_errors": 0,
+  "missing_credential": 0,
+  "plugin_tree_applied": true
+}

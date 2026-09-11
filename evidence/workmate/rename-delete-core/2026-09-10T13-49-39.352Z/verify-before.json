@@ -1,0 +1,79 @@
+{
+  "task": "t15",
+  "phase": "before",
+  "sandbox": "/tmp/mpd-t15-NXTWbm",
+  "head": "f69708809ed63a57461aa6730d297afc09e772a3",
+  "passed": false,
+  "checks": [
+    {
+      "id": "probe.executed-in-fresh-process",
+      "ok": true,
+      "detail": "RESULT line found"
+    },
+    {
+      "id": "tools.rename+delete registered",
+      "ok": true,
+      "detail": "{\"id\":\"probe.tools-registered\",\"ready\":true,\"hasRename\":true,\"hasDelete\":true}"
+    },
+    {
+      "id": "fixture init (sandbox HOME)",
+      "ok": true,
+      "detail": "{\"name\":\"t15-probe\",\"baseId\":\"hephaestus\",\"baseName\":\"Deep Worker\",\"readonly\":false,\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"path\":\"/tmp/mpd-t15-NXTWbm/user-home/.mpd/workmate/t15-probe\",\"note\":\"t15 output-schema fixture\"}"
+    },
+    {
+      "id": "DEFECT: rename reported invalid output after applying",
+      "ok": true,
+      "detail": "tool \"mpd_workmate_rename\" returned invalid output: \"value.ok\" is not a declared property (additionalProperties: false)"
+    },
+    {
+      "id": "DEFECT: archive delete reported invalid output after applying",
+      "ok": true,
+      "detail": "tool \"mpd_workmate_delete\" returned invalid output: \"value.ok\" is not a declared property (additionalProperties: false)"
+    },
+    {
+      "id": "DEFECT: purge delete reported invalid output after applying",
+      "ok": true,
+      "detail": "tool \"mpd_workmate_delete\" returned invalid output: \"value.ok\" is not a declared property (additionalProperties: false)"
+    },
+    {
+      "id": "DEFECT: the mutation landed anyway (old key freed)",
+      "ok": true,
+      "detail": "{\"id\":\"state.after-rename\",\"oldKey\":null,\"newKeyExists\":true}"
+    },
+    {
+      "id": "DEFECT: the retry answers without the mutation being re-applied (collision/unknown)",
+      "ok": false,
+      "detail": "tool \"mpd_workmate_rename\" returned invalid output: \"value.ok\" is not a declared property (additionalProperties: false)"
+    },
+    {
+      "id": "DEFECT: archive + purge landed anyway (both keys gone from the library)",
+      "ok": true,
+      "detail": "{\"archive\":{\"id\":\"state.after-archive\",\"get\":null,\"listContains\":false},\"purge\":{\"id\":\"state.after-purge\",\"get\":null,\"listContains\":false}}"
+    },
+    {
+      "id": "real ~/.mpd/workmate untouched",
+      "ok": true,
+      "detail": "{\"files\":5,\"sha\":\"ce635a4d2d5b3f6688054cccc65f7f09b1e7cfbdf85e8b4988caef67a1457aee\"}"
+    }
+  ],
+  "transcript": [
+    "=== t15 output-schema before-fix real-boot verification ===",
+    "repo=/root/dshProj/my-power-dsh  HEAD=f697088",
+    "sandbox=/tmp/mpd-t15-NXTWbm  DSH_HOME=/tmp/mpd-t15-NXTWbm/dsh-home  HOME=/tmp/mpd-t15-NXTWbm/user-home",
+    "phase=before  (before = the schema defect is expected; after = it must be gone)",
+    "[setup] copied .credentials.yaml into the sandbox",
+    "[setup] copied settings.yaml into the sandbox",
+    "[install] exit=0 :: dsh: initialized profile h at /tmp/mpd-t15-NXTWbm/dsh-home/profiles/h",
+    "[boot] dsh exit=0 (killed at the cap is normal)",
+    "PASS probe.executed-in-fresh-process :: RESULT line found",
+    "PASS tools.rename+delete registered :: {\"id\":\"probe.tools-registered\",\"ready\":true,\"hasRename\":true,\"hasDelete\":true}",
+    "PASS fixture init (sandbox HOME) :: {\"name\":\"t15-probe\",\"baseId\":\"hephaestus\",\"baseName\":\"Deep Worker\",\"readonly\":false,\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"path\":\"/tmp/mpd-t15-NXTWbm/user-home/.mpd/workmate/t15-probe\",\"note\":\"t15 output-schema fixture\"}",
+    "PASS DEFECT: rename reported invalid output after applying :: tool \"mpd_workmate_rename\" returned invalid output: \"value.ok\" is not a declared property (additionalProperties: false)",
+    "PASS DEFECT: archive delete reported invalid output after applying :: tool \"mpd_workmate_delete\" returned invalid output: \"value.ok\" is not a declared property (additionalProperties: false)",
+    "PASS DEFECT: purge delete reported invalid output after applying :: tool \"mpd_workmate_delete\" returned invalid output: \"value.ok\" is not a declared property (additionalProperties: false)",
+    "PASS DEFECT: the mutation landed anyway (old key freed) :: {\"id\":\"state.after-rename\",\"oldKey\":null,\"newKeyExists\":true}",
+    "FAIL DEFECT: the retry answers without the mutation being re-applied (collision/unknown) :: tool \"mpd_workmate_rename\" returned invalid output: \"value.ok\" is not a declared property (additionalProperties: false)",
+    "PASS DEFECT: archive + purge landed anyway (both keys gone from the library) :: {\"archive\":{\"id\":\"state.after-archive\",\"get\":null,\"listContains\":false},\"purge\":{\"id\":\"state.after-purge\",\"get\":null,\"listContains\":false}}",
+    "PASS real ~/.mpd/workmate untouched :: {\"files\":5,\"sha\":\"ce635a4d2d5b3f6688054cccc65f7f09b1e7cfbdf85e8b4988caef67a1457aee\"}"
+  ]
+}

@@ -1,0 +1,55 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs:
+(pass) client seam policy > declares only services this harness registers [0.51ms]
+(pass) client seam policy > declares only stable seams and probes everything else [0.51ms]
+(pass) client seam policy > probes betterSidebar without declaring it [0.19ms]
+(pass) with DSH-better-sidebar installed > registers the AgentTeams page and the workmate library, and no legacy floater [0.25ms]
+46 |     expect(definitions.some((definition) => definition.name === "conversation.chat.node")).toBe(false);
+47 |     // The slash-command admission surface stays: it is not a GUI panel.
+48 |     expect(client.calls.slots ?? []).toEqual(["conversation.chat.commandview"]);
+49 |   });
+50 |   test("the adopted client half is never applied (it would re-register the removed surfaces)", () => {
+51 |     expect(client.calls.agentTeamsApplied).toBeUndefined();
+                                                ^
+error: expect(received).toBeUndefined()
+
+Received: true
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs:51:44)
+(fail) with DSH-better-sidebar installed > the adopted client half is never applied (it would re-register the removed surfaces) [0.13ms]
+(pass) with DSH-better-sidebar installed > both tab descriptors are valid sidebar pages [0.32ms]
+(pass) with DSH-better-sidebar installed > keeps the locale namespaces registered [0.03ms]
+(pass) workmate page > renders the library from the host routes [8.10ms]
+[mpd] better-sidebar not installed — the AgentTeams page has no host (no floating fallback by design)
+[mpd] better-sidebar not installed — keeping the workmate floater
+(pass) without DSH-better-sidebar > falls back to the bundle-owned floater and footer toggle [0.63ms]
+
+packages/mpd-bundle-plugin/test/team-page.test.mjs:
+(pass) AgentTeams sidebar tab descriptor > registers one single-instance tab with the pinned id and order [0.82ms]
+(pass) AgentTeams sidebar tab descriptor > createTab mints a clean tab so the auto-open seed never lands on it [0.68ms]
+(pass) AgentTeams sidebar tab descriptor > offers the auto-open switch as a plugin-owned setting [0.87ms]
+(pass) AgentTeams page rendering > renders the conversation's teams, members, tasks and archived section [6.32ms]
+(pass) AgentTeams page rendering > renders the archived section with the archived label [5.81ms]
+(pass) AgentTeams page rendering > filters by the tab's own conversation scope [5.01ms]
+(pass) AgentTeams page rendering > shows the empty state when the conversation has no team [5.22ms]
+(pass) AgentTeams page rendering > a hidden tab renders no live view (the sidebar CSS-hides collapsed tabs) [5.62ms]
+(pass) AgentTeams page rendering > a failing host route degrades to the empty state instead of throwing [4.98ms]
+(pass) AgentTeams page rendering > a rejecting poll shows a readable error notice, not a crash [5.08ms]
+(pass) staged plan approval > passes a model directory to a staged team when the service provides one [5.54ms]
+(pass) staged plan approval > a throwing directoryFor degrades instead of crashing the page [5.02ms]
+(pass) badge and polling > badge reports the cached live-team count for its session only [5.20ms]
+(pass) badge and polling > mounting the page twice keeps a single polling controller [7.64ms]
+(pass) auto-open policy > opens the tab once, with a content seed, for a team that appears after the baseline [2708.52ms]
+(pass) auto-open policy > teams restored with the page never auto-open [2705.77ms]
+(pass) auto-open policy > the plugin switch turns auto-open off [2707.32ms]
+(pass) auto-open policy > a disabled tab type is never auto-opened [2707.41ms]
+(pass) boot safety > without better-sidebar the client warns once and registers no legacy surface [1.17ms]
+
+1 tests failed:
+(fail) with DSH-better-sidebar installed > the adopted client half is never applied (it would re-register the removed surfaces) [0.13ms]
+
+ 27 pass
+ 1 fail
+ 93 expect() calls
+Ran 28 tests across 2 files. [10.99s]

@@ -103,11 +103,51 @@ test("mpd_roles_list returns the full roster summary", async () => {
 })
 
 test("read-only deny list covers every write-capable tool (no shell/AST/LSP write bypass)", async () => {
-  const writeTools = ["write", "edit", "str_replace_editor", "apply_patch", "mpd_hashline_edit", "bash", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename"]
+  const writeTools = ["write", "edit", "mpd_hashline_edit", "bash", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename"]
   for (const t of writeTools) expect(READONLY_DENY).toContain(t)
   const { tools, spawned, exec } = makePlugin()
   const spawn = tools.find((t) => t.name === "mpd_role_spawn")
   await spawn.execute({ role: "oracle", task: "review X" }, exec)
   const deny = spawned[0].toolFilter.deny as string[]
   for (const t of writeTools) expect(deny).toContain(t)
+})
+
+/**
+ * The harness validates the WHOLE deny list at spawn time and rejects the child when a single name is
+ * unknown, so one dead entry breaks every read-only spawn. These two names are exactly that defect and
+ * must never come back. They are assembled from fragments so this guard does not itself re-introduce
+ * the literals it forbids.
+ */
+const DEAD_TOOL_NAMES = ["str_replace" + "_editor", "apply" + "_patch"]
+
+test("read-only deny list carries no dead tool name (the defect that broke every read-only spawn)", () => {
+  for (const dead of DEAD_TOOL_NAMES) expect(READONLY_DENY).not.toContain(dead)
+})
+
+test("the same dead names must not reappear in the roles source or its built dist", () => {
+  for (const rel of ["../src/index.ts", "../dist/index.js"]) {
+    const src = readFileSync(join(import.meta.dir, rel), "utf8")
+    for (const dead of DEAD_TOOL_NAMES) expect(src).not.toContain(dead)
+  }
+})
+
+/**
+ * Parity guard (captain decision A2): the workmate plugin denies the same tools on its own read-only
+ * spawns, so the two arrays must stay identical — the drift between them is the class that let this
+ * defect hide. A missing export FAILS this test rather than skipping it: a guard that silently
+ * disengages reports green with zero assertions, which is exactly how this defect class hid once
+ * already. The failures below are therefore deliberate — fix the export, never the guard.
+ */
+test("roles and workmate read-only deny lists are exactly equal (drift guard)", async () => {
+  // A missing named export surfaces as `undefined` (bun does not throw for ESM named imports), so the
+  // landing check is a shape check, never an exception check. It FAILS rather than returning: a drift
+  // guard that disengages silently is the one shape it must never have (t6 review finding).
+  const mod: any = await import("../../mpd-workmate-plugin/src/index.ts").catch(() => null)
+  const workmateDeny = mod?.READONLY_DENY
+  if (!Array.isArray(workmateDeny)) {
+    console.warn("[roles.test] mpd-workmate-plugin must export an array READONLY_DENY for this drift guard to compare; an unexported or non-array value means the guard would compare nothing")
+  }
+  expect(Array.isArray(workmateDeny)).toBe(true)
+  expect(workmateDeny).toEqual([...READONLY_DENY])
+  for (const dead of DEAD_TOOL_NAMES) expect(workmateDeny).not.toContain(dead)
 })

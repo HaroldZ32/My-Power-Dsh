@@ -1,0 +1,1 @@
+755cb5a1a722839e61c1d9426a62fc76447f885484fbfa052c2b303b551badd2  evidence/workmate/rename-delete-verify/attempt2-2026-09-10T13-59-50.000Z/readonly-deny-s1-current.mjs

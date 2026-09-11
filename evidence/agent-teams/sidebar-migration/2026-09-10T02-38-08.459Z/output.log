@@ -1,0 +1,99 @@
+[agent-teams-sidebar] ts=2026-09-10T02-38-08.459Z
+sandbox=/tmp/mpd-atsb-QKV7zU (isolated; the artifact under test is the sandbox COPY)
+offline artifact steps: artifactCopyFaithful=true moduleIds=true teamPageModuleInArtifact=true exactlyOneTeamTab=true teamTabShape=true noLegacyRegistration=true adoptedNeverApplied=true noFloaterDefined=true commandViewKept=true sourcesRegisterNoRemovedSurface=true commandViewStillRegisteredBySource=true buildGatePresent=true serverHalfMountedByRow=true adoptedClientBridged=true artifactCarriesBridge=true bridgePatchGuarded=true bridgePatchIdempotent=true
+host route: mode=real-boot ok=true
+  served client: {"url":"/plugins/??@mpd-dsh/mpd/client.js&rev=2dcb48c20b3245ad-48","status":200,"bytes":237667,"teamPageModule":true,"teamTabId":true,"bridge":true,"atLeastRepoArtifactBytes":true,"carriesRepoArtifact":true}
+  state route: {"status":200,"body":"{\"teams\":[]}","teamsArray":true}
+
+--- web boot log (tail) ---
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=no-binary binary=- cwd=/root/dshProj/my-power-dsh
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.
+dsh web: http://127.0.0.1:3194/?token=iAorzo4TqpriNfnreHLwaBZ7XIgJn6sGcOC5qiLWFWI
+
+
+=============== appended: MUTATION PROOF transcript (/mutation-proof.log) ===============
+=== mutation proof: legacy agent-teams surface re-introduction ===
+repo: /root/dshProj/my-power-dsh
+pristine src sha256:    eededdd6594800c5b052980cd0a712c9808e855ffc4a9572934426d171ad311a  (matches recorded baseline)
+pristine client sha256: 0aaa08347d81783e0724b07d7b689ce0a972b7d1afdab34d93632e7298378f15  (matches recorded baseline)
+
+--- mutation A-literal-conversation-chat-node ---
+applied: "ctx.slots.inject(\"conversation.chat.node\", () => ctx.slots.register({ name: \"conversation.chat.node\", key: \"agent-teams\" }, () => null));"
+build exit=1 artifact=0aaa08347d81 (unchanged: build refused before writing)
+build output: [build-mpd-client] FAIL: legacy agent-teams surface (inject("conversation.chat.node") is still registered by an mpd client source
+bun test exit=0
+   28 pass
+   0 fail
+  Ran 28 tests across 2 files. [11.03s]
+revert: src sha OK / client sha OK
+
+--- mutation A2-gate-blind-conversation-chat-node ---
+applied: "const LEGACY_CARD_SLOT = \"conversation.chat.node\";\n    ctx.slots.inject(LEGACY_CARD_SLOT, () => ctx.slots.register({ name: LEGACY_CARD_SLOT, key: \"agent-teams\" }, () => null));"
+build exit=0 artifact=1dc07810a743 (REBUILT with the mutation)
+build output: [build-mpd-client] wrote packages/mpd-bundle-plugin/client.js (237763 bytes)
+bun test exit=1
+  error: expect(received).toBe(expected)
+  Expected: false
+  Received: true
+  (fail) with DSH-better-sidebar installed > registers the AgentTeams page and the workmate library, and no legacy floater [0.38ms]
+  error: expect(received).toBe(expected)
+  Expected: false
+  Received: true
+  (fail) without DSH-better-sidebar > falls back to the bundle-owned floater and footer toggle [1.17ms]
+  error: expect(received).toBe(expected)
+  Expected: false
+  Received: true
+  (fail) boot safety > without better-sidebar the client warns once and registers no legacy surface [1.29ms]
+  (fail) with DSH-better-sidebar installed > registers the AgentTeams page and the workmate library, and no legacy floater [0.38ms]
+  (fail) without DSH-better-sidebar > falls back to the bundle-owned floater and footer toggle [1.17ms]
+  (fail) boot safety > without better-sidebar the client warns once and registers no legacy surface [1.29ms]
+   3 fail
+   25 pass
+   3 fail
+  Ran 28 tests across 2 files. [11.00s]
+revert: src sha OK / client sha OK
+
+--- mutation B-adopted-client-apply ---
+applied: "agentTeams.apply(ctx);"
+build exit=0 artifact=51cac085b6a3 (REBUILT with the mutation)
+build output: [build-mpd-client] wrote packages/mpd-bundle-plugin/client.js (237609 bytes)
+bun test exit=1
+  error: expect(received).toBeUndefined()
+  Received: true
+  (fail) with DSH-better-sidebar installed > the adopted client half is never applied (it would re-register the removed surfaces) [0.13ms]
+  (fail) with DSH-better-sidebar installed > the adopted client half is never applied (it would re-register the removed surfaces) [0.13ms]
+   1 fail
+   27 pass
+   1 fail
+  Ran 28 tests across 2 files. [10.99s]
+revert: src sha OK / client sha OK
+
+--- control run after reverting every mutation ---
+build exit=0 output: [build-mpd-client] wrote packages/mpd-bundle-plugin/client.js (237582 bytes)
+bun test exit=0
+   28 pass
+   0 fail
+  Ran 28 tests across 2 files. [10.99s]
+
+=============== appended: CASE NEGATIVE CONTROL (/case-negative-control.log) ===============
+=== case-level negative control: does agent-teams-sidebar --self-test actually catch a re-introduced legacy registration? ===
+mutation: reintroduce the removed in-conversation card slot under a gate-blind spelling (renamed local)
+mutation applied
+[build-mpd-client] wrote packages/mpd-bundle-plugin/client.js (237763 bytes)
+[agent-teams-sidebar] FAIL: self-test: noLegacyRegistration :: {"moduleIds":{"ok":true,"ids":["@nanmicoder/dsh-agent-teams","@mpd-dsh/team-page","@mpd-dsh/mpd"]},"teamPageModuleInArtifact":{"ok":true},"exactlyOneTeamTab":{"ok":true,"teamTabIds":["mpd-agent-teams"],"allTabIds":["mpd-agent-teams","mpd-workmate"]},"teamTabShape":{"ok":true,"order":85,"single":true,"toggle":"autoOpenOnTeamActivity"},"noLegacyRegistration":{"ok":false,"registeredDefinitions":["conversation.chat.commandview","conversation.chat.node"]},"adoptedNeverApplied":{"ok":true,"artifactStillContainsAdoptedStrings":true},"noFloaterDefined":{"ok":true},"commandViewKept":{"ok":true,"slots":["conversation.chat.commandview","conversation.chat.node"]},"sourcesRegisterNoRemovedSurface":{"ok":true,"hits":[]},"commandViewStillRegisteredBySource":{"ok":true},"buildGatePresent":{"ok":true},"serverHalfMountedByRow":{"ok":true,"note":"row mounted by the bundle patch + server half registering the route"},"adoptedClientBridged":{"ok":true,"missing":[]},"artifactCarriesBridge":{"ok":true,"missing":[]},"bridgePatchGuarded":{"ok":true}}
+[self-test exit: 1]
+[build-mpd-client] wrote packages/mpd-bundle-plugin/client.js (237582 bytes)
+eededdd6594800c5b052980cd0a712c9808e855ffc4a9572934426d171ad311a  packages/mpd-bundle-plugin/src/web-client.js
+0aaa08347d81783e0724b07d7b689ce0a972b7d1afdab34d93632e7298378f15  packages/mpd-bundle-plugin/client.js
+[agent-teams-sidebar self-test] ok: 15 checks (mpd-agent-teams,mpd-workmate; @nanmicoder/dsh-agent-teams,@mpd-dsh/team-page,@mpd-dsh/mpd)
+[self-test exit after revert: 0]
+
+=============== appended: GATE SWEEP SUMMARY (/sweep.log holds the raw output) ===============
+########## attribution: skills tree file count
+git status skills/ :
+ M skills/dsh-qa/SKILL.md
+?? skills/dsh-qa/scripts/agent-teams-sidebar.mjs
+find skills -type f | wc -l : 362
+HEAD tree skills count : 361

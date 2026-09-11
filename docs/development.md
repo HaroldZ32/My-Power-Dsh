@@ -85,9 +85,10 @@ The QA skill is `skills/dsh-qa` (`SKILL.md`). Every case script ships `--self-te
 | `skill-catalog-probe` | installed bundle serves the skill catalog (22 bundled skills, fixture loads) with no `$DSH_HOME/skills` copy | `node skills/dsh-qa/scripts/skill-catalog-probe.mjs` |
 | `relocate-smoke` | relocated bundle serves preset + corpus, no dev-path leak, no home copy | `node skills/dsh-qa/scripts/relocate-smoke.mjs` |
 | `team-route-rewire` | staged bundle install → agent-teams row composed → probe boot → web `/plugins/dsh-agent-teams/state` 200 | `node skills/dsh-qa/scripts/team-route-rewire.mjs` |
-| `workmate-library` | init→list→spawn→reflect→match against a sandbox HOME | `node skills/dsh-qa/scripts/workmate-library.mjs` |
+| `workmate-library` | init→list→spawn→reflect→match against a sandbox HOME; the self-test also pins the rename/delete host routes, the service surface and the §D reason matrix | `node skills/dsh-qa/scripts/workmate-library.mjs` |
 | `workmate-team-member` | workmate-backed member injection + self-reflect in a live team | `node skills/dsh-qa/scripts/workmate-team-member.mjs` |
-| `web-client-adapt` | the `@mpd-dsh/mpd` boot-graph client entry + client.js ids + workmate host routes | `node skills/dsh-qa/scripts/web-client-adapt.mjs` |
+| `web-client-adapt` | the `@mpd-dsh/mpd` boot-graph client entry + client.js ids + workmate host routes (incl. the client's rename/delete URLs) | `node skills/dsh-qa/scripts/web-client-adapt.mjs` |
+| `preset-conformance` | every harness-owned row config (preset + bundle patch + QA overlays) conforms to the INSTALLED harness schemas, the `mpd` preset's row set equals the installed `standard` preset's, and a real session created with `agentPreset: "mpd"` MOUNTS — with a negative control that must fail | `node skills/dsh-qa/scripts/preset-conformance.mjs` |
 | `agent-teams-adopt` (historical C1) | MIT notice + adoption wiring | `node skills/dsh-qa/scripts/agent-teams-adopt.mjs` |
 
 **QA hard rules** (AGENTS.md §7): sandbox `DSH_HOME=<mktemp>`; copy credentials once;
@@ -112,7 +113,7 @@ profile `node_modules/@mpd-dsh/mpd`) when pnpm store access is unavailable; the 
 | QA self-tests | `bun run test:qa` + each case `--self-test` |
 | QA real cases | `node skills/dsh-qa/scripts/<case>.mjs` |
 | Installer | `node scripts/install-profile.mjs --dry-run` / `--self-test` |
-| Boot check | `dsh --profile <p> --dump-config` in an isolated DSH_HOME |
+| Boot check (MOUNT) | a boot that really applies the rows in an isolated `DSH_HOME` + sandbox `HOME`: `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs` (host rows) / `node skills/dsh-qa/scripts/preset-conformance.mjs` (the `mpd` preset's standing mount). `dsh --profile <p> --dump-config` composes rows only and is NOT this gate (AGENTS.md §4) |
 
 No evidence on disk for a gate = the change is not complete.
 

@@ -40,17 +40,45 @@ function selfTest() {
   checks.push(["package name @mpd-dsh/workmate", pkg.name === "@mpd-dsh/workmate"])
   const pack = readFileSync(join(repoRoot, "scripts", "pack-mpd.mjs"), "utf8")
   checks.push(["pack PLUGIN_PKGS includes workmate", pack.includes('"mpd-workmate-plugin"')])
-  // Sidebar surface: the library is contributed as a DSH-better-sidebar tab, so the
-  // host must publish the roster + detail routes the tab reads and the client must
-  // register that tab through the sidebar service.
+  // Sidebar surface: the library is contributed as a DSH-better-sidebar tab — its ONLY
+  // host — so the host must publish the roster + detail routes the tab reads and the
+  // client must register that tab through the sidebar service.
   const wmSource = readFileSync(join(repoRoot, "packages", "mpd-workmate-plugin", "src", "index.ts"), "utf8")
   checks.push(["host roster route", wmSource.includes('path: "/plugins/mpd-workmate/roster"') && wmSource.includes('ctx.get ? ctx.get("mpdRoles") : undefined')])
   checks.push(["host detail route", wmSource.includes('path: "/plugins/mpd-workmate/get"') && wmSource.includes("workmateLibrary.read(name)")])
+  // Mutation surface: rename + delete are POST-only routes that branch on a reason code, and
+  // the docs describe exactly these literals — so pin them (a rename of either route or of a
+  // reason string must fail the case, not silently invalidate the documentation).
+  checks.push(["host rename route", wmSource.includes('path: "/plugins/mpd-workmate/rename"')
+    && wmSource.includes("renameWorkmate(parsed.body?.name, parsed.body?.new_name)")])
+  checks.push(["host delete route", wmSource.includes('path: "/plugins/mpd-workmate/delete"')
+    && wmSource.includes("deleteWorkmate(parsed.body?.name, parsed.body?.purge, parsed.body?.confirm)")])
+  checks.push(["mutation routes are POST-only with allow: POST", (wmSource.match(/allow: "POST"/g) ?? []).length >= 2])
+  // The §D refusal matrix the GUI branches on: every reason the docs publish must exist here.
+  const REASONS = ["invalid-name", "unknown", "collision", "in-use", "confirm-required"]
+  checks.push(["§D refusal reason matrix", REASONS.every((r) => wmSource.includes(`"${r}"`))
+    && wmSource.includes("{ blocking: e.blocking }")])
+  // Archive-first delete: the archive root is the hidden `.archive/` directory and a purge is
+  // the only destructive path (it must keep requiring the exact name).
+  checks.push(["delete is archive-first with a confirmed purge", wmSource.includes('join(workmateRoot(), ".archive")')
+    && wmSource.includes("archived: null, purged: true")])
+  checks.push(["service exposes rename + delete", wmSource.includes("rename: (name: string, newName: string)")
+    && wmSource.includes("delete: (name: string, purge = false, confirm = \"\")")])
   const client = readFileSync(join(repoRoot, "packages", "mpd-bundle-plugin", "client.js"), "utf8")
   checks.push(["client registers a better-sidebar tab", client.includes('const SIDEBAR_TAB_ID = "mpd-workmate"')
-    && client.includes("sidebar.registerTab") && client.includes("registerSidebarTab")])
-  checks.push(["client keeps a floater fallback", client.includes("better-sidebar not installed")
-    && client.includes('inject("shell.overlay"') && client.includes('inject("sidebar.footer.action"')])
+    && client.includes("sidebar.registerTab") && client.includes("registerWorkmateSidebarTab")])
+  // The tab is registered from the ctx.inject callback: the sidebar service is provided by
+  // another plugin's fiber AFTER this entry applies, so a one-shot probe would never see it.
+  checks.push(["the sidebar service is awaited, not probed", client.includes('ctx.inject(["betterSidebar"]')
+    && client.includes("mountSidebarPages(ctx, loadTeamPage())")
+    && !client.includes("serviceAvailable(")])
+  // The ARTIFACT carries the adopted bundle verbatim, whose dormant apply() still contains
+  // its own `shell.overlay` registration — so the removed-surface scan reads the mpd SOURCE.
+  const clientSource = readFileSync(join(repoRoot, "packages", "mpd-bundle-plugin", "src", "web-client.js"), "utf8")
+  checks.push(["client keeps NO floater fallback", !client.includes("mpd-workmate-library")
+    && !client.includes("mpd-workmate-toggle")
+    && !/inject\(\s*["'`]shell\.overlay["'`]/.test(clientSource)
+    && !/inject\(\s*["'`]sidebar\.footer\.action["'`]/.test(clientSource)])
   const bad = checks.filter(([, ok]) => !ok).map(([n]) => n)
   if (bad.length) fail("self-test: " + bad.join(" | "))
   console.log("[workmate-library self-test] ok: " + checks.length + " checks")

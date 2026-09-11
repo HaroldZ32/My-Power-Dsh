@@ -1,0 +1,57 @@
+{
+  "task": "t3 - workmate rename + delete core (Senior Engineer)",
+  "contract": ".mpd/plans/workmate-rename-delete-contract.md (sections A-M)",
+  "gates": {
+    "bun test packages": {
+      "exit": 0,
+      "pass": true
+    },
+    "bun run typecheck": {
+      "exit": 0,
+      "pass": true
+    },
+    "bun run test:qa": {
+      "exit": 0,
+      "pass": true
+    },
+    "node scripts/verify-vendor.mjs": {
+      "exit": 0,
+      "pass": true
+    },
+    "verify: bun test packages/mpd-workmate-plugin/test/workmate.test.ts": {
+      "exit": 0,
+      "pass": true
+    },
+    "verify: bun build src/index.ts -> dist/index.js (rebuild)": {
+      "exit": 0,
+      "pass": true
+    },
+    "verify: bun test packages/mpd-workmate-plugin/test/rename-delete.test.ts": {
+      "exit": 0,
+      "pass": true
+    },
+    "dsh plugin --profile w add <repo> (isolated DSH_HOME)": {
+      "exit": 0,
+      "pass": true
+    },
+    "dsh --profile w --dump-config: mpd-workmate row composed + dist carries rename/delete": {
+      "exit": 0,
+      "pass": true
+    },
+    "live busyTeams probe against real .mpd/team (read-only)": {
+      "exit": 0,
+      "pass": true
+    },
+    "isolation: temp HOME/DSH_HOME, real workmate library unchanged": {
+      "exit": 0,
+      "pass": true
+    }
+  },
+  "isolation": {
+    "HOME": "temp sandbox",
+    "DSH_HOME": "temp sandbox",
+    "real_home_untouched": true,
+    "lifecycle_probe": "read-only busyTeams, no mutation"
+  },
+  "all_passed": true
+}
