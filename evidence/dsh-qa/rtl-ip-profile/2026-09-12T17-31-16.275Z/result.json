@@ -1,0 +1,13 @@
+{
+  "verdict": "skipped-rtl-ip-carrier",
+  "dumpExit": 0,
+  "siliconRoot": "/root/dshProj/my-power-dsh-silicon",
+  "rowsComposed": true,
+  "rtlIpVisibleInComposedConfig": false,
+  "skips": [
+    "rtl-ip is not in the composed config: the mpd-side carrier (task t15) has not landed, and this bundle ships the profile as DATA only — the offline self-test covers the definition"
+  ],
+  "dshHomeSandbox": "/tmp/mpd-rtlip-8MX8NM",
+  "workspaceSandbox": "/tmp/mpd-rtlip-8MX8NM/ws",
+  "realHomeUntouched": true
+}

@@ -26,10 +26,11 @@
     "typecheck": "tsgo --noEmit",
     "test": "bun test packages",
     "test:fast": "bun test packages --test-timeout 30000",
-    "test:qa": "for f in skills/dsh-qa/scripts/*.mjs; do case \"$f\" in skills/dsh-qa/scripts/rtl-verif.mjs|skills/dsh-qa/scripts/rtl-ip-profile.mjs) echo \"[test:qa] SKIP $f — known-stale until the t19 repoint: these cases assert the RTL rows/skills now owned by the @mpd-dsh/silicon bundle (mpd-verif row, rtl-ip profile, rtl-* trees)\"; continue;; esac; echo \"[test:qa] $f\"; bun \"$f\" --self-test || { echo \"[test:qa] FAILED: $f\"; exit 1; }; done; echo \"[test:qa] all self-tests passed (2 RTL cases skipped: known-stale until t19)\"",
+    "test:qa": "for f in skills/dsh-qa/scripts/*.mjs; do echo \"[test:qa] $f\"; bun \"$f\" --self-test || { echo \"[test:qa] FAILED: $f\"; exit 1; }; done; echo \"[test:qa] all self-tests passed\"",
     "test:qa:all": "for f in skills/dsh-qa/scripts/*.mjs; do echo \"[test:qa:all] $f\"; bun \"$f\" --self-test || { echo \"[test:qa:all] FAILED: $f\"; exit 1; }; done; echo \"[test:qa:all] all self-tests passed\"",
     "verify:vendor": "node scripts/verify-vendor.mjs",
     "verify:rows": "node scripts/verify-rows-parity.mjs",
+    "verify:rtl-refs": "node scripts/verify-rtl-references.mjs",
     "bootstrap": "node scripts/bootstrap.mjs",
     "evidence:mount": "node skills/dsh-qa/scripts/mount-assert.mjs --expect \"name: '@deepseek-ai/dsh-llm'\"",
     "pack": "node scripts/pack-mpd.mjs"
