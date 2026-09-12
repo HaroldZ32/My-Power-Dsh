@@ -157,15 +157,10 @@ function buildPlan(o) {
       id: "mpd-bootstrap", name: p("packages/mpd-bootstrap-plugin/dist/index.js"),
       config: {}
     },
-    // B9: mirror the bundle patch's row verbatim (same id, entry and empty config)
-    // so a legacy install mounts the eight mpd_verif_* tools too. Kept last to
-    // match the bundle patch's order (packages/mpd-bundle/cordis.patch.yml).
+    // B9: every row mirrors the bundle patch verbatim (same id, entry and empty
+    // config) and in the same order (packages/mpd-bundle/cordis.patch.yml).
     // Row-id parity with the patch insert list is enforced by
     // scripts/verify-rows-parity.mjs.
-    {
-      id: "mpd-verif", name: p("packages/mpd-verif-plugin/dist/index.js"),
-      config: {}
-    }
   ]
   // The agent-teams row must register the SAME `profiles.mpd` roster as the
   // bundle patch (packages/mpd-bundle/cordis.patch.yml) — otherwise
@@ -267,8 +262,6 @@ function selfTest() {
   if (!policy || policy.mode !== "auto" || policy.profile !== "mpd" || !Array.isArray(policy.presets) || !policy.presets.includes("mpd")) { console.error("[install-profile self-test] FAIL: agent-teams sessionTeamPolicy"); process.exit(1) }
   if (!rows.includes("mpd-hashline")) { console.error("[install-profile self-test] FAIL: mpd-hashline row"); process.exit(1) }
   if (!rows.includes("mpd-roles") || !rows.includes("mpd-workmate") || !rows.includes("mpd-bootstrap")) { console.error("[install-profile self-test] FAIL: mpd-roles/workmate/bootstrap rows"); process.exit(1) }
-  // B9: the verif row must be declared (a legacy install otherwise mounts no mpd_verif_* tool)
-  if (!rows.includes("mpd-verif")) { console.error("[install-profile self-test] FAIL: mpd-verif row"); process.exit(1) }
   if (!plan.agentTeamsRow.name.includes("packages/mpd-agent-teams-plugin/lib/index.js")) { console.error("[install-profile self-test] FAIL: agent-teams main-code path"); process.exit(1) }
   // web-compat entry name must be exactly the bare bundle specifier (client-modules
   // contract) — never an absolute path

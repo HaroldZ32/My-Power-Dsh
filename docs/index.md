@@ -16,7 +16,7 @@ overview is [`README.md`](../README.md).
 | [`user-guide.md`](user-guide.md) | users | Install, presets, specialists (roster), workmate library, team mode, GUI panels, configuration. |
 | [`architecture.md`](architecture.md) | engineers, curious users | How the bundle is assembled and mounts: patch layers, plugin inventory, model routing, state layout, web-client wiring, interaction flows. |
 | [`development.md`](development.md) | developers | Repo layout, build/test commands, QA case catalog, gates, packing/installing, vendoring, git model, common pitfalls. |
-| [`rtl-verif-guide.md`](rtl-verif-guide.md) | RTL engineers, agents | RTL dev phase-1: Verible/slang-server LSP, rtl-codestyle templates, mpd-verif plugin (iverilog/Verilator/VCS + cocotb iron rule + VCS-only UVM), waveform-MCP wiring, engineering-flow recommendations (draft), deferred to-do list. |
+| [`rtl-verif-guide.md`](rtl-verif-guide.md) | RTL engineers, agents | RTL dev phase-1 (being moved to the silicon sub-bundle, gitee.com/nop_chip/my-power-dsh-silicon; until then this file describes the pre-extraction checkout): Verible/slang-server LSP, rtl-codestyle templates, mpd-verif plugin (iverilog/Verilator/VCS + cocotb iron rule + VCS-only UVM), waveform-MCP wiring, engineering-flow recommendations (draft), deferred to-do list. |
 | [`../AGENTS.md`](../AGENTS.md) | agents + maintainers | Binding repository manual: conventions, gates, git model, troubleshooting. |
 | [`../LICENSE.md`](../LICENSE.md), [`../LICENSE-NOTICES.md`](../LICENSE-NOTICES.md) | everyone | SUL-1.0 license + third-party notices (adopted dsh-agent-teams, comment-checker). |
 
@@ -28,8 +28,7 @@ One README per package under `packages/<name>/README.md`:
   `mpd-roles-plugin`, `mpd-ulw-plugin`, `mpd-hashline-plugin`, `mpd-boulder-plugin`,
   `mpd-comment-checker-plugin`, `mpd-memory-plugin`, `mpd-codegraph-plugin`,
   `mpd-dsh-adapter-plugin` (the single harness-seam adapter every row calls through),
-  `mpd-workmate-plugin`, `mpd-bootstrap-plugin`, `mpd-verif-plugin` (RTL
-  verification, Plan A), `mpd-agent-teams-plugin` (adopted),
+  `mpd-workmate-plugin`, `mpd-bootstrap-plugin`, `mpd-agent-teams-plugin` (adopted),
   `mpd-bundle-plugin` (bundle web-compat + combined web client),
   `mpd-qa-roles-probe` (QA-only).
 - **MCP servers** — `mpd-mcp-astgrep`, `mpd-mcp-gitbash`, `mpd-mcp-lsp`,

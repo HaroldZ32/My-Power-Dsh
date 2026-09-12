@@ -136,7 +136,7 @@ mpd-dsh/
 │   ├── mpd-agent-teams-plugin/   # adopted dsh-agent-teams (MIT, first-class main code): agent_teams_* + Web panel; memberPersona injects workmate backing
 │   ├── mpd-bundle-plugin/        # bundle web-compat: the @mpd-dsh/mpd no-op main + the combined web client (client.js = adopted agent-teams panel + the workmate library registered as a DSH-better-sidebar tab, with the bundle floater as fallback; built by scripts/build-mpd-client.mjs)
 │   └── mpd-qa-roles-probe/       # QA-only probe: mpd preset resolve + mpdRoles roster (overlay-mounted)
-├── skills/                      # skill corpus: dsh-qa (QA skill) + 17 ported upstream skills + svn-master + rtl-* (SERVED from the bundle by mpd-bootstrap; never copied to \$DSH_HOME)
+├── skills/                      # skill corpus: dsh-qa (QA skill) + 17 ported upstream skills + svn-master (SERVED from the bundle by mpd-bootstrap; never copied to \$DSH_HOME). The rtl-* trees moved to the silicon sub-bundle (gitee.com/nop_chip/my-power-dsh-silicon)
 ├── tests/
 │   ├── overlays/                 # QA patch overlays (keep empty when rows live in the bundle)
 │   ├── golden/                   # golden fixtures + Prometheus plan artifacts

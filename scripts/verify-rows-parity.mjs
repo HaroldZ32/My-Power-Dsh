@@ -2,9 +2,9 @@
 // B9 row-parity guard: the legacy installer (scripts/install-profile.mjs) must
 // declare the SAME row-id set as the bundle patch's `- insert:` lists
 // (packages/mpd-bundle/cordis.patch.yml). The measured defect this locks out:
-// the installer declared 21 row ids and the patch 22 — the only difference was
-// `mpd-verif`, so every install-profile install mounted none of the eight
-// mpd_verif_* tools while `--dump-config` still looked healthy.
+// the installer and the patch once declared DIFFERENT row-id sets, so an
+// install-profile install silently mounted none of the rows only the patch
+// carried while `--dump-config` still looked healthy.
 //
 // Gate story: run it exactly like the other repo-level guard,
 // `node scripts/verify-rows-parity.mjs` (cf. `node scripts/verify-vendor.mjs` /
@@ -94,4 +94,4 @@ if (missing.length || extra.length || patchDup.length || installerDup.length) {
   if (installerDup.length) console.error("  DUPLICATE ids in the installer: " + installerDup.join(", "))
   process.exit(1)
 }
-console.log("[verify-rows-parity] ok: " + installerSet.size + " row ids match the bundle patch insert list (mpd-verif included)")
+console.log("[verify-rows-parity] ok: " + installerSet.size + " row ids match the bundle patch insert list (" + [...installerSet].sort().join(", ") + ")")
