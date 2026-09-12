@@ -27,10 +27,10 @@ const CASES = ["rtl-verif.mjs", "rtl-ip-profile.mjs"]
 
 /** Forward references with a named owner; each entry is [prefix, owner, why]. */
 const PENDING = [
-  ["packages/mpd-mcp-lsp", "t16", "HDL language-service assets land with t16; the row ships disabled:true until then"],
-  ["docs/adder4.md", "t16", "landed by t16 together with the Verilog fixtures"],
-  ["docs/cnt8.md", "t16", "landed by t16 together with the Verilog fixtures"],
-  ["skills/lsp-setup/references", "t17", "the two orphan HDL READMEs are deleted by t17 and the knowledge moves to silicon's packages/mpd-mcp-lsp/references/"],
+  ["packages/mpd-mcp-lsp", "t16 (landed)", "the HDL language-service assets are now in the silicon bundle; a reference that still resolves only in the mpd checkout is a leftover of the pre-t16 state"],
+  ["docs/adder4.md", "t16 (landed)", "landed by t16 together with the Verilog fixtures"],
+  ["docs/cnt8.md", "t16 (landed)", "landed by t16 together with the Verilog fixtures"],
+  ["skills/lsp-setup/references", "migrated (t17)", "the two orphan HDL READMEs were deleted by t17 and the HDL pages now live in the silicon bundle's packages/mpd-mcp-lsp/references/ — kept as a named bucket so the historical reference stays visible instead of pretending the path still exists"],
   ["skills/rtl-dev", "historical", "proposed in the preserved gap assessment and never created: the capability shipped as rtl-codestyle/rtl-verif/rtl-ip-flow, and the document's technical content is kept verbatim"],
 ]
 /** Output/runtime locations created by running the gates — not repo assets. */
