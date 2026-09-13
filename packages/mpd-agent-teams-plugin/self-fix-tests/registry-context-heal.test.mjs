@@ -23,8 +23,8 @@ import { applyAgentTeamsFixes, assertRegistryFormat, canonicalIndent, findRegion
 
 const pluginRoot = join(dirname(fileURLToPath(import.meta.url)), "..")
 const repoRoot = join(pluginRoot, "..", "..")
-const LIB_FILES = ["index.js", "quality-gates.js", "session-start.js", "state.js", "tools.js", "mpd-deltas.js"]
-const ADOPTED_FILES = ["index.js", "quality-gates.js", "session-start.js", "state.js", "tools.js"]
+const LIB_FILES = ["index.js", "quality-gates.js", "scheduler.js", "session-start.js", "state.js", "tools.js", "mpd-deltas.js"]
+const ADOPTED_FILES = ["index.js", "quality-gates.js", "scheduler.js", "session-start.js", "state.js", "tools.js"]
 
 /**
  * Copy the adopted lib + registry + the applier CLI into a scratch root, so the

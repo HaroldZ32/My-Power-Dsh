@@ -19,7 +19,7 @@
     "skills": {
       "fileCount": 329,
       "source": "skill corpus at repo root (ported upstream skills + dsh-qa + svn-master + bundle-lifecycle, agent-teams-dispatch, agent-teams-sidebar, workmate-library, workmate-team-member and readonly-deny QA cases + the dsh-qa scripts/lib/workspace-isolation.mjs QA sandbox helper + the dsh-qa scripts/lib/gate-probe.mjs two-sided complexity-gate probe); whole-dir refresh from upstream, keep provenance links",
-      "treeSha": "ee6b84d00d2c1bcd4ae3bd2fa9fffea290df1938d020f8bf1d07fbac98dc88f9"
+      "treeSha": "de1bfe89552f322d2804bcd17bd3730482091c71bd1bd217c92de733a8fd654f"
     },
     "packages/mpd-agent-teams-plugin/_deps": {
       "fileCount": 635,

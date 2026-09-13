@@ -177,10 +177,36 @@ async function runReal() {
     return results
   }
 
+  // NEGATIVE CONTROL (t24 item 4): with the gate explicitly DISABLED the same complex
+  // prompt must produce NO team and NO notice. Without this, a gate that is
+  // accidentally always-true could still "pass" the complex side.
+  function runNegativeControl() {
+    const controlHome = join(sandbox, "negative-control")
+    const controlWs = join(controlHome, "ws")
+    mkdirSync(controlWs, { recursive: true })
+    cpSync(join(sandbox, ".credentials.yaml"), join(controlHome, ".credentials.yaml"))
+    if (existsSync(join(sandbox, "settings.yaml"))) cpSync(join(sandbox, "settings.yaml"), join(controlHome, "settings.yaml"))
+    cpSync(join(sandbox, "profiles"), join(controlHome, "profiles"), { recursive: true })
+    const patchText = readFileSync(join(sandbox, "cordis.patch.yml"), "utf8")
+    // the installed row renders autoRoute as JSON-ish YAML; flipping it to false must
+    // disarm the gate. If the pattern is absent the control FAILS loudly instead of
+    // passing vacuously.
+    if (!patchText.includes("autoRoute")) return { ok: false, reason: "autoRoute not found in the installed row patch" }
+    const disarmed = patchText.replace(/autoRoute:\s*true/g, "autoRoute: false")
+    writeFileSync(join(controlHome, "cordis.patch.yml"), disarmed)
+    const env = { ...process.env, DSH_HOME: controlHome, HOME: controlHome }
+    const live = spawnSync("dsh", ["--profile", "mpd-headless", COMPLEX_PROMPTS[0]], { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 600000, cwd: controlWs, stdio: ["ignore", "pipe", "pipe"] })
+    LOG.push("[negative-control] autoRoute=false + complex prompt\n[[exit=" + live.status + "]]\n" + ((live.stdout || "") + (live.stderr || "")).slice(0, 4000))
+    const teams = activeTeams(controlWs)
+    const notice = noticeInLog(controlHome)
+    return { ok: teams.length === 0 && !notice, teams: teams.length, notice, disarmed: disarmed !== patchText }
+  }
+
   steps.simpleSide = await runSide("simple", SIMPLE_PROMPTS, false)
   steps.complexSide = await runSide("complex", COMPLEX_PROMPTS, true)
+  steps.negativeControl = runNegativeControl()
   steps.twoSided = {
-    ok: steps.simpleSide.every((r) => r.ok) && steps.complexSide.every((r) => r.ok),
+    ok: steps.simpleSide.every((r) => r.ok) && steps.complexSide.every((r) => r.ok) && steps.negativeControl.ok,
     simpleTeams: steps.simpleSide.map((r) => r.teams),
     simpleNotices: steps.simpleSide.map((r) => r.notice),
     complexTeams: steps.complexSide.map((r) => r.teams),

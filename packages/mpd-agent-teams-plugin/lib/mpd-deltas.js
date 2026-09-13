@@ -253,4 +253,16 @@ export const MPD_DELTAS = [
         ],
         block: "//#region mpd-delta dependency-failed-unblock (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n/**\n * Whether `dependencies` still BLOCK a dependent task, and which of them failed.\n *\n * Three-state evaluation (user decision OPT-1, 2026-09-13): a dependency is\n * `satisfied` (completed), `failed-dependency` (failed) or unsatisfied\n * (pending/claimed/in_progress/cancelled/unknown). A FAILED dependency no longer\n * pins its dependents forever — the dependent stays `pending` and dispatchable,\n * while `failedDependencyIds` carries the failure so the view can say so. A\n * cancelled dependency was already non-blocking (deadlock rule) and its pending\n * dependents are released by `resolveCancelledDependencyDeadlocks`.\n * @param tasks - the team's tasks.\n * @param dependencies - task ids the candidate depends on.\n * @returns the blocking ids plus the failed ids (never both for one id).\n */\nexport function dependencyStates(tasks, dependencies) {\n    const byId = new Map(tasks.map((task) => [task.id, task]));\n    const blocking = [];\n    const failed = [];\n    for (const id of dependencies) {\n        const status = byId.get(id)?.status;\n        if (status === 'completed' || status === 'cancelled')\n            continue;\n        if (status === 'failed')\n            failed.push(id);\n        else\n            blocking.push(id);\n    }\n    return { blocking, failed };\n}\n/**\n * Whether `dependencies` are all satisfied (every named task exists and is\n * completed) for the given task list. OPT-1: a FAILED dependency does not block.\n * @param tasks - the team's tasks.\n * @param dependencies - task ids the candidate depends on.\n * @returns the ids that still block, empty when claimable.\n */\nexport function unsatisfiedDependencies(tasks, dependencies) {\n    return dependencyStates(tasks, dependencies).blocking;\n}\n//#endregion mpd-delta dependency-failed-unblock",
     },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/scheduler.js",
+        id: "mpd-delta ready-task-predicate",
+        beforeContext: [
+            "        && (task.status === 'claimed' || task.status === 'in_progress'));",
+            "}",
+        ],
+        afterContext: [
+            "function nextReadyTask(tasks, memberName) {",
+        ],
+        block: "//#region mpd-delta ready-task-predicate (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n/**\n * The scheduler's readiness predicate as a named, testable export: a task is\n * dispatchable when it is `pending`, not mid-reassignment, and no dependency still\n * BLOCKS it (OPT-1: a failed dependency does not block). S3's task-level resume\n * contract is exactly this predicate — a terminal task is never `pending`, so a\n * restarted process cannot re-run finished work — and the tests call it directly\n * instead of duplicating the filter inline.\n * @param tasks - the team's tasks.\n * @param task - the candidate task.\n * @returns true when the scheduler may dispatch it.\n */\nexport function isTaskReady(tasks, task) {\n    return task.status === 'pending'\n        && task.reassigning !== true\n        && unsatisfiedDependencies([...tasks], task.dependencies).length === 0;\n}\n//#endregion mpd-delta ready-task-predicate",
+    },
 ];

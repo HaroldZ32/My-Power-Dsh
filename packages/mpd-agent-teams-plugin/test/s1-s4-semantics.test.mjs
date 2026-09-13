@@ -125,20 +125,37 @@ test("S2 falsifiability: a NO-OP amendment does not re-run anything", async () =
     }
 })
 
-test("S3: the scheduler dispatches ONLY pending tasks, so terminal work is never re-run on restart", () => {
-    // The readiness predicate in lib/scheduler.js:146 is the task-level resume contract.
-    const schedulerSrc = readFileSync(join(here, "..", "lib", "scheduler.js"), "utf8")
-    expect(schedulerSrc).toContain("task.status === 'pending'")
-    expect(schedulerSrc).not.toMatch(/task\.status === 'completed'\s*&&\s*unsatisfiedDependencies/)
+test("S3: the scheduler's REAL readiness predicate never re-dispatches terminal work", async () => {
+    // Contract: a process restart must resume from persisted state, not re-run finished
+    // tasks. That guarantee IS the scheduler's readiness predicate, so the test drives
+    // the exported predicate itself instead of re-implementing its filter inline.
+    const { isTaskReady } = await import("../lib/scheduler.js")
     const tasks = [
         { id: "done", status: "completed", dependencies: [] },
         { id: "failed-one", status: "failed", dependencies: [] },
+        { id: "cancelled-one", status: "cancelled", dependencies: [] },
         { id: "running", status: "in_progress", dependencies: [] },
+        { id: "claimed-one", status: "claimed", dependencies: [] },
         { id: "waiting", status: "pending", dependencies: ["done"] },
         { id: "ready", status: "pending", dependencies: [] },
+        { id: "blocked", status: "pending", dependencies: ["running"] },
+        { id: "reassigning", status: "pending", dependencies: [], reassigning: true },
     ]
-    const ready = tasks.filter((task) => task.status === "pending" && (task.dependencies ?? []).every((id) => ["completed", "cancelled"].includes(tasks.find((t) => t.id === id).status)))
-    expect(ready.map((task) => task.id)).toEqual(["waiting", "ready"])
+    const ready = tasks.filter((task) => isTaskReady(tasks, task)).map((task) => task.id)
+    // never a terminal task: that is the resume guarantee
+    for (const terminal of ["done", "failed-one", "cancelled-one"]) expect(ready).not.toContain(terminal)
+    // in-flight work is not re-dispatched either
+    expect(ready).not.toContain("running")
+    expect(ready).not.toContain("claimed-one")
+    // a task mid-reassignment is held back
+    expect(ready).not.toContain("reassigning")
+    // pending with an unfinished dependency is held back; a completed one is not
+    expect(ready).not.toContain("blocked")
+    expect(ready).toContain("waiting")
+    expect(ready).toContain("ready")
+    // OPT-1 interaction: a FAILED dependency does not block, so its dependent is ready
+    const withFailedDep = [{ id: "A", status: "failed", dependencies: [] }, { id: "B", status: "pending", dependencies: ["A"] }]
+    expect(withFailedDep.filter((task) => isTaskReady(withFailedDep, task)).map((task) => task.id)).toEqual(["B"])
 })
 
 test("S4: a bounded notice reaches a RUNNING member without restarting its attempt", async () => {

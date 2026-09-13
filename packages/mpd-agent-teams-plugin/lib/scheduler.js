@@ -142,10 +142,26 @@ function ownedOpenTask(tasks, memberName) {
     return tasks.find(task => task.assignee === memberName
         && (task.status === 'claimed' || task.status === 'in_progress'));
 }
-function nextReadyTask(tasks, memberName) {
-    const ready = tasks.filter(task => task.status === 'pending'
+//#region mpd-delta ready-task-predicate (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/**
+ * The scheduler's readiness predicate as a named, testable export: a task is
+ * dispatchable when it is `pending`, not mid-reassignment, and no dependency still
+ * BLOCKS it (OPT-1: a failed dependency does not block). S3's task-level resume
+ * contract is exactly this predicate — a terminal task is never `pending`, so a
+ * restarted process cannot re-run finished work — and the tests call it directly
+ * instead of duplicating the filter inline.
+ * @param tasks - the team's tasks.
+ * @param task - the candidate task.
+ * @returns true when the scheduler may dispatch it.
+ */
+export function isTaskReady(tasks, task) {
+    return task.status === 'pending'
         && task.reassigning !== true
-        && unsatisfiedDependencies([...tasks], task.dependencies).length === 0);
+        && unsatisfiedDependencies([...tasks], task.dependencies).length === 0;
+}
+//#endregion mpd-delta ready-task-predicate
+function nextReadyTask(tasks, memberName) {
+    const ready = tasks.filter(task => isTaskReady(tasks, task));
     return ready.find(task => task.assignee === memberName)
         ?? ready.find(task => task.assignee === undefined);
 }
