@@ -12,14 +12,14 @@
     "trackedFiles": 9131,
     "trackedLoc": 1470231,
     "recordedAt": "2026-08-26T03:46:26.867Z",
-    "note": "loc = Σ split('\\n').length over tracked files (same method as verify-vendor)"
+    "note": "loc = \u03a3 split('\\n').length over tracked files (same method as verify-vendor)"
   },
   "assets": {
-    "_note": "skills corpus and agent-teams _deps closure: fileCount+treeSha (sorted relpath + per-file sha256 aggregation) double gate — verified by scripts/verify-vendor.mjs; dist: sha256 gate",
+    "_note": "skills corpus and agent-teams _deps closure: fileCount+treeSha (sorted relpath + per-file sha256 aggregation) double gate \u2014 verified by scripts/verify-vendor.mjs; dist: sha256 gate",
     "skills": {
-      "fileCount": 329,
+      "fileCount": 328,
       "source": "skill corpus at repo root (ported upstream skills + dsh-qa + svn-master + bundle-lifecycle, agent-teams-dispatch, agent-teams-sidebar, workmate-library, workmate-team-member and readonly-deny QA cases + the dsh-qa scripts/lib/workspace-isolation.mjs QA sandbox helper); whole-dir refresh from upstream, keep provenance links",
-      "treeSha": "8a0f05f0c241df966219ed2ead8b72f97e03b94ebd6a1b321eac3f7f98fa74c6"
+      "treeSha": "afe718251965a933b6a15b40bbe6ebf2e5222996fecb48b05fc8e770e390fcad"
     },
     "packages/mpd-agent-teams-plugin/_deps": {
       "fileCount": 635,
@@ -34,12 +34,12 @@
     "packages/mpd-mcp-gitbash/dist/cli.js": {
       "fileCount": 1,
       "source": "built offline via scripts/build-mcp.mjs from packages/git-bash-mcp",
-      "sha256": "cb9ce8f3f1749d9445d9ce5bc45d35f6e8d7d6450227a8665a6360ad38a3257a"
+      "sha256": "0484a8ff1714c949bc52a4fc0de89c756dcab975b0691a2823706f008475f38e"
     },
     "packages/mpd-mcp-lsp/dist/cli.js": {
       "fileCount": 1,
       "source": "built offline via scripts/build-mcp.mjs from packages/lsp-daemon",
-      "sha256": "04b49f8c192d03b5a9cdf1e1f17861d8f4c6741792a4c455e78d0ca8e0a973a9"
+      "sha256": "9f41d4258c204aca959de98a5bea59a7459f9e298885f187cfc0268e1d18ce69"
     },
     "packages/mpd-mcp-codegraph/dist/serve.js": {
       "fileCount": 1,
