@@ -80,7 +80,7 @@ test("mpd_role_spawn: read-only roles get write-deny toolFilter, workers none", 
   const ro = await spawn.execute({ role: "oracle", task: "review X" }, exec)
   expect(spawned[0].toolFilter).toEqual({ deny: READONLY_DENY })
   expect(spawned[0].persona).toContain("read-only")
-  expect(spawned[0].agentOptions.model).toBe("deepseek-v4-pro")
+  expect(spawned[0].agentOptions.model).toBe("deepseek-v4-flash")
   expect(ro.status).toBe("complete")
   expect(ro.summary).toBe("done")
 
@@ -99,7 +99,7 @@ test("mpd_roles_list returns the full roster summary", async () => {
   expect(res.roles.every((r: any) => r.id && r.model)).toBe(true)
   const oracle = res.roles.find((r: any) => r.id === "oracle")
   expect(oracle.readonly).toBe(true)
-  expect(oracle.model).toBe("deepseek-v4-pro")
+  expect(oracle.model).toBe("deepseek-v4-flash")
 })
 
 test("read-only deny list covers every write-capable tool (no shell/AST/LSP write bypass)", async () => {

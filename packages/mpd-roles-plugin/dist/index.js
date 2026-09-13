@@ -12,7 +12,7 @@ var ROLES = [
     description: "Strategic technical advisor: architecture review, deep debugging, self-review.",
     readonly: true,
     chain: [
-      { provider: "deepseek-official", model: "deepseek-v4-pro" },
+      { provider: "deepseek-official", model: "deepseek-v4-flash" },
       { provider: "deepseek-official", model: "deepseek-v4-flash" }
     ],
     personaFile: "personas/oracle.md"
@@ -34,7 +34,7 @@ var ROLES = [
     description: "Planning advisor: produces .mpd/plans plans only, never implements.",
     readonly: true,
     chain: [
-      { provider: "deepseek-official", model: "deepseek-v4-pro" },
+      { provider: "deepseek-official", model: "deepseek-v4-flash" },
       { provider: "deepseek-official", model: "deepseek-v4-flash" }
     ],
     personaFile: "personas/prometheus.md"
@@ -56,7 +56,7 @@ var ROLES = [
     description: "Primary engineering agent: plan small, execute with tools, verify, report honestly.",
     readonly: false,
     chain: [
-      { provider: "deepseek-official", model: "deepseek-v4-pro" },
+      { provider: "deepseek-official", model: "deepseek-v4-flash" },
       { provider: "deepseek-official", model: "deepseek-v4-flash" },
       { provider: "deepseek-official", model: "deepseek-v4-flash" }
     ],
@@ -68,7 +68,7 @@ var ROLES = [
     description: "Orchestrator: macro planning, delegate roles, integrate results.",
     readonly: false,
     chain: [
-      { provider: "deepseek-official", model: "deepseek-v4-pro" },
+      { provider: "deepseek-official", model: "deepseek-v4-flash" },
       { provider: "deepseek-official", model: "deepseek-v4-flash" }
     ],
     personaFile: "personas/atlas.md"
@@ -90,7 +90,7 @@ var ROLES = [
     description: "Deep reviewer: correctness/risk findings with evidence, no fixes.",
     readonly: false,
     chain: [
-      { provider: "deepseek-official", model: "deepseek-v4-pro" },
+      { provider: "deepseek-official", model: "deepseek-v4-flash" },
       { provider: "deepseek-official", model: "deepseek-v4-flash" }
     ],
     personaFile: "personas/metis.md"

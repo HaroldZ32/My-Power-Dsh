@@ -25,7 +25,7 @@ export const ROLES: MpdRoleSpec[] = [
     "description": "Strategic technical advisor: architecture review, deep debugging, self-review.",
     "readonly": true,
     "chain": [
-      { "provider": "deepseek-official", "model": "deepseek-v4-pro" },
+      { "provider": "deepseek-official", "model": "deepseek-v4-flash" },
       { "provider": "deepseek-official", "model": "deepseek-v4-flash" }
     ],
     "personaFile": "personas/oracle.md"
@@ -47,7 +47,7 @@ export const ROLES: MpdRoleSpec[] = [
     "description": "Planning advisor: produces .mpd/plans plans only, never implements.",
     "readonly": true,
     "chain": [
-      { "provider": "deepseek-official", "model": "deepseek-v4-pro" },
+      { "provider": "deepseek-official", "model": "deepseek-v4-flash" },
       { "provider": "deepseek-official", "model": "deepseek-v4-flash" }
     ],
     "personaFile": "personas/prometheus.md"
@@ -69,7 +69,7 @@ export const ROLES: MpdRoleSpec[] = [
     "description": "Primary engineering agent: plan small, execute with tools, verify, report honestly.",
     "readonly": false,
     "chain": [
-      { "provider": "deepseek-official", "model": "deepseek-v4-pro" },
+      { "provider": "deepseek-official", "model": "deepseek-v4-flash" },
       { "provider": "deepseek-official", "model": "deepseek-v4-flash" },
       { "provider": "deepseek-official", "model": "deepseek-v4-flash" }
     ],
@@ -81,7 +81,7 @@ export const ROLES: MpdRoleSpec[] = [
     "description": "Orchestrator: macro planning, delegate roles, integrate results.",
     "readonly": false,
     "chain": [
-      { "provider": "deepseek-official", "model": "deepseek-v4-pro" },
+      { "provider": "deepseek-official", "model": "deepseek-v4-flash" },
       { "provider": "deepseek-official", "model": "deepseek-v4-flash" }
     ],
     "personaFile": "personas/atlas.md"
@@ -103,7 +103,7 @@ export const ROLES: MpdRoleSpec[] = [
     "description": "Deep reviewer: correctness/risk findings with evidence, no fixes.",
     "readonly": false,
     "chain": [
-      { "provider": "deepseek-official", "model": "deepseek-v4-pro" },
+      { "provider": "deepseek-official", "model": "deepseek-v4-flash" },
       { "provider": "deepseek-official", "model": "deepseek-v4-flash" }
     ],
     "personaFile": "personas/metis.md"

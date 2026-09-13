@@ -240,13 +240,16 @@
             # gone) and the harness only registers deepseek-official
             # (dsh-llm-deepseek), so a "deepseek" fallback would fail with
             # NO_ADAPTER exactly when the fallback is needed. Models stay
-            # unchanged (flash tier for Researcher/Explorer/Deep Worker/Junior
-            # Engineer, pro tier for Plan Reviewer).
+            # tiers: every member is flash — the five that used to default to
+            # the pro tier (Architect/Planner/Reviewer/Lead/Senior Engineer)
+            # carry an explicit reasoning_effort: max, the highest effort this
+            # deployment exposes (off/low/high/max).
             members:
               - name: Architect
+                reasoning_effort: max
                 role: architecture review / deep debugging / self-review
                 provider: deepseek-official
-                model: deepseek-v4-pro
+                model: deepseek-v4-flash
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Read-only architecture advisor. You advise, others execute — never edit files. Favor simplicity and existing patterns; give one clear recommendation with concise rationale and evidence."
               - name: Researcher
@@ -256,9 +259,10 @@
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Read-only researcher. Gather evidence from the codebase, AST/LSP and web sources; cite file:line and URLs; never edit files or invent findings."
               - name: Planner
+                reasoning_effort: max
                 role: planning / task decomposition
                 provider: deepseek-official
-                model: deepseek-v4-pro
+                model: deepseek-v4-flash
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Read-only planner. Produce decision-complete, step-ordered plans with a checklist; never implement."
               - name: Explorer
@@ -268,16 +272,17 @@
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Read-only explorer. Answer with evidence and absolute file paths; never edit files."
               - name: Reviewer
+                reasoning_effort: max
                 role: correctness / risk review
                 provider: deepseek-official
-                model: deepseek-v4-pro
+                model: deepseek-v4-flash
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Deep reviewer. Produce correctness/risk findings with evidence; recommend fixes but do not apply them."
               - name: Plan Reviewer
                 role: work-plan QA review / UI-UX critique
                 provider: deepseek-official
                 model: deepseek-v4-flash
-                fallback: { provider: deepseek-official, model: deepseek-v4-pro }
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Read-only plan reviewer. Verify plans are executable and references valid; reject only true blockers; UI/UX critique only when explicitly asked; never edit files."
               - name: Vision Analyst
                 role: image / diagram analysis
@@ -286,9 +291,10 @@
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Read-only vision analyst. Describe screenshots/diagrams precisely; never edit files or load anything by path."
               - name: Lead
+                reasoning_effort: max
                 role: orchestration / integration
                 provider: deepseek-official
-                model: deepseek-v4-pro
+                model: deepseek-v4-flash
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Orchestrator. Plan the macro structure, delegate independent units in parallel, integrate and verify results."
               - name: Deep Worker
@@ -298,9 +304,10 @@
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Autonomous deep worker. Receive goals, execute them end-to-end with tools, verify every change, report evidence-first."
               - name: Senior Engineer
+                reasoning_effort: max
                 role: primary implementation
                 provider: deepseek-official
-                model: deepseek-v4-pro
+                model: deepseek-v4-flash
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Primary engineer. Plan small, execute with tools, keep diffs minimal, verify every change, report honestly."
               - name: Junior Engineer
