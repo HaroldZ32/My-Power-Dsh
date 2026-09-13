@@ -137,5 +137,40 @@
     "workState": "All acceptance criteria were measured as passed and the change is merged into dev (fix commit 1efb30b, merge commit 1f2b38e).",
     "resolutionNeeded": "Re-declare inScope to cover the deletion surface plus the self-fix test file, and re-issue the completion so the terminal record carries the acceptance/verify evidence.",
     "deviation": "packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs is outside the declared inScope but was required: with the carrier region gone the entrypoint carries zero registered regions, and that fixture dereferenced an empty region list (measured 1 fail / 152 pass before the fix, 153 pass / 0 fail after). The change is minimal: skip region-free adopted files and assert non-vacuity."
+  },
+
+  "followUpBatch": {
+    "note": "Three small fixes the captain folded into this slot (same batch of files, same writer). They extend the committed change; all gates were re-run on the resulting revision.",
+    "items": [
+      {
+        "id": "H1",
+        "file": "packages/mpd-agent-teams-plugin/lib/types/state.d.ts",
+        "problem": "The published declaration still described the pre-OPT-1 parameter order while the implementation takes (status, tasks, dependencies). The file is copied wholesale into the release package by the pack script, so the mismatch was a real shipped defect.",
+        "fix": "Signature corrected to (status, tasks, dependencies) and the docstring now states that a terminal-failed (or cancelled) dependency does not block, so the dependent stays open and claimable.",
+        "evidence": "direct invocation on the real module: correct order -> 'open'; the old/wrong order -> 'blocked' (decisive two-way evidence, no throw)"
+      },
+      {
+        "id": "H2",
+        "file": "packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs",
+        "problem": "Requested slot correction at the unknown-dependency assertion plus an OPT-1 assertion at the correct slots.",
+        "fix": "Accepted with a correction: the slots at that line were ALREADY correct (the local helper returns a task list whose failed entry is named A, so passing (tasks, ['ghost']) is right) — only a clarifying comment was needed. The OPT-1 assertion for a failed dependency already existed at the correct slots. The file also carries a second correct-slot call in the F2 parity test.",
+        "evidence": "153/0 plugin tests including this file; the wrong-order invocation is separately shown to answer 'blocked'"
+      },
+      {
+        "id": "H3",
+        "file": "packages/mpd-agent-teams-plugin/lib/session-start.js",
+        "problem": "Dead exported constant (declared once, referenced nowhere) left over from the superseded threshold rule.",
+        "fix": "Constant removed and the trigger comment rewritten to name Option A, cite the frozen contract's complexityGate.logicRevisionNote as the superseding decision, and state explicitly that a counted-signal >= 2 threshold must NOT be restored (with the measured reason and the accepted, ledgered cost).",
+        "evidence": "grep for the constant across lib/ and test/ returns 0; the registry region body was regenerated so the delta stays byte-faithful (--check clean at 21 regions / 6 files)"
+      }
+    ],
+    "gatesAfter": {
+      "registryCheck": "already applied: 21 mpd delta region(s) across 6 adopted file(s)",
+      "pluginTests": "153 pass / 0 fail",
+      "allPackages": "335 pass / 0 fail",
+      "typecheck": "exit 0",
+      "vendorGate": "PASS (no skills/** change, so the lock is untouched)",
+      "twoSidedGate": "PASS (simple [0,0,0] no notices; complex [1,1,1] one notice each; negative control disarmed)"
+    }
   }
 }
