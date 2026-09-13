@@ -127,6 +127,19 @@
       "command": "bun test packages/mpd-agent-teams-plugin/test/s1-s4-semantics.test.mjs",
       "exit": 0,
       "evidence": "S1 retry revokes the old attempt and keeps completed siblings; S2 amendment resets the amended task + transitive dependents and KEEPS a completed node whose inputs did not change (no-op amendment byte-identical); S3 scheduler readiness dispatches only 'pending'; S4 send_message delivers a bounded notice without changing attempt/attemptId"
+    },
+    {
+      "what": "definitive settled-revision run of the two-sided gate AFTER the R2 code changes",
+      "command": "node skills/dsh-qa/scripts/session-start-team.mjs (log committed INSIDE the measured commit)",
+      "exit": 0,
+      "evidence": "twoSided.ok=true; simpleTeams [0,0,0]/simpleNotices [false,false,false]; complexTeams [1,1,1]/complexNotices [true,true,true]; measured at HEAD d10f8e3 with no tracked edit during the 50 s settle window. An earlier attempt REFUSED with 'revision did not settle' while I was still committing — the settled-hash guard is falsifiable, not decorative. Log: evidence/omo-align/implementation/raw/session-start-team-final.log",
+      "log": "evidence/omo-align/implementation/raw/session-start-team-final.log"
+    },
+    {
+      "what": "OPT-2 assertion (1): a post-reclamation session leaves the repo state root untouched",
+      "command": "node scripts/reclaim-staged-teams.mjs (after the gate run)",
+      "exit": 0,
+      "evidence": "DRY RUN: 0 residual of 4 live team(s) — the gate cases write only into their sandbox workspaces"
     }
   ],
   "notVerified": [
@@ -196,5 +209,8 @@
     }
   ],
   "revision": "R2 (2026-09-13 captain-binding contract revision: OPT-1 + OPT-2)",
-  "contractNote": "The captain quotes frozen-contract.json at 19,937 B / sha256 a38c87dd…; measured on disk at revision time it is 26,013 B / sha256 prefix 4c3c2ded… (a fourth revision). I verified section by section that every clause this implementation depends on is byte-identical to the R2 instruction text: complexityGate (logic, signals, both 3+3 prompt sets), configPlane.frozen (10 keys + 3 rules), massUlwSemantics (S1-S4 incl. the corrected S2), manualEntryNames, requiredQaCases (9), changeLocations (10), isolation. The drift is confined to t4Requirements (now carrying fv4 authoritativePaths + immutabilityRule + residualFieldGap + revisionHistory). NOTE: the current contract file still contains NO OPT-1/OPT-2 section, so the R2 work order text in the captain message is the operative record for this revision."
+  "contractNote": "The captain quotes frozen-contract.json at 19,937 B / sha256 a38c87dd…; measured on disk at revision time it is 26,013 B / sha256 prefix 4c3c2ded… (a fourth revision). I verified section by section that every clause this implementation depends on is byte-identical to the R2 instruction text: complexityGate (logic, signals, both 3+3 prompt sets), configPlane.frozen (10 keys + 3 rules), massUlwSemantics (S1-S4 incl. the corrected S2), manualEntryNames, requiredQaCases (9), changeLocations (10), isolation. The drift is confined to t4Requirements (now carrying fv4 authoritativePaths + immutabilityRule + residualFieldGap + revisionHistory). NOTE: the current contract file still contains NO OPT-1/OPT-2 section, so the R2 work order text in the captain message is the operative record for this revision.",
+  "finalRevision": "c28c7c1",
+  "branch": "dev",
+  "mergeNote": "R2 commits were made on feature/omo-parity-align (f4f91b5 tip) and the branch was already an ancestor of dev, so `git merge --no-ff` reported 'Already up to date' — dev advanced by fast-forward-equivalent containment. Net: dev HEAD = the R2 commit; nothing was rebased or rewritten and no docs path was included."
 }
