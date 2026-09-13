@@ -1,5 +1,0 @@
-== tb_adder4: starting ==
-== tb_adder4: exhaustive sweep ==
-== tb_adder4: ALL TESTS PASSED ==
-tests/golden/fixtures/verilog/tb/tb_adder4.v:107: $finish called at 5220000 (1ps)
-vvp exit: 0

@@ -1,2 +1,0 @@
-[rtl-verif] SKIP: silicon bundle not present at /nonexistent/mpd-silicon — the case needs the checkout to install (set MPD_SILICON_ROOT)
-[rtl-verif] PASS (nothing to probe: bundle absent)

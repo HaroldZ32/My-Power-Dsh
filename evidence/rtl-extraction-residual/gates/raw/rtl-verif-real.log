@@ -1,3 +1,0 @@
-[rtl-verif] FAIL: dsh plugin add failed: dsh: initialized profile rtl-verif-qa at /tmp/mpd-dsh-qa-16YWS9/profiles/rtl-verif-qa
-dsh: pnpm failed in profile directory /tmp/mpd-dsh-qa-16YWS9/profiles/rtl-verif-qa
-

@@ -1,5 +1,0 @@
-verify-vendor exit=0
-verify-rows-parity exit=0
-verify-rtl-references exit=0
-bundle-lifecycle exit=1
-bun-test-packages exit=1

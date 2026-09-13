@@ -1,6 +1,0 @@
-[rtl-refs] silicon: /nonexistent/mpd-silicon | references: 5
-  resolved: 2
-  UNRESOLVED: packages/mpd-verif-plugin/dist/index.js (mpd skills/dsh-qa/scripts/rtl-verif.mjs)
-  UNRESOLVED: presets/rtl-ip.profile.json (mpd skills/dsh-qa/scripts/rtl-verif.mjs)
-  UNRESOLVED: presets/rtl-ip.profile.json (mpd skills/dsh-qa/scripts/rtl-ip-profile.mjs)
-[rtl-refs] FAIL — 3 unresolved reference(s)

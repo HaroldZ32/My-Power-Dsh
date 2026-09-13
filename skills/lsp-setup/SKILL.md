@@ -1,6 +1,6 @@
 ---
 name: lsp-setup
-description: "Configure a Language Server (LSP) for a specific language so editor/agent tooling — diagnostics, go-to-definition, find-references, rename — works. Use when you need to: configure LSP, lsp setup, set up or install a language server, fix 'no LSP server configured' / 'server not installed', choose between servers (basedpyright vs pyright vs ty vs ruff), or wire .codex/lsp-client.json / .opencode/lsp.json. 언어서버 설정. Routes by file extension to references/<language>/README.md for the exact builtin server, per-OS install commands (macOS/Linux/Windows), config snippets for both config files, initialization options, alternatives, and troubleshooting. Ships scripts: detect-lsp.ts (scan a project for languages + each server's install/config status) and verify-lsp.ts (run a real diagnostics roundtrip). Covers typescript, python, go, rust, c/c++, java, kotlin, c#/razor, swift, ruby, php, dart, elixir, zig, lua, bash, yaml, terraform, haskell, julia, verilog, systemverilog — with the HDL half (verilog / systemverilog) provided by the @mpd-dsh/silicon bundle at packages/mpd-mcp-lsp/references/; when that bundle is not installed this skill still routes those two languages but carries no HDL body of its own."
+description: "Configure a Language Server (LSP) for a specific language so editor/agent tooling — diagnostics, go-to-definition, find-references, rename — works. Use when you need to: configure LSP, lsp setup, set up or install a language server, fix 'no LSP server configured' / 'server not installed', choose between servers (basedpyright vs pyright vs ty vs ruff), or wire .codex/lsp-client.json / .opencode/lsp.json. 언어서버 설정. Routes by file extension to references/<language>/README.md for the exact builtin server, per-OS install commands (macOS/Linux/Windows), config snippets for both config files, initialization options, alternatives, and troubleshooting. Ships scripts: detect-lsp.ts (scan a project for languages + each server's install/config status) and verify-lsp.ts (run a real diagnostics roundtrip). Covers typescript, python, go, rust, c/c++, java, kotlin, c#/razor, swift, ruby, php, dart, elixir, zig, lua, bash, yaml, terraform, haskell, julia, verilog, systemverilog — with the HDL half (verilog / systemverilog) provided by a separate bundle at packages/mpd-mcp-lsp/references/; when that bundle is not installed this skill still routes those two languages but carries no HDL body of its own."
 ---
 
 # LSP Setup
@@ -43,8 +43,8 @@ reference before installing or configuring anything**.
 | `.tf .tfvars` | `references/terraform/README.md` |
 | `.hs .lhs` | `references/haskell/README.md` |
 | `.jl` | `references/julia/README.md` |
-| `.v .vh` | `../my-power-dsh-silicon/packages/mpd-mcp-lsp/references/verilog/README.md` (HDL pages moved to the `@mpd-dsh/silicon` bundle; `$MPD_SILICON_ROOT` overrides the sibling root) |
-| `.sv .svh` | `../my-power-dsh-silicon/packages/mpd-mcp-lsp/references/systemverilog/README.md` (same bundle) |
+| `.v .vh` | `packages/mpd-mcp-lsp/references/verilog/README.md` (HDL pages live in a separately maintained bundle) |
+| `.sv .svh` | `packages/mpd-mcp-lsp/references/systemverilog/README.md` (same bundle) |
 
 ---
 

@@ -1,7 +1,0 @@
-=== t31 fresh-clone re-measurement ===
-date: 2026-09-13T11:25:08Z  HEAD: 32ae54dd10db7ea46e1c1263143d56f266fd1f78
-before: pack present=true pkg.json sha256=f8c94451d01e31568d2fd26fdddf32b99a2b79ac429602c031d38c34413b5235 files=1119
-before: evidence/plan-d/skill-catalog entries=2
-restored: pack present=true pkg.json sha256=f8c94451d01e31568d2fd26fdddf32b99a2b79ac429602c031d38c34413b5235 files=1119
-whole-tree digest: 2bfcefb539ca0648d5bcc44ec0147e3ecf85ebabe99309a6655f23951099a394  -
-evidence/plan-d/skill-catalog entries=2

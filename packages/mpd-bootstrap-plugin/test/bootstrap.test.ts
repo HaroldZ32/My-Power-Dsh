@@ -60,8 +60,8 @@ describe("bundle skill corpus provider", () => {
     const { provider } = harness()
     expect(provider.name).toBe("mpd-bundle")
     const candidates = await provider.list()
-    // 19 = the shipped corpus AFTER the RTL trees moved to the @mpd-dsh/silicon
-    // bundle (the rtl-* skills are served there by the silicon-bundle provider).
+    // 19 = the shipped corpus AFTER the RTL skill trees were extracted out of
+    // this repository (they are no longer served by this bundle).
     expect(candidates.length).toBeGreaterThanOrEqual(19)
     const names = candidates.map((candidate) => candidate.name).sort()
     for (const expected of ["ast-grep", "dsh-qa", "svn-master"]) {

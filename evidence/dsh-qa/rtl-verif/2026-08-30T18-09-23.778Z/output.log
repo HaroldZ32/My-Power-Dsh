@@ -1,6 +1,0 @@
-[mpd-codegraph] init status=no-binary binary=- cwd=/root/dshProj/my-power-dsh
-[mpd-bootstrap] presets installed (0.2.4) -> /tmp/mpd-dsh-qa-lD2jTl/.agent-presets
-[mpd-bootstrap] skills installed (0.2.4) -> /tmp/mpd-dsh-qa-lD2jTl/skills
-CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.
-
-dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-official"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment

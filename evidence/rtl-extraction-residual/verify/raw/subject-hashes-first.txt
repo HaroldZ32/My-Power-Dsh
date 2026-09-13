@@ -1,6 +1,0 @@
-95ade5ae07c07b1f82695fbd2b9439e71004f5394deb9248303096eb03ac0d42  packages/mpd-mcp-lsp/overlay/lsp/server-definitions.ts
-2173ab02aefb9d92ba3a3436021117de0d0d5be79d6dfac0f73328afc9f58075  packages/mpd-mcp-lsp/overlay/lsp/language-mappings.ts
-ec33b3024b7511906e466210e1a36ffcec71dc77ec40c1b3704d9f68232d6194  packages/mpd-mcp-lsp/README.md
-a4ba74bd1278f884b0add86b40b68b2a065bdbc01d0e855b98579c1f4b748697  packages/mpd-mcp-lsp/README.zh-CN.md
-04b49f8c192d03b5a9cdf1e1f17861d8f4c6741792a4c455e78d0ca8e0a973a9  packages/mpd-mcp-lsp/dist/cli.js
-34a1c8d6e5ca46a00cb4d5e416c1068c45c14fce4e8255ec7d8a580fa15ad6db  scripts/verify-rtl-references.mjs

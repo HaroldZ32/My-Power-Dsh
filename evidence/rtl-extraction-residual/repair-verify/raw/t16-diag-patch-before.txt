@@ -1,5 +1,0 @@
-# t16 diagnostic patch — exactly one provider row, id-targeted
-- id: llm-deepseek
-  config:
-    baseURL: http://127.0.0.1:45223/v1
-    apiKeyEnv: DEEPSEEK_API_KEY

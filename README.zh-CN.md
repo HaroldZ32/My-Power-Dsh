@@ -15,7 +15,7 @@ workmate BASE 模板形式、沿用上游的稳定 id（`oracle`、`librarian`�
 skill、第三方上游 skill 与本仓库编写的用例；另有一个被整体采纳的组件：来自
 [dsh-agent-teams](https://github.com/NanmiCoder/dsh-agent-teams) 的 `agent-teams` 插件（MIT），以一等
 主代码形式内联并带本地适配。**其余部分——DSH 侧的管道、各插件、preset、QA 套件——均在本仓库编写**；
-RTL/EDA 表面不属于本仓库，它已拆分到兄弟子 bundle `@mpd-dsh/silicon`。
+RTL/EDA 表面不属于本仓库，它已被抽取到本仓库之外单独维护的 bundle 中。
 
 > **许可**：SUL-1.0 —— 继承自上游项目的许可（强 copyleft；完整文本见 [LICENSE.md](./LICENSE.md)）；
 > 上游版权归 code-yeongyu 与 OmO 贡献者所有。被采纳的 `agent-teams` 组件保留其自身的 MIT 许可
@@ -50,8 +50,7 @@ dsh plugin --profile web add .        # 在仓库根目录执行
 - [`AGENTS.md`](AGENTS.md) —— 仓库约束手册（约定、门禁、git 模型、排障）。
 
 **RTL/EDA 能力不在本仓库。** `rtl-*` skills、verif 插件、HDL 语言服务器配置、RTL 指南与 Verilog golden
-fixtures 均由 silicon 子 bundle 拥有（`@mpd-dsh/silicon`，同级检出 `../my-power-dsh-silicon`，
-`gitee.com/nop_chip/my-power-dsh-silicon`）。本仓库只承载 harness/bundle 软件面；仅安装 mpd 时启动
+fixtures 均已从本仓库抽取出去。本仓库只承载 harness/bundle 软件面；仅安装 mpd 时启动
 行为不变且不含任何 RTL 内容。
 
 本 bundle 安装后提供 `@mpd-dsh/mpd`：DeepSeek 双轨（官方默认）、MCP 服务器、全部

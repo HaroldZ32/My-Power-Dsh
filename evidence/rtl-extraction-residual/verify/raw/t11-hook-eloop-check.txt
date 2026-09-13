@@ -1,8 +1,0 @@
-### ELOOP check (uid=0) 08:26:55Z
-  lrwxrwxrwx 1 root root 6 Sep 13 16:26 loop-a -> loop-b
-  lrwxrwxrwx 1 root root 6 Sep 13 16:26 loop-b -> loop-a
-  lrwxrwxrwx 1 root root 6 Sep 13 16:26 loop-candidate -> loop-a
-loop-candidate   THROW code=ELOOP
-loop-a           THROW code=ELOOP
--- and the same path via lstat (the cover-the-residual route):
-lstat ok: isSymbolicLink=true

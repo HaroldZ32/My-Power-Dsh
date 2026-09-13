@@ -1,8 +1,0 @@
-PASS  A: boot served HTTP
-FAIL  A: rtl-ip profile resolved from the silicon file (members == silicon's list)
-FAIL  A: mpd roster intact (11 members)
-PASS  B: boot stayed up with silicon absent
-FAIL  B: rtl-ip reported unknown ({} fallback)
-FAIL  B: mpd roster still intact (11 members)
-carrier mount proof ok=false
-carrier_proof_exit=1

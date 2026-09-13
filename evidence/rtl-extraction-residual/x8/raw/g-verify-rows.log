@@ -1,1 +1,0 @@
-[verify-rows-parity] ok: 21 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-tools, mpd-ulw, mpd-web-compat, mpd-workmate)

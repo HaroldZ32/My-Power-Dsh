@@ -142,7 +142,7 @@ mpd-dsh/
 │   ├── mpd-agent-teams-plugin/   # adopted dsh-agent-teams (MIT, first-class main code): agent_teams_* + Web panel; memberPersona injects workmate backing
 │   ├── mpd-bundle-plugin/        # bundle web-compat: the @mpd-dsh/mpd no-op main + the combined web client (client.js = adopted agent-teams panel + the workmate library registered as a DSH-better-sidebar tab, with the bundle floater as fallback; built by scripts/build-mpd-client.mjs)
 │   └── mpd-qa-roles-probe/       # QA-only probe: mpd preset resolve + mpdRoles roster (overlay-mounted)
-├── skills/                      # skill corpus: dsh-qa (QA skill) + 17 ported upstream skills + svn-master (SERVED from the bundle by mpd-bootstrap; never copied to \$DSH_HOME). The rtl-* trees moved to the silicon sub-bundle (gitee.com/nop_chip/my-power-dsh-silicon)
+├── skills/                      # skill corpus: dsh-qa (QA skill) + 17 ported upstream skills + svn-master (SERVED from the bundle by mpd-bootstrap; never copied to \$DSH_HOME). The extracted RTL skill trees are no longer carried here
 ├── tests/
 │   ├── overlays/                 # QA patch overlays (keep empty when rows live in the bundle)
 │   ├── golden/                   # golden fixtures + Prometheus plan artifacts
@@ -250,11 +250,9 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   | D13 | `lib/tools.js` `agent_teams_update_task` contract text | `mpd-delta update-task-contract` | wave-3: `status` REQUIRED + the minimal terminal-call shape. **REPLACEMENT-shaped** — the upstream `description:` line lives INSIDE the block, so after a full re-materialize it is NOT self-healable: the heal REFUSES loudly (never a bare TypeError) and leaves the file byte-untouched, the same class as `scope-glob` under F3. Remedy: restore the marked region, or re-author it and run `--write-registry`. |
   | D14 | `lib/tools.js` `agent_teams_update_task` `status` parameter | `mpd-delta update-task-required-status-param` | wave-3: an omitted `status` fails loudly at the tool boundary. **REPLACEMENT-shaped** for the same reason (the single top-level `status:` line) → re-materialize + `--write` REFUSES; it cannot silently leave the key duplicated with last-wins semantics. |
   | D15 | `lib/tools.js` `agent_teams_update_task` attempt-id branch | `mpd-delta update-task-required-attempt-id` | wave-3: an omitted `attempt_id` says REQUIRED; the stale wording stays for a mismatch. **Purely ADDITIVE → DOES self-heal** after a re-materialize. |
-  | A7 | `lib/index.js` `apply()` head — the `rtl-ip` carrier hook | `mpd-delta rtl-ip-carrier` | t8/R5.3: reads the silicon bundle's `presets/rtl-ip.profile.json` at **apply() time** (never import time) and re-binds `config.profiles` so all four consumers (resolved profiles, captain prompt, slash command, gesture boundary) see ONE merged set; missing file → `{}` (mpd-only install, silent), corrupt → `{}` + one warning; mpd's own profile wins a collision. First region in `index.js`; `mpdDeltaFiles()` in `scripts/patch-agent-teams-fixes.mjs` additionally discovers unregistered adopted lib files that carry region markers, so a NEW delta file can be seeded once |
 
-  After wave 3 the registry held **12** regions (5 in `lib/tools.js`, 7 in `lib/quality-gates.js`);
-  **t8 added the 13th, `mpd-delta rtl-ip-carrier` in `lib/index.js`**, so the live registry is 13
-  regions across 3 files (regenerated with `--write-registry`, `--check` clean): D2 merged into `scope-glob`; wave 2 added
+  The live registry is **21** regions across **6** adopted files (regenerated with
+  `--write-registry`, `--check` clean): D2 merged into `scope-glob`; wave 2 added
   `mpd-delta scope-overlap` + `mpd-delta scope-overlap-normalize` (the B7 overlap rule's
   glob-aware rewrite) and `mpd-delta create-contract-gate` (the create-time contradiction gate in
   `validateCreateTask`); wave 3 added `mpd-delta update-task-contract`,

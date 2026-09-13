@@ -1,3 +1,0 @@
-[rtl-ip-profile] FAIL: dsh plugin add failed: dsh: initialized profile rtl-ip-qa at /tmp/mpd-rtlip-jBVSqR/profiles/rtl-ip-qa
-dsh: pnpm failed in profile directory /tmp/mpd-rtlip-jBVSqR/profiles/rtl-ip-qa
-

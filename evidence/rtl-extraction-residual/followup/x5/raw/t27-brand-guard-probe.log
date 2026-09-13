@@ -1,8 +1,0 @@
-PASS  committed dists: guard exits 0 for all three and reports non-zero subjects
-PASS  negative control: seeded OMO_PROVISION_HINT fails non-zero naming token + artifact
-PASS  primary subject: scrub passes `omo-git-bash` through and the guard names it in full
-PASS  primary byte comparison (1): intact artifacts compare equal with non-zero byte counts
-PASS  primary byte comparison (2): seeded mutant fails non-zero naming artifact + diff
-PASS  false-positive control: platformRootFromOpenCodeConfigPath / platformFromOptions exit 0
-PASS  empty-subject control: an empty scan fails non-zero
-brand guard proof ok=true
