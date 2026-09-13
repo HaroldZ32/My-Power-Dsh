@@ -269,10 +269,23 @@ export function apply(ctx, config) {
     // omits the command registry keeps the plugin fully functional — the fiber
     // never pends on it and simply never gains the slash command.
     if (config.slashCommand ?? true) {
+        // R4: every explicit entry point (the generic command, each generated profile
+        // command, and the plain-text gesture boundary) receives the resolved config so
+        // it can stage-or-ask in the SAME turn instead of leaving the team to the model.
+        const explicitOpts = () => ({ ctx, config: resolved });
         ctx.inject(['commands'], (commandCtx) => {
-            registerAgentTeamsCommand(commandCtx, () => config.profiles ?? {});
+            registerAgentTeamsCommand(commandCtx, () => config.profiles ?? {}, explicitOpts);
         });
-        installAgentTeamsGestureBoundary(ctx, () => config.profiles ?? {});
+        installAgentTeamsGestureBoundary(ctx, () => config.profiles ?? {}, explicitOpts);
+    }
+    else {
+        // R4 silent-failure requirement: a deployment that disables the slash command
+        // still recognises the gesture text, so it must say the command is disabled
+        // rather than staying quiet.
+        installAgentTeamsGestureBoundary(ctx, () => config.profiles ?? {}, () => ({
+            ctx,
+            config: { ...resolved, slashCommand: false, explicitDisabled: true },
+        }));
     }
     // The activity panel data/artwork routes need the Web server and the
     // workspace registry, which headless profiles do not mount; under
