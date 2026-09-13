@@ -1,0 +1,49 @@
+### C4.a stale pack: do the deleted HDL refs live under dist/mpd-package?
+dist/mpd-package/skills/lsp-setup
+dist/mpd-package/skills/lsp-setup/references
+dist/mpd-package/skills/lsp-setup/references/bash
+dist/mpd-package/skills/lsp-setup/references/c-cpp
+dist/mpd-package/skills/lsp-setup/references/csharp
+dist/mpd-package/skills/lsp-setup/references/dart
+dist/mpd-package/skills/lsp-setup/references/elixir
+dist/mpd-package/skills/lsp-setup/references/go
+dist/mpd-package/skills/lsp-setup/references/haskell
+dist/mpd-package/skills/lsp-setup/references/java
+dist/mpd-package/skills/lsp-setup/references/julia
+dist/mpd-package/skills/lsp-setup/references/kotlin
+dist/mpd-package/skills/lsp-setup/references/lua
+dist/mpd-package/skills/lsp-setup/references/php
+dist/mpd-package/skills/lsp-setup/references/python
+dist/mpd-package/skills/lsp-setup/references/ruby
+dist/mpd-package/skills/lsp-setup/references/rust
+dist/mpd-package/skills/lsp-setup/references/swift
+dist/mpd-package/skills/lsp-setup/references/systemverilog
+dist/mpd-package/skills/lsp-setup/references/terraform
+dist/mpd-package/skills/lsp-setup/references/typescript
+dist/mpd-package/skills/lsp-setup/references/verilog
+dist/mpd-package/skills/lsp-setup/references/yaml
+dist/mpd-package/skills/lsp-setup/references/zig
+dist/mpd-package/skills/lsp-setup/scripts
+--- specific files
+-rw-r--r-- 1 root root 3093 Sep 13 01:04 dist/mpd-package/skills/lsp-setup/references/systemverilog/README.md
+-rw-r--r-- 1 root root 2783 Sep 13 01:04 dist/mpd-package/skills/lsp-setup/references/verilog/README.md
+
+### C4.b dist ignored?
+.gitignore:12:dist/mpd-package/	dist/mpd-package/skills/lsp-setup/references/verilog/README.md
+
+### C4.c does the pack copy skills/ wholesale?
+47:  // skill corpus lives at the repo root skills/ per AGENTS.md layout; the bundle
+48:  // SERVES it from <pkg>/skills at runtime (mpd-bootstrap registers it as a
+49:  // ctx.skills provider) — nothing is copied into $DSH_HOME any more.
+50:  const skillsSrc = join(repoRoot, "skills")
+51:  if (existsSync(skillsSrc)) cpSync(skillsSrc, join(outDir, "skills"), { recursive: true })
+136:      "./skills/*": "./skills/*",
+142:      "skills/**",
+
+### C4.d stale pack also carries the LSP package + RTL template?
+dist/mpd-package/packages/mpd-mcp-lsp
+dist/mpd-package/packages/mpd-mcp-lsp/README.zh-CN.md
+dist/mpd-package/packages/mpd-mcp-lsp/dist
+dist/mpd-package/packages/mpd-mcp-lsp/dist/BUILD.lock
+dist/mpd-package/packages/mpd-mcp-lsp/dist/cli.js
+dist/mpd-package/packages/mpd-mcp-lsp/README.md

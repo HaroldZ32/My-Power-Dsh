@@ -1,0 +1,54 @@
+### how is captainPrompt (the profile list) surfaced at session level?
+packages/mpd-agent-teams-plugin/lib/capabilities.js:55:    const captainPrompt = `${TEAM_ACTIVATION_PROMPT}\n\n${config.captainPrompt()}`;
+packages/mpd-agent-teams-plugin/lib/capabilities.js:107:            return agent !== undefined && states.get(agent)?.member ? TEAM_MEMBER_PROMPT : captainPrompt;
+packages/mpd-agent-teams-plugin/lib/index.js:214:        captainPrompt: () => usageSectionText(TEAM_TOOL_NAMES.join(', '), formatProfilesForPrompt(config.profiles ?? {})),
+
+### formatProfilesForPrompt output shape:
+/**
+ * Named team-profile templates: config types, normalization, invocation
+ * parsing, and prompt rendering.
+ *
+ * Pure functions only — no I/O, no spawn. Runtime create/spawn stays in
+ * `tools.ts`; this module only turns a config map + a profile name into a
+ * validated, topologically ordered template (or parses `--profile` flags).
+ *
+ * @module dsh-agent-teams/profiles
+ */
+import { CAPTAIN_KEY, sanitizeKey } from "./state.js";
+/** Hard cap on named profiles so the usage prompt cannot grow without bound. */
+export const MAX_TEAM_PROFILES = 16;
+/** Hard cap on seed tasks per profile. The software-delivery example has 13. */
+export const MAX_PROFILE_TASKS = 32;
+/** Protocol excerpt length in the usage / prompt listing. */
+export const PROFILE_PROTOCOL_PROMPT_LIMIT = 240;
+const PROFILE_KEYS = ['description', 'protocol', 'executionPrompt', 'fallback', 'members', 'tasks', 'taskPlanning', 'reviewPolicy'];
+const REVIEW_POLICY_KEYS = ['requirementsMinRounds', 'requirementsMaxRounds', 'codeMaxRounds', 'maxRepairAttempts', 'requiredReviewers'];
+const MEMBER_KEYS = ['name', 'role', 'provider', 'model', 'reasoning_effort', 'executionPrompt', 'fallback'];
+const FALLBACK_KEYS = ['provider', 'model'];
+const TASK_KEYS = ['id', 'subject', 'description', 'assignee', 'dependencies'];
+/**
+ * Trim every profile key once, reject empty / colliding keys, and reject
+ * more than {@link MAX_TEAM_PROFILES} entries. Does not validate profile
+ * bodies — that belongs to {@link resolveTeamProfile}.
+ */
+export function listConfiguredProfiles(profiles) {
+    const record = asProfilesRecord(profiles);
+    const keys = Object.keys(record);
+    if (keys.length > MAX_TEAM_PROFILES) {
+        throw new Error(`too many AgentTeams profiles (${keys.length}); the limit is ${MAX_TEAM_PROFILES}`);
+    }
+    const seen = new Map();
+    const listed = [];
+    for (const rawKey of keys) {
+        const name = rawKey.trim();
+        if (name === '') {
+            throw new Error('configured AgentTeams profiles include an empty key');
+        }
+
+### sibling package identity (for a genuine install):
+{
+  name: '@mpd-dsh/silicon',
+  version: '0.1.0',
+  files: undefined,
+  exports: [
+-rw-r--r-- 2 root root 10327 Sep 13 00:29 /root/dshProj/my-power-dsh-silicon/presets/rtl-ip.profile.json

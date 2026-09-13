@@ -1,0 +1,13 @@
+### t15 EVIDENCE SNAPSHOT 2026-09-13T09:06:45Z
+--- planted silicon package (genuine directory, not a symlink):
+planted file:  B sha=
+sibling file: 10327 B sha=1ff65b7c7aca8fde
+isSymlink=no
+--- harness run outcome:
+--- first boot failure (pre-fix) parse error:
+grep: mount-proof/boot-manual.log: No such file or directory
+--- model requests received by the stub across runs: (present/absent rows in result json)
+{"present":{"exit":1,"calls":0},"absent":{"exit":1,"calls":0},"writtenAt":"2026-09-13T08:37:29.122Z"}
+--- repo untouched:
+porcelain=62 staged=52 HEAD=32ae54d
+tracked-modified-or-staged=52

@@ -1,0 +1,119 @@
+# PASS C4 — wiring: tests/golden + tests/overlays + skills/lsp-setup + MCP lsp template
+
+## tests/ tree (tracked)
+tests/golden/fixtures/math.bench.mjs
+tests/golden/fixtures/math.js
+tests/golden/fixtures/verilog/README.md
+tests/golden/fixtures/verilog/modules/adder4.v
+tests/golden/fixtures/verilog/modules/cnt8.v
+tests/golden/fixtures/verilog/tb/tb_adder4.v
+tests/golden/out/hello.txt
+tests/golden/out/integration-review.md
+tests/golden/out/plans/mpd-summary-plan.md
+tests/mcp-fixtures/sample.c
+tests/overlays/agent-presets-headless.yml
+tests/overlays/codegraph-plugin.yml
+tests/overlays/compat-track.yml
+tests/overlays/omo-bline.yml
+tests/overlays/persona-oracle.yml
+tests/overlays/persona-prometheus.yml
+tests/overlays/roles-probe.yml
+tests/prompt-adaptation-log.md
+
+## inbound refs to the verilog fixtures (adder4|cnt8|fixtures/verilog)
+.silicon-extraction/removal.log:22:DEL  skills/rtl-verif/fixtures/adder4/Makefile  ->  /root/dshProj/my-power-dsh-silicon/skills/rtl-verif/fixtures/adder4/Makefile
+.silicon-extraction/removal.log:23:DEL  skills/rtl-verif/fixtures/adder4/tb_adder4.py  ->  /root/dshProj/my-power-dsh-silicon/skills/rtl-verif/fixtures/adder4/tb_adder4.py
+.silicon-extraction/removal.log:24:DEL  skills/rtl-verif/fixtures/cnt8/Makefile  ->  /root/dshProj/my-power-dsh-silicon/skills/rtl-verif/fixtures/cnt8/Makefile
+.silicon-extraction/removal.log:25:DEL  skills/rtl-verif/fixtures/cnt8/tb_cnt8.py  ->  /root/dshProj/my-power-dsh-silicon/skills/rtl-verif/fixtures/cnt8/tb_cnt8.py
+.silicon-extraction/removal.log:69:DEL  packages/mpd-verif-plugin/test/fixtures/cnt8-failures.xml  ->  /root/dshProj/my-power-dsh-silicon/packages/mpd-verif-plugin/test/fixtures/cnt8-failures.xml
+AGENTS.md:18:  untouched. Internal QA/golden reference docs (e.g. `docs/adder4.md`,
+AGENTS.md:19:  `docs/cnt8.md`) and historical/process records — plan files
+AGENTS.md:144:├── docs/                         # human-facing docs (BILINGUAL EN + zh-CN): index.md (hub) / user-guide.md / architecture.md / development.md; historical plan records (plan-*.md,
+docs/adder4.md:1:# adder4 — 4-bit Ripple-Carry Adder
+docs/adder4.md:3:> **Internal QA artifact** — golden-fixture reference doc (tests/golden/fixtures/verilog/modules/adder4.v),
+docs/adder4.md:7:Source file: `tests/golden/fixtures/verilog/modules/adder4.v`
+docs/adder4.md:9:`adder4` is a synthesizable, Verilog-2001 compliant 4-bit ripple-carry adder. It is built from 4
+docs/adder4.md:58:    // instantiate adder4 for 4-bit add with carry-in
+docs/adder4.md:59:    adder4 u_adder4 (
+docs/adder4.md:83:    adder4 u_low (
+docs/adder4.md:91:    adder4 u_high (
+docs/cnt8.md:1:# cnt8 — 8-bit binary counter (load / en / rst_n)
+docs/cnt8.md:3:> **Internal QA artifact** — golden-fixture reference doc (tests/golden/fixtures/verilog/modules/cnt8.v),
+docs/cnt8.md:7:Source file: `tests/golden/fixtures/verilog/modules/cnt8.v`
+docs/cnt8.md:9:`cnt8` is a synthesizable, Verilog-2001 compliant 8-bit binary counter with synchronous parallel
+docs/cnt8.md:63:    cnt8 u_cnt8 (
+docs/rtl-gap-assessment.md:29:- **Golden fixtures**: `tests/golden/fixtures/verilog/` (adder4.v, cnt8.v, tb_adder4.v)
+docs/rtl-gap-assessment.md:180:| P0-1 | `skills/rtl-dev`: codify the loop discipline (lint → sim → evidence → fix), style guides, FIFO/FSM/ALU patterns, golden-fixture regression using the exist
+docs/rtl-gap-assessment.md:183:| P0-4 | Wire P0-1..3 into the golden fixtures as an executable dsh-qa RTL case (first real gate ever run on adder4.v/cnt8.v) | S | skill + dsh-qa case | Loop 1 step 4 b
+docs/rtl-gap-assessment.md:243:  none RTL); `tests/golden/fixtures/verilog/` + `docs/adder4.md` + `docs/cnt8.md`
+docs/rtl-gap-assessment.zh-CN.md:25:- **Golden 夹具**：`tests/golden/fixtures/verilog/`（adder4.v、cnt8.v、tb_adder4.v）存在，
+docs/rtl-gap-assessment.zh-CN.md:166:| P0-1 | `skills/rtl-dev`：固化闭环纪律（lint → sim → 证据 → 修复）、风格指南、FIFO/FSM/ALU 模式、复用现有 `tests/golden/fixtures/v
+docs/rtl-gap-assessment.zh-CN.md:169:| P0-4 | 把 P0-1..3 接入 golden 夹具，做成可执行的 dsh-qa RTL 用例（adder4.v/cnt8.v 的第一个真实门禁） | S | skill + dsh-qa 用例 | 闭环
+docs/rtl-gap-assessment.zh-CN.md:219:  `tests/golden/fixtures/verilog/` + `docs/adder4.md` + `docs/cnt8.md`（"No simulator
+docs/rtl-verif-guide.md:140:  `skills/rtl-verif/fixtures/{adder4,cnt8}` show verbatim ladder RTL + cocotb
+docs/rtl-verif-guide.zh-CN.md:133:  （`skills/rtl-verif/fixtures/{adder4,cnt8}`）展示逐字阶梯 RTL + cocotb
+docs/track-a-report.md:10:| S4 | Golden pass rate >=80%, including >=2 hardware | Achieved | 9/9=100%, hardware G2(adder4)/G9(cnt8) two tasks |
+packages/mpd-workmate-plugin/test/workmate.test.ts:65:  const note = autoNote(meta, "You are the Deep Worker.", "## 2026-01-01 — implement counter\nwrote cnt8.v")
+packages/mpd-workmate-plugin/test/workmate.test.ts:68:  const implScore = scoreMatch("implement a verilog counter and verify", { note, baseName: "Deep Worker", description: meta.description, memoryTai
+packages/mpd-workmate-plugin/test/workmate.test.ts:69:  const unrelated = scoreMatch("paint a landscape", { note, baseName: "Deep Worker", description: meta.description, memoryTail: "wrote cnt8.v" })
+packages/mpd-workmate-plugin/test/workmate.test.ts:107:  const r1 = await byName("mpd_workmate_reflect").execute({ name: "alice", task: "implement verilog counter", outcome: "wrote cnt8.v; gate passed
+packages/mpd-workmate-plugin/test/workmate.test.ts:139:  const out = await byName("mpd_workmate_spawn").execute({ name: "alice", task: "add a reset", context: "module is cnt8" }, exec)
+scripts/verify-rtl-references.mjs:31:  ["docs/adder4.md", "t16 (landed)", "landed by t16 together with the Verilog fixtures"],
+scripts/verify-rtl-references.mjs:32:  ["docs/cnt8.md", "t16 (landed)", "landed by t16 together with the Verilog fixtures"],
+tests/golden/fixtures/verilog/README.md:2:Create modules/adder4.v (4-bit ripple-carry adder, well-commented) and tb/tb_adder4.v (testbench checking several cases). No simulator needed; the file must b
+tests/golden/fixtures/verilog/modules/adder4.v:2:// adder4.v -- 4-bit ripple-carry adder (Verilog-2001)
+tests/golden/fixtures/verilog/modules/adder4.v:16:module adder4 (
+tests/golden/fixtures/verilog/modules/cnt8.v:2:// cnt8.v -- 8-bit binary counter with load / enable / reset (Verilog-2001)
+tests/golden/fixtures/verilog/modules/cnt8.v:23:module cnt8 (
+tests/golden/fixtures/verilog/tb/tb_adder4.v:2:// tb_adder4.v -- self-checking testbench for adder4 (Verilog-2001)
+tests/golden/fixtures/verilog/tb/tb_adder4.v:8://     iverilog -o tb_adder4.vvp modules/adder4.v tb/tb_adder4.v
+tests/golden/fixtures/verilog/tb/tb_adder4.v:9://     vvp tb_adder4.vvp
+tests/golden/fixtures/verilog/tb/tb_adder4.v:22:module tb_adder4;
+tests/golden/fixtures/verilog/tb/tb_adder4.v:40:    adder4 dut (
+tests/golden/fixtures/verilog/tb/tb_adder4.v:73:        $display("== tb_adder4: starting ==");
+tests/golden/fixtures/verilog/tb/tb_adder4.v:93:        $display("== tb_adder4: exhaustive sweep ==");
+tests/golden/fixtures/verilog/tb/tb_adder4.v:103:            $display("== tb_adder4: ALL TESTS PASSED ==");
+tests/golden/fixtures/verilog/tb/tb_adder4.v:105:            $display("== tb_adder4: %0d CHECK(S) FAILED ==", errors);
+
+## skills/lsp-setup tree (tracked)
+skills/lsp-setup/SKILL.md
+skills/lsp-setup/references/bash/README.md
+skills/lsp-setup/references/c-cpp/README.md
+skills/lsp-setup/references/csharp/README.md
+skills/lsp-setup/references/dart/README.md
+skills/lsp-setup/references/elixir/README.md
+skills/lsp-setup/references/go/README.md
+skills/lsp-setup/references/haskell/README.md
+skills/lsp-setup/references/java/README.md
+skills/lsp-setup/references/julia/README.md
+skills/lsp-setup/references/kotlin/README.md
+skills/lsp-setup/references/lua/README.md
+skills/lsp-setup/references/php/README.md
+skills/lsp-setup/references/python/README.md
+skills/lsp-setup/references/ruby/README.md
+skills/lsp-setup/references/rust/README.md
+skills/lsp-setup/references/swift/README.md
+skills/lsp-setup/references/terraform/README.md
+skills/lsp-setup/references/typescript/README.md
+skills/lsp-setup/references/yaml/README.md
+skills/lsp-setup/references/zig/README.md
+skills/lsp-setup/scripts/detect-lsp.ts
+skills/lsp-setup/scripts/lsp-server-table.ts
+skills/lsp-setup/scripts/tsconfig.json
+skills/lsp-setup/scripts/verify-lsp.ts
+
+## mpd-mcp-lsp templates + refs to rtl-lsp-client.json
+packages/mpd-mcp-lsp/README.md
+packages/mpd-mcp-lsp/README.zh-CN.md
+packages/mpd-mcp-lsp/dist/BUILD.lock
+packages/mpd-mcp-lsp/dist/cli.js
+packages/mpd-mcp-lsp/overlay/lsp/language-mappings.ts
+packages/mpd-mcp-lsp/overlay/lsp/server-definitions.ts
+packages/mpd-mcp-lsp/package.json
+packages/mpd-mcp-lsp/src/.gitkeep
+packages/mpd-mcp-lsp/templates/rtl-lsp-client.json
+docs/rtl-verif-guide.md:132:  `packages/mpd-mcp-lsp/templates/rtl-lsp-client.json` (merge/copy into
+docs/rtl-verif-guide.zh-CN.md:125:  `packages/mpd-mcp-lsp/templates/rtl-lsp-client.json`（合并/复制进
+evidence/rtl-verif/t9-integration/2026-08-30T18-56-01Z/result.json:34:  "lspRows": "none needed in patch - verible+slang-server ship as builtin registry entries inside packages/mpd-mcp-lsp/dist/cli.js
+packages/mpd-mcp-lsp/README.md:52:A ready template lives at `templates/rtl-lsp-client.json` — merge its `"lsp"`
+packages/mpd-mcp-lsp/README.zh-CN.md:51:现成模板位于 `templates/rtl-lsp-client.json` —— 将其 `"lsp"` 条目合并进该用户

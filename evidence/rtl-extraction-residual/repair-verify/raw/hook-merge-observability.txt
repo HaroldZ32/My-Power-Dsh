@@ -1,0 +1,6 @@
+hook-result-d-valid-nearest.json -> sample matches: 2
+    ctx.subagents.registerContinuableSetup([fn])
+    ctx.tools.register({"name":"agent_teams_create","description":"Create a team. Use approval=required for a two-phase plan: members and tasks remain unspawned/unc
+hook-result-a-corrupt-nearest-valid-farther.json -> sample matches: 2
+    ctx.subagents.registerContinuableSetup([fn])
+    ctx.tools.register({"name":"agent_teams_create","description":"Create a team. Use approval=required for a two-phase plan: members and tasks remain unspawned/unc

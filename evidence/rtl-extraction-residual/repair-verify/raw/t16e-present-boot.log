@@ -1,0 +1,6 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=no-binary binary=- cwd=/root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair-verify/raw/t16-lane/ws
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair-verify/raw/t16-lane/mpd-package/skills (provider mpd-bundle, bundle 0.3.2)
+CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.
+CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.
+CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.

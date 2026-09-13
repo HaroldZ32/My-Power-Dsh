@@ -1,0 +1,105 @@
+{
+  "task": "t31",
+  "supersedes": {
+    "task": "t28",
+    "attempt_id": "2530467a-2967-4d82-9268-a34d3785778f",
+    "status": "failed",
+    "finding": "X7-BLOCKER-1 — third fresh-clone self-test blocker outside that task's inScope",
+    "archived_result": "raw/result-t28-attempt1.json"
+  },
+  "workstream": "X7 (third blocker) — fresh-clone SKIP lane: third case converted, suite re-measured, single re-pin",
+  "attempt_id": "0c4b4c21-4b95-46b5-b4a4-9328217d50bb",
+  "status": "complete",
+  "pin": "HEAD 32ae54dd10db7ea46e1c1263143d56f266fd1f78 (dev); nothing committed by this task",
+  "spec": "evidence/rtl-extraction-residual/followup/x2-skip-contract.md (v2, 564 lines)",
+  "label_mapping_note": "x2 v2 §11/§12 are THIS task's spec; the contract's internal 't23' labels are the author's numbering (board: t23 = X6 declaration/Lead, t24/t28/t31 = X7, t25 = X4-repair)",
+  "corrected_blocker_count": 3,
+  "falsified_claim": "x2 v2 §15 M4 ('exactly two self-test P1 blockers') — falsified by direct measurement in t28; the third blocker was skills/dsh-qa/scripts/skill-catalog-probe.mjs:21-23 (tracked, unmodified), now converted under the t31 scope extension",
+  "converted_cases": [
+    "skills/dsh-qa/scripts/relocate-smoke.mjs",
+    "skills/dsh-qa/scripts/team-route-rewire.mjs",
+    "skills/dsh-qa/scripts/skill-catalog-probe.mjs"
+  ],
+  "changed_paths": [
+    "skills/dsh-qa/scripts/relocate-smoke.mjs",
+    "skills/dsh-qa/scripts/team-route-rewire.mjs",
+    "skills/dsh-qa/scripts/skill-catalog-probe.mjs",
+    "skills/dsh-qa/SKILL.md",
+    "package.json",
+    "VENDOR_LOCK.json",
+    "evidence/rtl-extraction-residual/x7/report.md",
+    "evidence/rtl-extraction-residual/x7/result-t31.json",
+    "evidence/rtl-extraction-residual/x7/raw/"
+  ],
+  "suite": {
+    "fresh_clone_pack_absent": {
+      "command": "bun run test:qa",
+      "exit": 0,
+      "cases_run": 24,
+      "skip_lines": 3,
+      "skips": ["relocate-smoke", "skill-catalog-probe", "team-route-rewire"],
+      "raw": "raw/t31-testqa-freshclone.out"
+    },
+    "workspace_pack_present": {
+      "command": "bun run test:qa",
+      "exit": 0,
+      "cases_run": 24,
+      "skip_lines": 0,
+      "raw": "raw/t31-testqa-packpresent.out"
+    },
+    "strict_pack_present": {
+      "command": "bun run test:qa:strict",
+      "exit": 0,
+      "skip_lines": 0,
+      "raw": "raw/t31-testqa-strict.out"
+    },
+    "full_sweep_pack_absent": {
+      "cases_run": 24,
+      "non_zero_exits": 0,
+      "skip_markers": 3,
+      "raw": "raw/t31-freshclone-sweep.txt"
+    }
+  },
+  "exit_matrix": {
+    "pack_absent_no_flag": "exit 0 + canonical SKIP marker (first stdout line), all three cases",
+    "pack_absent_strict_flag": "exit 1 + canonical FAIL marker with identical reason/prereq/remedy; --no-skip and --require-pack byte-identical",
+    "pack_present": "unchanged real lane / self-test, all three modes byte-identical",
+    "real_lane_pack_absent": "exit 0 + lane=real SKIP, no evidence directory; strict -> exit 1"
+  },
+  "anti_mask": {
+    "relocate_smoke_seeded_leaked_patch": "exit 1 in all 3 modes, 0 SKIP markers",
+    "skill_catalog_probe_incomplete_pack": "exit 1 in all 3 modes, 0 SKIP markers ('staged skill corpus incomplete')",
+    "skill_catalog_probe_broken_dist_check_farm": "unseeded -> exit 0 SKIP; seeded -> exit 1, 0 SKIP markers (checks precede gate)",
+    "team_route_rewire_seeded_check_farm": "unseeded -> exit 0 SKIP; seeded -> exit 1, 0 SKIP markers",
+    "credentials": "relocate-smoke + sandbox HOME + unset DEEPSEEK_API_KEY -> exit 1 'missing credentials', 0 markers, all 3 modes"
+  },
+  "pack_aside_restore": {
+    "before_package_json_sha256": "f8c94451d01e31568d2fd26fdddf32b99a2b79ac429602c031d38c34413b5235",
+    "after_package_json_sha256": "f8c94451d01e31568d2fd26fdddf32b99a2b79ac429602c031d38c34413b5235",
+    "files": 1119,
+    "whole_tree_digest": "2bfcefb539ca0648d5bcc44ec0147e3ecf85ebabe99309a6655f23951099a394",
+    "raw": "raw/t31-freshclone-state.txt, raw/t31-seeded-controls.txt"
+  },
+  "vendor_repin": {
+    "field": "assets.skills.treeSha",
+    "old": "2b55ab84a5c219b295d7e740e985bfdc944ec6af817b1f40839c2aa10e47585f",
+    "new": "bb52bff4195984daebcc6a87d554da02bac058e4409b9768acb59ad0d3456b32",
+    "fileCount": 328,
+    "recomputed_after_all_skills_edits": true,
+    "verify_vendor_exit": 0,
+    "cross_lane_note": "the packages/mpd-mcp-gitbash/dist/cli.js sha256 hunk in `git diff -- VENDOR_LOCK.json` belongs to the X4-repair/X5 lane and predates this task; this task changed only assets.skills.treeSha and touched no dist"
+  },
+  "gates": {
+    "bun run typecheck": 0,
+    "bun test packages": 0,
+    "node scripts/verify-vendor.mjs": 0,
+    "node scripts/verify-rtl-references.mjs": 0,
+    "node scripts/verify-rows-parity.mjs": 0,
+    "bun run test:qa (pack present)": 0,
+    "bun run test:qa:strict (pack present)": 0
+  },
+  "evidence": {
+    "report": "evidence/rtl-extraction-residual/x7/report.md (§7 = t31; §4 = the per-item matrix)",
+    "raw": "evidence/rtl-extraction-residual/x7/raw/ (t31-* files plus the t28 baseline files)"
+  }
+}

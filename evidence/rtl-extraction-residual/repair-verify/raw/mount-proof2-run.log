@@ -1,0 +1,21 @@
+{
+  "pluginAdd": 0,
+  "planted": {
+    "bytes": 10327,
+    "isFile": true
+  },
+  "present": {
+    "exit": null,
+    "requests": 0,
+    "rtlIp": false,
+    "listing": false,
+    "warnCount": 0,
+    "snippet": ""
+  },
+  "absent": {
+    "exit": null,
+    "requests": 0,
+    "rtlIp": false,
+    "warnCount": 0
+  }
+}

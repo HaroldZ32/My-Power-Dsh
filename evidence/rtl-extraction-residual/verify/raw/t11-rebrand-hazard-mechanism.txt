@@ -1,0 +1,61 @@
+### REBRAND HAZARD — mechanism check in scripts/build-mcp.mjs (read-only)
+--- servers built (targets/loop):
+18:const SERVERS = [
+19:  { name: "ast-grep", src: "ast-grep-mcp", pkg: "mpd-mcp-astgrep", entry: "src/cli.ts", argv: [] },
+20:  { name: "git-bash", src: "git-bash-mcp", pkg: "mpd-mcp-gitbash", entry: "src/cli.ts", argv: [] },
+21:  { name: "lsp", src: "lsp-daemon", pkg: "mpd-mcp-lsp", entry: "src/cli.ts", argv: ["mcp"] }
+28:const CORE = ["mcp-stdio-core", "utils", "omo-config-core", "lsp-core"]
+31:// --- mpd LSP overlay: in-repo patched copies of the upstream lsp-core files ---
+32:// The overlay lives at packages/mpd-mcp-lsp/overlay/lsp/ and carries a
+35:// prevents silent divergence from the upstream lsp-core baseline (e.g. a stale
+37:// full patched copies of the upstream lsp-core files; the anchor was renamed to
+38:// mpd-lsp-overlay-v1 (t8) when the retired HDL registrations left the overlay,
+40:const LSP_OVERLAY_DIR = join(repoRoot, "packages", "mpd-mcp-lsp", "overlay", "lsp")
+41:const BUILTIN_BUILD_ANCHOR = "mpd-lsp-overlay-v1"
+42:const LSP_OVERLAY_FILES = [
+43:  { name: "server-definitions.ts", rel: "src/lsp/server-definitions.ts", baselineExport: "BUILTIN_SERVERS" },
+44:  { name: "language-mappings.ts", rel: "src/lsp/language-mappings.ts", baselineExport: "EXT_TO_LANG" },
+47:// Apply the in-repo LSP overlay over the freshly-copied upstream lsp-core
+50:function applyLspOverlay(srcRoot) {
+51:  for (const f of LSP_OVERLAY_FILES) {
+52:    const overlayPath = join(LSP_OVERLAY_DIR, f.name)
+53:    const sourcePath = join(srcRoot, "lsp-core", f.rel)
+55:      console.error("[build-mcp] FAIL - mpd LSP overlay file missing: " + overlayPath)
+64:      console.error("[build-mcp] FAIL - upstream lsp-core source missing: " + sourcePath)
+78:    console.log("[build-mcp] mpd LSP overlay applied: " + f.name + " -> " + sourcePath)
+105:  lsp: {
+108:      ["OMO_LSP_DAEMON_CLI", "MPD_LSP_DAEMON_CLI"],
+
+--- any rebrand/rename step (omo -> mpd) in the build?
+24:// package dir name omo-config-core (upstream is never renamed). The scrub
+25:// renamed this reference to mpd-config-core but the dir does not exist there,
+28:const CORE = ["mcp-stdio-core", "utils", "omo-config-core", "lsp-core"]
+37:// full patched copies of the upstream lsp-core files; the anchor was renamed to
+97:// --- MPD scrub (t3 Phase B, captain-approved): post-bundle OMO->MPD transform ---------
+98:// The pristine upstream source still uses OMO_* identifiers; the committed dists were
+99:// hand-scrubbed OMO->MPD by commit 7d8f910 (direct dist edits, no rebuild), and AGENTS.md
+100:// pins the MPD_* contract (e.g. MPD_AST_GREP_SG_PATH). Apply the same key-level rename to
+102:// a TARGETED key list, never a global sed over "omo" (that would corrupt unrelated words
+103:// such as "from" or the OMO_CODEX_* codex contract kept literal in git-bash).
+107:      ["OMO_DAEMON_PROTOCOL_VERSION", "MPD_DAEMON_PROTOCOL_VERSION"],
+108:      ["OMO_LSP_DAEMON_CLI", "MPD_LSP_DAEMON_CLI"],
+109:      ["OMO_LSP_DAEMON_DIR", "MPD_LSP_DAEMON_DIR"],
+110:      ["OMO_LSP_DAEMON_VERSION", "MPD_LSP_DAEMON_VERSION"],
+111:      [".omo", ".mpd"],
+112:      ["omo-lsp-daemon", "mpd-lsp-daemon"],
+113:      ["omo-lsp-", "mpd-lsp-"],
+114:      ["omo/ping", "mpd/ping"],
+116:    residual: ["OMO_", ".omo", "omo-lsp", "omo/ping"],
+120:      ["OMO_AST_GREP_BIN_DIR", "MPD_AST_GREP_BIN_DIR"],
+121:      ["OMO_AST_GREP_SG_PATH", "MPD_AST_GREP_SG_PATH"],
+122:      ["OMO_AST_GREP_PROJECT_CWD", "MPD_AST_GREP_PROJECT_CWD"],
+123:      ["OMO_PROVISION_HINT", "MPD_PROVISION_HINT"],
+124:      [".omo", ".mpd"],
+125:      ["omoRuntimeCandidates", "mpdRuntimeCandidates"],
+
+--- is the rebrand instead a separate script/post-step?
+packages/mpd-mcp-gitbash/dist/cli.js
+scripts/build-mcp.mjs
+
+--- who else writes those dists (patchers)?
+scripts/install-profile.mjs

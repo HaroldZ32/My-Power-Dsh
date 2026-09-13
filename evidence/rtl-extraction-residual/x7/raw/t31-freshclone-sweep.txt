@@ -1,0 +1,28 @@
+moved aside; pack present=false
+--- per-case sweep (24 cases, pack absent) ---
+0	skills/dsh-qa/scripts/agent-teams-adopt.mjs	[agent-teams-adopt self-test] ok: notice + adopted LICENSE + 0.1.16-rc.3-mpd + _deps + AGENTS.md + installer self-test verified
+0	skills/dsh-qa/scripts/agent-teams-dispatch.mjs	  ok   installed host exposes no subagent followup member
+0	skills/dsh-qa/scripts/agent-teams-sidebar.mjs	[agent-teams-sidebar self-test] ok: 17 checks (mpd-agent-teams,mpd-workmate; @nanmicoder/dsh-agent-teams,@mpd-dsh/team-page,@mpd-dsh/mpd)
+0	skills/dsh-qa/scripts/bundle-lifecycle.mjs	[bundle-lifecycle self-test] ok: repo root IS the bundle + bundle-served preset row + provider wiring + probe + pnpm
+0	skills/dsh-qa/scripts/codegraph-smoke.mjs	[codegraph-smoke self-test] ok: project-path precondition verified on fixture
+0	skills/dsh-qa/scripts/dual-track-smoke.mjs	[llm-dual-track self-test] ok: track fixture assertions + devPatch boot operand verified
+0	skills/dsh-qa/scripts/mcp-call.mjs	[mcp-call self-test] ok: tool-name detection verified on fixture
+0	skills/dsh-qa/scripts/memory-smoke.mjs	[memory-smoke self-test] ok: bundle row + dist symbols + unit suite verified
+0	skills/dsh-qa/scripts/mount-assert.mjs	[mount-assert self-test] ok: presence/absence detection verified on fixture
+0	skills/dsh-qa/scripts/plan-c-smoke.mjs	[plan-c-smoke self-test] ok: rows + unit suites verified
+0	skills/dsh-qa/scripts/preset-conformance.mjs	[preset-conformance self-test] ok: 30 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, row parity 31/31
+0	skills/dsh-qa/scripts/preset-register.mjs	[preset-register self-test] ok: preset + roster fixtures + web-compat/preset-root/MCP-operand normalization verified
+0	skills/dsh-qa/scripts/readonly-deny.mjs	[readonly-deny self-test] ok: 23 checks
+0	skills/dsh-qa/scripts/relocate-smoke.mjs	[mpd-qa] SKIP case=relocate-smoke lane=self-test reason=absent-staged-pack prereq=dist/mpd-package/package.json remedy="node scripts/pack-mpd.mjs"
+0	skills/dsh-qa/scripts/session-start-team.mjs	[session-start-team self-test] ok: policy module + bundle patch + installer + persona verified
+0	skills/dsh-qa/scripts/skill-catalog-probe.mjs	[mpd-qa] SKIP case=skill-catalog-probe lane=self-test reason=absent-staged-pack prereq=dist/mpd-package/package.json remedy="node scripts/pack-mpd.mjs"
+0	skills/dsh-qa/scripts/software-smoke.mjs	[software-smoke self-test] ok: fixture semantics + deterministic self-play (winner P1, 11 plies) + 4 oracle probes green, mutation control RED (9 violation(s))
+0	skills/dsh-qa/scripts/team-route-rewire.mjs	[mpd-qa] SKIP case=team-route-rewire lane=self-test reason=absent-staged-pack prereq=dist/mpd-package/package.json remedy="node scripts/pack-mpd.mjs"
+0	skills/dsh-qa/scripts/tool-output-validation.mjs	[tool-output-validation self-test] ok: bundle rows + dist symbols + unit suites verified
+0	skills/dsh-qa/scripts/ultrawork-smoke.mjs	[ultrawork-smoke self-test] ok: engine symbols + bundle row verified
+0	skills/dsh-qa/scripts/vision-smoke.mjs	[vision-e2e self-test] ok: fixture generator verified (155 bytes)
+0	skills/dsh-qa/scripts/web-client-adapt.mjs	[web-client-adapt self-test] ok: 14 checks
+0	skills/dsh-qa/scripts/workmate-library.mjs	[workmate-library self-test] ok: 18 checks
+0	skills/dsh-qa/scripts/workmate-team-member.mjs	[workmate-team-member self-test] ok: 6 checks
+--- sweep non-zero exits ---
+(end non-zero)

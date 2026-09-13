@@ -1,0 +1,24 @@
+### DEMO design: unmodified byte-copy of the gate, run from a scratch repo layout
+34a1c8d6e5ca46a00cb4d5e416c1068c45c14fce4e8255ec7d8a580fa15ad6db  scripts/verify-rtl-references.mjs
+34a1c8d6e5ca46a00cb4d5e416c1068c45c14fce4e8255ec7d8a580fa15ad6db  evidence/rtl-extraction-residual/verify/raw/blindness-demo/scratch-repo/scripts/verify-rtl-references.mjs
+
+### DEMO A: post-repair shape (both RTL cases retired => CASES absent; silicon root empty)
+--- mpd-side leftovers that are simultaneously PRESENT in the real tree:
+    packages/mpd-mcp-lsp/overlay/lsp/server-definitions.ts (verible+slang builtins)
+    packages/mpd-mcp-lsp/dist/cli.js (launched by bundle row mcp-lsp)
+    tests/golden/fixtures/verilog/** (4 tracked files)
+    docs/adder4.md docs/cnt8.md
+--- run the copied gate with an EMPTY silicon root:
+[rtl-refs] silicon: /root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/verify/raw/blindness-demo/scratch-repo/../empty-silicon | references: 0
+  resolved: 0
+[rtl-refs] PASS — 0 resolved, 0 pending-by-design, 0 unresolved
+DEMO-A-exit=0
+{
+  "siliconRoot": "/root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/verify/raw/blindness-demo/scratch-repo/../empty-silicon",
+  "considered": 0,
+  "resolved": [],
+  "pending": [],
+  "unresolved": []
+}
+[rtl-refs] PASS — 0 resolved, 0 pending-by-design, 0 unresolved
+DEMO-A-json-exit=0

@@ -1,0 +1,45 @@
+{
+  "startedAt": "2026-09-13T09:21:05.988Z",
+  "planted": {
+    "bytes": 10327,
+    "isFile": true
+  },
+  "resolution": {
+    "resolved": "/root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair-verify/raw/t16-lane/mpd-package/node_modules/@mpd-dsh/silicon/presets/rtl-ip.profile.json"
+  },
+  "present": {
+    "label": "present",
+    "exit": 0,
+    "killed": false,
+    "elapsedMs": 62167,
+    "requests": 3,
+    "toolsOffered": 86,
+    "createOffered": true,
+    "systemProfilesPresent": "Configured team profiles (pass profile= to agent_teams_create):\n- rtl-ip (7 members, captain planning): RTL-IP SWIMLANE FLOW (skills/rtl-ip-flow is the binding execution contract). Gate semantics: EVERY diamond is passed by a Reviewer check (red and green alike — Reviewer/Plan Reviewer findings must be clear before any review completes); the \n- mpd (11 members, captain planning): Read-only members (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) take requirements/review/analysis tasks only and never edit files. Workers (Senior Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) take impl\n\nCheck the [exit code: N] marker on every bash result; investigate failures before moving on.\n\nUse the read tool — not shell commands like cat — to inspect text files. Results include line numbers. Use offset and limit to continue reading large files.\n\nUse the write tool to create files or completely replace file contents. Existing files are overwritten, so read an existing file first (the default fs-observation-policy requires it) and prefer edit for targeted changes.\n\nUse the edit tool for targeted changes to existing UTF-8 text files. It replaces literal old_string w",
+    "systemHasRtlIp": true,
+    "hasMpdInListing": true,
+    "secondRequestLastContent": "Generate the session title from this JSON array of human messages:\n[{\"seq\":8,\"text\":\"Call agent_teams_create with profile rtl-ip, then say t16-done.\"}]",
+    "warnCount": 0,
+    "applyCrash": false,
+    "logPath": "/root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair-verify/raw/t16c-present-boot.log",
+    "logTail": "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)\n[mpd-codegraph] init status=no-binary binary=- cwd=/root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair-verify/raw/t16-lane/ws\n[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair-verify/raw/t16-lane/mpd-package/skills (provider mpd-bundle, bundle 0.3.2)\nCodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.\nt16-done\n"
+  },
+  "absent": {
+    "label": "absent",
+    "exit": 0,
+    "killed": false,
+    "elapsedMs": 63655,
+    "requests": 3,
+    "toolsOffered": 86,
+    "createOffered": true,
+    "systemProfilesPresent": "Configured team profiles (pass profile= to agent_teams_create):\n- mpd (11 members, captain planning): Read-only members (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) take requirements/review/analysis tasks only and never edit files. Workers (Senior Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) take impl\n\nCheck the [exit code: N] marker on every bash result; investigate failures before moving on.\n\nUse the read tool — not shell commands like cat — to inspect text files. Results include line numbers. Use offset and limit to continue reading large files.\n\nUse the write tool to create files or completely replace file contents. Existing files are overwritten, so read an existing file first (the default fs-observation-policy requires it) and prefer edit for targeted changes.\n\nUse the edit tool for targeted changes to existing UTF-8 text files. It replaces literal old_string with new_string; by default old_string must appear exactly once. If old_string appears multiple times, provide a more specific old_string or set replace_all to true. Read the file first (the default fs-observation-policy requires it), unless you just created or edited it in this se",
+    "systemHasRtlIp": false,
+    "hasMpdInListing": true,
+    "secondRequestLastContent": "Generate the session title from this JSON array of human messages:\n[{\"seq\":8,\"text\":\"Call agent_teams_create with profile rtl-ip, then say t16-done.\"}]",
+    "warnCount": 0,
+    "applyCrash": false,
+    "logPath": "/root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair-verify/raw/t16c-absent-boot.log",
+    "logTail": "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)\n[mpd-codegraph] init status=no-binary binary=- cwd=/root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair-verify/raw/t16-lane/ws\n[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair-verify/raw/t16-lane/mpd-package/skills (provider mpd-bundle, bundle 0.3.2)\nCodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.\nt16-done\n"
+  },
+  "finishedAt": "2026-09-13T09:23:11.831Z"
+}

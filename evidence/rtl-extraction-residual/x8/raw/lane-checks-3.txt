@@ -1,0 +1,15 @@
+### status delta (must be evidence-only) ###
+72a73
+> ?? evidence/dsh-qa/bundle-lifecycle/2026-09-13T11-29-36.018Z/
+73a75
+> ?? evidence/dsh-qa/preset-conformance/2026-09-13T11-29-54.044Z/
+### X5 bun.lock workspaces vs real dirs ###
+  real packages dirs: 23 | ghost dirs present: 0 | dirs missing from lock: 4
+  ghost names mentioned in lock: none
+### X7 marker grammar present in the three converted cases ###
+  relocate-smoke           marker-code=0 no-skip=1
+  team-route-rewire        marker-code=0 no-skip=1
+  skill-catalog-probe      marker-code=0 no-skip=1
+### X7 single skills re-pin ###
+  skills fileCount 328 treeSha bb52bff4195984da
+  verify-vendor tail: [verify-vendor] PASS

@@ -1,0 +1,51 @@
+### P14 extension/case-variant axis (tracked + untracked-not-ignored)
+-- uppercase + other HDL + EDA file types
+P14-tracked-count=0
+-- untracked-not-ignored with those extensions
+P14-untracked-count=0
+
+### P15 gitignored / untracked leftovers axis
+?? evidence/rtl-extraction-residual/
+!! .venv-rtl/
+P15-count=2
+
+### P16 CONTENT-mentions whose PATH does not look RTL (the axis a name filter misses)
+.gitignore
+.silicon-extraction/removal.log
+AGENTS.md
+PLAN.md
+docs/index.md
+docs/index.zh-CN.md
+docs/review-p0-p3.md
+docs/track-a-report.md
+package.json
+packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs
+packages/mpd-bootstrap-plugin/test/bootstrap.test.ts
+packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs
+packages/mpd-bundle/README.md
+packages/mpd-bundle/README.zh-CN.md
+packages/mpd-bundle/cordis.patch.yml
+packages/mpd-qa-roles-probe/src/index.ts
+packages/mpd-workmate-plugin/test/workmate.test.ts
+scripts/build-mcp.mjs
+scripts/install-mcp.mjs
+scripts/pack-mpd.mjs
+
+### P17 patch/YAML/manifest row axis
+P17-hits=0
+
+### P18 VENDOR_LOCK entries whose key names RTL/HDL
+39:    "packages/mpd-mcp-lsp/dist/cli.js": {
+50:  "verification": "node scripts/verify-vendor.mjs: commit/version mismatch is a blocker; stats drift is a warning; asset counts are a blocker",
+
+### P19 dist/ axis (all dist trees, not just the pack)
+dist/mpd-package/skills/dsh-qa/scripts/rtl-ip-profile.mjs
+dist/mpd-package/skills/dsh-qa/scripts/rtl-verif.mjs
+dist/mpd-package/skills/lsp-setup/scripts/verify-lsp.ts
+dist/mpd-package/skills/lsp-setup/references/systemverilog
+dist/mpd-package/skills/lsp-setup/references/verilog
+P19-count=5
+
+### P20 skills-corpus README/SKILL axis
+skills/lsp-setup/SKILL.md
+P20-count=1

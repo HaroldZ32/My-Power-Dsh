@@ -1,0 +1,13 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: false
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      '@mpd-dsh/mpd':
+        specifier: link:/root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair-verify/raw/mount-proof/mpd-package
+        version: link:../../../mpd-package

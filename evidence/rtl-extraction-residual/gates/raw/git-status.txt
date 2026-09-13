@@ -1,0 +1,23 @@
+## git status --short — FIRST observation of this task, before any command that writes
+$ git status --short
+(empty — the tracked tree was clean)
+
+## git status --short — AFTER every command of this task (HEAD 32ae54d)
+$ git status --short
+?? evidence/dsh-qa/bundle-lifecycle/2026-09-13T07-37-13.539Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-13T07-36-29.035Z/
+?? evidence/rtl-extraction-residual/
+
+## git worktree list  (the temporary baseline worktrees were removed again)
+$ git worktree list
+/root/dshProj/my-power-dsh  32ae54d [dev]
+
+## HEAD of the measured tree
+$ git rev-parse HEAD
+32ae54dd10db7ea46e1c1263143d56f266fd1f78
+$ git log -1 --format='%H %s'
+32ae54dd10db7ea46e1c1263143d56f266fd1f78 chore(lsp-setup): retire the orphan HDL pages and take the single VENDOR_LOCK re-pin (t17)
+
+## pre-extraction baseline used for the before/after comparisons
+$ git rev-parse 3d99718
+3d99718047c696cde45e053cbc66b66c6d7ab9cc

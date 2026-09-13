@@ -1,0 +1,687 @@
+{
+  "generatedAt": "2026-09-13T08:36:27.591Z",
+  "siliconMembers": 7,
+  "lanes": {
+    "withSilicon": {
+      "label": "with-silicon",
+      "exit": 0,
+      "http": true,
+      "siliconPlanted": true,
+      "probe": [
+        {
+          "attempt": 0,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 1,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 2,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 3,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 4,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 5,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 6,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 7,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 8,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 9,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 10,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 11,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 12,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 13,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 14,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 15,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 16,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 17,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 18,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 19,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 20,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 21,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 22,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 23,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 24,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 25,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 26,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 27,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 28,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 29,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 30,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 31,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 32,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 33,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 34,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 35,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 36,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 37,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 38,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 39,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "profile": "mpd",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        }
+      ],
+      "bootTail": "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)\n[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair/raw/mount-proof/with-silicon/ws\n[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)\ndsh web: http://127.0.0.1:39001/?token=dUdwrd7auGcBK18hLk70dav8GtiXwaEzKSYA1URwYus\n"
+    },
+    "withoutSilicon": {
+      "label": "without-silicon",
+      "exit": 0,
+      "http": true,
+      "siliconPlanted": false,
+      "probe": [
+        {
+          "attempt": 0,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 1,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 2,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 3,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 4,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 5,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 6,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 7,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 8,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 9,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 10,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 11,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 12,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 13,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 14,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 15,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 16,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 17,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 18,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 19,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 20,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 21,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 22,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 23,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 24,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 25,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 26,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 27,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 28,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 29,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 30,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 31,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 32,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 33,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 34,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 35,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 36,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 37,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 38,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "attempt": 39,
+          "profile": "rtl-ip",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        },
+        {
+          "profile": "mpd",
+          "ok": false,
+          "error": "agent_teams tools require a calling agent (exec.agent was undefined)",
+          "members": null,
+          "returnedProfile": null
+        }
+      ],
+      "bootTail": "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)\n[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair/raw/mount-proof/without-silicon/ws\n[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)\ndsh web: http://127.0.0.1:39002/?token=CbQIlANs-dTYlRXRWGou4PDcCfOatNblkwYsfP2K1mg\n"
+    }
+  },
+  "checks": {
+    "A: boot served HTTP": true,
+    "A: rtl-ip profile resolved from the silicon file (members == silicon's list)": false,
+    "A: mpd roster intact (11 members)": false,
+    "B: boot stayed up with silicon absent": true,
+    "B: rtl-ip reported unknown ({} fallback)": false,
+    "B: mpd roster still intact (11 members)": false
+  },
+  "ok": false
+}

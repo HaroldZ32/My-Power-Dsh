@@ -1,0 +1,72 @@
+### subject revisions
+verify/addendum-gates-and-criteria.md            181 lines   14897 B  596c26b07fae5faeae38843e  mtime=2026-09-13 15:58:03
+verify/verdict.md                                202 lines   21476 B  b527d1103ce3ee36d51366c9  mtime=2026-09-13 15:47:02
+verify/false-negative-probes.md                   47 lines    7448 B  24aa5ee0ef4e213e887da044  mtime=2026-09-13 15:46:21
+verify/addendum-manifest.md                      314 lines   37090 B  7ce1447d233f4af2c4f1f3ae  mtime=2026-09-13 16:00:29
+review/review.md                                 395 lines   42475 B  826f9c5b83df766ba5c7a50d  mtime=2026-09-13 15:58:04
+
+### manifest rows that pin OTHER files:
+40:| Produced at | after t6's terminal record; the file's lineage is **225 → 326 → 333 → 338 lines** (see §4) |
+138:| `verify/addendum-gates-and-criteria.md` (subject) | 144 | 2026-09-13 15:49:58 | `fada192fb3fc0c1c0a0d0cb1bc393afdb5e200e63bea720ac25eae80888e1cb3` |
+155:(**225 → 326 → 333 → 338 → 395 lines**; `captain-attestation.md` §2.2 plus these measurements), and its
+184:| `verify/addendum-gates-and-criteria.md` (addendum 1) — **as indexed (r1)** | 144 lines, 11 766 B, mtime 15:49:58 | `fada192fb3fc0c1c0a0d0cb1bc393afdb5e200e63bea720ac25eae80888e1cb3` |
+185:| `verify/addendum-gates-and-criteria.md` — **current (r3)** | 181 lines, 14 897 B, mtime 15:58:03 | `596c26b07fae5faeae38843e672e3de2772f2f6cc79b50954390d8b6ebcb6ac2` — authoritative revision log: `verify/raw/addendum-revision-log.txt` (r1/r3 fingerprints + the r2/r3 reasons) |
+187:| `review/review.md` — **state measured for this index** | **338 lines**, 36 728 B, mtime 15:55:32 | `77429cbd311056262d740c70291c0dbf5cfe1df70ec134ed77305ab8722e1c1f` |
+188:| `review/review.md` — **current (carries §8 and §9)** | **395 lines**, 42 475 B, mtime 15:58:04 | `826f9c5b83df766ba5c7a50d2ef549a7053c5303421035808b9960ef64e83e8b` |
+
+### the manifest's own falsification-check instruction:
+### section owning line 138 (byte-identity table) ===
+| A32 | **(f2) C10 (binding condition) — the section postdates the terminal record.** §8 was written after t6's terminal record; the report must cite `review.md` as **one document** while noting that R7.7–R7.10 are the **captain's adjudications over it**, not review-authored rulings. | `review.md` §6 C10 |
+| A33 | **(g) R7.15 overrules the reviewer's defer recommendation — the guard blind spots are IN SCOPE for the repair.** Guard-1 and Guard-2 get **minimal subject-count assertions** (fail when the enumerated subject set is empty, and say which set was empty) in the same repair pass, each with a falsifiability probe (empty-subject copy → exit 1, non-empty → exit 0); **t8 lands them, t11 re-measures**. The stated reason must be reported wherever this is reported: these two gates are the very instruments the repair uses to prove correctness, so a green from a zero-subject run is exactly the class this audit exists to expose. **The reviewer's own recommendation to defer STANDS IN `review.md` §8 as the dissent.** | `captain-rulings.md` R7.15 (L380–400) · `review.md` §8.6 recommendation |
+| A34 | **Provenance/lineage of the t6 addendum itself.** `review.md` §1–§7 are t6's terminal deliverable (`completed`, `verdict=pass`, attempt `ad3378f4-…`); §8 was appended **after** that record at the captain's direction "so the audit has one citable review instead of a second file that t7 might miss"; it "changes no measurement above" and says so where it disagrees. Lineage recorded in §4. | `review.md` §8 provenance, §6 C1, and the `^verdict: pass` lines · `captain-attestation.md` §2.2 |
+
+---
+
+## 4. Byte-identity and hash lineage (read this before citing a hash)
+
+**Recorded as the addendum declares** (`addendum-gates-and-criteria.md:3-7`): to keep t6's reviewed artifact
+stable, `verdict.md` and `false-negative-probes.md` were **left byte-identical** to the versions under
+review; everything new went into the addendum. **The addendum does not change the t5 verdict.**
+
+Measured basis (this task, read-only) — no downstream reader has to wonder whether the addendum rewrote them:
+
+| File | Lines | mtime | sha256 (measured by t13) |
+|---|---|---|---|
+| `verify/verdict.md` | 202 | 2026-09-13 15:47:02 | `b527d1103ce3ee36d51366c9ad004770c78746a70453401200c0ab2f90a71a63` |
+| `verify/false-negative-probes.md` | 47 | 2026-09-13 15:46:21 | `24aa5ee0ef4e213e887da044be6d37595c12e1b1f5197226f690ef5ac83bf67d` |
+| `verify/addendum-gates-and-criteria.md` (subject) | 144 | 2026-09-13 15:49:58 | `fada192fb3fc0c1c0a0d0cb1bc393afdb5e200e63bea720ac25eae80888e1cb3` |
+
+
+### residual findings ===
+R-a: line 138 pins the addendum at r1 (144 lines / fada192f...) inside the byte-identity table whose
+     instruction at :147-149 invites a whole-table sha256sum comparison -> false alarm on the addendum row.
+     §5 table (lines 184-185) already carries BOTH rows; :138 was not updated.
+R-b: line 40 lineage '225 -> 326 -> 333 -> 338 lines' vs line 155 '... -> 395 lines' (frozen) and :188 (395).
+
+### manifest revision observed by Plan Reviewer vs now ===
+PR measured : 292 lines / 89544736... / mtime 15:59:26
+now         : 336 lines / 99bce33d45ee7b82 / mtime 2026-09-13 16:00:56
+
+### confirm the two protected t5 files still byte-identical to t5's declaration:
+b527d1103ce3ee36d51366c9ad004770c78746a70453401200c0ab2f90a71a63  verify/verdict.md
+24aa5ee0ef4e213e887da044be6d37595c12e1b1f5197226f690ef5ac83bf67d  verify/false-negative-probes.md
+### re-measure at 08:01:13Z
+manifest: 336 lines  99bce33d45ee7b82207658a3  mtime 2026-09-13 16:00:56
+--- R-a row (addendum subject) anywhere in the byte-identity table region:
+4:**Subjects (read-only here)**: (1) `verify/addendum-gates-and-criteria.md` — the **t5** extension; (2) `review/review.md` **§8** — the **t6** addendum (+ `review/raw/guard-blind-spot-sweep.txt` and `review/raw/sweep/**`)
+18:* **Fact 1 — the t5 addendum exists because a wake arrived after completion:** `verify/addendum-gates-and-criteria.md` was produced *after* t5 had reached a terminal `verdict=pass`, because the captain's follow-up probe request arrived when the task could no longer be re-claimed; it does **not** change t5's verdict and is an extension of the evidence base under the captain's rulings.
+29:| Why it exists | the captain's wake asking for extra probes arrived **after** t5 was already terminal; the scheduler correctly refuses to re-claim a terminal task, and t6 had already started reviewing. Rather than re-open or edit t5's reviewed deliverables, the new measurements were filed as an addendum **in the same `inScope` directory** (`verify/`). Declared in the addendum itself at `addendum-gates-and-criteria.md:3-7`. |
+51:### A · Gate re-runs (the addendum's §1, `addendum-gates-and-criteria.md:20-31`)
+128:**Recorded as the addendum declares** (`addendum-gates-and-criteria.md:3-7`): to keep t6's reviewed artifact
+138:| `verify/addendum-gates-and-criteria.md` (subject) | 144 | 2026-09-13 15:49:58 | `fada192fb3fc0c1c0a0d0cb1bc393afdb5e200e63bea720ac25eae80888e1cb3` |
+170:  `verify/addendum-gates-and-criteria.md`, independently adjudicated", §9.1–§9.4) is a **third**
+184:| `verify/addendum-gates-and-criteria.md` (addendum 1) — **as indexed (r1)** | 144 lines, 11 766 B, mtime 15:49:58 | `fada192fb3fc0c1c0a0d0cb1bc393afdb5e200e63bea720ac25eae80888e1cb3` |
+185:| `verify/addendum-gates-and-criteria.md` — **current (r3)** | 181 lines, 14 897 B, mtime 15:58:03 | `596c26b07fae5faeae38843e672e3de2772f2f6cc79b50954390d8b6ebcb6ac2` — authoritative revision log: `verify/raw/addendum-revision-log.txt` (r1/r3 fingerprints + the r2/r3 reasons) |
+240:  reads "t5 addendum — `evidence/rtl-extraction-residual/verify/addendum-gates-and-criteria.md`; indexed by
+--- R-b lineage lines:
+40:| Produced at | after t6's terminal record; the file's lineage is **225 → 326 → 333 → 338 lines** (see §4) |
+155:(**225 → 326 → 333 → 338 → 395 lines**; `captain-attestation.md` §2.2 plus these measurements), and its
+--- falsification instruction:
+147:* **Falsification check for any later reader** (run from the repo root):
+148-  `sha256sum -c`-style comparison against the table above. If either hash differs from the value recorded
+149-  here, the byte-identity claim is falsified and the difference must be attributed before the addendum or

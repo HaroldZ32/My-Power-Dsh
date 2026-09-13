@@ -1,0 +1,39 @@
+diff --git a/packages/mpd-mcp-lsp/dist/cli.js b/packages/mpd-mcp-lsp/dist/cli.js
+index 9132b89..9fd431b 100755
+--- a/packages/mpd-mcp-lsp/dist/cli.js
++++ b/packages/mpd-mcp-lsp/dist/cli.js
+@@ -1599,11 +1599,7 @@ var EXT_TO_LANG = {
+   ".objcpp": "objective-cpp",
+   ".fish": "fish",
+   ".graphql": "graphql",
+-  ".gql": "graphql",
+-  ".v": "verilog",
+-  ".vh": "verilog",
+-  ".sv": "systemverilog",
+-  ".svh": "systemverilog"
++  ".gql": "graphql"
+ };
+ function getLanguageId(ext) {
+   return EXT_TO_LANG[ext] ?? "plaintext";
+@@ -3639,9 +3635,7 @@ var LSP_INSTALL_HINTS = {
+   bash: "npm install -g bash-language-server",
+   "kotlin-ls": "See https://github.com/Kotlin/kotlin-lsp",
+   julials: `julia -e 'using Pkg; Pkg.add("LanguageServer")'`,
+-  razor: "Razor runs through the Roslyn language server (cohosting). " + "Install: dotnet tool install -g roslyn-language-server --prerelease (requires v5.8.0+). See https://github.com/dotnet/razor",
+-  verible: "download prebuilt binaries: https://github.com/chipsalliance/verible/releases",
+-  "slang-server": "per-platform static binaries: https://github.com/hudson-trading/slang-server/releases"
++  razor: "Razor runs through the Roslyn language server (cohosting). " + "Install: dotnet tool install -g roslyn-language-server --prerelease (requires v5.8.0+). See https://github.com/dotnet/razor"
+ };
+ var BUILTIN_SERVERS = {
+   typescript: {
+@@ -3742,9 +3736,7 @@ var BUILTIN_SERVERS = {
+   razor: {
+     command: ["roslyn-language-server", "--stdio"],
+     extensions: [".razor", ".cshtml"]
+-  },
+-  verible: { command: ["verible-verilog-ls"], extensions: [".v", ".vh"] },
+-  "slang-server": { command: ["slang-server"], extensions: [".sv", ".svh"] }
++  }
+ };
+ 
+ // ../lsp-core/src/lsp/config-loader.ts

@@ -1,0 +1,22 @@
+### REBRAND HAZARD — independent assertion 2026-09-13T08:27:52Z
+--- astgrep
+  work  sha=f06bba310cad306b  size=84651  OMO-hits=0  MPD-spellings=2
+  pack  sha=f06bba310cad306b  size=84651  OMO-hits=0  MPD-spellings=2
+  lock  f06bba310cad306b5638efb90a69e50b2c6a7416c0c536867f02c70f4b4fa4c5
+--- gitbash
+  work  sha=cb9ce8f3f1749d94  size=22656  OMO-hits=0  MPD-spellings=2
+  pack  sha=cb9ce8f3f1749d94  size=22656  OMO-hits=0  MPD-spellings=2
+  lock  cb9ce8f3f1749d9445d9ce5bc45d35f6e8d7d6450227a8665a6360ad38a3257a
+
+--- rebrand detail: platformFrmpdOptions vs platformFromOptions
+  astgrep  mpd-form=0 omo-form=0
+  gitbash  mpd-form=5 omo-form=0
+
+--- git status for those paths (expect clean):
+entries=0
+
+--- verify-vendor:
+exit=0
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS

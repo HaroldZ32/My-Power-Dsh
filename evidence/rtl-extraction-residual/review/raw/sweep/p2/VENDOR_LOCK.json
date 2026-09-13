@@ -1,0 +1,20 @@
+{
+  "upstream": "code-yeongyu/oh-my-openagent",
+  "upstreamCommitSha": "8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29",
+  "upstreamVersion": "5.0.0-beta.20",
+  "previousSnapshot": {
+    "commitSha": "f3642fcda303b214cc88784094da327fedab3fea",
+    "fileCount": 9009,
+    "loc": 151433,
+    "source": "legacy snapshot metadata (see README provenance)"
+  },
+  "upstreamStats": {
+    "trackedFiles": 9131,
+    "trackedLoc": 1470231,
+    "recordedAt": "2026-08-26T03:46:26.867Z",
+    "note": "loc = \u03a3 split('\\n').length over tracked files (same method as verify-vendor)"
+  },
+  "assets": {},
+  "verification": "node scripts/verify-vendor.mjs: commit/version mismatch is a blocker; stats drift is a warning; asset counts are a blocker",
+  "lockedAt": "2026-09-09T10:20:20.000Z"
+}

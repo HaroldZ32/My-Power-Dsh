@@ -1,0 +1,205 @@
+{
+  "task": "t1",
+  "role": "Explorer",
+  "head": "32ae54dd10db7ea46e1c1263143d56f266fd1f78",
+  "measuredAt": "2026-09-13T07:34Z..07:46Z",
+  "passes": [
+    "A1",
+    "A2",
+    "A3",
+    "A4",
+    "A5",
+    "B1",
+    "B1b",
+    "B1c",
+    "B2",
+    "B3",
+    "C1",
+    "C2",
+    "C3",
+    "C4",
+    "C5",
+    "D1-D8",
+    "E"
+  ],
+  "trackedHitCount": 1285,
+  "untrackedHitCount": 42,
+  "ignoredHitCount": 2289,
+  "inScopeDefectCount": 16,
+  "acceptableCount": 4521,
+  "reviewCount": 0,
+  "distinctHitPaths": 4537,
+  "byBucket": {
+    "BRIDGE-BY-DESIGN": 19,
+    "KEYWORD-FALSE-POSITIVE": 1986,
+    "UNTRACKED-BUILD-ARTIFACT": 2394,
+    "PROCESS-RECORD": 73,
+    "FULL-STRIP-DEFECT": 16,
+    "AUDIT-EVIDENCE": 42,
+    "TEST-STRING-DATA": 7
+  },
+  "defects": [
+    {
+      "path": "docs/index.md",
+      "severity": "medium",
+      "finding": "F6",
+      "why": "docs hub pair still links the stranded rtl-verif guide; becomes a dangling link once R2 deletes the six docs"
+    },
+    {
+      "path": "docs/index.zh-CN.md",
+      "severity": "medium",
+      "finding": "F6",
+      "why": "docs hub pair still links the stranded rtl-verif guide; becomes a dangling link once R2 deletes the six docs"
+    },
+    {
+      "path": "docs/rtl-gap-assessment.md",
+      "severity": "high",
+      "finding": "F1",
+      "why": "six stranded RTL docs (bilingual pairs) that the extraction's own record scheduled for deletion (removal.log:114) and captain ruling R2 orders deleted from mpd"
+    },
+    {
+      "path": "docs/rtl-gap-assessment.zh-CN.md",
+      "severity": "high",
+      "finding": "F1",
+      "why": "six stranded RTL docs (bilingual pairs) that the extraction's own record scheduled for deletion (removal.log:114) and captain ruling R2 orders deleted from mpd"
+    },
+    {
+      "path": "docs/rtl-ip-flow-guide.md",
+      "severity": "high",
+      "finding": "F1",
+      "why": "six stranded RTL docs (bilingual pairs) that the extraction's own record scheduled for deletion (removal.log:114) and captain ruling R2 orders deleted from mpd"
+    },
+    {
+      "path": "docs/rtl-ip-flow-guide.zh-CN.md",
+      "severity": "high",
+      "finding": "F1",
+      "why": "six stranded RTL docs (bilingual pairs) that the extraction's own record scheduled for deletion (removal.log:114) and captain ruling R2 orders deleted from mpd"
+    },
+    {
+      "path": "docs/rtl-verif-guide.md",
+      "severity": "high",
+      "finding": "F1",
+      "why": "six stranded RTL docs (bilingual pairs) that the extraction's own record scheduled for deletion (removal.log:114) and captain ruling R2 orders deleted from mpd"
+    },
+    {
+      "path": "docs/rtl-verif-guide.zh-CN.md",
+      "severity": "high",
+      "finding": "F1",
+      "why": "six stranded RTL docs (bilingual pairs) that the extraction's own record scheduled for deletion (removal.log:114) and captain ruling R2 orders deleted from mpd"
+    },
+    {
+      "path": "packages/mpd-bundle/README.md",
+      "severity": "medium",
+      "finding": "F4",
+      "why": "bundle README pair still advertises the RTL waveform-read rows and the `verif` plugin; the patch mounts neither"
+    },
+    {
+      "path": "packages/mpd-bundle/README.zh-CN.md",
+      "severity": "medium",
+      "finding": "F4",
+      "why": "bundle README pair still advertises the RTL waveform-read rows and the `verif` plugin; the patch mounts neither"
+    },
+    {
+      "path": "packages/mpd-mcp-lsp/README.md",
+      "severity": "medium",
+      "finding": "F3",
+      "why": "HDL-specific template retained in the retained LSP package; captain ruling R1 moves it out (its README section and the two RTL-guide references go with it)"
+    },
+    {
+      "path": "packages/mpd-mcp-lsp/README.zh-CN.md",
+      "severity": "medium",
+      "finding": "F3",
+      "why": "HDL-specific template retained in the retained LSP package; captain ruling R1 moves it out (its README section and the two RTL-guide references go with it)"
+    },
+    {
+      "path": "packages/mpd-mcp-lsp/templates/rtl-lsp-client.json",
+      "severity": "medium",
+      "finding": "F3",
+      "why": "HDL-specific template retained in the retained LSP package; captain ruling R1 moves it out (its README section and the two RTL-guide references go with it)"
+    },
+    {
+      "path": "skills/dsh-qa/SKILL.md",
+      "severity": "medium",
+      "finding": "F5",
+      "why": "skills/dsh-qa/SKILL.md:62 still asserts mpd-side rtl-ip profile content for a case that was repointed at silicon in t19 (captain ruling R3 retires the row)"
+    },
+    {
+      "path": "skills/dsh-qa/scripts/rtl-ip-profile.mjs",
+      "severity": "high",
+      "finding": "F2",
+      "why": "two RTL QA cases still in the mpd corpus; both return/exit 0 (SKIP+PASS) when the silicon checkout is absent, so test:qa can stay green while verifying nothing (captain ruling R3)"
+    },
+    {
+      "path": "skills/dsh-qa/scripts/rtl-verif.mjs",
+      "severity": "high",
+      "finding": "F2",
+      "why": "two RTL QA cases still in the mpd corpus; both return/exit 0 (SKIP+PASS) when the silicon checkout is absent, so test:qa can stay green while verifying nothing (captain ruling R3)"
+    }
+  ],
+  "defectGroups": [
+    {
+      "id": "F1",
+      "severity": "high",
+      "why": "six stranded RTL docs (bilingual pairs) that the extraction's own record scheduled for deletion (removal.log:114) and captain ruling R2 orders deleted from mpd",
+      "paths": [
+        "docs/rtl-verif-guide.md",
+        "docs/rtl-verif-guide.zh-CN.md",
+        "docs/rtl-ip-flow-guide.md",
+        "docs/rtl-ip-flow-guide.zh-CN.md",
+        "docs/rtl-gap-assessment.md",
+        "docs/rtl-gap-assessment.zh-CN.md"
+      ]
+    },
+    {
+      "id": "F2",
+      "severity": "high",
+      "why": "two RTL QA cases still in the mpd corpus; both return/exit 0 (SKIP+PASS) when the silicon checkout is absent, so test:qa can stay green while verifying nothing (captain ruling R3)",
+      "paths": [
+        "skills/dsh-qa/scripts/rtl-verif.mjs",
+        "skills/dsh-qa/scripts/rtl-ip-profile.mjs"
+      ]
+    },
+    {
+      "id": "F3",
+      "severity": "medium",
+      "why": "HDL-specific template retained in the retained LSP package; captain ruling R1 moves it out (its README section and the two RTL-guide references go with it)",
+      "paths": [
+        "packages/mpd-mcp-lsp/templates/rtl-lsp-client.json",
+        "packages/mpd-mcp-lsp/README.md",
+        "packages/mpd-mcp-lsp/README.zh-CN.md"
+      ]
+    },
+    {
+      "id": "F4",
+      "severity": "medium",
+      "why": "bundle README pair still advertises the RTL waveform-read rows and the `verif` plugin; the patch mounts neither",
+      "paths": [
+        "packages/mpd-bundle/README.md",
+        "packages/mpd-bundle/README.zh-CN.md"
+      ]
+    },
+    {
+      "id": "F5",
+      "severity": "medium",
+      "why": "skills/dsh-qa/SKILL.md:62 still asserts mpd-side rtl-ip profile content for a case that was repointed at silicon in t19 (captain ruling R3 retires the row)",
+      "paths": [
+        "skills/dsh-qa/SKILL.md"
+      ]
+    },
+    {
+      "id": "F6",
+      "severity": "medium",
+      "why": "docs hub pair still links the stranded rtl-verif guide; becomes a dangling link once R2 deletes the six docs",
+      "paths": [
+        "docs/index.md",
+        "docs/index.zh-CN.md"
+      ]
+    }
+  ],
+  "siliconContentInTrackedTree": 0,
+  "notes": [
+    "scope/acceptance.md (t2) was absent at pass E; the four prescribed buckets were applied and reconciled with evidence/rtl-extraction-residual/captain-rulings.md (R1-R4) which landed mid-scan",
+    "tracked-file results are pinned to HEAD 32ae54d; filesystem-wide (ignored/untracked) counts are moment-in-time snapshots because concurrent wave tasks and QA sandboxes write into .qa-*/.tmp-cache",
+    "the F2 cases were judged from their source, not executed (re-running gates belongs to t4/t11)"
+  ]
+}

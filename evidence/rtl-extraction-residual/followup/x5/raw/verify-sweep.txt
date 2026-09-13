@@ -1,0 +1,17 @@
+=== final contract verify sweep — 2026-09-13T11:03:06Z — HEAD 32ae54d ===
+
+$ echo "script placeholder hits: $(grep -c 'the upstream project' scripts/build-mcp.mjs || true)"; for f in packages/mpd-mcp-*/dist/BUILD.lock; do echo "$f: $(grep -c 'the upstream project' $f || true)"; done
+script placeholder hits: 0
+packages/mpd-mcp-astgrep/dist/BUILD.lock: 0
+packages/mpd-mcp-gitbash/dist/BUILD.lock: 0
+packages/mpd-mcp-lsp/dist/BUILD.lock: 0
+
+$ node -e "const l=require('fs').readFileSync('bun.lock','utf8');console.log('ghost omo-hephaestus:', l.includes('omo-hephaestus'));console.log('ghost presets-plugin:', l.includes('mpd-presets-plugin'))"
+ghost omo-hephaestus: false
+ghost presets-plugin: false
+
+$ ls packages/*/package.json | xargs -n1 dirname | sort | while read d; do grep -q "\"$d\"" bun.lock || echo "MISSING FROM LOCK: $d"; done; echo lock-workspace-check-done
+lock-workspace-check-done
+
+$ git diff --stat -- packages/mpd-mcp-astgrep/dist/cli.js packages/mpd-mcp-gitbash/dist/cli.js packages/mpd-mcp-lsp/dist/cli.js
+cli-diff-above (empty = byte-identical)

@@ -1,0 +1,15 @@
+### PACK FILE-LIST ASSERTION (exact names + full-path sweep) 08:21:38Z
+pack files total=1119
+--- exact-name assertions (expect 'absent' each):
+  skills/dsh-qa/scripts/rtl-verif.mjs                        absent
+  skills/dsh-qa/scripts/rtl-ip-profile.mjs                   absent
+  skills/lsp-setup/references/verilog/README.md              absent
+  skills/lsp-setup/references/systemverilog/README.md        absent
+  packages/mpd-verif-plugin/dist/index.js                    absent
+--- full-path sweep (case-insensitive) for any surviving RTL/HDL trace:
+skills/lsp-setup/scripts/verify-lsp.ts
+sweep-hits=1
+--- pack dsh-qa script names (should mirror the 24-case corpus, no RTL cases):
+agent-teams-adopt.mjs agent-teams-dispatch.mjs agent-teams-sidebar.mjs bundle-lifecycle.mjs codegraph-smoke.mjs dual-track-smoke.mjs mcp-call.mjs memory-smoke.mjs mount-assert.mjs plan-c-smoke.mjs preset-conformance.mjs preset-register.mjs readonly-deny.mjs relocate-smoke.mjs session-start-team.mjs skill-catalog-probe.mjs software-smoke.mjs team-route-rewire.mjs tool-output-validation.mjs ultrawork-smoke.mjs vision-smoke.mjs web-client-adapt.mjs workmate-library.mjs workmate-team-member.mjs 
+--- pack lsp-setup references dirs:
+bash c-cpp csharp dart elixir go haskell java julia kotlin lua php python ruby rust swift terraform typescript yaml zig 

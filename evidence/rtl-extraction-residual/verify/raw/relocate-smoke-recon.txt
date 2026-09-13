@@ -1,0 +1,38 @@
+### relocate-smoke precondition recon (read-only, for t11) 08:14:14Z
+-- does the case exist / how does it gate on the pack?
+17-const DEV = process.env.MPD_DEV_ROOT || repoRoot
+18-
+19-function selfTest() {
+20:  if (!existsSync(join(repoRoot, "dist", "mpd-package", "package.json"))) { console.error("[relocate-smoke self-test] FAIL: run node scripts/pack-mpd.mjs first"); process.exit(1) }
+21:  const patch = readFileSync(join(repoRoot, "dist", "mpd-package", "cordis.patch.yml"), "utf8")
+22-  if (patch.includes(DEV) || patch.includes("the upstream project")) { console.error("[relocate-smoke self-test] FAIL: dev path leak in staged patch"); process.exit(1) }
+23-  console.log("[relocate-smoke self-test] ok: staged patch is path-clean")
+24-}
+25-
+26-async function runReal() {
+27-  const creds = join(homedir(), ".dsh", ".credentials.yaml")
+28-  if (!existsSync(creds)) { console.error("[relocate-smoke] missing credentials"); process.exit(1) }
+29-  const ts = new Date().toISOString().replaceAll(":", "-")
+--
+32-  const reloc = join(repoRoot, ".qa-reloc")
+33-  mkdirSync(reloc, { recursive: true })
+34-  const staged = join(reloc, "mpd-pkg-relocated")
+35:  cpSync(join(repoRoot, "dist", "mpd-package"), staged, { recursive: true })
+36-  const home = join(reloc, "home")
+37-  const profile = join(home, "profiles", "t")
+38-  mkdirSync(profile, { recursive: true })
+39-  cpSync(creds, join(home, ".credentials.yaml"))
+40-  mkdirSync(join(reloc, "ws"), { recursive: true })
+41-  writeFileSync(join(profile, "package.json"), JSON.stringify({ name: "dsh-profile-t", private: true, dependencies: { ["@mpd-dsh/mpd"]: "file:" + staged, "@nanmicoder/dsh-agent-teams": "^0.1.13" }, dsh: { profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-headless"] } } }, null, 2) + "\n")
+42-  const env = { ...process.env, DSH_HOME: home }
+43-  const steps = {}
+
+-- is it in test:qa? (package.json scripts)
+29:    "test:qa": "for f in skills/dsh-qa/scripts/*.mjs; do echo \"[test:qa] $f\"; bun \"$f\" --self-test || { echo \"[test:qa] FAILED: $f\"; exit 1; }; done; echo \"[test:qa] all self-tests passed\"",
+30:    "test:qa:all": "for c in agent-teams-adopt agent-teams-dispatch agent-teams-sidebar bundle-lifecycle codegraph-smoke dual-track-smoke mcp-call memory-smoke mount-assert plan-c-smoke preset-conformance preset-register relocate-smoke session-start-team skill-catalog-probe software-smoke team-route-rewire tool-output-validation ultrawork-smoke vision-smoke web-client-adapt workmate-library workmate-team-member; do echo \"[test:qa:all] $c\"; bun \"skills/dsh-qa/scripts/$c.mjs\" || { echo \"[test:qa:all] FAILED: $c\"; exit 1; }; done; echo \"[test:qa:all] real-lane subset passed (real headless boot and/or live provider)\"",
+36:    "pack": "node scripts/pack-mpd.mjs"
+
+-- is dist/mpd-package present right now?
+dist/mpd-package
+
+-- does the corpus/QA standard document a pack precondition? (t9 files)

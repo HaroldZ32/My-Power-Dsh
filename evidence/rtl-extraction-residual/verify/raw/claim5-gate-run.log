@@ -1,0 +1,49 @@
+### C5.a real gate --json (read-only; silicon root as resolved by the script)
+{
+  "siliconRoot": "/root/dshProj/my-power-dsh-silicon",
+  "considered": 48,
+  "resolved": [
+    "packages/mpd-bundle/cordis.patch.yml",
+    "packages/mpd-mcp-lsp/templates/rtl-lsp-client.json",
+    "packages/mpd-verif-plugin/evidence/smoke/",
+    "scripts/install-mcp.mjs",
+    "skills/dsh-qa/scripts/rtl-verif.mjs",
+    "skills/rtl-codestyle",
+    "skills/rtl-codestyle/templates/fsm_3process.vinc",
+    "skills/rtl-codestyle/templates/module_skeleton.vinc",
+    "skills/rtl-codestyle/templates/parameterized_counter.vinc",
+    "skills/rtl-verif",
+    "skills/rtl-verif/fixtures/adder4",
+    "skills/rtl-verif/fixtures/cnt8",
+    "skills/rtl-verif/templates/uvm/",
+    "packages/mpd-mcp-lsp/templates/rtl-lsp-client.json",
+    "packages/mpd-verif-plugin/evidence/smoke/",
+    "scripts/install-mcp.mjs",
+    "skills/dsh-qa/scripts/rtl-verif.mjs",
+    "skills/rtl-codestyle",
+    "skills/rtl-codestyle/templates/fsm_3process.vinc",
+    "skills/rtl-codestyle/templates/module_skeleton.vinc",
+    "skills/rtl-codestyle/templates/parameterized_counter.vinc",
+    "skills/rtl-verif",
+    "skills/rtl-verif/fixtures/adder4",
+    "skills/rtl-verif/fixtures/cnt8",
+    "skills/rtl-verif/templates/uvm/",
+    "docs/adder4.md",
+    "docs/cnt8.md",
+    "packages/mpd-bundle/cordis.patch.yml",
+    "packages/mpd-mcp-lsp/dist/cli.js",
+    "skills/ast-grep/scripts/ast_grep_helper.py",
+    "skills/lsp-setup/references/",
+    "docs/adder4.md",
+    "docs/cnt8.md",
+    "packages/mpd-bundle/cordis.patch.yml",
+    "packages/mpd-mcp-lsp/dist/cli.js",
+    "skills/ast-grep/scripts/ast_grep_helper.py",
+gate-exit=0
+
+### C5.b self-test
+[rtl-refs self-test] ok: controls (resolved/pending/unresolved) + live audit 48 reference(s), 0 unresolved
+selftest-exit=0
+
+### C5.c is the silicon root even present? (stat only)
+SILICON=/root/dshProj/my-power-dsh-silicon exists=true docsExists=true

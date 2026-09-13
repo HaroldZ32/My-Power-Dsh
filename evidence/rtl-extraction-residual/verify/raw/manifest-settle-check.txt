@@ -1,0 +1,72 @@
+### t=0  08:04:10Z
+manifest : 350 lines 40488 B 0e3e67056ec459f83b280866 mtime 2026-09-13 16:04:04
+CHANGELOG: 74 lines 6559 B md5=07c413fd9ceebf5f0572f78b0216674f sha=c57865bb606af999a7cf9f31
+--- :40 lineage:
+| Produced at | after t6's terminal record; the file's lineage is **225 → 326 → 333 → 338 → 395 lines** — the **395**-line state is the current one (§4) |
+--- byte-identity addendum row + its caveat:
+138:| `verify/addendum-gates-and-criteria.md` (subject; **as indexed = r1** — the file was corrected to **r3** after this index: 181 lines / `596c26b0…`, see the lineage table below and `verify/raw/addendum-revision-log.txt`) | 144 | 2026-09-13 15:49:58 | `fada192fb3fc0c1c0a0d0cb1bc393afdb5e200e63bea720ac25eae80888e1cb3` |
+195:| `verify/addendum-gates-and-criteria.md` (addendum 1) — **as indexed (r1)** | 144 lines, 11 766 B, mtime 15:49:58 | `fada192fb3fc0c1c0a0d0cb1bc393afdb5e200e63bea720ac25eae80888e1cb3` |
+
+### t=+25s 08:04:35Z
+manifest : 350 lines 40488 B 0e3e67056ec459f83b280866 mtime 2026-09-13 16:04:04
+
+### SETTLE VERDICT (Reviewer, t5 addendum round) 2026-09-13T08:04:45Z
+Plan Reviewer's claims verified:
+ - review/CHANGELOG.md = 74 lines / 6559 B / md5 07c413fd9ceebf5f0572f78b0216674f / sha256 c57865bb606af999a7cf9f31475cbd892ecf8c266d481bc25ca7a5bef9166193  -> MATCH
+ - residue #2 FIXED: addendum-manifest.md:40 now reads '225 -> 326 -> 333 -> 338 -> 395 lines - the 395-line state is the current one'
+ - residue #1 SURVIVES, caveated inline at :138 (row labelled 'as indexed = r1', points at r3 596c26b0... and raw/addendum-revision-log.txt);
+   a whole-table sha256sum -c still flags that single row. Low severity; no human reader can be misled.
+ - their 336-line/357585a7 and 347-line/698754d2 instants are consistent with the observed drift; mine was a third instant.
+
+SETTLED FREEZE CANDIDATE:
+  verify/addendum-manifest.md = 350 lines / 40488 B / sha256 0e3e67056ec459f83b2808664c295736704f5fde4c17cd65e32e9ffcc42d6524 / mtime 2026-09-13 16:04:04 (unchanged across a 25 s re-measure)
+  (freeze/re-pin decision belongs to the captain; the authoritative non-stale fingerprints for the t5 addendum remain in raw/addendum-revision-log.txt)
+### freeze check at 08:05:13Z
+manifest : 350 lines / 40488 B / sha256 0e3e67056ec459f83b2808664c295736704f5fde4c17cd65e32e9ffcc42d6524 / mtime 2026-09-13 16:04:04
+expect   : 350 lines / 40488 B / 0e3e67056ec459f83b2808664c295736704f5fde4c17cd65e32e9ffcc42d6524
+
+### fix 1 (falsification scoped + third-row note):
+151:  the verdict is cited. The third row is a **revision fingerprint, not a protected-content check**: it
+152-  records the addendum **as indexed (r1)**; the addendum's current r3 state is pinned in the lineage table
+153-  below and in `verify/raw/addendum-revision-log.txt`, so comparing *that* row against the current file is
+154-  expected to differ and is not an alarm.
+155-
+
+### fix 2 (:40 lineage):
+| Artifact | `review/review.md` **§8** ("Addendum — captain adjudications R7.7–R7.10 and the 'guard that cannot fail' sweep"), §8.1–§8.6 |
+| Raw evidence | `review/raw/guard-blind-spot-sweep.txt` + `review/raw/sweep/{p1,p2,p3}/**` (t6's own captures) |
+| Produced at | after t6's terminal record; the file's lineage is **225 → 326 → 333 → 338 → 395 lines** — the **395**-line state is the current one (§4) |
+| Why it exists | the captain's adjudications R7.7–R7.10 and a probe request arrived **after** t6 was terminal; rather than open a second file t7 might miss, the material was appended as a labelled §8 of the same review. Declared at `review.md` §8 provenance (lines 253–258). |
+| Effect on t6's verdict | **none** — `^verdict: pass` remains at the start and the end of the file |
+
+### fix 3 (§8 git status attributed, not frozen):
+187:  lineage reads `… → 395`, and §8 now says explicitly that its paste is attribution evidence rather than a
+342:  repair keeps writing, so this list is **attribution evidence, not a frozen state** — it was already longer
+
+### guard-sweep pointers exist?
+-rw-r--r-- 1 root root 2409 Sep 13 15:52 review/raw/guard-blind-spot-sweep.txt
+review/raw/sweep/p1
+review/raw/sweep/p2
+review/raw/sweep/p3
+
+### my artifacts unchanged:
+596c26b07fae5faeae38843e verify/addendum-gates-and-criteria.md
+b527d1103ce3ee36d51366c9 verify/verdict.md
+24aa5ee0ef4e213e887da044 verify/false-negative-probes.md
+
+### RESIDUE CLOSURE (Reviewer) 2026-09-13T08:05:25Z
+ - Architect v2.2 = 350 lines / 40488 B / 0e3e6705... (mtime 16:04:04) == my settled freeze candidate EXACTLY.
+ - residue #1 now RESOLVED, not merely caveated: :151-154 scopes the falsification check to the two protected rows and
+   states the third row is a revision fingerprint whose mismatch 'is expected to differ and is not an alarm'.
+ - residue #2 RESOLVED at :40 ('... -> 395 lines - the 395-line state is the current one').
+ - extra: manifest :342 marks its §8 git-status paste as 'attribution evidence, not a frozen state' (consistent with my addendum §9 tree-drift note).
+ - guard-sweep citation targets exist: review/raw/guard-blind-spot-sweep.txt + review/raw/sweep/{p1,p2,p3}.
+ - t5 artifacts re-confirmed: addendum r3 596c26b0..., verdict.md b527d110..., false-negative-probes.md 24aa5ee0...
+ - no open residue on the ledger surface from the t5 side.
+
+### SUPERSESSION POINTER (appended by Reviewer 2026-09-13T08:14:14Z)
+The 'SETTLED FREEZE CANDIDATE: 350 lines / 40488 B / 0e3e6705... / mtime 16:04:04' block ABOVE is the PRE-t14 revision and is SUPERSEDED.
+Attested FROZEN revision (measured by me, matches captain-attestation.md §1): verify/addendum-manifest.md =
+  409 lines / 45257 B / sha256 3b7b28999c7a9b021a03cd9a1a72f1287942847986411dae3b3ea4c7ee8aecae / md5 bffb902199d396daa2b0e153773aaf9b / mtime 16:08:35 / mode -r--r--r--
+Details: verify/raw/manifest-freeze-verification.txt. Citation rule (attestation §1): cite the movers by SECTION (manifest §2/§3/§4),
+and anchor identity on verify/raw/addendum-revision-log.txt + captain-attestation.md §1 -- never on a hash of the manifest itself.

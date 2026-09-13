@@ -1,0 +1,53 @@
+### applyMpdScrub call sites + build/write order
+104:const MPD_SCRUB = {
+140:function applyMpdScrub(serverName, text) {
+141:  const cfg = MPD_SCRUB[serverName]
+183:    resolvedExternals[name] = from.entry
+189:    if (r.status !== 0) { console.error("[build-mcp] build failed " + s.name + ":", r.stderr); process.exit(1) }
+191:    const out = join(repoRoot, "packages", s.pkg, "dist")
+195:    const builtText = applyMpdScrub(s.name, readFileSync(cli, "utf8"))
+203:    console.log("[build-mcp] " + s.name + " -> " + join(out, "cli.js") + " (" + readFileSync(join(out, "cli.js")).length + " bytes)")
+
+--- context around the call site:
+134-    residual: ["omo-git-bash-run-"],
+135-  },
+136-}
+137-
+138-// Apply the key-level OMO->MPD scrub to a built cli.js, then assert no residual remains
+139-// (loud FAIL so a drifted upstream never silently ships an un-scrubbed dist).
+140:function applyMpdScrub(serverName, text) {
+141-  const cfg = MPD_SCRUB[serverName]
+142-  if (!cfg) return text
+143-  let out = text
+144-  for (const [from, to] of cfg.replace) out = out.split(from).join(to)
+145-  for (const residual of cfg.residual) {
+146-    if (out.includes(residual)) {
+147-      console.error(`[build-mcp] FAIL - ${serverName} dist still contains OMO residual "${residual}" after MPD scrub`)
+148-      process.exit(1)
+149-    }
+150-  }
+151-  return out
+152-}
+153-
+154-
+--
+189-    if (r.status !== 0) { console.error("[build-mcp] build failed " + s.name + ":", r.stderr); process.exit(1) }
+190-    const cli = join(dir, "dist", "cli.js")
+191-    const out = join(repoRoot, "packages", s.pkg, "dist")
+192-    mkdirSync(out, { recursive: true })
+193-    // MPD scrub: apply the key-level OMO->MPD rename (if any) so the shipped dist
+194-    // matches the committed convention (hand-scrubbed baseline, AGENTS.md contract).
+195:    const builtText = applyMpdScrub(s.name, readFileSync(cli, "utf8"))
+196-    writeFileSync(join(out, "cli.js"), builtText)
+197-    writeFileSync(join(out, "BUILD.lock"), JSON.stringify({
+198-      source: "the upstream project", sourceDir: "packages/" + s.src, builtAt: new Date().toISOString(),
+199-      build: ["bun build " + s.entry + " --outdir dist --target node --format esm"],
+200-      externalDeps: resolvedExternals,
+201-      artifact: { file: "cli.js", sha256: sha(join(out, "cli.js")), bytes: builtText.length }
+202-    }, null, 2) + "\n")
+203-    console.log("[build-mcp] " + s.name + " -> " + join(out, "cli.js") + " (" + readFileSync(join(out, "cli.js")).length + " bytes)")
+204-  }
+205-} finally {
+206-  rmSync(work, { recursive: true, force: true })
+207-}
+208-console.log("[build-mcp] PASS")

@@ -1,0 +1,51 @@
+=== g5-verify-vendor.log (tail) ===
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+=== g5-verify-rows-parity.log (tail) ===
+[verify-rows-parity] ok: 21 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-tools, mpd-ulw, mpd-web-compat, mpd-workmate)
+=== g5-verify-rtl-references.log (tail) ===
+  pending (historical): skills/rtl-dev — proposed in the preserved gap assessment and never created: the capability shipped as rtl-codestyle/rtl-verif/rtl-ip-flow, and the document's technical content is kept verbatim
+  pending (historical): skills/rtl-dev — proposed in the preserved gap assessment and never created: the capability shipped as rtl-codestyle/rtl-verif/rtl-ip-flow, and the document's technical content is kept verbatim
+[rtl-refs] PASS — 42 resolved, 6 pending-by-design, 0 unresolved
+=== g5-bundle-lifecycle.log (decisive lines) ===
+1:[bundle-lifecycle] ok=false -> /root/dshProj/my-power-dsh/evidence/dsh-qa/bundle-lifecycle/2026-09-13T07-48-22.924Z
+=== g5-bun-test-packages.log (summary) ===
+152:(fail) F3: healing a RE-MATERIALIZED upstream file refuses instead of emitting a broken module [27.28ms]
+201:(fail) t9: a re-materialized tools.js is REFUSED, byte-untouched, with key counts unchanged [4.80ms]
+215:(fail) t9: the targeted re-materialize shape (upstream twins restored at the literal) is REFUSED too [9.64ms]
+482:(fail) F3: healing a RE-MATERIALIZED upstream file refuses instead of emitting a broken module [27.28ms]
+483:(fail) t9: a re-materialized tools.js is REFUSED, byte-untouched, with key counts unchanged [4.80ms]
+484:(fail) t9: the targeted re-materialize shape (upstream twins restored at the literal) is REFUSED too [9.64ms]
+486: 295 pass
+487: 3 fail
+489:Ran 298 tests across 64 files. [12.98s]
+=== exits ===
+verify-vendor exit=0
+verify-rows-parity exit=0
+verify-rtl-references exit=0
+bundle-lifecycle exit=1
+bun-test-packages exit=1
+=== tree after my gate runs ===
+?? evidence/dsh-qa/bundle-lifecycle/2026-09-13T07-37-13.539Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-09-13T07-43-55.289Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-09-13T07-48-22.924Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-13T07-36-29.035Z/
+?? evidence/rtl-extraction-residual/
+HEAD=32ae54dd10db7ea46e1c1263143d56f266fd1f78
+=== .toolchain ignore form check ===
+.gitignore:6:.toolchain/	.toolchain/bin/verible-verilog-ls
+=== my bundle-lifecycle run, roles-probe lines ===
+4:[roles-probe] PRESET_MPD=ok
+5:[roles-probe] PRESET_PATH=/root/dshProj/my-power-dsh/.qa-reloc/bundle-lifecycle-2026-09-13T07-48-22.924Z/home/profiles/w/node_modules/@mpd-dsh/mpd/presets/mpd/agent.cordis.yml trust=system
+6:[roles-probe] ADAPTER_SEAMS=tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider ABSENT=agentPresets
+7:[roles-probe] ADAPTER_TOOL_CALL=ok
+8:[roles-probe] ROSTER=oracle,librarian,prometheus,hephaestus,sisyphus,atlas,explore,metis,momus,multimodal-looker,sisyphus-junior
+9:[roles-probe] SKILLS=19 BUNDLED=19
+10:[roles-probe] SKILL_FIXTURE=ok name=svn-master base=/root/dshProj/my-power-dsh/skills/svn-master bytes=5210
+11:[roles-probe] FAIL
+
+=== result.json header ===
+{
+ "ok": false
+}

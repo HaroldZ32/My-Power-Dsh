@@ -1,0 +1,22 @@
+### DEMO B2 (absolute roots): same token, opposite ownership => same bucket
+-- state 1: token exists ONLY in the mpd side (b2-repo)
+  "considered": 1,
+state1-exit=0
+-- state 2: token exists ONLY in the silicon side
+[rtl-refs] silicon: /root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/verify/raw/blindness-demo/b2-silicon | references: 1
+  resolved: 1
+[rtl-refs] PASS — 1 resolved, 0 pending-by-design, 0 unresolved
+state2-exit=0
+
+### DEMO C: every residual family's path is pre-absolved by the PENDING list (source lines 29-35, 65-71)
+29:const PENDING = [
+30-  ["packages/mpd-mcp-lsp", "t16 (landed)", "the HDL language-service assets are now in the silicon bundle; a reference that still resolves only in the mpd checkout is a leftover of the pre-t16 state"],
+31-  ["docs/adder4.md", "t16 (landed)", "landed by t16 together with the Verilog fixtures"],
+-- resolve(): existsSync(either root) then PENDING -> pending; only a NON-matching, non-existing token is unresolved
+function resolve(token, roots) {
+  if (roots.some((root) => existsSync(join(root, token)))) return { bucket: "resolved" }
+  for (const [prefix, owner, why] of PENDING) {
+    if (token === prefix || token.startsWith(prefix + "/")) return { bucket: "pending", owner, why }
+  }
+  return { bucket: "unresolved" }
+}

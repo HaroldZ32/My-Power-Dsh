@@ -1,0 +1,3 @@
+packages/mpd-mcp-astgrep/dist/cli.js                    0
+packages/mpd-mcp-gitbash/dist/cli.js                    0
+packages/mpd-mcp-lsp/dist/cli.js                        0

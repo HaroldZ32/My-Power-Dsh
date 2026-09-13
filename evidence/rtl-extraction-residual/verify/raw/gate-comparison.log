@@ -1,0 +1,11 @@
+=== mpd-verif-plugin test dir present? (explains 376->298) ===
+ls: cannot access 'packages/mpd-verif-plugin': No such file or directory
+test files under packages/mpd-verif-plugin: 0
+
+=== t4 (295/3) vs my (295/3) — verdict per gate ===
+gate | t4 | mine
+verify-vendor              | PASS exit 0 | [verify-vendor] PASS
+verify-rtl-references      | PASS exit 0, considered 48, unresolved [] | [rtl-refs] PASS — 42 resolved, 6 pending-by-design, 0 unresolved
+verify-rows-parity         | PASS exit 0, 21 rows | [verify-rows-parity] ok: 21 row ids match the bundle patch i
+bundle-lifecycle           | FAIL exit 1 (bundled 19 < 20) | exit 1; probe FAIL; SKILLS=19 BUNDLED=19
+bun test packages          | FAIL exit 1 (295 pass / 3 fail) | exit 1; 295pass 3fail 

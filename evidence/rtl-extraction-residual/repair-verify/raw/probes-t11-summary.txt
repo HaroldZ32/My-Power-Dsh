@@ -1,0 +1,19 @@
+slices: guard1 9L/d601ba51c5d7 mismatch 11L/6e3a35a50337 guard2 1L/e3b0c44298fc hook 53L/5b40c5b180a8
+GUARD-1 (four directions + real pair):
+  patch_only_empty     exit=1 | [verify-rows-parity] FAIL - zero-subject run: the bundle patch declares no '- insert:' row ids 
+  installer_only_empty exit=1 | [verify-rows-parity] FAIL - zero-subject run: the installer declares no row ids - refusing to r
+  both_empty           exit=1 | [verify-rows-parity] FAIL - zero-subject run: the bundle patch declares no '- insert:' row ids 
+  one_row_delta        exit=1 | [verify-rows-parity] FAIL - installer vs bundle patch row ids differ ||   bundle patch inserts (2): a, b ||   installer rows       (2): a, c ||   MISSING from scripts/install-profile.mjs: b ||   EXTRA in scripts/install-profile.mjs (not in the patch): c
+  real_pair_ok         exit=0 | 
+GUARD-2 (two shapes + real):
+  empty_assets           exit=0 | 
+  underscore_only_assets exit=0 | 
+  real_assets            exit=0 | 
+MERGE (verbatim hook region):
+  d valid nearest                                warns=0 rtl-ip=true name=rtl-ip mpd-kept=true
+  a corrupt nearest + valid farther              warns=1 rtl-ip=false name=- mpd-kept=true
+  a2 unreadable (ELOOP) nearest + valid farther  warns=1 rtl-ip=false name=- mpd-kept=true
+  a3 all unreadable (ELOOP)                      warns=1 rtl-ip=false name=- mpd-kept=true
+  b all corrupt                                  warns=1 rtl-ip=false name=- mpd-kept=true
+  c all absent                                   warns=0 rtl-ip=false name=- mpd-kept=true
+  d2 dangling symlink nearest + valid farther    warns=0 rtl-ip=true name=rtl-ip-FARTHER mpd-kept=true

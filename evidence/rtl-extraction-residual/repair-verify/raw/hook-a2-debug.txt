@@ -1,0 +1,7 @@
+depth 0 THROW ELOOP
+    [S]/node_modules/@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib/node_modules/@mpd-dsh/silicon/presets/rtl-ip.profile.json
+depth 1 READ-OK len=36 head={"rtl-ip":{"name":"rtl-ip-FA
+    [S]/node_modules/@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/node_modules/@mpd-dsh/silicon/presets/rtl-ip.profile.json
+depth 2 THROW ENOENT
+    [S]/node_modules/@mpd-dsh/mpd/packages/node_modules/@mpd-dsh/silicon/presets/rtl-ip.profile.json
+require.resolve -> [S]/node_modules/@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/node_modules/@mpd-dsh/silicon/presets/rtl-ip.profile.json

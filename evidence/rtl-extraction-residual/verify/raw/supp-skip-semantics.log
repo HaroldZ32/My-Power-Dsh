@@ -1,0 +1,64 @@
+### S2b rtl-verif.mjs skip()/exit semantics
+70:function skip(reason) {
+71-  skipped.push(reason)
+72-  console.log("[rtl-verif] SKIP: " + reason)
+73-}
+74:function fail(msg) {
+75-  console.error("[rtl-verif] FAIL: " + msg)
+76:  process.exit(1)
+77-}
+78-function siliconPresent() {
+79-  return existsSync(join(SILICON, "package.json"))
+80-}
+81-
+82-/** Row ids declared by the patch's `- insert:` blocks (4-space `- id:` entries). */
+--
+308:    process.exit(1)
+309-  }
+310-  console.log("[rtl-verif] PASS")
+311-}
+312-
+313-const argv = process.argv.slice(2)
+314-if (argv.includes("--self-test")) selfTest()
+
+### S2c siliconPresent() at top-level flow
+74-function fail(msg) {
+75-  console.error("[rtl-verif] FAIL: " + msg)
+76-  process.exit(1)
+77-}
+78:function siliconPresent() {
+79-  return existsSync(join(SILICON, "package.json"))
+80-}
+81-
+82-/** Row ids declared by the patch's `- insert:` blocks (4-space `- id:` entries). */
+83-function insertIds(patchText) {
+84-  const ids = []
+85-  let inInsert = false
+86-  for (const raw of patchText.split(/\r?\n/)) {
+87-    if (/^- insert:\s*$/.test(raw)) { inInsert = true; continue }
+88-    if (!inInsert) continue
+89-    if (raw.trim() === "") continue
+90-    if (!raw.startsWith(" ")) { inInsert = false; continue }
+91-    const m = raw.match(/^ {4}- id: ['\"]?([A-Za-z0-9_.-]+)['\"]?\s*$/)
+92-    if (m) ids.push(m[1])
+--
+98-  // golden fixture semantics: 3+4 must equal 7 (the asserted value)
+99-  if (!GOLDEN_ADDER_V.includes("i_a + i_b") || !GOLDEN_ADDER_TB.includes("dut.o_sum.value == 7") || !GOLDEN_ADDER_TB.includes("i_b.value = 4")) {
+100-    fail("golden fixture semantics")
+101-  }
+102:  if (!siliconPresent()) {
+103-    skip(`silicon bundle not present at ${SILICON} (set MPD_SILICON_ROOT) — bundle-side groups skipped`)
+104-  } else {
+105-    // patch shape: four additive rows, zero id-targets, no checkout-absolute path
+106-    const patch = readFileSync(PATCH, "utf8")
+107-    const ids = insertIds(patch)
+108-    if (ids.length !== SILICON_ROWS.length) fail(`silicon patch declares ${ids.length} row ids, expected ${SILICON_ROWS.length}`)
+109-    for (const row of SILICON_ROWS) {
+110-      if (!ids.includes(row)) fail("silicon patch is missing row id: " + row)
+111-    }
+112-    if (/^- id:/m.test(patch)) fail("silicon patch carries an id-target (must be additive-only)")
+113-    if (patch.includes("/root/")) fail("checkout-absolute path in the silicon patch")
+114-    // plugin dist surface: the eight-tool owner surface + iron-rule strings
+115-    if (!existsSync(VERIF_DIST)) fail("silicon plugin dist missing (bun build first): " + VERIF_DIST)
+116-    const dist = readFileSync(VERIF_DIST, "utf8")
+--

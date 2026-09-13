@@ -1,0 +1,8 @@
+### ERROR-CODE MECHANICS for the (a2) probe (uid=0) 08:24:56Z
+chmod 000 file         READ OK  len=2
+dangling symlink       THROW code=ENOENT
+path is a directory    THROW code=EISDIR
+parent is a file       THROW code=ENOTDIR
+
+### which of these are usable as a NON-ENOENT trigger under root?
+  (EISDIR / ENOTDIR work regardless of uid; EACCES may be bypassed by root's DAC override)

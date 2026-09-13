@@ -1,0 +1,101 @@
+{
+  "head": "32ae54dd10db7ea46e1c1263143d56f266fd1f78",
+  "distinctHitPaths": 4537,
+  "trackedHitCount": 1285,
+  "untrackedHitCount": 42,
+  "ignoredHitCount": 2289,
+  "inScopeDefectCount": 16,
+  "acceptableCount": 4521,
+  "reviewCount": 0,
+  "byBucket": {
+    "BRIDGE-BY-DESIGN": 19,
+    "KEYWORD-FALSE-POSITIVE": 1986,
+    "UNTRACKED-BUILD-ARTIFACT": 2394,
+    "PROCESS-RECORD": 73,
+    "FULL-STRIP-DEFECT": 16,
+    "AUDIT-EVIDENCE": 42,
+    "TEST-STRING-DATA": 7
+  },
+  "defects": [
+    {
+      "path": "docs/index.md",
+      "severity": "medium",
+      "why": "FULL-STRIP-DEFECT"
+    },
+    {
+      "path": "docs/index.zh-CN.md",
+      "severity": "medium",
+      "why": "FULL-STRIP-DEFECT"
+    },
+    {
+      "path": "docs/rtl-gap-assessment.md",
+      "severity": "high",
+      "why": "FULL-STRIP-DEFECT"
+    },
+    {
+      "path": "docs/rtl-gap-assessment.zh-CN.md",
+      "severity": "high",
+      "why": "FULL-STRIP-DEFECT"
+    },
+    {
+      "path": "docs/rtl-ip-flow-guide.md",
+      "severity": "high",
+      "why": "FULL-STRIP-DEFECT"
+    },
+    {
+      "path": "docs/rtl-ip-flow-guide.zh-CN.md",
+      "severity": "high",
+      "why": "FULL-STRIP-DEFECT"
+    },
+    {
+      "path": "docs/rtl-verif-guide.md",
+      "severity": "high",
+      "why": "FULL-STRIP-DEFECT"
+    },
+    {
+      "path": "docs/rtl-verif-guide.zh-CN.md",
+      "severity": "high",
+      "why": "FULL-STRIP-DEFECT"
+    },
+    {
+      "path": "packages/mpd-bundle/README.md",
+      "severity": "medium",
+      "why": "FULL-STRIP-DEFECT"
+    },
+    {
+      "path": "packages/mpd-bundle/README.zh-CN.md",
+      "severity": "medium",
+      "why": "FULL-STRIP-DEFECT"
+    },
+    {
+      "path": "packages/mpd-mcp-lsp/README.md",
+      "severity": "medium",
+      "why": "FULL-STRIP-DEFECT"
+    },
+    {
+      "path": "packages/mpd-mcp-lsp/README.zh-CN.md",
+      "severity": "medium",
+      "why": "FULL-STRIP-DEFECT"
+    },
+    {
+      "path": "packages/mpd-mcp-lsp/templates/rtl-lsp-client.json",
+      "severity": "medium",
+      "why": "FULL-STRIP-DEFECT"
+    },
+    {
+      "path": "skills/dsh-qa/SKILL.md",
+      "severity": "medium",
+      "why": "FULL-STRIP-DEFECT"
+    },
+    {
+      "path": "skills/dsh-qa/scripts/rtl-ip-profile.mjs",
+      "severity": "high",
+      "why": "FULL-STRIP-DEFECT"
+    },
+    {
+      "path": "skills/dsh-qa/scripts/rtl-verif.mjs",
+      "severity": "high",
+      "why": "FULL-STRIP-DEFECT"
+    }
+  ]
+}

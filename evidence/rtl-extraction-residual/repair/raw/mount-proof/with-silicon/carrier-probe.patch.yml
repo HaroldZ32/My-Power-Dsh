@@ -1,0 +1,3 @@
+- insert:
+    - id: carrier-probe
+      name: "/root/dshProj/my-power-dsh/packages/mpd-qa-roles-probe/dist/carrier-probe-with-silicon.mjs"

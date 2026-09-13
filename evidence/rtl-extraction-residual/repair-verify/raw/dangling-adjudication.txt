@@ -1,0 +1,31 @@
+### DANGLING-REFERENCE ADJUDICATION
+--- docs/adder4.md + docs/cnt8.md (modified by t8) — current fixture references:
+1:# adder4 — 4-bit Ripple-Carry Adder
+3:> **Internal QA artifact** — golden-fixture reference doc (moved to the silicon bundle:
+4:> `@mpd-dsh/silicon` `tests/golden/fixtures/verilog/modules/adder4.v`; this mpd copy describes the
+9:Source file: `@mpd-dsh/silicon` `tests/golden/fixtures/verilog/modules/adder4.v` (fixture moved to the silicon bundle; the mpd copy was deleted by t8)
+11:`adder4` is a synthesizable, Verilog-2001 compliant 4-bit ripple-carry adder. It is built from 4
+60:    // instantiate adder4 for 4-bit add with carry-in
+  ----
+1:# cnt8 — 8-bit binary counter (load / en / rst_n)
+3:> **Internal QA artifact** — golden-fixture reference doc (moved to the silicon bundle:
+4:> `@mpd-dsh/silicon` `tests/golden/fixtures/verilog/modules/cnt8.v`; this mpd copy describes the
+9:Source file: `@mpd-dsh/silicon` `tests/golden/fixtures/verilog/modules/cnt8.v` (fixture moved to the silicon bundle; the mpd copy was deleted by t8)
+11:`cnt8` is a synthesizable, Verilog-2001 compliant 8-bit binary counter with synchronous parallel
+65:    cnt8 u_cnt8 (
+
+--- README.md / AGENTS.md / PLAN.md references to the deleted fixture tree:
+
+--- verify-rtl-references.mjs: does it READ the deleted mpd cases or only NAME them?
+28:import { existsSync, readFileSync } from "node:fs"
+35:const DOCS = ["rtl-verif-guide.md", "rtl-verif-guide.zh-CN.md", "rtl-ip-flow-guide.md", "rtl-ip-flow-guide.zh-CN.md", "rtl-gap-assessment.md", "rtl-gap-assessment.zh-CN.md"]
+37:const CASES = []
+45:  { path: "docs/rtl-verif-guide.md", kind: "path" },
+46:  { path: "docs/rtl-verif-guide.zh-CN.md", kind: "path" },
+54:  { path: "skills/dsh-qa/scripts/rtl-verif.mjs", kind: "path" },
+55:  { path: "skills/dsh-qa/scripts/rtl-ip-profile.mjs", kind: "path" },
+66:  ["skills/dsh-qa/scripts/rtl-verif.mjs", "t8 (retired in mpd)", "the mpd-side RTL case was retired by t8/R3, so the silicon guides that still name this path are a silicon-side documentation follow-up — recorded as an owned bucket instead of being silently tolerated or deleted from the subject set"],
+68:  ["skills/rtl-dev", "historical", "proposed in the preserved gap assessment and never created: the capability shipped as rtl-codestyle/rtl-verif/rtl-ip-flow, and the document's technical content is kept verbatim"],
+100:  if (roots.some((root) => existsSync(join(root, token)))) return { bucket: "resolved" }
+122:      const present = existsSync(absolute)
+127:    if (existsSync(absolute)) {

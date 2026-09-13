@@ -1,0 +1,45 @@
+=== HEAD ===
+32ae54dd10db7ea46e1c1263143d56f266fd1f78
+
+=== has anyone touched the roles probe / its dist / the self-fix tests since 32ae54d? ===
+--- git log since 32ae54d touching them ---
+(empty = no commits since 32ae54d)
+
+--- working-tree diff of those paths vs HEAD ---
+(empty = unmodified in the working tree)
+
+=== file hashes (probe src + dist, bundle-lifecycle, self-fix tests) ===
+95b4644cb5e4e937eed760b86bed6613bee50f7608149e523a01d262119f9dca  packages/mpd-qa-roles-probe/src/index.ts
+37d0693a8b7f76e778d74229d22d1dbd80ce7722254814ceadd2a45ba2fcb639  packages/mpd-qa-roles-probe/dist/index.js
+ef60fed0d7f835f5474612fa7a965b132076e87c822813f2ba2a50b0447f5bf0  skills/dsh-qa/scripts/bundle-lifecycle.mjs
+22a4e8b164aaf535b9d7777aadf8a5f889c638f720b0532aaa4a61b225eb2ad9  packages/mpd-agent-teams-plugin/self-fix-tests/quality-loop.test.mjs
+c0531e6b5092e892390c2f4600c5055ae07df24997ba6e23ffd353f364ba20f3  packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs
+31256e5d9393d83ffe8e15a9848196e6f3e7c125072704ebe0a1019295fbef6f  packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs
+16e32769ab5b193ebdd5dbc23916c0ae77cbb9b08ca5215a1bae3f6f13b83712  packages/mpd-agent-teams-plugin/self-fix-tests/scope-semantics.test.mjs
+
+=== probe line 58 (the failing assertion) ===
+  try {
+    const summaries = await dsh.listSkills()
+    const bundled = summaries.filter((summary: any) => summary.source === "bundled")
+    console.log("[roles-probe] SKILLS=" + summaries.length + " BUNDLED=" + bundled.length)
+    const fixture = (await dsh.loadSkill(FIXTURE_SKILL)) as { name?: string; content?: string; resourceBase?: { path?: string } } | undefined
+    const base = fixture?.resourceBase?.path ?? "unknown"
+    const bytes = fixture?.content?.length ?? 0
+    console.log("[roles-probe] SKILL_FIXTURE=" + (fixture === undefined ? "missing" : "ok") + " name=" + String(fixture?.name ?? "-") + " base=" + base + " bytes=" + String(bytes))
+    catalogOk = fixture !== undefined && bytes > 100 && bundled.length >= 20
+  } catch (e: any) {
+    console.log("[roles-probe] SKILLS=fail:" + String(e?.message ?? e))
+
+=== is dist in sync with src? (rebuild would be a repair, not mine) ===
+1
+
+=== local artifacts t4 listed as present ===
+PRESENT .venv-rtl size=44M
+PRESENT .toolchain/bin/verible-verilog-ls size=6.1M
+PRESENT .toolchain/node_modules/.bin/codegraph size=0
+
+=== git status --short (full) ===
+?? evidence/dsh-qa/bundle-lifecycle/2026-09-13T07-37-13.539Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-09-13T07-43-55.289Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-13T07-36-29.035Z/
+?? evidence/rtl-extraction-residual/

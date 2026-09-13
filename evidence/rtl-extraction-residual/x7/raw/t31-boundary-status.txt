@@ -1,0 +1,7 @@
+=== boundary: my paths ===
+MM VENDOR_LOCK.json
+MM package.json
+MM skills/dsh-qa/SKILL.md
+ M skills/dsh-qa/scripts/relocate-smoke.mjs
+ M skills/dsh-qa/scripts/skill-catalog-probe.mjs
+ M skills/dsh-qa/scripts/team-route-rewire.mjs

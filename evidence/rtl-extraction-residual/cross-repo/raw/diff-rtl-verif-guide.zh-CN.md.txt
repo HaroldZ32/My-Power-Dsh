@@ -1,0 +1,20 @@
+--- /root/dshProj/my-power-dsh/docs/rtl-verif-guide.zh-CN.md	2026-08-31 17:55:22.298940067 +0800
++++ /root/dshProj/my-power-dsh-silicon/docs/rtl-verif-guide.zh-CN.md	2026-09-13 01:06:20.571112494 +0800
+@@ -122,7 +122,8 @@
+   （§1 中的发布包链接）。项目内细节见
+   `skills/lsp-setup/references/{verilog,systemverilog}/README.md`。
+ - **手工构建二进制的逃生通道**：示例用户配置
+-  `packages/mpd-mcp-lsp/templates/rtl-lsp-client.json`（合并/复制进
++  `packages/mpd-mcp-lsp/templates/rtl-lsp-client.json`（归 silicon 所有；
++  MCP-LSP 资产随任务 t16 落地 —— 合并/复制进
+   `~/.codex/lsp-client.json`）。注意：loader 会**丢弃 project-config 里
+   非内置 id 的条目**，因此自定义命令应写在 *user* 配置里；bundle 刻意
+   **不**自动锁定 `LSP_TOOLS_MCP_USER_CONFIG`（否则会遮蔽已有的应用级
+@@ -242,4 +243,4 @@
+ `mcp-wave-mcp` + `mcp-traceweave` + `mcp-lsp` 行、发布 CLI 内置双 HDL LSP
+ 注册表，以及在真实 verilator/cocotb 上跑黄金加法器流程，同时断言 venv 铁律
+ 与系统 Python 零污染。证据位于 `evidence/dsh-qa/rtl-verif/`；插件冒烟证据在
+-`packages/mpd-verif-plugin/evidence/smoke/`。
+\ No newline at end of file
++`packages/mpd-verif-plugin/evidence/smoke/`（本仓库）。
+\ No newline at end of file

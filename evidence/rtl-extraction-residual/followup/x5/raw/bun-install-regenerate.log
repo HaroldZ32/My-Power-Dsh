@@ -1,0 +1,9 @@
+bun install v1.3.14 (0d9b296a)
+Saved lockfile
+
++ @ast-grep/cli@0.45.2 (v0.45.3 available)
++ @code-yeongyu/comment-checker@0.8.0
++ @colbymchenry/codegraph@1.5.0 (v1.6.0 available)
+
+12 packages installed [34.00ms]
+Removed: 2

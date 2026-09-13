@@ -1,0 +1,34 @@
+{
+  "install": {
+    "status": 0
+  },
+  "port": 41277,
+  "boot": {
+    "status": 0,
+    "signal": null,
+    "killed": false
+  },
+  "elapsedMs": 5638,
+  "stubRequests": 2,
+  "trace": [
+    {
+      "n": 1,
+      "url": "/v1/chat/completions",
+      "bytes": 170823
+    },
+    {
+      "n": 2,
+      "url": "/v1/chat/completions",
+      "bytes": 6829
+    }
+  ],
+  "logBytes": 406,
+  "signatures": {
+    "missingCredential": 0,
+    "authFailed": 0,
+    "teamProfilesListed": 0,
+    "rtlIp": 0,
+    "applyCrash": 0
+  },
+  "logTail": "[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair-verify/raw/t16-diag2-sandbox/ws\n[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)\n[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)\ndiag2-ok\n"
+}

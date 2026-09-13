@@ -1,0 +1,174 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs:
+(pass) DEFECT 1: a declared glob covers the files beneath it [2.67ms]
+(pass) DEFECT 1 negative control: globs do not over-match [0.14ms]
+(pass) DEFECT 1: every no-wildcard declaration keeps the pre-delta B5 semantics [0.18ms]
+(pass) DEFECT 1: the completion gate accepts a glob-declared changedPath and still rejects an undeclared one [0.93ms]
+(pass) DEFECT 2 reproduction: the pre-fix generator listed one path in BOTH lists [12.34ms]
+(pass) DEFECT 2 fix: the finding's required path is CARVED OUT of the inherited prohibition [0.61ms]
+(pass) DEFECT 2 fix, REAL wave-1 inputs (team mpd-default-7332aba4 t7 + t10): the required edit is in scope [8.93ms]
+(pass) DEFECT 2 falsifiability: the contradiction guard must not reject legitimate carve-outs [0.31ms]
+(pass) DEFECT 2 falsifiability: the write-task overlap guard still separates colliding declarations [0.28ms]
+(pass) durability: the guard refuses when a delta region is missing (observed failure) [15.74ms]
+(pass) durability: the guard is idempotent on the real tree and restores a stripped tree [189.12ms]
+(pass) F2: every t4-changed line in lib/quality-gates.js sits inside a registered mpd-delta region [59.44ms]
+360 |         expect(upstream.status).toBe(0)
+361 |         writeFileSync(join(root, "packages/mpd-agent-teams-plugin/lib/quality-gates.js"), upstream.stdout)
+362 |         // the upstream file still carries `export function pathMatchesScope`; a region
+363 |         // insertion would produce a second declaration, so the guard must refuse
+364 |         const message = healError(root)
+365 |         expect(message).toMatch(/still exists OUTSIDE any region at line|already declared/)
+                              ^
+error: expect(received).toMatch(expected)
+
+Expected substring or pattern: /still exists OUTSIDE any region at line|already declared/
+Received: ""
+
+      at <anonymous> (/root/dshProj/my-power-dsh/.mpd/tmp-baseline-3d99718/packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs:365:25)
+(fail) F3: healing a RE-MATERIALIZED upstream file refuses instead of emitting a broken module [99.51ms]
+(pass) F3: a clean (region-carrying) tree still heals successfully [77.56ms]
+(pass) F4: stripping every region and healing reproduces the canonical file byte-for-byte [59.50ms]
+(pass) F4: the anchor-indent class is gone with the line keys [0.23ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs:
+(pass) t2: strip-healing BOTH adopted files from the same state is byte-identical [84.56ms]
+(pass) t2: a stripped tools.js heals byte-for-byte and the task-contract region lands at its canonical line [70.60ms]
+(pass) t2: quality-gates.js strip-heal stays byte-identical (no trade between the two files) [61.62ms]
+(pass) t2: a region heals to its canonical position under partial insertion histories [190.77ms]
+(pass) t2: every colliding pair is a real prefix collision (the fixture is meaningful) [4.70ms]
+(pass) t2: a nested colliding pair resolves the OUTER region to its OWN end marker [0.18ms]
+(pass) t2: intact control — the resolved span equals the independently grepped lines [5.70ms]
+(pass) t2: a dangling outer END marker is a partially stripped region, never a half-open pair [13.46ms]
+(pass) t2: a dangling outer BEGIN marker is a partially stripped region, never a half-open pair [20.79ms]
+(pass) t2: --write re-brackets a partially stripped region byte-faithfully (both dangling shapes) [347.99ms]
+(pass) t2: the registry carries context pairs and no line-keyed anchor fields [0.47ms]
+(pass) t9 R1: both markers present but inverted is the ONLY row that may say 'half-open marker pair' [6.17ms]
+(pass) t9 R2: begin present + end absent + body byte-equal re-brackets in place (all three pairs) [190.39ms]
+(pass) t9 R3: begin present + end absent + body DRIFTED refuses, naming the region and the line [5.79ms]
+(pass) t9 R4: end present + begin absent + body byte-equal re-brackets in place (all three pairs) [114.15ms]
+(pass) t9 R5: end present + begin absent + NOTHING survived drops the orphan line and heals [46.61ms]
+(pass) t9 (A): assertRegistryFormat refuses the OLD anchor format with the migration message [0.54ms]
+(pass) t9 (A): the CLI refuses a pre-migration registry by name, and --write-registry still migrates [368.78ms]
+(pass) t9: all four states of the ONLY shared seam heal byte-identically [182.00ms]
+538 |     const root = scratchRoot()
+539 |     try {
+540 |         const path = libPath(root, "tools.js")
+541 |         const upstream = spawnSync("git", ["show", "HEAD:packages/mpd-agent-teams-plugin/lib/tools.js"], { cwd: repoRoot, encoding: "utf8" })
+542 |         expect(upstream.status).toBe(0)
+543 |         expect(upstream.stdout.match(/mpd-delta/g) ?? []).toHaveLength(0)
+                                                                ^
+error: expect(received).toHaveLength(expected)
+
+Expected length: 0
+Received length: 10
+
+      at <anonymous> (/root/dshProj/my-power-dsh/.mpd/tmp-baseline-3d99718/packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs:543:59)
+(fail) t9: a re-materialized tools.js is REFUSED, byte-untouched, with key counts unchanged [14.48ms]
+580 |         const counts = (text) => ({
+581 |             descriptions: (text.match(/description: 'Update a task status\/output/g) ?? []).length,
+582 |             mpdStatus: (text.match(/REQUIRED: a payload-only update repeats the current status/g) ?? []).length,
+583 |         })
+584 |         expect(counts(mutated).descriptions).toBe(1)
+585 |         expect(counts(mutated).mpdStatus).toBe(0)
+                                                ^
+error: expect(received).toBe(expected)
+
+Expected: 0
+Received: 1
+
+      at <anonymous> (/root/dshProj/my-power-dsh/.mpd/tmp-baseline-3d99718/packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs:585:43)
+(fail) t9: the targeted re-materialize shape (upstream twins restored at the literal) is REFUSED too [24.23ms]
+
+../../packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs:
+(pass) DEFECT 1: a declared glob covers the files beneath it [0.35ms]
+(pass) DEFECT 1 negative control: globs do not over-match [0.04ms]
+(pass) DEFECT 1: every no-wildcard declaration keeps the pre-delta B5 semantics [0.06ms]
+(pass) DEFECT 1: the completion gate accepts a glob-declared changedPath and still rejects an undeclared one [0.21ms]
+(pass) DEFECT 2 reproduction: the pre-fix generator listed one path in BOTH lists [0.12ms]
+(pass) DEFECT 2 fix: the finding's required path is CARVED OUT of the inherited prohibition [0.15ms]
+(pass) DEFECT 2 fix, REAL wave-1 inputs (team mpd-default-7332aba4 t7 + t10): the required edit is in scope [0.27ms]
+(pass) DEFECT 2 falsifiability: the contradiction guard must not reject legitimate carve-outs [0.12ms]
+(pass) DEFECT 2 falsifiability: the write-task overlap guard still separates colliding declarations [0.06ms]
+(pass) durability: the guard refuses when a delta region is missing (observed failure) [11.44ms]
+(pass) durability: the guard is idempotent on the real tree and restores a stripped tree [209.99ms]
+(pass) F2: every t4-changed line in lib/quality-gates.js sits inside a registered mpd-delta region [67.39ms]
+360 |         expect(upstream.status).toBe(0)
+361 |         writeFileSync(join(root, "packages/mpd-agent-teams-plugin/lib/quality-gates.js"), upstream.stdout)
+362 |         // the upstream file still carries `export function pathMatchesScope`; a region
+363 |         // insertion would produce a second declaration, so the guard must refuse
+364 |         const message = healError(root)
+365 |         expect(message).toMatch(/still exists OUTSIDE any region at line|already declared/)
+                              ^
+error: expect(received).toMatch(expected)
+
+Expected substring or pattern: /still exists OUTSIDE any region at line|already declared/
+Received: ""
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs:365:25)
+(fail) F3: healing a RE-MATERIALIZED upstream file refuses instead of emitting a broken module [51.32ms]
+(pass) F3: a clean (region-carrying) tree still heals successfully [71.76ms]
+(pass) F4: stripping every region and healing reproduces the canonical file byte-for-byte [56.01ms]
+(pass) F4: the anchor-indent class is gone with the line keys [0.12ms]
+
+../../packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs:
+(pass) t2: strip-healing BOTH adopted files from the same state is byte-identical [63.02ms]
+(pass) t2: a stripped tools.js heals byte-for-byte and the task-contract region lands at its canonical line [48.73ms]
+(pass) t2: quality-gates.js strip-heal stays byte-identical (no trade between the two files) [53.38ms]
+(pass) t2: a region heals to its canonical position under partial insertion histories [578.61ms]
+(pass) t2: every colliding pair is a real prefix collision (the fixture is meaningful) [4.09ms]
+(pass) t2: a nested colliding pair resolves the OUTER region to its OWN end marker [0.07ms]
+(pass) t2: intact control — the resolved span equals the independently grepped lines [4.02ms]
+(pass) t2: a dangling outer END marker is a partially stripped region, never a half-open pair [65.42ms]
+(pass) t2: a dangling outer BEGIN marker is a partially stripped region, never a half-open pair [31.19ms]
+(pass) t2: --write re-brackets a partially stripped region byte-faithfully (both dangling shapes) [402.73ms]
+(pass) t2: the registry carries context pairs and no line-keyed anchor fields [0.17ms]
+(pass) t9 R1: both markers present but inverted is the ONLY row that may say 'half-open marker pair' [6.34ms]
+(pass) t9 R2: begin present + end absent + body byte-equal re-brackets in place (all three pairs) [75.08ms]
+(pass) t9 R3: begin present + end absent + body DRIFTED refuses, naming the region and the line [2.87ms]
+(pass) t9 R4: end present + begin absent + body byte-equal re-brackets in place (all three pairs) [95.69ms]
+(pass) t9 R5: end present + begin absent + NOTHING survived drops the orphan line and heals [34.98ms]
+(pass) t9 (A): assertRegistryFormat refuses the OLD anchor format with the migration message [0.34ms]
+(pass) t9 (A): the CLI refuses a pre-migration registry by name, and --write-registry still migrates [308.48ms]
+(pass) t9: all four states of the ONLY shared seam heal byte-identically [223.47ms]
+538 |     const root = scratchRoot()
+539 |     try {
+540 |         const path = libPath(root, "tools.js")
+541 |         const upstream = spawnSync("git", ["show", "HEAD:packages/mpd-agent-teams-plugin/lib/tools.js"], { cwd: repoRoot, encoding: "utf8" })
+542 |         expect(upstream.status).toBe(0)
+543 |         expect(upstream.stdout.match(/mpd-delta/g) ?? []).toHaveLength(0)
+                                                                ^
+error: expect(received).toHaveLength(expected)
+
+Expected length: 0
+Received length: 10
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs:543:59)
+(fail) t9: a re-materialized tools.js is REFUSED, byte-untouched, with key counts unchanged [9.18ms]
+580 |         const counts = (text) => ({
+581 |             descriptions: (text.match(/description: 'Update a task status\/output/g) ?? []).length,
+582 |             mpdStatus: (text.match(/REQUIRED: a payload-only update repeats the current status/g) ?? []).length,
+583 |         })
+584 |         expect(counts(mutated).descriptions).toBe(1)
+585 |         expect(counts(mutated).mpdStatus).toBe(0)
+                                                ^
+error: expect(received).toBe(expected)
+
+Expected: 0
+Received: 1
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs:585:43)
+(fail) t9: the targeted re-materialize shape (upstream twins restored at the literal) is REFUSED too [18.42ms]
+
+6 tests failed:
+(fail) F3: healing a RE-MATERIALIZED upstream file refuses instead of emitting a broken module [99.51ms]
+(fail) t9: a re-materialized tools.js is REFUSED, byte-untouched, with key counts unchanged [14.48ms]
+(fail) t9: the targeted re-materialize shape (upstream twins restored at the literal) is REFUSED too [24.23ms]
+(fail) F3: healing a RE-MATERIALIZED upstream file refuses instead of emitting a broken module [51.32ms]
+(fail) t9: a re-materialized tools.js is REFUSED, byte-untouched, with key counts unchanged [9.18ms]
+(fail) t9: the targeted re-materialize shape (upstream twins restored at the literal) is REFUSED too [18.42ms]
+
+ 68 pass
+ 6 fail
+ 728 expect() calls
+Ran 74 tests across 4 files. [5.00s]

@@ -1,0 +1,61 @@
+### C1  git ls-files skills | wc -l  ; rtl trees absent
+skills-files=329
+skills/rtl-ip-flow exists=no
+skills/rtl-codestyle exists=no
+skills/rtl-verif exists=no
+
+### C2  verif plugin dir absent; textual hits
+mpd-verif-plugin-dir=absent
+textual hits (packages scripts package.json, excl evidence):
+7
+packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs:5
+scripts/verify-rtl-references.mjs:2
+
+### C3  HDL assets registered/shipped by mpd (expected 0 post-repair)
+template-exists=PRESENT
+overlay+dist hits: 12
+
+### C4  six guides in docs/ (RESIDUAL expected today)
+RESIDUAL docs/rtl-verif-guide.md
+RESIDUAL docs/rtl-verif-guide.zh-CN.md
+RESIDUAL docs/rtl-ip-flow-guide.md
+RESIDUAL docs/rtl-ip-flow-guide.zh-CN.md
+RESIDUAL docs/rtl-gap-assessment.md
+RESIDUAL docs/rtl-gap-assessment.zh-CN.md
+hub link resolves today? yes
+
+### C5  golden fixtures + consumers
+tracked=PRESENT
+consumer-hits=0
+
+### C6  allow-list both directions
+presets/rtl-ip.profile.json=absent
+hook-refs=0
+README silicon-pointer lines=0
+
+### C7  gate + case SKIP + row
+c7-gate-exit=0
+[rtl-refs] PASS — 42 resolved, 6 pending-by-design, 0 unresolved
+VACUITY CHECK: grep -c '^\| rtl-verif ' vs file lines
+contract-cmd-count=73
+file-lines=73
+strict-row-count=0
+rtl-ip-profile-row-count=1
+abs-machine-path hits=0
+
+### C8  untracked/ignored + installable artifact
+.gitignore:26:.venv*/	.venv-rtl
+.gitignore:21:.mpd/	.mpd
+.gitignore:12:dist/mpd-package/	dist/mpd-package
+-- find FULL-STRIP paths under dist/mpd-package:
+dist/mpd-package/skills/dsh-qa/scripts/rtl-ip-profile.mjs
+dist/mpd-package/skills/dsh-qa/scripts/rtl-verif.mjs
+dist/mpd-package/skills/lsp-setup/references/systemverilog
+dist/mpd-package/skills/lsp-setup/references/systemverilog/README.md
+dist/mpd-package/skills/lsp-setup/references/verilog
+dist/mpd-package/skills/lsp-setup/references/verilog/README.md
+C8-find-count=6
+
+### C10 pin + status
+32ae54dd10db7ea46e1c1263143d56f266fd1f78
+5

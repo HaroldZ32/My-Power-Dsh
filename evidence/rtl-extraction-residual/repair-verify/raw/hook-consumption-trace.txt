@@ -1,0 +1,36 @@
+### how apply() consumes the merged profiles + ctx usage shape
+120:    // row's profile set. It MUST run first in apply() so every consumer below — resolved.profiles,
+210:        stateDir: resolved.stateDir,
+231:        ctx.inject(['commands'], (commandCtx) => {
+245:        const rawWebServer = (ctx.get(WEB_SERVER_KEYS[0]) ?? ctx.get(WEB_SERVER_KEYS[1]));
+246:        const workspaceRegistry = (ctx.get(WORKSPACE_KEYS[0]) ?? ctx.get(WORKSPACE_KEYS[1]));
+252:        const webServer = authenticatedWebRoutes(rawWebServer, () => ctx.get('connection'));
+257:        ctx.effect(() => webServer.register({
+264:                    stateRoot: join(workspace.path, resolved.stateDir),
+278:        ctx.effect(() => webServer.register({
+303:                const captain = ctx.agents.get(sessionId);
+310:                const stateRoot = join(workspace, resolved.stateDir);
+328:                    ctx.logger.warn(`agent-teams: halt failed for ${teamId}: ${String(error)}`);
+334:        ctx.effect(() => webServer.register({
+360:                const captain = ctx.agents.get(sessionId);
+367:                const stateRoot = join(workspace, resolved.stateDir);
+389:                            ctx.logger.warn(`agent-teams: approval notification failed for ${teamId}: ${String(error)}`);
+494:        ctx.effect(() => webServer.register({
+522:                    ctx.logger.warn(`agent-teams: artwork read failed for ${name}: ${String(error)}`);
+530:    ctx.on('internal/service', (name) => {
+551:    ctx.effect(() => clearInterval(surfacePoll));
+...
+28:import { formatProfilesForPrompt } from "./profiles.js";
+53:    profiles: z.dict(z.object({
+101:export function usageSectionText(toolNames, profilesText = '') {
+109:7. If the user names a configured profile / template / fixed roster, pass that name as profile= to agent_teams_create. After a successful profile create, do not recreate the same members. Seed profiles provide their template tasks; captain-planning profiles provide only the roster and guardrails, so you must design their DAG while staged. Add repair or retry tasks when review/test fails, but never make a new task depend on a failed task. Do not send_message to start the next stage; the scheduler assigns ready work after approval. Watch every required task until it is terminal before deleting the team. Never perform a real deployment without explicit user confirmation.
+114:Tools: ${toolNames}${profilesText === '' ? '' : `\n\n${profilesText}`}`;
+120:    // row's profile set. It MUST run first in apply() so every consumer below — resolved.profiles,
+124:    // corrupt / non-object JSON is logged once and also falls back to {}. mpd's own profiles win
+126:    // rejects unknown names, empty/duplicate keys and >16 profiles at create time.
+178:    config = { ...config, profiles: { ...loadSiliconProfiles(), ...(config.profiles ?? {}) } };
+188:        profiles: config.profiles ?? {},
+214:        captainPrompt: () => usageSectionText(TEAM_TOOL_NAMES.join(', '), formatProfilesForPrompt(config.profiles ?? {})),
+232:            registerAgentTeamsCommand(commandCtx, () => config.profiles ?? {});
+234:        installAgentTeamsGestureBoundary(ctx, () => config.profiles ?? {});
+237:    // workspace registry, which headless profiles do not mount; under

@@ -1,0 +1,5 @@
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] FAIL - zero-subject run: VENDOR_LOCK.json declares no vendored assets to fingerprint - refusing to report PASS
+guard2_probe_exit=1

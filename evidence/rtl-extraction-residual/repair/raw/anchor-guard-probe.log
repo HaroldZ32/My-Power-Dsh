@@ -1,0 +1,3 @@
+[build-mcp] mpd LSP overlay applied: server-definitions.ts -> /tmp/mpd-dsh-mcp-build-Sw0cl2/src/lsp-core/src/lsp/server-definitions.ts
+[build-mcp] FAIL - overlay language-mappings.ts lacks drift-guard anchor "mpd-lsp-overlay-v1" (stale/foreign overlay?)
+anchor_guard_probe_exit=1

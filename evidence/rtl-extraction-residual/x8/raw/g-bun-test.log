@@ -1,0 +1,509 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-mcp-shared/bin-resolve.test.mjs:
+(pass) ast-grep: $MPD_AST_GREP_BIN_DIR tier wins and prefers ast-grep over sg [3.26ms]
+(pass) ast-grep: a candidate that fails the ast-grep probe is skipped, never accepted by name [0.20ms]
+(pass) ast-grep: createRequire tier resolves the packed optionalDependency [0.23ms]
+(pass) ast-grep: <bundle>/.toolchain tier resolves the link: checkout layout [0.16ms]
+(pass) ast-grep: precedence is bin-dir > require > toolchain [0.26ms]
+(pass) ast-grep: nothing resolvable returns null and never throws [0.14ms]
+(pass) codegraph: <bundle>/.toolchain tier resolves the link: checkout layout [0.41ms]
+(pass) codegraph: createRequire tier reads the package's own bin entry [0.43ms]
+(pass) bundleRootFrom: <bundle>/packages/<pkg>/launch.mjs -> <bundle> [0.06ms]
+(pass) REAL toolchain probe: ast-grep passes, the deprecated sg wrapper fails [22.97ms]
+
+packages/mpd-ulw-plugin/test/engine.test.ts:
+(pass) engine policy: plan -> round -> verify -> quality gate with ledger [4.85ms]
+(pass) engine alias and 2-fruitless-waves stop [0.56ms]
+(pass) DeepSeek V4 / DSH contract: role text in prompt (no persona field), pro for planner/reviewer, compact handoff [0.84ms]
+
+packages/mpd-memory-plugin/test/memory.test.ts:
+(pass) git backend: write -> commit -> read -> reflection due [47.08ms]
+(pass) svn backend REAL svn CLI: repo create, checkout, commit, log [136.55ms]
+(pass) both vcs: commits to git and svn [164.20ms]
+(pass) svn backend wiring with fake svn CLIs [19.78ms]
+
+packages/mpd-config-plugin/test/config.test.ts:
+(pass) stripJsonc removes comments and trailing commas [0.41ms]
+(pass) stripJsonc keeps comments inside strings [0.05ms]
+(pass) deepMerge project wins, nested merged, pollution safe [0.35ms]
+(pass) mpd_config_get result is lossless JSON for a missing key (value null, never undefined) [1.24ms]
+(pass) mpdConfig service get resolves dot-paths (consistent with mpd_config_get) [0.56ms]
+
+packages/mpd-roles-plugin/test/roles.test.ts:
+(pass) roster: 11 roles, unique ids, non-empty chains and fields [0.17ms]
+(pass) persona assets exist for every role and contain real instructions [0.66ms]
+(pass) normalizeRoleKey: canonical, chain keys and legacy mpd- ids [0.14ms]
+(pass) mpdRoles service: list 11, get resolves aliases, unknown is null [0.89ms]
+(pass) mpd_role_persona returns the extracted persona text [0.34ms]
+(pass) mpd_role_spawn: read-only roles get write-deny toolFilter, workers none [0.92ms]
+(pass) mpd_roles_list returns the full roster summary [0.36ms]
+(pass) read-only deny list covers every write-capable tool (no shell/AST/LSP write bypass) [0.41ms]
+(pass) read-only deny list carries no dead tool name (the defect that broke every read-only spawn) [0.05ms]
+(pass) the same dead names must not reappear in the roles source or its built dist [0.22ms]
+(pass) roles and workmate read-only deny lists are exactly equal (drift guard) [2.21ms]
+
+packages/mpd-codegraph-plugin/src/index.test.ts:
+(pass) O-1 apply-time project root > no session and no override falls back to process.cwd() [1.14ms]
+(pass) O-1 apply-time project root > a session workspace (exec-less DSH_WORKSPACE_ROOT) beats the process cwd [0.45ms]
+(pass) O-1 apply-time project root > the explicit project-cwd override wins over the session workspace [0.51ms]
+(pass) O-1 apply-time project root > the status line names the session workspace, and the home skip still applies [0.30ms]
+(pass) O-1 call-time /mpd-codegraph handler > resolves the invocation's session workspace, not the apply-time root [0.70ms]
+(pass) O-1 call-time /mpd-codegraph handler > returns the harness CommandResult shape (kind), never the legacy success flag [0.35ms]
+(pass) O-1 call-time /mpd-codegraph handler > re-resolves per invocation: two sessions, two targets [0.48ms]
+
+packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs:
+(pass) client seam policy > declares only services this profile is guaranteed to mount [0.38ms]
+(pass) client seam policy > never declares the sidebar statically (that would park the whole entry) [0.22ms]
+(pass) client seam policy > waits for the sidebar through ctx.inject instead of a one-shot probe [0.05ms]
+(pass) with DSH-better-sidebar installed > registers the AgentTeams page and the workmate library, and no legacy floater [0.14ms]
+(pass) with DSH-better-sidebar installed > the adopted client half is never applied (it would re-register the removed surfaces) [0.02ms]
+(pass) with DSH-better-sidebar installed > both tab descriptors are valid sidebar pages [0.31ms]
+(pass) with DSH-better-sidebar installed > keeps the locale namespaces registered [0.03ms]
+(pass) workmate page > renders the library from the host routes [10.90ms]
+(pass) workmate page dictionaries > registers the workmate namespace with both dictionaries [0.84ms]
+(pass) workmate page dictionaries > zh is the key-set source of truth and en matches it key for key (§L A7) [0.75ms]
+(pass) workmate page dictionaries > the mutation surface is localized in BOTH languages, not hardcoded English [0.87ms]
+(pass) workmate page dictionaries > the tab-strip label stays hardcoded English (contract §K, deliberate deferral) [0.99ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > every reason code maps to a distinct, readable message [0.74ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > an in-use refusal names the blocking team and member (§E, user decision D2) [0.26ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > an unknown failure falls back to the server text, never to a raw reason key [0.09ms]
+(pass) workmate page mutation controls > delete is an explicit two-step confirmation, never one destructive click (D1) [26.72ms]
+(pass) workmate page mutation controls > purge cannot be submitted without typing the exact name (§D confirm-required) [28.37ms]
+(pass) workmate page mutation controls > the archive confirmation posts that workmate and reports the archived outcome [18.52ms]
+(pass) workmate page mutation controls > a rename posts { name, new_name } and follows the new key (§H no stale selection) [19.13ms]
+(pass) workmate page mutation controls > an in-use refusal is shown with the blocking team/member, not a generic failure (§E) [16.19ms]
+(pass) workmate page mutation controls > a 409 collision is reported as taken, and an unknown key drops the stale selection [16.25ms]
+(pass) workmate page mutation controls > a same-key rename is refused locally and explains itself (t8 L1) [13.45ms]
+(pass) workmate page mutation controls > a purge never reports itself as a plain delete (t8 L2) [0.81ms]
+(pass) workmate page mutation controls > the zh reason strings are complete sentences without a stray gap (t8 L3) [0.49ms]
+(pass) workmate page mutation controls > a detail load that fails stops claiming to load (t8 L4) [11.87ms]
+(pass) without DSH-better-sidebar > registers no sidebar surface at all — there is no floating fallback [0.86ms]
+
+packages/mpd-bundle-plugin/test/team-page.test.mjs:
+(pass) AgentTeams sidebar tab descriptor > registers one single-instance tab with the pinned id and order [0.83ms]
+(pass) AgentTeams sidebar tab descriptor > createTab mints a clean tab so the auto-open seed never lands on it [0.61ms]
+(pass) AgentTeams sidebar tab descriptor > offers the auto-open switch as a plugin-owned setting [0.73ms]
+(pass) AgentTeams page rendering > renders the conversation's teams, members, tasks and archived section [8.09ms]
+(pass) AgentTeams page rendering > reproduces the floater's panel interior, class for class [5.39ms]
+(pass) AgentTeams page rendering > the head's collapse control closes the sidebar panel through the store [5.45ms]
+(pass) AgentTeams page rendering > a missing store still renders the same markup and never throws [9.26ms]
+(pass) AgentTeams page rendering > the head's busy dot follows live member activity [10.38ms]
+(pass) AgentTeams page rendering > renders the collapse glyph with the platform's own icon component [7.32ms]
+(pass) AgentTeams page rendering > falls back to the identical inline chevron when the platform icons are absent [5.46ms]
+(pass) AgentTeams page rendering > renders the archived section with the archived label [5.19ms]
+(pass) AgentTeams page rendering > filters by the tab's own conversation scope [7.20ms]
+(pass) AgentTeams page rendering > shows the floater's own empty hint inside the panel body [7.86ms]
+(pass) AgentTeams page rendering > a hidden tab renders no live view (the sidebar CSS-hides collapsed tabs) [6.16ms]
+(pass) AgentTeams page rendering > a failing host route degrades to the empty state instead of throwing [5.83ms]
+(pass) AgentTeams page rendering > a rejecting poll shows a readable error notice, not a crash [5.95ms]
+(pass) staged plan approval > passes a model directory to a staged team when the service provides one [9.34ms]
+(pass) staged plan approval > a throwing directoryFor degrades instead of crashing the page [5.78ms]
+(pass) badge and polling > badge reports the cached live-team count for its session only [7.06ms]
+(pass) badge and polling > mounting the page twice keeps a single polling controller [9.34ms]
+(pass) auto-open policy > opens the tab once, with NO content seed, for a team that appears after the baseline [2710.80ms]
+(pass) auto-open policy > teams restored with the page never auto-open [2706.80ms]
+(pass) auto-open policy > the plugin switch turns auto-open off [2712.82ms]
+(pass) auto-open policy > a disabled tab type is never auto-opened [2707.58ms]
+(pass) boot safety > a missing page module degrades to one warning instead of throwing out of apply [1.39ms]
+(pass) boot safety > without better-sidebar nothing is registered and nothing is warned about [0.65ms]
+
+packages/mpd-bundle-plugin/test/sidebar-migration-artifact.test.mjs:
+(pass) shipped bundle client after the AgentTeams sidebar migration > registers exactly the three loader modules, including the sidebar page [2.62ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > carries the mpd export bridge with every pinned export [0.50ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > no mpd client source registers a removed surface [0.53ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > the page module keeps the pinned tab id and order [0.72ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/scope-semantics.test.mjs:
+(pass) B5: a directory pattern covers its contents WITHOUT a trailing slash [0.36ms]
+(pass) B5: trailing slash and non-trailing slash are equivalent [0.10ms]
+(pass) B5: exact file patterns still match exactly, siblings and suffixes do not [0.06ms]
+(pass) B5: root pattern matches everything; illegal/absolute patterns never match [0.06ms]
+(pass) B5: classifyChangedPath — directory inScope covers files, outOfScope wins [0.34ms]
+(pass) B6: completion reports ALL undeclared paths at once with the owning task id and a fix hint [1.91ms]
+(pass) B6: completion passes when a directory pattern (no trailing slash) covers every changed path [0.19ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs:
+(pass) DEFECT 1: a declared glob covers the files beneath it [0.49ms]
+(pass) DEFECT 1 negative control: globs do not over-match [0.10ms]
+(pass) DEFECT 1: every no-wildcard declaration keeps the pre-delta B5 semantics [0.15ms]
+(pass) DEFECT 1: the completion gate accepts a glob-declared changedPath and still rejects an undeclared one [0.28ms]
+(pass) DEFECT 2 reproduction: the pre-fix generator listed one path in BOTH lists [0.84ms]
+(pass) DEFECT 2 fix: the finding's required path is CARVED OUT of the inherited prohibition [1.16ms]
+(pass) DEFECT 2 fix, REAL wave-1 inputs (team mpd-default-7332aba4 t7 + t10): the required edit is in scope [0.57ms]
+(pass) DEFECT 2 falsifiability: the contradiction guard must not reject legitimate carve-outs [0.20ms]
+(pass) DEFECT 2 falsifiability: the write-task overlap guard still separates colliding declarations [0.24ms]
+(pass) durability: the guard refuses when a delta region is missing (observed failure) [7.46ms]
+(pass) durability: the guard is idempotent on the real tree and restores a stripped tree [95.56ms]
+(pass) F2: every t4-changed line in lib/quality-gates.js sits inside a registered mpd-delta region [60.13ms]
+(pass) F3: healing a RE-MATERIALIZED upstream file refuses instead of emitting a broken module [3.35ms]
+(pass) F3: a clean (region-carrying) tree still heals successfully [62.58ms]
+(pass) F4: stripping every region and healing reproduces the canonical file byte-for-byte [54.41ms]
+(pass) F4: the anchor-indent class is gone with the line keys [0.23ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/quality-loop.test.mjs:
+(pass) Fix1: review auto-wires reviewedTaskId into dependencies (premature dispatch) [0.37ms]
+(pass) Fix1: repair auto-wires sourceTaskId into dependencies [0.13ms]
+(pass) Fix2: unsatisfiedDependencies treats cancelled as satisfied, failed still blocks [0.07ms]
+(pass) Fix2: pending dependents blocked only by cancelled deps are cascaded (no deadlock) [0.37ms]
+(pass) Fix3: planQualityFollowUp links reasonTaskId and reason reaches the repair prompt [1.31ms]
+(pass) Fix4: reject without a completed source notifies the captain only (no repair, no escalation) [0.11ms]
+(pass) Fix4: genuine reject of a completed source still escalates [0.06ms]
+(pass) Fix3b: reasonTaskId / reassignReason survive task validation [0.21ms]
+(pass) Fix3c: assignmentPrompt renders reassignReason and captain guidance digest [0.39ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs:
+(pass) t2: strip-healing ALL adopted files from the same state is byte-identical [60.00ms]
+(pass) t2: a stripped tools.js heals byte-for-byte and the task-contract region lands at its canonical line [38.14ms]
+(pass) t2: quality-gates.js strip-heal stays byte-identical (no trade between the two files) [27.56ms]
+(pass) t2: a region heals to its canonical position under partial insertion histories [229.82ms]
+(pass) t2: every colliding pair is a real prefix collision (the fixture is meaningful) [4.09ms]
+(pass) t2: a nested colliding pair resolves the OUTER region to its OWN end marker [0.17ms]
+(pass) t2: intact control — the resolved span equals the independently grepped lines [4.63ms]
+(pass) t2: a dangling outer END marker is a partially stripped region, never a half-open pair [12.29ms]
+(pass) t2: a dangling outer BEGIN marker is a partially stripped region, never a half-open pair [13.77ms]
+(pass) t2: --write re-brackets a partially stripped region byte-faithfully (both dangling shapes) [155.48ms]
+(pass) t2: the registry carries context pairs and no line-keyed anchor fields [0.46ms]
+(pass) t9 R1: both markers present but inverted is the ONLY row that may say 'half-open marker pair' [3.59ms]
+(pass) t9 R2: begin present + end absent + body byte-equal re-brackets in place (all three pairs) [77.67ms]
+(pass) t9 R3: begin present + end absent + body DRIFTED refuses, naming the region and the line [4.78ms]
+(pass) t9 R4: end present + begin absent + body byte-equal re-brackets in place (all three pairs) [62.82ms]
+(pass) t9 R5: end present + begin absent + NOTHING survived drops the orphan line and heals [39.25ms]
+(pass) t9 (A): assertRegistryFormat refuses the OLD anchor format with the migration message [0.52ms]
+(pass) t9 (A): the CLI refuses a pre-migration registry by name, and --write-registry still migrates [207.82ms]
+(pass) t9: all four states of the ONLY shared seam heal byte-identically [106.23ms]
+(pass) t9: a re-materialized tools.js is REFUSED, byte-untouched, with key counts unchanged [14.30ms]
+(pass) t9: the targeted re-materialize shape (upstream twins restored at the literal) is REFUSED too [22.76ms]
+
+packages/mpd-agent-teams-plugin/test/workmate-key.test.ts:
+(pass) workmateKey maps the five multi-word roster members to kebab keys [0.18ms]
+(pass) workmateKey mirrors sanitizeName edge cases [0.07ms]
+
+packages/mpd-agent-teams-plugin/test/session-start.test.ts:
+(pass) policyEnabled: off disables, auto/instruct enable [0.10ms]
+(pass) policyQualifies: child sessions never qualify [0.17ms]
+(pass) policyQualifies: allow-list scoping and preset-less coverage [0.09ms]
+(pass) availableTeamId: free base, deterministic per-captain suffix, exhaustion [3.05ms]
+(pass) notices carry the startup marker, mention the team, and are user-role messages [0.58ms]
+(pass) spliceNotice inserts after the last claimed message and preserves the decision [0.43ms]
+
+packages/mpd-agent-teams-plugin/test/update-task-diagnostics.test.mjs:
+(pass) DEFECT 5: an OMITTED attempt_id is reported as required, never as stale ownership [21.89ms]
+(pass) DEFECT 5: a PRESENT but mismatched attempt_id still reports stale ownership [3.98ms]
+(pass) DEFECT 6: an omitted status is rejected instead of silently persisting the rest [3.72ms]
+(pass) DEFECT 6: a blank or out-of-enum status is refused loudly, never persisted [3.44ms]
+(pass) DEFECT 6: the tool contract marks status required and documents the minimal terminal call [2.86ms]
+(pass) the happy path still works: status + current attempt_id completes the task [11.71ms]
+
+packages/mpd-agent-teams-plugin/test/export-bridge.test.mjs:
+(pass) adopted client export bridge > registers under the adopted module id and keeps apply/inject [0.11ms]
+(pass) adopted client export bridge > exposes every bridged symbol at load time [0.19ms]
+(pass) adopted client export bridge > exports the panel CSS-module class map, not a renamed copy [0.08ms]
+(pass) adopted client export bridge > carries every class the sidebar page renders, and the adopted archivedWrap quirk [0.20ms]
+(pass) adopted client export bridge > locale dictionaries and monitor store survive the bridge [0.11ms]
+(pass) adopted client export bridge > the bridge is purely additive: exports grow by exactly the pinned list [1.54ms]
+(pass) adopted client export bridge > re-running the bridge is a no-op that leaves the file byte-identical [1.91ms]
+(pass) adopted client export bridge > drift guard: an unknown symbol is reported as undeclared [1.01ms]
+(pass) adopted client export bridge > a re-vendor re-applies the bridge [0.08ms]
+
+packages/mpd-agent-teams-plugin/test/backports.test.ts:
+(pass) withTeamLock: settled locks release their queue entry > a completed lock leaves no queue entry behind [0.20ms]
+(pass) withTeamLock: settled locks release their queue entry > a rejected mutation still releases its entry [0.16ms]
+(pass) withTeamLock: settled locks release their queue entry > serialization is preserved and the last waiter cleans up [11.32ms]
+(pass) blank optional task fields are normalized to absent > blank scalars are dropped and blank list entries are filtered [0.14ms]
+(pass) blank optional task fields are normalized to absent > non-blank values pass through untouched [0.04ms]
+(pass) blank optional task fields are normalized to absent > a legacy dirty record still loads instead of bricking the team [3.26ms]
+(pass) Web routes: authentication fence and bounded body > a missing Connection service fails closed with 503 [0.59ms]
+(pass) Web routes: authentication fence and bounded body > a rejected request never reaches the handler [0.18ms]
+(pass) Web routes: authentication fence and bounded body > an admitted request runs the route handler unchanged [0.16ms]
+(pass) Web routes: authentication fence and bounded body > readJsonRequest parses objects and refuses arrays, bad JSON, and oversized bodies [3.96ms]
+
+packages/mpd-agent-teams-plugin/test/task-contract-tool.test.mjs:
+(pass) DEFECT 3: a RUNNING task's contract is readable and matches what was declared [4.68ms]
+(pass) DEFECT 3: the full agent-teams tool surface registers, with the contract tool among it [2.29ms]
+(pass) DEFECT 3: the read-only surface is available to a member too and rejects unknown ids [9.69ms]
+
+packages/mpd-agent-teams-plugin/test/capabilities.test.ts:
+(pass) agent-scoped AgentTeams instructions > the captain gets the activation prompt, the member gets member rules [3.40ms]
+(pass) agent-scoped AgentTeams instructions > a member is denied every captain-only business tool [0.36ms]
+(pass) agent-scoped AgentTeams instructions > cold-resumed members are recognized from the durable retired index [0.67ms]
+(pass) agent-scoped AgentTeams instructions > a live team record decides membership without any spawn filter [3.97ms]
+(pass) agent-scoped AgentTeams instructions > damaged state warns and falls back to the captain protocol instead of throwing [0.61ms]
+(pass) agent-scoped AgentTeams instructions > agents created after install are attached on agent/session-start [0.40ms]
+
+packages/mpd-agent-teams-plugin/test/harness-compat.test.ts:
+(pass) queueMemberPrompt: delivery follows the host generation > 0.1.5-rc.2 host: the public prompt seam carries the team turn as a queued turn [0.63ms]
+(pass) queueMemberPrompt: delivery follows the host generation > 0.1.5-rc.2 host: public sendMessage is never used for team work [0.21ms]
+(pass) queueMemberPrompt: delivery follows the host generation > Alpha.5 … 0.1.2-rc.1 host: the symbol-keyed FIFO queue still carries the turn [0.37ms]
+(pass) queueMemberPrompt: delivery follows the host generation > legacy host: the receiver-bound followup still wins when present [3.56ms]
+(pass) queueMemberPrompt: delivery follows the host generation > neither contract: refuses instead of silently dropping the turn [0.39ms]
+(pass) deliverToMember: the scheduler's wakeup path > 0.1.5-rc.2 runtime delivers through the public prompt seam and reports success [0.54ms]
+(pass) deliverToMember: the scheduler's wakeup path > a host without any delivery contract reports failure instead of throwing [0.30ms]
+(pass) installContinuableMemberSetup: setup follows the host generation > legacy host registers the seam directly, never the session-start listener [0.15ms]
+(pass) installContinuableMemberSetup: setup follows the host generation > 0.1.5-rc.2 host: setup receives the live Agent and never reads childCtx.agent [0.71ms]
+(pass) installContinuableMemberSetup: setup follows the host generation > a host without either seam degrades with a warning instead of aborting apply() [0.16ms]
+(pass) sessionOwnEvents: child history excludes the inherited prefix > prefers the modern ownEvents() [0.11ms]
+(pass) sessionOwnEvents: child history excludes the inherited prefix > legacy session logs are sliced at seedLength [0.07ms]
+(pass) sessionOwnEvents: child history excludes the inherited prefix > an unreadable log is refused loudly [0.10ms]
+(pass) retired-member guard covers every resumable face > 0.1.5-rc.2 host: the public prompt seam rejects a retired member and passes others [1.26ms]
+(pass) retired-member guard covers every resumable face > Alpha.5 … 0.1.2-rc.1 host: the FIFO queue rejects a retired member and passes others [0.49ms]
+(pass) retired-member guard covers every resumable face > legacy host: followup is guarded without inventing the method [0.33ms]
+(pass) retired-member guard covers every resumable face > a runtime with no delivery face no longer pretends to guard one [0.13ms]
+
+packages/mpd-agent-teams-plugin/test/scheduler-dispatch.test.ts:
+(pass) scheduler dispatch across a dependency boundary > the first batch is delivered and dependents stay parked [5.74ms]
+(pass) scheduler dispatch across a dependency boundary > completing the first batch dispatches the next batch to its idle members [6.40ms]
+(pass) scheduler dispatch across a dependency boundary > a member's idle edge delivers its own newly unblocked task [10.18ms]
+(pass) scheduler dispatch across a dependency boundary > a real delivery failure is reported, not swallowed as success [2.99ms]
+
+packages/mpd-boulder-plugin/test/boulder.test.ts:
+(pass) session ids are dsh-prefixed by default [0.14ms]
+(pass) start, timer, complete lifecycle [5.88ms]
+(pass) plan progress parses TODOs and verification wave [1.48ms]
+(pass) mpd_boulder_status omits planProgress when null (lossless JSON contract) [1.45ms]
+
+packages/mpd-workmate-plugin/test/workmate.test.ts:
+(pass) sanitizeName / capText / autoNote / scoreMatch units [3.12ms]
+(pass) init → list → reflect → match lifecycle with a sandbox HOME [9.91ms]
+(pass) spawn carries persona+memory+note, reflect instruction, readonly deny, own route [2.06ms]
+(pass) workmate library root is under HOME and not in cwd [0.42ms]
+
+packages/mpd-workmate-plugin/test/rename-delete.test.ts:
+(pass) rename moves the evolved identity and preserves every byte of it [3.72ms]
+(pass) renamedFrom accumulates, dedupes, survives a later reflect and is capped [4.55ms]
+(pass) A5 note rule: only a LEADING autoNote prefix is rewritten, a custom note keeps its bytes [1.58ms]
+(pass) invalid names are rejected BEFORE any filesystem call, on both argument positions [1.69ms]
+(pass) same-key rename and case-only rename are refused with no side effect (M2) [0.69ms]
+(pass) the library ROOT can never be addressed as an instance (§B) [0.75ms]
+(pass) collision guard: ANY lstat hit on the target is a 409 collision and nothing is overwritten (M5) [0.99ms]
+(pass) a symlinked instance directory is refused, not resolved (§H) [0.77ms]
+(pass) unknown and orphan directories are never touched (M3), repeat delete is 404 [1.25ms]
+(pass) delete archives by default: hidden immediately, restorable, index key dropped [1.55ms]
+(pass) purge requires confirm === name, then removes the instance for good (D1) [1.25ms]
+(pass) a READONLY instance is a valid mutation target: library administration, not self-editing (M1) [0.92ms]
+(pass) delete never touches another workmate's bytes and leaves no partial instance [1.66ms]
+(pass) in-use gate: a name a team member holds blocks BOTH the rename target and the source (§E, A6) [2.15ms]
+(pass) busyTeams reads <cwd>/.mpd/team, skips archived teams and non-directory entries, fails open [0.67ms]
+(pass) A3: a stale meta.name cannot shadow the directory key, and a legacy key cannot resurrect a dir [1.59ms]
+(pass) an interrupted rename is rolled back: no half-moved instance, the key stays addressable [1.02ms]
+(pass) a throwing spawn releases the in-use counter, so it cannot block a later rename [1.19ms]
+(pass) no registered output schema uses a type ARRAY, and every surface reports archived: null on purge [3.59ms]
+(pass) routes: §D status/reason matrix, headers, no path leakage [4.36ms]
+(pass) a headless profile stays tool-only: no webServer, no route work, tools still function [0.81ms]
+(pass) the mutation tools' declared output schemas accept the values they return (t15) [39.93ms]
+(pass) the OLD return shape is rejected by the harness validator, so this lock can actually fail (t15) [11.49ms]
+(pass) the workmate deny list denies bash and the write-capable MCP tools, and carries no dead name [3.37ms]
+
+packages/mpd-dsh-adapter-plugin/test/adapter.test.ts:
+(pass) capabilities > reports every seam of a full harness [3.33ms]
+(pass) capabilities > reports absent seams without throwing [0.11ms]
+(pass) tool plane > registerTool normalizes schema, render and the (args, exec) call shape [0.53ms]
+(pass) tool plane > registerTool keeps a caller-supplied schema and render [0.12ms]
+(pass) tool plane > services resolve through ctx.get OR a plain ctx property [0.12ms]
+(pass) tool plane > registerTools registers every definition and disposes them together [0.18ms]
+(pass) tool plane > registerTool without a tools service fails with an actionable error [0.25ms]
+(pass) tool plane > guardTool passes the exec through and installs on the tools service [0.17ms]
+(pass) tool plane > onPostToolExecute owns next() and passes the downstream decision through [0.47ms]
+(pass) tool plane > onPostToolExecute lets a listener replace the decision [0.25ms]
+(pass) tool plane > onPostToolExecute is a no-op when the harness has no event bus [0.06ms]
+(pass) tool plane > hasTool + toolRuntime expose internal tool calls without raw ctx access [0.74ms]
+(pass) tool plane > executeTool normalizes success, tool error, thrown error and a missing runtime [0.42ms]
+(pass) agent plane > spawnAgent normalizes prompt, flat route and the result shape [0.34ms]
+(pass) agent plane > spawnAgent accepts pre-built prompt blocks and agentOptions [0.23ms]
+(pass) agent plane > spawnAgent tolerates a harness that returns no result [0.24ms]
+(pass) agent plane > spawnAgent without a subagent service fails with an actionable error [0.17ms]
+(pass) skill + preset plane > skill provider registration, catalog read and body load [0.46ms]
+(pass) skill + preset plane > skill calls without a skills service fail with actionable errors [0.22ms]
+(pass) skill + preset plane > resolvePreset returns a normalized preset record [0.32ms]
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+(pass) row entry > apply provides the mpdDsh service [0.18ms]
+(pass) row entry > decision helpers use the harness feedback key [0.07ms]
+
+packages/mpd-modelchain-plugin/test/modelchain.test.ts:
+(pass) DEFAULT_CHAINS uses kebab-case keys and only deepseek-official providers [0.13ms]
+(pass) resolveRole resolves kebab-case and legacy camelCase keys to the same chain [5.00ms]
+(pass) mpd_modelchain_resolve resolves kebab keys and drops the dead skipped field [0.72ms]
+(pass) modelchain.sisyphus-junior config key is resolved through the mpdConfig service [0.40ms]
+
+packages/mpd-tools-plugin/test/tools.test.ts:
+(pass) write-guard allows first write to a new file [0.42ms]
+(pass) write-guard allows idempotent rewrite of identical content [0.13ms]
+(pass) write-guard denies silent overwrite of differing content [0.10ms]
+(pass) write-guard allows idempotent rewrite of a >1MB file (full-file compare) [10.94ms]
+(pass) truncation output (incl. banner) never exceeds truncateMaxBytes [0.88ms]
+(pass) truncation with a budget smaller than the banner adds no head/tail slices [0.11ms]
+(pass) truncation keeps head and tail slices plus the banner [1.30ms]
+(pass) truncation passes through outputs within the budget unchanged [0.25ms]
+
+packages/mpd-hashline-plugin/test/hashline.test.ts:
+(pass) hashline view shows LINE#HASH|content [0.69ms]
+(pass) anchored replace on plain content [1.96ms]
+(pass) mismatched anchor throws [0.50ms]
+(pass) append and prepend anchored [0.30ms]
+(pass) replace range with end anchor [0.55ms]
+(pass) unified diff shape [0.42ms]
+
+packages/mpd-hashline-plugin/test/tool-schema.test.ts:
+(pass) no registered hashline schema uses a type ARRAY (parameters or output) [0.75ms]
+(pass) edit.lines is a oneOf union of the string and array-of-string shapes [0.13ms]
+(pass) read then edit works with lines as a single string AND as an array of strings [3.26ms]
+(pass) the committed src AND dist carry no array-typed schema form, and the dist carries the oneOf fix [0.33ms]
+(pass) the guard resolves a RELATIVE file_path against the session workspace, not process.cwd() [1.59ms]
+
+packages/mpd-bootstrap-plugin/test/bootstrap.test.ts:
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+[mpd-bootstrap] legacy home-copy cleanup skipped (config)
+(pass) bundle skill corpus provider > serves every shipped skill as a bundled-rank candidate [24.41ms]
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+[mpd-bootstrap] legacy home-copy cleanup skipped (config)
+(pass) bundle skill corpus provider > get() loads the skill body and keeps the resource base [18.97ms]
+[mpd-bootstrap] skill corpus served from /tmp/mpd-corpus-suKF4b (provider mpd-bundle, bundle 0.3.2)
+[mpd-bootstrap] legacy home-copy cleanup skipped (config)
+(pass) bundle skill corpus provider > frontmatter subset: quoted, folded, nested metadata and invocation policy [8.34ms]
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+[mpd-bootstrap] legacy home-copy cleanup skipped (config)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+[mpd-bootstrap] legacy home-copy cleanup skipped (config)
+(pass) bundle skill corpus provider > registers an fs/observed invalidator scoped to the corpus [0.75ms]
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+(pass) legacy home-copy migration > removes only stamped bundle copies and leaves user content alone [1.35ms]
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+(pass) legacy home-copy migration > never touches an unstamped home (legacy installer copies survive) [0.40ms]
+
+packages/mpd-comment-checker-plugin/test/comment-checker.test.ts:
+(pass) binary resolves from toolchain [0.04ms]
+(pass) comment file triggers detection (exit 2) [10.37ms]
+(pass) clean file passes (exit 0) [17.86ms]
+
+packages/mpd-mcp-shared/bin-resolve.test.mjs:
+
+packages/mpd-mcp-shared/bin-resolve.test.mjs:
+
+packages/mpd-ulw-plugin/test/engine.test.ts:
+
+packages/mpd-memory-plugin/test/memory.test.ts:
+
+packages/mpd-config-plugin/test/config.test.ts:
+
+packages/mpd-roles-plugin/test/roles.test.ts:
+
+packages/mpd-codegraph-plugin/src/index.test.ts:
+
+packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs:
+
+packages/mpd-bundle-plugin/test/team-page.test.mjs:
+
+packages/mpd-bundle-plugin/test/sidebar-migration-artifact.test.mjs:
+
+packages/mpd-agent-teams-plugin/self-fix-tests/scope-semantics.test.mjs:
+
+packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs:
+
+packages/mpd-agent-teams-plugin/self-fix-tests/quality-loop.test.mjs:
+
+packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/workmate-key.test.ts:
+
+packages/mpd-agent-teams-plugin/test/session-start.test.ts:
+
+packages/mpd-agent-teams-plugin/test/update-task-diagnostics.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/export-bridge.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/backports.test.ts:
+
+packages/mpd-agent-teams-plugin/test/task-contract-tool.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/capabilities.test.ts:
+
+packages/mpd-agent-teams-plugin/test/harness-compat.test.ts:
+
+packages/mpd-agent-teams-plugin/test/scheduler-dispatch.test.ts:
+
+packages/mpd-boulder-plugin/test/boulder.test.ts:
+
+packages/mpd-workmate-plugin/test/workmate.test.ts:
+
+packages/mpd-workmate-plugin/test/rename-delete.test.ts:
+
+packages/mpd-dsh-adapter-plugin/test/adapter.test.ts:
+
+packages/mpd-modelchain-plugin/test/modelchain.test.ts:
+
+packages/mpd-tools-plugin/test/tools.test.ts:
+
+packages/mpd-hashline-plugin/test/hashline.test.ts:
+
+packages/mpd-hashline-plugin/test/tool-schema.test.ts:
+
+packages/mpd-bootstrap-plugin/test/bootstrap.test.ts:
+
+packages/mpd-comment-checker-plugin/test/comment-checker.test.ts:
+
+packages/mpd-ulw-plugin/test/engine.test.ts:
+
+packages/mpd-memory-plugin/test/memory.test.ts:
+
+packages/mpd-config-plugin/test/config.test.ts:
+
+packages/mpd-roles-plugin/test/roles.test.ts:
+
+packages/mpd-codegraph-plugin/src/index.test.ts:
+
+packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs:
+
+packages/mpd-bundle-plugin/test/team-page.test.mjs:
+
+packages/mpd-bundle-plugin/test/sidebar-migration-artifact.test.mjs:
+
+packages/mpd-agent-teams-plugin/self-fix-tests/scope-semantics.test.mjs:
+
+packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs:
+
+packages/mpd-agent-teams-plugin/self-fix-tests/quality-loop.test.mjs:
+
+packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/workmate-key.test.ts:
+
+packages/mpd-agent-teams-plugin/test/session-start.test.ts:
+
+packages/mpd-agent-teams-plugin/test/update-task-diagnostics.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/export-bridge.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/backports.test.ts:
+
+packages/mpd-agent-teams-plugin/test/task-contract-tool.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/capabilities.test.ts:
+
+packages/mpd-agent-teams-plugin/test/harness-compat.test.ts:
+
+packages/mpd-agent-teams-plugin/test/scheduler-dispatch.test.ts:
+
+packages/mpd-boulder-plugin/test/boulder.test.ts:
+
+packages/mpd-workmate-plugin/test/workmate.test.ts:
+
+packages/mpd-workmate-plugin/test/rename-delete.test.ts:
+
+packages/mpd-dsh-adapter-plugin/test/adapter.test.ts:
+
+packages/mpd-modelchain-plugin/test/modelchain.test.ts:
+
+packages/mpd-tools-plugin/test/tools.test.ts:
+
+packages/mpd-hashline-plugin/test/hashline.test.ts:
+
+packages/mpd-hashline-plugin/test/tool-schema.test.ts:
+
+packages/mpd-bootstrap-plugin/test/bootstrap.test.ts:
+
+packages/mpd-comment-checker-plugin/test/comment-checker.test.ts:
+
+ 298 pass
+ 0 fail
+ 2097 expect() calls
+Ran 298 tests across 96 files. [13.75s]

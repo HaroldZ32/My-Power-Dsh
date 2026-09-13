@@ -1,0 +1,151 @@
+### TRAP 2: carrier hook candidate list + env consultation (SNAPSHOT) 08:17:37Z
+--- MPD_SILICON_ROOT anywhere in the plugin file / hook block?
+--- hook block 110-165:
+8. Quality kinds (requirements, implementation, verification, review, repair, integration) need a contract: non-empty objective and acceptance; implementation/repair also need inScope and verify. Review/requirements can complete only with verdict=pass; needs_revision/reject must fail with findings. The system then opens repair + next review that depend on the successful source, never the failed review. Do not approve your own implementation. create_task no longer silently resumes a halted team — call agent_teams_resume with a reason, or create_task({resume:true, resumeReason}).
+9. ${qualityPlanningPrompt()}
+10. Present the team's results to the user, then agent_teams_delete the team unless the user wants to keep working with it. Stopping a team aborts the Captain's current turn as well as member work; only a later explicit user turn may resume it.
+
+Tools: ${toolNames}${profilesText === '' ? '' : `\n\n${profilesText}`}`;
+}
+export function apply(ctx, config) {
+    //#region mpd-delta rtl-ip-carrier (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+    // Carrier hook (silicon docs/sync-policy.md §1; contract source: silicon presets/README.md
+    // §"The t15 hook contract"): merge the silicon bundle's `rtl-ip` agent-teams profile into this
+    // row's profile set. It MUST run first in apply() so every consumer below — resolved.profiles,
+    // the captain prompt, the slash command and the gesture boundary — sees ONE merged set.
+    // Read at apply time, never at import time. The file is silicon-owned: on an mpd-only install it
+    // is legitimately absent, which is not an error ({} fallback, boot unchanged, no warning);
+    // corrupt / non-object JSON is logged once and also falls back to {}. mpd's own profiles win
+    // every key collision, and no member shape is pre-validated here — resolveTeamProfile already
+    // rejects unknown names, empty/duplicate keys and >16 profiles at create time.
+    const loadSiliconProfiles = () => {
+        const fs = process.getBuiltinModule("node:fs");
+        const path = process.getBuiltinModule("node:path");
+        const require = process.getBuiltinModule("node:module").createRequire(import.meta.url);
+        const candidates = [];
+        try {
+            candidates.push(require.resolve("@mpd-dsh/silicon/presets/rtl-ip.profile.json"));
+        }
+        catch { /* package not resolvable: the bundle-relative walk-up below may still find it */ }
+        let dir = path.dirname(process.getBuiltinModule("node:url").fileURLToPath(import.meta.url));
+        for (let up = 0; up < 8; up += 1) {
+            candidates.push(path.join(dir, "node_modules", "@mpd-dsh", "silicon", "presets", "rtl-ip.profile.json"));
+            const parent = path.dirname(dir);
+            if (parent === dir)
+                break;
+            dir = parent;
+        }
+        let corrupt = 0;
+        for (const file of candidates) {
+            let text;
+            try {
+                text = fs.readFileSync(file, "utf8");
+            }
+            catch { continue; }
+            try {
+                const parsed = JSON.parse(text);
+                if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed))
+                    return parsed;
+                corrupt += 1;
+            }
+            catch { corrupt += 1; }
+        }
+        if (corrupt > 0)
+            console.warn("[mpd] agent-teams: ignoring the silicon rtl-ip profile (corrupt or non-object JSON)");
+        return {};
+    };
+    config = { ...config, profiles: { ...loadSiliconProfiles(), ...(config.profiles ?? {}) } };
+    //#endregion mpd-delta rtl-ip-carrier
+    const resolved = {
+### is @mpd-dsh/silicon resolvable from the checkout / ancestors? (SNAPSHOT)
+--- plugin dir location + walk-up targets:
+packages/mpd-agent-teams-plugin/lib
+packages/mpd-agent-teams-plugin/lib/node_modules/@mpd-dsh/silicon absent
+packages/mpd-agent-teams-plugin/node_modules/@mpd-dsh/silicon absent
+packages/node_modules/@mpd-dsh/silicon         absent
+node_modules/node_modules/@mpd-dsh/silicon     absent
+./node_modules/@mpd-dsh/silicon                absent
+../node_modules/@mpd-dsh/silicon               absent
+../my-power-dsh-silicon/node_modules/@mpd-dsh/silicon absent
+--- require.resolve from the plugin's own context:
+NOT-RESOLVABLE: MODULE_NOT_FOUND
+--- does the silicon checkout hold the file?
+-rw-r--r-- 2 root root 10327 Sep 13 00:29 ../my-power-dsh-silicon/presets/rtl-ip.profile.json
+--- t8's own carrier evidence, if any:
+evidence/rtl-extraction-residual/repair
+prep-note.md
+raw
+report.md
+### HOOK CORRUPT-BRANCH TRACE with line numbers (SNAPSHOT 08:19:57Z)
+118:    // Carrier hook (silicon docs/sync-policy.md §1; contract source: silicon presets/README.md
+119:    // §"The t15 hook contract"): merge the silicon bundle's `rtl-ip` agent-teams profile into this
+120:    // row's profile set. It MUST run first in apply() so every consumer below — resolved.profiles,
+121:    // the captain prompt, the slash command and the gesture boundary — sees ONE merged set.
+122:    // Read at apply time, never at import time. The file is silicon-owned: on an mpd-only install it
+123:    // is legitimately absent, which is not an error ({} fallback, boot unchanged, no warning);
+124:    // corrupt / non-object JSON is logged once and also falls back to {}. mpd's own profiles win
+125:    // every key collision, and no member shape is pre-validated here — resolveTeamProfile already
+126:    // rejects unknown names, empty/duplicate keys and >16 profiles at create time.
+127:    const loadSiliconProfiles = () => {
+128:        const fs = process.getBuiltinModule("node:fs");
+129:        const path = process.getBuiltinModule("node:path");
+130:        const require = process.getBuiltinModule("node:module").createRequire(import.meta.url);
+131:        const candidates = [];
+132:        try {
+133:            candidates.push(require.resolve("@mpd-dsh/silicon/presets/rtl-ip.profile.json"));
+134:        }
+135:        catch { /* package not resolvable: the bundle-relative walk-up below may still find it */ }
+136:        let dir = path.dirname(process.getBuiltinModule("node:url").fileURLToPath(import.meta.url));
+137:        for (let up = 0; up < 8; up += 1) {
+138:            candidates.push(path.join(dir, "node_modules", "@mpd-dsh", "silicon", "presets", "rtl-ip.profile.json"));
+139:            const parent = path.dirname(dir);
+140:            if (parent === dir)
+141:                break;
+142:            dir = parent;
+143:        }
+144:        let corrupt = 0;
+145:        for (const file of candidates) {
+146:            let text;
+147:            try {
+148:                text = fs.readFileSync(file, "utf8");
+149:            }
+150:            catch { continue; }
+151:            try {
+152:                const parsed = JSON.parse(text);
+153:                if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed))
+154:                    return parsed;
+155:                corrupt += 1;
+156:            }
+157:            catch { corrupt += 1; }
+158:        }
+
+### control-flow reading:
+  :126-131 candidates: (a) require.resolve; (b..j) 8-level walk-up
+  :132 let corrupt = 0
+  :133-147 for each candidate: readFileSync try/catch continue; JSON.parse try/catch -> corrupt += 1; valid object -> return parsed  <-- RETURNS EARLY
+  :148-149 if (corrupt > 0) console.warn(...)  <-- reached ONLY if the loop found no valid candidate
+  :150 return {}
+
+CONSEQUENCE (static): corrupt at (a) + valid at (b) => returns (b)'s object with ZERO warnings;
+the warning only fires when NO candidate yields a valid object. Strict A7 reading: corrupt => {} + one warning.
+--- tail 159-163:
+159:        if (corrupt > 0)
+160:            console.warn("[mpd] agent-teams: ignoring the silicon rtl-ip profile (corrupt or non-object JSON)");
+161:        return {};
+162:    };
+163:    config = { ...config, profiles: { ...loadSiliconProfiles(), ...(config.profiles ?? {}) } };
+
+### FINDING (new, static, SNAPSHOT — for t11 empirical confirmation + captain clarification)
+ID: V-hook-corrupt-fallthrough   Severity: medium
+CLAIM: the carrier hook diverges from BOTH the A7/contract reading ('corrupt -> {} + one warning')
+  and its own in-code comment (:122-124 'corrupt / non-object JSON is logged once and also falls back to {}')
+  in the readable-but-corrupt-then-valid case.
+OBSERVED (code trace, lib/index.js:144-161): a corrupt/non-object candidate increments 'corrupt' and the loop
+  CONTINUES; a later valid candidate hits 'return parsed' (:154) BEFORE the post-loop warning (:160-161).
+  => outcome: the farther valid copy is merged, and NO warning is emitted (corrupt count silently dropped).
+EXPECTED per contract/comment: {} fallback + exactly one warning.
+RISK: a corrupt nearest copy is silently superseded by a farther/older silicon copy - an operator gets no signal,
+  and 'first readable+object-JSON wins' silently becomes 'first valid object anywhere wins'.
+PROBE for t11 (mounting boot, sandbox): place non-object JSON at candidate (a) and a valid profile at candidate (b);
+  assert outcome AND warning count; then all-corrupt => {} + exactly one warning (that branch matches the contract).
+ACTION: captain ruling required (clarify the contract or the implementation); DO NOT patch on the spot.

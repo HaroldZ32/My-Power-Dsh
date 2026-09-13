@@ -1,0 +1,19 @@
+{
+  "cli": "packages/mpd-mcp-lsp/dist/cli.js",
+  "serverInfo": {
+    "name": "lsp",
+    "version": "0.1.0"
+  },
+  "toolsCount": 8,
+  "tools": [
+    "diagnostics",
+    "find_references",
+    "goto_definition",
+    "install_decision",
+    "prepare_rename",
+    "rename",
+    "status",
+    "symbols"
+  ],
+  "status": "LSP daemon unreachable: ENOENT: no such file or directory, mkdir '/root/.mpd/lsp-daemon/v0.2.3'.\nThe MCP server is a thin proxy and never runs language servers in-process.\nSocket: /root/.mpd/lsp-daemon/v0.2.3/daemon.sock\nLogs: /root/.mpd/lsp-daemon/v0.2.3/daemon.log\nThe daemon is auto-started on demand and will be retried on the next request."
+}

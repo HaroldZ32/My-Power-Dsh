@@ -1,0 +1,79 @@
+## quoted source lines (live-subject audit) — HEAD 32ae54d, hashes in subject-hashes.txt
+
+--- scripts/verify-rtl-references.mjs:1-8 ---
+#!/usr/bin/env node
+// verify-rtl-references: resolve every path reference that survives in the RTL
+// material after the extraction, three-bucket:
+//
+//   resolved            the path exists in the silicon bundle or in this repo
+//   pending-by-design   a forward reference with a named owner (t15/t16) — listed
+//                       with its owner, never silently tolerated
+//   unresolved          anything else: the gate FAILS (exit 1) and prints them
+
+--- skills/dsh-qa/scripts/rtl-verif.mjs:1-12 ---
+#!/usr/bin/env node
+// Case rtl-verif: verify the RTL verification deliverable end-to-end in an
+// isolated DSH_HOME — now against the @mpd-dsh/silicon bundle, which owns the
+// mpd_verif_* plugin, the RTL corpus and the rtl-ip profile data. Repointed in
+// t19: it previously probed the mpd-side plugin, skill and patch layout, which
+// the strip removed from this repository.
+//
+// TWO PHASE, deterministic, no LLM session (runs on credential-less QA boxes):
+//   PHASE 1 (isolated install + composed boot) — `dsh plugin add <silicon>` into
+//     a throwaway DSH_HOME; `--dump-config` must compose all four silicon rows
+//     with no duplicate loader id, and the strip's own row must be gone
+//     (mpd-verif no longer exists on the mpd side).
+
+--- skills/dsh-qa/scripts/rtl-verif.mjs:33-36 ---
+const VERIF_DIST = join(SILICON, "packages/mpd-verif-plugin/dist/index.js")
+const PATCH = join(SILICON, "packages/mpd-bundle/cordis.patch.yml")
+const SKILLS = join(SILICON, "skills")
+const PRESET = join(SILICON, "presets/rtl-ip.profile.json")
+
+--- skills/dsh-qa/scripts/rtl-ip-profile.mjs:1-22 ---
+#!/usr/bin/env node
+// Case rtl-ip-profile (RTL-IP workflow): the rtl-ip agent-teams roster profile.
+//
+// Owner after the RTL extraction: the definition lives in the @mpd-dsh/silicon
+// bundle as DATA (presets/rtl-ip.profile.json), while mpd keeps the single
+// agent-teams row that injects it (the t15 carrier). This case probes the
+// silicon side offline and, in the real pass, whether a composed boot exposes
+// the profile. Repointed in t19: it previously read mpd's patch/skills/docs,
+// which the strip removed.
+//
+// Silicon root resolution: $MPD_SILICON_ROOT, else the sibling checkout
+// ../my-power-dsh-silicon. --self-test is offline. The real pass prints SKIP
+// with a reason and still exits 0 when silicon is absent, `dsh` is unavailable,
+// or the mpd-side carrier has not landed (rtl-ip then exists as data only).
+// Never touches the real ~/.dsh.
+import { spawnSync } from "node:child_process"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
+
+const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
+
+--- packages/mpd-mcp-lsp/README.md:52 and README.zh-CN.md:51 ---
+A ready template lives at `templates/rtl-lsp-client.json` — merge its `"lsp"`
+现成模板位于 `templates/rtl-lsp-client.json` —— 将其 `"lsp"` 条目合并进该用户
+
+--- packages/mpd-qa-roles-probe/src/index.ts:13,15,53,58,62 ---
+const ROSTER_IDS = ["oracle", "librarian", "prometheus", "hephaestus", "sisyphus", "sisyphus-junior", "atlas", "explore", "metis", "momus", "multimodal-looker"]
+const FIXTURE_SKILL = "svn-master"
+    console.log("[roles-probe] SKILLS=" + summaries.length + " BUNDLED=" + bundled.length)
+    catalogOk = fixture !== undefined && bytes > 100 && bundled.length >= 20
+  const ok = presetOk && toolCallOk && ids.length === ROSTER_IDS.length && ROSTER_IDS.every((id) => ids.includes(id)) && catalogOk
+
+--- packages/mpd-qa-roles-probe/dist/index.js:282 (the shipped twin the boot loads) ---
+    catalogOk = fixture !== undefined && bytes > 100 && bundled.length >= 20;
+
+--- skills/dsh-qa/SKILL.md:62 ---
+| rtl-ip-profile | RTL IP workflow | bundle patch ships the rtl-ip roster profile (7 members, four-stage flow markers) + rtl-ip-flow skill + 4 document templates + bilingual guide; composed boot shows the profile in the agent-teams row config | RTL IP flow |
+
+--- .gitignore:23-27 ---
+# RTL phase-1 scratch: research clones (.research/) and the workspace-local cocotb venv (.venv-rtl/, .venv*)
+.research/
+.venv-rtl/
+.venv*/
+

@@ -1,0 +1,20 @@
+### t15 disposition — confirming the t16-lane closure in the RAW ARTIFACTS 2026-09-13T10:57:34Z
+--- contract verify 1: git status --short
+porcelain-entries=62
+tracked-changes=49
+--- contract verify 2: grep rtl-ip-carrier
+packages/mpd-agent-teams-plugin/lib/index.js:117:    //#region mpd-delta rtl-ip-carrier (m
+packages/mpd-agent-teams-plugin/lib/index.js:192:    //#endregion mpd-delta rtl-ip-carrier
+packages/mpd-agent-teams-plugin/lib/mpd-deltas.js:175:        id: "mpd-delta rtl-ip-carrie
+packages/mpd-agent-teams-plugin/lib/mpd-deltas.js:182:        block: "    //#region mpd-de
+
+--- raw artifact A (present lane):
+{"exit":0,"requests":3,"applyCrash":false,"warnCount":0,"systemHasRtlIp":true,"hasMpdInListing":true,"rtlIp7":true,"mpd11":true}
+--- raw artifact B (absent lane):
+{"exit":0,"requests":3,"applyCrash":false,"warnCount":0,"listingHasRtlIp":false}
+--- closure lines already in my file:
+178:## 9. C6 MOUNT-PROOF HALF — **CLOSED** (authorized closure update)
+208:**Final line: C6 mount-proof half — CLOSED (present lane: exit 0, 3 requests, `rtl-ip` + `mpd`
+214:## 9.1 CORRECTION to §9 (added after the Architect's measurement; §9's causal claim is superse
+--- rtl-ip team record evidence cited by the retry report:
+-rw------- 1 root root 11045 Sep 13 17:31 evidence/rtl-extraction-residual/repair-verify/t16-mount-proof-retry.md

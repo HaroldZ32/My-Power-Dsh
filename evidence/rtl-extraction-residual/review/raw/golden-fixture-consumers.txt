@@ -1,0 +1,15 @@
+# golden-fixture consumer search + doc citations (read-only, Plan Reviewer t6)
+$ git grep -n 'fixtures/verilog' -- . | (non-evidence, non-rtl-doc)
+docs/adder4.md:3:> **Internal QA artifact** — golden-fixture reference doc (tests/golden/fixtures/verilog/modules/adder4.v),
+docs/adder4.md:7:Source file: `tests/golden/fixtures/verilog/modules/adder4.v`
+docs/cnt8.md:3:> **Internal QA artifact** — golden-fixture reference doc (tests/golden/fixtures/verilog/modules/cnt8.v),
+docs/cnt8.md:7:Source file: `tests/golden/fixtures/verilog/modules/cnt8.v`
+
+package.json test scripts:
+27:    "test": "bun test packages",
+
+rtl-verif.mjs: roots + inline fixture proof (not a consumer)
+32:const SILICON = process.env.MPD_SILICON_ROOT || join(dirname(repoRoot), "my-power-dsh-silicon")
+40:const SILICON_ROWS = ["silicon-dsh-adapter", "silicon-bootstrap", "silicon-verif", "silicon-mcp-lsp"]
+50:const GOLDEN_ADDER_V = `module adder (
+58:const GOLDEN_ADDER_TB = `import cocotb

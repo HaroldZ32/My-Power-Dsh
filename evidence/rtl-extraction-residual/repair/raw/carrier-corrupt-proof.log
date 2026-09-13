@@ -1,0 +1,8 @@
+PASS  valid nearest: boot up, zero warnings
+PASS  all absent: boot up, zero warnings
+PASS  corrupt nearest: boot up, exactly ONE warning naming it
+PASS  corrupt nearest + VALID farther: still ONE warning naming the corrupt candidate (no continue)
+FAIL  unreadable-but-existing nearest + VALID farther: ONE warning naming it, no continue
+PASS  planted candidates cleaned up / pre-existing restored
+carrier corrupt-fallthrough proof ok=false
+corrupt_proof_exit=1

@@ -1,0 +1,22 @@
+{
+  "port": 45253,
+  "boot": {
+    "status": -9,
+    "killed": true
+  },
+  "elapsedMs": 180004,
+  "stubRequests": 0,
+  "trace": [],
+  "logBytes": 506,
+  "signatures": {
+    "missingCredential": 0,
+    "authFailed": 0,
+    "appliedPatch": 0,
+    "profileMounted": 0,
+    "teamProfilesListed": 0,
+    "rtlIp": 0,
+    "applyCrash": 0,
+    "mcpSpawn": 0
+  },
+  "logTail": "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)\n[mpd-codegraph] init status=no-binary binary=- cwd=/root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair-verify/raw/mount-proof2/ws\n[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair-verify/raw/mount-proof2/mpd-package/skills (provider mpd-bundle, bundle 0.3.2)\nCodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.\n"
+}

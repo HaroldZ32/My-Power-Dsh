@@ -1,0 +1,16 @@
+{
+  "name": "dsh-profile-mpd-headless",
+  "private": true,
+  "dependencies": {
+    "@mpd-dsh/mpd": "link:/root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair-verify/raw/t16-lane/mpd-package"
+  },
+  "dsh": {
+    "profile": {
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-headless",
+        "@mpd-dsh/mpd"
+      ]
+    }
+  }
+}

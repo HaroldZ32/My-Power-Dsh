@@ -1,0 +1,11 @@
+=== residue BEFORE ===
+44M	.venv-rtl
+1.3M	.mpd/verif
+15M	dist/mpd-package
+756M	.toolchain
+20260911T094211Z.tmp
+slang-server
+verible-verilog-ls
+=== removing ===
+=== residue AFTER ===
+(removed: .venv-rtl, .mpd/verif, 20260911T094211Z.tmp, .toolchain/bin/{verible-verilog-ls,slang-server}, dist/mpd-package)
