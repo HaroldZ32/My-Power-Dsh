@@ -177,8 +177,8 @@ function sha(p) { return createHash("sha256").update(readFileSync(p)).digest("he
 // CORRECT spelling, so asserting on the corrupted one would freeze it. It contains no `omo` trigram
 // and the guard neither flags nor blesses it.
 //
-// The allowlist is DATA (one entry per deliberately-kept foreign token) and follows X1's
-// classification (b): evidence/rtl-extraction-residual/followup/x1-brand-contract.md.
+// The allowlist is DATA (one entry per deliberately-kept foreign token) and follows
+// classification (b) of the brand-contract review recorded in the reasons below.
 export const BRAND_ALLOWLIST = [
   { token: "OMO_CODEX_GIT_BASH_PATH", artifact: "git-bash", reason: "X1 #1 (b): codex's env key (GIT_BASH_ENV_KEY); renaming it breaks the codex side's env reads" },
   { token: "OMO_CODEX_GIT_BASH_TIMEOUT_MS", artifact: "git-bash", reason: "X1 #2 (b): same codex env contract, timeout key" },
@@ -215,7 +215,7 @@ export function assertBrandClean(artifact, text, allowlist = BRAND_ALLOWLIST) {
   const violations = brand.filter((token) => !allowed.has(token.toLowerCase()))
   if (violations.length > 0) {
     for (const token of violations) {
-      console.error(`[build-mcp] FAIL - foreign brand token "${token}" in ${artifact} (not on the X1 allowlist; see evidence/rtl-extraction-residual/followup/x1-brand-contract.md)`)
+      console.error(`[build-mcp] FAIL - foreign brand token "${token}" in ${artifact} (not on the X1 allowlist declared in this file)`)
     }
     process.exit(1)
   }

@@ -1,8 +1,7 @@
 #!/usr/bin/env node
-// Landed by t8 from the t9 worked example
-// (evidence/rtl-extraction-residual/qa-standard/software-smoke.prototype.mjs) with exactly the two
-// landing deltas applied (house repo-root form, local workspace-isolation import) and the
-// prototype's evidence-dir override dropped.
+// Landed by t8 from the t9 worked example with exactly the two landing deltas applied (house
+// repo-root form, local workspace-isolation import) and the prototype's evidence-dir override
+// dropped. The worked example itself was a scratch prototype and is not carried here.
 //
 // Case software-smoke: the mpd bundle's SOFTWARE development loop, end to end, on a tiny
 // deterministic program (a small game) — where the retired RTL case proved the EDA toolchain

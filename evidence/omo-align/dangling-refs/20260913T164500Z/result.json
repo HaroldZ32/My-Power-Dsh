@@ -1,0 +1,48 @@
+{
+  "task": "Purge follow-up: dangling references to the retired evidence tree + the skills re-pin",
+  "anchor": {
+    "parent": "656f622 (dev before this change)",
+    "note": "Owned by the captain after the t33 takeover; the commit that carries this file is the change itself."
+  },
+  "finding": "The purge removed the retired evidence tree but four LIVE reference sites still named it by path, so the repository carried dead pointers to content that no longer exists.",
+  "sitesFixed": [
+    {
+      "file": "scripts/build-mcp.mjs:181",
+      "was": "the BRAND_ALLOWLIST comment pointed at a follow-up note inside the deleted tree",
+      "now": "points at the per-entry reasons declared in the same file"
+    },
+    {
+      "file": "scripts/build-mcp.mjs:218",
+      "was": "the guard's failure message told the reader to consult the deleted note",
+      "now": "tells the reader to consult the X1 allowlist declared in this file"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/software-smoke.mjs:2",
+      "was": "the header comment carried the deleted prototype's full path",
+      "now": "describes the worked example as a scratch prototype not carried here"
+    },
+    {
+      "file": "skills/dsh-qa/SKILL.md:71",
+      "was": "the case-table provenance cell named the retired phase",
+      "now": "neutral: \"Ported bundle QA case (t8)\""
+    }
+  ],
+  "vendorLock": {
+    "rule": "skills/** has ONE writer per wave and the re-pin must land in the SAME commit (§9/§11)",
+    "fileCount": "330 -> 330 (unchanged)",
+    "treeSha": "3f420502eb535a6a1ea7a710ad41c11c80454946e3daeab10dc6176cbb335a2e -> 9a823b47409d1c35bc81872f441d03ee0368a9ef2f60a1cb96f44a970eed3578",
+    "mechanism": "computed with the gate's own algorithm (sorted repo-relative paths, per-file sha256 over LF-normalized bytes, then sha256 of \"<path>\\n<sha>\\n\" lines); written by a targeted replacement of the single old digest so the file's formatting is untouched, because a JSON round-trip was byte-different and a full re-serialize would have produced a spurious diff",
+    "verifyVendor": "PASS - asset OK: skills 330 files"
+  },
+  "identifierScanAfterChange": {
+    "tracked": "0 real hits; the single raw match is the exempt third-party platform brand (\"macOS Apple Silicon\", a Rust target-triple note)",
+    "untrackedNonIgnored": "0 hits",
+    "buildOutputs": "0 hits beyond the same exempt line",
+    "falseAlarmRecorded": "The captain first flagged this change's own evidence prose as a violation. Re-measured precisely: the only matches were the SUBSTRING inside the exempt platform brand, never the retired project identifier. Recorded because a substring scan cannot distinguish the two and the next reader should not repeat the alarm."
+  },
+  "gates": {
+    "verify-vendor": "PASS",
+    "software-smoke --self-test": "see commandsRun",
+    "bun run test:qa": "see commandsRun"
+  }
+}
