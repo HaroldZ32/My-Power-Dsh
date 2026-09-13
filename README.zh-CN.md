@@ -2,17 +2,20 @@
 
 **中文** | [English](./README.md)
 
-**my-power-dsh** 是一个独立的 DeepSeek Harness（DSH）插件 bundle —— 即包 `@mpd-dsh/mpd`：拥有自己的
+**my-power-dsh** 是一个 DeepSeek Harness（DSH）插件 bundle —— 即包 `@mpd-dsh/mpd`：拥有自己的
 插件行、一个 `mpd` agent preset 以及随包提供的 skill 语料库，用一条 `dsh plugin add` 即可安装。
 
-它**不是** OMO 的 DeepSeek Harness 移植版。它的来源是事实性的，而非血统关系：一份
-[oh-my-openagent](https://github.com/code-yeongyu/oh-my-openagent)（OmO；commit `8c57e46`，
-v5.0.0-beta.20 —— 本仓库并不跟随推进的基线）的固定基线，其 11 个 specialist 以适配后的 teammate
-模板与 workmate BASE 模板形式随包发布；一个 328 个文件的 skill 语料库，混合了上游移植 skill、第三方
-上游 skill 与本仓库编写的用例；以及一个被采纳的组件 —— 来自
+**它从上游带来什么。** 本 bundle 的名册（roster）、model-chain 词汇以及若干协议键都源自 OMO，并且
+继续保持：11 个 specialist（Architect、Researcher、Planner、Deep Worker、Senior Engineer、Lead、
+Explorer、Reviewer、Plan Reviewer、Vision Analyst、Junior Engineer）以适配后的 teammate 模板与
+workmate BASE 模板形式、沿用上游的稳定 id（`oracle`、`librarian`、`prometheus` …）随包发布；线上
+协议保留上游命名（`OMO_CODEX_*` 环境变量、LSP daemon 的 `_omo` auth envelope）。能力基线为
+[oh-my-openagent](https://github.com/code-yeongyu/oh-my-openagent)（OmO）的 commit `8c57e46`
+（v5.0.0-beta.20）—— 已固定、已校验、刻意不跟随推进。328 个文件的 skill 语料库混合了上游移植
+skill、第三方上游 skill 与本仓库编写的用例；另有一个被整体采纳的组件：来自
 [dsh-agent-teams](https://github.com/NanmiCoder/dsh-agent-teams) 的 `agent-teams` 插件（MIT），以一等
-主代码形式内联并带本地适配。其余部分均在本仓库编写；RTL/EDA 表面不属于本仓库，它已拆分到兄弟子
-bundle `@mpd-dsh/silicon`。
+主代码形式内联并带本地适配。**其余部分——DSH 侧的管道、各插件、preset、QA 套件——均在本仓库编写**；
+RTL/EDA 表面不属于本仓库，它已拆分到兄弟子 bundle `@mpd-dsh/silicon`。
 
 > **许可**：SUL-1.0 —— 继承自上游项目的许可（强 copyleft；完整文本见 [LICENSE.md](./LICENSE.md)）；
 > 上游版权归 code-yeongyu 与 OmO 贡献者所有。被采纳的 `agent-teams` 组件保留其自身的 MIT 许可

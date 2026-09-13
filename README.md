@@ -2,19 +2,23 @@
 
 **English** | [中文](./README.zh-CN.md)
 
-**my-power-dsh** is an independent DeepSeek Harness (DSH) plugin bundle — the package `@mpd-dsh/mpd`,
-with its own plugin rows, one `mpd` agent preset and a served skill corpus, installed with a single
-`dsh plugin add`.
+**my-power-dsh** is a DeepSeek Harness (DSH) plugin bundle — the package `@mpd-dsh/mpd`, with its own
+plugin rows, one `mpd` agent preset and a served skill corpus, installed with a single `dsh plugin add`.
 
-It is not the OMO DeepSeek-Harness port. Its provenance is factual rather than a lineage: a pinned
-baseline of [oh-my-openagent](https://github.com/code-yeongyu/oh-my-openagent) (OmO; commit `8c57e46`,
-v5.0.0-beta.20 — a baseline this repository does not chase), whose 11 specialists ship as adapted
-teammate templates and workmate BASE templates; a 328-file skill corpus that mixes ported upstream
-skills with third-party upstream skills and cases written here; and one adopted component — the
-`agent-teams` plugin from [dsh-agent-teams](https://github.com/NanmiCoder/dsh-agent-teams) (MIT),
-vendored as first-class main code with local adaptations. Everything else is written here, and the
-RTL/EDA surface is not part of this repository: it was split out to the sibling `@mpd-dsh/silicon`
-sub-bundle.
+**What it carries from upstream.** The bundle's roster, model-chain vocabulary and several protocol
+keys are OMO-derived and stay so: the 11 specialists (Architect, Researcher, Planner, Deep Worker,
+Senior Engineer, Lead, Explorer, Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer) ship as
+adapted teammate templates and workmate BASE templates under the upstream's stable ids
+(`oracle`, `librarian`, `prometheus`, …); the wire keeps the upstream names (`OMO_CODEX_*` env keys,
+the LSP daemon's `_omo` auth envelope). The capability baseline is
+[oh-my-openagent](https://github.com/code-yeongyu/oh-my-openagent) (OmO) at commit `8c57e46`
+(v5.0.0-beta.20) — pinned, verified, deliberately not chased. The 328-file skill corpus mixes ported
+upstream skills with third-party upstream skills and cases written here, and one component is adopted
+outright: the `agent-teams` plugin from
+[dsh-agent-teams](https://github.com/NanmiCoder/dsh-agent-teams) (MIT), vendored as first-class main
+code with local adaptations. **The rest — the DSH plumbing, the plugins, the preset, the QA suite — is
+written here**, and the RTL/EDA surface is not part of this repository: it was split out to the
+sibling `@mpd-dsh/silicon` sub-bundle.
 
 > **License**: SUL-1.0 — the licence inherited from the upstream project (strong copyleft; full text in
 > [LICENSE.md](./LICENSE.md)); the upstream copyright belongs to code-yeongyu and the OmO contributors.

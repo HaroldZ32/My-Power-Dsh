@@ -26,14 +26,17 @@ repository is English-only (see Language Policy).
 
 ## 1. Overview & Provenance
 
-**my-power-dsh** is an independent DeepSeek Harness (DSH) plugin bundle. Its provenance is factual
-rather than a lineage: a pinned baseline of the upstream project (`code-yeongyu/oh-my-openagent`; base
-commit `8c57e46`, v5.0.0-beta.20, recorded in `VENDOR_LOCK.json` and not chased per §9), whose 11
-specialists ship as adapted teammate templates and workmate BASE templates; and one adopted component,
-the `agent-teams` plugin from dsh-agent-teams under the MIT License, vendored as first-class main code.
-Everything else is written here. The upstream snapshot stays pinned for provenance, and upstream spec
-parity remains an engineering reference rather than an identity claim. License: SUL-1.0 (`LICENSE.md`);
-inheritance and attribution are declared in `README.md` and `LICENSE-NOTICES.md`.
+**my-power-dsh** is a DeepSeek Harness (DSH) plugin bundle. **What it carries from upstream**: the
+roster, the model-chain vocabulary and several wire names are OMO-derived (`OMO_CODEX_*`-style env
+keys, the LSP daemon's `_omo` auth envelope, the roster's stable ids), and the capability baseline is
+a pinned snapshot of `code-yeongyu/oh-my-openagent` (base commit `8c57e46`, v5.0.0-beta.20, recorded
+in `VENDOR_LOCK.json` and not chased per §9), whose 11 specialists ship as adapted teammate templates
+and workmate BASE templates; one component is adopted outright, the `agent-teams` plugin from
+dsh-agent-teams under the MIT License, vendored as first-class main code. **What is ours**: the DSH
+plumbing, the plugin set, the `mpd` preset and the QA suite. Upstream spec parity is an engineering
+reference, not an identity label — describe this repository by what it ships, never by what it is
+not. License: SUL-1.0 (`LICENSE.md`), inherited from upstream; inheritance and attribution are
+declared in `README.md` and `LICENSE-NOTICES.md`.
 
 - Upstream product names and repository paths stay upstream's (provenance only).
 - Our naming prefix is **`mpd`** (my-power-dsh): packages, plugin ids, tool names (`mpd_*`),
