@@ -10,7 +10,7 @@
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { memberActivity } from "./members.js";
-import { CAPTAIN_KEY, listArchivedTeamIds, readArchivedTeam, readUnreadMailbox, readTeam, taskDepthsById, taskVisualState, } from "./state.js";
+import { CAPTAIN_KEY, failedDependencyIds, listArchivedTeamIds, readArchivedTeam, readUnreadMailbox, readTeam, taskDepthsById, taskVisualState, } from "./state.js";
 /** The current task of a member: its first unfinished owned task. */
 function currentTaskOf(memberName, tasks) {
     for (const task of tasks) {
@@ -102,7 +102,10 @@ export async function assembleTeamSnapshot(ctx, stateRoot, workspace, state, opt
             subject: task.subject,
             description: task.description ?? '',
             status: task.status,
-            state: taskVisualState(task.status, task.dependencies, tasks),
+            state: taskVisualState(task.status, tasks, task.dependencies),
+            // OPT-1 parity: the panel must show the SAME failed-dependency fact the
+            // task-contract view reports, so a claimable dependent is not rendered blocked.
+            failedDependencies: failedDependencyIds(tasks, task.dependencies),
             assignee: task.assignee ?? '',
             model: memberModelRoute(roster.find((member) => member.name === task.assignee)),
             dependencies: task.dependencies,

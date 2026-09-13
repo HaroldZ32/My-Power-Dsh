@@ -4,6 +4,10 @@ export const TEAM_TOOL_NAMES = [
     'agent_teams_add_member', 'agent_teams_remove_member', 'agent_teams_create_task',
     'agent_teams_reassign_task', 'agent_teams_claim_task', 'agent_teams_update_task',
     'agent_teams_send_message', 'agent_teams_status', 'agent_teams_resume', 'agent_teams_delete',
+    // The read-only contract surface is registered from a mpd-delta region in
+    // tools.js, so it must be listed here explicitly: without it the captain prompt
+    // and the deny computation under-count the frozen manual-entry set (14 names).
+    'agent_teams_task_contract',
 ];
 export const MEMBER_TOOL_NAMES = [
     'agent_teams_claim_task', 'agent_teams_update_task', 'agent_teams_send_message', 'agent_teams_status',

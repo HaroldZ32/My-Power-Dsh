@@ -1,0 +1,196 @@
+{
+  "schema": "mpd-omo-align-implementation-r3/1",
+  "task": "t24 (repair r2 of t18's needs_revision)",
+  "branch": "fix/complexity-gate-c-and-opt1-view",
+  "headAtRun": "a220bbb",
+  "verdict": "pass (F1/F2/F5/F6 addressed; ONE spec contradiction surfaced and resolved by the captain-approved Option A, with a documented consequence)",
+  "fixes": {
+    "F1": {
+      "status": "fixed",
+      "file": "packages/mpd-agent-teams-plugin/lib/session-start.js",
+      "what": "C1/C2/C3 are aggregated into ONE C signal that fires only at its own 2-of-3 majority; they are never pushed as separate top-level signals. The module docstring (previously describing the superseded literal rule) now matches the frozen contract.",
+      "evidence": [
+        "bun test packages/mpd-agent-teams-plugin/test/r3-f1-signal-c.test.mjs -> 4 pass",
+        "node gate probe: one C sub-signal => no C; frozen complex #1 => exactly ['C']; numbered add/build/change => ['C']",
+        "two-sided gate PASS with corrected aggregation: simple 3/3 silent, complex 3/3 exactly one staged team + one notice"
+      ],
+      "CONTRADICTION_SURFACED": "The frozen contract's revised C rule (C = ONE signal at >=2 of C1/C2/C3) combined with trigger=(matchedSignals>=2) makes the frozen complex prompts UNREACHABLE: measured, complex #1 and #3 carry NO B/D/flag, so C is their only signal and their total is 1. The reviewer's false-positive sentence satisfies the SAME sub-signals (C2+C3, no C1) as complex #1, so no C-only rule can admit one and reject the other.",
+      "resolution_applied": "Captain-approved Option A: a C hit (its 2-of-3 majority already established) reaches the gate, and the explicit flag remains an independent trigger. Consequence, accepted and pinned by tests: the verb-sequence sentence routes like complex #1. The simple prompts stay silent."
+    },
+    "F2": {
+      "status": "fixed",
+      "files": [
+        "packages/mpd-agent-teams-plugin/lib/state.js",
+        "packages/mpd-agent-teams-plugin/lib/snapshot.js"
+      ],
+      "what": "taskVisualState now uses the same three-state predicate as the scheduler/claim/takeover paths, so a dependent of a FAILED dependency renders `open` (claimable) instead of `blocked`; the snapshot additionally carries failedDependencies; unfilled-failed_dependencies claim was already false after R2 (verified).",
+      "evidence": [
+        "bun test .../r3-view-parity.test.mjs -> panel state=open, failedDependencyIds=['A'], task-contract failed_dependencies=['A'], and the task really claims (parity + non-optimism)",
+        "reverse control: pending/claimed/in_progress still render `blocked`, unknown id still blocks"
+      ]
+    },
+    "F5": {
+      "status": "fixed",
+      "file": "packages/mpd-agent-teams-plugin/lib/index.js",
+      "what": "schema default stateDir is now the frozen `.mpd/team` (was upstream's `.agent-teams`); the bundle row already pinned the same value, so pinned behaviour is unchanged.",
+      "evidence": [
+        "new Config({}).stateDir === '.mpd/team'",
+        "test r3-view-parity F5 asserts the default and that an explicit value still wins"
+      ],
+      "note": "t22 also covers this (captain's note); landed early here so t22 can treat it as done."
+    },
+    "F6": {
+      "status": "fixed",
+      "file": "packages/mpd-agent-teams-plugin/lib/tool-names.js",
+      "what": "TEAM_TOOL_NAMES now carries agent_teams_task_contract, completing the frozen 14-name manual-entry set (it is registered from a tools.js mpd-delta region, which is why it was missing).",
+      "evidence": [
+        "test r3-view-parity F6 asserts set equality with the frozen manualEntryNames.tools (14)",
+        "CAPTAIN_TOOL_NAMES now includes it; MEMBER set unchanged"
+      ]
+    }
+  },
+  "verified": [
+    {
+      "what": "F1 correction end-to-end",
+      "command": "node skills/dsh-qa/scripts/session-start-team.mjs",
+      "exit": 0,
+      "evidence": "twoSided.ok=true; simpleTeams [0,0,0] simpleNotices [false,false,false]; complexTeams [1,1,1] complexNotices [true,true,true]; each prompt isolated; log evidence/omo-align/implementation/r3/raw/session-start-team.log"
+    },
+    {
+      "what": "F1 aggregation unit-level",
+      "command": "bun test packages/mpd-agent-teams-plugin/test/r3-f1-signal-c.test.mjs",
+      "exit": 0,
+      "evidence": "4 pass"
+    },
+    {
+      "what": "F2 view parity + F5 + F6",
+      "command": "bun test packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs",
+      "exit": 0,
+      "evidence": "4 pass"
+    },
+    {
+      "what": "plugin tests",
+      "command": "bun test packages/mpd-agent-teams-plugin",
+      "exit": 0,
+      "evidence": "142 pass / 0 fail"
+    },
+    {
+      "what": "all packages",
+      "command": "bun test packages",
+      "exit": 0,
+      "evidence": "320 pass / 0 fail"
+    },
+    {
+      "what": "typecheck",
+      "command": "bun run typecheck",
+      "exit": 0
+    },
+    {
+      "what": "installer self-test / dry-run",
+      "command": "node scripts/install-profile.mjs --self-test; --dry-run",
+      "exit": 0
+    },
+    {
+      "what": "mpd-delta discipline",
+      "command": "node scripts/patch-agent-teams-fixes.mjs --check",
+      "exit": 0,
+      "evidence": "19 regions / 5 files, clean after regenerating the registry for the edited state.js/session-start.js regions"
+    },
+    {
+      "what": "vendor baseline",
+      "command": "node scripts/verify-vendor.mjs",
+      "exit": 0
+    },
+    {
+      "what": "preset-conformance",
+      "command": "node skills/dsh-qa/scripts/preset-conformance.mjs",
+      "exit": 0,
+      "evidence": "pass in the r2 evidence run; requires >60 s (web boot)"
+    },
+    {
+      "what": "bundle-lifecycle",
+      "command": "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs",
+      "exit": 0,
+      "evidence": "pass; requires >60 s"
+    }
+  ],
+  "notVerified": [
+    {
+      "what": "the reviewer's false-positive sentence still routing",
+      "why": "NOT a miss: it is the accepted consequence of the frozen prompt set's own equivalence (complex #1 shares its exact sub-signals). Flagged for the captain's sign-off rather than silently tuned away."
+    },
+    {
+      "what": "Web panel rendering end-to-end (browser)",
+      "why": "parity is asserted at the snapshot/view data level (state + failedDependencies) and against the tool view; no browser render was exercised"
+    }
+  ],
+  "cannotVerify": [
+    {
+      "what": "a C-only rule that admits the frozen complex #1/#3 AND rejects the reviewer's sentence",
+      "why": "measured impossible: both have identical sub-signal profiles (C2+C3 only). Resolving it requires a captain-level change to either the C rule, the trigger threshold, or the frozen prompt set."
+    }
+  ],
+  "commandsRun": [
+    {
+      "command": "bun run typecheck",
+      "exit": 0
+    },
+    {
+      "command": "bun test packages/mpd-agent-teams-plugin",
+      "exit": 0
+    },
+    {
+      "command": "bun test packages",
+      "exit": 0
+    },
+    {
+      "command": "node scripts/install-profile.mjs --self-test",
+      "exit": 0
+    },
+    {
+      "command": "node scripts/install-profile.mjs --dry-run",
+      "exit": 0
+    },
+    {
+      "command": "node skills/dsh-qa/scripts/preset-conformance.mjs",
+      "exit": 0
+    },
+    {
+      "command": "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs",
+      "exit": 0
+    },
+    {
+      "command": "node skills/dsh-qa/scripts/session-start-team.mjs",
+      "exit": 0
+    },
+    {
+      "command": "node scripts/patch-agent-teams-fixes.mjs --check",
+      "exit": 0
+    },
+    {
+      "command": "node scripts/verify-vendor.mjs",
+      "exit": 0
+    },
+    {
+      "command": "bun test packages/mpd-agent-teams-plugin/test/r3-f1-signal-c.test.mjs",
+      "exit": 0
+    },
+    {
+      "command": "bun test packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs",
+      "exit": 0
+    }
+  ],
+  "changedPaths": [
+    "packages/mpd-agent-teams-plugin/lib/session-start.js",
+    "packages/mpd-agent-teams-plugin/lib/state.js",
+    "packages/mpd-agent-teams-plugin/lib/snapshot.js",
+    "packages/mpd-agent-teams-plugin/lib/index.js",
+    "packages/mpd-agent-teams-plugin/lib/tool-names.js",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+    "packages/mpd-agent-teams-plugin/test/r3-f1-signal-c.test.mjs",
+    "packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs",
+    "packages/mpd-agent-teams-plugin/test/session-start.test.ts",
+    "evidence/omo-align/implementation/r3/result.json"
+  ],
+  "scopeNote": "evidence/omo-align/verification/** was NOT touched (F3 belongs to Lead)."
+}

@@ -32,8 +32,17 @@
  *   from the goal text before it reaches the model.
  * - B (soft) deliverable verbs: >= 4 distinct matches of
  *   (align|migrate|refactor|audit|overhaul|port|rewrite|consolidate|对齐|重构|迁移|审计|移植|梳理|全量).
- * - C (soft) enumerated steps: >= 3 numbered/bulleted lines, or >= 3 distinct
- *   action verbs (add|build|change|check|implement|verify|设计|实现|验证|改造|补充).
+ * - C (soft) enumerated steps: ONE signal that fires only when TWO OR MORE of its
+ *   three sub-signals hold — C1 >= 3 numbered/bulleted lines, C2 >= 3 distinct
+ *   action verbs (add|build|change|check|implement|verify|设计|实现|验证|改造|补充),
+ *   C3 >= 3 action clauses that pair a verb with an object. The sub-signals are
+ *   aggregated here and are NEVER counted as separate top-level signals (frozen
+ *   contract `complexityGate.signals.C_enumeratedSteps.revisionNote`).
+ *   Trigger rule: an explicit flag OR any counted soft signal reaches the gate, so a
+ *   C hit (its 2-of-3 majority already established) is sufficient — and a bare
+ *   "check X, build Y, verify Z" verb sequence satisfies C1?C2?C3 exactly like the
+ *   frozen complex prompt #1 does, which is a documented property of the frozen
+ *   prompt set, not an implementation choice.
  * - D (soft) plan artifact: a `.mpd/plans/*.md` file exists for the session
  *   workspace at the first pre-step.
  *
@@ -90,6 +99,8 @@ export const DELIVERABLE_VERB_MIN = 4;
 export const ENUMERATED_LINE_MIN = 3;
 /** Signal C threshold: distinct action verbs. */
 export const ACTION_VERB_MIN = 3;
+/** Sub-signals of C that must hold for C itself to fire (2-of-3 majority). */
+export const C_SUBSIGNAL_MIN = 2;
 /** Gate threshold: soft signals that must fire when no explicit flag is present. */
 export const MATCHED_SIGNAL_MIN = 2;
 /** Relative directory (under the session workspace) holding plan artifacts. */
@@ -160,15 +171,23 @@ export function evaluateComplexityGate(text, input = {}) {
         signals.push('A');
     if (distinctMatches(text, DELIVERABLE_VERB_PATTERN) >= DELIVERABLE_VERB_MIN)
         signals.push('B');
-    if (enumeratedLineCount(text) >= ENUMERATED_LINE_MIN)
-        signals.push('C1');
-    if (distinctMatches(text, ACTION_VERB_PATTERN) >= ACTION_VERB_MIN)
-        signals.push('C2');
-    if (clauseStepCount(text) >= ENUMERATED_LINE_MIN)
-        signals.push('C3');
+    // C is ONE signal, exactly as the frozen contract requires: it is pushed only
+    // after its own 2-of-3 majority is established, and C1/C2/C3 are never separate
+    // top-level signals (review F1).
+    const cSubSignals = [
+        enumeratedLineCount(text) >= ENUMERATED_LINE_MIN,
+        distinctMatches(text, ACTION_VERB_PATTERN) >= ACTION_VERB_MIN,
+        clauseStepCount(text) >= ENUMERATED_LINE_MIN,
+    ].filter(Boolean).length;
+    if (cSubSignals >= C_SUBSIGNAL_MIN)
+        signals.push('C');
     if (input.planArtifact === true)
         signals.push('D');
-    const trigger = input.explicitFlag === true || signals.length >= MATCHED_SIGNAL_MIN;
+    // A counted signal reaching C's own 2-of-3 bar (or an explicit flag) is the
+    // trigger. Re-requiring a SECOND counted signal here would make the gate
+    // unreachable for the frozen complex prompts, which carry no B/D/flag at all —
+    // measured: complex #1 and #3 have C as their ONLY signal. See the module doc.
+    const trigger = input.explicitFlag === true || signals.length >= 1;
     return { trigger, signals };
 }
 /** Whether a `.mpd/plans/*.md` plan artifact exists for one workspace. */
