@@ -138,3 +138,28 @@ prior evidence) are recorded with reasons rather than silently swept.
 
 Every earlier hash quoted in a lane's report is a **labelled point-in-time measurement**, not a
 freeze value; this table is the binding one for the revision it names.
+
+---
+
+## 9. Post-freeze revision: the declaration's tone (owner review)
+
+The owner read the landed declaration and called it out: *"也不用强调不是OMO的扩展，这就活脱一掩耳盗铃"* —
+don't keep insisting it is not an OMO extension; that is self-deception. The objection stands on the
+option's own measurements: the bundle still ships the upstream roster under its stable ids, still
+speaks the upstream wire names (`OMO_CODEX_*`, `_omo`), and still pins the upstream baseline, so an
+opening line that denies being the upstream's port is defending a claim rather than describing a
+project.
+
+Revision (`fix/declaration-style`, commit `2058963`, merged `fbbd650`): the negation framing was
+replaced with a factual two-part statement — **what it carries from upstream** (roster, model-chain
+vocabulary, wire names, the pinned `oh-my-openagent` baseline `8c57e46`, the adopted
+dsh-agent-teams component under MIT) and **what is ours** (the DSH plumbing, the plugin set, the
+`mpd` preset, the QA suite) — with the licence stated as a licence fact. The same treatment went to
+`AGENTS.md` §1 — which now also carries the rule this episode produced: *describe this repository by
+what it ships, never by what it is not* — plus `package.json`, the four source-header comments and
+the three plugin README pairs (`covered by SUL-1.0` → `SUL-1.0, inherited from upstream`), with each
+touched package's dist rebuilt.
+
+What did NOT change: the provenance measurements (the pinned upstream commit object is absent and is
+not an ancestor of HEAD), `LICENSE.md`, `LICENSE-NOTICES.md`, the recorded exemptions, and every
+"independent" that refers to the workmate library's instance naming rather than to an identity.
