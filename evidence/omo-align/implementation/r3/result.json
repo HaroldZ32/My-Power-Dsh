@@ -2,7 +2,7 @@
   "schema": "mpd-omo-align-implementation-r3/1",
   "task": "t24 (repair r2 of t18's needs_revision)",
   "branch": "fix/complexity-gate-c-and-opt1-view",
-  "headAtRun": "a220bbb",
+  "headAtRun": "1c83efc",
   "verdict": "pass (F1/F2/F5/F6 addressed; ONE spec contradiction surfaced and resolved by the captain-approved Option A, with a documented consequence)",
   "fixes": {
     "F1": {
@@ -192,5 +192,40 @@
     "packages/mpd-agent-teams-plugin/test/session-start.test.ts",
     "evidence/omo-align/implementation/r3/result.json"
   ],
-  "scopeNote": "evidence/omo-align/verification/** was NOT touched (F3 belongs to Lead)."
+  "scopeNote": "evidence/omo-align/verification/** was NOT touched (F3 belongs to Lead).",
+  "freeze": "evidence/omo-align/implementation/r3/freeze.json (t24 item 8: immutable, records head + per-file bytes/sha256 after the revision settled)",
+  "acceptanceCoverage": {
+    "1_C_single_signal_or_amend_contract": {
+      "status": "addressed",
+      "how": "C aggregated into ONE signal at its 2-of-3 bar; docstring rewritten; gate probe asserts it. NOTE: the contract's literal rule + >=2 trigger makes the frozen complex prompts unreachable, so Option A was applied and the consequence pinned in tests — captain sign-off requested."
+    },
+    "2_taskVisualState_three_state_and_allTasks": {
+      "status": "addressed",
+      "how": "taskVisualState routes through the three-state predicate; taskContractView already received allTasks (R2) and now a falsifiable parity assertion exists (r3-view-parity)."
+    },
+    "3_restore_rebuild_t17_report_and_fix_run_mjs_comparison": {
+      "status": "discharged_by_ownership",
+      "how": "The t17 report is intact and captain-adjudicated (schema mpd-omo-align-verification/1, assignee Lead, verdict pass, restoredAt with restoreReason). My harness typo (duplicate tool names) was already fixed and its artifacts moved to implementer-selfcheck/ so a re-run cannot clobber Lead's record. F3 ownership is Lead's per the captain."
+    },
+    "4_negative_control_and_real_S3_predicate": {
+      "status": "addressed",
+      "how": "isTaskReady() exported from scheduler.js (region ready-task-predicate) and driven by the S3 test; the two-sided case booted a disarmed gate (autoRoute=false) and measured 0 teams / 0 notices while the armed side stays 3/3."
+    },
+    "5_stateDir_default": {
+      "status": "addressed",
+      "how": "schema default .mpd/team; asserted."
+    },
+    "6_TEAM_TOOL_NAMES_membership": {
+      "status": "addressed",
+      "how": "agent_teams_task_contract added to TEAM_TOOL_NAMES (14 = frozen set). MEMBER_TOOL_NAMES membership decided deliberately: NOT added — the tool is captain-facing, and CAPTAIN_TOOL_NAMES is derived from the difference, so it stays captain-only."
+    },
+    "7_ledger_doc_pair_or_record_deferral": {
+      "status": "recorded_deferral",
+      "how": "docs/omo-parity-ledger.md + .zh-CN.md remain UNCOMMITTED (untracked) and docs/** is out of t24 scope; deferral recorded here per the acceptance's 'or record the deferral in the wave closure'. The wave closure must own the pair commit."
+    },
+    "8_immutable_freeze": {
+      "status": "addressed",
+      "how": "evidence/omo-align/implementation/r3/freeze.json records head 1c83efc + 9 file sha256/bytes after the tree settled."
+    }
+  }
 }
