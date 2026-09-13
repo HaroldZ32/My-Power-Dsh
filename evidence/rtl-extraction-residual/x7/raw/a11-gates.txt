@@ -1,4 +1,0 @@
-[typecheck] exit=0 :: $ tsgo --noEmit 
-[buntest] exit=0 ::  2097 expect() calls Ran 298 tests across 96 files. [13.27s] 
-[rtlrefs] exit=0 ::   pending (historical): skills/rtl-dev — proposed in the preserved gap assessment and never created: the capability shipped as rtl-codestyle/rtl-verif/rtl-ip-flow, and the document's technical content is kept verbatim [rtl-refs] PASS — 13 invariant subject(s) clean, 35 resolved, 8 pending-by-design, 0 unresolved 
-[rowsparity] exit=0 :: [verify-rows-parity] ok: 21 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-tools, mpd-ulw, mpd-web-compat, mpd-workmate) 

@@ -1,2 +1,0 @@
-[verify-rows-parity] FAIL - zero-subject run: the bundle patch declares no '- insert:' row ids - refusing to report PASS with nothing to compare
-guard1_probe_exit=1

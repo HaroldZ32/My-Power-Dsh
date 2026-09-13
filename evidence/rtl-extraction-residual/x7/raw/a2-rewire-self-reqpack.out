@@ -1,1 +1,0 @@
-[mpd-qa] FAIL case=team-route-rewire lane=self-test reason=absent-staged-pack prereq=dist/mpd-package/package.json remedy="node scripts/pack-mpd.mjs"

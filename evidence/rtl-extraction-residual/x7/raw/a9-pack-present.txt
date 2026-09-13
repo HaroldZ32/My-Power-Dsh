@@ -1,9 +1,0 @@
-=== A9 pack present: bun run test:qa ===
-test:qa exit=0
-SKIP count: 0
-cases run: 24
-[test:qa] all self-tests passed
-=== A9 pack present: bun run test:qa:strict ===
-test:qa:strict exit=0
-SKIP count: 0
-[test:qa:strict] all self-tests passed with no skips

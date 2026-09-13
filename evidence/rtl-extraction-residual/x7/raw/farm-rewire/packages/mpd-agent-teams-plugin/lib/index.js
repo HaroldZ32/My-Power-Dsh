@@ -1,1 +1,0 @@
-/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/index.js

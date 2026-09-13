@@ -1,8 +1,0 @@
-# fake-root probe: fresh-clone shape (tracked files present, dist/ absent)
-# farm: evidence/rtl-extraction-residual/followup/raw/x2-fakeroot
-## relocate-smoke --self-test
-[relocate-smoke self-test] FAIL: run node scripts/pack-mpd.mjs first
-exit=1
-## team-route-rewire --self-test
-[team-route-rewire self-test] FAIL: run node scripts/pack-mpd.mjs first
-exit=1

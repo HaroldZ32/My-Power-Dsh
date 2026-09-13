@@ -1,2 +1,0 @@
-[mpd-qa] SKIP case=team-route-rewire lane=real reason=absent-staged-pack prereq=dist/mpd-package/package.json remedy="node scripts/pack-mpd.mjs"
-[team-route-rewire] staged package absent at dist/mpd-package/package.json; skipping (not a failure)

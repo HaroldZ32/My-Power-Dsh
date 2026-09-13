@@ -1,2 +1,0 @@
-[mpd-qa] SKIP case=relocate-smoke lane=self-test reason=absent-staged-pack prereq=dist/mpd-package/package.json remedy="node scripts/pack-mpd.mjs"
-[relocate-smoke] staged package absent at dist/mpd-package/package.json; skipping (not a failure)

@@ -17,8 +17,8 @@ upstream skills with third-party upstream skills and cases written here, and one
 outright: the `agent-teams` plugin from
 [dsh-agent-teams](https://github.com/NanmiCoder/dsh-agent-teams) (MIT), vendored as first-class main
 code with local adaptations. **The rest — the DSH plumbing, the plugins, the preset, the QA suite — is
-written here**, and the RTL/EDA surface is not part of this repository: it was split out to the
-sibling `@mpd-dsh/silicon` sub-bundle.
+written here**, and the RTL/EDA surface is not part of this repository: it has been extracted
+into a separate bundle maintained outside this one.
 
 > **License**: SUL-1.0 — the licence inherited from the upstream project (strong copyleft; full text in
 > [LICENSE.md](./LICENSE.md)); the upstream copyright belongs to code-yeongyu and the OmO contributors.
@@ -55,10 +55,9 @@ Full documentation lives in [`docs/`](docs/index.md) — start at
   model, troubleshooting).
 
 **RTL/EDA capability lives elsewhere.** The `rtl-*` skills, the verif plugin, the HDL
-language-server configuration, the RTL guides and the Verilog golden fixtures are owned by the
-silicon sub-bundle (`@mpd-dsh/silicon`, sibling checkout `../my-power-dsh-silicon`,
-`gitee.com/nop_chip/my-power-dsh-silicon`). This repository ships the harness/bundle software
-surface only; an mpd-only install boots unchanged and carries no RTL content.
+language-server configuration, the RTL guides and the Verilog golden fixtures were extracted out
+of this repository. This repository ships the harness/bundle software surface only; an mpd-only
+install boots unchanged and carries no RTL content.
 
 This installs the `@mpd-dsh/mpd` bundle: DeepSeek dual-track (official default),
 MCP servers, all mpd plugins (including codegraph auto-init), adopted agent-teams

@@ -1,2 +1,0 @@
-[rtl-ip-profile] SKIP: silicon bundle not present at /nonexistent/mpd-silicon — the composed-boot probe needs the checkout (set MPD_SILICON_ROOT)
-[rtl-ip-profile] PASS (nothing to probe: bundle absent)

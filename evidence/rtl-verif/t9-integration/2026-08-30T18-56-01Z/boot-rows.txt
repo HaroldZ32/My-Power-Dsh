@@ -1,9 +1,0 @@
-boot dump-config entries (isolated DSH_HOME, headless):
-- id: mcp-lsp
-  name: '@deepseek-ai/dsh-mcp-client'
-- id: mcp-wave-mcp
-  name: '@deepseek-ai/dsh-mcp-client'
-- id: mcp-traceweave
-  name: '@deepseek-ai/dsh-mcp-client'
-- id: mpd-verif
-  name: /root/dshProj/my-power-dsh/packages/mpd-verif-plugin/dist/index.js

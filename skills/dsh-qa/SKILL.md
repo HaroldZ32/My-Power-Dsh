@@ -39,8 +39,7 @@ the upstream host QA skills.
 
 All cases in this corpus are **software-type**: they exercise the harness/bundle software surface
 (rows, tools, routes, sessions, files, processes) and never an EDA/RTL toolchain. The RTL/EDA
-corpus and its golden fixtures live in the silicon sub-bundle
-(`gitee.com/nop_chip/my-power-dsh-silicon`).
+corpus and its golden fixtures have been extracted out of this repository.
 
 | slug | domain | assertion | phase |
 |---|---|---|---|

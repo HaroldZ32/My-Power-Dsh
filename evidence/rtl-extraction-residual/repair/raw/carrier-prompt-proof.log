@@ -1,7 +1,0 @@
-FAIL  A: session composed with the silicon profile present lists rtl-ip
-FAIL  A: the silicon profile body is present (RTL IP description)
-FAIL  A: mpd profile still listed
-PASS  B: without silicon, rtl-ip is NOT listed
-FAIL  B: mpd profile still listed
-carrier prompt proof ok=false
-prompt_proof_exit=1

@@ -1,3 +1,0 @@
-[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
-[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair/raw/corrupt-proof/valid-nearest/ws
-[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)

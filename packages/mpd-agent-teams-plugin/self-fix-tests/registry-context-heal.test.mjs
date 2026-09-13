@@ -164,8 +164,16 @@ test("t2: quality-gates.js strip-heal stays byte-identical (no trade between the
 
 // ---------- insertion-count exactness: any insertion history, not just a full strip ----------
 test("t2: a region heals to its canonical position under partial insertion histories", () => {
+    let filesWithRegions = 0
     for (const name of ADOPTED_FILES) {
         const deltas = MPD_DELTAS.filter((delta) => delta.file.endsWith(`lib/${name}`))
+        // An adopted file MAY carry zero registered regions: its local adaptations can be
+        // plain body edits with no marked seam (e.g. `index.js` after the cross-bundle
+        // carrier hook was removed). There is no insertion history to exercise there, and
+        // the cross-file heal test above still covers the file byte-for-byte.
+        if (deltas.length === 0)
+            continue
+        filesWithRegions += 1
         const siblingIds = deltas
             .filter((delta) => delta.id.endsWith("scope-overlap") || delta.id.endsWith("scope-overlap-normalize"))
             .slice(0, 1)
@@ -193,6 +201,9 @@ test("t2: a region heals to its canonical position under partial insertion histo
             }
         }
     }
+    // Non-vacuity: the fixture must still exercise real insertion histories, so a registry
+    // that lost every region would fail here instead of passing silently.
+    expect(filesWithRegions).toBeGreaterThan(0)
 })
 
 // ---------- the marker prefix fix: one fixture per colliding pair ----------
