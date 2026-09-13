@@ -129,5 +129,13 @@
     "branch": "fix/external-bundle-purge",
     "merge": "--no-ff into dev",
     "guidance": "The pre-existing untracked user-facing ledger and prior-wave QA evidence directories were deliberately NOT staged or committed by this task."
+  },
+
+  "taskRecordCaveat": {
+    "status": "failed (validator-blocked, NOT a work failure)",
+    "cause": "The task contract's inScope enumerated only the files to EDIT, while the same contract's acceptance required deleting directories outside that list. The completion validator therefore rejected 11 changed paths as undeclared and forbade a 'completed' verdict.",
+    "workState": "All acceptance criteria were measured as passed and the change is merged into dev (fix commit 1efb30b, merge commit 1f2b38e).",
+    "resolutionNeeded": "Re-declare inScope to cover the deletion surface plus the self-fix test file, and re-issue the completion so the terminal record carries the acceptance/verify evidence.",
+    "deviation": "packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs is outside the declared inScope but was required: with the carrier region gone the entrypoint carries zero registered regions, and that fixture dereferenced an empty region list (measured 1 fail / 152 pass before the fix, 153 pass / 0 fail after). The change is minimal: skip region-free adopted files and assert non-vacuity."
   }
 }
