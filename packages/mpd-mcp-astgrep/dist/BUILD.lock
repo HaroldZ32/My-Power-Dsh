@@ -1,5 +1,5 @@
 {
-  "source": "the upstream project",
+  "source": "8c57e46",
   "sourceDir": "packages/ast-grep-mcp",
   "builtAt": "2026-08-26T05:04:38.418Z",
   "build": [
@@ -12,7 +12,7 @@
   },
   "artifact": {
     "file": "cli.js",
-    "sha256": "5a9ae80a4ef79b2efcd66dba27c82574f74e682c9bb84e465291dc0ba34aed7e",
+    "sha256": "f06bba310cad306b5638efb90a69e50b2c6a7416c0c536867f02c70f4b4fa4c5",
     "bytes": 84651
   }
 }
