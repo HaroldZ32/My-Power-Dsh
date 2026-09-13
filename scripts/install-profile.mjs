@@ -172,9 +172,15 @@ function buildPlan(o) {
   const agentTeamsRow = {
     id: "agent-teams", name: p("packages/mpd-agent-teams-plugin/lib/index.js"),
     config: { stateDir: ".mpd/team", memberProvider: "spawn", memberMaxDepth: 1, maxMembers: 16,
-      // SESSION-START TEAM RULE: mechanically enforce a team per mpd session
-      // (mirrors the bundle patch; see packages/mpd-agent-teams-plugin/lib/session-start.js).
-      sessionTeamPolicy: { mode: "auto", profile: "mpd", presets: ["mpd"], name: "MPD Default", approval: "required" } },
+      // CONFIGURATION PLANE: aligned to upstream team_mode (mirrors the bundle
+      // patch; see packages/mpd-agent-teams-plugin/lib/index.js). Absent-safe.
+      maxParallelMembers: 8, maxMessagesPerRun: 10000, maxWallClockMinutes: 120,
+      maxMemberTurns: 500, messagePayloadMaxBytes: 32768, recipientUnreadMaxBytes: 262144,
+      mailboxPollIntervalMs: 3000, enforcement: "enforce",
+      // SESSION-START TEAM GATE: a session starts with NO team; `mode: "off"` is
+      // the default (upstream parity) and `autoRoute: true` is the decoupled
+      // mechanical complexity gate. See lib/session-start.js.
+      sessionTeamPolicy: { mode: "off", autoRoute: true, profile: "mpd", presets: ["mpd"], name: "MPD Default", approval: "required" } },
     configYaml: profiles
   }
   if (o.agentTeams !== false) rows.push(agentTeamsRow)
@@ -257,9 +263,18 @@ function selfTest() {
     if (!r || r.config.toolCallTimeoutMs !== 60000) { console.error("[install-profile self-test] FAIL: " + mcp + " toolCallTimeoutMs"); process.exit(1) }
   }
   if (!rows.includes("agent-teams") || plan.agentTeamsRow.config.stateDir !== ".mpd/team") { console.error("[install-profile self-test] FAIL: agent-teams row/override"); process.exit(1) }
-  // session-start team policy must ship in the agent-teams row config
+  // session-start team gate must ship in the agent-teams row config: `mode: "off"`
+  // is the new default (no auto-provision, upstream parity) and `autoRoute: true`
+  // is the decoupled mechanical complexity gate (must be ENABLED by default).
   const policy = plan.agentTeamsRow.config.sessionTeamPolicy
-  if (!policy || policy.mode !== "auto" || policy.profile !== "mpd" || !Array.isArray(policy.presets) || !policy.presets.includes("mpd")) { console.error("[install-profile self-test] FAIL: agent-teams sessionTeamPolicy"); process.exit(1) }
+  if (!policy || policy.mode !== "off" || policy.autoRoute !== true || policy.profile !== "mpd" || !Array.isArray(policy.presets) || !policy.presets.includes("mpd")) { console.error("[install-profile self-test] FAIL: agent-teams sessionTeamPolicy (want mode 'off' + autoRoute enabled)"); process.exit(1) }
+  // configuration plane: the upstream-aligned keys must ship with the frozen
+  // local defaults (measured against upstream team_mode; see frozen-contract).
+  const plane = plan.agentTeamsRow.config
+  const planeExpected = { maxParallelMembers: 8, maxMessagesPerRun: 10000, maxWallClockMinutes: 120, maxMemberTurns: 500, messagePayloadMaxBytes: 32768, recipientUnreadMaxBytes: 262144, mailboxPollIntervalMs: 3000, enforcement: "enforce", maxMembers: 16, memberMaxDepth: 1 }
+  for (const [key, want] of Object.entries(planeExpected)) {
+    if (plane[key] !== want) { console.error("[install-profile self-test] FAIL: agent-teams configPlane." + key + " (want " + JSON.stringify(want) + ", got " + JSON.stringify(plane[key]) + ")"); process.exit(1) }
+  }
   if (!rows.includes("mpd-hashline")) { console.error("[install-profile self-test] FAIL: mpd-hashline row"); process.exit(1) }
   if (!rows.includes("mpd-roles") || !rows.includes("mpd-workmate") || !rows.includes("mpd-bootstrap")) { console.error("[install-profile self-test] FAIL: mpd-roles/workmate/bootstrap rows"); process.exit(1) }
   if (!plan.agentTeamsRow.name.includes("packages/mpd-agent-teams-plugin/lib/index.js")) { console.error("[install-profile self-test] FAIL: agent-teams main-code path"); process.exit(1) }

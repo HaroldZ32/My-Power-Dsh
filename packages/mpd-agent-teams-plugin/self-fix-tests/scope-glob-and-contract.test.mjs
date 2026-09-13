@@ -217,7 +217,7 @@ test("DEFECT 2 falsifiability: the write-task overlap guard still separates coll
 function scratchRoot() {
     const root = mkdtempSync(join(tmpdir(), "mpd-t4-fix-"))
     mkdirSync(join(root, "packages/mpd-agent-teams-plugin/lib"), { recursive: true })
-    for (const file of ["index.js", "quality-gates.js", "tools.js", "mpd-deltas.js"])
+    for (const file of ["index.js", "quality-gates.js", "session-start.js", "tools.js", "mpd-deltas.js"])
         cpSync(join(pluginRoot, "lib", file), join(root, "packages/mpd-agent-teams-plugin/lib", file))
     return root
 }
@@ -261,7 +261,7 @@ test("durability: the guard is idempotent on the real tree and restores a stripp
     expect(applyAgentTeamsFixes({ write: false }).regions).toBe(expectedRegions)
     const root = scratchRoot()
     try {
-        for (const name of ["index.js", "quality-gates.js", "tools.js"])
+        for (const name of ["index.js", "quality-gates.js", "session-start.js", "tools.js"])
             stripDeltas(join(root, "packages/mpd-agent-teams-plugin/lib", name))
         // verify-only on a stripped tree must fail loudly...
         expect(() => applyAgentTeamsFixes({ root, write: false })).toThrow()

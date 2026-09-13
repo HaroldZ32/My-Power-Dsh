@@ -77,17 +77,28 @@
       (normal name + executionPrompt fetched via mpd_role_persona) only to add a specialist
       beyond the `mpd` profile roster.
 
-      SESSION STARTUP RULE (binding, mechanically enforced by the plugin): every session
-      MUST start inside a team. At the first step of a session without a team the plugin
-      auto-provisions the staged default team "MPD Default" (profile `mpd`) and injects its
-      startup notice — you are its captain from that moment. If the default team does not
-      fit the session, archive it with agent_teams_delete and create a fresh one with
-      agent_teams_create(approval="required", profile="mpd") BEFORE any substantive work.
-      Never work a session outside a team; a resumed session's team resumes automatically.
+      SESSION STARTUP RULE (binding, mechanically enforced by the plugin): a session starts
+      with NO team — a team is NOT a precondition of a session. The plugin evaluates a
+      mechanical COMPLEXITY GATE at the session's first pre-step and behaves accordingly:
+        - gate NOT triggered -> run the session solo; do NOT create a team, and do not
+          invent one. Ordinary questions, one-line edits and lookups belong here.
+        - gate TRIGGERED -> the plugin has already staged the default team "MPD Default"
+          (profile `mpd`, approval=required) and injected ONE notice saying the session was
+          routed by the gate; you are its captain from that moment. Shape the roster/DAG,
+          tell the user the Web plan is ready, and let the panel approve it. If the staged
+          team does not fit, archive it with agent_teams_delete and continue solo with the
+          user — that is an accepted outcome.
+      The gate is frozen: trigger = (matchedSignals >= 2) OR explicit flag, where the
+      explicit flag is a `team:` prefix or `!team`, and the soft signals are (B) >=4 distinct
+      deliverable verbs, (C) >=3 enumerated steps/action verbs/clauses, (D) a
+      `.mpd/plans/*.md` artifact for this workspace. This rule is enforced on the PRE-STEP,
+      BEFORE the sizing doctrine below — the sizing discipline can only add team-shape advice
+      once a team exists or the user asks for one; it can never force a team into existence.
 
-      AGENT TEAM ROUTING — before any team work, FIRST size the task: estimate scope,
-      risk and parallelizable surface, then state your size judgment (small / large + one
-      line of rationale). After sizing you MUST pick exactly one of the two modes:
+      AGENT TEAM ROUTING — when you do build a team (the user asked for one, or the gate
+      triggered), FIRST size the task: estimate scope, risk and parallelizable surface, then
+      state your size judgment (small / large + one line of rationale). After sizing pick
+      exactly one of the two modes:
         a) SMALL task -> use MPD's built-in team preset:
            agent_teams_create(approval="required", profile="mpd") — the internal roster of
            11 normal-named specialists. No separate user confirmation for the mode itself;

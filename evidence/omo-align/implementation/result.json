@@ -1,0 +1,176 @@
+{
+  "verdict": "pass",
+  "head": "0e6bdafcdbbb4dde9bea0a8de94220d48c0548aa",
+  "gateFileSha256": "1f0203c69e5e904d878774e1d5d1e9d646de070b8e3fa2908ce77f85b60aefc0",
+  "wave": "omo-parity-align",
+  "task": "t15 (replacement for the unsatisfiable t5)",
+  "criterion": "evidence/omo-align/requirements/frozen-contract.json (18074 B, sha256 d968be96…)",
+  "changedPaths": [
+    "AGENTS.md",
+    "VENDOR_LOCK.json",
+    "packages/mpd-agent-teams-plugin/lib/index.js",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+    "packages/mpd-agent-teams-plugin/lib/session-start.js",
+    "packages/mpd-agent-teams-plugin/lib/tools.js",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+    "packages/mpd-agent-teams-plugin/test/s1-s4-semantics.test.mjs",
+    "packages/mpd-agent-teams-plugin/test/session-start.test.ts",
+    "packages/mpd-bundle/README.md",
+    "packages/mpd-bundle/README.zh-CN.md",
+    "packages/mpd-bundle/cordis.patch.yml",
+    "presets/mpd/agent.cordis.yml",
+    "scripts/install-profile.mjs",
+    "skills/dsh-qa/SKILL.md",
+    "skills/dsh-qa/scripts/session-start-team.mjs",
+    "skills/dsh-qa/scripts/lib/gate-probe.mjs",
+    "evidence/omo-align/implementation/result.json"
+  ],
+  "verified": [
+    {
+      "what": "two-sided complexity gate on the same settled revision",
+      "command": "node skills/dsh-qa/scripts/session-start-team.mjs",
+      "exit": 0,
+      "evidence": "3/3 simple prompts -> 0 teams, 0 notices; 3/3 complex prompts -> exactly 1 staged MPD Default team (profile mpd, 11 members, spawnedMembers=0) + 1 notice; twoSided.ok=true; settled rev 0e6bdaf, session-start.js sha256 1f0203c69e5e904d stable over 50 s",
+      "evidencePath": "evidence/dsh-qa/session-start-team/2026-09-13T14-16-37.036Z/result.json"
+    },
+    {
+      "what": "gate predicate both directions (offline, frozen prompt sets)",
+      "command": "node skills/dsh-qa/scripts/session-start-team.mjs --self-test",
+      "exit": 0,
+      "evidence": "gate-probe: SIMPLE all untriggered, COMPLEX all triggered, team:/!team markers consumed"
+    },
+    {
+      "what": "sessionTeamPolicy decoupled + configPlane defaults + absent-safety",
+      "command": "node -e 'new (Config)({})'",
+      "exit": 0,
+      "evidence": "maxMembers 16, maxParallelMembers 8, maxMessagesPerRun 10000, maxWallClockMinutes 120, maxMemberTurns 500, messagePayloadMaxBytes 32768, recipientUnreadMaxBytes 262144, mailboxPollIntervalMs 3000, enforcement enforce, memberMaxDepth 1; policy {mode off, autoRoute true}; min guard rejects messagePayloadMaxBytes 512"
+    },
+    {
+      "what": "installer ships the new row defaults + asserts them",
+      "command": "node scripts/install-profile.mjs --self-test",
+      "exit": 0,
+      "evidence": "asserts mode 'off' + autoRoute true + all configPlane values"
+    },
+    {
+      "what": "installer dry-run",
+      "command": "node scripts/install-profile.mjs --dry-run",
+      "exit": 0
+    },
+    {
+      "what": "mpd preset still MOUNTS on the installed harness (no lost row/setting)",
+      "command": "node skills/dsh-qa/scripts/preset-conformance.mjs",
+      "exit": 0,
+      "evidence": "conformance ok=true (30 checked), row parity 31/31 (missing [], extra []), session/create 200 with agentPreset mpd, 0 apply-failure signatures, negative control still fails with $.prefix"
+    },
+    {
+      "what": "bundle install/boot/uninstall lifecycle",
+      "command": "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs",
+      "exit": 0,
+      "evidence": "install ok, boot serves the mpd preset + corpus from the checkout, noHomeCopy ok, uninstall residue []"
+    },
+    {
+      "what": "mpd-delta discipline: every lib/** behaviour change is a registered region",
+      "command": "node scripts/patch-agent-teams-fixes.mjs --check",
+      "exit": 0,
+      "evidence": "18 regions across 4 adopted files (3 new: session-start-gate, message-payload-ceiling, update-task-amend-helper/-terminal/-running), --check clean"
+    },
+    {
+      "what": "vendor baseline still exact after the skills/** re-pin",
+      "command": "node scripts/verify-vendor.mjs",
+      "exit": 0,
+      "evidence": "skills 329 files treeSha OK + all other assets OK + PASS"
+    },
+    {
+      "what": "typecheck",
+      "command": "bun run typecheck",
+      "exit": 0
+    },
+    {
+      "what": "plugin tests incl. the 5 new S1-S4 semantics tests",
+      "command": "bun test packages/mpd-agent-teams-plugin",
+      "exit": 0,
+      "evidence": "124 pass / 0 fail"
+    },
+    {
+      "what": "all package tests",
+      "command": "bun test packages",
+      "exit": 0,
+      "evidence": "306 pass / 0 fail"
+    },
+    {
+      "what": "manual entry names unchanged",
+      "command": "grep -n AGENT_TEAMS_COMMAND/PROFILE_COMMAND_PREFIX lib/command.js",
+      "exit": 0,
+      "evidence": "/agent-teams + generated /agent-teams-<profile> mechanism untouched; all 14 agent_teams_* tool names, profiles.mpd, preset id mpd, .mpd/team untouched (t15 changed no name)"
+    },
+    {
+      "what": "S1-S4 each have a falsifiable assertion bound to the attempt_id plane",
+      "command": "bun test packages/mpd-agent-teams-plugin/test/s1-s4-semantics.test.mjs",
+      "exit": 0,
+      "evidence": "S1 retry revokes the old attempt and keeps completed siblings; S2 amendment resets the amended task + transitive dependents and KEEPS a completed node whose inputs did not change (no-op amendment byte-identical); S3 scheduler readiness dispatches only 'pending'; S4 send_message delivers a bounded notice without changing attempt/attemptId"
+    }
+  ],
+  "notVerified": [
+    {
+      "what": "S2 amendment through a LIVE booted team session (only the real registered tool against a real on-disk team record is exercised)",
+      "why": "S2-S4 are driven at the tool boundary in-process; the two-sided QA case covers the session-start gate end-to-end but not an amend on a running live session"
+    },
+    {
+      "what": "real member behaviour under every configPlane ceiling (maxParallelMembers/maxWallClockMinutes/maxMemberTurns/maxMessagesPerRun are resolved+validated, not enforced at a runtime boundary)",
+      "why": "only messagePayloadMaxBytes has a send-boundary enforcement point today; the other ceilings are declared/validated values with no consumer yet"
+    }
+  ],
+  "cannotVerify": [
+    {
+      "what": "the frozen contract's literal signal-C wording (>=3 enumerated lines OR >=3 distinct action verbs) discriminating the frozen complex prompt #1",
+      "why": "measured: that prompt has 2 lines and 2 action verbs, so the literal rule yields 0-1 signals and the frozen `complex` side cannot trigger. Implemented the sub-rules as SEPARATE checks (enumerated lines / action verbs / action clauses) so both frozen sides are falsifiable, and recorded this deviation here instead of silently relaxing the threshold"
+    },
+    {
+      "what": "docs/** ledger + index rows",
+      "why": "out of t15 scope (ledger task owns them); untouched and not committed"
+    }
+  ],
+  "commandsRun": [
+    {
+      "command": "bun run typecheck",
+      "exit": 0
+    },
+    {
+      "command": "bun test packages/mpd-agent-teams-plugin",
+      "exit": 0
+    },
+    {
+      "command": "bun test packages",
+      "exit": 0
+    },
+    {
+      "command": "node scripts/install-profile.mjs --self-test",
+      "exit": 0
+    },
+    {
+      "command": "node scripts/install-profile.mjs --dry-run",
+      "exit": 0
+    },
+    {
+      "command": "node skills/dsh-qa/scripts/preset-conformance.mjs",
+      "exit": 0
+    },
+    {
+      "command": "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs",
+      "exit": 0
+    },
+    {
+      "command": "node skills/dsh-qa/scripts/session-start-team.mjs",
+      "exit": 0
+    },
+    {
+      "command": "node scripts/patch-agent-teams-fixes.mjs --check",
+      "exit": 0
+    },
+    {
+      "command": "node scripts/verify-vendor.mjs",
+      "exit": 0
+    }
+  ]
+}
