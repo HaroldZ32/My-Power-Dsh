@@ -107,9 +107,13 @@ test("complexity gate: both directions on the frozen prompt sets", () => {
     const verdict = evaluateComplexityGate(consumed.text, { explicitFlag: consumed.flagged })
     expect(verdict.trigger).toBe(true)
   }
-  // The plan-artifact signal fires on its own only once a second signal joins it.
-  expect(evaluateComplexityGate("do the thing", { planArtifact: true })).toEqual({ trigger: false, signals: ["D"] })
-  expect(evaluateComplexityGate("do the thing", { planArtifact: true, explicitFlag: true }).trigger).toBe(true)
+  // The corrected C aggregation: a single C sub-signal is NOT enough for C...
+  const cOnly = evaluateComplexityGate("check the test", {})
+  expect(cOnly.signals).not.toContain("C")
+  // ...but the frozen complex prompt's 2-of-3 majority yields exactly one "C" signal.
+  expect(evaluateComplexityGate("Align the bundle with upstream: audit the orchestration surface, then implement the routing change.").signals).toEqual(["C"])
+  // D participates as its own soft signal and reaches the gate on its own bar.
+  expect(evaluateComplexityGate("do the thing", { planArtifact: true })).toEqual({ trigger: true, signals: ["D"] })
 })
 
 test("explicit flag is consumed out of the goal text", () => {
@@ -128,7 +132,10 @@ test("routeDecision: off+autoRoute gates, auto/instruct keep the legacy paths", 
   expect((await routeDecision({ mode: "off", autoRoute: true }, simple, "/nonexistent-ws")).action).toBe("none")
   const routed = await routeDecision({ mode: "off", autoRoute: true }, complex, "/nonexistent-ws")
   expect(routed.action).toBe("provision")
-  expect(routed.signals.length).toBeGreaterThanOrEqual(2)
+  // t24/F1: C is ONE signal that already enforces its own 2-of-3 sub-signal majority,
+  // so a complex prompt may legitimately route on the single "C" signal.
+  expect(routed.signals.length).toBeGreaterThanOrEqual(1)
+  expect(routed.signals).toContain("C")
   // The explicit flag alone routes.
   expect((await routeDecision({ mode: "off", autoRoute: true }, "team: do it", "/nonexistent-ws")).signals).toContain("A")
   // autoRoute disabled -> nothing routes even for complex text.

@@ -958,9 +958,14 @@ export async function listArchivedTeamIds(stateRoot) {
 /**
  * The visual state of one task: `running` while in_progress, `completed`
  * when done, `failed`/`cancelled` when terminal without success, `blocked`
- * while any dependency is unfinished, else `open`.
+ * while any dependency still BLOCKS, else `open`.
+ *
+ * OPT-1: a FAILED dependency does not block its dependent (the same three-state
+ * rule the scheduler, claim and takeover paths use), so the panel must not render
+ * such a dependent as `blocked` while the tool surface lets it be claimed. The
+ * failure stays visible through `failedDependencyIds` on the snapshot.
  */
-export function taskVisualState(status, dependencies, tasks) {
+export function taskVisualState(status, tasks, dependencies) {
     if (status === 'completed')
         return 'completed';
     if (status === 'failed')
@@ -969,12 +974,11 @@ export function taskVisualState(status, dependencies, tasks) {
         return 'cancelled';
     if (status === 'in_progress')
         return 'running';
-    const byId = new Map(tasks.map((task) => [task.id, task]));
-    const openDependency = dependencies.some((dependencyId) => {
-        const dependency = byId.get(dependencyId);
-        return dependency !== undefined && dependency.status !== 'completed';
-    });
-    return openDependency ? 'blocked' : 'open';
+    return dependencyStates(tasks, dependencies).blocking.length > 0 ? 'blocked' : 'open';
+}
+/** The dependency ids of one task that have FAILED (OPT-1 view parity). */
+export function failedDependencyIds(tasks, dependencies) {
+    return dependencyStates(tasks, dependencies).failed;
 }
 /**
  * Longest dependency path depth per task id (each depth = one lane column).

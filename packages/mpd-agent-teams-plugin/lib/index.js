@@ -45,7 +45,7 @@ const fallbackRouteConfig = z.union([
     z.const(undefined),
 ]);
 export const Config = z.object({
-    stateDir: z.string().default('.agent-teams'),
+    stateDir: z.string().default('.mpd/team'),
     memberProvider: z.string().default('spawn'),
     memberModel: z.string(),
     executionPrompt: z.string(),
