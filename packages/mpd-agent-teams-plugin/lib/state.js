@@ -96,25 +96,47 @@ export function sanitizeKey(name) {
     }
     return cleaned;
 }
+//#region mpd-delta dependency-failed-unblock (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
 /**
- * Whether `dependencies` are all satisfied (every named task exists and
- * completed) for the given task list.
+ * Whether `dependencies` still BLOCK a dependent task, and which of them failed.
+ *
+ * Three-state evaluation (user decision OPT-1, 2026-09-13): a dependency is
+ * `satisfied` (completed), `failed-dependency` (failed) or unsatisfied
+ * (pending/claimed/in_progress/cancelled/unknown). A FAILED dependency no longer
+ * pins its dependents forever — the dependent stays `pending` and dispatchable,
+ * while `failedDependencyIds` carries the failure so the view can say so. A
+ * cancelled dependency was already non-blocking (deadlock rule) and its pending
+ * dependents are released by `resolveCancelledDependencyDeadlocks`.
  * @param tasks - the team's tasks.
  * @param dependencies - task ids the candidate depends on.
- * @returns the ids that are still unsatisfied, empty when claimable.
+ * @returns the blocking ids plus the failed ids (never both for one id).
+ */
+export function dependencyStates(tasks, dependencies) {
+    const byId = new Map(tasks.map((task) => [task.id, task]));
+    const blocking = [];
+    const failed = [];
+    for (const id of dependencies) {
+        const status = byId.get(id)?.status;
+        if (status === 'completed' || status === 'cancelled')
+            continue;
+        if (status === 'failed')
+            failed.push(id);
+        else
+            blocking.push(id);
+    }
+    return { blocking, failed };
+}
+/**
+ * Whether `dependencies` are all satisfied (every named task exists and is
+ * completed) for the given task list. OPT-1: a FAILED dependency does not block.
+ * @param tasks - the team's tasks.
+ * @param dependencies - task ids the candidate depends on.
+ * @returns the ids that still block, empty when claimable.
  */
 export function unsatisfiedDependencies(tasks, dependencies) {
-    const byId = new Map(tasks.map((task) => [task.id, task]));
-    // A cancelled dependency never blocks its dependents (deadlock rule): only
-    // completed counts as satisfied, and failed/unknown still block. Pending
-    // dependents of cancelled work are resolved by
-    // resolveCancelledDependencyDeadlocks instead of being dispatched on a
-    // cancelled premise.
-    return dependencies.filter((id) => {
-        const status = byId.get(id)?.status;
-        return status !== 'completed' && status !== 'cancelled';
-    });
+    return dependencyStates(tasks, dependencies).blocking;
 }
+//#endregion mpd-delta dependency-failed-unblock
 /**
  * The allowed task status transitions, keyed by current status.
  * Terminal statuses have no outgoing transitions.

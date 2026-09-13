@@ -28,6 +28,24 @@
   ],
   "verified": [
     {
+      "what": "OPT-1 three-state dependency: a FAILED dependency no longer pins its dependents",
+      "command": "bun test packages/mpd-agent-teams-plugin/test/opt1-failed-dependency.test.mjs",
+      "exit": 0,
+      "evidence": "5/5 pass. dependencyStates() -> {blocking:[], failed:['A']} for a failed dep; unsatisfiedDependencies() no longer lists failed ids; B claimable in <15000 ms after A terminates failed (asserted bound) and the task contract view reports failed_dependencies:['A']; scheduler readiness path dispatches B; after A is retried to completed B proceeds normally; REVERSE CONTROL: pending/claimed/in_progress deps still block exactly as before, unknown id still blocks, completed/cancelled stay non-blocking"
+    },
+    {
+      "what": "OPT-2 ordering: the gate precedes the sizing doctrine in the preset",
+      "command": "bun test packages/mpd-agent-teams-plugin/test/opt2-residual-and-ordering.test.mjs",
+      "exit": 0,
+      "evidence": "preset asserts index(SESSION STARTUP RULE) < index(AGENT TEAM ROUTING), no 'MUST start inside a team' invariant remains, and the PRE-STEP / 'can never force a team into existence' wording is present (the ordering fix landed in t15 commit 902e019)"
+    },
+    {
+      "what": "OPT-2 residual reclamation: archive-only, protected teams untouched, manifest emitted",
+      "command": "node scripts/reclaim-staged-teams.mjs --apply",
+      "exit": 0,
+      "evidence": "Live workspace: scanned 26, reclaimable 22, reclaimed 22. Every reclaimed team is staged && !approvedAt && tasks.length === 0. PROTECTED and byte-identical: agent-teams-sidebar-migration (running/10 tasks), mpd-default-d92bc69a (running/32), mpd-default-db53f0d4 (running/19, the live session), mpd-default-84e50f06 (staged but carries 8 tasks -> NOT residue). Post-apply dry run: 0 residual of 4 live teams; archive/ holds the moved directories. No directory was removed with rm: archival is a rename. Manifest: evidence/omo-align/implementation/raw/reclaim-applied.json (+ reclaim-dryrun.json). NOTE: the live two-sided gate run after the apply reports PASS in evidence/omo-align/implementation/raw/session-start-team-r2.log"
+    },
+    {
       "what": "two-sided complexity gate on the same settled revision",
       "command": "node skills/dsh-qa/scripts/session-start-team.mjs",
       "exit": 0,
@@ -119,6 +137,10 @@
     {
       "what": "real member behaviour under every configPlane ceiling (maxParallelMembers/maxWallClockMinutes/maxMemberTurns/maxMessagesPerRun are resolved+validated, not enforced at a runtime boundary)",
       "why": "only messagePayloadMaxBytes has a send-boundary enforcement point today; the other ceilings are declared/validated values with no consumer yet"
+    },
+    {
+      "what": "OPT-2 assertion (2) as literally written: 'agent_teams_status no longer lists archived teams'",
+      "why": "agent_teams_status returns only the CALLING captain's own team (requireParticipantTeam), so it cannot list residue in the first place; I substituted a stronger, mechanical assertion: the archived ids moved out of the live state root into archive/<id>/ and the post-apply manifest reports 0 residual of 4 live teams"
     }
   ],
   "cannotVerify": [
@@ -172,5 +194,7 @@
       "command": "node scripts/verify-vendor.mjs",
       "exit": 0
     }
-  ]
+  ],
+  "revision": "R2 (2026-09-13 captain-binding contract revision: OPT-1 + OPT-2)",
+  "contractNote": "The captain quotes frozen-contract.json at 19,937 B / sha256 a38c87dd…; measured on disk at revision time it is 26,013 B / sha256 prefix 4c3c2ded… (a fourth revision). I verified section by section that every clause this implementation depends on is byte-identical to the R2 instruction text: complexityGate (logic, signals, both 3+3 prompt sets), configPlane.frozen (10 keys + 3 rules), massUlwSemantics (S1-S4 incl. the corrected S2), manualEntryNames, requiredQaCases (9), changeLocations (10), isolation. The drift is confined to t4Requirements (now carrying fv4 authoritativePaths + immutabilityRule + residualFieldGap + revisionHistory). NOTE: the current contract file still contains NO OPT-1/OPT-2 section, so the R2 work order text in the captain message is the operative record for this revision."
 }

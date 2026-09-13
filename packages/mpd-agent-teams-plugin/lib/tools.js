@@ -12,7 +12,7 @@ import { createUserMessage } from '../_deps/dsh-llm/lib/index.js';
 import { defineTool } from '../_deps/dsh-tools/lib/index.js';
 import { join } from 'node:path';
 import { appendTeamEvent, captainSessionOf } from "./events.js";
-import { acknowledgeMailbox, appendMailbox, archiveTeamDir, beginTaskAttempt, CAPTAIN_KEY, createMessage, createTeamDir, findTeamByCaptain, findTeamByParticipant, cancelUnfinishedTask, invalidateTaskAttempt, readUnreadMailbox, recordRetiredMemberIds, releaseMailboxDelivery, readTeam, sanitizeKey, transitionError, unsatisfiedDependencies, withTeamLock, writeTeam, removeTeamDir, validateCreateTask, evaluateQualityCompletion, planQualityFollowUp, resumeTeamState, buildCoverageMatrix, canDeclareDelivery, describeQualityLoop, sanitizeReviewAcceptance, sanitizeReviewObjective, taskKindOf, resolveCancelledDependencyDeadlocks, normalizeBlankOptionalTaskFields, } from "./state.js";
+import { acknowledgeMailbox, appendMailbox, archiveTeamDir, beginTaskAttempt, CAPTAIN_KEY, createMessage, createTeamDir, findTeamByCaptain, findTeamByParticipant, cancelUnfinishedTask, invalidateTaskAttempt, readUnreadMailbox, recordRetiredMemberIds, releaseMailboxDelivery, readTeam, sanitizeKey, transitionError, unsatisfiedDependencies, withTeamLock, writeTeam, removeTeamDir, validateCreateTask, evaluateQualityCompletion, planQualityFollowUp, resumeTeamState, buildCoverageMatrix, canDeclareDelivery, describeQualityLoop, sanitizeReviewAcceptance, sanitizeReviewObjective, taskKindOf, resolveCancelledDependencyDeadlocks, normalizeBlankOptionalTaskFields, dependencyStates, } from "./state.js";
 import { deliverToMember, installRetiredMemberGuard, installMemberSelectionRuntime, interruptMember, memberActivity, resolveMemberLlmSelection, spawnMember, steerCaptainReport, validateMemberLlmSelections, } from "./members.js";
 export { steerCaptainReport } from "./members.js";
 import { TERMINAL_TASK_STATUSES } from "./types.js";
@@ -1959,7 +1959,7 @@ export function registerAgentTeamsTools(ctx, config) {
                 const known = team.tasks.map((item) => item.id).join(', ');
                 throw new Error(`task "${taskId}" does not exist in team "${team.name}" (known tasks: ${known || 'none'})`);
             }
-            return taskContractView(task);
+            return taskContractView(task, team.tasks);
         },
     }));
     //#endregion mpd-delta task-contract
@@ -2474,7 +2474,7 @@ function contractList(value) {
  * member received, and includes the completion payload the task will be judged
  * on so the gate can be checked before the member finishes.
  */
-function taskContractView(task) {
+function taskContractView(task, allTasks = []) {
     const list = (value) => contractList(value);
     return {
         task_id: task.id,
@@ -2486,6 +2486,9 @@ function taskContractView(task) {
         attempt: task.attempt ?? 0,
         attempt_id: task.attemptId ?? '',
         dependencies: task.dependencies ?? [],
+        // OPT-1: a FAILED dependency does not block the dependent, so the view must
+        // carry the failure explicitly or the information would be lost silently.
+        failed_dependencies: dependencyStates(allTasks, task.dependencies ?? []).failed,
         objective: task.objective ?? '',
         in_scope: list(task.inScope),
         out_of_scope: list(task.outOfScope),

@@ -1,0 +1,10 @@
+[session-start-team] ok=true -> /root/dshProj/my-power-dsh/evidence/dsh-qa/session-start-team/2026-09-13T14-32-49.680Z
+  settled: {"ok":true,"rev":"d10f8e3ab74dc637a5a9d7d107eca7ef9f232db3","gateHash":"1f0203c69e5e904d878774e1d5d1e9d646de070b8e3fa2908ce77f85b60aefc0"}
+  installer: {"ok":true,"exit":0}
+  patchRow: {"ok":true,"hasRow":true}
+  compose: {"ok":true,"exit":0}
+  simpleSide: [{"prompt":"Reply with exactly: hello-ok","exited":1,"teams":0,"members":0,"spawnedMembers":0,"notice":false,"ok":true},{"prompt":"What does the git-master skill do? Answer in one sentence.","exited":1,"teams":0,"members":0,"spawnedMembers":0,"notice":false,"ok":true},{"prompt":"Rename the variable `foo` to `bar` in src/util.ts and run its test.","exited":1,"teams":0,"members":0,"spawnedMembers":0
+  complexSide: [{"prompt":"Align the bundle with upstream: audit the orchestration surface, then implement the routing change.","exited":1,"teams":1,"staged":"staged","profile":"mpd","members":11,"spawnedMembers":0,"notice":true,"ok":true},{"prompt":"team: fix the flaky test","exited":1,"teams":1,"staged":"staged","profile":"mpd","members":11,"spawnedMembers":0,"notice":true,"ok":true},{"prompt":"1. Read the pat
+  twoSided: {"ok":true,"simpleTeams":[0,0,0],"simpleNotices":[false,false,false],"complexTeams":[1,1,1],"complexNotices":[true,true,true]}
+[session-start-team] PASS
+EXIT=0

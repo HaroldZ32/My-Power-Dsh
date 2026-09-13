@@ -5,7 +5,7 @@
 // Run: bun test packages/mpd-agent-teams-plugin/self-fix-tests
 import { test, expect } from "bun:test"
 import { validateCreateTask, planQualityFollowUp, hasValidQualityTaskFields } from "../lib/quality-gates.js"
-import { unsatisfiedDependencies, resolveCancelledDependencyDeadlocks } from "../lib/state.js"
+import { unsatisfiedDependencies, resolveCancelledDependencyDeadlocks, dependencyStates } from "../lib/state.js"
 import { collectCompletedDependencyOutputs, formatDependencyOutputs, assignmentPrompt } from "../lib/scheduler.js"
 
 function task(id, kind, status, extra = {}) {
@@ -43,7 +43,10 @@ test("Fix1: repair auto-wires sourceTaskId into dependencies", () => {
     expect(gate.task.dependencies).toContain("t10")
 })
 
-test("Fix2: unsatisfiedDependencies treats cancelled as satisfied, failed still blocks", () => {
+test("Fix2 + OPT-1: cancelled and FAILED deps are non-blocking; pending still blocks", () => {
+    // OPT-1 (user decision 2026-09-13) superseded the old "failed still blocks"
+    // rule: a failed dependency records the failure but no longer pins its
+    // dependents. The failed id is surfaced through dependencyStates().failed.
     const tasks = [
         task("a", "work", "cancelled"),
         task("b", "work", "completed"),
@@ -51,9 +54,13 @@ test("Fix2: unsatisfiedDependencies treats cancelled as satisfied, failed still 
         task("d", "work", "pending"),
     ]
     expect(unsatisfiedDependencies(tasks, ["a", "b"])).toEqual([])
-    expect(unsatisfiedDependencies(tasks, ["c"])).toEqual(["c"])
+    expect(unsatisfiedDependencies(tasks, ["c"])).toEqual([])
+    expect(dependencyStates(tasks, ["c"])).toEqual({ blocking: [], failed: ["c"] })
     expect(unsatisfiedDependencies(tasks, ["d"])).toEqual(["d"])
-    expect(unsatisfiedDependencies(tasks, ["a", "c"])).toEqual(["c"])
+    expect(unsatisfiedDependencies(tasks, ["a", "c"])).toEqual([])
+    expect(dependencyStates(tasks, ["a", "c"])).toEqual({ blocking: [], failed: ["c"] })
+    // a failed dep mixed with a pending one still blocks on the pending one only
+    expect(unsatisfiedDependencies(tasks, ["c", "d"])).toEqual(["d"])
 })
 
 test("Fix2: pending dependents blocked only by cancelled deps are cascaded (no deadlock)", () => {
