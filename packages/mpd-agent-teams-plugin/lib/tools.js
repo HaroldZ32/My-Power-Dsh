@@ -1421,6 +1421,58 @@ export function registerAgentTeamsTools(ctx, config) {
             });
         },
     }));
+    //#region mpd-delta update-task-amend-helper (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+    /**
+     * The nodes an amendment invalidates: the amended task plus every TRANSITIVE
+     * DEPENDENT (a node whose dependency closure reaches the amended task). Upstream
+     * `task.definition` walks the same direction (`dag.definition.amended.
+     * invalidatedNodeIds`). Nodes UPSTREAM of the amendment keep their cached
+     * results; affected completed nodes are reset so the scheduler re-runs them.
+     * @param tasks - the team's task list.
+     * @param amendedId - the id of the task whose definition changed.
+     * @returns the invalidated ids, amended first.
+     */
+    function amendedInvalidatedIds(tasks, amendedId) {
+        const dependents = new Set();
+        let grew = true;
+        // Reachability transitively: seed with direct dependents, then grow while any
+        // new node's dependents join.
+        const direct = (id) => tasks.filter((candidate) => (candidate.dependencies ?? []).includes(id)).map((candidate) => candidate.id);
+        for (const id of direct(amendedId))
+            dependents.add(id);
+        while (grew) {
+            grew = false;
+            for (const id of [...dependents]) {
+                for (const next of direct(id)) {
+                    if (!dependents.has(next)) {
+                        dependents.add(next);
+                        grew = true;
+                    }
+                }
+            }
+        }
+        return [amendedId, ...dependents];
+    }
+    /** Whether an `amend` payload actually changes the task definition. */
+    function amendChangesDefinition(task, amend) {
+        const sameList = (current, next) => {
+            const left = [...(current ?? [])].sort();
+            const right = [...next].sort();
+            return left.length === right.length && left.every((item, index) => item === right[index]);
+        };
+        if (amend.subject !== undefined && amend.subject !== task.subject)
+            return true;
+        if (amend.description !== undefined && amend.description !== (task.description ?? ''))
+            return true;
+        if (amend.dependencies !== undefined && !sameList(task.dependencies, amend.dependencies))
+            return true;
+        if (amend.acceptance !== undefined && !sameList(task.acceptance, amend.acceptance))
+            return true;
+        if (amend.verify !== undefined && !sameList(task.verify, amend.verify))
+            return true;
+        return false;
+    }
+    //#endregion mpd-delta update-task-amend-helper
     ctx.tools.register(defineTool({
         name: 'agent_teams_update_task',
         //#region mpd-delta update-task-contract (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
@@ -1500,6 +1552,25 @@ export function registerAgentTeamsTools(ctx, config) {
                 },
                 description: 'Verification evidence in contract order: {command, status:"passed"|"failed", exitCode?, evidence?}. Supply one item per verify command.',
             },
+            // S2 (mass-ulw "revision without re-running completed work"): a CAPTAIN may
+            // amend a task's definition on a RUNNING team. A real change re-runs the
+            // amended task AND its TRANSITIVE DEPENDENTS (their input changed), while
+            // any completed node whose own definition is unchanged and whose transitive
+            // dependencies did not change KEEPS its cached result — exactly the upstream
+            // amend semantics (dag.definition.amended.invalidatedNodeIds). Tasks upstream
+            // of the amendment are never touched.
+            amend: {
+                type: 'object',
+                additionalProperties: false,
+                description: 'Amend a task definition. A real change re-runs this task and its transitive dependents; unaffected completed nodes keep their results.',
+                properties: {
+                    subject: { type: 'string', description: 'Replacement subject.' },
+                    description: { type: 'string', description: 'Replacement description.' },
+                    dependencies: { type: 'array', items: { type: 'string' }, description: 'Complete replacement dependency list.' },
+                    acceptance: { type: 'array', items: { type: 'string' }, description: 'Complete replacement acceptance list.' },
+                    verify: { type: 'array', items: { type: 'string' }, description: 'Complete replacement verify list.' },
+                },
+            },
         },
         output: {
             schema: {
@@ -1551,6 +1622,51 @@ export function registerAgentTeamsTools(ctx, config) {
                     }
                 }
                 if (TERMINAL_TASK_STATUSES.includes(task.status)) {
+                    //#region mpd-delta update-task-amend-terminal (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                    // S2: an amendment is an explicit captain action on the DEFINITION, so a
+                    // real change is allowed to revive a terminal task (and re-runs its
+                    // transitive dependents) instead of being refused as an immutable
+                    // terminal write. A no-op amendment still repeats the terminal state.
+                    if (args.amend !== undefined && identity.kind === 'captain' && amendChangesDefinition(task, args.amend)) {
+                        const invalidated = new Set(amendedInvalidatedIds(fresh.tasks, task.id));
+                        const invalidatedIds = [];
+                        for (const candidate of fresh.tasks) {
+                            if (!invalidated.has(candidate.id))
+                                continue;
+                            invalidatedIds.push(candidate.id);
+                            candidate.status = 'pending';
+                            candidate.attempt = (candidate.attempt ?? 0) + 1;
+                            candidate.attemptId = undefined;
+                            candidate.verdict = undefined;
+                            candidate.findings = undefined;
+                            candidate.acceptanceResults = undefined;
+                            candidate.commandsRun = undefined;
+                            candidate.reviewedAt = undefined;
+                        }
+                        if (args.amend.subject !== undefined)
+                            task.subject = args.amend.subject;
+                        if (args.amend.description !== undefined)
+                            task.description = args.amend.description;
+                        if (args.amend.dependencies !== undefined)
+                            task.dependencies = [...args.amend.dependencies];
+                        if (args.amend.acceptance !== undefined)
+                            task.acceptance = [...args.amend.acceptance];
+                        if (args.amend.verify !== undefined)
+                            task.verify = [...args.amend.verify];
+                        task.updatedAt = Date.now();
+                        await writeTeam(stateRoot, fresh);
+                        appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, caller.session), 'agent-teams/task-amended', {
+                            teamId: fresh.id,
+                            taskId: task.id,
+                            invalidatedNodeIds: invalidatedIds,
+                        });
+                        return {
+                            task_id: task.id,
+                            status: task.status,
+                            attempt: task.attempt ?? 0,
+                        };
+                    }
+                    //#endregion mpd-delta update-task-amend-terminal
                     const sameStatus = args.status === undefined || args.status === task.status;
                     const sameOutput = args.output === undefined || args.output === task.output;
                     if (!sameStatus || !sameOutput) {
@@ -1571,6 +1687,53 @@ export function registerAgentTeamsTools(ctx, config) {
                 const findings = parseFindings(args.findings);
                 const acceptanceResults = parseAcceptanceResults(args.acceptanceResults);
                 const commandsRun = parseCommandResults(args.commandsRun);
+                //#region mpd-delta update-task-amend-running (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                // S2 on a non-terminal task: amend the definition and reset ONLY the amended
+                // task plus its transitive dependents, so completed nodes whose inputs did
+                // not change keep their cached results and the scheduler re-runs the rest.
+                if (args.amend !== undefined && identity.kind === 'captain') {
+                    if (amendChangesDefinition(task, args.amend)) {
+                        const invalidated = new Set(amendedInvalidatedIds(fresh.tasks, task.id));
+                        const invalidatedIds = [];
+                        for (const candidate of fresh.tasks) {
+                            if (!invalidated.has(candidate.id))
+                                continue;
+                            invalidatedIds.push(candidate.id);
+                            candidate.status = 'pending';
+                            candidate.attempt = (candidate.attempt ?? 0) + 1;
+                            candidate.attemptId = undefined;
+                            candidate.verdict = undefined;
+                            candidate.findings = undefined;
+                            candidate.acceptanceResults = undefined;
+                            candidate.commandsRun = undefined;
+                            candidate.reviewedAt = undefined;
+                        }
+                        if (args.amend.subject !== undefined)
+                            task.subject = args.amend.subject;
+                        if (args.amend.description !== undefined)
+                            task.description = args.amend.description;
+                        if (args.amend.dependencies !== undefined)
+                            task.dependencies = [...args.amend.dependencies];
+                        if (args.amend.acceptance !== undefined)
+                            task.acceptance = [...args.amend.acceptance];
+                        if (args.amend.verify !== undefined)
+                            task.verify = [...args.amend.verify];
+                        task.updatedAt = Date.now();
+                        await writeTeam(stateRoot, fresh);
+                        appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, caller.session), 'agent-teams/task-amended', {
+                            teamId: fresh.id,
+                            taskId: task.id,
+                            invalidatedNodeIds: invalidatedIds,
+                        });
+                        await scheduler.kickTeam(workspace, team.id, team.captainSessionId === caller.id ? caller : undefined);
+                        return {
+                            task_id: task.id,
+                            status: task.status,
+                            attempt: task.attempt ?? 0,
+                        };
+                    }
+                }
+                //#endregion mpd-delta update-task-amend-running
                 const gate = evaluateQualityCompletion(task, {
                     status: args.status,
                     output: args.output,
@@ -1686,6 +1849,23 @@ export function registerAgentTeamsTools(ctx, config) {
                 if (args.from !== undefined && args.from !== from) {
                     throw new Error(`agent_teams_send_message: "from" must be your own identity ("${from}"), not "${args.from}"`);
                 }
+                //#region mpd-delta message-payload-ceiling (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                // configPlane alignment (upstream team_mode.message_payload_max_bytes):
+                // messagePayloadMaxBytes (frozen local default 32768, min 1024) is a REAL
+                // ceiling at the send boundary, and `enforcement` mirrors upstream —
+                // 'enforce' (default) blocks the over-limit send, 'observe' logs only.
+                {
+                    const payloadMaxBytes = config.messagePayloadMaxBytes ?? 32768;
+                    const bytes = Buffer.byteLength(args.content, 'utf8');
+                    if (bytes > payloadMaxBytes) {
+                        const overLimit = `agent_teams_send_message: payload is ${bytes} bytes, over messagePayloadMaxBytes=${payloadMaxBytes}`;
+                        if ((config.enforcement ?? 'enforce') === 'observe')
+                            ctx.logger.warn(overLimit);
+                        else
+                            throw new Error(`${overLimit}; split the message or raise the config key (set enforcement="observe" to log only)`);
+                    }
+                }
+                //#endregion mpd-delta message-payload-ceiling
                 if (to === CAPTAIN_KEY) {
                     const message = { ...createMessage(from, CAPTAIN_KEY, args.content), deliveryClaimedAt: Date.now() };
                     await appendMailbox(stateRoot, fresh.id, CAPTAIN_KEY, message);

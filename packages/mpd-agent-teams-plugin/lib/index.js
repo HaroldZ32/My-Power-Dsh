@@ -81,21 +81,36 @@ export const Config = z.object({
         })),
     })).default({}),
     memberMaxDepth: z.natural().default(1),
-    maxMembers: z.natural().min(1).default(8),
+    maxMembers: z.natural().min(1).default(16),
+    // Configuration plane aligned to upstream team_mode (measured at
+    // `/root/dshProj/oh-my-openagent` packages/team-core/src/config.ts:6-14),
+    // with the user's decision that OUR ceilings stay the more permissive local
+    // values. Every key is absent-safe: an old profile without them boots on
+    // these defaults (exercised by the self-test and the headless boot).
+    maxParallelMembers: z.natural().min(1).default(8),
+    maxMessagesPerRun: z.natural().min(1).default(10000),
+    maxWallClockMinutes: z.natural().min(1).default(120),
+    maxMemberTurns: z.natural().min(1).default(500),
+    messagePayloadMaxBytes: z.natural().min(1024).default(32768),
+    recipientUnreadMaxBytes: z.natural().min(1024).default(262144),
+    mailboxPollIntervalMs: z.natural().min(500).default(3000),
+    enforcement: z.union([z.const('enforce'), z.const('observe')]).default('enforce'),
     promptSectionOrder: z.natural().default(117),
     slashCommand: z.boolean().default(true),
-    // Session-start team policy: mechanically guarantee every qualifying
-    // session begins inside a team (see lib/session-start.js). Off by default
-    // so the adopted plugin keeps its upstream behavior unless a profile
-    // explicitly enables the rule.
+    // Session-start team policy: a session starts with NO team unless the
+    // mechanical complexity gate fires (see lib/session-start.js). `mode` keeps
+    // its three legacy values and defaults to 'off' = no auto-provision and no
+    // unconditional notice; `autoRoute` is the DECOUPLED mechanical gate and
+    // defaults ON, so the complexity gate is evaluated without a mandatory team.
     sessionTeamPolicy: z.object({
         mode: z.union([z.const('off'), z.const('auto'), z.const('instruct')]).default('off'),
+        autoRoute: z.boolean().default(true),
         profile: z.string(),
         presets: z.array(z.string()),
         name: z.string().default('MPD Default'),
         description: z.string(),
         approval: z.union([z.const('required'), z.const('automatic')]).default('required'),
-    }).default({ mode: 'off' }),
+    }).default({ mode: 'off', autoRoute: true }),
 });
 /** The model-facing usage policy: when and how to drive AgentTeams. */
 export function usageSectionText(toolNames, profilesText = '') {
@@ -197,10 +212,19 @@ export function apply(ctx, config) {
         executionPrompt: config.executionPrompt,
         fallback: config.fallback,
         memberMaxDepth: config.memberMaxDepth ?? 1,
-        maxMembers: config.maxMembers ?? 8,
+        maxMembers: config.maxMembers ?? 16,
+        maxParallelMembers: config.maxParallelMembers ?? 8,
+        maxMessagesPerRun: config.maxMessagesPerRun ?? 10000,
+        maxWallClockMinutes: config.maxWallClockMinutes ?? 120,
+        maxMemberTurns: config.maxMemberTurns ?? 500,
+        messagePayloadMaxBytes: config.messagePayloadMaxBytes ?? 32768,
+        recipientUnreadMaxBytes: config.recipientUnreadMaxBytes ?? 262144,
+        mailboxPollIntervalMs: config.mailboxPollIntervalMs ?? 3000,
+        enforcement: config.enforcement ?? 'enforce',
         profiles: config.profiles ?? {},
         sessionTeamPolicy: {
             mode: config.sessionTeamPolicy?.mode ?? 'off',
+            autoRoute: config.sessionTeamPolicy?.autoRoute ?? true,
             profile: config.sessionTeamPolicy?.profile,
             presets: config.sessionTeamPolicy?.presets ?? [],
             name: config.sessionTeamPolicy?.name ?? 'MPD Default',

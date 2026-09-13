@@ -19,24 +19,48 @@ with `instructionFileCandidates: [AGENT.md, AGENTS.md, CLAUDE.md]` so every proj
 session attempts to read AGENT.md, and it declares native tool presentation. The
 OMO-origin agents exist as a subagent roster (`mpd-roles-plugin`), not as presets.
 
-## Session-start team rule (binding)
+## Session-start team gate (binding)
 
-Every qualifying session MUST begin inside a team — either the auto-provisioned
-default team or one the captain creates. The rule is enforced mechanically by the
-adopted agent-teams plugin (`sessionTeamPolicy` config, implementation in
-`packages/mpd-agent-teams-plugin/lib/session-start.js`), not by prompt guidance alone:
+A session starts with **NO team** — a team is not a precondition of a session
+(upstream parity: OMO team mode ships disabled by default). What is enforced
+mechanically by the adopted agent-teams plugin is a **complexity gate**
+(`sessionTeamPolicy` config, implementation in
+`packages/mpd-agent-teams-plugin/lib/session-start.js`), not prompt guidance alone:
 
-- On the first step of a session that leads no team, `mode: auto` provisions the
-  staged default team **"MPD Default"** (profile `mpd`, `approval: required` — members
-  are only roster rows and spawn after the user reviews and approves the Web plan), and
-  injects a startup notice into the conversation telling the captain the session runs
-  through that team. A session that already has a team (resume) simply stays in it.
+- `mode: off` (the default) means "no auto-provision and no unconditional notice".
+  The decoupled mechanical gate is `autoRoute: true` (default enabled).
+- At the session's first pre-step the gate evaluates
+  `trigger = (matchedSignals >= 2) OR explicit flag`:
+  the explicit flag is a `team:` prefix or `!team` (the marker is consumed, so it
+  never reaches the model as goal text), and the soft signals are
+  (B) ≥4 distinct deliverable verbs, (C) ≥3 enumerated steps / action verbs /
+  clauses, (D) a `.mpd/plans/*.md` artifact for this workspace.
+- **Not triggered** → the session runs solo; no team, no notice.
+- **Triggered** → the staged default team **"MPD Default"** (profile `mpd`,
+  `approval: required` — members are only roster rows and spawn after the user
+  reviews and approves the Web plan) is provisioned, and exactly one startup
+  notice is injected saying the session was routed by the gate (never that a team
+  is mandatory). A session that already has a team (resume) simply stays in it.
 - Scope: `presets: [mpd]` covers mpd-preset sessions plus sessions without any preset
   (headless direct runs); subagent/member sessions (`parentSession` set) never qualify.
+- The gate runs on the PRE-STEP, **before** the preset's sizing doctrine, so the
+  sizing rule can no longer appear only after a team already exists.
 - The policy settles once per session: a team deleted mid-session is never recreated,
   and a team the captain creates afterwards is never fought over.
 - The `mpd` preset persona carries the matching SESSION STARTUP RULE so the captain
-  behaves as captain from the first turn.
+  behaves correctly whether or not the gate fired.
 
-Set `sessionTeamPolicy.mode: off` (or remove the key) to disable the rule entirely;
-`mode: instruct` keeps the mechanical startup notice but does not auto-create a team.
+Keep the legacy behaviour by opting in explicitly: `mode: auto` provisions the
+default team unconditionally, and `mode: instruct` injects the instruction notice
+without creating anything. Both values are preserved.
+
+## Configuration plane
+
+The row also carries the upstream-aligned limits (measured against OMO
+`team_mode`), all absent-safe and defaulting to the frozen local values:
+`maxMembers: 16` (local ceiling kept), `maxParallelMembers: 8`,
+`maxMessagesPerRun: 10000`, `maxWallClockMinutes: 120`, `maxMemberTurns: 500`,
+`messagePayloadMaxBytes: 32768` (min 1024), `recipientUnreadMaxBytes: 262144`
+(min 1024), `mailboxPollIntervalMs: 3000` (min 500), `memberMaxDepth: 1`,
+`stateDir: .mpd/team`, and `enforcement: enforce` (over-limit sends are blocked;
+`observe` logs only — the upstream semantics).
