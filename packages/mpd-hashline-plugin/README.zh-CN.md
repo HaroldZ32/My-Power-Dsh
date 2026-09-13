@@ -3,7 +3,7 @@
 
 Plan C / C3 — 在 DeepSeek Harness tool seam 上的 hash-anchored（哈希锚定）编辑纪律。
 
-Vendored core：上游项目 `packages/hashline-core`（base commit 8c57e46，SUL-1.0 fork 条款）。改编：`src/vendor/diff-utils.ts` 打包了一个极简 unified-diff 生成器，替代 npm `diff` 依赖。
+Vendored core：上游项目 `packages/hashline-core`（base commit 8c57e46；依 SUL-1.0 授权）。改编：`src/vendor/diff-utils.ts` 打包了一个极简 unified-diff 生成器，替代 npm `diff` 依赖。
 
 ## 工具
 

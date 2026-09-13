@@ -4,7 +4,7 @@
 Plan C / C3 — hash-anchored edit discipline on the DeepSeek Harness tool seam.
 
 Vendored core: the upstream project `packages/hashline-core` (base commit
-8c57e46, SUL-1.0 fork terms). Adaptation: `src/vendor/diff-utils.ts` bundles a
+8c57e46; covered by SUL-1.0). Adaptation: `src/vendor/diff-utils.ts` bundles a
 minimal unified-diff generator instead of the npm `diff` dependency.
 
 ## Tools
