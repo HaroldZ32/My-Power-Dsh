@@ -1,0 +1,130 @@
+{
+  "schema": "mpd-omo-align-implementation-r4/1",
+  "task": "t26 (R4): explicit-entry hardening + deterministic fallback + ask-first + dedicated QA case",
+  "branch": "fix/explicit-team-trigger",
+  "headAtRun": "186c347",
+  "verdict": "pass",
+  "mechanism": {
+    "owner": "lib/command.js region mpd-delta explicit-team-fallback (ensureExplicitTeam + the shared resolveExplicitTeamText bridge), wired from lib/index.js into the generic command, every generated profile command, and the plain-text gesture boundary.",
+    "sameTurn": "Staging happens INSIDE the invocation handler (command handler or pre-step gesture boundary), so it is the same turn by construction; the model keeps the primary path and the plugin is the deterministic fallback.",
+    "askFirst": "When a team already exists the resolver never reuses and never creates: it returns an inquiry naming the existing team plus the two options. Participant matching is supplemented by an unapproved-staged-team scan, because a fresh headless boot carries a NEW session id and participant matching alone would silently stage a duplicate plan.",
+    "silentFailures": "An unavailable profile roster, a staging throw, an ambiguous session (two teams) and a disabled slash-command surface each produce a visible WARNING; the failure path was exercised repeatedly during development and always surfaced as WARNING, never silence."
+  },
+  "deterministicFalsification": {
+    "design": "an isolated home with NO credentials and NO settings: headless answers MISSING_CREDENTIAL so the model cannot call ANY tool, making 'the model did not build the team' guaranteed rather than occasional.",
+    "result": "the plugin had already staged the team: happy = exactly 1 team, phase staged, profile mpd, 0 members active, not approved, activation notice present in the session log."
+  },
+  "verified": [
+    {
+      "what": "QA case explicit-team-trigger (4 cases)",
+      "command": "bun skills/dsh-qa/scripts/explicit-team-trigger.mjs",
+      "exit": 0,
+      "evidence": "PASS: happy {teams:1, profile:'mpd', phase:'staged', spawned:0, approved:false, noticeSeen:true}; duplicate {teamsBefore:1, teamsAfter:1, inquirySeen:true}; unknownProfile {teams:0, sawError:true}; disabled {warningSeen:true}"
+    },
+    {
+      "what": "QA case offline self-test",
+      "command": "bun skills/dsh-qa/scripts/explicit-team-trigger.mjs --self-test",
+      "exit": 0,
+      "evidence": "pins the resolver, both entry points and the disabled-surface wiring"
+    },
+    {
+      "what": "R4 unit resolver tests",
+      "command": "bun test packages/mpd-agent-teams-plugin/test/r4-explicit-team.test.mjs",
+      "exit": 0,
+      "evidence": "4 pass: stages (staged, 0 spawned, not approved); ask-first inquiry on an existing staged team with still exactly 1 team; ambiguity warns; missing roster warns"
+    },
+    {
+      "what": "no regression: the automatic gate",
+      "command": "bun skills/dsh-qa/scripts/session-start-team.mjs",
+      "exit": 0,
+      "evidence": "PASS: simple 3/3 silent, complex 3/3 one staged team + one notice, negative control disarmed"
+    }
+  ],
+  "noRegression": [
+    {
+      "command": "bun test packages/mpd-agent-teams-plugin",
+      "exit": 0,
+      "evidence": "153 pass / 0 fail"
+    },
+    {
+      "command": "bun test packages",
+      "exit": 0,
+      "evidence": "all packages pass"
+    },
+    {
+      "command": "bun run typecheck",
+      "exit": 0
+    },
+    {
+      "command": "node skills/dsh-qa/scripts/preset-conformance.mjs",
+      "exit": 0,
+      "evidence": "PASS incl. negative control"
+    },
+    {
+      "command": "timeout 400 bun skills/dsh-qa/scripts/bundle-lifecycle.mjs",
+      "exit": 0,
+      "evidence": "PASS; a 60 s wrapper kills it mid-boot, so the recorded exit code comes from the unwrapped run"
+    },
+    {
+      "command": "node scripts/patch-agent-teams-fixes.mjs --check",
+      "exit": 0,
+      "evidence": "22 regions / 7 adopted files, clean"
+    },
+    {
+      "command": "node scripts/verify-vendor.mjs",
+      "exit": 0,
+      "evidence": "PASS after the skills corpus re-pin in this change (330 files)"
+    }
+  ],
+  "notVerified": [
+    {
+      "what": "a live model turn where the model builds the team itself and the plugin must not add a second",
+      "why": "the deterministic environment has no model route at all, so the no-duplicate guarantee is asserted at the resolver level (ask-first) and by the duplicate QA case, not by a live model-built team"
+    },
+    {
+      "what": "Web/panel rendering of the inquiry text",
+      "why": "the inquiry is asserted in the session log; no browser render was exercised"
+    }
+  ],
+  "cannotVerify": [
+    {
+      "what": "'same session, second explicit call' with a stable session id",
+      "why": "each headless boot mints a new session id, so same-session-id behaviour cannot be produced end-to-end; the duplicate case exercises workspace-level unapproved-staged detection, which is the scenario that matters for avoiding a duplicate plan"
+    }
+  ],
+  "changedPaths": [
+    "packages/mpd-agent-teams-plugin/lib/command.js",
+    "packages/mpd-agent-teams-plugin/lib/session-start.js",
+    "packages/mpd-agent-teams-plugin/lib/index.js",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+    "packages/mpd-agent-teams-plugin/test/r4-explicit-team.test.mjs",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+    "skills/dsh-qa/scripts/explicit-team-trigger.mjs",
+    "skills/dsh-qa/SKILL.md",
+    "VENDOR_LOCK.json",
+    "evidence/omo-align/implementation/r4/result.json"
+  ],
+  "frozenFiles": {
+    "packages/mpd-agent-teams-plugin/lib/command.js": {
+      "bytes": 17587,
+      "sha256": "6c29cd65fcdc7be81e8cb6107fbcfad51a45b1ad600a1aefa5bf85b60fb8398f"
+    },
+    "packages/mpd-agent-teams-plugin/lib/session-start.js": {
+      "bytes": 26917,
+      "sha256": "2372df644e52c88247ea89354b8414071ebd5c87061a6d869a52786002475793"
+    },
+    "packages/mpd-agent-teams-plugin/lib/index.js": {
+      "bytes": 38822,
+      "sha256": "57ad622d7bae45d47fa4e1642c14e378da104b6d5b4d4e7d5e30a12eb28c5941"
+    },
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": {
+      "bytes": 83372,
+      "sha256": "18c32870fdfb8ce7269ad5df7595cd2e573575cb9f28515586e9e7a460ad546e"
+    },
+    "skills/dsh-qa/scripts/explicit-team-trigger.mjs": {
+      "bytes": 8664,
+      "sha256": "70e482cd9a10fc9a7d78af68ba254d86ae82885a5ca7ffc87ff355c4cdcd8238"
+    }
+  }
+}
