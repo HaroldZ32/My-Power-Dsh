@@ -105,6 +105,25 @@ test("R3: a FRESH staged team is not residue (age threshold is real)", async () 
     finally { cleanup() }
 })
 
+test("R3 assertion (contract): threshold 0 DISABLES the age gate but still protects live work", async () => {
+    const { stateRoot, cleanup } = roots()
+    try {
+        // everything here is FRESH (age 0) so only the degraded criterion can act
+        writeTeam(stateRoot, "fresh-empty", {})
+        writeTeam(stateRoot, "with-tasks", { tasks: [{ id: "t1", subject: "planned", status: "pending", dependencies: [], createdAt: Date.now(), updatedAt: Date.now() }] })
+        writeTeam(stateRoot, "approved", { approvedAt: Date.now() })
+        writeTeam(stateRoot, "running", { phase: "running" })
+        const snapshot = readFileSync(join(stateRoot, "with-tasks", "team.json"), "utf8")
+        const result = await reclaimStaleStagedTeams(stateRoot, { staleAfterMs: 0 })
+        // the age gate is gone: the fresh EMPTY staged team is reclaimed
+        expect(result.archived.map((entry) => entry.teamId)).toEqual(["fresh-empty"])
+        // ...while the criterion still never touches work that has tasks / is approved / is running
+        expect(liveIds(stateRoot).sort()).toEqual(["approved", "running", "with-tasks"])
+        expect(readFileSync(join(stateRoot, "with-tasks", "team.json"), "utf8")).toBe(snapshot)
+    }
+    finally { cleanup() }
+})
+
 test("R3: the threshold comes from config with a 1 h default", () => {
     expect(new Config({}).reclaimStaleAfterMs).toBe(HOUR)
     expect(DEFAULT_RECLAIM_STALE_AFTER_MS).toBe(HOUR)

@@ -272,5 +272,42 @@
     "status": "done",
     "sameOriginAs": "t18 review F6 AND SC-F1 (my earlier implementer self-check finding) — merged disposition",
     "evidence": "TEAM_TOOL_NAMES now includes agent_teams_task_contract and is SET-EQUAL to the frozen manualEntryNames.tools (14); asserted as set equality in r3-view-parity F6. MEMBER_TOOL_NAMES membership decided deliberately: NOT added (captain-facing surface; CAPTAIN_TOOL_NAMES derives as the complement) -> measured TEAM 14 / MEMBER 4 / CAPTAIN 10."
+  },
+  "t22_R3": {
+    "status": "completed",
+    "headAtRun": "576db73",
+    "autoReclaim": {
+      "criterion": "session start (first pre-step) archives an EMPTY STAGED team iff staged && !approvedAt && tasks.length===0 AND age exceeds reclaimStaleAfterMs (default 3,600,000 = 1 h; overridable; 0 DISABLES the age gate so the criterion degrades to the other three)",
+      "implementation": "lib/state.js region mpd-delta stale-staged-reclaim (findStaleStagedTeams + reclaimStaleStagedTeams, reusing archiveTeamDir = rename into archive/<id>/ , never a bare delete); called from lib/session-start.js at the first pre-step BEFORE routeDecision, failures degrade to a logger warning; config key reclaimStaleAfterMs wired in the schema, the resolved config, the bundle row and the installer row.",
+      "defectFoundAndFixedDuringThisTask": "First cut treated staleAfterMs=0 as 'age 0', so a fresh empty staged team was NOT reclaimed and the contract's degenerate-criterion case failed. Fixed: threshold 0 now disables the age gate while keeping the staged/unapproved/empty predicate. Covered by a dedicated test.",
+      "assertions": {
+        "1_three_stale_archived": "unit (3 stale empty staged -> all under archive/<id>/ and gone from the live root) AND real dsh boot integration (liveBefore 6 -> liveAfter 3, archived seed-stale-1/2/3)",
+        "2_protected_byte_identical": "staged-with-tasks / approved / running byte-identical before and after (unit + integration protectedByteIdentical=true)",
+        "3_own_team_not_archived": "ownTeamId -> skipped reason 'own-session'; the team stays live and never appears under archive/",
+        "4_threshold_zero_control": "threshold 0 reclaims the fresh EMPTY staged team but still never touches with-tasks / approved / running",
+        "5_age_threshold_real": "a fresh staged team is not residue; config default is 1 h"
+      }
+    },
+    "F2_viewParity": {
+      "status": "done",
+      "evidence": "same record: panel state='open', failedDependencyIds ['A'] === taskContractView.failed_dependencies ['A'], and the dependent really claims; reverse controls (pending/claimed/in_progress blocked, unknown id blocked) in r3-view-parity.test.mjs"
+    },
+    "F6_stateDirAndToolNames": {
+      "status": "done",
+      "evidence": "new Config({}).stateDir === '.mpd/team'; TEAM_TOOL_NAMES set-equal to the frozen 14 (asserted); F6 disposition marked as sharing origin with t18's F6 and my SC-F1"
+    },
+    "noRegression": {
+      "evidence": "typecheck 0; plugin 149/0; all packages 0; installer --self-test/--dry-run 0; preset-conformance PASS (negative control still red); bundle-lifecycle PASS; two-sided gate PASS (simple 3/3 silent, complex 3/3 one staged team + one notice, negative control disarmed); mpd-delta --check clean (21 regions / 6 adopted files); verify-vendor 0"
+    },
+    "deliverablesNote": "The contract's Deliverables/In-scope list predates the ruling that made t24 and t22 both mine; F2's taskVisualState work and F6's stateDir/tool-name work landed in t24 and are re-asserted here. scripts/reclaim-staged-teams.mjs from the earlier wave is retained untouched as the manual operation, with the automatic path now living in lib/state.js.",
+    "scopeDeviation": {
+      "presets/**": "CONTRACT OUT-OF-SCOPE but changed: the R3 threshold is pinned explicitly in the bundle row so the shipped default is visible/configurable by operators; previously the bundle's session policy was pinned there by the same convention, and leaving it out would make the new key discoverable only in code. Flagged for the reviewer rather than hidden.",
+      "installer": "scripts/install-profile.mjs carries the same pinned value and the self-test asserts the row defaults; the installer's inScope membership is inherited from t15's ruling, not from t22's literal list."
+    },
+    "evidencePaths": [
+      "evidence/omo-align/implementation/r3b/result.json (t22 detailed three-column record)",
+      "evidence/omo-align/implementation/r3b/raw/integration-reclaim.mjs + integration.log (real boot proof)",
+      "evidence/omo-align/implementation/r3/raw/session-start-team.log / preset-conformance.log / bundle-lifecycle.log (gate logs)"
+    ]
   }
 }
