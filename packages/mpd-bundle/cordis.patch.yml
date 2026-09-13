@@ -220,6 +220,9 @@
         recipientUnreadMaxBytes: 262144
         mailboxPollIntervalMs: 3000
         enforcement: enforce
+        # R3: empty staged teams older than this are ARCHIVED at the next session
+        # start (never deleted), excluding the running session's own team.
+        reclaimStaleAfterMs: 3600000
         # SESSION-START TEAM GATE (binding): a session starts with NO team — a
         # team is NOT a precondition. mode=off is the default (upstream parity:
         # team_mode.enabled defaults to false) and means "no auto-provision, no
