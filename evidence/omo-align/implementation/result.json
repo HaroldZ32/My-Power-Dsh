@@ -168,49 +168,109 @@
   ],
   "commandsRun": [
     {
-      "command": "bun run typecheck",
-      "exit": 0
+      "command": "cd /root/dshProj/my-power-dsh && bun run typecheck",
+      "status": "passed",
+      "exitCode": 0
     },
     {
-      "command": "bun test packages/mpd-agent-teams-plugin",
-      "exit": 0
+      "command": "cd /root/dshProj/my-power-dsh && bun test packages/mpd-agent-teams-plugin",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "133 pass / 0 fail"
     },
     {
-      "command": "bun test packages",
-      "exit": 0
+      "command": "cd /root/dshProj/my-power-dsh && bun test packages",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "315 pass / 0 fail"
     },
     {
-      "command": "node scripts/install-profile.mjs --self-test",
-      "exit": 0
+      "command": "cd /root/dshProj/my-power-dsh && node scripts/install-profile.mjs --self-test",
+      "status": "passed",
+      "exitCode": 0
     },
     {
-      "command": "node scripts/install-profile.mjs --dry-run",
-      "exit": 0
+      "command": "cd /root/dshProj/my-power-dsh && node scripts/install-profile.mjs --dry-run",
+      "status": "passed",
+      "exitCode": 0
     },
     {
-      "command": "node skills/dsh-qa/scripts/preset-conformance.mjs",
-      "exit": 0
+      "command": "cd /root/dshProj/my-power-dsh && node skills/dsh-qa/scripts/preset-conformance.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "PASS (row parity 31/31, session/create 200 agentPreset mpd, negative control still red). This case boots a web profile and needs >60 s, so it must be run with a raised timeout (raw/preset-conformance-r2.log)."
     },
     {
-      "command": "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs",
-      "exit": 0
+      "command": "cd /root/dshProj/my-power-dsh && bun skills/dsh-qa/scripts/bundle-lifecycle.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "PASS (uninstall residue [], boot ok) — measured twice: an earlier 60 s foreground wrapper returned exit 1 because it killed the run mid-boot, so the exit code recorded here comes from the unwrapped `timeout 300` invocation, which printed '[bundle-lifecycle] PASS'. The wrapper timeout is a harness artifact, not a gate failure."
     },
     {
-      "command": "node skills/dsh-qa/scripts/session-start-team.mjs",
-      "exit": 0
+      "command": "cd /root/dshProj/my-power-dsh && node skills/dsh-qa/scripts/session-start-team.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "two-sided on a settled revision; see raw/session-start-team-final.log"
     },
     {
-      "command": "node scripts/patch-agent-teams-fixes.mjs --check",
-      "exit": 0
+      "command": "cd /root/dshProj/my-power-dsh && node scripts/patch-agent-teams-fixes.mjs --check",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "19 regions / 5 adopted files, clean"
     },
     {
-      "command": "node scripts/verify-vendor.mjs",
-      "exit": 0
+      "command": "cd /root/dshProj/my-power-dsh && node scripts/verify-vendor.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "PASS (skills corpus treeSha unchanged by R2)"
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && bun test packages/mpd-agent-teams-plugin/test/opt1-failed-dependency.test.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "OPT-1 targeted: 6 pass / 0 fail (three-state, <15 s claim bound, view failed_dependencies, reverse control, captain takeover, retry-then-proceed)"
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && bun test packages/mpd-agent-teams-plugin/test/opt2-residual-and-ordering.test.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "OPT-2 targeted: 4 pass / 0 fail (residual classification, archive-not-delete, protected teams byte-identical, dry run, gate-before-sizing ordering)"
     }
   ],
   "revision": "R2 (2026-09-13 captain-binding contract revision: OPT-1 + OPT-2)",
   "contractNote": "The captain quotes frozen-contract.json at 19,937 B / sha256 a38c87dd…; measured on disk at revision time it is 26,013 B / sha256 prefix 4c3c2ded… (a fourth revision). I verified section by section that every clause this implementation depends on is byte-identical to the R2 instruction text: complexityGate (logic, signals, both 3+3 prompt sets), configPlane.frozen (10 keys + 3 rules), massUlwSemantics (S1-S4 incl. the corrected S2), manualEntryNames, requiredQaCases (9), changeLocations (10), isolation. The drift is confined to t4Requirements (now carrying fv4 authoritativePaths + immutabilityRule + residualFieldGap + revisionHistory). NOTE: the current contract file still contains NO OPT-1/OPT-2 section, so the R2 work order text in the captain message is the operative record for this revision.",
   "finalRevision": "c28c7c1",
   "branch": "dev",
-  "mergeNote": "R2 commits were made on feature/omo-parity-align (f4f91b5 tip) and the branch was already an ancestor of dev, so `git merge --no-ff` reported 'Already up to date' — dev advanced by fast-forward-equivalent containment. Net: dev HEAD = the R2 commit; nothing was rebased or rewritten and no docs path was included."
+  "mergeNote": "R2 commits were made on feature/omo-parity-align (f4f91b5 tip) and the branch was already an ancestor of dev, so `git merge --no-ff` reported 'Already up to date' — dev advanced by fast-forward-equivalent containment. Net: dev HEAD = the R2 commit; nothing was rebased or rewritten and no docs path was included.",
+  "implementer": "Senior Engineer (t15 attempt ecd6af8d); original task t15 is terminal and immutable, so t20 carries the audit trail for the R2 revision",
+  "r2Anchor": {
+    "contract": "evidence/omo-align/requirements/frozen-contract.json",
+    "bytes": 31705,
+    "sha256": "a0d28ebeaf3f204e4a33480670f44f204415b16758999ce22309a99e3c9c2d65",
+    "authority": "schedulerSemantics section (OPT1_failedDependency + OPT2_ordering_and_reclamation + assertionSubstitution + knownGaps)",
+    "caveat": "Before that section existed, only captain message text carried the OPT-1/OPT-2 decisions; this was recorded at the time and is now superseded by the frozen section."
+  },
+  "r2ChangedPaths": [
+    "packages/mpd-agent-teams-plugin/lib/state.js",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+    "packages/mpd-agent-teams-plugin/lib/tools.js",
+    "packages/mpd-agent-teams-plugin/test/opt1-failed-dependency.test.mjs",
+    "packages/mpd-agent-teams-plugin/test/opt2-residual-and-ordering.test.mjs",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/quality-loop.test.mjs",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+    "scripts/reclaim-staged-teams.mjs",
+    "evidence/omo-align/implementation/result.json"
+  ],
+  "r2Commits": {
+    "code": "c28c7c1",
+    "evidence": "c91f266",
+    "branch": "dev",
+    "note": "R2 commits were made on feature/omo-parity-align whose tip was already an ancestor of dev; merge --no-ff reported 'Already up to date' (no rewrite, no rebase)"
+  },
+  "r2ThreeColumnCounts": {
+    "verified": 19,
+    "notVerified": 3,
+    "cannotVerify": 2
+  }
 }
