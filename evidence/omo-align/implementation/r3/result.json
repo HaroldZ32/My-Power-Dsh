@@ -227,5 +227,50 @@
       "status": "addressed",
       "how": "evidence/omo-align/implementation/r3/freeze.json records head 1c83efc + 9 file sha256/bytes after the tree settled."
     }
+  },
+  "contractAnchor": {
+    "file": "evidence/omo-align/requirements/frozen-contract.json",
+    "bytes": 33022,
+    "sha256": "9916644bc50669b30d857b190a4058a53a31cf2106444b2c3e0091d955d76cb4",
+    "fields": [
+      "complexityGate.logic",
+      "complexityGate.logicRevisionNote",
+      "complexityGate.testPrompts.expectation"
+    ],
+    "logic_as_frozen": "trigger = anyExplicitFlag OR (matchedSignals >= 1); a matched signal = A explicit flag | C satisfied (>=2 of C1/C2/C3) | B >=4 deliverable verbs | D plan file exists",
+    "verified_on_disk": "measured 33,022 B / sha256 9916644bc50669b30d857b190a4058a53a31cf2106444b2c3e0091d955d76cb4 / PARSE OK; my implementation already conforms (C_SUBSIGNAL_MIN=2 pushes a single 'C'; trigger = explicitFlag || signals.length >= 1)"
+  },
+  "F1_final": {
+    "status": "FINALISED under captain adjudication Option A (user decision 2026-09-13)",
+    "acceptedCost": {
+      "sentence": "Check the test, build the package, verify the output.",
+      "behaviour": "DOES route to a team (C satisfied at C2+C3 = 2 of 3)",
+      "ledgered_as": "accepted cost, NOT a defect — contract complexityGate.logicRevisionNote: 'CONSEQUENCE, ACCEPTED AND LEDGERED … It is not distinguishable from frozen complex prompt #1 under any C-only rule'; testPrompts.expectation: 'KNOWN AND ACCEPTED … ledgered as the cost of option A, not a defect'"
+    },
+    "oldRuleUnreachability": {
+      "statement": "Under the superseded 'matchedSignals >= 2' rule the frozen complex prompts #1 and #3 could not trigger at all: they carry no B/D/explicit flag, so once C is one signal their counted total is 1.",
+      "evidence": "evidence/omo-align/implementation/r3/raw/signal-c-matrix.json (7-prompt sub-signal matrix; complex1 oldCount=2 counted as C1+C2+C3 separately, =1 once C is aggregated; complex3 likewise)",
+      "generator": "evidence/omo-align/implementation/r3/raw/gen-signal-c-matrix.mjs"
+    },
+    "requiredAssertions": {
+      "simple_3_of_3_silent": "asserted (r3-f1-signal-c.test.mjs + live two-sided gate: simpleTeams [0,0,0], simpleNotices [false,false,false])",
+      "complex_3_of_3_exactly_one_each": "asserted (live two-sided gate: complexTeams [1,1,1], complexNotices [true,true,true], each staged with 11 members and 0 spawned)",
+      "acceptedCost_pinned": "asserted (r3-f1-signal-c.test.mjs pins the false-positive shape: exactly one 'C' signal, never C1/C2/C3)"
+    },
+    "docstring": "rewritten to the frozen 2-of-3 rule and the OR-based trigger; the stale literal-rule wording is gone"
+  },
+  "F2_final": {
+    "status": "done",
+    "note": "The captain confirmed tools.js already passes allTasks into taskContractView (the review's claim that failed_dependencies was never populated does not hold after R2). The remaining UI semantics is fixed: taskVisualState routes through the three-state predicate.",
+    "bidirectionalAssertion": "r3-view-parity.test.mjs: on ONE team record the panel view reports state=open with failedDependencies ['A'] and the task-contract view reports failed_dependencies ['A']; the dependent then really claims. Reverse controls: pending/claimed/in_progress render blocked; an unknown dependency id renders blocked."
+  },
+  "F5_final": {
+    "status": "done",
+    "evidence": "schema default stateDir '.mpd/team' (measured); bundle row already pinned the same value so pinned behaviour is unchanged; asserted in r3-view-parity F5"
+  },
+  "F6_final": {
+    "status": "done",
+    "sameOriginAs": "t18 review F6 AND SC-F1 (my earlier implementer self-check finding) — merged disposition",
+    "evidence": "TEAM_TOOL_NAMES now includes agent_teams_task_contract and is SET-EQUAL to the frozen manualEntryNames.tools (14); asserted as set equality in r3-view-parity F6. MEMBER_TOOL_NAMES membership decided deliberately: NOT added (captain-facing surface; CAPTAIN_TOOL_NAMES derives as the complement) -> measured TEAM 14 / MEMBER 4 / CAPTAIN 10."
   }
 }
