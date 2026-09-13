@@ -1,6 +1,6 @@
 // C4 mpd-comment-checker-plugin: comment-detection discipline on the DSH tool seam.
 // Vendored core: the upstream project packages/comment-checker-core parser
-// (base 8c57e46, SUL-1.0 fork terms). The check runner is adapted to a
+// (base 8c57e46; covered by SUL-1.0). The check runner is adapted to a
 // spawnSync-based stdin JSON call against the @code-yeongyu/comment-checker
 // native binary (MIT, github.com/code-yeongyu/go-claude-code-comment-checker).
 // Binary resolution: dependency-first — @code-yeongyu/comment-checker is declared

@@ -5,7 +5,7 @@
 Plan C / C4 — comment/docstring detection on the DSH tool seam (opt-in binary).
 
 Vendored parser: the upstream project `packages/comment-checker-core` (base
-8c57e46, SUL-1.0 fork terms; `isRecord` inlined). Check binary:
+8c57e46; covered by SUL-1.0; `isRecord` inlined). Check binary:
 `@code-yeongyu/comment-checker` 0.8.0 (MIT,
 github.com/code-yeongyu/go-claude-code-comment-checker) — native tree-sitter
 binary: used UNMODIFIED and declared as an optionalDependency of the `@mpd-dsh/mpd`

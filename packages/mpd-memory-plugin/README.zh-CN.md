@@ -3,7 +3,7 @@
 
 Plan C / C6 — 基于 git/svn 的记忆引擎，带一个 reflection（反思）状态机。
 
-上游项目 `memory-core` 语义的聚焦移植（base 8c57e46，SUL-1.0 fork 条款）：markdown 记忆文件带 frontmatter（`description`/`kind`/`aliases`/`read_only`）、journal + facts 队列、reflection reducer（step-count / manual / dream 触发、reservation 状态），以及一个同时支持 git 与 svn 后端的 VCS 抽象。
+改编自上游包 `memory-core` 的语义（base 8c57e46；依 SUL-1.0 授权）：markdown 记忆文件带 frontmatter（`description`/`kind`/`aliases`/`read_only`）、journal + facts 队列、reflection reducer（step-count / manual / dream 触发、reservation 状态），以及一个同时支持 git 与 svn 后端的 VCS 抽象。
 
 ## VCS 后端（`memory.vcs`: git | svn | both）
 
