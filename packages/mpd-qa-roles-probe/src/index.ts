@@ -13,6 +13,13 @@ type RolesService = { list(): Array<{ id: string }> }
 const ROSTER_IDS = ["oracle", "librarian", "prometheus", "hephaestus", "sisyphus", "sisyphus-junior", "atlas", "explore", "metis", "momus", "multimodal-looker"]
 /** One corpus skill the probe loads to prove the provider serves real bodies. */
 const FIXTURE_SKILL = "svn-master"
+/**
+ * NAMED corpus fixtures that must appear in the served listing. The probe asserts
+ * presence of these stable, load-bearing cases instead of a bare corpus floor: the
+ * extraction removed three `rtl-*` skill trees (22 -> 19 served), and a hard-coded
+ * count would either break on every corpus change or silently stop meaning anything.
+ */
+const FIXTURE_SKILLS = ["ast-grep", "dsh-qa", "git-master", "programming", "svn-master"]
 export async function apply(ctx: { agentPresets: unknown; get?: (k: string) => any; [k: string]: unknown }): Promise<void> {
   const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
   let presetOk = false
@@ -50,12 +57,22 @@ export async function apply(ctx: { agentPresets: unknown; get?: (k: string) => a
   try {
     const summaries = await dsh.listSkills()
     const bundled = summaries.filter((summary: any) => summary.source === "bundled")
-    console.log("[roles-probe] SKILLS=" + summaries.length + " BUNDLED=" + bundled.length)
+    const servedNames = new Set(summaries.map((summary: any) => String(summary.name)))
+    const missingFixtures = FIXTURE_SKILLS.filter((name) => !servedNames.has(name))
+    console.log("[roles-probe] SKILLS=" + summaries.length + " BUNDLED=" + bundled.length
+      + " SKILL_FIXTURES=" + (FIXTURE_SKILLS.length - missingFixtures.length) + "/" + FIXTURE_SKILLS.length
+      + (missingFixtures.length > 0 ? " MISSING=" + missingFixtures.join(",") : ""))
     const fixture = (await dsh.loadSkill(FIXTURE_SKILL)) as { name?: string; content?: string; resourceBase?: { path?: string } } | undefined
     const base = fixture?.resourceBase?.path ?? "unknown"
     const bytes = fixture?.content?.length ?? 0
     console.log("[roles-probe] SKILL_FIXTURE=" + (fixture === undefined ? "missing" : "ok") + " name=" + String(fixture?.name ?? "-") + " base=" + base + " bytes=" + String(bytes))
-    catalogOk = fixture !== undefined && bytes > 100 && bundled.length >= 20
+    // Three independent failure channels, so the boot gate can really go red:
+    //   1. EVERY served skill must come from the bundle (no $DSH_HOME copy, no partial serve);
+    //   2. every named fixture must be present in the served listing;
+    //   3. the loaded fixture must return a real body (>100 bytes).
+    catalogOk = fixture !== undefined && bytes > 100
+      && summaries.length === bundled.length
+      && missingFixtures.length === 0
   } catch (e: any) {
     console.log("[roles-probe] SKILLS=fail:" + String(e?.message ?? e))
   }

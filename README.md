@@ -2,13 +2,25 @@
 
 **English** | [中文](./README.zh-CN.md)
 
-A DeepSeek-Harness plugin bundle that ports the portable capabilities of oh-my-openagent (OmO).
+**my-power-dsh** is an independent DeepSeek Harness (DSH) plugin bundle — the package `@mpd-dsh/mpd`,
+with its own plugin rows, one `mpd` agent preset and a served skill corpus, installed with a single
+`dsh plugin add`.
 
-> **Fork declaration**: This project is a fork derived from
-> [oh-my-openagent](https://github.com/code-yeongyu/oh-my-openagent)
-> (commit `8c57e46`, v5.0.0-beta.20) with deep modifications; it inherits upstream
-> **Sustainable Use License 1.0 (SUL-1.0)**. upstream copyright belongs to code-yeongyu and the OmO
-> contributors. Full license text: [LICENSE.md](./LICENSE.md).
+It is not the OMO DeepSeek-Harness port. Its provenance is factual rather than a lineage: a pinned
+baseline of [oh-my-openagent](https://github.com/code-yeongyu/oh-my-openagent) (OmO; commit `8c57e46`,
+v5.0.0-beta.20 — a baseline this repository does not chase), whose 11 specialists ship as adapted
+teammate templates and workmate BASE templates; a 328-file skill corpus that mixes ported upstream
+skills with third-party upstream skills and cases written here; and one adopted component — the
+`agent-teams` plugin from [dsh-agent-teams](https://github.com/NanmiCoder/dsh-agent-teams) (MIT),
+vendored as first-class main code with local adaptations. Everything else is written here, and the
+RTL/EDA surface is not part of this repository: it was split out to the sibling `@mpd-dsh/silicon`
+sub-bundle.
+
+> **License**: SUL-1.0 — the licence inherited from the upstream project (strong copyleft; full text in
+> [LICENSE.md](./LICENSE.md)); the upstream copyright belongs to code-yeongyu and the OmO contributors.
+> The adopted `agent-teams` component keeps its own MIT License (notices in
+> [LICENSE-NOTICES.md](./LICENSE-NOTICES.md)); that MIT grant covers the adopted component only — this
+> project's own code is not MIT-licensed.
 
 **Install (ONE command, straight from the checkout)**
 
@@ -37,6 +49,12 @@ Full documentation lives in [`docs/`](docs/index.md) — start at
 - [`docs/development.md`](docs/development.md) — build/test/QA/pack/release.
 - [`AGENTS.md`](AGENTS.md) — the binding repository manual (conventions, gates, git
   model, troubleshooting).
+
+**RTL/EDA capability lives elsewhere.** The `rtl-*` skills, the verif plugin, the HDL
+language-server configuration, the RTL guides and the Verilog golden fixtures are owned by the
+silicon sub-bundle (`@mpd-dsh/silicon`, sibling checkout `../my-power-dsh-silicon`,
+`gitee.com/nop_chip/my-power-dsh-silicon`). This repository ships the harness/bundle software
+surface only; an mpd-only install boots unchanged and carries no RTL content.
 
 This installs the `@mpd-dsh/mpd` bundle: DeepSeek dual-track (official default),
 MCP servers, all mpd plugins (including codegraph auto-init), adopted agent-teams

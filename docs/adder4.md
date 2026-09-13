@@ -1,10 +1,12 @@
 # adder4 — 4-bit Ripple-Carry Adder
 
-> **Internal QA artifact** — golden-fixture reference doc (tests/golden/fixtures/verilog/modules/adder4.v),
+> **Internal QA artifact** — golden-fixture reference doc (moved to the silicon bundle:
+> `@mpd-dsh/silicon` `tests/golden/fixtures/verilog/modules/adder4.v`; this mpd copy describes the
+> pre-extraction checkout),
 > not a user-facing doc; exempt from the bilingual policy (see AGENTS.md Language Policy + §3). Keep in sync with the
 > fixture, not with product docs.
 
-Source file: `tests/golden/fixtures/verilog/modules/adder4.v`
+Source file: `@mpd-dsh/silicon` `tests/golden/fixtures/verilog/modules/adder4.v` (fixture moved to the silicon bundle; the mpd copy was deleted by t8)
 
 `adder4` is a synthesizable, Verilog-2001 compliant 4-bit ripple-carry adder. It is built from 4
 full adders cascaded together; the carry-out of each lower stage ripples bit by bit to the carry-in

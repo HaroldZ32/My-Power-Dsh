@@ -12,7 +12,8 @@
 // at `scope-glob-and-contract.test.mjs:399` for tools.js lives here, together with
 // the insertion-history cases and one fixture per colliding marker pair.
 import { test, expect } from "bun:test"
-import { execFileSync, spawnSync } from "node:child_process"
+import { execFileSync } from "node:child_process"
+import { createHash } from "node:crypto"
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
@@ -22,8 +23,8 @@ import { applyAgentTeamsFixes, assertRegistryFormat, canonicalIndent, findRegion
 
 const pluginRoot = join(dirname(fileURLToPath(import.meta.url)), "..")
 const repoRoot = join(pluginRoot, "..", "..")
-const LIB_FILES = ["quality-gates.js", "tools.js", "mpd-deltas.js"]
-const ADOPTED_FILES = ["quality-gates.js", "tools.js"]
+const LIB_FILES = ["index.js", "quality-gates.js", "tools.js", "mpd-deltas.js"]
+const ADOPTED_FILES = ["index.js", "quality-gates.js", "tools.js"]
 
 /**
  * Copy the adopted lib + registry + the applier CLI into a scratch root, so the
@@ -40,6 +41,25 @@ function scratchRoot() {
 }
 
 const libPath = (root, name) => join(root, "packages/mpd-agent-teams-plugin/lib", name)
+
+/** Sha256 pins of the checked-in pristine upstream fixtures (fixtures/upstream/README.md). */
+const UPSTREAM_PINS = {
+    "tools.js": "ba1f6ab20d18285956c1cf206762f5a751eacd584513fa0d0f0c798e8bfc9ce7",
+    "quality-gates.js": "4907ff10a45351af8080b0a6203239012e25028c8175bd7588d31a7aa7481b57",
+}
+
+/**
+ * Read a PRISTINE upstream fixture. Never `git show HEAD:` — HEAD carries the mpd delta bodies,
+ * so it is no longer pristine by construction (t8 / F2). The pinned sha256 makes any fixture
+ * edit fail here instead of silently weakening an assertion.
+ */
+function pristineUpstream(name) {
+    const text = readFileSync(join(pluginRoot, "self-fix-tests", "fixtures", "upstream", name), "utf8")
+    const digest = createHash("sha256").update(text).digest("hex")
+    expect(digest, `fixture fixtures/upstream/${name} drifted from its pinned pristine bytes`).toBe(UPSTREAM_PINS[name])
+    return text
+}
+
 const canonicalOf = (name) => readFileSync(join(pluginRoot, "lib", name), "utf8")
 const regionIdAt = (line) => /\/\/#region (mpd-delta [A-Za-z0-9-]+) \(/.exec(line)?.[1]
 
@@ -91,7 +111,7 @@ const healError = (root, write) => {
 }
 
 // ---------- the headline case: strip BOTH files, heal each byte-for-byte ----------
-test("t2: strip-healing BOTH adopted files from the same state is byte-identical", () => {
+test("t2: strip-healing ALL adopted files from the same state is byte-identical", () => {
     const root = scratchRoot()
     try {
         const canonical = Object.fromEntries(ADOPTED_FILES.map((name) => [name, canonicalOf(name)]))
@@ -538,19 +558,18 @@ test("t9: a re-materialized tools.js is REFUSED, byte-untouched, with key counts
     const root = scratchRoot()
     try {
         const path = libPath(root, "tools.js")
-        const upstream = spawnSync("git", ["show", "HEAD:packages/mpd-agent-teams-plugin/lib/tools.js"], { cwd: repoRoot, encoding: "utf8" })
-        expect(upstream.status).toBe(0)
-        expect(upstream.stdout.match(/mpd-delta/g) ?? []).toHaveLength(0)
-        writeFileSync(path, upstream.stdout)
+        const upstreamText = pristineUpstream("tools.js")
+        expect(upstreamText.match(/mpd-delta/g) ?? []).toHaveLength(0)
+        writeFileSync(path, upstreamText)
         const message = healError(root, true)
         expect(message).toMatch(/mpd-delta update-task-contract/)
         expect(message).toContain("restore the marked file, or re-establish the region's site and re-run --write-registry")
         expect(message).toContain("never guesses an insertion site")
         // byte-untouched: the duplicate-key shape shift (upstream twin + mpd twin, last
         // one wins) cannot occur, because the pair assertion refuses before any insert
-        expect(readFileSync(path, "utf8")).toBe(upstream.stdout)
-        expect((upstream.stdout.match(/description: 'Update a task status\/output/g) ?? [])).toHaveLength(1)
-        expect(upstream.stdout).not.toContain("REQUIRED: a payload-only update repeats the current status")
+        expect(readFileSync(path, "utf8")).toBe(upstreamText)
+        expect((upstreamText.match(/description: 'Update a task status\/output/g) ?? [])).toHaveLength(1)
+        expect(upstreamText).not.toContain("REQUIRED: a payload-only update repeats the current status")
     }
     finally {
         rmSync(root, { recursive: true, force: true })
@@ -561,7 +580,7 @@ test("t9: the targeted re-materialize shape (upstream twins restored at the lite
     const root = scratchRoot()
     try {
         const path = libPath(root, "tools.js")
-        const upstreamLines = spawnSync("git", ["show", "HEAD:packages/mpd-agent-teams-plugin/lib/tools.js"], { cwd: repoRoot, encoding: "utf8" }).stdout.split("\n")
+        const upstreamLines = pristineUpstream("tools.js").split("\n")
         const upstreamName = upstreamLines.findIndex((line) => line.trim() === "name: 'agent_teams_update_task',")
         const upstreamDescription = upstreamLines.find((line) => line.trim().startsWith("description: 'Update a task status/output"))
         const upstreamStatusAt = upstreamLines.findIndex((line, at) => at > upstreamName && line.trim() === "status: {")

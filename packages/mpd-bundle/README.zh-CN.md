@@ -1,7 +1,9 @@
 # mpd-bundle
 **中文** | [English](./README.md)
 
-DSH bundle 聚合包：`cordis.patch.yml` 挂载每一个 mpd-dsh plugin row — MCP servers（ast-grep/git-bash/lsp/codegraph + 远程 context7/grep.app + RTL 波形读取行 `mcp-wave-mcp`/`mcp-traceweave` — 外部工具，经 `MPD_DSH_*_BIN` 环境变量优先解析，二进制缺席时优雅降级，安装策略见 `docs/rtl-verif-guide.md`）、B/C 线 plugins（mpd-config 置顶，使 mpdConfig service 对下方 rows 可见；mpd-tools / modelchain / roles / ulw / agent-teams / hashline / boulder / comment-checker / codegraph / memory / workmate / verif）、`mpd-web-compat` 自注册行（`name: '@mpd-dsh/mpd'`——承载 bundle web client 的 loader 条目）以及 mpd-bootstrap provisioning。
+DSH bundle 聚合包：`cordis.patch.yml` 挂载每一个 mpd-dsh plugin row — MCP servers（ast-grep / git-bash / lsp / codegraph + 远程 context7 / grep.app）、B/C 线 plugins（mpd-config 置顶，使 mpdConfig service 对下方 rows 可见；随后是 mpd-dsh-adapter / mpd-tools / modelchain / roles / ulw / hashline / boulder / comment-checker / codegraph / memory / workmate）、`mpd-web-compat` 自注册行（`name: '@mpd-dsh/mpd'`——承载 bundle web client 的 loader 条目）、mpd-bootstrap provisioning，以及被采纳的 `agent-teams` row（`stateDir: .mpd/team`）。
+
+波形读取行（`mcp-wave-mcp` / `mcp-traceweave`）**未挂载**：它们包装外部 Python MCP server，在 `cordis.patch.yml:92-123` 中连同安装步骤一起保持注释状态，因此没有这些二进制的机器仍能原样启动。
 
 该 bundle 只随附 ONE preset（`mpd`，主工作 agent；assets 位于 `packages/mpd-bootstrap-plugin/presets/mpd`）：它配置 `dsh-agent-instructions`，使用 `instructionFileCandidates: [AGENT.md, AGENTS.md, CLAUDE.md]`，使每个 project session 都尝试读取 AGENT.md，并声明 native tool presentation。OMO-origin agents 以 subagent roster（`mpd-roles-plugin`）形式存在，而非 presets。
 

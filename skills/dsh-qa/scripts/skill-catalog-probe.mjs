@@ -8,6 +8,7 @@
 // credential, and delivery — not model behavior — is what this case asserts.
 // Isolated DSH_HOME; evidence -> evidence/plan-d/skill-catalog/<ts>/.
 // --self-test is offline (staged presence + provider wiring in the built dist).
+// PREREQ: absent-staged-pack dist/mpd-package/package.json node scripts/pack-mpd.mjs
 import { spawnSync } from "node:child_process"
 import { cpSync, existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs"
 import { tmpdir, homedir } from "node:os"
@@ -17,19 +18,51 @@ import { fileURLToPath } from "node:url"
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const TASK = "Call the skill tool with name 'svn-master' (the exact skill name from the session skill catalog), then reply in one line what this skill governs."
 
+const SLUG = "skill-catalog-probe"
+const PACK = join(repoRoot, "dist", "mpd-package", "package.json")
+const PACK_PREREQ = { reason: "absent-staged-pack", prereq: "dist/mpd-package/package.json", remedy: "node scripts/pack-mpd.mjs" }
+// Both strict spellings are normative (x2 v2 §6.5): the generic name and the case-specific name.
+const STRICT = process.argv.includes("--no-skip") || process.argv.includes("--require-pack")
+
+/** AM1 (x2 v2 §7): a positive probe of the exact prerequisite. The ONLY skippable prerequisite
+ *  of this case is the staged pack (§3.3): credentials are NOT part of the skip set and keep
+ *  their existing loud failure. */
+function absentPrereq() {
+  return existsSync(PACK) ? null : PACK_PREREQ
+}
+
+/** SKIP (exit 0) or, under either strict flag, FAIL (exit 1) — the same field values in both
+ *  modes (AM2). The canonical marker is the FIRST stdout line (§4); human prose follows on
+ *  stdout for a SKIP and on stderr for a FAIL. Called AFTER the prerequisite-independent
+ *  offline checks (AM3b) and BEFORE the non-skippable credentials check. */
+function gate(lane) {
+  const p = absentPrereq()
+  if (p === null) return
+  console.log(`[mpd-qa] ${STRICT ? "FAIL" : "SKIP"} case=${SLUG} lane=${lane} reason=${p.reason} prereq=${p.prereq} remedy="${p.remedy}"`)
+  const prose = `[${SLUG}] staged package absent at ${p.prereq}; ${STRICT ? "failing (strict flag)" : "skipping (not a failure)"}`
+  if (STRICT) console.error(prose)
+  else console.log(prose)
+  process.exit(STRICT ? 1 : 0)
+}
+
 function selfTest() {
   const staged = join(repoRoot, "dist", "mpd-package")
   const marker = join(staged, "skills", "svn-master", "SKILL.md")
-  if (!existsSync(marker)) { console.error("[skill-catalog-probe self-test] FAIL: run node scripts/pack-mpd.mjs first (staged skills missing)"); process.exit(1) }
+  // Prerequisite-independent checks first (AM3b): the built provisioning dist is tracked,
+  // so a defect there is a FAIL in every mode — never a skip.
   // bundle-served model: the built provisioning plugin registers a skill provider
   // and no longer copies the corpus into the harness home.
   const dist = readFileSync(join(repoRoot, "packages", "mpd-bootstrap-plugin", "dist", "index.js"), "utf8")
   if (!dist.includes("registerProvider") || !dist.includes("skill corpus served from")) { console.error("[skill-catalog-probe self-test] FAIL: mpd-bootstrap dist does not register the corpus provider"); process.exit(1) }
   if (dist.includes("syncTree") || /cpSync\([^)]*skills/.test(dist)) { console.error("[skill-catalog-probe self-test] FAIL: mpd-bootstrap dist still copies the corpus (syncTree/cpSync)"); process.exit(1) }
+  gate("self-test")
+  // Present-but-broken pack (AM3): the prerequisite exists but the staged corpus is incomplete.
+  if (!existsSync(marker)) { console.error("[skill-catalog-probe self-test] FAIL: staged skill corpus incomplete (missing skills/svn-master/SKILL.md; run node scripts/pack-mpd.mjs)"); process.exit(1) }
   console.log("[skill-catalog-probe self-test] ok: staged skill corpus present + provider wiring verified")
 }
 
 async function runReal() {
+  gate("real")
   const creds = join(homedir(), ".dsh", ".credentials.yaml")
   if (!existsSync(creds)) { console.error("[skill-catalog-probe] missing credentials"); process.exit(1) }
   const ts = new Date().toISOString().replaceAll(":", "-")

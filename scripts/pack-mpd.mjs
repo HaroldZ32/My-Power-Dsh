@@ -72,7 +72,7 @@ function cpAssets() {
     if (existsSync(join(repoRoot, f))) cpSync(join(repoRoot, f), join(outDir, f))
   }
   // MCP install/activation helper ships with the package so dist installs can
-  // bootstrap the sg/codegraph/verible/slang binaries + wave MCPs too.
+  // bootstrap the sg/codegraph binaries + wave MCPs too.
   mkdirSync(join(outDir, "scripts"), { recursive: true })
   cpSync(join(repoRoot, "scripts", "install-mcp.mjs"), join(outDir, "scripts", "install-mcp.mjs"))
   // Per-package bilingual README pair for every shipped plugin/MCP package

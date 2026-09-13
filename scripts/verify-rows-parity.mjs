@@ -84,6 +84,14 @@ const extra = [...installerSet].filter((id) => !patchSet.has(id))
 const patchDup = duplicates(patchIds)
 const installerDup = duplicates(installerIds)
 
+// Guard-1 (t8 / R7.15): a run with ZERO subjects is a degraded run, not a pass. Without this,
+// a patch that declares no `- insert:` block (or an installer that prints nothing) made the
+// comparison below trivially true and the gate exited 0 while checking nothing.
+if (patchSet.size === 0 || installerSet.size === 0) {
+  const empty = [patchSet.size === 0 ? "the bundle patch declares no '- insert:' row ids" : "", installerSet.size === 0 ? "the installer declares no row ids" : ""].filter(Boolean)
+  console.error("[verify-rows-parity] FAIL - zero-subject run: " + empty.join(" and ") + " - refusing to report PASS with nothing to compare")
+  process.exit(1)
+}
 if (missing.length || extra.length || patchDup.length || installerDup.length) {
   console.error("[verify-rows-parity] FAIL - installer vs bundle patch row ids differ")
   console.error("  bundle patch inserts (" + patchSet.size + "): " + [...patchSet].join(", "))

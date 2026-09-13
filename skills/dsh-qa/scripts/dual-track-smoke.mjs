@@ -18,7 +18,7 @@ const TRACKS = {
 }
 const FIXTURE_ROW = "- id: agent-default-model\n  config:\n    provider: deepseek-official\n"
 
-// Dev-flavor rewrite of the bundle patch (preset-register/rtl-verif pattern): the
+// Dev-flavor rewrite of the bundle patch (the preset-register pattern): the
 // committed patch names rows as packed `@mpd-dsh/mpd/...` specifiers, which resolve
 // only inside an INSTALLED profile. This case used to hand the committed patch to a
 // bare `--profile headless`, so it died at boot with

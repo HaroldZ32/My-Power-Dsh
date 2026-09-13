@@ -7,6 +7,7 @@
 //   4) real headless boot: the RELOCATED bundle serves its preset root + skill
 //      corpus by reference, with ZERO writes into the harness home.
 // Evidence -> evidence/plan-d/relocate/<ts>/. --self-test is offline.
+// PREREQ: absent-staged-pack dist/mpd-package/package.json node scripts/pack-mpd.mjs
 import { spawnSync } from "node:child_process"
 import { cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
@@ -16,14 +17,41 @@ import { fileURLToPath } from "node:url"
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const DEV = process.env.MPD_DEV_ROOT || repoRoot
 
+const SLUG = "relocate-smoke"
+const PACK = join(repoRoot, "dist", "mpd-package", "package.json")
+const PACK_PREREQ = { reason: "absent-staged-pack", prereq: "dist/mpd-package/package.json", remedy: "node scripts/pack-mpd.mjs" }
+// Both strict spellings are normative (x2 v2 §6.5): the generic name and the case-specific name.
+const STRICT = process.argv.includes("--no-skip") || process.argv.includes("--require-pack")
+
+/** AM1 (x2 v2 §7): a positive probe of the exact prerequisite. The ONLY skippable prerequisite
+ *  of this case is the staged pack (§3.3): credentials are NOT part of the skip set and keep
+ *  their existing loud failure. */
+function absentPrereq() {
+  return existsSync(PACK) ? null : PACK_PREREQ
+}
+
+/** SKIP (exit 0) or, under either strict flag, FAIL (exit 1) — the same field values in both
+ *  modes (AM2). The canonical marker is the FIRST stdout line (§4); human prose follows on
+ *  stdout for a SKIP and on stderr for a FAIL. */
+function gate(lane) {
+  const p = absentPrereq()
+  if (p === null) return
+  console.log(`[mpd-qa] ${STRICT ? "FAIL" : "SKIP"} case=${SLUG} lane=${lane} reason=${p.reason} prereq=${p.prereq} remedy="${p.remedy}"`)
+  const prose = `[${SLUG}] staged package absent at ${p.prereq}; ${STRICT ? "failing (strict flag)" : "skipping (not a failure)"}`
+  if (STRICT) console.error(prose)
+  else console.log(prose)
+  process.exit(STRICT ? 1 : 0)
+}
+
 function selfTest() {
-  if (!existsSync(join(repoRoot, "dist", "mpd-package", "package.json"))) { console.error("[relocate-smoke self-test] FAIL: run node scripts/pack-mpd.mjs first"); process.exit(1) }
+  gate("self-test")
   const patch = readFileSync(join(repoRoot, "dist", "mpd-package", "cordis.patch.yml"), "utf8")
   if (patch.includes(DEV) || patch.includes("the upstream project")) { console.error("[relocate-smoke self-test] FAIL: dev path leak in staged patch"); process.exit(1) }
   console.log("[relocate-smoke self-test] ok: staged patch is path-clean")
 }
 
 async function runReal() {
+  gate("real")
   const creds = join(homedir(), ".dsh", ".credentials.yaml")
   if (!existsSync(creds)) { console.error("[relocate-smoke] missing credentials"); process.exit(1) }
   const ts = new Date().toISOString().replaceAll(":", "-")
