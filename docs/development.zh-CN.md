@@ -88,6 +88,10 @@ QA skill 是 `skills/dsh-qa`（`SKILL.md`）。每个 case 脚本都带 `--self-
 | `preset-conformance` | 每一个 Harness 自有行配置（preset + bundle patch + QA overlay）都与**已安装**的 Harness schema 相符，`mpd` preset 的行集合与已安装 `standard` preset 完全一致，并且以 `agentPreset: "mpd"` 真实创建的会话确实**挂载成功** —— 并带一个必须失败的负向对照 | `node skills/dsh-qa/scripts/preset-conformance.mjs` |
 | `agent-teams-adopt`（历史 C1） | MIT 声明 + 采纳接线 | `node skills/dsh-qa/scripts/agent-teams-adopt.mjs` |
 
+两个 npm 脚本，两条通道（t8）：`bun run test:qa` 运行**每个** case 的离线 `--self-test`；
+`bun run test:qa:all` 运行“重量/联机子集”的**真实通道**，其成员在 `package.json` 中按名字逐一列举
+（判据：该 case 需要真实的 headless dsh 启动和/或真实 provider）。显式白名单保证新 case 不会被静默当作重量用例。
+
 **QA 硬规则**（AGENTS.md §7）：沙箱 `DSH_HOME=<mktemp>`；只复制一次凭据；断言沙箱
 路径；绝不碰真实 `~/.dsh`；workmate 类 case 额外沙箱化 `HOME`（`~/.mpd/workmate`
 是用户批准的 HOME 例外）。

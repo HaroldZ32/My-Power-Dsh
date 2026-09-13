@@ -1,0 +1,88 @@
+=== bridge audit: per-token resolution (mpd vs silicon) ===
+token	mpd	silicon	resolution
+docs/adder4.md	yes	yes	BOTH
+docs/cnt8.md	yes	yes	BOTH
+packages/mpd-bundle/cordis.patch.yml	yes	yes	BOTH
+packages/mpd-mcp-lsp/dist/cli.js	yes	yes	BOTH
+packages/mpd-mcp-lsp/templates/rtl-lsp-client.json	yes	yes	BOTH
+packages/mpd-verif-plugin/dist/index.js	no	yes	silicon
+packages/mpd-verif-plugin/evidence/smoke/	no	yes	silicon
+presets/rtl-ip.profile.json	no	yes	silicon
+scripts/install-mcp.mjs	yes	no	mpd-only
+skills/ast-grep/scripts/ast_grep_helper.py	yes	no	mpd-only
+skills/dsh-qa/scripts/rtl-verif.mjs	yes	no	mpd-only
+skills/lsp-setup/references/	yes	no	mpd-only
+skills/rtl-codestyle	no	yes	silicon
+skills/rtl-codestyle/templates/fsm_3process.vinc	no	yes	silicon
+skills/rtl-codestyle/templates/module_skeleton.vinc	no	yes	silicon
+skills/rtl-codestyle/templates/parameterized_counter.vinc	no	yes	silicon
+skills/rtl-verif	no	yes	silicon
+skills/rtl-verif/fixtures/adder4	no	yes	silicon
+skills/rtl-verif/fixtures/cnt8	no	yes	silicon
+skills/rtl-verif/templates/uvm/	no	yes	silicon
+
+COUNTS {"BOTH":5,"silicon":11,"mpd-only":4}
+
+=== guard baseline (silicon present) ===
+  pending (historical): skills/rtl-dev — proposed in the preserved gap assessment and never created: the capability shipped as rtl-codestyle/rtl-verif/rtl-ip-flow, and the document's technical content is kept verbatim
+[rtl-refs] PASS — 42 resolved, 6 pending-by-design, 0 unresolved
+
+=== silicon-absent dangling experiment ===
+[rtl-refs] silicon: /nonexistent/mpd-silicon | references: 5
+  resolved: 2
+  UNRESOLVED: packages/mpd-verif-plugin/dist/index.js (mpd skills/dsh-qa/scripts/rtl-verif.mjs)
+  UNRESOLVED: presets/rtl-ip.profile.json (mpd skills/dsh-qa/scripts/rtl-verif.mjs)
+  UNRESOLVED: presets/rtl-ip.profile.json (mpd skills/dsh-qa/scripts/rtl-ip-profile.mjs)
+[rtl-refs] FAIL — 3 unresolved reference(s)
+exit=1
+
+=== mpd-side dependency on '@mpd-dsh/silicon' or sibling silicon path (tracked sources) ===
+./scripts/verify-rtl-references.mjs:24:const SILICON = process.env.MPD_SILICON_ROOT || join(dirname(repoRoot), "my-power-dsh-silicon")
+./docs/index.zh-CN.md:18:| [`rtl-verif-guide.zh-CN.md`](rtl-verif-guide.zh-CN.md) | RTL 工程师、代理 | RTL 开发 Phase-1（正在迁往 silicon 子插件仓库 gitee.com/nop_chip/my-power-dsh-silicon；迁移完成前本文件描述的是剥离前的检出）：Verible/slang-server LSP、rtl-codestyle 模板、mpd-verif 插件（iverilog/Verilator/VCS + cocotb 铁律 + 仅 VCS 的 UVM）、波形 MCP 接线、工程流程建议（草稿）、延期待办清单。 |
+./docs/index.md:19:| [`rtl-verif-guide.md`](rtl-verif-guide.md) | RTL engineers, agents | RTL dev phase-1 (being moved to the silicon sub-bundle, gitee.com/nop_chip/my-power-dsh-silicon; until then this file describes the pre-extraction checkout): Verible/slang-server LSP, rtl-codestyle templates, mpd-verif plugin (iverilog/Verilator/VCS + cocotb iron rule + VCS-only UVM), waveform-MCP wiring, engineering-flow recommendations (draft), deferred to-do list. |
+./AGENTS.md:139:├── skills/                      # skill corpus: dsh-qa (QA skill) + 17 ported upstream skills + svn-master (SERVED from the bundle by mpd-bootstrap; never copied to \$DSH_HOME). The rtl-* trees moved to the silicon sub-bundle (gitee.com/nop_chip/my-power-dsh-silicon)
+./t5-closure-evidence/t5-closure.md:23:| HEAD | `git log --oneline -1` | `12291a7 feat(rtl-extraction): remove the RTL surface from the mpd repo (moved to @mpd-dsh/silicon)` |
+./t5-closure-evidence/t5-closure.md:73:| 8 | `AGENTS.md`, `docs/index.md`, `docs/index.zh-CN.md` | RTL references repointed to `gitee.com/nop_chip/my-power-dsh-silicon` (bilingual, same commit) |
+./packages/mpd-bootstrap-plugin/test/bootstrap.test.ts:63:    // 19 = the shipped corpus AFTER the RTL trees moved to the @mpd-dsh/silicon
+./skills/dsh-qa/scripts/rtl-ip-profile.mjs:4:// Owner after the RTL extraction: the definition lives in the @mpd-dsh/silicon
+./skills/dsh-qa/scripts/rtl-ip-profile.mjs:12:// ../my-power-dsh-silicon. --self-test is offline. The real pass prints SKIP
+./skills/dsh-qa/scripts/rtl-ip-profile.mjs:23:const SILICON = process.env.MPD_SILICON_ROOT || join(dirname(repoRoot), "my-power-dsh-silicon")
+./skills/dsh-qa/scripts/rtl-verif.mjs:3:// isolated DSH_HOME — now against the @mpd-dsh/silicon bundle, which owns the
+./skills/dsh-qa/scripts/rtl-verif.mjs:32:const SILICON = process.env.MPD_SILICON_ROOT || join(dirname(repoRoot), "my-power-dsh-silicon")
+./skills/lsp-setup/SKILL.md:3:description: "Configure a Language Server (LSP) for a specific language so editor/agent tooling — diagnostics, go-to-definition, find-references, rename — works. Use when you need to: configure LSP, lsp setup, set up or install a language server, fix 'no LSP server configured' / 'server not installed', choose between servers (basedpyright vs pyright vs ty vs ruff), or wire .codex/lsp-client.json / .opencode/lsp.json. 언어서버 설정. Routes by file extension to references/<language>/README.md for the exact builtin server, per-OS install commands (macOS/Linux/Windows), config snippets for both config files, initialization options, alternatives, and troubleshooting. Ships scripts: detect-lsp.ts (scan a project for languages + each server's install/config status) and verify-lsp.ts (run a real diagnostics roundtrip). Covers typescript, python, go, rust, c/c++, java, kotlin, c#/razor, swift, ruby, php, dart, elixir, zig, lua, bash, yaml, terraform, haskell, julia, verilog, systemverilog — with the HDL half (verilog / systemverilog) provided by the @mpd-dsh/silicon bundle at packages/mpd-mcp-lsp/references/; when that bundle is not installed this skill still routes those two languages but carries no HDL body of its own."
+./skills/lsp-setup/SKILL.md:46:| `.v .vh` | `../my-power-dsh-silicon/packages/mpd-mcp-lsp/references/verilog/README.md` (HDL pages moved to the `@mpd-dsh/silicon` bundle; `$MPD_SILICON_ROOT` overrides the sibling root) |
+./skills/lsp-setup/SKILL.md:47:| `.sv .svh` | `../my-power-dsh-silicon/packages/mpd-mcp-lsp/references/systemverilog/README.md` (same bundle) |
+
+=== mpd repointed RTL QA cases: silicon-path constants ===
+skills/dsh-qa/scripts/rtl-verif.mjs:33:const VERIF_DIST = join(SILICON, "packages/mpd-verif-plugin/dist/index.js")
+skills/dsh-qa/scripts/rtl-verif.mjs:34:const PATCH = join(SILICON, "packages/mpd-bundle/cordis.patch.yml")
+skills/dsh-qa/scripts/rtl-verif.mjs:35:const SKILLS = join(SILICON, "skills")
+skills/dsh-qa/scripts/rtl-verif.mjs:36:const PRESET = join(SILICON, "presets/rtl-ip.profile.json")
+skills/dsh-qa/scripts/rtl-verif.mjs:37:const LSP_CLI = join(SILICON, "packages/mpd-mcp-lsp/dist/cli.js")
+skills/dsh-qa/scripts/rtl-verif.mjs:38:const VENV_CANDIDATES = [process.env.MPD_DSH_VERIF_VENV, join(SILICON, ".venv-rtl"), join(repoRoot, ".venv-rtl")].filter(Boolean)
+skills/dsh-qa/scripts/rtl-verif.mjs:79:  return existsSync(join(SILICON, "package.json"))
+skills/dsh-qa/scripts/rtl-ip-profile.mjs:24:const PRESET = join(SILICON, "presets", "rtl-ip.profile.json")
+skills/dsh-qa/scripts/rtl-ip-profile.mjs:25:const PATCH = join(SILICON, "packages", "mpd-bundle", "cordis.patch.yml")
+skills/dsh-qa/scripts/rtl-ip-profile.mjs:26:const SKILL = join(SILICON, "skills", "rtl-ip-flow")
+skills/dsh-qa/scripts/rtl-ip-profile.mjs:27:const DOCS = join(SILICON, "docs")
+skills/dsh-qa/scripts/rtl-ip-profile.mjs:69:  if (!existsSync(join(SILICON, "package.json"))) {
+skills/dsh-qa/scripts/rtl-ip-profile.mjs:114:  if (!existsSync(join(SILICON, "package.json"))) {
+
+=== mpd bundle patch declares no silicon- row ===
+count of 'silicon-' occurrences: 0
+
+=== EDA binaries and venv ===
+/opt/osscad/oss-cad-suite/bin/iverilog
+/opt/osscad/oss-cad-suite/bin/verilator
+PRESENT .venv-rtl
+ABSENT  ../my-power-dsh-silicon/.venv-rtl
+.gitignore:26:.venv*/	.venv-rtl
+
+=== tracked-ness of the six mpd RTL docs at HEAD ===
+docs/rtl-gap-assessment.md
+docs/rtl-gap-assessment.zh-CN.md
+docs/rtl-ip-flow-guide.md
+docs/rtl-ip-flow-guide.zh-CN.md
+docs/rtl-verif-guide.md
+docs/rtl-verif-guide.zh-CN.md
+last commit touching them: e3de0cc fix(mcp): wave-mcp row must NOT pass --session at startup

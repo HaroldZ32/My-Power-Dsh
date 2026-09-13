@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "version": "0.3.2",
-  "description": "my-power-dsh: DeepSeek Harness plugin-based port of the upstream project capabilities",
+  "description": "my-power-dsh: an independent DeepSeek Harness plugin bundle (provenance: a pinned oh-my-openagent baseline)",
   "main": "packages/mpd-bundle-plugin/dist/index.js",
   "exports": {
     ".": "./packages/mpd-bundle-plugin/dist/index.js",
@@ -27,7 +27,8 @@
     "test": "bun test packages",
     "test:fast": "bun test packages --test-timeout 30000",
     "test:qa": "for f in skills/dsh-qa/scripts/*.mjs; do echo \"[test:qa] $f\"; bun \"$f\" --self-test || { echo \"[test:qa] FAILED: $f\"; exit 1; }; done; echo \"[test:qa] all self-tests passed\"",
-    "test:qa:all": "for f in skills/dsh-qa/scripts/*.mjs; do echo \"[test:qa:all] $f\"; bun \"$f\" --self-test || { echo \"[test:qa:all] FAILED: $f\"; exit 1; }; done; echo \"[test:qa:all] all self-tests passed\"",
+    "test:qa:strict": "for f in skills/dsh-qa/scripts/*.mjs; do echo \"[test:qa:strict] $f\"; bun \"$f\" --self-test --no-skip || { echo \"[test:qa:strict] FAILED: $f\"; exit 1; }; done; echo \"[test:qa:strict] all self-tests passed with no skips\"",
+    "test:qa:all": "for c in agent-teams-adopt agent-teams-dispatch agent-teams-sidebar bundle-lifecycle codegraph-smoke dual-track-smoke mcp-call memory-smoke mount-assert plan-c-smoke preset-conformance preset-register relocate-smoke session-start-team skill-catalog-probe software-smoke team-route-rewire tool-output-validation ultrawork-smoke vision-smoke web-client-adapt workmate-library workmate-team-member; do echo \"[test:qa:all] $c\"; bun \"skills/dsh-qa/scripts/$c.mjs\" --no-skip || { echo \"[test:qa:all] FAILED: $c\"; exit 1; }; done; echo \"[test:qa:all] real-lane subset passed (real headless boot and/or live provider)\"",
     "verify:vendor": "node scripts/verify-vendor.mjs",
     "verify:rows": "node scripts/verify-rows-parity.mjs",
     "verify:rtl-refs": "node scripts/verify-rtl-references.mjs",

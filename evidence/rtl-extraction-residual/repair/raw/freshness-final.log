@@ -1,0 +1,49 @@
+### 5) unrelated rebuild churn reverted (build-mcp rebuilds all three MCP dists)
+reverted ast-grep/git-bash dist to the committed bytes
+### 6) repack on the reverted tree
+pack2_exit=0
+2026-09-13 16:32:58.062844783 +0800 1053 dist/mpd-package/package.json
+packed checks: rtl_cases=0 hdl_pages=0 installer_hdl=0 packed_cli_hdl=0
+### 7) verify-vendor on the final tree
+verify_vendor_exit=0
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+### 8) final six-command sweep (after the LAST write)
+=== node scripts/verify-vendor.mjs ===
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+exit=0
+=== node scripts/verify-rtl-references.mjs ===
+  pending (t8 (retired in mpd)): skills/dsh-qa/scripts/rtl-verif.mjs — the mpd-side RTL case was retired by t8/R3, so the silicon guides that still name this path are a silicon-side documentation follow-up — recorded as an owned bucket instead of being silently tolerated or deleted from the subject set
+  pending (migrated (t17)): skills/lsp-setup/references/systemverilog/README.md — the two orphan HDL READMEs were deleted by t17 and the HDL pages now live in the silicon bundle's packages/mpd-mcp-lsp/references/ — kept as a named bucket so the historical reference stays visible instead of pretending the path still exists
+  pending (migrated (t17)): skills/lsp-setup/references/verilog/README.md — the two orphan HDL READMEs were deleted by t17 and the HDL pages now live in the silicon bundle's packages/mpd-mcp-lsp/references/ — kept as a named bucket so the historical reference stays visible instead of pretending the path still exists
+  pending (historical): skills/rtl-dev — proposed in the preserved gap assessment and never created: the capability shipped as rtl-codestyle/rtl-verif/rtl-ip-flow, and the document's technical content is kept verbatim
+  pending (historical): skills/rtl-dev — proposed in the preserved gap assessment and never created: the capability shipped as rtl-codestyle/rtl-verif/rtl-ip-flow, and the document's technical content is kept verbatim
+[rtl-refs] PASS — 13 invariant subject(s) clean, 35 resolved, 8 pending-by-design, 0 unresolved
+exit=0
+=== node scripts/verify-rows-parity.mjs ===
+[verify-rows-parity] ok: 21 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-tools, mpd-ulw, mpd-web-compat, mpd-workmate)
+exit=0
+=== bun run typecheck ===
+$ tsgo --noEmit
+exit=0
+=== bun test packages ===
+packages/mpd-comment-checker-plugin/test/comment-checker.test.ts:
+
+ 298 pass
+ 0 fail
+ 2097 expect() calls
+Ran 298 tests across 64 files. [13.12s]
+exit=0
+=== bun run test:qa ===
+[web-client-adapt self-test] ok: 14 checks
+[test:qa] skills/dsh-qa/scripts/workmate-library.mjs
+[workmate-library self-test] ok: 18 checks
+[test:qa] skills/dsh-qa/scripts/workmate-team-member.mjs
+[workmate-team-member self-test] ok: 6 checks
+[test:qa] all self-tests passed
+exit=0

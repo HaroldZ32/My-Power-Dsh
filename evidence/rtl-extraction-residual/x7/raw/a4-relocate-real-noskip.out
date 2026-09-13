@@ -1,0 +1,1 @@
+[mpd-qa] FAIL case=relocate-smoke lane=real reason=absent-staged-pack prereq=dist/mpd-package/package.json remedy="node scripts/pack-mpd.mjs"

@@ -82,8 +82,14 @@ function listFiles(dir) {
   return out
 }
 
-for (const [rel, meta] of Object.entries(lock.assets || {})) {
-  if (String(rel).startsWith("_")) continue
+// Guard-2 (t8 / R7.15): the fingerprint loop is the gate's subject. With `assets` empty (or
+// every entry underscored) the run used to print PASS while checking zero fingerprints, so the
+// exit code proved nothing. Refuse the zero-subject run by name instead.
+const assetEntries = Object.entries(lock.assets || {}).filter(([rel]) => !String(rel).startsWith("_"))
+if (assetEntries.length === 0) {
+  fail("zero-subject run: VENDOR_LOCK.json declares no vendored assets to fingerprint - refusing to report PASS")
+}
+for (const [rel, meta] of assetEntries) {
   const dir = join(repoRoot, rel)
   if (!existsSync(dir)) { fail("asset missing: " + rel); continue }
   const files = listFiles(dir)

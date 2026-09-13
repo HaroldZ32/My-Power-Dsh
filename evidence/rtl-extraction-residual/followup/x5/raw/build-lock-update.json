@@ -1,0 +1,40 @@
+[
+  {
+    "dir": "packages/mpd-mcp-astgrep/dist",
+    "beforeSource": "the upstream project",
+    "beforeSha": "5a9ae80a4ef79b2efcd66dba27c82574f74e682c9bb84e465291dc0ba34aed7e",
+    "beforeBytes": 84651,
+    "realSha": "f06bba310cad306b5638efb90a69e50b2c6a7416c0c536867f02c70f4b4fa4c5",
+    "realBytes": 84651,
+    "afterSource": "8c57e46",
+    "afterSha": "f06bba310cad306b5638efb90a69e50b2c6a7416c0c536867f02c70f4b4fa4c5",
+    "afterBytes": 84651
+  },
+  {
+    "dir": "packages/mpd-mcp-gitbash/dist",
+    "beforeSource": "the upstream project",
+    "beforeSha": "c8a2336d6e231d96497f1f74963c968b27de3c1a5ac082c58b23ddc3d04651dc",
+    "beforeBytes": 22651,
+    "realSha": "cb9ce8f3f1749d9445d9ce5bc45d35f6e8d7d6450227a8665a6360ad38a3257a",
+    "realBytes": 22656,
+    "afterSource": "8c57e46",
+    "afterSha": "cb9ce8f3f1749d9445d9ce5bc45d35f6e8d7d6450227a8665a6360ad38a3257a",
+    "afterBytes": 22656
+  },
+  {
+    "dir": "packages/mpd-mcp-lsp/dist",
+    "beforeSource": "the upstream project",
+    "beforeSha": "9f41d4258c204aca959de98a5bea59a7459f9e298885f187cfc0268e1d18ce69",
+    "beforeBytes": 234821,
+    "realSha": "9f41d4258c204aca959de98a5bea59a7459f9e298885f187cfc0268e1d18ce69",
+    "realBytes": 234827,
+    "afterSource": "8c57e46",
+    "afterSha": "9f41d4258c204aca959de98a5bea59a7459f9e298885f187cfc0268e1d18ce69",
+    "afterBytes": 234827
+  },
+  {
+    "dir": "packages/mpd-mcp-codegraph/dist",
+    "lock": false,
+    "note": "no BUILD.lock (vendored prebuilt, VENDOR_LOCK tracks serve.js only)"
+  }
+]

@@ -1,0 +1,15 @@
+### PACK vs WORKING TREE — independent verification 2026-09-13T08:20:57Z
+work  cli.js : 234827 B  9f41d4258c204aca959de98a5bea59a7459f9e298885f187cfc0268e1d18ce69
+pack  cli.js : 234827 B  9f41d4258c204aca959de98a5bea59a7459f9e298885f187cfc0268e1d18ce69
+VENDOR_LOCK  : 9f41d4258c204aca959de98a5bea59a7459f9e298885f187cfc0268e1d18ce69
+
+--- pack: retired RTL cases present?
+retired-case-hits=0
+--- pack: HDL pages / HDL strings?
+hdl-page-hits=0
+pack-cli HDL-string hits=0
+--- pack: overlay (source of the HDL rows) still shipped?
+ls: cannot access 'dist/mpd-package/packages/mpd-mcp-lsp/overlay': No such file or directory
+--- pack: corpus + spec spot-check
+pack skills dirs=19  (work tree=19)
+pack dsh-qa RTL-named scripts=0

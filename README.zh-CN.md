@@ -2,12 +2,22 @@
 
 **中文** | [English](./README.md)
 
-my-power-dsh 是一个 DeepSeek-Harness 插件 bundle，移植了 oh-my-openagent (OmO) 的可移植能力。
+**my-power-dsh** 是一个独立的 DeepSeek Harness（DSH）插件 bundle —— 即包 `@mpd-dsh/mpd`：拥有自己的
+插件行、一个 `mpd` agent preset 以及随包提供的 skill 语料库，用一条 `dsh plugin add` 即可安装。
 
-> **Fork 声明**：本项目是 [oh-my-openagent](https://github.com/code-yeongyu/oh-my-openagent)
-> （commit `8c57e46`，v5.0.0-beta.20）的 fork，做了深度修改；继承上游
-> **Sustainable Use License 1.0 (SUL-1.0)**。上游版权归 code-yeongyu 与 OmO 贡献者所有。
-> 完整许可文本： [LICENSE.md](./LICENSE.md)。
+它**不是** OMO 的 DeepSeek Harness 移植版。它的来源是事实性的，而非血统关系：一份
+[oh-my-openagent](https://github.com/code-yeongyu/oh-my-openagent)（OmO；commit `8c57e46`，
+v5.0.0-beta.20 —— 本仓库并不跟随推进的基线）的固定基线，其 11 个 specialist 以适配后的 teammate
+模板与 workmate BASE 模板形式随包发布；一个 328 个文件的 skill 语料库，混合了上游移植 skill、第三方
+上游 skill 与本仓库编写的用例；以及一个被采纳的组件 —— 来自
+[dsh-agent-teams](https://github.com/NanmiCoder/dsh-agent-teams) 的 `agent-teams` 插件（MIT），以一等
+主代码形式内联并带本地适配。其余部分均在本仓库编写；RTL/EDA 表面不属于本仓库，它已拆分到兄弟子
+bundle `@mpd-dsh/silicon`。
+
+> **许可**：SUL-1.0 —— 继承自上游项目的许可（强 copyleft；完整文本见 [LICENSE.md](./LICENSE.md)）；
+> 上游版权归 code-yeongyu 与 OmO 贡献者所有。被采纳的 `agent-teams` 组件保留其自身的 MIT 许可
+> （声明见 [LICENSE-NOTICES.md](./LICENSE-NOTICES.md)）；该 MIT 授权仅覆盖被采纳组件 —— 本项目自身
+> 代码不是 MIT 许可。
 
 **安装（一条命令，直接在检出目录执行）**
 
@@ -35,6 +45,11 @@ dsh plugin --profile web add .        # 在仓库根目录执行
 - [`docs/development.md`](docs/development.md) —— 构建/测试/QA/打包/发布
   （[中文版](docs/development.zh-CN.md)）。
 - [`AGENTS.md`](AGENTS.md) —— 仓库约束手册（约定、门禁、git 模型、排障）。
+
+**RTL/EDA 能力不在本仓库。** `rtl-*` skills、verif 插件、HDL 语言服务器配置、RTL 指南与 Verilog golden
+fixtures 均由 silicon 子 bundle 拥有（`@mpd-dsh/silicon`，同级检出 `../my-power-dsh-silicon`，
+`gitee.com/nop_chip/my-power-dsh-silicon`）。本仓库只承载 harness/bundle 软件面；仅安装 mpd 时启动
+行为不变且不含任何 RTL 内容。
 
 本 bundle 安装后提供 `@mpd-dsh/mpd`：DeepSeek 双轨（官方默认）、MCP 服务器、全部
 mpd 插件（含 codegraph 自动初始化）、采纳的 agent-teams（团队工具 + 侧边栏团队页）、`mpd`

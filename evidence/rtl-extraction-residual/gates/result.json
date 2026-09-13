@@ -1,0 +1,173 @@
+{
+  "task": "t4",
+  "kind": "verification",
+  "round": 1,
+  "attemptId": "5b8a7d73-b91b-4738-ab71-7c264924167f",
+  "agent": "Deep Worker",
+  "measuredHead": "32ae54dd10db7ea46e1c1263143d56f266fd1f78",
+  "baselineCommit": "3d99718047c696cde45e053cbc66b66c6d7ab9cc",
+  "verdict": "failed",
+  "overall": "The three repo-level gates (verify-vendor, verify-rtl-references, verify-rows-parity) PASS; typecheck, test:qa, installer (dry-run + isolated --yes), preset-conformance and bootstrap PASS. TWO gates are RED: (F1) the mounting boot check bundle-lifecycle fails because the QA probe still demands >=20 bundled skills while the extraction left 19 (proved green at the pre-extraction baseline with 22); (F2) bun test packages fails with 3 agent-teams self-fix tests that derive their 'pristine upstream' fixture from git HEAD, which has carried the mpd-delta bodies since d510a16 - pre-existing, proved identical at the pre-extraction baseline. No tracked file was modified by this task.",
+  "commandsRun": [
+    {
+      "command": "node scripts/verify-vendor.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "raw/verify-vendor.log - PASS, commit 8c57e46 / version 5.0.0-beta.20 / 9131 files / assets incl. skills 329 files"
+    },
+    {
+      "command": "node scripts/verify-rtl-references.mjs --json",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "raw/verify-rtl-references.json - considered 48, unresolved []"
+    },
+    {
+      "command": "node scripts/verify-rtl-references.mjs --self-test",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "raw/verify-rtl-references-self-test.log - controls (resolved/pending/unresolved) + live audit 48 references, 0 unresolved"
+    },
+    {
+      "command": "node scripts/verify-rows-parity.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "raw/verify-rows-parity.log - 21 row ids match the bundle patch insert list"
+    },
+    {
+      "command": "bun test packages",
+      "status": "failed",
+      "exitCode": 1,
+      "evidence": "raw/bun-test-packages.log - 295 pass / 3 fail, all in packages/mpd-agent-teams-plugin/self-fix-tests (F2); same failures at pre-extraction 3d99718: raw/bun-test-baseline-3d99718.log"
+    },
+    {
+      "command": "bun run typecheck",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "raw/typecheck.log (tsgo --noEmit, empty output) + raw/typecheck-falsifiability.log (injected TS2322 -> exit 1, probe removed)"
+    },
+    {
+      "command": "bun run test:qa",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "raw/test-qa.log - [test:qa] all self-tests passed"
+    },
+    {
+      "command": "node scripts/install-profile.mjs --dry-run",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "raw/installer-dry-run.log - DRY-RUN done (nothing written)"
+    },
+    {
+      "command": "node scripts/install-profile.mjs --yes --dsh-home .mpd/tmp-installer-verify",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "raw/installer-isolated-yes.log - wrote profile/home/patch/presets in the isolated home; sandbox deleted"
+    },
+    {
+      "command": "bun skills/dsh-qa/scripts/preset-conformance.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "raw/preset-conformance.log - parity 31/31, session/create 200 agentPreset mpd, negativeControl agent-preset/invalid, bootLog signatures []"
+    },
+    {
+      "command": "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs",
+      "status": "failed",
+      "exitCode": 1,
+      "evidence": "raw/bundle-lifecycle.log - boot.ok=false, probe FAIL on bundled.length>=20 (19 skills); green at baseline: raw/bundle-lifecycle-baseline-3d99718.log (22, ok=true) (F1)"
+    },
+    {
+      "command": "node scripts/bootstrap.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "raw/bootstrap.log - preflight + vendor baseline PASS"
+    }
+  ],
+  "rtlNamedLiveSubjects": [
+    {
+      "item": "scripts/verify-rtl-references.mjs",
+      "subject": "silicon docs/ (6 ported RTL docs) + the two repointed RTL QA cases",
+      "live": true,
+      "verdict": "LIVE - 48 references, 0 unresolved, self-test controls fire"
+    },
+    {
+      "item": "skills/dsh-qa/scripts/rtl-verif.mjs",
+      "subject": "silicon mpd-verif-plugin dist + RTL corpus + rtl-ip profile data",
+      "live": true,
+      "verdict": "LIVE subject; offline self-test PASS; real pass BLOCKED by F3 (harness pnpm store)"
+    },
+    {
+      "item": "skills/dsh-qa/scripts/rtl-ip-profile.mjs",
+      "subject": "silicon presets/rtl-ip.profile.json + skill + templates, injected by mpd's agent-teams row",
+      "live": true,
+      "verdict": "LIVE subject; offline self-test PASS; manual substitute boot composes the 4 silicon rows; real pass BLOCKED by F3"
+    },
+    {
+      "item": "packages/mpd-mcp-lsp/templates/rtl-lsp-client.json",
+      "subject": "in-repo LSP template consumed by packages/mpd-mcp-lsp/README(.zh-CN).md and the silicon RTL docs",
+      "live": true,
+      "verdict": "LIVE - no dangling bridge"
+    },
+    {
+      "item": "skills/dsh-qa/SKILL.md:62 row rtl-ip-profile",
+      "subject": "now probes the silicon bundle (profile injected by the t15 carrier)",
+      "live": true,
+      "verdict": "LIVE but the row text is stale for the mpd side"
+    },
+    {
+      "item": ".gitignore:23-25",
+      "subject": "RTL scratch comment + .venv-rtl/ ignore",
+      "live": true,
+      "verdict": "still accurate for the leftover <repo>/.venv-rtl (44MB, untracked)"
+    }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "blocker",
+      "file": "packages/mpd-qa-roles-probe/src/index.ts",
+      "line": 58,
+      "problem": "The mounting boot gate (bundle-lifecycle / roles-probe) still requires bundled.length >= 20 while the RTL extraction left 19 bundled skills; the probe prints SKILLS=19 BUNDLED=19 then FAIL and the case exits 1. Green at the pre-extraction baseline (22, ok=true). The extraction turned a required boot gate red.",
+      "requiredFix": "Re-baseline the probe's corpus expectation to the shipped corpus (minimally >= 19, preferably derive it from the served bundle listing or assert named fixtures), rebuild packages/mpd-qa-roles-probe/dist/index.js, and re-run bundle-lifecycle."
+    },
+    {
+      "id": "F2",
+      "severity": "medium",
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs",
+      "line": 543,
+      "problem": "3 tests in bun test packages fail because they build their 'pristine upstream' fixture with git show HEAD:packages/mpd-agent-teams-plugin/lib/tools.js (resp. quality-gates.js) and assert zero mpd-delta markers; d510a16 committed those markers into HEAD, so the premise is false. Pre-existing (identical files at 3d99718 where the same tests fail), but it leaves the standing Tests gate red on dev.",
+      "requiredFix": "Pin the pristine fixture to a revision that predates the delta commit, or embed the pristine copies as fixtures, or synthesize upstream by stripping markers from a copy the test controls; then re-run the suite."
+    },
+    {
+      "id": "F3",
+      "severity": "low",
+      "file": "skills/dsh-qa/scripts/rtl-ip-profile.mjs",
+      "line": 130,
+      "problem": "Both repointed RTL cases redirect HOME to a fresh sandbox but pass no --store-dir, so `dsh plugin add` dies at the pnpm step (ERR_SQLITE_ERROR: unable to open database file) and the real pass never reaches its assertions. Not a subject defect - the same install + composed boot succeeds with --store-dir <sandbox>/pnpm-store.",
+      "requiredFix": "Give both cases the --store-dir <sandbox>/pnpm-store treatment bundle-lifecycle.mjs already uses."
+    },
+    {
+      "id": "F4",
+      "severity": "low",
+      "file": ".gitignore",
+      "line": 25,
+      "problem": "Untracked RTL-named environment leftovers remain on the box: <repo>/.venv-rtl (44MB cocotb venv) and <repo>/.toolchain/bin/verible-verilog-ls (6MB). No tracked impact.",
+      "requiredFix": "Decide and record in the t1 sweep / repair stage; delete if nothing references them."
+    }
+  ],
+  "changedPaths": [
+    "evidence/rtl-extraction-residual/gates/gates.md",
+    "evidence/rtl-extraction-residual/gates/findings.md",
+    "evidence/rtl-extraction-residual/gates/result.json",
+    "evidence/rtl-extraction-residual/gates/raw/"
+  ],
+  "trackedFilesModified": [],
+  "evidence": {
+    "gates": "evidence/rtl-extraction-residual/gates/gates.md",
+    "findings": "evidence/rtl-extraction-residual/gates/findings.md",
+    "raw": "evidence/rtl-extraction-residual/gates/raw/",
+    "gateGeneratedByproducts": [
+      "evidence/dsh-qa/bundle-lifecycle/2026-09-13T07-37-13.539Z/",
+      "evidence/dsh-qa/preset-conformance/2026-09-13T07-36-29.035Z/"
+    ]
+  }
+}

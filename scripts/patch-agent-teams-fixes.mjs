@@ -28,7 +28,7 @@
 //
 // The guard is exercised by `packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs`
 // (marker-prefix fixtures + strip-heal byte fidelity for both adopted files) and by the vendor run itself.
-import { readFileSync, writeFileSync } from "node:fs"
+import { readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { dirname, join, relative } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import process from "node:process"
@@ -41,9 +41,19 @@ const beginLine = (id) => MPD_DELTA_MARKERS.begin(id)
 /** Region end line for one delta id. */
 const endLine = (id) => MPD_DELTA_MARKERS.end(id)
 
-/** Every file the registry touches, in registry order. */
+/** Every file the registry touches, in registry order, plus the bootstrap discovery. */
 export function mpdDeltaFiles() {
-  return [...new Set(MPD_DELTAS.map((delta) => delta.file))]
+  const registered = [...new Set(MPD_DELTAS.map((delta) => delta.file))]
+  // A region can only be registered from a file the registry already names, so a NEW
+  // delta file (lib/index.js, t8's carrier hook) would never be discovered by
+  // --write-registry. Discover the adopted lib files that carry region markers and are
+  // not registered yet — the registry stays the authority, this only seeds it once.
+  const libDir = join(repoRoot, "packages/mpd-agent-teams-plugin/lib")
+  const discovered = readdirSync(libDir)
+    .filter((name) => name.endsWith(".js") && name !== "mpd-deltas.js")
+    .map((name) => relative(repoRoot, join(libDir, name)).split("\\").join("/"))
+    .filter((file) => !registered.includes(file) && readFileSync(join(repoRoot, file), "utf8").includes("//#region mpd-delta "))
+  return [...registered, ...discovered]
 }
 
 /**

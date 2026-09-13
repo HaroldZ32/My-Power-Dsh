@@ -1,0 +1,59 @@
+### FREESTANDING MEASUREMENT of the claimed frozen manifest 2026-09-13T08:12:40Z
+mode=-r--r--r--  size=45257 B  mtime=2026-09-13 16:08:35.657683671 +0800
+lines=409
+sha256=3b7b28999c7a9b021a03cd9a1a72f1287942847986411dae3b3ea4c7ee8aecae
+md5=bffb902199d396daa2b0e153773aaf9b
+claimed: 409 lines / 45257 B / sha256 3b7b28999c7a9b021a03cd9a1a72f1287942847986411dae3b3ea4c7ee8aecae / md5 bffb902199d396daa2b0e153773aaf9b / mtime 16:08:35
+architect's shorter spelling (61 hex chars, invalid): 3b7b28999c7a9b021a03cd9a1a72f1287942847986411dae3b4c7ee8aecae
+
+### captain-attestation.md §1 frozen identity:
+18-  never the working tree, and post-repair measurements belong to the repair's own verification.
+19-  For the two documents that moved repeatedly, cite by SECTION rather than by hash
+20:  (`verify/addendum-manifest.md` §2/§3/§4, `review/review.md` §6/§8/§9, the verdict's §4/§6), because a
+21-  section reference survives a revision while a hash does not — and the hashes recorded here were
+22-  taken on a tree whose own producer was still editing (the verdict advanced 501 → 513 lines after
+23-  the first freeze attempt, with my A1..A22 correction verified intact across it);
+24-- a negative result is not evidence until the tool's semantics are proven (see §4);
+25-- a hash nobody can reproduce from a frozen state is decoration — prefer citing a revision log.
+26-
+--
+36-| `verify/false-negative-probes.md` | 7448 | 47 | md5 `cc3fea8b2356f83f6c060be2147aff8e` | t5 — immutable |
+37-| `verify/addendum-gates-and-criteria.md` | 14897 | 181 | md5 `5f58fc37717b2db4de9fba11e3d4a0bd` | t5 — FROZEN (read-only) at r3 |
+38:| `verify/addendum-manifest.md` | 45257 | 409 | md5 `bffb902199d396daa2b0e153773aaf9b` | t13/t14 — FROZEN (read-only); covers both addenda (§2 A1..A22, §3 A23..A34, §4 identity+hash discipline); NO outstanding residue in this revision — the addendum row labels r1 and defers to verify/raw/addendum-revision-log.txt, and the falsification check is scoped to the two protected t5 rows |
+39-| `verify/raw/addendum-revision-log.txt` | 1188 | 21 | md5 `e7c5621ba995c7ad1b302e374b8bc274` | t5 — authoritative for the addendum's revisions |
+40-| `verdict.md` | 59567 | 535 | md5 `1160be2294d46ad6a1a7cd89c459a97b` | t7 — FROZEN (read-only), captain's final edit: A1..A22 ×4, reconciliation clause, review pin, EOF artifact removed, freeze claim points at an existing authority |
+41-| `verdict.zh-CN.md` | 58652 | 472 | md5 `45d977e96e73afb95245fba5bff1b003` | t7 — FROZEN (read-only), same corrections in Chinese |
+42-
+43-**Stale-by-one-generation, named so nobody trusts it:** the `review.md` row here was first written as
+44-333 lines / 36295 B (`7a346ab7…`) and the addendum row as 11766 B (`fada192f…`); both were superseded
+--
+61-  (181 lines, `596c26b0…`, header attribution + revision log). Findings, severities and the t5
+62-  verdict are unchanged, and t6 re-verified that all five of its claims survive either state.
+63:- `verify/addendum-manifest.md` pins r1 by construction. Do NOT "fix" it by rewriting: cite
+64-  `verify/raw/addendum-revision-log.txt` (composed after the final edit, so it cannot go stale) or
+65-  cite path + attribution.
+66-- **Freeze and how it is enforced.** Both movers are frozen at the revisions in §1. The producing
+67-  members have been told that anything further goes to the captain as a message, and that a change
+68-  found necessary later becomes a NEW artefact with its own provenance rather than another revision
+69-  of a document this record already pinned. The earlier pattern (four review.md revisions, three
+
+### do MY artifacts carry a stale manifest identity? (350/0e3e6705 mentions)
+verify/addendum-gates-and-criteria.md:0
+verify/verdict.md:0
+verify/false-negative-probes.md:0
+--- my revision log (should be about MY file only):
+### revision log row cited as authoritative by captain-attestation.md §1:
+size=1188 B  mode=-rw-r--r--  mtime=2026-09-13 15:58:09.209539094 +0800
+lines=21  md5=e7c5621ba995c7ad1b302e374b8bc274  sha256=e37964ba541d32322b96764bf53d2bdac443887c6cee0c90176a96edf4ef11aa
+attestation claims: 1188 B / 21 lines / md5 e7c5621ba995c7ad1b302e374b8bc274
+
+### CORRECTION TO MY OWN RECORD (2026-09-13T08:12:51Z)
+ - Earlier in this log I recorded 350 lines / 40488 B / 0e3e6705... as the 'settled freeze candidate'.
+   That was the pre-t14 revision; it is SUPERSEDED. The captain-attested FROZEN revision is:
+   409 lines / 45257 B / sha256 3b7b28999c7a9b021a03cd9a1a72f1287942847986411dae3b3ea4c7ee8aecae /
+   md5 bffb902199d396daa2b0e153773aaf9b / mtime 2026-09-13 16:08:35 / mode -r--r--r--  -- MEASURED BY ME, matches captain-attestation.md §1 exactly.
+ - The Architect's shorter sha256 spelling (3b7b28999c7a9b021a03cd9a1a72f1287942847986411dae3b4c7ee8aecae) has
+   61 hex chars and is INVALID; use the 64-char form above / the attestation's row.
+ - My artifacts carry NO stale manifest identity (grep 0e3e6705|'350 lines' -> 0 hits in addendum r3, verdict.md, false-negative-probes.md),
+   so nothing of mine needs a revision; per captain-attestation.md §1 the movers are cited by SECTION, not by hash.
+ - Per the hard stop I made no edit to any audit artifact in this round; this correction lives in my own append-only raw log.

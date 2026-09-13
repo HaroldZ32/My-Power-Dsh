@@ -1,19 +1,12 @@
 // ============================================================================
-// mpd RTL LSP overlay — drift-guard anchor: mpd-rtl-overlay-v1
+// mpd LSP overlay — drift-guard anchor: mpd-lsp-overlay-v1
 // ============================================================================
-// Patched copy of upstream lsp-core src/lsp/language-mappings.ts for the my-power-dsh RTL
-// coding support (team rtl-dev t3, design t2 Option A). This file REPLACES the
-// upstream file during the offline build (scripts/build-mcp.mjs applies it over
-// the freshly-copied lsp-core source). It must stay a superset of the upstream
-// baseline: keep every upstream export and entry intact, add only the RTL LSP
-// registrations below. If the upstream file drifts (new export shape), the
-// build fails loudly via the baselineExport check in build-mcp.mjs — re-sync
-// this overlay from the upstream file then re-add the RTL additions.
-// ----------------------------------------------------------------------------
-// ADDITIONS: builtin LSP servers for Verilog / SystemVerilog —
-//   verible-verilog-ls  (.v/.vh)  -> id "verible"
-//   slang-server        (.sv/.svh) -> id "slang-server"
-// ----------------------------------------------------------------------------
+// Patched copy of upstream lsp-core src/lsp/language-mappings.ts. This file REPLACES
+// the upstream file during the offline build (scripts/build-mcp.mjs applies it
+// over the freshly-copied lsp-core source), so it must stay a superset of the
+// upstream baseline: keep every upstream export and entry intact. If the upstream
+// file drifts (new export shape), the build fails loudly via the baselineExport
+// check in build-mcp.mjs — re-sync this overlay from the upstream file.
 
 export const SYMBOL_KIND_MAP: Record<number, string> = {
 	1: "File",
@@ -183,10 +176,6 @@ export const EXT_TO_LANG: Record<string, string> = {
 	".fish": "fish",
 	".graphql": "graphql",
 	".gql": "graphql",
-	".v": "verilog",
-	".vh": "verilog",
-	".sv": "systemverilog",
-	".svh": "systemverilog",
 };
 
 export function getLanguageId(ext: string): string {

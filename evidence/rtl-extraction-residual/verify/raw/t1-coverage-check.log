@@ -1,0 +1,58 @@
+### Did t1's passes see the HDL overlay / dist registrations?
+-- presence in t1 raw logs:
+evidence/rtl-extraction-residual/repo-scan/raw/passB1b-refined-content.log
+evidence/rtl-extraction-residual/repo-scan/raw/passB1c-precision-content.log
+evidence/rtl-extraction-residual/repo-scan/raw/passB1-tracked-content.log
+evidence/rtl-extraction-residual/repo-scan/raw/passC4-tests-lsp-wiring.log
+-- occurrence counts per log:
+1  passA1-tracked-names.log
+2  passA3-all-names.log
+1  passA4-dir-names.log
+57  passA5-supplementary-names.log
+96  passB1b-refined-content.log
+96  passB1c-precision-content.log
+90  passB1-tracked-content.log
+1  passB2-untracked-content.log
+1  passB3-ignored-content.log
+1  passC1-bundle-wiring.log
+3  passC2-docs-wiring.log
+9  passC3-scripts-wiring.log
+3  passC4-tests-lsp-wiring.log
+2  passC5-inbound-refs.log
+9  passD-state-artifacts.log
+
+-- t1 census rows for the LSP package:
+751:.mpd/tmp-baseline-bl-3d99718/packages/mpd-mcp-lsp/templates/rtl-lsp-client.json	name	ABSENT	UNTRACKED-BUILD-ARTIFACT	ACCEPTABLE	low
+4366:packages/mpd-mcp-lsp/README.md	content,content-precise	TRACKED	FULL-STRIP-DEFECT	IN-SCOPE-DEFECT	medium
+4367:packages/mpd-mcp-lsp/README.zh-CN.md	content,content-precise	TRACKED	FULL-STRIP-DEFECT	IN-SCOPE-DEFECT	medium
+4368:packages/mpd-mcp-lsp/dist/cli.js	content,content-precise	TRACKED	BRIDGE-BY-DESIGN	ACCEPTABLE	none
+4369:packages/mpd-mcp-lsp/overlay/lsp/language-mappings.ts	content,content-precise	TRACKED	BRIDGE-BY-DESIGN	ACCEPTABLE	none
+4370:packages/mpd-mcp-lsp/overlay/lsp/server-definitions.ts	content,content-precise	TRACKED	BRIDGE-BY-DESIGN	ACCEPTABLE	none
+4371:packages/mpd-mcp-lsp/templates/rtl-lsp-client.json	content,content-precise,name	TRACKED	FULL-STRIP-DEFECT	IN-SCOPE-DEFECT	medium
+
+-- t1 B1c token set (header):
+# PASS B1c — PRECISION pass: bounded RTL/EDA tokens (kills the 'shortLabel/effortLabel/assertListing' and 'verify' false positives)
+# cmd: git grep -n -i -E '\brtl\b|rtl[-_]|rtls?\b|verilog|systemverilog|vhdl|iverilog|verilator|verible|cocotb|\buvm\b|mpd[_-]verif|wave-mcp|traceweave|slang-server|adder4|cnt8|ecap_top|\bsdc\b|\bxdc\b'
+# HEAD: 32ae54dd10db7ea46e1c1263143d56f266fd1f78
+
+## per-file counts, non-evidence (shipped surface)
+docs/rtl-verif-guide.zh-CN.md:96
+docs/rtl-verif-guide.md:94
+.silicon-extraction/removal.log:90
+docs/rtl-gap-assessment.md:78
+docs/rtl-gap-assessment.zh-CN.md:76
+skills/dsh-qa/scripts/rtl-verif.mjs:52
+scripts/install-mcp.mjs:33
+skills/dsh-qa/scripts/rtl-ip-profile.mjs:27
+t5-closure-evidence/t5-closure.md:23
+scripts/verify-rtl-references.mjs:18
+packages/mpd-mcp-lsp/overlay/lsp/server-definitions.ts:14
+packages/mpd-mcp-lsp/overlay/lsp/language-mappings.ts:12
+packages/mpd-bundle/cordis.patch.yml:12
+docs/rtl-ip-flow-guide.md:12
+packages/mpd-workmate-plugin/test/workmate.test.ts:11
+tests/golden/fixtures/verilog/tb/tb_adder4.v:10
+docs/rtl-ip-flow-guide.zh-CN.md:10
+docs/adder4.md:10
+scripts/build-mcp.mjs:8
+packages/mpd-mcp-lsp/README.zh-CN.md:8

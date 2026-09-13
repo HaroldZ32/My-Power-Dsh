@@ -1,0 +1,7 @@
+34a1c8d6e5ca46a00cb4d5e416c1068c45c14fce4e8255ec7d8a580fa15ad6db  scripts/verify-rtl-references.mjs
+c5d2414c044f4b2e65a9a7500f8356957bfc81ec154625e9b8758c369cd8ebbb  skills/dsh-qa/scripts/rtl-verif.mjs
+74f1cee9b830582e64cc1669e16aaee776b29ec4162c883633043c8e315ae49e  skills/dsh-qa/scripts/rtl-ip-profile.mjs
+a9c98a865d12b3747c489afde37e972d99e232c2800ed35721764b946432ac61  packages/mpd-mcp-lsp/templates/rtl-lsp-client.json
+95b4644cb5e4e937eed760b86bed6613bee50f7608149e523a01d262119f9dca  packages/mpd-qa-roles-probe/src/index.ts
+406e086e19f712802b6a519f9efed998b818ab08736e4173b2885e9d2a510c85  packages/mpd-agent-teams-plugin/lib/tools.js
+f521c5f5a1705550e7533f2dad1e45585645db8e09af8a032c852dc84d454f1a  .gitignore

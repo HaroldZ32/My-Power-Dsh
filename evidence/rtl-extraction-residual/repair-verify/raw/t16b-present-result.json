@@ -1,0 +1,17 @@
+{
+  "label": "present",
+  "exit": 0,
+  "killed": false,
+  "elapsedMs": 62050,
+  "requests": 3,
+  "toolsOffered": 86,
+  "createOffered": true,
+  "rtlIpInPrompt": true,
+  "listingSnippet": "Configured team profiles (pass profile= to agent_teams_create):\\n- rtl-ip (7 members, captain planning): RTL-IP SWIMLANE FLOW (skills/rtl-ip-flow is the binding execution contract). Gate semantics: EVERY diamond is passed by a Reviewer check (red and green alike — Reviewer/Plan Reviewer findings must be clear before any review completes); the \\n- mpd (11 members, captain planning): Read-only members (Architect, Researche",
+  "createResult": "",
+  "warnCount": 0,
+  "applyCrash": false,
+  "logPath": "/root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair-verify/raw/t16b-present-boot.log",
+  "logBytes": 507,
+  "logTail": "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)\n[mpd-codegraph] init status=no-binary binary=- cwd=/root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair-verify/raw/t16-lane/ws\n[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair-verify/raw/t16-lane/mpd-package/skills (provider mpd-bundle, bundle 0.3.2)\nCodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.\nt16-done\n"
+}

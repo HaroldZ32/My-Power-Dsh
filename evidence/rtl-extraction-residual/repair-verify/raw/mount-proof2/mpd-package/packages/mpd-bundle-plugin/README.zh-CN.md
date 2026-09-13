@@ -1,0 +1,29 @@
+# mpd-bundle-plugin
+
+**中文** | [English](./README.md)
+
+`@mpd-dsh/mpd` bundle 自身的 main 插件和 Web 客户端界面。两个职责：
+
+1. **Web 兼容 main**——bundle 包的 `main` / `exports["."]` 指向这里。它是一个 no-op 插件（`apply() {}`），名称为 `@mpd-dsh/mpd`。bundle patch 的 `mpd-web-compat` 自引用行（`name: '@mpd-dsh/mpd'`）加载它，这使得 loader 条目名称为**恰好** `@mpd-dsh/mpd`——这是 client-modules 为 bundle 构建 boot-graph 客户端行所要求的入口（没有它任何客户端界面都不会加载）。
+2. **合并的 Web 客户端**——`client.js`（由 `scripts/build-mpd-client.mjs` 生成）作为 bundle 的 `./client` 导出被提供：
+   - 逐字采用 agent-teams 的 `lib/client.js`（注册 `@nanmicoder/dsh-agent-teams`）。它严格作为**视图库**使用：由 `scripts/patch-agent-teams-client.mjs` 施加的增量导出桥接（由 `scripts/vendor-agent-teams.mjs` 重新施加）暴露其视图/store/词典/CSS，而其 `apply(ctx)` 永不被调用——正是它注册了已删除的对话内团队卡片与活动浮窗，
+   - 一个 `@mpd-dsh/team-page` 注册，其 factory 为 `src/team-page.js`：**AgentTeams 页面**，作为 **DSH-better-sidebar** 的一个 Tab 注册（id `mpd-agent-teams`，order 85，`single: true`，进行中团队数角标，`autoOpenOnTeamActivity` 开关，按对话作用域）。它是唯一的团队 GUI：没有该侧边栏时只输出一条警告且不注册任何内容。页面渲染的是被删除浮窗自己的内部结构——采纳的 `panel` 类（它作用域化了每条采纳规则都读的 `--dsw-alias-*` 变量）、带标题/忙碌圆点/收起控件的 `panelHead`、`teams` 主体与采纳的空态提示——只有窗口管理器那一半（定位、拖拽/改宽、浮动外框）被去掉，
+   - 一个 `@mpd-dsh/mpd` 注册，其 factory 把 workmate 库贡献为它自己的 **DSH-better-sidebar** Tab（`mpd-workmate`，order 90，`single: true`），它通过 `GET /plugins/mpd-workmate/{list,roster,get}` + `POST /plugins/mpd-workmate/init` 读取和创建 workmate，并通过 `POST /plugins/mpd-workmate/{rename,delete}` 重命名/删除 —— 按 reason 编码的拒绝分支处理（`invalid-name` / `confirm-required` / `unknown` / `collision` / `in-use`（带阻塞团队列表）），删除是显式两步（确认 → 归档，或输入名称后彻底删除），文案 zh/en。它还注册了隐藏 `/agent-teams` 命令结果的 `conversation.chat.commandview` 空行。两个页面都**没有**浮动回退：只要有 mpd client 源注册了 `agent-teams-activity`、`conversation.chat.node`、`shell.overlay` 或 `sidebar.footer.action`，`scripts/build-mpd-client.mjs` 就会让构建失败。
+
+## 配置
+
+无。这是基础设施：自引用行在 bundle patch 中不携带任何配置。
+
+## 重新生成客户端
+
+```bash
+node scripts/build-mpd-client.mjs   # after editing src/web-client.js or agent-teams client
+node scripts/pack-mpd.mjs           # restage the bundle
+```
+
+## 文件
+
+- `src/index.ts`——no-op main 插件。
+- `src/web-client.js`——mpd 客户端 factory 主体（纯 JS，React.createElement）。
+- `src/team-page.js`——AgentTeams 侧边栏页面 factory 主体（模块 id `@mpd-dsh/team-page`），以同样方式构建进 `client.js`。
+- `client.js`——生成的合并客户端（已提交，镜像 vendored agent-teams 客户端工件）。

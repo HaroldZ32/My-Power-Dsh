@@ -13,7 +13,7 @@
 // `AGENTS.md` in BOTH inScope and outOfScope, so the update gate rejected the
 // edit its own acceptance text REQUIRED as `out_of_scope`.
 import { test, expect } from "bun:test"
-import { spawnSync } from "node:child_process"
+import { createHash } from "node:crypto"
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
@@ -31,6 +31,25 @@ import { MPD_DELTAS } from "../lib/mpd-deltas.js"
 import { applyAgentTeamsFixes, canonicalIndent } from "../../../scripts/patch-agent-teams-fixes.mjs"
 
 const pluginRoot = join(dirname(fileURLToPath(import.meta.url)), "..")
+
+/** Sha256 pins of the checked-in pristine upstream fixtures (fixtures/upstream/README.md). */
+const UPSTREAM_PINS = {
+    "tools.js": "ba1f6ab20d18285956c1cf206762f5a751eacd584513fa0d0f0c798e8bfc9ce7",
+    "quality-gates.js": "4907ff10a45351af8080b0a6203239012e25028c8175bd7588d31a7aa7481b57",
+}
+
+/**
+ * Read a PRISTINE upstream fixture. Never `git show HEAD:` — HEAD carries the mpd delta bodies,
+ * so it is no longer pristine by construction (t8 / F2). The pinned sha256 makes any fixture
+ * edit fail here instead of silently weakening an assertion.
+ */
+function pristineUpstream(name) {
+    const text = readFileSync(join(pluginRoot, "self-fix-tests", "fixtures", "upstream", name), "utf8")
+    const digest = createHash("sha256").update(text).digest("hex")
+    expect(digest, `fixture fixtures/upstream/${name} drifted from its pinned pristine bytes`).toBe(UPSTREAM_PINS[name])
+    return text
+}
+
 
 /** A minimal team state the create-task gate accepts. */
 function team() {
@@ -198,7 +217,7 @@ test("DEFECT 2 falsifiability: the write-task overlap guard still separates coll
 function scratchRoot() {
     const root = mkdtempSync(join(tmpdir(), "mpd-t4-fix-"))
     mkdirSync(join(root, "packages/mpd-agent-teams-plugin/lib"), { recursive: true })
-    for (const file of ["quality-gates.js", "tools.js", "mpd-deltas.js"])
+    for (const file of ["index.js", "quality-gates.js", "tools.js", "mpd-deltas.js"])
         cpSync(join(pluginRoot, "lib", file), join(root, "packages/mpd-agent-teams-plugin/lib", file))
     return root
 }
@@ -242,7 +261,7 @@ test("durability: the guard is idempotent on the real tree and restores a stripp
     expect(applyAgentTeamsFixes({ write: false }).regions).toBe(expectedRegions)
     const root = scratchRoot()
     try {
-        for (const name of ["quality-gates.js", "tools.js"])
+        for (const name of ["index.js", "quality-gates.js", "tools.js"])
             stripDeltas(join(root, "packages/mpd-agent-teams-plugin/lib", name))
         // verify-only on a stripped tree must fail loudly...
         expect(() => applyAgentTeamsFixes({ root, write: false })).toThrow()
@@ -304,8 +323,7 @@ test("F2: every t4-changed line in lib/quality-gates.js sits inside a registered
     // The upstream revision is the last commit that predates the mpd deltas; the
     // comparison is against it so the sweep covers EVERY behaviour-changing line
     // t4 introduced, not just the ones a verifier happened to name.
-    const upstream = spawnSync("git", ["show", "HEAD:packages/mpd-agent-teams-plugin/lib/quality-gates.js"], { cwd: join(pluginRoot, "..", ".."), encoding: "utf8" })
-    expect(upstream.status).toBe(0)
+    const upstreamText = pristineUpstream("quality-gates.js")
     const after = readFileSync(join(pluginRoot, "lib", "quality-gates.js"), "utf8")
     const lines = after.split("\n")
     const regions = MPD_DELTAS.filter((delta) => delta.file.endsWith("lib/quality-gates.js"))
@@ -329,7 +347,7 @@ test("F2: every t4-changed line in lib/quality-gates.js sits inside a registered
     // Every ADDED line must be inside a region, a marker line, or pure prose.
     // A comment/Doc comment change cannot alter runtime behaviour; executable code
     // outside a region is precisely the F2 defect.
-    const uncovered = addedLineIndices(upstream.stdout, after).filter((index) => {
+    const uncovered = addedLineIndices(upstreamText, after).filter((index) => {
         const line = lines[index] ?? ""
         const trimmed = line.trim()
         if (trimmed === "") return false
@@ -356,9 +374,8 @@ test("F3: healing a RE-MATERIALIZED upstream file refuses instead of emitting a 
     try {
         // the verifier's exact scenario: quality-gates.js replaced by the upstream
         // revision (regions AND old declarations gone), tools.js + registry stay ours
-        const upstream = spawnSync("git", ["show", "HEAD:packages/mpd-agent-teams-plugin/lib/quality-gates.js"], { cwd: join(pluginRoot, "..", ".."), encoding: "utf8" })
-        expect(upstream.status).toBe(0)
-        writeFileSync(join(root, "packages/mpd-agent-teams-plugin/lib/quality-gates.js"), upstream.stdout)
+        const upstreamText = pristineUpstream("quality-gates.js")
+        writeFileSync(join(root, "packages/mpd-agent-teams-plugin/lib/quality-gates.js"), upstreamText)
         // the upstream file still carries `export function pathMatchesScope`; a region
         // insertion would produce a second declaration, so the guard must refuse
         const message = healError(root)
@@ -367,7 +384,7 @@ test("F3: healing a RE-MATERIALIZED upstream file refuses instead of emitting a 
         expect(message).toMatch(/re-materialized|fails to import/)
         // the file must NOT have been half-healed into a duplicate declaration
         const healed = readFileSync(join(root, "packages/mpd-agent-teams-plugin/lib/quality-gates.js"), "utf8")
-        expect(healed).toBe(upstream.stdout)
+        expect(healed).toBe(upstreamText)
         expect((healed.match(/export function pathMatchesScope/g) ?? []).length).toBe(1)
     }
     finally {

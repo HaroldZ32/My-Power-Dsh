@@ -1,0 +1,102 @@
+=== t27 re-measurement vs CURRENT pins — 2026-09-13T11:15:10Z — HEAD 32ae54d ===
+
+--- A: contract verify command 1 (placeholder + source) ---
+script placeholder: 0
+packages/mpd-mcp-astgrep/dist/BUILD.lock: placeholder=0 source="source": "8c57e46"
+packages/mpd-mcp-gitbash/dist/BUILD.lock: placeholder=0 source="source": "8c57e46"
+packages/mpd-mcp-lsp/dist/BUILD.lock: placeholder=0 source="source": "8c57e46"
+
+--- A2: node --check ---
+node --check exit: 0
+
+--- A3: codegraph BUILD.lock absence ---
+packages/mpd-mcp-astgrep/dist/BUILD.lock
+packages/mpd-mcp-gitbash/dist/BUILD.lock
+packages/mpd-mcp-lsp/dist/BUILD.lock
+serve.js
+
+--- B: contract verify command 2 (per-artifact cli vs lock) ---
+astgrep cli=f06bba310cad lock=bba310cad306 bytes=84651
+gitbash cli=0484a8ff1714 lock=4a8ff1714c94 bytes=22651
+lsp cli=9f41d4258c20 lock=1d4258c204ac bytes=234827
+
+--- B2: full equality table (cli.js vs BUILD.lock vs VENDOR_LOCK) ---
+astgrep  source="8c57e46" cli_sha=f06bba310cad306b5638efb90a69e50b2c6a7416c0c536867f02c70f4b4fa4c5 lock_sha=f06bba310cad306b5638efb90a69e50b2c6a7416c0c536867f02c70f4b4fa4c5 vendor_sha=f06bba310cad306b5638efb90a69e50b2c6a7416c0c536867f02c70f4b4fa4c5 cli_bytes=84651 lock_bytes=84651 ALL_AGREE=true
+gitbash  source="8c57e46" cli_sha=0484a8ff1714c949bc52a4fc0de89c756dcab975b0691a2823706f008475f38e lock_sha=0484a8ff1714c949bc52a4fc0de89c756dcab975b0691a2823706f008475f38e vendor_sha=0484a8ff1714c949bc52a4fc0de89c756dcab975b0691a2823706f008475f38e cli_bytes=22651 lock_bytes=22651 ALL_AGREE=true
+lsp      source="8c57e46" cli_sha=9f41d4258c204aca959de98a5bea59a7459f9e298885f187cfc0268e1d18ce69 lock_sha=9f41d4258c204aca959de98a5bea59a7459f9e298885f187cfc0268e1d18ce69 vendor_sha=9f41d4258c204aca959de98a5bea59a7459f9e298885f187cfc0268e1d18ce69 cli_bytes=234827 lock_bytes=234827 ALL_AGREE=true
+
+--- C: contract verify command 3 (bun install --frozen-lockfile, workspace-scoped TMPDIR) ---
+bun install v1.3.14 (0d9b296a)
+
+Checked 31 installs across 48 packages (no changes) [4.00ms]
+frozen-lockfile exit: 0
+
+--- D: contract verify command 4 (verify-vendor) ---
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+verify-vendor exit: 0
+
+--- E: contract verify command 5 (ghosts + ws entries) ---
+ghosts: false
+ws entries: 38
+
+--- E2: all real packages/* dirs present ---
+lock-workspace-check-done
+
+--- F: bun.lock internal consistency (workspaces <-> packages map, 19/19) ---
+ABSENT mpd-agent-teams-plugin
+ABSENT mpd-bootstrap-plugin
+ABSENT mpd-boulder-plugin
+ABSENT mpd-bundle
+ABSENT mpd-bundle-plugin
+ABSENT mpd-comment-checker-plugin
+ABSENT mpd-config-plugin
+ABSENT mpd-dsh-adapter-plugin
+ABSENT mpd-hashline-plugin
+ABSENT mpd-mcp-astgrep
+ABSENT mpd-mcp-gitbash
+ABSENT mpd-mcp-lsp
+ABSENT mpd-memory-plugin
+ABSENT mpd-modelchain-plugin
+ABSENT mpd-qa-roles-probe
+ABSENT mpd-roles-plugin
+ABSENT mpd-tools-plugin
+ABSENT mpd-ulw-plugin
+ABSENT mpd-workmate-plugin
+real dirs checked: 19 problems: 19
+workspace names missing from the packages map: none
+
+--- G: guard probe (7 lanes) rerun on the CURRENT git-bash bytes ---
+PASS  committed dists: guard exits 0 for all three and reports non-zero subjects
+PASS  negative control: seeded OMO_PROVISION_HINT fails non-zero naming token + artifact
+PASS  primary subject: scrub passes `omo-git-bash` through and the guard names it in full
+PASS  primary byte comparison (1): intact artifacts compare equal with non-zero byte counts
+PASS  primary byte comparison (2): seeded mutant fails non-zero naming artifact + diff
+PASS  false-positive control: platformRootFromOpenCodeConfigPath / platformFromOptions exit 0
+PASS  empty-subject control: an empty scan fails non-zero
+brand guard proof ok=true
+
+--- H: dist artifacts unchanged by the probe (before == after hashes) ---
+IDEMPOTENT: no dist artifact changed by the probe
+
+--- I: staging state of this task paths (unstaged expected) ---
+ M bun.lock
+ M packages/mpd-mcp-astgrep/dist/BUILD.lock
+ M packages/mpd-mcp-gitbash/dist/BUILD.lock
+ M packages/mpd-mcp-lsp/dist/BUILD.lock
+ M scripts/build-mcp.mjs
+
+--- F (CORRECTED — the "ABSENT … problems: 19" block above came from a probe bug, not the lock) ---
+The first F block used a regex requiring `"name": …, "version": …` adjacently inside the workspaces
+entry. bun.lock's workspace entries are multi-line (`"name"` and `"version"` on separate lines), so
+the regex missed every entry and printed 19 false "ABSENT" lines. Re-run with a regex that anchors
+only on the workspace key + its `"name"` line:
+
+$ node -e '… check every real packages/* dir against its bun.lock workspaces entry …'
+real dirs checked: 19 problems: 0
+workspace names missing from the packages map: none
+
+So the lock is internally consistent: 19/19 real dirs present with matching package names, and every
+workspace package name resolves through the `packages` map. The misleading block is kept in place
+above (struck through by this note) rather than deleted, so the record shows the probe bug too.

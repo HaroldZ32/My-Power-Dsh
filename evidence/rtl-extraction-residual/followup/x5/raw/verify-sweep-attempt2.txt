@@ -1,0 +1,52 @@
+=== t21 final verify sweep (attempt 2) — 2026-09-13T11:06:16Z — HEAD 32ae54d ===
+
+--- V1 (contract): placeholder over script + every mcp dist BUILD.lock ---
+script placeholder hits: 0
+packages/mpd-mcp-astgrep/dist/BUILD.lock: 0
+packages/mpd-mcp-gitbash/dist/BUILD.lock: 0
+packages/mpd-mcp-lsp/dist/BUILD.lock: 0
+
+--- V2 (contract): ghosts ---
+ghost omo-hephaestus: false
+ghost presets-plugin: false
+
+--- V3 (contract): every real packages/* dir present in bun.lock ---
+lock-workspace-check-done
+
+--- V4 (contract): the three committed cli.js byte-identical ---
+cli-diff-above (empty = byte-identical)
+
+--- E1: three locks carry the identical real source value + artifact equality ---
+astgrep source="8c57e46" sha_ok=true bytes_ok=true
+gitbash source="8c57e46" sha_ok=true bytes_ok=true
+lsp source="8c57e46" sha_ok=true bytes_ok=true
+
+--- E2: codegraph BUILD.lock absence ---
+packages/mpd-mcp-astgrep/dist/BUILD.lock
+packages/mpd-mcp-gitbash/dist/BUILD.lock
+packages/mpd-mcp-lsp/dist/BUILD.lock
+serve.js
+
+--- E3: literal bun install --frozen-lockfile ---
+bun install v1.3.14 (0d9b296a)
+
+Checked 31 installs across 48 packages (no changes) [6.00ms]
+frozen exit=0
+
+--- E4: workspace-scoped regeneration form (already run; log raw/bun-install-regenerate.log) ---
+TMPDIR=<repo>/.mpd/tmp-bun-tmp BUN_INSTALL_CACHE_DIR=<repo>/.mpd/tmp-bun-cache bun install   # exit 0, Saved lockfile, Removed: 2
+
+--- E5: brand guard intact in build-mcp.mjs ---
+142:export function applyMpdScrub(serverName, text) {
+182:export const BRAND_ALLOWLIST = [
+208:export function assertBrandClean(artifact, text, allowlist = BRAND_ALLOWLIST) {
+245:export function assertRebuildMatchesCommitted(artifact, builtText, committedPath) {
+258:function main() {
+node --check OK
+
+--- E6: staging state of this task paths ---
+ M bun.lock
+ M packages/mpd-mcp-astgrep/dist/BUILD.lock
+ M packages/mpd-mcp-gitbash/dist/BUILD.lock
+ M packages/mpd-mcp-lsp/dist/BUILD.lock
+ M scripts/build-mcp.mjs

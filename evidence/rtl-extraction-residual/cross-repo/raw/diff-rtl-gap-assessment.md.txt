@@ -1,0 +1,17 @@
+--- /root/dshProj/my-power-dsh/docs/rtl-gap-assessment.md	2026-08-31 11:16:44.167953815 +0800
++++ /root/dshProj/my-power-dsh-silicon/docs/rtl-gap-assessment.md	2026-09-13 01:06:20.570112468 +0800
+@@ -235,10 +235,12 @@
+   Edalize; SpyGlass, VCS/Xcelium/Questa, Verdi, JasperGold, DC/Genus, PrimeTime,
+   Tessent, Methodics/SOS).
+ - **A2 — Capability inventory**: team task t2 output (Explorer). Key file evidence:
+-  `packages/mpd-bundle/cordis.patch.yml` (MCP rows mcp-astgrep/mcp-lsp/mcp-codegraph,
++  this bundle's `packages/mpd-bundle/cordis.patch.yml` (MCP rows mcp-astgrep/
++mcp-lsp/mcp-codegraph,
+   context7, grep_app, 13 mpd plugins, adopted agent-teams); ast-grep language list
+   (`skills/ast-grep/scripts/ast_grep_helper.py`, 25 languages, no Verilog/SV);
+-  `packages/mpd-mcp-lsp/dist/cli.js` built-in server list (42, no HDL server);
++  `packages/mpd-mcp-lsp/dist/cli.js` (silicon-owned; lands with t16) built-in server
++list (42, no HDL server);
+   codegraph wasm grammar dir (29 grammars, no verilog); shipped skills list (19 skills,
+   none RTL); `tests/golden/fixtures/verilog/` + `docs/adder4.md` + `docs/cnt8.md`
+   ("No simulator needed"); `evidence/p5/` golden batch (Verilog written but never

@@ -1,0 +1,8 @@
+=== boundary: working-tree status of my paths ===
+MM VENDOR_LOCK.json
+MM package.json
+MM skills/dsh-qa/SKILL.md
+ M skills/dsh-qa/scripts/relocate-smoke.mjs
+ M skills/dsh-qa/scripts/team-route-rewire.mjs
+--- evidence/x7 untracked files ---
+?? evidence/rtl-extraction-residual/x7/

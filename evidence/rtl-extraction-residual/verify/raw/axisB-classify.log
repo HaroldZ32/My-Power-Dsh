@@ -1,0 +1,66 @@
+### B1 docs/index.md + zh hub link
+docs/index.md:19:| [`rtl-verif-guide.md`](rtl-verif-guide.md) | RTL engineers, agents | RTL dev phase-1 (being moved to the silicon sub-bundle, gitee.com/nop_chip/my-power-dsh-silicon; until then this file describes the pre-extraction checkout): Verible/slang-server LSP, rtl-codestyle templates, mpd-verif plugin (iverilog/Verilator/VCS + cocotb iron rule + VCS-only UVM), waveform-MCP wiring, engineering-flow recommendations (draft), deferred to-do list. |
+docs/index.zh-CN.md:18:| [`rtl-verif-guide.zh-CN.md`](rtl-verif-guide.zh-CN.md) | RTL 工程师、代理 | RTL 开发 Phase-1（正在迁往 silicon 子插件仓库 gitee.com/nop_chip/my-power-dsh-silicon；迁移完成前本文件描述的是剥离前的检出）：Verible/slang-server LSP、rtl-codestyle 模板、mpd-verif 插件（iverilog/Verilator/VCS + cocotb 铁律 + 仅 VCS 的 UVM）、波形 MCP 接线、工程流程建议（草稿）、延期待办清单。 |
+
+### B2 are the six RTL docs still TRACKED in mpd?
+docs/rtl-gap-assessment.md
+docs/rtl-gap-assessment.zh-CN.md
+docs/rtl-ip-flow-guide.md
+docs/rtl-ip-flow-guide.zh-CN.md
+docs/rtl-verif-guide.md
+docs/rtl-verif-guide.zh-CN.md
+count=6
+
+### B3 skills that still carry RTL references
+3:description: "Configure a Language Server (LSP) for a specific language so editor/agent tooling — diagnostics, go-to-definition, find-references, rename — works. Use when you need to: configure LSP, lsp setup, set up or install a language server, fix 'no LSP server configured' / 'server not installed', choose between servers (basedpyright vs pyright vs ty vs ruff), or wire .codex/lsp-client.json / .opencode/lsp.json. 언어서버 설정. Routes by file extension to references/<language>/README.md for the exact builtin server, per-OS install commands (macOS/Linux/Windows), config snippets for both config files, initialization options, alternatives, and troubleshooting. Ships scripts: detect-lsp.ts (scan a project for languages + each server's install/config status) and verify-lsp.ts (run a real diagnostics roundtrip). Covers typescript, python, go, rust, c/c++, java, kotlin, c#/razor, swift, ruby, php, dart, elixir, zig, lua, bash, yaml, terraform, haskell, julia, verilog, systemverilog — with the HDL half (verilog / systemverilog) provided by the @mpd-dsh/silicon bundle at packages/mpd-mcp-lsp/references/; when that bundle is not installed this skill still routes those two languages but carries no HDL body of its own."
+11:server, write the config, then verify with a real roundtrip.
+46:| `.v .vh` | `../my-power-dsh-silicon/packages/mpd-mcp-lsp/references/verilog/README.md` (HDL pages moved to the `@mpd-dsh/silicon` bundle; `$MPD_SILICON_ROOT` overrides the sibling root) |
+47:| `.sv .svh` | `../my-power-dsh-silicon/packages/mpd-mcp-lsp/references/systemverilog/README.md` (same bundle) |
+51:## WORKFLOW — detect → install → configure → verify
+116:### 4. Verify
+122:bun scripts/verify-lsp.ts <path/to/file.ext>
+123:bun scripts/verify-lsp.ts <file> --timeout=90000
+138:| `scripts/verify-lsp.ts` | Real LSP diagnostics roundtrip for one file via the `lsp-tools-mcp` engine; `OK`/`FAIL`/`SKIP` + exit code 0/1/3. |
+--- dsh-qa SKILL.md
+3:description: "QA the my-power-dsh bundle against the REAL dsh binary in strict isolation. Every case must prove a plugin row is mounted (via dsh --dump-config) or a real tool call succeeds, write evidence to evidence/<domain>/<slug>/, and ship helper scripts that pass --self-test. Use whenever a bundle/plugin change, a DeepSeek route smoke, an MCP wire-up, an installer change, or a preset registration needs verification."
+10:QA skill: verify my-power-dsh bundle/plugin behavior with the real `dsh` binary in a **strictly isolated**
+26:   `.mpd/team`, `.mpd/memory`, `.mpd/boulder.json`, `.mpd/hashline-files.json`, `.mpd/verif`,
+48:| ultrawork-smoke | ultrawork | plan gate, execution rounds, verification gate, quality-gate ledger in one real headless session | Plan C/C2 |
+62:| rtl-ip-profile | RTL IP workflow | bundle patch ships the rtl-ip roster profile (7 members, four-stage flow markers) + rtl-ip-flow skill + 4 document templates + bilingual guide; composed boot shows the profile in the agent-teams row config | RTL IP flow |
+
+### B4 remaining content hits classified
+.gitignore:23:# RTL phase-1 scratch: research clones (.research/) and the workspace-local cocotb venv (.venv-rtl/, .venv*)
+.gitignore:25:.venv-rtl/
+.gitignore:34:simv_iverilog
+PLAN.md:25:4. The biggest risk is not the wiring, but verifying prompt/behavior-layer adaptation to DeepSeek's thinking format.
+PLAN.md:43:| S5 | Original repo zero changes, zero pushes; all changes only in the new mpd-dsh repo | git status verification + remote check |
+PLAN.md:51:Hephaestus native minimal plugin, dsh-qa skill, behavior verification and prompt iteration.
+PLAN.md:86:    ├── VENDOR_LOCK.json         # locks upstream commit sha + file-count/loc verification values
+PLAN.md:104:    ├── scripts/                 # bootstrap / build / smoke / evidence / verify-vendor
+PLAN.md:117:### 3.4 Loading mechanism (verified against DSH docs)
+PLAN.md:136:3. Generate VENDOR_LOCK.json: upstream commit sha + find/wc verification values; write scripts/verify-vendor.mjs.
+PLAN.md:185:1. Priority: ast-grep-mcp (highest value for Verilog/RTL syntax trees) → git-bash-mcp → lsp-tools-mcp+lsp-daemon (D2).
+PLAN.md:189:   make one real call against a sample Verilog file (record timeout/reconnect behavior).
+PLAN.md:194:**Evidence**: evidence/p3/tool-list.txt, evidence/p3/verilog-sample-call.log.
+PLAN.md:215:### 4.6 P5 behavior verification and tuning (3–5 person-days)
+PLAN.md:220:1. Golden-task set (≥8 tasks): 3 general coding, 2–3 hardware code (RTL module+testbench, lint cleanup, doc/waveform explanation), 2 tool-use.
+PLAN.md:291:| R4 | upstream version drift (HEAD 8c57e46 ≠ historical snapshot f3642fc) | High/Medium | VENDOR_LOCK lock + verification script, don't chase updates |
+PLAN.md:321:| P2 | mpd-skills-plugin | 0.5–1 person-day | skill directory + load verification + tests all green |
+PLAN.md:324:| P5 | behavior verification and tuning (full dsh-qa gate) | 3–5 person-days | Track A DoD fully achieved |
+PLAN.md:334:3. Write VENDOR_LOCK.json + scripts/verify-vendor.mjs and run it;
+scripts/install-mcp.mjs:5://   LSP binaries    verible-verilog-ls (chipsalliance/verible) + slang-server
+scripts/install-mcp.mjs:13://                   verified by importing the required SDK module
+scripts/install-mcp.mjs:33:  { bin: "verible-verilog-ls", repo: "chipsalliance/verible", assetRe: /linux-static-x86_64\.tar\.gz$/ },
+scripts/install-mcp.mjs:184:    // verify the mcp SDK module the dsh MCP client needs actually imports
+scripts/install-mcp.mjs:186:    const v = sh(venvPy, ["-c", w.verify + "; print('verify OK')"], { silent: true })
+scripts/install-mcp.mjs:187:    if (v.status !== 0) { fail(w.cmd + " verify failed: mcp SDK in its pipx env is missing/wrong (" + (v.stderr || "").slice(-200) + ")"); continue }
+scripts/install-mcp.mjs:188:    console.log("[install-mcp] " + w.cmd + " verify OK (mcp SDK present in its pipx env) ->", bin)
+scripts/install-mcp.mjs:195:  { pkg: "wave-mcp", cmd: "wave-mcp", envk: "MPD_DSH_WAVE_MCP_BIN", mcpRe: "mcp>=2", verify: "import mcp.server.mcpserver" },
+scripts/install-mcp.mjs:196:  { pkg: "traceweave-mcp", cmd: "traceweave-mcp", envk: "MPD_DSH_TRACEWEAVE_BIN", mcpRe: "mcp==1.27.0", verify: "import mcp" },
+scripts/install-mcp.mjs:204:    'export PATH="' + join(toolchain, "bin") + ':$PATH"   # verible-verilog-ls / slang-server',
+scripts/install-mcp.mjs:306:  if (!LSP_TARGETS.some((t) => t.bin === "verible-verilog-ls") || !LSP_TARGETS.some((t) => t.bin === "slang-server")) errors.push("lsp targets")
+
+### B5 tracked root-level process dirs
+.silicon-extraction/removal.log
+t5-closure-evidence/t5-closure.md
+t5-closure-evidence/token-discipline-check.md

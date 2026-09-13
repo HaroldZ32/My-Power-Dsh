@@ -1,0 +1,2 @@
+[mpd-qa] SKIP case=skill-catalog-probe lane=real reason=absent-staged-pack prereq=dist/mpd-package/package.json remedy="node scripts/pack-mpd.mjs"
+[skill-catalog-probe] staged package absent at dist/mpd-package/package.json; skipping (not a failure)

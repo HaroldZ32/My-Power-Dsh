@@ -1,0 +1,15 @@
+{
+  "name": "dsh-profile-headless",
+  "private": true,
+  "dependencies": {
+    "@mpd-dsh/mpd": "link:/root/dshProj/my-power-dsh"
+  },
+  "dsh": {
+    "profile": {
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@mpd-dsh/mpd"
+      ]
+    }
+  }
+}

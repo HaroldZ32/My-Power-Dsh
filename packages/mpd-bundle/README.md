@@ -2,15 +2,16 @@
 **English** | [中文](./README.zh-CN.md)
 
 DSH bundle aggregation package: `cordis.patch.yml` mounts every mpd-dsh plugin row —
-MCP servers (ast-grep/git-bash/lsp/codegraph + remote context7/grep.app + the RTL
-waveform-read rows `mcp-wave-mcp`/`mcp-traceweave` — external tools resolved
-env-first via `MPD_DSH_*_BIN`, graceful degrade when absent, install policy
-documented in `docs/rtl-verif-guide.md`), the B/C-line
-plugins (mpd-config first so the mpdConfig service is visible to the rows below,
-mpd-tools / modelchain / roles / ulw / agent-teams / hashline / boulder /
-comment-checker / codegraph / memory / workmate / verif), the `mpd-web-compat` self-row
+MCP servers (ast-grep / git-bash / lsp / codegraph + the remote context7 / grep.app rows),
+the B/C-line plugins (mpd-config first so the mpdConfig service is visible to the rows
+below, then mpd-dsh-adapter / mpd-tools / modelchain / roles / ulw / hashline /
+boulder / comment-checker / codegraph / memory / workmate), the `mpd-web-compat` self-row
 (`name: '@mpd-dsh/mpd'` — the loader entry that carries the bundle's web client),
-and mpd-bootstrap provisioning.
+mpd-bootstrap provisioning, and the adopted `agent-teams` row (`stateDir: .mpd/team`).
+
+The waveform-read rows (`mcp-wave-mcp` / `mcp-traceweave`) are **not mounted**: they wrap
+external Python MCP servers and stay commented out in `cordis.patch.yml:92-123` together
+with their install steps, so a machine without those binaries boots unchanged.
 
 The bundle ships ONE preset (`mpd`, the main working agent; assets under
 `packages/mpd-bootstrap-plugin/presets/mpd`): it configures `dsh-agent-instructions`

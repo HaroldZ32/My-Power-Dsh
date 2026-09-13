@@ -1,0 +1,8 @@
+[bundle-lifecycle] ok=true -> /root/dshProj/my-power-dsh/.mpd/tmp-baseline-bl-3d99718/evidence/dsh-qa/bundle-lifecycle/2026-09-13T07-38-00.350Z
+  install: {"ok":true,"exit":0,"dependency":"link:/root/dshProj/my-power-dsh/.mpd/tmp-baseline-bl-3d99718","bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"],"oneCommand":"dsh plugin --profile w add <repo root>"}
+  composed: {"ok":true,"exit":0}
+  boot: {"ok":true,"http":true,"corpus":"/root/dshProj/my-power-dsh/.mpd/tmp-baseline-bl-3d99718/skills","preset":"/root/dshProj/my-power-dsh/.mpd/tmp-baseline-bl-3d99718/.qa-reloc/bundle-lifecycle-2026-09-13T07-38-00.350Z/home/profiles/w/node_modules/@mpd-dsh/mpd/pre
+  noHomeCopy: {"ok":true,"skills":[],"presets":[]}
+  layerDurability: {"ok":true,"exit":0,"dependency":true,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"]}
+  uninstall: {"ok":true,"exit":0,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app"],"residue":[],"mpdState":[]}
+[bundle-lifecycle] PASS

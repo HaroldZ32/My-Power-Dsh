@@ -1,0 +1,29 @@
+{
+  "generatedAt": "2026-09-13T08:29:10.974Z",
+  "withSilicon": {
+    "label": "with-silicon",
+    "siliconPlanted": true,
+    "bootExit": 0,
+    "hasRtlIp": false,
+    "hasMpdProfile": false,
+    "sessionBytes": 0,
+    "siliconNote": false
+  },
+  "withoutSilicon": {
+    "label": "without-silicon",
+    "siliconPlanted": false,
+    "bootExit": 0,
+    "hasRtlIp": false,
+    "hasMpdProfile": false,
+    "sessionBytes": 0,
+    "siliconNote": false
+  },
+  "checks": {
+    "A: session composed with the silicon profile present lists rtl-ip": false,
+    "A: the silicon profile body is present (RTL IP description)": false,
+    "A: mpd profile still listed": false,
+    "B: without silicon, rtl-ip is NOT listed": true,
+    "B: mpd profile still listed": false
+  },
+  "ok": false
+}

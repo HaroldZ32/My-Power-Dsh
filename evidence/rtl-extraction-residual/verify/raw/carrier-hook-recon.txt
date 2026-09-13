@@ -1,0 +1,40 @@
+### R7.13 in captain-rulings.md (the C-criterion corrections) 08:15:56Z
+356:13. **R7.13 — t2's criterion defects are corrected, not inherited.** The reviewer's extension
+357-   measured three defects inside the audit's own acceptance criteria:
+358-   - C7's row check `grep -c '^\| rtl-verif '` is VACUOUS (the `^` branch matches every line,
+359-     returning 73 = the file's line count). Correct it to a strict row test in the corpus probe
+360-     the repair lands — the same "guard that cannot fail" family as R7.9, this time inside the
+361-     AUDIT's own contract, named twice on purpose.
+362-   - C7's requirement that the two RTL cases exist and SKIP cleanly cannot survive its own
+363-     repair (R3 retires them): stays SUPERSEDED (R7.2), never passed.
+364-   - C6's two remnants are red today (mpd's root README has zero silicon pointer lines;
+365-     `git grep rtl-ip.profile.json -- packages scripts presets` is empty) and are reported as
+366-     bridge gaps until R5.2/R5.3's hook and mount proof exist; never reported as passed in the
+367-     pre-repair baseline.
+368-14. **R7.14 — the retained gate's failure channel, measured precisely (narrows R7.9).** t5's
+
+### AGENTS.md §6 A7 row (carrier hook) — file content, not the reminder
+247:  | A7 | `lib/index.js` `apply()` head — the `rtl-ip` carrier hook | `mpd-delta rtl-ip-carrier` | t8/R5.3: reads the silicon bundle's `presets/rtl-ip.profile.json` at **apply() time** (never import time) and re-binds `config.profiles` so all four consumers (resolved profiles, captain prompt, slash command, gesture boundary) see ONE merged set; missing file → `{}` (mpd-only install, silent), corrupt → `{}` + one warning; mpd's own profile wins a collision. First region in `index.js`; `mpdDeltaFiles()` in `scripts/patch-agent-teams-fixes.mjs` additionally discovers unregistered adopted lib files that carry region markers, so a NEW delta file can be seeded once |
+250:  **t8 added the 13th, `mpd-delta rtl-ip-carrier` in `lib/index.js`**, so the live registry is 13
+
+### does the region exist in the working tree right now?
+117:    //#region mpd-delta rtl-ip-carrier (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+164:    //#endregion mpd-delta rtl-ip-carrier
+lib/index.js mtime=2026-09-13 16:01:21
+
+### registry count claim (13 regions / 3 files) — read-only check
+0
+mpd-delta 
+mpd-delta contract-contradiction
+mpd-delta create-contract-gate
+mpd-delta repair-scope
+mpd-delta repair-scope-fields
+mpd-delta rtl-ip-carrier
+mpd-delta scope-glob
+mpd-delta scope-overlap
+mpd-delta scope-overlap-normalize
+mpd-delta task-contract
+mpd-delta task-contract-render
+mpd-delta update-task-contract
+mpd-delta update-task-required-attempt-id
+mpd-delta update-task-required-status-param

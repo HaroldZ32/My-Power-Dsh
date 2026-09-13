@@ -1,0 +1,87 @@
+{
+  "generatedAt": "2026-09-13T11:28:31.052Z",
+  "buildScript": "/root/dshProj/my-power-dsh/scripts/build-mcp.mjs",
+  "lanes": {
+    "committed": [
+      {
+        "artifact": "ast-grep",
+        "exit": 0,
+        "stdout": "brand-scan {\"identifiers\":8702,\"brand\":0,\"allowlisted\":0}",
+        "stderr": ""
+      },
+      {
+        "artifact": "git-bash",
+        "exit": 0,
+        "stdout": "brand-scan {\"identifiers\":2195,\"brand\":3,\"allowlisted\":3}",
+        "stderr": ""
+      },
+      {
+        "artifact": "lsp",
+        "exit": 0,
+        "stdout": "brand-scan {\"identifiers\":22364,\"brand\":1,\"allowlisted\":1}",
+        "stderr": ""
+      }
+    ],
+    "byteCompareEqual": [
+      {
+        "artifact": "ast-grep",
+        "exit": 0,
+        "stdout": "byte-compare {\"compared\":1,\"bytes\":84651}",
+        "stderr": ""
+      },
+      {
+        "artifact": "git-bash",
+        "exit": 0,
+        "stdout": "byte-compare {\"compared\":1,\"bytes\":22651}",
+        "stderr": ""
+      },
+      {
+        "artifact": "lsp",
+        "exit": 0,
+        "stdout": "byte-compare {\"compared\":1,\"bytes\":234827}",
+        "stderr": ""
+      }
+    ],
+    "byteCompareMutant": {
+      "artifact": "git-bash",
+      "seed": "Usage: omo-git-bash [mcp]",
+      "exit": 1,
+      "stdout": "",
+      "stderr": "[build-mcp] FAIL - git-bash rebuild differs from the committed dist at char 22651 (rebuilt 22746 B vs committed 22651 B); the committed dists are the brand ground truth and a rebuild must reproduce them\n[build-mcp] FAIL - rebuilt line: \"\" | committed line: \"\""
+    },
+    "seeded": {
+      "artifact": "git-bash",
+      "token": "OMO_PROVISION_HINT",
+      "exit": 1,
+      "stdout": "",
+      "stderr": "[build-mcp] FAIL - foreign brand token \"OMO_PROVISION_HINT\" in git-bash (not on the X1 allowlist; see evidence/rtl-extraction-residual/followup/x1-brand-contract.md)"
+    },
+    "primarySubject": {
+      "artifact": "git-bash",
+      "seed": "Usage: omo-git-bash [options]",
+      "exit": 1,
+      "stdout": "",
+      "stderr": "[build-mcp] FAIL - foreign brand token \"omo-git-bash\" in git-bash (not on the X1 allowlist; see evidence/rtl-extraction-residual/followup/x1-brand-contract.md)"
+    },
+    "falsePositive": {
+      "exit": 0,
+      "stdout": "brand-scan {\"identifiers\":9,\"brand\":0,\"allowlisted\":0}",
+      "stderr": ""
+    },
+    "emptySubject": {
+      "exit": 1,
+      "stdout": "",
+      "stderr": "[build-mcp] FAIL - brand guard: 0 identifiers inspected in lsp (an empty scan is not a pass)"
+    }
+  },
+  "checks": {
+    "committed dists: guard exits 0 for all three and reports non-zero subjects": true,
+    "negative control: seeded OMO_PROVISION_HINT fails non-zero naming token + artifact": true,
+    "primary subject: scrub passes `omo-git-bash` through and the guard names it in full": true,
+    "primary byte comparison (1): intact artifacts compare equal with non-zero byte counts": true,
+    "primary byte comparison (2): seeded mutant fails non-zero naming artifact + diff": true,
+    "false-positive control: platformRootFromOpenCodeConfigPath / platformFromOptions exit 0": true,
+    "empty-subject control: an empty scan fails non-zero": true
+  },
+  "ok": true
+}

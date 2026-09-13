@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Offline build of ast-grep/git-bash MCP: copy source from the the upstream checkout (read-only) into a temp workspace,
+// Offline build of ast-grep/git-bash MCP: copy source from the OMO upstream checkout (read-only) into a temp workspace,
 // use bun cache for external dependencies, then after bun build copy dist artifacts into the mpd-dsh plugin package.
 // The original repo stays untouched; artifacts go into the plugin package (plugin-form) with SHA256 recorded in BUILD.lock.
 import { spawnSync } from "node:child_process"
@@ -7,11 +7,13 @@ import { createHash, randomUUID } from "node:crypto"
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync, symlinkSync, mkdtempSync } from "node:fs"
 import { tmpdir, homedir } from "node:os"
 import { dirname, join } from "node:path"
-import { fileURLToPath } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)))
-// Legacy layout assumed repoRoot = <the upstream checkout>/.mpd/port/mpd-dsh. Override with
-// MPD_UPSTREAM_ROOT when the repo lives elsewhere (e.g. /home/haroldzhao/dshProj/the upstream project).
+// The default is the legacy layout repoRoot = <upstream checkout>/.mpd/port/mpd-dsh. Override with
+// MPD_UPSTREAM_ROOT when the checkout lives elsewhere; the actual OMO checkout layout used here is
+// <repo>/.mpd-dsh/upstream (gitignored), whose packages/ hold ast-grep-mcp / git-bash-mcp /
+// lsp-daemon / lsp-core / mcp-stdio-core / utils / omo-config-core.
 const mpdRoot = process.env.MPD_UPSTREAM_ROOT || join(repoRoot, "..", "..", "..")
 const cacheRoot = join(homedir(), ".bun", "install", "cache")
 
@@ -28,22 +30,23 @@ const SERVERS = [
 const CORE = ["mcp-stdio-core", "utils", "omo-config-core", "lsp-core"]
 const EXTERNAL = { "js-yaml": "js-yaml@4.3.1", "jsonc-parser": "jsonc-parser@3.3.1", "zod": "zod@4.4.3" }
 
-// --- RTL LSP overlay (t2 Option A): in-repo registration patches ---------------
+// --- mpd LSP overlay: in-repo patched copies of the upstream lsp-core files ---
 // The overlay lives at packages/mpd-mcp-lsp/overlay/lsp/ and carries a
 // drift-guard anchor marker. The anchor must exist in BOTH the overlay file
 // and the overlay-applied source, otherwise the build FAILS loudly — this
 // prevents silent divergence from the upstream lsp-core baseline (e.g. a stale
 // overlay silently applied over a drifted upstream file). Overlay files are
-// full patched copies of the upstream lsp-core files (owned by t3); the
-// registry gains verible-verilog-ls (.v/.vh) and slang-server (.sv/.svh).
+// full patched copies of the upstream lsp-core files; the anchor was renamed to
+// mpd-lsp-overlay-v1 (t8) when the retired HDL registrations left the overlay,
+// so both sides are checked for the SAME current marker.
 const LSP_OVERLAY_DIR = join(repoRoot, "packages", "mpd-mcp-lsp", "overlay", "lsp")
-const BUILTIN_BUILD_ANCHOR = "mpd-rtl-overlay-v1"
+const BUILTIN_BUILD_ANCHOR = "mpd-lsp-overlay-v1"
 const LSP_OVERLAY_FILES = [
   { name: "server-definitions.ts", rel: "src/lsp/server-definitions.ts", baselineExport: "BUILTIN_SERVERS" },
   { name: "language-mappings.ts", rel: "src/lsp/language-mappings.ts", baselineExport: "EXT_TO_LANG" },
 ]
 
-// Apply the in-repo RTL LSP overlay over the freshly-copied upstream lsp-core
+// Apply the in-repo LSP overlay over the freshly-copied upstream lsp-core
 // source (inside the temp build workspace). Overlay missing/stale or upstream
 // baseline drifted -> FAIL loudly instead of producing a silently wrong dist.
 function applyLspOverlay(srcRoot) {
@@ -51,7 +54,7 @@ function applyLspOverlay(srcRoot) {
     const overlayPath = join(LSP_OVERLAY_DIR, f.name)
     const sourcePath = join(srcRoot, "lsp-core", f.rel)
     if (!existsSync(overlayPath)) {
-      console.error("[build-mcp] FAIL - RTL LSP overlay file missing: " + overlayPath)
+      console.error("[build-mcp] FAIL - mpd LSP overlay file missing: " + overlayPath)
       process.exit(1)
     }
     const overlayText = readFileSync(overlayPath, "utf8")
@@ -74,7 +77,7 @@ function applyLspOverlay(srcRoot) {
       console.error(`[build-mcp] FAIL - overlay ${f.name} did not apply (anchor missing after copy)`)
       process.exit(1)
     }
-    console.log("[build-mcp] RTL LSP overlay applied: " + f.name + " -> " + sourcePath)
+    console.log("[build-mcp] mpd LSP overlay applied: " + f.name + " -> " + sourcePath)
   }
 }
 
@@ -136,7 +139,7 @@ const MPD_SCRUB = {
 
 // Apply the key-level OMO->MPD scrub to a built cli.js, then assert no residual remains
 // (loud FAIL so a drifted upstream never silently ships an un-scrubbed dist).
-function applyMpdScrub(serverName, text) {
+export function applyMpdScrub(serverName, text) {
   const cfg = MPD_SCRUB[serverName]
   if (!cfg) return text
   let out = text
@@ -153,6 +156,108 @@ function applyMpdScrub(serverName, text) {
 
 function sha(p) { return createHash("sha256").update(readFileSync(p)).digest("hex") }
 
+// --- mpd brand guard (t20 / X1) -------------------------------------------------------
+// applyMpdScrub above is a TARGETED key list and asserts only the residuals it already
+// knows, so a rebuild could still silently ship an upstream OMO token the list has never
+// seen — measured 2026-09-13: OMO_PROVISION_HINT / omo-git-bash-run- / platformFromOptions
+// shaped drift reappeared from pre-rebrand upstream source and only a manual
+// `git checkout HEAD -- <dist>` restored the committed bytes. This guard is the mechanical
+// complement: SCAN every built artifact and FAIL LOUDLY (non-zero, naming token + artifact)
+// on any brand-shaped token that is not deliberately allowlisted below. It never rewrites
+// anything: widening the transform into a global "omo" replace would corrupt unrelated
+// identifiers — the measured false-positive class is `platformFromOpenCodeConfigPath`
+// ("romO" across a morpheme boundary) and `platformFromOptions`.
+//
+// PRIMARY SUBJECT (captain correction, measured): the git-bash scrub's replace list holds only
+// `omo-git-bash-run-`, so a bare `omo-git-bash` used in usage/help/error text passes through
+// untouched and the loud residual check reports nothing. A bare `omo-git-bash` (any suffix, any
+// embedding) is therefore exactly what this guard must fail on.
+// DELIBERATELY OUT OF SCOPE: `platformFrmpdOptions`. Our older global omo->mpd rewrite corrupted
+// upstream's English identifier `platformFromOptions`; a rebuild from upstream source produces the
+// CORRECT spelling, so asserting on the corrupted one would freeze it. It contains no `omo` trigram
+// and the guard neither flags nor blesses it.
+//
+// The allowlist is DATA (one entry per deliberately-kept foreign token) and follows X1's
+// classification (b): evidence/rtl-extraction-residual/followup/x1-brand-contract.md.
+export const BRAND_ALLOWLIST = [
+  { token: "OMO_CODEX_GIT_BASH_PATH", artifact: "git-bash", reason: "X1 #1 (b): codex's env key (GIT_BASH_ENV_KEY); renaming it breaks the codex side's env reads" },
+  { token: "OMO_CODEX_GIT_BASH_TIMEOUT_MS", artifact: "git-bash", reason: "X1 #2 (b): same codex env contract, timeout key" },
+  { token: "OMO_CODEX_EXEC_COMMAND_TIMEOUT_MS", artifact: "git-bash", reason: "X1 #3 (b): same codex env contract, exec-timeout key" },
+  { token: "_omo", artifact: "lsp", reason: "X1 #4 (b): the LSP daemon's auth-envelope wire key (params._omo, stripped before dispatch); renaming one side only breaks auth" },
+]
+
+// A brand-shaped token starts at a non-identifier boundary and is `omo` (optionally
+// underscore-prefixed / suffixed). `platformFromOpenCodeConfigPath` cannot match: its
+// "romO" is preceded by an alphanumeric. Case-insensitive so `_omo` and `OMO_*` both hit.
+const BRAND_TOKEN_RE = /(?<![A-Za-z0-9])(_{0,2}omo(?:[A-Z][A-Za-z0-9]*|[-_][A-Za-z0-9]*|\/[A-Za-z0-9._-]*)*[-_\/]?)/gi
+
+/** Every brand-shaped occurrence in one artifact text (deduped, in order of appearance). */
+export function brandTokens(text) {
+  return [...new Set([...text.matchAll(BRAND_TOKEN_RE)].map((match) => match[1]))]
+}
+
+/** Subject counts for one artifact: how many identifiers were inspected, how many brand hits. */
+export function scanBrandTokens(text) {
+  return { identifiers: (text.match(/[A-Za-z_$][A-Za-z0-9_$]*/g) ?? []).length, brand: brandTokens(text) }
+}
+
+/**
+ * Fail loudly when a built artifact carries a brand token that is not allowlisted.
+ * Exported so the negative control can drive it without rebuilding anything.
+ */
+export function assertBrandClean(artifact, text, allowlist = BRAND_ALLOWLIST) {
+  const { identifiers, brand } = scanBrandTokens(text)
+  if (identifiers === 0) {
+    console.error(`[build-mcp] FAIL - brand guard: 0 identifiers inspected in ${artifact} (an empty scan is not a pass)`)
+    process.exit(1)
+  }
+  const allowed = new Set(allowlist.filter((entry) => entry.artifact === artifact).map((entry) => entry.token.toLowerCase()))
+  const violations = brand.filter((token) => !allowed.has(token.toLowerCase()))
+  if (violations.length > 0) {
+    for (const token of violations) {
+      console.error(`[build-mcp] FAIL - foreign brand token "${token}" in ${artifact} (not on the X1 allowlist; see evidence/rtl-extraction-residual/followup/x1-brand-contract.md)`)
+    }
+    process.exit(1)
+  }
+  return { identifiers, brand: brand.length, allowlisted: brand.length }
+}
+
+// --- PRIMARY GUARD: byte equality against the committed dist (t20 amendment) ----------
+// The committed dists are the ground truth of the brand convention, so the primary check is a
+// BYTE COMPARISON of the scrubbed artifact against the committed file: it catches an un-scrubbed
+// spelling, a reverted key and any future drift nobody enumerated, without maintaining a list of
+// spellings. The token allowlist above stays as a LAYERED check (a bare `[Oo][Mm][Oo]` shape scan
+// would reject the legitimate committed bytes: lsp carries 5 x `_omo` + 2 x the upstream OpenCode
+// identifier, git-bash 3 x OMO_CODEX_*).
+// Practical limit, stated rather than hidden: a full rebuild needs the upstream checkout at
+// MPD_UPSTREAM_ROOT plus bun, so this function is exported and is exercisable as a pure function
+// over artifact bytes (committed files + seeded mutants) when a rebuild must not run.
+function firstDifference(a, b) {
+  const max = Math.min(a.length, b.length)
+  for (let i = 0; i < max; i += 1) if (a[i] !== b[i]) return i
+  return max
+}
+function lineAt(text, index) {
+  return (text.slice(0, index).split("\n").pop() ?? "").trim().slice(0, 160)
+}
+
+/** Compare a scrubbed artifact against its committed dist. Exported for the negative control. */
+export function assertRebuildMatchesCommitted(artifact, builtText, committedPath) {
+  if (!existsSync(committedPath)) {
+    console.warn(`[build-mcp] brand guard: no committed baseline for ${artifact} (${committedPath}); byte comparison skipped for this artifact`)
+    return { compared: 0, bytes: 0 }
+  }
+  const committed = readFileSync(committedPath, "utf8")
+  if (builtText === committed) return { compared: 1, bytes: Buffer.byteLength(builtText) }
+  const at = firstDifference(builtText, committed)
+  console.error(`[build-mcp] FAIL - ${artifact} rebuild differs from the committed dist at char ${at} (rebuilt ${Buffer.byteLength(builtText)} B vs committed ${Buffer.byteLength(committed)} B); the committed dists are the brand ground truth and a rebuild must reproduce them`)
+  console.error(`[build-mcp] FAIL - rebuilt line: ${JSON.stringify(lineAt(builtText, at))} | committed line: ${JSON.stringify(lineAt(committed, at))}`)
+  process.exit(1)
+}
+
+function main() {
+const brandTotals = { artifacts: 0, identifiers: 0, brand: 0 }
+const byteTotals = { compared: 0, bytes: 0 }
 const work = mkdtempSync(join(tmpdir(), "mpd-dsh-mcp-build-"))
 try {
   const srcRoot = join(work, "src")
@@ -160,9 +265,9 @@ try {
   for (const c of CORE) {
     cpSync(join(mpdRoot, "packages", c), join(srcRoot, c), { recursive: true, filter: (s) => !s.includes("node_modules") && !s.includes("dist") && !s.includes(".git") })
   }
-  // RTL LSP overlay: apply in-repo registration patches over the copied
+  // mpd LSP overlay: apply the in-repo patched copies over the copied
   // lsp-core source (drift-guarded). Must run after the lsp-core copy and
-  // before any bun build so the registry bakes in verible/slang-server.
+  // before any bun build so the patched registry is what gets baked in.
   applyLspOverlay(srcRoot)
   for (const s of SERVERS) {
     cpSync(join(mpdRoot, "packages", s.src), join(srcRoot, s.src), { recursive: true, filter: (p) => !p.includes("node_modules") && !p.includes("dist") && !p.includes(".git") })
@@ -192,9 +297,18 @@ try {
     // MPD scrub: apply the key-level OMO->MPD rename (if any) so the shipped dist
     // matches the committed convention (hand-scrubbed baseline, AGENTS.md contract).
     const builtText = applyMpdScrub(s.name, readFileSync(cli, "utf8"))
+    const brandScan = assertBrandClean(s.name, builtText)
+    brandTotals.artifacts += 1
+    brandTotals.identifiers += brandScan.identifiers
+    brandTotals.brand += brandScan.brand
+    const byteScan = assertRebuildMatchesCommitted(s.name, builtText, join(out, "cli.js"))
+    byteTotals.compared += byteScan.compared
+    byteTotals.bytes += byteScan.bytes
     writeFileSync(join(out, "cli.js"), builtText)
     writeFileSync(join(out, "BUILD.lock"), JSON.stringify({
-      source: "the upstream project", sourceDir: "packages/" + s.src, builtAt: new Date().toISOString(),
+      // Provenance, not prose: the upstream OMO commit this dist was built from (VENDOR_LOCK.json
+      // pins the same 8c57e46 baseline). It used to hold an OMO->mpd scrub artefact, not a real value.
+      source: "8c57e46", sourceDir: "packages/" + s.src, builtAt: new Date().toISOString(),
       build: ["bun build " + s.entry + " --outdir dist --target node --format esm"],
       externalDeps: resolvedExternals,
       artifact: { file: "cli.js", sha256: sha(join(out, "cli.js")), bytes: builtText.length }
@@ -204,4 +318,19 @@ try {
 } finally {
   rmSync(work, { recursive: true, force: true })
 }
+if (brandTotals.artifacts === 0) {
+  console.error("[build-mcp] FAIL - brand guard inspected 0 artifacts (an empty scan is not a pass)")
+  process.exit(1)
+}
+if (byteTotals.compared === 0) {
+  console.error("[build-mcp] FAIL - brand guard compared 0 artifacts against their committed dists (an empty byte comparison is not a pass)")
+  process.exit(1)
+}
+console.log(`[build-mcp] brand guard (primary): ${byteTotals.compared} artifact(s) byte-compared against the committed dists, ${byteTotals.bytes} byte(s) verified equal`)
+console.log(`[build-mcp] brand guard: ${brandTotals.artifacts} artifact(s), ${brandTotals.identifiers} identifier(s) inspected, ${brandTotals.brand} allowlisted brand occurrence(s), 0 foreign`)
 console.log("[build-mcp] PASS")
+}
+
+// Only build when executed directly: importing this module must stay side-effect-free
+// (assertBrandClean is exported for its negative control).
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) main()

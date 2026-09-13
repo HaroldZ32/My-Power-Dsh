@@ -1,0 +1,30 @@
+### C1.a grep -n -iE 'verible|slang|verilog|systemverilog' overlay/lsp/server-definitions.ts
+13:// ADDITIONS: builtin LSP servers for Verilog / SystemVerilog —
+14://   verible-verilog-ls  (.v/.vh)  -> id "verible"
+15://   slang-server        (.sv/.svh) -> id "slang-server"
+68:	verible: "download prebuilt binaries: https://github.com/chipsalliance/verible/releases",
+69:	"slang-server": "per-platform static binaries: https://github.com/hudson-trading/slang-server/releases",
+173:	verible: { command: ["verible-verilog-ls"], extensions: [".v", ".vh"] },
+174:	"slang-server": { command: ["slang-server"], extensions: [".sv", ".svh"] },
+exit=0
+
+### C1.b same for language-mappings.ts
+13:// ADDITIONS: builtin LSP servers for Verilog / SystemVerilog —
+14://   verible-verilog-ls  (.v/.vh)  -> id "verible"
+15://   slang-server        (.sv/.svh) -> id "slang-server"
+186:	".v": "verilog",
+187:	".vh": "verilog",
+188:	".sv": "systemverilog",
+189:	".svh": "systemverilog",
+exit=0
+
+### C1.c counts
+packages/mpd-mcp-lsp/overlay/lsp/server-definitions.ts : verible=6 slang=6 verilog=4 systemverilog=1
+packages/mpd-mcp-lsp/overlay/lsp/language-mappings.ts : verible=2 slang=2 verilog=7 systemverilog=3
+packages/mpd-mcp-lsp/dist/cli.js : verible=4 slang=4 verilog=5 systemverilog=2
+
+### C1.d dist/cli.js line hits
+3643:  verible: "download prebuilt binaries: https://github.com/chipsalliance/verible/releases",
+3644:  "slang-server": "per-platform static binaries: https://github.com/hudson-trading/slang-server/releases"
+3746:  verible: { command: ["verible-verilog-ls"], extensions: [".v", ".vh"] },
+3747:  "slang-server": { command: ["slang-server"], extensions: [".sv", ".svh"] }

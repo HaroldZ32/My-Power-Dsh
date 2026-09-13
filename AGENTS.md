@@ -26,11 +26,14 @@ repository is English-only (see Language Policy).
 
 ## 1. Overview & Provenance
 
-**my-power-dsh** ports the portable capabilities of the upstream project (GitHub `code-yeongyu`;
-provenance and inheritance are declared in `README.md`; base commit `8c57e46`, v5.0.0-beta.20)
-into the DeepSeek Harness (DSH) as a plugin bundle. The capability baseline is pinned to upstream
-`8c57e46` (v5.0.0-beta.20); upstream spec parity is the engineering target (see docs/feature-audit.md).
-License: SUL-1.0 (`LICENSE.md`); inheritance declared in `README.md`.
+**my-power-dsh** is an independent DeepSeek Harness (DSH) plugin bundle. Its provenance is factual
+rather than a lineage: a pinned baseline of the upstream project (`code-yeongyu/oh-my-openagent`; base
+commit `8c57e46`, v5.0.0-beta.20, recorded in `VENDOR_LOCK.json` and not chased per §9), whose 11
+specialists ship as adapted teammate templates and workmate BASE templates; and one adopted component,
+the `agent-teams` plugin from dsh-agent-teams under the MIT License, vendored as first-class main code.
+Everything else is written here. The upstream snapshot stays pinned for provenance, and upstream spec
+parity remains an engineering reference rather than an identity claim. License: SUL-1.0 (`LICENSE.md`);
+inheritance and attribution are declared in `README.md` and `LICENSE-NOTICES.md`.
 
 - Upstream product names and repository paths stay upstream's (provenance only).
 - Our naming prefix is **`mpd`** (my-power-dsh): packages, plugin ids, tool names (`mpd_*`),
@@ -244,9 +247,11 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   | D13 | `lib/tools.js` `agent_teams_update_task` contract text | `mpd-delta update-task-contract` | wave-3: `status` REQUIRED + the minimal terminal-call shape. **REPLACEMENT-shaped** — the upstream `description:` line lives INSIDE the block, so after a full re-materialize it is NOT self-healable: the heal REFUSES loudly (never a bare TypeError) and leaves the file byte-untouched, the same class as `scope-glob` under F3. Remedy: restore the marked region, or re-author it and run `--write-registry`. |
   | D14 | `lib/tools.js` `agent_teams_update_task` `status` parameter | `mpd-delta update-task-required-status-param` | wave-3: an omitted `status` fails loudly at the tool boundary. **REPLACEMENT-shaped** for the same reason (the single top-level `status:` line) → re-materialize + `--write` REFUSES; it cannot silently leave the key duplicated with last-wins semantics. |
   | D15 | `lib/tools.js` `agent_teams_update_task` attempt-id branch | `mpd-delta update-task-required-attempt-id` | wave-3: an omitted `attempt_id` says REQUIRED; the stale wording stays for a mismatch. **Purely ADDITIVE → DOES self-heal** after a re-materialize. |
+  | A7 | `lib/index.js` `apply()` head — the `rtl-ip` carrier hook | `mpd-delta rtl-ip-carrier` | t8/R5.3: reads the silicon bundle's `presets/rtl-ip.profile.json` at **apply() time** (never import time) and re-binds `config.profiles` so all four consumers (resolved profiles, captain prompt, slash command, gesture boundary) see ONE merged set; missing file → `{}` (mpd-only install, silent), corrupt → `{}` + one warning; mpd's own profile wins a collision. First region in `index.js`; `mpdDeltaFiles()` in `scripts/patch-agent-teams-fixes.mjs` additionally discovers unregistered adopted lib files that carry region markers, so a NEW delta file can be seeded once |
 
-  After wave 3 the registry holds **12** regions (5 in `lib/tools.js`, 7 in
-  `lib/quality-gates.js`): D2 merged into `scope-glob`; wave 2 added
+  After wave 3 the registry held **12** regions (5 in `lib/tools.js`, 7 in `lib/quality-gates.js`);
+  **t8 added the 13th, `mpd-delta rtl-ip-carrier` in `lib/index.js`**, so the live registry is 13
+  regions across 3 files (regenerated with `--write-registry`, `--check` clean): D2 merged into `scope-glob`; wave 2 added
   `mpd-delta scope-overlap` + `mpd-delta scope-overlap-normalize` (the B7 overlap rule's
   glob-aware rewrite) and `mpd-delta create-contract-gate` (the create-time contradiction gate in
   `validateCreateTask`); wave 3 added `mpd-delta update-task-contract`,

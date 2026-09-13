@@ -1,0 +1,29 @@
+### X4 guard probe artifact + negative control ###
+evidence/rtl-extraction-residual/followup/raw/x4-brand-guard-probe.mjs
+  scrub block found: true 33
+  guard-source mentions: OMO_PROVISION_HINT true
+  guard-source mentions: omoRuntimeCandidates true
+  guard-source mentions: omo/ping true
+  guard-source mentions: omo-git-bash true
+  guard-source mentions: platformFromOptions true
+### X4 seeded-token negative control (copy of dist + guard matcher logic) ###
+  seeded token detected by guard pattern list: true ["omo/ping","omoRuntimeCandidates"]
+  clean control (committed bytes) contains those patterns: 0
+### X5 BUILD.lock artifact (readFileSync) ###
+  astgrep  AGREE bytes-ok 8c57e46
+  gitbash  AGREE bytes-ok 8c57e46
+  lsp      AGREE bytes-ok 8c57e46
+### X6 declaration sweep ###
+  fork/port claims in touched files: 3
+  repo-wide (tracked, non-historical) hits:
+README.zh-CN.md:8:它**不是** OMO 的 DeepSeek Harness 移植版。它的来源是事实性的，而非血统关系：一份
+README.zh-CN.md:11:模板与 workmate BASE 模板形式随包发布；一个 328 个文件的 skill 语料库，混合了上游移植 skill、第三方
+README.zh-CN.md:116:- 移植计划：[PLAN.md](./PLAN.md)
+packages/mpd-agent-teams-plugin/README.md:133:`memberProvider` is the sub-agent runtime backend (`spawn` / `fork`), not an LLM provider. Cross-LLM-provider routing uses the optional `provider` + `model` fields of `agent_teams_add_member`; `memberModel` is only a model default for all members. A member on the captain's current provider/model inherits the captain's reasoning effort, while a changed provider or model automatically uses the target model's default. To request a particular effort, pass the optional `reasoning_effort` field — one of the target model's supported effort ids, or `"default"` to force the model's own default.
+packages/mpd-agent-teams-plugin/README_ZH.md:122:这里的 `memberProvider` 指子 Agent 的运行后端（`spawn` / `fork`），不是 LLM provider。跨 LLM provider 由 `agent_teams_add_member` 的可选 `provider` + `model` 参数表达；`memberModel` 只是所有成员的模型默认覆盖。成员沿用队长当前 provider/model 时会继承队长的思考强度；provider 或 model 任一改变时会自动使用目标模型的默认档。需要指定特定强度时，可传入可选的 `reasoning_effort` 参数（目标模型支持的档位 id，或 `"default"` 表示强制使用模型自身默认档）。
+grep: write error: Broken pipe
+### X7 skip markers in the pack-present suite run ###
+  test-qa SKIP lines: 0
+  test-qa tail: [workmate-team-member self-test] ok: 6 checks [test:qa] all self-tests passed 
+### status parity ###
+  before=75 after=77 HEAD=32ae54d

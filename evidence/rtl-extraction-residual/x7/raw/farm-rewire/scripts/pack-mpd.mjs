@@ -1,0 +1,1 @@
+/root/dshProj/my-power-dsh/scripts/pack-mpd.mjs

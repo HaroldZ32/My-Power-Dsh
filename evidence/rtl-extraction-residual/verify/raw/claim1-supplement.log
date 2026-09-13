@@ -1,0 +1,55 @@
+### C1.k the third LSP artifact: templates/rtl-lsp-client.json (tracked?)
+packages/mpd-mcp-lsp/templates/rtl-lsp-client.json
+{
+  "lsp": {
+    "verible": {
+      "command": ["verible-verilog-ls"],
+      "extensions": [".v", ".vh"],
+      "priority": 100
+    },
+    "slang-server": {
+      "command": ["slang-server"],
+      "extensions": [".sv", ".svh"],
+      "priority": 100
+    }
+  }
+}
+
+### C1.l VENDOR_LOCK pins the HDL-carrying dist/cli.js?
+39:    "packages/mpd-mcp-lsp/dist/cli.js": {
+40-      "fileCount": 1,
+41-      "source": "built offline via scripts/build-mcp.mjs from packages/lsp-daemon",
+42-      "sha256": "04b49f8c192d03b5a9cdf1e1f17861d8f4c6741792a4c455e78d0ca8e0a973a9"
+43-    },
+
+### C1.m does the bundle patch still compose the LSP row (live launch of mpd's dist)?
+62-          - !!js 'process.env.MPD_DSH_GITBASH_CLI || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-gitbash/dist/cli.js")'
+63-        toolCallTimeoutMs: 60000
+64:    - id: mcp-lsp
+65-      name: '@deepseek-ai/dsh-mcp-client'
+66-      config:
+67-        serverName: lsp
+68-        transport: stdio
+69-        command: node
+70-        args:
+71-          - !!js 'process.env.MPD_DSH_LSP_CLI || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-lsp/dist/cli.js")'
+72-          - mcp
+73-        toolCallTimeoutMs: 60000
+74-    # CodeGraph MCP (B8, wave 2): this row names NO binary path any more. It
+75-    # launches packages/mpd-mcp-codegraph/launch.mjs, which resolves the binary
+76-    # bundle-relatively (env pin -> createRequire of the optionalDependency ->
+
+### B6 dsh-qa SKILL.md case-table rows for the two RTL cases
+62:| rtl-ip-profile | RTL IP workflow | bundle patch ships the rtl-ip roster profile (7 members, four-stage flow markers) + rtl-ip-flow skill + 4 document templates + bilingual guide; composed boot shows the profile in the agent-teams row config | RTL IP flow |
+
+### B7 string-only kept items (keep-with-record evidence)
+packages/mpd-workmate-plugin/test/workmate.test.ts:39:        return { result: { structured: { name: "alice", summary: "implemented the verilog counter", recommendation: "review the clocking", evidence: ["file:line"] }, stopReason: "complete" } }
+packages/mpd-workmate-plugin/test/workmate.test.ts:64:  const meta = { name: "alice", baseId: "hephaestus", baseName: "Deep Worker", description: "autonomous goal-driven implementation", provider: "deepseek-official", model: "deepseek-v4-flash", readonly: false, createdAt: "", updatedAt: "", uses: 1, lastTask: "implement verilog counter" }
+packages/mpd-workmate-plugin/test/workmate.test.ts:65:  const note = autoNote(meta, "You are the Deep Worker.", "## 2026-01-01 — implement counter\nwrote cnt8.v")
+packages/mpd-workmate-plugin/test/workmate.test.ts:68:  const implScore = scoreMatch("implement a verilog counter and verify", { note, baseName: "Deep Worker", description: meta.description, memoryTail: "wrote cnt8.v" })
+packages/mpd-workmate-plugin/test/workmate.test.ts:69:  const unrelated = scoreMatch("paint a landscape", { note, baseName: "Deep Worker", description: meta.description, memoryTail: "wrote cnt8.v" })
+packages/mpd-workmate-plugin/test/workmate.test.ts:107:  const r1 = await byName("mpd_workmate_reflect").execute({ name: "alice", task: "implement verilog counter", outcome: "wrote cnt8.v; gate passed", persona_delta: "prefer synchronous always blocks" }, exec)
+packages/mpd-workmate-plugin/test/workmate.test.ts:115:  expect(memory).toContain("implement verilog counter")
+packages/mpd-workmate-plugin/test/workmate.test.ts:120:  const m1 = await byName("mpd_workmate_match").execute({ task: "implement a verilog counter and verify it" }, exec)
+packages/mpd-workmate-plugin/test/workmate.test.ts:130:  expect(provided.mpdWorkmate.read("alice").memory).toContain("implement verilog counter")
+packages/mpd-workmate-plugin/test/workmate.test.ts:139:  const out = await byName("mpd_workmate_spawn").execute({ name: "alice", task: "add a reset", context: "module is cnt8" }, exec)

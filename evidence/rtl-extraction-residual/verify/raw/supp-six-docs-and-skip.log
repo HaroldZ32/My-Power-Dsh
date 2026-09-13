@@ -1,0 +1,70 @@
+### S1 six stranded RTL docs — my own re-derivation
+docs/rtl-verif-guide.md                  tracked=yes sha=b763ba9a74b4aa88 precise-hits=159
+docs/rtl-verif-guide.zh-CN.md            tracked=yes sha=eb7951d127d156c0 precise-hits=167
+docs/rtl-ip-flow-guide.md                tracked=yes sha=e78650968b205352 precise-hits=20
+docs/rtl-ip-flow-guide.zh-CN.md          tracked=yes sha=f786e0180966df3e precise-hits=19
+docs/rtl-gap-assessment.md               tracked=yes sha=eeec2c26828084a0 precise-hits=149
+docs/rtl-gap-assessment.zh-CN.md         tracked=yes sha=a3d7b4a758c5ce4b precise-hits=149
+six-docs-count=6
+
+### S2 the two RTL QA cases' SKIP-and-exit-0 shape (source, my read)
+29-import { fileURLToPath, pathToFileURL } from "node:url"
+30-
+31-const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
+32:const SILICON = process.env.MPD_SILICON_ROOT || join(dirname(repoRoot), "my-power-dsh-silicon")
+33:const VERIF_DIST = join(SILICON, "packages/mpd-verif-plugin/dist/index.js")
+34:const PATCH = join(SILICON, "packages/mpd-bundle/cordis.patch.yml")
+35:const SKILLS = join(SILICON, "skills")
+36:const PRESET = join(SILICON, "presets/rtl-ip.profile.json")
+37:const LSP_CLI = join(SILICON, "packages/mpd-mcp-lsp/dist/cli.js")
+38:const VENV_CANDIDATES = [process.env.MPD_DSH_VERIF_VENV, join(SILICON, ".venv-rtl"), join(repoRoot, ".venv-rtl")].filter(Boolean)
+39-const EIGHT_TOOLS = ["mpd_verif_venv", "mpd_verif_backends", "mpd_verif_compile", "mpd_verif_lint", "mpd_verif_sim", "mpd_verif_coverage", "mpd_verif_uvm", "mpd_verif_regress"]
+40:const SILICON_ROWS = ["silicon-dsh-adapter", "silicon-bootstrap", "silicon-verif", "silicon-mcp-lsp"]
+41-const TREES = { "rtl-ip-flow": 9, "rtl-codestyle": 6, "rtl-verif": 20 }
+42-const LSP_REGISTRY = [
+43-  'verible: { command: ["verible-verilog-ls"], extensions: [".v", ".vh"] }',
+44-  '"slang-server": { command: ["slang-server"], extensions: [".sv", ".svh"] }',
+45-  '".v": "verilog"',
+46-  '".sv": "systemverilog"',
+--
+76-  process.exit(1)
+77-}
+78-function siliconPresent() {
+79:  return existsSync(join(SILICON, "package.json"))
+80-}
+81-
+82-/** Row ids declared by the patch's `- insert:` blocks (4-space `- id:` entries). */
+83-function insertIds(patchText) {
+84-  const ids = []
+85-  let inInsert = false
+--
+100-    fail("golden fixture semantics")
+101-  }
+102-  if (!siliconPresent()) {
+103:    skip(`silicon bundle not present at ${SILICON} (set MPD_SILICON_ROOT) — bundle-side groups skipped`)
+104-  } else {
+105-    // patch shape: four additive rows, zero id-targets, no checkout-absolute path
+106-    const patch = readFileSync(PATCH, "utf8")
+107-    const ids = insertIds(patch)
+108:    if (ids.length !== SILICON_ROWS.length) fail(`silicon patch declares ${ids.length} row ids, expected ${SILICON_ROWS.length}`)
+109:    for (const row of SILICON_ROWS) {
+-----
+70:    skip(`silicon bundle not present at ${SILICON} (set MPD_SILICON_ROOT) — nothing to assert`)
+71-  } else {
+72-    const data = JSON.parse(readFileSync(PRESET, "utf8"))
+73-    const profile = data["rtl-ip"] ?? data
+74-    const members = profile.members ?? []
+75-    if (members.length !== MEMBERS.length) fail(`profile has ${members.length} members, expected ${MEMBERS.length}`)
+76-    for (const member of MEMBERS) {
+77-      if (!members.some((entry) => entry.name === member)) fail("member missing in presets/rtl-ip.profile.json: " + member)
+78-    }
+--
+115:    skip(`silicon bundle not present at ${SILICON} — the composed-boot probe needs the checkout (set MPD_SILICON_ROOT)`)
+116-    console.log("[rtl-ip-profile] PASS (nothing to probe: bundle absent)")
+117-    return
+118-  }
+119-  const version = spawnSync("dsh", ["--version"], { encoding: "utf8", timeout: 60000 })
+120-  if (version.error || version.status !== 0) {
+121-    skip("dsh CLI not available on PATH — the composed-boot probe needs a harness install")
+122-    console.log("[rtl-ip-profile] PASS (composed-boot probe skipped)")
+123-    return

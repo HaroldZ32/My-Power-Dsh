@@ -16,6 +16,7 @@
 //   5) web profile route smoke: /plugins/dsh-agent-teams/state responds 200.
 // Evidence -> evidence/plan-e/e4-team-vendor/<ts>/. --self-test is offline.
 // Never touches the real ~/.dsh.
+// PREREQ: absent-staged-pack dist/mpd-package/package.json node scripts/pack-mpd.mjs
 import { spawnSync, spawn } from "node:child_process"
 import { cpSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
@@ -25,6 +26,55 @@ import { fileURLToPath } from "node:url"
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const DEV = process.env.MPD_DEV_ROOT || repoRoot
 const VENDOR = join(repoRoot, "packages", "mpd-agent-teams-plugin")
+
+const SLUG = "team-route-rewire"
+const PACK = join(repoRoot, "dist", "mpd-package", "package.json")
+const PACK_PREREQ = { reason: "absent-staged-pack", prereq: "dist/mpd-package/package.json", remedy: "node scripts/pack-mpd.mjs" }
+// Both strict spellings are normative (x2 v2 §6.5): the generic name and the case-specific name.
+const STRICT = process.argv.includes("--no-skip") || process.argv.includes("--require-pack")
+
+/** AM1 (x2 v2 §7): a positive probe of the exact prerequisite. The ONLY skippable prerequisite
+ *  of this case is the staged pack (§3.3): credentials are NOT part of the skip set and keep
+ *  their existing loud failure. */
+function absentPrereq() {
+  return existsSync(PACK) ? null : PACK_PREREQ
+}
+
+/** SKIP (exit 0) or, under either strict flag, FAIL (exit 1) — the same field values in both
+ *  modes (AM2). The canonical marker is the FIRST stdout line (§4); human prose follows on
+ *  stdout for a SKIP and on stderr for a FAIL. Called AFTER the prerequisite-independent
+ *  offline checks (AM3b) and BEFORE the non-skippable credentials check. */
+function gate(lane) {
+  const p = absentPrereq()
+  if (p === null) return
+  console.log(`[mpd-qa] ${STRICT ? "FAIL" : "SKIP"} case=${SLUG} lane=${lane} reason=${p.reason} prereq=${p.prereq} remedy="${p.remedy}"`)
+  const prose = `[${SLUG}] staged package absent at ${p.prereq}; ${STRICT ? "failing (strict flag)" : "skipping (not a failure)"}`
+  if (STRICT) console.error(prose)
+  else console.log(prose)
+  process.exit(STRICT ? 1 : 0)
+}
+
+/** A pack that is PRESENT must also be USABLE (x2 v2 §7 AM3: "present but broken is always a
+ *  FAIL, in every mode, with or without --no-skip"). The offline self-test cannot run the real
+ *  `dsh plugin add` lane, so this is the strongest check it can honestly make: the staged tree
+ *  must parse and carry the bundle identity the patch row resolves against. Without it the
+ *  assertion was vacuous — a bare existsSync on package.json passed even for a garbage file,
+ *  and the success line still claimed "staged bundle present" (measured 2026-09-13: this exact
+ *  case exited 0 on a pack whose package.json was `name: broken`). */
+function packUsable() {
+  if (!existsSync(PACK)) return { ok: true, why: "absent (handled by the skip gate)" }
+  let manifest = null
+  try { manifest = JSON.parse(readFileSync(PACK, "utf8")) } catch (error) {
+    return { ok: false, why: "package.json is not valid JSON: " + error.message }
+  }
+  if (manifest?.name !== "@mpd-dsh/mpd") return { ok: false, why: "package.json name is " + JSON.stringify(manifest?.name) + ", expected \"@mpd-dsh/mpd\"" }
+  const patch = join(repoRoot, "dist", "mpd-package", "cordis.patch.yml")
+  if (!existsSync(patch)) return { ok: false, why: "cordis.patch.yml is missing from the staged pack" }
+  if (!readFileSync(patch, "utf8").includes("mpd-web-compat")) return { ok: false, why: "cordis.patch.yml carries no mpd-web-compat row (the client entry the bundle needs)" }
+  const client = join(repoRoot, "dist", "mpd-package", "packages", "mpd-bundle-plugin", "client.js")
+  if (!existsSync(client)) return { ok: false, why: "packages/mpd-bundle-plugin/client.js is missing from the staged pack" }
+  return { ok: true, why: "parses and carries the bundle identity" }
+}
 
 function selfTest() {
   const checks = []
@@ -48,13 +98,19 @@ function selfTest() {
   checks.push(["patch web-compat self-row", patch.includes("id: mpd-web-compat") && patch.includes("name: '@mpd-dsh/mpd'")])
   const pack = readFileSync(join(repoRoot, "scripts", "pack-mpd.mjs"), "utf8")
   checks.push(["pack exports + combined client + no deps entry", pack.includes('"./packages/mpd-bundle-plugin/client.js"') && pack.includes('main: "packages/mpd-bundle-plugin/dist/index.js"') && pack.includes('".": "./packages/mpd-bundle-plugin/dist/index.js"') && pack.includes("agent-teams plugin (MIT provenance") && !pack.includes('dependencies: { "@nanmicoder')])
+  // AM3: a PRESENT pack must be USABLE — without this the assertion was vacuous and the
+  // success line still claimed "staged bundle present" off a bare existsSync.
+  const packUsableResult = packUsable()
+  checks.push(["staged pack present and usable (AM3)", packUsableResult.ok])
+  if (!packUsableResult.ok) console.error("[" + SLUG + "] staged pack unusable: " + packUsableResult.why)
   const bad = checks.filter(([, ok]) => !ok).map(([n]) => n)
   if (bad.length) { console.error("[team-route-rewire self-test] FAIL: " + bad.join(" | ")); process.exit(1) }
-  if (!existsSync(join(repoRoot, "dist", "mpd-package", "package.json"))) { console.error("[team-route-rewire self-test] FAIL: run node scripts/pack-mpd.mjs first"); process.exit(1) }
-  console.log("[team-route-rewire self-test] ok: " + checks.length + " checks + staged bundle present")
+  gate("self-test")
+  console.log("[team-route-rewire self-test] ok: " + checks.length + " checks; staged pack usable")
 }
 
 async function runReal() {
+  gate("real")
   const creds = join(homedir(), ".dsh", ".credentials.yaml")
   if (!existsSync(creds)) { console.error("[team-route-rewire] missing credentials"); process.exit(1) }
   const ts = new Date().toISOString().replaceAll(":", "-")

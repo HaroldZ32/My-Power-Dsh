@@ -1,0 +1,83 @@
+{
+  "packed": {
+    "copied": true,
+    "bytes": 1053
+  },
+  "pluginAdd": {
+    "name": "dsh plugin add",
+    "status": 0,
+    "ok": true,
+    "tail": "\ndependencies:\n+ @mpd-dsh/mpd link:/root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair-verify/raw/mount-proof/mpd-package\n\nAlready up to date\nDone in 185ms using pnpm v11.23.0\n\n   ╭─────────────────────────────────────────╮\n   │                                         │\n   │   Update available! 11.23.0 → 12.4.1.   │\n   │   Changelog: https://pnpm.io/v/12.4.1   │\n   │    To update, run: pnpm self-update     │\n   │                                         │\n   ╰─────────────────────────────────────────╯\n\ndsh: initialized profile mpd-headless at /root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair-verify/raw/mount-proof/dsh-home/profiles/mpd-headless\n"
+  },
+  "npmPack": {
+    "name": "npm pack sibling (offline attempt)",
+    "status": 1,
+    "ok": false,
+    "tail": "npm warn gitignore-fallback No .npmignore file found, using .gitignore for file exclusion. Consider creating a .npmignore file to explicitly control published files.\nnpm error Log files were not written due to an error writing to the directory: /root/.npm/_logs\nnpm error You can rerun the command with `--loglevel=verbose` to see the logs in your terminal\n"
+  },
+  "silicon": {
+    "method": "real package directory copied from the sibling checkout (npm pack offline-failed; see npmPack tail)",
+    "plantedAt": "/root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair-verify/raw/mount-proof/node_modules/@mpd-dsh/silicon/presets/rtl-ip.profile.json",
+    "exists": true,
+    "bytes": 10327,
+    "sha256": "1ff65b7c7aca8fde0722ad6f8cf1d99d0ed966ed4b06081db3411450c5c49ea6",
+    "siblingBytes": 10327,
+    "siblingSha": "1ff65b7c7aca8fde0722ad6f8cf1d99d0ed966ed4b06081db3411450c5c49ea6",
+    "copies": [
+      {
+        "path": "/root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair-verify/raw/mount-proof/node_modules/@mpd-dsh/silicon",
+        "file": true,
+        "isFile": true
+      },
+      {
+        "path": "/root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair-verify/raw/mount-proof/mpd-package/node_modules/@mpd-dsh/silicon",
+        "file": true,
+        "isFile": true
+      },
+      {
+        "path": "/root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair-verify/raw/mount-proof/dsh-home/profiles/mpd-headless/node_modules/@mpd-dsh/silicon",
+        "file": true,
+        "isFile": true
+      }
+    ]
+  },
+  "resolve": {
+    "libDirs": [
+      "/root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair-verify/raw/mount-proof/mpd-package/packages/mpd-agent-teams-plugin/lib",
+      "/root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair-verify/raw/mount-proof/dsh-home/profiles/mpd-headless/node_modules/@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib"
+    ],
+    "out": "RESOLVED /root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair-verify/raw/mount-proof/mpd-package/node_modules/@mpd-dsh/silicon/presets/rtl-ip.profile.json"
+  },
+  "present": {
+    "label": "present",
+    "exit": 1,
+    "stubCalls": 0,
+    "toolsOffered": [],
+    "hasRtlIpInPrompt": false,
+    "hasMpdListingInPrompt": false,
+    "promptSnippet": "",
+    "warningsInBoot": [],
+    "warnCount": 0,
+    "createResult": [],
+    "bootTail": "ode/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:862:73)\n    at loadProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:894:9)\n    at prepareProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:208:18)\n    at composeProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:233:18)\n    at runProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:283:25)\n    at async runCli (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:146:4)\n    at async file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:168:23\n\nNode.js v24.16.0\n"
+  },
+  "siliconRemoved": {
+    "sandboxGone": true,
+    "packGone": true,
+    "profileGone": true,
+    "pluginResolve": "resolved(after-removal) /root/dshProj/my-power-dsh/evidence/rtl-extraction-residual/repair-verify/raw/mount-proof/mpd-package/node_modules/@mpd-dsh/silicon/presets/rtl-ip.profile.json"
+  },
+  "absent": {
+    "label": "absent",
+    "exit": 1,
+    "stubCalls": 0,
+    "toolsOffered": [],
+    "hasRtlIpInPrompt": false,
+    "hasMpdListingInPrompt": false,
+    "promptSnippet": "",
+    "warningsInBoot": [],
+    "warnCount": 0,
+    "createResult": [],
+    "bootTail": "ode/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:862:73)\n    at loadProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:894:9)\n    at prepareProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:208:18)\n    at composeProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:233:18)\n    at runProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:283:25)\n    at async runCli (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:146:4)\n    at async file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:168:23\n\nNode.js v24.16.0\n"
+  }
+}

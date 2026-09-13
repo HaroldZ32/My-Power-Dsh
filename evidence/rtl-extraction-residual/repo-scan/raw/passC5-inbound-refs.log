@@ -1,0 +1,49 @@
+# PASS C5 — INBOUND references to the six RTL docs + the HDL template (for the R2/R1 repair and for the record)
+# cmd: git grep -n -E 'rtl-verif-guide|rtl-ip-flow-guide|rtl-gap-assessment|rtl-lsp-client' -- ':(exclude)evidence'
+
+.silicon-extraction/removal.log:114:KEEP docs/rtl-{verif,ip-flow}-guide*.md, rtl-gap-assessment*.md - migrate to silicon: follow-up (t20), then delete here
+docs/index.md:19:| [`rtl-verif-guide.md`](rtl-verif-guide.md) | RTL engineers, agents | RTL dev phase-1 (being moved to the silicon sub-bundle, gitee.com/nop_chip/my-power-dsh-silicon; until then this file describes the pre-extraction checkout): Verible/slang-server LSP, rtl-codestyle templates, mpd-verif plugin (iverilog/Verilator/VCS + cocotb iron rule + VCS-only UVM), waveform-MCP wiring, engineering-flow recommendations (draft), deferred to-do list. |
+docs/index.zh-CN.md:18:| [`rtl-verif-guide.zh-CN.md`](rtl-verif-guide.zh-CN.md) | RTL 工程师、代理 | RTL 开发 Phase-1（正在迁往 silicon 子插件仓库 gitee.com/nop_chip/my-power-dsh-silicon；迁移完成前本文件描述的是剥离前的检出）：Verible/slang-server LSP、rtl-codestyle 模板、mpd-verif 插件（iverilog/Verilator/VCS + cocotb 铁律 + 仅 VCS 的 UVM）、波形 MCP 接线、工程流程建议（草稿）、延期待办清单。 |
+docs/rtl-gap-assessment.md:3:**English** | [中文](./rtl-gap-assessment.zh-CN.md)
+docs/rtl-gap-assessment.md:251:  (`.mpd/team/rtl-gap-assessment/team.json`, task outputs) for the reviewer's spot-check.
+docs/rtl-gap-assessment.zh-CN.md:3:**中文** | [English](./rtl-gap-assessment.md)
+docs/rtl-gap-assessment.zh-CN.md:225:  （`.mpd/team/rtl-gap-assessment/team.json` 任务输出），供评审者抽查。
+docs/rtl-ip-flow-guide.md:3:[中文](./rtl-ip-flow-guide.zh-CN.md)
+docs/rtl-ip-flow-guide.zh-CN.md:3:[English](./rtl-ip-flow-guide.md)
+docs/rtl-verif-guide.md:3:[中文](./rtl-verif-guide.zh-CN.md)
+docs/rtl-verif-guide.md:132:  `packages/mpd-mcp-lsp/templates/rtl-lsp-client.json` (merge/copy into
+docs/rtl-verif-guide.zh-CN.md:3:[English](./rtl-verif-guide.md)
+docs/rtl-verif-guide.zh-CN.md:125:  `packages/mpd-mcp-lsp/templates/rtl-lsp-client.json`（合并/复制进
+packages/mpd-bundle/README.md:8:documented in `docs/rtl-verif-guide.md`), the B/C-line
+packages/mpd-bundle/README.zh-CN.md:4:DSH bundle 聚合包：`cordis.patch.yml` 挂载每一个 mpd-dsh plugin row — MCP servers（ast-grep/git-bash/lsp/codegraph + 远程 context7/grep.app + RTL 波形读取行 `mcp-wave-mcp`/`mcp-traceweave` — 外部工具，经 `MPD_DSH_*_BIN` 环境变量优先解析，二进制缺席时优雅降级，安装策略见 `docs/rtl-verif-guide.md`）、B/C 线 plugins（mpd-config 置顶，使 mpdConfig service 对下方 rows 可见；mpd-tools / modelchain / roles / ulw / agent-teams / hashline / boulder / comment-checker / codegraph / memory / workmate / verif）、`mpd-web-compat` 自注册行（`name: '@mpd-dsh/mpd'`——承载 bundle web client 的 loader 条目）以及 mpd-bootstrap provisioning。
+packages/mpd-mcp-lsp/README.md:52:A ready template lives at `templates/rtl-lsp-client.json` — merge its `"lsp"`
+packages/mpd-mcp-lsp/README.zh-CN.md:51:现成模板位于 `templates/rtl-lsp-client.json` —— 将其 `"lsp"` 条目合并进该用户
+scripts/verify-rtl-references.mjs:25:const DOCS = ["rtl-verif-guide.md", "rtl-verif-guide.zh-CN.md", "rtl-ip-flow-guide.md", "rtl-ip-flow-guide.zh-CN.md", "rtl-gap-assessment.md", "rtl-gap-assessment.zh-CN.md"]
+skills/dsh-qa/scripts/rtl-ip-profile.mjs:102:    for (const file of ["rtl-ip-flow-guide.md", "rtl-ip-flow-guide.zh-CN.md"]) {
+t5-closure-evidence/t5-closure.md:102:1. **Six RTL documents** (`rtl-verif-guide`, `rtl-ip-flow-guide`, `rtl-gap-assessment`, EN+ZH) —
+
+## docs/index.md lines 28-36 (captain rulings cite :34 for the mcp-lsp row)
+  `mpd-roles-plugin`, `mpd-ulw-plugin`, `mpd-hashline-plugin`, `mpd-boulder-plugin`,
+  `mpd-comment-checker-plugin`, `mpd-memory-plugin`, `mpd-codegraph-plugin`,
+  `mpd-dsh-adapter-plugin` (the single harness-seam adapter every row calls through),
+  `mpd-workmate-plugin`, `mpd-bootstrap-plugin`, `mpd-agent-teams-plugin` (adopted),
+  `mpd-bundle-plugin` (bundle web-compat + combined web client),
+  `mpd-qa-roles-probe` (QA-only).
+- **MCP servers** — `mpd-mcp-astgrep`, `mpd-mcp-gitbash`, `mpd-mcp-lsp`,
+  `mpd-mcp-codegraph`.
+- **Aggregation** — `mpd-bundle` (`cordis.patch.yml`).
+
+## docs/index.zh-CN.md lines 28-34
+  `mpd-comment-checker-plugin`、`mpd-memory-plugin`、`mpd-codegraph-plugin`、
+  `mpd-dsh-adapter-plugin`（所有行都经由它调用 Harness 接缝的唯一适配器）、
+  `mpd-workmate-plugin`、`mpd-bootstrap-plugin`、`mpd-agent-teams-plugin`（采纳）、
+  `mpd-bundle-plugin`（bundle web-compat + 合并 web client）、`mpd-qa-roles-probe`（仅 QA）。
+- **MCP 服务器** —— `mpd-mcp-astgrep`、`mpd-mcp-gitbash`、`mpd-mcp-lsp`、
+  `mpd-mcp-codegraph`。
+- **聚合** —— `mpd-bundle`（`cordis.patch.yml`）。
+
+## AGENTS.md references to the six docs (exact names)
+(none)
+
+## AGENTS.md RTL/silicon lines
+AGENTS.md:139:├── skills/                      # skill corpus: dsh-qa (QA skill) + 17 ported upstream skills + svn-master (SERVED from the bundle by mpd-bootstrap; never copied to \$DSH_HOME). T

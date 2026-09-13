@@ -1,0 +1,55 @@
+SKILL.md case-table rows (24):
+   mount-assert 
+   llm-dual-track   <-- NO SCRIPT
+   mcp-call 
+   preset-register 
+   codegraph-smoke 
+   agent-teams-adopt 
+   ultrawork-smoke 
+   plan-c-smoke 
+   memory-smoke 
+   vision-smoke 
+   tool-output-validation 
+   skill-catalog-probe 
+   relocate-smoke 
+   team-route-rewire 
+   workmate-library 
+   workmate-team-member 
+   web-client-adapt 
+   agent-teams-dispatch 
+   session-start-team 
+   bundle-lifecycle 
+   rtl-ip-profile 
+   preset-conformance 
+   agent-teams-sidebar 
+   readonly-deny 
+
+Scripts (25):
+   agent-teams-adopt 
+   agent-teams-dispatch 
+   agent-teams-sidebar 
+   bundle-lifecycle 
+   codegraph-smoke 
+   dual-track-smoke   <-- NO ROW
+   mcp-call 
+   memory-smoke 
+   mount-assert 
+   plan-c-smoke 
+   preset-conformance 
+   preset-register 
+   readonly-deny 
+   relocate-smoke 
+   rtl-ip-profile 
+   rtl-verif   <-- NO ROW
+   session-start-team 
+   skill-catalog-probe 
+   team-route-rewire 
+   tool-output-validation 
+   ultrawork-smoke 
+   vision-smoke 
+   web-client-adapt 
+   workmate-library 
+   workmate-team-member 
+
+rows_not_in_scripts: ['llm-dual-track']
+scripts_not_in_rows: ['dual-track-smoke', 'rtl-verif']

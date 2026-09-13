@@ -1,0 +1,15 @@
+### DEMO B: tokens the REAL gate reported 'resolved' — do they exist in mpd?
+MPD-ABSENT   skills/rtl-codestyle  (=> resolved only via the silicon root)
+MPD-ABSENT   skills/rtl-verif  (=> resolved only via the silicon root)
+MPD-ABSENT   skills/rtl-verif/fixtures/adder4  (=> resolved only via the silicon root)
+MPD-ABSENT   packages/mpd-verif-plugin/evidence/smoke  (=> resolved only via the silicon root)
+MPD-ABSENT   packages/mpd-verif-plugin/dist/index.js  (=> resolved only via the silicon root)
+
+### DEMO B2: same bucket whether the token is an mpd leftover or silicon-owned — construct both in a scratch root
+--- state 1: mpd scratch repo HAS the token as a leftover
+(gate is read from repoRoot/scripts; use a repo-shaped copy)
+  "considered": 0,
+state1-exit=0
+--- state 2: mpd scratch repo does NOT have docs/adder4.md (still silicon-present, else it would go unresolved)
+  "considered": 0,
+state2-exit=0

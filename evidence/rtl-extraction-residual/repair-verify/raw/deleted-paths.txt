@@ -1,0 +1,13 @@
+docs/rtl-gap-assessment.md
+docs/rtl-gap-assessment.zh-CN.md
+docs/rtl-ip-flow-guide.md
+docs/rtl-ip-flow-guide.zh-CN.md
+docs/rtl-verif-guide.md
+docs/rtl-verif-guide.zh-CN.md
+packages/mpd-mcp-lsp/templates/rtl-lsp-client.json
+skills/dsh-qa/scripts/rtl-ip-profile.mjs
+skills/dsh-qa/scripts/rtl-verif.mjs
+tests/golden/fixtures/verilog/modules/adder4.v
+tests/golden/fixtures/verilog/modules/cnt8.v
+tests/golden/fixtures/verilog/README.md
+tests/golden/fixtures/verilog/tb/tb_adder4.v

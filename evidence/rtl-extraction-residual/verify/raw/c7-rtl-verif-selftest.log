@@ -1,0 +1,2 @@
+[rtl-verif] SKIP: silicon bundle not present at /nonexistent/mpd-silicon (set MPD_SILICON_ROOT) — bundle-side groups skipped
+[rtl-verif self-test] ok: golden fixture + silicon patch (4 additive rows, no id-target, no absolute path) + eight-tool dist surface + iron-rule strings + three corpus trees + preset profile (1 group(s) skipped — see SKIP lines)

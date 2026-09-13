@@ -89,7 +89,13 @@ The QA skill is `skills/dsh-qa` (`SKILL.md`). Every case script ships `--self-te
 | `workmate-team-member` | workmate-backed member injection + self-reflect in a live team | `node skills/dsh-qa/scripts/workmate-team-member.mjs` |
 | `web-client-adapt` | the `@mpd-dsh/mpd` boot-graph client entry + client.js ids + workmate host routes (incl. the client's rename/delete URLs) | `node skills/dsh-qa/scripts/web-client-adapt.mjs` |
 | `preset-conformance` | every harness-owned row config (preset + bundle patch + QA overlays) conforms to the INSTALLED harness schemas, the `mpd` preset's row set equals the installed `standard` preset's, and a real session created with `agentPreset: "mpd"` MOUNTS — with a negative control that must fail | `node skills/dsh-qa/scripts/preset-conformance.mjs` |
+| `software-smoke` | software dev flow: a REAL headless mpd session (local OpenAI-shaped stub, throwaway key — no provider credential) writes a tiny deterministic game with the `write` tool and runs it with the `bash` tool in a SANDBOX workspace; the case replays the REAL transcript through its own oracle (legality, optimality, winner, determinism) and requires the mutation control to go RED | `node skills/dsh-qa/scripts/software-smoke.mjs` |
 | `agent-teams-adopt` (historical C1) | MIT notice + adoption wiring | `node skills/dsh-qa/scripts/agent-teams-adopt.mjs` |
+
+Two npm scripts, two lanes (t8): `bun run test:qa` runs EVERY case's offline `--self-test`;
+`bun run test:qa:all` runs the REAL lane of the heavy/live subset, enumerated by name in
+`package.json` (criterion: the case needs a real headless dsh boot and/or a live provider).
+The allowlist is explicit so a new case is never silently treated as heavy.
 
 **QA hard rules** (AGENTS.md §7): sandbox `DSH_HOME=<mktemp>`; copy credentials once;
 assert the sandbox path; never touch the real `~/.dsh`; workmate cases additionally

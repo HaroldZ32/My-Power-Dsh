@@ -1,0 +1,16 @@
+=== BEFORE state ===
+date: 2026-09-13T11:20:08Z
+HEAD: 32ae54dd10db7ea46e1c1263143d56f266fd1f78
+pack dir: dist/mpd-package
+drwxr-xr-x 6 root root 4096 Sep 13 16:32 dist/mpd-package
+package.json sha256: f8c94451d01e31568d2fd26fdddf32b99a2b79ac429602c031d38c34413b5235
+file count: 1119
+evidence/plan-d/relocate entries: 24
+=== MOVE ASIDE ===
+ls: cannot access 'dist/mpd-package': No such file or directory
+pack present probe: false
+=== RESTORE ===
+restored: dist/mpd-package
+package.json sha256 after: f8c94451d01e31568d2fd26fdddf32b99a2b79ac429602c031d38c34413b5235
+file count after: 1119
+evidence/plan-d/relocate entries after: 24

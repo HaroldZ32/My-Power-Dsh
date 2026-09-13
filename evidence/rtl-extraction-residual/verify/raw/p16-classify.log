@@ -1,0 +1,102 @@
+### P16-full: content-only survivors with ONE matching line each
+25
+
+-- AGENTS.md
+AGENTS.md:18:  untouched. Internal QA/golden reference docs (e.g. `docs/adder4.md`,
+AGENTS.md:19:  `docs/cnt8.md`) and historical/process records — plan files
+AGENTS.md:139:├── skills/                      # skill corpus: dsh-qa (QA skill) + 17 ported upstream skills + svn-master (SERVED from the bundle by mpd-bootstrap; never copied to \$DSH_HOME). The rtl-* trees moved to the silicon sub-bundle (gitee.com/nop_chip/my-power-dsh-silicon)
+
+-- docs/index.md
+docs/index.md:19:| [`rtl-verif-guide.md`](rtl-verif-guide.md) | RTL engineers, agents | RTL dev phase-1 (being moved to the silicon sub-bundle, gitee.com/nop_chip/my-power-dsh-silicon; until then this file describes the pre-extraction checkout): Verible/slang-server LSP, rtl-codestyle templates, mpd-verif plugin (iverilog/Verilator/VCS + cocotb iron rule + VCS-only UVM), waveform-MCP wiring, engineering-flow recommendations (draft), deferred to-do list. |
+
+-- docs/index.zh-CN.md
+docs/index.zh-CN.md:18:| [`rtl-verif-guide.zh-CN.md`](rtl-verif-guide.zh-CN.md) | RTL 工程师、代理 | RTL 开发 Phase-1（正在迁往 silicon 子插件仓库 gitee.com/nop_chip/my-power-dsh-silicon；迁移完成前本文件描述的是剥离前的检出）：Verible/slang-server LSP、rtl-codestyle 模板、mpd-verif 插件（iverilog/Verilator/VCS + cocotb 铁律 + 仅 VCS 的 UVM）、波形 MCP 接线、工程流程建议（草稿）、延期待办清单。 |
+
+-- docs/review-p0-p3.md
+docs/review-p0-p3.md:76:3. Golden-task set should include 1 Verilog RTL sample (ast-grep's LANGUAGES doesn't have verilog yet — in the golden run also verify taxonomy, or switch to C/TS samples).
+
+-- docs/track-a-report.md
+docs/track-a-report.md:10:| S4 | Golden pass rate >=80%, including >=2 hardware | Achieved | 9/9=100%, hardware G2(adder4)/G9(cnt8) two tasks |
+
+-- .gitignore
+.gitignore:23:# RTL phase-1 scratch: research clones (.research/) and the workspace-local cocotb venv (.venv-rtl/, .venv*)
+.gitignore:25:.venv-rtl/
+.gitignore:28:# verilator/cocotb build artifacts (never commit compiled objects)
+
+-- package.json
+package.json:33:    "verify:rtl-refs": "node scripts/verify-rtl-references.mjs",
+
+-- packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs
+packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs:9:// `packages/mpd-verif-plugin/test/**` was not honoured and every file beneath it
+packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs:56:    expect(pathMatchesScope("packages/mpd-verif-plugin/test/a.ts", "packages/mpd-verif-plugin/test/**")).toBe(true)
+packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs:57:    expect(classifyChangedPath("packages/mpd-verif-plugin/test/deep/case.ts", ["packages/mpd-verif-plugin/test/**"], ["packages/mpd-verif-plugin/src"])).toBe("in_scope")
+
+-- packages/mpd-bootstrap-plugin/test/bootstrap.test.ts
+packages/mpd-bootstrap-plugin/test/bootstrap.test.ts:63:    // 19 = the shipped corpus AFTER the RTL trees moved to the @mpd-dsh/silicon
+packages/mpd-bootstrap-plugin/test/bootstrap.test.ts:64:    // bundle (the rtl-* skills are served there by the silicon-bundle provider).
+
+-- packages/mpd-bundle/cordis.patch.yml
+packages/mpd-bundle/cordis.patch.yml:92:    # Waveform-read MCP rows (mcp-wave-mcp / mcp-traceweave) are NOT mounted by
+packages/mpd-bundle/cordis.patch.yml:93:    # default: they wrap EXTERNAL Python MCP servers (wave-mcp / TraceWeave)
+packages/mpd-bundle/cordis.patch.yml:95:    # venv iron rule belongs to cocotb only; pipx keeps the two tools isolated
+
+-- packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs
+packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs:20:const LISTED = { workmates: [{ name: "gui-alice", baseId: "hephaestus", baseName: "Deep Worker", readonly: false, uses: 3, updatedAt: "2026-09-10T01:00:00.000Z", note: "Writes RTL testbenches" }] };
+
+-- packages/mpd-bundle/README.md
+packages/mpd-bundle/README.md:5:MCP servers (ast-grep/git-bash/lsp/codegraph + remote context7/grep.app + the RTL
+packages/mpd-bundle/README.md:6:waveform-read rows `mcp-wave-mcp`/`mcp-traceweave` — external tools resolved
+packages/mpd-bundle/README.md:8:documented in `docs/rtl-verif-guide.md`), the B/C-line
+
+-- packages/mpd-bundle/README.zh-CN.md
+packages/mpd-bundle/README.zh-CN.md:4:DSH bundle 聚合包：`cordis.patch.yml` 挂载每一个 mpd-dsh plugin row — MCP servers（ast-grep/git-bash/lsp/codegraph + 远程 context7/grep.app + RTL 波形读取行 `mcp-wave-mcp`/`mcp-traceweave` — 外部工具，经 `MPD_DSH_*_BIN` 环境变量优先解析，二进制缺席时优雅降级，安装策略见 `docs/rtl-verif-guide.md`）、B/C 线 plugins（mpd-config 置顶，使 mpdConfig service 对下方 rows 可见；mpd-tools / modelchain / roles / ulw / agent-teams / hashline / boulder / comment-checker / codegraph / memory / workmate / verif）、`mpd-web-compat` 自注册行（`name: '@mpd-dsh/mpd'`——承载 bundle web client 的 loader 条目）以及 mpd-bootstrap provisioning。
+
+-- packages/mpd-qa-roles-probe/src/index.ts
+packages/mpd-qa-roles-probe/src/index.ts:34:  // Internal tool invocation through the adapter (the path mpd-verif's wave
+
+-- packages/mpd-workmate-plugin/test/workmate.test.ts
+packages/mpd-workmate-plugin/test/workmate.test.ts:39:        return { result: { structured: { name: "alice", summary: "implemented the verilog counter", recommendation: "review the clocking", evidence: ["file:line"] }, stopReason: "complete" } }
+packages/mpd-workmate-plugin/test/workmate.test.ts:64:  const meta = { name: "alice", baseId: "hephaestus", baseName: "Deep Worker", description: "autonomous goal-driven implementation", provider: "deepseek-official", model: "deepseek-v4-flash", readonly: false, createdAt: "", updatedAt: "", uses: 1, lastTask: "implement verilog counter" }
+packages/mpd-workmate-plugin/test/workmate.test.ts:65:  const note = autoNote(meta, "You are the Deep Worker.", "## 2026-01-01 — implement counter\nwrote cnt8.v")
+
+-- PLAN.md
+PLAN.md:185:1. Priority: ast-grep-mcp (highest value for Verilog/RTL syntax trees) → git-bash-mcp → lsp-tools-mcp+lsp-daemon (D2).
+PLAN.md:189:   make one real call against a sample Verilog file (record timeout/reconnect behavior).
+PLAN.md:194:**Evidence**: evidence/p3/tool-list.txt, evidence/p3/verilog-sample-call.log.
+
+-- scripts/build-mcp.mjs
+scripts/build-mcp.mjs:31:// --- RTL LSP overlay (t2 Option A): in-repo registration patches ---------------
+scripts/build-mcp.mjs:38:// registry gains verible-verilog-ls (.v/.vh) and slang-server (.sv/.svh).
+scripts/build-mcp.mjs:40:const BUILTIN_BUILD_ANCHOR = "mpd-rtl-overlay-v1"
+
+-- scripts/install-mcp.mjs
+scripts/install-mcp.mjs:5://   LSP binaries    verible-verilog-ls (chipsalliance/verible) + slang-server
+scripts/install-mcp.mjs:6://                   (hudson-trading/slang-server) latest GitHub releases -> <toolchain>/bin
+scripts/install-mcp.mjs:7://   --with-wave     wave-mcp + traceweave-mcp via PIPX (each in its own isolated
+
+-- scripts/pack-mpd.mjs
+scripts/pack-mpd.mjs:75:  // bootstrap the sg/codegraph/verible/slang binaries + wave MCPs too.
+
+-- .silicon-extraction/removal.log
+.silicon-extraction/removal.log:1:# t5 removal log — RTL surface physically removed from the mpd source repo
+.silicon-extraction/removal.log:5:DEL  skills/rtl-ip-flow/SKILL.md  ->  /root/dshProj/my-power-dsh-silicon/skills/rtl-ip-flow/SKILL.md
+.silicon-extraction/removal.log:6:DEL  skills/rtl-ip-flow/templates/defect-report.md  ->  /root/dshProj/my-power-dsh-silicon/skills/rtl-ip-flow/templates/defect-report.md
+
+-- skills/dsh-qa/scripts/dual-track-smoke.mjs
+skills/dsh-qa/scripts/dual-track-smoke.mjs:21:// Dev-flavor rewrite of the bundle patch (preset-register/rtl-verif pattern): the
+
+-- skills/dsh-qa/scripts/workmate-library.mjs
+skills/dsh-qa/scripts/workmate-library.mjs:19:1) mpd_workmate_init {base:"hephaestus", name:"alice", note:"Verilog counter specialist"}
+skills/dsh-qa/scripts/workmate-library.mjs:23:5) mpd_workmate_match {task:"implement a verilog counter and verify"}
+skills/dsh-qa/scripts/workmate-library.mjs:129:  steps.files = { ok: filesOk && (note.includes("Verilog") || note.includes("counter")), note: note.slice(0, 160), wmRoot }
+
+-- skills/dsh-qa/SKILL.md
+skills/dsh-qa/SKILL.md:62:| rtl-ip-profile | RTL IP workflow | bundle patch ships the rtl-ip roster profile (7 members, four-stage flow markers) + rtl-ip-flow skill + 4 document templates + bilingual guide; composed boot shows the profile in the agent-teams row config | RTL IP flow |
+
+-- skills/frontend/references/design/layout-skill.md
+skills/frontend/references/design/layout-skill.md:101:- **Direction** — if the app supports RTL, the layout uses logical properties (`margin-inline`, `inset-inline-start`) so it mirrors correctly.
+
+-- t5-closure-evidence/t5-closure.md
+t5-closure-evidence/t5-closure.md:1:# t5 closure ledger — final read-only reconciliation of the RTL strip
+t5-closure-evidence/t5-closure.md:4:**Subject**: the source-repo RTL strip delivered by t5, committed as `12291a7`.
+t5-closure-evidence/t5-closure.md:23:| HEAD | `git log --oneline -1` | `12291a7 feat(rtl-extraction): remove the RTL surface from the mpd repo (moved to @mpd-dsh/silicon)` |

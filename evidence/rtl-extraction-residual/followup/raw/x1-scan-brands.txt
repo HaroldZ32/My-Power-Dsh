@@ -1,0 +1,4 @@
+packages/mpd-mcp-astgrep/dist/cli.js                    oh-my-opencode-shape=0
+packages/mpd-mcp-gitbash/dist/cli.js                    oh-my-opencode-shape=0
+packages/mpd-mcp-lsp/dist/cli.js                        oh-my-opencode-shape=0
+scripts/build-mcp.mjs                                   oh-my-opencode-shape=1

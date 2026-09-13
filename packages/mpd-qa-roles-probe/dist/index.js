@@ -244,6 +244,7 @@ var name = "mpd-dsh-qa-roles-probe";
 var inject = ["agentPresets"];
 var ROSTER_IDS = ["oracle", "librarian", "prometheus", "hephaestus", "sisyphus", "sisyphus-junior", "atlas", "explore", "metis", "momus", "multimodal-looker"];
 var FIXTURE_SKILL = "svn-master";
+var FIXTURE_SKILLS = ["ast-grep", "dsh-qa", "git-master", "programming", "svn-master"];
 async function apply(ctx) {
   const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx);
   let presetOk = false;
@@ -274,12 +275,14 @@ async function apply(ctx) {
   try {
     const summaries = await dsh.listSkills();
     const bundled = summaries.filter((summary) => summary.source === "bundled");
-    console.log("[roles-probe] SKILLS=" + summaries.length + " BUNDLED=" + bundled.length);
+    const servedNames = new Set(summaries.map((summary) => String(summary.name)));
+    const missingFixtures = FIXTURE_SKILLS.filter((name2) => !servedNames.has(name2));
+    console.log("[roles-probe] SKILLS=" + summaries.length + " BUNDLED=" + bundled.length + " SKILL_FIXTURES=" + (FIXTURE_SKILLS.length - missingFixtures.length) + "/" + FIXTURE_SKILLS.length + (missingFixtures.length > 0 ? " MISSING=" + missingFixtures.join(",") : ""));
     const fixture = await dsh.loadSkill(FIXTURE_SKILL);
     const base = fixture?.resourceBase?.path ?? "unknown";
     const bytes = fixture?.content?.length ?? 0;
     console.log("[roles-probe] SKILL_FIXTURE=" + (fixture === undefined ? "missing" : "ok") + " name=" + String(fixture?.name ?? "-") + " base=" + base + " bytes=" + String(bytes));
-    catalogOk = fixture !== undefined && bytes > 100 && bundled.length >= 20;
+    catalogOk = fixture !== undefined && bytes > 100 && summaries.length === bundled.length && missingFixtures.length === 0;
   } catch (e) {
     console.log("[roles-probe] SKILLS=fail:" + String(e?.message ?? e));
   }

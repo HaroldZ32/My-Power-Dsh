@@ -1,0 +1,18 @@
+### X4 brand guard: negative control (foreign token) + committed bytes ###
+ls: cannot access 'evidence/rtl-extraction-residual/x4-repair/raw/x4-brand-guard-probe.mjs': No such file or directory
+--- guard script location(s):
+scripts/build-mcp.mjs
+--- matcher vectors on committed bytes (full token expected):
+  omoRuntimeCandidates   hits-in-gitbash=0
+  omo/ping               hits-in-gitbash=0
+### X5 placeholder + locks ###
+  script=0
+  packages/mpd-mcp-astgrep/dist/BUILD.lock       0
+  packages/mpd-mcp-gitbash/dist/BUILD.lock       0
+  packages/mpd-mcp-lsp/dist/BUILD.lock           0
+  locks-found=3
+### X5 git-bash artifact agreement ###
+  cli.js sha=0484a8ff1714c949bc52a4fc0de89c756dcab975b0691a2823706f008475f38e bytes=22651
+  BUILD.lock: 
+  VENDOR_LOCK: 0484a8ff1714c949bc52a4fc0de89c756dcab975b0691a2823706f008475f38e
+### X7 markers: fresh-clone suite SKIP lines ###

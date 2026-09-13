@@ -1,0 +1,3 @@
+mode=--self-test exit=1 skip_marker=0 text=[relocate-smoke self-test] FAIL: dev path leak in staged patch
+mode=--self-test --no-skip exit=1 skip_marker=0 text=[relocate-smoke self-test] FAIL: dev path leak in staged patch
+mode=--self-test --require-pack exit=1 skip_marker=0 text=[relocate-smoke self-test] FAIL: dev path leak in staged patch

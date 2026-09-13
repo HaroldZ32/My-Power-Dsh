@@ -1,19 +1,12 @@
 // ============================================================================
-// mpd RTL LSP overlay — drift-guard anchor: mpd-rtl-overlay-v1
+// mpd LSP overlay — drift-guard anchor: mpd-lsp-overlay-v1
 // ============================================================================
-// Patched copy of upstream lsp-core src/lsp/server-definitions.ts for the my-power-dsh RTL
-// coding support (team rtl-dev t3, design t2 Option A). This file REPLACES the
-// upstream file during the offline build (scripts/build-mcp.mjs applies it over
-// the freshly-copied lsp-core source). It must stay a superset of the upstream
-// baseline: keep every upstream export and entry intact, add only the RTL LSP
-// registrations below. If the upstream file drifts (new export shape), the
-// build fails loudly via the baselineExport check in build-mcp.mjs — re-sync
-// this overlay from the upstream file then re-add the RTL additions.
-// ----------------------------------------------------------------------------
-// ADDITIONS: builtin LSP servers for Verilog / SystemVerilog —
-//   verible-verilog-ls  (.v/.vh)  -> id "verible"
-//   slang-server        (.sv/.svh) -> id "slang-server"
-// ----------------------------------------------------------------------------
+// Patched copy of upstream lsp-core src/lsp/server-definitions.ts. This file REPLACES
+// the upstream file during the offline build (scripts/build-mcp.mjs applies it
+// over the freshly-copied lsp-core source), so it must stay a superset of the
+// upstream baseline: keep every upstream export and entry intact. If the upstream
+// file drifts (new export shape), the build fails loudly via the baselineExport
+// check in build-mcp.mjs — re-sync this overlay from the upstream file.
 
 import type { LspServerConfig } from "./types.js";
 
@@ -64,9 +57,6 @@ export const LSP_INSTALL_HINTS: Record<string, string> = {
 	razor:
 		"Razor runs through the Roslyn language server (cohosting). " +
 		"Install: dotnet tool install -g roslyn-language-server --prerelease (requires v5.8.0+). See https://github.com/dotnet/razor",
-	// --- mpd RTL overlay additions ---
-	verible: "download prebuilt binaries: https://github.com/chipsalliance/verible/releases",
-	"slang-server": "per-platform static binaries: https://github.com/hudson-trading/slang-server/releases",
 };
 
 export const BUILTIN_SERVERS: Record<string, Omit<LspServerConfig, "id">> = {
@@ -169,9 +159,6 @@ export const BUILTIN_SERVERS: Record<string, Omit<LspServerConfig, "id">> = {
 		command: ["roslyn-language-server", "--stdio"],
 		extensions: [".razor", ".cshtml"],
 	},
-	// --- mpd RTL overlay additions ---
-	verible: { command: ["verible-verilog-ls"], extensions: [".v", ".vh"] },
-	"slang-server": { command: ["slang-server"], extensions: [".sv", ".svh"] },
 };
 
 export const AUTO_INSTALLABLE_SERVERS: Record<string, string[]> = {
