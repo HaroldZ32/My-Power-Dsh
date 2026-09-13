@@ -502,13 +502,13 @@ async function callTool(id, name, args, options) {
   if (name === "which_bash")
     return toolResponse(id, whichBashPayload(resolve(options)));
   if (name === "diagnose")
-    return toolResponse(id, diagnosePayload(resolve(options), platformFrmpdOptions(options)));
+    return toolResponse(id, diagnosePayload(resolve(options), platformFromOptions(options)));
   if (name === "run")
     return await runToolResponse(id, args, options);
   return toolResponse(id, `Unknown git_bash tool: ${name}`, true);
 }
 async function runToolResponse(id, args, options) {
-  const platform = platformFrmpdOptions(options);
+  const platform = platformFromOptions(options);
   if (platform !== "win32")
     return toolResponse(id, "git_bash run is only available on native Windows.", true);
   const command = typeof args.command === "string" ? args.command.trim() : "";
@@ -577,7 +577,7 @@ function toolsForOptions(options) {
   ];
 }
 function canRunGitBash(options) {
-  if (platformFrmpdOptions(options) !== "win32")
+  if (platformFromOptions(options) !== "win32")
     return false;
   const resolution = resolve(options);
   return resolution.found && resolution.path !== null;
@@ -590,13 +590,13 @@ function resolve(options) {
     });
   }
   return resolveGitBash({
-    platform: platformFrmpdOptions(options),
+    platform: platformFromOptions(options),
     env: options.env ?? process.env,
     exists: options.exists ?? (() => false),
     where: options.where ?? (() => [])
   });
 }
-function platformFrmpdOptions(options) {
+function platformFromOptions(options) {
   return options.platform ?? process.platform;
 }
 function whichBashPayload(resolution) {
