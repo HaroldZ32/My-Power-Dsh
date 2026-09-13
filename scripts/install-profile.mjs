@@ -176,7 +176,7 @@ function buildPlan(o) {
       // patch; see packages/mpd-agent-teams-plugin/lib/index.js). Absent-safe.
       maxParallelMembers: 8, maxMessagesPerRun: 10000, maxWallClockMinutes: 120,
       maxMemberTurns: 500, messagePayloadMaxBytes: 32768, recipientUnreadMaxBytes: 262144,
-      mailboxPollIntervalMs: 3000, enforcement: "enforce",
+      mailboxPollIntervalMs: 3000, enforcement: "enforce", reclaimStaleAfterMs: 3600000,
       // SESSION-START TEAM GATE: a session starts with NO team; `mode: "off"` is
       // the default (upstream parity) and `autoRoute: true` is the decoupled
       // mechanical complexity gate. See lib/session-start.js.
@@ -271,7 +271,7 @@ function selfTest() {
   // configuration plane: the upstream-aligned keys must ship with the frozen
   // local defaults (measured against upstream team_mode; see frozen-contract).
   const plane = plan.agentTeamsRow.config
-  const planeExpected = { maxParallelMembers: 8, maxMessagesPerRun: 10000, maxWallClockMinutes: 120, maxMemberTurns: 500, messagePayloadMaxBytes: 32768, recipientUnreadMaxBytes: 262144, mailboxPollIntervalMs: 3000, enforcement: "enforce", maxMembers: 16, memberMaxDepth: 1 }
+  const planeExpected = { maxParallelMembers: 8, maxMessagesPerRun: 10000, maxWallClockMinutes: 120, maxMemberTurns: 500, messagePayloadMaxBytes: 32768, recipientUnreadMaxBytes: 262144, mailboxPollIntervalMs: 3000, enforcement: "enforce", reclaimStaleAfterMs: 3600000, maxMembers: 16, memberMaxDepth: 1 }
   for (const [key, want] of Object.entries(planeExpected)) {
     if (plane[key] !== want) { console.error("[install-profile self-test] FAIL: agent-teams configPlane." + key + " (want " + JSON.stringify(want) + ", got " + JSON.stringify(plane[key]) + ")"); process.exit(1) }
   }

@@ -71,7 +71,7 @@ import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createUserMessage } from '../_deps/dsh-llm/lib/index.js';
 import { appendTeamEvent } from "./events.js";
-import { findTeamByParticipant, readTeam, sanitizeKey, withTeamLock } from "./state.js";
+import { DEFAULT_RECLAIM_STALE_AFTER_MS, findTeamByParticipant, readTeam, reclaimStaleStagedTeams, sanitizeKey, withTeamLock } from "./state.js";
 import { initializeProfileTeam } from "./tools.js";
 /** Default display name for the auto-provisioned default team. */
 export const DEFAULT_TEAM_NAME = 'MPD Default';
@@ -471,6 +471,24 @@ export function installSessionTeamPolicy(ctx, resolved) {
         settledFor.add(agent.id);
         const workspace = agent.session.header.cwd ?? process.cwd();
         const user = latestUserMessage(messages);
+        // R3 residue reclamation: at the session's FIRST pre-step, archive the stale
+        // empty staged teams left by the pre-gate auto-provisioning. Archiving (never a
+        // raw delete) keeps them reviewable, the caller's own team is excluded, and a
+        // failure degrades to a warning instead of breaking the step.
+        try {
+            const stateRoot = join(workspace, resolved.stateDir);
+            const own = await findTeamByParticipant(stateRoot, agent.id);
+            const reclaim = await reclaimStaleStagedTeams(stateRoot, {
+                staleAfterMs: resolved.reclaimStaleAfterMs ?? DEFAULT_RECLAIM_STALE_AFTER_MS,
+                ownTeamId: own?.id,
+            });
+            if (reclaim.archived.length > 0) {
+                ctx.logger.info(`agent-teams: archived ${reclaim.archived.length} stale staged team(s): ${reclaim.archived.map((entry) => entry.teamId).join(', ')}`);
+            }
+        }
+        catch (error) {
+            ctx.logger.warn(`agent-teams: stale-team reclamation failed for agent "${agent.id}": ${String(error)}`);
+        }
         const route = await routeDecision(policy, user?.text, workspace);
         if (route.action === 'none')
             return decision;

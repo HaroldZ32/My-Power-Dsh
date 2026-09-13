@@ -95,6 +95,9 @@ export const Config = z.object({
     recipientUnreadMaxBytes: z.natural().min(1024).default(262144),
     mailboxPollIntervalMs: z.natural().min(500).default(3000),
     enforcement: z.union([z.const('enforce'), z.const('observe')]).default('enforce'),
+    // R3: age threshold before an EMPTY STAGED team counts as residue and is
+    // archived at the next session start (default 1 hour).
+    reclaimStaleAfterMs: z.natural().default(3600000),
     promptSectionOrder: z.natural().default(117),
     slashCommand: z.boolean().default(true),
     // Session-start team policy: a session starts with NO team unless the
@@ -221,6 +224,7 @@ export function apply(ctx, config) {
         recipientUnreadMaxBytes: config.recipientUnreadMaxBytes ?? 262144,
         mailboxPollIntervalMs: config.mailboxPollIntervalMs ?? 3000,
         enforcement: config.enforcement ?? 'enforce',
+        reclaimStaleAfterMs: config.reclaimStaleAfterMs ?? 3600000,
         profiles: config.profiles ?? {},
         sessionTeamPolicy: {
             mode: config.sessionTeamPolicy?.mode ?? 'off',

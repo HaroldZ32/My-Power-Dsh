@@ -927,6 +927,80 @@ export async function archiveTeamDir(stateRoot, teamId) {
     if (displaced)
         await rm(previous, { recursive: true, force: true }).catch(() => undefined);
 }
+//#region mpd-delta stale-staged-reclaim (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/** Default age before an empty staged team counts as residue (1 hour). */
+export const DEFAULT_RECLAIM_STALE_AFTER_MS = 3600000;
+/**
+ * Find the STALE EMPTY STAGED teams under one state root.
+ *
+ * Residual = `phase === 'staged'` AND never approved AND zero tasks AND older than
+ * `staleAfterMs` — the residue the pre-gate auto-provisioning left behind. Live work
+ * is never a candidate: an approved or running team, and a staged team that already
+ * carries tasks (its plan may still be under review), are excluded by construction.
+ * The caller's own team id is excluded separately at reclaim time so a session can
+ * never archive itself.
+ * @param stateRoot - resolved absolute state root directory.
+ * @param options - `staleAfterMs` and the `now` clock (injectable for tests).
+ * @returns one entry per candidate, newest first.
+ */
+export async function findStaleStagedTeams(stateRoot, options = {}) {
+    const staleAfterMs = options.staleAfterMs ?? DEFAULT_RECLAIM_STALE_AFTER_MS;
+    const now = options.now ?? Date.now();
+    if (!Number.isFinite(staleAfterMs) || staleAfterMs < 0)
+        return [];
+    let entries;
+    try {
+        entries = await readdir(stateRoot, { withFileTypes: true });
+    }
+    catch (error) {
+        if (error instanceof Error && 'code' in error && error.code === 'ENOENT')
+            return [];
+        throw error;
+    }
+    const candidates = [];
+    for (const entry of entries) {
+        if (!entry.isDirectory() || entry.name === 'archive' || entry.name.startsWith('.'))
+            continue;
+        const team = await readTeam(stateRoot, entry.name);
+        if (team === undefined || team.phase !== 'staged' || team.approvedAt !== undefined)
+            continue;
+        if (!Array.isArray(team.tasks) || team.tasks.length > 0)
+            continue;
+        if (!Number.isFinite(team.createdAt) || now - team.createdAt <= staleAfterMs)
+            continue;
+        candidates.push({ teamId: team.id, createdAt: team.createdAt, ageMs: now - team.createdAt });
+    }
+    candidates.sort((left, right) => right.createdAt - left.createdAt);
+    return candidates;
+}
+/**
+ * Archive the stale empty staged teams (ARCHIVE, never a raw delete) and report the
+ * manifest. `ownTeamId` is never reclaimed, so a session cannot archive its own team.
+ * A per-team failure is recorded and does not abort the remaining reclamations.
+ * @param stateRoot - resolved absolute state root directory.
+ * @param options - `staleAfterMs`, `now`, `ownTeamId`.
+ * @returns the manifest: scanned candidates plus what was archived or skipped.
+ */
+export async function reclaimStaleStagedTeams(stateRoot, options = {}) {
+    const candidates = await findStaleStagedTeams(stateRoot, options);
+    const archived = [];
+    const skipped = [];
+    for (const candidate of candidates) {
+        if (options.ownTeamId !== undefined && candidate.teamId === options.ownTeamId) {
+            skipped.push({ ...candidate, reason: 'own-session' });
+            continue;
+        }
+        try {
+            await archiveTeamDir(stateRoot, candidate.teamId);
+            archived.push(candidate);
+        }
+        catch (error) {
+            skipped.push({ ...candidate, reason: `archive-failed: ${String(error)}` });
+        }
+    }
+    return { scanned: candidates.length, archived, skipped };
+}
+//#endregion mpd-delta stale-staged-reclaim
 /**
  * Read one archived team (already moved under `archive/`), or undefined when
  * it was never archived.

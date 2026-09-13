@@ -1,0 +1,181 @@
+{
+  "schema": "mpd-omo-align-implementation-r3b/1",
+  "task": "t22 (R3): stale-staged auto-reclamation + F2/F6 finalisation + S3 level judgment",
+  "branch": "fix/r3-auto-reclaim",
+  "headAtRun": "26113aa",
+  "verdict": "pass",
+  "contractAnchor": {
+    "file": "evidence/omo-align/requirements/frozen-contract.json",
+    "bytes": 33022,
+    "sha256": "9916644bc50669b30d857b190a4058a53a31cf2106444b2c3e0091d955d76cb4",
+    "fields": [
+      "complexityGate.logic",
+      "complexityGate.logicRevisionNote",
+      "complexityGate.testPrompts.expectation"
+    ],
+    "logic_as_frozen": "trigger = anyExplicitFlag OR (matchedSignals >= 1); a matched signal = A explicit flag | C satisfied (>=2 of C1/C2/C3) | B >=4 deliverable verbs | D plan file exists",
+    "verified_on_disk": "measured 33,022 B / sha256 9916644bc50669b30d857b190a4058a53a31cf2106444b2c3e0091d955d76cb4 / PARSE OK; my implementation already conforms (C_SUBSIGNAL_MIN=2 pushes a single 'C'; trigger = explicitFlag || signals.length >= 1)"
+  },
+  "r3_autoReclaim": {
+    "criterion": "staged && !approvedAt && tasks.length === 0 AND age > reclaimStaleAfterMs (default 1h) AND not the calling session's own team; ARCHIVE (archiveTeamDir), never a bare delete",
+    "implementation": "lib/state.js region mpd-delta stale-staged-reclaim (findStaleStagedTeams + reclaimStaleStagedTeams); wired into the FIRST pre-step of lib/session-start.js before routeDecision; config key reclaimStaleAfterMs (schema+resolved default 3600000; bundle row and install-profile row both set it).",
+    "assertion1_three_stale_archived": {
+      "status": "passed",
+      "evidence": "unit r3-auto-reclaim.test.mjs: 3 stale staged removed from the live root and present under archive/<id>/team.json. INTEGRATION real dsh boot on a seeded sandbox: liveBefore 6 -> liveAfter 3, archived [\"seed-stale-1\", \"seed-stale-2\", \"seed-stale-3\"]"
+    },
+    "assertion2_protected_byteIdentical": {
+      "status": "passed",
+      "evidence": "unit: staged-with-tasks / approved-old / running-old byte-identical, only stale-empty archived. INTEGRATION: protectedByteIdentical=true"
+    },
+    "assertion3_ownTeam_not_archived": {
+      "status": "passed",
+      "evidence": "unit: reclaimStaleStagedTeams(..., ownTeamId:'own-team') archives only other-team, reports skipped [{teamId:'own-team',reason:'own-session'}]; the own team stays live and is never under archive/."
+    },
+    "extras": {
+      "freshTeamNotResidue": "a staged team newer than the threshold is untouched",
+      "configThreshold": "Config({}).reclaimStaleAfterMs === 3600000 (1 h)"
+    }
+  },
+  "F2_finalisation": {
+    "status": "passed",
+    "evidence": "r3-auto-reclaim.test.mjs F2 case: on ONE record panel state=open + failedDependencyIds ['A'] and task-contract failed_dependencies ['A'] are equal, and the dependent really claims; reverse controls in r3-view-parity.test.mjs."
+  },
+  "F6_finalisation": {
+    "status": "passed",
+    "sameOriginAs": "t18 review F6 + my SC-F1 (merged disposition)",
+    "evidence": "TEAM_TOOL_NAMES SET-EQUAL to the frozen 14 (r3-view-parity F6). MEMBER deliberately excluded (captain-facing); CAPTAIN derived as complement."
+  },
+  "S3_levelJudgment": {
+    "level": "PREDICATE-LEVEL with the live call path; NOT dispatch-level",
+    "covered": "lib/scheduler.js exports isTaskReady (region ready-task-predicate) and nextReadyTask() calls it, so the tested predicate is the one the dispatcher uses; the S3 test drives that export.",
+    "notCovered": "installTeamScheduler() is not driven, so no ticket-creation for a ready task is witnessed.",
+    "recommendation": "DO NOT add a dispatch-level harness now: (1) a live ticket assertion needs a booted team with an approved plan and spawned members, duplicating the existing agent-teams-adopt/dispatch QA cases; (2) readiness is a pure function that is now the single source of truth for dispatcher and test alike; (3) effort belongs to t26. If still wanted, the cheapest honest form is exporting nextReadyTask and asserting on it, or a scheduler-only QA case (one-task approved plan observing the ticket) - a new QA case, not further product change."
+  },
+  "verified": [
+    {
+      "what": "R3 unit assertions (captain's three + two extras)",
+      "command": "bun test packages/mpd-agent-teams-plugin/test/r3-auto-reclaim.test.mjs",
+      "exit": 0,
+      "evidence": "6 pass / 0 fail"
+    },
+    {
+      "what": "R3 against a REAL session boot",
+      "command": "node evidence/omo-align/implementation/r3b/raw/integration-reclaim.mjs",
+      "exit": 0,
+      "evidence": "staleStagedArchived=true, protectedByteIdentical=true, liveBefore 6 -> liveAfter 3"
+    },
+    {
+      "what": "F2 view parity",
+      "command": "bun test packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs",
+      "exit": 0,
+      "evidence": "4 pass"
+    },
+    {
+      "what": "F1 ratified behaviour",
+      "command": "bun test packages/mpd-agent-teams-plugin/test/r3-f1-signal-c.test.mjs",
+      "exit": 0,
+      "evidence": "4 pass"
+    },
+    {
+      "what": "plugin tests",
+      "command": "bun test packages/mpd-agent-teams-plugin",
+      "exit": 0,
+      "evidence": "148 pass / 0 fail"
+    },
+    {
+      "what": "all packages",
+      "command": "bun test packages",
+      "exit": 0,
+      "evidence": "see r3b gate log"
+    },
+    {
+      "what": "typecheck",
+      "command": "bun run typecheck",
+      "exit": 0
+    },
+    {
+      "what": "installer self-test + dry-run",
+      "command": "node scripts/install-profile.mjs --self-test; --dry-run",
+      "exit": 0
+    },
+    {
+      "what": "mpd-delta discipline",
+      "command": "node scripts/patch-agent-teams-fixes.mjs --check",
+      "exit": 0,
+      "evidence": "21 regions / 6 adopted files, clean"
+    },
+    {
+      "what": "two-sided gate (no regression)",
+      "command": "node skills/dsh-qa/scripts/session-start-team.mjs",
+      "exit": 0,
+      "evidence": "see r3b gate log"
+    },
+    {
+      "what": "preset-conformance",
+      "command": "node skills/dsh-qa/scripts/preset-conformance.mjs",
+      "exit": 0
+    },
+    {
+      "what": "verify-vendor",
+      "command": "node scripts/verify-vendor.mjs",
+      "exit": 0
+    }
+  ],
+  "notVerified": [
+    {
+      "what": "installTeamScheduler dispatch-level assertion",
+      "why": "stated in S3_levelJudgment: predicate-level + the live call path is covered; a ticket-creation assertion would duplicate the existing adopt/dispatch QA cases."
+    },
+    {
+      "what": "the reclamation info log line reaching headless output",
+      "why": "integration boundarySeen=false: the archive HAPPENED (filesystem delta proves it) but the info line was not observed in the headless process output; log visibility only."
+    }
+  ],
+  "cannotVerify": [
+    {
+      "what": "a candidate that is both stale AND the session's own team in a real boot",
+      "why": "at the first pre-step a fresh session has no team yet, so this state cannot arise naturally; the own-team exclusion is asserted at the function level."
+    }
+  ],
+  "changedPaths": [
+    "packages/mpd-agent-teams-plugin/lib/state.js",
+    "packages/mpd-agent-teams-plugin/lib/session-start.js",
+    "packages/mpd-agent-teams-plugin/lib/index.js",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+    "packages/mpd-bundle/cordis.patch.yml",
+    "scripts/install-profile.mjs",
+    "packages/mpd-agent-teams-plugin/test/r3-auto-reclaim.test.mjs",
+    "evidence/omo-align/implementation/r3b/result.json",
+    "evidence/omo-align/implementation/r3b/raw/integration-reclaim.mjs"
+  ],
+  "frozenFiles": {
+    "packages/mpd-agent-teams-plugin/lib/state.js": {
+      "bytes": 45832,
+      "sha256": "e4064715663ee4e713350fbc8ad65f0c2f743ecb89287e91e403510aa671f64d"
+    },
+    "packages/mpd-agent-teams-plugin/lib/session-start.js": {
+      "bytes": 26917,
+      "sha256": "2372df644e52c88247ea89354b8414071ebd5c87061a6d869a52786002475793"
+    },
+    "packages/mpd-agent-teams-plugin/lib/index.js": {
+      "bytes": 38041,
+      "sha256": "c1a31baabb25d83f73d933c937edfcd58b2afcac56bf419c9c75b118db1754c7"
+    },
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": {
+      "bytes": 75746,
+      "sha256": "43af030ebbc4beb46ff57cc4683b2fbdc49168ebb7cf0c4cf137a2e98837c00d"
+    },
+    "packages/mpd-agent-teams-plugin/lib/tool-names.js": {
+      "bytes": 989,
+      "sha256": "19d3dab403bc27e1cfa845a7db816a18d22cab410407f0953470196f23782884"
+    },
+    "scripts/install-profile.mjs": {
+      "bytes": 22037,
+      "sha256": "3ce3179f7ef1ce2046d66ff118672f7a5a744aea9ed6a8635c2df4a2fd90224d"
+    },
+    "packages/mpd-bundle/cordis.patch.yml": {
+      "bytes": 21202,
+      "sha256": "119cf6d98e5a75ba5682425a916ca26a4b68fee4ad4b75ee9451db97d864e2a0"
+    }
+  }
+}
