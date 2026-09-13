@@ -966,8 +966,13 @@ export async function findStaleStagedTeams(stateRoot, options = {}) {
             continue;
         if (!Array.isArray(team.tasks) || team.tasks.length > 0)
             continue;
-        if (!Number.isFinite(team.createdAt) || now - team.createdAt <= staleAfterMs)
-            continue;
+        // staleAfterMs === 0 DISABLES the age gate: the criterion degrades to
+        // `staged && !approvedAt && tasks.length === 0` (contract), so a threshold of 0
+        // still never touches a team that carries tasks or is approved.
+        if (staleAfterMs > 0) {
+            if (!Number.isFinite(team.createdAt) || now - team.createdAt <= staleAfterMs)
+                continue;
+        }
         candidates.push({ teamId: team.id, createdAt: team.createdAt, ageMs: now - team.createdAt });
     }
     candidates.sort((left, right) => right.createdAt - left.createdAt);
