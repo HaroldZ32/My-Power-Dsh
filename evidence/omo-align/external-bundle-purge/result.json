@@ -172,5 +172,11 @@
       "vendorGate": "PASS (no skills/** change, so the lock is untouched)",
       "twoSidedGate": "PASS (simple [0,0,0] no notices; complex [1,1,1] one notice each; negative control disarmed)"
     }
+  },
+
+  "duplicateWorkAndConcurrency": {
+    "finding": "The three folded-in fixes were implemented TWICE. This executor applied and verified them, then a concurrent writer switched branches in the shared checkout mid-task (reflog: checkout to a t25-closeout fix branch, commit, then a reset of dev), which discarded the uncommitted first attempt. The other writer's merge (06503cd) carries the same three fixes, including the identical trigger-comment rationale and the same line placement, so nothing needed re-committing; the second attempt was verified and discarded as a no-op.",
+    "finalState": "No functional divergence: the declaration signature, the removed dead constant and the trigger note are present exactly once in the merged revision; the registry stays byte-faithful at 21 regions / 6 files.",
+    "hazardForTheRecord": "A reset was run on the shared integration branch while a merge-parent was at its tip. That operation is only 'safe' by luck: had the tip been a merge commit, the reset would have dropped the entire merge with it. Multiple writers sharing one checkout must serialize branch switching, never run a reset on the shared branch, and never trust an uncommitted attempt to survive another writer's checkout."
   }
 }
