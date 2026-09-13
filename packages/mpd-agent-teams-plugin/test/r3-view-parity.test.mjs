@@ -29,6 +29,7 @@ const teamTasks = (aStatus) => [
 test("F2: a dependent of a FAILED dependency is NOT rendered blocked in the panel view", () => {
     const tasks = teamTasks("failed")
     // The panel's visual state must agree with the claimable reality.
+    // OPT-1, correct slots: a terminal-failed dependency leaves the dependent open.
     expect(taskVisualState("pending", tasks, ["A"])).toBe("open")
     expect(failedDependencyIds(tasks, ["A"])).toEqual(["A"])
     // A genuinely unfinished dependency still blocks (reverse control).

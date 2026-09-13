@@ -1,0 +1,47 @@
+{
+  "task": "t25 F2 close-out (residual defects from the r2 review)",
+  "anchor": {
+    "head": "787796b399915caf58748f23554aa028f40f59a6",
+    "note": "HEAD plus the four-file close-out edit set; the close-out commit that carries this evidence is its own anchor."
+  },
+  "defectsClosed": [
+    {
+      "id": "F2-a",
+      "file": "packages/mpd-agent-teams-plugin/lib/types/state.d.ts",
+      "was": "taskVisualState(status, dependencies, tasks) - the stale 0.1.14-era declaration; ships in dist/ and is copied wholesale by pack-mpd.mjs",
+      "now": "taskVisualState(status, tasks, dependencies), matching the runtime implementation",
+      "runtimeProof": "packages/mpd-agent-teams-plugin/lib/state.js:1047 declares export function taskVisualState(status, tasks, dependencies)"
+    },
+    {
+      "id": "F2-b",
+      "file": "packages/mpd-agent-teams-plugin/lib/session-start.js",
+      "was": "dead export MATCHED_SIGNAL_MIN = 2 left behind by the Option A ratification, still emitted into the generated registry body",
+      "now": "removed; grep for MATCHED_SIGNAL_MIN across packages/mpd-agent-teams-plugin returns zero references",
+      "registryConsequence": "lib/mpd-deltas.js carries the regenerated session-start-gate body; --write-registry was run after the in-region edit"
+    },
+    {
+      "id": "F1-note",
+      "file": "packages/mpd-agent-teams-plugin/lib/session-start.js",
+      "change": "the trigger comment now names the Option A adjudication and the frozen contract's complexityGate.logicRevisionNote, and states the accepted, ledgered false-positive cost"
+    }
+  ],
+  "notADefect": {
+    "id": "F2-c",
+    "file": "packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs:42",
+    "claim": "reported as a wrong-slot call that passes by accident (tasks in the dependencies position)",
+    "measured": "FALSE - the call is taskVisualState(\"pending\", tasks, [\"ghost\"]), i.e. (status, tasks, dependencies), which is the CORRECT slot order under the runtime signature. The wrong-slot reading only holds against the STALE state.d.ts (F2-a), so fixing F2-a is what closes it. The other five assertions in the same test use the correct slots too (measured: [\"A\"] in the third position).",
+    "action": "no test edit; a comment was added naming the OPT-1 slot order"
+  },
+  "gates": {
+    "patch-agent-teams-fixes --check": { "status": "PASS", "detail": "already applied: 21 mpd delta region(s) across 6 adopted file(s)" },
+    "verify-vendor": { "status": "PASS", "exitCode": 0 },
+    "bun test packages/mpd-agent-teams-plugin": { "status": "PASS", "detail": "153 pass / 0 fail / 994 expect() calls across 40 files" },
+    "bun run typecheck": { "status": "PASS", "detail": "tsgo --noEmit, exit 0" },
+    "bun run test:qa": { "status": "PASS", "detail": "all self-tests passed; team-route-rewire 13 checks with the staged pack usable" }
+  },
+  "purgeResidual": {
+    "trackedIdentifierScan": "git grep -i silicon over tracked files = 1 hit, the exempt upstream text 'macOS Apple Silicon' (a Rust target-triple note in skills/ast-grep/references/install.md:89)",
+    "untrackedNonIgnoredScan": "644 untracked, non-ignored files scanned byte-wise = 0 identifier hits",
+    "generatedArtifact": "dist/mpd-package (gitignored, local build output) carried 4 stale copied files; deleted and regenerated with node scripts/pack-mpd.mjs from the purged source, rescanned = 1 hit (the same exempt Apple Silicon line)"
+  }
+}

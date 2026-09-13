@@ -216,9 +216,11 @@ export type VisualTaskState = 'blocked' | 'open' | 'running' | 'completed' | 'fa
 /**
  * The visual state of one task: `running` while in_progress, `completed`
  * when done, `failed`/`cancelled` when terminal without success, `blocked`
- * while any dependency is unfinished, else `open`.
+ * while any dependency is unfinished, else `open`. A dependency whose own
+ * status is terminal-failed (or cancelled) is NOT unfinished: it cannot block
+ * the dependent, which stays `open` and claimable (OPT-1).
  */
-export declare function taskVisualState(status: string, dependencies: readonly string[], tasks: readonly TeamTask[]): VisualTaskState;
+export declare function taskVisualState(status: string, tasks: readonly TeamTask[], dependencies: readonly string[]): VisualTaskState;
 /**
  * Longest dependency path depth per task id (each depth = one lane column).
  */

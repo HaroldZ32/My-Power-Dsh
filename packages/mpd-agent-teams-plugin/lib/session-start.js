@@ -101,8 +101,6 @@ export const ENUMERATED_LINE_MIN = 3;
 export const ACTION_VERB_MIN = 3;
 /** Sub-signals of C that must hold for C itself to fire (2-of-3 majority). */
 export const C_SUBSIGNAL_MIN = 2;
-/** Gate threshold: soft signals that must fire when no explicit flag is present. */
-export const MATCHED_SIGNAL_MIN = 2;
 /** Relative directory (under the session workspace) holding plan artifacts. */
 export const PLANS_DIR = join('.mpd', 'plans');
 /**
@@ -183,10 +181,15 @@ export function evaluateComplexityGate(text, input = {}) {
         signals.push('C');
     if (input.planArtifact === true)
         signals.push('D');
-    // A counted signal reaching C's own 2-of-3 bar (or an explicit flag) is the
-    // trigger. Re-requiring a SECOND counted signal here would make the gate
-    // unreachable for the frozen complex prompts, which carry no B/D/flag at all —
-    // measured: complex #1 and #3 have C as their ONLY signal. See the module doc.
+    // Option A (captain adjudication, user decision 2026-09-13) — see the frozen
+    // contract's `complexityGate.logicRevisionNote`, which SUPERSEDES the original
+    // "trigger = (matchedSignals >= 2) OR anyExplicitFlag". A satisfied C (its own
+    // 2-of-3 bar) is by itself SUFFICIENT to trigger. Do NOT restore a `>= 2`
+    // counted-signal threshold here: measured, the frozen complex prompts #1 and #3
+    // carry no B/D/flag at all, so C is their ONLY signal and a >=2 bar makes the
+    // gate unreachable against its own frozen expectation. The accepted, ledgered
+    // cost is that a multi-clause request ("Check the test, build the package,
+    // verify the output.") satisfies C too and therefore DOES route to a team.
     const trigger = input.explicitFlag === true || signals.length >= 1;
     return { trigger, signals };
 }
