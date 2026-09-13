@@ -3,8 +3,8 @@
 
 Plan C / C6 — git/svn-backed memory engine with a reflection state machine.
 
-Adapted from the upstream package `memory-core` semantics (base 8c57e46; covered by
-SUL-1.0): markdown memory files with frontmatter
+Adapted from the upstream package `memory-core` semantics (base 8c57e46; SUL-1.0,
+inherited from upstream): markdown memory files with frontmatter
 (`description`/`kind`/`aliases`/`read_only`), journal + facts queues,
 reflection reducer (step-count / manual / dream triggers, reservation state),
 and a VCS abstraction with git AND svn backends.

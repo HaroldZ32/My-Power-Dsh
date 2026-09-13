@@ -1,6 +1,6 @@
 // C5 mpd-boulder-plugin: durable work-state machine (boulder) on the DSH tool seam.
 // Vendored core: the upstream project packages/boulder-state (base 8c57e46;
-// covered by SUL-1.0; see LICENSE.md). Adaptations: state root -> .mpd convention and
+// SUL-1.0, inherited from upstream; see LICENSE.md). Adaptations: state root -> .mpd convention and
 // session platform default -> "dsh" (legacy host prefixes still readable; see vendor/constants.ts, storage/shared.ts).
 import {
   readBoulderState,
