@@ -5,7 +5,7 @@
 QA-only probe plugin (never shipped in the bundle): mounted by QA overlays
 (`tests/overlays/roles-probe.yml`) to assert in a real boot that (1) the `mpd` preset
 resolves unmounted-broken and (2) the `mpdRoles` roster answers with the full 11-role
-OMO roster. Exits non-zero on failure so the QA case catches regressions.
+specialist roster. Exits non-zero on failure so the QA case catches regressions.
 
 ## What it does
 

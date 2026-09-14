@@ -1,0 +1,71 @@
+revision: 53d617e6c2d29dfadec06278bc4130061055378e
+
+[KP-01] want=PRESENT got=2 OK
+     2:  "upstream": "code-yeongyu/oh-my-openagent",
+     5:- All third party components incorporated into the oh-my-opencode Software are licensed under the original license
+[KP-02] want=PRESENT got=1 OK
+     303:  const nm = join(work, "node_modules", "@oh-my-opencode")
+[KP-03] want=PRESENT got=2 OK
+     23:Subcommands: `search`, `replace` (dry-run; `--apply` to write), `scan`, `test`, `new`, `langs`, `doctor`, `install`, `validate`. Resolves the `sg`/`ast-grep` binary across PATH, Homebrew, npm, and MPD caches, validates patterns before executing, and shells out — it never links ast-grep as a library. Internal handlers `cmd_*`; utilities `validate_pattern`, `normalize_lang`, `resolve_binary`, `run_sg`. Nothing in-repo imports it; docs and skills invoke it by path. `omo-opencode/src/cli/install-ast-grep-sg.ts` locates this skill dir to install the binary.
+     .mpd-dsh/upstream/packages/omo-opencode/src/cli/install-ast-grep-sg.ts
+[KP-04] want=PRESENT got=1 OK
+     133:- [`omo` (oh-my-opencode)](https://github.com/code-yeongyu/oh-my-opencode) — `src/tools/ast-grep/` is the original tool implementation; this skill is a port of its pattern-hint detection and two-pass-write strategy.
+[KP-06-AFTER-T5] want=ABSENT got=0 OK
+     
+[KF-01] want=PRESENT got=1 OK
+     5
+[KF-02] want=PRESENT got=3 OK
+     173:  // these very files). See BRAND_TOKEN_RE below for the same discipline.
+     219:const BRAND_TOKEN_RE = /(?<![A-Za-z0-9])(_{0,2}omo(?:[A-Z][A-Za-z0-9]*|[-_][A-Za-z0-9]*|\/[A-Za-z0-9._-]*)*[-_\/]?)/gi
+     223:  return [...new Set([...text.matchAll(BRAND_TOKEN_RE)].map((match) => match[1]))]
+[KF-03] want=PRESENT got=4 OK
+     8819:var MIGRATION_ID = "2026-07-codex-config-jsonc";
+     8851:  const senpi = recordAt(legacy, "[senpi]");
+     8854:    diagnostics: upstream !== undefined && senpi !== undefined ? ["conflict: [senpi] legacy [upstream] kept [senpi]"] : [],
+     8877:    id: MIGRATION_ID,
+[KF-04] want=PRESENT got=2 OK
+     366:  const userConfigPath = translateHomeConfigEnv(env["LSP_TOOLS_MCP_USER_CONFIG"], home, ".codex/lsp-client.json");
+     6248:  if (configDirName !== ".opencode" && configDirName !== ".mpd")
+[KF-05] want=PRESENT got=7 OK
+     365:  const projectConfigPaths = translateProjectConfigEnv(env["LSP_TOOLS_MCP_PROJECT_CONFIG"], cwd);
+     366:  const userConfigPath = translateHomeConfigEnv(env["LSP_TOOLS_MCP_USER_CONFIG"], home, ".codex/lsp-client.json");
+     367:  const installDecisionsPath = translateHomeConfigEnv(env["LSP_TOOLS_MCP_INSTALL_DECISIONS"], home, ".codex/lsp-install-decisions.json");
+     6153:    const cwd = options.cwd ?? inferOpenCodeProjectCwd(env["LSP_TOOLS_MCP_PROJECT_CONFIG"]);
+     6228:    LSP_TOOLS_MCP_PROJECT_CONFIG: canonicalizePathList(env["LSP_TOOLS_MCP_PROJECT_CONFIG"]),
+     6229:    LSP_TOOLS_MCP_USER_CONFIG: canonicalizePath(env["LSP_TOOLS_MCP_USER_CONFIG"]),
+     6230:    LSP_TOOLS_MCP_INSTALL_DECISIONS: canonicalizePath(env["LSP_TOOLS_MCP_INSTALL_DECISIONS"])
+[KF-06] want=PRESENT got=2 OK
+     packages/mpd-mcp-astgrep/dist/cli.js:437:  const codexHome = nonEmptyValue(options.env["CODEX_HOME"]);
+     skills/ast-grep/scripts/ast_grep_helper.py:235:    codex_home = os.environ.get("CODEX_HOME")
+[KF-07] want=PRESENT got=2 OK
+     AGENTS.md:366:  gateway providers (`llm-pi-ai` providers — opencode-go/scnet) configure the chain there, and
+     skills/dsh-qa/scripts/mcp-call.mjs:30:  // keys come from gateway providers (llm-pi-ai — opencode-go/scnet) configure the chain
+[KF-08] want=2 got=2 OK
+     342:    - id: tool-subagent-codex
+     351:    - id: tool-subagent-claude-code
+[KF-09] want=PRESENT got=3 OK
+     packages/mpd-boulder-plugin/src/vendor/storage/shared.ts:9:type SessionPlatform = "codex" | "opencode" | "senpi" | "dsh"
+     packages/mpd-boulder-plugin/src/vendor/storage/shared.ts:11:const SESSION_ID_PREFIX_PATTERN = /^(codex|opencode|senpi|dsh):/
+     packages/mpd-boulder-plugin/test/boulder.test.ts:22:  expect(normalizeSessionId("senpi:x")).toBe("senpi:x")
+[KH-01] want=PRESENT got=3 OK
+     packages/mpd-team-compact-plugin/src/index.ts:6:// Frozen semantics (evidence/omo-align/requirements/team-compaction-contract.json):
+     packages/mpd-team-compact-plugin/src/index.ts:16:// evidence/omo-align/compact-hinge/result.json):
+     skills/dsh-qa/scripts/session-start-team.mjs:26:// The frozen prompt sets (evidence/omo-align/requirements/frozen-contract.json).
+[KH-02] want=PRESENT got=0 FAIL
+     
+[KH-03] want=PRESENT got=4 OK
+     PLAN.md
+     docs/omo-parity-gap.md
+     docs/plan-e.md
+     docs/plan-f.md
+[KH-04] want=PRESENT got=3 OK
+     4:`packages/omo-opencode/src/agents/` + `packages/prompts-core/prompts/{atlas,prometheus}/*` +
+     59:  `load_skills` removed in favor of the skill clause, `call_omo_agent` -> `subagent`,
+     72:  `.omo/plans`) — both are namespace-convention adaptations.
+[KN-01] want=PRESENT got=2 OK
+     134:        os.environ["OMOB_TEST_TOKEN"] = "secret"
+     139:            os.environ.pop("OMOB_TEST_TOKEN", None)
+[KN-02] want=PRESENT got=1 OK
+     354:                executionPrompt: "Autonomous deep worker. Receive goals, execute them end-to-end with tools, verify every change, report evidence-first."
+[KN-03] want=PRESENT got=1 OK
+     203:// DELIBERATELY OUT OF SCOPE: `platformFrmpdOptions`. Our older global upstream-spelling -> mpd rewrite corrupted

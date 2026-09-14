@@ -28,7 +28,7 @@ trap 'rm -rf "$OUTPUT_DIR"' EXIT
 fail() { echo "FAIL: $*" >&2; exit 1; }
 pass() { echo "PASS: $*"; }
 
-omo_runtime_slug() {
+mpd_runtime_slug() {
   case "$(uname -s)" in
     Darwin) local os_slug="darwin" ;;
     MINGW*|MSYS*|CYGWIN*) local os_slug="win32" ;;
@@ -123,10 +123,10 @@ MPD_AST_GREP_SG_PATH="$FAKE_ENV_SG" $HELPER doctor > "$OUTPUT_DIR/env.out" 2>&1
 grep -Fq "ast-grep binary: $FAKE_ENV_SG" "$OUTPUT_DIR/env.out" || fail "MPD_AST_GREP_SG_PATH was not preferred: $(cat "$OUTPUT_DIR/env.out")"
 pass "MPD_AST_GREP_SG_PATH resolves first"
 
-# Given HOME has an OMO runtime sg executable.
+# Given HOME has an MPD runtime sg executable.
 # When doctor resolves ast-grep, then it reports the HOME runtime path.
 RUNTIME_HOME="$OUTPUT_DIR/home"
-RUNTIME_SLUG="$(omo_runtime_slug)"
+RUNTIME_SLUG="$(mpd_runtime_slug)"
 RUNTIME_BIN="sg"
 case "$RUNTIME_SLUG" in
   win32-*) RUNTIME_BIN="sg.exe" ;;

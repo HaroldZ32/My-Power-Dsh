@@ -17,12 +17,12 @@ The bundle ships ONE preset (`mpd`, the main working agent; assets under
 `packages/mpd-bootstrap-plugin/presets/mpd`): it configures `dsh-agent-instructions`
 with `instructionFileCandidates: [AGENT.md, AGENTS.md, CLAUDE.md]` so every project
 session attempts to read AGENT.md, and it declares native tool presentation. The
-OMO-origin agents exist as a subagent roster (`mpd-roles-plugin`), not as presets.
+The specialists exist as a subagent roster (`mpd-roles-plugin`), not as presets.
 
 ## Session-start team gate (binding)
 
 A session starts with **NO team** — a team is not a precondition of a session
-(upstream parity: OMO team mode ships disabled by default). What is enforced
+(upstream parity: the upstream team mode ships disabled by default). What is enforced
 mechanically by the adopted agent-teams plugin is a **complexity gate**
 (`sessionTeamPolicy` config, implementation in
 `packages/mpd-agent-teams-plugin/lib/session-start.js`), not prompt guidance alone:
@@ -56,7 +56,7 @@ without creating anything. Both values are preserved.
 
 ## Configuration plane
 
-The row also carries the upstream-aligned limits (measured against OMO
+The row also carries the upstream-aligned limits (measured against the upstream
 `team_mode`), all absent-safe and defaulting to the frozen local values:
 `maxMembers: 16` (local ceiling kept), `maxParallelMembers: 8`,
 `maxMessagesPerRun: 10000`, `maxWallClockMinutes: 120`, `maxMemberTurns: 500`,

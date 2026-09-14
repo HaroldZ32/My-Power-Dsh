@@ -1,0 +1,41 @@
+### t2 attempt 2 — fresh test:qa run (the ONE interim RED, current measurement) ###
+2026-09-14T07:18:37Z
+221171444240f0f55794c5d73b16b92701a7ed72
+
+### carries check: my AGENTS.md edits must NOT have removed the functionally-required literals ###
+-- root AGENTS.md mentions:
+512:| the GUI lists a plugin under a foreign name (e.g. "oh-my-opencode") and `@mpd-dsh/mpd` is absent | that name is a real dependency of the profile (`<profile>/package.json`), NOT a rename of the bundle: a `link:` to the upstream oh-my-openagent CLI checkout declares no `dsh.bundle`, so it joins the layer stack as a plain dependency while our layer is gone. Inspect with `dsh --profile <p> --dump-config` (no `@mpd-dsh/mpd` rows) and `dsh.profile.bundles` in the profile manifest, then re-add the bundle in one command (`dsh plugin --profile <p> add <repo>`) |
+-- scripts/build-mcp.mjs: touched by t2?
+   (empty = untouched by t2)
+16:// lsp-daemon / lsp-core / mcp-stdio-core / utils / omo-config-core.
+26:// package dir name omo-config-core (upstream is never renamed). The scrub
+30:const CORE = ["mcp-stdio-core", "utils", "omo-config-core", "lsp-core"]
+276:  const nm = join(work, "node_modules", "@oh-my-opencode")
+-- boulder src/test/dist touched by t2?
+   (empty = untouched by t2)
+
+### bun run test:qa (fresh, full log tail) ###
+$ for f in skills/dsh-qa/scripts/*.mjs; do echo "[test:qa] $f"; bun "$f" --self-test || { echo "[test:qa] FAILED: $f"; exit 1; }; done; echo "[test:qa] all self-tests passed"
+[test:qa] skills/dsh-qa/scripts/agent-teams-adopt.mjs
+[agent-teams-adopt self-test] ok: notice + adopted LICENSE + 0.1.16-rc.3-mpd + _deps + AGENTS.md + installer self-test verified
+[test:qa] skills/dsh-qa/scripts/agent-teams-dispatch.mjs
+  ok   installed host exposes no subagent followup member
+  ok   installed host owns the public subagent prompt seam
+  ok   installed host face declares the prompt request/receipt contract
+  ok   member delivery uses the audited boundary
+  ok   no call site uses ctx.subagents.followup
+  ok   modern delivery prefers the public prompt seam
+  ok   modern member setup receives the live Agent instead of reading childCtx.agent
+  ok   legacy followup/queue remain only as older-generation fallbacks
+  ok   task mutations kick the whole team
+  ok   member idle edges kick that member
+  ok   delivery failure rolls the claim back instead of stranding it
+  ok   capabilities deny all captain-only tools for members
+  ok   members receive member instructions, not the captain protocol
+  ok   real run asserts the wake on the dependent task's assignee only
+[agent-teams-dispatch self-test] ok: 14 checks
+[test:qa] skills/dsh-qa/scripts/agent-teams-messaging.mjs
+[agent-teams-messaging] FAIL: VENDOR_LOCK skills asset is stale: lock=331/c1f424fef1a2 tree=297/1d277907045e (re-pin in the same commit, AGENTS.md §9)
+[test:qa] FAILED: skills/dsh-qa/scripts/agent-teams-messaging.mjs
+error: script "test:qa" exited with code 1
+TESTQA_EXIT=1

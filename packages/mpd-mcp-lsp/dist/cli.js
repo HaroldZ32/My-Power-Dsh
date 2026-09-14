@@ -5355,7 +5355,7 @@ function authenticateMessage(raw, expectedToken) {
   const params = raw["params"];
   if (!isPlainRecord(params))
     return authError(id);
-  const envelope = params["_omo"];
+  const envelope = params["_mpd"];
   if (!isPlainRecord(envelope))
     return authError(id);
   const protocolVersion = envelope["protocolVersion"];
@@ -5365,7 +5365,7 @@ function authenticateMessage(raw, expectedToken) {
   if (typeof token !== "string" || !tokenMatches(token, expectedToken))
     return authError(id);
   const cleanParams = { ...params };
-  delete cleanParams["_omo"];
+  delete cleanParams["_mpd"];
   return { input: { ...raw, params: cleanParams }, id, method: typeof raw["method"] === "string" ? raw["method"] : undefined };
 }
 function isAuthErrorResponse(message) {
@@ -5736,7 +5736,7 @@ function pingDaemon(paths, token, timeoutMs = PROBE_TIMEOUT_MS, signal) {
       finish(parsePingResponse(message));
     });
     socket.once("connect", () => {
-      socket.write(encodeJsonLine({ jsonrpc: "2.0", id: 1, method: "mpd/ping", params: { _omo: authEnvelope(token) } }));
+      socket.write(encodeJsonLine({ jsonrpc: "2.0", id: 1, method: "mpd/ping", params: { _mpd: authEnvelope(token) } }));
     });
     socket.on("data", (chunk) => decoder.push(chunk));
     socket.once("error", () => {
@@ -6024,7 +6024,7 @@ function sendToolCall(paths, token, name, args, options) {
     const cancelPayload = () => encodeJsonLine({
       jsonrpc: "2.0",
       method: "$/cancelRequest",
-      params: { _omo: authEnvelope(token), id: requestId }
+      params: { _mpd: authEnvelope(token), id: requestId }
     });
     const finish = (run) => {
       if (settled)
@@ -6077,7 +6077,7 @@ function sendToolCall(paths, token, name, args, options) {
         jsonrpc: "2.0",
         id: requestId,
         method: "tools/call",
-        params: { _omo: authEnvelope(token), name, arguments: args }
+        params: { _mpd: authEnvelope(token), name, arguments: args }
       });
       socket.write(payload, () => {
         requestWritten = true;

@@ -1,0 +1,25 @@
+{
+  "measuredAt": "2026-09-14T07:15:46.987Z",
+  "gitHead": "221171444240f0f55794c5d73b16b92701a7ed72",
+  "method": "verify-vendor.mjs buildTreeSha (relpath sorted, sha256 of LF-normalized bytes, node_modules skipped)",
+  "revision_note": "re-measured AFTER the captain-ordered ast-grep AGENTS.md:23 repair (a skills/** edit); supersedes the 4299afc4 value in 03-corpus-after-deletion.json",
+  "skills_fileCount": 297,
+  "skills_treeSha": "1d277907045ef1d18fd390b5db1a2ce537c38e7692732ee022ca5a7ea75402c1",
+  "vendorLock_skills_at_measure_time": {
+    "fileCount": 331,
+    "treeSha": "c1f424fef1a283bcbfb1167fd05e18562bae50d4e0a897871596799642259e06"
+  },
+  "repin_required_by": "t6 (VENDOR_LOCK single writer)",
+  "repin_target": {
+    "assets.skills.fileCount": 297,
+    "assets.skills.treeSha": "1d277907045ef1d18fd390b5db1a2ce537c38e7692732ee022ca5a7ea75402c1"
+  },
+  "skills_edits_this_turn": [
+    "skills/dsh-qa/SKILL.md",
+    "skills/dsh-qa/scripts/preset-register.mjs",
+    "skills/coding-agent-sessions/** (34 files deleted)",
+    "skills/ast-grep/AGENTS.md:23 (captain-ordered corruption repair)"
+  ],
+  "deleted_dir": "skills/coding-agent-sessions",
+  "deleted_fileCount": 34
+}

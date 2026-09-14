@@ -1,0 +1,20 @@
+{
+  "measuredAt": "2026-09-14T07:07:39.091Z",
+  "gitHead": "221171444240f0f55794c5d73b16b92701a7ed72",
+  "method": "verify-vendor.mjs buildTreeSha (relpath sorted, sha256 of LF-normalized bytes, node_modules skipped) -- the authoritative re-pin method",
+  "skills_fileCount_after_deletion": 297,
+  "skills_treeSha_after_deletion": "4299afc4241a164700c5b2f6785325affb914b01681ed51728a8a4933a83774f",
+  "raw_byte_treeSha_for_reference": "178b36ab4d5b937bd5b67fd6517feee83baf956f97b6362288120f1743c01bd1",
+  "note_on_two_hashes": "the raw-byte hash differs only because skills/ultimate-browsing/engine/tests/fixtures/amp_redirect_stub.html carries a CR byte; verify-vendor normalizes CRLF to LF (its readBytes), so ONLY the normalized value is a valid re-pin target",
+  "vendorLock_skills_at_measure_time": {
+    "fileCount": 331,
+    "treeSha": "c1f424fef1a283bcbfb1167fd05e18562bae50d4e0a897871596799642259e06"
+  },
+  "repin_required_by": "t6 (VENDOR_LOCK is out of scope for this task, single-writer file)",
+  "repin_target": {
+    "assets.skills.fileCount": 297,
+    "assets.skills.treeSha": "4299afc4241a164700c5b2f6785325affb914b01681ed51728a8a4933a83774f"
+  },
+  "deleted_dir": "skills/coding-agent-sessions",
+  "deleted_fileCount": 34
+}

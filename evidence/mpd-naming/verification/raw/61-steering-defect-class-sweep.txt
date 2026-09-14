@@ -1,0 +1,32 @@
+t18 ADDENDUM — captain steering (R14) re-verified at the pinned revision
+HEAD=$(git rev-parse HEAD)  PORCELAIN=$(git status --porcelain | wc -l)
+T4 recheck: 39/39 modified product files == T1 snapshot; 4948/4948 tracked files == T1 snapshot
+evidence/: no tracked modification (only untracked-new entries)
+
+STEERING 1 — the voided premise
+  git status --porcelain -- skills/ VENDOR_LOCK.json
+   M VENDOR_LOCK.json
+   M skills/ast-grep/AGENTS.md
+   M skills/ast-grep/scripts/ast_grep_helper.py
+   M skills/ast-grep/tests/smoke.sh
+   M skills/ulw-plan/scripts/scaffold-plan.mjs
+  git diff --stat HEAD -- skills/  -> 4 files changed, 15 insertions(+), 15 deletions(-)
+  => FOUR skills writers, confirmed; my verdict never depended on the voided clause.
+  ONE re-pin: git diff -U0 -- VENDOR_LOCK.json | grep -cE '^[+-][^+-]' -> 8 (skills treeSha + gitbash sha + lsp sha + lockedAt)
+  Settled bytes: t17 filed two >=50s recomputations (re-pin/result.json.revision.settleProtocol); corroborated by this lane's T1==T2 (60s) and T3/T4 re-hashes.
+
+STEERING 2 — defect classes that must still be able to fail (all measured NOT PRESENT, each with a negative control)
+  identity label outside allowlisted roots : 0 files        [NC: injected label -> 54 hits]
+  codegraph MIGRATION_ID + [senpi]        : 4 lines present [NC: KEEP check flips 7->0 when blanked]
+  lsp .codex discovery defaults           : 2 lines present
+  ast-grep $CODEX_HOME tier               : 1 + 1 present
+  bilingual desync / dangling link        : 0 failures / 24 files [NC: sabotaged tree -> FAIL, 7 findings]
+  evidence/** or process-record byte      : 0 modified/deleted (all untracked-new)
+  second VENDOR_LOCK change               : none (8 value lines = one re-pin)
+  lock != my own recomputation            : 6/6 equal on TWO independent scripts
+                                            (frozen 8829d727... and hardened b097d6b3...; both 297/a0f1febb...)
+  lane claim unsupported by raw output    : none found (G5 stronger-than-frozen, 5 envelope sites, codegraph surface absent, 4 skills writers)
+
+EXPECTED, NOT DEFECTS
+  bytecode caches under skills/            : 0 files; verify-vendor.mjs:79-83 hardening (0cbf505) present
+  HEAD moved during the wave               : pinned by rev-parse + per-artifact sha256, rechecked across settle windows

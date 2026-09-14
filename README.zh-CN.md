@@ -5,20 +5,19 @@
 **my-power-dsh** 是一个 DeepSeek Harness（DSH）插件 bundle —— 即包 `@mpd-dsh/mpd`：拥有自己的
 插件行、一个 `mpd` agent preset 以及随包提供的 skill 语料库，用一条 `dsh plugin add` 即可安装。
 
-**它从上游带来什么。** 本 bundle 的名册（roster）、model-chain 词汇以及若干协议键都源自 OMO，并且
-继续保持：11 个 specialist（Architect、Researcher、Planner、Deep Worker、Senior Engineer、Lead、
+**它从上游带来什么。** 本 bundle 的名册（roster）与 model-chain 词汇来自上游项目，并且继续保持：
+11 个 specialist（Architect、Researcher、Planner、Deep Worker、Senior Engineer、Lead、
 Explorer、Reviewer、Plan Reviewer、Vision Analyst、Junior Engineer）以适配后的 teammate 模板与
-workmate BASE 模板形式、沿用上游的稳定 id（`oracle`、`librarian`、`prometheus` …）随包发布；线上
-协议保留上游命名（`OMO_CODEX_*` 环境变量、LSP daemon 的 `_omo` auth envelope）。能力基线为
-[oh-my-openagent](https://github.com/code-yeongyu/oh-my-openagent)（OmO）的 commit `8c57e46`
-（v5.0.0-beta.20）—— 已固定、已校验、刻意不跟随推进。328 个文件的 skill 语料库混合了上游移植
+workmate BASE 模板形式、沿用上游的稳定 id（`oracle`、`librarian`、`prometheus` …）随包发布。能力基线为
+[oh-my-openagent](https://github.com/code-yeongyu/oh-my-openagent) 的 commit `8c57e46`
+（v5.0.0-beta.20）—— 已固定、已校验、刻意不跟随推进。297 个文件的 skill 语料库混合了上游移植
 skill、第三方上游 skill 与本仓库编写的用例；另有一个被整体采纳的组件：来自
 [dsh-agent-teams](https://github.com/NanmiCoder/dsh-agent-teams) 的 `agent-teams` 插件（MIT），以一等
 主代码形式内联并带本地适配。**其余部分——DSH 侧的管道、各插件、preset、QA 套件——均在本仓库编写**；
 RTL/EDA 表面不属于本仓库，它已被抽取到本仓库之外单独维护的 bundle 中。
 
 > **许可**：SUL-1.0 —— 继承自上游项目的许可（强 copyleft；完整文本见 [LICENSE.md](./LICENSE.md)）；
-> 上游版权归 code-yeongyu 与 OmO 贡献者所有。被采纳的 `agent-teams` 组件保留其自身的 MIT 许可
+> 上游版权归 code-yeongyu 与 oh-my-openagent 贡献者所有。被采纳的 `agent-teams` 组件保留其自身的 MIT 许可
 > （声明见 [LICENSE-NOTICES.md](./LICENSE-NOTICES.md)）；该 MIT 授权仅覆盖被采纳组件 —— 本项目自身
 > 代码不是 MIT 许可。
 
@@ -55,11 +54,11 @@ fixtures 均已从本仓库抽取出去。本仓库只承载 harness/bundle 软�
 
 本 bundle 安装后提供 `@mpd-dsh/mpd`：DeepSeek 双轨（官方默认）、MCP 服务器、全部
 mpd 插件（含 codegraph 自动初始化）、采纳的 agent-teams（团队工具 + 侧边栏团队页）、`mpd`
-主代理预设，以及作为 SUBAGENTS 的 OMO 起源专家：
+主代理预设，以及作为 SUBAGENTS 的专家阵容：
 
 - **`mpd` 预设的每个工程会话都会尝试读取 `AGENT.md`**（依次回退 `AGENTS.md`、
   `CLAUDE.md`），通过 `dsh-agent-instructions` 实现。
-- **11 个 OMO 起源代理是专家与队友模板，不是预设**：Architect、Researcher、Planner、
+- **专家名册中的 11 个专家是队友模板，不是预设**：Architect、Researcher、Planner、
   Deep Worker、Senior Engineer、Lead、Explorer、Reviewer、Plan Reviewer、Vision
   Analyst 和 Junior Engineer 位于 mpd-roles roster —— 用 `mpd_role_spawn` 单发咨询，
   `mpd_roles_list` 列 roster，`mpd_role_persona` 取 persona 文本。只读角色在 spawn 时
@@ -124,6 +123,6 @@ mpd 插件（含 codegraph 自动初始化）、采纳的 agent-teams（团队�
 
 状态：Plan D 解耦完成 —— 可迁移的一插件安装（evidence/plan-d/relocate PASS）；
 Plan C 各波完成（团队采纳、ultrawork 引擎、hashline、boulder、mpd.jsonc、memory
-git+svn、vision e2e）；Plan F 完成 —— OMO 代理作为 subagent roster
+git+svn、vision e2e）；Plan F 完成 —— 专家名册作为 subagent roster
 （mpd-roles-plugin）、单一 `mpd` 主预设承载 AGENT.md 约定、mpd.jsonc 接入全部运行时
 插件（evidence/plan-f/roles-subagent PASS）。

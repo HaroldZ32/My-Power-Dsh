@@ -5,11 +5,11 @@ DSH bundle 聚合包：`cordis.patch.yml` 挂载每一个 mpd-dsh plugin row —
 
 波形读取行（`mcp-wave-mcp` / `mcp-traceweave`）**未挂载**：它们包装外部 Python MCP server，在 `cordis.patch.yml:92-123` 中连同安装步骤一起保持注释状态，因此没有这些二进制的机器仍能原样启动。
 
-该 bundle 只随附 ONE preset（`mpd`，主工作 agent；assets 位于 `packages/mpd-bootstrap-plugin/presets/mpd`）：它配置 `dsh-agent-instructions`，使用 `instructionFileCandidates: [AGENT.md, AGENTS.md, CLAUDE.md]`，使每个 project session 都尝试读取 AGENT.md，并声明 native tool presentation。OMO-origin agents 以 subagent roster（`mpd-roles-plugin`）形式存在，而非 presets。
+该 bundle 只随附 ONE preset（`mpd`，主工作 agent；assets 位于 `packages/mpd-bootstrap-plugin/presets/mpd`）：它配置 `dsh-agent-instructions`，使用 `instructionFileCandidates: [AGENT.md, AGENTS.md, CLAUDE.md]`，使每个 project session 都尝试读取 AGENT.md，并声明 native tool presentation。各专家以 subagent roster（`mpd-roles-plugin`）形式存在，而非 presets。
 
 ## 会话启动团队门（强制）
 
-会话启动时**没有团队** —— 团队不是会话的前提条件（对齐上游：OMO team mode 默认关闭）。被采纳的 agent-teams 插件**机械式强制**的是一道**复杂度门**（`sessionTeamPolicy` 配置，实现见 `packages/mpd-agent-teams-plugin/lib/session-start.js`），而不是仅靠提示词约束：
+会话启动时**没有团队** —— 团队不是会话的前提条件（对齐上游：上游 team mode 默认关闭）。被采纳的 agent-teams 插件**机械式强制**的是一道**复杂度门**（`sessionTeamPolicy` 配置，实现见 `packages/mpd-agent-teams-plugin/lib/session-start.js`），而不是仅靠提示词约束：
 
 - `mode: off`（默认）= 不自动建队、不无条件注入通知；机械门是与 `mode` 解耦的 `autoRoute: true`（默认启用）。
 - 在会话第一步的 pre-step 上，门按 `trigger = (matchedSignals >= 2) OR 显式标记` 判定：显式标记为 `team:` 前缀或 `!team`（标记会被**消费掉**，不会作为目标文本进入模型）；软信号为 (B) 去重命中 ≥4 个交付动词、(C) 编号/动作动词/子句 ≥3、(D) 该工作区存在 `.mpd/plans/*.md`。

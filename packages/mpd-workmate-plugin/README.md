@@ -4,7 +4,7 @@
 
 Durable, evolving agent library under the user's HOME (`~/.mpd/workmate`).
 
-The OMO roster specialists (`mpd-roles-plugin`) are **BASE templates only**. A
+The roster specialists (`mpd-roles-plugin`) are **BASE templates only**. A
 *workmate* is an instantiated copy with an independent name that:
 
 - **initializes** from a base specialist (`mpd_workmate_init`), copying the base

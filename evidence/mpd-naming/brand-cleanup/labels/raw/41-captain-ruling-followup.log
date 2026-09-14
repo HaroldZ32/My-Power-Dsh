@@ -1,0 +1,33 @@
+### captain-ruling follow-up (t2 lane, post-terminal) ###
+2026-09-14T07:15:53Z
+221171444240f0f55794c5d73b16b92701a7ed72
+
+### A) ast-grep AGENTS.md restored vs upstream 8c57e463e ###
+IDENTICAL to the pinned upstream copy (whole file)
+
+### B) boulder README wording (EN + ZH) ###
+Vendored core: the upstream project `packages/boulder-state`. Adaptations: the state root was
+retargeted to the `.mpd` convention, and session ids this bundle **writes** are `dsh:`-prefixed
+while reads still **accept** the legacy prefixes (`codex:` / `opencode:` / `senpi:`), so records
+written before the retarget keep resuming (see `src/vendor/constants.ts`,
+`src/vendor/storage/shared.ts`).
+---
+Vendored core：上游项目 `packages/boulder-state`。改编：state root 已改为 `.mpd` 约定；本 bundle **写入**的 session id 带 `dsh:` 前缀，而读取时仍**接受**遗留前缀（`codex:` / `opencode:` / `senpi:`），因此改根之前写入的记录仍能继续 resume（见 `src/vendor/constants.ts`、`src/vendor/storage/shared.ts`）。
+
+
+### C) G1 repo-wide (frozen regex) ###
+scripts/build-mcp.mjs:2:// Offline build of ast-grep/git-bash MCP: copy source from the OMO upstream checkout (read-only) into a temp workspace,
+G1_exit=0
+
+### D) brand tokens left in skills/ast-grep (token-boundary regex, per captain ruling 2) ###
+skills/ast-grep/AGENTS.md  ->  OMO, omo-opencode/src/cli/install-ast-grep-sg.ts
+skills/ast-grep/README.md  ->  omo
+skills/ast-grep/scripts/ast_grep_helper.py  ->  OMO, omo_env_binary, omo_runtime_slug, omo_runtime_binary
+skills/ast-grep/tests/smoke.sh  ->  omo_runtime_slug, OMO
+
+### E) bun test packages (sanity after the skills edit) ###
+
+ 399 pass
+ 0 fail
+ 2783 expect() calls
+Ran 399 tests across 90 files. [15.74s]

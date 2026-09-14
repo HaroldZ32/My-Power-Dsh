@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.2.3",
   "type": "module",
-  "description": "OMO-origin agent roster as subagent definitions (mpd_roles_list / mpd_role_spawn / mpd_role_persona + mpdRoles service)",
+  "description": "specialist roster as subagent definitions (mpd_roles_list / mpd_role_spawn / mpd_role_persona + mpdRoles service)",
   "scripts": {
     "test": "bun test"
   }

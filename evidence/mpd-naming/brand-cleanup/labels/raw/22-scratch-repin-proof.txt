@@ -1,0 +1,42 @@
+### proof that the ONLY test:qa blocker is the t6-owned VENDOR_LOCK re-pin ###
+
+Question: does `bun run test:qa` fail because of the t2 text/skills edits, or only because
+VENDOR_LOCK.json (out of t2's scope, single-writer = t6) has not been re-pinned yet?
+
+Method: mirror the case's repoRoot requirements into a throwaway, gitignored directory
+(.qa-t2/, removed afterwards), re-pin the skills asset THERE only (the real VENDOR_LOCK.json
+was never touched), and run the same case from the mirror.
+
+  $ mkdir -p .qa-t2/packages/mpd-agent-teams-plugin
+  $ cp -r skills .qa-t2/skills
+  $ cp -r packages/mpd-agent-teams-plugin/lib .qa-t2/packages/mpd-agent-teams-plugin/lib
+  $ cp package.json .qa-t2/package.json
+  $ cp skills/dsh-qa/scripts/agent-teams-messaging.mjs .qa-t2/skills/dsh-qa/scripts/
+  $ cp skills/dsh-qa/scripts/lib/workspace-isolation.mjs .qa-t2/skills/dsh-qa/scripts/lib/
+  # mirror-only edit:
+  #   .qa-t2/VENDOR_LOCK.json: assets.skills.fileCount=297
+  #                            assets.skills.treeSha=4299afc4241a164700c5b2f6785325affb914b01681ed51728a8a4933a83774f
+  $ bun .qa-t2/skills/dsh-qa/scripts/agent-teams-messaging.mjs --self-test
+  [agent-teams-messaging self-test] ok: R1 exports + SHIPPED send/clear/interject wiring + this
+  case drives the tool surface + scheduler exclusion on both reads + RED-arm transform applies +
+  VENDOR_LOCK skills pin current (297 files/4299afc4241a) + SKILL.md row + test:qa glob
+  SCRATCH_SELFTEST_EXIT=0
+
+Conclusion: with the re-pin applied, the case passes — including check (d), which reads the row
+`| agent-teams-messaging |` out of the edited skills/dsh-qa/SKILL.md. So no t2 edit breaks this
+case; the sole blocker is the un-landed VENDOR_LOCK re-pin, which AGENTS.md §9/§11 assigns to the
+wave's single VENDOR_LOCK writer (t6).
+
+In the real checkout, unchanged:
+
+  $ bun run test:qa
+  [agent-teams-messaging] FAIL: VENDOR_LOCK skills asset is stale: lock=331/c1f424fef1a2
+  tree=297/4299afc4241a (re-pin in the same commit, AGENTS.md §9)
+  TESTQA_EXIT=1
+
+Every other test:qa self-test passes in the real checkout (raw/12-testqa-minus-vendorlock-case.log,
+EXCLUDED_RUN_EXIT=0, 46 ok declarations).
+
+Note: the first scratch attempt used a 3-file skills/ mirror and correctly failed with
+`tree=3/4d1f6c997f66` — the hash is not a constant, it tracks the tree, so the proof above is
+falsifiable rather than a tautology.

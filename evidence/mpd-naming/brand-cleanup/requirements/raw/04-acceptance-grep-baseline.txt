@@ -1,0 +1,48 @@
+ACCEPTANCE-GREP BASELINE (pre-wave, 2026-09-14T06:56:31Z UTC)
+HEAD=221171444240f0f55794c5d73b16b92701a7ed72
+
+### G1 retired identity phrasings in authored, non-history content ###
+$ git ls-files | grep -vE '^evidence/|^(docs/(plan-[a-f]|omo-parity-gap|bline-report|review-p0-p3|track-a-report|ulw-deepseek-optimization)\.md|PLAN\.md|tests/golden/out/)' | xargs grep -nE 'OMO-origin|OMO-derived|OMO specialists|OMO 起源|OMO 名册|OMO roster|the OMO '
+AGENTS.md:30:roster, the model-chain vocabulary and several wire names are OMO-derived (`OMO_CODEX_*`-style env
+AGENTS.md:44:- **The OMO-origin agents are specialists and teammate templates, not presets**: the 11
+AGENTS.md:130:│   ├── mpd-roles-plugin/         # OMO-origin specialists: roster (roles.data.ts, normal names + stable ids) + personas/ + mpd_roles_list / mpd_role_spawn / mpd_role_persona + mpdRoles service
+AGENTS.md:525:- roster: the OMO-origin specialist definitions (stable id = modelchain chain key, normal
+README.md:9:keys are OMO-derived and stay so: the 11 specialists (Architect, Researcher, Planner, Deep Worker,
+README.md:64:(team tools + the sidebar team page), the `mpd` main-agent preset and the OMO-origin
+README.md:69:- **The 11 OMO-origin agents are specialists and teammate templates, not presets**:
+README.zh-CN.md:58:主代理预设，以及作为 SUBAGENTS 的 OMO 起源专家：
+README.zh-CN.md:62:- **11 个 OMO 起源代理是专家与队友模板，不是预设**：Architect、Researcher、Planner、
+docs/architecture.md:26:The OMO-origin 11 agents are **not presets**: they live as a specialist roster
+docs/architecture.md:100:| `mpd-roles` | mpd-roles-plugin | the 11 OMO-origin specialists as a roster (ids/normal names/personas/model chains/read-only) | `mpd_roles_list`, `mpd_role_spawn`, `mpd_role_persona`; service `mpdRoles` | `personasDir` |
+docs/architecture.zh-CN.md:23:OMO 起源的 11 个代理**不是预设**：它们作为专家 roster（`mpd-roles-plugin`）存在，
+docs/architecture.zh-CN.md:89:| `mpd-roles` | mpd-roles-plugin | 11 个 OMO 起源专家 roster（id/正常名/persona/模型链/只读） | `mpd_roles_list`、`mpd_role_spawn`、`mpd_role_persona`；服务 `mpdRoles` | `personasDir` |
+docs/feature-audit.md:15:| Team mode | 11-agent orchestration, mailbox, tasklist, state, worktree, tmux | ✅ | dsh-agent-teams 0.1.16-rc.3-mpd adopted as FIRST-CLASS MAIN CODE (MIT; packages/mpd-agent-teams-plugin loaded via bundle exports — pnpm never links a bundle's transitive deps into the profile root, so a plain dependency row would self-disable; server closure vendored under _deps/; evidence/plan-e/e4-team-vendor): durable continuable members, per-member mailbox + wake, dependency-aware scheduler, task DAG in the GUI, archive (stateDir .mpd/team; evidence/plan-c/c1-team). The OMO specialists are exposed as a normal-named `mpd` roster profile (`taskPlanning: captain`); the bespoke `mpd_team_spawn/status` one-shot mode was removed in favor of the adopted team plugin (reuse its architecture + GUI); web client adaptation: the @mpd-dsh/mpd bundle client now loads (mpd-web-compat self-row + '@mpd-dsh/mpd'-registered combined client.js — the agent-teams views composed by the DSH-better-sidebar `mpd-agent-teams` tab; evidence/plan-f/web-client-adapt) |
+docs/user-guide.md:80:The 11 OMO-origin agents are specialist subagents, **not presets**:
+docs/user-guide.zh-CN.md:73:11 个 OMO 起源代理是专家 subagent，**不是预设**：
+package.json:6:  "description": "my-power-dsh: a DeepSeek Harness plugin bundle (@mpd-dsh/mpd) carrying OMO-derived capabilities on DSH-native plumbing (upstream baseline: oh-my-openagent 8c57e46, pinned)",
+packages/mpd-bundle/README.md:20:OMO-origin agents exist as a subagent roster (`mpd-roles-plugin`), not as presets.
+packages/mpd-bundle/README.zh-CN.md:8:该 bundle 只随附 ONE preset（`mpd`，主工作 agent；assets 位于 `packages/mpd-bootstrap-plugin/presets/mpd`）：它配置 `dsh-agent-instructions`，使用 `instructionFileCandidates: [AGENT.md, AGENTS.md, CLAUDE.md]`，使每个 project session 都尝试读取 AGENT.md，并声明 native tool presentation。OMO-origin agents 以 subagent roster（`mpd-roles-plugin`）形式存在，而非 presets。
+packages/mpd-bundle/cordis.patch.yml:261:        # The OMO-origin agents become teammate instantiation templates for the
+packages/mpd-bundle/cordis.patch.yml:269:            description: "The OMO-origin specialist roster surfaced as normal-named teammate templates — captain-planned (roster only; the captain designs the DAG during the staged plan)."
+packages/mpd-qa-roles-probe/README.md:8:OMO roster. Exits non-zero on failure so the QA case catches regressions.
+packages/mpd-qa-roles-probe/README.zh-CN.md:5:仅用于 QA 的探针插件（从不随 bundle 发布）：由 QA overlay（`tests/overlays/roles-probe.yml`）挂载，以在真实启动中断言：(1) `mpd` preset 解析为 unmounted-broken，(2) `mpdRoles` 名册返回完整的 11 角色 OMO 名册。失败时以非零退出，从而让 QA 用例捕获回归。
+packages/mpd-qa-roles-probe/src/index.ts:2:// resolves, the mpdRoles roster answers with the full OMO roster (11 roles), and
+packages/mpd-roles-plugin/README.md:4:The OMO-origin agents exist as a **specialist roster**, not as standalone presets.
+packages/mpd-roles-plugin/README.zh-CN.md:4:OMO-origin agents 以一个 **specialist roster**（专家名录）存在，而非独立的 presets。每个 role = 一个稳定的 `id`（也是 modelchain chain key）+ 一个普通显示 `name` + persona 文本（asset `personas/<id>.md`）+ DeepSeek model chain + read-only discipline。
+packages/mpd-roles-plugin/package.json:6:  "description": "OMO-origin agent roster as subagent definitions (mpd_roles_list / mpd_role_spawn / mpd_role_persona + mpdRoles service)",
+packages/mpd-roles-plugin/src/index.ts:1:// mpd-roles-plugin: the OMO-origin agents live as a SPECIALIST ROSTER, not as
+packages/mpd-roles-plugin/src/roles.data.ts:1:// The OMO-origin agent roster. Each entry is a SPECIALIST definition with a
+packages/mpd-workmate-plugin/README.md:7:The OMO roster specialists (`mpd-roles-plugin`) are **BASE templates only**. A
+packages/mpd-workmate-plugin/README.zh-CN.md:7:OMO 名册（roster）专家（`mpd-roles-plugin`）**只是 BASE 模板**。一个 *workmate*（工作伙伴）是带独立名称的实例化副本，它：
+packages/mpd-workmate-plugin/src/index.ts:2:// (~/.mpd/workmate). The OMO roster specialists are BASE templates only: a workmate
+presets/mpd/agent.cordis.yml:6:#  3) the OMO-origin specialists are NOT presets anymore: they are specialist
+scripts/build-mcp.mjs:2:// Offline build of ast-grep/git-bash MCP: copy source from the OMO upstream checkout (read-only) into a temp workspace,
+skills/dsh-qa/SKILL.md:49:| preset-register | roster | mpd main preset resolves FROM THE BUNDLE-SERVED ROOT (PRESET_PATH under the presets dir, trust system) with no $DSH_HOME/.agent-presets copy + mpdRoles serves the 11-role OMO roster; the dev-flavor rewrite consumes the WHOLE packed MCP operand (checkout-absolute launcher paths, no `<baseUrl>/node_modules/<abs-repo>` splice) and pre-sets no CLI/binary pin, so the boot proves the real B8 launcher chain resolves the MCP rows | P4/refactor |
+skills/dsh-qa/scripts/preset-register.mjs:5:// and (2) the mpdRoles roster answers with the full 11-role OMO roster.
+count: 27 file(s)
+
+### G2 un-allowlisted brand token in shipped artifacts (token-boundary, per BRAND_TOKEN_RE) ###
+(see 02-brand-token-inventory.txt: 80 files pre-wave; every one of them must be either renamed or on the R3 allowlist)
+
+### G3 evidence/ byte-identical ###
+$ git status --short evidence/   -> must print nothing

@@ -20,7 +20,7 @@ ast-grep/
 
 ## HELPER CLI (`scripts/ast_grep_helper.py`)
 
-Subcommands: `search`, `replace` (dry-run; `--apply` to write), `scan`, `test`, `new`, `langs`, `doctor`, `install`, `validate`. Resolves the `sg`/`ast-grep` binary across PATH, Homebrew, npm, and OMO caches, validates patterns before executing, and shells out — it never links ast-grep as a library. Internal handlers `cmd_*`; utilities `validate_pattern`, `normalize_lang`, `resolve_binary`, `run_sg`. Nothing in-repo imports it; docs and skills invoke it by path. `omo-opencode/src/cli/install-ast-grep-sg.ts` locates this skill dir to install the binary.
+Subcommands: `search`, `replace` (dry-run; `--apply` to write), `scan`, `test`, `new`, `langs`, `doctor`, `install`, `validate`. Resolves the `sg`/`ast-grep` binary across PATH, Homebrew, npm, and MPD caches, validates patterns before executing, and shells out — it never links ast-grep as a library. Internal handlers `cmd_*`; utilities `validate_pattern`, `normalize_lang`, `resolve_binary`, `run_sg`. Nothing in-repo imports it; docs and skills invoke it by path. `omo-opencode/src/cli/install-ast-grep-sg.ts` locates this skill dir to install the binary.
 
 ## CONVENTIONS
 

@@ -1,0 +1,411 @@
+{
+  "id": "mpd-naming/brand-cleanup/rule",
+  "title": "Frozen boundary rule for the OMO-naming / DSH-only cleanup wave",
+  "frozen_at": "2026-09-14T06:58:00Z",
+  "frozen_by": "Architect (task t1, requirements)",
+  "measured_on": {
+    "repo": "my-power-dsh",
+    "branch": "dev",
+    "head": "221171444240f0f55794c5d73b16b92701a7ed72"
+  },
+  "raw_evidence": [
+    "raw/01-subject.txt (scan-subject definition + counts)",
+    "raw/02-brand-token-inventory.txt (token-boundary brand inventory, 80 shipped files)",
+    "raw/03-foreign-surface-inventory.txt (every foreign-harness literal with file:line)",
+    "raw/04-acceptance-grep-baseline.txt (pre-wave baseline of the acceptance greps: 27 files)",
+    "raw/05-consumer-traces-and-floors.txt (writer/reader trace for every kept literal + the hard floors)"
+  ],
+  "method": {
+    "subject": "shipped artifact = a git-tracked path whose first segment is not 'evidence/' (1313 of 4824 tracked files)",
+    "scan": "python/node token-boundary regex identical to BRAND_TOKEN_RE in scripts/build-mcp.mjs:192, applied to every shipped file",
+    "why_not_substring": "a bare `grep -i omo` is unusable: 'autonomous' and 'promote' contain the trigram 'omo'. Every scan in this wave MUST use a token boundary (the guard's own regex), never a substring grep.",
+    "excluded_roots": [
+      ".mpd-dsh/ (gitignored upstream checkout)",
+      ".qa-*/",
+      ".tmp-cache/",
+      "node_modules/",
+      ".toolchain/",
+      ".codegraph/",
+      ".mpd/",
+      "dist/mpd-package/",
+      "evidence/** (history, byte-identical)"
+    ]
+  },
+  "acceptance_map": {
+    "acceptance[0] (R1)": "R1_boundary_rule",
+    "acceptance[1] (R2)": "R2_vocabulary",
+    "acceptance[2] (R3)": "R3_deletion_rule + R3_allowlist",
+    "acceptance[3] (R4)": "R4_hard_floors + R4_out_of_scope",
+    "acceptance[4] (R5)": "R6_acceptance_criteria",
+    "description R5 (deliberately-not-touched)": "R4_out_of_scope",
+    "description R6 (acceptance)": "R6_acceptance_criteria"
+  },
+  "R1_boundary_rule": {
+    "precedence": [
+      "1 Functional",
+      "2 Historical",
+      "3 Provenance",
+      "4 Ours"
+    ],
+    "decision_unit": "an OCCURRENCE (file:line), never a file: the same file legitimately holds all four classes",
+    "classes": [
+      {
+        "id": "1-functional",
+        "definition": "a literal whose bytes are read or written by executable code, or are an identifier owned by a third party we do not control, so changing it changes behaviour.",
+        "runnable_check": "git grep -nF '<literal>' -- <shipped, non-md>; then read the hit: is it an env-key lookup, a socket/JSON key, a session-id parser, a config key, a provider id, an npm scope, or a URL we do not publish?",
+        "action": "KEEP byte-identical",
+        "examples": [
+          "_omo (writer+reader in one artifact -> RENAME, see allowlist)",
+          "opencode-go/scnet gateway provider ids",
+          "@code-yeongyu/comment-checker",
+          "MPD_SCHEMA_URL"
+        ]
+      },
+      {
+        "id": "2-historical",
+        "definition": "a literal that exists so data which ALREADY EXISTS on disk stays readable, or that names a frozen historical record (path, wave id, sha pin).",
+        "runnable_check": "test -e <path derived from the literal>   OR   a test pins the parser behaviour (e.g. packages/mpd-boulder-plugin/test/boulder.test.ts:22)   OR   the file is under an out-of-scope historical root (R4_out_of_scope)",
+        "action": "KEEP byte-identical (the user ruling 'history stays byte-identical' outranks tidiness)",
+        "examples": [
+          "evidence/omo-align/**",
+          "the frozen wave id omo-parity-align",
+          "boulder SessionPlatform codex|opencode|senpi",
+          "docs/omo-parity-gap.md"
+        ]
+      },
+      {
+        "id": "3-provenance",
+        "definition": "a literal that names a THIRD PARTY truthfully: upstream repo slug, commit sha, version tag, package name, licence/copyright text, attribution notice, or a URL that a third party publishes.",
+        "runnable_check": "git grep -nE 'code-yeongyu/oh-my-openagent|8c57e46|5\\.0\\.0-beta\\.20' -- <file>; or the file is LICENSE.md/LICENSE-NOTICES.md/*ATTRIBUTION.md/NOTICE",
+        "action": "KEEP the FACTS. A provenance sentence may be REPAIRED to be more precise or more truthful, but must never be weakened, and an attribution must never be silently dropped. The informal shorthand (OMO / OmO / omo used as a stand-in for the upstream project in our own prose) is NOT provenance -- it is class 4 and is retired.",
+        "examples": [
+          "README.md:14 [oh-my-openagent](https://github.com/code-yeongyu/oh-my-openagent)",
+          "README.md:24 'the OmO contributors'",
+          "VENDOR_LOCK.json upstream",
+          "tests/golden/out/plans/mpd-summary-plan.md:8 'upstream oh-my-openagent'"
+        ]
+      },
+      {
+        "id": "4-ours",
+        "definition": "everything else: our prose, comments, tool/row descriptions, doc titles, package descriptions, file names, function names, and any code path that exists to integrate with a harness this bundle does not support. Layer D is where BOTH the renames (identity) and the deletions (foreign-harness surface, R3) happen.",
+        "runnable_check": "it survived classes 1-3 with a citation that can be read at the cited line",
+        "action": "RENAME to R2 vocabulary, or DELETE when the occurrence names a foreign-harness surface (R3). No third option: 'reword into another foreign name' is forbidden.",
+        "examples": [
+          "'OMO-origin' / 'OMO-derived' / 'the OMO specialists'",
+          "package.json:6 description",
+          "codegraph stderr hints 9716/9718",
+          "the .codex / .opencode discovery paths"
+        ]
+      }
+    ],
+    "invariant": "no occurrence may be classified twice; the allowlist (R3_allowlist) is the exhaustive record of every surviving brand token in a shipped artifact."
+  },
+  "R2_vocabulary": {
+    "replacement": {
+      "en": [
+        "the specialist roster",
+        "roster specialists",
+        "the specialist roster's <N> specialists"
+      ],
+      "zh": [
+        "专家名册",
+        "专家阵容"
+      ]
+    },
+    "zh_note": "专家名录 (used today in packages/mpd-roles-plugin/README.zh-CN.md:4) is NOT the frozen form; use 专家名册 for 'the specialist roster' and 专家阵容 where the ensemble is meant.",
+    "upstream_name_rule": "the upstream is named by its repository identity (oh-my-openagent, code-yeongyu/oh-my-openagent, commit 8c57e46) -- never by the OMO/OmO shorthand, except inside a class 1/2/3 literal.",
+    "retired_phrasings": [
+      "OMO-origin",
+      "OMO-derived",
+      "the OMO specialists",
+      "OMO 起源",
+      "OMO 名册",
+      "OMO roster",
+      "OMO 角色",
+      "the OMO ",
+      "upstream omo ",
+      "OmO"
+    ],
+    "retired_measured_baseline": "27 shipped files / 38 lines (raw/04-acceptance-grep-baseline.txt); G1 must return 0 after the wave",
+    "forbidden_repairs": [
+      "replacing a foreign harness name with ANOTHER foreign harness name",
+      "deleting a provenance fact to make a grep green",
+      "leaving a sentence that the rename made false"
+    ]
+  },
+  "R3_deletion_rule": {
+    "definition": "A FOREIGN-HARNESS SURFACE is any literal, path, env key, config block, CLI bridge or code path whose only purpose is to interoperate with OpenCode / Codex / Senpi / the OMO CLI. Such a surface is DELETED (not renamed, not documented). A literal is NOT a foreign-harness surface when it merely NAMES a third party truthfully (class 3) or keeps pre-existing on-disk data readable (class 2).",
+    "decisive_test": "read the cite: does the code READ/WRITE it in order to talk to a harness this bundle does not ship? -> DELETE. Does it carry a third party's name/URL/licence, or parse a record that already exists? -> KEEP.",
+    "deletion_inventory": "raw/03-foreign-surface-inventory.txt (authoritative, file:line per literal); lanes: codegraph=t5, dists/build-mcp=t6, text+skills=t2, doc filenames=t7",
+    "must_not_be_renamed": "a foreign-harness surface must not be renamed into an mpd-flavoured spelling: e.g. `.codex/lsp-client.json` must not become `.mpd/lsp-client.json` unless the DSH-native path is independently required (that would be a NEW capability, not a rename).",
+    "traps": [
+      "codegraph reads ITS OWN settings out of the foreign [codex] block (serve.js:9047,9055 harness:\"codex\") -> a blind deletion silently makes codegraph unconfigurable (always defaults). The retarget MUST be proven behaviourally (sandbox config that disables/configures codegraph, before/after) -- t5 STEP B.",
+      "deleting a foreign literal from a REBUILT dist (ast-grep/git-bash/lsp) requires an MPD_SCRUB transform that reproduces the new bytes, because the PRIMARY guard is byte-equality against the committed dist (scripts/build-mcp.mjs:245).",
+      "codegraph has NO rebuild script: every edit is surgery and needs `node --check` + a behavioural screen (Note: `node --check` alone does NOT witness a dangling identifier read -- line 8085 EMPTY_OMO_CONFIG parses fine)."
+    ]
+  },
+  "R3_allowlist": [
+    {
+      "literal": "OMO_CODEX_GIT_BASH_PATH | OMO_CODEX_GIT_BASH_TIMEOUT_MS | OMO_CODEX_EXEC_COMMAND_TIMEOUT_MS",
+      "where": "packages/mpd-mcp-gitbash/dist/cli.js:320,457-458 (+ scripts/build-mcp.mjs:183-185 BRAND_ALLOWLIST)",
+      "class": "1-functional-external",
+      "consumer": "reader = that dist (win32 only); writer = the codex installer, OUTSIDE this repo (0 in-repo writers measured)",
+      "verdict": "DELETE (owner ruling 2026-09-14, DSH-only)",
+      "reason": "no DSH-side consumer exists, so nothing DSH-side loses a capability; keeping a dead foreign env contract is exactly what the ruling forbids. See R7-C1 -- the t1/t6 acceptance text that says 'stays literal' is the stale side.",
+      "owner_ruling_override": true,
+      "keep_variant": "if the captain/owner overrules C1 and keeps them: the allowlist reason to record is 'external env contract of the upstream omo-codex installer (writer outside this repo); the only reader is packages/mpd-mcp-gitbash/dist/cli.js:320,457-458, win32-only; the DSH-side git-bash MCP row never sets it' -- and t6 must then keep the three BRAND_ALLOWLIST entries as-is."
+    },
+    {
+      "literal": "omo.schema.json (inside MPD_SCHEMA_URL)",
+      "where": "packages/mpd-mcp-codegraph/dist/serve.js:8827, emitted at :8861",
+      "class": "3-provenance",
+      "consumer": "reader = an editor/JSON-schema resolver fetching the URL; the asset is published by the upstream project",
+      "verdict": "KEEP",
+      "reason": "renaming a path component of a third party's published asset 404s; it is not our name to change."
+    },
+    {
+      "literal": "HARNESS_IDS 'omo'",
+      "where": "packages/mpd-mcp-codegraph/dist/serve.js:5795",
+      "class": "1-functional (legacy config tolerance)",
+      "consumer": "HARNESS_KEYS (:7715) -> withoutControlKeys (:7735) strips `[omo]` before MpdConfigSchema (.strict(), :6180-6204) parses it; MpdHarnessIdSchema (:5796-5797) excludes 'omo' as an ACTIVE id, so the entry is inert",
+      "verdict": "CONTESTED -> prefer DELETE via unknown-key stripping",
+      "reason": "the only consumer is acceptance of a legacy `[omo]` section in a pre-existing ~/.mpd/config.jsonc. Deleting the literal is safe IF unknown `[<id>]` sections are stripped before the strict parse; that removes the token AND keeps old configs valid. See R7-C2.",
+      "keep_variant": "if kept: reason to record is 'legacy `[omo]` config-section tolerance: HARNESS_KEYS(:7715) -> withoutControlKeys(:7735) strips it before the .strict() MpdConfigSchema parse (:6180-6204) rejects unknown keys; MpdHarnessIdSchema (:5796-5797) already excludes omo as an ACTIVE id'."
+    },
+    {
+      "literal": "`[opencode]` / `[senpi]` / `[codex]` config sections",
+      "where": "packages/mpd-mcp-codegraph/dist/serve.js:6174-6176, 6189-6191, 6208 (+ :7797, :8856-8866 migration)",
+      "class": "1-functional (legacy config tolerance) / 4-ours (active selection)",
+      "consumer": "the strict schema accepts them; :9047/:9055 hardcode harness \"codex\" so OUR OWN settings are read from `[codex]`; :7725 reads OCX_PROFILE/OPENCODE_CONFIG_DIR",
+      "verdict": "DELETE the ACTIVE selection (harness:\"codex\" + the [codex] settings read + OCX_PROFILE/OPENCODE_CONFIG_DIR + the [opencode]/[senpi] env paths) and retarget to a project-native block; retain legacy-key tolerance ONLY as strip-before-validate",
+      "reason": "the active path is a foreign-harness surface; the section KEYS survive only as tolerance for configs written by an earlier build of this project. See R7-C2.",
+      "keep_variant": "if kept: reason to record is 'tolerance for ~/.mpd/config.jsonc written by an earlier build of THIS project (our own state path, detectUserMpdJsonPath) -- without the keys the strict parse rejects the user's existing file'. The ACTIVE selection (harness:\"codex\" at :9047/:9055) is NOT defensible under either ruling and must be retargeted."
+    },
+    {
+      "literal": "codex|opencode|senpi (session-id prefixes)",
+      "where": "packages/mpd-boulder-plugin/src/vendor/storage/shared.ts:9,11; dist/index.js:252; test/boulder.test.ts:22",
+      "class": "2-historical",
+      "consumer": "normalizeSessionId (shared.ts:13-19) returns an already-prefixed id unchanged; the test pins senpi:x; the file's own :5-8 note calls them data-compatibility values",
+      "verdict": "KEEP",
+      "reason": "deleting them re-prefixes pre-existing boulder records (senpi:x -> dsh:senpi:x) and breaks resume matching -- a behaviour change, not a rename. The owner's DSH-only bullet was aimed at surfaces, and the write default is already 'dsh'. See R7-C3.",
+      "keep_variant": "already the KEEP verdict; if the owner insists on deletion, the non-regressing form is to keep ACCEPTING the legacy prefixes (the current normalizeSessionId) and change only the comment/test wording -- do not narrow the regex."
+    },
+    {
+      "literal": "@oh-my-opencode (npm scope)",
+      "where": "scripts/build-mcp.mjs:276 (node_modules/@oh-my-opencode symlink target); skills/*/ATTRIBUTION.md:3 ('@oh-my-opencode/shared-skills')",
+      "class": "3-provenance / build-time fact",
+      "consumer": "the vendored upstream source imports @oh-my-opencode/<core> at build time; the shipped dists are bundled, so it never reaches runtime",
+      "verdict": "KEEP",
+      "reason": "it is the upstream's own scope; renaming it breaks the offline build's module resolution. Prose around it is class 4 and is rewritten (t6 step 3)."
+    },
+    {
+      "literal": "opencode-go / scnet",
+      "where": "AGENTS.md:366; skills/dsh-qa/scripts/{agent-teams-adopt,mcp-call}.mjs comments",
+      "class": "1-functional-external",
+      "consumer": "llm-pi-ai gateway provider ids in the user's settings.yaml -- owned outside this repo",
+      "verdict": "KEEP",
+      "reason": "third-party provider ids; renaming them would misconfigure the user's gateway chain."
+    },
+    {
+      "literal": "code-yeongyu/... package + repo names (@code-yeongyu/comment-checker, go-claude-code-comment-checker, @ast-grep/cli, @colbymchenry/codegraph)",
+      "where": "package.json:42-44, LICENSE-NOTICES.md:80, packages/mpd-comment-checker-plugin/**",
+      "class": "3-provenance",
+      "consumer": "npm resolution + attribution",
+      "verdict": "KEEP",
+      "reason": "third-party package identity and licence attribution; both are hard floors."
+    },
+    {
+      "literal": "tool-subagent-codex / tool-subagent-claude-code",
+      "where": "presets/mpd/agent.cordis.yml:342-348, 350-357",
+      "class": "1-functional (harness-owned rows)",
+      "consumer": "the installed harness's own provider rows, disabled:true; skills/dsh-qa/scripts/preset-conformance.mjs pins the preset row set against the shipped `standard` preset",
+      "verdict": "KEEP (hard floor F6)",
+      "reason": "deleting them forces the preset-conformance gate to be relaxed; they carry zero runtime behaviour."
+    },
+    {
+      "literal": "evidence/omo-align/**, evidence/omo-parity-rate*/**, the wave id omo-parity-align, docs/omo-parity-gap.md, docs/bline-report.md, docs/plan-*.md, PLAN.md",
+      "where": "history + paths referenced by QA scripts (skills/dsh-qa/scripts/agent-teams-messaging.mjs:232,369,863; session-start-team.mjs:26) and by protected docs",
+      "class": "2-historical",
+      "consumer": "frozen historical records + QA scripts that read them; shipped ledger keeps ONE provenance line naming the wave id",
+      "verdict": "KEEP",
+      "reason": "user ruling: history stays byte-identical. A renamed current file may therefore leave a DANGLING reference inside history -- that is accepted and must be recorded, not repaired."
+    },
+    {
+      "literal": "foreign mention inside OTHER vendored skills (review-work, ulw-execute, visual-qa, lsp-setup, ast-grep README/references, frontend/ultimate-browsing/ulw-research ATTRIBUTION bodies)",
+      "where": "skills/{review-work,ulw-execute,visual-qa,lsp-setup}/SKILL.md etc.",
+      "class": "3-provenance (third-party body)",
+      "consumer": "the skills describe other agents' tool names as translation tables; the skill bodies are upstream/third-party",
+      "verdict": "KEEP verbatim (owner ruling F7)",
+      "reason": "third-party bodies stay; they are not our identity claims.",
+      "exception": "skills/ast-grep is a vendored skill but carries OUR vendored patch (omo_* function names at scripts/ast_grep_helper.py:205-257 + tests/smoke.sh:31,129) and a scrub CORRUPTION at AGENTS.md:23 -- those are class 4 and are repaired."
+    }
+  ],
+  "R4_hard_floors": [
+    {
+      "id": "F1",
+      "what": "LICENSE.md (inherited SUL-1.0 body naming 'the oh-my-opencode Software')",
+      "why": "licence text; cannot be deleted or paraphrased"
+    },
+    {
+      "id": "F2",
+      "what": "LICENSE-NOTICES.md",
+      "why": "declares the derivation + upstream commit; a placeholder in :3 may be REPAIRED to name the upstream, never removed"
+    },
+    {
+      "id": "F3",
+      "what": "skills/frontend/ATTRIBUTION.md, skills/ultimate-browsing/ATTRIBUTION.md, skills/ulw-research/ATTRIBUTION.md (the only three in the corpus)",
+      "why": "third-party authorship + licence terms"
+    },
+    {
+      "id": "F4",
+      "what": "packages/mpd-mcp-codegraph/NOTICE + NODE-RUNTIME-LICENSES.md",
+      "why": "third-party attribution; the NOTICE truthfully says the runtime is adapted for the Codex plugin surface -- deleting that line would falsify attribution"
+    },
+    {
+      "id": "F5",
+      "what": "VENDOR_LOCK.json fields upstream / upstreamCommitSha / upstreamVersion / previousSnapshot.* / upstreamStats.note",
+      "why": "verify-vendor.mjs:30-42 treats commit+version as BLOCKERS; these are the pin itself"
+    },
+    {
+      "id": "F6",
+      "what": "presets/mpd/agent.cordis.yml:342-357 (the two disabled harness bridge rows)",
+      "why": "harness-owned rows; preset row-parity with the installed `standard` preset is a gate (preset-conformance)"
+    },
+    {
+      "id": "F7",
+      "what": "every other vendored skill's third-party body",
+      "why": "owner ruling"
+    },
+    {
+      "id": "F8",
+      "what": "all history: evidence/** (byte-identical), docs/{plan-*.md,decisions.md,omo-parity-gap.md,bline-report.md,review-p0-p3.md,track-a-report.md,ulw-deepseek-optimization.md}, PLAN.md, tests/golden/out/**",
+      "why": "user ruling: history stays byte-identical"
+    }
+  ],
+  "R4_out_of_scope": {
+    "evidence/**": "user ruling: byte-identical; verified by `git status --short evidence/` printing nothing (only the new evidence/mpd-naming/** tree may appear)",
+    "docs/omo-parity-gap.md": "historical record (single-language, exempt)",
+    "docs/plan-*.md + docs/decisions.md + docs/*-report.md + PLAN.md": "process records, exempt from the bilingual rule (AGENTS.md L18-L23)",
+    "tests/golden/out/**": "recorded golden plan artifacts; its `oh-my-openagent` mention is a class 3 provenance occurrence",
+    "LICENSE.md / LICENSE-NOTICES.md provenance lines": "hard floor F1/F2",
+    "README.md / AGENTS.md provenance and troubleshooting sections": "kept; a provenance sentence may be repaired only to stay TRUE (e.g. README.md:12-13 must stop claiming the wire keeps `_omo` once `_omo` is renamed). NOTE: `OMO-derived` in README.md:9 / AGENTS.md:30 is NOT protected by this exemption -- it is class 4 and is retired (R2).",
+    "VENDOR_LOCK.json upstream fields": "hard floor F5",
+    "gitignored roots": ".mpd-dsh/ (upstream checkout), .qa-*/, .tmp-cache/, node_modules/, .toolchain/, .codegraph/, .mpd/ -- never shipped, never scanned"
+  },
+  "R6_acceptance_criteria": {
+    "greps": [
+      {
+        "id": "G1",
+        "cmd": "git ls-files | grep -vE '^evidence/|^(docs/(plan-[a-f]|omo-parity-gap|bline-report|review-p0-p3|track-a-report|ulw-deepseek-optimization)\\.md|PLAN\\.md|tests/golden/out/)' | xargs grep -nE 'OMO-origin|OMO-derived|OMO specialists|OMO roster|OMO 起源|OMO 名册|OMO 角色|the OMO |upstream omo |\\bOmO\\b'",
+        "expect": "no output (baseline: 27 files / 38 lines, raw/04-...)",
+        "allowlist": "none -- a hit here is a finding, not a judgement call"
+      },
+      {
+        "id": "G2",
+        "cmd": "node -e '<BRAND_TOKEN_RE scan over every git-tracked non-evidence file>' and diff the token set against R3_allowlist",
+        "expect": "every surviving token is an allowlist entry whose `consumer` reads true at the cited line",
+        "baseline": "80 files (raw/02-brand-token-inventory.txt)"
+      },
+      {
+        "id": "G3",
+        "cmd": "git status --short evidence/",
+        "expect": "no pre-existing evidence path is modified (byte-identical history)"
+      },
+      {
+        "id": "G4",
+        "cmd": "grep -rn 'omo-parity-ledger' over tracked non-evidence files",
+        "expect": "empty after t7's rename",
+        "note": "history keeps the old path by design (R3_allowlist exception + t7 step 4)"
+      },
+      {
+        "id": "G5",
+        "cmd": "grep -n 'EMPTY_OMO_CONFIG\\|EMPTY_MPD_CONFIG' packages/mpd-mcp-codegraph/dist/serve.js",
+        "expect": "declaration and reader agree; `node --check` exits 0 (which alone does NOT prove this -- the ReferenceError is a runtime read)"
+      },
+      {
+        "id": "G6",
+        "cmd": "node scripts/build-mcp.mjs",
+        "expect": "exit 0, byte-equality guard green, brand guard inspects 4 artifacts (ast-grep, git-bash, lsp, codegraph), negative control fails on an injected token"
+      }
+    ],
+    "gates": [
+      "node scripts/verify-vendor.mjs",
+      "bun run typecheck",
+      "bun test packages",
+      "bun run test:qa",
+      "node skills/dsh-qa/scripts/preset-conformance.mjs",
+      "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs",
+      "bun skills/dsh-qa/scripts/codegraph-smoke.mjs"
+    ],
+    "invariants": [
+      "re-pin coupling: scripts/verify-vendor.mjs:92-117 fingerprints LOCALLY, so every skills/** edit invalidates assets.skills.fileCount (331) + treeSha and every dist edit invalidates its sha256 -> exactly ONE VENDOR_LOCK re-pin for the wave, in the same commit as the change (AGENTS.md §9/§11), owned by t6",
+      "bilingual: every touched human-facing *.md and its *.zh-CN.md sibling change together, each keeping the language switch link directly under the title (G7: python/perl pair check)",
+      "dist-vs-src: every plugin whose src changed is rebuilt so dist matches src",
+      "mount proof: no --dump-config output may be cited as plugin-load evidence (AGENTS.md §4); the codegraph fix needs a behavioural screen, not `node --check`",
+      "no falsified sentence: read each changed sentence; a rename that leaves a false claim (e.g. 'the wire keeps the upstream names ... the `_omo` auth envelope') is a blocker",
+      "hash discipline: pin the revision by hash, re-check after a settle window, name the hashes in every verdict (AGENTS.md §7)"
+    ],
+    "falsifiability": "the LSP-envelope rename (t6 step 2) must state what an ALREADY-RUNNING version-scoped daemon does (~/.mpd/lsp-daemon/v<version>) and the remedy; the brand guard's negative control must fail on a seeded mutant, not merely pass on a clean tree"
+  },
+  "R7_open_conflicts": [
+    {
+      "id": "C1",
+      "severity": "blocker",
+      "what": "OMO_CODEX_* : DELETE vs KEEP",
+      "texts": [
+        "owner ruling memory 2026-09-14 (binding): delete the git-bash OMO_CODEX_* reads + their BRAND_ALLOWLIST entries",
+        "t6 description step 1: same (delete)",
+        "t1 acceptance[2] R3: 'ALLOWLIST of foreign literals that must stay as-is ... OMO_CODEX_GIT_BASH_PATH ...'",
+        "t6 acceptance[2]: 'OMO_CODEX_* stays literal with the allowlist reason recorded'",
+        "t11 acceptance[4]: lists 'the externally-owned OMO_CODEX_* contract' among the deliberately-kept"
+      ],
+      "measured": "0 in-repo writers; the only reader is win32-only code in a dist whose row has no DSH counterpart",
+      "recommendation": "DELETE (owner ruling wins), and amend t6 acceptance[2] + t11 acceptance[4] accordingly -- otherwise t6 cannot satisfy both its own description and its own acceptance.",
+      "affects": [
+        "t6",
+        "t11",
+        "t10"
+      ]
+    },
+    {
+      "id": "C2",
+      "severity": "high",
+      "what": "codegraph foreign config surface: DELETE vs allowlist",
+      "texts": [
+        "owner ruling: delete the [opencode]/[senpi]/[codex] blocks + HARNESS_IDS entries + the OMO-worded hints",
+        "t5 nonGoals: do not rename HARNESS_IDS 'omo' / the $schema URL / the [opencode]-[senpi] sections (allowlisted)"
+      ],
+      "measured": "HARNESS_IDS 'omo' has exactly one behavioural consumer (strip-before-strict-parse, serve.js:7735), and codegraph's OWN settings come from `[codex]` via the hardcoded harness at :9047/:9055",
+      "recommendation": "split the question: DELETE the active selection (harness:\"codex\", the [codex] settings read, OCX_PROFILE/OPENCODE_CONFIG_DIR, the OMO-worded hints, the [opencode]-[senpi] env paths) and REPLACE the enumerated HARNESS_IDS with unknown-key stripping so no foreign literal survives; KEEP MPD_SCHEMA_URL. Deleting the active path REQUIRES t5's behavioural retarget proof.",
+      "affects": [
+        "t5",
+        "t6",
+        "t10",
+        "t11"
+      ]
+    },
+    {
+      "id": "C3",
+      "severity": "high",
+      "what": "boulder session-platform prefixes: KEEP vs DELETE",
+      "texts": [
+        "owner ruling bullet: delete the vendored boulder SessionPlatform literals + prefix regex",
+        "t2 step 6c: reduce them to DSH-only + update the test + rebuild the dist",
+        "the code itself (shared.ts:5-8): 'data-compatibility values for pre-existing boulder records, not branding -- keep them as-is'"
+      ],
+      "measured": "normalizeSessionId re-prefixes an id that does not match the regex, so dropping codex|opencode|senpi rewrites the stored sessionId of pre-existing records",
+      "recommendation": "KEEP the regex/type and cite it as class 2 (Historical). If the owner still wants them gone, the safe form is to keep ACCEPTING legacy prefixes while writing only `dsh:` -- which is exactly the current code -- so the only change that satisfies the ruling without a behaviour regression is the comment wording. Ask the owner to confirm before t2 edits it.",
+      "affects": [
+        "t2",
+        "t10"
+      ]
+    }
+  ],
+  "acceptance_self_check": {
+    "acceptance[0] R1": "met: R1_boundary_rule.classes[*].runnable_check (a command/grep per class) + precedence + decision_unit",
+    "acceptance[1] R2": "met: R2_vocabulary.replacement (en/zh) + retired_phrasings enumerated verbatim (the 5 named + 5 measured extras, incl. the bare OmO/`the OMO `/`upstream omo ` forms found at README.md:14 and AGENTS.md:512)",
+    "acceptance[2] R3": "met with a DECLARED DEVIATION: R3_allowlist carries file:line + the writer/reader + a reason for all 11 entries, but three of the literals the acceptance text calls 'must stay' are recorded as DELETE/CONTESTED because the binding owner ruling of 2026-09-14 and the t6/t5 task descriptions supersede that text -- see R7_open_conflicts C1/C2/C3, each with the measured consumer trace and a keep_variant so the captain can overrule without re-doing t1",
+    "acceptance[3] R4": "met: R4_hard_floors (8, incl. the 6 named + README/AGENTS provenance + tests/golden) and R4_out_of_scope (with the citation protecting each)",
+    "acceptance[4] R5": "met: R6_acceptance_criteria.greps (6 runnable greps with expected output + a measured pre-wave baseline) + gates (7) + invariants (re-pin coupling, bilingual, dist-vs-src, mount proof, no falsified sentence, hash discipline)"
+  }
+}

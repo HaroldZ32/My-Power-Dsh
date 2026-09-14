@@ -1,0 +1,55 @@
+{
+  "task": "t18 — addendum under captain steering (R14 void premise + the defect classes that must still be able to fail)",
+  "kind": "verification-addendum",
+  "author": "Reviewer (independent verifier)",
+  "verdict_unchanged": "PASS",
+  "revision": {
+    "head": "53d617e6c2d29dfadec06278bc4130061055378e",
+    "branch": "dev",
+    "porcelain_lines": 48,
+    "pinned_by": "per-artifact sha256 (the tree is dirty); HEAD re-read at T1/T2/T3/T4 — identical",
+    "head_moves_observed_by_t17": ["4d8a1307f452f0bda7e52f2a4adacb73d1da6f25", "0cbf505496ef5e24c2fb897bf73c9986c5e525d7", "53d617e6c2d29dfadec06278bc4130061055378e"],
+    "T4_recheck_after_this_steering": "39/39 modified product files and 4948/4948 tracked files still byte-identical to the T1 snapshot; evidence/ has no tracked modification"
+  },
+
+  "steering_1_void_premise_not_used_as_a_criterion": {
+    "what_I_did": "My t18 verdict never asserted or relied on 't16 was the wave's ONLY skills/** write', so the voided clause could not and did not influence the PASS. I judged the substantive invariant instead.",
+    "captain_ruling_confirmed": "evidence/mpd-naming/captain-rulings/result.json R14 (decision: 'VOID - ratified correction: four skills writers, one re-pin on settled bytes') and rulings.md §R14; t17's own result.json.skillsWritersMeasured_CORRECTION already records the same measurand with PREMISE FALSE AS MEASURED.",
+    "independently_measured_four_skills_writers": [
+      "skills/ast-grep/AGENTS.md (2 lines changed)",
+      "skills/ast-grep/scripts/ast_grep_helper.py (14 lines)",
+      "skills/ast-grep/tests/smoke.sh (6 lines)",
+      "skills/ulw-plan/scripts/scaffold-plan.mjs (8 lines)"
+    ],
+    "command": "git diff --stat HEAD -- skills/  ->  '4 files changed, 15 insertions(+), 15 deletions(-)'; git status --porcelain -- skills/ VENDOR_LOCK.json -> all five entries are ' M' (uncommitted)",
+    "operative_invariant_VERIFIED": {
+      "exactly_one_repin": "git diff -U0 -- VENDOR_LOCK.json = 8 changed value lines, all belonging to one re-pin: skills treeSha f6bb2053->a0f1febb, gitbash sha 0484a8ff->6458a82e, lsp sha 9f41d425->a7cebcf9, lockedAt 2026-09-14T09:15:59.000Z->2026-09-14T10:15:51.000Z; _deps/astgrep/codegraph values UNCHANGED and recomputed-equal",
+      "computed_on_settled_bytes": "CONFIRMED from t17's filed evidence (re-pin/result.json.revision.settleProtocol: two read-only recomputations >=50 s apart, per-file sha256 map + dist shas + HEAD + porcelain hash identical; the earlier e9c1be39 read that straddled t16's tail was refused and never written). Independently corroborated here: my own T1/T2/T3/T4 hashes show the same 39 files byte-stable across a 60 s window and across the whole gate sweep.",
+      "one_commit_can_carry_it": "all four skills edits + VENDOR_LOCK.json are still uncommitted together, so §9/§11's same-commit rule is satisfiable at the next captain commit",
+      "gate": "node scripts/verify-vendor.mjs exit 0 / PASS; my own recomputation matches the declared lock on 6/6 assets"
+    }
+  },
+
+  "steering_2_defect_classes_that_must_still_be_able_to_fail": [
+    { "defect_class": "identity label surviving outside the allowlisted provenance/functional/history classes", "measured": "0 files", "status": "not present", "evidence": "frozen G1 grep at the pinned revision = 0 lines; negative control (injected 'OMO-origin … OMO roster' into a scratch AGENTS.md) = 54 hits, so the check demonstrably fails when violated (raw/30-greps-at-T2.log)" },
+    { "defect_class": "a KEEP that vanished — codegraph MIGRATION_ID + the [senpi] read, the lsp .codex discovery defaults, ast-grep's $CODEX_HOME runtime tier", "measured": "MIGRATION_ID/[senpi] = 4 lines; lsp .codex discovery defaults = 2 lines; CODEX_HOME tier = 1 line each in astgrep dist and ast_grep_helper.py", "status": "all present", "evidence": "frozen G10/G11 and KEEP checks KF-03/KF-04/KF-06 all OK (raw/31-keep-allowlist-at-T2.log); negative control (blanking LSP_TOOLS_MCP_ in a scratch lsp dist) moves KF-05 7->0, so a vanished KEEP is detectable" },
+    { "defect_class": "a bilingual pair desynced or a switch link dangling", "measured": "24/24 files across 12 pairs OK, 0 failures; all switch links on line 2; no dangling link in any audited file incl. docs/index*.md", "status": "not present", "evidence": "raw/50-bilingual-links.json; negative control (scratch tree with one switch link removed and one counterpart deleted) = FAIL with 7 findings (raw/51-neg-control.json)" },
+    { "defect_class": "any evidence/** or process-record byte changed", "measured": "git status --porcelain -- evidence/ contains ONLY untracked-new entries ('??'); zero tracked evidence file modified or deleted; docs/plan-*.md, docs/decisions.md, docs/omo-parity-gap.md, docs/{bline-report,review-p0-p3,track-a-report,ulw-deepseek-optimization}.md and PLAN.md all untouched", "status": "not present", "evidence": "raw/00-pin.txt, G9 in raw/30-greps-at-T2.log" },
+    { "defect_class": "a second VENDOR_LOCK change", "measured": "exactly 8 changed value lines = one re-pin; no other lock edit exists in the diff", "status": "not present", "evidence": "git diff -U0 -- VENDOR_LOCK.json; raw/60-verification-log.txt" },
+    { "defect_class": "a lock value that does not equal MY OWN recomputation", "measured": "6/6 assets equal on two independent recomputations: the frozen t13 script (final-allowlist/raw/recompute-lock.mjs, sha256 8829d727…, which lacks the pycache skip) AND the t17 hardened script (re-pin/raw/recompute-lock.mjs, sha256 b097d6b3…, which carries the 0cbf505 skip)", "status": "equal", "evidence": "G14 in raw/30-greps-at-T2.log (LOCK-RECOMPUTE=MATCH) + raw/32-hardened-recompute-at-T3.json ('match': true x6, 'match': false x0). Both read 297/a0f1febb… — the count is insensitive to the hardening because there is nothing to skip" },
+    { "defect_class": "a lane report whose claims my raw output does not support", "measured": "no unsupported claim found in the lanes' reports that my scope covers. Spot-checked and confirmed BY MEASUREMENT: G5's stronger-than-frozen result (the frozen rule anticipated 9 residual OMO_CODEX lines; `git grep -c OMO_CODEX` at HEAD = 3 in gitbash/cli.js + 6 in build-mcp.mjs, and 0+0 at the pinned revision), the `_omo`->`_mpd` envelope at exactly 5 sites, the codegraph foreign surface fully absent, and the four skills writers (t16's own F2 flag + t17's correction, both vindicated)", "status": "supported", "evidence": "raw/30-greps-at-T2.log, raw/60-verification-log.txt, this addendum's steering_1 section" }
+  ],
+
+  "expected_and_not_defects": [
+    { "item": "py_compile bytecode drift", "measured": "0 files matching __pycache__ / *.pyc / *.pyo anywhere under skills/; the hardened gate scripts/verify-vendor.mjs:79-83 skips them (commit 0cbf505 present in history below HEAD); nothing stray to delete, nothing staged" },
+    { "item": "HEAD moved during the wave", "measured": "handled exactly as §7 requires — pinned by git rev-parse HEAD plus per-artifact sha256, re-checked across a >=50 s settle window and again after every subsequent phase (T1/T2/T3/T4 all identical)" }
+  ],
+
+  "residuals_unchanged": "R1 (KH-02 frozen-location staleness), R2 (G9 evidence-dir count growth 3->9, all untracked-new), R3 (inert nonEmptyEnvValue helper), R4 (medium: the lsp envelope rename breaks an already-running version-scoped daemon; t14 filed the remedy). None is a wave defect; R4 belongs in the captain's landing notes.",
+
+  "files_added_by_this_addendum": [
+    "evidence/mpd-naming/verification/result-addendum-r14.json (this file)",
+    "evidence/mpd-naming/verification/raw/32-hardened-recompute-at-T3.json",
+    "evidence/mpd-naming/verification/raw/61-steering-defect-class-sweep.txt"
+  ]
+}

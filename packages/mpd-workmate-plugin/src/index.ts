@@ -1,5 +1,5 @@
 // mpd-workmate-plugin: durable, evolving agent library under the user's HOME
-// (~/.mpd/workmate). The OMO roster specialists are BASE templates only: a workmate
+// (~/.mpd/workmate). The roster specialists are BASE templates only: a workmate
 // is an instantiated copy with an independent name that self-summarizes after each
 // work session (persona + independent memory, size-capped to keep spawned context
 // bounded) and keeps a short searchable note. Reuse via note-matching — when no note

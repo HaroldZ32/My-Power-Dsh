@@ -1,0 +1,11 @@
+d3a7403aa63df7390c4268d368e6b2b5d385582b2910736b6c0a25130fc15fda  evidence/mpd-naming/final-allowlist/rule.json
+032566d83389ab2da9e4a7f97fdbb8df723cb9f470def3b297f090d874796515  evidence/mpd-naming/final-allowlist/result.json
+3245dabd1ae3446acbf37861bcce157b1179cfc446166b8e37a96511ef489191  evidence/mpd-naming/final-allowlist/raw/10-brand-scan-at-revision.txt
+eb0c30ffcc0504592856af311d62f4672e1d453a8ed4d74ae3e0ad9a9abc6eb1  evidence/mpd-naming/final-allowlist/raw/20-lock-recompute.log
+7263c1f5d1dc17076980156de990645167520b7562623a5addfe858e0727dfea  evidence/mpd-naming/final-allowlist/raw/30-greps-current.log
+3c00a473312dac946026e430aaae8d0bbeffde33a94ba5bb1f8efefc7cdde172  evidence/mpd-naming/final-allowlist/raw/40-token-set.txt
+92afd42deb87c130e912b55592cc5f2cb26edda30661fde250ebcf85b3df9120  evidence/mpd-naming/final-allowlist/raw/50-keep-allowlist-check.log
+d3b36243f099b70a3606bfeb8fd0cf12203468b8776d166174bb1d2fcc458306  evidence/mpd-naming/final-allowlist/raw/acceptance-greps.sh
+8922bc9c45b5a489895f64b637cae05b6995fb4452026d7b27e13670b334c0a8  evidence/mpd-naming/final-allowlist/raw/check-keep-allowlist.sh
+fc21e1e1285fb20191ffc9f9ef34ff83590f57c8855f82b04d774132b05a8c17  evidence/mpd-naming/final-allowlist/raw/emit-result.py
+8829d7274d1f703f38253dd52e9ee4242dba8dc6c57c68a02b0d7b307cf9deed  evidence/mpd-naming/final-allowlist/raw/recompute-lock.mjs

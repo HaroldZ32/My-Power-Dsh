@@ -1,0 +1,17 @@
+PASS: --version
+PASS: langs lists at least 25 languages
+PASS: validate detects \w regex misuse
+PASS: validate accepts plausible pattern
+PASS: validate detects Python trailing colon
+PASS: validate detects incomplete TS function
+PASS: validate detects literal | alternation
+PASS: doctor produces output
+PASS: MPD_AST_GREP_SG_PATH resolves first
+PASS: MPD HOME runtime resolves before standalone fallback
+PASS: search without binary prints install hint
+PASS: install.sh syntax + --help
+PASS: SKILL.md frontmatter shape
+PASS: all references present
+PASS: no Korean in skill content
+
+all smoke tests passed

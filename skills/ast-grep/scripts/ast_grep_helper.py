@@ -202,9 +202,9 @@ def homebrew_binary() -> Optional[Path]:
     return None
 
 
-# --- OMO runtime resolution (vendored patch) ---
+# --- MPD runtime resolution (vendored patch) ---
 
-def omo_env_binary() -> Optional[Path]:
+def mpd_env_binary() -> Optional[Path]:
     raw_path = os.environ.get("MPD_AST_GREP_SG_PATH")
     if not raw_path:
         return None
@@ -214,7 +214,7 @@ def omo_env_binary() -> Optional[Path]:
     return None
 
 
-def omo_runtime_slug() -> str:
+def mpd_runtime_slug() -> str:
     if sys.platform.startswith("win"):
         os_slug = "win32"
     elif sys.platform == "darwin":
@@ -227,9 +227,9 @@ def omo_runtime_slug() -> str:
     return f"{os_slug}-{arch_slug}"
 
 
-def omo_runtime_binary() -> Optional[Path]:
+def mpd_runtime_binary() -> Optional[Path]:
     binary_name = "sg.exe" if sys.platform.startswith("win") else "sg"
-    slug = omo_runtime_slug()
+    slug = mpd_runtime_slug()
     candidates: list[Path] = []
 
     codex_home = os.environ.get("CODEX_HOME")
@@ -247,12 +247,12 @@ def resolve_binary() -> Optional[Path]:
     """Resolve the ast-grep binary in priority order.
 
     1. MPD_AST_GREP_SG_PATH override
-    2. OMO runtime dirs
+    2. MPD runtime dirs
     3. Cached binary in <skill>/bin/
     4. PATH (via shutil.which)
     5. Homebrew default paths
     """
-    for fn in (omo_env_binary, omo_runtime_binary, cached_binary, which_binary, homebrew_binary):
+    for fn in (mpd_env_binary, mpd_runtime_binary, cached_binary, which_binary, homebrew_binary):
         result = fn()
         if result:
             return result

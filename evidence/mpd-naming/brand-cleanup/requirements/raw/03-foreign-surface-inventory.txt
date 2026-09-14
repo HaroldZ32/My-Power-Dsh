@@ -1,0 +1,60 @@
+FOREIGN-HARNESS SURFACE INVENTORY (OpenCode / Codex / Senpi / OMO integration literals)
+Measured with git-tracked, non-evidence files; vendored third-party skill BODIES excluded (owner ruling: they stay).
+
+A. packages/mpd-mcp-codegraph/dist/serve.js  (vendored prebuilt; NO rebuild script -> surgery + proof)
+   41    "CODEX_HOME"                      in SAFE_AMBIENT_ENV_KEYS (env passthrough allowlist)
+   5795  HARNESS_IDS = ["codex","opencode","omo"]        legacy harness-id list
+   5796  MPD_CONFIG_HARNESS_IDS = ["opencode","senpi","codex"]   ACTIVE harness-id list (MpdHarnessIdSchema enum)
+   6174-6176 / 6189-6191 / 6208  "[opencode]" / "[senpi]" / "[codex]" config sections (MpdConfigSchema is .strict())
+   7715  HARNESS_KEYS = [codex,opencode,omo,senpi] mapped to `[<id>]`
+   7725  env OCX_PROFILE / OPENCODE_CONFIG_DIR       (profile resolution)
+   7735  withoutControlKeys() strips HARNESS_KEYS from the config view
+   7979  var EMPTY_MPD_CONFIG  --- 8085 reads `EMPTY_OMO_CONFIG`  => guaranteed ReferenceError (scrub casualty)
+   8827  MPD_SCHEMA_URL = ".../oh-my-openagent/dev/assets/omo.schema.json"   8861 emits it as $schema
+   8965  for (const prefix of ["OMO","CODEX"])        env-override prefix scan
+   9047 / 9055  harness: "codex" hardcoded              => codegraph reads its OWN settings from the foreign [codex] block
+   9716  CODEGRAPH_DISABLED_HINT "...disabled by OMO SOT config. Set [codex].codegraph.enabled=true..."
+   9718  CODEGRAPH_EXCLUDED_HINT "...project excluded by OMO CodeGraph policy."
+
+B. packages/mpd-mcp-lsp/dist/cli.js  (rebuilt by scripts/build-mcp.mjs)
+   365-367  LSP_TOOLS_MCP_PROJECT_CONFIG / _USER_CONFIG + default ".codex/lsp-client.json" / ".codex/lsp-install-decisions.json"
+   406      project config discovery: join(cwd, ".codex", "lsp-client.json")
+   6153     inferOpenCodeProjectCwd(env["LSP_TOOLS_MCP_PROJECT_CONFIG"])
+   6228-6230 LSP_TOOLS_MCP_* canonicalization
+   5358/5368 reader+stripper of params["_omo"]   5739/6027/6080 writer of { _omo: authEnvelope(token) }
+   5307/5362 MPD_DAEMON_PROTOCOL_VERSION = 1 + the version check  => cross-version skew is LOUD (PROTOCOL_ERROR), not silent
+
+C. packages/mpd-mcp-gitbash/dist/cli.js  (rebuilt by scripts/build-mcp.mjs)
+   320     GIT_BASH_ENV_KEY = "OMO_CODEX_GIT_BASH_PATH"     (win32-only read; writer is the codex installer, outside this repo)
+   457-458 EXEC_COMMAND_TIMEOUT_ENV_KEYS = ["OMO_CODEX_GIT_BASH_TIMEOUT_MS","OMO_CODEX_EXEC_COMMAND_TIMEOUT_MS", ...]
+
+D. packages/mpd-mcp-astgrep/dist/cli.js  (rebuilt by scripts/build-mcp.mjs)
+   437     const codexHome = nonEmptyValue(options.env["CODEX_HOME"])  => "$CODEX_HOME/runtime/ast-grep/<slug>/<bin>"
+
+E. skills/ast-grep (vendored skill; refreshed whole-dir)  -- also carries the scrub casualty
+   AGENTS.md:23  CORRUPTED SENTENCE: "`upstream cli install script (src/tools/ast-grep; see README provenance)`-grep-sg.ts`"
+                 (a scrub substituted a phrase for the literal `omo` inside the upstream file name `omo-grep-sg.ts`)
+   scripts/ast_grep_helper.py:205-257  `# --- OMO runtime resolution (vendored patch) ---` + omo_env_binary() / omo_runtime_slug()
+                 / omo_runtime_binary(); reads MPD_AST_GREP_SG_PATH and CODEX_HOME + ~/.mpd/runtime/...
+   tests/smoke.sh:31,129,136  local omo_runtime_slug() shell function + `CODEX_HOME=` isolation line
+
+F. packages/mpd-boulder-plugin/src/vendor/storage/shared.ts  (OUR adaptation of vendored boulder-state)
+   9   type SessionPlatform = "codex"|"opencode"|"senpi"|"dsh"   (with an in-file note: "data-compatibility values ... keep them as-is")
+   11  SESSION_ID_PREFIX_PATTERN = /^(codex|opencode|senpi|dsh):/
+   dist/index.js:252 mirrors it; test/boulder.test.ts:22 pins normalizeSessionId("senpi:x") === "senpi:x"
+
+G. presets/mpd/agent.cordis.yml
+   342-348  id: tool-subagent-codex      (disabled: true)
+   350-357  id: tool-subagent-claude-code (disabled: true)     HARD FLOOR: row-parity with the shipped `standard` preset
+
+H. scripts/build-mcp.mjs
+   276  join(work,"node_modules","@oh-my-opencode")  build-time resolution of the vendored upstream package scope
+   182-187 BRAND_ALLOWLIST (4 entries; the `_omo` entry is refuted by section B: writer+reader are in the SAME artifact)
+
+I. skills/coding-agent-sessions/   34 files, 244 KB, ZERO DSH scanner, 15 foreign platform scanners (owner ruling: purge)
+   only repo reference outside itself: docs/omo-parity-gap.md:55 (a protected historical record)
+
+J. Literals that legitimately name a third party or read pre-existing data (KEEP -- see rule.json R3)
+   opencode-go/scnet (llm-pi-ai gateway provider ids, outside our control), @code-yeongyu/comment-checker +
+   go-claude-code-comment-checker (third-party package/repo), MPD_SCHEMA_URL (upstream's published schema asset),
+   @oh-my-opencode (the vendored upstream's own npm scope), evidence/omo-align/** + the frozen wave id `omo-parity-align`.

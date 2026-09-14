@@ -1,7 +1,7 @@
 {
   "source": "8c57e46",
   "sourceDir": "packages/lsp-daemon",
-  "builtAt": "2026-09-13T08:31:34.194Z",
+  "builtAt": "2026-09-14T10:08:15.426Z",
   "build": [
     "bun build src/cli.ts --outdir dist --target node --format esm"
   ],
@@ -12,7 +12,7 @@
   },
   "artifact": {
     "file": "cli.js",
-    "sha256": "9f41d4258c204aca959de98a5bea59a7459f9e298885f187cfc0268e1d18ce69",
-    "bytes": 234827
+    "sha256": "a7cebcf9ec79ec480c98d3a9cd1392837927ada57bf9bbb18e0620ba863f3148",
+    "bytes": 234821
   }
 }

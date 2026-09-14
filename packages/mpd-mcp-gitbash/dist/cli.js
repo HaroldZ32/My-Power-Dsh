@@ -317,7 +317,6 @@ function createIdleTimer(idleTimeoutMs, log, onTimeout) {
 // ../utils/src/runtime/git-bash.ts
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
-var GIT_BASH_ENV_KEY = "OMO_CODEX_GIT_BASH_PATH";
 var PROGRAM_FILES_GIT_BASH = "C:\\Program Files\\Git\\bin\\bash.exe";
 var PROGRAM_FILES_X86_GIT_BASH = "C:\\Program Files (x86)\\Git\\bin\\bash.exe";
 var NON_GIT_BASH_LAUNCHER_DIR_SEGMENTS = ["\\windows\\system32\\", "\\microsoft\\windowsapps\\"];
@@ -325,14 +324,6 @@ function resolveGitBash(input) {
   if (input.platform !== "win32")
     return { found: true, path: null, source: "not-required", checkedPaths: [] };
   const checkedPaths = [];
-  const envPath = nonEmptyEnvValue(input.env, GIT_BASH_ENV_KEY);
-  if (envPath !== undefined) {
-    checkedPaths.push(envPath);
-    if (isBashExePath(envPath) && input.exists(envPath)) {
-      return { found: true, path: envPath, source: "env", checkedPaths };
-    }
-    return missingGitBash(checkedPaths);
-  }
   for (const candidate of [
     { path: PROGRAM_FILES_GIT_BASH, source: "program-files" },
     { path: PROGRAM_FILES_X86_GIT_BASH, source: "program-files-x86" }
@@ -367,8 +358,7 @@ function missingGitBash(checkedPaths) {
     checkedPaths,
     installHint: [
       "Git Bash is required on native Windows.",
-      "Install it with: winget install --id Git.Git -e --source winget",
-      `For a custom install, set ${GIT_BASH_ENV_KEY}=C:\\path\\to\\bash.exe`
+      "Install it with: winget install --id Git.Git -e --source winget"
     ].join(`
 `)
   };
@@ -454,8 +444,6 @@ async function runGitBashCommand(input) {
 var DEFAULT_TIMEOUT_MS = 120000;
 var MAX_TIMEOUT_MS = 30 * 60000;
 var EXEC_COMMAND_TIMEOUT_ENV_KEYS = [
-  "OMO_CODEX_GIT_BASH_TIMEOUT_MS",
-  "OMO_CODEX_EXEC_COMMAND_TIMEOUT_MS",
   "CODEX_EXEC_COMMAND_TIMEOUT_MS",
   "EXEC_COMMAND_TIMEOUT_MS"
 ];

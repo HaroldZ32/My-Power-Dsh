@@ -3,7 +3,7 @@
 
 Plan C / C5 — 在 DSH tool seam 上的持久化工作状态机（"boulder"）。
 
-Vendored core：上游项目 `packages/boulder-state`。改编：state root `.mpd` → `.mpd`，默认 session platform `upstream host` → `dsh`（见 `src/vendor/constants.ts`、`src/vendor/storage/shared.ts`）。
+Vendored core：上游项目 `packages/boulder-state`。改编：state root 已改为 `.mpd` 约定；本 bundle **写入**的 session id 带 `dsh:` 前缀，而读取时仍**接受**遗留前缀（`codex:` / `opencode:` / `senpi:`），因此改根之前写入的记录仍能继续 resume（见 `src/vendor/constants.ts`、`src/vendor/storage/shared.ts`）。
 
 ## 工具
 

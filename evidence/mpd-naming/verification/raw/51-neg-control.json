@@ -1,0 +1,453 @@
+{
+  "repoRoot": "/root/dshProj/my-power-dsh/evidence/mpd-naming/verification/raw/neg-control",
+  "auditedFiles": 24,
+  "negativeControl": "/root/dshProj/my-power-dsh/evidence/mpd-naming/verification/raw/neg-control/broken-list.txt",
+  "failures": 7,
+  "verdict": "FAIL",
+  "results": [
+    {
+      "rule": "R1-pair-exists",
+      "file": "docs/upstream-parity-ledger.md",
+      "status": "OK",
+      "detail": "counterpart docs/upstream-parity-ledger.zh-CN.md present"
+    },
+    {
+      "rule": "R2/R3-switch-link",
+      "file": "docs/upstream-parity-ledger.md",
+      "status": "FAIL",
+      "detail": "no [中文](./upstream-parity-ledger.zh-CN.md) within 4 lines under the title"
+    },
+    {
+      "rule": "R5-link-resolves",
+      "file": "docs/upstream-parity-ledger.md",
+      "status": "OK",
+      "detail": "0 relative link(s) all resolve"
+    },
+    {
+      "rule": "R1-pair-exists",
+      "file": "docs/upstream-parity-ledger.zh-CN.md",
+      "status": "OK",
+      "detail": "counterpart docs/upstream-parity-ledger.md present"
+    },
+    {
+      "rule": "R2/R3-switch-link",
+      "file": "docs/upstream-parity-ledger.zh-CN.md",
+      "status": "OK",
+      "detail": "[English](./upstream-parity-ledger.md) sits under the title (line 2)"
+    },
+    {
+      "rule": "R5-link-resolves",
+      "file": "docs/upstream-parity-ledger.zh-CN.md",
+      "status": "OK",
+      "detail": "1 relative link(s) all resolve"
+    },
+    {
+      "rule": "R1-pair-exists",
+      "file": "docs/index.md",
+      "status": "OK",
+      "detail": "counterpart docs/index.zh-CN.md present"
+    },
+    {
+      "rule": "R2/R3-switch-link",
+      "file": "docs/index.md",
+      "status": "OK",
+      "detail": "[中文](./index.zh-CN.md) sits under the title (line 2)"
+    },
+    {
+      "rule": "R4-index-link-resolves",
+      "file": "docs/index.md",
+      "status": "OK",
+      "detail": "14 relative link(s) all resolve"
+    },
+    {
+      "rule": "R1-pair-exists",
+      "file": "docs/index.zh-CN.md",
+      "status": "OK",
+      "detail": "counterpart docs/index.md present"
+    },
+    {
+      "rule": "R2/R3-switch-link",
+      "file": "docs/index.zh-CN.md",
+      "status": "OK",
+      "detail": "[English](./index.md) sits under the title (line 2)"
+    },
+    {
+      "rule": "R4-index-link-resolves",
+      "file": "docs/index.zh-CN.md",
+      "status": "OK",
+      "detail": "15 relative link(s) all resolve"
+    },
+    {
+      "rule": "R1-pair-exists",
+      "file": "README.md",
+      "status": "OK",
+      "detail": "counterpart README.zh-CN.md present"
+    },
+    {
+      "rule": "R2/R3-switch-link",
+      "file": "README.md",
+      "status": "OK",
+      "detail": "[中文](./README.zh-CN.md) sits under the title (line 2)"
+    },
+    {
+      "rule": "R5-link-resolves",
+      "file": "README.md",
+      "status": "FAIL",
+      "detail": "dangling link -> ./PLAN.md"
+    },
+    {
+      "rule": "R5-link-resolves",
+      "file": "README.md",
+      "status": "FAIL",
+      "detail": "dangling link -> ./VENDOR_LOCK.json"
+    },
+    {
+      "rule": "R5-link-resolves",
+      "file": "README.md",
+      "status": "OK",
+      "detail": "15 relative link(s) all resolve"
+    },
+    {
+      "rule": "R1-pair-exists",
+      "file": "README.zh-CN.md",
+      "status": "OK",
+      "detail": "counterpart README.md present"
+    },
+    {
+      "rule": "R2/R3-switch-link",
+      "file": "README.zh-CN.md",
+      "status": "OK",
+      "detail": "[English](./README.md) sits under the title (line 2)"
+    },
+    {
+      "rule": "R5-link-resolves",
+      "file": "README.zh-CN.md",
+      "status": "FAIL",
+      "detail": "dangling link -> ./PLAN.md"
+    },
+    {
+      "rule": "R5-link-resolves",
+      "file": "README.zh-CN.md",
+      "status": "FAIL",
+      "detail": "dangling link -> ./VENDOR_LOCK.json"
+    },
+    {
+      "rule": "R5-link-resolves",
+      "file": "README.zh-CN.md",
+      "status": "OK",
+      "detail": "18 relative link(s) all resolve"
+    },
+    {
+      "rule": "R1-pair-exists",
+      "file": "docs/architecture.md",
+      "status": "OK",
+      "detail": "counterpart docs/architecture.zh-CN.md present"
+    },
+    {
+      "rule": "R2/R3-switch-link",
+      "file": "docs/architecture.md",
+      "status": "OK",
+      "detail": "[中文](./architecture.zh-CN.md) sits under the title (line 2)"
+    },
+    {
+      "rule": "R5-link-resolves",
+      "file": "docs/architecture.md",
+      "status": "OK",
+      "detail": "1 relative link(s) all resolve"
+    },
+    {
+      "rule": "R1-pair-exists",
+      "file": "docs/architecture.zh-CN.md",
+      "status": "OK",
+      "detail": "counterpart docs/architecture.md present"
+    },
+    {
+      "rule": "R2/R3-switch-link",
+      "file": "docs/architecture.zh-CN.md",
+      "status": "OK",
+      "detail": "[English](./architecture.md) sits under the title (line 2)"
+    },
+    {
+      "rule": "R5-link-resolves",
+      "file": "docs/architecture.zh-CN.md",
+      "status": "OK",
+      "detail": "1 relative link(s) all resolve"
+    },
+    {
+      "rule": "R1-pair-exists",
+      "file": "docs/user-guide.md",
+      "status": "OK",
+      "detail": "counterpart docs/user-guide.zh-CN.md present"
+    },
+    {
+      "rule": "R2/R3-switch-link",
+      "file": "docs/user-guide.md",
+      "status": "OK",
+      "detail": "[中文](./user-guide.zh-CN.md) sits under the title (line 2)"
+    },
+    {
+      "rule": "R5-link-resolves",
+      "file": "docs/user-guide.md",
+      "status": "OK",
+      "detail": "1 relative link(s) all resolve"
+    },
+    {
+      "rule": "R1-pair-exists",
+      "file": "docs/user-guide.zh-CN.md",
+      "status": "OK",
+      "detail": "counterpart docs/user-guide.md present"
+    },
+    {
+      "rule": "R2/R3-switch-link",
+      "file": "docs/user-guide.zh-CN.md",
+      "status": "OK",
+      "detail": "[English](./user-guide.md) sits under the title (line 2)"
+    },
+    {
+      "rule": "R5-link-resolves",
+      "file": "docs/user-guide.zh-CN.md",
+      "status": "OK",
+      "detail": "1 relative link(s) all resolve"
+    },
+    {
+      "rule": "R1-pair-exists",
+      "file": "docs/feature-audit.md",
+      "status": "OK",
+      "detail": "counterpart docs/feature-audit.zh-CN.md present"
+    },
+    {
+      "rule": "R2/R3-switch-link",
+      "file": "docs/feature-audit.md",
+      "status": "OK",
+      "detail": "[中文](./feature-audit.zh-CN.md) sits under the title (line 2)"
+    },
+    {
+      "rule": "R5-link-resolves",
+      "file": "docs/feature-audit.md",
+      "status": "OK",
+      "detail": "1 relative link(s) all resolve"
+    },
+    {
+      "rule": "R1-pair-exists",
+      "file": "docs/feature-audit.zh-CN.md",
+      "status": "OK",
+      "detail": "counterpart docs/feature-audit.md present"
+    },
+    {
+      "rule": "R2/R3-switch-link",
+      "file": "docs/feature-audit.zh-CN.md",
+      "status": "OK",
+      "detail": "[English](./feature-audit.md) sits under the title (line 2)"
+    },
+    {
+      "rule": "R5-link-resolves",
+      "file": "docs/feature-audit.zh-CN.md",
+      "status": "OK",
+      "detail": "1 relative link(s) all resolve"
+    },
+    {
+      "rule": "R1-pair-exists",
+      "file": "packages/mpd-boulder-plugin/README.md",
+      "status": "OK",
+      "detail": "counterpart packages/mpd-boulder-plugin/README.zh-CN.md present"
+    },
+    {
+      "rule": "R2/R3-switch-link",
+      "file": "packages/mpd-boulder-plugin/README.md",
+      "status": "OK",
+      "detail": "[中文](./README.zh-CN.md) sits under the title (line 2)"
+    },
+    {
+      "rule": "R5-link-resolves",
+      "file": "packages/mpd-boulder-plugin/README.md",
+      "status": "OK",
+      "detail": "1 relative link(s) all resolve"
+    },
+    {
+      "rule": "R1-pair-exists",
+      "file": "packages/mpd-boulder-plugin/README.zh-CN.md",
+      "status": "OK",
+      "detail": "counterpart packages/mpd-boulder-plugin/README.md present"
+    },
+    {
+      "rule": "R2/R3-switch-link",
+      "file": "packages/mpd-boulder-plugin/README.zh-CN.md",
+      "status": "OK",
+      "detail": "[English](./README.md) sits under the title (line 2)"
+    },
+    {
+      "rule": "R5-link-resolves",
+      "file": "packages/mpd-boulder-plugin/README.zh-CN.md",
+      "status": "OK",
+      "detail": "1 relative link(s) all resolve"
+    },
+    {
+      "rule": "R1-pair-exists",
+      "file": "packages/mpd-bundle/README.md",
+      "status": "OK",
+      "detail": "counterpart packages/mpd-bundle/README.zh-CN.md present"
+    },
+    {
+      "rule": "R2/R3-switch-link",
+      "file": "packages/mpd-bundle/README.md",
+      "status": "OK",
+      "detail": "[中文](./README.zh-CN.md) sits under the title (line 2)"
+    },
+    {
+      "rule": "R5-link-resolves",
+      "file": "packages/mpd-bundle/README.md",
+      "status": "OK",
+      "detail": "1 relative link(s) all resolve"
+    },
+    {
+      "rule": "R1-pair-exists",
+      "file": "packages/mpd-bundle/README.zh-CN.md",
+      "status": "OK",
+      "detail": "counterpart packages/mpd-bundle/README.md present"
+    },
+    {
+      "rule": "R2/R3-switch-link",
+      "file": "packages/mpd-bundle/README.zh-CN.md",
+      "status": "OK",
+      "detail": "[English](./README.md) sits under the title (line 2)"
+    },
+    {
+      "rule": "R5-link-resolves",
+      "file": "packages/mpd-bundle/README.zh-CN.md",
+      "status": "OK",
+      "detail": "1 relative link(s) all resolve"
+    },
+    {
+      "rule": "R1-pair-exists",
+      "file": "packages/mpd-modelchain-plugin/README.md",
+      "status": "OK",
+      "detail": "counterpart packages/mpd-modelchain-plugin/README.zh-CN.md present"
+    },
+    {
+      "rule": "R2/R3-switch-link",
+      "file": "packages/mpd-modelchain-plugin/README.md",
+      "status": "OK",
+      "detail": "[中文](./README.zh-CN.md) sits under the title (line 2)"
+    },
+    {
+      "rule": "R5-link-resolves",
+      "file": "packages/mpd-modelchain-plugin/README.md",
+      "status": "OK",
+      "detail": "1 relative link(s) all resolve"
+    },
+    {
+      "rule": "R1-pair-exists",
+      "file": "packages/mpd-modelchain-plugin/README.zh-CN.md",
+      "status": "OK",
+      "detail": "counterpart packages/mpd-modelchain-plugin/README.md present"
+    },
+    {
+      "rule": "R2/R3-switch-link",
+      "file": "packages/mpd-modelchain-plugin/README.zh-CN.md",
+      "status": "OK",
+      "detail": "[English](./README.md) sits under the title (line 2)"
+    },
+    {
+      "rule": "R5-link-resolves",
+      "file": "packages/mpd-modelchain-plugin/README.zh-CN.md",
+      "status": "OK",
+      "detail": "1 relative link(s) all resolve"
+    },
+    {
+      "rule": "R1-pair-exists",
+      "file": "packages/mpd-qa-roles-probe/README.md",
+      "status": "OK",
+      "detail": "counterpart packages/mpd-qa-roles-probe/README.zh-CN.md present"
+    },
+    {
+      "rule": "R2/R3-switch-link",
+      "file": "packages/mpd-qa-roles-probe/README.md",
+      "status": "OK",
+      "detail": "[中文](./README.zh-CN.md) sits under the title (line 2)"
+    },
+    {
+      "rule": "R5-link-resolves",
+      "file": "packages/mpd-qa-roles-probe/README.md",
+      "status": "OK",
+      "detail": "1 relative link(s) all resolve"
+    },
+    {
+      "rule": "R1-pair-exists",
+      "file": "packages/mpd-qa-roles-probe/README.zh-CN.md",
+      "status": "OK",
+      "detail": "counterpart packages/mpd-qa-roles-probe/README.md present"
+    },
+    {
+      "rule": "R2/R3-switch-link",
+      "file": "packages/mpd-qa-roles-probe/README.zh-CN.md",
+      "status": "OK",
+      "detail": "[English](./README.md) sits under the title (line 2)"
+    },
+    {
+      "rule": "R5-link-resolves",
+      "file": "packages/mpd-qa-roles-probe/README.zh-CN.md",
+      "status": "OK",
+      "detail": "1 relative link(s) all resolve"
+    },
+    {
+      "rule": "R1-pair-exists",
+      "file": "packages/mpd-roles-plugin/README.md",
+      "status": "FAIL",
+      "detail": "missing counterpart packages/mpd-roles-plugin/README.zh-CN.md"
+    },
+    {
+      "rule": "R2/R3-switch-link",
+      "file": "packages/mpd-roles-plugin/README.md",
+      "status": "OK",
+      "detail": "[中文](./README.zh-CN.md) sits under the title (line 2)"
+    },
+    {
+      "rule": "R5-link-resolves",
+      "file": "packages/mpd-roles-plugin/README.md",
+      "status": "OK",
+      "detail": "1 relative link(s) all resolve"
+    },
+    {
+      "rule": "R0-exists",
+      "file": "packages/mpd-roles-plugin/README.zh-CN.md",
+      "status": "FAIL",
+      "detail": "file does not exist at the pinned revision"
+    },
+    {
+      "rule": "R1-pair-exists",
+      "file": "packages/mpd-workmate-plugin/README.md",
+      "status": "OK",
+      "detail": "counterpart packages/mpd-workmate-plugin/README.zh-CN.md present"
+    },
+    {
+      "rule": "R2/R3-switch-link",
+      "file": "packages/mpd-workmate-plugin/README.md",
+      "status": "OK",
+      "detail": "[中文](./README.zh-CN.md) sits under the title (line 2)"
+    },
+    {
+      "rule": "R5-link-resolves",
+      "file": "packages/mpd-workmate-plugin/README.md",
+      "status": "OK",
+      "detail": "1 relative link(s) all resolve"
+    },
+    {
+      "rule": "R1-pair-exists",
+      "file": "packages/mpd-workmate-plugin/README.zh-CN.md",
+      "status": "OK",
+      "detail": "counterpart packages/mpd-workmate-plugin/README.md present"
+    },
+    {
+      "rule": "R2/R3-switch-link",
+      "file": "packages/mpd-workmate-plugin/README.zh-CN.md",
+      "status": "OK",
+      "detail": "[English](./README.md) sits under the title (line 2)"
+    },
+    {
+      "rule": "R5-link-resolves",
+      "file": "packages/mpd-workmate-plugin/README.zh-CN.md",
+      "status": "OK",
+      "detail": "1 relative link(s) all resolve"
+    }
+  ]
+}

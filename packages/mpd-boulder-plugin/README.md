@@ -3,9 +3,11 @@
 
 Plan C / C5 — durable work-state machine ("boulder") on the DSH tool seam.
 
-Vendored core: the upstream project `packages/boulder-state`. Adaptations:
-state root `.mpd` → `.mpd` and the default session platform `upstream host` → `dsh`
-(see `src/vendor/constants.ts`, `src/vendor/storage/shared.ts`).
+Vendored core: the upstream project `packages/boulder-state`. Adaptations: the state root was
+retargeted to the `.mpd` convention, and session ids this bundle **writes** are `dsh:`-prefixed
+while reads still **accept** the legacy prefixes (`codex:` / `opencode:` / `senpi:`), so records
+written before the retarget keep resuming (see `src/vendor/constants.ts`,
+`src/vendor/storage/shared.ts`).
 
 ## Tools
 

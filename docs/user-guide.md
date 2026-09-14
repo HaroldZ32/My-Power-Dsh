@@ -77,7 +77,7 @@ The only shipped preset is **MPD**, the main working agent. Its conventions:
 
 ## 3. Specialists (the roster)
 
-The 11 OMO-origin agents are specialist subagents, **not presets**:
+The specialist roster's 11 specialists are specialist subagents, **not presets**:
 
 | Normal name | stable id | model (chain[0]) | discipline |
 |---|---|---|---|

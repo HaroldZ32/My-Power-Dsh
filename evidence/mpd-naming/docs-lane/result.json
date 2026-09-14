@@ -1,0 +1,64 @@
+{
+  "taskId": "t15",
+  "attemptId": "496c5126-72f2-4d0b-9038-67f39a2f0615",
+  "member": "Junior Engineer",
+  "lane": "docs lane — rename the maintained parity ledger pair and sync its index rows",
+  "renames": [
+    { "from": "docs/omo-parity-ledger.md", "to": "docs/upstream-parity-ledger.md", "how": "git mv (rename recorded in git status as RM)" },
+    { "from": "docs/omo-parity-ledger.zh-CN.md", "to": "docs/upstream-parity-ledger.zh-CN.md", "how": "git mv" }
+  ],
+  "contentChanges": [
+    { "file": "docs/upstream-parity-ledger.md", "line": 1, "before": "# OMO Parity Ledger", "after": "# Upstream Parity Ledger — my-power-dsh specialist parity against the pinned baseline" },
+    { "file": "docs/upstream-parity-ledger.md", "line": 2, "before": "**English** | [中文](./omo-parity-ledger.zh-CN.md)", "after": "**English** | [中文](./upstream-parity-ledger.zh-CN.md)" },
+    { "file": "docs/upstream-parity-ledger.md", "line": 25, "before": "| G1 | Align functionality with OMO latest (beta.62) | `D_UPSTREAM_REF` — reference only, no re-pin |", "after": "| G1 | Align functionality with the pinned upstream baseline (beta.62) | `D_UPSTREAM_REF` — reference only, no re-pin |", "note": "the stale sentence in this document's own goal table" },
+    { "file": "docs/upstream-parity-ledger.md", "line": 41, "before": "Ledger = `docs/omo-parity-ledger.md` + `docs/omo-parity-ledger.zh-CN.md`", "after": "Ledger = `docs/upstream-parity-ledger.md` + `docs/upstream-parity-ledger.zh-CN.md`", "note": "internal self-reference line (kept `docs/omo-parity-gap.md` and the rest of the row untouched)" },
+    { "file": "docs/upstream-parity-ledger.zh-CN.md", "line": 1, "before": "# OMO 对齐台账", "after": "# 上游对齐台账 —— my-power-dsh 专家体系与钉定基线的对齐" },
+    { "file": "docs/upstream-parity-ledger.zh-CN.md", "line": 2, "before": "[English](./omo-parity-ledger.md) | **中文**", "after": "[English](./upstream-parity-ledger.md) | **中文**" },
+    { "file": "docs/upstream-parity-ledger.zh-CN.md", "line": 22, "before": "| G1 | 功能上对齐 OMO 最新版（beta.62） | ...", "after": "| G1 | 功能上对齐钉定的上游基线（beta.62） | ...", "note": "the stale sentence in the ZH goal table" },
+    { "file": "docs/upstream-parity-ledger.zh-CN.md", "line": 38, "before": "台账 = `docs/omo-parity-ledger.md` + `docs/omo-parity-ledger.zh-CN.md`", "after": "台账 = `docs/upstream-parity-ledger.md` + `docs/upstream-parity-ledger.zh-CN.md`", "note": "internal self-reference line (kept `docs/omo-parity-gap.md` untouched)" },
+    { "file": "docs/index.md", "line": 19, "before": "| [`omo-parity-ledger.md`](omo-parity-ledger.md) | ... | The `omo-parity-align` wave ledger in both languages ([中文](omo-parity-ledger.zh-CN.md)): ... Current and maintained, not a historical record. |", "after": "| [`upstream-parity-ledger.md`](upstream-parity-ledger.md) | ... | The maintained specialist-parity ledger of this repository against its pinned upstream baseline, in both languages ([中文](upstream-parity-ledger.zh-CN.md)): ... Current and maintained, not a historical record. |", "note": "href + link text + description all updated to this repository's vocabulary" },
+    { "file": "docs/index.zh-CN.md", "line": 18, "before": "| [`omo-parity-ledger.zh-CN.md`](omo-parity-ledger.zh-CN.md) | ... | `omo-parity-align` 波次台账（双语，[English](omo-parity-ledger.md)）：... |", "after": "| [`upstream-parity-ledger.zh-CN.md`](upstream-parity-ledger.zh-CN.md) | ... | 本仓库专家体系与钉定上游基线的对齐台账（双语，[English](upstream-parity-ledger.md)）：... |", "note": "same three elements updated in the ZH hub" }
+  ],
+  "keptAsHistory": [
+    {
+      "what": "the wave id `omo-parity-align`",
+      "where": "docs/upstream-parity-ledger.md:4 and docs/upstream-parity-ledger.zh-CN.md:4 (the wave line)",
+      "why": "It identifies a historical wave, not a document name; rewriting it would falsify the record the ledger exists to preserve."
+    },
+    {
+      "what": "every `evidence/omo-align/**` path citation",
+      "where": "8 citations in the EN ledger, 7 in the ZH ledger (frozen-contract.json, research inputs, the four requirement verdicts)",
+      "why": "Those artifacts exist on disk under that path; renaming the citations without moving the evidence would produce dangling references."
+    },
+    {
+      "what": "`docs/omo-parity-gap.md` (name and content)",
+      "where": "referenced from both ledgers' opening notes and the D_LEDGER row",
+      "why": "A prior-phase process record, exempt from the bilingual rule and byte-identical by contract."
+    },
+    {
+      "what": "`docs/plan-*.md`, `docs/decisions.md`",
+      "where": "n/a",
+      "why": "Process records; untouched (git status empty for them)."
+    }
+  ],
+  "acceptance": {
+    "oldPairGone_newPairExists": { "verify": "test -f docs/upstream-parity-ledger.md && test -f docs/upstream-parity-ledger.zh-CN.md && test ! -e docs/omo-parity-ledger.md && test ! -e docs/omo-parity-ledger.zh-CN.md", "exitCode": 0, "passed": true },
+    "titlesDeBranded": { "en": "# Upstream Parity Ledger — my-power-dsh specialist parity against the pinned baseline", "zh": "# 上游对齐台账 —— my-power-dsh 专家体系与钉定基线的对齐", "omoHitsInTitles": 0 },
+    "switchLinksReciprocal": { "en": "**English** | [中文](./upstream-parity-ledger.zh-CN.md)", "zh": "[English](./upstream-parity-ledger.md) | **中文**", "bothOnLine2": true, "targetsExist": true, "matches": 2, "passed": true },
+    "noStalePath": { "command": "git grep -n \"omo-parity-ledger\" -- docs/ ':!docs/plan-*.md' ':!docs/omo-parity-gap.md'", "output": "", "passed": true, "wideSweep": "git grep -n \"omo-parity-ledger\" -- . ':!docs/' ':!evidence/' -> no output" },
+    "historyKept": { "waveIdHitsEn": 1, "evidenceCitationsEn": 8, "evidenceCitationsZh": 7, "passed": true },
+    "exemptRecordsUntouched": { "command": "git status --porcelain docs/omo-parity-gap.md docs/plan-*.md docs/decisions.md", "output": "", "passed": true }
+  },
+  "bilingualDiscipline": "Both language versions changed in this task: titles, line-2 switch links, the G1 goal row and the D_LEDGER self-reference in each file, plus both hub rows. No file changed alone.",
+  "notes": [
+    "The task description's 'stale sentence at line 25 (en) / 22 (zh)' resolves to the G1 goal-table row in each file ('Align functionality with OMO latest' / '功能上对齐 OMO 最新版'); both are rewritten. The internal self-reference lines it names (en :41 / zh :38) were the D_LEDGER rows and are updated.",
+    "The index rows previously used the wave id as the document's label; they now describe this repository's ledger, and the wave id remains only inside the two ledger documents where it labels the historical wave (explicitly required by this task's acceptance)."
+  ],
+  "changedPaths": [
+    "docs/upstream-parity-ledger.md",
+    "docs/upstream-parity-ledger.zh-CN.md",
+    "docs/index.md",
+    "docs/index.zh-CN.md"
+  ],
+  "evidenceDir": "evidence/mpd-naming/docs-lane/"
+}

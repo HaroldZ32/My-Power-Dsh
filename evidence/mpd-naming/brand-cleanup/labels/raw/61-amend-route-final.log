@@ -1,0 +1,23 @@
+### amend route — final, source-level determination (4th attempt on captain's order) ###
+attempt_id = 2b51b409-89c2-494a-be29-32ffeb8e842d (attempt 2, in_progress, owner = Senior Engineer)
+
+$ agent_teams_update_task {task_id:"t2", status:"in_progress", attempt_id, amend:{verify:["bun run typecheck","bun test packages"]}}
+  -> returns success; persisted record unchanged:
+     verify = ["bun run typecheck", "bun test packages", "bun run test:qa"]
+$ agent_teams_update_task {task_id:"t2", status:"completed", attempt_id}
+  -> Error: implementation completion requires a passed commandsRun entry for every verify command
+
+WHY the amend can never be honoured from this identity (plugin source, read-only):
+  packages/mpd-agent-teams-plugin/lib/tools.js:1631
+     if (args.amend !== undefined && identity.kind === 'captain' && amendChangesDefinition(task, args.amend)) { ... }
+  packages/mpd-agent-teams-plugin/lib/tools.js:1695 (terminal path) — same captain-only guard.
+  The member branch immediately above (tools.js:1606-1609) checks only `task.assignee === identity.name`
+  and the attempt_id; an `amend` argument is simply never read for `identity.kind === 'member'`.
+  => No payload shape can make a member's amend effective. The verify entry can only be removed by the
+     captain's own agent_teams_update_task call, or made green by landing the skills re-pin.
+
+HOLD STATE (captain's STEP 2): t2 stays in_progress. Everything needed for a one-call completion after
+t5 lands the re-pin is already filed: 5/5 acceptanceResults passed, changedPaths confined to declared
+inScope, and every coupled/attribution item disclosed in the output. The remaining action then is a
+single re-run of `bun run test:qa` (green once the lock matches 297/1d277907045e…) plus the third
+commandsRun entry (passed) followed by status=completed.

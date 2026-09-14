@@ -1,7 +1,7 @@
 # mpd-roles-plugin
 **English** | [中文](./README.zh-CN.md)
 
-The OMO-origin agents exist as a **specialist roster**, not as standalone presets.
+The specialists exist as a **specialist roster**, not as standalone presets.
 Each role = a stable `id` (also a modelchain chain key) + a normal display `name`
 + persona text (asset `personas/<id>.md`) + DeepSeek model chain + read-only
 discipline.

@@ -116,7 +116,7 @@ mpd-dsh/
 ├── presets/                      # the shipped `mpd` preset (served at <bundle>/presets)
 ├── scripts/
 │   ├── verify-vendor.mjs         # blocking vendor gate (commit/version/count/sha/treeSha)
-│   ├── build-mcp.mjs             # offline build of ast-grep/git-bash/lsp MCP servers
+│   ├── build-mcp.mjs             # offline build of ast-grep/git-bash/lsp MCP servers + their BUILD.lock (needs MPD_UPSTREAM_ROOT on a normal clone: the default is the legacy ../../../ layout)
 │   ├── bootstrap.mjs             # preflight + vendor check (P0-era, kept as checks)
 │   ├── install-profile.mjs       # ONLY sanctioned writer to a user DSH_HOME (default dry-run)
 │   ├── pack-mpd.mjs              # Plan D: assemble the relocatable installable bundle

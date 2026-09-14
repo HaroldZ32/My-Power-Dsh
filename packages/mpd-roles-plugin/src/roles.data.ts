@@ -1,4 +1,4 @@
-// The OMO-origin agent roster. Each entry is a SPECIALIST definition with a
+// The specialist roster. Each entry is a SPECIALIST definition with a
 // stable id (a modelchain chain key) and a normal, functional display name.
 // ids are stable because they double as mpd-modelchain chain keys and are
 // referenced across skills/docs; only the human-facing `name`/`description`

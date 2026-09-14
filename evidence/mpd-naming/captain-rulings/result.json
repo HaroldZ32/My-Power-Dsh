@@ -1,0 +1,225 @@
+{
+  "wave": "omo-to-dsh naming wave, requirements round 2",
+  "captain": "MPD (main working agent)",
+  "taken_at": "2026-09-14",
+  "frozen_input": {
+    "rule_json": "evidence/mpd-naming/final-allowlist/rule.json",
+    "rule_sha256": "d3a7403aa63df7390c4268d368e6b2b5d385582b2910736b6c0a25130fc15fda"
+  },
+  "rulings": [
+    {
+      "id": "R1",
+      "item": "KF-06 ast-grep CODEX_HOME runtime tier",
+      "decision": "KEEP + allowlist (analogy to owner ruling (b) acked)",
+      "reason": "foreign tool's own home variable read for interop, same class as the codegraph MIGRATION_ID/[senpi] and lsp .codex keeps; not one of this repo's own legacy brand tokens",
+      "sites": [
+        "skills/ast-grep/scripts/ast_grep_helper.py:235",
+        "skills/ast-grep/tests/smoke.sh:136",
+        "packages/mpd-mcp-astgrep/dist/cli.js:437-439"
+      ]
+    },
+    {
+      "id": "R2",
+      "item": "sk-08 omoRoot/omoReal scrub casualty",
+      "decision": "applied captain-side before the wave's single re-pin",
+      "file": "skills/ulw-plan/scripts/scaffold-plan.mjs",
+      "lines": [
+        124,
+        127,
+        129,
+        132
+      ],
+      "renamed_to": [
+        "mpdRoot",
+        "mpdReal"
+      ],
+      "consequences": [
+        "two skills writers this wave, but both ordered BEFORE every pin, so exactly ONE VENDOR_LOCK recomputation (t17)",
+        "verify-vendor FAILS on the working tree until t17 lands - by design; t18 depends on t17 and is the gate that must see it pass",
+        "t16 owns skills/ast-grep/** only and must not touch this file; t17 must not recompute before t16 completes"
+      ]
+    },
+    {
+      "id": "R3",
+      "item": "t13 relayed corrections",
+      "decision": "accepted",
+      "items": [
+        "the _omo -> _mpd skew failure is AUTH_ERROR_CODE -32001 + DaemonUnreachableError after the ready timeout, not protocolError",
+        "the codegraph foreign surface is already deleted and committed in 3c1a850; round-1 C2 resolved, $schema non-goal moot",
+        "leave and disclose the possibly-unused nonEmptyEnvValue helper"
+      ]
+    },
+    {
+      "id": "R4",
+      "item": "t14 disclosure D-1 (structural regexes vs literal residuals)",
+      "decision": "ACKED",
+      "verification": [
+        "BRAND_ALLOWLIST empty and asserted; assertBrandClean refuses a 0-identifier scan",
+        "captain re-ran node scripts/build-mcp.mjs: primary byte-equality guard 341615 bytes equal, 33215 identifiers inspected, 0 brand occurrences, exit 0",
+        "captain re-ran raw/build-repro.mjs --apply-scrub --compare on all three: byte-identical to committed (84651 / 22137 / 234827)"
+      ]
+    },
+    {
+      "id": "R5",
+      "item": "t14 disclosure D-4 (BUILD.lock stale) + build-script env trap",
+      "decision": "CLOSED by the captain",
+      "action": "refreshed the three BUILD.lock files with MPD_UPSTREAM_ROOT=<repo>/.mpd-dsh/upstream node scripts/build-mcp.mjs (exit 0); cli.js hashes unchanged f06bba31/6458a82e/a7cebcf9",
+      "documented": "AGENTS.md section 3: build-mcp.mjs resolves MPD_UPSTREAM_ROOT ?? <repo>/../../.. (legacy layout) and dies with ENOENT /packages/mcp-stdio-core on a normal clone"
+    },
+    {
+      "id": "R6",
+      "item": "wave state after t14",
+      "decision": "recorded",
+      "greps": {
+        "G1": 0,
+        "G4": 0,
+        "G5": 0,
+        "G17": 0,
+        "G6": 11,
+        "G7": 6,
+        "G14": "LOCK-RECOMPUTE=DRIFT"
+      },
+      "reds_are": "t16 (G6), t15 (G7) and the single re-pin (t17) - all pending work, no unexplained red"
+    },
+    {
+      "id": "R7",
+      "item": "cancelled lane t5 (codegraph) re-open request from Junior Engineer",
+      "decision": "stays CANCELLED / no work handed back",
+      "reason": "its substance is already landed and committed in 3c1a850 (codegraph foreign surface deleted) and the surviving MIGRATION_ID + [senpi] reads are allowlisted keeps; reviving a cancelled task would re-open a finalised lane"
+    },
+    {
+      "id": "R8",
+      "item": "sk-07 unfilled (sk-07 vs KP-03 looked like a conflict)",
+      "decision": "applied by the captain before the re-pin",
+      "detail": "skills/ast-grep/AGENTS.md:23 'OMO caches' -> 'MPD caches'; KP-03's upstream repo path on the SAME line untouched; the two entries name different spans, so the freeze was consistent",
+      "note": "third skills writer this wave, ordered ahead of the pin; exactly one lock recomputation still"
+    },
+    {
+      "id": "R9",
+      "item": "t7-06 unowned (legacy overlay filename)",
+      "decision": "applied by the captain",
+      "detail": "tests/overlays/omo-bline.yml -> tests/overlays/bline.yml; no references existed; content unchanged; not fingerprinted by VENDOR_LOCK"
+    },
+    {
+      "id": "R10",
+      "item": "branded labels inside the in-flight t16 files",
+      "decision": "steered to the lane, not edited by the captain",
+      "detail": [
+        "skills/ast-grep/scripts/ast_grep_helper.py:205 comment",
+        "skills/ast-grep/scripts/ast_grep_helper.py:250 docstring tier",
+        "skills/ast-grep/tests/smoke.sh:126 comment"
+      ],
+      "constraint": "labels only - the $CODEX_HOME runtime TIER stays (R1/KF-06 keep, allowlisted)"
+    },
+    {
+      "id": "R11",
+      "item": "F1 - verify-vendor counted bytecode caches as corpus content",
+      "decision": "fixed at the root by the captain, committed 0cbf505",
+      "fix": [
+        "scripts/verify-vendor.mjs listFiles() skips __pycache__ / *.pyc / *.pyo",
+        ".gitignore gains __pycache__/, *.pyc, *.pyo"
+      ],
+      "proof": {
+        "method": "isolated worktree of the pre-fix revision with one .pyc under skills/",
+        "red": "exit 1, count drifted: 298 vs 297",
+        "green": "exit 0, asset OK: skills 297 files, PASS"
+      },
+      "pin_impact": "none (no bytecode in the corpus)"
+    },
+    {
+      "id": "R12",
+      "item": "staging-boundary incident (git mv auto-stages)",
+      "decision": "corrected immediately as 53d617e; no history rewrite",
+      "detail": "0cbf505 additionally carried the ledger pair as pure renames plus tests/overlays/bline.yml; the content edits + hub rows landed in 53d617e, after which `git grep -n omo-parity-ledger HEAD -- docs/` returns nothing",
+      "lesson": "git mv stages the move - a rename+edit lane must git add again after editing, and the captain must inspect git diff --cached before committing on a shared tree"
+    },
+    {
+      "id": "R13",
+      "item": "t16 terminal-immutability refusal",
+      "decision": "expected (wave-4 D17 guard); evidence addendum is the record; no re-run",
+      "reason": "re-running t16 would re-run t17 and cost the wave its single pin"
+    },
+    {
+      "id": "R14",
+      "item": "t17's 't16 was the ONLY skills writer' premise",
+      "decision": "VOID - ratified correction: four skills writers, one re-pin on settled bytes",
+      "writers": [
+        "skills/ast-grep/scripts/ast_grep_helper.py (t16)",
+        "skills/ast-grep/tests/smoke.sh (t16)",
+        "skills/ast-grep/AGENTS.md:23 (captain sk-07)",
+        "skills/ulw-plan/scripts/scaffold-plan.mjs (captain sk-08)"
+      ],
+      "proven_invariant": [
+        "exactly one VENDOR_LOCK recomputation (lockedAt 2026-09-14T10:15:51.000Z)",
+        "computed on settled bytes after two >=50 s byte-identical reads",
+        "skills 297/a0f1febb..., gitbash 6458a82e..., lsp a7cebcf9..., _deps/astgrep/codegraph recomputed-unchanged",
+        "verify-vendor exit 0 / PASS (captain re-verified)",
+        "all four skills edits + VENDOR_LOCK.json still uncommitted together"
+      ],
+      "instruction_to_verification": "do not fail the wave for four skills files; judge the substantive clauses, and never let the voided premise hide a real defect"
+    },
+    {
+      "id": "R15",
+      "item": "Lead offered a formal new-task re-pin for the audit record",
+      "decision": "declined - the post-go-ahead fresh re-derivation IS the audit record",
+      "evidence": [
+        "evidence/mpd-naming/re-pin/result.json#postCompletionGoAheadReDerivation",
+        "evidence/mpd-naming/re-pin/output.log Appendix 2",
+        "raw/A5..A9",
+        "raw/B0"
+      ],
+      "reason": "a new task would recompute identical bytes into identical values while adding a second lock-touching lane to a one-re-pin wave",
+      "re_derivation": {
+        "runs": 2,
+        "gap_s": ">=50",
+        "head": "53d617e6",
+        "skills": "297 / a0f1febb4111d5884c9af3385963b06753c3f5a38423f7b66f6852c284725f95",
+        "drift": "NONE over all six assets",
+        "gate": "verify-vendor exit 0 / PASS"
+      },
+      "captain_check_correction": "the one provenance mention is lower-case `omo` in README.md:133, so a case-sensitive \"OMO\" grep correctly reads zero there"
+    },
+    {
+      "id": "R16",
+      "item": "t18's four non-blocking residuals (R1 KH-02 stale location, R2 G9 evidence growth, R3 dead nonEmptyEnvValue, R4 lsp envelope skew)",
+      "decision": "ACCEPTED as disclosed; no repair before the landing",
+      "captain_recheck": {
+        "verify_vendor": "exit 0 / PASS",
+        "greps": "G1/G4/G5/G6/G7 = 0, KEEPs present",
+        "vendor_lock_diff": "exactly 8 changed value lines = one re-pin"
+      },
+      "notes": {
+        "R1": "kept literal is byte-present at its new documented site; the expectation was location-bound, not the content",
+        "R2": "growth by design (five lanes + verification wrote evidence after the freeze); history byte-identical",
+        "R3": "inert dead helper in a bundled artifact, no brand token, minimal-diff discipline",
+        "R4": "deliberate loud breaking change with a stated one-time remedy; the retired PROTOCOL_ERROR wording is not repeated anywhere"
+      }
+    },
+    {
+      "id": "R17",
+      "item": "t19's two medium findings (lock not committed; frozen rename target vs landed name)",
+      "decision": "F1 confirmed and satisfied by the landing plan; F2 landed name stands, freeze NOT edited",
+      "F1": {
+        "detail": "HEAD moved by the captain's three commits (overlap fix, gate hardening, docs lane), not by a commit of t17's re-pin; VENDOR_LOCK.json is still ' M' and rides the landing commit with the four skills files",
+        "note": "t18's terminal record keeps its wording; this ruling is the correction of record"
+      },
+      "F2": {
+        "detail": "freeze said docs/parity-ledger{,.zh-CN}.md, the wave landed docs/upstream-parity-ledger{,.zh-CN}.md (the captain's t15 spec); OMO-free requirement met; KH-02 is a shape/location staleness",
+        "why_not_edit_the_freeze": "rule.json is a hashed evidence artifact cited by t17/t18/t19 - editing it would falsify those hashes"
+      },
+      "g2_enumeration": [
+        "skills/lsp-setup/references/*/README.md (21 files)",
+        "skills/lsp-setup/SKILL.md:86",
+        "skills/review-work/SKILL.md:30"
+      ],
+      "superseded": {
+        "t16_F3": "labels now read MPD; git grep omo_ over skills/ast-grep is empty",
+        "G9_count": "3 -> 9 by design, recorded not repaired"
+      }
+    }
+  ],
+  "artifacts": {
+    "rulings_md": "evidence/mpd-naming/captain-rulings/rulings.md",
+    "rulings_md_sha256": "81a420ca140c5d347b56c4d0e93b0bfc15f1882d4aad79be3280540ce187e54f"
+  }
+}

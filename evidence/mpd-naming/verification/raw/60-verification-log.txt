@@ -1,0 +1,53 @@
+t18 INDEPENDENT VERIFICATION LOG — 2026-09-14T10:22:01Z
+repo: /root/dshProj/my-power-dsh
+author: Reviewer (independent; authored no lane work, not the captain)
+
+--- pinned revision ---
+$ git rev-parse HEAD
+53d617e6c2d29dfadec06278bc4130061055378e
+$ git branch --show-current
+dev
+$ git status --porcelain | wc -l
+48
+
+--- settle proof (>= 50 s) ---
+$ (hash 39 modified product files + all 4948 tracked files) -> raw/13-,raw/10- ; sleep 60 ; re-hash -> raw/21-,raw/22-
+result: 39/39 modified identical; 4948/4948 tracked identical; HEAD identical. [settled]
+$ (after the full gate sweep) re-hash -> raw/23-modified-hashes-T3.tmp
+result: T3 == T1. [STILL SETTLED — no edit was landing at any read]
+
+--- frozen acceptance greps (driver run UNMODIFIED) ---
+$ sha256sum evidence/mpd-naming/final-allowlist/raw/acceptance-greps.sh
+d3b36243f099b70a3606bfeb8fd0cf12203468b8776d166174bb1d2fcc458306  evidence/mpd-naming/final-allowlist/raw/acceptance-greps.sh
+$ bash evidence/mpd-naming/final-allowlist/raw/acceptance-greps.sh
+exit=0 -> full output raw/30-greps-at-T2.log
+G1=0 G2=37files G3=31lines G4=0 G5=0 G6=0 G7=0 G8=15lines G9=9untracked G10=4 G11=2 G12=2 G13=2 G17=0 G14=MATCH
+
+--- frozen KEEP allowlist (driver run UNMODIFIED) ---
+$ sha256sum evidence/mpd-naming/final-allowlist/raw/check-keep-allowlist.sh
+8922bc9c45b5a489895f64b637cae05b6995fb4452026d7b27e13670b334c0a8  evidence/mpd-naming/final-allowlist/raw/check-keep-allowlist.sh
+$ bash evidence/mpd-naming/final-allowlist/raw/check-keep-allowlist.sh
+exit=0 -> full output raw/31-keep-allowlist-at-T2.log
+20/21 OK; KH-02 got=0 (documented relocation, see result.json R1)
+
+--- lock recompute ---
+$ node evidence/mpd-naming/final-allowlist/raw/recompute-lock.mjs
+exit=0; LOCK-RECOMPUTE=MATCH (skills 297/a0f1febb…, _deps 635/d1d10603…, 4 dists all equal)
+$ git diff -U0 -- VENDOR_LOCK.json | grep -c '^[+-][^+-]'
+8  (one re-pin: skills treeSha + 2 dist shas + lockedAt)
+
+--- gate sweep (each in its own file under raw/gates/) ---
+$ node scripts/verify-vendor.mjs                                  -> exit 0 , raw/gates/40-verify-vendor.log   (tail: "[verify-vendor] PASS")
+$ node scripts/patch-agent-teams-fixes.mjs --check                -> exit 0 , raw/gates/41-patch-check.log      (tail: "already applied: 40 mpd delta region(s) across 9 adopted file(s)")
+$ bun run typecheck                                               -> exit 0 , raw/gates/42-typecheck.log        (tail: "$ tsgo --noEmit")
+$ bun test packages/mpd-agent-teams-plugin                        -> exit 0 , raw/gates/43-agent-teams-tests.log(tail: "206 pass / 0 fail / Ran 206 tests across 54 files")
+$ bun run test:qa                                                 -> exit 0 , raw/gates/44-test-qa.log          (tail: "all self-tests passed")
+
+--- bilingual + links ---
+$ node evidence/mpd-naming/verification/raw/check-bilingual-links.mjs .   -> 24/24 files OK, 0 failures, raw/50-bilingual-links.json
+
+--- negative controls (falsifiability) ---
+NC-1 identity-label grep: injected OMO label -> 0 -> 54 hits   [flips RED]
+NC-2 scrub-outcome grep : MPD runtime -> OMO runtime -> found at :504 [flips RED]
+NC-3 KEEP presence (KF-05): LSP_TOOLS_MCP_ blanked -> 7 -> 0    [flips RED]
+NC-4 bilingual/link checker on a scratch tree: dropped EN switch link + deleted one zh counterpart -> verdict FAIL, 7 findings, raw/51-neg-control.json

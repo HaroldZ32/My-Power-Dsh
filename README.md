@@ -5,14 +5,13 @@
 **my-power-dsh** is a DeepSeek Harness (DSH) plugin bundle — the package `@mpd-dsh/mpd`, with its own
 plugin rows, one `mpd` agent preset and a served skill corpus, installed with a single `dsh plugin add`.
 
-**What it carries from upstream.** The bundle's roster, model-chain vocabulary and several protocol
-keys are OMO-derived and stay so: the 11 specialists (Architect, Researcher, Planner, Deep Worker,
+**What it carries from upstream.** The bundle's roster and model-chain vocabulary come from the
+upstream project and stay so: the 11 specialists (Architect, Researcher, Planner, Deep Worker,
 Senior Engineer, Lead, Explorer, Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer) ship as
 adapted teammate templates and workmate BASE templates under the upstream's stable ids
-(`oracle`, `librarian`, `prometheus`, …); the wire keeps the upstream names (`OMO_CODEX_*` env keys,
-the LSP daemon's `_omo` auth envelope). The capability baseline is
-[oh-my-openagent](https://github.com/code-yeongyu/oh-my-openagent) (OmO) at commit `8c57e46`
-(v5.0.0-beta.20) — pinned, verified, deliberately not chased. The 328-file skill corpus mixes ported
+(`oracle`, `librarian`, `prometheus`, …). The capability baseline is
+[oh-my-openagent](https://github.com/code-yeongyu/oh-my-openagent) at commit `8c57e46`
+(v5.0.0-beta.20) — pinned, verified, deliberately not chased. The 297-file skill corpus mixes ported
 upstream skills with third-party upstream skills and cases written here, and one component is adopted
 outright: the `agent-teams` plugin from
 [dsh-agent-teams](https://github.com/NanmiCoder/dsh-agent-teams) (MIT), vendored as first-class main
@@ -21,7 +20,8 @@ written here**, and the RTL/EDA surface is not part of this repository: it has b
 into a separate bundle maintained outside this one.
 
 > **License**: SUL-1.0 — the licence inherited from the upstream project (strong copyleft; full text in
-> [LICENSE.md](./LICENSE.md)); the upstream copyright belongs to code-yeongyu and the OmO contributors.
+> [LICENSE.md](./LICENSE.md)); the upstream copyright belongs to code-yeongyu and the
+> oh-my-openagent contributors.
 > The adopted `agent-teams` component keeps its own MIT License (notices in
 > [LICENSE-NOTICES.md](./LICENSE-NOTICES.md)); that MIT grant covers the adopted component only — this
 > project's own code is not MIT-licensed.
@@ -61,12 +61,12 @@ install boots unchanged and carries no RTL content.
 
 This installs the `@mpd-dsh/mpd` bundle: DeepSeek dual-track (official default),
 MCP servers, all mpd plugins (including codegraph auto-init), adopted agent-teams
-(team tools + the sidebar team page), the `mpd` main-agent preset and the OMO-origin
-specialists as SUBAGENTS:
+(team tools + the sidebar team page), the `mpd` main-agent preset and the specialist
+roster as SUBAGENTS:
 
 - **Every project session on the `mpd` preset attempts to read `AGENT.md`**
   (falling back to `AGENTS.md`, then `CLAUDE.md`) via `dsh-agent-instructions`.
-- **The 11 OMO-origin agents are specialists and teammate templates, not presets**:
+- **The specialist roster's 11 specialists are teammate templates, not presets**:
   Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead,
   Explorer, Reviewer, Plan Reviewer, Vision Analyst and Junior Engineer live in the
   mpd-roles roster — one-shot consult one with `mpd_role_spawn`, list the roster
@@ -148,5 +148,5 @@ specialists as SUBAGENTS:
 
 Status: Plan D decoupling COMPLETE — relocatable one-plugin install (evidence/plan-d/relocate PASS);
 Plan C waves complete (team adoption, ultrawork engine, hashline, boulder, mpd.jsonc, memory git+svn, vision e2e);
-Plan F COMPLETE — OMO agents as subagent roster (mpd-roles-plugin), single `mpd` main preset carrying the
+Plan F COMPLETE — the specialist roster as subagent definitions (mpd-roles-plugin), single `mpd` main preset carrying the
 AGENT.md convention, mpd.jsonc wired into all runtime plugins (evidence/plan-f/roles-subagent PASS).

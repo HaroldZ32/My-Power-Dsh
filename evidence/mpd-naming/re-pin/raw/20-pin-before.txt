@@ -1,0 +1,9 @@
+HEAD=4d8a1307f452f0bda7e52f2a4adacb73d1da6f25
+BRANCH=dev
+STATUS_SHA=0f1b507bf16eb1c669d18d6b5aabd37274b10e09e7b56831554ad47b453f85ad
+STATUS_COUNT=51
+f06bba310cad306b5638efb90a69e50b2c6a7416c0c536867f02c70f4b4fa4c5  packages/mpd-mcp-astgrep/dist/cli.js
+6458a82ee2cfcec319a03d2ffe8100c695d0980e7a366408fa5ef1467ca157b5  packages/mpd-mcp-gitbash/dist/cli.js
+a7cebcf9ec79ec480c98d3a9cd1392837927ada57bf9bbb18e0620ba863f3148  packages/mpd-mcp-lsp/dist/cli.js
+ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375  packages/mpd-mcp-codegraph/dist/serve.js
+e9a988e5a636f6386ee5d2040e9c21c58a6404e62298fb05120e8eb44a1f49ef  evidence/mpd-naming/re-pin/raw/skills-perfile.json

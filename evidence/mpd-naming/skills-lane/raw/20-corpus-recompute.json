@@ -1,0 +1,18 @@
+{
+  "algorithm": "verify-vendor canonical (sorted relpath; per-file sha256 of LF-normalized bytes; relpath\\ndigest\\n)",
+  "edited_file": "skills/ast-grep/scripts/ast_grep_helper.py",
+  "lock_before_this_task": {
+    "fileCount": 297,
+    "treeSha": "f6bb2053d02a0e256ab5d88debceb4cfbc76b10c6ff03dca69bf446718a583c9"
+  },
+  "reconstructed_pre_edit": {
+    "fileCount": 297,
+    "treeSha": "37c320b8a5c29220c159f1e8f32eb20ab941369fbbdd3e4bbe42cd998a69abcc"
+  },
+  "control_matches_lock": false,
+  "post_edit_target_for_t17": {
+    "fileCount": 297,
+    "treeSha": "a0f1febb4111d5884c9af3385963b06753c3f5a38423f7b66f6852c284725f95"
+  },
+  "note": "Computed only — VENDOR_LOCK.json was NOT written by this task (out of scope; t17 owns the single wave re-pin)."
+}

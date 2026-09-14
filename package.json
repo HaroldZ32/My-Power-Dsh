@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "version": "0.3.2",
-  "description": "my-power-dsh: a DeepSeek Harness plugin bundle (@mpd-dsh/mpd) carrying OMO-derived capabilities on DSH-native plumbing (upstream baseline: oh-my-openagent 8c57e46, pinned)",
+  "description": "my-power-dsh: a DeepSeek Harness plugin bundle (@mpd-dsh/mpd) carrying the specialist roster and the model-chain vocabulary on DSH-native plumbing (upstream baseline: oh-my-openagent 8c57e46, pinned)",
   "main": "packages/mpd-bundle-plugin/dist/index.js",
   "exports": {
     ".": "./packages/mpd-bundle-plugin/dist/index.js",

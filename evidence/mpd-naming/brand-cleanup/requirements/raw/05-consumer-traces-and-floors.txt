@@ -1,0 +1,62 @@
+CONSUMER TRACES (why each KEEP literal is protected) AND HARD FLOORS
+All line numbers measured on HEAD 221171444240f0f55794c5d73b16b92701a7ed72 (dev).
+
+KEEP-1  OMO_CODEX_* (3 keys, git-bash dist)
+  reader  packages/mpd-mcp-gitbash/dist/cli.js:320 (GIT_BASH_ENV_KEY, win32-only) and :457-458 (timeout keys)
+  writer  OUTSIDE this repo (the upstream omo-codex installer); measured: 0 in-repo writers
+  => no DSH-side consumer exists. OWNER RULING (2026-09-14) rules it a foreign-harness surface: DELETE the reads
+     + delete the BRAND_ALLOWLIST entries. The t1 acceptance text and t6 acceptance[2] ("OMO_CODEX_* stays literal")
+     are the STALE side of this conflict -- see rule.json R6-C1.
+
+KEEP-2  MPD_SCHEMA_URL = "https://raw.githubusercontent.com/code-yeongyu/oh-my-openagent/dev/assets/omo.schema.json"
+  writer  packages/mpd-mcp-codegraph/dist/serve.js:8861 ($schema: MPD_SCHEMA_URL inside transformConfigJsonc)
+  reader  an editor / JSON-schema resolver fetching the URL; the asset is published by the UPSTREAM project, not by us
+  => renaming the path component 404s. KEEP, cite as third-party published asset.
+
+KEEP-3  HARNESS_IDS 'omo' (serve.js:5795)
+  consumers: HARNESS_KEYS (7715) -> withoutControlKeys(7735) strips the key from a config view that is then parsed by
+             MpdConfigSchema (6180-6204, `.strict()`) -> an existing ~/.mpd/config.jsonc carrying `[omo]` would be REJECTED
+             if the key were dropped; MpdHarnessIdSchema = enum(["opencode","senpi","codex"]) (5796-5797) proves 'omo'
+             is already excluded as an ACTIVE harness id => the entry is inert legacy-key tolerance.
+  => the only defensible reason to keep it is legacy-config tolerance. If the owner wants zero foreign tokens, the
+     ALTERNATIVE (cheaper than keeping the literal) is to strip unknown `[<id>]` keys before validation instead of
+     enumerating them -- that deletes the literal AND keeps old configs valid. See rule.json R6-C2.
+
+KEEP-4  boulder SessionPlatform literals (src/vendor/storage/shared.ts:9,11)
+  reader  normalizeSessionId() (shared.ts:13-19): an id that already carries a legacy prefix is returned UNCHANGED;
+          without the legacy alternatives it is re-prefixed (`senpi:x` -> `dsh:senpi:x`), i.e. the stored sessionId
+          of a pre-existing boulder record CHANGES and resume matching breaks.
+  pinned by test/boulder.test.ts:22 (normalizeSessionId("senpi:x") === "senpi:x"); the file itself documents the
+  decision at shared.ts:5-8 ("data-compatibility values for pre-existing boulder records, not branding -- keep them as-is").
+  => Historical class (reads data that already exists). KEEP. The OWNER RULING bullet asks for deletion:
+     that is a BEHAVIOUR change, not a rename -- see rule.json R6-C3.
+
+KEEP-5  _omo (lsp dist) -- NOT kept: RENAME
+  writer  .../dist/cli.js:5739, 6027, 6080  params: { _omo: authEnvelope(token) }
+  reader  .../dist/cli.js:5358, 5368        params["_omo"] -> version check -> delete cleanParams["_omo"]
+  both sides are the SAME artifact and the daemon is spawned from that same file, so a consistent two-sided rename is
+  safe; cross-version skew is LOUD (MPD_DAEMON_PROTOCOL_VERSION=1, 5307; mismatch -> PROTOCOL_ERROR, 5362).
+  => RENAME to `_mpd` and REMOVE the BRAND_ALLOWLIST `_omo` entry (its reason -- "renaming one side only breaks auth"
+     -- is false: there is only one side).
+
+HARD FLOORS (must not be deleted or weakened; repair that makes a sentence MORE truthful is allowed)
+  F1 LICENSE.md:5 and the inherited SUL-1.0 body (names "the oh-my-opencode Software")
+  F2 LICENSE-NOTICES.md (whole file; :3 states the derivation + upstream commit)
+  F3 skills/frontend/ATTRIBUTION.md, skills/ultimate-browsing/ATTRIBUTION.md, skills/ulw-research/ATTRIBUTION.md
+     (the ONLY three ATTRIBUTION.md files in the corpus; they carry @oh-my-opencode authorship + SUL/MIT terms)
+  F4 packages/mpd-mcp-codegraph/NOTICE (:1, :15 -- "codex-codegraph adapts the CodeGraph MCP runtime for the Codex
+     plugin surface") and packages/mpd-mcp-codegraph/NODE-RUNTIME-LICENSES.md
+  F5 VENDOR_LOCK.json provenance: upstream, upstreamCommitSha, upstreamVersion, previousSnapshot.*, upstreamStats.note
+     (verify-vendor.mjs:30-42 reads upstreamCommitSha/upstreamVersion as BLOCKERS)
+  F6 presets/mpd/agent.cordis.yml:342-348 (tool-subagent-codex) and :350-357 (tool-subagent-claude-code): the harness's
+     OWN rows, disabled:true, zero runtime behaviour; skills/dsh-qa/scripts/preset-conformance.mjs pins the preset row
+     set against the INSTALLED `standard` preset, so deleting them forces that gate to be relaxed.
+  F7 the third-party bodies of every OTHER vendored skill (owner ruling): review-work/ulw-execute/visual-qa/lsp-setup
+     SKILL.md carry "Codex Harness Tool Compatibility" style sections for other agents -- they stay verbatim.
+  F8 all history: evidence/** byte-identical, docs/{plan-*.md,decisions.md,omo-parity-gap.md,bline-report.md,
+     review-p0-p3.md,track-a-report.md,ulw-deepseek-optimization.md}, PLAN.md, tests/golden/out/**.
+
+RE-PIN COUPLING (for t6's single writer)
+  scripts/verify-vendor.mjs:92-117 fingerprints LOCALLY: each `assets` entry is checked for fileCount + sha256/treeSha.
+  => skills/** change (the coding-agent-sessions purge + every skill edit) invalidates assets.skills.fileCount (331) and
+     treeSha; each dist edit invalidates its sha256; VENDOR_LOCK.lockedAt must be refreshed. ONE re-pin for the wave.

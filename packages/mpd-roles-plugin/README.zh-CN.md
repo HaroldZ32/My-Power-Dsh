@@ -1,7 +1,7 @@
 # mpd-roles-plugin
 **中文** | [English](./README.md)
 
-OMO-origin agents 以一个 **specialist roster**（专家名录）存在，而非独立的 presets。每个 role = 一个稳定的 `id`（也是 modelchain chain key）+ 一个普通显示 `name` + persona 文本（asset `personas/<id>.md`）+ DeepSeek model chain + read-only discipline。
+各专家以 **专家名册**（specialist roster）形式存在，而非独立的 presets。每个 role = 一个稳定的 `id`（也是 modelchain chain key）+ 一个普通显示 `name` + persona 文本（asset `personas/<id>.md`）+ DeepSeek model chain + read-only discipline。
 
 | id | name | readonly |
 | --- | --- | --- |

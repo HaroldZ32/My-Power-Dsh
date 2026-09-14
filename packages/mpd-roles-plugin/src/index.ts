@@ -1,4 +1,4 @@
-// mpd-roles-plugin: the OMO-origin agents live as a SPECIALIST ROSTER, not as
+// mpd-roles-plugin: the specialists live as a SPECIALIST ROSTER, not as
 // presets. Each role = { stable id (chain key), normal display name, persona
 // text, DeepSeek model chain, read-only discipline }. Consumers: mpd_role_spawn
 // (one-shot specialist from anywhere), mpd_role_persona (text for spawn

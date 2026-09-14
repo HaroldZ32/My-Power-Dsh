@@ -1,0 +1,29 @@
+# t16 — skills lane: rename ast-grep omo_* identifiers to mpd_* — 2026-09-14T10:11:54Z
+
+## V1 contract verify: python3 -m py_compile skills/ast-grep/scripts/ast_grep_helper.py
+EXIT=0
+(the plain form writes skills/ast-grep/scripts/__pycache__/ast_grep_helper.cpython-312.pyc — see FINDINGS; removing it now so the corpus stays at its committed file set)
+pycache dirs under skills/ after cleanup: 0
+
+## V2 contract verify: bash -n skills/ast-grep/tests/smoke.sh
+EXIT=0
+
+## V3 contract verify: git grep -n 'omo_' -- skills/ast-grep  (expect NO output)
+EXIT=1 (git grep exits 1 when there are zero matches — that IS the pass condition)
+
+## V3 falsifiability control: the same grep against the pre-change revision
+207:def omo_env_binary() -> Optional[Path]:
+217:def omo_runtime_slug() -> str:
+230:def omo_runtime_binary() -> Optional[Path]:
+232:    slug = omo_runtime_slug()
+255:    for fn in (omo_env_binary, omo_runtime_binary, cached_binary, which_binary, homebrew_binary):
+31:omo_runtime_slug() {
+129:RUNTIME_SLUG="$(omo_runtime_slug)"
+
+## smoke test (stdlib-python only; executed earlier on this exact source state)
+see raw/10-smoke.log — 15 PASS / 0 FAIL, exit 0, incl. 'MPD HOME runtime resolves before standalone fallback' (the assertion that calls the renamed mpd_runtime_slug)
+
+## corpus fingerprint (computed, NOT written)
+A current tree (my edits + the ulw-plan edit): {"fileCount":297,"treeSha":"2f7bbe36da3465e5d7ff050b4536d569a3dedad48eac43596e6d831ba364e6ff"}
+B my edits only (ulw-plan reverted to HEAD)  : {"fileCount":297,"treeSha":"342f25c939ff32de971ea26448855828ae89627b2f083eac8555a33e34f78d6b"}
+C all reverted (control == lock)             : 297 f6bb2053d02a0e256ab5d88debceb4cfbc76b10c6ff03dca69bf446718a583c9

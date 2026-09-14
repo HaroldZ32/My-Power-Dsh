@@ -1,0 +1,50 @@
+ M AGENTS.md
+ M LICENSE-NOTICES.md
+ M README.md
+ M README.zh-CN.md
+ M VENDOR_LOCK.json
+ M docs/architecture.md
+ M docs/architecture.zh-CN.md
+ M docs/feature-audit.md
+ M docs/feature-audit.zh-CN.md
+ M docs/user-guide.md
+ M docs/user-guide.zh-CN.md
+ M package.json
+ M packages/mpd-boulder-plugin/README.md
+ M packages/mpd-boulder-plugin/README.zh-CN.md
+ M packages/mpd-bundle/README.md
+ M packages/mpd-bundle/README.zh-CN.md
+ M packages/mpd-mcp-astgrep/dist/BUILD.lock
+ M packages/mpd-mcp-gitbash/dist/BUILD.lock
+ M packages/mpd-mcp-gitbash/dist/cli.js
+ M packages/mpd-mcp-lsp/dist/BUILD.lock
+ M packages/mpd-mcp-lsp/dist/cli.js
+ M packages/mpd-modelchain-plugin/README.md
+ M packages/mpd-modelchain-plugin/README.zh-CN.md
+ M packages/mpd-qa-roles-probe/README.md
+ M packages/mpd-qa-roles-probe/README.zh-CN.md
+ M packages/mpd-roles-plugin/README.md
+ M packages/mpd-roles-plugin/README.zh-CN.md
+ M packages/mpd-roles-plugin/package.json
+ M packages/mpd-roles-plugin/src/index.ts
+ M packages/mpd-roles-plugin/src/roles.data.ts
+ M packages/mpd-workmate-plugin/README.md
+ M packages/mpd-workmate-plugin/README.zh-CN.md
+ M packages/mpd-workmate-plugin/src/index.ts
+ M presets/mpd/agent.cordis.yml
+ M scripts/build-mcp.mjs
+ M skills/ast-grep/AGENTS.md
+ M skills/ast-grep/scripts/ast_grep_helper.py
+ M skills/ast-grep/tests/smoke.sh
+ M skills/ulw-plan/scripts/scaffold-plan.mjs
+?? evidence/mpd-naming/brand-cleanup/labels/
+?? evidence/mpd-naming/brand-cleanup/requirements/
+?? evidence/mpd-naming/captain-rulings/
+?? evidence/mpd-naming/docs-lane/
+?? evidence/mpd-naming/final-allowlist/
+?? evidence/mpd-naming/landing/
+?? evidence/mpd-naming/re-pin/
+?? evidence/mpd-naming/review/
+?? evidence/mpd-naming/skills-lane/
+?? evidence/mpd-naming/verification/
+?? evidence/mpd-naming/wave2/

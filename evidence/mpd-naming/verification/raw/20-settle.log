@@ -1,0 +1,7 @@
+ts_T1=2026-09-14T10:18:42Z
+settle_window_seconds=60
+T1_snapshot=13-modified-hashes-T1.sha256 (39 files) + 10-snapshot-worktree.sha256 (4948 tracked files)
+ts_T2=2026-09-14T10:19:42Z
+SETTLED: 39/39 modified product files byte-identical after 60s
+settle_recheck_head=53d617e6c2d29dfadec06278bc4130061055378e
+settle_recheck_dirty=48

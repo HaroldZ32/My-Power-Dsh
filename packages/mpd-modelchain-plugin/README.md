@@ -2,7 +2,7 @@
 
 **English** | [中文](./README.zh-CN.md)
 
-DeepSeek route resolution for the upstream OMO roles + a tiny workspace-scoped
+DeepSeek route resolution for the specialist roster + a tiny workspace-scoped
 key/value memory.
 
 ## Tools

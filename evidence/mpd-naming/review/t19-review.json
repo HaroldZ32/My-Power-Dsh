@@ -1,0 +1,34 @@
+{
+  "task": "t19",
+  "kind": "review",
+  "reviewed_task": "t18",
+  "attempt_id": "728ab7ff",
+  "verdict": "PASS",
+  "findings": {
+    "high": 0,
+    "blocker": 0,
+    "medium": 2,
+    "low": 5
+  },
+  "anchor": {
+    "head": "53d617e6c2d29dfadec06278bc4130061055378e",
+    "dirty": "39 modified product files + 9 untracked evidence dirs"
+  },
+  "medium_actions": {
+    "F1": "VENDOR_LOCK.json is still uncommitted; the landing commit MUST carry it with the skills set (t18's 're-pin landed as a commit' parenthetical is false)",
+    "F2": "the frozen rename target docs/parity-ledger{,.zh-CN}.md differs from the landed docs/upstream-parity-ledger{,.zh-CN}.md; the landed name stands, the freeze is not edited (R17)"
+  },
+  "gates_run_by_reviewer": {
+    "verify-vendor": "exit 0 PASS",
+    "typecheck": "exit 0",
+    "bun test packages": "408 pass / 0 fail"
+  },
+  "gates_read_from_t18": [
+    "test:qa",
+    "MOUNT boot",
+    "build-mcp reproducibility",
+    "codegraph-smoke"
+  ],
+  "transcribed_by": "captain (the reviewer is read-only and cannot write files)",
+  "record_sha256": "987b9a0a648dcf69588993353f0b36c71b3c8e151ffbde260b6385271723204c"
+}

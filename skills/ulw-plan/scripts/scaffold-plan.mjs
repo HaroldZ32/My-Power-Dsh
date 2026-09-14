@@ -121,15 +121,15 @@ async function mkdirWithoutSymlinks(dir, stopAt) {
 async function assertSafeWriteParent(cwd, target) {
 	const workspaceReal = await realpath(cwd);
 	const workspaceRoot = resolve(cwd);
-	const omoRoot = resolve(cwd, ".mpd");
+	const mpdRoot = resolve(cwd, ".mpd");
 	const parent = dirname(target);
 	assertContainedPath(workspaceRoot, parent, `refused: path escapes the workspace root: ${target}`);
-	assertContainedPath(omoRoot, parent, `refused: ulw-plan may only write under .mpd/: ${target}`);
+	assertContainedPath(mpdRoot, parent, `refused: ulw-plan may only write under .mpd/: ${target}`);
 	await mkdirWithoutSymlinks(parent, workspaceRoot);
-	const omoReal = await realpath(omoRoot);
+	const mpdReal = await realpath(mpdRoot);
 	const parentReal = await realpath(parent);
 	assertContainedPath(workspaceReal, parentReal, `refused: path escapes the workspace root through symlinks: ${target}`);
-	assertContainedPath(omoReal, parentReal, `refused: ulw-plan may only write under .mpd/ through real paths: ${target}`);
+	assertContainedPath(mpdReal, parentReal, `refused: ulw-plan may only write under .mpd/ through real paths: ${target}`);
 }
 
 async function assertSafeWriteTarget(target) {

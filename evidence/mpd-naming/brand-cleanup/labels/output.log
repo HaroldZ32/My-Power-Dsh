@@ -1,0 +1,177 @@
+t2 — DSH-only text lane (labels + foreign-harness prose + cross-agent skill removal)
+attempt 1 · attempt_id a3b8f7ad-bd92-4f53-a365-3f285cb0f7e7 · branch dev · HEAD 221171444240f0f55794c5d73b16b92701a7ed72
+rule (t1): evidence/mpd-naming/brand-cleanup/requirements/rule.json sha256 d00cb02e…bbc1f77
+
+1. LABELS (R2 vocabulary) — retired every OMO-origin / OMO-derived / "the OMO specialists" / OMO roster /
+   "the OMO " / "upstream omo" / OmO occurrence in the in-scope authored content, replacing it with the frozen
+   vocabulary (EN: the specialist roster / roster specialists / the specialist roster's 11 specialists;
+   ZH: 专家名册 / 专家阵容). Files: package.json description; README + README.zh-CN; docs/{architecture,
+   user-guide,feature-audit}(.zh-CN).md; skills/dsh-qa/{SKILL.md,scripts/preset-register.mjs};
+   packages/mpd-{roles,workmate,qa-roles-probe,modelchain,bundle}-plugin (READMEs, package.json, src),
+   packages/mpd-bundle/cordis.patch.yml (comments + the profile `description`), presets/mpd/agent.cordis.yml
+   (header comment only — the two disabled harness bridge rows were NOT touched: hard floor F6).
+   The OMO/OmO shorthand for the upstream is retired; the upstream is named by repository identity.
+
+2. FOREIGN-HARNESS PROSE — deleted (never reworded into another foreign name). Verified clean across every
+   in-scope file. Deliberately kept: presets/mpd/agent.cordis.yml:342-357 (harness-owned disabled rows, F6)
+   and the opencode-go/scnet gateway provider ids in two dsh-qa scripts (class 1 external, R3 allowlist).
+
+3. PLACEHOLDER RESIDUE — repaired the scrub casualties:
+   - skills/dsh-qa/SKILL.md:12-13 doubled-word placeholder ("mirrors upstream / the upstream host QA skills")
+   - packages/mpd-boulder-plugin/README(.zh-CN).md: "state root `.mpd` → `.mpd`" tautology and the false
+     "default session platform `upstream host` → `dsh`" (src/vendor/storage/shared.ts:5-11 is the truth:
+     default `dsh`, legacy prefixes still accepted so pre-existing records stay readable)
+   - LICENSE-NOTICES.md:3 "derived from the upstream project" → names oh-my-openagent + commit 8c57e46 (F2:
+     repaired, never removed)
+   - README(.zh-CN).md "What it carries from upstream": dropped the now-false wire claim (`OMO_CODEX_*` env
+     keys, the LSP daemon's `_omo` auth envelope) that t6's deletion/rename would falsify
+   - docs/feature-audit(.zh-CN).md: "upstream host runtime" → "the upstream CLI runtime"
+
+4. SKILLS DELETION (step 4) — `skills/coding-agent-sessions/` removed entirely, 34 files
+   (raw/02-deleted-tree.txt). Corpus measured before 331 files, after 297 files.
+   RE-PIN TARGET for t6 (single VENDOR_LOCK writer, out of this task's scope):
+     assets.skills.fileCount = 297
+     assets.skills.treeSha   = 4299afc4241a164700c5b2f6785325affb914b01681ed51728a8a4933a83774f
+   TRAP RECORDED: a raw-byte treeSha yields 178b36ab… because
+   skills/ultimate-browsing/engine/tests/fixtures/amp_redirect_stub.html carries a CR byte and verify-vendor's
+   readBytes normalizes CRLF→LF. Only the normalized value is a valid pin (the QA case independently
+   reproduced 297/4299afc4241a).
+   No shipped file referenced the deleted skill afterwards; only out-of-scope history
+   docs/omo-parity-gap.md does (accepted, history stays byte-identical).
+
+5. CORPUS FIGURES — corrected AFTER the deletion from the measured count: README.md and README.zh-CN.md
+   "328-file" → "297-file" (both languages, same change; the stale 328 was neither the pre-deletion lock
+   value 331 nor the post-deletion truth), AGENTS.md §3 "17 ported upstream skills" → "16".
+
+6. DIST-VS-SRC — the four changed src files were comment-only; each plugin was rebuilt with
+   `bun build packages/<p>/src/index.ts --target node --format esm --outfile packages/<p>/dist/index.js`
+   from the repo ROOT. Result: byte-identical dists (comments are not emitted; building from inside a
+   package dir would churn the emitted source-path headers), so `git status` shows no dist churn.
+
+7. GATES
+   bun run typecheck                          exit 0
+   bun test packages                          exit 0 — 399 pass / 0 fail / 90 files
+   bun run test:qa                            exit 1 — ONLY the vendor-lock pairing case
+       (skills/dsh-qa/scripts/agent-teams-messaging.mjs: "VENDOR_LOCK skills asset is stale:
+        lock=331/c1f424fef1a2 tree=297/4299afc4241a"). That is precisely the wave's one re-pin,
+        owned by t6; VENDOR_LOCK.json is out of this task's scope. Proven non-blocking for t2:
+        (a) every OTHER self-test passes (raw/12-…, EXCLUDED_RUN_EXIT=0, 46 ok declarations);
+        (b) with the lock re-pinned inside a throwaway mirror, the same case exits 0 (raw/22-…),
+            including its SKILL.md row check against the edited SKILL.md.
+   node scripts/verify-vendor.mjs             expectedly FAIL until t6 lands the re-pin (not run as a t2 gate)
+
+8. OUT-OF-SCOPE, REPORTED NOT LISTED IN changedPaths
+   (a) AGENTS.md updated per step 6(a) — §1 provenance sentence (the false `_omo`/OMO_CODEX_* wire claims
+       removed), the specialist-roster bullet, §3 layout line for mpd-roles-plugin, the skills corpus tree
+       line, §13 roster glossary entry, the "upstream omo CLI" troubleshooting wording, and
+       "OMO team mode ships disabled" → "the upstream team mode …".
+   (b) COUPLED test fix that the mandated deletion forced: packages/mpd-bootstrap-plugin/test/
+       bootstrap.test.ts pinned the corpus at `>= 19` shipped skills, i.e. it counted the deleted skill, so
+       `bun test packages` failed 1/399. Raised the pin's explanation and lowered it to `>= 18`. Reported
+       here rather than in changedPaths because the path is outside the declared inScope list.
+   (c) STEP 6(c) DELIBERATELY NOT DONE — boulder SessionPlatform. t1 rule R7 C3 measured that dropping the
+       `codex|opencode|senpi` prefixes rewrites the stored sessionId of pre-existing records
+       (normalizeSessionId re-prefixes anything that does not match the regex; test/boulder.test.ts:22 pins
+       it). t1 classifies the literals class 2 (Historical) and requires owner confirmation before t2 edits
+       them. Decision: no change to src/vendor/storage/shared.ts, its test, or its dist; the boulder README
+       residue WAS repaired. Owner confirmation needed to close 6(c).
+   (d) t6 HANDOFF — scripts/build-mcp.mjs:2 ("the OMO upstream checkout") is the LAST G1 hit repo-wide and
+       belongs to the dists/build-mcp lane; repo-wide G2-style brand tokens fell 80 → 47 files, and the only
+       survivors inside the t2 inScope set are the two allowlisted `evidence/omo-align/...` historical paths.
+
+9. DISCLOSURES
+   - The mandated deletion used `git rm -r -q skills/coding-agent-sessions`, which stages those 34 deletions
+     in the shared index. Nothing was committed, no ref moved; the captain may commit them as-is or reset
+     the index first (AGENTS.md §5 reserves staging/committing to the captain).
+   - evidence/** history untouched: only the new evidence/mpd-naming/brand-cleanup/labels/ tree was written.
+   - No --dump-config result is cited anywhere as plugin-load evidence; no plugin behaviour changed.
+   - This is a self-reported implementation result; the verdict belongs to t10.
+
+10. CAPTAIN-RULING FOLLOW-UP (applied after t2 went terminal)
+   - C3 boulder: step 6(c) DROPPED per the captain. src/vendor/storage/shared.ts, its test and its
+     dist remain untouched. The boulder README sentence (EN + ZH) now states the required truth:
+     the state root was retargeted to the `.mpd` convention, session ids this bundle WRITES are
+     `dsh:`-prefixed, and reads still ACCEPT the legacy prefixes (`codex:`/`opencode:`/`senpi:`)
+     so pre-retarget records keep resuming. Reason: those literals are a data-format floor
+     (test/boulder.test.ts:22 pins the tolerance), not identity labels.
+   - skills/ast-grep/AGENTS.md:23 (captain-ordered attribution item, outside t2's inScope): the
+     corrupted placeholder was replaced with the TRUE original text verified against the pinned
+     upstream checkout .mpd-dsh/upstream 8c57e463e
+     (packages/shared-skills/skills/ast-grep/AGENTS.md:23): `omo-opencode/src/cli/install-ast-grep-sg.ts`.
+     Proof: `diff` against the upstream copy is EMPTY for the WHOLE file — it is byte-identical to
+     the pinned upstream again. Observation: the upstream's own path omits the `packages/` prefix;
+     the real file is packages/omo-opencode/src/cli/install-ast-grep-sg.ts.
+   - Brand scans: token-boundary regex only (never `grep -i omo`); 'autonomous'/'promote' are
+     documented non-hits (e.g. references/cli.md:96 'Promote/demote severity').
+   - C1 supersession noted: OMO_CODEX_* is DELETED (t6 lane); t2 applied no keep_variant. C2 is t5's.
+   - NEW RE-PIN TARGET after the ast-grep edit (supersedes 4299afc4):
+     assets.skills.fileCount=297,
+     assets.skills.treeSha=1d277907045ef1d18fd390b5db1a2ce537c38e7692732ee022ca5a7ea75402c1
+   - Re-ran `bun test packages` after the skills edit: 399 pass / 0 fail.
+   - OPEN ITEM awaiting a ruling: the ast-grep vendored PATCH still carries our own `omo_*`
+     identifiers (ast_grep_helper.py:207/217/230/232/255, tests/smoke.sh:31/129) — class 4 per t1
+     and NOT allowlistable (the consumer is our own code), so G2 can only be satisfied by renaming
+     them. Left untouched under the captain's 'do not otherwise edit third-party skill bodies'
+     scoping; the rename is mechanical and ready to execute in one pass.
+   - t2 is TERMINAL: agent_teams_claim_task refuses it ('cannot move from failed to claimed'), so
+     this follow-up needs a captain amend (re-run) or a repair task to enter the formal record.
+
+11. t2 ATTEMPT 2 — verification state, corpus freeze, carries
+   - MEASURED interim RED (current, supersedes the 4299afc4 value quoted earlier):
+     [agent-teams-messaging] FAIL: VENDOR_LOCK skills asset is stale: lock=331/c1f424fef1a2
+     tree=297/1d277907045e (re-pin in the same commit, AGENTS.md §9) — `bun run test:qa` exit 1,
+     and this is its ONLY failing case; every other case is green (raw/50-…).
+   - SETTLED CORPUS (frozen after the captain-ordered ast-grep repair): fileCount=297
+     treeSha=1d277907045ef1d18fd390b5db1a2ce537c38e7692732ee022ca5a7ea75402c1
+     A raw-byte hash would be wrong (one pre-existing fixture carries a CR byte).
+   - HAZARD RECORDED: agent-teams-messaging --self-test transiently appends a probe line to
+     skills/dsh-qa/SKILL.md and restores it in a `finally`. Verified after the fresh run that the
+     file's normalized sha256 is 7b8a7e5ed8a71fea and the corpus still recomputes to
+     297/1d277907045e — i.e. the probe restored the file. Anyone running test:qa concurrently
+     with a SKILL.md edit must re-check the bytes afterwards.
+   - CARRIES VERIFIED: scripts/build-mcp.mjs is UNTOUCHED by t2 (@oh-my-opencode scope at :276 and the
+     omo-config-core dir name at :16/:26/:30 intact); the boulder codex|opencode|senpi prefixes and its
+     src/test/dist are untouched; root AGENTS.md never carried those two literals and its
+     'oh-my-opencode' example name is preserved (only the 'the upstream omo CLI' shorthand was
+     reworded to 'the upstream oh-my-openagent CLI').
+   - FROZEN: no further skills/** writes from this task; the open omo_* rename is NOT executed
+     (it would force a second re-pin, which AGENTS.md §9 forbids).
+
+12. COMPLETED (attempt 2)
+   Verification after t5's landed re-pin: `bun run typecheck` exit 0; `bun test packages` exit 0
+   (399 pass / 0 fail / 90 files); `bun run test:qa` exit 0 ("all self-tests passed", the former RED
+   case now reporting "VENDOR_LOCK skills pin current (297 files/1d277907045e)"); and
+   `node scripts/verify-vendor.mjs` exit 0 ("asset OK: skills 297 files"). Raw output: raw/70.
+   No contract edit was needed — verify stayed the original three commands and all three are green.
+   VENDOR_LOCK assets.skills = 297 / 1d277907045ef1d18fd390b5db1a2ce537c38e7692732ee022ca5a7ea75402c1
+   (the value this task measured and reported; the captain's earlier 4299afc4… was stale and is dead).
+   Attribution items (a)-(f) and the first-attempt record statement are in the task output.
+   t8 note: a full REAL-lane sweep may show a pre-existing codegraph-smoke RED from pack-mpd.mjs
+   omitting packages/mpd-team-compact-plugin — attributed, not fixed, not a wave regression.
+
+13. POST-COMPLETION ADDENDA (the task record is terminal, so they live here)
+   (1) codegraph-smoke RED — PRE-EXISTING packaging gap, attributed not fixed:
+       scripts/pack-mpd.mjs never copies packages/mpd-team-compact-plugin although the bundle patch
+       mounts it (packages/mpd-bundle/cordis.patch.yml:191-192, entry id `mpd-team-compact`), so the
+       packed boot dies importing entry `mpd-team-compact`. NOT a wave regression; this task did not
+       touch the packer or that plugin, and its own `bun run test:qa` (--self-test lane) is green.
+   (2) protocol note: the captain retracted the earlier 'self-amend' retry step — a member's amend is
+       inert (tools.js:1631/:1695 gate it on captain identity; tools.js:1606-1609 never reads an
+       `amend` argument for a member), and the captain deliberately rejected option (1) because a
+       captain-authored amendment would invalidate and re-run t2 + t5-t11, discarding t5's just-landed
+       re-pin. t2 closed by option (2): the re-pin landed, test:qa went green, and the ORIGINAL three
+       verify commands are all green with no contract edit.
+   (3) why they are here and not in the task output: t2 is terminal — an `output` update is refused
+       ("terminal task t2 is immutable; use agent_teams_reassign_task..."), and a findings update that
+       would have marked the four failed-attempt findings resolved echoed success but did not persist
+       (team.json still shows resolved=false). t10 must read these addenda here.
+
+14. ADDENDA 3 + 4 (post-terminal record, captain-requested)
+   (3) skills/dsh-qa/SKILL.md in git status is THIS LANE's authored edit (doubled-word repair + the
+       preset-register case-table row) — NOT probe residue. Measured proof: grep -c
+       "treeSha falsifiability probe" skills/dsh-qa/SKILL.md = 0, and the corpus recomputes to the
+       pinned 297/1d277907045e…; a leftover probe line would have moved that hash. The self-test
+       appends its probe inside a try/finally and restores the original bytes.
+   (4) No amendment was ever applied to t2. Final board state: status completed, attempt 2,
+       commandsRun = [typecheck passed, bun test packages passed, bun run test:qa passed],
+       acceptanceResults 5/5 passed, changedPaths confined to the declared inScope (+ evidence).

@@ -3,7 +3,7 @@
 #  1) AGENT.md / AGENTS.md / CLAUDE.md workspace instructions are discovered and
 #     injected for every project session (see the agent-instructions row below);
 #  2) tool presentation is native (every row tool exposed directly to the model);
-#  3) the OMO-origin specialists are NOT presets anymore: they are specialist
+#  3) the specialist roster's 11 specialists are NOT presets: they are specialist
 #     subagents (mpd-roles-plugin, mpd_role_spawn) and teammate instantiation
 #     templates for the adopted dsh-agent-teams plugin (normal-named `mpd`
 #     roster profile; reuse its architecture + Web GUI for team work);

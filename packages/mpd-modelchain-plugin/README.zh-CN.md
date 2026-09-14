@@ -2,7 +2,7 @@
 
 **中文** | [English](./README.md)
 
-为上游 OMO 角色做 DeepSeek 路由解析 + 一个很小的、工作区作用域的 key/value 内存。
+为专家名册做 DeepSeek 路由解析 + 一个很小的、工作区作用域的 key/value 内存。
 
 ## 工具
 

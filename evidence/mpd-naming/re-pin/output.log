@@ -1,0 +1,220 @@
+# t17 — the wave's single VENDOR_LOCK re-pin, computed on the final bytes
+
+member: Lead · attempt 1 · attempt_id 97fe6031-9e6c-4e42-9f7d-cc47020e4201
+computed at: 2026-09-14T10:17:14Z · branch dev · HEAD 53d617e6c2d29dfadec06278bc4130061055378e
+working tree: 47 porcelain entries, status sha256 5c216c8190c5615c1309b92b0b74f81c90960397cbf56fbc4afaa29eed851ac8
+
+## 1. What was computed, by what command
+
+    node evidence/mpd-naming/re-pin/raw/recompute-lock.mjs          # read-only recompute
+    node evidence/mpd-naming/re-pin/raw/recompute-lock.mjs --write  # refresh VENDOR_LOCK.json
+
+The script mirrors scripts/verify-vendor.mjs, INCLUDING the 0cbf505 hardening (listFiles skips
+node_modules and __pycache__/*.pyc/*.pyo); tree assets fold the sorted relpath + per-file sha256
+over LF-normalized bytes; `sha256` assets hash the RAW bytes the gate hashes.
+
+## 2. Settle discipline (AGENTS.md §7)
+
+The first recomputation read skills treeSha e9c1be39… ; a later one read a0f1febb… with the SAME
+297 fileCount, because the tail of t16's own skills writes (skills/ast-grep/tests/smoke.sh and
+scripts/ast_grep_helper.py, mtime 18:13:15 local) landed between the two reads. The lock was
+therefore NOT written from that read: the pin was taken only after two recomputations ≥50 s apart
+produced a byte-identical per-file map, byte-identical dist hashes, an unchanged HEAD and an
+unchanged porcelain status hash (raw/40-perfile-a.json vs raw/41-perfile-b.json, and
+raw/90-* vs raw/91-*, raw/92-final-match-summary.log).
+
+The captain was committing already-materialized working-tree content while this lane ran
+(HEAD 4d8a1307 → 0cbf5054 → 53d617e6). None of those commits changed a fingerprinted byte; the
+values were re-verified after the last observed move.
+
+## 3. Values (all six lock assets recomputed, zero drift)
+
+| asset | kind | value (current == locked) | match |
+|---|---|---|---|
+| skills | tree | 297 files · a0f1febb4111d5884c9af3385963b06753c3f5a38423f7b66f6852c284725f95 | yes |
+| packages/mpd-agent-teams-plugin/_deps | tree | 635 files · d1d106032b198d2392ca2fe36ea4b563c3010496192791a6e4812638b7cf8e37 | yes |
+| packages/mpd-mcp-astgrep/dist/cli.js | single | f06bba310cad306b5638efb90a69e50b2c6a7416c0c536867f02c70f4b4fa4c5 | yes |
+| packages/mpd-mcp-gitbash/dist/cli.js | single | 6458a82ee2cfcec319a03d2ffe8100c695d0980e7a366408fa5ef1467ca157b5 | yes |
+| packages/mpd-mcp-lsp/dist/cli.js | single | a7cebcf9ec79ec480c98d3a9cd1392837927ada57bf9bbb18e0620ba863f3148 | yes |
+| packages/mpd-mcp-codegraph/dist/serve.js | single | ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375 | yes |
+
+Refreshed: assets.skills.treeSha, the gitbash and lsp dist sha256, and lockedAt
+(2026-09-14T09:15:59.000Z → 2026-09-14T10:15:51.000Z). No other line changed.
+
+## 4. Stale-value scan
+
+    git grep -n "1d277907\|4299afc4" -- VENDOR_LOCK.json     → no output (0 bytes), exit 1
+
+exit 1 is git grep's no-match code; the contract's expectation is exactly "no output". No
+superseded skills treeSha is cited as current, in the lock or in result.json.
+
+## 5. Verify commands
+
+    node scripts/verify-vendor.mjs                          → exit 0, "[verify-vendor] PASS", no FAIL line
+    git grep -n "1d277907\|4299afc4" -- VENDOR_LOCK.json     → exit 1, no output (expected)
+    node -e "…console.log(fileCount, treeSha, lockedAt)"     → 297 a0f1febb… 2026-09-14T10:15:51.000Z
+
+## 6. Correction carried into the record (NOT a satisfied premise)
+
+The acceptance text asks the report to state that t16 was the wave's ONLY skills/** write. As
+measured by `git diff --stat HEAD -- skills/`, the settled tree has FOUR modified skills files:
+
+    skills/ast-grep/AGENTS.md                     t16 (omo_* → mpd_* rename lane)
+    skills/ast-grep/scripts/ast_grep_helper.py    t16 (same lane, 7 lines)
+    skills/ast-grep/tests/smoke.sh                t16 (same lane)
+    skills/ulw-plan/scripts/scaffold-plan.mjs     ANOTHER lane (omoRoot → mpdRoot, 8 lines);
+                                                  t16 itself flagged this as finding F2
+
+So the literal premise is false and is corrected here instead of repeated. The operative invariant
+does hold: all four skills modifications are still uncommitted, this VENDOR_LOCK.json change is
+likewise uncommitted, and there is exactly ONE re-pin for the wave — so one commit can carry the
+skills change(s) and the single re-pin together (AGENTS.md §9/§11).
+
+## 7. Not proven by this task
+
+- the dists were not rebuilt here (out of scope): the proof is byte hashing, not a rebuild;
+- the full gate sweep is t18's contract; only the vendor gate was run here;
+- the content correctness of the four skills modifications is not established by a fingerprint;
+- no source, dist or skills file was edited by this task (scope: VENDOR_LOCK.json + evidence/).
+
+## Raw transcripts
+
+### raw/70-verify-vendor.log
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] asset OK: skills 297 files
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+
+### raw/81-stale-scan.log (bytes: 0)
+
+### raw/82-lock-print.log
+297 a0f1febb4111d5884c9af3385963b06753c3f5a38423f7b66f6852c284725f95 2026-09-14T10:15:51.000Z
+
+### raw/92-final-match-summary.log
+assets 6 drift 0
+{"skills":{"fileCount":297,"treeSha":"a0f1febb4111d5884c9af3385963b06753c3f5a38423f7b66f6852c284725f95"},"packages/mpd-agent-teams-plugin/_deps":{"fileCount":635,"treeSha":"d1d106032b198d2392ca2fe36ea4b563c3010496192791a6e4812638b7cf8e37"},"packages/mpd-mcp-astgrep/dist/cli.js":{"sha256":"f06bba310cad306b5638efb90a69e50b2c6a7416c0c536867f02c70f4b4fa4c5"},"packages/mpd-mcp-gitbash/dist/cli.js":{"sha256":"6458a82ee2cfcec319a03d2ffe8100c695d0980e7a366408fa5ef1467ca157b5"},"packages/mpd-mcp-lsp/dist/cli.js":{"sha256":"a7cebcf9ec79ec480c98d3a9cd1392837927ada57bf9bbb18e0620ba863f3148"},"packages/mpd-mcp-codegraph/dist/serve.js":{"sha256":"ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375"}}
+
+### raw/91-final-revision-b.txt
+AT=2026-09-14T10:17:14Z
+HEAD=53d617e6c2d29dfadec06278bc4130061055378e
+BRANCH=dev
+STATUS_COUNT=47
+STATUS_SHA=5c216c8190c5615c1309b92b0b74f81c90960397cbf56fbc4afaa29eed851ac8
+f06bba310cad306b5638efb90a69e50b2c6a7416c0c536867f02c70f4b4fa4c5  packages/mpd-mcp-astgrep/dist/cli.js
+6458a82ee2cfcec319a03d2ffe8100c695d0980e7a366408fa5ef1467ca157b5  packages/mpd-mcp-gitbash/dist/cli.js
+a7cebcf9ec79ec480c98d3a9cd1392837927ada57bf9bbb18e0620ba863f3148  packages/mpd-mcp-lsp/dist/cli.js
+ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375  packages/mpd-mcp-codegraph/dist/serve.js
+
+### git diff -- VENDOR_LOCK.json
+diff --git a/VENDOR_LOCK.json b/VENDOR_LOCK.json
+index 7e0d11a..89d56e7 100644
+--- a/VENDOR_LOCK.json
++++ b/VENDOR_LOCK.json
+@@ -19,7 +19,7 @@
+     "skills": {
+       "fileCount": 297,
+       "source": "skill corpus at repo root (ported upstream skills + dsh-qa + svn-master + bundle-lifecycle, agent-teams-dispatch, agent-teams-sidebar, workmate-library, workmate-team-member and readonly-deny QA cases + the dsh-qa scripts/lib/workspace-isolation.mjs QA sandbox helper + the dsh-qa scripts/lib/gate-probe.mjs two-sided complexity-gate probe); whole-dir refresh from upstream, keep provenance links",
+-      "treeSha": "f6bb2053d02a0e256ab5d88debceb4cfbc76b10c6ff03dca69bf446718a583c9"
++      "treeSha": "a0f1febb4111d5884c9af3385963b06753c3f5a38423f7b66f6852c284725f95"
+     },
+     "packages/mpd-agent-teams-plugin/_deps": {
+       "fileCount": 635,
+@@ -34,12 +34,12 @@
+     "packages/mpd-mcp-gitbash/dist/cli.js": {
+       "fileCount": 1,
+       "source": "built offline via scripts/build-mcp.mjs from packages/git-bash-mcp",
+-      "sha256": "0484a8ff1714c949bc52a4fc0de89c756dcab975b0691a2823706f008475f38e"
++      "sha256": "6458a82ee2cfcec319a03d2ffe8100c695d0980e7a366408fa5ef1467ca157b5"
+     },
+     "packages/mpd-mcp-lsp/dist/cli.js": {
+       "fileCount": 1,
+       "source": "built offline via scripts/build-mcp.mjs from packages/lsp-daemon",
+-      "sha256": "9f41d4258c204aca959de98a5bea59a7459f9e298885f187cfc0268e1d18ce69"
++      "sha256": "a7cebcf9ec79ec480c98d3a9cd1392837927ada57bf9bbb18e0620ba863f3148"
+     },
+     "packages/mpd-mcp-codegraph/dist/serve.js": {
+       "fileCount": 1,
+@@ -48,5 +48,5 @@
+     }
+   },
+   "verification": "node scripts/verify-vendor.mjs: commit/version mismatch is a blocker; stats drift is a warning; asset counts are a blocker",
+-  "lockedAt": "2026-09-14T09:15:59.000Z"
++  "lockedAt": "2026-09-14T10:15:51.000Z"
+ }
+
+### git diff --stat HEAD -- skills/
+ skills/ast-grep/AGENTS.md                  |  2 +-
+ skills/ast-grep/scripts/ast_grep_helper.py | 14 +++++++-------
+ skills/ast-grep/tests/smoke.sh             |  6 +++---
+ skills/ulw-plan/scripts/scaffold-plan.mjs  |  8 ++++----
+ 4 files changed, 15 insertions(+), 15 deletions(-)
+
+## APPENDIX — post-completion steering verification (captain message "the skills corpus is still MOVING")
+
+The captain asked that the pin not be taken while the corpus moves, and listed two checks plus the F1
+bytecode hazard. Re-measured AFTER t17 was completed, at the SAME HEAD (53d617e6…), with no edit to
+VENDOR_LOCK.json:
+
+1. `git grep -n "OMO" -- skills/ast-grep`   -> NO output (exit 1). The label sweep (sk-01/sk-05/sk-06)
+   has already landed: ast_grep_helper.py:205 now reads `# --- MPD runtime resolution (vendored patch) ---`;
+   :250 now reads `2. MPD runtime dirs`; smoke.sh:126 now reads `pass "MPD_AST_GREP_SG_PATH resolves first"`.
+   The one provenance mention the captain expected is spelled lower-case and is therefore invisible to a
+   case-SENSITIVE `git grep "OMO"`: README.md:133 `- [`omo` (oh-my-opencode)](https://github.com/code-yeongyu/oh-my-opencode) …`.
+   AGENTS.md:23 likewise keeps the upstream path `omo-opencode/src/cli/install-ast-grep-sg.ts` (provenance)
+   and now says "MPD caches" (sk-07 landed).
+2. `git grep -n "omo_" -- skills/ast-grep`  -> NO output (exit 1); the three identifiers are renamed.
+3. Stray bytecode: `find skills -name '__pycache__' -o -name '*.pyc' -o -name '*.pyo'` -> EMPTY. No bytecode
+   is inside the corpus and none is staged. (The recompute script skips node_modules + __pycache__/*.pyc/*.pyo,
+   exactly like the gate hardened in 0cbf505, so it cannot count a cache even if one appears.)
+4. Corpus recomputed twice, 50 s apart, byte-identical AND equal to the pinned value:
+   297 files / a0f1febb4111d5884c9af3385963b06753c3f5a38423f7b66f6852c284725f95 (raw/A0-corpus-now.txt,
+   raw/A1-corpus-after-settle.txt).
+5. Lock re-check: drift NONE across all six assets (raw/A2-lock-recheck.json, raw/A3-lock-drift.txt);
+   `node scripts/verify-vendor.mjs` exit 0 / PASS (raw/A4-verify-vendor.log).
+
+Conclusion: the corpus was already settled when t17 pinned it — the label sweep landed BEFORE the pin
+(mtimes 18:13:15 local, i.e. inside the settle window that produced a0f1febb), not after. No re-pin is
+needed and the completed t17 values stand. A remembered hash was never reused: a0f1febb was computed from
+the bytes and then re-derived twice on the settled tree.
+
+Attribution refinement: the fourth skills/** writer is the CAPTAIN's own out-of-lane edits (sk-07
+skills/ast-grep/AGENTS.md:23, sk-08 skills/ulw-plan/scripts/scaffold-plan.mjs) — so the earlier "another
+lane" wording is refined to "the captain's out-of-lane edits". The acceptance premise "t16 was the wave's
+ONLY skills/** write" therefore remains false as measured, but is now fully attributed: t16's ast-grep
+rename lane + the captain's two declared edits.
+
+## APPENDIX 2 — captain GO-AHEAD re-derivation ("THE CORPUS IS SETTLED NOW - compute the pin")
+
+No earlier hash was reused. A FRESH, INDEPENDENT re-derivation was run from the current bytes (an inline
+implementation of the verify-vendor walk, plus sha256sum of every dist, plus the real gate), twice, >=50 s
+apart, at the unchanged HEAD 53d617e6c2d29dfadec06278bc4130061055378e:
+
+    GOAHEAD-A  fileCount=297  treeSha=a0f1febb4111d5884c9af3385963b06753c3f5a38423f7b66f6852c284725f95
+    GOAHEAD-B  fileCount=297  treeSha=a0f1febb4111d5884c9af3385963b06753c3f5a38423f7b66f6852c284725f95
+    lock drift: NONE            node scripts/verify-vendor.mjs -> exit 0, "[verify-vendor] PASS"
+    dist bytes (current tree): astgrep f06bba31… · gitbash 6458a82e… · lsp a7cebcf9… · codegraph ab287cdc…
+    bytecode under skills/: 0 files matching __pycache__ / *.pyc / *.pyo
+    (raw/A5-corpus-goahead-a.txt, raw/A6-corpus-goahead-b.txt, raw/A7-dist-goahead.txt,
+     raw/A8-lock-recheck-goahead.json, raw/A9-lock-drift-goahead.txt, raw/B0-verify-vendor-goahead.log)
+
+The value the recomputation produced equals the value already pinned, because no fingerprinted byte moved
+between the pin and the go-ahead - the label sweep had already landed inside the settle window before the
+pin (ast_grep_helper.py:205 "# --- MPD runtime resolution (vendored patch) ---", :250 "2. MPD runtime dirs",
+smoke.sh:126 "MPD_AST_GREP_SG_PATH resolves first"). Case-insensitive "omo" inventory of skills/ast-grep is
+exactly the four hits the captain listed: AGENTS.md:23 (upstream path omo-opencode/...), README.md:133
+(upstream provenance link), references/cli.md:96 ("Promote" false positive), tests/smoke.ps1:21
+("pscustomobject" false positive). `git grep omo_` over that tree returns no output.
+
+LSP ENVELOPE SKEW CAVEAT (read from t13's rule.json:709-710, not the round-1 parenthetical), which
+accompanies the lsp dist pin a7cebcf9…: removing `_omo` from the envelope leaves an ALREADY-RUNNING
+version-scoped daemon (started by the pre-rename artifact) unable to authenticate - authenticateMessage
+returns AUTH_ERROR_CODE -32001 when the envelope key is absent, and the client then fails with
+DaemonUnreachableError after its ready timeout (loud failure, not silent corruption). Remedy: restart, or
+clear the version-scoped daemon dir (~/.mpd/lsp-daemon/v<version>). The round-1/amended claim that skew
+fails via PROTOCOL_ERROR is WRONG and is NOT repeated here.

@@ -1,0 +1,140 @@
+{
+  "task": "t13",
+  "kind": "requirements (round 2)",
+  "artifact": "evidence/mpd-naming/final-allowlist/rule.json",
+  "settled_revision": {
+    "head": "4d8a1307f452f0bda7e52f2a4adacb73d1da6f25",
+    "head_subject": "fix(agent-teams): the B7 overlap relation is a real may-two-writers-touch-it test",
+    "branch": "dev",
+    "dirty_paths": [
+      "M LICENSE-NOTICES.md",
+      " M README.md",
+      " M README.zh-CN.md",
+      " M docs/architecture.md",
+      " M docs/architecture.zh-CN.md",
+      " M docs/feature-audit.md",
+      " M docs/feature-audit.zh-CN.md",
+      " M docs/user-guide.md",
+      " M docs/user-guide.zh-CN.md",
+      " M package.json",
+      " M packages/mpd-boulder-plugin/README.md",
+      " M packages/mpd-boulder-plugin/README.zh-CN.md",
+      " M packages/mpd-bundle/README.md",
+      " M packages/mpd-bundle/README.zh-CN.md",
+      " M packages/mpd-modelchain-plugin/README.md",
+      " M packages/mpd-modelchain-plugin/README.zh-CN.md",
+      " M packages/mpd-qa-roles-probe/README.md",
+      " M packages/mpd-qa-roles-probe/README.zh-CN.md",
+      " M packages/mpd-roles-plugin/README.md",
+      " M packages/mpd-roles-plugin/README.zh-CN.md",
+      " M packages/mpd-roles-plugin/package.json",
+      " M packages/mpd-roles-plugin/src/index.ts",
+      " M packages/mpd-roles-plugin/src/roles.data.ts",
+      " M packages/mpd-workmate-plugin/README.md",
+      " M packages/mpd-workmate-plugin/README.zh-CN.md",
+      " M packages/mpd-workmate-plugin/src/index.ts",
+      " M presets/mpd/agent.cordis.yml",
+      "?? evidence/mpd-naming/brand-cleanup/labels/",
+      "?? evidence/mpd-naming/brand-cleanup/requirements/",
+      "?? evidence/mpd-naming/final-allowlist/"
+    ],
+    "pin_caveat": "The wave's product edits (27 modified tracked files) are UNCOMMITTED in this working tree, so `git rev-parse HEAD` alone does NOT identify the frozen content. The per-file sha256 map below IS the pin; re-verify it with `sha256sum` before judging the wave, and re-emit this file if any hash moved."
+  },
+  "files_read_sha256": {
+    "evidence/mpd-naming/brand-cleanup/requirements/rule.json": "d00cb02e4833c5f9a9140853a6d34f1fff8846ad9a7048e0e8ca02ad6bbc1f77",
+    "evidence/mpd-naming/brand-cleanup/labels/result.json": "7c1889992b87c7be9849cf8abe9004c536508deaf131ca4e1305a85390cb2e7e",
+    "evidence/mpd-naming/brand-cleanup/dists/raw/dists-plan.json": "c11bbd2033b8a2eb296cac582dddc9c968b91c23e2c0f7240830fcea4a8e4a7d",
+    "evidence/mpd-naming/brand-cleanup/dists/raw/contract-amendment.json": "1167b56680e9f4dbdfb6989af6f8e69ababd67181bc28187db894e9d492433c2",
+    "AGENTS.md": "6785fcd49ae156159341296e912453225a16c6ca9aa4a88c8c57805559c28a9b",
+    "VENDOR_LOCK.json": "0dcf955e68c6cd825b04e1be6802f44b4ec3e23067f8f1218a590904c6f0e083",
+    "scripts/build-mcp.mjs": "3b9b33fcf07b301c788a5ca4b47d983297c038ffece79c6bcfed1eb1e5bd300d",
+    "packages/mpd-mcp-lsp/dist/cli.js": "9f41d4258c204aca959de98a5bea59a7459f9e298885f187cfc0268e1d18ce69",
+    "packages/mpd-mcp-gitbash/dist/cli.js": "0484a8ff1714c949bc52a4fc0de89c756dcab975b0691a2823706f008475f38e",
+    "packages/mpd-mcp-astgrep/dist/cli.js": "f06bba310cad306b5638efb90a69e50b2c6a7416c0c536867f02c70f4b4fa4c5",
+    "packages/mpd-mcp-codegraph/dist/serve.js": "ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375",
+    "skills/ast-grep/AGENTS.md": "86a12d84bd17fb6c2cb7382e9d7c3802f1e76f7fe37cf026e998c360a1b0a448",
+    "skills/ast-grep/README.md": "eb4d54eeb38d3d2449dc1eacc89c4da4d53227c153c299afe3e599428c05cd30",
+    "skills/ast-grep/scripts/ast_grep_helper.py": "d16383a6b947cd8f248627febe1182df6169568b525bba9465e6b2108dd19686",
+    "skills/ast-grep/tests/smoke.sh": "458f60a73f199329791e8d699c6b072bed043abeb8aa8df477085086d4a7f54f",
+    "skills/ulw-plan/scripts/scaffold-plan.mjs": "b026c55782a66dad05a8c6eb3986aadf2e4105d1945c101701fc5e9d1df65f65",
+    "skills/lsp-setup/SKILL.md": "e22d3ad8f0a0c1b820ed7c178c3e83ac40ecef5c47ff837390f0b187243f1aba",
+    "skills/review-work/SKILL.md": "378cf0941e9df28815068df992ed2774ef7ffe8d36db2b1724361dfde9caad9e",
+    "skills/ultimate-browsing/engine/tests/test_surrogate.py": "762a34188d49ccf762af2c17313258a92f7cb69f3919e834968ed2df6d7df7ac",
+    "docs/omo-parity-ledger.md": "1084feab272639603e4e271e0b4a1b90e84ed6ee2d9145d63b8a0847ae75726a",
+    "docs/omo-parity-ledger.zh-CN.md": "d58a6d26fd7c7104190c14bb37ea7982193623a63bbd8be19bbe0e272dff7a32",
+    "docs/index.md": "a8d5bb2821875ceb1e1d6f3acfc7af7b6535a1c4f10a984a89cad6533208215b",
+    "docs/index.zh-CN.md": "99f1ebd5a7c95adc69afc59adabf79a0b70207eaf2370cde8d191e87700b0e95",
+    "docs/omo-parity-gap.md": "f755fb27a2aa29e29d7d5418d04afc8d0eb50e5ab375206997a5617116ef0219",
+    "docs/plan-e.md": "e6ccc875b58aaf1c3cb65ffa77670de68f87ceb5561aa6505e00ec31fdaae5b9",
+    "docs/plan-f.md": "c6aecf2ec08c97fcb52fa55b51650c13347712161ef80e5af5afb6a221c9f493",
+    "presets/mpd/agent.cordis.yml": "bd953a8e068722a2cdedced54ef46efba7f70e7f50441399ab72bc5451169d71",
+    "packages/mpd-agent-teams-plugin/lib/session-start.js": "b8a483c176fcbe30b5e5bf84c26135de455dedfcff505bb7e9f7ba83564b9b36",
+    "packages/mpd-agent-teams-plugin/test/s1-s4-semantics.test.mjs": "b8db1ccc7fea5c1fb225dc2c4f708cbf5f98ed2bddaeefe6902b7c1151f130bd",
+    "packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs": "2dd5028053cfa61e18d76da8892a189fe073345712b752c327df59d1cdc17729",
+    "packages/mpd-dsh-adapter-plugin/src/index.ts": "3d0cffc2ea49074bbf6beb24878f2227ba2874080d533528ada04d3c775e0ab9",
+    "packages/mpd-team-compact-plugin/src/index.ts": "296322e149f2df1da33685edacbc9455b9c9575dd63e57ffda4efba8d71b41b9",
+    "skills/dsh-qa/scripts/agent-teams-messaging.mjs": "d8f05a5477d6acfebd303ee9583f3019627e2e1982b9dc765ccd8921503403ad",
+    "skills/dsh-qa/scripts/session-start-team.mjs": "e90a40c3723e0ba71332e37bb8a4b1b4c3d0f76f610b138957cae055d502bf39"
+  },
+  "shipped_tooling_sha256": {
+    "evidence/mpd-naming/final-allowlist/raw/recompute-lock.mjs": "8829d7274d1f703f38253dd52e9ee4242dba8dc6c57c68a02b0d7b307cf9deed",
+    "evidence/mpd-naming/final-allowlist/raw/acceptance-greps.sh": "d3b36243f099b70a3606bfeb8fd0cf12203468b8776d166174bb1d2fcc458306",
+    "evidence/mpd-naming/final-allowlist/raw/check-keep-allowlist.sh": "8922bc9c45b5a489895f64b637cae05b6995fb4452026d7b27e13670b334c0a8",
+    "evidence/mpd-naming/final-allowlist/raw/emit-result.py": "fc21e1e1285fb20191ffc9f9ef34ff83590f57c8855f82b04d774132b05a8c17"
+  },
+  "raw_logs_sha256": {
+    "evidence/mpd-naming/final-allowlist/raw/10-brand-scan-at-revision.txt": "3245dabd1ae3446acbf37861bcce157b1179cfc446166b8e37a96511ef489191",
+    "evidence/mpd-naming/final-allowlist/raw/20-lock-recompute.log": "eb0c30ffcc0504592856af311d62f4672e1d453a8ed4d74ae3e0ad9a9abc6eb1",
+    "evidence/mpd-naming/final-allowlist/raw/30-greps-current.log": "7263c1f5d1dc17076980156de990645167520b7562623a5addfe858e0727dfea",
+    "evidence/mpd-naming/final-allowlist/raw/50-keep-allowlist-check.log": "92afd42deb87c130e912b55592cc5f2cb26edda30661fde250ebcf85b3df9120",
+    "evidence/mpd-naming/final-allowlist/raw/40-token-set.txt": "3c00a473312dac946026e430aaae8d0bbeffde33a94ba5bb1f8efefc7cdde172"
+  },
+  "artifact_sha256": {
+    "evidence/mpd-naming/final-allowlist/rule.json": "d3a7403aa63df7390c4268d368e6b2b5d385582b2910736b6c0a25130fc15fda"
+  },
+  "lock_recompute": {
+    "rule": "recompute at the settled revision; the lock must EQUAL the recomputation (never cite a string)",
+    "tool": "evidence/mpd-naming/final-allowlist/raw/recompute-lock.mjs",
+    "result": "LOCK-RECOMPUTE=MATCH",
+    "measured": [
+      "{\"asset\":\"skills\",\"declaredFileCount\":297,\"actualFileCount\":297,\"actualTreeSha\":\"f6bb2053d02a0e256ab5d88debceb4cfbc76b10c6ff03dca69bf446718a583c9\",\"declaredTreeSha\":\"f6bb2053d02a0e256ab5d88debceb4cfbc76b10c6ff03dca69bf446718a583c9\"}",
+      "{\"asset\":\"packages/mpd-agent-teams-plugin/_deps\",\"declaredFileCount\":635,\"actualFileCount\":635,\"actualTreeSha\":\"d1d106032b198d2392ca2fe36ea4b563c3010496192791a6e4812638b7cf8e37\",\"declaredTreeSha\":\"d1d106032b198d2392ca2fe36ea4b563c3010496192791a6e4812638b7cf8e37\"}",
+      "{\"asset\":\"packages/mpd-mcp-astgrep/dist/cli.js\",\"declaredFileCount\":1,\"actualFileCount\":1,\"actualSha256\":\"f06bba310cad306b5638efb90a69e50b2c6a7416c0c536867f02c70f4b4fa4c5\",\"declaredSha256\":\"f06bba310cad306b5638efb90a69e50b2c6a7416c0c536867f02c70f4b4fa4c5\"}",
+      "{\"asset\":\"packages/mpd-mcp-gitbash/dist/cli.js\",\"declaredFileCount\":1,\"actualFileCount\":1,\"actualSha256\":\"0484a8ff1714c949bc52a4fc0de89c756dcab975b0691a2823706f008475f38e\",\"declaredSha256\":\"0484a8ff1714c949bc52a4fc0de89c756dcab975b0691a2823706f008475f38e\"}",
+      "{\"asset\":\"packages/mpd-mcp-lsp/dist/cli.js\",\"declaredFileCount\":1,\"actualFileCount\":1,\"actualSha256\":\"9f41d4258c204aca959de98a5bea59a7459f9e298885f187cfc0268e1d18ce69\",\"declaredSha256\":\"9f41d4258c204aca959de98a5bea59a7459f9e298885f187cfc0268e1d18ce69\"}",
+      "{\"asset\":\"packages/mpd-mcp-codegraph/dist/serve.js\",\"declaredFileCount\":1,\"actualFileCount\":1,\"actualSha256\":\"ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375\",\"declaredSha256\":\"ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375\"}"
+    ],
+    "supersedes": [
+      "round-1 rule.json's cited skills treeSha values 1d277907045e... and 4299afc4... and 2feb1bce... are STALE; 3c1a850 re-pinned the corpus",
+      "the current on-disk/lock value is f6bb2053d02a0e256ab5d88debceb4cfbc76b10c6ff03dca69bf446718a583c9 (297 files), derived by recomputation, not by citation"
+    ]
+  },
+  "keep_allowlist_check": {
+    "driver": "evidence/mpd-naming/final-allowlist/raw/check-keep-allowlist.sh",
+    "log": "evidence/mpd-naming/final-allowlist/raw/50-keep-allowlist-check.log",
+    "result": "every keep_allowlist entry verified at the cited site (KP-01..KN-03 all OK)"
+  },
+  "acceptance_greps": {
+    "driver": "evidence/mpd-naming/final-allowlist/raw/acceptance-greps.sh",
+    "log": "evidence/mpd-naming/final-allowlist/raw/30-greps-current.log",
+    "revision_logged_in_driver": [
+      "revision: 4d8a1307f452f0bda7e52f2a4adacb73d1da6f25"
+    ],
+    "every_entry_verified_by_a_grep_run_at_this_revision": true
+  },
+  "completeness": {
+    "method": "BRAND_TOKEN_RE (scripts/build-mcp.mjs:192) + a bare-word OMO/OmO/omo scan over every git-tracked non-evidence file",
+    "files_with_brand_tokens": 46,
+    "distinct_tokens": 61,
+    "token_set_file": "evidence/mpd-naming/final-allowlist/raw/50-keep-allowlist-check.log",
+    "statement": "Every one of the 46 files / 61 distinct tokens is classified in rule.json: rename_list, keep_allowlist (provenance | functional | historical), or not_a_brand_token (regex false positive). An occurrence that appears in none of the three lists is a finding."
+  },
+  "no_product_files_written": {
+    "written_paths": [
+      "evidence/mpd-naming/final-allowlist/raw",
+      "evidence/mpd-naming/final-allowlist/result.json",
+      "evidence/mpd-naming/final-allowlist/rule.json"
+    ],
+    "statement": "Only evidence/mpd-naming/final-allowlist/** was written; no product file, doc, dist or VENDOR_LOCK.json was touched."
+  }
+}

@@ -23,7 +23,7 @@ is installed into. It contributes:
 - one agent preset (`mpd`) and a skill corpus, served from the bundle (no home copy),
 - a combined web client (the AgentTeams sidebar page + the workmate library).
 
-The OMO-origin 11 agents are **not presets**: they live as a specialist roster
+The specialist roster's 11 specialists are **not presets**: they live as a specialist roster
 (`mpd-roles-plugin`) and as teammate instantiation templates in the adopted
 `agent-teams` `mpd` profile.
 
@@ -97,7 +97,7 @@ to bare package names.
 | `mpd-config` | mpd-config-plugin | minimal `mpd.jsonc` runtime config layer (project `.mpd/mpd.jsonc` merged over user `$DSH_HOME/mpd.jsonc`) | `mpd_config_get`, `mpd_config_reload`; service `mpdConfig` | `projectFile`, `userFile` |
 | `mpd-tools` | mpd-tools-plugin | write guard (no silent clobber), tool-output truncation (token budget), edit-error recovery guidance | waterfalls only | `writeGuard`, `truncateMaxBytes`, `recoveryHint` |
 | `mpd-modelchain` | mpd-modelchain-plugin | DeepSeek route resolution for roster roles + key/value memory notes | `mpd_modelchain_resolve`, `mpd_memory_save`, `mpd_memory_recall` | — |
-| `mpd-roles` | mpd-roles-plugin | the 11 OMO-origin specialists as a roster (ids/normal names/personas/model chains/read-only) | `mpd_roles_list`, `mpd_role_spawn`, `mpd_role_persona`; service `mpdRoles` | `personasDir` |
+| `mpd-roles` | mpd-roles-plugin | the specialist roster's 11 specialists as a roster (ids/normal names/personas/model chains/read-only) | `mpd_roles_list`, `mpd_role_spawn`, `mpd_role_persona`; service `mpdRoles` | `personasDir` |
 | `mpd-ulw` | mpd-ulw-plugin | fixed plan→execute→verify loop discipline | `mpd_ultrawork`, `mpd_ulw` (light alias) | `maxRounds`, `maxReReviews`, `provider/model/reviewerModel`, `planDir`, `stateDir` |
 | `mpd-hashline` | mpd-hashline-plugin | hash-anchored edit discipline (`LINE#HASH` anchors) | `mpd_hashline_read`, `mpd_hashline_edit`, `mpd_hashline_format`, `mpd_hashline_restore` | `guardEditTools`, `maxDiffChars`, `registryFile` |
 | `mpd-boulder` | mpd-boulder-plugin | durable work ledger bound to plan markdown files | `mpd_boulder_status`, `mpd_boulder_start`, `mpd_boulder_complete`, `mpd_boulder_task_timer`, `mpd_boulder_plan_progress`, `mpd_boulder_plans` | `boulderDir` |

@@ -1,0 +1,5 @@
+SCAN SUBJECT DEFINITION
+shipped artifact = a git-tracked path whose first segment is not 'evidence/'
+tracked total            : 4824
+tracked minus evidence/  : 1313
+gitignored (never shipped, OUT OF SCOPE): .mpd-dsh/ (upstream checkout), .qa-*/, .tmp-cache/, node_modules/, .toolchain/, .codegraph/, .mpd/, dist/mpd-package/

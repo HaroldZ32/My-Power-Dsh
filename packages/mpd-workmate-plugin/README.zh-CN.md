@@ -4,7 +4,7 @@
 
 位于用户 HOME（`~/.mpd/workmate`）的持久、不断演化的 agent 库。
 
-OMO 名册（roster）专家（`mpd-roles-plugin`）**只是 BASE 模板**。一个 *workmate*（工作伙伴）是带独立名称的实例化副本，它：
+专家名册（roster）中的专家（`mpd-roles-plugin`）**只是 BASE 模板**。一个 *workmate*（工作伙伴）是带独立名称的实例化副本，它：
 
 - **初始化**自基础专家（base specialist）（`mpd_workmate_init`），将基础 persona 复制到 `~/.mpd/workmate/<name>/`（基础对象保持原样）；
 - **在每次工作会话后自总结**（`mpd_workmate_reflect`）：追加一条有界的内存条目（超出上限时逐出最旧的条目），合并一个可选的 persona 修订，并重新生成一张简短的 note 卡片——所有文件都**受大小上限约束**（persona ≤ 8 KiB、memory ≤ 8 KiB、note ≤ 1.5 KiB），以保持生成的上下文有界；

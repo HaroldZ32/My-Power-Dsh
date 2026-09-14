@@ -1,0 +1,52 @@
+### G2-style brand-token scan (BRAND_TOKEN_RE, scripts/build-mcp.mjs:192) — REFRESHED after the captain-ruling follow-up ###
+measured: 2026-09-14T07:16:53.252Z  HEAD=221171444240f0f55794c5d73b16b92701a7ed72
+method: token-boundary regex only (the captain ruling forbids `grep -i omo`: autonomous/promote must NOT hit)
+files scanned: 1263   files with a brand token: 47
+
+AGENTS.md  ->  omo-parity-gap, omo-align/requirements/frozen-contract.json
+docs/index.md  ->  omo-parity-ledger, omo-parity-align
+docs/index.zh-CN.md  ->  omo-parity-ledger, omo-parity-align
+docs/omo-parity-gap.md  ->  OMO, omo-opencode/src/agents/, omo_agent, omo/plans
+docs/omo-parity-ledger.md  ->  OMO, omo-parity-ledger, omo-parity-align, omo-parity-gap, omo-align/requirements/frozen-contract.json, omo-align/research/team-vs-mass-ulw/gap.json, omo-align/research/session-policy/output.log, omo-align/requirements/verdict.json, omo-parity-rate/, omo-align/ledger-fix/, omo-align/ledger-fix/gates/, omo-align/ledger-fix/result.json, omo-parity-rate/raw/prompts.jsonl, omo-parity-rate/raw/probe.mjs
+docs/omo-parity-ledger.zh-CN.md  ->  OMO, omo-parity-ledger, omo-parity-align, omo-parity-gap, omo-align/requirements/frozen-contract.json, omo-align/research/team-vs-mass-ulw/gap.json, omo-align/research/session-policy/output.log, omo-align/requirements/verdict.json, omo-parity-rate/, omo-align/ledger-fix/, omo-align/ledger-fix/gates/, omo-align/ledger-fix/result.json, omo-parity-rate/raw/prompts.jsonl, omo-parity-rate/raw/probe.mjs
+docs/plan-e.md  ->  OMO-vs-mpd, OMO, omo-parity-gap
+docs/plan-f.md  ->  OMO, OMO-origin, omo-hephaestus
+packages/mpd-agent-teams-plugin/lib/session-start.js  ->  omo-align/requirements/frozen-contract.json
+packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs  ->  omo-align
+packages/mpd-agent-teams-plugin/test/s1-s4-semantics.test.mjs  ->  OMO, omo-align/verification/
+packages/mpd-dsh-adapter-plugin/src/index.ts  ->  omo-align/compact-hinge
+packages/mpd-mcp-codegraph/dist/serve.js  ->  omo, OMO_CONFIG, OMO
+packages/mpd-mcp-gitbash/dist/cli.js  ->  OMO_CODEX_GIT_BASH_PATH, OMO_CODEX_GIT_BASH_TIMEOUT_MS, OMO_CODEX_EXEC_COMMAND_TIMEOUT_MS
+packages/mpd-mcp-lsp/dist/cli.js  ->  _omo
+packages/mpd-team-compact-plugin/src/index.ts  ->  omo-align/requirements/team-compaction-contract.json, omo-align/compact-hinge/result.json
+scripts/build-mcp.mjs  ->  OMO, omo-config-core, OMO-, OMO_, omo, OMO_CODEX_, OMO_DAEMON_PROTOCOL_VERSION, OMO_LSP_DAEMON_CLI, OMO_LSP_DAEMON_DIR, OMO_LSP_DAEMON_VERSION, omo-lsp-daemon, omo-lsp-, omo/ping, omo-lsp, OMO_AST_GREP_BIN_DIR, OMO_AST_GREP_SG_PATH, OMO_AST_GREP_PROJECT_CWD, OMO_PROVISION_HINT, omoRuntimeCandidates, omo-runtime, omo-ast-grep, omoRuntime, omo-git-bash-run-, omo-git-bash, omo-, OMO_CODEX_GIT_BASH_PATH, OMO_CODEX_GIT_BASH_TIMEOUT_MS, OMO_CODEX_EXEC_COMMAND_TIMEOUT_MS, _omo
+skills/ast-grep/AGENTS.md  ->  OMO, omo-opencode/src/cli/install-ast-grep-sg.ts
+skills/ast-grep/README.md  ->  omo
+skills/ast-grep/scripts/ast_grep_helper.py  ->  OMO, omo_env_binary, omo_runtime_slug, omo_runtime_binary
+skills/ast-grep/tests/smoke.sh  ->  omo_runtime_slug, OMO
+skills/dsh-qa/scripts/agent-teams-messaging.mjs  ->  omo-align/qa-shipped-path/, omo-align
+skills/dsh-qa/scripts/session-start-team.mjs  ->  omo-align/requirements/frozen-contract.json
+skills/lsp-setup/SKILL.md  ->  omo
+skills/lsp-setup/references/bash/README.md  ->  omo
+skills/lsp-setup/references/c-cpp/README.md  ->  omo
+skills/lsp-setup/references/csharp/README.md  ->  omo
+skills/lsp-setup/references/dart/README.md  ->  omo
+skills/lsp-setup/references/elixir/README.md  ->  omo
+skills/lsp-setup/references/go/README.md  ->  omo
+skills/lsp-setup/references/haskell/README.md  ->  omo
+skills/lsp-setup/references/java/README.md  ->  omo
+skills/lsp-setup/references/julia/README.md  ->  omo
+skills/lsp-setup/references/kotlin/README.md  ->  omo
+skills/lsp-setup/references/lua/README.md  ->  omo
+skills/lsp-setup/references/php/README.md  ->  omo
+skills/lsp-setup/references/python/README.md  ->  omo
+skills/lsp-setup/references/ruby/README.md  ->  omo
+skills/lsp-setup/references/rust/README.md  ->  omo
+skills/lsp-setup/references/swift/README.md  ->  omo
+skills/lsp-setup/references/terraform/README.md  ->  omo
+skills/lsp-setup/references/typescript/README.md  ->  omo
+skills/lsp-setup/references/yaml/README.md  ->  omo
+skills/lsp-setup/references/zig/README.md  ->  omo
+skills/review-work/SKILL.md  ->  OMO
+skills/ultimate-browsing/engine/tests/test_surrogate.py  ->  OMOB_TEST_TOKEN
+skills/ulw-plan/scripts/scaffold-plan.mjs  ->  omoRoot, omoReal
