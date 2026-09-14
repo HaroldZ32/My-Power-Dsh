@@ -1,0 +1,119 @@
+{
+  "schema": "mpd-external-bundle-purge-verification/3",
+  "task": "t34 (reassigned verification; FINAL pass on the captain's frozen revision after the HOLD was lifted)",
+  "kind": "verification",
+  "verifier": "Reviewer",
+  "verdict": "pass",
+  "supersedes": "evidence/omo-align/verification-t34/result.json (the pre-HOLD pass at the same revision, six criteria, pass). That file is left byte-intact; this file is the post-HOLD final record and carries its content forward so no delivered evidence is replaced.",
+  "verdictScope": "All seven criteria pass on the frozen revision, including the captain's NEW criterion that evidence text itself must be neutral. Every captain-declared result reproduces EXCEPT two accounting numbers, filed as findings rather than defects: the untracked non-ignored file count (738 now, not 644 — it grows as evidence is written) and the skill-corpus fingerprint (the pre-HOLD value, superseded by the paired re-pin in merge 314022c). I also confirm the captain's two self-corrections in their favour and record two corrections of my own earlier wording.",
+  "frozenRevision": {
+    "measuredHead": "d54afe5372355ee8bd0e524f4d90f55621f74e66",
+    "declaredByCaptain": "d54afe5",
+    "match": true,
+    "trackedTreeClean": "git status over packages/ scripts/ skills/ presets/ docs/ AGENTS.md README* VENDOR_LOCK.json package.json reports only the two untracked ledger docs, which are outside this verification's subject",
+    "backupTags": ["backup/dev-d54afe5", "backup/dev-314022c", "backup/dev-656f622", "backup/dev-06503cd", "backup/dev-787796b"],
+    "settleEvidence": "The two-sided case itself settled on this revision and reported gateHash b79bde7c87cc2a6c899a3e4c0e9685c0b6e26fb0d3dfdc80f1383c385b5d623e, byte-identical to my own sha256 of lib/session-start.js. No source file changed during any run of this pass.",
+    "measuredHashes": {
+      "packages/mpd-agent-teams-plugin/lib/session-start.js": "b79bde7c87cc2a6c899a3e4c0e9685c0b6e26fb0d3dfdc80f1383c385b5d623e",
+      "packages/mpd-agent-teams-plugin/lib/state.js": "1d503e05830e6cc42fa129abf5546fdec262db736060b51a24232ac67cadbbc5",
+      "packages/mpd-agent-teams-plugin/lib/types/state.d.ts": "07b24e107605c8f82f16725a2508642e419848e5dc564bb38c2a773491e191c4",
+      "packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs": "2dd5028053cfa61e18d76da8892a189fe073345712b752c327df59d1cdc17729",
+      "VENDOR_LOCK.json": "1ad1585e9962cf781dca38ffce71ae57d990cec55c1b07ce5f07f1421b97b6e1",
+      "scripts/build-mcp.mjs": "3b9b33fcf07b301c788a5ca4b47d983297c038ffece79c6bcfed1eb1e5bd300d",
+      "skills/dsh-qa/SKILL.md": "2b654183ca1395eaceb4b4a80d15c8b0173e2e6a7caf41cf3136c674aec6675b",
+      "skills/dsh-qa/scripts/software-smoke.mjs": "0dc6a8b90e431e75e9b869853aca672f744310953aae9ac2f567b3588987a2bf",
+      "AGENTS.md": "af2984da27d9f328647adb2e22da8aeeef142d2867b23c35b43a0bdba17f21ec"
+    }
+  },
+  "captainClaimVerification": [
+    {
+      "claim": "AGENTS.md gained the two shared-checkout git rules and the gate line was corrected to the ratified predicate",
+      "status": "CONFIRMED",
+      "evidence": "AGENTS.md line 196 carries the binding one-git-writer rule and line 206 the attribution rule; the gate row now states the ratified predicate (explicit flag OR one matched signal) with its accepted cost. The file measures 65,209 bytes, inside the 65,536 instruction budget the captain was restoring, so the previously truncated tail is back."
+    },
+    {
+      "claim": "The four dangling references to the retired evidence tree were removed and the corpus re-pinned in the same commit",
+      "status": "CONFIRMED",
+      "evidence": "Zero occurrences of the retired tree name remain in scripts/build-mcp.mjs, skills/dsh-qa/scripts/software-smoke.mjs and skills/dsh-qa/SKILL.md (the four sites). Merge 314022c carries VENDOR_LOCK.json together with exactly those three files, and it is an ancestor of the frozen revision; verify-vendor PASSes on the new fingerprint."
+    },
+    {
+      "claim": "The t33 executor's concurrency account was archived as its own testimony, not as the captain's conclusion",
+      "status": "CONFIRMED",
+      "evidence": "Merge d54afe5 touches exactly one file (the purge evidence record) with six added lines and no deletions, so the account was appended as testimony rather than rewritten into the captain's voice."
+    },
+    {
+      "claim": "The captain's earlier alarm — that their own closeout evidence body wrote the retired identifier — was a false positive",
+      "status": "CONFIRMED",
+      "evidence": "Classifying the three remaining token lines in that closeout evidence: all three are the EXEMPT third-party platform brand; retired-form matches are 0. The captain's discrimination rule (search the short name but exclude the exempt brand, then search the engineering-specific forms separately) reproduces the clean result."
+    }
+  ],
+  "myOwnCorrections": [
+    {
+      "what": "My first t34 attempt's finding V1 (the view-parity call passes arguments in the wrong slots and is therefore inert)",
+      "status": "WITHDRAWN — the captain's correction was right and my measurement was wrong",
+      "evidence": "The authoritative runtime signature is lib/state.js::taskVisualState(status, tasks, dependencies); executing the test's own expression with its own fixture returns 'blocked' at the frozen revision, exactly as the assertion demands. My earlier reading used a hand-written variant that does not appear in the test. The genuinely stale artifact was the type declaration, repaired in commit 1eecb7d.",
+      "lesson": "Never file a finding about an assertion without executing that assertion's own expression."
+    },
+    {
+      "what": "My pre-HOLD message said the captain's closeout evidence bodies 'directly wrote the forbidden identifier'",
+      "status": "CORRECTED — those bodies restate the EXEMPT brand only",
+      "evidence": "Token classification gives 3 exempt-brand lines and 0 retired-identifier matches there. I inferred a contract violation from a substring match without classifying the token. The rewrite the captain planned is still right on hygiene grounds — evidence text cannot distinguish a forbidden form from an excepted brand — but it is not the violation I described."
+    }
+  ],
+  "residueGate": {
+    "criteria": ["tracked whole repository", "untracked and non-ignored files", "non-ignored build-output directories", "evidence text (the captain's NEW criterion, incl. this verifier's own artifacts)", "exemptions verified unmodified"],
+    "tracked": {"withdrawnFormMatches": 0, "rawTokenLines": 5, "exemptBrandLines": 1, "resolution": "the only token line is the EXEMPT third-party platform brand; the other four raw lines are evidence records quoting it while documenting the gate"},
+    "untrackedNonIgnored": {"filesInScope": 738, "withdrawnFormMatches": 0, "resolution": "count is higher than the declared 644 because evidence is written continuously during the wave; every file in scope was scanned and returned no withdrawn-form match (finding V3)"},
+    "engineeringSpecificForms": {"envVarFormMatches": 0, "packageScopeFormMatches": 0, "directoryPathFormMatches": 0},
+    "buildOutput": {"path": "dist/mpd-package (gitignored)", "beforeRegenNonExempt": 0, "afterRegenNonExempt": 0, "filesNormalized": 1121, "remainingMatches": "one case-insensitive match, the exempt brand line inside the packaged ast-grep reference"},
+    "evidenceTextNeutrality": {"myOwnArtifacts": "0 matches for any withdrawn form or case variant across evidence/omo-align/verification-t34/**", "thirdPartyArtifacts": "0 matches for the retired identifier; 3 lines restate the EXEMPT brand only (finding V4, hygiene, not a forbidden-token leak)"},
+    "danglingReferences": {"liveSurface": 0, "note": "164 occurrences of the retired tree names exist only inside historical wave evidence records under evidence/**; none in code, patch, manifest, docs or skills — the four live-surface sites the captain listed measure 0"},
+    "exemptions": ["Exemption 1: the third-party platform brand line in the vendored ast-grep reference — present, unmodified, single occurrence", "Exemption 2: the gitignored scratch/cache/index trees — verified to contain zero tracked files and excluded from the non-ignored scan by construction"],
+    "excludedFromScope": ".mpd/team/** per the captain's scope note"
+  },
+  "deletionManifestRecompute": {"commit": "1efb30b", "nameStatusFiltered": 4153, "parentDiffFiltered": 4153, "diffTreeNameStatus": 4154, "reportedCount": 4153, "resolution": "The captain's 4153 reproduces by two independent methods; the third reads one higher only because diff-tree's plain name-only output emits the commit object id as a header line. No deletion is missing."},
+  "vendorLockRecompute": {"fileCountMeasured": 330, "fileCountDeclared": 330, "treeShaMeasured": "9a823b47409d1c35bc81872f441d03ee0368a9ef2f60a1cb96f44a970eed3578", "treeShaDeclaredPreHold": "3f420502eb535a6a1ea7a710ad41c11c80454946e3daeab10dc6176cbb335a2e", "resolution": "fileCount reproduces; the fingerprint moved in merge 314022c where the dangling-reference fix and the re-pin are one commit. Pairing holds and verify-vendor PASSes, so this is a superseded expected value rather than a defect."},
+  "functionalRegression": {
+    "deltaCheck": "node scripts/patch-agent-teams-fixes.mjs --check => exit 0, 'already applied: 21 mpd delta region(s) across 6 adopted file(s)' (matches the declared expectation); the cross-bundle carrier region is absent",
+    "vendorGate": "node scripts/verify-vendor.mjs => PASS including 'asset OK: skills 330 files'",
+    "typecheck": "bun run typecheck => exit 0, no diagnostics",
+    "pluginTests": "bun test packages/mpd-agent-teams-plugin => 153 pass / 0 fail (matches the declared expectation)",
+    "softwareSmokeSelfTest": "node skills/dsh-qa/scripts/software-smoke.mjs --self-test => ok (fixture semantics + deterministic self-play + oracle probes green, mutation control RED with 9 violations) — run as required because the captain modified that script",
+    "fullQaSelfTests": "bun run test:qa => all self-tests passed",
+    "twoSidedGate": "bun skills/dsh-qa/scripts/session-start-team.mjs (background job, past the 60 s budget) => PASS on the frozen revision / gateHash b79bde7c…: simpleTeams [0,0,0] with no notices; complexTeams [1,1,1] each with one notice; negativeControl disarmed=true with 0 teams / 0 notices",
+    "presetConformance": "node skills/dsh-qa/scripts/preset-conformance.mjs => PASS: row loads, preset resolves with a real session and zero apply-failure signatures, and the negative control still fails loudly on the required persona key"
+  },
+  "acceptanceResults": [
+    {"criterion": "零残留门 — tracked 全仓", "status": "passed", "evidence": "Withdrawn-form matches 0; 5 raw token lines of which one is the EXEMPT third-party platform brand and four are evidence records quoting it while documenting the gate."},
+    {"criterion": "零残留门 — 未 tracked 且未被 gitignore 的文件", "status": "passed", "evidence": "738 files in scope scanned, withdrawn-form matches 0. The count differs from the declared 644 and is filed as finding V3."},
+    {"criterion": "零残留门 — 非 ignored 构建产物", "status": "passed", "evidence": "dist/mpd-package clean before and after a fresh pack (1121 files normalized); the only case-insensitive match is the exempt brand line."},
+    {"criterion": "证据文本自身中性化（本轮新增判据）", "status": "passed", "evidence": "My own artifacts: 0 matches for any withdrawn form or case variant. Third-party evidence: 0 matches for the retired identifier; 3 lines restate the exempt brand only (finding V4, hygiene). The gate's discriminating rule reproduces this classification."},
+    {"criterion": "悬空引用（指向已删除目录）清零", "status": "passed", "evidence": "The four live-surface sites (build-script comment + guard message, QA script header, skill case-table source cell) measure 0. The 164 remaining occurrences of the retired tree names live only in historical wave evidence records, none in code/patch/manifest/docs/skills."},
+    {"criterion": "功能回归门（含 captain 改过的软件冒烟自检）", "status": "passed", "evidence": "--check 21 regions / 6 files; verify-vendor PASS with skills 330; typecheck exit 0; plugin tests 153 pass / 0 fail; software-smoke --self-test ok with the mutation control RED; bun run test:qa all self-tests passed; two-sided gate PASS with the disarmed reverse control; preset-conformance PASS with its negative control still red."},
+    {"criterion": "删除清单与 VENDOR_LOCK 独立复算", "status": "passed", "evidence": "Deletions 4153 by two independent methods (a third reads 4154 due to diff-tree's commit-id header). VENDOR_LOCK fileCount 330 reproduces; the fingerprint is the post-314022c re-pin value, superseding the declared one (finding V2)."}
+  ],
+  "commandsRun": [
+    {"command": "node scripts/patch-agent-teams-fixes.mjs --check", "status": "passed", "exitCode": 0, "evidence": "21 mpd delta region(s) across 6 adopted file(s); carrier region absent"},
+    {"command": "node scripts/verify-vendor.mjs", "status": "passed", "exitCode": 0, "evidence": "PASS; asset OK: skills 330 files"},
+    {"command": "bun run typecheck", "status": "passed", "exitCode": 0, "evidence": "tsgo --noEmit, no diagnostics"},
+    {"command": "bun test packages/mpd-agent-teams-plugin", "status": "passed", "exitCode": 0, "evidence": "153 pass / 0 fail"},
+    {"command": "node skills/dsh-qa/scripts/software-smoke.mjs --self-test", "status": "passed", "exitCode": 0, "evidence": "ok: fixture semantics + deterministic self-play (winner P1, 11 plies) + 4 oracle probes green, mutation control RED (9 violations)"},
+    {"command": "bun run test:qa", "status": "passed", "exitCode": 0, "evidence": "all self-tests passed across the QA corpus"},
+    {"command": "bun skills/dsh-qa/scripts/session-start-team.mjs (background job; >60 s)", "status": "passed", "exitCode": 0, "evidence": "PASS on frozen revision d54afe5 / gateHash b79bde7c…: simpleTeams [0,0,0], complexTeams [1,1,1] with one notice each, negativeControl disarmed=true"},
+    {"command": "node skills/dsh-qa/scripts/preset-conformance.mjs", "status": "passed", "exitCode": 0, "evidence": "PASS; real session created; negative control still red on the required persona key"},
+    {"command": "git grep + untracked non-ignored scan with the runtime token ERE", "status": "passed", "exitCode": 0, "evidence": "tracked withdrawn-form 0; untracked non-ignored withdrawn-form 0 over 738 files; engineering-specific forms 0"},
+    {"command": "git show --name-status 1efb30b | awk '$1==\"D\"' | wc -l", "status": "passed", "exitCode": 0, "evidence": "4153, independently reproduced by the parent diff"},
+    {"command": "node -e \"const r=require('./evidence/omo-align/verification-t34/result.json'); console.log('verdict:', r.verdict)\"", "status": "passed", "exitCode": 0, "evidence": "verdict: pass (the same verdict is recorded by this final file)"}
+  ],
+  "findings": [
+    {"id": "V2", "severity": "low", "file": "VENDOR_LOCK.json", "line": 0, "problem": "The fingerprint declared before the HOLD is superseded: merge 314022c re-pinned the corpus together with the dangling-reference fix, so the expected value moved while fileCount stayed 330. Pairing holds and verify-vendor passes, so the artifact is correct and only the declared expectation is stale.", "requiredFix": "Record the post-314022c fingerprint as the purge's final value in the ledger."},
+    {"id": "V3", "severity": "low", "file": "evidence/omo-align/t25-closeout/20260913T161900Z/result.json", "line": 43, "problem": "Scope accounting drift: the declared untracked non-ignored count was 644; the measured count is 738 and it grows as evidence is written. The gate is unaffected (every file in scope scanned, 0 withdrawn-form matches), but a fixed number in a closure record will keep diverging from the tree.", "requiredFix": "Express the scope as 'all untracked non-ignored files at the measured revision' with the count recorded at closure time."},
+    {"id": "V4", "severity": "low", "file": "evidence/omo-align/t25-closeout/20260913T161900Z/raw-sweep.txt", "line": 10, "problem": "Three tracked evidence lines restate the EXEMPT third-party platform brand while documenting the residue gate (0 matches for the retired identifier). Not a forbidden-token leak, but under the new evidence-neutrality criterion the text cannot distinguish the excepted brand from a forbidden one — the exact confusion that produced the captain's pre-HOLD alarm.", "requiredFix": "Either describe the exemption without reproducing the brand text, or add 'evidence records documenting an exempt brand' to the exemption wording."}
+  ],
+  "residualRisks": [
+    "The checkout is shared and the revision moved repeatedly during this task (three earlier runs raced a moving head). Every future pass must re-confirm the head and the gate hash before trusting a reading, as this pass did.",
+    "The packed build output is produced by hand, so it can go stale after any source change without a re-pack; the scan proves the current bytes clean, not that a future pack will be run.",
+    "Untracked non-ignored content grows continuously, so any fixed count in a closure record drifts; the gate should keep scanning the live set.",
+    "This verification is delivered by mail and this evidence file because the board slot is terminal: claim_task refuses a failed-to-claimed transition, so the corrected verdict cannot be attached to task t34 without a successor task."
+  ]
+}

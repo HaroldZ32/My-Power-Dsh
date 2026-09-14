@@ -1,0 +1,130 @@
+{
+  "schema": "mpd.requirements.verdict/v1",
+  "task": "t12",
+  "kind": "requirements",
+  "round": 4,
+  "supersedes": "t11 (evidence/omo-align/requirements/verdict-r3.json)",
+  "verdict": "needs_revision",
+  "verdictReason": "本轮发生了实质进展：captain 采纳了 R3F2 的结构性建议，产出了 captain-owned 的冻结文件 evidence/omo-align/requirements/frozen-contract.json（5 项冻结决策、4 个可机械判定的复杂度信号、mass-ulw 四项断言、全套手动入口名与 14 个 agent_teams_* 工具名、10 个文本落点、9 条必跑门禁、isolation 说明）；隔离冲突也真实解除（0e6bdaf 已把 cordis.patch.yml + roles 三件套提交，工作区只剩 2 个未跟踪的 docs/user-guide 文件）。Planner 本轮补齐了冻结契约要求却仍然缺失的交付物：docs/omo-parity-ledger.md + .zh-CN.md（含语言切换、docs/index.md 双索引收录、omo-parity-gap.md 历史豁免声明）。剩下的问题不再是『没冻结』，而是 1 个新发现的语义冲突 + 2 处未冻结值 + 下游契约未改引，所以本轮仍判 needs_revision。",
+  "progressSince": {
+    "resolved": [
+      "R3F2（结构性根因）：captain 已建立可核验的冻结文件，requirements 门不再被要求修改他人契约（frozen-contract.json:5-6 明确写『the requirements gate verifies consistency against THIS file instead of asking the gate to write other tasks' contracts』）",
+      "用户裁决 6 / 目标 G7（持久双语台账）：已交付 docs/omo-parity-ledger.md + docs/omo-parity-ledger.zh-CN.md，并在两个索引中收录",
+      "isolation（裁决 7）：0e6bdaf 已提交 cordis.patch.yml + mpd-roles-plugin/{src,test,dist}，工作区仅剩 2 个未跟踪 user-guide 文件",
+      "上游默认值对齐：D_FIRST 的理由引用上游 team_mode.enabled 默认 false，是证据而非口味"
+    ],
+    "newFindings": [
+      "R4F1（blocker）：frozen-contract.json 的 mass-ulw S2 断言与用户裁决直接冲突",
+      "R4F2（high）：配置平面（裁决 4 前半）在冻结文件中缺失",
+      "R4F3（high）：t5/t6 契约仍引用不存在的『t1 冻结值』，未改引 frozen-contract.json"
+    ]
+  },
+
+  "criteriaVerdict": [
+    {"id": "R4-1", "criterion": "不要再开第 4 个同义 requirements 回合：captain 直接落地契约改动，门只核验落户情况", "status": "partial", "evidence": "captain 已产出 frozen-contract.json（结构性改造已发生），但 t5/t6 契约未改引该文件，核验对象仍缺失（见 R4F3）"},
+    {"id": "R4-2", "criterion": "二选一改造：captain 先冻结、门核验一致性（或冻结产物固化为可核验文件）", "status": "covered", "evidence": "evidence/omo-align/requirements/frozen-contract.json 存在（9398B，schema mpd-omo-align-frozen-contract/1，owner captain），note 明确门只做一致性核验"},
+    {"id": "R4-3", "criterion": "删除对 t1 的引用，改引具体冻结值", "status": "not-addressed", "evidence": "t5 契约仍写『若判定为复杂则按 t1 冻结的约定触发面表现』『复杂度触发面按 t1 冻结的需求实现』；t6 契约仍写『t1 冻结的验收标准』（见 R4F3）"},
+    {"id": "R4-4", "criterion": "新增台账任务或把 docs/** 入 t6 inScope，冻结文件名/语言切换/index 收录/历史豁免声明", "status": "partial", "evidence": "冻结文件已写下 D_LEDGER（文件名与语言切换要求）且 Planner 已交付两份台账文件并通过全部四条校验；但任务清单仍为 t1-t12，无台账归属任务 —— 交付物存在而责任任务不存在"},
+    {"id": "R4-5", "criterion": "套用 contractPatches.t5.acceptanceAdd[0]（稳定 hash + 沙箱 + 机械产物断言）与 t6.hashPin", "status": "partial", "evidence": "frozen-contract.json complexityGate.testPrompts.expectation 与 verify 已含双向期望与『same settled revision hash』；但 t5/t6 契约正文仍未写入该断言文本（t6 仍无 hash pin 条款）"},
+    {"id": "R4-6", "criterion": "套用 contractPatches.t4.acceptanceAdd（固定列 + 行集合=t2∪t3 + D10 逐项覆盖）", "status": "not-addressed", "evidence": "t4 契约 Acceptance 仍为 (none)、Verify 仍为 (none)；冻结文件中也没有为 t4 指定固定列与行集合约束"}
+  ],
+
+  "userGoalCoverage": [
+    {"goalId": "G1", "status": "covered", "where": "D_UPSTREAM_REF（beta.62 参考、基线仍 beta.20、不 re-pin）"},
+    {"goalId": "G2", "status": "covered-with-conflict", "where": "D_FIRST + D_AUTOROUTE_SPLIT + complexityGate（冲突见 R4F1）"},
+    {"goalId": "G3", "status": "conflict", "where": "massUlwSemantics.items S1-S4；S2 与『已完成节点不重跑』冲突（R4F1）"},
+    {"goalId": "G4", "status": "partial", "where": "手动入口冻结 + massUlw policy 写『不替换 runner』；但容量上限（不照搬上游 8 成员/4 并行）与『默认就绪的本地值』在冻结文件中无任何文字"},
+    {"goalId": "G5", "status": "covered", "where": "manualEntryNames（/agent-teams、/agent-teams-mpd、14 个 agent_teams_* 工具名、profiles.mpd、presetId mpd、stateDir）"},
+    {"goalId": "G6", "status": "covered", "where": "openForUser[1]：技能语料移植待 t8 门禁报告后再问用户；D_SKILLS_WRITER 限定本波次单写者"},
+    {"goalId": "G7", "status": "covered", "where": "D_LEDGER + 本轮交付的两份台账文件 + 双索引收录"},
+    {"goalId": "G8", "status": "partial", "where": "isolation 已解决 + requiredQaCases 9 条；但未记录本波次分支名 feature/omo-parity-align（无机械判据判定『提交在正确分支上』）"}
+  ],
+
+  "findings": [
+    {
+      "id": "R4F1",
+      "severity": "blocker",
+      "problem": "frozen-contract.json 的 mass-ulw S2 断言为『revising a task definition re-runs only the changed task AND ITS DEPENDENTS; completed upstream tasks keep their results』，而用户裁决 2 的原话是『定义修订/已完成节点不重跑』。二者在『依赖方已完成』这一情形下直接冲突：按冻结断言要重跑已完成的依赖方，按用户裁决不得重跑。若按冻结文件实现，将违反用户明确裁决；若按裁决实现，t5/t6 依冻结文件验收会判失败。这不是措辞问题而是行为分歧。",
+      "requiredFix": "二选一并在冻结文件中写死：① 把 S2 改为『a completed dependent is re-run only when the user explicitly asks; otherwise it keeps its result』；② 保留现措辞但在 openForUser 增加一条显式偏离项，写明『本次对 S2 的解释与用户裁决 2 不同』并取得用户确认。未解决前 S2 不可作为验收依据。",
+      "file": "evidence/omo-align/requirements/frozen-contract.json"
+    },
+    {
+      "id": "R4F2",
+      "severity": "high",
+      "problem": "用户裁决 4 前半是『对齐上游 team_mode 字段语义并补齐并行度/消息字节/未读配额/墙钟/单成员轮次等缺口字段，但上限沿用本地更宽松的 mpd 取值』。冻结文件里没有对应的冻结段：grep max_parallel_members / ceiling / 8 members / 4 parallel 全部 0 命中（上游实测默认 max_parallel_members=4、上限 8，见 team-core/src/config.ts）。因此该目标既无待补字段清单，也无本地上限取值 —— 实现者可自由发挥，验收者无从判定『对齐且不照搬』。",
+      "requiredFix": "在冻结文件新增 configPlane 段：列出待补字段名（上游口径）、本地默认值与上限（例如 maxMembers 保持 16、消息字节/未读配额/墙钟/单成员轮次各自取值）、以及『不照搬上游 4 并行/8 成员』的显式声明；并给出校验方式：node skills/dsh-qa/scripts/preset-conformance.mjs（用安装版 schema 校验，因为未知键会被 schemastery 静默保留）。",
+      "file": "evidence/omo-align/requirements/frozen-contract.json"
+    },
+    {
+      "id": "R4F3",
+      "severity": "high",
+      "problem": "t5 与 t6 契约正文仍引用『t1 冻结的约定/需求/验收标准』，而 t1 从未冻结任何值、其 verdict 是 needs_revision。冻结文件已存在却未被任何下游契约引用，导致『门只核验一致性』的改造在实际契约上尚未生效：t5 验收第 1、2 条与 t6 objective/acceptance 第 4 条都指向一个不存在的对象。",
+      "requiredFix": "t5/t6 契约删除全部『t1 冻结』措辞，改为『按 evidence/omo-align/requirements/frozen-contract.json 的对应段（complexityGate / manualEntryNames / massUlwSemantics / changeLocations / requiredQaCases）验收』；t6 另需补 hash pin 条款与改动前后入口名清单要求。",
+      "file": "evidence/omo-align/requirements/frozen-contract.json"
+    },
+    {
+      "id": "R4F4",
+      "severity": "medium",
+      "problem": "冻结文件的 isolation 段写『The pre-existing three-package migration was committed to dev as 0e6bdaf』，但 0e6bdaf 实际只含 4 个文件：packages/mpd-bundle/cordis.patch.yml 与 packages/mpd-roles-plugin/{dist/index.js,src/roles.data.ts,test/roles.test.ts}。它漏写了本次改动清单里的 cordis.patch.yml 已被提交这一关键事实（该文件正是 agent-teams row 的所在），描述与实际提交不完全一致。",
+      "requiredFix": "把 isolation 段改为逐文件事实：已提交 = cordis.patch.yml + roles 三件套；仍未提交 = docs/user-guide.md、docs/user-guide.zh-CN.md；并给出 t5 提交的路径白名单校验命令。",
+      "file": "evidence/omo-align/requirements/frozen-contract.json"
+    },
+    {
+      "id": "R4F5",
+      "severity": "low",
+      "problem": "冻结文件未记录本波次分支名（用户裁决 7 建议 feature/omo-parity-align），也没有任何机械判据能证明提交落在该分支上；t4 的验收（固定列判定表）在冻结文件中同样没有对应条目，t4 契约 Acceptance 仍为 (none)。",
+      "requiredFix": "在冻结文件补 branch: 'feature/omo-parity-align' 与对应校验；并为 t4 补固定列/行集合=t2∪t3/D10 覆盖三项要求，否则 t4 交付物无完成判据。",
+      "file": "evidence/omo-align/requirements/frozen-contract.json"
+    }
+  ],
+
+  "landedThisRound": {
+    "by": "Planner (read-only), t12",
+    "files": [
+      {"path": "docs/omo-parity-ledger.md", "role": "用户要求的人类面向持久台账（英文）"},
+      {"path": "docs/omo-parity-ledger.zh-CN.md", "role": "同一台账的中文版"},
+      {"path": "docs/index.md", "role": "新增台账索引行（含中文版链接）"},
+      {"path": "docs/index.zh-CN.md", "role": "新增台账索引行（含英文版链接）"}
+    ],
+    "verification": [
+      "test -f docs/omo-parity-ledger.md && test -f docs/omo-parity-ledger.zh-CN.md  -> ok",
+      "语言切换链接均在标题下 3 行内（EN->zh-CN、ZH->English）  -> ok",
+      "docs/index.md 与 docs/index.zh-CN.md 各收录 1 条，无重复  -> ok",
+      "两份台账均声明 docs/omo-parity-gap.md 属历史记录单语豁免、本波次不动  -> ok",
+      "台账内容与 frozen-contract.json 对齐：复杂度门 4 信号（A/B/C/D）、mass-ulw 语义改用契约的 S1-S4 编号、10 个文本落点、14 个 agent_teams_* 工具名  -> ok",
+      "台账新增 O5 条目记录 R4F1 的 S2 冲突  -> ok"
+    ],
+    "note": "两份台账由 Planner 预置，属于需求/验收面的文本化，不含任何代码；后续归口任务只需在其上补充实测结果并保持双语同步。"
+  },
+
+  "round5": {
+    "requiredToPass": [
+      "① 解决 R4F1：S2 断言与用户裁决 2 二选一后写死（blocker）",
+      "② 补 R4F2 的 configPlane 段（字段清单 + 本地上限 + 不照搬上游声明 + preset-conformance 校验）",
+      "③ t5/t6 契约删除『t1 冻结』引用、改引 frozen-contract.json；t6 补 hash pin 与入口名前后清单",
+      "④ 补 R4F4 的 isolation 逐文件事实与白名单校验命令",
+      "⑤ 补 branch 名与 t4 的三项固定列要求（R4F5）",
+      "⑥ 给台账补一条归属任务（交付物已在，缺责任任务）"
+    ],
+    "gateShape": "round 5 只需核验以上 6 项是否落入 frozen-contract.json 与 t4/t5/t6 契约；不需要重做用户目标映射。"
+  },
+
+  "evidence": {
+    "commandsRun": [
+      "agent_teams_task_contract t4 / t5 / t6 / t12（逐字比对是否改引 frozen-contract.json）",
+      "cat evidence/omo-align/requirements/frozen-contract.json（9398B，逐段读取）",
+      "git log --oneline -3（0e6bdaf 在 dev HEAD）；git show --stat 0e6bdaf（4 文件）",
+      "git status --short（仅 2 个未跟踪 docs/user-guide 文件）",
+      "node -e 读取 frozen-contract.json 的 keys / massUlwSemantics / manualEntryNames / complexityGate / isolation",
+      "grep -c 'max_parallel_members|ceiling|8 members|4 parallel' frozen-contract.json（0 命中）",
+      "test -f + head + grep 校验两份台账与两个索引（全部通过）"
+    ],
+    "filesInspected": [
+      "evidence/omo-align/requirements/frozen-contract.json",
+      "evidence/omo-align/requirements/verdict.json / verdict-r2.json / verdict-r3.json",
+      "docs/index.md (L1-47), docs/index.zh-CN.md (L1-20)",
+      ".mpd/team/mpd-default-db53f0d4/team.json（任务清单 t1-t12）",
+      "/root/dshProj/oh-my-openagent/packages/team-core/src/config.ts (max_parallel_members default)"
+    ]
+  }
+}

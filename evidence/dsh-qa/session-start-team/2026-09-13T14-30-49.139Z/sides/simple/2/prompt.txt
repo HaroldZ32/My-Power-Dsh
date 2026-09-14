@@ -1,0 +1,1 @@
+Rename the variable `foo` to `bar` in src/util.ts and run its test.
