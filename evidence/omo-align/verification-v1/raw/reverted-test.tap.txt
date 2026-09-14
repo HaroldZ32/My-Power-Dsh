@@ -1,0 +1,16 @@
+(pass) R1 dedup: N identical sends in the window fold to ONE record with dupCount=N [5.67ms]
+(pass) R1 dedup NEGATIVE CONTROL: same content, different from/to is NOT folded [1.23ms]
+(pass) R1 dedup: a send OUTSIDE the 60 s window is a new record (window is real) [1.00ms]
+(pass) R1 clear: archive-first tombstone + recoverable sidecar + audit event [3.03ms]
+(pass) R1 clear NEGATIVE CONTROL: no hard-delete path — cleared bytes survive on disk [1.30ms]
+(pass) R1 interjection: pending requests are NOT deliverable unread (negative control on the read path) [2.52ms]
+(pass) R1 interjection: TTL silence is a DENY (status expired) [1.95ms]
+(pass) R1 interjection: approval is recorded and cannot be re-decided [1.42ms]
+(fail) REPAIR V1: a request WITHOUT content is NORMALIZED (never silently invisible) [0.72ms]
+(fail) REPAIR V1: the content fallback priority is summary -> reason -> location [1.07ms]
+(fail) REPAIR V1: identity is REQUIRED and rejected loudly, naming the field [0.70ms]
+(fail) REPAIR V1: decide distinguishes MALFORMED-but-present from truly ABSENT [0.82ms]
+(fail) REPAIR V1: a normalized request still expires on captain silence (default DENY usable) [0.77ms]
+ 8 pass
+ 5 fail
+Ran 13 tests across 1 file. [108.00ms]

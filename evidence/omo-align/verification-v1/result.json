@@ -1,0 +1,89 @@
+{
+  "schema": "mpd-v1-repair-verification/1",
+  "task": "t44 (independent closure verification of the V1 repair delivered by t43)",
+  "kind": "verification",
+  "verifier": "Reviewer",
+  "verdict": "pass",
+  "verdictScope": "The V1 defect I constructed in t38 is closed, and the closure is falsifiable rather than asserted. On the committed revision the original failing call shape (a request with NO content) now yields a readable, decidable record; the decision path distinguishes a malformed-but-present record from a truly absent id with two different errors; a normalized request expires on captain silence with the requester preserved; the implementer's five new assertions provably go RED when the repair is reverted (8 pass / 5 fail) and GREEN on the shipped code (13 pass / 0 fail), so none of them is a tautology; the t36 end-to-end case still passes 10/10 with skills/** untouched; and the registry plus every named gate is green with counts matching the declaration.",
+  "settledRevision": {
+    "head": "0d5279419e612c59a73329015634f1866333d71b",
+    "headShort": "0d52794",
+    "headNote": "The repair commit 925309d was merged as 0d52794 before this attempt ran, so the verification is anchored on the committed revision rather than on a dirty tree. The worktree is clean for the reviewed paths.",
+    "committedBytesMatchDeclaration": "state.js, mpd-deltas.js and the regression test file all hash exactly to the values t43 declared (fa7fe937f1895c47 / da091a4aeb6d07fc / d6914ec0423df3cf), so the declaration is not a claim about a different tree.",
+    "measuredHashes": {
+      "packages/mpd-agent-teams-plugin/lib/state.js": "fa7fe937f1895c472732fdfdc0b193fcb2281448133fd0b15a490f230fe0ae19",
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "da091a4aeb6d07fcef169a596dd76b04e9e653d949586d2eed262c00f44571dd",
+      "packages/mpd-agent-teams-plugin/test/r1-message-channel.test.mjs": "d6914ec0423df3cf9a7a8565793a5fae0d386fd71c9c3eca191fcb74b15c2639",
+      "skills/dsh-qa/scripts/agent-teams-messaging.mjs": "6f286954e4f4338fb76ea9d9c5fe62a95eb9aaf2f9e558badfc2a8534d724f6e",
+      "VENDOR_LOCK.json": "afd437d99b99fd557a82140210581799a34442b57fb430842ea8769fa8fec459"
+    }
+  },
+  "criterion1_originalFailingShape": {
+    "method": "I re-ran t38's exact failing call shape — enqueue with id/from/summary/reason/location/ts and NO content — against the committed module, then read the queue and decided the request.",
+    "observedFixed": {"returnedStatus": "pending", "threw": null, "readableAsPending": 1, "normalizedContent": "only a summary", "decideResult": "approved", "invisibleRecordPath": false},
+    "observedReverted": {"returnedStatus": "pending", "threw": null, "readableAsPending": 0, "normalizedContent": null, "decideResult": "THREW: interjection \"ij-nc\" does not exist", "invisibleRecordPath": true},
+    "reading": "The implementer's DECLARED choice was (b) normalization, not (a) loud rejection, and the shipped behaviour matches that declaration: the returned status is still 'pending', the record is readable, the fallback content is the summary, and the request can be decided. The A/B arm shows the same call producing the invisible-record shape before the repair, so the observation is defect-sensitive."
+  },
+  "criterion2_decisionDistinguishes": {
+    "method": "One call with an id that exists nowhere, one call with an id present in the queue file but written WITHOUT content (so the mailbox shape check rejects it and the normal reader sees nothing).",
+    "observedFixed": {
+      "absentError": "interjection \"nope\" does not exist",
+      "malformedError": "interjection \"broken\" exists but is MALFORMED (present in the queue but not readable: the mailbox shape requires a non-empty string content and the identity fields); re-enqueue it with content, or inspect the queue file",
+      "normalReaderSeesMalformed": 0,
+      "distinguishable": true
+    },
+    "observedReverted": {"malformedError": "interjection \"broken\" does not exist", "distinguishable": false},
+    "reading": "The two cases are now distinguishable and the malformed case no longer masquerades as absence. The malformed record is still invisible to the normal reader by design, which is exactly why the raw-parse path is needed."
+  },
+  "criterion3_expiry": {
+    "method": "Enqueue a normalized (content-less) request with a TTL, then advance the clock past the TTL.",
+    "observedFixed": {"expiredIds": ["ij-ttl"], "status": "expired", "fromPreserved": "Junior Engineer", "stillPending": 0},
+    "observedReverted": {"expiredIds": [], "status": null, "fromPreserved": null},
+    "reading": "Captain silence now resolves into an explicit expiry and the requester identity survives, so the member can be told. Before the repair the same call expired nothing."
+  },
+  "criterion4_falsifiability": {
+    "method": "I did not argue about the assertions: I ran the implementer's OWN regression file against a pre-repair copy of the module (built from the commit before the repair) and against the shipped module, with only the state import repointed. Recipe preserved at raw/revert-method.md; the copied tree was deleted afterwards so the evidence carries no stale product copy.",
+    "againstReverted": {"pass": 8, "fail": 5, "failingTests": ["REPAIR V1: a request WITHOUT content is NORMALIZED (never silently invisible)", "REPAIR V1: the content fallback priority is summary -> reason -> location", "REPAIR V1: identity is REQUIRED and rejected loudly, naming the field", "REPAIR V1: decide distinguishes MALFORMED-but-present from truly ABSENT", "REPAIR V1: a normalized request still expires on captain silence (default DENY usable)"]},
+    "againstShipped": {"pass": 13, "fail": 0},
+    "reading": "Every new assertion depends on an observation that CHANGES when the repair is removed — exactly the five V1 tests fail, while the eight pre-existing channel tests keep passing. So the additions are genuine regression guards, not tautologies. No finding is filed on this criterion.",
+    "noteOnThePreExistingAssertions": "The eight older tests passing in both arms is expected and is not a weakness: they cover dedup, the archive-first clear and the pending-not-deliverable property, which the V1 repair did not touch."
+  },
+  "criterion5_endToEndAndSkills": {
+    "qaCase": "node skills/dsh-qa/scripts/agent-teams-messaging.mjs — PASS 10/10 on the committed revision, in a fresh sandbox (--tmp-mpd-t36-0ppzZq-ws--) with the mount markers present, crashSignatures [], isolation checked 1, and vendorLock 331 files / 705651e6…",
+    "skillsUntouched": "git status --porcelain over skills/ and VENDOR_LOCK.json is empty; the two skills files hash identically to the values measured in t38 (messaging case 6f286954…, case table b7f278cf…), so the repair changed no skill artefact."
+  },
+  "criterion6_registryAndGates": {
+    "deltaCheck": "node scripts/patch-agent-teams-fixes.mjs --check => exit 0, 'already applied: 23 mpd delta region(s) across 6 adopted file(s)' — matches the declared 23/6",
+    "pluginTests": "bun test packages/mpd-agent-teams-plugin => 166 pass / 0 fail (matches the declared 166/0)",
+    "selfFixTests": "bun test packages/mpd-agent-teams-plugin/self-fix-tests => 53 pass / 0 fail (matches the declared 53/0)",
+    "typecheck": "bun run typecheck => exit 0",
+    "extraRequiredFieldsProbe": "identity fields id/from/ts are each rejected with a message NAMING the missing field, and a rejected call leaves no half-written record (pending count 0 afterwards)."
+  },
+  "acceptanceResults": [
+    {"criterion": "用 t38 的原始失败调用形状（不含 content）独立重跑：不得出现「返回 pending 而读取为 0」的不可见记录；结果须与实现者声明的选择一致", "status": "passed", "evidence": "Committed module: status pending, readableAsPending 1, normalizedContent 'only a summary', decide 'approved', invisibleRecordPath FALSE — i.e. choice (b) normalization, exactly as declared. Pre-repair arm of the same driver: readableAsPending 0 and invisibleRecordPath TRUE, so the observation is defect-sensitive."},
+    {"criterion": "decideInterjection 两种情形可区分并给原始输出", "status": "passed", "evidence": "Absent id -> 'interjection \"nope\" does not exist'. Malformed-but-present id -> 'interjection \"broken\" exists but is MALFORMED (present in the queue but not readable: the mailbox shape requires a non-empty string content and the identity fields); re-enqueue it with content, or inspect the queue file'. In the pre-repair arm the malformed case returned the same 'does not exist' text, so the distinction is new and real."},
+    {"criterion": "到期语义独立验证（过 TTL ⇒ expired 且 from 保留）", "status": "passed", "evidence": "expiredIds ['ij-ttl'], status 'expired', fromPreserved 'Junior Engineer', stillPending 0. Pre-repair arm: expiredIds [] and no record, so expiry on a normalized request is a genuine consequence of the repair."},
+    {"criterion": "回归测试有效性与可证伪性（回退推理或最小反证）", "status": "passed", "evidence": "Executed proof, not reasoning: the implementer's own file against a pre-repair module => 8 pass / 5 fail, the five failures being exactly the new REPAIR V1 tests; against the shipped module => 13 pass / 0 fail. Recipe at raw/revert-method.md; taps at raw/reverted-test.tap.txt and raw/fixed-test.tap.txt. No tautology found."},
+    {"criterion": "t36 QA 用例原样重跑仍 10/10，且 skills/** 未被改动", "status": "passed", "evidence": "PASS 10/10 in a fresh sandbox with mount markers present and 0 crash signatures; git status over skills/ and VENDOR_LOCK.json empty; both skills files byte-identical to the t38 measurements."},
+    {"criterion": "登记表与门禁独立复核", "status": "passed", "evidence": "--check clean at 23 regions / 6 adopted files (declared 23/6); plugin tests 166 pass / 0 fail (declared 166/0); self-fix-tests 53 pass / 0 fail (declared 53/0); typecheck exit 0."},
+    {"criterion": "逐条 passed/failed 落 evidence/omo-align/verification-v1/result.json 含原始命令输出；任何一条不通过报 failed", "status": "passed", "evidence": "This file carries every criterion with its raw observations; the A/B JSON and test taps are preserved under raw/. All eight criteria pass, so the verdict is pass rather than failed."},
+    {"criterion": "不覆盖任何已交付证据；证据正文中性化", "status": "passed", "evidence": "All writes are under evidence/omo-align/verification-v1/**; no delivered evidence touched (the t38 driver was re-run read-only from its own path and its output redirected into this task's directory). A scan of every artifact here for the retired external identifier and its case variants returns 0 matches."}
+  ],
+  "commandsRun": [
+    {"command": "node evidence/omo-align/verification-v1/raw/driver.mjs packages/mpd-agent-teams-plugin/lib/state.js", "status": "passed", "exitCode": 0, "evidence": "fixed arm: readableAsPending 1 / normalizedContent 'only a summary' / decide approved / invisibleRecordPath false; distinguishable true; identity fields rejected by name; expiry works with from preserved"},
+    {"command": "node evidence/omo-align/verification-v1/raw/driver.mjs <pre-repair module>", "status": "passed", "exitCode": 0, "evidence": "reverted arm: readableAsPending 0 / invisibleRecordPath true; malformed indistinguishable from absent; identity fields accepted silently; expiry expires nothing"},
+    {"command": "bun test packages/mpd-agent-teams-plugin/test/r1-message-channel.test.mjs", "status": "passed", "exitCode": 0, "evidence": "13 pass / 0 fail on the shipped module"},
+    {"command": "bun test <pre-repair>/r1-message-channel.reverted.test.mjs", "status": "failed", "exitCode": 1, "evidence": "8 pass / 5 fail — the five REPAIR V1 tests go red without the repair, proving falsifiability"},
+    {"command": "node skills/dsh-qa/scripts/agent-teams-messaging.mjs", "status": "passed", "exitCode": 0, "evidence": "PASS 10/10; dedup 3-fold to 1 record dupCount 3 unread 1; clear audit + sidecar; pending not deliverable and deliverable when kind broken; mountedBoot markers 3 / crashSignatures []; isolation checked 1; vendorLock 331 / 705651e6…"},
+    {"command": "node scripts/patch-agent-teams-fixes.mjs --check", "status": "passed", "exitCode": 0, "evidence": "23 mpd delta region(s) across 6 adopted file(s)"},
+    {"command": "bun test packages/mpd-agent-teams-plugin && bun test packages/mpd-agent-teams-plugin/self-fix-tests && bun run typecheck", "status": "passed", "exitCode": 0, "evidence": "166 pass / 0 fail; 53 pass / 0 fail; typecheck exit 0"},
+    {"command": "git status --porcelain -- skills/ VENDOR_LOCK.json", "status": "passed", "exitCode": 0, "evidence": "empty — skills/** and the lock file are untouched by the repair"},
+    {"command": "node -e \"const r=require('./evidence/omo-align/verification-v1/result.json'); console.log('verdict:', r.verdict)\"", "status": "passed", "exitCode": 0, "evidence": "verdict: pass"}
+  ],
+  "findings": [],
+  "residualRisks": [
+    "The repair is FORWARD-looking: it normalizes new enqueues and reports pre-existing malformed queue records loudly on the decision path. Whether any historical team state already contains a malformed interjection line was explicitly out of this task's scope, and my verification does not scan cross-session state — so the loud-error path is the containment for old rows, not a cleanup.",
+    "The end-to-end delivery of an approved request at a member step boundary remains unverified (a limitation declared by both the implementation and my t38 pass). What this task verifies is the request-side safety property, the decision record, and the now-working expiry; the round trip still needs a long-lived captain session with spawned members.",
+    "The A/B falsifiability proof depends on a pre-repair copy of the module. The recipe and the observed taps are preserved, but the copied tree itself was deleted to avoid embedding stale product code in evidence — a future re-run must rebuild it from the named commit."
+  ]
+}
