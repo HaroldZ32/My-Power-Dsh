@@ -1,0 +1,48 @@
+{
+  "ok": true,
+  "mode": "RED-expect-bad",
+  "sandbox": "/root/dshProj/my-power-dsh/.qa-reloc/team-compact-param-schema/2026-09-14T05-19-43.787Z",
+  "exit": 1,
+  "providerRule": "every model-facing function schema must be object-rooted (the reported provider rule)",
+  "reportedError": "Invalid schema for function 'mpd_team_compact_run': schema must be a JSON Schema of 'type: \"object\"', got 'type: null'",
+  "hashes": {
+    "pluginSrc": "296322e149f2df1d",
+    "pluginDist": "6a8b4e6cb3adcf01",
+    "probeDist": "51c70165a889d7e1"
+  },
+  "steps": {
+    "mountedBoot": {
+      "ok": true,
+      "exit": 1,
+      "registered": "TEAM_COMPACT_TOOLS=2/2"
+    },
+    "probeReadLiveRegistry": {
+      "ok": true,
+      "line": "50/52 BAD=mpd_team_compact_run:type=null,mpd_team_compact_status:type=null"
+    },
+    "compactToolsFlagged": {
+      "ok": true,
+      "flagged": [
+        {
+          "name": "mpd_team_compact_run",
+          "type": "null"
+        },
+        {
+          "name": "mpd_team_compact_status",
+          "type": "null"
+        }
+      ]
+    },
+    "composesReportedError": {
+      "ok": true,
+      "composed": [
+        "Invalid schema for function 'mpd_team_compact_run': schema must be a JSON Schema of 'type: \"object\"', got 'type: null'",
+        "Invalid schema for function 'mpd_team_compact_status': schema must be a JSON Schema of 'type: \"object\"', got 'type: null'"
+      ]
+    },
+    "probeVerdict": {
+      "ok": true,
+      "note": "RED mode: the probe's own PASS verdict is already withheld"
+    }
+  }
+}

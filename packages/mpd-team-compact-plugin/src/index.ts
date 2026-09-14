@@ -463,11 +463,28 @@ export function apply(ctx: Ctx): void {
     }
   })
 
+  // TOOL PARAMETERS ARE OBJECT-ROOTED JSON SCHEMA — both tools below.
+  //
+  // MEASURED DEFECT (2026-09-14): the first cut passed a BARE property map
+  // (`parameters: { team_id: {…} }`). The adapter forwards `parameters` VERBATIM (it only
+  // defaults a schema when the field is ABSENT), and the harness's raw `register()` path
+  // does not validate parameters the way its `defineTool` does, so the registered schema
+  // had no `type` at all and the provider rejected EVERY model request of a session
+  // mounting the row:
+  //   Invalid schema for function 'mpd_team_compact_run': schema must be a JSON Schema of
+  //   'type: "object"', got 'type: null'
+  // The mount-level gate for this class is the QA roles probe's TOOL_PARAM_SCHEMAS line
+  // (a live-registry read; `--dump-config` is blind to it — AGENTS.md §4), and the unit
+  // gate is the "object-rooted parameters" test in test/compaction.test.mjs.
   dsh.registerTool({
     name: "mpd_team_compact_run",
     description: "Compact the members of a FINISHED team (every task terminal and every member idle). The captain is never compacted. Writes an audit record under .mpd/team-compact/ and notifies nobody.",
     parameters: {
-      team_id: { type: "string", description: "The team to compact. Defaults to every finished team in this workspace." },
+      type: "object",
+      properties: {
+        team_id: { type: "string", description: "The team to compact. Defaults to every finished team in this workspace." },
+      },
+      additionalProperties: false,
     },
     output: {
       schema: { type: "object", properties: { passes: { type: "array", items: { type: "object" } } } },
@@ -491,7 +508,11 @@ export function apply(ctx: Ctx): void {
     name: "mpd_team_compact_status",
     description: "Read-only: show the compaction audit for this workspace (one record per pass, newest last), including skipped members and the reason each was skipped.",
     parameters: {
-      team_id: { type: "string", description: "Limit to one team. Defaults to every team with an audit." },
+      type: "object",
+      properties: {
+        team_id: { type: "string", description: "Limit to one team. Defaults to every team with an audit." },
+      },
+      additionalProperties: false,
     },
     output: {
       schema: { type: "object", properties: { teams: { type: "array", items: { type: "object" } } } },

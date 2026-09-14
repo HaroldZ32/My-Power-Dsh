@@ -372,3 +372,36 @@ test("t48 plugin: apply() registers both tools and subscribes to the status edge
   expect(subscribed).toBe("agent/status")
   expect(listeners).toEqual([])
 })
+
+// REGRESSION (defect measured 2026-09-14): both tools shipped a BARE property map as
+// `parameters` (`{ team_id: {…} }`). The adapter forwards `parameters` verbatim — it only
+// defaults a schema when the field is ABSENT — and the harness's raw register() path does
+// not validate parameters, so the registered schema carried no object root and the provider
+// rejected EVERY model request of a session mounting the row:
+//   Invalid schema for function 'mpd_team_compact_run': schema must be a JSON Schema of
+//   'type: "object"', got 'type: null'
+// A source-level test is the right gate for the DECLARATION; its mount-level twin is the QA
+// roles probe's TOOL_PARAM_SCHEMAS line, which reads the LIVE registry in a real boot.
+test("t48 plugin: every registered tool declares an OBJECT-ROOTED parameters schema", () => {
+  const registered = []
+  const dsh = {
+    registerTool: (definition) => { registered.push(definition); return () => {} },
+    onEvent: () => () => {},
+    workspaceRoot: () => "/tmp/none",
+  }
+  const ctx = { get: (key) => (key === "mpdDsh" ? dsh : undefined), logger: { warn: () => {}, info: () => {} }, on: () => () => {} }
+  apply(ctx)
+  expect(registered.length).toBe(2)
+  for (const definition of registered) {
+    const parameters = definition.parameters
+    // The provider rule: an object root is mandatory. A bare property map has no `type`,
+    // which is exactly how it reached the wire as `type: null`.
+    expect({ tool: definition.name, type: parameters?.type }).toEqual({ tool: definition.name, type: "object" })
+    expect(typeof parameters.properties).toBe("object")
+    expect(Object.keys(parameters.properties)).toEqual(["team_id"])
+    expect(parameters.properties.team_id.type).toBe("string")
+    expect(parameters.additionalProperties).toBe(false)
+    // team_id is optional on BOTH tools: the pass defaults to every finished team.
+    expect(parameters.required ?? []).toEqual([])
+  }
+})
