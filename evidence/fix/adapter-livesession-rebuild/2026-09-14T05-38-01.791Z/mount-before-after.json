@@ -1,0 +1,17 @@
+{
+  "question": "Does the committed adapter ARTIFACT the bundle row loads expose the live-session plane the team-compaction tool calls?",
+  "mountBootBefore_rebuild": {
+    "evidence": "evidence/dsh-qa/bundle-lifecycle/2026-09-14T05-33-45.970Z/boot.log",
+    "capabilityKeys": 11,
+    "line": "[roles-probe] ADAPTER_SEAMS=tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider ABSENT=agentPresets"
+  },
+  "mountBootAfter_rebuild": {
+    "evidence": "evidence/dsh-qa/bundle-lifecycle/2026-09-14T05-38-28.264Z/boot.log",
+    "capabilityKeys": 15,
+    "line": "[roles-probe] ADAPTER_SEAMS=tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agents,events ABSENT=agentPresets,compaction,compactionForAgent"
+  },
+  "artifactShapeBefore": ["tools","toolsRegister","toolsGuard","toolsGet","toolsExecute","toolsPostExecute","subagents","subagentsSpawn","skills","skillsProvider","agentPresets"],
+  "artifactShapeAfter": ["tools","toolsRegister","toolsGuard","toolsGet","toolsExecute","toolsPostExecute","subagents","subagentsSpawn","skills","skillsProvider","agentPresets","agents","compaction","compactionForAgent","events"],
+  "distVsSrcSweep": {"packagesChecked": 16, "differingBefore": 13, "differingAfter": 0},
+  "note": "The 11-key set is exactly the capability surface of the committed dist; the 15-key set is exactly the surface of its source. compaction/compactionForAgent still read false INSIDE the QA probe boot because that probe ctx carries no compaction service - that is the probe scope, not the artifact; the artifact-level truth is the typeof check in raw/adapter-seam-repro.mjs."
+}

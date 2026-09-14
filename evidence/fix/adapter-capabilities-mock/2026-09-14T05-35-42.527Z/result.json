@@ -1,0 +1,15 @@
+{
+  "slug": "adapter-capabilities-mock",
+  "kind": "defect-fix",
+  "defect": "bun test packages: mpd-dsh-adapter-plugin > capabilities > 'reports every seam of a full harness' failed because fakeHarness() never gained the agents/compaction seams the adapter added in 7a8d245",
+  "mechanism": "the adapter's capabilities() gained agents (agents.list), compaction (compaction.compactNow) and compactionForAgent (liveAgents()[0].ctx.get('compaction')) in 7a8d245 (already on dev); the unit mock still provided only tools/subagents/skills/agentPresets, so three flags reported false",
+  "fix": "packages/mpd-dsh-adapter-plugin/test/adapter.test.ts: the mock gains a compaction stub, an agents registry (list/get) with one sample agent whose own scoped ctx resolves compaction, and both are wired into the ctx service map (test-only change)",
+  "red": { "command": "bun test packages/mpd-dsh-adapter-plugin", "result": "21 pass / 1 fail", "log": "red.log" },
+  "green": { "command": "bun test packages/mpd-dsh-adapter-plugin", "result": "22 pass / 0 fail", "log": "green-adapter.log" },
+  "gates": {
+    "bun test packages": { "result": "PASS 399 pass / 0 fail", "log": "bun-test-full.log" },
+    "bun run typecheck": { "result": "PASS", "log": "typecheck.log" },
+    "bun run test:qa": { "result": "PASS all self-tests", "log": "testqa.log" }
+  },
+  "touched": ["packages/mpd-dsh-adapter-plugin/test/adapter.test.ts"]
+}

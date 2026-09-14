@@ -990,6 +990,64 @@ function createDshAdapter(ctx, config = {}) {
   }
   const workspaceRoot = (exec) => workspaceRootOf(exec);
   const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
+  function liveAgents() {
+    const agents = service("agents");
+    if (agents === undefined || typeof agents.list !== "function")
+      return [];
+    try {
+      const list = agents.list();
+      return Array.isArray(list) ? list.filter((entry) => entry !== undefined && entry !== null) : [];
+    } catch {
+      return [];
+    }
+  }
+  function liveAgent(agentId) {
+    const id = String(agentId ?? "");
+    if (id === "")
+      return;
+    const agents = service("agents");
+    if (agents !== undefined && typeof agents.get === "function") {
+      try {
+        const found = agents.get(id);
+        if (found !== undefined && found !== null)
+          return found;
+      } catch {}
+    }
+    return liveAgents().find((candidate) => candidate.id === id);
+  }
+  const engineCache = new Map;
+  function compactionEngineForAgent(agentId) {
+    const id = String(agentId ?? "");
+    if (id === "")
+      return;
+    const cached = engineCache.get(id);
+    if (cached !== undefined)
+      return cached;
+    const agent = liveAgent(id);
+    const scoped = agent?.ctx;
+    if (scoped === undefined || scoped === null)
+      return;
+    let engine;
+    try {
+      engine = typeof scoped.get === "function" ? scoped.get("compaction") : undefined;
+    } catch {
+      return;
+    }
+    if (engine === undefined || engine === null)
+      return;
+    engineCache.set(id, engine);
+    return engine;
+  }
+  function onEvent(event, handler) {
+    if (typeof ctx?.on !== "function")
+      return;
+    try {
+      const disposer = ctx.on(event, handler);
+      return typeof disposer === "function" ? disposer : () => {};
+    } catch {
+      return;
+    }
+  }
   function timeoutSignal(timeoutMs) {
     try {
       if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function")
@@ -1003,6 +1061,16 @@ function createDshAdapter(ctx, config = {}) {
       const subagents = service("subagents");
       const skills = service("skills");
       const presets = service("agentPresets");
+      const agents = service("agents");
+      const compaction = service("compaction");
+      const sample = liveAgents()[0];
+      const sampleScoped = sample?.ctx;
+      let scopedCompaction = false;
+      try {
+        scopedCompaction = sampleScoped !== undefined && typeof sampleScoped.get === "function" && sampleScoped.get("compaction") !== undefined;
+      } catch {
+        scopedCompaction = false;
+      }
       return {
         tools: tools !== undefined,
         toolsRegister: typeof tools?.register === "function",
@@ -1014,11 +1082,19 @@ function createDshAdapter(ctx, config = {}) {
         subagentsSpawn: typeof subagents?.start === "function",
         skills: skills !== undefined,
         skillsProvider: typeof skills?.registerProvider === "function",
-        agentPresets: typeof presets?.resolve === "function"
+        agentPresets: typeof presets?.resolve === "function",
+        agents: agents !== undefined && typeof agents?.list === "function",
+        compaction: typeof compaction?.compactNow === "function",
+        compactionForAgent: scopedCompaction,
+        events: typeof ctx?.on === "function"
       };
     },
     workspaceRoot,
     workspaceRootsAll,
+    liveAgents,
+    liveAgent,
+    compactionEngineForAgent,
+    onEvent,
     registerTool(definition) {
       const tools = requireService("tools", 'cannot register tool "' + String(definition?.name) + '"');
       if (typeof tools.register !== "function")

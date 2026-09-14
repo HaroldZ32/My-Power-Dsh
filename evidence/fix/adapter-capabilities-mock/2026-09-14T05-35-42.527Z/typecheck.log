@@ -1,0 +1,2 @@
+$ tsgo --noEmit
+TC_EXIT=0
