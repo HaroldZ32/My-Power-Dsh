@@ -1,0 +1,3 @@
+{"id":"clear-1","from":"captain","to":"Lead","content":"","ts":100,"tombstone":true,"clearedAt":1000000,"clearedToWatermark":500,"archivedTo":"/tmp/mpd-t36-e4rOjE/ws/clear-ws/.mpd/team/t36-messaging/inbox/archive/captain.500.jsonl"}
+{"id":"clear-2","from":"captain","to":"Lead","content":"","ts":200,"tombstone":true,"clearedAt":1000000,"clearedToWatermark":500,"archivedTo":"/tmp/mpd-t36-e4rOjE/ws/clear-ws/.mpd/team/t36-messaging/inbox/archive/captain.500.jsonl"}
+{"id":"clear-3","from":"Lead","to":"captain","content":"kept","ts":900}
