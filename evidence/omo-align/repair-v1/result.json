@@ -1,0 +1,99 @@
+{
+  "schema": "mpd-omo-align-repair-v1/1",
+  "task": "t43 (repair of t38's V1: an interjection request without content was silently invisible)",
+  "attempt": "b66448ea-fa42-49a5-b36b-23a112fb0add",
+  "headAtWork": "3c995723c4fa8a131cfc406d4f1cc7e0810be227",
+  "gitWrites": "NONE (AGENTS.md §5 - captain commits)",
+  "defect": "lib/state.js enqueueInterjection spread the caller object and never validated content; the mailbox shape check on read REQUIRES a non-empty string content, so a request without content returned status:'pending' while readPendingInterjections could not see it and decideInterjection reported the misleading 'interjection \"<id>\" does not exist'. Captain silence could therefore never expire it.",
+  "decision": "OPTION (b) NORMALIZATION, not a loud rejection: content is derived in a FIXED priority order summary -> reason -> location; id/from/ts remain REQUIRED and are rejected loudly, naming the field, because no fallback can invent an identity or a clock.",
+  "whyNormalizationChosen": "A rejection would also close the hole, but it pushes the burden onto every caller and the shipped callers are LLM-driven; normalization keeps a well-formed, decidable record for the common malformed shape while the loud rejection still covers the fields that cannot be defaulted. The decision is PINNED by tests so it cannot drift silently.",
+  "changes": {
+    "enqueueInterjection": "validates id/from/ts (throws naming the missing field) and normalizes content (summary->reason->location); the doc block states the contract and the priority.",
+    "readRawInterjectionRecords": "new internal lenient reader (JSON parse, NO shape check) so a present-but-malformed record is distinguishable from an absent one.",
+    "decideInterjection": "now throws a DISTINCT error when the id is present on disk but fails the shape check ('exists but is MALFORMED ...'), instead of the misleading 'does not exist'."
+  },
+  "verified": [
+    {
+      "what": "THE t38 FAILURE SHAPE, re-run (verify command 4)",
+      "command": "node evidence/omo-align/verification-r1/raw/counterexamples.mjs",
+      "exit": 0,
+      "evidence": "callerShape.requestWithoutContent = {returnedStatus:'pending', readableAsPending:1, decideResult:'no error'} — the record is now visible AND decidable. Before the repair the same driver measured readableAsPending:0 and decideResult:'interjection \"ij-nc\" does not exist'. Full JSON captured at evidence/omo-align/repair-v1/counterexamples-after-fix.json."
+    },
+    {
+      "what": "regression suite for the repair",
+      "command": "bun test packages/mpd-agent-teams-plugin/test/r1-message-channel.test.mjs",
+      "exit": 0,
+      "evidence": "13 pass / 0 fail (5 new REPAIR V1 cases: normalization, priority order, loud identity rejection, MALFORMED-vs-ABSENT, normalized request still expires)"
+    },
+    {
+      "what": "full plugin suite",
+      "command": "bun test packages/mpd-agent-teams-plugin",
+      "exit": 0,
+      "evidence": "166 pass / 0 fail"
+    },
+    {
+      "what": "self-fix registry suites",
+      "command": "bun test packages/mpd-agent-teams-plugin/self-fix-tests",
+      "exit": 0,
+      "evidence": "53 pass / 0 fail"
+    },
+    {
+      "what": "typecheck",
+      "command": "bun run typecheck",
+      "exit": 0
+    },
+    {
+      "what": "registry consistency after the region-body edit",
+      "command": "node scripts/patch-agent-teams-fixes.mjs --write-registry && --check",
+      "exit": 0,
+      "evidence": "23 regions / 6 adopted files BEFORE and AFTER the regeneration; --check clean"
+    },
+    {
+      "what": "t36 QA case UNCHANGED (no skills/** edit)",
+      "command": "node skills/dsh-qa/scripts/agent-teams-messaging.mjs",
+      "exit": 0,
+      "evidence": "PASS: dedup positive+negative ok, clear ok, interjectionTtl ok, interjection ok (queued 1, deliverableWhilePending 0, gatedEvenAfterApproval 1), vendorLock gate 0. skills/** was NOT modified."
+    }
+  ],
+  "acceptanceClosure": {
+    "defectClosed": "the t38 shape now yields a visible, decidable record — no path returns 'pending' while nobody can see it",
+    "decideDistinguishable": "MALFORMED-but-present vs does-not-exist produce different messages; both measured in the new test",
+    "ttlClosed": "a normalized request reaches pending->expired with `from` preserved (silence = DENY is actually usable)",
+    "noRegression": "t36's 10/10 unchanged; no skills/** edit was needed",
+    "regressionPinned": "5 long-lived assertions in test/r1-message-channel.test.mjs",
+    "docsConsistent": "the function doc states the field contract and the fallback priority; the MALFORMED branch is documented in code"
+  },
+  "notVerified": [
+    {
+      "what": "interjection requests written by a DIFFERENT writer (not enqueueInterjection) that are malformed",
+      "why": "the repair normalizes at the enqueue boundary and makes the READ side report such records distinctly; the tests inject one malformed line directly to prove the distinction. A future writer bypassing enqueueInterjection would still produce a malformed record, but now a LOUD one."
+    }
+  ],
+  "cannotVerify": [
+    {
+      "what": "whether pre-existing malformed interjection rows exist in live team state",
+      "why": "would require scanning live .mpd/team state across sessions; out of this task's scope and the repair is forward-looking (new writes are normalized, old rows are reported as MALFORMED rather than silently ignored)."
+    }
+  ],
+  "changedPaths": [
+    "packages/mpd-agent-teams-plugin/lib/state.js",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+    "packages/mpd-agent-teams-plugin/test/r1-message-channel.test.mjs",
+    "evidence/omo-align/repair-v1/result.json",
+    "evidence/omo-align/repair-v1/counterexamples-after-fix.json"
+  ],
+  "settledFileHashes": {
+    "packages/mpd-agent-teams-plugin/lib/state.js": {
+      "bytes": 57791,
+      "sha256": "fa7fe937f1895c472732fdfdc0b193fcb2281448133fd0b15a490f230fe0ae19"
+    },
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": {
+      "bytes": 92290,
+      "sha256": "da091a4aeb6d07fcef169a596dd76b04e9e653d949586d2eed262c00f44571dd"
+    },
+    "packages/mpd-agent-teams-plugin/test/r1-message-channel.test.mjs": {
+      "bytes": 13438,
+      "sha256": "d6914ec0423df3cf9a7a8565793a5fae0d386fd71c9c3eca191fcb74b15c2639"
+    }
+  }
+}
