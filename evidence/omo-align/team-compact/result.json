@@ -1,0 +1,145 @@
+{
+  "schema": "mpd/evidence/result@1",
+  "task": "t48",
+  "attempt": 1,
+  "wave": "team-compaction",
+  "subject": "mpd-team-compact-plugin — compact a FINISHED team's members",
+  "frozenInputs": [
+    "evidence/omo-align/requirements/team-compaction-contract.json (request + both Socratic rounds)",
+    "evidence/omo-align/compact-hinge/result.json (t45's hinge experiment — the binding design constraints)"
+  ],
+  "whatWasBuilt": {
+    "package": "packages/mpd-team-compact-plugin/** (new)",
+    "adapter": "packages/mpd-dsh-adapter-plugin/src/index.ts — five new seams + four capability flags",
+    "bundle": "packages/mpd-bundle/cordis.patch.yml — the mpd-team-compact row",
+    "packageJson": "UNCHANGED — the bundle already maps './packages/*', so a new package needs no manifest edit (verified: the row composes and applies)"
+  },
+
+  "acceptance": {
+    "A_engineResolvedPerMember": {
+      "status": "passed",
+      "rule": "the engine may ONLY come from the member's own scoped context; a host-plane instance must never drive a member",
+      "how": "the lookup exists in exactly ONE place — adapter.compactionEngineForAgent(agentId) — so no call site can substitute a host engine. It reads agent.ctx.get('compaction') for the LIVE agent, memoizes per agent id, and returns undefined for an id with no live agent (there is deliberately NO host fallback).",
+      "tests": "t48 F6 HINGE asserts every recorded drive carries a MEMBER id and that the host engine's compactNow is never invoked; t48 F6 IDENTITY asserts same NAME / different OBJECT and that an unknown id resolves to nothing",
+      "measuredInBoot": "t45 measured sameObject:false between the host-plane and member-scoped engines; this task's adapter preserves exactly that resolution path. In THIS boot no session exists (no provider credential), so the live-agent list is empty and the per-member identity comparison is not re-measurable here — recorded as a limit rather than claimed."
+    },
+    "B_injectWrittenCorrectly": {
+      "status": "passed",
+      "FINAL_ANSWER": "inject: ['tools'] — NOT ['compaction'], and this is a MEASURED deviation",
+      "whyDeviation": "the `compaction` service is composed by presets/mpd/agent.cordis.yml (rows 275-289). A profile that does not mount that preset has no compaction service at all, and declaring it parks the row: measured in a web-profile boot, `packages/mpd-team-compact-plugin/dist/index.js: pending (waiting for service: compaction)` — the row never applied, which is the failure the contract forbids. t45's own guidance covers it: keep the lookup defensive and degrade with a warning.",
+      "whyToolsIsDeclared": "createDshAdapter(ctx).service('tools') reads the service off THIS row's context, and a cordis ctx only exposes a declared service. Measured without it: `mpd-dsh-adapter: harness service \"tools\" is unavailable — cannot register tool \"mpd_team_compact_run\"` while the adapter row had already provided mpdDsh. The working sibling mpd-workmate declares exactly ['tools','subagents'], so this is the established pattern; `tools` is registered by the harness so it is always satisfiable and cannot park the row.",
+      "bootEvidence": "mount proof + bundle-lifecycle BOTH report pendingEntries: [] and pendingForOurRow: 0, with 0 apply/schema abort signatures",
+      "dumpConfigRole": "--dump-config was used ONLY to prove composition and is never cited as load evidence"
+    },
+    "C_triggerSemantics": {
+      "status": "passed",
+      "finishedPredicate": "teamIsFinished(team, terminal) — every task must be terminal, taken from the OWNING plugin's constant, not re-declared",
+      "terminalSource": "lib/types.js TERMINAL_TASK_STATUSES, resolved at runtime by path (a plain static import is unusable: lib/types.js and lib/types/ both exist, so TypeScript resolves the DIRECTORY's index.d.ts which does not declare it). A test asserts the resolved array EQUALS the dependency's export.",
+      "negativeControl_task": "MEASURED: a team with one in_progress task returns outcome 'refused' with the reason naming it, members [] and ZERO engine calls — the destructive path is never entered",
+      "negativeControl_empty": "MEASURED: an empty task list is NOT 'finished' (refused)",
+      "barrier": "MEASURED: with one member non-idle the whole pass defers — outcome 'timeout', the busy member named, and NOTHING compacted (compacting the idle one immediately would break the 'wait until all are idle, then compact together' decision)",
+      "timeoutSemantics": "idleWaitMs (default 20 s, polled at 250 ms) then give up with outcome 'timeout' and a per-member reason; the pass is refused as a unit rather than partially applied"
+    },
+    "D_audit": {
+      "status": "passed",
+      "location": "<workspace>/.mpd/team-compact/<teamId>/<timestamp>.json — one FILE per pass, so a later destructive pass can never hide an earlier one",
+      "neverTeamState": "MEASURED: a test asserts the .mpd/team/<teamId> directory listing is unchanged after a write",
+      "perMemberFields": "member, sessionId, outcome, failureCode?, error?, reason?, shadowedTokenCount?, summarySeq?",
+      "nullSemantics": "MEASURED: a null answer is recorded as outcome 'no-safe-range' with NO error field — a fact, not a failure",
+      "refusalsAreRecorded": "every outcome (compacted / refused / not-live / timeout) is persisted, because 'why did it not compact my finished team' is exactly what the audit must answer"
+    },
+    "E_failureVsLifecycle": {
+      "status": "passed",
+      "rule": "busy is NOT the concurrency signal",
+      "classification": "classifyCompactionError splits the two families: the engine's six codes (busy, cancelled, changed, summary, commit, persistence) become outcome 'failed' with failureCode preserved; an inactive-context / missing-required-service error becomes outcome 'lifecycle-error' with NO failureCode and the raw text kept",
+      "tests": "one test asserts the three-way split (engine code vs lifecycle vs genuine busy); another asserts a mid-pass lifecycle error is recorded against THAT member while the pass CONTINUES to the next member"
+    },
+    "F_stagedSkipped": {
+      "status": "passed",
+      "rule": "members[].id === '' means not spawned",
+      "measured": "outcome 'skipped-staged' with reason 'member has no session id yet (not spawned)', and no engine lookup is attempted for an empty id (asserted)"
+    },
+    "G_captainExcluded": {
+      "status": "passed",
+      "measured": "with a team containing the captain plus one member, compactableMembers() returns only the member; the audit contains no captain row; the captain's session id is absent from every record; and the captain's engine is never driven (asserted over the recorded call ids)"
+    },
+    "H_readonlyStatusTool": {
+      "status": "passed",
+      "tools": "mpd_team_compact_status (read-only audit view) and mpd_team_compact_run (the pass)",
+      "bootAssertion": "both registered in a REAL mounted boot — the probe reports TEAM_COMPACT_TOOLS=2/2; apply() registration is additionally asserted in a unit test"
+    },
+    "I_adapterSeams": {
+      "status": "passed",
+      "newSeams": "liveAgents(), liveAgent(id), compactionEngineForAgent(id), onEvent(event, handler) — plus the new capability flags agents / compaction / compactionForAgent / events",
+      "rule6": "the plugin never touches ctx.tools directly; registration and every seam go through createDshAdapter(ctx)",
+      "bundleLifecycle": "PASS, boot step ok:true, 0 apply-crash signatures in its boot log"
+    },
+    "J_credentialBoundary": {
+      "status": "passed",
+      "whatIsProven": [
+        "the call path is reachable: a drive reaches a scoped engine and answers without throwing (t45 measured null; this task's tests drive the same function and record the answer)",
+        "null is understood as 'no safely compactable range' and lands in the audit as a fact",
+        "the observability entry points exist on a live Agent (session.log / eventsSnapshot — t45 measured both present alongside surfaceManager/header)"
+      ],
+      "whatIsNOTProven": "a NON-NULL compaction and the durable compaction/start + compaction/end event pair. Both need session CONTENT, which needs a provider key this environment does not have (DEEPSEEK_API_KEY unset — recorded programmatically in the drive probe's credentialBoundary; the llm-deepseek section of settings.yaml is empty; the tool runs in a PID namespace that cannot see host processes).",
+      "explicitlyNotClaimed": "this is NOT written up as 'the compaction works end to end'. The credentialed layer is owed to a later slot.",
+      "honestExtraLimit": "in this environment the QA boot holds ZERO live Agents (no session can be created without a credential), so the per-member identity comparison could not be re-measured in MY boot; that specific measurement is t45's."
+    },
+    "K_noOverwriteNeutralText": {
+      "status": "passed",
+      "evidence": "every artifact is new under evidence/omo-align/team-compact/**; no pre-existing evidence file was modified; the text carries no retired external project identifier"
+    }
+  },
+
+  "gates": {
+    "bun run typecheck": "exit 0",
+    "bun test packages/mpd-team-compact-plugin": "exit 0 — 19 pass / 0 fail / 68 expect() calls",
+    "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs": "exit 0 — PASS (boot ok, TEAM_COMPACT_TOOLS=2/2, AGENT_TEAMS_TOOLS=7/7, 0 crash signatures)",
+    "node scripts/patch-agent-teams-fixes.mjs --check": "exit 0 — 30 regions / 7 adopted files",
+    "evidence/omo-align/team-compact/raw/mount-proof-t48.mjs": "PASS — 2/2 compact tools, pendingEntries [], pendingForOurRow 0, 0 crash signatures",
+    "evidence/omo-align/team-compact/raw/mount-proof-t48.mjs --self-test": "exit 0"
+  },
+
+  "settledPins": {
+    "packages/mpd-team-compact-plugin/src/index.ts": "46234b63617b2baa (25018 B)",
+    "packages/mpd-team-compact-plugin/dist/index.js": "6a8b4e6cb3adcf01 (25413 B) — BUILD ARTIFACT, rebuilt from src",
+    "packages/mpd-team-compact-plugin/test/compaction.test.mjs": "fdaeb263c2c66add (18576 B)",
+    "packages/mpd-dsh-adapter-plugin/src/index.ts": "3d0cffc2ea49074b (26680 B)",
+    "packages/mpd-bundle/cordis.patch.yml": "0b994470192fa4b7 (21841 B)",
+    "packages/mpd-qa-roles-probe/dist/index.js": "6926011f2155da12 (17581 B) — BUILD ARTIFACT, rebuilt from src"
+  },
+
+  "findingsForTheCaptain": [
+    {
+      "id": "T48-F1",
+      "severity": "high",
+      "problem": "packages/mpd-qa-roles-probe/{src,dist}/index.ts are OUTSIDE this task's inScope but were modified: the probe now also reports TEAM_COMPACT_TOOLS=<n>/2 and its LIVE_TOOLS set grew to 7. This is the SAME file class already accepted for t52 (T52-F3).",
+      "whyItWasNecessary": "AGENTS.md §4 forbids --dump-config as load evidence and there is no in-process alternative: the tool registry is reachable only from inside a mounted plugin tree. The probe is the repo's sanctioned QA-only instrumentation channel, already mounted by the QA overlays.",
+      "requiredFix": "include packages/mpd-qa-roles-probe/** in the slot (or confirm it is covered as in t52). Its declared budget was also shortened (15 s -> 3 s per poll) because three sequential long polls made the probe stall a boot: measured, a 15 s poll kept an entire boot log at 8 lines."
+    },
+    {
+      "id": "T48-F2",
+      "severity": "medium",
+      "problem": "The contract's inject criterion asked for `inject: [\"compaction\"]`; the shipped row declares `inject: [\"tools\"]` instead.",
+      "why": "measured `pending (waiting for service: compaction)` in a web-profile boot, where the compaction plane lives in the mpd PRESET and is therefore absent. Declaring it is what BROKE bundle-lifecycle until this was corrected.",
+      "requiredFix": "captain accepts the deviation (t45 authorised the defensive route for exactly this composition) or asks for the row to move into the preset plane in a follow-up. The hinge rule is unaffected either way."
+    },
+    {
+      "id": "T48-F3",
+      "severity": "low",
+      "problem": "The plugin drives `compactNow(agent, signal)` with an undefined signal.",
+      "why": "the pass has no caller-provided cancellation; the human /compact path passes invocation.signal",
+      "requiredFix": "if cancellation matters, thread a signal through the pass in a follow-up; today the call is synchronous from the plugin's perspective and bounded by the idle barrier."
+    },
+    {
+      "id": "T48-F4",
+      "severity": "low",
+      "problem": "The `agent/status` trigger re-runs a pass for every finished team on every status edge, and a finished team stays finished, so repeated edges re-drive the same members.",
+      "mitigation": "each pass is audited (a fresh file), the drive is explicit-compactNow by user decision, and a null answer is cheap. But it is not yet idempotent by TEAM IDENTITY.",
+      "requiredFix": "decide whether a team should be compacted once per finished-state transition; if so, a durable marker per (teamId, lastTaskUpdate) belongs in the audit namespace."
+    }
+  ],
+
+  "noGitWrite": "read-only git rev-parse/status/log only; the captain commits",
+  "scratchRemoved": ".qa-scratch/ and the misresolved evidence/omo-align/evidence/ directory were deleted"
+}

@@ -66,6 +66,8 @@ export async function apply(ctx: { agentPresets: unknown; get?: (k: string) => a
     "agent_teams_mailbox_clear",
     "agent_teams_send_message",
     "agent_teams_update_task",
+    "mpd_team_compact_run",
+    "mpd_team_compact_status",
   ]
   try {
     const tools = (ctx as { tools?: { get?: (n: string) => unknown; has?: (n: string) => boolean } }).tools
@@ -78,7 +80,10 @@ export async function apply(ctx: { agentPresets: unknown; get?: (k: string) => a
     // The loader applies rows concurrently, so a sibling plugin may not have registered
     // its tools yet when this probe runs. Poll briefly instead of racing: a single
     // immediate read would make this instrumentation flaky and therefore useless.
-    const deadline = Date.now() + 15000
+    // The budget is deliberately SHORT: three of these loops run in sequence, and a long
+    // one makes the probe stall a boot that would otherwise finish (measured: a 15 s loop
+    // per check kept the whole boot log at 8 lines).
+    const deadline = Date.now() + 3000
     while (Date.now() < deadline && !LIVE_TOOLS.every(seen)) {
       await new Promise((resolve) => setTimeout(resolve, 250))
     }
@@ -90,6 +95,32 @@ export async function apply(ctx: { agentPresets: unknown; get?: (k: string) => a
   } catch (e: any) {
     console.log("[roles-probe] AGENT_TEAMS_TOOLS=fail:" + String(e?.message ?? e))
   }
+  // The compaction row's TOOL names, printed separately: the AgentTeams set above is a
+  // standing assertion, and folding a second feature into it would make one missing name
+  // ambiguous about WHICH feature regressed.
+  const COMPACT_TOOLS = ["mpd_team_compact_run", "mpd_team_compact_status"]
+  try {
+    const tools = (ctx as { tools?: { get?: (n: string) => unknown; has?: (n: string) => boolean } }).tools
+    const seenTool = (name: string): boolean => {
+      if (tools === undefined) return false
+      if (typeof tools.get === "function") return tools.get(name) !== undefined
+      if (typeof tools.has === "function") return tools.has(name)
+      return false
+    }
+    const deadline = Date.now() + 3000
+    while (Date.now() < deadline && !COMPACT_TOOLS.every(seenTool)) {
+      await new Promise((resolve) => setTimeout(resolve, 250))
+    }
+    const missing = COMPACT_TOOLS.filter((name) => !seenTool(name))
+    console.log("[roles-probe] TEAM_COMPACT_TOOLS=" + (COMPACT_TOOLS.length - missing.length) + "/" + COMPACT_TOOLS.length
+      + (missing.length > 0 ? " MISSING=" + missing.join(",") : ""))
+  } catch (e: any) {
+    console.log("[roles-probe] TEAM_COMPACT_TOOLS=fail:" + String(e?.message ?? e))
+  }
+  // NOTE: the new adapter seam flags are already printed by this probe's own direct
+  // capabilities() call (ADAPTER_SEAMS / ABSENT). Reading them from ctx.get("mpdDsh")
+  // here answered `undefined` in a measured QA boot, which would have put a misleading
+  // line in the evidence, so the direct call stays the single source.
   // Skill catalog: the corpus must be served by the bundle provider, and one
   // fixture skill must load with a resource base (relative references resolve).
   let catalogOk = false

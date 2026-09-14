@@ -1,0 +1,10 @@
+{
+  "name": "@mpd-dsh/team-compact-plugin",
+  "private": true,
+  "version": "0.3.2",
+  "type": "module",
+  "description": "Compact the members of a FINISHED team (every task terminal, every member idle). Members only — never the captain. Per-member engine resolution through each member's own scoped context, audit under <workspace>/.mpd/team-compact/, read-only status tool.",
+  "scripts": {
+    "test": "bun test"
+  }
+}

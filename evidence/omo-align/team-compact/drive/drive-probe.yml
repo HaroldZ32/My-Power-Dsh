@@ -1,0 +1,3 @@
+- insert:
+    - id: t48-drive-probe
+      name: "/root/dshProj/my-power-dsh/evidence/omo-align/team-compact/drive/drive-probe.mjs"

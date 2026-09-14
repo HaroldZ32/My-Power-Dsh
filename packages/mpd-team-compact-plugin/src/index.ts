@@ -1,0 +1,512 @@
+// mpd-team-compact-plugin: compact a FINISHED team's members.
+//
+// The user's request: "after every task is done and the team is about to be archived,
+// compact the context of all members of the current (not yet archived) team."
+//
+// Frozen semantics (evidence/omo-align/requirements/team-compaction-contract.json):
+//   trigger   a team whose EVERY task is terminal AND whose members are ALL idle
+//   who       members only — the captain is NEVER compacted (the user runs /compact)
+//   barrier   wait for all members to go idle, then compact them together
+//   method    unconditional explicit compactNow (a null answer means "no safely
+//             compactable range", which is recorded as a fact, not an error)
+//   audit     <workspace>/.mpd/team-compact/<teamId>/ — NEVER .mpd/team
+//   silence   audit only; a member is never notified (that would push context back in)
+//
+// HARD design constraints, each measured by the compact-hinge experiment (t45,
+// evidence/omo-align/compact-hinge/result.json):
+//   * The engine MUST be resolved per member through the member's OWN scoped context
+//     (`agent.ctx.get("compaction")`). The host-plane `ctx.get("compaction")` is a
+//     DIFFERENT object (`sameObject: false`) serving a different realm, so driving a
+//     member with it would compact the wrong history. That lookup lives in ONE place —
+//     the adapter's `compactionEngineForAgent` — so no call site can get it wrong.
+//   * `busy` is NOT the concurrency signal. A concurrent drive was measured throwing
+//     `cannot get required service "tokenMeter" in inactive context`, a Cordis
+//     lifecycle error. That class is classified separately from the six
+//     `ManualCompactionError` codes.
+//   * A staged team member (`id === ""`) has no live Agent and is skipped EXPLICITLY.
+//   * A team whose captain is gone has no in-process members; it is recorded
+//     `not-live` rather than silently ignored.
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
+import { createDshAdapter, type DshAdapter, type DshLiveAgent } from "../../mpd-dsh-adapter-plugin/src/index"
+
+export const name = "mpd-team-compact"
+// INJECT: the TOOLS seam — and deliberately NOT `compaction`.
+//
+// Two measured facts decide this line:
+//
+// 1) `compaction` MUST NOT be declared here. The service is composed by
+//    `presets/mpd/agent.cordis.yml` (rows 275-289), so a profile that does not mount that
+//    preset has no compaction service at all. MEASURED in a web-profile boot:
+//      `packages/mpd-team-compact-plugin/dist/index.js: pending (waiting for service: compaction)`
+//    — the row never applied, which is the failure mode the contract forbids. t45's own
+//    guidance covers it: "If the plugin must also tolerate a composition WITHOUT any
+//    compaction service, keep the lookup defensive and degrade with a warning." So the
+//    engine is resolved LAZILY at drive time (and always per member — the hinge rule).
+//
+// 2) `tools` MUST be declared, even though this plugin only reaches the tool registry
+//    through the adapter. `createDshAdapter(ctx).service("tools")` reads the service off
+//    THIS row's context, and a cordis ctx only exposes a service it has declared —
+//    measured: without it, registration threw
+//      `mpd-dsh-adapter: harness service "tools" is unavailable — cannot register tool ...`
+//    while the adapter row itself had provided mpdDsh. The working sibling plugin does the
+//    same thing (`mpd-workmate`: inject ["tools","subagents"]), so this is the established
+//    pattern rather than a new one. `tools` is registered by the harness itself, so unlike
+//    `compaction` it is always satisfiable and cannot park the row.
+export const inject: string[] = ["tools"]
+
+type Ctx = { on?: (e: string, h: (...a: any[]) => any) => any; get?: (k: string) => any; logger?: any; [k: string]: any }
+
+/** The team state namespace owned by the agent-teams plugin. Read-only here. */
+const TEAM_STATE_DIR = join(".mpd", "team")
+/** This plugin's OWN audit namespace. Never `.mpd/team`. */
+const COMPACT_STATE_DIR = join(".mpd", "team-compact")
+const CAPTAIN_KEY = "captain"
+
+/**
+ * Terminal task statuses, taken from the dependency that OWNS the vocabulary.
+ *
+ * Deliberately NOT re-declared locally: this set decides whether the destructive pass is
+ * allowed to fire, and a copied constant drifts silently. A plain static import is not
+ * usable here — `lib/types.js` (the runtime file) and `lib/types/` (a declarations
+ * directory) both exist, so TypeScript resolves the DIRECTORY's `index.d.ts`, which does
+ * not declare `TERMINAL_TASK_STATUSES`. The path is therefore computed at call time: the
+ * runtime resolves the real `.js` file, and the ownership chain stays visible and honest
+ * rather than being replaced by a literal.
+ */
+export async function terminalTaskStatuses(): Promise<readonly string[]> {
+  const here = dirname(fileURLToPath(import.meta.url))
+  // src/index.ts -> ../../mpd-agent-teams-plugin/lib/types.js
+  // dist/index.js -> ../../mpd-agent-teams-plugin/lib/types.js
+  const specifier = join(here, "..", "..", "mpd-agent-teams-plugin", "lib", "types.js")
+  const mod = await import(specifier) as { TERMINAL_TASK_STATUSES?: unknown }
+  const statuses = mod.TERMINAL_TASK_STATUSES
+  if (!Array.isArray(statuses) || statuses.length === 0 || !statuses.every((s) => typeof s === "string")) {
+    throw new Error("mpd-team-compact: the agent-teams types module no longer exports a TERMINAL_TASK_STATUSES string array")
+  }
+  return statuses as string[]
+}
+
+/** The six `ManualCompactionError` codes, plus our own lifecycle classification. */
+export const COMPACTION_FAILURE_CODES = ["busy", "cancelled", "changed", "summary", "commit", "persistence"] as const
+/** Our own outcome vocabulary — never mixed with the engine's codes. */
+export type CompactOutcome =
+  | "compacted"
+  | "no-safe-range"
+  | "skipped-not-live"
+  | "skipped-staged"
+  | "skipped-captain"
+  | "lifecycle-error"
+  | "failed"
+
+export interface CompactMemberRecord {
+  member: string
+  sessionId: string
+  outcome: CompactOutcome
+  /** The engine's failure code when it raised a ManualCompactionError (never "busy" alone). */
+  failureCode?: string
+  /** The raw error text for a lifecycle or unexpected error, so the audit is actionable. */
+  error?: string
+  shadowedTokenCount?: number
+  summarySeq?: number
+  /** Present for a member that never reached idle inside the barrier. */
+  reason?: string
+}
+
+export interface CompactAudit {
+  schema: "mpd/team-compact@1"
+  teamId: string
+  teamName: string
+  at: number
+  outcome: "compacted" | "refused" | "not-live" | "timeout"
+  /** Why the pass did not compact, when it did not. */
+  refusedReason?: string
+  members: CompactMemberRecord[]
+  /** engineKey is always "agent-scoped" — the only engine this plugin may drive. */
+  engineResolution: "agent-scoped"
+}
+
+// ── team state (read-only) ───────────────────────────────────────────────────
+
+export interface TeamMemberRecord {
+  id: string
+  name: string
+  status?: string
+}
+export interface TeamTaskRecord {
+  id: string
+  status: string
+  assignee?: string
+}
+export interface TeamRecord {
+  id: string
+  name: string
+  captainSessionId: string
+  phase?: string
+  members: TeamMemberRecord[]
+  tasks: TeamTaskRecord[]
+}
+
+/** Read one team record. Returns undefined for a missing/invalid file (never throws). */
+export function readTeamRecord(workspace: string, teamId: string): TeamRecord | undefined {
+  const file = join(workspace, TEAM_STATE_DIR, teamId, "team.json")
+  if (!existsSync(file)) return undefined
+  try {
+    const parsed = JSON.parse(readFileSync(file, "utf8"))
+    if (parsed === null || typeof parsed !== "object") return undefined
+    if (typeof parsed.id !== "string" || !Array.isArray(parsed.members) || !Array.isArray(parsed.tasks)) return undefined
+    return parsed as TeamRecord
+  } catch {
+    return undefined
+  }
+}
+
+/** Every team id under one workspace's team state namespace (archived teams excluded). */
+export function listTeamIds(workspace: string): string[] {
+  const root = join(workspace, TEAM_STATE_DIR)
+  if (!existsSync(root)) return []
+  try {
+    return readdirSync(root, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && !entry.name.startsWith(".") && entry.name !== "archive")
+      .map((entry) => entry.name)
+  } catch {
+    return []
+  }
+}
+
+/**
+ * The trigger, as a pure predicate so it can be falsified without a boot.
+ * `terminal` is injected (not hard-coded) so the caller must hand in the OWNING
+ * plugin's constant; the negative control is "any non-terminal task ⇒ never compact".
+ */
+export function teamIsFinished(team: TeamRecord, terminal: readonly string[]): boolean {
+  if (!Array.isArray(team.tasks) || team.tasks.length === 0) return false
+  return team.tasks.every((task) => terminal.includes(task.status))
+}
+
+/** Members that this plugin may consider: every member except the captain. */
+export function compactableMembers(team: TeamRecord): TeamMemberRecord[] {
+  return team.members.filter((member) => member.name !== CAPTAIN_KEY && member.status !== "removed")
+}
+
+/** A member with no session id has not been spawned yet: it has no Agent to compact. */
+export function isStagedMember(member: TeamMemberRecord): boolean {
+  return member.id === ""
+}
+
+// ── audit ────────────────────────────────────────────────────────────────────
+
+/** `<workspace>/.mpd/team-compact/<teamId>/` — accumulated, never overwritten. */
+export function auditDir(workspace: string, teamId: string): string {
+  return join(workspace, COMPACT_STATE_DIR, teamId)
+}
+
+export function writeAudit(workspace: string, audit: CompactAudit): string {
+  const dir = auditDir(workspace, audit.teamId)
+  mkdirSync(dir, { recursive: true })
+  // One file per pass: a later pass must never hide an earlier one, because a
+  // compaction is destructive and the audit is the only record of what was replaced.
+  const file = join(dir, `${new Date(audit.at).toISOString().replace(/[:.]/g, "-")}.json`)
+  writeFileSync(file, JSON.stringify(audit, null, 2) + "\n")
+  return file
+}
+
+export function readAudits(workspace: string, teamId: string): CompactAudit[] {
+  const dir = auditDir(workspace, teamId)
+  if (!existsSync(dir)) return []
+  try {
+    return readdirSync(dir)
+      .filter((entry) => entry.endsWith(".json"))
+      .sort()
+      .map((entry) => {
+        try {
+          return JSON.parse(readFileSync(join(dir, entry), "utf8")) as CompactAudit
+        } catch {
+          return undefined
+        }
+      })
+      .filter((audit): audit is CompactAudit => audit !== undefined)
+  } catch {
+    return []
+  }
+}
+
+// ── failure classification ───────────────────────────────────────────────────
+
+/**
+ * Classify a thrown error from a compaction drive.
+ *
+ * The point of this function is the HINGE-F5 rule: a concurrent drive does NOT
+ * necessarily surface the engine's `busy` code. t45 measured it throwing
+ * `cannot get required service "tokenMeter" in inactive context` — a Cordis
+ * lifecycle failure. Those two families are recorded separately so a reader can tell
+ * "the engine refused this compaction" from "we drove from a context that had moved on".
+ */
+export function classifyCompactionError(error: unknown): { outcome: CompactOutcome; failureCode?: string; error: string } {
+  const text = error instanceof Error ? error.message : String(error)
+  const code = (error as { code?: unknown } | undefined)?.code
+  const named = typeof code === "string" && (COMPACTION_FAILURE_CODES as readonly string[]).includes(code)
+    ? code
+    : COMPACTION_FAILURE_CODES.find((candidate) => new RegExp(`\\b${candidate}\\b`, "i").test(text))
+  if (named !== undefined && named !== "busy") return { outcome: "failed", failureCode: named, error: text }
+  // A Cordis lifecycle failure: the context that issued the drive is no longer active.
+  if (/inactive context|inactive\b/i.test(text) || /cannot get required service/i.test(text)) {
+    return { outcome: "lifecycle-error", error: text }
+  }
+  if (named === "busy") return { outcome: "failed", failureCode: "busy", error: text }
+  return { outcome: "failed", error: text }
+}
+
+// ── the pass ─────────────────────────────────────────────────────────────────
+
+export interface CompactPassOptions {
+  /** The terminal vocabulary the OWNER plugin exports. Defaults to the imported constant. */
+  terminal: readonly string[]
+  /** Barrier: how long to wait for every member to reach idle. */
+  idleWaitMs?: number
+  idlePollMs?: number
+  now?: () => number
+  sleep?: (ms: number) => Promise<void>
+}
+
+const DEFAULT_IDLE_WAIT_MS = 20_000
+const DEFAULT_IDLE_POLL_MS = 250
+
+function agentIsIdle(agent: DshLiveAgent | undefined): boolean {
+  if (agent === undefined) return false
+  const status = (agent as { status?: unknown }).status
+  // Absent status is treated as AVAILABLE, matching the agent-teams scheduler's rule
+  // (`live === undefined || live.status === 'idle'`) so the two plugins never disagree
+  // about whether a member is free.
+  return status === undefined || status === "idle"
+}
+
+/**
+ * Run ONE compaction pass for ONE team. Pure orchestration: every harness seam arrives
+ * through the adapter, and every branch is recorded in the returned audit.
+ */
+export async function compactTeamPass(
+  dsh: DshAdapter,
+  team: TeamRecord,
+  options: CompactPassOptions,
+): Promise<CompactAudit> {
+  const now = options.now ?? (() => Date.now())
+  const sleep = options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)))
+  const at = now()
+  const members = compactableMembers(team)
+  const base: Omit<CompactAudit, "outcome" | "members"> = {
+    schema: "mpd/team-compact@1",
+    teamId: team.id,
+    teamName: team.name,
+    at,
+    engineResolution: "agent-scoped",
+  }
+
+  // NEGATIVE CONTROL, first: a team that still has work must NEVER be compacted.
+  if (!teamIsFinished(team, options.terminal)) {
+    const nonTerminal = team.tasks.filter((task) => !options.terminal.includes(task.status))
+    return {
+      ...base,
+      outcome: "refused",
+      refusedReason: `team still has ${nonTerminal.length} non-terminal task(s): ${nonTerminal.map((task) => `${task.id}=${task.status}`).join(", ")}`,
+      members: [],
+    }
+  }
+
+  // Resolve every member's live Agent ONCE, so the barrier and the drive agree.
+  const resolved = members.map((member) => ({
+    member,
+    staged: isStagedMember(member),
+    agent: isStagedMember(member) ? undefined : dsh.liveAgent(member.id),
+  }))
+  const live = resolved.filter((entry) => !entry.staged && entry.agent !== undefined)
+  if (live.length === 0) {
+    // Every member is either staged or gone. Recorded, never silent: "not-live" is the
+    // documented answer for a team whose captain/session is gone (user decision).
+    return {
+      ...base,
+      outcome: "not-live",
+      refusedReason: "no live member Agents in this process (team is dormant or not yet spawned)",
+      members: resolved.map((entry) => ({
+        member: entry.member.name,
+        sessionId: entry.member.id,
+        outcome: entry.staged ? "skipped-staged" : "skipped-not-live",
+        ...entry.staged ? { reason: "member has no session id yet (not spawned)" } : { reason: "no live Agent for this session id" },
+      })),
+    }
+  }
+
+  // BARRIER: wait for EVERY live member to be idle before compacting any of them.
+  const idleWaitMs = options.idleWaitMs ?? DEFAULT_IDLE_WAIT_MS
+  const idlePollMs = options.idlePollMs ?? DEFAULT_IDLE_POLL_MS
+  const deadline = now() + idleWaitMs
+  let allIdle = live.every((entry) => agentIsIdle(dsh.liveAgent(entry.member.id)))
+  while (!allIdle && now() < deadline) {
+    await sleep(idlePollMs)
+    allIdle = live.every((entry) => agentIsIdle(dsh.liveAgent(entry.member.id)))
+  }
+  if (!allIdle) {
+    const busy = live.filter((entry) => !agentIsIdle(dsh.liveAgent(entry.member.id))).map((entry) => entry.member.name)
+    return {
+      ...base,
+      outcome: "timeout",
+      refusedReason: `waited ${idleWaitMs} ms for every member to be idle; still busy: ${busy.join(", ")}`,
+      members: resolved.map((entry) => ({
+        member: entry.member.name,
+        sessionId: entry.member.id,
+        outcome: entry.staged ? "skipped-staged" : entry.agent === undefined ? "skipped-not-live" : busy.includes(entry.member.name) ? "skipped-not-live" : "no-safe-range",
+        reason: entry.staged
+          ? "member has no session id yet (not spawned)"
+          : entry.agent === undefined
+            ? "no live Agent for this session id"
+            : busy.includes(entry.member.name)
+              ? "still busy when the barrier expired"
+              : "idle, but the barrier never cleared so no drive was issued",
+      })),
+    }
+  }
+
+  // DRIVE. One member at a time: the engine mutates durable session history.
+  const records: CompactMemberRecord[] = []
+  for (const entry of resolved) {
+    if (entry.staged) {
+      records.push({ member: entry.member.name, sessionId: entry.member.id, outcome: "skipped-staged", reason: "member has no session id yet (not spawned)" })
+      continue
+    }
+    if (entry.agent === undefined) {
+      records.push({ member: entry.member.name, sessionId: entry.member.id, outcome: "skipped-not-live", reason: "no live Agent for this session id" })
+      continue
+    }
+    // THE HINGE: the engine comes from the member's OWN scoped context, memoized in ONE
+    // adapter helper. There is deliberately no `ctx.get("compaction")` fallback here —
+    // a host-plane engine would compact a different realm's history.
+    const engine = dsh.compactionEngineForAgent(entry.member.id) as { compactNow?: (...args: unknown[]) => unknown } | undefined
+    if (engine === undefined || typeof engine.compactNow !== "function") {
+      records.push({ member: entry.member.name, sessionId: entry.member.id, outcome: "skipped-not-live", reason: "the member's scoped context exposes no compaction engine" })
+      continue
+    }
+    try {
+      const result = await engine.compactNow(entry.agent, undefined) as { shadowedTokenCount?: number; summarySeq?: number } | null | undefined
+      if (result === null || result === undefined) {
+        // Documented meaning: "no safe useful range exists". A FACT, not a failure.
+        records.push({ member: entry.member.name, sessionId: entry.member.id, outcome: "no-safe-range" })
+      } else {
+        records.push({
+          member: entry.member.name,
+          sessionId: entry.member.id,
+          outcome: "compacted",
+          ...result.shadowedTokenCount === undefined ? {} : { shadowedTokenCount: result.shadowedTokenCount },
+          ...result.summarySeq === undefined ? {} : { summarySeq: result.summarySeq },
+        })
+      }
+    } catch (error) {
+      const classified = classifyCompactionError(error)
+      records.push({
+        member: entry.member.name,
+        sessionId: entry.member.id,
+        outcome: classified.outcome,
+        ...classified.failureCode === undefined ? {} : { failureCode: classified.failureCode },
+        error: classified.error,
+      })
+    }
+  }
+
+  return { ...base, outcome: "compacted", members: records }
+}
+
+// ── plugin ───────────────────────────────────────────────────────────────────
+
+export function apply(ctx: Ctx): void {
+  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
+  const log = ctx.logger ?? { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} }
+  let terminal: readonly string[] = []
+  // Resolved lazily so an import-order surprise cannot stop the row from applying.
+  async function terminalStatuses(): Promise<readonly string[]> {
+    if (terminal.length > 0) return terminal
+    terminal = await terminalTaskStatuses()
+    return terminal
+  }
+
+  /** Run one pass for one team and persist its audit. Returns the audit. */
+  async function runPass(workspace: string, teamId: string): Promise<CompactAudit> {
+    const team = readTeamRecord(workspace, teamId)
+    if (team === undefined) {
+      const audit: CompactAudit = {
+        schema: "mpd/team-compact@1", teamId, teamName: "", at: Date.now(),
+        outcome: "refused", refusedReason: "no readable team record", members: [], engineResolution: "agent-scoped",
+      }
+      writeAudit(workspace, audit)
+      return audit
+    }
+    const audit = await compactTeamPass(dsh, team, { terminal: await terminalStatuses() })
+    // EVERY pass is persisted, including a refusal: the user asked for nothing silent, and
+    // "why did it not compact my finished team" is exactly what this file answers.
+    writeAudit(workspace, audit)
+    return audit
+  }
+
+  // The trigger. `agent/status` is the harness's own status edge; the pass is
+  // idempotent-by-refusal (it re-reads the team record and refuses a team with work).
+  dsh.onEvent?.("agent/status", async () => {
+    try {
+      const workspace = dsh.workspaceRoot()
+      if (workspace === undefined || workspace === "") return
+      for (const teamId of listTeamIds(workspace)) {
+        const team = readTeamRecord(workspace, teamId)
+        if (team === undefined) continue
+        if (!teamIsFinished(team, await terminalStatuses())) continue
+        await runPass(workspace, teamId)
+      }
+    } catch (error) {
+      log.warn?.(`mpd-team-compact: trigger pass failed: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  })
+
+  dsh.registerTool({
+    name: "mpd_team_compact_run",
+    description: "Compact the members of a FINISHED team (every task terminal and every member idle). The captain is never compacted. Writes an audit record under .mpd/team-compact/ and notifies nobody.",
+    parameters: {
+      team_id: { type: "string", description: "The team to compact. Defaults to every finished team in this workspace." },
+    },
+    output: {
+      schema: { type: "object", properties: { passes: { type: "array", items: { type: "object" } } } },
+      render: (_args: unknown, value: { passes: CompactAudit[] }) => [{
+        type: "text",
+        text: value.passes.length === 0
+          ? "No finished team to compact."
+          : value.passes.map((audit) => `${audit.teamId}: ${audit.outcome}${audit.refusedReason === undefined ? "" : ` (${audit.refusedReason})`} — ${audit.members.map((m) => `${m.member}=${m.outcome}`).join(", ") || "no members"}`).join("\n"),
+      }],
+    },
+    async execute(args: { team_id?: string }, exec: { agent?: { session?: { header?: { cwd?: string } } } }) {
+      const workspace = dsh.workspaceRoot(exec as never)
+      const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(workspace) : [args.team_id]
+      const passes: CompactAudit[] = []
+      for (const teamId of ids) passes.push(await runPass(workspace, teamId))
+      return { passes }
+    },
+  })
+
+  dsh.registerTool({
+    name: "mpd_team_compact_status",
+    description: "Read-only: show the compaction audit for this workspace (one record per pass, newest last), including skipped members and the reason each was skipped.",
+    parameters: {
+      team_id: { type: "string", description: "Limit to one team. Defaults to every team with an audit." },
+    },
+    output: {
+      schema: { type: "object", properties: { teams: { type: "array", items: { type: "object" } } } },
+      render: (_args: unknown, value: { teams: Array<{ teamId: string; passes: CompactAudit[] }> }) => {
+        if (value.teams.length === 0) return [{ type: "text", text: "No compaction audit recorded in this workspace." }]
+        return [{ type: "text", text: value.teams.map((entry) => {
+          const last = entry.passes[entry.passes.length - 1]
+          return `${entry.teamId}: ${entry.passes.length} pass(es); latest ${last?.outcome ?? "?"} at ${last === undefined ? "?" : new Date(last.at).toISOString()}${last?.refusedReason === undefined ? "" : ` (${last.refusedReason})`}`
+        }).join("\n") }]
+      },
+    },
+    async execute(args: { team_id?: string }, exec: { agent?: { session?: { header?: { cwd?: string } } } }) {
+      const workspace = dsh.workspaceRoot(exec as never)
+      const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(workspace) : [args.team_id]
+      return { teams: ids.map((teamId) => ({ teamId, passes: readAudits(workspace, teamId) })) }
+    },
+  })
+}
