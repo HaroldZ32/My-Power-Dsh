@@ -1,0 +1,66 @@
+{
+  "slug": "adapter-livesession-rebuild",
+  "kind": "defect-fix",
+  "defect": "the committed packages/mpd-dsh-adapter-plugin/dist/index.js (and 12 other dists that inline it) were never rebuilt after 7a8d245 added the adapter's live-session plane, so mpd_team_compact_run crashed with 'dsh.liveAgent is not a function' in every session mounting the row",
+  "mechanism": "packages/mpd-bundle/cordis.patch.yml:146 loads the adapter DIST; 7a8d245 (2026-09-14 10:59) added liveAgents/liveAgent/compactionEngineForAgent/onEvent to src/index.ts but the dist dates from 455d376 (2026-09-11 18:05); bun build inlines the adapter source into every plugin dist, so one changed dependency invalidated 13 artifacts at once",
+  "measurements": {
+    "committedDist_liveAgent_occurrences": 0,
+    "src_liveAgent_occurrences": 5,
+    "freshBuildVsCommittedDist_diffLines": 87,
+    "distVsSrcSweep": { "packagesChecked": 16, "differingBefore": 13, "differingAfter": 0 }
+  },
+  "fix": "rebuild all 13 divergent dists with 'bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packages/<pkg>/dist/index.js' from the repo root (the form that reproduces the committed banner byte-for-byte for an already-fresh package)",
+  "red": {
+    "driver": "raw/adapter-seam-repro.mjs",
+    "artifact": "raw/adapter.dist.stale.mjs (git show HEAD:packages/mpd-dsh-adapter-plugin/dist/index.js)",
+    "result": "typeof dsh.liveAgent = undefined; tool outcome ok=false, error=\"dsh.liveAgent is not a function. (In 'dsh.liveAgent(member.id)', 'dsh.liveAgent' is undefined)\"",
+    "log": "red.log"
+  },
+  "green": {
+    "driver": "raw/adapter-seam-repro.mjs",
+    "artifact": "packages/mpd-dsh-adapter-plugin/dist/index.js (rebuilt)",
+    "result": "typeof dsh.liveAgent = function; tool outcome ok=true with records [{member, outcome: skipped-not-live}]",
+    "log": "green.log"
+  },
+  "mount": {
+    "gate": "bundle-lifecycle --no-skip (isolated DSH_HOME + sandbox HOME + sandbox workspace, installed layout)",
+    "before": "evidence/dsh-qa/bundle-lifecycle/2026-09-14T05-33-45.970Z - ADAPTER_SEAMS 11 keys (no live-session plane)",
+    "after": "evidence/dsh-qa/bundle-lifecycle/2026-09-14T05-38-28.264Z - ADAPTER_SEAMS 15 keys, TEAM_COMPACT_TOOLS=2/2, TOOL_PARAM_SCHEMAS=52/52, roles-probe PASS",
+    "detail": "mount-before-after.json"
+  },
+  "gates": {
+    "dist-vs-src sweep": "16/16 MATCH",
+    "bun test packages": { "result": "PASS 399 pass / 0 fail", "log": "bun-test.log" },
+    "bun run typecheck": { "result": "PASS", "log": "typecheck.log" },
+    "bun run test:qa": { "result": "PASS all self-tests", "log": "testqa.log" },
+    "verify-vendor": { "result": "PASS (no skills/** or vendored asset touched -> no re-pin)", "log": "vendor.log" },
+    "bundle-lifecycle (MOUNT)": "PASS",
+    "preset-conformance (MOUNT)": "PASS (sessionCreate 200, agentPreset mpd, negative control RED)"
+  },
+  "known_unrelated_failure": {
+    "case": "preset-register (MOUNT)",
+    "measurement": "SKILLS=25 BUNDLED=19 -> probe FAIL",
+    "cause": "the case does not sandbox HOME, so the real ~/.agents/skills (6 skills) leaks into its boot; PRE-EXISTING, re-measured with the pre-change probe build",
+    "remedy": "fix lives in skills/dsh-qa/** -> invalidates the corpus treeSha in VENDOR_LOCK.json -> needs its own re-pin; deliberately not folded into this change"
+  },
+  "honest_limits": [
+    "the QA probe boot still reports compaction/compactionForAgent false because that probe ctx registers no compaction service; the artifact-level truth is the typeof measurement in the driver",
+    "no live provider round-trip (sandbox has no provider credential)",
+    "this repo has no build-all script and no gate that compares a dist against its source, so this defect class can recur on any adapter change"
+  ],
+  "changedPaths": [
+    "packages/mpd-bootstrap-plugin/dist/index.js",
+    "packages/mpd-boulder-plugin/dist/index.js",
+    "packages/mpd-codegraph-plugin/dist/index.js",
+    "packages/mpd-comment-checker-plugin/dist/index.js",
+    "packages/mpd-config-plugin/dist/index.js",
+    "packages/mpd-dsh-adapter-plugin/dist/index.js",
+    "packages/mpd-hashline-plugin/dist/index.js",
+    "packages/mpd-memory-plugin/dist/index.js",
+    "packages/mpd-modelchain-plugin/dist/index.js",
+    "packages/mpd-roles-plugin/dist/index.js",
+    "packages/mpd-tools-plugin/dist/index.js",
+    "packages/mpd-ulw-plugin/dist/index.js",
+    "packages/mpd-workmate-plugin/dist/index.js"
+  ]
+}

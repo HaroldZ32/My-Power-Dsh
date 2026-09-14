@@ -1,0 +1,9 @@
+[repro] adapter artifact    = /root/dshProj/my-power-dsh/packages/mpd-dsh-adapter-plugin/dist/index.js
+[repro] adapter capabilities = {"tools":true,"toolsRegister":true,"toolsGuard":true,"toolsGet":true,"toolsExecute":true,"toolsPostExecute":true,"subagents":false,"subagentsSpawn":false,"skills":false,"skillsProvider":false,"agentPresets":false,"agents":true,"compaction":false,"compactionForAgent":false,"events":true}
+[repro] typeof dsh.liveAgent = function
+[repro] typeof dsh.liveAgents = function
+[repro] typeof dsh.compactionEngineForAgent = function
+[repro] typeof dsh.onEvent = function
+[repro] typeof dsh.workspaceRootsAll = function
+[repro] tool outcome = {"ok":true,"value":{"passes":[{"schema":"mpd/team-compact@1","teamId":"repro-team","teamName":"repro","at":1789364308046,"engineResolution":"agent-scoped","outcome":"not-live","refusedReason":"no live member Agents in this process (team is dormant or not yet spawned)","members":[{"member":"Senior Engineer","sessionId":"session-member","outcome":"skipped-not-live","reason":"no live Agent for this session id"}]}]}}
+[repro] VERDICT=GREEN-CONFIRMED (the artifact serves the call site)
