@@ -24,6 +24,15 @@ const PLUGIN_PKGS = [
   "mpd-codegraph-plugin", "mpd-hashline-plugin", "mpd-boulder-plugin",
   "mpd-config-plugin", "mpd-comment-checker-plugin", "mpd-memory-plugin",
   "mpd-roles-plugin", "mpd-bootstrap-plugin", "mpd-workmate-plugin",
+  // mpd-team-compact-plugin is MOUNTED by the bundle patch
+  // (packages/mpd-bundle/cordis.patch.yml, loader entry `mpd-team-compact`) and was
+  // missing from this list, so `npm run pack` exited 0 while the packed tree omitted
+  // the package and the boot died with ERR_MODULE_NOT_FOUND on that entry (measured
+  // 2026-09-14 by a teammate's QA case; a checkout install was unaffected, which is
+  // exactly why no gate caught it). Every plugin package the patch mounts MUST be
+  // listed here: `mpd-qa-roles-probe` is deliberately absent because it is QA-only
+  // and mounted by an overlay, never by the shipped patch.
+  "mpd-team-compact-plugin",
   "mpd-bundle-plugin"
 ]
 const MCP_PKGS = ["mpd-mcp-astgrep", "mpd-mcp-gitbash", "mpd-mcp-lsp", "mpd-mcp-codegraph"]

@@ -1,5 +1,5 @@
 // QA-only preset+roster+skill-catalog probe plugin: asserts the mpd main preset
-// resolves, the mpdRoles roster answers with the full OMO roster (11 roles), and
+// resolves, the mpdRoles roster answers with the full specialist roster (11 roles), and
 // the bundle's skill corpus is served by the skill registry (count + one loaded
 // skill + its resource base). Mounted ONLY by QA overlays (tests/overlays/
 // roles-probe.yml template), never shipped in the bundle.
@@ -172,7 +172,11 @@ export async function apply(ctx: { agentPresets: unknown; get?: (k: string) => a
     const missingFixtures = FIXTURE_SKILLS.filter((name) => !servedNames.has(name))
     console.log("[roles-probe] SKILLS=" + summaries.length + " BUNDLED=" + bundled.length
       + " SKILL_FIXTURES=" + (FIXTURE_SKILLS.length - missingFixtures.length) + "/" + FIXTURE_SKILLS.length
-      + (missingFixtures.length > 0 ? " MISSING=" + missingFixtures.join(",") : ""))
+      + (missingFixtures.length > 0 ? " MISSING=" + missingFixtures.join(",") : "")
+      // A bare count is not diagnosable: when a served skill does NOT come from the
+      // bundle, name it (measured need 2026-09-14: "SKILLS=24 BUNDLED=18" told the
+      // reader nothing about WHICH six, so the gate failure could not be attributed).
+      + (summaries.length === bundled.length ? "" : " NON_BUNDLED=" + summaries.filter((summary: any) => summary.source !== "bundled").map((summary: any) => String(summary.name) + ":" + String(summary.source)).join(",")))
     const fixture = (await dsh.loadSkill(FIXTURE_SKILL)) as { name?: string; content?: string; resourceBase?: { path?: string } } | undefined
     const base = fixture?.resourceBase?.path ?? "unknown"
     const bytes = fixture?.content?.length ?? 0

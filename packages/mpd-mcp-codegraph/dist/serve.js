@@ -38,7 +38,6 @@ var DO_NOT_TRACK_ENV = "DO_NOT_TRACK";
 var SAFE_AMBIENT_ENV_KEYS = new Set([
   "APPDATA",
   "CI",
-  "CODEX_HOME",
   "ComSpec",
   "HOME",
   "HOMEDRIVE",
@@ -5791,11 +5790,7 @@ var MpdCategoryConfigObjectSchema = object({
 var MpdCategoryConfigSchema = preprocess((value) => isRecord3(value) ? normalizeLegacyModelFields(value) : value, MpdCategoryConfigObjectSchema);
 var MpdCategoriesConfigSchema = record(string2(), MpdCategoryConfigSchema);
 
-// ../../../../mpd-config-core/src/schema/harness.ts
-var HARNESS_IDS = ["codex", "opencode", "omo"];
-var MPD_CONFIG_HARNESS_IDS = ["opencode", "senpi", "codex"];
-var MpdHarnessIdSchema = _enum(MPD_CONFIG_HARNESS_IDS);
-
+var MPD_CONFIG_HARNESS_ID = "mpd";
 // ../../../../mpd-config-core/src/schema/codegraph.ts
 var MpdCodegraphSettingsShape = {
   enabled: boolean2(),
@@ -6149,8 +6144,14 @@ var MpdTelemetrySettingsSchema = MpdTelemetrySettingsLayerSchema.extend({
 }).strict();
 
 // ../../../../mpd-config-core/src/schema/config.ts
-var MpdOpenHostHarnessConfigSchema = record(string2(), unknown());
-var MpdTypedHarnessConfigSchema = object({
+// Every bracketed block is a resolution-layer control key: it must be ACCEPTED at
+// the layer boundary (the layer reader keeps strict unknown-key rejection) and is
+// then removed by the generic control-key strip before the resolved view. The
+// permissive value type is deliberate — the block's own shape is validated where
+// it is consumed, and naming a specific harness here would re-bake the foreign
+// enumeration this change removes.
+var MpdControlBlockSchema = record(string2(), unknown());
+var MpdConfigProfileSchema = object({
   categories: MpdCategoriesConfigSchema.optional(),
   agents: MpdAgentsConfigSchema.optional(),
   codegraph: MpdCodegraphSettingsLayerSchema.optional(),
@@ -6161,22 +6162,7 @@ var MpdTypedHarnessConfigSchema = object({
   memory: MpdMemorySettingsLayerSchema.optional(),
   telemetry: MpdTelemetrySettingsLayerSchema.optional()
 }).strict();
-var MpdConfigProfileSchema = object({
-  categories: MpdCategoriesConfigSchema.optional(),
-  agents: MpdAgentsConfigSchema.optional(),
-  codegraph: MpdCodegraphSettingsLayerSchema.optional(),
-  git_master: MpdGitMasterSettingsLayerSchema.optional(),
-  task: MpdTaskSettingsLayerSchema.optional(),
-  teams: MpdTeamsConfigLayerSchema.optional(),
-  models: MpdModelCatalogLayerSchema.optional(),
-  memory: MpdMemorySettingsLayerSchema.optional(),
-  telemetry: MpdTelemetrySettingsLayerSchema.optional(),
-  "[opencode]": MpdOpenHostHarnessConfigSchema.optional(),
-  "[senpi]": MpdTypedHarnessConfigSchema.optional(),
-  "[codex]": MpdTypedHarnessConfigSchema.optional()
-}).strict();
 var MpdConfigSchema = object({
-  $schema: string2().optional(),
   categories: MpdCategoriesConfigSchema.optional(),
   agents: MpdAgentsConfigSchema.optional(),
   codegraph: MpdCodegraphSettingsSchema.optional(),
@@ -6186,14 +6172,14 @@ var MpdConfigSchema = object({
   models: MpdModelCatalogSchema.optional(),
   memory: MpdMemorySettingsSchema.optional(),
   telemetry: MpdTelemetrySettingsSchema.optional(),
-  "[opencode]": MpdOpenHostHarnessConfigSchema.optional(),
-  "[senpi]": MpdTypedHarnessConfigSchema.optional(),
-  "[codex]": MpdTypedHarnessConfigSchema.optional(),
   profiles: record(string2(), MpdConfigProfileSchema).default({}),
   _migrations: array(string2()).optional(),
   legacy_migrations: record(string2(), unknown()).optional()
 }).strict();
 var MpdConfigLayerSchema = object({
+  // Accepted but never written: configs produced before this change carry the
+  // foreign product's `$schema` URL, and rejecting it here would drop the whole
+  // file. The migration no longer emits it and no new document carries it.
   $schema: string2().optional(),
   categories: MpdCategoriesConfigSchema.optional(),
   agents: MpdAgentsConfigSchema.optional(),
@@ -6204,9 +6190,7 @@ var MpdConfigLayerSchema = object({
   models: MpdModelCatalogLayerSchema.optional(),
   memory: MpdMemorySettingsLayerSchema.optional(),
   telemetry: MpdTelemetrySettingsLayerSchema.optional(),
-  "[opencode]": MpdOpenHostHarnessConfigSchema.optional(),
-  "[senpi]": MpdTypedHarnessConfigSchema.optional(),
-  "[codex]": MpdTypedHarnessConfigSchema.optional(),
+  "[mpd]": MpdControlBlockSchema.optional(),
   profiles: record(string2(), MpdConfigProfileSchema).optional(),
   _migrations: array(string2()).optional(),
   legacy_migrations: record(string2(), unknown()).optional()
@@ -7712,7 +7696,6 @@ function resolveMpdConfigPaths(options) {
 }
 
 // ../../../../mpd-config-core/src/loader/resolution.ts
-var HARNESS_KEYS = [...new Set([...HARNESS_IDS, ...MPD_CONFIG_HARNESS_IDS])].map((harness) => `[${harness}]`);
 function profileName(value) {
   return value === "" ? undefined : value;
 }
@@ -7729,10 +7712,17 @@ function toRecord(value) {
     return;
   return Object.fromEntries(Object.entries(value));
 }
+// Control keys belong to the resolution layer, never to the resolved view: the
+// profile table plus every bracketed block. The bracketed form is matched
+// generically rather than from a name list, so no harness name is baked in here.
+var CONTROL_KEY_PATTERN = /^\[.+\]$/;
+function isControlKey(key) {
+  return key === "profiles" || CONTROL_KEY_PATTERN.test(key);
+}
 function withoutControlKeys(config2) {
   const result = {};
   for (const [key, value] of Object.entries(config2)) {
-    if (key === "profiles" || HARNESS_KEYS.includes(key))
+    if (isControlKey(key))
       continue;
     result[key] = value;
   }
@@ -7791,13 +7781,12 @@ var DEFAULT_RAW_CONFIG = {
   teams: {}
 };
 function stripResolutionControlKeys(config2) {
-  const {
-    "[codex]": _codex,
-    "[opencode]": _opencode,
-    "[senpi]": _senpi,
-    profiles: _profiles,
-    ...resolved
-  } = config2;
+  const resolved = {};
+  for (const [key, value] of Object.entries(config2)) {
+    if (isControlKey(key))
+      continue;
+    resolved[key] = value;
+  }
   return resolved;
 }
 function validationDiagnostic(path, issues) {
@@ -8082,7 +8071,7 @@ function updateMpdConfig(options) {
   const path = resolveWritePath(options);
   const directory = directoryPath(path);
   const existed = fileSystem.existsSync(path);
-  let content = EMPTY_OMO_CONFIG;
+  let content = EMPTY_MPD_CONFIG;
   try {
     fileSystem.mkdirSync(directory, { recursive: true });
     if (options.scope === "project")
@@ -8731,7 +8720,7 @@ function transformResult(value) {
 }
 function executePlan(input) {
   const { env, fileSystem, journalResumed, plan } = input;
-  const protectedPaths = new Set([plan.targetPath, migrationJournalPath(env), migrationLockPath(env)]);
+  const protectedPaths = new Set([migrationJournalPath(env), migrationLockPath(env)]);
   assertSafeSourcePaths(plan.sources, protectedPaths);
   const existingSources = plan.sources.filter((source) => fileSystem.existsSync(source.path));
   const target = targetDocument(plan.targetPath, fileSystem);
@@ -8775,6 +8764,10 @@ function executePlan(input) {
   input.onBoundary?.("target-recorded");
   for (const move of targetRecorded.backupMoves) {
     input.renewLock();
+    // The additive migration rewrites its own target in place; relocating that very
+    // document afterwards would delete the config the writer just produced.
+    if (move.from === plan.targetPath)
+      continue;
     if (fileSystem.existsSync(move.to))
       throw new MigrationTransactionError(`Migration backup path already exists: ${move.to}`);
     moveMigrationBackup(fileSystem, move.from, move.to);
@@ -8824,7 +8817,6 @@ function runMigrations(options) {
 import { existsSync as existsSync6 } from "node:fs";
 import { posix as posix4, win32 } from "node:path";
 var MIGRATION_ID = "2026-07-codex-config-jsonc";
-var MPD_SCHEMA_URL = "https://raw.githubusercontent.com/code-yeongyu/oh-my-openagent/dev/assets/omo.schema.json";
 function isRecord5(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -8849,6 +8841,9 @@ function migrationHistory(sources, configPath) {
   }
   return history.length === 0 ? {} : { [configPath]: history };
 }
+// The migration no longer carries a foreign product's `$schema` URL nor the
+// foreign harness blocks into the rewritten document; the project's own settings
+// (codegraph, …) and the migration history are what survive.
 function transformConfigJsonc(configPath, sources) {
   const config2 = sources.find((source) => source.path === configPath);
   const legacy = config2 === undefined || !isRecord5(config2.value) ? {} : config2.value;
@@ -8858,11 +8853,7 @@ function transformConfigJsonc(configPath, sources) {
   return {
     diagnostics: upstream !== undefined && senpi !== undefined ? ["conflict: [senpi] legacy [upstream] kept [senpi]"] : [],
     document: {
-      $schema: MPD_SCHEMA_URL,
       ...recordAt(legacy, "codegraph") === undefined ? {} : { codegraph: recordAt(legacy, "codegraph") },
-      ...recordAt(legacy, "[opencode]") === undefined ? {} : { "[opencode]": recordAt(legacy, "[opencode]") },
-      ...recordAt(legacy, "[codex]") === undefined ? {} : { "[codex]": recordAt(legacy, "[codex]") },
-      ...senpi === undefined && upstream === undefined ? {} : { "[senpi]": senpi ?? upstream },
       ...Object.keys(history).length === 0 ? {} : { legacy_migrations: history }
     }
   };
@@ -8895,7 +8886,7 @@ function migrationPlan(homeDir, options) {
 function migratedSources(results) {
   return [...new Set(results.flatMap((result) => result.status === "migrated" ? result.preview?.backupMoves.map((move) => move.from) ?? [] : []))].sort();
 }
-function runCodexConfigMigration(options) {
+function runMpdConfigMigration(options) {
   const environment = options.environment ?? process.env;
   const homeDir = options.homeDir ?? environment["HOME"] ?? environment["USERPROFILE"];
   if (homeDir === undefined || homeDir.length === 0) {
@@ -8949,8 +8940,8 @@ function migrationEnvironment(homeDir, env) {
     ...env.USERPROFILE === undefined ? {} : { USERPROFILE: env.USERPROFILE }
   };
 }
-function runCodexStartupMigration(options) {
-  return runCodexConfigMigration(options);
+function runMpdStartupMigration(options) {
+  return runMpdConfigMigration(options);
 }
 function parseBoolean(value) {
   const normalized = value.trim().toLowerCase();
@@ -8962,7 +8953,7 @@ function parseBoolean(value) {
 }
 function envOverrides(env, warnings) {
   const codegraph = {};
-  for (const prefix of ["OMO", "CODEX"]) {
+  for (const prefix of ["MPD"]) {
     for (const [setting, suffix] of ENV_BOOLEAN_SETTINGS) {
       const name = `${prefix}_CODEGRAPH_${suffix}`;
       const rawValue = env[name];
@@ -8999,23 +8990,23 @@ function envOverrides(env, warnings) {
 function migrationWarnings(result) {
   const warnings = [];
   if (result.error !== undefined)
-    warnings.push(`mpd-codex: configuration migration: ${result.error}`);
+    warnings.push(`mpd-config: configuration migration: ${result.error}`);
   if (result.journalResumed)
-    warnings.push("mpd-codex: recovered an interrupted configuration migration");
+    warnings.push("mpd-config: recovered an interrupted configuration migration");
   if (result.migratedFrom.length > 0) {
-    warnings.push(`mpd-codex: migrated legacy configuration from ${result.migratedFrom.join(", ")}`);
+    warnings.push(`mpd-config: migrated legacy configuration from ${result.migratedFrom.join(", ")}`);
   }
   for (const migration of result.results) {
     for (const diagnostic of migration.diagnostics) {
-      warnings.push(`mpd-codex: configuration migration: ${diagnostic}`);
+      warnings.push(`mpd-config: configuration migration: ${diagnostic}`);
     }
   }
   return warnings;
 }
 function applicabilityWarnings(config2) {
-  return config2.codegraph?.watch_debounce_ms === undefined ? [] : ["codegraph.watch_debounce_ms is not supported for harness codex"];
+  return config2.codegraph?.watch_debounce_ms === undefined ? [] : ["codegraph.watch_debounce_ms is not supported by this harness"];
 }
-function codexCodegraphConfig(value) {
+function projectCodegraphConfig(value) {
   if (value === undefined)
     return;
   return {
@@ -9029,11 +9020,11 @@ function codexCodegraphConfig(value) {
     ...value.watch_debounce_ms === undefined ? {} : { watch_debounce_ms: value.watch_debounce_ms }
   };
 }
-function getCodexMpdConfig(options = {}) {
+function getMpdConfig(options = {}) {
   const env = options.env ?? process.env;
   const homeDir = resolveHomeDir2(options);
   const environment = environmentWithHome(env, homeDir);
-  const migration = runCodexStartupMigration({
+  const migration = runMpdStartupMigration({
     cwd: options.cwd ?? process.cwd(),
     environment,
     env: migrationEnvironment(homeDir, environment),
@@ -9044,7 +9035,7 @@ function getCodexMpdConfig(options = {}) {
     ...options.cwd === undefined ? {} : { cwd: options.cwd },
     env: environment,
     ...options.fileSystem === undefined ? {} : { fileSystem: options.fileSystem },
-    harness: "codex",
+    harness: MPD_CONFIG_HARNESS_ID,
     ...options.platform === undefined ? {} : { platform: options.platform },
     ...options.profile === undefined ? {} : { profile: options.profile }
   });
@@ -9052,7 +9043,7 @@ function getCodexMpdConfig(options = {}) {
     cwd: homeDir,
     env: environment,
     ...options.fileSystem === undefined ? {} : { fileSystem: options.fileSystem },
-    harness: "codex",
+    harness: MPD_CONFIG_HARNESS_ID,
     ...options.platform === undefined ? {} : { platform: options.platform },
     ...options.profile === undefined ? {} : { profile: options.profile }
   });
@@ -9060,10 +9051,10 @@ function getCodexMpdConfig(options = {}) {
   const config2 = MpdConfigSchema.parse(mergeMpdConfigRecords(result.config, envOverrides(env, envWarnings)));
   const trustedCodegraphInstallDir = trustedConfig.config.codegraph?.install_dir;
   const { codegraph, ...resolvedConfig } = config2;
-  const codexCodegraph = codexCodegraphConfig(codegraph);
+  const projectCodegraph = projectCodegraphConfig(codegraph);
   return {
     ...resolvedConfig,
-    ...codexCodegraph === undefined ? {} : { codegraph: codexCodegraph },
+    ...projectCodegraph === undefined ? {} : { codegraph: projectCodegraph },
     sources: result.sources,
     ...trustedCodegraphInstallDir === undefined ? {} : { trustedCodegraphInstallDir },
     warnings: [
@@ -9713,9 +9704,9 @@ var SESSION_START_CWD_ENV = "MPD_CODEGRAPH_SESSION_START_CWD";
 // src/serve.ts
 var CODEGRAPH_SKIP_HINT = `CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.
 `;
-var CODEGRAPH_DISABLED_HINT = `CodeGraph MCP skipped: disabled by OMO SOT config. Set [codex].codegraph.enabled=true to enable it.
+var CODEGRAPH_DISABLED_HINT = `CodeGraph MCP skipped: disabled by .mpd config. Set codegraph.enabled=true to enable it.
 `;
-var CODEGRAPH_EXCLUDED_HINT = `CodeGraph MCP skipped: project excluded by OMO CodeGraph policy.
+var CODEGRAPH_EXCLUDED_HINT = `CodeGraph MCP skipped: project excluded by the CodeGraph policy.
 `;
 var CODEGRAPH_VERSION = CODEGRAPH_PINNED_VERSION;
 var PROJECT_CWD_ENV_KEYS = ["MPD_CODEGRAPH_PROJECT_CWD", SESSION_START_CWD_ENV, "PWD"];
@@ -9724,7 +9715,7 @@ async function runCodegraphServe(options = {}) {
   const homeDir = options.homeDir ?? homedir6();
   const wrapperCwd = options.cwd ?? processCwd();
   const projectCwd = resolveProjectCwd(env, wrapperCwd);
-  const config2 = options.config ?? getCodexMpdConfig({ cwd: projectCwd, env, homeDir });
+  const config2 = options.config ?? getMpdConfig({ cwd: projectCwd, env, homeDir });
   const codegraphConfig = config2.codegraph ?? {};
   if (codegraphConfig.enabled === false) {
     return runUnavailableMcp(CODEGRAPH_DISABLED_HINT, options);

@@ -2,7 +2,7 @@
 // Case preset-register: under an isolated DSH_HOME, boot the dev-flavored bundle
 // patch and assert through the roles probe that (1) the mpd preset resolves
 // unbroken FROM THE BUNDLE-SHAPED ROOT (no $DSH_HOME/.agent-presets copy exists)
-// and (2) the mpdRoles roster answers with the full 11-role OMO roster.
+// and (2) the mpdRoles roster answers with the full 11-role specialist roster.
 // --self-test verifies the fixtures + the dev patch rewrite offline.
 import { cpSync, existsSync, mkdtempSync, mkdirSync, openSync, readdirSync, readFileSync, writeFileSync, closeSync } from "node:fs"
 import { tmpdir, homedir } from "node:os"
@@ -83,6 +83,14 @@ function runReal() {
   if (!existsSync(creds)) { console.error("[preset-register] missing credentials"); process.exit(1) }
   const sandbox = mkdtempSync(join(tmpdir(), "mpd-dsh-qa-"))
   cpSync(creds, join(sandbox, ".credentials.yaml"))
+  // AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's
+// model chain is configured through gateway providers (llm-pi-ai), so without it the
+// sandbox falls back to the base `deepseek-official` route and the boot dies with
+// MISSING_CREDENTIAL (measured 2026-09-14: 8 live cases red for exactly this; their
+// `--self-test` stayed green because it never boots). Same idiom as the cases that
+// already passed.
+  const qaSettings = join(homedir(), ".dsh", "settings.yaml")
+  if (existsSync(qaSettings)) cpSync(qaSettings, join(sandbox, "settings.yaml"))
   // NO preset copy: the bundle serves its own preset root (bundle-served model).
   // Runtime overlay generation: substitute repo paths (never commit checkout-absolute paths).
   const presetsOverlay = join(sandbox, "agent-presets-headless.yml")
@@ -94,8 +102,14 @@ function runReal() {
   // NO MPD_DSH_*_CLI / MPD_*_BIN pins: the dev patch points each MCP row at the
   // checkout launcher, so the boot exercises the real B8 resolution chain (a pin
   // would short-circuit `process.env.X || <launcher>` and hide a broken operand).
-  const env = { ...process.env, DSH_HOME: sandbox }
-  if (env.DSH_HOME !== sandbox) { console.error("[preset-register] isolation assertion failed"); process.exit(1) }
+  // AGENTS.md §7 — HOME is sandboxed too: the filesystem skill provider scans
+  // `<agentsHome>/skills` with `agentsHome = $DSH_AGENTS_HOME ?? ~/.agents`, so DSH_HOME
+  // alone still leaks the machine's own user skills into the boot (measured 2026-09-14:
+  // SKILLS=24 BUNDLED=18 NON_BUNDLED=<6 machine skills> -> roles-probe FAIL).
+  const userHome = join(sandbox, "userhome")
+  mkdirSync(userHome, { recursive: true })
+  const env = { ...process.env, DSH_HOME: sandbox, HOME: userHome }
+  if (env.DSH_HOME !== sandbox || env.HOME !== userHome) { console.error("[preset-register] isolation assertion failed"); process.exit(1) }
   const bundlePatch = join(sandbox, "bundle.dev.patch.yml")
   writeFileSync(bundlePatch, devPatch())
   const args = ["--profile", "headless",

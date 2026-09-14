@@ -1,0 +1,38 @@
+{
+  "ok": true,
+  "dshHome": "/tmp/mpd-wtm-dsh-NZqSRM",
+  "wmHome": "/tmp/mpd-wtm-home-3h7Jxt",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "injection": {
+      "ok": true,
+      "sample": "atus. |  | The instruction says to wait for the scheduler to run the task, then call agent_teams_status. I should not busy-poll. Let me sleep briefly via bash, then status. Actually a background bash sleep might be reasonable, but simplest: wait a short while then check status once or twice. |  | Let me sleep ~20 seconds and check status. | dsh: reasoning: | The task completed. Now step 6: call agent_teams_status and read member alice's output. | dsh: reasoning: | Everything is done. Report each result and end with DONE. |  | Should I delete the team? The user didn't ask to delete; they asked to end with DONE. The protocol says present results then delete the team unless the user wants to ke"
+    },
+    "reflect": {
+      "ok": true,
+      "tokenCount": 2,
+      "uses": 2
+    },
+    "files": {
+      "ok": true,
+      "memory": "## 2026-09-14T09:08:09.435Z — memorize build token\nalice remembers the build token is PINEAPPLE42\n\n## 2026-09-14T09:08:22.438Z — report build token\nConfirmed from durable workmate memory (~/.mpd/workm"
+    },
+    "isolation": {
+      "ok": true,
+      "realWm": "/root/.mpd/workmate",
+      "before": ".archive,index.json",
+      "after": ".archive,index.json"
+    }
+  }
+}

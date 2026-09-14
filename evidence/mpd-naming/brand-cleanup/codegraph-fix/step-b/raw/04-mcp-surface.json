@@ -1,0 +1,33 @@
+{
+  "launcher": "/root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/launch.mjs",
+  "exit_code": 0,
+  "initialized": true,
+  "initialize_result": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": {
+      "capabilities": {
+        "tools": {
+          "listChanged": false
+        }
+      },
+      "protocolVersion": "2024-11-05",
+      "serverInfo": {
+        "name": "codegraph",
+        "version": "1.5.0"
+      }
+    }
+  },
+  "tools_listed": true,
+  "tools_list_result": {
+    "jsonrpc": "2.0",
+    "id": 2,
+    "result": {
+      "tools": []
+    }
+  },
+  "degraded_stderr": [
+    "CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN."
+  ],
+  "stdout_line_count": 2
+}

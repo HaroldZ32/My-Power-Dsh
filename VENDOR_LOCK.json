@@ -12,14 +12,14 @@
     "trackedFiles": 9131,
     "trackedLoc": 1470231,
     "recordedAt": "2026-08-26T03:46:26.867Z",
-    "note": "loc = \u03a3 split('\\n').length over tracked files (same method as verify-vendor)"
+    "note": "loc = Σ split('\\n').length over tracked files (same method as verify-vendor)"
   },
   "assets": {
-    "_note": "skills corpus and agent-teams _deps closure: fileCount+treeSha (sorted relpath + per-file sha256 aggregation) double gate \u2014 verified by scripts/verify-vendor.mjs; dist: sha256 gate",
+    "_note": "skills corpus and agent-teams _deps closure: fileCount+treeSha (sorted relpath + per-file sha256 aggregation) double gate — verified by scripts/verify-vendor.mjs; dist: sha256 gate",
     "skills": {
-      "fileCount": 331,
+      "fileCount": 297,
       "source": "skill corpus at repo root (ported upstream skills + dsh-qa + svn-master + bundle-lifecycle, agent-teams-dispatch, agent-teams-sidebar, workmate-library, workmate-team-member and readonly-deny QA cases + the dsh-qa scripts/lib/workspace-isolation.mjs QA sandbox helper + the dsh-qa scripts/lib/gate-probe.mjs two-sided complexity-gate probe); whole-dir refresh from upstream, keep provenance links",
-      "treeSha": "c1f424fef1a283bcbfb1167fd05e18562bae50d4e0a897871596799642259e06"
+      "treeSha": "f6bb2053d02a0e256ab5d88debceb4cfbc76b10c6ff03dca69bf446718a583c9"
     },
     "packages/mpd-agent-teams-plugin/_deps": {
       "fileCount": 635,
@@ -44,9 +44,9 @@
     "packages/mpd-mcp-codegraph/dist/serve.js": {
       "fileCount": 1,
       "source": "vendored prebuilt from the upstream codegraph dist (MIT, see packages/mpd-mcp-codegraph/LICENSE/NOTICE)",
-      "sha256": "4601ace8dbe0e15da2b122a60cecd4f91a6825ac5a3099227db3ddcf96913858"
+      "sha256": "ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375"
     }
   },
   "verification": "node scripts/verify-vendor.mjs: commit/version mismatch is a blocker; stats drift is a warning; asset counts are a blocker",
-  "lockedAt": "2026-09-09T10:20:20.000Z"
+  "lockedAt": "2026-09-14T09:15:59.000Z"
 }

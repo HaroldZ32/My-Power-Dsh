@@ -1,0 +1,16 @@
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-tov-I7P12y/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+Here are the exact tool result lines, in order:
+
+**1. `mpd_config_get` with key `memory.vcs`:**
+```
+mpd config memory.vcs: null
+```
+
+**2. `mpd_config_get` with no arguments:**
+```
+mpd config: {}
+```
+
+Both calls succeeded (no error markers). The resolved config is empty: `memory.vcs` resolves to `null` (unset), and the full resolved config is an empty object `{}` — consistent with there being no project `.mpd/mpd.jsonc` or user `$DSH_HOME/mpd.jsonc` layer providing any of the consumed keys.

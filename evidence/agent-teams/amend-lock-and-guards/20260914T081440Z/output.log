@@ -1,0 +1,42 @@
+### bun test packages/mpd-agent-teams-plugin
+packages/mpd-agent-teams-plugin/test/update-task-amend-lock-and-guards.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/s1-s4-semantics.test.mjs:
+
+ 202 pass
+ 0 fail
+ 1336 expect() calls
+Ran 202 tests across 52 files. [4.24s]
+
+### bun run typecheck
+$ tsgo --noEmit
+
+### node scripts/patch-agent-teams-fixes.mjs --check
+[patch-agent-teams-fixes] already applied: 33 mpd delta region(s) across 7 adopted file(s)
+exit=0
+
+### codegraph-independent RED/GREEN for the deadlock (recorded earlier): kick-inside-lock => 'DEADLOCK: ... did not settle within 1500 ms'; fixed => 25 ms pass
+### FINAL SWEEP 2026-09-14T08:17:17Z
+
+## bun test packages/mpd-agent-teams-plugin
+
+ 202 pass
+ 0 fail
+ 1336 expect() calls
+Ran 202 tests across 52 files. [4.24s]
+
+## bun run typecheck
+$ tsgo --noEmit
+exit=0
+
+## node scripts/patch-agent-teams-fixes.mjs --check
+[patch-agent-teams-fixes] already applied: 33 mpd delta region(s) across 7 adopted file(s)
+exit=0
+
+## node scripts/verify-vendor.mjs
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+exit=0
+
+## AGENTS.md size vs budget
+bytes=65296 limit=65536 truncation_limit=65244

@@ -63,6 +63,12 @@ export const Config = z.object({
             reasoning_effort: z.string(),
             executionPrompt: z.string(),
             fallback: fallbackRouteConfig,
+//#region mpd-delta member-tool-deny-config (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+            // Read-only members declare the tool names their child must never call
+            // (the same seven the one-shot roster path denies). Validated here so the
+            // key survives harness config resolution instead of being stripped.
+            toolDeny: z.array(z.string()),
+//#endregion mpd-delta member-tool-deny-config
         })).min(1).required(),
         taskPlanning: z.union([z.const('captain'), z.const('seed')]),
         reviewPolicy: z.object({

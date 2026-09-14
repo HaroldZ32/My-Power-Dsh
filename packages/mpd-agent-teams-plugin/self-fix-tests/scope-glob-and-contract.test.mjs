@@ -213,11 +213,20 @@ test("DEFECT 2 falsifiability: the write-task overlap guard still separates coll
 })
 
 // ---------- durability: the vendor-refresh guard ----------
+// A file that carries a REGISTERED mpd-delta region must be staged in the scratch tree,
+// or the applier walks the registry against a tree that lacks it and dies with ENOENT
+// (measured 2026-09-14: registering regions in members.js + profiles.js broke 13 tests).
+// Derived from the registry so this list can never go stale again.
+const SCRATCH_BASE_FILES = ["command.js", "index.js", "quality-gates.js", "scheduler.js", "session-start.js", "state.js", "tools.js"]
+const SCRATCH_REGISTRY_FILES = [...new Set(MPD_DELTAS.map((delta) => delta.file.split("/").pop()))]
+const SCRATCH_ADOPTED_FILES = [...new Set([...SCRATCH_BASE_FILES, ...SCRATCH_REGISTRY_FILES])]
+const SCRATCH_LIB_FILES = [...new Set([...SCRATCH_ADOPTED_FILES, "mpd-deltas.js"])]
+
 /** Copy the adopted lib + deps into a scratch root so the applier can be driven there. */
 function scratchRoot() {
     const root = mkdtempSync(join(tmpdir(), "mpd-t4-fix-"))
     mkdirSync(join(root, "packages/mpd-agent-teams-plugin/lib"), { recursive: true })
-    for (const file of ["command.js", "index.js", "quality-gates.js", "scheduler.js", "session-start.js", "state.js", "tools.js", "mpd-deltas.js"])
+    for (const file of SCRATCH_LIB_FILES)
         cpSync(join(pluginRoot, "lib", file), join(root, "packages/mpd-agent-teams-plugin/lib", file))
     return root
 }
@@ -261,7 +270,7 @@ test("durability: the guard is idempotent on the real tree and restores a stripp
     expect(applyAgentTeamsFixes({ write: false }).regions).toBe(expectedRegions)
     const root = scratchRoot()
     try {
-        for (const name of ["command.js", "index.js", "quality-gates.js", "scheduler.js", "session-start.js", "state.js", "tools.js"])
+        for (const name of SCRATCH_ADOPTED_FILES)
             stripDeltas(join(root, "packages/mpd-agent-teams-plugin/lib", name))
         // verify-only on a stripped tree must fail loudly...
         expect(() => applyAgentTeamsFixes({ root, write: false })).toThrow()

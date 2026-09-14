@@ -168,7 +168,11 @@ test("DEFECT 6: the tool contract marks status required and documents the minima
         const tool = registerTools(workspace, captain, member).get("agent_teams_update_task")
         expect(tool.parameters.required).toContain("task_id")
         expect(tool.parameters.required).toContain("status")
-        expect(tool.parameters.properties.status.enum).toEqual(["in_progress", "completed", "failed", "cancelled"])
+        // Wave-4 GAP 4: `pending` joined the enum so a CAPTAIN can amend a task that has not
+        // started yet. Before it, a defective contract on a pending task was unfixable by any
+        // surface (amend refused the omitted status, and "pending" was not an accepted value),
+        // which forced a fail-and-retry cycle twice in one wave.
+        expect(tool.parameters.properties.status.enum).toEqual(["pending", "in_progress", "completed", "failed", "cancelled"])
         expect(tool.description).toMatch(/status` is REQUIRED/)
         expect(tool.description).toMatch(/\{task_id, status, attempt_id\[, verdict\]\}/)
     }

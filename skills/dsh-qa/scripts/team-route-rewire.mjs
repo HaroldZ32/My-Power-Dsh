@@ -124,8 +124,23 @@ async function runReal() {
   const profile = join(home, "profiles", "t")
   mkdirSync(profile, { recursive: true })
   cpSync(creds, join(home, ".credentials.yaml"))
+  // AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's
+// model chain is configured through gateway providers (llm-pi-ai), so without it the
+// sandbox falls back to the base `deepseek-official` route and the boot dies with
+// MISSING_CREDENTIAL (measured 2026-09-14: 8 live cases red for exactly this; their
+// `--self-test` stayed green because it never boots). Same idiom as the cases that
+// already passed.
+  const qaSettings = join(homedir(), ".dsh", "settings.yaml")
+  if (existsSync(qaSettings)) cpSync(qaSettings, join(home, "settings.yaml"))
   mkdirSync(join(reloc, "ws-rewire"), { recursive: true })
-  const env = { ...process.env, DSH_HOME: home }
+  // AGENTS.md §7 — HOME is sandboxed too: the filesystem skill provider scans
+  // `<agentsHome>/skills` with `agentsHome = $DSH_AGENTS_HOME ?? ~/.agents`, so DSH_HOME
+  // alone still leaks the machine's own user skills into the boot (measured 2026-09-14:
+  // SKILLS=24 BUNDLED=18 NON_BUNDLED=<6 machine skills> -> roles-probe FAIL).
+  const userHome = join(reloc, "userhome-rewire")
+  mkdirSync(userHome, { recursive: true })
+  const env = { ...process.env, DSH_HOME: home, HOME: userHome }
+  if (env.DSH_HOME !== home || env.HOME !== userHome) { console.error("[team-route-rewire] isolation assertion failed"); process.exit(1) }
   const steps = {}
   function runSync(cmd, args, opts = {}) {
     const r = spawnSync(cmd, args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout ?? 900000, cwd: opts.cwd ?? repoRoot, stdio: ["ignore", "pipe", "pipe"] })
@@ -198,14 +213,30 @@ async function runReal() {
   const webLog = join(outDir, "web.log")
   const webFd = openSync(webLog, "w")
   const web = spawn("dsh", ["--profile", "w", "--patch", webOverlay, "--port", String(port), "--no-open"], { env, cwd: join(reloc, "ws-rewire"), detached: false, stdio: ["ignore", webFd, webFd] })
-  let routeOk = false, routeStatus = null
+  let routeOk = false, routeStatus = null, cookie = null, authExchange = 0
   const t0 = Date.now()
   // Cold web boots in this sandbox (MCP servers + LSP daemon + client modules)
   // have been observed past two minutes; the poll is generous on purpose.
+  // The host authenticates EVERY non-static route through a browser session
+  // (`dsh-client-connection`): the process launch token is accepted ONLY on `GET /`,
+  // which mints an authority-bound signed cookie, so a bare route GET answers 401
+  // (measured 2026-09-14: the case's old expectation of an unauthenticated 200 was
+  // stale against the installed harness). Exchange the token from the boot log once,
+  // then poll the route WITH the cookie.
   while (Date.now() - t0 < 240000) {
     await new Promise((r) => setTimeout(r, 2000))
     try {
-      const res = await fetch("http://127.0.0.1:" + port + "/plugins/dsh-agent-teams/state", { signal: AbortSignal.timeout(4000) })
+      if (cookie === null) {
+        const token = /token=([A-Za-z0-9_-]+)/.exec(readFileSync(webLog, "utf8"))?.[1]
+        if (token === undefined) continue
+        const root = await fetch("http://127.0.0.1:" + port + "/?token=" + token, { redirect: "manual", signal: AbortSignal.timeout(4000) })
+        const setCookies = typeof root.headers.getSetCookie === "function" ? root.headers.getSetCookie() : []
+        cookie = String(setCookies[0] ?? root.headers.get("set-cookie") ?? "").split(";")[0] || ""
+        authExchange = root.status
+        await root.text()
+        continue
+      }
+      const res = await fetch("http://127.0.0.1:" + port + "/plugins/dsh-agent-teams/state", { headers: { cookie }, signal: AbortSignal.timeout(4000) })
       routeStatus = res.status
       await res.text()
       // The web app listens before the client plugin mounts its routes, so a
@@ -215,7 +246,7 @@ async function runReal() {
   }
   web.kill("SIGTERM")
   try { await new Promise((r) => setTimeout(r, 1500)) } catch {}
-  steps.webRoute = { ok: addWeb.status === 0 && routeOk, status: routeStatus, addExit: addWeb.status }
+  steps.webRoute = { ok: addWeb.status === 0 && routeOk && cookie !== null, status: routeStatus, authExchange, cookieMinted: cookie !== null && cookie !== "", addExit: addWeb.status }
   const allOk = Object.values(steps).every((s) => (typeof s === "object" && "ok" in s) ? s.ok : true)
   writeFileSync(join(outDir, "result.json"), JSON.stringify({ ok: allOk, sandbox: home, steps }, null, 2))
   writeFileSync(join(outDir, "output.log"), out.slice(0, 40000) + "\n\n--- dump ---\n" + dumpOut.slice(0, 30000))

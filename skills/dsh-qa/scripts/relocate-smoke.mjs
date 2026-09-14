@@ -65,9 +65,24 @@ async function runReal() {
   const profile = join(home, "profiles", "t")
   mkdirSync(profile, { recursive: true })
   cpSync(creds, join(home, ".credentials.yaml"))
+  // AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's
+// model chain is configured through gateway providers (llm-pi-ai), so without it the
+// sandbox falls back to the base `deepseek-official` route and the boot dies with
+// MISSING_CREDENTIAL (measured 2026-09-14: 8 live cases red for exactly this; their
+// `--self-test` stayed green because it never boots). Same idiom as the cases that
+// already passed.
+  const qaSettings = join(homedir(), ".dsh", "settings.yaml")
+  if (existsSync(qaSettings)) cpSync(qaSettings, join(home, "settings.yaml"))
   mkdirSync(join(reloc, "ws"), { recursive: true })
   writeFileSync(join(profile, "package.json"), JSON.stringify({ name: "dsh-profile-t", private: true, dependencies: { ["@mpd-dsh/mpd"]: "file:" + staged, "@nanmicoder/dsh-agent-teams": "^0.1.13" }, dsh: { profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-headless"] } } }, null, 2) + "\n")
-  const env = { ...process.env, DSH_HOME: home }
+  // AGENTS.md §7 — HOME is sandboxed too: the filesystem skill provider scans
+  // `<agentsHome>/skills` with `agentsHome = $DSH_AGENTS_HOME ?? ~/.agents`, so DSH_HOME
+  // alone still leaks the machine's own user skills into the boot (measured 2026-09-14:
+  // SKILLS=24 BUNDLED=18 NON_BUNDLED=<6 machine skills> -> roles-probe FAIL).
+  const userHome = join(reloc, "userhome")
+  mkdirSync(userHome, { recursive: true })
+  const env = { ...process.env, DSH_HOME: home, HOME: userHome }
+  if (env.DSH_HOME !== home || env.HOME !== userHome) { console.error("[relocate-smoke] isolation assertion failed"); process.exit(1) }
   const steps = {}
   console.log("[relocate-smoke] npm install (agent-teams + ast-grep + codegraph)...")
   const inst = spawnSync("npm", ["install", "--prefix", profile, "--no-audit", "--no-fund", "--cache", join(reloc, ".npm-cache")], { env, encoding: "utf8", timeout: 600000, maxBuffer: 32 * 1024 * 1024 })

@@ -1,0 +1,35 @@
+{
+  "ok": true,
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0,
+      "leaked": false
+    },
+    "live": {
+      "ok": true,
+      "exit": 0,
+      "preset": "/root/dshProj/my-power-dsh/.qa-reloc/mpd-pkg-relocated/presets/mpd/agent.cordis.yml",
+      "fixtureBase": "/root/dshProj/my-power-dsh/.qa-reloc/mpd-pkg-relocated/skills/svn-master"
+    },
+    "noPresetCopy": {
+      "ok": true,
+      "count": 0
+    },
+    "noSkillCopy": {
+      "ok": true,
+      "count": 0
+    },
+    "servedFromRelocated": {
+      "ok": true,
+      "staged": "/root/dshProj/my-power-dsh/.qa-reloc/mpd-pkg-relocated"
+    },
+    "bootstrap": {
+      "ok": true
+    }
+  }
+}

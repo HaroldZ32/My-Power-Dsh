@@ -481,6 +481,11 @@ async function bootProbe(sandbox, artifactText) {
   }
   symlinkSync(ROOT, join(profile, "node_modules", "@mpd-dsh", "mpd"))
   if (existsSync(credentials)) cpSync(credentials, join(home, ".credentials.yaml"))
+  // AGENTS.md §7 — live cases must ALSO stage settings.yaml when present (gateway
+  // providers keep the model route there; without it the boot dies with
+  // MISSING_CREDENTIAL). Measured 2026-09-14 across the live suite.
+  const qaSettings = join(homedir(), ".dsh", "settings.yaml")
+  if (existsSync(qaSettings)) cpSync(qaSettings, join(home, "settings.yaml"))
   writeFileSync(join(profile, "package.json"), JSON.stringify({
     name: "dsh-profile-w", private: true, dependencies: { "@mpd-dsh/mpd": "link:" + ROOT },
     dsh: { profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "@linxin666/dsh-web-all", "@mpd-dsh/mpd"] } },

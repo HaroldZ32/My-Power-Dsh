@@ -1,0 +1,60 @@
+{
+  "task": "fix the agent-team bugs measured live during the DSH-only naming wave",
+  "wave": "wave-4 amend-path repair",
+  "measuredAt": "2026-09-14",
+  "trigger": "the captain's agent_teams_update_task call with an `amend` payload HUNG (reported as 'interrupted after it was recorded, but no result durably recorded'); members additionally reported two silent no-ops and two contract-repair gaps",
+  "defects": [
+    {
+      "id": "D1-deadlock",
+      "severity": "blocker",
+      "symptom": "agent_teams_update_task with amend on a RUNNING task never returns; the tool call hangs forever",
+      "rootCause": "the mpd delta region `update-task-amend-running` called `scheduler.kickTeam(...)` INSIDE `withTeamLock(teamLockKey(...))`; kickTeam -> kickMember -> withTeamLock re-acquires the SAME key and `withTeamLock` is a plain non-reentrant promise chain, so the inner acquisition waits for the outer one that is awaiting it",
+      "evidence": "code: lib/tools.js (pre-fix line 1729 inside the lock opened at 1598); counter-example: every other kickTeam call site kicks AFTER its lock (e.g. the same tool's normal path). Live RED: 'DEADLOCK: captain amend on a running task did not settle within 1500 ms'",
+      "fix": "removed the inner kick; the existing call site below the lock already kicks once for every path through the tool (amend included)",
+      "red_green": "RED (kick re-introduced) = timeout at 1516 ms; GREEN (fixed) = pass in 25 ms"
+    },
+    {
+      "id": "D2-member-amend-silent-noop",
+      "severity": "high",
+      "symptom": "a MEMBER's `amend` returned success and persisted NOTHING (measured 4x); the task definition stayed exactly as the captain wrote it",
+      "rootCause": "both amend branches are gated on `identity.kind === 'captain'` and the member branch never read the `amend` argument at all (lib/tools.js:1606-1609) — a silent no-op on a definition change",
+      "fix": "new region `mpd-delta update-task-amend-captain-only`: a member passing `amend` is refused LOUDLY and told the only surface that can do it"
+    },
+    {
+      "id": "D3-terminal-field-silent-noop",
+      "severity": "high",
+      "symptom": "a changed `findings` (likewise acceptanceResults / commandsRun / changedPaths / verdict) on a TERMINAL task answered success while the record was unchanged (observed: `resolved` stayed false)",
+      "rootCause": "the terminal guard compared only `status` and `output`",
+      "fix": "new region `mpd-delta update-task-terminal-immutable-fields` + helper `terminalTaskChangedField`: every mutable field is compared and any real change is refused LOUDLY with the existing immutable-task wording"
+    },
+    {
+      "id": "D4-pending-task-unamendable",
+      "severity": "medium",
+      "symptom": "a captain could not repair a task's contract before it started: `amend` requires a status, and the status enum had no `pending` value",
+      "consequence": "measured twice in one wave: a defective captain-authored contract forced a fail-and-retry cycle",
+      "fix": "`pending` added to the status enum + description (region `update-task-required-status-param`); the amend branch runs before the quality gate, so a pending task amends cleanly"
+    },
+    {
+      "id": "D5-scope-unamendable",
+      "severity": "medium",
+      "symptom": "`inScope`/`outOfScope` were amendable by NOBODY — no captain surface exposed them — so a scope defect was unfixable outside a fail-and-re-run",
+      "fix": "new region `mpd-delta update-task-amend-scope` (schema) + `amendChangesDefinition` comparisons + both amend appliers"
+    }
+  ],
+  "filesChanged": [
+    "packages/mpd-agent-teams-plugin/lib/tools.js (5 regions: 1 edited, 2 new, 1 extended, 1 helper extended)",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js (regenerated: 33 regions)",
+    "packages/mpd-agent-teams-plugin/test/update-task-amend-lock-and-guards.test.mjs (new: 5 tests, all RED before / GREEN after)",
+    "packages/mpd-agent-teams-plugin/test/update-task-diagnostics.test.mjs (enum pin updated with its reason)"
+  ],
+  "gates": {
+    "bun test packages/mpd-agent-teams-plugin": "202 pass / 0 fail / 1336 expect / 52 files",
+    "bun run typecheck": "exit 0",
+    "node scripts/patch-agent-teams-fixes.mjs --check": "already applied: 33 mpd delta region(s) across 7 adopted file(s)",
+    "registry": "regenerated with --write-registry (never hand-edited); the applier first REFUSED the new scope region's anchor ('no afterContext window ... unique within 6 lines'), so the region was moved to end before the unique `verify:` line instead of weakening the anchor rule"
+  },
+  "openObservations": [
+    "`agent_teams_status` can display a status/attempt snapshot that lags the team.json a member reads directly (members reported 'attempt 1 pending is display lag'); not fixed here",
+    "a captain must still take over a member-owned task (reassign -> captain) before amending it; that revokes the member's live attempt, which is correct but expensive (it is how the D1 deadlock was reached in production)"
+  ]
+}

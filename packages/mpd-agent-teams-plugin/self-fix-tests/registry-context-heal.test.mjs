@@ -23,8 +23,14 @@ import { applyAgentTeamsFixes, assertRegistryFormat, canonicalIndent, findRegion
 
 const pluginRoot = join(dirname(fileURLToPath(import.meta.url)), "..")
 const repoRoot = join(pluginRoot, "..", "..")
-const LIB_FILES = ["command.js", "index.js", "quality-gates.js", "scheduler.js", "session-start.js", "state.js", "tools.js", "mpd-deltas.js"]
-const ADOPTED_FILES = ["command.js", "index.js", "quality-gates.js", "scheduler.js", "session-start.js", "state.js", "tools.js"]
+const BASE_LIB_FILES = ["command.js", "index.js", "quality-gates.js", "scheduler.js", "session-start.js", "state.js", "tools.js"]
+// A file that carries a REGISTERED mpd-delta region must be staged in the scratch tree,
+// or the applier walks the registry against a tree that lacks it and dies with ENOENT
+// (measured 2026-09-14: registering regions in members.js + profiles.js broke 13 tests).
+// Derived from the registry so this list can never go stale again.
+const REGISTRY_LIB_FILES = [...new Set(MPD_DELTAS.map((delta) => delta.file.split("/").pop()))]
+const ADOPTED_FILES = [...new Set([...BASE_LIB_FILES, ...REGISTRY_LIB_FILES])]
+const LIB_FILES = [...new Set([...ADOPTED_FILES, "mpd-deltas.js"])]
 
 /**
  * Copy the adopted lib + registry + the applier CLI into a scratch root, so the

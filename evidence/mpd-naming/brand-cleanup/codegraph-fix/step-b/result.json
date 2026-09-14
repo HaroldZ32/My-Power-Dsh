@@ -1,0 +1,76 @@
+{
+  "step": "B",
+  "taskId": "t5",
+  "attemptId": "307a19f3-7e18-44be-8c15-6bc7b81c8ed6",
+  "member": "Junior Engineer",
+  "subject": "DSH-only retarget of the codegraph config surface",
+  "artifact": {
+    "path": "packages/mpd-mcp-codegraph/dist/serve.js",
+    "sha256_step_a_complete": "849653683a2e69329e33a6fed4e1ef2fef8f7391ffe8d0967260042f731bedeb",
+    "sha256_step_b": "ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375",
+    "node_check": "exit 0"
+  },
+  "changesApplied": [
+    { "id": "B1", "what": "Project-owned block constant", "before": "HARNESS_IDS = [\"codex\",\"opencode\",\"omo\"]; MPD_CONFIG_HARNESS_IDS = [\"opencode\",\"senpi\",\"codex\"]; MpdHarnessIdSchema = _enum(MPD_CONFIG_HARNESS_IDS)", "after": "MPD_CONFIG_HARNESS_ID = \"mpd\" (single constant; the enum and both lists deleted)", "why": "No foreign harness name is baked in any more." },
+    { "id": "B2", "what": "harnessLayer target", "before": "loadMpdConfig({..., harness: \"codex\"}) at both call sites", "after": "loadMpdConfig({..., harness: MPD_CONFIG_HARNESS_ID})", "why": "codegraph's own settings now come from the block that belongs to this project." },
+    { "id": "B3", "what": "Generic control-key stripping #1 (resolved view)", "before": "withoutControlKeys() tested HARNESS_KEYS (the hardcoded `[codex]/[opencode]/[omo]/[senpi]` list) and `profiles`", "after": "isControlKey() = `profiles` OR CONTROL_KEY_PATTERN /^\\[.+\\]$/", "why": "Enumerations replaced by shape matching; the [mpd] layer is read from the RAW config before this strip runs (resolveMpdConfigView builds layers first, returns withoutControlKeys(config2) after the merge)." },
+    { "id": "B4", "what": "Generic control-key stripping #2 (resolution output)", "before": "stripResolutionControlKeys() destructured exactly `[codex]`, `[opencode]`, `[senpi]`, `profiles`", "after": "same isControlKey predicate, loop-based", "why": "Second hardcoded enumeration removed." },
+    { "id": "B5", "what": "HARNESS_KEYS constant", "before": "var HARNESS_KEYS = [...new Set([...HARNESS_IDS, ...MPD_CONFIG_HARNESS_IDS])].map(h => `[${h}]`)", "after": "deleted (was only referenced by withoutControlKeys)", "why": "Readerless after B3." },
+    { "id": "B6", "what": "Strict schemas: foreign block properties", "before": "`[opencode]`, `[senpi]`, `[codex]` properties in MpdConfigProfileSchema, MpdConfigSchema, MpdConfigLayerSchema; plus the now-unreferenced MpdOpenHostHarnessConfigSchema / MpdTypedHarnessConfigSchema definitions", "after": "all foreign block properties and both harness-config schemas deleted; MpdControlBlockSchema = record(string, unknown) accepts the project block, wired as `[mpd]` in MpdConfigLayerSchema", "why": "Layer-level strict validation must still accept the owner block (measured necessity, see below) while rejecting genuinely unknown keys." },
+    { "id": "B7", "what": "`$schema` emission", "before": "document: { $schema: MPD_SCHEMA_URL, ... }", "after": "emission dropped", "why": "Captain ruling: never write a foreign product's schema URL into a DSH user's config." },
+    { "id": "B8", "what": "MPD_SCHEMA_URL constant", "before": "var MPD_SCHEMA_URL = \"https://raw.githubusercontent.com/code-yeongyu/oh-my-openagent/dev/assets/omo.schema.json\"", "after": "deleted (readerless after B7; repo-wide grep showed the declaration + emission as its only two live hits)", "why": "Captain ruling: delete once unreferenced." },
+    { "id": "B9", "what": "Migration transform", "before": "carried [opencode], [codex], [senpi]/[upstream] blocks into the rewritten document", "after": "carries only the project's own keys (codegraph, …) and the migration history", "why": "The retargeted surface no longer corresponds to those blocks, and re-emitting a foreign block would re-plant it in the user's file." },
+    { "id": "B10", "what": "Foreign env-prefix enumeration", "before": "for (const prefix of [\"OMO\", \"CODEX\"]) in envOverrides()", "after": "for (const prefix of [\"MPD\"])", "why": "Removes the OMO_CODEGRAPH_* / CODEX_CODEGRAPH_* reads mandated by the task; the project's own MPD_CODEGRAPH_* overrides keep working." },
+    { "id": "B11", "what": "CODEX_HOME", "before": "in SAFE_AMBIENT_ENV_KEYS (the ambient env copied into a codegraph child)", "after": "deleted (no reader in the artifact, no writer anywhere)", "why": "Foreign env surface." },
+    { "id": "B12", "what": "Renames", "before": "getCodexMpdConfig / codexCodegraphConfig / runCodexConfigMigration / runCodexStartupMigration / `mpd-codex: ` warning prefix / \"not supported for harness codex\"", "after": "getMpdConfig / projectCodegraphConfig / runMpdConfigMigration / runMpdStartupMigration / `mpd-config: ` / \"not supported by this harness\"", "why": "User-visible and internal vocabulary now matches the project." }
+  ],
+  "deliberatelyNotRenamed": [
+    { "identifier": "MIGRATION_ID = \"2026-07-codex-config-jsonc\"", "line": 8819, "reason": "FLOOR — persisted migration state (the user's `_migrations` marker, the journal migrationId, the backup-name fallback). It is now the ONLY codex token left in the artifact. t6's brand guard must carry it as an explicit allowlist entry with the data-compat reason." },
+    { "identifier": "$schema as an accepted-but-unwritten schema key (MpdConfigLayerSchema)", "reason": "Configs written by the previous release carry the foreign URL and a LAYER is rejected whole if the key is unknown (`readConfigSource` -> MpdConfigLayerSchema.safeParse). Dropping the key from the layer schema would silently discard a real user's codegraph settings on read. We stop WRITING it (B7/B8) and keep READING it." }
+  ],
+  "retargetProof": {
+    "driver": "raw/drive-stepb.mjs",
+    "probe": "raw/probe.mjs (kept byte-identical to step-a/raw/probe.mjs; sha256 in the run records)",
+    "artifact_under_test": "the landed artifact itself — no copies, no substitutions",
+    "falsifiablePair": {
+      "b1_mpd_block_disables": "[mpd].codegraph.enabled=false -> codegraph SUPPRESSED (stderr: 'CodeGraph MCP skipped: disabled by .mpd config. Set codegraph.enabled=true to enable it.')",
+      "b2_foreign_codex_block_inert": "[codex].codegraph.enabled=false -> codegraph NOT suppressed (no disabled hint at all)",
+      "verdict": "PASS — the block NAME is what decides whether codegraph is configurable, so the foreign block is genuinely inert and [mpd] is genuinely the owner block."
+    },
+    "otherRuns": {
+      "b3_legacy_schema_still_validates": "a config carrying a foreign $schema URL is still accepted (migration executed, then the guard skipped as already-recorded)",
+      "b4_plain_migration_due": "control — the migration writes (196 -> 253 bytes) and leaves a .bak sibling"
+    }
+  },
+  "orderVerification": {
+    "claim": "[mpd] is read from the RAW config BEFORE the generic strip and the strict parse",
+    "measured": "b1 suppresses, which is only possible if harnessLayer read `[mpd]` out of the raw merged config; the same run shows the block absent from the resolved view (the written document carries no bracket key at all)."
+  },
+  "measuredSchemaNecessity": {
+    "finding": "The first retarget version removed the foreign block properties and added nothing, and BOTH b1 and b2 then failed to apply — because `readConfigSource` validates each file against MpdConfigLayerSchema and a rejected layer is dropped in full.",
+    "consequence": "MpdControlBlockSchema + the `[mpd]` property are REQUIRED for the owner block to be readable at all; they are not decoration.",
+    "fixed_by": "change B6"
+  },
+  "mcpSurface": {
+    "how": "the real packages/mpd-mcp-codegraph/launch.mjs driven over stdio with MCP JSON-RPC, sandbox HOME + sandbox project, MPD_CODEGRAPH_BIN pinned to a path-looking sentinel",
+    "result": "exit 0; initialize answered; tools/list answered",
+    "mode": "DEGRADED — no codegraph binary in the sandbox, stderr: 'CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.' The surface stays alive in the degraded mode rather than dying.",
+    "evidence": "raw/04-mcp-surface.json"
+  },
+  "vendorLockRepin": {
+    "codegraph": {
+      "stepAComplete": "849653683a2e69329e33a6fed4e1ef2fef8f7391ffe8d0967260042f731bedeb",
+      "stepB": "ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375"
+    },
+    "skillsUnchanged": { "fileCount": 297, "treeSha": "1d277907045ef1d18fd390b5db1a2ce537c38e7692732ee022ca5a7ea75402c1", "note": "STEP B touched no skills byte; the wave re-pin carried earlier is still current (re-measured after STEP B)." },
+    "lockedAt": "2026-09-14T15:31:00.000Z",
+    "gate": { "command": "node scripts/verify-vendor.mjs", "exitCode": 0, "evidence": "raw/05-verify-vendor-close.log — PASS" }
+  },
+  "scopeDiscipline": {
+    "inScopeTouched": ["packages/mpd-mcp-codegraph/dist/serve.js", "VENDOR_LOCK.json", "evidence/mpd-naming/brand-cleanup/codegraph-fix/"],
+    "outOfScopeTouched": [],
+    "thirdPartyUntouched": ["NOTICE", "NODE-RUNTIME-LICENSES.md", "LICENSE"],
+    "readmesUnchanged": "packages/mpd-mcp-codegraph/README.md and README.zh-CN.md still carry zero codex/omo occurrences — byte-identical, no bilingual edit needed.",
+    "stagedBundleNote": "t5 ran `node scripts/pack-mpd.mjs` once for the codegraph-smoke subject and REMOVED dist/mpd-package afterwards, because the packed tree omits packages/mpd-team-compact-plugin (pre-existing packaging gap, its own scoped change). Nobody should pack that tree meanwhile."
+  }
+}

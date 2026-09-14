@@ -1,0 +1,84 @@
+{
+  "task": "t6 (dists lane) — frozen execution plan after the captain's six rulings",
+  "state": "t6 still `pending`: claim refused while t2 (in_progress) and t5 (pending) are unfinished. Hold discipline (G) re-confirmed by the captain ('Held-until-unlock discipline is correct; keep it'). No t6 inScope implementation file touched.",
+  "acceptance_to_amend_at_claim": "evidence/mpd-naming/brand-cleanup/dists/raw/contract-amendment.json -> replacement_acceptance (5 items). Issue on the in_progress call.",
+  "execution_order": [
+    "1. claim_task t6 -> attempt_id",
+    "2. update_task {status:'in_progress', attempt_id, amend:{acceptance:<5 items>}}; if refused, state so and proceed against the same list",
+    "3. confirm t5's VENDOR_LOCK write landed (skills fileCount/treeSha + codegraph sha256 + lockedAt) and that verify-vendor was green for t5; capture both as evidence",
+    "4. edit scripts/build-mcp.mjs (scrub repair + allowlist purge + guard extension + comment sweep + findCache WARNING only)",
+    "5. guard-bypassed capture build (build-mcp-dump.mjs regenerated from the edited script) -> prove the fresh text equals the INTENDED new bytes for all 3 artifacts before touching any committed dist",
+    "6. hand-edit the committed dists to exactly those intended bytes: packages/mpd-mcp-lsp/dist/cli.js (5 x _omo -> _mpd), packages/mpd-mcp-gitbash/dist/cli.js (4 deletions), packages/mpd-mcp-astgrep/dist/cli.js (no change needed)",
+    "7. real rebuild: MPD_UPSTREAM_ROOT=.mpd-dsh/upstream node scripts/build-mcp.mjs -> must PASS (byte-equality green for 3 rebuilt artifacts + brand scan of 4 artifacts)",
+    "8. negative control driver (seeded mutants) -> guard must exit 1 on an injected brand token, exit 0 on the clean committed text; byte-guard mutant likewise",
+    "9. stale-daemon experiment if cheap: two-process old-vs-new against a sandbox MPD_LSP_DAEMON_DIR (old artifact + MPD_LSP_DAEMON_VERSION, same version) -> observe authError -32001 then DaemonUnreachableError; else state mechanism + loud failure mode",
+    "10. VENDOR_LOCK.json re-pin: ONLY the three dist sha256 values changed here (ast-grep, git-bash, lsp) + lockedAt. DO NOT touch the skills corpus entry or the codegraph entry (captain ruling A: t5 carries those)",
+    "11. gates: node scripts/verify-vendor.mjs (exit 0), bun test packages, bun run test:qa; write evidence/mpd-naming/brand-cleanup/dists/result.json",
+    "12. complete t6; output must quote verbatim: OMO_CODEX_* is DELETED (C1); the objective sentence 'keep the externally-owned OMO_CODEX_* contract as a documented allowlist entry' and nonGoals[0] are STALE and superseded"
+  ],
+  "scrub_edits": {
+    "ast-grep.replace_add": [["an OMO session", "an MPD session"], ["OMO runtime", "MPD runtime"]],
+    "ast-grep.residual_add": ["OMO session", "OMO runtime"],
+    "git-bash.replace": "replace [['omo-git-bash-run-','mpd-git-bash-run-']] with [['omo-git-bash','mpd-git-bash']] plus the 4 deletion entries below",
+    "git-bash.residual": ["omo-git-bash", "OMO_CODEX_"],
+    "lsp.replace_add": [["_omo", "_mpd"]],
+    "git_bash_deletion_entries": [
+      "remove L320 'var GIT_BASH_ENV_KEY = \"OMO_CODEX_GIT_BASH_PATH\";'",
+      "remove L328-335 env-lookup block in resolveGitBash",
+      "remove L371 hint line '`For a custom install, set ${GIT_BASH_ENV_KEY}=C:\\\\path\\\\to\\\\bash.exe`'",
+      "remove L457-458 the two OMO_ timeout keys from EXEC_COMMAND_TIMEOUT_ENV_KEYS",
+      "note: nonEmptyEnvValue() becomes unused dead code in the artifact; it carries no brand token and is left in place (minimal diff, lower risk than a fifth deletion)"
+    ]
+  },
+  "brand_allowlist_after": "[] (empty) + comment; the 3 OMO_CODEX_ entries and the _omo entry (L186) are deleted",
+  "guard_extension": {
+    "prebuilt_subjects": [{"name": "codegraph", "path": "packages/mpd-mcp-codegraph/dist/serve.js"}],
+    "rules": ["read-only scan of the committed prebuilt artifact (never edited here)", "missing prebuilt artifact = FAIL (not a silent skip)", "expected subject count = 4 (3 rebuilt + 1 prebuilt) asserted, so a missing subject cannot pass", "no allowlist entries for codegraph"],
+    "sequencing": "can only go green after t5 lands; that is the scheduled order"
+  },
+  "findCache": {
+    "ruling": "F2 — do NOT change resolution semantics in this wave",
+    "action": "add ONLY a loud console.warn when the chosen cache entry's version differs from the declared EXTERNAL version (byte-neutral; the chosen entry is unchanged); record the dead exact-match branch as a follow-up needing its own scoped change with its own proof",
+    "already_recorded_in": "raw/recon.json -> measured.external_dependency_resolution_hole"
+  },
+  "upstream_literals_kept": {
+    "ruling": "F1 — captain correction; keep both",
+    "items": [
+      "scripts/build-mcp.mjs:276 node_modules/@oh-my-opencode — upstream package scope; upstream package names ARE @oh-my-opencode/* and sources import '@oh-my-opencode/lsp-core/...' etc.",
+      "scripts/build-mcp.mjs:30 CORE entry 'omo-config-core' — the upstream checkout's package directory name"
+    ],
+    "treatment": "document both in the file as required upstream-scope/provenance literals with the module-resolution citation; the surrounding OMO-worded narrative comments are still swept where they are labels rather than literals"
+  },
+  "stale_daemon": {
+    "ruling": "E — captain accepted the correction (authError -32001, not PROTOCOL_ERROR)",
+    "remedy": "rm -rf ~/.mpd/lsp-daemon (or MPD_LSP_DAEMON_DIR=<fresh> / version bump)"
+  },
+  "carry_forward_from_captain": {
+    "narrative_comment_sweep": {
+      "instruction": "retire scripts/build-mcp.mjs:2 ('copy source from the OMO upstream checkout (read-only)') as part of the comment sweep",
+      "measured_correction": "there are TWO such hits in the file, not one: build-mcp.mjs:2 AND build-mcp.mjs:14 ('the actual OMO checkout layout used here is <repo>/.mpd-dsh/upstream'). Both are in this lane and both are swept. Token-boundary scan used: git grep -n -E '(^|[^A-Za-z0-9_])OMO([^A-Za-z0-9_]|$)'",
+      "other_hits_deliberately_not_touched": [
+        "docs/omo-parity-gap.md, docs/omo-parity-ledger.md, docs/omo-parity-ledger.zh-CN.md, docs/plan-e.md, docs/plan-f.md — process/historical records (exempt) or the ledger docs owned by t7",
+        "packages/mpd-agent-teams-plugin/test/s1-s4-semantics.test.mjs:1 comment '(t15 (OMO parity align)…)' — appears to be OUTSIDE every declared inScope (t2's list excludes mpd-agent-teams-plugin; mine excludes it too). Flagged for t9/t10, not touched here.",
+        "packages/mpd-mcp-codegraph/dist/serve.js — t5's lane"
+      ]
+    },
+    "skills_corpus_target_for_t5": {
+      "fileCount": 297,
+      "treeSha": "4299afc4241a164700c5b2f6785325affb914b01681ed51728a8a4933a83774f",
+      "algorithm": "verify-vendor buildTreeSha: relative paths sorted; per file sha256(readBytes(f)) with readBytes LF-normalizing text (no NUL) to LF; h.update(f + '\\n' + fh + '\\n')",
+      "VERIFIED_here": "reimplemented the canonical algorithm verbatim against skills/ -> 297 / 4299afc4… (matches the captain's value). Raw (unnormalized) per-file hash of the same tree -> 178b36ab… (WRONG). The CR carrier is ultimate-browsing/engine/tests/fixtures/amp_redirect_stub.html (pre-existing fixture with a CR byte).",
+      "correction_of_my_own_earlier_report": "the interim treeSha I quoted to the captain (2feb1bce…) came from a quick sequential reimplementation, NOT verify-vendor's per-file-digest aggregation. The fileCount 297 was correct; the treeSha string was not. The canonical value above supersedes it.",
+      "ruling": "A — t5 owns this asset's re-pin; this task does not touch it (recorded here only so the plan carries the verified target)"
+    },
+    "bootstrap_test_floor": {
+      "site": "packages/mpd-bootstrap-plugin/test/bootstrap.test.ts:66",
+      "current": "expect(candidates.length).toBeGreaterThanOrEqual(18)",
+      "note": "t2 lowered it from 19 (the deleted cross-agent skill) as an unavoidable coupled change; bun test packages reported 399 pass / 0 fail by t2. VERIFIED here: the file now reads 18. Do NOT restore 19 when running the gate sweep."
+    },
+    "nonEmptyEnvValue": {
+      "ruling": "LEAVE in place after the git-bash reader deletion (no brand token, minimal diff on a bundled artifact)",
+      "requirement": "disclose it in the completion output so t10 does not read it as a leftover contract"
+    }
+  }
+}

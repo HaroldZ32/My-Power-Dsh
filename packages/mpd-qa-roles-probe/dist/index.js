@@ -418,7 +418,7 @@ async function apply(ctx) {
     const bundled = summaries.filter((summary) => summary.source === "bundled");
     const servedNames = new Set(summaries.map((summary) => String(summary.name)));
     const missingFixtures = FIXTURE_SKILLS.filter((name2) => !servedNames.has(name2));
-    console.log("[roles-probe] SKILLS=" + summaries.length + " BUNDLED=" + bundled.length + " SKILL_FIXTURES=" + (FIXTURE_SKILLS.length - missingFixtures.length) + "/" + FIXTURE_SKILLS.length + (missingFixtures.length > 0 ? " MISSING=" + missingFixtures.join(",") : ""));
+    console.log("[roles-probe] SKILLS=" + summaries.length + " BUNDLED=" + bundled.length + " SKILL_FIXTURES=" + (FIXTURE_SKILLS.length - missingFixtures.length) + "/" + FIXTURE_SKILLS.length + (missingFixtures.length > 0 ? " MISSING=" + missingFixtures.join(",") : "") + (summaries.length === bundled.length ? "" : " NON_BUNDLED=" + summaries.filter((summary) => summary.source !== "bundled").map((summary) => String(summary.name) + ":" + String(summary.source)).join(",")));
     const fixture = await dsh.loadSkill(FIXTURE_SKILL);
     const base = fixture?.resourceBase?.path ?? "unknown";
     const bytes = fixture?.content?.length ?? 0;

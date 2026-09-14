@@ -1,0 +1,30 @@
+{
+  "ok": false,
+  "sandbox": "/tmp/mpd-wa-pCrNsb",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "rows": {
+      "ok": true,
+      "patch": true
+    },
+    "live": {
+      "ok": false,
+      "exit": 1
+    },
+    "boulder": {
+      "ok": false,
+      "boulderWork": null
+    },
+    "hashline": {
+      "ok": false,
+      "note": null
+    },
+    "config": {
+      "ok": false,
+      "sawConfig": false
+    }
+  }
+}

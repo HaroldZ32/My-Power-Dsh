@@ -872,6 +872,16 @@ export function registerAgentTeamsTools(ctx, config) {
         name: 'agent_teams_add_member',
         description: 'Add a member to the team roster. In a staged team this only adds an editable plan row and does not spawn a child; approval spawns the final configuration. In a running team it creates the durable continuable member immediately.',
         parameters: {
+            //#region mpd-delta member-tool-deny-param (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+            // A read-only member must be able to SAY so, or the mechanical restriction is
+            // unreachable for runtime-added members (the roster profile carries the same
+            // list as data). The seven names are the ones the one-shot path denies.
+            toolDeny: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Optional tool names this member must never call. Read-only members pass the seven write-capable names the one-shot roster path denies: write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename.',
+            },
+            //#endregion mpd-delta member-tool-deny-param
             name: { type: 'string', required: true, description: 'Unique member name inside the team.' },
             role: { type: 'string', description: 'Role of the member (e.g. researcher, engineer, reviewer).' },
             provider: { type: 'string', description: 'Optional LLM provider route. Use only when the user explicitly requests a different provider; requires model.' },
@@ -935,6 +945,13 @@ export function registerAgentTeamsTools(ctx, config) {
                     model: selection.model,
                     reasoningEffort: selection.reasoningEffort,
                     executionPrompt: trimmedOptional(args.executionPrompt),
+                    //#region mpd-delta member-tool-deny-add (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                    // DEFECT (measured 2026-09-14): a member added at runtime could not declare
+                    // itself read-only, so `agent_teams_add_member` produced a "read-only" member
+                    // that still held write/edit/bash. The roster path carries `toolDeny` as
+                    // profile data; the runtime path accepts the same list here.
+                    ...(args.toolDeny === undefined ? {} : { toolDeny: [...args.toolDeny] }),
+                    //#endregion mpd-delta member-tool-deny-add
                     joinedAt: Date.now(),
                     status: 'idle',
                 };
@@ -1424,6 +1441,33 @@ export function registerAgentTeamsTools(ctx, config) {
     }));
     //#region mpd-delta update-task-amend-helper (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
     /**
+     * The first field an update would actually CHANGE on a TERMINAL task, or
+     * undefined when the call is a pure no-op. Wave-4 DEFECT 3: comparing only
+     * `status`/`output` let a `findings`/`acceptanceResults`/`commandsRun`/
+     * `changedPaths`/`verdict` update report success while persisting nothing.
+     * @param task - the terminal task as stored.
+     * @param args - the update payload.
+     * @returns the changed field's name, or undefined.
+     */
+    function terminalTaskChangedField(task, args) {
+        const candidates = [
+            ['status', args.status],
+            ['output', args.output],
+            ['verdict', args.verdict],
+            ['changedPaths', args.changedPaths],
+            ['findings', args.findings],
+            ['acceptanceResults', args.acceptanceResults],
+            ['commandsRun', args.commandsRun],
+        ];
+        for (const [name, next] of candidates) {
+            if (next === undefined)
+                continue;
+            if (JSON.stringify(next) !== JSON.stringify(task[name] ?? undefined))
+                return name;
+        }
+        return undefined;
+    }
+    /**
      * The nodes an amendment invalidates: the amended task plus every TRANSITIVE
      * DEPENDENT (a node whose dependency closure reaches the amended task). Upstream
      * `task.definition` walks the same direction (`dag.definition.amended.
@@ -1471,6 +1515,10 @@ export function registerAgentTeamsTools(ctx, config) {
             return true;
         if (amend.verify !== undefined && !sameList(task.verify, amend.verify))
             return true;
+        if (amend.inScope !== undefined && !sameList(task.inScope, amend.inScope))
+            return true;
+        if (amend.outOfScope !== undefined && !sameList(task.outOfScope, amend.outOfScope))
+            return true;
         return false;
     }
     //#endregion mpd-delta update-task-amend-helper
@@ -1492,9 +1540,9 @@ export function registerAgentTeamsTools(ctx, config) {
             // and a payload-only update now repeats the current status explicitly.
             status: {
                 type: 'string',
-                enum: ['in_progress', 'completed', 'failed', 'cancelled'],
+                enum: ['pending', 'in_progress', 'completed', 'failed', 'cancelled'],
                 required: true,
-                description: 'New status (in_progress, completed, failed, cancelled). REQUIRED: a payload-only update repeats the current status; an omitted status cannot silently leave the task unchanged.',
+                description: 'New status (pending, in_progress, completed, failed, cancelled). REQUIRED: a payload-only update repeats the current status; an omitted status cannot silently leave the task unchanged. `pending` is how a captain amends a task that has NOT started yet (wave-4: without it, a defective contract on a pending task was unfixable by any surface).',
             },
             //#endregion mpd-delta update-task-required-status-param
             output: { type: 'string', description: 'Result summary; set when completing or failing.' },
@@ -1569,6 +1617,18 @@ export function registerAgentTeamsTools(ctx, config) {
                     description: { type: 'string', description: 'Replacement description.' },
                     dependencies: { type: 'array', items: { type: 'string' }, description: 'Complete replacement dependency list.' },
                     acceptance: { type: 'array', items: { type: 'string' }, description: 'Complete replacement acceptance list.' },
+                    //#region mpd-delta update-task-amend-scope (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                    // Wave-4 GAP 5 (measured live): `inScope`/`outOfScope` were amendable by
+                    // NOBODY — no captain surface exposed them and a scope is frozen once the
+                    // task exists — so a captain-authored scope defect could only be repaired
+                    // by failing the task and re-running its dependents (measured twice in one
+                    // wave, each costing a fail-and-retry cycle). They are plain definition
+                    // fields, amended exactly like the other lists. The region ends BEFORE
+                    // `verify` on purpose: the closing braces after it are not a unique
+                    // anchor window, and the applier refuses a far-away or ambiguous one.
+                    inScope: { type: 'array', items: { type: 'string' }, description: 'Complete replacement of the workspace-relative POSIX paths this task may change.' },
+                    outOfScope: { type: 'array', items: { type: 'string' }, description: 'Complete replacement of the paths this task must NOT change.' },
+                    //#endregion mpd-delta update-task-amend-scope
                     verify: { type: 'array', items: { type: 'string' }, description: 'Complete replacement verify list.' },
                 },
             },
@@ -1621,6 +1681,18 @@ export function registerAgentTeamsTools(ctx, config) {
                     if (task.attemptId !== undefined && args.attempt_id !== task.attemptId) {
                         throw new Error(`stale attempt for task ${task.id}: expected the current attempt_id; stop work and request fresh assignment`);
                     }
+                    //#region mpd-delta update-task-amend-captain-only (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                    // Wave-4 DEFECT 2 (measured 4x by a member): a member's `amend` was
+                    // ACCEPTED and persisted NOTHING — the amend branches below are gated on
+                    // captain identity and the member branch never read the argument, so the
+                    // tool answered success for a mutation that never happened while the
+                    // task's definition stayed exactly as the captain wrote it. A silent
+                    // no-op on a definition change is worse than a refusal: fail loudly and
+                    // name the only surface that can perform it.
+                    if (args.amend !== undefined) {
+                        throw new Error(`an amendment is an explicit captain action on the task definition: task ${task.id} cannot be amended by a member — ask the captain to amend it (a member's amend is refused, never silently ignored)`);
+                    }
+                    //#endregion mpd-delta update-task-amend-captain-only
                 }
                 if (TERMINAL_TASK_STATUSES.includes(task.status)) {
                     //#region mpd-delta update-task-amend-terminal (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
@@ -1654,6 +1726,10 @@ export function registerAgentTeamsTools(ctx, config) {
                             task.acceptance = [...args.amend.acceptance];
                         if (args.amend.verify !== undefined)
                             task.verify = [...args.amend.verify];
+                        if (args.amend.inScope !== undefined)
+                            task.inScope = [...args.amend.inScope];
+                        if (args.amend.outOfScope !== undefined)
+                            task.outOfScope = [...args.amend.outOfScope];
                         task.updatedAt = Date.now();
                         await writeTeam(stateRoot, fresh);
                         appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, caller.session), 'agent-teams/task-amended', {
@@ -1668,6 +1744,20 @@ export function registerAgentTeamsTools(ctx, config) {
                         };
                     }
                     //#endregion mpd-delta update-task-amend-terminal
+                    //#region mpd-delta update-task-terminal-immutable-fields (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                    // Wave-4 DEFECT 3 (measured live): the terminal guard compared only
+                    // `status` and `output`, so a changed `verdict` / `findings` /
+                    // `acceptanceResults` / `commandsRun` / `changedPaths` answered
+                    // SUCCESS and persisted NOTHING — a member's findings update echoed
+                    // success while `resolved` stayed false in team.json. Every mutable
+                    // field is compared now, and any real change is refused LOUDLY.
+                    {
+                        const changedField = terminalTaskChangedField(task, args);
+                        if (changedField !== undefined) {
+                            throw new Error(`terminal task ${task.id} is immutable: ${changedField} would change; use agent_teams_reassign_task to retry failed/cancelled work`);
+                        }
+                    }
+                    //#endregion mpd-delta update-task-terminal-immutable-fields
                     const sameStatus = args.status === undefined || args.status === task.status;
                     const sameOutput = args.output === undefined || args.output === task.output;
                     if (!sameStatus || !sameOutput) {
@@ -1719,6 +1809,10 @@ export function registerAgentTeamsTools(ctx, config) {
                             task.acceptance = [...args.amend.acceptance];
                         if (args.amend.verify !== undefined)
                             task.verify = [...args.amend.verify];
+                        if (args.amend.inScope !== undefined)
+                            task.inScope = [...args.amend.inScope];
+                        if (args.amend.outOfScope !== undefined)
+                            task.outOfScope = [...args.amend.outOfScope];
                         task.updatedAt = Date.now();
                         await writeTeam(stateRoot, fresh);
                         appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, caller.session), 'agent-teams/task-amended', {
@@ -1726,7 +1820,14 @@ export function registerAgentTeamsTools(ctx, config) {
                             taskId: task.id,
                             invalidatedNodeIds: invalidatedIds,
                         });
-                        await scheduler.kickTeam(workspace, team.id, team.captainSessionId === caller.id ? caller : undefined);
+                        // Wave-4 DEFECT 1 (measured live: the tool call never returned —
+                        // "interrupted after it was recorded, but no result durably
+                        // recorded"). `scheduler.kickTeam` -> `kickMember` -> `withTeamLock`
+                        // re-acquires THIS team's key, and `withTeamLock` is a plain
+                        // non-reentrant promise chain, so kicking from inside the lock
+                        // deadlocks the tool forever. The kick belongs OUTSIDE: the call
+                        // site below the lock already kicks once for every path through
+                        // this tool (amend included), so returning here is enough.
                         return {
                             task_id: task.id,
                             status: task.status,

@@ -33,6 +33,15 @@ function runReal() {
   // rename): isolate HOME too, and mirror the creds at the DSH home location.
   mkdirSync(join(sandbox, ".dsh"), { recursive: true })
   cpSync(creds, join(sandbox, ".dsh", ".credentials.yaml"))
+  // DEFECT (measured 2026-09-14): this case copied ONLY the credentials, not
+  // `settings.yaml`. On a home whose model chain is configured through gateway
+  // providers (llm-pi-ai — opencode-go/scnet), the route lives in settings.yaml, so
+  // the sandbox fell back to the base `deepseek-official` route and the boot died with
+  // `MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-official"`.
+  // AGENTS.md §7 requires live cases to copy it when present — exactly the idiom the
+  // passing cases use. Without this the case can never go green on such a home.
+  const settings = join(homedir(), ".dsh", "settings.yaml")
+  if (existsSync(settings)) cpSync(settings, join(sandbox, "settings.yaml"))
   // MPD_CODEGRAPH_BIN is pinned here BY DESIGN, not as a masked defect: this case
   // exists to exercise the codegraph binary + MCP server + a real tool call, so it
   // deliberately points the adopted code at the known-good toolchain binary. Its

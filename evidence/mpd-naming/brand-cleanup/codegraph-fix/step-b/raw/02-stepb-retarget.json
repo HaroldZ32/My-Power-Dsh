@@ -1,0 +1,91 @@
+{
+  "driver": "step-b-retarget",
+  "artifact": "/root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js",
+  "artifact_sha256": "ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375",
+  "falsifiable_pair": {
+    "question": "does the block NAME decide whether codegraph is configurable?",
+    "b1_mpd_block_suppressed": true,
+    "b2_foreign_codex_block_suppressed": false,
+    "verdict": "PASS — [mpd] is the project-owned block and a foreign [codex] block is inert"
+  },
+  "runs": [
+    {
+      "name": "b1-mpd-block-disables",
+      "mode": "mpd-disabled",
+      "expectation": "skipped: disabled by .mpd config",
+      "tested_artifact": "/root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js",
+      "tested_sha256": "ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375",
+      "exit_code": 0,
+      "thrown": null,
+      "codegraph_disabled_by_config": true,
+      "skipped_hint": [
+        "CodeGraph MCP skipped: disabled by .mpd config. Set codegraph.enabled=true to enable it."
+      ],
+      "config_exists_after": true,
+      "config_bytes_before": 262,
+      "config_bytes_after": 262,
+      "config_rewritten": false,
+      "config_after": "// MPD configuration (seeded for probe)\n{\n  \"codegraph\": {\n    \"enabled\": true,\n    \"auto_provision\": false\n  },\n  \"legacy_migrations\": {\n    \"projects\": [\n      \"seeded-legacy.jsonc\"\n    ]\n  },\n  \"[mpd]\": {\n    \"codegraph\": {\n      \"enabled\": false\n    }\n  }\n}\n",
+      "mpd_tree_created": []
+    },
+    {
+      "name": "b2-foreign-codex-block-inert",
+      "mode": "codex-disabled",
+      "expectation": "NOT the disabled wording",
+      "tested_artifact": "/root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js",
+      "tested_sha256": "ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375",
+      "exit_code": 0,
+      "thrown": null,
+      "codegraph_disabled_by_config": false,
+      "skipped_hint": [
+        "CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN."
+      ],
+      "config_exists_after": true,
+      "config_bytes_before": 264,
+      "config_bytes_after": 264,
+      "config_rewritten": false,
+      "config_after": "// MPD configuration (seeded for probe)\n{\n  \"codegraph\": {\n    \"enabled\": true,\n    \"auto_provision\": false\n  },\n  \"legacy_migrations\": {\n    \"projects\": [\n      \"seeded-legacy.jsonc\"\n    ]\n  },\n  \"[codex]\": {\n    \"codegraph\": {\n      \"enabled\": false\n    }\n  }\n}\n",
+      "mpd_tree_created": []
+    },
+    {
+      "name": "b3-legacy-schema-still-validates",
+      "mode": "legacy-schema",
+      "expectation": "migration writes, $schema not re-emitted",
+      "tested_artifact": "/root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js",
+      "tested_sha256": "ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375",
+      "exit_code": 0,
+      "thrown": null,
+      "codegraph_disabled_by_config": false,
+      "skipped_hint": [
+        "CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN."
+      ],
+      "config_exists_after": true,
+      "config_bytes_before": 252,
+      "config_bytes_after": 252,
+      "config_rewritten": false,
+      "config_after": "// MPD configuration (seeded for probe)\n{\n  \"codegraph\": {\n    \"enabled\": true,\n    \"auto_provision\": false\n  },\n  \"legacy_migrations\": {\n    \"projects\": [\n      \"seeded-legacy.jsonc\"\n    ]\n  },\n  \"$schema\": \"https://example.invalid/omo.schema.json\"\n}\n",
+      "mpd_tree_created": []
+    },
+    {
+      "name": "b4-plain-migration-due",
+      "mode": "no-marker",
+      "expectation": "migration writes",
+      "tested_artifact": "/root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js",
+      "tested_sha256": "ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375",
+      "exit_code": 0,
+      "thrown": null,
+      "codegraph_disabled_by_config": false,
+      "skipped_hint": [
+        "CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN."
+      ],
+      "config_exists_after": true,
+      "config_bytes_before": 196,
+      "config_bytes_after": 253,
+      "config_rewritten": true,
+      "config_after": "// MPD configuration (seeded for probe)\n{\n  \"codegraph\": {\n    \"enabled\": true,\n    \"auto_provision\": false\n  },\n  \"legacy_migrations\": {\n    \"projects\": [\n      \"seeded-legacy.jsonc\"\n    ]\n  },\n  \"_migrations\": [\n    \"2026-07-codex-config-jsonc\"\n  ]\n}\n",
+      "mpd_tree_created": [
+        "config.jsonc.bak.2026-09-14T07-30-20-617Z"
+      ]
+    }
+  ]
+}

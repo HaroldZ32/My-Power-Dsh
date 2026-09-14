@@ -1,0 +1,28 @@
+{
+  "ok": false,
+  "sandbox": "/tmp/mpd-c2-nh46Xd",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": false,
+      "exit": 1
+    },
+    "state": {
+      "ok": false,
+      "stateAny": null
+    },
+    "ledger": {
+      "ok": false,
+      "rows": 0
+    },
+    "planFile": {
+      "ok": false
+    },
+    "commentCheck": {
+      "ok": true
+    }
+  }
+}

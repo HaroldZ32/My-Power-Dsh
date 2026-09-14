@@ -577,7 +577,14 @@ export async function spawnMember(ctx, config, selections, llmSelection, captain
             prompt: [{ type: 'text', text: memberWelcome(team, member.name) }],
             parent: captain,
             persona: memberPersona(team, member, stateDir, config.executionPrompt),
-            toolFilter: { deny: [...CAPTAIN_TOOL_NAMES] },
+//#region mpd-delta member-tool-deny-filter (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+            // The member's OWN restriction is merged on top of the captain-only denial:
+            // the read-only roster roles ship the same seven write-capable names the
+            // one-shot path uses (`READONLY_DENY`), carried as profile data. Without
+            // this a "read-only" member in a TEAM still had write/edit/bash — measured
+            // from inside a member session, whose own probe ran `pwd` for real.
+            toolFilter: { deny: [...CAPTAIN_TOOL_NAMES, ...(member.toolDeny ?? [])] },
+//#endregion mpd-delta member-tool-deny-filter
             agentOptions: {
                 provider: llmSelection.provider,
                 model: llmSelection.model,

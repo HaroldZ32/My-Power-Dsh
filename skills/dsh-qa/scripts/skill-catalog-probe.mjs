@@ -45,6 +45,17 @@ function gate(lane) {
   process.exit(STRICT ? 1 : 0)
 }
 
+/** The names the harness's BUNDLED skill root discovers: a top-level directory bundle
+ *  `<name>/SKILL.md` or a top-level flat `<name>.md` (dsh-skill-filesystem, nested
+ *  `**&#47;SKILL.md` deliberately not discovered). Derived from the staged corpus on disk so
+ *  no case pins a magic corpus size that rots when the corpus legitimately changes. */
+function corpusSkillNames(root) {
+  return readdirSync(root, { withFileTypes: true })
+    .filter((e) => (e.isDirectory() && existsSync(join(root, e.name, "SKILL.md"))) || (e.isFile() && e.name.endsWith(".md")))
+    .map((e) => (e.isDirectory() ? e.name : e.name.slice(0, -3)))
+    .sort()
+}
+
 function selfTest() {
   const staged = join(repoRoot, "dist", "mpd-package")
   const marker = join(staged, "skills", "svn-master", "SKILL.md")
@@ -58,6 +69,10 @@ function selfTest() {
   gate("self-test")
   // Present-but-broken pack (AM3): the prerequisite exists but the staged corpus is incomplete.
   if (!existsSync(marker)) { console.error("[skill-catalog-probe self-test] FAIL: staged skill corpus incomplete (missing skills/svn-master/SKILL.md; run node scripts/pack-mpd.mjs)"); process.exit(1) }
+  // The derived corpus list is the case's expected-catalog operand: prove it is NOT
+  // vacuous (it must see the staged corpus and the loaded fixture) without pinning a size.
+  const corpusNames = corpusSkillNames(join(staged, "skills"))
+  if (corpusNames.length < 2 || !corpusNames.includes("svn-master") || !corpusNames.includes("dsh-qa")) { console.error("[skill-catalog-probe self-test] FAIL: corpus derivation does not see the staged corpus (expected svn-master + dsh-qa among " + corpusNames.length + ")"); process.exit(1) }
   console.log("[skill-catalog-probe self-test] ok: staged skill corpus present + provider wiring verified")
 }
 
@@ -77,7 +92,13 @@ async function runReal() {
   if (existsSync(settings)) cpSync(settings, join(sandbox, "settings.yaml"))
   const ws = join(sandbox, "ws")
   mkdirSync(ws, { recursive: true })
-  const env = { ...process.env, DSH_HOME: sandbox }
+  // AGENTS.md §7 — HOME is sandboxed too: the filesystem skill provider scans
+  // `<agentsHome>/skills` with `agentsHome = $DSH_AGENTS_HOME ?? ~/.agents`, so DSH_HOME
+  // alone still leaks the machine's own user skills into the boot (measured 2026-09-14:
+  // SKILLS=24 BUNDLED=18 NON_BUNDLED=<6 machine skills> -> roles-probe FAIL).
+  const userHome = join(sandbox, "userhome")
+  mkdirSync(userHome, { recursive: true })
+  const env = { ...process.env, DSH_HOME: sandbox, HOME: userHome }
   const staged = join(repoRoot, "dist", "mpd-package")
   const profileDir = join(sandbox, "profiles", "t")
   mkdirSync(profileDir, { recursive: true })
@@ -122,13 +143,20 @@ async function runReal() {
   const catalog = /\[roles-probe\] SKILLS=(\d+) BUNDLED=(\d+)/.exec(out)
   const fixture = /\[roles-probe\] SKILL_FIXTURE=(\w+) name=(\S+) base=(\S+) bytes=(\d+)/.exec(out)
   const installedReal = realpathSync(installedBundle)
+  // The expected count is DERIVED from the corpus this staged pack ships, never a
+  // magic number: the old hard-coded floor (`>= 20`) rotted silently while the corpus
+  // legitimately shrank (RTL trees extracted, then the cross-agent session-finder skill
+  // pruned by the DSH-only cleanup: 21 -> 19 -> 18).
+  const corpusRoot = join(staged, "skills")
+  const expectedSkills = corpusSkillNames(corpusRoot).length
   steps.catalog = {
     ok: /roles-probe\] PASS/.test(out)
-      && catalog !== null && Number(catalog[1]) >= 20 && Number(catalog[2]) >= 20
+      && catalog !== null && Number(catalog[1]) === expectedSkills && Number(catalog[2]) === expectedSkills
       && fixture !== null && fixture[1] === "ok" && fixture[2] === "svn-master"
       && String(fixture[3]).startsWith(installedReal) && Number(fixture[4]) > 100,
     total: catalog ? Number(catalog[1]) : null,
     bundled: catalog ? Number(catalog[2]) : null,
+    expected: expectedSkills,
     fixture: fixture ? { state: fixture[1], name: fixture[2], base: fixture[3], bytes: Number(fixture[4]) } : null,
     exit: live.status,
   }

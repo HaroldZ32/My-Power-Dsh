@@ -258,7 +258,7 @@
             - mpd
           name: MPD Default
           approval: required
-        # The OMO-origin agents become teammate instantiation templates for the
+        # The specialists become teammate instantiation templates for the
         # adopted dsh-agent-teams plugin (reusing its architecture + Web GUI).
         # One named profile `mpd` holds the full normal-named roster and
         # `taskPlanning: captain` means only the roster is fixed: the captain
@@ -266,7 +266,7 @@
         # /agent-teams --profile mpd <goal> instantiates the roster explicitly.
         profiles:
           mpd:
-            description: "The OMO-origin specialist roster surfaced as normal-named teammate templates — captain-planned (roster only; the captain designs the DAG during the staged plan)."
+            description: "The specialist roster surfaced as normal-named teammate templates — captain-planned (roster only; the captain designs the DAG during the staged plan)."
             protocol: "Read-only members (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) take requirements/review/analysis tasks only and never edit files. Workers (Senior Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) take implementation/verification/integration. The captain leads, designs the DAG, and integrates results. Workmate reuse: before delegating a role task, consult mpd_workmate_list / mpd_workmate_match(task); if a workmate note matches well, delegate to that workmate (member name = workmate name, so its persona/memory are injected), otherwise initialize a fresh workmate with mpd_workmate_init — never force a weak note match."
             taskPlanning: captain
             # fallback.provider is ALWAYS deepseek-official (never the bare
@@ -288,12 +288,21 @@
                 model: deepseek-v4-flash
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Read-only architecture advisor. You advise, others execute — never edit files. Favor simplicity and existing patterns; give one clear recommendation with concise rationale and evidence."
+                # Read-only members are MECHANICALLY restricted, not just instructed: these
+                # names are the same seven the one-shot roster path denies
+                # (mpd-roles-plugin / mpd-workmate-plugin READONLY_DENY), carried as profile
+                # data because the adopted plugin cannot import across packages. Without
+                # them a "read-only" member in a team kept write/edit/bash (measured
+                # 2026-09-14: a member's own session ran `pwd` for real).
+
+                toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
               - name: Researcher
                 role: code / open-source evidence search
                 provider: deepseek-official
                 model: deepseek-v4-flash
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Read-only researcher. Gather evidence from the codebase, AST/LSP and web sources; cite file:line and URLs; never edit files or invent findings."
+                toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
               - name: Planner
                 reasoning_effort: max
                 role: planning / task decomposition
@@ -301,12 +310,14 @@
                 model: deepseek-v4-flash
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Read-only planner. Produce decision-complete, step-ordered plans with a checklist; never implement."
+                toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
               - name: Explorer
                 role: read-only codebase exploration
                 provider: deepseek-official
                 model: deepseek-v4-flash
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Read-only explorer. Answer with evidence and absolute file paths; never edit files."
+                toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
               - name: Reviewer
                 reasoning_effort: max
                 role: correctness / risk review
@@ -320,12 +331,14 @@
                 model: deepseek-v4-flash
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Read-only plan reviewer. Verify plans are executable and references valid; reject only true blockers; UI/UX critique only when explicitly asked; never edit files."
+                toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
               - name: Vision Analyst
                 role: image / diagram analysis
                 provider: deepseek-official
                 model: deepseek-v4-flash-vision-exp
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Read-only vision analyst. Describe screenshots/diagrams precisely; never edit files or load anything by path."
+                toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
               - name: Lead
                 reasoning_effort: max
                 role: orchestration / integration

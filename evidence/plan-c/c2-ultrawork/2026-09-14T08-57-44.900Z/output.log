@@ -1,0 +1,54 @@
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-c2-NcS1Ot/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+## Result
+
+**Status: `complete`** — but with a caveat about the tool call itself.
+
+`mpd_ultrawork` returned an error to me: `tool "mpd_ultrawork" returned invalid output: "value.planFile" must be a string`. The engine did **not** fail mid-run — it executed the work, wrote its state file, and only its *return payload* failed schema validation, because `planFile` is `null` in the state while the output schema demands a string. That's a genuine defect in the `plan=false` path (`null` should be `""` or optional). So the numbers below come from the state file plus my own independent re-verification, not from the tool's return value.
+
+**State file path:** `/tmp/mpd-c2-NcS1Ot/ws/.mpd/ulw/ulw-8f72f963/state.json`
+**Ledger:** `/tmp/mpd-c2-NcS1Ot/ws/.mpd/ulw/ulw-8f72f963/ledger.jsonl`
+
+**Rounds:** the cap `rounds: 2` is recorded, and `.mpd/mpd.jsonc` sets `ulw.maxRounds: 2`. Actual execution waves = **1** (`wave: 1`, `fruitlessWaves: 0`) — the objective was satisfied on the first wave, so the second round was never needed.
+
+**Criteria states — all three `clean`:**
+
+| Key | Criterion | State | My re-verification |
+|---|---|---|---|
+| C1 | `utils.txt` exists as a regular file | clean | `test -f` PASS |
+| C2 | Exactly three lines: alpha, beta, gamma in order | clean | `wc -l` → 3; `sed -n l` → `alpha$ beta$ gamma$` |
+| C3 | Byte-exact: no CR/CRLF, no stray whitespace, no extra/blank lines | clean | `cmp` vs `alpha\nbeta\ngamma\n` → identical; sha256 `4fdbc441…2996` matches both; 0 CR bytes |
+
+I did not take the state file's word for it — I rebuilt the expected bytes and compared with `cmp` and sha256, which is what the C3 evidence claims.
+
+**One thing to flag honestly:** the verification gate was `skipped`, per the ledger line `{"lane":"verification","verdict":"skipped","detail":"no plan file or light tier without strict review"}`. That is the documented behaviour for light tier without `strictReview` — it is not a failure, but it does mean the thorough C1–C3 evidence above was gathered by the execution round itself rather than by an independent reviewer. My `cmp`/`sha256` pass is an independent check layered on top, so the conclusion holds regardless.
+dsh: reasoning:
+The tool returned an invalid output error. It seems there's a bug where planFile isn't a string when plan=false. Let me check the state directory to see what happened.
+
+Let me look at the workspace for .mpd/ulw state.
+dsh: reasoning:
+Interesting — utils.txt already exists (created at 16:57). Let me check state.json and ledger.jsonl and utils.txt content.
+
+Note there may be a pre-existing utils.txt. Let me read it.
+dsh: reasoning:
+So the run actually completed successfully — the workspace now has utils.txt with exactly alpha\nbeta\ngamma\n. The state.json shows status complete, 3 criteria all clean, rounds 2 (maxRounds=2 configured; but how many rounds were actually used? state.json has "rounds": 2 which per config is maxRounds. Hmm — need to determine actual rounds used. The state has "wave": 1. Let's check if there's a rounds-executed field. The tool signature said "rounds" is... let me re-read the tool description: "Run the fixed ultrawork discipline: ... execution rounds (fresh child per round...) ... State + ledger under .mpd/ulw/<id>." The result shape "B3-shaped result" mentions status, rounds, criteria, statePath.
+
+The tool errored because planFile is null but the schema required a string. So the underlying run succeeded; only the returned payload failed validation. The state file has "rounds": 2 — likely this echoes the configured maxRounds, and "wave": 1 indicates one execution wave actually happened. I should report honestly: rounds limit = 2, waves executed = 1.
+
+Let me verify the file independently and confirm no other state files exist (only one run id). Also verify byte-exact again myself, since I should not just trust the state file. I already did od -c: alpha\nbeta\ngamma\n — 17 bytes, correct.
+
+Let me also double-check there's exactly one ulw run dir and confirm planFile null / no plan file, and check .mpd/mpd.jsonc for the ulw config. Also verify criteria vs actual: C1 regular file yes, C2 exactly 3 lines, C3 byte-exact no CR.
+
+Let me run an independent verification pass.
+dsh: reasoning:
+Everything confirmed. Now report:
+
+- Status: complete
+- Rounds: maxRounds=2 configured; actual execution waves = 1 (wave: 1, fruitlessWaves: 0). state.json "rounds": 2 = the configured cap. I should be honest and distinguish.
+- Criteria states: C1 clean, C2 clean, C3 clean
+- State file path: /tmp/mpd-c2-NcS1Ot/ws/.mpd/ulw/ulw-8f72f963/state.json
+- Ledger: .../ledger.jsonl (verification lane skipped — light tier, no plan file, strictReview false)
+- Note the tool-call error: the engine did the work and wrote state, but its return payload violated its own schema because planFile was null (not a string). So I'm reporting from the state file + my own re-verification. Worth flagging as a defect.
+
+Keep it concise.

@@ -1,0 +1,4 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=marker binary=/root/dshProj/my-power-dsh/node_modules/.bun/@colbymchenry+codegraph@1.5.0/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/root/dshProj/my-power-dsh/.qa-reloc/ws-rewire
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/.qa-reloc/mpd-pkg-relocated/skills (provider mpd-bundle, bundle 0.3.2)
+dsh web: http://127.0.0.1:3198/?token=tb7G2S3_c_4DRi_K6BNucvIU50Mar5yNl4Un-NijTJI

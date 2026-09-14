@@ -9,8 +9,7 @@ metadata:
 
 QA skill: verify my-power-dsh bundle/plugin behavior with the real `dsh` binary in a **strictly isolated**
 sandbox (temp DSH_HOME + sandbox HOME + sandbox workspace cwd — see Hard rule 1), writing evidence to
-`evidence/<domain>/<slug>/`. Structure mirrors upstream
-the upstream host QA skills.
+`evidence/<domain>/<slug>/`. Structure mirrors the upstream project's QA skills.
 
 ## Hard rules
 
@@ -24,7 +23,12 @@ the upstream host QA skills.
    `assertSessionsSandboxed(dshHome, sandbox)` — no `<DSH_HOME>/sessions/<projectKey(realCwd)>` key
    (e.g. `--root-dshProj-my-power-dsh--`) may exist. Roots that otherwise leak into the checkout:
    `.mpd/team`, `.mpd/memory`, `.mpd/boulder.json`, `.mpd/hashline-files.json`, `.mpd/verif`,
-   `.mpd/plans`, `.mpd/ulw`, `.codegraph`.
+   `.mpd/plans`, `.mpd/ulw`, `.codegraph`. **Sandbox `HOME` too whenever a case reads the SKILL
+   catalog**: the filesystem provider's user roots are `<DSH_HOME>/skills` (`user-dsh`) and
+   `<agentsHome>/skills` (`user-agents`) with `agentsHome = $DSH_AGENTS_HOME ?? ~/.agents`, so a case
+   that isolates only `DSH_HOME` still serves the machine's own user skills — measured 2026-09-14:
+   `SKILLS=24 BUNDLED=18 NON_BUNDLED=<6 machine skills>` made the roles probe FAIL while `user-dsh`
+   was correctly empty.
 2. **Provability**: assert that plugin rows are mounted (substring/structure assertions on
    `dsh --dump-config`) or that a real call succeeded (tool/skill/MCP executed and result asserted).
 3. **Evidence**: each case writes `result.json` + raw output to
@@ -46,7 +50,7 @@ corpus and its golden fixtures have been extracted out of this repository.
 | mount-assert | bundle mount | --dump-config contains/lacks expected plugin rows | P0 |
 | dual-track-smoke | DeepSeek dual-track | deepseek-official and pi-ai deepseek routes both serve a real headless task; boots the DEV-FLAVOR patch (packed `@mpd-dsh/mpd/...` operand rewritten to checkout-absolute paths) so the boot really reaches the model step instead of dying `ERR_MODULE_NOT_FOUND @mpd-dsh/mpd` (that pre-existing boot failure made the sandbox-workspace isolation this case carries INERT) | P1 |
 | mcp-call | MCP | mcp__ast_grep__*/mcp__lsp__* callable with server responses; sandboxed DSH_HOME **and HOME** (plugin state `~/.mpd` never touches the real home), `settings.yaml` copied alongside `.credentials.yaml` (AGENTS.md §7), and NO `MPD_DSH_*_CLI` / `MPD_AST_GREP_SG_PATH` / `MPD_CODEGRAPH_BIN` pin pre-set — a caller pin wins in the B8 launcher and would mask a broken operand | P3 |
-| preset-register | roster | mpd main preset resolves FROM THE BUNDLE-SERVED ROOT (PRESET_PATH under the presets dir, trust system) with no $DSH_HOME/.agent-presets copy + mpdRoles serves the 11-role OMO roster; the dev-flavor rewrite consumes the WHOLE packed MCP operand (checkout-absolute launcher paths, no `<baseUrl>/node_modules/<abs-repo>` splice) and pre-sets no CLI/binary pin, so the boot proves the real B8 launcher chain resolves the MCP rows | P4/refactor |
+| preset-register | roster | mpd main preset resolves FROM THE BUNDLE-SERVED ROOT (PRESET_PATH under the presets dir, trust system) with no $DSH_HOME/.agent-presets copy + mpdRoles serves the 11-role specialist roster; the dev-flavor rewrite consumes the WHOLE packed MCP operand (checkout-absolute launcher paths, no `<baseUrl>/node_modules/<abs-repo>` splice) and pre-sets no CLI/binary pin, so the boot proves the real B8 launcher chain resolves the MCP rows | P4/refactor |
 | codegraph-smoke | codegraph | binary resolve -> init -> mcp__codegraph__explore real call. **This case pins `MPD_CODEGRAPH_BIN` to the toolchain binary BY DESIGN** — it exists to exercise that binary/init/tool-call path, so its green is NOT evidence that the bundle's own B8 resolution chain works (that is mcp-call's and the launcher-resolver tests' job). Do not remove the pin as if it were a masked defect | P4+ |
 | agent-teams-adopt | agent-teams adopt | installer writes bundle dep + stateDir override (.mpd/team); composed config contains the row; real headless AgentTeams run creates team state + archives on delete; web profile serves /plugins/dsh-agent-teams/state | Plan C/C1 |
 | ultrawork-smoke | ultrawork | plan gate, execution rounds, verification gate, quality-gate ledger in one real headless session | Plan C/C2 |

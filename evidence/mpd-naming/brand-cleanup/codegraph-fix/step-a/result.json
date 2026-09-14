@@ -1,0 +1,183 @@
+{
+  "step": "A",
+  "taskId": "t5",
+  "attemptId": "bd10e6fe-cf1d-40eb-ad21-14bfb79ddd04",
+  "member": "Junior Engineer",
+  "subject": "codegraph scrub casualty + OMO-worded user-visible hints",
+  "artifacts": {
+    "primary": "packages/mpd-mcp-codegraph/dist/serve.js",
+    "sha256_before": "4601ace8dbe0e15da2b122a60cecd4f91a6825ac5a3099227db3ddcf96913858",
+    "sha256_after": "451366faa1ecdf64536eb4e804e6da30f4137632710b79e5e35d37ddb15bee44"
+  },
+  "changesApplied": [
+    {
+      "id": "A-fix",
+      "line_before": 8085,
+      "line_after": 8085,
+      "before": "let content = EMPTY_OMO_CONFIG;",
+      "after": "let content = EMPTY_MPD_CONFIG;",
+      "why": "The declaration at line 7979 is EMPTY_MPD_CONFIG; the reader was the only dangling identifier in the file (measured: 1 occurrence)."
+    },
+    {
+      "id": "A-hint-disabled",
+      "line_before": 9716,
+      "line_after": 9716,
+      "before": "CodeGraph MCP skipped: disabled by OMO SOT config. Set [codex].codegraph.enabled=true to enable it.",
+      "after": "CodeGraph MCP skipped: disabled by .mpd config. Set codegraph.enabled=true to enable it.",
+      "why": "User-visible stderr hint carried the OMO brand token and pointed at the foreign harness block."
+    },
+    {
+      "id": "A-hint-excluded",
+      "line_before": 9718,
+      "line_after": 9718,
+      "before": "CodeGraph MCP skipped: project excluded by OMO CodeGraph policy.",
+      "after": "CodeGraph MCP skipped: project excluded by the CodeGraph policy.",
+      "why": "User-visible stderr hint carried the OMO brand token."
+    }
+  ],
+  "acceptanceEvidence": {
+    "check": {
+      "command": "node --check packages/mpd-mcp-codegraph/dist/serve.js",
+      "exitCode": 0,
+      "danglingIdentifierOccurrencesBefore": 1,
+      "danglingIdentifierOccurrencesAfter": 0,
+      "declarationAndReaderAgree": "7979 declares EMPTY_MPD_CONFIG; 8085 reads EMPTY_MPD_CONFIG"
+    },
+    "brandScanInArtifact": {
+      "command": "grep -n 'OMO SOT\\|OMO CodeGraph\\|OMO ' packages/mpd-mcp-codegraph/dist/serve.js",
+      "matches": 0,
+      "note": "No OMO-worded user-visible text remains in the artifact. Other OMO-origin tokens inside this file (HARNESS_IDS values, MIGRATION_ID, getCodexMpdConfig naming, the schema-block keys) belong to STEP B and are deliberately untouched here."
+    }
+  },
+  "cause": {
+    "scopedFinding": "The dangling read was real and is fixed, but the STARTUP MIGRATION PATH STILL DOES NOT RUN. The driver below proves two independent blockers fire before the migration can complete.",
+    "driver": "raw/driver.mjs",
+    "method": "One probe implementation runs the shipped artifact and byte-identical variants (only the named substitution differs, verified by sha256) against a sandbox HOME + sandbox project, seeding ~/.mpd/config.jsonc with a legacy document. MPD_CODEGRAPH_BIN is pinned to a path-looking sentinel so nothing is provisioned and no network path is entered.",
+    "variants": [
+      {
+        "name": "v1-shipped-with-trigger",
+        "artifact": "shipped",
+        "result": "no write; abort is swallowed; config byte-identical (223 -> 223), no files created",
+        "blocker": "assertSafeSourcePaths: 'Migration source is protected: <home>/.mpd/config.jsonc' (executePlan adds plan.targetPath to protectedPaths, and the plan's source IS that path, so the plan aborts before any transform)"
+      },
+      {
+        "name": "v2-rename-only-with-trigger",
+        "artifact": "shipped + EMPTY_MPD_CONFIG rename",
+        "result": "no write; config byte-identical (223 -> 223), no files created",
+        "blocker": "same protected-source abort — the rename alone changes nothing observable"
+      },
+      {
+        "name": "v3-rename-only-no-trigger",
+        "artifact": "same as v2",
+        "result": "no write (202 -> 202)",
+        "blocker": "protected-source abort"
+      },
+      {
+        "name": "v3b-rename-only-instrumented",
+        "artifact": "v2 + stderr instrumentation on the module's own catch",
+        "result": "captured 'MigrationTransactionError: Migration source is protected: <home>/.mpd/config.jsonc' at assertSafeSourcePaths",
+        "significance": "This is the run that makes the ReferenceError unobservable: on this path the guard throws first."
+      },
+      {
+        "name": "v4-protection-carveout-no-trigger",
+        "artifact": "v2 + targetPath removed from protectedPaths",
+        "result": "migration completes internally (status 'migrated', target written and observable at exit) BUT the target is then destroyed: config.jsonc gone, only config.jsonc.bak.<stamp> + migration-backup-.../.mpd/config.jsonc remain",
+        "blocker": "second defect — executePlan writes the target and then iterates journal backupMoves, which RENAMES the plan's own source (= targetPath) to the backup, deleting the just-migrated config"
+      },
+      {
+        "name": "v5-remedy-b-no-trigger",
+        "artifact": "v4 + 'if (move.from === plan.targetPath) continue;' in the backup-move loop",
+        "result": "MIGRATION ACTUALLY RUNS: config.jsonc exists after the run, 202 -> 383 bytes, rewritten with the migration marker and $schema; backup config.jsonc.bak.<stamp> created",
+        "evidence": "raw/work/v5-remedy-b-no-trigger.json (config_after, mpd_tree_created, config_exists_after=true)"
+      }
+    ],
+    "statement": "The one-token rename is a genuine scrub-casualty fix but NOT sufficient to make the migration run. The smallest byte set that makes it run is three substitutions: the rename, removing plan.targetPath from protectedPaths, and skipping the backup-move of the target itself. The captain RULED that all three land inside t5 (acceptance #2 requires execution), so the two corrections were landed on attempt 2 — see stepACompletion below."
+  },
+  "stepACompletion": {
+    "attempt": 2,
+    "authorization": "Captain ruling — both corrections authorized INSIDE t5 (t5 acceptance #2 requires the previously dead path to EXECUTE, and the v1-v5 causality proved that is impossible without them, so they are in-scope by construction).",
+    "corrections": [
+      { "id": "A-ii-first", "site": "executePlan backup-move loop (~8776)", "after": "if (move.from === plan.targetPath) continue;", "why": "The additive migration rewrites its own target in place; relocating that very document afterwards DELETES the config the writer just produced. Landed FIRST so the tree never sat in the data-loss state." },
+      { "id": "A-i-second", "site": "executePlan protectedPaths (~8734)", "after": "new Set([migrationJournalPath(env), migrationLockPath(env)]) — plan.targetPath removed", "why": "The guard aborted the plan before any transform because the migration's own source IS its target." }
+    ],
+    "artifact_after_completion": "849653683a2e69329e33a6fed4e1ef2fef8f7391ffe8d0967260042f731bedeb",
+    "screen": {
+      "driver": "raw/drive-landed.mjs",
+      "artifact_under_test": "the landed artifact itself (no copies, no substitutions)",
+      "landed_migration_due": "sha 849653683a2e, config EXISTS after the run, 202 -> 383 bytes, REWRITTEN, created [config.jsonc.bak.<stamp>]",
+      "landed_already_migrated": "sha 849653683a2e, unchanged (223 -> 223), created [] — the re-run guard still works",
+      "control_both_corrections_reverted": "sha 451366faa1ec, unchanged (202 -> 202), created [] — proves the screen measures the two corrections and not something incidental",
+      "evidence": "raw/20-step-a-completion-proof.json"
+    },
+    "rewritten_document_survives": "the config keeps its keys, gains the migration marker, and a .bak sibling is created; the file is NOT relocated",
+    "gate": { "command": "node scripts/verify-vendor.mjs", "exitCode": 0, "evidence": "raw/21-verify-vendor-step-a-complete.log" },
+    "BEHAVIOUR_CHANGE_FOR_T9_T10_AND_OWNER": "After a migration the config now STAYS at ~/.mpd/config.jsonc (rewritten in place, plus a timestamped .bak sibling) instead of being relocated into migration-backup-<stamp>-legacy-config/.mpd/. This is a deliberate semantic change required to make the migration both execute and not destroy the user's config; the captain is carrying the call to the owner.",
+    "scopeNote": "Both corrections are outside t5's frozen nonGoals but INSIDE its acceptance #2 by the captain's construction ruling.",
+    "note": "STEP B later removed the `$schema` line from the rewritten document (see step-b/result.json B7/B8), so the artifact's final hash is ab287cdc058f031c…."
+  },
+  "vendorLockRepin": {
+    "file": "VENDOR_LOCK.json",
+    "codegraph": {
+      "before": "4601ace8dbe0e15da2b122a60cecd4f91a6825ac5a3099227db3ddcf96913858",
+      "after": "451366faa1ecdf64536eb4e804e6da30f4137632710b79e5e35d37ddb15bee44"
+    },
+    "skills": {
+      "waveLevelRepin": true,
+      "why": "Carried by t5 on captain ruling: t2 deleted skills/coding-agent-sessions/ (331 -> 297), which made verify-vendor RED and the agent-teams-messaging self-test RED, while the healing re-pin lived in t6 (which runs after t5) — unsatisfiable ordering. AGENTS.md §11 pairing still holds because the captain lands the wave as ONE commit.",
+      "before": { "fileCount": 331, "treeSha": "c1f424fef1a283bcbfb1167fd05e18562bae50d4e0a897871596799642259e06" },
+      "after": { "fileCount": 297, "treeSha": "1d277907045ef1d18fd390b5db1a2ce537c38e7692732ee022ca5a7ea75402c1" },
+      "settled": "Two measurements 20 s apart returned the identical count and treeSha (raw/14-skills-settle.log); the hash was then written.",
+      "notASecondSkillsWriter": "No byte under skills/** was written by this task; only the lock was re-pinned."
+    },
+    "lockedAt": { "before": "2026-09-09T10:20:20.000Z", "after": "2026-09-14T07:20:00.000Z" },
+    "gate": {
+      "command": "node scripts/verify-vendor.mjs",
+      "exitCode": 0,
+      "evidence": "raw/15-verify-vendor.log — PASS, 'asset OK: skills 297 files', 'asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files'"
+    }
+  },
+  "dependentCaseFlip": {
+    "command": "node skills/dsh-qa/scripts/agent-teams-messaging.mjs --self-test",
+    "before": "exit 1 — FAIL: VENDOR_LOCK skills asset is stale: lock=331/c1f424fef1a2 tree=297/4299afc4241a",
+    "after": "exit 0 — ok: ... VENDOR_LOCK skills pin current (297 files/1d277907045e)",
+    "evidence": "raw/16-messaging-selftest-postlock.log"
+  },
+  "deliberatelyNotRenamed": [
+    {
+      "identifier": "MIGRATION_ID = \"2026-07-codex-config-jsonc\"",
+      "line": 8826,
+      "reason": "DOCUMENTED FLOOR — persisted migration state, not branding. It is (1) appended to the user's own ~/.mpd/config.jsonc `_migrations` marker (markerValue 8305-8313) and is the re-run guard (hasMigrationMarker 8231, plan decision 8236, journal resume 8628); (2) stored as `migrationId` in ~/.mpd/.migration-journal.json (8400/8433/8741/8759); (3) the backup-name fallback via encodeURIComponent(migrationId) (8681-8682). Renaming it would make every already-migrated user look unmigrated and re-run a migration on their live config.",
+      "t6AllowlistEntryNeeded": true
+    }
+  ],
+  "commandsRun": [
+    { "command": "node --check packages/mpd-mcp-codegraph/dist/serve.js", "status": "passed", "exitCode": 0 },
+    { "command": "node scripts/verify-vendor.mjs", "status": "passed", "exitCode": 0, "evidence": "raw/15-verify-vendor.log" },
+    { "command": "node evidence/mpd-naming/brand-cleanup/codegraph-fix/step-a/raw/driver.mjs <work> <out>", "status": "passed", "exitCode": 0, "evidence": "raw/02-step-a-causality.json" },
+    { "command": "node skills/dsh-qa/scripts/agent-teams-messaging.mjs --self-test", "status": "passed", "exitCode": 0, "evidence": "raw/16-messaging-selftest-postlock.log" }
+  ],
+  "openDecisionForCaptain": [
+    "STEP A's stated acceptance ('the previously dead path now executes') is NOT satisfiable by the scoped one-token fix alone. Two further corrections are needed and both change migration semantics, so they need an explicit ruling: (i) drop plan.targetPath from assertSafeSourcePaths' protectedPaths (executePlan 8734); (ii) skip the backup-move when move.from === plan.targetPath (8776-8781). Evidence for the combined remedy: variant v5 in raw/02-step-a-causality.json.",
+    "Consequence of landing (i)+(ii): after migration the config stays at ~/.mpd/config.jsonc (rewritten) and a timestamped .bak sibling is created, instead of the config being relocated into migration-backup-<stamp>-legacy-config/.mpd/. That is a behaviour change outside the codegraph brand scope and outside t5's frozen description, hence the report rather than a silent land.",
+    "Also needed before 'lands green': the staged bundle for the codegraph-smoke gate (dist/mpd-package is gitignored; codegraph-smoke exits 1 with 'missing staged bundle' on the pristine tree, so that RED is environmental, not caused by this change)."
+  ],
+  "readerJudgmentCalls": [
+    "blockedAtFirstBlockingError: true — only the dangling identifier was fixed and the two named user-visible hints. The two additional corrections below were NOT landed because they change migration semantics and are outside this task's frozen description.",
+    "scopeOfTheLand: the rename plus the disabled/enabled hint rewording only. STEP B (generic [mpd] retarget, generic control-key stripping, $schema emission + MPD_SCHEMA_URL removal, mpd-codex:/getCodexMpdConfig/codexCodegraphConfig renames) was NOT started, because STEP A could not meet its own acceptance and the task ordering treats STEP A as its own commit.",
+    "stepBIsUnstartedNotFailed: every STEP B finding already measured (both hardcoded enumerations, the [mpd]-read-before-strip order, the single $schema consumer, the MIGRATION_ID floor) is in the pre-flight messages to the captain and is re-usable as-is."
+  ],
+  "smokeGate": {
+    "command": "bun skills/dsh-qa/scripts/codegraph-smoke.mjs",
+    "preChange": "exit 1 — '[codegraph-smoke] missing staged bundle; run node scripts/pack-mpd.mjs first' (environmental)",
+    "afterStaging": "exit 1 — the staged bundle boots but the harness headless profile cannot import loader entry mpd-team-compact: ERR_MODULE_NOT_FOUND for @mpd-dsh/mpd/packages/mpd-team-compact-plugin/dist/index.js",
+    "attribution": "PRE-EXISTING PACKAGING GAP, not this change: packages/mpd-team-compact-plugin/ exists in the repo and the bundle patch names it at packages/mpd-bundle/cordis.patch.yml:191-192, but scripts/pack-mpd.mjs never names it, so the staged dist/mpd-package/packages/ tree omits it. The gate exercises a packed bundle boot, so it never touches this task's bytes.",
+    "evidence": ["raw/18-codegraph-smoke.log", "raw/18b-codegraph-smoke-boot-failure.log", "raw/18c-codegraph-smoke-diagnosis.txt"],
+    "stagingNote": "t5 ran `node scripts/pack-mpd.mjs` (exit 0) to give the gate a subject (raw/17-pack-staging.log) and then removed the staged tree, because a staged package missing mpd-team-compact is a broken artifact for whoever packs next; re-run the pack after the packaging gap is fixed."
+  },
+  "scopeDiscipline": {
+    "inScopeTouched": ["packages/mpd-mcp-codegraph/dist/serve.js", "VENDOR_LOCK.json", "evidence/mpd-naming/brand-cleanup/codegraph-fix/"],
+    "outOfScopeTouched": [],
+    "readmesUnchanged": "packages/mpd-mcp-codegraph/README.md and README.zh-CN.md contain zero codex/omo occurrences (measured), so both stay byte-identical — no bilingual edit needed.",
+    "thirdPartyUntouched": ["packages/mpd-mcp-codegraph/NOTICE", "packages/mpd-mcp-codegraph/NODE-RUNTIME-LICENSES.md", "packages/mpd-mcp-codegraph/LICENSE"]
+  }
+}

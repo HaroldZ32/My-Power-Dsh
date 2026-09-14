@@ -13,7 +13,7 @@
 // The real home is never touched (HOME=<sandbox>).
 // Evidence -> evidence/plan-f/workmate-team-member/<ts>/. --self-test is offline.
 import { spawnSync } from "node:child_process"
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
+import { cpSync, existsSync, readdirSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { homedir, tmpdir } from "node:os"
 import { join, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -50,6 +50,12 @@ function runReal() {
   const creds = join(homedir(), ".dsh", ".credentials.yaml")
   if (!existsSync(creds)) fail("missing credentials at " + creds)
   const realWm = join(homedir(), ".mpd", "workmate")
+  // DEFECT (measured 2026-09-14): this case asserted the REAL workmate library must
+  // NOT exist. That is false on any machine that ever used one — this repo's own home
+  // already has ~/.mpd/workmate/index.json — so the case failed for the environment,
+  // not for the change. The invariant that matters is that the case does not TOUCH it:
+  // snapshot the listing now and require it unchanged at the end.
+  const realWmBefore = existsSync(realWm) ? readdirSync(realWm).sort().join(",") : null
   const ts = new Date().toISOString().replaceAll(":", "-")
   const outDir = join(repoRoot, "evidence", "plan-f", "workmate-team-member", ts)
   mkdirSync(outDir, { recursive: true })
@@ -58,6 +64,14 @@ function runReal() {
   const ws = join(wmHome, "ws")
   mkdirSync(ws, { recursive: true })
   cpSync(creds, join(dshHome, ".credentials.yaml"))
+  // AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's
+// model chain is configured through gateway providers (llm-pi-ai), so without it the
+// sandbox falls back to the base `deepseek-official` route and the boot dies with
+// MISSING_CREDENTIAL (measured 2026-09-14: 8 live cases red for exactly this; their
+// `--self-test` stayed green because it never boots). Same idiom as the cases that
+// already passed.
+  const qaSettings = join(homedir(), ".dsh", "settings.yaml")
+  if (existsSync(qaSettings)) cpSync(qaSettings, join(dshHome, "settings.yaml"))
   writeFileSync(join(ws, "README.md"), "# my-power-dsh\nworkmate team-member e2e workspace\n")
   const env = { ...process.env, DSH_HOME: dshHome, HOME: wmHome }
   const steps = {}
@@ -85,7 +99,8 @@ function runReal() {
   // the member's mpd_workmate_reflect) and/or uses >= 2.
   steps.reflect = { ok: tokenCount >= 2 || meta.uses >= 2, tokenCount, uses: meta.uses }
   steps.files = { ok: existsSync(join(alice, "meta.json")) && existsSync(join(alice, "persona.md")) && existsSync(join(alice, "memory.md")), memory: memory.slice(0, 200) }
-  steps.isolation = { ok: !existsSync(realWm), realWm }
+  const realWmAfter = existsSync(realWm) ? readdirSync(realWm).sort().join(",") : null
+  steps.isolation = { ok: realWmAfter === realWmBefore, realWm, before: realWmBefore, after: realWmAfter }
 
   const allOk = Object.values(steps).every((s) => s.ok)
   writeFileSync(join(outDir, "result.json"), JSON.stringify({ ok: allOk, dshHome, wmHome, steps }, null, 2))

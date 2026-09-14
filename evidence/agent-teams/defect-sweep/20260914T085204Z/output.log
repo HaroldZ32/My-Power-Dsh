@@ -1,0 +1,44 @@
+### DEFECT SWEEP 2026-09-14T08:52:04Z
+
+## bun test packages/mpd-agent-teams-plugin
+
+ 206 pass
+ 0 fail
+ 1448 expect() calls
+Ran 206 tests across 54 files. [4.90s]
+
+## bun run typecheck
+$ tsgo --noEmit
+exit=0
+
+## node scripts/patch-agent-teams-fixes.mjs --check
+[patch-agent-teams-fixes] already applied: 40 mpd delta region(s) across 9 adopted file(s)
+exit=0
+
+## node scripts/verify-vendor.mjs
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+exit=0
+
+## bun run test:qa (self-tests)
+[agent-teams-messaging] FAIL: VENDOR_LOCK skills asset is stale: lock=297/1d277907045e tree=297/c088a0b92ef0 (re-pin in the same commit, AGENTS.md §9)
+[test:qa] FAILED: skills/dsh-qa/scripts/agent-teams-messaging.mjs
+error: script "test:qa" exited with code 1
+exit=0
+
+### FINAL SWEEP (after all defect fixes) 2026-09-14T08:54:06Z
+
+## bun test packages/mpd-agent-teams-plugin
+ 206 pass
+ 0 fail
+ 1448 expect() calls
+Ran 206 tests across 54 files. [4.92s]
+
+## bun run test:qa
+[workmate-team-member self-test] ok: 6 checks
+[test:qa] all self-tests passed
+
+## node scripts/verify-vendor.mjs
+[verify-vendor] PASS
+
+## delta guard
+[patch-agent-teams-fixes] already applied: 40 mpd delta region(s) across 9 adopted file(s)

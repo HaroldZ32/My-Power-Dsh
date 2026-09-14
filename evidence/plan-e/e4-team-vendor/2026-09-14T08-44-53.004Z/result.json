@@ -1,0 +1,40 @@
+{
+  "ok": false,
+  "sandbox": "/root/dshProj/my-power-dsh/.qa-reloc/home-rewire",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0,
+      "leaked": false
+    },
+    "resolution": {
+      "ok": true,
+      "out": "MAINCODE_OK /root/dshProj/my-power-dsh/.qa-reloc/mpd-pkg-relocated/packages/mpd-agent-teams-plugin/package.json\nPKG_ABSENT"
+    },
+    "live": {
+      "ok": false,
+      "exit": 1
+    },
+    "bootstrap": {
+      "ok": true
+    },
+    "installedTexts": {
+      "ok": true,
+      "files": 3
+    },
+    "noHomeCopy": {
+      "ok": true,
+      "skills": [],
+      "presets": []
+    },
+    "webRoute": {
+      "ok": false,
+      "status": 401,
+      "addExit": 0
+    }
+  }
+}

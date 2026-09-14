@@ -17,7 +17,9 @@ export const MAX_PROFILE_TASKS = 32;
 export const PROFILE_PROTOCOL_PROMPT_LIMIT = 240;
 const PROFILE_KEYS = ['description', 'protocol', 'executionPrompt', 'fallback', 'members', 'tasks', 'taskPlanning', 'reviewPolicy'];
 const REVIEW_POLICY_KEYS = ['requirementsMinRounds', 'requirementsMaxRounds', 'codeMaxRounds', 'maxRepairAttempts', 'requiredReviewers'];
-const MEMBER_KEYS = ['name', 'role', 'provider', 'model', 'reasoning_effort', 'executionPrompt', 'fallback'];
+//#region mpd-delta member-tool-deny-keys (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+const MEMBER_KEYS = ['name', 'role', 'provider', 'model', 'reasoning_effort', 'executionPrompt', 'fallback', 'toolDeny'];
+//#endregion mpd-delta member-tool-deny-keys
 const FALLBACK_KEYS = ['provider', 'model'];
 const TASK_KEYS = ['id', 'subject', 'description', 'assignee', 'dependencies'];
 /**
@@ -325,7 +327,12 @@ function normalizeMember(value, path, profileName) {
     if (provider !== undefined && model === undefined) {
         throw new Error(`profile member "${name}" sets provider without model`);
     }
-    return omitUndefined({ name, role, provider, model, reasoningEffort, executionPrompt, fallback });
+//#region mpd-delta member-tool-deny-parse (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+    return omitUndefined({ name, role, provider, model, reasoningEffort, executionPrompt, fallback,
+        // Inlined on purpose: the declaration and the use must live in ONE region so a
+        // partial heal can never leave this file calling an undeclared helper.
+        toolDeny: optionalStringList(raw['toolDeny'], `${path}.toolDeny`) });
+//#endregion mpd-delta member-tool-deny-parse
 }
 function normalizeFallback(value, path) {
     if (value === undefined)
@@ -563,6 +570,29 @@ function optionalNonEmptyString(value, path) {
     }
     return trimmed;
 }
+//#region mpd-delta member-tool-deny-helper (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/**
+ * An optional list of non-empty tool names (a member's read-only restriction).
+ * DEFECT (measured 2026-09-14): the `mpd` roster's six READ-ONLY members were
+ * restricted only by their `executionPrompt` ("never edit files") — the team-member
+ * spawn passed `toolFilter.deny = CAPTAIN_TOOL_NAMES` alone, so a "read-only" member
+ * in a team could still write, edit and run bash (its own session probe returned a
+ * real `pwd`). The roster's ONE-SHOT path already solves this with the exported
+ * `READONLY_DENY` list; this key carries the same seven names as profile data so the
+ * TEAM path is mechanically restricted too.
+ * @param value - the raw `toolDeny` entry.
+ * @param path - the config path used in error messages.
+ * @returns the normalized list, or undefined when absent.
+ */
+function optionalStringList(value, path) {
+    if (value === undefined)
+        return undefined;
+    if (!Array.isArray(value)) {
+        throw new Error(`${path} must be a list of tool names`);
+    }
+    return value.map((entry, index) => requiredNonEmptyString(entry, `${path}[${index}]`, `${path}[${index}] must not be empty`));
+}
+//#endregion mpd-delta member-tool-deny-helper
 function omitUndefined(value) {
     for (const key of Object.keys(value)) {
         if (value[key] === undefined)

@@ -1,0 +1,18 @@
+{
+  "source": "8c57e46",
+  "sourceDir": "packages/ast-grep-mcp",
+  "builtAt": "2026-09-14T07:04:05.074Z",
+  "build": [
+    "bun build src/cli.ts --outdir dist --target node --format esm"
+  ],
+  "externalDeps": {
+    "js-yaml": "js-yaml@5.3.0@@repo.huaweicloud.com@@@1",
+    "jsonc-parser": "jsonc-parser@3.3.1@@repo.huaweicloud.com@@@1",
+    "zod": "zod@4.4.3@@repo.huaweicloud.com@@@1"
+  },
+  "artifact": {
+    "file": "cli.js",
+    "sha256": "a9dc366596f0f6907d7b7f2ca85994f6182ccb1ecdeeea91e4e5e4bc1a943f98",
+    "bytes": 84639
+  }
+}

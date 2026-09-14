@@ -75,6 +75,14 @@ async function runReal() {
   mkdirSync(profile, { recursive: true })
   mkdirSync(userHome, { recursive: true })
   cpSync(creds, join(home, ".credentials.yaml"))
+  // AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's
+// model chain is configured through gateway providers (llm-pi-ai), so without it the
+// sandbox falls back to the base `deepseek-official` route and the boot dies with
+// MISSING_CREDENTIAL (measured 2026-09-14: 8 live cases red for exactly this; their
+// `--self-test` stayed green because it never boots). Same idiom as the cases that
+// already passed.
+  const qaSettings = join(homedir(), ".dsh", "settings.yaml")
+  if (existsSync(qaSettings)) cpSync(qaSettings, join(home, "settings.yaml"))
   const env = { ...process.env, DSH_HOME: home, HOME: userHome }
   const probePatch = join(sandbox, "probe.yml")
   // The probe overlay adds only the QA probe; the boot carries the FULL bundle
