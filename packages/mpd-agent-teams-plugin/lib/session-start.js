@@ -128,6 +128,15 @@ export const PLANS_DIR = join('.mpd', 'plans');
  * session, so this map stays bounded by live sessions.
  */
 const settledFor = new Set();
+/**
+ * Per-agent settlement for the interjection expiry SWEEP, keyed by agent id for the same
+ * reason as {@link settledFor}: `agent/pre-step` fires on EVERY step, but the sweep is a
+ * session-start concern. Without this guard the boundary statement ("expiry is evaluated
+ * at ... a session start") described something the code did not do — it ran on every
+ * pre-step. Running eagerly was harmless (idempotent + best-effort), but a comment that
+ * misdescribes its own trigger is exactly the kind of drift that later gets trusted.
+ */
+const sweptFor = new Set();
 /** Count distinct regex matches (case-insensitive, deduplicated by lowercased text). */
 function distinctMatches(text, pattern) {
     const seen = new Set();
@@ -571,6 +580,14 @@ export function installInterjectionExpirySweep(ctx, resolved) {
     ctx.on('agent/pre-step', async (payload, next) => {
         const decision = await next();
         try {
+            // ONCE PER SESSION, not per step: `agent/pre-step` fires for every step, but
+            // this sweep is a session-start concern (see the sweep guard's declaration).
+            const agentId = payload?.agent?.id;
+            if (typeof agentId === 'string' && agentId !== '') {
+                if (sweptFor.has(agentId))
+                    return decision;
+                sweptFor.add(agentId);
+            }
             // Resolve the workspace PER CALL from the session that is starting — never a
             // module-level const and never the process cwd alone (one host serves many
             // sessions with different workspaces; AGENTS.md §6 State).

@@ -9,7 +9,6 @@
     "whatIWasTold": "do NOT claim t48 / t51 / t52 to obtain an id",
     "soThisFileExists": "the delivery is recorded here and in the captain's messages; the captain lands it in the ledger once the chain opens"
   },
-
   "compositionRootMove": {
     "status": "DONE (the captain authorised it this round; it was previously blocked because lib/index.js was in no written inScope)",
     "whatChanged": [
@@ -20,7 +19,6 @@
     "theOldTestWouldNoLongerHaveProvenIt": "test/t53-dormant-expiry.test.mjs asserted the listener count after calling installSessionTeamPolicy. That assertion was PINNING THE OLD WIRING, not the capability. It now asserts the inverse (the policy installer registers NOTHING) and installs the sweep directly, and a NEW behavioural guard covers the root: test/t52-root-registration.test.mjs calls the real apply() with the policy OFF and proves a past-due request is actually resolved, with a negative control (no apply -> stays pending).",
     "registry": "30 regions across 7 adopted files (lib/index.js is now tracked); --check clean"
   },
-
   "userRulingImplemented": {
     "surface": "three separate tools, exactly as ruled",
     "agent_teams_interject_request": "member asks; payload summary + reason + location only; the identity is the CALLER's (no `from` parameter exists to spoof)",
@@ -32,19 +30,65 @@
     ],
     "authorizationIsEnforced": "in code at each tool boundary, and measured in BOTH directions — the mount proof records a member calling decide being refused with \"only the captain\""
   },
-
   "acceptance": {
-    "A_toolSurface_as_capability": { "status": "passed", "evidence": "test/t52-interjection-tools.test.mjs — 9 tests / 46 assertions, every one through the shipped tool definitions; full chain member request -> captain sees pending -> approve -> library re-posts an ordinary record -> the existing member-queue seam claims and acknowledges it" },
-    "B_mountProof": { "status": "passed", "evidence": "evidence/omo-align/interjection-tools/mount/ — 5/5 tools registered at a real mounted boot, 0 apply/schema abort signatures, probe PASS; --dump-config recorded as COMPOSITION ONLY and never cited as load (AGENTS.md §4)" },
-    "C_clearHasAProductionCaller": { "status": "passed", "evidence": "agent_teams_mailbox_clear asserts the F-3 seam on the REAL path (unread_after === 0 after clearing an unread record), and the mount drive repeats it on disk" },
-    "D_readLiveMailboxFate": { "status": "passed", "evidence": "KEPT and documented TEST-ONLY at its declaration, with the reason the scheduler must not route through it (it would drop the delivery-lease semantics)" },
-    "E_reachabilityInventory": { "status": "passed", "evidence": "reachability.md + raw/reachability-inventory.{mjs,json} — 261 exports; 215 cross-module; 43 module-internal; 3 with no production caller (readLiveMailbox kept/test-only, teamLockQueueKeys imported by test/backports.test.ts, SESSION_START_GATE_ID pre-existing orphan reported not deleted)" },
-    "F_noRegression": { "status": "passed", "evidence": "idempotent dedup, tombstone filter, expiry notice and R3's monotone verb set + thresholds all still green; the send path's parameter set is still exactly {content, from, to}" }
+    "A_toolSurface_as_capability": {
+      "status": "passed",
+      "evidence": "test/t52-interjection-tools.test.mjs — 9 tests / 46 assertions, every one through the shipped tool definitions; full chain member request -> captain sees pending -> approve -> library re-posts an ordinary record -> the existing member-queue seam claims and acknowledges it"
+    },
+    "B_mountProof": {
+      "status": "passed",
+      "evidence": "evidence/omo-align/interjection-tools/mount/ — 5/5 tools registered at a real mounted boot, 0 apply/schema abort signatures, probe PASS; --dump-config recorded as COMPOSITION ONLY and never cited as load (AGENTS.md §4)"
+    },
+    "C_clearHasAProductionCaller": {
+      "status": "passed",
+      "evidence": "agent_teams_mailbox_clear asserts the F-3 seam on the REAL path (unread_after === 0 after clearing an unread record), and the mount drive repeats it on disk"
+    },
+    "D_readLiveMailboxFate": {
+      "status": "passed",
+      "evidence": "KEPT and documented TEST-ONLY at its declaration, with the reason the scheduler must not route through it (it would drop the delivery-lease semantics)"
+    },
+    "E_reachabilityInventory": {
+      "status": "passed",
+      "evidence": "reachability.md + raw/reachability-inventory.{mjs,json} — 261 exports; 215 cross-module; 43 module-internal; 3 with no production caller (readLiveMailbox kept/test-only, teamLockQueueKeys imported by test/backports.test.ts, SESSION_START_GATE_ID pre-existing orphan reported not deleted)"
+    },
+    "F_noRegression": {
+      "status": "passed",
+      "evidence": "idempotent dedup, tombstone filter, expiry notice and R3's monotone verb set + thresholds all still green; the send path's parameter set is still exactly {content, from, to}"
+    }
   },
-
+  "probeOwnership_T52_F3": {
+    "question": "Are packages/mpd-qa-roles-probe/{src,dist}/index.js yours, and why could the registration proof not be obtained another way?",
+    "answer": "YES, mine — created in the earlier round of this work, and ALREADY COMMITTED as part of the captain's 33ff60a, so they are NOT among the currently-uncommitted files. Verified this round: git show HEAD:<each path> contains the instrumentation marker (1 hit for src and for dist).",
+    "whyThisFileAndNotAnotherWay": [
+      "No in-process alternative exists: the tool registry is reachable only from inside a mounted plugin tree, and --dump-config never executes plugin code (AGENTS.md §4), so it cannot witness a registered tool.",
+      "The probe is the repo's SANCTIONED instrumentation channel: QA-only, already mounted by the QA overlays (tests/overlays/roles-probe.yml), already used to prove the adapter seams and the roster, never shipped in the bundle. Reading the live registry there is the same technique ADAPTER_SEAMS already uses.",
+      "A pure log-grep would be weaker: it asserts a string appeared, not that the harness REGISTRY contains the tool. The probe reads the registry.",
+      "Driving the tools through a real session proves callability but needs a live credential and cannot enumerate the registry; the probe is deterministic and offline."
+    ],
+    "srcDistConsistency": "checked this round — rebuilding src reproduces dist byte-for-byte (bun build … then diff) => DIST MATCHES SRC. Both committed.",
+    "twoTrapsItFound": [
+      "the credentials row REFUSES a file readable beyond its owner (mode 644) and takes the whole plugin tree down with `plugin tree failed to load` — the sandbox must chmod 600, or the mount proof reports a crash signature that looks like a product defect",
+      "reading ctx.tools WITHOUT declaring it throws `cannot get property \"tools\" without inject` on an agent-scoped context — the probe must declare inject=['agentPresets','tools'] or its instrumentation silently reports nothing"
+    ],
+    "requestedAction": "create the slot with those two paths in scope (they are already committed, so the slot mostly records the dependency), or confirm they are covered by 33ff60a."
+  },
+  "advisoryA1_closure": {
+    "reviewFinding": "installInterjectionExpirySweep had no settledFor-style guard, so it ran on EVERY agent/pre-step, while its comment and the contract called the second event a 'session start'.",
+    "verifiedBeforeChanging": "CONFIRMED: the sweep registered a bare listener, and the policy's own guard (session-start.js:491-493) proves the event fires per step.",
+    "choice": "ADD THE GUARD and SHARPEN THE CONTRACT WORDING — both, because either alone leaves a mismatch",
+    "whatChanged": [
+      "lib/session-start.js — new per-agent `sweptFor` set (declared next to `settledFor` with the same rationale); the sweep returns early once the calling agent id has been swept. Keyed per agent, not globally, because one host serves many sessions.",
+      "evidence/omo-align/requirements/frozen-contract.json — `interjectionExpiryBoundary.statement` now says 'the FIRST agent/pre-step of a session' and a new `triggerPrecision` explains that agent/pre-step fires on every step and the guard is what makes the statement true. The write was GUARDED: the script refuses unless exactly that one key changed (measured changedKeys = [interjectionExpiryBoundary], addedKeys = [])."
+    ],
+    "beforeAfter": "before: eager, idempotent, best-effort (harmless but misdescribed). after: once per session per agent, still best-effort, description now matches the code.",
+    "tests": [
+      "test/t53-dormant-expiry.test.mjs — NEW 'the sweep is ONCE PER SESSION, not once per step': a second past-due request stays PENDING through a second pre-step of the same agent, no second log line, and a DIFFERENT agent still sweeps it",
+      "the pre-existing failing-sweep test needed a UNIQUE agent id, because the guard is module-level state shared across tests — a real consequence of the guard, worth knowing"
+    ]
+  },
   "gates": {
     "node scripts/patch-agent-teams-fixes.mjs --check": "exit 0 — 30 regions / 7 adopted files",
-    "bun test packages/mpd-agent-teams-plugin": "exit 0 — 195 pass / 0 fail / 1276 expect() calls across 50 files",
+    "bun test packages/mpd-agent-teams-plugin": "exit 0 — 196 pass / 0 fail / 1280 expect() calls across 50 files",
     "bun test packages/mpd-agent-teams-plugin/self-fix-tests": "exit 0 — 53 pass / 0 fail / 640 expect() calls",
     "bun run typecheck": "exit 0",
     "evidence/omo-align/interjection-tools/raw/mount-proof-t52.mjs": "PASS — re-run AFTER the registration move: 5/5 tools, 0 crash signatures",
@@ -52,7 +96,6 @@
     "node skills/dsh-qa/scripts/agent-teams-messaging.mjs": "exit 0 — GREEN (measured this round). Earlier in the wave it exited 1 on the vendorLock step; the captain re-pinned assets.skills.treeSha in commit 33ff60a and `verify-vendor` now exits 0. This case may therefore be cited as passing.",
     "node scripts/verify-vendor.mjs": "exit 0 — the skills treeSha matches the re-pin"
   },
-
   "findingsForTheCaptain": [
     {
       "id": "T52-F1",
@@ -86,18 +129,17 @@
       "requiredFix": "none required; listed so the next capability sweep does not rediscover it."
     }
   ],
-
   "settledPins": {
     "packages/mpd-agent-teams-plugin/lib/index.js": "393a369fb7a68648 (34973 B)",
-    "packages/mpd-agent-teams-plugin/lib/session-start.js": "64a064411e90ed01 (30806 B)",
+    "packages/mpd-agent-teams-plugin/lib/session-start.js": "b8a483c176fcbe30 (31801 B) — guard added this round",
     "packages/mpd-agent-teams-plugin/lib/state.js": "8e78e9b508d03230 (65291 B)",
     "packages/mpd-agent-teams-plugin/lib/tools.js": "9a2cfb89fd9ce06f (165305 B)",
-    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "fa6d893373929465 (123276 B)",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "526f4299c99de009 (124290 B)",
     "packages/mpd-agent-teams-plugin/test/t52-root-registration.test.mjs": "5854dfb97635fea8 (4340 B)",
-    "packages/mpd-agent-teams-plugin/test/t53-dormant-expiry.test.mjs": "6a9970b1677141aa (7401 B)",
-    "skills/dsh-qa/scripts/agent-teams-messaging.mjs": "c9073b82ac78ce92 (31433 B) — UNCHANGED BY ME this round; equals the committed bytes"
+    "packages/mpd-agent-teams-plugin/test/t53-dormant-expiry.test.mjs": "e6589e42a4e1ab4b (9473 B)",
+    "skills/dsh-qa/scripts/agent-teams-messaging.mjs": "c9073b82ac78ce92 (31433 B) — UNCHANGED BY ME this round; equals the committed bytes",
+    "evidence/omo-align/requirements/frozen-contract.json": "803a2665e9ce6c93 (40952 B) — one addendum key sharpened, all others byte-identical"
   },
-
   "noGitWrite": "read-only git log/show/diff/status only; the captain commits",
   "deliveredEvidenceElsewhere": {
     "mountProof": "evidence/omo-align/interjection-tools/mount/",

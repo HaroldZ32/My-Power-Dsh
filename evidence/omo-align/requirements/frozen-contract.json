@@ -374,14 +374,16 @@
   },
   "interjectionExpiryBoundary": {
     "addendum": "t53 boundary statement (R2-F4; the primitive and its TTL are UNCHANGED)",
-    "statement": "Expiry is evaluated at EVENTS, never by a timer: (1) a member IDLE EDGE (the scheduler tick inside kickMember), and (2) a SESSION START in the workspace (the sweep registered by installInterjectionExpirySweep).",
+    "statement": "Expiry is evaluated at EVENTS, never by a timer: (1) a member IDLE EDGE (the scheduler tick inside kickMember), and (2) the FIRST agent/pre-step of a session in the workspace (the sweep registered by installInterjectionExpirySweep, guarded per agent so it runs ONCE per session — agent/pre-step itself fires on every step, so the guard is what makes this statement true of the code).",
     "consequence": "A dormant team — one nobody kicks and nobody opens again — resolves nothing and its requester is never told. That is a stated boundary of the design, not an unresolved row: no background clock exists, so the pre-t53 wording ('TTL 30 minutes') must not be read as wall-clock.",
     "closedBy": "t53 added the session-start sweep, so the realistic dormancy case (the workspace is used again) DOES resolve past-due requests.",
     "implementation": [
-      "packages/mpd-agent-teams-plugin/lib/state.js — expireInterjectionsEverywhere(stateRoot, options)",
-      "packages/mpd-agent-teams-plugin/lib/session-start.js — installInterjectionExpirySweep(ctx, resolved), installed unconditionally at the top of installSessionTeamPolicy so it also runs when sessionTeamPolicy.mode is off"
+      "packages/mpd-agent-teams-plugin/lib/state.js — expireInterjectionsEverywhere(stateRoot, options): sweeps every team directory under one state root, best-effort per team, ENOENT root is a no-op",
+      "packages/mpd-agent-teams-plugin/lib/session-start.js — installInterjectionExpirySweep(ctx, resolved): owns its agent/pre-step listener and its per-agent once-per-session guard",
+      "packages/mpd-agent-teams-plugin/lib/index.js — the REGISTRATION lives in the composition root (region mpd-delta interjection-expiry-registration) so it runs for every session regardless of sessionTeamPolicy.mode"
     ],
-    "test": "packages/mpd-agent-teams-plugin/test/t53-dormant-expiry.test.mjs (6 tests: past-due resolves with no kick; one ms before the deadline is left ALONE; absent/empty root is a no-op; the shipped hook runs it; a failing sweep degrades to a warning; the notice is an ordinary record)"
+    "test": "packages/mpd-agent-teams-plugin/test/t53-dormant-expiry.test.mjs (6 tests: past-due resolves with no kick; one ms before the deadline is left ALONE; absent/empty root is a no-op; the shipped hook runs it; a failing sweep degrades to a warning; the notice is an ordinary record)",
+    "triggerPrecision": "installInterjectionExpirySweep registers on agent/pre-step with { global: true, prepend: true } and returns early once the calling agent id is in its per-agent settled set. It is installed from the COMPOSITION ROOT (lib/index.js, region mpd-delta interjection-expiry-registration), NOT from inside installSessionTeamPolicy — that function returns early when sessionTeamPolicy.mode is off, which would have gated dormancy resolution behind auto-routing. Verified by test/t52-root-registration.test.mjs (apply() with the policy OFF still resolves a past-due request) and test/t53-dormant-expiry.test.mjs (once per session, and a second session sweeps again)."
   },
   "openToolSurfaceEscalation": {
     "addendum": "t53 escalation (R2-F1): a DESIGN decision for the user, deliberately NOT implemented here",

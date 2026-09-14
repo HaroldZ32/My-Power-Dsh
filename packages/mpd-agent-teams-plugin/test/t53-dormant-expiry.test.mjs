@@ -37,6 +37,14 @@ async function seedPastDueRequest(stateRoot, over = {}) {
   })
 }
 
+/** A second past-due request, to distinguish "swept once" from "swept again". */
+async function seedSecondPastDue(stateRoot) {
+  return enqueueInterjection(stateRoot, TEAM, {
+    id: "ij-second", from: "Junior Engineer", content: "second request",
+    ts: PAST_DUE_TS, summary: "second", reason: "still blocked", location: "t53",
+  })
+}
+
 test("R1 DORMANT: a past-due request is expired and its requester TOLD without any scheduler kick", async () => {
   const { stateRoot, cleanup } = fixture()
   try {
@@ -84,6 +92,35 @@ test("R1 DORMANT NEGATIVE CONTROL: an empty/absent state root is a no-op, never 
   } finally { cleanup() }
 })
 
+test("R1 DORMANT: the sweep is ONCE PER SESSION, not once per step", async () => {
+  const { workspace, stateRoot, cleanup } = fixture()
+  try {
+    await seedPastDueRequest(stateRoot)
+    const listeners = []
+    const logs = []
+    const ctx = {
+      on: (name, handler) => listeners.push({ name, handler }),
+      logger: { info: (message) => logs.push(String(message)), warn: () => {}, error: () => {}, debug: () => {} },
+    }
+    installInterjectionExpirySweep(ctx, { stateDir: STATE_DIR })
+    const payload = { agent: { id: "t53-once", session: { header: { cwd: workspace } } } }
+    await listeners[0].handler(payload, async () => ({ kind: "accept" }))
+    expect((await readInterjections(stateRoot, TEAM))[0].status).toBe("expired")
+    const logCountAfterFirst = logs.length
+    // `agent/pre-step` fires on EVERY step. The guard must make the second one a no-op, so
+    // the boundary statement ("expiry is evaluated at ... a session start") is true of the
+    // code and not only of the comment.
+    await seedSecondPastDue(stateRoot)
+    await listeners[0].handler(payload, async () => ({ kind: "accept" }))
+    const rows = await readInterjections(stateRoot, TEAM)
+    expect(rows.find((row) => row.id === "ij-second")?.status).toBe("pending") // NOT swept
+    expect(logs.length).toBe(logCountAfterFirst)
+    // a DIFFERENT session still gets its own sweep — the guard is per agent, not global
+    await listeners[0].handler({ agent: { id: "t53-other", session: { header: { cwd: workspace } } } }, async () => ({ kind: "accept" }))
+    expect((await readInterjections(stateRoot, TEAM)).find((row) => row.id === "ij-second")?.status).toBe("expired")
+  } finally { cleanup() }
+})
+
 test("R1 DORMANT: the SHIPPED session-start hook runs the sweep (and only the session's own workspace)", async () => {
   const { workspace, stateRoot, cleanup } = fixture()
   try {
@@ -104,7 +141,7 @@ test("R1 DORMANT: the SHIPPED session-start hook runs the sweep (and only the se
     expect(listeners.length).toBe(1)
     expect(listeners[0].name).toBe("agent/pre-step")
     // drive the listener exactly as the harness does, with the session's own cwd
-    const decision = await listeners[0].handler({ agent: { session: { header: { cwd: workspace } } } }, async () => ({ kind: "accept" }))
+    const decision = await listeners[0].handler({ agent: { id: "t53-ok", session: { header: { cwd: workspace } } } }, async () => ({ kind: "accept" }))
     expect(decision).toEqual({ kind: "accept" }) // the hook never replaces the decision
     const rows = await readInterjections(stateRoot, TEAM)
     expect(rows[0].status).toBe("expired")
@@ -124,7 +161,7 @@ test("R1 DORMANT: a failing sweep degrades to a warning and still returns the de
     // a real failure the sweep must degrade rather than propagate.
     writeFileSync(join(workspace, "blocker"), "not a directory")
     installInterjectionExpirySweep(ctx, { stateDir: "blocker/team" })
-    const decision = await ctx.handler({ agent: { session: { header: { cwd: workspace } } } }, async () => ({ kind: "accept" }))
+    const decision = await ctx.handler({ agent: { id: "t53-failing", session: { header: { cwd: workspace } } } }, async () => ({ kind: "accept" }))
     expect(decision).toEqual({ kind: "accept" })
     expect(warnings.length).toBe(1)
     expect(warnings[0]).toContain("session-start interjection sweep failed")
