@@ -1,5 +1,5 @@
-# OMO 对齐台账
-[English](./omo-parity-ledger.md) | **中文**
+# 上游对齐台账 —— my-power-dsh 专家体系与钉定基线的对齐
+[English](./upstream-parity-ledger.md) | **中文**
 
 > 波次：`omo-parity-align`。状态：**已验证 —— 取值已冻结、实现已落地、门禁全绿（§8）。**
 > 本文件是本次功能对齐波次的持久人类面向台账，对齐对象为上游
@@ -19,7 +19,7 @@
 
 | # | 目标（用户原话） | 冻结决策 |
 |---|---|---|
-| G1 | 功能上对齐 OMO 最新版（beta.62） | `D_UPSTREAM_REF` —— 仅作参考，不重新 pin |
+| G1 | 功能上对齐钉定的上游基线（beta.62） | `D_UPSTREAM_REF` —— 仅作参考，不重新 pin |
 | G2 | agent-teams 不再作为默认存在，复杂任务时自动调用 | `D_FIRST` + `complexityGate` |
 | G3 | 功能对齐 mass-ulw | 保留任务板模型，补 4 项语义（M1–M4） |
 | G4 | 只对齐功能（不照搬结构/命名） | 手动入口名冻结；上限沿用本地取值 |
@@ -35,7 +35,7 @@
 | `D_FIRST` | 每个符合条件的会话启动时**不建队、不注入通知**，除非复杂度信号命中。 | 对齐上游默认而非本地口味：上游 `team_mode.enabled` 默认为 `false`（t3 `[U2][U3]`）。 |
 | `D_AUTOROUTE_SPLIT` | 机械门与旧的注入模式**解耦**：`sessionTeamPolicy.mode` 默认 `off`（枚举值全部保留）；新机械门是独立键 `sessionTeamPolicy.autoRoute`（默认启用）。 | 上游**没有**复杂度启发式（t3 全文 0 处 heuristic/threshold），其激活靠显式关键词。解耦可在新增门的同时不悄悄改变 `off`/`instruct` 的既有语义。 |
 | `D_SKILLS_WRITER` | 本波次 `skills/**` 的**唯一**写者是 `t5`，且仅限 `skills/dsh-qa/SKILL.md` 与 `skills/dsh-qa/scripts/session-start-team.mjs`。`t9` 本波次不写入。 | AGENTS.md `§9`：每波单写者；`skills/**` 变更会使语料 `treeSha` 失效，re-pin 必须与之同提交。基线：`afe718251965a933b6a15b40bbe6ebf2e5222996fecb48b05fc8e770e390fcad`，328 个文件。 |
-| `D_LEDGER` | 台账 = `docs/omo-parity-ledger.md` + `docs/omo-parity-ledger.zh-CN.md`，同提交，标题下直接放语言切换链接。`docs/omo-parity-gap.md` 与既往报告不动。 | 用户裁决 6；AGENTS.md `§3` 双语规则及历史记录豁免。 |
+| `D_LEDGER` | 台账 = `docs/upstream-parity-ledger.md` + `docs/upstream-parity-ledger.zh-CN.md`，同提交，标题下直接放语言切换链接。`docs/omo-parity-gap.md` 与既往报告不动。 | 用户裁决 6；AGENTS.md `§3` 双语规则及历史记录豁免。 |
 | `D_UPSTREAM_REF` | 上游参考为 beta.62（`d1557a4b4`）；仓库基线仍为 beta.20。 | 用户裁决 1；AGENTS.md `§9`（不追上游）。 |
 
 ## 3. 复杂度门（构造即可证伪）

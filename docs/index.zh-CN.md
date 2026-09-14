@@ -15,7 +15,7 @@
 | [`user-guide.zh-CN.md`](user-guide.zh-CN.md) | 用户 | 安装、预设、专家（roster）、workmate 库、团队模式、GUI 面板、配置。 |
 | [`architecture.zh-CN.md`](architecture.zh-CN.md) | 工程师、好奇的用户 | bundle 如何组装与挂载：patch 层、插件清单、模型路由、状态布局、web client 接线、交互流程。 |
 | [`development.zh-CN.md`](development.zh-CN.md) | 开发者 | 仓库布局、构建/测试命令、QA case 目录、门禁、打包/安装、vendor、git 模型、常见坑。 |
-| [`omo-parity-ledger.zh-CN.md`](omo-parity-ledger.zh-CN.md) | 维护者、评审者 | `omo-parity-align` 波次台账（双语，[English](omo-parity-ledger.md)）：冻结的复杂度门取值、mass-ulw 语义、手动入口名、未决项与实测验证状态。它是当前维护中的文档，不是历史记录。 |
+| [`upstream-parity-ledger.zh-CN.md`](upstream-parity-ledger.zh-CN.md) | 维护者、评审者 | 本仓库专家体系与钉定上游基线的对齐台账（双语，[English](upstream-parity-ledger.md)）：冻结的复杂度门取值、mass-ulw 语义、手动入口名、未决项与实测验证状态。它是当前维护中的文档，不是历史记录。 |
 | [`../AGENTS.md`](../AGENTS.md) | 代理 + 维护者 | 仓库约束手册：约定、门禁、git 模型、排障。 |
 | [`../LICENSE.md`](../LICENSE.md)、[`../LICENSE-NOTICES.md`](../LICENSE-NOTICES.md) | 所有人 | SUL-1.0 许可 + 第三方声明（采纳的 dsh-agent-teams、comment-checker）。 |
 

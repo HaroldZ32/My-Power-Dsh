@@ -1,5 +1,5 @@
-# OMO Parity Ledger
-**English** | [中文](./omo-parity-ledger.zh-CN.md)
+# Upstream Parity Ledger — my-power-dsh specialist parity against the pinned baseline
+**English** | [中文](./upstream-parity-ledger.zh-CN.md)
 
 > Wave: `omo-parity-align`. Status: **VERIFIED — values frozen, implementation landed, gates green
 > (§8).**
@@ -22,7 +22,7 @@ Single source of truth for frozen values: `evidence/omo-align/requirements/froze
 
 | # | Goal (user wording) | Frozen decision |
 |---|---|---|
-| G1 | Align functionality with OMO latest (beta.62) | `D_UPSTREAM_REF` — reference only, no re-pin |
+| G1 | Align functionality with the pinned upstream baseline (beta.62) | `D_UPSTREAM_REF` — reference only, no re-pin |
 | G2 | agent-teams no longer the default; auto-invoke for complex tasks | `D_FIRST` + `complexityGate` |
 | G3 | Align with mass-ulw | four semantics on the existing task-board model (M1–M4) |
 | G4 | Align functionality only (no structural/naming copy) | manual entry names frozen; ceiling values stay local |
@@ -38,7 +38,7 @@ Single source of truth for frozen values: `evidence/omo-align/requirements/froze
 | `D_FIRST` | Every qualifying session starts with **no team and no team notice** unless a complexity signal fires. | Upstream parity, not local taste: upstream `team_mode.enabled` defaults to `false` (t3 `[U2][U3]`). |
 | `D_AUTOROUTE_SPLIT` | The mechanical gate and the legacy injection mode are **decoupled**: `sessionTeamPolicy.mode` defaults to `off` (existing enum values kept); the new mechanical gate is a separate key `sessionTeamPolicy.autoRoute` (default enabled). | Upstream has **no** complexity heuristic (0 hits for heuristic/threshold in t3); activation upstream is an explicit keyword. The split lets us add a gate without silently changing what `off`/`instruct` mean. |
 | `D_SKILLS_WRITER` | This wave's **only** writer of `skills/**` is `t5`, limited to `skills/dsh-qa/SKILL.md` and `skills/dsh-qa/scripts/session-start-team.mjs`. `t9` writes nothing this wave. | AGENTS.md `§9`: one writer per wave; a `skills/**` edit invalidates the corpus `treeSha` and the re-pin must ride the same commit. Baseline: `afe718251965a933b6a15b40bbe6ebf2e5222996fecb48b05fc8e770e390fcad`, 328 files. |
-| `D_LEDGER` | Ledger = `docs/omo-parity-ledger.md` + `docs/omo-parity-ledger.zh-CN.md`, same commit, language switch link directly under each title. `docs/omo-parity-gap.md` and prior wave reports stay untouched. | User ruling 6; AGENTS.md `§3` bilingual rule with the historical-record exemption. |
+| `D_LEDGER` | Ledger = `docs/upstream-parity-ledger.md` + `docs/upstream-parity-ledger.zh-CN.md`, same commit, language switch link directly under each title. `docs/omo-parity-gap.md` and prior wave reports stay untouched. | User ruling 6; AGENTS.md `§3` bilingual rule with the historical-record exemption. |
 | `D_UPSTREAM_REF` | Upstream reference is beta.62 (`d1557a4b4`); repo baseline remains beta.20. | User ruling 1; AGENTS.md `§9` (never chase upstream). |
 
 ## 3. Complexity gate (falsifiable by construction)
