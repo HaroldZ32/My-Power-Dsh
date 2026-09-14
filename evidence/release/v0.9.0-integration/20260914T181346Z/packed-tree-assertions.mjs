@@ -11,7 +11,7 @@
 //
 // Usage: node evidence/release/v0.9.0-integration/<ts>/packed-tree-assertions.mjs
 import { createHash } from "node:crypto"
-import { existsSync, readFileSync, statSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -28,9 +28,7 @@ const rel = (p) => p.slice(repo.length + 1)
 for (const p of [
   "packages/mpd-ext-plugin/dist/index.js",
   "packages/mpd-ext-plugin/dist/sdk.js",
-  "packages/mpd-plugin-does-not-exist/dist/index.js",
 ]) {
-  if (p.includes("does-not-exist")) continue
   check(`staged ${p}`, existsSync(join(packed, p)))
 }
 check("staged extensions/mpd-ext-example/mpd-ext.json", existsSync(join(packed, "extensions/mpd-ext-example/mpd-ext.json")))
@@ -64,7 +62,13 @@ check("example contributes all four kinds", ["skills", "flows", "mcp", "roles"].
 
 // 5) the file count the packer reported (1107) matches the staged tree
 let count = 0
-const walk = (d) => { for (const e of readFileSync ? require("node:fs").readdirSync(d) : []) { const p = join(d, e); if (statSync(p).isDirectory()) walk(p); else count += 1 } }
+const walk = (d) => {
+  for (const e of readdirSync(d)) {
+    const p = join(d, e)
+    if (statSync(p).isDirectory()) walk(p)
+    else count += 1
+  }
+}
 walk(packed)
 check("staged file count is 1107", count === 1107, String(count))
 
