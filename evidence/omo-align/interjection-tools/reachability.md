@@ -23,7 +23,7 @@ visible on demand, and it is the first thing to re-run after any capability chan
 |---|---|---|---|
 | `appendMailboxDeduped` | `lib/state.js:485` | reachable (cross-module) | `lib/tools.js:1877` |
 | `expireInterjections` | `lib/state.js:677` | reachable (cross-module) | `lib/scheduler.js:300` |
-| `expireInterjectionsEverywhere` | `lib/state.js:773` | reachable (cross-module) | `lib/session-start.js:578` |
+| `expireInterjectionsEverywhere` | `lib/state.js:773` | reachable (cross-module) | `lib/session-start.js:595` |
 | `enqueueInterjection` | `lib/state.js:600` | reachable (cross-module) | `lib/tools.js:16 (import)` |
 | `decideInterjection` | `lib/state.js:708` | reachable (cross-module) | `lib/tools.js:2363` |
 | `clearMailboxToWatermark` | `lib/state.js:520` | reachable (cross-module) | `lib/tools.js:2422` |
@@ -32,8 +32,8 @@ visible on demand, and it is the first thing to re-run after any capability chan
 | `readPendingInterjections` | `lib/state.js:669` | reachable (cross-module) | `lib/state.js:679` |
 | `messageDedupKey` | `lib/state.js:473` | reachable (module-internal) | `lib/state.js:488` |
 | `isTaskReady` | `lib/scheduler.js:157` | reachable (module-internal) | `lib/scheduler.js:164` |
-| `installInterjectionExpirySweep` | `lib/session-start.js:570` | reachable (cross-module) | `lib/index.js:195` |
-| `installSessionTeamPolicy` | `lib/session-start.js:478` | reachable (cross-module) | `lib/index.js:184` |
+| `installInterjectionExpirySweep` | `lib/session-start.js:579` | reachable (cross-module) | `lib/index.js:195` |
+| `installSessionTeamPolicy` | `lib/session-start.js:487` | reachable (cross-module) | `lib/index.js:184` |
 | `INTERJECTION_KIND` | `lib/state.js:471` | reachable (cross-module) | `lib/scheduler.js:241` |
 | `INTERJECTION_QUEUE` | `lib/state.js:469` | reachable (module-internal) | `lib/state.js:627` |
 | `INTERJECTION_TTL_MS` | `lib/state.js:467` | reachable (module-internal) | `lib/state.js:625 (import)` |
@@ -43,7 +43,7 @@ visible on demand, and it is the first thing to re-run after any capability chan
 
 | Export | Declared | Decision |
 |---|---|---|
-| `SESSION_START_GATE_ID` | `lib/session-start.js:591` | **PRE-EXISTING orphan — reported, not deleted.** Present in HEAD before this task, referenced by nothing in `lib/**`, `test/**` or `skills/**`. It is a frozen diagnostic identifier, not a capability, so deleting it would be unrelated churn in a file this task is trying to keep stable; it is listed here so the next capability sweep does not have to rediscover it. |
+| `SESSION_START_GATE_ID` | `lib/session-start.js:608` | **PRE-EXISTING orphan — reported, not deleted.** Present in HEAD before this task, referenced by nothing in `lib/**`, `test/**` or `skills/**`. It is a frozen diagnostic identifier, not a capability, so deleting it would be unrelated churn in a file this task is trying to keep stable; it is listed here so the next capability sweep does not have to rediscover it. |
 | `teamLockQueueKeys` | `lib/state.js:60` | **KEPT, diagnostic/test-only.** A lock-queue snapshot used by `test/backports.test.ts` to assert that a completed `withTeamLock` leaves NO queued key (a lock-leak check). Its own doc comment already says "for diagnostics and leak checks". Nothing in production may call it: it exposes internal lock state. |
 | `readLiveMailbox` | `lib/state.js:576` | **KEPT, documented as test-only** (t52). No production caller and none should appear: the scheduler composes `deliverableUnread(readUnreadMailbox(...))`, where the tombstone filter is carried independently by BOTH functions, so routing through this one would drop the delivery-lease semantics. Kept because it states the F-3 invariant in one expression and the seam tests assert it directly. The doc comment now says all of this at the declaration. |
 

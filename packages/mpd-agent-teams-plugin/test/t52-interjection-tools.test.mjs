@@ -10,7 +10,7 @@ import { expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { CAPTAIN_KEY, INTERJECTION_QUEUE, readInterjections, readMailbox } from "../lib/state.js"
+import { CAPTAIN_KEY, INTERJECTION_QUEUE, readInterjections, readMailbox, readUnreadMailbox } from "../lib/state.js"
 import { installTeamScheduler } from "../lib/scheduler.js"
 import { registerAgentTeamsTools } from "../lib/tools.js"
 
@@ -114,6 +114,48 @@ test("t52 CHAIN: member requests -> captain sees pending -> approves -> ordinary
     expect(inbox[0].kind).toBeUndefined()
     expect(inbox[0].content).toContain("Approved interjection")
     expect((await call(tools, "agent_teams_interject_decide")({ action: "list" }, { agent: captain })).pending.length).toBe(0)
+  } finally { cleanup() }
+})
+
+test("t52 CHAIN: the approval reaches the REQUESTER's own session at the next idle edge — addressed, once, and nowhere else", async () => {
+  const { stateRoot, teamId, tools, captain, member, other, deliveries, runtime, workspace, cleanup } = fixture()
+  try {
+    // The fixture's two sessions must be distinct, or "we delivered to the requester" and
+    // "we delivered to some member" would be indistinguishable assertions.
+    expect(member.id).not.toBe(captain.id)
+    expect(member.id).not.toBe(other.id)
+    expect(member.id).not.toBe("")
+
+    const asked = await call(tools, "agent_teams_interject_request")(
+      { summary: "producer wrong", reason: "downstream diverges", location: "state.js:662" }, { agent: member },
+    )
+    await call(tools, "agent_teams_interject_decide")({ request_id: asked.request_id, decision: "approved" }, { agent: captain })
+
+    // NOTHING may be delivered before the idle edge: the approval records a decision, it is
+    // not itself a delivery.
+    expect(deliveries.length).toBe(0)
+    await runtime.kickMember(workspace, teamId, "Senior Engineer")
+    expect(deliveries.length).toBe(1)
+
+    // ADDRESS: the queue seam must carry BOTH addresses, and the child must be the requester.
+    const receipt = deliveries[0]
+    expect(receipt.childSessionId).toBe(member.id)
+    expect(receipt.childSessionId).not.toBe(captain.id)
+    expect(receipt.parentSessionId).toBe(captain.id)
+    expect(receipt.mode).toBe("continuable")
+    expect(receipt.delivery).toBe("queue")
+    // PAYLOAD: the approved body, in an ordinary delivery
+    const payload = JSON.stringify(receipt)
+    expect(payload).toContain("Approved interjection")
+    expect(payload).toContain(asked.request_id)
+    // SILENCE: the OTHER member was never addressed — the decision lane does not broadcast
+    expect(deliveries.every((entry) => entry.childSessionId !== other.id)).toBe(true)
+
+    // the acknowledgement follows the accepted delivery, so a second edge re-delivers nothing
+    expect((await readMailbox(stateRoot, teamId, "Senior Engineer"))[0].readAt).toBeDefined()
+    await runtime.kickMember(workspace, teamId, "Senior Engineer")
+    expect(deliveries.length).toBe(1)
+    expect((await readUnreadMailbox(stateRoot, teamId, "Senior Engineer")).length).toBe(0)
   } finally { cleanup() }
 })
 
