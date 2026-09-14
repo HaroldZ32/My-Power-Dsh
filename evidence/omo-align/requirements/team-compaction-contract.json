@@ -41,6 +41,20 @@
     "irreversibility": "A successful compaction REPLACES the selected history span with one summary node. Details are lost; this is why the audit record is a user requirement, not a nicety.",
     "existingHumanPath": "dsh-command-compact registers the /compact command and calls ctx.compaction.compactNow(invocation.agent, invocation.signal, invocation.commandId) - the same API this feature will drive programmatically."
   },
+  "userDecisionsFinal": {
+    "answeredOn": "2026-09-14 (second Socratic batch)",
+    "captainInclusion": "DO NOT compact the captain. The user compacts the captain manually via the human /compact command. Only team members are compacted.",
+    "auditLocation": "<workspace>/.mpd/team-compact/ - a separate namespace; never write .mpd/team (that state belongs to the agent-teams plugin).",
+    "deadCaptainTeams": "Skip and record not-live. Architect measured that once a captain session is gone, workspaceRootsAll() no longer sees that team and its member Agents are not in-process, so it cannot be compacted anyway. Compact it after the team is resumed, if ever.",
+    "memberNotification": "Silent, audit only - notifying a member would push context straight back in, the opposite of the point.",
+    "visibility": "Also ship a READ-ONLY tool (e.g. mpd_team_compact_status) so the audit is inspectable from the agent surface. A Web-panel surface is explicitly a later slot, not this wave.",
+    "gateRetune": {
+      "decision": "Lower the thresholds AND widen the CJK vocabulary, calibrated on real prompts, then re-measure.",
+      "input": "t37 measured 0/20 triggers on real prompts and caught a genuinely complex session-start request producing ZERO signals (1 B verb against a threshold of 4; 1 C2 verb against a threshold of 3). The observed cost is under-triggering, not over-triggering.",
+      "separateWorkItem": "This is NOT part of the compaction plugin. It is a behaviour change and needs its own contract, mount proof and two-sided gate evidence.",
+      "coverageRequirement": "The t39 verification's F2 finding stands: the 20-prompt set contained 0 Latin-only prompts, so the English trigger rate is undefined (n=0). Any recalibration set MUST cover English prompts explicitly or the bilingual claim is unsupported."
+    }
+  },
   "openFeasibilityQuestions": [
     "How does a sibling plugin learn that EVERY task of a team reached a terminal state - is there an event/service to subscribe to, or must it observe the team record on disk?",
     "How does it map a team record's members to live Agent objects (does the record carry session/agent ids)?",
