@@ -1,0 +1,111 @@
+{
+  "schema": "mpd.omo-align.qa-shipped-path-closure/1",
+  "task": "t51",
+  "objective": "Rebuild the R1 QA case so it asserts the SHIPPED user path, pin the F-1 root cause into the case, and re-pin VENDOR_LOCK in the same commit.",
+  "rootCause": {
+    "what": "The t36 case called the state primitives directly, so the F-1 class (library correct, shipped path unwired) passed every layer.",
+    "layersThatMissed": [
+      "lib unit suite",
+      "the t36 QA case",
+      "the plugin test suite",
+      "the wave gate list (green commands)"
+    ],
+    "pinnedInto": "the case header + --self-test guards (wiring regions present AND the case still references the tool surface)"
+  },
+  "redArm": {
+    "generator": "revertDedupWiring(): the three mpd-delta regions reverted to the shape recorded in the commit that introduced them",
+    "preFix": {
+      "records": 3,
+      "deliveriesToRecipient": 3
+    },
+    "shipped": {
+      "records": 1,
+      "dupCount": 3,
+      "deliveriesToRecipient": 1
+    },
+    "artifact": "raw/prefix-tools.js + raw/shipped-red-inbox/ in the run directory",
+    "independentlyReproducible": true
+  },
+  "steps": {
+    "surface": "passed",
+    "settled": "passed",
+    "installer": "passed",
+    "mountedBoot": "passed",
+    "isolation": "passed",
+    "shippedDedup": "passed",
+    "shippedDedupControl": "passed",
+    "preFixRedArm": "passed",
+    "shippedInterjection": "passed",
+    "shippedInterjectionRejectControl": "passed",
+    "shippedTtl": "passed",
+    "shippedClear": "passed",
+    "shippedClearAuthzControl": "passed",
+    "dedup": "passed",
+    "clear": "passed",
+    "interjectionTtl": "passed",
+    "interjection": "passed",
+    "vendorLock": "passed"
+  },
+  "run": {
+    "dir": "evidence/omo-align/qa-shipped-path/2026-09-14T03-11-24.425Z",
+    "ok": true,
+    "schema": "mpd.omo-align.qa-shipped-path/2",
+    "head": "8ce941e70a93d97c34b431797a87797618863388",
+    "settledFiles": {
+      "state_js": "8e78e9b508d032307943318e45030000523bbdaa6fcce9bee9db442698df70e2",
+      "scheduler_js": "27cc18b923443c22b160ed202485499b980cceb22f43e63855bf42e6cd6550a2"
+    },
+    "resultJsonSha256": "960ffa159f39fa531eade83c8c07ca8882bdf611aa9771443d8841b21d784d10"
+  },
+  "gates": [
+    {
+      "command": "node skills/dsh-qa/scripts/agent-teams-messaging.mjs --self-test",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "R1 exports + SHIPPED wiring + case drives the tool surface + scheduler exclusion + RED-arm transform + vendor pin"
+    },
+    {
+      "command": "node skills/dsh-qa/scripts/agent-teams-messaging.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "PASS, 18/18 steps in evidence/omo-align/qa-shipped-path/2026-09-14T03-11-24.425Z"
+    },
+    {
+      "command": "node scripts/verify-vendor.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "PASS; skills 331 files"
+    },
+    {
+      "command": "bun run test:qa",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "all self-tests passed (includes this case)"
+    }
+  ],
+  "vendorLock": {
+    "before": {
+      "fileCount": 331,
+      "treeSha": "0a91194e36aca49c5cfad0c3274e59b3b390cff4642f03aa37da31f6ecea4baa",
+      "source": "committed HEAD"
+    },
+    "after": {
+      "fileCount": 331,
+      "treeSha": "c1f424fef1a283bcbfb1167fd05e18562bae50d4e0a897871596799642259e06",
+      "source": "worktree after this change"
+    },
+    "pairingRule": "AGENTS.md §9/§11 — the re-pin rides the same commit as the skills/** change"
+  },
+  "isolation": {
+    "dshHome": "mkdtemp sandbox",
+    "home": "sandbox",
+    "workspace": "sandboxWorkspace(sandbox)",
+    "loadEvidence": "real mounted boot of the mpd preset home (3/3 plugin boot lines, 0 crash signatures) + assertSessionsSandboxed with a non-zero key count; --dump-config never cited"
+  },
+  "knownLimits": [
+    "kickMember is called directly (the same function the idle-edge listener calls); a genuine multi-member idle edge is not drivable in isolated headless.",
+    "The pre-fix arm is a reverting reconstruction of the three recorded regions, not the historical file object.",
+    "The primitive lanes remain and are the weaker evidence, kept only for faster localisation."
+  ],
+  "noGitWritePerformed": true
+}
