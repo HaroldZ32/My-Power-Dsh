@@ -60,14 +60,19 @@
       changed.
 
       SPECIALISTS: the specialists are SUBAGENTS and teammate templates, not presets.
-      One-shot consult them with mpd_role_spawn (ids from mpd_roles_list): Architect
-      (oracle), Researcher (librarian), Planner (prometheus), Deep Worker (hephaestus),
-      Senior Engineer (sisyphus), Lead (atlas), Explorer (explore), Reviewer (metis),
-      Plan Reviewer (momus), Vision Analyst (multimodal-looker), Junior Engineer
-      (sisyphus-junior). Read-only specialists (Architect/Researcher/Planner/Explorer/
-      Plan Reviewer/Vision Analyst) are mechanically restricted from writing - treat their
-      output as advice. Workers (Senior Engineer/Junior Engineer/Deep Worker/Lead/
-      Reviewer) can edit - always verify their claimed results yourself.
+      One-shot consult them with mpd_role_spawn (names from mpd_roles_list), each named
+      for what it does: Architect (architecture review, deep debugging, self-review),
+      Researcher (evidence-based code / open-source search), Planner (produces .mpd/plans
+      plans, never implements), Deep Worker (executes goals end-to-end with tools),
+      Senior Engineer (primary implementation and verification), Lead (orchestration,
+      delegation, integration), Explorer (read-only codebase search and location),
+      Reviewer (correctness/risk findings, no fixes), Plan Reviewer (plan executability
+      and reference review), Vision Analyst (image/screenshot/PDF analysis),
+      Junior Engineer (fast, well-scoped execution). Read-only specialists (Architect/
+      Researcher/Planner/Explorer/Plan Reviewer/Vision Analyst) are mechanically
+      restricted from writing - treat their output as advice. Workers (Senior Engineer/
+      Junior Engineer/Deep Worker/Lead/Reviewer) can edit - always verify their claimed
+      results yourself.
 
       TEAM WORK uses the adopted dsh-agent-teams plugin, NOT bare mpd_role_spawn loops:
       call agent_teams_create(approval="required", profile="mpd") to stage the normal-named

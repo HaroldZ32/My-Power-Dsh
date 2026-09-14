@@ -2,51 +2,53 @@
 **English** | [中文](./README.zh-CN.md)
 
 The specialists exist as a **specialist roster**, not as standalone presets.
-Each role = a stable `id` (also a modelchain chain key) + a normal display `name`
-+ persona text (asset `personas/<id>.md`) + DeepSeek model chain + read-only
-discipline.
+Each role is addressed by its **name** and described by what it does; it also carries
+a persona text (`personas/<internal-key>.md`), a DeepSeek model chain and its
+read-only discipline.
 
-| id | name | readonly |
-| --- | --- | --- |
-| oracle | Architect | yes |
-| librarian | Researcher | yes |
-| prometheus | Planner | yes |
-| hephaestus | Deep Worker | no |
-| sisyphus | Senior Engineer | no |
-| atlas | Lead | no |
-| explore | Explorer | yes |
-| metis | Reviewer | no |
-| momus | Plan Reviewer | yes |
-| multimodal-looker | Vision Analyst | yes |
-| sisyphus-junior | Junior Engineer | no |
+| role (what it does) | readonly |
+| --- | --- |
+| Architect — architecture review, deep debugging, self-review | yes |
+| Researcher — evidence-based code/open-source search | yes |
+| Planner — produces `.mpd/plans` plans, never implements | yes |
+| Deep Worker — executes goals end-to-end with tools | no |
+| Senior Engineer — primary implementation and verification | no |
+| Lead — orchestration, delegation, integration | no |
+| Explorer — read-only codebase search and location | yes |
+| Reviewer — correctness/risk findings, no fixes | no |
+| Plan Reviewer — plan executability and reference review | yes |
+| Vision Analyst — image/screenshot/PDF analysis | yes |
+| Junior Engineer — fast, well-scoped execution | no |
 
 ## Surface
 
 - `mpdRoles` service (`ctx.get("mpdRoles")`): `list()` / `get(key)` — consumed by
   `mpd-modelchain-plugin` (chain lookup).
-- `mpd_roles_list` — the roster, printed name-first as `Architect (oracle)`.
+- `mpd_roles_list` — the roster, one line per role: name, route, and what it does.
 - `mpd_role_spawn` — one-shot consult: spawn one role as a subagent (roster
   persona + route + write-deny toolFilter for read-only roles). The spawned
-  subagent is **labelled with the role's normal name** (`Architect`,
+  subagent is **labelled with the role's name** (`Architect`,
   `Deep Worker`), never with `role-<id>-<random>`.
 - `mpd_role_persona` — fetch the persona text for spawn surfaces that take
   persona as text (e.g. `agent_teams_add_member`).
 
-**One vocabulary for both surfaces (name unification).** The normal display name
-is the role's user-facing identity: it is the member name agent-teams stages in
-team mode, and it is the label a solo `mpd_role_spawn` produces. Every role key
-therefore accepts, in this order:
+**One vocabulary for both surfaces (name unification).** The role's name is its
+identity: it is the member name agent-teams stages in team mode, and it is the label a
+solo `mpd_role_spawn` produces. Address a role by that name in any spelling —
+`Architect`, `architect`, `Deep Worker`, `deep-worker`, `deepworker`,
+`Plan Reviewer` (case-, space-, hyphen- and underscore-insensitive). No surface
+advertises an upstream alias: a role is described by what it does.
 
-- the normal name — any spelling of it: `Architect`, `architect`, `Deep Worker`,
-  `deep-worker`, `deepworker`, `Plan Reviewer` (case-, space-, hyphen- and
-  underscore-insensitive);
-- the canonical id (`oracle`, `sisyphus-junior`);
-- the modelchain-style chain key (`sisyphusJunior`, `multimodalLooker`);
-- the legacy `mpd-<id>` preset alias.
+*Compatibility (internal, undocumented on any surface):* the roster also still accepts
+its stable internal keys — the chain keys used by `mpd-modelchain-plugin` and by
+`personas/<key>.md` (`oracle`, `sisyphus-junior`, …), the camelCase spellings
+(`sisyphusJunior`) and the legacy `mpd-<key>` form — so existing chains, workmate
+records (`meta.baseId`) and callers keep working. They are never returned, listed or
+required.
 
 The same resolution is what `ctx.get("mpdRoles").get(key)` uses, so the workmate
-library (`mpd_workmate_init base=...`), `mpd_modelchain_resolve` and the roster
-tools all take the team word and the id interchangeably.
+library (`mpd_workmate_init base=...`), `mpd_modelchain_resolve` and the roster tools
+all address a role the same way.
 
 ## Team mode
 

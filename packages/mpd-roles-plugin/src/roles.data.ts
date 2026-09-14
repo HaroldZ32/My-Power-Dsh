@@ -55,7 +55,7 @@ export const ROLES: MpdRoleSpec[] = [
   {
     "id": "hephaestus",
     "name": "Deep Worker",
-    "description": "Autonomous deep worker: receives goals, executes them end-to-end with tools, verifies every change.",
+    "description": "Autonomous deep worker: executes goals end-to-end with tools, verifies every change.",
     "readonly": false,
     "chain": [
       { "provider": "deepseek-official", "model": "deepseek-v4-flash" },
@@ -89,7 +89,7 @@ export const ROLES: MpdRoleSpec[] = [
   {
     "id": "explore",
     "name": "Explorer",
-    "description": "Read-only codebase explorer: evidence-based answers, never edits.",
+    "description": "Read-only codebase explorer: finds files and code, returns evidence, never edits.",
     "readonly": true,
     "chain": [
       { "provider": "deepseek-official", "model": "deepseek-v4-flash" },
@@ -100,7 +100,7 @@ export const ROLES: MpdRoleSpec[] = [
   {
     "id": "metis",
     "name": "Reviewer",
-    "description": "Deep reviewer: correctness/risk findings with evidence, no fixes.",
+    "description": "Deep reviewer: correctness and risk findings with evidence, no fixes.",
     "readonly": false,
     "chain": [
       { "provider": "deepseek-official", "model": "deepseek-v4-flash" },
@@ -111,7 +111,7 @@ export const ROLES: MpdRoleSpec[] = [
   {
     "id": "momus",
     "name": "Plan Reviewer",
-    "description": "Work-plan QA reviewer: verifies plans are executable and references valid, rejects only true blockers; UI/UX critique is a local extension.",
+    "description": "Work-plan QA reviewer: verifies the plan is executable and its references valid, rejects only true blockers.",
     "readonly": true,
     "chain": [
       { "provider": "deepseek-official", "model": "deepseek-v4-flash" },

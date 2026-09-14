@@ -5,11 +5,12 @@
 // surfaces like agent_teams_add_member), and the mpdRoles service (mpd-modelchain
 // chain lookup). Team mode lives in the adopted dsh-agent-teams plugin, whose
 // normal-named member templates are configured in the bundle patch.
-// ADDRESSING CONTRACT: the normal display name IS the role's user-facing identity —
-// it is the member name in team mode AND the label of a one-shot mpd_role_spawn —
-// so every surface accepts "Architect"/"Deep Worker" as readily as "oracle"/
-// "hephaestus" (normalizeRoleKey). Keep the two vocabularies one word apart, never
-// two spellings of the same thing.
+// ADDRESSING CONTRACT: a role is addressed by its normal display NAME — the member
+// name in team mode, the label of a one-shot mpd_role_spawn, and what every
+// description/render lists. The stable `id` is an INTERNAL key (modelchain chain key,
+// `personas/<id>.md`, workmate meta.baseId) that legacy callers may still pass; it is
+// accepted for compatibility and never advertised: a role is described by what it does.
+// Keep the two vocabularies one word apart, never two spellings of the same thing.
 // Persona texts are assets under personas/<id>.md resolved relative to this
 // plugin's package location.
 import { existsSync, readFileSync } from "node:fs"
@@ -75,10 +76,30 @@ export function normalizeRoleNameKey(name: string): string {
  *  passes to mpd_role_spawn (this is the name-unification contract). */
 const ROLE_ID_BY_NAME_KEY: Readonly<Record<string, string>> = Object.fromEntries(ROLES.map((r) => [normalizeRoleNameKey(r.name), r.id]))
 
-/** The roster as "Name (id)" pairs — the ONE wording every description, render
- *  and unknown-role error reuses, so the tool surface never drifts from the data. */
+/** The roster's names, comma-separated — the ONE wording every unknown-role error
+ *  reuses, so the tool surface never drifts from the data. */
 export function rosterNameList(): string {
-  return ROLES.map((r) => r.name + " (" + r.id + ")").join(", ")
+  return ROLES.map((r) => r.name).join(", ")
+}
+
+/** The roster as "Name (what it does)" — the ONE wording every tool description
+ *  reuses. A role is described by its FUNCTION, never by an upstream alias: the
+ *  stable `id` is an internal chain key (chain lookup, persona asset names, legacy
+ *  callers) and no surface advertises it. The leading role-noun of a description is
+ *  dropped (the name already is that noun) and a trailing period trimmed, so the
+ *  inline list reads as a capability index. */
+export function rosterFunctionList(): string {
+  return ROLES.map((r) => r.name + " (" + functionOf(r.description) + ")").join(", ")
+}
+
+/** "Strategic technical advisor: architecture review, deep debugging." -> "architecture review, deep debugging" */
+function functionOf(description: string): string {
+  const afterColon = description.includes(": ") ? description.slice(description.indexOf(": ") + 2) : description
+  return afterColon
+    .replace(/\s*\(([^()]*)\)/g, ", $1")
+    .replace(/\.+\s*$/, "")
+    .replace(/,\s*,/g, ",")
+    .trim()
 }
 
 /**
@@ -124,20 +145,20 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   dsh.registerTool({
     name: "mpd_roles_list",
-    description: "List the specialist roster: Architect (oracle), Researcher (librarian), Planner (prometheus), Deep Worker (hephaestus), Senior Engineer (sisyphus), Lead (atlas), Explorer (explore), Reviewer (metis), Plan Reviewer (momus), Vision Analyst (multimodal-looker), Junior Engineer (sisyphus-junior). These are the SAME normal names the team mode stages as teammates, so address a role by its name (\"Architect\", \"Deep Worker\") or its stable id (\"oracle\", \"hephaestus\") — both work everywhere. Use this before mpd_role_spawn; for team work use agent_teams_create profile=mpd instead of repeated one-shot spawns.",
+    description: "List the specialist roster — the SAME normal-named specialists team mode stages as teammates, each named for what it does: " + rosterFunctionList() + ". Address a role by that name (any case, space or hyphen spelling). Use this before mpd_role_spawn; for team work call agent_teams_create profile=mpd instead of repeated one-shot spawns.",
     parameters: { type: "object", properties: {} },
-    output: { schema: { type: "object", properties: { roles: { type: "array", items: { type: "object" } }, count: { type: "integer" } }, required: ["roles", "count"] }, render: (_a: unknown, v: any) => textBlock("roster (" + v.count + "):\n" + v.roles.map((r: any) => "- " + r.name + " (" + r.id + ") [" + r.model + (r.readonly ? " readonly" : "") + "] " + r.description).join("\n")) },
-    execute: async () => ({ roles: ROLES.map((r) => ({ id: r.id, name: r.name, description: r.description, readonly: r.readonly, provider: r.chain[0]?.provider ?? null, model: r.chain[0]?.model ?? null })), count: ROLES.length })
+    output: { schema: { type: "object", properties: { roles: { type: "array", items: { type: "object" } }, count: { type: "integer" } }, required: ["roles", "count"] }, render: (_a: unknown, v: any) => textBlock("roster (" + v.count + "):\n" + v.roles.map((r: any) => "- " + r.name + " [" + r.model + (r.readonly ? " readonly" : "") + "] — " + r.description).join("\n")) },
+    execute: async () => ({ roles: ROLES.map((r) => ({ name: r.name, description: r.description, readonly: r.readonly, provider: r.chain[0]?.provider ?? null, model: r.chain[0]?.model ?? null })), count: ROLES.length })
   })
 
   dsh.registerTool({
     name: "mpd_role_spawn",
-    description: "Spawn one specialist as a one-shot subagent with its roster persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Name the role exactly as the team mode would — its normal name (Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer, Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer) or, equivalently, its stable id (oracle, librarian, prometheus, hephaestus, sisyphus, atlas, explore, metis, momus, multimodal-looker, sisyphus-junior); the spawned subagent is labelled with that normal name. For multi-member team work prefer the adopted dsh-agent-teams protocol (agent_teams_create + agent_teams_add_member), not repeated one-shot spawns.",
-    parameters: { type: "object", properties: { role: { type: "string", description: "roster role: normal name (\"Architect\", \"Deep Worker\") or stable id (\"oracle\", \"hephaestus\") — see mpd_roles_list" }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" }, model: { type: "string", description: "optional model override (default: the role's primary route)" } }, required: ["role", "task"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { role: { type: "string" }, id: { type: "string" }, status: { type: "string", enum: ["complete"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "id", "status", "summary"] }, render: (_a: unknown, v: any) => textBlock("role " + v.role + " (" + v.id + ", " + v.status + ")\nsummary: " + v.summary + (v.recommendation ? "\nrecommendation: " + v.recommendation : "") + (v.details ? "\ndetails: " + v.details : "") + (v.evidence?.length ? "\nevidence:\n- " + v.evidence.join("\n- ") : "")) },
+    description: "Spawn one specialist as a one-shot subagent, carrying its persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The subagent is labelled with that name. For multi-member team work prefer the adopted dsh-agent-teams protocol (agent_teams_create + agent_teams_add_member), not repeated one-shot spawns.",
+    parameters: { type: "object", properties: { role: { type: "string", description: "role name (see mpd_roles_list), e.g. \"Architect\" or \"Deep Worker\"" }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" }, model: { type: "string", description: "optional model override (default: the role's primary route)" } }, required: ["role", "task"], additionalProperties: false },
+    output: { schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a: unknown, v: any) => textBlock("role " + v.role + " (" + v.status + ")\nsummary: " + v.summary + (v.recommendation ? "\nrecommendation: " + v.recommendation : "") + (v.details ? "\ndetails: " + v.details : "") + (v.evidence?.length ? "\nevidence:\n- " + v.evidence.join("\n- ") : "")) },
     execute: async (args: any, exec: any) => {
       const id = normalizeRoleKey(String(args?.role ?? ""))
-      if (!id) throw new Error("mpd_role_spawn: unknown role '" + String(args?.role) + "' — use a roster name or id: " + rosterNameList())
+      if (!id) throw new Error("mpd_role_spawn: unknown role '" + String(args?.role) + "' — use a roster name: " + rosterNameList())
       const spec = ROLE_BY_ID[id]
       const task = String(args?.task ?? "").trim()
       if (!task) throw new Error("mpd_role_spawn: task required")
@@ -157,20 +178,20 @@ export function apply(ctx: Ctx, config: Config = {}): void {
         ...(spec.readonly ? { toolFilter: { deny: READONLY_DENY } } : {})
       })
       const st = result.structured ?? {}
-      return { role: spec.name, id: spec.id, status: "complete", summary: String(st.summary ?? ""), recommendation: String(st.recommendation ?? ""), details: String(st.details ?? ""), evidence: Array.isArray(st.evidence) ? st.evidence.map(String) : [], stopReason: result.stopReason ?? null }
+      return { role: spec.name, status: "complete", summary: String(st.summary ?? ""), recommendation: String(st.recommendation ?? ""), details: String(st.details ?? ""), evidence: Array.isArray(st.evidence) ? st.evidence.map(String) : [], stopReason: result.stopReason ?? null }
     }
   })
 
   dsh.registerTool({
     name: "mpd_role_persona",
-    description: "Return the full persona text of one roster role, addressed by its normal name (\"Architect\", \"Deep Worker\") or its stable id (\"oracle\", \"hephaestus\"). Use it when a spawn surface takes the persona as TEXT — e.g. an agent_teams_add_member member whose name is the same normal name — so the member gets the real role instructions instead of a bare id.",
-    parameters: { type: "object", properties: { role: { type: "string", description: "roster role: normal name or stable id (see mpd_roles_list)" } }, required: ["role"] },
-    output: { schema: { type: "object", properties: { role: { type: "string" }, id: { type: "string" }, persona: { type: "string" }, chars: { type: "integer" } }, required: ["role", "id", "persona", "chars"] }, render: (_a: unknown, v: any) => textBlock("persona " + v.role + " (" + v.id + ", " + v.chars + " chars):\n" + v.persona) },
+    description: "Return the full persona text of one roster role, addressed by its name (\"Architect\", \"Deep Worker\", \"Plan Reviewer\"). Use it when a spawn surface takes the persona as TEXT — e.g. an agent_teams_add_member member whose name is that same name — so the member gets the real role instructions instead of a bare label.",
+    parameters: { type: "object", properties: { role: { type: "string", description: "role name (see mpd_roles_list)" } }, required: ["role"] },
+    output: { schema: { type: "object", properties: { role: { type: "string" }, persona: { type: "string" }, chars: { type: "integer" } }, required: ["role", "persona", "chars"] }, render: (_a: unknown, v: any) => textBlock("persona " + v.role + " (" + v.chars + " chars):\n" + v.persona) },
     execute: async (args: any) => {
       const id = normalizeRoleKey(String(args?.role ?? ""))
-      if (!id) throw new Error("mpd_role_persona: unknown role '" + String(args?.role) + "' — use a roster name or id: " + rosterNameList())
+      if (!id) throw new Error("mpd_role_persona: unknown role '" + String(args?.role) + "' — use a roster name: " + rosterNameList())
       const persona = readPersona(config, ROLE_BY_ID[id])
-      return { role: ROLE_BY_ID[id].name, id, persona, chars: persona.length }
+      return { role: ROLE_BY_ID[id].name, persona, chars: persona.length }
     }
   })
 }

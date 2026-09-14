@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test"
-import { apply, normalizeRoleKey, readPersona, pkgRoot, READONLY_DENY } from "../src/index.ts"
+import { apply, normalizeRoleKey, readPersona, pkgRoot, READONLY_DENY, rosterFunctionList, rosterNameList } from "../src/index.ts"
 import { ROLES } from "../src/roles.data.ts"
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
@@ -80,11 +80,62 @@ test("a one-shot spawn is labelled with the team-style normal name, not the id",
   const byName = await spawn.execute({ role: "Deep Worker", task: "implement Y" }, exec)
   expect(spawned[0].label).toBe("Deep Worker")
   expect(byName.role).toBe("Deep Worker")
-  expect(byName.id).toBe("hephaestus")
   const byId = await spawn.execute({ role: "momus", task: "review the plan" }, exec)
   expect(spawned[1].label).toBe("Plan Reviewer")
   expect(byId.role).toBe("Plan Reviewer")
-  expect(byId.id).toBe("momus")
+})
+
+/**
+ * The alias guard. The roster's stable ids are inherited upstream keys: they stay
+ * ACCEPTED (chain lookup, persona asset names, legacy callers), but no surface may
+ * ADVERTISE one — every description, parameter and rendered line addresses a role by
+ * its name and says what it does. Word-boundary matching keeps the honest English
+ * words that merely contain an id as a substring (the "Explorer" role contains
+ * "explore") from failing this guard.
+ */
+test("no surface advertises an upstream alias: names plus what a role does", async () => {
+  const { tools, spawned, exec } = makePlugin()
+  const spawn = tools.find((t) => t.name === "mpd_role_spawn")
+  const persona = tools.find((t) => t.name === "mpd_role_persona")
+  const list = tools.find((t) => t.name === "mpd_roles_list")
+  const listRes = await list.execute({}, {})
+  const spawnRes = await spawn.execute({ role: "Plan Reviewer", task: "review the plan" }, exec)
+  const personaRes = await persona.execute({ role: "Architect" }, {})
+  const surfaces = [
+    list.description, JSON.stringify(list.parameters), list.output.render({}, listRes)[0].text,
+    spawn.description, JSON.stringify(spawn.parameters), spawn.output.render({}, spawnRes)[0].text,
+    persona.description, JSON.stringify(persona.parameters), persona.output.render({}, personaRes)[0].text,
+    JSON.stringify(personaRes).replace(/"persona":"[^"]*"/, '"persona":"…"'), // the persona TEXT is the role's own instructions
+    rosterFunctionList(), rosterNameList(),
+  ]
+  for (const surface of surfaces) {
+    for (const role of ROLES) {
+      const alias = new RegExp("\\b" + role.id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "i")
+      expect(alias.test(surface), surface.slice(0, 80) + " … advertises the alias " + role.id).toBe(false)
+    }
+  }
+  // …while every NAME and its function text IS present where it matters.
+  for (const role of ROLES) {
+    expect(listRes.roles.map((r: any) => r.name)).toContain(role.name)
+    expect(list.output.render({}, listRes)[0].text).toContain(role.name)
+  }
+  expect(spawned[0].label).toBe("Plan Reviewer")
+})
+
+test("the roster tool payloads carry no id field (an alias is not part of a result)", async () => {
+  const { tools, exec } = makePlugin()
+  const list = tools.find((t) => t.name === "mpd_roles_list")
+  const spawn = tools.find((t) => t.name === "mpd_role_spawn")
+  const persona = tools.find((t) => t.name === "mpd_role_persona")
+  const listRes = await list.execute({}, {})
+  const spawnRes = await spawn.execute({ role: "momus", task: "review" }, exec)
+  const personaRes = await persona.execute({ role: "momus" }, {})
+  expect(Object.keys(listRes.roles[0])).not.toContain("id")
+  expect(Object.keys(spawnRes)).not.toContain("id")
+  expect(Object.keys(personaRes)).not.toContain("id")
+  for (const t of [list, spawn, persona]) {
+    expect(JSON.stringify(t.output.schema)).not.toContain('"id"')
+  }
 })
 
 test("mpdRoles service: list 11, get resolves aliases, unknown is null", () => {
@@ -99,12 +150,11 @@ test("mpdRoles service: list 11, get resolves aliases, unknown is null", () => {
   expect(svc.get("missing")).toBeNull()
 })
 
-test("mpd_role_persona returns the extracted persona text", async () => {
+test("mpd_role_persona returns the extracted persona text under the role's NAME", async () => {
   const { tools } = makePlugin()
   const tool = tools.find((t) => t.name === "mpd_role_persona")
   const res = await tool.execute({ role: "oracle" }, {})
   expect(res.role).toBe("Architect")
-  expect(res.id).toBe("oracle")
   expect(res.persona).toContain("read-only")
   expect(res.persona).toContain("the Architect")
   expect(res.chars).toBe(res.persona.length)
@@ -132,10 +182,11 @@ test("mpd_roles_list returns the full roster summary", async () => {
   const list = tools.find((t) => t.name === "mpd_roles_list")
   const res = await list.execute({}, {})
   expect(res.count).toBe(11)
-  expect(res.roles.every((r: any) => r.id && r.model)).toBe(true)
-  const oracle = res.roles.find((r: any) => r.id === "oracle")
+  expect(res.roles.every((r: any) => r.name && r.model && r.description)).toBe(true)
+  const oracle = res.roles.find((r: any) => r.name === "Architect")
   expect(oracle.readonly).toBe(true)
   expect(oracle.model).toBe("deepseek-v4-flash")
+  expect(oracle.description.length).toBeGreaterThan(10)
 })
 
 test("read-only deny list covers every write-capable tool (no shell/AST/LSP write bypass)", async () => {
@@ -164,6 +215,20 @@ test("the same dead names must not reappear in the roles source or its built dis
   for (const rel of ["../src/index.ts", "../dist/index.js"]) {
     const src = readFileSync(join(import.meta.dir, rel), "utf8")
     for (const dead of DEAD_TOOL_NAMES) expect(src).not.toContain(dead)
+  }
+})
+
+/**
+ * Alias guard on the SHIPPED artifact: the source can look clean while the built dist
+ * still renders `Name (alias)`. The ids legitimately appear in the dist as chain keys
+ * and persona paths, so only the DISPLAY SHAPE is forbidden — an id inside a
+ * parenthetical, which is exactly how the upstream alias used to be shown.
+ */
+test("the built dist renders no role as `Name (upstream-alias)`", () => {
+  const dist = readFileSync(join(import.meta.dir, "../dist/index.js"), "utf8")
+  for (const role of ROLES) {
+    const aliasShape = new RegExp("\\(\\s*" + role.id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*\\)", "i")
+    expect(aliasShape.test(dist), role.name + " is still rendered with its alias in dist").toBe(false)
   }
 })
 
