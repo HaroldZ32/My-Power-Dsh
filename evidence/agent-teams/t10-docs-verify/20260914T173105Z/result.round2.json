@@ -1,0 +1,35 @@
+{
+  "task": "t10 — Verify the rewritten documentation: bilingual parity, links and factual accuracy (RE-VERIFICATION round 2, post-t15)",
+  "verifier": "Reviewer",
+  "attempt": 7,
+  "attemptId": "3e757767-d3ed-4e46-963f-b445c1892c96",
+  "date": "2026-09-14T17:39:00Z",
+  "repoHead": "6cbb126",
+  "supersedes": "evidence/agent-teams/t10-docs-verify/20260914T173105Z/result.json (attempt 4, FAILED with F1+F2)",
+  "verdict": "PASS",
+  "method": "the SAME read-only checker (verify.mjs) re-run on the settled post-t15 tree, extended with two post-repair assertions that pin each repaired claim in BOTH languages; no doc was edited by me.",
+  "roundOverRound": {
+    "attempt4": { "badConfigRows": 1, "dirsOnDiskNotListed": ["mpd-mcp-shared"], "findings": 2 },
+    "round2": { "badConfigRows": 0, "dirsOnDiskNotListed": [], "findings": 0 },
+    "unchangedAndStillGreen": { "links": "73 total / 0 dead", "pathClaims": "205 claims / 0 real misses", "existence": true, "paritySameSectionCount": true, "relationship": "capabilities 16 < relationship 180 < license 202", "hub": "all six targets listed by docs/index.md" }
+  },
+  "perDoc": [
+    { "doc": "README.md + README.zh-CN.md", "verdict": "PASS", "bilingual": "PASS", "links": "PASS (13/13, 0 dead)", "parity": "PASS (19/19 sections)", "facts": "PASS" },
+    { "doc": "docs/index.md + docs/index.zh-CN.md", "verdict": "PASS (F2 closed)", "bilingual": "PASS", "links": "PASS (16+15, 0 dead)", "parity": "PASS (6/6)", "facts": "PASS — the universal 'One README per package' sentence is gone in both languages, replaced by a claim with exactly two stated exceptions, and BOTH exceptions are true against the tree (mpd-mcp-shared ships no README; mpd-agent-teams-plugin keeps upstream's EN README), while every other package carries the EN+ZH pair (22/24); mpd-mcp-shared is now enumerated in both languages" },
+    { "doc": "docs/user-guide.md + docs/user-guide.zh-CN.md", "verdict": "PASS (F1 closed)", "bilingual": "PASS", "links": "PASS (4/4, 0 dead)", "parity": "PASS (19/19 sections; §9 table 5/5 rows, §10 14/14 bullets)", "facts": "PASS — the false `codegraph.*` mpd.jsonc row is gone from BOTH tables; a note under each table states the row-option reality (autoInit/initTimeoutMs/cooldownMs/binary read at apply time, no plugin reads codegraph.* through mpd.jsonc); the remaining `codegraph.*` occurrences in these files are that truthful note only" },
+    { "doc": "docs/architecture.md + docs/architecture.zh-CN.md", "verdict": "PASS", "bilingual": "PASS", "links": "PASS (1/1, 0 dead)", "parity": "PASS (15/15)", "facts": "PASS" },
+    { "doc": "docs/development.md + docs/development.zh-CN.md", "verdict": "PASS", "bilingual": "PASS", "links": "PASS (1/1, 0 dead)", "parity": "PASS (10/10)", "facts": "PASS" },
+    { "doc": "docs/extensions.md + docs/extensions.zh-CN.md", "verdict": "PASS", "bilingual": "PASS", "links": "PASS (2/2, 0 dead)", "parity": "PASS (48/48 headings; structurally identical thin-looking ZH sections)", "facts": "PASS" },
+    { "doc": "packages/mpd-team-compact-plugin/README.md + README.zh-CN.md (new, added by t15)", "verdict": "PASS", "bilingual": "PASS (switch links under both titles)", "links": "PASS (3+3, 0 dead)", "parity": "PASS (7/7 headings, 7/7 table rows, 17/17 bullets)", "facts": "PASS — documents only mpd_team_compact_run + mpd_team_compact_status, both genuinely registered at packages/mpd-team-compact-plugin/src/index.ts:480,508; the row id mpd-team-compact exists in the bundle patch (packages/mpd-bundle/cordis.patch.yml:213) and in install-profile.mjs:164" }
+  ],
+  "postRepairAssertions": {
+    "F1": { "falseRowGoneEn": true, "falseRowGoneZh": true, "realityNoteEn": true, "realityNoteZh": true, "consumedKeyListOmitsCodegraph": true, "noPluginReadsIt": true, "ok": true },
+    "F2": { "universalClaimGoneEn": true, "universalClaimGoneZh": true, "exceptionsStatedEn": true, "mcpSharedListedEn": true, "mcpSharedListedZh": true, "teamCompactReadmePair": true, "exceptionsAreTrue": true, "undocumentedException": [], "ok": true }
+  },
+  "knownFollowUp": "packages/mpd-mcp-shared still has no README pair. That is no longer a false claim: docs/index.md and docs/index.zh-CN.md now name it explicitly as one of two stated exceptions and record the README pair as a follow-up. Accepted by the task text (a qualified-but-true sentence is acceptable).",
+  "findings": [],
+  "residualFalsePositivesOfTheChecker": [
+    "docs/plan-{c,d,e,f}.md — brace glob in prose, not a path.",
+    "skills/flows providers — prose naming two contribution kinds."
+  ]
+}

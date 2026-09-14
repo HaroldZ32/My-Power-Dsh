@@ -385,6 +385,18 @@ export const MPD_DELTAS = [
     },
     {
         file: "packages/mpd-agent-teams-plugin/lib/scheduler.js",
+        id: "mpd-delta dispatch-decline-guard",
+        beforeContext: [
+            "    return ctx.agents.get(member.id);",
+            "}",
+        ],
+        afterContext: [
+            "function ownedOpenTask(tasks, memberName) {",
+        ],
+        block: "//#region mpd-delta dispatch-decline-guard (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n/** One `dispatch declined` line per (team, member, reason) per process. */\nconst dispatchDeclineNotes = new Set();\n/** Bound on that set: a long-lived multi-session host must not grow it without limit. */\nconst DISPATCH_DECLINE_NOTE_MAX = 512;\n/**\n * Record WHY one kick declined to deliver a ready task.\n *\n * Every early return of the dispatch chain used to be a silent `return`, so a team parked\n * on a READY task was indistinguishable from a team with nothing to do. Measured live on\n * 2026-09-14 (team mpd-default): the post-approval kick found all six just-spawned members\n * inside their spawn/welcome turn, declined at the availability guard for every one of them\n * and delivered nothing for 59.3 s without a single log line — the captain read that as a\n * permanent stall and \"fixed\" it with a manual reassignment that interrupted the attempt\n * the idle edge had just delivered.\n *\n * Logged at `warn` and deduped per (team, member, reason): the FIRST occurrence — the one\n * that matters — is never lost, while a hot kick loop cannot flood the log.\n * @param logger - the plugin context logger (absent in some unit fixtures).\n * @param teamId - the team whose dispatch declined.\n * @param memberName - the addressed member, the session id for an idle edge, or `*`.\n * @param reason - the concrete condition that was false.\n */\nfunction noteDispatchDecline(logger, teamId, memberName, reason) {\n    const key = `${teamId}\\u0000${memberName}\\u0000${reason}`;\n    if (dispatchDeclineNotes.size >= DISPATCH_DECLINE_NOTE_MAX)\n        dispatchDeclineNotes.clear();\n    if (dispatchDeclineNotes.has(key))\n        return;\n    dispatchDeclineNotes.add(key);\n    logger?.warn?.(`agent-teams: dispatch declined for ${teamId}/${memberName}: ${reason}`);\n}\n/**\n * How the live Agent registry sees one member right now.\n *\n * The upstream `isMemberAvailable` treated EVERY non-idle live Agent as unavailable, so the\n * approval-time kick — which necessarily runs while the just-spawned members are still\n * inside their spawn/welcome turn — delivered nothing and returned silently. Task delivery\n * here is a QUEUED next turn (`queueMemberPrompt` -> `delivery: 'queue'`; the host's own\n * contract: \"queue delivery targets a later turn\"), so a member that is merely running its\n * own turn accepts it. Only a member that already owns an open attempt is genuinely\n * unavailable, because re-delivering would rotate that capability and duplicate the\n * assignment; the caller applies that second test against the durable task list, inside the\n * team lock. `cold` (no live Agent) keeps the upstream behaviour: eligible for one cold\n * recovery.\n * @param ctx - plugin context whose `agents` registry holds the live Agents.\n * @param member - the member whose child session id addresses the Agent.\n * @returns 'cold' | 'idle' | 'busy'.\n */\nfunction memberActivity(ctx, member) {\n    const live = liveMember(ctx, member);\n    if (live === undefined)\n        return 'cold';\n    return live.status === 'idle' ? 'idle' : 'busy';\n}\n//#endregion mpd-delta dispatch-decline-guard",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/scheduler.js",
         id: "mpd-delta ready-task-predicate",
         beforeContext: [
             "        && (task.status === 'claimed' || task.status === 'in_progress'));",
@@ -409,15 +421,72 @@ export const MPD_DELTAS = [
     },
     {
         file: "packages/mpd-agent-teams-plugin/lib/scheduler.js",
+        id: "mpd-delta kick-team-decline-logs",
+        beforeContext: [
+            "    const runtime = {",
+        ],
+        afterContext: [
+            "            for (const member of team.members) {",
+        ],
+        block: "        //#region mpd-delta kick-team-decline-logs (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n        async kickTeam(workspace, teamId, suppliedCaptain) {\n            const stateRoot = stateRootOf(workspace, config);\n            const team = await readTeam(stateRoot, teamId);\n            if (team === undefined)\n                return noteDispatchDecline(ctx.logger, teamId, '*', 'no team record exists at this state root');\n            if (team.halted === true)\n                return noteDispatchDecline(ctx.logger, teamId, '*', 'the team is halted');\n            if (team.phase === 'staged')\n                return noteDispatchDecline(ctx.logger, teamId, '*', 'the team is still staged; approval has not committed yet');\n            const captain = liveCaptain(ctx, team.captainSessionId, suppliedCaptain);\n            if (captain === undefined)\n                return noteDispatchDecline(ctx.logger, teamId, '*', 'no live captain session is resolvable, so no member turn can be authorized');\n        //#endregion mpd-delta kick-team-decline-logs",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/scheduler.js",
         id: "mpd-delta interjection-expiry-tick",
         beforeContext: [
-            "        async kickMember(workspace, teamId, memberName, suppliedCaptain) {",
             "            const stateRoot = stateRootOf(workspace, config);",
         ],
         afterContext: [
             "            const queueKey = memberQueueKey(stateRoot, teamId, memberName);",
         ],
         block: "            //#region mpd-delta interjection-expiry-tick (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n            // R1: the scheduler's idle edge IS the clock for \"captain silence = DENY\". An\n            // expired request flips pending -> expired and notifies the requester; the tick\n            // is best-effort so a bookkeeping failure can never block a real wake-up.\n            try {\n                const expired = await expireInterjections(stateRoot, teamId);\n                if (expired.length > 0)\n                    ctx.logger?.info?.(`agent-teams: expired ${expired.length} unanswered interjection request(s): ${expired.join(', ')}`);\n            }\n            catch (error) {\n                ctx.logger?.warn?.(`agent-teams: interjection expiry tick failed: ${String(error)}`);\n            }\n            //#endregion mpd-delta interjection-expiry-tick",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/scheduler.js",
+        id: "mpd-delta kick-member-decline-logs",
+        beforeContext: [
+            "                if (captain === undefined)",
+            "                    return;",
+        ],
+        afterContext: [
+            "                // A mailbox-only fallback is real pending work. Deliver it before a",
+        ],
+        block: "                //#region mpd-delta kick-member-decline-logs (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n                let member = team.members.find(candidate => candidate.name === memberName && candidate.status !== 'removed');\n                if (member === undefined)\n                    return noteDispatchDecline(ctx.logger, team.id, memberName, 'the member is not an active member of this team');\n                if (member.id === '')\n                    return noteDispatchDecline(ctx.logger, team.id, memberName, 'the member has no spawned child session yet');\n                // A member that is merely mid-turn can still ACCEPT a queued assignment\n                // (this is the approval-time case); only one that already owns an open\n                // attempt is genuinely unavailable.\n                if (memberActivity(ctx, member) === 'busy' && ownedOpenTask(team.tasks, memberName) !== undefined)\n                    return noteDispatchDecline(ctx.logger, team.id, memberName, 'the member is running the turn of an attempt it already owns');\n                //#endregion mpd-delta kick-member-decline-logs",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/scheduler.js",
+        id: "mpd-delta kick-member-locked-decline-logs",
+        beforeContext: [
+            "                const ticket = await withTeamLock(teamLockKey(stateRoot, team.id), async () => {",
+        ],
+        afterContext: [
+            "                    // Resolve cancelled-dependency deadlocks before selecting the",
+        ],
+        block: "                    //#region mpd-delta kick-member-locked-decline-logs (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n                    const fresh = await readTeam(stateRoot, team.id);\n                    if (fresh === undefined)\n                        return noteDispatchDecline(ctx.logger, team.id, memberName, 'the team record disappeared while this kick waited for the lock');\n                    if (fresh.halted === true)\n                        return noteDispatchDecline(ctx.logger, team.id, memberName, 'the team was halted while this kick waited for the lock');\n                    if (fresh.phase === 'staged')\n                        return noteDispatchDecline(ctx.logger, team.id, memberName, 'the team returned to staged while this kick waited for the lock');\n                    const currentMember = fresh.members.find(candidate => candidate.name === memberName && candidate.status !== 'removed');\n                    if (currentMember === undefined)\n                        return noteDispatchDecline(ctx.logger, team.id, memberName, 'the member left the team while this kick waited for the lock');\n                    if (currentMember.id === '')\n                        return noteDispatchDecline(ctx.logger, team.id, memberName, 'the member has no spawned child session yet');\n                    const owned = ownedOpenTask(fresh.tasks, currentMember.name);\n                    if (memberActivity(ctx, currentMember) === 'busy' && owned !== undefined)\n                        return noteDispatchDecline(ctx.logger, team.id, memberName, 'the member is running the turn of an attempt it already owns');\n                    //#endregion mpd-delta kick-member-locked-decline-logs",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/scheduler.js",
+        id: "mpd-delta idle-edge-no-team-log",
+        beforeContext: [
+            "        const stateRoot = stateRootOf(workspace, config);",
+        ],
+        afterContext: [
+            "        if (located.captainSessionId === agent.id) {",
+        ],
+        block: "        //#region mpd-delta idle-edge-no-team-log (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n        const located = await findTeamByParticipant(stateRoot, agent.id);\n        if (located === undefined) {\n            parkedAttempts.delete(agent.id);\n            return noteDispatchDecline(ctx.logger, '(unresolved)', agent.id, `the idle edge resolved no team under ${stateRoot}`);\n        }\n        //#endregion mpd-delta idle-edge-no-team-log",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/scheduler.js",
+        id: "mpd-delta idle-edge-nonmember-log",
+        beforeContext: [
+            "                await runtime.kickTeam(workspace, located.id, agent);",
+            "            return;",
+            "        }",
+        ],
+        afterContext: [
+            "        await withTeamLock(teamLockKey(stateRoot, located.id), async () => {",
+        ],
+        block: "        //#region mpd-delta idle-edge-nonmember-log (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n        const member = located.members.find(candidate => candidate.id === agent.id && candidate.status !== 'removed');\n        if (member === undefined) {\n            parkedAttempts.delete(agent.id);\n            return noteDispatchDecline(ctx.logger, located.id, agent.id, 'the session is not an active member of the team this edge resolved');\n        }\n        //#endregion mpd-delta idle-edge-nonmember-log",
     },
     {
         file: "packages/mpd-agent-teams-plugin/lib/command.js",

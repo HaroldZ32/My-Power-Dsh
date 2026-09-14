@@ -1,0 +1,151 @@
+{
+  "task": "t13",
+  "subject": "Diagnose and harden the post-approval dispatch stall: a ready DAG root is never auto-delivered",
+  "attempt": 2,
+  "attempt_id": "594760d5-93d2-4862-ae40-6597cbeefa9c",
+  "owner": "Lead",
+  "date_utc": "2026-09-14T16:43:02Z",
+  "git": {
+    "head": "6cbb12682679127788657a3551ddffafa1696be1",
+    "changed_paths": [
+      "packages/mpd-agent-teams-plugin/lib/scheduler.js (sha256 cabb82383dbcd42b5a1dd93ddb069cf3a9df115a85ff5a8c175e813d301f4daf)",
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js (generated; sha256 339e7ae6950a086307999712d30c754d8cf5ee9957aa1200eca8c3b9caf33fea)",
+      "packages/mpd-agent-teams-plugin/test/dispatch-stall-regression.test.mjs (new)",
+      "packages/mpd-agent-teams-plugin/self-fix-tests/dispatch-stall-region.test.mjs (new)",
+      "evidence/agent-teams/dispatch-stall/20260914T164302Z/** (evidence)"
+    ],
+    "note": "the fix is a working-tree change on top of HEAD; the captain owns the commit (AGENTS.md §5: ONE git writer per tree)"
+  },
+  "measured_reproduction": {
+    "source": "the live stalled team itself: .mpd/team/mpd-default/team.json (approvedAt 2026-09-14T16:36:46.809Z) plus the harness session logs under /root/.dsh/sessions/--root-dshProj-my-power-dsh--/",
+    "decoder": "raw/scan-timeline.mjs, raw/dump-session.mjs, raw/captain-tools.mjs (frame-by-frame zstd decode of the concatenated-frame session container)",
+    "facts": [
+      "16:36:46.236Z..16:36:46.802Z — every one of the six members' FIRST turn (turn/start) is already in flight before approval commits; each is the scheduler's spawn/welcome prompt, so each live Agent is `running`.",
+      "16:36:46.809Z — team.json.approvedAt: approveStagedTeam wrote phase='running' and called scheduler.kickTeam OUTSIDE the lock (tools.js:455-463).",
+      "16:36:46.809Z..16:37:46.092Z — NOTHING is delivered: no inbox splice, no turn, for any member. The kick hit `isMemberAvailable === false` for all six (a member whose turn has started reports `running` — dsh-agent-loop/lib/index.js `get status()`), returned at scheduler.js:317 without a log line, and was never retried.",
+      "16:36:56.895Z / 16:36:58.887Z / 16:37:05.669Z / 16:37:11.945Z — Deep Worker / Reviewer / Junior Engineer / Senior Engineer finish their spawn turns; NOTHING is delivered, which is CORRECT: every one of their tasks depends on t1 (only t1 was ready).",
+      "16:37:45.036Z — Architect finishes its spawn turn and transitions running->idle; the harness emits agent/status idle.",
+      "16:37:45.236Z — Architect's turn 2 starts 0.2 s later, and its message (16:37:46.092Z) is the scheduler's `AgentTeams automatic task assignment` for t1 (attempt 1). So the idle edge DOES retry after the fact.",
+      "16:38:18.750Z — the captain, having seen ~59 s of an idle team, calls agent_teams_reassign_task on t1; the tool result reports `attempt 2`, and Architect's turn 2 ends `interrupted` at 16:38:18.780Z (reassign_task interrupts the revoked owner only when the task was claimed/in_progress — tools.js:1275-1289)."
+    ],
+    "verdict": "The stall is real and its mechanism is confirmed, with one correction to the reported symptom: the ready root task was NOT permanently lost. It was silently declined at approval time and only arrived 59.3 s later on Architect's idle edge; the captain's manual reassignment then INTERRUPTED that in-flight attempt and spent a second one. The defect class is (a) a silent no-op at the only moment the team needs dispatch, and (b) a dispatch that depends entirely on a later idle edge, so a member that never produces one would strand its ready task."
+  },
+  "swallow_point": {
+    "pre_fix": {
+      "file": "packages/mpd-agent-teams-plugin/lib/scheduler.js",
+      "lines": [
+        "137-140 — function isMemberAvailable(ctx, member) { return live === undefined || live.status === 'idle'; }",
+        "317 — if (member === undefined || member.id === '' || !isMemberAvailable(ctx, member)) return;   <-- THE swallow point",
+        "338 — if (currentMember === undefined || currentMember.id === '' || !isMemberAvailable(ctx, currentMember)) return undefined;   (the same test re-run inside the team lock)"
+      ],
+      "condition_false_at_that_moment": "isMemberAvailable(ctx, member) === false because ctx.agents.get(member.id).status === 'running': the member is executing its spawn/welcome turn from startContinuable, which the harness delivers with `delivery: 'queue'` and wakes synchronously (dsh-subagent/lib/index.js submitAdmitted -> activation.inbox.deliver + wake). Measured turn/start 16:36:46.236-46.802 vs approvedAt 16:36:46.809."
+    },
+    "post_fix": "the guard is `memberActivity(...) === 'busy' && ownedOpenTask(team.tasks, memberName) !== undefined` — a mid-turn member accepts a queued assignment; only a member that already holds an open attempt is declined, and it is declined LOUDLY."
+  },
+  "hypotheses": {
+    "H1_race_with_spawn": {
+      "status": "CONFIRMED (first half) / FALSIFIED (second half)",
+      "confirmed": "The post-approval kick ran while every just-spawned member was mid-turn, so isMemberAvailable was false for all six and the kick returned at scheduler.js:317 with no log, no retry and no delivery. Confirmed by the turn/start times (all < approvedAt) plus a deterministic in-tree regression case (pre-fix deliveries = 0).",
+      "falsified_part": "The claim that `a member whose first turn was the spawn turn goes idle->idle (not a transition), leaving a one-shot race with no retry` is FALSE in this measurement: Architect emitted running->idle at 16:37:45.036 and the idle edge DID deliver t1 at 16:37:45.236. The cost is a delay of one whole spawn turn (59.3 s here); permanent loss needs a member that never produces an idle edge."
+    },
+    "H2_identity_workspace_mismatch": {
+      "status": "ELIMINATED",
+      "evidence": "The 16:37:45.236 delivery travelled the idle edge: syncMemberStatus -> findTeamByParticipant(stateRoot, agent.id) -> kickMember, so participant resolution by member child id under `agent.session.header.cwd + stateDir` succeeded. The harness also sets the child header cwd from the parent (dsh-subagent/lib/index.js childSessionMeta spreads parentHeader.cwd), and team.json at the time carried Architect's id 76a59b68-50a7-4e44-8e43-f356607802a9."
+    },
+    "H3_silent_delivery_failure": {
+      "status": "ELIMINATED",
+      "evidence": "Two independent measurements. (1) At the kick instant the members were mid-turn, so the code could not have reached the attempt/delivery section — the availability guard precedes it, and the pre-fix regression case shows zero deliveries AND zero attempts recorded. (2) A failed delivery rolls the task back to `pending` with attemptId cleared and clears the member's claimed status (scheduler.js rollback branch); the captain's reassign at 16:38:18.750 reported `attempt 2` AND interrupted Architect's live turn, which tools.js:1275-1289 only does when the revoked task was `claimed`/`in_progress` — i.e. the 16:37:46 delivery had SUCCEEDED, not failed."
+    }
+  },
+  "fix": {
+    "files": [
+      "packages/mpd-agent-teams-plugin/lib/scheduler.js",
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js (regenerated registry, never hand-edited)"
+    ],
+    "behaviour": [
+      "memberActivity(ctx, member) replaces isMemberAvailable: 'cold' (no live Agent -> unchanged cold recovery) | 'idle' | 'busy'. A `busy` member is still dispatchable because task delivery is a QUEUED next turn (queueMemberPrompt -> delivery:'queue'; host contract: 'queue delivery targets a later turn').",
+      "The genuinely-unavailable case is now explicit and durable: `busy` AND it already owns an open attempt -> declined with a reason (re-delivery would rotate that capability and duplicate the assignment).",
+      "Every early return in the dispatch chain now logs WHY at warn level, deduped once per (team, member, reason): kickTeam's four team-level returns, kickMember's outer and locked guards, and syncMemberStatus's two idle-edge misses (the silent path H2 hypothesised).",
+      "Log line shape: `agent-teams: dispatch declined for <team>/<member>: <reason>`. The dedupe set is capped at 512 keys so a long-lived multi-session host cannot grow it without bound."
+    ],
+    "regions": [
+      "mpd-delta dispatch-decline-guard (noteDispatchDecline + dispatchDeclineNotes + memberActivity; replaces the upstream isMemberAvailable declaration -> replacement-shaped, a re-vendor heal REFUSES loudly)",
+      "mpd-delta kick-team-decline-logs",
+      "mpd-delta kick-member-decline-logs",
+      "mpd-delta kick-member-locked-decline-logs",
+      "mpd-delta idle-edge-no-team-log",
+      "mpd-delta idle-edge-nonmember-log"
+    ],
+    "registry": "40 -> 46 regions across the same 9 adopted files; `node scripts/patch-agent-teams-fixes.mjs --check` clean",
+    "early_returns_audited": [
+      "kickTeam: 4 team-level returns -> logged. `continue` on a removed member is NOT a swallow: agent_teams_remove_member returns every unfinished owned task to the shared pending pool before marking the member removed, so a removed member cannot hold a ready task.",
+      "kickMember: member-missing, member-id-empty, busy+owns-attempt (outer), and the same four re-checks inside the team lock -> logged. `if (ticket === undefined) return` can no longer be silent: every inner path that returns undefined now logs first; the remaining undefined path (`nextReadyTask` found nothing for this member) is the normal idle state, not a swallow.",
+      "kickMember mailbox branch: a failed mailbox delivery already logs through deliverToMember (`member <id> delivery failed`) and releases the claim; a successful one is a real wake-up.",
+      "syncMemberStatus: idle-edge-no-team and idle-edge-nonmember -> logged (this is the silent path hypothesis H2 predicted). A `running` edge returning early is not a swallow: it is the transition that precedes the idle edge.",
+      "The post-approval `catch` in tools.js:455-463 already logs the kick failure; it needed no change."
+    ],
+    "re_vendor_safety": "measured, not assumed: reconstructing the pre-fix scheduler.js (guard region removed, upstream isMemberAvailable restored) makes `--write` REFUSE and leave the file byte-untouched, naming mpd-delta dispatch-decline-guard and 'never guesses an insertion site'. Pinned by self-fix-tests/dispatch-stall-region.test.mjs, which also proves no fix token exists outside a region."
+  },
+  "tests": {
+    "regression": {
+      "file": "packages/mpd-agent-teams-plugin/test/dispatch-stall-regression.test.mjs",
+      "cases": [
+        "the approval-time kick delivers a ready root task to a member whose spawn turn is still running",
+        "a second kick while the member is mid-turn does not duplicate the queued assignment, and says why",
+        "the member's own idle edge after the queued assignment does not deliver it twice",
+        "an idle edge that resolves no team logs the miss instead of returning silently"
+      ],
+      "before": "0 pass / 4 fail (deliveries 0; no decline line)",
+      "after": "4 pass / 0 fail"
+    },
+    "region_pinning": {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/dispatch-stall-region.test.mjs",
+      "cases": [
+        "every dispatch-stall edit is region-registered (nothing unmarked survives a strip)",
+        "a re-materialized scheduler.js (upstream guard restored) is REFUSED byte-untouched",
+        "stripping every scheduler.js region heals byte-for-byte back to the canonical file"
+      ],
+      "result": "3 pass / 0 fail"
+    }
+  },
+  "verification": {
+    "commands": [
+      { "command": "bun test packages/mpd-agent-teams-plugin", "result": "213 pass / 0 fail (baseline before this work: 206 pass / 0 fail)" },
+      { "command": "bun test packages/mpd-agent-teams-plugin/self-fix-tests", "result": "56 pass / 0 fail" },
+      { "command": "node scripts/patch-agent-teams-fixes.mjs --check", "result": "already applied: 46 mpd delta region(s) across 9 adopted file(s) (exit 0)" },
+      { "command": "node scripts/verify-vendor.mjs", "result": "PASS (the adopted lib/ is not a fingerprinted vendor asset; only _deps is)" }
+    ],
+    "mounted_boot": {
+      "script": "mount-proof.sh (probe mount-probe.mjs, real boot of the mpd profile via a --patch probe row)",
+      "isolation": "DSH_HOME, HOME and the session workspace cwd are all throwaway sandboxes; the boot added no new directory NAME under the repo's .mpd/team (compared before/after, since the live server legitimately churns mtimes there)",
+      "result": "passed: true",
+      "measured": {
+        "apply_crash_signatures": 0,
+        "dispatch_declined_lines_in_boot": 0,
+        "scheduler_sha_match": "yes (the boot's tree carries the edited scheduler.js)",
+        "dispatch_regions_present": "6/6",
+        "agent_teams_tools_registered": "9/9",
+        "in_boot_dispatch_deliveries": 1,
+        "in_boot_task_status": "claimed",
+        "upstream_guard_absent": "yes",
+        "boot_exit": 124
+      },
+      "note": "boot_exit 124 is the timeout cap on a still-serving profile; the probe reaches its DONE marker at ~9 s. --dump-config is NOT cited as load evidence."
+    }
+  },
+  "artifacts": {
+    "trace-sessions.log": "decoded member turn timelines + captain tool calls around the stall",
+    "baseline.log": "pre-change suite + registry check (206 pass, 40 regions)",
+    "regression-prefix.log": "RED run of the new regression suite against the unmodified scheduler.js",
+    "regression-postfix.log": "GREEN run after the fix",
+    "gates-postfix.log": "full plugin suite, self-fix suite, --check, verify-vendor",
+    "mount-proof.sh / mount-probe.mjs / mount-proof.log / mount-boot.log / install.log / mount-proof.result.json": "the isolated mounted-boot proof",
+    "raw/scan-timeline.mjs, raw/dump-session.mjs, raw/captain-tools.mjs": "the read-only decoders used for the live trace",
+    "output.log": "consolidated evidence output"
+  },
+  "notes_for_downstream": [
+    "AGENTS.md §6 states 'The live registry is 40 regions across 9 adopted files' — it is now 46. AGENTS.md is out of this task's scope, so the release/integration owner (t11) must update that sentence.",
+    "The fix is INERT in the live process until the next boot (plugin modules are not hot-reloaded). No server was restarted and no .mpd/team state was written by hand.",
+    "A related, deliberately untouched observation: the whole first dispatch of an approved team currently waits for the members' spawn turn because the members are spawned WHILE the assignment is not yet queued. With this fix the assignment is queued at approval, so the member starts it as its next turn; the spawn turn itself still consumes one model turn."
+  ]
+}

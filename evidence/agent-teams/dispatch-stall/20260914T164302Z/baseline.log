@@ -1,0 +1,26 @@
+### baseline: plugin suite
+packages/mpd-agent-teams-plugin/test/r4-explicit-team.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/capabilities.test.ts:
+
+packages/mpd-agent-teams-plugin/test/harness-compat.test.ts:
+
+packages/mpd-agent-teams-plugin/test/t52-root-registration.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/t52-interjection-tools.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/scheduler-dispatch.test.ts:
+
+packages/mpd-agent-teams-plugin/test/update-task-amend-lock-and-guards.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/s1-s4-semantics.test.mjs:
+
+ 206 pass
+ 0 fail
+ 1457 expect() calls
+Ran 206 tests across 54 files. [4.91s]
+exit=0
+
+### baseline: mpd-delta registry --check
+[patch-agent-teams-fixes] already applied: 40 mpd delta region(s) across 9 adopted file(s)
+exit=0

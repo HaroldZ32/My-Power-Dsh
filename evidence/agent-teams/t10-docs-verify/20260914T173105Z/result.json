@@ -1,0 +1,66 @@
+{
+  "task": "t10 — Verify the rewritten documentation: bilingual parity, links and factual accuracy",
+  "verifier": "Reviewer",
+  "attempt": 4,
+  "attemptId": "a89fd0de-0612-4554-be76-897e310b0c51",
+  "date": "2026-09-14T17:31:05Z",
+  "repoHead": "6cbb126",
+  "method": "read-only static verification; the checker is evidence/agent-teams/t10-docs-verify/20260914T173105Z/verify.mjs (no doc was edited). Facts that could be executed were executed (CLI validate/--self-test/scaffold+validate), not read.",
+  "verdict": "fail (2 findings)",
+  "perDoc": [
+    { "doc": "README.md + README.zh-CN.md (t9)", "bilingual": "PASS", "links": "PASS (13 links, 0 dead)", "parity": "PASS (19/19 sections; capabilities and install section inline-code token sets identical apart from the localized <工作区> placeholder)", "facts": "PASS", "verdict": "PASS" },
+    { "doc": "docs/index.md + docs/index.zh-CN.md (t9)", "bilingual": "PASS", "links": "PASS (16/15 links, 0 dead)", "parity": "PASS (6/6 sections)", "facts": "FAIL — line 30 claims one README per listed package, but packages/mpd-team-compact-plugin has none (and packages/mpd-mcp-shared, a real package, is absent from the list)", "verdict": "FAIL (medium)" },
+    { "doc": "docs/user-guide.md + docs/user-guide.zh-CN.md (t9)", "bilingual": "PASS", "links": "PASS (4/4 links, 0 dead)", "parity": "PASS (19/19 sections; §9 extension table 5/5 rows, §10 troubleshooting 14/14 bullets)", "facts": "FAIL — EN:245 / ZH:223 list `codegraph.*` as an `mpd.jsonc` key consulted by mpd-codegraph; no plugin reads it (the options autoInit/binary/initTimeoutMs/cooldownMs are row/apply-time config)", "verdict": "FAIL (medium)" },
+    { "doc": "docs/architecture.md + docs/architecture.zh-CN.md (t9)", "bilingual": "PASS", "links": "PASS (1/1, 0 dead)", "parity": "PASS (15/15 sections)", "facts": "PASS", "verdict": "PASS" },
+    { "doc": "docs/development.md + docs/development.zh-CN.md (t9)", "bilingual": "PASS", "links": "PASS (1/1, 0 dead)", "parity": "PASS (10/10 sections)", "facts": "PASS", "verdict": "PASS" },
+    { "doc": "docs/extensions.md + docs/extensions.zh-CN.md (t8)", "bilingual": "PASS", "links": "PASS (2/2, 0 dead, incl. the cross-language §12 anchor)", "parity": "PASS (48/48 headings; every low-paragraph-count ZH section has structurally identical tables/bullets/fences — §10 3/3 bullets, §11 10/10 bullets, §13 9/9 questions, §9 8/8 table rows)", "facts": "PASS", "verdict": "PASS" }
+  ],
+  "measured": {
+    "languageSwitchLinks": "all 6 pairs: EN links [中文](./x.zh-CN.md) within 4 lines of the title; ZH links [English](./x.md) likewise",
+    "relativeLinks": { "total": 73, "dead": 0, "external": 4 },
+    "repoPathClaims": { "checked": 203, "missing": 0, "nonClaimsFiltered": ["docs/plan-{c,d,e,f}.md (brace glob)", "skills/flows providers (prose, not a path)"] },
+    "extensionTools": {
+      "required": ["mpd_ext_list", "mpd_ext_show", "mpd_flow_list", "mpd_flow_show"],
+      "allDocumentedIn": ["README.md", "README.zh-CN.md", "docs/user-guide.md", "docs/user-guide.zh-CN.md", "docs/architecture.md", "docs/architecture.zh-CN.md", "docs/extensions.md", "docs/extensions.zh-CN.md"],
+      "mpd_ext_reload": "documented as CUT (not shipped): true; no mpd_ext_reload registration exists in packages/mpd-ext-plugin/src/index.ts"
+    },
+    "configKeys": {
+      "authoritativeSource": "packages/mpd-config-plugin/src/index.ts (mpd_config_get description)",
+      "consumedKeysAllVerifiedInSource": true,
+      "unconsumedKeyClaimingRow": { "file": "docs/user-guide.md", "line": 245, "zhFile": "docs/user-guide.zh-CN.md", "zhLine": 223, "text": "| `codegraph.*` | mpd-codegraph | autoInit, binary, timeouts |" }
+    },
+    "executedFacts": [
+      "bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example -> exit 0; banner and contributes line match docs/extensions.md §12 verbatim",
+      "bun scripts/mpd-ext.mjs --self-test -> exit 0, 19 checks passed",
+      "HOME=<tmp> bun scripts/mpd-ext.mjs scaffold rtl-demo --dir <tmp>/.mpd/extensions -> '1 skill(s), 1 flow(s), 1 role(s), 0 mcp server(s)' exactly as §8 prints; the printed validate command exits 0",
+      "grep -n 'defaultRank|idPattern|skillNamePattern|serverNamePattern' packages/mpd-ext-plugin/src/sdk.ts -> the four constants §12 quotes exist at lines 116-119"
+    ],
+    "relationshipChapter": { "file": "README.md", "capabilitiesLine": 16, "relationshipLine": 180, "licenseLine": 202, "separateSection": true, "afterCapabilities": true, "namesCarried": true, "namesAdopted": true, "namesOwn": true, "citesPinnedCommit": "8c57e46 / v5.0.0-beta.20", "citesMitAndNotices": true, "upstreamLabelInTitleOrFirstScreen": false, "zhCounterpart": "README.zh-CN.md 与其他项目的关系 (same structure)" },
+    "indexHub": { "listsUserGuide": true, "listsExtensions": true, "listsArchitecture": true, "listsDevelopment": true, "listsReadme": true, "listsAgentsMd": true }
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "medium",
+      "file": "docs/user-guide.md",
+      "line": 245,
+      "problem": "§8 'Configuration (mpd.jsonc)' table lists `codegraph.*` as an mpd.jsonc key consulted by mpd-codegraph ('autoInit, binary, timeouts'). No plugin reads a codegraph.* config key from mpdConfig: packages/mpd-codegraph-plugin/src/index.ts takes autoInit/initTimeoutMs/cooldownMs/binary from its bundle-patch ROW config, and the authoritative consumed-key list (mpd_config_get's description) does not mention codegraph. A user writing codegraph.* into .mpd/mpd.jsonc would silently get nothing.",
+      "requiredFix": "Remove the `codegraph.*` row from the mpd.jsonc table in docs/user-guide.md and docs/user-guide.zh-CN.md (line 223), or rewrite it to say these are apply-time row options, not mpd.jsonc keys.",
+      "resolved": false
+    },
+    {
+      "id": "F2",
+      "severity": "medium",
+      "file": "docs/index.md",
+      "line": 30,
+      "problem": "The 'Package reference' section opens with 'One README per package under `packages/<name>/README.md`:' and enumerates packages, but packages/mpd-team-compact-plugin (named in the list) has no README at all, so the stated rule is false for a package the hub itself lists. Separately, packages/mpd-mcp-shared — a real package with code and tests — is absent from the enumeration, making the hub an incomplete package index.",
+      "requiredFix": "Either add packages/mpd-team-compact-plugin/README.md (and .zh-CN.md), or drop the 'One README per package' rule and mark the list as a curated index; add mpd-mcp-shared to the enumeration in docs/index.md and docs/index.zh-CN.md.",
+      "resolved": false
+    }
+  ],
+  "falsePositivesCheckedAndDismissed": [
+    "docs/index.md 'docs/plan-{c,d,e,f}.md' — a brace glob in prose, all four files exist.",
+    "docs/architecture.md 'skills/flows providers' — prose naming two contribution kinds, not a path claim.",
+    "docs/extensions.md ZH sections with few wrapped paragraphs (Trust model, v1 limits, FAQ, §9) — structurally identical to EN (same bullets/tables/questions); Chinese text simply wraps into fewer lines. Not thinning."
+  ]
+}
