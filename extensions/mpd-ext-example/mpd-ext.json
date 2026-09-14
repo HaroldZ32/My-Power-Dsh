@@ -1,0 +1,30 @@
+{
+  "apiVersion": 1,
+  "id": "mpd-ext-example",
+  "description": "Reference MPD extension: declares all four contribution kinds (skill, flow, role, stdio MCP server) and ships a working, dependency-free MCP server. Disabled by default — enable it to watch the interface end to end.",
+  "enabled": false,
+  "contributes": {
+    "skills": [{ "root": "skills", "rank": 300 }],
+    "flows": [{ "dir": "flows", "rank": 300 }],
+    "roles": [
+      {
+        "name": "Example Reviewer",
+        "description": "Reference extension role: reviews a change against the extension contract and reports findings without editing files.",
+        "readonly": true,
+        "persona": "personas/example-reviewer.md"
+      }
+    ],
+    "mcp": [
+      {
+        "serverName": "example",
+        "transport": "stdio",
+        "command": "node",
+        "args": ["server.mjs"],
+        "cwd": ".",
+        "env": {},
+        "connectTimeoutMs": 10000,
+        "toolCallTimeoutMs": 60000
+      }
+    ]
+  }
+}

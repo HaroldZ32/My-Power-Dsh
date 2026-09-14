@@ -1,0 +1,41 @@
+{
+  "appendix": "t13 captain-guidance follow-up (post-completion clarification)",
+  "note": "Written AFTER t13 was marked completed, in answer to the captain's t13 guidance. result.json was NOT modified: this file is an additive, separately-named appendix so the completed record stays byte-identical to what was reported. Every claim below is labelled MEASURED (read from the decoded harness session logs of the live wave) or INFERENCE (bounded by named measurements).",
+  "guidance_points_answered": [
+    {
+      "captain_question": "check whether `isMemberAvailable` (scheduler.js:317-318) is false for a just-spawned member",
+      "verdict": "YES — MEASURED, for every one of the six members",
+      "evidence": "member turn/start: Architect 16:36:46.236Z, Reviewer 16:36:46.308Z, Deep Worker 16:36:46.493Z, Senior Engineer 16:36:46.670Z, Junior Engineer 16:36:46.802Z (all six in scan-timeline output); team.json approvedAt 16:36:46.809Z. Each turn/start means the child's Agent phase is non-idle, and dsh-agent-loop `get status()` returns 'running' for every non-idle phase, so `live.status === 'idle'` was false for all six when the post-approval kick ran (after the lock released, i.e. at or after 16:36:46.809Z)."
+    },
+    {
+      "captain_question": "whether a member whose first turn IS the spawn turn ever produces a running→idle TRANSITION afterwards (if it goes idle→idle, scheduler.js:533-534 returns before the kick at :538-539 and nothing ever retries)",
+      "verdict": "IT DOES transition, and the cited mechanism is REFUTED — MEASURED",
+      "evidence": "Architect's spawn turn (turn 1) ended `completed` at 16:37:45.036Z, i.e. a real running→idle transition; the harness emits `agent/status` only on a real change (dsh-agent-loop setPhase emits `if (status !== previousStatus)`, and dsh-agent/lib/invariant.js fails outright on a repeated same-status event). Architect's turn 2 (the scheduler's `AgentTeams automatic task assignment` for t1, message at 16:37:46.092Z) started 0.2 s later at 16:37:45.236Z — so the idle-edge kick DID run. The cited `return` is inside the `withTeamLock` callback (pre-fix :533-534 = now :614-615) and therefore exits only that callback: `await withTeamLock(...)` resolves normally and the kick below it (pre-fix :538-539 = now :619-620, `if (status === 'idle') await runtime.kickMember(...)`) still executes. Retry was never structurally impossible; it was LATENT — worth one whole spawn turn (59.3 s in this wave) and absent if no idle edge ever arrives."
+    },
+    {
+      "captain_question": "syncMemberStatus resolves the team with `findTeamByParticipant(stateRoot, agent.id)` where `workspace = agent.session.header.cwd ?? process.cwd()` (scheduler.js:470-476) — a member whose session cwd differs from the team's state root returns silently there",
+      "verdict": "ELIMINATED for the idle edge, and that path is now LOUD by construction",
+      "evidence": "The 16:37:45.236Z delivery ran through exactly that resolution path, so `findTeamByParticipant` matched Architect's durable child id under the team's state root — no cwd divergence existed for the members the harness actually spawned (dsh-subagent `childSessionMeta` copies `parentHeader.cwd` into the child header). Independently hardened: `mpd-delta idle-edge-no-team-log` now logs `agent/status ... the idle edge resolved no team under <stateRoot>` and `mpd-delta idle-edge-nonmember-log` logs the resolved-but-not-a-member case, both at warn, so a future cwd/identity divergence can no longer be silent."
+    }
+  ],
+  "extra_measured_refinement": {
+    "finding": "The edge that really gets DROPPED by that resolution guard is the RUNNING edge, not the idle one — measured twice, inferred once.",
+    "labelled_measurements": [
+      "Architect's running edge fired at 16:36:46.236Z, ~0.57 s BEFORE the approval commit (approvedAt 16:36:46.809Z); while the team was still `phase='staged'`, the staged member row carries `id: ''` (members are spawned inside the approval lock, tools.js:433-436, and the 'running' shape is written at :440-443), so findTeamByParticipant could not match that session at that instant.",
+      "The captain's own agent_teams_status call at 16:37:24.477Z reported Architect as `idle/running` — durable member.status 'idle' while the live Agent was 'running'. Had the running edge persisted, syncMemberStatus would have written 'working' (next='working' vs current 'idle' does not hit the `current.status === next` early return).",
+      "By 16:38:26.810Z the same view reported `working/running`, i.e. the durable write came from the DISPATCH (kickMember sets currentMember.status='working'), not from the status edge."
+    ],
+    "inference": "The dropped running-edge write means the durable member.status stays 'idle' during a member's spawn turn. That is cosmetic on its own (the Web view shows live activity too), but it removes one more signal that anything was happening — and it is the same resolution guard the captain suspected, just on the other edge.",
+    "not_changed": "No behaviour change is needed for the running edge; only the idle edge gates dispatch. Both are now logged when they resolve nothing."
+  },
+  "why_the_later_pool_dispatch_works": {
+    "measurement": "agent_teams_create_task at 16:40:50.814Z -> Reviewer's inbox splice 16:40:50.916Z -> Reviewer turn/start 2 at 16:40:50.918Z: 0.1 s end to end.",
+    "explanation": "Identical code path; the only difference is the predicate. Reviewer was idle at that moment, so `isMemberAvailable` (pre-fix) / the new `memberActivity` returned available and the delivery went out immediately. At the approval instant the same predicate is provably false for every member because all of them are inside the turn that their own spawn started. So 'works later, silent at approval' is fully explained by WHEN the kick runs versus WHEN the spawn turns begin — not by two different dispatch mechanisms.",
+    "regression_pin": "test/dispatch-stall-regression.test.mjs case 1 constructs exactly that approval-instant state (member live status 'running', one ready root task) and asserts 1 delivery + status claimed; case 2 asserts the only legitimate decline (running AND already owning an open attempt) is logged rather than silent."
+  },
+  "hard_constraints_honoured": [
+    "No server restart and no hot-reload: the edits are inert in the running dsh process until the next boot (verified by the repo's own note that ESM caches plugin modules).",
+    "The change is registered: 6 mpd-delta regions in lib/scheduler.js, registry regenerated with --write-registry (40 -> 46), `node scripts/patch-agent-teams-fixes.mjs --check` exits 0, and self-fix-tests/dispatch-stall-region.test.mjs proves a re-materialized scheduler.js is REFUSED byte-untouched.",
+    "`.mpd/team` was read only; all team-state mutations in this turn went through agent_teams_* tools."
+  ]
+}

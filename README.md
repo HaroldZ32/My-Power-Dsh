@@ -2,151 +2,207 @@
 
 **English** | [中文](./README.zh-CN.md)
 
-**my-power-dsh** is a DeepSeek Harness (DSH) plugin bundle — the package `@mpd-dsh/mpd`, with its own
-plugin rows, one `mpd` agent preset and a served skill corpus, installed with a single `dsh plugin add`.
+**my-power-dsh** is a plugin bundle for the DeepSeek Harness (DSH). One install turns a plain
+DSH setup into a working environment for real coding work: a main agent that reads your project
+rules, a roster of eleven specialists you can consult or delegate to, a library of durable
+"workmate" agents that remember what they learned, multi-agent teams whose plan you approve
+before anything runs, a served skill corpus, MCP integrations for code intelligence, and an
+extension interface that lets other packages contribute skills, flows, MCP servers and
+specialists without touching the core.
 
-**What it carries from upstream.** The bundle's roster and model-chain vocabulary come from the
-upstream project and stay so: the 11 specialists (Architect, Researcher, Planner, Deep Worker,
-Senior Engineer, Lead, Explorer, Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer) ship as
-adapted teammate templates and workmate BASE templates under the upstream's stable ids
-(`oracle`, `librarian`, `prometheus`, …). The capability baseline is
-[oh-my-openagent](https://github.com/code-yeongyu/oh-my-openagent) at commit `8c57e46`
-(v5.0.0-beta.20) — pinned, verified, deliberately not chased. The 297-file skill corpus mixes ported
-upstream skills with third-party upstream skills and cases written here, and one component is adopted
-outright: the `agent-teams` plugin from
-[dsh-agent-teams](https://github.com/NanmiCoder/dsh-agent-teams) (MIT), vendored as first-class main
-code with local adaptations. **The rest — the DSH plumbing, the plugins, the preset, the QA suite — is
-written here**, and the RTL/EDA surface is not part of this repository: it has been extracted
-into a separate bundle maintained outside this one.
+The bundle is the package `@mpd-dsh/mpd`. It installs with one command and uninstalls with one
+command that leaves no residue.
 
-> **License**: SUL-1.0 — the licence inherited from the upstream project (strong copyleft; full text in
-> [LICENSE.md](./LICENSE.md)); the upstream copyright belongs to code-yeongyu and the
-> oh-my-openagent contributors.
-> The adopted `agent-teams` component keeps its own MIT License (notices in
-> [LICENSE-NOTICES.md](./LICENSE-NOTICES.md)); that MIT grant covers the adopted component only — this
-> project's own code is not MIT-licensed.
+## Capabilities
 
-**Install (ONE command, straight from the checkout)**
+### The main agent: the `mpd` preset
 
-```sh
-dsh plugin --profile web add .        # run it in the repo root
+The only shipped preset is **MPD (Main Working Agent)**. Selecting it in a session gives you:
+
+- **Project rules loaded automatically** — the agent attempts to read `AGENT.md`, falling back
+  to `AGENTS.md`, then `CLAUDE.md`, at the start of every session.
+- **Native tool presentation** — the harness's own tools (`bash`, `read`, `edit`, …) are exposed
+  directly, plus everything the bundle adds.
+- **Routing built in** — the preset's persona explains the specialist roster, the workmate
+  library and team mode, so the agent reaches for the right one without extra setup.
+
+### Tools, by job
+
+| You want to… | Tools |
+|---|---|
+| Understand a codebase | the MCP tool servers: `mcp__ast_grep__*`, `mcp__lsp__*`, `mcp__codegraph__*`, `mcp__git_bash__*` |
+| Edit safely | the write guard and output-truncation rows, `mpd_hashline_read/edit/format/restore` (hash-anchored edits), `mpd_comment_check` |
+| Drive long work | `mpd_ulw` / `mpd_ultrawork` (plan → execute → verify), `mpd_boulder_*` (durable plan progress) |
+| Keep memory | `mpd_memory_write/read/reflect/reflect_complete/status` (git- or svn-backed), `mpd_memory_save/recall` |
+| Consult a specialist | `mpd_roles_list`, `mpd_role_spawn`, `mpd_role_persona` |
+| Keep an evolving agent | `mpd_workmate_list/init/spawn/reflect/match/rename/delete` |
+| Run a team | `agent_teams_*` plus the AgentTeams sidebar tab |
+| Configure the bundle | `.mpd/mpd.jsonc`, `mpd_config_get`, `mpd_config_reload` |
+| Extend the bundle | `mpd_ext_list`, `mpd_ext_show`, `mpd_flow_list`, `mpd_flow_show` and the `extensions/` root |
+
+### Specialists: the roster
+
+Eleven specialists ship as one-shot specialist subagents — not as separate presets. Address each
+by name (any case, space or hyphen spelling):
+
+**Architect** (architecture review, deep debugging, self-review) · **Researcher** (evidence-based
+code and open-source search) · **Planner** (writes plans, never implements) · **Deep Worker**
+(executes a goal end-to-end) · **Senior Engineer** (primary implementation and verification) ·
+**Lead** (orchestration and integration) · **Explorer** (read-only codebase search) · **Reviewer**
+(risk findings, no fixes) · **Plan Reviewer** (plan QA) · **Vision Analyst** (images and
+diagrams) · **Junior Engineer** (small, well-scoped changes).
+
+Read-only disciplines (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst)
+are mechanically denied the write tools at spawn time.
+
+### The workmate library
+
+Any specialist can be *instantiated* as a **workmate**: a durable copy under `~/.mpd/workmate/`
+with its own name, persona, independent memory and a short note card. A workmate evolves after
+each job — it summarizes what it did, and its next run starts from there. Reuse is matched by
+`mpd_workmate_match`, and a weak match is never forced: you initialize a new workmate instead.
+The Workmates sidebar tab lets you browse, open, create, rename and archive instances by hand.
+
+### Team mode
+
+A captain designs a roster and a task DAG, you review and approve the plan in the AgentTeams tab,
+and a dependency-aware scheduler runs it. Members are the specialists above; read-only disciplines
+stay read-only. Members can be backed by workmates, so a teammate carries its own accumulated
+memory.
+
+### Web GUI
+
+- **AgentTeams tab** — the whole team surface: the conversation's live and archived teams, member
+  activity, task rows, the dependency map, the stop control, and the staged-plan approval editor.
+  The tab badge shows how many teams are live.
+- **Workmates tab** — the workmate library: instances, notes, and the init/rename/delete flows.
+
+Both tabs are contributed to the community sidebar bundle `dsh-better-sidebar` and appear in its
+tab strip. Team work also runs entirely through the `agent_teams_*` tools if you prefer.
+
+### Skills
+
+18 skills ship inside the bundle and are **served, not copied**: the corpus and the `mpd` preset
+live in the bundle and disappear cleanly on uninstall.
+
+### MCP integrations
+
+Four in-repo stdio MCP servers (ast-grep, git-bash, an LSP bridge, codegraph) plus the optional
+remote rows (context7, grep_app) give the agent structural code search, language-server
+intelligence, a project code graph and shell access through MCP.
+
+### The extension interface
+
+A standardized way for **other packages** to add capability without touching this bundle:
+
+- a manifest — `mpd-ext.json` — declaring `skills`, `flows`, `mcp` servers and `roles`;
+- three discovery roots with two lifecycles: per-session (`<workspace>/.mpd/extensions/`, skills
+  and flows only) and host-wide (`~/.mpd/extensions/`, `<bundle>/extensions/`), which may also
+  contribute MCP servers and roles;
+- four inspection tools — `mpd_ext_list`, `mpd_ext_show`, `mpd_flow_list`, `mpd_flow_show`;
+- a dependency-free runtime bridge that connects declared stdio MCP servers when the plugin
+  starts and publishes their tools as `mcp__<server>__<tool>`;
+- a developer CLI — `bun scripts/mpd-ext.mjs validate|scaffold|list`.
+
+A disabled reference extension ships in
+[`extensions/mpd-ext-example/`](./extensions/README.md).
+
+### Built to stay maintainable
+
+- **One harness adapter.** Every plugin row talks to DSH through a single adapter package, so a
+  harness release that reshapes a seam is absorbed in one file.
+- **Whole-unit install and uninstall.** Rows, preset, skills and the extension root all live in
+  the bundle; nothing is copied into your DSH home. What survives uninstall is your own data:
+  the workmate library and each workspace's `.mpd/` state.
+
+## Install
+
+One command, straight from the checkout:
+
+```bash
+cd <repo> && dsh plugin --profile web add .
 ```
 
-> The repo root IS the bundle package (`@mpd-dsh/mpd`): its manifest declares
-> `dsh.bundle.patch`, `dsh.client` and the `exports` map the rows resolve through, so this
-> single command installs every plugin row, the `mpd` preset and the whole skill corpus —
-> no pack step, no copy step. `dsh plugin remove @mpd-dsh/mpd` reverses it just as cleanly.
->
-> `node scripts/pack-mpd.mjs` (`npm run pack`) is now only the RELEASE step: it assembles
-> the relocatable `dist/mpd-package/` for publishing or tarball installs
-> (`dsh plugin --profile web add dist/mpd-package`). A local checkout install never needs it.
+The repository root **is** the bundle package, so this installs every plugin row, the `mpd`
+preset, the skill corpus and the extension root in one step — no pack step, no copy step.
+Restart `dsh`, then pick the **MPD (Main Working Agent)** preset in a session.
 
-## Documentation
+For a published or tarball install, pack first and add the artifact:
 
-Full documentation lives in [`docs/`](docs/index.md) — start at
-[`docs/index.md`](docs/index.md):
+```bash
+node scripts/pack-mpd.mjs                       # -> dist/mpd-package/ (relocatable)
+dsh plugin --profile web add dist/mpd-package
+```
 
-- [`docs/user-guide.md`](docs/user-guide.md) — install, presets, specialists,
-  workmate library, team mode, GUI panels, configuration.
-- [`docs/architecture.md`](docs/architecture.md) — bundle assembly, boot chain,
-  plugin inventory, interaction flows, state layout, web-client wiring.
-- [`docs/development.md`](docs/development.md) — build/test/QA/pack/release.
-- [`AGENTS.md`](AGENTS.md) — the binding repository manual (conventions, gates, git
-  model, troubleshooting).
+### Uninstall
 
-**RTL/EDA capability lives elsewhere.** The `rtl-*` skills, the verif plugin, the HDL
-language-server configuration, the RTL guides and the Verilog golden fixtures were extracted out
-of this repository. This repository ships the harness/bundle software surface only; an mpd-only
-install boots unchanged and carries no RTL content.
+```bash
+dsh plugin remove @mpd-dsh/mpd
+```
 
-This installs the `@mpd-dsh/mpd` bundle: DeepSeek dual-track (official default),
-MCP servers, all mpd plugins (including codegraph auto-init), adopted agent-teams
-(team tools + the sidebar team page), the `mpd` main-agent preset and the specialist
-roster as SUBAGENTS:
+The bundle uninstalls as one unit, skills included, and leaves no residue in your DSH home. Your
+workmate library (`~/.mpd/workmate/`) and each workspace's `.mpd/` state stay yours.
 
-- **Every project session on the `mpd` preset attempts to read `AGENT.md`**
-  (falling back to `AGENTS.md`, then `CLAUDE.md`) via `dsh-agent-instructions`.
-- **The specialist roster's 11 specialists are teammate templates, not presets**:
-  Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead,
-  Explorer, Reviewer, Plan Reviewer, Vision Analyst and Junior Engineer live in the
-  mpd-roles roster — one-shot consult one with `mpd_role_spawn`, list the roster
-  with `mpd_roles_list`, fetch a persona text with `mpd_role_persona`. Read-only
-  roles are mechanically denied write tools at spawn.
-- **Team mode is the adopted dsh-agent-teams plugin** (first-class main code at
-  `packages/mpd-agent-teams-plugin`, `agent_teams_*`
-  tools + the AgentTeams sidebar tab): a normal-named `mpd` roster profile
-  (`taskPlanning: captain`) exposes the specialists above as teammate
-  instantiation templates. The captain calls `agent_teams_create(profile="mpd")`,
-  stages the plan in the AgentTeams tab, then the dependency-aware scheduler runs it.
-- **Web GUI** (`@mpd-dsh/mpd` client bundle, `packages/mpd-bundle-plugin`) — the whole
-  AgentTeams GUI is **one DSH-better-sidebar tab** (`dsh-better-sidebar`, the community
-  sidebar bundle; tab id `mpd-agent-teams`, order 85). It lists the conversation's live and
-  archived teams (members and live activity, task rows, the dependency map, the stop-team
-  control, and the staged-plan approval editor), badges the conversation's live-team count,
-  and auto-opens once when a team appears — plugin setting `autoOpenOnTeamActivity`, default
-  ON, switchable in the sidebar settings page. **Visual parity with the original panel is a
-  requirement**: the tab renders the removed floater's own interior — the `panelHead` with
-  its title, busy dot and collapse control (the platform's own chevron), the `teams` body,
-  the adopted empty hint and archive labels, all through the adopted CSS-module classes, so
-  the `--dsw-alias-*` variables the team/member/task rules read resolve exactly as they did
-  in the floater; only the window manager (drag, resize, floating frame) is gone. The
-  in-conversation team card and the top-right activity floater were **removed**. The
-  **Workmates** page is a second tab in the same sidebar, contributed via
-  `ctx.betterSidebar.registerTab` — it lists `~/.mpd/workmate/` instances
-  (base, uses, updated, note), opens one for its persona/memory/note, initializes new
-  ones with a roster-backed base picker, and renames or deletes an instance (zh/en, with an
-  explicit archive-vs-purge confirmation), reading
-  `GET /plugins/mpd-workmate/{list,roster,get}` + `POST /plugins/mpd-workmate/{init,rename,delete}`. Both
-  pages are **sidebar-only**: without that sidebar each logs one warning and registers
-  nothing (the workmate 🤖 floater and its sidebar-foot button were removed too), and
-  `scripts/build-mpd-client.mjs` fails the build if any client source registers one of the
-  removed surfaces. The bundle patch ships the `mpd-web-compat` self-row
-  (`name: '@mpd-dsh/mpd'`) so the client-modules boot graph carries the bundle's
-  client entry — without it no client surface loads.
-- **Workmate library** (`~/.mpd/workmate`): the roster specialists are BASE templates;
-  instantiate one into a durable, evolving copy with an independent name
-  (`mpd_workmate_init`). After each work session it self-summarizes
-  (`mpd_workmate_reflect`) — evolving its own persona + independent memory (size-capped)
-  and keeping a short note card. Reuse via `mpd_workmate_list` / `mpd_workmate_match`;
-  if no note matches well enough (`matched=false`), initialize a NEW workmate rather than
-  forcing a weak match. **Rename** an instance with `mpd_workmate_rename` (it moves the
-  evolved identity — directory key, metadata, index key, note self-reference, previous
-  names — never re-instantiates it), and **delete** it with `mpd_workmate_delete`, which is
-  **archive-first**: the instance moves to `~/.mpd/workmate/.archive/` (out of
-  `list`/`match`, restorable by a manual `mv` back) and only `purge: true` +
-  `confirm: <name>` removes it for real. Both mutations are **refused while the workmate is
-  in use** by a team member or an in-flight spawn, and they name the blocking teams so the
-  block is actionable. Names are ASCII-only (`[a-z0-9_-]`); CJK/upper-case names are
-  refused up front. In a team, a member named after the workmate gets its
-  persona/memory injected automatically (patched `memberPersona` in
-  `packages/mpd-agent-teams-plugin`). Details:
-  [`packages/mpd-workmate-plugin/README.md`](packages/mpd-workmate-plugin/README.md).
-- **One harness adapter.** Every mpd row calls `packages/mpd-dsh-adapter-plugin`
-  (`mpdDsh` service) for tool registration/guards/post-execute, internal tool calls,
-  subagent spawn, skill delivery and preset resolution — so a DeepSeek Harness release
-  that reshapes a seam is fixed in one file, not across every plugin (AGENTS.md §6).
-- **Whole-unit install, whole-unit uninstall.** One `dsh plugin add dist/mpd-package`
-  installs every row AND the assets: the `mpd` preset is served from
-  `<bundle>/presets` (the patch roots the preset roster there) and the skill corpus
-  from `<bundle>/skills` (the `mpd-bootstrap` row registers a `ctx.skills` provider).
-  Nothing is copied into `$DSH_HOME`, so `dsh plugin remove @mpd-dsh/mpd` takes the
-  rows, the preset and the skills away with it and leaves no residue. Only the
-  workmate library (`~/.mpd/workmate`, your own evolving agents) stays.
+## Quick start
 
-**Two hard rules**
-1. Engineering matches the upstream discipline: bun test / tsgo gates, isolated QA, evidence in
-   `evidence/<domain>/<slug>/`, phase gates.
-2. Every deliverable is a DSH plugin (self-written cordis plugin or official-plugin instance). No stray
-   scripts, no raw config.
+1. **Install** (above), restart `dsh`, and start a session on the **MPD** preset.
+2. **Ask for something real** — the agent has `bash`/`read`/`edit` plus the MCP code tools. Drop
+   an `AGENT.md` in your project to steer it; it is read automatically.
+3. **Consult a specialist**: `mpd_roles_list` to see the roster, then
+   `mpd_role_spawn { role: "Architect", task: "…" }` for a second opinion.
+4. **Keep the good one**: `mpd_workmate_init { base: "Architect", name: "system-architect" }`,
+   then reuse it with `mpd_workmate_spawn`.
+5. **Scale to a team**: `agent_teams_create { name: "…", description: "…", profile: "mpd",
+   approval: "required" }`, review the plan in the AgentTeams tab, approve it, and watch the
+   scheduler work.
+6. **Point it at your own capability**: drop an extension directory into
+   `<workspace>/.mpd/extensions/` and see it with `mpd_ext_list`.
 
-- Port plan: [PLAN.md](./PLAN.md)
-- Baseline lock: [VENDOR_LOCK.json](./VENDOR_LOCK.json)
-- Legal: [LICENSE.md](./LICENSE.md) / [LICENSE-NOTICES.md](./LICENSE-NOTICES.md)
-- Gates & branching model: [AGENTS.md](./AGENTS.md)
-- One-click install (primary): `node scripts/pack-mpd.mjs && dsh plugin --profile web add dist/mpd-package`;
-  legacy dev flow: `node scripts/install-profile.mjs --yes` (default dry-run; see --help)
+## Requirements
 
-Status: Plan D decoupling COMPLETE — relocatable one-plugin install (evidence/plan-d/relocate PASS);
-Plan C waves complete (team adoption, ultrawork engine, hashline, boulder, mpd.jsonc, memory git+svn, vision e2e);
-Plan F COMPLETE — the specialist roster as subagent definitions (mpd-roles-plugin), single `mpd` main preset carrying the
-AGENT.md convention, mpd.jsonc wired into all runtime plugins (evidence/plan-f/roles-subagent PASS).
+- DeepSeek Harness (DSH) with a web or headless profile, and model credentials configured in DSH
+  — the bundle never configures keys for you.
+- Optional, for the code-intelligence servers: the in-repo toolchain
+  (`node scripts/build-mcp.mjs`) or your own binaries, pointed at by the documented environment
+  variables.
+
+## Where to go next
+
+| Doc | For |
+|---|---|
+| [`docs/user-guide.md`](./docs/user-guide.md) | Install/uninstall, the preset, tools, specialists, workmates, teams, the GUI, configuration, extensions, troubleshooting |
+| [`docs/extensions.md`](./docs/extensions.md) | The extension developer guide: the contract, the four kinds, the CLI |
+| [`docs/architecture.md`](./docs/architecture.md) | How the bundle is assembled and mounts: boot chain, plugin inventory, state layout |
+| [`docs/development.md`](./docs/development.md) | Building, testing, QA gates, packing and releasing this repository |
+| [`docs/index.md`](./docs/index.md) | The documentation hub and reading order |
+| [`AGENTS.md`](./AGENTS.md) | The binding repository manual for agents and maintainers |
+
+## Relationship to other projects
+
+This bundle stands on other people's work, and it is worth being precise about which parts.
+
+- **Carried from the upstream project.** The specialist roster and the model-chain vocabulary
+  come from [oh-my-openagent](https://github.com/code-yeongyu/oh-my-openagent) (OMO), pinned at
+  commit `8c57e46` (v5.0.0-beta.20). The eleven specialists ship here as adapted teammate
+  templates and workmate base templates. The pinned baseline is an engineering reference, not an
+  identity: this repository is not a fork of OMO and does not chase it release by release.
+- **Adopted outright.** The `agent-teams` plugin from
+  [dsh-agent-teams](https://github.com/NanmiCoder/dsh-agent-teams) (MIT) is vendored as
+  first-class main code, with local adaptations (a boot-safety guard for the continuable-setup
+  seam, the live-agent member setup, workmate persona injection, and a client export bridge). Its
+  own licence and notices are preserved in [LICENSE-NOTICES.md](./LICENSE-NOTICES.md).
+- **Written here.** The DSH plumbing (the harness adapter, the runtime plugins, the `mpd` preset,
+  the combined web client), the QA suite, the documentation and the extension interface are this
+  project's own work. The RTL/EDA capability surface that once lived here has been extracted into
+  a separate bundle maintained elsewhere.
+
+Thanks are due to the OMO authors and contributors, and to the authors of `dsh-agent-teams` for
+publishing their work under a licence that permits this adoption.
+
+## License
+
+The repository is licensed under **SUL-1.0**, inherited from the upstream project; see
+[LICENSE.md](./LICENSE.md) for the full text. The upstream copyright belongs to code-yeongyu and
+the oh-my-openagent contributors. The adopted `agent-teams` component keeps its own MIT licence,
+which covers that component only — this project's own code is not MIT-licensed. See
+[LICENSE-NOTICES.md](./LICENSE-NOTICES.md).

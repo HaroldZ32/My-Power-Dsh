@@ -1,0 +1,68 @@
+### PRE-FIX run of the t13 regression suite (expect FAIL)
+git HEAD: 6cbb12682679127788657a3551ddffafa1696be1
+scheduler.js sha256: 27cc18b923443c22b160ed202485499b980cceb22f43e63855bf42e6cd6550a2  packages/mpd-agent-teams-plugin/lib/scheduler.js
+
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-agent-teams-plugin/test/dispatch-stall-regression.test.mjs:
+112 |         const { ctx, captain, deliveries } = makeRuntime(ws.dir)
+113 |         const scheduler = installTeamScheduler(ctx, { stateDir: STATE_DIR })
+114 | 
+115 |         await scheduler.kickTeam(ws.dir, TEAM_ID, captain)
+116 | 
+117 |         expect(deliveries).toHaveLength(1)
+                                 ^
+error: expect(received).toHaveLength(expected)
+
+Expected length: 1
+Received length: 0
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/test/dispatch-stall-regression.test.mjs:117:28)
+(fail) the approval-time kick delivers a ready root task to a member whose spawn turn is still running [8.53ms]
+135 |         const scheduler = installTeamScheduler(ctx, { stateDir: STATE_DIR })
+136 | 
+137 |         await scheduler.kickTeam(ws.dir, TEAM_ID, captain)
+138 |         await scheduler.kickTeam(ws.dir, TEAM_ID, captain)
+139 | 
+140 |         expect(deliveries).toHaveLength(1)
+                                 ^
+error: expect(received).toHaveLength(expected)
+
+Expected length: 1
+Received length: 0
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/test/dispatch-stall-regression.test.mjs:140:28)
+(fail) a second kick while the member is mid-turn does not duplicate the queued assignment, and says why [1.33ms]
+153 |         writeTeamRecord(ws.dir, teamRecord([task("t1", "freeze the contract", "Architect")]))
+154 |         const { ctx, captain, deliveries, handlers, liveMember } = makeRuntime(ws.dir)
+155 |         const scheduler = installTeamScheduler(ctx, { stateDir: STATE_DIR })
+156 | 
+157 |         await scheduler.kickTeam(ws.dir, TEAM_ID, captain)
+158 |         expect(deliveries).toHaveLength(1)
+                                 ^
+error: expect(received).toHaveLength(expected)
+
+Expected length: 1
+Received length: 0
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/test/dispatch-stall-regression.test.mjs:158:28)
+(fail) the member's own idle edge after the queued assignment does not deliver it twice [0.94ms]
+100 | }
+101 | 
+102 | /** Wait until `predicate` holds, so an async kick chain can settle. */
+103 | async function settle(predicate, label) {
+104 |     for (let i = 0; i < 100 && !predicate(); i++) await new Promise((resolve) => setTimeout(resolve, 5))
+105 |     if (!predicate()) throw new Error(`timed out waiting for ${label}`)
+                                      ^
+error: timed out waiting for the idle-edge miss to be logged
+      at settle (/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/test/dispatch-stall-regression.test.mjs:105:33)
+      at async <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/test/dispatch-stall-regression.test.mjs:187:15)
+(fail) an idle edge that resolves no team logs the miss instead of returning silently [516.52ms]
+
+packages/mpd-agent-teams-plugin/test/dispatch-stall-regression.test.mjs:
+
+ 0 pass
+ 4 fail
+ 4 expect() calls
+Ran 4 tests across 2 files. [695.00ms]
+exit=1

@@ -146,11 +146,22 @@ function buildPlan(o) {
       config: { vcs: "git" }
     },
     {
+      // The extension registry row: it must sit with the same neighbours as in the
+      // bundle patch (after mpd-dsh-adapter + mpd-config, directly above mpd-roles,
+      // its first consumer) and carry the plugin's only config key.
+      id: "mpd-ext", name: p("packages/mpd-ext-plugin/dist/index.js"),
+      config: { quiet: false }
+    },
+    {
       id: "mpd-roles", name: p("packages/mpd-roles-plugin/dist/index.js"),
       config: {}
     },
     {
       id: "mpd-workmate", name: p("packages/mpd-workmate-plugin/dist/index.js"),
+      config: {}
+    },
+    {
+      id: "mpd-team-compact", name: p("packages/mpd-team-compact-plugin/dist/index.js"),
       config: {}
     },
     {
@@ -277,6 +288,10 @@ function selfTest() {
   }
   if (!rows.includes("mpd-hashline")) { console.error("[install-profile self-test] FAIL: mpd-hashline row"); process.exit(1) }
   if (!rows.includes("mpd-roles") || !rows.includes("mpd-workmate") || !rows.includes("mpd-bootstrap")) { console.error("[install-profile self-test] FAIL: mpd-roles/workmate/bootstrap rows"); process.exit(1) }
+  // The two rows the parity gate proved were missing: the extension registry (new with
+  // the extension interface) and the team-compact row (absent since it landed in the
+  // patch). Both are pinned here so a future removal fails the self-test too.
+  if (!rows.includes("mpd-ext") || !rows.includes("mpd-team-compact")) { console.error("[install-profile self-test] FAIL: mpd-ext/team-compact rows"); process.exit(1) }
   if (!plan.agentTeamsRow.name.includes("packages/mpd-agent-teams-plugin/lib/index.js")) { console.error("[install-profile self-test] FAIL: agent-teams main-code path"); process.exit(1) }
   // web-compat entry name must be exactly the bare bundle specifier (client-modules
   // contract) — never an absolute path

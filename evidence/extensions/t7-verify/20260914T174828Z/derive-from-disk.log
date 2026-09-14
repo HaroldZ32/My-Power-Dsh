@@ -1,0 +1,83 @@
+{
+ "t2": {
+  "threeRoots": true,
+  "bundleRootFromOwnLocation": true,
+  "projectPerCall": false,
+  "unknownKeyRejected": false,
+  "toolsRegisteredInDist": true
+ },
+ "t3": {
+  "twoPhaseSwap": true,
+  "zeroToolsOnCollision": true,
+  "orphanReap": true,
+  "connectAtApply": true
+ },
+ "t4": {
+  "patchRow": true,
+  "patchRowPath": true,
+  "installProfileRow": true,
+  "rolesConsultService": true
+ },
+ "t5": {
+  "requiredSeams": true,
+  "derivedSummary": true,
+  "lifecycleEvidence": {
+   "ok": true,
+   "offeredExtTools": [
+    "mpd_ext_list",
+    "mpd_ext_show",
+    "mpd_flow_list",
+    "mpd_flow_show"
+   ],
+   "sawProjectId": true,
+   "sawUserId": true,
+   "sawProjectRejection": true,
+   "sawFlow": true,
+   "sawSkill": true,
+   "sawPersona": true,
+   "sawRoleChild": true,
+   "isolationOk": true,
+   "failureOk": true,
+   "isolationArm": true,
+   "packed": {
+    "ok": true,
+    "packExit": 0,
+    "packedRoot": "/root/dshProj/my-power-dsh/dist/mpd-package",
+    "rows": {
+     "mpdExtRowInPackedPatch": true
+    },
+    "assets": {
+     "pluginDist": false,
+     "extensionsAsset": false
+    },
+    "status": "RED (expected for this wave: the packed tree cannot resolve the mpd-ext row / discover <bundle>/extensions; the GREEN is t11's)",
+    "greenOwner": "t11",
+    "note": "no packed-tree file was modified by this case; the expectation is recorded, never patched",
+    "packTail": "[pack-mpd] modes normalized: 1095 files (644: 1083, 755: 12) | [pack-mpd] staged package -> /root/dshProj/my-power-dsh/dist/mpd-package"
+   }
+  },
+  "bridgeEvidence": {
+   "ok": true,
+   "live": true,
+   "dead": true,
+   "hang": true,
+   "schema": true,
+   "dup": true,
+   "containment": true,
+   "hangDurationMs": 5952,
+   "hangTimeoutMs": 1500
+  }
+ },
+ "rawPresent": [
+  "decoy-cwd-control.session.decoded.jsonl",
+  "decoy-cwd-control.session.jsonl.zstd",
+  "failure.session.decoded.jsonl",
+  "failure.session.jsonl.zstd",
+  "main.session.decoded.jsonl",
+  "main.session.jsonl.zstd",
+  "session-a.session.decoded.jsonl",
+  "session-a.session.jsonl.zstd",
+  "session-b.session.decoded.jsonl",
+  "session-b.session.jsonl.zstd"
+ ]
+}

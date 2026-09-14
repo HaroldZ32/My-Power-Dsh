@@ -18,9 +18,11 @@ How to build, test, QA, pack and release this repository.
 │   ├── build-mcp.mjs      offline build of the ast-grep/git-bash/lsp MCP servers
 │   ├── vendor-agent-teams.mjs  materialize the adopted agent-teams server closure (_deps/)
 │   ├── install-profile.mjs    legacy installer (default dry-run; --dsh-home for QA)
+│   ├── mpd-ext.mjs        extension developer CLI: validate / scaffold / list / --self-test
 │   ├── bootstrap.mjs      preflight + vendor check (P0-era, kept as checks)
 │   └── verify-vendor.mjs  blocking vendor gate
 ├── packages/              one package per plugin (src/ + dist/ + README.md)
+├── extensions/            the bundle-shipped extension discovery root + the disabled reference extension
 ├── skills/                ported skill corpus + dsh-qa (QA skill)
 ├── tests/                 QA overlays + golden fixtures
 └── evidence/              <domain>/<slug>/<timestamp>/{result.json, output.log}
@@ -46,6 +48,15 @@ A local install needs no pack step: the repo root manifest IS the bundle package
 touched `dist/` and restart dsh.
 
 MCP servers are built by `node scripts/build-mcp.mjs` (offline from in-repo sources).
+
+**Extension assets need no build.** `packages/mpd-ext-plugin` is an ordinary plugin package
+(rebuild its `dist/` after a source change like any other), while the packages that *use* the
+interface ship as plain directories under `extensions/<id>/` with an `mpd-ext.json` manifest and
+their assets — no compilation step, and the developer CLI runs straight from the TypeScript
+sources (`bun scripts/mpd-ext.mjs …`), so the CLI can never validate a stale copy of the rules.
+A NEW plugin package must also be added to the `PLUGIN_PKGS` allowlist inside
+`scripts/pack-mpd.mjs`, or a packed install ships without it and dies at boot with
+`ERR_MODULE_NOT_FOUND`.
 
 **Harness seams (binding, AGENTS.md §6):** a plugin row must not call `ctx.tools`,
 `ctx.subagents`, `ctx.skills` or `ctx.agentPresets` directly. Every row goes through
@@ -82,7 +93,7 @@ The QA skill is `skills/dsh-qa` (`SKILL.md`). Every case script ships `--self-te
 | `mount-assert` | bundle rows present/absent in `--dump-config` | `bun run test:qa` (all self-tests) |
 | `preset-register` | mpd preset resolves FROM the bundle-served root (no `$DSH_HOME/.agent-presets` copy) + roster serves 11 roles | `node skills/dsh-qa/scripts/preset-register.mjs` |
 | `bundle-lifecycle` | ONE command from the checkout (`dsh plugin add <repo root>`, no pack step) installs the whole unit → real boot serves preset + skills from the installed bundle and proves the harness adapter (`ADAPTER_SEAMS`, `ADAPTER_TOOL_CALL=ok`) → `dsh plugin remove` leaves no residue | `node skills/dsh-qa/scripts/bundle-lifecycle.mjs` |
-| `skill-catalog-probe` | installed bundle serves the skill catalog (22 bundled skills, fixture loads) with no `$DSH_HOME/skills` copy | `node skills/dsh-qa/scripts/skill-catalog-probe.mjs` |
+| `skill-catalog-probe` | installed bundle serves the skill catalog (18 bundled skills, fixture loads) with no `$DSH_HOME/skills` copy | `node skills/dsh-qa/scripts/skill-catalog-probe.mjs` |
 | `relocate-smoke` | relocated bundle serves preset + corpus, no dev-path leak, no home copy | `node skills/dsh-qa/scripts/relocate-smoke.mjs` |
 | `team-route-rewire` | staged bundle install → agent-teams row composed → probe boot → web `/plugins/dsh-agent-teams/state` 200 | `node skills/dsh-qa/scripts/team-route-rewire.mjs` |
 | `workmate-library` | init→list→spawn→reflect→match against a sandbox HOME; the self-test also pins the rename/delete host routes, the service surface and the §D reason matrix | `node skills/dsh-qa/scripts/workmate-library.mjs` |
@@ -91,6 +102,7 @@ The QA skill is `skills/dsh-qa` (`SKILL.md`). Every case script ships `--self-te
 | `preset-conformance` | every harness-owned row config (preset + bundle patch + QA overlays) conforms to the INSTALLED harness schemas, the `mpd` preset's row set equals the installed `standard` preset's, and a real session created with `agentPreset: "mpd"` MOUNTS — with a negative control that must fail | `node skills/dsh-qa/scripts/preset-conformance.mjs` |
 | `software-smoke` | software dev flow: a REAL headless mpd session (local OpenAI-shaped stub, throwaway key — no provider credential) writes a tiny deterministic game with the `write` tool and runs it with the `bash` tool in a SANDBOX workspace; the case replays the REAL transcript through its own oracle (legality, optimality, winner, determinism) and requires the mutation control to go RED | `node skills/dsh-qa/scripts/software-smoke.mjs` |
 | `agent-teams-adopt` (historical C1) | MIT notice + adoption wiring | `node skills/dsh-qa/scripts/agent-teams-adopt.mjs` |
+| `extension-lifecycle` / `extension-mcp-bridge` / `extension-isolation` (**new**) | the extension interface on REAL mounted boots: a data-plane extension in `<sandbox-ws>/.mpd/extensions/` appears in `mpd_ext_list`, its flow loads, its role spawns; the runtime stdio MCP bridge publishes `mcp__<server>__<tool>` and a real tool call succeeds; a broken extension of each kind leaves the good ones working, and two sessions with different cwds on one host see only their own project extensions | `bun skills/dsh-qa/scripts/extension-lifecycle.mjs` (and the two sibling cases; each ships `--self-test`) |
 
 Two npm scripts, two lanes (t8): `bun run test:qa` runs EVERY case's offline `--self-test`;
 `bun run test:qa:all` runs the REAL lane of the heavy/live subset, enumerated by name in
@@ -120,17 +132,39 @@ profile `node_modules/@mpd-dsh/mpd`) when pnpm store access is unavailable; the 
 | QA real cases | `node skills/dsh-qa/scripts/<case>.mjs` |
 | Installer | `node scripts/install-profile.mjs --dry-run` / `--self-test` |
 | Boot check (MOUNT) | a boot that really applies the rows in an isolated `DSH_HOME` + sandbox `HOME`: `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs` (host rows) / `node skills/dsh-qa/scripts/preset-conformance.mjs` (the `mpd` preset's standing mount). `dsh --profile <p> --dump-config` composes rows only and is NOT this gate (AGENTS.md §4) |
+| Extension CLI | `bun scripts/mpd-ext.mjs --self-test` (offline) + `bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example` (exit 0; a deliberately broken extension must exit 1 with per-item errors) |
 
 No evidence on disk for a gate = the change is not complete.
 
-## 6. Git model
+## 6. Release flow
+
+1. Land the release's changes on `dev` first — `feature/<slug>` / `fix/<slug>` branches, each with
+   its evidence committed. `master` only ever receives release merges.
+2. Branch `release/vX.Y.Z` from `dev`; bump the version in `package.json` (and any version
+   reference in this documentation set) and write the changelog note.
+3. Full gate sweep, all green and on disk: `node scripts/verify-vendor.mjs`, `bun run typecheck`,
+   `bun test packages`, `bun run test:qa` (every case's offline `--self-test`), the real-lane
+   subset `bun run test:qa:all`, and the boot check (§5: `preset-conformance` plus the mount
+   proof — never `--dump-config` alone).
+4. **`VENDOR_LOCK.json` pairing rule**: a `skills/**` change invalidates the corpus `treeSha`, and
+   the re-pin lands in the SAME commit as that change. `skills/**` has ONE writer per wave, so a
+   wave has exactly one re-pin — verify it is present, and that no `skills/**` change is committed
+   without it.
+5. Packaging: `npm run pack` (`node scripts/pack-mpd.mjs`) assembles the relocatable
+   `dist/mpd-package/`. Check the packed tree actually contains every plugin dist, the
+   `extensions/` assets and `scripts/mpd-ext.mjs` (a missing `PLUGIN_PKGS` entry is a silent
+   exit-0 with a broken boot).
+6. Merge `--no-ff` into `master` with a `release: vX.Y.Z …` message, create the annotated tag
+   (`git tag -a vX.Y.Z`), and push `master` + the tag (and `dev`).
+
+## 7. Git model
 
 `master` (release, merge-only) ← `dev` (integration) ← `feature/<slug>` / `fix/<slug>`.
 Commits: `<type>(<scope>): <summary>`; merges `--no-ff` with a descriptive message;
 never rebase published branches; fixes cite the defect and land with reproduction
 evidence.
 
-## 7. Vendoring & baseline
+## 8. Vendoring & baseline
 
 - `scripts/vendor-agent-teams.mjs` re-materializes the adopted agent-teams server
   runtime closure (`packages/mpd-agent-teams-plugin/_deps/`) from the host installation
@@ -140,7 +174,7 @@ evidence.
   `verify-vendor.mjs` blocks on mismatch. Upstream is never chased — a baseline change
   needs a deliberate branch + evidence.
 
-## 8. Common pitfalls (from real incidents)
+## 9. Common pitfalls (from real incidents)
 
 | Pitfall | Fix |
 |---|---|

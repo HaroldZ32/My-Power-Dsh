@@ -1,0 +1,18 @@
+{
+  "finding": "The ROSTER exposes a PROJECT-plane extension's role while the contract says that item is rejected — the two surfaces still disagree, on the roster's side",
+  "status": "MEASURED, out of this task's fix scope (the fix lives in packages/mpd-roles-plugin, which t14 must not edit)",
+  "how_measured": {
+    "fixture": "<sandbox-workspace>/.mpd/extensions/proj-ext/mpd-ext.json declaring contributes.roles=[{name:\"Project Role\", persona:\"p.md\"}] with p.md present",
+    "command": "bun raw/before-after.mjs src   (the probe drives mpd_ext_list/mpd_ext_show through apply() AND the roster's own extensionRoles() over the same fixture)",
+    "ext_report": {
+      "roles": [],
+      "errors": ["contributes.roles[0]: project-level extensions may contribute skills and flows only: tool and provider registration is process-global and cannot be scoped to a session"]
+    },
+    "roster_report": { "exposed": ["Project Role"], "refused": [] },
+    "observed_at": "after-probe.json -> project_plane"
+  },
+  "why": "packages/mpd-roles-plugin/src/index.ts `extensionRoles()` iterates every view from mpdExtensions.list() and checks `enabled`, the declared roles and the persona — but never the PLANE. The registry's project-plane rejection is recorded as a per-item ERROR, while the descriptor still carries the roles items and the root, so the roster resolves one anyway.",
+  "impact": "A project-level extension that declares a role with a readable persona exposes it through mpd_roles_list / mpd_role_spawn, contradicting the documented rule 'a project-level extension's mcp/roles items were rejected' (AGENTS.md §12) and contradicting mpd_ext_show for the same role.",
+  "suggested_fix_location": "packages/mpd-roles-plugin/src/index.ts `extensionRoles()`: skip views whose `plane` is 'project' (the view already carries `plane`), so the resolver honours the same contract rejection the registry records. The pattern is the existing `if (view?.enabled === false) continue` guard.",
+  "cross_reference": "AGENTS.md §12 documents the rejection as expected behaviour; if this is fixed, that row plus the t14 test `the four tools emit values that satisfy their own output schemas` (project-plane assertions) should be re-read."
+}

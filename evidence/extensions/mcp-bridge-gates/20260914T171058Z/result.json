@@ -1,0 +1,124 @@
+{
+  "task": "t3 — runtime stdio MCP bridge, dev CLI and the shipped reference extension",
+  "recordedAt": "2026-09-14T17:15:13.086Z",
+  "repo": "/root/dshProj/my-power-dsh/",
+  "verdict": "pass",
+  "commands": [
+    {
+      "command": "bun test packages/mpd-ext-plugin",
+      "argv": "/root/.nvm/versions/node/v24.16.0/lib/node_modules/bun/bin/bun.exe test packages/mpd-ext-plugin",
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "status": "passed",
+      "elapsedMs": 2052,
+      "lastLines": [
+        "bun test v1.3.14 (0d9b296a)"
+      ],
+      "stderrTail": [
+        "packages/mpd-ext-plugin/test/mcp.test.ts:",
+        "",
+        " 47 pass",
+        " 0 fail",
+        " 329 expect() calls",
+        "Ran 47 tests across 4 files. [2.04s]"
+      ]
+    },
+    {
+      "command": "bun scripts/mpd-ext.mjs --self-test",
+      "argv": "/root/.nvm/versions/node/v24.16.0/lib/node_modules/bun/bin/bun.exe scripts/mpd-ext.mjs --self-test",
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "status": "passed",
+      "elapsedMs": 363,
+      "lastLines": [
+        "  ok the broken run reports \"surprise\"",
+        "  ok the broken run reports \"persona file does not exist\"",
+        "  ok validate accepts extensions/mpd-ext-example (got 0): ",
+        "  ok list exits 0 (got 0)",
+        "  ok list names the bundle plane",
+        "  ok list sees the shipped example",
+        "  ok no command prints usage or fails",
+        "[mpd-ext] --self-test passed (19 checks)"
+      ],
+      "stderrTail": [
+        ""
+      ]
+    },
+    {
+      "command": "bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example",
+      "argv": "/root/.nvm/versions/node/v24.16.0/lib/node_modules/bun/bin/bun.exe scripts/mpd-ext.mjs validate extensions/mpd-ext-example",
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "status": "passed",
+      "elapsedMs": 53,
+      "lastLines": [
+        "[mpd-ext] validate /root/dshProj/my-power-dsh/extensions/mpd-ext-example (plane=user)",
+        "  extension \"mpd-ext-example\": loadable",
+        "  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)",
+        "  pending contributes.mcp[0]: pending: the \"mcp\" kind is declared by this build and connected by the runtime stdio MCP bridge task (t3) — server \"example\" is not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000)",
+        "  pending contributes.roles: pending: extension roles are resolved per call by mpd-roles-plugin (t4) — declared here, not yet exposed through mpd_roles_list",
+        "[mpd-ext] ok"
+      ],
+      "stderrTail": [
+        ""
+      ]
+    },
+    {
+      "command": "bun run typecheck",
+      "argv": "/root/.nvm/versions/node/v24.16.0/lib/node_modules/bun/bin/bun.exe run typecheck",
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "status": "passed",
+      "elapsedMs": 284,
+      "lastLines": [
+        ""
+      ],
+      "stderrTail": [
+        "$ tsgo --noEmit"
+      ]
+    },
+    {
+      "command": "bun scripts/mpd-ext.mjs validate /tmp/mpd-ext-broken-hU7EtJ (negative control)",
+      "argv": "/root/.nvm/versions/node/v24.16.0/lib/node_modules/bun/bin/bun.exe scripts/mpd-ext.mjs validate /tmp/mpd-ext-broken-hU7EtJ",
+      "exitCode": 1,
+      "expectedExitCode": 1,
+      "status": "passed",
+      "elapsedMs": 50,
+      "lastLines": [
+        "  contributes: 0 skill(s), 0 flow(s), 1 role(s), 0 mcp server(s)",
+        "  error descriptor.typoKey: unknown key \"typoKey\"",
+        "  error contributes.skills[0].root: root must be a non-empty extension-root-relative directory (absolute paths and `..` escapes are rejected)",
+        "  error contributes.flows[0].rank: rank must be a finite number when present",
+        "  error contributes.mcp[0].surprise: unknown key \"surprise\"",
+        "  error contributes.mcp[0].serverName: serverName is required and must match ^[A-Za-z0-9_-]{1,32}$",
+        "  error contributes.roles[0].persona: persona file does not exist: /tmp/mpd-ext-broken-hU7EtJ/personas/absent.md",
+        "  pending contributes.roles: pending: extension roles are resolved per call by mpd-roles-plugin (t4) — declared here, not yet exposed through mpd_roles_list"
+      ],
+      "stderrTail": [
+        "[mpd-ext] 6 problem(s) — this extension would not load"
+      ]
+    },
+    {
+      "command": "node evidence/extensions/mcp-bridge-gates/20260914T171058Z/dist-load.mjs",
+      "argv": "node evidence/extensions/mcp-bridge-gates/20260914T171058Z/dist-load.mjs",
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "status": "passed",
+      "elapsedMs": 66,
+      "lastLines": [
+        "    \"mpd_ext_list\",",
+        "    \"mpd_ext_show\",",
+        "    \"mpd_flow_list\",",
+        "    \"mpd_flow_show\"",
+        "  ],",
+        "  \"warnings\": [],",
+        "  \"verdict\": \"pass\"",
+        "}"
+      ],
+      "stderrTail": [
+        ""
+      ]
+    }
+  ],
+  "negativeControl": "a deliberately broken extension makes `validate` exit 1 with per-item errors, so the exit-0 case is falsifiable"
+}

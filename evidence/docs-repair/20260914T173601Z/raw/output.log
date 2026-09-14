@@ -1,0 +1,71 @@
+$ F1 grep: get("codegraph...") in packages/*/src/*.ts
+exit=0
+
+
+$ F1 mpd_config_get's authoritative consumed-key list
+exit=0
+117:    description: "Read the resolved mpd.jsonc runtime config (project .mpd/mpd.jsonc merged over user $DSH_HOME/mpd.jsonc). Consumed keys: memory.vcs/memory.dir/memory.agentSlug/memory.reflectionEvery, team.stateDir, hashline.guardEditTools/hashline.maxDiffChars/hashline.registryFile, commentChecker.autoCheck/commentChecker.bin/commentChecker.timeoutMs/commentChecker.maxMessageChars, modelchain.<chainKey>, boulder.dir, ulw.maxRounds/ulw.planDir/ulw.stateDir/ulw.provider/ulw.model/ulw.reviewerModel/ulw.maxReReviews.",
+
+$ F1 the real source: the mpd-codegraph ROW config
+exit=0
+- id: mpd-codegraph
+      name: '@mpd-dsh/mpd/packages/mpd-codegraph-plugin/dist/index.js'
+      config:
+        autoInit: true
+        initTimeoutMs: 60000
+    - id: mpd-memory
+      name: '@mpd-dsh/mpd/packages/mpd-memory-plugin/dist/index.js'
+
+$ F1 the plugin's own row-config type
+exit=0
+16:type Config = { autoInit?: boolean; initTimeoutMs?: number; cooldownMs?: number; binary?: string }
+
+$ F1 result: the false `codegraph.*` ROW is gone from both user guides
+exit=0
+
+
+$ F1 result: the exception is stated (EN)
+exit=0
+1
+
+$ F1 result: the exception is stated (ZH)
+exit=0
+1
+
+$ F2 proof: packages WITHOUT a bilingual README pair
+exit=0
+mpd-agent-teams-plugin readme=yes zh=NO
+mpd-mcp-shared readme=NO zh=NO
+
+$ F2 mpd-mcp-shared appears in both hubs
+exit=0
+docs/index.md
+docs/index.zh-CN.md
+
+$ F2 the new mpd-team-compact-plugin README pair
+exit=0
+-rw-r--r-- 1 root root 3560 Sep 15 01:35 packages/mpd-team-compact-plugin/README.md
+-rw-r--r-- 1 root root 3591 Sep 15 01:35 packages/mpd-team-compact-plugin/README.zh-CN.md
+
+$ gate 1: doc pairs + switch links
+exit=0
+doc-pair-ok
+
+$ gate 2: dead relative links over 12 docs
+exit=0
+links-ok
+
+reverse switch links missing: []
+checks: {
+  "codegraphKeyNotRead": true,
+  "codegraphRowRemoved": true,
+  "codegraphExceptionStatedBothLanguages": true,
+  "onlyTwoReadmeExceptions": true,
+  "sharedHelperListedBothLanguages": true,
+  "teamCompactPairExists": true,
+  "docPairOk": true,
+  "linksOk": true,
+  "reverseSwitchLinksPresent": true,
+  "keyTableRowParity": true
+}
+verdict: pass

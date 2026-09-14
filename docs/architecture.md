@@ -27,7 +27,7 @@ The specialist roster's 11 specialists are **not presets**: they live as a speci
 (`mpd-roles-plugin`) and as teammate instantiation templates in the adopted
 `agent-teams` `mpd` profile.
 
-## 2. Bundle assembly (Plan D)
+## 2. Bundle assembly
 
 **The repo root IS the bundle package.** `package.json` is named `@mpd-dsh/mpd` and
 declares `dsh.bundle.patch` (`./packages/mpd-bundle/cordis.patch.yml`), `dsh.client`,
@@ -74,6 +74,13 @@ Manifest invariants (why they exist):
    `__ModuleLoader__.load({ id: "<X>", factory })` — the id must match the row id or
    the loader throws "bundle ... loaded without registering".
 
+5. Sibling rows apply **concurrently**, so nothing may assume an ordering: services are resolved
+   lazily (`ctx.get(...)`) at tool-execute time, and a plugin that must finish work during
+   activation returns an **async** `apply` (Cordis awaits it) instead of doing it lazily later.
+   The `mpd-ext` row is the one row that finishes real startup work: it discovers the host-wide
+   extension roots and connects their declared stdio MCP servers before its apply resolves, so the
+   first tool generation of a reachable server already exists when the session starts.
+
 **Consequence**: to have a web client, the bundle needs (a) `dsh.client` + `./client`
 on its manifest, and (b) a **loader entry named exactly `@mpd-dsh/mpd`** — provided by
 the patch self-row:
@@ -97,7 +104,8 @@ to bare package names.
 | `mpd-config` | mpd-config-plugin | minimal `mpd.jsonc` runtime config layer (project `.mpd/mpd.jsonc` merged over user `$DSH_HOME/mpd.jsonc`) | `mpd_config_get`, `mpd_config_reload`; service `mpdConfig` | `projectFile`, `userFile` |
 | `mpd-tools` | mpd-tools-plugin | write guard (no silent clobber), tool-output truncation (token budget), edit-error recovery guidance | waterfalls only | `writeGuard`, `truncateMaxBytes`, `recoveryHint` |
 | `mpd-modelchain` | mpd-modelchain-plugin | DeepSeek route resolution for roster roles + key/value memory notes | `mpd_modelchain_resolve`, `mpd_memory_save`, `mpd_memory_recall` | — |
-| `mpd-roles` | mpd-roles-plugin | the specialist roster's 11 specialists as a roster (ids/normal names/personas/model chains/read-only) | `mpd_roles_list`, `mpd_role_spawn`, `mpd_role_persona`; service `mpdRoles` | `personasDir` |
+| `mpd-ext` | mpd-ext-plugin | the extension interface: one frozen descriptor contract, two planes (code `register()` + data-plane `mpd-ext.json`), lifecycle-split discovery, skills/flows providers, the runtime stdio MCP bridge, extension roles | `mpd_ext_list`, `mpd_ext_show`, `mpd_flow_list`, `mpd_flow_show`; service `mpdExtensions` | `quiet` + the lazy `mpd.jsonc` layer (`extensions.enable`, `extensions.disable`, `extensions.mcp.*`) |
+| `mpd-roles` | mpd-roles-plugin | the specialist roster's 11 specialists as a roster (normal names/personas/model chains/read-only), merged per call with extension-contributed roles | `mpd_roles_list`, `mpd_role_spawn`, `mpd_role_persona`; service `mpdRoles` | `personasDir` |
 | `mpd-ulw` | mpd-ulw-plugin | fixed plan→execute→verify loop discipline | `mpd_ultrawork`, `mpd_ulw` (light alias) | `maxRounds`, `maxReReviews`, `provider/model/reviewerModel`, `planDir`, `stateDir` |
 | `mpd-hashline` | mpd-hashline-plugin | hash-anchored edit discipline (`LINE#HASH` anchors) | `mpd_hashline_read`, `mpd_hashline_edit`, `mpd_hashline_format`, `mpd_hashline_restore` | `guardEditTools`, `maxDiffChars`, `registryFile` |
 | `mpd-boulder` | mpd-boulder-plugin | durable work ledger bound to plan markdown files | `mpd_boulder_status`, `mpd_boulder_start`, `mpd_boulder_complete`, `mpd_boulder_task_timer`, `mpd_boulder_plan_progress`, `mpd_boulder_plans` | `boulderDir` |
@@ -157,6 +165,39 @@ mechanism — the plugin never touches API keys**.
   gets the workmate's persona + memory + note plus a `mpd_workmate_reflect` instruction
   ("captain checks the note, delegates to the workmate-named member").
 
+### Extension → skills, flows, MCP tools and roles
+
+The `mpd-ext` row provides the `mpdExtensions` service and loads a standardized descriptor
+(`mpd-ext.json`, or the first argument of `register(descriptor, { root })`) through ONE validator,
+so a data-plane directory and a code-plane plugin row produce identical registry entries.
+
+- **Two discovery lifecycles.** Apply-time roots (`~/.mpd/extensions/` and
+  `<bundle>/extensions/`) are scanned once when the row applies and may contribute all four kinds;
+  the per-call project root (`<session workspace>/.mpd/extensions/`, resolved from the calling
+  session's workspace, never `process.cwd()`) is re-read on every call and may contribute only
+  skills and flows — tool and provider registration is process-global, so a project-level
+  `mcp`/`roles` item is rejected per item with a stated reason rather than silently half-loading.
+- **Skills and flows** are served through the adapter's `registerSkillProvider` under a
+  per-extension provider name; every candidate is pre-validated against the harness's own rules and
+  a violating candidate is skipped and recorded. A flow is a declarative JSON document rendered
+  into an in-memory SKILL.md-shaped candidate — the harness has no flow seam, so this plane adds
+  none.
+- **MCP servers** start at apply time, in parallel and time-boxed: the runtime bridge spawns the
+  declared stdio child, performs `initialize` → `notifications/initialized` → `tools/list`, and
+  publishes the first tool generation **before** the plugin finishes activating. A later tool-list
+  change is a two-phase fetch/swap whose rollback leaves ZERO tools from that server. Tool names
+  replicate the harness's `publicToolName` wire contract exactly
+  (`mcp__<server>__<raw>`, 64-char cap, `_<12-hex sha256(server NUL raw)>` on any lossy
+  transformation); a foreign `outputSchema` is kept or that tool is dropped (never rewritten), and
+  a foreign `inputSchema` is projected onto the enforced schema subset. Startup failure is
+  contained — the server is recorded `unavailable`/`failed` with its stderr tail.
+- **Roles** are resolved per call by `mpd-roles` (a lazy merge of the base roster with
+  extension-contributed roles at lookup time, never an apply-time merge), so an extension role is
+  usable through `mpd_role_spawn` / `mpd_role_persona` and as a workmate base template. It never
+  enters the agent-teams member list, which is static patch configuration.
+- Four tools inspect all of it — `mpd_ext_list`, `mpd_ext_show`, `mpd_flow_list`, `mpd_flow_show` —
+  and `scripts/mpd-ext.mjs` (`validate` / `scaffold` / `list`) shares the same runtime validator.
+
 ### Service timing
 Sibling-provided services are read **lazily at tool-execute time**
 (`mpd_modelchain`, `mpd-workmate` do `ctx.get("mpdRoles")` inside `execute`), matching
@@ -172,6 +213,9 @@ yet.
 | `<workspace>/.mpd/memory.json` | mpd-modelchain | key/value notes |
 | `<workspace>/.mpd/` (VCS-backed memory dir) | mpd-memory | git/svn-backed memory + reflection |
 | `<workspace>/.mpd/mpd.jsonc` | mpd-config | project config layer |
+| `<workspace>/.mpd/extensions/*/mpd-ext.json` | mpd-ext | the PER-CALL extension plane: re-read on every call from the calling session's workspace, so a QA boot launched from the repo cannot leak the repo's own extensions into a sandbox (skills + flows only) |
+| **`~/.mpd/extensions/*/mpd-ext.json`** (user HOME) | mpd-ext | the host-wide user extension plane, discovered at apply (skills, flows, mcp, roles) — a deliberate HOME-scoped exception like the workmate library |
+| **`<bundle>/extensions/*/mpd-ext.json`** | mpd-ext | the bundle-shipped host-wide extension plane (skills, flows, mcp, roles); it ships the disabled reference extension and disappears with an uninstall |
 | **`~/.mpd/workmate/`** (user HOME) | mpd-workmate | the cross-project workmate library (`<key>/` instances + `.archive/` — deleted instances moved out of the library, restorable by a manual `mv` back) — deliberate user-approved exception to workspace-scoped state (§ AGENTS.md §6); QA boots with `HOME=<sandbox>` |
 | `$DSH_HOME/.agent-presets/mpd*`, `$DSH_HOME/skills/*` | mpd-bootstrap | LEGACY only (bundle <= 0.2.6 stamped copies); removed on the first 0.3.0 boot — the bundle writes nothing to the home |
 

@@ -1,0 +1,28 @@
+ok        clean object: harness=true ours=accept projectable=true lossy=false
+ok        clean nullable oneOf: harness=true ours=accept projectable=true lossy=false
+ok        annotation-only: harness=true ours=accept projectable=true lossy=false
+ok        type array [string,null]: harness=false ours=reject projectable=true lossy=true
+ok        type array [string,number] (unprojectable): harness=false ours=reject projectable=false lossy=true
+ok        foreign keyword: $ref: harness=false ours=reject projectable=true lossy=true
+ok        foreign keyword: format/pattern: harness=false ours=reject projectable=true lossy=true
+ok        required without properties: harness=false ours=reject projectable=true lossy=true
+ok        required naming a missing property: harness=false ours=reject projectable=true lossy=true
+ok        additionalProperties object: harness=false ours=reject projectable=true lossy=true
+ok        type + oneOf: harness=false ours=reject projectable=true lossy=true
+ok        oneOf with one branch: harness=false ours=reject projectable=true lossy=true
+ok        oneOf with sibling constraint: harness=false ours=reject projectable=false lossy=true
+ok        boolean schema true: harness=false ours=reject projectable=true lossy=true
+ok        boolean schema false: harness=false ours=reject projectable=false lossy=true
+ok        enum without type: harness=false ours=reject projectable=true lossy=true
+ok        enum with a mixed value: harness=false ours=reject projectable=true lossy=true
+ok        const inside enum: harness=true ours=accept projectable=true lossy=false
+ok        const outside enum: harness=false ours=reject projectable=true lossy=true
+ok        properties without type: harness=false ours=reject projectable=true lossy=true
+ok        items under a string type: harness=false ours=reject projectable=true lossy=true
+ok        bad annotation type: harness=false ours=reject projectable=true lossy=true
+ok        empty properties with additionalProperties false: harness=true ours=accept projectable=true lossy=false
+ok        nested allOf: harness=false ours=reject projectable=true lossy=true
+ok        type array in a property: harness=false ours=reject projectable=true lossy=true
+
+mismatches: 0/25
+verdict: pass

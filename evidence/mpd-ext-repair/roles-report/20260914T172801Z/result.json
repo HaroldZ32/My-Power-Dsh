@@ -1,0 +1,154 @@
+{
+  "task": "t14",
+  "subject": "Repair the stale mpd-ext reporting: false 'roles pending' note and refused roles shown as usable",
+  "kind": "repair",
+  "attempt": 1,
+  "attempt_id": "2db3d8d5-24b2-4cf7-85eb-bd7598867b87",
+  "owner": "Lead",
+  "date_utc": "2026-09-14T17:35:38Z",
+  "git": {
+    "branch": "feature/extension-interface",
+    "head": "6cbb12682679127788657a3551ddffafa1696be1",
+    "note": "packages/mpd-ext-plugin is UNTRACKED on this branch (the wave adds it), so there is no pre-fix git revision; the pre-fix code was measured from the shipped dist/index.js artifact instead (see before_artifact)"
+  },
+  "hashes": {
+    "packages/mpd-ext-plugin/src/registry.ts": "b50f0defa8c0f188c39226fbf4db141ac57d5a9039bb7a37c070fae1369f9914",
+    "packages/mpd-ext-plugin/test/core.test.ts": "00e2175e907f113d74c328b8452f8f5beee6663251b0d63afed733077cf4ac26",
+    "packages/mpd-ext-plugin/dist/index.js (rebuilt)": "b47afb0039de42af3ddb7d1b7a787621e4b7954acce8d0ac0a1da4424b2c3a21",
+    "packages/mpd-ext-plugin/dist/index.js (pre-fix, as measured)": "f0277c30eccde6f9a8193f5ee1827d7f8bd59c3292a337a89f2b818ca33df72f"
+  },
+  "defects": {
+    "F3": {
+      "what": "the roles contribution emitted a `pending` note claiming extension roles were 'declared here, not yet exposed through mpd_roles_list' — false in every running session since mpd-roles resolves them per call",
+      "site": "packages/mpd-ext-plugin/src/registry.ts buildExtension, the unconditional `pending.push({ item: 'contributes.roles', ... })`",
+      "before": "BEFORE (pre-fix shipped dist): pending_roles=1 per extension, stale_sentence_present=true",
+      "after": "AFTER (fixed src): pending_roles=0, stale_sentence_present=false; the sentence now appears nowhere in src or the rebuilt dist",
+      "also_stale": "the adjacent mcp placeholder still said the kind is 'connected by the runtime stdio MCP bridge task (t3)' — the plan's residual also flagged it as stale in the CLI validate path; the wording is now state-only and its live state is still owned by the bridge (`setPending`)"
+    },
+    "F4": {
+      "what": "a role the roster REFUSES was still reported as a usable contribution, so mpd_ext_* and mpd_roles_list disagreed about the same role",
+      "site": "packages/mpd-ext-plugin/src/registry.ts buildExtension (roles loop + the `roles`/`contributions.roles` it produced) with no whole-view collision pass at all",
+      "before": "BEFORE (pre-fix shipped dist): alpha-owner contributions.roles=3 roles=['Verilog Reviewer','Architect','Roster Clone'] refusal_notes=0; zeta-clone contributions.roles=1 roles=['Verilog Reviewer'] refusal_notes=0; refused_roles_listed_as_usable=['alpha-owner:Architect','alpha-owner:Roster Clone','zeta-clone:Verilog Reviewer'] (all three refusal classes)",
+      "after": "AFTER (fixed src): alpha-owner contributions.roles=1 roles=['Verilog Reviewer'] refusal_notes=2; zeta-clone contributions.roles=0 roles=[] refusal_notes=1; refused_roles_listed_as_usable=[]"
+    }
+  },
+  "fix": {
+    "files": [
+      "packages/mpd-ext-plugin/src/registry.ts",
+      "packages/mpd-ext-plugin/test/core.test.ts"
+    ],
+    "registry_ts": [
+      "buildExtension now records a `RoleCandidate` per declared role (`contributes.roles[i]`, name, absolute persona, and this plane's LOCAL decision) and keeps `roles`/`contributions.roles`/`resolvedRoots.roles` in sync with it.",
+      "Local (statically decidable) refusals, reproduced verbatim from the roster: a base-roster NAME collision (the base wins; the name key is case/space/hyphen/underscore-insensitive), a base-roster ID collision (`ext-<extension>-<slug>`), an unreadable OR EMPTY persona (the old existsSync-only test accepted a zero-byte persona the roster refuses), and a missing root.",
+      "New exported `annotateRoleSurfaces(entries)`, called from `MpdExtensionRegistry.view()`, re-derives the whole-view decision the way the roster does: base names first, then each extension in view order claims what it exposes, first wins; a later collision becomes a `refused:` error instead of a silently listed role. Idempotent by construction (its notes are filtered by their `refused:` prefix before re-adding), so per-call views cannot accumulate duplicates while validation and bridge errors are preserved.",
+      "A descriptor-disabled extension claims nothing and exposes no roles (the roster skips disabled views); it says so once via `pending contributes.roles: not exposed: this extension is disabled (enabled=false), ...` instead of listing the roles as usable.",
+      "`roles`/`contributions.roles` now mean 'what the roster currently exposes'; `resolvedRoots.roles` keeps meaning 'which persona assets resolved'.",
+      "The mirrored rules are `roleNameKey` / `extensionRoleId` (exported) and the base data comes from `mpd-roles-plugin/src/roles.data` (a pure data module). Importing the roster's MODULE was rejected deliberately: it drags the cordis adapter into this registry, which the dev CLI (`scripts/mpd-ext.mjs validate`) imports with no host at all."
+    ],
+    "core_test_ts": [
+      "Replaced the test that asserted the wrong text (`mcp and roles are declared, recorded as pending, and not implemented in this task`) with `mcp is pending until the bridge connects it, while roles are NEVER pending (t14/F3)`.",
+      "Added nine t14 cases: F3 live-roles reporting on both tools (including a negative assertion on the removed sentence), base-name collision in BOTH paths (build-time/CLI validate and the view), unreadable + EMPTY persona, cross-extension collision naming the holder, disabled-extension reporting, refusal-note idempotency, case/separator-insensitive base-name collision, and a PARITY test that calls the roster's own `extensionRoles()` and requires both the exposed names and every refusal reason to match.",
+      "The t14 cases deliberately import no symbol this repair introduces, so the same file runs against the pre-fix behaviour and measures RED (see before_tests)."
+    ],
+    "out_of_scope_but_mandated": "packages/mpd-ext-plugin/dist/index.js was rebuilt because the acceptance requires the shipped code to match src/ (the plan's t3 change list has the same shape). It is therefore NOT in `changedPaths`, which admits only declared in-scope paths; it is named here and in the output field."
+  },
+  "verification": {
+    "commands": [
+      { "command": "bun test packages/mpd-ext-plugin", "exit": 0, "result": "55 pass / 0 fail, 431 expect() calls, 4 files (baseline before this repair: 47 pass / 1 fail — the one failure was the test asserting the stale text)" },
+      { "command": "bun run typecheck", "exit": 0, "result": "tsgo --noEmit clean" },
+      { "command": "bun build packages/mpd-ext-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ext-plugin/dist/index.js", "exit": 0, "result": "Bundled 11 modules, index.js 132.70 KB; the rebuilt bundle contains `annotateRoleSurfaces` and no stale sentence" },
+      { "command": "bun scripts/mpd-ext.mjs --self-test", "exit": 0, "result": "[mpd-ext] --self-test passed (19 checks)" },
+      { "command": "bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example", "exit": 0, "result": "loadable; 1 skill, 1 flow, 1 role, 1 mcp server; the printed mcp pending line is the new state-only wording (no stale task reference), and no roles pending line is printed" }
+    ],
+    "dist_matches_src": {
+      "method": "the same probe driven against the rebuilt dist/index.js and against src/index.ts",
+      "result": "identical after normalizing the temp-HOME directory names (the only textual differences); see dist-vs-src.json",
+      "fix_present_in_rebuilt_dist": true,
+      "stale_sentence_in_rebuilt_dist": false
+    },
+    "parity_with_the_roster": {
+      "method": "test `t14: the ext report and the ROSTER agree about every role` calls the roster's own `extensionRoles()` over the same fixture and compares both the exposed names and every refusal reason",
+      "result": "3 refusal reasons byte-identical, exposed-name sets equal"
+    }
+  },
+  "before_artifact": {
+    "what": "packages/mpd-ext-plugin/dist/index.js as shipped before this repair (sha256 f0277c30…) — the package is untracked, so no git revision exists",
+    "how_measured": "raw/before-after.mjs dist (drives the artifact's own mpd_ext_list/mpd_ext_show through apply())",
+    "caveat": "the mandated dist rebuild replaced it; its hash and its measured output (before-probe.json) are preserved here, and the pre-fix BEHAVIOUR stays reproducible via raw/reintroduce-defects.mjs (see before_tests)"
+  },
+  "before_tests": {
+    "method": "the two defect sites re-introduced at their exact sites in a copy of the fixed registry.ts (raw/reintroduce-defects.mjs, every substitution asserted), then the same test file run",
+    "reverted_registry_sha256": "e9f01a30ab0d217c0755c81b7891c52bf7494bd31dfed9fae50e774914aa09df",
+    "result": "26 pass / 9 fail — every t14 case RED (F3 pending note, base collision, unreadable/empty persona, cross-extension collision, disabled extension, idempotency, parity, base-name key shapes, and the rewritten mcp/roles test)",
+    "restore": "byte-exact restore verified with cmp; restored sha256 b50f0def…"
+  },
+  "residuals_and_findings": [
+    {
+      "kind": "residual",
+      "subject": "config-disabled extensions and the whole-view claim map",
+      "detail": "`view()` cannot see `extensions.disable[]` (the EFFECTIVE enabled state is resolved by the caller, `toView` -> `effectiveEnabled`, outside registry.ts). A descriptor-disabled extension claims nothing, exactly like the roster; a CONFIG-disabled one is still treated as claiming, so a later extension's same-named role is reported refused while the roster would expose it. Both tools already report `enabled: false`; closing the gap needs the caller's config (documented in the code comment on annotateRoleSurfaces)."
+    },
+    {
+      "kind": "finding (out of this task's fix scope)",
+      "subject": "the ROSTER exposes a PROJECT-plane extension's role",
+      "detail": "MEASURED: with `<workspace>/.mpd/extensions/proj-ext` declaring a role with a readable persona, mpd_ext_list/mpd_ext_show correctly report the contract rejection and expose nothing, while the roster's extensionRoles() EXPOSES 'Project Role'. The resolver checks `enabled`, the declared roles and the persona, but never the plane. Fix belongs in packages/mpd-roles-plugin/src/index.ts (skip `view.plane === 'project'`, mirroring the existing `enabled === false` guard), which t14 must not edit.",
+      "evidence": "project-plane-finding.json (and after-probe.json -> project_plane)"
+    },
+    {
+      "kind": "note",
+      "subject": "AGENTS.md wording",
+      "detail": "AGENTS.md §4 gained the Extension CLI gate and §12 already documents the project-plane rejection as expected; if the roster leak above is fixed, that §12 row needs re-reading. AGENTS.md was out of this task's scope and was not touched."
+    }
+  ],
+  "task_status": "COMPLETED (attempt 2). The repair was delivered in attempt 1; attempt 1 was recorded failed because the task's verify command exited 1 at that moment (another lane's in-flight `inject` change — see handoff_state). That lane reconciled the pins, and attempt 2 re-verified the UNCHANGED repair on the settled tree: the three contract verify commands and the Extension CLI gates are all green, the RED/GREEN provenance was re-derived (27/9 -> 36/0, exactly the t14 cases), and dist/ was rebuilt so it matches src/. See attempt_2_reverification.",
+  "handoff_state_attempt_1": {
+    "summary": "The repair is complete and verified; the mandated package-suite command is RED at hand-off for a reason that belongs to ANOTHER lane (a concurrent, settled edit of src/index.ts by t5).",
+    "measured_at": "2026-09-15T01:37:20+08:00 (and re-confirmed after a 60 s settle window)",
+    "bun_test_packages_mpd_ext_plugin": "53 pass / 2 fail (55 tests). Same command: 55 pass / 0 fail at 01:33 with this repair in place.",
+    "failing_cases": [
+      "apply registers exactly the four tools, no reload, and provides the mpdExtensions service — `expect(inject).toEqual([])` now receives [\"tools\",\"skills\"]",
+      "apply contains a hostile harness: a throwing tool or skill seam never escapes apply — its >= 5 'not registered' warning count no longer holds under the declared injects"
+    ],
+    "cause": "packages/mpd-ext-plugin/src/index.ts was rewritten at 01:36:26 (+08:00) by the lane that owns it (t5, in_progress), sha256 d92e357466e705bf3a11b5c38e087804d9ed2693f8f73e0e9f556069b2770456, changing the exported `inject` from [] to [\"tools\",\"skills\"]. The four registered tool names are unchanged.",
+    "t14_is_not_the_cause": "registry.ts (b50f0def…) and core.test.ts (00e2175e…) are byte-identical to the revision at which the suite was green, and every t14 case passes in the current tree (33 pass / 2 fail in core.test.ts, both failures being the two pins above).",
+    "deliberate_non_action": "The two pins were NOT adapted to the concurrent change: they encode another lane's contract, that lane is still in progress, and rewriting a pin to match an unreviewed in-flight edit is the 'weakened assertion' anti-pattern the repository forbids. The owner of src/index.ts (or the captain) must either update those assertions deliberately or restore `inject: []`.",
+    "evidence": "concurrent-edit-note.json, final-reverify.log, gates.log"
+  },
+  "artifacts": {
+    "output.log": "consolidated evidence: before/after values, RED/GREEN tallies, gates, finding",
+    "before-probe.json": "BEFORE values, measured from the pre-fix shipped dist artifact",
+    "after-probe.json": "AFTER values plus the project-plane finding, measured from the fixed source",
+    "rebuilt-dist-probe.json": "the rebuilt dist measured through the same probe",
+    "dist-vs-src.json": "normalized rebuilt-dist vs fixed-src comparison",
+    "before-tests.log / after-tests.log": "the t14 cases RED (defects re-introduced) and GREEN (fixed)",
+    "before-after.log": "the measurement run log (hashes, guards, restore proof)",
+    "gates.log": "bun test, typecheck, the mandated build, and the two Extension CLI gates",
+    "project-plane-finding.json": "the out-of-scope roster leak, with its fixture and commands",
+    "measure-before-after.sh, raw/before-after.mjs, raw/reintroduce-defects.mjs, raw/registry.fixed.ts": "the reproducible measurement (script, probe, defect re-introduction, fixed-file backup)",
+    "attempt-2-reverify.log": "attempt 2's settled-tree re-verification (hashes, the three contract commands, the Extension CLI gates)",
+    "final-reverify.log": "attempt 1's hand-off state (the red suite and its attribution), kept as the historical record"
+  },
+  "attempt_2_reverification": {
+    "settled_hashes": {
+      "packages/mpd-ext-plugin/src/registry.ts (t14)": "b50f0defa8c0f188c39226fbf4db141ac57d5a9039bb7a37c070fae1369f9914",
+      "packages/mpd-ext-plugin/test/core.test.ts (t14 cases + the owning lane's reconciled pins)": "7a7a1280ab373fd35b60e4458950ad189f2cc9bf80c7f4e3b469825f15b9bab8",
+      "packages/mpd-ext-plugin/dist/index.js (rebuilt in attempt 2)": "eb88fc9303ed837bccd40a49ee7eff5a157d0a189beb19beef116dd8f86d003d"
+    },
+    "gate_results": {
+      "bun test packages/mpd-ext-plugin": "56 pass / 0 fail (exit 0), 454 expect() calls",
+      "bun run typecheck": "tsgo --noEmit clean (exit 0)",
+      "bun build ... --outfile packages/mpd-ext-plugin/dist/index.js": "exit 0; rebuilt bundle carries the fix (annotateRoleSurfaces x2), 0 stale sentences, 0 'bridge task' references",
+      "bun scripts/mpd-ext.mjs --self-test": "exit 0, 19 checks",
+      "bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example": "exit 0; prints the state-only mcp pending line and no roles pending line"
+    },
+    "provenance_re_derived_on_the_settled_tree": {
+      "red": "27 pass / 9 fail with the two defect sites re-introduced — the 9 failures are EXACTLY the t14 cases (the reconciled pins stay green, so nothing else is collateral)",
+      "green": "36 pass / 0 fail",
+      "restore": "byte-exact (cmp) back to registry.ts b50f0def",
+      "before_artifact_phase": "correctly SKIPPED: the pre-fix dist was replaced by the mandated rebuild; before-probe.json (captured from that artifact, sha f0277c30) is preserved"
+    },
+    "dist_matches_src": "the rebuilt dist (eb88fc93) driven through the same probe reports the fixed source's values — contributions.roles 1/0, roles ['Verilog Reviewer']/[], pending_roles 0, stale_sentence false, refused_names_listed_as_usable [] — identical after normalizing temp-HOME paths",
+    "pins_reconciled_by": "the lane that owns src/index.ts: `expect(inject).toEqual([\"tools\", \"skills\"])` now matches `export const inject: string[] = [...REQUIRED_SEAMS]`; t14 did not touch that pin (see handoff_state.deliberate_non_action)",
+    "log": "attempt-2-reverify.log"
+  }
+}

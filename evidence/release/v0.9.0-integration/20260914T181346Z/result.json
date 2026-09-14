@@ -1,0 +1,72 @@
+{
+  "task": "t11",
+  "subject": "Release integration v0.9.0: version bump, packaging allowlist and assets, vendor re-pin, rebuild, pack and release checklist",
+  "kind": "integration",
+  "attempt": 9,
+  "attempt_id": "3e66c9f2-d160-4fc1-9e71-79d6e023d202",
+  "owner": "Lead",
+  "date_utc": "2026-09-14T18:16:31Z",
+  "git": {
+    "branch": "feature/extension-interface",
+    "head": "6cbb12682679127788657a3551ddffafa1696be1",
+    "note": "NO git command was run by this task (AGENTS.md §5: the captain is the only writer). The branch/commit/tag/push sequence is in release-checklist.md §3."
+  },
+  "changed_artifacts": [
+    { "path": "package.json", "change": "version 0.3.2 -> 0.9.0; exports += ./extensions/*; test:qa and test:qa:all now cover the three extension QA cases and the dev CLI (self-test + validate on extensions/mpd-ext-example) — the CLI was covered by neither lane before" },
+    { "path": "scripts/pack-mpd.mjs", "change": "mpd-ext-plugin added to PLUGIN_PKGS; cpAssets() copies <bundle>/extensions/ (hard FAIL when absent) and scripts/mpd-ext.mjs; packed manifest files += extensions/** and exports += ./extensions/*" },
+    { "path": "VENDOR_LOCK.json", "change": "skills asset re-pinned: fileCount 298 -> 301, treeSha 08e96f40d9b4ee3c9f01508cc4f7e0628b03a43175d6ffcc91d1c08668ab78b0 -> 0dd4a6ee68e0a11499f2b502873016d066cface6b59036147bca066433b4b576, corpus source note lists the three extension QA cases" },
+    { "path": "packages/mpd-ext-plugin/dist/index.js + dist/sdk.js", "change": "rebuilt from src/ (bun build, index + sdk per the package's own build script)" },
+    { "path": "packages/mpd-roles-plugin/dist/index.js", "change": "rebuilt from src/" },
+    { "path": "docs/upstream-parity-ledger.md + docs/upstream-parity-ledger.zh-CN.md", "change": "two statements this release invalidated corrected in BOTH languages: the §8 vendor row (the 'lock is current' claim was false; the drift and the v0.9.0 re-pin are recorded) and the §8 plugin-tests row (161/42 -> 213/58)" },
+    { "path": "evidence/release/v0.9.0-integration/20260914T181346Z/**", "change": "this task's evidence + the release checklist (evidence/ is not in the declared inScope; AGENTS.md §2.3/§4 require on-disk evidence, and every sibling lane did the same)" }
+  ],
+  "vendor_repin": {
+    "algorithm": "scripts/verify-vendor.mjs listFiles() (node_modules / __pycache__ / *.pyc / *.pyo skipped) + sorted repo-relative paths + sha256 over `path + \"\\n\" + sha256(CRLF-normalized file bytes) + \"\\n\"`",
+    "before": { "fileCount": 298, "treeSha": "08e96f40d9b4ee3c9f01508cc4f7e0628b03a43175d6ffcc91d1c08668ab78b0" },
+    "after": { "fileCount": 301, "treeSha": "0dd4a6ee68e0a11499f2b502873016d066cface6b59036147bca066433b4b576" },
+    "what_changed_in_the_corpus": "skills/dsh-qa/SKILL.md (edited: the extension case rows) plus three new files skills/dsh-qa/scripts/{extension-isolation,extension-lifecycle,extension-mcp-bridge}.mjs",
+    "gate_after": "node scripts/verify-vendor.mjs -> PASS, exit 0 ('asset OK: skills 301 files')",
+    "same_commit_rule": "this re-pin must be committed in the SAME commit as the skills/** change (AGENTS.md §9/§11: one skills writer per wave, one re-pin)"
+  },
+  "packaging_class": {
+    "defect": "scripts/pack-mpd.mjs could exit 0 while the packed tree omitted a mounted plugin package (precedent: mpd-team-compact-plugin) — for the extension interface it omitted packages/mpd-ext-plugin AND the <bundle>/extensions discovery root, so the packed boot would die ERR_MODULE_NOT_FOUND on the mpd-ext row or silently lose the bundle extension plane.",
+    "fix": "PLUGIN_PKGS += mpd-ext-plugin; cpAssets() copies extensions/ and scripts/mpd-ext.mjs; packed manifest declares files: extensions/** and exports: ./extensions/*; the root manifest gained the matching ./extensions/* export.",
+    "pack_result": "node scripts/pack-mpd.mjs exit 0, 1107 files, dist/mpd-package/ carries packages/mpd-ext-plugin/dist/{index.js,sdk.js}, extensions/mpd-ext-example/{mpd-ext.json,server.mjs,...}, scripts/mpd-ext.mjs, presets/, skills/, cordis.patch.yml with the mpd-ext row and 0 dev-path leaks",
+    "packed_boot_proof": "bun skills/dsh-qa/scripts/relocate-smoke.mjs --no-skip -> PASS (install ok; dump no dev-path leak; live relocated boot ok; 0 preset/skill copies into the home; assets served from the relocated package)",
+    "packed_extension_proof": "bun skills/dsh-qa/scripts/extension-lifecycle.mjs --no-skip -> exit 0; its packed arm reports GREEN with greenOwner=t11: packExit 0, mpdExtRowInPackedPatch true, pluginDist true, extensionsAsset true (t5 recorded the RED in the same arm)"
+  },
+  "verification": {
+    "commands": [
+      { "command": "node scripts/verify-vendor.mjs", "exit": 0, "result": "PASS; 'asset OK: skills 301 files'", "evidence": "verify-vendor.log" },
+      { "command": "node scripts/install-profile.mjs --dry-run", "exit": 0, "result": "23 rows about to be written (id-target=0, insert=23), the `mpd-ext` row present and pointing at packages/mpd-ext-plugin/dist/index.js; nothing written", "evidence": "install-profile-dryrun.log" },
+      { "command": "node scripts/pack-mpd.mjs", "exit": 0, "result": "1107 files staged into dist/mpd-package with the ext plugin, the extensions root and the rebuilt dists; modes normalized (644:1095, 755:12)", "evidence": "pack-mpd.log" },
+      { "command": "bun run typecheck", "exit": 0, "result": "tsgo --noEmit clean", "evidence": "typecheck.log" },
+      { "command": "bun test packages", "exit": 0, "result": "493 pass / 0 fail, 104 files", "evidence": "bun-test-packages.log" },
+      { "command": "bun run test:qa", "exit": 0, "result": "all self-tests passed, now including the dev CLI self-test + validate (both statements added to this lane)", "evidence": "test-qa.log" },
+      { "command": "node skills/dsh-qa/scripts/preset-conformance.mjs --self-test", "exit": 0, "result": "30 harness rows conform, row parity 31/31", "evidence": "preset-conformance.log" },
+      { "command": "bun scripts/mpd-ext.mjs --self-test", "exit": 0, "result": "19 checks passed", "evidence": "mpd-ext-selftest.log" },
+      { "command": "bun skills/dsh-qa/scripts/relocate-smoke.mjs --no-skip", "exit": 0, "result": "PASS (packed install + relocated boot)", "evidence": "relocate-smoke.log + evidence/plan-d/relocate/2026-09-14T18-13-53.970Z/" },
+      { "command": "bun skills/dsh-qa/scripts/extension-lifecycle.mjs --no-skip", "exit": 0, "result": "main/failure/isolation arms ok; packed arm GREEN (greenOwner=t11)", "evidence": "extension-lifecycle.log + evidence/extensions/extension-lifecycle/2026-09-14T18-14-38.727Z/" }
+    ],
+    "checklist": "release-checklist.md (branch/commit/tag/push sequence, per-gate evidence paths, the GIT_ASKPASS push shape, the corrected-vs-left doc table, and the NOT-verified list)"
+  },
+  "stale_maintenance_docs": {
+    "corrected": [
+      "docs/upstream-parity-ledger(.zh-CN).md §8 vendor row — the 'this lock is current' claim was false for the current tree (verify-vendor exited 1 with 301 vs 298 + treeSha mismatch); both languages now record the drift, the re-pin values and the evidence path.",
+      "docs/upstream-parity-ledger(.zh-CN).md §8 plugin-tests row — 161 pass / 42 files -> the current 213 pass / 58 files (the dispatch-stall regression + region-pinning suites)."
+    ],
+    "knowingly_left_with_reasons": [
+      "docs/feature-audit(.zh-CN).md 'C6 (next): memory engine…' — a stale '(next)' marker from Plan C, already contradicted by the same file's gap-closure section; v0.9.0 neither changed nor invalidated it.",
+      "All four files contain ZERO mentions of the extension interface (measured) — a coverage gap in an upstream-parity/feature audit, not a false statement this release invalidated; docs/extensions.md already documents it bilingually.",
+      "docs/upstream-parity-ledger(.zh-CN).md §2 D_SKILLS_WRITER ('Baseline: …, 328 files') and the other §8 anchor rows are records of an earlier wave; the ones re-run here (test:qa, preset rows, installer) still hold at their recorded values."
+    ]
+  },
+  "not_verified_here": [
+    "Every git action (branch/merge/commit/tag/push) — the captain is the only git writer; no git command was run.",
+    "The Gitee push itself — no token was read and no network push attempted; the checklist gives the GIT_ASKPASS shape and the hygiene rules.",
+    "bun run test:qa:all — the real-lane enumeration now includes the three extension cases and the live-provider smokes; not run here (real boots + live provider). Its COMPOSITION was verified (three names + two CLI statements present) and test:qa (which now covers the CLI gate) is green; the wave's real boots are t5/t7 evidence (evidence/extensions/**, evidence/extensions/t7-verify/20260914T174828Z/).",
+    "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs (host-row mount gate) — not re-run here; the installer dry-run composition is reported and the wave's mounted boots are t5/t7 evidence.",
+    "AGENTS.md §6 region count (still '40 regions across 9 adopted files'; the true count is 46 after t13) — AGENTS.md is in this task's outOfScope, so it was NOT edited despite the captain's earlier note assigning it here; the one-line fix is listed in the checklist §7.",
+    "Web GUI/browser surfaces (no browser in this session) and cross-platform (Linux only)."
+  ]
+}

@@ -1,0 +1,84 @@
+=== t4 attempt 5 — parity repair (scripts/install-profile.mjs) — 2026-09-14T17:11:19Z
+revision: 6cbb12682679127788657a3551ddffafa1696be1 on feature/extension-interface
+
+--- change under test (installer rows):
+diff --git a/scripts/install-profile.mjs b/scripts/install-profile.mjs
+index f88b4b1..3f06957 100644
+--- a/scripts/install-profile.mjs
++++ b/scripts/install-profile.mjs
+@@ -145,6 +145,13 @@ function buildPlan(o) {
+       id: "mpd-memory", name: p("packages/mpd-memory-plugin/dist/index.js"),
+       config: { vcs: "git" }
+     },
++    {
++      // The extension registry row: it must sit with the same neighbours as in the
++      // bundle patch (after mpd-dsh-adapter + mpd-config, directly above mpd-roles,
++      // its first consumer) and carry the plugin's only config key.
++      id: "mpd-ext", name: p("packages/mpd-ext-plugin/dist/index.js"),
++      config: { quiet: false }
++    },
+     {
+       id: "mpd-roles", name: p("packages/mpd-roles-plugin/dist/index.js"),
+       config: {}
+@@ -153,6 +160,10 @@ function buildPlan(o) {
+       id: "mpd-workmate", name: p("packages/mpd-workmate-plugin/dist/index.js"),
+       config: {}
+     },
++    {
++      id: "mpd-team-compact", name: p("packages/mpd-team-compact-plugin/dist/index.js"),
++      config: {}
++    },
+     {
+       id: "mpd-bootstrap", name: p("packages/mpd-bootstrap-plugin/dist/index.js"),
+       config: {}
+@@ -277,6 +288,10 @@ function selfTest() {
+   }
+   if (!rows.includes("mpd-hashline")) { console.error("[install-profile self-test] FAIL: mpd-hashline row"); process.exit(1) }
+   if (!rows.includes("mpd-roles") || !rows.includes("mpd-workmate") || !rows.includes("mpd-bootstrap")) { console.error("[install-profile self-test] FAIL: mpd-roles/workmate/bootstrap rows"); process.exit(1) }
++  // The two rows the parity gate proved were missing: the extension registry (new with
++  // the extension interface) and the team-compact row (absent since it landed in the
++  // patch). Both are pinned here so a future removal fails the self-test too.
++  if (!rows.includes("mpd-ext") || !rows.includes("mpd-team-compact")) { console.error("[install-profile self-test] FAIL: mpd-ext/team-compact rows"); process.exit(1) }
+   if (!plan.agentTeamsRow.name.includes("packages/mpd-agent-teams-plugin/lib/index.js")) { console.error("[install-profile self-test] FAIL: agent-teams main-code path"); process.exit(1) }
+   // web-compat entry name must be exactly the bare bundle specifier (client-modules
+   // contract) — never an absolute path
+
+--- 1) node scripts/verify-rows-parity.mjs
+[verify-rows-parity] ok: 23 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-tools, mpd-ulw, mpd-web-compat, mpd-workmate)
+exit=0
+
+--- 2) node scripts/install-profile.mjs --self-test
+[install-profile self-test] ok: path model + row set + agent-teams main-code path + profiles.mpd + web-compat entry + id-target render verified
+exit=0
+
+--- 3) bun test packages/mpd-roles-plugin
+packages/mpd-roles-plugin/test/roles.test.ts:
+
+ 23 pass
+ 0 fail
+ 452 expect() calls
+Ran 23 tests across 2 files. [168.00ms]
+exit=0
+
+--- 4) bun run typecheck
+$ tsgo --noEmit
+exit=0
+
+--- 5) installer dry-run composition (isolated --dsh-home): both rows present
+  - id: mpd-ext
+    name: "/root/dshProj/my-power-dsh/packages/mpd-ext-plugin/dist/index.js"
+    config:
+      quiet: false
+--
+  - id: mpd-team-compact
+    name: "/root/dshProj/my-power-dsh/packages/mpd-team-compact-plugin/dist/index.js"
+  - id: mpd-bootstrap
+    name: "/root/dshProj/my-power-dsh/packages/mpd-bootstrap-plugin/dist/index.js"
+exit=0
+
+--- 6) artifacts unchanged since attempt 2 (sha256)
+b6e69fef4bb9e1e118e43e0602b3c955b5548c2fd81711ccda57b6ff818558f2  packages/mpd-bundle/cordis.patch.yml
+042ed0f126661d692268282503c6e1dd1578f389c06b1f255a758bdfd2da4976  packages/mpd-roles-plugin/src/index.ts
+41eae81b971679844fde3924cbb13fc46e6ac670a469fb325a1d61e99871dfd5  packages/mpd-roles-plugin/dist/index.js
+431c68cdeff130a2bb2030296cdcd33946e65281065b6a36f7bb4fde244f24a9  scripts/install-profile.mjs
+7bf9228056959ab7ae51224e46cb5e602c26e7685ac7aeb81c32c57bff3bac7e  packages/mpd-roles-plugin/test/roles.test.ts

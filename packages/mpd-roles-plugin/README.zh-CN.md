@@ -30,6 +30,19 @@
 
 `ctx.get("mpdRoles").get(key)` 使用同一套解析，因此 workmate library（`mpd_workmate_init base=...`）、`mpd_modelchain_resolve` 与 roster 工具都以同一方式称呼 role。
 
+## 由扩展贡献的 role
+
+`mpd-ext` 扩展可以贡献 role。它们**按调用**合并进本名册（`ctx.get("mpdExtensions")`，在工具执行时惰性解析 —— 绝不是 apply 期缓存，因此稍后才 apply、甚至稍后才注册的扩展同样可见），并且与基础 role 拥有完全相同的 surface：
+
+- `mpd_roles_list` 会连同其所属扩展一起列出（`extension: <扩展 id>`）；`mpd_role_spawn` / `mpd_role_persona` 用扩展声明的名称称呼它，任意拼写均可（`Verilog Reviewer`、`verilog-reviewer`、`verilogreviewer`）。
+- 扩展声明为 `readonly` 的 role，spawn 时与只读的基础 role 一样带上 write-deny toolFilter。
+- `mpdRoles` service 同样提供它们，因此可作为 **workmate BASE 模板**使用（`mpd_workmate_init base="Verilog Reviewer"`）；当扩展声明了 `provider` + `model` 时，`mpd_modelchain_resolve` 也能解析。
+- 其稳定 id 带命名空间（`ext-<扩展 id>-<名称 slug>`），因此永远不会与基础 id 冲突。
+
+拒绝是响亮且隔离的：名称已被基础 role 或另一个扩展占用的 role，会在 `mpd_roles_list` 的 `refused` 列表中报告并记录一次日志 —— 它绝不会拖垮名册或启动。persona 文件不可读的 role 同样被拒绝；被配置禁用的扩展则完全不贡献 role。
+
+**已明确的边界 —— 扩展 role 不是 team member。** 所采用的 agent-teams `mpd` profile 成员列表是 `packages/mpd-bundle/cordis.patch.yml` 中的静态 patch 配置，插件无法在运行时扩展它；因此扩展 role 可以一次性 spawn、可以作为 workmate base，但永远无法通过 `agent_teams_create` 被 stage 为 teammate。
+
 ## Team mode
 
 多成员 team work 并非在此构建。它位于所采用的 `dsh-agent-teams` plugin 中：bundle patch 配置了一个普通命名的 `mpd` roster profile（`taskPlanning: captain`），其成员与上表一致。captain 调用 `agent_teams_create(profile="mpd")` 来 stage 这些 teammates，设计 task DAG，并复用 agent-teams Web plan panel + scheduler。

@@ -1,0 +1,97 @@
+{
+  "ok": false,
+  "slug": "extension-mcp-bridge",
+  "sandbox": "/tmp/mpd-extension-mcp-bridge-20Ct2m",
+  "arms": "live (repo's own stdio MCP server, real call) | dead | hang | schema (keep-or-drop) | dup (zero tools) | containment",
+  "note": "the healthy server is packages/mpd-mcp-lsp/dist/cli.js; the failure arms are local fixture servers started by the bridge itself",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": false,
+      "offered": false,
+      "called": true,
+      "succeeded": false,
+      "reason": "the harness recorded 1 call(s) to mcp__qa_mcp_live__status but every recorded result is an ERROR",
+      "resultHead": "Error: unknown tool \"mcp__qa_mcp_live__status\""
+    },
+    "dead": {
+      "vacuous": true,
+      "ok": false,
+      "offeredNoTool": true,
+      "headerSawNoTool": true,
+      "reported": false,
+      "stateText": ""
+    },
+    "hang": {
+      "vacuous": true,
+      "ok": false,
+      "connectTimeoutMs": 1500,
+      "durationMs": 7335,
+      "offeredNoTool": true,
+      "reported": false,
+      "stateText": ""
+    },
+    "schema": {
+      "vacuous": true,
+      "ok": false,
+      "goodToolOffered": true,
+      "badToolSkipped": false,
+      "reportedReason": false,
+      "stateText": ""
+    },
+    "dup": {
+      "vacuous": true,
+      "ok": false,
+      "zeroTools": false,
+      "headerZeroTools": false,
+      "stateText": "",
+      "collisionPremise": "two raw names (dup.name, dup_name) map to one public name (mcp__qa_mcp_dup__dup_name): an invalid tool list rolls the whole generation back to zero tools"
+    },
+    "containment": {
+      "ok": false,
+      "exit": 0,
+      "control": {
+        "liveToolOffered": false,
+        "liveCallSucceeded": false
+      },
+      "showCallOrder": [
+        null,
+        null,
+        null,
+        null
+      ],
+      "crashSignatures": [],
+      "offeredMcp": [
+        "mcp__ast_grep__rewrite",
+        "mcp__ast_grep__scan",
+        "mcp__ast_grep__search",
+        "mcp__codegraph__codegraph_explore",
+        "mcp__context7__query-docs",
+        "mcp__context7__resolve-library-id",
+        "mcp__grep_app__searchGitHub",
+        "mcp__lsp__diagnostics",
+        "mcp__lsp__find_references",
+        "mcp__lsp__goto_definition",
+        "mcp__lsp__install_decision",
+        "mcp__lsp__prepare_rename",
+        "mcp__lsp__rename",
+        "mcp__lsp__status",
+        "mcp__lsp__symbols",
+        "mcp__qa_mcp_dup__dup_name",
+        "mcp__qa_mcp_dup__dup_name_393b4cb71c20",
+        "mcp__qa_mcp_schema__bad_schema",
+        "mcp__qa_mcp_schema__good_tool"
+      ],
+      "isolation": {
+        "ok": true,
+        "checked": 1,
+        "keys": [
+          "--tmp-mpd-extension-mcp-bridge-20Ct2m-ws--"
+        ]
+      }
+    }
+  }
+}

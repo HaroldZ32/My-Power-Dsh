@@ -1,0 +1,65 @@
+{
+  "task": "t15 — repair the two t10 documentation findings (both languages)",
+  "recordedAt": "2026-09-14T17:38:33.784Z",
+  "findingsRepaired": {
+    "F1": "docs/user-guide.md(+zh): the false `codegraph.*` mpd.jsonc row is REMOVED and the reality is stated instead — mpd-codegraph takes autoInit/initTimeoutMs/cooldownMs/binary from its bundle-patch ROW options, and no plugin reads `codegraph.*` through mpdConfig.",
+    "F2": "docs/index.md(+zh): the false 'One README per package' universal is replaced by an accurate statement listing BOTH real exceptions, AND the missing pair was ADDED for packages/mpd-team-compact-plugin (bilingual, switch links), AND packages/mpd-mcp-shared now appears in the enumeration."
+  },
+  "knownFollowUp": "packages/mpd-mcp-shared still ships no README (source + tests only). It is OUT of t15's inScope (`packages/` other than the optional mpd-team-compact pair), so it is stated as an explicit exception in both hubs and recorded here as a follow-up — not silently dropped.",
+  "evidence": {
+    "gateRowCounts": {
+      "enKeyRows": 19,
+      "zhKeyRows": 19
+    }
+  },
+  "checks": {
+    "codegraphKeyNotRead": true,
+    "codegraphRowRemoved": true,
+    "codegraphExceptionStatedBothLanguages": true,
+    "onlyTwoReadmeExceptions": true,
+    "sharedHelperListedBothLanguages": true,
+    "teamCompactPairExists": true,
+    "docPairOk": true,
+    "linksOk": true,
+    "reverseSwitchLinksPresent": true,
+    "keyTableRowParity": true
+  },
+  "verdict": "pass",
+  "commands": [
+    {
+      "label": "F1: nothing reads codegraph.* — grep get(\"codegraph in packages/*/src/*.ts",
+      "stdout": "",
+      "note": "empty output is the proof; the literal grep is corroborated by the authoritative consumed-key list below"
+    },
+    {
+      "label": "F1: mpd_config_get consumed-key list (authoritative, ships in the tool description)",
+      "stdout": "117:    description: \"Read the resolved mpd.jsonc runtime config (project .mpd/mpd.jsonc merged over user $DSH_HOME/mpd.jsonc). Consumed keys: memory.vcs/memory.dir/memory.agentSlug/memory.reflectionEvery, team.stateDir, hashline.guardEditTools/hashline.maxDiffChars/hashline.registryFile, commentChecker.autoCheck/commentChecker.bin/commentChecker.timeoutMs/commentChecker.maxMessageChars, modelchain.<chainKey>, boulder.dir, ulw.maxRounds/ulw.planDir/ulw.stateDir/ulw.provider/ulw.model/ulw.reviewerModel/ulw.maxReReviews.\","
+    },
+    {
+      "label": "F1: the real source of those settings — the mpd-codegraph bundle-patch ROW config",
+      "stdout": "- id: mpd-codegraph\n      name: '@mpd-dsh/mpd/packages/mpd-codegraph-plugin/dist/index.js'\n      config:\n        autoInit: true\n        initTimeoutMs: 60000\n    - id: mpd-memory\n      name: '@mpd-dsh/mpd/packages/mpd-memory-plugin/dist/index.js'"
+    },
+    {
+      "label": "F1: the plugin's row-config type",
+      "stdout": "16:type Config = { autoInit?: boolean; initTimeoutMs?: number; cooldownMs?: number; binary?: string }"
+    },
+    {
+      "label": "F2: packages without a bilingual README pair (after the repair: exactly the two stated exceptions)",
+      "stdout": "mpd-agent-teams-plugin readme=yes zh=NO\nmpd-mcp-shared readme=NO zh=NO"
+    },
+    {
+      "label": "F2: mpd-mcp-shared in both hubs",
+      "stdout": "docs/index.md\ndocs/index.zh-CN.md"
+    },
+    {
+      "label": "gate 1",
+      "stdout": "doc-pair-ok",
+      "exitCode": 0
+    },
+    {
+      "label": "gate 2",
+      "stdout": "links-ok",
+      "exitCode": 0
+    }
+  ]
+}

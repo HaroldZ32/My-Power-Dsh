@@ -1,0 +1,65 @@
+=== t13 MOUNT proof (profile: mpd) ===
+repo=/root/dshProj/my-power-dsh
+sandbox DSH_HOME=/tmp/t13-mnt-dsh-zeTH9t
+sandbox HOME=/tmp/t13-mnt-home-kD2GuS
+sandbox WORKSPACE=/tmp/t13-mnt-ws-wS2Kws (session cwd; no state may land in the repo)
+HEAD=6cbb12682679127788657a3551ddffafa1696be1
+scheduler.js sha256=cabb82383dbcd42b5a1dd93ddb069cf3a9df115a85ff5a8c175e813d301f4daf
+probe=/root/dshProj/my-power-dsh/evidence/agent-teams/dispatch-stall/20260914T164302Z/mount-probe.mjs
+
+[exit=0] dsh plugin --profile mpd add <repo> (cwd=sandbox workspace)
+[patch] /tmp/t13-mnt-dsh-zeTH9t/t13-probe.yml:
+- insert:
+    - id: t13-dispatch-probe
+      name: "/root/dshProj/my-power-dsh/evidence/agent-teams/dispatch-stall/20260914T164302Z/mount-probe.mjs"
+
+### real boot with instrumentation: dsh --profile mpd --patch <probe>
+[exit=124] real boot (124 = still serving at the 90s cap)
+apply-crash signatures        : 0 (MUST be 0)
+'dispatch declined' in boot   : 0 (MUST be 0: no ready task was declined)
+probe reached final marker    : 1 (1 = yes)
+scheduler sha match           : yes
+dispatch regions present      : 6/6
+agent-teams tools registered  : 9/9
+in-boot dispatch deliveries   : 1 (must be 1)
+in-boot task status           : claimed (must be claimed)
+upstream guard absent         : yes (must be yes)
+new team dirs under repo      : 0  (MUST be 0)
+--- probe lines, verbatim ---
+[t13-mount-probe] SCHEDULER_PATH=/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/scheduler.js
+[t13-mount-probe] SCHEDULER_SHA_MATCH=yes
+[t13-mount-probe] DISPATCH_REGIONS_PRESENT=6/6
+[t13-mount-probe] UPSTREAM_GUARD_ABSENT=yes
+[t13-mount-probe] DECLINE_LOGGER_PRESENT=yes
+[t13-mount-probe] AGENT_TEAMS_TOOLS_PRESENT=9/9
+[t13-mount-probe] AGENT_TEAMS_TOOLS=agent_teams_status:ok,agent_teams_create:ok,agent_teams_add_member:ok,agent_teams_create_task:ok,agent_teams_update_task:ok,agent_teams_claim_task:ok,agent_teams_reassign_task:ok,agent_teams_send_message:ok,agent_teams_task_contract:ok
+[t13-mount-probe] LOADER_ENTRIES=unavailable
+[t13-mount-probe] SCHEDULER_EXPORT=installTeamScheduler:ok
+[t13-mount-probe] DISPATCH_PROBE_DELIVERIES=1
+[t13-mount-probe] DISPATCH_PROBE_TASK_STATUS=claimed
+[t13-mount-probe] DISPATCH_PROBE_DECLINE_LOGS=0
+[t13-mount-probe] DONE
+--- end ---
+[exit=0] MOUNT proof: tree applied AND the fixed dispatch delivered the ready root task in-boot
+{
+  "proof": "real boot that MOUNTS the rows (instrumentation = a --patch probe row), not a --dump-config composition check",
+  "isolation": {
+    "DSH_HOME": "temp sandbox",
+    "HOME": "temp sandbox",
+    "workspace_cwd": "temp sandbox"
+  },
+  "apply_crash_signatures": 0,
+  "dispatch_declined_lines_in_boot": 0,
+  "probe_reached_final_marker": true,
+  "scheduler_sha_match": "yes",
+  "dispatch_regions_present": "6/6",
+  "agent_teams_tools_registered": "9/9",
+  "in_boot_dispatch_deliveries": "1",
+  "in_boot_task_status": "claimed",
+  "upstream_guard_absent": "yes",
+  "new_state_dirs_in_repo": 0,
+  "boot_exit": 124,
+  "passed": true,
+  "note": "no --dump-config result is cited as load evidence; the probe reads the live tool registry and drives the loaded scheduler inside the boot process"
+}
+DONE

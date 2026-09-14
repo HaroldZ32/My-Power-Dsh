@@ -1,0 +1,25 @@
+### POST-FIX gates (final bytes)
+scheduler.js sha256: cabb82383dbcd42b5a1dd93ddb069cf3a9df115a85ff5a8c175e813d301f4daf
+mpd-deltas.js sha256: 339e7ae6950a086307999712d30c754d8cf5ee9957aa1200eca8c3b9caf33fea
+
+## 1. bun test packages/mpd-agent-teams-plugin
+
+ 213 pass
+ 0 fail
+ 1541 expect() calls
+Ran 213 tests across 58 files. [5.47s]
+
+## 2. node scripts/patch-agent-teams-fixes.mjs --check
+[patch-agent-teams-fixes] already applied: 46 mpd delta region(s) across 9 adopted file(s)
+exit=0
+
+## 3. self-fix-tests
+
+ 56 pass
+ 0 fail
+ 817 expect() calls
+Ran 56 tests across 10 files. [4.75s]
+
+## 4. node scripts/verify-vendor.mjs
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS

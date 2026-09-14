@@ -1,0 +1,117 @@
+{
+  "proof": "STAGED-TREE assertions after node scripts/pack-mpd.mjs (packed GREEN by construction)",
+  "why_not_install": "`dsh plugin add <packed-dir>` cannot complete on this host: pnpm fails with `[ERR_SQLITE_ERROR] unable to open database file`, reproduced by t7's owner with HOME=/root and with a sandbox HOME — environmental, not the packed tree. t7 recorded it in evidence/extensions/t7-verify/20260914T174828Z/result.json. This task did NOT attempt pnpm again (captain's instruction) and instead ran a real packed INSTALL through the npm path: skills/dsh-qa/scripts/relocate-smoke.mjs --no-skip = PASS (install ok, no dev-path leak, relocated live boot ok, zero home copies).",
+  "before_state_measured_by_t7": {
+    "source": "evidence/extensions/t7-verify/20260914T174828Z/result.json",
+    "red": "pack-mpd.mjs exits 0 while the staged tree has NEITHER packages/mpd-ext-plugin/ NOR extensions/, while the staged patch still declares the mpd-ext row — the silent-exit-0 class",
+    "staged_files_then": 1095,
+    "packed_manifest_files_exports_then": "named neither extensions/** nor ./extensions/*"
+  },
+  "after_state_measured_now": {
+    "staged_files": 1107,
+    "green": "packages/mpd-ext-plugin/{dist/index.js,dist/sdk.js}, extensions/mpd-ext-example/{mpd-ext.json,server.mjs}, scripts/mpd-ext.mjs all staged; packed manifest files/exports cover the asset; the packed patch keeps the mpd-ext row in packed-name form with zero dev-path leaks"
+  },
+  "checks": [
+    {
+      "label": "staged packages/mpd-ext-plugin/dist/index.js",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "staged packages/mpd-ext-plugin/dist/sdk.js",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "staged extensions/mpd-ext-example/mpd-ext.json",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "staged extensions/mpd-ext-example/server.mjs",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "staged scripts/mpd-ext.mjs",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "packed packages/mpd-ext-plugin/dist/index.js equals the repo dist byte-for-byte",
+      "ok": true,
+      "detail": "eb88fc9303ed837b"
+    },
+    {
+      "label": "packed packages/mpd-ext-plugin/dist/sdk.js equals the repo dist byte-for-byte",
+      "ok": true,
+      "detail": "4117a1d5d11dbbda"
+    },
+    {
+      "label": "packed packages/mpd-roles-plugin/dist/index.js equals the repo dist byte-for-byte",
+      "ok": true,
+      "detail": "898ebf8bccb04f48"
+    },
+    {
+      "label": "packed manifest version is 0.9.0",
+      "ok": true,
+      "detail": "0.9.0"
+    },
+    {
+      "label": "packed manifest files covers extensions/**",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "packed manifest exports covers ./extensions/*",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "packed manifest files covers scripts/**",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "packed patch still carries the mpd-ext row",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "packed patch points the row at the packed name",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "packed patch has zero dev-path leaks",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "packed patch rewrote no absolute dev path for the ext plugin",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "example manifest is apiVersion 1",
+      "ok": true,
+      "detail": "1"
+    },
+    {
+      "label": "example manifest is DISABLED by default",
+      "ok": true,
+      "detail": "false"
+    },
+    {
+      "label": "example contributes all four kinds",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "staged file count is 1107",
+      "ok": true,
+      "detail": "1107"
+    }
+  ],
+  "passed": true
+}

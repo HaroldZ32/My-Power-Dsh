@@ -1,0 +1,15 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-agent-teams-plugin/test/dispatch-stall-regression.test.mjs:
+(pass) the approval-time kick delivers a ready root task to a member whose spawn turn is still running [11.69ms]
+(pass) a second kick while the member is mid-turn does not duplicate the queued assignment, and says why [1.75ms]
+(pass) the member's own idle edge after the queued assignment does not deliver it twice [122.96ms]
+(pass) an idle edge that resolves no team logs the miss instead of returning silently [6.03ms]
+
+packages/mpd-agent-teams-plugin/test/dispatch-stall-regression.test.mjs:
+
+ 4 pass
+ 0 fail
+ 16 expect() calls
+Ran 4 tests across 2 files. [301.00ms]
+exit=0

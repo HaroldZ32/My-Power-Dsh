@@ -1,0 +1,26 @@
+=== t11 v0.9.0 release integration: contract verify commands ===
+date: 2026-09-14T18:16:31Z
+branch: feature/extension-interface  HEAD: 6cbb12682679127788657a3551ddffafa1696be1
+package.json version: 0.9.0
+
+## node scripts/verify-vendor.mjs
+exit=0
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+
+## node scripts/install-profile.mjs --dry-run
+exit=0
+[install-profile] rows about to be written to home patch: 23 (id-target=0, insert=23)
+  - id: mpd-ext
+    name: "/root/dshProj/my-power-dsh/packages/mpd-ext-plugin/dist/index.js"
+[install-profile] DRY-RUN done (nothing written); add --yes to actually install, and --dsh-home to override the target
+
+## node scripts/pack-mpd.mjs
+exit=0
+[pack-mpd] modes normalized: 1107 files (644: 1095, 755: 12)
+[pack-mpd] staged package -> /root/dshProj/my-power-dsh/dist/mpd-package
+
+## bun run typecheck
+exit=0
+$ tsgo --noEmit

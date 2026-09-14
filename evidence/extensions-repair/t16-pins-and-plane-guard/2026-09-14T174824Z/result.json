@@ -1,0 +1,65 @@
+{
+  "task": "t16",
+  "attempt": 2,
+  "attempt_id": "58e573f2-6400-41a1-ab2c-7b122d0ae853",
+  "slug": "t16-pins-and-plane-guard",
+  "measured_at": "2026-09-14T17:49:11Z",
+  "revision": {
+    "head": "6cbb12682679127788657a3551ddffafa1696be1",
+    "branch": "feature/extension-interface",
+    "sha256": {
+      "packages/mpd-ext-plugin/test/core.test.ts": "7a7a1280ab373fd35b60e4458950ad189f2cc9bf80c7f4e3b469825f15b9bab8",
+      "packages/mpd-roles-plugin/src/index.ts": "54f804847e02fbb1ead8c584dbfdb6cc3ac5f4a7053e1bebd003422513f08223",
+      "packages/mpd-roles-plugin/test/roles.test.ts": "092f275728646e67e17894bd7936442dae5398940614a8ba61c8686a40b06891",
+      "packages/mpd-roles-plugin/dist/index.js": "898ebf8bccb04f488a86717c4afc1c1c095653eb4e0107295edb7d8773f0b13f"
+    },
+    "note": "packages/mpd-ext-plugin is untracked in this wave, so HEAD does not cover it; the sha256 map above is the settled measurement."
+  },
+  "fix_1_seam_pins": {
+    "file": "packages/mpd-ext-plugin/test/core.test.ts",
+    "before": {
+      "four_tools_test": "expect(inject).toEqual([])  # the PRE-fix pin: it ASSERTED the defect",
+      "hostile_test": "expected a lowercase \"not registered\" substring and counted >= 5 of them; said nothing about the declaration or about a row that never gets its seams",
+      "suite": "53 pass / 2 fail at hand-off (t14)"
+    },
+    "after": {
+      "four_tools_test": "expect(inject).toEqual([\"tools\",\"skills\"]) + expect([...inject]).toEqual([...REQUIRED_SEAMS]) + expect(inject.length).toBeGreaterThan(0)",
+      "hostile_test": "(1) the declaration covers exactly the seams the row registers through; (2) with the seams ABSENT, a forced apply reports 'FATAL: the harness seams this row registers through are unavailable', 'This row must declare inject: [\"tools\",\"skills\"]' and 'the extension interface is NOT usable in this session' and NEVER claims success ('mpdExtensions provided' must be absent) - which is the pre-fix failure shape: applied everywhere, both seams gone, four tools absent behind a success line; (3) with the seams PRESENT but throwing, containment holds (no throw, service provided), >= 5 failure lines are reported casing-insensitively, and the FATAL summary names the declaration.",
+      "suite": "56 pass / 0 fail"
+    }
+  },
+  "fix_2_project_plane_role_leak": {
+    "file": "packages/mpd-roles-plugin/src/index.ts",
+    "before": "extensionRoles() checked enabled/roles/persona only, so a PROJECT-plane extension's role (whose `contributes.roles` item the frozen contract REJECTS) was exposed by the roster while mpd_ext_list exposed nothing: measured before-value count 12 while the extension-side contributions.roles was 0",
+    "after": "a plane guard mirroring the disabled guard skips view.plane === 'project' and records one refusal per declared role; the reason is MPD_EXT_CONTRACT.projectRejectionReason VERBATIM (reproduced, not imported, so this package stays usable with no extension row mounted); refused-role log lines now name the role and its extension",
+    "agreement_fixture": "ONE project-plane extension (id proj-roles, role 'Project Reviewer', readable persona) driven through BOTH surfaces: mpd_ext_list -> contributions.roles 0, roles [], error contributes.roles[0] === MPD_EXT_CONTRACT.projectRejectionReason; extensionRoles() -> no usable role, refused[0].reason === the same sentence"
+  },
+  "fails_before_the_fix": {
+    "driver": "raw/prefix-experiment.sh (copies the packages to a temp dir and reverts ONE fix per experiment - the repo is never modified)",
+    "A_pre_fix_seam_declaration": {
+      "change": "REQUIRED_SEAMS -> [] in the copy",
+      "result": "34 pass / 2 fail - BOTH pins fail ('apply registers exactly the four tools...' and 'apply contains a hostile harness...')"
+    },
+    "B_pre_fix_plane_guard": {
+      "change": "PROJECT_ONLY_PLANE neutered in the copy",
+      "result": "23 pass / 1 fail - 'a PROJECT-plane extension's role is refused' fails with Expected: 11, Received: 12 (the roster exposed the leaked role)"
+    },
+    "post_fix": {
+      "mpd-ext-plugin": "56 pass / 0 fail",
+      "mpd-roles-plugin": "24 pass / 0 fail",
+      "typecheck": "exit 0"
+    }
+  },
+  "commands": [
+    "bun test packages/mpd-ext-plugin",
+    "bun test packages/mpd-roles-plugin",
+    "bun run typecheck",
+    "bun build packages/mpd-roles-plugin/src/index.ts --target node --format esm --outfile packages/mpd-roles-plugin/dist/index.js",
+    "bash evidence/extensions-repair/t16-pins-and-plane-guard/2026-09-14T174824Z/raw/prefix-experiment.sh <repo>"
+  ],
+  "dist_state": {
+    "mpd-roles-plugin": "REBUILT (src changed): dist sha256 recorded above; the built file contains PROJECT_ROLES_REASON / the shared sentence.",
+    "mpd-ext-plugin": "NOT rebuilt on purpose: t16 changed only its TEST file, and the shipped dist already carries the authorized declaration (REQUIRED_SEAMS = [\"tools\",\"skills\"], verified by reading dist/index.js) - rebuilding would only churn other members' in-flight src edits."
+  },
+  "known_residual_not_closed": "packages/mpd-ext-plugin/src/registry.ts annotateRoleSurfaces() cannot see extensions.disable[] (documented in its own comment): a CONFIG-disabled extension is still treated as CLAIMING its role names, so a later extension's same-named role is reported refused while the roster exposes it. Closing it needs the caller's config; out of t16 scope by instruction."
+}

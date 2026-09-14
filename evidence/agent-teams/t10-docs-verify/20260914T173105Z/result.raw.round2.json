@@ -1,0 +1,2497 @@
+{
+ "generatedFrom": "/root/dshProj/my-power-dsh",
+ "pairs": [
+  "README.md vs README.zh-CN.md",
+  "docs/index.md vs docs/index.zh-CN.md",
+  "docs/user-guide.md vs docs/user-guide.zh-CN.md",
+  "docs/architecture.md vs docs/architecture.zh-CN.md",
+  "docs/development.md vs docs/development.zh-CN.md",
+  "docs/extensions.md vs docs/extensions.zh-CN.md"
+ ],
+ "checks": {
+  "existence": {
+   "ok": true,
+   "rows": [
+    {
+     "en": "README.md",
+     "zh": "README.zh-CN.md",
+     "enExists": true,
+     "zhExists": true,
+     "enSwitchLine": 3,
+     "zhSwitchLine": 3,
+     "ok": true
+    },
+    {
+     "en": "docs/index.md",
+     "zh": "docs/index.zh-CN.md",
+     "enExists": true,
+     "zhExists": true,
+     "enSwitchLine": 3,
+     "zhSwitchLine": 3,
+     "ok": true
+    },
+    {
+     "en": "docs/user-guide.md",
+     "zh": "docs/user-guide.zh-CN.md",
+     "enExists": true,
+     "zhExists": true,
+     "enSwitchLine": 3,
+     "zhSwitchLine": 3,
+     "ok": true
+    },
+    {
+     "en": "docs/architecture.md",
+     "zh": "docs/architecture.zh-CN.md",
+     "enExists": true,
+     "zhExists": true,
+     "enSwitchLine": 3,
+     "zhSwitchLine": 3,
+     "ok": true
+    },
+    {
+     "en": "docs/development.md",
+     "zh": "docs/development.zh-CN.md",
+     "enExists": true,
+     "zhExists": true,
+     "enSwitchLine": 3,
+     "zhSwitchLine": 3,
+     "ok": true
+    },
+    {
+     "en": "docs/extensions.md",
+     "zh": "docs/extensions.zh-CN.md",
+     "enExists": true,
+     "zhExists": true,
+     "enSwitchLine": 3,
+     "zhSwitchLine": 3,
+     "ok": true
+    }
+   ]
+  },
+  "parity": {
+   "sameSectionCount": true,
+   "rows": [
+    {
+     "en": "README.md",
+     "zh": "README.zh-CN.md",
+     "enSections": 19,
+     "zhSections": 19,
+     "sameCount": true,
+     "rows": [
+      {
+       "index": 0,
+       "en": "# my-power-dsh",
+       "zh": "# my-power-dsh",
+       "enLine": 1,
+       "zhLine": 1,
+       "enDens": {
+        "nonEmpty": 10,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 759
+       },
+       "zhDens": {
+        "nonEmpty": 7,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 351
+       }
+      },
+      {
+       "index": 1,
+       "en": "## Capabilities",
+       "zh": "## 能力清单",
+       "enLine": 16,
+       "zhLine": 13,
+       "enDens": {
+        "nonEmpty": 0,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 0
+       },
+       "zhDens": {
+        "nonEmpty": 0,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 0
+       }
+      },
+      {
+       "index": 2,
+       "en": "### The main agent: the `mpd` preset",
+       "zh": "### 主智能体：`mpd` preset",
+       "enLine": 18,
+       "zhLine": 15,
+       "enDens": {
+        "nonEmpty": 7,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 3,
+        "chars": 576
+       },
+       "zhDens": {
+        "nonEmpty": 7,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 3,
+        "chars": 295
+       }
+      },
+      {
+       "index": 3,
+       "en": "### Tools, by job",
+       "zh": "### 按用途划分的工具",
+       "enLine": 29,
+       "zhLine": 26,
+       "enDens": {
+        "nonEmpty": 11,
+        "tableRows": 11,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 978
+       },
+       "zhDens": {
+        "nonEmpty": 11,
+        "tableRows": 11,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 757
+       }
+      },
+      {
+       "index": 4,
+       "en": "### Specialists: the roster",
+       "zh": "### 专家：名册",
+       "enLine": 43,
+       "zhLine": 40,
+       "enDens": {
+        "nonEmpty": 10,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 834
+       },
+       "zhDens": {
+        "nonEmpty": 9,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 460
+       }
+      },
+      {
+       "index": 5,
+       "en": "### The workmate library",
+       "zh": "### workmate 库",
+       "enLine": 58,
+       "zhLine": 54,
+       "enDens": {
+        "nonEmpty": 5,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 476
+       },
+       "zhDens": {
+        "nonEmpty": 4,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 232
+       }
+      },
+      {
+       "index": 6,
+       "en": "### Team mode",
+       "zh": "### 团队模式",
+       "enLine": 66,
+       "zhLine": 61,
+       "enDens": {
+        "nonEmpty": 4,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 300
+       },
+       "zhDens": {
+        "nonEmpty": 3,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 123
+       }
+      },
+      {
+       "index": 7,
+       "en": "### Web GUI",
+       "zh": "### Web GUI",
+       "enLine": 73,
+       "zhLine": 67,
+       "enDens": {
+        "nonEmpty": 6,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 2,
+        "chars": 527
+       },
+       "zhDens": {
+        "nonEmpty": 5,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 2,
+        "chars": 255
+       }
+      },
+      {
+       "index": 8,
+       "en": "### Skills",
+       "zh": "### Skills",
+       "enLine": 83,
+       "zhLine": 76,
+       "enDens": {
+        "nonEmpty": 2,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 153
+       },
+       "zhDens": {
+        "nonEmpty": 2,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 81
+       }
+      },
+      {
+       "index": 9,
+       "en": "### MCP integrations",
+       "zh": "### MCP 集成",
+       "enLine": 88,
+       "zhLine": 81,
+       "enDens": {
+        "nonEmpty": 3,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 250
+       },
+       "zhDens": {
+        "nonEmpty": 2,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 129
+       }
+      },
+      {
+       "index": 10,
+       "en": "### The extension interface",
+       "zh": "### 扩展接口",
+       "enLine": 94,
+       "zhLine": 86,
+       "enDens": {
+        "nonEmpty": 11,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 5,
+        "chars": 823
+       },
+       "zhDens": {
+        "nonEmpty": 10,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 5,
+        "chars": 555
+       }
+      },
+      {
+       "index": 11,
+       "en": "### Built to stay maintainable",
+       "zh": "### 面向长期可维护",
+       "enLine": 110,
+       "zhLine": 101,
+       "enDens": {
+        "nonEmpty": 5,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 2,
+        "chars": 410
+       },
+       "zhDens": {
+        "nonEmpty": 4,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 2,
+        "chars": 206
+       }
+      },
+      {
+       "index": 12,
+       "en": "## Install",
+       "zh": "## 安装",
+       "enLine": 118,
+       "zhLine": 108,
+       "enDens": {
+        "nonEmpty": 12,
+        "tableRows": 0,
+        "fenced": 2,
+        "bullets": 0,
+        "chars": 575
+       },
+       "zhDens": {
+        "nonEmpty": 12,
+        "tableRows": 0,
+        "fenced": 2,
+        "bullets": 0,
+        "chars": 389
+       }
+      },
+      {
+       "index": 13,
+       "en": "### Uninstall",
+       "zh": "### 卸载",
+       "enLine": 137,
+       "zhLine": 127,
+       "enDens": {
+        "nonEmpty": 5,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 0,
+        "chars": 227
+       },
+       "zhDens": {
+        "nonEmpty": 5,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 0,
+        "chars": 155
+       }
+      },
+      {
+       "index": 14,
+       "en": "## Quick start",
+       "zh": "## 快速上手",
+       "enLine": 146,
+       "zhLine": 136,
+       "enDens": {
+        "nonEmpty": 12,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 878
+       },
+       "zhDens": {
+        "nonEmpty": 11,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 583
+       }
+      },
+      {
+       "index": 15,
+       "en": "## Requirements",
+       "zh": "## 环境要求",
+       "enLine": 161,
+       "zhLine": 150,
+       "enDens": {
+        "nonEmpty": 5,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 2,
+        "chars": 322
+       },
+       "zhDens": {
+        "nonEmpty": 4,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 2,
+        "chars": 183
+       }
+      },
+      {
+       "index": 16,
+       "en": "## Where to go next",
+       "zh": "## 接下来读什么",
+       "enLine": 169,
+       "zhLine": 157,
+       "enDens": {
+        "nonEmpty": 8,
+        "tableRows": 8,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 746
+       },
+       "zhDens": {
+        "nonEmpty": 8,
+        "tableRows": 8,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 516
+       }
+      },
+      {
+       "index": 17,
+       "en": "## Relationship to other projects",
+       "zh": "## 与其他项目的关系",
+       "enLine": 180,
+       "zhLine": 168,
+       "enDens": {
+        "nonEmpty": 17,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 3,
+        "chars": 1482
+       },
+       "zhDens": {
+        "nonEmpty": 14,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 3,
+        "chars": 740
+       }
+      },
+      {
+       "index": 18,
+       "en": "## License",
+       "zh": "## 许可证",
+       "enLine": 202,
+       "zhLine": 187,
+       "enDens": {
+        "nonEmpty": 5,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 410
+       },
+       "zhDens": {
+        "nonEmpty": 4,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 222
+       }
+      }
+     ]
+    },
+    {
+     "en": "docs/index.md",
+     "zh": "docs/index.zh-CN.md",
+     "enSections": 6,
+     "zhSections": 6,
+     "sameCount": true,
+     "rows": [
+      {
+       "index": 0,
+       "en": "# my-power-dsh Documentation",
+       "zh": "# my-power-dsh 文档",
+       "enLine": 1,
+       "zhLine": 1,
+       "enDens": {
+        "nonEmpty": 4,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 249
+       },
+       "zhDens": {
+        "nonEmpty": 3,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 159
+       }
+      },
+      {
+       "index": 1,
+       "en": "## Reading order",
+       "zh": "## 阅读顺序",
+       "enLine": 9,
+       "zhLine": 8,
+       "enDens": {
+        "nonEmpty": 14,
+        "tableRows": 13,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 1932
+       },
+       "zhDens": {
+        "nonEmpty": 14,
+        "tableRows": 13,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 1131
+       }
+      },
+      {
+       "index": 2,
+       "en": "## Package reference",
+       "zh": "## 包参考",
+       "enLine": 28,
+       "zhLine": 27,
+       "enDens": {
+        "nonEmpty": 17,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 4,
+        "chars": 1250
+       },
+       "zhDens": {
+        "nonEmpty": 14,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 4,
+        "chars": 934
+       }
+      },
+      {
+       "index": 3,
+       "en": "## Extension assets",
+       "zh": "## 扩展资产",
+       "enLine": 49,
+       "zhLine": 45,
+       "enDens": {
+        "nonEmpty": 5,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 3,
+        "chars": 398
+       },
+       "zhDens": {
+        "nonEmpty": 5,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 3,
+        "chars": 340
+       }
+      },
+      {
+       "index": 4,
+       "en": "## Historical planning docs",
+       "zh": "## 历史规划文档",
+       "enLine": 57,
+       "zhLine": 53,
+       "enDens": {
+        "nonEmpty": 3,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 267
+       },
+       "zhDens": {
+        "nonEmpty": 3,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 176
+       }
+      },
+      {
+       "index": 5,
+       "en": "## QA evidence",
+       "zh": "## QA 证据",
+       "enLine": 63,
+       "zhLine": 59,
+       "enDens": {
+        "nonEmpty": 2,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 167
+       },
+       "zhDens": {
+        "nonEmpty": 2,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 122
+       }
+      }
+     ]
+    },
+    {
+     "en": "docs/user-guide.md",
+     "zh": "docs/user-guide.zh-CN.md",
+     "enSections": 16,
+     "zhSections": 16,
+     "sameCount": true,
+     "rows": [
+      {
+       "index": 0,
+       "en": "# User Guide",
+       "zh": "# 使用者指南",
+       "enLine": 1,
+       "zhLine": 1,
+       "enDens": {
+        "nonEmpty": 4,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 259
+       },
+       "zhDens": {
+        "nonEmpty": 3,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 178
+       }
+      },
+      {
+       "index": 1,
+       "en": "## 1. Install",
+       "zh": "## 1. 安装",
+       "enLine": 9,
+       "zhLine": 8,
+       "enDens": {
+        "nonEmpty": 0,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 0
+       },
+       "zhDens": {
+        "nonEmpty": 0,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 0
+       }
+      },
+      {
+       "index": 2,
+       "en": "### One command, from the checkout",
+       "zh": "### 一条命令，直接在检出目录中执行",
+       "enLine": 11,
+       "zhLine": 10,
+       "enDens": {
+        "nonEmpty": 7,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 0,
+        "chars": 447
+       },
+       "zhDens": {
+        "nonEmpty": 7,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 0,
+        "chars": 293
+       }
+      },
+      {
+       "index": 3,
+       "en": "### Packed package (release / publishing)",
+       "zh": "### 打包产物（发布 / 分发）",
+       "enLine": 22,
+       "zhLine": 21,
+       "enDens": {
+        "nonEmpty": 10,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 0,
+        "chars": 601
+       },
+       "zhDens": {
+        "nonEmpty": 9,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 0,
+        "chars": 400
+       }
+      },
+      {
+       "index": 4,
+       "en": "### Uninstall (one command, no residue)",
+       "zh": "### 卸载（一条命令，无残留）",
+       "enLine": 36,
+       "zhLine": 34,
+       "enDens": {
+        "nonEmpty": 13,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 0,
+        "chars": 988
+       },
+       "zhDens": {
+        "nonEmpty": 12,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 0,
+        "chars": 617
+       }
+      },
+      {
+       "index": 5,
+       "en": "### Legacy installer (dev/QA only)",
+       "zh": "### 历史安装器（仅开发/QA）",
+       "enLine": 54,
+       "zhLine": 51,
+       "enDens": {
+        "nonEmpty": 6,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 0,
+        "chars": 359
+       },
+       "zhDens": {
+        "nonEmpty": 6,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 0,
+        "chars": 271
+       }
+      },
+      {
+       "index": 6,
+       "en": "## 2. The `mpd` preset",
+       "zh": "## 2. `mpd` preset",
+       "enLine": 64,
+       "zhLine": 61,
+       "enDens": {
+        "nonEmpty": 7,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 3,
+        "chars": 547
+       },
+       "zhDens": {
+        "nonEmpty": 6,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 3,
+        "chars": 293
+       }
+      },
+      {
+       "index": 7,
+       "en": "## 3. Tools, by job",
+       "zh": "## 3. 按用途划分的工具",
+       "enLine": 75,
+       "zhLine": 71,
+       "enDens": {
+        "nonEmpty": 13,
+        "tableRows": 13,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 1716
+       },
+       "zhDens": {
+        "nonEmpty": 13,
+        "tableRows": 13,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 1174
+       }
+      },
+      {
+       "index": 8,
+       "en": "## 4. Specialists (the roster)",
+       "zh": "## 4. 专家（名册）",
+       "enLine": 91,
+       "zhLine": 87,
+       "enDens": {
+        "nonEmpty": 21,
+        "tableRows": 13,
+        "fenced": 0,
+        "bullets": 3,
+        "chars": 1227
+       },
+       "zhDens": {
+        "nonEmpty": 20,
+        "tableRows": 13,
+        "fenced": 0,
+        "bullets": 3,
+        "chars": 680
+       }
+      },
+      {
+       "index": 9,
+       "en": "## 5. Workmate library (durable, evolving specialists)",
+       "zh": "## 5. workmate 库（持久、会演化的专家）",
+       "enLine": 118,
+       "zhLine": 113,
+       "enDens": {
+        "nonEmpty": 19,
+        "tableRows": 8,
+        "fenced": 1,
+        "bullets": 0,
+        "chars": 1624
+       },
+       "zhDens": {
+        "nonEmpty": 17,
+        "tableRows": 8,
+        "fenced": 1,
+        "bullets": 0,
+        "chars": 1017
+       }
+      },
+      {
+       "index": 10,
+       "en": "### Renaming and deleting a workmate",
+       "zh": "### 重命名与删除 workmate",
+       "enLine": 144,
+       "zhLine": 137,
+       "enDens": {
+        "nonEmpty": 23,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 0,
+        "chars": 1700
+       },
+       "zhDens": {
+        "nonEmpty": 18,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 0,
+        "chars": 932
+       }
+      },
+      {
+       "index": 11,
+       "en": "## 6. Team mode",
+       "zh": "## 6. 团队模式",
+       "enLine": 175,
+       "zhLine": 163,
+       "enDens": {
+        "nonEmpty": 24,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 5,
+        "chars": 1601
+       },
+       "zhDens": {
+        "nonEmpty": 20,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 5,
+        "chars": 1023
+       }
+      },
+      {
+       "index": 12,
+       "en": "## 7. Web GUI",
+       "zh": "## 7. Web GUI",
+       "enLine": 203,
+       "zhLine": 187,
+       "enDens": {
+        "nonEmpty": 25,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 3,
+        "chars": 2229
+       },
+       "zhDens": {
+        "nonEmpty": 20,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 3,
+        "chars": 1108
+       }
+      },
+      {
+       "index": 13,
+       "en": "## 8. Configuration (`mpd.jsonc`)",
+       "zh": "## 8. 配置（`mpd.jsonc`）",
+       "enLine": 231,
+       "zhLine": 210,
+       "enDens": {
+        "nonEmpty": 19,
+        "tableRows": 12,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 1472
+       },
+       "zhDens": {
+        "nonEmpty": 18,
+        "tableRows": 12,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 1093
+       }
+      },
+      {
+       "index": 14,
+       "en": "## 9. Extensions, from your side",
+       "zh": "## 9. 从使用者视角看扩展",
+       "enLine": 255,
+       "zhLine": 233,
+       "enDens": {
+        "nonEmpty": 47,
+        "tableRows": 5,
+        "fenced": 2,
+        "bullets": 5,
+        "chars": 2943
+       },
+       "zhDens": {
+        "nonEmpty": 41,
+        "tableRows": 5,
+        "fenced": 2,
+        "bullets": 5,
+        "chars": 1755
+       }
+      },
+      {
+       "index": 15,
+       "en": "## 10. Troubleshooting quick map",
+       "zh": "## 10. 故障排查速查",
+       "enLine": 315,
+       "zhLine": 287,
+       "enDens": {
+        "nonEmpty": 40,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 14,
+        "chars": 3256
+       },
+       "zhDens": {
+        "nonEmpty": 35,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 14,
+        "chars": 1933
+       }
+      }
+     ]
+    },
+    {
+     "en": "docs/architecture.md",
+     "zh": "docs/architecture.zh-CN.md",
+     "enSections": 15,
+     "zhSections": 15,
+     "sameCount": true,
+     "rows": [
+      {
+       "index": 0,
+       "en": "# Architecture",
+       "zh": "# 架构",
+       "enLine": 1,
+       "zhLine": 1,
+       "enDens": {
+        "nonEmpty": 4,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 283
+       },
+       "zhDens": {
+        "nonEmpty": 3,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 156
+       }
+      },
+      {
+       "index": 1,
+       "en": "## 1. Big picture",
+       "zh": "## 1. 全局图景",
+       "enLine": 9,
+       "zhLine": 8,
+       "enDens": {
+        "nonEmpty": 16,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 5,
+        "chars": 1154
+       },
+       "zhDens": {
+        "nonEmpty": 13,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 5,
+        "chars": 776
+       }
+      },
+      {
+       "index": 2,
+       "en": "## 2. Bundle assembly",
+       "zh": "## 2. Bundle 组装",
+       "enLine": 30,
+       "zhLine": 26,
+       "enDens": {
+        "nonEmpty": 25,
+        "tableRows": 7,
+        "fenced": 0,
+        "bullets": 3,
+        "chars": 2052
+       },
+       "zhDens": {
+        "nonEmpty": 22,
+        "tableRows": 7,
+        "fenced": 0,
+        "bullets": 3,
+        "chars": 1443
+       }
+      },
+      {
+       "index": 3,
+       "en": "## 3. Boot chain & the web-compat self-row",
+       "zh": "## 3. 启动链路与 web-compat 自引用行",
+       "enLine": 62,
+       "zhLine": 55,
+       "enDens": {
+        "nonEmpty": 30,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 1,
+        "chars": 2030
+       },
+       "zhDens": {
+        "nonEmpty": 25,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 1,
+        "chars": 1313
+       }
+      },
+      {
+       "index": 4,
+       "en": "## 4. Plugin inventory",
+       "zh": "## 4. 插件清单",
+       "enLine": 99,
+       "zhLine": 87,
+       "enDens": {
+        "nonEmpty": 19,
+        "tableRows": 19,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 4249
+       },
+       "zhDens": {
+        "nonEmpty": 19,
+        "tableRows": 19,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 3348
+       }
+      },
+      {
+       "index": 5,
+       "en": "## 5. Interaction flows",
+       "zh": "## 5. 交互流程",
+       "enLine": 121,
+       "zhLine": 109,
+       "enDens": {
+        "nonEmpty": 0,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 0
+       },
+       "zhDens": {
+        "nonEmpty": 0,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 0
+       }
+      },
+      {
+       "index": 6,
+       "en": "### Roster → one-shot specialist",
+       "zh": "### Roster → 单发专家",
+       "enLine": 123,
+       "zhLine": 111,
+       "enDens": {
+        "nonEmpty": 5,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 399
+       },
+       "zhDens": {
+        "nonEmpty": 5,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 226
+       }
+      },
+      {
+       "index": 7,
+       "en": "### Roster → workmate → team",
+       "zh": "### Roster → workmate → team",
+       "enLine": 130,
+       "zhLine": 118,
+       "enDens": {
+        "nonEmpty": 36,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 8,
+        "chars": 2746
+       },
+       "zhDens": {
+        "nonEmpty": 27,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 8,
+        "chars": 1580
+       }
+      },
+      {
+       "index": 8,
+       "en": "### Extension → skills, flows, MCP tools and roles",
+       "zh": "### 扩展 → skills、flows、MCP 工具与 roles",
+       "enLine": 168,
+       "zhLine": 147,
+       "enDens": {
+        "nonEmpty": 29,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 5,
+        "chars": 2592
+       },
+       "zhDens": {
+        "nonEmpty": 23,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 5,
+        "chars": 1452
+       }
+      },
+      {
+       "index": 9,
+       "en": "### Service timing",
+       "zh": "### 服务时序",
+       "enLine": 201,
+       "zhLine": 174,
+       "enDens": {
+        "nonEmpty": 4,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 244
+       },
+       "zhDens": {
+        "nonEmpty": 3,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 151
+       }
+      },
+      {
+       "index": 10,
+       "en": "## 6. State layout",
+       "zh": "## 6. 状态布局",
+       "enLine": 207,
+       "zhLine": 179,
+       "enDens": {
+        "nonEmpty": 12,
+        "tableRows": 12,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 1634
+       },
+       "zhDens": {
+        "nonEmpty": 12,
+        "tableRows": 12,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 1102
+       }
+      },
+      {
+       "index": 11,
+       "en": "## 6b. Harness adapter (the only seam contact)",
+       "zh": "## 6b. Harness 适配器（唯一的接缝接触面）",
+       "enLine": 222,
+       "zhLine": 194,
+       "enDens": {
+        "nonEmpty": 26,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 5,
+        "chars": 1959
+       },
+       "zhDens": {
+        "nonEmpty": 20,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 5,
+        "chars": 1239
+       }
+      },
+      {
+       "index": 12,
+       "en": "## 6c. Agent preset plane (the `mpd` preset)",
+       "zh": "## 6c. Agent 预设层（`mpd` 预设）",
+       "enLine": 252,
+       "zhLine": 218,
+       "enDens": {
+        "nonEmpty": 30,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 4,
+        "chars": 2540
+       },
+       "zhDens": {
+        "nonEmpty": 22,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 4,
+        "chars": 1427
+       }
+      },
+      {
+       "index": 13,
+       "en": "## 7. Web client wiring (the subtle part)",
+       "zh": "## 7. Web client 接线（微妙之处）",
+       "enLine": 286,
+       "zhLine": 244,
+       "enDens": {
+        "nonEmpty": 74,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 6036
+       },
+       "zhDens": {
+        "nonEmpty": 65,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 3926
+       }
+      },
+      {
+       "index": 14,
+       "en": "## 8. Security & isolation",
+       "zh": "## 8. 安全与隔离",
+       "enLine": 368,
+       "zhLine": 317,
+       "enDens": {
+        "nonEmpty": 5,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 3,
+        "chars": 376
+       },
+       "zhDens": {
+        "nonEmpty": 5,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 3,
+        "chars": 197
+       }
+      }
+     ]
+    },
+    {
+     "en": "docs/development.md",
+     "zh": "docs/development.zh-CN.md",
+     "enSections": 10,
+     "zhSections": 10,
+     "sameCount": true,
+     "rows": [
+      {
+       "index": 0,
+       "en": "# Development Guide",
+       "zh": "# 开发指南",
+       "enLine": 1,
+       "zhLine": 1,
+       "enDens": {
+        "nonEmpty": 2,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 101
+       },
+       "zhDens": {
+        "nonEmpty": 2,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 58
+       }
+      },
+      {
+       "index": 1,
+       "en": "## 1. Repo layout",
+       "zh": "## 1. 仓库布局",
+       "enLine": 7,
+       "zhLine": 7,
+       "enDens": {
+        "nonEmpty": 21,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 0,
+        "chars": 1400
+       },
+       "zhDens": {
+        "nonEmpty": 21,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 0,
+        "chars": 1108
+       }
+      },
+      {
+       "index": 2,
+       "en": "## 2. Build",
+       "zh": "## 2. 构建",
+       "enLine": 31,
+       "zhLine": 31,
+       "enDens": {
+        "nonEmpty": 29,
+        "tableRows": 0,
+        "fenced": 2,
+        "bullets": 0,
+        "chars": 1988
+       },
+       "zhDens": {
+        "nonEmpty": 24,
+        "tableRows": 0,
+        "fenced": 2,
+        "bullets": 0,
+        "chars": 1249
+       }
+      },
+      {
+       "index": 3,
+       "en": "## 3. Tests",
+       "zh": "## 3. 测试",
+       "enLine": 70,
+       "zhLine": 65,
+       "enDens": {
+        "nonEmpty": 11,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 0,
+        "chars": 723
+       },
+       "zhDens": {
+        "nonEmpty": 11,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 0,
+        "chars": 529
+       }
+      },
+      {
+       "index": 4,
+       "en": "## 4. QA (real DSH boots, strictly isolated)",
+       "zh": "## 4. QA（真实 DSH 启动，严格隔离）",
+       "enLine": 85,
+       "zhLine": 80,
+       "enDens": {
+        "nonEmpty": 32,
+        "tableRows": 15,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 4671
+       },
+       "zhDens": {
+        "nonEmpty": 27,
+        "tableRows": 14,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 2952
+       }
+      },
+      {
+       "index": 5,
+       "en": "## 5. Gates (AGENTS.md §4)",
+       "zh": "## 5. 门禁（AGENTS.md §4）",
+       "enLine": 125,
+       "zhLine": 115,
+       "enDens": {
+        "nonEmpty": 10,
+        "tableRows": 9,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 974
+       },
+       "zhDens": {
+        "nonEmpty": 10,
+        "tableRows": 9,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 764
+       }
+      },
+      {
+       "index": 6,
+       "en": "## 6. Release flow",
+       "zh": "## 6. 发布流程",
+       "enLine": 139,
+       "zhLine": 129,
+       "enDens": {
+        "nonEmpty": 18,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 1425
+       },
+       "zhDens": {
+        "nonEmpty": 16,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 913
+       }
+      },
+      {
+       "index": 7,
+       "en": "## 7. Git model",
+       "zh": "## 7. Git 模型",
+       "enLine": 160,
+       "zhLine": 148,
+       "enDens": {
+        "nonEmpty": 4,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 265
+       },
+       "zhDens": {
+        "nonEmpty": 3,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 149
+       }
+      },
+      {
+       "index": 8,
+       "en": "## 8. Vendoring & baseline",
+       "zh": "## 8. Vendor 与基线",
+       "enLine": 167,
+       "zhLine": 154,
+       "enDens": {
+        "nonEmpty": 7,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 2,
+        "chars": 537
+       },
+       "zhDens": {
+        "nonEmpty": 6,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 2,
+        "chars": 331
+       }
+      },
+      {
+       "index": 9,
+       "en": "## 9. Common pitfalls (from real incidents)",
+       "zh": "## 9. 常见坑（来自真实事故）",
+       "enLine": 177,
+       "zhLine": 163,
+       "enDens": {
+        "nonEmpty": 8,
+        "tableRows": 8,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 894
+       },
+       "zhDens": {
+        "nonEmpty": 8,
+        "tableRows": 8,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 608
+       }
+      }
+     ]
+    },
+    {
+     "en": "docs/extensions.md",
+     "zh": "docs/extensions.zh-CN.md",
+     "enSections": 25,
+     "zhSections": 25,
+     "sameCount": true,
+     "rows": [
+      {
+       "index": 0,
+       "en": "# MPD extensions — the developer guide",
+       "zh": "# MPD 扩展 —— 开发者指南",
+       "enLine": 1,
+       "zhLine": 1,
+       "enDens": {
+        "nonEmpty": 10,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 720
+       },
+       "zhDens": {
+        "nonEmpty": 5,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 507
+       }
+      },
+      {
+       "index": 1,
+       "en": "## 1. What already works — and what this interface adds",
+       "zh": "## 1. 已经可行的事 —— 以及本接口新增了什么",
+       "enLine": 17,
+       "zhLine": 13,
+       "enDens": {
+        "nonEmpty": 25,
+        "tableRows": 7,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 2171
+       },
+       "zhDens": {
+        "nonEmpty": 15,
+        "tableRows": 7,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 1181
+       }
+      },
+      {
+       "index": 2,
+       "en": "## 2. Two authoring forms, one contract",
+       "zh": "## 2. 两种编写形态，一份契约",
+       "enLine": 50,
+       "zhLine": 36,
+       "enDens": {
+        "nonEmpty": 36,
+        "tableRows": 0,
+        "fenced": 2,
+        "bullets": 0,
+        "chars": 1919
+       },
+       "zhDens": {
+        "nonEmpty": 31,
+        "tableRows": 0,
+        "fenced": 2,
+        "bullets": 0,
+        "chars": 1470
+       }
+      },
+      {
+       "index": 3,
+       "en": "## 3. The descriptor reference",
+       "zh": "## 3. 描述符参考",
+       "enLine": 96,
+       "zhLine": 77,
+       "enDens": {
+        "nonEmpty": 4,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 287
+       },
+       "zhDens": {
+        "nonEmpty": 1,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 136
+       }
+      },
+      {
+       "index": 4,
+       "en": "### 3.1 Top level",
+       "zh": "### 3.1 顶层",
+       "enLine": 103,
+       "zhLine": 81,
+       "enDens": {
+        "nonEmpty": 11,
+        "tableRows": 7,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 883
+       },
+       "zhDens": {
+        "nonEmpty": 8,
+        "tableRows": 7,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 535
+       }
+      },
+      {
+       "index": 5,
+       "en": "### 3.2 `contributes`",
+       "zh": "### 3.2 `contributes`",
+       "enLine": 118,
+       "zhLine": 93,
+       "enDens": {
+        "nonEmpty": 38,
+        "tableRows": 6,
+        "fenced": 4,
+        "bullets": 0,
+        "chars": 1313
+       },
+       "zhDens": {
+        "nonEmpty": 38,
+        "tableRows": 6,
+        "fenced": 4,
+        "bullets": 0,
+        "chars": 1120
+       }
+      },
+      {
+       "index": 6,
+       "en": "### 3.3 Grammars and asset-path rules",
+       "zh": "### 3.3 语法与资源路径规则",
+       "enLine": 167,
+       "zhLine": 142,
+       "enDens": {
+        "nonEmpty": 11,
+        "tableRows": 6,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 1066
+       },
+       "zhDens": {
+        "nonEmpty": 8,
+        "tableRows": 6,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 743
+       }
+      },
+      {
+       "index": 7,
+       "en": "### 3.4 Flow documents",
+       "zh": "### 3.4 flow 文档",
+       "enLine": 183,
+       "zhLine": 155,
+       "enDens": {
+        "nonEmpty": 16,
+        "tableRows": 11,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 1131
+       },
+       "zhDens": {
+        "nonEmpty": 13,
+        "tableRows": 11,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 719
+       }
+      },
+      {
+       "index": 8,
+       "en": "## 4. Discovery: three roots, two lifecycles",
+       "zh": "## 4. 发现机制：三个根目录，两种生命周期",
+       "enLine": 204,
+       "zhLine": 173,
+       "enDens": {
+        "nonEmpty": 0,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 0
+       },
+       "zhDens": {
+        "nonEmpty": 0,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 0
+       }
+      },
+      {
+       "index": 9,
+       "en": "### 4.1 The roots",
+       "zh": "### 4.1 根目录",
+       "enLine": 206,
+       "zhLine": 175,
+       "enDens": {
+        "nonEmpty": 5,
+        "tableRows": 5,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 510
+       },
+       "zhDens": {
+        "nonEmpty": 5,
+        "tableRows": 5,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 376
+       }
+      },
+      {
+       "index": 10,
+       "en": "### 4.2 Why the project plane is restricted",
+       "zh": "### 4.2 project plane 为何受限",
+       "enLine": 214,
+       "zhLine": 183,
+       "enDens": {
+        "nonEmpty": 6,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 539
+       },
+       "zhDens": {
+        "nonEmpty": 4,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 331
+       }
+      },
+      {
+       "index": 11,
+       "en": "### 4.3 Precedence, shadowing and the config keys",
+       "zh": "### 4.3 优先级、遮蔽与配置键",
+       "enLine": 225,
+       "zhLine": 192,
+       "enDens": {
+        "nonEmpty": 20,
+        "tableRows": 7,
+        "fenced": 0,
+        "bullets": 2,
+        "chars": 1656
+       },
+       "zhDens": {
+        "nonEmpty": 12,
+        "tableRows": 7,
+        "fenced": 0,
+        "bullets": 2,
+        "chars": 995
+       }
+      },
+      {
+       "index": 12,
+       "en": "## 5. Worked examples",
+       "zh": "## 5. 完整示例",
+       "enLine": 252,
+       "zhLine": 211,
+       "enDens": {
+        "nonEmpty": 2,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 168
+       },
+       "zhDens": {
+        "nonEmpty": 1,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 71
+       }
+      },
+      {
+       "index": 13,
+       "en": "### 5.1 A skill (`skills`)",
+       "zh": "### 5.1 skill（`skills`）",
+       "enLine": 257,
+       "zhLine": 215,
+       "enDens": {
+        "nonEmpty": 14,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 0,
+        "chars": 797
+       },
+       "zhDens": {
+        "nonEmpty": 10,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 0,
+        "chars": 634
+       }
+      },
+      {
+       "index": 14,
+       "en": "### 5.2 A flow (`flows`)",
+       "zh": "### 5.2 flow（`flows`）",
+       "enLine": 278,
+       "zhLine": 232,
+       "enDens": {
+        "nonEmpty": 24,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 0,
+        "chars": 1011
+       },
+       "zhDens": {
+        "nonEmpty": 23,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 0,
+        "chars": 981
+       }
+      },
+      {
+       "index": 15,
+       "en": "### 5.3 An MCP server (`mcp`)",
+       "zh": "### 5.3 MCP server（`mcp`）",
+       "enLine": 306,
+       "zhLine": 259,
+       "enDens": {
+        "nonEmpty": 29,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 2,
+        "chars": 1310
+       },
+       "zhDens": {
+        "nonEmpty": 21,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 2,
+        "chars": 920
+       }
+      },
+      {
+       "index": 16,
+       "en": "### 5.4 A role (`roles`)",
+       "zh": "### 5.4 role（`roles`）",
+       "enLine": 342,
+       "zhLine": 287,
+       "enDens": {
+        "nonEmpty": 27,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 4,
+        "chars": 1543
+       },
+       "zhDens": {
+        "nonEmpty": 19,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 4,
+        "chars": 1058
+       }
+      },
+      {
+       "index": 17,
+       "en": "## 6. Failure and collision policy",
+       "zh": "## 6. 失败与冲突策略",
+       "enLine": 376,
+       "zhLine": 313,
+       "enDens": {
+        "nonEmpty": 18,
+        "tableRows": 14,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 2164
+       },
+       "zhDens": {
+        "nonEmpty": 15,
+        "tableRows": 14,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 1111
+       }
+      },
+      {
+       "index": 18,
+       "en": "## 7. The model-facing tools",
+       "zh": "## 7. 面向模型的工具",
+       "enLine": 398,
+       "zhLine": 332,
+       "enDens": {
+        "nonEmpty": 11,
+        "tableRows": 6,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 1149
+       },
+       "zhDens": {
+        "nonEmpty": 8,
+        "tableRows": 6,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 647
+       }
+      },
+      {
+       "index": 19,
+       "en": "## 8. Developer workflow",
+       "zh": "## 8. 开发者工作流",
+       "enLine": 414,
+       "zhLine": 345,
+       "enDens": {
+        "nonEmpty": 41,
+        "tableRows": 0,
+        "fenced": 2,
+        "bullets": 0,
+        "chars": 2621
+       },
+       "zhDens": {
+        "nonEmpty": 31,
+        "tableRows": 0,
+        "fenced": 2,
+        "bullets": 0,
+        "chars": 1812
+       }
+      },
+      {
+       "index": 20,
+       "en": "## 9. MCP: install-plane row vs runtime bridge",
+       "zh": "## 9. MCP：安装面 row 与运行时桥",
+       "enLine": 468,
+       "zhLine": 389,
+       "enDens": {
+        "nonEmpty": 20,
+        "tableRows": 8,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 1670
+       },
+       "zhDens": {
+        "nonEmpty": 11,
+        "tableRows": 8,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 816
+       }
+      },
+      {
+       "index": 21,
+       "en": "## 10. Trust model",
+       "zh": "## 10. 信任模型",
+       "enLine": 494,
+       "zhLine": 406,
+       "enDens": {
+        "nonEmpty": 12,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 3,
+        "chars": 1042
+       },
+       "zhDens": {
+        "nonEmpty": 3,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 3,
+        "chars": 484
+       }
+      },
+      {
+       "index": 22,
+       "en": "## 11. v1 limits and follow-ups",
+       "zh": "## 11. v1 限制与后续项",
+       "enLine": 509,
+       "zhLine": 412,
+       "enDens": {
+        "nonEmpty": 19,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 10,
+        "chars": 1324
+       },
+       "zhDens": {
+        "nonEmpty": 11,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 10,
+        "chars": 688
+       }
+      },
+      {
+       "index": 23,
+       "en": "## 12. How the samples in this guide are verified",
+       "zh": "## 12. 本指南中的示例如何验证",
+       "enLine": 532,
+       "zhLine": 427,
+       "enDens": {
+        "nonEmpty": 15,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 0,
+        "chars": 957
+       },
+       "zhDens": {
+        "nonEmpty": 13,
+        "tableRows": 0,
+        "fenced": 1,
+        "bullets": 0,
+        "chars": 664
+       }
+      },
+      {
+       "index": 24,
+       "en": "## 13. FAQ",
+       "zh": "## 13. 常见问题",
+       "enLine": 555,
+       "zhLine": 448,
+       "enDens": {
+        "nonEmpty": 23,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 1784
+       },
+       "zhDens": {
+        "nonEmpty": 9,
+        "tableRows": 0,
+        "fenced": 0,
+        "bullets": 0,
+        "chars": 931
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "links": {
+   "total": 73,
+   "dead": 0,
+   "perFile": {
+    "README.md": {
+     "count": 13,
+     "dead": 0,
+     "external": 2
+    },
+    "README.zh-CN.md": {
+     "count": 13,
+     "dead": 0,
+     "external": 2
+    },
+    "docs/index.md": {
+     "count": 16,
+     "dead": 0,
+     "external": 0
+    },
+    "docs/index.zh-CN.md": {
+     "count": 15,
+     "dead": 0,
+     "external": 0
+    },
+    "docs/user-guide.md": {
+     "count": 4,
+     "dead": 0,
+     "external": 0
+    },
+    "docs/user-guide.zh-CN.md": {
+     "count": 4,
+     "dead": 0,
+     "external": 0
+    },
+    "docs/architecture.md": {
+     "count": 1,
+     "dead": 0,
+     "external": 0
+    },
+    "docs/architecture.zh-CN.md": {
+     "count": 1,
+     "dead": 0,
+     "external": 0
+    },
+    "docs/development.md": {
+     "count": 1,
+     "dead": 0,
+     "external": 0
+    },
+    "docs/development.zh-CN.md": {
+     "count": 1,
+     "dead": 0,
+     "external": 0
+    },
+    "docs/extensions.md": {
+     "count": 2,
+     "dead": 0,
+     "external": 0
+    },
+    "docs/extensions.zh-CN.md": {
+     "count": 2,
+     "dead": 0,
+     "external": 0
+    }
+   }
+  },
+  "paths": {
+   "claims": 205,
+   "missing": 0,
+   "missingList": []
+  },
+  "extTools": {
+   "required": [
+    "mpd_ext_list",
+    "mpd_ext_show",
+    "mpd_flow_list",
+    "mpd_flow_show"
+   ],
+   "perFile": {
+    "README.md": {
+     "mpd_ext_list": true,
+     "mpd_ext_show": true,
+     "mpd_flow_list": true,
+     "mpd_flow_show": true
+    },
+    "README.zh-CN.md": {
+     "mpd_ext_list": true,
+     "mpd_ext_show": true,
+     "mpd_flow_list": true,
+     "mpd_flow_show": true
+    },
+    "docs/index.md": {
+     "mpd_ext_list": false,
+     "mpd_ext_show": false,
+     "mpd_flow_list": false,
+     "mpd_flow_show": false
+    },
+    "docs/index.zh-CN.md": {
+     "mpd_ext_list": false,
+     "mpd_ext_show": false,
+     "mpd_flow_list": false,
+     "mpd_flow_show": false
+    },
+    "docs/user-guide.md": {
+     "mpd_ext_list": true,
+     "mpd_ext_show": true,
+     "mpd_flow_list": true,
+     "mpd_flow_show": true
+    },
+    "docs/user-guide.zh-CN.md": {
+     "mpd_ext_list": true,
+     "mpd_ext_show": true,
+     "mpd_flow_list": true,
+     "mpd_flow_show": true
+    },
+    "docs/architecture.md": {
+     "mpd_ext_list": true,
+     "mpd_ext_show": true,
+     "mpd_flow_list": true,
+     "mpd_flow_show": true
+    },
+    "docs/architecture.zh-CN.md": {
+     "mpd_ext_list": true,
+     "mpd_ext_show": true,
+     "mpd_flow_list": true,
+     "mpd_flow_show": true
+    },
+    "docs/development.md": {
+     "mpd_ext_list": true,
+     "mpd_ext_show": false,
+     "mpd_flow_list": false,
+     "mpd_flow_show": false
+    },
+    "docs/development.zh-CN.md": {
+     "mpd_ext_list": true,
+     "mpd_ext_show": false,
+     "mpd_flow_list": false,
+     "mpd_flow_show": false
+    },
+    "docs/extensions.md": {
+     "mpd_ext_list": true,
+     "mpd_ext_show": true,
+     "mpd_flow_list": true,
+     "mpd_flow_show": true
+    },
+    "docs/extensions.zh-CN.md": {
+     "mpd_ext_list": true,
+     "mpd_ext_show": true,
+     "mpd_flow_list": true,
+     "mpd_flow_show": true
+    }
+   },
+   "reloadToolCut": true
+  },
+  "configKeys": {
+   "consumedFrom": "packages/mpd-config-plugin/src/index.ts mpd_config_get description",
+   "badRows": []
+  },
+  "packageReference": {
+   "entries": [
+    {
+     "name": "mpd-mcp-shared",
+     "dirExists": true,
+     "readmeExists": false
+    },
+    {
+     "name": "mpd-agent-teams-plugin",
+     "dirExists": true,
+     "readmeExists": true
+    },
+    {
+     "name": "mpd-dsh-adapter-plugin",
+     "dirExists": true,
+     "readmeExists": true
+    },
+    {
+     "name": "mpd-config-plugin",
+     "dirExists": true,
+     "readmeExists": true
+    },
+    {
+     "name": "mpd-tools-plugin",
+     "dirExists": true,
+     "readmeExists": true
+    },
+    {
+     "name": "mpd-modelchain-plugin",
+     "dirExists": true,
+     "readmeExists": true
+    },
+    {
+     "name": "mpd-roles-plugin",
+     "dirExists": true,
+     "readmeExists": true
+    },
+    {
+     "name": "mpd-ext-plugin",
+     "dirExists": true,
+     "readmeExists": true
+    },
+    {
+     "name": "mpd-ulw-plugin",
+     "dirExists": true,
+     "readmeExists": true
+    },
+    {
+     "name": "mpd-hashline-plugin",
+     "dirExists": true,
+     "readmeExists": true
+    },
+    {
+     "name": "mpd-boulder-plugin",
+     "dirExists": true,
+     "readmeExists": true
+    },
+    {
+     "name": "mpd-comment-checker-plugin",
+     "dirExists": true,
+     "readmeExists": true
+    },
+    {
+     "name": "mpd-memory-plugin",
+     "dirExists": true,
+     "readmeExists": true
+    },
+    {
+     "name": "mpd-codegraph-plugin",
+     "dirExists": true,
+     "readmeExists": true
+    },
+    {
+     "name": "mpd-workmate-plugin",
+     "dirExists": true,
+     "readmeExists": true
+    },
+    {
+     "name": "mpd-bootstrap-plugin",
+     "dirExists": true,
+     "readmeExists": true
+    },
+    {
+     "name": "mpd-team-compact-plugin",
+     "dirExists": true,
+     "readmeExists": true
+    },
+    {
+     "name": "mpd-bundle-plugin",
+     "dirExists": true,
+     "readmeExists": true
+    },
+    {
+     "name": "mpd-qa-roles-probe",
+     "dirExists": true,
+     "readmeExists": true
+    },
+    {
+     "name": "mpd-mcp-astgrep",
+     "dirExists": true,
+     "readmeExists": true
+    },
+    {
+     "name": "mpd-mcp-gitbash",
+     "dirExists": true,
+     "readmeExists": true
+    },
+    {
+     "name": "mpd-mcp-lsp",
+     "dirExists": true,
+     "readmeExists": true
+    },
+    {
+     "name": "mpd-mcp-codegraph",
+     "dirExists": true,
+     "readmeExists": true
+    },
+    {
+     "name": "mpd-bundle",
+     "dirExists": true,
+     "readmeExists": true
+    }
+   ],
+   "dirsOnDiskNotListed": []
+  },
+  "relationship": {
+   "capabilitiesLine": 16,
+   "relationshipLine": 180,
+   "licenseLine": 202,
+   "isSeparateSection": true,
+   "afterCapabilities": true,
+   "beforeHeadline": true,
+   "namesCarried": true,
+   "namesAdopted": true,
+   "namesOwn": true,
+   "citesPinnedCommit": true,
+   "citesMit": true,
+   "upstreamLabelInTitleOrFirstScreen": false
+  },
+  "hub": {
+   "file": "docs/index.md",
+   "lists": {
+    "docs/user-guide.md": true,
+    "docs/extensions.md": true,
+    "docs/architecture.md": true,
+    "docs/development.md": true,
+    "README.md": true,
+    "AGENTS.md": true
+   }
+  },
+  "postRepair": {
+   "f1": {
+    "id": "F1",
+    "falseRowGoneEn": true,
+    "falseRowGoneZh": true,
+    "realityNoteEn": true,
+    "realityNoteZh": true,
+    "consumedKeyListOmitsCodegraph": true,
+    "noPluginReadsIt": true,
+    "ok": true
+   },
+   "f2": {
+    "id": "F2",
+    "universalClaimGoneEn": true,
+    "universalClaimGoneZh": true,
+    "exceptionsStatedEn": true,
+    "mcpSharedListedEn": true,
+    "mcpSharedListedZh": true,
+    "teamCompactReadmePair": true,
+    "exceptionsAreTrue": true,
+    "ok": true,
+    "readmeAudit": [
+     {
+      "name": "mpd-agent-teams-plugin",
+      "en": true,
+      "zh": false
+     },
+     {
+      "name": "mpd-bootstrap-plugin",
+      "en": true,
+      "zh": true
+     },
+     {
+      "name": "mpd-boulder-plugin",
+      "en": true,
+      "zh": true
+     },
+     {
+      "name": "mpd-bundle",
+      "en": true,
+      "zh": true
+     },
+     {
+      "name": "mpd-bundle-plugin",
+      "en": true,
+      "zh": true
+     },
+     {
+      "name": "mpd-codegraph-plugin",
+      "en": true,
+      "zh": true
+     },
+     {
+      "name": "mpd-comment-checker-plugin",
+      "en": true,
+      "zh": true
+     },
+     {
+      "name": "mpd-config-plugin",
+      "en": true,
+      "zh": true
+     },
+     {
+      "name": "mpd-dsh-adapter-plugin",
+      "en": true,
+      "zh": true
+     },
+     {
+      "name": "mpd-ext-plugin",
+      "en": true,
+      "zh": true
+     },
+     {
+      "name": "mpd-hashline-plugin",
+      "en": true,
+      "zh": true
+     },
+     {
+      "name": "mpd-mcp-astgrep",
+      "en": true,
+      "zh": true
+     },
+     {
+      "name": "mpd-mcp-codegraph",
+      "en": true,
+      "zh": true
+     },
+     {
+      "name": "mpd-mcp-gitbash",
+      "en": true,
+      "zh": true
+     },
+     {
+      "name": "mpd-mcp-lsp",
+      "en": true,
+      "zh": true
+     },
+     {
+      "name": "mpd-mcp-shared",
+      "en": false,
+      "zh": false
+     },
+     {
+      "name": "mpd-memory-plugin",
+      "en": true,
+      "zh": true
+     },
+     {
+      "name": "mpd-modelchain-plugin",
+      "en": true,
+      "zh": true
+     },
+     {
+      "name": "mpd-qa-roles-probe",
+      "en": true,
+      "zh": true
+     },
+     {
+      "name": "mpd-roles-plugin",
+      "en": true,
+      "zh": true
+     },
+     {
+      "name": "mpd-team-compact-plugin",
+      "en": true,
+      "zh": true
+     },
+     {
+      "name": "mpd-tools-plugin",
+      "en": true,
+      "zh": true
+     },
+     {
+      "name": "mpd-ulw-plugin",
+      "en": true,
+      "zh": true
+     },
+     {
+      "name": "mpd-workmate-plugin",
+      "en": true,
+      "zh": true
+     }
+    ],
+    "undocumentedException": []
+   }
+  }
+ },
+ "findings": []
+}

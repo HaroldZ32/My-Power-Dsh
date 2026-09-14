@@ -1,0 +1,112 @@
+{
+  "task": "t4",
+  "subject": "Mount mpd-ext in the bundle patch and let extension roles join the specialist roster",
+  "attempt_id": "680029b2-84e4-4423-85bf-cd06ecc08e20",
+  "measured_at": "2026-09-14T17:06:14Z",
+  "revision": {
+    "branch": "feature/extension-interface",
+    "head": "6cbb12682679127788657a3551ddffafa1696be1",
+    "sha256": {
+      "packages/mpd-bundle/cordis.patch.yml": "b6e69fef4bb9e1e118e43e0602b3c955b5548c2fd81711ccda57b6ff818558f2",
+      "packages/mpd-roles-plugin/src/index.ts": "042ed0f126661d692268282503c6e1dd1578f389c06b1f255a758bdfd2da4976",
+      "packages/mpd-roles-plugin/test/roles.test.ts": "63ad4fb72b89a58ee6ca45a72a82b23b3f059e53077c12873683dd1ff0fbfe05",
+      "packages/mpd-roles-plugin/dist/index.js": "41eae81b971679844fde3924cbb13fc46e6ac670a469fb325a1d61e99871dfd5",
+      "packages/mpd-roles-plugin/README.md": "4eb3117dd8dda6e9d10fcc4fbb5072cc3051c6fafcaf9b3724b5edade0e17cec",
+      "packages/mpd-roles-plugin/README.zh-CN.md": "eaed647763849a2cdec14e0fedf6967b944b54b10481cf8b8ab3aeb31ca997ba"
+    }
+  },
+  "row": {
+    "id": "mpd-ext",
+    "name": "@mpd-dsh/mpd/packages/mpd-ext-plugin/dist/index.js",
+    "config": {
+      "quiet": false
+    },
+    "patch_line": 176,
+    "position": "after mpd-dsh-adapter + mpd-config, directly above mpd-roles (its first consumer)",
+    "occurrences_of_id_in_patch": 1,
+    "config_schema_of_plugin": "MpdExtPluginConfig { quiet?: boolean } (src/index.ts:48)",
+    "applied_in_real_boot": "evidence/dsh-qa/preset-conformance/2026-09-14T17-05-25.921Z/boot.log -> '[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show'"
+  },
+  "gates": [
+    {
+      "command": "bun test packages/mpd-roles-plugin",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "23 pass / 0 fail, 452 expect() calls (16 pre-existing + 7 new: real mpd-ext registration, per-call resolution, collision refusal, workmate BASE, absent/broken service, agent-teams limit, dist guard)"
+    },
+    {
+      "command": "bun run typecheck",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "tsgo --noEmit clean on the settled tree (a transient error in packages/mpd-ext-plugin/src/schema-sanitize.ts was present at 17:00 and is gone at 17:04; no output mentions any file t4 changed)"
+    },
+    {
+      "command": "bunx tsgo --ignoreConfig --noEmit ... packages/mpd-roles-plugin/src/index.ts packages/mpd-roles-plugin/test/roles.test.ts",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "scoped typecheck of exactly the files t4 changed"
+    },
+    {
+      "command": "node scripts/verify-rows-parity.mjs",
+      "status": "failed",
+      "exitCode": 1,
+      "evidence": "MISSING from scripts/install-profile.mjs: mpd-ext, mpd-team-compact. Both are OUTSIDE t4's inScope (scripts/install-profile.mjs is not listed). mpd-team-compact was ALREADY missing before this change (measured red at HEAD 6cbb126), so the gate cannot go green from inside t4."
+    },
+    {
+      "command": "node skills/dsh-qa/scripts/preset-conformance.mjs --self-test",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "30 harness rows conform, row parity 31/31"
+    },
+    {
+      "command": "node skills/dsh-qa/scripts/preset-conformance.mjs (REAL run, plan section 4 gate 8 - required for a bundle-patch change)",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "evidence/dsh-qa/preset-conformance/2026-09-14T17-05-25.921Z: ok=true, sessionCreate ok (agentPreset=mpd), bootLog signatures [], negative control still red. Run AFTER the dist rebuild."
+    },
+    {
+      "command": "bun evidence/extensions/roles-wiring/2026-09-14T170418Z/raw/dist-smoke.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "drives the REAL dist/index.js of mpd-ext + mpd-roles: list 12, spawn label 'Verilog Reviewer' with the READONLY_DENY toolFilter, persona text from the extension root, mpdRoles entry id ext-rtl-verilog-verilog-reviewer, base 'Deep Worker' intact"
+    }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "high",
+      "problem": "node scripts/verify-rows-parity.mjs (t4 acceptance criterion 7) cannot pass inside t4's inScope: the gate is bidirectional (bundle patch insert ids == scripts/install-profile.mjs row ids) and adding the mpd-ext row to the patch requires a matching installer row, but scripts/install-profile.mjs is not in t4's inScope.",
+      "requiredFix": "Add `{ id: \"mpd-ext\", name: p(\"packages/mpd-ext-plugin/dist/index.js\"), config: { quiet: false } }` to scripts/install-profile.mjs - either by amending t4's inScope or folding it into t11 (whose contract already owns the rebuild/pack/release-checklist work)."
+    },
+    {
+      "id": "F2",
+      "severity": "medium",
+      "problem": "The same gate was ALREADY red before this task: mpd-team-compact is in the bundle patch (inserts, 23 ids) but missing from scripts/install-profile.mjs (21 ids). Nothing in this wave introduced it, and it is out of scope for t4.",
+      "requiredFix": "Fix the pre-existing parity gap as part of t11 (or a separate defect task): add the mpd-team-compact row to scripts/install-profile.mjs so the legacy installer path can mount what the patch ships."
+    },
+    {
+      "id": "F3",
+      "severity": "medium",
+      "problem": "packages/mpd-ext-plugin/src/registry.ts still pushes a now-FALSE pending note for every extension that declares roles: 'pending: extension roles are resolved per call by mpd-roles-plugin (t4) - declared here, not yet exposed through mpd_roles_list' (registry.ts:493-500) and the type comment '(mcp: t3, roles: t4)' (registry.ts:97). After this change roles ARE exposed, so mpd_ext_list / mpd_ext_show report a pending item that no longer exists.",
+      "requiredFix": "The mpd-ext owner (t2/t3) or t11 drops that pending push (roles are resolved by mpd-roles now) and updates the comment. packages/mpd-ext-plugin/ is explicitly outOfScope for t4."
+    },
+    {
+      "id": "F4",
+      "severity": "low",
+      "problem": "The refusal of a colliding role is recorded on the ROSTER side (mpd_roles_list.refused + one log line) because mpd-roles cannot write into the mpd-ext registry record; mpd_ext_list still lists the declared role name as if it were usable.",
+      "requiredFix": "Optional follow-up for the mpd-ext owner: let mpd_ext_list/show mark roles the roster refused (e.g. by asking the mpdRoles service), so the two surfaces agree."
+    },
+    {
+      "id": "F5",
+      "severity": "low",
+      "problem": "packages/mpd-roles-plugin/dist/index.js was STALE before this task (it predates the rosterFunctionList/functionOf change of commit 697bfb8). The rebuild in this change therefore carries that catch-up churn (180 insertions / 22 deletions) next to the t4 wiring.",
+      "requiredFix": "None required - informational. The dist is now in sync with src; a new test pins the extension-role markers in BOTH src and dist, so a future src-only edit fails loudly instead of shipping dead."
+    }
+  ],
+  "notes": [
+    "Per-call resolution proof: mpd-roles is applied BEFORE any extension exists (11 roles), an extension registered afterwards is visible on the NEXT call (12), and a config-disabled extension contributes nothing.",
+    "Collision proof: an extension role named 'Architect' and a second extension re-declaring 'Verilog Reviewer' are both refused (refused[] + one log line each) while the base roster, the other extension role and the whole boot keep working.",
+    "Workmate BASE proof: the REAL mpd_workmate_init creates ~/.mpd/workmate/verilog-reviewer-1 from the extension role (baseId ext-rtl-verilog-verilog-reviewer, persona text from the extension root); HOME is sandboxed to a temp dir in every test.",
+    "Evidence convention: evidence/extensions/roles-wiring/2026-09-14T170418Z/{output.log,result.json,preset-conformance-real-run.log,preset-conformance-post-rebuild.log,raw/dist-smoke.mjs}."
+  ]
+}

@@ -1,0 +1,58 @@
+================ t11 v0.9.0 release integration: consolidated output ================
+date: 2026-09-14T18:18:23Z  branch: feature/extension-interface  HEAD: 6cbb12682679127788657a3551ddffafa1696be1
+package.json version: 0.9.0
+VENDOR_LOCK skills: 301 0dd4a6ee68e0a11499f2b502873016d066cface6b59036147bca066433b4b576
+
+--- contract verify commands (exit codes) ---
+verify-vendor            [verify-vendor] PASS
+install-profile-dryrun   [install-profile] DRY-RUN done (nothing written); add --yes to actually install, and --dsh
+pack-mpd                 [pack-mpd] staged package -> /root/dshProj/my-power-dsh/dist/mpd-package
+typecheck                $ tsgo --noEmit
+bun-test-packages        Ran 493 tests across 104 files. [19.22s]
+test-qa                  EXIT=0
+preset-conformance       [preset-conformance self-test] ok: 30 harness rows conform against the installed schemas (
+mpd-ext-selftest         [mpd-ext] --self-test passed (19 checks)
+relocate-smoke           EXIT=0
+extension-lifecycle      EXIT=0
+
+--- packed tree ---
+OK   packages/mpd-ext-plugin/dist/index.js
+OK   packages/mpd-roles-plugin/dist/index.js
+OK   scripts/mpd-ext.mjs
+OK   extensions/mpd-ext-example/mpd-ext.json
+files: 1107  dev-path leaks: 0
+
+--- extension-lifecycle packed arm (from evidence/extensions/extension-lifecycle/2026-09-14T18-14-38.727Z/result.json) ---
+{
+ "ok": true,
+ "packExit": 0,
+ "packedRoot": "/root/dshProj/my-power-dsh/dist/mpd-package",
+ "rows": {
+  "mpdExtRowInPackedPatch": true
+ },
+ "assets": {
+  "pluginDist": true,
+  "extensionsAsset": true
+ },
+ "status": "GREEN (t11's pack fix has landed: the packed tree carries the plugin and extensions/)",
+ "greenOwner": "t11",
+ "note": "no packed-tree file was modified by this case; the expectation is recorded, never patched",
+ "packTail": "[pack-mpd] modes normalized: 1107 files (644: 1095, 755: 12) | [pack-mpd] staged package -> /root/dshProj/my-power-dsh/dist/mpd-package"
+}
+
+--- changed artifacts ---
+ * package.json
+ * scripts/pack-mpd.mjs
+ * VENDOR_LOCK.json
+ * packages/mpd-ext-plugin/dist/index.js + dist/sdk.js
+ * packages/mpd-roles-plugin/dist/index.js
+ * docs/upstream-parity-ledger.md + docs/upstream-parity-ledger.zh-CN.md
+ * evidence/release/v0.9.0-integration/20260914T181346Z/**
+
+--- NOT verified here ---
+ - Every git action (branch/merge/commit/tag/push) — the captain is the only git writer; no git command was run.
+ - The Gitee push itself — no token was read and no network push attempted; the checklist gives the GIT_ASKPASS s
+ - bun run test:qa:all — the real-lane enumeration now includes the three extension cases and the live-provider s
+ - bun skills/dsh-qa/scripts/bundle-lifecycle.mjs (host-row mount gate) — not re-run here; the installer dry-run 
+ - AGENTS.md §6 region count (still '40 regions across 9 adopted files'; the true count is 46 after t13) — AGENTS
+ - Web GUI/browser surfaces (no browser in this session) and cross-platform (Linux only).

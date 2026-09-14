@@ -1,0 +1,64 @@
+# mpd-team-compact-plugin
+
+**English** | [中文](./README.zh-CN.md)
+
+Compaction for **finished teams**: when every task of a team is terminal and every member is idle,
+`mpd_team_compact_run` compacts the members' context once, together, and records what happened.
+It exists so an archived team stops carrying weight — the captain decides, the members are the ones
+compacted.
+
+## Tools
+
+| Tool | Inputs | Result |
+|---|---|---|
+| `mpd_team_compact_run` | `team_id?` — defaults to every finished team in this workspace | one audit pass per team: the team outcome plus each member's outcome |
+| `mpd_team_compact_status` | `team_id?` — defaults to every team with an audit | read-only: the recorded passes (newest last), including skipped members and the reason each was skipped |
+
+## Semantics
+
+- **Trigger** — a team whose EVERY task is terminal AND whose members are ALL idle.
+- **Who** — members only. The captain is never compacted (that is the user's `/compact`).
+- **Barrier** — wait for every member to go idle, then compact them together.
+- **Method** — an unconditional explicit `compactNow`. A null answer means "no safely compactable
+  range", which is recorded as a fact, not as an error.
+- **Audit** — `<workspace>/.mpd/team-compact/<teamId>/`, accumulated and never overwritten. It is
+  never `.mpd/team`: that state belongs to the agent-teams plugin.
+- **Silence** — audit only. A member is never notified; a notification would push context back in.
+
+## Design constraints (each one measured)
+
+- **The engine is resolved PER MEMBER through the member's own scoped context**
+  (`agent.ctx.get("compaction")`), in exactly one place: the adapter's `compactionEngineForAgent`.
+  The host-plane engine is a DIFFERENT object serving a different realm, so driving a member with it
+  would compact the wrong history.
+- **`compaction` is deliberately NOT in `inject`.** The service is composed by the `mpd` preset, so a
+  profile without that preset has none; a declared-but-unregistered service parks the row
+  (`pending (waiting for service: compaction)`), which is the failure mode the contract forbids. It is
+  resolved lazily at drive time and degrades with a warning.
+- **`inject: ["tools"]` IS declared.** Cordis only exposes a service a context declared, and the
+  adapter reads the tool registry off this row's context.
+- A **staged member** (`id === ""`) has no live Agent and is skipped explicitly; a team whose captain
+  is gone is recorded `not-live` rather than silently ignored.
+- **`busy` is not the concurrency signal**: driving a busy member throws a Cordis lifecycle error
+  (`tokenMeter` in an inactive context), classified separately from the six `ManualCompactionError`
+  codes.
+- The `parameters` schema is **object-rooted**. A `type: null` root was measured to make the provider
+  reject every model request of a mounting session, which is why the unit test and the mount-level
+  `TOOL_PARAM_SCHEMAS` probe both pin it.
+
+## State
+
+| Path | Notes |
+|---|---|
+| `<workspace>/.mpd/team-compact/<teamId>/` | the audit ledger: one record per pass, accumulated |
+
+## Gates
+
+- `bun test packages/mpd-team-compact-plugin` — the offline unit suite (`test/compaction.test.mjs`).
+- `bun run typecheck`.
+- Boot check: the row must really APPLY (a mount proof, never `--dump-config` — AGENTS.md §4).
+
+## Related
+
+- Team mode from the user's side: [`../../docs/user-guide.md`](../../docs/user-guide.md) §6.
+- The plugin that owns `.mpd/team`: [`../mpd-agent-teams-plugin/README.md`](../mpd-agent-teams-plugin/README.md).

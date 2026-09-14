@@ -33,6 +33,13 @@ const PLUGIN_PKGS = [
   // listed here: `mpd-qa-roles-probe` is deliberately absent because it is QA-only
   // and mounted by an overlay, never by the shipped patch.
   "mpd-team-compact-plugin",
+  // mpd-ext-plugin is MOUNTED by the bundle patch (row `mpd-ext`) and was missing
+  // from this list: the packed tree would omit `packages/mpd-ext-plugin/dist/` while
+  // `npm run pack` still exited 0, and the packed boot would die ERR_MODULE_NOT_FOUND
+  // on that row — the same silent-omission class the comment above records for
+  // mpd-team-compact-plugin. Its discovery root `<bundle>/extensions/` is copied by
+  // cpAssets() and declared in the packed manifest's files/exports below.
+  "mpd-ext-plugin",
   "mpd-bundle-plugin"
 ]
 const MCP_PKGS = ["mpd-mcp-astgrep", "mpd-mcp-gitbash", "mpd-mcp-lsp", "mpd-mcp-codegraph"]
@@ -53,11 +60,22 @@ function cpDist() {
 
 function cpAssets() {
   mkdirSync(join(outDir, "packages"), { recursive: true })
-  // skill corpus lives at the repo root skills/ per AGENTS.md layout; the bundle
+  // the skills corpus lives at the repo root skills/ per AGENTS.md layout; the bundle
   // SERVES it from <pkg>/skills at runtime (mpd-bootstrap registers it as a
   // ctx.skills provider) — nothing is copied into $DSH_HOME any more.
   const skillsSrc = join(repoRoot, "skills")
   if (existsSync(skillsSrc)) cpSync(skillsSrc, join(outDir, "skills"), { recursive: true })
+  // The extension DISCOVERY ROOT. mpd-ext resolves the bundle plane as
+  // `<bundleRoot>/extensions` (manifest.ts bundleExtensionsDir()), so a packed bundle
+  // that ships the plugin but not this directory silently loses the whole bundle plane
+  // — the shipped reference extension disappears with no error anywhere. t1 §1.9
+  // requires the asset and the packed manifest entry in the same change.
+  const extensionsSrc = join(repoRoot, "extensions")
+  if (!existsSync(extensionsSrc)) {
+    console.error("[pack-mpd] FAIL: missing " + extensionsSrc + " — the mpd-ext bundle discovery root must ship (see plan §1.9)")
+    process.exit(1)
+  }
+  cpSync(extensionsSrc, join(outDir, "extensions"), { recursive: true })
   // the main preset ships at the repo root presets/ and is SERVED from
   // <pkg>/presets by the bundle patch's agent-presets root (no $DSH_HOME copy);
   // the roles plugin's persona assets ship under packages/mpd-roles-plugin/personas
@@ -81,9 +99,12 @@ function cpAssets() {
     if (existsSync(join(repoRoot, f))) cpSync(join(repoRoot, f), join(outDir, f))
   }
   // MCP install/activation helper ships with the package so dist installs can
-  // bootstrap the sg/codegraph binaries + wave MCPs too.
+  // bootstrap the sg/codegraph binaries + wave MCPs too. The extension CLI ships for
+  // the same reason: it is the documented developer workflow (`validate`/`scaffold`/
+  // `list`) and the AGENTS.md §4 Extension-CLI gate runs it from the packed tree.
   mkdirSync(join(outDir, "scripts"), { recursive: true })
   cpSync(join(repoRoot, "scripts", "install-mcp.mjs"), join(outDir, "scripts", "install-mcp.mjs"))
+  cpSync(join(repoRoot, "scripts", "mpd-ext.mjs"), join(outDir, "scripts", "mpd-ext.mjs"))
   // Per-package bilingual README pair for every shipped plugin/MCP package
   // (the adopted mpd-agent-teams-plugin is copied wholesale above, READMEs included).
   for (const p of [...PLUGIN_PKGS, ...MCP_PKGS]) {
@@ -144,12 +165,17 @@ function writeManifest() {
       "./packages/*": "./packages/*",
       "./skills/*": "./skills/*",
       "./presets/*": "./presets/*",
+      // the mpd-ext bundle discovery root: mpd-ext resolves `<bundleRoot>/extensions`
+      // by filesystem path, and the map entry keeps the packed form addressable exactly
+      // like skills/ and presets/ (plan §1.9: the asset and this declaration ship together).
+      "./extensions/*": "./extensions/*",
       "./client": "./packages/mpd-bundle-plugin/client.js"
     },
     files: [
       "packages/**",
       "skills/**",
       "presets/**",
+      "extensions/**",
       "scripts/**",
       "cordis.patch.yml",
       "LICENSE.md", "LICENSE-NOTICES.md", "README.md", "README.zh-CN.md"

@@ -134,10 +134,62 @@ function liveCaptain(ctx, captainSessionId, supplied) {
 function liveMember(ctx, member) {
     return ctx.agents.get(member.id);
 }
-function isMemberAvailable(ctx, member) {
-    const live = liveMember(ctx, member);
-    return live === undefined || live.status === 'idle';
+//#region mpd-delta dispatch-decline-guard (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/** One `dispatch declined` line per (team, member, reason) per process. */
+const dispatchDeclineNotes = new Set();
+/** Bound on that set: a long-lived multi-session host must not grow it without limit. */
+const DISPATCH_DECLINE_NOTE_MAX = 512;
+/**
+ * Record WHY one kick declined to deliver a ready task.
+ *
+ * Every early return of the dispatch chain used to be a silent `return`, so a team parked
+ * on a READY task was indistinguishable from a team with nothing to do. Measured live on
+ * 2026-09-14 (team mpd-default): the post-approval kick found all six just-spawned members
+ * inside their spawn/welcome turn, declined at the availability guard for every one of them
+ * and delivered nothing for 59.3 s without a single log line — the captain read that as a
+ * permanent stall and "fixed" it with a manual reassignment that interrupted the attempt
+ * the idle edge had just delivered.
+ *
+ * Logged at `warn` and deduped per (team, member, reason): the FIRST occurrence — the one
+ * that matters — is never lost, while a hot kick loop cannot flood the log.
+ * @param logger - the plugin context logger (absent in some unit fixtures).
+ * @param teamId - the team whose dispatch declined.
+ * @param memberName - the addressed member, the session id for an idle edge, or `*`.
+ * @param reason - the concrete condition that was false.
+ */
+function noteDispatchDecline(logger, teamId, memberName, reason) {
+    const key = `${teamId}\u0000${memberName}\u0000${reason}`;
+    if (dispatchDeclineNotes.size >= DISPATCH_DECLINE_NOTE_MAX)
+        dispatchDeclineNotes.clear();
+    if (dispatchDeclineNotes.has(key))
+        return;
+    dispatchDeclineNotes.add(key);
+    logger?.warn?.(`agent-teams: dispatch declined for ${teamId}/${memberName}: ${reason}`);
 }
+/**
+ * How the live Agent registry sees one member right now.
+ *
+ * The upstream `isMemberAvailable` treated EVERY non-idle live Agent as unavailable, so the
+ * approval-time kick — which necessarily runs while the just-spawned members are still
+ * inside their spawn/welcome turn — delivered nothing and returned silently. Task delivery
+ * here is a QUEUED next turn (`queueMemberPrompt` -> `delivery: 'queue'`; the host's own
+ * contract: "queue delivery targets a later turn"), so a member that is merely running its
+ * own turn accepts it. Only a member that already owns an open attempt is genuinely
+ * unavailable, because re-delivering would rotate that capability and duplicate the
+ * assignment; the caller applies that second test against the durable task list, inside the
+ * team lock. `cold` (no live Agent) keeps the upstream behaviour: eligible for one cold
+ * recovery.
+ * @param ctx - plugin context whose `agents` registry holds the live Agents.
+ * @param member - the member whose child session id addresses the Agent.
+ * @returns 'cold' | 'idle' | 'busy'.
+ */
+function memberActivity(ctx, member) {
+    const live = liveMember(ctx, member);
+    if (live === undefined)
+        return 'cold';
+    return live.status === 'idle' ? 'idle' : 'busy';
+}
+//#endregion mpd-delta dispatch-decline-guard
 function ownedOpenTask(tasks, memberName) {
     return tasks.find(task => task.assignee === memberName
         && (task.status === 'claimed' || task.status === 'in_progress'));
@@ -276,14 +328,20 @@ export function installTeamScheduler(ctx, config) {
         }
     };
     const runtime = {
+        //#region mpd-delta kick-team-decline-logs (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
         async kickTeam(workspace, teamId, suppliedCaptain) {
             const stateRoot = stateRootOf(workspace, config);
             const team = await readTeam(stateRoot, teamId);
-            if (team === undefined || team.halted === true || team.phase === 'staged')
-                return;
+            if (team === undefined)
+                return noteDispatchDecline(ctx.logger, teamId, '*', 'no team record exists at this state root');
+            if (team.halted === true)
+                return noteDispatchDecline(ctx.logger, teamId, '*', 'the team is halted');
+            if (team.phase === 'staged')
+                return noteDispatchDecline(ctx.logger, teamId, '*', 'the team is still staged; approval has not committed yet');
             const captain = liveCaptain(ctx, team.captainSessionId, suppliedCaptain);
             if (captain === undefined)
-                return;
+                return noteDispatchDecline(ctx.logger, teamId, '*', 'no live captain session is resolvable, so no member turn can be authorized');
+        //#endregion mpd-delta kick-team-decline-logs
             for (const member of team.members) {
                 if (member.status === 'removed')
                     continue;
@@ -313,9 +371,18 @@ export function installTeamScheduler(ctx, config) {
                 const captain = liveCaptain(ctx, team.captainSessionId, suppliedCaptain);
                 if (captain === undefined)
                     return;
+                //#region mpd-delta kick-member-decline-logs (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
                 let member = team.members.find(candidate => candidate.name === memberName && candidate.status !== 'removed');
-                if (member === undefined || member.id === '' || !isMemberAvailable(ctx, member))
-                    return;
+                if (member === undefined)
+                    return noteDispatchDecline(ctx.logger, team.id, memberName, 'the member is not an active member of this team');
+                if (member.id === '')
+                    return noteDispatchDecline(ctx.logger, team.id, memberName, 'the member has no spawned child session yet');
+                // A member that is merely mid-turn can still ACCEPT a queued assignment
+                // (this is the approval-time case); only one that already owns an open
+                // attempt is genuinely unavailable.
+                if (memberActivity(ctx, member) === 'busy' && ownedOpenTask(team.tasks, memberName) !== undefined)
+                    return noteDispatchDecline(ctx.logger, team.id, memberName, 'the member is running the turn of an attempt it already owns');
+                //#endregion mpd-delta kick-member-decline-logs
                 // A mailbox-only fallback is real pending work. Deliver it before a
                 // fresh task and acknowledge only after Harness accepts the follow-up.
                 const unread = deliverableUnread(await readUnreadMailbox(stateRoot, team.id, member.name));
@@ -331,13 +398,23 @@ export function installTeamScheduler(ctx, config) {
                     return;
                 }
                 const ticket = await withTeamLock(teamLockKey(stateRoot, team.id), async () => {
+                    //#region mpd-delta kick-member-locked-decline-logs (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
                     const fresh = await readTeam(stateRoot, team.id);
-                    if (fresh === undefined || fresh.halted === true || fresh.phase === 'staged')
-                        return undefined;
+                    if (fresh === undefined)
+                        return noteDispatchDecline(ctx.logger, team.id, memberName, 'the team record disappeared while this kick waited for the lock');
+                    if (fresh.halted === true)
+                        return noteDispatchDecline(ctx.logger, team.id, memberName, 'the team was halted while this kick waited for the lock');
+                    if (fresh.phase === 'staged')
+                        return noteDispatchDecline(ctx.logger, team.id, memberName, 'the team returned to staged while this kick waited for the lock');
                     const currentMember = fresh.members.find(candidate => candidate.name === memberName && candidate.status !== 'removed');
-                    if (currentMember === undefined || currentMember.id === '' || !isMemberAvailable(ctx, currentMember))
-                        return undefined;
+                    if (currentMember === undefined)
+                        return noteDispatchDecline(ctx.logger, team.id, memberName, 'the member left the team while this kick waited for the lock');
+                    if (currentMember.id === '')
+                        return noteDispatchDecline(ctx.logger, team.id, memberName, 'the member has no spawned child session yet');
                     const owned = ownedOpenTask(fresh.tasks, currentMember.name);
+                    if (memberActivity(ctx, currentMember) === 'busy' && owned !== undefined)
+                        return noteDispatchDecline(ctx.logger, team.id, memberName, 'the member is running the turn of an attempt it already owns');
+                    //#endregion mpd-delta kick-member-locked-decline-logs
                     // Resolve cancelled-dependency deadlocks before selecting the
                     // next ready task: a pending task blocked only by cancelled
                     // prerequisites would never become ready and would block
@@ -473,11 +550,13 @@ export function installTeamScheduler(ctx, config) {
     const syncMemberStatus = async (agent, status) => {
         const workspace = agent.session.header.cwd ?? process.cwd();
         const stateRoot = stateRootOf(workspace, config);
+        //#region mpd-delta idle-edge-no-team-log (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
         const located = await findTeamByParticipant(stateRoot, agent.id);
         if (located === undefined) {
             parkedAttempts.delete(agent.id);
-            return;
+            return noteDispatchDecline(ctx.logger, '(unresolved)', agent.id, `the idle edge resolved no team under ${stateRoot}`);
         }
+        //#endregion mpd-delta idle-edge-no-team-log
         if (located.captainSessionId === agent.id) {
             // Captain takeover is scoped to the captain's current turn. Unlike a
             // durable member, the captain has no scheduler lane that can resume an
@@ -509,11 +588,13 @@ export function installTeamScheduler(ctx, config) {
                 await runtime.kickTeam(workspace, located.id, agent);
             return;
         }
+        //#region mpd-delta idle-edge-nonmember-log (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
         const member = located.members.find(candidate => candidate.id === agent.id && candidate.status !== 'removed');
         if (member === undefined) {
             parkedAttempts.delete(agent.id);
-            return;
+            return noteDispatchDecline(ctx.logger, located.id, agent.id, 'the session is not an active member of the team this edge resolved');
         }
+        //#endregion mpd-delta idle-edge-nonmember-log
         await withTeamLock(teamLockKey(stateRoot, located.id), async () => {
             const fresh = await readTeam(stateRoot, located.id);
             const current = fresh?.members.find(candidate => candidate.id === agent.id && candidate.status !== 'removed');

@@ -1,0 +1,47 @@
+{
+  "ok": true,
+  "harnessRoot": "/root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh",
+  "note": "session/create mounts the mpd preset and refuses on any inactive row, so its ok answer is the mount proof; the negative control boots the same sandbox with the retired `text:` persona form and must fail.",
+  "steps": {
+    "conformance": {
+      "ok": true,
+      "checked": 30,
+      "schemaFree": 6,
+      "parity": {
+        "reference": 31,
+        "ours": 31,
+        "missing": [],
+        "extra": []
+      },
+      "problems": []
+    },
+    "auth": {
+      "ok": true,
+      "tokenSeen": true,
+      "cookieSession": true
+    },
+    "sessionCreate": {
+      "ok": true,
+      "status": 200,
+      "sessionId": "session-ed81d045-fb97-4244-92ad-c6602f8e6b52",
+      "agentPreset": "mpd"
+    },
+    "sessionHeader": {
+      "ok": true,
+      "agentPreset": "mpd",
+      "log": "/tmp/mpd-preset-main-HCK90W/home/sessions/--tmp-mpd-preset-main-HCK90W-ws--/session-ed81d045-fb97-4244-92ad-c6602f8e6b52/session.v3.jsonl.zstd"
+    },
+    "bootLog": {
+      "ok": true,
+      "signatures": []
+    },
+    "negativeControl": {
+      "ok": true,
+      "code": "agent-preset/invalid",
+      "message": "agent-presets: preset \"mpd\" failed to mount: failed to apply loader entry persona (@deepseek-ai/dsh-persona): invalid config:\n  - $.prefix missing required value (at prefix) (/tmp/mpd-preset-control-2026-09-14T17-04-37.167Z/mpd/agent.cordis.yml)",
+      "mutations": [
+        "persona prefix: -> text:"
+      ]
+    }
+  }
+}

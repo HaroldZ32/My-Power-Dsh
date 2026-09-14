@@ -485,7 +485,11 @@ function rosterNameList() {
   return ROLES.map((r) => r.name).join(", ");
 }
 function rosterFunctionList() {
-  return ROLES.map((r) => r.name + " (" + r.description.replace(/\.$/, "") + ")").join(", ");
+  return ROLES.map((r) => r.name + " (" + functionOf(r.description) + ")").join(", ");
+}
+function functionOf(description) {
+  const afterColon = description.includes(": ") ? description.slice(description.indexOf(": ") + 2) : description;
+  return afterColon.replace(/\s*\(([^()]*)\)/g, ", $1").replace(/\.+\s*$/, "").replace(/,\s*,/g, ",").trim();
 }
 function normalizeRoleKey(key) {
   const k = String(key ?? "").trim();
@@ -515,26 +519,189 @@ function readPersona(config, spec) {
   } catch {}
   return spec.description;
 }
+var EXTENSIONS_SERVICE = "mpdExtensions";
+var PROJECT_ONLY_PLANE = "project";
+var PROJECT_ROLES_REASON = "project-level extensions may contribute skills and flows only: tool and provider registration is process-global and cannot be scoped to a session";
+function text(value) {
+  return typeof value === "string" ? value : "";
+}
+function errText(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+function extensionRoleId(extensionId, name2) {
+  const slug = String(name2).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return "ext-" + extensionId + "-" + (slug || "role");
+}
+function readExtensionPersona(root, file) {
+  if (!root || !file)
+    return null;
+  try {
+    const path = resolve2(root, file);
+    if (existsSync(path)) {
+      const body = readFileSync(path, "utf8").trim();
+      if (body)
+        return body;
+    }
+  } catch {}
+  return null;
+}
+function extensionRoles(ctx, exec, warn) {
+  const roles = [];
+  const refused = [];
+  const owner = new Map;
+  for (const role of ROLES)
+    owner.set(normalizeRoleNameKey(role.name), "the base roster");
+  let service;
+  try {
+    service = typeof ctx?.get === "function" ? ctx.get(EXTENSIONS_SERVICE) : undefined;
+  } catch (error) {
+    warn('ctx.get("' + EXTENSIONS_SERVICE + '") failed (' + errText(error) + ") — the roster stays base-only for this call");
+    return { roles, refused };
+  }
+  if (service === undefined || service === null || typeof service.list !== "function")
+    return { roles, refused };
+  let views;
+  try {
+    const snapshot = service.list({ exec });
+    views = Array.isArray(snapshot?.extensions) ? snapshot.extensions : [];
+  } catch (error) {
+    warn("mpdExtensions.list() failed (" + errText(error) + ") — the roster stays base-only for this call");
+    return { roles, refused };
+  }
+  for (const view of views) {
+    const extensionId = text(view?.id);
+    if (extensionId === "")
+      continue;
+    if (view?.enabled === false)
+      continue;
+    const declared = view?.descriptor?.contributes?.roles;
+    if (!Array.isArray(declared))
+      continue;
+    if (view?.plane === PROJECT_ONLY_PLANE) {
+      for (const item of declared) {
+        const name2 = text(item?.name).trim();
+        if (name2 === "")
+          continue;
+        refused.push({ extension: extensionId, name: name2, reason: PROJECT_ROLES_REASON });
+      }
+      continue;
+    }
+    const root = text(view?.root);
+    declared.forEach((item, index) => {
+      const name2 = text(item?.name).trim();
+      if (name2 === "")
+        return;
+      const refuse = (reason) => {
+        refused.push({ extension: extensionId, name: name2, reason });
+      };
+      const itemLabel = "contributes.roles[" + index + "]";
+      const key = normalizeRoleNameKey(name2);
+      const takenBy = owner.get(key);
+      if (takenBy !== undefined) {
+        refuse('role name "' + name2 + '" (' + itemLabel + ' of extension "' + extensionId + '") is already taken by ' + takenBy + " — this extension role is not exposed");
+        return;
+      }
+      const id = extensionRoleId(extensionId, name2);
+      if (ROLE_BY_ID[id] !== undefined) {
+        refuse('role id "' + id + '" collides with the base roster — this extension role is not exposed');
+        return;
+      }
+      const personaFile = root === "" ? text(item?.persona) : resolve2(root, text(item?.persona));
+      const persona = readExtensionPersona(root, text(item?.persona));
+      if (persona === null) {
+        refuse("persona file is not readable: " + personaFile);
+        return;
+      }
+      const chain = typeof item?.provider === "string" && typeof item?.model === "string" ? [{ provider: item.provider, model: item.model }] : [];
+      owner.set(key, 'extension "' + extensionId + '"');
+      roles.push({
+        id,
+        name: name2,
+        description: text(item?.description),
+        readonly: item?.readonly === true,
+        chain,
+        persona,
+        personaFile,
+        extension: extensionId
+      });
+    });
+  }
+  return { roles, refused };
+}
 function apply(ctx, config = {}) {
   const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx);
+  const warn = (line) => {
+    const message2 = "[mpd-roles] " + line;
+    try {
+      if (ctx?.logger && typeof ctx.logger.warn === "function")
+        ctx.logger.warn(message2);
+      else
+        console.log(message2);
+    } catch {}
+  };
+  const warned = new Set;
+  const warnOnce = (key, line) => {
+    if (warned.has(key))
+      return;
+    warned.add(key);
+    warn(line);
+  };
+  const roleSurface = (exec) => {
+    const base = ROLES.map((r) => ({
+      id: r.id,
+      name: r.name,
+      description: r.description,
+      readonly: r.readonly,
+      chain: r.chain.map((c) => ({ ...c })),
+      persona: readPersona(config, r),
+      personaFile: personaPath(config, r),
+      extension: null
+    }));
+    const contributed = extensionRoles(ctx, exec, (line) => warnOnce("lookup:" + line, line));
+    for (const refusal of contributed.refused) {
+      warnOnce("refused:" + refusal.extension + ":" + refusal.name, 'extension role refused: "' + refusal.name + '" (' + refusal.extension + ") — " + refusal.reason);
+    }
+    return { roles: [...base, ...contributed.roles], refused: contributed.refused };
+  };
+  const roleOf = (surface, key) => {
+    const id = normalizeRoleKey(key);
+    if (id) {
+      const found = surface.roles.find((role) => role.extension === null && role.id === id);
+      if (found)
+        return found;
+    }
+    const raw = String(key ?? "").trim();
+    if (raw === "")
+      return null;
+    const namespaced = surface.roles.find((role) => role.extension !== null && role.id === raw);
+    if (namespaced)
+      return namespaced;
+    const nameKey = normalizeRoleNameKey(raw);
+    return surface.roles.find((role) => role.extension !== null && normalizeRoleNameKey(role.name) === nameKey) ?? null;
+  };
+  const roleNameListOf = (surface) => surface.roles.map((role) => role.name).join(", ");
   ctx.provide("mpdRoles", {
-    list: () => ROLES.map((r) => ({ id: r.id, name: r.name, description: r.description, readonly: r.readonly, chain: r.chain.map((c) => ({ ...c })), personaFile: r.personaFile, persona: readPersona(config, r) })),
+    list: () => roleSurface(undefined).roles.map((r) => ({ id: r.id, name: r.name, description: r.description, readonly: r.readonly, chain: r.chain.map((c) => ({ ...c })), personaFile: r.personaFile, persona: r.persona, extension: r.extension })),
     get: (key) => {
-      const id = normalizeRoleKey(key);
-      if (!id)
-        return null;
-      const spec = ROLE_BY_ID[id];
-      return { id: spec.id, name: spec.name, description: spec.description, readonly: spec.readonly, chain: spec.chain.map((c) => ({ ...c })), persona: readPersona(config, spec) };
+      const spec = roleOf(roleSurface(undefined), key);
+      return spec === null ? null : { id: spec.id, name: spec.name, description: spec.description, readonly: spec.readonly, chain: spec.chain.map((c) => ({ ...c })), persona: spec.persona, extension: spec.extension };
     }
   });
   dsh.registerTool({
     name: "mpd_roles_list",
     description: "List the specialist roster — the SAME normal-named specialists team mode stages as teammates, each named for what it does: " + rosterFunctionList() + ". Address a role by that name (any case, space or hyphen spelling). Use this before mpd_role_spawn; for team work call agent_teams_create profile=mpd instead of repeated one-shot spawns.",
     parameters: { type: "object", properties: {} },
-    output: { schema: { type: "object", properties: { roles: { type: "array", items: { type: "object" } }, count: { type: "integer" } }, required: ["roles", "count"] }, render: (_a, v) => textBlock2("roster (" + v.count + `):
-` + v.roles.map((r) => "- " + r.name + " [" + r.model + (r.readonly ? " readonly" : "") + "] — " + r.description).join(`
-`)) },
-    execute: async () => ({ roles: ROLES.map((r) => ({ name: r.name, description: r.description, readonly: r.readonly, provider: r.chain[0]?.provider ?? null, model: r.chain[0]?.model ?? null })), count: ROLES.length })
+    output: { schema: { type: "object", properties: { roles: { type: "array", items: { type: "object" } }, count: { type: "integer" }, refused: { type: "array", items: { type: "object", properties: { extension: { type: "string" }, name: { type: "string" }, reason: { type: "string" } }, required: ["extension", "name", "reason"] } } }, required: ["roles", "count"] }, render: (_a, v) => textBlock2("roster (" + v.count + `):
+` + v.roles.map((r) => "- " + r.name + " [" + r.model + (r.readonly ? " readonly" : "") + (r.extension ? " extension:" + r.extension : "") + "] — " + r.description).join(`
+`) + (Array.isArray(v.refused) && v.refused.length > 0 ? `
+refused (` + v.refused.length + `):
+` + v.refused.map((r) => "- " + r.name + " (" + r.extension + ") — " + r.reason).join(`
+`) : "")) },
+    execute: async (_args, exec) => {
+      const surface = roleSurface(exec);
+      const roles = surface.roles.map((r) => ({ name: r.name, description: r.description, readonly: r.readonly, provider: r.chain[0]?.provider ?? null, model: r.chain[0]?.model ?? null, extension: r.extension }));
+      return { roles, count: roles.length, refused: surface.refused.map((r) => ({ extension: r.extension, name: r.name, reason: r.reason })) };
+    }
   });
   dsh.registerTool({
     name: "mpd_role_spawn",
@@ -548,14 +715,14 @@ evidence:
 - ` + v.evidence.join(`
 - `) : "")) },
     execute: async (args, exec) => {
-      const id = normalizeRoleKey(String(args?.role ?? ""));
-      if (!id)
-        throw new Error("mpd_role_spawn: unknown role '" + String(args?.role) + "' — use a roster name: " + rosterNameList());
-      const spec = ROLE_BY_ID[id];
+      const surface = roleSurface(exec);
+      const spec = roleOf(surface, String(args?.role ?? ""));
+      if (spec === null)
+        throw new Error("mpd_role_spawn: unknown role '" + String(args?.role) + "' — use a roster name: " + roleNameListOf(surface));
       const task = String(args?.task ?? "").trim();
       if (!task)
         throw new Error("mpd_role_spawn: task required");
-      const persona = readPersona(config, spec);
+      const persona = spec.persona;
       const provider = spec.chain[0]?.provider ?? "deepseek-official";
       const model = typeof args?.model === "string" && args.model.trim() ? args.model.trim() : spec.chain[0]?.model;
       const prompt = persona + `
@@ -587,12 +754,12 @@ Work with the tools your role requires (read-only roles must never modify anythi
     parameters: { type: "object", properties: { role: { type: "string", description: "role name (see mpd_roles_list)" } }, required: ["role"] },
     output: { schema: { type: "object", properties: { role: { type: "string" }, persona: { type: "string" }, chars: { type: "integer" } }, required: ["role", "persona", "chars"] }, render: (_a, v) => textBlock2("persona " + v.role + " (" + v.chars + ` chars):
 ` + v.persona) },
-    execute: async (args) => {
-      const id = normalizeRoleKey(String(args?.role ?? ""));
-      if (!id)
-        throw new Error("mpd_role_persona: unknown role '" + String(args?.role) + "' — use a roster name: " + rosterNameList());
-      const persona = readPersona(config, ROLE_BY_ID[id]);
-      return { role: ROLE_BY_ID[id].name, persona, chars: persona.length };
+    execute: async (args, exec) => {
+      const surface = roleSurface(exec);
+      const spec = roleOf(surface, String(args?.role ?? ""));
+      if (spec === null)
+        throw new Error("mpd_role_persona: unknown role '" + String(args?.role) + "' — use a roster name: " + roleNameListOf(surface));
+      return { role: spec.name, persona: spec.persona, chars: spec.persona.length };
     }
   });
 }
@@ -605,6 +772,8 @@ export {
   normalizeRoleKey,
   name,
   inject,
+  extensionRoles,
+  extensionRoleId,
   apply,
   READONLY_DENY
 };
