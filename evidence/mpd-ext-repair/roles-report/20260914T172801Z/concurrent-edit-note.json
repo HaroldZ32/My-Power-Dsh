@@ -1,0 +1,29 @@
+{
+  "note": "t14's mandated verify command (`bun test packages/mpd-ext-plugin`) is RED at hand-off, and the cause is a CONCURRENT in-flight edit by another lane — not this repair. Recorded with hash-level attribution so the captain can act.",
+  "observed": {
+    "when": "2026-09-15T01:36:26+08:00 (settled: the file did not change across a 60 s window)",
+    "file_changed_by_another_lane": "packages/mpd-ext-plugin/src/index.ts",
+    "its_sha256": "d92e357466e705bf3a11b5c38e087804d9ed2693f8f73e0e9f556069b2770456",
+    "owner": "t5 is in_progress ('QA cases and real-boot evidence...') and t5's lane owns src/index.ts; the change is not part of t14",
+    "what_changed": "the plugin's exported `inject` is now [\"tools\", \"skills\"] instead of [] (the four registered tool names are unchanged).",
+    "suite": "53 pass / 2 fail across 55 tests",
+    "failing_cases": [
+      "apply registers exactly the four tools, no reload, and provides the mpdExtensions service — the failing assertion is `expect(inject).toEqual([])` (received [\"tools\",\"skills\"]); `registered` tool names are still exactly the four",
+      "apply contains a hostile harness: a throwing tool or skill seam never escapes apply — its >= 5 'not registered' warning count no longer holds under the declared injects"
+    ]
+  },
+  "why_this_is_not_t14": {
+    "t14_files": {
+      "packages/mpd-ext-plugin/src/registry.ts": "b50f0defa8c0f188c39226fbf4db141ac57d5a9039bb7a37c070fae1369f9914 (unchanged since the green run)",
+      "packages/mpd-ext-plugin/test/core.test.ts": "00e2175e907f113d74c328b8452f8f5beee6663251b0d63afed733077cf4ac26 (unchanged since the green run)"
+    },
+    "same_suite_green_with_this_repair": "55 pass / 0 fail at 2026-09-15T01:33 (+08:00) — gates.log, with registry.ts at the hash above; the two failures appeared only after src/index.ts was rewritten at 01:36",
+    "t14_cases_current_state": "every t14 case (F3 reporting, the three refusal classes, disabled extension, idempotency, parity, base-name key shapes) passes in the CURRENT tree; the failures are the two pre-existing inventory/containment pins listed above"
+  },
+  "deliberate_non_action": "This repair did NOT adapt the two pins to the concurrent change: they encode another lane's contract (the declared `inject` set and the warning count that follows from it), that lane is still IN PROGRESS, and rewriting a pin to match an unreviewed in-flight edit is exactly the 'weakened assertion' anti-pattern the repository's conventions forbid. The owner of src/index.ts (or the captain) should either update those two assertions deliberately or restore `inject: []`.",
+  "reproduce": [
+    "sha256sum packages/mpd-ext-plugin/src/index.ts   # d92e3574…",
+    "bun test packages/mpd-ext-plugin                 # 53 pass / 2 fail",
+    "bun test packages/mpd-ext-plugin/test/core.test.ts -t 'registers exactly the four tools'   # shows expect(inject).toEqual([]) vs ['tools','skills']"
+  ]
+}

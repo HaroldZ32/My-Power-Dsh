@@ -1,0 +1,36 @@
+=== t16 evidence capture — 2026-09-14T17:48:24Z
+revision: 6cbb12682679127788657a3551ddffafa1696be1 on feature/extension-interface
+
+--- POST-FIX gates (current tree):
+$ bun test packages/mpd-ext-plugin
+ 56 pass
+ 0 fail
+$ bun test packages/mpd-roles-plugin
+ 24 pass
+ 0 fail
+$ bun run typecheck
+$ tsgo --noEmit
+exit=0
+### A) PRE-FIX seam declaration (REQUIRED_SEAMS -> []), ext core tests
+(fail) apply registers exactly the four tools, no reload, and provides the mpdExtensions service [12.71ms]
+(fail) apply contains a hostile harness: a throwing tool or skill seam never escapes apply [1.08ms]
+(fail) apply registers exactly the four tools, no reload, and provides the mpdExtensions service [12.71ms]
+(fail) apply contains a hostile harness: a throwing tool or skill seam never escapes apply [1.08ms]
+ 34 pass
+ 2 fail
+--- pre-fix experiment (full) ---
+### A) PRE-FIX seam declaration (REQUIRED_SEAMS -> []), ext core tests
+(fail) apply registers exactly the four tools, no reload, and provides the mpdExtensions service [4.10ms]
+(fail) apply contains a hostile harness: a throwing tool or skill seam never escapes apply [0.47ms]
+(fail) apply registers exactly the four tools, no reload, and provides the mpdExtensions service [4.10ms]
+(fail) apply contains a hostile harness: a throwing tool or skill seam never escapes apply [0.47ms]
+ 34 pass
+ 2 fail
+
+### B) PRE-FIX roster (plane guard neutered), roles tests
+Expected: 11
+Received: 12
+(fail) extension roles: a PROJECT-plane extension's role is refused (the contract rejects it) [1.62ms]
+(fail) extension roles: a PROJECT-plane extension's role is refused (the contract rejects it) [1.62ms]
+ 23 pass
+ 1 fail

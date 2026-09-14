@@ -1,0 +1,48 @@
+=== t14 attempt 2: settled-tree re-verification ===
+date: 2026-09-14T17:51:48Z
+branch: feature/extension-interface  HEAD: 6cbb12682679127788657a3551ddffafa1696be1
+registry.ts (t14): b50f0defa8c0f188c39226fbf4db141ac57d5a9039bb7a37c070fae1369f9914
+core.test.ts (t14 cases + t16's reconciled pins): 7a7a1280ab373fd35b60e4458950ad189f2cc9bf80c7f4e3b469825f15b9bab8
+src/index.ts (other lane): 46479db27486fd1825795ea1fb0e875b96922f80859ef45e3c23331b418a5e31
+
+## 1. bun test packages/mpd-ext-plugin
+
+ 56 pass
+ 0 fail
+ 454 expect() calls
+Ran 56 tests across 4 files. [2.36s]
+exit=0
+
+## 2. bun run typecheck
+$ tsgo --noEmit
+typecheck exit=0
+
+## 3. bun build ... (mandated dist rebuild)
+
+  index.js  134.65 KB  (entry point)
+
+build exit=0
+dist/index.js: eb88fc9303ed837bccd40a49ee7eff5a157d0a189beb19beef116dd8f86d003d
+dist carries the fix: annotateRoleSurfaces=2 stale_sentence=0 bridge_task=0
+
+## 4. Extension CLI gates
+  ok list sees the shipped example
+  ok no command prints usage or fails
+[mpd-ext] --self-test passed (19 checks)
+self-test exit=0
+[mpd-ext] validate /root/dshProj/my-power-dsh/extensions/mpd-ext-example (plane=user)
+  extension "mpd-ext-example": loadable
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  pending contributes.mcp[0]: pending: server "example" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+[mpd-ext] ok
+validate exit=0
+
+### attempt 2 final settled-state check (after all evidence writes)
+registry.ts: b50f0defa8c0f188c39226fbf4db141ac57d5a9039bb7a37c070fae1369f9914
+core.test.ts: 7a7a1280ab373fd35b60e4458950ad189f2cc9bf80c7f4e3b469825f15b9bab8
+bun test exit=0
+ 56 pass
+ 0 fail
+ 454 expect() calls
+Ran 56 tests across 4 files. [2.09s]
+typecheck exit=0

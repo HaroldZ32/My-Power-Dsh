@@ -1,0 +1,56 @@
+{
+  "artifact": "packages/mpd-ext-plugin/dist/index.js (PRE-fix shipped build)",
+  "fixture": "alpha-owner (healthy + base-name collision + unreadable persona) and zeta-clone (cross-extension duplicate)",
+  "mpd_ext_list": {
+    "alpha_owner": {
+      "contributions_roles": 3,
+      "roles": [
+        "Verilog Reviewer",
+        "Architect",
+        "Roster Clone"
+      ],
+      "pending_roles": [
+        "pending: extension roles are resolved per call by mpd-roles-plugin (t4) — declared here, not yet exposed through mpd_roles_list"
+      ],
+      "errors": [
+        "contributes.roles[2].persona: persona file does not exist: /tmp/t14-home-peDaa4/.mpd/extensions/alpha-owner/missing.md"
+      ]
+    },
+    "zeta_clone": {
+      "contributions_roles": 1,
+      "roles": [
+        "Verilog Reviewer"
+      ],
+      "pending_roles": [
+        "pending: extension roles are resolved per call by mpd-roles-plugin (t4) — declared here, not yet exposed through mpd_roles_list"
+      ],
+      "errors": []
+    }
+  },
+  "mpd_ext_show": {
+    "alpha_owner_roles": [
+      "Verilog Reviewer",
+      "Architect",
+      "Roster Clone"
+    ],
+    "zeta_clone_roles": [
+      "Verilog Reviewer"
+    ]
+  },
+  "roster_resolution": {
+    "exposed": [
+      "alpha-owner:Verilog Reviewer"
+    ],
+    "refused": [
+      "persona file is not readable: /tmp/t14-home-peDaa4/.mpd/extensions/alpha-owner/missing.md",
+      "role name \"Architect\" (contributes.roles[1] of extension \"alpha-owner\") is already taken by the base roster — this extension role is not exposed",
+      "role name \"Verilog Reviewer\" (contributes.roles[0] of extension \"zeta-clone\") is already taken by extension \"alpha-owner\" — this extension role is not exposed"
+    ]
+  },
+  "stale_sentence_present": true,
+  "refused_names_listed_as_usable": [
+    "alpha-owner:Architect",
+    "alpha-owner:Roster Clone",
+    "zeta-clone:Verilog Reviewer"
+  ]
+}

@@ -1,0 +1,98 @@
+=== t14 BEFORE/AFTER ===
+repo=/root/dshProj/my-power-dsh
+fixed registry.ts sha256: b50f0defa8c0f188c39226fbf4db141ac57d5a9039bb7a37c070fae1369f9914
+dist/index.js sha256 now: eb88fc9303ed837bccd40a49ee7eff5a157d0a189beb19beef116dd8f86d003d
+pre-fix dist/index.js sha256 as measured: f0277c30eccde6f9a8193f5ee1827d7f8bd59c3292a337a89f2b818ca33df72f (see before-probe.json, captured before the mandated rebuild)
+
+--- BEFORE (values): the pre-fix SHIPPED build, driven through its own tools ---
+SKIPPED: dist/index.js already carries the fix (it was rebuilt by this task);
+         keeping the before-probe.json captured from the pre-fix artifact.
+
+--- AFTER (values): the fixed source ---
+exit=0
+{
+  "artifact": "packages/mpd-ext-plugin/src/index.ts (fixed source)",
+  "fixture": "alpha-owner (healthy + base-name collision + unreadable persona) and zeta-clone (cross-extension duplicate)",
+  "mpd_ext_list": {
+    "alpha_owner": {
+      "contributions_roles": 1,
+      "roles": [
+        "Verilog Reviewer"
+      ],
+      "pending_roles": [],
+      "errors": [
+        "contributes.roles[2].persona: persona file does not exist: /tmp/t14-home-7rBlN3/.mpd/extensions/alpha-owner/missing.md",
+        "contributes.roles[1]: refused: role name \"Architect\" (contributes.roles[1] of extension \"alpha-owner\") is already taken by the base roster — this extension role is not exposed",
+        "contributes.roles[2]: refused: persona file is not readable: /tmp/t14-home-7rBlN3/.mpd/extensions/alpha-owner/missing.md"
+      ]
+    },
+    "zeta_clone": {
+      "contributions_roles": 0,
+      "roles": [],
+      "pending_roles": [],
+      "errors": [
+        "contributes.roles[0]: refused: role name \"Verilog Reviewer\" (contributes.roles[0] of extension \"zeta-clone\") is already taken by extension \"alpha-owner\" — this extension role is not exposed"
+      ]
+    }
+  },
+  "mpd_ext_show": {
+    "alpha_owner_roles": [
+      "Verilog Reviewer"
+    ],
+    "zeta_clone_roles": []
+  },
+  "project_plane": {
+    "ext_roles": [],
+    "ext_errors": [
+      "contributes.roles[0]: project-level extensions may contribute skills and flows only: tool and provider registration is process-global and cannot be scoped to a session"
+    ],
+    "roster_exposes": []
+  },
+  "roster_resolution": {
+    "exposed": [
+      "alpha-owner:Verilog Reviewer"
+    ],
+    "refused": [
+      "persona file is not readable: /tmp/t14-home-7rBlN3/.mpd/extensions/alpha-owner/missing.md",
+      "project-level extensions may contribute skills and flows only: tool and provider registration is process-global and cannot be scoped to a session",
+      "role name \"Architect\" (contributes.roles[1] of extension \"alpha-owner\") is already taken by the base roster — this extension role is not exposed",
+      "role name \"Verilog Reviewer\" (contributes.roles[0] of extension \"zeta-clone\") is already taken by extension \"alpha-owner\" — this extension role is not exposed"
+    ]
+  },
+  "stale_sentence_present": false,
+  "refused_names_listed_as_usable": []
+}
+
+--- BEFORE (tests): defect sites re-introduced in src/registry.ts ---
+[reintroduce-defects] wrote /root/dshProj/my-power-dsh/packages/mpd-ext-plugin/src/registry.ts (35429 bytes)
+reverted registry.ts sha256: e9f01a30ab0d217c0755c81b7891c52bf7494bd31dfed9fae50e774914aa09df  /root/dshProj/my-power-dsh/packages/mpd-ext-plugin/src/registry.ts
+bun test core.test.ts (defects re-introduced) exit=1
+(fail) mcp is pending until the bridge connects it, while roles are NEVER pending (t14/F3) [2.82ms]
+(fail) t14/F3: a live roles contribution reports no pending item and no 'not yet exposed' claim [2.76ms]
+(fail) t14/F4: a role colliding with a BASE roster name is refused with the roster's reason, in both paths [0.92ms]
+(fail) t14/F4: an unreadable OR empty persona is refused, and the empty case is no longer accepted [1.78ms]
+(fail) t14/F4: a CROSS-extension name collision refuses the LATER extension and names the holder [1.78ms]
+(fail) t14: a disabled extension's declared roles are reported as not exposed, never as usable [2.09ms]
+(fail) t14: refusal notes are idempotent — repeated calls neither duplicate nor lose them [2.51ms]
+(fail) t14: the ext report and the ROSTER agree about every role (parity, measured against the resolver) [3.11ms]
+(fail) t14: every spelling of a base roster name collides (case- and separator-insensitive) [1.68ms]
+(fail) mcp is pending until the bridge connects it, while roles are NEVER pending (t14/F3) [2.82ms]
+(fail) t14/F3: a live roles contribution reports no pending item and no 'not yet exposed' claim [2.76ms]
+(fail) t14/F4: a role colliding with a BASE roster name is refused with the roster's reason, in both paths [0.92ms]
+(fail) t14/F4: an unreadable OR empty persona is refused, and the empty case is no longer accepted [1.78ms]
+(fail) t14/F4: a CROSS-extension name collision refuses the LATER extension and names the holder [1.78ms]
+(fail) t14: a disabled extension's declared roles are reported as not exposed, never as usable [2.09ms]
+(fail) t14: refusal notes are idempotent — repeated calls neither duplicate nor lose them [2.51ms]
+(fail) t14: the ext report and the ROSTER agree about every role (parity, measured against the resolver) [3.11ms]
+(fail) t14: every spelling of a base roster name collides (case- and separator-insensitive) [1.68ms]
+ 27 pass
+ 9 fail
+
+--- restoring the fixed registry.ts ---
+restored registry.ts sha256: b50f0defa8c0f188c39226fbf4db141ac57d5a9039bb7a37c070fae1369f9914  /root/dshProj/my-power-dsh/packages/mpd-ext-plugin/src/registry.ts
+
+--- AFTER (tests): the fixed source ---
+bun test core.test.ts (fixed) exit=0
+ 36 pass
+ 0 fail
+DONE

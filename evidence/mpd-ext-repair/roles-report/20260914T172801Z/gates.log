@@ -1,0 +1,47 @@
+=== t14 gates ===
+registry.ts sha256: b50f0defa8c0f188c39226fbf4db141ac57d5a9039bb7a37c070fae1369f9914
+core.test.ts sha256: 00e2175e907f113d74c328b8452f8f5beee6663251b0d63afed733077cf4ac26
+dist/index.js sha256 BEFORE rebuild: f0277c30eccde6f9a8193f5ee1827d7f8bd59c3292a337a89f2b818ca33df72f
+
+## 1. bun test packages/mpd-ext-plugin
+packages/mpd-ext-plugin/test/mcp.test.ts:
+
+ 55 pass
+ 0 fail
+ 431 expect() calls
+Ran 55 tests across 4 files. [2.10s]
+
+## 2. bun run typecheck
+$ tsgo --noEmit
+typecheck exit=0
+
+## 3. bun build packages/mpd-ext-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ext-plugin/dist/index.js
+Bundled 11 modules in 8ms
+
+  index.js  132.70 KB  (entry point)
+
+build exit=0
+dist/index.js sha256 AFTER rebuild: b47afb0039de42af3ddb7d1b7a787621e4b7954acce8d0ac0a1da4424b2c3a21
+dist carries the fix: annotateRoleSurfaces=2 stale_sentence=0
+
+## 4. AGENTS.md §4 Extension CLI gates
+  ok validate accepts extensions/mpd-ext-example (got 0): 
+  ok list exits 0 (got 0)
+  ok list names the bundle plane
+  ok list sees the shipped example
+  ok no command prints usage or fails
+[mpd-ext] --self-test passed (19 checks)
+self-test exit=0
+[mpd-ext] validate /root/dshProj/my-power-dsh/extensions/mpd-ext-example (plane=user)
+  extension "mpd-ext-example": loadable
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  pending contributes.mcp[0]: pending: server "example" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+[mpd-ext] ok
+validate exit=0
+{
+  "comparison": "rebuilt dist/index.js vs fixed src/index.ts, same fixture",
+  "identical_after_normalizing_temp_home_paths": true,
+  "fix_present_in_rebuilt_dist": true,
+  "stale_sentence_in_rebuilt_dist": false,
+  "note": "the only textual differences were the random temp-HOME directory names inside persona paths; every reported value (contributions.roles, roles, pending_roles, refusal reasons, refusal counts) is identical"
+}
