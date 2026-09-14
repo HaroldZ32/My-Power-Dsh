@@ -1,0 +1,107 @@
+{
+  "schema": "mpd-review-r3/1",
+  "task": "t54",
+  "kind": "review",
+  "round": 3,
+  "attempt": "1 (96f4d5f5-51a3-46df-baf0-fab2af0cae2e)",
+  "reviewer": "Architect (read-only)",
+  "reviewedTask": "t53",
+  "verdict": "pass",
+  "verdictRationale": "All five of t53's acceptance items are delivered and independently verified: the tool-surface decision is escalated into the frozen contract with the truth stated (four record corrections, no false reachability claim left), the QA case is untouched and still red (t51 kept as the fix, attribution corrected), the revision is re-pinned and verified 9/9 against the commit, and the dormancy half of the expiry contract is implemented with a real test plus negative controls and a stated boundary. The gate/R3/V1 substance survives the session-start edit (nine gate constants byte-identical, R3 A/B reproduced, V1 field contract intact), and the wave's measurement was re-anchored by this review on the shipped gate (0/20, same prompts digest). What remains open is another task's in-flight work (t51, t52) or a user-owned design decision, not a t53 failure.",
+  "readOnly": {
+    "productFilesModified": 0,
+    "gitWrites": 0,
+    "preexistingEvidenceOverwritten": 0,
+    "note": "Rounds 1 and 2 evidence (evidence/omo-align/review-r1, review-r2) are untouched; all artifacts are new under evidence/omo-align/review-r3/. The extraction of the t53 lib for measurement happened in a temp dir that was deleted; no stale product copy is kept in evidence."
+  },
+
+  "anchoredRevision": {
+    "commit": "5277be0",
+    "also": "b48ffd9 (the t53 fix commit)",
+    "commitMessage": "fix(agent-teams): make dormant-team expiry actually resolve, and correct the record it supersedes",
+    "driftDuringReview": "Two other tasks are in flight in the same checkout and moved files while this review ran: t52 touched tools.js (151421 -> 165305 B), state.js (61904 -> 65291 B) and mpd-deltas.js; t51 modified skills/dsh-qa/scripts/agent-teams-messaging.mjs. Neither is part of t53 or of this review. All t53-revision measurements below were taken against the COMMIT's bytes (git show / git archive), not the live tree.",
+    "reviewedFileHashes": {
+      "packages/mpd-agent-teams-plugin/lib/state.js": { "bytes": 64370, "sha256_prefix": "4b17c335946bf846", "liveTree": "moved by t52" },
+      "packages/mpd-agent-teams-plugin/lib/scheduler.js": { "bytes": 31955, "sha256_prefix": "27cc18b923443c22", "liveTree": "= t53" },
+      "packages/mpd-agent-teams-plugin/lib/session-start.js": { "bytes": 31187, "sha256_prefix": "7831f26831c7606d", "liveTree": "= t53" },
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": { "bytes": 107046, "sha256_prefix": "3e34091ca9d805cc", "liveTree": "moved by t52" },
+      "packages/mpd-agent-teams-plugin/lib/tools.js": { "bytes": 151421, "sha256_prefix": "4babeddc7b528c1a", "liveTree": "moved by t52" },
+      "packages/mpd-agent-teams-plugin/test/r1-message-channel.test.mjs": { "bytes": 18027, "sha256_prefix": "bbceac658b782370" },
+      "packages/mpd-agent-teams-plugin/test/t49-send-dedup-wiring.test.mjs": { "bytes": 13029, "sha256_prefix": "410185dc970b15c4" },
+      "packages/mpd-agent-teams-plugin/test/t53-dormant-expiry.test.mjs": { "bytes": 7040, "sha256_prefix": "b80558d6b92f6505" },
+      "evidence/omo-align/requirements/frozen-contract.json": { "bytes": 39814, "sha256_prefix": "3e77e6b842553687" }
+    },
+    "pinsVerification": "settled-pins.json matches the commit 9/9 (git show 5277be0:<path> reproduces every pinned hash). The two live mismatches (tools.js, mpd-deltas.js) are t52's uncommitted work.",
+    "preT49ArmForAB": { "revision": "7379e28", "state_js_sha256_prefix": "fa7fe937f1895c47" },
+    "preR3ArmForAB": { "revision": "facb2de^", "session_start_js_sha256": "b79bde7c87cc2a6c899a3e4c0e9685c0b6e26fb0d3dfdc80f1383c385b5d623e" }
+  },
+
+  "t53AcceptanceVerified": [
+    { "item": "Escalate the tool surface + correct/supersede the t49 record", "status": "passed", "code": "evidence/omo-align/requirements/frozen-contract.json.openToolSurfaceEscalation; evidence/omo-align/messaging/r1-wiring/result.json.SUPERSEDED; findings.md / followup-round.md / dead-capability-findings.md supersession headers", "evidence": "currentTruth states the three primitives have NO production caller and that nothing may be read as saying the lane is reachable. I re-derived it on the extracted t53 lib: enqueueInterjection 0, clearMailboxToWatermark 0, readLiveMailbox 0, decideInterjection only two comment lines (scheduler.js:231, registry mirror) => no executable caller; appendMailboxDeduped / expireInterjections / expireInterjectionsEverywhere do have callers." },
+    { "item": "Keep t51 as the fix; correct the attribution; never cite the case as passing", "status": "passed", "code": "skills/dsh-qa/scripts/agent-teams-messaging.mjs (untouched by t53)", "evidence": "I re-ran the case at the t53 revision: exit 1, interjection.positive.ok=false, requesterInboxAfterRepost=2, requester='captain' (raw/qa-messaging-rerun.log). The corrected attribution is recorded in the SUPERSEDED block and the three headers; no record cites the case as passing." },
+    { "item": "Re-pin the stale test-file hash / test count", "status": "passed", "code": "evidence/omo-align/messaging/r1-wiring/settled-pins.json", "evidence": "9 files hashed after a 50 s settle window; t49PinCorrection records 44acbc827a486546 / 179 lines / '177 pass' against actual 410185dc970b15c4 / 13029 B / '178 pass'; supersessionChain explains the revisions. Verified 9/9 against commit 5277be0." },
+    { "item": "State the expiry boundary and/or tick at session start", "status": "passed", "code": "frozen-contract.json.interjectionExpiryBoundary; lib/state.js:773 expireInterjectionsEverywhere; lib/session-start.js:575-590 installInterjectionExpirySweep (installed unconditionally at :483); test/t53-dormant-expiry.test.mjs", "evidence": "Both ways delivered. I ran the test file: 6 pass / 0 fail - past-due resolves with NO scheduler kick, 1 ms before the deadline is left ALONE, absent/empty root is a no-op, the shipped listener works with sessionTeamPolicy.mode='off', a failing sweep degrades to a warning and still returns the decision, and the notice is an ordinary record." },
+    { "item": "Flake guidance (junit capture; an in-flight write is a non-measurement)", "status": "passed", "code": "t53 evidence record", "evidence": "Recorded; nothing executable to verify." },
+    { "item": "Contract append is pin-only (no pre-existing key edited)", "status": "passed", "code": "evidence/omo-align/requirements/frozen-contract.json", "evidence": "Parsed-JSON comparison against 0f647f2: added keys exactly ['interjectionExpiryBoundary','openToolSurfaceEscalation'], removed NONE, changed pre-existing keys NONE." }
+  ],
+
+  "acceptanceResults": [
+    { "criterion": "R1-1 idempotent dedup including the different from/to negative control", "status": "passed", "evidence": "Code: tools.js:1876/:1895 call appendMailboxDeduped (state.js:485) with the fold guard returning delivered:'duplicate' before any live delivery (tools.js:1919-1926). Measured on the extracted t53 state.js (4b17c335): 3 identical key+window sends -> ONE surviving row, dupCount incremented, the transient _folded marker never written to the JSONL; a fold preserves readAt so an acknowledged record cannot be re-opened. The t49 wiring test (real tool + real scheduler, call-count 0->1->1) re-runs 7/7 and the r1 negative controls re-run 18/18." },
+    { "criterion": "R1-2 bounded clear: tombstone + recoverable sidecar + audit event, no hard-delete path", "status": "passed", "evidence": "Code: state.js:520-559. Measured on the t53 bytes: 3 acknowledged records -> clear -> 0 unread / 0 live, tombstones keep readAt+deliveredAt, sidecar holds the cleared bytes, audit.kind='mailbox-cleared', no hard-delete branch. Reachability caveat: clearMailboxToWatermark still has no production caller at this revision (t52 in flight) - stated, not concealed." },
+    { "criterion": "R1-3 interjection: pending not delivered / delivery after approval at a step boundary / TTL expiry with notification / scheduler unread path excludes pending", "status": "passed", "evidence": "Clause 1: deliverableUnread (scheduler.js:241) drops INTERJECTION_KIND and tombstones on both shipped unread reads, with a spoofed-kind negative control. Clause 2: state.js:721-732 re-posts the approved body as an ordinary '<ij>-delivery' record that rides the ordinary scheduler path - measured on the t53 bytes (exactly one ordinary record) and A/B-proven new in t49 (pre-repair 0 -> shipped 1). The trigger surface is t52's in-flight work, so the lane is still unreachable at this revision; that is recorded in the contract's openToolSurfaceEscalation and is not concealed. Clause 3: state.js:662-684 flips pending->expired AND appends one ordinary notice; driven by two events (scheduler idle edge + the session-start sweep), boundary stated in interjectionExpiryBoundary; measured + tested (6/6). Clause 4: scheduler.js:321/:384 pass." },
+    { "criterion": "R1-4 duplicate delivery does not double the member's actions (call count)", "status": "passed", "evidence": "test/t49-send-dedup-wiring.test.mjs drives the real tool and the real scheduler via installTeamScheduler -> runtime.kickMember and records deliveries as a call count: 0 before the idle edge, exactly 1 after, still 1 after a second kick; a failed live delivery still yields exactly one scheduler delivery. Re-run: 7 pass / 0 fail." },
+    { "criterion": "V1 closure + sufficiency of t44's falsifiability proof", "status": "passed", "evidence": "Reproduced against the extracted t53 state.js: content-less enqueue -> content 'only a summary', readable as pending, decidable; absent id -> 'does not exist'; malformed-but-present -> MALFORMED; missing identity -> 'missing required field \"id\"'. t44's pre-repair A/B (implementer's own file: 8 pass / 5 fail reverted, 13 pass / 0 fail shipped) remains sufficient for this defect; the r1 file re-runs 18/18 on this revision." },
+    { "criterion": "R3 harmonisation: mutual consistency, no new miss, threshold untouched, concrete counterexample, mounting proof", "status": "passed", "evidence": "session-start.js changed this round, so I diffed it against 0f647f2: only the sweep import, the unconditional install call and the new region were added. All nine gate constants and the trigger predicate (session-start.js:212) are byte-identical. Fresh A/B (facb2de^ vs this gate): monotone (no verb removals), contract verbatim true/true, exactly two counterexample flips (EN 'Audit the ledger, build the package, verify the output.' and CJK '重构这个模块, 迁移到新接口, 审计日志.' - both silent -> team), 0 flips on the 20 real prompts, calibration set unchanged. The two-sided gate case re-runs PASS with the negative control disarmed." },
+    { "criterion": "Contract consistency: C2/C3 verbatim; logicRevisionNote / harmonizedVerbTables honest", "status": "passed", "evidence": "C1 remains byte-identical to the shipped ENUMERATED_LINE_PATTERN; C3 positional restatement present; harmonizedVerbTables present (2 occurrences); logicRevisionNote records Option A and R3; messagingOperativeReading present; the two new keys are accurate and reference implementation paths and tests. Append-only verified as parsed JSON." },
+    { "criterion": "t37/t39 measurements incorporated + Option A judgement with executable recommendations", "status": "passed", "evidence": "The gate file move stale-anchored the wave's measurement, so I re-ran the self-contained probe on the shipped gate: anchor 7831f268, same prompts digest fd43da71..., 0/20 real prompts trigger (session-start 0/5, follow-up 0/15), FP rate 0 -> the reading survives and is re-anchored. Judgement carries: Option A holds formally but the measured risk is under-trigger (the richest session-start prompt produced zero signals: 1 distinct B verb vs 4, 1 distinct C2 verb vs 3); no English prompt exists in the dataset (rate undefined, n=0) so the bilingual claim is unsupported; order = positive stratum -> English coverage -> cheapest-first re-tune (C3 verb-with-object or ACTION_VERB_MIN 3->2), never the C 2-of-3 bar or signals >= 1." },
+    { "criterion": "Risk list + executable prevention", "status": "passed", "evidence": "Top risk recorded as advisory A1 (the new sweep is a per-step sweep while its own documentation says session start) plus the wave's recurring class - a primitive written and tested with no caller - whose prevention is the reachability assertion per primitive that t52's tests are adding. Second: the measurement anchor must be re-issued whenever the gate file is touched for an unrelated reason (done here)." },
+    { "criterion": "Do not overwrite delivered evidence; neutralise the text", "status": "passed", "evidence": "All artifacts are new under evidence/omo-align/review-r3/; review-r1 and review-r2 are untouched; no writes outside that directory; no retired external project identifier appears in any artifact of this review." }
+  ],
+
+  "advisories": [
+    {
+      "id": "A1",
+      "severity": "low",
+      "blocking": false,
+      "file": "packages/mpd-agent-teams-plugin/lib/session-start.js",
+      "line": 576,
+      "problem": "installInterjectionExpirySweep registers on 'agent/pre-step' with no once-per-agent guard, so it runs on EVERY model step, while the region comment and frozen-contract.json.interjectionExpiryBoundary.statement describe the second expiry event as 'a SESSION START in the workspace'. The module's own gate proves the event fires per step: it needs settledFor (session-start.js:496-498) to run only once. Behaviour is eager but idempotent and best-effort, so nothing is broken; the cost is a readdir plus one read per team on the hottest path in the agent loop, and the stated boundary is inaccurate.",
+      "requiredFix": "Either add a per-session guard mirroring settledFor, or restate the event as 'every pre-step, the session's first included' in the comment and in interjectionExpiryBoundary. Small change; best folded into t52's in-flight work, which already edits this area."
+    }
+  ],
+
+  "openItemsNotOwnedByThisTask": [
+    { "item": "R1's interjection lane reachability", "owner": "t52 (in flight, uncommitted)", "evidence": "agent_teams_interject_request / agent_teams_interject_decide / agent_teams_mailbox_clear are registered in the uncommitted tools.js and call enqueueInterjection / readPendingInterjections / decideInterjection / clearMailboxToWatermark. Not reviewed here because it is another task's unfinished work." },
+    { "item": "R1's QA case is still red", "owner": "t51 (in flight, uncommitted)", "evidence": "My run at the t53 revision exits 1 (requesterInboxAfterRepost=2); the case file is modified in the working tree by t51. R1's own falsifiable experiment must not be cited as passing until t51 lands." },
+    { "item": "Wave-level R1 completeness claim", "owner": "t47 (integration)", "evidence": "At the reviewed revision the lane is unreachable and the case is red; the integration slot owns the final claim once t51/t52 close." }
+  ],
+
+  "gatesRerun": [
+    { "command": "git show 5277be0:<9 pinned files> | sha256sum vs settled-pins.json", "status": "passed", "exitCode": 0, "evidence": "9/9 match" },
+    { "command": "git archive 5277be0 -- packages/mpd-agent-teams-plugin/lib -> call-site scan -> node evidence/omo-align/review-r3/raw/probe-r3-wiring.mjs (MPD_STATE_JS)", "status": "passed", "exitCode": 0, "evidence": "t53 state.js 4b17c335/64370 B anchored; fold marker transient; ack-fold preserves readAt; clear-after-ack 0 unread; expiry notice; decision vocabulary + repost; V1 field contract - all confirmed on the t53 bytes; lane has 0 executable callers" },
+    { "command": "node evidence/omo-align/review-r3/raw/probe-r3-verb-ab.mjs", "status": "passed", "exitCode": 0, "evidence": "anchor session-start.js 7831f268; monotone; contract verbatim true/true; 2 counterexample flips; 0/20 real flips" },
+    { "command": "node evidence/omo-parity-rate/raw/probe.mjs --json", "status": "passed", "exitCode": 0, "evidence": "re-anchor on the shipped gate: session-start.js 7831f268; 0/20 triggers; FP rate 0; digest fd43da71 unchanged" },
+    { "command": "bun test packages/mpd-agent-teams-plugin/test/t53-dormant-expiry.test.mjs", "status": "passed", "exitCode": 0, "evidence": "6 pass / 0 fail" },
+    { "command": "bun test packages/mpd-agent-teams-plugin/test/r1-message-channel.test.mjs", "status": "passed", "exitCode": 0, "evidence": "18 pass / 0 fail" },
+    { "command": "bun test packages/mpd-agent-teams-plugin", "status": "passed", "exitCode": 0, "evidence": "184 pass / 0 fail / 1200 expect() across 46 files" },
+    { "command": "bun test packages/mpd-agent-teams-plugin/self-fix-tests", "status": "passed", "exitCode": 0, "evidence": "53 pass / 0 fail / 615 expect()" },
+    { "command": "bun run typecheck", "status": "passed", "exitCode": 0, "evidence": "tsgo --noEmit, clean" },
+    { "command": "node scripts/patch-agent-teams-fixes.mjs --check", "status": "passed", "exitCode": 0, "evidence": "28 mpd delta region(s) across 6 adopted file(s)" },
+    { "command": "bun skills/dsh-qa/scripts/session-start-team.mjs", "status": "passed", "exitCode": 0, "evidence": "PASS; twoSided simpleTeams [0,0,0] vs complexTeams [1,1,1]; negativeControl disarmed" },
+    { "command": "node skills/dsh-qa/scripts/agent-teams-messaging.mjs", "status": "failed", "exitCode": 1, "evidence": "RED at the t53 revision (t51's fix in flight); requesterInboxAfterRepost=2; all other blocks green" },
+    { "command": "git diff 0f647f2 -- packages/mpd-agent-teams-plugin/lib/session-start.js + constant-by-constant comparison", "status": "passed", "exitCode": 0, "evidence": "only the sweep import + install + new region added; nine gate constants and the trigger predicate byte-identical" }
+  ],
+
+  "artifactHashes": {
+    "evidence/omo-align/review-r3/REVIEW.md": { "bytes": 14348, "sha256": "dd9d6c4a2ecdbadf400c11ab99b4afe6306e023313d5b93de3f1912f9104500f" },
+    "evidence/omo-align/review-r3/raw/probe-r3-wiring.mjs": { "bytes": 12229, "sha256": "355a53756cb53ca452f959806948995341f76b0156200000ddb73192b9b63012" },
+    "evidence/omo-align/review-r3/raw/probe-r3-wiring.out.json": { "bytes": 3817, "sha256": "8819fbe18ecfb332b8c675538b1bf0e24c61d3dd28b5ec25ec81dcb87d4efda5", "note": "live-tree run (t53 + t52 in flight)" },
+    "evidence/omo-align/review-r3/raw/probe-r3-wiring-t53state.out.json": { "bytes": 3817, "sha256": "c425f0dbde0be5e479bd91909a0051dd9f990835b90ca35e4dfefaa2cb618098", "note": "t53-exact run (extracted commit lib)" },
+    "evidence/omo-align/review-r3/raw/probe-r3-verb-ab.mjs": { "bytes": 8440, "sha256": "957091e633b91786c90b63e57c9b124bec72a4381fc4d8b6a48af6740bb80c5f" },
+    "evidence/omo-align/review-r3/raw/probe-r3-verb-ab.out.json": { "bytes": 13066, "sha256": "44043cc1e723b8413b2e1283edcec01081a175a2a87d525c6c1c7671070719dc" },
+    "evidence/omo-align/review-r3/raw/measurement-reanchor.json": { "bytes": 11575, "sha256": "0f0d84f2f97a5e74cbc40a0f56166c60a4d36377c27488ab73adc4e2be898cbf" },
+    "evidence/omo-align/review-r3/raw/qa-messaging-rerun.log": { "bytes": 2126, "sha256": "859e931204debd66f98c0134f9956e38ee013454401b97a3e0b977a0fea8c949" }
+  },
+
+  "neutrality": "No retired external project identifier appears in any artifact of this review; the measurement dataset is cited by in-repo path and digest only."
+}

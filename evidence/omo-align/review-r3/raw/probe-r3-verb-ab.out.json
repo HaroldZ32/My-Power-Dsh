@@ -1,0 +1,677 @@
+{
+  "schema": "mpd-review-r3-ab/1",
+  "reviewer": "Architect (t46, read-only)",
+  "anchoredFiles": {
+    "packages/mpd-agent-teams-plugin/lib/session-start.js": {
+      "bytes": 31187,
+      "sha256": "7831f26831c7606d6049a1b3cf708146869d46d1a9d5b2ac363b59a8f5183680"
+    },
+    "evidence/omo-align/requirements/frozen-contract.json": {
+      "bytes": 39814,
+      "sha256": "3e77e6b842553687fed82df4265b6592d31336fdc6f0c4d72a4d6d43dcd853df"
+    }
+  },
+  "preR3Commit": "facb2de^",
+  "preR3File": {
+    "bytes": 27208,
+    "sha256": "b79bde7c87cc2a6c899a3e4c0e9685c0b6e26fb0d3dfdc80f1383c385b5d623e"
+  },
+  "verbTables": {
+    "preR3": {
+      "C2_ACTION_VERB_PATTERN": [
+        "add",
+        "align",
+        "build",
+        "change",
+        "check",
+        "consolidate",
+        "implement",
+        "migrate",
+        "overhaul",
+        "port",
+        "refactor",
+        "rewrite",
+        "verify"
+      ],
+      "C2_cjk": [
+        "实现",
+        "改造",
+        "补充",
+        "设计",
+        "验证"
+      ],
+      "C3_CLAUSE_ACTION_PATTERN": [
+        "add",
+        "align",
+        "also",
+        "and",
+        "audit",
+        "build",
+        "change",
+        "check",
+        "implement",
+        "migrate",
+        "refactor",
+        "rewrite",
+        "then",
+        "verify"
+      ],
+      "C3_verbs_only": [
+        "add",
+        "align",
+        "audit",
+        "build",
+        "change",
+        "check",
+        "implement",
+        "migrate",
+        "refactor",
+        "rewrite",
+        "verify"
+      ],
+      "C3_conjunctions": [
+        "also",
+        "and",
+        "then"
+      ],
+      "C3_cjk": [
+        "全量",
+        "实现",
+        "审计",
+        "对齐",
+        "改造",
+        "梳理",
+        "移植",
+        "补充",
+        "设计",
+        "迁移",
+        "重构",
+        "验证"
+      ]
+    },
+    "shipped": {
+      "C2_ACTION_VERB_PATTERN": [
+        "add",
+        "align",
+        "audit",
+        "build",
+        "change",
+        "check",
+        "consolidate",
+        "implement",
+        "migrate",
+        "overhaul",
+        "port",
+        "refactor",
+        "rewrite",
+        "verify"
+      ],
+      "C2_cjk": [
+        "全量",
+        "实现",
+        "审计",
+        "对齐",
+        "改造",
+        "梳理",
+        "移植",
+        "补充",
+        "设计",
+        "迁移",
+        "重构",
+        "验证"
+      ],
+      "C3_CLAUSE_ACTION_PATTERN": [
+        "add",
+        "align",
+        "also",
+        "and",
+        "audit",
+        "build",
+        "change",
+        "check",
+        "consolidate",
+        "implement",
+        "migrate",
+        "overhaul",
+        "port",
+        "refactor",
+        "rewrite",
+        "then",
+        "verify"
+      ],
+      "C3_verbs_only": [
+        "add",
+        "align",
+        "audit",
+        "build",
+        "change",
+        "check",
+        "consolidate",
+        "implement",
+        "migrate",
+        "overhaul",
+        "port",
+        "refactor",
+        "rewrite",
+        "verify"
+      ],
+      "C3_conjunctions": [
+        "also",
+        "and",
+        "then"
+      ],
+      "C3_cjk": [
+        "全量",
+        "实现",
+        "审计",
+        "对齐",
+        "改造",
+        "梳理",
+        "移植",
+        "补充",
+        "设计",
+        "迁移",
+        "重构",
+        "验证"
+      ]
+    },
+    "addedToC2": {
+      "en": [
+        "audit"
+      ],
+      "cjk": [
+        "全量",
+        "审计",
+        "对齐",
+        "梳理",
+        "移植",
+        "迁移",
+        "重构"
+      ]
+    },
+    "addedToC3": {
+      "en": [
+        "consolidate",
+        "overhaul",
+        "port"
+      ],
+      "cjk": []
+    },
+    "removedFromC2": {
+      "en": [],
+      "cjk": []
+    },
+    "removedFromC3": {
+      "en": [],
+      "cjk": []
+    },
+    "monotonicity": "MONOTONE: every pre-R3 verb survives in the harmonized table (no removals), so the R3 signal set can only GROW on a fixed text -> the change can add triggers, never remove them",
+    "contractVerbatim": {
+      "englishMatchesShipped": true,
+      "cjkMatchesShipped": true,
+      "C2EqualsC3_english": true,
+      "C3conjunctions": [
+        "also",
+        "and",
+        "then"
+      ],
+      "C2EqualsC3_cjk": true,
+      "contractC2DetectList": [
+        "add",
+        "align",
+        "audit",
+        "build",
+        "change",
+        "check",
+        "consolidate",
+        "implement",
+        "migrate",
+        "overhaul",
+        "port",
+        "refactor",
+        "rewrite",
+        "verify",
+        "设计",
+        "实现",
+        "验证",
+        "改造",
+        "补充",
+        "对齐",
+        "重构",
+        "迁移",
+        "审计",
+        "移植",
+        "梳理",
+        "全量"
+      ],
+      "triggerLine_old": [
+        "* `complexityGate`) is `trigger = (matchedSignals >= 2) OR anyExplicitFlag`:",
+        "// \"trigger = (matchedSignals >= 2) OR anyExplicitFlag\". A satisfied C (its own",
+        "const trigger = input.explicitFlag === true || signals.length >= 1;"
+      ],
+      "triggerLine_new": [
+        "* `complexityGate`) is `trigger = anyExplicitFlag OR (matchedSignals >= 1)` — the",
+        "// \"trigger = (matchedSignals >= 2) OR anyExplicitFlag\". A satisfied C (its own",
+        "const trigger = input.explicitFlag === true || signals.length >= 1;"
+      ],
+      "C1DetectString": "^\\s*(?:\\d+[.",
+      "C1ShippedSource": "^\\s*(?:\\d+[.)]|[-*|])\\s"
+    }
+  },
+  "comparison": [
+    {
+      "id": "frozen-simple-1",
+      "stratum": "simple",
+      "old": {
+        "trigger": false,
+        "signals": []
+      },
+      "new": {
+        "trigger": false,
+        "signals": []
+      },
+      "flipped": false
+    },
+    {
+      "id": "frozen-simple-2",
+      "stratum": "simple",
+      "old": {
+        "trigger": false,
+        "signals": []
+      },
+      "new": {
+        "trigger": false,
+        "signals": []
+      },
+      "flipped": false
+    },
+    {
+      "id": "frozen-simple-3",
+      "stratum": "simple",
+      "old": {
+        "trigger": false,
+        "signals": []
+      },
+      "new": {
+        "trigger": false,
+        "signals": []
+      },
+      "flipped": false
+    },
+    {
+      "id": "frozen-complex-1",
+      "stratum": "complex",
+      "old": {
+        "trigger": true,
+        "signals": [
+          "C"
+        ]
+      },
+      "new": {
+        "trigger": true,
+        "signals": [
+          "C"
+        ]
+      },
+      "flipped": false
+    },
+    {
+      "id": "frozen-complex-2",
+      "stratum": "complex",
+      "old": {
+        "trigger": false,
+        "signals": []
+      },
+      "new": {
+        "trigger": false,
+        "signals": []
+      },
+      "flipped": false
+    },
+    {
+      "id": "frozen-complex-3",
+      "stratum": "complex",
+      "old": {
+        "trigger": true,
+        "signals": [
+          "C"
+        ]
+      },
+      "new": {
+        "trigger": true,
+        "signals": [
+          "C"
+        ]
+      },
+      "flipped": false
+    },
+    {
+      "id": "P01",
+      "stratum": "real-session-start",
+      "old": {
+        "trigger": false,
+        "signals": []
+      },
+      "new": {
+        "trigger": false,
+        "signals": []
+      },
+      "flipped": false
+    },
+    {
+      "id": "P02",
+      "stratum": "real-session-start",
+      "old": {
+        "trigger": false,
+        "signals": []
+      },
+      "new": {
+        "trigger": false,
+        "signals": []
+      },
+      "flipped": false
+    },
+    {
+      "id": "P03",
+      "stratum": "real-session-start",
+      "old": {
+        "trigger": false,
+        "signals": []
+      },
+      "new": {
+        "trigger": false,
+        "signals": []
+      },
+      "flipped": false
+    },
+    {
+      "id": "P04",
+      "stratum": "real-session-start",
+      "old": {
+        "trigger": false,
+        "signals": []
+      },
+      "new": {
+        "trigger": false,
+        "signals": []
+      },
+      "flipped": false
+    },
+    {
+      "id": "P05",
+      "stratum": "real-session-start",
+      "old": {
+        "trigger": false,
+        "signals": []
+      },
+      "new": {
+        "trigger": false,
+        "signals": []
+      },
+      "flipped": false
+    },
+    {
+      "id": "P06",
+      "stratum": "real-follow-up",
+      "old": {
+        "trigger": false,
+        "signals": []
+      },
+      "new": {
+        "trigger": false,
+        "signals": []
+      },
+      "flipped": false
+    },
+    {
+      "id": "P07",
+      "stratum": "real-follow-up",
+      "old": {
+        "trigger": false,
+        "signals": []
+      },
+      "new": {
+        "trigger": false,
+        "signals": []
+      },
+      "flipped": false
+    },
+    {
+      "id": "P08",
+      "stratum": "real-follow-up",
+      "old": {
+        "trigger": false,
+        "signals": []
+      },
+      "new": {
+        "trigger": false,
+        "signals": []
+      },
+      "flipped": false
+    },
+    {
+      "id": "P09",
+      "stratum": "real-follow-up",
+      "old": {
+        "trigger": false,
+        "signals": []
+      },
+      "new": {
+        "trigger": false,
+        "signals": []
+      },
+      "flipped": false
+    },
+    {
+      "id": "P10",
+      "stratum": "real-follow-up",
+      "old": {
+        "trigger": false,
+        "signals": []
+      },
+      "new": {
+        "trigger": false,
+        "signals": []
+      },
+      "flipped": false
+    },
+    {
+      "id": "P11",
+      "stratum": "real-follow-up",
+      "old": {
+        "trigger": false,
+        "signals": []
+      },
+      "new": {
+        "trigger": false,
+        "signals": []
+      },
+      "flipped": false
+    },
+    {
+      "id": "P12",
+      "stratum": "real-follow-up",
+      "old": {
+        "trigger": false,
+        "signals": []
+      },
+      "new": {
+        "trigger": false,
+        "signals": []
+      },
+      "flipped": false
+    },
+    {
+      "id": "P13",
+      "stratum": "real-follow-up",
+      "old": {
+        "trigger": false,
+        "signals": []
+      },
+      "new": {
+        "trigger": false,
+        "signals": []
+      },
+      "flipped": false
+    },
+    {
+      "id": "P14",
+      "stratum": "real-follow-up",
+      "old": {
+        "trigger": false,
+        "signals": []
+      },
+      "new": {
+        "trigger": false,
+        "signals": []
+      },
+      "flipped": false
+    },
+    {
+      "id": "P15",
+      "stratum": "real-follow-up",
+      "old": {
+        "trigger": false,
+        "signals": []
+      },
+      "new": {
+        "trigger": false,
+        "signals": []
+      },
+      "flipped": false
+    },
+    {
+      "id": "P16",
+      "stratum": "real-follow-up",
+      "old": {
+        "trigger": false,
+        "signals": []
+      },
+      "new": {
+        "trigger": false,
+        "signals": []
+      },
+      "flipped": false
+    },
+    {
+      "id": "P17",
+      "stratum": "real-follow-up",
+      "old": {
+        "trigger": false,
+        "signals": []
+      },
+      "new": {
+        "trigger": false,
+        "signals": []
+      },
+      "flipped": false
+    },
+    {
+      "id": "P18",
+      "stratum": "real-follow-up",
+      "old": {
+        "trigger": false,
+        "signals": []
+      },
+      "new": {
+        "trigger": false,
+        "signals": []
+      },
+      "flipped": false
+    },
+    {
+      "id": "P19",
+      "stratum": "real-follow-up",
+      "old": {
+        "trigger": false,
+        "signals": []
+      },
+      "new": {
+        "trigger": false,
+        "signals": []
+      },
+      "flipped": false
+    },
+    {
+      "id": "P20",
+      "stratum": "real-follow-up",
+      "old": {
+        "trigger": false,
+        "signals": []
+      },
+      "new": {
+        "trigger": false,
+        "signals": []
+      },
+      "flipped": false
+    },
+    {
+      "id": "COUNTEREXAMPLE-EN",
+      "stratum": "constructed",
+      "old": {
+        "trigger": false,
+        "signals": []
+      },
+      "new": {
+        "trigger": true,
+        "signals": [
+          "C"
+        ]
+      },
+      "flipped": true
+    },
+    {
+      "id": "COUNTEREXAMPLE-CJK",
+      "stratum": "constructed",
+      "old": {
+        "trigger": false,
+        "signals": []
+      },
+      "new": {
+        "trigger": true,
+        "signals": [
+          "C"
+        ]
+      },
+      "flipped": true
+    },
+    {
+      "id": "KNOWN-ACCEPTED",
+      "stratum": "constructed",
+      "old": {
+        "trigger": true,
+        "signals": [
+          "C"
+        ]
+      },
+      "new": {
+        "trigger": true,
+        "signals": [
+          "C"
+        ]
+      },
+      "flipped": false
+    }
+  ],
+  "summary": {
+    "total": 29,
+    "flips": [
+      "COUNTEREXAMPLE-EN",
+      "COUNTEREXAMPLE-CJK"
+    ],
+    "real20": {
+      "total": 20,
+      "flips": 0,
+      "triggersNew": 0
+    },
+    "frozen6": [
+      "frozen-simple-1:false->false",
+      "frozen-simple-2:false->false",
+      "frozen-simple-3:false->false",
+      "frozen-complex-1:true->true",
+      "frozen-complex-2:false->false",
+      "frozen-complex-3:true->true"
+    ]
+  },
+  "tempCopyRemoved": true
+}

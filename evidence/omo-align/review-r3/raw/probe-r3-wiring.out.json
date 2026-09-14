@@ -1,0 +1,116 @@
+{
+  "schema": "mpd-review-r2-probe/1",
+  "reviewer": "Architect (t50, read-only)",
+  "anchoredFiles": {
+    "packages/mpd-agent-teams-plugin/lib/state.js": {
+      "bytes": 65291,
+      "sha256": "8e78e9b508d032307943318e45030000523bbdaa6fcce9bee9db442698df70e2"
+    }
+  },
+  "foldedMarker": {
+    "firstFolded": false,
+    "secondFolded": true,
+    "returnedMarkerOnFold": true,
+    "rows": 1,
+    "rawRowKeys": [
+      "id",
+      "from",
+      "to",
+      "content",
+      "ts",
+      "dupCount"
+    ],
+    "markerPersisted": false,
+    "dupCount": 2,
+    "reading": "TRANSIENT CONFIRMED: the marker is returned to the caller and never written; one surviving row, dupCount incremented"
+  },
+  "acknowledgedThenFolded": {
+    "unreadBefore": 0,
+    "rows": 1,
+    "dupCount": 2,
+    "readAtPreserved": true,
+    "unreadAfter": 0,
+    "reading": "the fold preserves readAt, so an acknowledged record cannot be re-opened by a duplicate send (round-1 F-3 mechanism closed for this path)"
+  },
+  "clearAfterAck": {
+    "unreadBeforeClear": 0,
+    "clearedIds": [
+      "c-0",
+      "c-1",
+      "c-2"
+    ],
+    "tombstoneKeys": [
+      "id",
+      "from",
+      "to",
+      "content",
+      "ts",
+      "tombstone",
+      "clearedAt",
+      "clearedToWatermark",
+      "archivedTo",
+      "readAt",
+      "deliveredAt"
+    ],
+    "readAtPreserved": true,
+    "unreadAfterClear": 0,
+    "liveAfterClear": 0,
+    "sidecarBytes": 399,
+    "reading": "ROUND-1 F-3 CLOSED: tombstones keep readAt and are not unread; a clear can no longer resurrect acknowledged records"
+  },
+  "expiryNotice": {
+    "expiredBeforeTtl": [],
+    "expiredAtTtl": [
+      "ij-ttl"
+    ],
+    "status": "expired",
+    "requesterInbox": [
+      {
+        "id": "interjection-expired-ij-ttl",
+        "from": "captain",
+        "to": "Lead",
+        "kind": null,
+        "mentionsExpiry": true
+      }
+    ],
+    "reading": "ROUND-1 F-2 CLOSED: expiry flips the row to expired AND appends ONE ordinary notice (no interjection kind) to the requester"
+  },
+  "decision": {
+    "arbitraryDecision": {
+      "error": "invalid interjection decision \"banana\"; allowed values are: approved, rejected",
+      "statusStayedPending": "pending"
+    },
+    "approvedStatus": "approved",
+    "reposted": [
+      {
+        "id": "ij-ok-delivery",
+        "to": "Junior Engineer",
+        "kind": null,
+        "content": "Approved interjection \"ij-ok\": body-after-approval"
+      }
+    ],
+    "secondDecisionError": "interjection \"ij-ok\" is already approved",
+    "reading": "ROUND-1 F-4 CLOSED (closed vocabulary, the bad row stays pending) and the approved body IS re-posted once as an ordinary record id \"<ij>-delivery\""
+  },
+  "v1FieldContract": {
+    "normalizedContent": "only a summary",
+    "returnedStatus": "pending",
+    "readableAsPending": 1,
+    "decideResult": "approved",
+    "absentError": "interjection \"nope\" does not exist",
+    "malformedError": "interjection \"broken\" exists but is MALFORMED (present in the queue but not read",
+    "missingFieldError": "interjection request is missing required field \"id\"",
+    "reading": "V1 FIELD CONTRACT HOLDS on the settled revision (normalization, readable, MALFORMED vs ABSENT, named required-field rejection)"
+  },
+  "repostAB": {
+    "preRepairRevision": "7379e28",
+    "preRepairState": {
+      "bytes": 57791,
+      "sha256": "fa7fe937f1895c472732fdfdc0b193fcb2281448133fd0b15a490f230fe0ae19"
+    },
+    "preT49RequesterInboxAfterApproval": 0,
+    "shippedRequesterInboxAfterApproval": 1,
+    "reading": "the pre-t49 module (7379e28, the pre-repair tip) does NOT re-post on approval while the shipped module does, so the repost is NEW in t49 and the delivered QA case (which writes its own \"ij-1-delivery\") was written against the older shape"
+  },
+  "scratchRemoved": true
+}
