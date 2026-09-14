@@ -1,0 +1,70 @@
+{
+  "schema": "mpd/evidence/result@1",
+  "task": "t53",
+  "round": "repair-round-3",
+  "attempt": 1,
+  "subject": "the round-3 record/wording repairs produced by t50's needs_revision review",
+  "head_before_my_edits": "0f647f21f2579d931be47cc86a8b8c591579fb93",
+  "note": "No git write was performed (read-only status/log/diff only). The captain commits; the file CONTENTS pinned here are what must be committed.",
+
+  "criteria": {
+    "c1_tool_surface_and_record": {
+      "decision": "ESCALATED, not implemented — deliberately",
+      "reason": "The frozen R1 intent names three authorities (a member ASKS, the captain DECIDES, and 'captain may clear any mailbox; a member may clear only its own'). Choosing tool names, schemas and the authorization checks is a user-visible interface decision, so implementing it inside a repair round would be inventing the contract instead of satisfying it. t50 recommended the same: escalate as a design decision, then wire it in one implementation slot.",
+      "recorded_in": "evidence/omo-align/requirements/frozen-contract.json -> openToolSurfaceEscalation (new key; every pre-existing key verified byte-identical after the append)",
+      "slot": "t52 (implementation, depends on t49/t48/t51) already carries it",
+      "current_truth": "On this revision exactly two R1 primitives have a production caller: appendMailboxDeduped (lib/tools.js, both send sites) and expireInterjections (lib/scheduler.js tick + the new session-start sweep). enqueueInterjection, decideInterjection, clearMailboxToWatermark and readLiveMailbox still have NO production caller.",
+      "record_correction": [
+        "evidence/omo-align/messaging/r1-wiring/result.json — new top-level SUPERSEDED block naming the wrong reachability claim, the wrong cause attribution and the stale pins",
+        "evidence/omo-align/messaging/r1-wiring/findings.md — supersession header (its title claimed 'R1 is WIRED')",
+        "evidence/omo-align/messaging/r1-wiring/followup-round.md — supersession header on its section 3 (the wrong attribution)",
+        "evidence/omo-align/messaging/r1-wiring/dead-capability-findings.md — marked the AUTHORITATIVE reading where it conflicts with the two files above",
+        "the immutable t49 task record itself cannot be edited; its correction is this evidence plus a message to the captain"
+      ]
+    },
+    "c2_attribution_and_t51": {
+      "corrected_attribution": "The t36 QA case was GREEN on the pre-repair revision and went RED because of the new approved-delivery repost added in this wave (lib/state.js, decideInterjection). The case also writes its own repost under the SAME id ('<ij>-delivery'), so the requester inbox holds 2 records against its length===1 assertion.",
+      "why_t49_was_wrong": "t49's arm reverted a SCHEDULER line (the deliverableUnread tombstone filter). The repost lives in state.js, so that arm could never affect the outcome — it measured nothing, which is why it reproduced the identical failure.",
+      "t51": "kept as THE fix (update the case to assert the library's own delivery record instead of writing one, plus the root-cause comment and the VENDOR_LOCK.json re-pin in the same commit per AGENTS.md §9). Not touched here: skills/** and VENDOR_LOCK.json are outside this task.",
+      "citing_discipline": "R1's own falsifiable experiment (node skills/dsh-qa/scripts/agent-teams-messaging.mjs) is RED at this revision and is NOT cited as passing anywhere in this record.",
+      "measured_here": "not re-run to avoid producing a third overlapping run of the same known-red case; the red state is t50's measurement on 0f647f2, and nothing t53 changed touches that case's inputs beyond state.js line numbers."
+    },
+    "c3_pins": {
+      "authoritative": "evidence/omo-align/messaging/r1-wiring/settled-pins.json",
+      "supersedes": "the settledFiles block in r1-wiring/result.json (t49)",
+      "t49_pin_correction": "recorded test pin 44acbc827a486546 / 179 lines / '177 pass' vs actual at that revision 410185dc970b15c4 / 13029 B / 178 pass",
+      "current_pin_of_that_file": "410185dc970b15c4 (13029 B) — the SAME bytes, because the captain committed t49's follow-up as 50e6497 and t53 added its new tests in a separate file (t53-dormant-expiry.test.mjs) rather than rewriting it",
+      "recheck": "all nine pinned files re-hashed after a 50 s settle window; hashes stable"
+    },
+    "c4_expiry_boundary": {
+      "choice": "BOTH options: an explicit boundary statement AND a session-start tick",
+      "boundary_statement": "evidence/omo-align/requirements/frozen-contract.json -> interjectionExpiryBoundary: expiry is evaluated at EVENTS (a member idle edge; a session start), never by a timer, so a workspace nobody ever opens again resolves nothing.",
+      "new_behaviour": [
+        "lib/state.js — expireInterjectionsEverywhere(stateRoot, options): sweeps every team directory under one state root, best-effort per team, ENOENT root is a no-op",
+        "lib/session-start.js — installInterjectionExpirySweep(ctx, resolved): registers its own agent/pre-step listener, called UNCONDITIONALLY at the top of installSessionTeamPolicy so it also runs when sessionTeamPolicy.mode is off; resolves the workspace per call from the starting session's own cwd; degrades to a warning"
+      ],
+      "why_unconditional": "expiry is bookkeeping every session needs, not a feature of auto-routing — gating it behind the policy would reintroduce the dormancy hole on any profile that disables auto-provisioning",
+      "test": "test/t53-dormant-expiry.test.mjs — 6 tests, five negative/positive controls"
+    },
+    "c5_flakiness": {
+      "status": "None now — no recurrence observed in this round",
+      "evidence": "the suite ran 184/0 across 5 clean runs in this round (plus t50's 9 runs at 178/0); no failure attributable to a concurrent write",
+      "convention_recorded": "a suite failure measured while a writer is mid-flight is a NON-measurement; re-run on settled bytes. If a genuine flake recurs, capture it with: bun test packages/mpd-agent-teams-plugin --reporter=junit --reporter-outfile=/tmp/mpd-junit.xml — the junit XML names the failing test, which the lost log of t50's run 1 could not."
+    }
+  },
+
+  "gates": {
+    "patch-agent-teams-fixes --check": "exit 0 — 28 regions / 6 adopted files (26 before this round; +interjection-expiry-sweep, +interjection-expiry-session-start)",
+    "bun test packages/mpd-agent-teams-plugin": "exit 0 — 184 pass / 0 fail / 1200 expect() calls across 46 files (178 before)",
+    "bun test packages/mpd-agent-teams-plugin/self-fix-tests": "exit 0 — 53 pass / 0 fail / 615 expect() calls across 8 files",
+    "bun run typecheck": "exit 0 — tsgo --noEmit, clean",
+    "bun skills/dsh-qa/scripts/session-start-team.mjs": "exit 0 — PASS, two-sided (simple 3/3 silent, complex 3/3 one staged team) with the negative control disarmed; gateHash 7831f26831c7606d… (changed from 8cfaef47… because session-start.js legitimately changed)"
+  },
+
+  "honest_limits": [
+    "The interjection lane is still unreachable from any agent surface; this task corrects the record and escalates the interface decision (t52) rather than implementing it.",
+    "The session-start sweep is registered from installSessionTeamPolicy (lib/session-start.js) because lib/index.js is NOT in this task's inScope; the call is the first statement of that function, so it runs whether or not the policy is enabled.",
+    "The session-start hook and its sweep are unit-tested with a synthetic ctx.on that captures the handler and with an EventEmitter-free fake; no live session was driven through it in this round beyond the session-start-team QA gate, which exercises the bootstrap path but does not seed a past-due interjection.",
+    "node skills/dsh-qa/scripts/agent-teams-messaging.mjs remains RED (t51's job) and is not cited as passing."
+  ]
+}

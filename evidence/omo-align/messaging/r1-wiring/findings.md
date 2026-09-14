@@ -1,5 +1,20 @@
 # t49 — R1 is WIRED at the tool boundary (repair round 2, attempt 1)
 
+> **SUPERSEDED (t53, repair-round-3).** Read this together with `dead-capability-findings.md` in
+> this same directory. The "R1 is WIRED" claim below is true **only for the dedup fold**: the
+> interjection lane (`enqueueInterjection` / `decideInterjection`) and `clearMailboxToWatermark`
+> still have **no production caller**, so a later reader must NOT conclude that R1's lane is
+> reachable. Two further corrections, both from t50's round-2 review, are in
+> `settled-pins.json` and in the `SUPERSEDED` block of `result.json`: the t36 QA case's cause
+> attribution was wrong (its red is caused by the new `decideInterjection` repost in `state.js`,
+> not by a pre-existing case defect — the A/B arm cited here reverted a *scheduler* line and so
+> could not measure it), and the test-file pin and test count below are one revision stale.
+>
+> **Stale-hash footnote (t53).** This file cites the frozen contract as `35,174 B` and `36,401 B`
+> at two points below. The file it names is now `39,814 B` / `3e77e6b8…` after t53 appended two
+> keys (`interjectionExpiryBoundary`, `openToolSurfaceEscalation`); every pre-existing key was
+> verified byte-identical after that append. `settled-pins.json` holds the current values.
+
 Scope: `packages/mpd-agent-teams-plugin/**` + `evidence/omo-align/messaging/**`.
 No git write was performed (read-only `status`/`log`/`diff` only). Repo head at measurement: `7379e28`.
 

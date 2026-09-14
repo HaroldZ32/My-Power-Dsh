@@ -3,6 +3,16 @@
   "task": "t49",
   "round": "repair-round-2",
   "attempt": 1,
+  "SUPERSEDED": {
+    "by": "t53 (repair-round-3)",
+    "reason": "t50 review round 2 (verdict needs_revision) proved TWO claims in this file wrong, so this record must not be read on its own.",
+    "whatIsWrong": [
+      "REACHABILITY: line 9's reason and the acceptance line for R1 claim the lane is consumed at the tool boundary. That is true ONLY for the dedup fold; the INTERJECTION lane (enqueueInterjection / decideInterjection) and clearMailboxToWatermark still have NO production caller and stay unreachable from any agent surface. The truth is recorded in this same directory's dead-capability-findings.md, written minutes later.",
+      "CAUSE ATTRIBUTION: the t36 QA case (skills/dsh-qa/scripts/agent-teams-messaging.mjs) exit 1 was attributed to a PRE-EXISTING case defect, 'A/B measured' by reverting a SCHEDULER edit. That arm was invalid: the approved-delivery repost lives in state.js (decideInterjection), so reverting a scheduler line could never change the outcome. The case was GREEN before this wave and went RED because of the new repost.",
+      "STALE PINS: the test-file pin (44acbc827a486546 / 179 lines) and the '177 pass' count describe the pre-50e6497 revision; the settled revision had 410185dc… and 178 tests. See settled-pins.json in this directory."
+    ],
+    "whatStillStands": "Every lib pin and the defects R1W-D1..D3 are unaffected; t50 independently reproduced the dedup guard, the tombstone/read-marker fix, the expiry notice, the closed vocabulary and the call-count proof."
+  },
   "head": "7379e28bd1b610666d15b245c37edc7ec159d7cb",
   "decision": {
     "choice": "(a) wire R1 in this wave",

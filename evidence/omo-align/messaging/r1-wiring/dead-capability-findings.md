@@ -1,5 +1,11 @@
 # Dead-capability sweep (same class as F-1: "written, tested, never called")
 
+> **CONFIRMED by t50 (review round 2) and ADOPTED as the authoritative reading of this
+> directory.** Where this file and `result.json` / `findings.md` disagree about whether R1's lane
+> is reachable, THIS file is correct: the dedup fold is wired, the interjection lane and the clear
+> primitive are not. The tool-surface decision those findings F-4/F-5/F-6 require is recorded as an
+> escalation in `evidence/omo-align/requirements/frozen-contract.json` and is carried by task t52.
+
 Method: for every R1 symbol, count (a) `import` bindings in `lib/**` outside its declaring
 module, (b) quoted-string references (dynamic dispatch), (c) test reach. Then confirm with a
 repo-wide `grep -rn` excluding `evidence/`. Script: `raw/dead-capability-sweep.mjs`.

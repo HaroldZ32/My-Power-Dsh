@@ -77,7 +77,7 @@ import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createUserMessage } from '../_deps/dsh-llm/lib/index.js';
 import { appendTeamEvent } from "./events.js";
-import { DEFAULT_RECLAIM_STALE_AFTER_MS, findTeamByParticipant, readTeam, reclaimStaleStagedTeams, sanitizeKey, withTeamLock } from "./state.js";
+import { DEFAULT_RECLAIM_STALE_AFTER_MS, expireInterjectionsEverywhere, findTeamByParticipant, readTeam, reclaimStaleStagedTeams, sanitizeKey, withTeamLock } from "./state.js";
 import { initializeProfileTeam } from "./tools.js";
 /** Default display name for the auto-provisioned default team. */
 export const DEFAULT_TEAM_NAME = 'MPD Default';
@@ -476,6 +476,11 @@ export async function routeDecision(policy, userText, workspace) {
  * @param resolved - the resolved plugin runtime config (must carry `sessionTeamPolicy`).
  */
 export function installSessionTeamPolicy(ctx, resolved) {
+    // R1 dormancy fix: the expiry sweep is installed FIRST and unconditionally — it is
+    // bookkeeping every session needs, not a feature of auto-routing, so it must run even
+    // when the team policy is off (the gate below returns early in that case).
+    // See installInterjectionExpirySweep at the end of this module.
+    installInterjectionExpirySweep(ctx, resolved);
     const policy = resolved.sessionTeamPolicy;
     if (!policyEnabled(policy))
         return;
@@ -547,5 +552,45 @@ export function installSessionTeamPolicy(ctx, resolved) {
     }, { global: true, prepend: true });
 }
 //#endregion mpd-delta session-start-gate
+//#region mpd-delta interjection-expiry-session-start (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/**
+ * R1 dormancy fix: make "captain silence = DENY" resolve even for a DORMANT team.
+ *
+ * The scheduler's expiry tick rides a member IDLE EDGE (`kickMember`), so a team that
+ * never kicks again leaves a past-due request `pending` and its requester un-notified.
+ * This sweep runs at session start, so the next time anyone works in the workspace the
+ * past-due rows resolve and their requesters are told.
+ *
+ * Registered SEPARATELY from the team policy, and deliberately so: expiry is
+ * bookkeeping every session needs, not a feature of auto-routing — it must also run
+ * when `sessionTeamPolicy.mode` is `off`. Best-effort: a failure degrades to a warning
+ * and can never break or reject a session-start step.
+ *
+ * Boundary (stated, not implied): expiry is evaluated at EVENTS, never by a timer.
+ * The events are "a member became idle" (scheduler tick) and "a session started in
+ * this workspace" (this sweep). A workspace nobody ever opens again resolves nothing.
+ * @param ctx - the plugin context (needs `on` and `logger`).
+ * @param resolved - the resolved plugin config (provides `stateDir`).
+ */
+export function installInterjectionExpirySweep(ctx, resolved) {
+    ctx.on('agent/pre-step', async (payload, next) => {
+        const decision = await next();
+        try {
+            // Resolve the workspace PER CALL from the session that is starting — never a
+            // module-level const and never the process cwd alone (one host serves many
+            // sessions with different workspaces; AGENTS.md §6 State).
+            const workspace = payload?.agent?.session?.header?.cwd ?? process.cwd();
+            const swept = await expireInterjectionsEverywhere(join(workspace, resolved.stateDir));
+            if (swept.expired.length > 0) {
+                ctx.logger.info(`agent-teams: expired ${swept.expired.length} past-due interjection request(s) at session start: ${swept.expired.join(', ')}`);
+            }
+        }
+        catch (error) {
+            ctx.logger.warn(`agent-teams: session-start interjection sweep failed: ${String(error)}`);
+        }
+        return decision;
+    }, { global: true, prepend: true });
+}
+//#endregion mpd-delta interjection-expiry-session-start
 /** Frozen gate id carried by the session-start complexity gate (diagnostics only). */
 export const SESSION_START_GATE_ID = 'mpd-session-start-complexity-gate/1';
