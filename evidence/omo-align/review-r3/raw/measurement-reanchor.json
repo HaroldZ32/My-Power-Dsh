@@ -1,0 +1,352 @@
+{
+  "summary": {
+    "anchoredHashes": {
+      "packages/mpd-agent-teams-plugin/lib/session-start.js": "7831f26831c7606d6049a1b3cf708146869d46d1a9d5b2ac363b59a8f5183680",
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "3e34091ca9d805cca434321973acbc70ccbcf00eda944ed6d79afdeb4fb8f667",
+      "packages/mpd-agent-teams-plugin/lib/state.js": "4b17c335946bf846ce3332e60fa341b497cdafdec79eb2ce17e94cb9a56cbe57",
+      "evidence/omo-align/requirements/frozen-contract.json": "3e77e6b842553687fed82df4265b6592d31336fdc6f0c4d72a4d6d43dcd853df",
+      "raw/prompts.jsonl": "123dca67e738f85e08a0043c6a33a686d1e91e31e9dbe0568437437414e5f9b5"
+    },
+    "predicate": "trigger = explicitFlag || signals.length >= 1 (Option A, ratified)",
+    "total": 20,
+    "cjk": 20,
+    "sessionStart": {
+      "total": 5,
+      "triggered": 0,
+      "falsePositiveRate": 0,
+      "oneInN": null,
+      "triggeredIds": []
+    },
+    "followUp": {
+      "total": 15,
+      "triggered": 0,
+      "falsePositiveRate": 0,
+      "oneInN": null,
+      "triggeredIds": []
+    },
+    "overallFalsePositiveRate": 0,
+    "promptSetDigest": "fd43da71babeb020d85754c442b6af75634605fcd57fa5e1491f85b33c0143ec"
+  },
+  "rows": [
+    {
+      "id": "P01",
+      "session": "session-62770d9b-163c-4e8b-8097-d0ceff4bf37e",
+      "turn": 1,
+      "stratum": "session-start",
+      "hasCJK": true,
+      "sanitized": true,
+      "promptPreview": "/agent-teams-mpd 功能上对齐OMO（<repo-outside>/）的最新版本，有什么不对应的与不确定的跟我说，尽量保持对齐，agent team-mpd不再作为默",
+      "signals": [],
+      "cSubSignals": {
+        "C1_enumeratedLines": false,
+        "C2_actionVerbs": false,
+        "C3_actionClauses": false
+      },
+      "trigger": false
+    },
+    {
+      "id": "P02",
+      "session": "session-6f45da5e-3937-4538-97fd-39852f542171",
+      "turn": 1,
+      "stratum": "session-start",
+      "hasCJK": true,
+      "sanitized": false,
+      "promptPreview": "/agent-teams-mpd 查看当前工程，检察是否完全剥离RTL开发部分",
+      "signals": [],
+      "cSubSignals": {
+        "C1_enumeratedLines": false,
+        "C2_actionVerbs": false,
+        "C3_actionClauses": false
+      },
+      "trigger": false
+    },
+    {
+      "id": "P03",
+      "session": "session-7521cbf3-ea10-4195-ad7e-f86f7b41b4b4",
+      "turn": 1,
+      "stratum": "session-start",
+      "hasCJK": true,
+      "sanitized": false,
+      "promptPreview": "把MPD默认agent team所有的原先默认是pro模型的成员的默认配置切到flash的max effort上来",
+      "signals": [],
+      "cSubSignals": {
+        "C1_enumeratedLines": false,
+        "C2_actionVerbs": false,
+        "C3_actionClauses": false
+      },
+      "trigger": false
+    },
+    {
+      "id": "P04",
+      "session": "session-791dabbd-e011-4b33-aeb1-ac7ebf08ad50",
+      "turn": 1,
+      "stratum": "session-start",
+      "hasCJK": true,
+      "sanitized": false,
+      "promptPreview": "先阅读AGENT.md，并修复该工程对于Deepseek Harness的新版本的适配问题",
+      "signals": [],
+      "cSubSignals": {
+        "C1_enumeratedLines": false,
+        "C2_actionVerbs": false,
+        "C3_actionClauses": false
+      },
+      "trigger": false
+    },
+    {
+      "id": "P05",
+      "session": "session-aded9c07-4cd3-4c82-ac31-22ce8c47c5be",
+      "turn": 1,
+      "stratum": "session-start",
+      "hasCJK": true,
+      "sanitized": false,
+      "promptPreview": "测试一下当前MPD是否可用，并扫描一下当前工程看看有没有潜在的问题并汇报给我，无论如何，先别动手",
+      "signals": [],
+      "cSubSignals": {
+        "C1_enumeratedLines": false,
+        "C2_actionVerbs": false,
+        "C3_actionClauses": false
+      },
+      "trigger": false
+    },
+    {
+      "id": "P06",
+      "session": "session-6f45da5e-3937-4538-97fd-39852f542171",
+      "turn": 8,
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "sanitized": false,
+      "promptPreview": "检查完以后如果有直接动手改，然后以后开发测试案例用软件类型的，比如说写个小游戏啥的",
+      "signals": [],
+      "cSubSignals": {
+        "C1_enumeratedLines": false,
+        "C2_actionVerbs": false,
+        "C3_actionClauses": false
+      },
+      "trigger": false
+    },
+    {
+      "id": "P07",
+      "session": "session-791dabbd-e011-4b33-aeb1-ac7ebf08ad50",
+      "turn": 15,
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "sanitized": true,
+      "promptPreview": "报错：cannot resolve target \"<repo>/team-activity\": ENOENT: no such file or directory, realpa",
+      "signals": [],
+      "cSubSignals": {
+        "C1_enumeratedLines": false,
+        "C2_actionVerbs": false,
+        "C3_actionClauses": true
+      },
+      "trigger": false
+    },
+    {
+      "id": "P08",
+      "session": "session-aded9c07-4cd3-4c82-ac31-22ce8c47c5be",
+      "turn": 93,
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "sanitized": false,
+      "promptPreview": "我重启了dsh，排第二波吧",
+      "signals": [],
+      "cSubSignals": {
+        "C1_enumeratedLines": false,
+        "C2_actionVerbs": false,
+        "C3_actionClauses": false
+      },
+      "trigger": false
+    },
+    {
+      "id": "P09",
+      "session": "session-62770d9b-163c-4e8b-8097-d0ceff4bf37e",
+      "turn": 159,
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "sanitized": false,
+      "promptPreview": "消息通道可以保留，但必须要有查重清除操作，并且我建议给消息添加一个让成员找captain申请（captain决定是否通过）的插话操作的方式，让整个流程能及时纠错",
+      "signals": [],
+      "cSubSignals": {
+        "C1_enumeratedLines": false,
+        "C2_actionVerbs": false,
+        "C3_actionClauses": false
+      },
+      "trigger": false
+    },
+    {
+      "id": "P10",
+      "session": "session-62770d9b-163c-4e8b-8097-d0ceff4bf37e",
+      "turn": 210,
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "sanitized": false,
+      "promptPreview": "建队这块儿，确保用户明确说让你建队或者调用/agent-team-mpd的时候稳定触发建队，这里的强制进入路径尽量不要出差错",
+      "signals": [],
+      "cSubSignals": {
+        "C1_enumeratedLines": false,
+        "C2_actionVerbs": false,
+        "C3_actionClauses": false
+      },
+      "trigger": false
+    },
+    {
+      "id": "P11",
+      "session": "session-aded9c07-4cd3-4c82-ac31-22ce8c47c5be",
+      "turn": 219,
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "sanitized": false,
+      "promptPreview": "你先留下必须留下的明文，我要压缩一下你这边的上下文才能够继续执行",
+      "signals": [],
+      "cSubSignals": {
+        "C1_enumeratedLines": false,
+        "C2_actionVerbs": false,
+        "C3_actionClauses": false
+      },
+      "trigger": false
+    },
+    {
+      "id": "P12",
+      "session": "session-aded9c07-4cd3-4c82-ac31-22ce8c47c5be",
+      "turn": 221,
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "sanitized": false,
+      "promptPreview": "检查.mpd/SESSION-CHECKPOINT.md并继续，在你确认恢复以后我会批准启动团队",
+      "signals": [],
+      "cSubSignals": {
+        "C1_enumeratedLines": false,
+        "C2_actionVerbs": false,
+        "C3_actionClauses": true
+      },
+      "trigger": false
+    },
+    {
+      "id": "P13",
+      "session": "session-6f45da5e-3937-4538-97fd-39852f542171",
+      "turn": 243,
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "sanitized": false,
+      "promptPreview": "提交并push修复，relocate-smoke 的 fresh-clone 也解决掉，重建品牌保护也解决，还有请修改一下声明，因为现在该工程属于是参考了OMO与dsh-agent",
+      "signals": [],
+      "cSubSignals": {
+        "C1_enumeratedLines": false,
+        "C2_actionVerbs": false,
+        "C3_actionClauses": false
+      },
+      "trigger": false
+    },
+    {
+      "id": "P14",
+      "session": "session-aded9c07-4cd3-4c82-ac31-22ce8c47c5be",
+      "turn": 247,
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "sanitized": false,
+      "promptPreview": "哦对，这些东西之后flash都要改成flash reasoning max，因为deepseek官方后续会把pro链接到flash，现在不改以后也没区别，如果可以的话，把这个默认你",
+      "signals": [],
+      "cSubSignals": {
+        "C1_enumeratedLines": false,
+        "C2_actionVerbs": false,
+        "C3_actionClauses": false
+      },
+      "trigger": false
+    },
+    {
+      "id": "P15",
+      "session": "session-aded9c07-4cd3-4c82-ac31-22ce8c47c5be",
+      "turn": 248,
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "sanitized": false,
+      "promptPreview": "RTL的先不动，RTL那边后续会剥离为独立附属plugin，现在就不要动了",
+      "signals": [],
+      "cSubSignals": {
+        "C1_enumeratedLines": false,
+        "C2_actionVerbs": false,
+        "C3_actionClauses": false
+      },
+      "trigger": false
+    },
+    {
+      "id": "P16",
+      "session": "session-aded9c07-4cd3-4c82-ac31-22ce8c47c5be",
+      "turn": 250,
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "sanitized": false,
+      "promptPreview": "有问题就先修着，我的意思是那边可以相对省点精力，而不是有问题不修",
+      "signals": [],
+      "cSubSignals": {
+        "C1_enumeratedLines": false,
+        "C2_actionVerbs": false,
+        "C3_actionClauses": false
+      },
+      "trigger": false
+    },
+    {
+      "id": "P17",
+      "session": "session-62770d9b-163c-4e8b-8097-d0ceff4bf37e",
+      "turn": 288,
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "sanitized": true,
+      "promptPreview": "哦对，顺便干一件小活，不要在工程的任何地方提到<retired-project>工程的事情，那个永远将不会被开源出去，主要用于内部使用",
+      "signals": [],
+      "cSubSignals": {
+        "C1_enumeratedLines": false,
+        "C2_actionVerbs": false,
+        "C3_actionClauses": false
+      },
+      "trigger": false
+    },
+    {
+      "id": "P18",
+      "session": "session-6f45da5e-3937-4538-97fd-39852f542171",
+      "turn": 342,
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "sanitized": true,
+      "promptPreview": "不是，你倒是传啊，api key就在<home-file>",
+      "signals": [],
+      "cSubSignals": {
+        "C1_enumeratedLines": false,
+        "C2_actionVerbs": false,
+        "C3_actionClauses": false
+      },
+      "trigger": false
+    },
+    {
+      "id": "P19",
+      "session": "session-6f45da5e-3937-4538-97fd-39852f542171",
+      "turn": 343,
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "sanitized": false,
+      "promptPreview": "也不用强调不是OMO的扩展，这就活脱一掩耳盗铃。。。",
+      "signals": [],
+      "cSubSignals": {
+        "C1_enumeratedLines": false,
+        "C2_actionVerbs": false,
+        "C3_actionClauses": false
+      },
+      "trigger": false
+    },
+    {
+      "id": "P20",
+      "session": "session-62770d9b-163c-4e8b-8097-d0ceff4bf37e",
+      "turn": 349,
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "sanitized": false,
+      "promptPreview": "添加一个新功能，每次任务完成归档后，对当前未归档的队伍的所有成员压缩上下文",
+      "signals": [],
+      "cSubSignals": {
+        "C1_enumeratedLines": false,
+        "C2_actionVerbs": false,
+        "C3_actionClauses": false
+      },
+      "trigger": false
+    }
+  ]
+}
