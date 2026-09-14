@@ -13,6 +13,7 @@ import {
   INTERJECTION_QUEUE,
   INTERJECTION_TTL_MS,
   MAILBOX_DEDUP_WINDOW_MS,
+  acknowledgeMailbox,
   appendMailbox,
   appendMailboxDeduped,
   clearMailboxToWatermark,
@@ -246,5 +247,84 @@ test("REPAIR V1: a normalized request still expires on captain silence (default 
     expect(record.status).toBe("expired")
     // `from` survives so the requesting member can be told
     expect(record.from).toBe("Junior Engineer")
+  } finally { cleanup() }
+})
+
+test("R1 SEAM: after a clear -> 0 unread and 0 deliverable (tombstones never re-open)", async () => {
+  const { stateRoot, cleanup } = fixture()
+  try {
+    await appendMailbox(stateRoot, TEAM, "captain", message({ id: "c1", ts: 100, content: "payload-1" }))
+    await appendMailbox(stateRoot, TEAM, "captain", message({ id: "c2", ts: 200, content: "payload-2" }))
+    // both are unread before the clear
+    expect((await readUnreadMailbox(stateRoot, TEAM, "captain")).length).toBe(2)
+    await clearMailboxToWatermark(stateRoot, TEAM, "captain", 500, { now: 1_000 })
+    // the seam: a cleared record is not unread and not deliverable — it is a tombstone
+    expect((await readUnreadMailbox(stateRoot, TEAM, "captain")).length).toBe(0)
+    expect((await readLiveMailbox(stateRoot, TEAM, "captain")).length).toBe(0)
+    // rows survive (no hard delete) and carry the markers
+    const all = await readMailbox(stateRoot, TEAM, "captain")
+    expect(all.filter((record) => record.tombstone === true).length).toBe(2)
+  } finally { cleanup() }
+})
+
+test("R1 SEAM: a clear cannot RE-OPEN an acknowledged record", async () => {
+  const { stateRoot, cleanup } = fixture()
+  try {
+    await appendMailbox(stateRoot, TEAM, "captain", message({ id: "ack-1", ts: 100, content: "already-read" }))
+    // the recipient acknowledges it (delivered + read markers)
+    await acknowledgeMailbox(stateRoot, TEAM, "captain", ["ack-1"])
+    expect((await readUnreadMailbox(stateRoot, TEAM, "captain")).length).toBe(0)
+    // clearing must PRESERVE those markers, otherwise the row would look unread again
+    await clearMailboxToWatermark(stateRoot, TEAM, "captain", 500, { now: 1_000 })
+    expect((await readUnreadMailbox(stateRoot, TEAM, "captain")).length).toBe(0)
+    const record = (await readMailbox(stateRoot, TEAM, "captain")).find((entry) => entry.id === "ack-1")
+    expect(record.tombstone).toBe(true)
+    expect(typeof record.readAt).toBe("number")
+    expect(typeof record.deliveredAt).toBe("number")
+  } finally { cleanup() }
+})
+
+test("R1: the decision vocabulary is CLOSED — anything but approved|rejected is named loudly", async () => {
+  const { stateRoot, cleanup } = fixture()
+  try {
+    await enqueueInterjection(stateRoot, TEAM, { id: "ij-v", from: "Lead", content: "c", ts: 1 })
+    await expect(decideInterjection(stateRoot, TEAM, "ij-v", "maybe", { now: 2 })).rejects.toThrow(/invalid interjection decision "maybe"; allowed values are: approved, rejected/)
+    // the refused decision did NOT mutate the record
+    expect((await readPendingInterjections(stateRoot, TEAM)).map((r) => r.id)).toEqual(["ij-v"])
+    // both allowed values work
+    expect((await decideInterjection(stateRoot, TEAM, "ij-v", "rejected", { now: 3 })).status).toBe("rejected")
+  } finally { cleanup() }
+})
+
+test("R1: an APPROVED interjection is re-posted as an ORDINARY message to the requester", async () => {
+  const { stateRoot, cleanup } = fixture()
+  try {
+    await enqueueInterjection(stateRoot, TEAM, { id: "ij-ap", from: "Junior Engineer", content: "summary only", ts: 1 })
+    await decideInterjection(stateRoot, TEAM, "ij-ap", "approved", { now: 2 })
+    // the requester's own inbox now holds an ordinary (non-interjection) delivery, which
+    // is what the existing member-prompt queue seam delivers at the next step boundary.
+    const inbox = await readUnreadMailbox(stateRoot, TEAM, "Junior Engineer")
+    expect(inbox.length).toBe(1)
+    expect(inbox[0].kind).toBeUndefined()
+    expect(inbox[0].content).toContain("Approved interjection")
+    expect(inbox[0].content).toContain("summary only")
+    // a REJECTED request posts nothing
+    await enqueueInterjection(stateRoot, TEAM, { id: "ij-rj", from: "Lead", content: "no", ts: 1 })
+    await decideInterjection(stateRoot, TEAM, "ij-rj", "rejected", { now: 3 })
+    expect((await readUnreadMailbox(stateRoot, TEAM, "Lead")).length).toBe(0)
+  } finally { cleanup() }
+})
+
+test("R1: expiry notifies the requesting member with an ordinary message", async () => {
+  const { stateRoot, cleanup } = fixture()
+  try {
+    const ts = 9_000
+    await enqueueInterjection(stateRoot, TEAM, { id: "ij-n", from: "Junior Engineer", content: "c", ts })
+    await expireInterjections(stateRoot, TEAM, { now: ts + INTERJECTION_TTL_MS })
+    const inbox = await readUnreadMailbox(stateRoot, TEAM, "Junior Engineer")
+    expect(inbox.length).toBe(1)
+    expect(inbox[0].kind).toBeUndefined()
+    expect(inbox[0].content).toContain("EXPIRED")
+    expect(inbox[0].content).toContain("denied by default")
   } finally { cleanup() }
 })
