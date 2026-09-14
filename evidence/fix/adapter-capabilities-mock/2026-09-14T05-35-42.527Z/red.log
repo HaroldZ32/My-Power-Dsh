@@ -1,0 +1,49 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-dsh-adapter-plugin/test/adapter.test.ts:
+46 | 
+47 | describe("capabilities", () => {
+48 |   test("reports every seam of a full harness", () => {
+49 |     const { ctx } = fakeHarness()
+50 |     const caps = createDshAdapter(ctx).capabilities()
+51 |     expect(Object.values(caps).every((value) => value === true)).toBe(true)
+                                                                      ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-dsh-adapter-plugin/test/adapter.test.ts:51:66)
+(fail) capabilities > reports every seam of a full harness [0.95ms]
+(pass) capabilities > reports absent seams without throwing [0.16ms]
+(pass) tool plane > registerTool normalizes schema, render and the (args, exec) call shape [0.76ms]
+(pass) tool plane > registerTool keeps a caller-supplied schema and render [0.10ms]
+(pass) tool plane > services resolve through ctx.get OR a plain ctx property [0.12ms]
+(pass) tool plane > registerTools registers every definition and disposes them together [0.25ms]
+(pass) tool plane > registerTool without a tools service fails with an actionable error [0.19ms]
+(pass) tool plane > guardTool passes the exec through and installs on the tools service [0.19ms]
+(pass) tool plane > onPostToolExecute owns next() and passes the downstream decision through [0.39ms]
+(pass) tool plane > onPostToolExecute lets a listener replace the decision [0.19ms]
+(pass) tool plane > onPostToolExecute is a no-op when the harness has no event bus [0.06ms]
+(pass) tool plane > hasTool + toolRuntime expose internal tool calls without raw ctx access [0.82ms]
+(pass) tool plane > executeTool normalizes success, tool error, thrown error and a missing runtime [0.43ms]
+(pass) agent plane > spawnAgent normalizes prompt, flat route and the result shape [0.56ms]
+(pass) agent plane > spawnAgent accepts pre-built prompt blocks and agentOptions [0.17ms]
+(pass) agent plane > spawnAgent tolerates a harness that returns no result [0.19ms]
+(pass) agent plane > spawnAgent without a subagent service fails with an actionable error [0.17ms]
+(pass) skill + preset plane > skill provider registration, catalog read and body load [0.42ms]
+(pass) skill + preset plane > skill calls without a skills service fail with actionable errors [0.23ms]
+(pass) skill + preset plane > resolvePreset returns a normalized preset record [0.29ms]
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+(pass) row entry > apply provides the mpdDsh service [0.14ms]
+(pass) row entry > decision helpers use the harness feedback key [0.08ms]
+
+packages/mpd-dsh-adapter-plugin/test/adapter.test.ts:
+
+1 tests failed:
+(fail) capabilities > reports every seam of a full harness [0.95ms]
+
+ 21 pass
+ 1 fail
+ 60 expect() calls
+Ran 22 tests across 2 files. [119.00ms]

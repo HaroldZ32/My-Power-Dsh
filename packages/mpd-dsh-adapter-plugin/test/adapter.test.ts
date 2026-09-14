@@ -35,8 +35,13 @@ function fakeHarness(overrides: Record<string, unknown> = {}) {
     get: async (name: string) => ({ name, content: "body" }),
   }
   const agentPresets = { resolve: async (id: string) => ({ id, path: "/bundle/presets/" + id + "/agent.cordis.yml", trust: "system" }) }
+  const compaction = { compactNow: async (agent: any) => ({ agent }) }
+  // The sample agent carries its OWN scoped ctx: on a real harness the agent-scoped compaction
+  // service is a different object from the host-plane one, so capabilities() reports two seams.
+  const sampleAgent = { id: "sample-agent", ctx: { get: (serviceName: string) => (serviceName === "compaction" ? compaction : undefined) } }
+  const agents = { list: () => [sampleAgent], get: (id: string) => (id === sampleAgent.id ? sampleAgent : undefined) }
   const ctx = {
-    get: (serviceName: string) => ({ tools, subagents, skills, agentPresets } as Record<string, unknown>)[serviceName],
+    get: (serviceName: string) => ({ tools, subagents, skills, agentPresets, agents, compaction } as Record<string, unknown>)[serviceName],
     on: (event: string, listener: any) => { if (event === "tools/post-execute") listeners.push(listener); return () => { listeners.splice(listeners.indexOf(listener), 1) } },
     provide: (serviceName: string, value: unknown) => { provided[serviceName] = value },
     ...overrides,
