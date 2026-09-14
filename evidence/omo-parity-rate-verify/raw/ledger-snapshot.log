@@ -1,0 +1,33 @@
+{
+ "hashes": {
+  "docs/omo-parity-ledger.md": "dc1500348bbb9fef44b50c2e2efa4d799adb263df2207994de158bc738f459da",
+  "docs/omo-parity-ledger.zh-CN.md": "01b4fa90f718d26b8225ff6ec4d580969d3e9b40254e345498ae64cf3282f3ae",
+  "evidence/omo-align/requirements/frozen-contract.json": "09949c8095d7ccd533329b114a2ef22bad1ce81bd24338240e68cfd0fd66be41",
+  "t37Pinned_ledger_en": "0454431a2efe064bf9062dddb282ee79c3883928548847309df4b9c56e2a1f08",
+  "t37Pinned_ledger_zh": "7398ec2d62ea20db0a39cca6104d22d1a7db5066b1a343058b22abb0f5032cd4"
+ },
+ "section3": {
+  "enHasThreshold1": true,
+  "enHasStaleThreshold2": false,
+  "enStatesCSingleSignal": true,
+  "zhHasThreshold1": true,
+  "zhHasStaleThreshold2": false,
+  "zhStatesCSingleSignal": true,
+  "contractLogic": "trigger = anyExplicitFlag OR (matchedSignals >= 1), where a matched signal means: A explicit flag; C satisfied = >=2 of ",
+  "enHarmonizedTableMentioned": true
+ },
+ "section8": {
+  "enPendingRows": 7,
+  "enVerifiedRows": 0,
+  "zhPendingRows": 8,
+  "zhVerifiedRows": 0,
+  "enHeaderStatusLine": "> Wave: `omo-parity-align`. Status: **VERIFIED — values frozen, implementation landed, gates green",
+  "zhHeaderStatusLine": "> 波次：`omo-parity-align`。状态：**已验证 —— 取值已冻结、实现已落地、门禁全绿（§8）。**"
+ },
+ "linkage": {
+  "enLinksZh": true,
+  "zhLinksEn": true,
+  "enLine2": "**English** | [中文](./omo-parity-ledger.zh-CN.md)",
+  "zhLine2": "[English](./omo-parity-ledger.md) | **中文**"
+ }
+}

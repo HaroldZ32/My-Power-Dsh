@@ -1,0 +1,82 @@
+{
+  "schema": "mpd-omo-parity-rate-verify/ledger-snapshot/1",
+  "takenAt": "2026-09-14T00:43:45.147Z",
+  "note": "Mid-flight snapshot taken while t40 (ledger landing) was still in_progress. Closure is NOT judged here.",
+  "hashes": {
+    "docs/omo-parity-ledger.md": "dc1500348bbb9fef44b50c2e2efa4d799adb263df2207994de158bc738f459da",
+    "docs/omo-parity-ledger.zh-CN.md": "01b4fa90f718d26b8225ff6ec4d580969d3e9b40254e345498ae64cf3282f3ae",
+    "evidence/omo-align/requirements/frozen-contract.json": "09949c8095d7ccd533329b114a2ef22bad1ce81bd24338240e68cfd0fd66be41",
+    "t37Pinned_ledger_en": "0454431a2efe064bf9062dddb282ee79c3883928548847309df4b9c56e2a1f08",
+    "t37Pinned_ledger_zh": "7398ec2d62ea20db0a39cca6104d22d1a7db5066b1a343058b22abb0f5032cd4"
+  },
+  "ledgerChangedSinceT37": {
+    "en": true,
+    "zh": true
+  },
+  "section3": {
+    "enHasThreshold1": true,
+    "enHasStaleThreshold2": false,
+    "enStatesCSingleSignal": true,
+    "zhHasThreshold1": true,
+    "zhHasStaleThreshold2": false,
+    "zhStatesCSingleSignal": true,
+    "contractLogic": "trigger = anyExplicitFlag OR (matchedSignals >= 1), where a matched signal means: A explicit flag; C satisfied = >=2 of ",
+    "enHarmonizedTableMentioned": true
+  },
+  "section8": {
+    "enPendingRows": 7,
+    "enVerifiedRows": 0,
+    "zhPendingRows": 8,
+    "zhVerifiedRows": 0,
+    "enHeaderStatusLine": "> Wave: `omo-parity-align`. Status: **VERIFIED — values frozen, implementation landed, gates green",
+    "zhHeaderStatusLine": "> 波次：`omo-parity-align`。状态：**已验证 —— 取值已冻结、实现已落地、门禁全绿（§8）。**"
+  },
+  "bilingualLinkage": {
+    "enLinksZh": true,
+    "zhLinksEn": true,
+    "enLine2": "**English** | [中文](./omo-parity-ledger.zh-CN.md)",
+    "zhLine2": "[English](./omo-parity-ledger.md) | **中文**"
+  },
+  "conflictInventory": [
+    {
+      "id": "CF-1",
+      "topic": ">=2 vs >=1 threshold",
+      "observableNow": "EN §3 and ZH §3 both read '>= 1'; the contract's logic also reads '>= 1' (code: signals.length >= 1). Corrected in the current snapshot.",
+      "judged": false
+    },
+    {
+      "id": "CF-2",
+      "topic": "C = 'lines OR verbs' vs 2-of-3",
+      "observableNow": "EN §3 states C counts as ONE signal satisfied at 2-of-3 sub-signals (C1/C2/C3). Corrected in the current snapshot.",
+      "judged": false
+    },
+    {
+      "id": "CF-3",
+      "topic": "stale/asymmetric verb tables",
+      "observableNow": "EN §3 carries a 'Harmonized verb tables (behaviour change, R3)' paragraph; B row unchanged (matches contract).",
+      "judged": false
+    },
+    {
+      "id": "CF-4",
+      "topic": "§8 all pending vs green gates",
+      "observableNow": "EN §8 still shows pending rows and ZH §8 still shows 待跑 rows; moreover the EN and ZH §8 tables currently have DIFFERENT row counts, and the header status line already claims VERIFIED while §8 rows say pending.",
+      "judged": false
+    },
+    {
+      "id": "CF-5",
+      "topic": "module docstring vs code (same file)",
+      "observableNow": "Resolved in code by t35: lib/session-start.js docstring now documents the ratified Option A predicate and names the superseded '>= 2'.",
+      "judged": false
+    },
+    {
+      "id": "CF-6",
+      "topic": "§4 S2 quote + §7 O5 lingering",
+      "observableNow": "§7 now carries an explicit 'O5 is CLOSED (reconciled, not lingering)' note and §4 quotes the frozen S2 assertion verbatim with the upstream-citation limitation recorded.",
+      "judged": false
+    }
+  ],
+  "contractSide": {
+    "testPromptsSimple": 3,
+    "testPromptsComplex": 3
+  }
+}

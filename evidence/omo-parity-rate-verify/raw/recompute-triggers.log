@@ -1,0 +1,7 @@
+gate hash guard: OK | pin reachable via git: true
+pins match: true
+summary: {"total":20,"cjk":20,"sessionStart":{"total":5,"triggered":0,"rate":0,"oneInN":null,"triggeredIds":[]},"followUp":{"total":15,"triggered":0,"rate":0,"oneInN":null,"triggeredIds":[]},"overallRate":0,"myPromptSetDigest":"fd43da71babeb020d85754c442b6af75634605fcd57fa5e1491f85b33c0143ec","allTriggersAgree":true,"allSignalsAgree":true,"cSubSignalColumnAgreesWithGate":false}
+probe rerun: {"exit":0,"stderr":"","summary":{"anchoredHashes":{"packages/mpd-agent-teams-plugin/lib/session-start.js":"8cfaef47e9959ef7def01003640f768ff4befa50e9c202ff692a0629ca0a2aa6","packages/mpd-agent-teams-plugin/lib/mpd-deltas.js":"47f204cd9678ed87660b18e5ecd01895ce3249fae8155deb0a1d33821f6ff9c5","package
+mismatches: 2
+   {"id":"P07","kind":"cSubSignals-vs-gate-exact","mine":{"C1":false,"C2":false,"C3":false},"theirs":{"C1_enumeratedLines":false,"C2_actionVerbs":false,"C3_actionClauses":true}}
+   {"id":"P12","kind":"cSubSignals-vs-gate-exact","mine":{"C1":false,"C2":false,"C3":false},"theirs":{"C1_enumeratedLines":false,"C2_actionVerbs":false,"C3_actionClauses":true}}

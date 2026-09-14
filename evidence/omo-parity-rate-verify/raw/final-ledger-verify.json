@@ -1,0 +1,230 @@
+{
+  "checkedAt": "2026-09-14T00:54:20.794Z",
+  "hashes": {
+    "head": "0d5279419e612c59a73329015634f1866333d71b",
+    "docs/omo-parity-ledger.md": "1084feab272639603e4e271e0b4a1b90e84ed6ee2d9145d63b8a0847ae75726a",
+    "docs/omo-parity-ledger.zh-CN.md": "d58a6d26fd7c7104190c14bb37ea7982193623a63bbd8be19bbe0e272dff7a32",
+    "docs/index.md": "a8d5bb2821875ceb1e1d6f3acfc7af7b6535a1c4f10a984a89cad6533208215b",
+    "evidence/omo-align/requirements/frozen-contract.json": "09949c8095d7ccd533329b114a2ef22bad1ce81bd24338240e68cfd0fd66be41",
+    "packages/mpd-agent-teams-plugin/lib/session-start.js": "8cfaef47e9959ef7def01003640f768ff4befa50e9c202ff692a0629ca0a2aa6"
+  },
+  "checks": [
+    {
+      "id": "settled-hash",
+      "ok": true,
+      "detail": "ledger EN 1084feab27263960 / ZH d58a6d26fd7c7104 identical across the 55 s window"
+    },
+    {
+      "id": "s3-threshold-en",
+      "ok": true,
+      "detail": "EN §3 states the ratified >= 1 predicate"
+    },
+    {
+      "id": "s3-threshold-zh",
+      "ok": true,
+      "detail": "ZH §3 states the ratified >= 1 predicate"
+    },
+    {
+      "id": "s3-no-stale-threshold",
+      "ok": true,
+      "detail": "no residual '>= 2' threshold statement in either language"
+    },
+    {
+      "id": "s3-c-single-signal-en",
+      "ok": true,
+      "detail": "EN §3: C is one signal, satisfied at 2-of-3"
+    },
+    {
+      "id": "s3-c-single-signal-zh",
+      "ok": true,
+      "detail": "ZH §3: C is one signal, 2-of-3 in Chinese"
+    },
+    {
+      "id": "s3-b-table-complete",
+      "ok": true,
+      "detail": "EN §3 B row carries all 15 contract B verbs (found 15)"
+    },
+    {
+      "id": "s3-c-union-complete",
+      "ok": true,
+      "detail": "EN §3 carries the harmonized C union: 14 EN + 12 CJK contract verbs (found 26)"
+    },
+    {
+      "id": "s3-c-union-complete-zh",
+      "ok": true,
+      "detail": "ZH §3 carries the harmonized C union (found 26/26)"
+    },
+    {
+      "id": "s3-a-row",
+      "ok": true,
+      "detail": "EN §3 A row: team:/!team with the consumed-prefix rule"
+    },
+    {
+      "id": "s3-d-row",
+      "ok": true,
+      "detail": "EN §3 D row: .mpd/plans artifact"
+    },
+    {
+      "id": "s3-c1-c2-c3-named",
+      "ok": true,
+      "detail": "EN §3 names C1/C2/C3"
+    },
+    {
+      "id": "s8-en-all-verified",
+      "ok": true,
+      "detail": "EN §8 gate table: 9 rows, all verified, 0 pending"
+    },
+    {
+      "id": "s8-zh-all-verified",
+      "ok": true,
+      "detail": "ZH §8 gate table: 9 rows, all verified, 0 待跑"
+    },
+    {
+      "id": "s8-row-count-parity",
+      "ok": true,
+      "detail": "EN 9 gate rows vs ZH 9 gate rows"
+    },
+    {
+      "id": "s8-command-order-parity",
+      "ok": true,
+      "detail": "gate commands identical and in the same order: 9 vs 9"
+    },
+    {
+      "id": "s8-links-present",
+      "ok": true,
+      "detail": "language switch links intact in both files"
+    },
+    {
+      "id": "s8-header-status",
+      "ok": true,
+      "detail": "header status line flipped to VERIFIED in both languages"
+    },
+    {
+      "id": "s8-sha-anchors",
+      "ok": true,
+      "detail": "§8 anchor table pins the contract/gate/state/prompts content hashes in both languages"
+    },
+    {
+      "id": "s8-rate-number-matches-raw",
+      "ok": true,
+      "detail": "EN §8 rate row carries the raw 0-of-20 result"
+    },
+    {
+      "id": "s8-rate-number-matches-raw-zh",
+      "ok": true,
+      "detail": "ZH §8 rate row carries the raw 0-of-20 result"
+    },
+    {
+      "id": "cf1-closed",
+      "ok": true,
+      "detail": "CF-1: no >=2 statement survives in either ledger"
+    },
+    {
+      "id": "cf2-closed",
+      "ok": true,
+      "detail": "CF-2: the 'lines OR verbs' C rule is gone; 2-of-3 present"
+    },
+    {
+      "id": "cf3b-closed",
+      "ok": true,
+      "detail": "CF-3b: the C verb union is complete in the ledger"
+    },
+    {
+      "id": "cf4-closed",
+      "ok": true,
+      "detail": "CF-4: §8 no longer reports pending/待跑"
+    },
+    {
+      "id": "cf5-code-side",
+      "ok": true,
+      "detail": "CF-5: session-start.js docstring now documents Option A (line-29 check)"
+    },
+    {
+      "id": "cf5-line29-wording",
+      "ok": true,
+      "detail": "line 29 reads: * `complexityGate`) is `trigger = anyExplicitFlag OR (matchedSignals >= 1)` — the"
+    },
+    {
+      "id": "cf6a-closed",
+      "ok": true,
+      "detail": "CF-6a: §4 quotes the reconciled S2 assertion in both languages"
+    },
+    {
+      "id": "cf6b-closed",
+      "ok": true,
+      "detail": "CF-6b: O5 is marked closed/reconciled"
+    },
+    {
+      "id": "o3-o4-closed",
+      "ok": true,
+      "detail": "O3/O4 no longer described as open work"
+    },
+    {
+      "id": "l6-stale-fixed",
+      "ok": true,
+      "detail": "L6 names mode === \"off\" and no stale mode === \"auto\" remains"
+    },
+    {
+      "id": "closure-ids-complete",
+      "ok": true,
+      "detail": "t37 ids CF-1,CF-2,CF-3,CF-3a,CF-3b,CF-4,CF-5,CF-6; closure ids CF-1,CF-2,CF-3a,CF-3b,CF-4,CF-5,CF-6a,CF-6b; unaccounted [] (CF-3/CF-6 are parent headings, covered by their a/b children)"
+    },
+    {
+      "id": "closure-table-has-terminal-state",
+      "ok": true,
+      "detail": "closure table rows: 10, each carrying an explicit terminal state: 10 (8 CF rows + beyond-t37 + accepted-cost)"
+    },
+    {
+      "id": "s8-number-matches-its-pinned-log",
+      "ok": true,
+      "detail": "§8 claims 161/0 across 42 files; its pinned raw log says 161/0 across 42 files"
+    },
+    {
+      "id": "s8-pinned-log-unmodified",
+      "ok": true,
+      "detail": "pinned log sha256 recomputed 1d08e5a41b14a2e2 vs t40's claim 1d08e5a41b14a2e2"
+    },
+    {
+      "id": "s8-vendor-number-true",
+      "ok": true,
+      "detail": "§8 claims verify-vendor PASS; an independent run exits 0"
+    }
+  ],
+  "failures": [],
+  "settledAgainstPass1": true,
+  "line29": " * `complexityGate`) is `trigger = anyExplicitFlag OR (matchedSignals >= 1)` — the",
+  "conflictIds": {
+    "t37Ids": [
+      "CF-1",
+      "CF-2",
+      "CF-3",
+      "CF-3a",
+      "CF-3b",
+      "CF-4",
+      "CF-5",
+      "CF-6"
+    ],
+    "closureIds": [
+      "CF-1",
+      "CF-2",
+      "CF-3a",
+      "CF-3b",
+      "CF-4",
+      "CF-5",
+      "CF-6a",
+      "CF-6b"
+    ],
+    "unaccounted": []
+  },
+  "spotCheck": {
+    "pluginTestsAtAnchor": "161/0, 42 files",
+    "pluginTestsOnCurrentTree": "166/0, 42 files",
+    "pluginTestsCurrentTreeExit": 0,
+    "headNow": "0d5279419e612c59a73329015634f1866333d71b",
+    "note": "The §8 number is anchored to the window HEAD 3096455->e89fa2a; the current tree has moved on (the comment/count drift is a property of HEAD moving, not of the number being wrong - see finding F4).",
+    "vendor": {
+      "exit": 0,
+      "tail": "[verify-vendor] PASS"
+    }
+  }
+}
