@@ -348,29 +348,55 @@ export function repairScopeFromFindings(findings, source) {
     return { inScope: allowed, ...(carved.length > 0 ? { outOfScope: carved } : {}) };
 }
 /**
- * The B7 overlap test. It keeps the original collision rule — two declarations
- * can match the same path when their `/`-bounded prefixes collide — for every
- * overlap position that is literal on both sides, and adds the glob positions
- * this delta introduced: a collision exists only when at least one colliding
- * segment is literal on both sides and the literals differ (a wildcard can
- * always be narrowed to avoid the other declaration). A parent declaration and
- * a directory beneath it (`packages/foo` + `packages/foo/vendor`, the documented
- * carve-out shape) are therefore NOT a collision, while two same-depth
- * declarations (`packages/foo/lib` + `packages/foo/test`) are.
+ * The B7 overlap test, as a true "may two writers touch the same path" relation:
+ * two declarations overlap when at least one workspace path can match BOTH, where a
+ * declaration covers exactly what `pathMatchesScope` covers — the declaration itself
+ * and everything beneath it (the dir-prefix rule), with `**` crossing separators and
+ * `*` / `?` staying inside one segment.
+ *
+ * The wave-2 body this replaces was inverted for its ONLY caller (`inScopeOverlap`,
+ * i.e. the create-task sibling validator): it called two DIFFERENT same-depth paths a
+ * collision (`docs/index.md` vs `scripts/build-mcp.mjs`) while reporting a parent and
+ * the file inside it as disjoint (`docs` vs `docs/index.md`), so it refused independent
+ * lanes and waved through the one shape that really races on a file. Measured
+ * 2026-09-14: three task creations were only unblocked by naming an unrelated task as a
+ * dependency (`evidence/mpd-naming/verifier-contract/`). The carve-out question it used
+ * to answer is asked by `contractContradiction`/`repairScopeFromFindings` through
+ * `pathMatchesScope`, never through this relation.
  */
 function scopePatternsOverlap(left, right) {
-    const leftSegments = left.split('/');
-    const rightSegments = right.split('/');
-    const shared = Math.min(leftSegments.length, rightSegments.length);
-    for (let index = 0; index < shared; index += 1) {
-        const one = leftSegments[index];
-        const other = rightSegments[index];
-        if (one === other)
-            continue;
-        if (!scopeSegmentHasWildcard(one) && !scopeSegmentHasWildcard(other))
-            return true;
+    if (isMatchEverythingPattern(left) || isMatchEverythingPattern(right))
+        return true;
+    return scopeSegmentsOverlap(left.split('/'), 0, right.split('/'), 0);
+}
+/**
+ * Whether two segment lists can describe the same path. A side that runs out first
+ * COVERS every path below the other (dir-prefix), which is exactly the parent/child
+ * overlap; two different literal segments can never meet.
+ */
+function scopeSegmentsOverlap(left, leftAt, right, rightAt) {
+    if (leftAt >= left.length || rightAt >= right.length)
+        return true;
+    const one = left[leftAt];
+    const other = right[rightAt];
+    if (one === '**')
+        return scopeSegmentsOverlap(left, leftAt + 1, right, rightAt) || scopeSegmentsOverlap(left, leftAt, right, rightAt + 1);
+    if (other === '**')
+        return scopeSegmentsOverlap(left, leftAt, right, rightAt + 1) || scopeSegmentsOverlap(left, leftAt + 1, right, rightAt);
+    const oneWild = scopeSegmentHasWildcard(one);
+    const otherWild = scopeSegmentHasWildcard(other);
+    if (oneWild || otherWild) {
+        // The concrete side is the witness for the patterned side; when BOTH sides are
+        // patterned the relation stays conservative (serialize rather than guess).
+        if (!oneWild && !scopeSegmentMatches(one, other))
+            return false;
+        if (!otherWild && !scopeSegmentMatches(other, one))
+            return false;
+        return scopeSegmentsOverlap(left, leftAt + 1, right, rightAt + 1);
     }
-    return false;
+    if (one !== other)
+        return false;
+    return scopeSegmentsOverlap(left, leftAt + 1, right, rightAt + 1);
 }
 //#endregion mpd-delta contract-contradiction
 function dependencyClosureContains(tasks, dependencies, targetId) {

@@ -206,10 +206,26 @@ test("DEFECT 2 falsifiability: the contradiction guard must not reject legitimat
     expect(contract(["packages/foo/**"], ["**"]).ok).toBe(false)
 })
 
-test("DEFECT 2 falsifiability: the write-task overlap guard still separates colliding declarations", () => {
-    expect(inScopeOverlap(["packages/foo"], ["packages/foo/vendor"])).toEqual([])
-    expect(inScopeOverlap(["packages/foo/lib"], ["packages/foo/test"])).toEqual(["packages/foo/lib"])
+test("DEFECT 2 falsifiability: the write-task overlap guard is a real may-two-writers-touch-it relation", () => {
+    // Same declaration -> collide.
     expect(inScopeOverlap(["a"], ["a"])).toEqual(["a"])
+    // A parent scope COVERS the file/dir beneath it -> collide (this is the racing shape
+    // the pre-fix relation waved through).
+    expect(inScopeOverlap(["docs"], ["docs/index.md"])).toEqual(["docs"])
+    expect(inScopeOverlap(["packages/foo"], ["packages/foo/vendor"])).toEqual(["packages/foo"])
+    // Two DIFFERENT concrete paths never meet -> no collision (the pre-fix relation called
+    // them colliding and forced unrelated lanes to serialize).
+    expect(inScopeOverlap(["packages/foo/lib"], ["packages/foo/test"])).toEqual([])
+    expect(inScopeOverlap(["docs/index.md"], ["scripts/build-mcp.mjs"])).toEqual([])
+    expect(inScopeOverlap(["docs/upstream-parity-ledger.md"], ["docs/index.md"])).toEqual([])
+    // Glob positions: `**` crosses separators, `*` stays inside one segment.
+    expect(inScopeOverlap(["docs/**"], ["docs/index.md"])).toEqual(["docs/**"])
+    expect(inScopeOverlap(["packages/*/dist"], ["packages/foo/dist/cli.js"])).toEqual(["packages/*/dist"])
+    expect(inScopeOverlap(["src/**"], ["srcx/a.ts"])).toEqual([])
+    expect(inScopeOverlap(["docs/**"], ["src/**"])).toEqual([])
+    expect(inScopeOverlap(["**"], ["docs/index.md"])).toEqual(["**"])
+    // Scope entries are still normalized before the relation (`.`/`./` mean everything).
+    expect(inScopeOverlap(["."], ["docs/index.md"])).toEqual(["."])
 })
 
 // ---------- durability: the vendor-refresh guard ----------

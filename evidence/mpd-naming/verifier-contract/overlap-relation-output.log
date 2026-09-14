@@ -1,0 +1,11 @@
+disjoint ["docs/index.md"] vs ["scripts/build-mcp.mjs"] | preFix=true fixed=false
+disjoint ["docs/upstream-parity-ledger.md"] vs ["docs/index.md"] | preFix=true fixed=false
+disjoint ["packages/foo/lib"] vs ["packages/foo/test"] | preFix=true fixed=false
+disjoint ["src/**"] vs ["srcx/a.ts"] | preFix=true fixed=false
+disjoint ["docs/**"] vs ["src/**"] | preFix=true fixed=false
+overlap  ["docs"] vs ["docs/index.md"] | preFix=false fixed=true
+overlap  ["packages/foo"] vs ["packages/foo/vendor"] | preFix=false fixed=true
+overlap  ["a"] vs ["a"] | preFix=true fixed=true
+overlap  ["docs/**"] vs ["docs/index.md"] | preFix=false fixed=true
+overlap  ["packages/*/dist"] vs ["packages/foo/dist/cli.js"] | preFix=false fixed=true
+overlap  ["**"] vs ["docs/index.md"] | preFix=false fixed=true
