@@ -1,0 +1,55 @@
+{
+  "schema": "mpd-omo-align-r3-verb-harmonisation/1",
+  "task": "t35 R3",
+  "settledFileHashes": {
+    "packages/mpd-agent-teams-plugin/lib/state.js": {
+      "bytes": 54389,
+      "sha256": "751a4c1eaf1714d37a45baa8c0a83895ee8e2a487f28574d02fd445cd1b8b825"
+    },
+    "packages/mpd-agent-teams-plugin/lib/scheduler.js": {
+      "bytes": 30673,
+      "sha256": "f9ec4a226511b420c660673ccc1838b99fa4c0ac548f4b0f19e0fcf865109011"
+    },
+    "packages/mpd-agent-teams-plugin/lib/session-start.js": {
+      "bytes": 27954,
+      "sha256": "63489b074e9a48016462456455cae1d26402338dc6f4a1ab7ae4d8fc49fff8f8"
+    },
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": {
+      "bytes": 88815,
+      "sha256": "47f204cd9678ed87660b18e5ecd01895ce3249fae8155deb0a1d33821f6ff9c5"
+    },
+    "evidence/omo-align/requirements/frozen-contract.json": {
+      "bytes": 35174,
+      "sha256": "09949c8095d7ccd533329b114a2ef22bad1ce81bd24338240e68cfd0fd66be41"
+    },
+    "packages/mpd-agent-teams-plugin/test/r1-message-channel.test.mjs": {
+      "bytes": 9108,
+      "sha256": "b83b77583da0aeeddece4753844b498600f9ba57cfc7464e991a81debe35d91b"
+    }
+  },
+  "verified": [
+    {
+      "what": "two-sided gate (no regression from R3)",
+      "command": "bun skills/dsh-qa/scripts/session-start-team.mjs",
+      "exit": 0,
+      "evidence": "PASS: simple 3/3 silent, complex 3/3 one staged team + one notice, negative control disarmed=true"
+    },
+    {
+      "what": "ISOLATION MOUNT PROOF (required: R3 is a behaviour change)",
+      "command": "node evidence/omo-align/messaging/r3-verb-harmonisation/mount-proof.mjs",
+      "exit": 0,
+      "evidence": "ok=true: the three changed modules import; all 14 EN + 12 CJK verbs pass BOTH tables; a REAL isolated install+boot reports 0 apply/schema crash signatures; R1 exports load. --dump-config was NOT used as load evidence."
+    }
+  ],
+  "changedPaths": [
+    "packages/mpd-agent-teams-plugin/lib/state.js",
+    "packages/mpd-agent-teams-plugin/lib/scheduler.js",
+    "packages/mpd-agent-teams-plugin/lib/session-start.js",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+    "packages/mpd-agent-teams-plugin/test/r1-message-channel.test.mjs",
+    "evidence/omo-align/requirements/frozen-contract.json",
+    "evidence/omo-align/messaging/r3-verb-harmonisation/mount-proof.mjs",
+    "evidence/omo-align/messaging/r3-verb-harmonisation/mount-proof.json",
+    "evidence/omo-align/messaging/r3-verb-harmonisation/session-start-team.log"
+  ]
+}

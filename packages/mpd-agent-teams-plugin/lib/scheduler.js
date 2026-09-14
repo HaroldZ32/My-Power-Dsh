@@ -13,7 +13,7 @@
  */
 import { join } from 'node:path';
 import { deliverToMember } from "./members.js";
-import { acknowledgeMailbox, beginTaskAttempt, CAPTAIN_KEY, claimMailboxDelivery, findTeamByParticipant, invalidateTaskAttempt, readTeam, readUnreadMailbox, releaseMailboxDelivery, resolveCancelledDependencyDeadlocks, unsatisfiedDependencies, withTeamLock, writeTeam, } from "./state.js";
+import { acknowledgeMailbox, beginTaskAttempt, CAPTAIN_KEY, claimMailboxDelivery, findTeamByParticipant, INTERJECTION_KIND, invalidateTaskAttempt, readTeam, readUnreadMailbox, releaseMailboxDelivery, resolveCancelledDependencyDeadlocks, unsatisfiedDependencies, withTeamLock, writeTeam, } from "./state.js";
 /** Per-dependency output cap in the assignment prompt. */
 export const DEPENDENCY_OUTPUT_MAX_CHARS = 2_000;
 /** Combined dependency-output budget in the assignment prompt. */
@@ -220,6 +220,22 @@ When finishing: use status=completed only when the task's success criteria are s
 
 State policy: ${stateDir}/${teamId}/ is read-only diagnostics; mutate team state only through agent_teams_* tools.`;
 }
+//#region mpd-delta interjection-not-auto-delivered (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/**
+ * R1: drop interjection REQUESTS from an auto-delivery unread set.
+ *
+ * `fallbackMailboxPrompt` packs EVERY unread mailbox record verbatim and the
+ * scheduler delivers it at the next idle edge, so a request written into an ordinary
+ * inbox would be delivered WITHOUT the captain's approval. Pending requests are
+ * therefore filtered out of both auto-delivery reads; they reach a member only after
+ * `decideInterjection(..., 'approved')` re-posts them as an ordinary message.
+ * @param messages - unread mailbox records.
+ * @returns the records that may auto-deliver.
+ */
+function deliverableUnread(messages) {
+    return messages.filter((message) => message.kind !== INTERJECTION_KIND);
+}
+//#endregion mpd-delta interjection-not-auto-delivered
 function fallbackMailboxPrompt(messages) {
     return [
         'AgentTeams delivered messages that were persisted while live delivery was unavailable:',
@@ -284,7 +300,7 @@ export function installTeamScheduler(ctx, config) {
                     return;
                 // A mailbox-only fallback is real pending work. Deliver it before a
                 // fresh task and acknowledge only after Harness accepts the follow-up.
-                const unread = await readUnreadMailbox(stateRoot, team.id, member.name);
+                const unread = deliverableUnread(await readUnreadMailbox(stateRoot, team.id, member.name));
                 if (unread.length > 0) {
                     await withTeamLock(teamLockKey(stateRoot, team.id), () => (claimMailboxDelivery(stateRoot, team.id, member.name, unread.map(message => message.id))));
                     const accepted = await deliverToMember(ctx, captain, member.id, fallbackMailboxPrompt(unread), new AbortController().signal);
@@ -347,7 +363,7 @@ export function installTeamScheduler(ctx, config) {
                     // the prompt) instead of delaying the task behind a mailbox
                     // round-trip; they are claimed now and acknowledged only
                     // after Harness accepts the delivery below.
-                    const captainUnread = (await readUnreadMailbox(stateRoot, fresh.id, currentMember.name))
+                    const captainUnread = deliverableUnread(await readUnreadMailbox(stateRoot, fresh.id, currentMember.name))
                         .filter((message) => message.from === CAPTAIN_KEY)
                         .slice(-5);
                     if (captainUnread.length > 0) {

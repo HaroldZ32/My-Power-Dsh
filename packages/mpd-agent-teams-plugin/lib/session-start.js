@@ -26,7 +26,13 @@
  * existed, and therefore never preventing one) cannot recur.
  *
  * The frozen gate (see `evidence/omo-align/requirements/frozen-contract.json`
- * `complexityGate`) is `trigger = (matchedSignals >= 2) OR anyExplicitFlag`:
+ * `complexityGate`) is `trigger = anyExplicitFlag OR (matchedSignals >= 1)` — the
+ * RATIFIED Option A predicate. A single matched signal admits the gate; a satisfied
+ * C counts as ONE matched signal and is itself sufficient, because C's own bar is a
+ * 2-of-3 majority of its sub-signals (C1/C2/C3). The superseded `matchedSignals >= 2`
+ * wording must NOT be restored: the frozen complex prompts #1/#3 carry C as their
+ * only signal and would become unreachable, and the multi-clause false positive is an
+ * ACCEPTED cost of Option A, not a defect.
  * - A (hard) explicit flag: the trimmed user text starts with `team:` or
  *   contains `!team` (case-insensitive). The marker is CONSUMED: it is removed
  *   from the goal text before it reaches the model.
@@ -80,8 +86,16 @@ export const STARTUP_NOTICE_MARKER = '[AgentTeams] Session-start team rule';
 //#region mpd-delta session-start-gate (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
 /** Signal B: deliverable verbs (english + CJK), counted by distinct match. */
 export const DELIVERABLE_VERB_PATTERN = /(align|migrate|refactor|audit|overhaul|port|rewrite|consolidate|对齐|重构|迁移|审计|移植|梳理|全量)/giu;
-/** Signal C: action verbs (english + CJK), counted by distinct match. */
-export const ACTION_VERB_PATTERN = /(\badd\b|\balign\b|\bbuild\b|\bchange\b|\bcheck\b|\bconsolidate\b|\bimplement\b|\bmigrate\b|\boverhaul\b|\bport\b|\brefactor\b|\brewrite\b|\bverify\b|设计|实现|验证|改造|补充)/giu;
+/**
+ * Signal C2: action verbs (English + CJK), counted by distinct match.
+ *
+ * R3 HARMONISATION (user decision: harmonize, a BEHAVIOUR change): this table and
+ * CLAUSE_ACTION_PATTERN carry the SAME verb set — the union of what each used to
+ * hold — so neither verb is silently C2-only or C3-only. Only the ROLE differs:
+ * C2 counts a verb anywhere in the text, C3 counts a clause that OPENS with one.
+ * The English and CJK lists are enumerable from these two regexes directly.
+ */
+export const ACTION_VERB_PATTERN = /(\badd\b|\balign\b|\baudit\b|\bbuild\b|\bchange\b|\bcheck\b|\bconsolidate\b|\bimplement\b|\bmigrate\b|\boverhaul\b|\bport\b|\brefactor\b|\brewrite\b|\bverify\b|设计|实现|验证|改造|补充|对齐|重构|迁移|审计|移植|梳理|全量)/giu;
 /** Signal C: numbered / bulleted / table rows that read as enumerated steps. */
 export const ENUMERATED_LINE_PATTERN = /^\s*(?:\d+[.)]|[-*|])\s/u;
 /**
@@ -91,8 +105,13 @@ export const ENUMERATED_LINE_PATTERN = /^\s*(?:\d+[.)]|[-*|])\s/u;
  * enumerated steps exactly like line breaks do.
  */
 export const CLAUSE_SEPARATOR_PATTERN = /[\n\r;:,.]/u;
-/** Signal C: a clause that opens (optionally after a conjunction) with an imperative/action verb. */
-export const CLAUSE_ACTION_PATTERN = /^\s*(?:(?:and|then|also)\s+)?(?:\b(?:add|align|audit|build|change|check|implement|migrate|refactor|rewrite|verify)\b|设计|实现|验证|改造|补充|对齐|重构|迁移|审计|移植|梳理|全量)/iu;
+/**
+ * Signal C3: a clause that opens (optionally after a conjunction) with an action verb.
+ * R3: the verb set is IDENTICAL to ACTION_VERB_PATTERN (the harmonized union); the
+ * anchors and the optional conjunction are the only table-specific parts, and they
+ * exist because C3 is a POSITIONAL test (clause start) while C2 is a text count.
+ */
+export const CLAUSE_ACTION_PATTERN = /^\s*(?:(?:and|then|also)\s+)?(?:\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|设计|实现|验证|改造|补充|对齐|重构|迁移|审计|移植|梳理|全量)/iu;
 /** Signal B threshold: distinct deliverable-verb matches. */
 export const DELIVERABLE_VERB_MIN = 4;
 /** Signal C threshold: enumerated lines. */
