@@ -1,0 +1,120 @@
+{
+  "rows": [
+    {
+      "symbol": "messageDedupKey",
+      "importedBy": [],
+      "stringRefs": [],
+      "tests": 0,
+      "verdict": "UNREACHABLE"
+    },
+    {
+      "symbol": "appendMailboxDeduped",
+      "importedBy": [
+        "lib/tools.js"
+      ],
+      "stringRefs": [],
+      "tests": 1,
+      "verdict": "REACHABLE from production code"
+    },
+    {
+      "symbol": "clearMailboxToWatermark",
+      "importedBy": [],
+      "stringRefs": [],
+      "tests": 2,
+      "verdict": "ONLY TESTS REACH IT"
+    },
+    {
+      "symbol": "readLiveMailbox",
+      "importedBy": [],
+      "stringRefs": [],
+      "tests": 1,
+      "verdict": "ONLY TESTS REACH IT"
+    },
+    {
+      "symbol": "enqueueInterjection",
+      "importedBy": [],
+      "stringRefs": [],
+      "tests": 1,
+      "verdict": "ONLY TESTS REACH IT"
+    },
+    {
+      "symbol": "readInterjections",
+      "importedBy": [],
+      "stringRefs": [],
+      "tests": 0,
+      "verdict": "UNREACHABLE"
+    },
+    {
+      "symbol": "readPendingInterjections",
+      "importedBy": [],
+      "stringRefs": [],
+      "tests": 1,
+      "verdict": "ONLY TESTS REACH IT"
+    },
+    {
+      "symbol": "readRawInterjectionRecords",
+      "importedBy": [],
+      "stringRefs": [],
+      "tests": 0,
+      "verdict": "UNREACHABLE"
+    },
+    {
+      "symbol": "expireInterjections",
+      "importedBy": [
+        "lib/scheduler.js"
+      ],
+      "stringRefs": [],
+      "tests": 1,
+      "verdict": "REACHABLE from production code"
+    },
+    {
+      "symbol": "decideInterjection",
+      "importedBy": [],
+      "stringRefs": [],
+      "tests": 1,
+      "verdict": "ONLY TESTS REACH IT"
+    },
+    {
+      "symbol": "isTaskReady",
+      "importedBy": [],
+      "stringRefs": [],
+      "tests": 1,
+      "verdict": "ONLY TESTS REACH IT"
+    },
+    {
+      "symbol": "deliverableUnread",
+      "importedBy": [],
+      "stringRefs": [],
+      "tests": 0,
+      "verdict": "UNREACHABLE"
+    },
+    {
+      "symbol": "INTERJECTION_TTL_MS",
+      "importedBy": [],
+      "stringRefs": [],
+      "tests": 1,
+      "verdict": "ONLY TESTS REACH IT"
+    },
+    {
+      "symbol": "MAILBOX_DEDUP_WINDOW_MS",
+      "importedBy": [],
+      "stringRefs": [],
+      "tests": 1,
+      "verdict": "ONLY TESTS REACH IT"
+    }
+  ],
+  "notReachable": [
+    "messageDedupKey",
+    "clearMailboxToWatermark",
+    "readLiveMailbox",
+    "enqueueInterjection",
+    "readInterjections",
+    "readPendingInterjections",
+    "readRawInterjectionRecords",
+    "decideInterjection",
+    "isTaskReady",
+    "deliverableUnread",
+    "INTERJECTION_TTL_MS",
+    "MAILBOX_DEDUP_WINDOW_MS"
+  ]
+}
