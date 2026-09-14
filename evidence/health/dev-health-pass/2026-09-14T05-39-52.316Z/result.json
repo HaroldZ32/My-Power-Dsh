@@ -1,0 +1,51 @@
+{
+  "slug": "dev-health-pass",
+  "subject": { "dev": "2b26b5b", "branchAtStart": "fix/team-compact-param-schema@8d2edb1" },
+  "verdict": "healthy after two repairs (F1 blocker fixed, F2 suite-red fixed, F3 pre-existing QA-case failure left open and documented)",
+  "environment": { "dsh": "0.1.5-rc.1", "node": "v24.16.0", "bun": "1.3.14" },
+  "gates": {
+    "verify-vendor": { "status": "PASS" },
+    "bun test packages": { "status": "PASS", "detail": "399 pass / 0 fail (398 / 1 before the F2 repair)" },
+    "bun run typecheck": { "status": "PASS" },
+    "bun run test:qa": { "status": "PASS", "detail": "all self-tests" },
+    "bundle-lifecycle (MOUNT)": { "status": "PASS", "evidence": "evidence/dsh-qa/bundle-lifecycle/2026-09-14T05-38-28.264Z" },
+    "preset-conformance (MOUNT)": { "status": "PASS", "evidence": "evidence/dsh-qa/preset-conformance/2026-09-14T05-35-09.344Z" },
+    "preset-register (MOUNT)": { "status": "FAIL", "evidence": "evidence/dsh-qa/preset-register/2026-09-14T05-35-14.847Z", "preExisting": true, "cause": "case does not sandbox HOME -> real ~/.agents/skills (6) leaks -> SKILLS=25 BUNDLED=19" },
+    "dist-vs-src sweep": { "status": "PASS", "detail": "16/16 MATCH (13 of 16 differed before the F1 repair)" }
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "blocker",
+      "status": "fixed",
+      "title": "the shipped adapter artifact could not serve the live-session plane",
+      "symptom": "mpd_team_compact_run threw 'dsh.liveAgent is not a function' in every session mounting the row",
+      "cause": "bundle patch loads the adapter dist; 7a8d245 added the live-session plane to src and never rebuilt the dist; 13 dists inlining it went stale with it",
+      "fix": "rebuild all 13 dists with the canonical bun build command",
+      "evidence": "evidence/fix/adapter-livesession-rebuild/2026-09-14T05-38-01.791Z"
+    },
+    {
+      "id": "F2",
+      "severity": "high",
+      "status": "fixed",
+      "title": "the adapter's full-harness unit mock was stale, leaving the suite red",
+      "symptom": "bun test packages: mpd-dsh-adapter-plugin > capabilities > 'reports every seam of a full harness' failed",
+      "cause": "fakeHarness() never gained the agents/compaction seams added in 7a8d245",
+      "fix": "extend the mock with a compaction stub, an agents registry and one sample agent with its own scoped ctx",
+      "evidence": "evidence/fix/adapter-capabilities-mock/2026-09-14T05-35-42.527Z"
+    },
+    {
+      "id": "F3",
+      "severity": "medium",
+      "status": "open-pre-existing",
+      "title": "preset-register QA case fails because it does not sandbox HOME",
+      "symptom": "SKILLS=25 BUNDLED=19 -> probe FAIL",
+      "remedy": "fix lives in skills/dsh-qa/** -> invalidates the corpus treeSha in VENDOR_LOCK.json -> needs its own re-pin",
+      "evidence": "evidence/dsh-qa/preset-register/2026-09-14T05-35-14.847Z"
+    }
+  ],
+  "notVerified": [
+    "no live provider round-trip (sandbox has no provider credential)",
+    "the already-running GUI process keeps the pre-repair modules in memory (ESM cache) -> the repair applies to a new dsh process"
+  ]
+}

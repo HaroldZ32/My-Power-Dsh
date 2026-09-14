@@ -1,0 +1,9 @@
+delta-check	0	node scripts/patch-agent-teams-fixes.mjs --check
+verify-vendor	1	node scripts/verify-vendor.mjs
+typecheck	0	bun run typecheck
+plugin-tests	1	bun test packages/mpd-agent-teams-plugin
+self-fix-tests	0	bun test packages/mpd-agent-teams-plugin/self-fix-tests
+test-qa	1	bun run test:qa
+preset-conformance	0	node skills/dsh-qa/scripts/preset-conformance.mjs
+session-start-team	0	bun skills/dsh-qa/scripts/session-start-team.mjs
+messaging-case-self-test	1	node skills/dsh-qa/scripts/agent-teams-messaging.mjs --self-test

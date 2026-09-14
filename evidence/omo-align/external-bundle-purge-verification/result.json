@@ -1,0 +1,135 @@
+{
+  "schema": "mpd-external-bundle-purge-verification/1",
+  "task": "t34 (rebuilt verification slot; predecessor slots t31/t32 were cancelled)",
+  "kind": "verification",
+  "verifier": "Reviewer",
+  "attemptId": "c45dca03-4437-469b-a147-0fc2b34ad10d",
+  "verdict": "needs_revision",
+  "verdictScope": "The residue gate itself is met on the settled revision and functional regression is fully green, but ONE acceptance criterion fails: the type/test-repair check requires the wrong-argument-order case to be fixed with a reproducible bidirectional proof, and that case is still wrong-order and still passes inertly. The task's own observation channel therefore cannot detect a regression of the very rule it claims to pin. I report the gate result honestly (it is met) and fail the criterion that is not.",
+  "settledRevision": {
+    "head": "d54afe5372355ee8bd0e524f4d90f55621f74e66",
+    "settleEvidence": "HEAD and the gate file hashes were identical across a 20 s check before the final runs; the two-sided case itself settled on this revision and reported gateHash b79bde7c87cc2a6c899a3e4c0e9685c0b6e26fb0d3dfdc80f1383c385b5d623e, byte-identical to my own sha256 of lib/session-start.js.",
+    "churnNote": "A first two-sided run FAILED with 'revision did not settle' because another writer committed mid-run (HEAD moved 656f622 -> d54afe5). I re-ran only after the settle window confirmed no change. This is recorded because it is exactly the class of false reading the settle discipline exists to prevent.",
+    "measuredHashes": {
+      "packages/mpd-agent-teams-plugin/lib/session-start.js": "b79bde7c87cc2a6c899a3e4c0e9685c0b6e26fb0d3dfdc80f1383c385b5d623e",
+      "packages/mpd-agent-teams-plugin/lib/state.js": "1d503e05830e6cc42fa129abf5546fdec262db736060b51a24232ac67cadbbc5",
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "8f1c2e110d85e9079085d67e65b69a2acae826a0b7befabd50f47d58bf0ae703",
+      "packages/mpd-agent-teams-plugin/lib/command.js": "6c29cd65fcdc7be81e8cb6107fbcfad51a45b1ad600a1aefa5bf85b60fb8398f",
+      "packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs": "2dd5028053cfa61e18d76da8892a189fe073345712b752c327df59d1cdc17729",
+      "scripts/build-mcp.mjs": "3b9b33fcf07b301c788a5ca4b47d983297c038ffece79c6bcfed1eb1e5bd300d",
+      "skills/dsh-qa/SKILL.md": "2b654183ca1395eaceb4b4a80d15c8b0173e2e6a7caf41cf3136c674aec6675b",
+      "skills/dsh-qa/scripts/software-smoke.mjs": "0dc6a8b90e431e75e9b869853aca672f744310953aae9ac2f567b3588987a2bf",
+      "VENDOR_LOCK.json": "1ad1585e9962cf781dca38ffce71ae57d990cec55c1b07ce5f07f1421b97b6e1"
+    }
+  },
+  "identifierSet": {
+    "derivation": "Derived independently from repository history rather than from any task text: the deletion commit's path list was enumerated by category only, and the withdrawn tokens were then reduced to the scan patterns used below. The literal tokens are deliberately NOT restated here; the scan patterns are reproduced as a hash-committed driver under raw/ so the gate is re-runnable without the evidence file re-embedding any withdrawn name.",
+    "categoriesScanned": [
+      "withdrawn project/repo/directory short name, case-insensitive",
+      "cross-repository directory name of the withdrawn extraction wave",
+      "organization handle forms (underscore and hyphen spellings)",
+      "package-name form built from the withdrawn repository name",
+      "cross-repository relative path prefixes (ancestor-directory patterns)"
+    ],
+    "notInSetAndWhy": "Two literal families that a naive scan conflates were EXCLUDED because they are not this project's identifier: (a) the two internally maintained verification-tree names that the wave's own QA corpus legitimately uses for generic RTL/verification cases (they match 59 tracked files and are unrelated to the withdrawn repository name); (b) the sanctioned third-party platform brand (exemption 1). Including (a) would have produced a permanently red gate over unrelated artifacts."
+  },
+  "exemptions": [
+    {
+      "what": "the third-party platform brand string at skills/ast-grep/references/install.md:89",
+      "reason": "unrelated upstream vendor text (an OS platform name inside an ast-grep toolchain note), NOT this project's identifier; rewriting it would corrupt a vendored reference and keep the gate permanently red. Verified present, verified unmodified, and the only such occurrence.",
+      "modifiedByMe": false
+    },
+    {
+      "what": "gitignored scratch/cache/index directories",
+      "reason": "temporary copies that are neither tracked nor published. Verified against .gitignore entries for the QA relocation tree, the temp-cache tree and the codegraph index: 0 files inside them are tracked, and my non-ignored worktree scan therefore excludes them by construction.",
+      "modifiedByMe": false
+    }
+  ],
+  "scanResult": {
+    "trackedFiles": {"nonExemptHits": 0, "exemptHits": 1, "filesWithAnyHit": 4},
+    "worktreeNonIgnoredFiles": {"nonExemptHits": 0, "exemptHits": 1, "filesWithAnyHit": 4},
+    "hits": [
+      {"file": "skills/ast-grep/references/install.md", "line": 89, "category": "exempt third-party platform brand", "detail": "the sanctioned exemption; unmodified"},
+      {"file": "evidence/omo-align/dangling-refs/20260913T164500Z/result.json", "line": 38, "category": "evidence residue (record of the gate itself)", "detail": "a recorded scan result that quotes the exempt brand while documenting the clean gate; no project identifier in an actionable position"},
+      {"file": "evidence/omo-align/t25-closeout/20260913T161900Z/raw-sweep.txt", "line": 10, "category": "evidence residue (record of the gate itself)", "detail": "same class: a scan transcript noting the exempt brand line"},
+      {"file": "evidence/omo-align/t25-closeout/20260913T161900Z/result.json", "line": 43, "category": "evidence residue (record of the gate itself)", "detail": "same class, two occurrences, both quoting the exempt brand while reporting the gate"}
+    ],
+    "noSourceOrPublishableHit": "There is no hit in live code, in the patch/config plane, in the package manifest, in the publishable bilingual documentation, or in the skill corpus after the mid-review fix (see the churn note in findings).",
+    "midReviewChange": "My FIRST scan (at HEAD 656f622) found three real source hits: scripts/build-mcp.mjs (two dangling references to a deleted evidence artifact), skills/dsh-qa/SKILL.md (a provenance label), and skills/dsh-qa/scripts/software-smoke.mjs (a provenance comment pointing at a deleted path). While this verification was running, commit dc0c698 (merged as 314022c, an ancestor of the reviewed HEAD) neutralized exactly those three files and re-pinned the corpus in the same commit. I re-ran the full scan on the settled HEAD and the three are gone. My verdict is anchored to the settled revision; the earlier readings are recorded as superseded, not as current findings."
+  },
+  "functionalRegression": {
+    "agentTeamsRowLoads": "yes — the two-sided case's own wiring check passed (patch row present, headless profile composed) and preset-conformance created a real session with the preset",
+    "mpdProfileResolves": "yes — preset-conformance: session/create HTTP 200 with agentPreset mpd, session log written, boot log with zero apply-failure signatures",
+    "twoSidedGate": "PASS on the settled revision: simple side 3/3 with zero teams and zero notices; complex side 3/3 each staging exactly one team (profile mpd, 11 members, 0 spawned) with one notice; disarmed reverse control (autoRoute disabled) 0 teams / 0 notices",
+    "deltaRegistry": {"machineIdiom": "--check reports 21 mpd delta region(s) across 6 adopted file(s); --check exit 0 and clean", "literalIdiom": "grep -c 'id: \"mpd-delta' = 22 because the generated registry repeats the marker inside its own defining idiom; the duplicate-free marker count is 22 distinct marker strings over the same 21 regions. Both idioms are recorded by name so the counts are never compared across idioms.", "carrierRegionRemoved": "confirmed: zero occurrences of the carrier region marker or its block in the registry, and zero occurrences of the cross-bundle hook or the withdrawn identifier in the adopted plugin entrypoint"},
+    "presetConformance": "PASS including its negative control (the preset still fails loudly on the missing required persona key), so the assertion is falsifiable and not tautological",
+    "vendorGate": "PASS (skill corpus fingerprint and every vendored asset item verify)",
+    "packageTests": "not re-run in this task's scope; the wave's implementation records cover them and the gates the contract names are all green above"
+  },
+  "purgeSurface": {
+    "carrierHookRemoved": true,
+    "packageJsonScripts": "no script points at a deleted file; the withdrawal-only script entry is gone and the surviving verify entries are intact",
+    "readmePair": "the publishable bilingual pair is present, switch-linked in both directions, and carries no identifier hit",
+    "agentsManual": "the local-adaptation table is structurally intact (its row-per-region shape preserved) and the withdrawn cross-bundle adaptation row is absent; the registry count text matches the measured machine idiom",
+    "internalReferenceDocs": "the two internal QA reference documents named in the contract are deleted",
+    "orphanEvidenceTrees": "both orphaned extraction-wave evidence trees are absent from the worktree and untracked in the index",
+    "removalLog": "the extraction-wave state record is absent",
+    "generatedBuildOutput": "the gitignored packed artifact directory carried stale copies written BEFORE the mid-review fix; I regenerated it from the purged source with the pack script and re-scanned: 0 identifier hits. This closes the residue class the contract's amended criterion called out for non-ignored build outputs (the class the first pass had missed).",
+    "skillsRepin": "the skill corpus re-pin and the skill-file edits are in the SAME commit (dc0c698: corpus fingerprint plus SKILL.md plus software-smoke.mjs), and no later commit touches skills/** without the paired fingerprint change — single-writer pairing holds."
+  },
+  "typeAndTestRepair": {
+    "declarationConsistent": "PASS — lib/types/state.d.ts declares the view function with the same parameter order and types as the implementation in lib/state.js (status, tasks, dependencies)",
+    "deadThresholdConstant": "PASS — the superseded gate-threshold constant no longer exists anywhere in packages/, skills/ or scripts/",
+    "ratifiedTriggerComment": "PASS — the trigger line carries a comment naming the ratified decision and its accepted cost directly above it",
+    "wrongOrderCaseFixed": "FAIL — the case at packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs:42 still passes its arguments in the wrong slots: it supplies the dependency list where the task list belongs and an empty dependency list where the dependencies belong. Measured: the call as written evaluates to 'open' (a non-blocking verdict) while the assertion demands 'blocked'; it passes only because the empty dependency list short-circuits the predicate. The intended call (task list first, the unknown id second) evaluates to 'blocked', which proves the production rule is correct and the TEST is inert, not the code.",
+    "bidirectionalProof": "FAIL — the criterion requires a reproducible bidirectional proof (correct order passes / wrong order fails). Neither direction exists: the suite is green but the wrong-order call does not fail (it silently asserts a different, trivially true proposition), and no captured output demonstrates the intended call. I re-ran the suite myself: 4 pass / 0 fail, which is exactly the false confidence the criterion is meant to exclude.",
+    "residualChain": "The same wrong-order call is also what makes the mislabelled assertion look like coverage of the unknown-dependency rule; until it is corrected, a regression of that rule would not turn this suite red."
+  },
+  "evidenceNeutralization": {
+    "files": ["evidence/omo-align/external-bundle-purge-verification/result.json", "evidence/omo-align/external-bundle-purge-verification/output.log"],
+    "noForbiddenIdentifierRestated": "No withdrawn project, repository, directory, organization, package or environment-variable name is reproduced in this evidence. Hits and exemptions are expressed by category plus file:line; the scan patterns are committed only as a digest inside raw/ so the gate stays re-runnable.",
+    "deletionManifestForm": "The removed set is expressed by neutral category plus pre-delete git identity (tree/blob object ids) recoverable from history, never by restating withdrawn path names.",
+    "productFilesModified": "none — every write in this task is under evidence/omo-align/external-bundle-purge-verification/**; the one write outside a pure read was the regeneration of the gitignored packed-artifact directory, which is a build output, is not tracked, and was produced by the repository's own pack script."
+  },
+  "acceptanceResults": [
+    {"criterion": "零残留门（标识集合扫描）", "status": "passed", "evidence": "Independently derived identifier set; tracked and non-ignored worktree scans both return 0 non-exempt hits on the settled revision. The only non-source hits are three evidence records that quote the sanctioned third-party brand while documenting the gate itself, plus the ONE exempt vendored brand line. No hit in live code, patch/config, manifest, publishable docs or skill corpus. The earlier three source hits were neutralized mid-review by commit dc0c698 and re-verified gone at the settled HEAD."},
+    {"criterion": "两条豁免（不得修改）", "status": "passed", "evidence": "Exemption 1 verified present and unmodified at skills/ast-grep/references/install.md:89 (third-party platform brand; the only such occurrence). Exemption 2 verified structurally: the QA relocation tree, temp-cache tree and codegraph index are gitignored, contain zero tracked files, and are excluded from the non-ignored scan by construction. Neither exemption was edited by me."},
+    {"criterion": "功能回归", "status": "passed", "evidence": "Two-sided gate PASS on the settled revision including the disarmed reverse control; preset-conformance PASS with its negative control still red; verify-vendor PASS; delta --check clean at 21 regions / 6 adopted files (machine idiom), with the literal idiom recorded separately as 22 and the carrier region confirmed absent."},
+    {"criterion": "清除面核对", "status": "passed", "evidence": "Carrier hook gone; package.json carries no entry pointing at a deleted file; bilingual README pair present, switch-linked both ways and identifier-free; the manual's adaptation table intact with the withdrawn row removed and the registry count matching the machine idiom; both internal reference docs deleted; both orphaned evidence trees absent; the extraction-state record absent; and the gitignored packed artifact regenerated from purged source and re-scanned clean, closing the non-ignored-build-output residue class."},
+    {"criterion": "类型与用例修复核对", "status": "failed", "evidence": "Declaration order matches the implementation (pass); the dead threshold constant is gone (pass); the ratified-decision comment sits above the trigger (pass). But the wrong-order case is NOT fixed and there is NO bidirectional proof: test/r3-view-parity.test.mjs:42 still supplies the dependency list in the tasks slot and an empty list in the dependencies slot, so the call evaluates to 'open' while the assertion demands 'blocked' — it passes only because the predicate short-circuits on the empty list. The intended call evaluates to 'blocked', proving the production rule is fine and the assertion is inert. The suite is 4 pass / 0 fail, i.e. green for the wrong reason."},
+    {"criterion": "证据中性化", "status": "passed", "evidence": "Both required evidence files exist under the task's neutral scope directory and restate no withdrawn identifier: hits and exemptions are recorded by category plus file:line, the scan patterns are committed only as a digest under raw/, and the removed set is expressed by neutral category plus pre-delete git identity. No product file was modified."}
+  ],
+  "commandsRun": [
+    {"command": "cd /root/dshProj/my-power-dsh && node scripts/patch-agent-teams-fixes.mjs --check", "status": "passed", "exitCode": 0, "evidence": "already applied: 21 mpd delta region(s) across 6 adopted file(s); registry clean; carrier region absent (0 occurrences)"},
+    {"command": "cd /root/dshProj/my-power-dsh && bun skills/dsh-qa/scripts/session-start-team.mjs", "status": "passed", "exitCode": 0, "evidence": "PASS on settled rev d54afe5 / gateHash b79bde7c…: simple 3/3 silent, complex 3/3 staged one team each, disarmed control 0 teams / 0 notices. A prior run failed on a non-settled revision (another writer committed mid-run) and is recorded, not hidden."},
+    {"command": "cd /root/dshProj/my-power-dsh && node scripts/verify-vendor.mjs", "status": "passed", "exitCode": 0, "evidence": "every vendored asset item plus the skill-corpus fingerprint verified; PASS"},
+    {"command": "cd /root/dshProj/my-power-dsh && node skills/dsh-qa/scripts/preset-conformance.mjs", "status": "passed", "exitCode": 0, "evidence": "the team row loads and the preset resolves: session/create HTTP 200 with the expected preset, zero apply-failure signatures in the boot log, and the negative control still fails loudly on the missing required persona key"},
+    {"command": "cd /root/dshProj/my-power-dsh && bun test packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs", "status": "passed", "exitCode": 0, "evidence": "4 pass / 0 fail — green, but the wrong-order assertion passes inertly (measured: as-written call => 'open', intended call => 'blocked'), which is the criterion that fails"},
+    {"command": "cd /root/dshProj/my-power-dsh && node scripts/pack-mpd.mjs && grep -rlE \"<identifier set>\" dist/mpd-package", "status": "passed", "exitCode": 0, "evidence": "packed artifact regenerated from the purged source (1121 files normalized) and re-scanned: 0 identifier hits, closing the stale-build-output residue class the amended criterion names"},
+    {"command": "cd /root/dshProj/my-power-dsh && git grep -inE \"<identifier set>\" -- . ; git ls-files --cached --others --exclude-standard | xargs grep -inE \"<identifier set>\"", "status": "passed", "exitCode": 0, "evidence": "tracked: 0 non-exempt hits (4 files with any hit = 1 exempt brand + 3 evidence records quoting that brand); non-ignored worktree: identical set; the three mid-review source hits are gone at the settled revision"},
+    {"command": "cd /root/dshProj/my-power-dsh && node -e \"const r=require('./evidence/omo-align/external-bundle-purge-verification/result.json'); console.log('verdict:', r.verdict)\"", "status": "passed", "exitCode": 0, "evidence": "verdict: needs_revision"}
+  ],
+  "findings": [
+    {
+      "id": "V1",
+      "severity": "medium",
+      "file": "packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs",
+      "line": 42,
+      "problem": "Wrong-argument-order case not repaired, and its assertion is inert. The call passes the dependency list in the tasks slot and an empty list in the dependencies slot, so it evaluates to 'open' while the assertion demands 'blocked' — it passes only because the empty dependency list short-circuits the predicate. Measured both ways: as-written => 'open' (so a strict reading would fail; it does not fail), intended (task list first, unknown id second) => 'blocked'. The suite reports 4 pass / 0 fail, which is green for the wrong reason and gives false confidence that the unknown-dependency blocking rule is pinned. This contradicts the t25 F2-LOW closure claim and the t34 criterion demanding a reproducible bidirectional proof.",
+      "requiredFix": "Change the call to pass the task list first and the unknown id as the dependency list, then capture BOTH directions in the evidence: correct order passes, deliberately swapped order fails. Owner: the implementation writer who owns that test file (product file — not modified by me)."
+    },
+    {
+      "id": "V2",
+      "severity": "low",
+      "file": "evidence/omo-align/dangling-refs/20260913T164500Z/result.json",
+      "line": 38,
+      "problem": "Three tracked evidence records (this one and the two under the double-five closeout directory) contain the sanctioned third-party platform brand while documenting the residue gate. They are not actionable identifier leaks in source or publishable output, but under the contract's literal zero-hit-with-two-exemptions rule they are hits, and the contract's own category list does not distinguish their class.",
+      "requiredFix": "Either extend the exemption wording to cover evidence records that quote an exempt brand while documenting the gate, or reword those three records to describe the exemption without reproducing the brand. Owner: the evidence producers (captain and the closeout author). Not modified by me."
+    }
+  ],
+  "residualRisks": [
+    "The reviewed revision moved twice during this verification (HEAD 656f622 -> d54afe5, with the dangling-reference fix landing mid-scan). Any verdict on a shared checkout is only as good as its settle window; I re-ran the failing gate after settling and anchored every reading to the hashes above.",
+    "Two literal families that a naive identifier scan conflates were deliberately excluded (an unrelated internal verification-tree name family used by the QA corpus, and the sanctioned platform brand). If a future gate adopts a broader pattern without that distinction it will go permanently red on unrelated artifacts — the exclusion is recorded with its reason rather than silently filtered.",
+    "The non-ignored worktree contains several hundred untracked files; the scan covers them, but a future writer could add an untracked artifact after this verdict. The packed build output in particular is regenerated by hand, so it can go stale again whenever source changes without a re-pack."
+  ]
+}

@@ -1,0 +1,181 @@
+{
+  "schema": "mpd-omo-align-review/1",
+  "task": "t27 (closing review of the wave; new record — does NOT reopen t18)",
+  "kind": "review",
+  "round": 2,
+  "reviewer": "Reviewer",
+  "attemptId": "d3fce211-768b-4658-8f43-d32b2801f5ca",
+  "reviewedTasks": ["t24 (F1 tightening)", "t22 (F2 view consistency + F6)", "t26 (R4 forced-entry path)"],
+  "reviewedAt": "2026-09-13T15:55Z",
+  "verdict": "pass",
+  "priorRecordsPreserved": {
+    "t18": "evidence/omo-align/review/result.json (terminal; not rewritten)",
+    "t25": "evidence/omo-align/review/r2/result-t25-review-r2.json (this task's predecessor at the same path; renamed, not overwritten)"
+  },
+  "verdictScope": "THE WAVE CAN BE CALLED COMPLETE, with one documented medium finding and one ratified-by-design non-satisfaction. I verified all three assigned items on the settled revision with my own runs: F1 tightening is real (C is one signal, fired only at >=2-of-3 sub-signals; a one-sub-signal sentence and a C1+C3-only sentence do not fire), F2 view consistency is real and bidirectional (failed dependency => panel 'open' + failed dependency named, and the dependent really claims; pending/claimed/in_progress still 'blocked'), and R4's forced-entry path works end to end in a genuinely model-incapable environment (my own run: happy stages exactly one STAGED team with 0 spawned and the notice seen; duplicate yields the ask-first inquiry with still one team; unknown profile errors with zero teams; disabled slash command warns). Non-regression is fully green. Two caveats are recorded rather than hidden: (1) the t27 acceptance text still says the filed false-positive sentence must NOT stage a team, but under the captain-ratified Option A (frozen contract amended to matchedSignals >= 1) it DOES route; the contract records this as a known, accepted cost, so I report that criterion as unmet-by-ratified-design rather than as a defect of the delivered code; (2) the C2 verb list in code is wider than the contract's C2 list (finding F1-SUB) — frozen complex prompt #1 triggers only because of that wider list, so this is a latent contract inconsistency needing a documentation amendment, and the ordinary-prompt trigger rate remains the open acceptance-cost item.",
+  "reviewAnchor": {
+    "reviewedHead": "d7886395b842cf401fe90ceb5fb0f6f305d267b6",
+    "branch": "dev",
+    "method": "Every reviewed file was read from the committed revision and each claim below is anchored to the sha256 I measured; the working tree was dirty only in docs/** and evidence/** at review time (git status --porcelain showed no packages/presets/scripts/skills change).",
+    "measuredHashes": {
+      "packages/mpd-agent-teams-plugin/lib/session-start.js": "2372df644e52c88247ea89354b8414071ebd5c87061a6d869a52786002475793",
+      "packages/mpd-agent-teams-plugin/lib/state.js": "1d503e05830e6cc42fa129abf5546fdec262db736060b51a24232ac67cadbbc5",
+      "packages/mpd-agent-teams-plugin/lib/snapshot.js": "fc534afdd0102314c3d24bf7b468e958295a29c26a9b91c4ddaa5b9fcbe3a365",
+      "packages/mpd-agent-teams-plugin/lib/scheduler.js": "4fff9a9713d3ba86c888ac17048859ba2c87f7dfb0ac7d9379e3787e5e52900f",
+      "packages/mpd-agent-teams-plugin/lib/tool-names.js": "19d3dab403bc27e1cfa845a7db816a18d22cab410407f0953470196f23782884",
+      "packages/mpd-agent-teams-plugin/lib/command.js": "6c29cd65fcdc7be81e8cb6107fbcfad51a45b1ad600a1aefa5bf85b60fb8398f",
+      "packages/mpd-agent-teams-plugin/lib/index.js": "57ad622d7bae45d47fa4e1642c14e378da104b6d5b4d4e7d5e30a12eb28c5941",
+      "skills/dsh-qa/scripts/explicit-team-trigger.mjs": "70e482cd9a10fc9a7d78af68ba254d86ae82885a5ca7ffc87ff355c4cdcd8238",
+      "skills/dsh-qa/scripts/session-start-team.mjs": "e90a40c3723e0ba71332e37bb8a4b1b4c3d0f76f610b138957cae055d502bf39"
+    },
+    "anchorCrossCheck": "The two-sided QA case settled on rev d788639 with gateHash 2372df64… — byte-identical to my own sha256 of lib/session-start.js, so the case and my probes measured the same file."
+  },
+  "t18DispositionReference": {
+    "F1": "tightened by t24 (C aggregated into one signal at its 2-of-3 bar) — verified here; residual sub-signal contract divergence filed as F1-SUB",
+    "F2": "fixed by t22/t24 — verified here and closed",
+    "F3": "closed-by-rebuild (Lead); independently re-verified by me earlier (45,244 B / 90b76b10… / verdict pass, stable hashes)",
+    "F4": "disposed (point a accepted; point b downgraded to predicate-level, dispatch-level deferred)",
+    "F6": "folded into t22 and closed (TEAM_TOOL_NAMES 14, set-equal to the frozen list)",
+    "A8": "accepted-with-exemption (user decision; historical failed field preserved)",
+    "A4": "owned by t21 (functional-surface table)",
+    "F5_F7_F8": "known/low, no action"
+  },
+  "acceptanceResults": [
+    {
+      "criterion": "F1 收紧得到验证：C 的命中要求 C1/C2/C3 ≥2 成立；反例断言——\"Check the test, build the package, verify the output.\" 不得建队；冻结 3+3 提示集仍双向通过",
+      "status": "failed",
+      "evidence": "SPLIT RESULT, both halves measured. (a) TIGHTENING VERIFIED: session-start.js::evaluateComplexityGate pushes exactly one 'C' only when >=2 of the three sub-signals hold; my probes: 'check the test' => signals [] (one sub-signal, no C); a C1+C3-only sentence => signals [] (distinct action verbs counted 1, so the 2-of-3 bar is not met) — the majority requirement is genuinely load-bearing and C never appears as C1/C2/C3. (b) FALSE-POSITIVE ASSERTION NOT MET BY RATIFIED DESIGN: 'Check the test, build the package, verify the output.' measures B=0, C1=0, C2=3, C3=3 => signals ['C'] => routeDecision 'provision'. This is exactly what the captain-ratified Option A accepts: frozen-contract.json::complexityGate.logicRevisionNote records the consequence as ACCEPTED AND LEDGERED and testPrompts.expectation records it as KNOWN AND ACCEPTED and not a defect; t24/t26 pin it in evidence. t18's measured reason stands: that sentence and frozen complex #1 share the identical sub-signal profile (C2+C3, no B/C1/flag), so no rule over the frozen signals separates them. (c) FROZEN 3+3 STILL PASSES BOTH WAYS: my own run of the mandated case settled on rev d788639 / gateHash 2372df64… => simpleTeams [0,0,0] with no notices; complexTeams [1,1,1] each staged mpd / 11 members / 0 spawned with one notice; disarmed reverse control (autoRoute=false) => 0 teams / 0 notices. I mark this criterion failed solely because its literal second clause cannot be satisfied under the ratified contract; the delivered behaviour matches the ratified decision and the frozen sets."
+    },
+    {
+      "criterion": "F2 视图一致性得到验证：同一团队记录下 taskVisualState（面板/agent_teams_status）与 taskContractView 对「失败依赖的下游」呈现一致——可 claim 即非 blocked，且显式带出失败依赖名；给出双向对照证据",
+      "status": "passed",
+      "evidence": "My own 6-case matrix against the shipped state.js::taskVisualState and state.js::failedDependencyIds with dependency A and pending dependent B: A failed => visual 'open', failed ['A']; A completed => 'open', []; A pending => 'blocked', []; A claimed => 'blocked', []; A in_progress => 'blocked', []; A cancelled => 'open', []. The panel path is therefore consistent with dependencyStates (used by claim and the scheduler) in BOTH directions and names the failed dependency id. The contract-side half is wired by tools.js::taskContractView (failed_dependencies from the same predicate, called with the full task list) and snapshot.js (state + failedDependencies); r3-view-parity drives the REAL agent_teams_claim_task on an on-disk record and the dependent claims, proving the views are not optimistic. Residual: browser rendering itself was not exercised (recorded honestly by t24/t26)."
+    },
+    {
+      "criterion": "R4 强制进入路径得到验证：① model-incapable environment => plugin stages exactly one team (approval=required, 0 spawned) + notice；② 模型正常建队时不得产生第二支；③ 已有未批准团队 => 询问而非新建/复用；④ slashCommand:false => 告警；profile 不存在 => 显式报错；⑤ explicit-team-trigger 用例覆盖 happy/重复/缺 profile/禁用四情形",
+      "status": "passed",
+      "evidence": "① MY OWN RUN: bun skills/dsh-qa/scripts/explicit-team-trigger.mjs exit 0 => happy {teams:1, profile:'mpd', phase:'staged', spawned:0, approved:false, noticeSeen:true}. The design makes this deterministic rather than hopeful: the case installs an isolated DSH_HOME and boots with no credentials and no settings, so headless answers MISSING_CREDENTIAL and the model cannot call any tool — the team therefore comes from command.js::ensureExplicitTeam inside the invocation handler, i.e. the same turn by construction. ② the live-model half is not end-to-end testable here and is declared: session-start provisioning starts with findTeamByParticipant and returns undefined when the session already leads a team (no second team, no invented notice), and the duplicate case proves the one-team invariant in the model-incapable path; t26's notVerified records the live-model limitation. ③ duplicate {teamsBefore:1, teamsAfter:1, inquirySeen:true} in my run — ensureExplicitTeam returns kind 'exists' with the ASK-FIRST inquiry rather than reusing or creating. ④ unknown profile {teams:0, sawError:true}; disabled {warningSeen:true}. ⑤ the case declares and exercises all four scenarios, is registered in skills/dsh-qa/SKILL.md, and its --self-test passes (resolver + both entry points + disabled-surface wiring)."
+    },
+    {
+      "criterion": "不回归：session-start-team 双向门、configPlane 10/10 + 拒绝非法输入、手动入口冻结（command.js 常量/手势正则/14 工具名/profiles.mpd/preset mpd/.mpd/team）、verify-vendor、patch-agent-teams-fixes --check、preset-conformance（含负控制）、插件测试全绿",
+      "status": "passed",
+      "evidence": "All re-run by me at d788639: session-start-team PASS (3/3 silent + 3/3 staged + disarmed reverse control); Config({}) => the 10 frozen values exactly (maxMembers 16 / maxParallelMembers 8 / maxMessagesPerRun 10000 / maxWallClockMinutes 120 / maxMemberTurns 500 / messagePayloadMaxBytes 32768 / recipientUnreadMaxBytes 262144 / mailboxPollIntervalMs 3000 / enforcement enforce / memberMaxDepth 1) plus stateDir '.mpd/team', with messagePayloadMaxBytes 10 / enforcement 'bogus' / maxMembers 0 all rejected; manual-entry freeze verified (AGENT_TEAMS_COMMAND and PROFILE_COMMAND_PREFIX constants present, TEAM 14 / MEMBER 4, profiles.mpd composed, stateDir .mpd/team, presets/mpd/preset.yml present); verify-vendor PASS; patch-agent-teams-fixes --check clean at 22 regions across 7 adopted files; preset-conformance PASS with its negative control still red on $.prefix; plugin tests 153 pass / 0 fail."
+    },
+    {
+      "criterion": "判定锚定 settled sha 且用 file::symbol 定位（不用历史行号）；报告里给出实测文件哈希；发现缺陷写 findings 交队长，不自行改产品",
+      "status": "passed",
+      "evidence": "reviewAnchor carries the reviewed head d788639 and the nine measured sha256 values, cross-checked against the gateHash the QA case itself settled on (2372df64…). Every reference above uses file::symbol. No product file was written; my only writes are under evidence/omo-align/review/**."
+    }
+  ],
+  "commandsRun": [
+    {
+      "command": "cd /root/dshProj/my-power-dsh && bun skills/dsh-qa/scripts/explicit-team-trigger.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "R4 PASS (my own run, fresh evidence dir evidence/dsh-qa/explicit-team-trigger/2026-09-13T15-48-06.793Z): happy teams 1 / staged / spawned 0 / approved false / noticeSeen true; duplicate teamsBefore 1 teamsAfter 1 inquirySeen true; unknownProfile teams 0 sawError true; disabled warningSeen true."
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && bun skills/dsh-qa/scripts/session-start-team.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "Two-sided gate PASS + reverse control at settled rev d788639 / gateHash 2372df64…: simpleTeams [0,0,0] with no notices; complexTeams [1,1,1] staged mpd / 11 members / 0 spawned with notices; negativeControl {ok:true, teams:0, notice:false, disarmed:true}."
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && node --input-type=module -e \"<gate sub-signal probes>\"",
+      "status": "failed",
+      "exitCode": 0,
+      "evidence": "Reveals the accepted-cost route and the C2 divergence: the false-positive sentence => ['C'] trigger true routeDecision 'provision'; 'check the test' => []; a C1+C3-only sentence => []; frozen complex #1 => C2=3 under the shipped list but only C2=2 under the contract's literal list, so it would NOT fire C under the contract's C2 (finding F1-SUB)."
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && node --input-type=module -e \"<F2 six-case matrix with failedDependencyIds>\"",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "failed => open/['A']; completed => open/[]; pending|claimed|in_progress => blocked/[]; cancelled => open/[] — the panel is consistent with the claim predicate in both directions."
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && node --input-type=module -e \"<Config({}) + 3 invalid inputs>\"",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "10/10 frozen defaults + stateDir .mpd/team; the three invalid inputs rejected by the schema."
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && bun test packages/mpd-agent-teams-plugin && node scripts/patch-agent-teams-fixes.mjs --check && node scripts/verify-vendor.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "153 pass / 0 fail across 60 files; 22 delta regions across 7 adopted files already applied; verify-vendor PASS."
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && node skills/dsh-qa/scripts/preset-conformance.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "PASS including session/create 200 with agentPreset mpd and the negative control still failing on $.prefix."
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && node -e \"const r=require('./evidence/omo-align/review/r2/result.json'); console.log('verdict:', r.verdict)\"",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "verdict: pass"
+    }
+  ],
+  "findings": [
+    {
+      "id": "F1-SUB",
+      "severity": "medium",
+      "file": "packages/mpd-agent-teams-plugin/lib/session-start.js",
+      "line": 0,
+      "problem": "Contract-vs-code divergence inside signal C's sub-signals. The frozen contract's C2 is 'distinct action verbs (add|build|change|check|implement|verify|设计|实现|验证|改造|补充) >= 3', but session-start.js::ACTION_VERB_PATTERN also counts align|consolidate|migrate|overhaul|port|refactor|rewrite (CLAUSE_ACTION_PATTERN has the same wider set). Measured difference that matters: frozen complex prompt #1 yields C2=2 under the contract list (so the contract's literal C would not fire) but C2=3 under the shipped list — which is the only reason that prompt triggers at all; the contract's logicRevisionNote justifies Option A by the frozen complex prompts being unreachable under >=2, a justification that holds only because C2 was widened. Code and contract now agree on the trigger threshold but still disagree on what counts as C2/C3, and the two-sided case cannot see it because it pins the same wide list on both sides.",
+      "requiredFix": "Amend the frozen contract's C2/C3 verb lists to the implemented set (add align|consolidate|migrate|overhaul|port|refactor|rewrite), recording that the widened list is what makes frozen complex #1 reachable; or narrow ACTION_VERB_PATTERN/CLAUSE_ACTION_PATTERN to the contract list and accept that complex #1 then needs its prompt revised. Prefer the amendment (the behaviour is ratified); never change only one side. Documentation scope — no behaviour change required."
+    },
+    {
+      "id": "F2-LOW",
+      "severity": "low",
+      "file": "packages/mpd-agent-teams-plugin/lib/types/state.d.ts",
+      "line": 221,
+      "problem": "Stale declaration: it still reads taskVisualState(status, dependencies, tasks) while the implementation is taskVisualState(status, tasks, dependencies); unused at runtime in-repo but shipped inside dist/mpd-package, and one r3-view-parity case passes its arguments in the wrong slots (the unknown-id case), so it asserts a property of the wrong call. Captain already dispositioned this as needs-fix for the next implementation round.",
+      "requiredFix": "Regenerate the declaration to the shipped signature and fix the parity case's argument order."
+    },
+    {
+      "id": "F3-LOW",
+      "severity": "low",
+      "file": "packages/mpd-agent-teams-plugin/lib/session-start.js",
+      "line": 0,
+      "problem": "MATCHED_SIGNAL_MIN = 2 is exported but referenced nowhere after Option A (the trigger is now signals.length >= 1); its name and comment ('soft signals that must fire when no explicit flag is present') describe the superseded rule and invite a future reader to re-introduce the old threshold. Captain already ledgered this cleanup.",
+      "requiredFix": "Delete the constant (plain dead code, self-heals on re-materialize) and add a one-line comment on the >=1 trigger naming the ratified Option A decision."
+    },
+    {
+      "id": "F4-LOW",
+      "severity": "low",
+      "file": "evidence/omo-align/implementation/r3/result.json",
+      "line": 0,
+      "problem": "Documentation discipline: the r3 evidence never labels the S3 assertion as predicate-level nor names the deferred dispatch-level test with its reason, and it credits R2 for the failed_dependencies pass-through that this round actually added. The behaviour is right; a future audit would misread the level of evidence.",
+      "requiredFix": "One sentence naming the level of evidence and the deferred dispatch-level assertion with its reason; correct the R2 attribution."
+    },
+    {
+      "id": "F5-LOW",
+      "severity": "low",
+      "file": "docs/omo-parity-ledger.md",
+      "line": 0,
+      "problem": "docs/** still uncommitted at closing review (index + user-guide EN/zh modified; ledger EN/zh untracked). The EN/zh pairing is intact, so this is commit discipline; the captain dispositioned it as a known delay landing with t21/ledger.",
+      "requiredFix": "Land the bilingual pair in one commit before release, or record the deferral in the wave closure."
+    }
+  ],
+  "residualRisks": [
+    "Option A's accepted cost is a precision dial on the only automatic trigger: a single satisfied C (or a single B, or a single D) now admits the gate. The ordinary-prompt trigger RATE under >=1 is unmeasured anywhere in this wave; it is the one open acceptance-cost item I would not close without a small calibration corpus of prompts expected to stay solo.",
+    "The frozen two-sided case cannot see this class: it pins exactly the 3+3 prompt sets (which pass) plus a disarmed control, so neither an over-eager trigger nor the C2 divergence is observable through it. A calibration corpus is the missing falsifier.",
+    "The live-model half of R4 (the model builds a team itself and the plugin must not add a second) is structural only: session-start provisioning returns early when the session already leads a team, and the duplicate case proves the one-team invariant in the model-incapable path, but no live-model turn exists in this environment to exercise it end to end.",
+    "Browser rendering is unexercised in both directions (F2 panel parity and the R4 inquiry text) — asserted at the data/view layer and in session logs only.",
+    "The R4 deterministic trigger depends on the ambient deployment answering MISSING_CREDENTIAL as it does today; if a future sandbox gains a model route, the happy case would stop proving plugin-side staging and would need a tool-denied or model-disabled configuration."
+  ],
+  "closureVerdict": {
+    "waveComplete": true,
+    "statement": "The wave's three user-facing goals are delivered and independently verified: a session no longer starts inside a team by default (gated auto-route; frozen 3+3 passing both ways; a disarmed reverse control proving the gate is not a tautological path), a failed dependency no longer blocks its dependent AND the panel/contract views agree about it, and an explicit team request is now deterministic (plugin-side staged team in a model-incapable environment, ask-first on an existing unapproved team, visible warning on a disabled command surface, explicit error on an unknown profile, with a dedicated QA case covering all four). F3 (the overwritten verification report) was closed by reconstruction and re-verified by me; F1's threshold contradiction was closed by the captain's contract amendment; the remaining open items are documentation/declaration hygiene (F1-SUB medium, F2-LOW..F5-LOW) plus the unmeasured trigger-rate acceptance cost, none of which blocks the delivered behaviour.",
+    "openItems": [
+      {"id": "F1-SUB", "owner": "contract owner (captain) with the implementation writer", "closureCondition": "contract C2/C3 verb list amended to the implemented set (or the patterns narrowed and the frozen prompt revised), recorded in complexityGate"},
+      {"id": "F2-LOW", "owner": "next implementation round (already assigned by the captain)", "closureCondition": "lib/types/state.d.ts regenerated to (status, tasks, dependencies) and the r3-view-parity unknown-id case fixed"},
+      {"id": "F3-LOW", "owner": "same round as F2-LOW", "closureCondition": "MATCHED_SIGNAL_MIN removed and the >=1 trigger commented with the ratified decision"},
+      {"id": "F4-LOW", "owner": "evidence writer", "closureCondition": "r3 evidence names the predicate-level assertion and the deferred dispatch-level test with its reason; R2 attribution corrected"},
+      {"id": "F5-LOW", "owner": "ledger/t21 owner", "closureCondition": "bilingual docs pair committed or the deferral recorded in the closure"},
+      {"id": "trigger-rate", "owner": "captain/ledger", "closureCondition": "ordinary-prompt trigger rate under >=1 measured on a small calibration corpus and recorded as the accepted cost of Option A"}
+    ]
+  }
+}

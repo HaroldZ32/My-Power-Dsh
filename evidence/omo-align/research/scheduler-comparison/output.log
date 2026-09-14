@@ -1,0 +1,307 @@
+===================================================================
+t14 RESEARCH LOG — mass-ulw/workflow DAG 引擎 vs 本地 agent-teams 任务板调度器
+generated: 2026-09-13T13:58:23Z  actor: Explorer (read-only), task t14
+upstream: /root/dshProj/oh-my-openagent (beta.62 / d1557a4b4)
+local:    /root/dshProj/my-power-dsh
+===================================================================
+
+### [U1] upstream scheduler identity pinned in the fingerprint
+
+export type DagDefinitionFingerprintInputV1 = {
+  readonly name: string
+  readonly scheduler: {
+    // Frontier admission since 2026-08-25: a node starts once every dependsOn node completed and
+    // a slot is free; waves are informational groupings only (was "strict-barrier").
+    readonly waveAdmission: "dependency-frontier"
+    readonly failurePolicy: "continue-independent"
+    readonly dependencyData: "filesystem-only"
+  }
+  readonly nodes: readonly DagNodeFingerprintInputV1[]
+}
+
+type JsonValue =
+  | string
+
+### [U2] dependency-frontier admission (waves are informational, not barriers)
+}
+
+// Dependency-frontier execution: a node is admitted the moment EVERY node it dependsOn holds a
+// terminal `completed` state and a resident slot is free - never because a wave boundary was
+// reached. Compiled waves survive only as informational event groupings (dag.wave.started is
+// emitted per admission pass, dag.wave.completed when a wave's full membership is terminal), so
+// an unrelated slow sibling can no longer starve ready dependents behind a barrier the tool
+// One admission pass over the frontier: the ordered residency-denied queue first (oldest denial
+// gets the first freed slot), then every newly ready node. startOwned runs as one batch; denials
+// park in the queue and retry after a settlement frees a slot, failing with residency_denied only
+
+### [U3] skip cascade + isRunnable (failure never pins dependents as pending)
+function applyDependentSkipCascade(context: SchedulerContext): void {
+  let changed = true
+  while (changed) {
+    changed = false
+    const snapshot = context.journal.snapshot()
+    for (const node of snapshot.nodes) {
+      if (node.state !== "pending" && node.state !== "blocked") continue
+      const dependencies = node.dependsOn.map((nodeId) => nodeById(snapshot, nodeId))
+      if (dependencies.some((dependency) => TERMINAL_NODE_STATES.has(dependency.state) && dependency.state !== "completed")) {
+        transition(context, node.id, "skipped", { kind: "skipped" })
+        changed = true
+      }
+    }
+  }
+}
+
+function isRunnable(record: DagRunRecordV1, nodeId: DagNodeId): boolean {
+  const node = nodeById(record, nodeId)
+  return (node.state === "pending" || node.state === "blocked") &&
+    node.dependsOn.every((dependencyId) => nodeById(record, dependencyId).state === "completed")
+
+### [U4] retry / send / amend
+## Recovering one node - retry, send, amend
+
+A settled run is not a dead end. Three verbs act on a SINGLE node, so one bad node never costs you the whole graph, and every node that already finished keeps its cached result:
+
+```js
+await sdk.retry(runId)                                  // every failed/cancelled node gets a fresh attempt
+await sdk.retry(runId, ["lint"])                        // just this node
+await sdk.retry(runId, ["lint"], { prompt: "..." })     // edit the instruction as you retry it
+await sdk.send(runId, "lint", "skip the vendored dir")  // steer a running child, or revive a finished one
+await sdk.amend(runId, editedDefinition)                // re-run only what changed, plus its dependents
+```
+
+- **`retry`** gives a fresh attempt to every `failed` or `cancelled` node (or just the `node_ids` you name) and hands their skip-cascaded dependents back to the wave loop. Completed nodes are reused, never re-executed. Passing a single `node_id` with `prompt` edits that node's instruction as it retries. Retrying a COMPLETED node is refused with `node_not_retryable` - use `amend`. A `skipped` node is retryable only when a failed or cancelled ancestor is in the same retry set. While the run is still `running`, retry is refused with `run_still_active`: let the wave settle first.
+- **`send`** delivers a message to ONE node's child. A running child is steered in place; a finished child that is still resident is revived with its context intact, so it continues instead of starting over. A child that cannot be continued is refused with `node_not_continuable`, and `retry` is the remedy.
+- **`amend`** submits an edited definition against the SAME run. Each node's fingerprint is diffed: unchanged completed nodes keep their cached results, and only changed or added nodes plus their transitive dependents re-run. Amending a node that is currently running is refused with `amend_running_node`. `load_skills` is deliberately outside the fingerprint, so a skills-only edit re-runs nothing.
+
+## Resume across a restart
+
+Runs are journaled. When the session dies mid-run, the run pauses instead of being lost; on restart the extension resumes paused runs it owns, reusing outputs of nodes that already finished so completed work is never redone. Your side of the contract: `start` with the same `key` and definition returns the existing run (`reused: true`) instead of forking a duplicate, or `attach` with the stored `run_id`. Never re-issue a changed definition under an old key; that's a definition conflict.
+
+`start` is for STARTING a run, not for recovering one: re-issuing the same key and definition against an already-settled run returns it untouched and schedules nothing. To move a settled run forward, use `retry` or `amend` above.
+
+### [U5] run reuse by key+fingerprint / definition conflict
+  // (2) fingerprint the SUBMITTED definition: never effectivePrompt, never skill content.
+  const definitionFingerprint = fingerprintDefinition(definition)
+
+  // (3)+(4) under the key lock so a concurrent same-key start can never create a second run.
+  return context.store.withKeyLock(params.parentSessionId, definition.key, () => {
+    const existingKey = context.store.readKey(params.parentSessionId, definition.key)
+    // A key whose run record is gone (retention pruned it) is stale, not a conflict: the key is
+    // rewritten by the fresh run below. Conflict is reserved for a key with a LIVE divergent run.
+    const existing = existingKey === null ? null : context.store.readCheckpoint<DagRunRecordV1>(existingKey.runId)
+    if (existing !== null) {
+      if (existing.definitionFingerprint !== definitionFingerprint) {
+        throw new DagManagerError({
+          code: "definition_conflict",
+          message: `dag run key "${definition.key}" already exists with a different definition`,
+          runId: existing.runId,
+        })
+      }
+      // Reuse never re-materializes skills: the run keeps its creation-time effectivePrompt.
+      return { reused: true, snapshot: projectSnapshot(existing) }
+    }
+
+    const runId = context.newRunId()
+    const materialized = context.materializeSkills?.({ runId, definition, at })
+    const effectivePrompts = new Map(
+      (materialized?.nodes ?? []).map((node) => [node.nodeId, node.effectivePrompt] as const),
+
+### [U6] amend invalidation = changed/added + transitive dependents only
+  const invalidatedIds = transitiveDependents(compiled.edges, [...diff.changedIds, ...diff.addedIds])
+    .filter((id) => !diff.addedIds.includes(id))
+  const materializedDefinition = materializeAmendedDefinition(
+    context,
+    oldRecord,
+    params.definition,
+    [...diff.changedIds, ...diff.addedIds],
+    at,
+  )
+  const definitionFingerprint = fingerprintDefinition(params.definition)
+  const oldNodes = new Map(oldRecord.nodes.map((node) => [node.id, node] as const))
+  const invalidated = new Set(invalidatedIds)
+  const nodes = compiled.nodes.map((compiledNode) => {
+    const oldNode = oldNodes.get(compiledNode.id)
+    if (oldNode === undefined) return compiledNode
+    if (!invalidated.has(compiledNode.id)) return oldNode
+    const { error: _error, resultArtifact: _resultArtifact, runStats: _runStats, completedAt: _completedAt, startedAt: _startedAt, ...kept } = oldNode as DagNode & {
+      readonly resultArtifact?: unknown
+    }
+    return {
+      ...kept,
+      prompt: compiledNode.prompt,
+      route: compiledNode.route,
+      dependsOn: compiledNode.dependsOn,
+      state: "pending" as const,
+      execAttempt: (oldNode.execAttempt ?? 0) + 1,
+    }
+  })
+  const mutation = {
+    ...dagDefinitionAmendedEvent({
+      previousFingerprint: oldRecord.definitionFingerprint,
+      fingerprint: definitionFingerprint,
+      changedNodeIds: diff.changedIds,
+      addedNodeIds: diff.addedIds,
+      invalidatedNodeIds: invalidatedIds,
+    }),
+    definition: materializedDefinition.definition,
+
+### [U7] 17 journaled events + four push channels
+export const DAG_RUN_EVENT_TYPES = [
+  "dag.run.created",
+  "dag.run.started",
+  "dag.run.paused",
+  "dag.run.resumed",
+  "dag.run.completed",
+  "dag.run.failed",
+  "dag.run.cancelled",
+  "dag.wave.started",
+  "dag.wave.completed",
+  "dag.node.transitioned",
+  "dag.node.task-attached",
+  "dag.node.reused",
+  "dag.node.retried",
+  "dag.node.steered",
+  "dag.definition.amended",
+  "dag.diagnostic.added",
+  "dag.stream.overflow",
+] as const
+```
+
+Emitted every 15s (default) while at least one owned run is nonterminal. Terminal runs
+(`completed`, `failed`, `cancelled`) never earn a heartbeat. `headSeq` is the highest seq the
+bridge has forwarded for that run, so a viewer can detect that it fell behind without waiting for
+the next event.
+
+
+### [U8] capacity model + no output truncation
+- **Capacity model.** Nodes run as background tasks under a per-model slot limiter - default 5 concurrent, overridable via `task.default_concurrency` / provider / model concurrency in omo config (0 = unbounded). Nodes past the limit queue FIFO and roll in as slots free, so a wave wider than the slots still completes, serialized in chunks: width costs queue time, never correctness - raise `task.default_concurrency` when wall-clock matters. Caps default to 64 nodes per run and 16 runs per session; `task.dag.max_nodes_per_run` / `task.dag.max_runs_per_session` raise them when a run genuinely needs more.
+- Node outputs are stored and returned IN FULL, with no truncation - when embedding an output into a later prompt, quote or summarize the relevant part. Pasting an unbounded output into a prompt drowns it.
+
+### [U9] recovery budget
+// Bound repeated owner deaths before launch using the durable execution counter, not display
+// attempt. Retries/amendments also consume this budget; recovery never advances it past three.
+const MAX_RECOVERY_READMISSIONS = 3
+
+### [L1] local dependency gate: failed blocks forever, only cancelled is released
+export function unsatisfiedDependencies(tasks, dependencies) {
+    const byId = new Map(tasks.map((task) => [task.id, task]));
+    // A cancelled dependency never blocks its dependents (deadlock rule): only
+    // completed counts as satisfied, and failed/unknown still block. Pending
+    // dependents of cancelled work are resolved by
+    // resolveCancelledDependencyDeadlocks instead of being dispatched on a
+    // cancelled premise.
+    return dependencies.filter((id) => {
+        const status = byId.get(id)?.status;
+        return status !== 'completed' && status !== 'cancelled';
+    });
+}
+
+### [L2] local terminal transitions (failed has no outgoing edge)
+export const TASK_TRANSITIONS = {
+    pending: ['claimed', 'cancelled'],
+    claimed: ['in_progress', 'failed', 'cancelled'],
+    in_progress: ['completed', 'failed', 'cancelled'],
+    completed: [],
+    failed: [],
+    cancelled: [],
+};
+
+### [L3] local deadlock resolver covers CANCELLED only
+/**
+ * Resolve every pending task blocked only by cancelled dependencies, seeding
+ * from all currently-cancelled tasks. Idempotent; safe to run on any dispatch
+ * or cancellation path (also covers cold-process recovery, where a cancellation
+ * may have happened before the process restarted).
+ * @returns the ids cancelled by this pass.
+ */
+export function resolveCancelledDependencyDeadlocks(tasks, reason = 'dependency was cancelled') {
+    const seeds = tasks.filter((task) => task.status === 'cancelled').map((task) => task.id);
+    const victims = [];
+    for (const seed of seeds)
+        victims.push(...cancelCancelledDependents(tasks, seed, reason));
+    return [...new Set(victims)];
+}
+
+### [L4] local completed task immutability (reassign refuses completed)
+                const task = requireTask(fresh, args.task_id);
+                if (task.status === 'completed')
+                    throw new Error(`completed task ${task.id} is immutable and cannot be reassigned`);
+                if (task.reassigning === true)
+                    throw new Error(`task ${task.id} is already being reassigned`);
+                    const sameOutput = args.output === undefined || args.output === task.output;
+                    if (!sameStatus || !sameOutput) {
+                        throw new Error(`terminal task ${task.id} is immutable; use agent_teams_reassign_task to retry failed/cancelled work`);
+                    }
+
+### [L5] local edit_plan is staged-only (no post-approval dependency rewiring)
+function requireStagedTeam(team) {
+    if (team.phase !== 'staged') {
+        throw new Error(`team "${team.name}" is already running; its plan can no longer be edited`);
+    }
+    if (team.halted === true)
+        throw new Error(`team "${team.name}" is halted, not awaiting plan approval`);
+106:function requireStagedTeam(team) {
+324:            requireStagedTeam(fresh);
+407:            requireStagedTeam(fresh);
+470:            requireStagedTeam(fresh);
+495:                requireStagedTeam(fresh);
+510:            requireStagedTeam(fresh);
+769:            requireStagedTeam(team);
+
+### [L6] local dependency outputs ARE passed (topological, capped)
+/** Per-dependency output cap in the assignment prompt. */
+export const DEPENDENCY_OUTPUT_MAX_CHARS = 2_000;
+/** Combined dependency-output budget in the assignment prompt. */
+export const DEPENDENCY_OUTPUTS_TOTAL_MAX_CHARS = 12_000;
+Completed dependency results:
+${formatDependencyOutputs(ticket.dependencyOutputs)}
+
+### [L7] local kickTeam has no slot limiter
+    const runtime = {
+        async kickTeam(workspace, teamId, suppliedCaptain) {
+            const stateRoot = stateRootOf(workspace, config);
+            const team = await readTeam(stateRoot, teamId);
+            if (team === undefined || team.halted === true || team.phase === 'staged')
+                return;
+            const captain = liveCaptain(ctx, team.captainSessionId, suppliedCaptain);
+            if (captain === undefined)
+                return;
+            for (const member of team.members) {
+                if (member.status === 'removed')
+                    continue;
+                await runtime.kickMember(workspace, teamId, member.name, captain);
+            }
+        },
+
+### [L8] local session event vocabulary omitted by this harness
+33:    const known = dshSession.KNOWN_SESSION_EVENT_TYPES;
+34:    if (known?.has(type) !== true) {
+0
+(0 = no agent-teams/* entry in the installed harness vocabulary; the file is GENERATED from the harness repo)
+
+### [L9] MEASURED live board: failed dependency pins four tasks
+t1 | failed | attempt= 1 | deps= []
+t2 | completed | attempt= 1 | deps= []
+t3 | completed | attempt= 1 | deps= []
+t4 | completed | attempt= 1 | deps= ['t2']
+t5 | cancelled | attempt= 1 | deps= ['t12', 't2', 't3']
+t6 | cancelled | attempt= 0 | deps= ['t12', 't5']
+t7 | cancelled | attempt= 0 | deps= ['t5', 't6']
+t8 | completed | attempt= 1 | deps= ['t4']
+t9 | cancelled | attempt= 0 | deps= ['t5', 't8']
+t10 | failed | attempt= 1 | deps= []
+t11 | failed | attempt= 1 | deps= []
+t12 | cancelled | attempt= 4 | deps= []
+t13 | completed | attempt= 1 | deps= []
+t14 | in_progress | attempt= 1 | deps= []
+t15 | in_progress | attempt= 1 | deps= ['t13']
+
+### [L10] MEASURED residue: auto-provisioned default teams
+25
+(phase, n_tasks, approved) -> count
+  ('running', 15, True) -> 1
+  ('running', 32, True) -> 1
+  ('staged', 0, False) -> 22
+  ('staged', 8, False) -> 1
+
+END OF LOG

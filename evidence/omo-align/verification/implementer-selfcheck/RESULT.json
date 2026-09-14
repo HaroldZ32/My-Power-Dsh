@@ -1,0 +1,120 @@
+{
+  "schema": "mpd-omo-align-implementer-selfcheck/1",
+  "who": "Senior Engineer (IMPLEMENTER of t15) — this is NOT the independent verification record",
+  "important": "t17's verification record is evidence/omo-align/verification/result.json owned by Lead (assignee of t17, attempt 84a1437c). The captain asked me to run t17, but t17 is Lead's task and team rules forbid claiming another member's task and forbid an implementer certifying their own work. This file is a CORROBORATING self-check only, kept under a non-colliding name because my first harness run briefly wrote result.json (Lead restored it; see its restoreReason).",
+  "verdict": "pass (corroborating; not the authoritative t17 verdict)",
+  "revision": {
+    "headAtRun": "c91f26621d11b58911d1d7a0224d06267542363c",
+    "note": "settled: 9 pinned file hashes identical across a >=50 s window (drift [])"
+  },
+  "pinnedFileSha256": {
+    "packages/mpd-agent-teams-plugin/lib/session-start.js": "1f0203c69e5e904d878774e1d5d1e9d646de070b8e3fa2908ce77f85b60aefc0",
+    "packages/mpd-agent-teams-plugin/lib/index.js": "c1b170e8c9e92dcc3195e530ae676448120dc2c87b31de8b45b2bc6979d98feb",
+    "packages/mpd-agent-teams-plugin/lib/state.js": "eae4061415a05f4b937f2975b59cc2c4a044dd3be3b2965425f0c93369da10a8",
+    "packages/mpd-agent-teams-plugin/lib/tools.js": "026e2ffca86e1254005254144d4c5f4f38dce6c538777f98b0e8217f92db2dcb",
+    "packages/mpd-bundle/cordis.patch.yml": "9ee189972b2b870607afde74eafe08bebbb425c381e4bca2ef33ebc29dc29c9d",
+    "presets/mpd/agent.cordis.yml": "125312b54b2c20e64c195890feeb56a915c4b57f29e0fbc97e0df5c6662e1a90",
+    "scripts/install-profile.mjs": "37e9c291930d0c07476ec1dcc06d50be5fd75f70fb17ce6a851c9a1be03a465c",
+    "skills/dsh-qa/scripts/session-start-team.mjs": "4e37e5d56ea170d493ad2d305c92ebf669fa960495534425fa2a7fc9394d4ed9",
+    "AGENTS.md": "6767f85d7fa9f354c688b35ba1f7ded30791768431ffb1015fd0d9791ea9f780"
+  },
+  "corroboratedMeasurements": {
+    "twoSidedGate": {
+      "simpleTeams": [
+        0,
+        0,
+        0
+      ],
+      "simpleNotices": [
+        false,
+        false,
+        false
+      ],
+      "complexTeams": [
+        1,
+        1,
+        1
+      ],
+      "complexNotices": [
+        true,
+        true,
+        true
+      ],
+      "complexTeamShape": "phase=staged, profile=mpd, members=11, spawned=0",
+      "isolated": "each prompt in its own sandbox HOME+workspace; assertSessionsSandboxed ok for all 6"
+    },
+    "opt1FailedDependency": {
+      "failedSideClaimable": true,
+      "claimElapsedMs": 13,
+      "viewFailedDependencies": [
+        "A"
+      ],
+      "reverseControlCompletedSideClaimable": true,
+      "viewFailedDependenciesEmpty": true
+    },
+    "cSignalRevision": {
+      "simple1": [],
+      "simple2": [],
+      "simple3": [],
+      "complex1": [
+        "C2",
+        "C3"
+      ],
+      "complex2": [
+        "A"
+      ],
+      "complex3": [
+        "C1",
+        "C2",
+        "C3"
+      ],
+      "explicitFlagAlone": [
+        "A"
+      ],
+      "note": "the captain's revised C (>=2 of C1/C2/C3) is implemented; an explicit-flag-only prompt DOES trigger via the anyExplicitFlag branch"
+    },
+    "manualEntries": {
+      "commandConstBeforeAndAfter": "AGENT_TEAMS_COMMAND='agent-teams' + PROFILE_COMMAND_PREFIX=`${AGENT_TEAMS_COMMAND}-` (identical at 0e6bdaf and HEAD)",
+      "registeredTools": 14,
+      "frozenContractTools": 14,
+      "match": true,
+      "toolNamesConstantDeclares": 13,
+      "delta": "tool-names.js TEAM_TOOL_NAMES lists 13 stable names; agent_teams_task_contract is registered in tools.js inside the mpd-delta task-contract region, so it is absent from that constant while still registered (frozen predicate checks the REGISTERED set, which matches 14/14)",
+      "profileKey": "mpd",
+      "presetId": "mpd",
+      "stateDir": ".mpd/team"
+    },
+    "gates9": {
+      "typecheck": 0,
+      "plugin-tests": 0,
+      "all-packages": 0,
+      "installer-self-test": 0,
+      "installer-dry-run": 0,
+      "preset-conformance": 0,
+      "bundle-lifecycle": 0,
+      "delta-check": 0,
+      "verify-vendor": 0
+    },
+    "isolation": {
+      "realLiveTeamsRead": 4,
+      "writesToRealStateRoot": 0
+    }
+  },
+  "findingsForTheCaptain": [
+    {
+      "id": "SC-F1",
+      "severity": "low",
+      "finding": "tool-names.js TEAM_TOOL_NAMES declares 13 of the frozen 14 agent_teams_* tools: agent_teams_task_contract (an mpd-added tool registered inside the mpd-delta task-contract region in tools.js) is not in that constant.",
+      "impact": "No rename and no missing tool: the registered set is 14/14 and matches the frozen contract. Any future check that trusts TEAM_TOOL_NAMES as the complete manual-entry set would under-count by one.",
+      "fix": "optionally append the name to TEAM_TOOL_NAMES (out of my write scope; not required for the frozen predicate)"
+    },
+    {
+      "id": "SC-F2",
+      "severity": "low",
+      "finding": "frozen-contract.json has moved again since the captain's anchor: quoted 26,666 B / sha256 055f1edc..., measured 31,705 B / a0d28ebe... at my run.",
+      "impact": "None on this verification: I pinned the per-file sha256 of the implementation itself, which is the anchor method the captain endorsed in Lead's record.",
+      "fix": "re-freeze or accept the current revision before t18"
+    }
+  ],
+  "isolationNote": "All boots and tool drives ran under evidence/omo-align/verification/sandbox; the real repo state root was only read (4 live teams counted)."
+}

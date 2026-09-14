@@ -1,0 +1,31 @@
+=== LOCAL packages/ ===
+mpd-agent-teams-plugin mpd-bootstrap-plugin mpd-boulder-plugin mpd-bundle mpd-bundle-plugin mpd-codegraph-plugin mpd-comment-checker-plugin mpd-config-plugin mpd-dsh-adapter-plugin mpd-hashline-plugin mpd-mcp-astgrep mpd-mcp-codegraph mpd-mcp-gitbash mpd-mcp-lsp mpd-mcp-shared mpd-memory-plugin mpd-modelchain-plugin mpd-qa-roles-probe mpd-roles-plugin mpd-tools-plugin mpd-ulw-plugin mpd-workmate-plugin node_modules 
+
+=== UPSTREAM packages added between the two commits (expect empty) ===
+
+=== UPSTREAM top-dir churn in window ===
+    655 omo-senpi
+    401 omo-opencode
+    332 omo-codex
+    246 senpi-task
+    132 memory-core
+    120 web
+     67 utils
+     56 shared-skills
+     47 omo-native
+     42 lsp-core
+     32 model-core
+     25 omo-config-core
+     18 skills-loader-core
+     17 prompts-core
+     16 lsp-daemon
+      8 lsp-tools-mcp
+      7 ast-grep-mcp
+      6 rules-engine
+      5 openclaw-core
+      4 team-core
+      4 mcp-stdio-core
+      4 mcp-client-core
+      3 git-bash-mcp
+      3 delegate-core
+      3 claude-code-compat-core

@@ -1,0 +1,26 @@
+{
+  "tag": "fv5",
+  "writtenAt": "2026-09-13T14:35:54.841Z",
+  "supersedes": {
+    "file": "gap.json",
+    "sha256": "cade32a6ae0346bf0e01aa96fd8b28d7ab8a0167ee6f94529e1511be971ce067",
+    "bytes": 82509
+  },
+  "files": {
+    "gap-r2.json": {
+      "bytes": 120249,
+      "sha256": "cfcb13d206564074e5407355d1876b0a5d59a589df543ce2da287471c6eb1aa4"
+    },
+    "gap-verdict-table-r2.md": {
+      "bytes": 41739,
+      "sha256": "fb5fe941e814d3123cb9f84da860fba3ad406595053082cc910195fa4b9a4000"
+    }
+  },
+  "ruleInput": {
+    "path": "/root/dshProj/my-power-dsh/evidence/omo-align/requirements/frozen-contract.json",
+    "bytes": 28243,
+    "sha256": "a9dfb3114289cbebc339552a3b168f8881e46e07eb905fa2599ef225223b92bf",
+    "readAt": "2026-09-13T14:35:54.845Z"
+  },
+  "note": "Immutable snapshot. A rebuild writes a NEW revisions/ dir; this one must never be rewritten."
+}

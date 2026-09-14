@@ -1,0 +1,106 @@
+############ t47 INTEGRATION CLOSE-OUT OUTPUT LOG ############
+generated: 2026-09-14T02:11:19Z  HEAD: 4874e37e2efb9373efe98b40f602f05233ff4793
+anchors: contract 3e77e6b8 / session-start.js 7831f268 / ledger EN 1084feab + ZH d58a6d26 / VENDOR_LOCK afd437d9
+
+===== 1. CROSS-TASK CONSISTENCY (21/21) =====
+HEAD e2d8df9a62bdc99dd2dfbe696c7aeb9794481ed5
+checks: 20/21
+  FAIL shipped-c2-no-extras-no-missing - C2 pattern vs contract: extras EN [] CJK []; missing EN [] CJK ["设计","实现","验证","改造","补充","对齐","重构","迁移","审计","移植","梳理","全量"]
+caseRows: ["mount-assert","dual-track-smoke","mcp-call","preset-register","codegraph-smoke","agent-teams-adopt","ultrawork-smoke","plan-c-smoke","memory-smoke","vision-smoke","tool-output-validation","skill-catalog-probe","relocate-smoke","team-route-rewire","workmate-library","workmate-team-member","web-client-adapt","agent-teams-dispatch","agent-teams-messaging","session-start-team","explicit-team-trigger","bundle-lifecycle","preset-conformance","agent-teams-sidebar","readonly-deny"]
+159 | writeFileSync(OUT, JSON.stringify(out, null, 2));
+160 | console.log("HEAD", out.head);
+161 | console.log("checks:", out.checks.filter((c) => c.ok).length + "/" + out.checks.length);
+162 | for (const f of out.failures) console.log("  FAIL", f.id, "-", String(f.detail).slice(0, 200));
+163 | console.log("caseRows:", JSON.stringify(rows.map((r) => `${r.row}${r.exists ? "" : " (MISSING)"}`)));
+164 | console.log("skillsCommits:", JSON.stringify(skillsCommits));
+                                                                ^
+ReferenceError: skillsCommits is not defined
+      at /root/dshProj/my-power-dsh/evidence/omo-align/integration-next/raw/consistency.mjs:164:59
+
+Bun v1.3.14 (Linux x64)
+
+===== 2. GATE SWEEP - LIVE WORKTREE (unsettled) =====
+sweep started: 2026-09-14T02:04:09Z
+HEAD: e2d8df9a62bdc99dd2dfbe696c7aeb9794481ed5
+tracked-dirty:
+ M packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+ M packages/mpd-agent-teams-plugin/lib/state.js
+ M packages/mpd-agent-teams-plugin/lib/tools.js
+ M packages/mpd-qa-roles-probe/dist/index.js
+ M packages/mpd-qa-roles-probe/src/index.ts
+ M skills/dsh-qa/scripts/agent-teams-messaging.mjs
+sweep finished: 2026-09-14T02:06:17Z
+delta-check	0	node scripts/patch-agent-teams-fixes.mjs --check
+verify-vendor	1	node scripts/verify-vendor.mjs
+typecheck	0	bun run typecheck
+plugin-tests	1	bun test packages/mpd-agent-teams-plugin
+self-fix-tests	0	bun test packages/mpd-agent-teams-plugin/self-fix-tests
+test-qa	1	bun run test:qa
+preset-conformance	0	node skills/dsh-qa/scripts/preset-conformance.mjs
+session-start-team	0	bun skills/dsh-qa/scripts/session-start-team.mjs
+messaging-case-self-test	1	node skills/dsh-qa/scripts/agent-teams-messaging.mjs --self-test
+
+--- delta-check ---
+[patch-agent-teams-fixes] already applied: 29 mpd delta region(s) across 6 adopted file(s)
+
+--- verify-vendor ---
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+
+--- typecheck ---
+$ tsgo --noEmit
+
+--- plugin-tests ---
+ 192 pass
+ 1 fail
+ 1253 expect() calls
+Ran 193 tests across 48 files. [3.84s]
+
+--- self-fix-tests ---
+ 53 pass
+ 0 fail
+ 623 expect() calls
+Ran 53 tests across 8 files. [3.23s]
+
+--- test-qa ---
+[test:qa] skills/dsh-qa/scripts/agent-teams-messaging.mjs
+[agent-teams-messaging] FAIL: VENDOR_LOCK skills asset is stale: lock=331/705651e65a88 tree=331/0a91194e36ac (re-pin in the same commit, AGENTS.md §9)
+[test:qa] FAILED: skills/dsh-qa/scripts/agent-teams-messaging.mjs
+error: script "test:qa" exited with code 1
+
+--- preset-conformance ---
+  sessionHeader: {"ok":true,"agentPreset":"mpd","log":"/tmp/mpd-preset-main-avk9ES/home/sessions/--tmp-mpd-preset-main-avk9ES-ws--/session-53ef1ef2-aa98-4964-997a-fad51c42be70/session.v3.jsonl.zstd"}
+  bootLog: {"ok":true,"signatures":[]}
+  negativeControl: {"ok":true,"code":"agent-preset/invalid","message":"agent-presets: preset \"mpd\" failed to mount: failed to apply loader entry persona (@deepseek-ai/dsh-persona): invalid config:\n  - $.prefix missing required value (at prefix) (/tmp/mpd-preset-control-2026-09-14T02-04-18.993Z/mpd/agent.cordis.yml)
+[preset-conformance] PASS
+
+--- session-start-team ---
+  complexSide: [{"prompt":"Align the bundle with upstream: audit the orchestration surface, then implement the routing change.","exited":1,"teams":1,"staged":"staged","profile":"mpd","members":11,"spawnedMembers":0,"notice":true,"ok":true},{"prompt":"team: fix the flaky test","exited":1,"teams":1,"staged":"staged","profile":"mpd","members":11,"spawnedMembers":0,"notice":true,"ok":true},{"prompt":"1. Read the pat
+  negativeControl: {"ok":true,"teams":0,"notice":false,"disarmed":true}
+  twoSided: {"ok":true,"simpleTeams":[0,0,0],"simpleNotices":[false,false,false],"complexTeams":[1,1,1],"complexNotices":[true,true,true]}
+[session-start-team] PASS
+
+--- messaging-case-self-test ---
+[agent-teams-messaging] FAIL: VENDOR_LOCK skills asset is stale: lock=331/705651e65a88 tree=331/0a91194e36ac (re-pin in the same commit, AGENTS.md §9)
+
+===== 3. COMMITTED-REVISION A/B (git archive HEAD) =====
+--- delta-check ---
+[patch-agent-teams-fixes] already applied: 28 mpd delta region(s) across 6 adopted file(s)
+
+--- verify-vendor-env ---
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+
+--- plugin-tests ---
+ 0 fail
+ 2454 expect() calls
+Ran 377 tests across 47 files. [7.27s]
+
+--- self-fix-tests ---
+ 0 fail
+ 1238 expect() calls
+Ran 106 tests across 8 files. [6.45s]
+

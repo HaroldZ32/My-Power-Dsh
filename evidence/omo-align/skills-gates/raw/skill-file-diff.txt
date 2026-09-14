@@ -1,0 +1,36 @@
+=== per-skill file diff: local skills/ vs upstream shared-skills (HEAD=beta.62) ===
+### ast-grep                 local=18 upstream=18
+### coding-agent-sessions    local=34 upstream=34
+### data-scientist           local=9 upstream=11
+    upstream-only: references/execution-surfaces.md
+    upstream-only: references/placement.md
+    upstream-only: references/polars-lane.md
+    upstream-only: references/visualization.md
+    upstream-only: scripts/ensure-js-deps.sh
+    upstream-only: scripts/ensure-py-deps.sh
+    local-only:    references/common-scenarios.md
+    local-only:    references/execution-templates.md
+    local-only:    references/integration-patterns.md
+    local-only:    references/performance-benchmarks.md
+### debugging                local=20 upstream=25
+    upstream-only: references/scripts/dap.mjs
+    upstream-only: references/scripts/dap.test.ts
+    upstream-only: references/scripts/fixture-adapter.mjs
+    upstream-only: references/tools/dap.md
+    upstream-only: references/tools/frida.md
+dsh-qa                   (no upstream shared-skills counterpart)
+### frontend                 local=28 upstream=29
+    upstream-only: references/design/ambience-skill.md
+### git-master               local=2 upstream=2
+### init-deep                local=1 upstream=1
+### lsp-setup                local=25 upstream=25
+### programming              local=75 upstream=75
+### refactor                 local=1 upstream=1
+### remove-ai-slops          local=1 upstream=1
+### review-work              local=1 upstream=1
+svn-master               (no upstream shared-skills counterpart)
+### ultimate-browsing        local=57 upstream=57
+### ulw-execute              local=1 upstream=1
+### ulw-plan                 local=6 upstream=6
+### ulw-research             local=2 upstream=2
+### visual-qa                local=19 upstream=19

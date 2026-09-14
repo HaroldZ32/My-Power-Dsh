@@ -1,0 +1,55 @@
+== A1: old mandatory-team invariant text must be gone ==
+packages/mpd-agent-teams-plugin/test/opt2-residual-and-ordering.test.mjs:109:    expect(preset).not.toMatch(/every session\s+MUST start inside a team/i)
+hits: 1
+
+== A5: ledger files + language switch + index rows ==
+-rw------- 1 root root 10661 Sep 13 21:44 docs/omo-parity-ledger.md
+-rw------- 1 root root  9967 Sep 13 21:45 docs/omo-parity-ledger.zh-CN.md
+# OMO Parity Ledger
+**English** | [中文](./omo-parity-ledger.zh-CN.md)
+
+> Wave: `omo-parity-align`. Status: **OPEN — values frozen, implementation not yet verified.**
+---
+# OMO 对齐台账
+[English](./omo-parity-ledger.md) | **中文**
+
+> 波次：`omo-parity-align`。状态：**进行中 —— 取值已冻结，实现尚未验证。**
+index mentions ledger: 1
+
+== A7: skills/** changed files in the feature commit vs VENDOR_LOCK pairing ==
+ VENDOR_LOCK.json                                   |   6 +-
+ skills/dsh-qa/SKILL.md                             |   2 +-
+ skills/dsh-qa/scripts/lib/gate-probe.mjs           |  46 ++
+ skills/dsh-qa/scripts/session-start-team.mjs       | 207 +++--
+902e019 skills files: 3
+902e019 touches VENDOR_LOCK: 1
+
+== A8: branch / merge / direct-to-dev ==
+HEAD branch: dev
+  contains-902e019: * dev
+  contains-902e019:   feature/omo-parity-align
+  * c28c7c1 feat(agent-teams): failed dependencies stop blocking; archive staged residue
+  *   f4f91b5 merge(feature/omo-parity-align): session-start complexity gate + mass-ulw S1-S4 + configPlane
+  |\  
+  | * 902e019 feat(agent-teams): gate team provisioning on a frozen complexity signal
+  |/  
+  * 0e6bdaf feat(roster): make every teammate flash-tier with explicit reasoning effort
+  *   917c65f merge(fix/ledger-tone-note): record the wording revision
+  |\  
+  | * 6a7395b docs(evidence): record the declaration's wording revision and why the owner rejected the first framing
+  |/  
+5fa28e2 changed paths:
+  evidence/omo-align/implementation/raw/reclaim-applied.json
+  evidence/omo-align/implementation/raw/reclaim-dryrun.json
+  evidence/omo-align/implementation/raw/session-start-team-r2.log
+  evidence/omo-align/implementation/result.json
+  packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+  packages/mpd-agent-teams-plugin/lib/state.js
+  packages/mpd-agent-teams-plugin/lib/tools.js
+  packages/mpd-agent-teams-plugin/self-fix-tests/quality-loop.test.mjs
+  packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs
+  packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs
+  packages/mpd-agent-teams-plugin/test/opt1-failed-dependency.test.mjs
+  packages/mpd-agent-teams-plugin/test/opt2-residual-and-ordering.test.mjs
+  scripts/reclaim-staged-teams.mjs
+5fa28e2 forbidden-path hits: 0

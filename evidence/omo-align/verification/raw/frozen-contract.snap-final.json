@@ -1,0 +1,330 @@
+{
+  "schema": "mpd-omo-align-frozen-contract/1",
+  "wave": "omo-parity-align",
+  "owner": "captain",
+  "createdAt": "2026-09-13",
+  "note": "Captain-owned frozen decisions for the OMO functional-alignment wave. This file is the single source of truth for the values the implementation contracts reference; task descriptions may lag it, this file may not. The requirements gate verifies consistency against THIS file instead of asking the gate to write other tasks' contracts (the t1/t10/t11 loop).",
+  "frozenDecisions": {
+    "D_FIRST": "sessionTeamPolicy no longer auto-provisions by default: every qualifying session starts with NO team and NO team notice unless a complexity signal fires. Rationale: this is upstream parity, not local taste (upstream team_mode.enabled defaults to false).",
+    "D_AUTOROUTE_SPLIT": "The mechanical gate and the legacy injection mode are DECOUPLED: sessionTeamPolicy.mode defaults to 'off' and keeps its existing values (off|auto|instruct, no value removed); the new mechanical gate is a separate key sessionTeamPolicy.autoRoute (default enabled). 'off' now means 'no auto-provision, no unconditional notice'; 'instruct' keeps today's notice behavior for sessions that opt in explicitly.",
+    "D_SKILLS_WRITER": "For this wave the ONLY writer of skills/** is the implementation task t5 (Senior Engineer), limited to the two QA anchors skills/dsh-qa/SKILL.md and skills/dsh-qa/scripts/session-start-team.mjs. The skills-corpus implementation task t9 writes nothing in this wave; if the user approves corpus work it lands in a later wave with a single writer and exactly one VENDOR_LOCK re-pin.",
+    "D_LEDGER": "The persistent human-facing gap ledger is docs/omo-parity-ledger.md plus docs/omo-parity-ledger.zh-CN.md, written in the same commit, each carrying a language switch link directly under the title. docs/omo-parity-gap.md and prior wave reports are historical records and stay untouched (exempt from the bilingual rule).",
+    "D_UPSTREAM_REF": "Upstream reference for this wave: /root/dshProj/oh-my-openagent at v5.0.0-beta.62 (HEAD d1557a4b4). The repo baseline stays pinned at beta.20 per VENDOR_LOCK; this is a functional-alignment reference, never a re-pin. No VENDOR_LOCK change unless skills/** changes."
+  },
+  "complexityGate": {
+    "rationale": "Upstream has NO complexity heuristic (verified: 0 hits for heuristic/threshold/complexity in the t3 corpus; activation is an explicit keyword). The threshold is therefore a local design decision that must be frozen here and proven falsifiable by a two-sided test, never tuned after the fact.",
+    "logic": "trigger = (matchedSignals >= 2) OR anyExplicitFlag",
+    "signals": {
+      "A_explicitFlag": {
+        "kind": "hard",
+        "detect": "the trimming user text starts with 'team:' or contains '!team' (case-insensitive); the matching prefix is consumed and is not part of the goal text",
+        "role": "the local equivalent of upstream's explicit keyword activation"
+      },
+      "B_deliverableVerbs": {
+        "kind": "soft",
+        "detect": ">= 4 distinct matches of (align|migrate|refactor|audit|overhaul|port|rewrite|consolidate|对齐|重构|迁移|审计|移植|梳理|全量) in the user text",
+        "measure": "distinct-match count, case-insensitive"
+      },
+      "C_enumeratedSteps": {
+        "kind": "soft",
+        "detect": "C fires when TWO OR MORE of its three independent sub-signals hold: C1 enumerated lines (^\\s*(\\d+[.)]|[-*])\\s) >= 3; C2 distinct action verbs (add|build|change|check|implement|verify|设计|实现|验证|改造|补充) >= 3; C3 action clauses (>= 3 clauses that each pair an action verb with an object, whether or not numbered) >= 3.",
+        "measure": "count of C1, C2, C3; C is satisfied at >= 2 of 3",
+        "revisionNote": "SUPERSEDES the original literal wording ('C1 >= 3 OR C2 >= 3'). Measured contradiction: frozen complex prompt #1 ('Align the bundle with upstream: audit the orchestration surface, then implement the routing change.') has 2 enumerated lines and 2 action verbs, so the literal rule could never satisfy its own frozen complex side — while the frozen simple prompts must stay silent. The implemented form (C1/C2/C3 with a >= 2-of-3 majority) was accepted because it keeps BOTH frozen prompt sets falsifiable in practice: the two-sided case measures simple 3/3 silent and complex 3/3 triggering on a settled revision. Updating the prompts instead would have invalidated the evidence already produced against them."
+      },
+      "D_planArtifact": {
+        "kind": "soft",
+        "detect": "a plan file matching .mpd/plans/*.md exists for the session workspace at the first pre-step"
+      }
+    },
+    "action": {
+      "profile": "mpd",
+      "approval": "required",
+      "name": "MPD Default",
+      "description": "auto-routed by the complexity gate (sessionTeamPolicy.autoRoute)",
+      "effect": "create a STAGED team (no member is spawned before the user approves the Web plan) and inject the startup notice to the captain; wording must state that the session is gated, not that a team is mandatory"
+    },
+    "testPrompts": {
+      "simple": [
+        "Reply with exactly: hello-ok",
+        "What does the git-master skill do? Answer in one sentence.",
+        "Rename the variable `foo` to `bar` in src/util.ts and run its test."
+      ],
+      "complex": [
+        "Align the bundle with upstream: audit the orchestration surface, then implement the routing change.",
+        "team: fix the flaky test",
+        "1. Read the patch file\\n2. Audit the gates\\n3. Implement the change\\n4. Verify the boot"
+      ],
+      "expectation": "every prompt in `simple` leaves .mpd/team empty and the session log free of the startup notice; every prompt in `complex` produces exactly one staged team and one notice. A run where either side is not observed is a FAIL, and a gate that cannot fail this test is not accepted."
+    },
+    "verify": [
+      "cd <repo> && bun skills/dsh-qa/scripts/session-start-team.mjs",
+      "the case must assert BOTH directions on the same settled revision hash"
+    ]
+  },
+  "manualEntryNames": {
+    "policy": "frozen — renaming any of these is forbidden; adding new names is allowed",
+    "slashCommandMechanism": {
+      "note": "The profile command is GENERATED, not a literal: /agent-teams-mpd comes from PROFILE_COMMAND_PREFIX ('agent-teams-') + profileCommandName() over Object.keys(getProfiles()). A literal-name check could therefore be bypassed by editing the profile key set, so the frozen predicate is stated as the mechanism.",
+      "frozenPredicate": "the gesture regex for /agent-teams and the constants AGENT_TEAMS_COMMAND/PROFILE_COMMAND_PREFIX in lib/command.js stay unchanged AND the profiles.* key set stays unchanged (evidence: packages/mpd-agent-teams-plugin/lib/command.js:3-5,12-17,75-76,95-100 + the patch's profiles block)",
+      "currentKeys": [
+        "mpd"
+      ]
+    },
+    "slashCommands": [
+      "/agent-teams",
+      "/agent-teams-mpd"
+    ],
+    "tools": [
+      "agent_teams_create",
+      "agent_teams_approve",
+      "agent_teams_edit_plan",
+      "agent_teams_add_member",
+      "agent_teams_remove_member",
+      "agent_teams_create_task",
+      "agent_teams_reassign_task",
+      "agent_teams_claim_task",
+      "agent_teams_update_task",
+      "agent_teams_send_message",
+      "agent_teams_status",
+      "agent_teams_resume",
+      "agent_teams_delete",
+      "agent_teams_task_contract"
+    ],
+    "profileKey": "profiles.mpd",
+    "presetId": "mpd",
+    "stateDir": ".mpd/team"
+  },
+  "massUlwSemantics": {
+    "policy": "keep the agent-teams task-board model; add ONLY these four semantics. Do not replace the runner with an upstream-style dag engine (upstream's workflow tool and the DSH workflow tool are different machines).",
+    "items": [
+      {
+        "id": "S1",
+        "name": "node-level retry",
+        "assert": "a terminal failed task can be retried without discarding the tasks that already completed"
+      },
+      {
+        "id": "S2",
+        "name": "revision without re-running completed work",
+        "assert": "amending a task definition re-runs ONLY the changed task and its TRANSITIVE DEPENDENTS. A completed node whose own definition is unchanged AND none of whose transitive dependencies were changed/added/xor-moved keeps its cached result — that is the 'completed nodes are not re-run' guarantee. A completed DEPENDENT of an amended task IS re-run, because its input changed (upstream amend semantics: the amended event carries invalidatedNodeIds); keeping a stale dependent result would be the bug, not the contract.",
+        "resolves": "Planner R4F1 — the earlier wording 'and its dependents' read as conflicting with the user's 'amend must not re-run completed nodes'. The two are reconciled by scoping the no-re-run guarantee to nodes whose transitive inputs did not change.",
+        "evidenceProvenance": "UPSTREAM REFERENCE, NOT IN THIS REPO (verified 2026-09-13: docs/reference/ does not exist here and the path has 0 hits repo-wide including .git). The upstream file is /root/dshProj/oh-my-openagent/docs/reference/mass-ulw-protocol.md. Anyone verifying S2 locally can only verify the contradiction-free wording above, not the upstream citation — record that limitation rather than claiming a verified citation."
+      },
+      {
+        "id": "S3",
+        "name": "resume across restart",
+        "assert": "a run interrupted by process exit resumes from persisted state instead of restarting finished tasks"
+      },
+      {
+        "id": "S4",
+        "name": "mid-run steering",
+        "assert": "a running member can be steered back into its scope with a bounded notice, without restarting the attempt"
+      }
+    ],
+    "reuse": "Bind S1-S4 to the existing attempt_id plane and the canDeclareDelivery verification plane (lib/quality-gates.js); do not duplicate upstream doctrine."
+  },
+  "configPlane": {
+    "note": "Goal 4: align the FIXED FIELDS to upstream team_mode semantics, but keep the user's decision that our CEILINGS stay the more permissive local values. Upstream defaults measured at packages/team-core/src/config.ts:6-14; our existing plugin keys measured in packages/mpd-agent-teams-plugin/lib/index.js:83-84 (memberMaxDepth, maxMembers) resolved at :199-200.",
+    "frozen": [
+      {
+        "key": "maxMembers",
+        "upstreamKey": "max_members",
+        "upstreamDefault": 8,
+        "localDefault": 16,
+        "ceiling": 16,
+        "source": "bundle row already sets maxMembers: 16; keep 16 (user decision: local ceilings win)"
+      },
+      {
+        "key": "maxParallelMembers",
+        "upstreamKey": "max_parallel_members",
+        "upstreamDefault": 4,
+        "localDefault": 8,
+        "ceiling": 16,
+        "source": "NEW field; upstream ceiling is 8, ours must allow more because maxMembers is 16"
+      },
+      {
+        "key": "maxMessagesPerRun",
+        "upstreamKey": "max_messages_per_run",
+        "upstreamDefault": 10000,
+        "localDefault": 10000,
+        "ceiling": null,
+        "source": "NEW field (no local equivalent today)"
+      },
+      {
+        "key": "maxWallClockMinutes",
+        "upstreamKey": "max_wall_clock_minutes",
+        "upstreamDefault": 120,
+        "localDefault": 120,
+        "ceiling": null,
+        "source": "NEW field"
+      },
+      {
+        "key": "maxMemberTurns",
+        "upstreamKey": "max_member_turns",
+        "upstreamDefault": 500,
+        "localDefault": 500,
+        "ceiling": null,
+        "source": "NEW field"
+      },
+      {
+        "key": "messagePayloadMaxBytes",
+        "upstreamKey": "message_payload_max_bytes",
+        "upstreamDefault": 32768,
+        "min": 1024,
+        "localDefault": 32768,
+        "source": "NEW field; applies to agent_teams_send_message payloads"
+      },
+      {
+        "key": "recipientUnreadMaxBytes",
+        "upstreamKey": "recipient_unread_max_bytes",
+        "upstreamDefault": 262144,
+        "min": 1024,
+        "localDefault": 262144,
+        "source": "NEW field; per-recipient unread ceiling"
+      },
+      {
+        "key": "mailboxPollIntervalMs",
+        "upstreamKey": "mailbox_poll_interval_ms",
+        "upstreamDefault": 3000,
+        "min": 500,
+        "localDefault": 3000,
+        "source": "NEW field; adopted as the delivery/poll cadence knob"
+      },
+      {
+        "key": "memberMaxDepth",
+        "upstreamKey": null,
+        "localDefault": 1,
+        "source": "LOCAL-ONLY, must be preserved (upstream has no depth concept)"
+      },
+      {
+        "key": "stateDir",
+        "upstreamKey": "base_dir",
+        "localDefault": ".mpd/team",
+        "source": "LOCAL-ONLY value, preserved; upstream base_dir defaults to ~/.omo"
+      }
+    ],
+    "rules": [
+      "Enforcement semantics must match upstream: 'enforce' blocks over-limit sends; 'observe' logs only. Default stays enforce (measured: upstream config.ts also defaults enforce).",
+      "Every new key must be validated with the INSTALLED plugin schema via node skills/dsh-qa/scripts/preset-conformance.mjs — schemastery SILENTLY KEEPS unknown keys, so an unvalidated key is a capability that never appears (AGENTS.md troubleshooting row).",
+      "New keys must be absent-safe: an old profile without them must still boot with the defaults above."
+    ]
+  },
+  "changeLocations": {
+    "note": "Measured locations of the old invariants. This list supersedes any earlier prose; there is no AGENT.md in this repo (AGENT.md is only the first instructionFileCandidate).",
+    "items": [
+      "packages/mpd-bundle/cordis.patch.yml — agent-teams row sessionTeamPolicy block + its comment",
+      "packages/mpd-agent-teams-plugin/lib/session-start.js — policyQualifies predicate + provisionedNotice/instructNotice text",
+      "packages/mpd-agent-teams-plugin/lib/index.js — config schema + resolved defaults",
+      "presets/mpd/agent.cordis.yml — the SESSION STARTUP RULE block and the sizing doctrine placement",
+      "packages/mpd-bundle/README.md (EN) and packages/mpd-bundle/README.zh-CN.md (zh-CN) — same commit",
+      "scripts/install-profile.mjs — the row config and its self-test assertion (currently pins mode === 'auto')",
+      "skills/dsh-qa/SKILL.md — the session-start-team case row",
+      "skills/dsh-qa/scripts/session-start-team.mjs — assessTeamState inverts to a two-sided assertion",
+      "AGENTS.md — the startup-rule section and the delta-table row that describes the old behavior",
+      "packages/mpd-agent-teams-plugin/self-fix-tests/** — only if lib behavior bodies change under a registered mpd-delta region"
+    ]
+  },
+  "requiredQaCases": [
+    "bun run typecheck",
+    "bun test packages/mpd-agent-teams-plugin",
+    "bun test packages",
+    "node scripts/install-profile.mjs --self-test",
+    "node scripts/install-profile.mjs --dry-run",
+    "node skills/dsh-qa/scripts/preset-conformance.mjs",
+    "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs",
+    "bun skills/dsh-qa/scripts/session-start-team.mjs",
+    "node scripts/verify-vendor.mjs"
+  ],
+  "isolation": {
+    "status": "resolved by user decision 2026-09-13",
+    "branch": "feature/omo-parity-align (cut from dev after the migration commit below)",
+    "committed": [
+      "packages/mpd-bundle/cordis.patch.yml",
+      "packages/mpd-roles-plugin/src/roles.data.ts",
+      "packages/mpd-roles-plugin/test/roles.test.ts",
+      "packages/mpd-roles-plugin/dist/index.js (rebuilt so the tracked artifact matches its source)"
+    ],
+    "commit": "0e6bdaf (feat(roster): make every teammate flash-tier with explicit reasoning effort)",
+    "uncommittedUserOwned": [
+      "docs/user-guide.md",
+      "docs/user-guide.zh-CN.md"
+    ],
+    "uncommittedFromThisWave": [
+      "docs/index.md",
+      "docs/index.zh-CN.md (the ledger index rows written by the r4 requirements round)",
+      "docs/omo-parity-ledger.md",
+      "docs/omo-parity-ledger.zh-CN.md",
+      "evidence/omo-align/**"
+    ],
+    "rule": "The two user-guide files must never be mixed into this wave's commits. The ledger + index rows belong to the ledger task and ride with its commit."
+  },
+  "t4Requirements": {
+    "note": "Planner R4F5: the three requirements t4 was told to honor live only in captain messages. Frozen here so a consistency check can find them. R2 revision (2026-09-13, after the Researcher rework): the R1 acceptance added a FIXED 10-COLUMN table whose row set is the t2 UNION t3 enumeration (22 rows: Table A), which SUPERSEDES the earlier 10-skill row set; the skill rows survive as Table B (a secondary skill-class lens, non-authoritative for the gate's row count).",
+    "authoritativePaths": [
+      "evidence/omo-align/skills-gates/gap.json (FROZEN revision fv4: 82,509 B, sha256 cade32a6…; rows = 32 = 22 domain rows D*/T3* + 10 skill rows; verdictDistribution applicable 16 / uncertain 13 / already-have 2 / adoptable 1; the 10 skill rows now carry upstreamHarnessCoupling + couplingMeasurement + overlap + relevanceToGoals + relevanceRationale + skillPortCost + replacement)",
+      "evidence/omo-align/skills-gates/gap-verdict-table.md (FROZEN fv4: 50,613 B, sha256 81855a4f…; line 1 = '# 上游功能差距判定表（输入 t8 技能门禁评分）')",
+      "evidence/omo-align/skills-gates/revisions/fv4-2026-09-13T14-00-29-361Z/ (immutable snapshot: gap.json + gap-verdict-table.md + manifest.json with sha256/bytes) and revisions/REVISIONS.md (per-revision index)",
+      "evidence/omo-align/skills-gates/raw/derived-rows-fv4.json (every derived component of fv4, so a re-score is recomputable from raw)",
+      "evidence/omo-align/skills-gates/build-r1.mjs (generator; writes the LIVE copy plus the immutable snapshot)"
+    ],
+    "immutabilityRule": "ADOPTED from the producer's own fix: a graded input revision is never overwritten in place; every rebuild additionally writes revisions/<tag>-<UTCstamp>/ and REVISIONS.md records the index. fv1-fv3 are LOST (evidence/omo-align is untracked in git, and the old builder was deleted) — t8's own deliverables are the only surviving record of the revision it scored.",
+    "residualFieldGap": "FINAL — THIS SECTION IS THE AUTHORITATIVE RULE SET; where it disagrees with any captain message or with any earlier revision of this field, THIS TEXT WINS. (a) Inputs: the per-row seam booleans are derivable from raw/upstream-skill-records.json. ALL TEN rows have a record, including skills-loader-core/security-research whose `name` field is EMPTY (look it up by PATH); there is NO unknown-fallback row. (b) D3 RULE: D3 = 1 + (counted TRUE seam booleans), clamped to [0,3]. `counted` includes ONLY harnessSeamChange and binaryDependency. The baseline 1 is the old band=1: a row with no counted boolean scores D3 = 1, never 0, because a port is never literally free. harnessSeamChange is TRUE iff a SEAM TRIGGER class is present WITH mechanism evidence; binaryDependency is TRUE iff the row's own SKILL.md carries an executable command that is part of the porting work. Token SUMS are NEVER used (git-master count 0 vs sum 3; mass-ulw count 1 vs sum 36). (c) Class mapping: the D3/V4 axis is the SEAM TRIGGER set = envKeyOmo, teamTools, dagRunId, workflowTool. The D4 axis (soft classes) = categoryRouting, cliOmo, omoDir, taskTool, binaries, creds; these are annotation-only ('environment prerequisite: needs X') and NEVER add to D3. There is no third band. (d) EVIDENCE QUALITY takes precedence over (c): only a hit whose evidenceQuality = mechanism counts toward D4; a prose hit is recorded but neither scored nor able to trigger V4. Measured prose-only hits: skills-loader-core/dev-browser 'workflow loop', skills-loader-core/frontend 'Design System and Component Workflow'. The frozen class table is CASE-SENSITIVE, so uppercase prose never entered a class (skills-loader-core/git-master 'RESET WORKFLOW' / 'Autosquash Workflow'); re-deriving with /i is non-compliant. (e) V4 predicate: (dagRunId AND mechanism) OR (envKeyOmo AND workflowTool AND mechanism) => the only expected hits are omo-senpi/mass-ulw and omo-senpi/dag-library. (f) THRESHOLD: vetoes (V1 equivalent, V4 runner-replacement) apply BEFORE the threshold; total >= 15 => adapt-then-install; total < 15 => skip. couplingMeasurement != none caps D4 (D4 != 3) and is never an action by itself. (g) THE GATE RECOMPUTES and never quotes a remembered total. t19 (independent measurement) returned verdict no-seam-required for skills/remove-deadcode: porting it needs NO repository change (text-level tool renaming only), so its harnessSeamChange is FALSE and counted = 1 via binaryDependency => D3 = 2 under the D4 mapping already published by the gate owner => total 14 => skip. (h) The narrative layer must show each row's inputs and arithmetic, not just a total. (i) FAILURE MODE TO AVOID (measured this wave): the rule text, the derivation formula and the pre-announced numbers drifted apart because numbers were announced before the formula was fixed. Any later message that conflicts with this text is void.",
+    "classScoring": "classMapping/D4 banding lives in the gate rubric; this contract fixes which classes are seam triggers (envKeyOmo, teamTools, dagRunId, workflowTool) versus soft annotations (categoryRouting, cliOmo, omoDir, taskTool, binaries, creds), and declares that only mechanism-evidenced seam triggers affect D3/V4.",
+    "harnessSeamChangeRule": "TRUE iff a SEAM TRIGGER class (envKeyOmo, teamTools, dagRunId, workflowTool) is present WITH mechanism evidence; prose-only hits never make it TRUE. binaryDependency is TRUE iff the row's own SKILL.md carries an executable command that is part of the porting work. credentialDependency never scores.",
+    "revisionHistory": "Four generations existed; the first three are SUPERSEDED and NOT verifiable: 133,512 B (64 skill items, t4's first delivery), 147,592 B sha 148998a6… (the revision t8 actually scored against), 56,376 B sha f08c6d09… (fv2), then 73,777 B sha 9eccb353… (fv3, live for a few minutes and never snapshotted — do NOT cite 74,733 B: no such file exists on disk). The ONLY verifiable revision is **fv4: gap.json 82,509 B, sha256 cade32a6ae0346bf0e01aa96fd8b28d7ab8a0167ee6f94529e1511be971ce067**, with its immutable snapshot at evidence/omo-align/skills-gates/revisions/fv4-2026-09-13T14-00-29-361Z/{gap.json,gap-verdict-table.md,manifest.json} and the index in revisions/REVISIONS.md. fv1–fv3 are LOST byte-exactly (evidence/omo-align is untracked in git; the intermediate builders were replaced), so an independent verifier MUST recompute distributions from fv4 + its snapshot and must never open a fv1–fv3 path or cite t8's input pin (which no longer exists on disk). Captain adjudication: t8 is NOT re-scored, because the post-scoring changes were ADDITIVE on 9 of the 10 skill rows — the decision-relevant distribution stayed byte-identical (applicable 16 / uncertain 13 / already-have 2 / adoptable 1) and mass-ulw stayed partial-equivalent. **One row is the exception and must always be read together with t8's verdict: `skills/remove-deadcode`** — fv4 records replacement.status = partial-equivalent, which by the published D5 rule drops its total from 18 to 14 < X=15, flipping its action adapt-then-install → skip; it is the gate's ONLY input-revision-sensitive action. PROCESS RULE adopted for the rest of the wave: an input revision already pinned by a downstream task must never be overwritten under the same filename — a reissue uses a new versioned filename, keeps its builder, and writes an immutable snapshot.",
+    "pathHistory": "The t4 terminal record still lists evidence/omo-align/research/skills-and-capability-gap/** as changedPaths; that directory was deleted after the captain-directed relocation, so a verifier must read the authoritative paths above and treat the terminal record's paths as stale (terminal records are immutable). Three earlier generations of this file existed during the wave (133,512 B and 147,592 B variants plus the 201-line table); the R1 rework above is the current one.",
+    "rowSet": "t8 (the SKILL GATE) scores EXACTLY the 10 rows whose rowSetSource == \"frozen-contract.rowSet\": skills/remove-deadcode, skills/security-research, skills/tech-debt-audit, omo-codex/rules, omo-senpi/dag-library, omo-senpi/mass-ulw, skills-loader-core/dev-browser, skills-loader-core/frontend, skills-loader-core/git-master, skills-loader-core/security-research. The LITERAL string \"Table B\" appears nowhere in the data, so a programmatic check must filter on rowSetSource === \"frozen-contract.rowSet\". Table A (rowSetSource t2-enumeration = 12 rows D1..D12, plus t3-enumeration = 10 rows T3-01..T3-10) is the CAPABILITY layer: it belongs to t4's gap table and to the implementation/verification chain (t15/t17), NOT to the skill gate's row count. This restores the captain's twice-stated ruling; the earlier wording of this field (which called Table A authoritative for t8) was a text defect and is void.",
+    "verdictVocabulary": "applicable | adoptable | already-have | uncertain (measured distribution in the R1 table: applicable 16, uncertain 13, already-have 2, adoptable 1 — the single adoptable row T3-01-default-state carries a two-sided falsifiable assertion: ordinary prompt ⇒ 0 teams / 0 notices, complex prompt ⇒ exactly 1 staged team + 1 notice).",
+    "classDistribution": {
+      "note": "skill-class lens (the 64-item upstream skill inventory reported by the earlier generation of the gap document)",
+      "already-have": 29,
+      "not-applicable": 25,
+      "uncertain": 10,
+      "adoptable": 0
+    },
+    "items": [
+      "Fixed column set (10 columns) for the judgment table; a row missing a column fails acceptance.",
+      "Row set = the union of the t2 and t3 enumerations; a row the researcher cannot judge stays in the table marked uncertain with a reason — rows may not be dropped.",
+      "D10 recovery coverage: retry (8), revision (2), resume (1), mid-run steering (0) must each be reported explicitly, because S1-S4 are exactly these four semantics.",
+      "Every row classified adoptable carries one falsifiable assertion (command/observation + expected result + what a failure looks like)."
+    ],
+    "binaryDependencyRule": "binaryDependency = TRUE iff the row's SKILL.md contains an executable command that the SKILL ITSELF DIRECTS THE AGENT TO RUN as part of executing that skill. It is FALSE when the same commands appear only as DOCUMENTED EXAMPLES / code blocks that teach the skill's subject matter, because no environment prerequisite attaches to the PORT itself. Discriminator (mechanical, no judgement needed): ask whether the command is the skill's own entry point for its workflow, or an illustration of the topic the skill teaches. Worked values under this criterion: remove-deadcode TRUE (bun run typecheck is the skill's own verification step); tech-debt-audit TRUE (bun test); dev-browser TRUE (npx Playwright launch); frontend TRUE (uv/make build step); dag-library TRUE and mass-ulw TRUE (node/python harness coupling); security-research(.agents) FALSE (team_create only); omo-codex/rules FALSE; skills-loader-core/security-research FALSE; **skills-loader-core/git-master FALSE** — its 16 bash/make blocks are EXAMPLES that teach git usage (the skill is a git reference), so nothing must be installed to PORT it. Consequence under D3 = 1 + counted: remove-deadcode counted=1 => D3=2 => 14 total => skip (confirmed by the separate empirical measurement t19, no-seam-required); git-master counted=0 => D3=1 => 14 total => skip (NOT borderline, and it does NOT belong in userApprovedOverrides since the user never approved it).",
+    "authorityNote": "ON READ-TIME AUTHORITY: this file is the only source; a gate/verifier must RE-READ it when starting work and record the bytes + sha256 it read. Numbers in any captain or member message are ADVISORY and may be stale — the file's formula plus the reader's own recomputation governs. Any later message that conflicts with this file is void (clause (i) of residualFieldGap)."
+  },
+  "openForUser": [
+    "Complexity-gate calibration: the values above are frozen defaults, not measured optima. They await an empirical run and the user may adjust them once.",
+    "Whether the skills corpus (mass-ulw / dag-library / hyperplan) should be ported at all — decided only after the t8 gate report, per the user's instruction."
+  ],
+  "schedulerSemantics": {
+    "captainAdjudication": "User decisions 2026-09-13, revision R2 — this section is the operative record; before it existed, only captain message text carried it.",
+    "OPT1_failedDependency": {
+      "decision": "User chose A: a failed dependency must NOT permanently block its downstream (not cascading-cancel).",
+      "rule": "dependencyStates() returns satisfied | failed-dependency | unsatisfied. unsatisfiedDependencies() keeps its single-value contract but no longer lists FAILED ids, so a failed upstream stops blocking on ALL THREE paths: scheduler dispatch, member claim, and captain takeover (reassign_task). cancelled stays non-blocking; the deadlock rule is otherwise unchanged.",
+      "failureIsSurfaced": "taskContractView exposes `failed_dependencies` so the failure is visible, never silently swallowed.",
+      "falsifiable": [
+        "A terminal-failed upstream => downstream still claimable within 15s and its contract view names the failed dependency",
+        "A retry that succeeds => downstream continues on the real dependency result",
+        "REVERSE CONTROL: pending/claimed/in_progress/unknown-id upstreams still block; completed/cancelled still do not"
+      ],
+      "region": "mpd-delta dependency-failed-unblock",
+      "evidence": [
+        "packages/mpd-agent-teams-plugin/test/opt1-failed-dependency.test.mjs (6/6)",
+        "dev c28c7c1 code + c91f266 evidence"
+      ]
+    },
+    "OPT2_ordering_and_reclamation": {
+      "decision": "User chose A: sizing must be decided before a team can be created; residual staged teams are reclaimed by ARCHIVING only.",
+      "ordering": "The preset's SESSION STARTUP RULE (PRE-STEP complexity gate) precedes the AGENT TEAM ROUTING sizing doctrine and states that sizing can never force a team into existence. The old 'every session MUST start inside a team' invariant no longer exists anywhere.",
+      "reclamation": "scripts/reclaim-staged-teams.mjs ARCHIVES (never rm) using the agent_teams_delete archive semantics: rename into <stateRoot>/archive/<id>/. Reclaimable ONLY when `staged && !approvedAt && tasks.length === 0`.",
+      "applied": "26 scanned, 22 archived, 4 protected teams left byte-identical (3 running incl. this session, plus one staged team carrying 8 tasks correctly judged non-residue). Post-apply dry run: 0 residual of 4 live teams.",
+      "assertionSubstitution": "The originally written assertion 'agent_teams_status no longer lists archived teams' is structurally untestable — that tool returns only the CALLING captain's own team (requireParticipantTeam). Substituted with a stronger mechanical assertion: the id leaves the active state root, appears under archive/<id>/, and the post-apply scan reports 0 residual. This is a substitution, declared, not a silent loosening.",
+      "evidence": [
+        "packages/mpd-agent-teams-plugin/test/opt2-residual-and-ordering.test.mjs (4/4)",
+        "evidence/omo-align/implementation/raw/{reclaim-dryrun.json,reclaim-applied.json}"
+      ]
+    },
+    "knownGaps": [
+      "multi-hop A->B->C failed-dependency behaviour has no dedicated test (C blocks while B is pending, which the three-state definition predicts)",
+      "cross-process / Web-panel visibility of the 22 archived teams was not measured"
+    ]
+  }
+}

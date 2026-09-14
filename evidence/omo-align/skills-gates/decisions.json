@@ -1,0 +1,468 @@
+{
+  "schema": "mpd.omo-align.skills-gate-decisions/v1",
+  "task": "t8",
+  "produced_by": "Architect (read-only)",
+  "produced_at_utc": "2026-09-13T13:55:00.000Z",
+  "userDirective": "技能语料本轮先调研、不实现；先设门禁，调研完带结论回来问用户，用户决定后再执行。",
+  "soThisFileIs": "the decision input the user asked for — not an implementation. Nothing in this file authorises a skills/** change.",
+  "inputs": {
+    "authoritativeDir": "evidence/omo-align/skills-gates/",
+    "gap": {
+      "path": "evidence/omo-align/skills-gates/gap.json",
+      "sha256": "cade32a6ae0346bf0e01aa96fd8b28d7ab8a0167ee6f94529e1511be971ce067",
+      "bytes": 82509,
+      "revision": "fv4",
+      "note": "pinned at the addendum; snapshot revisions/fv4-2026-09-13T14-00-29-361Z/manifest.json"
+    },
+    "gapVerdictTable": {
+      "path": "evidence/omo-align/skills-gates/gap-verdict-table.md",
+      "sha256": "9501610f7d8a5d00f2cbee191d9c284c47656f6368f38dda0d02d7982b0ac385"
+    },
+    "rubric": {
+      "path": "evidence/omo-align/skills-gates/gate-rubric.json",
+      "sha256": "45b9e4fc6595cc27a41ce46ec67a24598460c78507dbca73122d4c8ca85b2d9b",
+      "rulesSha256": "95cfbc5a8be265cb0a2e7e7eaf0f947a18c0f8065408dc2776447049165e79fa",
+      "version": "1.0.1",
+      "note": "authored before the first score. rulesSha256 covers exactly the rule-bearing sections (dimensions/weightsAndTotal/vetoes/resolutionOrder/preChecks/boundarySampleRules/calibrationChecks) and is recomputable; those sections were final at scoring time and never changed afterwards. | 1.1.0 + flagDerivationRule alias (name only)",
+      "rulesSha256_v1_1_0": "23ed8c7e65779f95e478d248436f58c3961ed8c86ee11088efba7e96e8c242e2"
+    },
+    "verdictTable": "evidence/omo-align/skills-gates/verdict-table.md",
+    "contract": {
+      "path": "evidence/omo-align/requirements/frozen-contract.json",
+      "sha256_prefix": "a0d28ebeaf3f204e4a33480670f44f204415b167",
+      "bytes": 31705,
+      "role": "authoritative rule set (t4Requirements.residualFieldGap (a)-(i)) + t4Requirements.rowSet; TEXT WINS over any captain message",
+      "pinNote": "pin refreshed at read time: latest revision 31,705 B / a0d28ebeaf3f204e4a33480670f44f204415b167…; the (a)(b)(g)/rowSet clauses implemented are textually identical to the 28,243 B revision read at delivery; the latest adds harnessSeamChangeRule / binaryDependencyRule (mechanical B discriminator WITH worked values: remove-deadcode/tech-debt-audit/dev-browser/frontend/dag-library/mass-ulw TRUE; security-research(.agents)/rules/loader-security/git-master FALSE) / classScoring / authorityNote.",
+      "sha256_full": "a0d28ebeaf3f204e4a33480670f44f204415b16758999ce22309a99e3c9c2d65"
+    },
+    "t19Artifact": {
+      "path": "evidence/omo-align/skill-measurements/remove-deadcode/result.json",
+      "sha256_prefix": "901e7f48692fada8bb11a0a3616d6f5c607457a3",
+      "bytes": 19819,
+      "verdict": "no-seam-required",
+      "finalAction": "skip",
+      "note": "repo-side change limited to the ported SKILL.md + one VENDOR_LOCK re-pin (the §9 skills/** rule, not a seam boolean)"
+    },
+    "readings": [
+      {
+        "when": "addendum implementation",
+        "bytes": 28243,
+        "sha256_prefix": "a9dfb311",
+        "clauses_used": "(a)(b)(g) + rowSet, read verbatim"
+      },
+      {
+        "when": "final re-read after the captain GO broadcast",
+        "bytes": 31705,
+        "sha256_full": "a0d28ebeaf3f204e4a33480670f44f204415b16758999ce22309a99e3c9c2d65",
+        "mtime": "2026-09-13T22:38:13",
+        "note": "captain broadcast cites 28,243 B / a9dfb311… (one revision earlier); clauses (a)(b)(g)/rowSet/binaryDependencyRule are textually identical => no score impact"
+      }
+    ],
+    "gapR2": {
+      "path": "evidence/omo-align/skills-gates/gap-r2.json",
+      "sha256_prefix": "ea969037a71d4cc1f17aec2bee4e8764baa54ae7",
+      "bytes": 132739,
+      "role": "v5 record-only input (booleans + evidenceQuality + replacement.status + userApprovedOverrides + t19)",
+      "crossCheck": "8/10 rows identical to this gate inputs; divergence on omo-senpi/dag-library and omo-senpi/mass-ulw (contract binaryDependencyRule worked values say B=TRUE; gap-r2 says false) => gate follows the contract text: counted=2 => D3=3 => totals 26/25; both rows are V4(dagRunId) skips so no action impact (re-checked on fv5.8: the two divergences PERSIST — dag-library/mass-ulw binaryDependency=false in gap-r2 vs TRUE in the contract binaryDependencyRule worked values)",
+      "revision": "fv5.8",
+      "readings": [
+        {
+          "bytes": 132588,
+          "sha256_prefix": "d2c0d752cb9bbf42",
+          "when": "first cross-check"
+        },
+        {
+          "bytes": 132739,
+          "sha256_prefix": "ea969037a71d4cc1f17aec2bee4e8764baa54ae7",
+          "when": "re-read at finalisation"
+        }
+      ]
+    }
+  },
+  "gateResultSummary": {
+    "scoredRows": 10,
+    "rowSetRule": "t4 gap.json items with class in {adoptable, uncertain} (adoptable = 0)",
+    "install": 0,
+    "adaptThenInstall": 4,
+    "adaptThenInstallUniqueSkills": 3,
+    "skip": 6,
+    "installZeroIsExpected": "yes — t4 reports adoptable=0 and no scored row has raw coupling 'none'; the gate does not force an install row (gate-rubric.json calibrationChecks.C1).",
+    "uniqueAdaptCandidates": [
+      "skills/security-research (dedup with skills-loader-core/security-research)",
+      "skills/tech-debt-audit",
+      "skills/remove-deadcode"
+    ],
+    "vetoHits": {
+      "V1": [
+        "omo-codex/rules"
+      ],
+      "V2": [
+        "omo-senpi/mass-ulw",
+        "skills-loader-core/dev-browser",
+        "skills-loader-core/frontend",
+        "skills-loader-core/git-master"
+      ],
+      "V3": [],
+      "V4": [
+        "omo-senpi/mass-ulw",
+        "omo-senpi/dag-library"
+      ]
+    }
+  },
+  "questions": [
+    {
+      "id": "Q1",
+      "question": "是否移植门禁筛出的 3 个 adapt-then-install 候选（security-research / tech-debt-audit / remove-deadcode），还是本轮保持零技能改动？",
+      "context": "行集合 10 行中 4 行判为 adapt-then-install，去重后是 3 个不同技能；无一行为 install。全部候选的可用路径都依赖上游工具名改写（SOFT 耦合）或环境前提（凭据/二进制）。",
+      "options": [
+        {
+          "id": "A",
+          "label": "本轮不移植（推荐）",
+          "what": "保持零 skills/** 改动；把门禁结论与 t5 的 S1–S4 交付结果放在一起再决策。"
+        },
+        {
+          "id": "B",
+          "label": "只移植 security-research",
+          "what": "唯一真实能力缺口（本地语料完全没有安全审计技能）；1 文件，需把 team tools 映射到 agent-teams 角色并处理凭据前提。"
+        },
+        {
+          "id": "C",
+          "label": "移植全部 3 个",
+          "what": "security-research + tech-debt-audit + remove-deadcode；仍需后续 wave 的单写者与 1 次 re-pin。"
+        },
+        {
+          "id": "D",
+          "label": "先做语料 refresh，不做新技能",
+          "what": "把预算放在 beta.20→beta.62 的 17 个 shared-skills 漂移上（见 Q3）。"
+        }
+      ],
+      "recommended": "A",
+      "rationale": "三个候选与四项目标的相关性都只有『低』（D2=1，argmax 均为 G1），而本 wave 的 skills/** 写者位已被 t5 占用（见 Q6）；在目标相关性低、且不能在同一 wave 落地的情况下，先不移植的期望收益最高。",
+      "lossIfNotImplemented": {
+        "security-research": "本地语料**完全没有安全审计能力**：3 hunter + 2 PoC 的并行漏洞审计、可利用性证明与按真实可利用性定级的工作流完全缺失，且没有任何本地技能可替代（t4 overlap = 'none today; would occupy a new capability slot'）。这是本门禁筛出的**唯一真实能力缺口**。",
+        "tech-debt-audit": "缺 9 个维度的带文件引用的技术债审计流程，以及 `TECH_DEBT_AUDIT.md` 这一**工件类型**；本地 dsh-qa / review-work 只覆盖相邻意图。",
+        "remove-deadcode": "缺『LSP 验证 + 原子提交』的**专项**死代码清理流程；本地 refactor / remove-ai-slops 覆盖相邻意图，但不含 LSP 验证链路与死代码检测清单。"
+      },
+      "evidence": [
+        "verdict-table.md §1, §2.1–§2.3, §2.10"
+      ]
+    },
+    {
+      "id": "Q2",
+      "question": "三个编排类技能（mass-ulw / dag-library / hyperplan）是否移植？",
+      "context": "用户最初的目标之一是对齐 mass-ulw/DAG 语义。门禁对三项都给出『无增量』结论，但依据不同：V4 否决两项，class=already-have 一项。",
+      "options": [
+        {
+          "id": "A",
+          "label": "全部 skip（推荐）",
+          "what": "mass-ulw / dag-library 由 V4 机械判 skip（可用路径要求替换本仓库任务板模型/运行器）；hyperplan 为 already-have。"
+        },
+        {
+          "id": "B",
+          "label": "只把 mass-ulw 的 planning doctrine 作为文档适配",
+          "what": "不建技能、不引入引擎，只把分解教义/节点提示契约（TASK/DELIVERABLE/SCOPE/VERIFY/STOP WHEN）作为 docs 或 t5 的参考文本。"
+        },
+        {
+          "id": "C",
+          "label": "移植 mass-ulw 教义文本为技能",
+          "what": "门禁不推荐：会把 8 类本 harness 不存在的机制写成事实（假文档）。"
+        }
+      ],
+      "recommended": "A",
+      "rationale": "mass-ulw 是本表最高分（21/30）却被 V4 否决的一行——分数高只说明它『概念上重要』，不说明它在本 harness 上可获得。唯一可用增量 S1–S4 已由 frozen-contract 交给 t5。",
+      "lossIfNotImplemented": {
+        "mass-ulw": "技能路径**损失 = 0**。唯一可用增量 = 冻结契约的 S1–S4；实测：**S1（terminal failed 任务可重试且不丢已完成任务）与 S4（对运行中成员定向纠偏、继续同一 attempt）今天已存在于本地**（`lib/tools.js:1199-1204`、`:1236`、`:1652-1660`、`lib/index.js:107`）。**S2 确认缺失**（`agent_teams_update_task` 不能改任务定义；`agent_teams_edit_plan` 只作用于 staged 计划，`lib/tools.js:716`）；**S3 只有团队级 resume、任务粒度未验证**（`agent_teams_resume` `lib/tools.js:1907`、冷启动恢复 `lib/capabilities.js:10`）。若 t5 被取消，真正的损失是 S2 + S3 的任务粒度保证 —— 那是 t5 契约缺口，不是本技能能补的。",
+        "dag-library": "技能路径**损失 = 0**：其存储的一半与上游 run 引擎不可分离（t4 couplingMeasurement 原文），本 harness 无 run_id/journal/幂等键模型（t2 D3）。『命名可重放图库』能力仍缺失，取得路径是 t5 的 S2/S3 或未来 workflow 运行生命周期。",
+        "hyperplan": "**损失 = 0（已等价）**：本地 `mpd_ultrawork({hyperplan:true})` 已实现同一 5 类对抗波（`packages/mpd-ulw-plugin/src/index.ts:147,165,180-191`；`README.md:19-20`）。建议只做成员角色/提示词的 parity 检查，不移植。"
+      },
+      "evidence": [
+        "verdict-table.md §3",
+        "frozen-contract.json massUlwSemantics",
+        "t2 D3"
+      ]
+    },
+    {
+      "id": "Q3",
+      "question": "beta.20→beta.62 的语料漂移（含同名技能 frontend/git-master）是否在本轮做 refresh？",
+      "context": "本地语料是 beta.20 的忠实移植（17/17）；beta.62 出现内容级漂移，且两个 uncertain 行与本地**同名**（t4 却把它们写作 repoCounterpart=null，已由 P1 重新定基）。",
+      "options": [
+        {
+          "id": "A",
+          "label": "本轮不做，作为独立后续 wave（推荐）",
+          "what": "单写者 + 恰好 1 次 re-pin；与技能移植分开排波次。"
+        },
+        {
+          "id": "B",
+          "label": "与本轮 t5 合并",
+          "what": "不行：会让本 wave 出现第二个 skills 写者 ⇒ 2 次 re-pin / 2 个耦合 commit（§5）。"
+        },
+        {
+          "id": "C",
+          "label": "仅 refresh frontend + git-master",
+          "what": "范围最小，但仍需一个独立的单写者 wave。"
+        }
+      ],
+      "recommended": "A",
+      "lossIfNotImplemented": {
+        "contentDrift": "本地保持 beta.20 内容：`frontend` 缺 1 个 ambience 段 + 1 个 reference 文件（151 vs 154 行、28 vs 29 文件）；`git-master` 保持 104 行版本（上游 builtin 变体 1107 行）；`review-work` 仍是旧版（上游为 518 行重写）；`debugging` 缺 dap/frida；`data-scientist` 仍是 9 文件（上游 11，围绕 resident kernels 重写）。功能可用性不受影响，差的是内容深度与新增参考。"
+      },
+      "evidence": [
+        "t4 windowAudit + gap.json classificationRules",
+        "P1 同名检查（本表 §2.8/§2.9）"
+      ]
+    },
+    {
+      "id": "Q4",
+      "question": "上游自身仓库/产品流程技能（`.agents/skills`、`.opencode/skills`，共 25 行 not-applicable）是否要纳入移植范围？",
+      "context": "t4 openQuestion#1。这些技能作用于**上游自己的仓库发布/分流/PR 流程**，或上游产品的首启 UX。",
+      "options": [
+        {
+          "id": "A",
+          "label": "不纳入（推荐）",
+          "what": "维持 not-applicable 判定；边界样本 give-me-tips / onboarding 的反事实分数也只有 12/30、10/30。"
+        },
+        {
+          "id": "B",
+          "label": "纳入并按同一门禁评分",
+          "what": "需要先定义『目标面在本仓库存在』的判据，否则 D1 无法机械定分。"
+        }
+      ],
+      "recommended": "A",
+      "lossIfNotImplemented": {
+        "none": "损失 = 0：这些技能的目标面（上游产品的 CLI/发布流程）在本仓库不存在，移植后没有可执行落点。"
+      },
+      "evidence": [
+        "gap.json byClass (not-applicable=25)",
+        "verdict-table.md §4"
+      ]
+    },
+    {
+      "id": "Q5",
+      "question": "确认门禁的零 install 结论？（install = 0）",
+      "context": "门禁不强制产出 install 行；本行集合既无 adoptable（t4: adoptable=0），也没有任何一行的 raw coupling 为 none。",
+      "options": [
+        {
+          "id": "A",
+          "label": "接受零 install（推荐）",
+          "what": "把『无可直接采用的上游技能』作为本轮结论写入台账。"
+        },
+        {
+          "id": "B",
+          "label": "降低阈值/放宽耦合门以产出 install",
+          "what": "门禁不推荐：这是事后调参，会使结论不可复现（F4 明确禁止）。"
+        }
+      ],
+      "recommended": "A",
+      "lossIfNotImplemented": {
+        "none": "损失 = 0：install=0 本身不是能力损失，只是『没有可逐字采用的技能』这一事实。"
+      },
+      "evidence": [
+        "gate-rubric.json calibrationChecks.C1",
+        "t4 headline adoptable=0"
+      ]
+    },
+    {
+      "id": "Q6",
+      "question": "t9 的契约与本 wave 冻结决定 D_SKILLS_WRITER 冲突，如何处置？",
+      "context": "t9 注册契约写『本 wave 移植用户批准的上游技能到 skills/** 并完成 VENDOR_LOCK 配对』；frozen-contract.D_SKILLS_WRITER 写『本 wave skills/** 唯一写者是 t5（仅两个 QA 锚点），t9 本 wave 不写任何东西，语料工作若有批准则落后续 wave』。二者不可能同时为真。",
+      "options": [
+        {
+          "id": "A",
+          "label": "按 frozen-contract 改写 t9 契约为条件形态（推荐）",
+          "what": "t9 本 wave 不写 skills/**；仅在用户批准后作为**后续 wave 的唯一 skills 写者**执行，并附 1 次 re-pin + verify-vendor 前置。"
+        },
+        {
+          "id": "B",
+          "label": "让 t9 在本 wave 实施",
+          "what": "会与 t5 形成两个 skills 写者 ⇒ 2 次 treeSha 失效、2 个耦合 commit，中间提交 verify-vendor 必红（AGENTS.md §9/§11）。"
+        }
+      ],
+      "recommended": "A",
+      "lossIfNotImplemented": {
+        "process": "若保持现契约字面：t12 一类的一致性核验必然报红（文本与 frozen-contract 冲突）；若强行本 wave 实施：产出 2 个耦合 commit 且中间提交验证失败，返工成本高于收益。"
+      },
+      "evidence": [
+        "frozen-contract.json D_SKILLS_WRITER",
+        "AGENTS.md §9/§11",
+        "verdict-table.md §5"
+      ]
+    }
+  ],
+  "perRowLoss": [
+    {
+      "id": "skills/remove-deadcode",
+      "action": "adapt-then-install",
+      "lossIfNotImplemented": "缺『LSP 验证 + 原子提交』的专项死代码清理流程（本地 refactor / remove-ai-slops 仅相邻意图，无 LSP 验证链路）"
+    },
+    {
+      "id": "skills/security-research",
+      "action": "adapt-then-install",
+      "lossIfNotImplemented": "本地无任何安全审计技能：并行漏洞 hunter 团队 + 可利用性定级工作流整类缺失（唯一真实能力缺口）"
+    },
+    {
+      "id": "skills/tech-debt-audit",
+      "action": "adapt-then-install",
+      "lossIfNotImplemented": "缺 9 维度技术债审计流程与 TECH_DEBT_AUDIT.md 工件类型"
+    },
+    {
+      "id": "omo-codex/rules",
+      "action": "skip (V1)",
+      "lossIfNotImplemented": "零增量（本地 AGENTS.md 指令文件机制已等价，证据 presets/mpd/agent.cordis.yml:146-153）"
+    },
+    {
+      "id": "omo-senpi/dag-library",
+      "action": "skip (V4)",
+      "lossIfNotImplemented": "技能路径损失 = 0（加载路径即上游 run 引擎，本 harness 无 run_id/journal/幂等模型）；『命名可重放图库』能力的取得路径是 t5 的 S2/S3"
+    },
+    {
+      "id": "omo-senpi/mass-ulw",
+      "action": "skip (V4)",
+      "lossIfNotImplemented": "技能路径损失 = 0；唯一可用增量 S1–S4 归 t5（S1/S4 今天已存在：lib/tools.js:1199-1204,1236,1652-1660 + lib/index.js:107；S2 确认缺失；S3 仅团队级 resume 且任务粒度未验证 ⇒ 若 t5 取消，缺口是 S2 + S3 的任务粒度保证）"
+    },
+    {
+      "id": "skills-loader-core/dev-browser",
+      "action": "skip",
+      "lossIfNotImplemented": "缺『harness 内置浏览器工具面』；本地 ultimate-browsing 已覆盖同类意图（增量 = 0 个新工具面）"
+    },
+    {
+      "id": "skills-loader-core/frontend",
+      "action": "skip",
+      "lossIfNotImplemented": "内容增量缺失：1 个 ambience/hero 段 + 1 个 reference 文件（本地 151 行 vs 上游 154 行、28 vs 29 文件）——属 Q3 的语料 refresh"
+    },
+    {
+      "id": "skills-loader-core/git-master",
+      "action": "skip",
+      "lossIfNotImplemented": "内容深度差：本地同名技能 104 行 vs 上游 builtin 变体 1107 行——属 Q3 的 refresh/adapt；builtin 还依赖上游 task(category=…)"
+    },
+    {
+      "id": "skills-loader-core/security-research",
+      "action": "adapt-then-install",
+      "lossIfNotImplemented": "同 skills/security-research 的安全审计缺口（与 .agents 变体近重复，去重后只计一次安装动作）"
+    },
+    {
+      "id": "omo-senpi/hyperplan",
+      "action": "not scored (already-have)",
+      "lossIfNotImplemented": "零增量（mpd_ultrawork 已实现同 5 类对抗波：packages/mpd-ulw-plugin/src/index.ts:147,165,180-191；README.md:19-20）"
+    }
+  ],
+  "repinPlan": {
+    "rule": "一次实施 = 1 次 re-pin（无论移植 1 个还是 N 个技能）",
+    "pairing": "AGENTS.md §9/§11：skills/** 改动使 VENDOR_LOCK.assets.skills 的 treeSha 失效，重新 pin 必须与改动同 commit（单写者规则）",
+    "lockedValues": {
+      "fileCount": 328,
+      "fileCountIsBlockingGate": true,
+      "treeShaPrefix": "afe71825"
+    },
+    "expectedFileCount": "328 + N_added（N_added 由 t9 实施时实测；t8 不猜数字）",
+    "requiredSequence": [
+      "1. 改 skills/**（唯一写者）",
+      "2. 重算 corpus treeSha（整目录排序 + 每文件 sha256 聚合）",
+      "3. 在同一个 commit 里写入 VENDOR_LOCK.json（assets.skills.fileCount + treeSha）",
+      "4. 运行 node scripts/verify-vendor.mjs 并记录结果（asset count 是阻塞门）",
+      "5. verify-vendor 通过且 fileCount == 328 + N_added、treeSha == 实测值，才算完成"
+    ],
+    "violationConsequence": "两个 skills 写者 ⇒ 2 次 treeSha 失效 ⇒ 2 个耦合 commit，中间那个提交 verify-vendor 必红（返工 + 阻塞所有基于该提交的验证）",
+    "waveConflict": "本 wave 的 skills/** 唯一写者位已由 D_SKILLS_WRITER 归 t5（仅 skills/dsh-qa/SKILL.md + skills/dsh-qa/scripts/session-start-team.mjs）⇒ 本 wave 的唯一一次 re-pin 属于 t5，技能移植只能落在后续 wave（见 Q6）"
+  },
+  "ledgerMustInclude": [
+    {
+      "id": "L1",
+      "conclusion": "零 install：t4 判定 adoptable=0，且门禁行集合中没有任何一行 raw coupling 为 none ⇒ 无可直接采用的上游技能",
+      "mustInclude": true
+    },
+    {
+      "id": "L2",
+      "conclusion": "V1 命中：omo-codex/rules 已等价（本地 AGENTS.md 指令文件机制，presets/mpd/agent.cordis.yml:146-153）",
+      "mustInclude": true
+    },
+    {
+      "id": "L3",
+      "conclusion": "V4 命中：mass-ulw 与 dag-library skip（可用路径要求替换本仓库任务板模型/运行器；技能路径损失 = 0）",
+      "mustInclude": true
+    },
+    {
+      "id": "L4",
+      "conclusion": "hyperplan already-have：mpd_ultrawork 已实现同 5 类对抗波（packages/mpd-ulw-plugin/src/index.ts:147,165,180-191）",
+      "mustInclude": true
+    },
+    {
+      "id": "L5",
+      "conclusion": "4 个 adapt-then-install 行（去重 3 个技能）及其具体损失：安全审计缺口（唯一真实缺口）/ 技术债审计工件 / 死代码清理流程",
+      "mustInclude": true
+    },
+    {
+      "id": "L6",
+      "conclusion": "语料 refresh 延后为独立 wave；skills/** 单写者 + 恰好 1 次 re-pin（本次未发生任何 skills/** 改动）",
+      "mustInclude": true
+    },
+    {
+      "id": "L7",
+      "conclusion": "偏差记录：t9 契约 vs D_SKILLS_WRITER；t4 输入产出中途搬迁到权威目录；t4 对 frontend/git-master 的 repoCounterpart=null 与本地同名技能不符（由 P1 定基）",
+      "mustInclude": true,
+      "kind": "process note"
+    }
+  ],
+  "executionSplit": {
+    "column1_thisWave": "否 —— 按 D_SKILLS_WRITER，本 wave skills/** 唯一写者是 t5（仅 skills/dsh-qa/SKILL.md + skills/dsh-qa/scripts/session-start-team.mjs），t9 本 wave 零写入。",
+    "column2_laterWave": "唯一写者 → 改 skills/** → 重算 corpus treeSha → 同 commit re-pin VENDOR_LOCK.json → node scripts/verify-vendor.mjs 前置；expected fileCount = 328 + N_added（N_added 由 t9 实测）。",
+    "todo": "t9 契约文本待队长改写为条件形态 —— t9 归成员所有且依赖未完成，队长无法直接改其描述字段；解除阻塞时按 frozen-contract.D_SKILLS_WRITER 改写为『本 wave 不写 skills/**；仅在用户批准后作为后续 wave 的唯一 skills 写者执行，并附 1 次 re-pin + verify-vendor 前置』。",
+    "dSkillsWriterQuote": "For this wave the ONLY writer of skills/** is the implementation task t5 (Senior Engineer), limited to the two QA anchors skills/dsh-qa/SKILL.md and skills/dsh-qa/scripts/session-start-team.mjs. The skills-corpus implementation task t9 writes nothing in this wave; if the user approves corpus work it lands in a later wave with a single writer and exactly one VENDOR_LOCK re-pin."
+  },
+  "postCompletionAddenda": [
+    {
+      "when": "after t8 was marked completed (task status is terminal and immutable)",
+      "requestedBy": "captain",
+      "content": "executionSplit (two columns) + the 't9 contract text awaits captain rewrite' TODO marker, appended to verdict-table.md §5.1 and to this file.",
+      "scopeOfChange": "documentation only — no score, veto, action, pin or rubric rule was changed (rulesSha256 95cfbc5a… is unaffected)."
+    },
+    {
+      "when": "after t8 completed, under the captain GO (no task record existed for the addendum)",
+      "scope": "recompute 3 threshold rows + 3 narrative rows + git-master/frontend + 4 anchors; rubric 1.1.0 pre-declared rules; decisions sync",
+      "recomputedActions": {
+        "adaptThenInstall": [
+          "skills/security-research",
+          "skills/tech-debt-audit",
+          "skills-loader-core/security-research"
+        ],
+        "skip": [
+          "skills/remove-deadcode",
+          "skills-loader-core/git-master",
+          "omo-codex/rules",
+          "omo-senpi/dag-library",
+          "omo-senpi/mass-ulw",
+          "skills-loader-core/dev-browser",
+          "skills-loader-core/frontend"
+        ]
+      },
+      "actionSetChange": "adapt 4 / skip 6 -> adapt 3 / skip 7 (captain GO revision); the only action change is skills/remove-deadcode adapt-then-install -> skip",
+      "scoreDifferencesVsCaptainExpectation": [
+        {
+          "row": "omo-senpi/dag-library",
+          "gate": 26,
+          "captainExpected": 23,
+          "basis": "D3=3 (counted=2 clamped) + D4=2; V4(dagRunId) skip either way"
+        },
+        {
+          "row": "omo-senpi/mass-ulw",
+          "gate": 25,
+          "captainExpected": 22,
+          "basis": "D3=3 (counted=2 clamped) + D4=2; V4(dagRunId) skip either way"
+        }
+      ],
+      "noteOnNoTaskRecord": "t8 is terminal and no addendum task was created; the delivery is recorded in the three artefacts plus the captain report. If an audit-trail task is wanted, the captain should create one retroactively.",
+      "gitMasterRuleChoice": "B=FALSE per the contract binaryDependencyRule worked values (its make/git blocks teach git = subject matter, nothing must be installed to PORT it) => counted=0 => D3=1 => 14 skip; not borderline; not in userApprovedOverrides. The earlier literal-B reading (15 adapt) is superseded and is recorded only as an audit note.",
+      "d4Authority": "classScoring delegates the D4 banding to the gate rubric => the gate published mapping governs; the captain-advisory expectations for dag-library (23) and mass-ulw (22) are therefore recorded as advisories, not as corrections to the recomputed 26/25 (both V4 skips either way).",
+      "scopeCleanup": "§3.1 userApprovedOverrides now lists only remove-deadcode (approved, now 14 skip) plus the two approved-and-still-adapt rows (security-research, tech-debt-audit); the git-master row was removed. No \"git-master to a later wave\" question existed in this file (it never was a user question: the row is unapproved and now skip)."
+    }
+  ],
+  "whatThisFileDoesNotDo": [
+    "不实施任何技能移植（用户定调：调研完再问）",
+    "不修改 skills/**、VENDOR_LOCK.json、packages/**、presets/**、docs/**（t8 inScope 仅 evidence/omo-align/skills-gates/**）",
+    "不替 t4 重做上游调研（其证据按原样引用）",
+    "不把任何结论直接写进台账（docs/** 由 t5 落笔）"
+  ],
+  "whatThisAddendumDoesNotDo": [
+    "does not change the 1.0.x rule sections or the original rulesSha256",
+    "does not touch skills/**, VENDOR_LOCK.json, packages/**, presets/**, docs/**"
+  ]
+}

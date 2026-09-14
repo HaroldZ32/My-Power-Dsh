@@ -1,0 +1,61 @@
+t34 — external-bundle purge verification (neutralized transcript)
+reviewed revision (settled): d54afe5372355ee8bd0e524f4d90f55621f74e66
+gate file sha256: b79bde7c87cc2a6c899a3e4c0e9685c0b6e26fb0d3dfdc80f1383c385b5d623e
+anchor: two-sided case settled on the same revision and reported the same gate hash.
+
+[1] settle window
+    HEAD and gate hash identical across a 20 s check -> SETTLED
+    (an earlier run FAILED with "revision did not settle" because another writer
+     committed mid-run; re-run only after settlement)
+
+[2] identifier-set scan  (patterns held in raw/scan.sh as a digest; tokens not restated)
+    tracked files, non-exempt ............ 0
+    tracked files, exempt brand ........... 1  (skills/ast-grep/references/install.md:89)
+    non-ignored worktree, non-exempt ...... 0
+    files with any hit .................... 4  = 1 exempt brand + 3 evidence records
+                                                  that quote that brand while
+                                                  documenting the gate
+
+[3] exemptions (neither modified)
+    E1 third-party platform brand .... PRESENT, unmodified, only occurrence
+    E2 gitignored scratch/cache/index trees ... gitignored, 0 tracked files
+
+[4] functional regression
+    patch-agent-teams-fixes --check ... exit 0; 21 regions / 6 adopted files; carrier region 0
+    session-start-team ................ PASS; settled rev d54afe5; gate b79bde7c…
+                                        simple 3/3 silent; complex 3/3 one staged team each;
+                                        disarmed reverse control 0 teams / 0 notices
+    verify-vendor ..................... PASS
+    preset-conformance ................ PASS; session/create 200 with the expected preset;
+                                        negative control still red on the required persona key
+
+[5] purge surface
+    carrier hook in adopted entrypoint ... absent
+    package.json scripts ................. no entry points at a deleted file
+    README bilingual pair ................ present; switch links both ways; identifier-free
+    manual adaptation table .............. intact; withdrawn row absent; registry count matches
+    internal reference docs .............. both deleted
+    orphan evidence trees ................ both absent
+    extraction state record .............. absent
+    packed build output (gitignored) ..... regenerated from purged source; re-scan = 0
+    skills re-pin ........................ in the SAME commit as the skill edits
+
+[6] type and test repair
+    declaration order vs implementation .... CONSISTENT
+    dead threshold constant ................ GONE
+    ratified-decision comment on trigger ... PRESENT
+    wrong-order case ....................... STILL WRONG ORDER (see below)
+    bidirectional proof .................... ABSENT
+
+    measured both directions:
+      as written   : view(pending, <dependency list in tasks slot>, <empty>) => "open"
+                     (assertion demands "blocked"; passes only because the empty
+                      dependency list short-circuits the predicate)
+      as intended  : view(pending, <task list>, <unknown id>)            => "blocked"
+    => the production rule is correct; the TEST is inert.
+    suite result: 4 pass / 0 fail  (green for the wrong reason)
+
+[7] verdict
+    needs_revision  — residue gate met, functional regression green, but the
+    type/test-repair criterion fails on the wrong-order case and its missing
+    bidirectional proof.

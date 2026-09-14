@@ -1,0 +1,268 @@
+{
+  "task": "t2",
+  "task_subject": "研究：OMO 最新版 workflow/mass-ulw 语义 vs 本仓库 agent-teams —— 差异矩阵与候选方案",
+  "produced_by": "Researcher (read-only)",
+  "produced_at_utc": "2026-09-13",
+  "objective": "Produce a difference matrix between the upstream OMO mass-ulw / workflow semantics and this repository's adopted agent-teams plugin, with file:line and URL evidence, plus candidate options. The final choice is the captain's/user's; this document decides nothing.",
+  "method": {
+    "local": "read-only inspection of packages/mpd-agent-teams-plugin/lib/*, packages/mpd-bundle/cordis.patch.yml, presets/mpd/agent.cordis.yml, packages/mpd-ulw-plugin/README.md, skills/ulw-execute/SKILL.md (grep/read only; no writes outside evidence/)",
+    "upstream": "code-yeongyu/oh-my-openagent @ dev, queried through GitHub code search (grep.app); the local pinned snapshot stays VENDOR_LOCK.json's 8c57e46 / v5.0.0-beta.20 — the beta.20 -> beta.62 functional audit is t4's scope, not this task's",
+    "caveat": "Upstream is cited by URL + function/section name, not by fetched line numbers: the dev branch has moved past the local beta.20 pin, so no upstream line number here is presented as pinned identity. Local evidence is cited by exact path:line against the current working tree."
+  },
+  "sources": {
+    "local": [
+      "packages/mpd-agent-teams-plugin/lib/session-start.js:1-40 (module contract: mechanical enforcement)",
+      "packages/mpd-agent-teams-plugin/lib/session-start.js:62-64 policyEnabled",
+      "packages/mpd-agent-teams-plugin/lib/session-start.js:71-84 policyQualifies (parentSession excluded; presets allow-list)",
+      "packages/mpd-agent-teams-plugin/lib/session-start.js:96-110 availableTeamId",
+      "packages/mpd-agent-teams-plugin/lib/session-start.js:123-168 provisionSessionTeam (staged:true)",
+      "packages/mpd-agent-teams-plugin/lib/session-start.js:174-187 provisionedNotice",
+      "packages/mpd-agent-teams-plugin/lib/session-start.js:194-203 instructNotice",
+      "packages/mpd-agent-teams-plugin/lib/session-start.js:229-269 installSessionTeamPolicy (agent/pre-step, global+prepend, settle-once)",
+      "packages/mpd-agent-teams-plugin/lib/index.js:87-98 sessionTeamPolicy schema (DEFAULT mode:off)",
+      "packages/mpd-agent-teams-plugin/lib/index.js:229-232 installSessionTeamPolicy call site",
+      "packages/mpd-agent-teams-plugin/lib/index.js:233-248 slash command + gesture boundary (natural-language/manual entry)",
+      "packages/mpd-agent-teams-plugin/lib/command.js:3,5,26 AGENT_TEAMS_COMMAND + GESTURE /^\\/agent-teams/",
+      "packages/mpd-bundle/cordis.patch.yml:204-224 agent-teams row: sessionTeamPolicy mode auto, profile mpd, presets [mpd], name MPD Default, approval required",
+      "packages/mpd-bundle/README.md:22-42 the documented session-start team rule",
+      "presets/mpd/agent.cordis.yml:72-102 TEAM WORK + AGENT TEAM ROUTING (size judgment small/large)",
+      "presets/mpd/agent.cordis.yml:80-86 SESSION STARTUP RULE (binding)",
+      "presets/mpd/agent.cordis.yml:104-114 REQUIREMENTS CONFERENCE (non-optional)",
+      "presets/mpd/agent.cordis.yml:284-355 workflow rows (workflowEngine:true, tool-workflow)",
+      "packages/mpd-agent-teams-plugin/lib/scheduler.js:1-13 event-driven shared task scheduler",
+      "packages/mpd-agent-teams-plugin/lib/scheduler.js:17-20 dependency-output caps (2k/item, 12k total)",
+      "packages/mpd-agent-teams-plugin/lib/scheduler.js:36-84 collectCompletedDependencyOutputs (topological; cycles prune a branch)",
+      "packages/mpd-agent-teams-plugin/lib/scheduler.js:491-495 agent/status idle edge -> kickMember",
+      "packages/mpd-agent-teams-plugin/lib/quality-gates.js:7-27 quality kinds, review policy, DEFAULT_REVIEW_ACCEPTANCE",
+      "packages/mpd-agent-teams-plugin/lib/quality-gates.js:391 validateCreateTask (create-time contract/contradiction gate)",
+      "packages/mpd-agent-teams-plugin/lib/quality-gates.js:659-753 planQualityFollowUp (auto repair + next review)",
+      "packages/mpd-agent-teams-plugin/lib/quality-gates.js:754-768 buildCoverageMatrix",
+      "packages/mpd-agent-teams-plugin/lib/quality-gates.js:769-812 canDeclareDelivery (verdict=pass, repair follow-up, path audit)",
+      "packages/mpd-agent-teams-plugin/lib/quality-gates.js:1029 describeQualityLoop",
+      "packages/mpd-ulw-plugin/README.md:4-25 local ultrawork engine (adapted from upstream ultrawork, base 8c57e46; PIN->RED->GREEN->SURFACE->CLEAN; plan gate; verification gate; ledger)",
+      "skills/ulw-execute/SKILL.md:103 (references the mass-ulw SKILL.md + references/planning.md: the skill is ABSENT from the local corpus)",
+      "skills/frontend/references/design/print-paged-media.md:76 (second dangling mass-ulw reference)"
+    ],
+    "upstream": [
+      "https://github.com/code-yeongyu/oh-my-openagent/blob/dev/packages/omo-senpi/skills/mass-ulw/SKILL.md",
+      "https://github.com/code-yeongyu/oh-my-openagent/blob/dev/packages/omo-senpi/skills/mass-ulw/references/planning.md",
+      "https://github.com/code-yeongyu/oh-my-openagent/blob/dev/packages/omo-senpi/src/components/task/dag-lint.ts",
+      "https://github.com/code-yeongyu/oh-my-openagent/blob/dev/packages/omo-senpi/src/components/skill-pointers/index.ts",
+      "https://github.com/code-yeongyu/oh-my-openagent/blob/dev/packages/omo-senpi/AGENTS.md",
+      "https://github.com/code-yeongyu/oh-my-openagent/blob/dev/packages/omo-senpi/src/extension/dag-sdk-root-provisioning.ts",
+      "https://github.com/code-yeongyu/oh-my-openagent/blob/dev/packages/omo-senpi/plugin/runtime/dag/sdk.js",
+      "https://github.com/code-yeongyu/oh-my-openagent/blob/dev/packages/omo-senpi/skills/onboarding/SKILL.md",
+      "https://github.com/code-yeongyu/oh-my-openagent/blob/dev/packages/omo-senpi/changes.md",
+      "https://github.com/code-yeongyu/oh-my-openagent/pull/7175"
+    ]
+  },
+  "upstream_semantics_summary": {
+    "mass_ulw": "A doctrine skill (frontmatter: 'Drives dependency-ordered child work through the native workflow tool, one run per phase with retry/amend/send recovery. Use when the user asks for mass-ulw, a DAG of tasks, or fan-out work where some tasks must wait on others.'). One run covers ONE phase's dependency-ordered lanes and NEVER a whole multi-phase job; the next phase is a NEW run (or amend when only the definition changed).",
+    "activation": "Keyword-gated, not default-on: the skill-pointers component matches /\\b(?:mass[\\s-]*ulw|ulw[\\s-]*mass|mulw|meth)\\b/i (MASS_ALIAS) and injects a hidden (display:false) pointer message telling the model to READ mass-ulw/SKILL.md if the user is actually asking for it. The pointer text is explicitly conditional ('A keyword proves a mention, not a request'), and overlapping mentions all fire ('mass ulw-loop' injects mass-ulw AND ulw-loop).",
+    "execution_surface": "The native workflow tool driven from an eval/JS cell: the kernel installs the tool.workflow proxy and the extension publishes a dependency-free SDK at OMO_DAG_SDK_ROOT (sdk.js; dag.define/node/start, run_id lifecycle, retry/amend/send recovery, stored definition library OMO_DAG_LIBRARY).",
+    "planning_contract": "references/planning.md is MANDATORY reading before defining any graph. Default shape is fan-out then fan-in; decomposition by component / file domain / phase (collect -> verify -> synthesize); a 2-node graph with no dependency is NOT a dag (use plain parallel task spawns); capacity model and write-scope rules.",
+    "node_prompt_contract": "TASK / DELIVERABLE / SCOPE / VERIFY / STOP WHEN. dag-lint surfaces ADVISORY warnings at the tool boundary when TASK: or STOP WHEN is missing (warnings never reject).",
+    "goal_binding": "Every run is goal-bound ('Goal before start'): register via create_goal; node/run completion claims are false until proven against captured evidence (RESULT VERIFICATION; 'TREAT AS FALSE UNTIL YOU PROVE IT'). PR #7175 'bind mass-ulw runs to a goal carrying result verification' is the upstream change that made this explicit.",
+    "team_vs_dag": "Explicit routing doctrine: plain ulw-research -> the team path (cross-critique and expand loops are team mechanics); 'mass ulw research' -> the dag path at mass scale, keeping a small team only for conversation/debate rounds ('attack is conversation, and dag nodes do not talk').",
+    "not_default": "Upstream never auto-provisions a team at session start; the whole mass-ulw plane is armed by the user's keyword. There is no session-start team policy in OMO."
+  },
+  "local_semantics_summary": {
+    "agent_teams": "Adopted dsh-agent-teams plugin (upstream 0.1.16-rc.3-mpd, MIT, first-class main code at packages/mpd-agent-teams-plugin). It gives: staged teams with a Web approval plane, continuable members, a shared task list with dependency edges, per-task attempt_id capabilities, quality-kind contracts and gates, an event-driven scheduler, and an activity panel.",
+    "session_start_policy": "MPD ADDS a session-start rule the adopted plugin does not have upstream: mode auto provisions the staged 'MPD Default' team (profile mpd, approval required) at the first agent/pre-step of every qualifying session and injects a startup notice. The plugin schema defaults this to off (index.js:91-98); the BUNDLE turns it on (cordis.patch.yml:218-224). Qualification: top-level session only (parentSession absent) and preset allow-list [mpd] (session-start.js:71-84). Settle-once per agent (session-start.js:242-244).",
+    "dag_model": "The team's DAG IS the shared task list: tasks carry dependencies: string[], the scheduler wakes a durable member on an idle edge or a graph mutation and hands it the recursively-collected completed dependency outputs (topological order; a cycle prunes that branch, scheduler.js:36-84). There is no run_id, no phase object, no per-run lifecycle, no retry/amend verb.",
+    "quality_plane": "Quality kinds requirements/implementation/verification/review/repair/integration with a contract (objective + acceptance; implementation/repair also inScope + verify). Create-time contradiction gate (validateCreateTask), review verdict gate (verdict=pass or the task must fail with findings), automatic repair + next review (planQualityFollowUp), delivery gate canDeclareDelivery incl. changed-path scope audit, and a goal-item coverage matrix (buildCoverageMatrix). This plane is STRONGER than upstream's doctrine-level verification wave.",
+    "ultrawork_plane": "A SEPARATE local plane already exists: mpd_ultrawork/mpd_ulw (packages/mpd-ulw-plugin) is an adaptation of upstream ultrawork at base 8c57e46 with PIN->RED->GREEN->SURFACE->CLEAN, a plan gate, a verification gate and a per-lane ledger. It runs on the DSH subagent seam, not on agent-teams.",
+    "workflow_tool": "The DSH harness itself ships a workflow tool (tool-workflow row, presets/mpd/agent.cordis.yml:349-355; workflowEngine:true) whose script hook surface is agent()/pipeline()/parallel()/phase()/log()/args with a JSON return. It has NO run_id, no lifecycle, no retry/amend/send, no durable journal, and no eval-cell SDK.",
+    "manual_entry": "The intentional manual entry is unchanged by any option below: the /agent-teams slash command + plain-text gesture boundary (command.js:3,5,26; index.js:243-248) and the agent_teams_create tool."
+  },
+  "dimensions": [
+    {
+      "id": "D1-activation",
+      "dimension": "Activation / default posture",
+      "upstream": "Keyword-gated only. No team and no DAG exist until the user writes a mass-ulw spelling; the pointer is conditional and claims no intent. Nothing is provisioned for an ordinary prompt.",
+      "local": "Default-on. Every qualifying session auto-provisions a staged 11-member team and injects the startup notice on its FIRST step, regardless of task size (session-start.js:229-269; cordis.patch.yml:218-224; preset text presets/mpd/agent.cordis.yml:80-86).",
+      "gap": "OPPOSITE DEFAULTS. This is exactly the 'agent-teams 不再默认' requirement. It is also the lowest-risk gap to close, because the plugin default is already off (index.js:91-98) and only the bundle row enables auto mode.",
+      "severity": "high",
+      "options": ["C1", "C2", "C3"]
+    },
+    {
+      "id": "D2-trigger-mechanism",
+      "dimension": "Trigger mechanism (how work reaches the orchestrator)",
+      "upstream": "A prompt-input component (skill-pointers) matches one uniform keyword table over the user's text (quoted/relayed regions blanked) and injects a hidden pointer: 'This message mentions X. If the user of this session is asking to run X, read <skill>/SKILL.md ... If X is only being discussed, quoted, or relayed, ignore this pointer.'",
+      "local": "NO keyword/pointer component exists anywhere in the repo's plugins (grep for keyword|trigger|detect over packages/mpd-agent-teams-plugin/lib returns only UI i18n and unrelated comments). The only triggers are (a) the mechanical session-start policy, (b) the model's own decision, (c) the /agent-teams slash command/gesture (command.js:3,5,26).",
+      "gap": "MISSING MECHANISM. A keyword-gated router would have to be built (new plugin or an adapter hook); note that shipping any skills/** pointer target also invalidates the corpus treeSha (VENDOR_LOCK single-writer rule, AGENTS.md 9/11).",
+      "severity": "medium",
+      "options": ["C3"]
+    },
+    {
+      "id": "D3-execution-surface",
+      "dimension": "Execution surface / programmability",
+      "upstream": "Native workflow tool driven from an eval cell; tool.workflow proxy + OMO_DAG_SDK_ROOT SDK; data-driven graph construction, multi-run composition, concurrent runs, adaptive retries; run_id + snapshot lifecycle; durable journal/checkpoint/lock under senpi-task/dag.",
+      "local": "The DSH workflow tool exists but is a different contract: a JS script body with agent()/pipeline()/parallel()/phase()/log()/args, one JSON return, no run_id, no lifecycle verbs, no journal, no adaptive retry (a throwing stage drops that ITEM to null). agent-teams itself is event-driven over the shared task list (scheduler.js:1-13, 491-495) with per-task attempt_ids, not per-run ids.",
+      "gap": "NAME COLLISION, SEMANTICS MISMATCH. Porting mass-ulw text verbatim would document capabilities the DSH workflow tool does not have. Any port must be an ADAPTATION to the DSH tool surface (phases, barriers, item-null semantics, concurrency caps) or must build the missing lifecycle.",
+      "severity": "high",
+      "options": ["C4"]
+    },
+    {
+      "id": "D4-dag-model",
+      "dimension": "DAG model and dispatch unit",
+      "upstream": "One run per phase, never a whole multi-phase job; a run's unit is a NODE with id/category/dependsOn/prompt; fan-out then fan-in is the default; a 2-node independent graph is NOT a dag.",
+      "local": "One persistent team task list for the whole job; the unit is a TASK with dependencies[]; independent work is meant to be parallel (usage policy index.js:105 'Independent work should be parallel; dependencies are only genuine prerequisites'), but there is no 'run' boundary, no per-phase key, no node category routing, and no lint against a degenerate dependency graph.",
+      "gap": "PARTIAL. The dependency edge and topological output hand-off already exist (scheduler.js:36-84); missing are the one-run-per-phase boundary, category-based node routing, and the degenerate-graph lint.",
+      "severity": "medium",
+      "options": ["C4", "C5"]
+    },
+    {
+      "id": "D5-node-contract",
+      "dimension": "Work-unit prompt/contract discipline",
+      "upstream": "Node prompt contract TASK / DELIVERABLE / SCOPE / VERIFY / STOP WHEN, surfaced as ADVISORY dag-lint warnings at the tool boundary (never a rejection).",
+      "local": "Quality kinds carry a machine-checked contract (objective + acceptance; implementation/repair also inScope + verify; create-time contradiction gate validateCreateTask; review findings schema; acceptanceResults/commandsRun). Plain 'work' kind tasks require only a non-empty subject.",
+      "gap": "ASYMMETRIC. For quality kinds the local model is stronger than upstream's advisory lint; the gap is (a) no STOP WHEN field, (b) no contract shape at all for non-quality work tasks, (c) no create-time lint equivalent for a degenerate/uncategorized node prompt.",
+      "severity": "low",
+      "options": ["C5"]
+    },
+    {
+      "id": "D6-verification",
+      "dimension": "Verification and completion semantics",
+      "upstream": "Doctrine + a verification wave: goal-bound run, node/run completion claims are false until proven against captured evidence, the run ends only when the goal's success criteria pass. No mechanical gate.",
+      "local": "MECHANICAL GATE. review/requirements can only complete with verdict=pass (needs_revision/reject must fail with findings), failed quality work auto-opens repair + next review, canDeclareDelivery blocks on a completed implementation without a passing review and on any changed path outside the contract scope, and buildCoverageMatrix maps goal items to tasks.",
+      "gap": "LOCAL IS AHEAD, EXCEPT for the missing goal binding (D7). Porting upstream's verification doctrine as text would duplicate a stronger existing mechanism; what is worth importing is the phrasing/UX, not the mechanism.",
+      "severity": "low",
+      "options": ["C5"]
+    },
+    {
+      "id": "D7-goal-binding",
+      "dimension": "Goal binding",
+      "upstream": "Every run is goal-bound: create_goal is registered before the graph starts and the objective carries result verification (PR #7175 made this explicit for mass-ulw).",
+      "local": "The harness goal rows exist in the preset (presets/mpd/agent.cordis.yml:209-225 command-goal + tool-goal), and 'goal verification' appears in the ultrawork ledger (mpd-ulw-plugin README:16-17), but the agent-teams plugin itself has NO goal binding: delivery readiness is computed only from the task graph (canDeclareDelivery). Team work can complete with no goal object in play.",
+      "gap": "MISSING LINK. A team DAG is not tied to a goal revision, and no gate checks the goal's success criteria against the delivered evidence.",
+      "severity": "medium",
+      "options": ["C4", "C5"]
+    },
+    {
+      "id": "D8-routing-doctrine",
+      "dimension": "Team-vs-dag routing doctrine",
+      "upstream": "Explicit: incremental/plain work stays with the team; mass/over-collection work goes to the dag at mass scale; keep a small team only for the conversation-shaped rounds ('dag nodes do not talk').",
+      "local": "Prompt-level doctrine exists but is TEAM-INTERNAL, not pre-team: the preset tells the captain to size the task (small/large) and pick the built-in roster or an on-the-spot roster (presets/mpd/agent.cordis.yml:88-102) — but that sizing happens AFTER the session-start policy already provisioned a team. There is no pre-team routing to a non-team execution plane.",
+      "gap": "ORDERING BUG. Sizing doctrine that runs after provisioning cannot prevent the default team. It also never routes to the workflow/ultrawork planes.",
+      "severity": "high",
+      "options": ["C1", "C2", "C4"]
+    },
+    {
+      "id": "D9-scale",
+      "dimension": "Scale / capacity model",
+      "upstream": "Mass scale by design: 60+ node opening waves, a difficulty ladder (quick / unspecified-low / unspecified-high / deep, architect/ultrabrain reducer) and a capacity model; over-collection then reduction.",
+      "local": "maxMembers 16 (cordis.patch.yml:208) over an 11-member roster, all on deepseek-v4-flash with reasoning_effort tiers (cordis.patch.yml:247-266); the workflow tool has deployment concurrency caps. No per-node category/difficulty routing.",
+      "gap": "DIFFERENT SCALE CLASS. The team roster is a conversation/verification plane; 60+ node fan-out belongs on the workflow/subagent plane, not on continuable members.",
+      "severity": "medium",
+      "options": ["C4", "C2"]
+    },
+    {
+      "id": "D10-recovery",
+      "dimension": "Failure recovery",
+      "upstream": "Per-run retry / amend / send recovery verbs, adaptive retries in the SDK, and a settled run proves the next phase's cell.",
+      "local": "Per-task attempt_id + stale-attempt refusal, parked attempts for an idle member, captain reassignment as the only rotation, automatic requeue only for cold recovery when the durable owner is no longer resident (scheduler.js:1-13, 440-460), and the quality gate's automatic repair loop.",
+      "gap": "EQUIVALENT BUT DIFFERENT GRANULARITY: local recovers at TASK granularity with a human-reviewable ledger; upstream recovers at RUN granularity programmatically. No amend/send equivalent exists locally.",
+      "severity": "low",
+      "options": ["C4"]
+    },
+    {
+      "id": "D11-human-plane",
+      "dimension": "Human review plane",
+      "upstream": "None in the mass-ulw path: the run is autonomous once the keyword is written.",
+      "local": "LOCAL-ONLY FEATURE: staged plan + Web approval (approval=required, nothing spawns until the user approves), plan editing via agent_teams_edit_plan, activity panel, halt/resume. This is a strict superset of upstream and must NOT be lost while 'de-defaulting'.",
+      "gap": "None (local advantage). Any option below must preserve the manual entry (command.js:3,5,26) and the approval plane.",
+      "severity": "info",
+      "options": ["ALL"]
+    },
+    {
+      "id": "D12-skill-corpus",
+      "dimension": "Doctrine availability in the local skill corpus",
+      "upstream": "The mass-ulw skill + references/planning.md ship as first-class skills.",
+      "local": "The corpus has NO mass-ulw skill (skills/*/SKILL.md listing has 19 entries, none of them mass-ulw), yet skills/ulw-execute/SKILL.md:103 and skills/frontend/references/design/print-paged-media.md:76 reference 'the mass-ulw skill's SKILL.md and references/planning.md' — a dangling cross-reference today. The `mpd_ultrawork` policy README documents the ultrawork adaptation of the SAME upstream base (8c57e46) but the doc lives in the plugin README, not in the corpus.",
+      "gap": "MISSING DOCTRINE + DANGLING POINTER. Whether mass-ulw should be ported/adapted/skipped is t4 (corpus diff) and t8 (adopt/adapt/skip gate); this task records the finding only.",
+      "severity": "medium",
+      "options": ["C4"]
+    }
+  ],
+  "candidate_options": [
+    {
+      "id": "C1",
+      "title": "Flip the default off (config-only)",
+      "change": "Set sessionTeamPolicy.mode to off (or instruct) in the bundle row (packages/mpd-bundle/cordis.patch.yml:218-224), the legacy installer row (scripts/install-profile.mjs:177), the preset startup text (presets/mpd/agent.cordis.yml:80-86) and the documented rule (packages/mpd-bundle/README.md:22-42).",
+      "closes": ["D1-activation", "D8-routing-doctrine"],
+      "risk": "low code risk; HIGH blast radius on gates/docs. Measured assertions that pin mode auto / MPD Default: skills/dsh-qa/scripts/session-start-team.mjs:85,87,129,133 and scripts/install-profile.mjs:261-262. The plugin schema already defaults to off (index.js:91-98), so no plugin code changes.",
+      "verify_cost": "must rewrite the session-start-team QA case to assert the NEW posture (default off + manual entry intact) rather than deleting it",
+      "pros": "smallest diff; exactly matches '不再默认'; keeps the Web approval plane; reversible in one row",
+      "cons": "does not itself add OMO-style routing; leaves the prompt text 'every session MUST start inside a team' needing rewording"
+    },
+    {
+      "id": "C2",
+      "title": "Complexity-gated provisioning",
+      "change": "Keep auto provisioning but add a qualification predicate: provision only when the first user turn looks complex (explicit size signal / keyword / estimated scope), otherwise inject nothing. Requires policyQualifies/provisionSessionTeam changes in lib/session-start.js and a new schema value in lib/index.js:91-98.",
+      "closes": ["D1-activation", "D8-routing-doctrine", "D9-scale"],
+      "risk": "medium: the predicate reads prompt content from the pre-step payload; false negatives (a genuinely complex task gets no team) and false positives need a QA case of their own; also a heuristic is not mechanically provable, unlike the current rule",
+      "verify_cost": "new isolated boot case + negative control",
+      "pros": "keeps ready-made teams for genuinely large work; answers '复杂任务自动路由' inside the existing policy",
+      "cons": "the sizing decision is the model's anyway (preset doctrine); a heuristic duplicates it at the plugin layer; possible drift between the two sizings"
+    },
+    {
+      "id": "C3",
+      "title": "OMO-style keyword pointer component",
+      "change": "Add a prompt-input component (new mpd plugin or an adapter hook) with ONE keyword table (e.g. /\\b(?:agent[\\s-]*teams?|mass[\\s-]*ulw|建队)\\b/i) that injects a hidden, conditionally-worded pointer to read the relevant shipped skill; no auto-provisioning.",
+      "closes": ["D2-trigger-mechanism", "D1-activation"],
+      "risk": "medium-high: a new plugin row + a shipped skill target; any skills/** addition invalidates the corpus treeSha and must ride the SAME commit as the VENDOR_LOCK re-pin (AGENTS.md 9/11, single-writer rule)",
+      "verify_cost": "pointer-injection unit test + one mounted boot with registration instrumentation",
+      "pros": "closest functional parity with upstream's activation model; cheap at runtime (stateless, few hundred bytes per mention)",
+      "cons": "a keyword proves a mention, not a request (upstream had to add that caveat); needs localization for Chinese phrasing; overlaps with the harness's own slash-command surface"
+    },
+    {
+      "id": "C4",
+      "title": "Adapt mass-ulw doctrine onto the DSH workflow tool (doctrine, not code)",
+      "change": "Ship (or extend skills/ulw-execute with) the mass-ulw-equivalent doctrine, ADAPTED to the DSH workflow tool: one script per phase, fan-out then fan-in, node contract TASK/DELIVERABLE/SCOPE/VERIFY/STOP WHEN in the agent() prompt, an explicit verification node, goal binding via create_goal, and an explicit note on the DSH tool's real limits (no run_id, no retry/amend, stage throw -> item null, no journal).",
+      "closes": ["D3-execution-surface", "D4-dag-model", "D7-goal-binding", "D9-scale", "D10-recovery", "D12-skill-corpus"],
+      "risk": "medium: skills/** change (+VENDOR_LOCK re-pin, one writer) and the doctrine must NOT promise upstream verbs the DSH workflow tool lacks (D3)",
+      "verify_cost": "one real workflow-tool run on a small graph + the dangling-reference fix in ulw-execute/SKILL.md:103",
+      "pros": "fills the real gap (2-node independence, phases, node contract, goal binding) with no plugin-contract churn; usable today by the mpd preset",
+      "cons": "doctrine is not mechanically enforced unless the lint (C5) lands too"
+    },
+    {
+      "id": "C5",
+      "title": "Structural parity inside the agent-teams plugin",
+      "change": "Three additive changes: (a) advisory create-time lint for non-quality work tasks and for a degenerate dependency graph, mirroring dag-lint; (b) a STOP-WHEN-equivalent field on task contracts; (c) goal binding for team delivery (assert the goal's criteria cover the delivered evidence before canDeclareDelivery passes).",
+      "closes": ["D5-node-contract", "D6-verification", "D7-goal-binding", "D4-dag-model"],
+      "risk": "highest: it edits the ADOPTED plugin's contract surface, so each change must be an mpd-delta region with the context-pair registry regeneration, guard-refusal behaviour and the permanent tests (AGENTS.md 6), plus schema/row conformance",
+      "verify_cost": "deltas + registry regenerated with --write-registry + --check clean + the mount proof + preset-conformance",
+      "pros": "turns doctrine into mechanical enforcement; reuses the existing (stronger) quality-gate plane instead of duplicating it",
+      "cons": "largest diff and the only option that can take a boot down if the schema drifts; still cannot supply OMO's run lifecycle (D3)"
+    }
+  ],
+  "option_matrix": {
+    "D1-activation": ["C1", "C2", "C3"],
+    "D2-trigger-mechanism": ["C3"],
+    "D3-execution-surface": ["C4"],
+    "D4-dag-model": ["C4", "C5"],
+    "D5-node-contract": ["C5"],
+    "D6-verification": ["C5"],
+    "D7-goal-binding": ["C4", "C5"],
+    "D8-routing-doctrine": ["C1", "C2", "C4"],
+    "D9-scale": ["C2", "C4"],
+    "D10-recovery": ["C4"],
+    "D11-human-plane": ["all options must preserve it"],
+    "D12-skill-corpus": ["C4"]
+  },
+  "hard_constraints_for_any_option": [
+    "The manual entry stays exactly as it is: /agent-teams command + gesture boundary (command.js:3,5,26) and the agent_teams_create tool (requirement '手动入口未变').",
+    "The Web staged-plan approval plane and the quality gate (verdict=pass, repair loop, canDeclareDelivery) must not regress — they are local advantages over upstream.",
+    "packages/mpd-agent-teams-plugin/lib is adopted upstream code: any edit there is an mpd-delta region with the context-pair registry regenerated (--write-registry) and --check clean; never hand-edit anchors (AGENTS.md 6).",
+    "Any skills/** change invalidates the corpus treeSha in VENDOR_LOCK.json and must land in the SAME commit (single-writer rule) — this couples every doctrinal option (C3/C4) to a re-pin.",
+    "Porting OMO text verbatim is unsafe wherever it names the OMO workflow/dag contract: the DSH workflow tool has no run_id, no retry/amend/send, no durable journal, no eval-cell SDK (D3)."
+  ],
+  "open_questions_for_the_captain": [
+    "Is the desired end state 'no auto team at all, team only on explicit request/complexity' (C1/C2/C3) or 'auto team only for large work' (C2)? The team goal's wording 'agent-teams 不再默认' reads as the former.",
+    "Should a mass-ulw-equivalent doctrine be ported at all (C4), or is the existing mpd_ultrawork + DSH workflow tool considered sufficient? That adopt/adapt/skip call belongs to t4/t8.",
+    "Does the local workflow tool's script surface satisfy the '复杂任务自动路由' requirement (a routing step that picks team vs workflow vs solo), or is a new routing predicate wanted (C2/C3)?",
+    "Should the dangling mass-ulw references (skills/ulw-execute/SKILL.md:103, skills/frontend/references/design/print-paged-media.md:76) be fixed as part of this wave regardless of the port decision?"
+  ],
+  "explicitly_not_decided": "This dossier ranks nothing and recommends nothing. Per the task's non-goals, the choice among C1..C5 is the captain's and the user's; the evidence above is the decision input."
+}

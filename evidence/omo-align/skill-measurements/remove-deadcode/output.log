@@ -1,0 +1,142 @@
+==========================================================================
+t19 MEASUREMENT LOG — does porting upstream remove-deadcode require repo seam changes?
+generated: 2026-09-13T14:21:26Z  actor: Explorer (read-only member)
+repo revision (git log -1 --format=%H): f4f91b5754bba3fa3c3d758c01d4e08fe50c6585
+upstream skill: /root/dshProj/oh-my-openagent/.agents/skills/remove-deadcode/SKILL.md
+  sha256: 2323273413f220a68e43c46c81d97396d46d28adfce02c935c38d9c434d10d2f
+sandbox fixture sha256:
+  73a955c8b978b569a1cf15e643e36df5f397201ef225f3c8f040523807e13073  /root/dshProj/my-power-dsh/evidence/omo-align/skill-measurements/remove-deadcode/sandbox/src/a.ts
+  a6b81be8635681abf9239d6da268884e28c746aa4869a73143a699378dc89ccb  /root/dshProj/my-power-dsh/evidence/omo-align/skill-measurements/remove-deadcode/sandbox/src/b.ts
+  ca7d1cb309844aa7a5320c157688e9645297e248b3a534c94a8d498566f949bc  /root/dshProj/my-power-dsh/evidence/omo-align/skill-measurements/remove-deadcode/sandbox/tsconfig.json
+==========================================================================
+
+=== SECTION 1: surfaces referenced by the skill (upstream file:line) ===
+10:- **LSP is law.** Verify with `LspFindReferences(includeDeclaration=false)` before ANY removal decision.
+35:bunx tsc --noEmit --noUnusedLocals --noUnusedParameters 2>&1
+42:task(subagent_type="explore", run_in_background=true, load_skills=[],
+46:task(subagent_type="explore", run_in_background=true, load_skills=[],
+62:LspFindReferences(filePath, line, character, includeDeclaration=false)
+89:**Goal: maximize parallel agents with ZERO git conflicts.**
+115:task(
+143:2. For each symbol, run LspFindReferences to RE-VERIFY it's still dead (another agent may have changed things)
+150:4. After ALL edits in this batch, run: `bun run typecheck`
+151:5. If typecheck fails: `git checkout -- [files]` and report failure
+153:   `git add [your-specific-files] && git commit -m "refactor: remove dead code from [brief file list]"`
+157:- Stage ONLY your batch's files (`git add [specific files]`). NEVER `git add -A` — other agents are working in parallel.
+173:bun run typecheck   # must pass
+174:bun test            # note any NEW failures vs pre-existing
+175:bun run build       # must pass
+205:If `$ARGUMENTS` is provided, narrow the scan:
+214:- More than 50 candidates found (ask user to narrow scope or confirm proceeding)
+
+=== SECTION 2: do those surfaces exist in our repo / this environment? ===
+-- 2.1 delegation tools: no 'task' tool package; DSH's tool name is 'subagent'
+  dsh-tool-task packages: 0
+373:	const toolName = config.toolName ?? "subagent";
+107:    name: "mpd_role_spawn",
+-- 2.2 repo scripts (package.json)
+{'typecheck': 'tsgo --noEmit', 'test': 'bun test packages', 'pack': 'node scripts/pack-mpd.mjs'}
+  'build' present? -> False
+-- 2.3 commands on PATH
+  bun   /root/.nvm/versions/node/v24.16.0/bin/bun
+  bunx  /root/.nvm/versions/node/v24.16.0/bin/bunx
+  git   /usr/bin/git
+  rm    /usr/bin/rm
+  tsc   MISSING (not installed; node_modules has tsgo only)
+  tsgo  not on PATH; present at node_modules/.bin/tsgo
+-- 2.4 skills are served by DIRECTORY SCAN (no manifest/preset/patch row per skill)
+6://   1) Skill corpus: this row registers a `ctx.skills` provider over
+19:import { existsSync, readFileSync, readdirSync, rmSync } from "node:fs"
+20:import { readdir, readFile } from "node:fs/promises"
+282:    entries = await readdir(root, { withFileTypes: true, encoding: "utf8" })
+383:        ids = readdirSync(presets).filter((id) => id === "mpd" || id.startsWith("mpd-"))
+399:    return readdirSync(root, { withFileTypes: true, encoding: "utf8" })
+-- 2.5 hardcoded skill lists are membership-only (adding a skill breaks nothing)
+67:    for (const expected of ["ast-grep", "dsh-qa", "svn-master"]) {
+-- 2.6 VENDOR_LOCK exact-count gate (re-pin required by process rule, not a seam boolean)
+99:    fail("asset " + rel + " count drifted: " + files.length + " vs " + meta.fileCount)
+114:    if (actual !== meta.treeSha) { fail("asset " + rel + " treeSha mismatch"); assetOk = false }
+
+=== SECTION 3: REAL LSP seam probe (mcp__lsp__find_references on the sandbox fixture) ===
+$ mcp__lsp__find_references {filePath: sandbox/src/b.ts, line: 2, character: 16, includeDeclaration: false}
+RESULT (verbatim):
+  LSP server 'typescript' for .ts, .tsx, .js, .jsx, .mjs, .cjs, .mts, .cts is NOT INSTALLED.
+  Command not found: typescript-language-server
+  -> the lsp MCP tool surface EXISTS; the TypeScript language server is an ENVIRONMENT prerequisite.
+
+=== SECTION 4: raw scan transcript (tsgo + bunx tsc) ===
+### SCAN A (fixed): repo's own compiler tsgo on the sandbox fixture
+$ cd sandbox && tsgo --noEmit -p tsconfig.json
+EXIT=0
+
+### SCAN B: skill's exact scanner with a writable TMPDIR
+$ TMPDIR=evidence/omo-align/skill-measurements/remove-deadcode/sandbox/tmp timeout 60 bunx tsc --noEmit --noUnusedLocals --noUnusedParameters
+error: bun is unable to write files to tempdir: ReadOnlyFileSystem
+EXIT=1
+
+### SCAN C: is typescript resolvable at all (bunx tsc --version, writable TMPDIR)
+error: bun is unable to write files to tempdir: ReadOnlyFileSystem
+EXIT=1
+### SCAN A2: repo compiler with the skill's unused flags
+$ cd sandbox && tsgo --noEmit --noUnusedLocals --noUnusedParameters -p tsconfig.json
+src/a.ts(1,10): error TS6133: 'unusedHelper' is declared but its value is never read.
+src/a.ts(2,42): error TS6133: 'unusedParam' is declared but its value is never read.
+src/a.ts(3,9): error TS6133: 'unusedLocal' is declared but its value is never read.
+src/a.ts(6,7): error TS6133: 'neverReferenced' is declared but its value is never read.
+EXIT=1
+
+### SCAN B2: bun tempdir override attempts
+$ BUN_TMPDIR=... bunx tsc --version
+error: bun is unable to write files to tempdir: ReadOnlyFileSystem
+EXIT=1
+$ bun --version (bun itself runs?)
+1.3.14
+EXIT=0
+$ ls -ld /tmp; touch /tmp/probe
+drwxr-xr-x 2 root root 40 Sep 13 22:19 /tmp
+
+=== SECTION 5: raw protocol transcript (skill Phase 4 steps 4-6 + Phase 5 + revert) ===
+### PROTOCOL RUN: the skill's Phase 4 batch protocol (steps 4-6) + Phase 5 + revert path, isolated git probe
+baseline commit: 2bcec61
+
+$ inject dead code (unused param + unused local)
+$ bun run typecheck   # the skill's per-batch gate (script = tsgo with the skill's unused flags)
+$ /root/dshProj/my-power-dsh/node_modules/.bin/tsgo --noEmit --noUnusedLocals --noUnusedParameters -p tsconfig.json
+a.ts(1,33): error TS6133: 'unusedParam' is declared but its value is never read.
+a.ts(2,9): error TS6133: 'unusedLocal' is declared but its value is never read.
+error: script "typecheck" exited with code 1
+EXIT=1
+
+$ apply removal (delete unused local, prefix _ on the required parameter)
+$ /root/dshProj/my-power-dsh/node_modules/.bin/tsgo --noEmit --noUnusedLocals --noUnusedParameters -p tsconfig.json
+typecheck after removal EXIT=0
+
+$ git add <specific file> && git commit -m 'refactor: remove dead code from a.ts'
+removal commit: df87f75
+df87f75 refactor: remove dead code from a.ts
+2bcec61 baseline
+
+$ FAILURE PATH: introduce a type error -> typecheck fails -> git checkout -- a.ts
+a.ts(2,9): error TS2322: Type 'string' is not assignable to type 'number'.
+a.ts(2,9): error TS6133: 'broken' is declared but its value is never read.
+error: script "typecheck" exited with code 1
+typecheck-with-error EXIT=1
+reverted; git status --porcelain:
+(empty above = clean revert)
+$ /root/dshProj/my-power-dsh/node_modules/.bin/tsgo --noEmit --noUnusedLocals --noUnusedParameters -p tsconfig.json
+typecheck after revert EXIT=0
+
+$ rm dead file path (skill step: 'Dead file: delete with rm')
+rm available: /usr/bin/rm
+
+### probe cleanup
+probe removed: YES
+
+=== SECTION 6: upstream skill frontmatter (loader-subset compatibility) ===
+---
+name: remove-deadcode
+description: "Remove unused code from this project with ultrawork mode, LSP-verified safety, atomic commits. Triggers: remove dead code, dead code, cleanup, remove unused."
+---
+subset rule source: packages/mpd-bootstrap-plugin/src/index.ts (top-level scalars, one nested metadata mapping, optional block scalars)
+
+END OF LOG

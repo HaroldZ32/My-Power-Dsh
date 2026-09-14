@@ -1,0 +1,60 @@
+{
+  "schema": "mpd-omo-align-verification-supplement/1",
+  "task": "t17 (already completed, attempt 1) — re-read after the captain's formal GO message",
+  "note": "The GO arrived after t17 was already completed. Its own authorityNote says the numbers in the message are ADVISORY and may be stale; the values below are what I re-read and recomputed myself at 2026-09-13T14:44Z.",
+  "reReadAnchors": {
+    "contract": {
+      "path": "evidence/omo-align/requirements/frozen-contract.json",
+      "bytes": 31705,
+      "sha256": "a0d28ebeaf3f204e4a33480670f44f204415b16758999ce22309a99e3c9c2d65",
+      "mtime": "2026-09-13 22:38:13 +0800",
+      "authorityNoteReadback": "its authorityNote makes message-supplied numbers advisory and a re-read + recomputation authoritative — consistent with this supplement",
+      "advisoryPinInGo": { "bytes": 28243, "sha256": "a9dfb3114289cbebc339552a3b168f8881e46e07eb905fa2599ef225223b92bf" },
+      "advisoryPinWasAnIntermediateRevision": "28243 / a9dfb311 was the 22:31:25 revision; the file was edited once more at 22:38:13 to 31705 / a0d28ebe. The original t17 task pin (21341 B / 2a77f2c3) matches no revision ever observed.",
+      "verdictBearingSectionsStable": [
+        "frozenDecisions",
+        "complexityGate",
+        "configPlane",
+        "manualEntryNames",
+        "massUlwSemantics",
+        "requiredQaCases",
+        "isolation"
+      ],
+      "stabilityWindow": "22:23 -> 22:44 (verified byte-identical between raw/frozen-contract.snap-*-a.json and raw/frozen-contract.snap-final.json, and snap-final.json is byte-identical to the file on disk now)"
+    },
+    "implementation": {
+      "head": "c91f26621d11b58911d1d7a0224d06267542363c",
+      "headSubject": "test(evidence): record the R2 gate exit codes and the settled-revision gate log",
+      "sessionStartJs": {
+        "bytes": 24397,
+        "sha256": "1f0203c69e5e904d878774e1d5d1e9d646de070b8e3fa2908ce77f85b60aefc0",
+        "matchesGoAdvisory": true
+      },
+      "patchRegionCheck": { "regions": 19, "adoptedFiles": 5, "exitCode": 0, "advisoryInGo": 18 },
+      "pluginTests": { "pass": 134, "fail": 0, "advisoryInGo": 124 },
+      "deltasVsGo": [
+        "19 mpd-delta regions (not 18): the R2 commit added mpd-delta dependency-failed-unblock in lib/state.js",
+        "plugins tests 134/0 (not 124/0): the R2 commit added test/opt1-failed-dependency.test.mjs and test/opt2-residual-and-ordering.test.mjs",
+        "HEAD c91f266 (not f4f91b5): the f4f91b5 feature merge is correct but R2 landed afterwards, directly on dev",
+        "contract 31705 / a0d28ebe (not 28243 / a9dfb311)"
+      ],
+      "codeHashesUnchangedSinceVerdict": true
+    }
+  },
+  "approvalRequiredEncoding": {
+    "measured": "phase=staged, planReviewState=awaiting_review, approvedAt=undefined, members=11 all status='idle', active=0, spawned=0, tasks=0",
+    "conclusion": "approval=required is mechanically encoded as staged + awaiting_review with no approvedAt; no member is spawned before the user approves. This is the record behind the t17 acceptance evidence 'phase=staged, members=11, activeMembers=0'."
+  },
+  "assertionsReConfirmedAgainstTheGo": {
+    "defaultNoTeam": "already verified: 3 frozen simple prompts => 0 teams + 0 notices (mandated case, twice)",
+    "complexAutoRoute": "already verified: 3 frozen complex prompts => exactly 1 staged team + 1 notice, profile mpd, approval=required encoding above, 0 spawned; team: prefix consumed",
+    "sameSettledRevision": "already verified: both sides of every run share one revision; gate file hash 1f0203c6 stable over each 50 s window",
+    "falsifiableNegativeControl": "already verified: the simple side plus raw/opt2-and-calibration.log (frozen-simple-1/2/3 all trigger=false; frozen-complex-1/2/3 all trigger=true)",
+    "opt1": "already verified: raw/opt1-independent.log 14/14 on the real predicate; failure surfaced in taskContractView (with finding F2 for the status view)",
+    "manualEntryFreeze": "already verified: raw/manual-entry-freeze.log",
+    "nineGates": "already verified: all exit 0 on the settled revision (session-start-team included as the 10th); bundle-lifecycle needed an isolated re-run after one concurrent false-red (F7)",
+    "acceptableKnownItems": "S2/S3/S4 suite-level only (residual R1); configPlane only messagePayloadMaxBytes enforced at runtime (F-note); update-task-amend-parameters not registrable and merged into the helper region — all recorded in result.json"
+  },
+  "verdictStatus": "unchanged: pass. No code hash moved since the verdict, so the re-read changes nothing except the advisory numbers the GO carried.",
+  "noNewWrites": "This supplement and the re-read logs are the only new files; no packages/presets/scripts/skills/docs file was touched."
+}

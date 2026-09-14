@@ -1,0 +1,68 @@
+[
+ {
+  "key": "maxMembers",
+  "got": 16,
+  "want": 16,
+  "ok": true
+ },
+ {
+  "key": "maxParallelMembers",
+  "got": 8,
+  "want": 8,
+  "ok": true
+ },
+ {
+  "key": "maxMessagesPerRun",
+  "got": 10000,
+  "want": 10000,
+  "ok": true
+ },
+ {
+  "key": "maxWallClockMinutes",
+  "got": 120,
+  "want": 120,
+  "ok": true
+ },
+ {
+  "key": "maxMemberTurns",
+  "got": 500,
+  "want": 500,
+  "ok": true
+ },
+ {
+  "key": "messagePayloadMaxBytes",
+  "got": 32768,
+  "want": 32768,
+  "ok": true
+ },
+ {
+  "key": "recipientUnreadMaxBytes",
+  "got": 262144,
+  "want": 262144,
+  "ok": true
+ },
+ {
+  "key": "mailboxPollIntervalMs",
+  "got": 3000,
+  "want": 3000,
+  "ok": true
+ },
+ {
+  "key": "memberMaxDepth",
+  "got": 1,
+  "want": 1,
+  "ok": true
+ },
+ {
+  "key": "stateDir",
+  "got": ".agent-teams",
+  "want": ".mpd/team",
+  "ok": false
+ }
+]
+policy {"mode":"off","autoRoute":true,"presets":[],"name":"MPD Default","approval":"required"}
+min-guard messagePayloadMaxBytes 512 => REJECTED
+min-guard mailboxPollIntervalMs 100 => REJECTED
+min-guard recipientUnreadMaxBytes 10 => REJECTED
+mode union => REJECTED
+enforcement default enforce

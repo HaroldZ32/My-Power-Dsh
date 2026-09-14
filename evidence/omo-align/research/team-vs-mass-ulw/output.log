@@ -1,0 +1,227 @@
+# t2 — OMO mass-ulw / workflow semantics vs this repository's agent-teams
+## Difference matrix and candidate options (read-only research dossier)
+
+Task: t2. Deliverable pair: `gap.json` (machine-readable matrix) + this log (narrative + citations).
+Baseline: current working tree; upstream `code-yeongyu/oh-my-openagent` @ `dev`, queried read-only through
+GitHub code search. The pinned local snapshot remains `VENDOR_LOCK.json` = commit `8c57e46`, v5.0.0-beta.20;
+the beta.20 -> beta.62 functional audit is t4's scope and is NOT attempted here.
+
+I edited nothing outside `evidence/omo-align/research/team-vs-mass-ulw/`.
+
+---
+
+## 0. One-paragraph answer
+
+Upstream's orchestration plane and this repository's are **opposite by default and structurally different in
+kind**. Upstream is **keyword-gated doctrine over a programmatic run engine**: nothing exists until the user
+writes a `mass ulw` spelling, at which point a hidden pointer tells the model to read `mass-ulw/SKILL.md`,
+which mandates a planning reference, a one-run-per-phase DAG on the native `workflow` tool, a node prompt
+contract, a goal binding and a verification wave. This repository has the *inverse* posture — **mechanical
+default-on**: every qualifying session auto-provisions the staged "MPD Default" team on its first step
+(`lib/session-start.js:229-269`, enabled by `packages/mpd-bundle/cordis.patch.yml:218-224`) — plus a
+**stronger** quality-gate plane and a Web approval plane that upstream does not have at all. The headline gap
+is therefore D1 (opposite defaults, which is exactly the stated "agent-teams 不再默认" requirement); the
+headline structural gap is D3 (the two `workflow` tools share a name but not a contract). The most important
+non-obvious finding: **the plugin's own schema already defaults `sessionTeamPolicy.mode` to `off`
+(`lib/index.js:91-98`) — only the bundle row turns it on**, so de-defaulting is a one-row config decision, not
+a code change.
+
+---
+
+## 1. Method and its limits (read this before trusting a citation)
+
+- Local evidence: exact `path:line` against the current tree, obtained with read/grep only.
+- Upstream evidence: URL + file/function/section. The `dev` branch has moved past the local beta.20 pin, so I
+  deliberately present **no upstream line numbers as pinned identity** — a line number on `dev` today is not a
+  beta.20 fact. Where an upstream snippet is quoted, it is a search-result excerpt of the `dev` file.
+- I could not run `bun test`, `--dump-config`, or any mount: this seat is read-only (no bash/execution
+  evidence was gathered). Every local claim is therefore a **source claim**, not a measured runtime claim.
+  Anything needing a real boot is listed as t5/t6 work.
+
+---
+
+## 2. Upstream semantics (what `mass ulw` / the workflow plane actually is)
+
+### 2.1 Activation is keyword-gated, and the pointer is deliberately conditional
+`omo-senpi` ships one `skill-pointers` component holding a uniform keyword table. The mass group is
+`MASS_ALIAS = (?:mass[\s-]*ulw|ulw[\s-]*mass|mulw|meth)` over the user's input with quoted/relayed regions
+blanked; a match injects a hidden (`display:false`) custom message pointing at `mass-ulw/SKILL.md`.
+`packages/omo-senpi/AGENTS.md` states the doctrine explicitly: *"A keyword proves a mention, not a request, so
+the pointer text is conditional (...) rather than asserting intent"*, and overlapping mentions all fire
+(`mass ulw-loop` injects both mass-ulw and ulw-loop). Sources:
+[skill-pointers/index.ts](https://github.com/code-yeongyu/oh-my-openagent/blob/dev/packages/omo-senpi/src/components/skill-pointers/index.ts),
+[omo-senpi/AGENTS.md](https://github.com/code-yeongyu/oh-my-openagent/blob/dev/packages/omo-senpi/AGENTS.md),
+[onboarding/SKILL.md](https://github.com/code-yeongyu/oh-my-openagent/blob/dev/packages/omo-senpi/skills/onboarding/SKILL.md)
+("Mass-ulw: `mass ulw` opens dependency-ordered multi-agent DAG orchestration").
+
+### 2.2 The skill contract
+[mass-ulw/SKILL.md](https://github.com/code-yeongyu/oh-my-openagent/blob/dev/packages/omo-senpi/skills/mass-ulw/SKILL.md)
+frontmatter: *"Drives dependency-ordered child work through the native workflow tool, one run per phase with
+retry/amend/send recovery."* Body: use it when the user asks for mass-ulw, a DAG, staged fan-out, or work with
+real dependencies; *"A run covers ONE phase's dependency-ordered lanes and NEVER a whole multi-phase job"*;
+under `ulw-loop`/`ulw-execute` the loop owns the goal, this skill owns only the phase's run.
+"Goal before start": every run is goal-bound (`create_goal`), and *"node and run completion claims are false
+until proven against captured evidence"* — the change that made this explicit upstream is
+[PR #7175](https://github.com/code-yeongyu/oh-my-openagent/pull/7175) ("bind mass-ulw runs to a goal carrying
+result verification").
+
+### 2.3 The planning reference is mandatory
+[references/planning.md](https://github.com/code-yeongyu/oh-my-openagent/blob/dev/packages/omo-senpi/skills/mass-ulw/references/planning.md)
+self-describes as *"Mandatory planning reference (...) read in full BEFORE defining any graph"*: decomposition
+by component / file domain / phase (collect -> verify -> synthesize), *"Default shape is fan-out, then
+fan-in"*, and the sharp rule *"A 2-node graph with no dependency between the nodes is not a dag - use plain
+parallel `task` spawns instead."*
+
+### 2.4 The node prompt contract, linted (advisory only)
+[dag-lint.ts](https://github.com/code-yeongyu/oh-my-openagent/blob/dev/packages/omo-senpi/src/components/task/dag-lint.ts)
+checks `prompt` for `TASK:` and `STOP WHEN` and pushes warnings naming
+`TASK/DELIVERABLE/SCOPE/VERIFY/STOP WHEN`; the file's own header says warnings *"never reject"*.
+
+### 2.5 The execution surface is a programmatic run engine
+*"Build and run every dag INSIDE an eval cell. The eval kernel installs the `tool.workflow` proxy and the
+extension publishes a small JS SDK at `OMO_DAG_SDK_ROOT`"* — see
+[dag-sdk-root-provisioning.ts](https://github.com/code-yeongyu/oh-my-openagent/blob/dev/packages/omo-senpi/src/extension/dag-sdk-root-provisioning.ts)
+and [plugin/runtime/dag/sdk.js](https://github.com/code-yeongyu/oh-my-openagent/blob/dev/packages/omo-senpi/plugin/runtime/dag/sdk.js)
+("Every call funnels through `globalThis.tool.workflow({ action, ... })`"). The SDK profile is
+`dag.define/node/start`, `run_id` + snapshot lifecycle, and a stored definition library (`OMO_DAG_LIBRARY`).
+
+### 2.6 Team vs dag is an explicit routing doctrine
+`ulw-research` (both copies) routes by trigger: a plain research request goes to the **team path** (critique and
+expand loops are team mechanics), while `mass ulw research` goes to the **dag path at mass scale** — "attack is
+conversation, and dag nodes do not talk". See
+[ulw-research/SKILL.md](https://github.com/code-yeongyu/oh-my-openagent/blob/dev/packages/omo-senpi/skills/ulw-research/SKILL.md)
+and [changes.md](https://github.com/code-yeongyu/oh-my-openagent/blob/dev/packages/omo-senpi/changes.md).
+
+### 2.7 There is no session-start team policy upstream
+Nothing in the inspected upstream components provisions a team at session start. The whole plane is armed by
+the user's text.
+
+---
+
+## 3. Local semantics (what this repository's agent-teams actually is)
+
+### 3.1 Default-on mechanical session-start policy (the thing to de-default)
+`lib/session-start.js:1-40` states the module contract: *"Prompt-level guidance (...) is not enough - a session
+can quietly run solo"*; the hook is the `agent/pre-step` waterfall, installed `global + prepend`
+(`:229-269`), **settle-once per agent** (`:242-244`). Qualification (`:71-84`): top-level sessions only
+(`header.parentSession` must be absent, so members/subagents/workflow workers never qualify) and the preset
+allow-list (`presets: []` = every session). `mode: 'auto'` calls `provisionSessionTeam` (`:123-168`), which
+reuses the same `initializeProfileTeam` path as `agent_teams_create`, with `staged: true`, then injects the
+startup notice (`:174-187`); any provisioning error degrades to the `instruct` notice (`:194-203`) rather than
+breaking the step. `mode: 'instruct'` injects only the notice; `mode: 'off'` does nothing.
+Schema: `lib/index.js:87-98` — **`sessionTeamPolicy` defaults to `{ mode: 'off' }`**. The bundle enables it:
+`packages/mpd-bundle/cordis.patch.yml:204-224` (`mode: auto`, `profile: mpd`, `presets: [mpd]`,
+`name: MPD Default`, `approval: required`). Documented in `packages/mpd-bundle/README.md:22-42` and asserted by
+`skills/dsh-qa/scripts/session-start-team.mjs:85,87,129,133` and `scripts/install-profile.mjs:261-262`.
+
+### 3.2 The manual entry (must not change)
+`lib/command.js:3,5,26`: `AGENT_TEAMS_COMMAND = 'agent-teams'`, `GESTURE = /^\/agent-teams(?=$|[\t\n\r ])/u`,
+matched at `:26`; registered at `lib/index.js:233-248` (slash command via `ctx.inject(['commands'])` + the
+plain-text gesture boundary for surfaces without command adjudication), with `slashCommand` defaulting true.
+The tool-level entry is `agent_teams_create`.
+
+### 3.3 The DAG is the shared task list, and it is human-reviewable
+`lib/scheduler.js:1-13`: an event-driven scheduler; every `agent/status` idle edge and every task-graph
+mutation attempts one atomic claim and wakes a durable member (`:491-495`). Dependencies are
+`dependencies: string[]`; completed ancestors are collected **topologically** and injected into the assignment
+prompt with per-item 2 000-char and total 12 000-char caps (`:17-20`, `:36-84`); a cycle prunes only that
+branch (a warning, `:43`). A member that becomes idle while owning an open attempt is **parked** until an
+explicit captain reassignment; automatic retry is reserved for cold recovery when the durable owner is no
+longer resident (`:440-481`).
+
+### 3.4 The quality plane is stronger than upstream's doctrine
+`lib/quality-gates.js:7-27` defines kinds requirements/implementation/verification/review/repair/integration,
+the review policy (requirements 1..4 rounds, code max 3, max 2 repair attempts) and the default review
+acceptance. `validateCreateTask` (`:391`) is a create-time contract/contradiction gate. `planQualityFollowUp`
+(`:659`) opens repair + the next review automatically. `canDeclareDelivery` (`:769-812`) blocks delivery when a
+review/requirements task completed without `verdict=pass`, when a failed quality task has no follow-up repair,
+when a completed implementation has no passing review, and when any `changedPaths` entry falls outside the
+contract's `inScope`/`outOfScope`. `buildCoverageMatrix` (`:754-768`) maps goal items to covering tasks.
+
+### 3.5 A separate local ultrawork plane already exists
+`packages/mpd-ulw-plugin/README.md:4-25`: `mpd_ultrawork` / `mpd_ulw` is a fixed-policy engine adapted from
+upstream ultrawork at base `8c57e46` (discovery waves, PIN->RED->GREEN->SURFACE->CLEAN per criterion, plan gate,
+verification gate, final ledger, optional hyperplan wave). It runs on the **DSH subagent seam**, not on
+agent-teams — so this repo already contains *two* orchestration planes with no router between them.
+
+### 3.6 The DSH `workflow` tool is NOT upstream's workflow/dag tool
+The preset mounts `tool-workflow` (`presets/mpd/agent.cordis.yml:349-355`, `workflowEngine: true` at `:305`).
+Its script hook surface is `agent()` / `pipeline()` / `parallel()` / `phase()` / `log()` / `args` with a JSON
+return. It has **no** `run_id`, no snapshot/lifecycle verbs, no `retry`/`amend`/`send`, no durable journal, no
+eval-cell SDK, and a throwing stage resolves that **item** to null rather than failing the run. Upstream's
+`tool.workflow({action})` is the dag tool itself. Same name, different machine.
+
+### 3.7 The local corpus does not contain mass-ulw, yet two files point at it
+`skills/*/SKILL.md` has 19 entries and no mass-ulw. But `skills/ulw-execute/SKILL.md:103` instructs: *"Read the
+`mass-ulw` skill's `SKILL.md` and `references/planning.md` IN FULL before defining any graph"*, and
+`skills/frontend/references/design/print-paged-media.md:76` defers to "the `mass-ulw` verification wave" — a
+dangling cross-reference in the shipped corpus today. The adopt/adapt/skip verdict is t4/t8 scope.
+
+---
+
+## 4. Difference matrix (condensed)
+
+| # | Dimension | Upstream (mass-ulw / workflow) | Local (agent-teams + mpd) | Gap | Severity |
+|---|---|---|---|---|---|
+| D1 | Activation | Keyword-gated; nothing exists by default | Default-on: auto-provisions "MPD Default" on the first step | **Opposite defaults** | high |
+| D2 | Trigger mechanism | Uniform keyword table + hidden conditional pointer | No keyword/pointer component exists | Missing mechanism | medium |
+| D3 | Execution surface | Eval cell + `tool.workflow` + `OMO_DAG_SDK_ROOT`, run_id/lifecycle | DSH `workflow` script (no run_id/lifecycle) + event-driven task list | Name collision, semantics mismatch | high |
+| D4 | DAG model | One run per phase; node id/category/dependsOn; fan-out then fan-in | One persistent task list; task + dependencies[]; no run boundary | Partial | medium |
+| D5 | Node contract | TASK/DELIVERABLE/SCOPE/VERIFY/STOP WHEN, advisory lint | Machine-checked contract for quality kinds; work tasks need only a subject | Asymmetric | low |
+| D6 | Verification | Doctrine + verification wave (no gate) | Mechanical gate: verdict=pass, auto repair, delivery blockers, coverage matrix | Local ahead | low |
+| D7 | Goal binding | Every run goal-bound (create_goal; PR #7175) | No team-goal binding; delivery computed from the graph alone | Missing link | medium |
+| D8 | Routing doctrine | team vs dag, explicit, pre-work | Prompt sizing runs INSIDE an already-provisioned team (preset `:88-102`) | Ordering bug | high |
+| D9 | Scale | 60+ node waves, difficulty ladder | 16 members max, one model tier family | Different scale class | medium |
+| D10 | Recovery | per-run retry/amend/send, adaptive retries | per-task attempt_id, parked attempts, captain reassign, cold-requeue | Different granularity | low |
+| D11 | Human plane | None (autonomous) | Staged plan + Web approval + edit + halt/resume + panel | Local advantage | info |
+| D12 | Corpus | mass-ulw skill ships | mass-ulw absent; two dangling references | Missing doctrine | medium |
+
+---
+
+## 5. Candidate options (no decision taken here)
+
+* **C1 — flip the default off (config-only).** Edit the bundle row (`cordis.patch.yml:218-224`), the legacy
+  installer row (`scripts/install-profile.mjs:177`), the preset startup text (`presets/mpd/agent.cordis.yml:80-86`)
+  and the documented rule (`packages/mpd-bundle/README.md:22-42`); rewrite the assertions in
+  `skills/dsh-qa/scripts/session-start-team.mjs:85,87,129,133` and `scripts/install-profile.mjs:261-262` to pin
+  the NEW posture. Zero plugin-code risk (the schema already defaults off). Closes D1, D8.
+* **C2 — complexity-gated provisioning.** Keep auto mode but add a qualification predicate over the first turn
+  in `lib/session-start.js` (+ schema value in `lib/index.js:91-98`). Closes D1, D8, D9. Risk: a heuristic is
+  not mechanically provable and duplicates the preset's own sizing doctrine.
+* **C3 — OMO-style keyword pointer component.** A new prompt-input component with one keyword table injecting a
+  hidden conditional pointer; no auto-provisioning. Closes D2, D1. Any shipped skill target drags in a
+  `skills/**` change + VENDOR_LOCK re-pin (single-writer rule).
+* **C4 — adapt mass-ulw doctrine onto the DSH workflow tool.** Doctrine only (skills/**): one run per phase,
+  fan-out/fan-in, node contract, explicit verification node, `create_goal` binding, plus an explicit statement
+  of the DSH tool's real limits. Closes D3, D4, D7, D9, D10, D12. Must NOT copy upstream verbs that do not
+  exist here.
+* **C5 — structural parity inside the adopted plugin.** (a) advisory create-time lint for work tasks /
+  degenerate graphs, (b) STOP-WHEN-equivalent contract field, (c) goal binding for team delivery. Closes D5,
+  D6, D7, D4. Highest risk: each edit is an mpd-delta region + registry regeneration + mount proof.
+
+Hard constraints for any option: the `/agent-teams` manual entry stays byte-identical in behaviour; the Web
+approval plane and the quality gate must not regress; adopted-plugin edits must be delta regions with a clean
+`--check` and a regenerated context-pair registry; any `skills/**` change rides the same commit as its
+VENDOR_LOCK re-pin.
+
+---
+
+## 6. Open questions handed to the captain
+
+1. Is the target "no auto team at all; team only on explicit request/complexity" (C1/C2/C3), or "auto team only
+   for large work" (C2)? The team goal text "agent-teams 不再默认" reads as the former.
+2. Port a mass-ulw-equivalent doctrine at all (C4), or treat `mpd_ultrawork` + the DSH `workflow` tool as
+   sufficient? That adopt/adapt/skip call belongs to t4/t8.
+3. Does "复杂任务自动路由" require a NEW routing predicate (C2/C3), or is a doctrine-level routing step in the
+   preset (C4) enough?
+4. Fix the two dangling mass-ulw references (`skills/ulw-execute/SKILL.md:103`,
+   `skills/frontend/references/design/print-paged-media.md:76`) in this wave regardless of the port decision?
+
+## 7. Handoff notes
+
+- t4 (corpus diff + beta.20->beta.62 audit) can reuse `upstream_semantics_summary` and D12 here; the mass-ulw
+  skill body and `references/planning.md` are the two artifacts whose local absence D12 records.
+- t5 (implementation) should treat C1 as the minimum acceptable de-default and pick/add C2..C5 as scope allows;
+  the option matrix in `gap.json` maps each dimension to the options that close it.
+- t6 (verification) must assert the manual entry is unchanged (`command.js:3,5,26` behaviour) and that the
+  chosen posture is observable in a real mounted boot — NOT via `--dump-config` (AGENTS.md section 4).

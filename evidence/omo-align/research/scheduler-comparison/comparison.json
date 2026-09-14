@@ -1,0 +1,350 @@
+{
+  "task_id": "t14",
+  "title": "mass-ulw/workflow DAG 引擎 vs 本地 agent-teams 任务板调度器：逐维度优劣与优化候选",
+  "researched_at": "2026-09-13T14:05:00Z",
+  "actor": "Explorer (read-only member)",
+  "method": "Read-only inspection. Upstream = /root/dshProj/oh-my-openagent (v5.0.0-beta.62, commit d1557a4b4): packages/senpi-task/src/dag/**, packages/omo-senpi/skills/mass-ulw/**, docs/reference/mass-ulw-protocol.md. Local = /root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/{scheduler,state,quality-gates,members,tools,events}.js. No file outside evidence/omo-align/research/scheduler-comparison/ was written.",
+  "path_prefixes": {
+    "upstream": "/root/dshProj/oh-my-openagent/",
+    "local": "/root/dshProj/my-power-dsh/"
+  },
+  "verdict_legend": ["upstream-better", "local-better", "equivalent", "tradeoff"],
+  "findings": [
+    {
+      "id": "D1-F1",
+      "dimension": "触发与调度：谁决定下一个跑什么",
+      "verdict": "tradeoff",
+      "upstreamEvidence": "packages/senpi-task/src/dag/scheduler.ts:502-504 (\"Dependency-frontier execution: a node is admitted the moment EVERY node it dependsOn holds a terminal completed state and a resident slot is free - never because a wave boundary was reached\"); scheduler.ts:175-177 (residency-denied nodes queue in first-denied order; a freed slot goes to the OLDEST denied admission); scheduler.ts:544 (one admission pass over the frontier); packages/senpi-task/src/dag/fingerprint.ts:18-31 (scheduler identity pinned as waveAdmission:\"dependency-frontier\", failurePolicy:\"continue-independent\", dependencyData:\"filesystem-only\")",
+      "localEvidence": "packages/mpd-agent-teams-plugin/lib/state.js:106-117 (unsatisfiedDependencies: a task is claimable only when every dependency is completed/cancelled); scheduler.js:145-151 (nextReadyTask: pending + no unsatisfied deps, member's own assignment first, then unassigned); scheduler.js:256-269 and 491-495 (kick on every member idle edge and on task-graph mutation; ctx.on('agent/status') is the wake source); scheduler.js:225-240 (per-member serialization queue)",
+      "upstreamVerdictNote": "Upstream declares waves but since 2026-08-25 they are INFORMATIONAL groupings only - admission is dependency-frontier + slot availability, i.e. semantically the same model as the local dependency-gate + idle-edge kick. The genuine upstream edge is admission FAIRNESS: an explicit ordered residency-denied queue (oldest first) instead of racing idle edges.",
+      "localVerdictNote": "Local has no slot limiter and no admission queue, but it has targeted assignment (assignee-first) plus a per-member serialization queue and parked-attempt bookkeeping (scheduler.js:296-328) that makes repeated idle edges idempotent - a property upstream gets from its latch/admission-pass design instead.",
+      "optimizationCandidate": null,
+      "needsUserDecision": false
+    },
+    {
+      "id": "D1-F2",
+      "dimension": "触发与调度：规模纪律与自动建队的顺序（已知 t2/D8）",
+      "verdict": "upstream-better",
+      "upstreamEvidence": "packages/omo-senpi/skills/mass-ulw/SKILL.md:10 (mass-ulw is used only when the user asks for it or real dependencies exist; for fully independent workers plain parallel spawns are simpler) and SKILL.md:14 (read references/planning.md IN FULL before defining ANY graph); packages/omo-opencode/src/config/schema/default-mode.ts (auto-injection switches exist only for ultrawork/goal - no team/DAG auto-start)",
+      "localEvidence": "packages/mpd-agent-teams-plugin/lib/session-start.js:229-269 (installSessionTeamPolicy provisions the default team on the first agent/pre-step of every qualifying session, unconditionally) and :123-168 (provisionSessionTeam); presets/mpd/agent.cordis.yml:80-86 (SESSION STARTUP RULE: \"every session MUST start inside a team\", the auto-provision happens first) then :88-102 (AGENT TEAM ROUTING: size the task small/large and pick a team form)",
+      "upstreamVerdictNote": "Upstream never creates orchestration state before the lead has (a) judged the work worth a graph, (b) sized the waves against the capacity model, and (c) written the plan in one breath (planning.md:12).",
+      "localVerdictNote": "Local performs the ordering defect named in t2/D8: the size judgment arrives AFTER the team already exists, so the roster/DAG is designed under a presupposition that was never evaluated. This is a defect of the CURRENT wave's subject matter (session-start policy), fixable independently of the scheduler engine.",
+      "optimizationCandidate": {
+        "what": "Move the size/routing decision BEFORE any team creation: session-start must not provision; it may at most inject an instruction notice. The provisioning decision moves to the size judgment (keyword/explicit or the persona's small/large rule), or the policy default flips off.",
+        "benefit": "Removes the ordering defect and the 25-team residue it produced; makes 'agent-teams 不再默认' mechanically true instead of prose-only.",
+        "cost": "Requires the trigger definition (keyword vs size rule) to be frozen by requirements; the mechanical guarantee 'every session starts in a team' is lost by design.",
+        "risk": "If the trigger is only prose, sessions can silently run solo again - the reason the mechanical policy existed.",
+        "falsifiableAssertion": "After the change, a headless session with a trivial prompt ('reply hello-ok') creates NO .mpd/team directory, while a session whose first message contains the agreed trigger creates exactly one staged team."
+      },
+      "needsUserDecision": true
+    },
+    {
+      "id": "D1-F3",
+      "dimension": "触发与调度：派工的目标性与幂等",
+      "verdict": "local-better",
+      "upstreamEvidence": "packages/senpi-task/src/dag/scheduler.ts:544-560 (admission iterates the frontier; a node is bound to a child task at admission); packages/senpi-task/src/dag/recovery.ts:33-35 (MAX_RECOVERY_READMISSIONS=3 bounds repeated owner deaths) and recovery.ts:1-60 (lease-based recovery re-admits)",
+      "localEvidence": "scheduler.js:145-151 (assignee-first then unassigned); state.js:145-160 (beginTaskAttempt increments attempt and issues a fresh attemptId capability); state.js:225-233 (invalidateTaskAttempt clears the capability and stamps handoffId, so late member updates are rejected); scheduler.js:296-328 (parkedAttempts: a resident member that goes idle while owning an open attempt is parked, not re-dispatched)",
+      "upstreamVerdictNote": "Upstream bounds recovery by a durable execution counter rather than remembering a live owner; a node whose owner died can be re-admitted up to three times.",
+      "localVerdictNote": "Local carries an explicit durable member identity + capability token, so 'the member is still alive and its attempt is still valid' is representable; repeated idle edges cannot silently revoke valid work. The cost is the parked-attempt edge cases (scheduler.js:396-411 restores the generation when delivery fails).",
+      "optimizationCandidate": null,
+      "needsUserDecision": false
+    },
+    {
+      "id": "D2-F1",
+      "dimension": "失败恢复：单点恢复能力（retry/send/amend vs reassign/attempt）",
+      "verdict": "upstream-better",
+      "upstreamEvidence": "packages/omo-senpi/skills/mass-ulw/SKILL.md:78-80 (retry = fresh attempt for failed/cancelled nodes and their skip-cascaded dependents back to the loop, completed nodes reused; send = steer a running child or revive a resident finished one; amend = diff each node fingerprint so unchanged completed nodes keep cached results and only changed/added + transitive dependents re-run); packages/senpi-task/src/dag/node-retry.ts:31 (RETRYABLE_NODE_STATES = failed|cancelled|skipped), :63-92 (retryDagNodes journals dag.node.retried with a new execAttempt for each target and re-enters the run with a fresh scheduler), :96-108 (skippedDependentsOf are returned to blocked); dag/node-send.ts:33-... (steer running / revive resident / typed refusal naming retry as remedy); dag/manager.ts:440-512 (amend diff + invalidation of changed/added + transitive dependents); dag/recovery.ts:1-60 + docs/reference/mass-ulw-protocol.md:52-56 (dag.node.reused/retried/steered events; journal-driven resume across restart)",
+      "localEvidence": "packages/mpd-agent-teams-plugin/lib/tools.js:1199-1311 (agent_teams_reassign_task: atomically retry/reassign/captain-takeover one ready unfinished OR failed task; refuses a COMPLETED task at :1236; revokes the old attempt before interrupting the member; serializes the handoff via handoffId at :1282-1285); state.js:145-160/225-233 (attempt capabilities); scheduler.js:296-326 and 396-411 (parked attempts and cold-process single recovery); tools.js:1557 (terminal task immutable; retry failed/cancelled work through reassign)",
+      "upstreamVerdictNote": "Three verbs (retry, send, amend) act on ONE node and every already-finished node keeps its cached result; the run is never a dead end. Amend is the capability local has no counterpart for.",
+      "localVerdictNote": "Local has retry/reassign and a strong capability protocol, but no amend, no steering of a finished member (only mailbox guidance to a live member), and no per-node 'last_error' to reason from; `agent_teams_send_message` is the only mid-run correction channel.",
+      "optimizationCandidate": {
+        "what": "Add a minimal post-approval re-planning verb (see D2-F4) rather than porting the full amend engine; keep retry/reassign as-is.",
+        "benefit": "Removes the 'one bad task costs the whole graph' property for the local board.",
+        "cost": "A definition/fingerprint concept must be introduced (what makes a task 'unchanged') plus invalidation of transitive dependents - the largest single change on this list.",
+        "risk": "Half-adopting fingerprints (e.g. hashing only subjects) would invalidate too much or too little and could silently re-run or skip work.",
+        "falsifiableAssertion": "Given a settled board where t5 failed and t6..t9 depend on it, editing exactly one task's objective invalidates only that task plus its transitive dependents, and every completed non-descendant keeps its recorded output (assert no new attempt number on those tasks)."
+      },
+      "needsUserDecision": true
+    },
+    {
+      "id": "D2-F2",
+      "dimension": "失败恢复：缺 fingerprint 缓存的真实后果",
+      "verdict": "tradeoff",
+      "upstreamEvidence": "packages/senpi-task/src/dag/fingerprint.ts:63-108 (diffNodeFingerprints: unchangedIds/changedIds/addedIds/removedIds are computed per node); dag/manager.ts:333-355 (a same-key same-fingerprint start returns reused:true and schedules nothing; a same-key different-fingerprint start is refused with definition_conflict); dag/fingerprint.ts:1-17 (the fingerprinted prompt is the ORIGINAL submitted prompt - never the skill-expanded effectivePrompt)",
+      "localEvidence": "packages/mpd-agent-teams-plugin/lib/tools.js:1236 ('completed task ... is immutable and cannot be reassigned'); tools.js:1557 ('terminal task ... is immutable; use agent_teams_reassign_task to retry failed/cancelled work'); state.js:122-129 (TASK_TRANSITIONS: completed/failed/cancelled have no outgoing transitions); scheduler.js:36-84 (dependency outputs are re-collected from durable team.json at every dispatch, so a retry sees the same completed ancestors)",
+      "upstreamVerdictNote": "The fingerprint is what makes minimal re-execution possible: only nodes whose submitted definition changed (plus transitive dependents) lose their cached result.",
+      "localVerdictNote": "The feared failure mode - 'a completed task is silently re-run after a revision' - does NOT exist locally, because completed tasks are terminal and immutable and no code path re-activates them. The real cost is the mirror image: no mechanism can deliberately invalidate a completed task or re-run a changed subtree, so mid-flight correction is impossible and the only remedy is deleting the team.",
+      "optimizationCandidate": {
+        "what": "If re-planning is wanted, add an explicit invalidation verb (invalidate task + transitive dependents) with a definition digest; do NOT add implicit fingerprint-driven re-runs on top of the current immutable-terminal model.",
+        "benefit": "Keeps the current safety property (nothing silently re-runs) while adding the missing deliberate-correction capability.",
+        "cost": "New state fields (definitionDigest, invalidatedBy) and scheduler handling for a new transition (terminal -> pending).",
+        "risk": "Re-opening a terminal task breaks the attempt-capability invariant if the generation is not bumped; the attempt counter and outputs must be cleared explicitly.",
+        "falsifiableAssertion": "A completed task's output is never lost or recomputed unless the new verb names it or a dependency of it; a fuzz run over random board mutations finds no attempt increment on untouched completed tasks."
+      },
+      "needsUserDecision": false
+    },
+    {
+      "id": "D2-F3",
+      "dimension": "失败恢复：reassign 是否丢掉已完成上游的结果",
+      "verdict": "local-better",
+      "upstreamEvidence": "packages/senpi-task/src/dag/fingerprint.ts:24-27 (dependencyData:\"filesystem-only\" is part of the pinned scheduler identity - downstream work consumes files, not upstream outputs); packages/omo-senpi/skills/mass-ulw/references/planning.md:105 (node outputs are stored and returned IN FULL, with no truncation, but the lead is told to quote/summarize rather than paste them)",
+      "localEvidence": "packages/mpd-agent-teams-plugin/lib/scheduler.js:36-84 (collectCompletedDependencyOutputs walks all completed ancestors in topological order), :101-121 (formatDependencyOutputs with per-item 2000-char and combined 12000-char caps, scheduler.js:18-20), :190-191 (the assignment prompt embeds 'Completed dependency results'), :372 (collected fresh at dispatch time from durable team.json); scheduler.js:71-98 (a failed review named as reasonTaskId is injected as labeled reason material with its unresolved findings)",
+      "upstreamVerdictNote": "Upstream deliberately does NOT pass node outputs into dependent prompts; correctness relies on the filesystem plus each node re-reading what it needs. Nothing is lost by a retry because nothing was carried in-band - but the lead must manually reduce/re-quote, and a node that under-writes its file report loses information (planning.md:30 mandates a bounded file report per node).",
+      "localVerdictNote": "Reassignment cannot lose completed upstream results: completed tasks are immutable (tools.js:1236) and their outputs are re-derived from the durable team record on every dispatch. Local additionally carries a bounded digest in-band (2000/12000 char caps) plus the failed-review-as-reason channel, which has no upstream equivalent.",
+      "optimizationCandidate": {
+        "what": "Keep local in-band dependency outputs; consider adding an explicit 'artifact path' field to task contracts so large results are referenced rather than inlined.",
+        "benefit": "Avoids the truncation cliff at 2000/12000 chars while keeping the in-band digest for orientation.",
+        "cost": "Small contract/tool schema addition; consumers must open the artifact.",
+        "risk": "Two sources of truth (inline digest vs artifact) can drift if the artifact is rewritten after dispatch.",
+        "falsifiableAssertion": "A dependent task whose ancestor output exceeds 12000 chars still receives a pointer to the full artifact and a bounded digest, and the printed prompt proves the truncation marker is present."
+      },
+      "needsUserDecision": false
+    },
+    {
+      "id": "D2-F4",
+      "dimension": "失败恢复：失败依赖永久钉死下游（本波实测缺陷）",
+      "verdict": "upstream-better",
+      "upstreamEvidence": "packages/senpi-task/src/dag/types.ts:19-30 (node states include 'skipped'); packages/senpi-task/src/dag/scheduler.ts:813-828 (applyDependentSkipCascade: a pending/blocked node whose dependency is terminal-but-not-completed transitions to 'skipped' instead of blocking) and :829-832 (isRunnable requires every dependency's state to be completed); packages/senpi-task/src/dag/node-retry.ts:63-108 (retryDagNodes returns skip-cascaded dependents to 'blocked' and re-enters the run; SKILL.md:78 'hands their skip-cascaded dependents back to the wave loop'); fingerprint.ts:24-27 (failurePolicy:\"continue-independent\" - a failure never blocks independent nodes)",
+      "localEvidence": "packages/mpd-agent-teams-plugin/lib/state.js:106-117 (unsatisfiedDependencies treats ONLY completed/cancelled as satisfied - failed and unknown block forever); state.js:122-129 (TASK_TRANSITIONS.failed = [] - failed is terminal); state.js:186-224 (resolveCancelledDependencyDeadlocks handles CANCELLED dependencies only); tools.js:1586 (update_task enforces transitionError, so failed->cancelled is rejected); tools.js:106-111 and :769 (edit_plan/requireStagedTeam is staged-only - post-approval dependency rewiring is impossible); tools.js:1425-1520 (update_task has no dependencies parameter); quality-gates.js:782-793 (canDeclareDelivery expects a follow-up repair for a failed quality task, but the repair is a NEW task and does not release the failed task's dependents); MEASURED live board /root/dshProj/my-power-dsh/.mpd/team/mpd-default-db53f0d4/team.json: t12 failed (attempt 3, deps []), t5 pending deps ['t12','t2','t3'], t6 pending deps ['t12','t5'], t7 pending deps ['t5','t6'], t9 pending deps ['t5','t8'] - four tasks pinned by one failure with no in-product escape",
+      "upstreamVerdictNote": "Upstream failure semantics are non-blocking by construction: dependents are skipped (not pending-stuck), retry revives them, and the run settles with a countable outcome instead of hanging.",
+      "localVerdictNote": "Local has no equivalent: failed is a dead end for the whole downstream cone. The only remedies today are reassign (retry the SAME failed task, which works only if it can actually pass) or deleting the team. This is the concrete defect the task asked to flag as 'fix in this wave'.",
+      "optimizationCandidate": {
+        "what": "Give a failed dependency an explicit release path. Minimal shape: on a failed task, cascade its PENDING dependents to 'cancelled' (mirroring the existing cancelled-dependency cascade, state.js:186-224) OR add a captain verb 'release dependents of a failed task' that rewrites each pending dependent's dependency list to drop the failed id and records why. Either way the cascade must run on the same dispatch path as resolveCancelledDependencyDeadlocks (scheduler.js:291-295).",
+        "benefit": "Unblocks the real board (t5/t6/t7/t9 today), removes a class of silent hangs, and makes canDeclareDelivery's 'failed without a follow-up repair' flow actually reachable.",
+        "cost": "Small: one state helper + one call site + unit tests; no schema change if the cancelled-cascade variant is chosen.",
+        "risk": "Silently cancelling downstream work can hide a failure; the reason string and a status-visible blocker must make the cascade loud, and the captain must be able to re-create the released tasks.",
+        "falsifiableAssertion": "With a task board where A failed and B depends only on A, one dispatch pass leaves B cancelled (or released-and-ready with the failed id removed), never pending; the same board with A completed leaves B claimable. Board t5/t6/t7/t9 becomes deliverable or explicitly cancelled, and canDeclareDelivery names the dangling failure instead of the board hanging."
+      },
+      "needsUserDecision": false
+    },
+    {
+      "id": "D3-F1",
+      "dimension": "幂等与去重：run key + fingerprint vs team/task id",
+      "verdict": "upstream-better",
+      "upstreamEvidence": "packages/senpi-task/src/dag/manager.ts:336-355 (same parentSessionId+runKey+definitionFingerprint returns {reused:true} and schedules nothing; a different definition under the same key is refused with definition_conflict); dag/store.ts:237-280 and :314-319 (the key record path is a hash of parentSessionId+runKey, guarded by withKeyLock so concurrent same-key starts cannot fork); docs/reference/mass-ulw-protocol.md:52-56 (dag.run.created carries runKey+definitionFingerprint; dag.node.reused carries sourceRunId)",
+      "localEvidence": "packages/mpd-agent-teams-plugin/lib/session-start.js:96-110 (availableTeamId: sanitized base name when free, else <base>-<sha256(captainSessionId)[0:8]>); state.js:63-98 (sanitizeKey/MAX_KEY_LENGTH); tools.js:546-... (agent_teams_create; one active team per captain enforced by findTeamByParticipant in session-start.js:128-132); task ids are per-team sequence numbers t<N> (tools.js:1151-1176)",
+      "upstreamVerdictNote": "Idempotency is keyed on the WORK DEFINITION: identical intent cannot produce a second run, and divergent intent under the same key fails loudly instead of forking.",
+      "localVerdictNote": "Local is idempotent only inside one session (one active team per captain, policy settles once). Across sessions the same intent produces a fresh team id (suffix digest) and a fresh task namespace, so nothing deduplicates and nothing is reused - and there is no equivalent of 'this team already covers this work'.",
+      "optimizationCandidate": {
+        "what": "Decide whether teams need cross-session identity at all. If yes, add an optional explicit team key to agent_teams_create (reuse an existing non-archived team with the same key) - do not adopt definition fingerprints for this.",
+        "benefit": "Prevents duplicate near-identical teams and gives a stable handle for resuming work.",
+        "cost": "Key semantics + conflict rules must be specified; the auto-provisioned default team ids would need a rule.",
+        "risk": "A key collision could attach new work to an old team with stale members/state; without fingerprints there is no definition-conflict detection.",
+        "falsifiableAssertion": "Creating two teams with the same explicit key in the same workspace yields one team record and a reuse notice; a different key yields two."
+      },
+      "needsUserDecision": true
+    },
+    {
+      "id": "D3-F2",
+      "dimension": "幂等与去重：自动建队的残留（实测）",
+      "verdict": "upstream-better",
+      "upstreamEvidence": "packages/senpi-task/src/dag/manager.ts:336-355 (reuse instead of fork); dag/store.ts:121-140 (key records + retention pruning - 'a key whose run record is gone is stale, not a conflict'); docs/reference/mass-ulw-protocol.md:140-146 (runs are capped at 256 in the list window; terminal runs never earn a heartbeat)",
+      "localEvidence": "MEASURED /root/dshProj/my-power-dsh/.mpd/team/: 25 mpd-default* directories. Breakdown by (phase, tasks, approvedAt): ('staged',0,false)=22, ('staged',8,false)=1, ('running',10,true)=1, ('running',32,true)=1. session-start.js:241-244 (settledFor: the policy never re-provisions and never recreates a deleted team) and :96-110 (each new session takes a fresh suffixed id) plus :174-187 (provisionedNotice tells the captain to archive the team if it does not fit)",
+      "upstreamVerdictNote": "Upstream never accumulates orphan runs for the same key, and its retention/window rules make stale records visible and prunable; failing runs settle (failed) and earn no heartbeat.",
+      "localVerdictNote": "Local has no reclamation: the policy deliberately never touches a team after provisioning, so an unused staged team stays on disk forever. 22 of the 25 records are staged with zero tasks - provisioned, never used, never cleaned. This is a direct cost of the always-on default and it is workspace-visible (the in-use gate for workmate rename/delete scans .mpd/team).",
+      "optimizationCandidate": {
+        "what": "Add a retention rule for auto-provisioned default teams (e.g. a staged default team with 0 tasks and no captain activity after N hours is archived, not deleted) and/or make the policy not provision at all.",
+        "benefit": "Bounds workspace state and stops the .mpd/team scan from growing without limit.",
+        "cost": "A retention sweep needs a safe trigger (session start or an explicit tool) and must never run in a QA sandbox by accident.",
+        "risk": "Archiving a team a user was about to approve would be destructive-looking; archive (recoverable) must be used, never delete.",
+        "falsifiableAssertion": "After a sweep, no staged team older than the threshold with zero tasks remains unarchived, and every archived team is still recoverable from .mpd/team/archive/."
+      },
+      "needsUserDecision": true
+    },
+    {
+      "id": "D4-F1",
+      "dimension": "可观测性：journal/heartbeat/activity vs Web 面板 + task 状态",
+      "verdict": "upstream-better",
+      "upstreamEvidence": "packages/senpi-task/src/dag/types.ts:251-269 (17 journaled event types); docs/reference/mass-ulw-protocol.md:28-70 (event envelope with runId/seq/at/lane and the 17 payloads), :88-140 (four push channels: omo.dag.event sequenced+WAL-persisted; omo.dag.heartbeat every 15s carrying headSeq; omo.dag.activity coalesced 150ms with currentTool/lastAssistantLine/turns/toolCalls; omo.dag.updated a debounced wholesale snapshot), :205-240 (history/subscribe with a gap-free catch-up algorithm and overflow recovery); packages/omo-senpi/skills/mass-ulw/SKILL.md:93-95 (TUI status widget + /dag detail view)",
+      "localEvidence": "packages/mpd-agent-teams-plugin/lib/snapshot.js:40 (assembleTeamSnapshot), :128 (collectTeamsActivity), :165 (collectArchivedTeamsActivity); packages/mpd-agent-teams-plugin/lib/web-routes.js:1-20 (authenticated web routes over workspace team state); tools.js:1787-1875 (agent_teams_status: team phase, halted/escalated, loop_state, deliverable, coverage matrix, delivery blockers, mailbox unread counts with latest 200 chars, per-task status); scheduler.js:462-489 (member status derived from agent/status idle|running)",
+      "upstreamVerdictNote": "Upstream can answer 'which node is stuck or drifting RIGHT NOW' from durable, sequenced evidence: heartbeat liveness, per-node activity (last assistant line, turns, tool calls), and a per-node transition ledger with last_error.",
+      "localVerdictNote": "Local answers 'what is the board state' from a disk snapshot plus coarse member status. There is no heartbeat, no sequence number, no per-member turn/tool telemetry, and NO per-task last_error (only task.output), so a member that reports 'working' while looping is invisible except through the session transcript. A hung dispatch is only detectable by absence of state change.",
+      "optimizationCandidate": {
+        "what": "Add a minimal liveness surface to the local board: per-task lastTransitionAt + lastError, and a member activity record (turns/last line) refreshed on member status edges, exposed through agent_teams_status and the Web panel.",
+        "benefit": "Makes stalls and drift detectable without reading transcripts; enables a future watchdog.",
+        "cost": "State-schema addition on member/task plus UI plumbing; the scheduler already observes the edges needed to fill it.",
+        "risk": "Adding a second authoritative source for member state can disagree with the live Agent registry; keep the panel read-only and derived.",
+        "falsifiableAssertion": "With a member deliberately holding a turn open, agent_teams_status shows a stale lastTransitionAt/lastError for its task, while a normally progressing member's values advance."
+      },
+      "needsUserDecision": false
+    },
+    {
+      "id": "D4-F2",
+      "dimension": "可观测性：本地会话事件账本在本 harness 上被静默丢弃",
+      "verdict": "upstream-better",
+      "upstreamEvidence": "docs/reference/mass-ulw-protocol.md:150-166 (journaled events reach omo.dag.event only AFTER the WAL append and checkpoint replace both succeed; no pre-durability emission path); packages/senpi-task/src/dag/journal.ts (WAL + checkpoint replace pipeline)",
+      "localEvidence": "packages/mpd-agent-teams-plugin/lib/events.js:33-38 (appendTeamEvent: if the event type is not in the harness's KNOWN_SESSION_EVENT_TYPES it is OMITTED and only debug-logged; the comment states 'Disk state remains the authoritative source for the activity panel'); the plugin emits at least member-added, task-created, task-updated, team-created, member-removed, team-resumed, team-deleted, team-halted, plan-discarded, message-sent; the INSTALLED harness set /root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-session/lib/types/known-event-types.js:20-78 contains ZERO agent-teams/* entries (the file is GENERATED from the harness repo and states 'Downstream (out-of-repo) plugin events are outside this list by construction')",
+      "upstreamVerdictNote": "Upstream's ledger is generated, shipped and consumed by the same project, so the event vocabulary can never be silently unavailable.",
+      "localVerdictNote": "MEASURED on this harness build: every agent-teams/* session event is omitted at emit time, so the Conversation-Node fold and any log-derived monitoring silently see nothing. The plugin degrades by design (disk state remains authoritative), but the intended seq-able ledger does not exist end-to-end.",
+      "optimizationCandidate": {
+        "what": "Either (a) keep disk state authoritative and stop claiming a session-event ledger (document it), or (b) write team events with the harness's `ignorable` envelope marker so an out-of-vocabulary event is retained by the harness read path, then verify retention end-to-end with a mounted boot.",
+        "benefit": "Makes monitoring trustworthy and removes a silent-degradation path.",
+        "cost": "Option (b) needs a harness seam confirmation (the ignorable writer surface) and a QA case that reads back the persisted log.",
+        "risk": "If the marker is misused, the persistence read path may refuse a whole log; this must be a mounted-boot-verified change, never a --dump-config claim.",
+        "falsifiableAssertion": "After a team mutation in an isolated DSH_HOME, the persisted session log contains the agent-teams/* record and a fresh read reconstructs the session without a vocabulary error; the current build demonstrably lacks such a record.",
+        "uncertain": "Whether the installed harness exposes the ignorable writer surface for out-of-repo plugins - the known-event-types header says the marker IS the compatibility mechanism, but no writer API was exercised in this read-only pass."
+      },
+      "needsUserDecision": false
+    },
+    {
+      "id": "D5-F1",
+      "dimension": "依赖语义：纯排序 + 文件系统 vs 依赖输出 + 契约/理由注入",
+      "verdict": "tradeoff",
+      "upstreamEvidence": "packages/senpi-task/src/dag/fingerprint.ts:24-27 (dependencyData:\"filesystem-only\" is pinned into the scheduler identity - dependency data travels through the filesystem, not the prompt); packages/omo-senpi/skills/mass-ulw/references/planning.md:64 (capacity model: per-model slot limiter default 5, 64 nodes/run, 16 runs/session) and :105 (outputs stored in full, no truncation) and :30 (each node writes ONE bounded file report <= 5k tokens to a ledger path); SKILL.md:24 (the verification wave produces the evidence run success criteria name)",
+      "localEvidence": "packages/mpd-agent-teams-plugin/lib/scheduler.js:36-84/101-121 (topologically ordered completed-ancestor outputs, per-item 2000 and combined 12000 char caps), :190-191 (embedded in the assignment prompt), :152-203 (the full task contract - kind/objective/inScope/outOfScope/acceptance/verify - is rendered into the member's prompt), :71-98 (reasonTaskId injects a failed review's output + unresolved findings); packages/mpd-agent-teams-plugin/lib/quality-gates.js:769-812 (canDeclareDelivery: verdict=pass for review/requirements, follow-up repair for failed quality tasks, no completed implementation without a passing review, changed paths audited against inScope/outOfScope)",
+      "upstreamVerdictNote": "Filesystem-only dependencies avoid prompt bloat and stale copies, and the pinned fingerprint makes the choice explicit and stable; the cost is that the lead must curate file reports and nothing is passed automatically.",
+      "localVerdictNote": "Local passes bounded digests automatically (orientation without bloat) and additionally encodes a machine-checked delivery contract (verdict/acceptance/verify/changedPaths/coverage) that upstream expresses only as planning prose plus goal criteria.",
+      "optimizationCandidate": {
+        "what": "Keep both: retain the in-band digest and the delivery gate, and add the upstream discipline that each implementation task names a bounded artifact path (planning.md:30 analogue).",
+        "benefit": "Combines automatic orientation with filesystem-grade evidence; prevents 'the digest is all that survived' outcomes.",
+        "cost": "One optional contract field + a prompt line; no scheduler change.",
+        "risk": "Task authors may treat the artifact path as optional and keep inlining large outputs until the 12000-char cap silently truncates them.",
+        "falsifiableAssertion": "For every implementation task in a new board, either a bounded artifact path is present or the prompt shows the dependency digest was truncated - never a silent full-output drop."
+      },
+      "needsUserDecision": false
+    },
+    {
+      "id": "D6-F1",
+      "dimension": "上限与背压",
+      "verdict": "upstream-better",
+      "upstreamEvidence": "packages/omo-senpi/skills/mass-ulw/references/planning.md:64 (per-model slot limiter default 5 concurrent, FIFO queue past the limit; caps 64 nodes/run and 16 runs/session; task.default_concurrency / task.dag.max_nodes_per_run / task.dag.max_runs_per_session are the knobs) and :95 (concurrent runs under max_runs_per_session); packages/senpi-task/src/dag/scheduler.ts:603 (a node with no free slot and no task that can free one fails with residency_denied instead of hanging); packages/senpi-task/src/lifecycle/residency.ts:18-39 (residency admission against max_children, with an ordered denial queue); packages/senpi-task/src/dag/recovery.ts:33-35 (MAX_RECOVERY_READMISSIONS=3); packages/omo-opencode/src/config/AGENTS.md:58-80 (the separate team_mode subsystem adds max_parallel_members/max_members + per-message/per-recipient byte caps + wall-clock + member-turn caps)",
+      "localEvidence": "packages/mpd-bundle/cordis.patch.yml:207-208 (memberMaxDepth: 1, maxMembers: 16); scheduler.js:250-254 (kickTeam loops over EVERY member - no slot limiter); scheduler.js:225-240 (per-member serialization); state.js:106-117 + tools.js:161-166/1240-1256 (one unfinished task per member, one captain takeover); scheduler.js:18-20 (dependency-output caps 2000/12000); members.js:27 (persona protocol cap 400 chars); members.js:29-30 (workmate persona 8KB / memory 6KB)",
+      "upstreamVerdictNote": "Upstream has an explicit, configurable capacity model plus a failure mode when capacity cannot be honoured, and bounds recovery re-admissions.",
+      "localVerdictNote": "Local has a member ceiling and per-member serialization but NO wall-clock cap, NO per-run node cap, NO message byte cap and NO explicit concurrency limiter; backpressure is left to the harness's own subagent residency. With 16 members all becoming idle at once, kickTeam dispatches up to 16 assignment deliveries in a loop (each awaited in sequence per member queue) with nothing that says 'slow down'.",
+      "optimizationCandidate": {
+        "what": "Add a concurrency/slot knob for the board (e.g. maxConcurrentMembers, default 4) honoured by kickTeam, plus an optional board wall-clock or max-attempts bound.",
+        "benefit": "Prevents a 16-member fan-out from saturating the model route and gives an operator a single knob.",
+        "cost": "Scheduler change (queue members instead of kicking all) + config plumbing; interacts with the per-member parked-attempt logic.",
+        "risk": "Queueing members can starve a member whose task is blocked but whose mailbox has guidance; the mailbox-first branch (scheduler.js:271-282) must stay ahead of the slot check.",
+        "falsifiableAssertion": "With maxConcurrentMembers=2 and 5 ready tasks, exactly 2 members leave idle within one dispatch pass and the remaining 3 are dispatched only as slots free; no more than 2 are ever 'working' simultaneously."
+      },
+      "needsUserDecision": true
+    },
+    {
+      "id": "D7-F1",
+      "dimension": "人会话与人工介入",
+      "verdict": "tradeoff",
+      "upstreamEvidence": "packages/omo-senpi/skills/mass-ulw/SKILL.md:48-64 (lifecycle driven from an eval cell: attach/snapshot/wait/cancel; start returns at once and wakes the session on completions) and :66-86 (intervention verbs retry/send/amend, plus pause/resume across restart); SKILL.md:90 (supervision: check each active node against its own prompt's SCOPE on every mid-run wake) and :95 (/dag view); packages/omo-opencode/src/features/team-mode/AGENTS.md:7 (team mode, the sibling feature, is OFF by default)",
+      "localEvidence": "packages/mpd-agent-teams-plugin/lib/tools.js:546-714 (agent_teams_create stages a plan with approval=required; members are roster rows and nothing spawns), :839-870 (agent_teams_approve is the human gate), :715-838 (agent_teams_edit_plan revises the staged plan atomically), :1907-1959 (agent_teams_resume), :1960-... (agent_teams_delete + delivery gate), :1861-1875 (canDeclareDelivery surfaced in agent_teams_status), quality-gates.js:769-812 (delivery blockers), presets/mpd/agent.cordis.yml:104-114 (REQUIREMENTS CONFERENCE before the DAG is written)",
+      "upstreamVerdictNote": "Upstream intervenes mid-run without any approval round-trip: steer a running child, revive a finished one, retry one node, amend the definition - and a human watches through /dag.",
+      "localVerdictNote": "Local buys human control and machine-checked delivery: a staged plan the user reviews in the Web panel, a requirements conference before the DAG, a quality contract per task kind, and canDeclareDelivery listing blockers (no completed implementation without a passing review, failed quality task without a repair, unaudited changed path). Upstream has none of these as executable gates - its verification wave is a planning convention.",
+      "optimizationCandidate": {
+        "what": "Keep the staged approval + delivery gate; add only the missing mid-run verb (post-approval re-plan, see D2-F1/F4) rather than removing the gate.",
+        "benefit": "Retains the strongest local property (a human-approved, machine-checked plan) while removing the 'cannot correct mid-flight' limitation.",
+        "cost": "See D2-F1 - the amend/invalidation work is the cost.",
+        "risk": "Two gates (approval + delivery) can both block; the delivery gate must not become the only way to learn about a deadlocked dependency (see D2-F4).",
+        "falsifiableAssertion": "A board with a failing review can be corrected without deleting the team: the repair and its re-review run, the delivery gate reports ok=true, and the approval record for the original plan is still present."
+      },
+      "needsUserDecision": true
+    }
+  ],
+  "recommendedOptimizations": [
+    {
+      "order": 1,
+      "wave": "this-wave",
+      "id": "OPT-1",
+      "title": "修复失败依赖永久钉死下游（本波实测缺陷）",
+      "findingRefs": ["D2-F4"],
+      "change": "Give a failed task an explicit release path for its PENDING dependents: cascade-cancel them on the dispatch path (mirroring resolveCancelledDependencyDeadlocks) or add a captain verb that removes the failed id from each pending dependent's dependency list with a recorded reason.",
+      "benefit": "Unblocks t5/t6/t7/t9 today; removes a whole class of silent hangs; makes the existing 'failed without a follow-up repair' delivery blocker reachable.",
+      "cost": "Low: one state helper, one call site in scheduler kickMember (next to scheduler.js:291-295), unit tests.",
+      "risk": "Must be loud (reason string + status-visible blocker) so a cascade cannot hide a real failure.",
+      "falsifiableAssertion": "Board {A failed, B depends only on A}: one dispatch pass leaves B cancelled or ready-with-A-removed, never pending; with A completed, B is claimable."
+    },
+    {
+      "order": 2,
+      "wave": "this-wave",
+      "id": "OPT-2",
+      "title": "让规模判断先于建队（顺序缺陷）",
+      "findingRefs": ["D1-F2", "D3-F2"],
+      "change": "Stop unconditional session-start provisioning; make the trigger explicit (keyword/opt-in or the size judgment) and only then create the team. Retention rule for auto-provisioned teams with 0 tasks.",
+      "benefit": "Makes 'agent-teams 不再默认' mechanically true, removes the ordering defect and the 22-team residue.",
+      "cost": "The trigger must be frozen by requirements; the mechanical guarantee is intentionally given up.",
+      "risk": "A prose-only trigger can silently regress to solo sessions (exactly what the mechanical policy was built to prevent).",
+      "falsifiableAssertion": "Trivial headless session creates no .mpd/team record; triggered session creates exactly one staged team."
+    },
+    {
+      "order": 3,
+      "wave": "next-wave",
+      "id": "OPT-3",
+      "title": "批准后最小化重规划（amend 语义的本地化）",
+      "findingRefs": ["D2-F1", "D2-F2", "D7-F1"],
+      "change": "Add a post-approval re-plan verb: a task definition digest + deliberate invalidation of one task and its transitive dependents; unchanged completed tasks keep their outputs. Do NOT make completed tasks implicitly re-runnable.",
+      "benefit": "One bad task no longer costs the whole graph; mid-run correction without team deletion.",
+      "cost": "Highest on this list: new persisted fields, a terminal->pending transition, scheduler handling, tool surface, tests.",
+      "risk": "A half-correct digest invalidates too much (wasted re-runs) or too little (stale results presented as fresh).",
+      "falsifiableAssertion": "Editing one task's objective invalidates exactly that task plus transitive dependents; non-descendant completed tasks keep their attempt numbers and outputs."
+    },
+    {
+      "order": 4,
+      "wave": "next-wave",
+      "id": "OPT-4",
+      "title": "可执行的停滞探测（heartbeat/activity/lastError）",
+      "findingRefs": ["D4-F1", "D4-F2"],
+      "change": "Add per-task lastTransitionAt/lastError and a member activity record refreshed on status edges, exposed through agent_teams_status; resolve the session-event vocabulary question (ignorable marker or documented disk-only).",
+      "benefit": "Stalls and drift become visible without reading transcripts; enables a watchdog later.",
+      "cost": "Medium: state schema + status/web plumbing; the event side needs a mounted-boot proof.",
+      "risk": "Derived member activity can disagree with the live Agent registry; keep it read-only and derived.",
+      "falsifiableAssertion": "A deliberately stalled member shows stale lastTransitionAt/lastError while a progressing member's values advance; a persisted agent-teams event is readable back from the session log (or the docs state disk-only)."
+    },
+    {
+      "order": 5,
+      "wave": "next-wave",
+      "id": "OPT-5",
+      "title": "背压：并发槽位 + 板级上限",
+      "findingRefs": ["D6-F1"],
+      "change": "Add maxConcurrentMembers (default 4) honoured by kickTeam, plus optional wall-clock/max-attempt bounds. Keep the mailbox-first branch ahead of the slot check.",
+      "benefit": "Protects the model route from a 16-member simultaneous fan-out; one knob for operators.",
+      "cost": "Medium: scheduler queueing + config plumbing.",
+      "risk": "A queued member with unread guidance could be starved if the mailbox branch is ordered after the slot check.",
+      "falsifiableAssertion": "maxConcurrentMembers=2 with 5 ready tasks yields at most 2 'working' members at any time and dispatches the remaining 3 as slots free."
+    },
+    {
+      "order": 6,
+      "wave": "next-wave",
+      "id": "OPT-6",
+      "title": "跨会话团队身份（可选）",
+      "findingRefs": ["D3-F1"],
+      "change": "Optional explicit team key on agent_teams_create that reuses an existing non-archived team; do not adopt definition fingerprints for cross-session dedupe.",
+      "benefit": "Prevents duplicate near-identical teams; gives a stable handle to resume work.",
+      "cost": "Low-medium: key semantics + conflict rules.",
+      "risk": "A collision could attach new work to a stale team.",
+      "falsifiableAssertion": "Same key twice yields one team record with a reuse notice; different keys yield two."
+    },
+    {
+      "order": 7,
+      "wave": "next-wave",
+      "id": "OPT-7",
+      "title": "依赖产物：契约里的 bounded artifact path",
+      "findingRefs": ["D2-F3", "D5-F1"],
+      "change": "Optional artifact path per implementation/verification task; prompt includes the digest plus the path.",
+      "benefit": "Avoids the 2000/12000-char truncation cliff while keeping in-band orientation.",
+      "cost": "Low: one optional contract field + a prompt line.",
+      "risk": "Two sources of truth if the artifact is rewritten after dispatch.",
+      "falsifiableAssertion": "An ancestor output over 12000 chars still reaches the dependent as a bounded digest plus a pointer, with the truncation marker visible in the prompt."
+    }
+  ],
+  "explicitlyOutOfScopeThisWave": [
+    "Porting the upstream DAG engine (waves/journal/WAL/leases/RPC channels) - the local board is a different execution model (durable members, not per-node child tasks) and a port would replace the adopted plugin's architecture.",
+    "Adopting definitionFingerprint as the identity mechanism - it is pinned to the upstream scheduler semantics (waveAdmission/failurePolicy/dependencyData) and cannot be transplanted without replacing the engine.",
+    "Team-mode caps (max_parallel_members/message bytes/wall clock) - they belong to the sibling team_mode subsystem, not the DAG engine; only the local board's own caps are in scope here.",
+    "Everything under packages/**, presets/**, scripts/**, skills/**, docs/**, AGENTS.md, VENDOR_LOCK.json - read-only for this task."
+  ],
+  "uncertain": [
+    {
+      "what": "Whether the installed harness exposes an `ignorable` writer so an out-of-repo plugin event can be persisted (D4-F2 option b).",
+      "why": "The harness's known-event-types header names the ignorable envelope marker as the compatibility mechanism, but no writer API was exercised in this read-only pass and the Set contains zero agent-teams entries.",
+      "howToResolve": "A mounted-boot QA case in an isolated DSH_HOME that emits one agent-teams event and reads the persisted session log back."
+    },
+    {
+      "what": "Whether upstream's dependencyData:\"filesystem-only\" is a deliberate design or an accepted limitation.",
+      "why": "The protocol and skill documents state the behaviour and the fingerprint pins it, but no rationale document was found in the read scope.",
+      "howToResolve": "Search upstream docs/notes for the scheduler-identity decision record; not required for the local decision."
+    },
+    {
+      "what": "The root cause of t12's three consecutive failures (why the Senior Engineer could not complete it) is outside this task's read scope.",
+      "why": "t14 compares mechanisms; the incident is used only as evidence that the failed-dependency deadlock is reachable and was reached.",
+      "howToResolve": "Read the t12 task output in .mpd/team/mpd-default-db53f0d4/team.json (available; not needed for the comparison)."
+    }
+  ]
+}

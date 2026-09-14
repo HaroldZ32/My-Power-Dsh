@@ -1,0 +1,216 @@
+{
+  "schema": "mpd-omo-align-review/1",
+  "task": "t18 (replacement for t7)",
+  "kind": "review",
+  "round": 1,
+  "reviewer": "Reviewer",
+  "attemptId": "1262b128-2928-46bf-a0df-a5b5b33040f1",
+  "reviewedTasks": ["t15 (implementation)", "t17 (verification)"],
+  "reviewedAt": "2026-09-13T14:49Z",
+  "verdict": "needs_revision",
+  "verdictScope": "The three user-facing goal sets are functionally delivered and I reproduced the core claims myself on a settled revision: the two-sided complexity gate PASSES (my own run, exit 0, 3/3 simple silent + 3/3 complex staged), OPT-1's claim predicate is fixed and reverse-controlled, configPlane defaults+guards hold, and manual entry names are unchanged. I still fail this review because (a) the gate's signal C does NOT implement the FROZEN contract's C rule and demonstrably over-triggers (F1), (b) the shipped UI surface still reports a failed-dependency dependent as `blocked`, contradicting OPT-1 (F2), and (c) the t17 delivery artifact `evidence/omo-align/verification/result.json` is in an inconsistent state and its mandated verify command reports `needs_revision` (F3). None of those is in my inScope to fix (the wave's single writer is t15), so they go back to the captain/writer.",
+  "revision": {
+    "headAtReview": "c91f26621d11b58911d1d7a0224d06267542363c",
+    "branch": "dev",
+    "workingTreeAtReview": "only docs/** (4 modified + 2 new ledger docs) and evidence/** untracked; no packages/presets/scripts/skills source file dirty",
+    "pinnedRevisionHashesConfirmed": {
+      "packages/mpd-agent-teams-plugin/lib/session-start.js": "1f0203c69e5e904d878774e1d5d1e9d646de070b8e3fa2908ce77f85b60aefc0",
+      "packages/mpd-agent-teams-plugin/lib/tools.js": "026e2ffca86e1254005254144d4c5f4f38dce6c538777f98b0e8217f92db2dcb",
+      "packages/mpd-agent-teams-plugin/lib/state.js": "eae4061415a05f4b937f2975b59cc2c4a044dd3be3b2965425f0c93369da10a8",
+      "skills/dsh-qa/scripts/session-start-team.mjs": "4e37e5d56ea170d493ad2d305c92ebf669fa960495534425fa2a7fc9394d4ed9"
+    },
+    "note": "I re-measured the four hashes above at review time; all match the hashes t17 pinned and the files I exercised were byte-identical to the ones t17 measured."
+  },
+  "samiReproductions": [
+    {
+      "assertion": "A1 gate two-sided (frozen 3+3 prompts)",
+      "how": "I ran the mandated case myself, not a transcription: `node skills/dsh-qa/scripts/session-start-team.mjs` (exit 0), fresh run at 2026-09-13T14-46-20.917Z.",
+      "result": "ok=true; simpleTeams [0,0,0] / simpleNotices [false,false,false]; complexTeams [1,1,1] / complexNotices [true,true,true]; each complex side phase=staged profile=mpd members=11 spawnedMembers=0; settled rev c91f266, gate sha256 1f0203c6…",
+      "verdict": "reproduced"
+    },
+    {
+      "assertion": "A6 OPT-1 failed dependency is non-blocking (predicate used by claim + scheduler)",
+      "how": "Own driver importing the real `dependencyStates`/`unsatisfiedDependencies`/`taskVisualState` from lib/state.js and evaluating a 9-case status matrix.",
+      "result": "failed dep -> blocking=[] failed=[A] claimable=true; pending/claimed/in_progress dep -> blocking=[A] claimable=false; cancelled -> non-blocking; unknown id -> blocking; mixed failed+pending -> blocked by the pending only. Reverse control (completed dep -> claimable) holds. See F2 for the UI inconsistency this same matrix exposed.",
+      "verdict": "reproduced (predicate correct; UI surface wrong)"
+    },
+    {
+      "assertion": "A8 mandated gates",
+      "how": "Own run of the two-sided case (exit 0) plus the gates t17 preserved under verification/raw/gates/*.log.",
+      "result": "session-start-team PASS; verify-vendor PASS (skills 329 files, treeSha OK); patch-agent-teams-fixes --check clean (19 regions / 5 files); bundle-lifecycle PASS; preset-conformance PASS.",
+      "verdict": "reproduced"
+    },
+    {
+      "assertion": "A9 configPlane defaults + min guards + absent-safety",
+      "how": "Instantiated the real plugin `Config` from lib/index.js with `{}` and with three invalid inputs.",
+      "result": "defaults exactly maxMembers 16 / maxParallelMembers 8 / maxMessagesPerRun 10000 / maxWallClockMinutes 120 / maxMemberTurns 500 / messagePayloadMaxBytes 32768 / recipientUnreadMaxBytes 262144 / mailboxPollIntervalMs 3000 / enforcement enforce / memberMaxDepth 1, policy {mode off, autoRoute true}. Negative controls REJECTED: messagePayloadMaxBytes 10, enforcement 'bogus', maxMembers 0. NOTE: the schema's own stateDir default is '.agent-teams' (F5).",
+      "verdict": "reproduced"
+    }
+  ],
+  "captainAdjudications": {
+    "schema": "mpd-review-adjudications/1",
+    "addedAt": "2026-09-13T15:05Z",
+    "addedBy": "captain (instruction to Reviewer); additive annotation only",
+    "method": "ADDITIVE ONLY, mirroring t17's captainAdjudications/A8 style: the `verdict` field is UNCHANGED (`needs_revision`), no acceptanceResult/commandResult/finding text was rewritten, and the append is recorded in the same file for the ledger and for the next review.",
+    "verdictUnchanged": "needs_revision",
+    "items": {
+      "F3": "closed-by-rebuild. The t17 deliverable was reconstructed at 14:56:48Z: `evidence/omo-align/verification/result.json` = 45,244 B / sha256 90b76b100aaf130b92ceecac2474127f6ac64b5a26b76d459ce74fe358ae9db2 / verdict=pass, byte-identical to the immutable copy `evidence/omo-align/verification/raw/t17-report-restored.json`. I re-verified it read-only and independently: the hash was stable at 14:58Z / 15:00Z / 15:02Z with mtime frozen at 22:56:48; keys 26 with assertions[10] / acceptanceResults[8] / findings[9]; its pinnedRevisionHashes agree with my own measurements (session-start.js 1f0203c6…, index.js c1b170e8…, state.js eae40614…, tools.js 026e2ffc…, cordis.patch.yml 9ee18997…); `run.mjs` now writes raw/run-<stamp>.json|output.log and never the delivered paths, and its deduped set-equality comparison re-derived offline gives missing [] / extra [] / setEqual true; the grep that returned zero feature hits during my review now resolves. The incident and the process lesson are recorded in evidence/omo-align/verification/INCIDENT-overwritten-report.md. F3's operational claim (verdict=pass not re-derivable from its named path) no longer holds.",
+      "F1": "accepted-calibration. The 2-of-3 signal-C form is MAINTAINED; the measured false positive ('Check the test, build the package, verify the output.' => [C2,C3] => team) is recorded as a known, accepted cost; the frozen prompts are unchanged so the already-produced two-sided evidence stays valid. NOTE: this annotation does NOT rewrite the historical fact recorded in F1 above (that the shipped predicate let C1/C2/C3 count as independent top-level signals, so C's own >=2-of-3 majority was never enforced). That fact stays true as recorded; it is now also assigned to t24 (repair-round-2) to tighten to 'C fires only when >=2 of C1/C2/C3 hold'.",
+      "F2": "fix-task t22 (R3: residual reclamation automation + F2 view consistency + F6 stateDir default). This is the one still-live product gap in this report: the Web panel path (snapshot.js -> taskVisualState) renders a claimable failed-dependency dependent as `blocked` while the claim predicate says ready.",
+      "F4": "disposed. Point (a) accepted: the reverse control has four real-run boots (three in the mandated case's simple side plus one in Lead's independent driver; the offline probe is an additional, not sole, falsifier). Point (b) upheld and DOWNGRADED in writing to source-level + predicate-level evidence, not dispatch-level: nextReadyTask is module-private (scheduler.js exports only DEPENDENCY_OUTPUT_MAX_CHARS, DEPENDENCY_OUTPUTS_TOTAL_MAX_CHARS, collectCompletedDependencyOutputs, formatDependencyOutputs, assignmentPrompt, installTeamScheduler), no test outside scheduler.js references it, and the inline copy still uses the pre-OPT-1 rule; a true dispatch-level assertion needs a product change and is handed to t22.",
+      "F6": "folded-into-t22 (schema stateDir default '.agent-teams' vs frozen '.mpd/team').",
+      "F5": "known/low, no action (the packaged two-sided case does not import sandboxWorkspace/assertSessionsSandboxed; recorded in residualRisks).",
+      "F7": "known/low, no action (bundle-lifecycle is not concurrency-safe; red log and isolated green rerun both preserved under verification/raw/gates).",
+      "F8": "known/low, no action (no model turn is covered in this environment; the gate evidence stays valid because agent/pre-step runs before the LLM call).",
+      "A8": "accepted-with-exemption (user decision: keep R2 on dev and record the exemption; t15 was already terminal and the plugin refuses completed -> claimed). The historical `verdict: failed` field in t17's A8 entry is retained, not overwritten.",
+      "A4": "owned by t21 (functional-surface per-row alignment table, recombined from t4 evidence)."
+    },
+    "nextReview": "t27 (post-repair re-review, assigned to Reviewer; depends on t22 and t26) is the clean closing verdict for this wave; it reviews F1-tightening, F2 consistency, and R4 forced-entry, plus the non-regression gate set."
+  },
+  "acceptanceResults": [
+    {
+      "criterion": "复核验证证据是否真的支撑结论：抽查复现 t17 的至少 3 条断言（自己动手跑），指出任何恒真断言或证据与结论不符之处",
+      "status": "passed",
+      "evidence": "I reproduced four claims myself (samiReproductions A1/A6/A8/A9 above): the two-sided QA case exit 0 on the settled revision c91f266 with the same pinned gate hash, the OPT-1 predicate matrix with reverse control, the mandated gates, and configPlane defaults+guards with negative controls. Two 'evidence does not support the conclusion' defects are filed: F3 (the t17 deliverable `evidence/omo-align/verification/result.json` is now a different, internally-consistent-but-not-self-consistent artifact whose printed verdict is `needs_revision`) and F4 (S3's assertion is source-substring + an inline re-implementation of the predicate, not a run of the real resume path)."
+    },
+    {
+      "criterion": "核对仓库绑定规范：适配器唯一接触面、状态只落工作区 .mpd/team、工具名与斜杠指令名未变、双语文档规则（bundle README EN+zh 同提交）、mpd-delta 区域与 self-fix-tests 一致性",
+      "status": "failed",
+      "evidence": "Holds: state root is the session workspace (`join(agent.session.header.cwd, config.stateDir)` in provisionSessionTeam) and stateDir .mpd/team; lib/command.js and lib/profiles.js byte-unchanged since 902e019~1; all 14 `agent_teams_*` tools still registered, /agent-teams + the generated /agent-teams-<profile> mechanism untouched; packages/mpd-bundle/README.md + README.zh-CN.md changed together in 902e019 with correct language-switch links; the new lib/** behaviour is registered as mpd-delta regions (`--check` clean). Fails: the OPT-1 guarantee 'a failed dependency does not block the dependent' is contradicted on the shipped UI surface by `taskVisualState` (F2), which snapshot.js feeds to the Web panel — a binding-behaviour regression inside the very change that introduced OPT-1."
+    },
+    {
+      "criterion": "核对 skills/** 单写者与 VENDOR_LOCK 配对：本波若触及 skills/dsh-qa/** 两个锚点，确认是否需要在同一提交 re-pin",
+      "status": "passed",
+      "evidence": "The wave DID touch skills/dsh-qa (SKILL.md, scripts/session-start-team.mjs, new scripts/lib/gate-probe.mjs). The single re-pin landed in the SAME commit, 902e019: VENDOR_LOCK.json skills treeSha afe71825… -> ee6b84d0…, fileCount 328 -> 329. `git log 902e019..HEAD -- skills/ VENDOR_LOCK.json` is empty, so there is exactly one writer and exactly one re-pin. I re-ran `node scripts/verify-vendor.mjs`: PASS (skills 329 files, treeSha OK)."
+    },
+    {
+      "criterion": "核对 OPT-1 的实现是否真的解除了「失败依赖永久钉死下游」，并独立复现一次（构造 failed 依赖 → 下游仍可 claim）；同时确认该改动没有把正常路径也放开（反向控制）",
+      "status": "passed",
+      "evidence": "Own matrix against the real state.js predicates: failed dependency -> blocking=[] and claimable; the earlier defect (a failed dependency pinning a dependent forever) is gone (the deadlock class that forced t12's cancellation, which the captain had to release by hand, can no longer pin a downstream task). Reverse control holds: pending/claimed/in_progress dependencies still block, an unknown dependency id still blocks, and a mixed failed+pending list blocks on the pending one only. The claim tool and the scheduler both route through `unsatisfiedDependencies`, so the fix covers the real dispatch path. Residual: the UI/visual surface is not fixed (F2)."
+    },
+    {
+      "criterion": "核对 t15/t17 契约外行为：范围外变更、未声明的测试文件、冻结契约漂移是否被如实记录",
+      "status": "passed",
+      "evidence": "t15's changedPaths names 5 paths outside its declared inScope and 3 test files it added/expanded; t15's result.json records the VENDOR_LOCK.json contract-vs-rule tension and the docs/** exclusion honestly, and its cannotVerify records the signal-C deviation. The frozen-contract pin drift (declared 21,341 B / 2a77f2c3 vs on-disk 31,705 B / a0d28ebe; the t17 driver also observed five revisions and recorded noRevisionMatchedTheDeclaredPin) is disclosed in both t15's contractNote and t17's frozenContractRevision — but see F9: no immutable requirements artifact exists."
+    }
+  ],
+  "commandsRun": [
+    {
+      "command": "cd /root/dshProj/my-power-dsh && node skills/dsh-qa/scripts/session-start-team.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "My independent run (not t17's): [session-start-team] PASS, ok=true, rev c91f266, gate 1f0203c6…; simpleTeams [0,0,0]/simpleNotices [false,false,false], complexTeams [1,1,1]/complexNotices [true,true,true]; log preserved at evidence/omo-align/review/raw/qa-rerun.log and evidence/dsh-qa/session-start-team/2026-09-13T14-46-20.917Z/result.json."
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && node skills/dsh-qa/scripts/session-start-team.mjs --self-test",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "Offline gate-probe both directions + bundle patch/installer/persona shape; SIMPLE all untriggered, COMPLEX all triggered, markers consumed."
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && node --input-type=module -e \"<configPlane Config({}) + 3 negative controls>\"",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "All 10 frozen defaults matched; messagePayloadMaxBytes 10 / enforcement 'bogus' / maxMembers 0 all rejected with the exact schema messages."
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && node --input-type=module -e \"<dependencyStates/unsatisfiedDependencies/taskVisualState 9-case matrix>\"",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "failed dep non-blocking + claimable; pending/claimed/in_progress/unknown block; cancelled non-blocking; reverse control holds. visual state returns 'blocked' for the failed-dep case (F2)."
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && node -e \"const r=require('./evidence/omo-align/review/result.json'); console.log('verdict:', r.verdict)\"",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "verdict: needs_revision"
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && node -e \"const r=require('./evidence/omo-align/verification/result.json'); console.log('verdict:', r.verdict)\"  # t17's mandated verify",
+      "status": "failed",
+      "exitCode": 0,
+      "evidence": "The command prints `verdict: needs_revision` (file sha256 b73b7be8737f177fdaf641e939d1ed061e4c3e48321f7eb901471f190ff1b460, 7,508 B, mtime 2026-09-13 22:46 +0800) — see F3. t17's own commandsRun claims this same command exited 0 printing `pass`; the artifact on disk no longer supports that."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "medium",
+      "problem": "The frozen contract's signal C is NOT implemented as frozen. `complexityGate.signals.C_enumeratedSteps.detect` (frozen) requires 'C fires when TWO OR MORE of its three independent sub-signals hold: C1 enumerated lines >= 3; C2 distinct action verbs >= 3; C3 action clauses >= 3', i.e. C is a single soft signal with a >=2-of-3 majority. `evaluateComplexityGate` (session-start.js:157-173) instead pushes C1, C2 and C3 as THREE independent top-level signals and lets the flat global count reach MATCHED_SIGNAL_MIN=2, so no majority of C's own sub-signals is ever required. Demonstrated over-trigger: 'Check the test, build the package, verify the output.' yields signals [C2,C3] -> trigger=true — a single ordinary sentence provisions a staged team, and C's own 2-of-3 rule does not hold for it (C1=0). The same shape fires on any list of >=3 distinct action verbs. This contradicts t15's own cannotVerify statement that the sub-rules were kept 'as SEPARATE checks' and makes the comment block at session-start.js:35-38 (which still describes the SUPERSEDED literal '>=3 lines, or >=3 action verbs') misleading. The frozen 3+3 prompt sets still pass, so the two-sided case cannot see this class.",
+      "requiredFix": "Either (a) make C discharge exactly one signal only when >=2 of {C1,C2,C3} hold and assert that in the offline gate probe, or (b) amend the FROZEN contract text to the flat-count rule and re-freeze it with a new pin. Also fix the module docstring to describe whichever rule wins. Owner: t15's writer (out of my inScope).",
+      "file": "packages/mpd-agent-teams-plugin/lib/session-start.js",
+      "line": 157
+    },
+    {
+      "id": "F2",
+      "severity": "medium",
+      "problem": "OPT-1 is only half applied: the claim path is fixed, the UI/visual surface still treats a FAILED dependency as blocking. `taskVisualState` (state.js:963-978) tests `dependency.status !== 'completed'` for every dependency, so a pending dependent of a failed dependency is reported `blocked` even though `unsatisfiedDependencies` says it is claimable — my matrix shows this in one row. `snapshot.js:105` puts that visual state into the team snapshot the Web panel renders, and `taskContractView`/`renderTaskContract` do not surface `failed_dependencies` either (the field exists at tools.js:2491 but takes an `allTasks` argument that `taskContractView` calls without passing). Net effect: a captain looking at the panel sees the dependent still blocked and will not dispatch it, which is exactly the 'failed dependency pins the downstream forever' behaviour OPT-1 was created to remove; t15's own comment at state.js:106-107 claims the view 'carries the failure so the view can say so', but the view cannot.",
+      "requiredFix": "Route taskVisualState through the same three-state predicate (treat completed AND cancelled as satisfied, failed as non-blocking, everything else as blocking) and pass the task list into taskContractView so `failed_dependencies` is actually populated; add a falsifiable assertion (failed dep => visual 'open', pending dep => visual 'blocked'). Owner: t15's writer.",
+      "file": "packages/mpd-agent-teams-plugin/lib/state.js",
+      "line": 963
+    },
+    {
+      "id": "F3",
+      "severity": "high",
+      "problem": "The t17 deliverable no longer supports t17's verdict. `evidence/omo-align/verification/result.json` is currently sha256 b73b7be8737f177fdaf641e939d1ed061e4c3e48321f7eb901471f190ff1b460 / 7,508 B / mtime 2026-09-13 22:46 +0800, with the schema {verdict, steps, head, generatedAt} and verdict=needs_revision; the mandated t17 verify command therefore prints `verdict: needs_revision`, and `step.manualEntries.ok` is false. t17's completed record (team.json task t17, and the assignment summary handed to me) describes a different artifact: the full report with `verdictScope`, `assertions[10]`, `acceptanceResults[8]`, `findings F1-F8`, `residualRisks[6]`, `t1CrossCheck[10]` and verdict=pass. That report is nowhere on disk any more (I grepped the whole workspace for `verdictScope`/`t1CrossCheck`/`residualRisks`: zero hits outside the mailbox text). The current file looks like a re-run of `evidence/omo-align/verification/run.mjs` (mtime 22:46, output.log ends at verify-vendor PASS) whose own finalizer wrote a minimal verdict; its `manualEntries` 'failure' is a driver artifact — it concatenates TEAM_TOOL_NAMES+MEMBER_TOOL_NAMES with duplicates and compares them to a 14-name list, so it can never pass. So the on-disk evidence chain for the t17 verdict is (i) overwritten, (ii) internally inconsistent (all completed steps ok=true yet verdict=needs_revision), and (iii) not produced by the driver's declared naming. I have preserved a byte copy of the observed file at evidence/omo-align/review/raw/verification-result-observed-144744.json for the captain.",
+      "requiredFix": "t17's owner must restore/rebuild `evidence/omo-align/verification/result.json` to the report that actually carries the verdict + assertions + findings (or re-run the driver to completion) and fix run.mjs's manual-entries comparison (dedupe + set-equality) so a re-run cannot emit a false needs_revision. Until then the t17 verdict is not auditable from its own deliverable. No code/doc under my inScope.",
+      "file": "evidence/omo-align/verification/result.json",
+      "line": 0
+    },
+    {
+      "id": "F4",
+      "severity": "medium",
+      "problem": "Two of t17's claims rest on assertions that cannot fail. (1) A8 'the two-sided case fails when either side breaks' has no reverse control: `session-start-team.mjs --self-test` exercises ONLY the offline predicate, and the real case has no falsification run (e.g. a temporarily disabled gate or an inverted expectation), so 'a gate that cannot fail one side is not accepted' is asserted, not demonstrated. The frozen-contract acceptance line itself demands the case must assert BOTH directions on the same settled revision; it does assert both directions, but nothing proves the case would report failure if the gate regressed. (2) The S3 assertion ('resume across restart') is a source-substring check (`expect(schedulerSrc).toContain(\"task.status === 'pending'\")`) plus an INLINE re-implementation of the readiness filter inside the test (test/s1-s4-semantics.test.mjs:128-142) — it never calls the real `nextReadyTask`, and its inline filter uses the OLD dependency rule (only 'completed'/'cancelled' satisfy) while the shipped scheduler now also admits 'failed'. It is a tautology about a copy, not a run of the resume path.",
+      "requiredFix": "Add a reverse-control run to the two-sided case (e.g. assert the case's own negative control, as preset-conformance does) and replace S3's inline filter with an import of the real readiness predicate (or a `verification`-kind assertion executed against a restarted scheduler). Owner: verification/QA writer.",
+      "file": "packages/mpd-agent-teams-plugin/test/s1-s4-semantics.test.mjs",
+      "line": 128
+    },
+    {
+      "id": "F5",
+      "severity": "low",
+      "problem": "The frozen `manualEntryNames.stateDir` is `.mpd/team`, but the plugin's own schema default for `stateDir` is `.agent-teams` (lib/index.js:Config). The bundle patch and the installer self-test pin `.mpd/team`, so the delivered configuration is correct; the latent risk is a consumer that instantiates the plugin without the row override, which silently lands state in `.agent-teams` instead of the frozen workspace root.",
+      "requiredFix": "Change the schema default to '.mpd/team' (matching the frozen value and the patch) so the two cannot disagree.",
+      "file": "packages/mpd-agent-teams-plugin/lib/index.js",
+      "line": 0
+    },
+    {
+      "id": "F6",
+      "severity": "low",
+      "problem": "The frozen `manualEntryNames.tools` list has 14 names but `lib/tool-names.js` TEAM_TOOL_NAMES has 13 — `agent_teams_task_contract` (registered at tools.js, and present in the frozen list) is absent, so it is excluded from the captain prompt tool list and from the member deny computation. Impact is small (the tool stays callable by everyone, which is benign for a read-only contract surface), but the frozen list and the governed list disagree.",
+      "requiredFix": "Add `agent_teams_task_contract` to TEAM_TOOL_NAMES (and decide deliberately whether it belongs in MEMBER_TOOL_NAMES), or amend the frozen list. Owner: writer.",
+      "file": "packages/mpd-agent-teams-plugin/lib/tool-names.js",
+      "line": 2
+    },
+    {
+      "id": "F7",
+      "severity": "low",
+      "problem": "docs/** is red in the working tree at review time: docs/index.md, docs/index.zh-CN.md, docs/user-guide.md, docs/user-guide.zh-CN.md modified and docs/omo-parity-ledger.md + .zh-CN.md untracked. The EN/zh pairing and switch links are correct (both halves changed), so this is a discipline/consistency issue rather than a rule violation: a wave that ships a new gate and a new ledger leaves human-facing docs half-committed, and the t15 writer explicitly excluded docs/** from its own contract.",
+      "requiredFix": "The docs/ledger owner commits the pair in the same commit (§5/§3 bilingual rule) or the captain records the deferral in the wave's closure.",
+      "file": "docs/index.md",
+      "line": 0
+    },
+    {
+      "id": "F8",
+      "severity": "low",
+      "problem": "The frozen requirements artifact is not immutable: the declared pin (21,341 B / sha256 2a77f2c3…) matches no revision on disk. t17 observed five revisions in ~18 min (25,097 B / 0ec6bbb1 -> 31,705 B / a0d28ebe) and recorded `noRevisionMatchedTheDeclaredPin: true`; t15 saw three earlier ones. Judgement-bearing sections are byte-stable (t17's and t15's section-wise checks agree), so the verdicts are usable, but no artifact pins what was actually frozen.",
+      "requiredFix": "After the revision settles, freeze once (copy to a name that cannot be appended to, record size+sha256) and have the next verification cite that immutable copy.",
+      "file": "evidence/omo-align/requirements/frozen-contract.json",
+      "line": 0
+    }
+  ],
+  "residualRisks": [
+    "Signal C's loosened form (F1) is a recall/precision dial on the ONLY automatic trigger: any list of >= 3 distinct action verbs now stages a team. If the intent is 'ordinary sessions stay solo', the trigger rate should be re-measured after the fix on a normal-prompt corpus, not only on the 3+3 frozen set.",
+    "OPT-2's residual reclamation (scripts/reclaim-staged-teams.mjs) archives staged teams with `tasks.length === 0`; t15's own run reclaimed 22 live teams in this workspace. Any future staged team that briefly holds tasks is out of its protection class — the guard is 'staged && !approvedAt && tasks==0', which should be re-read before the next cleanup wave (I did not modify or re-run it).",
+    "The non-`messagePayloadMaxBytes` ceilings (maxParallelMembers / maxMessagesPerRun / maxWallClockMinutes / maxMemberTurns) are declared and validated but have no runtime consumer, exactly as t15 records under notVerified. 'configPlane aligned' therefore means 'resolved and validated', not 'enforced'.",
+    "The t17-gate assertions were verified by t17's own driver plus my re-run of the packaged case; the packaged case itself lacks `assertSessionsSandboxed` (t17 F5), so its isolation claim rests on its workspace-keyed layout, not on the standing isolation assertion. My re-run inherited that gap."
+  ],
+  "isolationEvidence": {
+    "whatIWrote": [
+      "evidence/omo-align/review/result.json",
+      "evidence/omo-align/review/raw/qa-rerun.log",
+      "evidence/omo-align/review/raw/verification-result-observed-144744.json"
+    ],
+    "note": "Everything else I produced is the QA case's own output under evidence/dsh-qa/session-start-team/ (a side effect of running the mandated case, which writes its evidence into its own domain directory). I modified no file under packages/**, presets/**, scripts/**, skills/**, docs/** or VENDOR_LOCK.json. The QA case booted in its own mktemp DSH_HOME; the observed verification/result.json copy is a byte copy of data that was already on disk (read-only capture)."
+  },
+  "t1CrossCheckNote": "t17's t1 cross-check (A4 out-of-wave, A8 process) is consistent with what I observe: A4's skills-gate delivery is t8/t4 territory, and A8 is the direct-on-dev commit history (f4f91b5 merge was a fast-forward-equivalent containment; c28c7c1 landed directly on dev with four amends). I did not re-adjudicate A1-A10 myself; that was t17's scope."
+}

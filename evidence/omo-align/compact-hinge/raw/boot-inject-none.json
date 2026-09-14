@@ -1,0 +1,67 @@
+{
+  "tag": "inject-none",
+  "injectDeclared": "[]",
+  "sandbox": "/tmp/mpd-t45-inject-none-KEEpiB",
+  "installExit": 0,
+  "bootExit": 1,
+  "crashSignatures": [],
+  "pendingEntries": [],
+  "probeLines": [
+    {
+      "t": 1789347587807,
+      "kind": "probe-applied",
+      "inject": []
+    },
+    {
+      "t": 1789347587807,
+      "kind": "host-plane-compaction",
+      "resolved": false,
+      "reason": "undefined"
+    },
+    {
+      "t": 1789347587807,
+      "kind": "agents-unavailable",
+      "tag": "apply"
+    },
+    {
+      "t": 1789347587807,
+      "kind": "probe-ready"
+    },
+    {
+      "t": 1789347592253,
+      "kind": "agents-enumerated",
+      "tag": "session-start",
+      "count": 1,
+      "ids": [
+        "session-21cda5c0-c1b0-4979-b990-3234c8ef87fa"
+      ]
+    },
+    {
+      "t": 1789347592254,
+      "kind": "member-agent",
+      "tag": "session-start",
+      "fields": {
+        "id": "session-21cda5c0-c1b0-4979-b990-3234c8ef87fa",
+        "hasSession": true,
+        "hasRunMaintenance": true,
+        "hasCtx": true,
+        "status": "idle"
+      },
+      "engineFromAgentScope": {
+        "resolved": true,
+        "type": "object",
+        "compactNow": "function",
+        "keys": [
+          "ctx",
+          "name",
+          "config",
+          "warnedPressureConfigTargets",
+          "overflowRetries",
+          "overflowAgents"
+        ]
+      }
+    }
+  ],
+  "workspaceKeys": null,
+  "logHead": "[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-t45-inject-none-KEEpiB/ws\n[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)\n[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)\n\ndsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route \"deepseek-official\"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment\n"
+}

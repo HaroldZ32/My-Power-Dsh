@@ -1,0 +1,68 @@
+=== UPSTREAM packages/shared-skills/skills/* ===
+ast-grep                     files=18    dirs=3   
+coding-agent-sessions        files=34    dirs=5   
+data-scientist               files=11    dirs=2   
+debugging                    files=25    dirs=5   
+frontend                     files=29    dirs=6   
+git-master                   files=2     dirs=1   
+init-deep                    files=1     dirs=0   
+lsp-setup                    files=25    dirs=22  
+programming                  files=75    dirs=12  
+refactor                     files=1     dirs=0   
+remove-ai-slops              files=1     dirs=0   
+review-work                  files=1     dirs=0   
+ultimate-browsing            files=57    dirs=9   
+ulw-execute                  files=1     dirs=0   
+ulw-plan                     files=6     dirs=3   
+ulw-research                 files=2     dirs=0   
+visual-qa                    files=19    dirs=2   
+
+=== UPSTREAM packages/omo-senpi/skills/* ===
+dag-library                  files=1     dirs=0   
+give-me-tips                 files=1     dirs=0   
+hyperplan                    files=1     dirs=0   
+init-deep                    files=1     dirs=0   
+mass-ulw                     files=2     dirs=1   
+onboarding                   files=3     dirs=0   
+ultrawork                    files=1     dirs=0   
+ulw-loop                     files=3     dirs=1   
+ulw-plan                     files=6     dirs=2   
+ulw-research                 files=3     dirs=1   
+
+=== UPSTREAM other skill roots ===
+.agents/skills/codex-qa/
+.agents/skills/get-unpublished-changes/
+.agents/skills/github-triage/
+.agents/skills/hyperplan/
+.agents/skills/omomomo/
+.agents/skills/opencode-qa/
+.agents/skills/pre-publish-review/
+.agents/skills/publish/
+.agents/skills/remove-deadcode/
+.agents/skills/security-research/
+.agents/skills/senpi-qa/
+.agents/skills/tech-debt-audit/
+.agents/skills/work-with-pr/
+.agents/skills/work-with-pr-workspace/
+.opencode/skills/github-triage/
+.opencode/skills/hyperplan/
+.opencode/skills/pre-publish-review/
+.opencode/skills/work-with-pr/
+.opencode/skills/work-with-pr-workspace/
+packages/omo-codex/plugin/components/comment-checker/skills/comment-checker/
+packages/omo-codex/plugin/components/lcx/skills/lcx-contribute-bug-fix/
+packages/omo-codex/plugin/components/lcx/skills/lcx-doctor/
+packages/omo-codex/plugin/components/lcx/skills/lcx-report-bug/
+packages/omo-codex/plugin/components/lsp/skills/lsp/
+packages/omo-codex/plugin/components/rules/skills/rules/
+packages/omo-codex/plugin/components/teammode/skills/teammode/
+packages/omo-codex/plugin/components/ultrawork/skills/ulw-plan/
+packages/omo-codex/plugin/components/ulw-loop/skills/ulw-loop/
+packages/omo-codex/plugin/skills/init-deep/
+packages/omo-codex/plugin/skills/ulw-plan/
+packages/skills-loader-core/src/features/builtin-skills/agent-browser/
+packages/skills-loader-core/src/features/builtin-skills/dev-browser/
+packages/skills-loader-core/src/features/builtin-skills/frontend/
+packages/skills-loader-core/src/features/builtin-skills/git-master/
+packages/skills-loader-core/src/features/builtin-skills/security-research/
+packages/skills-loader-core/src/features/builtin-skills/skills/

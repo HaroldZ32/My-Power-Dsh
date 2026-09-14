@@ -1,0 +1,10 @@
+typecheck	0	bun run typecheck
+test-plugin	0	bun test packages/mpd-agent-teams-plugin
+test-packages	0	bun test packages
+install-selftest	0	node scripts/install-profile.mjs --self-test
+install-dryrun	0	node scripts/install-profile.mjs --dry-run
+preset-conformance	0	node skills/dsh-qa/scripts/preset-conformance.mjs
+bundle-lifecycle	1	bun skills/dsh-qa/scripts/bundle-lifecycle.mjs
+patch-check	0	node scripts/patch-agent-teams-fixes.mjs --check
+verify-vendor	0	node scripts/verify-vendor.mjs
+session-start-team	0	bun skills/dsh-qa/scripts/session-start-team.mjs

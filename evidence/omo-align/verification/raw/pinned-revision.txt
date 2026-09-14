@@ -1,0 +1,4 @@
+HEAD=d10f8e3ab74dc637a5a9d7d107eca7ef9f232db3
+a9dfb3114289cbebc339552a3b168f8881e46e07eb905fa2599ef225223b92bf  evidence/omo-align/requirements/frozen-contract.json
+frozen-contract size=28243 mtime=2026-09-13 22:31:25.900576835 +0800
+frozen-contract JSON: valid

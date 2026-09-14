@@ -1,0 +1,6 @@
+{"t":1789347623851,"kind":"probe-applied","inject":[]}
+{"t":1789347623851,"kind":"host-plane-compaction","resolved":true,"type":"object","compactNow":"function","keys":["ctx","name","config","warnedPressureConfigTargets","overflowRetries","overflowAgents"]}
+{"t":1789347623852,"kind":"agents-enumerated","tag":"apply","count":0,"ids":[]}
+{"t":1789347623852,"kind":"probe-ready"}
+{"t":1789347626735,"kind":"agents-enumerated","tag":"session-start","count":1,"ids":["session-cb3b8305-0348-4490-afc2-893a499b298d"]}
+{"t":1789347626735,"kind":"member-agent","tag":"session-start","fields":{"id":"session-cb3b8305-0348-4490-afc2-893a499b298d","hasSession":true,"hasRunMaintenance":true,"hasCtx":true,"status":"idle"},"engineFromAgentScope":{"resolved":true,"type":"object","compactNow":"function","keys":["ctx","name","config","warnedPressureConfigTargets","overflowRetries","overflowAgents"]}}

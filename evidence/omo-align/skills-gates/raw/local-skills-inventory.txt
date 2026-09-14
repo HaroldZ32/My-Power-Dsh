@@ -1,0 +1,23 @@
+=== LOCAL skills/* dirs (count files, dirs, LOC) ===
+ast-grep                     files=18    dirs=3    loc=3711
+coding-agent-sessions        files=34    dirs=5    loc=3626
+data-scientist               files=9     dirs=2    loc=1055
+debugging                    files=20    dirs=4    loc=4022
+dsh-qa                       files=27    dirs=3    loc=5029
+frontend                     files=28    dirs=6    loc=3218
+git-master                   files=2     dirs=1    loc=104
+init-deep                    files=1     dirs=0    loc=304
+lsp-setup                    files=25    dirs=22   loc=1876
+programming                  files=75    dirs=12   loc=19822
+refactor                     files=1     dirs=0    loc=731
+remove-ai-slops              files=1     dirs=0    loc=336
+review-work                  files=1     dirs=0    loc=614
+svn-master                   files=1     dirs=0    loc=82
+ultimate-browsing            files=57    dirs=9    loc=6383
+ulw-execute                  files=1     dirs=0    loc=239
+ulw-plan                     files=6     dirs=3    loc=774
+ulw-research                 files=2     dirs=0    loc=435
+visual-qa                    files=19    dirs=2    loc=2044
+
+=== LOCAL total ===
+328

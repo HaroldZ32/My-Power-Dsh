@@ -1,0 +1,157 @@
+{
+  "task_id": "t3",
+  "title": "上游团队启用策略/自动路由机制 + 本仓库会话启动策略现状（含需改文本清单）",
+  "researched_at": "2026-09-13T13:41:16Z",
+  "actor": "Explorer (read-only member)",
+  "method": "Read-only inspection of the local upstream checkout /root/dshProj/oh-my-openagent (v5.0.0-beta.62, commit d1557a4b4) and of this repository. No file was modified outside evidence/omo-align/research/session-policy/. Raw command transcript: evidence/omo-align/research/session-policy/output.log",
+  "upstream": {
+    "repo_path": "/root/dshProj/oh-my-openagent",
+    "origin": "code-yeongyu/oh-my-openagent",
+    "version": "5.0.0-beta.62",
+    "commit": "d1557a4b4",
+    "pinned_baseline_of_this_repo": {
+      "file": "/root/dshProj/my-power-dsh/VENDOR_LOCK.json",
+      "upstreamCommitSha": "8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29",
+      "upstreamVersion": "5.0.0-beta.20"
+    }
+  },
+  "upstream_mechanism": {
+    "default_state": {
+      "verdict": "OFF by default; team mode is strictly opt-in",
+      "citations": [
+        {"file": "packages/omo-opencode/src/features/team-mode/AGENTS.md", "lines": "7", "quote": "**OFF by default.** Enable via `team_mode.enabled` in `.omo/omo.jsonc`; restart OpenCode after enabling."},
+        {"file": "docs/guide/team-mode.md", "lines": "5-7", "quote": "## Status — OFF by default. Enable via JSONC config."},
+        {"file": "packages/team-core/src/config.ts", "lines": "3-5", "quote": "TeamModeConfigSchema = z.object({ enabled: z.boolean().default(false), ... })"}
+      ]
+    },
+    "enable_surface": {
+      "verdict": "one config key in a JSONC config file, read per user (~/.omo/omo.jsonc) or per project (.omo/omo.jsonc); restart required; no bundle-patch-level default",
+      "config_key": "team_mode (11 fields; only 5 matter operationally: enabled, tmux_visualization, max_parallel_members, max_members, base_dir)",
+      "citations": [
+        {"file": "packages/omo-opencode/src/config/AGENTS.md", "lines": "58-80", "quote": "## TEAM_MODE SCHEMA (11 fields) … When `enabled: true`: 12 team_* tools register … 3 team-mode hooks register conditionally … 4 team-session-event handlers … team-mode built-in skill loads … Doctor check runs"},
+        {"file": "packages/omo-opencode/src/config/schema/oh-my-opencode-config.ts", "lines": "88", "quote": "team_mode: TeamModeConfigSchema.optional()"},
+        {"file": "docs/guide/team-mode.md", "lines": "15-30", "quote": "Add to the `[opencode]` block of `~/.omo/omo.jsonc` (user) or `.omo/omo.jsonc` (project) … After enabling, restart opencode."}
+      ]
+    },
+    "tool_registration_gate": {
+      "verdict": "team_* tools do not exist while disabled — absence is the authoritative signal the plugin itself tells the model to trust",
+      "citations": [
+        {"file": "packages/omo-opencode/src/plugin/tool-registry.ts", "lines": "72-76", "quote": "teamModeEnabled: pluginConfig.team_mode?.enabled ?? false, teamToolCount"},
+        {"file": "packages/omo-opencode/src/hooks/team-mode-status-injector/hook.ts", "lines": "103-104", "quote": "Team mode is ENABLED for this session. Presence of the team_* tools is authoritative proof; do not inspect config files to verify."}
+      ]
+    },
+    "activation_routing": {
+      "verdict": "keyword-explicit only: the user must say 'team mode' (or the model decides once the tools exist); there is NO complexity/size heuristic and NO session-start auto-provisioning",
+      "trigger_pattern": "TEAM_PATTERN = /\\bteam[\\s_-]?mode\\b/i  (team mode | team-mode | team_mode | teammode)",
+      "trigger_action": "keyword detector (Transform tier on messages.transform) scans the FIRST user message and injects the [team-mode] prompt: 'Orchestrate via team_* tools … NEVER substitute with delegate_task'",
+      "second_surface": "team-mode-status-injector re-checks the LATEST real user message each turn and injects <team_mode_status enabled=\"true\"> plus the closure invariant",
+      "no_auto_mode": "packages/omo-opencode/src/config/schema/default-mode.ts declares exactly TWO auto-injection switches — ultrawork (auto-inject ulw prompt) and goal (auto-create a goal). There is deliberately no default_mode.team: team mode is never auto-started.",
+      "scoping": "the team keyword is filtered out in non-main sessions (index.test.ts 'should filter team-mode keyword in non-main session (only ultrawork allowed there)')",
+      "citations": [
+        {"file": "packages/omo-opencode/src/hooks/keyword-detector/AGENTS.md", "lines": "14-17", "quote": "Team mode | TEAM_PATTERN | Forces orchestration via team_* tools when user invokes team mode / team-mode / team_mode / teammate; instructs user to enable team_mode.enabled if tools are absent"},
+        {"file": "packages/omo-opencode/src/hooks/keyword-detector/team/default.ts", "lines": "8-10", "quote": "Triggers when the user explicitly invokes team-mode work"},
+        {"file": "packages/prompts-core/prompts/mode/team.md", "lines": "1-3", "quote": "[team-mode] Team-mode reference detected. Orchestrate via team_* tools (team_create -> team_task_create + team_send_message); NEVER substitute with delegate_task"},
+        {"file": "packages/omo-opencode/src/config/schema/default-mode.ts", "lines": "1-18", "quote": "DefaultModeConfigSchema = z.object({ ultrawork, goal }) — no team field"},
+        {"file": "packages/omo-opencode/src/hooks/keyword-detector/index.test.ts", "lines": "1044-1085", "quote": "should inject team-mode message when user types 'team mode' / should NOT trigger on bare 'team' / filtered in non-main session"}
+      ]
+    },
+    "conditional_runtime": {
+      "verdict": "hooks, skill and diagnostics all ride the same enabled gate",
+      "citations": [
+        {"file": "packages/omo-opencode/src/hooks/AGENTS.md", "lines": "105-112", "quote": "### Team-mode Hooks (conditional, only when team_mode.enabled: true) — team-mode-status-injector, team-mailbox-injector, team-tool-gating"},
+        {"file": "packages/omo-opencode/src/agents/builtin-agents/available-skills.test.ts", "lines": "28-47", "quote": "includes team-mode when team mode is enabled / excludes team-mode when team mode is disabled"}
+      ]
+    },
+    "eligibility": {
+      "verdict": "three verdict tiers; read-only specialists are HARD-REJECTED as team members",
+      "eligible": ["sisyphus", "atlas", "sisyphus-junior"],
+      "conditional": ["hephaestus"],
+      "hard_reject": ["oracle", "librarian", "explore", "multimodal-looker", "metis", "momus", "prometheus"],
+      "citations": [
+        {"file": "packages/omo-opencode/src/features/team-mode/AGENTS.md", "lines": "52-62", "quote": "ELIGIBLE AGENTS — eligible: sisyphus, atlas, sisyphus-junior; conditional: hephaestus; hard-reject: oracle, librarian, explore, multimodal-looker, metis, momus, prometheus (read-only or plan-mode-only)"},
+        {"file": "docs/guide/team-mode.md", "lines": "66-72", "quote": "The curated agents are read-only and in-process, so they can't write mailbox state. Route both groups through the task tool instead."}
+      ]
+    },
+    "lifecycle_and_closure": {
+      "verdict": "explicit closure contract: the lead must shut down and delete the team in the same turn once every task is terminal; lingering teams are a defect",
+      "citations": [
+        {"file": "packages/omo-opencode/src/hooks/team-mode-status-injector/hook.ts", "lines": "102-107", "quote": "Closure invariant: every team you open is yours to close … if every task is terminal, run team_shutdown_request + team_approve_shutdown per active member, then team_delete — in the same turn … Lingering teams are a defect."},
+        {"file": "packages/prompts-core/prompts/mode/team.md", "lines": "2-3", "quote": "Closing the team is the lead's responsibility, not the user's."}
+      ]
+    }
+  },
+  "repo_mechanism": {
+    "verdict": "the OPPOSITE default: every qualifying mpd session is mechanically provisioned into a staged 'MPD Default' team at its first agent/pre-step, with no keyword, no size judgment and no user opt-in",
+    "policy_value": {"mode": "auto", "profile": "mpd", "presets": ["mpd"], "name": "MPD Default", "approval": "required"},
+    "config_source": "bundle patch row config only (packages/mpd-bundle/cordis.patch.yml) + the legacy installer mirror; the .mpd/mpd.jsonc config plane does NOT expose sessionTeamPolicy",
+    "qualification": "non-child session (header.parentSession absent) AND (no preset OR preset in ['mpd']); settles once per agent id (no recreation after delete)",
+    "provisioning_path": "same as the agent_teams_create(approval=required, profile=...) tool (initializeProfileTeam, staged) — the 11-member mpd roster is written as roster rows; nothing spawns until the user approves the Web plan",
+    "no_closure": "there is no shutdown/delete path for the auto-provisioned default team: it persists until the user deletes it, and the policy never recreates it",
+    "citations": [
+      {"file": "packages/mpd-bundle/cordis.patch.yml", "lines": "202-224", "quote": "config.sessionTeamPolicy: {mode: auto, profile: mpd, presets: [mpd], name: MPD Default, approval: required} with the 'SESSION-START TEAM RULE (binding)' comment"},
+      {"file": "packages/mpd-agent-teams-plugin/lib/session-start.js", "lines": "47-84", "quote": "DEFAULT_TEAM_NAME='MPD Default'; STARTUP_NOTICE_MARKER='[AgentTeams] Session-start team rule'; policyEnabled (mode!=='off'); policyQualifies (child sessions excluded, preset allow-list)"},
+      {"file": "packages/mpd-agent-teams-plugin/lib/session-start.js", "lines": "123-168", "quote": "provisionSessionTeam(): withTeamLock -> findTeamByParticipant -> availableTeamId -> initializeProfileTeam(staged:true)"},
+      {"file": "packages/mpd-agent-teams-plugin/lib/session-start.js", "lines": "174-203", "quote": "provisionedNotice() / instructNotice() — the two injected startup notices"},
+      {"file": "packages/mpd-agent-teams-plugin/lib/session-start.js", "lines": "229-269", "quote": "installSessionTeamPolicy(): ctx.on('agent/pre-step', …, {global:true, prepend:true})"},
+      {"file": "packages/mpd-agent-teams-plugin/lib/index.js", "lines": "89-100", "quote": "sessionTeamPolicy zod schema (mode default 'off', name default 'MPD Default', approval default 'required')"},
+      {"file": "packages/mpd-agent-teams-plugin/lib/index.js", "lines": "200-209", "quote": "resolved.sessionTeamPolicy normalization (mode ?? 'off')"},
+      {"file": "packages/mpd-agent-teams-plugin/lib/index.js", "lines": "232", "quote": "installSessionTeamPolicy(ctx, resolved)"},
+      {"file": "presets/mpd/agent.cordis.yml", "lines": "80-102", "quote": "SESSION STARTUP RULE (binding, mechanically enforced) … every session MUST start inside a team … AGENT TEAM ROUTING small/large (prompt-level, on top of the mechanical provision)"},
+      {"file": "scripts/install-profile.mjs", "lines": "173-178", "quote": "sessionTeamPolicy: { mode: 'auto', profile: 'mpd', presets: ['mpd'], name: 'MPD Default', approval: 'required' }"},
+      {"file": "packages/mpd-bundle/README.md", "lines": "24-45", "quote": "## Session-start team rule (binding) — every qualifying session MUST begin inside a team"},
+      {"file": "packages/mpd-agent-teams-plugin/lib/tools.js", "lines": "1954", "quote": "comment tying the create tool to the session-start team policy"}
+    ],
+    "always_on_prompt_surface": "the model-facing usage policy (usageSectionText, promptSectionOrder 117, captainPrompt) is injected in every session regardless of the policy mode, so a session that never creates a team still carries the 'you are the captain' protocol text"
+  },
+  "gap_matrix": [
+    {"dimension": "default state", "upstream": "OFF; opt-in via team_mode.enabled", "ours": "ON; sessionTeamPolicy.mode=auto for every mpd-preset session", "gap": "flip the default and make the rule opt-in (requirement 'agent-teams 不再默认')", "severity": "high"},
+    {"dimension": "enable surface", "upstream": "JSONC config file (.omo/omo.jsonc, user or project) + restart", "ours": "bundle patch row config (packages/mpd-bundle/cordis.patch.yml) + installer mirror; no user config plane", "gap": "expose the policy through the .mpd/mpd.jsonc config plane (mpd-config-plugin) so a user can enable/instruct/off it without editing bundle source", "severity": "medium"},
+    {"dimension": "tool availability", "upstream": "team_* tools register only when enabled; absence is the authoritative signal", "ours": "agent_teams_* tools always registered (plugin mount) + usage policy always injected", "gap": "decide whether 'not default' also means a quieter prompt surface; at minimum the persona/policy text must stop claiming the session MUST lead a team", "severity": "medium"},
+    {"dimension": "activation trigger", "upstream": "explicit keyword 'team mode' (main session only) or model judgment when tools exist", "ours": "mechanical at first agent/pre-step, no keyword and no size judgment", "gap": "replace the unconditional provision with a trigger: keyword/'/agent-teams' explicit entry and/or the size judgment the persona already describes; complex tasks must still be able to auto-route", "severity": "high"},
+    {"dimension": "auto-routing of complex tasks", "upstream": "none beyond the keyword; routing heuristics live in prose (when to use), not in code", "ours": "persona has a small/large routing paragraph, but it is subsumed by the unconditional provision", "gap": "define the mechanical trigger for complex tasks (t1 must freeze it); OMO offers no complexity heuristic to copy — this is a deliberate deviation to be specified, not ported", "severity": "high"},
+    {"dimension": "notice surface", "upstream": "prompts/mode/team.md + <team_mode_status> injected only after the keyword", "ours": "provisionedNotice/instructNotice injected for every qualifying session", "gap": "gate the notices on the same trigger as the provisioning", "severity": "medium"},
+    {"dimension": "member eligibility", "upstream": "read-only specialists hard-rejected as members (mailbox requires write)", "ours": "the 11-member mpd roster includes read-only specialists as members (protocol says they never edit; nothing mechanically prevents mailbox use)", "gap": "optional alignment; needs a t1 decision (keeping read-only members is a deliberate mpd deviation today)", "severity": "low"},
+    {"dimension": "closure", "upstream": "closure invariant: lead shuts down + deletes in the same turn once all tasks are terminal", "ours": "no closure path for the default team; it persists (measured residue below)", "gap": "add a closure/retention policy (owner: t5) so 'no longer default' does not become 'no longer cleaned up'", "severity": "medium"},
+    {"dimension": "skill surface", "upstream": "built-in team-mode skill loaded only when enabled", "ours": "no team-mode skill in skills/ (19 skill dirs checked); team guidance lives in the plugin usage section + preset persona", "gap": "not required for the default flip; note for the skills audit (t4/t8)", "severity": "low"},
+    {"dimension": "config fields", "upstream": "11 team_mode fields (parallelism, caps, mailbox sizing, base_dir)", "ours": "5 sessionTeamPolicy fields + stateDir/memberProvider/maxMembers on the row", "gap": "informational; t5 should not grow the surface unless t1 asks", "severity": "low"}
+  ],
+  "change_locations": [
+    {"path": "packages/mpd-bundle/cordis.patch.yml", "lines": "202-224", "kind": "config/text", "change": "the live source of truth for sessionTeamPolicy (mode: auto). Flip to the agreed default (off/instruct/triggered) and rewrite the 'SESSION-START TEAM RULE (binding)' comment block 209-217."},
+    {"path": "packages/mpd-agent-teams-plugin/lib/session-start.js", "lines": "1-270", "kind": "logic", "change": "the whole mechanical policy: DEFAULT_TEAM_NAME:48, STARTUP_NOTICE_MARKER:50, policyEnabled:62, policyQualifies:71, availableTeamId:96, provisionSessionTeam:123, provisionedNotice:174, instructNotice:194, installSessionTeamPolicy:229. Trigger/config-plane gating and any 'complex task' routing hook land here."},
+    {"path": "packages/mpd-agent-teams-plugin/lib/index.js", "lines": "89-100, 200-209, 232", "kind": "logic", "change": "config schema + defaults + install call. Schema default is already 'off' — the bundle patch is the only thing turning it on; add config-plane input here if t5 routes the policy through mpdConfig."},
+    {"path": "presets/mpd/agent.cordis.yml", "lines": "80-102", "kind": "prompt/text", "change": "persona 'SESSION STARTUP RULE (binding…)' (80-86) becomes conditional/trigger-based; 'AGENT TEAM ROUTING' (88-102) becomes the routing rule for complex tasks instead of a fallback next to an unconditional provision."},
+    {"path": "scripts/install-profile.mjs", "lines": "173-178, 260-262", "kind": "config+gate", "change": "legacy installer row mirrors the patch value and its self-test asserts mode==='auto' — both must move with the new default."},
+    {"path": "skills/dsh-qa/scripts/session-start-team.mjs", "lines": "81-90, 124-142", "kind": "QA case", "change": "self-test asserts the patch/installer/persona carry mode: auto and MPD Default; the live step asserts a TRIVIAL prompt leaves a staged team. All three assertions invert — the case must become a negative control (trivial session creates NO team) plus a positive control for the new trigger."},
+    {"path": "skills/dsh-qa/SKILL.md", "lines": "65", "kind": "QA docs", "change": "the session-start-team case row description ('fix session-start rule' … 'the session mechanically started inside a team') must be rewritten to the new contract."},
+    {"path": "packages/mpd-agent-teams-plugin/test/session-start.test.ts", "lines": "22-95", "kind": "unit test", "change": "policyEnabled/policyQualifies/notices tests; keep, and add the trigger-on/trigger-off cases."},
+    {"path": "packages/mpd-bundle/README.md", "lines": "24-45", "kind": "docs (EN)", "change": "'## Session-start team rule (binding)' section must describe the new default."},
+    {"path": "packages/mpd-bundle/README.zh-CN.md", "lines": "12-22", "kind": "docs (zh-CN)", "change": "bilingual pair of the above — must change in the SAME commit (AGENTS.md language policy)."},
+    {"path": "AGENTS.md", "lines": "236", "kind": "manual", "change": "the §6 delta table row A5 ('lib/session-start.js:170-200 notices … default team profile name mpd') describes the local adaptation; update if the notice/provisioning semantics change."},
+    {"path": "docs/user-guide.md", "lines": "75, 96", "kind": "docs", "change": "user-facing 'team mode' / reasoning-effort-in-team-mode wording; bilingual pair docs/user-guide.zh-CN.md in the same commit."},
+    {"path": "packages/mpd-agent-teams-plugin/README.md", "lines": "-", "kind": "docs", "change": "no sessionTeamPolicy text today (grep: 0 hits); add/adjust only if the plugin README gains such a section."},
+    {"path": "packages/mpd-config-plugin/src/index.ts", "lines": "117", "kind": "candidate new work", "change": "the tool description already advertises 'team.stateDir' although nothing consumes it; if t5 wants the config plane, add the sessionTeamPolicy key here (and to the description)."}
+  ],
+  "measured_residue": {
+    "what": "auto-provisioned default teams left in this workspace by the always-on policy",
+    "root": "/root/dshProj/my-power-dsh/.mpd/team/",
+    "count_default_teams": 25,
+    "breakdown": [
+      {"phase": "staged", "tasks": 0, "approved": false, "count": 22, "note": "pure residue — provisioned, never used, never cleaned"},
+      {"phase": "staged", "tasks": 8, "approved": false, "count": 1, "note": "abandoned mid-staging (8-task DAG never approved)"},
+      {"phase": "running", "tasks": 10, "approved": true, "count": 1, "note": "this session's own team mpd-default-db53f0d4"},
+      {"phase": "running", "tasks": 32, "approved": true, "count": 1, "note": "a prior completed session's team"}
+    ],
+    "interpretation": "an always-on provision with no closure produces unbounded per-session state that nothing ever reclaims; upstream's off-by-default + explicit closure invariant is the structural counterexample"
+  },
+  "open_questions_for_requirements": [
+    "t1 must freeze the target default: pure OMO parity (mode off, tools present, model/user decides), instruct-only (notice, no auto-create), or triggered-auto (auto-provision only for tasks meeting a size/complexity rule).",
+    "If complex tasks must auto-route mechanically, what is the signal? OMO has NO complexity heuristic to port — candidates: keyword surface (team mode / ulw / agent-teams), the persona's small/large judgment, or a task-size threshold defined by t1. This is the one genuine design decision, not a parity question.",
+    "Should the policy live in a config plane (.mpd/mpd.jsonc via mpd-config-plugin) like upstream's team_mode, or stay a bundle-patch constant? t5's brief names a '配置平面'.",
+    "Does the always-on usageSectionText/captainPrompt need weakening when the policy is off, or does the manual /agent-teams entry keep it?",
+    "Should the 25 residual .mpd/team/mpd-default* directories be reclaimed as part of this work (they are workspace state, not evidence)?"
+  ],
+  "out_of_scope_observations": [
+    "Skills corpus references to 'team mode' (skills/ulw-research/SKILL.md:62, skills/debugging, skills/refactor) are adopted upstream texts that already phrase team mode as conditional ('when your harness gives you it') — they are not asserting mpd's auto policy. Corpus-level decisions belong to t2/t4/t8/t9.",
+    "Upstream 'team_mode' and upstream 'ultrawork/workflow/mass-ulw' are separate subsystems; this file covers only enablement/routing. The workflow/mass-ulw semantics comparison is t2's deliverable."
+  ]
+}

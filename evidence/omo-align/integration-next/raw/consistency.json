@@ -1,0 +1,376 @@
+{
+  "checkedAt": "2026-09-14T02:10:21.221Z",
+  "head": "e2d8df9a62bdc99dd2dfbe696c7aeb9794481ed5",
+  "checks": [
+    {
+      "id": "shipped-c2-equals-contract-en",
+      "ok": true,
+      "detail": "C2 matches 14/14 declared EN verbs"
+    },
+    {
+      "id": "shipped-c2-equals-contract-cjk",
+      "ok": true,
+      "detail": "C2 matches 12/12 declared CJK verbs"
+    },
+    {
+      "id": "shipped-c3-equals-contract-en",
+      "ok": true,
+      "detail": "C3 matches 14/14 declared EN verbs"
+    },
+    {
+      "id": "shipped-c3-equals-contract-cjk",
+      "ok": true,
+      "detail": "C3 matches 12/12 declared CJK verbs"
+    },
+    {
+      "id": "shipped-c2-no-extras-no-missing",
+      "ok": true,
+      "detail": "C2 pattern vs contract: extras EN [] CJK []; missing EN [] CJK []"
+    },
+    {
+      "id": "shipped-c3-no-extras",
+      "ok": true,
+      "detail": "C3 verb set (excluding and/then/also) vs contract: extras EN [] CJK []"
+    },
+    {
+      "id": "ledger-en-s3-has-all-declared-verbs",
+      "ok": true,
+      "detail": "EN §3 missing []"
+    },
+    {
+      "id": "ledger-zh-s3-has-all-declared-verbs",
+      "ok": true,
+      "detail": "ZH §3 missing []"
+    },
+    {
+      "id": "every-case-row-has-script",
+      "ok": true,
+      "detail": "rows without a script: []"
+    },
+    {
+      "id": "messaging-row-present",
+      "ok": true,
+      "detail": "SKILL.md carries the R1 case row"
+    },
+    {
+      "id": "session-start-row-present",
+      "ok": true,
+      "detail": "SKILL.md carries the session-start case row"
+    },
+    {
+      "id": "skills-change-paired-with-lock",
+      "ok": true,
+      "detail": "in facb2de^..HEAD: commits touching skills/ WITHOUT VENDOR_LOCK in the same commit = []"
+    },
+    {
+      "id": "wave-repin-count-recorded",
+      "ok": true,
+      "detail": "VENDOR_LOCK.json changed in 1 commit(s) inside the wave range: [\"98af744547\"] (each one also carries a skills/ change: 1 skills commit(s) in range)"
+    },
+    {
+      "id": "wave-r1-skills-commit-recognised",
+      "ok": true,
+      "detail": "R1 QA-case commit(s) in range: [{\"commit\":\"98af744547\",\"subject\":\"test(qa): end-to-end falsifiable case for the message channel, with th\",\"skillsFiles\":2,\"lockInSameCommit\":true}]"
+    },
+    {
+      "id": "pending-skills-change-declared",
+      "ok": true,
+      "detail": "uncommitted skills/** change at sweep time: M skills/dsh-qa/scripts/agent-teams-messaging.mjs - reported as an incomplete item, not a pairing failure"
+    },
+    {
+      "id": "v1-construction-evidence-present",
+      "ok": true,
+      "detail": "t38 result.json sha 32aa0e05362d6174, raw driver present true"
+    },
+    {
+      "id": "v1-repair-evidence-present",
+      "ok": true,
+      "detail": "t43 result.json + counterexamples-after-fix.json present"
+    },
+    {
+      "id": "v1-repair-commit-reachable",
+      "ok": true,
+      "detail": "git cat-file -t 925309d = commit"
+    },
+    {
+      "id": "v1-reverification-evidence-present",
+      "ok": true,
+      "detail": "t44 result.json sha b13fdb4ed84eb2a1; all raw files present true"
+    },
+    {
+      "id": "contract-records-optionA-and-harmonization",
+      "ok": true,
+      "detail": "logicRevisionNote + harmonizedVerbTables present"
+    },
+    {
+      "id": "contract-records-repair-boundaries",
+      "ok": true,
+      "detail": "openToolSurfaceEscalation + interjectionExpiryBoundary present (t53 escalations)"
+    }
+  ],
+  "failures": [],
+  "verbTables": {
+    "declaredEn": 14,
+    "declaredCjk": 12,
+    "c2En": 14,
+    "c2Cjk": 12,
+    "c3En": 14,
+    "c3Cjk": 12,
+    "c3PositionalAnchors": [
+      "and",
+      "then",
+      "also"
+    ]
+  },
+  "caseRows": [
+    {
+      "row": "mount-assert",
+      "script": "skills/dsh-qa/scripts/mount-assert.mjs",
+      "exists": true,
+      "sha256": "3e50ce7306ca6b18"
+    },
+    {
+      "row": "dual-track-smoke",
+      "script": "skills/dsh-qa/scripts/dual-track-smoke.mjs",
+      "exists": true,
+      "sha256": "1161b4e43d10c370"
+    },
+    {
+      "row": "mcp-call",
+      "script": "skills/dsh-qa/scripts/mcp-call.mjs",
+      "exists": true,
+      "sha256": "9bc7119510c51fc1"
+    },
+    {
+      "row": "preset-register",
+      "script": "skills/dsh-qa/scripts/preset-register.mjs",
+      "exists": true,
+      "sha256": "e1117251fad6be86"
+    },
+    {
+      "row": "codegraph-smoke",
+      "script": "skills/dsh-qa/scripts/codegraph-smoke.mjs",
+      "exists": true,
+      "sha256": "d55ea0adb151350c"
+    },
+    {
+      "row": "agent-teams-adopt",
+      "script": "skills/dsh-qa/scripts/agent-teams-adopt.mjs",
+      "exists": true,
+      "sha256": "7a90f522f638695f"
+    },
+    {
+      "row": "ultrawork-smoke",
+      "script": "skills/dsh-qa/scripts/ultrawork-smoke.mjs",
+      "exists": true,
+      "sha256": "7602727122f0075b"
+    },
+    {
+      "row": "plan-c-smoke",
+      "script": "skills/dsh-qa/scripts/plan-c-smoke.mjs",
+      "exists": true,
+      "sha256": "3ac2c02ac23219f1"
+    },
+    {
+      "row": "memory-smoke",
+      "script": "skills/dsh-qa/scripts/memory-smoke.mjs",
+      "exists": true,
+      "sha256": "ea4b34cd04637647"
+    },
+    {
+      "row": "vision-smoke",
+      "script": "skills/dsh-qa/scripts/vision-smoke.mjs",
+      "exists": true,
+      "sha256": "858bd19d57ec5527"
+    },
+    {
+      "row": "tool-output-validation",
+      "script": "skills/dsh-qa/scripts/tool-output-validation.mjs",
+      "exists": true,
+      "sha256": "521a727ac7280acd"
+    },
+    {
+      "row": "skill-catalog-probe",
+      "script": "skills/dsh-qa/scripts/skill-catalog-probe.mjs",
+      "exists": true,
+      "sha256": "9a23e27aeebc96ab"
+    },
+    {
+      "row": "relocate-smoke",
+      "script": "skills/dsh-qa/scripts/relocate-smoke.mjs",
+      "exists": true,
+      "sha256": "057fcacecd887c49"
+    },
+    {
+      "row": "team-route-rewire",
+      "script": "skills/dsh-qa/scripts/team-route-rewire.mjs",
+      "exists": true,
+      "sha256": "cc225a6c82565737"
+    },
+    {
+      "row": "workmate-library",
+      "script": "skills/dsh-qa/scripts/workmate-library.mjs",
+      "exists": true,
+      "sha256": "5741ac4bc03ae4e6"
+    },
+    {
+      "row": "workmate-team-member",
+      "script": "skills/dsh-qa/scripts/workmate-team-member.mjs",
+      "exists": true,
+      "sha256": "4e4d55a05b68c75f"
+    },
+    {
+      "row": "web-client-adapt",
+      "script": "skills/dsh-qa/scripts/web-client-adapt.mjs",
+      "exists": true,
+      "sha256": "c8049bf120c7f16e"
+    },
+    {
+      "row": "agent-teams-dispatch",
+      "script": "skills/dsh-qa/scripts/agent-teams-dispatch.mjs",
+      "exists": true,
+      "sha256": "969097e48c91366d"
+    },
+    {
+      "row": "agent-teams-messaging",
+      "script": "skills/dsh-qa/scripts/agent-teams-messaging.mjs",
+      "exists": true,
+      "sha256": "c9073b82ac78ce92"
+    },
+    {
+      "row": "session-start-team",
+      "script": "skills/dsh-qa/scripts/session-start-team.mjs",
+      "exists": true,
+      "sha256": "e90a40c3723e0ba7"
+    },
+    {
+      "row": "explicit-team-trigger",
+      "script": "skills/dsh-qa/scripts/explicit-team-trigger.mjs",
+      "exists": true,
+      "sha256": "70e482cd9a10fc9a"
+    },
+    {
+      "row": "bundle-lifecycle",
+      "script": "skills/dsh-qa/scripts/bundle-lifecycle.mjs",
+      "exists": true,
+      "sha256": "ef60fed0d7f835f5"
+    },
+    {
+      "row": "preset-conformance",
+      "script": "skills/dsh-qa/scripts/preset-conformance.mjs",
+      "exists": true,
+      "sha256": "29824adf04404efb"
+    },
+    {
+      "row": "agent-teams-sidebar",
+      "script": "skills/dsh-qa/scripts/agent-teams-sidebar.mjs",
+      "exists": true,
+      "sha256": "1b7460dce37d159a"
+    },
+    {
+      "row": "readonly-deny",
+      "script": "skills/dsh-qa/scripts/readonly-deny.mjs",
+      "exists": true,
+      "sha256": "ba6b490813e07760"
+    }
+  ],
+  "waveRange": "facb2de^..HEAD",
+  "waveSkillsCommits": [
+    {
+      "commit": "98af744547",
+      "subject": "test(qa): end-to-end falsifiable case for the message channel, with th",
+      "skillsFiles": 2,
+      "lockInSameCommit": true
+    }
+  ],
+  "waveLockCommits": [
+    "98af744547"
+  ],
+  "pendingSkillsChange": "M skills/dsh-qa/scripts/agent-teams-messaging.mjs",
+  "v1Chain": {
+    "construction_t38": {
+      "evidence": "evidence/omo-align/verification-r1/result.json",
+      "sha256": "32aa0e05362d6174792a0e9563d117cf2a4bdda5434ea6bb2c1670ed873adbb9",
+      "verdict": "failed",
+      "rawDriver": "evidence/omo-align/verification-r1/raw/counterexamples.mjs",
+      "rawDriverExists": true,
+      "taskRecord": "t38 = cancelled (retired); its findings preserved in the task record and review-r1/"
+    },
+    "repair_t43": {
+      "evidence": "evidence/omo-align/repair-v1/result.json",
+      "sha256": "2833d26d7ca51f42f27228ba55bce358e5a5f775e7bb0092006b5144036a7958",
+      "counterexamplesAfterFix": "evidence/omo-align/repair-v1/counterexamples-after-fix.json",
+      "counterexamplesAfterFixSha": "483f814ac8d06bb1f39a5cec94fc501042593f25ccc140fca0f3ea0f06a68dab",
+      "commit925309dExists": "commit",
+      "commit925309dSubject": "925309d43b44d3628a8982acee69c54fb4193783|fix(agent-teams): a body-less interjection request can no longer be invisible"
+    },
+    "reverification_t44": {
+      "evidence": "evidence/omo-align/verification-v1/result.json",
+      "sha256": "b13fdb4ed84eb2a1e1884bc912692c3010c10c90ac7b94757de93c1932117478",
+      "verdict": "pass",
+      "rawFiles": [
+        {
+          "f": "driver.mjs",
+          "exists": true
+        },
+        {
+          "f": "fixed.out.json",
+          "exists": true
+        },
+        {
+          "f": "reverted.out.json",
+          "exists": true
+        },
+        {
+          "f": "fixed-test.tap.txt",
+          "exists": true
+        },
+        {
+          "f": "reverted-test.tap.txt",
+          "exists": true
+        },
+        {
+          "f": "revert-method.md",
+          "exists": true
+        }
+      ],
+      "mergeCommit": "0d52794 (repair 925309d merged)"
+    },
+    "retirement_t38": {
+      "mechanism": "task record retired to cancelled with output + acceptanceResults + findings preserved (read via agent_teams_task_contract t38)",
+      "preservedVerdict": "needs_revision (failed on finding V1)",
+      "dependentRebuild": "t41/t42 were destroyed by the cancellation and rebuilt as t46/t47 (this task)"
+    }
+  },
+  "contractAdditions": {
+    "contractBytes": 39814,
+    "contractSha256": "3e77e6b842553687fed82df4265b6592d31336fdc6f0c4d72a4d6d43dcd853df",
+    "keys": [
+      "schema",
+      "wave",
+      "owner",
+      "createdAt",
+      "note",
+      "frozenDecisions",
+      "complexityGate",
+      "manualEntryNames",
+      "massUlwSemantics",
+      "configPlane",
+      "changeLocations",
+      "requiredQaCases",
+      "isolation",
+      "t4Requirements",
+      "openForUser",
+      "schedulerSemantics",
+      "messagingOperativeReading",
+      "interjectionExpiryBoundary",
+      "openToolSurfaceEscalation"
+    ],
+    "hasLogicRevisionNote": true,
+    "hasHarmonizedVerbTables": true,
+    "hasOpenToolSurfaceEscalation": true,
+    "hasInterjectionExpiryBoundary": true,
+    "hasSchedulerSemantics": true,
+    "hasMessagingOperativeReading": true
+  }
+}

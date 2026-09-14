@@ -1,0 +1,218 @@
+{
+  "task": "t19",
+  "title": "精确测量：remove-deadcode 的移植是否需要改本仓库的缝（决定 D3 与最终动作）",
+  "measured_at_utc": "2026-09-13T14:21:00Z",
+  "actor": "Explorer (read-only member)",
+  "verdict": "no-seam-required",
+  "finalAction": "skip",
+  "binaryQuestion": "若把上游 remove-deadcode 技能移植进本仓库的 skills/，是否需要改动本仓库的代码/配置/缝（patch、preset、脚本、适配器）？",
+  "answer": "NO —— 不需要改任何本仓库的代码/配置/缝。该技能的全部适配都发生在被移植的 SKILL.md 文本内部（把上游专有工具名/命令改写为本仓库已注册的等价物）；本仓库侧唯一必然发生的文件变更是 skills/remove-deadcode/SKILL.md 本身 + 一次 VENDOR_LOCK.json 重钉（AGENTS.md §9 的 D_SKILLS_WRITER 规则，对每一个 skills/** 变更统一适用，不是 seam 布尔）。patch / preset / adapter / scripts 全部无需改动。",
+  "repoRevision": {
+    "gitLog1": "0e6bdafcdbbb4dde9bea0a8de94220d48c0548aa",
+    "measuredUpstreamFile": {
+      "path": "/root/dshProj/oh-my-openagent/.agents/skills/remove-deadcode/SKILL.md",
+      "sha256": "2323273413f220a68e43c46c81d97396d46d28adfce02c935c38d9c434d10d2f",
+      "lines": 215,
+      "fileCount": 1,
+      "dirCount": 0
+    },
+    "sandboxFixtureSha256": {
+      "sandbox/src/a.ts": "73a955c8b978b569a1cf15e643e36df5f397201ef225f3c8f040523807e13073",
+      "sandbox/src/b.ts": "a6b81be8635681abf9239d6da268884e28c746aa4869a73143a699378dc89ccb",
+      "sandbox/tsconfig.json": "ca7d1cb309844aa7a5320c157688e9645297e248b3a534c94a8d498566f949bc"
+    },
+    "upstreamCheckout": "/root/dshProj/oh-my-openagent (v5.0.0-beta.62, commit d1557a4b4)"
+  },
+  "sandbox": {
+    "root": "evidence/omo-align/skill-measurements/remove-deadcode/sandbox/",
+    "fixture": "src/a.ts (unused import + unused local + unused param), src/b.ts (unused export), tsconfig.json",
+    "isolation": "所有执行都在本任务 evidence 目录内或其中的一次性 git probe 内完成；probe 的 .git 在执行结束后删除；未使用 cwd 之外的真实环境，未写任何源码/配置/skills/docs，未安装任何包。"
+  },
+  "surfaceInventory": [
+    {
+      "id": "S1",
+      "surface": "task(subagent_type=\"explore\", run_in_background=true, load_skills=[])  /  task(category=\"deep\", load_skills=[...])",
+      "upstreamEvidence": ".agents/skills/remove-deadcode/SKILL.md:42,46,115-118",
+      "presentInRepo": "capability present, name differs",
+      "classification": "text-only-adaptation",
+      "localEvidence": "no dsh-tool-task package exists in the installed harness (count 0); DSH's delegation tool default name is `subagent` (node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-tool-subagent/lib/index.js:373 `const toolName = config.toolName ?? \"subagent\"`); our repo adds `mpd_role_spawn` (packages/mpd-roles-plugin/src/index.ts:107) and the agent_teams_* team route. No patch/preset/adapter/script change is needed to obtain delegation.",
+      "note": "This is the only 'upstream-proprietary surface' the skill depends on. It is satisfied by rewriting the call in the ported SKILL.md — the artifact being ported — not by changing the repo."
+    },
+    {
+      "id": "S2",
+      "surface": "LspFindReferences(filePath, line, character, includeDeclaration=false)",
+      "upstreamEvidence": ".agents/skills/remove-deadcode/SKILL.md:10,62,143",
+      "presentInRepo": "tool surface EXISTS; server binary MISSING",
+      "classification": "text-only-adaptation + environment-prerequisite",
+      "localEvidence": "REAL call mcp__lsp__find_references(filePath=sandbox/src/b.ts, line=2, character=16, includeDeclaration=false) returned: \"LSP server 'typescript' for .ts, .tsx, .js, .jsx, .mjs, .cjs, .mts, .cts is NOT INSTALLED. Command not found: typescript-language-server\". The tool accepted the skill's exact parameter set (filePath/line/character/includeDeclaration), so the rename is a drop-in; the missing grammar server is an ENVIRONMENT prerequisite (global npm install), and the lsp MCP row is already part of this repo's bundle (packages/mpd-mcp-lsp).",
+      "note": "I deliberately did NOT call lsp_install_decision (it writes /root/.codex/lsp-install-decisions.json, outside my evidence scope) and installed nothing."
+    },
+    {
+      "id": "S3",
+      "surface": "bunx tsc --noEmit --noUnusedLocals --noUnusedParameters",
+      "upstreamEvidence": ".agents/skills/remove-deadcode/SKILL.md:35",
+      "presentInRepo": "no (typescript not installed; bunx cannot start)",
+      "classification": "environment-prerequisite",
+      "localEvidence": "node_modules/typescript absent (node_modules/.bin contains tsgo only); `bunx tsc --version` exits 1 with `error: bun is unable to write files to tempdir: ReadOnlyFileSystem` both with default and overridden TMPDIR/BUN_TMPDIR. The scanner INTENT is available locally: node_modules/.bin/tsgo --noEmit --noUnusedLocals --noUnusedParameters -p tsconfig.json produced the definitive candidate list with file:line (exit 1): src/a.ts(1,10) TS6133 'unusedHelper'; src/a.ts(2,42) TS6133 'unusedParam'; src/a.ts(3,9) TS6133 'unusedLocal'; src/a.ts(6,7) TS6133 'neverReferenced'.",
+      "note": "Environment prerequisite, exactly the carve-out the frozen rule names (`bun` in a script). No repo change required."
+    },
+    {
+      "id": "S4",
+      "surface": "bun run typecheck",
+      "upstreamEvidence": ".agents/skills/remove-deadcode/SKILL.md:150,173",
+      "presentInRepo": "yes",
+      "classification": "already-present",
+      "localEvidence": "package.json scripts.typecheck = \"tsgo --noEmit\". EXECUTED for real in the isolated git probe via a package.json whose typecheck script carries the skill's unused flags: exit 1 with two TS6133 findings while dead code was present, exit 0 after removal, exit 0 after revert.",
+      "note": null
+    },
+    {
+      "id": "S5",
+      "surface": "bun test",
+      "upstreamEvidence": ".agents/skills/remove-deadcode/SKILL.md:174",
+      "presentInRepo": "yes",
+      "classification": "already-present",
+      "localEvidence": "package.json scripts.test = \"bun test packages\".",
+      "note": "Not executed in the probe (fixture has no tests); the script's existence is the seam question and it is present."
+    },
+    {
+      "id": "S6",
+      "surface": "bun run build",
+      "upstreamEvidence": ".agents/skills/remove-deadcode/SKILL.md:175",
+      "presentInRepo": "no such script",
+      "classification": "text-only-adaptation",
+      "localEvidence": "package.json has NO `build` script (measured: 'build' in scripts -> False); this repo's release/verification set is typecheck / test / test:qa / verify:vendor / pack (AGENTS.md §4). The ported skill drops or rewrites that line; no config change is implied.",
+      "note": null
+    },
+    {
+      "id": "S7",
+      "surface": "git checkout -- <files> / git add <specific files> / git commit",
+      "upstreamEvidence": ".agents/skills/remove-deadcode/SKILL.md:151-158",
+      "presentInRepo": "yes",
+      "classification": "already-present",
+      "localEvidence": "git at /usr/bin/git; the repo is a git work tree (git log -1 = 0e6bdaf). EXECUTED end-to-end in an isolated probe: baseline commit 2bcec61; removal commit df87f75 (\"refactor: remove dead code from a.ts\"); failure path (type error -> typecheck exit 1 -> git checkout -- a.ts) left `git status --porcelain` EMPTY and typecheck exit 0.",
+      "note": "The skill's parallel-safety rule (never `git add -A`) is a prose rule, not a repo seam."
+    },
+    {
+      "id": "S8",
+      "surface": "rm <dead file>",
+      "upstreamEvidence": ".agents/skills/remove-deadcode/SKILL.md:149",
+      "presentInRepo": "yes",
+      "classification": "already-present",
+      "localEvidence": "rm at /usr/bin/rm (measured in the probe: `rm dead.ts` succeeded).",
+      "note": null
+    },
+    {
+      "id": "S9",
+      "surface": "$ARGUMENTS (SCOPE CONTROL)",
+      "upstreamEvidence": ".agents/skills/remove-deadcode/SKILL.md:205",
+      "presentInRepo": "convention already carried by a shipped skill",
+      "classification": "text-only-adaptation",
+      "localEvidence": "skills/refactor/SKILL.md:608 already contains $ARGUMENTS, so carrying it cannot be a new seam requirement; no $ARGUMENTS substitution implementation was found in the installed dsh-skill / dsh-skill-filesystem libs (grep: no hit), so the section may need rewording.",
+      "note": "Precedent in our own corpus; rewordable text."
+    },
+    {
+      "id": "S10",
+      "surface": "load_skills=[\"typescript-programmer\", \"git-master\"]",
+      "upstreamEvidence": ".agents/skills/remove-deadcode/SKILL.md:117",
+      "presentInRepo": "partial (names differ)",
+      "classification": "text-only-adaptation",
+      "localEvidence": "our corpus has skills/git-master and skills/programming; there is no typescript-programmer skill directory (ls skills/ = 19 dirs). Rewording only.",
+      "note": null
+    },
+    {
+      "id": "S11",
+      "surface": "skill delivery plane (frontmatter, <bundle>/skills serving, VENDOR_LOCK)",
+      "upstreamEvidence": ".agents/skills/remove-deadcode/SKILL.md:1-4 (frontmatter: two top-level scalars)",
+      "presentInRepo": "yes, by directory scan",
+      "classification": "already-present",
+      "localEvidence": "packages/mpd-bootstrap-plugin/src/index.ts:6-9 + :19,48 (registers a ctx.skills provider over <bundle>/skills; readdir-based, no per-skill manifest or patch row); the frontmatter parser accepts top-level scalars (packages/mpd-bootstrap-plugin/src/index.ts:90 parseFrontmatter, subset pinned by packages/mpd-bootstrap-plugin/test/bootstrap.test.ts:94 with fixtures, and :67 is a membership check over [ast-grep, dsh-qa, svn-master] — adding a skill breaks neither). The one exact-count gate is scripts/verify-vendor.mjs:98,114 (skills fileCount 328 + treeSha) => the VENDOR_LOCK re-pin is mandatory, which AGENTS.md §9 defines as the standing D_SKILLS_WRITER process rule for every skills/** change and the gate's own repoTouchPoints for this row already lists.",
+      "note": "This is the ONLY repo file the port necessarily touches besides the new skill file: VENDOR_LOCK.json (re-pin). It is a process obligation applied uniformly to every skills row, not a seam boolean."
+    }
+  ],
+  "executions": [
+    {"command": "node_modules/.bin/tsgo --noEmit -p tsconfig.json (sandbox, without unused flags)", "cwd": "evidence/.../remove-deadcode/sandbox", "exitCode": 0, "result": "baseline: no findings (flags absent, as expected)"},
+    {"command": "node_modules/.bin/tsgo --noEmit --noUnusedLocals --noUnusedParameters -p tsconfig.json", "cwd": "evidence/.../remove-deadcode/sandbox", "exitCode": 1, "result": "4x TS6133 with exact file:line — the skill's Phase 1 scanner intent is satisfiable with the repo's installed compiler"},
+    {"command": "bunx tsc --noEmit --noUnusedLocals --noUnusedParameters (timeout 40)", "cwd": "evidence/.../remove-deadcode/sandbox", "exitCode": 1, "result": "error: bun is unable to write files to tempdir: ReadOnlyFileSystem — the literal upstream command cannot start here (environment prerequisite)"},
+    {"command": "bunx tsc --version (writable TMPDIR + BUN_TMPDIR overrides)", "cwd": "evidence/.../remove-deadcode/sandbox", "exitCode": 1, "result": "same tempdir error; typescript is also not installed (node_modules/typescript absent)"},
+    {"command": "bun --version", "cwd": "repo", "exitCode": 0, "result": "1.3.14 — bun itself runs; only bunx's tempdir/typescript path is blocked"},
+    {"command": "mcp__lsp__find_references(filePath=sandbox/src/b.ts, line=2, character=16, includeDeclaration=false)", "cwd": "repo", "exitCode": null, "result": "tool exists and accepts the skill's parameter shape; refused with 'LSP server typescript ... is NOT INSTALLED. Command not found: typescript-language-server'"},
+    {"command": "git init + git add -A + git commit baseline", "cwd": "sandbox/tmp/gitprobe", "exitCode": 0, "result": "baseline commit 2bcec61"},
+    {"command": "bun run typecheck (script = tsgo with the skill's unused flags) with injected dead code", "cwd": "sandbox/tmp/gitprobe", "exitCode": 1, "result": "a.ts(1,33) TS6133 unusedParam; a.ts(2,9) TS6133 unusedLocal"},
+    {"command": "bun run typecheck after the removal", "cwd": "sandbox/tmp/gitprobe", "exitCode": 0, "result": "clean"},
+    {"command": "git add a.ts && git commit -m \"refactor: remove dead code from a.ts\"", "cwd": "sandbox/tmp/gitprobe", "exitCode": 0, "result": "removal commit df87f75"},
+    {"command": "bun run typecheck with a deliberate type error", "cwd": "sandbox/tmp/gitprobe", "exitCode": 1, "result": "a.ts(2,9) TS2322 + TS6133 — the skill's revert trigger"},
+    {"command": "git checkout -- a.ts && bun run typecheck", "cwd": "sandbox/tmp/gitprobe", "exitCode": 0, "result": "revert complete; git status --porcelain EMPTY; typecheck exit 0"}
+  ],
+  "prerequisites": {
+    "alreadyPresent": [
+      "bun 1.3.14 (/root/.nvm/versions/node/v24.16.0/bin/bun) and `bun run <script>`",
+      "bun run typecheck -> tsgo --noEmit (repo script; the skill's per-batch gate)",
+      "bun test -> bun test packages (repo script)",
+      "git (/usr/bin/git) with commit/checkout revert; the repo is a git work tree",
+      "rm (/usr/bin/rm)",
+      "the LSP MCP tool surface (mcp__lsp__find_references) mounted by the bundle's mcp-lsp row",
+      "a subagent delegation tool named `subagent` (+ subagent_fork) and our mpd_role_spawn / agent_teams_* routes",
+      "skills served by directory scan from <bundle>/skills, so a new skill directory needs no patch/preset row",
+      "compiler for the scanner: node_modules/.bin/tsgo (TypeScript-native) with --noUnusedLocals/--noUnusedParameters"
+    ],
+    "environmentPrerequisites": [
+      "typescript-language-server (+ a typescript usable by the server) for the skill's 'LSP is law' Phase 2 — MEASURED MISSING (command not found); installing it is a global npm install, not a repo change",
+      "a writable bun tempdir for `bunx` — MEASURED BLOCKED here (bunx cannot even print a version)",
+      "network/registry access if `bunx tsc` is kept instead of switching to tsgo"
+    ],
+    "missingWithoutCounterpart": [
+      "`bun run build` — this repo has no build script; the ported skill must drop or replace that Phase 5 line (text-only)"
+    ],
+    "repoChangesRequired": []
+  },
+  "boundaryConclusion": {
+    "rule": "evidence/omo-align/requirements/frozen-contract.json:154 residualFieldGap: harnessSeamChange = any(envKeyOmo, workflowTool, dagRunId, goalTool, teamTools) > 0; binaryDependency = binaries > 0; credentialDependency = creds > 0; D3 = number of TRUE seam booleans (harnessSeamChange + binaryDependency), EXCEPT a boolean whose keyword hit is prose-only or an ordinary environment prerequisite (e.g. `bun` in a script) does NOT count.",
+    "harnessSeamChange": false,
+    "binaryDependency": true,
+    "binaryDependencyCounted": false,
+    "credentialDependency": false,
+    "d3": 0,
+    "total": 14,
+    "finalAction": "skip",
+    "reasoning": "The skill's coupling tokens are taskTool, categoryRouting, binaries (evidence/omo-align/skills-gates/raw/derived-rows-fv4.json). taskTool/categoryRouting are SOFT classes and NOT among the five harnessSeamChange keywords => harnessSeamChange = FALSE. binaries > 0 comes only from the script-level `bun run typecheck`/`bunx tsc`, which the rule's exception excludes as an ordinary environment prerequisite => D3 = 0. With fileCount = 1 the row's total lands at 14 (< X = 15) => skip, matching frozen-contract.json:154's own statement that remove-deadcode scores 14.",
+    "alternativeReading": {
+      "trigger": "If the captain counts `harnessSeamChange = true` because the port must rewrite an upstream-proprietary tool call (`task(...)` -> `subagent`/`mpd_role_spawn`) inside the skill's own text, then D3 = 1 and the total becomes 15 (>= X) => action flips to adapt-then-install (D4 < 3). The literal contract wording ('需要改动本仓库的代码/配置/缝（patch、preset、脚本、适配器）') does NOT cover a text edit inside the ported artifact, so the measured answer stays no-seam-required; but the boundary is exactly one captain ruling away from 15.",
+      "boundaryIsDecidable": true
+    },
+    "falsifiableAssertion": "Port the skill text-only (skills/remove-deadcode/SKILL.md), apply the single VENDOR_LOCK re-pin, and change NOTHING else: (a) `node scripts/verify-vendor.mjs` exits 0 after the re-pin; (b) a mounted mpd session lists `remove-deadcode` in its skill catalog (bun skills/dsh-qa/scripts/skill-catalog-probe.mjs); (c) the substituted Phase 1/Phase 4 commands (`bun run typecheck` with the unused flags, `subagent` delegation) execute in that repo with no patch/preset/adapter/script edit. Any required patch/preset/adapter edit appearing during (a)-(c) would falsify verdict=no-seam-required."
+  },
+  "uncertain": [
+    {
+      "what": "Whether the captain's frozen rule treats a text-only tool-name adaptation inside the ported SKILL.md as harnessSeamChange.",
+      "why": "The frozen flagDerivationRule's five keywords exclude taskTool, and the acceptance wording speaks of changing repo code/config/seams; both readings are defensible and give different boundary totals (14 vs 15).",
+      "howToResolve": "One captain ruling; my measurement supplies the ground truth that the required change is text-only."
+    },
+    {
+      "what": "Whether `$ARGUMENTS` is substituted for skills by this harness.",
+      "why": "No substitution code was found in the installed dsh-skill libs, yet skills/refactor/SKILL.md:608 already ships $ARGUMENTS, so it cannot be a NEW seam requirement; the exact runtime behaviour was not measured with a live session (out of this task's scope).",
+      "howToResolve": "A live skill invocation in an isolated session (skill-catalog/skill-load case)."
+    },
+    {
+      "what": "Whether the ported skill should keep `bunx tsc` (and therefore declare a typescript prerequisite) or switch to the repo's tsgo scanner.",
+      "why": "Both are executable in principle; only tsgo was MEASURED working here while bunx is blocked by the read-only bun tempdir and the missing typescript install.",
+      "howToResolve": "t9/t15 during the port: pick tsgo (measured) or add typescript as a documented prerequisite."
+    },
+    {
+      "what": "Whether the LSP server should be installed for this skill to be usable as written ('LSP is law').",
+      "why": "The lsp MCP server for TypeScript is not installed; installing is an environment action I must not take read-only, and I also deliberately did not write the /root/.codex install-decision file (outside my evidence scope).",
+      "howToResolve": "User decision: install typescript-language-server, or the ported skill states the LSP step requires that prerequisite."
+    }
+  ],
+  "notModifiedOutsideEvidence": [
+    "packages/**, presets/**, scripts/**, skills/**, docs/**, evidence/omo-align/skills-gates/**, evidence/omo-align/implementation/** — untouched",
+    "no package installed; no lsp_install_decision written (it would write /root/.codex/lsp-install-decisions.json, outside scope)",
+    "the git probe's .git was created inside the sandbox and removed at the end of the same call; the repo's own git state was never mutated"
+  ],
+  "evidenceFiles": [
+    "evidence/omo-align/skill-measurements/remove-deadcode/result.json",
+    "evidence/omo-align/skill-measurements/remove-deadcode/output.log",
+    "evidence/omo-align/skill-measurements/remove-deadcode/output.scans.log",
+    "evidence/omo-align/skill-measurements/remove-deadcode/output.protocol.log",
+    "evidence/omo-align/skill-measurements/remove-deadcode/sandbox/{src/a.ts,src/b.ts,tsconfig.json}"
+  ]
+}

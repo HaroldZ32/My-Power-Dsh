@@ -1,0 +1,33 @@
+== BASELINE 0e6bdaf vs WORKTREE (manual entry freeze) ==
+
+-- lib/command.js: constants + gesture regex --
+baseline sha256: ec478eee4b16c817b766c9e0c3754d2253461eaa387219a109bf89bdd030a25f
+worktree sha256: ec478eee4b16c817b766c9e0c3754d2253461eaa387219a109bf89bdd030a25f
+baseline decls:
+3:export const AGENT_TEAMS_COMMAND = 'agent-teams';
+4:const PROFILE_COMMAND_PREFIX = `${AGENT_TEAMS_COMMAND}-`;
+5:const GESTURE = /^\/agent-teams(?=$|[\t\n\r ])/u;
+worktree decls:
+3:export const AGENT_TEAMS_COMMAND = 'agent-teams';
+4:const PROFILE_COMMAND_PREFIX = `${AGENT_TEAMS_COMMAND}-`;
+5:const GESTURE = /^\/agent-teams(?=$|[\t\n\r ])/u;
+
+-- agent_teams_* tool names (registered) --
+baseline: 14 names
+worktree: 14 names
+DIFF: none (identical set)
+
+-- patch profiles key set + stateDir --
+205:        stateDir: .mpd/team
+231:        profiles:
+232:          mpd:
+worktree:
+205:        stateDir: .mpd/team
+256:        profiles:
+257:          mpd:
+
+-- preset id/roster roots --
+mpd
+
+-- generated slash command mechanism (command.js profileCommandName + profiles key set) --
+PROFILE_COMMAND_PREFIX derives from AGENT_TEAMS_COMMAND: true

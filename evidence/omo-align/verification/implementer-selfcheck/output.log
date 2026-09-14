@@ -1,0 +1,675 @@
+############ t17 VERIFICATION OUTPUT LOG (restored) ############
+restored: 2026-09-13T14:56:48Z  HEAD: c91f26621d11b58911d1d7a0224d06267542363c
+NOTE: this log and result.json were overwritten at 14:49:54Z and ~14:54Z by a re-run of evidence/omo-align/verification/run.mjs;
+      the post-overwrite state is preserved at raw/run-144954-overwrite-state.json and raw/run-144954-overwrite-output.log.
+
+===== 1. PINNED REVISION / SETTLE =====
+HEAD=d10f8e3ab74dc637a5a9d7d107eca7ef9f232db3
+a9dfb3114289cbebc339552a3b168f8881e46e07eb905fa2599ef225223b92bf  evidence/omo-align/requirements/frozen-contract.json
+frozen-contract size=28243 mtime=2026-09-13 22:31:25.900576835 +0800
+frozen-contract JSON: valid
+
+1f0203c69e5e904d878774e1d5d1e9d646de070b8e3fa2908ce77f85b60aefc0  packages/mpd-agent-teams-plugin/lib/session-start.js
+c1b170e8c9e92dcc3195e530ae676448120dc2c87b31de8b45b2bc6979d98feb  packages/mpd-agent-teams-plugin/lib/index.js
+c5a8b1aa947fb7417217bf7d37d205f41cdc9ee69142b6405c4e8e54ae083e9e  packages/mpd-agent-teams-plugin/lib/tools.js
+4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5  packages/mpd-agent-teams-plugin/lib/quality-gates.js
+9ee189972b2b870607afde74eafe08bebbb425c381e4bca2ef33ebc29dc29c9d  packages/mpd-bundle/cordis.patch.yml
+125312b54b2c20e64c195890feeb56a915c4b57f29e0fbc97e0df5c6662e1a90  presets/mpd/agent.cordis.yml
+37e9c291930d0c07476ec1dcc06d50be5fd75f70fb17ce6a851c9a1be03a465c  scripts/install-profile.mjs
+4e37e5d56ea170d493ad2d305c92ebf669fa960495534425fa2a7fc9394d4ed9  skills/dsh-qa/scripts/session-start-team.mjs
+8f067ddb30abeb4f047c4329036ad840364ad0a899a83df262ae963d43f76f7d  skills/dsh-qa/scripts/lib/gate-probe.mjs
+6767f85d7fa9f354c688b35ba1f7ded30791768431ffb1015fd0d9791ea9f780  AGENTS.md
+0ec6bbb1f8104cd7de0c337ac96a6fe46987d6bccb72e9ace3d1944d5d52c2e5  evidence/omo-align/requirements/frozen-contract.json
+
+1f0203c69e5e904d878774e1d5d1e9d646de070b8e3fa2908ce77f85b60aefc0  packages/mpd-agent-teams-plugin/lib/session-start.js
+c1b170e8c9e92dcc3195e530ae676448120dc2c87b31de8b45b2bc6979d98feb  packages/mpd-agent-teams-plugin/lib/index.js
+eae4061415a05f4b937f2975b59cc2c4a044dd3be3b2965425f0c93369da10a8  packages/mpd-agent-teams-plugin/lib/state.js
+026e2ffca86e1254005254144d4c5f4f38dce6c538777f98b0e8217f92db2dcb  packages/mpd-agent-teams-plugin/lib/tools.js
+4821cf55d09e7d6ef96e9b6f87ac518ce4cc7df1b5265c37d4c1f765df3fa04f  packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+9ee189972b2b870607afde74eafe08bebbb425c381e4bca2ef33ebc29dc29c9d  packages/mpd-bundle/cordis.patch.yml
+125312b54b2c20e64c195890feeb56a915c4b57f29e0fbc97e0df5c6662e1a90  presets/mpd/agent.cordis.yml
+37e9c291930d0c07476ec1dcc06d50be5fd75f70fb17ce6a851c9a1be03a465c  scripts/install-profile.mjs
+a0e7e1a8761318e1502e501c5260fa90c52ae7e96f868e1aef2cce180c6ba1cb  scripts/reclaim-staged-teams.mjs
+4e37e5d56ea170d493ad2d305c92ebf669fa960495534425fa2a7fc9394d4ed9  skills/dsh-qa/scripts/session-start-team.mjs
+8f067ddb30abeb4f047c4329036ad840364ad0a899a83df262ae963d43f76f7d  skills/dsh-qa/scripts/lib/gate-probe.mjs
+6767f85d7fa9f354c688b35ba1f7ded30791768431ffb1015fd0d9791ea9f780  AGENTS.md
+
+===== 2. GATE EXIT CODES (batch + final) =====
+typecheck	0	bun run typecheck
+test-plugin	0	bun test packages/mpd-agent-teams-plugin
+test-packages	0	bun test packages
+install-selftest	0	node scripts/install-profile.mjs --self-test
+install-dryrun	0	node scripts/install-profile.mjs --dry-run
+preset-conformance	0	node skills/dsh-qa/scripts/preset-conformance.mjs
+bundle-lifecycle	1	bun skills/dsh-qa/scripts/bundle-lifecycle.mjs
+patch-check	0	node scripts/patch-agent-teams-fixes.mjs --check
+verify-vendor	0	node scripts/verify-vendor.mjs
+session-start-team	0	bun skills/dsh-qa/scripts/session-start-team.mjs
+
+typecheck	0	bun run typecheck
+install-selftest	0	node scripts/install-profile.mjs --self-test
+install-dryrun	0	node scripts/install-profile.mjs --dry-run
+patch-check	0	node scripts/patch-agent-teams-fixes.mjs --check
+verify-vendor	0	node scripts/verify-vendor.mjs
+
+-- typecheck:
+$ tsgo --noEmit
+-- test-plugin:
+packages/mpd-agent-teams-plugin/test/s1-s4-semantics.test.mjs:
+
+ 134 pass
+ 0 fail
+ 858 expect() calls
+Ran 134 tests across 48 files. [2.62s]
+-- test-packages:
+packages/mpd-comment-checker-plugin/test/comment-checker.test.ts:
+
+ 316 pass
+ 0 fail
+ 2272 expect() calls
+Ran 316 tests across 105 files. [14.13s]
+-- preset-conformance:
+  sessionHeader: {"ok":true,"agentPreset":"mpd","log":"/tmp/mpd-preset-main-JTSRzB/home/sessions/--tmp-mpd-preset-main-JTSRzB-ws--/session-5ec91ca4-6a77-492e-8194-75d0a81bf83c/session.v3.jsonl.zstd"}
+  bootLog: {"ok":true,"signatures":[]}
+  negativeControl: {"ok":true,"code":"agent-preset/invalid","message":"agent-presets: preset \"mpd\" failed to mount: failed to apply loader entry persona (@deepseek-ai/dsh-persona): invalid config:\n  - $.prefix missing required value (at prefix) (/tmp/mpd-preset-control-2026-09-13T14-34-32.302Z/mpd/agent.cordis.yml)
+[preset-conformance] PASS
+-- bundle-lifecycle (isolated re-run):
+[bundle-lifecycle] ok=true -> /root/dshProj/my-power-dsh/evidence/dsh-qa/bundle-lifecycle/2026-09-13T14-37-52.228Z
+  install: {"ok":true,"exit":0,"dependency":"link:/root/dshProj/my-power-dsh","bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"],"oneCommand":"dsh plugin --profile w add <repo root>"}
+  composed: {"ok":true,"exit":0}
+  boot: {"ok":true,"http":true,"corpus":"/root/dshProj/my-power-dsh/skills","preset":"/root/dshProj/my-power-dsh/.qa-reloc/bundle-lifecycle-2026-09-13T14-37-52.228Z/home/profiles/w/node_modules/@mpd-dsh/mpd/presets/mpd/agent.cordis.yml","trust":"system","bundleReal":"
+  noHomeCopy: {"ok":true,"skills":[],"presets":[]}
+  layerDurability: {"ok":true,"exit":0,"dependency":true,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"]}
+  uninstall: {"ok":true,"exit":0,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app"],"residue":[],"mpdState":[]}
+[bundle-lifecycle] PASS
+-- patch-check:
+[patch-agent-teams-fixes] already applied: 19 mpd delta region(s) across 5 adopted file(s)
+-- verify-vendor:
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+
+===== 3. TWO-SIDED GATE CASE (mandated, run 1) =====
+{
+ "ok": true,
+ "settled": {
+  "ok": true,
+  "rev": "f4f91b5754bba3fa3c3d758c01d4e08fe50c6585",
+  "gateHash": "1f0203c69e5e904d878774e1d5d1e9d646de070b8e3fa2908ce77f85b60aefc0"
+ },
+ "twoSided": {
+  "ok": true,
+  "simpleTeams": [
+   0,
+   0,
+   0
+  ],
+  "simpleNotices": [
+   false,
+   false,
+   false
+  ],
+  "complexTeams": [
+   1,
+   1,
+   1
+  ],
+  "complexNotices": [
+   true,
+   true,
+   true
+  ]
+ }
+}
+simple [{"teams":0,"notice":false},{"teams":0,"notice":false},{"teams":0,"notice":false}]
+complex [{"teams":1,"notice":true,"phase":"staged","profile":"mpd","members":11,"spawned":0},{"teams":1,"notice":true,"phase":"staged","profile":"mpd","members":11,"spawned":0},{"teams":1,"notice":true,"phase":"staged","profile":"mpd","members":11,"spawned":0}]
+
+===== 3b. TWO-SIDED GATE CASE (mandated, run 2 = FINAL revision) =====
+{
+ "ok": true,
+ "settled": {
+  "ok": true,
+  "rev": "c91f26621d11b58911d1d7a0224d06267542363c",
+  "gateHash": "1f0203c69e5e904d878774e1d5d1e9d646de070b8e3fa2908ce77f85b60aefc0"
+ },
+ "twoSided": {
+  "ok": true,
+  "simpleTeams": [
+   0,
+   0,
+   0
+  ],
+  "simpleNotices": [
+   false,
+   false,
+   false
+  ],
+  "complexTeams": [
+   1,
+   1,
+   1
+  ],
+  "complexNotices": [
+   true,
+   true,
+   true
+  ]
+ }
+}
+
+===== 4. INDEPENDENT ISOLATION + TWO-SIDED DRIVER =====
+{
+  "steps": {
+    "installer": {
+      "exit": 0,
+      "ok": true
+    },
+    "sides": [
+      {
+        "label": "simple",
+        "prompt": "Reply with exactly: hello-ok",
+        "teams": 0,
+        "notice": false,
+        "ok": true,
+        "goalTextConsumed": null,
+        "userMessageTexts": [
+          "Reply with exactly: hello-ok",
+          "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent DSH fi",
+          "<system-reminder>\nA skill is a reusable set of task-specific instructions. The following skills are "
+        ],
+        "sessionStoreKeys": [
+          "--tmp-mpd-t17-iso-aENGIJ-side-simple-ws--"
+        ],
+        "sessionStoreKeyIsSandbox": true,
+        "activeMembers": 0
+      },
+      {
+        "label": "complex",
+        "prompt": "team: fix the flaky test",
+        "teams": 1,
+        "notice": true,
+        "ok": true,
+        "goalTextConsumed": true,
+        "userMessageTexts": [
+          "fix the flaky test",
+          "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent DSH fi",
+          "<system-reminder>\nA skill is a reusable set of task-specific instructions. The following skills are ",
+          "[AgentTeams] Session-start team rule: this session was routed by the complexity gate (complexity sig"
+        ],
+        "sessionStoreKeys": [
+          "--tmp-mpd-t17-iso-aENGIJ-side-complex-ws--"
+        ],
+        "sessionStoreKeyIsSandbox": true,
+        "staged": "staged",
+        "members": 11,
+        "activeMembers": 0,
+        "dossier": "mpd-default"
+      }
+    ],
+    "isolation": [
+      {
+        "label": "simple",
+        "keys": [
+          "--tmp-mpd-t17-iso-aENGIJ-side-simple-ws--"
+        ],
+        "sandboxKeyed": true
+      },
+      {
+        "label": "complex",
+        "keys": [
+          "--tmp-mpd-t17-iso-aENGIJ-side-complex-ws--"
+        ],
+        "sandboxKeyed": true
+      }
+    ],
+    "repoTeamPreserved": {
+      "before": [
+        "agent-teams-sidebar-migration",
+        "mpd-default-84e50f06",
+        "mpd-default-d92bc69a",
+        "mpd-default-db53f0d4"
+      ],
+      "after": [
+        "agent-teams-sidebar-migration",
+        "mpd-default-84e50f06",
+        "mpd-default-d92bc69a",
+        "mpd-default-db53f0d4"
+      ],
+      "newIds": []
+    },
+    "realHomePreserved": {
+      "before": [
+        "lsp-daemon",
+        "mcp-servers",
+        "mcp-wave.patch.yml",
+        "mcp.env",
+        "workmate"
+      ],
+      "after": [
+        "lsp-daemon",
+        "mcp-servers",
+        "mcp-wave.patch.yml",
+        "mcp.env",
+        "workmate"
+      ],
+      "newEntries": []
+    }
+  },
+  "verdict": {
+    "twoSided": true,
+    "isolation": true
+  },
+  "baseline": {
+    "repoTeamBefore": [
+      "agent-teams-sidebar-migration",
+      "mpd-default-84e50f06",
+      "mpd-default-d92bc69a",
+      "mpd-default-db53f0d4"
+    ],
+    "realHomeBefore": [
+      "lsp-daemon",
+      "mcp-servers",
+      "mcp-wave.patch.yml",
+      "mcp.env",
+      "workmate"
+    ]
+  }
+}
+===== 5. OPT-1 INDEPENDENT PREDICATE TEST =====
+PASS opt1-failed-dep-not-blocking :: blocking=[]
+PASS opt1-failed-dep-surfaced :: failed=["A"]
+PASS control-completed-dep-ready :: blocking=[]
+PASS control-pending-dep-blocks :: blocking=["A"]
+PASS control-claimed-dep-blocks :: blocking=["A"]
+PASS control-in_progress-dep-blocks :: blocking=["A"]
+PASS cancelled-dep-not-blocking :: blocking=[]
+PASS mixed-dep-blocks-only-pending :: blocking=["C"]
+PASS retry-lifecycle-semantics :: failed:[] claimed:["A"] in_progress:["A"] completed:[]
+PASS unknown-dep-blocks :: blocking=["A"]
+PASS view-contract-carries-failed-dependencies :: agent_teams_task_contract -> failed_dependencies present
+INFO view-snapshot-visual-state :: {"visual":"blocked"}
+PASS claim-path-uses-predicate :: agent_teams_claim_task readiness uses unsatisfiedDependencies
+PASS scheduler-uses-predicate :: scheduler.nextReadyTask uses unsatisfiedDependencies
+{
+  "coreAllOk": true,
+  "failedIds": [
+    "view-snapshot-visual-state"
+  ],
+  "results": [
+    {
+      "id": "opt1-failed-dep-not-blocking",
+      "ok": true,
+      "detail": "blocking=[]"
+    },
+    {
+      "id": "opt1-failed-dep-surfaced",
+      "ok": true,
+      "detail": "failed=[\"A\"]"
+    },
+    {
+      "id": "control-completed-dep-ready",
+      "ok": true,
+      "detail": "blocking=[]"
+    },
+    {
+      "id": "control-pending-dep-blocks",
+      "ok": true,
+      "detail": "blocking=[\"A\"]"
+    },
+    {
+      "id": "control-claimed-dep-blocks",
+      "ok": true,
+      "detail": "blocking=[\"A\"]"
+    },
+    {
+      "id": "control-in_progress-dep-blocks",
+      "ok": true,
+      "detail": "blocking=[\"A\"]"
+    },
+    {
+      "id": "cancelled-dep-not-blocking",
+      "ok": true,
+      "detail": "blocking=[]"
+    },
+    {
+      "id": "mixed-dep-blocks-only-pending",
+      "ok": true,
+      "detail": "blocking=[\"C\"]"
+    },
+    {
+      "id": "retry-lifecycle-semantics",
+      "ok": true,
+      "detail": "failed:[] claimed:[\"A\"] in_progress:[\"A\"] completed:[]"
+    },
+    {
+      "id": "unknown-dep-blocks",
+      "ok": true,
+      "detail": "blocking=[\"A\"]"
+    },
+    {
+      "id": "view-contract-carries-failed-dependencies",
+      "ok": true,
+      "detail": "agent_teams_task_contract -> failed_dependencies present"
+    },
+    {
+      "id": "view-snapshot-visual-state",
+      "ok": false,
+      "detail": "taskVisualState(pending,[\"A\"],A=failed) = \"blocked\" (snapshot/status + web panel surface); claimability says READY, this view says \"blocked\""
+    },
+    {
+      "id": "claim-path-uses-predicate",
+      "ok": true,
+      "detail": "agent_teams_claim_task readiness uses unsatisfiedDependencies"
+    },
+    {
+      "id": "scheduler-uses-predicate",
+      "ok": true,
+      "detail": "scheduler.nextReadyTask uses unsatisfiedDependencies"
+    }
+  ]
+}
+
+===== 6. OPT-2 + GATE CALIBRATION =====
+{
+ "steps": {
+  "dryRunChangesNothing": {
+   "ok": true,
+   "summary": "[reclaim-staged-teams] re-run with --apply to archive them"
+  },
+  "apply": {
+   "summary": "[reclaim-staged-teams] APPLIED: 2 residual of 5 live team(s), 2 archived",
+   "residueArchivedNotDeleted": true,
+   "runningProtectedByteIdentical": true,
+   "approvedStagedProtected": true,
+   "stagedWithTasksProtected": true,
+   "liveDirAfter": [
+    "approved-staged",
+    "archive",
+    "running",
+    "staged-with-tasks"
+   ]
+  },
+  "ordering": {
+   "ok": true,
+   "preStepListener": true,
+   "globalPrepend": true,
+   "gateEvaluatedInListener": true
+  },
+  "calibration": {
+   "frozenSimpleAllQuiet": true,
+   "frozenComplexAllTrigger": true,
+   "adversarialSimpleTriggers": [
+    "adversarial-simple-list"
+   ]
+  }
+ },
+ "gateCalibration": [
+  {
+   "label": "frozen-simple-1",
+   "trigger": false,
+   "signals": [],
+   "flagConsumed": false
+  },
+  {
+   "label": "frozen-simple-2",
+   "trigger": false,
+   "signals": [],
+   "flagConsumed": false
+  },
+  {
+   "label": "frozen-simple-3",
+   "trigger": false,
+   "signals": [],
+   "flagConsumed": false
+  },
+  {
+   "label": "adversarial-simple-list",
+   "trigger": true,
+   "signals": [
+    "C2",
+    "C3"
+   ],
+   "flagConsumed": false
+  },
+  {
+   "label": "adversarial-simple-cjk",
+   "trigger": false,
+   "signals": [],
+   "flagConsumed": false
+  },
+  {
+   "label": "adversarial-simple-two",
+   "trigger": false,
+   "signals": [],
+   "flagConsumed": false
+  },
+  {
+   "label": "frozen-complex-1",
+   "trigger": true,
+   "signals": [
+    "C2",
+    "C3"
+   ],
+   "flagConsumed": false
+  },
+  {
+   "label": "frozen-complex-2",
+   "trigger": true,
+   "signals": [
+    "A"
+   ],
+   "flagConsumed": true
+  },
+  {
+   "label": "frozen-complex-3",
+   "trigger": true,
+   "signals": [
+    "C1",
+    "C2",
+    "C3"
+   ],
+   "flagConsumed": false
+  }
+ ]
+}
+
+===== 7. MANUAL ENTRY FREEZE =====
+== BASELINE 0e6bdaf vs WORKTREE (manual entry freeze) ==
+
+-- lib/command.js: constants + gesture regex --
+baseline sha256: ec478eee4b16c817b766c9e0c3754d2253461eaa387219a109bf89bdd030a25f
+worktree sha256: ec478eee4b16c817b766c9e0c3754d2253461eaa387219a109bf89bdd030a25f
+baseline decls:
+3:export const AGENT_TEAMS_COMMAND = 'agent-teams';
+4:const PROFILE_COMMAND_PREFIX = `${AGENT_TEAMS_COMMAND}-`;
+5:const GESTURE = /^\/agent-teams(?=$|[\t\n\r ])/u;
+worktree decls:
+3:export const AGENT_TEAMS_COMMAND = 'agent-teams';
+4:const PROFILE_COMMAND_PREFIX = `${AGENT_TEAMS_COMMAND}-`;
+5:const GESTURE = /^\/agent-teams(?=$|[\t\n\r ])/u;
+
+-- agent_teams_* tool names (registered) --
+baseline: 14 names
+worktree: 14 names
+DIFF: none (identical set)
+
+-- patch profiles key set + stateDir --
+205:        stateDir: .mpd/team
+231:        profiles:
+232:          mpd:
+worktree:
+205:        stateDir: .mpd/team
+256:        profiles:
+257:          mpd:
+
+-- preset id/roster roots --
+mpd
+
+-- generated slash command mechanism (command.js profileCommandName + profiles key set) --
+PROFILE_COMMAND_PREFIX derives from AGENT_TEAMS_COMMAND: true
+
+===== 8. CONFIG PLANE =====
+[
+ {
+  "key": "maxMembers",
+  "got": 16,
+  "want": 16,
+  "ok": true
+ },
+ {
+  "key": "maxParallelMembers",
+  "got": 8,
+  "want": 8,
+  "ok": true
+ },
+ {
+  "key": "maxMessagesPerRun",
+  "got": 10000,
+  "want": 10000,
+  "ok": true
+ },
+ {
+  "key": "maxWallClockMinutes",
+  "got": 120,
+  "want": 120,
+  "ok": true
+ },
+ {
+  "key": "maxMemberTurns",
+  "got": 500,
+  "want": 500,
+  "ok": true
+ },
+ {
+  "key": "messagePayloadMaxBytes",
+  "got": 32768,
+  "want": 32768,
+  "ok": true
+ },
+ {
+  "key": "recipientUnreadMaxBytes",
+  "got": 262144,
+  "want": 262144,
+  "ok": true
+ },
+ {
+  "key": "mailboxPollIntervalMs",
+  "got": 3000,
+  "want": 3000,
+  "ok": true
+ },
+ {
+  "key": "memberMaxDepth",
+  "got": 1,
+  "want": 1,
+  "ok": true
+ },
+ {
+  "key": "stateDir",
+  "got": ".agent-teams",
+  "want": ".mpd/team",
+  "ok": false
+ }
+]
+policy {"mode":"off","autoRoute":true,"presets":[],"name":"MPD Default","approval":"required"}
+min-guard messagePayloadMaxBytes 512 => REJECTED
+min-guard mailboxPollIntervalMs 100 => REJECTED
+min-guard recipientUnreadMaxBytes 10 => REJECTED
+mode union => REJECTED
+enforcement default enforce
+
+===== 9. t1 ACCEPTANCE CROSS-CHECK (A1/A5/A7/A8) =====
+== A1: old mandatory-team invariant text must be gone ==
+packages/mpd-agent-teams-plugin/test/opt2-residual-and-ordering.test.mjs:109:    expect(preset).not.toMatch(/every session\s+MUST start inside a team/i)
+hits: 1
+
+== A5: ledger files + language switch + index rows ==
+-rw------- 1 root root 10661 Sep 13 21:44 docs/omo-parity-ledger.md
+-rw------- 1 root root  9967 Sep 13 21:45 docs/omo-parity-ledger.zh-CN.md
+# OMO Parity Ledger
+**English** | [中文](./omo-parity-ledger.zh-CN.md)
+
+> Wave: `omo-parity-align`. Status: **OPEN — values frozen, implementation not yet verified.**
+---
+# OMO 对齐台账
+[English](./omo-parity-ledger.md) | **中文**
+
+> 波次：`omo-parity-align`。状态：**进行中 —— 取值已冻结，实现尚未验证。**
+index mentions ledger: 1
+
+== A7: skills/** changed files in the feature commit vs VENDOR_LOCK pairing ==
+ VENDOR_LOCK.json                                   |   6 +-
+ skills/dsh-qa/SKILL.md                             |   2 +-
+ skills/dsh-qa/scripts/lib/gate-probe.mjs           |  46 ++
+ skills/dsh-qa/scripts/session-start-team.mjs       | 207 +++--
+902e019 skills files: 3
+902e019 touches VENDOR_LOCK: 1
+
+== A8: branch / merge / direct-to-dev ==
+HEAD branch: dev
+  contains-902e019: * dev
+  contains-902e019:   feature/omo-parity-align
+  * c28c7c1 feat(agent-teams): failed dependencies stop blocking; archive staged residue
+  *   f4f91b5 merge(feature/omo-parity-align): session-start complexity gate + mass-ulw S1-S4 + configPlane
+  |\  
+  | * 902e019 feat(agent-teams): gate team provisioning on a frozen complexity signal
+  |/  
+  * 0e6bdaf feat(roster): make every teammate flash-tier with explicit reasoning effort
+  *   917c65f merge(fix/ledger-tone-note): record the wording revision
+  |\  
+  | * 6a7395b docs(evidence): record the declaration's wording revision and why the owner rejected the first framing
+  |/  
+5fa28e2 changed paths:
+  evidence/omo-align/implementation/raw/reclaim-applied.json
+  evidence/omo-align/implementation/raw/reclaim-dryrun.json
+  evidence/omo-align/implementation/raw/session-start-team-r2.log
+  evidence/omo-align/implementation/result.json
+  packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+  packages/mpd-agent-teams-plugin/lib/state.js
+  packages/mpd-agent-teams-plugin/lib/tools.js
+  packages/mpd-agent-teams-plugin/self-fix-tests/quality-loop.test.mjs
+  packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs
+  packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs
+  packages/mpd-agent-teams-plugin/test/opt1-failed-dependency.test.mjs
+  packages/mpd-agent-teams-plugin/test/opt2-residual-and-ordering.test.mjs
+  scripts/reclaim-staged-teams.mjs
+5fa28e2 forbidden-path hits: 0
+
+===== 10. CAPTAIN ADJUDICATIONS (additive) =====
+{
+  "addedAt": "2026-09-13T14:50Z",
+  "note": "Additive record of the captain's dispositions after accepting this verdict. Nothing above was rewritten.",
+  "verdictAccepted": true,
+  "anchorMethodEndorsed": "file sha256 instead of commit id, because HEAD moved 5 times during verification",
+  "items": {
+    "A8": "accepted-with-exemption - see the captainAdjudication note on the A8 entry below (user decision: keep R2 on dev and record the exemption; t15 was already terminal and the plugin refuses completed -> claimed).",
+    "A4": "owned by the new task t21 (functional-surface per-row alignment table, recombined from the existing t4 evidence; Lead does not participate).",
+    "F1": "one calibration pass authorised; the 2-of-3 signal-C form is MAINTAINED; the measured false positive ('Check the test, build the package, verify the output.' -> team) is recorded in the ledger as a known cost; prompts are not changed so the existing two-sided evidence stays valid.",
+    "F2": "accepted as a real defect; repair task t22 (automatic reclamation + view consistency) assigned to the implementer.",
+    "F6": "recorded as to-fix (deployment row is correct; a profile that omits stateDir still writes '.agent-teams'); goes on the follow-up wave list, folded into t22 if its scope allows.",
+    "F7": "recorded as a known defect with the retained original raw log (raw/gates/bundle-lifecycle.log) as evidence.",
+    "F3": "captain's responsibility; the contract's 5-revision drift is recorded in the ledger.",
+    "F4": "captain's responsibility; the R2 dev-direct landing is recorded in the ledger, and A8's exemption note above is the operative record.",
+    "reviewF4": "assigned back to Lead (this report): reverse-control run records and the S3 assertion strength - see the finding 'reviewF4' below and the residual R1 downgrade."
+  },
+  "supplement": "evidence/omo-align/verification/raw/recheck-after-go.json (re-read anchors after the formal GO + deltas vs its advisory numbers)"
+}
+
+===== 11. EVIDENCE-INTEGRITY INCIDENT =====
+{
+  "incident": "Delivered artifact overwritten by its own driver script under the same name (second same-shape defect of the wave; the first was t4's input).",
+  "overwrittenArtifacts": [
+    "evidence/omo-align/verification/result.json",
+    "evidence/omo-align/verification/output.log"
+  ],
+  "when": "2026-09-13T14:49:54Z (result.json 7,757 B / sha256 9f8e977e9f27046b8c2bd2a96d3407ea1e7c562584b9c7eaee02fc9f320179c6, keys {verdict, steps, head, generatedAt}, verdict needs_revision) and AGAIN at ~14:54Z (7,876 B; an in-flight process running the pre-fix code, i.e. a process started before the fix landed).",
+  "trigger": "evidence/omo-align/verification/run.mjs (not authored by Lead; appeared in the verification directory and was executed at 14:49 and again ~14:54)",
+  "preservedOverwriteState": [
+    "evidence/omo-align/verification/raw/run-144954-overwrite-state.json (7757 B / 9f8e977e..., the exact post-overwrite file)",
+    "evidence/omo-align/verification/raw/run-144954-overwrite-output.log (20406 B, the exact post-overwrite log)"
+  ],
+  "reviewerCopyOfTheOverwrittenState": "evidence/omo-align/review/raw/verification-result-observed-144744.json (7,508 B) - a copy of the POST-overwrite state, NOT of the original report; Reviewer-owned and not touched.",
+  "originalReportRecovered": "from the delivered content (structure + the two additive annotations) plus the untouched raw/ drivers and logs; the raw/ directory survived the overwrite intact (hash tables, gate logs, opt1/opt2/isolation drivers, config-plane log, manual-entry log, contract snapshots, recheck-after-go.json).",
+  "prevention": "run.mjs now writes raw/run-<stamp>.json + raw/run-<stamp>.output.log and never touches the delivered result.json / output.log; the rule is stated in an English comment at the top of the script. The manualEntries comparison was also repaired (dedupe both sides + explicit missing/extra) - it was a false negative that reddened the overwriting run (13 constant-derived names vs the 14-entry frozen list, missing agent_teams_task_contract). In addition a byte-identical immutable copy of this restored report lives at raw/t17-report-restored.json, so a future same-name writer cannot erase the content again.",
+  "usefulByproduct": "The preserved overwrite state doubles as independent corroboration from a second driver: two-sided [0,0,0]/[1,1,1], OPT-1 driven through the REAL agent_teams_claim_task tool (B claimed in 13 ms, failedDependencies ['A']; A completed => failedDependencies []), cSignal simple 1-3 [] vs complex 1-3 non-empty, and all 9 gates exit 0 - bundle-lifecycle PASSED in that sequential run, confirming the F7 batch failure was concurrency-only."
+}

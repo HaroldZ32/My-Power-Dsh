@@ -1,0 +1,2740 @@
+{
+  "revision": "fv5.7",
+  "task": "t4",
+  "produced_by": "Researcher (read-only)",
+  "produced_at_utc": "2026-09-13T14:43:10.375Z",
+  "selfValidation": {
+    "defect": "The first fv5 build used a LINE-LEVEL mechanism classifier, so a backticked filename elsewhere on the line promoted the prose word 'workflow' to mechanism and made skills-loader-core/frontend show harnessSeamChange=true. Caught by this producer's own post-build validation.",
+    "fix": "Per-MATCH classification: a hit is mechanism only when the match itself is inside inline code, inside a fenced block, an env token, a call (followed by '('), or a tool./sdk./env( path. binaryDependency likewise now uses the frozen definition (executable command in code context) instead of a class-hit shortcut.",
+    "intermediates": [
+      "revisions/fv5-<stamp>/ (line-level mechanism classifier: frontend seam wrongly true)",
+      "revisions/fv5.1-<stamp>/ (exec detector too loose: dag-library/mass-ulw/git-master wrongly bin=true)",
+      "revisions/fv5.2-<stamp>/ (noun `node` at segment start matched as a runtime: mass-ulw wrongly bin=true)",
+      "revisions/fv5.3-<stamp>/ (wrapper-call regex still allowed a bare segment start: mass-ulw bin wrongly true)",
+      "revisions/fv5.4-<stamp>/ (data identical; only selfValidation.status text was stale)",
+      "revisions/fv5.5-<stamp>/ (status text named fv5.3)",
+      "revisions/fv5.6-<stamp> x2 (changelog section 8 duplicated/misordered; data otherwise correct — all kept immutable)"
+    ],
+    "status": "all kept immutable; none is citable as the delivered revision; the delivered revision is fv5.7."
+  },
+  "supersedes": {
+    "file": "gap.json",
+    "sha256": "cade32a6ae0346bf0e01aa96fd8b28d7ab8a0167ee6f94529e1511be971ce067",
+    "bytes": 82509,
+    "snapshot": "revisions/fv4-2026-09-13T14-00-29-361Z/",
+    "table": {
+      "file": "gap-verdict-table.md",
+      "sha256": "81855a4fed7630268fba86e35f28f1b36414262edc9452ff464f544915f427c8",
+      "bytes": 50613
+    },
+    "statement": "This file supersedes fv4. gap.json and gap-verdict-table.md are NOT modified; their byte-invariance is anchored to revisions/fv4-2026-09-13T14-00-29-361Z/manifest.json."
+  },
+  "authoritativeRuleInput": {
+    "path": "/root/dshProj/my-power-dsh/evidence/omo-align/requirements/frozen-contract.json",
+    "bytes": 31705,
+    "sha256": "a0d28ebeaf3f204e4a33480670f44f204415b16758999ce22309a99e3c9c2d65",
+    "readAt": "2026-09-13T14:43:10.375Z",
+    "note": "Rule text recorded VERBATIM from the on-disk file at read time; this file's own precedence clause makes its text authoritative over messages.",
+    "rule": {
+      "source": "/root/dshProj/my-power-dsh/evidence/omo-align/requirements/frozen-contract.json (31705 B, sha256 a0d28ebeaf3f204e4a33480670f44f204415b16758999ce22309a99e3c9c2d65) read at 2026-09-13T14:43:10.350Z",
+      "d3": "(b) D3 RULE: D3 = 1 + (counted TRUE seam booleans), clamped to [0,3].",
+      "seamTriggers": "SEAM TRIGGER set = envKeyOmo, teamTools, dagRunId, workflowTool.",
+      "evidenceQuality": "(d) EVIDENCE QUALITY takes precedence over (c): only a hit whose evidenceQuality = mechanism counts toward D4; a prose hit is recorded but neither scored nor able to trigger V4.",
+      "v4": "(e) V4 predicate: (dagRunId AND mechanism) OR (envKeyOmo AND workflowTool AND mechanism) => the only expected hits are omo-senpi/mass-ulw and omo-senpi/dag-library.",
+      "threshold": "(f) THRESHOLD: vetoes (V1 equivalent, V4 runner-replacement) apply BEFORE the threshold; total >= 15 => adapt-then-install; total < 15 => skip."
+    },
+    "conflict": {
+      "id": "ruleConflict-D3",
+      "goMessage": "D3 = count of TRUE seam booleans (harnessSeamChange + binaryDependency)",
+      "onDiskText": "(b) D3 RULE: D3 = 1 + (counted TRUE seam booleans), clamped to [0,3].",
+      "impact": "They differ by exactly 1 on every row. With `total >= 15 => adapt`, that point flips remove-deadcode between 14/skip (GO caliber) and 15/adapt (on-disk caliber, 1+counted=2).",
+      "resolutionApplied": "Per the on-disk text's own precedence clause ('Any later message that conflicts with this text is void') and the text's '(g) THE GATE RECOMPUTES and never quotes a remembered total', this deliverable publishes BOTH calibers side by side and asserts NO winning total. The gate must recompute from the row inputs."
+    }
+  },
+  "scope": {
+    "items": [
+      "1) local anchors refreshed to the settled tree (file::symbol + line auxiliary + sha256 at read time)",
+      "2) top dual-write wording corrected + X4 rewritten (no 'deleted' claim)",
+      "3) per (row, class) evidenceQuality mechanism|prose with matched fragments",
+      "4) three record-only booleans per Table B row (harnessSeamChange / binaryDependency / credentialDependency)",
+      "5) versioned filenames + changelog + immutable snapshot + REVISIONS.md line"
+    ]
+  },
+  "rows": [
+    {
+      "id": "D1-activation",
+      "domain": "编排/团队",
+      "upstreamItem": "团队默认关闭 + 显式触发（team mode 关键词；mass-ulw 指针）——上游不存在会话启动默认建队",
+      "upstreamEvidence": "docs/guide/team-mode.md:5-7; packages/team-core/src/config.ts:4; packages/omo-opencode/src/hooks/keyword-detector/team/default.ts:6-10; packages/omo-senpi/src/components/skill-pointers/index.ts:30-46",
+      "repoCounterpart": "会话启动机械策略（默认 mode=auto）+ bundle 行配置",
+      "repoEvidence": "cordis.patch.yml::agent-teams/sessionTeamPolicy (line 242; file sha256 9ee189972b2b8706…); cordis.patch.yml::agent-teams row (line 202; file sha256 9ee189972b2b8706…); packages/mpd-agent-teams-plugin/lib/session-start.js::installSessionTeamPolicy (line 437; file sha256 1f0203c69e5e904d…); packages/mpd-agent-teams-plugin/lib/session-start.js::policyQualifies (line 251; file sha256 1f0203c69e5e904d…)",
+      "verdict": "applicable",
+      "semanticDiff": "上游 OFF + 显式触发；本仓库在首个 agent/pre-step 无条件 provision 一个 staged 团队（默认 ON）",
+      "mechanicalCheck": "把 sessionTeamPolicy.mode 置 off，在隔离 DSH_HOME 跑一个普通提示，观察 <ws>/.mpd/team/ 无新团队目录且日志无 STARTUP_NOTICE_MARKER",
+      "notes": "来源 t2 D1；与 T3-01 同域但按并集要求保留两行（不合并、不删行）",
+      "rowSetSource": "t2-enumeration",
+      "falsifiableAssertion": null,
+      "ledgerCandidate": true,
+      "anchorStatus": "refreshed-fv5",
+      "anchorMethod": "file::symbol + line (auxiliary) + file sha256 at read time"
+    },
+    {
+      "id": "D2-trigger-mechanism",
+      "domain": "工具/路由",
+      "upstreamItem": "统一关键词表 + 隐藏的条件式 skill 指针（mention ≠ request）",
+      "upstreamEvidence": "packages/omo-senpi/src/components/skill-pointers/index.ts:30-46; packages/omo-senpi/AGENTS.md (keyword table; conditional pointer text)",
+      "repoCounterpart": "null（本仓库任何插件都没有关键词/指针组件）",
+      "repoEvidence": "grep -rn 'keyword|trigger|detect' packages/mpd-agent-teams-plugin/lib -> 仅 UI i18n 命中（无机制）",
+      "verdict": "applicable",
+      "semanticDiff": "上游由输入文本关键词注入指针；本仓库只有模型自决 + 机械策略 + /agent-teams 手势",
+      "mechanicalCheck": "在 mpd 会话输入含 'mass ulw' 的提示，观察是否注入任何 <omo-*-pointer> 等价物（期望：无；本仓库无该机制）",
+      "notes": "来源 t2 D2；t2 C3 是其候选方案，方案选择不属于本表",
+      "rowSetSource": "t2-enumeration",
+      "falsifiableAssertion": null,
+      "ledgerCandidate": true,
+      "anchorStatus": "carried-from-fv4",
+      "anchorNote": "Not in the affected set (D1, D8, T3-01..T3-08); fv4 text retained verbatim."
+    },
+    {
+      "id": "D3-execution-surface",
+      "domain": "DAG/引擎",
+      "upstreamItem": "原生 workflow 工具 + eval cell + OMO_DAG_SDK_ROOT（run_id/attach/snapshot/wait/cancel/retry/send/amend + 日志化 resume）",
+      "upstreamEvidence": "packages/omo-senpi/skills/mass-ulw/SKILL.md:26-42 (eval 驱动), :48-64 (run 生命周期); packages/omo-senpi/plugin/runtime/dag/sdk.js:1-4; packages/omo-senpi/src/extension/dag-sdk-root-provisioning.ts:1-6",
+      "repoCounterpart": "DSH workflow 工具（JS agent()/pipeline()/parallel() 脚本，无 run_id/生命周期/日志）+ agent-teams 事件驱动任务板",
+      "repoEvidence": "presets/mpd/agent.cordis.yml:349-355; packages/mpd-agent-teams-plugin/lib/scheduler.js:1-13,36-84,440-495",
+      "verdict": "uncertain",
+      "semanticDiff": "同名不同机：上游 workflow=dag 运行引擎；本仓库 workflow=脚本扇出（阶段抛错仅该 item 变 null，无重试/修订/日志化恢复）",
+      "mechanicalCheck": "对比可用动词：本仓库 workflow 工具无 run_id/retry/amend/resume 动词（读 presets/mpd/agent.cordis.yml:349-355 与工具 schema）；期望缺失，若存在则本行判定需重评",
+      "notes": "来源 t2 D3；判定 uncertain 的原因=上游项无法整体采纳（引擎缺失），只能改写为本地语义",
+      "rowSetSource": "t2-enumeration",
+      "falsifiableAssertion": null,
+      "ledgerCandidate": true,
+      "anchorStatus": "carried-from-fv4",
+      "anchorNote": "Not in the affected set (D1, D8, T3-01..T3-08); fv4 text retained verbatim."
+    },
+    {
+      "id": "D4-dag-model",
+      "domain": "DAG",
+      "upstreamItem": "一次 run 只覆盖一个 phase；node{id,category,dependsOn}；默认 fan-out→fan-in；2 节点无依赖不算 dag",
+      "upstreamEvidence": "packages/omo-senpi/skills/mass-ulw/SKILL.md:16-20; packages/omo-senpi/skills/mass-ulw/references/planning.md:23-25",
+      "repoCounterpart": "共享任务板：task.dependencies[] + 拓扑依赖输出注入",
+      "repoEvidence": "packages/mpd-agent-teams-plugin/lib/scheduler.js:1-13,36-84,440-495; packages/mpd-agent-teams-plugin/lib/scheduler.js:17-20 (2k/12k 截断)",
+      "verdict": "applicable",
+      "semanticDiff": "本仓库无 run/phase 边界与 node category 路由；依赖边与拓扑 hand-off 已存在",
+      "mechanicalCheck": "创建一个无依赖的 2 任务图并观察调度（本地允许；上游 doctrine 判为 not-a-dag）——差异可观测即判定成立",
+      "notes": "来源 t2 D4",
+      "rowSetSource": "t2-enumeration",
+      "falsifiableAssertion": null,
+      "ledgerCandidate": true,
+      "anchorStatus": "carried-from-fv4",
+      "anchorNote": "Not in the affected set (D1, D8, T3-01..T3-08); fv4 text retained verbatim."
+    },
+    {
+      "id": "D5-node-contract",
+      "domain": "DAG/质量",
+      "upstreamItem": "node prompt 契约 TASK/DELIVERABLE/SCOPE/VERIFY/STOP WHEN + dag-lint 建议性告警（从不拒绝）",
+      "upstreamEvidence": "packages/omo-senpi/src/components/task/dag-lint.ts:10-20",
+      "repoCounterpart": "质量类任务契约（objective/acceptance/inScope/verify）+ 建卡时矛盾门",
+      "repoEvidence": "packages/mpd-agent-teams-plugin/lib/quality-gates.js:391,659,769-812",
+      "verdict": "applicable",
+      "semanticDiff": "本地对 quality kind 是机器校验（更强），但普通 work 任务只要求 subject；双方都缺 STOP WHEN 字段",
+      "mechanicalCheck": "创建 kind=work 任务且只给 subject -> 本地接受（上游 lint 会给告警）；观察是否落盘/告警",
+      "notes": "来源 t2 D5",
+      "rowSetSource": "t2-enumeration",
+      "falsifiableAssertion": null,
+      "ledgerCandidate": true,
+      "anchorStatus": "carried-from-fv4",
+      "anchorNote": "Not in the affected set (D1, D8, T3-01..T3-08); fv4 text retained verbatim."
+    },
+    {
+      "id": "D6-verification",
+      "domain": "质量",
+      "upstreamItem": "结果验证 doctrine：节点/run 完成声明在证据证明前一律为假；验证波产出证据",
+      "upstreamEvidence": "packages/omo-senpi/skills/mass-ulw/SKILL.md:22-24; https://github.com/code-yeongyu/oh-my-openagent/blob/dev/packages/omo-senpi/skills/mass-ulw/references/planning.md (verification wave section)",
+      "repoCounterpart": "机械质量门：verdict=pass 要求 + 自动 repair + 交付门 + 覆盖矩阵",
+      "repoEvidence": "packages/mpd-agent-teams-plugin/lib/quality-gates.js:391,659,769-812; packages/mpd-agent-teams-plugin/lib/quality-gates.js:754-768 (buildCoverageMatrix)",
+      "verdict": "already-have",
+      "semanticDiff": "本地是机械门（比上游 doctrine 强）；可借鉴的是措辞/UX，不是机制",
+      "mechanicalCheck": "让一个 review 任务以 needs_revision 结束并观察其不可 completed（quality-gates.js:769-812）",
+      "notes": "来源 t2 D6",
+      "rowSetSource": "t2-enumeration",
+      "falsifiableAssertion": null,
+      "ledgerCandidate": true,
+      "anchorStatus": "carried-from-fv4",
+      "anchorNote": "Not in the affected set (D1, D8, T3-01..T3-08); fv4 text retained verbatim."
+    },
+    {
+      "id": "D7-goal-binding",
+      "domain": "目标",
+      "upstreamItem": "每次 run 绑定 goal（create_goal），目标承载结果验证（PR #7175）",
+      "upstreamEvidence": "packages/omo-senpi/skills/mass-ulw/SKILL.md:22-24; https://github.com/code-yeongyu/oh-my-openagent/pull/7175",
+      "repoCounterpart": "harness goal 工具已挂载，但团队交付未绑定 goal",
+      "repoEvidence": "presets/mpd/agent.cordis.yml:221-225 (command-goal/tool-goal); packages/mpd-agent-teams-plugin/lib/quality-gates.js:769-812 (交付只看任务图)",
+      "verdict": "applicable",
+      "semanticDiff": "本地有 goal 能力但无 team→goal 绑定；团队可在无 goal 对象时完成",
+      "mechanicalCheck": "发起一个无 goal 的团队并走完交付：本地 canDeclareDelivery 通过（上游 doctrine 要求 goal 存在）——差异可复现",
+      "notes": "来源 t2 D7；与 frozen-contract 的四项 mass-ulw 语义无关（S1-S4 见专节）",
+      "rowSetSource": "t2-enumeration",
+      "falsifiableAssertion": null,
+      "ledgerCandidate": true,
+      "anchorStatus": "carried-from-fv4",
+      "anchorNote": "Not in the affected set (D1, D8, T3-01..T3-08); fv4 text retained verbatim."
+    },
+    {
+      "id": "D8-routing-doctrine",
+      "domain": "路由",
+      "upstreamItem": "team vs dag 的显式路由 doctrine（plain 研究→team；mass→dag；dag 节点不说话）",
+      "upstreamEvidence": "packages/shared-skills/skills/ulw-research/SKILL.md:159 (mass vs plain routing sentence)",
+      "repoCounterpart": "preset 内的 small/large 规模判定（在已 provision 团队之后运行）",
+      "repoEvidence": "presets/mpd/agent.cordis.yml::SESSION STARTUP RULE (line 80; file sha256 125312b54b2c20e6…); packages/mpd-agent-teams-plugin/lib/session-start.js::evaluateComplexityGate (line 157; file sha256 1f0203c69e5e904d…); packages/mpd-agent-teams-plugin/lib/session-start.js::autoRouteEnabled (line 242; file sha256 1f0203c69e5e904d…)",
+      "verdict": "applicable",
+      "semanticDiff": "本地规模判定在团队建立之后，无法阻止默认建队；也从不路由到 workflow/ultrawork 平面",
+      "mechanicalCheck": "读 preset 文本确认 sizing 段落位置在 session-start 策略之后（顺序可观测）；期望：无法阻止默认 provision",
+      "notes": "来源 t2 D8",
+      "rowSetSource": "t2-enumeration",
+      "falsifiableAssertion": null,
+      "ledgerCandidate": true,
+      "anchorStatus": "refreshed-fv5",
+      "anchorMethod": "file::symbol + line (auxiliary) + file sha256 at read time"
+    },
+    {
+      "id": "D9-scale",
+      "domain": "DAG/容量",
+      "upstreamItem": "mass 规模：60+ 节点波次 + 难度阶梯 category 路由 + reducer",
+      "upstreamEvidence": "packages/omo-senpi/skills/mass-ulw/references/planning.md (category routing ladder); packages/omo-senpi/skills/mass-ulw/SKILL.md:11-14",
+      "repoCounterpart": "maxMembers 16 / 11 人 roster / 单一模型族（deepseek-v4-flash + reasoning 档）",
+      "repoEvidence": "packages/mpd-bundle/cordis.patch.yml:208,247-266",
+      "verdict": "applicable",
+      "semanticDiff": "不同规模类：本仓库团队是对话/验证平面；60+ 扇出应落在 workflow/subagent 平面",
+      "mechanicalCheck": "统计 roster 与 maxMembers 上限并与上游节点上限对比（读 patch 行即可复现）",
+      "notes": "来源 t2 D9",
+      "rowSetSource": "t2-enumeration",
+      "falsifiableAssertion": null,
+      "ledgerCandidate": true,
+      "anchorStatus": "carried-from-fv4",
+      "anchorNote": "Not in the affected set (D1, D8, T3-01..T3-08); fv4 text retained verbatim."
+    },
+    {
+      "id": "D10-recovery",
+      "domain": "恢复",
+      "upstreamItem": "per-run retry / send / amend + 日志化跨重启 resume",
+      "upstreamEvidence": "packages/omo-senpi/skills/mass-ulw/SKILL.md:66-86",
+      "repoCounterpart": "per-task attempt_id + parked attempt + captain 重派 + 冷恢复重排 + 质量门 repair 环",
+      "repoEvidence": "packages/mpd-agent-teams-plugin/lib/scheduler.js:1-13,36-84,440-495; packages/mpd-agent-teams-plugin/lib/quality-gates.js:391,659,769-812",
+      "verdict": "applicable",
+      "semanticDiff": "粒度不同：本地按 task 恢复且需人工审阅；上游按 run 程序化恢复，无 amend/send 等价动词",
+      "mechanicalCheck": "见 S1-S4 专节（逐项可证伪断言）",
+      "notes": "来源 t2 D10；本行由 S1-S4 专节展开（frozen-contract 明确要求逐项报告）",
+      "rowSetSource": "t2-enumeration",
+      "falsifiableAssertion": null,
+      "ledgerCandidate": true,
+      "anchorStatus": "carried-from-fv4",
+      "anchorNote": "Not in the affected set (D1, D8, T3-01..T3-08); fv4 text retained verbatim."
+    },
+    {
+      "id": "D11-human-plane",
+      "domain": "人机/评审",
+      "upstreamItem": "mass-ulw 路径无人机审批（关键词后自治）",
+      "upstreamEvidence": "packages/omo-senpi/skills/mass-ulw/SKILL.md:19-20 (keyword 后直接定义/启动)",
+      "repoCounterpart": "staged plan + Web 审批（approval=required）+ edit_plan + halt/resume + 活动面板",
+      "repoEvidence": "packages/mpd-agent-teams-plugin/lib/index.js:100-115,233-248",
+      "verdict": "already-have",
+      "semanticDiff": "本地是严格超集（上游无审批面）；去默认化时必须保留",
+      "mechanicalCheck": "staged 团队下调用 agent_teams_approve 前成员不得启动（观察 member 状态停留在 roster 行）",
+      "notes": "来源 t2 D11",
+      "rowSetSource": "t2-enumeration",
+      "falsifiableAssertion": null,
+      "ledgerCandidate": true,
+      "anchorStatus": "carried-from-fv4",
+      "anchorNote": "Not in the affected set (D1, D8, T3-01..T3-08); fv4 text retained verbatim."
+    },
+    {
+      "id": "D12-skill-corpus",
+      "domain": "技能",
+      "upstreamItem": "mass-ulw skill + references/planning.md 随产品作为一等技能发布",
+      "upstreamEvidence": "packages/omo-senpi/skills/mass-ulw/SKILL.md:1-6 (frontmatter/description); packages/omo-senpi/skills/mass-ulw/references/planning.md:1-8",
+      "repoCounterpart": "本地语料无 mass-ulw，但 skills/ulw-execute 引用它（悬空）",
+      "repoEvidence": "skills/ulw-execute/SKILL.md:103; skills/frontend/references/design/print-paged-media.md:76",
+      "verdict": "uncertain",
+      "semanticDiff": "缺 doctrine 且存在悬空交叉引用；是否移植/改写由 t8 门禁与用户裁决",
+      "mechanicalCheck": "ls skills/ | grep mass-ulw -> 无；grep -rn 'mass-ulw' skills/ -> 2 处引用（期望=引用存在但目标缺失）",
+      "notes": "来源 t2 D12；技能级判定细则见 Table B 与 t4 技能清单（supportingEvidence）",
+      "rowSetSource": "t2-enumeration",
+      "falsifiableAssertion": null,
+      "ledgerCandidate": true,
+      "anchorStatus": "carried-from-fv4",
+      "anchorNote": "Not in the affected set (D1, D8, T3-01..T3-08); fv4 text retained verbatim."
+    },
+    {
+      "id": "T3-01-default-state",
+      "domain": "编排/默认策略",
+      "upstreamItem": "Team Mode 默认 OFF，opt-in via team_mode.enabled",
+      "upstreamEvidence": "packages/team-core/src/config.ts:4; docs/guide/team-mode.md:5-7; packages/omo-opencode/src/features/team-mode/AGENTS.md:7",
+      "repoCounterpart": "sessionTeamPolicy.mode=auto（bundle 行启用；插件 schema 默认已是 off）",
+      "repoEvidence": "cordis.patch.yml::agent-teams/sessionTeamPolicy (line 242; file sha256 9ee189972b2b8706…); packages/mpd-agent-teams-plugin/lib/index.js::sessionTeamPolicy (line 105; file sha256 c1b170e8c9e92dcc…); install-profile.mjs::agentTeamsRow/sessionTeamPolicy (line 183; file sha256 37e9c291930d0c07…); session-start-team.mjs::selfTest (two-sided case) (line 84; file sha256 4e37e5d56ea170d4…)",
+      "verdict": "adoptable",
+      "semanticDiff": "上游默认 OFF、需显式开启；本仓库默认 ON 且机械 provision",
+      "mechanicalCheck": "翻转 bundle 行的 sessionTeamPolicy.mode -> off；隔离 boot 跑普通提示；断言 .mpd/team/ 无新团队且日志无 notice；再跑一个复杂提示断言恰好产生 1 个 staged 团队",
+      "notes": "来源 t3 #1（与 D1 同域，按并集要求保留双行）",
+      "falsifiableAssertion": "命令/观察：翻转 packages/mpd-bundle/cordis.patch.yml 的 sessionTeamPolicy.mode 为 off 后，在隔离 DSH_HOME + 沙箱 workspace 启动一次普通会话；期望：<ws>/.mpd/team/ 不出现新团队目录、会话日志不含 '[AgentTeams] Session-start team rule'；失败表现：仍自动建队或仍注入 notice => 默认未翻转（D_FIRST 未落地）。反向：同一 revision 下输入 complex 提示期望恰好 1 个 staged 团队 + 1 条 notice，缺任一侧即 FAIL。",
+      "rowSetSource": "t3-enumeration",
+      "ledgerCandidate": true,
+      "anchorStatus": "refreshed-fv5",
+      "anchorMethod": "file::symbol + line (auxiliary) + file sha256 at read time"
+    },
+    {
+      "id": "T3-02-enable-surface",
+      "domain": "配置",
+      "upstreamItem": "启用面 = JSONC 配置文件（~/.omo/omo.jsonc 或 .omo/omo.jsonc）+ 重启",
+      "upstreamEvidence": "docs/guide/team-mode.md:17; packages/omo-opencode/src/features/team-mode/AGENTS.md:7",
+      "repoCounterpart": "启用面 = bundle patch 行 + installer 镜像；无用户配置平面",
+      "repoEvidence": "cordis.patch.yml::agent-teams/sessionTeamPolicy (line 242; file sha256 9ee189972b2b8706…); install-profile.mjs::agentTeamsRow/sessionTeamPolicy (line 183; file sha256 37e9c291930d0c07…); index.js: resolved defaults (sessionTeamPolicy block) (line 103; file sha256 c1b170e8c9e92dcc…)",
+      "verdict": "applicable",
+      "semanticDiff": "上游可由用户 JSONC 开启/关闭；本地只能改 bundle 源（用户无入口）",
+      "mechanicalCheck": "在 .mpd/mpd.jsonc 写入新开关并 boot，观察策略取值随之变化（当前期望：无此键 => 改动无效，即缺口可复现）",
+      "notes": "来源 t3 #2；D_AUTOROUTE_SPLIT 规定新键名 sessionTeamPolicy.autoRoute",
+      "rowSetSource": "t3-enumeration",
+      "falsifiableAssertion": null,
+      "ledgerCandidate": true,
+      "anchorStatus": "refreshed-fv5",
+      "anchorMethod": "file::symbol + line (auxiliary) + file sha256 at read time"
+    },
+    {
+      "id": "T3-03-tool-availability",
+      "domain": "工具",
+      "upstreamItem": "team_* 工具仅在启用时注册；工具缺席即权威信号",
+      "upstreamEvidence": "packages/omo-opencode/src/plugin/tool-registry-team-tools.ts:20-21; packages/omo-opencode/src/plugin/tool-registry.ts:69-73",
+      "repoCounterpart": "agent_teams_* 工具始终注册（插件挂载）+ usage 策略始终注入",
+      "repoEvidence": "cordis.patch.yml::agent-teams row (line 202; file sha256 9ee189972b2b8706…); cordis.patch.yml::agent-teams/sessionTeamPolicy (line 242; file sha256 9ee189972b2b8706…); packages/mpd-agent-teams-plugin/lib/session-start.js::installSessionTeamPolicy (line 437; file sha256 1f0203c69e5e904d…)",
+      "verdict": "applicable",
+      "semanticDiff": "上游用工具缺席表达关闭；本地工具常驻，只能靠提示/策略收敛，\"不再默认\"不等于提示面安静化",
+      "mechanicalCheck": "在 sessionTeamPolicy.mode=off 下 boot 并检查 captain prompt 是否仍包含 usage 段（期望：仍包含 => 提示面未收敛，可观测）",
+      "notes": "来源 t3 #3",
+      "rowSetSource": "t3-enumeration",
+      "falsifiableAssertion": null,
+      "ledgerCandidate": true,
+      "anchorStatus": "refreshed-fv5",
+      "anchorMethod": "file::symbol + line (auxiliary) + file sha256 at read time"
+    },
+    {
+      "id": "T3-04-activation-trigger",
+      "domain": "路由/触发",
+      "upstreamItem": "显式关键词 'team mode'（主会话）或模型判断（工具存在时）",
+      "upstreamEvidence": "packages/omo-opencode/src/hooks/keyword-detector/team/default.ts:6-10",
+      "repoCounterpart": "首个 agent/pre-step 机械 provision（无关键词、无规模判断）",
+      "repoEvidence": "packages/mpd-agent-teams-plugin/lib/session-start.js::consumeExplicitFlag (line 140; file sha256 1f0203c69e5e904d…); packages/mpd-agent-teams-plugin/lib/session-start.js::consumeFlagFromMessage (line 214; file sha256 1f0203c69e5e904d…); packages/mpd-agent-teams-plugin/lib/session-start.js::evaluateComplexityGate (line 157; file sha256 1f0203c69e5e904d…); packages/mpd-agent-teams-plugin/lib/session-start.js::installSessionTeamPolicy (line 437; file sha256 1f0203c69e5e904d…)",
+      "verdict": "applicable",
+      "semanticDiff": "本地触发与任务复杂度无关；上游触发是用户显式文本",
+      "mechanicalCheck": "对同一 revision 分别跑「含 team: 前缀」与「普通」提示，观察建队是否只在后者之外发生（期望：两侧都建队 => 触发未门控）",
+      "notes": "来源 t3 #4；机械门定义见 frozen-contract.complexityGate",
+      "rowSetSource": "t3-enumeration",
+      "falsifiableAssertion": null,
+      "ledgerCandidate": true,
+      "anchorStatus": "refreshed-fv5",
+      "anchorMethod": "file::symbol + line (auxiliary) + file sha256 at read time"
+    },
+    {
+      "id": "T3-05-auto-routing",
+      "domain": "路由",
+      "upstreamItem": "上游无复杂度启发式（0 hits）；路由只存在于散文（when to use）",
+      "upstreamEvidence": "packages/omo-opencode/src/hooks/keyword-detector/team/default.ts:6-10; docs/guide/team-mode.md:5-7（上游仅有关键词触发，无阈值代码）",
+      "repoCounterpart": "preset 有 small/large 段落，但被无条件 provision 吞没",
+      "repoEvidence": "packages/mpd-agent-teams-plugin/lib/session-start.js::evaluateComplexityGate (line 157; file sha256 1f0203c69e5e904d…); packages/mpd-agent-teams-plugin/lib/session-start.js::autoRouteEnabled (line 242; file sha256 1f0203c69e5e904d…); packages/mpd-agent-teams-plugin/lib/index.js::sessionTeamPolicy (line 105; file sha256 c1b170e8c9e92dcc…)",
+      "verdict": "uncertain",
+      "semanticDiff": "无上游项可直接采纳：复杂度门是本仓库的本地设计（必须由 frozen-contract.complexityGate 冻结，不能事后调参）",
+      "mechanicalCheck": "grep -rni 'complexity|heuristic|threshold' 上游语料（期望 0 命中，复现「无上游可抄」）；本地门的两侧测试见 T3-01 断言",
+      "notes": "来源 t3 #5；判定 uncertain 的原因=上游没有对应物，只能本地发明并冻结",
+      "rowSetSource": "t3-enumeration",
+      "falsifiableAssertion": null,
+      "ledgerCandidate": true,
+      "anchorStatus": "refreshed-fv5",
+      "anchorMethod": "file::symbol + line (auxiliary) + file sha256 at read time"
+    },
+    {
+      "id": "T3-06-notice-surface",
+      "domain": "提示面",
+      "upstreamItem": "prompts/mode/team.md + <team_mode_status> 仅在关键词后注入",
+      "upstreamEvidence": "packages/prompts-core/prompts/mode/team.md:1-3",
+      "repoCounterpart": "provisionedNotice/instructNotice 对每个合格会话注入",
+      "repoEvidence": "packages/mpd-agent-teams-plugin/lib/session-start.js::provisionedNotice (line 356; file sha256 1f0203c69e5e904d…) / packages/mpd-agent-teams-plugin/lib/session-start.js::instructNotice (line 377; file sha256 1f0203c69e5e904d…); packages/mpd-agent-teams-plugin/lib/session-start.js::spliceNotice (line 395; file sha256 1f0203c69e5e904d…); packages/mpd-agent-teams-plugin/lib/session-start.js::consumeFlagFromMessage (line 214; file sha256 1f0203c69e5e904d…)",
+      "verdict": "applicable",
+      "semanticDiff": "上游通知由触发门控；本地通知无条件注入",
+      "mechanicalCheck": "同 T3-01 的启动断言：off 模式下日志不得出现 STARTUP_NOTICE_MARKER（可 grep 会话日志）",
+      "notes": "来源 t3 #6",
+      "rowSetSource": "t3-enumeration",
+      "falsifiableAssertion": null,
+      "ledgerCandidate": true,
+      "anchorStatus": "refreshed-fv5",
+      "anchorMethod": "file::symbol + line (auxiliary) + file sha256 at read time"
+    },
+    {
+      "id": "T3-07-member-eligibility",
+      "domain": "成员",
+      "upstreamItem": "只读专家被硬拒绝为成员（成员必须能写 mailbox）",
+      "upstreamEvidence": "packages/team-core/src/types.ts:203-228",
+      "repoCounterpart": "mpd roster 把 6 个只读专家放进 11 人成员表（协议要求不写，但无机械限制）",
+      "repoEvidence": "cordis.patch.yml::agent-teams row (line 202; file sha256 9ee189972b2b8706…) (roster block in the same row)",
+      "verdict": "applicable",
+      "semanticDiff": "上游用机械拒绝保证成员可写；本地靠 deny list + 协议文本，语义上是有意偏差",
+      "mechanicalCheck": "检查 roster 中只读成员是否可被调度到写任务（期望：可，因为拒绝只在上游实现）",
+      "notes": "来源 t3 #7；是否对齐需用户裁决（属可选对齐）",
+      "rowSetSource": "t3-enumeration",
+      "falsifiableAssertion": null,
+      "ledgerCandidate": true,
+      "anchorStatus": "refreshed-fv5",
+      "anchorMethod": "file::symbol + line (auxiliary) + file sha256 at read time"
+    },
+    {
+      "id": "T3-08-closure",
+      "domain": "生命周期",
+      "upstreamItem": "关闭不变量：所有任务终态后 lead 在同一 turn 内 shutdown + delete",
+      "upstreamEvidence": "packages/omo-opencode/src/features/team-mode/member-guidance.ts:38-46; packages/prompts-core/prompts/mode/team.md:1-3",
+      "repoCounterpart": "默认团队无关闭路径，会持久残留",
+      "repoEvidence": "packages/mpd-agent-teams-plugin/lib/session-start.js::installSessionTeamPolicy (line 437; file sha256 1f0203c69e5e904d…); AGENTS.md §12 (in-use gate scan) — symbol-free section reference (line 353; file sha256 6767f85d7fa9f354…)",
+      "verdict": "applicable",
+      "semanticDiff": "上游有机械关闭序列；本地无关闭策略，\"不再默认\"可能变成\"不再清理\"",
+      "mechanicalCheck": "跑完一个团队后统计 .mpd/team 下的残留团队数（t3 measured_residue=25）；期望关闭策略落地后不增长",
+      "notes": "来源 t3 #8；t3 测得 25 个残留团队",
+      "rowSetSource": "t3-enumeration",
+      "falsifiableAssertion": null,
+      "ledgerCandidate": true,
+      "anchorStatus": "refreshed-fv5",
+      "anchorMethod": "file::symbol + line (auxiliary) + file sha256 at read time"
+    },
+    {
+      "id": "T3-09-skill-surface",
+      "domain": "技能",
+      "upstreamItem": "内置 team-mode skill 仅在启用时加载",
+      "upstreamEvidence": "packages/omo-codex/plugin/components/teammode/skills/teammode/SKILL.md:1-6",
+      "repoCounterpart": "本地 skills/ 无 team-mode 技能；团队指引在插件 usage 段 + preset persona",
+      "repoEvidence": "ls skills/ = 19 目录（无 team-mode）; packages/mpd-agent-teams-plugin/lib/index.js:100-115",
+      "verdict": "applicable",
+      "semanticDiff": "上游有启用时可加载的技能载体；本地指引常驻在提示面",
+      "mechanicalCheck": "ls skills/ | grep -i team -> 无（期望无；若出现则本行需重评）",
+      "notes": "来源 t3 #9；技能语料整体判定见 Table B",
+      "rowSetSource": "t3-enumeration",
+      "falsifiableAssertion": null,
+      "ledgerCandidate": true,
+      "anchorStatus": "carried-from-fv4",
+      "anchorNote": "Not in the affected set (D1, D8, T3-01..T3-08); fv4 text retained verbatim."
+    },
+    {
+      "id": "T3-10-config-fields",
+      "domain": "配置",
+      "upstreamItem": "team_mode 11 个字段（并发/成员上限/消息字节/墙钟/成员轮次/base_dir 等）",
+      "upstreamEvidence": "packages/team-core/src/config.ts:3-15",
+      "repoCounterpart": "sessionTeamPolicy 5 字段 + 行级 stateDir/memberProvider/maxMembers",
+      "repoEvidence": "packages/mpd-bundle/cordis.patch.yml:204-224; packages/mpd-agent-teams-plugin/lib/index.js:76-98",
+      "verdict": "applicable",
+      "semanticDiff": "上游字段面更宽；本地对等字段缺失（并行度/消息字节/未读配额/墙钟/单成员轮次）",
+      "mechanicalCheck": "比对两侧字段清单（读 config.ts:3-15 与 index.js:76-98 即可复现 11 vs 5+n）",
+      "notes": "来源 t3 #10；用户裁决 4（R4F2）要求补齐缺口字段但上限沿用本地更宽松值",
+      "rowSetSource": "t3-enumeration",
+      "falsifiableAssertion": null,
+      "ledgerCandidate": true,
+      "anchorStatus": "carried-from-fv4",
+      "anchorNote": "Not in the affected set (D1, D8, T3-01..T3-08); fv4 text retained verbatim."
+    },
+    {
+      "id": "skills/remove-deadcode",
+      "domain": "技能",
+      "upstreamItem": "remove-deadcode（上游技能，载体 .agents/skills）",
+      "upstreamEvidence": ".agents/skills/remove-deadcode/SKILL.md:3 (frontmatter), .agents/skills/remove-deadcode/SKILL.md:1-216（文件实长 216 行，fileCount=1, dirCount=0）",
+      "repoCounterpart": "null",
+      "repoEvidence": "null（本地无对应目录）",
+      "verdict": "uncertain",
+      "semanticDiff": "上游仓库内建技能，通用度较高但与本波四目标无直接关系；是否移植待 t8 门禁",
+      "mechanicalCheck": "ls .agents/skills/remove-deadcode 与本地对照（可复现）；判定为 adoptable 前不得移植（本轮只读）",
+      "notes": "来源 frozen-contract.t4Requirements.rowSet（原文 \"skills/remove-deadcode\"）；t4 旧 id=.agents/skills/remove-deadcode；class 分布见 supportingEvidence",
+      "falsifiableAssertion": null,
+      "replacement": {
+        "status": "partial-equivalent",
+        "mechanism": "skills/remove-ai-slops + skills/refactor（既有清理类技能）",
+        "evidence": "skills/remove-ai-slops/SKILL.md:1-336; skills/refactor/SKILL.md:1-731",
+        "equivalence": "部分等价（清理类能力存在；死代码专门化没有）"
+      },
+      "skillPortCost": {
+        "countingRule": "计数范围 = 技能树自身（上游 SKILL.md 所在目录 / 本地 skills/<name>/），跨行可比。null 与 0 语义不同：0=实测为空，null(unknown/absent)=未能只读测得或本地不存在；unknown 不是 0、也不是最高代价。",
+        "upstreamSkillTree": {
+          "status": "measured",
+          "fileCount": 1,
+          "dirCount": 0,
+          "scope": ".agents/skills/remove-deadcode/"
+        },
+        "localSkillTree": {
+          "status": "absent",
+          "fileCount": null,
+          "dirCount": null,
+          "scope": "skills/remove-deadcode/"
+        },
+        "harnessCoupling": [
+          "taskTool",
+          "categoryRouting",
+          "binaries"
+        ],
+        "couplingMeasurement": "non-none：命中 taskTool,categoryRouting,binaries（因此按 t8 规则不得判 none）",
+        "repoTouchPoints": [
+          "skills/**（采纳/改写目标；单写者 + 一次 VENDOR_LOCK 重钉，D_SKILLS_WRITER）",
+          "presets/mpd/agent.cordis.yml（仅当 persona/doctrine 文本改动时）",
+          "AGENTS.md（仅当约定变化时）"
+        ]
+      },
+      "fieldProvenance": "re-exposed in fv4; fv1 (pre-R1) values for rows without an override were generic placeholders, fv4 values are row-specific",
+      "upstreamHarnessCoupling": [
+        "taskTool",
+        "categoryRouting",
+        "binaries"
+      ],
+      "couplingMeasurement": "non-none：命中 taskTool,categoryRouting,binaries（因此按 t8 规则不得判 none）",
+      "overlap": "清理类能力部分覆盖：本地 skills/remove-ai-slops + skills/refactor；无死代码专门化",
+      "relevanceToGoals": {
+        "goal1_omoAlignment": "低",
+        "goal2_agentTeamsNotDefault": "无",
+        "goal3_autoRouting": "无",
+        "goal4_massUlwDag": "无"
+      },
+      "relevanceRationale": "上游仓库内建技能；与四目标无直接关系",
+      "rowSetSource": "frozen-contract.rowSet",
+      "ledgerCandidate": false,
+      "anchorStatus": "carried-from-fv4",
+      "anchorNote": "Not in the affected set (D1, D8, T3-01..T3-08); fv4 text retained verbatim.",
+      "fv5": {
+        "upstreamFile": ".agents/skills/remove-deadcode/SKILL.md",
+        "classEvidence": {
+          "taskTool": {
+            "class": "taskTool",
+            "hits": [
+              {
+                "line": 42,
+                "fragment": "task(",
+                "lineText": "task(subagent_type=\"explore\", run_in_background=true, load_skills=[],",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 42,
+                "fragment": "subagent_type",
+                "lineText": "task(subagent_type=\"explore\", run_in_background=true, load_skills=[],",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 42,
+                "fragment": "load_skills",
+                "lineText": "task(subagent_type=\"explore\", run_in_background=true, load_skills=[],",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              }
+            ],
+            "best": "mechanism"
+          },
+          "categoryRouting": {
+            "class": "categoryRouting",
+            "hits": [
+              {
+                "line": 116,
+                "fragment": "category",
+                "lineText": "category=\"deep\",",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              }
+            ],
+            "best": "mechanism"
+          },
+          "binaries": {
+            "class": "binaries",
+            "hits": [
+              {
+                "line": 150,
+                "fragment": "bun",
+                "lineText": "4. After ALL edits in this batch, run: `bun run typecheck`",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": false
+              },
+              {
+                "line": 173,
+                "fragment": "bun",
+                "lineText": "bun run typecheck   # must pass",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": false
+              },
+              {
+                "line": 174,
+                "fragment": "bun",
+                "lineText": "bun test            # note any NEW failures vs pre-existing",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": false
+              }
+            ],
+            "best": "mechanism"
+          }
+        },
+        "binaryCommandEvidence": [
+          {
+            "line": 35,
+            "fragment": "bunx tsc",
+            "lineText": "bunx tsc --noEmit --noUnusedLocals --noUnusedParameters 2>&1",
+            "evidenceQuality": "mechanism"
+          },
+          {
+            "line": 72,
+            "fragment": "src/foo.ts",
+            "lineText": "| 1 | src/foo.ts:42 | unusedFunc | function | REMOVE |",
+            "evidenceQuality": "mechanism"
+          },
+          {
+            "line": 73,
+            "fragment": "src/bar.ts",
+            "lineText": "| 2 | src/bar.ts:10 | OldType | type | REMOVE |",
+            "evidenceQuality": "mechanism"
+          }
+        ],
+        "upstreamHarnessCoupling": [
+          "taskTool",
+          "categoryRouting",
+          "binaries"
+        ],
+        "booleans": {
+          "harnessSeamChange": {
+            "value": false,
+            "basis": "keyword",
+            "evidenceQuality": "none",
+            "evidence": [
+              "no seam-trigger class in the frozen class table"
+            ],
+            "falsePositiveRisk": false,
+            "note": "Seam trigger has prose-only hits (or none) => false with evidenceQuality prose/none. This matches the captain's ruling for dev-browser/frontend, and records the positive finding rather than `unknown`."
+          },
+          "binaryDependency": {
+            "value": true,
+            "basis": "keyword",
+            "evidence": [
+              "L35 \"bunx tsc\"",
+              "L72 \"src/foo.ts\"",
+              "L73 \"src/bar.ts\""
+            ],
+            "falsePositiveRisk": false,
+            "note": "Per the frozen definition: an executable command inside the row's own SKILL.md that is part of the porting work. Code context required (fence or inline code)."
+          },
+          "credentialDependency": {
+            "value": false,
+            "basis": "keyword",
+            "evidence": [
+              "no credential-related hit"
+            ],
+            "falsePositiveRisk": false,
+            "note": "No credential mention. Record-only: never scores."
+          }
+        }
+      }
+    },
+    {
+      "id": "skills/security-research",
+      "domain": "技能",
+      "upstreamItem": "security-research（上游技能，载体 .agents/skills）",
+      "upstreamEvidence": ".agents/skills/security-research/SKILL.md:3 (frontmatter), .agents/skills/security-research/SKILL.md:1-204（文件实长 204 行，fileCount=1, dirCount=0）",
+      "repoCounterpart": "null",
+      "repoEvidence": "null（本地无对应目录）",
+      "verdict": "uncertain",
+      "semanticDiff": "上游仓库内建安全审计技能；本地无对应，属于新增能力槽位",
+      "mechanicalCheck": "ls .agents/skills/security-research 与本地对照（可复现）；判定为 adoptable 前不得移植（本轮只读）",
+      "notes": "来源 frozen-contract.t4Requirements.rowSet（原文 \"skills/security-research\"）；t4 旧 id=.agents/skills/security-research；class 分布见 supportingEvidence",
+      "falsifiableAssertion": null,
+      "replacement": {
+        "status": "no-equivalent",
+        "mechanism": null,
+        "evidence": "本地 skills/ 无安全审计技能",
+        "equivalence": "无增量（新增能力槽位）"
+      },
+      "skillPortCost": {
+        "countingRule": "计数范围 = 技能树自身（上游 SKILL.md 所在目录 / 本地 skills/<name>/），跨行可比。null 与 0 语义不同：0=实测为空，null(unknown/absent)=未能只读测得或本地不存在；unknown 不是 0、也不是最高代价。",
+        "upstreamSkillTree": {
+          "status": "measured",
+          "fileCount": 1,
+          "dirCount": 0,
+          "scope": ".agents/skills/security-research/"
+        },
+        "localSkillTree": {
+          "status": "absent",
+          "fileCount": null,
+          "dirCount": null,
+          "scope": "skills/security-research/"
+        },
+        "harnessCoupling": [
+          "teamTools",
+          "categoryRouting",
+          "creds"
+        ],
+        "couplingMeasurement": "non-none：命中 teamTools,categoryRouting,creds（因此按 t8 规则不得判 none）",
+        "repoTouchPoints": [
+          "skills/**（采纳/改写目标；单写者 + 一次 VENDOR_LOCK 重钉，D_SKILLS_WRITER）",
+          "presets/mpd/agent.cordis.yml（仅当 persona/doctrine 文本改动时）",
+          "AGENTS.md（仅当约定变化时）"
+        ]
+      },
+      "fieldProvenance": "re-exposed in fv4; fv1 (pre-R1) values for rows without an override were generic placeholders, fv4 values are row-specific",
+      "upstreamHarnessCoupling": [
+        "teamTools",
+        "categoryRouting",
+        "creds"
+      ],
+      "couplingMeasurement": "non-none：命中 teamTools,categoryRouting,creds（因此按 t8 规则不得判 none）",
+      "overlap": "none（本地无安全审计技能）",
+      "relevanceToGoals": {
+        "goal1_omoAlignment": "低",
+        "goal2_agentTeamsNotDefault": "无",
+        "goal3_autoRouting": "无",
+        "goal4_massUlwDag": "无"
+      },
+      "relevanceRationale": "新增能力槽位，与四目标无直接关系",
+      "rowSetSource": "frozen-contract.rowSet",
+      "ledgerCandidate": false,
+      "anchorStatus": "carried-from-fv4",
+      "anchorNote": "Not in the affected set (D1, D8, T3-01..T3-08); fv4 text retained verbatim.",
+      "fv5": {
+        "upstreamFile": ".agents/skills/security-research/SKILL.md",
+        "classEvidence": {
+          "teamTools": {
+            "class": "teamTools",
+            "hits": [
+              {
+                "line": 51,
+                "fragment": "team_create",
+                "lineText": "Call `team_create` with an inline spec:",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 54,
+                "fragment": "team_create",
+                "lineText": "team_create({",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              }
+            ],
+            "best": "mechanism"
+          },
+          "categoryRouting": {
+            "class": "categoryRouting",
+            "hits": [
+              {
+                "line": 34,
+                "fragment": "category",
+                "lineText": "- Keep CWE category separate from severity.",
+                "evidenceQuality": "prose",
+                "caseSensitive": true
+              },
+              {
+                "line": 45,
+                "fragment": "category",
+                "lineText": "| `surface-hunter` | category | `deep` | Map entry points, trust boundaries, and reachable attack surfaces. |",
+                "evidenceQuality": "prose",
+                "caseSensitive": true
+              },
+              {
+                "line": 46,
+                "fragment": "category",
+                "lineText": "| `auth-data-hunter` | category | `ultrabrain` | Hunt auth, authorization, data isolation, injection, and secr",
+                "evidenceQuality": "prose",
+                "caseSensitive": true
+              }
+            ],
+            "best": "prose"
+          },
+          "creds": {
+            "class": "creds",
+            "hits": [
+              {
+                "line": 69,
+                "fragment": "credential",
+                "lineText": "prompt: \"You hunt auth, authorization, tenant/data isolation, injection, SSRF, credential exposure, and confus",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": false
+              }
+            ],
+            "best": "mechanism"
+          }
+        },
+        "binaryCommandEvidence": [],
+        "upstreamHarnessCoupling": [
+          "teamTools",
+          "categoryRouting",
+          "creds"
+        ],
+        "booleans": {
+          "harnessSeamChange": {
+            "value": true,
+            "basis": "keyword",
+            "evidenceQuality": "mechanism",
+            "evidence": [
+              "teamTools: L51 \"team_create\""
+            ],
+            "falsePositiveRisk": false,
+            "note": "Seam trigger present with mechanism evidence (match itself is a call/env/tool token, or sits in a code fence/inline code)."
+          },
+          "binaryDependency": {
+            "value": false,
+            "basis": "keyword",
+            "evidence": [
+              "no executable command (bun/bunx/node/npx/npm/pnpm/yarn/uv/deno/python/bash/sh or a script path) in the skill's own SKILL.md"
+            ],
+            "falsePositiveRisk": false,
+            "note": "Per the frozen definition: an executable command inside the row's own SKILL.md that is part of the porting work. Code context required (fence or inline code)."
+          },
+          "credentialDependency": {
+            "value": "unknown",
+            "basis": "keyword",
+            "evidence": [
+              "L69 \"credential\" (mechanism)"
+            ],
+            "falsePositiveRisk": true,
+            "note": "Domain-word/audit-target ambiguity (e.g. 'credential exposure', grep for API_KEY); not a credential requirement. Record-only: never scores."
+          }
+        }
+      }
+    },
+    {
+      "id": "skills/tech-debt-audit",
+      "domain": "技能",
+      "upstreamItem": "tech-debt-audit（上游技能，载体 .agents/skills）",
+      "upstreamEvidence": ".agents/skills/tech-debt-audit/SKILL.md:3 (frontmatter), .agents/skills/tech-debt-audit/SKILL.md:1-208（文件实长 208 行，fileCount=1, dirCount=0）",
+      "repoCounterpart": "null",
+      "repoEvidence": "null（本地无对应目录）",
+      "verdict": "uncertain",
+      "semanticDiff": "上游仓库内建技术债审计技能；本地无对应",
+      "mechanicalCheck": "ls .agents/skills/tech-debt-audit 与本地对照（可复现）；判定为 adoptable 前不得移植（本轮只读）",
+      "notes": "来源 frozen-contract.t4Requirements.rowSet（原文 \"skills/tech-debt-audit\"）；t4 旧 id=.agents/skills/tech-debt-audit；class 分布见 supportingEvidence",
+      "falsifiableAssertion": null,
+      "replacement": {
+        "status": "no-equivalent",
+        "mechanism": null,
+        "evidence": "本地 skills/ 无技术债审计技能",
+        "equivalence": "无增量（新增能力槽位）"
+      },
+      "skillPortCost": {
+        "countingRule": "计数范围 = 技能树自身（上游 SKILL.md 所在目录 / 本地 skills/<name>/），跨行可比。null 与 0 语义不同：0=实测为空，null(unknown/absent)=未能只读测得或本地不存在；unknown 不是 0、也不是最高代价。",
+        "upstreamSkillTree": {
+          "status": "measured",
+          "fileCount": 1,
+          "dirCount": 0,
+          "scope": ".agents/skills/tech-debt-audit/"
+        },
+        "localSkillTree": {
+          "status": "absent",
+          "fileCount": null,
+          "dirCount": null,
+          "scope": "skills/tech-debt-audit/"
+        },
+        "harnessCoupling": [
+          "taskTool",
+          "categoryRouting",
+          "creds",
+          "binaries"
+        ],
+        "couplingMeasurement": "non-none：命中 taskTool,categoryRouting,creds,binaries（因此按 t8 规则不得判 none）",
+        "repoTouchPoints": [
+          "skills/**（采纳/改写目标；单写者 + 一次 VENDOR_LOCK 重钉，D_SKILLS_WRITER）",
+          "presets/mpd/agent.cordis.yml（仅当 persona/doctrine 文本改动时）",
+          "AGENTS.md（仅当约定变化时）"
+        ]
+      },
+      "fieldProvenance": "re-exposed in fv4; fv1 (pre-R1) values for rows without an override were generic placeholders, fv4 values are row-specific",
+      "upstreamHarnessCoupling": [
+        "taskTool",
+        "categoryRouting",
+        "creds",
+        "binaries"
+      ],
+      "couplingMeasurement": "non-none：命中 taskTool,categoryRouting,creds,binaries（因此按 t8 规则不得判 none）",
+      "overlap": "none（本地无技术债审计技能）",
+      "relevanceToGoals": {
+        "goal1_omoAlignment": "低",
+        "goal2_agentTeamsNotDefault": "无",
+        "goal3_autoRouting": "无",
+        "goal4_massUlwDag": "无"
+      },
+      "relevanceRationale": "新增能力槽位，与四目标无直接关系",
+      "rowSetSource": "frozen-contract.rowSet",
+      "ledgerCandidate": false,
+      "anchorStatus": "carried-from-fv4",
+      "anchorNote": "Not in the affected set (D1, D8, T3-01..T3-08); fv4 text retained verbatim.",
+      "fv5": {
+        "upstreamFile": ".agents/skills/tech-debt-audit/SKILL.md",
+        "classEvidence": {
+          "taskTool": {
+            "class": "taskTool",
+            "hits": [
+              {
+                "line": 173,
+                "fragment": "task(",
+                "lineText": "task(category=\"unspecified-low\", run_in_background=true, load_skills=[], prompt=\"[CONTEXT] Tech debt audit. [G",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 173,
+                "fragment": "load_skills",
+                "lineText": "task(category=\"unspecified-low\", run_in_background=true, load_skills=[], prompt=\"[CONTEXT] Tech debt audit. [G",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 174,
+                "fragment": "task(",
+                "lineText": "task(category=\"unspecified-low\", run_in_background=true, load_skills=[], prompt=\"[CONTEXT] Tech debt audit. [G",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              }
+            ],
+            "best": "mechanism"
+          },
+          "categoryRouting": {
+            "class": "categoryRouting",
+            "hits": [
+              {
+                "line": 173,
+                "fragment": "category",
+                "lineText": "task(category=\"unspecified-low\", run_in_background=true, load_skills=[], prompt=\"[CONTEXT] Tech debt audit. [G",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 174,
+                "fragment": "category",
+                "lineText": "task(category=\"unspecified-low\", run_in_background=true, load_skills=[], prompt=\"[CONTEXT] Tech debt audit. [G",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              }
+            ],
+            "best": "mechanism"
+          },
+          "creds": {
+            "class": "creds",
+            "hits": [
+              {
+                "line": 102,
+                "fragment": "API_KEY",
+                "lineText": "- `grep(\"API_KEY|SECRET|PASSWORD|TOKEN\")` in non-config files — hardcoded config",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": false
+              },
+              {
+                "line": 102,
+                "fragment": "TOKEN",
+                "lineText": "- `grep(\"API_KEY|SECRET|PASSWORD|TOKEN\")` in non-config files — hardcoded config",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": false
+              },
+              {
+                "line": 142,
+                "fragment": "token",
+                "lineText": "- `grep(\"api[Kk]ey|api_secret|password|secret|token|credential\")` in source files (not config or env)",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": false
+              }
+            ],
+            "best": "mechanism"
+          },
+          "binaries": {
+            "class": "binaries",
+            "hits": [
+              {
+                "line": 87,
+                "fragment": "bun",
+                "lineText": "- `bash(\"bun test 2>&1 | grep -E '(fail|skip|todo)'\")` — current test health",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": false
+              },
+              {
+                "line": 101,
+                "fragment": "Bun",
+                "lineText": "- `grep(\".env|process.env|Bun.env\")` — env var usage",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": false
+              }
+            ],
+            "best": "mechanism"
+          }
+        },
+        "binaryCommandEvidence": [
+          {
+            "line": 87,
+            "fragment": "(\"bun test",
+            "lineText": "- `bash(\"bun test 2>&1 | grep -E '(fail|skip|todo)'\")` — current test health",
+            "evidenceQuality": "mechanism"
+          },
+          {
+            "line": 99,
+            "fragment": "(\"npm audit",
+            "lineText": "- `bash(\"npm audit --omit=dev 2>&1 | head -40\")` — known CVEs (if node_modules present)",
+            "evidenceQuality": "mechanism"
+          }
+        ],
+        "upstreamHarnessCoupling": [
+          "taskTool",
+          "categoryRouting",
+          "creds",
+          "binaries"
+        ],
+        "booleans": {
+          "harnessSeamChange": {
+            "value": false,
+            "basis": "keyword",
+            "evidenceQuality": "none",
+            "evidence": [
+              "no seam-trigger class in the frozen class table"
+            ],
+            "falsePositiveRisk": false,
+            "note": "Seam trigger has prose-only hits (or none) => false with evidenceQuality prose/none. This matches the captain's ruling for dev-browser/frontend, and records the positive finding rather than `unknown`."
+          },
+          "binaryDependency": {
+            "value": true,
+            "basis": "keyword",
+            "evidence": [
+              "L87 \"(\"bun test\"",
+              "L99 \"(\"npm audit\""
+            ],
+            "falsePositiveRisk": false,
+            "note": "Per the frozen definition: an executable command inside the row's own SKILL.md that is part of the porting work. Code context required (fence or inline code)."
+          },
+          "credentialDependency": {
+            "value": "unknown",
+            "basis": "keyword",
+            "evidence": [
+              "L102 \"API_KEY\" (mechanism)",
+              "L102 \"TOKEN\" (mechanism)",
+              "L142 \"token\" (mechanism)"
+            ],
+            "falsePositiveRisk": true,
+            "note": "Domain-word/audit-target ambiguity (e.g. 'credential exposure', grep for API_KEY); not a credential requirement. Record-only: never scores."
+          }
+        }
+      }
+    },
+    {
+      "id": "omo-codex/rules",
+      "domain": "技能/规则",
+      "upstreamItem": "rules（上游技能，载体 packages/omo-codex）",
+      "upstreamEvidence": "packages/omo-codex/plugin/components/rules/skills/rules/SKILL.md:3 (frontmatter), packages/omo-codex/plugin/components/rules/skills/rules/SKILL.md:1-33（文件实长 33 行，fileCount=1, dirCount=0）",
+      "repoCounterpart": "null",
+      "repoEvidence": "null（本地无对应目录）",
+      "verdict": "uncertain",
+      "semanticDiff": "上游 rules 组件：从 .omo/rules 注入项目规则；本地用 AGENTS.md 约定，机制重复",
+      "mechanicalCheck": "ls packages/omo-codex/plugin/components/rules/skills/rules/ 与本地对照（可复现）；判定为 adoptable 前不得移植（本轮只读）",
+      "notes": "来源 frozen-contract.t4Requirements.rowSet（原文 \"omo-codex/rules\"）；t4 旧 id=packages/omo-codex/plugin/components/rules/skills/rules/SKILL.md；class 分布见 supportingEvidence",
+      "falsifiableAssertion": null,
+      "replacement": {
+        "status": "partial-equivalent",
+        "mechanism": "dsh-agent-instructions 指令文件约定（AGENT.md → AGENTS.md → CLAUDE.md）",
+        "evidence": "presets/mpd/agent.cordis.yml:146-153",
+        "equivalence": "部分等价：项目规则注入已存在，但格式/发现路径与上游 rules-engine 不同"
+      },
+      "skillPortCost": {
+        "countingRule": "计数范围 = 技能树自身（上游 SKILL.md 所在目录 / 本地 skills/<name>/），跨行可比。null 与 0 语义不同：0=实测为空，null(unknown/absent)=未能只读测得或本地不存在；unknown 不是 0、也不是最高代价。",
+        "upstreamSkillTree": {
+          "status": "measured",
+          "fileCount": 1,
+          "dirCount": 0,
+          "scope": "packages/omo-codex/plugin/components/rules/skills/rules/"
+        },
+        "localSkillTree": {
+          "status": "absent",
+          "fileCount": null,
+          "dirCount": null,
+          "scope": "skills/rules/"
+        },
+        "harnessCoupling": [
+          "omoDir",
+          "cliOmo"
+        ],
+        "couplingMeasurement": "non-none：命中 omoDir,cliOmo（因此按 t8 规则不得判 none）",
+        "repoTouchPoints": [
+          "skills/**（采纳/改写目标；单写者 + 一次 VENDOR_LOCK 重钉，D_SKILLS_WRITER）",
+          "presets/mpd/agent.cordis.yml（仅当 persona/doctrine 文本改动时）",
+          "AGENTS.md（仅当约定变化时）"
+        ]
+      },
+      "fieldProvenance": "re-exposed in fv4; fv1 (pre-R1) values for rows without an override were generic placeholders, fv4 values are row-specific",
+      "upstreamHarnessCoupling": [
+        "omoDir",
+        "cliOmo"
+      ],
+      "couplingMeasurement": "non-none：命中 omoDir,cliOmo（因此按 t8 规则不得判 none）",
+      "overlap": "与本地 AGENTS.md 指令文件约定机制重复（presets/mpd/agent.cordis.yml:146-153）",
+      "relevanceToGoals": {
+        "goal1_omoAlignment": "低",
+        "goal2_agentTeamsNotDefault": "无",
+        "goal3_autoRouting": "无",
+        "goal4_massUlwDag": "无"
+      },
+      "relevanceRationale": "规则注入已被本地约定覆盖",
+      "rowSetSource": "frozen-contract.rowSet",
+      "ledgerCandidate": false,
+      "anchorStatus": "carried-from-fv4",
+      "anchorNote": "Not in the affected set (D1, D8, T3-01..T3-08); fv4 text retained verbatim.",
+      "fv5": {
+        "upstreamFile": "packages/omo-codex/plugin/components/rules/skills/rules/SKILL.md",
+        "classEvidence": {
+          "omoDir": {
+            "class": "omoDir",
+            "hits": [
+              {
+                "line": 18,
+                "fragment": ".omo",
+                "lineText": "- `.omo/rules/**/*.md`",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 30,
+                "fragment": ".omo",
+                "lineText": "- `CODEX_RULES_ENABLED_SOURCES=CONTEXT.md,.omo/rules`",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              }
+            ],
+            "best": "mechanism"
+          },
+          "cliOmo": {
+            "class": "cliOmo",
+            "hits": [
+              {
+                "line": 18,
+                "fragment": "omo",
+                "lineText": "- `.omo/rules/**/*.md`",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 30,
+                "fragment": "omo",
+                "lineText": "- `CODEX_RULES_ENABLED_SOURCES=CONTEXT.md,.omo/rules`",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              }
+            ],
+            "best": "mechanism"
+          }
+        },
+        "binaryCommandEvidence": [],
+        "upstreamHarnessCoupling": [
+          "omoDir",
+          "cliOmo"
+        ],
+        "booleans": {
+          "harnessSeamChange": {
+            "value": false,
+            "basis": "keyword",
+            "evidenceQuality": "none",
+            "evidence": [
+              "no seam-trigger class in the frozen class table"
+            ],
+            "falsePositiveRisk": false,
+            "note": "Seam trigger has prose-only hits (or none) => false with evidenceQuality prose/none. This matches the captain's ruling for dev-browser/frontend, and records the positive finding rather than `unknown`."
+          },
+          "binaryDependency": {
+            "value": false,
+            "basis": "keyword",
+            "evidence": [
+              "no executable command (bun/bunx/node/npx/npm/pnpm/yarn/uv/deno/python/bash/sh or a script path) in the skill's own SKILL.md"
+            ],
+            "falsePositiveRisk": false,
+            "note": "Per the frozen definition: an executable command inside the row's own SKILL.md that is part of the porting work. Code context required (fence or inline code)."
+          },
+          "credentialDependency": {
+            "value": false,
+            "basis": "keyword",
+            "evidence": [
+              "no credential-related hit"
+            ],
+            "falsePositiveRisk": false,
+            "note": "No credential mention. Record-only: never scores."
+          }
+        }
+      }
+    },
+    {
+      "id": "omo-senpi/dag-library",
+      "domain": "DAG/技能",
+      "upstreamItem": "dag-library（上游技能，载体 packages/omo-senpi）",
+      "upstreamEvidence": "packages/omo-senpi/skills/dag-library/SKILL.md:3 (frontmatter), packages/omo-senpi/skills/dag-library/SKILL.md:1-71（文件实长 71 行，fileCount=1, dirCount=0）",
+      "repoCounterpart": "null",
+      "repoEvidence": "null（本地无对应目录）",
+      "verdict": "uncertain",
+      "semanticDiff": "存储并复用命名 dag 定义（$OMO_DAG_LIBRARY/.omo/dags + key 轮换）；依赖上游 run 幂等模型，本地无对应",
+      "mechanicalCheck": "ls packages/omo-senpi/skills/dag-library/ 与本地对照（可复现）；判定为 adoptable 前不得移植（本轮只读）",
+      "notes": "来源 frozen-contract.t4Requirements.rowSet（原文 \"omo-senpi/dag-library\"）；t4 旧 id=packages/omo-senpi/skills/dag-library/SKILL.md；class 分布见 supportingEvidence",
+      "falsifiableAssertion": null,
+      "replacement": {
+        "status": "no-equivalent",
+        "mechanism": null,
+        "evidence": "packages/mpd-boulder-plugin/src/index.ts:152-156（最近的本地资产：.mpd/plans 列表，文档型、不可按名重跑）",
+        "equivalence": "无增量：按名复用图定义依赖 key+fingerprint 幂等与 run 句柄，本地无承载机制"
+      },
+      "skillPortCost": {
+        "countingRule": "计数范围 = 技能树自身（上游 SKILL.md 所在目录 / 本地 skills/<name>/），跨行可比。null 与 0 语义不同：0=实测为空，null(unknown/absent)=未能只读测得或本地不存在；unknown 不是 0、也不是最高代价。",
+        "upstreamSkillTree": {
+          "status": "measured",
+          "fileCount": 1,
+          "dirCount": 0,
+          "scope": "packages/omo-senpi/skills/dag-library/"
+        },
+        "localSkillTree": {
+          "status": "absent",
+          "fileCount": null,
+          "dirCount": null,
+          "scope": "skills/dag-library/"
+        },
+        "harnessCoupling": [
+          "envKeyOmo",
+          "omoDir",
+          "workflowTool",
+          "dagRunId",
+          "categoryRouting",
+          "cliOmo"
+        ],
+        "couplingMeasurement": "non-none：命中 envKeyOmo,omoDir,workflowTool,dagRunId,categoryRouting,cliOmo（因此按 t8 规则不得判 none）",
+        "repoTouchPoints": [
+          "skills/**（采纳/改写目标；单写者 + 一次 VENDOR_LOCK 重钉，D_SKILLS_WRITER）",
+          "presets/mpd/agent.cordis.yml（仅当 persona/doctrine 文本改动时）",
+          "AGENTS.md（仅当约定变化时）"
+        ]
+      },
+      "fieldProvenance": "re-exposed in fv4; fv1 (pre-R1) values for rows without an override were generic placeholders, fv4 values are row-specific",
+      "upstreamHarnessCoupling": [
+        "envKeyOmo",
+        "omoDir",
+        "workflowTool",
+        "dagRunId",
+        "categoryRouting",
+        "cliOmo"
+      ],
+      "couplingMeasurement": "non-none：命中 envKeyOmo,omoDir,workflowTool,dagRunId,categoryRouting,cliOmo（因此按 t8 规则不得判 none）",
+      "overlap": "本地无可按名复用的图定义；最近资产 .mpd/plans 为文档型（packages/mpd-boulder-plugin/src/index.ts:152-156）",
+      "relevanceToGoals": {
+        "goal1_omoAlignment": "中",
+        "goal2_agentTeamsNotDefault": "低",
+        "goal3_autoRouting": "中",
+        "goal4_massUlwDag": "高"
+      },
+      "relevanceRationale": "DAG 复用资产直接关系 goal4，但依赖上游 run 幂等模型",
+      "rowSetSource": "frozen-contract.rowSet",
+      "ledgerCandidate": false,
+      "anchorStatus": "carried-from-fv4",
+      "anchorNote": "Not in the affected set (D1, D8, T3-01..T3-08); fv4 text retained verbatim.",
+      "fv5": {
+        "upstreamFile": "packages/omo-senpi/skills/dag-library/SKILL.md",
+        "classEvidence": {
+          "envKeyOmo": {
+            "class": "envKeyOmo",
+            "hits": [
+              {
+                "line": 16,
+                "fragment": "OMO_DAG_LIBRARY",
+                "lineText": "1. `$OMO_DAG_LIBRARY` (multiple dirs, separated by `:` — or by `;` on Windows, so drive-letter paths survive)",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 35,
+                "fragment": "OMO_DAG_SDK_ROOT",
+                "lineText": "The extension publishes `library.js` next to `sdk.js` at `OMO_DAG_SDK_ROOT`:",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 38,
+                "fragment": "OMO_DAG_SDK_ROOT",
+                "lineText": "const lib = await import(`${env(\"OMO_DAG_SDK_ROOT\")}/library.js`)",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              }
+            ],
+            "best": "mechanism"
+          },
+          "omoDir": {
+            "class": "omoDir",
+            "hits": [
+              {
+                "line": 17,
+                "fragment": ".omo",
+                "lineText": "2. `$PWD/.omo/dags`",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 18,
+                "fragment": "$HOME/.omo",
+                "lineText": "3. `$HOME/.omo/dags`",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 60,
+                "fragment": ".omo",
+                "lineText": "defn = json.loads(read(f\"{env('HOME')}/.omo/dags/nightly-audit.json\"))",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              }
+            ],
+            "best": "mechanism"
+          },
+          "workflowTool": {
+            "class": "workflowTool",
+            "hits": [
+              {
+                "line": 55,
+                "fragment": "tool.workflow",
+                "lineText": "Python cannot import the ESM library. Reproduce the same semantics with plain dicts — read the file, rotate th",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 64,
+                "fragment": "tool.workflow",
+                "lineText": "run = tool.workflow({\"action\": \"start\", \"definition\": json.loads(text)})",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 65,
+                "fragment": "tool.workflow",
+                "lineText": "result = tool.workflow({\"action\": \"wait\", \"run_id\": run[\"run_id\"], \"detach\": False})  # detach=False keeps the",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              }
+            ],
+            "best": "mechanism"
+          },
+          "dagRunId": {
+            "class": "dagRunId",
+            "hits": [
+              {
+                "line": 43,
+                "fragment": "run_id",
+                "lineText": "`await lib.load(name)` returns the filled definition without starting it; `await lib.start(name)` loads and st",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 50,
+                "fragment": "amend",
+                "lineText": "- `lib.start(\"nightly-audit\", { suffix: \"20260818\" })` → key becomes `nightly-audit-20260818`: explicit suffix",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 65,
+                "fragment": "run_id",
+                "lineText": "result = tool.workflow({\"action\": \"wait\", \"run_id\": run[\"run_id\"], \"detach\": False})  # detach=False keeps the",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              }
+            ],
+            "best": "mechanism"
+          },
+          "categoryRouting": {
+            "class": "categoryRouting",
+            "hits": [
+              {
+                "line": 25,
+                "fragment": "category",
+                "lineText": "{ \"id\": \"audit\", \"category\": \"unspecified-low\", \"prompt\": \"Audit docs/ for stale claims; write findings to /tm",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 26,
+                "fragment": "category",
+                "lineText": "{ \"id\": \"verify\", \"category\": \"quick\", \"prompt\": \"Verify each finding in /tmp/audit-{{key}}.md against src/.\",",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              }
+            ],
+            "best": "mechanism"
+          },
+          "cliOmo": {
+            "class": "cliOmo",
+            "hits": [
+              {
+                "line": 17,
+                "fragment": "omo",
+                "lineText": "2. `$PWD/.omo/dags`",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 18,
+                "fragment": "omo",
+                "lineText": "3. `$HOME/.omo/dags`",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 60,
+                "fragment": "omo",
+                "lineText": "defn = json.loads(read(f\"{env('HOME')}/.omo/dags/nightly-audit.json\"))",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              }
+            ],
+            "best": "mechanism"
+          }
+        },
+        "binaryCommandEvidence": [],
+        "upstreamHarnessCoupling": [
+          "envKeyOmo",
+          "omoDir",
+          "workflowTool",
+          "dagRunId",
+          "categoryRouting",
+          "cliOmo"
+        ],
+        "booleans": {
+          "harnessSeamChange": {
+            "value": true,
+            "basis": "keyword",
+            "evidenceQuality": "mechanism",
+            "evidence": [
+              "envKeyOmo: L16 \"OMO_DAG_LIBRARY\"",
+              "dagRunId: L43 \"run_id\"",
+              "workflowTool: L55 \"tool.workflow\""
+            ],
+            "falsePositiveRisk": false,
+            "note": "Seam trigger present with mechanism evidence (match itself is a call/env/tool token, or sits in a code fence/inline code)."
+          },
+          "binaryDependency": {
+            "value": false,
+            "basis": "keyword",
+            "evidence": [
+              "no executable command (bun/bunx/node/npx/npm/pnpm/yarn/uv/deno/python/bash/sh or a script path) in the skill's own SKILL.md"
+            ],
+            "falsePositiveRisk": false,
+            "note": "Per the frozen definition: an executable command inside the row's own SKILL.md that is part of the porting work. Code context required (fence or inline code)."
+          },
+          "credentialDependency": {
+            "value": false,
+            "basis": "keyword",
+            "evidence": [
+              "no credential-related hit"
+            ],
+            "falsePositiveRisk": false,
+            "note": "No credential mention. Record-only: never scores."
+          }
+        }
+      }
+    },
+    {
+      "id": "omo-senpi/mass-ulw",
+      "domain": "DAG/技能",
+      "upstreamItem": "mass-ulw（上游技能，载体 packages/omo-senpi）",
+      "upstreamEvidence": "packages/omo-senpi/skills/mass-ulw/SKILL.md:3 (frontmatter), packages/omo-senpi/skills/mass-ulw/SKILL.md:1-97（文件实长 97 行，fileCount=2, dirCount=1）",
+      "repoCounterpart": "null",
+      "repoEvidence": "null（本地无对应目录）",
+      "verdict": "uncertain",
+      "semanticDiff": "mass-ulw doctrine：一次 run 一个 phase、node 契约、goal 绑定、验证波；机制（run_id/retry/amend/send/日志）本地缺失，只能改写",
+      "mechanicalCheck": "ls packages/omo-senpi/skills/mass-ulw/ 与本地对照（可复现）；判定为 adoptable 前不得移植（本轮只读）",
+      "notes": "来源 frozen-contract.t4Requirements.rowSet（原文 \"omo-senpi/mass-ulw\"）；t4 旧 id=packages/omo-senpi/skills/mass-ulw/SKILL.md；class 分布见 supportingEvidence",
+      "falsifiableAssertion": null,
+      "replacement": {
+        "status": "partial-equivalent",
+        "mechanism": "agent-teams 任务板（依赖排序/扇出/验证）+ DSH workflow 工具的 agent()/pipeline()/parallel()",
+        "evidence": "packages/mpd-agent-teams-plugin/lib/scheduler.js:36-84; packages/mpd-agent-teams-plugin/lib/quality-gates.js:769-812; presets/mpd/agent.cordis.yml:349-355",
+        "equivalence": "部分等价：依赖边/拓扑 hand-off/机械验证已由任务板承载；phase 边界与 run 级动词（retry/amend/send/resume）无等价物，只能落 recoveryCoverage 的 S1-S4 四项语义"
+      },
+      "skillPortCost": {
+        "countingRule": "计数范围 = 技能树自身（上游 SKILL.md 所在目录 / 本地 skills/<name>/），跨行可比。null 与 0 语义不同：0=实测为空，null(unknown/absent)=未能只读测得或本地不存在；unknown 不是 0、也不是最高代价。",
+        "upstreamSkillTree": {
+          "status": "measured",
+          "fileCount": 2,
+          "dirCount": 1,
+          "scope": "packages/omo-senpi/skills/mass-ulw/"
+        },
+        "localSkillTree": {
+          "status": "absent",
+          "fileCount": null,
+          "dirCount": null,
+          "scope": "skills/mass-ulw/"
+        },
+        "harnessCoupling": [
+          "envKeyOmo",
+          "workflowTool",
+          "dagRunId",
+          "goalTool",
+          "taskTool",
+          "categoryRouting",
+          "cliOmo"
+        ],
+        "couplingMeasurement": "non-none：命中 envKeyOmo,workflowTool,dagRunId,goalTool,taskTool,categoryRouting,cliOmo（因此按 t8 规则不得判 none）",
+        "repoTouchPoints": [
+          "skills/**（采纳/改写目标；单写者 + 一次 VENDOR_LOCK 重钉，D_SKILLS_WRITER）",
+          "presets/mpd/agent.cordis.yml（仅当 persona/doctrine 文本改动时）",
+          "AGENTS.md（仅当约定变化时）"
+        ]
+      },
+      "fieldProvenance": "re-exposed in fv4; fv1 (pre-R1) values for rows without an override were generic placeholders, fv4 values are row-specific",
+      "upstreamHarnessCoupling": [
+        "envKeyOmo",
+        "workflowTool",
+        "dagRunId",
+        "goalTool",
+        "taskTool",
+        "categoryRouting",
+        "cliOmo"
+      ],
+      "couplingMeasurement": "non-none：命中 envKeyOmo,workflowTool,dagRunId,goalTool,taskTool,categoryRouting,cliOmo（因此按 t8 规则不得判 none）",
+      "overlap": "概念重叠（依赖排序/扇出/验证）但机制不重叠：本地无 run_id/retry/amend/send/日志（t2 D3）",
+      "relevanceToGoals": {
+        "goal1_omoAlignment": "高",
+        "goal2_agentTeamsNotDefault": "低",
+        "goal3_autoRouting": "中",
+        "goal4_massUlwDag": "高"
+      },
+      "relevanceRationale": "mass-ulw/DAG 对齐的参照物；其 category 路由不是任务级路由器",
+      "rowSetSource": "frozen-contract.rowSet",
+      "ledgerCandidate": false,
+      "anchorStatus": "carried-from-fv4",
+      "anchorNote": "Not in the affected set (D1, D8, T3-01..T3-08); fv4 text retained verbatim.",
+      "fv5": {
+        "upstreamFile": "packages/omo-senpi/skills/mass-ulw/SKILL.md",
+        "classEvidence": {
+          "envKeyOmo": {
+            "class": "envKeyOmo",
+            "hits": [
+              {
+                "line": 28,
+                "fragment": "OMO_DAG_SDK_ROOT",
+                "lineText": "Build and run every dag INSIDE an eval cell. The eval kernel installs the `tool.workflow` proxy and the extens",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 33,
+                "fragment": "OMO_DAG_SDK_ROOT",
+                "lineText": "const sdk = await import(`${env(\"OMO_DAG_SDK_ROOT\")}/sdk.js`)",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 53,
+                "fragment": "OMO_DAG_SDK_ROOT",
+                "lineText": "const sdk = await import(`${env(\"OMO_DAG_SDK_ROOT\")}/sdk.js`)",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              }
+            ],
+            "best": "mechanism"
+          },
+          "workflowTool": {
+            "class": "workflowTool",
+            "hits": [
+              {
+                "line": 3,
+                "fragment": "workflow",
+                "lineText": "description: \"Drives dependency-ordered child work through the native workflow tool, one run per phase with re",
+                "evidenceQuality": "prose",
+                "caseSensitive": true
+              },
+              {
+                "line": 10,
+                "fragment": "workflow",
+                "lineText": "Use this skill when the user asks for `mass-ulw`, a task DAG, staged fan-out, or any multi-agent job where rea",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 14,
+                "fragment": "tool.workflow",
+                "lineText": "Before defining ANY graph, read `references/planning.md` (relative to this skill's own directory) IN FULL. Do ",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              }
+            ],
+            "best": "mechanism"
+          },
+          "dagRunId": {
+            "class": "dagRunId",
+            "hits": [
+              {
+                "line": 3,
+                "fragment": "amend",
+                "lineText": "description: \"Drives dependency-ordered child work through the native workflow tool, one run per phase with re",
+                "evidenceQuality": "prose",
+                "caseSensitive": true
+              },
+              {
+                "line": 10,
+                "fragment": "amend",
+                "lineText": "Use this skill when the user asks for `mass-ulw`, a task DAG, staged fan-out, or any multi-agent job where rea",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 41,
+                "fragment": "run_id",
+                "lineText": "const result = await sdk.wait(run.run_id)",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              }
+            ],
+            "best": "mechanism"
+          },
+          "goalTool": {
+            "class": "goalTool",
+            "hits": [
+              {
+                "line": 10,
+                "fragment": "goal",
+                "lineText": "Use this skill when the user asks for `mass-ulw`, a task DAG, staged fan-out, or any multi-agent job where rea",
+                "evidenceQuality": "prose",
+                "caseSensitive": true
+              },
+              {
+                "line": 24,
+                "fragment": "goal",
+                "lineText": "Every run is goal-bound. In a standalone run, register the goal as written (`create_goal`, or a `# Goal` block",
+                "evidenceQuality": "prose",
+                "caseSensitive": true
+              },
+              {
+                "line": 24,
+                "fragment": "goal",
+                "lineText": "Every run is goal-bound. In a standalone run, register the goal as written (`create_goal`, or a `# Goal` block",
+                "evidenceQuality": "prose",
+                "caseSensitive": true
+              }
+            ],
+            "best": "prose"
+          },
+          "taskTool": {
+            "class": "taskTool",
+            "hits": [
+              {
+                "line": 18,
+                "fragment": "load_skills",
+                "lineText": "A run is a declarative definition: a stable `key` (idempotency: re-starting the same key with the same graph r",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 80,
+                "fragment": "load_skills",
+                "lineText": "- **`amend`** submits an edited definition against the SAME run. Each node's fingerprint is diffed: unchanged ",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              }
+            ],
+            "best": "mechanism"
+          },
+          "categoryRouting": {
+            "class": "categoryRouting",
+            "hits": [
+              {
+                "line": 14,
+                "fragment": "category",
+                "lineText": "Before defining ANY graph, read `references/planning.md` (relative to this skill's own directory) IN FULL. Do ",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 18,
+                "fragment": "category",
+                "lineText": "A run is a declarative definition: a stable `key` (idempotency: re-starting the same key with the same graph r",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 20,
+                "fragment": "category",
+                "lineText": "Route every node by `category` using the routing table in `references/planning.md`; the run executes nodes in ",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              }
+            ],
+            "best": "mechanism"
+          },
+          "cliOmo": {
+            "class": "cliOmo",
+            "hits": [
+              {
+                "line": 95,
+                "fragment": "/dag",
+                "lineText": "- `/dag` opens the detail view: node states, waves, and failures for each run in the session.",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 96,
+                "fragment": "omo",
+                "lineText": "- External viewers subscribe to the RPC channels `omo.dag.event` (journaled, sequenced), `omo.dag.updated` (fu",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 96,
+                "fragment": "omo",
+                "lineText": "- External viewers subscribe to the RPC channels `omo.dag.event` (journaled, sequenced), `omo.dag.updated` (fu",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              }
+            ],
+            "best": "mechanism"
+          }
+        },
+        "binaryCommandEvidence": [],
+        "upstreamHarnessCoupling": [
+          "envKeyOmo",
+          "workflowTool",
+          "dagRunId",
+          "goalTool",
+          "taskTool",
+          "categoryRouting",
+          "cliOmo"
+        ],
+        "booleans": {
+          "harnessSeamChange": {
+            "value": true,
+            "basis": "keyword",
+            "evidenceQuality": "mechanism",
+            "evidence": [
+              "envKeyOmo: L28 \"OMO_DAG_SDK_ROOT\"",
+              "dagRunId: L10 \"amend\"",
+              "workflowTool: L10 \"workflow\""
+            ],
+            "falsePositiveRisk": false,
+            "note": "Seam trigger present with mechanism evidence (match itself is a call/env/tool token, or sits in a code fence/inline code)."
+          },
+          "binaryDependency": {
+            "value": false,
+            "basis": "keyword",
+            "evidence": [
+              "no executable command (bun/bunx/node/npx/npm/pnpm/yarn/uv/deno/python/bash/sh or a script path) in the skill's own SKILL.md"
+            ],
+            "falsePositiveRisk": false,
+            "note": "Per the frozen definition: an executable command inside the row's own SKILL.md that is part of the porting work. Code context required (fence or inline code)."
+          },
+          "credentialDependency": {
+            "value": false,
+            "basis": "keyword",
+            "evidence": [
+              "no credential-related hit"
+            ],
+            "falsePositiveRisk": false,
+            "note": "No credential mention. Record-only: never scores."
+          }
+        }
+      }
+    },
+    {
+      "id": "skills-loader-core/dev-browser",
+      "domain": "技能/工具",
+      "upstreamItem": "dev-browser（上游技能，载体 packages/skills-loader-core）",
+      "upstreamEvidence": "packages/skills-loader-core/src/features/builtin-skills/dev-browser/SKILL.md:3 (frontmatter), packages/skills-loader-core/src/features/builtin-skills/dev-browser/SKILL.md:1-214（文件实长 214 行，fileCount=3, dirCount=1）",
+      "repoCounterpart": "null",
+      "repoEvidence": "null（本地无对应目录）",
+      "verdict": "uncertain",
+      "semanticDiff": "内置浏览器自动化技能；与 local skills/ultimate-browsing 部分重叠，需人工判读后决定 adopt/skip",
+      "mechanicalCheck": "ls packages/skills-loader-core/src/features/builtin-skills/dev-browser/ 与本地对照（可复现）；判定为 adoptable 前不得移植（本轮只读）",
+      "notes": "来源 frozen-contract.t4Requirements.rowSet（原文 \"skills-loader-core/dev-browser\"）；t4 旧 id=packages/skills-loader-core/src/features/builtin-skills/dev-browser/SKILL.md；class 分布见 supportingEvidence",
+      "falsifiableAssertion": null,
+      "replacement": {
+        "status": "partial-equivalent",
+        "mechanism": "skills/ultimate-browsing Tier-2（CloakBrowser + agent-browser CDP）",
+        "evidence": "skills/ultimate-browsing/SKILL.md:87-99",
+        "equivalence": "部分等价（浏览器自动化已覆盖；驱动接口不同）"
+      },
+      "skillPortCost": {
+        "countingRule": "计数范围 = 技能树自身（上游 SKILL.md 所在目录 / 本地 skills/<name>/），跨行可比。null 与 0 语义不同：0=实测为空，null(unknown/absent)=未能只读测得或本地不存在；unknown 不是 0、也不是最高代价。",
+        "upstreamSkillTree": {
+          "status": "measured",
+          "fileCount": 3,
+          "dirCount": 1,
+          "scope": "packages/skills-loader-core/src/features/builtin-skills/dev-browser/"
+        },
+        "localSkillTree": {
+          "status": "absent",
+          "fileCount": null,
+          "dirCount": null,
+          "scope": "skills/dev-browser/"
+        },
+        "harnessCoupling": [
+          "workflowTool",
+          "binaries"
+        ],
+        "couplingMeasurement": "non-none：命中 workflowTool,binaries（因此按 t8 规则不得判 none）",
+        "repoTouchPoints": [
+          "skills/**（采纳/改写目标；单写者 + 一次 VENDOR_LOCK 重钉，D_SKILLS_WRITER）",
+          "presets/mpd/agent.cordis.yml（仅当 persona/doctrine 文本改动时）",
+          "AGENTS.md（仅当约定变化时）"
+        ]
+      },
+      "fieldProvenance": "re-exposed in fv4; fv1 (pre-R1) values for rows without an override were generic placeholders, fv4 values are row-specific",
+      "upstreamHarnessCoupling": [
+        "workflowTool",
+        "binaries"
+      ],
+      "couplingMeasurement": "non-none：命中 workflowTool,binaries（因此按 t8 规则不得判 none）",
+      "overlap": "与 skills/ultimate-browsing 部分重叠（浏览器自动化），驱动接口不同",
+      "relevanceToGoals": {
+        "goal1_omoAlignment": "低",
+        "goal2_agentTeamsNotDefault": "无",
+        "goal3_autoRouting": "无",
+        "goal4_massUlwDag": "无"
+      },
+      "relevanceRationale": "开发期浏览器面，与四目标无关",
+      "rowSetSource": "frozen-contract.rowSet",
+      "ledgerCandidate": false,
+      "anchorStatus": "carried-from-fv4",
+      "anchorNote": "Not in the affected set (D1, D8, T3-01..T3-08); fv4 text retained verbatim.",
+      "fv5": {
+        "upstreamFile": "packages/skills-loader-core/src/features/builtin-skills/dev-browser/SKILL.md",
+        "classEvidence": {
+          "workflowTool": {
+            "class": "workflowTool",
+            "hits": [
+              {
+                "line": 8,
+                "fragment": "workflow",
+                "lineText": "Browser automation that maintains page state across script executions. Write small, focused scripts to accompl",
+                "evidenceQuality": "prose",
+                "caseSensitive": true
+              }
+            ],
+            "best": "prose"
+          },
+          "binaries": {
+            "class": "binaries",
+            "hits": [
+              {
+                "line": 24,
+                "fragment": "Chromium",
+                "lineText": "Launches a new Chromium browser for fresh automation sessions.",
+                "evidenceQuality": "prose",
+                "caseSensitive": false
+              },
+              {
+                "line": 136,
+                "fragment": "Playwright",
+                "lineText": "The `page` object is a standard Playwright Page.",
+                "evidenceQuality": "prose",
+                "caseSensitive": false
+              }
+            ],
+            "best": "prose"
+          }
+        },
+        "binaryCommandEvidence": [
+          {
+            "line": 27,
+            "fragment": "./skills/dev-browser/server.sh",
+            "lineText": "./skills/dev-browser/server.sh &",
+            "evidenceQuality": "mechanism"
+          },
+          {
+            "line": 44,
+            "fragment": "npm i",
+            "lineText": "cd skills/dev-browser && npm i && npm run start-extension &",
+            "evidenceQuality": "mechanism"
+          },
+          {
+            "line": 62,
+            "fragment": "npx tsx",
+            "lineText": "cd skills/dev-browser && npx tsx <<'EOF'",
+            "evidenceQuality": "mechanism"
+          }
+        ],
+        "upstreamHarnessCoupling": [
+          "workflowTool",
+          "binaries"
+        ],
+        "booleans": {
+          "harnessSeamChange": {
+            "value": false,
+            "basis": "keyword",
+            "evidenceQuality": "prose",
+            "evidence": [
+              "workflowTool: L8 \"workflow\" (prose-only, per-match classification)"
+            ],
+            "falsePositiveRisk": false,
+            "note": "Seam trigger has prose-only hits (or none) => false with evidenceQuality prose/none. This matches the captain's ruling for dev-browser/frontend, and records the positive finding rather than `unknown`."
+          },
+          "binaryDependency": {
+            "value": true,
+            "basis": "keyword",
+            "evidence": [
+              "L27 \"./skills/dev-browser/server.sh\"",
+              "L44 \"npm i\"",
+              "L62 \"npx tsx\""
+            ],
+            "falsePositiveRisk": false,
+            "note": "Per the frozen definition: an executable command inside the row's own SKILL.md that is part of the porting work. Code context required (fence or inline code)."
+          },
+          "credentialDependency": {
+            "value": false,
+            "basis": "keyword",
+            "evidence": [
+              "no credential-related hit"
+            ],
+            "falsePositiveRisk": false,
+            "note": "No credential mention. Record-only: never scores."
+          }
+        }
+      }
+    },
+    {
+      "id": "skills-loader-core/frontend",
+      "domain": "技能",
+      "upstreamItem": "frontend（上游技能，载体 packages/skills-loader-core）",
+      "upstreamEvidence": "packages/skills-loader-core/src/features/builtin-skills/frontend/SKILL.md:3 (frontmatter), packages/skills-loader-core/src/features/builtin-skills/frontend/SKILL.md:1-155（文件实长 155 行，fileCount=1, dirCount=0）",
+      "repoCounterpart": "skills/frontend/SKILL.md",
+      "repoEvidence": "skills/frontend/SKILL.md:1-152 (local counterpart)",
+      "verdict": "uncertain",
+      "semanticDiff": "内置 frontend 副本；本地已有 shared-skills 版 frontend（差异=beta.62 新增 ambience-skill.md）",
+      "mechanicalCheck": "ls packages/skills-loader-core/src/features/builtin-skills/frontend/ 与本地对照（可复现）；判定为 adoptable 前不得移植（本轮只读）",
+      "notes": "来源 frozen-contract.t4Requirements.rowSet（原文 \"skills-loader-core/frontend\"）；t4 旧 id=packages/skills-loader-core/src/features/builtin-skills/frontend/SKILL.md；class 分布见 supportingEvidence",
+      "falsifiableAssertion": null,
+      "replacement": {
+        "status": "partial-equivalent",
+        "mechanism": "skills/frontend（shared-skills 版，本地已存在）",
+        "evidence": "skills/frontend/SKILL.md; raw/skill-file-diff.txt（差异=上游新增 references/design/ambience-skill.md）",
+        "equivalence": "部分等价（同名但内容不同 ⇒ 损失 ≠ 0）：本地 skills/frontend 151 行/28 文件 vs 上游 shared-skills 29 文件（含 +references/design/ambience-skill.md）；builtin 为另一份单文件包装（154 行/1 文件）。动作不变（门禁内本就 skip）。",
+        "contentDrift": "本地 SKILL.md 151 行 / sha 159c32005214c162… vs upstream(shared-skills & builtin 同) 154 行 / sha 82d4715eb56059dd…；漂移集中在 reference 文件（+ambience-skill.md）。",
+        "statusBeforeFv5": "equivalent",
+        "changeNote": "equivalent -> partial-equivalent (captain ruling); loss narrative 0 -> content-refresh increment; action unchanged (skip)."
+      },
+      "skillPortCost": {
+        "countingRule": "计数范围 = 技能树自身（上游 SKILL.md 所在目录 / 本地 skills/<name>/），跨行可比。null 与 0 语义不同：0=实测为空，null(unknown/absent)=未能只读测得或本地不存在；unknown 不是 0、也不是最高代价。",
+        "upstreamSkillTree": {
+          "status": "measured",
+          "fileCount": 1,
+          "dirCount": 0,
+          "scope": "packages/skills-loader-core/src/features/builtin-skills/frontend/"
+        },
+        "localSkillTree": {
+          "status": "measured",
+          "fileCount": 28,
+          "dirCount": 6,
+          "scope": "skills/frontend/"
+        },
+        "harnessCoupling": [
+          "workflowTool",
+          "categoryRouting",
+          "creds",
+          "binaries"
+        ],
+        "couplingMeasurement": "non-none：命中 workflowTool,categoryRouting,creds,binaries（因此按 t8 规则不得判 none）",
+        "repoTouchPoints": [
+          "skills/**（采纳/改写目标；单写者 + 一次 VENDOR_LOCK 重钉，D_SKILLS_WRITER）",
+          "presets/mpd/agent.cordis.yml（仅当 persona/doctrine 文本改动时）",
+          "AGENTS.md（仅当约定变化时）"
+        ]
+      },
+      "fieldProvenance": "re-exposed in fv4; fv1 (pre-R1) values for rows without an override were generic placeholders, fv4 values are row-specific",
+      "upstreamHarnessCoupling": [
+        "workflowTool",
+        "categoryRouting",
+        "creds",
+        "binaries"
+      ],
+      "couplingMeasurement": "non-none：命中 workflowTool,categoryRouting,creds,binaries（因此按 t8 规则不得判 none）",
+      "overlap": "本地已有 shared-skills 版 skills/frontend；差异=上游新增 references/design/ambience-skill.md",
+      "relevanceToGoals": {
+        "goal1_omoAlignment": "中",
+        "goal2_agentTeamsNotDefault": "无",
+        "goal3_autoRouting": "无",
+        "goal4_massUlwDag": "无"
+      },
+      "relevanceRationale": "仅 beta.62 内容漂移",
+      "rowSetSource": "frozen-contract.rowSet",
+      "ledgerCandidate": false,
+      "anchorStatus": "carried-from-fv4",
+      "anchorNote": "Not in the affected set (D1, D8, T3-01..T3-08); fv4 text retained verbatim.",
+      "fv5": {
+        "upstreamFile": "packages/skills-loader-core/src/features/builtin-skills/frontend/SKILL.md",
+        "classEvidence": {
+          "workflowTool": {
+            "class": "workflowTool",
+            "hits": [
+              {
+                "line": 65,
+                "fragment": "workflow",
+                "lineText": "| `redesign-skill.md` | Improving EXISTING UI — \"this looks bad\", \"fix the design\". Audit-first workflow; neve",
+                "evidenceQuality": "prose",
+                "caseSensitive": true
+              },
+              {
+                "line": 112,
+                "fragment": "workflow",
+                "lineText": "`README.md` routes the pinned `Owl-Listener/designpowers` corpus into this workflow. It supplies design contex",
+                "evidenceQuality": "prose",
+                "caseSensitive": true
+              },
+              {
+                "line": 132,
+                "fragment": "workflow",
+                "lineText": "| \"Use designpowers\", \"make the design workflow stronger\", \"add personas/accessibility/debt/handoff\" | `design",
+                "evidenceQuality": "prose",
+                "caseSensitive": true
+              }
+            ],
+            "best": "prose"
+          },
+          "categoryRouting": {
+            "class": "categoryRouting",
+            "hits": [
+              {
+                "line": 21,
+                "fragment": "category",
+                "lineText": "| Writing or modifying frontend code, OR auditing performance / SEO / accessibility / quality | ALSO `referenc",
+                "evidenceQuality": "prose",
+                "caseSensitive": true
+              },
+              {
+                "line": 87,
+                "fragment": "category",
+                "lineText": "| `README.md` | Any frontend code is written or audited. Carries the seven tenets: real-browser audits only, 1",
+                "evidenceQuality": "prose",
+                "caseSensitive": true
+              }
+            ],
+            "best": "prose"
+          },
+          "creds": {
+            "class": "creds",
+            "hits": [
+              {
+                "line": 19,
+                "fragment": "token",
+                "lineText": "| Interaction or motion work — micro-interactions, animated components, transitions, gestures, hover/press/sta",
+                "evidenceQuality": "prose",
+                "caseSensitive": false
+              },
+              {
+                "line": 20,
+                "fragment": "token",
+                "lineText": "| Hero atmosphere or ambience — an animated, shader, particle, or grid background; a typographic reveal (split",
+                "evidenceQuality": "prose",
+                "caseSensitive": false
+              },
+              {
+                "line": 32,
+                "fragment": "token",
+                "lineText": "- **Static visual reference** (screenshot, generated mockup, Stitch/Imagen output, Figma export, overview, or ",
+                "evidenceQuality": "prose",
+                "caseSensitive": false
+              }
+            ],
+            "best": "prose"
+          },
+          "binaries": {
+            "class": "binaries",
+            "hits": [
+              {
+                "line": 21,
+                "fragment": "Playwright",
+                "lineText": "| Writing or modifying frontend code, OR auditing performance / SEO / accessibility / quality | ALSO `referenc",
+                "evidenceQuality": "prose",
+                "caseSensitive": false
+              },
+              {
+                "line": 21,
+                "fragment": "Chromium",
+                "lineText": "| Writing or modifying frontend code, OR auditing performance / SEO / accessibility / quality | ALSO `referenc",
+                "evidenceQuality": "prose",
+                "caseSensitive": false
+              },
+              {
+                "line": 88,
+                "fragment": "Playwright",
+                "lineText": "| `react-perf-tooling.md` | Before ANY React audit. The Playwright + `playwright-lighthouse` + `react-scan/lit",
+                "evidenceQuality": "prose",
+                "caseSensitive": false
+              }
+            ],
+            "best": "prose"
+          }
+        },
+        "binaryCommandEvidence": [
+          {
+            "line": 93,
+            "fragment": "uv run",
+            "lineText": "uv run $SKILL_DIR/scripts/perfection/lighthouse-audit.py https://localhost:3000",
+            "evidenceQuality": "mechanism"
+          },
+          {
+            "line": 103,
+            "fragment": "python3 $SKILL_DIR/references/ui-ux-db/scripts/search.py",
+            "lineText": "python3 $SKILL_DIR/references/ui-ux-db/scripts/search.py \"<query>\" --design-system -p \"Project\"   # full desig",
+            "evidenceQuality": "mechanism"
+          },
+          {
+            "line": 104,
+            "fragment": "python3 $SKILL_DIR/references/ui-ux-db/scripts/search.py",
+            "lineText": "python3 $SKILL_DIR/references/ui-ux-db/scripts/search.py \"<query>\" --domain <domain>             # targeted lo",
+            "evidenceQuality": "mechanism"
+          }
+        ],
+        "upstreamHarnessCoupling": [
+          "workflowTool",
+          "categoryRouting",
+          "creds",
+          "binaries"
+        ],
+        "booleans": {
+          "harnessSeamChange": {
+            "value": false,
+            "basis": "keyword",
+            "evidenceQuality": "prose",
+            "evidence": [
+              "workflowTool: L65 \"workflow\" (prose-only, per-match classification)"
+            ],
+            "falsePositiveRisk": false,
+            "note": "Seam trigger has prose-only hits (or none) => false with evidenceQuality prose/none. This matches the captain's ruling for dev-browser/frontend, and records the positive finding rather than `unknown`."
+          },
+          "binaryDependency": {
+            "value": true,
+            "basis": "keyword",
+            "evidence": [
+              "L93 \"uv run\"",
+              "L103 \"python3 $SKILL_DIR/references/ui-ux-db/scripts/search.py\"",
+              "L104 \"python3 $SKILL_DIR/references/ui-ux-db/scripts/search.py\""
+            ],
+            "falsePositiveRisk": false,
+            "note": "Per the frozen definition: an executable command inside the row's own SKILL.md that is part of the porting work. Code context required (fence or inline code)."
+          },
+          "credentialDependency": {
+            "value": "unknown",
+            "basis": "keyword",
+            "evidence": [
+              "L19 \"token\" (prose)",
+              "L20 \"token\" (prose)",
+              "L32 \"token\" (prose)"
+            ],
+            "falsePositiveRisk": true,
+            "note": "Domain-word/audit-target ambiguity (e.g. 'credential exposure', grep for API_KEY); not a credential requirement. Record-only: never scores."
+          }
+        }
+      }
+    },
+    {
+      "id": "skills-loader-core/git-master",
+      "domain": "技能",
+      "upstreamItem": "git-master（上游技能，载体 packages/skills-loader-core）",
+      "upstreamEvidence": "packages/skills-loader-core/src/features/builtin-skills/git-master/SKILL.md:3 (frontmatter), packages/skills-loader-core/src/features/builtin-skills/git-master/SKILL.md:1-1108（文件实长 1108 行，fileCount=1, dirCount=0）",
+      "repoCounterpart": "skills/git-master/SKILL.md",
+      "repoEvidence": "skills/git-master/SKILL.md:1-105 (local counterpart)",
+      "verdict": "uncertain",
+      "semanticDiff": "内置 git-master 副本（1108 行）；本地 skills/git-master 为 shared-skills 版（105 行），两个不同载体的取舍待判",
+      "mechanicalCheck": "ls packages/skills-loader-core/src/features/builtin-skills/git-master/ 与本地对照（可复现）；判定为 adoptable 前不得移植（本轮只读）",
+      "notes": "来源 frozen-contract.t4Requirements.rowSet（原文 \"skills-loader-core/git-master\"）；t4 旧 id=packages/skills-loader-core/src/features/builtin-skills/git-master/SKILL.md；class 分布见 supportingEvidence",
+      "falsifiableAssertion": null,
+      "replacement": {
+        "status": "partial-equivalent",
+        "mechanism": "skills/git-master（shared-skills 版，本地已存在）",
+        "evidence": "skills/git-master/SKILL.md:1-104",
+        "equivalence": "部分等价（同名但内容不同 ⇒ 损失 ≠ 0）：本地 skills/git-master 104 行/2 文件 vs 上游 builtin 1107 行/1 文件。动作不变（门禁内本就 skip）。",
+        "contentDrift": "本地 SKILL.md 104 行 / 2 文件 vs 上游 builtin 1107 行 / 1 文件。",
+        "statusBeforeFv5": "equivalent",
+        "changeNote": "equivalent -> partial-equivalent (captain ruling); loss narrative 0 -> content-refresh increment; action unchanged (skip)."
+      },
+      "skillPortCost": {
+        "countingRule": "计数范围 = 技能树自身（上游 SKILL.md 所在目录 / 本地 skills/<name>/），跨行可比。null 与 0 语义不同：0=实测为空，null(unknown/absent)=未能只读测得或本地不存在；unknown 不是 0、也不是最高代价。",
+        "upstreamSkillTree": {
+          "status": "measured",
+          "fileCount": 1,
+          "dirCount": 0,
+          "scope": "packages/skills-loader-core/src/features/builtin-skills/git-master/"
+        },
+        "localSkillTree": {
+          "status": "measured",
+          "fileCount": 2,
+          "dirCount": 1,
+          "scope": "skills/git-master/"
+        },
+        "harnessCoupling": [
+          "taskTool",
+          "categoryRouting"
+        ],
+        "couplingMeasurement": "non-none：命中 taskTool,categoryRouting（因此按 t8 规则不得判 none）",
+        "repoTouchPoints": [
+          "skills/**（采纳/改写目标；单写者 + 一次 VENDOR_LOCK 重钉，D_SKILLS_WRITER）",
+          "presets/mpd/agent.cordis.yml（仅当 persona/doctrine 文本改动时）",
+          "AGENTS.md（仅当约定变化时）"
+        ]
+      },
+      "fieldProvenance": "re-exposed in fv4; fv1 (pre-R1) values for rows without an override were generic placeholders, fv4 values are row-specific",
+      "upstreamHarnessCoupling": [
+        "taskTool",
+        "categoryRouting"
+      ],
+      "couplingMeasurement": "non-none：命中 taskTool,categoryRouting（因此按 t8 规则不得判 none）",
+      "overlap": "本地已有 shared-skills 版 skills/git-master（105 行）vs 内置版（1108 行）",
+      "relevanceToGoals": {
+        "goal1_omoAlignment": "中",
+        "goal2_agentTeamsNotDefault": "无",
+        "goal3_autoRouting": "无",
+        "goal4_massUlwDag": "无"
+      },
+      "relevanceRationale": "两载体取舍待定",
+      "rowSetSource": "frozen-contract.rowSet",
+      "ledgerCandidate": false,
+      "anchorStatus": "carried-from-fv4",
+      "anchorNote": "Not in the affected set (D1, D8, T3-01..T3-08); fv4 text retained verbatim.",
+      "fv5": {
+        "upstreamFile": "packages/skills-loader-core/src/features/builtin-skills/git-master/SKILL.md",
+        "classEvidence": {
+          "taskTool": {
+            "class": "taskTool",
+            "hits": [
+              {
+                "line": 3,
+                "fragment": "task(",
+                "lineText": "description: \"MUST USE for ANY git operations. Atomic commits, rebase/squash, history search (blame, bisect, l",
+                "evidenceQuality": "prose",
+                "caseSensitive": true
+              },
+              {
+                "line": 3,
+                "fragment": "load_skills",
+                "lineText": "description: \"MUST USE for ANY git operations. Atomic commits, rebase/squash, history search (blame, bisect, l",
+                "evidenceQuality": "prose",
+                "caseSensitive": true
+              }
+            ],
+            "best": "prose"
+          },
+          "categoryRouting": {
+            "class": "categoryRouting",
+            "hits": [
+              {
+                "line": 3,
+                "fragment": "category",
+                "lineText": "description: \"MUST USE for ANY git operations. Atomic commits, rebase/squash, history search (blame, bisect, l",
+                "evidenceQuality": "prose",
+                "caseSensitive": true
+              }
+            ],
+            "best": "prose"
+          }
+        },
+        "binaryCommandEvidence": [],
+        "upstreamHarnessCoupling": [
+          "taskTool",
+          "categoryRouting"
+        ],
+        "booleans": {
+          "harnessSeamChange": {
+            "value": false,
+            "basis": "keyword",
+            "evidenceQuality": "none",
+            "evidence": [
+              "no seam-trigger class in the frozen class table"
+            ],
+            "falsePositiveRisk": false,
+            "note": "Seam trigger has prose-only hits (or none) => false with evidenceQuality prose/none. This matches the captain's ruling for dev-browser/frontend, and records the positive finding rather than `unknown`."
+          },
+          "binaryDependency": {
+            "value": false,
+            "basis": "keyword",
+            "evidence": [
+              "no executable command (bun/bunx/node/npx/npm/pnpm/yarn/uv/deno/python/bash/sh or a script path) in the skill's own SKILL.md"
+            ],
+            "falsePositiveRisk": false,
+            "note": "Per the frozen definition: an executable command inside the row's own SKILL.md that is part of the porting work. Code context required (fence or inline code)."
+          },
+          "credentialDependency": {
+            "value": false,
+            "basis": "keyword",
+            "evidence": [
+              "no credential-related hit"
+            ],
+            "falsePositiveRisk": false,
+            "note": "No credential mention. Record-only: never scores."
+          }
+        }
+      }
+    },
+    {
+      "id": "skills-loader-core/security-research",
+      "domain": "技能",
+      "upstreamItem": "security-research（上游技能，载体 packages/skills-loader-core）",
+      "upstreamEvidence": "packages/skills-loader-core/src/features/builtin-skills/security-research/SKILL.md:1 (frontmatter), packages/skills-loader-core/src/features/builtin-skills/security-research/SKILL.md:1-199（文件实长 199 行，fileCount=1, dirCount=0）",
+      "repoCounterpart": "null",
+      "repoEvidence": "null（本地无对应目录）",
+      "verdict": "uncertain",
+      "semanticDiff": "内置安全研究技能；与 .agents/skills/security-research 同名不同载体",
+      "mechanicalCheck": "ls packages/skills-loader-core/src/features/builtin-skills/security-research/ 与本地对照（可复现）；判定为 adoptable 前不得移植（本轮只读）",
+      "notes": "来源 frozen-contract.t4Requirements.rowSet（原文 \"skills-loader-core/security-research\"）；t4 旧 id=packages/skills-loader-core/src/features/builtin-skills/security-research/SKILL.md；class 分布见 supportingEvidence",
+      "falsifiableAssertion": null,
+      "replacement": {
+        "status": "no-equivalent",
+        "mechanism": null,
+        "evidence": "本地 skills/ 无安全审计技能（ls skills/ = 19 目录）",
+        "equivalence": "无增量（新增能力槽位）"
+      },
+      "skillPortCost": {
+        "countingRule": "计数范围 = 技能树自身（上游 SKILL.md 所在目录 / 本地 skills/<name>/），跨行可比。null 与 0 语义不同：0=实测为空，null(unknown/absent)=未能只读测得或本地不存在；unknown 不是 0、也不是最高代价。",
+        "upstreamSkillTree": {
+          "status": "measured",
+          "fileCount": 1,
+          "dirCount": 0,
+          "scope": "packages/skills-loader-core/src/features/builtin-skills/security-research/"
+        },
+        "localSkillTree": {
+          "status": "absent",
+          "fileCount": null,
+          "dirCount": null,
+          "scope": "skills/security-research/"
+        },
+        "harnessCoupling": [
+          "omoDir",
+          "teamTools",
+          "categoryRouting",
+          "cliOmo",
+          "creds"
+        ],
+        "couplingMeasurement": "non-none：命中 omoDir,teamTools,categoryRouting,cliOmo,creds（因此按 t8 规则不得判 none）",
+        "repoTouchPoints": [
+          "skills/**（采纳/改写目标；单写者 + 一次 VENDOR_LOCK 重钉，D_SKILLS_WRITER）",
+          "presets/mpd/agent.cordis.yml（仅当 persona/doctrine 文本改动时）",
+          "AGENTS.md（仅当约定变化时）"
+        ]
+      },
+      "fieldProvenance": "re-exposed in fv4; fv1 (pre-R1) values for rows without an override were generic placeholders, fv4 values are row-specific",
+      "upstreamHarnessCoupling": [
+        "omoDir",
+        "teamTools",
+        "categoryRouting",
+        "cliOmo",
+        "creds"
+      ],
+      "couplingMeasurement": "non-none：命中 omoDir,teamTools,categoryRouting,cliOmo,creds（因此按 t8 规则不得判 none）",
+      "overlap": "none（本地无安全审计技能；与 .agents/skills/security-research 同名不同载体）",
+      "relevanceToGoals": {
+        "goal1_omoAlignment": "低",
+        "goal2_agentTeamsNotDefault": "无",
+        "goal3_autoRouting": "无",
+        "goal4_massUlwDag": "无"
+      },
+      "relevanceRationale": "新增能力槽位",
+      "rowSetSource": "frozen-contract.rowSet",
+      "ledgerCandidate": false,
+      "anchorStatus": "carried-from-fv4",
+      "anchorNote": "Not in the affected set (D1, D8, T3-01..T3-08); fv4 text retained verbatim.",
+      "fv5": {
+        "upstreamFile": "packages/skills-loader-core/src/features/builtin-skills/security-research/SKILL.md",
+        "classEvidence": {
+          "omoDir": {
+            "class": "omoDir",
+            "hits": [
+              {
+                "line": 10,
+                "fragment": ".omo",
+                "lineText": "`security-research requires team-mode. Set team_mode.enabled: true in your .omo/omo.jsonc config, restart open",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              }
+            ],
+            "best": "mechanism"
+          },
+          "teamTools": {
+            "class": "teamTools",
+            "hits": [
+              {
+                "line": 46,
+                "fragment": "team_create",
+                "lineText": "Call `team_create` with an inline spec:",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 49,
+                "fragment": "team_create",
+                "lineText": "team_create({",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              }
+            ],
+            "best": "mechanism"
+          },
+          "categoryRouting": {
+            "class": "categoryRouting",
+            "hits": [
+              {
+                "line": 29,
+                "fragment": "category",
+                "lineText": "- Keep CWE category separate from severity.",
+                "evidenceQuality": "prose",
+                "caseSensitive": true
+              },
+              {
+                "line": 40,
+                "fragment": "category",
+                "lineText": "| `surface-hunter` | category | `deep` | Map entry points, trust boundaries, and reachable attack surfaces. |",
+                "evidenceQuality": "prose",
+                "caseSensitive": true
+              },
+              {
+                "line": 41,
+                "fragment": "category",
+                "lineText": "| `auth-data-hunter` | category | `ultrabrain` | Hunt auth, authorization, data isolation, injection, and secr",
+                "evidenceQuality": "prose",
+                "caseSensitive": true
+              }
+            ],
+            "best": "prose"
+          },
+          "cliOmo": {
+            "class": "cliOmo",
+            "hits": [
+              {
+                "line": 10,
+                "fragment": "omo",
+                "lineText": "`security-research requires team-mode. Set team_mode.enabled: true in your .omo/omo.jsonc config, restart open",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              },
+              {
+                "line": 10,
+                "fragment": "omo",
+                "lineText": "`security-research requires team-mode. Set team_mode.enabled: true in your .omo/omo.jsonc config, restart open",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": true
+              }
+            ],
+            "best": "mechanism"
+          },
+          "creds": {
+            "class": "creds",
+            "hits": [
+              {
+                "line": 64,
+                "fragment": "credential",
+                "lineText": "prompt: \"You hunt auth, authorization, tenant/data isolation, injection, SSRF, credential exposure, and confus",
+                "evidenceQuality": "mechanism",
+                "caseSensitive": false
+              }
+            ],
+            "best": "mechanism"
+          }
+        },
+        "binaryCommandEvidence": [],
+        "upstreamHarnessCoupling": [
+          "omoDir",
+          "teamTools",
+          "categoryRouting",
+          "cliOmo",
+          "creds"
+        ],
+        "booleans": {
+          "harnessSeamChange": {
+            "value": true,
+            "basis": "keyword",
+            "evidenceQuality": "mechanism",
+            "evidence": [
+              "teamTools: L46 \"team_create\""
+            ],
+            "falsePositiveRisk": false,
+            "note": "Seam trigger present with mechanism evidence (match itself is a call/env/tool token, or sits in a code fence/inline code)."
+          },
+          "binaryDependency": {
+            "value": false,
+            "basis": "keyword",
+            "evidence": [
+              "no executable command (bun/bunx/node/npx/npm/pnpm/yarn/uv/deno/python/bash/sh or a script path) in the skill's own SKILL.md"
+            ],
+            "falsePositiveRisk": false,
+            "note": "Per the frozen definition: an executable command inside the row's own SKILL.md that is part of the porting work. Code context required (fence or inline code)."
+          },
+          "credentialDependency": {
+            "value": "unknown",
+            "basis": "keyword",
+            "evidence": [
+              "L64 \"credential\" (mechanism)"
+            ],
+            "falsePositiveRisk": true,
+            "note": "Domain-word/audit-target ambiguity (e.g. 'credential exposure', grep for API_KEY); not a credential requirement. Record-only: never scores."
+          }
+        }
+      }
+    }
+  ],
+  "derivationTable": [
+    {
+      "id": "skills/remove-deadcode",
+      "classes": [
+        "taskTool",
+        "categoryRouting",
+        "binaries"
+      ],
+      "seamTriggerMechanism": false,
+      "seamEvidenceQuality": "none",
+      "binaryDependency": true,
+      "credentialDependency": false,
+      "countedTrueSeamBooleans": 1,
+      "D3_goCaliber_count": 1,
+      "D3_onDiskCaliber_1plusCounted_clamped3": 2,
+      "note": "Both calibers published; the gate recomputes and asserts no winning total (ruleConflict-D3)."
+    },
+    {
+      "id": "skills/security-research",
+      "classes": [
+        "teamTools",
+        "categoryRouting",
+        "creds"
+      ],
+      "seamTriggerMechanism": true,
+      "seamEvidenceQuality": "mechanism",
+      "binaryDependency": false,
+      "credentialDependency": "unknown",
+      "countedTrueSeamBooleans": 1,
+      "D3_goCaliber_count": 1,
+      "D3_onDiskCaliber_1plusCounted_clamped3": 2,
+      "note": "Both calibers published; the gate recomputes and asserts no winning total (ruleConflict-D3)."
+    },
+    {
+      "id": "skills/tech-debt-audit",
+      "classes": [
+        "taskTool",
+        "categoryRouting",
+        "creds",
+        "binaries"
+      ],
+      "seamTriggerMechanism": false,
+      "seamEvidenceQuality": "none",
+      "binaryDependency": true,
+      "credentialDependency": "unknown",
+      "countedTrueSeamBooleans": 1,
+      "D3_goCaliber_count": 1,
+      "D3_onDiskCaliber_1plusCounted_clamped3": 2,
+      "note": "Both calibers published; the gate recomputes and asserts no winning total (ruleConflict-D3)."
+    },
+    {
+      "id": "omo-codex/rules",
+      "classes": [
+        "omoDir",
+        "cliOmo"
+      ],
+      "seamTriggerMechanism": false,
+      "seamEvidenceQuality": "none",
+      "binaryDependency": false,
+      "credentialDependency": false,
+      "countedTrueSeamBooleans": 0,
+      "D3_goCaliber_count": 0,
+      "D3_onDiskCaliber_1plusCounted_clamped3": 1,
+      "note": "Both calibers published; the gate recomputes and asserts no winning total (ruleConflict-D3)."
+    },
+    {
+      "id": "omo-senpi/dag-library",
+      "classes": [
+        "envKeyOmo",
+        "omoDir",
+        "workflowTool",
+        "dagRunId",
+        "categoryRouting",
+        "cliOmo"
+      ],
+      "seamTriggerMechanism": true,
+      "seamEvidenceQuality": "mechanism",
+      "binaryDependency": false,
+      "credentialDependency": false,
+      "countedTrueSeamBooleans": 1,
+      "D3_goCaliber_count": 1,
+      "D3_onDiskCaliber_1plusCounted_clamped3": 2,
+      "note": "Both calibers published; the gate recomputes and asserts no winning total (ruleConflict-D3)."
+    },
+    {
+      "id": "omo-senpi/mass-ulw",
+      "classes": [
+        "envKeyOmo",
+        "workflowTool",
+        "dagRunId",
+        "goalTool",
+        "taskTool",
+        "categoryRouting",
+        "cliOmo"
+      ],
+      "seamTriggerMechanism": true,
+      "seamEvidenceQuality": "mechanism",
+      "binaryDependency": false,
+      "credentialDependency": false,
+      "countedTrueSeamBooleans": 1,
+      "D3_goCaliber_count": 1,
+      "D3_onDiskCaliber_1plusCounted_clamped3": 2,
+      "note": "Both calibers published; the gate recomputes and asserts no winning total (ruleConflict-D3)."
+    },
+    {
+      "id": "skills-loader-core/dev-browser",
+      "classes": [
+        "workflowTool",
+        "binaries"
+      ],
+      "seamTriggerMechanism": false,
+      "seamEvidenceQuality": "prose",
+      "binaryDependency": true,
+      "credentialDependency": false,
+      "countedTrueSeamBooleans": 1,
+      "D3_goCaliber_count": 1,
+      "D3_onDiskCaliber_1plusCounted_clamped3": 2,
+      "note": "Both calibers published; the gate recomputes and asserts no winning total (ruleConflict-D3)."
+    },
+    {
+      "id": "skills-loader-core/frontend",
+      "classes": [
+        "workflowTool",
+        "categoryRouting",
+        "creds",
+        "binaries"
+      ],
+      "seamTriggerMechanism": false,
+      "seamEvidenceQuality": "prose",
+      "binaryDependency": true,
+      "credentialDependency": "unknown",
+      "countedTrueSeamBooleans": 1,
+      "D3_goCaliber_count": 1,
+      "D3_onDiskCaliber_1plusCounted_clamped3": 2,
+      "note": "Both calibers published; the gate recomputes and asserts no winning total (ruleConflict-D3)."
+    },
+    {
+      "id": "skills-loader-core/git-master",
+      "classes": [
+        "taskTool",
+        "categoryRouting"
+      ],
+      "seamTriggerMechanism": false,
+      "seamEvidenceQuality": "none",
+      "binaryDependency": false,
+      "credentialDependency": false,
+      "countedTrueSeamBooleans": 0,
+      "D3_goCaliber_count": 0,
+      "D3_onDiskCaliber_1plusCounted_clamped3": 1,
+      "note": "Both calibers published; the gate recomputes and asserts no winning total (ruleConflict-D3)."
+    },
+    {
+      "id": "skills-loader-core/security-research",
+      "classes": [
+        "omoDir",
+        "teamTools",
+        "categoryRouting",
+        "cliOmo",
+        "creds"
+      ],
+      "seamTriggerMechanism": true,
+      "seamEvidenceQuality": "mechanism",
+      "binaryDependency": false,
+      "credentialDependency": "unknown",
+      "countedTrueSeamBooleans": 1,
+      "D3_goCaliber_count": 1,
+      "D3_onDiskCaliber_1plusCounted_clamped3": 2,
+      "note": "Both calibers published; the gate recomputes and asserts no winning total (ruleConflict-D3)."
+    }
+  ],
+  "waveGoalMapping": {
+    "note": "D2 scoring is NOT changed by this revision (t8 already scored against the fv4 keys; no re-scoring this wave). This section only states the correspondence so the caliber question is visible.",
+    "authoritativeGoals": [
+      "G1 不再默认建队",
+      "G2 复杂任务自动调用",
+      "G3 对齐 mass-ulw (S1–S4)",
+      "G4 配置平面对齐"
+    ],
+    "fv4Keys": [
+      "goal1_omoAlignment",
+      "goal2_agentTeamsNotDefault",
+      "goal3_autoRouting",
+      "goal4_massUlwDag"
+    ],
+    "mapping": [
+      {
+        "authoritative": "G1 不再默认建队",
+        "fv4Key": "goal2_agentTeamsNotDefault"
+      },
+      {
+        "authoritative": "G2 复杂任务自动调用",
+        "fv4Key": "goal3_autoRouting"
+      },
+      {
+        "authoritative": "G3 对齐 mass-ulw (S1–S4)",
+        "fv4Key": "goal4_massUlwDag"
+      },
+      {
+        "authoritative": "G4 配置平面对齐",
+        "fv4Key": null,
+        "note": "no independent fv4 key"
+      }
+    ],
+    "reverse": [
+      {
+        "fv4Key": "goal1_omoAlignment",
+        "authoritative": null,
+        "note": "umbrella item with no one-to-one authoritative goal"
+      }
+    ]
+  },
+  "userApprovedOverrides": [
+    {
+      "skill": "skills/remove-deadcode",
+      "action": "skip",
+      "score": 14,
+      "rule": "D3=1 via binaryDependency only; harnessSeamChange FALSE (t19 independently measured no-seam-required); total < 15",
+      "note": "Earlier preview differed; the user may confirm or withdraw."
+    },
+    {
+      "skill": "skills/security-research",
+      "action": "adapt-then-install",
+      "rule": "D3=1 via harnessSeamChange/teamTools (mechanism)",
+      "note": "The user may confirm or withdraw."
+    },
+    {
+      "skill": "skills/tech-debt-audit",
+      "action": "adapt-then-install",
+      "rule": "D3=1 via binaryDependency",
+      "note": "The user may confirm or withdraw."
+    },
+    {
+      "skill": "skills-loader-core/security-research",
+      "action": "adapt-then-install",
+      "rule": "D3=1 via harnessSeamChange/teamTools (mechanism)",
+      "note": "The user may confirm or withdraw."
+    }
+  ],
+  "t19": {
+    "path": "/root/dshProj/my-power-dsh/evidence/omo-align/skill-measurements/remove-deadcode/result.json",
+    "sha256": "901e7f48692fada8bb11a0a3616d6f5c607457a3ed674a3cad960b6fefa60f6e",
+    "bytes": 19819,
+    "verdict": "no-seam-required",
+    "finalAction": "skip",
+    "note": "First-hand read by this producer; corroborates harnessSeamChange=false for that row."
+  },
+  "changedVsFv4": {
+    "added": [
+      "authoritativeRuleInput(+conflict)",
+      "derivationTable",
+      "waveGoalMapping",
+      "userApprovedOverrides",
+      "rows[].fv5{upstreamFile,classEvidence,booleans}",
+      "rows[].anchorStatus/anchorMethod"
+    ],
+    "modified": [
+      "rows[D1,D8,T3-01..T3-08].repoEvidence -> refreshed anchors",
+      "replacement.status for skills-loader-core/{frontend,git-master}: equivalent -> partial-equivalent (+contentDrift)"
+    ],
+    "untouched": [
+      "row id set (32)",
+      "verdictVocabulary/verdict distribution (applicable 16 / uncertain 13 / already-have 2 / adoptable 1)",
+      "recoveryCoverage",
+      "nameFreeze",
+      "ledgerCandidates",
+      "skillPortCost",
+      "relevanceToGoals"
+    ]
+  },
+  "anchorReadTimeHashes": {
+    "policy": "1f0203c69e5e904d878774e1d5d1e9d646de070b8e3fa2908ce77f85b60aefc0",
+    "schema": "c1b170e8c9e92dcc3195e530ae676448120dc2c87b31de8b45b2bc6979d98feb",
+    "preset": "125312b54b2c20e64c195890feeb56a915c4b57f29e0fbc97e0df5c6662e1a90",
+    "patch": "9ee189972b2b870607afde74eafe08bebbb425c381e4bca2ef33ebc29dc29c9d",
+    "qa": "4e37e5d56ea170d493ad2d305c92ebf669fa960495534425fa2a7fc9394d4ed9",
+    "installer": "37e9c291930d0c07476ec1dcc06d50be5fd75f70fb17ce6a851c9a1be03a465c",
+    "agents": "6767f85d7fa9f354c688b35ba1f7ded30791768431ffb1015fd0d9791ea9f780"
+  }
+}

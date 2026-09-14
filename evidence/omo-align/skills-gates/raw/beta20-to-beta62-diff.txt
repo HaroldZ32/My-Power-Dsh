@@ -1,0 +1,118 @@
+=== commits 8c57e46..HEAD total ===
+2490
+
+=== shared-skills changed (name-status) ===
+M	packages/shared-skills/skills/ast-grep/SKILL.md
+M	packages/shared-skills/skills/coding-agent-sessions/SKILL.md
+M	packages/shared-skills/skills/data-scientist/SKILL.md
+D	packages/shared-skills/skills/data-scientist/references/common-scenarios.md
+A	packages/shared-skills/skills/data-scientist/references/execution-surfaces.md
+D	packages/shared-skills/skills/data-scientist/references/execution-templates.md
+D	packages/shared-skills/skills/data-scientist/references/integration-patterns.md
+D	packages/shared-skills/skills/data-scientist/references/performance-benchmarks.md
+A	packages/shared-skills/skills/data-scientist/references/placement.md
+A	packages/shared-skills/skills/data-scientist/references/polars-lane.md
+M	packages/shared-skills/skills/data-scientist/references/uv-setup.md
+A	packages/shared-skills/skills/data-scientist/references/visualization.md
+A	packages/shared-skills/skills/data-scientist/scripts/ensure-js-deps.sh
+A	packages/shared-skills/skills/data-scientist/scripts/ensure-py-deps.sh
+M	packages/shared-skills/skills/debugging/SKILL.md
+M	packages/shared-skills/skills/debugging/references/methodology/00-setup.md
+M	packages/shared-skills/skills/debugging/references/methodology/02-investigate.md
+M	packages/shared-skills/skills/debugging/references/runtimes/go.md
+M	packages/shared-skills/skills/debugging/references/runtimes/native-binary.md
+M	packages/shared-skills/skills/debugging/references/runtimes/node.md
+M	packages/shared-skills/skills/debugging/references/runtimes/python.md
+M	packages/shared-skills/skills/debugging/references/runtimes/rust.md
+A	packages/shared-skills/skills/debugging/references/scripts/dap.mjs
+A	packages/shared-skills/skills/debugging/references/scripts/dap.test.ts
+A	packages/shared-skills/skills/debugging/references/scripts/fixture-adapter.mjs
+A	packages/shared-skills/skills/debugging/references/tools/dap.md
+A	packages/shared-skills/skills/debugging/references/tools/frida.md
+M	packages/shared-skills/skills/frontend/.gitignore
+M	packages/shared-skills/skills/frontend/ATTRIBUTION.md
+M	packages/shared-skills/skills/frontend/SKILL.md
+M	packages/shared-skills/skills/frontend/references/design/README.md
+M	packages/shared-skills/skills/frontend/references/design/_INDEX.md
+A	packages/shared-skills/skills/frontend/references/design/ambience-skill.md
+M	packages/shared-skills/skills/frontend/references/design/interaction-skill.md
+M	packages/shared-skills/skills/git-master/SKILL.md
+M	packages/shared-skills/skills/init-deep/SKILL.md
+M	packages/shared-skills/skills/lsp-setup/SKILL.md
+M	packages/shared-skills/skills/programming/SKILL.md
+M	packages/shared-skills/skills/refactor/SKILL.md
+M	packages/shared-skills/skills/remove-ai-slops/SKILL.md
+M	packages/shared-skills/skills/review-work/SKILL.md
+M	packages/shared-skills/skills/ultimate-browsing/ATTRIBUTION.md
+M	packages/shared-skills/skills/ultimate-browsing/SKILL.md
+M	packages/shared-skills/skills/ultimate-browsing/references/chrome-stealth.md
+M	packages/shared-skills/skills/ultimate-browsing/references/insane-search/README.md
+M	packages/shared-skills/skills/ulw-execute/SKILL.md
+M	packages/shared-skills/skills/ulw-plan/SKILL.md
+M	packages/shared-skills/skills/ulw-plan/scripts/scaffold-plan.mjs
+M	packages/shared-skills/skills/ulw-research/SKILL.md
+M	packages/shared-skills/skills/visual-qa/SKILL.md
+
+=== shared-skills commit count ===
+35
+
+=== omo-senpi/skills changed (name-status) ===
+M	packages/omo-senpi/skills/AGENTS.md
+M	packages/omo-senpi/skills/dag-library/SKILL.md
+M	packages/omo-senpi/skills/give-me-tips/SKILL.md
+M	packages/omo-senpi/skills/hyperplan/SKILL.md
+M	packages/omo-senpi/skills/init-deep/SKILL.md
+M	packages/omo-senpi/skills/mass-ulw/SKILL.md
+M	packages/omo-senpi/skills/mass-ulw/references/planning.md
+M	packages/omo-senpi/skills/onboarding/SKILL.md
+M	packages/omo-senpi/skills/ultrawork/SKILL.md
+M	packages/omo-senpi/skills/ulw-loop/SKILL.md
+M	packages/omo-senpi/skills/ulw-loop/references/full-workflow.md
+M	packages/omo-senpi/skills/ulw-plan/SKILL.md
+M	packages/omo-senpi/skills/ulw-plan/references/full-workflow.md
+M	packages/omo-senpi/skills/ulw-plan/references/intent-clear.md
+M	packages/omo-senpi/skills/ulw-plan/references/intent-unclear.md
+M	packages/omo-senpi/skills/ulw-plan/scripts/scaffold-plan.mjs
+M	packages/omo-senpi/skills/ulw-research/SKILL.md
+
+=== scope histogram (top 40) ===
+    218 build(omo-senpi)
+    182 fix(omo-senpi)
+    141 test(omo-senpi)
+     59 fix(senpi-task)
+     55 feat(omo-senpi)
+     42 docs(omo-senpi)
+     37 chore(omo-senpi)
+     30 fix(ulw-loop)
+     29 fix(memory-core)
+     28 test(senpi-task)
+     27 fix(memory)
+     26 fix(omo-opencode)
+     26 fix(omo-native)
+     21 refactor(omo-senpi)
+     21 feat(memory-core)
+     20 test(evidence)
+     18 test(script)
+     18 test(omo-native)
+     18 fix(team-mode)
+     17 test(omo-opencode)
+     17 test(memory-core)
+     16 docs(evidence)
+     15 feat(senpi-task)
+     15 chore(deps)
+     14 docs(omo-codex)
+     13 fix(release)
+     13 fix(publish)
+     13 fix(omo-codex)
+     13 docs(senpi-task)
+     12 test(memory)
+     12 fix(senpi)
+     12 fix(script)
+     11 docs(readme)
+     10 test(publish)
+     10 docs(shared-skills)
+      9 feat(ulw-loop)
+      8 test(senpi)
+      8 fix(model-core)
+      8 fix(hooks)
+      8 feat(web)
