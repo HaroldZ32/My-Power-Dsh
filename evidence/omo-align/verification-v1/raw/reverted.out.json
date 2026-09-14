@@ -1,0 +1,31 @@
+{
+  "modulePath": "/root/dshProj/my-power-dsh/evidence/omo-align/verification-v1/raw/revert/packages/mpd-agent-teams-plugin/lib/state.js",
+  "originalFailingShape": {
+    "returnedStatus": "pending",
+    "threw": null,
+    "readableAsPending": 0,
+    "normalizedContent": null,
+    "decideResult": "THREW: interjection \"ij-nc\" does not exist",
+    "invisibleRecordPath": true
+  },
+  "decideTwoCases": {
+    "absentError": "interjection \"nope\" does not exist",
+    "malformedError": "interjection \"broken\" does not exist",
+    "normalReaderSeesMalformed": 0,
+    "distinguishable": false
+  },
+  "requiredFields": {
+    "errors": {
+      "id": "NO ERROR",
+      "from": "NO ERROR",
+      "ts": "NO ERROR"
+    },
+    "noHalfWrittenRecord": true
+  },
+  "expiry": {
+    "expiredIds": [],
+    "status": null,
+    "fromPreserved": null,
+    "stillPending": 0
+  }
+}
