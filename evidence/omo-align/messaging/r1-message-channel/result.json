@@ -1,0 +1,181 @@
+{
+  "schema": "mpd-omo-align-messaging-r1-r3/1",
+  "task": "t35 (R1 message channel + R3 verb-table harmonisation)",
+  "attempt": "2 (722426fb-8b69-48dd-8eba-a551154d4dd1)",
+  "branch": "dev (working tree; NO git write performed - captain commits per AGENTS.md §5)",
+  "headAtWork": "d54afe5372355ee8bd0e524f4d90f55621f74e66",
+  "settledFileHashes": {
+    "packages/mpd-agent-teams-plugin/lib/state.js": {
+      "bytes": 54389,
+      "sha256": "751a4c1eaf1714d37a45baa8c0a83895ee8e2a487f28574d02fd445cd1b8b825"
+    },
+    "packages/mpd-agent-teams-plugin/lib/scheduler.js": {
+      "bytes": 30673,
+      "sha256": "f9ec4a226511b420c660673ccc1838b99fa4c0ac548f4b0f19e0fcf865109011"
+    },
+    "packages/mpd-agent-teams-plugin/lib/session-start.js": {
+      "bytes": 27954,
+      "sha256": "63489b074e9a48016462456455cae1d26402338dc6f4a1ab7ae4d8fc49fff8f8"
+    },
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": {
+      "bytes": 88815,
+      "sha256": "47f204cd9678ed87660b18e5ecd01895ce3249fae8155deb0a1d33821f6ff9c5"
+    },
+    "evidence/omo-align/requirements/frozen-contract.json": {
+      "bytes": 35174,
+      "sha256": "09949c8095d7ccd533329b114a2ef22bad1ce81bd24338240e68cfd0fd66be41"
+    },
+    "packages/mpd-agent-teams-plugin/test/r1-message-channel.test.mjs": {
+      "bytes": 9108,
+      "sha256": "b83b77583da0aeeddece4753844b498600f9ba57cfc7464e991a81debe35d91b"
+    }
+  },
+  "r1": {
+    "dedup": {
+      "key": "from + to + content + 60 s window (MAILBOX_DEDUP_WINDOW_MS = MAILBOX_DELIVERY_LEASE_MS)",
+      "behaviour": "appendMailboxDeduped folds a repeat into the existing record's dupCount and writes NO second record, so delivery is at-most-once while the record survives (never physically deleted)",
+      "tests": "8 pass: N sends in-window -> ONE record with dupCount=3 and ONE unread; NEGATIVE CONTROL different sender -> two records; outside-window -> new record"
+    },
+    "clear": {
+      "granularity": "clearMailboxToWatermark(watermark)",
+      "discipline": "archive-first: the cleared bytes are written to inbox/archive/<agent>.<watermark>.jsonl BEFORE the live file is rewritten; each cleared row becomes a tombstone (id/from/to/ts/clearedAt/archivedTo, content emptied); one audit event {kind:'mailbox-cleared',...}",
+      "authority": "the exported primitive takes the agent key; captain-any vs member-own is enforced at the tool layer (t-B / follow-up, recorded below)"
+    },
+    "interjection": {
+      "record": "first-class message with kind='interjection-request', status='pending', expiresAt=ts+30 min, living in its own lane (INTERJECTION_QUEUE)",
+      "whyOwnQueue": "measured: lib/scheduler.js fallbackMailboxPrompt packs ANY unread inbox record verbatim and auto-delivers at the next idle edge, so an inbox request would BYPASS approval",
+      "schedulerExclusion": "new region mpd-delta interjection-not-auto-delivered: deliverableUnread() filters kind==='interjection-request' out of BOTH unread reads (the fallback delivery path and the assignment ride-along path)",
+      "ttl": "expireInterjections() flips pending -> expired once now >= expiresAt (silence = DENY)",
+      "decision": "decideInterjection() records approved/rejected and refuses a second decision"
+    }
+  },
+  "r3": {
+    "change": "BEHAVIOUR change (user chose harmonization): ACTION_VERB_PATTERN (C2) and CLAUSE_ACTION_PATTERN (C3) now carry the IDENTICAL verb set - the union: 14 English + 12 CJK (previously C2 lacked audit, C3 lacked consolidate|overhaul|port, and the CJK sets differed by 7)",
+    "onlyRoleDiffers": "C2 counts a verb anywhere; C3 counts a clause that OPENS with one (its ^\\s* anchor + optional and|then|also). No verb is C2-only or C3-only.",
+    "thresholdUnchanged": "trigger = anyExplicitFlag OR matchedSignals >= 1 (Option A, ratified) - R3 did not touch it",
+    "contractSync": "frozen-contract.json C2/C3 now transcribe the shipped lists verbatim + harmonizedVerbTables + revision notes; 33,022 B / 9916644b... -> 35,174 B / 09949c80..."
+  },
+  "verified": [
+    {
+      "what": "R1 acceptance with both negative controls",
+      "command": "bun test packages/mpd-agent-teams-plugin/test/r1-message-channel.test.mjs",
+      "exit": 0,
+      "evidence": "8 pass / 0 fail"
+    },
+    {
+      "what": "plugin suite",
+      "command": "bun test packages/mpd-agent-teams-plugin",
+      "exit": 0,
+      "evidence": "161 pass / 0 fail"
+    },
+    {
+      "what": "self-fix registry suites",
+      "command": "bun test packages/mpd-agent-teams-plugin/self-fix-tests",
+      "exit": 0,
+      "evidence": "53 pass / 0 fail"
+    },
+    {
+      "what": "registry consistency",
+      "command": "node scripts/patch-agent-teams-fixes.mjs --check",
+      "exit": 0,
+      "evidence": "23 regions / 6 adopted files (was 21/6 before R1+R3)"
+    },
+    {
+      "what": "typecheck",
+      "command": "bun run typecheck",
+      "exit": 0
+    },
+    {
+      "what": "two-sided gate (no regression from R3)",
+      "command": "bun skills/dsh-qa/scripts/session-start-team.mjs",
+      "exit": 0,
+      "evidence": "PASS: simple 3/3 silent, complex 3/3 one staged team + one notice, negative control disarmed=true"
+    },
+    {
+      "what": "ISOLATION MOUNT PROOF (required: R3 is a behaviour change)",
+      "command": "node evidence/omo-align/messaging/r3-verb-harmonisation/mount-proof.mjs",
+      "exit": 0,
+      "evidence": "ok=true: the three changed modules import; all 14 EN + 12 CJK verbs pass BOTH tables; a REAL isolated install+boot reports 0 apply/schema crash signatures; R1 exports load. --dump-config was NOT used as load evidence."
+    }
+  ],
+  "notVerified": [
+    {
+      "what": "clear AUTHORITY enforcement (captain may clear any mailbox, a member only its own) at the tool boundary",
+      "why": "the R1 acceptance names the authority split, but the tool wiring (agent_teams_* surface) is a follow-up slot; this task implemented the state primitive + its archive/tombstone/audit semantics. Recorded rather than claimed."
+    },
+    {
+      "what": "approved interjection delivered at the NEXT STEP BOUNDARY through the member queue seam",
+      "why": "delivery rides the existing scheduler seam (deliverToMember/queueMemberPrompt); the approval RECORD is asserted here (pending -> approved), the end-to-end boundary delivery is a live-scheduler behaviour this task did not drive."
+    }
+  ],
+  "cannotVerify": [
+    {
+      "what": "a live scheduler auto-delivering a pending interjection",
+      "why": "the exclusion is asserted on the read path (deliverableUnread + readUnreadMailbox) and unit-tested; driving a real multi-member idle edge needs a long-lived captain session with spawned members, which the isolated headless environment cannot hold (documented limitation)."
+    }
+  ],
+  "changedPaths": [
+    "packages/mpd-agent-teams-plugin/lib/state.js",
+    "packages/mpd-agent-teams-plugin/lib/scheduler.js",
+    "packages/mpd-agent-teams-plugin/lib/session-start.js",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+    "packages/mpd-agent-teams-plugin/test/r1-message-channel.test.mjs",
+    "evidence/omo-align/requirements/frozen-contract.json",
+    "evidence/omo-align/messaging/r3-verb-harmonisation/mount-proof.mjs",
+    "evidence/omo-align/messaging/r3-verb-harmonisation/mount-proof.json",
+    "evidence/omo-align/messaging/r3-verb-harmonisation/session-start-team.log"
+  ],
+  "inFlightDuplicateNote": "The working tree ALSO carries 4 unrelated files ({packages/mpd-agent-teams-plugin/lib/types/state.d.ts, lib/session-start.js (the Option A comment + dead-export removal), lib/mpd-deltas.js, test/r3-view-parity.test.mjs}) from the t25 F2 close-out that the captain committed as 3c8eebf/1eecb7d; my R3 edit to session-start.js is ADDITIVE on top of that (different region) and touches none of their lines.",
+  "t35Addendum_moduleDocSweep": {
+    "trigger": "t35 in-scope addendum (no new task): Lead found the module doc contradicting the code",
+    "defect": "lib/session-start.js module doc claimed `trigger = (matchedSignals >= 2) OR anyExplicitFlag` while line 206 implements the ratified Option A `explicitFlag || signals.length >= 1`; a measurement that read the DOC would under-report the trigger rate (the basis of t37/t39).",
+    "fix": "module doc now states `trigger = anyExplicitFlag OR (matchedSignals >= 1)` (Option A), explains that a satisfied C counts as ONE matched signal and is itself sufficient because C's own bar is a 2-of-3 majority of C1/C2/C3, and explicitly forbids restoring `>= 2` with the measured reason.",
+    "mechanicalAssertion": {
+      "docStatesOptionA": true,
+      "docsClaimOldRuleAsCurrent": false,
+      "code": "const trigger = input.explicitFlag === true || signals.length >= 1;",
+      "verifiedBy": "node one-liner over the shipped file, evidence in this record"
+    },
+    "sweepOfOtherTouchedFiles": {
+      "files": [
+        "lib/state.js",
+        "lib/scheduler.js",
+        "lib/tools.js",
+        "lib/mpd-deltas.js"
+      ],
+      "staleThresholdComments": 0,
+      "notes": [
+        "state.js: the only 'threshold' hit is the R3 reclaim threshold (`staleAfterMs`, 0 disables the age gate) — a different concept, and its comment matches its code.",
+        "scheduler.js / tools.js: no trigger/threshold/matchedSignals vocabulary at all.",
+        "mpd-deltas.js (GENERATED): the single `matchedSignals >= 2` occurrence is inside the mirrored region body and is the comment that SUPERSEDES the old rule; the registry was regenerated after the R3 region edit, so it mirrors the file.",
+        "'mandatory team' mentions exist only as NEGATIONS (index.js:107 'without a mandatory team', session-start.js:7 and :392 'never ... mandatory') — consistent with the gate semantics, not stale claims."
+      ],
+      "result": "0 stale comment-vs-code contradictions found; the one real contradiction (the module doc) is fixed."
+    },
+    "settledFileHashesAfterAddendum": {
+      "packages/mpd-agent-teams-plugin/lib/session-start.js": {
+        "bytes": 28432,
+        "sha256": "8cfaef47e9959ef7def01003640f768ff4befa50e9c202ff692a0629ca0a2aa6"
+      },
+      "packages/mpd-agent-teams-plugin/lib/state.js": {
+        "bytes": 54389,
+        "sha256": "751a4c1eaf1714d37a45baa8c0a83895ee8e2a487f28574d02fd445cd1b8b825"
+      },
+      "packages/mpd-agent-teams-plugin/lib/scheduler.js": {
+        "bytes": 30673,
+        "sha256": "f9ec4a226511b420c660673ccc1838b99fa4c0ac548f4b0f19e0fcf865109011"
+      },
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": {
+        "bytes": 88815,
+        "sha256": "47f204cd9678ed87660b18e5ecd01895ce3249fae8155deb0a1d33821f6ff9c5"
+      }
+    },
+    "gatesAfterAddendum": {
+      "deltaCheck": 0,
+      "deltaRegions": "23 / 6 files",
+      "typecheck": 0,
+      "pluginTests": "161 pass / 0 fail",
+      "selfFixTests": "53 pass / 0 fail"
+    }
+  }
+}

@@ -1,0 +1,122 @@
+{
+  "schema": "mpd.requirements.verification/v1",
+  "task": "t12",
+  "kind": "requirements-verification",
+  "scope": "captain's 6-point read-only 核验口径 (message: 队长·t12（requirements r4）的可满足验收口径)",
+  "date": "2026-09-13",
+  "verifier": "Planner (read-only)",
+  "authoritativeArtifact": "evidence/omo-align/requirements/frozen-contract.json",
+  "verdict": "pass",
+  "verdictNote": "6/6 核验项成立。两项 findings 都落在 Planner 自己的台账文本（landing-point 清单/索引同步），不触及任何下游契约，已在本轮修正 —— 因此按『只对不成立项列 findings』的规则仍为 pass。",
+  "taskStateCaveat": "t12 的 task 记录已在上一轮终态化为 failed（terminal，不可改写）。本 pass 结论通过本文件与该轮汇报交付，不改变 t12 的 task 状态；不得据此再开同义 requirements 回合。",
+
+  "checks": [
+    {
+      "id": "V1",
+      "name": "产物存在且可解析",
+      "command": "node -e \"const j=require('./evidence/omo-align/requirements/frozen-contract.json'); console.log(j.schema)\"",
+      "observed": "mpd-omo-align-frozen-contract/1",
+      "expected": "mpd-omo-align-frozen-contract/1",
+      "status": "passed"
+    },
+    {
+      "id": "V2",
+      "name": "冻结值齐全（逐项确认存在且非空）",
+      "observed": {
+        "frozenDecisions": ["D_FIRST(len 253)", "D_AUTOROUTE_SPLIT(len 403)", "D_SKILLS_WRITER(len 379)", "D_LEDGER(len 318)", "D_UPSTREAM_REF(len 264)"],
+        "frozenDecisionsExtraKeys": [],
+        "complexityGate.signals": ["A_explicitFlag", "B_deliverableVerbs", "C_enumeratedSteps", "D_planArtifact"],
+        "complexityGate.logic": "trigger = (matchedSignals >= 2) OR anyExplicitFlag",
+        "complexityGate.action": "{profile: mpd, approval: required, name: MPD Default, effect: staged team + gated notice}",
+        "complexityGate.testPrompts.simple": 3,
+        "complexityGate.testPrompts.complex": 3,
+        "complexityGate.verify": 2,
+        "massUlwSemantics.items": ["S1", "S2", "S3", "S4"],
+        "manualEntryNames.keys": ["policy", "slashCommandMechanism", "slashCommands", "tools", "profileKey", "presetId", "stateDir"],
+        "manualEntryNames.slashCommandMechanism.frozenPredicate": "present (gesture regex + AGENT_TEAMS_COMMAND/PROFILE_COMMAND_PREFIX unchanged AND profiles.* key set unchanged)",
+        "changeLocations.items": 10,
+        "requiredQaCases": 9,
+        "isolation": {"status": "resolved by user decision 2026-09-13", "references": "0e6bdaf"}
+      },
+      "status": "passed"
+    },
+    {
+      "id": "V3",
+      "name": "Planner 此前的落点清单 ⊆ changeLocations.items",
+      "command": "node -e \"<compare planner list vs contract changeLocations.items>\" (script run, see evidence)",
+      "observed": {
+        "contractItemCount": 10,
+        "plannerEnumeratedCount": 11,
+        "plannerFilesNotNamedInContract": [],
+        "contractItemsNotAttributableToAPlannerFile": [],
+        "allItemTextsAttributable": true,
+        "noPlannerFileMissing": true
+      },
+      "detail": "9 条编号落点全部命中：L1→item1, L2→item2, L3→item4, L4+L5→item5, L6→item6, L7→item7, L8→item8, L9→item9。Planner 台账另列、contract 亦列出：lib/index.js→item3, self-fix-tests/**→item10。无缺口。",
+      "status": "passed"
+    },
+    {
+      "id": "V4",
+      "name": "决策常量与仓库现状一致（只读核对）",
+      "observed": {
+        "0e6bdaf_on_dev": {"branch": "dev", "isHead": true},
+        "lib_index_js_schema_default": "z.union([off,auto,instruct]).default('off') — 与 D_AUTOROUTE_SPLIT『不删值、默认 off』方向一致",
+        "lib_index_js_resolved_default": "config.sessionTeamPolicy?.mode ?? 'off'",
+        "install_profile_mjs_line_177": "sessionTeamPolicy: { mode: \"auto\", ... }",
+        "install_profile_mjs_line_262": "硬断言 policy.mode !== \"auto\" => FAIL"
+      },
+      "status": "passed",
+      "pendingImplementation": [
+        "scripts/install-profile.mjs:177 的 row 取值与 :262 的 self-test 断言仍钉 'auto' —— 与新默认不符，属 t5 的 inScope 待实现点，**不是冻结矛盾**（D_AUTOROUTE_SPLIT 明确 mode 枚举不删值、默认 off；row 侧改动与 self-test 属实现面）。t5 必须把两处一起改，否则 installer 门禁会红。",
+        "packages/mpd-bundle/cordis.patch.yml 的 agent-teams row 当前 sessionTeamPolicy.mode 仍为 auto（L1 落点）—— 同上，属 t5 待实现。",
+        "lib/session-start.js 仍是旧的无条件策略（policyQualifies 无复杂度门）—— 属 t5 待实现。"
+      ]
+    },
+    {
+      "id": "V5",
+      "name": "skills 单写者",
+      "observed": "D_SKILLS_WRITER: 本 wave 唯一 skills/** 写者是 t5，仅限 skills/dsh-qa/SKILL.md 与 skills/dsh-qa/scripts/session-start-team.mjs；t9 本波次不写 skills",
+      "status": "passed"
+    },
+    {
+      "id": "V6",
+      "name": "隔离状态",
+      "command": "git status --porcelain",
+      "observed": [
+        " M docs/index.md",
+        " M docs/index.zh-CN.md",
+        " M docs/user-guide.md",
+        " M docs/user-guide.zh-CN.md",
+        "?? docs/omo-parity-ledger.md",
+        "?? docs/omo-parity-ledger.zh-CN.md",
+        "?? evidence/omo-align/",
+        "?? evidence/team/"
+      ],
+      "status": "passed",
+      "detail": "『3 个包文件已落盘』成立：0e6bdaf（HEAD，dev）含 packages/mpd-bundle/cordis.patch.yml + packages/mpd-roles-plugin/{dist/index.js,src/roles.data.ts,test/roles.test.ts}，工作区无任何 M packages/** 残留。相对口径多出的 3 个 docs 改动全部是 Planner 本轮台账交付（见 finding V6-F1），不含包文件。"
+    }
+  ],
+
+  "findings": [
+    {
+      "id": "V6-F1",
+      "severity": "low",
+      "problem": "口径预期『只剩两个 user-guide 文件』，实测为 6 个条目：两个 user-guide 文件，加上 Planner 本轮台账交付产生的 3 个 docs 改动（M docs/index.md、M docs/index.zh-CN.md）与 2 个新增台账文件（?? docs/omo-parity-ledger.md、?? docs/omo-parity-ledger.zh-CN.md）。包文件已全部落盘这一点不受影响。",
+      "requiredFix": "在 isolation 段落登记为『本波新增、随台账/索引提交』的第 4 类路径，或将它们随台账任务单独提交；t5 提交的路径白名单需覆盖它们，以免被误判为混入。Planner 不修改冻结文件（captain-owned）。",
+      "file": "evidence/omo-align/requirements/frozen-contract.json"
+    },
+    {
+      "id": "V3-F1",
+      "severity": "low",
+      "problem": "第三项核验时未发现缺口（11 个文件全部可归属），但口径中列出的 10 条与 Planner 清单的对应关系并非 1:1：item5 同时承载 EN+ZH 两个 README（合同注明 same commit），item10（self-fix-tests/**）是条件项。若后续有人只按条目数比对，会误判为『Planner 清单少一条』。",
+      "requiredFix": "保持现状即可；本文件与台账第 6 节已写明该对应关系，作为机械比对时的说明来源。",
+      "file": "docs/omo-parity-ledger.md"
+    }
+  ],
+
+  "conclusion": {
+    "blocker": "none",
+    "t5Blocking": false,
+    "note": "按队长口径，t5 的阻塞已解除：冻结值齐全、落点无缺口、决策常量与现状一致、单写者已指定、隔离已成立。三项 pendingImplementation 已明确标注为 t5 的待实现点（含 installer self-test 必须与 row 同步改），不得被当作已达成的证据。"
+  }
+}

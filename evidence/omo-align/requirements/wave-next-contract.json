@@ -1,0 +1,86 @@
+{
+  "schema": "mpd.requirements-conference/v1",
+  "wave": "next",
+  "frozenAt": "2026-09-14",
+  "conference": {
+    "method": "Socratic requirements conference; the captain collected the code-level constraints by one-shot consult of the roster Architect (read-only) and put only the user-answerable forks to the user in one batch.",
+    "participants": ["captain", "Architect (oracle, read-only consult)", "user"],
+    "userAnswers": 12
+  },
+  "items": {
+    "R1": {
+      "title": "Message channel: dedup + bounded clear + interjection-request with captain approval",
+      "goal": "Keep the message channel, but make it idempotent, recoverable and correctable: duplicate deliveries must not cause duplicate actions, an overflowing or stuck mailbox must be clearable without destroying evidence, and a member must be able to ASK the captain for permission to interject so errors are caught in time.",
+      "hardCodeConstraint": {
+        "finding": "lib/scheduler.js:223-228 fallbackMailboxPrompt packs ANY unread inbox record verbatim and lib/scheduler.js:287-298 delivers it at the next idle edge.",
+        "consequence": "An interjection request written into the ordinary inbox would be auto-delivered and would BYPASS captain approval.",
+        "requirement": "The interjection must be a FIRST-CLASS message kind with its own pending queue, and the scheduler's unread-read path must exclude pending interjections."
+      },
+      "decisions": {
+        "failureModeToKill": "idempotent delivery (prevent duplicate ACTION, not mailbox growth or rate limiting) - single select",
+        "dedupKey": "from + to + content + 60 s window (reuses MAILBOX_DELIVERY_LEASE_MS = 60_000, lib/state.js:25)",
+        "onDuplicate": "fold to dupCount=N, deliver AT MOST once, never physically delete a record",
+        "clearGranularity": "clear down to a watermark",
+        "clearAuthority": "captain may clear any mailbox; a member may clear only its own",
+        "clearDiscipline": "archive-first + tombstone + audit event; a hard-delete path must not exist (mirrors tools.js:2197 'mailboxes stay on disk for later review' and the workmate archive-first rule)",
+        "interjectionPayload": "summary + reason + location only (file:line or task id) - the body follows only after approval, so 'approval' is substantive rather than formal",
+        "onCaptainSilence": "default DENY + TTL 30 minutes + notify the requesting member (status expired)",
+        "deliveryAfterApproval": "at the next step boundary (consistent with frozen S4 'bounded notice, without restarting the attempt'), through the existing member-prompt queue seam - never harness sendMessage-steer",
+        "deliverySemantics": "keep at-least-once + add idempotency (record id + host messageId) to reach effective-once"
+      },
+      "acceptance": [
+        "Sending the same (from,to,content) N times inside the window delivers AT MOST once; the durable JSONL still holds all N records folded with dupCount=N; negative control: two identical contents with different from/to are NOT folded",
+        "Clear-down-to-watermark produces a tombstone, an archive sidecar from which the cleared bytes are recoverable, and one audit event; after clear the read returns only the tombstone; negative control: no hard-delete path exists",
+        "A pending interjection is NOT delivered before approval (the member is not woken); after approval it is delivered at a step boundary through the queue seam, not sendMessage-steer; on TTL expiry it becomes expired and the requesting member is notified; negative control: the scheduler's unread read excludes pending interjections",
+        "Duplicate delivery does not double the member's actions (assert the task-update call count does not double on redelivery)"
+      ],
+      "falsifiableExperiment": "A new QA case in an isolated DSH_HOME + sandbox workspace, MOUNTING the rows (never --dump-config), asserting one positive and one negative control per sub-feature."
+    },
+    "R2": {
+      "title": "Wave close-out: complexity-gate false-positive rate measured, ledger landed",
+      "goal": "Quantify the accepted cost of the ratified Option A predicate on REAL ordinary prompts, and land the parity ledger so the wave's claims are readable and consistent with the frozen contract.",
+      "decisions": {
+        "promptSource": "sampled from existing session logs (sanitized before it enters the repo)",
+        "includeCJK": true,
+        "count": ">= 20 real ordinary prompts, MUST NOT reuse the 6 frozen testPrompts (those are the calibration set)",
+        "costMetric": "share of ordinary prompts that trigger a team, plus a human-readable 'one needless team approval every N prompts'",
+        "measureOnSettledHash": true
+      },
+      "knownDefectToFix": "docs/omo-parity-ledger.md and docs/omo-parity-ledger.zh-CN.md section 3 are STALE: they still state the superseded '>=2' threshold and the old C1-OR-C2 rule, while the frozen contract says '>= 1' with C's own 2-of-3 majority. Both language versions must be corrected and stay in sync, and the section 8 status must flip from pending to verified.",
+      "acceptance": [
+        ">= 20 real ordinary prompts recorded with per-prompt verdict, including Chinese prompts, each with the measured matched-signal set",
+        "The false-positive rate is computed from the recorded raw data and reproducible by an independent recomputation",
+        "Ledger section 3 matches the frozen contract in BOTH language versions, section 8 flips to verified, and the language switch links stay intact",
+        "Measurement is anchored to a settled revision hash"
+      ]
+    },
+    "R3": {
+      "title": "Harmonize the two verb tables (BEHAVIOUR CHANGE - user chose the non-recommended option)",
+      "goal": "The frozen contract's C2/C3 verb lists and the shipped patterns must agree, AND the two shipped patterns must agree with each other. The user explicitly chose to harmonize the tables rather than transcribe the inconsistency.",
+      "measuredInconsistency": {
+        "ACTION_VERB_PATTERN": "lib/session-start.js:84 - align|consolidate|migrate|overhaul|port|refactor|rewrite + CJK set",
+        "CLAUSE_ACTION_PATTERN": "lib/session-start.js:95 - has audit (absent from ACTION), is missing consolidate|overhaul|port (present in ACTION), and its CJK set differs by 7 entries",
+        "contract": "evidence/omo-align/requirements/frozen-contract.json C2/C3 lists mirror neither table exactly"
+      },
+      "decisions": {
+        "userChoice": "harmonize the two tables (behaviour change)",
+        "consequenceAccepted": "This is NOT a documentation edit. Any change to the patterns changes the trigger predicate, so it must ship as an implementation change with its own isolated mount proof, its own two-sided gate evidence, and a contract update in the SAME commit.",
+        "notAllowed": "Do not smuggle the harmonization into a 'contract revision' task, and do not change the trigger THRESHOLD while harmonizing the vocabulary."
+      },
+      "acceptance": [
+        "C2 and C3 in the frozen contract transcribe the shipped patterns EXACTLY after harmonization (English and CJK, verb by verb)",
+        "The two shipped patterns are mutually consistent (a verb in one table is either in the other or explicitly documented as table-specific with a reason)",
+        "The two-sided gate still returns 3/3 silent on the simple set and 3/3 trigger on the complex set on a settled revision, with the negative control disarmed",
+        "An isolated mounting boot proves the changed module loads (no apply/schema abort) - --dump-config is NOT accepted as proof"
+      ]
+    }
+  },
+  "waveLevelConstraints": {
+    "singleWriterPlugin": "packages/mpd-agent-teams-plugin/** has ONE writer; the plugin also refuses two tasks declaring overlapping inScope, so all plugin edits of this wave live in ONE task.",
+    "singleSkillsWriter": "skills/** has ONE writer and the corpus VENDOR_LOCK treeSha must be re-pinned in the SAME commit, so exactly ONE task of this wave may edit skills/**.",
+    "contractDefectLesson": "Every inScope must name every path the task will create, modify or DELETE - a completion whose changedPaths falls outside inScope is rejected by the plugin (this cost the previous wave a whole task).",
+    "settledHashDiscipline": "Verify on settled hashes: pin the revision, confirm stability, then measure; anchor every verdict to the hash actually measured.",
+    "noOverwriteOfDeliveredEvidence": "A delivered or pinned evidence artifact is never overwritten; a later pass writes a NEW file (this rule was broken twice in the previous wave).",
+    "gitDiscipline": "ONE git writer per working tree (AGENTS.md section 5): teammates never run commit/add/checkout/switch/reset/stash/merge/branch/rebase/tag."
+  }
+}

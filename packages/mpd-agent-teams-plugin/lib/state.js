@@ -460,7 +460,153 @@ export async function appendMailbox(stateRoot, teamId, agentKey, message) {
     const separator = existing !== '' && !existing.endsWith('\n') ? '\n' : '';
     await atomicWriteText(file, `${existing}${separator}${JSON.stringify(message)}\n`);
 }
+//#region mpd-delta message-channel-r1 (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/** Duplicate window for the R1 delivery-idempotency key (from+to+content). */
+export const MAILBOX_DEDUP_WINDOW_MS = MAILBOX_DELIVERY_LEASE_MS;
+/** Interjection requests still unanswered after this are DENIED by default. */
+export const INTERJECTION_TTL_MS = 30 * 60 * 1000;
+/** Lane that holds interjection REQUESTS awaiting the captain's decision. */
+export const INTERJECTION_QUEUE = 'interjections';
+/** Message kind marking a first-class interjection request. */
+export const INTERJECTION_KIND = 'interjection-request';
+/** The R1 delivery-idempotency key: sender + recipient + content. */
+export function messageDedupKey(message) {
+    return `${message.from}\u0000${message.to}\u0000${message.content}`;
+}
 /**
+ * Fold one message into the mailbox for DELIVERY idempotency: when the same
+ * (from,to,content) was appended inside the window, the existing record's
+ * `dupCount` is incremented and NO second record is written, so a redelivery can
+ * never make the recipient act twice. The window is measured on `ts`, and a record
+ * that is already delivered/read is still folded — the point is to stop the ACTION,
+ * not to shrink the file; nothing is ever physically deleted.
+ * @returns the record that now holds the message (new or folded).
+ */
+export async function appendMailboxDeduped(stateRoot, teamId, agentKey, message, options = {}) {
+    const windowMs = options.windowMs ?? MAILBOX_DEDUP_WINDOW_MS;
+    const existing = await readMailbox(stateRoot, teamId, agentKey);
+    const key = messageDedupKey(message);
+    const hit = existing.find((candidate) => messageDedupKey(candidate) === key
+        && Math.abs(message.ts - candidate.ts) <= windowMs);
+    if (hit !== undefined) {
+        const folded = { ...hit, dupCount: (hit.dupCount ?? 1) + 1 };
+        await mutateMailbox(stateRoot, teamId, agentKey, [hit.id], () => folded);
+        return { message: folded, folded: true };
+    }
+    await appendMailbox(stateRoot, teamId, agentKey, { ...message, dupCount: message.dupCount ?? 1 });
+    return { message: { ...message, dupCount: message.dupCount ?? 1 }, folded: false };
+}
+/**
+ * Clear a mailbox DOWN TO A WATERMARK: every record with `ts <= watermark` is
+ * replaced in place by a tombstone, its original bytes are written to an archive
+ * sidecar (`inbox/archive/<agentKey>.<watermark>.jsonl` — the recoverable copy), and
+ * ONE audit event describes the operation. There is deliberately NO hard-delete
+ * branch: the tombstone keeps the id/ts/from/to so the record stays reviewable, and
+ * the sidecar makes the cleared bytes recoverable byte-for-byte.
+ * @returns the manifest: tombstoned ids, the sidecar path, and the audit event.
+ */
+export async function clearMailboxToWatermark(stateRoot, teamId, agentKey, watermark, options = {}) {
+    const messages = await readMailbox(stateRoot, teamId, agentKey);
+    const cleared = messages.filter((message) => message.ts <= watermark && message.tombstone !== true);
+    if (cleared.length === 0) {
+        return { cleared: [], sidecar: undefined, audit: undefined };
+    }
+    const clearedIds = new Set(cleared.map((message) => message.id));
+    // archive-first: the recoverable copy is written AND flushed before the live
+    // file is rewritten, so an interrupted clear always leaves the bytes somewhere.
+    const archiveDir = join(stateRoot, teamId, 'inbox', 'archive');
+    await mkdir(archiveDir, { recursive: true });
+    const sidecar = join(archiveDir, `${sanitizeKey(agentKey)}.${watermark}.jsonl`);
+    await atomicWriteText(sidecar, cleared.map((message) => JSON.stringify(message)).join('\n') + '\n');
+    await mutateMailbox(stateRoot, teamId, agentKey, [...clearedIds], (message) => ({
+        id: message.id,
+        from: message.from,
+        to: message.to,
+        content: '',
+        ts: message.ts,
+        tombstone: true,
+        clearedAt: options.now ?? Date.now(),
+        clearedToWatermark: watermark,
+        archivedTo: sidecar,
+    }));
+    const audit = {
+        kind: 'mailbox-cleared',
+        agentKey,
+        watermark,
+        clearedCount: cleared.length,
+        clearedIds: [...clearedIds],
+        sidecar,
+        at: options.now ?? Date.now(),
+    };
+    return { cleared: [...clearedIds], sidecar, audit };
+}
+/** Read only the records that are NOT tombstones (the live view after a clear). */
+export async function readLiveMailbox(stateRoot, teamId, agentKey) {
+    return (await readMailbox(stateRoot, teamId, agentKey)).filter((message) => message.tombstone !== true);
+}
+/**
+ * Enqueue a first-class interjection REQUEST. It is a normal mailbox record with
+ * `kind: 'interjection-request'` and `status: 'pending'`, but it lives in its own
+ * QUEUE, never in a member's ordinary inbox: the scheduler packs EVERY unread inbox
+ * record verbatim and auto-delivers at the next idle edge (lib/scheduler.js:223-228,
+ * 287-298), so a request in the normal inbox would be delivered and would BYPASS the
+ * captain's approval. The payload carries summary + reason + location only; the body
+ * follows only after approval.
+ * @returns the queued request record.
+ */
+export async function enqueueInterjection(stateRoot, teamId, request) {
+    const record = {
+        ...request,
+        id: request.id,
+        to: INTERJECTION_QUEUE,
+        kind: INTERJECTION_KIND,
+        status: 'pending',
+        ts: request.ts,
+        expiresAt: request.ts + INTERJECTION_TTL_MS,
+    };
+    await appendMailbox(stateRoot, teamId, INTERJECTION_QUEUE, record);
+    return record;
+}
+/** Every interjection request in one state, newest last. */
+export async function readInterjections(stateRoot, teamId) {
+    return readMailbox(stateRoot, teamId, INTERJECTION_QUEUE);
+}
+/**
+ * Read interjections that are still AWAITING DECISION. This is the function the
+ * scheduler must use instead of a blanket unread scan: pending requests are never
+ * auto-delivered.
+ */
+export async function readPendingInterjections(stateRoot, teamId) {
+    return (await readInterjections(stateRoot, teamId)).filter((record) => record.status === 'pending');
+}
+/**
+ * Expire every pending interjection whose TTL has passed: captain silence is a
+ * DEFAULT DENY, and the requesting member is notified (status `expired`).
+ * @returns the expired ids.
+ */
+export async function expireInterjections(stateRoot, teamId, options = {}) {
+    const now = options.now ?? Date.now();
+    const pending = await readPendingInterjections(stateRoot, teamId);
+    const expired = pending.filter((record) => typeof record.expiresAt === 'number' && record.expiresAt <= now);
+    if (expired.length === 0)
+        return [];
+    await mutateMailbox(stateRoot, teamId, INTERJECTION_QUEUE, expired.map((record) => record.id), (record) => ({ ...record, status: 'expired', decidedAt: now }));
+    return expired.map((record) => record.id);
+}
+/** Record the captain's decision on one interjection request. */
+export async function decideInterjection(stateRoot, teamId, interjectionId, decision, options = {}) {
+    const now = options.now ?? Date.now();
+    const record = (await readInterjections(stateRoot, teamId)).find((candidate) => candidate.id === interjectionId);
+    if (record === undefined)
+        throw new Error(`interjection "${interjectionId}" does not exist`);
+    if (record.status !== 'pending')
+        throw new Error(`interjection "${interjectionId}" is already ${String(record.status)}`);
+    const decided = { ...record, status: decision, decidedAt: now };
+    await mutateMailbox(stateRoot, teamId, INTERJECTION_QUEUE, [interjectionId], () => decided);
+    return decided;
+}
+//#endregion mpd-delta message-channel-r1
+/** Read one agent's whole mailbox, oldest first./**
  * Read one agent's whole mailbox, oldest first.
  * @param stateRoot - resolved absolute state root directory.
  * @param teamId - the team id.
@@ -844,7 +990,13 @@ function isTeamMessage(value) {
         && isFiniteNumber(value['ts'])
         && (value['deliveryClaimedAt'] === undefined || isFiniteNumber(value['deliveryClaimedAt']))
         && (value['deliveredAt'] === undefined || isFiniteNumber(value['deliveredAt']))
-        && (value['readAt'] === undefined || isFiniteNumber(value['readAt']));
+        && (value['readAt'] === undefined || isFiniteNumber(value['readAt']))
+        // R1 additive fields; absent on every pre-existing record, so old
+        // mailboxes stay readable (the shape check only widens).
+        && (value['kind'] === undefined || typeof value['kind'] === 'string')
+        && (value['status'] === undefined || typeof value['status'] === 'string')
+        && (value['dupCount'] === undefined || (Number.isSafeInteger(value['dupCount']) && value['dupCount'] >= 1))
+        && (value['tombstone'] === undefined || value['tombstone'] === true);
 }
 /**
  * Remove a team's whole directory (members should be interrupted first).

@@ -1,0 +1,61 @@
+{
+  "schema": "mpd-omo-align-mount-proof/1",
+  "task": "t35",
+  "purpose": "R3 is a behaviour change: prove the modified plugin tree mounts in a real isolated boot (not --dump-config).",
+  "importedModules": {
+    "lib/state.js": 73,
+    "lib/scheduler.js": 7,
+    "lib/session-start.js": 27
+  },
+  "r1ExportsLoaded": {
+    "appendMailboxDeduped": true,
+    "clearMailboxToWatermark": true,
+    "enqueueInterjection": true,
+    "expireInterjections": true,
+    "decideInterjection": true
+  },
+  "harmonizedTables": {
+    "english": [
+      "add",
+      "align",
+      "audit",
+      "build",
+      "change",
+      "check",
+      "consolidate",
+      "implement",
+      "migrate",
+      "overhaul",
+      "port",
+      "refactor",
+      "rewrite",
+      "verify"
+    ],
+    "cjk": [
+      "设计",
+      "实现",
+      "验证",
+      "改造",
+      "补充",
+      "对齐",
+      "重构",
+      "迁移",
+      "审计",
+      "移植",
+      "梳理",
+      "全量"
+    ],
+    "c2FailingVerbs": [],
+    "c3FailingVerbs": [],
+    "c2CjkFailing": [],
+    "c3CjkFailing": [],
+    "identicalVerbSets": true
+  },
+  "boot": {
+    "installerExit": 0,
+    "dshExit": 1,
+    "crashSignatures": [],
+    "clean": true
+  },
+  "ok": true
+}

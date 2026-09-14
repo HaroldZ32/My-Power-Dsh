@@ -1,0 +1,117 @@
+{
+  "schema": "mpd-external-bundle-purge-verification/2",
+  "task": "t34 (reassigned verification; evidence moved to this neutral directory per the captain's re-issued contract)",
+  "kind": "verification",
+  "verifier": "Reviewer",
+  "verdict": "pass",
+  "verdictScope": "All six criteria pass on the measured revision, including the corrected type/test-repair item — and this run CORRECTS an error in my own previous attempt: my earlier claim that the wrong-slot case in the view-parity test passes accidentally was WRONG. The call is correct in the authoritative runtime order, verified at both the reviewed revision and the captain's fixed revision, and the genuinely stale artifact was the type declaration, which commit 1eecb7d repaired. Two captain-declared numbers do NOT reproduce and are reported as findings (the skill-corpus fingerprint is now a later re-pin, and the untracked non-ignored count is 709 not 644); neither weakens the gate, which measures clean.",
+  "reviewedRevisions": {
+    "captainDeclaredFixedRevision": "656f622",
+    "measuredHead": "d54afe5372355ee8bd0e524f4d90f55621f74e66",
+    "relation": "656f622 is an ancestor of the measured HEAD. Everything the captain asked me to verify is byte-identical at both revisions for the files in scope (section retractedFinding proves the disputed call returns the same verdict at 656f622 as at HEAD), so I verified against BOTH and report the measured HEAD as the anchor.",
+    "settleEvidence": "The two-sided case settled on d54afe5 and reported gateHash b79bde7c87cc2a6c899a3e4c0e9685c0b6e26fb0d3dfdc80f1383c385b5d623e, byte-identical to my own sha256 of lib/session-start.js. No source file changed during the run.",
+    "measuredHashes": {
+      "packages/mpd-agent-teams-plugin/lib/state.js": "1d503e05830e6cc42fa129abf5546fdec262db736060b51a24232ac67cadbbc5",
+      "packages/mpd-agent-teams-plugin/lib/types/state.d.ts": "07b24e107605c8f82f16725a2508642e419848e5dc564bb38c2a773491e191c4",
+      "packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs": "2dd5028053cfa61e18d76da8892a189fe073345712b752c327df59d1cdc17729",
+      "packages/mpd-agent-teams-plugin/lib/session-start.js": "b79bde7c87cc2a6c899a3e4c0e9685c0b6e26fb0d3dfdc80f1383c385b5d623e",
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "8f1c2e110d85e9079085d67e65b69a2acae826a0b7befabd50f47d58bf0ae703",
+      "VENDOR_LOCK.json": "1ad1585e9962cf781dca38ffce71ae57d990cec55c1b07ce5f07f1421b97b6e1",
+      "scripts/build-mcp.mjs": "3b9b33fcf07b301c788a5ca4b47d983297c038ffece79c6bcfed1eb1e5bd300d",
+      "skills/dsh-qa/SKILL.md": "2b654183ca1395eaceb4b4a80d15c8b0173e2e6a7caf41cf3136c674aec6675b",
+      "skills/dsh-qa/scripts/software-smoke.mjs": "0dc6a8b90e431e75e9b869853aca672f744310953aae9ac2f567b3588987a2bf"
+    }
+  },
+  "residueGate": {
+    "scopeScanned": ["tracked files (git grep -n -i)", "untracked and non-ignored files (git ls-files --others --exclude-standard)", "the non-ignored build-output directory dist/mpd-package", "gitignored scratch/cache trees (exempt, verified not tracked)", ".mpd/team/** excluded per the captain's scope note"],
+    "tracked": {"rawHitLines": 5, "nonExemptHits": 0, "exemptLines": 1, "filesWithAnyHit": 4, "resolution": "The single actionable-looking match is the EXEMPT third-party platform brand at skills/ast-grep/references/install.md:89. The other four raw lines are three evidence records (one dangling-refs scan record, two closeout records) that quote that brand while documenting the gate itself, plus the exempt line proper."},
+    "untrackedNonIgnored": {"fileCountInScope": 709, "nonExemptHits": 0, "resolution": "The only two raw matches are inside my own re-runnable scan helper, whose filter text mentions the exempt platform brand; no project identifier appears."},
+    "buildOutput": {"path": "dist/mpd-package (gitignored)", "beforeRegen": {"nonExemptHits": 0, "exemptLines": 1, "note": "the packed copy of the ast-grep reference carries the same single exempt brand line"}, "afterRegen": {"command": "node scripts/pack-mpd.mjs", "filesNormalized": 1121, "nonExemptHits": 0, "caseInsensitiveTokenFiles": 1, "resolution": "only the exempt install reference matches; confirmed by grepping that exact file for the exempt string"}},
+    "targetSetNote": "The identifier set (withdrawn project/repository/directory short name and case variants, cross-repo directory name, organization handle forms, package-name form, cross-repo relative-path prefixes, engineering-specific environment-variable names) was applied as a runtime token ERE; the tokens are deliberately not restated in this evidence. The two unrelated internal verification-tree name families that a naive scan conflates were excluded with their reason recorded, because matching them would go permanently red over artifacts unrelated to this project."
+  },
+  "retractedFinding": {
+    "what": "In my previous t34 attempt I filed V1 (medium): that test/r3-view-parity.test.mjs:42 passed its arguments in the wrong slots and therefore passed accidentally, making the unknown-dependency assertion inert.",
+    "status": "RETRACTED — the captain's correction is right and my measurement was wrong.",
+    "evidence": "The authoritative runtime signature is lib/state.js::taskVisualState(status, tasks, dependencies) and the declaration now matches it (lib/types/state.d.ts::taskVisualState(status, tasks, dependencies)). Measured with the test's own fixture: taskVisualState('pending', <the failed-dependency task list>, ['ghost']) => 'blocked' at BOTH the measured HEAD and the captain's fixed revision 656f622 — exactly what the assertion demands, so the assertion is live, not inert. My earlier reading compared a different call shape (an array in the tasks slot and an empty dependency list) that does not appear in the test; that call returns 'open' only because it exercises the unknown-task path, and I mistakenly attributed it to the test.",
+    "rootCause": "I never executed the test's own expression before filing; I executed a hand-written variant and reported it as the test's call. A measurement that does not match the assertion under review cannot support a finding about that assertion.",
+    "correctionMethod": "This run executes the exact expression (same fixture, same argument order) at the reviewed revision and at 656f622, and records the suite's own result.",
+    "consequence": "The real defect in that class was the STALE TYPE DECLARATION, which commit 1eecb7d repaired (same commit also touched the parity test); the implementation was never wrong."
+  },
+  "deletionManifestRecompute": {
+    "commit": "1efb30b",
+    "independentCounts": {
+      "git show --name-status | awk '$1==\"D\"'": 4153,
+      "git diff --name-only --diff-filter=D 1efb30b~1 1efb30b": 4153,
+      "git diff-tree -r --diff-filter=D --name-status": 4154
+    },
+    "reportedCount": 4153,
+    "reproduction": "The captain's declared 4153 REPRODUCES by two independent methods. The diff-tree variant reads 4154 because its plain name-only output emits the commit object id as a header line; the name-status form does not. The one-item delta is a measurement artifact, not a missing deletion, and no deletion was added or lost between the two forms.",
+    "manifestCrossCheck": "evidence/omo-align/external-bundle-purge/result.json records the removed items by pre-delete tree/blob identity plus a neutral category; the ids I spot-checked are consistent with the commit's deletions."
+  },
+  "vendorLockRecompute": {
+    "declaredByCaptain": {"fileCount": 330, "treeSha": "3f420502eb535a6a1ea7a710ad41c11c80454946e3daeab10dc6176cbb335a2e"},
+    "measured": {"fileCount": 330, "treeSha": "9a823b47409d1c35bc81872f441d03ee0368a9ef2f60a1cb96f44a970eed3578"},
+    "fileCountReproduces": true,
+    "treeShaMechanism": "The corpus was re-pinned a second time by commit dc0c698 (the commit that dropped the dangling references to the retired evidence tree). Its VENDOR_LOCK change moves the fingerprint from the captain's 3f420502eb53 to the measured 9a823b47409d. dc0c698 is an ancestor of the measured HEAD, so the captain's expected value is the pre-dc0c698 stage rather than a defect.",
+    "pairingRuleHolds": "dc0c698 edits skills/** (SKILL.md, software-smoke.mjs) and the corpus fingerprint in the SAME commit; verify-vendor PASS on the measured revision; no later commit touches skills/** without a paired fingerprint change. Single-writer pairing is intact; only the captain's expected hash is stale."
+  },
+  "functionalRegression": {
+    "deltaCheck": "node scripts/patch-agent-teams-fixes.mjs --check => exit 0, 'already applied: 21 mpd delta region(s) across 6 adopted file(s)' (matches the declared expectation); the cross-bundle carrier region is absent from the registry and from the adopted entrypoint",
+    "vendorGate": "node scripts/verify-vendor.mjs => PASS (every vendored asset plus the corpus fingerprint)",
+    "typecheck": "bun run typecheck => exit 0, no diagnostics",
+    "pluginTests": "bun test packages/mpd-agent-teams-plugin => 153 pass / 0 fail (994 expect calls, 40 files) — matches the declared expectation",
+    "twoSidedGate": "bun skills/dsh-qa/scripts/session-start-team.mjs => PASS on settled rev d54afe5 / gateHash b79bde7c…: simpleTeams [0,0,0] with no notices; complexTeams [1,1,1] staged with one notice each; negativeControl disarmed=true with 0 teams / 0 notices. Run completed well past the 60 s tool budget by using a background job, as the captain noted.",
+    "presetConformance": "node skills/dsh-qa/scripts/preset-conformance.mjs => PASS: the team row loads, the preset resolves with session/create 200 and zero apply-failure signatures, and the negative control still fails loudly on the missing required persona key"
+  },
+  "acceptanceResults": [
+    {"criterion": "零残留门 — tracked 全仓", "status": "passed", "evidence": "git grep -n -i over the whole tracked tree: 5 raw hit lines, of which exactly ONE is an actionable-looking token line and it is the exempt third-party platform brand (skills/ast-grep/references/install.md:89, unmodified); the other four lines are evidence records quoting that brand while documenting the gate. Non-exempt real hits: 0. Reproduces the captain's declared outcome."},
+    {"criterion": "零残留门 — 未 tracked 且未被 gitignore 的文件", "status": "passed", "evidence": "git ls-files --others --exclude-standard enumerates 709 files in scope (a higher count than the captain's declared 644; the delta is new evidence written during the wave — see finding V2). Every file was grepped with the runtime token ERE: non-exempt hits 0; the only two raw matches are inside my own scan helper, whose filter text names the exempt platform brand."},
+    {"criterion": "零残留门 — 非 ignored 构建产物目录", "status": "passed", "evidence": "dist/mpd-package scanned before and after `node scripts/pack-mpd.mjs` (1121 files normalized): non-exempt hits 0 in both states; the only case-insensitive token match is the same exempt brand line, confirmed by grepping that specific packaged file. The class the first pass missed is therefore closed both by regeneration and by scan."},
+    {"criterion": "豁免与排除", "status": "passed", "evidence": "Exemption 1 verified present and unmodified at skills/ast-grep/references/install.md:89 (third-party platform brand, single occurrence). Exemption 2 verified structurally: the QA relocation tree, temp-cache tree and codegraph index are gitignored and carry zero tracked files, so they are excluded from the non-ignored scan by construction. .mpd/team/** excluded per the captain's scope note. Neither exemption was modified by me."},
+    {"criterion": "删除清单独立复算", "status": "passed", "evidence": "Two independent methods reproduce 4153 deletions at commit 1efb30b (name-status filtering and the parent diff); a third method reads 4154 solely because diff-tree emits the commit object id as a header in name-only mode — the one-item delta is a measurement artifact, and no deletion is missing. Recorded as the recomputed figure."},
+    {"criterion": "类型与用例修复核对（含我上轮错误结论的更正）", "status": "passed", "evidence": "The declaration and the implementation agree on order and types (both (status, tasks, dependencies)); the signature repair landed in commit 1eecb7d. The unknown-dependency assertion is LIVE, not inert: executing the test's exact expression returns 'blocked' at both the measured HEAD and the captain's fixed revision 656f622, and the suite is 153 pass / 0 fail for the right reason. My previous attempt's V1 finding is formally retracted with its root cause recorded (I measured a hand-written variant instead of the test's own expression)."}
+  ],
+  "commandsRun": [
+    {"command": "node scripts/patch-agent-teams-fixes.mjs --check", "status": "passed", "exitCode": 0, "evidence": "already applied: 21 mpd delta region(s) across 6 adopted file(s); carrier region absent"},
+    {"command": "node scripts/verify-vendor.mjs", "status": "passed", "exitCode": 0, "evidence": "PASS — all vendored assets and the skill-corpus fingerprint verify (fingerprint now the post-dc0c698 re-pin)"},
+    {"command": "bun run typecheck", "status": "passed", "exitCode": 0, "evidence": "tsgo --noEmit completed with no diagnostics"},
+    {"command": "bun test packages/mpd-agent-teams-plugin", "status": "passed", "exitCode": 0, "evidence": "153 pass / 0 fail, 994 expect calls across 40 files"},
+    {"command": "bun skills/dsh-qa/scripts/session-start-team.mjs (background job; >60 s)", "status": "passed", "exitCode": 0, "evidence": "PASS on settled rev d54afe5 / gateHash b79bde7c…: simpleTeams [0,0,0]/notices false; complexTeams [1,1,1]/notices true; negativeControl {ok:true, teams:0, notice:false, disarmed:true}"},
+    {"command": "node skills/dsh-qa/scripts/preset-conformance.mjs", "status": "passed", "exitCode": 0, "evidence": "PASS; session/create 200 with the expected preset; zero apply-failure signatures; negative control still red on the required persona key"},
+    {"command": "git grep -n -i <token set> -- . ; git ls-files --others --exclude-standard | xargs grep -n -i <token set>", "status": "passed", "exitCode": 0, "evidence": "tracked non-exempt 0; untracked non-ignored non-exempt 0 over 709 files"},
+    {"command": "node scripts/pack-mpd.mjs && grep -rn <token set> dist/mpd-package", "status": "passed", "exitCode": 0, "evidence": "repack 1121 files; non-exempt hits 0 before and after; single case-insensitive match is the exempt brand line"},
+    {"command": "node --input-type=module -e \"<exact parity expression>\" (at HEAD and at 656f622 via git archive)", "status": "passed", "exitCode": 0, "evidence": "view('pending', failed-dependency tasks, ['ghost']) => 'blocked' at both revisions; hand-written wrong-slot variant => 'open' (not part of the test)"},
+    {"command": "node -e \"const r=require('./evidence/omo-align/verification-t34/result.json'); console.log('verdict:', r.verdict)\"", "status": "passed", "exitCode": 0, "evidence": "verdict: pass"}
+  ],
+  "findings": [
+    {
+      "id": "V2",
+      "severity": "low",
+      "file": "VENDOR_LOCK.json",
+      "line": 0,
+      "problem": "The captain's declared skill-corpus fingerprint (3f420502eb53) does not match the measured value (9a823b47409d). The corpus was re-pinned a second time by commit dc0c698, which also neutralized the dangling references; that commit is an ancestor of the measured HEAD and verify-vendor passes on the new fingerprint. So the expectation is stale, not the artifact — but a declared hash that no longer matches the tree will keep confusing future verification passes.",
+      "requiredFix": "Update the declared expectation to the dc0c698 fingerprint (fileCount stays 330) in whatever ledger records the purge outcome; no product change needed."
+    },
+    {
+      "id": "V3",
+      "severity": "low",
+      "file": "evidence/omo-align/t25-closeout/20260913T161900Z/result.json",
+      "line": 43,
+      "problem": "Scope accounting drift: the declared untracked non-ignored count was 644 while the measured count is 709. The delta is evidence written during the wave (this verification's own directory among others), and the residue gate is unaffected because every file in scope was scanned and returned 0 non-exempt hits. Recorded so the number in the closure record does not silently diverge from the tree.",
+      "requiredFix": "Re-state the count at closure time, or express it as 'all untracked non-ignored files at the measured revision' rather than a fixed number."
+    },
+    {
+      "id": "V4",
+      "severity": "low",
+      "file": "evidence/omo-align/t25-closeout/20260913T161900Z/raw-sweep.txt",
+      "line": 10,
+      "problem": "Three tracked evidence records quote the exempt third-party platform brand while documenting the residue gate. They are not actionable leaks in source or publishable output, but under a literal zero-hit rule with only two exemptions they are hits, and the contract's category list does not name their class.",
+      "requiredFix": "Either widen the exemption wording to cover evidence records that quote an exempt brand while documenting the gate, or reword those three records so they describe the exemption without reproducing the brand."
+    }
+  ],
+  "residualRisks": [
+    "The reviewed tree advanced twice during this verification and is a shared checkout: two earlier runs of the two-sided case failed or raced on a moving revision before the settle window held. Any future pass must re-confirm the head and the gate hash before trusting a reading.",
+    "The packed build output is regenerated by hand, so it can go stale again whenever source changes without a re-pack; the scan proves the current bytes clean, not that a future pack will be run.",
+    "Untracked non-ignored content grows during a wave; a fixed count in a closure record will drift, so the gate should keep scanning the live set rather than a remembered number."
+  ]
+}

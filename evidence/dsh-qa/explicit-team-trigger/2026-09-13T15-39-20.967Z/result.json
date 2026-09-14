@@ -1,0 +1,31 @@
+{
+  "ok": false,
+  "sandbox": "/tmp/mpd-r4-lD6wnH",
+  "steps": {
+    "happy": {
+      "ok": true,
+      "teams": 1,
+      "profile": "mpd",
+      "phase": "staged",
+      "spawned": 0,
+      "approved": false,
+      "noticeSeen": true
+    },
+    "duplicate": {
+      "ok": true,
+      "teamsBefore": 1,
+      "teamsAfter": 1,
+      "inquirySeen": true
+    },
+    "unknownProfile": {
+      "ok": true,
+      "teams": 0,
+      "sawError": true
+    },
+    "disabled": {
+      "ok": false,
+      "warningSeen": false
+    }
+  },
+  "totalSteps": 4
+}

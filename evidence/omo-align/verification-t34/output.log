@@ -1,0 +1,62 @@
+t34 (reassigned) — external-bundle purge verification
+measured HEAD: d54afe5372355ee8bd0e524f4d90f55621f74e66
+captain-declared fixed revision: 656f622 (ancestor of HEAD; the disputed call was checked at BOTH)
+gate sha256: b79bde7c87cc2a6c899a3e4c0e9685c0b6e26fb0d3dfdc80f1383c385b5d623e
+
+[1] residue gate (token ERE supplied at run time; tokens not restated here)
+    tracked, raw hit lines ............ 5
+      of which the only token line .... the EXEMPT third-party platform brand
+                                        (skills/ast-grep/references/install.md:89)
+      the other four .................. evidence records that quote that brand
+                                        while documenting the gate
+    tracked, non-exempt real hits ..... 0
+    untracked non-ignored, in scope ... 709 files
+      non-exempt hits ................. 0
+      only matches .................... my own scan helper's filter text
+    dist/mpd-package (gitignored)
+      before regen .................... non-exempt 0; one exempt line
+      after  node scripts/pack-mpd.mjs  non-exempt 0; 1121 files normalized
+      final ........................... single case-insensitive match = the exempt line
+
+[2] exemptions
+    E1 third-party platform brand ..... present, unmodified, single occurrence
+    E2 gitignored scratch/cache trees . gitignored, zero tracked files
+    .mpd/team/** ...................... excluded per the captain's scope note
+
+[3] deletion manifest recompute (commit 1efb30b)
+    name-status filtered .............. 4153
+    parent diff --diff-filter=D ....... 4153
+    diff-tree name-status ............. 4154 (name-only form adds the commit id header)
+    => reported 4153; the captain's figure reproduces by two methods
+
+[4] VENDOR_LOCK recompute
+    fileCount ......................... 330  (reproduces)
+    treeSha measured .................. 9a823b47409d1c35bc81872f441d03ee0368a9ef2f60a1cb96f44a970eed3578
+    treeSha declared by captain ....... 3f420502eb53...  (STALE — see finding V2)
+    re-pin commit ..................... dc0c698 (same commit as the skill edits)
+
+[5] functional regression
+    patch-agent-teams-fixes --check ... exit 0; 21 regions / 6 adopted files; carrier absent
+    verify-vendor ..................... PASS
+    bun run typecheck ................. exit 0, no diagnostics
+    bun test packages/mpd-agent-teams-plugin ... 153 pass / 0 fail (994 expects, 40 files)
+    session-start-team (background) ... PASS; rev d54afe5; gate b79bde7c...
+                                        simple [0,0,0]/no notices; complex [1,1,1]/one notice
+                                        each; disarmed control 0 teams / 0 notices
+    preset-conformance ................ PASS; session/create 200; negative control still red
+
+[6] type / test repair — and the correction of my own previous error
+    runtime signature ................. state.js:: taskVisualState(status, tasks, dependencies)
+    declaration ....................... state.d.ts:: same order and types
+    signature repair commit ........... 1eecb7d
+    EXACT test expression ............. view('pending', <failed-dependency tasks>, ['ghost'])
+                                        => 'blocked'   at HEAD  (d54afe5)
+                                        => 'blocked'   at 656f622
+    hand-written wrong-slot variant ... => 'open'  (NOT the test's call; my earlier mistake)
+    suite ............................. 153 pass / 0 fail
+    => previous V1 finding RETRACTED; the assertion is live, the stale d.ts was the real defect
+
+[7] verdict
+    pass — all six criteria met; two captain-declared numbers do not reproduce and are
+    filed as findings (stale corpus fingerprint, scope count drift), neither affecting
+    the gate.

@@ -1,0 +1,30 @@
+--- install ---
+Already up to date
+
+dependencies:
++ @mpd-dsh/mpd 0.3.2 <- ../../../../..
+
+Done in 160ms using pnpm v11.23.0
+
+   ╭─────────────────────────────────────────╮
+   │                                         │
+   │   Update available! 11.23.0 → 12.4.1.   │
+   │   Changelog: https://pnpm.io/v/12.4.1   │
+   │    To update, run: pnpm self-update     │
+   │                                         │
+   ╰─────────────────────────────────────────╯
+
+
+--- boot ---
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=fail binary=/root/dshProj/my-power-dsh/node_modules/.bun/@colbymchenry+codegraph@1.5.0/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/root/dshProj/my-power-dsh/.qa-reloc/bundle-lifecycle-2026-09-13T15-44-03.843Z
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+
+--- remove ---
+✓ Lockfile passes supply-chain policies (verified 18s ago)
+Already up to date
+
+dependencies:
+- @mpd-dsh/mpd 0.3.2
+
+Done in 166ms using pnpm v11.23.0

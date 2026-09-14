@@ -1,0 +1,193 @@
+{
+  "schema": "mpd.requirements.verdict/v1",
+  "task": "t11",
+  "kind": "requirements",
+  "round": 3,
+  "supersedes": "t10 (evidence/omo-align/requirements/verdict-r2.json, verdict=needs_revision)",
+  "verdict": "needs_revision",
+  "verdictReason": "队长未修改任何下游契约：t5 与 t6 只把依赖从 t10 换成 t11（内容一字未改），t4 仍 Acceptance=(none)/Verify=(none)，t8 未获固定列约束，台账任务仍未指派，5 个未提交文件仍未落盘。t11 的 8 条验收标准全部 not-addressed。这是 t1→t10→t11 第三次同义重复，根因是流程设计缺陷而非信息缺失：t11 的验收标准是『把值写入别的任务的契约』这种指令式动作，而 requirements 门只读契约、不能写契约，因此这三轮在结构上不可能出现 pass。",
+  "structuralFinding": {
+    "problem": "requirements 门的验收标准被写成『修改下游契约的指令』，而该门在权限上只能读取契约。凡验收标准是『把 X 写入 tN 的 Acceptance』的回合，本门都无法独立完成或验证 —— 必须由持写权限的 captain 执行，门只能核验结果。",
+    "recommendation": "二选一：① captain 先改契约，再由 requirements 门只做『核验 checklist 是否落入契约』（当前 t11 后段的意图）；② 把『契约冻结』的产物固化为一份由 captain 维护的冻结文件（例如 evidence/omo-align/requirements/frozen-contract.json 或 t11 的 deliverables），门只核验该文件与各任务契约一致。禁止再开第 4 个同义 requirements 回合。"
+  },
+
+  "criteriaVerdict": [
+    {
+      "id": "R3-1",
+      "criterion": "把 verdict-r2.json frozenDecisions 的具体值写入 t5/t4/t8 契约的 Acceptance 字段后再派发。",
+      "status": "not-addressed",
+      "evidence": "agent_teams_task_contract t4/t5/t8 实测：t4 Acceptance=(none)；t5 Acceptance 与 round 2 逐字相同（仍写『按 t1 冻结的约定/需求』）；t8 未获固定列与行集合约束。frozenDecisions 的值（signals/threshold/action/两组逐字提示）在任何契约里都不存在。",
+      "requiredFix": "见 contractPatches.t5.acceptanceAdd / contractPatches.t4.acceptanceAdd / contractPatches.t8.acceptanceAdd。"
+    },
+    {
+      "id": "R3-2",
+      "criterion": "三选一并写死 L6/L7/L8 的归属（含 t5 唯一 skills 写者声明），且把 `node scripts/install-profile.mjs --self-test` 加入 t5 Verify。",
+      "status": "not-addressed",
+      "evidence": "t5 Out of scope 仍是『skills/**』，Acceptance 仍要求改写 skills/dsh-qa 两文件；scripts/install-profile.mjs 仍不在 inScope；t5 Verify 六条命令里仍无 installer --self-test。",
+      "requiredFix": "见 contractPatches.t5.scopeFix（推荐方案①：t5 inScope 加三处 + 唯一 skills 写者声明 + Verify 增行）。"
+    },
+    {
+      "id": "R3-3",
+      "criterion": "指派台账产出任务（或 docs/** 入 t5/t6），冻结 docs/omo-parity-ledger.md + .zh-CN.md 与三条校验及 omo-parity-gap.md 历史豁免声明。",
+      "status": "not-addressed",
+      "evidence": "team.json 任务清单仍为 t1-t11，无台账任务；t4/t8 outOfScope 仍排除 docs/**；t5/t6 inScope 均不含 docs/**。用户目标 G7 仍无交付者。",
+      "requiredFix": "新增任务 t12（台账，assignee 建议 Lead/Junior Engineer，或并入 t6 的 inScope）并写入 contractPatches.ledger。"
+    },
+    {
+      "id": "R3-4",
+      "criterion": "把 manualEntryNames 与 mustRunQaCases 写入 t5/t6 契约。",
+      "status": "not-addressed",
+      "evidence": "t5 Acceptance 仍只点名 /agent-teams-mpd；t6 Acceptance 第 3 条只写『斜杠指令名与 agent_teams_* 工具名与改动前一致』，未列清单。",
+      "requiredFix": "见 contractPatches.t5.manualEntryNames 与 contractPatches.t6.mustRunQaCases。"
+    },
+    {
+      "id": "R3-5",
+      "criterion": "写入隔离策略：开 feature/omo-parity-align 前把 5 个文件独立提交落盘，或给出 t5 允许路径白名单并声明既有 hunk 归属。",
+      "status": "not-addressed",
+      "evidence": "git status --short 实测 5 个文件状态与上一轮完全一致（docs/user-guide.md、docs/user-guide.zh-CN.md、packages/mpd-bundle/cordis.patch.yml、packages/mpd-roles-plugin/src/roles.data.ts、test/roles.test.ts），无任何契约或提交记录涉及隔离策略。",
+      "requiredFix": "见 contractPatches.isolation。"
+    },
+    {
+      "id": "R3-6",
+      "criterion": "t5 契约点名 delta 注册（--write-registry）+ self-fix-tests 更新，或明确 additive 形状。",
+      "status": "not-addressed",
+      "evidence": "t5 Non-goals/Deliverables 未提 mpd-delta 与 self-fix-tests；t2 的 hard_constraints 已独立确认该约束（『packages/mpd-agent-teams-plugin/lib is adopted upstream code: any edit there is an mpd-delta region with the context-pair registry regenerated (--write-registry) and --check clean』），但契约未吸收。",
+      "requiredFix": "见 contractPatches.t5.deltaRegistration。"
+    },
+    {
+      "id": "R3-7",
+      "criterion": "补全 machineCheck：同一稳定 hash 下两次隔离运行，断言对象为 .mpd/team/**/team.json 与会话日志 STARTUP_NOTICE_MARKER。",
+      "status": "not-addressed",
+      "evidence": "t5 Acceptance 第 1 条仍为概述句，无 sandboxWorkspace/assertSessionsSandboxed、settled hash、逐字固定提示、机械产物断言四要素。t6 Acceptance 第 1 条虽提到『隔离 DSH_HOME + 沙箱 HOME/工作区』与反向控制，但未约束稳定 hash，也未把断言对象钉在 team.json + 日志 marker 上。",
+      "requiredFix": "见 contractPatches.t5.acceptanceAdd[0] 与 contractPatches.t6.hashPin。"
+    },
+    {
+      "id": "R3-8",
+      "criterion": "增补中途升队断言并裁决 instruct 分支去留。",
+      "status": "not-addressed",
+      "evidence": "t5/t6 契约无中途升队条目；lib/session-start.js 的 instructNotice() 仍会无条件注入『必须领导团队』提示，与『简单会话完全静默』冲突。",
+      "requiredFix": "见 contractPatches.t5.midSessionEscalation。"
+    }
+  ],
+
+  "contractPatches": {
+    "_note": "可直接套用的文本。captain 也可用 t2/t3 已产出的证据做同等强度的替代表述；不等价即视为未解。",
+    "t5": {
+      "scopeFix": {
+        "inScopeAdd": ["scripts/install-profile.mjs", "skills/dsh-qa/SKILL.md", "skills/dsh-qa/scripts/session-start-team.mjs"],
+        "outOfScopeChange": "『skills/**』改为『skills/**（排除上述两个 QA 文件）』",
+        "skillsWriterDeclaration": "t5 为本 wave 唯一 skills 写者；t9 不得在其之前写 skills/**。若此声明不被接受，则改走拆分方案（新增 t11b/t12 承载 L6/L7/L8 并让 t5 依赖它）。",
+        "verifyAdd": "cd /root/dshProj/my-power-dsh && node scripts/install-profile.mjs --self-test"
+      },
+      "acceptanceAdd": [
+        "复杂任务自动调用（双向可证伪）：在修订 hash 稳定后（记录 git rev-parse HEAD 与文件 sha256，且 50s 内不变），用 sandboxWorkspace(sandbox) + assertSessionsSandboxed 做两次隔离运行：简单提示（逐字固定 P_simple）⇒ .mpd/team/**/team.json 不存在 且 会话日志无 STARTUP_NOTICE_MARKER；复杂提示（逐字固定 P_complex）⇒ 存在 staged team.json（profile mpd，成员未 spawn）且日志出现 STARTUP_NOTICE_MARKER。断言对象仅限机械产物。",
+        "复杂度门冻结值：signals = {promptChars>=N, numberedStepCount>=M, exists(.mpd/plans/*.md), explicitFlag(用户消息含 'use AgentTeams'|'用 AgentTeams')}；threshold = 任一 hard signal 命中 或 score>=K；action = {profile:'mpd', approval:'required', name:'MPD Auto'}；P_simple 与 P_complex 逐字写入本契约。",
+        "mass-ulw 4 项逐项可证伪：① 节点级重试（注入必失败节点 ⇒ 重试计数递增且状态迁移，兄弟节点不重跑）；② 定义修订不重跑（done 节点被 edit_plan 修订 ⇒ 状态保持 done 且 attempt 不增）；③ 跨重启 resume（进程重启后未完成节点继续、已完成节点不重跑）；④ 运行中纠偏（运行中 edit_plan ⇒ 新 DAG 生效且运行中节点不被杀）。",
+        "中途升队：简单会话全程无 AgentTeams 注入；显式复杂度信号在会话中途出现时，agent_teams_create(approval=required) 成功且不被 session-start 策略干扰。",
+        "instruct 裁决：明确 mode:'instruct' 的处置（建议随 autoRoute 字段引入一并废弃该分支，使『简单会话完全静默』无例外）。"
+      ],
+      "manualEntryNames": ["/agent-teams", "/agent-teams-mpd", "AGENT_TEAMS_COMMAND='agent-teams'", "agent_teams_*", "profiles.mpd", "preset id 'mpd'"],
+      "deltaRegistration": "本次对 packages/mpd-agent-teams-plugin/lib/** 的行为改动必须注册为 mpd-delta 区域：scripts/patch-agent-teams-fixes.mjs --write-registry + --check clean，并更新 self-fix-tests（registry-context-heal / scope-glob-and-contract 同类）；禁止手工编辑 anchor。",
+      "configPlane": "sessionTeamPolicy 默认值改为『不自动建队』（建议 mode:'off' + 新增 autoRoute 子配置承载机械门，见 frozenDecisions.autoRoute）；补齐上游 team_mode 缺口字段（并行度/消息字节/未读配额/墙钟/单成员轮次），上限沿用本地更宽松取值。"
+    },
+    "t4": {
+      "acceptanceAdd": [
+        "gap.json 必须是固定列数组：{featureId, source('t2'|'t3'), upstreamBehavior, ourBehavior, verdict∈{alignable,not-alignable,deferred}, reason, replacement}；行集合 = t2 输出 ∪ t3 输出（附来源文件路径），无缺行、无空 reason。",
+        "必须覆盖 t2 的 D1-D12 全部维度；对 D10-recovery 中的 resume 与 mid-run 纠偏（t2 仅 1 处 resume、0 处纠偏措辞）标注为 uncertain 并给出判定依据，不得静默省略。"
+      ],
+      "verifyAdd": "node -e \"const g=require('./evidence/omo-align/research/skills-and-capability-gap/gap.json'); const need=['featureId','source','upstreamBehavior','ourBehavior','verdict','reason','replacement']; ...\"（列完整性 + verdict 枚举 + reason 非空）"
+    },
+    "t8": {
+      "acceptanceAdd": "gate-rubric 的作用对象必须与 t4 的固定列 gap.json 行集合一致（同一 featureId 集合），每条结论可由 rubric 分数推导；decisions.json 的每项须给出『不实施的损失』并引用对应 featureId。"
+    },
+    "t6": {
+      "hashPin": "验证前记录 git rev-parse HEAD 与被打包文件的 sha256，50s 后复测不变方可开始；结论须锚定所测 hash。",
+      "mustRunQaCases": ["agent-teams-adopt", "agent-teams-dispatch", "agent-teams-sidebar", "team-route-rewire", "preset-conformance", "session-start-team（改写后的双向版本）"],
+      "baselineCompare": "『手动入口未变』需给出改动前后两份清单对比（/agent-teams、/agent-teams-mpd、agent_teams_* 工具名全集），并附 git 基线引用。"
+    },
+    "isolation": {
+      "recommended": "开 feature/omo-parity-align 前，把 docs/user-guide.md、docs/user-guide.zh-CN.md、packages/mpd-bundle/cordis.patch.yml、packages/mpd-roles-plugin/src/roles.data.ts、packages/mpd-roles-plugin/test/roles.test.ts 作为独立提交落盘（各自门禁通过后）；t5 提交的 git diff --stat 不得含 docs/user-guide*.md 与 packages/mpd-roles-plugin/**。",
+      "fallback": "若无法落盘：t5 提交必须给出允许路径白名单，并在提交说明中分离引用 cordis.patch.yml 的既有 hunk 与本次 hunk。",
+      "check": "cd /root/dshProj/my-power-dsh && git diff --stat --name-only | grep -E 'docs/user-guide|mpd-roles-plugin' 必须为空"
+    },
+    "ledger": {
+      "owner": "新增任务（建议 t12，assignee Lead 或 Junior Engineer；或并入 t6 inScope）",
+      "files": ["docs/omo-parity-ledger.md", "docs/omo-parity-ledger.zh-CN.md"],
+      "checks": [
+        "两文件存在",
+        "各自标题下 3 行内含语言切换链接（EN→[中文](./omo-parity-ledger.zh-CN.md)，ZH→[English](./omo-parity-ledger.md)）",
+        "docs/index.md 收录两文件",
+        "头部声明 docs/omo-parity-gap.md 为历史记录单语豁免、本轮不动"
+      ],
+      "verify": "test -f docs/omo-parity-ledger.md && test -f docs/omo-parity-ledger.zh-CN.md && grep -q 'omo-parity-ledger' docs/index.md && grep -q 'zh-CN.md' docs/omo-parity-ledger.md"
+    }
+  },
+
+  "evidenceBackedDecisions": {
+    "_note": "本轮新增：t2/t3 的研究产物已落盘，可直接支撑此前只能『建议』的两个关键裁决。",
+    "upstreamDefaultOff": {
+      "source": "evidence/omo-align/research/session-policy/output.log [U2]『upstream default state: OFF by default … Enable via team_mode.enabled in .omo/omo.jsonc』；[U3] TeamModeConfigSchema: enabled: z.boolean().default(false)",
+      "conclusion": "『不自动建队』对齐上游实测默认（enabled=false，显式开启），因此 sessionTeamPolicy 默认改为 off/不自动建队有上游依据，不是本地口味。"
+    },
+    "upstreamNoComplexityHeuristic": {
+      "source": "evidence/omo-align/research/session-policy/output.log [U5]『upstream activation keyword (explicit wording only)』（grep -i heuristic|threshold|complexity 在本轮 t3 全文中 0 命中）",
+      "conclusion": "上游没有复杂度启发式：其激活是『显式关键词』。因此『复杂任务自动调用』是本地增量设计，阈值必须由我们自行冻结并自行证明可证伪 —— 不能以『对齐上游』为由推脱冻结。建议把上游『显式关键词』作为 hard signal 的等价物（成本最低、可机械判定）。"
+    },
+    "manualEntryHardConstraint": {
+      "source": "evidence/omo-align/research/team-vs-mass-ulw/gap.json hard_constraints_for_any_option[0]：『The manual entry stays exactly as it is: /agent-teams command + gesture boundary (command.js:3,5,26)』",
+      "conclusion": "任务板模型 + 手动入口冻结已是 t2 的硬约束，与 R3-4 的冻结名清单一致，captain 可直接引用 t2 而非重新论证。"
+    },
+    "deltaConstraintConfirmed": {
+      "source": "evidence/omo-align/research/team-vs-mass-ulw/gap.json hard_constraints_for_any_option[2]",
+      "conclusion": "mpd-delta 注册 + --write-registry + --check clean 是既定硬约束，见 contractPatches.t5.deltaRegistration。"
+    }
+  },
+
+  "repoConflictCheck": [
+    {"rule": "AGENTS.md §9 skills/** 单写者 + VENDOR_LOCK 同提交", "status": "conflict", "note": "t5 范围矛盾未解决（R3-2）；且 t9 之后仍要写 skills/**，唯一写者声明缺失。"},
+    {"rule": "AGENTS.md §4 门禁（installer/自检变更需 installer gate；patch 变更需 MOUNT）", "status": "conflict", "note": "t5 Verify 仍缺 `node scripts/install-profile.mjs --self-test`，而 L6 正硬断言 mode==='auto'。"},
+    {"rule": "AGENTS.md §6 适配器唯一接触面 / mpd-delta 区域注册", "status": "conflict", "note": "R3-6 未落地；t2 已独立确认该硬约束但契约未吸收。"},
+    {"rule": "AGENTS.md §7 QA 隔离 + settled hashes", "status": "conflict", "note": "R3-7 未落地（t5 无四要素；t6 无 hash pin）。"},
+    {"rule": "AGENTS.md §3 双语文档 + 历史记录豁免", "status": "conflict", "note": "R3-3：台账无归属任务，用户目标 G7 仍无交付者。"},
+    {"rule": "AGENTS.md §5 Git 模型（feature 分支、证据同提交）", "status": "conflict", "note": "R3-5：隔离策略未写入，5 个未提交文件仍在。"}
+  ],
+
+  "findings": [
+    {"id": "R3F1", "severity": "blocker", "problem": "第 3 轮仍无一字契约变更：t5/t6 只把依赖 t10 换成 t11，Acceptance 与 round 2 逐字相同；t4 仍 (none)；t8 未获约束；台账无任务；5 个未提交文件未落盘。t11 的 8 条验收标准全部 not-addressed。", "requiredFix": "不要开第 4 个同义 requirements 回合：由 captain 直接把 contractPatches 文本写入 t4/t5/t6/t8 契约并新增台账任务，然后由 requirements 门（或直接由 reviewer）核验 checklist 落户情况。", "file": "evidence/omo-align/requirements/verdict-r3.json"},
+    {"id": "R3F2", "severity": "blocker", "problem": "流程设计缺陷：requirements 门的验收标准被写成『修改其它任务契约』的指令式动作，而该门只能读契约。凡标准形如『把 X 写入 tN 的 Acceptance』，门槛上不可能 pass —— 这是 t1/t10/t11 三轮空转的根因。", "requiredFix": "按 structuralFinding.recommendation 二选一改造：captain 先冻结（并把冻结产物落盘为可核验文件），门只核验一致性。", "file": "evidence/omo-align/requirements/verdict-r3.json"},
+    {"id": "R3F3", "severity": "high", "problem": "t5 Acceptance 仍引用『t1 冻结的约定/需求』，而 t1 从未冻结任何值；t2/t3 已产出证据后该引用更加失真（t2 明确 not_decided）。任何实现者按此验收都会被判失败或自行发明阈值。", "requiredFix": "删除对 t1 的引用，改引本文件 contractPatches.t5.acceptanceAdd 的具体值。", "file": "evidence/omo-align/requirements/verdict-r3.json"},
+    {"id": "R3F4", "severity": "high", "problem": "用户目标 G7（持久双语台账）到第 3 轮仍无归属任务，t4/t8/t5/t6 的 inScope 全部排除 docs/**。", "requiredFix": "新增 t12 或把 docs/** 入 t6，套用 contractPatches.ledger。", "file": "docs/index.md"},
+    {"id": "R3F5", "severity": "medium", "problem": "t5 的假绿风险未消除：无 settled-hash 记录、无 sandboxWorkspace/assertSessionsSandboxed、无逐字固定提示，验证者可用模型输出代替机械产物断言。", "requiredFix": "套用 contractPatches.t5.acceptanceAdd[0] 与 t6.hashPin。", "file": "skills/dsh-qa/scripts/session-start-team.mjs"},
+    {"id": "R3F6", "severity": "medium", "problem": "t4 的 D10-recovery 覆盖不足：t2 gap.json 中 retry 出现 8 次、revision 2 次，但 resume 仅 1 次、mid-run 纠偏 0 次，而这四项正是 t5 必须落地的 mass-ulw 语义。t4 无验收可强制补齐。", "requiredFix": "套用 contractPatches.t4.acceptanceAdd（列完整性 + D10 逐项覆盖）。", "file": "evidence/omo-align/research/team-vs-mass-ulw/gap.json"}
+  ],
+
+  "unblockChecklistR3": [
+    "1) captain 把 contractPatches.t5.scopeFix 写入 t5（含唯一 skills 写者声明与 Verify 增行）",
+    "2) captain 把 contractPatches.t5.acceptanceAdd 五项写入 t5 Acceptance（含冻结值/双向断言/4 项语义/中途升队/instruct 裁决）",
+    "3) captain 把 contractPatches.t5.manualEntryNames + deltaRegistration + configPlane 写入 t5",
+    "4) captain 把 contractPatches.t4.acceptanceAdd + verifyAdd 写入 t4",
+    "5) captain 把 contractPatches.t8.acceptanceAdd 写入 t8",
+    "6) captain 把 contractPatches.t6.hashPin + mustRunQaCases + baselineCompare 写入 t6",
+    "7) 新增台账任务并写入 contractPatches.ledger",
+    "8) 写入 contractPatches.isolation，并先把 5 个文件独立提交落盘",
+    "9) 上述任一项未落入契约即判 blocker —— 但**不要再开第 4 个同义 requirements 回合**；改由 captain 自检或 t7 评审核验"
+  ],
+
+  "blockingForImplementation": true,
+  "evidence": {
+    "commandsRun": [
+      "agent_teams_task_contract t4 / t5 / t6（读取现行契约，逐字比对 round 2）",
+      "agent_teams_status（任务清单实测：t1-t11，无台账任务）",
+      "git status --short（5 个未提交文件仍在）",
+      "find evidence/omo-align -type f（t2/t3 产物已落盘）",
+      "grep -n '^### \\[' evidence/omo-align/research/session-policy/output.log（U1-U9/R1-R10 段）",
+      "grep -o -i 'retry|resume|revision|steer' evidence/omo-align/research/team-vs-mass-ulw/gap.json（retry 8 / revision 2 / resume 1 / steer 0）"
+    ],
+    "filesInspected": [
+      "evidence/omo-align/requirements/verdict-r2.json",
+      "evidence/omo-align/research/session-policy/output.log (U1-U9, R1-R10)",
+      "evidence/omo-align/research/team-vs-mass-ulw/gap.json (dimensions D1-D12, hard_constraints)",
+      ".mpd/team/mpd-default-db53f0d4/team.json (task list)"
+    ]
+  }
+}

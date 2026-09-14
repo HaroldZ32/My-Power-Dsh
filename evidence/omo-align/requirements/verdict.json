@@ -1,0 +1,416 @@
+{
+  "schema": "mpd.requirements.verdict/v1",
+  "task": "t1",
+  "kind": "requirements",
+  "round": 1,
+  "verdict": "needs_revision",
+  "verdictReason": "需求方向（7 项裁决）与仓库绑定规范整体不冲突，但 5 条验收标准当前不可机械验证（启发式门阈值/谓词未定、mass-ulw 语义未落成可证伪断言、功能面对齐未要求逐条判定、双语台账边界未定义、QA 用例的旧断言与新方向直接冲突），且『会话启动条款现行文字』的落点清单把不存在的 AGENT.md 当作条款位置。冻结实现契约前必须按 findings 补齐。",
+  "inputs": {
+    "captainBriefing": {
+      "messageId": "90c2501c-bb06-403a-97c2-7b4d5b380b7e",
+      "from": "captain",
+      "receivedAt": 1789306534062,
+      "summary": "用户 2026-09-13 亲口确认的 7 项裁决（冻结版）"
+    },
+    "upstream": {
+      "path": "/root/dshProj/oh-my-openagent",
+      "verifiedVersion": "5.0.0-beta.62",
+      "verifiedHead": "d1557a4b48fdbec06a7144fdc4afa3e65c6523ed",
+      "verifiedHeadBranch": "dev",
+      "note": "本任务只核对版本存在性（package.json version + git describe = v5.0.0-beta.62）；语义差异矩阵由 t2/t4 负责，本裁决不代替它们。"
+    },
+    "repoBaseline": {
+      "cwd": "/root/dshProj/my-power-dsh",
+      "branch": "dev",
+      "vendorSkillsTreeSha": "afe718251965a933b6a15b40bbe6ebf2e5222996fecb48b05fc8e770e390fcad",
+      "vendorSkillsFileCount": 328,
+      "uncommittedChanges": [
+        "docs/user-guide.md",
+        "docs/user-guide.zh-CN.md",
+        "packages/mpd-bundle/cordis.patch.yml",
+        "packages/mpd-roles-plugin/src/roles.data.ts",
+        "packages/mpd-roles-plugin/test/roles.test.ts"
+      ]
+    }
+  },
+
+  "userGoalsMapping": [
+    {
+      "goalId": "G1",
+      "userWording": "功能上对齐 OMO 最新版（/root/dshProj/oh-my-openagent @ v5.0.0-beta.62，我们基线 8c57e46/beta.20）",
+      "coveredBy": ["裁决5 (A)", "t2", "t4", "t8", "A4-补充要求", "A5-补充要求"],
+      "coverage": "partial",
+      "gap": "『对齐』本身未定义完成判据：t2/t4 产出差异矩阵，但没有任何验收要求『每条差异必须给出 可对齐/不可对齐 判定 + 理由 + 替代方案』的机械清单。裁决5 已写『全量清单并逐条判定』，需提升为 t4/t8 的验收标准而非背景说明。"
+    },
+    {
+      "goalId": "G2",
+      "userWording": "agent-teams 不再作为默认存在，改为复杂任务时自动调用",
+      "coveredBy": ["裁决1 (A)", "A1", "A2", "A3", "A8"],
+      "coverage": "partial",
+      "gap": "『复杂』没有机械定义：A2 只要求『可机械观察的信号』，但未冻结判据集合、阈值、以及命中后的动作参数（profile/approval/团队名）。裁决1 列出 4 类信号（提示词长度/步骤数、显式措辞、已有 plan 文件、显式标志）—— 需要写成可执行的谓词与阈值。"
+    },
+    {
+      "goalId": "G3",
+      "userWording": "功能对齐 mass-ulw",
+      "coveredBy": ["裁决2 (A)", "A3", "A9"],
+      "coverage": "partial",
+      "gap": "A3 只要求逐项命令与证据，未要求把 4 项语义（节点级重试 / 定义修订后不重跑已完成节点 / 跨重启 resume / 运行中纠偏）写成『行为级可证伪断言』。语义声明与行为断言之间缺一层：每条语义必须有 RED-GREEN 对照或状态机断言。"
+    },
+    {
+      "goalId": "G4",
+      "userWording": "只对齐功能（不做上游结构/命名照搬）",
+      "coveredBy": ["裁决2 (A) 保留任务板模型", "裁决4 (A) 上限沿用本地", "A4"],
+      "coverage": "partial",
+      "gap": "『只对齐功能』的可机械判据未写：需要一条验收要求『不得引入上游包名/命名空间/结构照搬；判据 = 复核 diff 只落在行为/配置语义，不改 mpd_* 命名与工具表面名』。"
+    },
+    {
+      "goalId": "G5",
+      "userWording": "手动调用的指令名保持不变",
+      "coveredBy": ["A6"],
+      "coverage": "covered",
+      "note": "A6（手动入口名不变 + QA 复跑）方向正确，补强点见 F6（增删判定表）。"
+    },
+    {
+      "goalId": "G6",
+      "userWording": "先调研 + 设门禁，调研完带结论回来问用户再决定是否实施（技能语料）",
+      "coveredBy": ["裁决3", "t4", "t8", "t9(条件)", "A7"],
+      "coverage": "covered",
+      "note": "A7 已把『条件性 + 单写者 + VENDOR_LOCK 同提交』写成硬约束，方向正确。"
+    },
+    {
+      "goalId": "G7",
+      "userWording": "差距记录写成持久台账并保持中英双语（历史记录类单语）",
+      "coveredBy": ["裁决6", "A5"],
+      "coverage": "partial",
+      "gap": "『新增人类面向台账』的文件路径、命名、language-switch 链接、以及『既有 docs/omo-parity-gap.md 保持单语即时豁免』的边界未冻结。A5 的判据需要写出具体文件与校验命令。"
+    },
+    {
+      "goalId": "G8",
+      "userWording": "仓库流程：feature 分支（建议 feature/omo-parity-align）+ 证据同提交 + 全量门禁 + --no-ff 回 dev；已有未提交改动不混入",
+      "coveredBy": ["裁决7", "A3", "A8-补充要求"],
+      "coverage": "covered",
+      "note": "方向正确；补充：A8 需把 §4 门禁表逐条成文（含 MOUNT 与 preset-conformance），并把『未提交改动的隔离』写成机械判据（同提交路径白名单）。"
+    }
+  ],
+
+  "acceptanceCriteria": [
+    {
+      "id": "A1",
+      "criterion": "需求裁决不再把『每个会话必须处于团队中』当作不变量；该旧不变量的全部落点被指名并改写",
+      "machineCheck": "test -f evidence/omo-align/requirements/verdict.json && grep -c '不再默认' 判定书；t5 后：grep -rn 'every session.*MUST start inside a team\\|每个符合条件的会话启动时都必须进入一个 team\\|Never run a session outside a team\\|Never work a session outside a team' 在改写范围内返回 0 命中（见 oldInvariantLandingPoints）",
+      "requiredNow": true,
+      "status": "covered"
+    },
+    {
+      "id": "A2",
+      "criterion": "复杂度门必须可证伪（简单提示 vs 复杂提示对照），不允许恒真断言；简单提示下必须完全静默（不建队、不注入通知）",
+      "machineCheck": "同一修订快照（hash 稳定）下两次隔离 headless 运行：(a) 简单提示 ⇒ .mpd/team/**/team.json 不存在 且 会话日志无 STARTUP_NOTICE_MARKER；(b) 复杂提示 ⇒ 存在 staged team.json（profile mpd）且日志出现通知。两条断言任一失败即 fail。",
+      "requiredNow": true,
+      "status": "partial",
+      "gap": "缺『复杂』的冻结谓词/阈值，见 F2；缺『同一快照 hash 稳定』约束，见 F8。"
+    },
+    {
+      "id": "A3",
+      "criterion": "mass-ulw 4 项语义（节点级重试 / 定义修订不重跑已完成节点 / 跨重启 resume / 运行中纠偏）逐项有可证伪行为断言与证据",
+      "machineCheck": "每项一条命令级断言 + evidence 记录（见 A9 的逐项展开）",
+      "requiredNow": true,
+      "status": "partial",
+      "gap": "未指定『语义 → 断言』映射，见 F4。"
+    },
+    {
+      "id": "A4",
+      "criterion": "目标 1-4 完整实现 + 其余功能面全量清单逐条判定（可对齐/不可对齐 + 理由 + 替代方案）",
+      "machineCheck": "差异矩阵/清单为机械可核对的表：每行 有 判定 ∈ {alignable, not-alignable, deferred} + 理由 + 替代方案；行集合覆盖 t2/t4 枚举的全部功能面",
+      "requiredNow": true,
+      "status": "partial",
+      "gap": "『全量』与『逐条判定』缺行集合来源与完成判据，见 F4。"
+    },
+    {
+      "id": "A5",
+      "criterion": "持久差距台账为新增人类面向文档并中英双语同步；历史记录类豁免边界写清",
+      "machineCheck": "test -f docs/<新台账>.md && test -f docs/<新台账>.zh-CN.md && 两文件均在标题下 3 行内含语言切换链接 && docs/index.md 收录",
+      "requiredNow": true,
+      "status": "partial",
+      "gap": "文件路径/命名/是否进 docs/index.md 未定；既有 docs/omo-parity-gap.md 的豁免声明需成文，见 F5。"
+    },
+    {
+      "id": "A6",
+      "criterion": "手动调用入口名不变（/agent-teams、agent_teams_* 工具名、profile 名 mpd）",
+      "machineCheck": "diff 中不存在对 agent_teams_* 工具名/`/agent-teams` 斜杠命令/`profiles.mpd` 键的重命名；`node skills/dsh-qa/scripts/agent-teams-dispatch.mjs` 与 agent-teams-adopt 复跑通过",
+      "requiredNow": true,
+      "status": "partial",
+      "gap": "缺『允许新增/不允许重命名』的判定表与需要复跑的用例清单，见 F6。"
+    },
+    {
+      "id": "A7",
+      "criterion": "skills/** 单写者 + VENDOR_LOCK treeSha 同提交配对在 t9 被强制",
+      "machineCheck": "同一 commit 内 skills/** 变更集合非空 ⇒ VENDOR_LOCK.json 中 assets.skills.treeSha 变更且 `node scripts/verify-vendor.mjs` 退出 0；skills/** 无变更 ⇒ 无 re-pin",
+      "requiredNow": true,
+      "status": "covered",
+      "note": "当前基线 treeSha=afe71825…（328 files），t9 若任何 skills/** 字节变化必须单次 re-pin。"
+    },
+    {
+      "id": "A8",
+      "criterion": "仓库流程：feature 分支 + 证据同提交 + §4 全量门禁 + --no-ff 回 dev，且不混入工作区既有未提交改动",
+      "machineCheck": "分支名匹配 ^feature/；`bun test packages/...`、`bun run typecheck`、`node scripts/verify-vendor.mjs`、`node skills/dsh-qa/scripts/preset-conformance.mjs`、MOUNT 启动（bundle-lifecycle 或 mount-proof 模式）退出 0；提交路径白名单不含 docs/user-guide*.md、packages/mpd-roles-plugin/src/roles.data.ts、packages/mpd-roles-plugin/test/roles.test.ts",
+      "requiredNow": true,
+      "status": "partial",
+      "gap": "工作区确有 5 个未提交改动（含 cordis.patch.yml —— 它正是本次要改的文件），需显式隔离策略，见 F7。"
+    },
+    {
+      "id": "A9",
+      "criterion": "会话启动/协议/preset 文本改写后，机械行为门禁与文档门禁同时复跑通过",
+      "machineCheck": "node skills/dsh-qa/scripts/preset-conformance.mjs（含 --self-test）退出 0；MOUNT 启动 0 apply-crash 签名；bun test packages/mpd-agent-teams-plugin 退出 0；session-start-team 用例改写后（简单=静默 / 复杂=建队）双向通过",
+      "requiredNow": true,
+      "status": "partial",
+      "gap": "现有 session-start-team 用例断言与新方向冲突，见 F3。"
+    },
+    {
+      "id": "A10",
+      "criterion": "配置平面：sessionTeamPolicy 默认不再自动建队，且 team_mode 字段语义与上游对齐（并行度/消息字节/未读配额/墙钟/单成员轮次缺口补齐），上限沿用本地更宽松取值",
+      "machineCheck": "preset-conformance 通过（未知键会被 schemastery 静默保留 ⇒ 必须用安装版 schema 校验）；配置快照中 sessionTeamPolicy 默认 mode != auto；缺口字段存在且默认值等于本地取值",
+      "requiredNow": true,
+      "status": "covered"
+    }
+  ],
+
+  "textLandingPoints": {
+    "note": "F1 的核心产出：『会话必须在团队中』这条旧不变量的全部线上/线下文本落点（已逐个读文件确认，非猜测）。t5 改写范围必须覆盖此清单。",
+    "oldInvariantLandingPoints": [
+      {
+        "id": "L1",
+        "file": "packages/mpd-bundle/cordis.patch.yml",
+        "region": "agent-teams row config 注释 + sessionTeamPolicy 块（当前 mode: auto / profile: mpd / presets: [mpd] / name: MPD Default / approval: required）",
+        "binding": true,
+        "currentTextAnchor": "SESSION-START TEAM RULE (binding): every qualifying session MUST begin inside a team",
+        "requiredRewrite": "改为『非默认：仅在复杂任务启发式命中时自动 staged 建队；简单会话完全静默』+ 明确默认值"
+      },
+      {
+        "id": "L2",
+        "file": "packages/mpd-agent-teams-plugin/lib/session-start.js",
+        "region": "policyQualifies() (≈L66-85) + provisionedNotice() (≈L171-187) + instructNotice() (≈L193-200)",
+        "binding": true,
+        "currentTextAnchor": "`${STARTUP_NOTICE_MARKER}: this session must run inside a team` / `Never run a session outside a team`",
+        "requiredRewrite": "谓词从『无队即建』改为『复杂度门命中才建』；两条通知文本删除不变量表述"
+      },
+      {
+        "id": "L3",
+        "file": "presets/mpd/agent.cordis.yml",
+        "region": "persona 文本 SESSION STARTUP RULE 段（L80-86）",
+        "binding": true,
+        "currentTextAnchor": "SESSION STARTUP RULE (binding, mechanically enforced by the plugin): every session MUST start inside a team … Never work a session outside a team",
+        "requiredRewrite": "改为提示词层纪律：默认不建队；复杂度信号出现时（或会话中途升级）自动 staged 建队；保留手动 /agent-teams 入口"
+      },
+      {
+        "id": "L4",
+        "file": "packages/mpd-bundle/README.md",
+        "region": "『## Session-start team rule (binding)』整节（L22-42）",
+        "binding": true,
+        "currentTextAnchor": "Every qualifying session MUST begin inside a team",
+        "requiredRewrite": "整节改写为『complex-task auto-invocation』语义"
+      },
+      {
+        "id": "L5",
+        "file": "packages/mpd-bundle/README.zh-CN.md",
+        "region": "『## 会话启动团队规则（强制）』整节（L12-19）",
+        "binding": true,
+        "currentTextAnchor": "每个符合条件的会话启动时都必须进入一个 team",
+        "requiredRewrite": "与 L4 同提交同步改写（双语强制）"
+      },
+      {
+        "id": "L6",
+        "file": "scripts/install-profile.mjs",
+        "region": "agentTeamsRow.config.sessionTeamPolicy（≈L176-177）+ --self-test 断言（≈L261-262 要求 mode === 'auto'）",
+        "binding": true,
+        "currentTextAnchor": "SESSION-START TEAM RULE: mechanically enforce a team per mpd session",
+        "requiredRewrite": "row 配置与 self-test 断言同步改（否则安装器门禁会因新默认值而红）"
+      },
+      {
+        "id": "L7",
+        "file": "skills/dsh-qa/SKILL.md",
+        "region": "用例表 session-start-team 行（L65）",
+        "binding": true,
+        "currentTextAnchor": "a TRIVIAL prompt run (\"reply hello-ok\", no team words) leaves .mpd/team/<id>/team.json staged",
+        "requiredRewrite": "用例描述改为双向对照；**该文件属 skills/**，按 §9 单写者规则需与 t5 的 skills 变更合并为一次写入**"
+      },
+      {
+        "id": "L8",
+        "file": "skills/dsh-qa/scripts/session-start-team.mjs",
+        "region": "assessTeamState() 断言 trivial prompt ⇒ staged 11 成员 mpd 团队（L44-58）",
+        "binding": true,
+        "currentTextAnchor": "// Case session-start-team (fix: session-start team rule): prove that … provisions a default team for a qualifying session at its first step",
+        "requiredRewrite": "改为简单提示⇒无队+无通知、复杂提示⇒有此队 的双向可证伪断言（同一 skills 单写者批次）"
+      },
+      {
+        "id": "L9",
+        "file": "AGENTS.md",
+        "region": "§6 delta 表 A5 行（L236，session-start notices 的用途描述）+ §12 已知问题行（L490 提及 agent/session-start，但该行讲的是 member 初始化崩溃，不是团队不变量）",
+        "binding": false,
+        "currentTextAnchor": "| A5 | `lib/session-start.js:170-200` notices | no | default team profile name `mpd` |",
+        "requiredRewrite": "A5 描述更新为『复杂任务启发式门 + 通知文本』；§12 行按规则『不清理无关条目』保留，除非语义因本次实现变化（注册表需按 D8 重生成）"
+      }
+    ],
+    "nonFindings": [
+      {
+        "claim": "『AGENT.md 约定文本』是一处待改写的启动条款",
+        "reality": "仓库不存在 AGENT.md（ls AGENT*.md 仅 AGENTS.md，64075 bytes）。AGENT.md 只作为 dsh-agent-instructions 的 instructionFileCandidates 首选项出现（AGENTS.md L71；presets/mpd/agent.cordis.yml L56-58；packages/mpd-bundle/README.md L17-19）。",
+        "action": "t5 只需改写 AGENTS.md 与上述落点；不得新建 AGENT.md 来『承载』启动条款（会改变项目指令文件解析优先级与仓库语义）。"
+      }
+    ]
+  },
+
+  "repoConflictCheck": [
+    {
+      "rule": "AGENTS.md §4 门禁：任何 patch/preset 变更 REQUIRED MOUNT 启动；工具 schema 变更必需真实挂载 boot",
+      "status": "compliant",
+      "note": "A9 已把 preset-conformance + MOUNT 启动写成机械判据。注意 --dump-config 不能作为 plugin 加载证据。"
+    },
+    {
+      "rule": "AGENTS.md §6 适配器唯一接触面（agent-teams/lib 为已采纳上游主代码，本地改动必须走 mpd-delta 注册区域）",
+      "status": "conflict-risk",
+      "note": "拟新增的『复杂度启发式门』落在 lib/session-start.js。若直接改上游函数体，则需注册为 mpd-delta 区域（beforeContext/afterContext 上下文对）；且按 §6 的 F3/D13/D14 教训：REPLACEMENT-shaped delta 在人工 re-materialize 后拒绝自愈并 exit 1 —— 新 delta 必须设计成 additive 或同步更新 registry（--write-registry）与 self-fix-tests。"
+    },
+    {
+      "rule": "AGENTS.md §7 QA 隔离：DSH_HOME 不隔离 WORKSPACE；必须 sandboxWorkspace + assertSessionsSandboxed；禁止在真实工作区留下 .mpd/team 记录",
+      "status": "conflict-risk",
+      "note": "复杂度门的对照实验天然要跑 headless 会话；若不沙箱工作区，会在仓库留下 .mpd/team/mpd-default-*（正是 mpd_workmate_rename/delete 的 in-use 扫描对象）。A2 的对照命令必须写明用 sandboxWorkspace(sandbox)。"
+    },
+    {
+      "rule": "AGENTS.md §9 skills/** 单写者 + VENDOR_LOCK 同提交配对（一个 wave 恰好一次 re-pin）",
+      "status": "conflict-risk",
+      "note": "L7/L8 在 skills/** 内，t5（实现）与 t9（技能实施）若都要动 skills/** 会形成两个写者。必须在冻结契约时指定本 wave 的单一 skills 写者：建议 t5 只写 L7/L8（不改语料库条目），t9 因此在 t5 之前不做任何 skills/** 写入；或把 L7/L8 一并划给 t9。二选一必须在契约里指名。"
+    },
+    {
+      "rule": "AGENTS.md §7『Verify on SETTLED hashes』",
+      "status": "conflict-risk",
+      "note": "A2 的双向对照必须钉住修订 hash 并在 settle 窗口后复测，否则会重演 wave 2 的『半回滚树』测量事故。"
+    },
+    {
+      "rule": "AGENTS.md §3 双语文档规则 + 豁免清单（plan-*.md/decisions.md/omo-parity-gap.md 等历史记录单语）",
+      "status": "needs-definition",
+      "note": "新增台账是『人类面向』⇒ 必须双语；docs/omo-parity-gap.md 保留单语（已在豁免清单 L21）。边界需在台账文档头部写一行豁免声明。"
+    },
+    {
+      "rule": "裁决7：工作区已有未提交改动不得混入",
+      "status": "conflict-risk",
+      "note": "packages/mpd-bundle/cordis.patch.yml 同时在『未提交改动』与 L1 改写目标中 —— 必须先决定：把该未提交改动作为 t5 前的独立提交落盘，还是让 t5 携带它并明确说明。"
+    }
+  ],
+
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "high",
+      "problem": "t1 验收标准第 3 条要求『指出会话启动条款现行文字需要改写的位置（AGENT.md 约定文本 + 包内协议文本）』，但仓库不存在 AGENT.md（仅为 instructionFileCandidates 首选项），真实的强制文本有 8 处（L1-L8），其中 skills/ 内 2 处、installer self-test 1 处被漏掉。按现表述冻结契约会漏改 installer 断言（会红）与 QA 用例（方向相反）。",
+      "requiredFix": "以 textLandingPoints.oldInvariantLandingPoints 的 L1-L8 替换原表述；显式声明『不新建 AGENT.md』；L9(AGENTS.md) 按 A5/D8 规则单独处理。",
+      "file": "evidence/omo-align/requirements/verdict.json"
+    },
+    {
+      "id": "F2",
+      "severity": "blocker",
+      "problem": "裁决1 把『复杂任务』交给启发式门，但没有任何验收标准冻结该门的谓词与阈值（『提示词长度/步骤数』多少算复杂？『已有 plan 文件』指 .mpd/plans/*.md 还是任意？『显式标志』是哪个字段？命中后 profile/approval/name 是什么？）。没有冻结值的门无法写出可证伪断言，也无法防止实现者事后调参到恒真。",
+      "requiredFix": "在 t5 契约里冻结：① 信号清单与每个信号的机械判据（例：prompt 字符数 ≥ N 或包含 ≥M 个编号/步骤标记；命中 .mpd/plans/*.md 存在；显式 flag 名）；② 命中后的动作参数（profile=mpd, approval=required, name 待定）；③ 简单/复杂两组固定测试提示（逐字写入 QA 用例，避免模型措辞漂移）。",
+      "file": "packages/mpd-agent-teams-plugin/lib/session-start.js"
+    },
+    {
+      "id": "F3",
+      "severity": "blocker",
+      "problem": "现有 QA 用例 session-start-team 断言的正是新方向的反面：TRIVIAL prompt 必须留下 staged 的 11 成员团队（skills/dsh-qa/scripts/session-start-team.mjs assessTeamState；skills/dsh-qa/SKILL.md L65）。同时 installer self-test 硬断言 sessionTeamPolicy.mode === 'auto'（scripts/install-profile.mjs L262）。若不在冻结契约里指名改写，t5 完成后这两处门禁将与新需求对撞（红），或实现者会绕过门禁。",
+      "requiredFix": "把 L6/L7/L8 明确划入 t5 的 inScope（或明确划给 t9 并说明依赖），并要求改写为双向断言：简单提示 ⇒ .mpd/team 无 team.json 且日志无 STARTUP_NOTICE_MARKER；复杂提示 ⇒ staged team.json 存在。",
+      "file": "skills/dsh-qa/scripts/session-start-team.mjs"
+    },
+    {
+      "id": "F4",
+      "severity": "high",
+      "problem": "裁决5（全量清单逐条判定）与裁决2（mass-ulw 4 项语义）目前只是背景叙述，没有任何验收标准把它们变成机械可核对的表或行为断言。t2/t4 可以交出一份散文式差异矩阵而不违规，t7 也无法判定『逐条判定』是否完成。",
+      "requiredFix": "为 t4/t8 增补验收：差异矩阵必须是有固定列名的表（featureId / upstreamBehavior / ourBehavior / verdict ∈ {alignable,not-alignable,deferred} / reason / replacement），且行集合 = t2+t3 枚举并集（附枚举来源）；为 t5 增补验收：mass-ulw 4 项语义各自附一条可证伪断言（重试：注入失败节点后重试计数与状态迁移；定义修订：修订后已完成节点不被重跑；resume：跨进程重启后未完成节点继续且已完成节点不重跑；纠偏：任务运行中 edit_plan 后新 DAG 生效且不在跑节点不被杀）。",
+      "file": "evidence/omo-align/requirements/verdict.json"
+    },
+    {
+      "id": "F5",
+      "severity": "medium",
+      "problem": "裁决6 的持久台账缺少落点定义：文件路径未定、是否收录 docs/index.md 未定、『历史记录类豁免』的边界只有一句口头描述（既有 docs/omo-parity-gap.md 在 AGENTS.md L21 豁免清单内，但新台账不在）。A5 的判据当前无法执行。",
+      "requiredFix": "冻结：新增 docs/omo-parity-ledger.md + docs/omo-parity-ledger.zh-CN.md（命名可议，但必须在契约里写死），标题下 3 行内语言切换链接，docs/index.md 收录；既有 docs/omo-parity-gap.md 标注为历史记录单语并**不得**在本轮改动（否则触发双语同步要求）。",
+      "file": "docs/index.md"
+    },
+    {
+      "id": "F6",
+      "severity": "medium",
+      "problem": "裁决5/6 与 A6 都涉及既有表面，但没有一张『允许新增 / 禁止重命名』的判定表，也没有列出哪些既有 QA 用例必须复跑。下游无法判断某个改动是否违反『手动调用指令名保持不变』。",
+      "requiredFix": "冻结判定表：冻结名 = agent_teams_* 全套、/agent-teams 斜杠命令、profiles.mpd 键、mpd preset id；允许新增 = 配置字段（team_mode 缺口字段）、staged 建队的内部逻辑、doc/台账；并在 A6 列出必跑用例（agent-teams-adopt、agent-teams-dispatch、agent-teams-sidebar、team-route-rewire、preset-conformance）。",
+      "file": "skills/dsh-qa/SKILL.md"
+    },
+    {
+      "id": "F7",
+      "severity": "medium",
+      "problem": "工作区已有 5 个未提交改动，其中 packages/mpd-bundle/cordis.patch.yml 正是本次 L1 的改写目标，而裁决7 要求不得混入。当前没有机械判据区分『既有未提交改动』与『本次改动』。",
+      "requiredFix": "冻结隔离策略二选一并写入契约：① 开 feature 分支前先把这 5 个文件作为独立提交落盘（推荐，前提是它们已通过自身门禁）；② 若不能落盘，则 t5 提交必须给出路径白名单，并把 cordis.patch.yml 的既有 diffhunk 与本次 hunk 在提交说明中分离引用。",
+      "file": "packages/mpd-bundle/cordis.patch.yml"
+    },
+    {
+      "id": "F8",
+      "severity": "medium",
+      "problem": "A2 的双向对照缺三条隔离/稳定性约束：必须用 sandboxWorkspace + assertSessionsSandboxed（否则在仓库留下 .mpd/team 记录）、必须在 hash 稳定的修订快照上测（§7 settled hashes）、必须钉住两组提示文本（模型措辞漂移会让断言不稳定）。现有表述『两条断言命中』不足以让验证者照做。",
+      "requiredFix": "把三条约束写进 A2 的 machineCheck 文本，并要求断言对象是机械产物（.mpd/team 状态 + 会话日志标记），而不是模型自然语言输出。",
+      "file": "skills/dsh-qa/scripts/lib/workspace-isolation.mjs"
+    },
+    {
+      "id": "F9",
+      "severity": "low",
+      "problem": "裁决1 要求『保留提示层纪律允许会话中途升队』，但没有任何验收标准覆盖会话中途升队路径（只在裁决4 的配置平面里被间接提到）。同时『简单任务完全静默』要求『不注入通知』，而 session-start.js 的 mode: 'instruct' 分支会无条件注入提示 —— 新语义下 instruct 模式的定位需明确。",
+      "requiredFix": "为 t5 增补一条行为断言：简单会话全程无 AgentTeams 注入；显式复杂度信号在会话中途出现时，captain 可走 agent_teams_create(approval=required) 升队且不受 session-start 策略干扰；并明确 mode: instruct 在新语义下保留/废弃。",
+      "file": "packages/mpd-agent-teams-plugin/lib/session-start.js"
+    }
+  ],
+
+  "frozenInvariants": [
+    "agent-teams 不是默认：简单会话不建队、不注入任何通知、不产生 .mpd/team 记录。",
+    "手动入口名冻结：agent_teams_* 工具名、/agent-teams 斜杠命令、profiles.mpd 键、mpd preset id 一律不改名。",
+    "任务板模型保留：不替换为上游 mass-ulw 的运行器，只补 4 项关键语义。",
+    "上限字段沿用本地更宽松取值（不照搬上游 8 成员/4 并行）。",
+    "skills/** 单写者 + VENDOR_LOCK treeSha 同提交、每 wave 恰好一次 re-pin。",
+    "证据与改动同提交；feature 分支 + --no-ff 合并回 dev；不混入既有未提交改动。"
+  ],
+
+  "downstreamContractImpact": {
+    "t5": [
+      "inScope 必须含 L1-L8（含 skills/ 内 L7/L8）与 installer self-test L6；或明确把 L6-L8 移交并声明依赖。",
+      "契约需冻结复杂度门的谓词/阈值/动作参数与两组固定测试提示（F2）。",
+      "契约需含 sandboxWorkspace/assertSessionsSandboxed 与 settled-hash 约束（F8/F3）。",
+      "若改 lib/session-start.js 行为体，需按 §6/D8 走 mpd-delta 注册区域并更新 self-fix-tests（避免 re-materialize 后无法自愈）。"
+    ],
+    "t4": ["输出必须是固定列的判定表，行集合 = t2+t3 枚举并集，逐条 verdict+reason+replacement（F4）。"],
+    "t8": ["门禁规则需可机械套用：每条规则给出判定输入、输出来自哪张表/哪个文件（F4/F6）。"],
+    "t9": ["条件任务：仅当用户批准后执行；skills/** 写入必须是本 wave 唯一写者批次，同一提交内 re-pin VENDOR_LOCK.json 并跑 verify-vendor（A7）。"],
+    "t6": ["验证必须复跑 F3 改写后的双向用例 + preset-conformance + MOUNT 启动 + agent-teams-dispatch/adopt（A6/A9）。"]
+  },
+
+  "blockingForImplementation": true,
+  "evidence": {
+    "commandsRun": [
+      "ls -a /root/dshProj/my-power-dsh (root listing; AGENT.md absent)",
+      "git status --short; git branch --show-current (=dev)",
+      "git diff --stat (5 uncommitted files)",
+      "cd /root/dshProj/oh-my-openagent && grep -m1 '\"version\"' package.json; git describe --tags --abbrev=0 (5.0.0-beta.62)",
+      "grep -n sessionTeamPolicy dev tree (cordis.patch.yml:217-231, lib/index.js:91-98,202-209, install-profile.mjs:176-177,261-262)",
+      "sed -n '55,90p;165,205p' packages/mpd-agent-teams-plugin/lib/session-start.js (policyQualifies + notices)",
+      "sed -n '60,110p' presets/mpd/agent.cordis.yml (SESSION STARTUP RULE at L80-86)",
+      "grep -n session-start-team skills/dsh-qa/SKILL.md (L65) + head of skills/dsh-qa/scripts/session-start-team.mjs",
+      "grep -n skills VENDOR_LOCK.json (treeSha afe71825…, fileCount 328)"
+    ],
+    "filesInspected": [
+      "AGENTS.md (L17-22, L56-90, L236, L352, L490-491)",
+      "packages/mpd-bundle/cordis.patch.yml (L195-245)",
+      "packages/mpd-bundle/README.md (L1-42)",
+      "packages/mpd-bundle/README.zh-CN.md (L1-25)",
+      "presets/mpd/agent.cordis.yml (L56-110)",
+      "packages/mpd-agent-teams-plugin/lib/session-start.js (L55-90, L165-205, L230-269)",
+      "packages/mpd-agent-teams-plugin/lib/index.js (L91-99, L202-209)",
+      "scripts/install-profile.mjs (L165-200, L250-270)",
+      "skills/dsh-qa/SKILL.md (L60-65)",
+      "skills/dsh-qa/scripts/session-start-team.mjs (L1-60)",
+      "VENDOR_LOCK.json (L17-30)",
+      "docs/index.md (L15, L39-42)"
+    ]
+  }
+}

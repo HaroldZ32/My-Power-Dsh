@@ -178,5 +178,41 @@
     "finding": "The three folded-in fixes were implemented TWICE. This executor applied and verified them, then a concurrent writer switched branches in the shared checkout mid-task (reflog: checkout to a t25-closeout fix branch, commit, then a reset of dev), which discarded the uncommitted first attempt. The other writer's merge (06503cd) carries the same three fixes, including the identical trigger-comment rationale and the same line placement, so nothing needed re-committing; the second attempt was verified and discarded as a no-op.",
     "finalState": "No functional divergence: the declaration signature, the removed dead constant and the trigger note are present exactly once in the merged revision; the registry stays byte-faithful at 21 regions / 6 files.",
     "hazardForTheRecord": "A reset was run on the shared integration branch while a merge-parent was at its tip. That operation is only 'safe' by luck: had the tip been a merge commit, the reset would have dropped the entire merge with it. Multiple writers sharing one checkout must serialize branch switching, never run a reset on the shared branch, and never trust an uncommitted attempt to survive another writer's checkout."
+  },
+
+  "scanCriterionCorrection": {
+    "finding": "The first execution of this task scanned TRACKED files only. Two whole residue classes live outside that set and were missed by the executor AND by the first gate: (a) a build-artifact directory that is NOT gitignored, and (b) an untracked, non-ignored evidence directory left on disk after its tracked files were deleted.",
+    "criterionNow": "The gate must scan tracked files UNION non-ignored worktree files: `git ls-files --cached --others --exclude-standard`. A tracked-only scan is insufficient by construction. Exemptions stay: gitignored cache/scratch copies, and the live team-state directory of a running session.",
+    "classA_buildArtifact": {
+      "item": "the packed release directory produced by the pack script (dist/mpd-package)",
+      "state": "NOT gitignored, 1121 files / 15 MB, present on disk as a snapshot of an older pack run",
+      "measuredCorrection": "The report that this snapshot still carried withdrawn names was STALE by the time it was checked: it had been regenerated after the purge (mtime 00:33, post-dating the purge commit), and a full scan of it returned ZERO withdrawn-name hits — its two READMEs and both skill files already carry the neutral wording. It was still removed per the standing default (a build artifact is reproducible and is a distribution vector if re-packed or shipped).",
+      "preDeleteIdentity": {
+        "fileCount": 1121,
+        "size": "15 MB",
+        "blobs": [
+          "cb51489762957c0d3ee7dcb74573d63b4ad6449e",
+          "c121ed5c0e875031f0fd6a68a64a15ef37de5f63",
+          "d5b9593a6f90c34a7b185680399ba07a6a088e52",
+          "9aa5d61781e52f883ef30184eca4fe75153ab9e1"
+        ]
+      },
+      "action": "removed (rebuildable at any time with the pack script)"
+    },
+    "classB_untrackedEvidenceDir": {
+      "item": "the extraction-wave residual evidence directory (tracked files were deleted by this task; the directory itself survived on disk)",
+      "measuredBy": "the captain, independently",
+      "state": "866 untracked, NON-ignored files / 51 MB, including a nested dependency tree carrying the withdrawn package name in its literal paths",
+      "action": "removed by the captain; no commit was needed because nothing in it was tracked",
+      "lesson": "Deleting the tracked files of a directory does not delete the directory's untracked remainder. The worktree scan is what catches it."
+    },
+    "postFixScan": {
+      "trackedRealHits": 0,
+      "nonIgnoredWorktreeHits": 2,
+      "remaining": [
+        "an untracked scan script belonging to the verification task (token supplied at run time, so it never re-embeds a withdrawn name) — a self-reference that the verification task should exempt or exclude",
+        "a tracked verification record that discusses the exemption in prose — flagged to the captain, who has already opened a fix for the dangling references"
+      ]
+    }
   }
 }
