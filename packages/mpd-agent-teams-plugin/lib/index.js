@@ -27,7 +27,7 @@ import { collectArchivedTeamsActivity, collectTeamsActivity } from "./snapshot.j
 import { findTeamByCaptain } from "./state.js";
 import { formatProfilesForPrompt } from "./profiles.js";
 import { qualityPlanningPrompt } from "./quality-gates.js";
-import { installSessionTeamPolicy } from "./session-start.js";
+import { installInterjectionExpirySweep, installSessionTeamPolicy } from "./session-start.js";
 import { installTeamCapabilities } from "./capabilities.js";
 import { TEAM_TOOL_NAMES } from "./tool-names.js";
 import { RequestBodyError, authenticatedWebRoutes, readJsonRequest } from "./web-routes.js";
@@ -182,6 +182,18 @@ export function apply(ctx, config) {
     // MPD main agent). Installed AFTER tool registration so the shared profile
     // init path is available for provisioning.
     installSessionTeamPolicy(ctx, resolved);
+    //#region mpd-delta interjection-expiry-registration (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+    // R1 dormancy fix: install the expiry sweep HERE, in the composition root, and
+    // UNCONDITIONALLY — not inside installSessionTeamPolicy. The sweep is bookkeeping every
+    // session needs, not a feature of auto-routing, so gating it behind the team policy
+    // (which returns early when `sessionTeamPolicy.mode` is off) would silently reintroduce
+    // the hole this closes: a dormant team's past-due interjection requests would never
+    // resolve and their requesters would never be told that silence is a DENY.
+    //
+    // The function itself lives in session-start.js with the rest of the session-start
+    // behaviour; only its REGISTRATION is a composition-root concern.
+    installInterjectionExpirySweep(ctx, resolved);
+    //#endregion mpd-delta interjection-expiry-registration
     // Deterministic activation surfaces: the closed-namespace `/agent-teams`
     // host command (surfaces in the Web GUI slash menu via the Harness
     // ui-commands client) and the plain-text gesture boundary for surfaces

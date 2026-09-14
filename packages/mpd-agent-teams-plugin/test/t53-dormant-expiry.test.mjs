@@ -15,7 +15,7 @@ import {
   readInterjections,
   readUnreadMailbox,
 } from "../lib/state.js"
-import { installSessionTeamPolicy } from "../lib/session-start.js"
+import { installInterjectionExpirySweep, installSessionTeamPolicy } from "../lib/session-start.js"
 
 const STATE_DIR = join(".mpd", "team")
 const TEAM = "dormant-team"
@@ -94,8 +94,13 @@ test("R1 DORMANT: the SHIPPED session-start hook runs the sweep (and only the se
       on: (name, handler) => listeners.push({ name, handler }),
       logger: { info: (message) => logs.push(String(message)), warn: () => {}, error: () => {}, debug: () => {} },
     }
-    // the policy is DISABLED here on purpose: the sweep must not depend on auto-routing
+    // The sweep's registration lives in the COMPOSITION ROOT (lib/index.js), not inside
+    // installSessionTeamPolicy: it is bookkeeping every session needs, so it must not be
+    // gated behind the team policy. Installing the sweep directly is therefore the
+    // shipped behaviour, and the policy installer is asserted to NOT register it.
     installSessionTeamPolicy(ctx, { stateDir: STATE_DIR, sessionTeamPolicy: { mode: "off" } })
+    expect(listeners.length).toBe(0)
+    installInterjectionExpirySweep(ctx, { stateDir: STATE_DIR })
     expect(listeners.length).toBe(1)
     expect(listeners[0].name).toBe("agent/pre-step")
     // drive the listener exactly as the harness does, with the session's own cwd
@@ -118,7 +123,7 @@ test("R1 DORMANT: a failing sweep degrades to a warning and still returns the de
     // make the state root a path THROUGH a regular file, so readdir throws ENOTDIR —
     // a real failure the sweep must degrade rather than propagate.
     writeFileSync(join(workspace, "blocker"), "not a directory")
-    installSessionTeamPolicy(ctx, { stateDir: "blocker/team", sessionTeamPolicy: { mode: "off" } })
+    installInterjectionExpirySweep(ctx, { stateDir: "blocker/team" })
     const decision = await ctx.handler({ agent: { session: { header: { cwd: workspace } } } }, async () => ({ kind: "accept" }))
     expect(decision).toEqual({ kind: "accept" })
     expect(warnings.length).toBe(1)

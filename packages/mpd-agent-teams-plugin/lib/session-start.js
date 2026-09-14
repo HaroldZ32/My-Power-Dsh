@@ -476,11 +476,6 @@ export async function routeDecision(policy, userText, workspace) {
  * @param resolved - the resolved plugin runtime config (must carry `sessionTeamPolicy`).
  */
 export function installSessionTeamPolicy(ctx, resolved) {
-    // R1 dormancy fix: the expiry sweep is installed FIRST and unconditionally — it is
-    // bookkeeping every session needs, not a feature of auto-routing, so it must run even
-    // when the team policy is off (the gate below returns early in that case).
-    // See installInterjectionExpirySweep at the end of this module.
-    installInterjectionExpirySweep(ctx, resolved);
     const policy = resolved.sessionTeamPolicy;
     if (!policyEnabled(policy))
         return;

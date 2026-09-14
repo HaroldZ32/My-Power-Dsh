@@ -1,0 +1,108 @@
+{
+  "schema": "mpd/evidence/result@1",
+  "task": "t52 (executed under the captain's direct dispatch; NO slot was claimable — see slotSituation)",
+  "round": "interjection lane: capability + composition-root registration move",
+  "attempt": 1,
+  "slotSituation": {
+    "claimable": false,
+    "why": "t52 is `pending` with deps t49+t48+t51; `agent_teams_claim_task t52` is refused (\"blocked by unfinished dependencies\"). t53 is completed/terminal. The captain confirmed no legal slot exists this round and owns the record gap.",
+    "whatIWasTold": "do NOT claim t48 / t51 / t52 to obtain an id",
+    "soThisFileExists": "the delivery is recorded here and in the captain's messages; the captain lands it in the ledger once the chain opens"
+  },
+
+  "compositionRootMove": {
+    "status": "DONE (the captain authorised it this round; it was previously blocked because lib/index.js was in no written inScope)",
+    "whatChanged": [
+      "packages/mpd-agent-teams-plugin/lib/index.js — NEW region `mpd-delta interjection-expiry-registration`: calls installInterjectionExpirySweep(ctx, resolved) directly after installSessionTeamPolicy, UNCONDITIONALLY",
+      "packages/mpd-agent-teams-plugin/lib/session-start.js — the same call was REMOVED from inside installSessionTeamPolicy"
+    ],
+    "whyItMatters": "installSessionTeamPolicy returns early when sessionTeamPolicy.mode is off, so registering the sweep from inside it made the dormancy fix depend on auto-routing. In the composition root the sweep is installed for every session regardless of policy — which is what `installInterjectionExpirySweep` owning its own listener was always meant to guarantee.",
+    "theOldTestWouldNoLongerHaveProvenIt": "test/t53-dormant-expiry.test.mjs asserted the listener count after calling installSessionTeamPolicy. That assertion was PINNING THE OLD WIRING, not the capability. It now asserts the inverse (the policy installer registers NOTHING) and installs the sweep directly, and a NEW behavioural guard covers the root: test/t52-root-registration.test.mjs calls the real apply() with the policy OFF and proves a past-due request is actually resolved, with a negative control (no apply -> stays pending).",
+    "registry": "30 regions across 7 adopted files (lib/index.js is now tracked); --check clean"
+  },
+
+  "userRulingImplemented": {
+    "surface": "three separate tools, exactly as ruled",
+    "agent_teams_interject_request": "member asks; payload summary + reason + location only; the identity is the CALLER's (no `from` parameter exists to spoof)",
+    "agent_teams_interject_decide": "captain only; closed {approved, rejected}, refused loudly naming BOTH allowed values; action=\"list\" observes pending",
+    "agent_teams_mailbox_clear": "clears to a watermark; captain may clear ANY mailbox, a member ONLY its own",
+    "rejectedAlternatives": [
+      "folding the lane into agent_teams_send_message (would put un-approved content on the send path)",
+      "one tool with an action parameter"
+    ],
+    "authorizationIsEnforced": "in code at each tool boundary, and measured in BOTH directions — the mount proof records a member calling decide being refused with \"only the captain\""
+  },
+
+  "acceptance": {
+    "A_toolSurface_as_capability": { "status": "passed", "evidence": "test/t52-interjection-tools.test.mjs — 9 tests / 46 assertions, every one through the shipped tool definitions; full chain member request -> captain sees pending -> approve -> library re-posts an ordinary record -> the existing member-queue seam claims and acknowledges it" },
+    "B_mountProof": { "status": "passed", "evidence": "evidence/omo-align/interjection-tools/mount/ — 5/5 tools registered at a real mounted boot, 0 apply/schema abort signatures, probe PASS; --dump-config recorded as COMPOSITION ONLY and never cited as load (AGENTS.md §4)" },
+    "C_clearHasAProductionCaller": { "status": "passed", "evidence": "agent_teams_mailbox_clear asserts the F-3 seam on the REAL path (unread_after === 0 after clearing an unread record), and the mount drive repeats it on disk" },
+    "D_readLiveMailboxFate": { "status": "passed", "evidence": "KEPT and documented TEST-ONLY at its declaration, with the reason the scheduler must not route through it (it would drop the delivery-lease semantics)" },
+    "E_reachabilityInventory": { "status": "passed", "evidence": "reachability.md + raw/reachability-inventory.{mjs,json} — 261 exports; 215 cross-module; 43 module-internal; 3 with no production caller (readLiveMailbox kept/test-only, teamLockQueueKeys imported by test/backports.test.ts, SESSION_START_GATE_ID pre-existing orphan reported not deleted)" },
+    "F_noRegression": { "status": "passed", "evidence": "idempotent dedup, tombstone filter, expiry notice and R3's monotone verb set + thresholds all still green; the send path's parameter set is still exactly {content, from, to}" }
+  },
+
+  "gates": {
+    "node scripts/patch-agent-teams-fixes.mjs --check": "exit 0 — 30 regions / 7 adopted files",
+    "bun test packages/mpd-agent-teams-plugin": "exit 0 — 195 pass / 0 fail / 1276 expect() calls across 50 files",
+    "bun test packages/mpd-agent-teams-plugin/self-fix-tests": "exit 0 — 53 pass / 0 fail / 640 expect() calls",
+    "bun run typecheck": "exit 0",
+    "evidence/omo-align/interjection-tools/raw/mount-proof-t52.mjs": "PASS — re-run AFTER the registration move: 5/5 tools, 0 crash signatures",
+    "evidence/omo-align/interjection-tools/raw/mount-proof-t52.mjs --self-test": "exit 0",
+    "node skills/dsh-qa/scripts/agent-teams-messaging.mjs": "exit 0 — GREEN (measured this round). Earlier in the wave it exited 1 on the vendorLock step; the captain re-pinned assets.skills.treeSha in commit 33ff60a and `verify-vendor` now exits 0. This case may therefore be cited as passing.",
+    "node scripts/verify-vendor.mjs": "exit 0 — the skills treeSha matches the re-pin"
+  },
+
+  "findingsForTheCaptain": [
+    {
+      "id": "T52-F1",
+      "severity": "high",
+      "problem": "The QA case fix the captain now assigns to t51 is ALREADY COMMITTED as the captain's own work. `git show HEAD:skills/dsh-qa/scripts/agent-teams-messaging.mjs` carries the fix (the case asserts the LIBRARY's own delivery record; the hand-written re-post is gone; the root-cause comment is present), and HEAD == worktree for that file.",
+      "preciseEvidence": [
+        "grep 'ordinary, to: requesterKey' in the HEAD blob -> 0 hits (the fabricated re-post is gone)",
+        "grep 'requesterInbox[0].id === \"ij-1-delivery\"' -> 1 hit at line 445 (the library record is asserted)",
+        "git diff HEAD -- skills/ -> EMPTY (nothing of mine is pending there)"
+      ],
+      "whatThisMeans": "There is nothing for t51 to redo, and no pending change of mine to revert. I did NOT edit skills/** this round and will not. AND the lock half is already done too: the captain re-pinned assets.skills.treeSha in commit 33ff60a (it is now 0a91194e…, which is exactly the value `verify-vendor` computed for the drifted tree during my earlier run), `verify-vendor` exits 0, and the QA case exits 0 — so the case IS green and may be cited as passing.",
+      "requiredFix": "captain reconciles the ledger only: mark t51 satisfied/cancelled, since both halves (the case fix and the re-pin) have landed."
+    },
+    {
+      "id": "T52-F2",
+      "severity": "medium",
+      "problem": "lib/tool-names.js still lists 14 names, so (a) the member capability deny list (capabilities.js:94) does not name the three new tools and (b) the captain prompt (index.js:179) does not advertise them.",
+      "mitigation": "(a) is not a live hole — authorization is enforced inside each tool and measured — but it is defence-in-depth we are not getting. (b) is a discoverability gap.",
+      "requiredFix": "one line in a slot that owns lib/tool-names.js, plus updating test/r3-view-parity.test.mjs's frozen 14 to 17."
+    },
+    {
+      "id": "T52-F3",
+      "severity": "low",
+      "problem": "packages/mpd-qa-roles-probe/{src,dist} were modified to carry the registration instrumentation (QA-only tooling). The captain's file was NOT in t52's written inScope either.",
+      "requiredFix": "confirm acceptance in the commit; also note the two traps it surfaced — the credentials row refuses mode 644 and takes the whole plugin tree down, and reading ctx.tools without declaring it throws `cannot get property \"tools\" without inject`."
+    },
+    {
+      "id": "T52-F4",
+      "severity": "low",
+      "problem": "SESSION_START_GATE_ID (lib/session-start.js) is a pre-existing orphan with zero references in lib/**, test/** or skills/**.",
+      "requiredFix": "none required; listed so the next capability sweep does not rediscover it."
+    }
+  ],
+
+  "settledPins": {
+    "packages/mpd-agent-teams-plugin/lib/index.js": "393a369fb7a68648 (34973 B)",
+    "packages/mpd-agent-teams-plugin/lib/session-start.js": "64a064411e90ed01 (30806 B)",
+    "packages/mpd-agent-teams-plugin/lib/state.js": "8e78e9b508d03230 (65291 B)",
+    "packages/mpd-agent-teams-plugin/lib/tools.js": "9a2cfb89fd9ce06f (165305 B)",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "fa6d893373929465 (123276 B)",
+    "packages/mpd-agent-teams-plugin/test/t52-root-registration.test.mjs": "5854dfb97635fea8 (4340 B)",
+    "packages/mpd-agent-teams-plugin/test/t53-dormant-expiry.test.mjs": "6a9970b1677141aa (7401 B)",
+    "skills/dsh-qa/scripts/agent-teams-messaging.mjs": "c9073b82ac78ce92 (31433 B) — UNCHANGED BY ME this round; equals the committed bytes"
+  },
+
+  "noGitWrite": "read-only git log/show/diff/status only; the captain commits",
+  "deliveredEvidenceElsewhere": {
+    "mountProof": "evidence/omo-align/interjection-tools/mount/",
+    "reachability": "evidence/omo-align/interjection-tools/reachability.md",
+    "shippedPathTests": "packages/mpd-agent-teams-plugin/test/t52-interjection-tools.test.mjs",
+    "whyTwoDirectories": "the tools', probe's and QA-case work landed under `interjection-tools/` in the earlier round and is already committed; this round adds the registration move under the captain's spelling `interject-tools/`. No delivered evidence was overwritten — this directory is new."
+  }
+}
