@@ -38,3 +38,10 @@ compile.log
 __pycache__/
 *.pyc
 *.pyo
+
+# Regenerable scrub scratch (naming wave): per-artifact copies of the PRE-rename upstream
+# source tree used to prove the dist rewrites were byte-identical after scrubbing. Never a
+# deliverable — it carries the very upstream naming this repository purged, 8.8 MB / 1208
+# files, and one command regenerates any artifact:
+#   node evidence/mpd-naming/wave2/raw/build-repro.mjs <artifact> --apply-scrub --compare
+evidence/**/raw/scratch/
