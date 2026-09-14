@@ -74,6 +74,13 @@ function listFiles(dir) {
     for (const entry of readdirSync(d)) {
       const p = join(d, entry)
       if (entry === "node_modules") continue
+      // Bytecode caches are BUILD artifacts, not corpus content: `python3 -m py_compile`
+      // (a documented verify command for the ast-grep helper) writes
+      // `skills/ast-grep/scripts/__pycache__/*.pyc`, which used to drift the count
+      // 297 -> 298 and fail this gate on a legitimately unchanged corpus, while the .pyc
+      // itself is not gitignored and could be committed as corpus content (measured
+      // 2026-09-14: RED "count drifted: 298 vs 297", GREEN after this skip).
+      if (entry === "__pycache__" || entry.endsWith(".pyc") || entry.endsWith(".pyo")) continue
       if (statSync(p).isDirectory()) walk(p)
       else out.push(p)
     }

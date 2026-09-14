@@ -35,3 +35,6 @@ simv_iverilog
 compile.log
 .review-tmp2/
 .review-tmp*/
+__pycache__/
+*.pyc
+*.pyo
