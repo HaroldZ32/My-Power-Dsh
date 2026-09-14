@@ -1,0 +1,133 @@
+{
+  "schema": "mpd-r1-r3-verification/1",
+  "task": "t38 (independent verification of R1 message-channel sub-features and R3 verb-table harmonization)",
+  "kind": "verification",
+  "verifier": "Reviewer",
+  "verdict": "failed",
+  "verdictScope": "All three R1 sub-features and the R3 behaviour change are INDEPENDENTLY REPRODUCED — my own sandbox run of the shipped QA case passed 10/10, my own hand-built counter-examples pass including the load-bearing safety property (a pending request hand-placed in an ordinary inbox is still not auto-delivered), the R3 change has a real isolated mount proof with 0 abort signatures, the two-sided gate passes on a settled revision, and the contract's C2/C3 word lists match the shipped regexes token-for-token. I still report FAILED for one concrete, reproduced defect in the shipped R1 surface: the interjection enqueue accepts a request that omits the message body, reports it as `pending`, and thereby creates a record that NO reader can ever see — it is invisible to the pending read and to expiry, and any decision on it throws the misleading error 'does not exist'. Details and the reproduction are in finding V1.",
+  "settledRevision": {
+    "head": "309645530c1b1c36794ccbdf102d946190468eee",
+    "headNote": "The t35/t36 changes were UNCOMMITTED when I started; I pinned by file hash (PIN1) and confirmed the same hashes after all measurements (PIN2) — identical, so nothing moved under me. Mid-verification the captain committed them as merge 3096455; I re-checked every reviewed file's committed bytes against the hashes I had measured and all four MATCH, so the verdict applies to the committed revision as well as to the tree I measured.",
+    "pin1": "2026-09-14T00:29:18Z",
+    "pin2": "2026-09-14T00:33:29Z",
+    "hashesIdenticalAcrossPins": true,
+    "measuredHashes": {
+      "packages/mpd-agent-teams-plugin/lib/state.js": "751a4c1eaf1714d37a45baa8c0a83895ee8e2a487f28574d02fd445cd1b8b825",
+      "packages/mpd-agent-teams-plugin/lib/scheduler.js": "f9ec4a226511b420c660673ccc1838b99fa4c0ac548f4b0f19e0fcf865109011",
+      "packages/mpd-agent-teams-plugin/lib/session-start.js": "8cfaef47e9959ef7def01003640f768ff4befa50e9c202ff692a0629ca0a2aa6",
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "47f204cd9678ed87660b18e5ecd01895ce3249fae8155deb0a1d33821f6ff9c5",
+      "skills/dsh-qa/scripts/agent-teams-messaging.mjs": "6f286954e4f4338fb76ea9d9c5fe62a95eb9aaf2f9e558badfc2a8534d724f6e",
+      "skills/dsh-qa/SKILL.md": "b7f278cf6dc8dd551045cdd51b75396a947155b683af0671b1a2e8e6500f59a7",
+      "VENDOR_LOCK.json": "afd437d99b99fd557a82140210581799a34442b57fb430842ea8769fa8fec459",
+      "evidence/omo-align/requirements/frozen-contract.json": "09949c8095d7ccd533329b114a2ef22bad1ce81bd24338240e68cfd0fd66be41"
+    }
+  },
+  "independentRun": {
+    "case": "skills/dsh-qa/scripts/agent-teams-messaging.mjs (t36's case, executed by me)",
+    "mySandbox": "/tmp/mpd-t36-e4rOjE (a fresh mkdtemp from MY run; t36's own run dirs are evidence/omo-align/messaging-qa/2026-09-14T00-22-52.814Z and 00-25-37.800Z and 00-26-51.986Z, none reused)",
+    "myEvidence": "evidence/omo-align/messaging-qa/2026-09-14T00-29-32.579Z/ (a NEW timestamped directory; no delivered evidence overwritten)",
+    "result": "PASS, ok=true, 10 criteria all ok",
+    "observed": {
+      "surface": {"exports": 10, "dedupWindowMs": 60000, "interjectionTtlMs": 1800000, "interjectionKind": "interjection-request", "queue": "interjections"},
+      "settled": {"head": "d54afe5372355ee8bd0e524f4d90f55621f74e66", "stateSha": "751a4c1eaf1714d37a45baa8c0a83895ee8e2a487f28574d02fd445cd1b8b825", "schedulerSha": "f9ec4a226511b420c660673ccc1838b99fa4c0ac548f4b0f19e0fcf865109011"},
+      "mountedBoot": {"ok": true, "credentialBlocked": true, "crashSignatures": [], "mountMarkers": 3, "missingMarkers": []},
+      "isolation": {"ok": true, "checked": 1, "keys": ["--tmp-mpd-t36-e4rOjE-ws--"]},
+      "dedup": {"sends": 3, "folded": [false, true, true], "records": 1, "dupCount": 3, "unread": 1, "negativeDifferentFrom": {"folded": false, "records": 2}},
+      "clear": {"cleared": ["clear-1", "clear-2"], "auditKind": "mailbox-cleared", "sidecarWrittenBeforeRewrite": true},
+      "interjection": {"queued": 1, "deliverableWhilePending": 0, "notYetExpired": 0, "gatedEvenAfterApproval": 1, "deliverableWhenKindBroken": 1},
+      "vendorLock": {"fileCount": 331, "treeSha": "705651e65a887efedd882579f7df531c1df134d1ce765577e5d02949ded91aaa", "gateExit": 0}
+    }
+  },
+  "myOwnCounterExamples": {
+    "driver": "evidence/omo-align/verification-r1/raw/counterexamples.mjs (written by me; output in counterexamples.out.json)",
+    "method": "Fresh mkdtemp state root per scenario; the safety predicate is EXTRACTED from the shipped scheduler source text and executed as-is (not retyped); every reading is taken at the point it is asserted.",
+    "dedup": {
+      "positive": {"sends": 3, "folded": [false, true, true], "recordsAfterTripleSend": 1, "dupCountOnRecord": 3, "unreadAfterTripleSend": 1},
+      "myNegativeCounterExamples": {"differentFrom_folded": false, "differentTo_folded": false, "outOfWindow_folded": false, "recordsAfterNegatives": 3},
+      "reading": "A redelivery of the same (sender, recipient, body) inside the window folds and writes NO second record; changing the sender, the recipient, or the window does not fold — the folding is not a blanket suppression."
+    },
+    "clear": {
+      "appendedRecords": 3, "clearedCount": 3, "auditKind": "mailbox-cleared", "auditClearedCount": 3,
+      "sidecarFile": "captain.500.jsonl", "sidecarLineCount": 3, "sidecarRecoversPayloadVerbatim": ["payload-alpha", "payload-beta", "payload-gamma"],
+      "liveAfterClear": {"recordCount": 3, "tombstones": 3, "liveContentEmptied": true, "anyPayloadLeftLive": false},
+      "myNegativeCounterExamples": {"liveUnreadAfterClear": 0},
+      "reading": "Archive-first holds: every cleared record survives as a tombstone with its identity, the original bytes are recoverable verbatim from the sidecar, and the payload exists ONLY there. There is no hard-delete branch — a second read of the live file yields the tombstones, never a shorter file."
+    },
+    "interjection": {
+      "enqueued": {"returnedStatus": "pending", "pendingInQueueAtEnqueue": 1, "laneRecordCount": 1, "laneKind": "interjection-request"},
+      "handPlacedInAnOrdinaryInbox": {"ordinaryInboxUnread": 1, "kinds": ["interjection-request"], "deliverableAfterShippedPredicate": 0},
+      "myNegativeCounterExample_kindBroken": {"deliverable": 1},
+      "approval": {"decidedStatus": "approved", "stillNotAutoDelivered": true},
+      "ttl": {"expiredIds": [], "laneStatuses": ["approved"], "fromPreserved": true},
+      "reading": "THE LOAD-BEARING NEGATIVE: I hand-placed a pending request into a normal inbox whose unread record the scheduler's idle-edge path would otherwise pack and deliver; the shipped predicate filtered it to 0 deliverable, and breaking the record's kind on the very same record made the predicate deliver it (1) — so the filter is real and falsifiable, not incidental. Approval records the decision without leaking the request into an auto-delivered lane."
+    }
+  },
+  "mountProof": {
+    "required": "R3 is a behaviour change, so a real mount is required; --dump-config is not load evidence (AGENTS.md §4).",
+    "how": "My own run installed the profile into an isolated DSH_HOME and booted the preset with the workspace and HOME both inside the sandbox.",
+    "rawLogFragment": [
+      "[[exit=1]]",
+      "[mpd-codegraph] init status=ok binary=... \u2026 cwd=/tmp/mpd-t36-e4rOjE/ws",
+      "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)",
+      "[mpd-bootstrap] skill corpus served from .../skills (provider mpd-bundle, bundle 0.3.2)",
+      "dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route \"deepseek-official\" \u2026"
+    ],
+    "mountMarkers": 3,
+    "abortSignatureCount": 0,
+    "abortSignaturePatterns": ["unsupported JSON schema", "JsonSchemaError", "plugin tree failed to load", "failed to apply loader entry"],
+    "exitInterpretation": "The boot exits 1 solely on the missing model credential, which is expected in this environment and is recorded by the case as credentialBlocked; the three plugin start-up markers prove the row tree mounted before the credential check, and no abort signature appears anywhere in the log."
+  },
+  "twoSidedGate": {
+    "revision": "309645530c1b1c36794ccbdf102d946190468eee",
+    "note": "A first attempt FAILED with 'revision did not settle' because the captain committed mid-run (HEAD d54afe5 -> 3096455). I identified the cause, confirmed the reviewed file bytes were unchanged, and re-ran on the settled revision.",
+    "result": "PASS: simpleTeams [0,0,0] with no notices; complexTeams [1,1,1] staged with one notice each; negativeControl disarmed=true with 0 teams / 0 notices"
+  },
+  "contractVsShipped": {
+    "contractFile": "evidence/omo-align/requirements/frozen-contract.json (35,174 B / sha256 09949c80\u2026) — matches the declared R3 revision",
+    "declaredTokenLists": {"shippedEnglish": 14, "shippedCjk": 12, "total": 26, "harmonizedVerbTablesBlockPresent": true, "thresholdNotePresent": true},
+    "comparisonMethod": "For every declared token I EXECUTED both shipped patterns: the C2 pattern against a sentence containing the token and the C3 pattern against the token opening a clause. Parsing the regex source was avoided after an early parse gave a wrong answer.",
+    "result": {"declaredTokens": 26, "c2Misses": [], "c3Misses": [], "shippedTokenCount": 26, "setsIdentical": true, "proseC2ListMatchesShipped": true, "differences": []},
+    "roleDifferenceConfirmed": "The two tables carry the SAME set but differ in position only: a token mid-sentence matches C2 and not C3, while the same token opening a clause matches C3. Verified on six sampled tokens.",
+    "conclusion": "R3's declared harmonization is true word-for-word; no verb is C2-only or C3-only any more, and the trigger threshold is unchanged (the contract states the ratified predicate and the shipped code implements it)."
+  },
+  "registryAndSelfFix": {
+    "deltaCheck": "node scripts/patch-agent-teams-fixes.mjs --check => exit 0, 'already applied: 23 mpd delta region(s) across 6 adopted file(s)' — matches t35's declared 23/6",
+    "selfFixTests": "bun test packages/mpd-agent-teams-plugin/self-fix-tests => 53 pass / 0 fail (575 expect calls, 8 files)",
+    "carrierRegionAbsent": true
+  },
+  "acceptanceResults": [
+    {"criterion": "独立复跑 t36 的 QA 用例：在**你自己的**隔离沙箱里跑（不复用它的沙箱目录），逐条判据给出你观测到的真实输出；**不得**只引用它的 result.json 就下结论。", "status": "passed", "evidence": "I ran the case myself; it created a fresh sandbox (/tmp/mpd-t36-e4rOjE, distinct from all three of t36's run dirs) and wrote a NEW evidence directory. My own observed output: 10/10 criteria ok — surface exports 10 with window 60000 / ttl 1800000 / kind interjection-request; dedup 3 sends folded [false,true,true] to 1 record dupCount 3 unread 1; clear produced a mailbox-cleared audit and an archive sidecar; interjection pending was not deliverable, gated even after approval, and deliverable when its kind was broken; vendor lock 331 files with gate exit 0; isolation checked 1 sandbox session key."},
+    {"criterion": "负向对照必须真的红过：对去重（不同 from/to 不得折叠）、清除（硬删路径不存在）、插话（pending 不被投递）三条，逐条给出你**主动构造反例**的结果（例如手工把一条 pending 插话塞进普通收件箱，证明调度器仍不投递它）。", "status": "passed", "evidence": "My own driver (raw/counterexamples.mjs) constructs all three. DEDUP: different sender -> folded false; different recipient -> folded false; outside the window -> folded false (3 records survive). CLEAR: all cleared records survive as tombstones, payload exists ONLY in the sidecar, live read returns 0 unread, live file never shrinks. INTERJECTION (the load-bearing one): I hand-placed a pending request into a normal inbox; the shipped predicate (extracted from scheduler.js and executed as-is) returned 0 deliverable; breaking that same record's kind made it deliver 1 — so the filter is real and falsifiable. Approval alone left it non-deliverable."},
+    {"criterion": "R3 行为变更的隔离挂载证明：真实启动 mpd 预设（隔离 DSH_HOME + 沙箱 workspace + 沙箱 HOME），给出 0 条 apply/schema abort 签名的原始日志片段；--dump-config 不接受作为加载证据。", "status": "passed", "evidence": "My own run's raw log carries all three plugin start-up markers ([mpd-codegraph] init status=ok, [mpd-dsh-adapter] mpdDsh provided, [mpd-bootstrap] skill corpus served from) with 0 occurrences of the four abort-signature patterns; the exit code is 1 solely on the missing model credential, recorded as credentialBlocked. The case's own note states --dump-config is deliberately not cited as load evidence."},
+    {"criterion": "两向门在**稳定 hash** 上复现：简单集 3/3 静默、复杂集 3/3 触发、负向对照 disarmed；写明你测的 hash 并确认它在测量期间稳定。", "status": "passed", "evidence": "PASS at 3096455: simpleTeams [0,0,0] / notices false; complexTeams [1,1,1] / notices true; negativeControl disarmed=true 0 teams 0 notices. The first attempt failed to settle because the captain committed mid-run; after confirming the reviewed bytes were unchanged I re-ran and it passed. All file hashes were identical at PIN1 (00:29:18Z) and PIN2 (00:33:29Z), and the committed bytes match them exactly."},
+    {"criterion": "契约-实现一致性独立校验：frozen-contract.json 的 C2/C3 与 shipped 的 ACTION_VERB_PATTERN / CLAUSE_ACTION_PATTERN **逐词**比对（英文 + CJK），逐条列出差异（若有）。", "status": "passed", "evidence": "All 26 declared tokens (14 English + 12 CJK) were verified by EXECUTING both shipped patterns: zero C2 misses and zero C3 misses; the declared set equals the shipped set with no additions or omissions; the contract's prose C2 list also matches; the only difference between the two tables is positional (mid-sentence matches C2 only, clause-opening matches C3), verified on six sampled tokens. Differences: none."},
+    {"criterion": "登记表独立校验：patch-agent-teams-fixes --check 干净、区域数/文件数与 t35 声明一致；self-fix-tests 全绿。", "status": "passed", "evidence": "--check exits 0 with '23 mpd delta region(s) across 6 adopted file(s)', matching the declared 23/6; self-fix-tests 53 pass / 0 fail."},
+    {"criterion": "结论按判据逐条 passed/failed 落 evidence/omo-align/verification-r1/result.json（含原始命令输出）；**任何一条不通过就报 failed 并给 findings**，不得为收口放宽判据。", "status": "passed", "evidence": "This file records every criterion with its observed output; the run's raw driver output is preserved at raw/counterexamples.out.json. The verdict is failed because of finding V1 (a reproduced defect in the shipped interjection enqueue), not because any criterion above was softened."},
+    {"criterion": "不覆盖任何已交付证据；证据正文中性化（不写已退役的外部工程标识）。", "status": "passed", "evidence": "My writes are confined to evidence/omo-align/verification-r1/** and my own new messaging-qa run directory; no delivered evidence was overwritten. A scan of my artifacts for the retired identifier and its case variants returns 0 matches — the evidence is neutral."}
+  ],
+  "commandsRun": [
+    {"command": "node skills/dsh-qa/scripts/agent-teams-messaging.mjs", "status": "passed", "exitCode": 0, "evidence": "PASS, ok=true, 10/10 criteria in my own sandbox (/tmp/mpd-t36-e4rOjE); evidence written to a new directory evidence/omo-align/messaging-qa/2026-09-14T00-29-32.579Z/"},
+    {"command": "node evidence/omo-align/verification-r1/raw/counterexamples.mjs", "status": "passed", "exitCode": 0, "evidence": "my hand-built negatives: dedup different-from/different-to/out-of-window all folded=false; clear keeps tombstones with payload only in the sidecar; a hand-placed pending request is filtered to 0 deliverable by the shipped predicate and 1 when its kind is broken"},
+    {"command": "bun skills/dsh-qa/scripts/session-start-team.mjs", "status": "passed", "exitCode": 0, "evidence": "PASS at settled revision 3096455: simple 3/3 silent, complex 3/3 triggered, disarmed negative control 0/0"},
+    {"command": "grep -cE 'mpdDsh provided|skill corpus served from|mpd-codegraph init status=' + abort-signature grep over my run's raw log", "status": "passed", "exitCode": 0, "evidence": "3 mount markers, 0 abort signatures"},
+    {"command": "node scripts/patch-agent-teams-fixes.mjs --check", "status": "passed", "exitCode": 0, "evidence": "23 mpd delta region(s) across 6 adopted file(s) — matches the declared figures"},
+    {"command": "bun test packages/mpd-agent-teams-plugin/self-fix-tests", "status": "passed", "exitCode": 0, "evidence": "53 pass / 0 fail"},
+    {"command": "execution-based token comparison of both shipped patterns against the contract's 26 declared tokens", "status": "passed", "exitCode": 0, "evidence": "0 C2 misses, 0 C3 misses, sets identical, no differences"},
+    {"command": "node -e \"const r=require('./evidence/omo-align/verification-r1/result.json'); console.log('verdict:', r.verdict)\"", "status": "failed", "exitCode": 0, "evidence": "verdict: failed (see finding V1)"}
+  ],
+  "findings": [
+    {
+      "id": "V1",
+      "severity": "medium",
+      "file": "packages/mpd-agent-teams-plugin/lib/state.js",
+      "line": 557,
+      "problem": "The interjection enqueue accepts a request that omits the message body and reports success, but the resulting record is UNREADABLE and UNDECIDABLE. The mailbox reader validates each record through the message-shape check, which requires a string `content`; the queue record built for a body-less request has no `content`, so it is silently dropped from every read. Reproduced with the shipped exports: enqueue without content returns status 'pending', yet the pending read returns 0; the same call WITH content returns 1. Consequently expiry finds nothing (silence never turns into a decision) and a decision on the request throws `interjection \"<id>\" does not exist`, which misreports a shape problem as a missing record. The existing QA case avoids this only because it happens to pass a `content` field; the shipped docstring does not state that requirement, so a caller following it creates an invisible request — the exact silent-failure class this wave exists to remove. Note the tool-boundary authorization work already declared as out of wave scope is a DIFFERENT gap, not this one.",
+      "requiredFix": "Pick one and pin it with a test: (a) document `content` as required and reject a body-less request loudly at enqueue with a clear message, or (b) default the body from the summary/reason fields so the record always satisfies the shape check. Also make the decision path distinguish 'record malformed/invisible' from 'id not found', so the current misleading error cannot mask this class again."
+    }
+  ],
+  "residualRisks": [
+    "The end-to-end delivery after approval (posting the approved request back into the requester's inbox and delivering it at the next step boundary) is explicitly NOT verified by either the implementation or this pass; both record it as an open gap. My evidence covers the request-side safety property (pending requests are never auto-delivered) and the decision RECORD, not the round trip.",
+    "The real scheduler idle-edge delivery path was not exercised with spawned members; the safety property is proven at the predicate level on a hand-placed record, which is the strongest available form in an isolated headless environment.",
+    "Every headless boot ends on the missing model credential in this environment, so no successful model turn is covered; the mount proof therefore rests on start-up markers plus the absence of abort signatures."
+  ]
+}
