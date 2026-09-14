@@ -1922,7 +1922,7 @@
       "declared": "lib/session-start.js:83",
       "className": "REACHABLE (module-internal)",
       "usedBy": [],
-      "firstUse": "lib/session-start.js:354",
+      "firstUse": "lib/session-start.js:363",
       "callSiteCount": 1,
       "tests": 1
     },
@@ -1931,7 +1931,7 @@
       "declared": "lib/session-start.js:85",
       "className": "REACHABLE (module-internal)",
       "usedBy": [],
-      "firstUse": "lib/session-start.js:403",
+      "firstUse": "lib/session-start.js:412",
       "callSiteCount": 1,
       "tests": 1
     },
@@ -1940,7 +1940,7 @@
       "declared": "lib/session-start.js:88",
       "className": "REACHABLE (module-internal)",
       "usedBy": [],
-      "firstUse": "lib/session-start.js:189",
+      "firstUse": "lib/session-start.js:198",
       "callSiteCount": 1,
       "tests": 0
     },
@@ -1949,7 +1949,7 @@
       "declared": "lib/session-start.js:98",
       "className": "REACHABLE (module-internal)",
       "usedBy": [],
-      "firstUse": "lib/session-start.js:196 (import)",
+      "firstUse": "lib/session-start.js:205 (import)",
       "callSiteCount": 0,
       "tests": 0
     },
@@ -1958,7 +1958,7 @@
       "declared": "lib/session-start.js:100",
       "className": "REACHABLE (module-internal)",
       "usedBy": [],
-      "firstUse": "lib/session-start.js:143",
+      "firstUse": "lib/session-start.js:152",
       "callSiteCount": 1,
       "tests": 0
     },
@@ -1967,7 +1967,7 @@
       "declared": "lib/session-start.js:107",
       "className": "REACHABLE (module-internal)",
       "usedBy": [],
-      "firstUse": "lib/session-start.js:155 (import)",
+      "firstUse": "lib/session-start.js:164 (import)",
       "callSiteCount": 0,
       "tests": 0
     },
@@ -1976,7 +1976,7 @@
       "declared": "lib/session-start.js:114",
       "className": "REACHABLE (module-internal)",
       "usedBy": [],
-      "firstUse": "lib/session-start.js:156",
+      "firstUse": "lib/session-start.js:165",
       "callSiteCount": 1,
       "tests": 0
     },
@@ -1985,7 +1985,7 @@
       "declared": "lib/session-start.js:116",
       "className": "REACHABLE (module-internal)",
       "usedBy": [],
-      "firstUse": "lib/session-start.js:189",
+      "firstUse": "lib/session-start.js:198",
       "callSiteCount": 1,
       "tests": 0
     },
@@ -1994,7 +1994,7 @@
       "declared": "lib/session-start.js:118",
       "className": "REACHABLE (module-internal)",
       "usedBy": [],
-      "firstUse": "lib/session-start.js:195 (import)",
+      "firstUse": "lib/session-start.js:204 (import)",
       "callSiteCount": 0,
       "tests": 0
     },
@@ -2003,7 +2003,7 @@
       "declared": "lib/session-start.js:120",
       "className": "REACHABLE (module-internal)",
       "usedBy": [],
-      "firstUse": "lib/session-start.js:196 (import)",
+      "firstUse": "lib/session-start.js:205 (import)",
       "callSiteCount": 0,
       "tests": 0
     },
@@ -2012,7 +2012,7 @@
       "declared": "lib/session-start.js:122",
       "className": "REACHABLE (module-internal)",
       "usedBy": [],
-      "firstUse": "lib/session-start.js:199",
+      "firstUse": "lib/session-start.js:208",
       "callSiteCount": 1,
       "tests": 0
     },
@@ -2021,67 +2021,49 @@
       "declared": "lib/session-start.js:124",
       "className": "REACHABLE (module-internal)",
       "usedBy": [],
-      "firstUse": "lib/session-start.js:218",
+      "firstUse": "lib/session-start.js:227",
       "callSiteCount": 1,
       "tests": 0
     },
     {
       "symbol": "consumeExplicitFlag",
-      "declared": "lib/session-start.js:168",
+      "declared": "lib/session-start.js:177",
       "className": "REACHABLE (module-internal)",
       "usedBy": [],
-      "firstUse": "lib/session-start.js:256",
+      "firstUse": "lib/session-start.js:265",
       "callSiteCount": 4,
       "tests": 2
     },
     {
       "symbol": "evaluateComplexityGate",
-      "declared": "lib/session-start.js:185",
+      "declared": "lib/session-start.js:194",
       "className": "REACHABLE (module-internal)",
       "usedBy": [],
-      "firstUse": "lib/session-start.js:461",
+      "firstUse": "lib/session-start.js:470",
       "callSiteCount": 1,
       "tests": 2
     },
     {
       "symbol": "hasPlanArtifact",
-      "declared": "lib/session-start.js:216",
+      "declared": "lib/session-start.js:225",
       "className": "REACHABLE (module-internal)",
       "usedBy": [],
-      "firstUse": "lib/session-start.js:460",
+      "firstUse": "lib/session-start.js:469",
       "callSiteCount": 1,
       "tests": 0
     },
     {
       "symbol": "consumeFlagFromMessage",
-      "declared": "lib/session-start.js:255",
+      "declared": "lib/session-start.js:264",
       "className": "REACHABLE (module-internal)",
       "usedBy": [],
-      "firstUse": "lib/session-start.js:522",
+      "firstUse": "lib/session-start.js:531",
       "callSiteCount": 1,
       "tests": 0
     },
     {
       "symbol": "policyEnabled",
-      "declared": "lib/session-start.js:277",
-      "className": "REACHABLE (module-internal)",
-      "usedBy": [],
-      "firstUse": "lib/session-start.js:480",
-      "callSiteCount": 1,
-      "tests": 1
-    },
-    {
-      "symbol": "autoRouteEnabled",
-      "declared": "lib/session-start.js:283",
-      "className": "REACHABLE (module-internal)",
-      "usedBy": [],
-      "firstUse": "lib/session-start.js:458 (import)",
-      "callSiteCount": 0,
-      "tests": 0
-    },
-    {
-      "symbol": "policyQualifies",
-      "declared": "lib/session-start.js:292",
+      "declared": "lib/session-start.js:286",
       "className": "REACHABLE (module-internal)",
       "usedBy": [],
       "firstUse": "lib/session-start.js:489",
@@ -2089,62 +2071,80 @@
       "tests": 1
     },
     {
-      "symbol": "availableTeamId",
-      "declared": "lib/session-start.js:317",
+      "symbol": "autoRouteEnabled",
+      "declared": "lib/session-start.js:292",
       "className": "REACHABLE (module-internal)",
       "usedBy": [],
-      "firstUse": "lib/session-start.js:354",
+      "firstUse": "lib/session-start.js:467 (import)",
+      "callSiteCount": 0,
+      "tests": 0
+    },
+    {
+      "symbol": "policyQualifies",
+      "declared": "lib/session-start.js:301",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/session-start.js:498",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "availableTeamId",
+      "declared": "lib/session-start.js:326",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/session-start.js:363",
       "callSiteCount": 1,
       "tests": 1
     },
     {
       "symbol": "provisionSessionTeam",
-      "declared": "lib/session-start.js:344",
+      "declared": "lib/session-start.js:353",
       "className": "REACHABLE (module-internal)",
       "usedBy": [],
-      "firstUse": "lib/session-start.js:530",
+      "firstUse": "lib/session-start.js:539",
       "callSiteCount": 1,
       "tests": 0
     },
     {
       "symbol": "provisionedNotice",
-      "declared": "lib/session-start.js:397",
+      "declared": "lib/session-start.js:406",
       "className": "REACHABLE (module-internal)",
       "usedBy": [],
-      "firstUse": "lib/session-start.js:541",
+      "firstUse": "lib/session-start.js:550",
       "callSiteCount": 1,
       "tests": 1
     },
     {
       "symbol": "instructNotice",
-      "declared": "lib/session-start.js:418",
+      "declared": "lib/session-start.js:427",
       "className": "REACHABLE (module-internal)",
       "usedBy": [],
-      "firstUse": "lib/session-start.js:534",
+      "firstUse": "lib/session-start.js:543",
       "callSiteCount": 2,
       "tests": 1
     },
     {
       "symbol": "spliceNotice",
-      "declared": "lib/session-start.js:436",
+      "declared": "lib/session-start.js:445",
       "className": "REACHABLE (module-internal)",
       "usedBy": [],
-      "firstUse": "lib/session-start.js:546",
+      "firstUse": "lib/session-start.js:555",
       "callSiteCount": 1,
       "tests": 1
     },
     {
       "symbol": "routeDecision",
-      "declared": "lib/session-start.js:451",
+      "declared": "lib/session-start.js:460",
       "className": "REACHABLE (module-internal)",
       "usedBy": [],
-      "firstUse": "lib/session-start.js:514",
+      "firstUse": "lib/session-start.js:523",
       "callSiteCount": 1,
       "tests": 2
     },
     {
       "symbol": "installSessionTeamPolicy",
-      "declared": "lib/session-start.js:478",
+      "declared": "lib/session-start.js:487",
       "className": "REACHABLE (cross-module)",
       "usedBy": [
         "lib/index.js"
@@ -2155,7 +2155,7 @@
     },
     {
       "symbol": "installInterjectionExpirySweep",
-      "declared": "lib/session-start.js:570",
+      "declared": "lib/session-start.js:579",
       "className": "REACHABLE (cross-module)",
       "usedBy": [
         "lib/index.js"
@@ -2166,7 +2166,7 @@
     },
     {
       "symbol": "SESSION_START_GATE_ID",
-      "declared": "lib/session-start.js:591",
+      "declared": "lib/session-start.js:608",
       "className": "NO PRODUCTION CALLER",
       "usedBy": [],
       "callSiteCount": 0,
@@ -2673,7 +2673,7 @@
       "usedBy": [
         "lib/session-start.js"
       ],
-      "firstUse": "lib/session-start.js:578",
+      "firstUse": "lib/session-start.js:595",
       "callSiteCount": 1,
       "tests": 1
     },
@@ -2700,7 +2700,7 @@
       ],
       "firstUse": "lib/scheduler.js:321",
       "callSiteCount": 9,
-      "tests": 4
+      "tests": 5
     },
     {
       "symbol": "claimMailboxDelivery",
