@@ -27,7 +27,7 @@
       },
       "C_enumeratedSteps": {
         "kind": "soft",
-        "detect": "C fires when TWO OR MORE of its three independent sub-signals hold: C1 enumerated lines (^\\s*(\\d+[.)]|[-*])\\s) >= 3; C2 distinct action verbs (add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify|设计|实现|验证|改造|补充|对齐|重构|迁移|审计|移植|梳理|全量) >= 3; C3 action clauses (>= 3 clauses that each pair an action verb with an object, whether or not numbered) >= 3.",
+        "detect": "C fires when TWO OR MORE of its three independent sub-signals hold: C1 enumerated lines (^\\s*(?:\\d+[.)]|[-*|])\\s) >= 3 — transcribed EXACTLY from the shipped ENUMERATED_LINE_PATTERN, whose `|` alternative covers markdown-table rows; C2 distinct action verbs (add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify|设计|实现|验证|改造|补充|对齐|重构|迁移|审计|移植|梳理|全量) >= 3; C3 a clause whose FIRST token, optionally after and|then|also, is an action verb — >= 3 such clauses (restated for precision: the shipped CLAUSE_ACTION_PATTERN anchors at ^\\s* and admits an optional and|then|also, and its verb set is IDENTICAL to C2's).",
         "measure": "count of C1, C2, C3; C is satisfied at >= 2 of 3",
         "revisionNote": "SUPERSEDES the original literal wording ('C1 >= 3 OR C2 >= 3'). Measured contradiction: frozen complex prompt #1 ('Align the bundle with upstream: audit the orchestration surface, then implement the routing change.') has 2 enumerated lines and 2 action verbs, so the literal rule could never satisfy its own frozen complex side — while the frozen simple prompts must stay silent. The implemented form (C1/C2/C3 with a >= 2-of-3 majority) was accepted because it keeps BOTH frozen prompt sets falsifiable in practice: the two-sided case measures simple 3/3 silent and complex 3/3 triggering on a settled revision. Updating the prompts instead would have invalidated the evidence already produced against them. || R3 (2026-09-14): the verb lists above were HARMONIZED per the user's explicit choice and are transcribed VERBATIM from the shipped regexes; the trigger threshold was NOT changed.",
         "harmonizedVerbTables": {
@@ -65,7 +65,8 @@
           "note": "ACTION_VERB_PATTERN (C2, counts a verb anywhere) and CLAUSE_ACTION_PATTERN (C3, counts a clause that OPENS with one) now carry the IDENTICAL verb set: the union of what each held before. The only table-specific parts are C3's positional anchors (^\\s*, an optional and|then|also) and C2's anywhere-in-text role - a deliberate role difference, not a verb-set difference. Before R3, C2 held consolidate|overhaul|port but not audit, C3 held audit but not consolidate|overhaul|port, and the CJK sets differed by 7 entries; all of that is now eliminated, so no verb is silently C2-only or C3-only.",
           "triggerThresholdUnchanged": "anyExplicitFlag OR matchedSignals >= 1 (Option A) - R3 did not touch the threshold",
           "behaviourChangeEvidence": "evidence/omo-align/messaging/r3-verb-harmonisation/"
-        }
+        },
+        "pinOnlyNote": "t49 pin-only addendum: C1 transcribed exactly and C3 restated as 'a clause whose FIRST token, optionally after and|then|also, is an action verb'. NO code change accompanied this wording."
       },
       "D_planArtifact": {
         "kind": "soft",
@@ -363,5 +364,12 @@
       "multi-hop A->B->C failed-dependency behaviour has no dedicated test (C blocks while B is pending, which the three-state definition predicts)",
       "cross-process / Web-panel visibility of the 22 archived teams was not measured"
     ]
+  },
+  "messagingOperativeReading": {
+    "addendum": "t49 pin-only wording addendum (the primitive is UNCHANGED)",
+    "deliverySemantics": "AT-MOST-ONCE delivery; ONE surviving record per (from,to,content) inside the 60 s window; the N stored duplicate attempts are visible as dupCount=N on that record.",
+    "why": "The old wording ('N records folded') read as if all N rows survive; the operative reading is that the duplicate ATTEMPTS are counted in dupCount while only the first row exists, so a recipient cannot act twice.",
+    "primitive": "lib/state.js appendMailboxDeduped (unchanged by this task's wording addendum)",
+    "wiredAt": "lib/tools.js agent_teams_send_message (both the captain and the member append sites) — t49 wiring"
   }
 }

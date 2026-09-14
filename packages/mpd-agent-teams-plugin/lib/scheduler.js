@@ -13,7 +13,7 @@
  */
 import { join } from 'node:path';
 import { deliverToMember } from "./members.js";
-import { acknowledgeMailbox, beginTaskAttempt, CAPTAIN_KEY, claimMailboxDelivery, findTeamByParticipant, INTERJECTION_KIND, invalidateTaskAttempt, readTeam, readUnreadMailbox, releaseMailboxDelivery, resolveCancelledDependencyDeadlocks, unsatisfiedDependencies, withTeamLock, writeTeam, } from "./state.js";
+import { acknowledgeMailbox, beginTaskAttempt, CAPTAIN_KEY, claimMailboxDelivery, expireInterjections, findTeamByParticipant, INTERJECTION_KIND, invalidateTaskAttempt, readTeam, readUnreadMailbox, releaseMailboxDelivery, resolveCancelledDependencyDeadlocks, unsatisfiedDependencies, withTeamLock, writeTeam, } from "./state.js";
 /** Per-dependency output cap in the assignment prompt. */
 export const DEPENDENCY_OUTPUT_MAX_CHARS = 2_000;
 /** Combined dependency-output budget in the assignment prompt. */
@@ -229,11 +229,16 @@ State policy: ${stateDir}/${teamId}/ is read-only diagnostics; mutate team state
  * inbox would be delivered WITHOUT the captain's approval. Pending requests are
  * therefore filtered out of both auto-delivery reads; they reach a member only after
  * `decideInterjection(..., 'approved')` re-posts them as an ordinary message.
+ *
+ * A cleared TOMBSTONE is dropped here as well, not only inside `readUnreadMailbox`:
+ * this function is the scheduler's LAST gate before a wake-up, so it stays correct
+ * even if it is handed a record set that still contains cleared rows (e.g. a caller
+ * reading `readMailbox` directly). Belt-and-braces on the delivery boundary.
  * @param messages - unread mailbox records.
  * @returns the records that may auto-deliver.
  */
 function deliverableUnread(messages) {
-    return messages.filter((message) => message.kind !== INTERJECTION_KIND);
+    return messages.filter((message) => message.kind !== INTERJECTION_KIND && message.tombstone !== true);
 }
 //#endregion mpd-delta interjection-not-auto-delivered
 function fallbackMailboxPrompt(messages) {
@@ -287,6 +292,19 @@ export function installTeamScheduler(ctx, config) {
         },
         async kickMember(workspace, teamId, memberName, suppliedCaptain) {
             const stateRoot = stateRootOf(workspace, config);
+            //#region mpd-delta interjection-expiry-tick (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+            // R1: the scheduler's idle edge IS the clock for "captain silence = DENY". An
+            // expired request flips pending -> expired and notifies the requester; the tick
+            // is best-effort so a bookkeeping failure can never block a real wake-up.
+            try {
+                const expired = await expireInterjections(stateRoot, teamId);
+                if (expired.length > 0)
+                    ctx.logger?.info?.(`agent-teams: expired ${expired.length} unanswered interjection request(s): ${expired.join(', ')}`);
+            }
+            catch (error) {
+                ctx.logger?.warn?.(`agent-teams: interjection expiry tick failed: ${String(error)}`);
+            }
+            //#endregion mpd-delta interjection-expiry-tick
             const queueKey = memberQueueKey(stateRoot, teamId, memberName);
             await serializeMember(queueKey, async () => {
                 let team = await readTeam(stateRoot, teamId);

@@ -1,0 +1,37 @@
+{
+  "task": "t49",
+  "round": "repair-round-2",
+  "attempt": 1,
+  "head": "7379e28bd1b610666d15b245c37edc7ec159d7cb",
+  "note": "commands only; the long session-start-team QA case is recorded in its own evidence dir",
+  "results": [
+    {
+      "label": "delta registry check",
+      "command": "node scripts/patch-agent-teams-fixes.mjs --check",
+      "exitCode": 0,
+      "ms": 69,
+      "tail": "[patch-agent-teams-fixes] already applied: 26 mpd delta region(s) across 6 adopted file(s)"
+    },
+    {
+      "label": "plugin suite",
+      "command": "bun test packages/mpd-agent-teams-plugin",
+      "exitCode": 0,
+      "ms": 3486,
+      "tail": "    },\n    {\n      \"teamId\": \"mpd-default-84e50f06\",\n      \"phase\": \"staged\",\n      \"tasks\": 8,\n      \"approved\": false,\n      \"residual\": false,\n      \"archived\": false\n    }\n  ]\n}\n[reclaim-staged-teams] DRY RUN: 0 residual of 4 live team(s) (nothing changed)"
+    },
+    {
+      "label": "self-fix suite",
+      "command": "bun test packages/mpd-agent-teams-plugin/self-fix-tests",
+      "exitCode": 0,
+      "ms": 3042,
+      "tail": "bun test v1.3.14 (0d9b296a)"
+    },
+    {
+      "label": "typecheck",
+      "command": "bun run typecheck",
+      "exitCode": 0,
+      "ms": 245,
+      "tail": ""
+    }
+  ]
+}

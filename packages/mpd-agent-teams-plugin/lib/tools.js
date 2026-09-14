@@ -12,7 +12,7 @@ import { createUserMessage } from '../_deps/dsh-llm/lib/index.js';
 import { defineTool } from '../_deps/dsh-tools/lib/index.js';
 import { join } from 'node:path';
 import { appendTeamEvent, captainSessionOf } from "./events.js";
-import { acknowledgeMailbox, appendMailbox, archiveTeamDir, beginTaskAttempt, CAPTAIN_KEY, createMessage, createTeamDir, findTeamByCaptain, findTeamByParticipant, cancelUnfinishedTask, invalidateTaskAttempt, readUnreadMailbox, recordRetiredMemberIds, releaseMailboxDelivery, readTeam, sanitizeKey, transitionError, unsatisfiedDependencies, withTeamLock, writeTeam, removeTeamDir, validateCreateTask, evaluateQualityCompletion, planQualityFollowUp, resumeTeamState, buildCoverageMatrix, canDeclareDelivery, describeQualityLoop, sanitizeReviewAcceptance, sanitizeReviewObjective, taskKindOf, resolveCancelledDependencyDeadlocks, normalizeBlankOptionalTaskFields, dependencyStates, } from "./state.js";
+import { acknowledgeMailbox, appendMailbox, appendMailboxDeduped, archiveTeamDir, beginTaskAttempt, CAPTAIN_KEY, createMessage, createTeamDir, findTeamByCaptain, findTeamByParticipant, cancelUnfinishedTask, invalidateTaskAttempt, readUnreadMailbox, recordRetiredMemberIds, releaseMailboxDelivery, readTeam, sanitizeKey, transitionError, unsatisfiedDependencies, withTeamLock, writeTeam, removeTeamDir, validateCreateTask, evaluateQualityCompletion, planQualityFollowUp, resumeTeamState, buildCoverageMatrix, canDeclareDelivery, describeQualityLoop, sanitizeReviewAcceptance, sanitizeReviewObjective, taskKindOf, resolveCancelledDependencyDeadlocks, normalizeBlankOptionalTaskFields, dependencyStates, } from "./state.js";
 import { deliverToMember, installRetiredMemberGuard, installMemberSelectionRuntime, interruptMember, memberActivity, resolveMemberLlmSelection, spawnMember, steerCaptainReport, validateMemberLlmSelections, } from "./members.js";
 export { steerCaptainReport } from "./members.js";
 import { TERMINAL_TASK_STATUSES } from "./types.js";
@@ -1867,8 +1867,14 @@ export function registerAgentTeamsTools(ctx, config) {
                 }
                 //#endregion mpd-delta message-payload-ceiling
                 if (to === CAPTAIN_KEY) {
-                    const message = { ...createMessage(from, CAPTAIN_KEY, args.content), deliveryClaimedAt: Date.now() };
-                    await appendMailbox(stateRoot, fresh.id, CAPTAIN_KEY, message);
+                    //#region mpd-delta send-dedup-wiring (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                    // R1 wiring: an identical (from,to,content) inside the 60 s window folds
+                    // into the surviving record's dupCount instead of appending a second one,
+                    // so the recipient can deliver/act at most once. The record is never
+                    // physically deleted and the window/priority live in lib/state.js.
+                    const pending = { ...createMessage(from, CAPTAIN_KEY, args.content), deliveryClaimedAt: Date.now() };
+                    const { message, folded } = await appendMailboxDeduped(stateRoot, fresh.id, CAPTAIN_KEY, pending);
+                    //#endregion mpd-delta send-dedup-wiring
                     appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, caller.session), 'agent-teams/message-sent', {
                         teamId: fresh.id,
                         messageId: message.id,
@@ -1876,6 +1882,7 @@ export function registerAgentTeamsTools(ctx, config) {
                         to: CAPTAIN_KEY,
                         content: args.content,
                         ts: message.ts,
+                        ...folded ? { foldedDuplicate: true, dupCount: message.dupCount } : {},
                     });
                     return { kind: 'captain', fresh, identity, message, from };
                 }
@@ -1883,8 +1890,9 @@ export function registerAgentTeamsTools(ctx, config) {
                     throw new Error(`team "${fresh.name}" is halted; call agent_teams_resume before waking a member`);
                 }
                 const recipient = requireMember(fresh, to);
-                const message = { ...createMessage(from, recipient.name, args.content), deliveryClaimedAt: Date.now() };
-                await appendMailbox(stateRoot, fresh.id, recipient.name, message);
+                // R1 wiring (same rule as the captain path above).
+                const pendingMember = { ...createMessage(from, recipient.name, args.content), deliveryClaimedAt: Date.now() };
+                const { message, folded } = await appendMailboxDeduped(stateRoot, fresh.id, recipient.name, pendingMember);
                 appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, caller.session), 'agent-teams/message-sent', {
                     teamId: fresh.id,
                     messageId: message.id,
@@ -1898,6 +1906,25 @@ export function registerAgentTeamsTools(ctx, config) {
             // Resolve the exact live captain only after releasing the state lock.
             // The plugin mailbox is already durable if live delivery cannot proceed.
             const captain = ctx.agents.get(prepared.fresh.captainSessionId);
+            //#region mpd-delta send-dedup-delivery-guard (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+            // R1: when this send FOLDED into an existing record (`_folded`, a transient marker
+            // from the state primitive — never persisted), the recipient must NOT be woken a
+            // second time: the fold is precisely the "act at most once" guarantee. And such a
+            // second delivery would be pure waste anyway — a SUCCESS would only re-acknowledge
+            // an already-acknowledged record, while a FAILURE would release the claim and hand
+            // the very same record to the scheduler, so the durable record is unchanged either
+            // way while the recipient may have acted twice. The scheduler therefore still owns
+            // the wake: it delivers the one surviving record exactly once when the live path
+            // did not accept it (unread + unclaimed), and delivers nothing once it was acked.
+            if (prepared.message._folded === true) {
+                return {
+                    message_id: prepared.message.id,
+                    from: prepared.from,
+                    to: prepared.kind === 'captain' ? CAPTAIN_KEY : prepared.recipient.name,
+                    delivered: 'duplicate',
+                };
+            }
+            //#endregion mpd-delta send-dedup-delivery-guard
             if (prepared.kind === 'captain') {
                 let delivered = 'mailbox';
                 if (captain !== undefined && prepared.identity.kind === 'member') {

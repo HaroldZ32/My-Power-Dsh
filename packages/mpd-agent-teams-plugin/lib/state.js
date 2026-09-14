@@ -489,9 +489,21 @@ export async function appendMailboxDeduped(stateRoot, teamId, agentKey, message,
     const hit = existing.find((candidate) => messageDedupKey(candidate) === key
         && Math.abs(message.ts - candidate.ts) <= windowMs);
     if (hit !== undefined) {
-        const folded = { ...hit, dupCount: (hit.dupCount ?? 1) + 1 };
+        // R1: the surviving record keeps its OWN delivery/read markers. Dropping them
+        // would clear a live claim (or an acknowledgement) and let a folded duplicate be
+        // delivered again — exactly the duplicate ACTION this primitive exists to stop.
+        const folded = {
+            ...hit,
+            dupCount: (hit.dupCount ?? 1) + 1,
+            ...hit.deliveryClaimedAt === undefined ? {} : { deliveryClaimedAt: hit.deliveryClaimedAt },
+            ...hit.deliveredAt === undefined ? {} : { deliveredAt: hit.deliveredAt },
+            ...hit.readAt === undefined ? {} : { readAt: hit.readAt },
+        };
         await mutateMailbox(stateRoot, teamId, agentKey, [hit.id], () => folded);
-        return { message: folded, folded: true };
+        // `_folded` is a TRANSIENT in-memory marker for the caller (the send boundary must
+        // not re-deliver an already-owned payload). It is never persisted: the record kept
+        // is `folded` alone, so a later fold cannot see a stale marker from an old crash.
+        return { message: { ...folded, _folded: true }, folded: true };
     }
     await appendMailbox(stateRoot, teamId, agentKey, { ...message, dupCount: message.dupCount ?? 1 });
     return { message: { ...message, dupCount: message.dupCount ?? 1 }, folded: false };
@@ -528,6 +540,11 @@ export async function clearMailboxToWatermark(stateRoot, teamId, agentKey, water
         clearedAt: options.now ?? Date.now(),
         clearedToWatermark: watermark,
         archivedTo: sidecar,
+        // R1: PRESERVE the read/delivery markers. Without them a cleared record could
+        // re-open as "unread" and be delivered a second time after an acknowledgement.
+        ...message.readAt === undefined ? {} : { readAt: message.readAt },
+        ...message.deliveredAt === undefined ? {} : { deliveredAt: message.deliveredAt },
+        ...message.dupCount === undefined ? {} : { dupCount: message.dupCount },
     }));
     const audit = {
         kind: 'mailbox-cleared',
@@ -649,7 +666,28 @@ export async function expireInterjections(stateRoot, teamId, options = {}) {
     if (expired.length === 0)
         return [];
     await mutateMailbox(stateRoot, teamId, INTERJECTION_QUEUE, expired.map((record) => record.id), (record) => ({ ...record, status: 'expired', decidedAt: now }));
+    // R1: silence is a DEFAULT DENY, and the requester must be TOLD. The notice is an
+    // ORDINARY message (no interjection kind), so it travels the normal delivery path
+    // and cannot be filtered out by the interjection gate.
+    for (const record of expired) {
+        if (typeof record.from !== 'string' || record.from === '')
+            continue;
+        await appendMailbox(stateRoot, teamId, record.from, {
+            ...createExpiryNotice(record),
+            id: `interjection-expired-${record.id}`,
+            from: CAPTAIN_KEY,
+            to: record.from,
+            ts: now,
+        });
+    }
     return expired.map((record) => record.id);
+}
+/** The ordinary notice a requester receives when their interjection request expires. */
+function createExpiryNotice(record) {
+    const receivedAt = typeof record.ts === 'number' ? new Date(record.ts).toISOString() : '(unknown time)';
+    return {
+        content: `Your interjection request "${String(record.id)}" (sent ${receivedAt}) EXPIRED without a captain decision, so it is denied by default. It was not delivered to anyone.`,
+    };
 }
 /** Record the captain's decision on one interjection request. */
 export async function decideInterjection(stateRoot, teamId, interjectionId, decision, options = {}) {
@@ -667,8 +705,31 @@ export async function decideInterjection(stateRoot, teamId, interjectionId, deci
     }
     if (record.status !== 'pending')
         throw new Error(`interjection "${interjectionId}" is already ${String(record.status)}`);
+    // R1: the decision vocabulary is CLOSED. Anything else is a caller bug and must be
+    // named loudly instead of being persisted as an unknown status.
+    const ALLOWED_INTERJECTION_DECISIONS = ['approved', 'rejected'];
+    if (!ALLOWED_INTERJECTION_DECISIONS.includes(decision)) {
+        throw new Error(`invalid interjection decision "${String(decision)}"; allowed values are: ${ALLOWED_INTERJECTION_DECISIONS.join(', ')}`);
+    }
     const decided = { ...record, status: decision, decidedAt: now };
     await mutateMailbox(stateRoot, teamId, INTERJECTION_QUEUE, [interjectionId], () => decided);
+    // R1 "delivery after approval": the APPROVED body is re-posted as an ORDINARY message
+    // in the requester's inbox. It therefore rides the existing member-prompt queue seam
+    // at the next step boundary like any other mailbox work — the plugin never calls the
+    // harness sendMessage/steer path for team work (AGENTS.md §12), and the requester's
+    // running attempt is not restarted (frozen S4).
+    if (decision === 'approved' && typeof record.from === 'string' && record.from !== '') {
+        const body = typeof options.body === 'string' && options.body !== ''
+            ? options.body
+            : (typeof record.body === 'string' && record.body !== '' ? record.body : record.content);
+        await appendMailbox(stateRoot, teamId, record.from, {
+            id: `${interjectionId}-delivery`,
+            from: options.captainKey ?? CAPTAIN_KEY,
+            to: record.from,
+            content: `Approved interjection "${interjectionId}": ${body}`,
+            ts: now,
+        });
+    }
     return decided;
 }
 //#endregion mpd-delta message-channel-r1
@@ -717,6 +778,10 @@ export async function readMailbox(stateRoot, teamId, agentKey, onMalformedLine) 
 export async function readUnreadMailbox(stateRoot, teamId, agentKey, onMalformedLine) {
     const now = Date.now();
     return (await readMailbox(stateRoot, teamId, agentKey, onMalformedLine))
+        // R1: a TOMBSTONE is a cleared record — the payload is gone, so it must never
+        // count as unread/deliverable. Kept out of this read rather than deleted, so the
+        // row stays reviewable and the archive sidecar stays the recovery path.
+        .filter(message => message.tombstone !== true)
         .filter(message => message.readAt === undefined
         && (message.deliveryClaimedAt === undefined
             || now - message.deliveryClaimedAt >= MAILBOX_DELIVERY_LEASE_MS));
