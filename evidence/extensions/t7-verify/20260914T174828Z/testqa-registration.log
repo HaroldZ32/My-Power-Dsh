@@ -1,0 +1,11 @@
+=== test:qa:all raw at 17:50:00Z ===
+for c in agent-teams-adopt agent-teams-dispatch agent-teams-sidebar bundle-lifecycle codegraph-smoke dual-track-smoke mcp-call memory-smoke mount-assert plan-c-smoke preset-conformance preset-register relocate-smoke session-start-team skill-catalog-probe software-smoke team-route-rewire tool-output-validation ultrawork-smoke vision-smoke web-client-adapt workmate-library workmate-team-member; do echo "[test:qa:all] $c"; bun "skills/dsh-qa/scripts/$c.mjs" --no-skip || { echo "[test:qa:all] FAILED: $c"; exit 1; }; done; echo "[test:qa:all] real-lane subset passed (real headless boot and/or live provider)"
+
+extension-lifecycle present: false
+extension-mcp-bridge present: false
+
+=== HEAD 6cbb126 ===
+(none above = absent at HEAD too)
+
+=== sha256 of package.json now ===
+523102bd3a7a98c153e5d2e2b9c790d2a4adc0e3c39dbacb65dd2157d2b58b19  package.json

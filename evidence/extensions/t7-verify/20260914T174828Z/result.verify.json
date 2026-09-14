@@ -1,0 +1,219 @@
+{
+  "slug": "t7-verify",
+  "ok": true,
+  "problems": [],
+  "steps": {
+    "c1.no-module-level-workspace-root": {
+      "ok": true,
+      "matches": []
+    },
+    "c2.workspace-discovery-never-uses-process-cwd": {
+      "ok": true,
+      "discoveryRootUsesCwd": [],
+      "allCwdReads": [
+        {
+          "l": "this.cwd = options.entry.root === \"\" ? process.cwd() : resolve(options.entry.root, options.item.cwd === \"\" ? \".\" : options.item.cwd)",
+          "i": 1956
+        }
+      ],
+      "note": "a child-PROCESS cwd (MCP stdio spawn) is legitimate and is reported, not failed"
+    },
+    "c5.no-direct-harness-seams": {
+      "ok": true,
+      "directSeams": [],
+      "adapterResolution": [
+        "257:import { createDshAdapter, type DshAdapter, type DshToolExec } from \"../../mpd-dsh-adapter-plugin/src/index\"",
+        "440:dsh = (typeof ctx?.get === \"function\" ? ctx.get(\"mpdDsh\") : undefined) ?? createDshAdapter(ctx)"
+      ]
+    },
+    "c3.workspace-root-resolved-per-call": {
+      "ok": true,
+      "callSites": [
+        "487:const root = cwdOf(listOptions) ?? dsh.workspaceRoot()",
+        "534:const root = cwdOf(listOptions) ?? dsh.workspaceRoot()",
+        "558:const root = dsh.workspaceRoot(exec as DshToolExec | undefined)"
+      ]
+    },
+    "c4.no-runtime-writes-outside-extension-roots": {
+      "ok": true,
+      "writeSites": 0,
+      "suspicious": []
+    },
+    "8a.publicToolName-parity-with-installed-harness": {
+      "ok": true,
+      "MAX": 64,
+      "HASH": 12,
+      "harnessImpl": true,
+      "ourImpl": true
+    },
+    "install.profile": {
+      "ok": true,
+      "exit": 0,
+      "tail": "stall-profile] wrote profile/ home patch/ presets(1) + web-compat shim @mpd-dsh/mpd\n[install-profile] done. Start with: dsh --profile mpd-headless   (the web preset selector will show the mpd preset)\n"
+    },
+    "a.mount-proof-row-applied-and-4-tools-offered": {
+      "ok": true,
+      "exit": 0,
+      "needed": [
+        "mpd_ext_list",
+        "mpd_ext_show",
+        "mpd_flow_list",
+        "mpd_flow_show"
+      ],
+      "offeredExt": [
+        "mpd_ext_list",
+        "mpd_ext_show",
+        "mpd_flow_list",
+        "mpd_flow_show"
+      ],
+      "crashed": []
+    },
+    "b.1.project-extension-listed": {
+      "ok": true,
+      "head": "mpd extensions: 3 (0 shadowed, 0 rejected)\n- t7-proj [project/directory] enabled skills=1 flows=1 mcp=0 roles=0\n- t7-user [user/directory] enabled skills=1 flows=1 mcp=1 roles=1 (roles: T7 User Reviewer)\n- mpd-ext-exampl"
+    },
+    "b.2.flow-loadable": {
+      "ok": true,
+      "head": "mpd extensions: 3 (0 shadowed, 0 rejected)\n- t7-proj [project/directory] enabled skills=1 flows=1 mcp=0 roles=0\n- t7-user [user/directory] enabled skills=1 flow"
+    },
+    "b.3.role-persona-reachable": {
+      "ok": true,
+      "head": "mpd extensions: 3 (0 shadowed, 0 rejected)\n- t7-proj [project/directory] enabled skills=1 flows=1 mcp=0 roles=0\n- t7-user [user/directory] enabled skills=1 flow"
+    },
+    "b.4.mcp-tool-callable-from-session-log": {
+      "ok": true,
+      "head": "mpd extensions: 3 (0 shadowed, 0 rejected)\n- t7-proj [project/directory] enabled skills=1 flows=1 mcp=0 roles=0\n- t7-user [user/directory] enabled skills=1 flows=1 mcp=1 roles=1 (roles: T7 User Review",
+      "succeeded": true
+    },
+    "b.5.sandbox-isolation": {
+      "ok": true,
+      "checked": 1,
+      "keys": [
+        "--tmp-mpd-t7-verify-YCdc5f-ws--"
+      ]
+    },
+    "e.1.boot-green-with-six-broken-extensions": {
+      "ok": true,
+      "exit": 0,
+      "crashed": [],
+      "listOk": true
+    },
+    "e.2.malformed-skill-candidate-skipped-and-valid-sibling-loads": {
+      "ok": true,
+      "badExtensionListed": true,
+      "reported": true,
+      "badSkillMention": "- t7-bad-skill [user/directory] enabled skills=1 flows=0 mcp=0 roles=0",
+      "validSiblingLoaded": true,
+      "skillCallId": "call_failure_5",
+      "skillHead": "<skill_content name=\"t7-good-sibling\">\n<skill_resources>\nBase directory for this skill: /tmp/mpd-t7-verify-YCdc5f/run-ho",
+      "note": "the malformed candidate must be dropped by the provider's pre-validation; if it reached the skills snapshot it would poison the snapshot and the valid sibling of the SAME provider would not load"
+    },
+    "e.3.healthy-extension-still-works-beside-broken": {
+      "ok": true,
+      "mcpHead": "{\n  \"id\": \"t7-user\",\n  \"root\": \"/tmp/mpd-t7-verify-YCdc5f/run-home/.mpd/extensions/t7-user\",\n  \"enabled\": false,\n  \"kinds\": [\n    \"skills\",\n",
+      "mcpIsError": false,
+      "mcpCallId": "call_failure_6"
+    },
+    "e.4.dead-mcp-reported-no-tool": {
+      "ok": true,
+      "seen": "t7_dead=unavailable",
+      "tools": []
+    },
+    "e.5.hang-mcp-time-boxed-boot-green": {
+      "ok": true,
+      "seen": "t7_hang=unavailable",
+      "exit": 0
+    },
+    "e.6.schema-keep-or-drop-loud": {
+      "ok": true,
+      "seen": "t7_schema=connected",
+      "good": true,
+      "badInput": false,
+      "badOutput": false
+    },
+    "e.7.dup-raw-name-leaves-zero-tools": {
+      "ok": true,
+      "seen": "t7_dup=unavailable",
+      "tools": []
+    },
+    "e.8.project-plane-mcp-and-roles-rejected-loudly": {
+      "ok": true,
+      "head": "- t7-proj-badplane [project/directory] enabled skills=0 flows=0 mcp=0 roles=0 |     error contributes.roles[0]: project-level extensions may contribute skills and flows only: tool and provider registration is process-global and cannot be scoped to a session |     error contributes.mcp[0]: project-le"
+    },
+    "8b.lossy-public-name-matches-harness-algorithm": {
+      "ok": true,
+      "observed": "mcp__t7_lossy__weird_name_with_spaces_e101727a6163",
+      "expected": "mcp__t7_lossy__weird_name_with_spaces_e101727a6163",
+      "len": 50,
+      "cap": 64
+    },
+    "8c.lossy-tool-really-callable": {
+      "ok": true,
+      "head": "lossy-ok",
+      "isError": false,
+      "callId": "call_failure_7"
+    },
+    "d.iso-a": {
+      "ok": true,
+      "exit": 0,
+      "sawExpected": true,
+      "sawForbidden": []
+    },
+    "d.iso-b": {
+      "ok": true,
+      "exit": 0,
+      "sawExpected": true,
+      "sawForbidden": []
+    },
+    "d.iso-decoy-control": {
+      "ok": true,
+      "exit": 0,
+      "sawExpected": true,
+      "sawForbidden": []
+    },
+    "f.1.pack-runs": {
+      "ok": true,
+      "exit": 0,
+      "tail": "[pack-mpd] modes normalized: 1095 files (644: 1083, 755: 12)\n[pack-mpd] staged package -> /root/dshProj/my-power-dsh/dist/mpd-package\n",
+      "stderr": ""
+    },
+    "f.2.packed-red-recorded-as-expected": {
+      "ok": true,
+      "exit": 0,
+      "pluginPresent": false,
+      "extensionsPresent": false,
+      "patchMentionsExt": true,
+      "note": "t5's stated expectation for this wave: the packed tree cannot yet resolve the ext row / carry extensions/. A GREEN here means t11 already landed its fix."
+    }
+  },
+  "harness": {
+    "MAX": 64,
+    "HASH": 12
+  },
+  "boots": {
+    "main": {
+      "exit": 0,
+      "elapsedMs": 5081,
+      "offeredExt": [
+        "mpd_ext_list",
+        "mpd_ext_show",
+        "mpd_flow_list",
+        "mpd_flow_show"
+      ],
+      "crashed": []
+    },
+    "failure": {
+      "exit": 0,
+      "elapsedMs": 4101,
+      "crashed": [],
+      "listed": "mpd extensions: 10 (0 shadowed, 0 rejected)\n- t7-proj [project/directory] enabled skills=1 flows=1 mcp=0 roles=0\n- t7-proj-badplane [project/directory] enabled skills=0 flows=0 mcp=0 roles=0\n    error contributes.roles[0]: project-level extensions may contribute skills and flows only: tool and provider registration is process-global and cannot be scoped to a session\n    error contributes.mcp[0]: project-level extensions may contribute skills and flows only: tool and provider registration is process-global and cannot be scoped to a session\n- t7-bad-skill [user/directory] enabled skills=1 flows="
+    },
+    "packed": {
+      "exit": 0,
+      "pluginPresent": false,
+      "extensionsPresent": false,
+      "patchMentionsExt": true
+    }
+  },
+  "sandbox": "/tmp/mpd-t7-verify-YCdc5f"
+}

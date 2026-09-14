@@ -1,0 +1,84 @@
+{
+  "ok": false,
+  "slug": "extension-mcp-bridge",
+  "sandbox": "/tmp/mpd-extension-mcp-bridge-M0cP78",
+  "arms": "live (repo's own stdio MCP server, real call) | dead | hang | schema (keep-or-drop) | dup (zero tools) | containment",
+  "note": "the healthy server is packages/mpd-mcp-lsp/dist/cli.js; the failure arms are local fixture servers started by the bridge itself",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": false,
+      "offered": false,
+      "called": true,
+      "succeeded": false,
+      "reason": "the harness recorded 1 call(s) to mcp__qa_mcp_live__status but every recorded result is an ERROR",
+      "resultHead": "Error: unknown tool \"mpd_ext_show\"\nError: unknown tool \"mpd_ext_show\"\nError: unknown tool \"mpd_ext_show\"\nError: unknown tool \"mpd_ext_show\"\nError: unknown tool \"mcp__qa_mcp_live__status\""
+    },
+    "dead": {
+      "ok": false,
+      "offeredNoTool": true,
+      "headerSawNoTool": true,
+      "reported": false,
+      "stateText": ""
+    },
+    "hang": {
+      "ok": false,
+      "connectTimeoutMs": 1500,
+      "durationMs": 8203,
+      "offeredNoTool": true,
+      "reported": false,
+      "stateText": ""
+    },
+    "schema": {
+      "ok": false,
+      "goodToolOffered": false,
+      "badToolSkipped": true,
+      "reportedReason": false,
+      "stateText": ""
+    },
+    "dup": {
+      "ok": true,
+      "zeroTools": true,
+      "headerZeroTools": true,
+      "stateText": ""
+    },
+    "containment": {
+      "ok": false,
+      "exit": 0,
+      "showCallOrder": [
+        null,
+        null,
+        null,
+        null
+      ],
+      "crashSignatures": [],
+      "offeredMcp": [
+        "mcp__ast_grep__rewrite",
+        "mcp__ast_grep__scan",
+        "mcp__ast_grep__search",
+        "mcp__codegraph__codegraph_explore",
+        "mcp__context7__query-docs",
+        "mcp__context7__resolve-library-id",
+        "mcp__grep_app__searchGitHub",
+        "mcp__lsp__diagnostics",
+        "mcp__lsp__find_references",
+        "mcp__lsp__goto_definition",
+        "mcp__lsp__install_decision",
+        "mcp__lsp__prepare_rename",
+        "mcp__lsp__rename",
+        "mcp__lsp__status",
+        "mcp__lsp__symbols"
+      ],
+      "isolation": {
+        "ok": true,
+        "checked": 1,
+        "keys": [
+          "--tmp-mpd-extension-mcp-bridge-M0cP78-ws--"
+        ]
+      }
+    }
+  }
+}

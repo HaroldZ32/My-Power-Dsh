@@ -1,0 +1,140 @@
+{
+  "check": "every registered tool schema passes the INSTALLED harness assertSupportedJsonSchema",
+  "harnessPath": "/root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-tools/lib/index.js",
+  "home": "/tmp/mpd-ext-schema-home-rtSQdq",
+  "toolsChecked": 12,
+  "applyWarnings": [],
+  "mcpServers": [
+    {
+      "extension": "lsp-live",
+      "serverName": "lsp",
+      "state": "connected",
+      "tools": [
+        "mcp__lsp__status",
+        "mcp__lsp__diagnostics",
+        "mcp__lsp__goto_definition",
+        "mcp__lsp__find_references",
+        "mcp__lsp__symbols",
+        "mcp__lsp__prepare_rename",
+        "mcp__lsp__rename",
+        "mcp__lsp__install_decision"
+      ]
+    }
+  ],
+  "failed": 0,
+  "verdict": "pass",
+  "honestLimits": [
+    "assertSupportedJsonSchema is asserted by the harness on output.schema ONLY; `parameters` is recorded as not-asserted rather than claimed.",
+    "this is a schema/registration check, not a mounted boot: t5 owns the isolated-DSH_HOME mount proof with registration instrumentation."
+  ],
+  "rows": [
+    {
+      "source": "mpd-ext-plugin apply",
+      "name": "mpd_ext_list",
+      "hasRender": true,
+      "timeoutMs": null,
+      "outputSchemaAccepted": true,
+      "violations": [],
+      "parametersAssertedByThisRelease": false
+    },
+    {
+      "source": "mpd-ext-plugin apply",
+      "name": "mpd_ext_show",
+      "hasRender": true,
+      "timeoutMs": null,
+      "outputSchemaAccepted": true,
+      "violations": [],
+      "parametersAssertedByThisRelease": false
+    },
+    {
+      "source": "mpd-ext-plugin apply",
+      "name": "mpd_flow_list",
+      "hasRender": true,
+      "timeoutMs": null,
+      "outputSchemaAccepted": true,
+      "violations": [],
+      "parametersAssertedByThisRelease": false
+    },
+    {
+      "source": "mpd-ext-plugin apply",
+      "name": "mpd_flow_show",
+      "hasRender": true,
+      "timeoutMs": null,
+      "outputSchemaAccepted": true,
+      "violations": [],
+      "parametersAssertedByThisRelease": false
+    },
+    {
+      "source": "stdio MCP bridge (real packages/mpd-mcp-lsp server)",
+      "name": "mcp__lsp__status",
+      "hasRender": true,
+      "timeoutMs": 15000,
+      "outputSchemaAccepted": true,
+      "violations": [],
+      "parametersAssertedByThisRelease": false
+    },
+    {
+      "source": "stdio MCP bridge (real packages/mpd-mcp-lsp server)",
+      "name": "mcp__lsp__diagnostics",
+      "hasRender": true,
+      "timeoutMs": 15000,
+      "outputSchemaAccepted": true,
+      "violations": [],
+      "parametersAssertedByThisRelease": false
+    },
+    {
+      "source": "stdio MCP bridge (real packages/mpd-mcp-lsp server)",
+      "name": "mcp__lsp__goto_definition",
+      "hasRender": true,
+      "timeoutMs": 15000,
+      "outputSchemaAccepted": true,
+      "violations": [],
+      "parametersAssertedByThisRelease": false
+    },
+    {
+      "source": "stdio MCP bridge (real packages/mpd-mcp-lsp server)",
+      "name": "mcp__lsp__find_references",
+      "hasRender": true,
+      "timeoutMs": 15000,
+      "outputSchemaAccepted": true,
+      "violations": [],
+      "parametersAssertedByThisRelease": false
+    },
+    {
+      "source": "stdio MCP bridge (real packages/mpd-mcp-lsp server)",
+      "name": "mcp__lsp__symbols",
+      "hasRender": true,
+      "timeoutMs": 15000,
+      "outputSchemaAccepted": true,
+      "violations": [],
+      "parametersAssertedByThisRelease": false
+    },
+    {
+      "source": "stdio MCP bridge (real packages/mpd-mcp-lsp server)",
+      "name": "mcp__lsp__prepare_rename",
+      "hasRender": true,
+      "timeoutMs": 15000,
+      "outputSchemaAccepted": true,
+      "violations": [],
+      "parametersAssertedByThisRelease": false
+    },
+    {
+      "source": "stdio MCP bridge (real packages/mpd-mcp-lsp server)",
+      "name": "mcp__lsp__rename",
+      "hasRender": true,
+      "timeoutMs": 15000,
+      "outputSchemaAccepted": true,
+      "violations": [],
+      "parametersAssertedByThisRelease": false
+    },
+    {
+      "source": "stdio MCP bridge (real packages/mpd-mcp-lsp server)",
+      "name": "mcp__lsp__install_decision",
+      "hasRender": true,
+      "timeoutMs": 15000,
+      "outputSchemaAccepted": true,
+      "violations": [],
+      "parametersAssertedByThisRelease": false
+    }
+  ]
+}

@@ -50,6 +50,35 @@ The same resolution is what `ctx.get("mpdRoles").get(key)` uses, so the workmate
 library (`mpd_workmate_init base=...`), `mpd_modelchain_resolve` and the roster tools
 all address a role the same way.
 
+## Extension-contributed roles
+
+An `mpd-ext` extension may contribute roles. They are merged into this roster **per call**
+(`ctx.get("mpdExtensions")`, resolved lazily at tool-execute time — never an apply-time
+cache, so an extension row that applies later, or registers later, is still visible), and
+they work on every surface a base role does:
+
+- `mpd_roles_list` lists them with their owning extension (`extension: <extension-id>`), and
+  `mpd_role_spawn` / `mpd_role_persona` address them by their declared name in any spelling
+  (`Verilog Reviewer`, `verilog-reviewer`, `verilogreviewer`).
+- A role the extension declares `readonly` spawns with the same write-deny toolFilter as the
+  read-only base roles.
+- The `mpdRoles` service serves them too, so they are usable as **workmate BASE templates**
+  (`mpd_workmate_init base="Verilog Reviewer"`) and resolve through `mpd_modelchain_resolve`
+  when the extension declared a `provider` + `model` pair.
+- The stable id is namespaced (`ext-<extension-id>-<slug of the name>`), so it can never
+  collide with a base id.
+
+Refusals are loud and isolated: a role whose name is already taken by a base role or by
+another extension is reported in `mpd_roles_list`'s `refused` list and logged once — it never
+takes the roster, or the boot, down. A role whose persona file is unreadable is refused the
+same way, and an extension that is disabled by config contributes no role at all.
+
+**Honoured limit — extension roles are not team members.** The adopted agent-teams `mpd`
+profile member list is static patch configuration in `packages/mpd-bundle/cordis.patch.yml`
+and cannot be extended from a plugin at runtime, so an extension role can be spawned one-shot
+and used as a workmate base, but it can never be staged as a teammate by
+`agent_teams_create`.
+
 ## Team mode
 
 Multi-member team work is NOT built here. It lives in the adopted

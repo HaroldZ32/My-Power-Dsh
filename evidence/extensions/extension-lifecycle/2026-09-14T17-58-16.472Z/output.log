@@ -1,0 +1,86 @@
+=== install ===
+ams precisely; never edit files or load anything by path."
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Lead
+              reasoning_effort: max
+              role: orchestration / integration
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Orchestrator. Plan the macro structure, delegate independent units in parallel, integrate and verify results."
+            - name: Deep Worker
+              role: autonomous goal-driven implementation
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Autonomous deep worker. Receive goals, execute them end-to-end with tools, verify every change, report evidence-first."
+            - name: Senior Engineer
+              reasoning_effort: max
+              role: primary implementation
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Primary engineer. Plan small, execute with tools, keep diffs minimal, verify every change, report honestly."
+            - name: Junior Engineer
+              role: small mechanical changes
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny."
+
+[install-profile] wrote profile/ home patch/ presets(1) + web-compat shim @mpd-dsh/mpd
+[install-profile] done. Start with: dsh --profile mpd-headless   (the web preset selector will show the mpd preset)
+
+
+=== main arm (exit 0, 5394ms) ===
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-extension-lifecycle-PQYBSP/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:qa-ext-user, mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+lifecycle-main-done
+
+
+=== failure arm (exit 0) ===
+[mpd-codegraph] init status=marker binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-extension-lifecycle-PQYBSP/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:qa-ext-user, mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-ext] qa-bad-json (/tmp/mpd-extension-lifecycle-PQYBSP/ws/.mpd/extensions/qa-bad-json/mpd-ext.json) rejected: descriptor must be a JSON object
+[mpd-ext] qa-bad-version (/tmp/mpd-extension-lifecycle-PQYBSP/ws/.mpd/extensions/qa-bad-version/mpd-ext.json) rejected: apiVersion must equal 1 (got 9)
+[mpd-ext] qa-bad-json (/tmp/mpd-extension-lifecycle-PQYBSP/ws/.mpd/extensions/qa-bad-json/mpd-ext.json) rejected: descriptor must be a JSON object
+[mpd-ext] qa-bad-version (/tmp/mpd-extension-lifecycle-PQYBSP/ws/.mpd/extensions/qa-bad-version/mpd-ext.json) rejected: apiVersion must equal 1 (got 9)
+[mpd-ext] qa-bad-json (/tmp/mpd-extension-lifecycle-PQYBSP/ws/.mpd/extensions/qa-bad-json/mpd-ext.json) rejected: descriptor must be a JSON object
+[mpd-ext] qa-bad-version (/tmp/mpd-extension-lifecycle-PQYBSP/ws/.mpd/extensions/qa-bad-version/mpd-ext.json) rejected: apiVersion must equal 1 (got 9)
+[mpd-ext] qa-bad-json (/tmp/mpd-extension-lifecycle-PQYBSP/ws/.mpd/extensions/qa-bad-json/mpd-ext.json) rejected: descriptor must be a JSON object
+[mpd-ext] qa-bad-version (/tmp/mpd-extension-lifecycle-PQYBSP/ws/.mpd/extensions/qa-bad-version/mpd-ext.json) rejected: apiVersion must equal 1 (got 9)
+lifecycle-failure-done
+
+
+=== session-a (cwd=/tmp/mpd-extension-lifecycle-PQYBSP/ws-a) ===
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-extension-lifecycle-PQYBSP/ws-a
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:qa-ext-user, mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+isolation-session-a
+
+
+=== session-b (cwd=/tmp/mpd-extension-lifecycle-PQYBSP/ws-b) ===
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-extension-lifecycle-PQYBSP/ws-b
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:qa-ext-user, mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+isolation-session-b
+
+
+=== decoy-cwd-control (cwd=/tmp/mpd-extension-lifecycle-PQYBSP/decoy) ===
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-extension-lifecycle-PQYBSP/decoy
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:qa-ext-user, mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+isolation-decoy-cwd-control
+
+
+=== packed arm (pack exit 0) ===
+[pack-mpd] modes normalized: 1095 files (644: 1083, 755: 12)
+[pack-mpd] staged package -> /root/dshProj/my-power-dsh/dist/mpd-package
+

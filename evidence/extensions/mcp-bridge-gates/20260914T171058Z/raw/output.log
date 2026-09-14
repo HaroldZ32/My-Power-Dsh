@@ -1,0 +1,161 @@
+$ bun test packages/mpd-ext-plugin
+exit=0 expected=0 elapsed=2052ms
+bun test v1.3.14 (0d9b296a)
+[stderr]
+packages/mpd-ext-plugin/test/core.test.ts:
+(pass) apply registers exactly the four tools, no reload, and provides the mpdExtensions service [13.77ms]
+(pass) apply contains a hostile harness: a throwing tool or skill seam never escapes apply [3.08ms]
+(pass) the four tools emit values that satisfy their own output schemas [6.00ms]
+(pass) mpd_ext_show and mpd_flow_show report an unknown id as an error naming the known ids [1.23ms]
+(pass) descriptor validation rejects unknown keys, bad apiVersion, missing id, escapes and bad rank [0.76ms]
+(pass) role provider/model must be paired and persona must stay inside the root [0.32ms]
+(pass) effectiveEnabled follows disable > enable > descriptor [0.30ms]
+(pass) discovery precedence is project > user > bundle and shadowing is recorded, never fatal [5.15ms]
+(pass) a malformed manifest is reported per item and never aborts apply or another extension [2.57ms]
+(pass) the project plane is re-read per call and never leaks across workspaces [1.93ms]
+(pass) skill candidates are pre-validated: a bad candidate is skipped, warned and never emitted [2.37ms]
+(pass) the provider pre-validates at emit time too, and reports the skip to the owner [0.41ms]
+(pass) a loaded candidate is recorded on the extension when its items are unusable [0.72ms]
+(pass) the project-plane skill provider resolves per call from provider.list({ cwd }) [2.30ms]
+(pass) a skill provider never throws out of list()/get() when discovery fails [0.77ms]
+(pass) provider names are unique by construction [0.14ms]
+(pass) flows render into skill candidates and a flow id outside the skill grammar is rejected loudly [0.41ms]
+(pass) a broken flow file is skipped and recorded while its siblings keep working [1.09ms]
+(pass) config is read lazily per use: disable/enable are honoured after apply [2.75ms]
+(pass) extensionConfig reads every extensions.* key lazily from mpdConfig (declared process-level limit) [0.36ms]
+(pass) mcp.enabled=false is honoured per call and surfaced instead of silently pending [13.36ms]
+(pass) a missing mpdConfig degrades to the documented defaults [1.92ms]
+(pass) the code plane registers through ctx.get("mpdExtensions") and shares the same validation [2.60ms]
+(pass) describe() answers the frozen descriptor shape for a known extension [1.57ms]
+(pass) one broken extension of each kind leaves the good ones working [3.14ms]
+(pass) mcp and roles are declared, recorded as pending, and not implemented in this task [3.59ms]
+(pass) discoverPlane never throws for a missing root [0.19ms]
+
+packages/mpd-ext-plugin/test/mcp.test.ts:
+(pass) publicToolName replicates the harness algorithm: verbatim, sanitized+hashed, truncated+hashed [0.77ms]
+(pass) childEnv inherits only the SDK safe list and never a credential-shaped parent variable [0.25ms]
+(pass) the client completes initialize -> initialized -> tools/list against the repo's own stdio MCP server [98.48ms]
+(pass) the client reports a non-JSON stdout line as a protocol error instead of dying [69.80ms]
+(pass) apply connects declared servers, publishes their tools before activation completes, and mpd_ext_show reports the state [45.87ms]
+(pass) apply keeps the extension's pending line truthful while a server is disconnected [102.00ms]
+(pass) startup failure is contained: a dead server is unavailable with its stderr tail while its sibling still connects [131.49ms]
+(pass) a hanging server is time-boxed and the others still publish in parallel [460.66ms]
+(pass) a later tool-list change is swapped in, and a mid-list conflict rolls back to ZERO tools [71.48ms]
+(pass) a server-initiated tools/list_changed notification triggers a re-sync [91.39ms]
+(pass) a foreign inputSchema is projected for parameters while the wire schema stays untouched [70.88ms]
+(pass) tools with an unprojectable or foreign output schema are skipped loudly while their siblings register [72.73ms]
+(pass) a public-name collision with an existing tool skips that tool and is recorded [69.85ms]
+(pass) tools/call maps content, structured content and isError onto the harness result contract [323.41ms]
+(pass) the child env carries no credential-shaped variable inherited from the parent, and the child is reaped on dispose [71.59ms]
+(pass) a disabled extension never spawns a child and reports state disabled [0.98ms]
+(pass) extensions.mcp.enabled=false connects nothing even for an enabled extension [0.60ms]
+(pass) a server's relative args and cwd resolve against the EXTENSION ROOT, not the dsh process cwd [69.99ms]
+(pass) the shipped example's stdio MCP server starts, lists its tool and answers a real call [74.39ms]
+(pass) the shipped example extension is discoverable, disabled, and contributes all four kinds [0.89ms]
+
+packages/mpd-ext-plugin/test/core.test.ts:
+
+packages/mpd-ext-plugin/test/mcp.test.ts:
+
+ 47 pass
+ 0 fail
+ 329 expect() calls
+Ran 47 tests across 4 files. [2.04s]
+
+$ bun scripts/mpd-ext.mjs --self-test
+exit=0 expected=0 elapsed=363ms
+ok scaffold exits 0 (got 0): 
+  ok scaffold wrote mpd-ext.json
+  ok scaffold wrote skills/demo-ext-skill/SKILL.md
+  ok scaffold wrote flows/demo-ext-flow.json
+  ok scaffold wrote personas/demo-ext-reviewer.md
+  ok scaffold wrote server.mjs
+  ok validate accepts the scaffold (got 0): 
+  ok validate exits 1 on a broken extension (got 1)
+  ok the broken run reports "typoKey"
+  ok the broken run reports "serverName"
+  ok the broken run reports "contributes.skills[0].root"
+  ok the broken run reports "escapes are rejected"
+  ok the broken run reports "surprise"
+  ok the broken run reports "persona file does not exist"
+  ok validate accepts extensions/mpd-ext-example (got 0): 
+  ok list exits 0 (got 0)
+  ok list names the bundle plane
+  ok list sees the shipped example
+  ok no command prints usage or fails
+[mpd-ext] --self-test passed (19 checks)
+
+$ bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example
+exit=0 expected=0 elapsed=53ms
+[mpd-ext] validate /root/dshProj/my-power-dsh/extensions/mpd-ext-example (plane=user)
+  extension "mpd-ext-example": loadable
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  pending contributes.mcp[0]: pending: the "mcp" kind is declared by this build and connected by the runtime stdio MCP bridge task (t3) — server "example" is not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000)
+  pending contributes.roles: pending: extension roles are resolved per call by mpd-roles-plugin (t4) — declared here, not yet exposed through mpd_roles_list
+[mpd-ext] ok
+
+$ bun run typecheck
+exit=0 expected=0 elapsed=284ms
+
+[stderr]
+$ tsgo --noEmit
+
+$ bun scripts/mpd-ext.mjs validate /tmp/mpd-ext-broken-hU7EtJ (negative control)
+exit=1 expected=1 elapsed=50ms
+[mpd-ext] validate /tmp/mpd-ext-broken-hU7EtJ (plane=user)
+  extension "broken-ext": loadable
+  contributes: 0 skill(s), 0 flow(s), 1 role(s), 0 mcp server(s)
+  error descriptor.typoKey: unknown key "typoKey"
+  error contributes.skills[0].root: root must be a non-empty extension-root-relative directory (absolute paths and `..` escapes are rejected)
+  error contributes.flows[0].rank: rank must be a finite number when present
+  error contributes.mcp[0].surprise: unknown key "surprise"
+  error contributes.mcp[0].serverName: serverName is required and must match ^[A-Za-z0-9_-]{1,32}$
+  error contributes.roles[0].persona: persona file does not exist: /tmp/mpd-ext-broken-hU7EtJ/personas/absent.md
+  pending contributes.roles: pending: extension roles are resolved per call by mpd-roles-plugin (t4) — declared here, not yet exposed through mpd_roles_list
+[stderr]
+[mpd-ext] 6 problem(s) — this extension would not load
+
+$ node evidence/extensions/mcp-bridge-gates/20260914T171058Z/dist-load.mjs
+exit=0 expected=0 elapsed=66ms
+{
+  "loadedPath": "/root/dshProj/my-power-dsh/packages/mpd-ext-plugin/dist/index.js",
+  "checks": [
+    {
+      "label": "module loads standalone",
+      "ok": true
+    },
+    {
+      "label": "name is the row id",
+      "ok": true
+    },
+    {
+      "label": "inject is empty",
+      "ok": true
+    },
+    {
+      "label": "apply is a function",
+      "ok": true
+    },
+    {
+      "label": "apply is async (returns a promise)",
+      "ok": true
+    },
+    {
+      "label": "apply resolves without throwing",
+      "ok": true
+    },
+    {
+      "label": "apply registered the four tools",
+      "ok": true
+    }
+  ],
+  "failed": 0,
+  "registered": [
+    "mpd_ext_list",
+    "mpd_ext_show",
+    "mpd_flow_list",
+    "mpd_flow_show"
+  ],
+  "warnings": [],
+  "verdict": "pass"
+}

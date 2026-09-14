@@ -155,6 +155,28 @@
         truncateMaxBytes: 8192
     - id: mpd-modelchain
       name: '@mpd-dsh/mpd/packages/mpd-modelchain-plugin/dist/index.js'
+    # mpd-ext: the extension registry — it provides the `mpdExtensions` service and the
+    # four model-facing tools (mpd_ext_list / mpd_ext_show / mpd_flow_list / mpd_flow_show).
+    # POSITION (bundle-patch change, plan [REV3] §1.4): after mpd-dsh-adapter and mpd-config,
+    # directly above mpd-roles — its first consumer. Row order is deliberately NOT the
+    # dependency mechanism here (docs/architecture.md: a sibling-provided service is read
+    # lazily at tool-execute time; the dependency mechanism that exists is `inject`), so the
+    # row works anywhere in this band and the band documents the intended direction:
+    #   · ABOVE mpd-dsh-adapter the row's apply-time `ctx.get("mpdDsh")` finds no mounted
+    #     adapter and silently falls back to `createDshAdapter(ctx)` — a SECOND adapter
+    #     instance beside the one the tree mounts, breaking the one-contact-surface rule
+    #     (AGENTS.md §6) and doubling any per-instance guard/waterfall state.
+    #   · BELOW mpd-roles inverts the direction: today mpd-roles resolves the service with a
+    #     per-call `ctx.get("mpdExtensions")`, but any later conversion of that lazy get into
+    #     a hard `inject: ["mpdExtensions"]` would make mpd-roles a FATAL `pending` loader
+    #     entry (the measured class that takes the whole plugin tree down) AND lose every
+    #     extension-contributed role, because the provider row applies after its consumer.
+    # `quiet` is the plugin's ONLY config key (MpdExtPluginConfig); false keeps the one-line
+    # apply summary.
+    - id: mpd-ext
+      name: '@mpd-dsh/mpd/packages/mpd-ext-plugin/dist/index.js'
+      config:
+        quiet: false
     - id: mpd-roles
       name: '@mpd-dsh/mpd/packages/mpd-roles-plugin/dist/index.js'
     - id: mpd-ulw

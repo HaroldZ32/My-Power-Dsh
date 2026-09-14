@@ -1,0 +1,507 @@
+{
+  "check": "schema subset mirror vs the INSTALLED harness validator",
+  "harnessPath": "/root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-tools/lib/index.js",
+  "harnessNote": "loaded",
+  "corpusSize": 25,
+  "mismatches": 0,
+  "verdict": "pass",
+  "note": "the mirror is exercised by packages/mpd-ext-plugin/test/mcp.test.ts on every run; this cross-check is the independent, harness-anchored proof",
+  "rows": [
+    {
+      "label": "clean object",
+      "harnessAccepted": true,
+      "harnessMessage": null,
+      "ourViolations": [],
+      "agrees": true,
+      "projection": {
+        "projectable": true,
+        "lossy": false,
+        "schema": {
+          "type": "object",
+          "properties": {
+            "a": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "a"
+          ]
+        },
+        "violations": []
+      }
+    },
+    {
+      "label": "clean nullable oneOf",
+      "harnessAccepted": true,
+      "harnessMessage": null,
+      "ourViolations": [],
+      "agrees": true,
+      "projection": {
+        "projectable": true,
+        "lossy": false,
+        "schema": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "a": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "violations": []
+      }
+    },
+    {
+      "label": "annotation-only",
+      "harnessAccepted": true,
+      "harnessMessage": null,
+      "ourViolations": [],
+      "agrees": true,
+      "projection": {
+        "projectable": true,
+        "lossy": false,
+        "schema": {},
+        "violations": []
+      }
+    },
+    {
+      "label": "type array [string,null]",
+      "harnessAccepted": false,
+      "harnessMessage": "unsupported JSON schema: schema.type must be a single type string (type arrays are not supported)",
+      "ourViolations": [
+        "schema.type must be a single type string (type arrays are not supported)"
+      ],
+      "agrees": true,
+      "projection": {
+        "projectable": true,
+        "lossy": true,
+        "schema": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "violations": []
+      }
+    },
+    {
+      "label": "type array [string,number] (unprojectable)",
+      "harnessAccepted": false,
+      "harnessMessage": "unsupported JSON schema: schema.type must be a single type string (type arrays are not supported)",
+      "ourViolations": [
+        "schema.type must be a single type string (type arrays are not supported)"
+      ],
+      "agrees": true,
+      "projection": {
+        "projectable": false,
+        "lossy": true,
+        "schema": null,
+        "violations": [
+          "schema: type array [string, number] cannot be projected onto a single type"
+        ]
+      }
+    },
+    {
+      "label": "foreign keyword: $ref",
+      "harnessAccepted": false,
+      "harnessMessage": "unsupported JSON schema: schema.$ref is not a supported keyword (subset: type/oneOf/properties/required/additionalProperties/items/enum/const + annotations)",
+      "ourViolations": [
+        "schema.$ref is not a supported keyword (subset: type/oneOf/properties/required/additionalProperties/items/enum/const + annotations)"
+      ],
+      "agrees": true,
+      "projection": {
+        "projectable": true,
+        "lossy": true,
+        "schema": {},
+        "violations": []
+      }
+    },
+    {
+      "label": "foreign keyword: format/pattern",
+      "harnessAccepted": false,
+      "harnessMessage": "unsupported JSON schema: schema.properties.a.format is not a supported keyword (subset: type/oneOf/properties/required/additionalProperties/items/enum/const + annotations); schema.properties.a.pattern is not a supported keyword (subset: type/oneOf/properties/required/additionalProperties/items/enum/const + annotations)",
+      "ourViolations": [
+        "schema.properties.a.format is not a supported keyword (subset: type/oneOf/properties/required/additionalProperties/items/enum/const + annotations)",
+        "schema.properties.a.pattern is not a supported keyword (subset: type/oneOf/properties/required/additionalProperties/items/enum/const + annotations)"
+      ],
+      "agrees": true,
+      "projection": {
+        "projectable": true,
+        "lossy": true,
+        "schema": {
+          "type": "object",
+          "properties": {
+            "a": {
+              "type": "string"
+            }
+          }
+        },
+        "violations": []
+      }
+    },
+    {
+      "label": "required without properties",
+      "harnessAccepted": false,
+      "harnessMessage": "unsupported JSON schema: schema.required names \"a\" which is not in properties",
+      "ourViolations": [
+        "schema.required names \"a\" which is not in properties"
+      ],
+      "agrees": true,
+      "projection": {
+        "projectable": true,
+        "lossy": true,
+        "schema": {
+          "type": "object"
+        },
+        "violations": []
+      }
+    },
+    {
+      "label": "required naming a missing property",
+      "harnessAccepted": false,
+      "harnessMessage": "unsupported JSON schema: schema.required names \"b\" which is not in properties",
+      "ourViolations": [
+        "schema.required names \"b\" which is not in properties"
+      ],
+      "agrees": true,
+      "projection": {
+        "projectable": true,
+        "lossy": true,
+        "schema": {
+          "type": "object",
+          "properties": {
+            "a": {
+              "type": "string"
+            }
+          }
+        },
+        "violations": []
+      }
+    },
+    {
+      "label": "additionalProperties object",
+      "harnessAccepted": false,
+      "harnessMessage": "unsupported JSON schema: schema.additionalProperties must be a boolean",
+      "ourViolations": [
+        "schema.additionalProperties must be a boolean"
+      ],
+      "agrees": true,
+      "projection": {
+        "projectable": true,
+        "lossy": true,
+        "schema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "violations": []
+      }
+    },
+    {
+      "label": "type + oneOf",
+      "harnessAccepted": false,
+      "harnessMessage": "unsupported JSON schema: schema cannot declare both type and oneOf",
+      "ourViolations": [
+        "schema cannot declare both type and oneOf"
+      ],
+      "agrees": true,
+      "projection": {
+        "projectable": true,
+        "lossy": true,
+        "schema": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "violations": []
+      }
+    },
+    {
+      "label": "oneOf with one branch",
+      "harnessAccepted": false,
+      "harnessMessage": "unsupported JSON schema: schema.oneOf must be an array of at least two schemas",
+      "ourViolations": [
+        "schema.oneOf must be an array of at least two schemas"
+      ],
+      "agrees": true,
+      "projection": {
+        "projectable": true,
+        "lossy": true,
+        "schema": {
+          "type": "string"
+        },
+        "violations": []
+      }
+    },
+    {
+      "label": "oneOf with sibling constraint",
+      "harnessAccepted": false,
+      "harnessMessage": "unsupported JSON schema: schema.properties is not supported beside oneOf",
+      "ourViolations": [
+        "schema.properties is not supported beside oneOf"
+      ],
+      "agrees": true,
+      "projection": {
+        "projectable": false,
+        "lossy": true,
+        "schema": null,
+        "violations": [
+          "schema: oneOf sibling constraints cannot be nested into branch 0 (schema.properties is not supported on type \"string\")",
+          "schema: oneOf sibling constraints cannot be nested into branch 1 (schema.properties is not supported on type \"number\")"
+        ]
+      }
+    },
+    {
+      "label": "boolean schema true",
+      "harnessAccepted": false,
+      "harnessMessage": "unsupported JSON schema: schema must be a schema object",
+      "ourViolations": [
+        "schema must be a schema object"
+      ],
+      "agrees": true,
+      "projection": {
+        "projectable": true,
+        "lossy": true,
+        "schema": {},
+        "violations": []
+      }
+    },
+    {
+      "label": "boolean schema false",
+      "harnessAccepted": false,
+      "harnessMessage": "unsupported JSON schema: schema must be a schema object",
+      "ourViolations": [
+        "schema must be a schema object"
+      ],
+      "agrees": true,
+      "projection": {
+        "projectable": false,
+        "lossy": true,
+        "schema": null,
+        "violations": [
+          "schema: boolean schema `false` has no projection (nothing validates against it)"
+        ]
+      }
+    },
+    {
+      "label": "enum without type",
+      "harnessAccepted": false,
+      "harnessMessage": "unsupported JSON schema: schema.enum requires type or oneOf",
+      "ourViolations": [
+        "schema.enum requires type or oneOf"
+      ],
+      "agrees": true,
+      "projection": {
+        "projectable": true,
+        "lossy": true,
+        "schema": {
+          "type": "string",
+          "enum": [
+            "a",
+            "b"
+          ]
+        },
+        "violations": []
+      }
+    },
+    {
+      "label": "enum with a mixed value",
+      "harnessAccepted": false,
+      "harnessMessage": "unsupported JSON schema: schema.enum must be a non-empty array of string values",
+      "ourViolations": [
+        "schema.enum must be a non-empty array of string values"
+      ],
+      "agrees": true,
+      "projection": {
+        "projectable": true,
+        "lossy": true,
+        "schema": {
+          "type": "string"
+        },
+        "violations": []
+      }
+    },
+    {
+      "label": "const inside enum",
+      "harnessAccepted": true,
+      "harnessMessage": null,
+      "ourViolations": [],
+      "agrees": true,
+      "projection": {
+        "projectable": true,
+        "lossy": false,
+        "schema": {
+          "type": "integer",
+          "enum": [
+            1,
+            2
+          ],
+          "const": 2
+        },
+        "violations": []
+      }
+    },
+    {
+      "label": "const outside enum",
+      "harnessAccepted": false,
+      "harnessMessage": "unsupported JSON schema: schema.const must be one of schema.enum when both are declared",
+      "ourViolations": [
+        "schema.const must be one of schema.enum when both are declared"
+      ],
+      "agrees": true,
+      "projection": {
+        "projectable": true,
+        "lossy": true,
+        "schema": {
+          "type": "integer",
+          "enum": [
+            1,
+            2
+          ]
+        },
+        "violations": []
+      }
+    },
+    {
+      "label": "properties without type",
+      "harnessAccepted": false,
+      "harnessMessage": "unsupported JSON schema: schema.properties requires type or oneOf",
+      "ourViolations": [
+        "schema.properties requires type or oneOf"
+      ],
+      "agrees": true,
+      "projection": {
+        "projectable": true,
+        "lossy": true,
+        "schema": {
+          "type": "object",
+          "properties": {
+            "a": {
+              "type": "string"
+            }
+          }
+        },
+        "violations": []
+      }
+    },
+    {
+      "label": "items under a string type",
+      "harnessAccepted": false,
+      "harnessMessage": "unsupported JSON schema: schema.items is not supported on type \"string\"",
+      "ourViolations": [
+        "schema.items is not supported on type \"string\""
+      ],
+      "agrees": true,
+      "projection": {
+        "projectable": true,
+        "lossy": true,
+        "schema": {
+          "type": "string"
+        },
+        "violations": []
+      }
+    },
+    {
+      "label": "bad annotation type",
+      "harnessAccepted": false,
+      "harnessMessage": "unsupported JSON schema: schema.title must be a string",
+      "ourViolations": [
+        "schema.title must be a string"
+      ],
+      "agrees": true,
+      "projection": {
+        "projectable": true,
+        "lossy": true,
+        "schema": {
+          "type": "object"
+        },
+        "violations": []
+      }
+    },
+    {
+      "label": "empty properties with additionalProperties false",
+      "harnessAccepted": true,
+      "harnessMessage": null,
+      "ourViolations": [],
+      "agrees": true,
+      "projection": {
+        "projectable": true,
+        "lossy": false,
+        "schema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "violations": []
+      }
+    },
+    {
+      "label": "nested allOf",
+      "harnessAccepted": false,
+      "harnessMessage": "unsupported JSON schema: schema.properties.a.properties.b.allOf is not a supported keyword (subset: type/oneOf/properties/required/additionalProperties/items/enum/const + annotations)",
+      "ourViolations": [
+        "schema.properties.a.properties.b.allOf is not a supported keyword (subset: type/oneOf/properties/required/additionalProperties/items/enum/const + annotations)"
+      ],
+      "agrees": true,
+      "projection": {
+        "projectable": true,
+        "lossy": true,
+        "schema": {
+          "type": "object",
+          "properties": {
+            "a": {
+              "type": "object",
+              "properties": {
+                "b": {}
+              }
+            }
+          }
+        },
+        "violations": []
+      }
+    },
+    {
+      "label": "type array in a property",
+      "harnessAccepted": false,
+      "harnessMessage": "unsupported JSON schema: schema.properties.a.type must be a single type string (type arrays are not supported)",
+      "ourViolations": [
+        "schema.properties.a.type must be a single type string (type arrays are not supported)"
+      ],
+      "agrees": true,
+      "projection": {
+        "projectable": true,
+        "lossy": true,
+        "schema": {
+          "type": "object",
+          "properties": {
+            "a": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "violations": []
+      }
+    }
+  ]
+}
