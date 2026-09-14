@@ -16,6 +16,7 @@ overview is [`README.md`](../README.md).
 | [`user-guide.md`](user-guide.md) | users | Install, presets, specialists (roster), workmate library, team mode, GUI panels, configuration. |
 | [`architecture.md`](architecture.md) | engineers, curious users | How the bundle is assembled and mounts: patch layers, plugin inventory, model routing, state layout, web-client wiring, interaction flows. |
 | [`development.md`](development.md) | developers | Repo layout, build/test commands, QA case catalog, gates, packing/installing, vendoring, git model, common pitfalls. |
+| [`omo-parity-ledger.md`](omo-parity-ledger.md) | maintainers, reviewers | The `omo-parity-align` wave ledger in both languages ([中文](omo-parity-ledger.zh-CN.md)): frozen complexity-gate values, mass-ulw semantics, manual-entry names, open items and the measured verification state. Current and maintained, not a historical record. |
 | [`../AGENTS.md`](../AGENTS.md) | agents + maintainers | Binding repository manual: conventions, gates, git model, troubleshooting. |
 | [`../LICENSE.md`](../LICENSE.md), [`../LICENSE-NOTICES.md`](../LICENSE-NOTICES.md) | everyone | SUL-1.0 license + third-party notices (adopted dsh-agent-teams, comment-checker). |
 

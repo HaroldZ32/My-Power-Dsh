@@ -1,0 +1,241 @@
+{
+  "schema": "mpd.omo-align.ledger-fix/v1",
+  "task": "t40",
+  "wave": "omo-parity-align",
+  "objective": "Land the t37 correction draft into both ledgers, close every listed contradiction, and turn a re-measured §8 from pending into verified.",
+  "gitWritesPerformed": false,
+  "anchors": {
+    "headAtGateRunStart": "3096455",
+    "headAtGateRunEnd": "e89fa2a",
+    "note": "The captain landed the wave concurrently, so the commit id moved during the run; the content hashes are the exact anchors.",
+    "files": {
+      "evidence/omo-align/requirements/frozen-contract.json": "09949c8095d7ccd533329b114a2ef22bad1ce81bd24338240e68cfd0fd66be41",
+      "packages/mpd-agent-teams-plugin/lib/session-start.js": "8cfaef47e9959ef7def01003640f768ff4befa50e9c202ff692a0629ca0a2aa6",
+      "packages/mpd-agent-teams-plugin/lib/state.js": "751a4c1eaf1714d37a45baa8c0a83895ee8e2a487f28574d02fd445cd1b8b825",
+      "evidence/omo-parity-rate/raw/prompts.jsonl": "123dca67e738f85e08a0043c6a33a686d1e91e31e9dbe0568437437414e5f9b5",
+      "docs/omo-parity-ledger.md": "1084feab272639603e4e271e0b4a1b90e84ed6ee2d9145d63b8a0847ae75726a",
+      "docs/omo-parity-ledger.zh-CN.md": "d58a6d26fd7c7104190c14bb37ea7982193623a63bbd8be19bbe0e272dff7a32"
+    }
+  },
+  "gates": [
+    {
+      "name": "typecheck",
+      "command": "bun run typecheck",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "exit 0",
+      "log": "gates/typecheck.log",
+      "logSha256": "ae47736bb2a9401aa9743893f2f64b9a605e65a99d78cd991a8021e0f7722d87"
+    },
+    {
+      "name": "plugin-tests",
+      "command": "bun test packages/mpd-agent-teams-plugin",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "161 pass / 0 fail across 42 files",
+      "log": "gates/plugin-tests.log",
+      "logSha256": "1d08e5a41b14a2e23b2493264266bf3d31dcd1d8ae6f916ce3ca1878d59e3dd7"
+    },
+    {
+      "name": "test-qa",
+      "command": "bun run test:qa",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "all self-tests passed",
+      "log": "gates/test-qa.log",
+      "logSha256": "240f3c0c541bb49637398c1b099ec35479dc158a811e44cb7f225de51731e4be"
+    },
+    {
+      "name": "bundle-lifecycle",
+      "command": "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "PASS: one-command install, no home copy, uninstall residue []",
+      "log": "gates/bundle-lifecycle.log",
+      "logSha256": "574b93d15bd0327165710028c21b8da74bec4b0554d3b2c169cc4f795a243342"
+    },
+    {
+      "name": "session-start-team",
+      "command": "bun skills/dsh-qa/scripts/session-start-team.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "PASS: simpleTeams [0,0,0], complexTeams [1,1,1], negativeControl disarmed true",
+      "log": "gates/session-start-team.log",
+      "logSha256": "157ab61391b27e750784f1a3885cca5584dab2755ee264167524fe999b976083"
+    },
+    {
+      "name": "preset-conformance-selftest",
+      "command": "node skills/dsh-qa/scripts/preset-conformance.mjs --self-test",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "30 harness rows conform; row parity 31/31",
+      "log": "gates/preset-conformance-selftest.log",
+      "logSha256": "5ed1ed45543e2962658b48b879bba0d0b30cc47f742fc615c8f2ee9bb520f7d3"
+    },
+    {
+      "name": "installer-selftest",
+      "command": "node scripts/install-profile.mjs --self-test",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "exit 0",
+      "log": "gates/installer-selftest.log",
+      "logSha256": "3aacc3e46b6764968148791b2eedbb98e2028f3ca21cb5769f612e63cb0a7a1c"
+    },
+    {
+      "name": "vendor",
+      "command": "node scripts/verify-vendor.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "PASS; skills 331 files",
+      "log": "gates/vendor.log",
+      "logSha256": "736398582c96454afc7c42b96c2e72e8731844ab99f2713f1b3a0e88a76fb06e"
+    }
+  ],
+  "rateStudy": {
+    "command": "node evidence/omo-parity-rate/raw/probe.mjs --json",
+    "recomputed": true,
+    "total": 20,
+    "sessionStart": {
+      "total": 5,
+      "triggered": 0,
+      "falsePositiveRate": 0,
+      "oneInN": null,
+      "triggeredIds": []
+    },
+    "followUp": {
+      "total": 15,
+      "triggered": 0,
+      "falsePositiveRate": 0,
+      "oneInN": null,
+      "triggeredIds": []
+    },
+    "overallFalsePositiveRate": 0,
+    "anchoredHashes": {
+      "packages/mpd-agent-teams-plugin/lib/session-start.js": "8cfaef47e9959ef7def01003640f768ff4befa50e9c202ff692a0629ca0a2aa6",
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "47f204cd9678ed87660b18e5ecd01895ce3249fae8155deb0a1d33821f6ff9c5",
+      "packages/mpd-agent-teams-plugin/lib/state.js": "751a4c1eaf1714d37a45baa8c0a83895ee8e2a487f28574d02fd445cd1b8b825",
+      "evidence/omo-align/requirements/frozen-contract.json": "09949c8095d7ccd533329b114a2ef22bad1ce81bd24338240e68cfd0fd66be41",
+      "raw/prompts.jsonl": "123dca67e738f85e08a0043c6a33a686d1e91e31e9dbe0568437437414e5f9b5"
+    },
+    "upperBound95": {
+      "overallN20": "13.9% (Clopper-Pearson one-sided); rule-of-three 15.0%",
+      "sessionStartN5": "45.1% (Clopper-Pearson one-sided); rule-of-three 60.0%"
+    },
+    "independentVerbRecount": {
+      "method": "matched the gate's EXPORTED ACTION_VERB_PATTERN / CLAUSE_ACTION_PATTERN against raw/prompts.jsonl",
+      "P01": {
+        "B": 1,
+        "Bverbs": [
+          "对齐"
+        ],
+        "C2": 1,
+        "C3": 0,
+        "enumeratedLines": 0
+      },
+      "P02toP05": "all zero"
+    }
+  },
+  "contradictionClosure": [
+    {
+      "id": "CF-1",
+      "finding": "§3 threshold said >= 2 while contract and code say >= 1",
+      "state": "corrected",
+      "where": "§3 EN+ZH"
+    },
+    {
+      "id": "CF-2",
+      "finding": "§3 C row said lines OR verbs and omitted C3",
+      "state": "corrected",
+      "where": "§3 EN+ZH"
+    },
+    {
+      "id": "CF-3a",
+      "finding": "B row verb list flagged for checking",
+      "state": "checked-no-change",
+      "where": "§3 EN+ZH"
+    },
+    {
+      "id": "CF-3b",
+      "finding": "C verb table stale and asymmetric (7 EN + 6 CJK missing)",
+      "state": "corrected",
+      "where": "§3 EN+ZH"
+    },
+    {
+      "id": "CF-4",
+      "finding": "§8 entirely pending",
+      "state": "corrected",
+      "where": "§8 EN+ZH"
+    },
+    {
+      "id": "CF-5",
+      "finding": "session-start.js module doc contradicts its own code",
+      "state": "closed-as-boundary-not-this-task",
+      "where": "packages/** out of scope; carried forward to the file owner; the ledger no longer repeats the stale wording"
+    },
+    {
+      "id": "CF-6a",
+      "finding": "§4 quoted S2 pre-reconciliation wording",
+      "state": "corrected",
+      "where": "§4 EN+ZH"
+    },
+    {
+      "id": "CF-6b",
+      "finding": "§7 O5 presented a resolved conflict as open",
+      "state": "corrected",
+      "where": "§4 + §7 O5 EN+ZH"
+    },
+    {
+      "id": "beyond-t37-O3",
+      "finding": "O3 left as open work",
+      "state": "corrected",
+      "where": "§7 O3 EN+ZH (uncertain recorded with reason)"
+    },
+    {
+      "id": "beyond-t37-O4",
+      "finding": "O4 described an unconfirmed instruct-mode conflict",
+      "state": "corrected",
+      "where": "§7 O4 EN+ZH (closed: no unconditional-notice path)"
+    },
+    {
+      "id": "beyond-t37-L6",
+      "finding": "§6 L6 pinned a stale mode === auto",
+      "state": "corrected",
+      "where": "§6 L6 EN+ZH"
+    },
+    {
+      "id": "beyond-t37-L4-L5",
+      "finding": "§6 L4/L5 named README headings that no longer exist",
+      "state": "corrected",
+      "where": "§6 L4/L5 EN+ZH"
+    },
+    {
+      "id": "accepted-cost",
+      "finding": "a multi-clause prompt can route via C's own 2-of-3 bar",
+      "state": "kept-and-documented",
+      "where": "§3 + §7 O1 EN+ZH"
+    }
+  ],
+  "indexUpdate": {
+    "needed": true,
+    "reason": "docs/index.md and docs/index.zh-CN.md list the current human-facing docs and did not mention the ledger at all, although it is the wave's persistent ledger and not a historical record.",
+    "rows": [
+      "docs/index.md reading-order table",
+      "docs/index.zh-CN.md reading-order table"
+    ]
+  },
+  "verifyCommands": [
+    {
+      "command": "grep -q 'zh-CN.md' docs/omo-parity-ledger.md && grep -q 'omo-parity-ledger.md' docs/omo-parity-ledger.zh-CN.md && echo BILINGUAL-PAIR-OK",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "BILINGUAL-PAIR-OK"
+    },
+    {
+      "command": "git grep -nE '>= *2' -- docs/omo-parity-ledger.md docs/omo-parity-ledger.zh-CN.md || echo NO-STALE-THRESHOLD",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "NO-STALE-THRESHOLD; the direct scan ran on the working tree because both ledger files are untracked until the captain commits them"
+    }
+  ],
+  "evidenceSanitization": "The copied gate logs are byte-identical to the captured output except for ONE neutralised vendor-scope token (@nanmicoder -> <vendor-scope>) in gates/test-qa.log, so this evidence text carries no retired external project identifier. The recorded logSha256 values are of the sanitized files."
+}
