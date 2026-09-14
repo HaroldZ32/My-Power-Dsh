@@ -1,0 +1,30 @@
+{
+  "task": "t48",
+  "newRow": "mpd-team-compact",
+  "head": "bec976f160bdf133abdf309879f092feb5f2d680",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "composition": {
+      "ok": true,
+      "exit": 0,
+      "note": "COMPOSITION ONLY — never cited as load evidence (AGENTS.md §4)"
+    },
+    "mountedBoot": {
+      "ok": false,
+      "probeVerdict": "PASS",
+      "compactTools": "0/2",
+      "compactToolsMissing": [
+        "mpd_team_compact_run",
+        "mpd_team_compact_status"
+      ],
+      "standingToolSet": "5/7",
+      "pendingEntries": [],
+      "pendingForOurRow": 0,
+      "crashSignatures": [],
+      "loadEvidence": "real mounted boot of the installed bundle in an isolated DSH_HOME + sandbox HOME + sandbox workspace, held open until the QA probe's registration instrument reports; --dump-config is deliberately NOT cited as load evidence (AGENTS.md §4)"
+    }
+  }
+}

@@ -182,6 +182,14 @@
         vcs: git
     - id: mpd-workmate
       name: '@mpd-dsh/mpd/packages/mpd-workmate-plugin/dist/index.js'
+    # Compacts a FINISHED team's members (every task terminal AND every member idle).
+    # Members only — the captain is compacted by the human /compact command. The engine is
+    # resolved per member through that member's OWN scoped context; the host-plane engine is
+    # a different object serving a different realm (measured: sameObject false), so the
+    # lookup lives in ONE adapter helper. Audit lands under <workspace>/.mpd/team-compact/;
+    # this row never writes .mpd/team (that state belongs to the agent-teams plugin).
+    - id: mpd-team-compact
+      name: '@mpd-dsh/mpd/packages/mpd-team-compact-plugin/dist/index.js'
     # Bundle asset provisioning (no home writes since 0.3.0): registers the
     # <bundle>/skills corpus as a ctx.skills provider (rank 600 "bundled", below
     # project/custom/user roots) and removes the version-stamped copies that

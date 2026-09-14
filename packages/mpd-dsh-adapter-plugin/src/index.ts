@@ -128,6 +128,30 @@ export interface DshCapabilities {
   skills: boolean
   skillsProvider: boolean
   agentPresets: boolean
+  /** The live-session registry (`agents.list`) — the only way to reach a member's Agent. */
+  agents: boolean
+  /** `ctx.get("compaction")`: the HOST-plane engine. Never used to drive a member. */
+  compaction: boolean
+  /** A memoized per-agent engine lookup through the agent's OWN scoped context. */
+  compactionForAgent: boolean
+  /** The harness event seam (`ctx.on`) — used to observe status edges. */
+  events: boolean
+}
+
+/**
+ * A live session's Agent, as much of it as this bundle depends on.
+ *
+ * Measured by the compact-hinge experiment (t45, evidence/omo-align/compact-hinge):
+ * `ctx.agents.list()` returns live Agents, `id` is the shared session/agent id, and a
+ * member's own compaction engine is reachable ONLY as `agent.ctx.get("compaction")` —
+ * the host-plane instance is a DIFFERENT object serving a different realm.
+ */
+export interface DshLiveAgent {
+  id: string
+  status?: string
+  session?: unknown
+  ctx?: unknown
+  runMaintenance?: unknown
 }
 
 export interface DshAdapter {
@@ -147,6 +171,21 @@ export interface DshAdapter {
    * the exec-less `workspaceRoot()`. For agentless surfaces (web routes) only.
    */
   workspaceRootsAll(): string[]
+  /** Every live Agent in this process (`[]` when the registry is absent). */
+  liveAgents(): DshLiveAgent[]
+  /** One live Agent by id, or undefined. */
+  liveAgent(agentId: string): DshLiveAgent | undefined
+  /**
+   * The compaction engine THAT SERVES ONE AGENT, resolved through the agent's own
+   * scoped context. This is the ONLY correct engine to drive a member session: the
+   * host-plane `ctx.get("compaction")` is a different instance covering a different
+   * realm (measured `sameObject: false`), so using it would compact the wrong thing.
+   * Memoized per agent id, and dropped when the agent is gone so a recycled id cannot
+   * inherit a stale engine.
+   */
+  compactionEngineForAgent(agentId: string): unknown
+  /** Subscribe to a harness event; returns a disposer, or undefined when unavailable. */
+  onEvent(event: string, handler: (...args: unknown[]) => unknown): (() => void) | undefined
   registerTool(definition: DshToolDef): () => void
   registerTools(definitions: DshToolDef[]): () => void
   guardTool(guard: (exec: DshToolExec) => string | undefined): () => void
@@ -258,6 +297,78 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
   const workspaceRoot = (exec?: DshToolExec): string => workspaceRootOf(exec)
   const workspaceRootsAll = (): string[] => workspaceRootsOf(service("agents"))
 
+  // ── live-session plane ────────────────────────────────────────────────────
+  // `agents.list()` is the ONLY handle on a member's Agent: the durable team record
+  // carries member NAMES and session IDs, not Agents, and a continuable member's Agent
+  // lives in this process only while its session does.
+  function liveAgents(): DshLiveAgent[] {
+    const agents = service("agents")
+    if (agents === undefined || typeof agents.list !== "function") return []
+    try {
+      const list = agents.list()
+      return Array.isArray(list) ? list.filter((entry: any) => entry !== undefined && entry !== null) : []
+    } catch { return [] }
+  }
+
+  function liveAgent(agentId: string): DshLiveAgent | undefined {
+    const id = String(agentId ?? "")
+    if (id === "") return undefined
+    const agents = service("agents")
+    if (agents !== undefined && typeof agents.get === "function") {
+      try {
+        const found = agents.get(id)
+        if (found !== undefined && found !== null) return found as DshLiveAgent
+      } catch { /* fall through to the list scan */ }
+    }
+    // A registry without get() (or one that does not know the id) still answers from
+    // the live list, which is what the hinge experiment measured.
+    return liveAgents().find((candidate) => candidate.id === id)
+  }
+
+  /**
+   * Per-agent compaction engines, memoized by agent id.
+   *
+   * The engine MUST come from `agent.ctx.get("compaction")`. The compact-hinge
+   * experiment measured the host-plane `ctx.get("compaction")` and the member-scoped
+   * lookup returning objects that are NOT the same (`sameObject: false`) while both
+   * report `name: "compaction"` — each realm has its own BasicCompactionEngine, so
+   * driving a member with the host instance would compact a different realm's history.
+   * Dispatching through this one memoized helper makes that mistake impossible to make
+   * per-call-site.
+   *
+   * The cache is keyed by agent id AND dropped when the agent leaves the live registry,
+   * so a recycled id can never inherit a previous incarnation's engine.
+   */
+  const engineCache = new Map<string, unknown>()
+  function compactionEngineForAgent(agentId: string): unknown {
+    const id = String(agentId ?? "")
+    if (id === "") return undefined
+    const cached = engineCache.get(id)
+    if (cached !== undefined) return cached
+    const agent = liveAgent(id)
+    const scoped = agent?.ctx
+    if (scoped === undefined || scoped === null) return undefined
+    let engine: unknown
+    try {
+      engine = typeof (scoped as any).get === "function" ? (scoped as any).get("compaction") : undefined
+    } catch {
+      return undefined
+    }
+    if (engine === undefined || engine === null) return undefined
+    engineCache.set(id, engine)
+    return engine
+  }
+
+  function onEvent(event: string, handler: (...args: unknown[]) => unknown): (() => void) | undefined {
+    if (typeof ctx?.on !== "function") return undefined
+    try {
+      const disposer = ctx.on(event, handler)
+      return typeof disposer === "function" ? disposer : () => { /* event bus owns teardown */ }
+    } catch {
+      return undefined
+    }
+  }
+
   function timeoutSignal(timeoutMs: number): AbortSignal | undefined {
     try {
       if (typeof AbortSignal !== "undefined" && typeof (AbortSignal as any).timeout === "function") return (AbortSignal as any).timeout(timeoutMs)
@@ -271,6 +382,15 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       const subagents = service("subagents")
       const skills = service("skills")
       const presets = service("agentPresets")
+      const agents = service("agents")
+      const compaction = service("compaction")
+      const sample = liveAgents()[0]
+      const sampleScoped = sample?.ctx
+      let scopedCompaction = false
+      try {
+        scopedCompaction = sampleScoped !== undefined && typeof (sampleScoped as any).get === "function"
+          && (sampleScoped as any).get("compaction") !== undefined
+      } catch { scopedCompaction = false }
       return {
         tools: tools !== undefined,
         toolsRegister: typeof tools?.register === "function",
@@ -283,12 +403,22 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         skills: skills !== undefined,
         skillsProvider: typeof skills?.registerProvider === "function",
         agentPresets: typeof presets?.resolve === "function",
+        agents: agents !== undefined && typeof agents?.list === "function",
+        compaction: typeof compaction?.compactNow === "function",
+        compactionForAgent: scopedCompaction,
+        events: typeof ctx?.on === "function",
       }
     },
 
     // ── workspace plane ─────────────────────────────────────────────────────
     workspaceRoot,
     workspaceRootsAll,
+
+    // ── live-session plane ──────────────────────────────────────────────────
+    liveAgents,
+    liveAgent,
+    compactionEngineForAgent,
+    onEvent,
 
     // ── tool plane ──────────────────────────────────────────────────────────
     registerTool(definition: DshToolDef): () => void {

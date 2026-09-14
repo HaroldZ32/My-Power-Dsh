@@ -1,0 +1,31 @@
+{
+  "task": "t48",
+  "probe": "compaction engine resolution from the agent's OWN scoped context + observability entry points, against a REAL session",
+  "whatThisProves": [
+    "the drive path is reachable: the engine resolves from the agent's own scoped context and answers instead of throwing",
+    "a null answer means 'no safely compactable range' — a recorded fact, not an error",
+    "the observability entry points (session.log / eventsSnapshot) are readable on a live Agent"
+  ],
+  "whatThisDoesNotProve": [
+    "a NON-NULL compaction and the durable compaction/start + compaction/end event pair: both need session CONTENT, which needs a provider key this environment does not have"
+  ],
+  "credentialBoundary": {
+    "deepseekApiKeySet": false,
+    "note": "recorded so the limit is auditable rather than asserted; the credentialed layer is owed to a later slot"
+  },
+  "boot": {
+    "served": false,
+    "installExit": 0,
+    "tokenFound": false,
+    "mpdPresetMounted": false,
+    "crashSignatures": [
+      "plugin tree failed to load",
+      "failed to apply loader entry"
+    ],
+    "mpdTeamCompactPending": false
+  },
+  "sessionCreate": null,
+  "report": {
+    "phase": "absent"
+  }
+}

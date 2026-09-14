@@ -1,0 +1,20 @@
+{
+  "task": "t48",
+  "whatThisProves": [
+    "the drive path is reachable: a per-member scoped engine resolves and compactNow answers",
+    "a null answer means no safely compactable range (recorded as a fact, not an error)",
+    "session.log / eventsSnapshot are readable on a live Agent"
+  ],
+  "whatThisDoesNotProve": [
+    "a NON-NULL compaction and the durable compaction/start + compaction/end pair — those need session content, which needs a provider key this environment lacks (no DEEPSEEK_API_KEY, empty llm-deepseek section in settings.yaml, sandboxed HOME)"
+  ],
+  "credentialBoundary": {
+    "deepseekApiKeySet": false,
+    "note": "recorded so the limit is auditable rather than asserted"
+  },
+  "report": {
+    "booted": true,
+    "liveAgents": 0,
+    "members": []
+  }
+}
