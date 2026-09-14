@@ -234,6 +234,41 @@
         "class": "QA-assertion/transcript drift, not a product regression and not the packaging gap t20 attributed",
         "disposition": "own follow-up diagnosis; NOT folded into the landed naming wave"
       }
+    },
+    {
+      "id": "R19",
+      "item": "codegraph-smoke red closed",
+      "decision": "fixed in 41e6401; R18's guess was incomplete",
+      "measured_truth": {
+        "cause_1": "the verdict asserted the tool-name literal against the MODEL's answer text — false GREEN on a refusal (08-56-10.102Z) and false RED on a real call (14-45-59.644Z)",
+        "cause_2": "the prompt never named the indexed project and the session workspace is /tmp, which CodeGraph refuses to query, so the recorded result was always the refusal",
+        "fix": "harness-side evidence via skills/dsh-qa/scripts/lib/session-evidence.mjs (concatenated-zstd-frame store: one decompress call returns the header frame ONLY — 1 of 25 records) + an explicit projectPath + a fresh fixture per run",
+        "green": "evidence/dsh-qa/codegraph/2026-09-14T14-48-30.168Z"
+      }
+    },
+    {
+      "id": "R20",
+      "item": "CodeGraph shared-daemon line",
+      "decision": "policy default changed; opt-in preserved",
+      "measured_truth": {
+        "cause": "upstream graceful fallback after its shared per-project-root daemon goes away (30-min inactivity reap even with a client attached, a `codegraph daemon` stop, pid-liveness arbitration that a PID namespace cannot perform)",
+        "fix": "packages/mpd-mcp-codegraph/daemon-policy.mjs defaults to in-process; MPD_CODEGRAPH_DAEMON=1/0 as the switch; explicit CODEGRAPH_NO_DAEMON=1 never overridden; applied before dist/serve.js loads",
+        "proof": "evidence/mpd-defects-2/raw/codegraph-daemon-probe.mjs (arm A green end-to-end; arm B's daemon-visible half recorded UNPROVEN — no daemon socket came up in this sandbox in either arm)"
+      }
+    },
+    {
+      "id": "R21",
+      "item": "agent-name unification + a second captain correction",
+      "decision": "names unified; false remote claim corrected",
+      "measured_truth": {
+        "unified": "normal names are the addressing vocabulary on every surface (role spawn label, spawn/persona returns, list render, workmate label, three personas)",
+        "live": "evidence/dsh-qa/preset-register/2026-09-14T15-01-05.624Z: ROSTER_NAMES=Architect,…,Junior Engineer with every name resolving to its own id",
+        "captain_error": "earlier reported 'origin/dev = 2aa0c50'; git ls-remote showed 26a4dd9 until this push, so 2aa0c50 and 41e6401 landed together (26a4dd9..41e6401)",
+        "keeps": [
+          "mpd-ulw child labels stay run-scoped pipeline stages",
+          "workmate names remain the user's ASCII keys; only the spawn label was unified"
+        ]
+      }
     }
   ],
   "artifacts": {

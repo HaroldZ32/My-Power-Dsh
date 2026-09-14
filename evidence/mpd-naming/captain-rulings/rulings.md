@@ -299,3 +299,63 @@ condition is the literal TOOL-NAME string, which the captured transcript no long
 a QA-assertion/transcript drift (the same class as the earlier ones), not a product regression and
 not a packaging gap — it needs its own short diagnosis and must NOT be folded into the landed naming
 wave, whose own gates are green.
+
+## R19 — the codegraph-smoke red is now CLOSED, with its true second cause found
+
+R18 reported the red as "QA-assertion/transcript drift" and left it open. It is closed in `41e6401`,
+and the diagnosis was bigger than R18 guessed — there were TWO independent causes, and the pairing
+made the old verdict meaningless in both directions:
+
+1. **The assertion measured narration.** The verdict required the literal
+   `/mcp__codegraph__codegraph_explore/` inside the captured CLI output, i.e. the MODEL's answer text.
+   Replaying the recorded session log of `2026-09-14T14-45-59.644Z` shows what that hid: the only
+   recorded `tool/result` for that run is CodeGraph's refusal
+   ("The project at /tmp/mpd-dsh-qa-…/ws isn't indexed with codegraph … don't call codegraph for it
+   again this session") — and the case still PASSED its old prose form in `08-56-10.102Z`, whose own
+   log admits "The tool call returned an error message rather than content". So the field had a false
+   GREEN (a refusal accepted because the model named the tool) and a false RED (a real call whose
+   narration omitted the name).
+2. **The fixture could never produce content.** The prompt never named the indexed project, and the
+   session workspace is a `/tmp` sandbox that CodeGraph refuses to query (the documented exclusion),
+   so the tool was always asked about an unindexed root. The prompt now names
+   `projectPath=<repo>/.cg-qa` explicitly and the fixture is rebuilt from scratch each run.
+
+The verdict now comes from the harness's own session log (`skills/dsh-qa/scripts/lib/session-evidence.mjs`):
+a recorded `tool/call` plus a non-error `tool/result` whose text carries the indexed source. The trap
+that made the first attempt at this fail is worth remembering: the store is a CONCATENATED-ZSTD-FRAME
+container, so ONE `zstdDecompressSync` call returns the header frame only — 1 of 25 records on a real
+artifact — which reads exactly like "the tool was never called". Frames are scanned with the harness's
+own structure-only algorithm. `mcp-call` had the same class of defect (prose-based tool list and prose
+`/ast-grep|match/`), and its two arms now assert the recorded tool list and a recorded call + result.
+
+## R20 — the CodeGraph daemon line is a policy decision, not a bug hunt
+
+The user's reported `[CodeGraph MCP] Shared daemon connection lost … degraded` line is upstream's own
+graceful fallback; the session keeps working from its own engine. What made it frequent here is that
+the shared daemon is lost for reasons a session cannot control (30-minute inactivity reap, a
+`codegraph daemon` stop, pid-liveness arbitration that a PID-namespaced host cannot perform). Decision:
+our launcher defaults the child to in-process serving and exposes `MPD_CODEGRAPH_DAEMON=1/0`, with an
+explicit upstream `CODEGRAPH_NO_DAEMON=1` never overridden. The two-sided probe
+(`evidence/mpd-defects-2/raw/codegraph-daemon-probe.mjs`) proves the default arm end-to-end; the
+daemon-visible half of the opt-in arm is RECORDED AS UNPROVEN because no daemon socket came up in this
+sandbox in either arm (independently reproduced with a bare `codegraph serve --mcp`). Claiming that half
+would repeat R18's mistake.
+
+## R21 — agent names: one vocabulary, and the captain's second false claim corrected
+
+The roster's normal names (Architect, Deep Worker, …) are now the addressing vocabulary everywhere:
+`mpd_role_spawn` accepts any spelling and LABELS the child with the name, returns `{role: name, id}`,
+`mpd_roles_list` renders name-first, `mpd_workmate_spawn` labels with the workmate's own name, and the
+three personas that never stated their roster name do. Live proof on a mounted boot:
+`ROSTER_NAMES=Architect,Researcher,Planner,Deep Worker,Senior Engineer,Lead,Explorer,Reviewer,Plan Reviewer,Vision Analyst,Junior Engineer`,
+each resolving to its own id.
+
+Correction, same discipline as R18: the captain reported "origin/dev = `2aa0c50`" earlier. It was false
+— `git ls-remote` showed the remote at `26a4dd9` until this wave's push, so `2aa0c50` AND `41e6401`
+landed together as `26a4dd9..41e6401`. A local `git log` is not evidence of a remote head; only
+`git ls-remote` (or the push output) is.
+
+Two deliberate KEEPs recorded: (1) `mpd-ulw-plugin` child labels stay run-scoped
+(`ulw-<run>-planrev0`, `-gate`): they are pipeline STAGES of one loop, not agent identities, and the
+run id is what makes concurrent loops readable; (2) the workmate library's own names remain the user's
+ASCII keys — only the spawn LABEL was unified.
