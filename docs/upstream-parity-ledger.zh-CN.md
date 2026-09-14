@@ -167,13 +167,13 @@ verify`；中文 12 个 —— `设计, 实现, 验证, 改造, 补充, 对齐, 
 | 门禁 | 命令 | 状态 |
 |---|---|---|
 | typecheck | `bun run typecheck` | 已验证（退出码 0） |
-| 插件测试 | `bun test packages/mpd-agent-teams-plugin` | 已验证（161 通过 / 0 失败，42 个文件） |
+| 插件测试 | `bun test packages/mpd-agent-teams-plugin` | 在该锚点已验证（161 通过 / 0 失败，42 个文件）。**当前树（v0.9.0）：** 213 通过 / 0 失败、58 个文件 —— 插件新增了 dispatch-stall 回归与 region 钉定测试套件（`evidence/agent-teams/dispatch-stall/`） |
 | QA 自检 | `bun run test:qa` | 已验证（退出码 0，全部自检通过） |
 | 运行时启动 | `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs` | 已验证（PASS：一条命令安装、home 无副本、卸载无残留） |
 | 双向门控用例 | `bun skills/dsh-qa/scripts/session-start-team.mjs` | 已验证（PASS：simple 3/3 静默、complex 3/3 恰好一个 staged 团队 + 一条通知、反向控制 disarmed = true） |
 | preset/patch 行 | `node skills/dsh-qa/scripts/preset-conformance.mjs --self-test` | 已验证（30 条 harness 行合规、行对齐 31/31） |
 | 安装器 | `node scripts/install-profile.mjs --self-test` | 已验证（退出码 0） |
-| vendor | `node scripts/verify-vendor.mjs` | 已验证（PASS；本波语料的 re-pin 已落盘，当前锁为最新） |
+| vendor | `node scripts/verify-vendor.mjs` | 在该锚点已验证（PASS；该波语料的 re-pin 已落盘）。**当前树已被 v0.9.0 取代：** 扩展波新增了 `skills/dsh-qa/SKILL.md` 行与三个 `extension-*.mjs` QA 案例，故 skills 资产重钉为 `fileCount: 301` / `treeSha: 0dd4a6ee68e0a11499f2b502873016d066cface6b59036147bca066433b4b576`，闸门再次 PASS —— 见 `VENDOR_LOCK.json` 与 `evidence/release/v0.9.0-integration/` |
 | 触发率实测 | `node evidence/omo-parity-rate/raw/probe.mjs --json` | 已验证（20 条真实普通提示、0 条触发；锚点与逐条判定可复算 —— 见 §3） |
 
 本台账与其记录的变更**在同一提交内更新**；无证据的通过不算通过（AGENTS.md `§2.3`、`§4`）。

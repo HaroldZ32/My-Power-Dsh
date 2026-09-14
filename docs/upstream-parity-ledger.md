@@ -181,13 +181,13 @@ anchors. The wave's own frozen values and gate code were byte-identical across t
 | Gate | Command | State |
 |---|---|---|
 | typecheck | `bun run typecheck` | verified (exit 0) |
-| plugin tests | `bun test packages/mpd-agent-teams-plugin` | verified (161 pass / 0 fail, 42 files) |
+| plugin tests | `bun test packages/mpd-agent-teams-plugin` | verified at this anchor (161 pass / 0 fail, 42 files). **Current tree (v0.9.0):** 213 pass / 0 fail over 58 files — the plugin gained the dispatch-stall regression + region-pinning suites (`evidence/agent-teams/dispatch-stall/`) |
 | QA self-tests | `bun run test:qa` | verified (exit 0, all self-tests passed) |
 | runtime boot | `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs` | verified (PASS; one-command install, no home copy, uninstall leaves no residue) |
 | two-sided gate case | `bun skills/dsh-qa/scripts/session-start-team.mjs` | verified (PASS: simple 3/3 silent, complex 3/3 exactly one staged team + one notice, negative control disarmed = true) |
 | preset/patch rows | `node skills/dsh-qa/scripts/preset-conformance.mjs --self-test` | verified (30 harness rows conform, row parity 31/31) |
 | installer | `node scripts/install-profile.mjs --self-test` | verified (exit 0) |
-| vendor | `node scripts/verify-vendor.mjs` | verified (PASS; the wave's corpus re-pin already landed, so this lock is current) |
+| vendor | `node scripts/verify-vendor.mjs` | verified at this anchor (PASS; that wave's corpus re-pin had landed). **Superseded for the current tree by v0.9.0:** the extension wave added the `skills/dsh-qa/SKILL.md` rows plus the three `extension-*.mjs` QA cases, so the skills asset is re-pinned to `fileCount: 301` / `treeSha: 0dd4a6ee68e0a11499f2b502873016d066cface6b59036147bca066433b4b576` and the gate PASSes again — see `VENDOR_LOCK.json` and `evidence/release/v0.9.0-integration/` |
 | trigger-rate study | `node evidence/omo-parity-rate/raw/probe.mjs --json` | verified (20 real ordinary prompts, 0 triggered; anchors and per-row verdicts recomputable — see §3) |
 
 This ledger is updated **in the same commit as the change it records**; an evidence-free pass is not

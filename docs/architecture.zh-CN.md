@@ -23,7 +23,7 @@ bundle**（`@mpd-dsh/mpd`）交付，其 `dsh.bundle.patch`
 专家名册中的 11 个专家**不是预设**：它们作为专家名册（`mpd-roles-plugin`）存在，
 也作为采纳的 `agent-teams` `mpd` profile 中的队友实例化模板存在。
 
-## 2. Bundle 组装（Plan D）
+## 2. Bundle 组装
 
 **仓库根目录就是 bundle 包。** `package.json` 名为 `@mpd-dsh/mpd`，声明了
 `dsh.bundle.patch`（`./packages/mpd-bundle/cordis.patch.yml`）、`dsh.client`、各行解析所依赖的
@@ -65,6 +65,12 @@ Manifest 不变式（为什么存在）：
    `__ModuleLoader__.load({ id: "<X>", factory })` —— id 必须与行 id 一致，否则 loader
    抛 "bundle ... loaded without registering"。
 
+5. 兄弟行是**并发** apply 的，因此任何东西都不能假设顺序：服务在工具执行时惰性解析
+   （`ctx.get(...)`），而必须在启动阶段完成工作的插件应当返回 **async** 的 `apply`
+   （Cordis 会 await 它），而不是推迟到之后惰性完成。`mpd-ext` 行是唯一真正在启动阶段
+   完成实际工作的一行：它发现主机级扩展根，并在自己的 apply 结束之前连接这些根声明的
+   stdio MCP 服务器，因此**可达服务器的第一代工具**在会话开始时就已经存在。
+
 **推论**：要有 web client，bundle 需要 (a) manifest 上有 `dsh.client` + `./client`，
 以及 (b) 一个**准确命名为 `@mpd-dsh/mpd` 的 loader entry** —— 由 patch 自引用行提供：
 
@@ -86,7 +92,8 @@ client 永远不会出现在 boot graph 中（可复现验证；证据
 | `mpd-tools` | mpd-tools-plugin | 写保护（禁止静默覆盖）、工具输出截断（token 预算）、编辑错误恢复提示 | 仅 waterfall | `writeGuard`、`truncateMaxBytes`、`recoveryHint` |
 | `mpd-modelchain` | mpd-modelchain-plugin | roster 角色的 DeepSeek 路由解析 + 键值记忆注释 | `mpd_modelchain_resolve`、`mpd_memory_save`、`mpd_memory_recall` | — |
 | `mpd-dsh-adapter` | mpd-dsh-adapter-plugin | 与 Harness 接缝的**唯一**接触面：工具注册/guard/post-execute/execute、子代理 spawn、skill provider + 目录、preset 解析、能力探测 | 服务 `mpdDsh` | `defaultTimeoutMs`、`quiet` |
-| `mpd-roles` | mpd-roles-plugin | 专家名册中的 11 个专家（id/正常名/persona/模型链/只读） | `mpd_roles_list`、`mpd_role_spawn`、`mpd_role_persona`；服务 `mpdRoles` | `personasDir` |
+| `mpd-ext` | mpd-ext-plugin | 扩展接口：一份冻结的描述符契约、两个面（代码 `register()` + 数据面 `mpd-ext.json`）、按生命周期划分的发现、skills/flows provider、运行时 stdio MCP 桥、扩展 role | `mpd_ext_list`、`mpd_ext_show`、`mpd_flow_list`、`mpd_flow_show`；服务 `mpdExtensions` | `quiet` + 惰性 `mpd.jsonc` 层（`extensions.enable`、`extensions.disable`、`extensions.mcp.*`） |
+| `mpd-roles` | mpd-roles-plugin | 专家名册中的 11 个专家（正常名字/persona/模型链/只读），并在每次调用时与扩展贡献的 role 合并 | `mpd_roles_list`、`mpd_role_spawn`、`mpd_role_persona`；服务 `mpdRoles` | `personasDir` |
 | `mpd-ulw` | mpd-ulw-plugin | 固定 plan→execute→verify 循环纪律 | `mpd_ultrawork`、`mpd_ulw`（轻量别名） | `maxRounds`、`maxReReviews`、`provider/model/reviewerModel`、`planDir`、`stateDir` |
 | `mpd-hashline` | mpd-hashline-plugin | 哈希锚定编辑纪律（`LINE#HASH` 锚点） | `mpd_hashline_read`、`mpd_hashline_edit`、`mpd_hashline_format`、`mpd_hashline_restore` | `guardEditTools`、`maxDiffChars`、`registryFile` |
 | `mpd-boulder` | mpd-boulder-plugin | 绑定计划 markdown 文件的持久化工作台账 | `mpd_boulder_status`、`mpd_boulder_start`、`mpd_boulder_complete`、`mpd_boulder_task_timer`、`mpd_boulder_plan_progress`、`mpd_boulder_plans` | `boulderDir` |
@@ -137,6 +144,33 @@ key**。
   存在，成员的系统提示会带上该 workmate 的 persona + memory + note，以及
   `mpd_workmate_reflect` 指令（"captain 查 note 后委派给以 workmate 命名的成员"）。
 
+### 扩展 → skills、flows、MCP 工具与 roles
+
+`mpd-ext` 行提供 `mpdExtensions` 服务，并通过**同一个**校验器加载标准化的描述符
+（`mpd-ext.json`，或 `register(descriptor, { root })` 的第一个参数），因此数据面目录与代码面插件
+行产生完全相同的注册表条目。
+
+- **两种发现生命周期。** apply 时根（`~/.mpd/extensions/` 与 `<bundle>/extensions/`）在该行
+  apply 时扫描一次，可以贡献全部四种种类；按调用的工程根（`<会话工作区>/.mpd/extensions/`，从
+  发起调用的会话工作区解析，绝不使用 `process.cwd()`）每次调用都重新读取，且只能贡献 skills 与
+  flows —— 工具与 provider 的注册是进程级的，因此工程级的 `mcp`/`roles` 条目会按条目被拒绝并给出
+  明确原因，而不是静默半加载。
+- **skills 与 flows** 通过适配器的 `registerSkillProvider` 以每扩展独立的 provider 名提供；每个
+  候选都会按 harness 自身的规则预校验，违规候选会被跳过并记录。flow 是一份声明式 JSON 文档，
+  被渲染成内存中的 SKILL.md 形态候选 —— harness 没有 flow 接缝，因此这一面不新增任何接缝。
+- **MCP 服务器** 在 apply 时并行、带时限地启动：运行时桥 spawn 清单声明的 stdio 子进程，依次
+  执行 `initialize` → `notifications/initialized` → `tools/list`，并在插件完成激活**之前**发布
+  第一代工具。之后的工具列表变化走两阶段 fetch/swap，回滚后该服务器留下的工具数量为零。工具名
+  逐字节复刻 harness 的 `publicToolName` 线上契约（`mcp__<server>__<raw>`、64 字符上限、任何有损
+  变换都追加 `_<12-hex sha256(server NUL raw)>`）；第三方的 `outputSchema` 要么保留、要么丢弃
+  该工具（绝不改写），第三方 `inputSchema` 会被投影到 harness 强制的 schema 子集上。启动失败是
+  被包容的 —— 该服务器被记录为 `unavailable`/`failed`，并带上它的 stderr 尾部。
+- **roles** 由 `mpd-roles` 在每次调用时解析（在查询时把基础名册与扩展贡献的 role 惰性合并，绝不
+  在 apply 时合并），因此扩展 role 可以通过 `mpd_role_spawn` / `mpd_role_persona` 使用，也可以
+  作为 workmate 的基础模板。它永远不会进入 agent-teams 的成员列表 —— 那是静态的 patch 配置。
+- 四个工具可以检查这一切 —— `mpd_ext_list`、`mpd_ext_show`、`mpd_flow_list`、`mpd_flow_show` ——
+  而 `scripts/mpd-ext.mjs`（`validate` / `scaffold` / `list`）共享同一个运行时校验器。
+
 ### 服务时序
 兄弟插件提供的服务在**工具执行时惰性读取**（`mpd_modelchain`、`mpd-workmate` 在
 `execute` 内 `ctx.get("mpdRoles")`），与已验证的 QA-roles-probe 模式一致：apply 时
@@ -151,6 +185,9 @@ key**。
 | `<workspace>/.mpd/memory.json` | mpd-modelchain | 键值注释 |
 | `<workspace>/.mpd/`（VCS 记忆目录） | mpd-memory | git/svn 支撑的记忆 + 反思 |
 | `<workspace>/.mpd/mpd.jsonc` | mpd-config | 工程配置层 |
+| `<workspace>/.mpd/extensions/*/mpd-ext.json` | mpd-ext | **按调用** 的扩展面：每次调用都从发起调用的会话工作区重新读取，因此从仓库目录启动的 QA 启动不会把仓库自己的扩展泄漏进沙箱（仅 skills + flows） |
+| **`~/.mpd/extensions/*/mpd-ext.json`**（用户 HOME） | mpd-ext | 主机级的用户扩展面，在 apply 时发现（skills、flows、mcp、roles）—— 与 workmate 库一样，是一处经用户批准的 HOME 作用域例外 |
+| **`<bundle>/extensions/*/mpd-ext.json`** | mpd-ext | bundle 自带的主机级扩展面（skills、flows、mcp、roles）；它随包提供默认禁用的参考扩展，并在卸载时一并消失 |
 | **`~/.mpd/workmate/`**（用户 HOME） | mpd-workmate | 跨工程 workmate 库（`<key>/` 实例 + `.archive/` —— 已删除实例被移出库、手动 `mv` 搬回即可恢复）—— 用户批准的对 workspace-scoped 状态规则的刻意例外（AGENTS.md §6）；QA 以 `HOME=<sandbox>` 启动 |
 | `$DSH_HOME/.agent-presets/mpd*`、`$DSH_HOME/skills/*` | mpd-bootstrap | 仅历史遗留（bundle <= 0.2.6 的带版本戳副本），首次 0.3.0 启动时删除——新版本不再写 home |
 

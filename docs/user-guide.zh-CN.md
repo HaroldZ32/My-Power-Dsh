@@ -1,35 +1,35 @@
-# 用户指南
+# 使用者指南
 
-**中文** | [English](user-guide.md)
+[English](user-guide.md) | **中文**
 
-使用 my-power-dsh bundle 的人需要知道的一切，按工作流顺序排列。
+按使用顺序，覆盖安装 my-power-dsh bundle 并在日常工作中使用它所需的一切。想先看简版请看
+[README](../README.zh-CN.md)；想了解内部原理请看 [architecture.zh-CN.md](architecture.zh-CN.md)。
 
 ## 1. 安装
 
-### 一条命令，直接在检出目录安装
+### 一条命令，直接在检出目录中执行
 
 ```bash
-cd <仓库> && dsh plugin --profile <mpd|web> add .
+cd <repo> && dsh plugin --profile <mpd|web> add .
 ```
 
-仓库根目录**就是** bundle 包（`@mpd-dsh/mpd`）：`dsh.bundle.patch`、`dsh.client` 与 `exports`
-映射都在它的 manifest 里，因此这一条命令会装好全部插件行、`mpd` preset 与整个 skill 语料库。
-不需要任何其他步骤——没有打包步骤，也没有复制步骤。`dsh plugin remove @mpd-dsh/mpd` 反向卸载同一单元。
+仓库根目录 **就是** bundle 包本身（`@mpd-dsh/mpd`）：`dsh.bundle.patch`、`dsh.client` 与
+`exports` 映射都在它的 manifest 里，因此这一条命令会安装全部插件行、`mpd` preset、整个 skill
+语料库以及扩展根目录。没有别的步骤 —— 不需要打包，也不需要复制。重启 `dsh`，然后在
+**MPD（Main Working Agent）** preset 上开启会话。
 
-### 打包产物（发布/分发）
+### 打包产物（发布 / 分发）
 
 ```bash
 node scripts/pack-mpd.mjs                          # -> dist/mpd-package/（可迁移）
 dsh plugin --profile <mpd|web> add dist/mpd-package
-# 或从任意发布位置
+# 或者从任何已发布位置
 dsh plugin --profile web add <path-or-name-of-@mpd-dsh/mpd>
 ```
 
-`pack-mpd` 用于**分发**：组装一个自包含、不依赖检出目录的 `@mpd-dsh/mpd`（各插件已构建的 dist +
-采纳的 agent-teams 主代码 + skill 语料库与 presets + 合并的 web client + 打包形态 patch）。
-发布、交付 tarball 或验证可迁移性时才需要；本地安装永远不需要它。
-
-然后启动 DSH，选择 **MPD (Main Working Agent)** 预设。
+`pack-mpd` 是给 **分发** 用的：它组装出一个自包含的 `@mpd-dsh/mpd`（各插件已构建的 dist +
+采纳的 agent-teams 主代码 + skill 语料库与 presets + 合并后的 web 客户端 + 打包形态的 patch），
+不依赖检出目录。发布、制作 tarball 或验证可迁移性时才需要它；本地安装从不需要。
 
 ### 卸载（一条命令，无残留）
 
@@ -37,208 +37,287 @@ dsh plugin --profile web add <path-or-name-of-@mpd-dsh/mpd>
 dsh plugin --profile <mpd|web> remove @mpd-dsh/mpd
 ```
 
-bundle 以“整体”安装、也以“整体”卸载，且包含 skills：插件行来自 bundle patch，
-`mpd` preset 由 `<bundle>/presets` 供给（patch 把 preset 名册根指向该目录），
-skill 语料库由 `<bundle>/skills` 供给（`mpd-bootstrap` 行注册 `ctx.skills` provider）。
-不向 `$DSH_HOME` 复制任何内容，因此卸载会连同行、preset 与 skills 一起移除——
-preset 名册回到出厂状态（`default: standard`），`$DSH_HOME/skills` 与
-`$DSH_HOME/.agent-presets` 保持原样。刻意保留的是**你自己的数据**：workmate 库
+本 bundle 整体安装、整体卸载，skills 也包含在内：插件行来自 bundle patch，`mpd` preset 从
+`<bundle>/presets` 提供（patch 把 preset 根指向那里），skill 语料库从 `<bundle>/skills` 提供
+（`mpd-bootstrap` 行注册了一个 `ctx.skills` provider）。`$DSH_HOME` 中不会被复制任何东西，因此
+卸载会一并带走插件行、preset 与 skills —— 内置 preset 名册恢复原状，`$DSH_HOME/skills` 与
+`$DSH_HOME/.agent-presets` 保持原样。刻意保留下来的只有 **你自己的数据**：workmate 库
 （`~/.mpd/workmate`）与各工作区的 `.mpd/` 状态。
 
-从 bundle `<= 0.2.6`（会把 presets + skills 复制进 `$DSH_HOME`）升级：`>= 0.3.0`
-首次启动会自行删除这些带版本戳的副本。旧式 `scripts/install-profile.mjs` 流程写入的
-无版本戳副本不会被触碰——如用过该流程，请手动删除。
+从 `<= 0.2.6` 的 bundle（会把 presets + skills 复制进 `$DSH_HOME`）升级：`>= 0.3.0` 的首次启动
+会自行删除那些带版本戳的副本。由历史遗留的 `scripts/install-profile.mjs` 流程留下的无戳副本不会
+被触碰 —— 如果你用过那个流程，请手工删除。
 
-### 旧式安装器（仅开发/QA）
+### 历史安装器（仅开发/QA）
 
 ```bash
 node scripts/install-profile.mjs --yes [--profile mpd|mpd-headless] [--dsh-home X] [--skip-toolchain]
 node scripts/install-profile.mjs            # --dry-run 只打印计划，不写任何东西
 ```
 
-QA 场景下绝不要对真实 home 运行旧式安装器（`--dsh-home` 就是为隔离 QA 准备的）。
+绝不要在 QA 场景中对真实 home 运行这个历史安装器（`--dsh-home` 就是为隔离 QA 准备的）。
+受支持的用户路径是 `dsh plugin add`。
 
-## 2. `mpd` 预设
+## 2. `mpd` preset
 
-唯一交付的预设是 **MPD**，主工作代理。其约定：
+唯一随包提供的 preset 是 **MPD（Main Working Agent）**。它的约定：
 
-- **每个工程指令文件**：会话开始时代理 MUST 尝试读取 `AGENT.md`（依次回退
-  `AGENTS.md`、`CLAUDE.md`)—— 预设通过 `dsh-agent-instructions` 配置这些候选名。
-- **原生工具呈现**：行工具（bash/read/edit/…）直接暴露。
-- 预设 persona 说明了专家、团队模式与 workmate 库（见下），代理无需额外配置即可正确
-  ​​路由。
+- **项目指令文件**：会话开始时，智能体必须尝试读取 `AGENT.md`（回退到 `AGENTS.md`，再回退到
+  `CLAUDE.md`）—— preset 就是通过 `dsh-agent-instructions` 配置了这几个候选名。
+- **原生工具呈现**：harness 自带的工具（bash/read/edit 等）直接暴露。
+- preset 的人设解释了专家名册、团队模式与 workmate 库（见下文），因此智能体无需额外配置就能
+  正确路由。
 
-## 3. 专家（roster）
+## 3. 按用途划分的工具
 
-专家名册中的 11 个专家是专家 subagent，**不是预设**：
+| 你想做的事 | 工具 | 说明 |
+|---|---|---|
+| 探索代码库 | `mcp__ast_grep__*`（结构化检索/改写）、`mcp__lsp__*`（定义、引用、诊断、重命名）、`mcp__codegraph__*`（项目代码图）、`mcp__git_bash__*`（shell） | MCP 工具服务器；它们的工具以 `mcp__<server>__<tool>` 形式出现 |
+| 安全地修改 | 写入守卫与输出截断（无需配置）、`mpd_hashline_read/edit/format/restore`、`mpd_comment_check` | 哈希锚定编辑在锚点过期时会拒绝写入，而不是写到错误的行 |
+| 推进长任务 | `mpd_ulw`（轻量）/ `mpd_ultrawork`（完整纪律：计划关卡、执行轮次、验证关卡）、`mpd_boulder_start/status/complete/task_timer/plan_progress/plans` | `mpd_boulder_*` 跨会话跟踪某个计划 markdown 文件的进度 |
+| 保存记忆 | `mpd_memory_write/read/reflect/reflect_complete/status`、`mpd_memory_save/recall` | 版本库后端可以是 git 或 svn；`mpd_memory_save/recall` 是简单的键值层 |
+| 咨询专家 | `mpd_roles_list`、`mpd_role_spawn`、`mpd_role_persona` | 一次性子智能体；只读角色会被禁用写入类工具 |
+| 养一个会成长的智能体 | `mpd_workmate_list/init/spawn/reflect/match/rename/delete` | 见 §5 |
+| 运行一个团队 | `agent_teams_*` 以及 AgentTeams 标签页 | 见 §6 |
+| 配置本 bundle | `.mpd/mpd.jsonc`、`mpd_config_get`、`mpd_config_reload` | 见 §8 |
+| 扩展本 bundle | `mpd_ext_list`、`mpd_ext_show`、`mpd_flow_list`、`mpd_flow_show` | 见 §9 |
+| 解析模型路由 | `mpd_modelchain_resolve` | 解析某位专家会使用的 provider/model |
+| 查看已结束团队 | `mpd_team_compact_run`、`mpd_team_compact_status` | 已完结团队的压缩审计 |
 
-| 正常名 | 稳定 id | 模型（chain[0]） | 纪律 |
-|---|---|---|---|
-| Architect | `oracle` | deepseek-v4-pro | 只读 |
-| Researcher | `librarian` | deepseek-v4-flash | 只读 |
-| Planner | `prometheus` | deepseek-v4-pro | 只读 |
-| Deep Worker | `hephaestus` | deepseek-v4-flash | 工作者 |
-| Senior Engineer | `sisyphus` | deepseek-v4-pro | 工作者 |
-| Lead | `atlas` | deepseek-v4-pro | 工作者 |
-| Explorer | `explore` | deepseek-v4-flash | 只读 |
-| Reviewer | `metis` | deepseek-v4-pro | 工作者 |
-| Plan Reviewer | `momus` | deepseek-v4-flash | 只读 |
-| Vision Analyst | `multimodal-looker` | deepseek-v4-flash-vision-exp | 只读 |
-| Junior Engineer | `sisyphus-junior` | deepseek-v4-flash | 工作者 |
+## 4. 专家（名册）
 
-单发使用：
+名册中的 11 位专家是专家子智能体，**不是 preset**。用 **名字** 称呼他们即可（大小写、空格或连
+字符写法都可以：`Architect`、`deep worker`、`plan-reviewer`）：
 
-- `mpd_roles_list` —— 列出 roster。
-- `mpd_role_spawn { role, task, context? }` —— 以该专家 persona + 模型路由 spawn 一个
-  subagent；只读角色在机制上禁用写工具。
-- `mpd_role_persona { role }` —— 取完整 persona 文本（例如传给以文本接收 persona 的
-  spawn 接口）。
+| 名字 | 纪律 |
+|---|---|
+| Architect | 架构评审、深度调试、自审 —— 只读 |
+| Researcher | 基于证据的代码 / 开源检索 —— 只读 |
+| Planner | 产出计划，从不实现 —— 只读 |
+| Deep Worker | 端到端执行目标 |
+| Senior Engineer | 主要实现与验证 |
+| Lead | 编排与委派 |
+| Explorer | 只读代码库检索 |
+| Reviewer | 正确性与风险发现，不做修复 |
+| Plan Reviewer | 检查计划是否可执行，只拒绝真实阻塞项 —— 只读 |
+| Vision Analyst | 读取截图与图表 —— 只读 |
+| Junior Engineer | 小而明确范围的机械化改动 |
 
-## 4. Workmate 库（持久化、可演化的专家）
+一次性使用：
 
-roster 只是 **base 模板**。当你会在跨会话复用某专家时，把它实例化为 *workmate* ——
-位于 `~/.mpd/workmate/`（你的 HOME，跨工程）的持久化副本，带独立名字。
+- `mpd_roles_list` —— 列出名册。
+- `mpd_role_spawn { role, task, context? }` —— 以子智能体形式 spawn 一位专家，带上它的人设与
+  模型路由；只读角色会被机制性地禁用写入类工具。
+- `mpd_role_persona { role }` —— 取出完整人设文本（例如传给只接受文本人设的 spawn 接口）。
+
+## 5. workmate 库（持久、会演化的专家）
+
+名册只是 **基础模板**。当你会在多个会话中反复使用某位专家时，把它实例化成一个 *workmate* ——
+`~/.mpd/workmate/` 下的一份持久副本（在你的 HOME 中，跨项目），拥有独立名字。
 
 ```text
-mpd_workmate_init   { base: <roster id 或正常名>, name?: <独立名字>, note? }
+mpd_workmate_init   { base: <名册名字>, name?: <独立名字>, note? }
   → 创建 ~/.mpd/workmate/<name>/{meta.json, persona.md, memory.md, note.md}
 ```
 
 | 工具 | 用途 |
 |---|---|
-| `mpd_workmate_list` | 列实例（名字、base、uses、updatedAt、note） |
-| `mpd_workmate_spawn { name, task, context? }` | 一次性复用：workmate 携带其演化的 persona + 独立 memory + note，走自身模型路由；它被指示在最终报告前调用 `mpd_workmate_reflect` |
-| `mpd_workmate_reflect { name, task, outcome, persona_delta?, note? }` | 工作后自我演化：有界 memory 追加（最旧淘汰）、persona 修订合并、note 重生成、`uses++` |
-| `mpd_workmate_match { task }` | 按任务对 note 打分；低于阈值 → `matched: false`，建议是**新建一个 workmate** —— 绝不强行弱匹配 |
-| `mpd_workmate_rename { name, new_name }` | 重命名实例（搬移其已演化的身份） |
-| `mpd_workmate_delete { name, purge?, confirm? }` | 删除实例——默认先归档；只有 `purge: true` + `confirm: <name>` 才彻底移除 |
+| `mpd_workmate_list` | 列出实例（name、base、uses、updatedAt、note） |
+| `mpd_workmate_spawn { name, task, context? }` | 一次性复用：workmate 以其演化后的人设 + 独立记忆 + 说明卡，在自己的模型路由上运行；它被要求在最终汇报前调用 `mpd_workmate_reflect` |
+| `mpd_workmate_reflect { name, task, outcome, persona_delta?, note? }` | 工作后自我演化：有上限的记忆追加（最旧的被淘汰）、人设修订合并、说明卡重生成、`uses++` |
+| `mpd_workmate_match { task }` | 针对任务给说明卡打分；低于阈值时返回 `matched: false`，并建议 **新建一个 workmate** —— 绝不强推弱匹配 |
+| `mpd_workmate_rename { name, new_name }` | 重命名实例（迁移它已演化的身份） |
+| `mpd_workmate_delete { name, purge?, confirm? }` | 删除实例 —— 先归档；只有 `purge: true` + `confirm: <name>` 才是真正删除 |
 
-大小上限保证注入上下文有界：persona ≤ 8 KiB、memory ≤ 8 KiB、note ≤ 1.5 KiB。
+容量上限让注入的上下文保持有界：人设 ≤ 8 KiB、记忆 ≤ 8 KiB、说明卡 ≤ 1.5 KiB。
 
-Workmate 是你的代理的*演化记忆*：每次任务后 workmate 自己总结（通过 spawn 指令或团队
-成员 persona），所以以后的会话从它上次停下的地方继续。
+workmate 是你智能体的 *演化记忆*：每次任务后由 workmate 自己总结（通过 spawn 指令或团队成员
+人设），因此后续会话从上次结束处继续。
 
 ### 重命名与删除 workmate
 
-**名称仅限 ASCII**（`[a-z0-9_-]`，小写）。`Alice`、CJK 名称、`a/b` 或 `..` 都会在一开始就被
-`400 invalid-name` 拒绝——磁盘上什么都不会被改动。Unicode 名称是已列出的后续项，不是缺陷。
+**名字仅限 ASCII**（`[a-z0-9_-]`，小写）。`Alice`、中文名、`a/b` 或 `..` 会在最前面就被拒绝
+（`400 invalid-name`）—— 磁盘上不会被动任何东西。Unicode 名字是已知的后续项，不是缺陷。
 
-**重命名**（`mpd_workmate_rename { name, new_name }`）是**搬移**而不是重建：目录键、
-`meta.json`、库索引、note 的自引用以及先前名称历史（`renamedFrom`）一起搬移，而 persona、
-memory、使用次数与创建时间都逐字节保留。重命名到一个已存在的名称会被拒绝（`409 collision`），
-重命名到当前名称同样被拒绝。
+**重命名**（`mpd_workmate_rename { name, new_name }`）是 **迁移** workmate 而不是重建：目录键、
+`meta.json`、库索引、说明卡中的自我引用以及历史名字（`renamedFrom`）一起迁移，而人设、记忆、
+使用次数与创建时间按字节保留。重命名到已存在的名字会被拒绝（`409 collision`），重命名为当前
+名字同样会被拒绝。
 
-**删除**（`mpd_workmate_delete { name }`）默认**先归档**：实例移入
-`~/.mpd/workmate/.archive/<name>-<stamp>/`，立即从 `list` 与 `match` 中消失，并且可以手动恢复：
+**删除**（`mpd_workmate_delete { name }`）是 **先归档**：实例被移动到
+`~/.mpd/workmate/.archive/<name>-<stamp>/`，立即从 `list` 与 `match` 中消失，并可以手工找回：
 
 ```bash
 mv ~/.mpd/workmate/.archive/<name>-<stamp> ~/.mpd/workmate/<name>
 ```
 
-只有显式的 purge 才会销毁任何东西：`mpd_workmate_delete { name, purge: true, confirm: "<name>" }`
-——必须给出确切的名称，否则调用被拒绝且什么都不删除。产品内没有恢复按钮：先归档在界面上刻意是
-单向的，恢复就是上面的 `mv`。
+只有显式 purge 才会销毁任何东西：`mpd_workmate_delete { name, purge: true, confirm: "<name>" }`
+—— 必须给出完全一致的名字，否则调用会被拒绝且不会删除任何内容。产品内没有"恢复"按钮：先归档在
+UI 上是刻意的单向操作，恢复就是上面那条 `mv`。
 
-**两种变更在该 workmate 正在被使用时都会被拒绝**——被某个团队成员占用（`.mpd/team/` 下某个
-未归档的团队记录里出现了它），或被一个正在进行的 `mpd_workmate_spawn` 占用。拒绝为 `409 in-use`，
-并列出阻塞的团队 id 与成员，因此可据此处理：结束/归档那些团队，然后重试。同一道门也覆盖重命名的
-*目标*，所以把一个 workmate 重命名**为**某个正被团队使用的 roster 名称（例如 `architect`）也会
-被同样拒绝。
+**当 workmate 正在被使用时，这两种改动都会被拒绝** —— 无论是被团队成员使用（`.mpd/team/` 下
+未归档的团队记录中出现了它的名字），还是仍有 `mpd_workmate_spawn` 在运行。拒绝信息为
+`409 in-use`，并列出阻塞的团队 id 与成员，因此是可行动的：结束或归档那些团队，然后重试。同一
+道门也覆盖重命名的 **目标名**，所以把 workmate 重命名为某个正被团队使用的名册名字也会被同样拒绝。
 
-## 5. 团队模式（采纳的 dsh-agent-teams）
+## 6. 团队模式
 
 ```text
-agent_teams_create { name: <团队名>, description: <目标>, profile: "mpd", approval: "required" }
-  → 暂存正常命名的 roster 作为队友 + 空任务 DAG
-# 暂存期间：在 Web 计划面板编辑成员/任务，或用
+agent_teams_create { name: <团队>, description: <目标>, profile: "mpd", approval: "required" }
+  → 暂存一份使用正常名字的名册作为队友 + 一个空的任务 DAG
+# 暂存期间：在 Web 计划面板中编辑成员/任务，或者用
 agent_teams_add_member / agent_teams_create_task / agent_teams_edit_plan
 agent_teams_approve  # 用户批准 → spawn 成员，调度器启动
-# 领导者（你/captain）：
+# 队长（你 / captain）：
 agent_teams_status / agent_teams_send_message / agent_teams_reassign_task
 ```
 
-- `approval: "required"` 是两阶段流程（推荐）：在 GUI 审查计划前什么都不运行。
-- `mpd` profile 是 **captain 计划**（`taskPlanning: captain`）：roster 固定，captain
-  在暂存计划期间设计 DAG。
-- 只读成员（Architect、Researcher、Planner、Explorer、Plan Reviewer、Vision Analyst）
-  绝不编辑文件；工作者（Senior Engineer、Junior Engineer、Deep Worker、Lead、
-  Reviewer）实现并验证。
-- **Workmate 支撑的成员**：如果你初始化了一个 workmate（如 `alice`）并添加名为
-  `alice` 的成员，该成员的系统提示自动携带 `alice` 的 persona + memory + note，并在
-  每次任务后把反思写回 workmate。captain 指引：委派前检查 `mpd_workmate_match`；
-  弱匹配 → 新建 workmate 而不是强行使用。
+- `approval: "required"` 是两阶段流程（推荐）：在你于 GUI 中审阅之前，什么都不会运行。
+- `mpd` profile 是 **captain 规划制**（`taskPlanning: captain`）：名册固定，由 captain 在暂存
+  计划阶段设计任务 DAG。
+- 只读成员（Architect、Researcher、Planner、Explorer、Plan Reviewer、Vision Analyst）从不编辑
+  文件；工作者（Senior Engineer、Junior Engineer、Deep Worker、Lead、Reviewer）负责实现与验证。
+- **由 workmate 背书的成员**：如果你初始化了一个 workmate（例如 `alice`）并添加一个名为
+  `alice` 的成员，该成员的系统提示会自动带上 `alice` 的人设 + 记忆 + 说明卡，并在每次任务后
+  回写进该 workmate。captain 的行为准则：委派前先查 `mpd_workmate_match`；匹配很弱就新建一个
+  workmate，而不是硬用。
+- **扩展 role 不是团队成员**：扩展可以贡献一个能被 `mpd_role_spawn` / `mpd_role_persona` 使用
+  的 role，但团队成员列表是静态的 patch 配置，所以扩展 role 永远不会成为队友（见 §9）。
 
-## 6. Web GUI
+## 7. Web GUI
 
-- **AgentTeams 侧边栏页（唯一的团队界面）**：整个团队 GUI 是 **DSH-better-sidebar**
-  （`dsh-better-sidebar`，社区侧边栏 bundle；Tab id `mpd-agent-teams`）中的一个 Tab。它列出
-  *本对话* 的团队 —— 先进行中的（成员及其实时活动、带状态的任务行、依赖图、captain 上下文、
-  停止团队控件），再已归档的 —— 并在此承载暂存计划审批编辑器，计划就在它被创建的地方审查与编辑。
-  Tab 角标显示本对话进行中的团队数量，且该 Tab 为 `single: true`：切换对话时复用同一个 Tab
-  而不是再开一个。团队出现时该 Tab 会自动打开一次；可在侧边栏设置页用
-  **Auto-open when a team appears** 开关关闭（插件设置 `autoOpenOnTeamActivity`，默认开启）。
-  该 Tab 渲染的正是被移除浮窗自己的内部结构 —— 带标题、实时活动圆点与收起控件的面板头、
-  可滚动的团队主体、采纳的空态提示与归档标签 —— 因此看起来与被它取代的面板完全一致；
-  收起控件关闭的就是侧栏面板本身。原来的对话内团队卡片与右上角活动浮窗**已删除**，且没有回退：
-  没有 DSH-better-sidebar 的 profile 只会输出一条警告，并且完全没有团队 GUI —— 团队协作仍通过
-  `agent_teams_*` 工具与 `.mpd/team` 状态进行。
-- **Workmates 侧边栏页**：workmate 库作为 **DSH-better-sidebar**
-  （`dsh-better-sidebar`，社区侧边栏 bundle）的第二个 Tab 注册，因此它就位于该侧边栏自己的页面
-  所在之处 —— Tab 条、`+` 菜单、以及在侧边栏设置里的启用/禁用开关。页面列出
-  `~/.mpd/workmate/` 实例（base、uses、更新时间、note），支持筛选、点开查看
-  persona/memory/note，并通过**由 roster 填充的 base 选择器**（无需手打 id）加可选
-  name/note 新建。它还可以**重命名**与**删除**所选实例 —— 删除流程是显式的（确认步骤、归档，
-  以及再一步需要输入确切名称的彻底删除），两种操作都已本地化（zh/en）。数据来自 / 提交到 host
-  路由 `GET /plugins/mpd-workmate/{list,roster,get}` + `POST /plugins/mpd-workmate/{init,rename,delete}`。
-  侧边栏**标签栏文字**本身仍是英文 `Workmates`（有记录的延后项——标签栏文字在注册处解析，
-  那里没有可用的本地化翻译函数，与 AgentTeams Tab 一致）；页面主体跟随你的语言。
-- **两个页面都只在侧边栏**：都没有回退。没有 DSH-better-sidebar 时各自只输出一条警告且不注册
-  任何东西，并且 bundle 不再附带 workmate 的 🤖 浮窗与侧栏脚部按钮。
+- **AgentTeams 侧边栏标签页**（唯一的团队界面）：整个团队 GUI 是 **DSH-better-sidebar**
+  （社区侧边栏 bundle；标签 id `mpd-agent-teams`）中的一个标签页。它列出 *本会话* 的团队 ——
+  先活跃团队（成员及其实时动态、带状态的任务行、依赖图、captain 上下文、停止团队控制），再是
+  已归档团队 —— 并且承载暂存计划的审批编辑器，因此计划在它被创建的地方被审阅和编辑。标签徽标
+  显示本会话中活跃团队的数量，`single: true` 会让标签页重新定位而不是打开第二份副本。当出现团队
+  时，标签页会自行打开一次；可以在侧边栏设置页用 **Auto-open when a team appears** 开关关闭
+  （插件设置 `autoOpenOnTeamActivity`，默认开启）。
+- **Workmates 侧边栏标签页**：workmate 库作为第二个标签页贡献给同一个侧边栏，因此它和该侧边栏
+  自己的页面在一起 —— 标签条、`+` 菜单，以及侧边栏自己的启用/禁用开关。页面列出
+  `~/.mpd/workmate/` 中的实例（base、uses、updated、note），支持筛选、打开查看某人设/记忆/说明卡，
+  并可以从 **基于名册的 base 选择器**（不需要手输 id）加上可选名字与说明卡来新建一个实例。它还可以
+  **重命名** 与 **删除** 选中的实例 —— 删除流程是显式的（先确认，再归档，然后还有一个需要输入
+  完整名字才能永久清除的步骤），两种操作都做了 zh/en 本地化。它读取并调用宿主路由
+  `GET /plugins/mpd-workmate/{list,roster,get}` 与
+  `POST /plugins/mpd-workmate/{init,rename,delete}`。侧边栏 **标签条上的文字** 仍然保持英文
+  `Workmates`（这是一个已记录的推迟项：标签条文字的解析处没有本地化翻译器，AgentTeams 标签页
+  同样如此）；页面正文跟随你的语言。
+- **两个页面都只存在于侧边栏中**：都没有降级方案。没有 DSH-better-sidebar 时，两者各自只会打印
+  一条警告且不注册任何东西。团队工作仍然可以通过 `agent_teams_*` 工具与 `.mpd/team` 状态运行，
+  workmate 库也仍然可以通过 `mpd_workmate_*` 工具完整使用。
 
-## 7. 配置（`mpd.jsonc`）
+## 8. 配置（`mpd.jsonc`）
 
-`mpd-config` 把工程层 `.mpd/mpd.jsonc` 覆盖到用户层 `$DSH_HOME/mpd.jsonc`（按 key，
-工程优先）。用 `mpd_config_get` / `mpd_config_reload` 查询。插件读取的 key：
+`mpd-config` 把项目层 `.mpd/mpd.jsonc` 合并到用户层 `$DSH_HOME/mpd.jsonc` 之上（逐键合并，项目
+优先）。用 `mpd_config_get` 查询解析后的值，用 `mpd_config_reload` 重新读取。插件会读取的键：
 
-| Key | 消费者 | 含义 |
+| 键 | 消费方 | 含义 |
 |---|---|---|
 | `memory.vcs` | mpd-memory | `git` / `svn` / `both` |
-| `memory.dir`、`memory.agentSlug`、`memory.reflectionEvery` | mpd-memory | 记忆根、代理 slug、反思节奏 |
+| `memory.dir`、`memory.agentSlug`、`memory.reflectionEvery` | mpd-memory | 记忆根目录、agent slug、反思节奏 |
 | `boulder.dir` | mpd-boulder | boulder 台账位置 |
-| `hashline.*` | mpd-hashline | 守卫开关、diff 上限、注册文件 |
-| `commentChecker.*` | mpd-comment-checker | autoCheck、binary、超时 |
+| `hashline.*` | mpd-hashline | 守卫开关、diff 上限、注册表文件 |
+| `commentChecker.*` | mpd-comment-checker | autoCheck、二进制、超时 |
 | `ulw.*` | mpd-ulw | 轮数、计划/状态目录、provider/model 路由 |
-| `codegraph.*` | mpd-codegraph | autoInit、binary、超时 |
+| `extensions.enable`、`extensions.disable` | mpd-ext | 按 id 的扩展启用/禁用列表（进程级：见 §9） |
+| `extensions.mcp.*` | mpd-ext | MCP 桥默认值：`enabled`、`connectTimeoutMs`、`toolCallTimeoutMs` |
+| `modelchain.*` | mpd-modelchain | 各名册角色的 provider/model 链 |
+| `team.stateDir` | agent-teams | 团队状态位置（默认 `.mpd/team`） |
 
-## 8. 排障速查
+`mpd-codegraph` 刻意不在上表中：它的 `autoInit`、`initTimeoutMs`、`cooldownMs` 与 `binary` 来自
+它的 **bundle-patch 行** 配置（在 apply 时读取），没有任何插件通过 `mpd.jsonc` 读取
+`codegraph.*` 键。它的行在 `packages/mpd-bundle/cordis.patch.yml` 中自带 `autoInit: true` 与
+`initTimeoutMs: 60000`。
 
-- `mpd_role_spawn` 未知角色 → id 是 roster id（`oracle`、`sisyphus-junior`、…）；先跑
-  `mpd_roles_list`。
-- `mpd_workmate_*` 报 "mpdRoles service unavailable" → `mpd-roles` 行未挂载（重装
-  bundle / 加行）。
-- workmate 重命名/删除**因正在被使用而被拒绝** → `.mpd/team/` 下某个未归档的团队记录里出现了
-  它，或某个 `mpd_workmate_spawn` 仍在运行。拒绝信息会列出阻塞的团队；在 AgentTeams Tab 里
-  归档（或退休）那些团队并等运行中的 spawn 结束，然后重试。重命名为某个正被使用的 roster
-  名称（`architect`、`lead`、…）会被同样拒绝。
-- workmate 被误删 → 默认删除只是**归档**：把 `~/.mpd/workmate/.archive/<name>-<stamp>` 搬回
-  `~/.mpd/workmate/<name>` 即可。产品内没有恢复功能，而 `purge`（需 `confirm: <name>`）
-  无法恢复。
-- workmate 名称被拒绝（`400 invalid-name`）→ 名称仅限 ASCII、小写 `[a-z0-9_-]`：大写、空格、
-  标点、`/` 与 CJK 名称都会在改动任何东西之前被拒绝。请改用 ASCII 名称；Unicode 名称是已列出的
-  后续项。
-- 侧边栏里没有 AgentTeams Tab → 重新构建发布的 client
-  （`node scripts/build-mpd-client.mjs`，然后刷新页面），并确认 profile 装有
-  `dsh-better-sidebar`（没有它团队页面只输出一条警告，且没有宿主）。
-- GUI 里完全没有客户端界面 → `mpd-web-compat` 自引用行必须存在且重装 bundle
-  （`dsh plugin --profile <p> add dist/mpd-package`）。
-- `MISSING_CREDENTIAL` → provider 路由需要你 DSH 凭据中的 key；本 bundle 从不配置
-  key。
-- AGENT.md 未注入 → 会话运行的是非 `mpd` 预设；切换预设。
-- 侧边栏报 `cannot resolve target "…/team-activity"` → AgentTeams tab 的"自动打开"过去会给侧边栏一个
-  占位文件路径；从 `dsh-better-sidebar` 0.19 起，带路径的 open 会被路由到 DSH 原生右栏，而右栏会真的解析文件。
-  更新 bundle 即可（`git pull` 后执行 `dsh plugin --profile <p> add <仓库路径>`）并刷新页面 —— 现在自动打开
-  不带 seed，tab 会直接打开。
-- **创建 `mpd` 会话总是失败，报错为 `agent-preset/invalid … $.prefix missing required value`**
-  → 已安装的 Harness 改了 `dsh-persona` 的约定（现在取 `prefix`，不再是废弃的 `text`），
-  因而拒绝挂载整个预设。更新 bundle 即可（`git pull` 后执行
-  `dsh plugin --profile <p> add <仓库路径>`）—— 这是 Harness 版本兼容性修复，不是你侧配置问题。
+## 9. 从使用者视角看扩展
+
+扩展接口让一个包 —— 或一个普通目录 —— 在不改动 bundle 的前提下，为你的 DSH 环境增加 skill、
+flow、MCP 服务器与专家 role。作者的完整契约见 [extensions.zh-CN.md](extensions.zh-CN.md)；本节
+只讲 *使用者* 需要知道的部分。
+
+**扩展从哪里被发现**（一个扩展就是包含 `mpd-ext.json` 的目录）：
+
+| 根目录 | 时机 | 可贡献 |
+|---|---|---|
+| `<工作区>/.mpd/extensions/` | 每次调用重新读取，来自发起调用的会话工作区 | 仅 skills + flows |
+| `~/.mpd/extensions/` | 插件启动时发现 | skills、flows、MCP 服务器、roles |
+| `<bundle>/extensions/` | 插件启动时发现 | skills、flows、MCP 服务器、roles |
+
+**添加一个扩展。** 把目录放进正确的根（需要 MCP 服务器或 roles 就用主机级；只增加 skills 与
+flows 就可以放在工作区级），然后重启 `dsh`。没有 reload 工具：重启就是唯一诚实的重载方式。
+
+**打开或关闭。** 扩展自己的 manifest 里有 `"enabled": true|false`；随包的参考扩展默认禁用。
+你也可以不改 manifest，而是在 `.mpd/mpd.jsonc` 中覆盖：
+
+```jsonc
+{
+  "extensions": {
+    "enable": ["my-runtime-ext"],
+    "disable": ["noisy-ext"],
+    "mcp": { "enabled": true, "connectTimeoutMs": 10000, "toolCallTimeoutMs": 60000 }
+  }
+}
+```
+
+`disable` 优先于 `enable`，`enable` 优先于 manifest 自身的 `enabled`。
+
+**查看加载了什么。** `mpd_ext_list` 显示所有已知扩展及其 plane、有效启用状态、贡献计数与逐条目
+错误；`mpd_ext_show { id }` 显示单个扩展的全部信息，包括每个 MCP 服务器的确切状态
+（`connected`、`unavailable`、`failed`、`disabled`）以及它发布的工具。`mpd_flow_list` /
+`mpd_flow_show` 用于查看所贡献的 flow。在信任一个目录之前先校验它：
+
+```bash
+bun scripts/mpd-ext.mjs validate <dir>     # 退出码 1，并逐条打印问题
+bun scripts/mpd-ext.mjs scaffold my-ext --dir /tmp   # 从一个可工作的骨架开始
+```
+
+**诚实的边界。**
+
+- **会话级扩展只能增加 skills 与 flows。** 工具与 provider 的注册是进程级的，因此工作区级清单
+  若声明 `mcp` 或 `roles`，会按条目被拒绝并给出明确原因 —— 绝不会半加载。
+- **没有 reload。** 修改扩展的 manifest 或资源后，会在下一次 `dsh` 启动时生效；`mpd_ext_list`
+  刻意没有对应的重载工具。
+- **扩展 role 不是团队成员。** 它们可以通过 `mpd_role_spawn` / `mpd_role_persona` 使用，也可以
+  作为 workmate 的基础模板，但 agent-teams 的成员列表是静态 patch 配置。
+- **`extensions.*` 配置是进程级的**，在插件启动时读取 —— 它不是按会话隔离的。
+- **第四方 MCP 服务器是一个子进程。** 它绝不会从你的宿主环境继承名字形如凭据的变量；它需要什么
+  就在 manifest 的 `env` 中声明。
+
+## 10. 故障排查速查
+
+- `mpd_role_spawn` 报未知角色 → 角色按 **名字** 应答（`Architect`、`Deep Worker`、
+  `plan reviewer` —— 大小写/空格/连字符写法都可以）；运行 `mpd_roles_list`。
+- `mpd_workmate_*` 提示 "mpdRoles service unavailable" → `mpd-roles` 行没有挂载（重新安装
+  bundle）。
+- workmate 的重命名/删除 **因"正在使用"被拒绝** → `.mpd/team/` 下某个未归档团队记录中出现了它，
+  或仍有 `mpd_workmate_spawn` 在运行。拒绝信息会列出阻塞的团队；在 AgentTeams 标签页中归档（或
+  退役）那些团队并等待运行中的 spawn 结束，然后重试。
+- workmate 被误删 → 默认删除只会 **归档**：把
+  `~/.mpd/workmate/.archive/<name>-<stamp>` 移回 `~/.mpd/workmate/<name>` 即可。产品内没有恢复
+  功能，而 `purge`（配合 `confirm: <name>`）不可恢复。
+- workmate 名字被拒绝（`400 invalid-name`）→ 名字仅限 ASCII、小写 `[a-z0-9_-]`：大写、空格、
+  标点、`/` 与中文名都会在触碰任何东西之前被拒绝。
+- **扩展没有出现在 `mpd_ext_list` 中** → 检查目录里确实有 `mpd-ext.json`、它确实位于三个根之一
+  之下，并且 `dsh` 已重启。被拒绝的清单会由 `mpd_ext_list` 连同逐条目原因一起报告。
+- **扩展的 MCP 工具缺失** → `mpd_ext_show { id }` 会报告该服务器的状态：`unavailable`/`failed`
+  会带上子进程的 stderr 尾部与原因；`disabled` 表示扩展被关闭或 `extensions.mcp.enabled` 为
+  false。schema 无法投影到 harness 子集的工具会被明确跳过（作为已记录的错误出现），而不是静默
+  消失。
+- **工作区级扩展的 `mcp`/`roles` 条目被拒绝** → 符合预期：只有主机级根
+  （`~/.mpd/extensions/`、`<bundle>/extensions/`）可以贡献工具与 provider。请移动该目录，或从
+  清单中去掉不支持的种类。
+- 侧边栏缺少 AgentTeams 标签页 → 重新构建随包客户端（`node scripts/build-mpd-client.mjs`，然后
+  刷新页面），并确认 profile 中存在 `dsh-better-sidebar`（没有它，团队页面只打印一条警告且没有
+  宿主）。
+- GUI 中完全没有客户端界面 → `mpd-web-compat` 自引用行必须存在，并且需要重新安装 bundle
+  （`dsh plugin --profile <p> add <repo-or-package>`）。
+- `MISSING_CREDENTIAL` → 该 provider 路由需要在你的 DSH 凭据中有密钥；本 bundle 从不配置密钥。
+- AGENT.md 没有被注入 → 会话运行的不是 `mpd` preset；请切换 preset。
+- 侧边栏显示 `cannot resolve target "…/team-activity"` → 旧客户端用内容种子打开了 AgentTeams
+  标签页。更新 bundle（`git pull`，然后 `dsh plugin --profile <p> add <repo>`）并刷新页面 ——
+  现在的自动打开不再带种子。
+- **无法创建任何 `mpd` 会话，错误为 `agent-preset/invalid … $.prefix missing required value`**
+  → 已安装的 harness 改变了 `dsh-persona` 契约（它接受 `prefix`，而不是已退休的 `text`），于是
+  拒绝挂载整个 preset。更新 bundle（`git pull`，然后 `dsh plugin --profile <p> add <repo>`）
+  —— 这是 harness 版本兼容性修复，不是你这边配置的问题。
