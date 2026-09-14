@@ -1,0 +1,276 @@
+{
+  "schema": "mpd.omo-align.qa-shipped-path/2",
+  "task": "t36",
+  "case": "agent-teams-messaging",
+  "head": "8ce941e70a93d97c34b431797a87797618863388",
+  "sandbox": "/tmp/mpd-t36-PgQFnM",
+  "workspace": "/tmp/mpd-t36-PgQFnM/ws",
+  "stateRoot": "/tmp/mpd-t36-PgQFnM/ws/.mpd/team",
+  "settledFiles": {
+    "state_js": "8e78e9b508d032307943318e45030000523bbdaa6fcce9bee9db442698df70e2",
+    "scheduler_js": "27cc18b923443c22b160ed202485499b980cceb22f43e63855bf42e6cd6550a2"
+  },
+  "loadEvidence": "mounted boot of the mpd preset in the sandbox home; --dump-config not cited",
+  "rootCause": "The original case asserted the state primitives only, so the F-1 class (library correct, shipped path unwired) passed every layer. It now drives agent_teams_send_message / agent_teams_mailbox_clear / agent_teams_interject_* against the real installTeamScheduler and counts deliveries on the member-queue seam, with a pre-fix RED arm.",
+  "knownLimits": [
+    "The approval->auto-delivery path is probed at the STATE level: the approved request is re-posted as an ordinary message to the requester's inbox (the documented tool-wiring job) and the shipped predicate then delivers it. The tool-layer wiring that posts it AND drives the real scheduler idle edge for a spawned member is not driven here — it needs a long-lived captain session with live members, which the isolated headless environment cannot hold (same limitation recorded by t35)."
+  ],
+  "ok": true,
+  "steps": {
+    "surface": {
+      "ok": true,
+      "exports": 10,
+      "dedupWindowMs": 60000,
+      "interjectionTtlMs": 1800000,
+      "interjectionKind": "interjection-request",
+      "queue": "interjections"
+    },
+    "settled": {
+      "ok": true,
+      "head": "8ce941e70a93d97c34b431797a87797618863388",
+      "stateSha": "8e78e9b508d032307943318e45030000523bbdaa6fcce9bee9db442698df70e2",
+      "schedulerSha": "27cc18b923443c22b160ed202485499b980cceb22f43e63855bf42e6cd6550a2"
+    },
+    "installer": {
+      "ok": true,
+      "exit": 0,
+      "mpdPresetInstalled": true
+    },
+    "mountedBoot": {
+      "ok": true,
+      "exit": 1,
+      "credentialBlocked": true,
+      "crashSignatures": [],
+      "mountMarkers": 3,
+      "missingMarkers": [],
+      "loadEvidence": "real mount+boot of the mpd preset home; --dump-config is deliberately NOT cited (AGENTS.md §4)"
+    },
+    "isolation": {
+      "ok": true,
+      "checked": 1,
+      "keys": [
+        "--tmp-mpd-t36-PgQFnM-ws--"
+      ],
+      "sessionsWritten": 1
+    },
+    "shippedDedup": {
+      "ok": true,
+      "sends": [
+        {
+          "delivered": "wake",
+          "message_id": "e2caab97-8378-430d-af62-217503a24556"
+        },
+        {
+          "delivered": "duplicate",
+          "message_id": "e2caab97-8378-430d-af62-217503a24556"
+        },
+        {
+          "delivered": "duplicate",
+          "message_id": "e2caab97-8378-430d-af62-217503a24556"
+        }
+      ],
+      "records": 1,
+      "dupCount": 3,
+      "deliveriesToRecipient": {
+        "afterSends": 1,
+        "afterKick": 1,
+        "afterSecondKick": 1
+      },
+      "windowMs": 60000,
+      "path": "agent_teams_send_message -> appendMailboxDeduped -> scheduler kickMember -> ctx.subagents.prompt"
+    },
+    "shippedDedupControl": {
+      "ok": true,
+      "delivered": "wake",
+      "records": 2,
+      "dupCounts": [
+        3,
+        1
+      ]
+    },
+    "preFixRedArm": {
+      "ok": true,
+      "records": 3,
+      "dupCounts": [
+        null,
+        null,
+        null
+      ],
+      "deliveriesToRecipient": 3,
+      "transform": {
+        "captainRegionBytes": 628,
+        "memberRegionBytes": 124,
+        "guardRegionBytes": 1212,
+        "outBytes": 163675
+      },
+      "specimen": "the t49 regions reverted to the shape recorded in the commit that introduced them (raw/prefix-tools.js)",
+      "note": "Counter-reading the contract asks for: 3 records / >=3 deliveries BEFORE the repair, 1 record / 1 delivery after it."
+    },
+    "shippedInterjection": {
+      "ok": true,
+      "request": {
+        "id": "d424bf98-669d-41df-9062-80811304b446",
+        "status": "pending",
+        "delivered_to_anyone": false
+      },
+      "pendingListed": 1,
+      "deliveries": {
+        "beforeApprove": 0,
+        "whilePending": 0,
+        "toRequester": 1,
+        "toOtherMember": 0
+      },
+      "requesterInbox": [
+        "d424bf98-669d-41df-9062-80811304b446-delivery"
+      ],
+      "path": "interject_request -> interject_decide(approved) -> decideInterjection re-post -> kickMember -> ctx.subagents.prompt"
+    },
+    "shippedInterjectionRejectControl": {
+      "ok": true,
+      "status": "rejected",
+      "requesterInbox": 0,
+      "deliveriesAfter": 0
+    },
+    "shippedTtl": {
+      "ok": true,
+      "agedStatus": "expired",
+      "deliveredNotice": [
+        "interjection-expired-363e9e49-bf77-4a19-8d13-87eb54e394ab"
+      ],
+      "noticeAcknowledged": true,
+      "unreadAfterAck": 0,
+      "stillPending": [
+        "d4e5b436-d08b-481b-8626-7080d017ba31"
+      ],
+      "deliveriesToRequester": 1,
+      "path": "scheduler kickMember -> expiry tick -> expireInterjections -> ordinary notice -> deliverableUnread -> ctx.subagents.prompt"
+    },
+    "shippedClear": {
+      "ok": true,
+      "cleared": [
+        null,
+        null
+      ],
+      "unread_after": 0,
+      "tombstoned": 2,
+      "deliveries": {
+        "beforeClear": 2,
+        "afterKick": 2
+      },
+      "path": "agent_teams_send_message -> agent_teams_mailbox_clear -> readUnreadMailbox -> scheduler kickMember"
+    },
+    "shippedClearAuthzControl": {
+      "ok": true,
+      "refusal": "only the captain may clear another participant's mailbox: you are \"Lead\" and asked to clear \"Senior Engineer\""
+    },
+    "dedup": {
+      "ok": true,
+      "positive": {
+        "ok": true,
+        "sends": 3,
+        "folded": [
+          false,
+          true,
+          true
+        ],
+        "records": 1,
+        "dupCount": 3,
+        "unread": 1,
+        "windowMs": 60000
+      },
+      "negative": {
+        "ok": true,
+        "folded": false,
+        "records": 2,
+        "ids": [
+          "dedup-1",
+          "dedup-other"
+        ],
+        "otherDupCount": 1,
+        "foldedStillFolded": 3
+      }
+    },
+    "clear": {
+      "ok": true,
+      "positive": {
+        "ok": true,
+        "cleared": [
+          "clear-1",
+          "clear-2"
+        ],
+        "audit": {
+          "kind": "mailbox-cleared",
+          "agentKey": "captain",
+          "watermark": 500,
+          "clearedCount": 2,
+          "clearedIds": [
+            "clear-1",
+            "clear-2"
+          ],
+          "sidecar": "/tmp/mpd-t36-PgQFnM/ws/clear-ws/.mpd/team/t36-messaging/inbox/archive/captain.500.jsonl",
+          "at": 1000000
+        },
+        "sidecar": "/tmp/mpd-t36-PgQFnM/ws/clear-ws/.mpd/team/t36-messaging/inbox/archive/captain.500.jsonl",
+        "sidecarRecords": 2,
+        "tombstones": 2,
+        "idsSurvive": true,
+        "liveView": 1
+      },
+      "negative": {
+        "ok": true,
+        "idsSurvive": [
+          "clear-1",
+          "clear-2",
+          "clear-3"
+        ],
+        "liveLines": 3,
+        "payloadLocations": [
+          "clear-ws/.mpd/team/t36-messaging/inbox/archive/captain.500.jsonl"
+        ],
+        "hardDelete": false
+      }
+    },
+    "interjectionTtl": {
+      "ok": true,
+      "expired": [
+        "ij-ttl"
+      ],
+      "status": "expired",
+      "requester": "Lead",
+      "pendingLeft": 0
+    },
+    "interjection": {
+      "ok": true,
+      "positive": {
+        "ok": true,
+        "queued": 1,
+        "deliverableWhilePending": 0,
+        "notYetExpired": 0,
+        "status": "approved",
+        "gatedEvenAfterApproval": 1,
+        "requesterInboxAfterRepost": 1,
+        "requester": "captain",
+        "deliveredId": "ij-1-delivery",
+        "expiresAt": 3800000
+      },
+      "negative": {
+        "ok": true,
+        "deliverableWhenKindBroken": 1,
+        "falsifiable": true
+      },
+      "spoofedRecord": "ij-1"
+    },
+    "vendorLock": {
+      "ok": true,
+      "before": {
+        "fileCount": 331,
+        "treeSha": "ff5fe0f8fe88cf2c829f9fefb419c78f2a68e7c7b951e2f97c20fd5049fe6735"
+      },
+      "after": {
+        "fileCount": 331,
+        "treeSha": "ff5fe0f8fe88cf2c829f9fefb419c78f2a68e7c7b951e2f97c20fd5049fe6735"
+      },
+      "gateExit": 0
+    }
+  }
+}
