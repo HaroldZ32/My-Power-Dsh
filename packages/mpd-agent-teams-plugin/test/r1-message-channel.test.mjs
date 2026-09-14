@@ -176,3 +176,75 @@ test("R1 interjection: approval is recorded and cannot be re-decided", async () 
     await expect(decideInterjection(stateRoot, TEAM, "ij-ok", "approved", { now: 600 })).rejects.toThrow(/already approved/)
   } finally { cleanup() }
 })
+
+test("REPAIR V1: a request WITHOUT content is NORMALIZED (never silently invisible)", async () => {
+  const { stateRoot, cleanup } = fixture()
+  try {
+    // The exact t38 failure shape: no `content` at all. Before the repair this
+    // returned status:'pending' while readPendingInterjections could not see it.
+    const record = await enqueueInterjection(stateRoot, TEAM, {
+      id: "ij-nc", from: "Junior Engineer", summary: "let me touch lib/x", reason: "blocked on scope", location: "lib/x", ts: 1_000,
+    })
+    expect(record.status).toBe("pending")
+    // DECISION PINNED: normalization, with content derived from summary
+    expect(record.content).toBe("let me touch lib/x")
+    const pending = await readPendingInterjections(stateRoot, TEAM)
+    expect(pending.map((entry) => entry.id)).toEqual(["ij-nc"])
+    // and it is decidable (the captain can act on what they can see)
+    const approved = await decideInterjection(stateRoot, TEAM, "ij-nc", "approved", { now: 2_000 })
+    expect(approved.status).toBe("approved")
+  } finally { cleanup() }
+})
+
+test("REPAIR V1: the content fallback priority is summary -> reason -> location", async () => {
+  const { stateRoot, cleanup } = fixture()
+  try {
+    const fromSummary = await enqueueInterjection(stateRoot, TEAM, { id: "p1", from: "Lead", summary: "S", reason: "R", location: "L", ts: 1 })
+    const fromReason = await enqueueInterjection(stateRoot, TEAM, { id: "p2", from: "Lead", reason: "R", location: "L", ts: 1 })
+    const fromLocation = await enqueueInterjection(stateRoot, TEAM, { id: "p3", from: "Lead", location: "L", ts: 1 })
+    expect(fromSummary.content).toBe("S")
+    expect(fromReason.content).toBe("R")
+    expect(fromLocation.content).toBe("L")
+    // the caller's own content always wins
+    const explicit = await enqueueInterjection(stateRoot, TEAM, { id: "p4", from: "Lead", content: "C", summary: "S", ts: 1 })
+    expect(explicit.content).toBe("C")
+  } finally { cleanup() }
+})
+
+test("REPAIR V1: identity is REQUIRED and rejected loudly, naming the field", async () => {
+  const { stateRoot, cleanup } = fixture()
+  try {
+    await expect(enqueueInterjection(stateRoot, TEAM, { from: "Lead", ts: 1 })).rejects.toThrow(/missing required field "id"/)
+    await expect(enqueueInterjection(stateRoot, TEAM, { id: "x", ts: 1 })).rejects.toThrow(/missing required field "from"/)
+    await expect(enqueueInterjection(stateRoot, TEAM, { id: "x", from: "Lead" })).rejects.toThrow(/missing required field "ts"/)
+    // no partially-written record is left behind by a rejected call
+    expect((await readMailbox(stateRoot, TEAM, INTERJECTION_QUEUE)).length).toBe(0)
+  } finally { cleanup() }
+})
+
+test("REPAIR V1: decide distinguishes MALFORMED-but-present from truly ABSENT", async () => {
+  const { stateRoot, cleanup } = fixture()
+  try {
+    // absent: no such record anywhere
+    await expect(decideInterjection(stateRoot, TEAM, "nope", "approved", { now: 1 })).rejects.toThrow(/does not exist/)
+    // malformed-but-present: written straight to the queue file without content, so it
+    // fails the mailbox shape check and the normal reader cannot see it
+    const file = join(stateRoot, TEAM, "inbox", `${INTERJECTION_QUEUE}.jsonl`)
+    writeFileSync(file, JSON.stringify({ id: "broken", from: "Lead", to: INTERJECTION_QUEUE, kind: INTERJECTION_KIND, status: "pending", ts: 1, expiresAt: 2 }) + "\n")
+    expect((await readMailbox(stateRoot, TEAM, INTERJECTION_QUEUE)).length).toBe(0)
+    await expect(decideInterjection(stateRoot, TEAM, "broken", "approved", { now: 3 })).rejects.toThrow(/MALFORMED/)
+  } finally { cleanup() }
+})
+
+test("REPAIR V1: a normalized request still expires on captain silence (default DENY usable)", async () => {
+  const { stateRoot, cleanup } = fixture()
+  try {
+    const ts = 5_000
+    await enqueueInterjection(stateRoot, TEAM, { id: "ij-ttl-nc", from: "Junior Engineer", reason: "only a reason", ts })
+    expect(await expireInterjections(stateRoot, TEAM, { now: ts + INTERJECTION_TTL_MS })).toEqual(["ij-ttl-nc"])
+    const record = (await readMailbox(stateRoot, TEAM, INTERJECTION_QUEUE)).find((entry) => entry.id === "ij-ttl-nc")
+    expect(record.status).toBe("expired")
+    // `from` survives so the requesting member can be told
+    expect(record.from).toBe("Junior Engineer")
+  } finally { cleanup() }
+})

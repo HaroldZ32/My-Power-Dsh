@@ -552,12 +552,40 @@ export async function readLiveMailbox(stateRoot, teamId, agentKey) {
  * 287-298), so a request in the normal inbox would be delivered and would BYPASS the
  * captain's approval. The payload carries summary + reason + location only; the body
  * follows only after approval.
- * @returns the queued request record.
+ *
+ * FIELD CONTRACT (repair V1). The mailbox shape REQUIRES a non-empty `content`
+ * string, and a record that fails the shape check is invisible to every reader —
+ * which used to let a caller create a request that returned `status:'pending'` while
+ * nobody could ever see or decide it (a silent failure). `content` is therefore
+ * NORMALIZED here rather than left optional: when the caller omits it (or passes an
+ * empty string) it is derived, in this fixed priority order, from
+ * `summary` -> `reason` -> `location`. `id`, `from` and `ts` are REQUIRED and are
+ * rejected loudly when missing, because no fallback can invent an identity or a clock.
+ * @param request - the request; `id`/`from`/`ts` required, `content` optional (normalized).
+ * @returns the queued request record (always carrying a readable `content`).
+ * @throws when a required identity field is missing, naming the field.
  */
 export async function enqueueInterjection(stateRoot, teamId, request) {
+    for (const field of ['id', 'from', 'ts']) {
+        const value = request?.[field];
+        if (value === undefined || (typeof value === 'string' && value.trim() === '')) {
+            throw new Error(`interjection request is missing required field "${field}"`);
+        }
+    }
+    // Same fixed priority as the doc above; the first non-empty candidate wins.
+    const rawContent = typeof request.content === 'string' ? request.content.trim() : '';
+    const content = rawContent !== ''
+        ? request.content
+        : (typeof request.summary === 'string' && request.summary.trim() !== ''
+            ? request.summary
+            : (typeof request.reason === 'string' && request.reason.trim() !== ''
+                ? request.reason
+                : (typeof request.location === 'string' ? request.location : '')));
     const record = {
         ...request,
         id: request.id,
+        from: request.from,
+        content,
         to: INTERJECTION_QUEUE,
         kind: INTERJECTION_KIND,
         status: 'pending',
@@ -566,6 +594,36 @@ export async function enqueueInterjection(stateRoot, teamId, request) {
     };
     await appendMailbox(stateRoot, teamId, INTERJECTION_QUEUE, record);
     return record;
+}
+/**
+ * Every line of the interjection queue that parses as JSON, WITHOUT the mailbox shape
+ * check. This is how a MALFORMED record (present on disk, unreadable by the normal
+ * reader) is told apart from a record that truly does not exist.
+ */
+async function readRawInterjectionRecords(stateRoot, teamId) {
+    const file = join(stateRoot, teamId, 'inbox', `${sanitizeKey(INTERJECTION_QUEUE)}.jsonl`);
+    let raw;
+    try {
+        raw = await readFile(file, 'utf8');
+    }
+    catch (error) {
+        if (error instanceof Error && 'code' in error && error.code === 'ENOENT')
+            return [];
+        throw error;
+    }
+    const records = [];
+    for (const rawLine of raw.split('\n')) {
+        const line = stripLeadingBom(rawLine);
+        if (line.trim() === '')
+            continue;
+        try {
+            records.push(JSON.parse(line));
+        }
+        catch {
+            // a non-JSON line cannot carry an id; it is reported by the reader's hook
+        }
+    }
+    return records;
 }
 /** Every interjection request in one state, newest last. */
 export async function readInterjections(stateRoot, teamId) {
@@ -597,8 +655,16 @@ export async function expireInterjections(stateRoot, teamId, options = {}) {
 export async function decideInterjection(stateRoot, teamId, interjectionId, decision, options = {}) {
     const now = options.now ?? Date.now();
     const record = (await readInterjections(stateRoot, teamId)).find((candidate) => candidate.id === interjectionId);
-    if (record === undefined)
+    if (record === undefined) {
+        // Repair V1: a record that IS on disk but fails the mailbox shape check is
+        // MALFORMED, not absent. Reporting it as "does not exist" hid the real cause
+        // and sent the caller hunting for a wrong id.
+        const present = (await readRawInterjectionRecords(stateRoot, teamId)).some((candidate) => candidate?.id === interjectionId);
+        if (present) {
+            throw new Error(`interjection "${interjectionId}" exists but is MALFORMED (present in the queue but not readable: the mailbox shape requires a non-empty string content and the identity fields); re-enqueue it with content, or inspect the queue file`);
+        }
         throw new Error(`interjection "${interjectionId}" does not exist`);
+    }
     if (record.status !== 'pending')
         throw new Error(`interjection "${interjectionId}" is already ${String(record.status)}`);
     const decided = { ...record, status: decision, decidedAt: now };
