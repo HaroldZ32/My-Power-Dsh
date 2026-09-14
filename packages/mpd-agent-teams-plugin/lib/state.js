@@ -733,6 +733,58 @@ export async function decideInterjection(stateRoot, teamId, interjectionId, deci
     return decided;
 }
 //#endregion mpd-delta message-channel-r1
+//#region mpd-delta interjection-expiry-sweep (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/**
+ * Resolve past-due interjection requests across EVERY team under one state root.
+ *
+ * Why this exists: `expireInterjections` is driven from the scheduler's IDLE EDGE
+ * (a member's `kickMember`), so a team that never kicks again after a request holds
+ * that row `pending` past its TTL forever and the requester is never told — silence
+ * is supposed to be a DEFAULT DENY, not an unresolved row. The session-start hook
+ * calls this sweep once per session, so a DORMANT team still resolves its past-due
+ * requests the next time anyone works in the workspace.
+ *
+ * Boundary (stated, not implied): expiry is still evaluated at EVENTS, never by a
+ * timer. The two events are "a member became idle" (scheduler tick) and "a session
+ * started in this workspace" (this sweep). A workspace nobody ever opens again
+ * resolves nothing — no background clock exists.
+ *
+ * Best-effort per team: one unreadable team is skipped rather than aborting the
+ * sweep, and a team with no pending request is not touched at all.
+ * @param stateRoot - resolved absolute state root directory.
+ * @param options - `now` for a deterministic measurement; otherwise wall-clock.
+ * @returns `{ teamIds, expired }` — only the teams that actually expired something.
+ */
+export async function expireInterjectionsEverywhere(stateRoot, options = {}) {
+    let entries;
+    try {
+        entries = await readdir(stateRoot, { withFileTypes: true });
+    }
+    catch (error) {
+        if (error instanceof Error && 'code' in error && error.code === 'ENOENT')
+            return { teamIds: [], expired: [] };
+        throw error;
+    }
+    const teamIds = [];
+    const expired = [];
+    for (const entry of entries) {
+        if (!entry.isDirectory() || entry.name === 'archive' || entry.name.startsWith('.'))
+            continue;
+        try {
+            const expiredIds = await expireInterjections(stateRoot, entry.name, options);
+            if (expiredIds.length > 0) {
+                teamIds.push(entry.name);
+                expired.push(...expiredIds);
+            }
+        }
+        catch {
+            // A single unreadable team must not abort the session-start sweep; the
+            // scheduler tick still covers it once that team is kicked again.
+        }
+    }
+    return { teamIds, expired };
+}
+//#endregion mpd-delta interjection-expiry-sweep
 /** Read one agent's whole mailbox, oldest first./**
  * Read one agent's whole mailbox, oldest first.
  * @param stateRoot - resolved absolute state root directory.

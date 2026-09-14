@@ -1,5 +1,12 @@
 # t49 follow-up round (sent to the captain after t49 was already terminal)
 
+> **SUPERSEDED (t53, repair-round-3) — one section only.** Section 3 of this file repeats t49's
+> wrong cause attribution for the t36 QA case. The corrected attribution: that case was GREEN
+> before this wave and went RED because of the new `decideInterjection` repost in `state.js`; the
+> "A/B measured" arm cited here reverted a *scheduler* line, which cannot affect a `state.js`
+> repost, so it measured nothing. Everything else here (the shipped-path call counts, the sweep
+> results) stands.
+
 t49 was marked `completed`, so the task payload is immutable and could not absorb this round.
 The captain's follow-up added one hard requirement — **exactly one `agent_teams_update_task`** —
 plus three review items. All are addressed below; nothing under `skills/**` was touched.

@@ -1,0 +1,81 @@
+{
+  "schema": "mpd/evidence/pins@1",
+  "task": "t53",
+  "round": "repair-round-3",
+  "whatThisIs": "The authoritative file pins for the R1/R3 wave, measured on the t53 WORKING TREE. It supersedes the pins in r1-wiring/result.json (t49), which were taken one revision earlier and named a test-file hash that no longer existed.",
+  "whyItMatters": "R2-F3: a third party comparing hashes must not be sent to a revision that does not exist. These pins name this task's revision and state the caveat that the captain's commit follows.",
+  "caveat": "Measured BEFORE the captain commits t53 (AGENTS.md 5: teammates never run git writes). The test files below are already committed; state.js / session-start.js / mpd-deltas.js are the t53 working-tree bytes the captain still has to commit.",
+  "supersessionChain": {
+    "packages/mpd-agent-teams-plugin/test/t49-send-dedup-wiring.test.mjs": [
+      {
+        "revision": "7379e28 + t49 attempt 1",
+        "sha256_prefix": "44acbc827a486546",
+        "note": "the value t49's record pinned: 179 lines, pre-task-count"
+      },
+      {
+        "revision": "50e6497 (committed by the captain after t49 went terminal)",
+        "sha256_prefix": "410185dc970b15c4",
+        "note": "added the shipped-path delivery call-count test; t49's recorded pin was left one revision behind"
+      },
+      {
+        "revision": "as of t53",
+        "sha256_prefix": "410185dc970b15c4",
+        "note": "the SAME bytes as 50e6497 — t53 added its new tests in a separate file, so this pin is correct and current",
+        "supersedes": "the 7379e28 entry above"
+      }
+    ]
+  },
+  "t49PinCorrection": {
+    "file": "packages/mpd-agent-teams-plugin/test/t49-send-dedup-wiring.test.mjs",
+    "recordedIn": "evidence/omo-align/messaging/r1-wiring/result.json (settledFiles)",
+    "recordedValue": {
+      "sha256_prefix": "44acbc827a486546",
+      "lines": 179,
+      "suite": "177 pass"
+    },
+    "actualAtThatRevision": {
+      "sha256_prefix": "410185dc970b15c4",
+      "bytes": 13029,
+      "suite": "178 pass"
+    },
+    "verdict": "SUPERSEDED — the recorded test-file pin and test count are stale; every lib pin in that record still matches."
+  },
+  "files": {
+    "packages/mpd-agent-teams-plugin/lib/state.js": {
+      "sha256": "4b17c335946bf846ce3332e60fa341b497cdafdec79eb2ce17e94cb9a56cbe57",
+      "bytes": 64370
+    },
+    "packages/mpd-agent-teams-plugin/lib/scheduler.js": {
+      "sha256": "27cc18b923443c22b160ed202485499b980cceb22f43e63855bf42e6cd6550a2",
+      "bytes": 31955
+    },
+    "packages/mpd-agent-teams-plugin/lib/tools.js": {
+      "sha256": "4babeddc7b528c1a065adfde121329ebb11c1cad59bf345f6a321d9810e5dd4d",
+      "bytes": 151421
+    },
+    "packages/mpd-agent-teams-plugin/lib/session-start.js": {
+      "sha256": "7831f26831c7606d6049a1b3cf708146869d46d1a9d5b2ac363b59a8f5183680",
+      "bytes": 31187
+    },
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": {
+      "sha256": "3e34091ca9d805cca434321973acbc70ccbcf00eda944ed6d79afdeb4fb8f667",
+      "bytes": 107046
+    },
+    "packages/mpd-agent-teams-plugin/test/r1-message-channel.test.mjs": {
+      "sha256": "bbceac658b782370580fdecdbacb0f31c7a46e14c33662ad44147157aedb8b02",
+      "bytes": 18027
+    },
+    "packages/mpd-agent-teams-plugin/test/t49-send-dedup-wiring.test.mjs": {
+      "sha256": "410185dc970b15c4996f20a024a09787c0088200eff3f085facbdc629e448470",
+      "bytes": 13029
+    },
+    "packages/mpd-agent-teams-plugin/test/t53-dormant-expiry.test.mjs": {
+      "sha256": "b80558d6b92f6505f943219acfe9a27fc7110afd5196d828c264fa2d38ba5cc0",
+      "bytes": 7040
+    },
+    "evidence/omo-align/requirements/frozen-contract.json": {
+      "sha256": "3e77e6b842553687fed82df4265b6592d31336fdc6f0c4d72a4d6d43dcd853df",
+      "bytes": 39814
+    }
+  }
+}
