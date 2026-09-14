@@ -1,0 +1,46 @@
+{
+  "ok": false,
+  "mode": "RED-expect-bad",
+  "sandbox": "/root/dshProj/my-power-dsh/.qa-param-schema/2026-09-14T05-09-44.606Z",
+  "exit": 0,
+  "providerRule": "every function schema must be object-rooted (the reported gateway rule)",
+  "hashes": {
+    "pluginSrc": "46234b63617b2baa",
+    "pluginDist": "6a8b4e6cb3adcf01",
+    "probeDist": "51c70165a889d7e1"
+  },
+  "steps": {
+    "liveTurn": {
+      "ok": true,
+      "exit": 0,
+      "requests": 0
+    },
+    "wireRequest": {
+      "ok": false,
+      "tool": "mpd_team_compact_run",
+      "schemaType": "null",
+      "properties": []
+    },
+    "compactToolsRegistered": {
+      "ok": true,
+      "line": "TEAM_COMPACT_TOOLS=2/2"
+    },
+    "wireSchemaNotObjectRooted": {
+      "ok": true,
+      "seen": "null"
+    },
+    "stubRejected": {
+      "ok": false,
+      "violation": null
+    },
+    "providerErrorSurfaced": {
+      "ok": false,
+      "marker": "Invalid schema for function 'mpd_team_compact_run'"
+    },
+    "probe": {
+      "ok": true,
+      "note": "RED mode: the probe schema assertion is recorded, not required",
+      "line": "50/52 BAD=mpd_team_compact_run:type=null,mpd_team_compact_status:type=null"
+    }
+  }
+}

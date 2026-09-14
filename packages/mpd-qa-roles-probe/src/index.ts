@@ -117,6 +117,47 @@ export async function apply(ctx: { agentPresets: unknown; get?: (k: string) => a
   } catch (e: any) {
     console.log("[roles-probe] TEAM_COMPACT_TOOLS=fail:" + String(e?.message ?? e))
   }
+  // PARAMETER SCHEMA instrumentation — the model-facing half of a tool definition.
+  //
+  // MEASURED DEFECT (2026-09-14): `mpd_team_compact_run` declared a BARE property map
+  // (`parameters: { team_id: {…} }`) where an object-rooted JSON Schema belongs. The
+  // adapter forwards `parameters` VERBATIM (it only defaults a schema when the field is
+  // absent), and the harness's raw `register()` path does NOT validate parameters
+  // (unlike `defineTool`, which compiles a property map into `type: "object"`), so the
+  // bare map reached the provider and EVERY model request of a session mounting the row
+  // was rejected with:
+  //   Invalid schema for function 'mpd_team_compact_run': schema must be a JSON Schema
+  //   of 'type: "object"', got 'type: null'
+  // Neither `--dump-config` (composition only, AGENTS.md §4) nor a source-level unit test
+  // can witness that — only the LIVE registry knows what was registered. So read the
+  // model-facing projection (`tools.schemas()`) and require an object root for every tool
+  // of this bundle's own namespaces: a future plugin cannot ship this class silently.
+  let paramSchemasOk = true
+  const ownNamespace = /^(mpd_|agent_teams_)/
+  const describeType = (t: unknown): string => t === undefined ? "null" : JSON.stringify(t)
+  try {
+    const tools = (ctx as {
+      tools?: {
+        schemas?: () => Array<{ name?: unknown; parameters?: { type?: unknown } }>
+        get?: (n: string) => { name?: unknown; parameters?: { type?: unknown } } | undefined
+      }
+    }).tools
+    // Primary source is the model-facing projection; the fallback covers a tools
+    // service that exposes only get(), using the names this probe already polls.
+    const own = typeof tools?.schemas === "function"
+      ? tools.schemas().filter((s) => ownNamespace.test(String(s?.name)))
+      : [...LIVE_TOOLS, ...COMPACT_TOOLS]
+        .map((n) => tools?.get?.(n))
+        .filter((s): s is { name?: unknown; parameters?: { type?: unknown } } => s !== undefined)
+        .filter((s) => ownNamespace.test(String(s?.name)))
+    const bad = own.filter((s) => s?.parameters?.type !== "object")
+    console.log("[roles-probe] TOOL_PARAM_SCHEMAS=" + (own.length - bad.length) + "/" + own.length
+      + (bad.length > 0 ? " BAD=" + bad.map((s) => String(s?.name) + ":type=" + describeType(s?.parameters?.type)).join(",") : ""))
+    paramSchemasOk = own.length > 0 && bad.length === 0
+  } catch (e: any) {
+    console.log("[roles-probe] TOOL_PARAM_SCHEMAS=fail:" + String(e?.message ?? e))
+    paramSchemasOk = false
+  }
   // NOTE: the new adapter seam flags are already printed by this probe's own direct
   // capabilities() call (ADAPTER_SEAMS / ABSENT). Reading them from ctx.get("mpdDsh")
   // here answered `undefined` in a measured QA boot, which would have put a misleading
@@ -146,7 +187,7 @@ export async function apply(ctx: { agentPresets: unknown; get?: (k: string) => a
   } catch (e: any) {
     console.log("[roles-probe] SKILLS=fail:" + String(e?.message ?? e))
   }
-  const ok = presetOk && toolCallOk && ids.length === ROSTER_IDS.length && ROSTER_IDS.every((id) => ids.includes(id)) && catalogOk
+  const ok = presetOk && toolCallOk && ids.length === ROSTER_IDS.length && ROSTER_IDS.every((id) => ids.includes(id)) && catalogOk && paramSchemasOk
   console.log("[roles-probe] " + (ok ? "PASS" : "FAIL"))
   if (!ok) process.exitCode = 1
 }

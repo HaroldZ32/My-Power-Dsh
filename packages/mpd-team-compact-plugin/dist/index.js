@@ -575,7 +575,11 @@ function apply(ctx) {
     name: "mpd_team_compact_run",
     description: "Compact the members of a FINISHED team (every task terminal and every member idle). The captain is never compacted. Writes an audit record under .mpd/team-compact/ and notifies nobody.",
     parameters: {
-      team_id: { type: "string", description: "The team to compact. Defaults to every finished team in this workspace." }
+      type: "object",
+      properties: {
+        team_id: { type: "string", description: "The team to compact. Defaults to every finished team in this workspace." }
+      },
+      additionalProperties: false
     },
     output: {
       schema: { type: "object", properties: { passes: { type: "array", items: { type: "object" } } } },
@@ -598,7 +602,11 @@ function apply(ctx) {
     name: "mpd_team_compact_status",
     description: "Read-only: show the compaction audit for this workspace (one record per pass, newest last), including skipped members and the reason each was skipped.",
     parameters: {
-      team_id: { type: "string", description: "Limit to one team. Defaults to every team with an audit." }
+      type: "object",
+      properties: {
+        team_id: { type: "string", description: "Limit to one team. Defaults to every team with an audit." }
+      },
+      additionalProperties: false
     },
     output: {
       schema: { type: "object", properties: { teams: { type: "array", items: { type: "object" } } } },
