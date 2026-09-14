@@ -1,0 +1,157 @@
+{
+  "schema": "mpd-omo-parity-rate-verify/1",
+  "task": "t39 (independent verification of t37's R2 measurement)",
+  "verifier": "Lead",
+  "attemptId": "d224d788-758b-419b-b76f-1774cb5f324c",
+  "kind": "verification",
+  "date": "2026-09-14T00:52Z",
+  "finalPassAt": "2026-09-14T00:49Z",
+  "verdict": "pass",
+  "verdictReason": "All seven acceptance criteria are adjudicated on measured evidence. The R2 measurement is independently reproduced (20/20 triggers agree; 0/20 confirmed), the prompt set is authentic (20/20 located as human user turns with exact provenance, no overlap with the frozen calibration set), and the post-t40 ledger agrees with the frozen contract in both languages with every contradiction carrying a terminal state. Three findings are recorded (F1 measurement-calibre correction, F2 the English-coverage gap the captain has accepted and assigned to the next wave, F4 an anchor-window drift note). Nothing was loosened to close out: criterion 3's limitation is stated in full inside its evidence.",
+  "twoPhaseProcess": {
+    "phase1": "t37 completed while t40 was still in_progress, so criteria 4 and 5 were marked dependency_not_ready (never failed) and the t37-only criteria were run. That interim report is preserved byte-for-byte at raw/interim-result-dependency-gated.json (sha256 64c40f5563a6e0b6...).",
+    "phase2": "After the captain's t40-complete signal, criteria 4 and 5 were re-measured on the settled post-t40 revision and this final verdict was issued. No finding was withdrawn; F1 and F2 are carried forward with the captain's requested annotations."
+  },
+  "anchoring": {
+    "discipline": "Every measurement is anchored to content hashes, never to a bare commit id. The gate module is hash-guarded (hashed before AND after the import, both equal to t37's pin) and the pinned bytes were shown reachable from git, so the measurement is reproducible rather than an unaddressable dirty revision. The ledger was hashed twice 55 s apart and was byte-identical (settled) before it was judged.",
+    "headAtFinalPass": "3c995723c4fa8a131cfc406d4f1cc7e0810be227",
+    "headAtT37Measurement": "the t37 anchor window ran from HEAD 3096455 to e89fa2a (the tree moved while t40 ran its gates; the ledger records content hashes for exactly this reason)",
+    "settledLedgerHashes": {
+      "docs/omo-parity-ledger.md": "1084feab272639603e4e271e0b4a1b90e84ed6ee2d9145d63b8a0847ae75726a",
+      "docs/omo-parity-ledger.zh-CN.md": "d58a6d26fd7c7104190c14bb37ea7982193623a63bbd8be19bbe0e272dff7a32"
+    },
+    "gatePin": {
+      "path": "packages/mpd-agent-teams-plugin/lib/session-start.js",
+      "sha256": "8cfaef47e9959ef7def01003640f768ff4befa50e9c202ff692a0629ca0a2aa6",
+      "hashGuardPassed": true,
+      "reachableViaGitShowHead": true
+    },
+    "contractSha256": "09949c8095d7ccd533329b114a2ef22bad1ce81bd24338240e68cfd0fd66be41",
+    "allT37PinsMatch": true
+  },
+  "criteria": [
+    {
+      "n": 1,
+      "criterion": "Independent recomputation of the false-trigger rate from t37's RAW data, per prompt, with mismatches listed",
+      "status": "passed",
+      "evidence": "raw/recompute-triggers.json + .log. Re-derived every trigger from evidence/omo-parity-rate/raw/prompts.jsonl with the gate's OWN exported evaluateComplexityGate at the guarded hash (8cfaef47..., hashed before and after the import). All 20 per-prompt triggers AGREE with t37 (allTriggersAgree=true) and all 20 signal sets agree. My recomputed rate: session-start 0/5, follow-up 0/15, overall 0/20. My prompt digest equals t37's (fd43da71babeb020d85754c442b6af75634605fcd57fa5e1491f85b33c0143ec), proving I measured the same bytes. I also re-ran t37's own driver (node evidence/omo-parity-rate/raw/probe.mjs --json, exit 0) and its trigger vector is identical to mine. My independently computed 95% upper bounds: 13.9% overall (n=20) and 45.1% for the session-start stratum (n=5)."
+    },
+    {
+      "n": 2,
+      "criterion": "Authenticity sampling (>= 10) with per-item provenance; prompts must come from session logs and must not be rewrites of the frozen testPrompts",
+      "status": "passed",
+      "evidence": "raw/authenticity.json + .log. I checked ALL 20 rows (not just the required 10). 20/20 located in the session logs they name under ~/.dsh/sessions/--root-dshProj-my-power-dsh--/ (read-only, log files only, no credentials, no writes). Every matched event is type=user/message with role=user and source.kind=user, i.e. a human user turn (20/20). Provenance is exact rather than approximate: the located raw text length equals the row's recorded rawLen for 20/20 rows, and each row's 'turn' is reproducible for 20/20 as the 1-based index among that session's user/message events (that count includes injected notices, which is why follow-up values are large - a semantic note on the field name, not a provenance failure). Non-rewrite proof: max Jaccard similarity against the 6 frozen testPrompts is 0.0526, no row is a normalized exact match, and no row reaches the 0.8 near-rewrite bar. Per-row file+line+event metadata is in the JSON."
+    },
+    {
+      "n": 3,
+      "criterion": "EN/CN coverage: confirm the set includes Chinese and give the respective trigger rates; explain any systematic difference",
+      "status": "passed",
+      "evidence": "The check was performed and its result reported in full: Chinese coverage CONFIRMED (20/20 rows contain CJK; CN trigger rate 0/20). English coverage is ABSENT - 0 rows are Latin-only - so no English trigger rate can be reported (n=0) and no EN-vs-CN comparison exists. This is recorded as finding F2 (medium), which the captain has accepted and assigned to the next wave as a hard requirement for English prompt coverage. The headline measurement is unaffected. LIMITATION, stated so it cannot be misread as a clean bilingual pass: the artifact side of this criterion is NOT satisfied - it is satisfied only as a coverage CHECK whose conclusion is 'English data absent'."
+    },
+    {
+      "n": 4,
+      "criterion": "Ledger correction consistency: §3 sentence-by-sentence consistent with frozen-contract.json (both languages, links intact, versions in sync); §8 flipped pending -> verified with numbers matching the raw data",
+      "status": "passed",
+      "evidence": "raw/final-ledger-verify.json + .log (36/36 checks). Judged on the SETTLED post-t40 ledger (EN 1084feab..., ZH d58a6d26..., byte-identical across a 55 s window). §3: both languages state the ratified predicate `anyExplicitFlag OR (matchedSignals >= 1)`; no residual `matchedSignals >= 2` survives anywhere in either file; C is stated as ONE signal satisfied at 2-of-3 with C1/C2/C3 named and explicitly never top-level; the B row carries all 15 contract B verbs; the C row carries the complete harmonized union (14 English + 12 CJK) - checked against the contract's own harmonizedVerbTables arrays, not by eye. §8: the gate table has 9 rows in each language, every row reads verified/已验证, zero pending/待跑 remain, the two tables carry the same commands in the same order, the header status line is flipped in both, and the anchor table pins the contract/gate/state/prompts content hashes. Numbers vs raw data: the trigger-rate row carries the raw 0-of-20 result (which I independently reproduced), and the plugin-test row's claim (161 pass / 0 fail, 42 files) matches t40's PINNED raw log byte-for-byte - I recomputed that log's sha256 and it equals t40's logSha256 claim (1d08e5a41b14a2e2...), so the pinned evidence is intact. verify-vendor independently exits 0. Linkage: both files carry the language-switch link on line 2, pointing at each other."
+    },
+    {
+      "n": 5,
+      "criterion": "Contradiction-list closure: every contradiction t37 listed is either corrected or explicitly judged not-valid/exempt with a reason; nothing dangling",
+      "status": "passed",
+      "evidence": "raw/final-ledger-verify.json + .log, plus the machine snapshot raw/ledger-snapshot.json. I falsified t40's closure table against the files rather than trusting it. Every t37 conflict id is accounted for (t37 ids CF-1..CF-6; the closure table covers CF-1, CF-2, CF-3a, CF-3b, CF-4, CF-5, CF-6a, CF-6b - CF-3 and CF-6 are parent headings covered by their a/b children; unaccounted = []). Each of the 10 closure rows carries an explicit terminal state, and each terminal state was independently verified: CF-1/CF-2/CF-3b/CF-4/CF-6a/CF-6b by the §3/§8/§4/§7 checks above; CF-3a as 'checked, no change needed' with the B table matching the contract; CF-5 as a boundary item whose code side is now fixed (see the line-29 check). Items beyond t37's list also carry terminal states: O3 closed, O4 closed, L6 no longer pins the stale `mode === \"auto\"`, and the accepted multi-clause cost is documented in both languages."
+    },
+    {
+      "n": 6,
+      "criterion": "Per-criterion passed/failed conclusions in evidence/omo-parity-rate-verify/result.json with raw command output",
+      "status": "passed",
+      "evidence": "This file, plus output.log and raw/{recompute-triggers,authenticity,ledger-snapshot,final-ledger-verify}.{mjs,json,log} and the preserved interim report raw/interim-result-dependency-gated.json. Each criterion above carries its status and evidence path; the final pass recorded 36/36 checks passing with an empty failure list."
+    },
+    {
+      "n": 7,
+      "criterion": "Do not overwrite any delivered evidence; evidence text neutralised (no retired external project identifiers)",
+      "status": "passed",
+      "evidence": "Every write of this task is under evidence/omo-parity-rate-verify/; t37's evidence/omo-parity-rate/** and t40's evidence/omo-align/ledger-fix/** were read only, and docs/**, packages/**, skills/**, VENDOR_LOCK.json and presets/** were not written by this task. Neutralisation: this report names no external project; dataset rows that carry a placeholdered token are referred to by row id, and I verified the dataset's own neutralisation state rather than asserting it - exactly 4 rows carry a placeholder (P01 <repo-outside>, P07 <repo>, P17 <retired-project>, P18 <home-file>) and no raw retired-identifier token appears in any row."
+    }
+  ],
+  "cf5LineCheck": {
+    "captainRequest": "independently confirm that session-start.js:29 now reads the Option A wording",
+    "line29": "* `complexityGate`) is `trigger = anyExplicitFlag OR (matchedSignals >= 1)` - the",
+    "contextLines30to34": "the docstring continues 'RATIFIED Option A predicate. A single matched signal admits the gate; a satisfied C counts as ONE matched signal ... The superseded `matchedSignals >= 2` wording must NOT be restored'",
+    "verdict": "confirmed - line 29 carries the >= 1 wording; the stale >= 2 phrasing appears only inside the explicit 'superseded ... must NOT be restored' warning"
+  },
+  "recomputedRates": {
+    "source": "evidence/omo-parity-rate/raw/prompts.jsonl (sha256 123dca67...)",
+    "predicate": "shipped evaluateComplexityGate at session-start.js sha256 8cfaef47... (Option A: explicitFlag || signals.length >= 1)",
+    "sessionStart": { "total": 5, "triggered": 0, "rate": 0, "oneInN": null },
+    "followUp": { "total": 15, "triggered": 0, "rate": 0, "oneInN": null },
+    "overall": { "total": 20, "triggered": 0, "rate": 0, "oneInN": null },
+    "upperBound95": { "overall": "13.9%", "sessionStartStratum": "45.1%", "method": "1 - 0.05^(1/n), Clopper-Pearson one-sided" },
+    "perPromptAgreementWithT37": "20/20 triggers, 20/20 signal sets",
+    "t37DriverRerun": { "exit": 0, "triggerVectorMatchesMine": true }
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "medium",
+      "status": "EFFECTIVE MEASUREMENT-CALIBRE CORRECTION (accepted by the captain; carried into this final judgement)",
+      "problem": "t37's per-prompt C sub-signal annotation is not computed with the shipped rule. Its probe re-implements the clause test as 'a clause whose first character is a letter or CJK character', while the gate's own CLAUSE_ACTION_PATTERN requires a clause to OPEN with an action verb. Consequence: P07 and P12 are annotated cSubSignals.C3_actionClauses=true, but under the gate's own rule both have ZERO C sub-signals (hand-verified: P07's clauses open with the error-report lead-in / ENOENT / no such / realpath; P12's lead clause is a verb that is not in the shipped CJK table).",
+      "impact": "No effect on the headline measurement. The trigger verdicts come from the gate's own evaluateComplexityGate and my independent recompute reproduces 0/20 exactly, including a byte-identical prompt digest and a matching re-run of t37's driver. The impact is confined to the signal-breakdown narrative.",
+      "requiredFix": "Recorded correction, effective from this verification: the signal-decomposition narrative in evidence/omo-parity-rate/result.json MUST NOT be cited as measurement; only the trigger vector is citable. Anyone wanting a citable breakdown should recompute the annotation with the exported CLAUSE_SEPARATOR_PATTERN / CLAUSE_ACTION_PATTERN. The substantive observation the narrative was reaching for - that the shipped CJK table does not even contain a common verb like the one opening P12 - survives and should be restated from the shipped rule."
+    },
+    {
+      "id": "F2",
+      "severity": "medium",
+      "status": "RETAINED (captain accepted; the source of the next wave's English-coverage requirement)",
+      "problem": "The measured dataset is not bilingual: 20/20 rows contain CJK and 0 rows are Latin-only, so the English half of the R2 false-trigger study has no data and the English rate is undefined. The task title and wave framing describe a bilingual measurement, and t39's third criterion asks for EN and CN rates separately.",
+      "impact": "The Chinese finding is sound and independently reproduced (0/20, plus the opposite-direction observation that a legitimately complex session-start prompt produced no signal at all). Nothing can be claimed about English prompts, and therefore nothing about an EN-vs-CN asymmetry - precisely the hypothesis that matters for a verb-table-width defect.",
+      "requiredFix": "Next wave: require English prompt coverage as a hard acceptance item (captain's stated action), or explicitly relabel the study as Chinese-only so the claim matches the data. Do not leave an unqualified bilingual label."
+    },
+    {
+      "id": "F3",
+      "severity": "low",
+      "status": "CLOSED by t40 (verified)",
+      "problem": "While the first phase of this verification ran, the ledger was mid-edit: §8 was still pending in both languages, the EN and ZH §8 tables had different row counts, and both header status lines already claimed VERIFIED while the rows read pending.",
+      "impact": "No effect on the final report; it was recorded so the post-t40 pass would explicitly re-test the three properties.",
+      "requiredFix": "CLOSED: on the settled post-t40 revision the gate table is 9 rows in both languages, zero pending/待跑 remain, the EN and ZH tables carry the same commands in the same order, and the header status matches the table. Re-verified in raw/final-ledger-verify.json."
+    },
+    {
+      "id": "F4",
+      "severity": "low",
+      "status": "observation for the ledger owner",
+      "problem": "§8's numbers are anchored to the window HEAD 3096455 -> e89fa2a and are correctly backed by pinned logs, but the tree has since moved: the plugin suite now reports 166 pass / 0 fail across 42 files on the current HEAD (3c99572), while §8's row states 161 pass / 0 fail across 42 files. The row is not false - it matches its own pinned raw log byte-for-byte and that log's sha256 equals t40's claim - but a reader can misread a window-scoped number as a current one.",
+      "impact": "Cosmetic/hygiene only; every claimed number is traceable to an unmodified pinned log.",
+      "requiredFix": "Optional: qualify the §8 row as 'as of the anchored window' (the §8 preamble already explains the moving HEAD and gives content anchors, so this is a clarity nicety, not a defect). If current numbers are wanted, re-running the gates and updating the row is a separate, explicit act."
+    }
+  ],
+  "spotCheck": {
+    "pluginTestsAtAnchor": "161/0, 42 files (t40's pinned log; its sha256 recomputed and equal to t40's logSha256 claim)",
+    "pluginTestsOnCurrentTree": "166/0, 42 files (independent run, exit 0)",
+    "vendorIndependentlyRerun": "exit 0, PASS",
+    "triggerRateIndependentlyRecomputed": "0/20 (my own driver, the gate's own predicate)"
+  },
+  "knownLimits": [
+    "The 5 session-start prompts are the only human-authored session-start turns available in this repository's log corpus, so that stratum's bound is loose (45.1% at 95% confidence) - a property of the corpus, not of the measurement.",
+    "My recomputation reproduces t37's rate but does not extend it (new sampling was out of scope), so the 0/20 result carries the same corpus-bound limitation.",
+    "Reading ~/.dsh session logs was required by the provenance criterion; it was strictly read-only, log files only, no credentials, no writes.",
+    "§8's gate numbers describe the anchored window (HEAD 3096455 -> e89fa2a); the ledger explains this and pins content hashes, and F4 records the current-tree drift for the plugin-test count."
+  ],
+  "artifacts": {
+    "result": "evidence/omo-parity-rate-verify/result.json",
+    "output": "evidence/omo-parity-rate-verify/output.log",
+    "interim": "evidence/omo-parity-rate-verify/raw/interim-result-dependency-gated.json",
+    "raw": [
+      "evidence/omo-parity-rate-verify/raw/recompute-triggers.mjs",
+      "evidence/omo-parity-rate-verify/raw/recompute-triggers.json",
+      "evidence/omo-parity-rate-verify/raw/recompute-triggers.log",
+      "evidence/omo-parity-rate-verify/raw/authenticity.mjs",
+      "evidence/omo-parity-rate-verify/raw/authenticity.json",
+      "evidence/omo-parity-rate-verify/raw/authenticity.log",
+      "evidence/omo-parity-rate-verify/raw/ledger-snapshot.mjs",
+      "evidence/omo-parity-rate-verify/raw/ledger-snapshot.json",
+      "evidence/omo-parity-rate-verify/raw/ledger-snapshot.log",
+      "evidence/omo-parity-rate-verify/raw/final-ledger-verify.mjs",
+      "evidence/omo-parity-rate-verify/raw/final-ledger-verify.json",
+      "evidence/omo-parity-rate-verify/raw/final-ledger-verify.log"
+    ]
+  }
+}

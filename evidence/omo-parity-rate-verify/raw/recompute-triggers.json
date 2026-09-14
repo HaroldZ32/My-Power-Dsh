@@ -1,0 +1,743 @@
+{
+  "gateGuard": {
+    "beforeHash": "8cfaef47e9959ef7def01003640f768ff4befa50e9c202ff692a0629ca0a2aa6",
+    "expectedPin": "8cfaef47e9959ef7def01003640f768ff4befa50e9c202ff692a0629ca0a2aa6",
+    "matchesPinBefore": true,
+    "headBlobSha256": "8cfaef47e9959ef7def01003640f768ff4befa50e9c202ff692a0629ca0a2aa6",
+    "pinReachableViaGit": true,
+    "headRevision": "309645530c1b1c36794ccbdf102d946190468eee",
+    "afterHash": "8cfaef47e9959ef7def01003640f768ff4befa50e9c202ff692a0629ca0a2aa6",
+    "hashStableAcrossImport": true
+  },
+  "pins": {
+    "packages/mpd-agent-teams-plugin/lib/session-start.js": {
+      "expected": "8cfaef47e9959ef7def01003640f768ff4befa50e9c202ff692a0629ca0a2aa6",
+      "measured": "8cfaef47e9959ef7def01003640f768ff4befa50e9c202ff692a0629ca0a2aa6",
+      "matches": true
+    },
+    "packages/mpd-agent-teams-plugin/lib/state.js": {
+      "expected": "751a4c1eaf1714d37a45baa8c0a83895ee8e2a487f28574d02fd445cd1b8b825",
+      "measured": "751a4c1eaf1714d37a45baa8c0a83895ee8e2a487f28574d02fd445cd1b8b825",
+      "matches": true
+    },
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": {
+      "expected": "47f204cd9678ed87660b18e5ecd01895ce3249fae8155deb0a1d33821f6ff9c5",
+      "measured": "47f204cd9678ed87660b18e5ecd01895ce3249fae8155deb0a1d33821f6ff9c5",
+      "matches": true
+    },
+    "evidence/omo-align/requirements/frozen-contract.json": {
+      "expected": "09949c8095d7ccd533329b114a2ef22bad1ce81bd24338240e68cfd0fd66be41",
+      "measured": "09949c8095d7ccd533329b114a2ef22bad1ce81bd24338240e68cfd0fd66be41",
+      "matches": true
+    },
+    "evidence/omo-parity-rate/raw/prompts.jsonl": {
+      "expected": "123dca67e738f85e08a0043c6a33a686d1e91e31e9dbe0568437437414e5f9b5",
+      "measured": "123dca67e738f85e08a0043c6a33a686d1e91e31e9dbe0568437437414e5f9b5",
+      "matches": true
+    }
+  },
+  "perPrompt": [
+    {
+      "id": "P01",
+      "stratum": "session-start",
+      "hasCJK": true,
+      "trigger": false,
+      "signals": [],
+      "gateExactC": {
+        "C1": false,
+        "C2": false,
+        "C3": false
+      },
+      "gateExactB": {
+        "bCount": 1,
+        "bFires": false
+      },
+      "bDistinctVerbs": [
+        "对齐"
+      ],
+      "c2DistinctVerbs": [
+        "对齐"
+      ],
+      "t37": {
+        "trigger": false,
+        "signals": [],
+        "cSubSignals": {
+          "C1_enumeratedLines": false,
+          "C2_actionVerbs": false,
+          "C3_actionClauses": false
+        }
+      },
+      "agreesOnTrigger": true,
+      "agreesOnSignals": true,
+      "t37CSubSignalsEqualGateExact": true
+    },
+    {
+      "id": "P02",
+      "stratum": "session-start",
+      "hasCJK": true,
+      "trigger": false,
+      "signals": [],
+      "gateExactC": {
+        "C1": false,
+        "C2": false,
+        "C3": false
+      },
+      "gateExactB": {
+        "bCount": 0,
+        "bFires": false
+      },
+      "bDistinctVerbs": [],
+      "c2DistinctVerbs": [],
+      "t37": {
+        "trigger": false,
+        "signals": [],
+        "cSubSignals": {
+          "C1_enumeratedLines": false,
+          "C2_actionVerbs": false,
+          "C3_actionClauses": false
+        }
+      },
+      "agreesOnTrigger": true,
+      "agreesOnSignals": true,
+      "t37CSubSignalsEqualGateExact": true
+    },
+    {
+      "id": "P03",
+      "stratum": "session-start",
+      "hasCJK": true,
+      "trigger": false,
+      "signals": [],
+      "gateExactC": {
+        "C1": false,
+        "C2": false,
+        "C3": false
+      },
+      "gateExactB": {
+        "bCount": 0,
+        "bFires": false
+      },
+      "bDistinctVerbs": [],
+      "c2DistinctVerbs": [],
+      "t37": {
+        "trigger": false,
+        "signals": [],
+        "cSubSignals": {
+          "C1_enumeratedLines": false,
+          "C2_actionVerbs": false,
+          "C3_actionClauses": false
+        }
+      },
+      "agreesOnTrigger": true,
+      "agreesOnSignals": true,
+      "t37CSubSignalsEqualGateExact": true
+    },
+    {
+      "id": "P04",
+      "stratum": "session-start",
+      "hasCJK": true,
+      "trigger": false,
+      "signals": [],
+      "gateExactC": {
+        "C1": false,
+        "C2": false,
+        "C3": false
+      },
+      "gateExactB": {
+        "bCount": 0,
+        "bFires": false
+      },
+      "bDistinctVerbs": [],
+      "c2DistinctVerbs": [],
+      "t37": {
+        "trigger": false,
+        "signals": [],
+        "cSubSignals": {
+          "C1_enumeratedLines": false,
+          "C2_actionVerbs": false,
+          "C3_actionClauses": false
+        }
+      },
+      "agreesOnTrigger": true,
+      "agreesOnSignals": true,
+      "t37CSubSignalsEqualGateExact": true
+    },
+    {
+      "id": "P05",
+      "stratum": "session-start",
+      "hasCJK": true,
+      "trigger": false,
+      "signals": [],
+      "gateExactC": {
+        "C1": false,
+        "C2": false,
+        "C3": false
+      },
+      "gateExactB": {
+        "bCount": 0,
+        "bFires": false
+      },
+      "bDistinctVerbs": [],
+      "c2DistinctVerbs": [],
+      "t37": {
+        "trigger": false,
+        "signals": [],
+        "cSubSignals": {
+          "C1_enumeratedLines": false,
+          "C2_actionVerbs": false,
+          "C3_actionClauses": false
+        }
+      },
+      "agreesOnTrigger": true,
+      "agreesOnSignals": true,
+      "t37CSubSignalsEqualGateExact": true
+    },
+    {
+      "id": "P06",
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "trigger": false,
+      "signals": [],
+      "gateExactC": {
+        "C1": false,
+        "C2": false,
+        "C3": false
+      },
+      "gateExactB": {
+        "bCount": 0,
+        "bFires": false
+      },
+      "bDistinctVerbs": [],
+      "c2DistinctVerbs": [],
+      "t37": {
+        "trigger": false,
+        "signals": [],
+        "cSubSignals": {
+          "C1_enumeratedLines": false,
+          "C2_actionVerbs": false,
+          "C3_actionClauses": false
+        }
+      },
+      "agreesOnTrigger": true,
+      "agreesOnSignals": true,
+      "t37CSubSignalsEqualGateExact": true
+    },
+    {
+      "id": "P07",
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "trigger": false,
+      "signals": [],
+      "gateExactC": {
+        "C1": false,
+        "C2": false,
+        "C3": false
+      },
+      "gateExactB": {
+        "bCount": 0,
+        "bFires": false
+      },
+      "bDistinctVerbs": [],
+      "c2DistinctVerbs": [],
+      "t37": {
+        "trigger": false,
+        "signals": [],
+        "cSubSignals": {
+          "C1_enumeratedLines": false,
+          "C2_actionVerbs": false,
+          "C3_actionClauses": true
+        }
+      },
+      "agreesOnTrigger": true,
+      "agreesOnSignals": true,
+      "t37CSubSignalsEqualGateExact": false
+    },
+    {
+      "id": "P08",
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "trigger": false,
+      "signals": [],
+      "gateExactC": {
+        "C1": false,
+        "C2": false,
+        "C3": false
+      },
+      "gateExactB": {
+        "bCount": 0,
+        "bFires": false
+      },
+      "bDistinctVerbs": [],
+      "c2DistinctVerbs": [],
+      "t37": {
+        "trigger": false,
+        "signals": [],
+        "cSubSignals": {
+          "C1_enumeratedLines": false,
+          "C2_actionVerbs": false,
+          "C3_actionClauses": false
+        }
+      },
+      "agreesOnTrigger": true,
+      "agreesOnSignals": true,
+      "t37CSubSignalsEqualGateExact": true
+    },
+    {
+      "id": "P09",
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "trigger": false,
+      "signals": [],
+      "gateExactC": {
+        "C1": false,
+        "C2": false,
+        "C3": false
+      },
+      "gateExactB": {
+        "bCount": 0,
+        "bFires": false
+      },
+      "bDistinctVerbs": [],
+      "c2DistinctVerbs": [],
+      "t37": {
+        "trigger": false,
+        "signals": [],
+        "cSubSignals": {
+          "C1_enumeratedLines": false,
+          "C2_actionVerbs": false,
+          "C3_actionClauses": false
+        }
+      },
+      "agreesOnTrigger": true,
+      "agreesOnSignals": true,
+      "t37CSubSignalsEqualGateExact": true
+    },
+    {
+      "id": "P10",
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "trigger": false,
+      "signals": [],
+      "gateExactC": {
+        "C1": false,
+        "C2": false,
+        "C3": false
+      },
+      "gateExactB": {
+        "bCount": 0,
+        "bFires": false
+      },
+      "bDistinctVerbs": [],
+      "c2DistinctVerbs": [],
+      "t37": {
+        "trigger": false,
+        "signals": [],
+        "cSubSignals": {
+          "C1_enumeratedLines": false,
+          "C2_actionVerbs": false,
+          "C3_actionClauses": false
+        }
+      },
+      "agreesOnTrigger": true,
+      "agreesOnSignals": true,
+      "t37CSubSignalsEqualGateExact": true
+    },
+    {
+      "id": "P11",
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "trigger": false,
+      "signals": [],
+      "gateExactC": {
+        "C1": false,
+        "C2": false,
+        "C3": false
+      },
+      "gateExactB": {
+        "bCount": 0,
+        "bFires": false
+      },
+      "bDistinctVerbs": [],
+      "c2DistinctVerbs": [],
+      "t37": {
+        "trigger": false,
+        "signals": [],
+        "cSubSignals": {
+          "C1_enumeratedLines": false,
+          "C2_actionVerbs": false,
+          "C3_actionClauses": false
+        }
+      },
+      "agreesOnTrigger": true,
+      "agreesOnSignals": true,
+      "t37CSubSignalsEqualGateExact": true
+    },
+    {
+      "id": "P12",
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "trigger": false,
+      "signals": [],
+      "gateExactC": {
+        "C1": false,
+        "C2": false,
+        "C3": false
+      },
+      "gateExactB": {
+        "bCount": 0,
+        "bFires": false
+      },
+      "bDistinctVerbs": [],
+      "c2DistinctVerbs": [],
+      "t37": {
+        "trigger": false,
+        "signals": [],
+        "cSubSignals": {
+          "C1_enumeratedLines": false,
+          "C2_actionVerbs": false,
+          "C3_actionClauses": true
+        }
+      },
+      "agreesOnTrigger": true,
+      "agreesOnSignals": true,
+      "t37CSubSignalsEqualGateExact": false
+    },
+    {
+      "id": "P13",
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "trigger": false,
+      "signals": [],
+      "gateExactC": {
+        "C1": false,
+        "C2": false,
+        "C3": false
+      },
+      "gateExactB": {
+        "bCount": 1,
+        "bFires": false
+      },
+      "bDistinctVerbs": [
+        "移植"
+      ],
+      "c2DistinctVerbs": [
+        "移植"
+      ],
+      "t37": {
+        "trigger": false,
+        "signals": [],
+        "cSubSignals": {
+          "C1_enumeratedLines": false,
+          "C2_actionVerbs": false,
+          "C3_actionClauses": false
+        }
+      },
+      "agreesOnTrigger": true,
+      "agreesOnSignals": true,
+      "t37CSubSignalsEqualGateExact": true
+    },
+    {
+      "id": "P14",
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "trigger": false,
+      "signals": [],
+      "gateExactC": {
+        "C1": false,
+        "C2": false,
+        "C3": false
+      },
+      "gateExactB": {
+        "bCount": 0,
+        "bFires": false
+      },
+      "bDistinctVerbs": [],
+      "c2DistinctVerbs": [],
+      "t37": {
+        "trigger": false,
+        "signals": [],
+        "cSubSignals": {
+          "C1_enumeratedLines": false,
+          "C2_actionVerbs": false,
+          "C3_actionClauses": false
+        }
+      },
+      "agreesOnTrigger": true,
+      "agreesOnSignals": true,
+      "t37CSubSignalsEqualGateExact": true
+    },
+    {
+      "id": "P15",
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "trigger": false,
+      "signals": [],
+      "gateExactC": {
+        "C1": false,
+        "C2": false,
+        "C3": false
+      },
+      "gateExactB": {
+        "bCount": 0,
+        "bFires": false
+      },
+      "bDistinctVerbs": [],
+      "c2DistinctVerbs": [],
+      "t37": {
+        "trigger": false,
+        "signals": [],
+        "cSubSignals": {
+          "C1_enumeratedLines": false,
+          "C2_actionVerbs": false,
+          "C3_actionClauses": false
+        }
+      },
+      "agreesOnTrigger": true,
+      "agreesOnSignals": true,
+      "t37CSubSignalsEqualGateExact": true
+    },
+    {
+      "id": "P16",
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "trigger": false,
+      "signals": [],
+      "gateExactC": {
+        "C1": false,
+        "C2": false,
+        "C3": false
+      },
+      "gateExactB": {
+        "bCount": 0,
+        "bFires": false
+      },
+      "bDistinctVerbs": [],
+      "c2DistinctVerbs": [],
+      "t37": {
+        "trigger": false,
+        "signals": [],
+        "cSubSignals": {
+          "C1_enumeratedLines": false,
+          "C2_actionVerbs": false,
+          "C3_actionClauses": false
+        }
+      },
+      "agreesOnTrigger": true,
+      "agreesOnSignals": true,
+      "t37CSubSignalsEqualGateExact": true
+    },
+    {
+      "id": "P17",
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "trigger": false,
+      "signals": [],
+      "gateExactC": {
+        "C1": false,
+        "C2": false,
+        "C3": false
+      },
+      "gateExactB": {
+        "bCount": 0,
+        "bFires": false
+      },
+      "bDistinctVerbs": [],
+      "c2DistinctVerbs": [],
+      "t37": {
+        "trigger": false,
+        "signals": [],
+        "cSubSignals": {
+          "C1_enumeratedLines": false,
+          "C2_actionVerbs": false,
+          "C3_actionClauses": false
+        }
+      },
+      "agreesOnTrigger": true,
+      "agreesOnSignals": true,
+      "t37CSubSignalsEqualGateExact": true
+    },
+    {
+      "id": "P18",
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "trigger": false,
+      "signals": [],
+      "gateExactC": {
+        "C1": false,
+        "C2": false,
+        "C3": false
+      },
+      "gateExactB": {
+        "bCount": 0,
+        "bFires": false
+      },
+      "bDistinctVerbs": [],
+      "c2DistinctVerbs": [],
+      "t37": {
+        "trigger": false,
+        "signals": [],
+        "cSubSignals": {
+          "C1_enumeratedLines": false,
+          "C2_actionVerbs": false,
+          "C3_actionClauses": false
+        }
+      },
+      "agreesOnTrigger": true,
+      "agreesOnSignals": true,
+      "t37CSubSignalsEqualGateExact": true
+    },
+    {
+      "id": "P19",
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "trigger": false,
+      "signals": [],
+      "gateExactC": {
+        "C1": false,
+        "C2": false,
+        "C3": false
+      },
+      "gateExactB": {
+        "bCount": 0,
+        "bFires": false
+      },
+      "bDistinctVerbs": [],
+      "c2DistinctVerbs": [],
+      "t37": {
+        "trigger": false,
+        "signals": [],
+        "cSubSignals": {
+          "C1_enumeratedLines": false,
+          "C2_actionVerbs": false,
+          "C3_actionClauses": false
+        }
+      },
+      "agreesOnTrigger": true,
+      "agreesOnSignals": true,
+      "t37CSubSignalsEqualGateExact": true
+    },
+    {
+      "id": "P20",
+      "stratum": "follow-up",
+      "hasCJK": true,
+      "trigger": false,
+      "signals": [],
+      "gateExactC": {
+        "C1": false,
+        "C2": false,
+        "C3": false
+      },
+      "gateExactB": {
+        "bCount": 0,
+        "bFires": false
+      },
+      "bDistinctVerbs": [],
+      "c2DistinctVerbs": [],
+      "t37": {
+        "trigger": false,
+        "signals": [],
+        "cSubSignals": {
+          "C1_enumeratedLines": false,
+          "C2_actionVerbs": false,
+          "C3_actionClauses": false
+        }
+      },
+      "agreesOnTrigger": true,
+      "agreesOnSignals": true,
+      "t37CSubSignalsEqualGateExact": true
+    }
+  ],
+  "mismatches": [
+    {
+      "id": "P07",
+      "kind": "cSubSignals-vs-gate-exact",
+      "mine": {
+        "C1": false,
+        "C2": false,
+        "C3": false
+      },
+      "theirs": {
+        "C1_enumeratedLines": false,
+        "C2_actionVerbs": false,
+        "C3_actionClauses": true
+      }
+    },
+    {
+      "id": "P12",
+      "kind": "cSubSignals-vs-gate-exact",
+      "mine": {
+        "C1": false,
+        "C2": false,
+        "C3": false
+      },
+      "theirs": {
+        "C1_enumeratedLines": false,
+        "C2_actionVerbs": false,
+        "C3_actionClauses": true
+      }
+    }
+  ],
+  "probeRerun": {
+    "exit": 0,
+    "stderr": "",
+    "summary": {
+      "anchoredHashes": {
+        "packages/mpd-agent-teams-plugin/lib/session-start.js": "8cfaef47e9959ef7def01003640f768ff4befa50e9c202ff692a0629ca0a2aa6",
+        "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "47f204cd9678ed87660b18e5ecd01895ce3249fae8155deb0a1d33821f6ff9c5",
+        "packages/mpd-agent-teams-plugin/lib/state.js": "751a4c1eaf1714d37a45baa8c0a83895ee8e2a487f28574d02fd445cd1b8b825",
+        "evidence/omo-align/requirements/frozen-contract.json": "09949c8095d7ccd533329b114a2ef22bad1ce81bd24338240e68cfd0fd66be41",
+        "raw/prompts.jsonl": "123dca67e738f85e08a0043c6a33a686d1e91e31e9dbe0568437437414e5f9b5"
+      },
+      "predicate": "trigger = explicitFlag || signals.length >= 1 (Option A, ratified)",
+      "total": 20,
+      "cjk": 20,
+      "sessionStart": {
+        "total": 5,
+        "triggered": 0,
+        "falsePositiveRate": 0,
+        "oneInN": null,
+        "triggeredIds": []
+      },
+      "followUp": {
+        "total": 15,
+        "triggered": 0,
+        "falsePositiveRate": 0,
+        "oneInN": null,
+        "triggeredIds": []
+      },
+      "overallFalsePositiveRate": 0,
+      "promptSetDigest": "fd43da71babeb020d85754c442b6af75634605fcd57fa5e1491f85b33c0143ec"
+    },
+    "probeAgreesWithMine": true,
+    "probeTriggerVectorMatchesMine": true,
+    "probeDigest": "fd43da71babeb020d85754c442b6af75634605fcd57fa5e1491f85b33c0143ec"
+  },
+  "summary": {
+    "total": 20,
+    "cjk": 20,
+    "sessionStart": {
+      "total": 5,
+      "triggered": 0,
+      "rate": 0,
+      "oneInN": null,
+      "triggeredIds": []
+    },
+    "followUp": {
+      "total": 15,
+      "triggered": 0,
+      "rate": 0,
+      "oneInN": null,
+      "triggeredIds": []
+    },
+    "overallRate": 0,
+    "myPromptSetDigest": "fd43da71babeb020d85754c442b6af75634605fcd57fa5e1491f85b33c0143ec",
+    "allTriggersAgree": true,
+    "allSignalsAgree": true,
+    "cSubSignalColumnAgreesWithGate": false
+  },
+  "thresholds": {
+    "DELIVERABLE_VERB_MIN": 4,
+    "ENUMERATED_LINE_MIN": 3,
+    "ACTION_VERB_MIN": 3,
+    "C_SUBSIGNAL_MIN": 2
+  }
+}

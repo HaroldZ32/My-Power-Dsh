@@ -1,0 +1,84 @@
+############ t39 FINAL VERIFICATION OUTPUT LOG ############
+generated: 2026-09-14T00:55:14Z   HEAD at this log: 0d5279419e612c59a73329015634f1866333d71b
+anchors: ledger EN 1084feab... / ZH d58a6d26... / contract 09949c80... / gate 8cfaef47...
+
+===== 1. INDEPENDENT RECOMPUTE (criterion 1) =====
+gate hash guard: OK | pin reachable via git: true
+pins match: true
+summary: {"total":20,"cjk":20,"sessionStart":{"total":5,"triggered":0,"rate":0,"oneInN":null,"triggeredIds":[]},"followUp":{"total":15,"triggered":0,"rate":0,"oneInN":null,"triggeredIds":[]},"overallRate":0,"myPromptSetDigest":"fd43da71babeb020d85754c442b6af75634605fcd57fa5e1491f85b33c0143ec","allTriggersAgree":true,"allSignalsAgree":true,"cSubSignalColumnAgreesWithGate":false}
+probe rerun: {"exit":0,"stderr":"","summary":{"anchoredHashes":{"packages/mpd-agent-teams-plugin/lib/session-start.js":"8cfaef47e9959ef7def01003640f768ff4befa50e9c202ff692a0629ca0a2aa6","packages/mpd-agent-teams-plugin/lib/mpd-deltas.js":"47f204cd9678ed87660b18e5ecd01895ce3249fae8155deb0a1d33821f6ff9c5","package
+mismatches: 2
+   {"id":"P07","kind":"cSubSignals-vs-gate-exact","mine":{"C1":false,"C2":false,"C3":false},"theirs":{"C1_enumeratedLines":false,"C2_actionVerbs":false,"C3_actionClauses":true}}
+   {"id":"P12","kind":"cSubSignals-vs-gate-exact","mine":{"C1":false,"C2":false,"C3":false},"theirs":{"C1_enumeratedLines":false,"C2_actionVerbs":false,"C3_actionClauses":true}}
+
+===== 2. AUTHENTICITY / PROVENANCE (criterion 2) =====
+session store: {"key":"--root-dshProj-my-power-dsh--","dir":"~/.dsh/sessions/--root-dshProj-my-power-dsh--","sessionsOnDisk":109}
+summary: {"rows":20,"located":20,"humanUserTurns":20,"derivedTurnMatchesRow":5,"rawLenMatchesRow":20,"failures":0,"cjkRows":20,"latinOnlyRows":0,"sessionsUsed":5,"distinctSessionStartSessions":5}
+frozen overlap: max 0.0526 | exact false | nearRewrite>=0.8 false
+  P01 [session-start] located=true human=true line=12 turn=null role=user src=user ~/.dsh/sessions/--root-dshProj-my-power-dsh--/session-62770d9b-163c-4e8b-8097-d0ceff4bf37e/session.v3.jsonl.zstd
+  P02 [session-start] located=true human=true line=13 turn=null role=user src=user ~/.dsh/sessions/--root-dshProj-my-power-dsh--/session-6f45da5e-3937-4538-97fd-39852f542171/session.v3.jsonl.zstd
+  P03 [session-start] located=true human=true line=11 turn=null role=user src=user ~/.dsh/sessions/--root-dshProj-my-power-dsh--/session-7521cbf3-ea10-4195-ad7e-f86f7b41b4b4/session.v3.jsonl.zstd
+  P04 [session-start] located=true human=true line=18 turn=null role=user src=user ~/.dsh/sessions/--root-dshProj-my-power-dsh--/session-791dabbd-e011-4b33-aeb1-ac7ebf08ad50/session.v3.jsonl.zstd
+  P05 [session-start] located=true human=true line=10 turn=null role=user src=user ~/.dsh/sessions/--root-dshProj-my-power-dsh--/session-aded9c07-4cd3-4c82-ac31-22ce8c47c5be/session.v3.jsonl.zstd
+  P06 [follow-up] located=true human=true line=142 turn=null role=user src=user ~/.dsh/sessions/--root-dshProj-my-power-dsh--/session-6f45da5e-3937-4538-97fd-39852f542171/session.v3.jsonl.zstd
+  P07 [follow-up] located=true human=true line=1153 turn=null role=user src=user ~/.dsh/sessions/--root-dshProj-my-power-dsh--/session-791dabbd-e011-4b33-aeb1-ac7ebf08ad50/session.v3.jsonl.zstd
+  P08 [follow-up] located=true human=true line=1087 turn=null role=user src=user ~/.dsh/sessions/--root-dshProj-my-power-dsh--/session-aded9c07-4cd3-4c82-ac31-22ce8c47c5be/session.v3.jsonl.zstd
+  P09 [follow-up] located=true human=true line=1565 turn=null role=user src=user ~/.dsh/sessions/--root-dshProj-my-power-dsh--/session-62770d9b-163c-4e8b-8097-d0ceff4bf37e/session.v3.jsonl.zstd
+  P10 [follow-up] located=true human=true line=2095 turn=null role=user src=user ~/.dsh/sessions/--root-dshProj-my-power-dsh--/session-62770d9b-163c-4e8b-8097-d0ceff4bf37e/session.v3.jsonl.zstd
+  P11 [follow-up] located=true human=true line=2051 turn=null role=user src=user ~/.dsh/sessions/--root-dshProj-my-power-dsh--/session-aded9c07-4cd3-4c82-ac31-22ce8c47c5be/session.v3.jsonl.zstd
+  P12 [follow-up] located=true human=true line=2081 turn=null role=user src=user ~/.dsh/sessions/--root-dshProj-my-power-dsh--/session-aded9c07-4cd3-4c82-ac31-22ce8c47c5be/session.v3.jsonl.zstd
+  P13 [follow-up] located=true human=true line=2297 turn=null role=user src=user ~/.dsh/sessions/--root-dshProj-my-power-dsh--/session-6f45da5e-3937-4538-97fd-39852f542171/session.v3.jsonl.zstd
+  P14 [follow-up] located=true human=true line=2198 turn=null role=user src=user ~/.dsh/sessions/--root-dshProj-my-power-dsh--/session-aded9c07-4cd3-4c82-ac31-22ce8c47c5be/session.v3.jsonl.zstd
+  P15 [follow-up] located=true human=true line=2274 turn=null role=user src=user ~/.dsh/sessions/--root-dshProj-my-power-dsh--/session-aded9c07-4cd3-4c82-ac31-22ce8c47c5be/session.v3.jsonl.zstd
+  P16 [follow-up] located=true human=true line=2295 turn=null role=user src=user ~/.dsh/sessions/--root-dshProj-my-power-dsh--/session-aded9c07-4cd3-4c82-ac31-22ce8c47c5be/session.v3.jsonl.zstd
+  P17 [follow-up] located=true human=true line=2606 turn=null role=user src=user ~/.dsh/sessions/--root-dshProj-my-power-dsh--/session-62770d9b-163c-4e8b-8097-d0ceff4bf37e/session.v3.jsonl.zstd
+  P18 [follow-up] located=true human=true line=3777 turn=null role=user src=user ~/.dsh/sessions/--root-dshProj-my-power-dsh--/session-6f45da5e-3937-4538-97fd-39852f542171/session.v3.jsonl.zstd
+  P19 [follow-up] located=true human=true line=3830 turn=null role=user src=user ~/.dsh/sessions/--root-dshProj-my-power-dsh--/session-6f45da5e-3937-4538-97fd-39852f542171/session.v3.jsonl.zstd
+  P20 [follow-up] located=true human=true line=3386 turn=null role=user src=user ~/.dsh/sessions/--root-dshProj-my-power-dsh--/session-62770d9b-163c-4e8b-8097-d0ceff4bf37e/session.v3.jsonl.zstd
+
+===== 3. LEDGER SNAPSHOT (phase-1 inventory) =====
+{
+ "hashes": {
+  "docs/omo-parity-ledger.md": "dc1500348bbb9fef44b50c2e2efa4d799adb263df2207994de158bc738f459da",
+  "docs/omo-parity-ledger.zh-CN.md": "01b4fa90f718d26b8225ff6ec4d580969d3e9b40254e345498ae64cf3282f3ae",
+  "evidence/omo-align/requirements/frozen-contract.json": "09949c8095d7ccd533329b114a2ef22bad1ce81bd24338240e68cfd0fd66be41",
+  "t37Pinned_ledger_en": "0454431a2efe064bf9062dddb282ee79c3883928548847309df4b9c56e2a1f08",
+  "t37Pinned_ledger_zh": "7398ec2d62ea20db0a39cca6104d22d1a7db5066b1a343058b22abb0f5032cd4"
+ },
+ "section3": {
+  "enHasThreshold1": true,
+  "enHasStaleThreshold2": false,
+  "enStatesCSingleSignal": true,
+  "zhHasThreshold1": true,
+  "zhHasStaleThreshold2": false,
+  "zhStatesCSingleSignal": true,
+  "contractLogic": "trigger = anyExplicitFlag OR (matchedSignals >= 1), where a matched signal means: A explicit flag; C satisfied = >=2 of ",
+  "enHarmonizedTableMentioned": true
+ },
+ "section8": {
+  "enPendingRows": 7,
+  "enVerifiedRows": 0,
+  "zhPendingRows": 8,
+  "zhVerifiedRows": 0,
+  "enHeaderStatusLine": "> Wave: `omo-parity-align`. Status: **VERIFIED — values frozen, implementation landed, gates green",
+  "zhHeaderStatusLine": "> 波次：`omo-parity-align`。状态：**已验证 —— 取值已冻结、实现已落地、门禁全绿（§8）。**"
+ },
+ "linkage": {
+  "enLinksZh": true,
+  "zhLinksEn": true,
+  "enLine2": "**English** | [中文](./omo-parity-ledger.zh-CN.md)",
+  "zhLine2": "[English](./omo-parity-ledger.md) | **中文**"
+ }
+}
+
+===== 4. FINAL LEDGER + CONFLICT PASS (criteria 4,5) =====
+HEAD 0d5279419e612c59a73329015634f1866333d71b
+settled: true
+checks: 36/36 passing
+line29: * `complexityGate`) is `trigger = anyExplicitFlag OR (matchedSignals >= 1)` — the
+conflict unaccounted: []
+
+===== 5. FINAL REPORT VALIDATION =====
+verdict=pass
+criteria=1:passed 2:passed 3:passed 4:passed 5:passed 6:passed 7:passed
+findings=F1:medium F2:medium F3:low F4:low
