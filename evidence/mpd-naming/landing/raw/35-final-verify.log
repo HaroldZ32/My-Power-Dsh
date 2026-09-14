@@ -1,0 +1,32 @@
+
+## APPENDIX — post-landing state (the captain landed the wave mid-task)
+
+commit ff1932f 'chore(naming): land the OMO/Codex/OpenCode to DSH naming wave' — 189 files, +40697/-136.
+verified: lock+all four skills edits in ONE commit; 0 evidence M/D vs 3c1a850; 0 process records changed;
+scratch tree NOT committed (0 files) — so the scratch decision was taken as EXCLUDE; verify-vendor exit 0 / PASS.
+
+remaining uncommitted: 1214 paths = 1208 scratch + this package's 6 files (no product source left).
+follow-up: git add --pathspec-from-file=evidence/mpd-naming/landing/raw/34-remaining-uncommitted-path-list.txt && git commit -m 'chore(evidence): file the t20 landing package for the naming wave'
+
+raw/20,22,23,27,28 were regenerated after that commit and then RESTORED to their committed content so the
+pinned-revision record stays self-consistent; post-landing measurements are in raw/33-post-landing-state.log.
+
+### final verify commands at the post-landing revision
+$ git status --porcelain
+?? evidence/mpd-naming/landing/COMMIT-MESSAGE.txt
+?? evidence/mpd-naming/landing/COMMIT-PLAN.md
+?? evidence/mpd-naming/landing/output.log
+?? evidence/mpd-naming/landing/raw/33-post-landing-state.log
+?? evidence/mpd-naming/landing/raw/34-remaining-uncommitted-path-list.txt
+?? evidence/mpd-naming/landing/raw/35-final-verify.log
+?? evidence/mpd-naming/landing/result.json
+?? evidence/mpd-naming/wave2/raw/scratch/
+exit=0
+
+$ git diff --name-only 3c1a850   (full wave delta incl. the landing commit)
+paths=205
+
+$ node scripts/verify-vendor.mjs
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+exit=0

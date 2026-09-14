@@ -1,0 +1,140 @@
+{
+  "task": "t20",
+  "subject": "integration — the wave's changed-path set, evidence index and the captain's one-commit plan",
+  "kind": "integration",
+  "member": "Lead",
+  "attempt": 1,
+  "attemptId": "3935069e-8eeb-4627-bf2a-c0d887886dfd",
+  "status": "completed",
+  "noGitWrite": "No git write command was run by this task: every git invocation was read-only (rev-parse, log, status, diff, show, cat-file -e, ls-files, check-ignore). Nothing was added, committed, pushed, branched, reset, stashed or checked out; VENDOR_LOCK.json and every product file were left exactly as found.",
+  "revision": {
+    "branch": "dev",
+    "head": "53d617e6c2d29dfadec06278bc4130061055378e",
+    "preWaveRevisionForHistoryCompare": "3c1a850",
+    "dirtyTree": "39 modified tracked files + untracked evidence/mpd-naming/** (50 porcelain lines at the final re-run)"
+  },
+  "acceptanceResults": [
+    {
+      "criterion": "the landing set is explicit: every path the wave changed at the pinned revision (git status --porcelain + git diff --name-status against 3c1a850), grouped by lane, with the wave's ONE VENDOR_LOCK.json change called out and every history path (evidence/**, docs/plan-*.md, docs/omo-parity-gap.md) proven byte-untouched",
+      "status": "passed",
+      "evidence": "raw/22-lane-assignment.json (per-path lane map), raw/23-landing-path-list.txt (paste-ready list), raw/26-history-proof.log, COMMIT-PLAN.md sections 1-2. Measured at HEAD 53d617e6: 39 modified tracked files grouped into t2 text lane (manual/overview/manifest/preset; bilingual docs prose; 12 package READMEs; roster/workmate prose + roles data), t14 dists lane (scripts/build-mcp.mjs + gitbash/lsp dists + 3 BUILD.locks), t16 skills lane (ast_grep_helper.py, smoke.sh), the mixed t16+sk-07 file (skills/ast-grep/AGENTS.md), the captain's sk-08 file (skills/ulw-plan/scripts/scaffold-plan.mjs) and VENDOR_LOCK.json, which is the wave's SINGLE lock change. History proof: `git diff --name-status --diff-filter=MD 3c1a850 -- evidence/` is EMPTY (0 of 3673 tracked evidence paths changed); all 6 evidence paths in the wave diff are ADDITIONS (each verified absent at 3c1a850 with `git cat-file -e`); the process records docs/plan-{c,d,e,f}.md, docs/omo-parity-gap.md, docs/decisions.md, docs/bline-report.md, docs/review-p0-p3.md, docs/track-a-report.md, docs/ulw-deepseek-optimization.md show an empty diff AND are byte-identical by explicit `git show 3c1a850:<p> | sha256sum` vs `sha256sum <p>` compare (26-history-proof.log section 4). NOTE ON THE WORDING: the criterion's 'git diff --name-only 3c1a850 must contain no evidence/** path' is literally unsatisfiable — the wave's own new evidence is tracked and the captain's commits added 6 evidence files — so the ruling's substance (no pre-existing history path modified or deleted) is what is proven and stated; the precise reading is recorded in COMMIT-PLAN.md section 0."
+    },
+    {
+      "criterion": "the evidence index lists every artifact the lanes and the verifier filed, each with its sha256 and a one-line statement of which acceptance check it supports",
+      "status": "passed",
+      "evidence": "raw/24-evidence-index.json: 1387 artifacts, 8619642 bytes, each entry carrying path + bytes + sha256 + the acceptance check it supports (mapping in raw/25-evidence-index-summary.txt). Coverage: wave2 1217 (t14 dists lane), brand-cleanup 67 (t1/t2/t13/t14 lineage), re-pin 41 (t17), verification 28 (t18), final-allowlist 11 (t13), skills-lane 9 (t16), docs-lane 4 (t15), verifier-contract 3, corpus-gate-bytecode 3, review 2 (t19), captain-rulings 2 (R14). The walk uses lstat and therefore records symlinks as symlinks instead of following them; it skips node_modules directories. `evidence/mpd-naming/landing/**` (t20's own home) is deliberately excluded so the index never has to hash itself — the landing artifacts' own hashes are in this report's landingArtifactHashes block."
+    },
+    {
+      "criterion": "the commit plan is executable by the captain in ONE commit: the exact path list, a suggested commit subject + body that cites the three owner rulings and the wave's acceptance checks, and the gate summary (verify-vendor, typecheck, plugin suite, test:qa, delta --check) with each exit code",
+      "status": "passed",
+      "evidence": "COMMIT-PLAN.md (sections 2-4) + COMMIT-MESSAGE.txt (ready to paste via `git commit -F`) + raw/23-landing-path-list.txt (staged with `git add --pathspec-from-file=…`). The plan splits (a) the 19 diff entries ALREADY landed in the wave commits (.gitignore, scripts/verify-vendor.mjs, the agent-teams B7 lib+test, docs/index{,.zh-CN}.md, the two rename pairs, the 6 added evidence files) from (b) the ONE landing commit = 39 modified tracked + the untracked evidence set. The message cites owner rulings (a) ast-grep omo_* -> mpd_*, (b) codegraph [senpi]/MIGRATION_ID + lsp .codex keeps allowlisted, (c) gitbash OMO_CODEX_* deleted, plus the wave's single VENDOR_LOCK re-pin with its exact values. Gate summary with exit codes: verify-vendor 0 (t20 re-ran; t18 and t19 agree), patch-agent-teams-fixes --check 0 (t20 re-ran; t18 agrees), typecheck 0 (t18; t19 re-ran), bun test packages 408 pass / 0 fail (t19), bun test packages/mpd-agent-teams-plugin 206 pass / 0 fail (t18), bun run test:qa 0 'all self-tests passed' (t18). Sources are labelled per row so no gate is claimed as re-run here."
+    },
+    {
+      "criterion": "no git write happened in this task: no add/commit/push/branch/reset/stash/checkout was run (AGENTS.md §5 — the captain is the only git writer in this checkout)",
+      "status": "passed",
+      "evidence": "Every git invocation in this task was read-only: `git rev-parse --abbrev-ref HEAD`, `git rev-parse HEAD`, `git log --oneline`, `git status --porcelain [-uall]`, `git -c diff.renames=true diff --name-status/--name-only/--stat/--diff-filter`, `git show 3c1a850:<path>`, `git cat-file -e 3c1a850:<path>`, `git ls-files`, `git check-ignore -v`. The only writes were `mkdir -p` and file writes under the in-scope path evidence/mpd-naming/landing/ (plus a `sed -i` on this package's own builder script). No add/commit/push/branch/reset/stash/checkout/merge/rebase/tag was executed; VENDOR_LOCK.json and all product files were untouched."
+    }
+  ],
+  "commandsRun": [
+    {
+      "command": "git status --porcelain",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "50 porcelain lines at the final re-run (raw/27-verify-status.log): 39 ` M` modified tracked + 11 `??` untracked evidence directories; the full per-file enumeration is raw/20-status-uall-final.txt (1384 entries)."
+    },
+    {
+      "command": "git diff --name-only 3c1a850",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "55 paths (raw/28-verify-diff-3c1a850.log, raw/21-diff-name-status-3c1a850.txt): the full wave delta including the 2 rename pairs and the 19 already-landed entries; 0 process-record paths; 6 evidence paths, all additions (raw/26-history-proof.log)."
+    },
+    {
+      "command": "node scripts/verify-vendor.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "raw/29-verify-vendor.log: '[verify-vendor] PASS' with commit/version/stats OK, 'asset OK: skills 297 files', '_deps 635 files' and all four dists; no FAIL line."
+    }
+  ],
+  "gateSummary": {
+    "verify-vendor": { "cmd": "node scripts/verify-vendor.mjs", "exit": 0, "source": "t20 re-ran (raw/29-verify-vendor.log); t18 and t19 also measured 0" },
+    "delta-check": { "cmd": "node scripts/patch-agent-teams-fixes.mjs --check", "exit": 0, "source": "t20 re-ran (raw/30-patch-check.log): 'already applied: 40 mpd delta region(s) across 9 adopted file(s)'" },
+    "typecheck": { "cmd": "bun run typecheck", "exit": 0, "source": "t18 (evidence/mpd-naming/verification/result.json .gate_sweep); t19 re-ran it 0" },
+    "plugin-suite-full": { "cmd": "bun test packages", "exit": 0, "source": "t19 (evidence/mpd-naming/review/t19-review.json .gates_run_by_reviewer): 408 pass / 0 fail" },
+    "plugin-suite-adopted": { "cmd": "bun test packages/mpd-agent-teams-plugin", "exit": 0, "source": "t18: 206 pass / 0 fail, 1457 expect()" },
+    "test-qa": { "cmd": "bun run test:qa", "exit": 0, "source": "t18: '[test:qa] all self-tests passed'" }
+  },
+  "landingSet": {
+    "alreadyLandedInWaveCommits": 19,
+    "oneCommit": {
+      "modifiedTracked": 39,
+      "untrackedEvidenceFiles": 1345,
+      "note": "the untracked count is as captured before this landing package existed; the paste-ready list raw/23-landing-path-list.txt is regenerated LAST and therefore also contains evidence/mpd-naming/landing/** itself — its final line count is printed in the FINAL PACKAGE STATE block of output.log",
+      "scratchCaveat": "1208 of the untracked files are t14's reproduction scratch tree (evidence/mpd-naming/wave2/raw/scratch/**, 8.8 MB). Its 21 node_modules symlinks (absolute, into /root/.bun/install/cache/… and back into the scratch src/) are excluded automatically by .gitignore:1 `node_modules/` — raw/31-landing-symlinks.log is empty (sha256 e3b0c442…), proving no symlink enters the commit. Whether to land or exclude the scratch tree is the captain's call; COMMIT-PLAN.md section 2b gives the exclusion pathspec."
+    }
+  },
+  "evidenceIndex": {
+    "path": "evidence/mpd-naming/landing/raw/24-evidence-index.json",
+    "sha256": "51a92d95181c814bd22be7df0c867c6b2227ca374f98d37c5d93ceea0037703e",
+    "count": 1387,
+    "totalBytes": 8619642,
+    "perDir": { "evidence/mpd-naming/wave2": 1217, "evidence/mpd-naming/brand-cleanup": 67, "evidence/mpd-naming/re-pin": 41, "evidence/mpd-naming/verification": 28, "evidence/mpd-naming/final-allowlist": 11, "evidence/mpd-naming/skills-lane": 9, "evidence/mpd-naming/docs-lane": 4, "evidence/mpd-naming/corpus-gate-bytecode": 3, "evidence/mpd-naming/verifier-contract": 3, "evidence/mpd-naming/captain-rulings": 2, "evidence/mpd-naming/review": 2 },
+    "summary": "evidence/mpd-naming/landing/raw/25-evidence-index-summary.txt (sha256 664078dfa932a5c6ba5879dbffd02989ab338299d35ee68c9eb295996e39f88f)"
+  },
+  "historyProof": {
+    "path": "evidence/mpd-naming/landing/raw/26-history-proof.log",
+    "sha256": "e037bc3bac3049e22b7db8a215fe6092e9cd4aab6c05a9627421e298b6d35c7f",
+    "findings": "0 modified/deleted evidence paths since 3c1a850 (3673 tracked evidence files); the 6 evidence paths in the wave diff are additions; 0 process-record paths changed; 10/10 process records byte-identical by explicit sha256 compare"
+  },
+  "laneAssignment": {
+    "path": "evidence/mpd-naming/landing/raw/22-lane-assignment.json",
+    "sha256": "e5a47eaa5abb0ca0b41b52452ec4113a17b570b7fc5457a733850d54063bb7f9"
+  },
+  "commitPlan": {
+    "plan": "evidence/mpd-naming/landing/COMMIT-PLAN.md",
+    "message": "evidence/mpd-naming/landing/COMMIT-MESSAGE.txt (paste with `git commit -F`)",
+    "pathList": "evidence/mpd-naming/landing/raw/23-landing-path-list.txt (stage with `git add --pathspec-from-file=…`)",
+    "singleRepin": "VENDOR_LOCK.json — skills 297/a0f1febb…, gitbash 6458a82e…, lsp a7cebcf9…, lockedAt 2026-09-14T10:15:51.000Z; must ride with all four skills/** edits in one commit (t19 F1)."
+  },
+  "decisionsForTheCaptain": [
+    "Land or exclude t14's 1208-file / 8.8 MB reproduction scratch tree (evidence/mpd-naming/wave2/raw/scratch/**); the exclusion pathspec is in COMMIT-PLAN.md section 2b, and either way the choice must be stated in the commit body.",
+    "t19 F2 records that the frozen rename target (`docs/parity-ledger{,.zh-CN}.md`) differs from the landed name (`docs/upstream-parity-ledger{,.zh-CN}.md`): the landed name stands, the freeze text is not edited (ruling R17).",
+    "Residuals to carry in the landing notes: R1 (KH-02 location moved with the rename — the historical wave id is still present at docs/upstream-parity-ledger{,.zh-CN}.md:4), R3 (`nonEmptyEnvValue` is dead code in the gitbash dist after its only caller was deleted), R4 (the _omo -> _mpd lsp envelope rename is a loud breaking change for an already-running version-scoped daemon: AUTH_ERROR_CODE -32001, then DaemonUnreachableError; remedy = restart or clear ~/.mpd/lsp-daemon/v<version>)."
+  ],
+  "landingArtifactHashes": {
+    "COMMIT-PLAN.md": "c786bfab3b106efa474fcb14d7c01bf9d60222072e6894b624e057f2c7402b84",
+    "COMMIT-MESSAGE.txt": "679128a79f9c16cae01f0d0385e5b70db21e17c933cca5ae091842dc7a495144",
+    "raw/22-lane-assignment.json": "e5a47eaa5abb0ca0b41b52452ec4113a17b570b7fc5457a733850d54063bb7f9",
+    "raw/24-evidence-index.json": "51a92d95181c814bd22be7df0c867c6b2227ca374f98d37c5d93ceea0037703e",
+    "raw/25-evidence-index-summary.txt": "664078dfa932a5c6ba5879dbffd02989ab338299d35ee68c9eb295996e39f88f",
+    "raw/26-history-proof.log": "e037bc3bac3049e22b7db8a215fe6092e9cd4aab6c05a9627421e298b6d35c7f",
+    "raw/27-verify-status.log": "42d5c1d9d333e8c010aaf13c7d14af3f008c5a669c69f9f5652cc70cdf84532b",
+    "raw/28-verify-diff-3c1a850.log": "6e653075e582259b9c0d22e3884d99eddefe3814eb739618d4084202b4cd90b7",
+    "raw/29-verify-vendor.log": "b937f79599f034ed68880144695403e7ddc0fe1bb2fa5fd34559029fb9752128",
+    "raw/30-patch-check.log": "c5b41bbd2ae0456ee3832557bf6403571f758978935afe6fa60398899e9e986b",
+    "raw/31-landing-symlinks.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "selfReferenceNote": "raw/23-landing-path-list.txt, result.json and output.log change while this package is being finalized (the paste-ready list is regenerated last so it can include the package itself), so their final sha256 values are printed in the FINAL PACKAGE STATE block at the end of output.log instead of being embedded here."
+  },
+  "stateUpdate_landedByCaptain": {
+    "what": "While this package was being assembled, the captain landed the wave: commit ff1932f21ba4e5fe536e617faf2b5f8b2acca86b 'chore(naming): land the OMO/Codex/OpenCode to DSH naming wave' — 189 files, +40697/-136.",
+    "verifiedProperties": {
+      "lockRidesWithAllSkillsEdits": "VENDOR_LOCK.json plus skills/ast-grep/{AGENTS.md,scripts/ast_grep_helper.py,tests/smoke.sh} and skills/ulw-plan/scripts/scaffold-plan.mjs are all in ff1932f (single commit, §9/§11 satisfied)",
+      "historyUntouched": "git diff --diff-filter=MD 3c1a850 ff1932f -- evidence/ = 0 paths; 0 process-record paths changed between 3c1a850 and ff1932f",
+      "scratchTreeExcluded": "git ls-tree -r --name-only ff1932f -- evidence/mpd-naming/wave2/raw/scratch = 0 files, so decision 1 was taken as EXCLUDE",
+      "gateAtLandedRevision": "node scripts/verify-vendor.mjs exit 0 / '[verify-vendor] PASS'"
+    },
+    "remainingUncommitted": {
+      "count": 1214,
+      "composition": "1208 files of t14's reproduction scratch tree (deliberately excluded) + this landing package's 6 files (COMMIT-PLAN.md, COMMIT-MESSAGE.txt, output.log, result.json, raw/33-post-landing-state.log, raw/34-remaining-uncommitted-path-list.txt); no product source remains uncommitted",
+      "pathList": "evidence/mpd-naming/landing/raw/34-remaining-uncommitted-path-list.txt",
+      "followUp": "one evidence-only commit: `git add --pathspec-from-file=evidence/mpd-naming/landing/raw/34-remaining-uncommitted-path-list.txt && git commit -m \"chore(evidence): file the t20 landing package for the naming wave\"`"
+    },
+    "staleFactsInTheSectionsAbove": "The acceptance evidence above documents the PINNED revision 53d617e6 (39 modified tracked + 1345 untracked) — that is the historical, correct record of what the captain then landed. The 5 files this task had regenerated after the landing commit (raw/20,22,23,27,28) were RESTORED to their ff1932f committed content so the pinned-revision record stays self-consistent; the post-landing state lives in raw/33-post-landing-state.log and raw/34-remaining-uncommitted-path-list.txt.",
+    "evidence": "evidence/mpd-naming/landing/raw/33-post-landing-state.log"
+  },
+  "notProven": [
+    "The full gate sweep was NOT re-run by this task: t18's and t19's measured exit codes are cited with their sources, and only verify-vendor + the delta --check were re-run first-hand.",
+    "The scratch-tree inclusion decision is deliberately not made here (out of scope): the plan presents both the paste-ready list and the exclusion pathspec.",
+    "This package does not verify the content correctness of the lanes' changes; t18 (verification) and t19 (review) own that, and both returned PASS.",
+    "Nothing outside evidence/mpd-naming/landing/ was created or modified by this task."
+  ]
+}

@@ -1,0 +1,122 @@
+# t20 — landing package for the captain (integration)
+
+member: Lead · attempt 1 · attempt_id 3935069e-8eeb-4627-bf2a-c0d887886dfd
+revision: dev @ 53d617e6c2d29dfadec06278bc4130061055378e (dirty tree) · pre-wave compare revision 3c1a850
+NO git write was performed by this task (see result.json.acceptanceResults[3]).
+
+## 1. What this package contains
+
+| artifact | purpose |
+|---|---|
+| `COMMIT-PLAN.md` | the one-commit plan: already-landed set, the landing path set by lane, the staging command, the suggested message, the gate summary with exit codes, the decisions to record |
+| `COMMIT-MESSAGE.txt` | the ready-to-paste subject + body (`git commit -F`) |
+| `raw/23-landing-path-list.txt` | the paste-ready path list (`git add --pathspec-from-file=…`), regenerated LAST |
+| `raw/24-evidence-index.json` | every artifact the lanes and the verifier filed, with sha256, size and the acceptance check it supports |
+| `raw/25-evidence-index-summary.txt` | the per-directory counts of that index |
+| `raw/26-history-proof.log` | the history-untouched proof against 3c1a850 |
+| `raw/22-lane-assignment.json` | per-path lane attribution + the already-landed set |
+| `raw/27,28,29,30-*.log` | this task's verify commands (status, diff, verify-vendor, delta --check) |
+| `result.json` | the structured integration report |
+
+## 2. The landing set in one screen
+
+- ALREADY LANDED in wave commits (19 diff entries, do NOT re-commit): `.gitignore`, `scripts/verify-vendor.mjs`,
+  `packages/mpd-agent-teams-plugin/lib/{mpd-deltas.js,quality-gates.js}` + its `self-fix-tests` file,
+  `docs/index.md`, `docs/index.zh-CN.md`, the two rename pairs (docs ledger pair R096, `tests/overlays/bline.yml` R100),
+  and the 6 added evidence files under `evidence/mpd-naming/{corpus-gate-bytecode,verifier-contract}/`.
+- THE ONE COMMIT: 39 modified tracked files (t2 text lane 28 … t14 dists lane 6, t16 skills lane 2, the mixed
+  t16+sk-07 `skills/ast-grep/AGENTS.md`, the captain's sk-08 `skills/ulw-plan/scripts/scaffold-plan.mjs`,
+  and `VENDOR_LOCK.json`) + the untracked evidence under `evidence/mpd-naming/**` (1208 of them are t14's
+  reproduction scratch tree, 8.8 MB; its 21 `node_modules` symlinks are gitignored and never enter the commit).
+- THE SINGLE RE-PIN: `VENDOR_LOCK.json` — skills 297/a0f1febb…, gitbash 6458a82e…, lsp a7cebcf9…,
+  lockedAt 2026-09-14T10:15:51.000Z — riding together with all four `skills/**` edits.
+
+## 3. History is proven untouched
+
+- `git diff --name-status --diff-filter=MD 3c1a850 -- evidence/` → EMPTY (0 of 3673 tracked evidence paths changed).
+- The 6 evidence paths in the wave diff are ADDITIONS (each proven absent at 3c1a850).
+- Process records (`docs/plan-{c,d,e,f}.md`, `docs/omo-parity-gap.md`, `docs/decisions.md`, `docs/bline-report.md`,
+  `docs/review-p0-p3.md`, `docs/track-a-report.md`, `docs/ulw-deepseek-optimization.md`): empty diff AND
+  10/10 byte-identical by explicit sha256 compare.
+- Note: the criterion's literal phrase "`git diff --name-only 3c1a850` must contain no `evidence/**` path" cannot hold
+  (the wave's own new evidence is tracked); the precise reading and the substance that IS proven are in
+  COMMIT-PLAN.md §0.
+
+## 4. Gates (exit codes, with the source of each measurement)
+
+| gate | exit | source |
+|---|---|---|
+| `node scripts/verify-vendor.mjs` | 0 ("PASS", no FAIL) | t20 re-ran; t18+t19 agree |
+| `node scripts/patch-agent-teams-fixes.mjs --check` | 0 ("already applied: 40 mpd delta region(s) across 9 adopted file(s)") | t20 re-ran; t18 agrees |
+| `bun run typecheck` | 0 | t18; t19 re-ran |
+| `bun test packages` | 0 (408 pass / 0 fail) | t19 |
+| `bun test packages/mpd-agent-teams-plugin` | 0 (206 pass / 0 fail) | t18 |
+| `bun run test:qa` | 0 ("all self-tests passed") | t18 |
+
+## 5. Decisions handed to the captain
+
+1. Land or exclude t14's 1208-file scratch tree (both commands are in COMMIT-PLAN.md §2b).
+2. t19 F2: the frozen rename target differs from the landed name (`docs/upstream-parity-ledger{,.zh-CN}.md`);
+   the landed name stands, the freeze is not edited (R17).
+3. Carry the residuals: R1 (KEEP location moved with the rename), R3 (`nonEmptyEnvValue` dead code),
+   R4 (loud `_omo`→`_mpd` daemon breakage; remedy = restart or clear `~/.mpd/lsp-daemon/v<version>`).
+
+## 6. Raw transcripts
+
+### final verify commands (re-run at package finalization)
+$ git status --porcelain  -> exit 0, 7 lines
+$ git diff --name-only 3c1a850 -> exit 0, 205 paths
+$ node scripts/verify-vendor.mjs -> exit 0: [verify-vendor] PASS
+$ node scripts/patch-agent-teams-fixes.mjs --check -> exit 0: [patch-agent-teams-fixes] already applied: 40 mpd delta region(s) across 9 adopted file(s)
+
+### raw/31-landing-symlinks.log (empty = no symlink enters the commit)
+bytes: 0
+
+## FINAL PACKAGE STATE
+
+generated: 2026-09-14T10:30:33Z · branch dev · HEAD ff1932f21ba4e5fe536e617faf2b5f8b2acca86b
+modified tracked: 1 · untracked files: 1212
+paste-ready path list raw/23-landing-path-list.txt: 1213 paths (includes this landing package)
+evidence index: 1387 artifacts / 8619642 bytes
+verify exits: git status=0 · git diff=0 · verify-vendor=0 · delta-check=0
+
+sha256 of every file in this package (output.log excluded: it is the file being written):
+c786bfab3b106efa474fcb14d7c01bf9d60222072e6894b624e057f2c7402b84  COMMIT-PLAN.md
+679128a79f9c16cae01f0d0385e5b70db21e17c933cca5ae091842dc7a495144  COMMIT-MESSAGE.txt
+972770e56b5cd661d8635ed0150492daa3adccf04a2a44205c661755e0ea16d4  result.json
+c25d77e4dfbceb032749d804870a9cd07f1d58c0a0171f5232df10e46b3161f9  raw/build-landing.mjs
+ef9c52166cb53016f265d8e16dbcc7169dbb793a4ef6448b4dbce01cde5044ea  raw/10-status-porcelain.txt
+b350bb5a449b520ebab0f78511604894ec06d847d62cd59363c6640f91a92db2  raw/11-diff-name-status-vs-3c1a850.txt
+7b41175bccd693aacb1f2209e8de93b9d111954c8a6c2b908bd8203c48aa2187  raw/12-status-uall.txt
+ed19ca749fd3a25215ecb2dc035a171699ef5f27b2256595ad7e13519e4d1815  raw/20-status-uall-final.txt
+b350bb5a449b520ebab0f78511604894ec06d847d62cd59363c6640f91a92db2  raw/21-diff-name-status-3c1a850.txt
+29d35280f783fd85a35e537a3031c30b977d837a0bb0aa41d0b1fe3cb3ea52c7  raw/23-landing-path-list.txt
+664078dfa932a5c6ba5879dbffd02989ab338299d35ee68c9eb295996e39f88f  raw/25-evidence-index-summary.txt
+bac6a0d87ffa952f86ebfb95de5b6234b4aae7418a154fef56a0a04c57103bba  raw/32-untracked-list.txt
+9b559a3fc03d56a82a46ef6c59b3e732f3c1e76c6c8ba1f9e8f57d2299f633e3  raw/22-lane-assignment.json
+51a92d95181c814bd22be7df0c867c6b2227ca374f98d37c5d93ceea0037703e  raw/24-evidence-index.json
+e037bc3bac3049e22b7db8a215fe6092e9cd4aab6c05a9627421e298b6d35c7f  raw/26-history-proof.log
+78e0b91a1db0abeaded91c37a21fb35a5c512428c7a4fa09fd74531e4dc9927d  raw/27-verify-status.log
+09aafe5ef5ec890cf2c8aef42be6f8389f196aecbc21406c631693624e754e38  raw/28-verify-diff-3c1a850.log
+b937f79599f034ed68880144695403e7ddc0fe1bb2fa5fd34559029fb9752128  raw/29-verify-vendor.log
+c5b41bbd2ae0456ee3832557bf6403571f758978935afe6fa60398899e9e986b  raw/30-patch-check.log
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  raw/31-landing-symlinks.log
+
+note: the path list is regenerated LAST, so it contains this package's own files; result.json and output.log are finalized after that regeneration, so their hashes above are the final ones for this turn.
+
+## FINAL PACKAGE STATE (post-landing)
+generated: 2026-09-14T10:31:37Z · HEAD ff1932f21ba4e5fe536e617faf2b5f8b2acca86b
+landing commit: ff1932f (189 files) · pinned-revision record: 53d617e6
+remaining uncommitted: 1214 paths
+
+sha256 of the landing package's own files (output.log excluded: it is the file being written):
+cf43cb318fd0fd716f633d71d4e84cc01e847b5e98beab77d49e58dd2d1758ef  COMMIT-PLAN.md
+679128a79f9c16cae01f0d0385e5b70db21e17c933cca5ae091842dc7a495144  COMMIT-MESSAGE.txt
+db7aeab3e85093571c4014299c3de47291ad882f50c923b578de62b71e0049f0  result.json
+1e37ce81b5cab23e5e6d3e0a48687a85689890b6b17e1a88d42f0ef3062da1ea  raw/33-post-landing-state.log
+fc8b3439b0047a1f8538143fd2807ac42b78a771260595fe811ced483efbfc52  raw/34-remaining-uncommitted-path-list.txt
+f0fef7c53345a6bb204f476af5d6c17f86e008a469de5bec334f7b13992c775a  raw/35-final-verify.log
+
+### correction (supersedes the 34 hash above): 34-remaining-uncommitted-path-list.txt regenerated AFTER 35-final-verify.log existed, so the list now includes every remaining path (itself included)
+34 lines: 1215 · sha256: d5e00b706144404bd061b9798a7136256adcc548e358d6fd34ea99c7612b512e
+composition: 1208 scratch + 7 landing-package files
