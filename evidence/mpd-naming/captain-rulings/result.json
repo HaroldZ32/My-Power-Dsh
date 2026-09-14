@@ -216,10 +216,28 @@
         "t16_F3": "labels now read MPD; git grep omo_ over skills/ast-grep is empty",
         "G9_count": "3 -> 9 by design, recorded not repaired"
       }
+    },
+    {
+      "id": "R18",
+      "item": "t20's codegraph-smoke attribution + the captain's own false confirmation",
+      "decision": "both corrected by measurement",
+      "captain_error": "grepped a non-existent packed-patch path with a `|| echo ABSENT` fallback, which printed a false 'ABSENT' and was briefly reported as a confirmed packaging defect",
+      "measured_truth": {
+        "packed_patch": "dist/mpd-package/cordis.patch.yml:191-192 carries id: mpd-team-compact; 22/22 rows match the source patch, no missing id",
+        "packed_plugin": "dist/mpd-package/packages/mpd-team-compact-plugin/dist/index.js present"
+      },
+      "codegraph_smoke": {
+        "status": "RED (real)",
+        "run": "evidence/dsh-qa/codegraph/2026-09-14T10-35-00.286Z ok=false exit=0",
+        "last_pass": "evidence/dsh-qa/codegraph/2026-09-14T08-56-10.102Z ok=true",
+        "failing_condition": "the case requires the literal /mcp__codegraph__codegraph_explore/ in the captured transcript; the log carries the init line and a correct answer (norm, x<0) but not that string",
+        "class": "QA-assertion/transcript drift, not a product regression and not the packaging gap t20 attributed",
+        "disposition": "own follow-up diagnosis; NOT folded into the landed naming wave"
+      }
     }
   ],
   "artifacts": {
     "rulings_md": "evidence/mpd-naming/captain-rulings/rulings.md",
-    "rulings_md_sha256": "81a420ca140c5d347b56c4d0e93b0bfc15f1882d4aad79be3280540ce187e54f"
+    "rulings_md_sha256": "86231fc0600111fad47615ad93e4b5e28971affe94ef6f367f2b34ad839e6c88"
   }
 }

@@ -26,6 +26,16 @@
   sha 固定、由阻塞式 vendor 门禁（`scripts/verify-vendor.mjs`）保护的预构建文件，在那里打标记
   delta 要么使门禁失败，要么把门禁变成自我背书
   （`evidence/wave3/registry-redesign/t1-decision-record.txt` §A4）。
+- **共享 daemon 策略（`daemon-policy.mjs`）**：被采纳的 server 既可依托按项目根共享的 daemon
+  （`<projectRoot>/.codegraph/daemon.{sock,pid}`），也可用自身进程内引擎服务会话。daemon 的消失
+  并不受会话控制——上游会在空闲 30 分钟后回收它（即使仍有客户端连接，`DEFAULT_MAX_IDLE_MS`），
+  `codegraph daemon` 的停止会 SIGTERM 它，而基于 pid 的存活探测在 PID namespace 中不可信——连接
+  丢失时会报 `[CodeGraph MCP] Shared daemon connection lost; serving this session in-process
+  (degraded), re-serving 0 in-flight request(s).`。因此本 bundle 默认改为**进程内服务**（无
+  daemon、无该提示；`.codegraph/codegraph.db` 仍在会话间共享，只有引擎/watcher 是每会话的）。
+  `MPD_CODEGRAPH_DAEMON=1` 恢复上游共享 daemon，`=0` 显式声明默认行为，显式设置的
+  `CODEGRAPH_NO_DAEMON=1`（上游自带的 opt-out）永不被覆盖。launcher 在 import `dist/serve.js`
+  **之前**应用该策略，因为 vendored bridge 在加载时即冻结子进程 env。
 - 与 `mpd-codegraph-plugin`（项目索引初始化）和 `mcp-codegraph` 行搭配使用。
 
 ## 证明
@@ -34,6 +44,9 @@
 `$HOME/.mpd` 驱动真实 MCP 子进程：修复前的 launcher 以未捕获的
 `ENOENT: ... mkdir '<home>/.mpd/codegraph'` 崩溃且不响应任何 MCP 请求，修复后的 launcher
 退出码 0 并响应 `initialize` / `tools/list`（0 个工具）。
+`evidence/mpd-defects-2/raw/codegraph-daemon-probe.mjs` 是 daemon 的双向证明：A 臂（默认）用自身
+引擎应答 `initialize`/`tools/call`，且不产生任何 daemon 产物、也没有 `Shared daemon` 提示；B 臂
+（`MPD_CODEGRAPH_DAEMON=1`）则走上游的 daemon 路径。
 
 ## 用法
 

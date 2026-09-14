@@ -20,11 +20,18 @@
 ## Surface
 
 - `mpdRoles` service（`ctx.get("mpdRoles")`）：`list()` / `get(key)` — 被 `mpd-modelchain-plugin` 消费（chain lookup）。
-- `mpd_roles_list` — roster（ids → normal names）。
-- `mpd_role_spawn` — one-shot consult：将一个 role 作为 subagent 生成（roster persona + route + 对 read-only roles 的 write-deny toolFilter）。
+- `mpd_roles_list` — roster，以 name 开头打印：`Architect (oracle)`。
+- `mpd_role_spawn` — one-shot consult：将一个 role 作为 subagent 生成（roster persona + route + 对 read-only roles 的 write-deny toolFilter）。被生成的 subagent **以该 role 的普通名称为 label**（`Architect`、`Deep Worker`），而不再是 `role-<id>-<random>`。
 - `mpd_role_persona` — 为需要将 persona 作为文本使用的 spawn surface 获取 persona 文本（例如 `agent_teams_add_member`）。
 
-Role keys 接受 canonical id（`oracle`、`sisyphus-junior`）、modelchain-style key（`sisyphusJunior`、`multimodalLooker`）以及 legacy 的 `mpd-<id>` preset alias。
+**两个 surface 共用同一套命名（名称统一）。** 普通显示名称才是 role 对外的身份：它既是 team mode 下 agent-teams 为成员取的名称，也是单次 `mpd_role_spawn` 产生的 label。因此每个 role key 按以下顺序接受：
+
+- 普通名称 —— 任意拼写：`Architect`、`architect`、`Deep Worker`、`deep-worker`、`deepworker`、`Plan Reviewer`（大小写、空格、连字符、下划线均不敏感）；
+- canonical id（`oracle`、`sisyphus-junior`）；
+- modelchain-style chain key（`sisyphusJunior`、`multimodalLooker`）；
+- legacy 的 `mpd-<id>` preset alias。
+
+`ctx.get("mpdRoles").get(key)` 使用同一套解析，因此 workmate library（`mpd_workmate_init base=...`）、`mpd_modelchain_resolve` 与 roster 工具都能互换地接受 team 名称与 id。
 
 ## Team mode
 

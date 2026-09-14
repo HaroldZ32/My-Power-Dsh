@@ -1,0 +1,18 @@
+{
+  "ok": false,
+  "exit": 0,
+  "assertion": "harness-recorded tool/call + non-error tool/result whose returned text carries the indexed source",
+  "initOk": true,
+  "tool": {
+    "name": "mcp__codegraph__codegraph_explore",
+    "called": false,
+    "succeeded": false,
+    "calls": [],
+    "resultChars": 0,
+    "reason": "the harness recorded no tool/call for mcp__codegraph__codegraph_explore (answer-only narration is not tool evidence)"
+  },
+  "resultHasNorm": false,
+  "sessionFile": "/tmp/mpd-dsh-qa-2gqyAn/sessions/--tmp-mpd-dsh-qa-2gqyAn-ws--/session-c0dceb5d-c662-4c70-9c77-6abb549b14da/session.v3.jsonl.zstd",
+  "sessionError": null,
+  "outHasToolName": true
+}

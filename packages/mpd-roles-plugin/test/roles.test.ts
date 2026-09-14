@@ -54,6 +54,39 @@ test("normalizeRoleKey: canonical, chain keys and legacy mpd- ids", () => {
   expect(normalizeRoleKey("")).toBeNull()
 })
 
+/**
+ * The name-unification contract: the roster's normal display names are the SAME
+ * names team mode gives its members, so a non-team caller addresses a role with
+ * the team word — in any case or separator spelling — and never has to learn the
+ * stable ids to do it. Every name must resolve, to its OWN id.
+ */
+test("normalizeRoleKey: team-style normal names resolve to the same role as their id", () => {
+  for (const r of ROLES) {
+    expect(normalizeRoleKey(r.name), r.name).toBe(r.id)
+    expect(normalizeRoleKey(r.name.toLowerCase()), r.name).toBe(r.id)
+    expect(normalizeRoleKey(r.name.toUpperCase()), r.name).toBe(r.id)
+    expect(normalizeRoleKey(r.name.replaceAll(" ", "-")), r.name).toBe(r.id)
+    expect(normalizeRoleKey(r.name.replaceAll(" ", "_")), r.name).toBe(r.id)
+    expect(normalizeRoleKey(r.name.replaceAll(" ", "")), r.name).toBe(r.id)
+  }
+  expect(normalizeRoleKey("Deep Worker")).toBe("hephaestus")
+  expect(normalizeRoleKey("  plan reviewer  ")).toBe("momus")
+  expect(normalizeRoleKey("Vision Analyst")).toBe("multimodal-looker")
+})
+
+test("a one-shot spawn is labelled with the team-style normal name, not the id", async () => {
+  const { tools, spawned, exec } = makePlugin()
+  const spawn = tools.find((t) => t.name === "mpd_role_spawn")
+  const byName = await spawn.execute({ role: "Deep Worker", task: "implement Y" }, exec)
+  expect(spawned[0].label).toBe("Deep Worker")
+  expect(byName.role).toBe("Deep Worker")
+  expect(byName.id).toBe("hephaestus")
+  const byId = await spawn.execute({ role: "momus", task: "review the plan" }, exec)
+  expect(spawned[1].label).toBe("Plan Reviewer")
+  expect(byId.role).toBe("Plan Reviewer")
+  expect(byId.id).toBe("momus")
+})
+
 test("mpdRoles service: list 11, get resolves aliases, unknown is null", () => {
   const { provided } = makePlugin()
   const svc = provided.mpdRoles
@@ -62,6 +95,7 @@ test("mpdRoles service: list 11, get resolves aliases, unknown is null", () => {
   const o = svc.get("mpd-prometheus")
   expect(o.id).toBe("prometheus")
   expect(o.readonly).toBe(true)
+  expect(svc.get("Architect").id).toBe("oracle")
   expect(svc.get("missing")).toBeNull()
 })
 
@@ -69,8 +103,10 @@ test("mpd_role_persona returns the extracted persona text", async () => {
   const { tools } = makePlugin()
   const tool = tools.find((t) => t.name === "mpd_role_persona")
   const res = await tool.execute({ role: "oracle" }, {})
-  expect(res.role).toBe("oracle")
+  expect(res.role).toBe("Architect")
+  expect(res.id).toBe("oracle")
   expect(res.persona).toContain("read-only")
+  expect(res.persona).toContain("the Architect")
   expect(res.chars).toBe(res.persona.length)
 })
 

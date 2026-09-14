@@ -347,6 +347,12 @@ async function apply(ctx) {
   const roles = ctx.get?.("mpdRoles");
   const ids = (roles?.list?.() ?? []).map((r) => r.id);
   console.log("[roles-probe] ROSTER=" + ids.join(","));
+  const byName = ids.map((id) => {
+    const name2 = String((roles?.list?.() ?? []).find((r) => r.id === id)?.name ?? "");
+    const resolved = roles?.get?.(name2);
+    return resolved?.id === id ? name2 : name2 + "!=" + String(resolved?.id);
+  });
+  console.log("[roles-probe] ROSTER_NAMES=" + byName.join(","));
   const LIVE_TOOLS = [
     "agent_teams_interject_request",
     "agent_teams_interject_decide",

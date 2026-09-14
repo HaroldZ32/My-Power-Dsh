@@ -14,7 +14,6 @@
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
-import { randomUUID } from "node:crypto"
 import { createDshAdapter, workspaceRootOf, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-workmate"
@@ -602,7 +601,11 @@ export function apply(ctx: Ctx): void {
       noteSpawnStart(key)
       try {
         const result = await dsh.spawnAgent({
-          label: "workmate-" + key + "-" + randomUUID().slice(0, 8),
+          // Name unification: the workmate's OWN name is the label — the same word a
+          // team member would carry (a team member is added under the workmate name so
+          // its persona/memory are injected). Never a `workmate-<key>-<random>` alias:
+          // one agent, one name, on every surface.
+          label: key,
           prompt,
           parent: exec.agent,
           signal: exec.signal,

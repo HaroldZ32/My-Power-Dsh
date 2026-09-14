@@ -1,0 +1,41 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/node_modules/.bun/@colbymchenry+codegraph@1.5.0/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/tmp/mpd-dsh-qa-FaceXh/ws
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/dist/mpd-package/skills (provider mpd-bundle, bundle 0.3.2)
+[CodeGraph MCP] Shared daemon unavailable; serving this session in-process (degraded).
+dsh: reasoning:
+The user asks: "Do only one thing: list all available tool names in your current session that start with the mcp__ prefix (one per line). Do not call any tools."
+
+So I just list them from the function definitions. Let me scan:
+
+- mcp__ast_grep__rewrite
+- mcp__ast_grep__scan
+- mcp__ast_grep__search
+- mcp__codegraph__codegraph_explore
+- mcp__context7__query-docs
+- mcp__context7__resolve-library-id
+- mcp__grep_app__searchGitHub
+- mcp__lsp__diagnostics
+- mcp__lsp__find_references
+- mcp__lsp__goto_definition
+- mcp__lsp__install_decision
+- mcp__lsp__prepare_rename
+- mcp__lsp__rename
+- mcp__lsp__status
+- mcp__lsp__symbols
+
+That's 15. List one per line. No tool calls.
+mcp__ast_grep__rewrite
+mcp__ast_grep__scan
+mcp__ast_grep__search
+mcp__codegraph__codegraph_explore
+mcp__context7__query-docs
+mcp__context7__resolve-library-id
+mcp__grep_app__searchGitHub
+mcp__lsp__diagnostics
+mcp__lsp__find_references
+mcp__lsp__goto_definition
+mcp__lsp__install_decision
+mcp__lsp__prepare_rename
+mcp__lsp__rename
+mcp__lsp__status
+mcp__lsp__symbols

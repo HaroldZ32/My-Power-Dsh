@@ -33,14 +33,29 @@ Offline-built MCP server that serves the CodeGraph tool surface
   vendor gate (`scripts/verify-vendor.mjs`), so a marked delta there would either fail
   the gate or turn it into a self-attestation
   (`evidence/wave3/registry-redesign/t1-decision-record.txt` §A4).
+- **Shared-daemon policy (`daemon-policy.mjs`)**: the adopted server can serve a session from a
+  per-project-root SHARED daemon (`<projectRoot>/.codegraph/daemon.{sock,pid}`) or from its own
+  in-process engine. The daemon is lost for reasons the session cannot control — upstream reaps it
+  after 30 idle minutes even with a client attached (`DEFAULT_MAX_IDLE_MS`), a `codegraph daemon`
+  stop SIGTERMs it, and the pid-liveness rendezvous cannot be trusted from a PID namespace — and the
+  lost connection is reported as `[CodeGraph MCP] Shared daemon connection lost; serving this session
+  in-process (degraded), re-serving 0 in-flight request(s).` This bundle therefore defaults to
+  **in-process serving** (no daemon, no line; `.codegraph/codegraph.db` is still shared between
+  sessions — only the engine/watcher is per session). `MPD_CODEGRAPH_DAEMON=1` restores upstream's
+  shared daemon, `=0` states the default explicitly, and an explicit `CODEGRAPH_NO_DAEMON=1`
+  (upstream's own opt-out) is never overridden. The launcher applies the policy BEFORE importing
+  `dist/serve.js`, because the vendored bridge freezes the child env at load time.
 - Pair with `mpd-codegraph-plugin` (project index init) and `mcp-codegraph` row.
 
 ## Proof
 
 `evidence/wave3/codegraph-degrade-and-applytime/` — `degrade-launcher.mjs` drives the
-real MCP child with the genuinely read-only `$HOME/.mdp`: the pre-fix launcher dies
+real MCP child with the genuinely read-only `$HOME/.mpd`: the pre-fix launcher dies
 uncaught with `ENOENT: ... mkdir '<home>/.mpd/codegraph'` and answers no MCP request,
 while the fixed launcher exits 0 and answers `initialize` / `tools/list` (0 tools).
+`evidence/mpd-defects-2/raw/codegraph-daemon-probe.mjs` is the two-sided daemon proof: arm A
+(default) answers `initialize`/`tools/call` from its own engine with NO daemon artifacts and no
+`Shared daemon` line, while arm B (`MPD_CODEGRAPH_DAEMON=1`) takes upstream's daemon path.
 
 ## Usage
 

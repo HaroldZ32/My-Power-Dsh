@@ -277,3 +277,25 @@ KP-05/F7 class statement remains correct.
 **t16's F3 is superseded** (labels now read MPD at `ast_grep_helper.py:205/:250` and
 `AGENTS.md:23`; `git grep -n omo_ -- skills/ast-grep` is empty) and **G9's count staleness** (3 -> 9
 untracked evidence entries, by design) is recorded, not repaired.
+
+## R18 — two corrections about the t20 `codegraph-smoke` note (one of them the captain's own error)
+
+**The captain's error, corrected within minutes.** While checking t20's claim the captain ran
+`grep ... dist/mpd-package/packages/mpd-bundle/cordis.patch.yml || echo "(row ABSENT ...)"` — a path
+that does NOT exist (pack-mpd writes the packed patch at the PACKAGE ROOT), so the `||` branch printed
+a false "ABSENT" and the captain briefly reported a confirmed packaging defect. Re-measured at the
+correct path: `dist/mpd-package/cordis.patch.yml:191-192` carries `id: mpd-team-compact`, the packed
+patch has 22 rows matching the 22 source rows with NO missing id, and
+`dist/mpd-package/packages/mpd-team-compact-plugin/dist/index.js` is present. The `|| echo` idiom is
+a trap: an absent PATH and an absent PATTERN print the same message. Verify the path exists first.
+
+**t20's attribution is therefore also false, while its observation is true.** `codegraph-smoke` IS
+red right now (captain re-ran it: `evidence/dsh-qa/codegraph/2026-09-14T10-35-00.286Z`, `ok=false`,
+exit 0; the newest recorded PASS is `08-56-10.102Z`), but NOT because pack-mpd omits a row. The case's
+`ok` requires four conditions (`run.status === 0`, `/init status=(ok|marker)/`, the literal
+`/mcp__codegraph__codegraph_explore/` in the captured output, and `/norm|x<0/`): the log shows
+`[mpd-codegraph] init status=ok` and a correct answer containing `norm` and `x<0`, so the failing
+condition is the literal TOOL-NAME string, which the captured transcript no longer contains. That is
+a QA-assertion/transcript drift (the same class as the earlier ones), not a product regression and
+not a packaging gap — it needs its own short diagnosis and must NOT be folded into the landed naming
+wave, whose own gates are green.

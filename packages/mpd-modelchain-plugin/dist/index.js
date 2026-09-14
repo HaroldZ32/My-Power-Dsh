@@ -410,8 +410,8 @@ function apply(ctx, config = {}) {
   }
   dsh.registerTool({
     name: "mpd_modelchain_resolve",
-    description: "Resolve the DeepSeek provider/model route for an upstream role (sisyphus/sisyphus-junior/oracle/atlas/prometheus/librarian/explore/metis/momus/multimodal-looker/hephaestus) from the adapted fallback chains.",
-    parameters: { type: "object", properties: { role: { type: "string", description: "upstream agent role name" } }, required: ["role"] },
+    description: "Resolve the DeepSeek provider/model route for a roster role, addressed by its normal name (Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer, Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer) or its stable id (sisyphus/sisyphus-junior/oracle/atlas/prometheus/librarian/explore/metis/momus/multimodal-looker/hephaestus) — the same names team mode uses. Chains come from the mpd-roles roster, with the adapted fallback chains behind them.",
+    parameters: { type: "object", properties: { role: { type: "string", description: 'roster role: normal name ("Architect", "Deep Worker") or stable id ("oracle", "hephaestus")' } }, required: ["role"] },
     output: {
       schema: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" }, chain: { type: "array", items: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" } }, required: [] } } }, required: ["provider", "model"] },
       render: (_args, value) => [{ type: "text", text: "role=" + _args?.role + " -> " + value.provider + "/" + value.model + " (chain " + value.chain.length + " entries)" }]

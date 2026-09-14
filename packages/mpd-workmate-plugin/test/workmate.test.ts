@@ -147,12 +147,16 @@ test("spawn carries persona+memory+note, reflect instruction, readonly deny, own
   expect(prompt).toContain("mpd_workmate_reflect")
   expect(prompt).toContain("verified")
   expect(opts.toolFilter).toBeUndefined() // non-readonly workmate keeps write tools
+  // Name unification: the subagent is labelled with the workmate's OWN name — the
+  // same word a team member would carry — never a `workmate-<key>-<random>` alias.
+  expect(opts.label).toBe("alice")
 
   // readonly base → deny write tools
   await byName("mpd_workmate_init").execute({ base: "librarian", name: "bob" }, exec)
   const readonlyOut = await byName("mpd_workmate_spawn").execute({ name: "bob", task: "search evidence" }, exec)
   expect(readonlyOut.status).toBe("complete")
   expect(spawned[1].toolFilter).toEqual({ deny: expect.arrayContaining(["write", "edit"]) })
+  expect(spawned[1].label).toBe("bob")
 })
 
 test("workmate library root is under HOME and not in cwd", () => {

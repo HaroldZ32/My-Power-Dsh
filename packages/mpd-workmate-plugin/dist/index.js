@@ -2,7 +2,6 @@
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { randomUUID } from "node:crypto";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { resolve } from "node:path";
@@ -864,7 +863,7 @@ Work with the tools your role requires (read-only workmates must never modify an
       noteSpawnStart(key);
       try {
         const result = await dsh.spawnAgent({
-          label: "workmate-" + key + "-" + randomUUID().slice(0, 8),
+          label: key,
           prompt,
           parent: exec.agent,
           signal: exec.signal,

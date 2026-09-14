@@ -33,6 +33,7 @@
 // stdout: if the first attempt already emitted MCP bytes, a second attempt would
 // corrupt the stream, so that case is reported and exits 1.
 import { resolveCodegraphBinary } from "../mpd-mcp-shared/bin-resolve.mjs"
+import { applyDaemonPolicy } from "./daemon-policy.mjs"
 
 if ((process.env.MPD_CODEGRAPH_BIN ?? "").trim().length === 0) {
   try {
@@ -46,6 +47,11 @@ if ((process.env.MPD_CODEGRAPH_BIN ?? "").trim().length === 0) {
 /** Path-looking sentinel: never a real binary, so the adopted resolver reports
  *  `exists: false` with `source: "env"` and the provisioning path is skipped. */
 const UNAVAILABLE_SENTINEL = "/nonexistent/mpd-codegraph-unavailable"
+
+// Shared-daemon policy (see daemon-policy.mjs for the measured defect this closes).
+// It must run BEFORE `dist/serve.js` is imported: the bridge freezes the child env
+// from this process's env at import/start time.
+const daemon = applyDaemonPolicy(process.env, { log: (line) => process.stderr.write(line + "\n") })
 
 function stderrText(error) {
   if (error instanceof Error) return error.stack ?? error.message

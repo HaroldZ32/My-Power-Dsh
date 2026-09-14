@@ -2,7 +2,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve as resolve2 } from "node:path";
 import { fileURLToPath } from "node:url";
-import { randomUUID } from "node:crypto";
 
 // packages/mpd-roles-plugin/src/roles.data.ts
 var ROLES = [
@@ -478,6 +477,13 @@ function textBlock2(text) {
 function pkgRoot() {
   return dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))));
 }
+function normalizeRoleNameKey(name2) {
+  return String(name2 ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+var ROLE_ID_BY_NAME_KEY = Object.fromEntries(ROLES.map((r) => [normalizeRoleNameKey(r.name), r.id]));
+function rosterNameList() {
+  return ROLES.map((r) => r.name + " (" + r.id + ")").join(", ");
+}
 function normalizeRoleKey(key) {
   const k = String(key ?? "").trim();
   if (!k)
@@ -490,7 +496,7 @@ function normalizeRoleKey(key) {
     return "sisyphus-junior";
   if (k === "multimodalLooker")
     return "multimodal-looker";
-  return null;
+  return ROLE_ID_BY_NAME_KEY[normalizeRoleNameKey(k)] ?? null;
 }
 function personaPath(config, spec) {
   return config.personasDir ? join(resolve2(config.personasDir), spec.id + ".md") : join(pkgRoot(), "packages", "mpd-roles-plugin", "personas", spec.id + ".md");
@@ -520,18 +526,18 @@ function apply(ctx, config = {}) {
   });
   dsh.registerTool({
     name: "mpd_roles_list",
-    description: "List the specialist roster (ids → normal display names): Architect(oracle), Researcher(librarian), Planner(prometheus), Deep Worker(hephaestus), Senior Engineer(sisyphus), Lead(atlas), Explorer(explore), Reviewer(metis), Plan Reviewer(momus), Vision Analyst(multimodal-looker), Junior Engineer(sisyphus-junior). Use before mpd_role_spawn. Team mode uses the dsh-agent-teams profiles (agent_teams_create profile=mpd).",
+    description: 'List the specialist roster: Architect (oracle), Researcher (librarian), Planner (prometheus), Deep Worker (hephaestus), Senior Engineer (sisyphus), Lead (atlas), Explorer (explore), Reviewer (metis), Plan Reviewer (momus), Vision Analyst (multimodal-looker), Junior Engineer (sisyphus-junior). These are the SAME normal names the team mode stages as teammates, so address a role by its name ("Architect", "Deep Worker") or its stable id ("oracle", "hephaestus") — both work everywhere. Use this before mpd_role_spawn; for team work use agent_teams_create profile=mpd instead of repeated one-shot spawns.',
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { roles: { type: "array", items: { type: "object" } }, count: { type: "integer" } }, required: ["roles", "count"] }, render: (_a, v) => textBlock2("roster (" + v.count + `):
-` + v.roles.map((r) => "- " + r.id + " [" + r.model + (r.readonly ? " readonly" : "") + "] " + r.description).join(`
+` + v.roles.map((r) => "- " + r.name + " (" + r.id + ") [" + r.model + (r.readonly ? " readonly" : "") + "] " + r.description).join(`
 `)) },
     execute: async () => ({ roles: ROLES.map((r) => ({ id: r.id, name: r.name, description: r.description, readonly: r.readonly, provider: r.chain[0]?.provider ?? null, model: r.chain[0]?.model ?? null })), count: ROLES.length })
   });
   dsh.registerTool({
     name: "mpd_role_spawn",
-    description: "Spawn one specialist as a one-shot subagent with its roster persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Use ids from mpd_roles_list: Architect(oracle), Researcher(librarian), Planner(prometheus), Deep Worker(hephaestus), Senior Engineer(sisyphus), Lead(atlas), Explorer(explore), Reviewer(metis), Plan Reviewer(momus), Vision Analyst(multimodal-looker), Junior Engineer(sisyphus-junior). For multi-member team work prefer the adopted dsh-agent-teams protocol (agent_teams_create + agent_teams_add_member), not repeated one-shot spawns.",
-    parameters: { type: "object", properties: { role: { type: "string", description: "roster role id (mpd_roles_list)" }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" }, model: { type: "string", description: "optional model override (default: the role's primary route)" } }, required: ["role", "task"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a, v) => textBlock2("role " + v.role + " (" + v.status + `)
+    description: "Spawn one specialist as a one-shot subagent with its roster persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Name the role exactly as the team mode would — its normal name (Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer, Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer) or, equivalently, its stable id (oracle, librarian, prometheus, hephaestus, sisyphus, atlas, explore, metis, momus, multimodal-looker, sisyphus-junior); the spawned subagent is labelled with that normal name. For multi-member team work prefer the adopted dsh-agent-teams protocol (agent_teams_create + agent_teams_add_member), not repeated one-shot spawns.",
+    parameters: { type: "object", properties: { role: { type: "string", description: 'roster role: normal name ("Architect", "Deep Worker") or stable id ("oracle", "hephaestus") — see mpd_roles_list' }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" }, model: { type: "string", description: "optional model override (default: the role's primary route)" } }, required: ["role", "task"], additionalProperties: false },
+    output: { schema: { type: "object", properties: { role: { type: "string" }, id: { type: "string" }, status: { type: "string", enum: ["complete"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "id", "status", "summary"] }, render: (_a, v) => textBlock2("role " + v.role + " (" + v.id + ", " + v.status + `)
 summary: ` + v.summary + (v.recommendation ? `
 recommendation: ` + v.recommendation : "") + (v.details ? `
 details: ` + v.details : "") + (v.evidence?.length ? `
@@ -541,7 +547,7 @@ evidence:
     execute: async (args, exec) => {
       const id = normalizeRoleKey(String(args?.role ?? ""));
       if (!id)
-        throw new Error("mpd_role_spawn: unknown role '" + String(args?.role) + "' — call mpd_roles_list first");
+        throw new Error("mpd_role_spawn: unknown role '" + String(args?.role) + "' — use a roster name or id: " + rosterNameList());
       const spec = ROLE_BY_ID[id];
       const task = String(args?.task ?? "").trim();
       if (!task)
@@ -558,7 +564,7 @@ Context:
 
 Work with the tools your role requires (read-only roles must never modify anything). End with ONLY the structured report (role/summary/recommendation/details/evidence).`;
       const result = await dsh.spawnAgent({
-        label: "role-" + id + "-" + randomUUID().slice(0, 8),
+        label: spec.name,
         prompt,
         parent: exec.agent,
         signal: exec.signal,
@@ -569,27 +575,29 @@ Work with the tools your role requires (read-only roles must never modify anythi
         ...spec.readonly ? { toolFilter: { deny: READONLY_DENY } } : {}
       });
       const st = result.structured ?? {};
-      return { role: id, status: "complete", summary: String(st.summary ?? ""), recommendation: String(st.recommendation ?? ""), details: String(st.details ?? ""), evidence: Array.isArray(st.evidence) ? st.evidence.map(String) : [], stopReason: result.stopReason ?? null };
+      return { role: spec.name, id: spec.id, status: "complete", summary: String(st.summary ?? ""), recommendation: String(st.recommendation ?? ""), details: String(st.details ?? ""), evidence: Array.isArray(st.evidence) ? st.evidence.map(String) : [], stopReason: result.stopReason ?? null };
     }
   });
   dsh.registerTool({
     name: "mpd_role_persona",
-    description: "Return the full persona text of one roster role. Use it when a spawn surface takes the persona as TEXT (e.g. agent_teams_add_member persona=...), so the member gets the real role instructions instead of a bare id.",
-    parameters: { type: "object", properties: { role: { type: "string" } }, required: ["role"] },
-    output: { schema: { type: "object", properties: { role: { type: "string" }, persona: { type: "string" }, chars: { type: "integer" } }, required: ["role", "persona", "chars"] }, render: (_a, v) => textBlock2("persona " + v.role + " (" + v.chars + ` chars):
+    description: 'Return the full persona text of one roster role, addressed by its normal name ("Architect", "Deep Worker") or its stable id ("oracle", "hephaestus"). Use it when a spawn surface takes the persona as TEXT — e.g. an agent_teams_add_member member whose name is the same normal name — so the member gets the real role instructions instead of a bare id.',
+    parameters: { type: "object", properties: { role: { type: "string", description: "roster role: normal name or stable id (see mpd_roles_list)" } }, required: ["role"] },
+    output: { schema: { type: "object", properties: { role: { type: "string" }, id: { type: "string" }, persona: { type: "string" }, chars: { type: "integer" } }, required: ["role", "id", "persona", "chars"] }, render: (_a, v) => textBlock2("persona " + v.role + " (" + v.id + ", " + v.chars + ` chars):
 ` + v.persona) },
     execute: async (args) => {
       const id = normalizeRoleKey(String(args?.role ?? ""));
       if (!id)
-        throw new Error("mpd_role_persona: unknown role '" + String(args?.role) + "'");
+        throw new Error("mpd_role_persona: unknown role '" + String(args?.role) + "' — use a roster name or id: " + rosterNameList());
       const persona = readPersona(config, ROLE_BY_ID[id]);
-      return { role: id, persona, chars: persona.length };
+      return { role: ROLE_BY_ID[id].name, id, persona, chars: persona.length };
     }
   });
 }
 export {
+  rosterNameList,
   readPersona,
   pkgRoot,
+  normalizeRoleNameKey,
   normalizeRoleKey,
   name,
   inject,

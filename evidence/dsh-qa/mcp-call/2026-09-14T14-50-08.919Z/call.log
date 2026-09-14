@@ -1,0 +1,14 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/node_modules/.bun/@colbymchenry+codegraph@1.5.0/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/tmp/mpd-dsh-qa-VdcZaN/ws
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/dist/mpd-package/skills (provider mpd-bundle, bundle 0.3.2)
+dsh: reasoning:
+Report the tool's returned content verbatim.
+
+Note: the tool result content — I should report verbatim. The result was JSON. I'll present it as-is.
+The tool returned this content verbatim:
+
+```json
+{"schemaVersion":1,"ok":true,"kind":"search","workdir":"/tmp/mpd-dsh-qa-VdcZaN/ws","matches":[{"path":"tests/mcp-fixtures/sample.c","language":"c","text":"return 0;","range":{"start":{"line":1,"column":17,"byteOffset":17},"end":{"line":1,"column":26,"byteOffset":26}},"metavariables":{"single":{},"multi":{}}}],"counts":{"returnedMatches":1,"returnedFiles":1,"totalMatches":1,"totalFiles":1,"atLeastMatches":1},"truncation":{"truncated":false,"reason":null,"maxMatches":50,"maxPayloadBytes":4194304,"salvagedRecords":0},"warnings":[],"durationMs":192}
+```
+
+Summary of the returned data: exactly 1 match of `return 0;` on line 1 (columns 17–26, byte offsets 17–26) in `tests/mcp-fixtures/sample.c`; no truncation and no warnings. No bash tool was used.

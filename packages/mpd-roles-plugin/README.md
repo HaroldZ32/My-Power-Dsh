@@ -24,15 +24,29 @@ discipline.
 
 - `mpdRoles` service (`ctx.get("mpdRoles")`): `list()` / `get(key)` — consumed by
   `mpd-modelchain-plugin` (chain lookup).
-- `mpd_roles_list` — the roster (ids → normal names).
+- `mpd_roles_list` — the roster, printed name-first as `Architect (oracle)`.
 - `mpd_role_spawn` — one-shot consult: spawn one role as a subagent (roster
-  persona + route + write-deny toolFilter for read-only roles).
+  persona + route + write-deny toolFilter for read-only roles). The spawned
+  subagent is **labelled with the role's normal name** (`Architect`,
+  `Deep Worker`), never with `role-<id>-<random>`.
 - `mpd_role_persona` — fetch the persona text for spawn surfaces that take
   persona as text (e.g. `agent_teams_add_member`).
 
-Role keys accept the canonical id (`oracle`, `sisyphus-junior`), the
-modelchain-style key (`sisyphusJunior`, `multimodalLooker`) and the legacy
-`mpd-<id>` preset alias.
+**One vocabulary for both surfaces (name unification).** The normal display name
+is the role's user-facing identity: it is the member name agent-teams stages in
+team mode, and it is the label a solo `mpd_role_spawn` produces. Every role key
+therefore accepts, in this order:
+
+- the normal name — any spelling of it: `Architect`, `architect`, `Deep Worker`,
+  `deep-worker`, `deepworker`, `Plan Reviewer` (case-, space-, hyphen- and
+  underscore-insensitive);
+- the canonical id (`oracle`, `sisyphus-junior`);
+- the modelchain-style chain key (`sisyphusJunior`, `multimodalLooker`);
+- the legacy `mpd-<id>` preset alias.
+
+The same resolution is what `ctx.get("mpdRoles").get(key)` uses, so the workmate
+library (`mpd_workmate_init base=...`), `mpd_modelchain_resolve` and the roster
+tools all take the team word and the id interchangeably.
 
 ## Team mode
 

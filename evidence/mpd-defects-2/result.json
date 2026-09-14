@@ -1,0 +1,74 @@
+{
+  "wave": "defects-2",
+  "checkedAt": "2026-09-14T14:59:11Z",
+  "head": "2aa0c50",
+  "scope": "the reported CodeGraph 'Shared daemon connection lost' line, the red codegraph-smoke case, the same assertion-drift class in mcp-call, and the unification of non-team agent names with the team-style roster names",
+  "defects": [
+    {
+      "id": "D1-codegraph-daemon-line",
+      "symptom": "[CodeGraph MCP] Shared daemon connection lost; serving this session in-process (degraded), re-serving 0 in-flight request(s). reported on the CLI",
+      "rootCause": "upstream graceful fallback (its own #662): the adopted server proxies to a per-project-root SHARED daemon (<root>/.codegraph/daemon.{sock,pid}), and the daemon is lost for reasons the session cannot control — upstream reaps it after 30 idle minutes even with a client attached (DEFAULT_MAX_IDLE_MS), a 'codegraph daemon' stop SIGTERMs it, and the rendezvous is pid-liveness based so a PID-namespaced/sandboxed host reads a LIVE daemon's pid lock as stale",
+      "fix": "packages/mpd-mcp-codegraph/daemon-policy.mjs — the launcher now defaults the child to in-process serving (no daemon, no line; .codegraph/codegraph.db is still shared across sessions). MPD_CODEGRAPH_DAEMON=1 restores upstream's shared daemon, =0 states the default, and an explicit CODEGRAPH_NO_DAEMON=1 is never overridden. Applied BEFORE dist/serve.js is imported, because the vendored bridge freezes the child env at load time.",
+      "proof": {
+        "probe": "raw/codegraph-daemon-probe.mjs",
+        "arms": "A (default): tool answered from the session engine, ZERO daemon artifacts for the indexed project root, no 'Shared daemon' line, policy notice present. B (MPD_CODEGRAPH_DAEMON=1): no policy notice, tool still served.",
+        "unproven": "the daemon-visible half of arm B — upstream's detached daemon did not materialize a socket in this sandbox in EITHER arm (independently reproduced: `codegraph serve --mcp` here prints no daemon notice and creates no socket). Recorded as unproven rather than claimed.",
+        "unit": "packages/mpd-mcp-codegraph/test/daemon-policy.test.mjs (9 tests: value parsing, default, both explicit forms, upstream-opt-out precedence, warning path, one-notice rule, launcher ordering, and the bridge allowlist forwarding invariant)"
+      }
+    },
+    {
+      "id": "D2-codegraph-smoke-red",
+      "symptom": "evidence/dsh-qa/codegraph/2026-09-14T10-35-00.286Z — ok=false, exit 0, init status=ok",
+      "rootCause": "two independent problems. (a) The verdict asserted the tool-name literal against the model's ANSWER TEXT, so a run that really called the tool but narrated only its result went RED (and a run that merely named the tool went GREEN: evidence/dsh-qa/codegraph/2026-09-14T08-56-10.102Z reported an error result yet passed). (b) The prompt never named the indexed project, and the session workspace is a /tmp sandbox which CodeGraph refuses to query, so the recorded tool result was the refusal text.",
+      "fix": "skills/dsh-qa/scripts/lib/session-evidence.mjs (new): read the HARNESS session store — <DSH_HOME>/sessions/<projectKey(cwd)>/<sessionId>/session.v3.jsonl.zstd, a CONCATENATED-ZSTD-FRAME container (one zstdDecompressSync call returns the header frame ONLY: 1 of 25 records on a real artifact; frames are located with the harness's own structure-only scan). codegraph-smoke now decides on a recorded tool/call + non-error tool/result carrying the indexed source, names the indexed projectPath explicitly, starts from a fresh fixture each run, and files the raw session log + decoded records + result text with the verdict.",
+      "proof": {
+        "red": "2026-09-14T10-35-00.286Z (prose assertion, tool result = refusal)",
+        "green": "evidence/dsh-qa/codegraph/2026-09-14T14-48-30.168Z — tool/call recorded with projectPath=<repo>/.cg-qa, non-error result 502 chars carrying the source",
+        "selfTest": "bun skills/dsh-qa/scripts/lib/session-evidence.mjs --self-test (multi-frame + plain stores, torn frame, tool list, both negative controls)"
+      }
+    },
+    {
+      "id": "D3-mcp-call-same-class",
+      "symptom": "mcp-call proved its two claims from the model's prose (/mcp____ast_grep__/ in the answer; /ast-grep|match/ and no BINARY_NOT_FOUND anywhere in the log)",
+      "rootCause": "narration-based assertions: a model that never called the tool could pass, and one that called it perfectly but summarised differently could fail",
+      "fix": "enum arm now asserts the tool list the request header actually carried (request/header.data.header.tools[]); call arm asserts a recorded tool/call to mcp__ast_grep__search plus a non-error tool/result carrying the fixture line. The prose checks remain in result.json as informational fields.",
+      "proof": "evidence/dsh-qa/mcp-call/2026-09-14T14-50-08.919Z — recordedToolCount=92 with all mcp__ tools, ast_grep call recorded, result carries \"text\":\"return 0;\""
+    },
+    {
+      "id": "D4-agent-name-unification",
+      "symptom": "a non-team spawn was labelled role-<id>-<random> and addressed by STABLE ID, while team members are named Architect / Deep Worker / … — one agent, two vocabularies",
+      "rootCause": "mpd-roles-plugin accepted only ids and built an id-based label; the workmate spawn prefixed its own name with workmate-<key>-<random>",
+      "fix": "the roster's normal display name is now the addressing vocabulary on every surface: normalizeRoleKey accepts the name in any case/space/hyphen/underscore spelling (plus the id, the legacy mpd-<id> alias and the camelCase chain key) and returns the stable id; mpd_role_spawn labels the child with the normal name; mpd_role_spawn / mpd_role_persona return {role: name, id}; mpd_roles_list renders name-first; mpd_workmate_spawn labels with the workmate's own name; the three personas that never stated their roster name (oracle/librarian/multimodal-looker) now do; mpd_modelchain_resolve documents the same vocabulary.",
+      "proof": {
+        "unit": "packages/mpd-roles-plugin/test/roles.test.ts (all 11 names resolve in 6 spellings each, label = normal name, persona returns name+id) + packages/mpd-workmate-plugin/test/workmate.test.ts (label = workmate name)",
+        "live": "evidence/dsh-qa/preset-register/2026-09-14T15-01-05.624Z/output.log: a MOUNTED boot prints [roles-probe] ROSTER_NAMES=Architect,Researcher,Planner,Deep Worker,Senior Engineer,Lead,Explorer,Reviewer,Plan Reviewer,Vision Analyst,Junior Engineer — every name resolved back to its OWN stable id through the mpdRoles service (a mismatch would print `Name!=id`)",
+        "gates": "bun test packages 419/0; bun run typecheck 0"
+      }
+    }
+  ],
+  "gates": {
+    "verify-vendor": "PASS (single skills/**: 298 files / f8ecfc55f82439f2016bb2a76d3f3775b61760cbac46baf31d8fbf77f168f15f, re-pinned in the SAME change; lockedAt 2026-09-14T14:59:11Z)",
+    "bun test packages": "419 pass / 0 fail",
+    "bun run typecheck": "exit 0",
+    "bun run test:qa": "all self-tests passed",
+    "patch-agent-teams-fixes --check": "already applied: 40 delta regions across 9 adopted files",
+    "pack-mpd": "staged package refreshed (1090 files)"
+  },
+  "files": [
+    "packages/mpd-mcp-codegraph/daemon-policy.mjs (new)",
+    "packages/mpd-mcp-codegraph/test/daemon-policy.test.mjs (new)",
+    "packages/mpd-mcp-codegraph/launch.mjs",
+    "packages/mpd-mcp-codegraph/README.md + README.zh-CN.md",
+    "packages/mpd-roles-plugin/src/index.ts + dist/index.js + test/roles.test.ts",
+    "packages/mpd-roles-plugin/personas/{oracle,librarian,multimodal-looker}.md",
+    "packages/mpd-roles-plugin/README.md + README.zh-CN.md",
+    "packages/mpd-modelchain-plugin/src/index.ts + dist/index.js",
+    "packages/mpd-workmate-plugin/src/index.ts + dist/index.js + test/workmate.test.ts",
+    "skills/dsh-qa/scripts/lib/session-evidence.mjs (new)",
+    "skills/dsh-qa/scripts/codegraph-smoke.mjs",
+    "skills/dsh-qa/scripts/mcp-call.mjs",
+    "skills/dsh-qa/SKILL.md",
+    "AGENTS.md (§7 harness-evidence rule; §12 codegraph daemon + role naming rows)",
+    "VENDOR_LOCK.json (single re-pin)"
+  ]
+}

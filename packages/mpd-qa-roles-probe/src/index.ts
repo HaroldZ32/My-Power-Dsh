@@ -13,7 +13,7 @@ export const name = "mpd-dsh-qa-roles-probe"
 // `ctx.tools` without declaring it reports `cannot get property "tools" without inject`
 // (measured, t52 mount proof) and the instrumentation silently reports nothing useful.
 export const inject = ["agentPresets", "tools"]
-type RolesService = { list(): Array<{ id: string }> }
+type RolesService = { list(): Array<{ id: string; name?: string }>; get?(key: string): { id: string } | null }
 const ROSTER_IDS = ["oracle", "librarian", "prometheus", "hephaestus", "sisyphus", "sisyphus-junior", "atlas", "explore", "metis", "momus", "multimodal-looker"]
 /** One corpus skill the probe loads to prove the provider serves real bodies. */
 const FIXTURE_SKILL = "svn-master"
@@ -55,6 +55,17 @@ export async function apply(ctx: { agentPresets: unknown; get?: (k: string) => a
   const roles = ctx.get?.("mpdRoles") as RolesService | undefined
   const ids = (roles?.list?.() ?? []).map((r) => r.id)
   console.log("[roles-probe] ROSTER=" + ids.join(","))
+  // Name-vocabulary instrumentation: the roster's NORMAL names are the addressing
+  // vocabulary every consumer shares with team mode, so the live boot proves BOTH that
+  // the names are served and that a name resolves to its own stable id through the
+  // service (the same resolution mpd_role_spawn / mpd_workmate_init / the modelchain
+  // resolver use). A name that stopped resolving would show up here as "Name!=id".
+  const byName = ids.map((id) => {
+    const name = String(((roles?.list?.() ?? []).find((r) => r.id === id) as { name?: string } | undefined)?.name ?? "")
+    const resolved = roles?.get?.(name) as { id?: string } | undefined
+    return resolved?.id === id ? name : name + "!=" + String(resolved?.id)
+  })
+  console.log("[roles-probe] ROSTER_NAMES=" + byName.join(","))
   // REGISTRATION INSTRUMENTATION for the AgentTeams tool surface. `--dump-config` only
   // COMPOSES rows and never executes plugin code (AGENTS.md §4), so it cannot witness a
   // registered tool; this reads the live registry from inside the mounted boot instead.
