@@ -1,0 +1,43 @@
+MEASURED_REV=a036ef324985959dfe9f94d9ef1183497454f725
+measured revision: dev = a036ef324985959dfe9f94d9ef1183497454f725 (docs(evidence): file this pass's QA runs, the health report, and the standing wave records)
+tree clean at measurement: 1 entries
+
+===== bun test packages =====
+packages/mpd-comment-checker-plugin/test/comment-checker.test.ts:
+
+ 399 pass
+ 0 fail
+ 2791 expect() calls
+Ran 399 tests across 90 files. [15.97s]
+===== typecheck =====
+$ tsgo --noEmit
+===== test:qa =====
+[test:qa] skills/dsh-qa/scripts/workmate-team-member.mjs
+[workmate-team-member self-test] ok: 6 checks
+[test:qa] all self-tests passed
+===== verify-vendor =====
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+===== dist-vs-src sweep =====
+mpd-bootstrap-plugin             MATCH
+mpd-boulder-plugin               MATCH
+mpd-bundle-plugin                MATCH
+mpd-codegraph-plugin             MATCH
+mpd-comment-checker-plugin       MATCH
+mpd-config-plugin                MATCH
+mpd-dsh-adapter-plugin           MATCH
+mpd-hashline-plugin              MATCH
+mpd-memory-plugin                MATCH
+mpd-modelchain-plugin            MATCH
+mpd-qa-roles-probe               MATCH
+mpd-roles-plugin                 MATCH
+mpd-team-compact-plugin          MATCH
+mpd-tools-plugin                 MATCH
+mpd-ulw-plugin                   MATCH
+mpd-workmate-plugin              MATCH
+
+===== bundle-lifecycle MOUNT =====
+evidence/dsh-qa/bundle-lifecycle/2026-09-14T05-40-33.855Z -> PASS (install/composed/boot+http/noHomeCopy/layerDurability/uninstall all ok)
+ADAPTER_SEAMS: [roles-probe] ADAPTER_SEAMS=tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,agents,events ABSENT=compaction,compactionForAgent
+roles-probe: [roles-probe] PASS
