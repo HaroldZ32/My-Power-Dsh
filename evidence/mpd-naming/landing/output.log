@@ -120,3 +120,9 @@ f0fef7c53345a6bb204f476af5d6c17f86e008a469de5bec334f7b13992c775a  raw/35-final-v
 ### correction (supersedes the 34 hash above): 34-remaining-uncommitted-path-list.txt regenerated AFTER 35-final-verify.log existed, so the list now includes every remaining path (itself included)
 34 lines: 1215 · sha256: d5e00b706144404bd061b9798a7136256adcc548e358d6fd34ea99c7612b512e
 composition: 1208 scratch + 7 landing-package files
+
+## ADDENDUM — captain-requested named artifacts
+landing-set.txt + t20-landing.json + ONE-COMMIT-PLAN.md generated at HEAD 26a4dd94aebc8da366339a062904e2bc1776c944 by raw/build-t20-named.mjs (read-only git).
+landing-set.txt: the wave set (196 entries vs 53d617e) grouped into 10 lanes + the uncommitted remainder + the lock<->skills pair verification.
+t20-landing.json: evidence index 1414 artifacts with sha256, per-asset lock summary (6 assets), gate summary with exit codes and per-row sources, R4 note, residual dispositions, and an explicit couldNotConfirm list.
+ONE-COMMIT-PLAN.md: state, the only remaining optional commit (1209 untracked), the R4 landing note, the three low residuals, the gate table + honesty note.
