@@ -1,0 +1,165 @@
+{
+  "schema": "mpd-omo-align-messaging-qa/1",
+  "task": "t36",
+  "case": "agent-teams-messaging",
+  "head": "7379e28bd1b610666d15b245c37edc7ec159d7cb",
+  "sandbox": "/tmp/mpd-t36-UqAbhZ",
+  "workspace": "/tmp/mpd-t36-UqAbhZ/ws",
+  "stateRoot": "/tmp/mpd-t36-UqAbhZ/ws/.mpd/team",
+  "settledFiles": {
+    "state_js": "fa7fe937f1895c472732fdfdc0b193fcb2281448133fd0b15a490f230fe0ae19",
+    "scheduler_js": "f9ec4a226511b420c660673ccc1838b99fa4c0ac548f4b0f19e0fcf865109011"
+  },
+  "loadEvidence": "mounted boot of the mpd preset in the sandbox home; --dump-config not cited",
+  "knownLimits": [
+    "The approval->auto-delivery path is probed at the STATE level: the approved request is re-posted as an ordinary message to the requester's inbox (the documented tool-wiring job) and the shipped predicate then delivers it. The tool-layer wiring that posts it AND drives the real scheduler idle edge for a spawned member is not driven here — it needs a long-lived captain session with live members, which the isolated headless environment cannot hold (same limitation recorded by t35)."
+  ],
+  "ok": true,
+  "steps": {
+    "surface": {
+      "ok": true,
+      "exports": 10,
+      "dedupWindowMs": 60000,
+      "interjectionTtlMs": 1800000,
+      "interjectionKind": "interjection-request",
+      "queue": "interjections"
+    },
+    "settled": {
+      "ok": true,
+      "head": "7379e28bd1b610666d15b245c37edc7ec159d7cb",
+      "stateSha": "fa7fe937f1895c472732fdfdc0b193fcb2281448133fd0b15a490f230fe0ae19",
+      "schedulerSha": "f9ec4a226511b420c660673ccc1838b99fa4c0ac548f4b0f19e0fcf865109011"
+    },
+    "installer": {
+      "ok": true,
+      "exit": 0,
+      "mpdPresetInstalled": true
+    },
+    "mountedBoot": {
+      "ok": true,
+      "exit": 1,
+      "credentialBlocked": true,
+      "crashSignatures": [],
+      "mountMarkers": 3,
+      "missingMarkers": [],
+      "loadEvidence": "real mount+boot of the mpd preset home; --dump-config is deliberately NOT cited (AGENTS.md §4)"
+    },
+    "isolation": {
+      "ok": true,
+      "checked": 1,
+      "keys": [
+        "--tmp-mpd-t36-UqAbhZ-ws--"
+      ],
+      "sessionsWritten": 1
+    },
+    "dedup": {
+      "ok": true,
+      "positive": {
+        "ok": true,
+        "sends": 3,
+        "folded": [
+          false,
+          true,
+          true
+        ],
+        "records": 1,
+        "dupCount": 3,
+        "unread": 1,
+        "windowMs": 60000
+      },
+      "negative": {
+        "ok": true,
+        "folded": false,
+        "records": 2,
+        "ids": [
+          "dedup-1",
+          "dedup-other"
+        ],
+        "otherDupCount": 1,
+        "foldedStillFolded": 3
+      }
+    },
+    "clear": {
+      "ok": true,
+      "positive": {
+        "ok": true,
+        "cleared": [
+          "clear-1",
+          "clear-2"
+        ],
+        "audit": {
+          "kind": "mailbox-cleared",
+          "agentKey": "captain",
+          "watermark": 500,
+          "clearedCount": 2,
+          "clearedIds": [
+            "clear-1",
+            "clear-2"
+          ],
+          "sidecar": "/tmp/mpd-t36-UqAbhZ/ws/clear-ws/.mpd/team/t36-messaging/inbox/archive/captain.500.jsonl",
+          "at": 1000000
+        },
+        "sidecar": "/tmp/mpd-t36-UqAbhZ/ws/clear-ws/.mpd/team/t36-messaging/inbox/archive/captain.500.jsonl",
+        "sidecarRecords": 2,
+        "tombstones": 2,
+        "idsSurvive": true,
+        "liveView": 1
+      },
+      "negative": {
+        "ok": true,
+        "idsSurvive": [
+          "clear-1",
+          "clear-2",
+          "clear-3"
+        ],
+        "liveLines": 3,
+        "payloadLocations": [
+          "clear-ws/.mpd/team/t36-messaging/inbox/archive/captain.500.jsonl"
+        ],
+        "hardDelete": false
+      }
+    },
+    "interjectionTtl": {
+      "ok": true,
+      "expired": [
+        "ij-ttl"
+      ],
+      "status": "expired",
+      "requester": "Lead",
+      "pendingLeft": 0
+    },
+    "interjection": {
+      "ok": true,
+      "positive": {
+        "ok": true,
+        "queued": 1,
+        "deliverableWhilePending": 0,
+        "notYetExpired": 0,
+        "status": "approved",
+        "gatedEvenAfterApproval": 1,
+        "requesterInboxAfterRepost": 1,
+        "requester": "Junior Engineer",
+        "deliveredId": "ij-1-delivery",
+        "expiresAt": 3800000
+      },
+      "negative": {
+        "ok": true,
+        "deliverableWhenKindBroken": 1,
+        "falsifiable": true
+      },
+      "spoofedRecord": "ij-1"
+    },
+    "vendorLock": {
+      "ok": true,
+      "before": {
+        "fileCount": 331,
+        "treeSha": "705651e65a887efedd882579f7df531c1df134d1ce765577e5d02949ded91aaa"
+      },
+      "after": {
+        "fileCount": 331,
+        "treeSha": "705651e65a887efedd882579f7df531c1df134d1ce765577e5d02949ded91aaa"
+      },
+      "gateExit": 0
+    }
+  }
+}

@@ -557,7 +557,22 @@ export async function clearMailboxToWatermark(stateRoot, teamId, agentKey, water
     };
     return { cleared: [...clearedIds], sidecar, audit };
 }
-/** Read only the records that are NOT tombstones (the live view after a clear). */
+/**
+ * Read only the records that are NOT tombstones (the live view after a clear).
+ *
+ * TEST-ONLY BY DESIGN (t52, closing review finding F-6). It has no production caller and
+ * should not grow one: the scheduler's delivery path composes
+ * `deliverableUnread(readUnreadMailbox(...))`, where the tombstone filter is carried
+ * INDEPENDENTLY by both `readUnreadMailbox` and `deliverableUnread`, and the claim/ack
+ * markers are handled by `claimMailboxDelivery`/`acknowledgeMailbox`. Routing the
+ * scheduler through this function instead would drop the lease semantics.
+ *
+ * It is kept because it is the clearest single-expression statement of the F-3
+ * invariant ("a cleared record is never live again") and the seam tests assert it
+ * directly (`test/r1-message-channel.test.mjs`, `test/t49-send-dedup-wiring.test.mjs`).
+ * Deleting it would remove a cheap, direct guard on a defect that has already escaped
+ * once, so it stays — explicitly labelled rather than left as an accidental orphan.
+ */
 export async function readLiveMailbox(stateRoot, teamId, agentKey) {
     return (await readMailbox(stateRoot, teamId, agentKey)).filter((message) => message.tombstone !== true);
 }

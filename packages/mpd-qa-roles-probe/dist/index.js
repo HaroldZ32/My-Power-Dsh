@@ -241,7 +241,7 @@ function createDshAdapter(ctx, config = {}) {
 
 // packages/mpd-qa-roles-probe/src/index.ts
 var name = "mpd-dsh-qa-roles-probe";
-var inject = ["agentPresets"];
+var inject = ["agentPresets", "tools"];
 var ROSTER_IDS = ["oracle", "librarian", "prometheus", "hephaestus", "sisyphus", "sisyphus-junior", "atlas", "explore", "metis", "momus", "multimodal-looker"];
 var FIXTURE_SKILL = "svn-master";
 var FIXTURE_SKILLS = ["ast-grep", "dsh-qa", "git-master", "programming", "svn-master"];
@@ -271,6 +271,35 @@ async function apply(ctx) {
   const roles = ctx.get?.("mpdRoles");
   const ids = (roles?.list?.() ?? []).map((r) => r.id);
   console.log("[roles-probe] ROSTER=" + ids.join(","));
+  const LIVE_TOOLS = [
+    "agent_teams_interject_request",
+    "agent_teams_interject_decide",
+    "agent_teams_mailbox_clear",
+    "agent_teams_send_message",
+    "agent_teams_update_task"
+  ];
+  try {
+    const tools = ctx.tools;
+    const seen = (name2) => {
+      if (tools === undefined)
+        return false;
+      if (typeof tools.get === "function")
+        return tools.get(name2) !== undefined;
+      if (typeof tools.has === "function")
+        return tools.has(name2);
+      return false;
+    };
+    const deadline = Date.now() + 15000;
+    while (Date.now() < deadline && !LIVE_TOOLS.every(seen)) {
+      await new Promise((resolve2) => setTimeout(resolve2, 250));
+    }
+    const present2 = LIVE_TOOLS.filter(seen);
+    const missing = LIVE_TOOLS.filter((name2) => !seen(name2));
+    console.log("[roles-probe] AGENT_TEAMS_TOOLS=" + present2.length + "/" + LIVE_TOOLS.length + (missing.length > 0 ? " MISSING=" + missing.join(",") : ""));
+    console.log("[roles-probe] AGENT_TEAMS_NEW_TOOLS_OK=" + (missing.length === 0));
+  } catch (e) {
+    console.log("[roles-probe] AGENT_TEAMS_TOOLS=fail:" + String(e?.message ?? e));
+  }
   let catalogOk = false;
   try {
     const summaries = await dsh.listSkills();
