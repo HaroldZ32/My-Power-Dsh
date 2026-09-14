@@ -1,0 +1,46 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/node_modules/.bun/@colbymchenry+codegraph@1.5.0/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/tmp/mpd-t52-mount-oNSlIi/ws
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+[roles-probe] PRESET_MPD=ok
+[roles-probe] PRESET_PATH=/root/dshProj/my-power-dsh/presets/mpd/agent.cordis.yml trust=system
+[roles-probe] ADAPTER_SEAMS=tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets
+[roles-probe] ADAPTER_TOOL_CALL=ok
+[roles-probe] ROSTER=oracle,librarian,prometheus,hephaestus,sisyphus,atlas,explore,metis,momus,multimodal-looker,sisyphus-junior
+[roles-probe] AGENT_TEAMS_TOOLS=fail:cannot get property "tools" without inject
+[roles-probe] SKILLS=19 BUNDLED=19 SKILL_FIXTURES=5/5
+[roles-probe] SKILL_FIXTURE=ok name=svn-master base=/root/dshProj/my-power-dsh/skills/svn-master bytes=5210
+[roles-probe] PASS
+file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1545
+		throw new Error(`${binName}: ${stage}: ${detail}${stack}`, { cause });
+		      ^
+
+Error: dsh: plugin tree failed to load: failed to apply loader entry include (cordis:include): failed to apply loader entry credentials (@deepseek-ai/dsh-credentials-local): credentials-local: /tmp/mpd-t52-mount-oNSlIi/.credentials.yaml is readable beyond its owner (mode 644); run "chmod 600 /tmp/mpd-t52-mount-oNSlIi/.credentials.yaml" before starting again
+Error: credentials-local: /tmp/mpd-t52-mount-oNSlIi/.credentials.yaml is readable beyond its owner (mode 644); run "chmod 600 /tmp/mpd-t52-mount-oNSlIi/.credentials.yaml" before starting again
+    at assertOwnerOnly (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:104:8)
+    at async LocalCredentialProvider.loadInitial (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:648:3)
+    at async [cordis.init] (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:446:3)
+    at file:///tmp/mpd-t52-mount-oNSlIi/profiles/headless/#credentials
+    at file:///tmp/mpd-t52-mount-oNSlIi/profiles/headless/#include
+    at boot (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1545:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async runProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:311:14)
+    at async runCli (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:146:4)
+    at async file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:168:23 {
+  [cause]: Error: failed to apply loader entry include (cordis:include): failed to apply loader entry credentials (@deepseek-ai/dsh-credentials-local): credentials-local: /tmp/mpd-t52-mount-oNSlIi/.credentials.yaml is readable beyond its owner (mode 644); run "chmod 600 /tmp/mpd-t52-mount-oNSlIi/.credentials.yaml" before starting again
+      at updateError (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:309:9)
+      at Entry._init (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:529:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    [cause]: Error: failed to apply loader entry credentials (@deepseek-ai/dsh-credentials-local): credentials-local: /tmp/mpd-t52-mount-oNSlIi/.credentials.yaml is readable beyond its owner (mode 644); run "chmod 600 /tmp/mpd-t52-mount-oNSlIi/.credentials.yaml" before starting again
+        at updateError (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:309:9)
+        at Entry._init (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:529:10) {
+      [cause]: Error: credentials-local: /tmp/mpd-t52-mount-oNSlIi/.credentials.yaml is readable beyond its owner (mode 644); run "chmod 600 /tmp/mpd-t52-mount-oNSlIi/.credentials.yaml" before starting again
+          at assertOwnerOnly (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:104:8)
+          at async LocalCredentialProvider.loadInitial (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:648:3)
+          at async [cordis.init] (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:446:3)
+          at file:///tmp/mpd-t52-mount-oNSlIi/profiles/headless/#credentials
+          at file:///tmp/mpd-t52-mount-oNSlIi/profiles/headless/#include
+    }
+  }
+}
+
+Node.js v24.16.0

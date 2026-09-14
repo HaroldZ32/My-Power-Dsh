@@ -1,0 +1,2 @@
+{"id":"ij-1","from":"Junior Engineer","to":"interjections","content":"body-after-approval","ts":2000000,"summary":"need the runbook","reason":"blocked on the gate","location":"t36","kind":"interjection-request","status":"approved","expiresAt":3800000,"decidedAt":2002000}
+{"id":"ij-ttl","from":"Lead","to":"interjections","content":"s","ts":2000000,"summary":"s","reason":"r","location":"t36","kind":"interjection-request","status":"expired","expiresAt":3800000,"decidedAt":3800000}

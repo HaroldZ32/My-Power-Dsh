@@ -8,7 +8,11 @@
 import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-dsh-qa-roles-probe"
-export const inject = ["agentPresets"]
+// `tools` is a REQUIRED dependency of the registration instrumentation below: an
+// agent-scoped cordis ctx throws on any property not in `inject`, so reading
+// `ctx.tools` without declaring it reports `cannot get property "tools" without inject`
+// (measured, t52 mount proof) and the instrumentation silently reports nothing useful.
+export const inject = ["agentPresets", "tools"]
 type RolesService = { list(): Array<{ id: string }> }
 const ROSTER_IDS = ["oracle", "librarian", "prometheus", "hephaestus", "sisyphus", "sisyphus-junior", "atlas", "explore", "metis", "momus", "multimodal-looker"]
 /** One corpus skill the probe loads to prove the provider serves real bodies. */
@@ -51,6 +55,41 @@ export async function apply(ctx: { agentPresets: unknown; get?: (k: string) => a
   const roles = ctx.get?.("mpdRoles") as RolesService | undefined
   const ids = (roles?.list?.() ?? []).map((r) => r.id)
   console.log("[roles-probe] ROSTER=" + ids.join(","))
+  // REGISTRATION INSTRUMENTATION for the AgentTeams tool surface. `--dump-config` only
+  // COMPOSES rows and never executes plugin code (AGENTS.md §4), so it cannot witness a
+  // registered tool; this reads the live registry from inside the mounted boot instead.
+  // The probe is QA-only tooling and may touch the seam directly, exactly as it already
+  // does for `agentPresets` above.
+  const LIVE_TOOLS = [
+    "agent_teams_interject_request",
+    "agent_teams_interject_decide",
+    "agent_teams_mailbox_clear",
+    "agent_teams_send_message",
+    "agent_teams_update_task",
+  ]
+  try {
+    const tools = (ctx as { tools?: { get?: (n: string) => unknown; has?: (n: string) => boolean } }).tools
+    const seen = (name: string): boolean => {
+      if (tools === undefined) return false
+      if (typeof tools.get === "function") return tools.get(name) !== undefined
+      if (typeof tools.has === "function") return tools.has(name)
+      return false
+    }
+    // The loader applies rows concurrently, so a sibling plugin may not have registered
+    // its tools yet when this probe runs. Poll briefly instead of racing: a single
+    // immediate read would make this instrumentation flaky and therefore useless.
+    const deadline = Date.now() + 15000
+    while (Date.now() < deadline && !LIVE_TOOLS.every(seen)) {
+      await new Promise((resolve) => setTimeout(resolve, 250))
+    }
+    const present = LIVE_TOOLS.filter(seen)
+    const missing = LIVE_TOOLS.filter((name) => !seen(name))
+    console.log("[roles-probe] AGENT_TEAMS_TOOLS=" + present.length + "/" + LIVE_TOOLS.length
+      + (missing.length > 0 ? " MISSING=" + missing.join(",") : ""))
+    console.log("[roles-probe] AGENT_TEAMS_NEW_TOOLS_OK=" + (missing.length === 0))
+  } catch (e: any) {
+    console.log("[roles-probe] AGENT_TEAMS_TOOLS=fail:" + String(e?.message ?? e))
+  }
   // Skill catalog: the corpus must be served by the bundle provider, and one
   // fixture skill must load with a resource base (relative references resolve).
   let catalogOk = false

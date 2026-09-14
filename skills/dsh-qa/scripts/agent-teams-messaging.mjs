@@ -416,14 +416,23 @@ async function runReal() {
   const stillGatedAfterApproval = predicate.deliverableUnread(
     await state.readUnreadMailbox(ijRoot, TEAM, state.INTERJECTION_QUEUE),
   ).length === 0
-  // The documented IN path: the approved request is re-posted as an ORDINARY message
-  // to the requester's own inbox (member keys are sanitized on write, exactly as the
-  // scheduler's member names are), where the SAME shipped predicate delivers it. The
-  // interjection `kind` is deliberately NOT carried over — that is what "re-post as an
-  // ordinary message" means, and it is why the request cannot slip through as itself.
+  // The documented IN path: approving re-posts the request as an ORDINARY message into the
+  // requester's own inbox (member keys are sanitized on write, exactly as the scheduler's
+  // member names are), where the SAME shipped predicate delivers it. The interjection
+  // `kind` is deliberately NOT carried over — that is what "re-post as an ordinary
+  // message" means, and it is why the request cannot slip through as itself.
+  //
+  // ROOT CAUSE, and why this block asserts the LIBRARY's record instead of writing one
+  // (review round 2, R2-F2): this case used to hand-write its own re-post under the id
+  // `ij-1-delivery` — the very id `state.js decideInterjection` had just written. The two
+  // ids collided, the requester inbox held TWO records, and the `length === 1` assertion
+  // failed. The library record is the production behaviour; a case that fabricates the
+  // record it then counts proves nothing about the shipped path.
+  //
+  // The wider lesson this case must carry: a green result at the PRIMITIVE layer says
+  // nothing about the path a user actually walks. That is exactly how this wave's
+  // "library vs capability" defects survived earlier passes.
   const requesterKey = "junior-engineer"
-  const { kind: _kind, ...ordinary } = approved
-  await state.appendMailbox(ijRoot, TEAM, requesterKey, { ...ordinary, to: requesterKey, id: "ij-1-delivery" })
   const requesterInbox = predicate.deliverableUnread(await state.readUnreadMailbox(ijRoot, TEAM, requesterKey))
   const interjectionPositive = {
     ok: pendingBefore.length === 1 && pendingBefore[0].expiresAt === ijTs + state.INTERJECTION_TTL_MS
@@ -431,8 +440,12 @@ async function runReal() {
       && notDeliveredPending && notYetExpired.length === 0
       && approved.status === "approved" && pendingAfter.length === 0
       && approvedRecord.status === "approved" && stillGatedAfterApproval
-      && requesterInbox.length === 1 && requesterInbox[0].from === "Junior Engineer"
-      && requesterInbox[0].content === "body-after-approval" && requesterInbox[0].to === requesterKey
+      // EXACTLY the ONE record the library posted, addressed to the requester, carrying the
+      // approved body and NO interjection kind
+      && requesterInbox.length === 1 && requesterInbox[0].id === "ij-1-delivery"
+      && requesterInbox[0].from === state.CAPTAIN_KEY
+      && requesterInbox[0].content.includes("Approved interjection \"ij-1\"")
+      && requesterInbox[0].content.includes("body-after-approval")
       && requesterInbox[0].kind === undefined,
     queued: queueRecords.length, deliverableWhilePending: deliverable.length,
     notYetExpired: notYetExpired.length, status: approved.status,

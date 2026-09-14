@@ -11,8 +11,9 @@
 import { createUserMessage } from '../_deps/dsh-llm/lib/index.js';
 import { defineTool } from '../_deps/dsh-tools/lib/index.js';
 import { join } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { appendTeamEvent, captainSessionOf } from "./events.js";
-import { acknowledgeMailbox, appendMailbox, appendMailboxDeduped, archiveTeamDir, beginTaskAttempt, CAPTAIN_KEY, createMessage, createTeamDir, findTeamByCaptain, findTeamByParticipant, cancelUnfinishedTask, invalidateTaskAttempt, readUnreadMailbox, recordRetiredMemberIds, releaseMailboxDelivery, readTeam, sanitizeKey, transitionError, unsatisfiedDependencies, withTeamLock, writeTeam, removeTeamDir, validateCreateTask, evaluateQualityCompletion, planQualityFollowUp, resumeTeamState, buildCoverageMatrix, canDeclareDelivery, describeQualityLoop, sanitizeReviewAcceptance, sanitizeReviewObjective, taskKindOf, resolveCancelledDependencyDeadlocks, normalizeBlankOptionalTaskFields, dependencyStates, } from "./state.js";
+import { acknowledgeMailbox, appendMailbox, appendMailboxDeduped, archiveTeamDir, beginTaskAttempt, CAPTAIN_KEY, clearMailboxToWatermark, createMessage, createTeamDir, decideInterjection, enqueueInterjection, findTeamByCaptain, findTeamByParticipant, cancelUnfinishedTask, invalidateTaskAttempt, readInterjections, readPendingInterjections, readUnreadMailbox, recordRetiredMemberIds, releaseMailboxDelivery, readTeam, sanitizeKey, transitionError, unsatisfiedDependencies, withTeamLock, writeTeam, removeTeamDir, validateCreateTask, evaluateQualityCompletion, planQualityFollowUp, resumeTeamState, buildCoverageMatrix, canDeclareDelivery, describeQualityLoop, sanitizeReviewAcceptance, sanitizeReviewObjective, taskKindOf, resolveCancelledDependencyDeadlocks, normalizeBlankOptionalTaskFields, dependencyStates, } from "./state.js";
 import { deliverToMember, installRetiredMemberGuard, installMemberSelectionRuntime, interruptMember, memberActivity, resolveMemberLlmSelection, spawnMember, steerCaptainReport, validateMemberLlmSelections, } from "./members.js";
 export { steerCaptainReport } from "./members.js";
 import { TERMINAL_TASK_STATUSES } from "./types.js";
@@ -2227,6 +2228,219 @@ export function registerAgentTeamsTools(ctx, config) {
             return { deleted: true, team_name: team.name };
         },
     }));
+    //#region mpd-delta interjection-tools (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+    // R1's interjection lane was a LIBRARY: enqueueInterjection / decideInterjection /
+    // clearMailboxToWatermark had no production caller, so no agent could ask to interject,
+    // no captain could decide, and nothing could clear. These three tools are the
+    // production entry points. THREE separate tools (not one tool with an `action`) and
+    // deliberately NOT folded into agent_teams_send_message: the send path must never
+    // carry un-approved content, which is the bypass this wave exists to prevent.
+    //
+    // AUTHORIZATION IS ENFORCED HERE, at the tool boundary, and it fails LOUDLY with a
+    // reason the caller can act on — a description is not a guarantee.
+    //   request : any participant, only under its OWN identity
+    //   decide  : the captain of THIS team only
+    //   clear   : the captain may clear ANY mailbox; a member may clear ONLY its own
+    ctx.tools.register(defineTool({
+        name: 'agent_teams_interject_request',
+        description: 'Ask the captain for permission to interject. The request is queued in a separate lane, carries ONLY a summary + reason + location (never the body it wants to deliver), and is NOT delivered to anyone: a pending request is invisible to the scheduler until the captain approves it with agent_teams_interject_decide. Use this when something must be said out of turn so errors are caught in time.',
+        parameters: {
+            summary: { type: 'string', required: true, description: 'What you want to say or do, in one line.' },
+            reason: { type: 'string', required: true, description: 'Why it cannot wait for your normal turn.' },
+            location: { type: 'string', required: true, description: 'Where the problem is (file, symbol, task id).' },
+        },
+        output: {
+            schema: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {
+                    request_id: { type: 'string', required: true },
+                    from: { type: 'string', required: true },
+                    status: { type: 'string', required: true },
+                    expires_at: { type: 'number', required: true },
+                    delivered_to_anyone: { type: 'boolean', required: true, description: 'Always false: a pending request is never auto-delivered.' },
+                },
+            },
+            render: (args, value) => [{
+                    type: 'text',
+                    text: `Interjection request ${value.request_id} from ${value.from} is ${value.status} (expires ${new Date(value.expires_at).toISOString()}). It was delivered to nobody; the captain must approve it.`,
+                }],
+        },
+        async execute(args, exec) {
+            const caller = requireCaptain(exec);
+            const workspace = workspaceOf(caller);
+            const stateRoot = stateRootOf(workspace, config);
+            const team = await requireParticipantTeam(workspace, config, caller);
+            const request = await withTeamLock(teamLockKey(stateRoot, team.id), async () => {
+                const { team: fresh, identity } = await requireFreshParticipant(stateRoot, team.id, caller.id);
+                // The requester is ALWAYS the caller. There is no `from` argument to spoof:
+                // a member asking "as" someone else would poison the approval record.
+                const record = await enqueueInterjection(stateRoot, fresh.id, {
+                    id: randomUUID(),
+                    from: identity.name,
+                    ts: Date.now(),
+                    summary: args.summary,
+                    reason: args.reason,
+                    location: args.location,
+                });
+                appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, caller.session), 'agent-teams/interjection-requested', {
+                    teamId: fresh.id,
+                    requestId: record.id,
+                    from: identity.name,
+                    location: args.location,
+                });
+                return record;
+            });
+            return {
+                request_id: request.id,
+                from: request.from,
+                status: request.status,
+                expires_at: request.expiresAt,
+                delivered_to_anyone: false,
+            };
+        },
+    }));
+    ctx.tools.register(defineTool({
+        name: 'agent_teams_interject_decide',
+        description: 'Captain only: approve or reject a pending interjection request. An approved request is re-posted into the requester\'s own inbox as an ORDINARY message, so the existing member-queue seam delivers it at the next step boundary; a rejected one posts nothing. Silence past the request\'s expiry is a DENY, and the requester is told. Alternatively use action "list" to see what is pending.',
+        parameters: {
+            request_id: { type: 'string', description: 'The request to decide. Required unless action is "list".' },
+            decision: { type: 'string', description: 'Either "approved" or "rejected" (no other value is accepted). Required unless action is "list".' },
+            action: { type: 'string', description: 'Omit (or "decide") to record a decision; "list" to only report pending requests.' },
+        },
+        output: {
+            schema: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {
+                    action: { type: 'string', required: true },
+                    pending: { type: 'array', required: true, items: { type: 'object', additionalProperties: true } },
+                    request_id: { type: 'string' },
+                    status: { type: 'string' },
+                    requester: { type: 'string' },
+                },
+            },
+            render: (args, value) => {
+                const pendingLines = value.pending.length === 0
+                    ? ['No pending interjection request.']
+                    : value.pending.map((entry) => `  ${entry.id} from ${entry.from} (expires ${new Date(entry.expires_at).toISOString()}): ${entry.summary} — ${entry.reason} @ ${entry.location}`);
+                const decidedLine = value.request_id === undefined
+                    ? []
+                    : [`${value.request_id} is ${value.status}; the requester ${value.requester} was notified through its own inbox.`];
+                return [{ type: 'text', text: [...pendingLines, ...decidedLine].join('\n') }];
+            },
+        },
+        async execute(args, exec) {
+            const caller = requireCaptain(exec);
+            const workspace = workspaceOf(caller);
+            const stateRoot = stateRootOf(workspace, config);
+            const team = await requireParticipantTeam(workspace, config, caller);
+            const action = args.action ?? 'decide';
+            return withTeamLock(teamLockKey(stateRoot, team.id), async () => {
+                // AUTHZ: the captain of THIS team, re-derived from fresh state. A member
+                // passing this tool is refused loudly, and the message says why.
+                const fresh = await requireFreshCaptainTeam(stateRoot, team.id, caller.id);
+                const pending = (await readPendingInterjections(stateRoot, fresh.id)).map((record) => ({
+                    id: record.id,
+                    from: record.from,
+                    summary: record.summary ?? record.content,
+                    reason: record.reason ?? '',
+                    location: record.location ?? '',
+                    expires_at: typeof record.expiresAt === 'number' ? record.expiresAt : 0,
+                }));
+                if (action === 'list') {
+                    return { action: 'list', pending };
+                }
+                if (action !== 'decide') {
+                    throw new Error(`agent_teams_interject_decide: unknown action "${String(action)}"; the only allowed values are "list" and "decide"`);
+                }
+                if (typeof args.request_id !== 'string' || args.request_id.trim() === '') {
+                    throw new Error('agent_teams_interject_decide requires "request_id" (or action "list" to only report pending requests)');
+                }
+                if (args.decision !== 'approved' && args.decision !== 'rejected') {
+                    throw new Error(`agent_teams_interject_decide: decision must be one of: approved, rejected — received "${String(args.decision)}"`);
+                }
+                const decided = await decideInterjection(stateRoot, fresh.id, args.request_id.trim(), args.decision);
+                appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, caller.session), 'agent-teams/interjection-decided', {
+                    teamId: fresh.id,
+                    requestId: decided.id,
+                    requester: decided.from,
+                    status: decided.status,
+                });
+                return { action: 'decide', pending, request_id: decided.id, status: decided.status, requester: decided.from };
+            });
+        },
+    }));
+    ctx.tools.register(defineTool({
+        name: 'agent_teams_mailbox_clear',
+        description: 'Clear a mailbox DOWN TO A WATERMARK. Every record at or before the watermark is replaced by a tombstone whose original bytes are archived first (recoverable sidecar), so nothing is ever hard-deleted and a cleared record can never be delivered again. Authorization: the captain may clear ANY mailbox; a member may clear ONLY its own.',
+        parameters: {
+            watermark: { type: 'number', required: true, description: 'Clear every record whose ts is <= this value.' },
+            agent: { type: 'string', description: 'Which mailbox: "captain" or a member name. Defaults to your own mailbox. A member may only name itself.' },
+        },
+        output: {
+            schema: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {
+                    agent: { type: 'string', required: true },
+                    cleared: { type: 'array', required: true, items: { type: 'string' } },
+                    archived_to: { type: 'string' },
+                    unread_after: { type: 'number', required: true },
+                },
+            },
+            render: (args, value) => [{
+                    type: 'text',
+                    text: `Cleared ${value.cleared.length} record(s) from the "${value.agent}" mailbox${value.archived_to === undefined ? '' : `; original bytes archived at ${value.archived_to}`}. ${value.unread_after} unread record(s) remain.`,
+                }],
+        },
+        async execute(args, exec) {
+            const caller = requireCaptain(exec);
+            const workspace = workspaceOf(caller);
+            const stateRoot = stateRootOf(workspace, config);
+            const team = await requireParticipantTeam(workspace, config, caller);
+            if (!Number.isFinite(args.watermark)) {
+                throw new Error('agent_teams_mailbox_clear requires a numeric "watermark"');
+            }
+            return withTeamLock(teamLockKey(stateRoot, team.id), async () => {
+                const { team: fresh, identity } = await requireFreshParticipant(stateRoot, team.id, caller.id);
+                // AUTHZ, enforced here: the captain may clear any mailbox, a member only its
+                // own. Defaulting to the caller's own key keeps a member from having to name
+                // itself (and from being able to name anyone else).
+                const target = args.agent === undefined || args.agent.trim() === '' ? identity.name : args.agent.trim();
+                if (identity.kind === 'member' && target !== identity.name) {
+                    throw new Error(`only the captain may clear another participant's mailbox: you are "${identity.name}" and asked to clear "${target}"`);
+                }
+                if (identity.kind === 'member' && target === CAPTAIN_KEY) {
+                    throw new Error(`only the captain may clear the captain mailbox; you are "${identity.name}"`);
+                }
+                if (identity.kind === 'captain' && target !== CAPTAIN_KEY) {
+                    // captain clearing a member: the name must exist, so a typo cannot
+                    // silently clear nothing.
+                    requireMember(fresh, target);
+                }
+                const manifest = await clearMailboxToWatermark(stateRoot, fresh.id, target, args.watermark);
+                appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, caller.session), 'agent-teams/mailbox-cleared', {
+                    teamId: fresh.id,
+                    agentKey: target,
+                    watermark: args.watermark,
+                    clearedCount: manifest.cleared.length,
+                    by: identity.name,
+                });
+                // The seam that proves the F-3 fix on a REAL path: a cleared record must
+                // not be unread afterwards (this is the assertion the round-2 review asked
+                // to see executed through the tool surface, not only through the primitive).
+                const unreadAfter = await readUnreadMailbox(stateRoot, fresh.id, target);
+                return {
+                    agent: target,
+                    cleared: manifest.cleared.map((record) => record.id),
+                    ...manifest.sidecar === undefined ? {} : { archived_to: manifest.sidecar },
+                    unread_after: unreadAfter.length,
+                };
+            });
+        },
+    }));
+    //#endregion mpd-delta interjection-tools
     return runtime;
 }
 // Shared staged/instant profile-team creation, used by the create tool AND by

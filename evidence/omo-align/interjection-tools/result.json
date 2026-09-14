@@ -1,0 +1,130 @@
+{
+  "schema": "mpd/evidence/result@1",
+  "task": "t52",
+  "round": "interjection lane: library -> capability",
+  "attempt": 1,
+  "head_before_my_edits": "0f647f21f2579d931be47cc86a8b8c591579fb93",
+  "userRuling": {
+    "surface": "THREE separate tools",
+    "tools": {
+      "agent_teams_interject_request": "member asks; payload = summary + reason + location; the caller's own identity only; never the body",
+      "agent_teams_interject_decide": "captain only approves/rejects; closed vocabulary {approved, rejected}; also action=list to observe pending",
+      "agent_teams_mailbox_clear": "clears to a watermark; captain may clear ANY mailbox, a member ONLY its own"
+    },
+    "rejectedAlternatives": [
+      "folding the lane into agent_teams_send_message — would put un-approved content on the send path, the exact bypass this wave guards",
+      "one tool with an action parameter — the user chose three tools so each schema stays minimal and each authorization boundary is independent"
+    ]
+  },
+  "acceptance": {
+    "A_toolSurface_as_capability": {
+      "status": "passed",
+      "shippedPathOnly": "every assertion goes through registerAgentTeamsTools; no test calls a state.js primitive to prove a lane behaviour",
+      "chain": "member calls agent_teams_interject_request -> row is pending in its OWN lane -> captain calls agent_teams_interject_decide(action=list) and SEES it -> captain approves -> the library re-posts an ORDINARY record into the requester's inbox -> the EXISTING scheduler member-queue seam claims/acknowledges it at the next idle edge",
+      "tests": "packages/mpd-agent-teams-plugin/test/t52-interjection-tools.test.mjs — 9 tests, 46 assertions, all through the tool definitions",
+      "nextStepBoundary": "the test asserts the delivered record is acknowledged (readAt set) after runtime.kickMember() — the same function the agent/status idle listener calls. A live multi-process idle edge remains undrivable in isolated headless (one-shot dsh disposes continuable members), stated as a limit rather than claimed."
+    },
+    "B_mountProof": {
+      "status": "passed",
+      "evidence": "evidence/omo-align/interjection-tools/mount/result-<ts>.json + boot-<ts>.log",
+      "registeredTools": "5/5 asserted (the three NEW tools plus agent_teams_send_message and agent_teams_update_task)",
+      "newToolsOk": true,
+      "crashSignatures": [],
+      "probeVerdict": "PASS",
+      "isolation": "isolated DSH_HOME + sandbox HOME + sandbox workspace; the credentials file is written mode 0o600",
+      "dumpConfigRole": "recorded as COMPOSITION ONLY and explicitly NOT cited as load evidence (AGENTS.md §4)",
+      "twoRealFixesFoundByThisProof": [
+        "the credentials row REFUSES a file readable beyond its owner (mode 644) and takes the WHOLE plugin tree down — the sandbox must chmod 600. Recorded because it produces a 'plugin tree failed to load' signature that looks like a real plugin defect.",
+        "the QA probe read ctx.tools WITHOUT declaring it, and an agent-scoped cordis ctx throws 'cannot get property \"tools\" without inject' — the instrumentation reported a failure that looked like a missing tool. Fixed by declaring inject=['agentPresets','tools']."
+      ]
+    },
+    "C_clearHasProductionCaller": {
+      "status": "passed",
+      "evidence": "agent_teams_mailbox_clear is the production entry point; the F-3 seam ('after a clear: 0 unread, 0 deliverable') is asserted on the REAL path — the tool returns unread_after and the test asserts 0 after clearing an unread record; the mount drive asserts the same on disk",
+      "authorization": "captain clears a member mailbox (allowed, name must exist), a member clears its own (allowed via the default target), a member clearing another/member-captain mailbox is REFUSED with a readable reason"
+    },
+    "D_readLiveMailboxFate": {
+      "status": "passed",
+      "decision": "KEPT, documented as TEST-ONLY at the declaration",
+      "reason": "the scheduler composes deliverableUnread(readUnreadMailbox(...)); the tombstone filter is carried INDEPENDENTLY by both, and routing delivery through readLiveMailbox would drop the delivery-lease semantics (no claim/ack). Kept because it states the F-3 invariant in one expression and two seam tests assert it directly."
+    },
+    "E_reachabilityInventory": {
+      "status": "passed",
+      "evidence": "evidence/omo-align/interjection-tools/reachability.md + raw/reachability-inventory.{mjs,json}",
+      "totals": "261 exports declared in lib/**; 214 reachable cross-module; 44 reachable module-internally; 3 with NO production caller",
+      "noProductionCaller": [
+        { "symbol": "readLiveMailbox", "declared": "lib/state.js:576", "decision": "KEPT, documented test-only (see D)" },
+        { "symbol": "teamLockQueueKeys", "declared": "lib/state.js:60", "decision": "KEPT, diagnostic/test-only — a lock-leak check used by test/backports.test.ts; production must never read internal lock state" },
+        { "symbol": "SESSION_START_GATE_ID", "declared": "lib/session-start.js:596", "decision": "PRE-EXISTING orphan (present in HEAD before this task), referenced by nothing in lib/**, test/** or skills/**; reported, NOT deleted, because it is a frozen diagnostic identifier and removing it would be unrelated churn in a file this task keeps stable" }
+      ],
+      "laneNowWired": "enqueueInterjection -> lib/tools.js interject_request; decideInterjection -> lib/tools.js interject_decide; clearMailboxToWatermark -> lib/tools.js mailbox_clear; expireInterjectionsEverywhere -> lib/session-start.js"
+    },
+    "F_noRegression": {
+      "status": "passed",
+      "idempotentDedup": "t49 suite 7/0 still green; the send path's parameter set is still exactly {content, from, to}",
+      "tombstoneFilter": "r1 + t49 + t52 tests green",
+      "expiryNotice": "r1 suite green; agent-teams-messaging.mjs interjectionTtl step true",
+      "R3MonotoneTokensAndThresholds": "session-start.js gate hash UNCHANGED this task (7831f26831c7606d); session-start-team PASS two-sided",
+      "deltaRegistry": "29 regions / 6 adopted files, --check clean (was 28)"
+    }
+  },
+  "qaCaseFix_R2F2": {
+    "status": "fixed and measured",
+    "what": "skills/dsh-qa/scripts/agent-teams-messaging.mjs used to hand-write its own re-post under the id 'ij-1-delivery' that state.js decideInterjection had just written, so the requester inbox held 2 records and the length===1 assertion failed",
+    "fix": "the case now ASSERTS the LIBRARY's own delivery record (id ij-1-delivery, from captain, body 'Approved interjection \"ij-1\"', no interjection kind) instead of fabricating one, and carries the root-cause comment about 'a green result at the PRIMITIVE layer says nothing about the path a user walks' plus the id-collision lesson",
+    "measured": "interjection step ok=true, requesterInboxAfterRepost=1 — the step is GREEN and the case's overall exit is now 1 ONLY because of the VENDOR_LOCK re-pin (see the finding below)",
+    "correctedAttribution": "this red was introduced by THIS wave's library repost, NOT a pre-existing case defect. The earlier 'A/B with the scheduler edit reverted' arm was invalid: the repost lives in state.js, so reverting a scheduler line could never change the outcome."
+  },
+  "findingsForTheCaptain": [
+    {
+      "id": "T52-F1",
+      "severity": "high",
+      "problem": "VENDOR_LOCK.json must be re-pinned in the SAME commit as this skills/** change (AGENTS.md §9). verify-vendor now FAILS: 'asset skills treeSha mismatch' (331 files unchanged; the treeSha drifted).",
+      "files": ["skills/dsh-qa/scripts/agent-teams-messaging.mjs"],
+      "requiredFix": "the captain re-pins assets.skills.treeSha with the project's own mechanism inside the commit window — do NOT hand-recompute it; use whatever scripts/verify-vendor.mjs (or the documented re-pin path) writes, then re-run node scripts/verify-vendor.mjs and node skills/dsh-qa/scripts/agent-teams-messaging.mjs to confirm exit 0.",
+      "note": "This is the single reason that QA case still exits 1; its interjection step is green."
+    },
+    {
+      "id": "T52-F2",
+      "severity": "medium",
+      "problem": "lib/tool-names.js is NOT in this task's inScope, so it still lists 14 names. Consequences: (a) the member-side capability deny list (capabilities.js:94) does not name the three new tools, and (b) the captain prompt (index.js:179) does not advertise them.",
+      "mitigation": "(a) is NOT a live hole — authorization is enforced INSIDE each tool and the mount proof measures a member being refused ('only the captain'). The deny list would only add defence in depth. (b) is a discoverability gap: the tools are registered and callable, but the captain prompt does not mention them.",
+      "requiredFix": "add the three names to TEAM_TOOL_NAMES in a slot that owns lib/tool-names.js, then update the frozen count assertions (test/r3-view-parity.test.mjs expects 14; test/task-contract-tool.test.mjs now expects 17 registered tools and would still hold)."
+    },
+    {
+      "id": "T52-F3",
+      "severity": "low",
+      "problem": "packages/mpd-qa-roles-probe/src/index.ts + dist/index.js were changed to carry the registration instrumentation (and inject=['agentPresets','tools']). It is QA-only tooling, but it is outside this task's inScope list.",
+      "requiredFix": "confirm the captain accepts this file in the commit; the probe is mounted by QA overlays only and never shipped in the bundle."
+    },
+    {
+      "id": "T52-F4",
+      "severity": "low",
+      "problem": "SESSION_START_GATE_ID (lib/session-start.js:596) is a pre-existing orphan with zero references anywhere.",
+      "requiredFix": "none required; listed so the next capability sweep does not have to rediscover it. Delete it in a slot that owns session-start.js if a clean sweep is wanted."
+    }
+  ],
+  "gates": {
+    "node scripts/patch-agent-teams-fixes.mjs --check": "exit 0 — 29 regions / 6 adopted files",
+    "bun test packages/mpd-agent-teams-plugin": "exit 0 — 193 pass / 0 fail / 1254 expect() calls across 48 files",
+    "bun test packages/mpd-agent-teams-plugin/self-fix-tests": "exit 0 — 53 pass / 0 fail",
+    "bun run typecheck": "exit 0",
+    "bun skills/dsh-qa/scripts/session-start-team.mjs": "exit 0 — PASS (probe overlay still mounts after the inject change)",
+    "node skills/dsh-qa/scripts/agent-teams-messaging.mjs": "exit 1 — ONLY the vendorLock step (T52-F1); the interjection step is green",
+    "evidence/omo-align/interjection-tools/raw/mount-proof-t52.mjs": "PASS — 5/5 tools registered, 0 crash signatures",
+    "evidence/omo-align/interjection-tools/raw/mount-proof-t52.mjs --self-test": "exit 0"
+  },
+  "settledPins": {
+    "packages/mpd-agent-teams-plugin/lib/state.js": "8e78e9b508d03230 (65291 B)",
+    "packages/mpd-agent-teams-plugin/lib/tools.js": "9a2cfb89fd9ce06f (165305 B)",
+    "packages/mpd-agent-teams-plugin/lib/session-start.js": "7831f26831c7606d (31187 B) — UNCHANGED from t53",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "1a32156da3206e4c (122338 B)",
+    "packages/mpd-agent-teams-plugin/test/t52-interjection-tools.test.mjs": "0d40f486b55a034c (11708 B)",
+    "packages/mpd-agent-teams-plugin/test/t53-dormant-expiry.test.mjs": "b80558d6b92f6505 (7040 B)",
+    "packages/mpd-qa-roles-probe/dist/index.js": "2495893a02d8fa39 (14209 B)",
+    "skills/dsh-qa/scripts/agent-teams-messaging.mjs": "c9073b82ac78ce92 (31433 B)",
+    "stabilityCheck": "re-hashed after a 50 s settle window: STABLE",
+    "authorityNote": "measured on this WORKING TREE before the captain commits; the file CONTENTS here are what must be committed"
+  },
+  "noGitWrite": "read-only git rev-parse only; the captain commits"
+}

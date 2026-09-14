@@ -1,0 +1,44 @@
+{
+  "task": "t52",
+  "head": "e2d8df9a62bdc99dd2dfbe696c7aeb9794481ed5",
+  "newTools": [
+    "agent_teams_interject_request",
+    "agent_teams_interject_decide",
+    "agent_teams_mailbox_clear"
+  ],
+  "steps": {
+    "composition": {
+      "ok": true,
+      "exit": 0,
+      "note": "COMPOSITION ONLY — never cited as load evidence (AGENTS.md §4)"
+    },
+    "mountedBoot": {
+      "ok": false,
+      "registeredTools": null,
+      "assertedTools": null,
+      "missing": [],
+      "newToolsOk": null,
+      "crashSignatures": [
+        "plugin tree failed to load",
+        "failed to apply loader entry"
+      ],
+      "probeVerdict": "PASS",
+      "presetResolved": true,
+      "loadEvidence": "real mounted boot of the dev-flavored bundle in an isolated DSH_HOME + sandbox HOME + sandbox workspace, with registration instrumentation read from inside the boot; --dump-config is deliberately NOT cited as load evidence (AGENTS.md §4)"
+    },
+    "isolation": {
+      "ok": true,
+      "sandbox": "/tmp/mpd-t52-mount-oNSlIi",
+      "note": "DSH_HOME, HOME and the session cwd are all sandboxed temp dirs; the boot log lands under evidence/"
+    },
+    "toolSurfaceOnDisk": {
+      "ok": true,
+      "requested": "8955f783-7c55-476a-ada4-bd473bb48cec",
+      "listedPending": 1,
+      "memberRefused": true,
+      "decidedStatus": "approved",
+      "clearedRecords": 1,
+      "unreadAfterClear": 0
+    }
+  }
+}
