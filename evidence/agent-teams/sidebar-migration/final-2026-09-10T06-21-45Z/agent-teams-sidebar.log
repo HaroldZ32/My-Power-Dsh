@@ -1,0 +1,27 @@
+[agent-teams-sidebar] ts=2026-09-10T06-22-01.309Z
+sandbox=/tmp/mpd-atsb-sPYfkG (isolated; the artifact under test is the sandbox COPY)
+offline artifact steps: artifactCopyFaithful=true moduleIds=true teamPageModuleInArtifact=true exactlyOneTeamTab=true teamTabShape=true noLegacyRegistration=true adoptedNeverApplied=true noFloaterDefined=true commandViewKept=true panelInteriorParity=true sourcesRegisterNoRemovedSurface=true commandViewStillRegisteredBySource=true buildGatePresent=true serverHalfMountedByRow=true adoptedClientBridged=true artifactCarriesBridge=true bridgePatchGuarded=true bridgePatchIdempotent=true
+host route: mode=real-boot ok=true
+  served client: {"url":"/plugins/??@mpd-dsh/mpd/client.js&rev=14977d3c9a0646cc-48","status":200,"bytes":240356,"teamPageModule":true,"teamTabId":true,"bridge":true,"atLeastRepoArtifactBytes":true,"carriesRepoArtifact":true}
+  state route: {"status":200,"body":"{\"teams\":[]}","teamsArray":true}
+[agent-teams-sidebar] ok=true -> /root/dshProj/my-power-dsh/evidence/agent-teams/sidebar-migration/2026-09-10T06-22-01.309Z
+  artifactCopyFaithful: {"ok":true,"repoSha":"b49c717bb607208a8053d1e3d2a85a3f29a5d9e835735717c0760e9ae95ff5cc","copySha":"b49c717bb607208a8053d1e3d2a85a3f29a5d9e835735717c0760e9ae95ff5cc","bytes":240271}
+  moduleIds: {"ok":true,"ids":["@nanmicoder/dsh-agent-teams","@mpd-dsh/team-page","@mpd-dsh/mpd"]}
+  teamPageModuleInArtifact: {"ok":true}
+  exactlyOneTeamTab: {"ok":true,"teamTabIds":["mpd-agent-teams"],"allTabIds":["mpd-agent-teams","mpd-workmate"]}
+  teamTabShape: {"ok":true,"order":85,"single":true,"toggle":"autoOpenOnTeamActivity"}
+  noLegacyRegistration: {"ok":true,"registeredDefinitions":["conversation.chat.commandview"]}
+  adoptedNeverApplied: {"ok":true,"artifactStillContainsAdoptedStrings":true}
+  noFloaterDefined: {"ok":true}
+  commandViewKept: {"ok":true,"slots":["conversation.chat.commandview"]}
+  panelInteriorParity: {"ok":true,"mismatched":[],"observed":{"root":"aYQbCq_panel","head":"aYQbCq_panelHead","title":"aYQbCq_panelTitle","dot":"aYQbCq_panelDot","controls":"aYQbCq_panelControls","collapse":"aYQbCq_iconButton","teams":"aYQbCq_teams","empty":"aYQb
+  sourcesRegisterNoRemovedSurface: {"ok":true,"hits":[]}
+  commandViewStillRegisteredBySource: {"ok":true}
+  buildGatePresent: {"ok":true}
+  serverHalfMountedByRow: {"ok":true,"note":"row mounted by the bundle patch + server half registering the route"}
+  adoptedClientBridged: {"ok":true,"missing":[]}
+  artifactCarriesBridge: {"ok":true,"missing":[]}
+  bridgePatchGuarded: {"ok":true}
+  bridgePatchIdempotent: {"ok":true,"exit":0,"output":"[patch-agent-teams-client] already applied: packages/mpd-agent-teams-plugin/lib/client.js (17 symbols, 196972 bytes)","restored":false}
+  hostRouteMounted: {"ok":true,"mode":"real-boot","servedClient":{"url":"/plugins/??@mpd-dsh/mpd/client.js&rev=14977d3c9a0646cc-48","status":200,"bytes":240356,"teamPageModule":true,"teamTabId":true,"bridge":true,"atLeastRepoArtifactBytes":true,"carriesRepoArt
+[agent-teams-sidebar] PASS

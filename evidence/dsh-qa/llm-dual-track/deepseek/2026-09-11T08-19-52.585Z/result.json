@@ -1,0 +1,8 @@
+{
+  "ok": false,
+  "track": "deepseek",
+  "provider": "deepseek",
+  "durationMs": 6887,
+  "exit": 1,
+  "hasToolEvidence": true
+}

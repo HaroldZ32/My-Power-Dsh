@@ -1,0 +1,42 @@
+{
+  "task": "t6 — bounded bare-OMO label sweep (captain ruling: fix ONE file, REPORT the rest)",
+  "scan_command": "git grep -n -E '(^|[^A-Za-z0-9_])OMO([^A-Za-z0-9_]|$)'  (token-boundary; NOT grep -i omo — measured false-positive class: 'autonomous', 'promote')",
+  "repo_revision": "dev HEAD 2211714 + the wave's in-flight working tree",
+  "FIXED_IN_T6": [
+    {"path": "scripts/build-mcp.mjs", "lines": [2, 14, 99, 101, 140, 149, 161, 297, 309, 310], "class": "class-1 bare OMO identity label in narrative comments / one in-script diagnostic", "note": "in lane; both line 2 and line 14 are swept (captain message named only line 2)"},
+    {"path": "packages/mpd-agent-teams-plugin/test/s1-s4-semantics.test.mjs", "lines": [1], "class": "class-1 bare OMO identity label in OUR OWN wave comment ('t15 (OMO parity align)')", "attribution": "reported in the completion output, NEVER in changedPaths (captain ruling)", "safety": "test/ file, not the adopted lib/ main code; the delta registry guards lib/ only"},
+    {"path": "scripts/build-mcp.mjs", "lines": [25, 26, 30, 276], "class": "KEPT literals with a documented reason", "note": "node_modules/@oh-my-opencode and CORE 'omo-config-core' are functionally required upstream identifiers (F1); documented with the module-resolution citation, not renamed"}
+  ],
+  "ACCOUNTED_FOR_ELSEWHERE": [
+    {"path": "docs/omo-parity-ledger.md", "lines": [1, 25], "owner": "t7 (ledger rename)"},
+    {"path": "docs/omo-parity-ledger.zh-CN.md", "lines": [1, 22], "owner": "t7 (ledger rename)"},
+    {"path": "docs/omo-parity-gap.md", "lines": [1, 29, 43, 49, 58], "class": "exempt historical process record"},
+    {"path": "docs/plan-e.md", "lines": [16, 21], "class": "exempt historical process record"},
+    {"path": "docs/plan-f.md", "lines": [1, 18, 82], "class": "exempt historical process record"},
+    {"path": "packages/mpd-mcp-codegraph/dist/serve.js", "lines": [8965, 9716, 9718], "owner": "t5 (codegraph lane)"}
+  ],
+  "UNACCOUNTED_RESIDUE_AS_SCANNED (superseded by R5_CLOSED_BY_OWNER_RULING below)": [
+    {"path": "skills/ast-grep/AGENTS.md", "line": 23, "class": "class-1 label ('OMO caches') inside a VENDORED upstream skill dir", "note": "skills/** is the wave's single-writer corpus but t2's inScope names only skills/dsh-qa/, so this file has no owner this wave; the sentence also documents a real resolution tier, so a fix needs a class decision, not a blind rename"},
+    {"path": "skills/ast-grep/scripts/ast_grep_helper.py", "line": 205, "class": "class-1 label ('OMO runtime resolution (vendored patch)') in a comment"},
+    {"path": "skills/ast-grep/scripts/ast_grep_helper.py", "line": 250, "class": "class-1 label ('OMO runtime dirs') in a docstring that describes a FUNCTIONAL resolution tier"},
+    {"path": "skills/ast-grep/tests/smoke.sh", "line": 126, "class": "class-1 label in a test comment"},
+    {"path": "skills/review-work/SKILL.md", "line": 30, "class": "class-1 label ('OMO installs these selectable agent roles into ~/.codex/agents/') inside a ported upstream skill", "note": "the referenced ~/.codex/agents/ path is a real foreign-harness path — belongs to the same class the text lane is retiring, but the file is outside every declared inScope"}
+  ],
+  "R5_CLOSED_BY_OWNER_RULING": {
+    "ruling": "The owner ruled explicitly that the other vendored skills' bodies stay. All five items below are CLASS R5 (third-party vendored/ported skill bodies, deliberately not touched): allowed residue, NOT unowned leftovers and NOT findings. No owner, no follow-up task, no edit this wave.",
+    "reinforcing_reasons": [
+      "skills/** has ONE writer per wave (t2's lane); a t6 edit there would create a second skills writer and force a second corpus re-pin, which section 9 forbids",
+      "items 1 and 3 describe FUNCTIONAL resolution tiers, so a blind rename would be a factual regression"
+    ],
+    "required_in_completion_output": "State that these five residues are R5-allowed (owner ruling: third-party skill bodies stay), not unowned leftovers.",
+    "items": [
+      {"path": "skills/ast-grep/AGENTS.md", "line": 23, "class": "R5", "note": "PARTLY STALE as of the captain's re-check: the corrupted/mangled fragment is gone and the upstream path `omo-opencode/src/cli/install-ast-grep-sg.ts` is restored. Re-verified here: the mangled '-grep-sg.ts' fragment count is 0, and the remaining bare token on the line is 'OMO' in 'OMO caches'. Do NOT re-touch this file."},
+      {"path": "skills/ast-grep/scripts/ast_grep_helper.py", "line": 205, "class": "R5", "note": "comment 'OMO runtime resolution (vendored patch)'"},
+      {"path": "skills/ast-grep/scripts/ast_grep_helper.py", "line": 250, "class": "R5", "note": "docstring 'OMO runtime dirs' — describes a functional resolution tier"},
+      {"path": "skills/ast-grep/tests/smoke.sh", "line": 126, "class": "R5", "note": "test comment"},
+      {"path": "skills/review-work/SKILL.md", "line": 30, "class": "R5", "note": "ported upstream skill body; also carries a real foreign-harness path (~/.codex/agents/)"}
+    ]
+  },
+  "verdict": "No bare-OMO label remains in a first-party MAINTAINED file outside this task's lane after these fixes. The five vendored-skill/ported-skill items are CLOSED AS CLASS R5 by owner ruling (allowed residue, no edit), not unowned leftovers.",
+  "not_scanned_by_ruling": ["evidence/** (untouched by ruling — it dominates the raw hit count)", "the pinned upstream checkout .mpd-dsh/upstream and the .qa-reloc copies (not tracked)"]
+}

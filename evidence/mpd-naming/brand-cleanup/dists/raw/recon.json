@@ -1,0 +1,102 @@
+{
+  "task": "t6 (dists lane) — pre-implementation reconnaissance, filed while t6 is still blocked by t2/t5",
+  "state": "t6 NOT claimed: agent_teams_claim_task returned 'task t6 is blocked by unfinished dependencies: t2, t5'. No t6 inScope implementation file was modified by this recon.",
+  "revision": {
+    "branch": "dev",
+    "head": "2211714",
+    "note": "git is read-only for members (AGENTS.md section 5); the captain owns commit/branch"
+  },
+  "method": [
+    "A guard-bypassed copy of scripts/build-mcp.mjs was generated with sed into evidence/mpd-naming/brand-cleanup/dists/raw/build-mcp-dump.mjs: output dir redirected to this evidence dir (MPD_BUILD_DUMP_DIR) and the two guard calls stubbed, so a fresh build could be captured WITHOUT writing any committed dist or VENDOR_LOCK-pinned asset.",
+    "Committed dists were then diffed against the freshly built artifacts.",
+    "Raw logs: baseline-rebuild.log (the real script, unmodified tree), dump-build.log (the capture build)."
+  ],
+  "measured": {
+    "real_rebuild_baseline": {
+      "command": "MPD_UPSTREAM_ROOT=.mpd-dsh/upstream node scripts/build-mcp.mjs",
+      "exit": 1,
+      "first_failure": "[build-mcp] FAIL - foreign brand token \"OMO\" in ast-grep (not on the X1 allowlist declared in this file)",
+      "meaning": "ACCEPTANCE 1 IS RED ON THE UNTOUCHED TREE. A rebuild fails before any dist is written, so this is a pre-existing defect of the dists lane, not a regression of this wave."
+    },
+    "drift_committed_vs_fresh_build": {
+      "mpd-mcp-astgrep/dist/cli.js": {
+        "bytes": 84639,
+        "byte_equal": false,
+        "committed_brand_tokens": [],
+        "rebuilt_brand_tokens": ["OMO"],
+        "diff": "exactly 2 lines: 'Start an OMO session ...' vs committed 'Start an MPD session ...'; '...across the env override, OMO runtime, ...' vs committed '... env override, MPD runtime, ...'"
+      },
+      "mpd-mcp-gitbash/dist/cli.js": {
+        "bytes": 22651,
+        "byte_equal": false,
+        "committed_brand_tokens": ["OMO_CODEX_GIT_BASH_PATH", "OMO_CODEX_GIT_BASH_TIMEOUT_MS", "OMO_CODEX_EXEC_COMMAND_TIMEOUT_MS"],
+        "rebuilt_brand_tokens": ["OMO_CODEX_GIT_BASH_PATH", "OMO_CODEX_GIT_BASH_TIMEOUT_MS", "OMO_CODEX_EXEC_COMMAND_TIMEOUT_MS", "omo-git-bash"],
+        "diff": "exactly 1 line: 'Usage: omo-git-bash [mcp]' vs committed 'Usage: mpd-git-bash [mcp]'"
+      },
+      "mpd-mcp-lsp/dist/cli.js": {
+        "bytes": 234821,
+        "byte_equal": true,
+        "committed_brand_tokens": ["_omo"],
+        "rebuilt_brand_tokens": ["_omo"],
+        "diff": "none — the toolchain reproduces the committed lsp dist byte-for-byte today"
+      }
+    },
+    "scrub_entries_needed_for_byte_equality": [
+      "MPD_SCRUB['ast-grep'].replace += ['an OMO session' -> 'an MPD session']",
+      "MPD_SCRUB['ast-grep'].replace += ['OMO runtime' -> 'MPD runtime']",
+      "MPD_SCRUB['git-bash'].replace: broaden ['omo-git-bash-run-' -> 'mpd-git-bash-run-'] to ['omo-git-bash' -> 'mpd-git-bash']"
+    ],
+    "external_dependency_resolution_hole": {
+      "declared": "EXTERNAL js-yaml@4.3.1 (scripts/build-mcp.mjs:31)",
+      "observed": "[build-mcp] ext dep: js-yaml <- js-yaml@5.3.0@@repo.huaweicloud.com@@@1",
+      "cause": "findCache's exact-match branch ('d === entry') can never match: bun cache dir names carry a '@@@1' / '@repo...@@@1' suffix, so the highest-version fallback always wins (a MAJOR version substitution, silently).",
+      "impact_on_bytes": "none today — js-yaml is imported only by upstream utils/src/frontmatter.ts and is NOT bundled into any of the 3 artifacts (0 'YAMLException' occurrences in all three committed dists). Filed as a latent reproducibility hole; a minimal in-scope hardening (match 'entry + \"@@\"', warn loudly on substitution) is planned.",
+      "cache_state": "~/.bun/install/cache holds js-yaml@4.2.0@@@1 and js-yaml@5.3.0@@repo.huaweicloud.com@@@1 — no 4.3.1 copy exists"
+    },
+    "codegraph_guard_subject": {
+      "committed_brand_tokens": {"omo": 9, "OMO": 9, "OMO_CONFIG": 1},
+      "meaning": "Extending the brand guard to the 4th (prebuilt) artifact makes 'node scripts/build-mcp.mjs' fail until t5 lands. Acceptance 1's '4 artifacts' row can only go green after t5."
+    }
+  },
+  "omo_codex_deletion_sites": {
+    "git-bash_dist_lines": {
+      "declaration": "packages/mpd-mcp-gitbash/dist/cli.js:320 var GIT_BASH_ENV_KEY = \"OMO_CODEX_GIT_BASH_PATH\";",
+      "reader_block": "packages/mpd-mcp-gitbash/dist/cli.js:328-335 (const envPath = nonEmptyEnvValue(input.env, GIT_BASH_ENV_KEY); ... return missingGitBash(checkedPaths);)",
+      "hint_line": "packages/mpd-mcp-gitbash/dist/cli.js:371 `For a custom install, set ${GIT_BASH_ENV_KEY}=C:\\path\\to\\bash.exe`",
+      "timeout_keys": "packages/mpd-mcp-gitbash/dist/cli.js:457-458 (two entries of EXEC_COMMAND_TIMEOUT_ENV_KEYS); 'CODEX_EXEC_COMMAND_TIMEOUT_MS' and 'EXEC_COMMAND_TIMEOUT_MS' are not OMO-branded and stay"
+    },
+    "in_repo_writers": "none (git grep OMO_CODEX_ outside .mpd-dsh/upstream and .qa-reloc hits only the 3 git-bash dist literals, 7 build-mcp.mjs comment/allowlist lines, and the AGENTS.md provenance sentence)",
+    "row_disabled": "packages/mpd-bundle/cordis.patch.yml:54-56 (mcp-gitbash, disabled: true) — confirmed",
+    "scrub_residual_plan": "MPD_SCRUB['git-bash'].residual += 'OMO_CODEX_' so a stalled deletion fails loudly inside the scrub, before the brand guard"
+  },
+  "lsp_envelope_rename": {
+    "writer": "packages/mpd-mcp-lsp/dist/cli.js:5323 authEnvelope(token) -> { protocolVersion: MPD_DAEMON_PROTOCOL_VERSION, token }, sent at :5739, :6027, :6080 (all '{ _omo: authEnvelope(token) }')",
+    "reader_stripper": "packages/mpd-mcp-lsp/dist/cli.js:5358 params[\"_omo\"] / :5368 delete cleanParams[\"_omo\"] (authenticateMessage)",
+    "same_artifact": "packagedRuntimeDefaults() :5591 sets cliPath = fileURLToPath(new URL('./cli.js', import.meta.url)); spawnDaemonProcess :5759 spawns [paths.cliPath, 'daemon'] — writer and reader live in the artifact that is also the spawned daemon, so a two-sided rename is atomic",
+    "upstream_source": ".mpd-dsh/upstream/packages/lsp-daemon/src/{ipc-protocol.ts:102,109, daemon-client.ts:144,193, ensure-daemon.ts:105}",
+    "occurrences_in_artifact": 5,
+    "stale_daemon_caveat": "Daemon dir is version-scoped: ~/.mpd/lsp-daemon/v<package.json version> (lsp package version 0.2.3; daemonPaths() :5604-5620, resolveDaemonVersion() :5571). An already-running daemon at the SAME version keeps the old code in memory, so after the rename the ping at :5739 reads params['_omo'] as undefined -> authError (-32001 daemon_authentication_failed, :5477); the protocolVersion check at :5360-5363 can only run when the envelope is present at the expected key, so the skew presents as an AUTH error, not protocolError. The client's probe then sees a null ping (:5713-5721) and ensureDaemonRunning spawns a fresh daemon (:5692-5703) which cannot take over the live same-version socket; waitUntilReachable expires -> DaemonUnreachableError (:5685-5689) — loud, never a silent misroute. Remedy: rm -rf ~/.mpd/lsp-daemon (or point MPD_LSP_DAEMON_DIR at a fresh dir / bump the version so a new v<version> dir is created) and let it respawn.",
+    "plan": "MPD_SCRUB['lsp'].replace += ['_omo' -> '_mpd'] (a global '_omo' split/join inside this artifact replaces exactly the 5 measured occurrences); delete the '_omo' BRAND_ALLOWLIST entry."
+  },
+  "brand_allowlist_after": "empty ([]), with a comment; the 3 OMO_CODEX_ entries and the _omo entry are deleted per the captain's C1 ruling",
+  "oh_my_opencode_scope_string": {
+    "site": "scripts/build-mcp.mjs:276 join(work, 'node_modules', '@oh-my-opencode')",
+    "verdict": "FUNCTIONALLY REQUIRED — upstream package names ARE @oh-my-opencode/* (verified in .mpd-dsh/upstream/packages/*/package.json) and upstream sources import '@oh-my-opencode/lsp-core/...' etc. Sweeping the string would break module resolution. Planned treatment: keep the literal, document it in the file as a required upstream-scope literal (provenance/functional), not a renameable brand token.",
+    "note": "CORE = ['mcp-stdio-core','utils','omo-config-core','lsp-core'] (line 30) carries the upstream directory name omo-config-core for the same reason (the checkout's package dir is not renamed)."
+  },
+  "serialization_constraint": {
+    "finding": "scripts/verify-vendor.mjs:98-115 blocks on fileCount and sha256/treeSha of EVERY VENDOR_LOCK asset, including packages/mpd-mcp-{astgrep,gitbash,lsp}/dist/cli.js. Therefore ANY edit to those dists (even a byte-identical rebuild that only rewrites BUILD.lock is safe, but a changed cli.js is not) before t5 runs its own 'node scripts/verify-vendor.mjs' acceptance would fail t5.",
+    "consequence": "t6's dist hand-edits + VENDOR_LOCK re-pin must run AFTER t5 (codegraph sha) and t2 (skills corpus treeSha/fileCount) — exactly the declared dependency order. The wave re-pin will need to carry all three dist sha256 values (ast-grep, git-bash, lsp), the codegraph sha t5 lands, the skills corpus fileCount/treeSha and lockedAt.",
+    "held_items": [
+      "packages/mpd-mcp-{astgrep,gitbash,lsp}/dist/cli.js hand-edits",
+      "scripts/build-mcp.mjs scrub/allowlist/guard-extension edits (held to avoid a window in which the repo's own build script is red before the dists match)",
+      "VENDOR_LOCK.json (single writer, last in wave)"
+    ]
+  },
+  "contract_defect": {
+    "problem": "The captain's C1 ruling (delete OMO_CODEX_*) is NOT reflected in the stored t6 contract: objective still says 'keep the externally-owned OMO_CODEX_* contract as a documented allowlist entry', acceptance[2] still says 'OMO_CODEX_* stays literal with the allowlist reason recorded', nonGoals[0] says 'Renaming the externally-owned OMO_CODEX_* env contract'.",
+    "measured_at": "2026-09-14T07:0xZ, .mpd/team/mpd-default-e1f54e18/team.json (t6.updatedAt 1789367690012 = 2026-09-14T06:34:50.012Z)",
+    "aligned_fields": "description (already rewritten to 'DELETE the external-CLI env contracts ... instead of renaming them (owner ruling: DSH-only)') and acceptance[1] (already requires the _omo literal gone)",
+    "need": "re-amend objective + acceptance[2] (+ nonGoals[0] wording) so t8/t10 judge against the deletion criterion the ruling states"
+  }
+}

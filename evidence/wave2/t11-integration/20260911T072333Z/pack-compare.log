@@ -1,0 +1,12 @@
+=== packed dists vs working tree (byte compare) ===
+compared=19 mismatches=0
+
+=== B8 artifacts in the pack ===
+present: packages/mpd-mcp-astgrep/launch.mjs (644)
+present: packages/mpd-mcp-codegraph/launch.mjs (644)
+present: packages/mpd-mcp-shared/bin-resolve.mjs (644)
+ABSENT: packages/mpd-mcp-shared/bin-resolve.test.mjs
+
+=== skills copy mode check ===
+-rw-r--r-- 1 root root 18290 Sep 11 15:27 dist/mpd-package/scripts/install-mcp.mjs
+-rw-r--r-- 1 root root  6444 Sep 11 15:27 dist/mpd-package/skills/dsh-qa/scripts/mcp-call.mjs

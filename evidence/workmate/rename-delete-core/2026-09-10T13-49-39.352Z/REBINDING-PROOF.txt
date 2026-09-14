@@ -1,0 +1,14 @@
+=== t15: PROOF that the dev-flow rebinding works (t3's two overlay attempts failed; this one loaded) ===
+lane: evidence/.../prefix-lane.mjs --corrupt-schema (mutated COPY mounted as the live mpd-workmate row)
+
+[1] the boot log names the COPY as the entry that applied:
+dsh: failed to apply loader entry mpd-workmate (/root/dshProj/my-power-dsh/.mpd/t15-outer/t15-inner/packages/mpd-workmate-plugin/dist/index.js): unsupported JSON schema: schema.required names "ok" which is not in properties
+
+[2] the rejection is caused by the mutation, which exists ONLY in the copy:
+    copy path:  /root/dshProj/my-power-dsh/.mpd/t15-outer/t15-inner/packages/mpd-workmate-plugin/dist/index.js
+    live dist:  /root/dshProj/my-power-dsh/packages/mpd-workmate-plugin/dist/index.js (healthy — declares ok twice)
+
+[3] why it worked when an id-target overlay did not: the row lives IN the profile's composed
+    patch file ($DSH_HOME/cordis.patch.yml, written by scripts/install-profile.mjs), so the row
+    TEXT was rewritten there. An id-target overlay applies config overrides to a row; it cannot
+    rebind the row's module.

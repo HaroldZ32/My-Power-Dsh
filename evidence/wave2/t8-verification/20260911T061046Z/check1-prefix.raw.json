@@ -1,0 +1,106 @@
+{
+  "driver": "check1-glob",
+  "libDir": ".mpd/t8-verify-work/prefix/packages/mpd-agent-teams-plugin/lib",
+  "version": "pre-fix (no mpd-delta scope-glob)",
+  "cases": [
+    {
+      "id": "A1",
+      "kind": "pathMatchesScope",
+      "detail": "packages/foo/test/a.test.mjs ~ packages/foo/test/**",
+      "value": false
+    },
+    {
+      "id": "A2",
+      "kind": "classifyChangedPath",
+      "detail": "packages/foo/test/a.test.mjs with inScope=['packages/foo/test/**']",
+      "value": "undeclared"
+    },
+    {
+      "id": "A3",
+      "kind": "classifyChangedPath",
+      "detail": "packages/foo/test/deep/case.ts with inScope=['packages/foo/test/**']",
+      "value": "undeclared"
+    },
+    {
+      "id": "B1",
+      "kind": "classifyChangedPath",
+      "detail": "packages/mpd-verif-plugin/test/case_a.py with inScope=['packages/mpd-verif-plugin/test/**']",
+      "value": "undeclared"
+    },
+    {
+      "id": "N1",
+      "kind": "pathMatchesScope",
+      "detail": "srcx/a.ts ~ src/** (must stay false)",
+      "value": false
+    },
+    {
+      "id": "N2",
+      "kind": "pathMatchesScope",
+      "detail": "src/a.md ~ **/*.ts (must stay false)",
+      "value": false
+    },
+    {
+      "id": "N3",
+      "kind": "pathMatchesScope",
+      "detail": "lib/a.js.map ~ lib/a.js (must stay false)",
+      "value": false
+    },
+    {
+      "id": "N4",
+      "kind": "classifyChangedPath",
+      "detail": "packages/foo/lib/x.ts stays out_of_scope while a glob is declared",
+      "value": "out_of_scope"
+    },
+    {
+      "id": "C1",
+      "kind": "evaluateQualityCompletion",
+      "detail": "changedPaths=['packages/foo/test/deep/a.test.ts']",
+      "value": {
+        "ok": false,
+        "error": "implementation probe cannot complete: 1 changed path(s) not covered by inScope:\n  - packages/foo/test/deep/a.test.ts is undeclared\nFix: add the path(s) to inScope, or use a directory prefix pattern (e.g. \"packages/foo\" or \"packages/foo/\") that covers them."
+      }
+    },
+    {
+      "id": "C2",
+      "kind": "evaluateQualityCompletion",
+      "detail": "changedPaths=['packages/other/a.ts'] (must stay rejected)",
+      "value": {
+        "ok": false,
+        "error": "implementation probe cannot complete: 1 changed path(s) not covered by inScope:\n  - packages/other/a.ts is undeclared\nFix: add the path(s) to inScope, or use a directory prefix pattern (e.g. \"packages/foo\" or \"packages/foo/\") that covers them."
+      }
+    },
+    {
+      "id": "D0",
+      "kind": "wave-1 t7 declaration",
+      "detail": "inScope glob patterns",
+      "value": [
+        "packages/mpd-boulder-plugin/src/**",
+        "packages/mpd-memory-plugin/src/**",
+        "packages/mpd-ulw-plugin/src/**",
+        "packages/mpd-config-plugin/src/**",
+        "packages/mpd-comment-checker-plugin/src/**",
+        "packages/mpd-modelchain-plugin/src/**",
+        "packages/mpd-verif-plugin/src/**",
+        "packages/mpd-workmate-plugin/src/**",
+        "evidence/**"
+      ]
+    },
+    {
+      "id": "D1",
+      "kind": "real wave-1 t7 replay",
+      "detail": "declared changedPaths as recorded (12 paths)",
+      "value": {
+        "ok": true
+      }
+    },
+    {
+      "id": "D2",
+      "kind": "real wave-1 t7 replay",
+      "detail": "+ the src files its own glob declares (packages/mpd-boulder-plugin/src/index.ts, packages/mpd-memory-plugin/src/index.ts)",
+      "value": {
+        "ok": false,
+        "error": "implementation t7 cannot complete: 2 changed path(s) not covered by inScope:\n  - packages/mpd-boulder-plugin/src/index.ts is undeclared\n  - packages/mpd-memory-plugin/src/index.ts is undeclared\nFix: add the path(s) to inScope, or use a directory prefix pattern (e.g. \"packages/foo\" or \"packages/foo/\") that covers them."
+      }
+    }
+  ]
+}

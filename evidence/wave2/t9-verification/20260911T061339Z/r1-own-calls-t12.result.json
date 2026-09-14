@@ -1,0 +1,35 @@
+{
+  "task": "t9 own R1 behavioural proof",
+  "stamp": "2026-09-11T06:20:47.846Z",
+  "distRevision": "d0aee5c79476dfe92ccb1747da6292ea0802a6fdc7d2319735defa8dcabd120e",
+  "sandbox": "/tmp/t9-r1-own-TxIwhk",
+  "sessionWorkspace": "/tmp/t9-r1-own-TxIwhk/session-ws",
+  "dshWorkspaceRootOverride": "/tmp/t9-r1-own-TxIwhk/other-ws/unrelated-root",
+  "callA_noSession": {
+    "error": {
+      "code": "VERIF_E_NO_VENV",
+      "message": "cocotb venv missing at /tmp/t9-r1-own-TxIwhk/other-ws/unrelated-root/.venv-rtl (iron rule: project-local venv required, system python is never used)",
+      "hint": "run: python3 -m venv .venv-rtl && .venv-rtl/bin/pip install \"cocotb>=2.0\" — or call mpd_verif_venv with action \"create\", or set MPD_DSH_VERIF_VENV to an existing project venv"
+    }
+  },
+  "callB_sessionNoBackend": {
+    "error": {
+      "code": "VERIF_E_NO_BACKEND",
+      "message": "backend 'iverilog' not found",
+      "hint": "install it or set MPD_DSH_VERIF_IVERILOG"
+    }
+  },
+  "callC_sessionWithBackend": {
+    "ok": false,
+    "total": 1,
+    "passed": 0,
+    "resultsJson": "/tmp/t9-r1-own-TxIwhk/session-ws/.mpd/verif/regress/20260911-142047-839/results.json",
+    "reportPath": "/tmp/t9-r1-own-TxIwhk/session-ws/.mpd/verif/regress/20260911-142047-839/results.md",
+    "perCaseFailure": "sim exited (status 0) but no results.xml was produced by cocotb"
+  },
+  "carryForwardObservation": "per-case sim still refuses (t12 open at this revision): sim exited (status 0) but no results.xml was produced by cocotb",
+  "debug": {
+    "sandboxFiles": 241
+  },
+  "allPass": true
+}

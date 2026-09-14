@@ -1,0 +1,46 @@
+### verify 1 — node --check on the three files ###
+  node --check scripts/build-mcp.mjs -> exit 0 | no output
+  node --check packages/mpd-mcp-lsp/dist/cli.js -> exit 0 | no output
+  node --check packages/mpd-mcp-gitbash/dist/cli.js -> exit 0 | no output
+
+### verify 2 — git grep -n -E "OMO_CODEX|_omo" over the three files (expect NO output) ###
+  exit 1 | output: (none)
+
+### verify 3 — git grep -n -E "OMO|oh-my-opencode" over scripts/build-mcp.mjs ###
+  exit 0
+    scripts/build-mcp.mjs:100:// The pristine upstream source still uses its own OMO_* spellings; the committed dists were
+    scripts/build-mcp.mjs:109:      ["OMO_DAEMON_PROTOCOL_VERSION", "MPD_DAEMON_PROTOCOL_VERSION"],
+    scripts/build-mcp.mjs:110:      ["OMO_LSP_DAEMON_CLI", "MPD_LSP_DAEMON_CLI"],
+    scripts/build-mcp.mjs:111:      ["OMO_LSP_DAEMON_DIR", "MPD_LSP_DAEMON_DIR"],
+    scripts/build-mcp.mjs:112:      ["OMO_LSP_DAEMON_VERSION", "MPD_LSP_DAEMON_VERSION"],
+    scripts/build-mcp.mjs:123:    residual: ["OMO_", ".omo", "omo-lsp", "omo/ping", /_(?:om)o/],
+    scripts/build-mcp.mjs:127:      ["OMO_AST_GREP_BIN_DIR", "MPD_AST_GREP_BIN_DIR"],
+    scripts/build-mcp.mjs:128:      ["OMO_AST_GREP_SG_PATH", "MPD_AST_GREP_SG_PATH"],
+    scripts/build-mcp.mjs:129:      ["OMO_AST_GREP_PROJECT_CWD", "MPD_AST_GREP_PROJECT_CWD"],
+    scripts/build-mcp.mjs:130:      ["OMO_PROVISION_HINT", "MPD_PROVISION_HINT"],
+    scripts/build-mcp.mjs:137:      ["an OMO session", "an MPD session"],
+    scripts/build-mcp.mjs:138:      ["OMO runtime", "MPD runtime"],
+    scripts/build-mcp.mjs:140:    residual: ["OMO_", ".omo", "omoRuntime", "omo-runtime", "omo-ast-grep", "OMO session", "OMO runtime"],
+    scripts/build-mcp.mjs:190:// seen — measured 2026-09-13: OMO_PROVISION_HINT / omo-git-bash-run- / platformFromOptions
+    scripts/build-mcp.mjs:218:// "romO" is preceded by an alphanumeric. Case-insensitive, so both the `OMO_` and the `omo-` shapes are hit.
+    scripts/build-mcp.mjs:303:  const nm = join(work, "node_modules", "@oh-my-opencode")
+
+### wave acceptance greps ###
+  G4 grep '_omo' packages/mpd-mcp-lsp/dist/cli.js -> (no output)
+  G5 grep 'OMO_CODEX' over every shipped file -> (no output)
+
+### brand guard on the three committed artifacts (BRAND_ALLOWLIST is empty by design) ###
+  ast-grep: brandTokens=[] identifiers=8702 -> assertBrandClean ok ({"identifiers":8702,"brand":0,"allowlisted":0})
+  git-bash: brandTokens=[] identifiers=2149 -> assertBrandClean ok ({"identifiers":2149,"brand":0,"allowlisted":0})
+  lsp: brandTokens=[] identifiers=22364 -> assertBrandClean ok ({"identifiers":22364,"brand":0,"allowlisted":0})
+
+### negative control — a seeded brand token MUST fail loudly ###
+  seeded token in the lsp artifact -> exit 1 (non-zero = the guard fired)
+  output: [build-mcp] FAIL - foreign brand token "OMO_DAEMON_PROTOCOL_VERSION" in lsp (not on the X1 allowlist declared in this file)
+
+### per-artifact sha256 (pre-re-pin values; t17 owns VENDOR_LOCK) ###
+  scripts/build-mcp.mjs sha256=5f5d82629870fe138175c4040d5bc526dec45087771282fcb0ea0b670824d54e
+  packages/mpd-mcp-lsp/dist/cli.js sha256=a7cebcf9ec79ec480c98d3a9cd1392837927ada57bf9bbb18e0620ba863f3148
+  packages/mpd-mcp-gitbash/dist/cli.js sha256=6458a82ee2cfcec319a03d2ffe8100c695d0980e7a366408fa5ef1467ca157b5
+
+[verify-t14] overall: PASS

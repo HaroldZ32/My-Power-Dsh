@@ -1,0 +1,19 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/node_modules/.bun/@colbymchenry+codegraph@1.5.0/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/tmp/mpd-retier-QHTYXv/ws
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+[retier-probe] PROFILE_MEMBERS=11
+[retier-probe] MEMBER=Architect model=deepseek-v4-flash effort=max fallback=deepseek-v4-flash
+[retier-probe] MEMBER=Researcher model=deepseek-v4-flash effort=undefined fallback=deepseek-v4-flash
+[retier-probe] MEMBER=Planner model=deepseek-v4-flash effort=max fallback=deepseek-v4-flash
+[retier-probe] MEMBER=Explorer model=deepseek-v4-flash effort=undefined fallback=deepseek-v4-flash
+[retier-probe] MEMBER=Reviewer model=deepseek-v4-flash effort=max fallback=deepseek-v4-flash
+[retier-probe] MEMBER=Plan Reviewer model=deepseek-v4-flash effort=undefined fallback=deepseek-v4-flash
+[retier-probe] MEMBER=Vision Analyst model=deepseek-v4-flash-vision-exp effort=undefined fallback=deepseek-v4-flash
+[retier-probe] MEMBER=Lead model=deepseek-v4-flash effort=max fallback=deepseek-v4-flash
+[retier-probe] MEMBER=Deep Worker model=deepseek-v4-flash effort=undefined fallback=deepseek-v4-flash
+[retier-probe] MEMBER=Senior Engineer model=deepseek-v4-flash effort=max fallback=deepseek-v4-flash
+[retier-probe] MEMBER=Junior Engineer model=deepseek-v4-flash effort=undefined fallback=deepseek-v4-flash
+[retier-probe] RESOLVE=member-expro ok provider=deepseek-official model=deepseek-v4-flash effort=max
+[retier-probe] RESOLVE=member-vision ok provider=deepseek-official model=deepseek-v4-flash-vision-exp effort=high
+[retier-probe] NEGATIVE_CONTROL=rejected :: provider "deepseek-official" model "deepseek-v4-flash" does not support reasoning effort "bogus-effort"
+[retier-probe] PROBE_DONE

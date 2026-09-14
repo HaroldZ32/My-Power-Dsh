@@ -1,0 +1,130 @@
+install exit=0
+
+---
+
+$ dsh --profile mpd-headless "/agent-teams-mpd fix the flaky test"
+[[exit=0]]
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-r4-mtX0CA/happy/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+## Web plan ready — "MPD Default" (profile `mpd`)
+
+The team is **staged, not started**: 11 roster members, **0 spawned**, 5 tasks pending. Nothing runs until you click **Approve & Run**.
+
+**DAG (all tasks carry quality contracts):**
+
+| id | kind | subject | owner | deps |
+|----|------|---------|-------|------|
+| t1 | requirements | Locate and reproduce the flaky test | Explorer | — |
+| t2 | implementation | Fix the flaky test's root cause | Senior Engineer | t1 |
+| t3 | verification | Independently verify the flake is gone | Deep Worker | t2 |
+| t4 | review | Review the fix for correctness & test discipline | Reviewer | t2 |
+| t5 | integration | Integrate the fix and run the full quality gate | Lead | t3, t4 |
+
+**Anti-masking guards baked into the contracts**
+- t2 forbids the classic "fixes": `.skip`/`.only`, retries, widened timeouts, fixed `sleep` — it must remove the *documented* root cause.
+- t3 re-runs the target test **≥50×** from the implemented tree and must report raw output; a residual flake is a failure, not an "environment quirk."
+- t4 must return `verdict=pass` to complete; any `needs_revision`/`reject` needs file:line findings plus a `requiredFix`, and the scheduler will auto-open repair + next review.
+- t5 gates on both the independent verification **and** the review, plus a full-suite/typecheck/diff-stat sweep.
+
+**One thing to confirm before you approve:** the session workspace (`/tmp/mpd-r4-mtX0CA/happy/ws`) is currently **empty** — no test suite, only `.mpd/` and `.codegraph/`. So t1 is explicitly contracted to either (a) name the exact test + a reproduction, or (b) report a blocker with the searched root and its contents rather than invent a target. If you have a specific repo/test in mind, point me at it and I'll narrow t2's provisional `**/*` scope and the verify commands to it.
+
+Approve in the Web UI, or tell me what to change and I'll revise the staged plan.
+dsh: reasoning:
+The user wants me to fix a flaky test using AgentTeams. A team has already been staged ("MPD Default", profile mpd, approval=required). I'm the captain. I need to shape the roster/DAG while staged, then tell the user the plan is ready.
+
+First, let me explore the workspace to understand what we're dealing with. Let me look at the repo structure and find the flaky test.
+
+Let me start by exploring the workspace.
+dsh: reasoning:
+The workspace appears mostly empty (only .codegraph and .mpd). Let me dig deeper. Maybe the repo is inside .mpd or hidden. Let me look around.
+dsh: reasoning:
+Interesting. The workspace is empty — no actual project. There's a codegraph.db which might have some indexed content. Let me check the codegraph db and the
+
+---
+
+$ dsh --profile mpd-headless "/agent-teams-mpd fix the flaky test"
+[[exit=0]]
+[mpd-codegraph] init status=marker binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-r4-mtX0CA/happy/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+I stopped before touching anything, because two things need your call first.
+
+**1. An existing team is already staged.** This session already leads team **MPD Default** (`mpd-default-a33491bf`), staged but not approved. Nothing was created or reused. Which do you want?
+- **(a)** Keep that team and approve its current plan (click Approve & Run, or tell me to approve it), or
+- **(b)** Retire it (`agent_teams_delete`) and stage a fresh `mpd` team for this task.
+
+**2. The workspace has no test code at all.** `/tmp/mpd-r4-mtX0CA/happy/ws` contains only `.codegraph/` and `.mpd/` — no source files, no test suite, no `package.json`/`pyproject.toml`, and not a git repo. So I can't identify a flaky test to fix from here.
+
+Please tell me: **(a) or (b)**, and where the flaky test lives — is it in another repo/path you want me to target, a specific test name or suite, and do you have a failure log or a CI run showing the flake? With that, I'll stage the full plan (locating the flake, reproducing it under repetition, root-causing, fixing, then verification/review) in one edit and hand it back for approval.
+dsh: reasoning:
+The user invoked `/agent-teams-mpd fix the flaky test`. There's an existing staged team "MPD Default" (mpd-default-a33491bf). The system says to ask the user which they want: (a) keep using that team and approve its plan, or (b) retire it and stage a fresh mpd team.
+
+Wait — the instruction says: "When the user returns to chat, first ask one concise clarification question without editing or recreating". Here the situation is a new explicit request with an existing staged team. The runtime message tells me to ask the user.
+
+But hold on — the user's request is a new request "fix the flaky test". The plugin says: "a team already exists ... Nothing was created and nothing was reused automatically. Ask the user which they want: (a) keep using that team and approve its plan, or (b) retire it (agent_teams_delete) and stage a fresh mpd team."
+
+Hmm, but there's a nuance: my task per the protocol is to stage a plan. However, given a team already exists staged, I must ask the user. But should I do a bit of reconnaissance first to make the plan meaningful? The protocol says the captain should design the DAG. But the immediate instruction is to ask one concise question.
+
+Actually, let me think about what's best. The user said "fix the flaky test" — quite vague. I should probably first investigate the workspace to understand what flaky test exists, then stage a plan. But the existing team blocks creation.
+
+The explicit direction: "Ask the user which they want". So I should ask. But I could also do useful reconnaissance in parallel to
+
+---
+
+$ dsh --profile mpd-headless "/agent-teams --profile does-not-exist do something"
+[[exit=0]]
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-r4-mtX0CA/unknown/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+I can't start that team — the profile `does-not-exist` isn't configured.
+
+**Available profiles: mpd** (11 members, captain planning)
+
+To proceed, either:
+- Re-run with `--profile mpd`, e.g. `/agent-teams --profile mpd do something`
+- Or drop the `--profile` flag and describe the goal — I'll plan a custom roster and task DAG while staged for your review.
+
+Nothing was created or spawned. Let me know which way you'd like to go.
+dsh: reasoning:
+The user invoked /agent-teams with a non-existent profile. The system message is explicit: profile "does-not-exist" doesn't exist, available: mpd, don't create a team.
+
+I should not create a team. Just report to the user clearly.
+
+
+---
+
+$ dsh --profile mpd-headless "/agent-teams-mpd fix the flaky test"
+[[exit=0]]
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-r4-mtX0CA/disabled/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+The team is **staged and waiting for your review** — I have not spawned or approved anything.
+
+## What I found (recon, before planning)
+
+Your instruction was "fix the flaky test", but the session workspace `/tmp/mpd-r4-mtX0CA/disabled/ws` is **empty of any project**:
+
+- It contains only `.codegraph/` (a DB with **0 indexed files/nodes**), no source, no tests, no `package.json`, no git repo (`git status` → *not a git repository*).
+- The only real candidate repo on this machine is `/root/dshProj/my-power-dsh` (`@mpd-dsh/mpd`, `bun test packages`, 226 test files). It is **readable** from this session but **outside the writable workspace**, so any edit there would need escalated sandbox permission — and even there, no specific test is documented as flaky (`grep -i flaky` across its docs/tests/CI evidence finds only skill documentation, not a named failing test).
+
+I deliberately did **not** stage a "fix" task: with no identified test and no writable source tree, an implementation task would have no grounded `inScope` or `verify` command, and inventing one would be fabricated work.
+
+## Staged plan (`fix-flaky-test`, profile `mpd`, approval required)
+
+| Task | Kind | Owner | Depends |
+|---|---|---|---|
+| **t1** — Identify and characterize the flaky test to fix | requirements r1 | Explorer (read-only) | — |
+| **t2** — Review the flaky-test triage finding | review r1 | Plan Reviewer (read-only) | t1 |
+
+t1 must return either a concrete target (repo + test file/name + exact repro command + one failing and one passing observation) **or** an evidenced blocker — explicitly not an invented test. t2 independently verifies that evidence and flags whether the target is inside the writable workspace. A passing t2 is what unlocks adding grounded implementation → verification → review tasks.
+
+## One clarification to unblock it
+
+**Which repository and which test do you mean by "the flaky test" — and should I work in `/root/dshProj/my-power-dsh` (which needs escalated write access) or will the project be placed inside this workspace?**
+
+Reply in chat with the answer (or edit the plan directly in the Web plan view), and I'll extend the DAG with the implementation/verification/review tasks and re-submit it for approval.
+dsh: reasoning:
+The user invoked `/agent-teams-mpd fix the flaky test`. The system warning says the slash-command surface is disabled (slashCommand:false), so the slash command is NOT handled as a command. However, the user's intent is clearly an AgentTeams activation with the mpd profile: "fix the flaky test".
+
+The instructions say: "When the user asks to run something with AgentTeams (e.g. "use AgentTeams to do X"), or an activati

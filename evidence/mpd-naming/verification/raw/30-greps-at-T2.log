@@ -1,0 +1,181 @@
+revision: 53d617e6c2d29dfadec06278bc4130061055378e
+branch:   dev
+dirty:    48 path(s)
+
+### G1-zero  (expected: 0 lines)
+$ git ls-files | grep -v '^evidence/' | grep -vE '^evidence/|^(docs/(plan-[a-f]|omo-parity-gap|bline-report|review-p0-p3|track-a-report|ulw-deepseek-optimization)\.md|PLAN\.md|tests/golden/out/)' | xargs grep -nE 'OMO-origin|OMO-derived|OMO specialists|OMO roster|OMO 起源|OMO 名册|OMO 角色|the OMO |upstream omo |\bOmO\b' || true
+    
+    -> lines=0
+
+### G2-allowlisted  (expected: only allowlisted brand tokens (raw list for the allowlist diff))
+$ git ls-files | grep -v '^evidence/' | xargs grep -lE '(^|[^A-Za-z0-9_])_?omo([^A-Za-z0-9_]|$)' 2>/dev/null || true
+    AGENTS.md
+    docs/omo-parity-gap.md
+    docs/plan-e.md
+    docs/plan-f.md
+    docs/upstream-parity-ledger.md
+    docs/upstream-parity-ledger.zh-CN.md
+    packages/mpd-agent-teams-plugin/lib/session-start.js
+    packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs
+    packages/mpd-agent-teams-plugin/test/s1-s4-semantics.test.mjs
+    packages/mpd-dsh-adapter-plugin/src/index.ts
+    packages/mpd-team-compact-plugin/src/index.ts
+    scripts/build-mcp.mjs
+    skills/ast-grep/AGENTS.md
+    skills/ast-grep/README.md
+    skills/dsh-qa/scripts/agent-teams-messaging.mjs
+    skills/dsh-qa/scripts/session-start-team.mjs
+    skills/lsp-setup/SKILL.md
+    skills/lsp-setup/references/bash/README.md
+    skills/lsp-setup/references/c-cpp/README.md
+    skills/lsp-setup/references/csharp/README.md
+    skills/lsp-setup/references/dart/README.md
+    skills/lsp-setup/references/elixir/README.md
+    skills/lsp-setup/references/go/README.md
+    skills/lsp-setup/references/haskell/README.md
+    skills/lsp-setup/references/java/README.md
+    skills/lsp-setup/references/julia/README.md
+    skills/lsp-setup/references/kotlin/README.md
+    skills/lsp-setup/references/lua/README.md
+    skills/lsp-setup/references/php/README.md
+    skills/lsp-setup/references/python/README.md
+    skills/lsp-setup/references/ruby/README.md
+    skills/lsp-setup/references/rust/README.md
+    skills/lsp-setup/references/swift/README.md
+    skills/lsp-setup/references/terraform/README.md
+    skills/lsp-setup/references/typescript/README.md
+    skills/lsp-setup/references/yaml/README.md
+    skills/lsp-setup/references/zig/README.md
+    -> lines=37
+
+### G3-foreign-surface-allowlisted  (expected: only allowlisted foreign literals)
+$ git ls-files | grep -v '^evidence/' | xargs grep -nE 'CODEX_HOME|LSP_TOOLS_MCP|OPENCODE_CONFIG_DIR|OCX_PROFILE|OPENCODE_HOME|SENPI_CODING_AGENT_DIR|multi_agent_v1|subagent_codex' 2>/dev/null || true
+    PLAN.md:250:| T4 | Strict isolation: real binary + isolated home directory, never touch the user's real config (e.g. isolated CODEX_HOME / SENPI_CODING_AGENT_DIR) | QA always uses an isolated DSH_HOME (temp dir), boots the real dsh binary; scripts assert isolation is effective |
+    docs/ulw-deepseek-optimization.md:13:   "Codex Harness Tool Compatibility" section (`multi_agent_v1.spawn_agent`, `lazycodex-*`
+    packages/mpd-mcp-astgrep/dist/cli.js:437:  const codexHome = nonEmptyValue(options.env["CODEX_HOME"]);
+    packages/mpd-mcp-codegraph/dist/serve.js:7708:  return profileName(options.profile) ?? profileName(env["MPD_PROFILE"]) ?? profileName(env["OCX_PROFILE"]) ?? profileNameFromLegacyConfigDir(env["OPENCODE_CONFIG_DIR"]);
+    packages/mpd-mcp-lsp/dist/cli.js:365:  const projectConfigPaths = translateProjectConfigEnv(env["LSP_TOOLS_MCP_PROJECT_CONFIG"], cwd);
+    packages/mpd-mcp-lsp/dist/cli.js:366:  const userConfigPath = translateHomeConfigEnv(env["LSP_TOOLS_MCP_USER_CONFIG"], home, ".codex/lsp-client.json");
+    packages/mpd-mcp-lsp/dist/cli.js:367:  const installDecisionsPath = translateHomeConfigEnv(env["LSP_TOOLS_MCP_INSTALL_DECISIONS"], home, ".codex/lsp-install-decisions.json");
+    packages/mpd-mcp-lsp/dist/cli.js:6153:    const cwd = options.cwd ?? inferOpenCodeProjectCwd(env["LSP_TOOLS_MCP_PROJECT_CONFIG"]);
+    packages/mpd-mcp-lsp/dist/cli.js:6228:    LSP_TOOLS_MCP_PROJECT_CONFIG: canonicalizePathList(env["LSP_TOOLS_MCP_PROJECT_CONFIG"]),
+    packages/mpd-mcp-lsp/dist/cli.js:6229:    LSP_TOOLS_MCP_USER_CONFIG: canonicalizePath(env["LSP_TOOLS_MCP_USER_CONFIG"]),
+    packages/mpd-mcp-lsp/dist/cli.js:6230:    LSP_TOOLS_MCP_INSTALL_DECISIONS: canonicalizePath(env["LSP_TOOLS_MCP_INSTALL_DECISIONS"])
+    presets/mpd/agent.cordis.yml:347:        toolName: subagent_codex
+    skills/ast-grep/scripts/ast_grep_helper.py:235:    codex_home = os.environ.get("CODEX_HOME")
+    skills/ast-grep/tests/smoke.sh:136:HOME="$RUNTIME_HOME" CODEX_HOME= MPD_AST_GREP_SG_PATH= $HELPER doctor > "$OUTPUT_DIR/mpd-runtime.out" 2>&1
+    skills/lsp-setup/SKILL.md:111:  `LSP_TOOLS_MCP_USER_CONFIG`), where `command` + `extensions` are honored.
+    skills/review-work/SKILL.md:11:| `subagent(sub...)` | `multi_agent_v1.spawn_agent({"message":"TASK: act as an explorer. ...","agent_type":"explorer","fork_context":false})` |
+    skills/review-work/SKILL.md:12:| `subagent(sub...)` | `multi_agent_v1.spawn_agent({"message":"TASK: act as a librarian. ...","agent_type":"librarian","fork_context":false})` |
+    skills/review-work/SKILL.md:13:| `subagent(description="plan", ...)` | `multi_agent_v1.spawn_agent({"message":"TASK: act as a planning agent. ...","agent_type":"plan","fork_context":false})` |
+    skills/review-work/SKILL.md:14:| `subagent(description="oracle", ...)` for final verification | `multi_agent_v1.spawn_agent({"message":"TASK: act as a rigorous reviewer. ...","agent_type":"lazycodex-gate-reviewer","fork_context":false})` |
+    skills/review-work/SKILL.md:15:| `task(category="...", ...)` for implementation or QA | `multi_agent_v1.spawn_agent({"message":"TASK: act as an implementation or QA worker. ...","fork_context":false})` |
+    skills/review-work/SKILL.md:16:| `job_output(task_id="...")` | `multi_agent_v1.wait_agent(...)` for mailbox signals |
+    skills/review-work/SKILL.md:17:| `team_*(...)` | Use Codex native subagents via `multi_agent_v1.spawn_agent` and `multi_agent_v1.wait_agent`; use `multi_agent_v1.send_input` and `multi_agent_v1.close_agent` only when exposed in the active tools list |
+    skills/review-work/SKILL.md:32:Codex exposes ONE of two subagent tool surfaces per session; check your own tool list and route accordingly. If `multi_agent_v1.*` tools exist, use the table above as written. If instead a flat `spawn_agent` with a required `task_name` exists (`multi_agent_v2`), rewrite every `multi_agent_v1.*` example: `multi_agent_v1.spawn_agent({...,"fork_context":false})` becomes `spawn_agent({"task_name":"<lowercase_digits_underscores>","message":...,"agent_type":...,"fork_turns":"none"})` (`"all"` only when full parent history is truly required); `send_input` becomes `send_message`; do not call `close_agent`/`resume_agent` (finished agents end on their own; `followup_task` re-tasks one, `interrupt_agent` stops one); `wait_agent` takes only `timeout_ms` and returns on any child mailbox activity. `agent_type` works the same on both surfaces. If a code block below conflicts with this section, this section wins.
+    skills/review-work/SKILL.md:34:For work likely to exceed one wait cycle, require the child to send `WORKING: <task> - <current phase>` before long passes and `BLOCKED: <reason>` only when progress stops. A `multi_agent_v1.wait_agent` timeout only means no new mailbox update arrived. Treat a running child as alive. Fallback only when the child is completed without the deliverable, ack-only after followup, explicitly `BLOCKED:`, or no longer running.
+    skills/review-work/SKILL.md:38:Every `multi_agent_v1.spawn_agent` message must be self-contained. Start with
+    skills/review-work/SKILL.md:51:Plan and reviewer agents may run for a long time; spawn them in the background and keep doing independent root work. Between `multi_agent_v1.wait_agent` calls, back off — double the timeout up to ~5 minutes — instead of spinning short cycles.
+    skills/review-work/SKILL.md:60:locally. Use `multi_agent_v1.wait_agent` for mailbox signals, not proof of completion.
+    skills/review-work/SKILL.md:549:As each completes, collect via the Codex mapping above (`multi_agent_v1.wait_agent`,
+    skills/review-work/SKILL.md:569:wait/followup cycles. Do not use `multi_agent_v1.send_input` as an interrupt; queued
+    skills/visual-qa/SKILL.md:107:Dispatch through your harness's own subagent tool. In OpenCode: `subagent(description="oracle", ...)`. In Codex: `multi_agent_v1.spawn_agent({"message": "...", "agent_type": "lazycodex-gate-reviewer", "fork_context": false})` (the code blocks below are written in OpenCode `task(...)` form; translate them to that `spawn_agent` call, putting the full prompt in `message`). In DSH: `subagent(description=..., prompt=..., run_in_background: true, persona="<fetch via mpd_role_persona(role=oracle)>")`.
+    skills/visual-qa/SKILL.md:303:   **Codex:** `multi_agent_v1.spawn_agent({"message":"TASK: Act as a clone / design-system fidelity reviewer. ...","agent_type":"lazycodex-clone-fidelity-reviewer","fork_context":false})`
+    -> lines=31
+
+### G4-omo-gone  (expected: 0 lines)
+$ grep -n '_omo' packages/mpd-mcp-lsp/dist/cli.js || true
+    
+    -> lines=0
+
+### G5-omocodex-gone  (expected: 0 lines)
+$ git ls-files | grep -v '^evidence/' | xargs grep -n 'OMO_CODEX' 2>/dev/null || true
+    
+    -> lines=0
+
+### G6-astgrep-identifiers-gone  (expected: 0 lines)
+$ git ls-files skills/ast-grep | xargs grep -nE 'omo_env_binary|omo_runtime_slug|omo_runtime_binary|omoRoot|omoReal|OMO runtime|OMO caches' 2>/dev/null || true
+    
+    -> lines=0
+
+### G7-ledger-path-gone  (expected: 0 lines (outside evidence/**))
+$ git ls-files | grep -v '^evidence/' | xargs grep -n 'omo-parity-ledger' 2>/dev/null || true
+    
+    -> lines=0
+
+### G8-omo-bare-word-allowlisted  (expected: only allowlisted bare-word sites)
+$ git ls-files | grep -v '^evidence/' | xargs grep -nE '(^|[^A-Za-z0-9_])OMO([^A-Za-z0-9_]|$)' 2>/dev/null || true
+    docs/omo-parity-gap.md:1:# OMO Parity Audit — my-power-dsh vs upstream (om-opencode src/agents)
+    docs/omo-parity-gap.md:29:| OMO construct | DSH counterpart | Status |
+    docs/omo-parity-gap.md:43:- **No per-tool permissions on the preset plane.** OMO denies write/edit/patch per agent
+    docs/omo-parity-gap.md:49:- **`subagent` has no `load_skills` array**: OMO passes skills per delegation. DSH subagents
+    docs/omo-parity-gap.md:58:  `svn-master`. OMO tool-API mapped to DSH (`task(subagent_type=...)` -> `subagent(...)`,
+    docs/plan-e.md:16:   the gaps found by the OMO-vs-mpd audit (delegation check, decompose-and-delegate, anti-duplication,
+    docs/plan-e.md:21:- **Upstream OMO team**: members are mailbox-writing executors only (sisyphus / atlas /
+    docs/plan-f.md:1:# plan-f — OMO agents as subagents + AGENT.md convention + mpdConfig wiring
+    docs/plan-f.md:18:2. **The OMO-origin agents become subagents.** The 11 standalone presets
+    docs/plan-f.md:82:- The OMO preset dirs are deleted; personas are assets under mpd-roles-plugin —
+    packages/mpd-agent-teams-plugin/test/s1-s4-semantics.test.mjs:1:// t15 (OMO parity align): the four frozen mass-ulw semantics, each with a
+    scripts/build-mcp.mjs:137:      ["an OMO session", "an MPD session"],
+    scripts/build-mcp.mjs:138:      ["OMO runtime", "MPD runtime"],
+    scripts/build-mcp.mjs:140:    residual: ["OMO_", ".omo", "omoRuntime", "omo-runtime", "omo-ast-grep", "OMO session", "OMO runtime"],
+    skills/review-work/SKILL.md:30:Role-specific behavior must be described in a self-contained `message`. Use `fork_context: false` to start the child with only the initial prompt (no parent history); use `fork_context: true` only when full parent history is truly required. Include any required conversation context, files, diffs, constraints, and requested skill names directly in the spawned agent's `message`. OMO installs these selectable agent roles into `~/.codex/agents/`: `explorer`, `librarian`, `plan`, `momus`, `metis`, `lazycodex-code-reviewer`, `lazycodex-qa-executor`, and `lazycodex-gate-reviewer` — pass the matching name as `agent_type` so the child gets that role's model and instructions. If the spawn tool exposes no `agent_type` parameter, omit it and describe the role inside `message`. If a code block below conflicts with this section, this section wins.
+    -> lines=15
+
+### G9-evidence-untouched  (expected: only the new evidence/mpd-naming/** entries)
+$ git status --porcelain evidence/ || true
+    ?? evidence/mpd-naming/brand-cleanup/labels/
+    ?? evidence/mpd-naming/brand-cleanup/requirements/
+    ?? evidence/mpd-naming/captain-rulings/
+    ?? evidence/mpd-naming/docs-lane/
+    ?? evidence/mpd-naming/final-allowlist/
+    ?? evidence/mpd-naming/re-pin/
+    ?? evidence/mpd-naming/skills-lane/
+    ?? evidence/mpd-naming/verification/
+    ?? evidence/mpd-naming/wave2/
+    -> lines=9
+
+### G10-codegraph-keeps-present  (expected: MIGRATION_ID + [senpi] migration read PRESENT (never deleted))
+$ grep -n 'MIGRATION_ID\|\[senpi\]' packages/mpd-mcp-codegraph/dist/serve.js || true
+    8819:var MIGRATION_ID = "2026-07-codex-config-jsonc";
+    8851:  const senpi = recordAt(legacy, "[senpi]");
+    8854:    diagnostics: upstream !== undefined && senpi !== undefined ? ["conflict: [senpi] legacy [upstream] kept [senpi]"] : [],
+    8877:    id: MIGRATION_ID,
+    -> lines=4
+
+### G11-lsp-discovery-defaults-present  (expected: the .codex discovery defaults PRESENT (never deleted))
+$ grep -n '\.codex/lsp-client.json\|\.codex/lsp-install-decisions.json' packages/mpd-mcp-lsp/dist/cli.js || true
+    366:  const userConfigPath = translateHomeConfigEnv(env["LSP_TOOLS_MCP_USER_CONFIG"], home, ".codex/lsp-client.json");
+    367:  const installDecisionsPath = translateHomeConfigEnv(env["LSP_TOOLS_MCP_INSTALL_DECISIONS"], home, ".codex/lsp-install-decisions.json");
+    -> lines=2
+
+### G12-astgrep-scrub-targets  (expected: the MPD-worded bytes PRESENT (scrub outcome), 0 OMO)
+$ grep -nE 'an MPD session|MPD runtime|an OMO session|OMO runtime' packages/mpd-mcp-astgrep/dist/cli.js || true
+    475:var MPD_PROVISION_HINT = "Start an MPD session so the bundled ast-grep skill provisions the pinned runtime automatically";
+    504:  return `ast-grep binary not found for ${platform}: no candidate passed the --version probe across the env override, MPD runtime, skill bin cache, PATH, or Homebrew prefixes.`;
+    -> lines=2
+
+### G13-preset-bridge-rows-present  (expected: 2 rows (hard floor F6))
+$ grep -nE 'id: tool-subagent-(codex|claude-code)' presets/mpd/agent.cordis.yml || true
+    342:    - id: tool-subagent-codex
+    351:    - id: tool-subagent-claude-code
+    -> lines=2
+
+### G17-codegraph-foreign-absent  (expected: 0 lines (must-absent: t5 deleted HARNESS_IDS / [opencode] / [codex] / the $schema URL))
+$ grep -nE 'HARNESS_IDS|\[opencode\]|\[codex\]|harness: "codex"|MPD_SCHEMA_URL' packages/mpd-mcp-codegraph/dist/serve.js || true
+    
+    -> lines=0
+
+### G14-journal-lock-rule  (expected: LOCK-RECOMPUTE=MATCH)
+$ node evidence/mpd-naming/final-allowlist/raw/recompute-lock.mjs || true
+    repoRoot=/root/dshProj/my-power-dsh
+    HEAD-from-VENDOR_LOCK.lockedAt=2026-09-14T10:15:51.000Z
+    {"asset":"skills","declaredFileCount":297,"actualFileCount":297,"actualTreeSha":"a0f1febb4111d5884c9af3385963b06753c3f5a38423f7b66f6852c284725f95","declaredTreeSha":"a0f1febb4111d5884c9af3385963b06753c3f5a38423f7b66f6852c284725f95"}
+    {"asset":"packages/mpd-agent-teams-plugin/_deps","declaredFileCount":635,"actualFileCount":635,"actualTreeSha":"d1d106032b198d2392ca2fe36ea4b563c3010496192791a6e4812638b7cf8e37","declaredTreeSha":"d1d106032b198d2392ca2fe36ea4b563c3010496192791a6e4812638b7cf8e37"}
+    {"asset":"packages/mpd-mcp-astgrep/dist/cli.js","declaredFileCount":1,"actualFileCount":1,"actualSha256":"f06bba310cad306b5638efb90a69e50b2c6a7416c0c536867f02c70f4b4fa4c5","declaredSha256":"f06bba310cad306b5638efb90a69e50b2c6a7416c0c536867f02c70f4b4fa4c5"}
+    {"asset":"packages/mpd-mcp-gitbash/dist/cli.js","declaredFileCount":1,"actualFileCount":1,"actualSha256":"6458a82ee2cfcec319a03d2ffe8100c695d0980e7a366408fa5ef1467ca157b5","declaredSha256":"6458a82ee2cfcec319a03d2ffe8100c695d0980e7a366408fa5ef1467ca157b5"}
+    {"asset":"packages/mpd-mcp-lsp/dist/cli.js","declaredFileCount":1,"actualFileCount":1,"actualSha256":"a7cebcf9ec79ec480c98d3a9cd1392837927ada57bf9bbb18e0620ba863f3148","declaredSha256":"a7cebcf9ec79ec480c98d3a9cd1392837927ada57bf9bbb18e0620ba863f3148"}
+    {"asset":"packages/mpd-mcp-codegraph/dist/serve.js","declaredFileCount":1,"actualFileCount":1,"actualSha256":"ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375","declaredSha256":"ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375"}
+    LOCK-RECOMPUTE=MATCH
+    -> lines=9
+

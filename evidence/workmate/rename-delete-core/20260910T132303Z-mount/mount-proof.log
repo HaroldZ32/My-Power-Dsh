@@ -1,0 +1,53 @@
+=== t12 MOUNT proof (profile: mpd) ===
+repo=/root/dshProj/my-power-dsh
+sandbox DSH_HOME=/tmp/mpd-wm-mnt-dsh-lvlPzV
+sandbox HOME=/tmp/mpd-wm-mnt-home-gCPffk
+HEAD=f69708809ed63a57461aa6730d297afc09e772a3
+probe=/root/dshProj/my-power-dsh/evidence/workmate/rename-delete-core/mount-probe.mjs
+src type-array occurrences : 0
+dist type-array occurrences: 0
+delete schema (src): archived: { oneOf: [{ type: "string" }
+
+[exit=0] dsh plugin --profile mpd add <repo>
+[patch] /tmp/mpd-wm-mnt-dsh-lvlPzV/mount-probe.yml:
+- insert:
+    - id: mount-probe
+      name: "/root/dshProj/my-power-dsh/evidence/workmate/rename-delete-core/mount-probe.mjs"
+
+### real boot with registration instrumentation: dsh --profile mpd --patch <probe>
+[exit=124] real boot (124 = alive at the 60s cap, normal for a serving profile)
+apply-crash signatures : 0 (MUST be 0)
+probe completed        : 1 (1 = the probe reached its final marker)
+workmate tools present : WORKMATE_TOOLS_PRESENT=7/7
+--- mount-probe lines, verbatim ---
+[mount-probe] WORKMATE_TOOLS_PRESENT=7/7
+[mount-probe] WORKMATE_TOOLS=mpd_workmate_list:ok,mpd_workmate_init:ok,mpd_workmate_spawn:ok,mpd_workmate_reflect:ok,mpd_workmate_match:ok,mpd_workmate_rename:ok,mpd_workmate_delete:ok
+[mount-probe] WORKMATE_LIST_CALL=ok count=0
+[mount-probe] WORKMATE_DELETE_INVALID_NAME=refused msg="mpd_workmate: invalid name \"Alice\" — names are ASCII, lowercase, [a-z0-9_-] only and must already be sanitized"
+[mount-probe] DONE
+--- boot log, verbatim ---
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=no-binary binary=- cwd=/root/dshProj/my-power-dsh
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.
+[mount-probe] WORKMATE_TOOLS_PRESENT=7/7
+[mount-probe] WORKMATE_TOOLS=mpd_workmate_list:ok,mpd_workmate_init:ok,mpd_workmate_spawn:ok,mpd_workmate_reflect:ok,mpd_workmate_match:ok,mpd_workmate_rename:ok,mpd_workmate_delete:ok
+[mount-probe] WORKMATE_LIST_CALL=ok count=0
+[mount-probe] WORKMATE_DELETE_INVALID_NAME=refused msg="mpd_workmate: invalid name \"Alice\" — names are ASCII, lowercase, [a-z0-9_-] only and must already be sanitized"
+[mount-probe] DONE
+--- end ---
+[exit=0] MOUNT proof: tree applied AND 7/7 workmate tools registered
+{
+  "proof": "real boot that MOUNTS the rows (registration instrumentation via a --patch probe row)",
+  "isolation": {
+    "HOME": "temp sandbox",
+    "DSH_HOME": "temp sandbox"
+  },
+  "apply_crash_signatures": 0,
+  "probe_reached_final_marker": true,
+  "workmate_tools_registered": "7/7",
+  "boot_exit": 124,
+  "passed": true,
+  "note": "no --dump-config result is cited as load evidence; the mount probe reads the live tool registry after a settle window"
+}
+DONE

@@ -1,0 +1,15 @@
+{
+  "task": "t1",
+  "kind": "requirements",
+  "assignee": "Architect",
+  "verdict": "pass",
+  "attempt": 1,
+  "canonicalSource": ".mpd/team/mpd-wave-3/team.json#tasks[id=t1].output",
+  "outputSha256": "5e01b74ea80fab210f2e141f6af4be07bc5fba17ab333933efa9b47b7bcbde94",
+  "outputBytes": 11965,
+  "outputChars": 11911,
+  "persistedBy": "captain",
+  "reason": "task output reaches downstream members CLIPPED by prompt injection; team archive detaches it from the workspace",
+  "file": "t1-decision-record.md",
+  "verbatim": true
+}

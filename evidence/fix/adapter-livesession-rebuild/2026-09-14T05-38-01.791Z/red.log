@@ -1,0 +1,9 @@
+[repro] adapter artifact    = /root/dshProj/my-power-dsh/evidence/fix/adapter-livesession-rebuild/2026-09-14T05-38-01.791Z/raw/adapter.dist.stale.mjs
+[repro] adapter capabilities = {"tools":true,"toolsRegister":true,"toolsGuard":true,"toolsGet":true,"toolsExecute":true,"toolsPostExecute":true,"subagents":false,"subagentsSpawn":false,"skills":false,"skillsProvider":false,"agentPresets":false}
+[repro] typeof dsh.liveAgent = undefined
+[repro] typeof dsh.liveAgents = undefined
+[repro] typeof dsh.compactionEngineForAgent = undefined
+[repro] typeof dsh.onEvent = undefined
+[repro] typeof dsh.workspaceRootsAll = function
+[repro] tool outcome = {"ok":false,"error":"dsh.liveAgent is not a function. (In 'dsh.liveAgent(member.id)', 'dsh.liveAgent' is undefined)"}
+[repro] VERDICT=RED-CONFIRMED (the shipped artifact cannot serve the call site)

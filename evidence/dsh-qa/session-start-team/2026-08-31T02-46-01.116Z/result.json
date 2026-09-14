@@ -1,0 +1,38 @@
+{
+  "ok": true,
+  "sandbox": "/tmp/mpd-sst-GeVRYx",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "patchRow": {
+      "ok": true,
+      "hasRow": true
+    },
+    "compose": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0,
+      "tail": "/mpd-mcp-codegraph/dist/serve.js:384:19)\n    at async provisionMissingCodegraph (file:///root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js:9814:18)\n    at async runCodegraphServe (file:///root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js:9769:25)\n    at async runCodegraphServeCli (file:///root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js:9852:22)\n"
+    },
+    "teamState": {
+      "ok": true,
+      "teamId": "mpd-default",
+      "phase": "staged",
+      "profile": "mpd",
+      "members": 11,
+      "captainSessionId": "session-41486a59-1810-4456-b2d5-0fd16d593103"
+    },
+    "noticeInLog": {
+      "ok": true,
+      "matched": [
+        "/tmp/mpd-sst-GeVRYx/sessions/--tmp-mpd-sst-GeVRYx-ws--/session-41486a59-1810-4456-b2d5-0fd16d593103/session.jsonl.zstd"
+      ]
+    }
+  },
+  "totalSteps": 6
+}

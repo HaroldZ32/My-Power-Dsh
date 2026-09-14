@@ -1,0 +1,11 @@
+{
+  "check": "FULL profile (mpd) in an isolated DSH_HOME + sandbox HOME",
+  "install_exit": 0,
+  "dump_config_exit": 0,
+  "mpd_rows_in_full_profile": 16,
+  "mpd_workmate_row_present": true,
+  "real_boot_exit": 124,
+  "loader_apply_errors": 0,
+  "verdict": "plugin tree APPLIED on the full profile",
+  "note": "--dump-config alone cannot close this class (it never applies plugin code); the real boot is the decisive check"
+}

@@ -1,0 +1,43 @@
+{
+  "task": "t16 — skills lane: steered ADDENDUM after completion (captain message: three branded WORD-LABELS inside t16's two files)",
+  "attempt_id": "83a993e2-2d3c-4f44-88e7-56501814b189",
+  "status_at_receipt": "t16 was already COMPLETED (attempt 1) when this steering arrived; the edits below are executed as directed and recorded here, since a terminal task result is immutable from the member side.",
+  "labels_changed": [
+    {"file": "skills/ast-grep/scripts/ast_grep_helper.py", "line": 205, "old": "# --- OMO runtime resolution (vendored patch) ---", "new": "# --- MPD runtime resolution (vendored patch) ---"},
+    {"file": "skills/ast-grep/scripts/ast_grep_helper.py", "line": 250, "old": "    2. OMO runtime dirs", "new": "    2. MPD runtime dirs"},
+    {"file": "skills/ast-grep/tests/smoke.sh", "line": 126, "old": "# Given HOME has an OMO runtime sg executable.", "new": "# Given HOME has an MPD runtime sg executable."}
+  ],
+  "scope_discipline": {
+    "labels_only": "the $CODEX_HOME runtime TIER itself is untouched — not deleted, not renamed (captain ruling R1 / KF-06). Verified by printing the tier block: `codex_home = os.environ.get(\"CODEX_HOME\")` … `candidates.append(Path(codex_home) / \"runtime\" / \"ast-grep\" / slug / binary_name)`.",
+    "residual_labels_in_the_two_files": "NONE — a token-boundary, case-insensitive scan for a bare `omo` word in both files now returns nothing (the scan that found exactly these three lines before the fix).",
+    "files_not_touched": ["skills/ast-grep/AGENTS.md (captain applied the sk-07 `OMO caches` -> `MPD caches` fix; not mine)", "tests/overlays/omo-bline.yml (captain renamed to bline.yml)", "skills/ast-grep/references/**", "skills/ast-grep/SKILL.md"]
+  },
+  "verify_after_label_sweep": [
+    {"command": "python3 -m py_compile skills/ast-grep/scripts/ast_grep_helper.py", "exit": 0, "note": "the plain form again wrote skills/ast-grep/scripts/__pycache__/*.pyc (finding F1); the artifact was removed immediately — 0 pycache dirs / 0 .pyc files under skills/ afterwards"},
+    {"command": "bash -n skills/ast-grep/tests/smoke.sh", "exit": 0},
+    {"command": "git grep -n \"omo_\" -- skills/ast-grep", "observed": "no output; exit 1 = git grep's zero-match code (the pass condition)"},
+    {"command": "bash skills/ast-grep/tests/smoke.sh", "exit": 0, "evidence": "15 PASS / 0 FAIL, re-run on the post-sweep source (raw/10-smoke.log)"}
+  ],
+  "corpus_fingerprints_for_t17_computed_not_written": {
+    "algorithm": "verify-vendor canonical (sorted relpaths; per-file sha256 of LF-normalized bytes; relpath\\ndigest\\n)",
+    "A_current_tree": {"fileCount": 297, "treeSha": "a0f1febb4111d5884c9af3385963b06753c3f5a38423f7b66f6852c284725f95"},
+    "B_this_task_reverted": {"fileCount": 297, "treeSha": "35720bd2428ded2f6438b2d54363860b4f41702fafae3b89e8d22625c73a187d", "meaning": "sibling skills edits only (skills/ast-grep/AGENTS.md from the captain's sk-07 fix + skills/ulw-plan/scripts/scaffold-plan.mjs)"},
+    "C_control_all_modified_reverted": {"fileCount": 297, "treeSha": "f6bb2053d02a0e256ab5d88debceb4cfbc76b10c6ff03dca69bf446718a583c9", "matches_lock_now": true},
+    "VENDOR_LOCK.json": "still NOT written by this task; its entry (297 / f6bb2053…) still equals control C, i.e. the HEAD-state corpus"
+  },
+  "findings_delta": {
+    "F3": "RESOLVED by this addendum — the two helper labels and the smoke label are renamed to the MPD convention; the captain's steering superseded the earlier class-R5 'leave the labels' disposition for these three lines only.",
+    "F2": "STRENGTHENED — there are now FOUR modified skills files in the working tree (skills/ast-grep/AGENTS.md, my two, skills/ulw-plan/scripts/scaffold-plan.mjs), three of them outside this task, so the 'only skills/** writer' premise stays false and t17 must pin the SETTLED revision.",
+    "F1": "UNCHANGED and re-confirmed — the contract's own py_compile command polluted the corpus again during this addendum run and had to be cleaned up."
+  },
+  "changed_paths_this_addendum": [
+    "skills/ast-grep/scripts/ast_grep_helper.py",
+    "skills/ast-grep/tests/smoke.sh",
+    "evidence/mpd-naming/skills-lane/raw/10-smoke.log",
+    "evidence/mpd-naming/skills-lane/raw/20-corpus-recompute.json",
+    "evidence/mpd-naming/skills-lane/raw/30-pin-scenarios.txt",
+    "evidence/mpd-naming/skills-lane/raw/40-label-sweep-verify.log",
+    "evidence/mpd-naming/skills-lane/raw/pin-scenarios.mjs",
+    "evidence/mpd-naming/skills-lane/result-addendum.json"
+  ]
+}

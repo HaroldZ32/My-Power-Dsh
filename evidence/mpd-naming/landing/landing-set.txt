@@ -1,0 +1,251 @@
+# t20 landing set — the wave's changed paths, grouped per lane
+# generated 2026-09-14T10:33:47.339Z by evidence/mpd-naming/landing/raw/build-t20-named.mjs (read-only git)
+#
+# STATE: the wave is ALREADY LANDED. ff1932f "chore(naming): land the OMO/Codex/OpenCode to DSH naming wave"
+# (189 files, +40697/-136) carries the product + lock + skills + docs/text changes, and 26a4dd9
+# "chore(evidence): file the t20 landing package for the naming wave" carries this landing package.
+# HEAD is 26a4dd94aebc8da366339a062904e2bc1776c944; the working tree is clean except the deliberately excluded scratch tree.
+#
+# MEASUREMENT NOTE: the captain's framing (39 modified tracked + 9 untracked dirs, diffed against 53d617e)
+# was exact BEFORE the landing commit; the SAME path set is now committed, so the same measurement reads
+# "git diff --name-status 53d617e HEAD" = 196 entries here (the paths are identical; only their
+# staged/committed state changed). Both readings are given below.
+#
+# pre-landing revision compared against: 53d617e6c2d29dfadec06278bc4130061055378e
+# landed commit: ff1932f   evidence commit: 26a4dd9
+
+## A. the wave's landing set (what ff1932f + 26a4dd9 carry), grouped per lane
+
+### wave evidence (every lane + t18 verification + t19 review + t20 landing) — 157 path(s)
+A  evidence/mpd-naming/brand-cleanup/labels/output.log
+A  evidence/mpd-naming/brand-cleanup/labels/raw/01-corpus-before-deletion.json
+A  evidence/mpd-naming/brand-cleanup/labels/raw/02-deleted-tree.txt
+A  evidence/mpd-naming/brand-cleanup/labels/raw/03-corpus-after-deletion.json
+A  evidence/mpd-naming/brand-cleanup/labels/raw/10-gates-typecheck-and-tests.log
+A  evidence/mpd-naming/brand-cleanup/labels/raw/11-gates-full.log
+A  evidence/mpd-naming/brand-cleanup/labels/raw/12-testqa-minus-vendorlock-case.log
+A  evidence/mpd-naming/brand-cleanup/labels/raw/20-g1-after.txt
+A  evidence/mpd-naming/brand-cleanup/labels/raw/21-brand-token-inventory-after.txt
+A  evidence/mpd-naming/brand-cleanup/labels/raw/22-scratch-repin-proof.txt
+A  evidence/mpd-naming/brand-cleanup/labels/raw/30-final-confirmation.log
+A  evidence/mpd-naming/brand-cleanup/labels/raw/40-corpus-final.json
+A  evidence/mpd-naming/brand-cleanup/labels/raw/41-captain-ruling-followup.log
+A  evidence/mpd-naming/brand-cleanup/labels/raw/42-record-followup.mjs
+A  evidence/mpd-naming/brand-cleanup/labels/raw/50-attempt2-testqa-and-carries.log
+A  evidence/mpd-naming/brand-cleanup/labels/raw/51-record-attempt2.mjs
+A  evidence/mpd-naming/brand-cleanup/labels/raw/52-completion-gate-refusal.log
+A  evidence/mpd-naming/brand-cleanup/labels/raw/60-pin-target-recheck.json
+A  evidence/mpd-naming/brand-cleanup/labels/raw/61-amend-route-final.log
+A  evidence/mpd-naming/brand-cleanup/labels/raw/70-final-gates-after-repin.log
+A  evidence/mpd-naming/brand-cleanup/labels/result.json
+A  evidence/mpd-naming/brand-cleanup/requirements/raw/01-subject.txt
+A  evidence/mpd-naming/brand-cleanup/requirements/raw/02-brand-token-inventory.txt
+A  evidence/mpd-naming/brand-cleanup/requirements/raw/03-foreign-surface-inventory.txt
+A  evidence/mpd-naming/brand-cleanup/requirements/raw/04-acceptance-grep-baseline.txt
+A  evidence/mpd-naming/brand-cleanup/requirements/raw/05-consumer-traces-and-floors.txt
+A  evidence/mpd-naming/brand-cleanup/requirements/rule.json
+A  evidence/mpd-naming/captain-rulings/result.json
+A  evidence/mpd-naming/captain-rulings/rulings.md
+A  evidence/mpd-naming/docs-lane/output.log
+A  evidence/mpd-naming/docs-lane/raw/checks.json
+A  evidence/mpd-naming/docs-lane/raw/checks.mjs
+A  evidence/mpd-naming/docs-lane/result.json
+A  evidence/mpd-naming/final-allowlist/raw/10-brand-scan-at-revision.txt
+A  evidence/mpd-naming/final-allowlist/raw/20-lock-recompute.log
+A  evidence/mpd-naming/final-allowlist/raw/30-greps-current.log
+A  evidence/mpd-naming/final-allowlist/raw/40-token-set.txt
+A  evidence/mpd-naming/final-allowlist/raw/50-keep-allowlist-check.log
+A  evidence/mpd-naming/final-allowlist/raw/acceptance-greps.sh
+A  evidence/mpd-naming/final-allowlist/raw/check-keep-allowlist.sh
+A  evidence/mpd-naming/final-allowlist/raw/emit-result.py
+A  evidence/mpd-naming/final-allowlist/raw/recompute-lock.mjs
+A  evidence/mpd-naming/final-allowlist/result.json
+A  evidence/mpd-naming/final-allowlist/rule.json
+A  evidence/mpd-naming/landing/COMMIT-MESSAGE.txt
+A  evidence/mpd-naming/landing/COMMIT-PLAN.md
+A  evidence/mpd-naming/landing/output.log
+A  evidence/mpd-naming/landing/raw/10-status-porcelain.txt
+A  evidence/mpd-naming/landing/raw/11-diff-name-status-vs-3c1a850.txt
+A  evidence/mpd-naming/landing/raw/12-status-uall.txt
+A  evidence/mpd-naming/landing/raw/20-status-uall-final.txt
+A  evidence/mpd-naming/landing/raw/21-diff-name-status-3c1a850.txt
+A  evidence/mpd-naming/landing/raw/22-lane-assignment.json
+A  evidence/mpd-naming/landing/raw/23-landing-path-list.txt
+A  evidence/mpd-naming/landing/raw/24-evidence-index.json
+A  evidence/mpd-naming/landing/raw/25-evidence-index-summary.txt
+A  evidence/mpd-naming/landing/raw/26-history-proof.log
+A  evidence/mpd-naming/landing/raw/27-verify-status.log
+A  evidence/mpd-naming/landing/raw/28-verify-diff-3c1a850.log
+A  evidence/mpd-naming/landing/raw/29-verify-vendor.log
+A  evidence/mpd-naming/landing/raw/30-patch-check.log
+A  evidence/mpd-naming/landing/raw/31-landing-symlinks.log
+A  evidence/mpd-naming/landing/raw/32-untracked-list.txt
+A  evidence/mpd-naming/landing/raw/33-post-landing-state.log
+A  evidence/mpd-naming/landing/raw/34-remaining-uncommitted-path-list.txt
+A  evidence/mpd-naming/landing/raw/35-final-verify.log
+A  evidence/mpd-naming/landing/raw/build-landing.mjs
+A  evidence/mpd-naming/landing/result.json
+A  evidence/mpd-naming/re-pin/output.log
+A  evidence/mpd-naming/re-pin/raw/10-recompute-before.err
+A  evidence/mpd-naming/re-pin/raw/10-recompute-before.json
+A  evidence/mpd-naming/re-pin/raw/20-pin-before.txt
+A  evidence/mpd-naming/re-pin/raw/30-pin-after.json
+A  evidence/mpd-naming/re-pin/raw/31-pin-after.txt
+A  evidence/mpd-naming/re-pin/raw/40-perfile-a.json
+A  evidence/mpd-naming/re-pin/raw/40-stab-a.json
+A  evidence/mpd-naming/re-pin/raw/41-perfile-b.json
+A  evidence/mpd-naming/re-pin/raw/41-stab-b.json
+A  evidence/mpd-naming/re-pin/raw/50-write-stderr.txt
+A  evidence/mpd-naming/re-pin/raw/50-write-stdout.json
+A  evidence/mpd-naming/re-pin/raw/60-recompute-after.json
+A  evidence/mpd-naming/re-pin/raw/70-verify-vendor.log
+A  evidence/mpd-naming/re-pin/raw/80-recompute-faithful.json
+A  evidence/mpd-naming/re-pin/raw/81-stale-scan.log
+A  evidence/mpd-naming/re-pin/raw/82-lock-print.log
+A  evidence/mpd-naming/re-pin/raw/90-final-a.json
+A  evidence/mpd-naming/re-pin/raw/90-final-revision-a.txt
+A  evidence/mpd-naming/re-pin/raw/91-final-b.json
+A  evidence/mpd-naming/re-pin/raw/91-final-revision-b.txt
+A  evidence/mpd-naming/re-pin/raw/92-final-match-summary.log
+A  evidence/mpd-naming/re-pin/raw/95-post-verify-recompute.json
+A  evidence/mpd-naming/re-pin/raw/95-post-verify-summary.log
+A  evidence/mpd-naming/re-pin/raw/96-verify-vendor-final.log
+A  evidence/mpd-naming/re-pin/raw/97-stale-scan-final.log
+A  evidence/mpd-naming/re-pin/raw/98-lock-print-final.log
+A  evidence/mpd-naming/re-pin/raw/A0-corpus-now.txt
+A  evidence/mpd-naming/re-pin/raw/A1-corpus-after-settle.txt
+A  evidence/mpd-naming/re-pin/raw/A2-lock-recheck.json
+A  evidence/mpd-naming/re-pin/raw/A3-lock-drift.txt
+A  evidence/mpd-naming/re-pin/raw/A4-verify-vendor.log
+A  evidence/mpd-naming/re-pin/raw/A5-corpus-goahead-a.txt
+A  evidence/mpd-naming/re-pin/raw/A6-corpus-goahead-b.txt
+A  evidence/mpd-naming/re-pin/raw/A7-dist-goahead.txt
+A  evidence/mpd-naming/re-pin/raw/A8-lock-recheck-goahead.json
+A  evidence/mpd-naming/re-pin/raw/A9-lock-drift-goahead.txt
+A  evidence/mpd-naming/re-pin/raw/B0-verify-vendor-goahead.log
+A  evidence/mpd-naming/re-pin/raw/recompute-lock.mjs
+A  evidence/mpd-naming/re-pin/raw/skills-perfile.json
+A  evidence/mpd-naming/re-pin/result.json
+A  evidence/mpd-naming/review/t19-review-record.md
+A  evidence/mpd-naming/review/t19-review.json
+A  evidence/mpd-naming/skills-lane/output.log
+A  evidence/mpd-naming/skills-lane/raw/10-smoke.log
+A  evidence/mpd-naming/skills-lane/raw/20-corpus-recompute.json
+A  evidence/mpd-naming/skills-lane/raw/30-pin-scenarios.txt
+A  evidence/mpd-naming/skills-lane/raw/40-label-sweep-verify.log
+A  evidence/mpd-naming/skills-lane/raw/pin-scenarios.mjs
+A  evidence/mpd-naming/skills-lane/raw/recompute-corpus.mjs
+A  evidence/mpd-naming/skills-lane/result-addendum.json
+A  evidence/mpd-naming/skills-lane/result.json
+A  evidence/mpd-naming/verification/raw/00-pin.txt
+A  evidence/mpd-naming/verification/raw/10-snapshot-worktree.sha256
+A  evidence/mpd-naming/verification/raw/11-frozen-artifacts.sha256
+A  evidence/mpd-naming/verification/raw/12-modified-paths.txt
+A  evidence/mpd-naming/verification/raw/13-modified-hashes-T1.sha256
+A  evidence/mpd-naming/verification/raw/20-settle.log
+A  evidence/mpd-naming/verification/raw/21-modified-hashes-T2.sha256
+A  evidence/mpd-naming/verification/raw/22-snapshot-worktree-T2.sha256
+A  evidence/mpd-naming/verification/raw/23-modified-hashes-T3.sha256
+A  evidence/mpd-naming/verification/raw/30-greps-at-T2.log
+A  evidence/mpd-naming/verification/raw/31-keep-allowlist-at-T2.log
+A  evidence/mpd-naming/verification/raw/32-hardened-recompute-at-T3.json
+A  evidence/mpd-naming/verification/raw/50-bilingual-links.json
+A  evidence/mpd-naming/verification/raw/51-neg-control.json
+A  evidence/mpd-naming/verification/raw/60-verification-log.txt
+A  evidence/mpd-naming/verification/raw/61-steering-defect-class-sweep.txt
+A  evidence/mpd-naming/verification/raw/70-verification-manifest.sha256
+A  evidence/mpd-naming/verification/raw/check-bilingual-links.mjs
+A  evidence/mpd-naming/verification/raw/gates/40-verify-vendor.log
+A  evidence/mpd-naming/verification/raw/gates/41-patch-check.log
+A  evidence/mpd-naming/verification/raw/gates/42-typecheck.log
+A  evidence/mpd-naming/verification/raw/gates/43-agent-teams-tests.log
+A  evidence/mpd-naming/verification/raw/gates/44-test-qa.log
+A  evidence/mpd-naming/verification/raw/gates/sweep-summary.log
+A  evidence/mpd-naming/verification/raw/neg-controls/astgrep-sabotaged.js
+A  evidence/mpd-naming/verification/raw/neg-controls/scripts/build-mcp.mjs
+A  evidence/mpd-naming/verification/result-addendum-r14.json
+A  evidence/mpd-naming/verification/result.json
+A  evidence/mpd-naming/wave2/output.log
+A  evidence/mpd-naming/wave2/raw/10-verify-t14.log
+A  evidence/mpd-naming/wave2/raw/20-verify-vendor-after-t14.log
+A  evidence/mpd-naming/wave2/raw/apply-t14-edits-2.mjs
+A  evidence/mpd-naming/wave2/raw/apply-t14-edits.mjs
+A  evidence/mpd-naming/wave2/raw/build-mcp.mjs.pre-t14
+A  evidence/mpd-naming/wave2/raw/build-repro.mjs
+A  evidence/mpd-naming/wave2/raw/verify-t14.mjs
+A  evidence/mpd-naming/wave2/result.json
+
+### t2 text lane (package READMEs) — 12 path(s)
+M  packages/mpd-boulder-plugin/README.md
+M  packages/mpd-boulder-plugin/README.zh-CN.md
+M  packages/mpd-bundle/README.md
+M  packages/mpd-bundle/README.zh-CN.md
+M  packages/mpd-modelchain-plugin/README.md
+M  packages/mpd-modelchain-plugin/README.zh-CN.md
+M  packages/mpd-qa-roles-probe/README.md
+M  packages/mpd-qa-roles-probe/README.zh-CN.md
+M  packages/mpd-roles-plugin/README.md
+M  packages/mpd-roles-plugin/README.zh-CN.md
+M  packages/mpd-workmate-plugin/README.md
+M  packages/mpd-workmate-plugin/README.zh-CN.md
+
+### t2 text lane (manual/overview/manifest/preset) — 6 path(s)
+M  AGENTS.md
+M  LICENSE-NOTICES.md
+M  package.json
+M  presets/mpd/agent.cordis.yml
+M  README.md
+M  README.zh-CN.md
+
+### t15 docs lane + t2 text lane (docs prose) — 6 path(s)
+M  docs/architecture.md
+M  docs/architecture.zh-CN.md
+M  docs/feature-audit.md
+M  docs/feature-audit.zh-CN.md
+M  docs/user-guide.md
+M  docs/user-guide.zh-CN.md
+
+### t14 dists lane — 6 path(s)
+M  packages/mpd-mcp-astgrep/dist/BUILD.lock
+M  packages/mpd-mcp-gitbash/dist/BUILD.lock
+M  packages/mpd-mcp-gitbash/dist/cli.js
+M  packages/mpd-mcp-lsp/dist/BUILD.lock
+M  packages/mpd-mcp-lsp/dist/cli.js
+M  scripts/build-mcp.mjs
+
+### UNCLASSIFIED — 4 path(s)
+M  packages/mpd-roles-plugin/package.json
+M  packages/mpd-roles-plugin/src/index.ts
+M  packages/mpd-roles-plugin/src/roles.data.ts
+M  packages/mpd-workmate-plugin/src/index.ts
+
+### t16 skills lane (rides with the lock) — 2 path(s)
+M  skills/ast-grep/scripts/ast_grep_helper.py
+M  skills/ast-grep/tests/smoke.sh
+
+### t17 re-pin: THE WAVE'S SINGLE VENDOR_LOCK CHANGE (must ride with the four skills/** files) — 1 path(s)
+M  VENDOR_LOCK.json
+
+### t16 skills lane + captain sk-07 (rides with the lock) — 1 path(s)
+M  skills/ast-grep/AGENTS.md
+
+### captain out-of-lane sk-08 (rides with the lock) — 1 path(s)
+M  skills/ulw-plan/scripts/scaffold-plan.mjs
+
+## B. uncommitted right now (git status --porcelain -uall)
+
+M evidence/mpd-naming/landing/output.log
+?? evidence/mpd-naming/landing/ONE-COMMIT-PLAN.md
+?? evidence/mpd-naming/landing/landing-set.txt
+?? evidence/mpd-naming/landing/raw/build-t20-named.mjs
+?? evidence/mpd-naming/landing/t20-landing.json
+?? evidence/mpd-naming/wave2/raw/scratch/
+
+untracked file count: 1212 = 1208 files of t14's reproduction scratch tree (deliberately EXCLUDED from the landing; .gitignore:1 keeps its 21 node_modules symlinks out) + 4 file(s) of this landing package's own new artifacts
+
+## C. the pair that must never be split
+
+VENDOR_LOCK.json  ←→  skills/ast-grep/AGENTS.md, skills/ast-grep/scripts/ast_grep_helper.py,
+                          skills/ast-grep/tests/smoke.sh, skills/ulw-plan/scripts/scaffold-plan.mjs
+(§9/§11: the single re-pin rides in the same commit as every skills/** change. VERIFIED in ff1932f:
+all five paths are in that commit, none left behind.)

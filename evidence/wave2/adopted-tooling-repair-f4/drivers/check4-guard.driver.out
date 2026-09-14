@@ -1,0 +1,19 @@
+{
+  "driver": "check4-guard-failure",
+  "live_tree_mutated": false,
+  "sandbox": "/tmp/mpd-t8-guard-iRjQeT",
+  "sandbox_restored_byte_identical": true,
+  "live_sha256_before": "4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5",
+  "live_sha256_after": "4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5",
+  "live_untouched": true,
+  "passed": true
+}
+  0 (want 0 (already applied)         ) S1 real tree --check (read-only)                     [patch-agent-teams-fixes] already applied: 9 mpd delta region(s) across 2 adopted file(s)
+  0 (want 0                           ) S2 sandbox byte-identical --check                    
+  1 (want 1 + MISSING                 ) S3 region stripped -> --check must REFUSE            [patch-agent-teams-fixes] FAIL: delta "mpd-delta scope-glob" is MISSING from packages/mpd-
+  0 (want 0 + applied                 ) S3b --write restores                                 [patch-agent-teams-fixes] applied: 9 mpd delta region(s) across 2 adopted file(s) (inserte
+  0 (want 0                           ) S3c restored --check                                 
+  1 (want 1                           ) S4 drift: region+anchor gone -> --check              [patch-agent-teams-fixes] FAIL: delta "mpd-delta scope-glob" is MISSING from packages/mpd-
+  1 (want 1 + anchor gone             ) S4b drift: --write must REFUSE                       
+  1 (want 1 + no longer matches       ) S5 region body edited -> --check must REFUSE         [patch-agent-teams-fixes] FAIL: delta "mpd-delta scope-glob" in packages/mpd-agent-teams-p
+  0 (want 0                           ) S6 pristine restored -> --check                      

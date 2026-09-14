@@ -1,9 +1,13 @@
-# QA 用：headless 模板无 agent-presets 行 → 插入（字面量路径，验证 !!js 嵌套是否是根因）
+# QA use: template — preset-register.mjs substitutes {{PRESETS}} with this repo's
+# presets dir at runtime (never commit checkout-absolute paths). Mirrors the
+# bundle patch's own agent-presets id-target row: bundle-rooted `system` root +
+# the mpd default, so the headless QA boot exercises the same config shape the
+# web profile gets from the patch.
 - insert:
     - id: agent-presets
       name: '@deepseek-ai/dsh-agent-presets'
       config:
-        default: omo-oracle
+        default: mpd
         roots:
-          - path: '/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/omo-dsh/packages/omo-presets-plugin/presets'
+          - path: '{{PRESETS}}'
             trust: system

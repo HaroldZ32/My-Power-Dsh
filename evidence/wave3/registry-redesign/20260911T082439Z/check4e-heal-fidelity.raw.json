@@ -1,0 +1,14 @@
+{
+  "driver": "check4e-heal-fidelity",
+  "scenario": "our own file with EVERY region stripped (markers + bodies), then the guard's --write; the canonical adoption is the working-tree file",
+  "strip": "stripped: 7 regions -> mpd-delta scope-glob, mpd-delta scope-overlap, mpd-delta scope-overlap-normalize, mpd-delta contract-contradiction, mpd-delta create-contract-gate, mpd-delta repair-scope, mpd-delta repair-scope-fields\nstripped sha256 = 0c0d812258e5d198901bb0a797b3da7249c58ab7a4d255b44777253a183355b2",
+  "heal_write": "[patch-agent-teams-fixes] applied: 12 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta scope-glob, mpd-delta scope-overlap, mpd-delta scope-overlap-normalize, mpd-delta contract-contradiction, mpd-delta create-contract-gate, mpd-delta repair-scope, mpd-delta repair-scope-fields)\nexit=0",
+  "check_after_heal": "[patch-agent-teams-fixes] already applied: 12 mpd delta region(s) across 2 adopted file(s)\nexit=0",
+  "identical": true,
+  "diff": "diff-lines=0\ndiff-exit=0",
+  "regions_canonical": "canonical:\n  102://#region mpd-delta scope-glob (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n  244://#region mpd-delta scope-overlap (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n  263://#region mpd-delta scope-overlap-normalize (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n  276://#region mpd-delta contract-contradiction (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n  410:    //#region mpd-delta create-contract-gate (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n  714:    //#region mpd-delta repair-scope (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n  730:        //#region mpd-delta repair-scope-fields (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\nhealed:\n  102://#region mpd-delta scope-glob (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n  244://#region mpd-delta scope-overlap (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n  263://#region mpd-delta scope-overlap-normalize (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n  276://#region mpd-delta contract-contradiction (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n  410:    //#region mpd-delta create-contract-gate (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n  714:    //#region mpd-delta repair-scope (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n  730:        //#region mpd-delta repair-scope-fields (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)",
+  "diff_lines": 0,
+  "heal_exit": 0,
+  "check_exit": 0,
+  "passed": true
+}

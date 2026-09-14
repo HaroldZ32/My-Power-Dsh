@@ -1,0 +1,102 @@
+{
+  "task": "t5 — fix the read-only deny lists (contract §G) and prove it as far as this environment allows",
+  "slug": "roles-readonly",
+  "authoritativeEvidencePath": "evidence/workmate/roles-readonly/ (the task's declared evidence path; an older copy of the same artifacts also exists under evidence/fix/readonly-deny/ from a run made before the scope was reconciled — this directory is the authoritative one)",
+  "status": "complete — all declared verify commands green; one criterion recorded as an environment residual",
+  "change": {
+    "rolesDenyList": [
+      "write",
+      "edit",
+      "mpd_hashline_edit",
+      "bash",
+      "mcp__ast_grep__rewrite",
+      "mcp__ast_grep__scan",
+      "mcp__lsp__rename"
+    ],
+    "removedOnly": "the two unregistered legacy editor names",
+    "keptOnPurpose": "bash (a shell can write files; read/glob/grep stay available) and the three live-registered MCP write tools",
+    "noHasToolFilter": true,
+    "distRebuilt": "packages/mpd-roles-plugin/dist/index.js (the repo loads dist, not src)",
+    "files": [
+      "packages/mpd-roles-plugin/src/index.ts",
+      "packages/mpd-roles-plugin/dist/index.js",
+      "packages/mpd-roles-plugin/test/roles.test.ts",
+      "skills/dsh-qa/scripts/readonly-deny.mjs"
+    ]
+  },
+  "verifyCommandsAllGreen": {
+    "bun test packages/mpd-roles-plugin/test": "11 pass / 0 fail / 140 expect calls",
+    "bun run test:qa": "[test:qa] all self-tests passed (exit 0)",
+    "bun run typecheck": "exit 0"
+  },
+  "credentialFreeLiveProof": {
+    "method": "the case boots a FRESH dsh process in an isolated DSH_HOME with a sandbox HOME and a throwaway key; a local OpenAI-shaped stub answers the PARENT model step with exactly one mpd_role_spawn call, so the child-composition path really runs; a sandbox copy of the shared adapter is instrumented so the restriction handed to the harness is recorded",
+    "recordedFilter": {
+      "deny": [
+        "write",
+        "edit",
+        "mpd_hashline_edit",
+        "bash",
+        "mcp__ast_grep__rewrite",
+        "mcp__ast_grep__scan",
+        "mcp__lsp__rename"
+      ]
+    },
+    "stubTrace": "call#1 hasTools=true; call#2 hasTools=false (the CHILD's own model request); call#3 and call#4 hasTools=true",
+    "childCreatedAndAnswered": true,
+    "unknownToolRefusalSeen": false,
+    "exitCode": 0,
+    "whyItProvesTheFix": "tools.restrict() runs inside the child's setup, so a rejection means no child agent is created. A created, answering child proves the harness accepted the seven-name list, and the adapter probe pins which list was accepted."
+  },
+  "residual": {
+    "criterion": "a spawned read-only child EXECUTES a turn",
+    "met": false,
+    "why": "no provider credential is reachable anywhere in this environment (~/.dsh/.credentials.yaml holds only a client-connection/browser-session grant; settings.yaml configures no gateway chain; no environment key) — independently confirmed by t6",
+    "rawEvidence": "live-probe-raw.txt lanes A and B, showing `MISSING_CREDENTIAL: llm-deepseek: no API key for provider route \"deepseek-official\"`",
+    "remedy": "export DEEPSEEK_API_KEY and re-run `node skills/dsh-qa/scripts/readonly-deny.mjs` — the case needs no change",
+    "explicitlyNotAVerifyEntry": "the credential-gated run is not listed in commandsRun; it is recorded here only"
+  },
+  "correctionToTheProposedSignal": {
+    "proposed": "failing with MISSING_CREDENTIAL instead of the restrict error is positive evidence the list was accepted, because restrict() runs at child composition before model auth",
+    "measured": "REFUTED. Authentication precedes the child's composition in this build: with no key the run stops at MISSING_CREDENTIAL and with a dummy key it stops at `AUTH: Authentication Fails`, both at the PARENT's first model step, so mpd_role_spawn is never invoked and the restriction is never evaluated (both lanes: `restrict error present: 0`). Recording it as positive evidence would have enshrined a false positive.",
+    "replacement": "the credential-free stub lane above is the strongest live evidence this environment allows"
+  },
+  "reviewFindingFoldedIn": {
+    "source": "t6 review, severity low",
+    "finding": "the roles/workmate parity guard used to console.warn and RETURN when the workmate export was missing — a drift guard that could disengage silently and still report green",
+    "fix": "it now asserts Array.isArray(workmateDeny) first, so it fails loudly instead of skipping; verified engaged (140 expect calls, no SKIP warning)"
+  },
+  "scopeReconciliation": {
+    "problem": "the first attempt wrote outside its declared inScope, and AGENTS.md is explicitly listed in outOfScope for this task",
+    "actionsTaken": [
+      "AGENTS.md edit REVERTED (git checkout -- AGENTS.md) — the task contract wins over verbal approval, and another member is editing that file concurrently",
+      "evidence relocated to the declared path evidence/workmate/roles-readonly/",
+      "the case now writes its evidence to the declared path"
+    ],
+    "stillOutsideInScope": [
+      "skills/dsh-qa/SKILL.md — the case-table row the QA discipline requires for every new case",
+      "VENDOR_LOCK.json — the skills-corpus fingerprint, which adding a QA case necessarily changes (verified consistent with the tree by the gate's own algorithm)"
+    ],
+    "recommendation": "the captain either declares these two paths in inScope for t5, or assigns them to t10 (bilingual docs + QA assertion sync), which is the natural owner of both",
+    "knowledgePreservation": "the operational lessons that were going to be an AGENTS.md row are preserved in-scope instead: the case script's header explains why --dump-config is not a health signal and why an in-session spawn cannot prove this fix, and the test file documents the guard semantics"
+  },
+  "otherMeasurementsOnRecord": {
+    "preFixFailureNotReproducible": "against a pristine f697088 worktree the same drive delivered the NINE-name pre-fix list (delivery proven by the instrumented adapter) and the child was still created, with no refusal — the refusal is not reproducible in a fresh process here; the in-session error is a boot-time module-cache condition (§N2), independently measured by t6 too",
+    "dumpConfigIsNotAHealthSignal": "`dsh --profile <p> --dump-config` composes rows without executing plugin code, so a profile whose plugin aborts the whole tree still dumps cleanly",
+    "detectorPitfallsFoundWhileBuildingThis": [
+      "the harness writes `names unknown global tool` (singular) for one unknown name — matching the plural form makes a detector blind to the exact error it hunts",
+      "a greedy continuation regex in a sandbox patch rewrite silently matched three rows and repointed the wrong one, so a control passed while exercising nothing"
+    ]
+  },
+  "blockerOwnedByOthers": {
+    "what": "RESOLVED — packages/mpd-workmate-plugin no longer contains the output-schema type array that aborted the plugin tree; src and dist both read archived: { type: \"string\" } and grep for a type array returns 0 in each.",
+    "owner": "t3/t12 (formally claimed)",
+    "verifiedByMe": "fresh isolated boot with the row intact reports 0 loader-apply errors and stops only at the credential gate, so the profile boots",
+    "effectOnThisCase": "the earlier row-stripping workaround has been REMOVED; the case now runs the profile unmodified and FAILS if the row is absent, so this class of defect can never hide behind the probe again",
+    "note": "this entry previously described the defect as live; corrected once the fix was verified, so a reviewer does not read a resolved blocker as current"
+  },
+  "baseline": {
+    "head": "f697088 with 33 pre-existing dirty entries at claim time — never committed, stashed or reverted; the only file restored during this task is AGENTS.md, whose restoration was required by this task's outOfScope list",
+    "scratchRemoved": "the temporary f697088 worktree and probe directory used for the before/after measurement were removed; git worktree list shows only the main tree"
+  }
+}

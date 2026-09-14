@@ -1,0 +1,2 @@
+[codegraph-smoke] missing staged bundle; run node scripts/pack-mpd.mjs first
+exit=1

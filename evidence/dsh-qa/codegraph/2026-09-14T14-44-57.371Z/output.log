@@ -1,0 +1,26 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/root/dshProj/my-power-dsh/.cg-qa
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/dist/mpd-package/skills (provider mpd-bundle, bundle 0.3.2)
+dsh: reasoning:
+The user wants me to call mcp__codegraph__codegraph_explore targeting the norm function in src/util.ts, and report the returned content verbatim. No bash.
+
+Let me just call the tool.
+Here is the tool's returned content, verbatim:
+
+```
+**Exploration: norm function in src/util.ts**
+
+Found 1 symbol across 1 file.
+
+**Source Code**
+
+> The code below is the **verbatim, current on-disk source** of these files — re-read from disk on this call and line-numbered, byte-for-byte identical to what the Read tool returns. It is NOT a summary, outline, or stale cache. Treat each block as a Read you have already performed: do not Read a file shown here.
+
+**`src/util.ts`** — norm(function)
+
+```typescript
+1	export function norm(x:number){return x<0?0:x}
+```
+```
+
+Summary of what came back: `codegraph_explore` resolved the query to exactly one symbol — `norm` in `src/util.ts` — and returned its full on-disk source, a single line: `export function norm(x:number){return x<0?0:x}` (a clamp-to-zero helper). No bash was used.

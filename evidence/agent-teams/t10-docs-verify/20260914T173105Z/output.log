@@ -1,0 +1,250 @@
+# t10 verification log — 2026-09-14T17:32:04Z — head 6cbb126
+
+## 1. checker (read-only)
+$ node evidence/agent-teams/t10-docs-verify/20260914T173105Z/verify.mjs
+{
+ "existence": true,
+ "paritySameSectionCount": true,
+ "links": {
+  "total": 73,
+  "dead": 0,
+  "perFile": {
+   "README.md": {
+    "count": 13,
+    "dead": 0,
+    "external": 2
+   },
+   "README.zh-CN.md": {
+    "count": 13,
+    "dead": 0,
+    "external": 2
+   },
+   "docs/index.md": {
+    "count": 16,
+    "dead": 0,
+    "external": 0
+   },
+   "docs/index.zh-CN.md": {
+    "count": 15,
+    "dead": 0,
+    "external": 0
+   },
+   "docs/user-guide.md": {
+    "count": 4,
+    "dead": 0,
+    "external": 0
+   },
+   "docs/user-guide.zh-CN.md": {
+    "count": 4,
+    "dead": 0,
+    "external": 0
+   },
+   "docs/architecture.md": {
+    "count": 1,
+    "dead": 0,
+    "external": 0
+   },
+   "docs/architecture.zh-CN.md": {
+    "count": 1,
+    "dead": 0,
+    "external": 0
+   },
+   "docs/development.md": {
+    "count": 1,
+    "dead": 0,
+    "external": 0
+   },
+   "docs/development.zh-CN.md": {
+    "count": 1,
+    "dead": 0,
+    "external": 0
+   },
+   "docs/extensions.md": {
+    "count": 2,
+    "dead": 0,
+    "external": 0
+   },
+   "docs/extensions.zh-CN.md": {
+    "count": 2,
+    "dead": 0,
+    "external": 0
+   }
+  }
+ },
+ "paths": {
+  "claims": 203,
+  "missing": 3,
+  "missingList": [
+   "docs/index.md: docs/plan-",
+   "docs/index.zh-CN.md: docs/plan-",
+   "docs/architecture.md: skills/flows"
+  ]
+ },
+ "configKeys": {
+  "consumedFrom": "packages/mpd-config-plugin/src/index.ts mpd_config_get description",
+  "badRows": [
+   {
+    "line": 245,
+    "text": "| `codegraph.*` | mpd-codegraph | autoInit, binary, timeouts |"
+   }
+  ]
+ },
+ "relationship": {
+  "capabilitiesLine": 16,
+  "relationshipLine": 180,
+  "licenseLine": 202,
+  "isSeparateSection": true,
+  "afterCapabilities": true,
+  "beforeHeadline": true,
+  "namesCarried": true,
+  "namesAdopted": true,
+  "namesOwn": true,
+  "citesPinnedCommit": true,
+  "citesMit": true,
+  "upstreamLabelInTitleOrFirstScreen": false
+ },
+ "hub": {
+  "file": "docs/index.md",
+  "lists": {
+   "docs/user-guide.md": true,
+   "docs/extensions.md": true,
+   "docs/architecture.md": true,
+   "docs/development.md": true,
+   "README.md": true,
+   "AGENTS.md": true
+  }
+ },
+ "findings": [
+  {
+   "id": "D-path-docs/index.md-docs/plan-",
+   "severity": "high",
+   "doc": "docs/index.md",
+   "line": 0,
+   "problem": "repo path claim does not exist: docs/plan-",
+   "requiredFix": "fix the path or drop the claim"
+  },
+  {
+   "id": "D-path-docs/index.zh-CN.md-docs/plan-",
+   "severity": "high",
+   "doc": "docs/index.zh-CN.md",
+   "line": 0,
+   "problem": "repo path claim does not exist: docs/plan-",
+   "requiredFix": "fix the path or drop the claim"
+  },
+  {
+   "id": "D-path-docs/architecture.md-skills/flows",
+   "severity": "high",
+   "doc": "docs/architecture.md",
+   "line": 0,
+   "problem": "repo path claim does not exist: skills/flows",
+   "requiredFix": "fix the path or drop the claim"
+  },
+  {
+   "id": "D-cfg-245",
+   "severity": "medium",
+   "doc": "docs/user-guide.md",
+   "line": 245,
+   "problem": "config-table row claims an mpd.jsonc key that no plugin consumes: | `codegraph.*` | mpd-codegraph | autoInit, binary, timeouts |",
+   "requiredFix": "remove the row, or state that these are row/apply-time options (autoInit/binary/initTimeoutMs/cooldownMs), not mpd.jsonc keys"
+  }
+ ]
+}
+
+## 2. extension CLI facts (executed)
+$ bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example
+[mpd-ext] validate /root/dshProj/my-power-dsh/extensions/mpd-ext-example (plane=user)
+  extension "mpd-ext-example": loadable
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  pending contributes.mcp[0]: pending: server "example" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+[mpd-ext] ok
+exit=0
+
+$ bun scripts/mpd-ext.mjs --self-test
+  ok no command prints usage or fails
+[mpd-ext] --self-test passed (19 checks)
+
+$ SB=$(mktemp -d); HOME=$SB bun scripts/mpd-ext.mjs scaffold rtl-demo --dir $SB/.mpd/extensions
+[mpd-ext] scaffolded "rtl-demo" at /tmp/tmp.t2WvQXCjUq/.mpd/extensions/rtl-demo
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 0 mcp server(s)
+  next: bun scripts/mpd-ext.mjs validate /tmp/tmp.t2WvQXCjUq/.mpd/extensions/rtl-demo
+exit=0
+
+$ HOME=$SB bun scripts/mpd-ext.mjs validate $SB/.mpd/extensions/rtl-demo
+[mpd-ext] validate /tmp/tmp.t2WvQXCjUq/.mpd/extensions/rtl-demo (plane=user)
+  extension "rtl-demo": loadable
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 0 mcp server(s)
+[mpd-ext] ok
+exit=0
+
+## 3. the failing config-table rows
+$ grep -n 'codegraph\.\*' docs/user-guide.md docs/user-guide.zh-CN.md
+docs/user-guide.md:245:| `codegraph.*` | mpd-codegraph | autoInit, binary, timeouts |
+docs/user-guide.zh-CN.md:223:| `codegraph.*` | mpd-codegraph | autoInit、二进制、超时 |
+
+$ grep -o 'Consumed keys:[^"]*' packages/mpd-config-plugin/src/index.ts
+Consumed keys: memory.vcs/memory.dir/memory.agentSlug/memory.reflectionEvery, team.stateDir, hashline.guardEditTools/hashline.maxDiffChars/hashline.registryFile, commentChecker.autoCheck/commentChecker.bin/commentChecker.timeoutMs/commentChecker.maxMessageChars, modelchain.<chainKey>, boulder.dir, ulw.maxRounds/ulw.planDir/ulw.stateDir/ulw.provider/ulw.model/ulw.reviewerModel/ulw.maxReReviews.
+
+$ grep -n 'mpdConfig\|cfg\|config' packages/mpd-codegraph-plugin/src/index.ts | head
+16:type Config = { autoInit?: boolean; initTimeoutMs?: number; cooldownMs?: number; binary?: string }
+86:function cooldownFresh(cwd: string, cooldownMs: number): boolean {
+91:    return age < cooldownMs
+122:  const autoInit = config.autoInit ?? true
+123:  const timeoutMs = config.initTimeoutMs ?? 60_000
+124:  const cooldownMs = config.cooldownMs ?? 15 * 60_000
+126:  const binary = resolveBinary(config)
+133:  else if (cooldownFresh(cwd, cooldownMs)) { status = "cooldown" }
+151:          const b = resolveBinary(config)
+
+$ grep -rn 'get("codegraph' packages/*/src/*.ts
+(no output above = no plugin reads codegraph.* from mpdConfig)
+
+## 4. the failing package-reference rows
+$ grep -n 'One README per package' docs/index.md
+30:One README per package under `packages/<name>/README.md`:
+
+$ ls packages/mpd-team-compact-plugin/ packages/mpd-mcp-shared/
+packages/mpd-mcp-shared/:
+bin-resolve.mjs
+bin-resolve.test.mjs
+
+packages/mpd-team-compact-plugin/:
+dist
+package.json
+src
+test
+
+$ node -e 'readdirSync(packages) not listed in docs/index.md'
+[ 'mpd-mcp-shared' ]
+
+## 5. link + parity summaries
+$ per-file link resolution
+  README.md                      links=13 dead=0 external=2
+  README.zh-CN.md                links=13 dead=0 external=2
+  docs/index.md                  links=16 dead=0 external=0
+  docs/index.zh-CN.md            links=15 dead=0 external=0
+  docs/user-guide.md             links=4 dead=0 external=0
+  docs/user-guide.zh-CN.md       links=4 dead=0 external=0
+  docs/architecture.md           links=1 dead=0 external=0
+  docs/architecture.zh-CN.md     links=1 dead=0 external=0
+  docs/development.md            links=1 dead=0 external=0
+  docs/development.zh-CN.md      links=1 dead=0 external=0
+  docs/extensions.md             links=2 dead=0 external=0
+  docs/extensions.zh-CN.md       links=2 dead=0 external=0
+
+$ heading counts EN vs ZH
+  README.md                      EN=19 ZH=19
+  docs/index.md                  EN=6 ZH=6
+  docs/user-guide.md             EN=19 ZH=19
+  docs/architecture.md           EN=15 ZH=15
+  docs/development.md            EN=10 ZH=10
+  docs/extensions.md             EN=48 ZH=48
+
+## 6. README relationship chapter placement
+$ grep -n '^## ' README.md
+16:## Capabilities
+118:## Install
+146:## Quick start
+161:## Requirements
+169:## Where to go next
+180:## Relationship to other projects
+202:## License

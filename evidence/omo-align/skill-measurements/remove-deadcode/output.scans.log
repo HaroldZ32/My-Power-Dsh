@@ -1,0 +1,29 @@
+### SCAN A (fixed): repo's own compiler tsgo on the sandbox fixture
+$ cd sandbox && tsgo --noEmit -p tsconfig.json
+EXIT=0
+
+### SCAN B: skill's exact scanner with a writable TMPDIR
+$ TMPDIR=evidence/omo-align/skill-measurements/remove-deadcode/sandbox/tmp timeout 60 bunx tsc --noEmit --noUnusedLocals --noUnusedParameters
+error: bun is unable to write files to tempdir: ReadOnlyFileSystem
+EXIT=1
+
+### SCAN C: is typescript resolvable at all (bunx tsc --version, writable TMPDIR)
+error: bun is unable to write files to tempdir: ReadOnlyFileSystem
+EXIT=1
+### SCAN A2: repo compiler with the skill's unused flags
+$ cd sandbox && tsgo --noEmit --noUnusedLocals --noUnusedParameters -p tsconfig.json
+src/a.ts(1,10): error TS6133: 'unusedHelper' is declared but its value is never read.
+src/a.ts(2,42): error TS6133: 'unusedParam' is declared but its value is never read.
+src/a.ts(3,9): error TS6133: 'unusedLocal' is declared but its value is never read.
+src/a.ts(6,7): error TS6133: 'neverReferenced' is declared but its value is never read.
+EXIT=1
+
+### SCAN B2: bun tempdir override attempts
+$ BUN_TMPDIR=... bunx tsc --version
+error: bun is unable to write files to tempdir: ReadOnlyFileSystem
+EXIT=1
+$ bun --version (bun itself runs?)
+1.3.14
+EXIT=0
+$ ls -ld /tmp; touch /tmp/probe
+drwxr-xr-x 2 root root 40 Sep 13 22:19 /tmp

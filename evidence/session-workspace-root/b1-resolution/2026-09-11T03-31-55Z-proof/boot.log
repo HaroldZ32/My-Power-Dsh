@@ -1,0 +1,28 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=no-binary binary=- cwd=/root/dshProj
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.
+dsh web: http://127.0.0.1:3199/?token=30PZFWpaIqCJGY6Agm_nxapDtJdL8l31hlMs-UDnbBw
+[ws-probe] HOST_CWD=/root/dshProj
+[ws-probe] REPO=/root/dshProj/my-power-dsh W_BLOCKED=/tmp/mpd-b1-proof-qqFlOS/ws-blocked W_CLEAN=/tmp/mpd-b1-proof-qqFlOS/ws-clean
+[ws-probe] SESSION_CWDS=["/root/dshProj/my-power-dsh","/tmp/mpd-b1-proof-qqFlOS/ws-blocked","/tmp/mpd-b1-proof-qqFlOS/ws-clean"]
+[ws-probe] AGENTS_FOUND={"repo":true,"blocked":true,"clean":true}
+[ws-probe] ROOTS_ALL=["/root/dshProj/my-power-dsh","/tmp/mpd-b1-proof-qqFlOS/ws-blocked","/tmp/mpd-b1-proof-qqFlOS/ws-clean"]
+[ws-probe] CHECK R1_HASHLINE_RELATIVE_READ=PASS ok=true path=/root/dshProj/my-power-dsh/packages/mpd-hashline-plugin/package.json
+[ws-probe] CHECK R2_VERIF_INFO_WORKSPACE=PASS workspace=/root/dshProj/my-power-dsh venv=/root/dshProj/my-power-dsh/.venv-rtl work=/root/dshProj/my-power-dsh/.mpd/verif
+[ws-probe] CHECK R3_MEMORY_STATUS_ROOT=PASS root=/root/dshProj/my-power-dsh/.mpd/memory/agents/agent-my-power-dsh
+[ws-probe] CHECK R4_BOULDER_PLANS_LISTS_REPO_PLAN=PASS count=1 plans=["/root/dshProj/my-power-dsh/.mpd/plans/workmate-rename-delete-contract.md"]
+[ws-probe] CHECK R5_BOULDER_STATUS_FILE=PASS stateFile=/root/dshProj/my-power-dsh/.mpd/boulder.json
+[ws-probe] CHECK S1_SESSION_ISOLATION_BLOCKED=PASS root=/tmp/mpd-b1-proof-qqFlOS/ws-blocked/.mpd/memory/agents/agent-ws-blocked
+[ws-probe] CHECK S2_SESSION_ISOLATION_CLEAN=PASS root=/tmp/mpd-b1-proof-qqFlOS/ws-clean/.mpd/memory/agents/agent-ws-clean
+[ws-probe] CHECK S3_TWO_SESSIONS_DIFFER=PASS repo=/root/dshProj/my-power-dsh blocked=/tmp/mpd-b1-proof-qqFlOS/ws-blocked
+[ws-probe] CHECK N1_NO_AGENT_FALLS_BACK_TO_HOST_CWD=PASS workspace=/root/dshProj hostCwd=/root/dshProj
+[ws-probe] CHECK BEFORE1_BOULDER_PLANS_INVISIBLE_WITHOUT_SESSION=PASS count=0 plans=[]
+[ws-probe] CHECK BEFORE2_RELATIVE_READ_FAILS_WITHOUT_SESSION=PASS ok=false err=mpd-hashline: file not found: /root/dshProj/packages/mpd-hashline-plugin/package.json
+[ws-probe] CHECK W1_INIT=PASS ok=true err=
+[ws-probe] CHECK W2_RENAME_REFUSED_IN_BLOCKED_WS=PASS ok=false err=mpd_workmate: "oracle-1" / "oracle-2" is in use by team member(s) blocking-team/oracle-1, blocking-team/oracle-2 — archive or retire those teams and let running spawns finish first
+[ws-probe] CHECK W3_RENAME_ALLOWED_IN_CLEAN_WS=PASS ok=true name=oracle-2
+[ws-probe] CHECK W4_DELETE_REFUSED_IN_BLOCKED_WS=PASS ok=false err=mpd_workmate: "oracle-2" is in use by team member(s) blocking-team/oracle-2 — archive or retire those teams and let running spawns finish first
+[ws-probe] CHECK W5_AGENTLESS_USES_HOST_ROOT=PASS ok=true name=oracle-3
+[ws-probe] CHECK W6_DELETE_ALLOWED_IN_CLEAN_WS=PASS ok=true archived=/tmp/mpd-b1-proof-qqFlOS/userhome/.mpd/workmate/.archive/oracle-3-2026-09-11T033211Z
+[ws-probe] DONE

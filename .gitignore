@@ -1,5 +1,47 @@
 node_modules/
+.npm-cache/
+.qa-reloc/
+.qa-tmp/
+.qa-web-client/
+.toolchain/
 *.tmp
 evidence/*.log.tmp
 .DS_Store
 .codegraph/
+.mpd-dsh/
+dist/mpd-package/
+.bun-tmp/
+.qa-tov/
+.cg-qa/
+.git-home/
+.tmp-cache/
+.credentials.yaml
+
+# workspace-scoped runtime state (team/memory/plans/config) — never committed
+.mpd/
+
+# RTL phase-1 scratch: research clones (.research/) and the workspace-local cocotb venv (.venv-rtl/, .venv*)
+.research/
+.venv-rtl/
+.venv*/
+
+# verilator/cocotb build artifacts (never commit compiled objects)
+.sim_build/
+sim_build/
+obj_dir/
+*.o
+*.a
+simv_iverilog
+compile.log
+.review-tmp2/
+.review-tmp*/
+__pycache__/
+*.pyc
+*.pyo
+
+# Regenerable scrub scratch (naming wave): per-artifact copies of the PRE-rename upstream
+# source tree used to prove the dist rewrites were byte-identical after scrubbing. Never a
+# deliverable — it carries the very upstream naming this repository purged, 8.8 MB / 1208
+# files, and one command regenerates any artifact:
+#   node evidence/mpd-naming/wave2/raw/build-repro.mjs <artifact> --apply-scrub --compare
+evidence/**/raw/scratch/

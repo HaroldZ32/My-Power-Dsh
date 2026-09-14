@@ -1,0 +1,63 @@
+bun test v1.3.14 (0d9b296a)
+
+../../../../packages/mpd-ext-plugin/test/core.test.ts:
+(pass) apply registers exactly the four tools, no reload, and provides the mpdExtensions service [13.21ms]
+[mpd-ext] FATAL: the harness seams this row registers through are unavailable (toolsRegister=false, skillsProvider=false) — the four tools and the skills provider will NOT be registered in this session. This row must declare inject: ["tools","skills"].
+[mpd-ext] skill provider for "mpd-ext-example" not registered: mpd-dsh-adapter: harness service "skills" is unavailable — cannot register a skill provider
+[mpd-ext] project-plane skill provider not registered: mpd-dsh-adapter: harness service "skills" is unavailable — cannot register a skill provider
+[mpd-ext] tool "mpd_ext_list" not registered: mpd-dsh-adapter: harness service "tools" is unavailable — cannot register tool "mpd_ext_list"
+[mpd-ext] tool "mpd_ext_show" not registered: mpd-dsh-adapter: harness service "tools" is unavailable — cannot register tool "mpd_ext_show"
+[mpd-ext] tool "mpd_flow_list" not registered: mpd-dsh-adapter: harness service "tools" is unavailable — cannot register tool "mpd_flow_list"
+[mpd-ext] tool "mpd_flow_show" not registered: mpd-dsh-adapter: harness service "tools" is unavailable — cannot register tool "mpd_flow_show"
+[mpd-ext] FATAL: only 0/4 tools registered (missing: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show) — the extension interface is NOT usable in this session; the row declares inject: ["tools","skills"], so check the harness seams above
+[mpd-ext] skill provider for "hostile" not registered: skills seam gone
+[mpd-ext] skill provider for "mpd-ext-example" not registered: skills seam gone
+[mpd-ext] project-plane skill provider not registered: skills seam gone
+[mpd-ext] tool "mpd_ext_list" not registered: tools seam gone
+[mpd-ext] tool "mpd_ext_show" not registered: tools seam gone
+[mpd-ext] tool "mpd_flow_list" not registered: tools seam gone
+[mpd-ext] tool "mpd_flow_show" not registered: tools seam gone
+[mpd-ext] FATAL: only 0/4 tools registered (missing: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show) — the extension interface is NOT usable in this session; the row declares inject: ["tools","skills"], so check the harness seams above
+(pass) apply contains a hostile harness: a throwing tool or skill seam never escapes apply [4.10ms]
+(pass) the four tools emit values that satisfy their own output schemas [7.09ms]
+(pass) mpd_ext_show and mpd_flow_show report an unknown id as an error naming the known ids [1.45ms]
+(pass) descriptor validation rejects unknown keys, bad apiVersion, missing id, escapes and bad rank [0.59ms]
+(pass) role provider/model must be paired and persona must stay inside the root [0.23ms]
+(pass) effectiveEnabled follows disable > enable > descriptor [0.20ms]
+(pass) discovery precedence is project > user > bundle and shadowing is recorded, never fatal [3.43ms]
+[mpd-ext] bad-json (/tmp/mpd-ext-ws-SyrzpT/.mpd/extensions/bad-json/mpd-ext.json) rejected: invalid JSON: JSON Parse error: Expected '}'
+[mpd-ext] bad-version (/tmp/mpd-ext-ws-SyrzpT/.mpd/extensions/bad-version/mpd-ext.json) rejected: apiVersion must equal 1 (got 9)
+[mpd-ext] no-id (/tmp/mpd-ext-ws-SyrzpT/.mpd/extensions/no-id/mpd-ext.json) rejected: id is required and must match ^[a-z0-9][a-z0-9-]{0,63}$
+(pass) a malformed manifest is reported per item and never aborts apply or another extension [2.29ms]
+(pass) the project plane is re-read per call and never leaks across workspaces [1.58ms]
+(pass) skill candidates are pre-validated: a bad candidate is skipped, warned and never emitted [1.84ms]
+(pass) the provider pre-validates at emit time too, and reports the skip to the owner [0.31ms]
+(pass) a loaded candidate is recorded on the extension when its items are unusable [0.57ms]
+(pass) the project-plane skill provider resolves per call from provider.list({ cwd }) [2.05ms]
+(pass) a skill provider never throws out of list()/get() when discovery fails [0.66ms]
+(pass) provider names are unique by construction [0.12ms]
+(pass) flows render into skill candidates and a flow id outside the skill grammar is rejected loudly [0.36ms]
+(pass) a broken flow file is skipped and recorded while its siblings keep working [0.86ms]
+(pass) config is read lazily per use: disable/enable are honoured after apply [2.51ms]
+(pass) extensionConfig reads every extensions.* key lazily from mpdConfig (declared process-level limit) [0.33ms]
+(pass) mcp.enabled=false is honoured per call and surfaced instead of silently pending [11.26ms]
+(pass) a missing mpdConfig degrades to the documented defaults [1.82ms]
+(pass) the code plane registers through ctx.get("mpdExtensions") and shares the same validation [2.26ms]
+(pass) describe() answers the frozen descriptor shape for a known extension [1.75ms]
+(pass) one broken extension of each kind leaves the good ones working [3.08ms]
+(pass) mcp is pending until the bridge connects it, while roles are NEVER pending (t14/F3) [3.90ms]
+(pass) t14/F3: a live roles contribution reports no pending item and no 'not yet exposed' claim [1.83ms]
+(pass) t14/F4: a role colliding with a BASE roster name is refused with the roster's reason, in both paths [1.83ms]
+(pass) t14/F4: an unreadable OR empty persona is refused, and the empty case is no longer accepted [2.22ms]
+(pass) t14/F4: a CROSS-extension name collision refuses the LATER extension and names the holder [2.17ms]
+(pass) t14: a disabled extension's declared roles are reported as not exposed, never as usable [1.73ms]
+(pass) t14: refusal notes are idempotent — repeated calls neither duplicate nor lose them [2.78ms]
+(pass) t14: the ext report and the ROSTER agree about every role (parity, measured against the resolver) [3.06ms]
+(pass) t14: every spelling of a base roster name collides (case- and separator-insensitive) [1.48ms]
+(pass) discoverPlane never throws for a missing root [0.19ms]
+(pass) t16: the ext report and the ROSTER agree about a PROJECT-plane role (nothing usable, same reason) [1.73ms]
+
+ 36 pass
+ 0 fail
+ 342 expect() calls
+Ran 36 tests across 1 file. [142.00ms]

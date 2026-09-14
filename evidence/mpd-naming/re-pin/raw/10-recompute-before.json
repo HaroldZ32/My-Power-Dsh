@@ -1,0 +1,70 @@
+{
+  "repoRoot": "/root/dshProj/my-power-dsh",
+  "assets": {
+    "skills": {
+      "kind": "tree",
+      "locked": {
+        "fileCount": 297,
+        "treeSha": "f6bb2053d02a0e256ab5d88debceb4cfbc76b10c6ff03dca69bf446718a583c9"
+      },
+      "current": {
+        "fileCount": 297,
+        "treeSha": "e9c1be3966cf14bb6e1badc4b302ab735258d3519c561b0111fc10ee59a0aff5",
+        "perFileSidecar": "evidence/mpd-naming/re-pin/raw/skills-perfile.json"
+      },
+      "match": false
+    },
+    "packages/mpd-agent-teams-plugin/_deps": {
+      "kind": "tree",
+      "locked": {
+        "fileCount": 635,
+        "treeSha": "d1d106032b198d2392ca2fe36ea4b563c3010496192791a6e4812638b7cf8e37"
+      },
+      "current": {
+        "fileCount": 635,
+        "treeSha": "d1d106032b198d2392ca2fe36ea4b563c3010496192791a6e4812638b7cf8e37"
+      },
+      "match": true
+    },
+    "packages/mpd-mcp-astgrep/dist/cli.js": {
+      "kind": "single",
+      "locked": {
+        "sha256": "f06bba310cad306b5638efb90a69e50b2c6a7416c0c536867f02c70f4b4fa4c5"
+      },
+      "current": {
+        "sha256": "f06bba310cad306b5638efb90a69e50b2c6a7416c0c536867f02c70f4b4fa4c5"
+      },
+      "match": true
+    },
+    "packages/mpd-mcp-gitbash/dist/cli.js": {
+      "kind": "single",
+      "locked": {
+        "sha256": "0484a8ff1714c949bc52a4fc0de89c756dcab975b0691a2823706f008475f38e"
+      },
+      "current": {
+        "sha256": "6458a82ee2cfcec319a03d2ffe8100c695d0980e7a366408fa5ef1467ca157b5"
+      },
+      "match": false
+    },
+    "packages/mpd-mcp-lsp/dist/cli.js": {
+      "kind": "single",
+      "locked": {
+        "sha256": "9f41d4258c204aca959de98a5bea59a7459f9e298885f187cfc0268e1d18ce69"
+      },
+      "current": {
+        "sha256": "a7cebcf9ec79ec480c98d3a9cd1392837927ada57bf9bbb18e0620ba863f3148"
+      },
+      "match": false
+    },
+    "packages/mpd-mcp-codegraph/dist/serve.js": {
+      "kind": "single",
+      "locked": {
+        "sha256": "ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375"
+      },
+      "current": {
+        "sha256": "ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375"
+      },
+      "match": true
+    }
+  }
+}

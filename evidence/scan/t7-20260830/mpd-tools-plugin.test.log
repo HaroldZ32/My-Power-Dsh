@@ -1,0 +1,16 @@
+bun test v1.3.14 (0d9b296a)
+
+test/tools.test.ts:
+(pass) write-guard allows first write to a new file [1.30ms]
+(pass) write-guard allows idempotent rewrite of identical content [0.17ms]
+(pass) write-guard denies silent overwrite of differing content [0.11ms]
+(pass) write-guard allows idempotent rewrite of a >1MB file (full-file compare) [8.05ms]
+(pass) truncation output (incl. banner) never exceeds truncateMaxBytes [1.78ms]
+(pass) truncation with a budget smaller than the banner adds no head/tail slices [0.11ms]
+(pass) truncation keeps head and tail slices plus the banner [0.11ms]
+(pass) truncation passes through outputs within the budget unchanged [0.16ms]
+
+ 8 pass
+ 0 fail
+ 20 expect() calls
+Ran 8 tests across 1 file. [65.00ms]

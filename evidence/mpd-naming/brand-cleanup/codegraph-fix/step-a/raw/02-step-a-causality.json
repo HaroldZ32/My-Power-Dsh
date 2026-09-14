@@ -1,0 +1,128 @@
+{
+  "driver": "step-a-causality",
+  "artifact": "/root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js",
+  "artifact_sha256": "4601ace8dbe0e15da2b122a60cecd4f91a6825ac5a3099227db3ddcf96913858",
+  "dangling_identifier_occurrences_shipped": 1,
+  "substitutions": {
+    "rename": {
+      "from": "let content = EMPTY_OMO_CONFIG;",
+      "to": "let content = EMPTY_MPD_CONFIG;",
+      "applied_in_driver": true
+    },
+    "protection": {
+      "from": "const protectedPaths = new Set([plan.targetPath, migrationJournalPath(env), migrationLockPath(env)]);",
+      "to": "const protectedPaths = new Set([migrationJournalPath(env), migrationLockPath(env)]);",
+      "applied_in_driver": true
+    },
+    "self_move_skip": {
+      "from": "if (fileSystem.existsSync(move.to))",
+      "to": "if (move.from === plan.targetPath) continue;",
+      "applied_in_driver": true
+    }
+  },
+  "variants": [
+    {
+      "name": "v1-shipped-with-trigger",
+      "note": "shipped artifact, migration due",
+      "artifact_copy_sha256": "4601ace8dbe0e15da2b122a60cecd4f91a6825ac5a3099227db3ddcf96913858",
+      "seeded_without_marker": false,
+      "exit_code": 0,
+      "thrown": null,
+      "config_bytes_before": 223,
+      "config_bytes_after": 223,
+      "mpd_tree_created": [],
+      "config_after": "// MPD configuration (seeded legacy document)\n{\n  \"codegraph\": { \"enabled\": true, \"auto_provision\": false },\n  \"legacy_migrations\": { \"projects\": [\"seeded-legacy.jsonc\"] },\n  \"_migrations\": [\"2026-07-codex-config-jsonc\"]\n}\n",
+      "instrumentation": [],
+      "skipped_hint": [
+        "CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.\n"
+      ]
+    },
+    {
+      "name": "v2-rename-only-with-trigger",
+      "note": "rename applied, migration due",
+      "artifact_copy_sha256": "259c24ff6b3f12e7e7eeefabd05e259f32c19d6662ef0946c2d3985ad0f3c12d",
+      "seeded_without_marker": false,
+      "exit_code": 0,
+      "thrown": null,
+      "config_bytes_before": 223,
+      "config_bytes_after": 223,
+      "mpd_tree_created": [],
+      "config_after": "// MPD configuration (seeded legacy document)\n{\n  \"codegraph\": { \"enabled\": true, \"auto_provision\": false },\n  \"legacy_migrations\": { \"projects\": [\"seeded-legacy.jsonc\"] },\n  \"_migrations\": [\"2026-07-codex-config-jsonc\"]\n}\n",
+      "instrumentation": [],
+      "skipped_hint": [
+        "CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.\n"
+      ]
+    },
+    {
+      "name": "v3-rename-only-no-trigger",
+      "note": "rename applied, guard passes",
+      "artifact_copy_sha256": "259c24ff6b3f12e7e7eeefabd05e259f32c19d6662ef0946c2d3985ad0f3c12d",
+      "seeded_without_marker": true,
+      "exit_code": 0,
+      "thrown": null,
+      "config_bytes_before": 202,
+      "config_bytes_after": 202,
+      "mpd_tree_created": [],
+      "config_after": "// MPD configuration (seeded legacy document, migration not yet recorded)\n{\n  \"codegraph\": { \"enabled\": true, \"auto_provision\": false },\n  \"legacy_migrations\": { \"projects\": [\"seeded-legacy.jsonc\"] }\n}\n",
+      "instrumentation": [],
+      "skipped_hint": [
+        "CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.\n"
+      ]
+    },
+    {
+      "name": "v3b-rename-only-instrumented",
+      "note": "same bytes + stderr instrumentation on the catch",
+      "artifact_copy_sha256": "48b739e6cafa6652f9d8b4414b1a4c44b70faf5a8b1aa0955217559d2b43f1f2",
+      "seeded_without_marker": true,
+      "exit_code": 0,
+      "thrown": null,
+      "config_bytes_before": 202,
+      "config_bytes_after": 202,
+      "mpd_tree_created": [],
+      "config_after": "// MPD configuration (seeded legacy document, migration not yet recorded)\n{\n  \"codegraph\": { \"enabled\": true, \"auto_provision\": false },\n  \"legacy_migrations\": { \"projects\": [\"seeded-legacy.jsonc\"] }\n}\n",
+      "instrumentation": [
+        "[process.stderr] [probe-instrumentation] migration threw: MigrationTransactionError: Migration source is protected: /root/dshProj/my-power-dsh/evidence/mpd-naming/brand-cleanup/codegraph-fix/step-a/raw/work/sandboxes/v3b-rename-only-instrumented/home/.mpd/config.jsonc\n    at assertSafeSourcePaths (file:///root/dshProj/my-power-dsh/evidence/mpd-naming/brand-cleanup/codegraph-fix/step-a/raw/work/variants/v3b-rename-only-instrumented/dist/serve.js:8713:13)\n    at executePlan (file:///root/dshProj/my-power-dsh/evidence/mpd-naming/brand-cleanup/codegraph-fix/step-a/raw/work/variants/v3b-rename-only-instrumented/dist/serve.js:8735:3)\n    at file:///root/dshProj/my-power-dsh/evidence/mpd-naming/brand-cleanup/codegraph-fix/step-a/raw/work/variants/v3b-rename-only-instrumented/dist/serve.js:8803:54\n    at Array.map (<anonymous>)\n    at runMigrations (file:///root/dshProj/my-power-dsh/evidence/mpd-naming/brand-cleanup/codegraph-fix/step-a/raw/work/variants/v3b-rename-only-instrumented/dist/serve.js:8803:40)\n    at runCodexConfigMigration (file:///root/dshProj/my-power-dsh/evidence/mpd-naming/brand-cleanup/codegraph-fix/step-a/raw/work/variants/v3b-rename-only-instrumented/dist/serve.js:8905:19)\n    at runCodexStartupMigration (file:///root/dshProj/my-power-dsh/evidence/mpd-naming/brand-cleanup/codegraph-fix/step-a/raw/work/variants/v3b-rename-only-instrumented/dist/serve.js:8954:10)\n    at getCodexMpdConfig (file:///root/dshProj/my-power-dsh/evidence/mpd-naming/brand-cleanup/codegraph-fix/step-a/raw/work/variants/v3b-rename-only-instrumented/dist/serve.js:9037:21)\n    at Module.runCodegraphServe (file:///root/dshProj/my-power-dsh/evidence/mpd-naming/brand-cleanup/codegraph-fix/step-a/raw/work/variants/v3b-rename-only-instrumented/dist/serve.js:9728:37)\n    at file:///root/dshProj/my-power-dsh/evidence/mpd-naming/brand-cleanup/codegraph-fix/step-a/raw/probe.mjs:107:26"
+      ],
+      "skipped_hint": [
+        "CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.\n"
+      ]
+    },
+    {
+      "name": "v4-protection-carveout-no-trigger",
+      "note": "rename + protection carve-out",
+      "artifact_copy_sha256": "cce1ff1c694d79913370ab41abb35adb02e7548ea1e4df31cd6fb7b92f51b4ad",
+      "seeded_without_marker": true,
+      "exit_code": 0,
+      "thrown": null,
+      "config_bytes_before": 202,
+      "config_bytes_after": null,
+      "mpd_tree_created": [
+        "config.jsonc.bak.2026-09-14T07-19-18-387Z",
+        "migration-backup-2026-09-14T07-19-18-381Z-legacy-config/.mpd/config.jsonc"
+      ],
+      "config_after": null,
+      "instrumentation": [],
+      "skipped_hint": [
+        "CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.\n"
+      ]
+    },
+    {
+      "name": "v5-remedy-b-no-trigger",
+      "note": "rename + protection carve-out + no self-move",
+      "artifact_copy_sha256": "164672e2609dcfecbc830add120725f38e9057729d834e1461378ed513134900",
+      "seeded_without_marker": true,
+      "exit_code": 0,
+      "thrown": null,
+      "config_bytes_before": 202,
+      "config_bytes_after": 383,
+      "mpd_tree_created": [
+        "config.jsonc.bak.2026-09-14T07-19-18-529Z"
+      ],
+      "config_after": "// MPD configuration (seeded legacy document, migration not yet recorded)\n{\n  \"codegraph\": { \"enabled\": true, \"auto_provision\": false },\n  \"legacy_migrations\": {\n    \"projects\": [\n      \"seeded-legacy.jsonc\"\n    ]\n  },\n  \"$schema\": \"https://raw.githubusercontent.com/code-yeongyu/oh-my-openagent/dev/assets/omo.schema.json\",\n  \"_migrations\": [\n    \"2026-07-codex-config-jsonc\"\n  ]\n}\n",
+      "instrumentation": [],
+      "skipped_hint": [
+        "CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.\n"
+      ]
+    }
+  ]
+}

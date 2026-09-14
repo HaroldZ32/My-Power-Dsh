@@ -1,0 +1,8 @@
+{
+  "ok": true,
+  "status": 200,
+  "routeDeclared": true,
+  "answer": "A red square in the upper-left and a pixelated green circle in the lower-right, both set against a solid blue background.",
+  "apiError": null,
+  "rawBytes": 976
+}

@@ -1,0 +1,4 @@
+{"type":"session","version":3,"id":"session-bc0b8e3e-bbb1-4916-b0dc-7bc784528fbe","createdAt":1789098300203,"cwd":"/root/dshProj/my-power-dsh","isSeeded":false,"delegationDepth":0,"agentPreset":"mpd"}
+{"type":"permission/preset","seq":0,"time":1789098300377,"data":{"preset":"workspace-write"}}
+{"type":"sandbox/mode","seq":1,"time":1789098300381,"data":{"mode":"workspace-write"}}
+{"type":"approval/policy","seq":2,"time":1789098300381,"data":{"policy":"ask"}}

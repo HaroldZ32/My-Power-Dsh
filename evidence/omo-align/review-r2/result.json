@@ -1,0 +1,139 @@
+{
+  "schema": "mpd-review-r2/1",
+  "task": "t50",
+  "kind": "review",
+  "round": 2,
+  "attempt": "1 (9012bb97-e231-4312-b11c-577a1c82163f)",
+  "reviewer": "Architect (read-only)",
+  "reviewedTask": "t49",
+  "alsoInScope": ["R1 acceptance", "V1 closure", "R3 harmonisation", "t37/t39 measurements + Option A", "t44 falsifiability"],
+  "verdict": "needs_revision",
+  "verdictRationale": "The repair is real where it landed: the dedup guard, the tombstone/read-marker fix, the expiry notice, the closed decision vocabulary and the tool-boundary call-count proof are all independently reproduced on the settled bytes, and the repair found and fixed three genuine defects (R1W-D1..D3) that no earlier pass had exercised. It is not a pass because the interjection lane still has no agent-facing surface (enqueue/decide/clear have zero call sites, so no agent can ask, approve or clear), the R1 QA case is RED at the settled revision because of the new repost, and the t49 completion payload asserts the opposite of the shipped code.",
+  "readOnly": {
+    "productFilesModified": 0,
+    "gitWrites": 0,
+    "preexistingEvidenceOverwritten": 0,
+    "note": "Round-1 evidence (evidence/omo-align/review-r1/) is untouched; all artifacts are new under evidence/omo-align/review-r2/."
+  },
+
+  "anchoredRevision": {
+    "branch": "dev",
+    "head": "0f647f2",
+    "settled": true,
+    "settledNote": "All four repair/sweep commits (aaa54d7, 62d0db3, 50e6497, 0f647f2) are landed and the worktree is clean; hashes were re-read after a 50 s settle window and were stable. Round 1 measured a dirty tree, so this is the first review anchored on committed bytes.",
+    "commitsSinceRound1": ["aaa54d7 fix(agent-teams): wire R1 into the shipped path", "62d0db3 merge(fix/r1-wiring)", "50e6497 test(agent-teams): prove the dedup guard on the SHIPPED path, and sweep for dead capability", "0f647f2 merge(test/dead-capability-sweep)"],
+    "reviewedFileHashes": {
+      "packages/mpd-agent-teams-plugin/lib/state.js": { "bytes": 61904, "sha256": "004efcfd27d424a6d4ad6a5432269bd555ccc27a5b935b8a1d58591679ccdf67" },
+      "packages/mpd-agent-teams-plugin/lib/scheduler.js": { "bytes": 31955, "sha256": "27cc18b923443c22b160ed202485499b980cceb22f43e63855bf42e6cd6550a2" },
+      "packages/mpd-agent-teams-plugin/lib/tools.js": { "bytes": 151421, "sha256": "4babeddc7b528c1a" },
+      "packages/mpd-agent-teams-plugin/lib/session-start.js": { "bytes": 28432, "sha256": "8cfaef47e9959ef7def01003640f768ff4befa50e9c202ff692a0629ca0a2aa6", "note": "UNCHANGED from round 1 - R3 and the gate are untouched" },
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": { "bytes": 100922, "sha256": "87fd502b09dac90e" },
+      "packages/mpd-agent-teams-plugin/test/r1-message-channel.test.mjs": { "bytes": 18027, "sha256": "bbceac658b782370" },
+      "packages/mpd-agent-teams-plugin/test/t49-send-dedup-wiring.test.mjs": { "bytes": 13029, "sha256": "410185dc970b15c4" },
+      "evidence/omo-align/requirements/frozen-contract.json": { "bytes": 36401, "sha256": "19dc0c6779f8a479" }
+    },
+    "preRepairArm": {
+      "revision": "7379e28",
+      "state_js": { "bytes": 57791, "sha256": "fa7fe937f1895c472732fdfdc0b193fcb2281448133fd0b15a490f230fe0ae19" },
+      "note": "Materialized into a temp package copy for the A/B and deleted afterwards; no stale product copy is kept in evidence."
+    }
+  },
+
+  "round1FindingsStatus": [
+    { "id": "F-1 (dedup clause)", "status": "closed", "evidence": "tools.js:1876/:1895 call appendMailboxDeduped; the fold guard tools.js:1919-1926 returns delivered:'duplicate' before any live delivery; probe: 3 identical sends -> one row, dupCount 2->3, _folded never persisted (row keys [id,from,to,content,ts,dupCount])" },
+    { "id": "F-2 (expiry notice)", "status": "closed", "evidence": "state.js:662-684 flips pending->expired and appends an ordinary notice; tick scheduler.js:295-307 at the top of kickMember; probe: requester inbox = one record interjection-expired-ij-ttl, from captain, kind null, body mentions EXPIRED" },
+    { "id": "F-3 (tombstone resurrection)", "status": "closed", "evidence": "readUnreadMailbox state.js:778-786 and deliverableUnread scheduler.js:241 both drop tombstones; clearMailboxToWatermark preserves readAt/deliveredAt/dupCount (state.js:543-547) and the fold preserves them (state.js:498-500); probe: 3 acknowledged -> clear -> 0 unread, 0 live, tombstones keep readAt+deliveredAt" },
+    { "id": "F-4 (decision vocabulary)", "status": "closed", "evidence": "state.js:708-713; probe: 'banana' -> \"invalid interjection decision \\\"banana\\\"; allowed values are: approved, rejected\" and the row STAYS pending; a second decision is refused as already approved" },
+    { "id": "F-5 (call-count evidence)", "status": "closed", "evidence": "test/t49-send-dedup-wiring.test.mjs drives the real tool + real scheduler (installTeamScheduler -> runtime.kickMember) and counts subagents.prompt deliveries: 0 -> 1 -> still 1; with live delivery failing: first 'mailbox', second 'duplicate', then exactly one scheduler delivery; I ran the file 7 pass / 0 fail" },
+    { "id": "F-6 (operative wording)", "status": "closed", "evidence": "frozen-contract.json.messagingOperativeReading = AT-MOST-ONCE, ONE surviving record, dupCount=N" },
+    { "id": "F-7 (C1/C3 transcription)", "status": "closed", "evidence": "C1 byte-identical to ENUMERATED_LINE_PATTERN; the old 'pair an action verb with an object' phrasing is gone (0 occurrences); C3 restated positionally; harmonizedVerbTables intact" },
+    { "id": "V1 closure", "status": "still closed", "evidence": "probe on state.js 004efcfd: content-less enqueue normalizes to 'only a summary', readable as pending, decidable; absent id 'does not exist'; malformed-but-present MALFORMED; missing identity names the field" },
+    { "id": "t44 falsifiability method", "status": "still sufficient", "evidence": "verdict unchanged; the 5 REPAIR V1 assertions re-pass (r1 file 18/18 on the settled revision) and the pre-repair A/B recipe was reproduced independently in round 1" },
+    { "id": "R3 harmonisation", "status": "unchanged, verdict carries", "evidence": "session-start.js is byte-identical to round 1 (8cfaef47); round-1 counterexamples stand (Audit the ledger, build the package, verify the output. / 重构这个模块, 迁移到新接口, 审计日志. were silent pre-R3 and route now); the delta stays monotone" },
+    { "id": "t37/t39 + Option A", "status": "unchanged, judgement carries", "evidence": "the measured gate input is unchanged (probe-output.json anchors session-start.js 8cfaef47 = the settled file): 0/20 real triggers, 0 English prompts (rate undefined), the richest session-start prompt a zero-signal MISS; recommendation order unchanged (positive stratum -> English coverage -> cheapest-first re-tune; do not touch the C 2-of-3 bar or signals >= 1)" }
+  ],
+
+  "findings": [
+    {
+      "id": "R2-F1",
+      "severity": "high",
+      "file": "packages/mpd-agent-teams-plugin/lib/tools.js",
+      "problem": "The interjection lane still has no agent-facing surface. Measured call sites on the settled revision: appendMailboxDeduped -> tools.js:1876/:1895 (wired); expireInterjections -> scheduler.js:300 (wired); enqueueInterjection -> NONE; decideInterjection -> NONE (the only non-definition hit in lib/ is the JSDoc line scheduler.js:231); clearMailboxToWatermark -> NONE; readLiveMailbox -> NONE. So no agent can ask for an interjection, the captain cannot approve or reject one, and no surface can clear a mailbox: the frozen R1 intent (a member must be able to ASK the captain) and the frozen clear-authority rule (captain may clear any mailbox, a member only its own) are still unimplemented at the tool boundary. The t49 completion payload and evidence/omo-align/messaging/r1-wiring/result.json claim the opposite ('R1 is now consumed at the tool boundary; no R1 criterion rests on an unreferenced export'), while the same directory's dead-capability-findings.md documents the truth.",
+      "requiredFix": "Decide and implement the tool surface (which tool exposes enqueueInterjection / decideInterjection / clearMailboxToWatermark and to whom each is authorized) - a design decision to escalate to the user, not a mechanical repair. Also correct/supersede the t49 record so a later reader cannot conclude the lane is reachable."
+    },
+    {
+      "id": "R2-F2",
+      "severity": "high",
+      "file": "skills/dsh-qa/scripts/agent-teams-messaging.mjs",
+      "line": 419,
+      "problem": "The R1 QA case is RED at the settled revision: node skills/dsh-qa/scripts/agent-teams-messaging.mjs exits 1 with interjection.positive.ok=false, requesterInboxAfterRepost=2 (assertion wants 1), requester='captain'. Cause: the new library repost (state.js:721-732) writes id '<ij>-delivery' into the requester's inbox and the case ALSO writes its own repost under the same id at skills/dsh-qa/scripts/agent-teams-messaging.mjs:419-427 before asserting length === 1. My A/B: the pre-repair module (7379e28) leaves the requester inbox at 0 after an approval, the shipped module at 1; the same case PASSED on the pre-repair revision in round 1 (evidence/omo-align/review-r1/raw/qa-messaging-rerun.log at 01:06:38Z). t49 attributes it to a 'PRE-EXISTING case defect' with an A/B that reverts 'the only scheduler edit' - an arm that cannot remove a state.js repost, so the attribution is unsupported.",
+      "requiredFix": "Keep t51 as the fix (update the case to assert the LIBRARY's own delivery record instead of writing one, plus the root-cause comment and the VENDOR_LOCK.json re-pin in the same commit per AGENTS.md section 9). Correct t49's cause attribution. Until t51 lands, R1's own falsifiable experiment is red and must not be cited as passing."
+    },
+    {
+      "id": "R2-F3",
+      "severity": "medium",
+      "file": "evidence/omo-align/messaging/r1-wiring/result.json",
+      "problem": "Stale settled-hash pin: t49's record pins test/t49-send-dedup-wiring.test.mjs at 44acbc827a486546 / 179 lines, but the settled file is 410185dc970b15c4 / 13,029 B (the follow-up commit 50e6497 rewrote it after the record was written). Its verify claim '177 pass / 0 fail' likewise describes the pre-50e6497 suite (the settled suite is 178 tests, 178 pass / 0 fail). Every lib pin in that record matches the settled revision, so the substance stands; this is the AGENTS.md section 7 'verify on settled hashes' slip, on the one file the repair added.",
+      "requiredFix": "Re-pin the test file (or mark the entry superseded by the sweep commit) so a third party comparing hashes is not sent to a revision that no longer exists."
+    },
+    {
+      "id": "R2-F4",
+      "severity": "low",
+      "file": "packages/mpd-agent-teams-plugin/lib/scheduler.js",
+      "line": 293,
+      "problem": "The TTL is bound to idle edges, not to wall-clock: the expiry tick lives at the top of kickMember (scheduler.js:293-307), so a team that never kicks again after a request leaves the row pending past its TTL indefinitely and the requester is never told, while the shipped wording ('TTL 30 minutes', 'onCaptainSilence') reads as wall-clock. This matches the accepted fix text ('call expireInterjections on the scheduler's idle edge'), so it is a boundary rather than a defect.",
+      "requiredFix": "State the boundary explicitly in the contract/ledger (expiry is evaluated at idle edges, not by a timer), or also tick once at session start so a dormant team still resolves past-due requests."
+    },
+    {
+      "id": "R2-F5",
+      "severity": "low",
+      "file": "packages/mpd-agent-teams-plugin/test/t49-send-dedup-wiring.test.mjs",
+      "problem": "One non-reproducible suite failure: my first bun test packages/mpd-agent-teams-plugin run reported 177 pass / 1 fail (1154 expect() calls vs 1156 clean) in the exact window in which the t49 test file was being rewritten by a concurrent writer (mtime 01:35:07Z). Nine runs on the settled revision are 178 pass / 0 fail. The failing test could not be named because that run's log was not preserved; per section 7 a run overlapping a write is not a measurement.",
+      "requiredFix": "None now. If it recurs, capture with bun test ... --reporter=junit --reporter-outfile=... so the flaky test is named."
+    }
+  ],
+
+  "acceptanceResults": [
+    { "criterion": "R1-1 idempotent dedup (incl. the different from/to negative control)", "status": "passed", "evidence": "tools.js:1876 (captain) and :1895 (member) call appendMailboxDeduped (state.js:485, key state.js:473, window state.js:465); the fold guard tools.js:1919-1926 returns delivered:'duplicate' and performs no second delivery. Guarded by test/t49-send-dedup-wiring.test.mjs (7 pass): two identical real tool calls -> ONE durable record dupCount 2 and exactly ONE mailbox delivery; different content -> 2 records; captain path dedups too; the pre-repair negative control still holds in the r1 file (18 pass)." },
+    { "criterion": "R1-2 bounded clear: tombstone + recoverable sidecar + audit event, no hard-delete path", "status": "passed", "evidence": "state.js:520-559 (archive-first sidecar, tombstone keeps id/from/to/ts and now readAt/deliveredAt/dupCount, audit.kind='mailbox-cleared'); probe: 3 acknowledged records -> clear -> 0 unread, 0 live, sidecar holds the cleared bytes, no hard-delete branch. NOTE: clearMailboxToWatermark still has no production caller (R2-F1), so the seam is exercised only by tests." },
+    { "criterion": "R1-3 interjection: pending not auto-delivered / delivery after approval at a step boundary / TTL expiry with requester notification / scheduler unread path excludes pending", "status": "failed", "evidence": "Clause 1 PASS (deliverableUnread scheduler.js:241 drops INTERJECTION_KIND and tombstones; applied at scheduler.js:321 and :384, with a spoofed-kind negative control in the QA case). Clause 2 MECHANISM PRESENT but UNREACHABLE: state.js:721-732 reposts the approved body as an ordinary record '<ij>-delivery' that rides the ordinary scheduler path - verified by probe (requester inbox gets exactly one ordinary record) and by A/B (pre-repair: 0, shipped: 1) - but decideInterjection has no production caller, so no captain can trigger it. Clause 3 PASS with a boundary: state.js:662-684 flips pending->expired and appends an ordinary notice; tick scheduler.js:295-307; probe: notice interjection-expired-ij-ttl, kind null, mentions EXPIRED; boundary = the tick runs only on idle edges (R2-F4). Clause 4 PASS. Overall FAILED because the lane cannot be entered, decided or cleared by any agent (R2-F1) and R1's own QA case is red at the settled revision (R2-F2)." },
+    { "criterion": "R1-4 duplicate delivery does not double the member's actions (call count)", "status": "passed", "evidence": "test/t49-send-dedup-wiring.test.mjs drives the real scheduler via installTeamScheduler -> runtime.kickMember and records deliveries as a CALL COUNT: 0 before the idle edge, exactly 1 after, still 1 after a second kick; a failed live delivery still yields exactly one scheduler delivery; the seeded task is claimed exactly once (status claimed, attempt 1, one attemptId). I ran the file: 7 pass / 0 fail." },
+    { "criterion": "V1 closure + sufficiency of t44's falsifiability proof", "status": "passed", "evidence": "Reproduced on the settled state.js 004efcfd: content-less enqueue -> status pending, content 'only a summary', readable as pending (1), decidable; absent id -> 'does not exist'; malformed-but-present -> MALFORMED; missing identity -> 'missing required field \"id\"'. t44's pre-repair A/B method remains sufficient (and was independently reproduced in round 1); the 5 REPAIR V1 assertions re-pass at the settled revision (r1 file 18/18)." },
+    { "criterion": "R3 harmonisation: mutual consistency, no new miss, threshold untouched, counterexample, mounting proof", "status": "passed", "evidence": "session-start.js is byte-identical to round 1 (8cfaef47), so the round-1 A/B stands: C2 == C3 verb-only set; additions C2 {EN audit + 7 CJK}, C3 {EN consolidate, overhaul, port}; removals NONE -> monotone (can only add triggers); calibration set unchanged in both arms; the two constructed counterexamples (EN and CJK) flip silent -> team; 0 flips on the 20 real prompts; threshold still signals >= 1 (session-start.js:212)." },
+    { "criterion": "Contract consistency: C2/C3 verbatim; logicRevisionNote / harmonizedVerbTables / operative wording honest", "status": "passed", "evidence": "C1 now byte-identical to the shipped ENUMERATED_LINE_PATTERN (the old prose is gone); C3 restated positionally; harmonizedVerbTables present; logicRevisionNote records Option A and the R3 harmonisation; messagingOperativeReading added (round-1 F-6 closed)." },
+    { "criterion": "t37/t39 measurements incorporated + judgement on Option A with executable recommendations", "status": "passed", "evidence": "Gate input unchanged (session-start.js 8cfaef47 = the file the measurement pinned), so round-1's reading and recommendation carry verbatim: 20/20 CJK, 0 English (rate undefined), 0/20 triggers, the richest session-start prompt a zero-signal MISS; order = positive stratum -> English coverage -> cheapest-first re-tune (C3 verb-with-object or ACTION_VERB_MIN 3->2), never the C 2-of-3 bar or signals >= 1." },
+    { "criterion": "Risk list + executable prevention", "status": "passed", "evidence": "Top risk remains the R1 seam class: the clear primitive is still the F-3 mechanism with no production caller (R2-F1), so its green result rests on a library-level path until a clear tool is wired - wire the clear WITH the tombstone/read-marker regression test already added, and assert 'cleared mailbox => 0 unread, 0 deliverable' at the seam. Second: the TTL boundary (R2-F4). Third: the settled-hash slip (R2-F3) and the un-named flake (R2-F5)." },
+    { "criterion": "Do not overwrite delivered evidence; neutralise the text", "status": "passed", "evidence": "All artifacts are new under evidence/omo-align/review-r2/; evidence/omo-align/review-r1/ (files unchanged, mtimes 09:07/09:09) and every other delivered record were not modified. No retired external project identifier appears in any artifact of this review." }
+  ],
+
+  "gatesRerunOnSettledRevision": [
+    { "command": "node scripts/patch-agent-teams-fixes.mjs --check", "status": "passed", "exitCode": 0, "evidence": "already applied: 26 mpd delta region(s) across 6 adopted file(s)" },
+    { "command": "bun test packages/mpd-agent-teams-plugin", "status": "passed", "exitCode": 0, "evidence": "178 pass / 0 fail / 1156 expect() across 44 files (9 consecutive runs); one earlier run reported 177/1 during a concurrent file rewrite (R2-F5)" },
+    { "command": "bun test packages/mpd-agent-teams-plugin/test/t49-send-dedup-wiring.test.mjs", "status": "passed", "exitCode": 0, "evidence": "7 pass / 0 fail" },
+    { "command": "bun test packages/mpd-agent-teams-plugin/test/r1-message-channel.test.mjs", "status": "passed", "exitCode": 0, "evidence": "18 pass / 0 fail" },
+    { "command": "bun test packages/mpd-agent-teams-plugin/self-fix-tests", "status": "passed", "exitCode": 0, "evidence": "53 pass / 0 fail / 599 expect()" },
+    { "command": "bun run typecheck", "status": "passed", "exitCode": 0, "evidence": "tsgo --noEmit, clean" },
+    { "command": "node skills/dsh-qa/scripts/session-start-team.mjs", "status": "passed", "exitCode": 0, "evidence": "PASS; twoSided simpleTeams [0,0,0] vs complexTeams [1,1,1]; negativeControl disarmed" },
+    { "command": "node skills/dsh-qa/scripts/agent-teams-messaging.mjs", "status": "failed", "exitCode": 1, "evidence": "RED at 0f647f2: interjection.positive.ok=false, requesterInboxAfterRepost=2, requester='captain'; every other block green (dedup 3->1, clear, interjectionTtl, negative control, mountedBoot 0 crash signatures)" },
+    { "command": "node evidence/omo-align/review-r2/raw/probe-r2-wiring.mjs", "status": "passed", "exitCode": 0, "evidence": "fold marker transient / acked-then-folded / clear-after-ack / expiry notice / decision + repost / V1 / pre-repair A/B all reproduced" },
+    { "command": "git log 7379e28..0f647f2 && git status --porcelain", "status": "passed", "exitCode": 0, "evidence": "four repair/sweep commits; worktree clean" }
+  ],
+
+  "recommendation": [
+    "t51 already covers R2-F2 (the QA case): no new task; correct t49's cause attribution in its record.",
+    "R2-F1 is a tool-surface decision (which tool exposes ask/decide/clear, and who may clear) - escalate it to the user together with the loop-ceiling escalation rather than improvising another repair cycle.",
+    "R2-F3/F4/F5 are record/wording level: no slot, no code.",
+    "Because a failed review slot pins its dependents, release t47/t48 from t50 the same way t46 was released (re-create them against the follow-up slot + a closure verification), or retire this slot after the record correction.",
+    "If the captain instead accepts R1's lane as a documented partial (dedup + expiry + clear discipline delivered and verified; ask/approve wiring deferred by user decision), record R1's remaining client-facing clauses as NOT MET in a new slot - do not re-read the criteria."
+  ],
+
+  "artifactHashes": {
+    "evidence/omo-align/review-r2/REVIEW.md": { "bytes": 16705, "sha256": "e18057bf388c0e4f858bd87860d97494856ca2382926c9bd0cf1963d10580983" },
+    "evidence/omo-align/review-r2/raw/probe-r2-wiring.mjs": { "bytes": 12201, "sha256": "5b91a5735cdb9a6132456b84d99c5a66e22b8341648f173cba8e568afeb650a2" },
+    "evidence/omo-align/review-r2/raw/probe-r2-wiring.out.json": { "bytes": 3817, "sha256": "dde549c89247bce049f5b2745ea7cbcda03b4aad4dde812a26f6ba27bbee7ae5" },
+    "evidence/omo-align/review-r2/raw/probe-r2-wiring.err.txt": { "bytes": 0, "note": "clean stderr" },
+    "evidence/omo-align/review-r2/raw/qa-messaging-rerun.log": { "bytes": 2126, "sha256": "9cdbf2fcacdbdd6f63a5d8fb9c9158014437b45fb58197619884d4f0bb4db519" }
+  },
+
+  "neutrality": "No retired external project identifier appears in any artifact of this review; the measurement dataset is cited by its in-repo path only."
+}

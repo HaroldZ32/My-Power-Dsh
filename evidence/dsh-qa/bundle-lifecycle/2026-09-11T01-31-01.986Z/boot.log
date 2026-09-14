@@ -1,0 +1,12 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=no-binary binary=- cwd=/root/dshProj/my-power-dsh/.qa-reloc/bundle-lifecycle-2026-09-11T01-31-01.986Z
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.
+[roles-probe] PRESET_MPD=ok
+[roles-probe] PRESET_PATH=/root/dshProj/my-power-dsh/.qa-reloc/bundle-lifecycle-2026-09-11T01-31-01.986Z/home/profiles/w/node_modules/@mpd-dsh/mpd/presets/mpd/agent.cordis.yml trust=system
+[roles-probe] ADAPTER_SEAMS=tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider ABSENT=agentPresets
+[roles-probe] ADAPTER_TOOL_CALL=ok
+[roles-probe] ROSTER=oracle,librarian,prometheus,hephaestus,sisyphus,atlas,explore,metis,momus,multimodal-looker,sisyphus-junior
+[roles-probe] SKILLS=22 BUNDLED=22
+[roles-probe] SKILL_FIXTURE=ok name=svn-master base=/root/dshProj/my-power-dsh/skills/svn-master bytes=5210
+[roles-probe] PASS

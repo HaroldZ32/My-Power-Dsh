@@ -1,0 +1,91 @@
+{
+  "tag": "drive",
+  "injectDeclared": "[]",
+  "sandbox": "/tmp/mpd-t45-drive-26uITo",
+  "installExit": 0,
+  "bootExit": 1,
+  "crashSignatures": [],
+  "pendingEntries": [],
+  "probeLines": [
+    {
+      "t": 1789347728150,
+      "kind": "agents",
+      "tag": "apply",
+      "count": 0
+    },
+    {
+      "t": 1789347732509,
+      "kind": "agents",
+      "tag": "session-start",
+      "count": 1
+    },
+    {
+      "t": 1789347732510,
+      "kind": "identity",
+      "hostResolved": true,
+      "hostCompactNow": "function",
+      "hostName": "compaction",
+      "agentResolved": true,
+      "agentCompactNow": "function",
+      "agentName": "compaction",
+      "sameObject": false,
+      "agentFields": {
+        "id": "session-19d8a7a3-7a26-4b78-bb89-e27a7f7a781a",
+        "hasSession": true,
+        "hasRunMaintenance": true,
+        "hasCtx": true,
+        "status": "idle"
+      },
+      "sessionKeys": [
+        "log",
+        "surfaceManager",
+        "header",
+        "inheritedEventCount",
+        "firstLiveSeq",
+        "eventsSnapshot",
+        "headerFold",
+        "headerFoldSeq",
+        "contextFold",
+        "contextFoldSeq",
+        "derived",
+        "derivedNodes",
+        "derivedGeneration"
+      ]
+    },
+    {
+      "t": 1789347732510,
+      "kind": "before",
+      "status": "idle",
+      "counters": null
+    },
+    {
+      "t": 1789347732672,
+      "kind": "mid-status",
+      "status": "idle"
+    },
+    {
+      "t": 1789347734172,
+      "kind": "drive",
+      "firstResult": {
+        "threw": false,
+        "returnedSync": false,
+        "result": "null"
+      },
+      "concurrentSecondCall": {
+        "threw": true,
+        "returnedSync": true,
+        "error": "cannot get required service \"tokenMeter\" in inactive context",
+        "errorCode": "Error"
+      },
+      "countersAfter": null,
+      "statusAfter": "idle",
+      "droveRealCompaction": false
+    },
+    {
+      "t": 1789347734172,
+      "kind": "done"
+    }
+  ],
+  "workspaceKeys": null,
+  "logHead": "[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-t45-drive-26uITo/ws\n[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)\n[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)\n\ndsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route \"deepseek-official\"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment\n"
+}

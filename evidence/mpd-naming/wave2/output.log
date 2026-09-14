@@ -1,0 +1,96 @@
+t14 — DISTS LANE (build script + git-bash + lsp). COMPLETE.
+attempt 1 · attempt_id f2e69e0c-3108-4c5e-9b12-d0f2a428a3a0 · branch dev
+HEAD at handoff 4d8a1307f452f0bda7e52f2a4adacb73d1da6f25 (it advanced from t13's freeze revision 3c1a8507 during this task)
+requirements: evidence/mpd-naming/final-allowlist/rule.json (t13, sha256 d3a7403a…)
+
+WHAT LANDED
+1. scripts/build-mcp.mjs — the narrative sweep (bm-01..bm-16): line 2 now names the upstream oh-my-openagent
+   checkout, line 14 the actual upstream checkout layout; the MPD-scrub header, the residual-error text, the
+   BUILD.lock provenance comment and the brand-guard rationale no longer call the transform "OMO->MPD" or
+   claim that codex contracts stay literal. bm-17: BRAND_ALLOWLIST is now EMPTY by design (the three
+   OMO_CODEX_* entries and the `_omo` entry are deleted with the surface they described).
+   The scrub tables gained the entries a rebuild needs: sc-lsp (the envelope rename + its residual),
+   sc-as (the two session/runtime forms the committed ast-grep dist already reads), sc-gb (the artifact's
+   own name, plus the four deletion transforms).
+2. packages/mpd-mcp-gitbash/dist/cli.js — gb-01..gb-04: the env-key declaration, the env-lookup tier of
+   resolveGitBash, the install-hint line that named the key, and the two OMO_-prefixed timeout keys are
+   DELETED (owner ruling (c)). The program-files and PATH tiers, and the two unprefixed timeout keys, stay.
+   22651 -> 22137 bytes; the artifact now carries ZERO brand-shaped tokens. No dangling reference remains
+   (no GIT_BASH_ENV_KEY anywhere) and no dead allowlist entry exists (the list is empty).
+3. packages/mpd-mcp-lsp/dist/cli.js — lsp-01..lsp-05: the auth envelope is `_mpd` at all five sites, writer
+   and reader/stripper renamed together (params["_mpd"] at :5358/:5368; the three writer sites at
+   :5739/:6027/:6080). Nothing else in the artifact changed.
+4. packages/mpd-mcp-astgrep/dist/cli.js was NOT touched (out of scope) — it was already brand-clean; only
+   the scrub table needed the entries that reproduce it.
+
+PROOF THE COMMITTED BYTES ARE REPRODUCIBLE (this is why the byte-equality guard will stay green)
+raw/build-repro.mjs rebuilds each server exactly as the script does (CORE copy + LSP overlay + node_modules
+layout + `bun build … --target node --format esm` + applyMpdScrub) WITHOUT calling the repo's main() (which
+would rewrite BUILD.lock — out of scope), and byte-compares the result with the committed dist:
+  ast-grep: pristine 84651 B + scrub == committed 84651 B            (baseline was a MISMATCH at char 15473)
+  git-bash: pristine 22651 B + scrub -> 22137 B == committed 22137 B (baseline was a MISMATCH at char 22455)
+  lsp:      pristine 234827 B + scrub == committed 234827 B          (baseline was already matching)
+Pristine and scrubbed copies are kept under raw/scratch/<server>/ as the durable evidence.
+
+VERIFICATION (raw/10-verify-t14.log, overall PASS)
+  node --check on all three files                                     -> exit 0
+  git grep -n -E "OMO_CODEX|_omo" -- the three files                   -> no output
+  git grep -n -E "OMO|oh-my-opencode" -- scripts/build-mcp.mjs         -> only KEEP-classified hits (below)
+  G4 grep '_omo' packages/mpd-mcp-lsp/dist/cli.js                      -> no output
+  G5 grep 'OMO_CODEX' over every shipped file                          -> no output
+  brand guard with the EMPTY allowlist: ast-grep 0 tokens/8702 ids, git-bash 0/2149, lsp 0/22364 -> pass
+  NEGATIVE CONTROL: a seeded brand token makes the guard fail loudly ("foreign brand token
+  \"OMO_DAEMON_PROTOCOL_VERSION\" in lsp …", exit 1) — the guard is falsifiable, not a constant.
+
+KEEPS (explicitly classified, so no reader mistakes one for a leftover)
+  KP-02  @oh-my-opencode node_modules scope (:303) + the omo-config-core dir name (:16/:26/:30) — build-time
+         facts of the vendored upstream source; renaming breaks module resolution in the offline build.
+  KF-01  the MPD_SCRUB input/residual literals — the strings a PRISTINE build outputs; the scrub must match
+         them to produce the committed bytes (deleting an input makes a rebuild fail the byte guard).
+  KF-02  BRAND_TOKEN_RE and its boundary comments — the scanner's own subject matter.
+  KF-04/05  the lsp `.codex/lsp-client.json` + `.codex/lsp-install-decisions.json` discovery defaults, the
+         `.opencode` branch that also accepts our `.mpd` (:6243-6249), and the `LSP_TOOLS_MCP_*` env keys —
+         OWNER RULING (b): KEEP and allowlist explicitly.
+  gb-04  CODEX_EXEC_COMMAND_TIMEOUT_MS / EXEC_COMMAND_TIMEOUT_MS — no OMO brand token, predate this wave.
+  All of the above are the KEEP entries of evidence/mpd-naming/final-allowlist/rule.json.
+
+LSP ENVELOPE SKEW (acceptance requires this statement)
+  The daemon is probed with `mpd/ping` + the renamed envelope (500 ms) and otherwise spawned by this same
+  artifact; it lives in ~/.mpd/lsp-daemon/v<version>/. A daemon left over from a pre-rename build does not
+  recognise `_mpd`, answers `daemon_authentication_failed` instead of a ping result, so the probe fails, the
+  client spawns a fresh daemon, and if the stale process still owns the socket the 5 s readiness wait times
+  out with "LSP daemon did not become reachable at <socket>".
+  REMEDY: once — `kill $(cat ~/.mpd/lsp-daemon/v<version>/daemon.pid)` (or delete that version directory),
+  then retry; the client auto-starts a clean daemon. A dsh restart alone is not enough while the old daemon
+  process is alive.
+
+DEVIATIONS / FINDINGS
+  D-1  t13's sc-gb prescribes adding the literal retired env-key spelling to the git-bash residual list, but
+       that literal is exactly what the wave's own acceptance greps forbid (G5 = 0 lines; verify 2 = no
+       output). Resolved by expressing the two literal-bearing deletions as structural RegExps, writing the
+       lsp envelope pattern the way this file's own brand regex writes it (/_(?:om)o/g), and keeping only the
+       artifact's own name as a literal residual. Protection is NOT weakened — the allowlist is now EMPTY, so
+       assertBrandClean fails loudly on ANY brand token (proved by the negative control).
+  D-2  applyMpdScrub now accepts RegExp entries in `replace`/`residual` (2 lines) — a literal-pair table
+       cannot delete a foreign key without naming it.
+  D-3  nonEmptyEnvValue (git-bash dist :366) is now DEAD CODE, disclosed and deliberately left in place
+       (no brand token; minimal diff on a bundled artifact).
+  D-4  packages/mpd-mcp-{gitbash,lsp}/dist/BUILD.lock still record the pre-t14 artifact sha. BUILD.lock is
+       outside this task's inScope (which names dist/cli.js) and nothing gates on it; t8's G6 run rewrites it.
+  F-1  verify-vendor now exits 1 with three expected mismatches (raw/20-verify-vendor-after-t14.log):
+       the two dist sha256s (this task's mandated edits; t17 owns the re-pin) and the skills treeSha, which is
+       NOT mine: the corpus moved again since the round-2 freeze — the working tree computes 297 /
+       b85dd5d6e690921fad131aca387a91803d4b0cbfa11f366520e145d218c9af62 while VENDOR_LOCK currently holds
+       297 / f6bb2053d02a0e256ab5d88debceb4cfbc76b10c6ff03dca69bf446718a583c9. t17 must pin the SETTLED value.
+  F-2  no rebuild was run through the repo's main(); the scratch reproduction proves the same property
+       without touching anything outside evidence/.
+
+HANDOFF
+  t8/G6   node scripts/build-mcp.mjs is expected to exit 0 (all three artifacts reproduce byte-for-byte,
+          brand guard green with the empty allowlist, negative control fires).
+  t17     re-pin assets packages/mpd-mcp-{gitbash,lsp}/dist/cli.js sha256 to
+          gitbash 6458a82ee2cfcec319a03d2ffe8100c695d0980e7a366408fa5ef1467ca157b5
+          lsp     a7cebcf9ec79ec480c98d3a9cd1392837927ada57bf9bbb18e0620ba863f3148
+          plus the settled skills treeSha (F-1) and lockedAt.
+  t9/t10  the remaining foreign literals are enumerated above with their KEEP ids; D-1 is the only prose-level
+          deviation from the frozen rename list.

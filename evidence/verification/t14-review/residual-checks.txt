@@ -1,0 +1,31 @@
+## t14 round 2 — residual checks (2026-09-11T04:21:59Z)
+
+### F5: any '18/18' tokens left in the t8 evidence?
+evidence/session-workspace-root/t8-verify/attempt-2/RESULT.json:263:  "count_correction": "t13 recomputed the probe check count from probe_checks_raw itself: 19/19 PASS (the prose previously said 18/18; the raw list always carried 19 entries). Verdict unchanged."
+evidence/session-workspace-root/t8-verify/attempt-2/repair-t13/RESULT.json:31:    "F5_counts": "Probe check counts recomputed from probe_checks_raw: 19/19 (was stated as 18/18). probe_checks_pass_count/probe_checks_total added to both t8 RESULT.json files; verdicts unchanged.",
+evidence/session-workspace-root/t8-verify/attempt-2/repair-t13/RESULT.json:63:      "evidence": "probe_checks_pass_count=19 / probe_checks_total=19 added to evidence/session-workspace-root/t8-verify/RESULT.json and .../attempt-2/RESULT.json (computed from probe_checks_raw), with a count_correction note; the 18/18 tokens corrected to 19/19 in both RESULT.json files, both RESULT.md files and live-deployment-evidence.md. No verdict changed and no code changed for this item."
+evidence/session-workspace-root/t8-verify/attempt-2/repair-t13/ADDENDUM.md:16:| **F5 (low)** — t8 prose said 18/18 while the raw list carries 19 PASS | Counts recomputed from `probe_checks_raw` itself: `probe_checks_pass_count` / `probe_checks_total` added to both t8 `RESULT.json` files, the `18/18` tokens corrected to `19/19` in both JSONs and both `RESULT.md`s and in `live-deployment-evidence.md`; verdicts unchanged. |
+evidence/session-workspace-root/t8-verify/RESULT.json:264:  "count_correction": "t13 recomputed the probe check count from probe_checks_raw itself: 19/19 PASS (the prose previously said 18/18; the raw list always carried 19 entries). Verdict unchanged."
+(empty = corrected)
+evidence/session-workspace-root/t8-verify/RESULT.md:9:**19/19 checks PASS**, the four captain reproductions all resolve inside the session workspace, the
+evidence/session-workspace-root/t8-verify/RESULT.md:68:| `node evidence/.../run-toolcall-proof.mjs` | 0 | 19/19 checks PASS, 0 crash signatures |
+evidence/session-workspace-root/t8-verify/attempt-2/RESULT.md:55:| `run-toolcall-proof.mjs` (fresh boot) | 0 | 19/19 checks PASS, 0 crash signatures |
+
+### new unit case count (308 -> 309 = +1 guard case)
+5
+93:test("the committed src AND dist carry no array-typed schema form, and the dist carries the oneOf fix", () => {
+107:test("the guard resolves a RELATIVE file_path against the session workspace, not process.cwd()", async () => {
+
+### t13 introduced no tool-schema change (no new mount obligation)
++        edits: { type: "array", items: { type: "object", properties: { op: { type: "string", enum: ["replace", "append", "prepend"] }, pos: { type: "string" }, end: { type: "string" }, lines: { oneOf: [{ type: "string" }, { type: "array", items: { type: "string" } }] } }, required: ["op"], additionalProperties: false } }
+(empty = no schema delta in the worktree diff for hashline parameters beyond the B4 fix already reviewed)
+
+### venv.test.ts / smoke callers still compile against the new optional params (typecheck already 0)
+16:    const st = venvStatus()
+33:    const st = venvStatus()
+48:    const st = venvStatus()
+111:    try { requireCocotbVenv() } catch (e) { err = e as VerifError }
+
+### no writes to the real ~/.dsh or .mpd/team by t13 (its proof used sandbox HOME/DSH_HOME)
+isolation={"HOME":"temp sandbox","DSH_HOME":"temp sandbox"}
+applyCrashSignatures=0 marker=true passed=true

@@ -1,0 +1,107 @@
+{
+  "task": "t7 orphan-row matrix + OLD-format-registry guard audit",
+  "stamp": "2026-09-11T09:37:04.636Z",
+  "canon": "Architect ruling (inbox senior-engineer msg 1, items 4-5) + t1 decision record A2",
+  "applier": "scripts/patch-agent-teams-fixes.mjs (real file, copied into a farm with the real registry)",
+  "rows": {
+    "R1_half_open": {
+      "exit": 1,
+      "out": "[patch-agent-teams-fixes] FAIL: region \"mpd-delta task-contract\" has a half-open marker pair (begin@1757, end@1756) — both markers exist but the end precedes the begin; refusing to guess the intended span\n"
+    },
+    "R2_rebracket_end_absent_intact": {
+      "exit": 0,
+      "byteIdentical": true
+    },
+    "R3_begin_present_end_absent_drifted": {
+      "exit": 1,
+      "out": "[patch-agent-teams-fixes] FAIL: delta \"mpd-delta update-task-required-status-param\" in packages/mpd-agent-teams-plugin/lib/tools.js: the begin marker at line 1431 has no end marker and the surviving lines are NOT the registered block — the delta was edited without regenerating lib/mpd-deltas.js; restore the marked region, or fix it and run: node scripts/patch-agent-teams-fixes.mjs --write-registry\n",
+      "driftRetained": true,
+      "fileUntouched": true
+    },
+    "R3b_drifted_check_mode": {
+      "exit": 1,
+      "out": "[patch-agent-teams-fixes] FAIL: delta \"mpd-delta update-task-required-status-param\" in packages/mpd-agent-teams-plugin/lib/tools.js: the begin marker at line 1431 has no end marker and the surviving lines are NOT the registered block — the delta was edited without regenerating lib/mpd-deltas.js; restore the marked region, or fix it and run: node scripts/patch-agent-teams-fixes.mjs --write-registry\n"
+    },
+    "R3c_drifted_by_deletion": {
+      "exit": 1,
+      "out": "[patch-agent-teams-fixes] FAIL: delta \"mpd-delta update-task-required-status-param\" in packages/mpd-agent-teams-plugin/lib/tools.js: the begin marker at line 1431 has no end marker and the surviving lines are NOT the registered block — the delta was edited without regenerating lib/mpd-deltas.js; restore the marked region, or fix it and run: node scripts/patch-agent-teams-fixes.mjs --write-registry\n",
+      "fileUntouched": true
+    },
+    "R4_rebracket_begin_absent_intact": {
+      "exit": 0,
+      "byteIdentical": true
+    },
+    "R5_orphan_end_drop_and_heal": {
+      "exit": 0,
+      "byteIdentical": true
+    },
+    "R6_old_format_registry": {
+      "exit": 1,
+      "out": "[patch-agent-teams-fixes] FAIL: lib/mpd-deltas.js is in the OLD anchor format — run: node scripts/patch-agent-teams-fixes.mjs --write-registry (one-time migration)\n"
+    },
+    "R8_migration_path": {
+      "writeRegistryExit": 0,
+      "entries": 12,
+      "checkExit": 0
+    },
+    "R7_strip_both_decisive": {
+      "writeExit": 0,
+      "checkExit": 0,
+      "toolsIdentical": true,
+      "qualityGatesIdentical": true
+    }
+  },
+  "checks": [
+    {
+      "name": "R1 both markers present, end<begin -> FAIL with `half-open marker pair` (canon: only this case may say half-open)",
+      "pass": true,
+      "detail": "exit=1 out=[patch-agent-teams-fixes] FAIL: region \"mpd-delta task-contract\" has a half-open marker pair (begin@1757, end@1756) — both markers exist but the end precedes the begin; refusing to guess the intended span"
+    },
+    {
+      "name": "R2 begin present, end absent, body byte-equal -> re-bracket in place, file byte-identical to canonical",
+      "pass": true,
+      "detail": "exit=0 byte-identical=true out=[patch-agent-teams-fixes] applied: 12 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta update-task-required-status-param)"
+    },
+    {
+      "name": "R3 begin present, end absent, body DRIFTED -> canon FAIL naming the region AND the line (authored text must not be silently replaced)",
+      "pass": true,
+      "detail": "exit=1 out=[patch-agent-teams-fixes] FAIL: delta \"mpd-delta update-task-required-status-param\" in packages/mpd-agent-teams-plugin/lib/tools.js: the begin marker at line 1431 has no end marker and the surviving lines are NOT the registered block — the delta was edited wit ; drift line retained in healed file=true"
+    },
+    {
+      "name": "R4 end present, begin absent, body byte-equal -> re-bracket in place, file byte-identical to canonical",
+      "pass": true,
+      "detail": "exit=0 byte-identical=true out=[patch-agent-teams-fixes] applied: 12 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta update-task-required-status-param)"
+    },
+    {
+      "name": "R5 end present, begin absent, body gone -> drop the single orphan end line and heal from context (byte-identical)",
+      "pass": true,
+      "detail": "exit=0 byte-identical=true out=[patch-agent-teams-fixes] applied: 12 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta update-task-required-status-param)"
+    },
+    {
+      "name": "R6 OLD-format registry (anchor fields, no before/afterContext) + a missing region -> canon: the named migration message, never a bare TypeError",
+      "pass": true,
+      "detail": "exit=1 out=[patch-agent-teams-fixes] FAIL: lib/mpd-deltas.js is in the OLD anchor format — run: node scripts/patch-agent-teams-fixes.mjs --write-registry (one-time migration)"
+    },
+    {
+      "name": "R3b same drifted shape in --check mode -> canon: FAIL naming the region AND the line",
+      "pass": true,
+      "detail": "exit=1 out=[patch-agent-teams-fixes] FAIL: delta \"mpd-delta update-task-required-status-param\" in packages/mpd-agent-teams-plugin/lib/tools.js: the begin marker at line 1431 has no end marker and the surviving lines are NOT the registered block — the delta was edited without regenerating lib/mpd-deltas.js; res"
+    },
+    {
+      "name": "R3c drifted-by-deletion -> canon: FAIL naming the region AND the line; the file must stay byte-untouched",
+      "pass": true,
+      "detail": "exit=1 fileUntouched=true out=[patch-agent-teams-fixes] FAIL: delta \"mpd-delta update-task-required-status-param\" in packages/mpd-agent-teams-plugin/lib/tools.js: the begin marker at line 1431 has no end marker and the surviving lines are NOT the registered block — the delta was edited wit"
+    },
+    {
+      "name": "R7 DECISIVE strip-both: every region removed from both files in the same state -> one --write heals BOTH byte-identically, then --check exits 0",
+      "pass": true,
+      "detail": "writeExit=0 checkExit=0 toolsIdentical=true qgIdentical=true out=[patch-agent-teams-fixes] applied: 12 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta scope-glob, mpd-delta scope-overlap, mpd-delta scope-overlap-normalize, mpd-delta contract-contr"
+    },
+    {
+      "name": "R8 migration stays usable: OLD-format registry + --write-registry -> exit 0, 12 context pairs, no anchor keys, then --check exit 0",
+      "pass": true,
+      "detail": "writeRegistryExit=0 pairs=true anchorKeys=false checkExit=0 out=[patch-agent-teams-fixes] registry regenerated: packages/mpd-agent-teams-plugin/lib/mpd-deltas.js (12 regions)"
+    }
+  ],
+  "allPass": true
+}

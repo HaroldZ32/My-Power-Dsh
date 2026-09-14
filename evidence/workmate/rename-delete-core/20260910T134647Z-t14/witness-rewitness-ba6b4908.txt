@@ -1,0 +1,33 @@
+t14 WITNESS — RE-RUN on the shipped case after Deep Worker's PROVENANCE-GUARD edit
+
+SHA CHAIN FOR MY WITNESS COPIES (all retained, so any later edit stays diffable):
+  6daf8884... first witness  ->   diff vs next: +6 comment lines, ZERO non-comment lines
+  e540d0d9... second witness ->   diff vs next: 8 non-comment lines, ALL in the control lane
+  ba6b4908... second witness (this run; both shipped file and my copy hash identically)
+
+DIFF e540d0d9 -> ba6b4908 (what changed, verified by me, not taken on trust):
+  - control lane only: `const diagSent = steps.reinjectionDiagnostic.filterSent?.deny ?? []` and
+    `const mutationLoaded = DEAD_NAMES.every((n) => diagSent.includes(n))`, and the control's `ok` now
+    requires `mutationLoaded && diagChild.length === 0 && parent has all seven && !refusalSeen`;
+    plus two reported fields (mutationLoaded, injectedNamesSeenByAdapter) and a new note.
+  - positive lane UNTOUCHED: `const isChildReq = ...` and `ok: childSpy.length > 0 && parentShowsAllSeven
+    && childSpy.every(...)` are byte-identical to the version I verified.
+  (My earlier grep for the literal string `ok: diagChild.length === 0` now returns 0 because that clause
+   was folded into the provenance-guarded expression — a STRENGTHENING, not a removal.)
+
+RE-WITNESS RUN (byte-identical copy, both sha256 ba6b4908...): exit 0, ok=true, PASS
+  enforcement       : {ok:true, childRequests:1, childToolCounts:[81], childLeaksWriteCapable:[],
+                       childHasStructuredOutput:true, parentToolCount:87, parentHasAllSeven:true}
+  reinjectionControl: {ok:true, mutationLoaded:true, injectedNamesSeenByAdapter:["str_replace_editor",
+                       "apply_patch"], childRequestsUnderRestriction:0, parentToolCount:87, refusalSeen:false}
+  per request: positive call#1 parent 87/all-seven · call#2 0 · call#3 CHILD 81/wc=[] · call#4 parent 87
+               control  call#1 parent 87/all-seven · call#2 0 · call#3 CHILD 87/ALL SEVEN
+  reviewer-applied: positive predicate -> enforcement.ok TRUE; control -> childRequests 0; provenance -> true
+  case evidence: evidence/workmate/roles-readonly/2026-09-10T14-19-31.187Z
+  gate at this run: verify-vendor exit 0 PASS; `find skills -newer VENDOR_LOCK.json -type f` -> prints nothing
+
+REVIEWER ASSESSMENT OF THE NEW GUARD: sound, and stronger than the marker technique I used. The witness is
+the adapter's own `filterSent.deny` — the actual runtime value the harness received from the mutated roles
+build — rather than an injected log line, and the control can no longer pass unless that provenance holds.
+Direction of failure is correct too: if the injection mechanism ever breaks, the control FAILS loudly
+instead of reporting a meaningless green.

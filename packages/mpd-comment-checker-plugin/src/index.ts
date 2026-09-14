@@ -1,0 +1,150 @@
+// C4 mpd-comment-checker-plugin: comment-detection discipline on the DSH tool seam.
+// Vendored core: the upstream project packages/comment-checker-core parser
+// (base 8c57e46; SUL-1.0, inherited from upstream). The check runner is adapted to a
+// spawnSync-based stdin JSON call against the @code-yeongyu/comment-checker
+// native binary (MIT, github.com/code-yeongyu/go-claude-code-comment-checker).
+// Binary resolution: dependency-first — @code-yeongyu/comment-checker is declared
+// as an optionalDependency of the bundle package (used UNMODIFIED, per policy),
+// resolved from the plugin's own package location via createRequire; then env /
+// dev-toolchain fallbacks for local checkout QA.
+// Opt-in behavior: config.autoCheck=false by default (the binary is ~51MB).
+import { existsSync, readFileSync } from "node:fs"
+import { spawnSync } from "node:child_process"
+import { createRequire } from "node:module"
+import { dirname, join, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
+import { createDshAdapter, workspaceRootOf } from "../../mpd-dsh-adapter-plugin/src/index"
+
+export const name = "mpd-comment-checker"
+export const inject = ["tools"]
+
+type Ctx = { tools: any; on: (ev: string, fn: (...a: any[]) => any) => void; get?: (k: string) => any }
+type Config = { autoCheck?: boolean; binary?: string; timeoutMs?: number; maxMessageChars?: number }
+
+/** Merge the row config with the mpdConfig runtime layer (mpd.jsonc wins per key). */
+function mergedConfig(ctx: Ctx, config: Config): Config {
+  const svc = ctx.get?.("mpdConfig") as { get: (k?: string) => any } | undefined
+  if (!svc?.get) return config
+  const v = (k: string) => svc.get(k)
+  return {
+    ...config,
+    autoCheck: typeof v("commentChecker.autoCheck") === "boolean" ? v("commentChecker.autoCheck") : config.autoCheck,
+    binary: typeof v("commentChecker.bin") === "string" ? v("commentChecker.bin") : config.binary,
+    timeoutMs: typeof v("commentChecker.timeoutMs") === "number" ? v("commentChecker.timeoutMs") : config.timeoutMs,
+    maxMessageChars: typeof v("commentChecker.maxMessageChars") === "number" ? v("commentChecker.maxMessageChars") : config.maxMessageChars,
+  }
+}
+
+function textBlock(text: string): any { return [{ type: "text", text }] }
+
+function repoRoot(): string {
+  // this plugin's dist is <root>/packages/mpd-comment-checker-plugin/dist/index.js
+  return dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
+}
+
+function platformKey(): string {
+  const arch = process.arch === "x64" ? "x64" : process.arch
+  return process.platform + "-" + arch
+}
+
+function dependencyBinary(): string | null {
+  // @code-yeongyu/comment-checker installed as a (optional) dependency of the
+  // enclosing @mpd-dsh/mpd package -> sibling node_modules parent-walk finds it.
+  try {
+    const req = createRequire(import.meta.url)
+    const p = req.resolve("@code-yeongyu/comment-checker/package.json")
+    return join(dirname(p), "vendor", platformKey(), "comment-checker")
+  } catch { return null }
+}
+
+export function resolveBinary(config: Config): string | null {
+  if (config.binary && existsSync(resolve(config.binary))) return resolve(config.binary)
+  const env = process.env.MPD_DSH_COMMENT_CHECKER_BIN
+  if (env && existsSync(env)) return env
+  const dep = dependencyBinary()
+  if (dep && existsSync(dep)) return dep
+  const candidates = [
+    join(repoRoot(), ".toolchain", "node_modules", "@code-yeongyu", "comment-checker", "vendor", platformKey(), "comment-checker"),
+    join(repoRoot(), ".toolchain", "node_modules", "@code-yeongyu", "comment-checker", "bin", "comment-checker")
+  ]
+  for (const c of candidates) if (existsSync(c)) return c
+  return null
+}
+
+// `root` is the CALLING SESSION's workspace (adapter workspaceRoot); it is only metadata
+// for the detector binary, so an omitted value degrades to the process default.
+function hookInputFor(path: string, content: string, root?: string): any {
+  return {
+    session_id: "mpd",
+    tool_name: "Write",
+    transcript_path: "",
+    cwd: root ?? workspaceRootOf(),
+    hook_event_name: "PostToolUse",
+    tool_input: { file_path: path, content },
+    tool_response: { content: [{ type: "text", text: "file content" }], details: null, isError: false }
+  }
+}
+
+function runCheck(binary: string, hookInput: any, timeoutMs: number): { hasComments: boolean; message: string } {
+  const r = spawnSync(binary, ["check"], { input: JSON.stringify(hookInput), encoding: "utf8", timeout: timeoutMs, maxBuffer: 4 * 1024 * 1024 })
+  if (r.error) throw new Error("mpd-comment-checker: spawn failed: " + String(r.error.message ?? r.error))
+  const stderr = (r.stderr ?? "") + (r.stdout ?? "")
+  if (r.status === 0) return { hasComments: false, message: "" }
+  if (r.status === 2) return { hasComments: true, message: stderr }
+  return { hasComments: false, message: "unexpected exit " + r.status + ": " + stderr.slice(0, 200) }
+}
+
+export { hookInputFor, runCheck }
+
+export function apply(ctx: Ctx, config: Config = {}): void {
+  // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
+  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
+  const cfg = mergedConfig(ctx, config)
+  const timeoutMs = cfg.timeoutMs ?? 30000
+  const maxMessageChars = cfg.maxMessageChars ?? 12000
+
+  dsh.registerTool({
+    name: "mpd_comment_check",
+    description: "Run the comment/docstring detector on one or more files (content in memory or read from disk). Returns per-file detection results; exit 2 means comments/docstrings found and the binary message spells the required action. The binary (@code-yeongyu/comment-checker, MIT) must be installed in .toolchain (installer flag --with-comment-checker) or set via MPD_DSH_COMMENT_CHECKER_BIN.",
+    parameters: { type: "object", properties: { files: { type: "array", items: { type: "object", properties: { path: { type: "string" }, content: { type: "string" } }, required: ["path"], additionalProperties: false } } }, required: ["files"] },
+    output: { schema: { type: "object", properties: { binary: { type: "string" }, results: { type: "array", items: { type: "object" } } }, required: ["binary", "results"] }, render: (_a: unknown, v: any) => textBlock("comment-check binary=" + v.binary + "\n" + v.results.map((x: any) => (x.hasComments ? "DETECTED " + x.path + ": " + x.message.slice(0, maxMessageChars) : "clean " + x.path)).join("\n")) },
+    execute: async (args: any, exec: any) => {
+      const binary = resolveBinary(cfg)
+      if (!binary) throw new Error("mpd-comment-checker: binary not found — run the installer with --with-comment-checker or set MPD_DSH_COMMENT_CHECKER_BIN")
+      const files = Array.isArray(args?.files) ? args.files : []
+      const results = []
+      for (const f of files) {
+        const path = String(f.path)
+        const content = typeof f.content === "string" ? f.content : (existsSync(path) ? readFileSync(path, "utf8") : "")
+        if (!content) { results.push({ path, hasComments: false, message: "no content to check" }); continue }
+        try {
+          const res = runCheck(binary, hookInputFor(path, content, dsh.workspaceRoot(exec)), timeoutMs)
+          if (!res.hasComments && res.message) results.push({ path, hasComments: false, message: res.message })
+          else results.push({ path, ...res })
+        } catch (e: any) { results.push({ path, hasComments: false, message: "error: " + String(e?.message ?? e) }) }
+      }
+      return { binary, results }
+    }
+  })
+
+  if (cfg.autoCheck === true) {
+    dsh.onPostToolExecute(async (exec: any, result: any, out: any) => {
+      if (out.kind !== "accept") return out
+      const isEdit = exec.name === "edit" || exec.name === "str_replace_editor" || exec.name === "write"
+      if (!isEdit) return out
+      const fp = exec.arguments?.file_path ?? exec.arguments?.path
+      if (typeof fp !== "string") return out
+      const binary = resolveBinary(cfg)
+      if (!binary) return out
+      let content = ""
+      try { content = readFileSync(fp, "utf8") } catch { return out }
+      if (!content) return out
+      const res = runCheck(binary, hookInputFor(fp, content, dsh.workspaceRoot(exec)), timeoutMs)
+      if (!res.hasComments) return out
+      const hint = "[mpd-comment-checker] comments/docstrings detected in " + fp + ":\n" + res.message.slice(0, maxMessageChars)
+      const c = out.content ?? result?.content
+      const text = typeof c === "string" ? c : (Array.isArray(c) ? c.map((b: any) => (b && b.type === "text" ? b.text : "")).join("\n") : "")
+      return { ...out, content: [{ type: "text", text: (text ? text + "\n\n" : "") + hint }] }
+    })
+  }
+}

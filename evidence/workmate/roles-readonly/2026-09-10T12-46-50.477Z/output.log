@@ -1,0 +1,54 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-rd-home-LieFT4/ws
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+dsh: failed to apply loader entry mpd-workmate (/root/dshProj/my-power-dsh/packages/mpd-workmate-plugin/dist/index.js): unsupported JSON schema: schema.properties.archived.type must be a single type string (type arrays are not supported)
+file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1511
+		throw new Error(`${binName}: ${stage}: ${detail}${stack}`, { cause });
+		      ^
+
+Error: dsh: plugin tree failed to load: failed to apply loader entry mpd-workmate (/root/dshProj/my-power-dsh/packages/mpd-workmate-plugin/dist/index.js): unsupported JSON schema: schema.properties.archived.type must be a single type string (type arrays are not supported)
+JsonSchemaError: unsupported JSON schema: schema.properties.archived.type must be a single type string (type arrays are not supported)
+    at assertSupportedJsonSchema (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-tools/lib/index.js:325:35)
+    at Proxy.register (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-tools/lib/index.js:2778:3)
+    at Object.apply (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:120:36)
+    at Object.registerTool (file:///root/dshProj/my-power-dsh/packages/mpd-dsh-adapter-plugin/dist/index.js:74:20)
+    at new apply (file:///root/dshProj/my-power-dsh/packages/mpd-workmate-plugin/dist/index.js:809:7)
+    at Fiber.execute (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1067:24)
+    at file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1141:34
+    at file:///tmp/mpd-rd-dsh-Noo6En/profiles/mpd-headless/#mpd-workmate
+    at file:///tmp/mpd-rd-dsh-Noo6En/profiles/mpd-headless/#include
+    at boot (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1511:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async runProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-BTzzdrGY.js:261:14)
+    at async file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:130:3 {
+  [cause]: Error: failed to apply loader entry mpd-workmate (/root/dshProj/my-power-dsh/packages/mpd-workmate-plugin/dist/index.js): unsupported JSON schema: schema.properties.archived.type must be a single type string (type arrays are not supported)
+      at updateError (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:309:9)
+      at Entry._await (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:516:10)
+      at async Promise.allSettled (index 107)
+      at async Proxy.await (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:192:22)
+      at async boot (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1501:3)
+      at async runProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-BTzzdrGY.js:261:14)
+      at async file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:130:3 {
+    [cause]: JsonSchemaError: unsupported JSON schema: schema.properties.archived.type must be a single type string (type arrays are not supported)
+        at assertSupportedJsonSchema (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-tools/lib/index.js:325:35)
+        at Proxy.register (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-tools/lib/index.js:2778:3)
+        at Object.apply (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:120:36)
+        at Object.registerTool (file:///root/dshProj/my-power-dsh/packages/mpd-dsh-adapter-plugin/dist/index.js:74:20)
+        at new apply (file:///root/dshProj/my-power-dsh/packages/mpd-workmate-plugin/dist/index.js:809:7)
+        at Fiber.execute (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1067:24)
+        at file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1141:34
+        at file:///tmp/mpd-rd-dsh-Noo6En/profiles/mpd-headless/#mpd-workmate
+        at file:///tmp/mpd-rd-dsh-Noo6En/profiles/mpd-headless/#include {
+      code: 'UNSUPPORTED_SCHEMA',
+      violations: [
+        'schema.properties.archived.type must be a single type string (type arrays are not supported)'
+      ]
+    }
+  }
+}
+
+Node.js v24.16.0
+
+
+--- dump-config (roles row) ---
+id: mpd-roles present

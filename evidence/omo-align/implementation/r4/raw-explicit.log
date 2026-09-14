@@ -1,0 +1,7 @@
+[explicit-team-trigger] ok=true -> /root/dshProj/my-power-dsh/evidence/dsh-qa/explicit-team-trigger/2026-09-13T15-40-47.672Z
+  happy: {"ok":true,"teams":1,"profile":"mpd","phase":"staged","spawned":0,"approved":false,"noticeSeen":true}
+  duplicate: {"ok":true,"teamsBefore":1,"teamsAfter":1,"inquirySeen":true}
+  unknownProfile: {"ok":true,"teams":0,"sawError":true}
+  disabled: {"ok":true,"warningSeen":true}
+[explicit-team-trigger] PASS
+EXIT=0

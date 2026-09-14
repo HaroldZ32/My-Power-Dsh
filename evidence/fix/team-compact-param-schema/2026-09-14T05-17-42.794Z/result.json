@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "mode": "GREEN",
+  "sandbox": "/root/dshProj/my-power-dsh/.qa-param-schema/2026-09-14T05-17-36.810Z",
+  "exit": 1,
+  "providerRule": "every model-facing function schema must be object-rooted (the reported provider rule)",
+  "reportedError": "Invalid schema for function 'mpd_team_compact_run': schema must be a JSON Schema of 'type: \"object\"', got 'type: null'",
+  "hashes": {
+    "pluginSrc": "296322e149f2df1d",
+    "pluginDist": "ddf263daf78b81b2",
+    "probeDist": "51c70165a889d7e1"
+  },
+  "steps": {
+    "mountedBoot": {
+      "ok": true,
+      "exit": 1,
+      "registered": "TEAM_COMPACT_TOOLS=2/2"
+    },
+    "probeReadLiveRegistry": {
+      "ok": true,
+      "line": "52/52"
+    },
+    "allToolsObjectRooted": {
+      "ok": true,
+      "checked": 52,
+      "total": 52,
+      "bad": []
+    },
+    "compactToolsPresent": {
+      "ok": true,
+      "line": "TEAM_COMPACT_TOOLS=2/2"
+    },
+    "probePass": {
+      "ok": true
+    }
+  }
+}

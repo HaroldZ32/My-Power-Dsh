@@ -1,0 +1,14 @@
+[preset-probe] ROOTS=[{"path":"/home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/config/agent-presets/","trust":"system"},{"path":"/tmp/mpd-dsh-qa-LhVClD/.agent-presets","trust":"user"}]
+CodeGraph MCP skipped: project excluded by OMO CodeGraph policy.
+[preset-probe] LIST=standard,code,minimal,cordis,mpd-atlas,mpd-explore,mpd-hephaestus,mpd-librarian,mpd-metis,mpd-momus,mpd-multimodal-looker,mpd-oracle,mpd-prometheus,mpd-sisyphus,mpd-sisyphus-junior
+[preset-probe] RESOLVED={"mpd-oracle":true,"mpd-librarian":true,"mpd-prometheus":true,"mpd-hephaestus":true,"mpd-sisyphus":true,"mpd-atlas":true,"mpd-explore":true,"mpd-metis":true,"mpd-momus":true,"mpd-multimodal-looker":true,"mpd-sisyphus-junior":true}
+[preset-probe] PASS
+Hi! I'm ready to work in the `mpd-dsh` repository (the oh-my-openagent → DeepSeek Harness port).
+
+What would you like me to do? For example:
+- Check the current state of the port (PLAN.md, feature audit, gate status)
+- Work on a specific plugin or capability (B1–B4 tracks, skills, MCPs)
+- Run QA gates (`bun test`, `test:qa`, `verify:vendor`, installer dry-run)
+- Something else entirely
+
+Just let me know.

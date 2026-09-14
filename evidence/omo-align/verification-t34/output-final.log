@@ -1,0 +1,51 @@
+t34 FINAL PASS — external-bundle purge verification
+frozen revision: d54afe5372355ee8bd0e524f4d90f55621f74e66
+gate sha256:     b79bde7c87cc2a6c899a3e4c0e9685c0b6e26fb0d3dfdc80f1383c385b5d623e
+                 (equal to the two-sided case's own settled gateHash)
+
+RESIDUE GATE
+  tracked, withdrawn-form matches ............ 0
+    raw token lines 5 = 1 exempt brand line + 4 evidence records quoting it
+  untracked non-ignored, matches ............ 0   (738 files in scope)
+  engineering-specific forms (env/scope/path)  0
+  build output, before regen ................ 0
+  build output, after regen (1121 files) .... 0
+  evidence text, my own artifacts ........... 0  (new criterion)
+  evidence text, third-party ................ 0 retired-identifier; 3 lines restate the
+                                                EXEMPT brand only (hygiene finding V4)
+  dangling refs, live surface ............... 0  (4 sites cleared; 164 occurrences of the
+                                                  retired tree names remain only inside
+                                                  historical wave evidence records)
+  exemptions ................................ verified present and unmodified
+
+CAPTAIN CLAIMS — independently verified, all four CONFIRMED
+  1 AGENTS.md rules + corrected gate line ... confirmed; file 65,209 B (back inside budget)
+  2 four dangling refs + same-commit re-pin . confirmed; merge 314022c carries both
+  3 concurrency account archived as testimony  confirmed; merge d54afe5 adds 6 lines, 0 deletions
+  4 earlier alarm was a false positive ...... confirmed; exempt brand only, 0 retired-form matches
+
+MY OWN CORRECTIONS
+  earlier finding V1 (wrong slots) .......... WITHDRAWN — captain was right; the call is
+                                              correct and the stale d.ts was the defect
+  pre-HOLD claim that closeout evidence
+  wrote the forbidden identifier ........... CORRECTED — it restates the EXEMPT brand only
+
+RECOMPUTES
+  deletions at 1efb30b ...................... 4153 (two independent methods; a third reads
+                                              4154 only via diff-tree's commit-id header)
+  VENDOR_LOCK fileCount ..................... 330 reproduces
+  VENDOR_LOCK treeSha measured .............. 9a823b47409d...  (declared 3f420502... is the
+                                              pre-314022c value; pairing holds, vendor PASS)
+
+FUNCTIONAL REGRESSION — all green
+  patch-agent-teams-fixes --check ........... 21 regions / 6 adopted files
+  verify-vendor ............................. PASS (skills 330 files)
+  bun run typecheck ......................... exit 0
+  bun test packages/mpd-agent-teams-plugin .. 153 pass / 0 fail
+  software-smoke --self-test ................ ok; mutation control RED (9 violations)
+  bun run test:qa ........................... all self-tests passed
+  session-start-team (background) ........... PASS; simple [0,0,0]; complex [1,1,1] one notice
+                                              each; disarmed control 0 teams / 0 notices
+  preset-conformance ........................ PASS; negative control still red
+
+VERDICT: pass (7/7 criteria). Findings V2/V3/V4 are low-value accounting/hygiene items.

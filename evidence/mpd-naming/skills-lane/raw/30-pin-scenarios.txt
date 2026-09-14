@@ -1,0 +1,6 @@
+modified skills files: ["skills/ast-grep/AGENTS.md","skills/ast-grep/scripts/ast_grep_helper.py","skills/ast-grep/tests/smoke.sh","skills/ulw-plan/scripts/scaffold-plan.mjs"]
+A current tree (this task's edits + all sibling skills edits): 297 / a0f1febb4111d5884c9af3385963b06753c3f5a38423f7b66f6852c284725f95
+B this task's two files reverted to HEAD (sibling edits only): 297 / 35720bd2428ded2f6438b2d54363860b4f41702fafae3b89e8d22625c73a187d
+C control: every modified skills file reverted to HEAD: 297 / f6bb2053d02a0e256ab5d88debceb4cfbc76b10c6ff03dca69bf446718a583c9
+lock now: 297 / f6bb2053d02a0e256ab5d88debceb4cfbc76b10c6ff03dca69bf446718a583c9
+CONTROL C == lock: true

@@ -1,0 +1,102 @@
+{
+  "task": "t8",
+  "title": "Verify the adopted-tooling fixes: `**` expansion, contract consistency, contract readability, vendor-refresh durability",
+  "attempt": 1,
+  "attempt_id": "9180b59e-635a-4bf3-be3d-e6949f7a4c84",
+  "executed_by": "Lead (independent verification; no implementation was performed by this task)",
+  "verdict": "failed",
+  "verdict_reason": "Two acceptance criteria of t4 fail on raw output this verifier produced, and the task-body outcome requirement for DEFECT 2 is only narrowed, not prevented: after the fix the generated repair contract no longer lists a path twice, but the REQUIRED edit it still demands (F3 / AGENTS.md, the real wave-1 t13 inputs) is still classified out_of_scope by the completion gate.",
+  "host_restart_required": "Yes — no hot reload of plugin modules in this harness: the live session keeps running the PRE-FIX matcher until dsh restarts. Every module-level claim below is therefore proven by direct module import (pre-fix from git HEAD, post-fix from the working tree) and the mount proof, never by the live completion gate.",
+  "pre_fix_source": "git show HEAD:packages/mpd-agent-teams-plugin/lib/** at 98680b1fb2bbf5c10c28cfbe44419e91595e1cb7, extracted into .mpd/t8-verify-work/prefix (workspace-local, gitignored)",
+  "checks": [
+    {
+      "id": "C1",
+      "criterion": "inScope `**` expansion reproduced against PRE-FIX and honoured POST-FIX (driven fixture)",
+      "result": "passed",
+      "raw": ["check1-prefix.raw.json", "check1-postfix.raw.json"],
+      "detail": "PRE-FIX: pathMatchesScope('packages/foo/test/a.test.mjs','packages/foo/test/**')=false; classifyChangedPath=undeclared for the file and for a deeper file; evaluateQualityCompletion on a task declaring that glob with a changedPath under it: ok=false ('1 changed path(s) not covered by inScope'). POST-FIX: true / in_scope / ok=true. Negative controls identical in both (srcx/a.ts~src/**=false, src/a.md~**/*.ts=false, lib/a.js.map~lib/a.js=false, packages/foo/lib stays out_of_scope) and an undeclared path stays rejected in both. REAL wave-1 replay (archived team mpd-default-7332aba4 task t7): pre-fix ok=false with 2 uncovered src paths ('packages/mpd-boulder-plugin/src/index.ts', 'packages/mpd-memory-plugin/src/index.ts') under its own packages/*/src/** declarations; post-fix ok=true."
+    },
+    {
+      "id": "C2",
+      "criterion": "Contract contradiction reproduced against pre-fix generation, impossible after the fix — and the outcome named in the task body prevented",
+      "result": "failed",
+      "raw": ["check2-prefix.raw.json", "check2-postfix.raw.json"],
+      "detail": "Pre-fix: replaying the REAL wave-1 inputs (archived team mpd-default-7332aba4, source t7 + review t10) through the pre-fix planQualityFollowUp reproduces the recorded repair task t13 BYTE-FOR-BYTE (inScope/outOfScope identical) with AGENTS.md in BOTH lists; validateCreateTask accepted the contradictory declaration (ok=true); the 60-combination property sweep produced 24 contradictory scopes. Post-fix: the same real inputs produce a contradiction-free scope (contradiction=undefined; sweep 0/60) and validateCreateTask refuses the pair while legitimate carve-outs stay legal. FAILED on the task-body requirement: under the post-fix scope the finding F3-agents-md-state-root-stale (file AGENTS.md, requiredFix carried by the generated acceptance) is STILL classified out_of_scope, exactly the wave-1 outcome ('rejected a REQUIRED edit and forced the member to declare it unmatched'). The code's own doc comment states the intended mechanism (the finding's file is 'carved OUT of the source contract's outOfScope'); the implementation keeps the prohibition and drops the file from inScope instead."
+    },
+    {
+      "id": "C3",
+      "criterion": "A LIVE running task's contract is readable through the new surface and matches its declaration field-by-field",
+      "result": "passed",
+      "raw": ["check3-t4-captain.raw.json", "check3-t6-captain.raw.json", "check3-t8-captain.raw.json", "check3-t8-declaration-compare.json"],
+      "detail": "The REAL registered tool set was driven against a byte-identical copy of the live team record. 14/14 tools registered including agent_teams_task_contract. t4 (just completed), t6 (in_progress, another member's) and t8 (in_progress, mine) each report 13/13 compared fields identical to the durable record: task_id, subject, kind, status, assignee, attempt, attempt_id, dependencies, objective, in_scope, out_of_scope, acceptance, verify. t8's view also equals the assignment prompt verbatim (objective, 6 acceptance items, 4 verify commands). Member read works; unknown id and blank id are refused; the live team.json and the sandbox copy are byte-identical after every read (sha256 before/after)."
+    },
+    {
+      "id": "C4",
+      "criterion": "Vendor-refresh durability claim tested by exercising the guard's failure mode (remove/rename the anchor, fail loudly, restore)",
+      "result": "passed",
+      "raw": ["check4-guard.raw.json", "check4-guard.log"],
+      "detail": "S1 real tree --check exit 0 ('already applied: 7 mpd delta region(s) across 2 adopted file(s)'). S2 sandbox byte-identical copy exit 0. S3 region stripped -> --check exit 1 naming the missing delta; S3b --write exit 0 and restores the file BYTE-IDENTICAL; S3c --check exit 0. S4 region + its anchor line removed (drift) -> --check exit 1; S4b --write exit 1 ('its anchor line is gone too (\"function isDefaultExcluded(path) {\") - the adopted file drifted'). S5 region body edited -> --check exit 1 ('no longer matches this script's registered block - first difference at line 192'). S6 pristine restored -> exit 0. The live tree was never mutated (sha256 identical before/after)."
+    },
+    {
+      "id": "C4b",
+      "criterion": "Every change to adopted code is marked in-source as a LOCAL ADAPTATION at the point of change (t4 acceptance 4)",
+      "result": "failed",
+      "raw": ["check4b-adaptation-markers.raw.json", "check4c-revendor-simulation.log", "check4d-revendor-heal.raw.json"],
+      "detail": "7 registered regions (5 in quality-gates.js, 2 in tools.js) are correctly marked. But 17 added lines of adopted-code change in packages/mpd-agent-teams-plugin/lib/quality-gates.js lie OUTSIDE every region: the rewritten inScopeOverlap body (current lines 252-255), the new normalizeScopePattern helper (263-267) and the create-time contradiction gate inside validateCreateTask (405-412). They are unmarked and therefore unmanaged by the re-apply guard."
+    },
+    {
+      "id": "C4c",
+      "criterion": "A `vendor-agent-teams.mjs` run cannot silently drop the deltas (t4 acceptance 5, re-vendor case)",
+      "result": "failed",
+      "raw": ["check4c-revendor-simulation.log", "check4d-revendor-heal.log", "check4d-revendor-heal.raw.json"],
+      "detail": "Simulated the hand re-materialize the guard exists for: quality-gates.js replaced by the last un-adapted revision (git HEAD), tools.js + mpd-deltas.js ours, then the guard's healing pass exactly as scripts/vendor-agent-teams.mjs runs it (line 122, applyAgentTeamsFixes({write:true})). Measured: --check refuses first (exit 1, good), then --write reports 'applied ... inserted: 5 regions' with exit 0 and the following --check exits 0 — while the healed file contains TWO `export function pathMatchesScope` declarations and the healed MODULE FAILS TO IMPORT (`Identifier 'pathMatchesScope' has already been declared`). The diff healed-vs-working tree shows what no guard pass restores: the upstream pathMatchesScope body keeps sitting above the inserted region and the three unmarked changes of C4b are silently absent."
+    },
+    {
+      "id": "C5",
+      "criterion": "No agent-teams regression: plugin suite green and a MOUNTING boot applying the agent-teams row shows 0 apply-crash signatures (never --dump-config)",
+      "result": "passed",
+      "raw": ["check5-plugin-suite.log", "check5-mount.raw.json", "check5-mount.log", "check5-mount-boot.log"],
+      "detail": "bun test packages/mpd-agent-teams-plugin: 83 pass / 0 fail / 312 expect() calls, exit 0. Mounted boot in an isolated DSH_HOME + HOME + WORKSPACE (dsh plugin add into a temp profile, then a boot carrying the full bundle plus a registration-instrumentation probe row): 0 apply-crash signatures (unsupported JSON schema | JsonSchemaError | plugin tree failed to load | failed to apply loader entry | without inject), probe reached DONE, AGENT_TEAMS_TOOLS_PRESENT=14/14 with agent_teams_task_contract=REGISTERED (proving the POST-FIX module was the one loaded), exit 124 = still serving at the 90s cap. Isolation: 0 new team records in the real workspace, 0 real-workspace session keys in the sandbox. No --dump-config result is cited as load evidence."
+    }
+  ],
+  "t4_acceptance_map": [
+    "1. inScope matcher honours packages/foo/test/** and a task can complete with files under it — PASS (C1; pre-fix false/undeclared, post-fix true/in_scope, real wave-1 t7 flip included)",
+    "2. Contract generation can no longer list one path in BOTH lists, defect reproduced first, fix falsifiable — PASS on the literal wording (C2: exact real-input replay of t13 + 24/60 -> 0/60 + create gate refuses, carve-outs still legal); the OUTCOME gap is finding F1",
+    "3. A running task's contract is readable and matches what was declared — PASS (C3: 13/13 fields on three live tasks, verbatim match against the assignment prompt)",
+    "4. Every adopted-code change marked LOCAL ADAPTATION in-source — FAIL (C4b: 17 lines outside every region)",
+    "5. Changes survive a vendor refresh; guard failure mode exercised — PARTIAL/FAIL (C4 loud and byte-exact for our own file; C4c the vendor run's own healing mode produces a broken module and silently loses the unmarked changes)",
+    "6. No regression: suite green + boot with 0 apply-crash signatures — PASS (C5)",
+    "7. Wave-1 defect cited (t3/t4/t7/t13 and the t13 contradiction) — PASS (t4 output and evidence/wave2/adopted-tooling/README.md cite both)"
+  ],
+  "findings": [
+    {
+      "id": "F1-repair-scope-still-rejects-required-edit",
+      "severity": "high",
+      "file": "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+      "line": 312,
+      "problem": "repairScopeFromFindings drops a finding's file from inScope when the source contract's outOfScope forbids it, but leaves the prohibition in outOfScope. Replaying the REAL wave-1 inputs (mpd-default-7332aba4 t7 + t10) through the post-fix planQualityFollowUp still yields a repair whose own acceptance carries finding F3's requiredFix while AGENTS.md classifies out_of_scope — the same rejection/declare-unmatched outcome on t13 that the task body says this fix exists to prevent ('a fix that only narrows the window is not a pass'). The function's doc comment claims the opposite mechanism ('carved OUT of the source contract's outOfScope'). The self-fix test's comment (self-fix-tests/scope-glob-and-contract.test.mjs:133-135) states 'the required edit is no longer out_of_scope' while its own assertion on the next line expects out_of_scope.",
+      "requiredFix": "Make the generated repair scope actually admit every finding file its acceptance demands: carve the finding's forbidden path out of outOfScope (drop or narrow the covering pattern) instead of only skipping the inScope admission, so classifyChangedPath(finding.file, generated.inScope, generated.outOfScope)==='in_scope' for each finding with a valid file; add a falsifiable regression test built from the real t13 inputs asserting that; correct the contradicting comment in self-fix-tests/scope-glob-and-contract.test.mjs."
+    },
+    {
+      "id": "F2-unmarked-adopted-code-changes",
+      "severity": "medium",
+      "file": "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+      "line": 252,
+      "problem": "17 added lines of behaviour-changing adopted-code edits sit outside every mpd-delta region: the rewritten inScopeOverlap body (252-255), the new normalizeScopePattern helper (263-267) and the create-time contractContradiction gate inside validateCreateTask (405-412). t4 acceptance 4 requires every adopted-code change to be marked in-source as a LOCAL ADAPTATION; these are not, so they are also invisible to the re-apply guard.",
+      "requiredFix": "Wrap the three edits in registered mpd-delta regions (e.g. scope-overlap-glob and create-contract-gate) beside their code and regenerate lib/mpd-deltas.js with --write-registry, or move the code into an existing marked region."
+    },
+    {
+      "id": "F3-healing-path-breaks-revendor",
+      "severity": "high",
+      "file": "scripts/patch-agent-teams-fixes.mjs",
+      "line": 90,
+      "problem": "The healing path that scripts/vendor-agent-teams.mjs runs unconditionally (applyAgentTeamsFixes({write:true}), vendor-agent-teams.mjs:122) inserts a missing region before its anchor without checking that the file still carries the declaration the region replaces. On the hand re-materialize the guard exists for (upstream file, our registry), --write exits 0 and the next --check exits 0 while the healed file holds two `export function pathMatchesScope` declarations and the module fails to import ('Identifier pathMatchesScope has already been declared'); the unmarked changes (F2) are silently absent from the healed file.",
+      "requiredFix": "Before inserting, refuse when the target file still contains the declaration/body the region would (re)define (or verify after healing that the file parses/imports and that no symbol the region declares appeared twice), and make vendor-agent-teams.mjs surface that refusal as a failure instead of a green 'applied'. Cover it with a test that heals an upstream (regions-absent) copy and asserts a non-zero exit rather than a broken module."
+    }
+  ],
+  "notes": [
+    "The live tree was never mutated by this verification: the guard was exercised on sha256-identical sandbox copies so concurrent members (t6/t9) were never exposed to a stripped file.",
+    "Every pre-fix measurement comes from the git HEAD revision extracted with git archive; every post-fix measurement comes from the working-tree module that the mounted boot also loaded (probe: 14/14 tools incl. the t4 tool).",
+    "The captain's t11 brief addendum (packed-artifact modes, AGENTS.md corrections) is untouched by this task and remains with t11."
+  ]
+}

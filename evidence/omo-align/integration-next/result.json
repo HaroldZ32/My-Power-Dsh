@@ -1,0 +1,281 @@
+{
+  "schema": "mpd-omo-align-integration/1",
+  "task": "t47 (wave integration close-out; rebuilt replacement for the destroyed t42)",
+  "integrator": "Lead",
+  "attemptId": "82d34683-7379-4e6c-b1ee-bc72e10436da",
+  "kind": "integration",
+  "round": 1,
+  "date": "2026-09-14T02:12Z",
+  "head": "e2d8df9a62bdc99dd2dfbe696c7aeb9794481ed5",
+  "headSubject": "merge(docs/verify-r3-pass): the round-3 review",
+  "verdict": "pass",
+  "verdictReason": "All seven acceptance criteria are satisfied: the cross-task consistency is established on one anchored revision (21/21 programmatic checks), the V1 closure chain is verified end to end with hashes and paths, the eight named gates were re-run with raw exit codes and controls, the deliverables list is complete, and the incomplete items are enumerated without euphemism. The close-out CONCLUSION is that the wave is NOT shippable on the current worktree (five gates red, all attributed to uncommitted t51/t52 work) while the COMMITTED revision is green on every gate that can be verified there - both facts are stated loudly below.",
+  "waveStatus": {
+    "shippable": false,
+    "reason": "The tracked worktree carried uncommitted t51/t52 work at sweep time (7 files), which makes the wave-level gate sweep red for two attributable reasons (stale VENDOR_LOCK skills pin; an in-flight tool-surface test) and makes any sweep result revision-unstable.",
+    "whatRemains": [
+      "t51 (QA case re-pointed at the shipped path + VENDOR_LOCK re-pin) must land and be committed together with its skills change.",
+      "t52 (interjection tool surface) must land; its new test file test/t52-interjection-tools.test.mjs is currently untracked.",
+      "After both land: re-run the eight gates on a SETTLED revision and re-issue this close-out.",
+      "t45's compaction hinge close-loop (and therefore t48) is unresolved."
+    ]
+  },
+  "anchoring": {
+    "discipline": "Content hashes, never a bare commit id. The 13 files this close-out depends on were hashed twice 55 s apart and were byte-identical (settled) at the moment of the consistency pass; the worktree nevertheless moved again DURING the gate sweep (mpd-deltas.js 03f6006b... -> 1a32156d...), which is recorded rather than hidden.",
+    "settledFileHashes": {
+      "evidence/omo-align/requirements/frozen-contract.json": "3e77e6b842553687",
+      "packages/mpd-agent-teams-plugin/lib/session-start.js": "7831f26831c7606d",
+      "packages/mpd-agent-teams-plugin/lib/scheduler.js": "27cc18b923443c22",
+      "skills/dsh-qa/SKILL.md": "b7f278cf6dc8dd55",
+      "skills/dsh-qa/scripts/session-start-team.mjs": "e90a40c3723e0ba7",
+      "VENDOR_LOCK.json": "afd437d99b99fd55",
+      "docs/omo-parity-ledger.md": "1084feab27263960",
+      "docs/omo-parity-ledger.zh-CN.md": "d58a6d26fd7c7104",
+      "packages/mpd-bundle/cordis.patch.yml": "119cf6d98e5a75ba"
+    },
+    "committedVsLive": {
+      "method": "For the A/B the COMMITTED revision was materialised read-only with `git archive HEAD | tar -x -C <evidence>/raw/head-tree` and the gates were run inside that extraction; the extracted trees were then deleted (regenerable by the same command) and their logs retained under raw/gates-head/.",
+      "differingFiles": {
+        "packages/mpd-agent-teams-plugin/lib/state.js": { "head": "4b17c335946bf846", "live": "8e78e9b508d03230", "owner": "t52 (in flight)" },
+        "packages/mpd-agent-teams-plugin/lib/tools.js": { "head": "4babeddc7b528c1a", "live": "9a2cfb89fd9ce06f", "owner": "t52 (in flight)" },
+        "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": { "head": "3e34091ca9d805cc", "live": "1a32156da3206e4c", "owner": "t52 (in flight; changed DURING the sweep)" },
+        "packages/mpd-agent-teams-plugin/test/task-contract-tool.test.mjs": { "head": "committed baseline", "live": "modified", "owner": "t52 (in flight; became dirty after the sweep started)" },
+        "skills/dsh-qa/scripts/agent-teams-messaging.mjs": { "head": "6f286954e4f4338f", "live": "c9073b82ac78ce92", "owner": "t51 (in flight)" },
+        "packages/mpd-qa-roles-probe/src/index.ts + dist/index.js": { "head": "f56b28bb1939dddc / 76ddb7eaef5ca152", "live": "5fb116653839e765 / 3c3a787f8281f3a4", "owner": "in flight" }
+      },
+      "identicalFiles": "session-start.js, scheduler.js, SKILL.md, session-start-team.mjs, VENDOR_LOCK.json, both ledgers, the frozen contract, cordis.patch.yml, presets/mpd/agent.cordis.yml - live == HEAD"
+    }
+  },
+  "crossTaskConsistency": {
+    "script": "evidence/omo-align/integration-next/raw/consistency.mjs",
+    "result": "evidence/omo-align/integration-next/raw/consistency.json",
+    "checksPassing": "21/21",
+    "verbTables": {
+      "contractDeclared": { "english": 14, "cjk": 12 },
+      "shippedC2Matches": { "english": "14/14", "cjk": "12/12" },
+      "shippedC3Matches": { "english": "14/14", "cjk": "12/12" },
+      "noExtrasNoMissing": true,
+      "c3PositionalAnchors": ["and", "then", "also"],
+      "ledgerBothLanguagesCarryAllDeclaredVerbs": true,
+      "how": "Token sets were compared by EXECUTING the shipped ACTION_VERB_PATTERN / CLAUSE_ACTION_PATTERN against the contract's declared sets, and separately by decoding the pattern sources (including \\uXXXX escapes) and checking for tokens the contract does not declare. Three-way agreement: contract <-> shipped <-> both ledger §3 sections."
+    },
+    "caseTable": {
+      "rows": 25,
+      "everyRowHasScript": true,
+      "r1Row": "agent-teams-messaging -> skills/dsh-qa/scripts/agent-teams-messaging.mjs (exists; HEAD 6f286954..., live c9073b82... dirty under t51)",
+      "sessionStartRow": "session-start-team -> skills/dsh-qa/scripts/session-start-team.mjs (exists; e90a40c3723e0ba7, live == HEAD)",
+      "selfTestStatus": "agent-teams-messaging --self-test exits 1 on the CURRENT tree solely because of the uncommitted skills edit (stale VENDOR_LOCK pin); session-start-team passes both its offline self-test and the real two-sided run"
+    },
+    "vendorLockPairing": {
+      "waveRange": "facb2de^..HEAD",
+      "skillsCommitsInWave": 1,
+      "theCommit": "98af744547 (test(qa): end-to-end falsifiable case for the message channel, with the corpus re-pinned) - skills files 2, VENDOR_LOCK.json in the SAME commit",
+      "vendorLockCommitsInWave": ["98af744547"],
+      "conclusion": "ONE skills change and exactly ONE matching VENDOR_LOCK re-pin inside the wave, in the same commit (AGENTS.md §9/§11 satisfied).",
+      "pendingSkillsChange": "M skills/dsh-qa/scripts/agent-teams-messaging.mjs (t51, uncommitted) - declared, not silently passed",
+      "outOfScopeCommits": "Older unpaired skills commits (RTL purge, web/sidebar, QA boot-graph waves) lie outside this wave's range and are not judged here."
+    },
+    "contractAdditions": {
+      "contractBytes": 39814,
+      "contractSha256": "3e77e6b842553687",
+      "keysPresent": ["schedulerSemantics", "messagingOperativeReading", "interjectionExpiryBoundary", "openToolSurfaceEscalation", "complexityGate.logicRevisionNote", "complexityGate.signals.C_enumeratedSteps.harmonizedVerbTables"],
+      "note": "Option A (>= 1) and the R3 harmonization are recorded in the contract; the two t53 boundary statements (tool-surface escalation, event-based expiry) are present as first-class keys."
+    }
+  },
+  "v1Chain": {
+    "construction": {
+      "task": "t38 (cancelled after repair)",
+      "what": "constructed the V1 defect: an interjection request with no content was returned as pending but was unreadable by the queue, i.e. invisible",
+      "evidence": "evidence/omo-align/verification-r1/result.json (sha256 32aa0e05362d6174..., 20241 B, verdict 'failed' on finding V1) + raw/counterexamples.mjs",
+      "anchor": "t38's record: needs_revision, 1 open finding V1"
+    },
+    "repair": {
+      "task": "t43",
+      "what": "chose normalization (b): content is defaulted with a fixed priority summary -> reason -> location; id/from/ts stay REQUIRED and are refused loudly by name",
+      "commit": "925309d (reachable: git cat-file -t = commit)",
+      "evidence": "evidence/omo-align/repair-v1/result.json (sha256 2833d26d7ca51f42..., 6337 B) + counterexamples-after-fix.json",
+      "declaredPins": "state.js fa7fe937f1895c47 / mpd-deltas.js da091a4aeb6d07fc / regression test d6914ec0423df3cf"
+    },
+    "reverification": {
+      "task": "t44 (verdict pass, 8/8, zero findings)",
+      "what": "independent re-measurement at the committed revision: the original failing shape now returns pending + readableAsPending 1 + normalized content; the decision path distinguishes ABSENT from MALFORMED; expiry flips and preserves from; and the falsifiability proof was executed (the implementer's own test file against a pre-repair module: 8 pass / 5 fail, exactly the five new tests failing).",
+      "anchor": "committed revision 0d52794 (repair 925309d merged)",
+      "evidence": "evidence/omo-align/verification-v1/result.json (sha256 b13fdb4ed84eb2a1..., 14152 B) + raw/{driver.mjs, fixed.out.json, reverted.out.json, fixed-test.tap.txt, reverted-test.tap.txt, revert-method.md}",
+      "merge": "0d52794 = merge(fix/v1-interjection-normalized): close V1"
+    },
+    "retirement": {
+      "task": "t38 -> cancelled",
+      "mechanism": "the task record was retired to cancelled with its output, acceptanceResults and findings preserved; the reassignment reason states the defect was repaired (925309d, merged 0d52794) and re-verified (t44 pass)",
+      "consequence": "retiring it released the dependency that had permanently pinned its downstream; the destroyed dependents were rebuilt as t46/t47"
+    },
+    "chainVerdict": "COMPLETE and walkable: construction (t38, failed on V1) -> repair (t43 / 925309d) -> independent re-verification (t44, pass 8/8, executed falsifiability proof) -> retirement (t38 cancelled with its record preserved). Every step has a hash and a path above."
+  },
+  "deliverables": {
+    "R1": {
+      "summary": "message channel: idempotent dedup, archive-first clear to watermark, first-class interjection queue, and the send-path dedup guard; V1 closure included",
+      "product": {
+        "packages/mpd-agent-teams-plugin/lib/state.js": "HEAD 4b17c335946bf846 (live 8e78e9b508d03230, t52 in flight)",
+        "packages/mpd-agent-teams-plugin/lib/scheduler.js": "HEAD 27cc18b923443c22 (live == HEAD)",
+        "packages/mpd-agent-teams-plugin/lib/tools.js": "HEAD 4babeddc7b528c1a (live 9a2cfb89fd9ce06f, t52 in flight)",
+        "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "HEAD 3e34091ca9d805cc (live 1a32156da3206e4c, t52 in flight)"
+      },
+      "qa": {
+        "skills/dsh-qa/scripts/agent-teams-messaging.mjs": "HEAD 6f286954e4f4338f (live c9073b82ac78ce92, t51 in flight)",
+        "skills/dsh-qa/SKILL.md": "b7f278cf6dc8dd55 (row agent-teams-messaging)"
+      },
+      "evidence": {
+        "evidence/omo-align/messaging/r1-wiring/result.json": "d611c667eee5a75b",
+        "evidence/omo-align/verification-r1/result.json": "32aa0e05362d6174",
+        "evidence/omo-align/repair-v1/result.json": "2833d26d7ca51f42",
+        "evidence/omo-align/verification-v1/result.json": "b13fdb4ed84eb2a1",
+        "evidence/omo-align/review-r1/result.json": "01a53127508840ad",
+        "evidence/omo-align/review-r3/result.json": "692dea2beb2adab2",
+        "evidence/omo-align/messaging-qa/": "t36/t38 QA runs (10/10)"
+      },
+      "unmet": [
+        "t52 tool surface (interject request/decide, mailbox clear) is NOT committed; only the state primitives and the send-path guard are",
+        "the messaging QA case and its VENDOR_LOCK pin are red on the current tree until t51 lands",
+        "post-approval step-boundary end-to-end delivery is still not driven (t44's recorded limit)"
+      ]
+    },
+    "R2": {
+      "summary": "false-trigger measurement over real prompts + the bilingual ledger brought into agreement with the frozen contract",
+      "artifacts": {
+        "evidence/omo-parity-rate/result.json": "d77fcf6547920856 (t37, 20 real prompts, 0 triggered)",
+        "evidence/omo-parity-rate/ledger-delta.md": "conflict table + bilingual replacement draft (t37)",
+        "evidence/omo-parity-rate-verify/result.json": "87578c165f74cfee (t39 independent verification, verdict pass, 4 findings)",
+        "docs/omo-parity-ledger.md": "1084feab27263960 (t40 landing; §3 >= 1 + C 2-of-3 + harmonized tables; §8 all verified)",
+        "docs/omo-parity-ledger.zh-CN.md": "d58a6d26fd7c7104 (same commit as EN)",
+        "evidence/omo-align/ledger-fix/result.json": "c386a97d5a3e930c (t40 closure record + 8 gate logs)",
+        "evidence/omo-align/requirements/frozen-contract.json": "3e77e6b842553687"
+      },
+      "unmet": [
+        "F2: the measured dataset contains NO English prompts, so the English trigger rate is undefined and no EN-vs-CN comparison exists; the next wave owns English coverage",
+        "F1: t37's per-prompt signal decomposition used a re-implemented looser clause rule, so only the trigger vector is citable as measurement, not the signal breakdown"
+      ]
+    },
+    "R3": {
+      "summary": "the two verb tables harmonized into one shared set (14 EN + 12 CJK); thresholds untouched",
+      "artifacts": {
+        "packages/mpd-agent-teams-plugin/lib/session-start.js": "7831f26831c7606d (C2/C3 patterns; live == HEAD)",
+        "contract": "complexityGate.signals.C_enumeratedSteps.harmonizedVerbTables + complexityGate.logicRevisionNote (3e77e6b842553687)",
+        "A/B probe": "evidence/omo-align/review-r1/raw/probe-r3-ab.{mjs,out.json} (pre-R3 module b79bde7c... vs shipped)",
+        "re-anchored measurement": "evidence/omo-align/review-r3/raw/measurement-reanchor.json"
+      },
+      "unmet": [
+        "none material: the harmonization is monotone (no token removed), the 6-prompt calibration set behaves identically in both arms, and the accepted multi-clause routing cost is documented in both languages"
+      ]
+    }
+  },
+  "gateTable": {
+    "liveWorktree": {
+      "note": "Run 02:04:09Z -> 02:06:17Z against the WORKING TREE, which was NOT settled (t52 edited mpd-deltas.js during the sweep). Raw logs: raw/gates/*.log; codes: raw/gates/codes.txt.",
+      "rows": [
+        { "gate": "patch-agent-teams-fixes --check", "exit": 0 },
+        { "gate": "verify-vendor", "exit": 1, "cause": "asset skills treeSha mismatch - the ONLY failure line; caused by the uncommitted t51 skills edit" },
+        { "gate": "bun run typecheck", "exit": 0 },
+        { "gate": "bun test packages/mpd-agent-teams-plugin", "exit": 1, "cause": "1 fail of 193 (48 files): 'DEFECT 3: the full agent-teams tool surface registers' - the t52 in-flight tool-surface test/lib pair" },
+        { "gate": "bun test .../self-fix-tests", "exit": 0 },
+        { "gate": "bun run test:qa", "exit": 1, "cause": "the messaging case's VENDOR_LOCK staleness (same single cause as verify-vendor); the dispatch self-test itself passed 14 checks" },
+        { "gate": "preset-conformance", "exit": 0, "controls": "checked 30, parity 31/31 (missing [], extra []), negative control RED with agent-preset/invalid ($.prefix)" },
+        { "gate": "session-start-team", "exit": 0, "controls": "twoSided simple [0,0,0]/notices false, complex [1,1,1]/notices true; negative control disarmed=true, 0 teams" },
+        { "gate": "agent-teams-messaging --self-test", "exit": 1, "cause": "same stale VENDOR_LOCK skills pin" }
+      ]
+    },
+    "committedRevisionAB": {
+      "note": "Gates re-run inside `git archive HEAD` extraction (HEAD e2d8df9). Raw logs under raw/gates-head/.",
+      "rows": [
+        { "gate": "patch-agent-teams-fixes --check", "exit": 0, "detail": "28 mpd delta region(s) across 6 adopted file(s)" },
+        { "gate": "bun test packages/mpd-agent-teams-plugin", "exit": 0, "detail": "377 pass / 0 fail across 47 files" },
+        { "gate": "bun test .../self-fix-tests", "exit": 0, "detail": "106 pass / 0 fail across 8 files" },
+        { "gate": "verify-vendor (with MPD_UPSTREAM_ROOT)", "exit": 1, "detail": "repo assets all OK including 'asset OK: skills 331 files' (the committed skills tree MATCHES the lock); the non-zero exit is the REFERENCE CHECKOUT mismatch (upstream HEAD d1557a4b4 / beta.62 vs the locked baseline 8c57e46 / beta.20), which is the documented reference-not-baseline situation, not a repo defect" }
+      ]
+    }
+  },
+  "acceptanceResults": [
+    {
+      "criterion": "Cross-task consistency on ONE stable hash: frozen-contract C2/C3 <-> shipped regexes <-> both ledger §3; SKILL.md case row <-> new case script exists and self-tests; VENDOR_LOCK re-pin in the SAME commit as the skills change",
+      "status": "passed",
+      "evidence": "21/21 programmatic checks (raw/consistency.{mjs,json,log}), anchored on the settled file set (13 files byte-identical across 55 s). Verb tables: contract declares 14 EN + 12 CJK; the shipped C2 and C3 patterns match 14/14 and 12/12 in both languages with NO extras and NO omissions (token sets compared by executing the shipped patterns and by decoding the pattern sources, including \\uXXXX escapes); both ledger §3 sections carry every declared token. Case table: 25 rows, every row has its script; the R1 row and the session-start row both resolve. Pairing: inside the wave range facb2de^..HEAD there is exactly ONE skills commit (98af744547) and exactly ONE VENDOR_LOCK change, in that SAME commit."
+    },
+    {
+      "criterion": "V1 closure chain verified: construction (t38) -> repair (t43, 925309d) -> independent re-verification (t44, pass 8/8) -> retirement (t38 cancelled with output/findings preserved), each with an anchored hash and evidence path",
+      "status": "passed",
+      "evidence": "See v1Chain above. Construction: evidence/omo-align/verification-r1/result.json 32aa0e05362d6174... (verdict failed on V1) + raw/counterexamples.mjs. Repair: commit 925309d (git cat-file -t = commit) + evidence/omo-align/repair-v1/result.json 2833d26d7ca51f42... + counterexamples-after-fix.json. Re-verification: evidence/omo-align/verification-v1/result.json b13fdb4ed84eb2a1... (verdict pass, 8/8) with all six raw files present (driver.mjs, fixed.out.json, reverted.out.json, fixed-test.tap.txt, reverted-test.tap.txt, revert-method.md), anchored at the merge 0d52794. Retirement: t38 = cancelled, its output/acceptanceResults/findings preserved in the task record, the reassignment reason naming the repair and the re-verification."
+    },
+    {
+      "criterion": "All gates re-run with raw exit codes and key output (delta-check, verify-vendor, typecheck, plugin tests, self-fix-tests, test:qa, preset-conformance with its negative control, session-start-team with disarmed control; the >60 s case run as a background job)",
+      "status": "passed",
+      "evidence": "Nine gates re-run; raw logs, codes.txt and the sweep-time dirty snapshot are under raw/gates/ and raw/dirty-at-sweep.txt. session-start-team ran inside the background sweep (2 min 8 s total sweep, >60 s case included). Controls verified in the raw logs: preset-conformance negative control RED (agent-preset/invalid, $.prefix), session-start-team negative control disarmed=true with 0 teams/0 notices. HONEST RESULT, stated because it is the whole point: FIVE of the nine gates exit non-zero on the working tree, all attributed to the uncommitted t51/t52 work, and the sweep is explicitly NOT a settled-hash verdict because the tree changed during it. A committed-revision A/B (git archive HEAD) shows the committed bytes green on every gate verifiable there: delta-check 0 (28 regions/6 files), plugin tests 377/0, self-fix 106/0, and verify-vendor's repo asset check including 'skills 331 files' OK."
+    },
+    {
+      "criterion": "Deliverables list: R1 / R2 / R3 paths + anchored hashes + evidence paths + unmet items, so a reader need not read the chat transcript",
+      "status": "passed",
+      "evidence": "See deliverables above: each of R1/R2/R3 carries product/config hashes (HEAD and live where they differ), the QA/skill artifacts, the evidence paths with sha256 prefixes, and its unmet items. The R1 entry records that t52's tool surface is not committed and that the case pin is red; R2 records F1/F2; R3 records none material."
+    },
+    {
+      "criterion": "Incomplete items and known gaps listed without euphemism: F2, F1, the un-driven step-boundary delivery, and the captain's operational mistake plus its lesson",
+      "status": "passed",
+      "evidence": "See incompleteItems: 10 entries, including F2 (0 English prompts -> no EN rate), F1 (signal breakdown not citable), t44's recorded limit that post-approval step-boundary end-to-end delivery is not driven, and the captain's mistake - retiring a FAILED dependency as cancelled destroyed its dependents t41/t42 because the plugin releases a cancelled dependency by cancelling its downstream, so the slots had to be rebuilt as t46/t47; the lesson is now recorded in AGENTS.md §12 with the remedy (leave the failed slot as the honest record and create NEW tasks that depend on the repair + the closure verification). Also listed: the five red gates, t45's failed compaction hinge (t48 blocked), t46's cancelled needs_revision verdict and its 7 findings, the pending t51/t52, the unsettled worktree, and the 193-vs-377 test-count anomaly."
+    },
+    {
+      "criterion": "Evidence in evidence/omo-align/integration-next/ (new directory replacing the destroyed t42 slot); no delivered evidence overwritten",
+      "status": "passed",
+      "evidence": "All writes are under evidence/omo-align/integration-next/ (196 KB). Every other evidence tree was read only (t37's omo-parity-rate, t39's omo-parity-rate-verify, t38's verification-r1, t43's repair-v1, t44's verification-v1, t40's ledger-fix, the reviews). The scratch trees extracted for the A/B lived under raw/ and were deleted after their logs were kept; no product file, no docs, no skills file and no VENDOR_LOCK.json was written by this task."
+    },
+    {
+      "criterion": "Evidence text neutralised (no retired external project identifiers)",
+      "status": "passed",
+      "evidence": "This report names no external project. The only identifiers used are repository-local paths, task ids, and the upstream baseline/reference commit ids that the repository's own manual cites. The two historical commits whose subjects mention a purged surface are referred to by short hash only."
+    }
+  ],
+  "incompleteItems": [
+    "F2 (from t39): the R2 measurement dataset has 20/20 CJK rows and ZERO English rows, so the English trigger rate is undefined and no EN-vs-CN comparison exists. The captain owns the next-wave requirement for English coverage.",
+    "F1 (from t39): t37's per-prompt signal decomposition was computed with a re-implemented looser clause rule, so only the trigger vector is citable as measurement; the signal breakdown must not be cited.",
+    "Post-approval step-boundary end-to-end delivery is still NOT driven (recorded by t44): the approval RECORD is asserted, the delivery at the next step boundary is not.",
+    "Captain's operational mistake: retiring the FAILED dependency t38 as `cancelled` did NOT free its downstream - the plugin releases a cancelled dependency by CANCELING its dependents, so t41 and t42 were destroyed and had to be rebuilt (t46, t47). Lesson now in AGENTS.md §12: leave the failed slot as the honest record and create NEW downstream tasks that depend on the repair + the closure verification.",
+    "Wave-level gate green is NOT established: 5 of 9 gates exit non-zero on the current worktree, all attributed to uncommitted t51/t52 work. The committed revision is green on the gates verifiable in an extraction, but a wave close-out cannot be declared green until t51/t52 land, the re-pin rides with them, and the gates are re-run on a settled revision.",
+    "t45 FAILED: the compaction hinge was proven with a qualifier (host-plane node needs the inject declaration; the member-scoped engine resolves without it) but the end-to-end close loop did NOT close - compactNow returned null, no compaction/start+end pair was observed, and the 'busy' negative control threw a missing-service error instead of returning a busy code. t48 (mpd-team-compact-plugin) consequently remains pending.",
+    "t46 was CANCELLED with verdict needs_revision and 7 open findings; its findings are captured in evidence/omo-align/review-r1/ and were carried into the repair chain. Round 2 (t50) also returned needs_revision; the round-3 repair (t53) was re-reviewed as pass (t54). Nothing was waved through.",
+    "Pending slots at close-out: t48 (compaction implementation), t51 (QA case re-pointed at the shipped path + re-pin), t52 (interjection tool surface). Failed slots without a repair: t25, t34, t45.",
+    "The worktree was NOT settled during the gate sweep: mpd-deltas.js changed from 03f6006b to 1a32156d while the sweep ran, and test/task-contract-tool.test.mjs became dirty after it started. The sweep numbers are therefore revision-unstable by construction; they are recorded, not relied upon.",
+    "Un-explained observation to re-measure after t51/t52 land: the live in-flight tree reports 193 tests across 48 files while the committed extraction reports 377 across 47. Attribution (mid-flight load/skip behaviour vs the untracked t52 test) was NOT established here; do not read either number as the wave's test count until re-measured."
+  ],
+  "findings": [
+    {
+      "id": "F-GATES",
+      "severity": "medium",
+      "problem": "Five of the nine named gates exit non-zero on the working tree at sweep time (verify-vendor 1, plugin tests 1, test:qa 1, messaging self-test 1, plus the same root cause recurring). All five trace to two uncommitted work streams: t51's skills edit invalidates the VENDOR_LOCK skills treeSha (three of the failures cite exactly that), and t52's in-flight tool-surface change fails one test.",
+      "impact": "The wave cannot be declared gate-green until those land. This is a true red, not a measurement artifact - but it is red on an UNSETTLED tree, so it is not evidence about the committed revision either.",
+      "requiredFix": "Land t51 + t52 with their re-pin in the same commit, then re-run the nine gates on a settled revision and re-issue this close-out. Do not mark the wave shippable before that."
+    },
+    {
+      "id": "F-SETTLE",
+      "severity": "low",
+      "problem": "The sweep started against a worktree that was mid-edit and the tree changed during the sweep (verified by hash). Per AGENTS.md §7 a verdict requires a settled revision; these gate results cannot be one.",
+      "impact": "Explains (and bounds) F-GATES; also explains why the committed-revision A/B was necessary.",
+      "requiredFix": "None beyond F-GATES: re-run after the work streams land, and pin the revision before the sweep."
+    },
+    {
+      "id": "F-PIN",
+      "severity": "low",
+      "problem": "VENDOR_LOCK's skills treeSha is correct for the committed revision but stale for the working tree, and the QA case turns that staleness into a self-test failure. The case's own diagnostic message is good (it prints lock vs tree and cites AGENTS.md §9).",
+      "impact": "Expected mid-flight consequence; would be a real defect if it survived the commit window.",
+      "requiredFix": "t51 must re-pin in the same commit as its skills change (the case and verify-vendor both enforce it)."
+    }
+  ],
+  "artifacts": {
+    "result": "evidence/omo-align/integration-next/result.json",
+    "output": "evidence/omo-align/integration-next/output.log",
+    "raw": [
+      "evidence/omo-align/integration-next/raw/consistency.mjs",
+      "evidence/omo-align/integration-next/raw/consistency.json",
+      "evidence/omo-align/integration-next/raw/consistency.log",
+      "evidence/omo-align/integration-next/raw/run-gates.sh",
+      "evidence/omo-align/integration-next/raw/dirty-at-sweep.txt",
+      "evidence/omo-align/integration-next/raw/dirty-post-sweep.txt",
+      "evidence/omo-align/integration-next/raw/gates/ (9 live gate logs + codes.txt)",
+      "evidence/omo-align/integration-next/raw/gates-head/ (committed-revision A/B logs)"
+    ]
+  }
+}

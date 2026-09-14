@@ -1,0 +1,19 @@
+{
+  "task": "t6",
+  "purpose": "Durable record of the captain's CONTRACT INTEGRITY amendment for t6, delivered while t6 was still `pending` (the platform refuses amend on a pending task and refuses claim while t2/t5 are unfinished). Apply verbatim as `amend.acceptance` on the t6 in_progress call at claim time.",
+  "delivered_at": "2026-09-14 (captain message, contract-integrity follow-up to ruling C1)",
+  "claim_state": "t6 claim REFUSED: 'task t6 is blocked by unfinished dependencies: t2, t5' (re-checked after this message; t2 in_progress, t5 pending). No amend has been issued.",
+  "replacement_acceptance": [
+    "A rebuild via `node scripts/build-mcp.mjs` reproduces every committed dist byte-for-byte (byte-equality guard green) and the brand guard scans every shipped artifact (ast-grep, git-bash, lsp, codegraph)",
+    "The `_omo` literal is RENAMED to `_mpd` in packages/mpd-mcp-lsp/dist/cli.js with the writer, the reader/stripper and the spawned-daemon side consistent, the stale-daemon caveat stated (what an already-running version-scoped daemon does, and the remedy), and scripts/build-mcp.mjs:186's allowlist entry for `_omo` DELETED (its stated reason is false: writer and reader live in the same artifact and version skew fails loudly via PROTOCOL_ERROR)",
+    "CAPTAIN RULING C1 (DSH-only mandate supersedes the earlier acceptance text): OMO_CODEX_GIT_BASH_PATH / OMO_CODEX_GIT_BASH_TIMEOUT_MS / OMO_CODEX_EXEC_COMMAND_TIMEOUT_MS are DELETED, not kept — the git-bash reader is removed, their three BRAND_ALLOWLIST entries are removed, and no OMO_-branded env contract may remain in any shipped artifact; the guard's negative control proves the guard fails on an injected brand token (seeded mutant), not just on a clean tree",
+    "VENDOR_LOCK.json carries the updated lsp sha256, the skills corpus treeSha/fileCount and a refreshed lockedAt, and `node scripts/verify-vendor.mjs` exits 0",
+    "BUILD.lock is regenerated and consistent with the rebuilt artifact"
+  ],
+  "captain_instruction": "If the amend call is refused at that point, say so in the output and complete against the list above anyway — the captain ruling is authoritative either way.",
+  "measurement_notes_for_t10": {
+    "acceptance_2_PROTOCOL_ERROR_parenthetical": "The parenthetical is a quote of the FALSE allowlist reason being deleted; the substantive claim (the reason is false) is confirmed. But the measured failure mode of a skew is NOT protocolError: authenticateMessage returns AUTH_ERROR_CODE -32001 ('daemon_authentication_failed', dist/cli.js:5477) whenever the envelope key is absent, and the protocolVersion branch (:5360-5363) can only run when the envelope is present at the expected key. The client then fails with DaemonUnreachableError after the 5 s ready timeout. Evidence: evidence/mpd-naming/brand-cleanup/dists/raw/recon.json -> lsp_envelope_rename.stale_daemon_caveat.",
+    "acceptance_3_note": "Deleting the git-bash reader makes 'Start an MPD session'/'MPD runtime'/'mpd-git-bash' scrubs a PREREQUISITE of a green rebuild (measured: without them the untouched tree already fails the brand guard on `OMO` in ast-grep). Those 3 scrub entries are part of the same in-scope repair, not a separate change.",
+    "acceptance_4_note": "The skills corpus fileCount/treeSha must be re-pinned with t2's deletion (now 297 files / 2feb1bce... vs locked 331 / c1f424fe...); the codegraph sha256 comes from t5; the three dist sha256 values come from this task's rebuild."
+  }
+}

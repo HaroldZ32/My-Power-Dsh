@@ -1,0 +1,72 @@
+{
+  "schema": "mpd.requirements-conference/v1",
+  "wave": "team-compaction",
+  "frozenAt": "2026-09-14",
+  "request": "每次任务完成归档后，对当前未归档的队伍的所有成员压缩上下文",
+  "userDecisions": {
+    "trigger": {
+      "choice": "整队任务全部完成时",
+      "meaning": "When EVERY task of a team has reached a terminal state, fire ONE compaction pass for that team.",
+      "rejected": ["any single task reaching a terminal state", "the team being archived via agent_teams_delete"],
+      "note": "This is the lower-frequency reading: one pass per completed team, not one per task."
+    },
+    "who": {
+      "choice": "等所有成员都空闲再一起压",
+      "meaning": "A barrier: wait until every member of that team is idle, then compact them together.",
+      "why": "ctx.compaction.compactNow requires an idle agent - ManualCompactAgentContext.runMaintenance throws synchronously when the agent is already active, and the expected-failure code is 'busy'."
+    },
+    "teamScope": {
+      "choice": "所有未归档队伍的全部成员",
+      "meaning": "Iterate every non-archived team record; compact the members of each."
+    },
+    "threshold": {
+      "choice": "无条件显式压缩 (compactNow)",
+      "meaning": "Call compactNow on every pass, not compactIfNeeded. A pass with no safely compactable range legitimately returns null and is recorded as such."
+    },
+    "safety": {
+      "choice": "写审计记录 + 失败码逐条归档",
+      "meaning": "Every pass writes an audit record: team, member, session, whether it was skipped as busy, shadowedSeqCount / shadowedTokenCount, summarySeq, and the failure code when one occurs. Nothing silent."
+    },
+    "placement": {
+      "choice": "新建独立插件包 mpd-team-compact-plugin",
+      "why": "Does not touch the adopted upstream agent-teams code, so it avoids both the single-writer zone and the region-registry machinery.",
+      "consequence": "It must discover task-terminal transitions and member-to-agent mapping on its own; those are the open feasibility questions."
+    }
+  },
+  "harnessFacts": {
+    "composition": "presets/mpd/agent.cordis.yml:264-289 already composes the compaction plane: the `compaction` service plus compaction-basic, command-compact and compaction-tool-result-pruner. So ctx.compaction is live in an mpd session and in member sessions.",
+    "api": "CompactionEngine.compactNow(agent: ManualCompactAgentContext, signal, sourceCommandId?) => CompactionResult | null",
+    "agentRequirement": "ManualCompactAgentContext = { session, options } + runMaintenance(task); runMaintenance THROWS SYNCHRONOUSLY when the agent is already active.",
+    "failureCodes": ["busy", "cancelled", "changed", "summary", "commit", "persistence"],
+    "irreversibility": "A successful compaction REPLACES the selected history span with one summary node. Details are lost; this is why the audit record is a user requirement, not a nicety.",
+    "existingHumanPath": "dsh-command-compact registers the /compact command and calls ctx.compaction.compactNow(invocation.agent, invocation.signal, invocation.commandId) - the same API this feature will drive programmatically."
+  },
+  "userDecisionsFinal": {
+    "answeredOn": "2026-09-14 (second Socratic batch)",
+    "captainInclusion": "DO NOT compact the captain. The user compacts the captain manually via the human /compact command. Only team members are compacted.",
+    "auditLocation": "<workspace>/.mpd/team-compact/ - a separate namespace; never write .mpd/team (that state belongs to the agent-teams plugin).",
+    "deadCaptainTeams": "Skip and record not-live. Architect measured that once a captain session is gone, workspaceRootsAll() no longer sees that team and its member Agents are not in-process, so it cannot be compacted anyway. Compact it after the team is resumed, if ever.",
+    "memberNotification": "Silent, audit only - notifying a member would push context straight back in, the opposite of the point.",
+    "visibility": "Also ship a READ-ONLY tool (e.g. mpd_team_compact_status) so the audit is inspectable from the agent surface. A Web-panel surface is explicitly a later slot, not this wave.",
+    "gateRetune": {
+      "decision": "Lower the thresholds AND widen the CJK vocabulary, calibrated on real prompts, then re-measure.",
+      "input": "t37 measured 0/20 triggers on real prompts and caught a genuinely complex session-start request producing ZERO signals (1 B verb against a threshold of 4; 1 C2 verb against a threshold of 3). The observed cost is under-triggering, not over-triggering.",
+      "separateWorkItem": "This is NOT part of the compaction plugin. It is a behaviour change and needs its own contract, mount proof and two-sided gate evidence.",
+      "coverageRequirement": "The t39 verification's F2 finding stands: the 20-prompt set contained 0 Latin-only prompts, so the English trigger rate is undefined (n=0). Any recalibration set MUST cover English prompts explicitly or the bilingual claim is unsupported."
+    }
+  },
+  "openFeasibilityQuestions": [
+    "How does a sibling plugin learn that EVERY task of a team reached a terminal state - is there an event/service to subscribe to, or must it observe the team record on disk?",
+    "How does it map a team record's members to live Agent objects (does the record carry session/agent ids)?",
+    "What is the correct 'all members idle' barrier, and what happens to a member that becomes busy again mid-pass?",
+    "Is driving runMaintenance/compactNow on a continuable subagent session from a sibling plugin legitimate, or does it need the owning session's cooperation?",
+    "Does the compaction plane need to be composed in the plugin's own row context, and does the plugin need `compaction` in inject (a declared-but-unregistered service makes the loader entry pending and can fail the whole tree)."
+  ],
+  "hardConstraints": {
+    "singleWriterPlugin": "packages/mpd-agent-teams-plugin/** stays untouched by this feature (user chose a separate package).",
+    "singleSkillsWriter": "Any QA case under skills/** needs the corpus VENDOR_LOCK treeSha re-pinned in the SAME commit; serialize to exactly one skills writer.",
+    "adapterRule": "New mpd plugins reach harness seams through mpd-dsh-adapter (packages/mpd-dsh-adapter-plugin) - the one file allowed to touch ctx.tools/ctx.subagents/ctx.skills/ctx.agentPresets. The agent-teams plugin is the documented exception; a NEW plugin is not.",
+    "bootProof": "A new row must be proven by an isolated DSH_HOME boot that MOUNTS it with registration instrumentation; --dump-config proves composition only.",
+    "noneRemoval": "Compaction is destructive, so the feature must never fire inside a team that still has non-terminal tasks."
+  }
+}

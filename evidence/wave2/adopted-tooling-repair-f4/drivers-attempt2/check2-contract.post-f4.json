@@ -1,0 +1,382 @@
+{
+  "driver": "check2-contract",
+  "libDir": "packages/mpd-agent-teams-plugin/lib",
+  "version": "post-fix (mpd-delta contract-contradiction present)",
+  "replay": {
+    "inputs": {
+      "sourceTaskId": "t7",
+      "reviewTaskId": "t10",
+      "sourceInScope": [
+        "packages/mpd-dsh-adapter-plugin/src/index.ts",
+        "packages/mpd-boulder-plugin/src/**",
+        "packages/mpd-memory-plugin/src/**",
+        "packages/mpd-ulw-plugin/src/**",
+        "packages/mpd-hashline-plugin/src/index.ts",
+        "packages/mpd-config-plugin/src/**",
+        "packages/mpd-comment-checker-plugin/src/**",
+        "packages/mpd-modelchain-plugin/src/**",
+        "packages/mpd-verif-plugin/src/**",
+        "packages/mpd-workmate-plugin/src/**",
+        "packages/mpd-boulder-plugin/dist/index.js",
+        "packages/mpd-memory-plugin/dist/index.js",
+        "packages/mpd-ulw-plugin/dist/index.js",
+        "packages/mpd-hashline-plugin/dist/index.js",
+        "packages/mpd-config-plugin/dist/index.js",
+        "packages/mpd-comment-checker-plugin/dist/index.js",
+        "packages/mpd-modelchain-plugin/dist/index.js",
+        "packages/mpd-verif-plugin/dist/index.js",
+        "packages/mpd-workmate-plugin/dist/index.js",
+        "packages/mpd-dsh-adapter-plugin/dist/index.js",
+        "evidence/**"
+      ],
+      "sourceOutOfScope": [
+        "presets/**",
+        "packages/mpd-bundle/cordis.patch.yml",
+        "VENDOR_LOCK.json",
+        "AGENTS.md",
+        "README.md",
+        "README.zh-CN.md"
+      ],
+      "findingFiles": [
+        {
+          "id": "F1-cocotb-lane-venv-root",
+          "file": "packages/mpd-verif-plugin/src/venv.ts"
+        },
+        {
+          "id": "F2-hashline-guard-base",
+          "file": "packages/mpd-hashline-plugin/src/index.ts"
+        },
+        {
+          "id": "F4-pack-artifact-prefix",
+          "file": "dist/mpd-package/packages/mpd-verif-plugin/dist/index.js"
+        },
+        {
+          "id": "F3-agents-md-state-root-stale",
+          "file": "AGENTS.md"
+        },
+        {
+          "id": "F6-agentless-union-uncovered",
+          "file": "packages/mpd-workmate-plugin/src/index.ts"
+        },
+        {
+          "id": "F5-t8-count-consistency",
+          "file": "evidence/session-workspace-root/t8-verify/attempt-2/RESULT.json"
+        },
+        {
+          "id": "F7-hygiene-preexisting-strays",
+          "file": "evidence/dsh-qa/agent-teams-dispatch"
+        }
+      ]
+    },
+    "generated": {
+      "id": "repair-round-2",
+      "inScope": [
+        "packages/mpd-dsh-adapter-plugin/src/index.ts",
+        "packages/mpd-boulder-plugin/src/**",
+        "packages/mpd-memory-plugin/src/**",
+        "packages/mpd-ulw-plugin/src/**",
+        "packages/mpd-hashline-plugin/src/index.ts",
+        "packages/mpd-config-plugin/src/**",
+        "packages/mpd-comment-checker-plugin/src/**",
+        "packages/mpd-modelchain-plugin/src/**",
+        "packages/mpd-verif-plugin/src/**",
+        "packages/mpd-workmate-plugin/src/**",
+        "packages/mpd-boulder-plugin/dist/index.js",
+        "packages/mpd-memory-plugin/dist/index.js",
+        "packages/mpd-ulw-plugin/dist/index.js",
+        "packages/mpd-hashline-plugin/dist/index.js",
+        "packages/mpd-config-plugin/dist/index.js",
+        "packages/mpd-comment-checker-plugin/dist/index.js",
+        "packages/mpd-modelchain-plugin/dist/index.js",
+        "packages/mpd-verif-plugin/dist/index.js",
+        "packages/mpd-workmate-plugin/dist/index.js",
+        "packages/mpd-dsh-adapter-plugin/dist/index.js",
+        "evidence/**",
+        "dist/mpd-package/packages/mpd-verif-plugin/dist/index.js",
+        "AGENTS.md"
+      ],
+      "outOfScope": [
+        "presets/**",
+        "packages/mpd-bundle/cordis.patch.yml",
+        "VENDOR_LOCK.json",
+        "README.md",
+        "README.zh-CN.md"
+      ]
+    },
+    "recordedPreFixRepair": {
+      "id": "t13",
+      "inScope": [
+        "packages/mpd-verif-plugin/src/venv.ts",
+        "packages/mpd-hashline-plugin/src/index.ts",
+        "dist/mpd-package/packages/mpd-verif-plugin/dist/index.js",
+        "AGENTS.md",
+        "packages/mpd-workmate-plugin/src/index.ts",
+        "evidence/session-workspace-root/t8-verify/attempt-2/RESULT.json",
+        "evidence/dsh-qa/agent-teams-dispatch"
+      ],
+      "outOfScope": [
+        "presets/**",
+        "packages/mpd-bundle/cordis.patch.yml",
+        "VENDOR_LOCK.json",
+        "AGENTS.md",
+        "README.md",
+        "README.zh-CN.md"
+      ],
+      "changedPaths": [
+        "packages/mpd-verif-plugin/src/venv.ts",
+        "packages/mpd-hashline-plugin/src/index.ts",
+        "evidence/session-workspace-root/t8-verify/attempt-2/RESULT.json"
+      ]
+    },
+    "generatedMatchesRecordedPreFix": false,
+    "contradictionInGeneratedScope": null,
+    "agentsMdClassificationUnderGeneratedScope": "in_scope",
+    "demandedButNotInScope": [],
+    "requiredFilesInScope": [
+      {
+        "file": "packages/mpd-verif-plugin/src/venv.ts",
+        "classification": "in_scope"
+      },
+      {
+        "file": "packages/mpd-hashline-plugin/src/index.ts",
+        "classification": "in_scope"
+      },
+      {
+        "file": "dist/mpd-package/packages/mpd-verif-plugin/dist/index.js",
+        "classification": "in_scope"
+      },
+      {
+        "file": "AGENTS.md",
+        "classification": "in_scope"
+      },
+      {
+        "file": "packages/mpd-workmate-plugin/src/index.ts",
+        "classification": "in_scope"
+      },
+      {
+        "file": "evidence/session-workspace-root/t8-verify/attempt-2/RESULT.json",
+        "classification": "in_scope"
+      },
+      {
+        "file": "evidence/dsh-qa/agent-teams-dispatch",
+        "classification": "in_scope"
+      }
+    ],
+    "preservedProhibitions": [
+      {
+        "pattern": "presets/**",
+        "coversRequiredFile": false,
+        "stillForbidden": true
+      },
+      {
+        "pattern": "packages/mpd-bundle/cordis.patch.yml",
+        "coversRequiredFile": false,
+        "stillForbidden": true
+      },
+      {
+        "pattern": "VENDOR_LOCK.json",
+        "coversRequiredFile": false,
+        "stillForbidden": true
+      },
+      {
+        "pattern": "AGENTS.md",
+        "coversRequiredFile": true,
+        "stillForbidden": false
+      },
+      {
+        "pattern": "README.md",
+        "coversRequiredFile": false,
+        "stillForbidden": true
+      },
+      {
+        "pattern": "README.zh-CN.md",
+        "coversRequiredFile": false,
+        "stillForbidden": true
+      }
+    ],
+    "generatedAcceptance": [
+      "Give requireCocotbVenv an exec parameter (venv.ts:138) and pass it to venvStatus(override, exec) at :139; pass exec from sim.ts:200 and regress.ts:135; use venvStatus(override, exec) at venv.ts:127. Re-prove with a session workspace != process cwd (extend the t8 probe with mpd_verif_sim/mpd_verif_regress or a direct call) showing the gate resolves <session>/.venv-rtl.",
+      "Resolve the guard's file_path with the same base as the registry (sessionPath(fp, dsh, exec)) before the registered() lookup, keeping absolute paths unchanged, and add a unit case with a relative file_path where session != process.cwd().",
+      "Integration (t11) must re-run `npm run pack` after the final dists, and no verification or review step may cite dist/mpd-package/** or .qa-reloc/** as evidence of the current tree; record the re-pack in the integration evidence.",
+      "Update the section 6 State bullet (and the codegraph troubleshooting row when touched) to name the session-workspace precedence introduced by B1, in English.",
+      "Add one live check with two sessions in different workspaces plus a team record in one of them, driving rename/delete through the service with no explicit roots and asserting the refusal; or state in the evidence that the GUI path stays inspection-only.",
+      "Quote the raw list (19 PASS) or compute the count from the array itself when t11 consolidates the evidence; no code change.",
+      "Delete the three empty evidence dirs and the .qa-tmp leftovers (or record a keep decision), and confirm the integration commit adds no such artefacts."
+    ]
+  },
+  "createGate": {
+    "validateCreateTask(inScope=['AGENTS.md'], outOfScope=['AGENTS.md'])": {
+      "ok": false,
+      "error": "implementation contract is unsatisfiable: no path can ever be in scope — declared \"AGENTS.md\" is forbidden by outOfScope \"AGENTS.md\"\nFix: drop the duplicate from outOfScope or narrow it (e.g. outOfScope \"packages/foo/vendor\" instead of \"packages/foo\")."
+    },
+    "classifyChangedPath('AGENTS.md', ['AGENTS.md'], ['AGENTS.md'])": "out_of_scope",
+    "validateCreateTask(inScope=['packages/foo'], outOfScope=['packages/foo/vendor']) (carve-out must stay legal)": {
+      "ok": true,
+      "error": null
+    },
+    "validateCreateTask(inScope=['packages/foo/**'], outOfScope=['**']) (universal must be refused)": {
+      "ok": false,
+      "error": "implementation contract is unsatisfiable: no path can ever be in scope — declared \"packages/foo/**\" is forbidden by outOfScope \"**\"\nFix: drop the duplicate from outOfScope or narrow it (e.g. outOfScope \"packages/foo/vendor\" instead of \"packages/foo\")."
+    }
+  },
+  "propertySweep": {
+    "combinations": 60,
+    "contradictoryScopes": 6,
+    "samples": [
+      {
+        "source": {
+          "inScope": [
+            "packages/foo"
+          ],
+          "outOfScope": [
+            "packages/foo"
+          ]
+        },
+        "file": "AGENTS.md",
+        "scope": {
+          "inScope": [
+            "packages/foo",
+            "AGENTS.md"
+          ],
+          "outOfScope": [
+            "packages/foo"
+          ]
+        },
+        "hit": {
+          "inScope": "packages/foo",
+          "outOfScope": "packages/foo"
+        },
+        "classification": "in_scope"
+      },
+      {
+        "source": {
+          "inScope": [
+            "packages/foo"
+          ],
+          "outOfScope": [
+            "packages/foo"
+          ]
+        },
+        "file": "docs/new.md",
+        "scope": {
+          "inScope": [
+            "packages/foo",
+            "docs/new.md"
+          ],
+          "outOfScope": [
+            "packages/foo"
+          ]
+        },
+        "hit": {
+          "inScope": "packages/foo",
+          "outOfScope": "packages/foo"
+        },
+        "classification": "in_scope"
+      },
+      {
+        "source": {
+          "inScope": [
+            "packages/foo/src"
+          ],
+          "outOfScope": [
+            "packages/foo"
+          ]
+        },
+        "file": "AGENTS.md",
+        "scope": {
+          "inScope": [
+            "packages/foo/src",
+            "AGENTS.md"
+          ],
+          "outOfScope": [
+            "packages/foo"
+          ]
+        },
+        "hit": {
+          "inScope": "packages/foo/src",
+          "outOfScope": "packages/foo"
+        },
+        "classification": "in_scope"
+      },
+      {
+        "source": {
+          "inScope": [
+            "packages/foo/src"
+          ],
+          "outOfScope": [
+            "packages/foo"
+          ]
+        },
+        "file": "docs/new.md",
+        "scope": {
+          "inScope": [
+            "packages/foo/src",
+            "docs/new.md"
+          ],
+          "outOfScope": [
+            "packages/foo"
+          ]
+        },
+        "hit": {
+          "inScope": "packages/foo/src",
+          "outOfScope": "packages/foo"
+        },
+        "classification": "in_scope"
+      },
+      {
+        "source": {
+          "inScope": [
+            "packages/foo/**"
+          ],
+          "outOfScope": [
+            "packages/foo"
+          ]
+        },
+        "file": "AGENTS.md",
+        "scope": {
+          "inScope": [
+            "packages/foo/**",
+            "AGENTS.md"
+          ],
+          "outOfScope": [
+            "packages/foo"
+          ]
+        },
+        "hit": {
+          "inScope": "packages/foo/**",
+          "outOfScope": "packages/foo"
+        },
+        "classification": "in_scope"
+      },
+      {
+        "source": {
+          "inScope": [
+            "packages/foo/**"
+          ],
+          "outOfScope": [
+            "packages/foo"
+          ]
+        },
+        "file": "docs/new.md",
+        "scope": {
+          "inScope": [
+            "packages/foo/**",
+            "docs/new.md"
+          ],
+          "outOfScope": [
+            "packages/foo"
+          ]
+        },
+        "hit": {
+          "inScope": "packages/foo/**",
+          "outOfScope": "packages/foo"
+        },
+        "classification": "in_scope"
+      }
+    ]
+  },
+  "notes": [
+    "demandedButNotInScope non-empty means the generated repair REQUIRES an edit its own scope still classifies out_of_scope",
+    "preservedProhibitions: every pattern with coversRequiredFile=false MUST stay stillForbidden=true (no over-carve); a pattern covering a required file MUST be dropped"
+  ]
+}

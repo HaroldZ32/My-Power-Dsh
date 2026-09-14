@@ -1,0 +1,36 @@
+probe run 2026-09-14T17:14:07.800Z
+framing: newline-delimited JSON-RPC 2.0 on stdin/stdout (terminator "\\n")
+handshake order: initialize -> notifications/initialized -> tools/list -> tools/call
+requested protocol version: 2025-11-25
+negotiated protocol version: 2025-11-25
+serverInfo: {"name":"lsp","version":"0.1.0"}
+tools/list (8): ["diagnostics","find_references","goto_definition","install_decision","prepare_rename","rename","status","symbols"]
+tools/call status: {"isError":false,"contentTypes":["text"]}
+client elapsed: 188ms, protocol errors: []
+
+raw framing probe stdout:
+{
+  "requestBytes": 151,
+  "requestEndsWithNewline": true,
+  "responseLines": 2,
+  "initializeResult": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": {
+      "capabilities": {
+        "tools": {
+          "listChanged": false
+        }
+      },
+      "serverInfo": {
+        "name": "lsp",
+        "version": "0.1.0"
+      },
+      "protocolVersion": "2025-11-25"
+    }
+  },
+  "toolsListId": 2,
+  "sawContentLengthHeader": false
+}
+
+raw probe stderr: 

@@ -1,0 +1,10 @@
+{
+  "name": "@mpd-dsh/memory",
+  "private": true,
+  "version": "0.2.3",
+  "type": "module",
+  "description": "Git/svn-backed memory engine with reflection (Plan C / C6)",
+  "scripts": {
+    "test": "bun test"
+  }
+}

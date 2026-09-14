@@ -1,0 +1,8 @@
+=== F4 acceptance reproduction: clean heal byte fidelity ===
+regions stripped from quality-gates.js: 7
+--write: applied | inserted: 7 | indent corrections: 0
+next --check: already-applied
+healed === canonical (byte-for-byte): true
+gate inside WRITE_KINDS block: true
+create-contract-gate anchor indent: "    " | block indent: "    "
+indent guard on a 8-space block / 4-space anchor: {"indent":"        ","correctedFrom":"    "}

@@ -1,0 +1,238 @@
+[install-profile] dshHome=/root/.dsh profile=mpd write=false
+[install-profile] profileDir=/root/.dsh/profiles/mpd
+[install-profile] homePatch=/root/.dsh/cordis.patch.yml
+[install-profile] presets -> /root/.dsh/.agent-presets/mpd-*
+[install-profile] toolchain missing=false (use --skip-toolchain to skip)
+[install-profile] rows about to be written to home patch: 23 (id-target=0, insert=23)
+- insert:
+  - id: mpd-web-compat
+    name: "@mpd-dsh/mpd"
+  - id: mcp-astgrep
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "ast_grep"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-astgrep/dist/cli.js"
+      env:
+        MPD_AST_GREP_SG_PATH: "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/sg"
+      toolCallTimeoutMs: 60000
+  - id: mcp-gitbash
+    name: "@deepseek-ai/dsh-mcp-client"
+    disabled: true
+    config:
+      serverName: "git_bash"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-gitbash/dist/cli.js"
+      toolCallTimeoutMs: 60000
+  - id: mcp-lsp
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "lsp"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-lsp/dist/cli.js"
+        - "mcp"
+      toolCallTimeoutMs: 60000
+  - id: mcp-codegraph
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "codegraph"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js"
+      env:
+        MPD_CODEGRAPH_BIN: "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph"
+      toolCallTimeoutMs: 60000
+  - id: mcp-context7
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "context7"
+      transport: "streamable-http"
+      url: "https://mcp.context7.com/mcp"
+      toolCallTimeoutMs: 60000
+  - id: mcp-grepapp
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "grep_app"
+      transport: "streamable-http"
+      url: "https://mcp.grep.app"
+      toolCallTimeoutMs: 60000
+  - id: mpd-codegraph
+    name: "/root/dshProj/my-power-dsh/packages/mpd-codegraph-plugin/dist/index.js"
+    config:
+      autoInit: true
+      initTimeoutMs: 60000
+      binary: "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph"
+  - id: mpd-tools
+    name: "/root/dshProj/my-power-dsh/packages/mpd-tools-plugin/dist/index.js"
+    config:
+      writeGuard: true
+      truncateMaxBytes: 8192
+  - id: mpd-modelchain
+    name: "/root/dshProj/my-power-dsh/packages/mpd-modelchain-plugin/dist/index.js"
+  - id: mpd-ulw
+    name: "/root/dshProj/my-power-dsh/packages/mpd-ulw-plugin/dist/index.js"
+    config:
+      maxRounds: 3
+  - id: mpd-hashline
+    name: "/root/dshProj/my-power-dsh/packages/mpd-hashline-plugin/dist/index.js"
+    config:
+      guardEditTools: true
+  - id: mpd-boulder
+    name: "/root/dshProj/my-power-dsh/packages/mpd-boulder-plugin/dist/index.js"
+  - id: mpd-dsh-adapter
+    name: "/root/dshProj/my-power-dsh/packages/mpd-dsh-adapter-plugin/dist/index.js"
+  - id: mpd-config
+    name: "/root/dshProj/my-power-dsh/packages/mpd-config-plugin/dist/index.js"
+  - id: mpd-comment-checker
+    name: "/root/dshProj/my-power-dsh/packages/mpd-comment-checker-plugin/dist/index.js"
+    config:
+      autoCheck: false
+  - id: mpd-memory
+    name: "/root/dshProj/my-power-dsh/packages/mpd-memory-plugin/dist/index.js"
+    config:
+      vcs: "git"
+  - id: mpd-ext
+    name: "/root/dshProj/my-power-dsh/packages/mpd-ext-plugin/dist/index.js"
+    config:
+      quiet: false
+  - id: mpd-roles
+    name: "/root/dshProj/my-power-dsh/packages/mpd-roles-plugin/dist/index.js"
+  - id: mpd-workmate
+    name: "/root/dshProj/my-power-dsh/packages/mpd-workmate-plugin/dist/index.js"
+  - id: mpd-team-compact
+    name: "/root/dshProj/my-power-dsh/packages/mpd-team-compact-plugin/dist/index.js"
+  - id: mpd-bootstrap
+    name: "/root/dshProj/my-power-dsh/packages/mpd-bootstrap-plugin/dist/index.js"
+  - id: agent-teams
+    name: "/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/index.js"
+    config:
+      stateDir: ".mpd/team"
+      memberProvider: "spawn"
+      memberMaxDepth: 1
+      maxMembers: 16
+      maxParallelMembers: 8
+      maxMessagesPerRun: 10000
+      maxWallClockMinutes: 120
+      maxMemberTurns: 500
+      messagePayloadMaxBytes: 32768
+      recipientUnreadMaxBytes: 262144
+      mailboxPollIntervalMs: 3000
+      enforcement: "enforce"
+      reclaimStaleAfterMs: 3600000
+      sessionTeamPolicy:
+        mode: "off"
+        autoRoute: true
+        profile: "mpd"
+        presets: ["mpd"]
+        name: "MPD Default"
+        approval: "required"
+      profiles:
+        mpd:
+          description: "The specialist roster surfaced as normal-named teammate templates — captain-planned (roster only; the captain designs the DAG during the staged plan)."
+          protocol: "Read-only members (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) take requirements/review/analysis tasks only and never edit files. Workers (Senior Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) take implementation/verification/integration. The captain leads, designs the DAG, and integrates results. Workmate reuse: before delegating a role task, consult mpd_workmate_list / mpd_workmate_match(task); if a workmate note matches well, delegate to that workmate (member name = workmate name, so its persona/memory are injected), otherwise initialize a fresh workmate with mpd_workmate_init — never force a weak note match."
+          taskPlanning: captain
+          # fallback.provider is ALWAYS deepseek-official (never the bare
+          # "deepseek" compat-track provider): the original layered design
+          # intended dsh-llm-pi-ai ("deepseek") as the degradation tier, but
+          # that row is OFF by default (install-profile --with-compat-track is
+          # gone) and the harness only registers deepseek-official
+          # (dsh-llm-deepseek), so a "deepseek" fallback would fail with
+          # NO_ADAPTER exactly when the fallback is needed. Models stay
+          # tiers: every member is flash — the five that used to default to
+          # the pro tier (Architect/Planner/Reviewer/Lead/Senior Engineer)
+          # carry an explicit reasoning_effort: max, the highest effort this
+          # deployment exposes (off/low/high/max).
+          members:
+            - name: Architect
+              reasoning_effort: max
+              role: architecture review / deep debugging / self-review
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only architecture advisor. You advise, others execute — never edit files. Favor simplicity and existing patterns; give one clear recommendation with concise rationale and evidence."
+              # Read-only members are MECHANICALLY restricted, not just instructed: these
+              # names are the same seven the one-shot roster path denies
+              # (mpd-roles-plugin / mpd-workmate-plugin READONLY_DENY), carried as profile
+              # data because the adopted plugin cannot import across packages. Without
+              # them a "read-only" member in a team kept write/edit/bash (measured
+              # 2026-09-14: a member's own session ran `pwd` for real).
+
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Researcher
+              role: code / open-source evidence search
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only researcher. Gather evidence from the codebase, AST/LSP and web sources; cite file:line and URLs; never edit files or invent findings."
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Planner
+              reasoning_effort: max
+              role: planning / task decomposition
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only planner. Produce decision-complete, step-ordered plans with a checklist; never implement."
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Explorer
+              role: read-only codebase exploration
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only explorer. Answer with evidence and absolute file paths; never edit files."
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Reviewer
+              reasoning_effort: max
+              role: correctness / risk review
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Deep reviewer. Produce correctness/risk findings with evidence; recommend fixes but do not apply them."
+            - name: Plan Reviewer
+              role: work-plan QA review / UI-UX critique
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only plan reviewer. Verify plans are executable and references valid; reject only true blockers; UI/UX critique only when explicitly asked; never edit files."
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Vision Analyst
+              role: image / diagram analysis
+              provider: deepseek-official
+              model: deepseek-v4-flash-vision-exp
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only vision analyst. Describe screenshots/diagrams precisely; never edit files or load anything by path."
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Lead
+              reasoning_effort: max
+              role: orchestration / integration
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Orchestrator. Plan the macro structure, delegate independent units in parallel, integrate and verify results."
+            - name: Deep Worker
+              role: autonomous goal-driven implementation
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Autonomous deep worker. Receive goals, execute them end-to-end with tools, verify every change, report evidence-first."
+            - name: Senior Engineer
+              reasoning_effort: max
+              role: primary implementation
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Primary engineer. Plan small, execute with tools, keep diffs minimal, verify every change, report honestly."
+            - name: Junior Engineer
+              role: small mechanical changes
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny."
+
+[install-profile] DRY-RUN done (nothing written); add --yes to actually install, and --dsh-home to override the target

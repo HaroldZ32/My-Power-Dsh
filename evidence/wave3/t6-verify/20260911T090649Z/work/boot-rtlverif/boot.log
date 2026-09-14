@@ -1,0 +1,7 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=marker binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/root/dshProj/my-power-dsh
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+[t6-mcp-probe] HAS_TOOL=false fixture=/root/dshProj/my-power-dsh/tests/mcp-fixtures/sample.c
+[t6-mcp-probe] MCP_TOOL_CALL=ok attempt=1 value={"content":[{"type":"text","text":"{\"schemaVersion\":1,\"ok\":true,\"kind\":\"search\",\"workdir\":\"/root/dshProj/my-power-dsh\",\"matches\":[{\"path\":\"tests/mcp-fixtures/sample.c\",\"language\":\"c\",\"text\":\"return 0;\",\"range\":{\"start\":{\"line\":1,\"column\":17,\"byteOffset\":17},\"end\":{\"line\":1,\"column\":26,\"byteOffset\":26}},\"metavariables\":{\"single\":{},\"multi\":{}}}],\"counts\":{\"returnedMatches\":1,\"returnedFiles\":1,\"totalMatches\":1,\"totalFiles\":1,\"atLeastMatches\":1},\"truncation\":{\"truncated\":false,\"reason\":null,\"maxMatches\":50,\"maxPayloadBytes\":4
+
+dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-official"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment

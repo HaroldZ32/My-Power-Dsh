@@ -1,0 +1,389 @@
+{
+  "driver": "strip-heal-both",
+  "repo": "/root/dshProj/my-power-dsh",
+  "measuredAt": "2026-09-11T08:32:29.260Z",
+  "registrySha": "d3a1d4adce41992b9eb7faf37dd145dbaf4df0352a1b29c8b39038e1a7285ffb",
+  "registryRegions": 12,
+  "results": [
+    {
+      "scenario": "both-full-strip",
+      "round": 1,
+      "canonicalSha": {
+        "tools.js": "7cb899a72b06a023c25bb25681f3dd75d59c1e911573bf82a5a8da809a3f5c07",
+        "quality-gates.js": "4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5"
+      },
+      "registrySha": "d3a1d4adce41992b9eb7faf37dd145dbaf4df0352a1b29c8b39038e1a7285ffb",
+      "registryRegions": 12,
+      "registryOrder": [
+        "mpd-delta scope-glob",
+        "mpd-delta scope-overlap",
+        "mpd-delta scope-overlap-normalize",
+        "mpd-delta contract-contradiction",
+        "mpd-delta create-contract-gate",
+        "mpd-delta repair-scope",
+        "mpd-delta repair-scope-fields",
+        "mpd-delta update-task-contract",
+        "mpd-delta update-task-required-status-param",
+        "mpd-delta update-task-required-attempt-id",
+        "mpd-delta task-contract",
+        "mpd-delta task-contract-render"
+      ],
+      "stripped": [
+        {
+          "file": "tools.js",
+          "regionsStripped": 5,
+          "linesRemoved": 136,
+          "strippedDiffers": true,
+          "strippedSha": "13976fa44e1b1dab7eeb7d60cfd99d2e9de11a04b846d4ee59dcf42bdb50145a"
+        },
+        {
+          "file": "quality-gates.js",
+          "regionsStripped": 7,
+          "linesRemoved": 249,
+          "strippedDiffers": true,
+          "strippedSha": "0c0d812258e5d198901bb0a797b3da7249c58ab7a4d255b44777253a183355b2"
+        }
+      ],
+      "heal": {
+        "status": "applied",
+        "inserted": [
+          "mpd-delta scope-glob",
+          "mpd-delta scope-overlap",
+          "mpd-delta scope-overlap-normalize",
+          "mpd-delta contract-contradiction",
+          "mpd-delta create-contract-gate",
+          "mpd-delta repair-scope",
+          "mpd-delta repair-scope-fields",
+          "mpd-delta update-task-contract",
+          "mpd-delta update-task-required-status-param",
+          "mpd-delta update-task-required-attempt-id",
+          "mpd-delta task-contract",
+          "mpd-delta task-contract-render"
+        ],
+        "insertedCount": 12,
+        "regions": 12,
+        "files": [
+          "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+          "packages/mpd-agent-teams-plugin/lib/tools.js"
+        ]
+      },
+      "recheck": {
+        "status": "already-applied",
+        "inserted": []
+      },
+      "compared": [
+        {
+          "file": "tools.js",
+          "byteIdentical": true,
+          "healedSha": "7cb899a72b06a023c25bb25681f3dd75d59c1e911573bf82a5a8da809a3f5c07",
+          "canonicalSha": "7cb899a72b06a023c25bb25681f3dd75d59c1e911573bf82a5a8da809a3f5c07",
+          "exit": 0,
+          "added": 0,
+          "deleted": 0,
+          "diffLines": 0,
+          "raw": ""
+        },
+        {
+          "file": "quality-gates.js",
+          "byteIdentical": true,
+          "healedSha": "4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5",
+          "canonicalSha": "4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5",
+          "exit": 0,
+          "added": 0,
+          "deleted": 0,
+          "diffLines": 0,
+          "raw": ""
+        }
+      ],
+      "passed": true
+    },
+    {
+      "scenario": "both-full-strip",
+      "round": 2,
+      "canonicalSha": {
+        "tools.js": "7cb899a72b06a023c25bb25681f3dd75d59c1e911573bf82a5a8da809a3f5c07",
+        "quality-gates.js": "4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5"
+      },
+      "registrySha": "d3a1d4adce41992b9eb7faf37dd145dbaf4df0352a1b29c8b39038e1a7285ffb",
+      "registryRegions": 12,
+      "registryOrder": [
+        "mpd-delta scope-glob",
+        "mpd-delta scope-overlap",
+        "mpd-delta scope-overlap-normalize",
+        "mpd-delta contract-contradiction",
+        "mpd-delta create-contract-gate",
+        "mpd-delta repair-scope",
+        "mpd-delta repair-scope-fields",
+        "mpd-delta update-task-contract",
+        "mpd-delta update-task-required-status-param",
+        "mpd-delta update-task-required-attempt-id",
+        "mpd-delta task-contract",
+        "mpd-delta task-contract-render"
+      ],
+      "stripped": [
+        {
+          "file": "tools.js",
+          "regionsStripped": 5,
+          "linesRemoved": 136,
+          "strippedDiffers": true,
+          "strippedSha": "13976fa44e1b1dab7eeb7d60cfd99d2e9de11a04b846d4ee59dcf42bdb50145a"
+        },
+        {
+          "file": "quality-gates.js",
+          "regionsStripped": 7,
+          "linesRemoved": 249,
+          "strippedDiffers": true,
+          "strippedSha": "0c0d812258e5d198901bb0a797b3da7249c58ab7a4d255b44777253a183355b2"
+        }
+      ],
+      "heal": {
+        "status": "applied",
+        "inserted": [
+          "mpd-delta scope-glob",
+          "mpd-delta scope-overlap",
+          "mpd-delta scope-overlap-normalize",
+          "mpd-delta contract-contradiction",
+          "mpd-delta create-contract-gate",
+          "mpd-delta repair-scope",
+          "mpd-delta repair-scope-fields",
+          "mpd-delta update-task-contract",
+          "mpd-delta update-task-required-status-param",
+          "mpd-delta update-task-required-attempt-id",
+          "mpd-delta task-contract",
+          "mpd-delta task-contract-render"
+        ],
+        "insertedCount": 12,
+        "regions": 12,
+        "files": [
+          "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+          "packages/mpd-agent-teams-plugin/lib/tools.js"
+        ]
+      },
+      "recheck": {
+        "status": "already-applied",
+        "inserted": []
+      },
+      "compared": [
+        {
+          "file": "tools.js",
+          "byteIdentical": true,
+          "healedSha": "7cb899a72b06a023c25bb25681f3dd75d59c1e911573bf82a5a8da809a3f5c07",
+          "canonicalSha": "7cb899a72b06a023c25bb25681f3dd75d59c1e911573bf82a5a8da809a3f5c07",
+          "exit": 0,
+          "added": 0,
+          "deleted": 0,
+          "diffLines": 0,
+          "raw": ""
+        },
+        {
+          "file": "quality-gates.js",
+          "byteIdentical": true,
+          "healedSha": "4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5",
+          "canonicalSha": "4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5",
+          "exit": 0,
+          "added": 0,
+          "deleted": 0,
+          "diffLines": 0,
+          "raw": ""
+        }
+      ],
+      "passed": true
+    },
+    {
+      "scenario": "both-full-strip",
+      "round": 3,
+      "canonicalSha": {
+        "tools.js": "7cb899a72b06a023c25bb25681f3dd75d59c1e911573bf82a5a8da809a3f5c07",
+        "quality-gates.js": "4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5"
+      },
+      "registrySha": "d3a1d4adce41992b9eb7faf37dd145dbaf4df0352a1b29c8b39038e1a7285ffb",
+      "registryRegions": 12,
+      "registryOrder": [
+        "mpd-delta scope-glob",
+        "mpd-delta scope-overlap",
+        "mpd-delta scope-overlap-normalize",
+        "mpd-delta contract-contradiction",
+        "mpd-delta create-contract-gate",
+        "mpd-delta repair-scope",
+        "mpd-delta repair-scope-fields",
+        "mpd-delta update-task-contract",
+        "mpd-delta update-task-required-status-param",
+        "mpd-delta update-task-required-attempt-id",
+        "mpd-delta task-contract",
+        "mpd-delta task-contract-render"
+      ],
+      "stripped": [
+        {
+          "file": "tools.js",
+          "regionsStripped": 5,
+          "linesRemoved": 136,
+          "strippedDiffers": true,
+          "strippedSha": "13976fa44e1b1dab7eeb7d60cfd99d2e9de11a04b846d4ee59dcf42bdb50145a"
+        },
+        {
+          "file": "quality-gates.js",
+          "regionsStripped": 7,
+          "linesRemoved": 249,
+          "strippedDiffers": true,
+          "strippedSha": "0c0d812258e5d198901bb0a797b3da7249c58ab7a4d255b44777253a183355b2"
+        }
+      ],
+      "heal": {
+        "status": "applied",
+        "inserted": [
+          "mpd-delta scope-glob",
+          "mpd-delta scope-overlap",
+          "mpd-delta scope-overlap-normalize",
+          "mpd-delta contract-contradiction",
+          "mpd-delta create-contract-gate",
+          "mpd-delta repair-scope",
+          "mpd-delta repair-scope-fields",
+          "mpd-delta update-task-contract",
+          "mpd-delta update-task-required-status-param",
+          "mpd-delta update-task-required-attempt-id",
+          "mpd-delta task-contract",
+          "mpd-delta task-contract-render"
+        ],
+        "insertedCount": 12,
+        "regions": 12,
+        "files": [
+          "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+          "packages/mpd-agent-teams-plugin/lib/tools.js"
+        ]
+      },
+      "recheck": {
+        "status": "already-applied",
+        "inserted": []
+      },
+      "compared": [
+        {
+          "file": "tools.js",
+          "byteIdentical": true,
+          "healedSha": "7cb899a72b06a023c25bb25681f3dd75d59c1e911573bf82a5a8da809a3f5c07",
+          "canonicalSha": "7cb899a72b06a023c25bb25681f3dd75d59c1e911573bf82a5a8da809a3f5c07",
+          "exit": 0,
+          "added": 0,
+          "deleted": 0,
+          "diffLines": 0,
+          "raw": ""
+        },
+        {
+          "file": "quality-gates.js",
+          "byteIdentical": true,
+          "healedSha": "4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5",
+          "canonicalSha": "4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5",
+          "exit": 0,
+          "added": 0,
+          "deleted": 0,
+          "diffLines": 0,
+          "raw": ""
+        }
+      ],
+      "passed": true
+    },
+    {
+      "scenario": "cli-both-full-strip",
+      "strippedSha": {
+        "tools.js": "13976fa44e1b1dab7eeb7d60cfd99d2e9de11a04b846d4ee59dcf42bdb50145a",
+        "quality-gates.js": "0c0d812258e5d198901bb0a797b3da7249c58ab7a4d255b44777253a183355b2"
+      },
+      "cliWrite": {
+        "exit": 0,
+        "stdout": "[patch-agent-teams-fixes] applied: 12 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta scope-glob, mpd-delta scope-overlap, mpd-delta scope-overlap-normalize, mpd-delta contract-contradiction, mpd-delta create-contract-gate, mpd-delta repair-scope, mpd-delta repair-scope-fields, mpd-delta update-task-contract, mpd-delta update-task-required-status-param, mpd-delta update-task-required-attempt-id, mpd-delta task-contract, mpd-delta task-contract-render)",
+        "stderr": ""
+      },
+      "cliCheck": {
+        "exit": 0,
+        "stdout": "[patch-agent-teams-fixes] already applied: 12 mpd delta region(s) across 2 adopted file(s)",
+        "stderr": ""
+      },
+      "compared": [
+        {
+          "file": "tools.js",
+          "byteIdentical": true,
+          "exit": 0,
+          "added": 0,
+          "deleted": 0,
+          "diffLines": 0,
+          "raw": ""
+        },
+        {
+          "file": "quality-gates.js",
+          "byteIdentical": true,
+          "exit": 0,
+          "added": 0,
+          "deleted": 0,
+          "diffLines": 0,
+          "raw": ""
+        }
+      ],
+      "passed": true
+    },
+    {
+      "scenario": "both-partial-strip",
+      "stripped": {
+        "tools.js": {
+          "ids": [
+            "mpd-delta update-task-contract",
+            "mpd-delta update-task-required-attempt-id",
+            "mpd-delta task-contract-render"
+          ],
+          "removed": 91
+        },
+        "quality-gates.js": {
+          "ids": [
+            "mpd-delta scope-glob",
+            "mpd-delta scope-overlap-normalize",
+            "mpd-delta create-contract-gate",
+            "mpd-delta repair-scope-fields"
+          ],
+          "removed": 122
+        }
+      },
+      "heal": {
+        "status": "applied",
+        "insertedCount": 7,
+        "inserted": [
+          "mpd-delta scope-glob",
+          "mpd-delta scope-overlap-normalize",
+          "mpd-delta create-contract-gate",
+          "mpd-delta repair-scope-fields",
+          "mpd-delta update-task-contract",
+          "mpd-delta update-task-required-attempt-id",
+          "mpd-delta task-contract-render"
+        ]
+      },
+      "compared": [
+        {
+          "file": "tools.js",
+          "byteIdentical": true,
+          "exit": 0,
+          "added": 0,
+          "deleted": 0,
+          "diffLines": 0,
+          "raw": ""
+        },
+        {
+          "file": "quality-gates.js",
+          "byteIdentical": true,
+          "exit": 0,
+          "added": 0,
+          "deleted": 0,
+          "diffLines": 0,
+          "raw": ""
+        }
+      ],
+      "passed": true
+    },
+    {
+      "scenario": "negative-control-perturbed-seam",
+      "delta": "mpd-delta scope-glob",
+      "victimFile": "quality-gates.js",
+      "perturbedLine": "function isDefaultExcluded(path) {",
+      "refusalMessage": "[patch-agent-teams-fixes] FAIL: delta \"mpd-delta scope-glob\" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js and its registered afterContext window occurs 0 time(s) OUTSIDE every region (must be exactly 1) — the adopted file drifted; refusing to guess the insertion site",
+      "victimUnchanged": true,
+      "passed": true
+    }
+  ],
+  "passed": true
+}

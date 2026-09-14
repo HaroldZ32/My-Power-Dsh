@@ -1,0 +1,25 @@
+=== SHIPPED CASE (t13 guard) ===
+[positive] exit=0 restrictError=False
+   call#1: tools=87 writeCapable=['bash', 'edit', 'mcp__ast_grep__rewrite', 'mcp__ast_grep__scan', 'mcp__lsp__rename', 'mpd_hashline_edit', 'write'] structured_output=False
+   call#2: tools=0 writeCapable=[] structured_output=None
+   call#3: tools=81 writeCapable=[] structured_output=True
+   call#4: tools=87 writeCapable=['bash', 'edit', 'mcp__ast_grep__rewrite', 'mcp__ast_grep__scan', 'mcp__lsp__rename', 'mpd_hashline_edit', 'write'] structured_output=False
+[reinjectionDiagnostic] exit=0 restrictError=False
+   call#1: tools=87 writeCapable=['bash', 'edit', 'mcp__ast_grep__rewrite', 'mcp__ast_grep__scan', 'mcp__lsp__rename', 'mpd_hashline_edit', 'write'] structured_output=False
+   call#2: tools=0 writeCapable=[] structured_output=None
+   call#3: tools=87 writeCapable=['bash', 'edit', 'mcp__ast_grep__rewrite', 'mcp__ast_grep__scan', 'mcp__lsp__rename', 'mpd_hashline_edit', 'write'] structured_output=False
+enforcement     : {"childHasStructuredOutput": true, "childLeaksWriteCapable": [], "childRequests": 1, "childToolCounts": [81], "note": "read-only authority is ENFORCED: the child's own requests cannot see any of the seven write-capable tools, while the parent's sees all of them", "ok": true, "parentHasAllSeven": true, "parentRequests": 3, "parentToolCount": 87}
+reinjectionControl: {"childRequestsUnderRestriction": 0, "note": "control: with the unregistered names re-injected no request is a strictly-smaller restricted child and no refusal is raised \u2014 the restriction silently stops applying, which is the exact degradation the enforcement assertion above exists to catch", "ok": true, "parentSeesWriteCapable": ["write", "edit", "mpd_hashline_edit", "bash", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename"], "parentToolCount": 87, "refusalSeen": false}
+
+=== REVIEWER INSTRUMENT (independent copy) ===
+[positive] exit=0 restrictError=False
+   call#1: tools=87 writeCapable=['bash', 'edit', 'mcp__ast_grep__rewrite', 'mcp__ast_grep__scan', 'mcp__lsp__rename', 'mpd_hashline_edit', 'write'] structured_output=None
+   call#2: tools=0 writeCapable=[] structured_output=None
+   call#3: tools=81 writeCapable=[] structured_output=None
+   call#4: tools=87 writeCapable=['bash', 'edit', 'mcp__ast_grep__rewrite', 'mcp__ast_grep__scan', 'mcp__lsp__rename', 'mpd_hashline_edit', 'write'] structured_output=None
+[reinjectionDiagnostic] exit=0 restrictError=False
+   call#1: tools=87 writeCapable=['bash', 'edit', 'mcp__ast_grep__rewrite', 'mcp__ast_grep__scan', 'mcp__lsp__rename', 'mpd_hashline_edit', 'write'] structured_output=None
+   call#2: tools=0 writeCapable=[] structured_output=None
+   call#3: tools=87 writeCapable=['bash', 'edit', 'mcp__ast_grep__rewrite', 'mcp__ast_grep__scan', 'mcp__lsp__rename', 'mpd_hashline_edit', 'write'] structured_output=None
+t13 predicate on reviewer [positive] lane: parentTools=87 childRequests=0 -> enforcement assertion ok=False
+t13 predicate on reviewer [reinjectionDiagnostic] lane: parentTools=87 childRequests=0 -> enforcement assertion ok=False

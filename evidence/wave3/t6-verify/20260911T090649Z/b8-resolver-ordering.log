@@ -1,0 +1,7 @@
+{
+  "resolved": {
+    "binary": "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/ast-grep",
+    "source": "toolchain"
+  },
+  "sgWrapperProbe": false
+}

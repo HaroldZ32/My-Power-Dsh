@@ -1,0 +1,8 @@
+[mpd-mcp-codegraph] unavailable fallback: Error: ENOENT: no such file or directory, mkdir '/root/.mpd/codegraph'
+    at async mkdir (node:internal/fs/promises:859:10)
+    at async acquireLock (file:///tmp/t6-fb8-EX2Ybc/fixed/fakebundle/packages/mpd-mcp-codegraph/dist/serve.js:308:3)
+    at async Object.ensureCodegraphProvisioned [as ensureProvisioned] (file:///tmp/t6-fb8-EX2Ybc/fixed/fakebundle/packages/mpd-mcp-codegraph/dist/serve.js:384:19)
+    at async provisionMissingCodegraph (file:///tmp/t6-fb8-EX2Ybc/fixed/fakebundle/packages/mpd-mcp-codegraph/dist/serve.js:9814:18)
+    at async Module.runCodegraphServe (file:///tmp/t6-fb8-EX2Ybc/fixed/fakebundle/packages/mpd-mcp-codegraph/dist/serve.js:9769:25)
+    at async file:///tmp/t6-fb8-EX2Ybc/fixed/fakebundle/packages/mpd-mcp-codegraph/launch.mjs:63:22
+CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.

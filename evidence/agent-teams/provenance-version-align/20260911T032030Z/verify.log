@@ -1,0 +1,14 @@
+== verify 1: grep -n '0.1.14\|0.1.16-rc.3-mpd' AGENTS.md README.md README.zh-CN.md
+AGENTS.md:74:  `@nanmicoder/dsh-agent-teams` (MIT; adopted package version `0.1.16-rc.3-mpd`) and ships
+AGENTS.md:78:  root — see §12). That version is a **0.1.14 body with the audited 0.1.16-rc.3 deltas
+AGENTS.md:79:  backported**, and `lib/client.js` is still the 0.1.14 client build — so the 0.1.14 body is
+AGENTS.md:166:`evidence/workmate/rename-delete-core/20260910T131415Z-fullboot/full-boot.result.json` and
+== verify 2: node -e require('./packages/mpd-agent-teams-plugin/package.json').version
+0.1.16-rc.3-mpd
+== README pair + exempt upstream docs + docs/ untouched (empty = untouched)
+== changedPaths = [AGENTS.md]
+ M AGENTS.md
+== §1 other provenance claims vs VENDOR_LOCK.json
+upstreamCommitSha: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29 (AGENTS §1 claims base commit 8c57e46)
+upstreamVersion : 5.0.0-beta.20 (AGENTS §1 claims v5.0.0-beta.20)
+upstream        : code-yeongyu/oh-my-openagent (AGENTS §1 claims GitHub code-yeongyu)

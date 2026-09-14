@@ -1,0 +1,116 @@
+$ /root/.nvm/versions/node/v24.16.0/bin/node /root/dshProj/my-power-dsh/scripts/install-profile.mjs --yes --dsh-home /root/dshProj/my-power-dsh/evidence/omo-align/implementation/r3b/raw/sandbox --profile mpd-headless --skip-toolchain
+[[exit=0]]
+[install-profile] dshHome=/root/dshProj/my-power-dsh/evidence/omo-align/implementation/r3b/raw/sandbox profile=mpd-headless write=true
+[install-profile] profileDir=/root/dshProj/my-power-dsh/evidence/omo-align/implementation/r3b/raw/sandbox/profiles/mpd-headless
+[install-profile] homePatch=/root/dshProj/my-power-dsh/evidence/omo-align/implementation/r3b/raw/sandbox/cordis.patch.yml
+[install-profile] presets -> /root/dshProj/my-power-dsh/evidence/omo-align/implementation/r3b/raw/sandbox/.agent-presets/mpd-*
+[install-profile] toolchain missing=false (use --skip-toolchain to skip)
+[install-profile] rows about to be written to home patch: 21 (id-target=0, insert=21)
+- insert:
+  - id: mpd-web-compat
+    name: "@mpd-dsh/mpd"
+  - id: mcp-astgrep
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "ast_grep"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-astgrep/dist/cli.js"
+      env:
+        MPD_AST_GREP_SG_PATH: "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/sg"
+      toolCallTimeoutMs: 60000
+  - id: mcp-gitbash
+    name: "@deepseek-ai/dsh-mcp-client"
+    disabled: true
+    config:
+      serverName: "git_bash"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-gitbash/dist/cli.js"
+      toolCallTimeoutMs: 60000
+  - id: mcp-lsp
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "lsp"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-lsp/dist/cli.js"
+        - "mcp"
+      toolCallTimeoutMs: 60000
+  - id: mcp-codegraph
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "codegraph"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js"
+      env:
+        MPD_CODEGRAPH_BIN: "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph"
+      toolCallTimeoutMs: 60000
+  - id: mcp-context7
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "context7"
+      transport: "streamable-http"
+      url: "https://mcp.context7.com/mcp"
+      toolCallTimeoutMs: 60000
+  - id: mcp-grepapp
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "grep_app"
+      transport: "streamable-http"
+      url: "https://mcp.grep.app"
+      toolCallTimeoutMs: 60000
+  - id: mpd-codegraph
+    name: "/root/dshProj/my-power-dsh/packages/mpd-codegraph-plugin/dist/index.js"
+    config:
+      autoInit: true
+      initTimeoutMs: 60000
+      binary: "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph"
+  - id: mpd-tools
+    name: "/root/dshProj/my-power-dsh/packages/mpd-tools-plugin/dist/index.js"
+    config:
+      writeGuard: true
+      truncateMaxBytes: 8192
+  - id: mpd-modelchain
+    name: "/root/dshProj/my-power-dsh/packages/mpd-modelchain-plugin/dist/index.js"
+  - id: mpd-ulw
+    name: "/root/dshProj/my-power-dsh/packages/mpd-ulw-plugin/dist/index.js"
+    config:
+      maxRounds: 3
+  - id: mpd-hashline
+    name: "/root/dshProj/my-power-dsh/packages/mpd-hashline-plugin/dist/index.js"
+    config:
+      guardEditTools: true
+  - id: mpd-boulder
+    name: "/root/dshProj/my-power-dsh/packages/mpd-boulder-plugin/dist/index.js"
+  - id: mpd-dsh-adapter
+    name: "/root/dshProj/my-power-dsh/packages/mpd-dsh-adapter-plugin/dist/index.js"
+  - id: mpd-config
+    name: "/root/dshProj/my-power-dsh/packages/mpd-config-plugin/dist/index.js"
+  - id: mpd-comment-checker
+    name: "/root/dshProj/my-power-dsh/packages/mpd-comment-checker-plugin/dist/index.js"
+    config:
+      autoCheck: false
+  - id: mpd-memory
+    name: "/root/dshProj/my-power-dsh/packages/mpd-memory-plugin/dist/index.js"
+    config:
+      vcs: "git"
+  - id: mpd-roles
+    name: "/root/dshProj/my-power-dsh/packages/mpd-roles-plugin/dist/index.js"
+  - id: mpd-workmate
+    name: "/root/dshProj/my-power-dsh/packages/mpd-workmate-plugin/
+
+---
+
+$ dsh --profile mpd-headless Reply with exactly: hello-ok
+[[exit=1]]
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/root/dshProj/my-power-dsh/evidence/omo-align/implementation/r3b/raw/sandbox/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+
+dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-official"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment

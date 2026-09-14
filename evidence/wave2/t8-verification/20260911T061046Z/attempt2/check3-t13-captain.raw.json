@@ -1,0 +1,338 @@
+{
+  "driver": "check3-live-contract",
+  "liveTeamJson": ".mpd/team/mpd-wave-2/team.json",
+  "sandbox": "/tmp/mpd-t8-contract-4JPOPo",
+  "caller": {
+    "kind": "captain",
+    "id": "session-aded9c07-4cd3-4c82-ac31-22ce8c47c5be"
+  },
+  "registeredToolCount": 14,
+  "registeredToolNames": [
+    "agent_teams_add_member",
+    "agent_teams_approve",
+    "agent_teams_claim_task",
+    "agent_teams_create",
+    "agent_teams_create_task",
+    "agent_teams_delete",
+    "agent_teams_edit_plan",
+    "agent_teams_reassign_task",
+    "agent_teams_remove_member",
+    "agent_teams_resume",
+    "agent_teams_send_message",
+    "agent_teams_status",
+    "agent_teams_task_contract",
+    "agent_teams_update_task"
+  ],
+  "liveSha256Before": "9f1a8cfc75f7aeb37200845f13ca45ec752f0aad0f9f1f362b386962725e6339",
+  "sandboxSha256Before": "9f1a8cfc75f7aeb37200845f13ca45ec752f0aad0f9f1f362b386962725e6339",
+  "toolRegistered": true,
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "task_id": {
+        "type": "string",
+        "description": "Task id from the shared task list, e.g. \"t4\"."
+      }
+    }
+  },
+  "hasRender": true,
+  "view": {
+    "task_id": "t13",
+    "subject": "Repair t4's durability gap: carve repair scope out of the source outOfScope, register the 17 unmarked lines, and make the vendor heal path refuse a double declaration",
+    "kind": "repair",
+    "status": "completed",
+    "assignee": "Senior Engineer",
+    "attempt": 1,
+    "attempt_id": "63cb19fe-bf18-4dad-8c9d-0f2b9070bd82",
+    "dependencies": [
+      "t1",
+      "t4"
+    ],
+    "objective": "Close the three findings that failed t8: make repairScopeFromFindings carve the required path out of the inherited outOfScope, bring every behaviour-changing line inside a registered mpd-delta region, and make the vendor heal path refuse when a region would redefine a declaration the file still carries.",
+    "in_scope": [
+      "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+      "packages/mpd-agent-teams-plugin/self-fix-tests",
+      "packages/mpd-agent-teams-plugin/test",
+      "scripts/vendor-agent-teams.mjs",
+      "scripts/patch-agent-teams-fixes.mjs",
+      "evidence/wave2/adopted-tooling-repair"
+    ],
+    "out_of_scope": [
+      "skills/**",
+      "VENDOR_LOCK.json",
+      "AGENTS.md",
+      "packages/mpd-verif-plugin/**",
+      "packages/mpd-bundle/cordis.patch.yml"
+    ],
+    "acceptance": [
+      "F1 CLOSED: `repairScopeFromFindings` CARVES the finding's file OUT of the inherited outOfScope (it currently drops it from inScope while KEEPING the prohibition), so the finding's required edit is actually permitted. Proven by a falsifiable test built from the REAL wave-1 inputs (the archived team mpd-default-7332aba4, its t7 + t10), asserting that the t13 shape now produces a repair contract whose required file is IN-SCOPE and whose required edit is no longer rejected as out_of_scope — not merely that the contradiction count dropped to zero",
+      "F1 documentation defect also closed: the `repairScopeFromFindings` doc comment must describe what the code actually does, and the self-fix test whose COMMENT claims 'the required edit is no longer out_of_scope' while its ASSERTION expects `out_of_scope` must be corrected so the assertion matches the intended semantics. A comment contradicting its own assertion is itself a defect",
+      "F2 CLOSED: every behaviour-changing line t4 introduced in `lib/quality-gates.js` sits inside a registered `mpd-delta` region — specifically the three groups the verifier named as unmarked (`inScopeOverlap` ~252-255, `normalizeScopePattern` ~263-267, the create-time contradiction gate ~405-412), and `lib/mpd-deltas.js` is regenerated so the guard can detect and restore ALL of them. t4 acceptance 4 must pass when re-judged",
+      "F3 CLOSED: the healing path in `scripts/vendor-agent-teams.mjs` (~line 122, which always runs with write:true) must REFUSE — or post-validate — when inserting a region would redefine a declaration the file still carries. Reproduce the verifier's exact scenario (the hand re-materialize the guard exists for): the old path produced two `export function pathMatchesScope` and the file FAILED TO IMPORT with `Identifier 'pathMatchesScope' has already been declared` while `--write` and the next `--check` both exited 0. After the fix, that scenario must fail loudly with a named cause, and a clean re-materialize must still succeed",
+      "The three fixes are proven together by re-running the verifier's own driver where possible (evidence/wave2/t8-verification/20260911T061046Z/) rather than inventing a parallel harness",
+      "No regression: the plugin suite stays green, the isolated boot still registers 14/14 tools with 0 apply-crash signatures, and the unmarked/adopted files are byte-identical where the task did not intend to change them",
+      "Evidence is written under the declared evidence path with raw logs, and the output states explicitly that a dsh restart is still required for the new semantics to act on a live session (no module hot reload)"
+    ],
+    "verify": [
+      "bun test packages/mpd-agent-teams-plugin",
+      "bun test packages",
+      "bun run typecheck",
+      "the t8 driver in evidence/wave2/t8-verification/20260911T061046Z/ (F1 real-inputs replay, F2 delta-region sweep, F3 double-declaration scenario)",
+      "an isolated boot registering 14/14 tools with 0 apply-crash signatures"
+    ],
+    "deliverables": [],
+    "non_goals": [],
+    "source_task_id": "t4",
+    "source_finding_ids": [
+      "F1",
+      "F2",
+      "F3"
+    ],
+    "acceptance_results": [
+      {
+        "criterion": "F1 CLOSED: `repairScopeFromFindings` CARVES the finding's file OUT of the inherited outOfScope (it currently drops it from inScope while KEEPING the prohibition), so the finding's required edit is actually permitted. Proven by a falsifiable test built from the REAL wave-1 inputs (the archived team mpd-default-7332aba4, its t7 + t10), asserting that the t13 shape now produces a repair contract whose required file is IN-SCOPE and whose required edit is no longer rejected as out_of_scope — not merely that the contradiction count dropped to zero",
+        "status": "passed",
+        "evidence": "Reproduced pre-fix: the covering pattern stayed in outOfScope, so classifyChangedPath('AGENTS.md') = out_of_scope while the repair's acceptance required that edit. Post-fix, replayed through the REAL archived inputs (team mpd-default-7332aba4, t7 inScope/outOfScope + t10 findings F1-cocotb-lane-venv-root and F3-agents-md-state-root-stale): generated inScope = [t7 inScope…, 'packages/mpd-verif-plugin/src/venv.ts', 'AGENTS.md'] and generated outOfScope = ['presets/**','packages/mpd-bundle/cordis.patch.yml','VENDOR_LOCK.json','README.md','README.zh-CN.md'] — AGENTS.md dropped from the prohibitions. classifyChangedPath('AGENTS.md')=in_scope and classifyChangedPath('packages/mpd-verif-plugin/src/venv.ts')=in_scope, while the prohibitions no finding requires still hold (VENDOR_LOCK.json and presets/mpd/agent.cordis.yml = out_of_scope), and contractContradiction(generated) = none. Raw log: evidence/wave2/adopted-tooling-repair/f1/real-inputs-replay.log. Falsifiable test from the same inputs: 'DEFECT 2 fix, REAL wave-1 inputs (team mpd-default-7332aba4 t7 + t10): the required edit is in scope' (30 pass / 0 fail, f2/self-fix-suite.log)."
+      },
+      {
+        "criterion": "F1 documentation defect also closed: the `repairScopeFromFindings` doc comment must describe what the code actually does, and the self-fix test whose COMMENT claims 'the required edit is no longer out_of_scope' while its ASSERTION expects `out_of_scope` must be corrected so the assertion matches the intended semantics. A comment contradicting its own assertion is itself a defect",
+        "status": "passed",
+        "evidence": "The doc comment now describes the carve-out and its rationale ('A finding's file that the source contract FORBIDS is CARVED OUT of the inherited outOfScope: the covering patterns are dropped from the result and the file is admitted to inScope, so a needs_revision verdict can always be acted on…'). The self-fix test was rewritten: its comment and its assertion now agree — expect(scope.inScope).toEqual(['packages/x','AGENTS.md']), expect(scope.outOfScope).toBeUndefined(), and expect(classifyChangedPath('AGENTS.md', …)).toBe('in_scope'). No assertion anywhere in the two repair suites still expects out_of_scope for a file the acceptance requires; the only out_of_scope assertions that remain are for prohibitions no finding requires (VENDOR_LOCK.json, presets/**), which is the falsifiability side of the same test."
+      },
+      {
+        "criterion": "F2 CLOSED: every behaviour-changing line t4 introduced in `lib/quality-gates.js` sits inside a registered `mpd-delta` region — specifically the three groups the verifier named as unmarked (`inScopeOverlap` ~252-255, `normalizeScopePattern` ~263-267, the create-time contradiction gate ~405-412), and `lib/mpd-deltas.js` is regenerated so the guard can detect and restore ALL of them. t4 acceptance 4 must pass when re-judged",
+        "status": "passed",
+        "evidence": "The three named groups are now inside registered regions: mpd-delta scope-overlap (inScopeOverlap rewrite), mpd-delta scope-overlap-normalize (normalizeScopePattern), mpd-delta create-contract-gate (the create-time contradiction gate in validateCreateTask); all 9 regions and their spans are listed in f2/region-inventory.log. The whole pathMatchesScope function now lives inside mpd-delta scope-glob (so a re-materialize cannot leave a stray upstream copy behind), and lib/mpd-deltas.js was regenerated to 9 regions (guard: 'already applied: 9 mpd delta region(s) across 2 adopted file(s)'). The new F2 test performs a real LCS line diff between the pre-delta revision (git HEAD) and the working tree and asserts that EVERY added line is inside a region, a marker line, or prose — zero executable lines outside a region (plus explicit assertions that the three named groups are inside). Raw log: f2/self-fix-suite.log. Two guard-side root causes found while closing F2 and fixed in the same pass: writeRegistry could pick an anchor living INSIDE another region (the old scope-glob anchor was pathMatchesScopeNormalized, declared by the neighbouring scope-glob-core region), so a dropped region took its own anchor with it and healed nothing — anchors are now selected outside every region span; and --write-registry no longer runs a same-process verification that could only ever see the pre-write registry."
+      },
+      {
+        "criterion": "F3 CLOSED: the healing path in `scripts/vendor-agent-teams.mjs` (~line 122, which always runs with write:true) must REFUSE — or post-validate — when inserting a region would redefine a declaration the file still carries. Reproduce the verifier's exact scenario (the hand re-materialize the guard exists for): the old path produced two `export function pathMatchesScope` and the file FAILED TO IMPORT with `Identifier 'pathMatchesScope' has already been declared` while `--write` and the next `--check` both exited 0. After the fix, that scenario must fail loudly with a named cause, and a clean re-materialize must still succeed",
+        "status": "passed",
+        "evidence": "Verifier scenario reproduced in a sandbox (upstream quality-gates.js from git HEAD + our tools.js/mpd-deltas.js, then the heal path) and captured in f3/hand-rematerialize.log: post-fix --write exits 1 with '[patch-agent-teams-fixes] FAIL: refusing to heal delta \"mpd-delta scope-glob\" … it declares \"pathMatchesScope\" but that declaration still exists OUTSIDE any region at line 102 — the file was re-materialized with the OLD body; remove the old declaration (or restore the marked file) before healing, otherwise the healed module fails to import'; --check also exits 1 (verify-only, region MISSING); the refused file is byte-identical to the input with exactly 1 declaration (no half-heal, no double declaration). vendor-agent-teams.mjs turns the refusal into a failed run (process.exit(1)) instead of a green 'applied'. A clean re-materialize still succeeds: 'F3: a clean (region-carrying) tree still heals successfully' re-inserts 7 regions and the next pass verifies byte-identical (f2/self-fix-suite.log). Implementation note: the collision check is restricted to MODULE-scope declarations — an earlier draft also matched a nested loop local (const key) and wrongly refused a valid heal, a bug the test caught."
+      },
+      {
+        "criterion": "The three fixes are proven together by re-running the verifier's own driver where possible (evidence/wave2/t8-verification/20260911T061046Z/) rather than inventing a parallel harness",
+        "status": "passed",
+        "evidence": "Re-ran the t8 drivers in place: check5-mount.sh (gates/mount-driver-rerun.raw.json — 14/14 tools, task_contract REGISTERED, 0 apply-crash signatures, probe DONE; gates/mount-driver-rerun also refreshed check5-plugin-suite.log) and check4-guard-failure.sh (gates/guard-driver-rerun.log — all failure modes exit 1 with a named cause, live tree untouched, sha256 equal before/after). The F1 confirmation re-reads the archived inputs from .mpd/team/archive/mpd-default-7332aba4/team.json exactly as the verifier did, and the F3 confirmation reproduces the verifier's hand re-materialize (HEAD file + our registry) rather than a synthetic surrogate. Two driver expectations are stale against this repair and are stated rather than worked around: the driver hard-codes `7 regions` (now 9) and mutates the merged-away scope-glob-core region, so S5 skips its mutation and S1 prints 9. The in-region drift case that S5 intends is verified directly: mutating one line inside the scope-glob region makes --check exit 1 naming the exact line ('lines 102-195 … first difference at line 118') while the pristine tree exits 0."
+      },
+      {
+        "criterion": "No regression: the plugin suite stays green, the isolated boot still registers 14/14 tools with 0 apply-crash signatures, and the unmarked/adopted files are byte-identical where the task did not intend to change them",
+        "status": "passed",
+        "evidence": "bun test packages/mpd-agent-teams-plugin = 87 pass / 0 fail (gates/plugin-suite.log); self-fix suite = 30 pass / 0 fail (f2/self-fix-suite.log); bun test packages = 340 pass / 0 fail across 38 files (gates/full-suite.log); bun run typecheck exit 0 (gates/typecheck.log). Isolated mounted boot: AGENT_TEAMS_TOOLS_PRESENT=14/14, T4_TOOL_agent_teams_task_contract=REGISTERED, apply_crash_signatures=0 (gates/mount-driver-rerun.raw.json) — no --dump-config result is cited as load evidence. The mount driver's own passed=false is its workspace-isolation counter: the flagged .mpd/team/mpd-default-587132ea was created by captain session session-8954c880-eee (a concurrent teammate), not by this boot, whose leak counters are 0 (real_workspace_session_keys_in_sandbox=0); that item belongs to t7/t9. Untouched: skills/**, VENDOR_LOCK.json, AGENTS.md, packages/mpd-verif-plugin/**, packages/mpd-bundle/cordis.patch.yml; the live tree's packages/mpd-agent-teams-plugin/_deps/ shows 0 changes (the vendor script was exercised only through the guard path in sandboxes)."
+      },
+      {
+        "criterion": "Evidence is written under the declared evidence path with raw logs, and the output states explicitly that a dsh restart is still required for the new semantics to act on a live session (no module hot reload)",
+        "status": "passed",
+        "evidence": "Evidence tree (raw logs, not summaries): evidence/wave2/adopted-tooling-repair/{README.md,result.json,f1/real-inputs-replay.log,f2/region-inventory.log,f2/self-fix-suite.log,f3/hand-rematerialize.log,gates/full-suite.log,gates/plugin-suite.log,gates/typecheck.log,gates/guard-driver-rerun.log,gates/mount-driver-rerun.raw.json}. README.md opens with and result.json carries host_restart_required: 'A dsh restart is still required for the new semantics to act on a live session — this harness has no module hot reload: the running plugin keeps the PRE-FIX repairScopeFromFindings/matcher until the process restarts, so every claim here is proven by direct module import and by the guard CLI, never by a live completion gate. The isolated mounted boot proves registration, not the new semantics.'"
+      }
+    ],
+    "commands_run": [
+      {
+        "command": "bun test packages/mpd-agent-teams-plugin",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "87 pass / 0 fail / 343 expect() calls across 11 files — evidence/wave2/adopted-tooling-repair/gates/plugin-suite.log"
+      },
+      {
+        "command": "bun test packages",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "340 pass / 0 fail / 2181 expect() calls across 38 files — evidence/wave2/adopted-tooling-repair/gates/full-suite.log"
+      },
+      {
+        "command": "bun run typecheck",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "tsgo --noEmit clean — evidence/wave2/adopted-tooling-repair/gates/typecheck.log"
+      },
+      {
+        "command": "the t8 driver in evidence/wave2/t8-verification/20260911T061046Z/ (F1 real-inputs replay, F2 delta-region sweep, F3 double-declaration scenario)",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "F1: real archived t7+t10 inputs replayed → AGENTS.md in_scope, unrelated prohibitions still out_of_scope, contradiction none (f1/real-inputs-replay.log). F2: LCS sweep of the working tree against the pre-delta revision → zero executable lines outside a region, three named groups now inside regions (f2/self-fix-suite.log, f2/region-inventory.log). F3: hand re-materialize → --write exit 1 naming pathMatchesScope at line 102, --check exit 1, file left byte-identical with 1 declaration (f3/hand-rematerialize.log). Driver re-runs: check4-guard (all failure modes exit 1, live sha256 unchanged — gates/guard-driver-rerun.log) and check5-mount (gates/mount-driver-rerun.raw.json). Stale driver expectations reported, not worked around: it hard-codes 7 regions (now 9) and mutates the merged-away scope-glob-core region, so S5 skips its mutation; the in-region drift case is verified directly instead (mutating one line inside scope-glob makes --check exit 1 naming line 118)."
+      },
+      {
+        "command": "an isolated boot registering 14/14 tools with 0 apply-crash signatures",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "check5-mount driver re-run (isolated DSH_HOME + HOME + workspace, registration-instrumentation probe row): AGENT_TEAMS_TOOLS_PRESENT=14/14, T4_TOOL_agent_teams_task_contract=REGISTERED, apply_crash_signatures=0, probe reached DONE — evidence/wave2/adopted-tooling-repair/gates/mount-driver-rerun.raw.json (no --dump-config result cited as load evidence)"
+      },
+      {
+        "command": "bun test packages/mpd-agent-teams-plugin/self-fix-tests",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "30 pass / 0 fail / 148 expect() calls — includes the F1 real-inputs test, the F2 LCS region sweep, the F3 refusal test and the clean-heal test — evidence/wave2/adopted-tooling-repair/f2/self-fix-suite.log"
+      },
+      {
+        "command": "node scripts/patch-agent-teams-fixes.mjs --check",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "already applied: 9 mpd delta region(s) across 2 adopted file(s) — evidence/wave2/adopted-tooling-repair/gates/guard-driver-rerun.log"
+      }
+    ],
+    "changed_paths": [
+      "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+      "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "packages/mpd-agent-teams-plugin/self-fix-tests/README.md",
+      "scripts/patch-agent-teams-fixes.mjs",
+      "scripts/vendor-agent-teams.mjs",
+      "evidence/wave2/adopted-tooling-repair/README.md",
+      "evidence/wave2/adopted-tooling-repair/result.json"
+    ],
+    "findings_open": 0
+  },
+  "rendered": "Task t13 [completed] repair — Repair t4's durability gap: carve repair scope out of the source outOfScope, register the 17 unmarked lines, and make the vendor heal path refuse a double declaration\nAssignee: Senior Engineer (attempt 1, attempt_id 63cb19fe-bf18-4dad-8c9d-0f2b9070bd82)\nDependencies: t1, t4\nContract:\n  Objective: Close the three findings that failed t8: make repairScopeFromFindings carve the required path out of the inherited outOfScope, bring every behaviour-changing line inside a registered mpd-delta region, and make the vendor heal path refuse when a region would redefine a declaration the file still carries.\n  In scope: packages/mpd-agent-teams-plugin/lib/quality-gates.js, packages/mpd-agent-teams-plugin/lib/mpd-deltas.js, packages/mpd-agent-teams-plugin/self-fix-tests, packages/mpd-agent-teams-plugin/test, scripts/vendor-agent-teams.mjs, scripts/patch-agent-teams-fixes.mjs, evidence/wave2/adopted-tooling-repair\n  Out of scope: skills/**, VENDOR_LOCK.json, AGENTS.md, packages/mpd-verif-plugin/**, packages/mpd-bundle/cordis.patch.yml\n  Acceptance: F1 CLOSED: `repairScopeFromFindings` CARVES the finding's file OUT of the inherited outOfScope (it currently drops it from inScope while KEEPING the prohibition), so the finding's required edit is actually permitted. Proven by a falsifiable test built from the REAL wave-1 inputs (the archived team mpd-default-7332aba4, its t7 + t10), asserting that the t13 shape now produces a repair contract whose required file is IN-SCOPE and whose required edit is no longer rejected as out_of_scope — not merely that the contradiction count dropped to zero, F1 documentation defect also closed: the `repairScopeFromFindings` doc comment must describe what the code actually does, and the self-fix test whose COMMENT claims 'the required edit is no longer out_of_scope' while its ASSERTION expects `out_of_scope` must be corrected so the assertion matches the intended semantics. A comment contradicting its own assertion is itself a defect, F2 CLOSED: every behaviour-changing line t4 introduced in `lib/quality-gates.js` sits inside a registered `mpd-delta` region — specifically the three groups the verifier named as unmarked (`inScopeOverlap` ~252-255, `normalizeScopePattern` ~263-267, the create-time contradiction gate ~405-412), and `lib/mpd-deltas.js` is regenerated so the guard can detect and restore ALL of them. t4 acceptance 4 must pass when re-judged, F3 CLOSED: the healing path in `scripts/vendor-agent-teams.mjs` (~line 122, which always runs with write:true) must REFUSE — or post-validate — when inserting a region would redefine a declaration the file still carries. Reproduce the verifier's exact scenario (the hand re-materialize the guard exists for): the old path produced two `export function pathMatchesScope` and the file FAILED TO IMPORT with `Identifier 'pathMatchesScope' has already been declared` while `--write` and the next `--check` both exited 0. After the fix, that scenario must fail loudly with a named cause, and a clean re-materialize must still succeed, The three fixes are proven together by re-running the verifier's own driver where possible (evidence/wave2/t8-verification/20260911T061046Z/) rather than inventing a parallel harness, No regression: the plugin suite stays green, the isolated boot still registers 14/14 tools with 0 apply-crash signatures, and the unmarked/adopted files are byte-identical where the task did not intend to change them, Evidence is written under the declared evidence path with raw logs, and the output states explicitly that a dsh restart is still required for the new semantics to act on a live session (no module hot reload)\n  Verify: bun test packages/mpd-agent-teams-plugin, bun test packages, bun run typecheck, the t8 driver in evidence/wave2/t8-verification/20260911T061046Z/ (F1 real-inputs replay, F2 delta-region sweep, F3 double-declaration scenario), an isolated boot registering 14/14 tools with 0 apply-crash signatures\n  Source task: t4\nCompletion payload so far:\n  acceptanceResults: [{\"criterion\":\"F1 CLOSED: `repairScopeFromFindings` CARVES the finding's file OUT of the inherited outOfScope (it currently drops it from inScope while KEEPING the prohibition), so the finding's required edit is actually permitted. Proven by a falsifiable test built from the REAL wave-1 inputs (the archived team mpd-default-7332aba4, its t7 + t10), asserting that the t13 shape now produces a repair contract whose required file is IN-SCOPE and whose required edit is no longer rejected as out_of_scope — not merely that the contradiction count dropped to zero\",\"status\":\"passed\",\"evidence\":\"Reproduced pre-fix: the covering pattern stayed in outOfScope, so classifyChangedPath('AGENTS.md') = out_of_scope while the repair's acceptance required that edit. Post-fix, replayed through the REAL archived inputs (team mpd-default-7332aba4, t7 inScope/outOfScope + t10 findings F1-cocotb-lane-venv-root and F3-agents-md-state-root-stale): generated inScope = [t7 inScope…, 'packages/mpd-verif-plugin/src/venv.ts', 'AGENTS.md'] and generated outOfScope = ['presets/**','packages/mpd-bundle/cordis.patch.yml','VENDOR_LOCK.json','README.md','README.zh-CN.md'] — AGENTS.md dropped from the prohibitions. classifyChangedPath('AGENTS.md')=in_scope and classifyChangedPath('packages/mpd-verif-plugin/src/venv.ts')=in_scope, while the prohibitions no finding requires still hold (VENDOR_LOCK.json and presets/mpd/agent.cordis.yml = out_of_scope), and contractContradiction(generated) = none. Raw log: evidence/wave2/adopted-tooling-repair/f1/real-inputs-replay.log. Falsifiable test from the same inputs: 'DEFECT 2 fix, REAL wave-1 inputs (team mpd-default-7332aba4 t7 + t10): the required edit is in scope' (30 pass / 0 fail, f2/self-fix-suite.log).\"},{\"criterion\":\"F1 documentation defect also closed: the `repairScopeFromFindings` doc comment must describe what the code actually does, and the self-fix test whose COMMENT claims 'the required edit is no longer out_of_scope' while its ASSERTION expects `out_of_scope` must be corrected so the assertion matches the intended semantics. A comment contradicting its own assertion is itself a defect\",\"status\":\"passed\",\"evidence\":\"The doc comment now describes the carve-out and its rationale ('A finding's file that the source contract FORBIDS is CARVED OUT of the inherited outOfScope: the covering patterns are dropped from the result and the file is admitted to inScope, so a needs_revision verdict can always be acted on…'). The self-fix test was rewritten: its comment and its assertion now agree — expect(scope.inScope).toEqual(['packages/x','AGENTS.md']), expect(scope.outOfScope).toBeUndefined(), and expect(classifyChangedPath('AGENTS.md', …)).toBe('in_scope'). No assertion anywhere in the two repair suites still expects out_of_scope for a file the acceptance requires; the only out_of_scope assertions that remain are for prohibitions no finding requires (VENDOR_LOCK.json, presets/**), which is the falsifiability side of the same test.\"},{\"criterion\":\"F2 CLOSED: every behaviour-changing line t4 introduced in `lib/quality-gates.js` sits inside a registered `mpd-delta` region — specifically the three groups the verifier named as unmarked (`inScopeOverlap` ~252-255, `normalizeScopePattern` ~263-267, the create-time contradiction gate ~405-412), and `lib/mpd-deltas.js` is regenerated so the guard can detect and restore ALL of them. t4 acceptance 4 must pass when re-judged\",\"status\":\"passed\",\"evidence\":\"The three named groups are now inside registered regions: mpd-delta scope-overlap (inScopeOverlap rewrite), mpd-delta scope-overlap-normalize (normalizeScopePattern), mpd-delta create-contract-gate (the create-time contradiction gate in validateCreateTask); all 9 regions and their spans are listed in f2/region-inventory.log. The whole pathMatchesScope function now lives inside mpd-delta scope-glob (so a re-materialize cannot leave a stray upstream copy behind), and lib/mpd-deltas.js was regenerated to 9 regions (guard: 'already applied: 9 mpd delta region(s) across 2 adopted file(s)'). The new F2 test performs a real LCS line diff between the pre-delta revision (git HEAD) and the working tree and asserts that EVERY added line is inside a region, a marker line, or prose — zero executable lines outside a region (plus explicit assertions that the three named groups are inside). Raw log: f2/self-fix-suite.log. Two guard-side root causes found while closing F2 and fixed in the same pass: writeRegistry could pick an anchor living INSIDE another region (the old scope-glob anchor was pathMatchesScopeNormalized, declared by the neighbouring scope-glob-core region), so a dropped region took its own anchor with it and healed nothing — anchors are now selected outside every region span; and --write-registry no longer runs a same-process verification that could only ever see the pre-write registry.\"},{\"criterion\":\"F3 CLOSED: the healing path in `scripts/vendor-agent-teams.mjs` (~line 122, which always runs with write:true) must REFUSE — or post-validate — when inserting a region would redefine a declaration the file still carries. Reproduce the verifier's exact scenario (the hand re-materialize the guard exists for): the old path produced two `export function pathMatchesScope` and the file FAILED TO IMPORT with `Identifier 'pathMatchesScope' has already been declared` while `--write` and the next `--check` both exited 0. After the fix, that scenario must fail loudly with a named cause, and a clean re-materialize must still succeed\",\"status\":\"passed\",\"evidence\":\"Verifier scenario reproduced in a sandbox (upstream quality-gates.js from git HEAD + our tools.js/mpd-deltas.js, then the heal path) and captured in f3/hand-rematerialize.log: post-fix --write exits 1 with '[patch-agent-teams-fixes] FAIL: refusing to heal delta \\\"mpd-delta scope-glob\\\" … it declares \\\"pathMatchesScope\\\" but that declaration still exists OUTSIDE any region at line 102 — the file was re-materialized with the OLD body; remove the old declaration (or restore the marked file) before healing, otherwise the healed module fails to import'; --check also exits 1 (verify-only, region MISSING); the refused file is byte-identical to the input with exactly 1 declaration (no half-heal, no double declaration). vendor-agent-teams.mjs turns the refusal into a failed run (process.exit(1)) instead of a green 'applied'. A clean re-materialize still succeeds: 'F3: a clean (region-carrying) tree still heals successfully' re-inserts 7 regions and the next pass verifies byte-identical (f2/self-fix-suite.log). Implementation note: the collision check is restricted to MODULE-scope declarations — an earlier draft also matched a nested loop local (const key) and wrongly refused a valid heal, a bug the test caught.\"},{\"criterion\":\"The three fixes are proven together by re-running the verifier's own driver where possible (evidence/wave2/t8-verification/20260911T061046Z/) rather than inventing a parallel harness\",\"status\":\"passed\",\"evidence\":\"Re-ran the t8 drivers in place: check5-mount.sh (gates/mount-driver-rerun.raw.json — 14/14 tools, task_contract REGISTERED, 0 apply-crash signatures, probe DONE; gates/mount-driver-rerun also refreshed check5-plugin-suite.log) and check4-guard-failure.sh (gates/guard-driver-rerun.log — all failure modes exit 1 with a named cause, live tree untouched, sha256 equal before/after). The F1 confirmation re-reads the archived inputs from .mpd/team/archive/mpd-default-7332aba4/team.json exactly as the verifier did, and the F3 confirmation reproduces the verifier's hand re-materialize (HEAD file + our registry) rather than a synthetic surrogate. Two driver expectations are stale against this repair and are stated rather than worked around: the driver hard-codes `7 regions` (now 9) and mutates the merged-away scope-glob-core region, so S5 skips its mutation and S1 prints 9. The in-region drift case that S5 intends is verified directly: mutating one line inside the scope-glob region makes --check exit 1 naming the exact line ('lines 102-195 … first difference at line 118') while the pristine tree exits 0.\"},{\"criterion\":\"No regression: the plugin suite stays green, the isolated boot still registers 14/14 tools with 0 apply-crash signatures, and the unmarked/adopted files are byte-identical where the task did not intend to change them\",\"status\":\"passed\",\"evidence\":\"bun test packages/mpd-agent-teams-plugin = 87 pass / 0 fail (gates/plugin-suite.log); self-fix suite = 30 pass / 0 fail (f2/self-fix-suite.log); bun test packages = 340 pass / 0 fail across 38 files (gates/full-suite.log); bun run typecheck exit 0 (gates/typecheck.log). Isolated mounted boot: AGENT_TEAMS_TOOLS_PRESENT=14/14, T4_TOOL_agent_teams_task_contract=REGISTERED, apply_crash_signatures=0 (gates/mount-driver-rerun.raw.json) — no --dump-config result is cited as load evidence. The mount driver's own passed=false is its workspace-isolation counter: the flagged .mpd/team/mpd-default-587132ea was created by captain session session-8954c880-eee (a concurrent teammate), not by this boot, whose leak counters are 0 (real_workspace_session_keys_in_sandbox=0); that item belongs to t7/t9. Untouched: skills/**, VENDOR_LOCK.json, AGENTS.md, packages/mpd-verif-plugin/**, packages/mpd-bundle/cordis.patch.yml; the live tree's packages/mpd-agent-teams-plugin/_deps/ shows 0 changes (the vendor script was exercised only through the guard path in sandboxes).\"},{\"criterion\":\"Evidence is written under the declared evidence path with raw logs, and the output states explicitly that a dsh restart is still required for the new semantics to act on a live session (no module hot reload)\",\"status\":\"passed\",\"evidence\":\"Evidence tree (raw logs, not summaries): evidence/wave2/adopted-tooling-repair/{README.md,result.json,f1/real-inputs-replay.log,f2/region-inventory.log,f2/self-fix-suite.log,f3/hand-rematerialize.log,gates/full-suite.log,gates/plugin-suite.log,gates/typecheck.log,gates/guard-driver-rerun.log,gates/mount-driver-rerun.raw.json}. README.md opens with and result.json carries host_restart_required: 'A dsh restart is still required for the new semantics to act on a live session — this harness has no module hot reload: the running plugin keeps the PRE-FIX repairScopeFromFindings/matcher until the process restarts, so every claim here is proven by direct module import and by the guard CLI, never by a live completion gate. The isolated mounted boot proves registration, not the new semantics.'\"}]\n  commandsRun: [{\"command\":\"bun test packages/mpd-agent-teams-plugin\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"87 pass / 0 fail / 343 expect() calls across 11 files — evidence/wave2/adopted-tooling-repair/gates/plugin-suite.log\"},{\"command\":\"bun test packages\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"340 pass / 0 fail / 2181 expect() calls across 38 files — evidence/wave2/adopted-tooling-repair/gates/full-suite.log\"},{\"command\":\"bun run typecheck\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"tsgo --noEmit clean — evidence/wave2/adopted-tooling-repair/gates/typecheck.log\"},{\"command\":\"the t8 driver in evidence/wave2/t8-verification/20260911T061046Z/ (F1 real-inputs replay, F2 delta-region sweep, F3 double-declaration scenario)\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"F1: real archived t7+t10 inputs replayed → AGENTS.md in_scope, unrelated prohibitions still out_of_scope, contradiction none (f1/real-inputs-replay.log). F2: LCS sweep of the working tree against the pre-delta revision → zero executable lines outside a region, three named groups now inside regions (f2/self-fix-suite.log, f2/region-inventory.log). F3: hand re-materialize → --write exit 1 naming pathMatchesScope at line 102, --check exit 1, file left byte-identical with 1 declaration (f3/hand-rematerialize.log). Driver re-runs: check4-guard (all failure modes exit 1, live sha256 unchanged — gates/guard-driver-rerun.log) and check5-mount (gates/mount-driver-rerun.raw.json). Stale driver expectations reported, not worked around: it hard-codes 7 regions (now 9) and mutates the merged-away scope-glob-core region, so S5 skips its mutation; the in-region drift case is verified directly instead (mutating one line inside scope-glob makes --check exit 1 naming line 118).\"},{\"command\":\"an isolated boot registering 14/14 tools with 0 apply-crash signatures\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"check5-mount driver re-run (isolated DSH_HOME + HOME + workspace, registration-instrumentation probe row): AGENT_TEAMS_TOOLS_PRESENT=14/14, T4_TOOL_agent_teams_task_contract=REGISTERED, apply_crash_signatures=0, probe reached DONE — evidence/wave2/adopted-tooling-repair/gates/mount-driver-rerun.raw.json (no --dump-config result cited as load evidence)\"},{\"command\":\"bun test packages/mpd-agent-teams-plugin/self-fix-tests\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"30 pass / 0 fail / 148 expect() calls — includes the F1 real-inputs test, the F2 LCS region sweep, the F3 refusal test and the clean-heal test — evidence/wave2/adopted-tooling-repair/f2/self-fix-suite.log\"},{\"command\":\"node scripts/patch-agent-teams-fixes.mjs --check\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"already applied: 9 mpd delta region(s) across 2 adopted file(s) — evidence/wave2/adopted-tooling-repair/gates/guard-driver-rerun.log\"}]\n  changedPaths: [\"packages/mpd-agent-teams-plugin/lib/quality-gates.js\",\"packages/mpd-agent-teams-plugin/lib/mpd-deltas.js\",\"packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs\",\"packages/mpd-agent-teams-plugin/self-fix-tests/README.md\",\"scripts/patch-agent-teams-fixes.mjs\",\"scripts/vendor-agent-teams.mjs\",\"evidence/wave2/adopted-tooling-repair/README.md\",\"evidence/wave2/adopted-tooling-repair/result.json\"]\nOpen findings: 0",
+  "unknownId": "task \"t-does-not-exist\" does not exist in team \"MPD Wave 2\" (known tasks: t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13)",
+  "blankId": "task_id is required",
+  "memberRead": {
+    "ok": true,
+    "in_scope": [
+      "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+      "packages/mpd-agent-teams-plugin/self-fix-tests",
+      "packages/mpd-agent-teams-plugin/test",
+      "scripts/vendor-agent-teams.mjs",
+      "scripts/patch-agent-teams-fixes.mjs",
+      "evidence/wave2/adopted-tooling-repair"
+    ],
+    "out_of_scope": [
+      "skills/**",
+      "VENDOR_LOCK.json",
+      "AGENTS.md",
+      "packages/mpd-verif-plugin/**",
+      "packages/mpd-bundle/cordis.patch.yml"
+    ],
+    "acceptance_len": 7
+  },
+  "liveSha256After": "9f1a8cfc75f7aeb37200845f13ca45ec752f0aad0f9f1f362b386962725e6339",
+  "sandboxSha256After": "9f1a8cfc75f7aeb37200845f13ca45ec752f0aad0f9f1f362b386962725e6339",
+  "liveUntouched": true,
+  "sandboxUntouched": true,
+  "declared": {
+    "subject": "Repair t4's durability gap: carve repair scope out of the source outOfScope, register the 17 unmarked lines, and make the vendor heal path refuse a double declaration",
+    "kind": "repair",
+    "status": "completed",
+    "assignee": "Senior Engineer",
+    "attempt": 1,
+    "attemptId": "63cb19fe-bf18-4dad-8c9d-0f2b9070bd82",
+    "dependencies": [
+      "t1",
+      "t4"
+    ],
+    "objective": "Close the three findings that failed t8: make repairScopeFromFindings carve the required path out of the inherited outOfScope, bring every behaviour-changing line inside a registered mpd-delta region, and make the vendor heal path refuse when a region would redefine a declaration the file still carries.",
+    "inScope": [
+      "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+      "packages/mpd-agent-teams-plugin/self-fix-tests",
+      "packages/mpd-agent-teams-plugin/test",
+      "scripts/vendor-agent-teams.mjs",
+      "scripts/patch-agent-teams-fixes.mjs",
+      "evidence/wave2/adopted-tooling-repair"
+    ],
+    "outOfScope": [
+      "skills/**",
+      "VENDOR_LOCK.json",
+      "AGENTS.md",
+      "packages/mpd-verif-plugin/**",
+      "packages/mpd-bundle/cordis.patch.yml"
+    ],
+    "acceptance": [
+      "F1 CLOSED: `repairScopeFromFindings` CARVES the finding's file OUT of the inherited outOfScope (it currently drops it from inScope while KEEPING the prohibition), so the finding's required edit is actually permitted. Proven by a falsifiable test built from the REAL wave-1 inputs (the archived team mpd-default-7332aba4, its t7 + t10), asserting that the t13 shape now produces a repair contract whose required file is IN-SCOPE and whose required edit is no longer rejected as out_of_scope — not merely that the contradiction count dropped to zero",
+      "F1 documentation defect also closed: the `repairScopeFromFindings` doc comment must describe what the code actually does, and the self-fix test whose COMMENT claims 'the required edit is no longer out_of_scope' while its ASSERTION expects `out_of_scope` must be corrected so the assertion matches the intended semantics. A comment contradicting its own assertion is itself a defect",
+      "F2 CLOSED: every behaviour-changing line t4 introduced in `lib/quality-gates.js` sits inside a registered `mpd-delta` region — specifically the three groups the verifier named as unmarked (`inScopeOverlap` ~252-255, `normalizeScopePattern` ~263-267, the create-time contradiction gate ~405-412), and `lib/mpd-deltas.js` is regenerated so the guard can detect and restore ALL of them. t4 acceptance 4 must pass when re-judged",
+      "F3 CLOSED: the healing path in `scripts/vendor-agent-teams.mjs` (~line 122, which always runs with write:true) must REFUSE — or post-validate — when inserting a region would redefine a declaration the file still carries. Reproduce the verifier's exact scenario (the hand re-materialize the guard exists for): the old path produced two `export function pathMatchesScope` and the file FAILED TO IMPORT with `Identifier 'pathMatchesScope' has already been declared` while `--write` and the next `--check` both exited 0. After the fix, that scenario must fail loudly with a named cause, and a clean re-materialize must still succeed",
+      "The three fixes are proven together by re-running the verifier's own driver where possible (evidence/wave2/t8-verification/20260911T061046Z/) rather than inventing a parallel harness",
+      "No regression: the plugin suite stays green, the isolated boot still registers 14/14 tools with 0 apply-crash signatures, and the unmarked/adopted files are byte-identical where the task did not intend to change them",
+      "Evidence is written under the declared evidence path with raw logs, and the output states explicitly that a dsh restart is still required for the new semantics to act on a live session (no module hot reload)"
+    ],
+    "verify": [
+      "bun test packages/mpd-agent-teams-plugin",
+      "bun test packages",
+      "bun run typecheck",
+      "the t8 driver in evidence/wave2/t8-verification/20260911T061046Z/ (F1 real-inputs replay, F2 delta-region sweep, F3 double-declaration scenario)",
+      "an isolated boot registering 14/14 tools with 0 apply-crash signatures"
+    ]
+  },
+  "fieldComparison": [
+    {
+      "field": "task_id",
+      "match": true,
+      "reported": "t13",
+      "declared": "t13"
+    },
+    {
+      "field": "subject",
+      "match": true,
+      "reported": "Repair t4's durability gap: carve repair scope out of the source outOfScope, register the 17 unmarked lines, and make the vendor heal path refuse a double decla",
+      "declared": "Repair t4's durability gap: carve repair scope out of the source outOfScope, register the 17 unmarked lines, and make the vendor heal path refuse a double decla"
+    },
+    {
+      "field": "kind",
+      "match": true,
+      "reported": "repair",
+      "declared": "repair"
+    },
+    {
+      "field": "status",
+      "match": true,
+      "reported": "completed",
+      "declared": "completed"
+    },
+    {
+      "field": "assignee",
+      "match": true,
+      "reported": "Senior Engineer",
+      "declared": "Senior Engineer"
+    },
+    {
+      "field": "attempt",
+      "match": true,
+      "reported": "1",
+      "declared": "1"
+    },
+    {
+      "field": "attempt_id",
+      "match": true,
+      "reported": "63cb19fe-bf18-4dad-8c9d-0f2b9070bd82",
+      "declared": "63cb19fe-bf18-4dad-8c9d-0f2b9070bd82"
+    },
+    {
+      "field": "dependencies",
+      "match": true,
+      "reported": "[\"t1\",\"t4\"]",
+      "declared": "[\"t1\",\"t4\"]"
+    },
+    {
+      "field": "objective",
+      "match": true,
+      "reported": "Close the three findings that failed t8: make repairScopeFromFindings carve the required path out of the inherited outOfScope, bring every behaviour-changing li",
+      "declared": "Close the three findings that failed t8: make repairScopeFromFindings carve the required path out of the inherited outOfScope, bring every behaviour-changing li"
+    },
+    {
+      "field": "in_scope",
+      "match": true,
+      "reported": "[\"packages/mpd-agent-teams-plugin/lib/quality-gates.js\",\"packages/mpd-agent-teams-plugin/lib/mpd-deltas.js\",\"packages/mpd-agent-teams-plugin/self-fix-tests\",\"pa",
+      "declared": "[\"packages/mpd-agent-teams-plugin/lib/quality-gates.js\",\"packages/mpd-agent-teams-plugin/lib/mpd-deltas.js\",\"packages/mpd-agent-teams-plugin/self-fix-tests\",\"pa"
+    },
+    {
+      "field": "out_of_scope",
+      "match": true,
+      "reported": "[\"skills/**\",\"VENDOR_LOCK.json\",\"AGENTS.md\",\"packages/mpd-verif-plugin/**\",\"packages/mpd-bundle/cordis.patch.yml\"]",
+      "declared": "[\"skills/**\",\"VENDOR_LOCK.json\",\"AGENTS.md\",\"packages/mpd-verif-plugin/**\",\"packages/mpd-bundle/cordis.patch.yml\"]"
+    },
+    {
+      "field": "acceptance",
+      "match": true,
+      "reported": "[\"F1 CLOSED: `repairScopeFromFindings` CARVES the finding's file OUT of the inherited outOfScope (it currently drops it from inScope while KEEPING the prohibiti",
+      "declared": "[\"F1 CLOSED: `repairScopeFromFindings` CARVES the finding's file OUT of the inherited outOfScope (it currently drops it from inScope while KEEPING the prohibiti"
+    },
+    {
+      "field": "verify",
+      "match": true,
+      "reported": "[\"bun test packages/mpd-agent-teams-plugin\",\"bun test packages\",\"bun run typecheck\",\"the t8 driver in evidence/wave2/t8-verification/20260911T061046Z/ (F1 real-",
+      "declared": "[\"bun test packages/mpd-agent-teams-plugin\",\"bun test packages\",\"bun run typecheck\",\"the t8 driver in evidence/wave2/t8-verification/20260911T061046Z/ (F1 real-"
+    }
+  ],
+  "allFieldsMatch": true
+}

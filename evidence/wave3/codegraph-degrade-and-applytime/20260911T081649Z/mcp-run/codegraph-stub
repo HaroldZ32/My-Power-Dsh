@@ -1,0 +1,18 @@
+#!/root/.nvm/versions/node/v24.16.0/bin/node
+process.stderr.write("STUB_CODEGRAPH_LAUNCHED " + process.argv.slice(2).join(" ") + "\n")
+let buf = ""
+process.stdin.setEncoding("utf8")
+process.stdin.on("data", (chunk) => {
+  buf += chunk
+  let index
+  while ((index = buf.indexOf("\n")) >= 0) {
+    const line = buf.slice(0, index)
+    buf = buf.slice(index + 1)
+    try {
+      const message = JSON.parse(line)
+      if (message.id === undefined) continue
+      process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id: message.id, result: { protocolVersion: "2024-11-05", capabilities: { tools: {} }, serverInfo: { name: "codegraph-stub", version: "0" } } }) + "\n")
+    } catch { /* ignore */ }
+  }
+})
+process.stdin.on("end", () => process.exit(0))

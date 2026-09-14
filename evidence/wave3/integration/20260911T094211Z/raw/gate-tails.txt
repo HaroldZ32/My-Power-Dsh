@@ -1,0 +1,39 @@
+
+=== tails ===
+--- verify-vendor
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+--- typecheck
+$ tsgo --noEmit
+--- bun-test-packages
+packages/mpd-comment-checker-plugin/test/comment-checker.test.ts:
+
+ 376 pass
+ 0 fail
+ 2519 expect() calls
+Ran 376 tests across 82 files. [13.57s]
+--- test-qa
+[web-client-adapt self-test] ok: 14 checks
+[test:qa] skills/dsh-qa/scripts/workmate-library.mjs
+[workmate-library self-test] ok: 18 checks
+[test:qa] skills/dsh-qa/scripts/workmate-team-member.mjs
+[workmate-team-member self-test] ok: 6 checks
+[test:qa] all self-tests passed
+--- preset-conformance
+  auth: {"ok":true,"tokenSeen":true,"cookieSession":true}
+  sessionCreate: {"ok":true,"status":200,"sessionId":"session-48821c07-321b-4381-a773-2453f4318c76","agentPreset":"mpd"}
+  sessionHeader: {"ok":true,"agentPreset":"mpd","log":"/tmp/mpd-preset-main-xDjbtl/home/sessions/--tmp-mpd-preset-main-xDjbtl-ws--/session-48821c07-321b-4381-a773-2453f4318c76/session.v3.jsonl.zstd"}
+  bootLog: {"ok":true,"signatures":[]}
+  negativeControl: {"ok":true,"code":"agent-preset/invalid","message":"agent-presets: preset \"mpd\" failed to mount: failed to apply loader entry persona (@deepseek-ai/dsh-persona): invalid config:\n  - $.prefix missing required value (at prefix) (/tmp/mpd-preset-control-2026-09-11T09-53-37.285Z/mpd/agent.cordis.yml)
+[preset-conformance] PASS
+--- dist-sweep
+packages with dist/index.js: 16
+FRESH byte-identical: 16
+FRESH banner-only: 0
+STALE: 0
+clean-room pass1==pass2 byte-identical: 16/16
+clean-room committed==pass2 byte-identical: 16/16

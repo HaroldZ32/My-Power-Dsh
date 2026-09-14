@@ -1,0 +1,6 @@
+{
+  "superseded": "evidence/omo-align/review/r2-result.json",
+  "authoritative": "evidence/omo-align/review/r2/result.json",
+  "sha256": "727ccdce603287d904a1a09f6ed7d8c91d9506abd086d2dc1cf832ee9db0431e",
+  "note": "t25 deliverable consolidated into r2/ per the captain scope; F1 closure confirmation appended per the captain three-part closure test."
+}

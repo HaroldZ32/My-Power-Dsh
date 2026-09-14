@@ -1,0 +1,53 @@
+# post-landing state, 2026-09-14T10:31:04Z
+# the captain landed the wave in ff1932f while t20 was assembling; this file records the state AFTER that commit
+
+$ git log --oneline -2
+ff1932f chore(naming): land the OMO/Codex/OpenCode to DSH naming wave
+53d617e docs(naming): the docs lane, completed - debranded ledger pair plus its hub rows
+
+$ git show --stat ff1932f (tail)
+ skills/ulw-plan/scripts/scaffold-plan.mjs          |    8 +-
+ 189 files changed, 40697 insertions(+), 136 deletions(-)
+
+$ git show --name-only --format= ff1932f | wc -l   # files in the landing commit
+189
+
+$ git diff --name-status --diff-filter=MD 3c1a850 ff1932f -- evidence/   # must be empty
+[0 modified/deleted evidence paths]
+
+$ git ls-tree -r --name-only ff1932f -- evidence/mpd-naming/wave2/raw/scratch | wc -l   # scratch tree NOT committed
+0
+
+$ git show --name-only --format= ff1932f | grep -E '^(VENDOR_LOCK.json|skills/)'   # lock + all four skills edits in ONE commit
+VENDOR_LOCK.json
+skills/ast-grep/AGENTS.md
+skills/ast-grep/scripts/ast_grep_helper.py
+skills/ast-grep/tests/smoke.sh
+skills/ulw-plan/scripts/scaffold-plan.mjs
+
+$ git status --porcelain (post-landing remainder)
+?? evidence/mpd-naming/landing/COMMIT-MESSAGE.txt
+?? evidence/mpd-naming/landing/COMMIT-PLAN.md
+?? evidence/mpd-naming/landing/output.log
+?? evidence/mpd-naming/landing/raw/33-post-landing-state.log
+?? evidence/mpd-naming/landing/result.json
+?? evidence/mpd-naming/wave2/raw/scratch/
+
+$ git status --porcelain -uall | grep -c '^??'   # remaining untracked
+1213
+
+$ git diff --name-only 3c1a850 | wc -l   # full wave delta incl. the landing commit
+205
+
+$ node scripts/verify-vendor.mjs
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] asset OK: skills 297 files
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+exit=0

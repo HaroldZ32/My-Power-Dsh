@@ -1,0 +1,206 @@
+{
+  "ok": false,
+  "slug": "extension-lifecycle",
+  "sandbox": "/tmp/mpd-extension-lifecycle-0ulXKx",
+  "arms": "main (mount + list + flow + skill + role persona/spawn) | failure (broken of each kind beside a healthy one, CLI oracle) | isolation (two sessions, one host, decoy control) | packed (t5 records the state; t11 owns the GREEN)",
+  "rankLadder": "100 project-dsh < 200 project-agents < 250 runtime < 300 ours < 400 user-dsh < 500 user-agents < 600 bundled; lower wins inside a layer, nearest layer wins outright",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0,
+      "tail": "fallback: { provider: deepseek-official, model: deepseek-v4-flash }\n              executionPrompt: \"Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny.\"\n\n[install-profile] wrote profile/ home patch/ presets(1) + web-compat shim @mpd-dsh/mpd\n[install-profile] done. Start with: dsh --profile mpd-headless   (the web preset selector will show the mpd preset)\n"
+    },
+    "main": {
+      "ok": false,
+      "exit": 0,
+      "durationMs": 6740,
+      "offeredExtTools": [],
+      "recordedTools": [
+        "skill",
+        "mpd_role_persona",
+        "mpd_role_spawn"
+      ],
+      "calls": {
+        "mpd_ext_list": {
+          "succeeded": false,
+          "reason": "the harness recorded 1 call(s) to mpd_ext_list but every recorded result is an ERROR",
+          "resultHead": "Error: unknown tool \"mpd_ext_list\"\nError: unknown tool \"mpd_ext_show\"\nError: unknown tool \"mpd_flow_list\"\nError: unknown tool \"mpd_flow_show\"\nError: skill \"qa-ext-skill\" is unknown or no longer available\npersona QA Extension Reviewer (69 ch"
+        },
+        "mpd_ext_show": {
+          "succeeded": false,
+          "reason": "the harness recorded 1 call(s) to mpd_ext_show but every recorded result is an ERROR",
+          "resultHead": "Error: unknown tool \"mpd_ext_list\"\nError: unknown tool \"mpd_ext_show\"\nError: unknown tool \"mpd_flow_list\"\nError: unknown tool \"mpd_flow_show\"\nError: skill \"qa-ext-skill\" is unknown or no longer available\npersona QA Extension Reviewer (69 ch"
+        },
+        "mpd_flow_list": {
+          "succeeded": false,
+          "reason": "the harness recorded 1 call(s) to mpd_flow_list but every recorded result is an ERROR",
+          "resultHead": "Error: unknown tool \"mpd_ext_list\"\nError: unknown tool \"mpd_ext_show\"\nError: unknown tool \"mpd_flow_list\"\nError: unknown tool \"mpd_flow_show\"\nError: skill \"qa-ext-skill\" is unknown or no longer available\npersona QA Extension Reviewer (69 ch"
+        },
+        "mpd_flow_show": {
+          "succeeded": false,
+          "reason": "the harness recorded 1 call(s) to mpd_flow_show but every recorded result is an ERROR",
+          "resultHead": "Error: unknown tool \"mpd_ext_list\"\nError: unknown tool \"mpd_ext_show\"\nError: unknown tool \"mpd_flow_list\"\nError: unknown tool \"mpd_flow_show\"\nError: skill \"qa-ext-skill\" is unknown or no longer available\npersona QA Extension Reviewer (69 ch"
+        },
+        "skill": {
+          "succeeded": false,
+          "reason": "the harness recorded 1 call(s) to skill but every recorded result is an ERROR",
+          "resultHead": "Error: unknown tool \"mpd_ext_list\"\nError: unknown tool \"mpd_ext_show\"\nError: unknown tool \"mpd_flow_list\"\nError: unknown tool \"mpd_flow_show\"\nError: skill \"qa-ext-skill\" is unknown or no longer available\npersona QA Extension Reviewer (69 ch"
+        },
+        "mpd_role_persona": {
+          "succeeded": true,
+          "reason": "",
+          "resultHead": "Error: unknown tool \"mpd_ext_list\"\nError: unknown tool \"mpd_ext_show\"\nError: unknown tool \"mpd_flow_list\"\nError: unknown tool \"mpd_flow_show\"\nError: skill \"qa-ext-skill\" is unknown or no longer available\npersona QA Extension Reviewer (69 ch"
+        },
+        "mpd_role_spawn": {
+          "succeeded": true,
+          "reason": "",
+          "resultHead": "Error: unknown tool \"mpd_ext_list\"\nError: unknown tool \"mpd_ext_show\"\nError: unknown tool \"mpd_flow_list\"\nError: unknown tool \"mpd_flow_show\"\nError: skill \"qa-ext-skill\" is unknown or no longer available\npersona QA Extension Reviewer (69 ch"
+        }
+      },
+      "sawProjectId": false,
+      "sawUserId": false,
+      "sawProjectRejection": false,
+      "sawFlow": false,
+      "sawSkill": false,
+      "sawPersona": true,
+      "sawRoleChild": false,
+      "crashSignatures": [],
+      "isolation": {
+        "ok": true,
+        "checked": 1,
+        "keys": [
+          "--tmp-mpd-extension-lifecycle-0ulXKx-ws--"
+        ]
+      }
+    },
+    "failure": {
+      "ok": false,
+      "exit": 0,
+      "sessionCompleted": true,
+      "listedHealthy": false,
+      "flowToolStillWorks": false,
+      "reportedProjectRejection": false,
+      "reportedRejections": [],
+      "cliChecks": {
+        "qa-bad-json": {
+          "exit": 1,
+          "tail": "  extension \"unnamed\": REJECTED |   error descriptor: descriptor must be a JSON object"
+        },
+        "qa-bad-version": {
+          "exit": 1,
+          "tail": "  extension \"qa-bad-version\": REJECTED |   error apiVersion: apiVersion must equal 1 (got 9)"
+        },
+        "qa-bad-skill": {
+          "exit": 1,
+          "tail": "  error contributes.skills[0]/QA-BAD-NAME: frontmatter name \"QA-BAD-NAME\" violates the skill-name grammar in /tmp/mpd-extension-lifecycle-0ulXKx/ws/.mpd/extensions/qa-bad-skill/skills/QA-BAD-NAME/SKIL"
+        },
+        "qa-bad-asset": {
+          "exit": 1,
+          "tail": "  contributes: 0 skill(s), 0 flow(s), 0 role(s), 0 mcp server(s) |   error contributes.skills[0].root: root must be a non-empty extension-root-relative directory (absolute paths and `..` escapes are r"
+        },
+        "qa-ext-healthy": {
+          "exit": 0,
+          "tail": "  contributes: 1 skill(s), 1 flow(s), 0 role(s), 0 mcp server(s) | [mpd-ext] ok"
+        }
+      },
+      "crashSignatures": [],
+      "resultHead": "Error: unknown tool \"mpd_ext_list\"\nError: unknown tool \"mpd_flow_list\"\nError: unknown tool \"mpd_flow_show\"",
+      "isolation": {
+        "ok": true,
+        "checked": 1,
+        "keys": [
+          "--tmp-mpd-extension-lifecycle-0ulXKx-ws--"
+        ]
+      }
+    },
+    "isolation": {
+      "ok": false,
+      "sessions": {
+        "session-a": {
+          "ok": false,
+          "exit": 0,
+          "cwd": "/tmp/mpd-extension-lifecycle-0ulXKx/ws-a",
+          "recorded": true,
+          "succeeded": false,
+          "sawExpected": false,
+          "sawForbidden": [],
+          "offeredExtTools": [],
+          "isolation": {
+            "ok": true,
+            "checked": 2,
+            "keys": [
+              "--tmp-mpd-extension-lifecycle-0ulXKx-ws-a--",
+              "--tmp-mpd-extension-lifecycle-0ulXKx-ws--"
+            ]
+          }
+        },
+        "session-b": {
+          "ok": false,
+          "exit": 0,
+          "cwd": "/tmp/mpd-extension-lifecycle-0ulXKx/ws-b",
+          "recorded": true,
+          "succeeded": false,
+          "sawExpected": false,
+          "sawForbidden": [],
+          "offeredExtTools": [],
+          "isolation": {
+            "ok": true,
+            "checked": 3,
+            "keys": [
+              "--tmp-mpd-extension-lifecycle-0ulXKx-ws-b--",
+              "--tmp-mpd-extension-lifecycle-0ulXKx-ws-a--",
+              "--tmp-mpd-extension-lifecycle-0ulXKx-ws--"
+            ]
+          }
+        },
+        "decoy-cwd-control": {
+          "ok": false,
+          "exit": 0,
+          "cwd": "/tmp/mpd-extension-lifecycle-0ulXKx/decoy",
+          "recorded": true,
+          "succeeded": false,
+          "sawExpected": false,
+          "sawForbidden": [],
+          "offeredExtTools": [],
+          "isolation": {
+            "ok": true,
+            "checked": 4,
+            "keys": [
+              "--tmp-mpd-extension-lifecycle-0ulXKx-decoy--",
+              "--tmp-mpd-extension-lifecycle-0ulXKx-ws-b--",
+              "--tmp-mpd-extension-lifecycle-0ulXKx-ws-a--",
+              "--tmp-mpd-extension-lifecycle-0ulXKx-ws--"
+            ]
+          }
+        },
+        "ok": false
+      }
+    },
+    "packed": {
+      "ok": true,
+      "packExit": 0,
+      "packedRoot": "/root/dshProj/my-power-dsh/dist/mpd-package",
+      "rows": {
+        "mpdExtRowInPackedPatch": true
+      },
+      "assets": {
+        "pluginDist": false,
+        "extensionsAsset": false
+      },
+      "status": "RED (expected for this wave: the packed tree cannot resolve the mpd-ext row / discover <bundle>/extensions; the GREEN is t11's)",
+      "greenOwner": "t11",
+      "note": "no packed-tree file was modified by this case; the expectation is recorded, never patched",
+      "packTail": "[pack-mpd] modes normalized: 1092 files (644: 1080, 755: 12) | [pack-mpd] staged package -> /root/dshProj/my-power-dsh/dist/mpd-package"
+    },
+    "isolationFinal": {
+      "ok": true,
+      "checked": 4,
+      "keys": [
+        "--tmp-mpd-extension-lifecycle-0ulXKx-decoy--",
+        "--tmp-mpd-extension-lifecycle-0ulXKx-ws-b--",
+        "--tmp-mpd-extension-lifecycle-0ulXKx-ws-a--",
+        "--tmp-mpd-extension-lifecycle-0ulXKx-ws--"
+      ]
+    }
+  }
+}

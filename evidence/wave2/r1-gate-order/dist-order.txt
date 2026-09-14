@@ -1,0 +1,22 @@
+=== packages/mpd-verif-plugin/dist/index.js (rebuilt from repo root with the repo-relative entry)
+1118:  const gate = requireCocotbVenv(undefined, exec);
+1648:function createRegressDir(exec) {
+1676:    const regressDir2 = createRegressDir(exec);
+1697:  const gate = requireCocotbVenv(undefined, exec);
+1708:  const regressDir = createRegressDir(exec);
+
+sha256: 13ad3e3e45a1a768ffc6746dc0e2cf809a27d3f2baaf93f92ba44fce577cb75a  packages/mpd-verif-plugin/dist/index.js
+
+NOTE (rebuild form): the contract's literal 'cd packages/mpd-verif-plugin && bun build src/index.ts ...' form emits package-relative inlined banner comments ('// src/compile.ts'); the dist sweep strips only the FIRST banner line, so that form makes the sweep report mpd-verif-plugin STALE (measured, counterfactual below). The canonical sweep-reproducible form is the repo-root one used here:
+  bun build --target node --format esm packages/mpd-verif-plugin/src/index.ts --outfile packages/mpd-verif-plugin/dist/index.js
+
+=== counterfactual: sweep verdict when the package-dir build form is committed
+74:mpd-verif-plugin: STALE
+75-  cmd: bun build --target node --format esm packages/mpd-verif-plugin/src/index.ts --outfile /tmp/mpd-dist-sweep/pass1/mpd-verif-plugin.js
+76-  sha256 committed=8cb817de1834fec7 fresh=13ad3e3e45a1a768 (96155B vs 96629B)
+77-  RAW BODY DIFF (banner line excepted):
+78-    3c3
+FRESH banner-only: 0
+STALE: 1 -> mpd-verif-plugin
+clean-room pass1==pass2 byte-identical: 16/16
+clean-room committed==pass2 byte-identical: 15/16

@@ -1,0 +1,89 @@
+{
+  "case": "agent-teams-scheduler-wakeup",
+  "reported": "after the captain dispatched the first batch, the scheduler never woke the next members; the team froze",
+  "verdict": "root-caused on the live machine, fixed, regression-locked (failing-first), gates green",
+  "rootCause": {
+    "what": "lib/members.js#deliverToMember called ctx.subagents.followup(parent, childId, content, options)",
+    "why": "the running Harness (dsh 0.1.2-rc.1) exposes no `followup` member on the subagent service; delivery is the host-only FIFO queue runtime[Symbol.for('dsh.subagent.queuePrompt')](parent, childId, content, source, signal). Alpha.2 owned followup/registerContinuableSetup; Alpha.5/rc.1 replaced both.",
+    "consequence": "the call threw TypeError inside deliverToMember's catch -> false -> the claim rolled back to `pending` and the member stayed idle, so no member was ever woken. The first batch appeared to start only because the spawn prompt lists each member's assigned task count, so Planner/Researcher claimed t1/t2 themselves.",
+    "liveEvidence": [
+      "team workmate-rename-delete: t1/t2 completed (attempt=1, self-claimed), t3/t4/t5 pending with attempt=0 (never claimed)",
+      "all 11 member session logs: 1 turn each, spawn prompt only, 0 'AgentTeams automatic task assignment' prompts",
+      "every agent_teams_send_message in the captain session (07:52Z-08:45Z) returned 'delivered via mailbox'; 9 mailbox records left unclaimed/unread",
+      "installed host face: no `followup` member; Symbol.for(\"dsh.subagent.queuePrompt\") implemented in dsh-subagent/lib/index.js"
+    ]
+  },
+  "fix": {
+    "newFiles": [
+      "packages/mpd-agent-teams-plugin/lib/harness-compat.js",
+      "lib/capabilities.js",
+      "lib/tool-names.js",
+      "lib/web-routes.js"
+    ],
+    "rewired": [
+      "members.js: deliverToMember -> queueMemberPrompt; installRetiredMemberGuard -> guardSubagentDelivery (all delivery faces); installMemberSelectionRuntime -> installContinuableMemberSetup + sessionOwnEvents; failMemberOpenAttempt added; steerCaptainReport single-sourced here",
+      "index.js: installTeamCapabilities replaces the global usage section; authenticatedWebRoutes + readJsonRequest on state/halt/plan routes; approval steer wakes the captain",
+      "tools.js: isPendingMember on the runtime, onFailureSettled -> scheduler.kickMember, blank-optional normalization, captain claim_task guard, reuse guidance, description updates",
+      "scheduler.js: parked-attempt recovery idempotency; state.js: settled team-lock release + legacy blank-field tolerance; quality-gates.js: normalizeBlankOptionalTaskFields"
+    ],
+    "adoptedVersion": "0.1.16-rc.3-mpd (0.1.14 body + audited upstream 0.1.16-rc.3 backports)"
+  },
+  "proof": {
+    "failingFirst": "mutating lib/members.js back to the pre-fix one-shot followup call fails 4 of the 19 delivery/scheduler tests; restoring the file (sha256 checked) returns 19/19 — see mutant-failures.txt",
+    "regressionTests": [
+      "test/harness-compat.test.ts (15)",
+      "test/scheduler-dispatch.test.ts (4) — dependency-boundary dispatch on an rc.1-shaped runtime",
+      "test/capabilities.test.ts (6)",
+      "test/backports.test.ts (10)"
+    ],
+    "hostContract": "skills/dsh-qa/scripts/agent-teams-dispatch.mjs --self-test (11 checks) asserts the INSTALLED host seam and the shipped plugin binding",
+    "gates": "gates.log: bun test packages 253 tests / 250 pass / 3 skip / 0 fail; typecheck exit 0; test:qa all self-tests pass; verify-vendor PASS (skills tree re-pinned); build-mpd-client 242635 bytes; pack ok",
+    "liveAcceptancePending": "needs a running model route: restart dsh (server plugins load at boot) then `node skills/dsh-qa/scripts/agent-teams-dispatch.mjs`, or run a small team in the GUI and confirm members receive their assignments",
+    "liveBoot": {
+      "what": "two real-boot QA cases boot an isolated dsh web server with the repacked bundle (dist/mpd-package) and drive it over HTTP",
+      "agentTeamsSidebar": "PASS — client bundle served (242720 bytes, teamPageModule + teamTabId + export bridge), and /plugins/dsh-agent-teams/state answers 401 anonymously but 200 {teams:[...]} with the browser cookie session (adopted 0.1.16-rc.3 auth fence, panel data feed intact)",
+      "webClientAdapt": "PASS — boot entry @mpd-dsh/mpd, served client carries the three module ids, no unregistered service, workmate isolation held",
+      "headlessApply": "node skills/dsh-qa/scripts/session-start-team.mjs: the modified plugin APPLIES on a real headless boot (installer row + composed config + provisioned staged mpd team with 11 members + injected startup notice); only the model call needs a credential"
+    }
+  },
+  "knownGaps": [
+    "browser bundle is still the 0.1.14 build (rc.3 client deltas = client-runtime -> store/ui-chat import adaptation + member-badge polish; adopting it means re-running the export bridge and re-pinning the sidebar class-map/parity tests)",
+    "upstream #138 instruction shortening not adopted (the fork's usage text carries MPD-specific rules)"
+  ],
+  "changedPaths": [
+    "M AGENTS.md",
+    "M LICENSE-NOTICES.md",
+    "M VENDOR_LOCK.json",
+    "M docs/feature-audit.md",
+    "M docs/feature-audit.zh-CN.md",
+    "M packages/mpd-agent-teams-plugin/lib/client.js",
+    "M packages/mpd-agent-teams-plugin/lib/index.js",
+    "M packages/mpd-agent-teams-plugin/lib/members.js",
+    "M packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+    "M packages/mpd-agent-teams-plugin/lib/scheduler.js",
+    "M packages/mpd-agent-teams-plugin/lib/state.js",
+    "M packages/mpd-agent-teams-plugin/lib/tools.js",
+    "M packages/mpd-agent-teams-plugin/package.json",
+    "M packages/mpd-bundle/cordis.patch.yml",
+    "M scripts/pack-mpd.mjs",
+    "M scripts/vendor-agent-teams.mjs",
+    "M skills/dsh-qa/SKILL.md",
+    "M skills/dsh-qa/scripts/agent-teams-adopt.mjs",
+    "M skills/dsh-qa/scripts/team-route-rewire.mjs",
+    "M skills/dsh-qa/scripts/web-client-adapt.mjs",
+    "M skills/dsh-qa/scripts/workmate-library.mjs",
+    "?? evidence/dsh-qa/session-start-team/2026-09-10T10-11-31.320Z/",
+    "?? packages/mpd-agent-teams-plugin/lib/capabilities.js",
+    "?? packages/mpd-agent-teams-plugin/lib/harness-compat.js",
+    "?? packages/mpd-agent-teams-plugin/lib/tool-names.js",
+    "?? packages/mpd-agent-teams-plugin/lib/web-routes.js",
+    "?? packages/mpd-agent-teams-plugin/test/backports.test.ts",
+    "?? packages/mpd-agent-teams-plugin/test/capabilities.test.ts",
+    "?? packages/mpd-agent-teams-plugin/test/export-bridge.test.mjs",
+    "?? packages/mpd-agent-teams-plugin/test/harness-compat.test.ts",
+    "?? packages/mpd-agent-teams-plugin/test/scheduler-dispatch.test.ts",
+    "?? skills/dsh-qa/scripts/agent-teams-dispatch.mjs",
+    "?? skills/dsh-qa/scripts/agent-teams-sidebar.mjs"
+  ],
+  "generatedAt": "2026-09-10T10:17:47.265Z"
+}

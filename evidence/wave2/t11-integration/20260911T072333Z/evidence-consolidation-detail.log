@@ -1,0 +1,54 @@
+=== nested record files per wave-2 dir ===
+-- evidence/wave2/b9-installer-parity
+evidence/wave2/b9-installer-parity/20260911T054527Z/result.json
+-- evidence/wave2/memory-migration
+evidence/wave2/memory-migration/20260911T055855Z/result.json
+evidence/wave2/memory-migration/20260911T055855Z/before-after-summary.json
+-- evidence/wave2/qa-workspace-isolation
+evidence/wave2/qa-workspace-isolation/20260911T054831Z/result.json
+-- evidence/wave2/t8-verification
+evidence/wave2/t8-verification/20260911T061046Z/attempt3/result.json
+evidence/wave2/t8-verification/20260911T061046Z/result.json
+evidence/wave2/t8-verification/20260911T061046Z/attempt2/result.json
+evidence/wave2/t8-verification/20260911T061046Z/README.md
+-- evidence/wave2/t9-verification
+evidence/wave2/t9-verification/20260911T061339Z/b8-own-gate.result.json
+evidence/wave2/t9-verification/20260911T061339Z/t9-RESULT.json
+evidence/wave2/t9-verification/20260911T061339Z/r1-own-calls-t12.result.json
+evidence/wave2/t9-verification/20260911T061339Z/memory-read-call.result.json
+-- evidence/wave2/t10-review
+evidence/wave2/t10-review/20260911T063000Z/guard-fullstrip.result.json
+evidence/wave2/t10-review/20260911T063000Z/glob-e2e.result.json
+evidence/wave2/t10-review/20260911T063000Z/t10-REVIEW.md
+evidence/wave2/t10-review/20260911T063000Z/guard-copy.result.json
+-- evidence/wave2/t11-integration
+-- evidence/wave2/adopted-tooling-repair-f4-sibling
+evidence/wave2/adopted-tooling-repair-f4-sibling/README.md
+
+=== any zero-byte files under evidence/wave2 (partials) ===
+evidence/wave2/t10-review/20260911T063000Z/heal-repro.err
+evidence/wave2/t8-verification/20260911T061046Z/check1-prefix.err
+evidence/wave2/t8-verification/20260911T061046Z/check3-t6-captain.err
+evidence/wave2/t8-verification/20260911T061046Z/check3-t4-captain.err
+evidence/wave2/t8-verification/20260911T061046Z/check2-postfix.err
+evidence/wave2/t8-verification/20260911T061046Z/attempt3/check3-t14-captain.err
+evidence/wave2/t8-verification/20260911T061046Z/attempt3/check3-t8-captain.err
+evidence/wave2/t8-verification/20260911T061046Z/check1-postfix.err
+evidence/wave2/t8-verification/20260911T061046Z/check2-prefix.err
+evidence/wave2/t8-verification/20260911T061046Z/check3-t8-captain.err
+(end)
+
+=== wave-1 evidence dirs (for the report) ===
+evidence/hashline/:
+schema-union-fix
+
+evidence/session-workspace-root/:
+b1-resolution
+dist-repair
+t8-verify
+
+evidence/verification/:
+t10-review
+t11-integration
+t14-review
+t9-b2-b6

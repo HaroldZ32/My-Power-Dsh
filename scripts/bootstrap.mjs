@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// P0 版 bootstrap：前置校验 + vendor 校验；P1 起扩展为从 profiles/* 模板初始化隔离 DSH_HOME。
+// P0 bootstrap: preflight checks + vendor verification; from P1 expand to initialize an isolated DSH_HOME from profiles/* templates.
 import { spawnSync } from "node:child_process"
 import { existsSync } from "node:fs"
 import { dirname, join } from "node:path"
@@ -18,9 +18,9 @@ for (const [bin, args] of [["node", ["--version"]], ["bun", ["--version"]], ["gi
 const verify = spawnSync("node", [join(repoRoot, "scripts", "verify-vendor.mjs")], { stdio: "inherit" })
 if (verify.status !== 0) failed = true
 
-for (const d of ["packages/omo-dsh-bundle", "packages/omo-skills-plugin", "profiles/omo-headless"]) {
-  if (!existsSync(join(repoRoot, d))) { console.warn("[bootstrap] not yet created: " + d + " (P1+)"); }
+for (const d of ["packages/mpd-bundle", "packages/mpd-bootstrap-plugin", "packages/mpd-roles-plugin"]) {
+  if (!existsSync(join(repoRoot, d))) { console.warn("[bootstrap] missing: " + d); failed = true }
 }
 
 if (failed) { console.error("[bootstrap] FAIL"); process.exit(1) }
-step("PASS - 前置与 vendor 基线校验通过，可进入 P1")
+step("PASS - preflight and vendor baseline checks passed (set MPD_UPSTREAM_ROOT if the upstream checkout is not auto-detected at .mpd-dsh/upstream)")

@@ -1,0 +1,45 @@
+feat(naming): retire the upstream identity from shipped text and artifacts, with the wave's single vendor re-pin
+
+Owner rulings implemented (frozen in evidence/mpd-naming/final-allowlist/rule.json):
+(a) ast-grep omo_* identifiers -> mpd_*: skills/ast-grep/scripts/ast_grep_helper.py (mpd_env_binary,
+    mpd_runtime_slug, mpd_runtime_binary) + tests/smoke.sh + AGENTS.md labels; `git grep omo_ --
+    skills/ast-grep` = 0, and the smoke suite exercises the renamed calls (15 PASS / 0 FAIL).
+(b) codegraph [senpi]/MIGRATION_ID and the lsp .codex discovery defaults are KEPT and allowlisted:
+    codegraph dist/serve.js:8819/:8877 MIGRATION_ID + the [upstream]/[senpi] migration reads, and
+    lsp dist/cli.js:366/:367 .codex/lsp-client.json + .codex/lsp-install-decisions.json.
+(c) git-bash OMO_CODEX_* DELETED: the env-key declaration, the env-lookup tier, the install hint and
+    the two prefixed timeout keys are gone from packages/mpd-mcp-gitbash/dist/cli.js (22651 -> 22137 B);
+    repo-wide `grep -n OMO_CODEX` = 0 (was 3 dist + 6 build-mcp literals).
+
+Dists lane: scripts/build-mcp.mjs narrative sweep (bm-01..bm-17, BRAND_ALLOWLIST now empty by design)
+with the scrub tables rebuilt; the dists are byte-reproducible from the script (t14 evidence).
+Text lane: the upstream identity is retired from the manual, the READMEs, the package descriptions and
+the roster data; the cross-agent skill was purged and the corpus figures corrected.
+Docs lane: docs/omo-parity-ledger{,.zh-CN}.md -> docs/upstream-parity-ledger{,.zh-CN}.md (both languages
+in one change, language-switch links under each title, hub rows retargeted on href + text + description)
+and tests/overlays/omo-bline.yml -> tests/overlays/bline.yml.
+
+VENDOR_LOCK.json - THE WAVE'S SINGLE RE-PIN, computed on the settled bytes after two >=50 s byte-identical
+reads (AGENTS.md 7/9/11): skills 297 files / treeSha
+a0f1febb4111d5884c9af3385963b06753c3f5a38423f7b66f6852c284725f95; mpd-mcp-gitbash/dist/cli.js sha256
+6458a82ee2cfcec319a03d2ffe8100c695d0980e7a366408fa5ef1467ca157b5; mpd-mcp-lsp/dist/cli.js sha256
+a7cebcf9ec79ec480c98d3a9cd1392837927ada57bf9bbb18e0620ba863f3148; lockedAt 2026-09-14T10:15:51.000Z.
+_deps (635/d1d10603...), astgrep (f06bba31...) and codegraph (ab287cdc...) were recomputed and are
+unchanged. The re-pin rides in this commit together with all four skills/** edits, as ruled.
+
+History stays byte-identical: no pre-existing evidence file is modified or deleted (0 of 3673 tracked
+evidence paths changed since 3c1a850), the 6 evidence paths in this wave's diff are pure additions, and
+docs/plan-*.md, docs/omo-parity-gap.md, docs/decisions.md and the prior-phase reports are byte-identical
+by explicit sha256 compare.
+
+Gates (exit codes): verify-vendor 0 (PASS, no FAIL line) - patch-agent-teams-fixes --check 0
+("already applied: 40 mpd delta region(s) across 9 adopted file(s)") - typecheck 0 - bun test packages
+408 pass / 0 fail - bun run test:qa 0 ("all self-tests passed"). Verification: t18 PASS (0 blocking,
+4 disclosed residuals); review: t19 PASS (0 high/blocker).
+Evidence index: evidence/mpd-naming/landing/raw/24-evidence-index.json.
+
+Known residuals (accepted, recorded): R1 the frozen KEEP KH-02 location moved with the rename (the
+historical wave id is still present, at docs/upstream-parity-ledger{,.zh-CN}.md:4); R3 nonEmptyEnvValue()
+is now dead code in the git-bash dist; R4 the _omo -> _mpd lsp envelope rename breaks an already-running
+version-scoped daemon loudly (AUTH_ERROR_CODE -32001, then DaemonUnreachableError) - remedy: restart or
+clear ~/.mpd/lsp-daemon/v<version>.

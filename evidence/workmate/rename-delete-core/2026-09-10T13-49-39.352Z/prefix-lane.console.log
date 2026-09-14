@@ -1,0 +1,15 @@
+=== t15 pre-fix real-boot lane ===
+sandbox=/root/dshProj/my-power-dsh/.mpd/t15-sb-prefix
+[install] exit=0
+[patch] rows composed: 21; workmate row found: true
+[patch] workmate row name: "/root/dshProj/my-power-dsh/packages/mpd-workmate-plugin/dist/index.js"
+[copy] ok declarations stripped: 2 -> 0; "ok" strings left in the copy: 0 (must be 0, required must not name a missing property)
+[patch] workmate row rebound to the mutated copy
+[boot] exit=1 (killed at the cap is normal for a live profile)
+FAIL marker_proves_the_mutated_copy_was_live
+FAIL probe_ran
+FAIL pre_fix_rename_rejected_by_the_validator
+FAIL pre_fix_archive_rejected_by_the_validator
+FAIL pre_fix_purge_rejected_by_the_validator
+FAIL mutation_applied_despite_the_rejection
+=== pre-fix lane: FAIL ===

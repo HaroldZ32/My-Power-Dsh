@@ -1,0 +1,13 @@
+### extension-isolation --self-test
+[extension-isolation self-test] ok: stub protocol (tool call, advance, child marker, no-tools text) + descriptor contract + shipped example + boot recipe verified
+exit=0
+### extension-lifecycle --self-test
+[extension-lifecycle self-test] ok: composed row + validator rejections (incl. NaN rank via the code plane) + CLI oracle + seam regression (inject declared, failure LOUD, no false success) + fixtures verified
+exit=0
+### extension-mcp-bridge --self-test
+[extension-mcp-bridge self-test] ok: lsp server + row + public-name collision premise + fixture scenarios + example server verified
+exit=0
+### mpd-ext.mjs --self-test
+  ok no command prints usage or fails
+[mpd-ext] --self-test passed (19 checks)
+exit=0

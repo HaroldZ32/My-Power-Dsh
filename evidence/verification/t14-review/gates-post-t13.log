@@ -1,0 +1,27 @@
+## t14 review round 2: gate sweep on the post-t13 tree (2026-09-11T04:19:07Z)
+HEAD=98680b1fb2bbf5c10c28cfbe44419e91595e1cb7
+
+### bun run typecheck
+$ tsgo --noEmit
+TYPECHECK_EXIT=0
+
+### bun test packages
+(pass) clean file passes (exit 0) [3.99ms]
+
+ 309 pass
+ 0 fail
+ 2032 expect() calls
+Ran 309 tests across 35 files. [12.61s]
+TEST_EXIT=0
+
+### bun run test:qa
+[test:qa] skills/dsh-qa/scripts/workmate-team-member.mjs
+[workmate-team-member self-test] ok: 6 checks
+[test:qa] all self-tests passed
+TESTQA_EXIT=0
+
+### node scripts/verify-vendor.mjs
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+VENDOR_EXIT=0

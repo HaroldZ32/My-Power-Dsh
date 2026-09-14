@@ -1,0 +1,12 @@
+PASS O-1 apply-time: session workspace (DSH_WORKSPACE_ROOT) != process cwd -> the SESSION root is used — line cwd=/root/dshProj/my-power-dsh/evidence/wave3/t6-verify/20260911T090649Z/work/o1-run/sessionWS sessionWS=/root/dshProj/my-power-dsh/evidence/wave3/t6-verify/20260911T090649Z/work/o1-run/sessionWS processCwd=/root/ds
+PASS O-1 apply-time: no session override -> the documented last tier (process.cwd) holds — line cwd=/root/dshProj/my-power-dsh/evidence/wave3/t6-verify/20260911T090649Z/work/o1-run/projectA expected=/root/dshProj/my-power-dsh/evidence/wave3/t6-verify/20260911T090649Z/work/o1-run/projectA status=marker ms=3887
+PASS O-1 apply-time: explicit MPD_CODEGRAPH_PROJECT_CWD still wins over the workspace plane — line cwd=/root/dshProj/my-power-dsh/evidence/wave3/t6-verify/20260911T090649Z/work/o1-run/explicitC expected=/root/dshProj/my-power-dsh/evidence/wave3/t6-verify/20260911T090649Z/work/o1-run/explicitC status=marker ms=380
+[mpd-codegraph] init status=marker binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/root/dshProj/my-power-dsh
+PASS O-1 call-time: the plugin registers /mpd-codegraph on a commands seam — function
+PASS O-1 call-time: handler resolves the INVOCATION's session cwd (not process.cwd) — {"kind":"success","text":"mpd-codegraph init: marker (/root/dshProj/my-power-dsh/evidence/wave3/t6-verify/20260911T090649Z/work/o1-run/sessionWS)"}
+PASS O-1 call-time: no invocation -> process.cwd() fallback (documented last tier) — {"kind":"success","text":"mpd-codegraph init: marker (/root/dshProj/my-power-dsh)"}
+PASS O-1 call-time: explicit override wins over the invocation session cwd — {"kind":"success","text":"mpd-codegraph init: marker (/root/dshProj/my-power-dsh/evidence/wave3/t6-verify/20260911T090649Z/work/o1-run/explicitC)"}
+PASS O-1 call-time: handler returns the harness CommandResult shape ({kind}), never {success,error} — {"kind":"success","text":"mpd-codegraph init: marker (/root/dshProj/my-power-dsh/evidence/wave3/t6-verify/20260911T090649Z/work/o1-run/sessionWS)"}
+PASS mount health: 0 apply-crash signatures across the three boots — signatures=0
+
+PASS — o1-own.result.json (9/9)

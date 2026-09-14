@@ -1,17 +1,3 @@
-# my-power-dsh — License (fork of oh-my-openagent)
-
-本项目是 oh-my-openagent（"OmO"，GitHub: code-yeongyu/oh-my-openagent）的**分叉（fork）衍生仓库**，
-上游 commit 基线：8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29（v5.0.0-beta.20）。
-
-根据上游 SUL-1.0（Sustainable Use License 1.0）的 Notices 条款，特此声明：
-**本项目基于 oh-my-openagent 修改而来（修改内容：适配 DeepSeek Harness 的插件化移植）**，
-全部代码继承上游同一许可：Sustainable Use License 1.0（SUL-1.0），
-上游版权归属于 code-yeongyu / oh-my-opencode 项目及其贡献者；本项目不主张任何超出上游授予的额外权利。
-
-以下为上游许可证全文（未作任何删改）：
-
----
-
 # License
 
 Portions of this software are licensed as follows:

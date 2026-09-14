@@ -1,0 +1,113 @@
+{
+  "task": "t6 independent verification",
+  "slug": "rename-delete-verify",
+  "timestamp": "2026-09-10T13-24-03.000Z",
+  "verdict": "FAILED - two blocking findings",
+  "gitBaseline": {
+    "headBefore": "f69708809ed63a57461aa6730d297afc09e772a3",
+    "headAfter": "f69708809ed63a57461aa6730d297afc09e772a3",
+    "porcelainBefore": 65,
+    "porcelainAfter": 65,
+    "myDelta": [
+      "evidence/workmate/rename-delete-verify/ (untracked, this run)"
+    ]
+  },
+  "isolation": {
+    "realHome": "/root",
+    "realDshHome": "/root/.dsh",
+    "sandboxesAreMktemp": true,
+    "realLibraryHashBefore": {
+      "files": 5,
+      "sha": "ce635a4d2d5b3f6688054cccc65f7f09b1e7cfbdf85e8b4988caef67a1457aee"
+    },
+    "realLibraryHashAfter": {
+      "files": 5,
+      "sha": "ce635a4d2d5b3f6688054cccc65f7f09b1e7cfbdf85e8b4988caef67a1457aee"
+    },
+    "realLibraryUnchanged": true
+  },
+  "parts": {
+    "routesAndLifecycle": {
+      "file": "result.json",
+      "total": 59,
+      "passed": 59,
+      "failed": 0,
+      "failedChecks": []
+    },
+    "toolAndServiceProbe": {
+      "file": "result-tools.json",
+      "total": 19,
+      "passed": 15,
+      "failed": 4,
+      "failedChecks": [
+        "tool.rename 200-equivalent :: tool \"mpd_workmate_rename\" returned invalid output: \"value.ok\" is not a declared property (additionalProperties: false)",
+        "A4 name/uses/createdAt after reflect :: {\"name\":\"probe-2\",\"uses\":1,\"createdAt\":\"2026-09-10T13:27:49.914Z\",\"before\":{\"uses\":0,\"createdAt\":\"2026-09-10T13:27:49.914Z\"}}",
+        "reflect wrote memory :: {\"memoryLen\":null}",
+        "tool.delete purge with confirm ok :: tool \"mpd_workmate_delete\" returned invalid output: \"value.ok\" is not a declared property (additionalProperties: false)"
+      ]
+    },
+    "focusedDefectAndDenyProbe": {
+      "file": "result-focused.json",
+      "total": 19,
+      "passed": 18,
+      "failed": 1
+    }
+  },
+  "gates": {
+    "bun test packages": {
+      "exit": 0,
+      "log": "gate-bun-test.log",
+      "summary": "291 tests, 287 pass, 3 skip, 0 fail"
+    },
+    "bun run typecheck": {
+      "exit": 0,
+      "log": "gate-typecheck.log",
+      "summary": "tsgo --noEmit clean"
+    },
+    "bun run test:qa": {
+      "exit": 0,
+      "log": "gate-test-qa.log",
+      "summary": "all self-tests passed"
+    },
+    "node scripts/verify-vendor.mjs": {
+      "exit": 1,
+      "log": "gate-vendor-final.log",
+      "summary": "FAIL - asset skills treeSha mismatch (locked 81620614..., current 75ae0f79..., 364 files both)"
+    },
+    "dsh --profile mpd-headless --dump-config (isolated DSH_HOME)": {
+      "exit": 0,
+      "log": "boot-check.log",
+      "summary": "ROLES_ROW/WORKMATE_ROW/HASHLINE_ROW present"
+    }
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "blocker",
+      "title": "Both new agent tools are rejected by the harness tool-output validator",
+      "detail": "mpd_workmate_rename and mpd_workmate_delete return {ok:true,...} while their declared output.schema sets additionalProperties:false without declaring ok. The harness rejects the call (tool \"mpd_workmate_rename\" returned invalid output: \"value.ok\" is not a declared property) WHILE the mutation is applied - the agent sees an error for a change that did happen. The HTTP routes are unaffected because they bypass the tool-output validator.",
+      "evidence": "result-focused.json: FINDING.rename-tool-output-rejected, FINDING.delete-archive-tool-output-rejected, FINDING.delete-purge-tool-output-rejected, hazard.*",
+      "owner": "t3"
+    },
+    {
+      "id": "F2",
+      "severity": "blocker",
+      "title": "node scripts/verify-vendor.mjs is RED on the integrated tree",
+      "detail": "skills treeSha mismatch: VENDOR_LOCK.json was refreshed at 20:46:31 but skills/dsh-qa/SKILL.md (21:10:47) and skills/dsh-qa/scripts/readonly-deny.mjs (21:21:52) changed afterwards. File count matches (364); only content drifted. Current aggregate = 75ae0f79b0a66170ecd6f74463ebfa63e573fa0715022e1059dd1d883647f5f5.",
+      "evidence": "gate-vendor-final.log, gate-vendor.log",
+      "owner": "t5 (skills corpus owner)"
+    },
+    {
+      "id": "F3",
+      "severity": "medium",
+      "title": "The credential-free read-only deny proof could not be independently reproduced by t6 (method limit, not a product defect)",
+      "detail": "A boot-time probe cannot create children (dsh.spawnAgent without an agent context dies with \"Cannot read properties of undefined (reading aborted)\"), so the A/B control never reached tools.restrict(). Additionally dsh.hasTool is NOT a faithful proxy for the restrict() view: in the hand-built sandbox profile it reported str_replace_editor as registered while the deployment restrict() view does not know that name - consistent with contract G warning that hasTool reads the GLOBAL view only. The deny fix therefore rests on the static artifact checks (verified) plus t5 end-to-end stub evidence (fresh process, child created and answered), which this task did not independently re-run.",
+      "evidence": "result-focused.json: deny.ab-inconclusive, deny.both-dead-names-are-unregistered (failed as a probe, non-decisive)",
+      "owner": "t9 / captain"
+    }
+  ],
+  "notes": {
+    "toolPathPositives": "rename preserves uses/createdAt byte-for-byte, renamedFrom survives reflect and is exposed by service.get(), stale key stays dead after reflect, confirm-required refusal enforced (result-focused.json).",
+    "routePathPositives": "59/59 checks (result.json): full D matrix, archive restorable, purge removal, collision, orphan, symlinked instance refused, root guard, no home path in error bodies, real library byte-identical."
+  }
+}

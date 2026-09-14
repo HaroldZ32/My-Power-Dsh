@@ -1,0 +1,16 @@
+{
+  "driver": "check4d-revendor-heal",
+  "simulation": "our tools.js + mpd-deltas.js, quality-gates.js replaced by the upstream (HEAD) revision, then the guard's healing pass (write:true, exactly what scripts/vendor-agent-teams.mjs runs)",
+  "check_before_heal": "[patch-agent-teams-fixes] FAIL: delta \"mpd-delta scope-glob\" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (verify-only mode) \u2014 a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js\nexit=1",
+  "heal_write": "[patch-agent-teams-fixes] FAIL: refusing to heal delta \"mpd-delta scope-glob\" into packages/mpd-agent-teams-plugin/lib/quality-gates.js (insertion): it declares \"pathMatchesScope\" but that declaration still exists OUTSIDE any region at line 102 \u2014 the file was re-materialized with the OLD body; remove the old declaration (or restore the marked file) before healing, otherwise the healed module fails to import\nexit=1",
+  "check_after_heal": "[patch-agent-teams-fixes] FAIL: delta \"mpd-delta scope-glob\" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (verify-only mode) \u2014 a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js\nexit=1",
+  "file_unchanged_by_refused_pass": "sha256 after = 4907ff10a45351af8080b0a6203239012e25028c8175bd7588d31a7aa7481b57\nfile-unchanged=yes",
+  "pathMatchesScope_declarations": "1",
+  "refusal_diagnostic": "[patch-agent-teams-fixes] FAIL: refusing to heal delta \"mpd-delta scope-glob\" into packages/mpd-agent-teams-plugin/lib/quality-gates.js (insertion): it declares \"pathMatchesScope\" but that declaration still exists OUTSIDE any region at line 102 \u2014 the file was re-materialized with the OLD body; remove the old declaration (or restore the marked file) before healing, otherwise the healed module fails to import",
+  "exit_codes": {
+    "check_before_heal": 1,
+    "heal_write": 1,
+    "check_after_heal": 1
+  },
+  "passed": true
+}

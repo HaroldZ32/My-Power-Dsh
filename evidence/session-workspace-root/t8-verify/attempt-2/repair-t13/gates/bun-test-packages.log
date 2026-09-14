@@ -1,0 +1,8 @@
+# gate: bun test packages
+# date: 2026-09-11T04:15:13Z
+
+ 309 pass
+ 0 fail
+ 2032 expect() calls
+Ran 309 tests across 35 files. [12.47s]
+[exit code: 0]

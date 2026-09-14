@@ -1,0 +1,24 @@
+[t6-focus] sandbox=/tmp/mpd-t6-focus-y35Wtu HOME=/tmp/mpd-t6-focus-y35Wtu/user-home
+[t6-focus] dsh exit=0
+PASS probe2.executed :: RESULT found
+PASS FIX.rename-tool-output-accepted :: {"id":"rename.raw","ok":true,"value":{"ok":true,"name":"probe-b","from":"probe-a","renamedFrom":["probe-a"]}}
+PASS FIX.delete-archive-tool-output-accepted :: {"id":"delete.archive.raw","ok":true,"value":{"ok":true,"name":"probe-b","archived":"/tmp/mpd-t6-focus-y35Wtu/user-home/.mpd/workmate/.archive/probe-b-2026-09-10T141359Z","purged":false}}
+PASS FIX.delete-purge-tool-output-accepted :: {"id":"delete.purge.raw","ok":true,"value":{"ok":true,"name":"probe-c","archived":null,"purged":true}}
+PASS FIX.no-invalid-output-error-anywhere :: {}
+PASS FIX.rename-tool-returns-ok-and-name :: {"ok":true,"name":"probe-b","from":"probe-a","renamedFrom":["probe-a"]}
+PASS FIX.delete-tool-returns-ok-and-purged :: {"ok":true,"name":"probe-c","archived":null,"purged":true}
+PASS control.init-tool-accepted :: {"id":"init","ok":true,"value":{"name":"probe-a","baseId":"hephaestus","baseName":"Deep Worker","readonly":false,"provider":"deepseek-official","model":"deepseek-v4-flash","path":"/tmp/mpd-t6-focus-y35Wtu/user-home/.mpd/workmate/probe-a","note":"t6 probe2 fixture"}}
+PASS control.reflect-tool-accepted :: {"name":"probe-b","updated":true,"uses":1,"personaChars":1996,"memoryChars":60,"noteChars":114}
+PASS hazard.rename-mutation-applied :: {"id":"service.get.after-rename","name":"probe-b","uses":0,"createdAt":"2026-09-10T14:13:59.179Z","renamedFrom":["probe-a"],"oldKey":null}
+PASS hazard.delete-archive-applied :: {"dir":false,"archive":["probe-b-2026-09-10T141359Z"]}
+PASS hazard.purge-applied :: {"present":false}
+PASS rename preserves uses (tool path) :: {"before":0,"after":0}
+PASS rename preserves createdAt (tool path) :: {"before":"2026-09-10T14:13:59.179Z","after":"2026-09-10T14:13:59.179Z"}
+PASS A4 renamedFrom survives reflect (tool path) :: {"id":"service.get.after-reflect","name":"probe-b","uses":1,"createdAt":"2026-09-10T14:13:59.179Z","renamedFrom":["probe-a"]}
+PASS service.get exposes rename history :: {"keys":["id","name","uses","createdAt","renamedFrom"]}
+PASS confirm-required refusal via tool :: mpd_workmate: purging "probe-c" requires confirm to equal the name exactly
+PASS deny.ab-inconclusive (recorded, never a pass) :: {"A":"Cannot read properties of undefined (reading 'aborted')","B":"Cannot read properties of undefined (reading 'aborted')","C":"Cannot read properties of undefined (reading 'aborted')","D":"Cannot read properties of undefined (reading 'aborted')"}
+PASS deny.lists-are-identical-seven :: {"id":"deny.lists","roles":["write","edit","mpd_hashline_edit","bash","mcp__ast_grep__rewrite","mcp__ast_grep__scan","mcp__lsp__rename"],"workmate":["write","edit","mpd_hashline_edit","bash","mcp__ast_grep__rewrite","mcp__ast_grep__scan","mcp__lsp__rename"]}
+PASS deny.all-seven-names-are-live-registered :: {"write":true,"edit":true,"mpd_hashline_edit":true,"bash":true,"mcp__ast_grep__rewrite":true,"mcp__ast_grep__scan":true,"mcp__lsp__rename":true}
+FAIL deny.both-dead-names-are-unregistered :: {"str_replace_editor":true,"apply_patch":false}
+PASS deny.read-tools-not-denied :: {"read":true,"glob":true,"grep":true}

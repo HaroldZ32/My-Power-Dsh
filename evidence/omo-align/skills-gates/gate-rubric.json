@@ -1,0 +1,580 @@
+{
+  "schema": "mpd.omo-align.skills-gate-rubric/v1",
+  "rubricVersion": "1.1.0",
+  "rulesSha256": {
+    "value": "95cfbc5a8be265cb0a2e7e7eaf0f947a18c0f8065408dc2776447049165e79fa",
+    "canonicalization": "sha256 of JSON.stringify over exactly these sections, keys sorted, separators ',',':' , ensure_ascii=false",
+    "sections": [
+      "dimensions",
+      "weightsAndTotal",
+      "vetoes",
+      "resolutionOrder",
+      "preChecks",
+      "boundarySampleRules",
+      "calibrationChecks"
+    ],
+    "why": "The rule-bearing sections never changed after scoring; this digest makes that verifiable independently of the input-pin/revision edits made to the rest of the file.",
+    "note": "unchanged: digest over the 1.0.x rule sections only (all still present and unmodified)"
+  },
+  "revisions": [
+    {
+      "version": "1.0.1",
+      "when": "before the first row was scored",
+      "kind": "pre-scoring calibration (not a post-hoc change: no score existed yet)",
+      "change": "The SOFT table gained the foreign-team-tool-name vocabulary ('teamTools', 'team tools') because t4's coupling strings contain those spellings; without it the published default rule (unmatched => HARD) would classify a re-wordable tool-name reference as a hard coupling.",
+      "effectOnRules": "none beyond the D4 classification of the two security-research rows (H drops to 1, D4 1 instead of 0); their action is unchanged (adapt-then-install either way).",
+      "ruleCompleteness": "The default stays 'unmatched => HARD (unclassified)' — conservative and mechanical, so an unrecognised coupling string can never be scored as portable."
+    }
+  ],
+  "task": "t8",
+  "produced_by": "Architect (read-only)",
+  "produced_at_utc": "2026-09-13T13:52:00.000Z",
+  "purpose": "A gate for the upstream skill corpus that is FIXED BEFORE SCORING and mechanically applicable: a third party reading t4's gap.json can reproduce every score, every veto and every action. No post-hoc rationalisation: this file is authored before any row is scored, and verdict-table.md pins its sha256.",
+  "authoredBeforeScoring": {
+    "statement": "This rubric was written to disk before the first row scored. verdict-table.md records the sha256 of this file and states that the score table was derived from that exact revision.",
+    "orderOfOperations": [
+      "1. fix inputs (path + sha256)",
+      "2. author gate-rubric.json (this file)",
+      "3. run pre-checks",
+      "4. score rows mechanically per this file",
+      "5. write verdict-table.md + decisions.json"
+    ]
+  },
+  "frozenAuthorities": {
+    "captainRulings": [
+      "Row set = t4 table rows with class in {adoptable, uncertain}; excluded rows get one tail line with count + reason.",
+      "Fixed columns; a missing column fails the gate: id | 上游技能/领域项 | t4 判定 | rubric 各维度得分 | 合计 | 建议动作(install|adapt-then-install|skip) | 实施代价(fileCount+dirCount、是否动 harness seam) | 与 t5 落地能力的重复度(已等价|部分等价|无增量) | 不实施的损失 | 证据引用",
+      "'不实施的损失' may not be empty or 'none': either a concrete capability loss, or '零增量（t5/本地已等价，证据：file:line）'.",
+      "Rubric must be formed before scoring ('先成型再打分'), and the threshold->action mapping must be a predicate, not a case-by-case judgement.",
+      "V1 已等价 => skip (total does not participate); V2 部分等价 => at most adapt-then-install; V3 renaming a frozen name => skip; V4 requiring the task-board model/runner to be replaced => skip.",
+      "Resolution order is fixed: veto -> coupling -> total. Boundary samples are resolved by the same order, never case by case.",
+      "couplingMeasurement present => harnessCoupling may not be judged 'none'.",
+      "portCost fileCount/dirCount null is a distinct 'unknown-cost' band (not 0, not the worst band); it does not block install, but the row's loss cell must say '代价未知 + 需 t9 实测'.",
+      "'重复度' is ONE dimension presented in TWO places: the score dimension absorbs both 'existing skill' and 't5 landed capability' evidence; the column prints its classification mapping.",
+      "Frozen names: agent_teams_* tool names, the generated /agent-teams gesture + /agent-teams-<profile-key> family (mechanism: lib/command.js:3-5,12-17,75-76,95-100 + the profiles.* key set), the profiles.mpd key, the mpd preset id.",
+      "The ledger (docs/omo-parity-ledger.md + .zh-CN.md) is written by t5; t8 only lists which gate conclusions must enter it."
+    ],
+    "frozenContractRef": "evidence/omo-align/requirements/frozen-contract.json (D_FIRST, D_AUTOROUTE_SPLIT, D_SKILLS_WRITER, D_LEDGER, D_UPSTREAM_REF, massUlwSemantics S1-S4, manualEntryNames.slashCommandMechanism.frozenPredicate, openForUser)"
+  },
+  "inputs": {
+    "authoritativeDir": "evidence/omo-align/skills-gates/",
+    "used": {
+      "gap": {
+        "path": "evidence/omo-align/skills-gates/gap.json",
+        "sha256": "148998a64a8a528e7d2d22e9f0848a67687e5ce63004cb3d669b2604a9a7d025",
+        "bytes": 147592,
+        "settled": "re-hashed after a 45 s settle window (AGENTS.md §7) — stable"
+      },
+      "humanTable": {
+        "path": "evidence/omo-align/skills-gates/gap-verdict-table.md",
+        "sha256": "9501610f7d8a5d00f2cbee191d9c284c47656f6368f38dda0d02d7982b0ac385",
+        "bytes": 28929,
+        "settled": "re-hashed after a 45 s settle window — stable"
+      }
+    },
+    "revisionNote": "The producer revised the input while t8 was running. Revision A (present at claim time): gap.json sha256 1e143257a23c0ac0d6119c5f3808ff4e68849ba5fd9e89288b1f4ebbcea3b0e5, 135022 B. Revision B (produced_at_utc 2026-09-13T13:48:58.908Z, settled): the hashes pinned above. Both revisions were scored-checked field by field for all 10 rows (H/S coupling census, D4, D3 penalty, D2 max, P1 same-name flag): IDENTICAL ⇒ no score, veto or action changed. The pins above are the settled revision.",
+    "relocationNote": "At t8 claim time the authority dir did not exist and t4 output lived at the contract path evidence/omo-align/research/skills-and-capability-gap/; during t8 the producer MOVED it (not copied) to the authoritative dir with the renamed files gap.json + gap-verdict-table.md. The contract-path copy no longer exists. Scores below are pinned to the sha256 above; a later revision requires a re-run.",
+    "rowSetRule": "items[] where class == 'adoptable' or class == 'uncertain'. Items with class 'already-have' or 'not-applicable' are NOT scored.",
+    "expectedRowSetSize": 10,
+    "nearDuplicatePolicy": "Rows that are the same skill in two upstream roots (same name, >=95% same semantics) are scored separately but counted ONCE in the action tally; the dedupe pair is named in verdict-table.md.",
+    "fieldPolicy": "A row missing any of id/class/upstreamSemantics/repoCounterpart/overlap/upstreamHarnessCoupling/couplingMeasurement/portCost/relevanceToGoals/evidenceCitations is marked blocked-scoring instead of estimated."
+  },
+  "preChecks": [
+    {
+      "id": "P1",
+      "name": "same-name local-corpus check",
+      "why": "t4 emits repoCounterpart as the string 'null ...' for two rows whose skill NAME already exists in this repo's skills/. Scoring 'no counterpart' would overstate the increment.",
+      "procedure": "ls -d skills/<name> for every scored row; if a same-name local skill dir exists, the row's repetition evidence MUST cite it (and its measured drift) even when t4 wrote repoCounterpart starting with 'null'.",
+      "appliesTo": [
+        "skills-loader-core/frontend",
+        "skills-loader-core/git-master"
+      ]
+    },
+    {
+      "id": "P2",
+      "name": "coupling measurement floor",
+      "why": "captain ruling + t4 emits raw token counts, so a measured-but-short coupling list cannot be scored as 'none'.",
+      "procedure": "if couplingMeasurement is a non-empty string and the coupling list is empty or the literal 'none', treat it as one HARD 'unclassified' class (D4 <= 1)."
+    },
+    {
+      "id": "P3",
+      "name": "unknown-cost band",
+      "procedure": "if portCost.fileCount and portCost.dirCount are BOTH null, D3 = 'U' (unknown). 'U' contributes 1 point, never blocks install, and forces the loss cell to '代价未知 + 需 t9 实测'."
+    },
+    {
+      "id": "P4",
+      "name": "duplicate id census",
+      "procedure": "count items and unique ids; report duplicate ids as an input-shape deviation (they do not enter the scored row set in this dataset)."
+    }
+  ],
+  "dimensions": [
+    {
+      "id": "D1",
+      "name": "能力影响面 (capability impact)",
+      "weight": 3,
+      "orientation": "higher is a better candidate",
+      "bands": [
+        {
+          "score": 0,
+          "label": "no-gain",
+          "predicate": "capabilityClass in {target-surface-absent, equivalent-local-capability}"
+        },
+        {
+          "score": 1,
+          "label": "marginal/refresh",
+          "predicate": "capabilityClass in {same-name-counterpart-differs, marginal-variant-of-existing-intent}"
+        },
+        {
+          "score": 2,
+          "label": "new capability class",
+          "predicate": "capabilityClass == new-capability-class"
+        },
+        {
+          "score": 3,
+          "label": "changes how work runs",
+          "predicate": "capabilityClass == cross-task-mechanism"
+        }
+      ],
+      "capabilityClassRules": {
+        "target-surface-absent": "the skill's content targets a surface that does not exist in this repo (e.g. another product's CLI/UX). Evidence: upstreamSemantics + repoCounterpart.",
+        "equivalent-local-capability": "t4 overlap states the local mechanism already covers it.",
+        "same-name-counterpart-differs": "P1 found skills/<name> locally but SKILL.md content differs materially (line-count/file-count drift measured).",
+        "marginal-variant-of-existing-intent": "t4 overlap names an existing local skill covering a neighbouring intent.",
+        "new-capability-class": "no local counterpart, and the skill carries a workflow/artifact type this repo does not have.",
+        "cross-task-mechanism": "the skill changes how work is executed across tasks (runner/DAG/engine class), not just adds content."
+      },
+      "semiMechanical": true,
+      "evidenceRequirement": "every row cites the capabilityClass + the file:line/field that fixed it"
+    },
+    {
+      "id": "D2",
+      "name": "与本次四项目标的相关性 (relevance to the four goals)",
+      "weight": 3,
+      "orientation": "higher is a better candidate",
+      "mechanical": true,
+      "procedure": "map t4 relevanceToGoals {高->3, 中->2, 低->1, 无->0}; D2 = max over the four goal values; record the argmax goal id.",
+      "goals": {
+        "G1": "功能对齐 OMO",
+        "G2": "agent-teams 不再默认",
+        "G3": "复杂任务自动路由",
+        "G4": "mass-ulw / DAG 语义"
+      }
+    },
+    {
+      "id": "D3",
+      "name": "移植成本 (port cost; higher = cheaper)",
+      "weight": 1,
+      "orientation": "higher is cheaper",
+      "mechanical": true,
+      "procedure": "fileTier = 0 if fileCount<=1; 1 if fileCount in 2..3; 2 if fileCount in 4..20; 3 if fileCount>20. penalty = fileTier + 2*harnessSeamChange + 1*binaryDependency + 1*credentialDependency. D3 = 3 if penalty==0; 2 if penalty==1; 1 if penalty in 2..3; 0 if penalty>=4.",
+      "unknownCost": {
+        "trigger": "fileCount == null AND dirCount == null",
+        "value": "U",
+        "contribution": 1,
+        "note": "distinct band: not 0, not the worst; does not block install"
+      }
+    },
+    {
+      "id": "D4",
+      "name": "上游 harness 专有耦合度 (upstream harness coupling; higher = more portable)",
+      "weight": 1,
+      "orientation": "higher = less coupling",
+      "mechanical": true,
+      "procedure": "Classify every entry of upstreamHarnessCoupling with the keyword table below (first match wins, case-insensitive). HARD = count of hard entries; SOFT = count of soft entries. If the raw list is the literal 'none' or empty AND couplingMeasurement is empty/absent => D4 = 3. Else if HARD == 0 => D4 = 2. Else if HARD == 1 => D4 = 1. Else D4 = 0.",
+      "hardClassTable": [
+        {
+          "class": "upstream-run-engine",
+          "patterns": [
+            "run_?id",
+            "journal",
+            "OMO_DAG_SDK_ROOT",
+            "library\\.js",
+            "tool\\.workflow",
+            "workflowTool",
+            "workflow actions",
+            "actions start",
+            "sdk\\.define",
+            "eval cell",
+            "Python fallback"
+          ]
+        },
+        {
+          "class": "env-or-home-path",
+          "patterns": [
+            "\\benv ",
+            "\\$[A-Z_]{2,}",
+            "\\.omo/",
+            "\\.agent-teams"
+          ]
+        },
+        {
+          "class": "foreign-cli",
+          "patterns": [
+            "\\bsenpi\\b",
+            "\\bCLI\\b",
+            "\\bCLI subcommand"
+          ]
+        },
+        {
+          "class": "credential",
+          "patterns": [
+            "cred",
+            "token"
+          ]
+        },
+        {
+          "class": "binary",
+          "patterns": [
+            "binar(y|ies)"
+          ]
+        },
+        {
+          "class": "service-rpc",
+          "patterns": [
+            "RPC",
+            "omo\\.dag",
+            "\\bservice\\b"
+          ]
+        },
+        {
+          "class": "foreign-team-tool",
+          "patterns": [
+            "team_create",
+            "task_send",
+            "team_delete"
+          ]
+        }
+      ],
+      "softClassTable": [
+        {
+          "class": "category-routing",
+          "patterns": [
+            "category.?routing",
+            "category"
+          ]
+        },
+        {
+          "class": "foreign-task-tool-name",
+          "patterns": [
+            "taskTool",
+            "task tool",
+            "task\\("
+          ]
+        },
+        {
+          "class": "foreign-team-tool-name",
+          "patterns": [
+            "teamTools",
+            "team tools",
+            "team-tool"
+          ]
+        }
+      ],
+      "default": "HARD 'unclassified' (conservative: an unmatched coupling string is never treated as portable)"
+    },
+    {
+      "id": "D5",
+      "name": "与现有技能的重复/冲突度 (duplication vs existing local capability; higher = less duplication)",
+      "weight": 2,
+      "orientation": "higher = less duplication",
+      "semiMechanical": true,
+      "presentation": "ONE dimension in TWO places: this score AND the verdict-table column '重复度' (classification mapping).",
+      "classificationDerivation": [
+        {
+          "value": "已等价",
+          "predicate": "t4 overlap states the local mechanism already covers the capability (marker phrases: 'local mechanism is', 'SAME concept', 'already implemented locally', 'duplicate an existing capability'), OR P1 finds a same-name local SKILL.md that is byte-identical.",
+          "score": 0
+        },
+        {
+          "value": "部分等价",
+          "predicate": "t4 overlap names a local counterpart with partial coverage, OR P1 finds a same-name local skill whose content differs materially, OR the row is partly covered by an existing local skill.",
+          "score": 1
+        },
+        {
+          "value": "无增量(正交)",
+          "predicate": "t4 overlap is 'none' AND P1 finds no same-name local skill AND couplingMeasurement does not declare the mechanism impossible locally.",
+          "score": 3
+        },
+        {
+          "value": "无增量(不可用)",
+          "predicate": "couplingMeasurement / overlap declares the usable half inseparable from an upstream-only mechanism ('not separable', 'harness lacks', 'no local counterpart (t2 D3)').",
+          "score": 0
+        }
+      ],
+      "columnVocabulary": [
+        "已等价",
+        "部分等价",
+        "无增量(正交)",
+        "无增量(不可用)"
+      ],
+      "columnNote": "The three frozen words are preserved as prefixes; the parenthetical disambiguates the two 无增量 sub-cases (正交 = adds nothing but duplicates nothing; 不可用 = the mechanism cannot exist here)."
+    }
+  ],
+  "weightsAndTotal": {
+    "formula": "total = 3*D1 + 3*D2 + 1*D3 + 1*D4 + 2*D5",
+    "maxTotal": 30,
+    "threshold": 15,
+    "thresholdRationale": "15 = 50% of 30: a candidate must earn at least half of the weighted evidence before it is worth a skills/** change and its VENDOR_LOCK re-pin."
+  },
+  "vetoes": [
+    {
+      "id": "V1",
+      "predicate": "重复度 == 已等价",
+      "effect": "action = skip; total does not participate; loss = 零增量",
+      "authority": "captain ruling (frozen)"
+    },
+    {
+      "id": "V2",
+      "predicate": "重复度 == 部分等价",
+      "effect": "action is CAPPED at adapt-then-install (install is forbidden for that row)",
+      "authority": "captain ruling (frozen)"
+    },
+    {
+      "id": "V3",
+      "predicate": "the skill's usable path requires renaming or changing a frozen name (agent_teams_* tools; the /agent-teams gesture and the generated /agent-teams-<profile-key> family, i.e. lib/command.js:3-5,12-17,75-76,95-100 + the profiles.* key set; the profiles.mpd key; the mpd preset id)",
+      "effect": "action = skip regardless of total",
+      "authority": "captain ruling + frozenInvariants[1] + frozen-contract.manualEntryNames"
+    },
+    {
+      "id": "V4",
+      "predicate": "(dagRunId AND mechanism) OR (envKeyOmo AND workflowTool AND mechanism)",
+      "effect": "action = skip regardless of total; every V4 skip row MUST name the coupling class that fired it",
+      "authority": "frozen-contract residualFieldGap (e)",
+      "expectedHits": [
+        "omo-senpi/mass-ulw",
+        "omo-senpi/dag-library"
+      ]
+    }
+  ],
+  "resolutionOrder": {
+    "steps": [
+      "1. apply pre-checks P1-P3 to the row",
+      "2. apply vetoes V1, V3, V4 (any hit => action = skip, stop)",
+      "3. apply the coupling gate: couplingNone = (D4 == 3)",
+      "4. apply the total gate: total >= 15",
+      "5. apply the V2 cap",
+      "6. any tie/boundary is resolved by THIS order, never case by case"
+    ],
+    "actionMapping": [
+      {
+        "when": "veto fired",
+        "action": "skip"
+      },
+      {
+        "when": "total >= 15 AND D4 == 3",
+        "action": "install"
+      },
+      {
+        "when": "total >= 15 AND D4 < 3",
+        "action": "adapt-then-install"
+      },
+      {
+        "when": "total < 15",
+        "action": "skip"
+      }
+    ]
+  },
+  "boundarySampleRules": {
+    "give-me-tips": "class = not-applicable (out of the scored row set). Counterfactual score if forced into the row set: D1=0 (target-surface-absent: a tip tour for another product's CLI), D2=1, D3=2 (1 file, no seam, credential mention), D4=1 (HARD credential + SOFT task/category), D5=3 (no local counterpart) => total 12 < 15 => skip. Two independent reasons: class exclusion and the total gate.",
+    "onboarding": "class = not-applicable (out of the scored row set). Counterfactual: D1=0 (first-run UX of another product), D2=1, D3=1 (seam + credential), D4=0 (HARD senpi CLI + env/home path), D5=3 => total 10 < 15 => skip.",
+    "rule": "A boundary sample is never special-cased: it is scored by the same pre-checks/vetoes/gates, and BOTH the exclusion rule and the counterfactual arithmetic are printed."
+  },
+  "calibrationChecks": [
+    {
+      "id": "C1",
+      "assertion": "install may legitimately be 0: the row set may contain no 'adoptable' item and no row whose raw coupling is 'none'. A gate that always expects >= 1 install row would be unsound (t4: adoptable=0)."
+    },
+    {
+      "id": "C2",
+      "assertion": "every scored row's action must be re-derivable from (repetition value, D4, total) alone; if a reviewer cannot re-derive it, the row fails this gate."
+    },
+    {
+      "id": "C3",
+      "assertion": "a row with repetition == 已等价 must NOT be listed as a candidate in decisions.json."
+    },
+    {
+      "id": "C4",
+      "assertion": "V3 must be evaluated for every row (at least one row must record 'not triggered' with the frozen-name set it was compared against), otherwise the veto could be silently skipped."
+    }
+  ],
+  "outputs": {
+    "verdictTable": {
+      "path": "evidence/omo-align/skills-gates/verdict-table.md",
+      "requiredColumns": [
+        "id",
+        "上游技能/领域项",
+        "t4 判定",
+        "rubric 各维度得分",
+        "合计",
+        "建议动作(install|adapt-then-install|skip)",
+        "实施代价(fileCount+dirCount、是否动 harness seam)",
+        "与 t5 落地能力的重复度(已等价|部分等价|无增量)",
+        "不实施的损失",
+        "证据引用"
+      ],
+      "perRowSections": [
+        "上游语义摘要",
+        "本仓库对应物",
+        "评分明细",
+        "建议动作",
+        "实施代价",
+        "风险"
+      ]
+    },
+    "decisions": {
+      "path": "evidence/omo-align/skills-gates/decisions.json",
+      "required": [
+        "questions for the user",
+        "recommended option per question",
+        "concrete loss if not implemented",
+        "re-pin plan (single writer, exact re-pin count, expected fileCount)",
+        "which conclusions must enter docs/omo-parity-ledger.md"
+      ]
+    }
+  },
+  "supersedes": "1.0.1",
+  "revisionNote": "1.1.0 adds the pre-declared class/evidence/D3/D4 rules signed by the captain at GO. It does NOT modify any 1.0.x rule section, so the original rulesSha256 is preserved verbatim; the extended digest is rulesSha256_v1_1_0.",
+  "classMapping": {
+    "authority": "frozen-contract.json::t4Requirements.residualFieldGap (a)-(i) — this text wins over any captain message",
+    "contractSha256": "a0d28ebeaf3f204e4a33480670f44f204415b16758999ce22309a99e3c9c2d65",
+    "contractBytes": 31705,
+    "seamTriggerAxis_D3_V4": [
+      "envKeyOmo",
+      "teamTools",
+      "dagRunId",
+      "workflowTool"
+    ],
+    "softAxis_D4_only": [
+      "categoryRouting",
+      "cliOmo",
+      "omoDir",
+      "taskTool",
+      "binaries",
+      "creds"
+    ],
+    "rule": "seam-trigger classes are the ONLY ones that can produce a D3 penalty or a V4 hit; soft classes are annotation-only and never add to D3",
+    "unlistedClassHandling": "no third band: an unlisted class (goalTool observed) falls to the soft/D4 axis and is annotation-only",
+    "caseSensitivity": "the frozen class table is CASE-SENSITIVE; uppercase prose never entered a class (git-master \"RESET WORKFLOW\" / \"Autosquash Workflow\" are NOT hits); re-deriving with /i is non-compliant",
+    "contractPinNote": "pinned to the revision READ AT FINALISATION per the contract authorityNote (31,705 B / a0d28ebe…, mtime 22:38:13); the implementation-time revision was 28,243 B / a9dfb311… and the (a)(b)(g)/rowSet/binaryDependencyRule clauses are textually identical; the captain advisory three-piece (28,403 B / 380ffc41…) is an earlier revision and is recorded, not used as the pin."
+  },
+  "evidenceQuality": {
+    "rule": "precedence over classMapping: only a hit whose evidenceQuality = mechanism counts toward D4; a prose hit is recorded but neither scored nor able to trigger V4",
+    "measuredProseHits": [
+      {
+        "row": "skills-loader-core/dev-browser",
+        "class": "workflowTool",
+        "evidence": "\"workflow loop\" prose"
+      },
+      {
+        "row": "skills-loader-core/frontend",
+        "class": "workflowTool",
+        "evidence": "\"Design System and Component Workflow\" prose"
+      }
+    ],
+    "environmentPrerequisites": {
+      "classes": [
+        "binaries",
+        "creds",
+        "omoDir",
+        "cliOmo"
+      ],
+      "rule": "when the hit is an ordinary environment prerequisite or a domain word (bun in a script, credential exposure, .omo path, senpi CLI) it is recorded as \"environment prerequisite: needs X\" and NEVER scores",
+      "note": "a binary hit that is backed by real executable commands inside the row own SKILL.md is MECHANISM for D4 and also satisfies binaryDependency in the D3 rule"
+    }
+  },
+  "D3Rule": {
+    "formula": "D3 = 1 + (counted TRUE seam booleans), clamped to [0,3]",
+    "countedBooleans": [
+      "harnessSeamChange",
+      "binaryDependency"
+    ],
+    "harnessSeamChange": "TRUE iff a SEAM TRIGGER class is present WITH mechanism evidence",
+    "binaryDependency": "TRUE iff the row own SKILL.md carries an executable command that is part of the porting work",
+    "tokenSums": "NEVER used (git-master: count 0 vs sum 3; mass-ulw: count 1 vs sum 36)",
+    "baseline": "1 (never 0: a port is never literally free)",
+    "rawLookup": "raw/upstream-skill-records.json; ALL TEN rows have a record — skills-loader-core/security-research has an EMPTY name field and must be looked up BY PATH; there is NO unknown-fallback row",
+    "t19": "Explorer measured no-seam-required for skills/remove-deadcode: text-level tool renaming inside the ported SKILL.md only, zero repository-side change => harnessSeamChange FALSE, counted = 1 via binaryDependency => D3 = 2",
+    "binaryDependencyWorkedValues": {
+      "source": "frozen-contract.json::t4Requirements.binaryDependencyRule",
+      "TRUE": [
+        "skills/remove-deadcode (bun run typecheck = the skill own verification step)",
+        "skills/tech-debt-audit (bun test)",
+        "skills-loader-core/dev-browser (npx Playwright launch)",
+        "skills-loader-core/frontend (uv/make build step)",
+        "omo-senpi/dag-library (node/python harness coupling)",
+        "omo-senpi/mass-ulw (node/python harness coupling)"
+      ],
+      "FALSE": [
+        "skills/security-research(.agents)",
+        "omo-codex/rules",
+        "skills-loader-core/security-research",
+        "skills-loader-core/git-master (its 16 bash/make blocks TEACH git = subject matter, nothing must be installed to PORT it)"
+      ]
+    }
+  },
+  "d4Mapping": {
+    "input": "counted (mechanism) hits among the SOFT axis classes, per evidenceQuality",
+    "bands": "0 counted => 2; 1 counted => 1; >=2 counted => 0",
+    "cap": "couplingMeasurement != none caps D4 != 3 (contract (f)); all ten rows are non-none, so D4 <= 2 and the 1.0.x \"none => 3\" band is unreachable here",
+    "publishedBy": "this gate (rubric 1.0.1 mapping, re-applied to the counted soft-axis input)"
+  },
+  "threshold": {
+    "X": 15,
+    "rule": "total >= 15 => adapt-then-install; total < 15 => skip; vetoes apply BEFORE the threshold",
+    "borderline": "a row with total == 15 and no veto must be flagged threshold-borderline and listed in userApprovedOverrides",
+    "userApprovedOverrides": "user-approved candidates that fall to/below the threshold must be listed with their score, both rule generations and a confirm-or-withdraw note"
+  },
+  "complexityGateSync": {
+    "note": "rubric-side sync only (no gate scoring impact): the frozen complexity gate signal C was revised in the contract to three sub-signals (C1 enumerated lines / C2 action verbs / C3 action clauses) with >= 2 of 3 satisfied; the revision note in frozen-contract.json::complexityGate.signals.C_enumeratedSteps.revisionNote supersedes the original literal wording. Recorded here because the gate references the four-goal set that the complexity gate operationalises."
+  },
+  "rulesSha256_v1_1_0": {
+    "value": "23ed8c7e65779f95e478d248436f58c3961ed8c86ee11088efba7e96e8c242e2",
+    "sections": [
+      "dimensions",
+      "weightsAndTotal",
+      "vetoes",
+      "resolutionOrder",
+      "preChecks",
+      "boundarySampleRules",
+      "calibrationChecks",
+      "classMapping",
+      "evidenceQuality",
+      "D3Rule",
+      "d4Mapping",
+      "threshold"
+    ],
+    "note": "recomputed after the pin refresh inside classMapping (contractSha256/contractBytes/contractPinNote); the 1.0.x rulesSha256 is untouched"
+  },
+  "flagDerivationRule": {
+    "aliasOf": "D3Rule",
+    "note": "The captain delivery list names this section flagDerivationRule; it is the SAME rule as D3Rule (kept as an alias so a reviewer matching the list finds it). Not part of rulesSha256_v1_1_0 section list, which is unchanged by this alias.",
+    "formula": "D3 = 1 + (counted TRUE seam booleans), clamped to [0,3]",
+    "countedBooleans": [
+      "harnessSeamChange",
+      "binaryDependency"
+    ],
+    "harnessSeamChange": "TRUE iff a SEAM TRIGGER class is present WITH mechanism evidence",
+    "binaryDependency": "TRUE iff the row own SKILL.md carries an executable command that is part of the porting work",
+    "credentialDependency": "never scores (annotation only)",
+    "tokenSums": "NEVER used",
+    "rawLookup": "raw/upstream-skill-records.json; ALL TEN rows have a record — skills-loader-core/security-research has an EMPTY name field and must be looked up BY PATH; there is NO unknown-fallback row",
+    "binaryDependencyWorkedValues": {
+      "source": "frozen-contract.json::t4Requirements.binaryDependencyRule",
+      "TRUE": [
+        "skills/remove-deadcode (bun run typecheck = the skill own verification step)",
+        "skills/tech-debt-audit (bun test)",
+        "skills-loader-core/dev-browser (npx Playwright launch)",
+        "skills-loader-core/frontend (uv/make build step)",
+        "omo-senpi/dag-library (node/python harness coupling)",
+        "omo-senpi/mass-ulw (node/python harness coupling)"
+      ],
+      "FALSE": [
+        "skills/security-research(.agents)",
+        "omo-codex/rules",
+        "skills-loader-core/security-research",
+        "skills-loader-core/git-master (its 16 bash/make blocks TEACH git = subject matter, nothing must be installed to PORT it)"
+      ]
+    }
+  },
+  "rubricVersionNote": "1.1.0 + flagDerivationRule alias (name only; no rule change)"
+}

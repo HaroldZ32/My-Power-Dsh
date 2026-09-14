@@ -1,0 +1,60 @@
+install exit=0
+
+---
+
+$ dsh --profile mpd-headless "/agent-teams-mpd fix the flaky test"
+[[exit=1]]
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-r4-lD6wnH/happy/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+
+dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-official"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment
+
+
+---
+
+$ dsh --profile mpd-headless "/agent-teams-mpd fix the flaky test"
+[[exit=1]]
+[mpd-codegraph] init status=marker binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-r4-lD6wnH/happy/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+
+dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-official"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment
+
+
+---
+
+$ dsh --profile mpd-headless "/agent-teams --profile does-not-exist do something"
+[[exit=1]]
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-r4-lD6wnH/unknown/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+
+dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-official"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment
+
+
+---
+
+$ dsh --profile mpd-headless "/agent-teams-mpd fix the flaky test"
+[[exit=1]]
+file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1197
+		throw new Error(`${binName}: failed to parse ${label} ${file}: ${String(error)}`);
+		      ^
+
+Error: dsh: failed to parse patches /tmp/mpd-r4-lD6wnH/disabled/cordis.patch.yml: YAMLException: bad indentation of a mapping entry (119:13)
+
+ 116 |       reclaimStaleAfterMs: 3600000
+ 117 |       sessionTeamPolicy:
+ 118 |       slashCommand: false
+ 119 |         mode: "off"
+-------------------^
+ 120 |         autoRoute: true
+ 121 |         profile: "mpd"
+    at parsePatchList (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1197:9)
+    at loadOptionalPatches (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1149:9)
+    at composeProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:238:22)
+    at async runProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:283:19)
+    at async runCli (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:146:4)
+    at async file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:168:23
+
+Node.js v24.16.0

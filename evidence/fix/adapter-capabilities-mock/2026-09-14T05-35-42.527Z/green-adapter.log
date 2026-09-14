@@ -1,0 +1,33 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-dsh-adapter-plugin/test/adapter.test.ts:
+(pass) capabilities > reports every seam of a full harness [1.16ms]
+(pass) capabilities > reports absent seams without throwing [0.13ms]
+(pass) tool plane > registerTool normalizes schema, render and the (args, exec) call shape [0.89ms]
+(pass) tool plane > registerTool keeps a caller-supplied schema and render [0.16ms]
+(pass) tool plane > services resolve through ctx.get OR a plain ctx property [0.16ms]
+(pass) tool plane > registerTools registers every definition and disposes them together [0.39ms]
+(pass) tool plane > registerTool without a tools service fails with an actionable error [0.31ms]
+(pass) tool plane > guardTool passes the exec through and installs on the tools service [0.30ms]
+(pass) tool plane > onPostToolExecute owns next() and passes the downstream decision through [0.57ms]
+(pass) tool plane > onPostToolExecute lets a listener replace the decision [0.21ms]
+(pass) tool plane > onPostToolExecute is a no-op when the harness has no event bus [0.06ms]
+(pass) tool plane > hasTool + toolRuntime expose internal tool calls without raw ctx access [0.94ms]
+(pass) tool plane > executeTool normalizes success, tool error, thrown error and a missing runtime [0.46ms]
+(pass) agent plane > spawnAgent normalizes prompt, flat route and the result shape [0.70ms]
+(pass) agent plane > spawnAgent accepts pre-built prompt blocks and agentOptions [0.26ms]
+(pass) agent plane > spawnAgent tolerates a harness that returns no result [0.25ms]
+(pass) agent plane > spawnAgent without a subagent service fails with an actionable error [0.31ms]
+(pass) skill + preset plane > skill provider registration, catalog read and body load [0.67ms]
+(pass) skill + preset plane > skill calls without a skills service fail with actionable errors [0.34ms]
+(pass) skill + preset plane > resolvePreset returns a normalized preset record [0.45ms]
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+(pass) row entry > apply provides the mpdDsh service [0.23ms]
+(pass) row entry > decision helpers use the harness feedback key [0.10ms]
+
+packages/mpd-dsh-adapter-plugin/test/adapter.test.ts:
+
+ 22 pass
+ 0 fail
+ 60 expect() calls
+Ran 22 tests across 2 files. [115.00ms]

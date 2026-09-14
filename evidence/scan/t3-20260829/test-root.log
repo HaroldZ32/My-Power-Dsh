@@ -1,0 +1,125 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-ulw-plugin/test/engine.test.ts:
+(pass) engine policy: plan -> round -> verify -> quality gate with ledger [5.76ms]
+(pass) engine alias and 2-fruitless-waves stop [0.65ms]
+(pass) DeepSeek V4 / DSH contract: role text in prompt (no persona field), pro for planner/reviewer, compact handoff [0.91ms]
+
+packages/mpd-memory-plugin/test/memory.test.ts:
+(pass) git backend: write -> commit -> read -> reflection due [23.23ms]
+(pass) svn backend REAL svn CLI: repo create, checkout, commit, log [89.19ms]
+(pass) both vcs: commits to git and svn [141.63ms]
+(pass) svn backend wiring with fake svn CLIs [8.76ms]
+
+packages/mpd-config-plugin/test/config.test.ts:
+(pass) stripJsonc removes comments and trailing commas [0.35ms]
+(pass) stripJsonc keeps comments inside strings [0.04ms]
+(pass) deepMerge project wins, nested merged, pollution safe [0.27ms]
+(pass) mpd_config_get result is lossless JSON for a missing key (value null, never undefined) [0.98ms]
+(pass) mpdConfig service get resolves dot-paths (consistent with mpd_config_get) [0.49ms]
+
+packages/mpd-roles-plugin/test/roles.test.ts:
+(pass) roster: 11 roles, unique ids, non-empty chains and fields [0.16ms]
+(pass) persona assets exist for every role and contain real instructions [0.65ms]
+(pass) normalizeRoleKey: canonical, chain keys and legacy mpd- ids [0.12ms]
+(pass) mpdRoles service: list 11, get resolves aliases, unknown is null [0.76ms]
+(pass) mpd_role_persona returns the extracted persona text [0.29ms]
+(pass) mpd_role_spawn: read-only roles get write-deny toolFilter, workers none [0.76ms]
+(pass) mpd_roles_list returns the full roster summary [0.32ms]
+(pass) read-only deny list covers every write-capable tool (no shell/AST/LSP write bypass) [0.30ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/scope-semantics.test.mjs:
+(pass) B5: a directory pattern covers its contents WITHOUT a trailing slash [0.29ms]
+(pass) B5: trailing slash and non-trailing slash are equivalent [0.07ms]
+(pass) B5: exact file patterns still match exactly, siblings and suffixes do not [0.07ms]
+(pass) B5: root pattern matches everything; illegal/absolute patterns never match [0.09ms]
+(pass) B5: classifyChangedPath — directory inScope covers files, outOfScope wins [0.26ms]
+(pass) B6: completion reports ALL undeclared paths at once with the owning task id and a fix hint [0.62ms]
+(pass) B6: completion passes when a directory pattern (no trailing slash) covers every changed path [0.10ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/quality-loop.test.mjs:
+(pass) Fix1: review auto-wires reviewedTaskId into dependencies (premature dispatch) [0.74ms]
+(pass) Fix1: repair auto-wires sourceTaskId into dependencies [0.12ms]
+(pass) Fix2: unsatisfiedDependencies treats cancelled as satisfied, failed still blocks [0.08ms]
+(pass) Fix2: pending dependents blocked only by cancelled deps are cascaded (no deadlock) [0.38ms]
+(pass) Fix3: planQualityFollowUp links reasonTaskId and reason reaches the repair prompt [1.29ms]
+(pass) Fix4: reject without a completed source notifies the captain only (no repair, no escalation) [0.11ms]
+(pass) Fix4: genuine reject of a completed source still escalates [0.08ms]
+(pass) Fix3b: reasonTaskId / reassignReason survive task validation [0.21ms]
+(pass) Fix3c: assignmentPrompt renders reassignReason and captain guidance digest [0.52ms]
+
+packages/mpd-agent-teams-plugin/test/workmate-key.test.ts:
+(pass) workmateKey maps the five multi-word roster members to kebab keys [0.13ms]
+(pass) workmateKey mirrors sanitizeName edge cases [0.06ms]
+
+packages/mpd-boulder-plugin/test/boulder.test.ts:
+(pass) session ids are dsh-prefixed by default [0.13ms]
+(pass) start, timer, complete lifecycle [2.36ms]
+(pass) plan progress parses TODOs and verification wave [1.64ms]
+(pass) mpd_boulder_status omits planProgress when null (lossless JSON contract) [1.08ms]
+
+packages/mpd-workmate-plugin/test/workmate.test.ts:
+(pass) sanitizeName / capText / autoNote / scoreMatch units [0.78ms]
+(pass) init → list → reflect → match lifecycle with a sandbox HOME [5.75ms]
+(pass) spawn carries persona+memory+note, reflect instruction, readonly deny, own route [1.63ms]
+(pass) workmate library root is under HOME and not in cwd [0.31ms]
+
+packages/mpd-modelchain-plugin/test/modelchain.test.ts:
+(pass) DEFAULT_CHAINS uses kebab-case keys and only deepseek-official providers [0.13ms]
+(pass) resolveRole resolves kebab-case and legacy camelCase keys to the same chain [0.19ms]
+(pass) mpd_modelchain_resolve resolves kebab keys and drops the dead skipped field [0.53ms]
+(pass) modelchain.sisyphus-junior config key is resolved through the mpdConfig service [0.31ms]
+
+packages/mpd-tools-plugin/test/tools.test.ts:
+(pass) write-guard allows first write to a new file [0.30ms]
+(pass) write-guard allows idempotent rewrite of identical content [0.12ms]
+(pass) write-guard denies silent overwrite of differing content [0.10ms]
+(pass) write-guard allows idempotent rewrite of a >1MB file (full-file compare) [4.09ms]
+
+packages/mpd-hashline-plugin/test/hashline.test.ts:
+(pass) hashline view shows LINE#HASH|content [0.63ms]
+(pass) anchored replace on plain content [1.95ms]
+(pass) mismatched anchor throws [0.43ms]
+(pass) append and prepend anchored [0.29ms]
+(pass) replace range with end anchor [0.49ms]
+(pass) unified diff shape [0.39ms]
+
+packages/mpd-comment-checker-plugin/test/comment-checker.test.ts:
+(skip) binary resolves from toolchain
+(skip) comment file triggers detection (exit 2)
+(skip) clean file passes (exit 0)
+
+dist/mpd-package/packages/mpd-agent-teams-plugin/self-fix-tests/scope-semantics.test.mjs:
+(pass) B5: a directory pattern covers its contents WITHOUT a trailing slash [0.10ms]
+(pass) B5: trailing slash and non-trailing slash are equivalent [0.02ms]
+(pass) B5: exact file patterns still match exactly, siblings and suffixes do not [0.05ms]
+(pass) B5: root pattern matches everything; illegal/absolute patterns never match [0.02ms]
+(pass) B5: classifyChangedPath — directory inScope covers files, outOfScope wins [0.08ms]
+(pass) B6: completion reports ALL undeclared paths at once with the owning task id and a fix hint [0.13ms]
+(pass) B6: completion passes when a directory pattern (no trailing slash) covers every changed path [0.04ms]
+
+dist/mpd-package/packages/mpd-agent-teams-plugin/self-fix-tests/quality-loop.test.mjs:
+(pass) Fix1: review auto-wires reviewedTaskId into dependencies (premature dispatch) [0.18ms]
+(pass) Fix1: repair auto-wires sourceTaskId into dependencies [0.07ms]
+(pass) Fix2: unsatisfiedDependencies treats cancelled as satisfied, failed still blocks [0.06ms]
+(pass) Fix2: pending dependents blocked only by cancelled deps are cascaded (no deadlock) [0.10ms]
+(pass) Fix3: planQualityFollowUp links reasonTaskId and reason reaches the repair prompt [0.30ms]
+(pass) Fix4: reject without a completed source notifies the captain only (no repair, no escalation) [0.06ms]
+(pass) Fix4: genuine reject of a completed source still escalates [0.02ms]
+(pass) Fix3b: reasonTaskId / reassignReason survive task validation [0.04ms]
+(pass) Fix3c: assignmentPrompt renders reassignReason and captain guidance digest [0.12ms]
+
+dist/mpd-package/packages/mpd-agent-teams-plugin/test/workmate-key.test.ts:
+(pass) workmateKey maps the five multi-word roster members to kebab keys [0.04ms]
+(pass) workmateKey mirrors sanitizeName edge cases [0.02ms]
+
+3 tests skipped:
+(skip) binary resolves from toolchain
+(skip) comment file triggers detection (exit 2)
+(skip) clean file passes (exit 0)
+
+ 78 pass
+ 3 skip
+ 0 fail
+ 483 expect() calls
+Ran 81 tests across 16 files. [523.00ms]

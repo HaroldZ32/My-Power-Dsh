@@ -1,0 +1,22 @@
+{
+  "sweep": "t10 full AGENTS.md §4 gate sweep",
+  "date": "2026-08-29",
+  "assignee": "Junior Engineer",
+  "tree": "post-fix dev worktree (clusters 1-4 + t8/t13 declared)",
+  "gates": [
+    {"gate": "01-typecheck", "command": "bun run typecheck", "exit": 0, "ok": true, "note": "tsgo --noEmit, 0 errors"},
+    {"gate": "02-bun-test", "command": "bun test packages", "exit": 0, "ok": true, "note": "64 pass / 3 skip / 0 fail, 422 expect, 13 files"},
+    {"gate": "03-test-qa", "command": "bun run test:qa", "exit": 0, "ok": true, "note": "all 17 dsh-qa self-tests passed"},
+    {"gate": "04-verify-vendor", "command": "node scripts/verify-vendor.mjs", "exit": 0, "ok": true, "note": "[verify-vendor] PASS — all 6 vendored assets OK (F-24 re-lock confirmed)"},
+    {"gate": "05-install-dryrun", "command": "node scripts/install-profile.mjs --dry-run", "exit": 0, "ok": true, "note": "DRY-RUN done (nothing written); no writes asserted"},
+    {"gate": "06-boot-check", "command": "dsh --profile headless --dump-config (isolated DSH_HOME=mktemp, dev-flavor bundle patch)", "exit": 0, "ok": true, "note": "19/19 bundle rows mounted: mcp-astgrep/lsp/codegraph, mpd-{web-compat,config,tools,modelchain,roles,ulw,hashline,boulder,comment-checker,codegraph,memory,workmate,bootstrap}, agent-teams, mcp-context7/grepapp"}
+  ],
+  "summary": "ALL 6 GATES PASS (exit 0) — no defects found",
+  "defects": [],
+  "isolation": {
+    "bootCheck": "DSH_HOME=mktemp sandbox (mpd-gatesweep-*), credentials copied ONCE, real ~/.dsh untouched (asserted sandboxPrefix + dshHomeSandbox in 06 result.json)",
+    "installer": "dry-run only — output asserts 'DRY-RUN done (nothing written)'",
+    "secrets": "grep of all evidence logs for apiKey/token/secret/sk- values: only the 'token-meter' plugin row id matched (not a credential); no secret material in evidence"
+  },
+  "evidenceRoot": "evidence/verify/gate-sweep/20260829T165326Z"
+}

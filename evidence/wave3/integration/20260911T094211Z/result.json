@@ -1,0 +1,164 @@
+{
+  "task": "t8",
+  "kind": "integration",
+  "title": "Wave-3 integration: evidence consolidation, final gates, pack + modes, three-wave reconciled commit plan, AGENTS.md process notes, carry-forward",
+  "measuredAt": "2026-09-11T09:49Z",
+  "revision": {
+    "branch": "dev",
+    "head": "98680b1fb2bbf5c10c28cfbe44419e91595e1cb7",
+    "committed": false,
+    "toolsJsSha256": "406e086e19f712802b6a519f9efed998b818ab08736e4173b2885e9d2a510c85",
+    "qualityGatesJsSha256": "4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5",
+    "vendorLockSha256": "55150c57f714bec289dcc74c24699a40db9dcc2fc087cacfb4e020dd7130ffe5",
+    "agentsMdSha256": "4a2d2816485e157dd87cab0c7ada73e9b4f83bccbc143c1eeb4896f0e4ef3532",
+    "note": "the gate sweep was re-run after the final AGENTS.md edit so the quoted numbers belong to this exact tree state"
+  },
+  "evidenceConsolidation": {
+    "caseDirectories": {
+      "t1": "evidence/wave3/t1-requirements/20260911T081617Z (record: result.json + the canonical decision record)",
+      "t2": "evidence/wave3/registry-redesign/20260911T082439Z (record: result.json + README.md, 38 raw logs)",
+      "t3": "evidence/wave3/qa-harness-fidelity (record: result.json + output.log)",
+      "t4": "evidence/wave3/codegraph-degrade-and-applytime/20260911T081649Z (record: RESULT.json + 16 raw logs)",
+      "t5": "evidence/wave3/t5-verify/20260911T083206Z (record: result.json + README.md + output.log + drivers/)",
+      "t6": "evidence/wave3/t6-verify/20260911T090649Z (record: t6-RESULT.json + supplement; 53+ raw logs)",
+      "t7": "evidence/wave3/t7-review/20260911T092206Z (records: REVIEW.md, REVIEW-round2.md, result.json, result-round2.json; 57 raw logs)"
+    },
+    "deviationsReportedNotRemoved": [
+      "t3's evidence sits at evidence/wave3/qa-harness-fidelity/{result.json,output.log} WITHOUT the <timestamp>/ level required by the evidence-path convention (content complete)",
+      "two cosmetic EMPTY directories under t4's evidence: evidence/wave3/codegraph-degrade-and-applytime/20260911T081649Z/mcp-run/{home/.mpd,project}",
+      "the captain's spot checks (evidence/wave3/{t2,t9}-captain-independent-verification/) carry raw logs only, no record file"
+    ],
+    "deleted": "nothing — every artifact was reported, never removed"
+  },
+  "gates": [
+    { "command": "node scripts/verify-vendor.mjs", "exit": 0, "result": "PASS — all assets OK (skills 366 files, _deps 635, 4 MCP dist cli/serve)" },
+    { "command": "bun run typecheck", "exit": 0, "result": "tsgo --noEmit clean" },
+    { "command": "bun test packages", "exit": 0, "result": "376 pass / 0 fail / 2519 expect() calls / 82 files" },
+    { "command": "bun run test:qa", "exit": 0, "result": "all self-tests passed" },
+    { "command": "node skills/dsh-qa/scripts/preset-conformance.mjs", "exit": 0, "result": "PASS; negativeControl ok code=agent-preset/invalid ($.prefix missing required value)" },
+    { "command": "node evidence/session-workspace-root/dist-repair/sweep.mjs --clean-room", "exit": 0, "result": "16 packages: FRESH byte-identical 16, banner-only 0, STALE 0; pass1==pass2 16/16; committed==pass2 16/16" }
+  ],
+  "pack": {
+    "repackRequired": true,
+    "why": "3 packed files differed from the working tree before the pack: packages/mpd-agent-teams-plugin/lib/{mpd-deltas.js,tools.js} and packages/mpd-codegraph-plugin/dist/index.js (wave-3 changes); the packed artifact was from wave 2 (07:27Z)",
+    "command": "npm run pack",
+    "exit": 0,
+    "modes": { "files": 1160, "sixFourFour": 1148, "sevenFiveFive": 12, "nonConforming": 0, "executables": ["packages/mpd-mcp-{astgrep,codegraph,gitbash,lsp}/dist/{cli,serve}.js", "8 skills/** scripts"] },
+    "byteIdentity": { "compared": 785, "identical": 785, "different": 0, "missingSource": 0 },
+    "packedDirCommittable": false,
+    "packedDirRule": ".gitignore:12:dist/mpd-package/"
+  },
+  "commitPlan": {
+    "file": "commit-plan.md",
+    "executed": false,
+    "base": "dev @ 98680b1fb2bbf5c10c28cfbe44419e91595e1cb7",
+    "branch": "fix/wave1-wave2-wave3-closeout (recommended, NOT created)",
+    "commits": 10,
+    "absorbs": "wave 1's 8-commit plan and wave 2's 10-commit plan (which had already absorbed wave 1); wave 3 extends commits 5, 6, 8, 9 and 10 in place",
+    "vendorLockPairingRule": "VENDOR_LOCK.json must land in the SAME commit as every skills/** change that invalidates its treeSha. The vendor gate hashes the whole skills/** tree, so a commit that edits skills and leaves the lock stale is RED at that commit; conversely the lock may not be committed before the skills tree reaches its final state. With the single-skills-writer rule (§9) that is exactly ONE re-pin per wave: in this plan the pairing is commit 5, which carries every skills/** change from all three waves AND the re-pinned VENDOR_LOCK.json (skills: 366 files, treeSha 3259d07a613c0bb9cf4a0ae8478adcbbb6247ec8bd361fb2075c3092c1c00621, from wave 2's 5b13e920…; HEAD was 364 files / 29a6877c…). scripts/verify-vendor.mjs lands there too because it is the gate that computes the re-pin. No other commit may touch skills/** or VENDOR_LOCK.json.",
+    "wave3RepinCount": 1,
+    "wave3RepinEvidence": "evidence/wave3/t6-verify/20260911T090649Z/vendor-repin.result.json (366/366 files, recomputed == committed treeSha 3259d07a…, exactly ONE re-pin from wave 2's final state)",
+    "pathDisposition": { "checker": "assign-paths.mjs", "record": "path-disposition.json", "totalPaths": 1114, "modified": 67, "untracked": 1047, "unassigned": [], "perCommit": { "c1": 6, "c2": 16, "c3": 62, "c4": 16, "c5": 215, "c6": 49, "c7": 13, "c8": 107, "c9": 1, "c10": 629 } }
+  },
+  "documentation": {
+    "file": "AGENTS.md",
+    "englishOnly": true,
+    "zhTwin": "not required (agent-facing)",
+    "additions": [
+      "§12 row: a plugin-module edit is NOT hot-reloaded into a loaded session — a dsh restart is required before any adopted-plugin semantics act on a live session (measured wave-3 instance with the pre-fix wording)",
+      "§12 row: each bash call gets a FRESH /tmp — cross-call scratch state does not persist",
+      "§12 row: the single-skills-writer rule that forces exactly one VENDOR_LOCK re-pin per wave",
+      "§12 row: the update_task trailing-key shape (status REQUIRED; split a large payload; residual stated)",
+      "§9 bullet: skills/** has ONE writer per wave (single-skills-writer rule) + the VENDOR_LOCK pairing",
+      "§11 release-checklist line: the VENDOR_LOCK pairing rule verbatim",
+      "§7 bullet: verify on SETTLED hashes (the wave-2 revert-in-flight measurement)",
+      "§6: the region table gained D13–D15 and the stale '9 regions' paragraph now records the 12-region context-pair registry"
+    ]
+  },
+  "carryForward": {
+    "file": "carry-forward.md",
+    "wave2Items": 22,
+    "closed": 20,
+    "closedInCode": 17,
+    "closedAsProcessNotes": 3,
+    "stillOpen": ["agent_teams_setup onboarding + roster provenance (low)", "inherited .gitignore inside _deps/** (low)", "check5-mount driver EV_OUT convention (low, informational)", "widen R1's packed-artifact assertion to launchers + skills/dsh-qa scripts (low, t10 informational)", "the whole three-wave layer is uncommitted — the plan must be executed"],
+    "userSideActions": [
+      "restart dsh (adopted-plugin semantics act only on a fresh process)",
+      "archive mpd-default-0bc1738e and mpd-default-587132ea in the AgentTeams tab (verified present: 11 members / 0 tasks / staged each)",
+      "fix ~/.mpd/mcp.env if it is sourced: MPD_AST_GREP_SG_PATH still points at .toolchain/node_modules/.bin/sg, which exits 1 on --version, while .bin/ast-grep exits 0 printing ast-grep 0.45.3 — the caller-pin-wins rule makes it bypass B8's chain"
+    ],
+    "residual": "a model-side omission of output/changedPaths stays undetectable by the plugin; bounded by the REQUIRED status parameter + splitting the payload"
+  },
+  "gitStatusVerbatim": {
+    "branch": "dev",
+    "head": "98680b1fb2bbf5c10c28cfbe44419e91595e1cb7",
+    "porcelainEntries": 1114,
+    "modified": 67,
+    "untracked": 1047,
+    "diffstat": "67 files changed, 2755 insertions(+), 745 deletions(-)",
+    "porcelainFile": "raw/git-status-porcelain.txt",
+    "diffstatFile": "raw/git-diffstat.txt"
+  },
+  "notCommittable": [
+    { "path": ".mpd/team/**", "rule": ".gitignore:21:.mpd/", "why": "live team state owned by the agent-teams plugin" },
+    { "path": ".mpd/memory/**", "rule": ".gitignore:21:.mpd/", "why": "memory store's own git repository" },
+    { "path": "dist/mpd-package/**", "rule": ".gitignore:12:dist/mpd-package/", "why": "packed build artifact, regenerated by npm run pack" },
+    { "path": ".codegraph/**", "rule": ".gitignore:10:.codegraph/", "why": "per-workspace codegraph index" }
+  ],
+  "safety": {
+    "pushed": false,
+    "tagged": false,
+    "releaseBranch": false,
+    "teamStateWritten": false,
+    "memoryCountersHandEdited": false
+  },
+  "postVerdictAddendum": {
+    "why": "the captain's integration brief named four extra AGENTS.md doc items, the R4 fresh-clone caveat, a wider pack assertion and four post-wave items; closing them required only documentation and report edits (no code change), so the verdict is unchanged",
+    "agentsMdSha256AfterAdditions": "0dd8893053a7de23aac838adb76e1d6cd645c11d4e17e871e02d0810259ba911",
+    "agentsMdStalenessSweep2": "captain's three-item sweep: (1) the §12 'codegraph provision crash' row was ALREADY flipped to RESOLVED-in-wave-3 (it is at line 468, not 441 — the file grew) and was strengthened here with the LIVE-path clause `[CodeGraph MCP] Shared daemon unavailable; serving this session in-process (degraded)` (t4 RESULT.json / t6 supplement); (2) 'Post-t4 the registry holds 9 regions' was ALREADY replaced by 'After wave 3 the registry holds **12** regions' (line 248) — grep for the old sentence returns 0; (3) the D8 row was genuinely STILL STALE and is FIXED here: 'registry of the regions + insertion anchors' → a beforeContext/afterContext CONTEXT PAIR measured on the region-stripped skeleton, with the wave-2 anchor/anchorOccurrence/anchorMarker fields explicitly GONE and uniqueness required at BOTH emit and heal time (grep 'insertion anchors' now returns 0).",
+    "agentsMdDocDebtClosed": [
+      "(a) §6 delta table: D13/D14 marked REPLACEMENT-shaped — after a full re-materialize they are NOT self-healable, the heal refuses loudly with the file byte-untouched (same class as scope-glob under F3); D15 marked purely ADDITIVE and self-healing; region count 9 → 12 recorded with the three wave-3 ids",
+      "(b) §12: agent_teams_update_task REQUIRES `status` on EVERY call (a payload-only update repeats the current status), an omitted `attempt_id` is reported as REQUIRED, and the field-proven shape (split the payload, end with a minimal {task_id, status, attempt_id[, verdict]}) is recorded",
+      "(c) §6: canonical `mpd-delta task-contract` line moved 1733 → 1757; absolute line numbers are explicitly NOT part of any contract",
+      "(d) §6: evidence/wave2/t10-review/20260911T063000Z/{guard-copy.mjs,guard-fullstrip.mjs} are deliberately UNPATCHED historical records importing the old anchor-format registry — a future reader must not 'fix' them",
+      "plus: §12 codegraph provision-crash row corrected to RESOLVED-in-wave-3 (launcher-side degrade), and the §7 verify-on-settled-hashes bullet"
+    ],
+    "packAssertionWidened": {
+      "scope": "every packed file (not only the plugin dists): launchers, mpd-mcp-shared resolver, skills/** (incl. skills/dsh-qa scripts), adopted lib and scripts/**",
+      "packedFiles": 1160,
+      "byteIdentical": 1158,
+      "differences": ["package.json — rebuilt packed-form manifest (dsh.bundle.patch → ./cordis.patch.yml, dev-only keys dropped, files/license added)", "cordis.patch.yml — relocated from packages/mpd-bundle/ to the package root; its CONTENT is byte-identical to packages/mpd-bundle/cordis.patch.yml"],
+      "widenedClassesUnexpectedDifferences": 0,
+      "record": "raw/packed-vs-worktree-full.json"
+    },
+    "r4FreshCloneCaveat": {
+      "statement": "HEAD is currently broken from a fresh clone for the MCP rows and the vendor path.",
+      "verified": "git cat-file -e HEAD:<path> → not in HEAD for packages/mpd-mcp-astgrep/launch.mjs, packages/mpd-mcp-codegraph/launch.mjs, packages/mpd-mcp-shared/bin-resolve.mjs, scripts/patch-agent-teams-fixes.mjs, skills/dsh-qa/scripts/lib/workspace-isolation.mjs, packages/mpd-agent-teams-plugin/lib/mpd-deltas.js, scripts/verify-rows-parity.mjs — while the TRACKED packages/mpd-bundle/cordis.patch.yml (lines ~50/~90) references both launchers and the TRACKED scripts/vendor-agent-teams.mjs:23 imports the applier",
+      "whereRecorded": "commit-plan.md '⚠ HEAD IS CURRENTLY BROKEN FROM A FRESH CLONE (R4)' section + FINAL-REPORT.md step 0 + carry-forward.md §3.7"
+    },
+    "postWaveItems": [
+      "N1 (low, DOCUMENTATION ONLY — do NOT fix before the commits land): scripts/patch-agent-teams-fixes.mjs lines ~355-362 (driftedOrphanError JSDoc) still says dropping the orphan begin marker 'would delete that authored text'; the real hazard is a misdiagnosis/duplicate (the surviving body blocks the seam so drop+heal fails its beforeContext assertion, and a success would leave the authored lines beside a re-inserted block). The file is the t10-REVIEWED revision sha256 fa696421135f7fb816c7a015821bdab2995996528c0fe219d105c00dc353ca8f and must not be edited now; the pack and the commit plan describe that reviewed revision",
+      "R2 (medium): legacy scripts/install-profile.mjs:62-63,82-83,94-96 bypasses both B8 launchers and pre-pins the deprecated .bin/sg wrapper + MPD_CODEGRAPH_BIN",
+      "R3 (medium, honesty item): this box has NO LLM credential (llm-deepseek: {}, no env var, credentials hold only a browser-session record) → the live-LLM lanes of dual-track-smoke / mcp-call / codegraph-smoke are an EVIDENCE GAP, never a green; only their offline --self-test legs ran",
+      "R5 (medium, trap): dsh.hasTool returns false for a working MCP tool at apply time — never gate MCP registration on it",
+      "mpd-comment-checker false-clean: mpd_comment_check returned `clean` for a NONEXISTENT path (captain's reproduction; the suite cannot catch it because every case passes explicit content and skipIf hides a missing binary) — needs its own scoped fix + mount proof",
+      "agent_teams_create_task refuses a legitimate repair (inScope-overlap refusal naming a task with a non-overlapping scope, twice) — route through the review gate; never edit .mpd/team to work around it",
+      "pending user-requested model-route standardization (checkpoint §9): specialists on deepseek-flash + reasoning_effort max",
+      "check5-mount driver EV_OUT convention (t10) and widening R1's packed-artifact assertion (now demonstrated by this task's widened comparison) remain low-severity follow-ups"
+    ],
+    "reviewedRevision": {
+      "note": "the pack and the commit plan describe the t7/t10-reviewed revision; N2 (the stale '9 regions' paragraph) was already closed, and no reviewed byte was edited for this addendum",
+      "toolsJsSha256": "406e086e19f712802b6a519f9efed998b818ab08736e4173b2885e9d2a510c85",
+      "qualityGatesJsSha256": "4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5",
+      "registrySha256": "d3a1d4adce41992b9eb7faf37dd145dbaf4df0352a1b29c8b39038e1a7285ffb",
+      "applierSha256": "fa696421135f7fb816c7a015821bdab2995996528c0fe219d105c00dc353ca8f",
+      "vendorLockSha256": "55150c57f714bec289dcc74c24699a40db9dcc2fc087cacfb4e020dd7130ffe5",
+      "applierPacked": false,
+      "applierPackedNote": "the packed artifact ships only scripts/install-mcp.mjs; the applier is a development-only repo script, so N1 does not touch the packed artifact"
+    },
+    "codeChangeSinceSweep": "none — the full gate sweep was re-run AFTER every documentation edit (final run 09:53Z: verify-vendor 0 PASS, typecheck 0, bun test packages 0 = 376 pass / 0 fail / 82 files, test:qa 0 = all self-tests passed, preset-conformance 0 PASS + negative control, dist sweep 0 = 16 FRESH / 0 STALE), so the quoted numbers belong to the same tree that carries all the additions",
+    "gitStateAfterAdditions": "unchanged: dev @ 98680b1fb2bbf5c10c28cfbe44419e91595e1cb7, 0 tags at HEAD, nothing pushed"
+  },
+  "passed": true,
+  "note": "no --dump-config result is cited as load evidence anywhere in this task; the mounted boot is what proved plugin behaviour"
+}

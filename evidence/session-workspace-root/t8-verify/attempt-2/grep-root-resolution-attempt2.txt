@@ -1,0 +1,27 @@
+# t8 attempt-2, required check 5 — every remaining root-resolution hit in packages/*/src (current tree)
+
+## raw: grep -rn 'DSH_WORKSPACE_ROOT|process.cwd()' packages/*/src
+packages/mpd-codegraph-plugin/src/index.ts:76:  const cwd = (process.env.MPD_CODEGRAPH_PROJECT_CWD ?? process.env.MPD_DSH_CODEGRAPH_PROJECT_CWD) || process.cwd()
+packages/mpd-dsh-adapter-plugin/src/index.ts:138:   *   2. `DSH_WORKSPACE_ROOT`             (process override: operator/QA only)
+packages/mpd-dsh-adapter-plugin/src/index.ts:139:   *   3. `process.cwd()`                  (last resort: boot, unit tests)
+packages/mpd-dsh-adapter-plugin/src/index.ts:183:// The harness never defines DSH_WORKSPACE_ROOT; a session's header cwd is the
+packages/mpd-dsh-adapter-plugin/src/index.ts:186:// highest first: session -> DSH_WORKSPACE_ROOT (operator/QA override) ->
+packages/mpd-dsh-adapter-plugin/src/index.ts:187:// process.cwd() (boot, unit tests). Never cached: one host serves many sessions
+packages/mpd-dsh-adapter-plugin/src/index.ts:203:  const override = process.env.DSH_WORKSPACE_ROOT
+packages/mpd-dsh-adapter-plugin/src/index.ts:205:  return process.cwd()
+packages/mpd-verif-plugin/src/env.ts:31:// (session header cwd -> DSH_WORKSPACE_ROOT -> process.cwd()); this module only
+packages/mpd-workmate-plugin/src/index.ts:335:  // direct/module-level callers on the adapter's ONE resolution (env -> process.cwd()).
+packages/mpd-workmate-plugin/src/index.ts:385: * union of every live session workspace, or the adapter's env -> process.cwd() form when none is
+packages/mpd-workmate-plugin/src/index.ts:554:    // workspaces (`workspaceRootsAll`), falling back to the adapter's env -> process.cwd() form
+
+## raw: literal B1 expression 'process.env.DSH_WORKSPACE_ROOT ?? process.cwd()'
+(none — the helper splits it into a const + two returns; no plugin carries it)
+
+## classification (unchanged from attempt 1; the tree changed only in the four repaired dists + banner)
+1. packages/mpd-dsh-adapter-plugin/src/index.ts:203-205 — THE single shared helper (workspaceRootOf).
+2. packages/mpd-dsh-adapter-plugin/src/index.ts:138,139,183,186,187 — doc comments of that same precedence.
+3. packages/mpd-verif-plugin/src/env.ts:31 — doc comment pointing at the adapter's ONE resolution.
+4. packages/mpd-workmate-plugin/src/index.ts:335,385,554 — doc comments (tool/agentless paths).
+5. packages/mpd-codegraph-plugin/src/index.ts:76 — residual, different expression, apply-time, explicit override wins
+   (const cwd = (process.env.MPD_CODEGRAPH_PROJECT_CWD ?? process.env.MPD_DSH_CODEGRAPH_PROJECT_CWD) || process.cwd()).
+   Outside B1's migrated call-site set; reported as a low observation, unchanged.

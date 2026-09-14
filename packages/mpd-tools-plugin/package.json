@@ -1,0 +1,10 @@
+{
+  "name": "@mpd-dsh/tools",
+  "private": true,
+  "version": "0.2.3",
+  "type": "module",
+  "description": "Tools/hooks plugin (B1)",
+  "scripts": {
+    "test": "bun test"
+  }
+}

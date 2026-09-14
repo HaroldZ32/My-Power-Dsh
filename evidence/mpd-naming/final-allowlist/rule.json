@@ -1,0 +1,731 @@
+{
+  "id": "mpd-naming/final-allowlist",
+  "title": "FINAL mechanical freeze — rename list, keep allowlist, acceptance greps (round 2)",
+  "task": "t13 (requirements, round 2)",
+  "frozen_by": "Architect",
+  "frozen_at": "2026-09-14T16:22:00Z",
+  "settled_revision": {
+    "head": "3c1a850756e63b7338ca3a8287e7327b9571bdad",
+    "branch": "dev",
+    "head_subject": "fix(agent-teams,qa): amend guards, member read-only deny, and QA isolation/auth drift",
+    "tree_state": "DIRTY: 27 modified tracked product files (the wave's edits are uncommitted) + the untracked evidence/ dirs",
+    "pin": "HEAD alone does NOT pin the content. The pin is result.json -> files_read_sha256 (and `git status --porcelain` + `sha256sum`). Re-emit result.json if any hash moved.",
+    "round1_freeze": "this file SUPERSEDES evidence/mpd-naming/brand-cleanup/requirements/rule.json where they differ; the round-1 rule's CLASSES remain in force, its LOCK STRINGS do not (they were cited, not recomputed)",
+    "concurrent_editing": "This tree was being edited by other lanes during the freeze (the codegraph artifact changed mid-pass: HARNESS_IDS 'omo', the [opencode]/[codex] config blocks, harness:\"codex\" and the $schema/MPD_SCHEMA_URL emission were all REMOVED by t5 during this turn). Consequence: a cited LINE NUMBER can move while the tree is dirty. The pin is result.json -> files_read_sha256; re-run the two shipped drivers (raw/acceptance-greps.sh, raw/check-keep-allowlist.sh) instead of trusting a remembered line."
+  },
+  "lineage_inputs": [
+    "evidence/mpd-naming/brand-cleanup/requirements/rule.json (round-1 rule; sha256 in result.json)",
+    "evidence/mpd-naming/brand-cleanup/labels/result.json (t2 lane report; sha256 in result.json)",
+    "evidence/mpd-naming/brand-cleanup/dists/raw/dists-plan.json (t6 frozen execution plan; sha256 in result.json)",
+    "evidence/mpd-naming/brand-cleanup/dists/raw/contract-amendment.json (t6 amended acceptance; sha256 in result.json)"
+  ],
+  "owner_rulings_verbatim": [
+    {
+      "id": "(a)",
+      "text": "ast-grep omo_* identifiers -> mpd_*",
+      "scope": "the vendored skills/ast-grep patch we authored (function names + their call sites + the comment/docstring that names them)",
+      "applied_in": "rename_list ids sk-01..sk-07"
+    },
+    {
+      "id": "(b)",
+      "text": "codegraph [senpi] migration read + MIGRATION_ID and the lsp .codex/lsp-client.json discovery defaults -> KEEP and allowlist explicitly",
+      "scope": "legacy-input tolerance and env/path DISCOVERY DEFAULTS (reverse of round-1's 'delete the lsp foreign path inference')",
+      "applied_in": "keep_allowlist.functional ids KF-03, KF-04, KF-05, KF-06"
+    },
+    {
+      "id": "(c)",
+      "text": "packages/mpd-mcp-gitbash/dist/cli.js OMO_CODEX_* -> DELETE (superseding the older frozen text that kept it literal)",
+      "scope": "the three env keys, their reads, their hint line and their BRAND_ALLOWLIST entries",
+      "applied_in": "rename_list ids gb-01..gb-04, bm-17; supersedes round-1 R3_allowlist entry 1 and t6 acceptance[2]'s original text"
+    }
+  ],
+  "lock_rule": {
+    "statement": "Never cite a remembered lock string. RECOMPUTE it at the settled revision with the canonical algorithm and require VENDOR_LOCK.json to EQUAL the recomputation.",
+    "algorithm": "scripts/verify-vendor.mjs:92-117 -- per asset: listFiles (node_modules skipped, single-file assets allowed) -> fileCount; text files (no NUL) are LF-normalized by readBytes; treeSha = sha256 over \"<relpath>\\n<sha256(readBytes(file))>\\n\" in sorted-relpath order; sha256 = raw bytes for single-file assets.",
+    "tool": "evidence/mpd-naming/final-allowlist/raw/recompute-lock.mjs (exits 1 on drift)",
+    "measured_at_this_revision": {
+      "skills": {
+        "fileCount": 297,
+        "treeSha": "f6bb2053d02a0e256ab5d88debceb4cfbc76b10c6ff03dca69bf446718a583c9"
+      },
+      "packages/mpd-agent-teams-plugin/_deps": {
+        "fileCount": 635,
+        "treeSha": "d1d106032b198d2392ca2fe36ea4b563c3010496192791a6e4812638b7cf8e37"
+      },
+      "packages/mpd-mcp-astgrep/dist/cli.js": {
+        "sha256": "f06bba310cad306b5638efb90a69e50b2c6a7416c0c536867f02c70f4b4fa4c5"
+      },
+      "packages/mpd-mcp-gitbash/dist/cli.js": {
+        "sha256": "0484a8ff1714c949bc52a4fc0de89c756dcab975b0691a2823706f008475f38e"
+      },
+      "packages/mpd-mcp-lsp/dist/cli.js": {
+        "sha256": "9f41d4258c204aca959de98a5bea59a7459f9e298885f187cfc0268e1d18ce69"
+      },
+      "packages/mpd-mcp-codegraph/dist/serve.js": {
+        "sha256": "ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375"
+      }
+    },
+    "reenable_after_the_wave": "every asset the wave touches must be re-pinned in VENDOR_LOCK.json IN THE SAME COMMIT, and then LOCK-RECOMPUTE must read MATCH again; exactly ONE re-pin per wave for skills/** (AGENTS.md 9/11).",
+    "stale_strings_this_replaces": [
+      "1d277907045e...",
+      "4299afc4...",
+      "2feb1bce...",
+      "331/c1f424fe..."
+    ],
+    "trap": "a RAW-byte per-file hash of the same tree yields 178b36ab..., because skills/ultimate-browsing/engine/tests/fixtures/amp_redirect_stub.html carries a CR byte. ONLY the LF-normalized value is a valid re-pin target."
+  },
+  "rename_list": [
+    {
+      "id": "bm-01",
+      "lane": "t6",
+      "where": "scripts/build-mcp.mjs:2",
+      "current": "copy source from the OMO upstream checkout (read-only)",
+      "shape": "copy source from the upstream oh-my-openagent checkout (read-only)",
+      "why": "project label in a comment; G1 hit"
+    },
+    {
+      "id": "bm-02",
+      "lane": "t6",
+      "where": "scripts/build-mcp.mjs:14",
+      "current": "the actual OMO checkout layout used here is",
+      "shape": "the actual upstream checkout layout used here is",
+      "why": "project label in a comment; G1 hit"
+    },
+    {
+      "id": "bm-03",
+      "lane": "t6",
+      "where": "scripts/build-mcp.mjs:99",
+      "current": "post-bundle OMO->MPD transform",
+      "shape": "post-bundle upstream-spelling -> MPD_ prefix rename",
+      "why": "'OMO->MPD' is a label; the transform's INPUTS are upstream spellings, so naming them MPD would be false"
+    },
+    {
+      "id": "bm-04",
+      "lane": "t6",
+      "where": "scripts/build-mcp.mjs:100",
+      "current": "The pristine upstream source still uses OMO_* identifiers",
+      "shape": "The pristine upstream source still uses its own OMO_* spellings",
+      "why": "KEEP the literal spelling OMO_* (it denotes the strings the table below matches -- G1/G8 do not match `OMO_*`), drop nothing else"
+    },
+    {
+      "id": "bm-05",
+      "lane": "t6",
+      "where": "scripts/build-mcp.mjs:101",
+      "current": "hand-scrubbed OMO->MPD by commit 7d8f910",
+      "shape": "hand-scrubbed into the MPD_ prefix by commit 7d8f910",
+      "why": "label sweep"
+    },
+    {
+      "id": "bm-06",
+      "lane": "t6",
+      "where": "scripts/build-mcp.mjs:105",
+      "current": "such as \"from\" or the OMO_CODEX_* codex contract kept literal in git-bash",
+      "shape": "such as \"from\" or the git-bash launcher-path env key",
+      "why": "the claim is now false under ruling (c): the contract is DELETED, not kept"
+    },
+    {
+      "id": "bm-07",
+      "lane": "t6",
+      "where": "scripts/build-mcp.mjs:134",
+      "current": "// OMO_CODEX_* is the codex contract and stays literal; only the tmpdir prefix changes.",
+      "shape": "// The git-bash artifact's upstream env contract is deleted (DSH-only); the tmpdir prefix is renamed.",
+      "why": "false claim under ruling (c)"
+    },
+    {
+      "id": "bm-08",
+      "lane": "t6",
+      "where": "scripts/build-mcp.mjs:140",
+      "current": "Apply the key-level OMO->MPD scrub",
+      "shape": "Apply the key-level upstream -> MPD_ prefix scrub",
+      "why": "label sweep"
+    },
+    {
+      "id": "bm-09",
+      "lane": "t6",
+      "where": "scripts/build-mcp.mjs:149",
+      "current": "dist still contains OMO residual \"${residual}\" after MPD scrub",
+      "shape": "dist still contains upstream brand token \"${residual}\" after the MPD scrub",
+      "why": "the residual set now contains no OMO_CODEX_ at all, so 'OMO residual' is wrong; the message must name the class"
+    },
+    {
+      "id": "bm-10",
+      "lane": "t6",
+      "where": "scripts/build-mcp.mjs:161",
+      "current": "a rebuild could still silently ship an upstream OMO token",
+      "shape": "a rebuild could still silently ship an upstream brand token",
+      "why": "label sweep"
+    },
+    {
+      "id": "bm-11",
+      "lane": "t6",
+      "where": "scripts/build-mcp.mjs:175",
+      "current": "Our older global omo->mpd rewrite corrupted",
+      "shape": "Our older global upstream-spelling -> mpd rewrite corrupted",
+      "why": "label sweep"
+    },
+    {
+      "id": "bm-12",
+      "lane": "t6",
+      "where": "scripts/build-mcp.mjs:191",
+      "current": "Case-insensitive so `_omo` and `OMO_*` both hit.",
+      "shape": "Case-insensitive, so both the `OMO_` and the `omo-` shapes are hit.",
+      "why": "`_omo` is renamed out of the artifacts (ruling: rename the envelope), so citing it as the example is stale; the regex behaviour is unchanged"
+    },
+    {
+      "id": "bm-13",
+      "lane": "t6",
+      "where": "scripts/build-mcp.mjs:230-231",
+      "current": "lsp carries 5 x `_omo` + 2 x the upstream OpenCode identifier, git-bash 3 x OMO_CODEX_*).",
+      "shape": "lsp carries the upstream OpenCode identifier and no brand token, git-bash none).",
+      "why": "the counts become false after the lsp rename + the git-bash deletion"
+    },
+    {
+      "id": "bm-14",
+      "lane": "t6",
+      "where": "scripts/build-mcp.mjs:297",
+      "current": "apply the key-level OMO->MPD rename (if any)",
+      "shape": "apply the key-level upstream -> MPD_ prefix rename (if any)",
+      "why": "label sweep"
+    },
+    {
+      "id": "bm-15",
+      "lane": "t6",
+      "where": "scripts/build-mcp.mjs:309",
+      "current": "the upstream OMO commit this dist was built from",
+      "shape": "the upstream commit this dist was built from",
+      "why": "label sweep; G1 hit (`the OMO `)"
+    },
+    {
+      "id": "bm-16",
+      "lane": "t6",
+      "where": "scripts/build-mcp.mjs:310",
+      "current": "It used to hold an OMO->mpd scrub artefact",
+      "shape": "It used to hold a scrub artefact",
+      "why": "label sweep"
+    },
+    {
+      "id": "bm-17",
+      "lane": "t6",
+      "where": "scripts/build-mcp.mjs:182-187",
+      "current": "export const BRAND_ALLOWLIST = [ ...4 entries: OMO_CODEX_GIT_BASH_PATH, OMO_CODEX_GIT_BASH_TIMEOUT_MS, OMO_CODEX_EXEC_COMMAND_TIMEOUT_MS, _omo... ]",
+      "shape": "export const BRAND_ALLOWLIST = [];  // empty by design: every remaining brand-shaped literal is either scrubbed away or an upstream-scope/build literal declared in the scrub tables",
+      "why": "OWNER RULING (c) deletes the three OMO_CODEX_ entries; the `_omo` entry is refuted (writer :5739/:6027/:6080 and reader :5358/:5368 live in the SAME artifact, and version skew fails loudly -- see accept-11)"
+    },
+    {
+      "id": "lsp-01",
+      "lane": "t6",
+      "where": "packages/mpd-mcp-lsp/dist/cli.js:5358",
+      "current": "const envelope = params[\"_omo\"];",
+      "shape": "const envelope = params[\"_mpd\"];",
+      "why": "RULING: rename the LSP auth envelope (both sides, same artifact)"
+    },
+    {
+      "id": "lsp-02",
+      "lane": "t6",
+      "where": "packages/mpd-mcp-lsp/dist/cli.js:5368",
+      "current": "delete cleanParams[\"_omo\"];",
+      "shape": "delete cleanParams[\"_mpd\"];",
+      "why": "the reader/stripper side"
+    },
+    {
+      "id": "lsp-03",
+      "lane": "t6",
+      "where": "packages/mpd-mcp-lsp/dist/cli.js:5739",
+      "current": "params: { _omo: authEnvelope(token) }",
+      "shape": "params: { _mpd: authEnvelope(token) }",
+      "why": "the daemon ping writer"
+    },
+    {
+      "id": "lsp-04",
+      "lane": "t6",
+      "where": "packages/mpd-mcp-lsp/dist/cli.js:6027",
+      "current": "params: { _omo: authEnvelope(token), id: requestId }",
+      "shape": "params: { _mpd: authEnvelope(token), id: requestId }",
+      "why": "the request writer"
+    },
+    {
+      "id": "lsp-05",
+      "lane": "t6",
+      "where": "packages/mpd-mcp-lsp/dist/cli.js:6080",
+      "current": "params: { _omo: authEnvelope(token), name, arguments: args }",
+      "shape": "params: { _mpd: authEnvelope(token), name, arguments: args }",
+      "why": "the tool-call writer; 5 sites total, all inside this one artifact"
+    },
+    {
+      "id": "gb-01",
+      "lane": "t6",
+      "where": "packages/mpd-mcp-gitbash/dist/cli.js:320",
+      "current": "var GIT_BASH_ENV_KEY = \"OMO_CODEX_GIT_BASH_PATH\";",
+      "shape": "DELETE the declaration",
+      "why": "OWNER RULING (c): delete, do not rename. 0 in-repo writers; the only reader is win32-only code in this artifact"
+    },
+    {
+      "id": "gb-02",
+      "lane": "t6",
+      "where": "packages/mpd-mcp-gitbash/dist/cli.js:328-335",
+      "current": "const envPath = nonEmptyEnvValue(input.env, GIT_BASH_ENV_KEY); if (envPath !== undefined) checkedPaths.push(envPath)",
+      "shape": "DELETE the env-lookup block (keep the remaining checkedPaths tiers)",
+      "why": "ruling (c); `nonEmptyEnvValue` may become unused dead code -- leave it (no brand token, minimal diff on a bundled artifact) and DISCLOSE it"
+    },
+    {
+      "id": "gb-03",
+      "lane": "t6",
+      "where": "packages/mpd-mcp-gitbash/dist/cli.js:371",
+      "current": "`For a custom install, set ${GIT_BASH_ENV_KEY}=C:\\\\path\\\\to\\\\bash.exe`",
+      "shape": "DELETE the hint line (or point the hint at the path probe only)",
+      "why": "ruling (c): no foreign env contract may survive, and the hint would name a deleted key"
+    },
+    {
+      "id": "gb-04",
+      "lane": "t6",
+      "where": "packages/mpd-mcp-gitbash/dist/cli.js:457-458",
+      "current": "EXEC_COMMAND_TIMEOUT_ENV_KEYS = [\"OMO_CODEX_GIT_BASH_TIMEOUT_MS\", \"OMO_CODEX_EXEC_COMMAND_TIMEOUT_MS\", \"CODEX_EXEC_COMMAND_TIMEOUT_MS\", \"EXEC_COMMAND_TIMEOUT_MS\"]",
+      "shape": "DELETE the two OMO_ entries; keep CODEX_EXEC_COMMAND_TIMEOUT_MS + EXEC_COMMAND_TIMEOUT_MS (they carry no OMO brand token and predate this wave)",
+      "why": "ruling (c); the guard's subject is the OMO_ prefix, and the residual list gains \"OMO_CODEX_\""
+    },
+    {
+      "id": "sc-lsp",
+      "lane": "t6",
+      "where": "scripts/build-mcp.mjs:106-119 (MPD_SCRUB.lsp)",
+      "current": "replace[...]; residual [\"OMO_\", \".omo\", \"omo-lsp\", \"omo/ping\"]",
+      "shape": "replace += [\"_omo\", \"_mpd\"]; residual += \"_omo\"",
+      "why": "make a rebuild reproduce the renamed envelope, and make a re-introduced `_omo` fail loudly"
+    },
+    {
+      "id": "sc-gb",
+      "lane": "t6",
+      "where": "scripts/build-mcp.mjs:133-137 (MPD_SCRUB.git-bash)",
+      "current": "replace [[\"omo-git-bash-run-\",\"mpd-git-bash-run-\"]]; residual [\"omo-git-bash-run-\"]",
+      "shape": "replace [[\"omo-git-bash\",\"mpd-git-bash\"]] + the deletion transforms for gb-01..gb-04; residual [\"omo-git-bash\",\"OMO_CODEX_\"]",
+      "why": "the committed dist already carries the mpd- spelling; the residual list must now FAIL on any surviving bare `omo-git-bash` or `OMO_CODEX_`"
+    },
+    {
+      "id": "sc-as",
+      "lane": "t6",
+      "where": "scripts/build-mcp.mjs:120-132 (MPD_SCRUB.ast-grep)",
+      "current": "replace/residual without an OMO-session entry",
+      "shape": "replace += [\"an OMO session\",\"an MPD session\"], [\"OMO runtime\",\"MPD runtime\"]; residual += [\"OMO session\",\"OMO runtime\"]",
+      "why": "the COMMITTED dist already reads `an MPD session` (:475) and `MPD runtime` (:504); a rebuild from pristine upstream would emit the OMO forms and fail the byte-equality guard without these entries (verified: the committed ast-grep dist contains 0 OMO occurrences today)"
+    },
+    {
+      "id": "sk-01",
+      "lane": "t2/skills",
+      "where": "skills/ast-grep/scripts/ast_grep_helper.py:205",
+      "current": "# --- OMO runtime resolution (vendored patch) ---",
+      "shape": "# --- MPD runtime resolution (vendored patch) ---",
+      "why": "OWNER RULING (a)"
+    },
+    {
+      "id": "sk-02",
+      "lane": "t2/skills",
+      "where": "skills/ast-grep/scripts/ast_grep_helper.py:207 (def), :255 (use)",
+      "current": "omo_env_binary",
+      "shape": "mpd_env_binary",
+      "why": "OWNER RULING (a); references confined to this file"
+    },
+    {
+      "id": "sk-03",
+      "lane": "t2/skills",
+      "where": "skills/ast-grep/scripts/ast_grep_helper.py:217 (def), :232 (use)",
+      "current": "omo_runtime_slug",
+      "shape": "mpd_runtime_slug",
+      "why": "OWNER RULING (a); ALSO mirrored by a same-named shell function in tests/smoke.sh (sk-06)"
+    },
+    {
+      "id": "sk-04",
+      "lane": "t2/skills",
+      "where": "skills/ast-grep/scripts/ast_grep_helper.py:230 (def), :255 (use)",
+      "current": "omo_runtime_binary",
+      "shape": "mpd_runtime_binary",
+      "why": "OWNER RULING (a)"
+    },
+    {
+      "id": "sk-05",
+      "lane": "t2/skills",
+      "where": "skills/ast-grep/scripts/ast_grep_helper.py:250",
+      "current": "2. OMO runtime dirs",
+      "shape": "2. MPD runtime dirs",
+      "why": "OWNER RULING (a), docstring side"
+    },
+    {
+      "id": "sk-06",
+      "lane": "t2/skills",
+      "where": "skills/ast-grep/tests/smoke.sh:31 (def), :129 (use), :126 (comment)",
+      "current": "omo_runtime_slug() { ... }  /  RUNTIME_SLUG=\"$(omo_runtime_slug)\"  /  # Given HOME has an OMO runtime sg executable.",
+      "shape": "mpd_runtime_slug() ...  /  RUNTIME_SLUG=\"$(mpd_runtime_slug)\"  /  # Given HOME has an MPD runtime sg executable.",
+      "why": "OWNER RULING (a); the shell twin must move in the same change or the smoke test breaks"
+    },
+    {
+      "id": "sk-07",
+      "lane": "t2/skills",
+      "where": "skills/ast-grep/AGENTS.md:23",
+      "current": "across PATH, Homebrew, npm, and OMO caches",
+      "shape": "across PATH, Homebrew, npm, and MPD caches",
+      "why": "the resolution tiers are ours; label sweep"
+    },
+    {
+      "id": "sk-08",
+      "lane": "t2/skills",
+      "where": "skills/ulw-plan/scripts/scaffold-plan.mjs:124,127,129,132",
+      "current": "omoRoot / omoReal (local consts holding the `.mpd` write root)",
+      "shape": "mpdRoot / mpdReal",
+      "why": "scrub casualty: the variable names a `.mpd` root; the name is ours and confined to one function"
+    },
+    {
+      "id": "t7-01",
+      "lane": "t7",
+      "where": "docs/omo-parity-ledger.md (whole file)",
+      "current": "docs/omo-parity-ledger.md + docs/omo-parity-ledger.zh-CN.md",
+      "shape": "docs/parity-ledger.md + docs/parity-ledger.zh-CN.md (captain's `git mv`; keep ONE provenance line naming the historical wave id `omo-parity-align` and the pre-rename path)",
+      "why": "the pair is maintained, not historical (docs/index.md:19 says so explicitly), so its FILENAME carries a retired brand name"
+    },
+    {
+      "id": "t7-02",
+      "lane": "t7",
+      "where": "docs/parity-ledger.md:1 / docs/parity-ledger.zh-CN.md:1",
+      "current": "# OMO Parity Ledger / # OMO 对齐台账",
+      "shape": "# Parity Ledger / # 对齐台账",
+      "why": "G8 hits; the switch links on line 2 move with the filenames"
+    },
+    {
+      "id": "t7-03",
+      "lane": "t7",
+      "where": "docs/index.md:19 / docs/index.zh-CN.md:18",
+      "current": "the two ledger rows linking `omo-parity-ledger.md` / `omo-parity-ledger.zh-CN.md`",
+      "shape": "the same rows linking `parity-ledger.md` / `parity-ledger.zh-CN.md` (both languages in the same change); the row text may keep the historical wave id `omo-parity-align`",
+      "why": "G7 hits; bilingual rule"
+    },
+    {
+      "id": "t7-04",
+      "lane": "t7",
+      "where": "docs/parity-ledger.md:41 / docs/parity-ledger.zh-CN.md:38",
+      "current": "the `D_LEDGER` row naming the old ledger paths",
+      "shape": "the same row naming the NEW paths; do not touch the recorded gate results",
+      "why": "self-reference must not dangle"
+    },
+    {
+      "id": "t7-05",
+      "lane": "t7",
+      "where": "docs/parity-ledger.md:25 / docs/parity-ledger.zh-CN.md:22",
+      "current": "Align functionality with OMO latest (beta.62) / 功能上对齐 OMO 最新版",
+      "shape": "name the upstream project (oh-my-openagent) instead of the retired shorthand",
+      "why": "G8 hits; a provenance statement may be repaired to stay true"
+    },
+    {
+      "id": "t7-06",
+      "lane": "t7",
+      "where": "tests/overlays/omo-bline.yml",
+      "current": "tests/overlays/omo-bline.yml",
+      "shape": "tests/overlays/bline.yml",
+      "why": "the last OMO-branded maintained filename; its only consumer is the readdir glob in skills/dsh-qa/scripts/preset-conformance.mjs (0 textual references, measured)"
+    }
+  ],
+  "keep_allowlist": {
+    "provenance": [
+      {
+        "id": "KP-01",
+        "what": "oh-my-openagent repo slug / commit 8c57e46 / version 5.0.0-beta.20 / the inherited SUL-1.0 text naming 'the oh-my-opencode Software'",
+        "where": "VENDOR_LOCK.json:2-5; LICENSE.md:5; LICENSE-NOTICES.md:1-6; README.md; AGENTS.md 1",
+        "reason": "upstream identity, pin and licence text are facts we must state truthfully; the hard floors (round-1 F1-F5) stand"
+      },
+      {
+        "id": "KP-02",
+        "what": "`@oh-my-opencode` npm scope (node_modules/@oh-my-opencode) and the `omo-config-core` package DIRECTORY name",
+        "where": "scripts/build-mcp.mjs:276 (scope), :16/:26/:30 (dir name)",
+        "reason": "build-time facts of the vendored upstream source: its packages ARE named @oh-my-opencode/* and its own workspace dirs are omo-*; renaming breaks module resolution inside the offline build. Both are inert in the shipped dists (bundled) and are documented in the file"
+      },
+      {
+        "id": "KP-03",
+        "what": "`omo-opencode/src/cli/install-ast-grep-sg.ts`",
+        "where": "skills/ast-grep/AGENTS.md:23",
+        "reason": "a REAL upstream repository path -- verified to exist at .mpd-dsh/upstream/packages/omo-opencode/src/cli/install-ast-grep-sg.ts. AGENTS.md 1: upstream repository paths stay upstream's"
+      },
+      {
+        "id": "KP-04",
+        "what": "`[`omo` (oh-my-opencode)](https://github.com/code-yeongyu/oh-my-opencode)` attribution row",
+        "where": "skills/ast-grep/README.md:133 (Acknowledgments)",
+        "reason": "third-party attribution; the upstream project's own (former) name; deleting or rewording it would weaken attribution"
+      },
+      {
+        "id": "KP-05",
+        "what": "third-party package/repo names + licence attributions (comment-checker, go-claude-code-comment-checker, @code-yeongyu/*, dsh-agent-teams)",
+        "where": "package.json:41-45; LICENSE-NOTICES.md; packages/*/README.md",
+        "reason": "third-party identity and licence attribution (hard floors)"
+      }
+    ],
+    "functional": [
+      {
+        "id": "KF-01",
+        "what": "the MPD_SCRUB replace/residual INPUT literals: OMO_DAEMON_PROTOCOL_VERSION, OMO_LSP_DAEMON_CLI, OMO_LSP_DAEMON_DIR, OMO_LSP_DAEMON_VERSION, .omo, omo-lsp-daemon, omo-lsp-, omo/ping, OMO_AST_GREP_BIN_DIR, OMO_AST_GREP_SG_PATH, OMO_AST_GREP_PROJECT_CWD, OMO_PROVISION_HINT, omoRuntimeCandidates, omo-runtime, omo-ast-grep, omo-git-bash-run-, omo-git-bash, `an OMO session`, `OMO runtime`, OMO_CODEX_",
+        "where": "scripts/build-mcp.mjs:30,106-138 (the MPD_SCRUB object) and the residual assertions",
+        "reason": "these are the strings the pristine upstream build OUTPUTS; the scrub matches them to produce the committed bytes, and the PRIMARY guard is byte-equality against those committed dists (scripts/build-mcp.mjs:245). Deleting an input makes a rebuild emit foreign bytes and fail the guard. Evidence: the committed ast-grep dist already reads `an MPD session` (:475) / `MPD runtime` (:504) while a pristine rebuild emits the OMO forms"
+      },
+      {
+        "id": "KF-02",
+        "what": "BRAND_TOKEN_RE itself (`(_{0,2}omo...)`) and the two comments that explain its boundary rule (`omo` as the pattern's subject)",
+        "where": "scripts/build-mcp.mjs:189,192 (+ :104,:167,:177 which QUOTE the trigram to explain the false-positive class: 'from', 'promote', platformFromOptions)",
+        "reason": "the scanner's own subject matter; a grep-shaped token cannot be replaced without destroying the guard"
+      },
+      {
+        "id": "KF-03",
+        "what": "codegraph `MIGRATION_ID = \"2026-07-codex-config-jsonc\"`, the `[upstream]` -> `[senpi]` migration READ, and the migration record id",
+        "where": "packages/mpd-mcp-codegraph/dist/serve.js:8819 (id), :8850 (the [upstream] read), :8851 (the [senpi] read), :8854 (the conflict diagnostic that names both), :8877 (the id in the migration plan)",
+        "reason": "OWNER RULING (b) VERBATIM: keep and allowlist explicitly. These read a config file that already exists on disk (~/.mpd/config.jsonc, our own state path) and MIGRATE it; deleting them breaks a pre-existing user config. MEASURED at this revision: the [opencode]/[codex] config blocks, HARNESS_IDS 'omo', harness:\"codex\" and the foreign $schema URL are ALL GONE (t5 deleted them), so only the [senpi]/[upstream] legacy reads + MIGRATION_ID survive -- exactly what ruling (b) keeps."
+      },
+      {
+        "id": "KF-04",
+        "what": "the lsp `.codex/lsp-client.json` / `.codex/lsp-install-decisions.json` DISCOVERY DEFAULTS and the `.opencode` branch of projectRootFromOpenCodeConfigPath",
+        "where": "packages/mpd-mcp-lsp/dist/cli.js:366, :367 (defaults), :406 (project discovery), :6243-6249 (accepts `.opencode` AND `.mpd`)",
+        "reason": "OWNER RULING (b) VERBATIM: keep and allowlist explicitly, reversing round-1's 'delete the lsp foreign path inference'. The same function already accepts our `.mpd` path, so the foreign spelling is a compatibility default, not our identity"
+      },
+      {
+        "id": "KF-05",
+        "what": "the `LSP_TOOLS_MCP_*` env keys",
+        "where": "packages/mpd-mcp-lsp/dist/cli.js:365, :6153, :6228-6230; documented at skills/lsp-setup/SKILL.md:111",
+        "reason": "the read/write contract of the daemon's own config surface (0 in-repo writers measured); renaming one side silently disconnects a user's existing override. Same class as KF-04's ruling (b)"
+      },
+      {
+        "id": "KF-06",
+        "what": "ast-grep's `CODEX_HOME` runtime tier",
+        "where": "packages/mpd-mcp-astgrep/dist/cli.js:437-439; skills/ast-grep/scripts/ast_grep_helper.py:235; skills/ast-grep/tests/smoke.sh:136",
+        "reason": "env-key DISCOVERY DEFAULT, the same class the owner explicitly KEPT for lsp (ruling (b)) and it sits beside an `.mpd` tier; only smoke.sh ever sets it (to blank it). NOT individually named by the owner -- a one-line ack keeps or deletes it (see open_items)"
+      },
+      {
+        "id": "KF-07",
+        "what": "`opencode-go` / `scnet` (llm-pi-ai gateway provider ids)",
+        "where": "AGENTS.md:366; skills/dsh-qa/scripts/agent-teams-adopt.mjs:86; skills/dsh-qa/scripts/mcp-call.mjs:30",
+        "reason": "third-party provider ids configured in the user's settings.yaml; renaming them misconfigures the chain"
+      },
+      {
+        "id": "KF-08",
+        "what": "the two disabled harness bridge rows `tool-subagent-codex` / `tool-subagent-claude-code`",
+        "where": "presets/mpd/agent.cordis.yml:342, :351",
+        "reason": "hard floor F6: harness-owned, disabled:true, zero runtime behaviour, and their presence is pinned row-for-row against the installed `standard` preset by preset-conformance"
+      },
+      {
+        "id": "KF-09",
+        "what": "boulder `SessionPlatform = \"codex\"|\"opencode\"|\"senpi\"|\"dsh\"` + SESSION_ID_PREFIX_PATTERN",
+        "where": "packages/mpd-boulder-plugin/src/vendor/storage/shared.ts:9, :11; dist/index.js:252; test/boulder.test.ts:22",
+        "reason": "data-compatibility readers for records that already exist (normalizeSessionId returns a prefixed id unchanged; narrowing the regex re-prefixes stored ids to dsh:senpi:x and breaks resume). The round-1 conflict C3 was resolved as KEEP by the owner: the file's note and packages/mpd-boulder-plugin/README.md:7-8 now state it truthfully. Carries no brand token, so it is outside the grep surface but recorded here so it is not 'cleaned up' later"
+      }
+    ],
+    "historical": [
+      {
+        "id": "KH-01",
+        "what": "evidence/omo-align/** and evidence/omo-parity-rate*/** PATH literals (8 distinct spellings)",
+        "where": "AGENTS.md:502; packages/mpd-agent-teams-plugin/lib/session-start.js:28; packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs:91; packages/mpd-agent-teams-plugin/test/s1-s4-semantics.test.mjs:171; packages/mpd-dsh-adapter-plugin/src/index.ts:144; packages/mpd-team-compact-plugin/src/index.ts:6,16; skills/dsh-qa/scripts/agent-teams-messaging.mjs:232,369,863; skills/dsh-qa/scripts/session-start-team.mjs:26; docs/parity-ledger.md (many)",
+        "reason": "user ruling: history stays byte-identical. These are pointers INTO frozen records; renaming the pointer would dangle"
+      },
+      {
+        "id": "KH-02",
+        "what": "the frozen wave ids `omo-parity-align`, `omo-align`, `omo-parity-rate`, `omo-parity-gap`, `omo-parity-ledger`",
+        "where": "AGENTS.md:21; docs/index.md:19; docs/index.zh-CN.md:18; packages/mpd-agent-teams-plugin/test/s1-s4-semantics.test.mjs:1; docs/parity-ledger.md:4,41; docs/parity-ledger.zh-CN.md:4,38",
+        "reason": "a historical identifier, not an identity label (t7 keeps exactly ONE provenance line naming it)"
+      },
+      {
+        "id": "KH-03",
+        "what": "the historical record FILES and their contents: docs/omo-parity-gap.md (incl. `om-opencode src/agents`, `omo_agent`, `omo/plans`), docs/omo-parity-ledger.(zh-CN.)md's frozen strings, docs/plan-e.md, docs/plan-f.md, PLAN.md, docs/ulw-deepseek-optimization.md, docs/bline-report.md, docs/review-p0-p3.md, docs/track-a-report.md, docs/decisions.md, tests/golden/out/**",
+        "reason": "process records exempt from the bilingual rule and from this wave (round-1 R4_out_of_scope); their OMO uses describe the upstream project as it was",
+        "where": "docs/**, PLAN.md, tests/golden/out/**"
+      },
+      {
+        "id": "KH-04",
+        "what": "`omo-opencode/src/agents/`, `omo_agent`, `omo/plans` inside docs/omo-parity-gap.md",
+        "where": "docs/omo-parity-gap.md:4,59,72",
+        "reason": "the same historical record: they name upstream paths/identifiers as they were when the audit ran"
+      }
+    ],
+    "not_a_brand_token": [
+      {
+        "id": "KN-01",
+        "what": "`OMOB_TEST_TOKEN` (env var name in a third-party test)",
+        "where": "skills/ultimate-browsing/engine/tests/test_surrogate.py:134,139",
+        "reason": "REGEX FALSE POSITIVE: BRAND_TOKEN_RE matches the prefix `OMOB` (uppercase suffix matched by `[A-Z][A-Za-z0-9]*`) with no brand meaning. If the brand guard is extended to skills/**, this token MUST be allowlisted or the guard will fail on a vendored test fixture"
+      },
+      {
+        "id": "KN-02",
+        "what": "the trigram `omo` inside ordinary English words",
+        "where": "e.g. 'autonomous' (packages/mpd-bundle/cordis.patch.yml:337), 'promote'",
+        "reason": "why every scan in this wave must use a token boundary (BRAND_TOKEN_RE / `(^|[^A-Za-z0-9_])omo([^A-Za-z0-9_]|$)`) and never `grep -i omo`"
+      },
+      {
+        "id": "KN-03",
+        "what": "the corrupted-identifier note `platformFrmpdOptions`",
+        "where": "scripts/build-mcp.mjs:175",
+        "reason": "documented as DELIBERATELY OUT OF SCOPE (asserting on the corrupted spelling would freeze it, and the correct spelling platformFromOptions contains no brand token)"
+      }
+    ]
+  },
+  "acceptance_greps": [
+    {
+      "id": "G1",
+      "cmd": "git ls-files | grep -vE '^evidence/|^(docs/(plan-[a-f]|omo-parity-gap|bline-report|review-p0-p3|track-a-report|ulw-deepseek-optimization)\\.md|PLAN\\.md|tests/golden/out/)' | xargs grep -nE 'OMO-origin|OMO-derived|OMO specialists|OMO roster|OMO 起源|OMO 名册|OMO 角色|the OMO |upstream omo |\\bOmO\\b'",
+      "expected": "0 lines",
+      "actual_at_revision": "1 line (scripts/build-mcp.mjs:2) -- the single remaining label, owned by rename_list bm-01"
+    },
+    {
+      "id": "G2",
+      "cmd": "git ls-files | grep -v '^evidence/' | xargs grep -lE '(^|[^A-Za-z0-9_])_?omo([^A-Za-z0-9_]|$)'",
+      "expected": "every listed file is covered by rename_list or keep_allowlist",
+      "actual_at_revision": "40 files (see raw/30-greps-current.log)"
+    },
+    {
+      "id": "G3",
+      "cmd": "git ls-files | grep -v '^evidence/' | xargs grep -nE 'CODEX_HOME|LSP_TOOLS_MCP|OPENCODE_CONFIG_DIR|OCX_PROFILE|OPENCODE_HOME|SENPI_CODING_AGENT_DIR|multi_agent_v1|subagent_codex'",
+      "expected": "only KF-04/KF-05/KF-06 sites (lsp/ast-grep discovery defaults) + KF-07 provider ids + KF-08 preset rows + third-party skill bodies (round-1 F7); the codegraph artifact carries NO CODEX_HOME / [opencode] / [codex] / HARNESS_IDS any more (t5 deleted them)",
+      "actual_at_revision": "31 lines, none of them in packages/mpd-mcp-codegraph/dist/serve.js"
+    },
+    {
+      "id": "G4",
+      "cmd": "grep -n '_omo' packages/mpd-mcp-lsp/dist/cli.js",
+      "expected": "0 lines",
+      "actual_at_revision": "5 lines (5358, 5368, 5739, 6027, 6080) -- rename_list lsp-01..lsp-05"
+    },
+    {
+      "id": "G5",
+      "cmd": "git ls-files | grep -v '^evidence/' | xargs grep -n 'OMO_CODEX'",
+      "expected": "0 lines",
+      "actual_at_revision": "9 lines: the 3 dist reads/keys (gb-01/gb-04, ruling (c)) + 6 in scripts/build-mcp.mjs (bm-06/bm-07/bm-13/bm-17 + the scrub residual KF-01)"
+    },
+    {
+      "id": "G6",
+      "cmd": "git ls-files skills/ast-grep | xargs grep -nE 'omo_env_binary|omo_runtime_slug|omo_runtime_binary|omoRoot|omoReal|OMO runtime|OMO caches'",
+      "expected": "0 lines",
+      "actual_at_revision": "11 lines (sk-01..sk-07, sk-08) -- owner ruling (a)"
+    },
+    {
+      "id": "G7",
+      "cmd": "git ls-files | grep -v '^evidence/' | xargs grep -n 'omo-parity-ledger'",
+      "expected": "0 lines",
+      "actual_at_revision": "6 lines in docs/index.md:19, docs/index.zh-CN.md:18, docs/omo-parity-ledger.md:2,41, docs/omo-parity-ledger.zh-CN.md:2,38 -- t7-01..t7-04"
+    },
+    {
+      "id": "G8",
+      "cmd": "git ls-files | grep -v '^evidence/' | xargs grep -nE '(^|[^A-Za-z0-9_])OMO([^A-Za-z0-9_]|$)'",
+      "expected": "only keep_allowlist sites (mostly KH-*) + the scrub-table inputs KF-01",
+      "actual_at_revision": "30 lines (raw/30-greps-current.log)"
+    },
+    {
+      "id": "G9",
+      "cmd": "git status --porcelain evidence/",
+      "expected": "only `?? evidence/mpd-naming/**` entries (history byte-identical)",
+      "actual_at_revision": "3 untracked entries: brand-cleanup/labels/, brand-cleanup/requirements/, final-allowlist/"
+    },
+    {
+      "id": "G10",
+      "cmd": "grep -n 'MIGRATION_ID\\|\\[senpi\\]' packages/mpd-mcp-codegraph/dist/serve.js",
+      "expected": "4 lines PRESENT (8819, 8851, 8854, 8877) -- a MUST-PRESENT check, so a future deletion pass cannot quietly drop ruling (b)",
+      "actual_at_revision": "4 lines"
+    },
+    {
+      "id": "G11",
+      "cmd": "grep -n '\\.codex/lsp-client.json\\|\\.codex/lsp-install-decisions.json' packages/mpd-mcp-lsp/dist/cli.js",
+      "expected": "2 lines PRESENT (366, 367) -- MUST-PRESENT, ruling (b)",
+      "actual_at_revision": "2 lines"
+    },
+    {
+      "id": "G12",
+      "cmd": "grep -nE 'an MPD session|MPD runtime|an OMO session|OMO runtime' packages/mpd-mcp-astgrep/dist/cli.js",
+      "expected": "2 lines, both MPD-worded (475, 504); 0 OMO lines",
+      "actual_at_revision": "2 lines, both MPD-worded"
+    },
+    {
+      "id": "G13",
+      "cmd": "grep -nE 'id: tool-subagent-(codex|claude-code)' presets/mpd/agent.cordis.yml",
+      "expected": "2 rows PRESENT (hard floor F6)",
+      "actual_at_revision": "2 rows (342, 351)"
+    },
+    {
+      "id": "G14",
+      "cmd": "node evidence/mpd-naming/final-allowlist/raw/recompute-lock.mjs",
+      "expected": "exit 0 and LOCK-RECOMPUTE=MATCH (the lock EQUALS the recomputation)",
+      "actual_at_revision": "exit 0, LOCK-RECOMPUTE=MATCH, skills 297/f6bb2053..."
+    },
+    {
+      "id": "G15",
+      "cmd": "re-run the whole driver: bash evidence/mpd-naming/final-allowlist/raw/acceptance-greps.sh",
+      "expected": "G1=0, G4=0, G5=0, G6=0, G7=0, G9=3 untracked-only, G10/G11/G12/G13 non-empty, G14=MATCH; G2/G3/G8 reduce to the allowlisted sites",
+      "actual_at_revision": "the current log is raw/30-greps-current.log; G1/G4/G5/G6/G7 are the ONLY greps still RED and all of them are in the t6/t7 lanes"
+    },
+    {
+      "id": "G16",
+      "cmd": "node scripts/verify-vendor.mjs",
+      "expected": "exit 0 after the wave's single re-pin",
+      "note": "not run by this requirements task (it needs the upstream checkout and it is a GATE, run by the verifier); G14 is the same subject measured by recomputation"
+    },
+    {
+      "id": "G17",
+      "cmd": "grep -nE \"HARNESS_IDS|\\[opencode\\]|\\[codex\\]|harness: \\\"codex\\\"|MPD_SCHEMA_URL\" packages/mpd-mcp-codegraph/dist/serve.js ; node -e '<BRAND_TOKEN_RE scan of that file>'",
+      "expected": "0 lines and 0 brand tokens -- a MUST-ABSENT check proving t5's deletion landed and cannot regress",
+      "actual_at_revision": "0 lines, 0 brand tokens (sha256 ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375)"
+    }
+  ],
+  "supersedes": [
+    {
+      "round1_text": "R3_allowlist entry 1: OMO_CODEX_* 'KEEP as-is'",
+      "now": "DELETE (owner ruling (c)); see rename_list gb-01..gb-04 + bm-17"
+    },
+    {
+      "round1_text": "t6 acceptance[2] / t11 acceptance[4]: 'OMO_CODEX_* stays literal'",
+      "now": "the STALE side of C1; the dist reads and the three BRAND_ALLOWLIST entries are deleted"
+    },
+    {
+      "round1_text": "R3_deletion_rule: delete the lsp `.codex` / `.opencode` foreign path inference",
+      "now": "KEEP and allowlist explicitly (owner ruling (b))"
+    },
+    {
+      "round1_text": "R7_open_conflicts C1/C2/C3",
+      "now": "C1 -> DELETE (ruling (c)); C2 -> RESOLVED by deletion during t5 (HARNESS_IDS 'omo' and the brand token are GONE from serve.js: 0 brand tokens measured); C3 -> KEEP (the owner accepted the data-compatibility argument; the code and README state it)"
+    },
+    {
+      "round1_text": "LOCK STRINGS in round-1's own acceptance text (1d277907045e / 4299afc4 / 2feb1bce / 331-c1f424fe)",
+      "now": "the lock RULE (recompute and require equality); the current value is 297/f6bb2053d02a0e256ab5d88debceb4cfbc76b10c6ff03dca69bf446718a583c9"
+    },
+    {
+      "round1_text": "round-1's 'incidental foreign mentions inside OTHER vendored skills stay' keeps open the ast-grep skill",
+      "now": "skills/ast-grep is a vendored skill that carries OUR patch, so its omo_* identifiers are renamed (owner ruling (a)) while its third-party prose/attribution stays"
+    },
+    {
+      "round1_text": "KP-06 / t5 nonGoal / t6 acceptance: keep the codegraph MPD_SCHEMA_URL ($schema -> upstream omo.schema.json)",
+      "now": "REMOVED from the artifact by t5 during this turn: `grep -n 'MPD_SCHEMA_URL\\|schema.json' packages/mpd-mcp-codegraph/dist/serve.js` returns nothing, and the transformConfigJsonc comment now states 'The migration no longer carries a foreign product's `$schema` URL nor the foreign harness blocks into the rewritten document'. There is therefore nothing to keep; owner ruling (b) keeps only the [senpi]/[upstream] reads + MIGRATION_ID (KF-03)."
+    }
+  ],
+  "open_items": [
+    {
+      "id": "O1",
+      "severity": "low",
+      "item": "KF-06 (ast-grep CODEX_HOME) is kept BY ANALOGY to owner ruling (b), not by an explicit owner sentence",
+      "needs": "a one-line ack; if the owner prefers deletion, the tier at dist/cli.js:437-439 + ast_grep_helper.py:235 + smoke.sh:136 goes and the scrub gains an equivalent transform"
+    },
+    {
+      "id": "O2",
+      "severity": "low",
+      "item": "KP-03's upstream path is written without the `packages/` prefix in skills/ast-grep/AGENTS.md:23 while the real file is .mpd-dsh/upstream/packages/omo-opencode/src/cli/install-ast-grep-sg.ts",
+      "needs": "optional precision repair in the same change; not a brand issue"
+    },
+    {
+      "id": "O3",
+      "severity": "medium",
+      "item": "the removal of `_omo` from the lsp envelope leaves an ALREADY-RUNNING version-scoped daemon (started by the pre-rename artifact) unable to authenticate: authenticateMessage returns AUTH_ERROR_CODE -32001 when the envelope key is absent, and the client then fails with DaemonUnreachableError after its ready timeout (a loud failure, not silent corruption). Corrected evidence: evidence/mpd-naming/brand-cleanup/dists/raw/contract-amendment.json -> measurement_notes_for_t10",
+      "needs": "t6 states the caveat + remedy (restart / clear the version-scoped daemon dir); the round-1 and amended-acceptance claim that skew fails via PROTOCOL_ERROR is WRONG and must not be repeated"
+    },
+    {
+      "id": "O4",
+      "severity": "low",
+      "item": "deleting the git-bash reader leaves `nonEmptyEnvValue` possibly unused in the bundled artifact",
+      "needs": "leave it (no brand token, minimal diff) and DISCLOSE it in t6's output so a reviewer does not read it as a leftover contract"
+    },
+    {
+      "id": "O5",
+      "severity": "low",
+      "item": "packages/mpd-agent-teams-plugin/test/s1-s4-semantics.test.mjs:1's 't15 (OMO parity align)' comment was OUTSIDE every declared inScope in round 1",
+      "needs": "classified HERE as KH-02 (historical wave id) -- no edit, so no scope change is needed"
+    },
+    {
+      "id": "O6",
+      "severity": "medium",
+      "item": "the worktree is DIRTY (27 modified product files uncommitted) while HEAD is 3c1a850",
+      "needs": "the captain commits the wave; until then every verdict must cite result.json's per-file sha256 map, not HEAD alone (AGENTS.md 7 hash discipline)"
+    }
+  ]
+}

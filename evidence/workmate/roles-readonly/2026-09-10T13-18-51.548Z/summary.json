@@ -1,0 +1,71 @@
+{
+  "task": "t5 — fix the read-only deny lists (contract §G) and prove it as far as this environment allows",
+  "slug": "readonly-deny",
+  "status": "complete; one criterion recorded as an environment residual (captain decision), not as a verify entry",
+  "rawArtifacts": {
+    "caseResult": "case-result.json",
+    "transcripts": "output.log",
+    "rawLiveProbe": "live-probe-raw.txt",
+    "beforeAfterProbe": "before-after-probe.mjs (also recorded in the earlier run directory)"
+  },
+
+  "change": {
+    "rolesDenyList": ["write", "edit", "mpd_hashline_edit", "bash", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename"],
+    "removedOnly": "the two unregistered legacy editor names",
+    "keptOnPurpose": "bash (can write files; read/glob/grep stay available) and the three live-registered MCP write tools",
+    "noHasToolFilter": true,
+    "distRebuilt": "packages/mpd-roles-plugin/dist/index.js",
+    "files": [
+      "packages/mpd-roles-plugin/src/index.ts",
+      "packages/mpd-roles-plugin/dist/index.js",
+      "packages/mpd-roles-plugin/test/roles.test.ts",
+      "skills/dsh-qa/scripts/readonly-deny.mjs",
+      "skills/dsh-qa/SKILL.md",
+      "AGENTS.md",
+      "VENDOR_LOCK.json",
+      "evidence/fix/readonly-deny/**"
+    ]
+  },
+
+  "verifyCommandsAllGreen": {
+    "bun test packages/mpd-roles-plugin/test": "11 pass / 0 fail / 139 expect calls",
+    "bun run test:qa": "all self-tests passed (exit 0), including the new readonly-deny case's 23 checks",
+    "bun run typecheck": "exit 0"
+  },
+
+  "credentialFreeLiveProof": {
+    "method": "the case boots a FRESH dsh process in an isolated DSH_HOME with a throwaway key and a local OpenAI-shaped stub that answers the PARENT model step with exactly one mpd_role_spawn call; a sandbox copy of the shared adapter is instrumented so the restriction actually handed to the harness is recorded",
+    "recordedFilter": { "deny": ["write", "edit", "mpd_hashline_edit", "bash", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename"] },
+    "childCreatedAndAnswered": true,
+    "stubTrace": "call#1 hasTools=true; call#2 hasTools=false (the child's own request); call#3 and call#4 hasTools=true",
+    "unknownToolRefusalSeen": false,
+    "exitCode": 0,
+    "whyItProvesTheFix": "tools.restrict() runs inside the child's setup, so a rejection means no child agent is created. A created, answering child proves the harness accepted the seven-name list, and the adapter probe pins which list was accepted."
+  },
+
+  "correctionToTheProposedSignal": {
+    "proposed": "failing with MISSING_CREDENTIAL instead of the restrict error is positive evidence the list was accepted, because restrict() runs at child composition before model authentication",
+    "measured": "REFUTED. Authentication precedes the child's composition. Lane A (no key) stops at `MISSING_CREDENTIAL: llm-deepseek: no API key for provider route \"deepseek-official\"` and lane B (dummy key) stops at `AUTH: Authentication Fails` — in both cases mpd_role_spawn is never invoked, so the restriction is never evaluated and the credential error carries no information about the list.",
+    "consequence": "the credential-free stub lane above is the strongest live evidence available here; the credential lanes are recorded as diagnostics only and are deliberately NOT listed as verify entries"
+  },
+
+  "residual": {
+    "criterion": "a spawned read-only child EXECUTES a turn",
+    "met": false,
+    "why": "no provider credential is reachable anywhere in this environment (the captain independently confirmed: ~/.dsh/.credentials.yaml carries only a browser-session grant, settings.yaml has no key field, no environment key)",
+    "evidence": "live-probe-raw.txt (lanes A and B, raw output)",
+    "remedy": "export DEEPSEEK_API_KEY and re-run `node skills/dsh-qa/scripts/readonly-deny.mjs` — the case needs no change",
+    "note": "recorded as a residual per the captain's decision, with the child actually being CREATED proven by the stub lane"
+  },
+
+  "otherMeasurementOnRecord": {
+    "preFixFailureReproducibility": "against a pristine f697088 worktree the same drive delivered the NINE-name pre-fix list (delivery proven by the instrumented adapter) and the child was still created, with no refusal — so the pre-fix failure is not reproducible in a fresh process here; the captain's in-session error is a different condition, consistent with boot-time module caching (§N2)",
+    "dumpConfigIsNotAHealthSignal": "`dsh --profile <p> --dump-config` composes rows without executing plugin code, so a profile whose plugin aborts the whole tree still dumps cleanly",
+    "detectorPitfallsFoundWhileBuildingThis": [
+      "the harness writes `names unknown global tool` (singular) for one unknown name — matching the plural form makes a detector blind to the exact error it hunts",
+      "a greedy continuation regex in a sandbox patch rewrite silently matched three rows and repointed the wrong one, so a control passed while exercising nothing"
+    ]
+  },
+
+  "scopeDeviationAcceptedByCaptain": "beyond the declared inScope (packages/mpd-roles-plugin/, skills/dsh-qa/scripts/, evidence/...), this change also updates AGENTS.md (the §12 troubleshooting row for this defect class), skills/dsh-qa/SKILL.md (the case-table row the QA discipline requires for any new case), VENDOR_LOCK.json (the skills-corpus fingerprint, which the new case necessarily changes) and evidence/fix/readonly-deny/** (the evidence directory). The captain reviewed and accepted these as part of this fix's definition of done; they are not an unexplained scope breach."
+}

@@ -1,0 +1,38 @@
+{
+  "ok": false,
+  "sandbox": "/tmp/mpd-sst-Xsom5i",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "patchRow": {
+      "ok": true,
+      "hasRow": true
+    },
+    "compose": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": false,
+      "exit": 1,
+      "tail": "ode_modules/.bin/codegraph cwd=/tmp/mpd-sst-Xsom5i/ws\n[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)\n\ndsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route \"deepseek-official\"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment\n"
+    },
+    "teamState": {
+      "ok": true,
+      "teamId": "mpd-default",
+      "phase": "staged",
+      "profile": "mpd",
+      "members": 11,
+      "captainSessionId": "session-ca00c6f4-b316-4567-ba86-afc9dd1f8742"
+    },
+    "noticeInLog": {
+      "ok": true,
+      "matched": [
+        "/tmp/mpd-sst-Xsom5i/sessions/--tmp-mpd-sst-Xsom5i-ws--/session-ca00c6f4-b316-4567-ba86-afc9dd1f8742/session.jsonl.zstd"
+      ]
+    }
+  },
+  "totalSteps": 6
+}

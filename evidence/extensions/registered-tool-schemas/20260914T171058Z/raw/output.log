@@ -1,0 +1,16 @@
+ok   mpd_ext_list (mpd-ext-plugin apply) render=true timeoutMs=null
+ok   mpd_ext_show (mpd-ext-plugin apply) render=true timeoutMs=null
+ok   mpd_flow_list (mpd-ext-plugin apply) render=true timeoutMs=null
+ok   mpd_flow_show (mpd-ext-plugin apply) render=true timeoutMs=null
+ok   mcp__lsp__status (stdio MCP bridge (real packages/mpd-mcp-lsp server)) render=true timeoutMs=15000
+ok   mcp__lsp__diagnostics (stdio MCP bridge (real packages/mpd-mcp-lsp server)) render=true timeoutMs=15000
+ok   mcp__lsp__goto_definition (stdio MCP bridge (real packages/mpd-mcp-lsp server)) render=true timeoutMs=15000
+ok   mcp__lsp__find_references (stdio MCP bridge (real packages/mpd-mcp-lsp server)) render=true timeoutMs=15000
+ok   mcp__lsp__symbols (stdio MCP bridge (real packages/mpd-mcp-lsp server)) render=true timeoutMs=15000
+ok   mcp__lsp__prepare_rename (stdio MCP bridge (real packages/mpd-mcp-lsp server)) render=true timeoutMs=15000
+ok   mcp__lsp__rename (stdio MCP bridge (real packages/mpd-mcp-lsp server)) render=true timeoutMs=15000
+ok   mcp__lsp__install_decision (stdio MCP bridge (real packages/mpd-mcp-lsp server)) render=true timeoutMs=15000
+
+tools checked: 12
+failed: 0
+verdict: pass

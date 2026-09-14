@@ -1,0 +1,96 @@
+{
+  "at": "2026-09-13T13:18:20.062Z",
+  "sandbox": {
+    "home": "/tmp/mpd-retier-9uYpNC/home",
+    "ws": "/tmp/mpd-retier-9uYpNC/ws",
+    "port": 4443,
+    "isolated": true
+  },
+  "boot": {
+    "probeDone": true,
+    "probeError": null,
+    "crashSignatures": [],
+    "logBytes": 1919
+  },
+  "profileMembers": [
+    {
+      "name": "Architect",
+      "model": "deepseek-v4-pro",
+      "effort": "undefined",
+      "fallback": "deepseek-v4-flash"
+    },
+    {
+      "name": "Researcher",
+      "model": "deepseek-v4-flash",
+      "effort": "undefined",
+      "fallback": "deepseek-v4-flash"
+    },
+    {
+      "name": "Planner",
+      "model": "deepseek-v4-pro",
+      "effort": "undefined",
+      "fallback": "deepseek-v4-flash"
+    },
+    {
+      "name": "Explorer",
+      "model": "deepseek-v4-flash",
+      "effort": "undefined",
+      "fallback": "deepseek-v4-flash"
+    },
+    {
+      "name": "Reviewer",
+      "model": "deepseek-v4-pro",
+      "effort": "undefined",
+      "fallback": "deepseek-v4-flash"
+    },
+    {
+      "name": "Plan Reviewer",
+      "model": "deepseek-v4-flash",
+      "effort": "undefined",
+      "fallback": "deepseek-v4-pro"
+    },
+    {
+      "name": "Vision Analyst",
+      "model": "deepseek-v4-flash-vision-exp",
+      "effort": "undefined",
+      "fallback": "deepseek-v4-flash"
+    },
+    {
+      "name": "Lead",
+      "model": "deepseek-v4-pro",
+      "effort": "undefined",
+      "fallback": "deepseek-v4-flash"
+    },
+    {
+      "name": "Deep Worker",
+      "model": "deepseek-v4-flash",
+      "effort": "undefined",
+      "fallback": "deepseek-v4-flash"
+    },
+    {
+      "name": "Senior Engineer",
+      "model": "deepseek-v4-pro",
+      "effort": "undefined",
+      "fallback": "deepseek-v4-flash"
+    },
+    {
+      "name": "Junior Engineer",
+      "model": "deepseek-v4-flash",
+      "effort": "undefined",
+      "fallback": "deepseek-v4-flash"
+    }
+  ],
+  "resolveLane": [
+    {
+      "label": "member-expro",
+      "status": "ok",
+      "rest": "provider=deepseek-official model=deepseek-v4-flash effort=max"
+    },
+    {
+      "label": "member-vision",
+      "status": "ok",
+      "rest": "provider=deepseek-official model=deepseek-v4-flash-vision-exp effort=high"
+    }
+  ],
+  "negativeControl": "rejected :: provider \"deepseek-official\" model \"deepseek-v4-flash\" does not support reasoning effort \"bogus-effort\""
+}

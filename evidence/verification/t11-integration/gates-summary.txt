@@ -1,0 +1,13 @@
+=== verify-vendor: node scripts/verify-vendor.mjs ===
+exit=0 elapsed=1s
+=== typecheck: bun run typecheck ===
+exit=0 elapsed=1s
+=== bun-test-packages: bun test packages ===
+exit=0 elapsed=13s
+=== test-qa: bun run test:qa ===
+exit=0 elapsed=3s
+=== bundle-lifecycle: bun skills/dsh-qa/scripts/bundle-lifecycle.mjs ===
+exit=0 elapsed=16s
+=== preset-conformance: node skills/dsh-qa/scripts/preset-conformance.mjs ===
+exit=0 elapsed=32s
+mount-proof exit=0

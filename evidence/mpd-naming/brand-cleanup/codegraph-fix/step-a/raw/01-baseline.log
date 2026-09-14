@@ -1,0 +1,9 @@
+=== baseline serve.js sha256 ===
+4601ace8dbe0e15da2b122a60cecd4f91a6825ac5a3099227db3ddcf96913858  packages/mpd-mcp-codegraph/dist/serve.js
+=== dangling identifier scan (pre-edit) ===
+7979:var EMPTY_MPD_CONFIG = `// MPD configuration
+8085:  let content = EMPTY_OMO_CONFIG;
+=== git status of my inScope paths (pre-edit) ===
+=== skills tree measurement (settle check #1) ===
+fileCount=297
+treeSha=4299afc4241a164700c5b2f6785325affb914b01681ed51728a8a4933a83774f

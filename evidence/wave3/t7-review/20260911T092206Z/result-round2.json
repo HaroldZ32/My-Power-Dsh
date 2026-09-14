@@ -1,0 +1,33 @@
+{
+  "task": "t10 review round 2",
+  "stamp": "2026-09-11T09:42:00Z",
+  "reviewer": "Reviewer",
+  "verdict": "pass",
+  "reviewed_task": "t9 (repair round 2)",
+  "round1_reference": "REVIEW.md / result.json in this directory (verdict needs_revision, T7-F1/T7-F2)",
+  "closure": {
+    "T7-F1": "CLOSED — assertRegistryFormat (applier:378-385, called :393) refuses the OLD anchor format with the exact canon message and no fallback; my R6 measured exit 1 + named message + no TypeError; my R8 proved --write-registry still migrates (12 context pairs, --check 0); t9 check4j agrees (bare_typeerror_present false, adopted_files_untouched true).",
+    "T7-F2": "CLOSED — the applier branches on findRegion's orphan before the drop (applier:415-439); driftedOrphanError names the region AND the begin marker's line with the remedy in BOTH --check and --write; drop+heal only for orphan 'begin' with nothing survived. My R3/R3b/R3c now pass; t9 check4k extends to 12/12 regions refused naming region+line+remedy with the file untouched."
+  },
+  "matrix_round2": {
+    "harness": "t7-orphan-rows.mjs (unchanged, re-run against the repaired applier)",
+    "result": "10/10 PASS — R1 half-open, R2/R4 re-bracket, R3/R3b/R3c drifted refusal, R5 drop+heal, R6 old-registry named message, R7 decisive strip-both byte identity, R8 migration usable",
+    "log": "orphan-rows-round2.log"
+  },
+  "regression_checks": {
+    "f3_refusal_observed": "exit 1 naming delta + pathMatchesScope@977, fixture sha unchanged (f3-refusal-round2.log)",
+    "bun_test_packages": "376 pass / 0 fail (82 files)",
+    "plugin_suite": "116 pass / 0 fail (26 files)",
+    "self_fix_suite": "53 pass / 0 fail (8 files)",
+    "update_task_diagnostics": "6 pass / 0 fail (recovery phrase now attempt_id=\"<value>\")",
+    "typecheck": "exit 0",
+    "applier_check": "exit 0, 12 regions",
+    "mounted_boot": "0 apply-crash signatures, probe DONE, 14/14 tools, 0 isolation leaks (work/mount-round2/check5-mount.raw.json)",
+    "vendor_repin": "audit 6/6 — skills untouched by the repair, still exactly ONE re-pin, treeSha 3259d07a…",
+    "footprint": ["scripts/patch-agent-teams-fixes.mjs", "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js", "packages/mpd-agent-teams-plugin/lib/tools.js", "packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs", "packages/mpd-agent-teams-plugin/test/update-task-diagnostics.test.mjs"]
+  },
+  "informational_for_t8": [
+    "check5-mount.sh resolves its probe from $EV/drivers — re-running with a bare EV_OUT fails loudly; stage a drivers/ copy (my first re-run hit this; the corrected run is the evidence).",
+    "Round-1 non-blocking items stand: re-pack dist/mpd-package (R1), stage the untracked layer (R4), widen R1's packed-artifact assertion to launchers + skills/dsh-qa scripts, two cosmetic empty dirs under t4's mcp-run/."
+  ]
+}

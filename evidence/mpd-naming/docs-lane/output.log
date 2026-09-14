@@ -1,0 +1,26 @@
+=== t15 docs-lane — verify commands as run ===
+
+--- verify 1: pair exists, old pair gone ---
+PASS exit=0
+
+--- verify 2: git grep omo-parity-ledger (expect no output) ---
+(no output above = PASS)
+
+--- verify 3: switch links ---
+docs/upstream-parity-ledger.md:2:**English** | [中文](./upstream-parity-ledger.zh-CN.md)
+docs/upstream-parity-ledger.zh-CN.md:2:[English](./upstream-parity-ledger.md) | **中文**
+
+--- wide sweep: old path outside docs/ and evidence/ ---
+(none)
+
+--- history KEPT ---
+4:> Wave: `omo-parity-align`. Status: **VERIFIED — values frozen, implementation landed, gates green
+docs/upstream-parity-ledger.md:8
+docs/upstream-parity-ledger.zh-CN.md:7
+
+--- exempt process records untouched ---
+(empty = untouched)
+
+--- git rename records ---
+RM docs/omo-parity-ledger.md -> docs/upstream-parity-ledger.md
+RM docs/omo-parity-ledger.zh-CN.md -> docs/upstream-parity-ledger.zh-CN.md

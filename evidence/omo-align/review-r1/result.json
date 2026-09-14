@@ -1,0 +1,247 @@
+{
+  "schema": "mpd-review-r1/1",
+  "task": "t46",
+  "kind": "review",
+  "round": 1,
+  "attempt": "2 (ff68ce57-411c-4ee5-9888-43bcd7bbf813)",
+  "reviewer": "Architect (read-only)",
+  "reviewedTasks": ["t35", "t36", "t37", "t39", "t44"],
+  "verdict": "needs_revision",
+  "verdictRationale": "V1 is genuinely closed and its falsifiability proof is sufficient; R3 is correctly executed as a behaviour change (monotone, verbatim in the contract, no delta on the measured corpus). But R1's delivery-facing acceptance criteria are unmet by any shipped code path: every R1 primitive has zero call sites (F-1), expiry has no caller and notifies nobody (F-2), 'delivery after approval' exists only as a comment and as a step the QA script performs on itself, R1-4 has no evidence at all (F-5), and the delivered clear primitive will resurrect acknowledged records into the scheduler's auto-delivery path as soon as it is wired (F-3).",
+  "readOnly": {
+    "productFilesModified": 0,
+    "gitWrites": 0,
+    "preexistingEvidenceOverwritten": 0,
+    "note": "Only read-only git was used; all artifacts are new under evidence/omo-align/review-r1/."
+  },
+
+  "anchoredRevision": {
+    "branch": "dev",
+    "head": "7379e28",
+    "headNote": "Pinned by measurement at review time; the worktree is clean for every reviewed path (only untracked evidence/** present).",
+    "reviewedFileHashes": {
+      "packages/mpd-agent-teams-plugin/lib/state.js": { "bytes": 57791, "sha256": "fa7fe937f1895c472732fdfdc0b193fcb2281448133fd0b15a490f230fe0ae19" },
+      "packages/mpd-agent-teams-plugin/lib/scheduler.js": { "bytes": 30673, "sha256": "f9ec4a226511b420c660673ccc1838b99fa4c0ac548f4b0f19e0fcf865109011" },
+      "packages/mpd-agent-teams-plugin/lib/tools.js": { "bytes": 149196, "sha256": "026e2ffca86e1254005254144d4c5f4f38dce6c538777f98b0e8217f92db2dcb" },
+      "packages/mpd-agent-teams-plugin/lib/session-start.js": { "bytes": 28432, "sha256": "8cfaef47e9959ef7def01003640f768ff4befa50e9c202ff692a0629ca0a2aa6" },
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": { "bytes": 92290, "sha256": "da091a4aeb6d07fcef169a596dd76b04e9e653d949586d2eed262c00f44571dd" },
+      "packages/mpd-agent-teams-plugin/test/r1-message-channel.test.mjs": { "bytes": 13438, "sha256": "d6914ec0423df3cf9a7a8565793a5fae0d386fd71c9c3eca191fcb74b15c2639" },
+      "packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs": { "bytes": 5952, "sha256": "2dd5028053cfa61e18d76da8892a189fe073345712b752c327df59d1cdc17729" },
+      "evidence/omo-align/requirements/frozen-contract.json": { "bytes": 35174, "sha256": "09949c8095d7ccd533329b114a2ef22bad1ce81bd24338240e68cfd0fd66be41" }
+    },
+    "preR3Module": {
+      "source": "git show facb2de^:packages/mpd-agent-teams-plugin/lib/session-start.js",
+      "bytes": 27208,
+      "sha256": "b79bde7c87cc2a6c899a3e4c0e9685c0b6e26fb0d3dfdc80f1383c385b5d623e",
+      "note": "Materialized into a temp package copy for the A/B measurement and deleted afterwards; no stale product copy is kept in evidence."
+    }
+  },
+
+  "acceptanceResults": [
+    {
+      "criterion": "R1-1 幂等去重: N sends in the 60 s window deliver AT MOST once; negative control different from/to not folded",
+      "status": "failed",
+      "codeLocation": "state.js:485 appendMailboxDeduped (key state.js:473, window state.js:465); shipped send path tools.js:1871 (captain) and tools.js:1887 (member) call appendMailbox; tools.js:15 does not import appendMailboxDeduped",
+      "evidence": "probe-r1-wiring.out.json.dedup: 3 identical sends via appendMailbox -> 3 records / 3 unread; via appendMailboxDeduped -> 1 record / dupCount 3 / 1 unread. Negative control and window control are correct in the shipped test (r1-message-channel.test.mjs:63, :78) and my re-run is 13 pass / 0 fail. The operative clause is false for the shipped channel."
+    },
+    {
+      "criterion": "R1-2 有界清除: tombstone + recoverable archive sidecar + audit event; no hard-delete path",
+      "status": "passed",
+      "codeLocation": "state.js:508 clearMailboxToWatermark; state.js:544 readLiveMailbox",
+      "evidence": "probe-r1-wiring.out.json.tombstones: sidecar holds the cleared bytes (246 B / 3 records), tombstone keys [id,from,to,content,ts,tombstone,clearedAt,clearedToWatermark,archivedTo], readLiveMailbox 0, audit.kind='mailbox-cleared'. No hard-delete branch exists (the clear only rewrites). PASS as a primitive; it has zero call sites (F-1) and must not be wired before F-3 is fixed."
+    },
+    {
+      "criterion": "R1-3 插话申请: pending not auto-delivered / after approval delivered at a step boundary via the queue seam / TTL expiry with requester notification",
+      "status": "failed",
+      "codeLocation": "state.js:568 enqueueInterjection; scheduler.js:235 deliverableUnread applied at scheduler.js:303 and :366; state.js:655 decideInterjection; state.js:645 expireInterjections",
+      "evidence": "Clause 1 PASS: deliverableUnread drops kind===INTERJECTION_KIND on both shipped unread reads, and the delivered QA case's spoofed-kind negative control makes it falsifiable. Clause 2 ABSENT: decideInterjection only rewrites status; nothing re-posts. The assertion that it does is a comment (scheduler.js:230-231) that is false about the code, and the QA case performs the repost itself at agent-teams-messaging.mjs:419-427 before asserting the message it just wrote (its summary field requesterInboxAfterRepost=1 is evidence about the script). Clause 3 HALF ABSENT: expiry flips pending->expired correctly (probe: before TTL [], at TTL ['ij-ttl'], status expired, from preserved) but has no caller and writes nothing to the requester (measured requester inbox = 0) while its docstring state.js:643-645 claims notification."
+    },
+    {
+      "criterion": "R1-4 重复投递不使成员动作翻倍 (assert the task-update call count does not double)",
+      "status": "failed",
+      "codeLocation": "no location exists",
+      "evidence": "grep for 'call count|callCount|not double|redeliver' across packages/mpd-agent-teams-plugin/test/, self-fix-tests/ and the messaging QA case returns 0 hits. The criterion is neither asserted nor measurable while dedup is unwired (F-5)."
+    },
+    {
+      "criterion": "R3 动词表和谐化: two tables mutually consistent, no new miss, threshold untouched, isolated mount proof, two-sided gate",
+      "status": "passed",
+      "codeLocation": "session-start.js:98 (C2), :114 (C3), thresholds :116-122, trigger :212",
+      "evidence": "probe-r3-ab.out.json: C2 verb set equals C3's verb-only set (EN 14 = 14 after excluding the C3 conjunctions and|then|also; CJK 12 = 12); additions C2 gained EN audit + CJK {对齐,重构,迁移,审计,移植,梳理,全量}, C3 gained EN {consolidate,overhaul,port}; removals NONE -> monotone, so R3 can only add triggers. Calibration set unchanged (simple 3/3 silent, complex #1/#3 trigger on C in both arms). 20 real prompts: 0 flips. Two constructed boundary counterexamples flip silent -> team (see r3Behaviour)."
+    },
+    {
+      "criterion": "契约一致性: frozen-contract C2/C3 verbatim; logicRevisionNote / harmonizedVerbTables record Option A and the harmonization",
+      "status": "passed",
+      "codeLocation": "evidence/omo-align/requirements/frozen-contract.json -> complexityGate.logic, .logicRevisionNote, .signals.C_enumeratedSteps.harmonizedVerbTables",
+      "evidence": "harmonizedVerbTables EXISTS (nested under signals.C_enumeratedSteps, not at complexityGate top level). Measured: shippedEnglish == shipped C2 EN (true), shippedCjk == shipped C2 CJK (true), contract C2 detect list == shipped C2 set (true). logicRevisionNote records Option A and the R3 harmonization. One transcription gap outside the R3 clause: C1 detect omits the shipped '|' alternative and the C3 prose describes a looser test than the positional match (F-7)."
+    },
+    {
+      "criterion": "t37/t39 measurements incorporated + judgement on whether Option A still holds, with executable recommendations",
+      "status": "passed",
+      "codeLocation": "evidence/omo-parity-rate/result.json; evidence/omo-parity-rate/raw/{prompts.jsonl,probe-output.json}; evidence/omo-align/requirements/team-compaction-contract.json:55",
+      "evidence": "See optionAJudgement. 20/20 real prompts CJK (latinOnly 0 -> English rate undefined, n=0); 0 triggers overall (session-start 0/5, follow-up 0/15) with the probe control proving the 0 is not a broken probe; the richest session-start prompt produced zero signals (1 distinct B verb vs 4, 1 distinct C2 verb vs 3) = a MISS. My independent A/B re-derives the control and shows R3 contributes none of the zeros."
+    },
+    {
+      "criterion": "V1 closure + sufficiency of t44's falsifiability proof",
+      "status": "passed",
+      "codeLocation": "state.js:568 enqueueInterjection (normalization + required fields), state.js:603 readRawInterjectionRecords, state.js:655 decideInterjection",
+      "evidence": "Independently reproduced on the shipped module: content-less enqueue -> status pending, content 'only a summary', readable as pending (1), decidable (approved); absent id -> 'does not exist'; malformed-but-present -> the MALFORMED error; both distinguishable. t44's method (implementer's own file against the pre-repair module -> 8 pass / 5 fail; 13 pass / 0 fail on the shipped module) is sufficient for THIS defect; my re-run of that file on the measured revision is 13 pass / 0 fail. Caveat: it proves sensitivity to that repair, not coverage of the class (F-4 is a live member of the same class on the decision side)."
+    },
+    {
+      "criterion": "风险清单: most likely regression + executable prevention",
+      "status": "passed",
+      "codeLocation": "state.js:508 + state.js:717 + scheduler.js:235/303/366",
+      "evidence": "F-3 is the named risk with a three-part prevention (filter tombstones in readUnreadMailbox, keep the read/claimed markers, add the seam test 'cleared mailbox => 0 unread, 0 deliverable')."
+    }
+  ],
+
+  "findings": [
+    {
+      "id": "F-1",
+      "severity": "blocker",
+      "file": "packages/mpd-agent-teams-plugin/lib/tools.js",
+      "line": 1871,
+      "problem": "Every R1 primitive is defined and unit-tested but has ZERO call sites in the shipped runtime (tools.js, scheduler.js, members.js, index.js, quality-gates.js, harness-compat.js): appendMailboxDeduped, clearMailboxToWatermark, readLiveMailbox, enqueueInterjection, expireInterjections, readPendingInterjections, readInterjections; decideInterjection's only hit is the JSDoc line scheduler.js:231. The shipped send tool (tools.js:1815) appends with appendMailbox at tools.js:1871/:1887 and does not import appendMailboxDeduped (tools.js:15). Measured: 3 identical sends through the shipped append path = 3 records / 3 unread, i.e. N deliveries. No agent-facing surface can enqueue, decide, clear or expire anything. R1's delivery-facing acceptance criteria (R1-1 operative clause, R1-3 clauses 2 and 3, R1-4) are therefore unmet by the delivered system.",
+      "requiredFix": "Either (a) wire R1 in this wave: move tools.js:1871/:1887 to appendMailboxDeduped; add the interjection enqueue/decide surface with the frozen clear-authority rule (captain may clear any mailbox, a member only its own); re-post on 'approved' through the existing member-prompt queue seam at the next step boundary (never harness sendMessage-steer); call expireInterjections on the scheduler's idle edge; or (b) record R1-1 (operative clause), R1-3 and R1-4 as NOT MET in the ledger and parent result and open a new task whose inScope names lib/tools.js + lib/scheduler.js. Do not leave them passed."
+    },
+    {
+      "id": "F-2",
+      "severity": "high",
+      "file": "packages/mpd-agent-teams-plugin/lib/state.js",
+      "line": 645,
+      "problem": "expireInterjections has no caller, and its own docstring (state.js:643-645) claims 'the requesting member is notified (status expired)' while the function only rewrites status/decidedAt. Measured: after an expiry the requester's inbox holds 0 records. The frozen decision onCaptainSilence requires default DENY + TTL 30 min + notify the requesting member, so a member who asks for permission and gets no answer learns nothing.",
+      "requiredFix": "Append an ordinary message to record.from inside the expiry path (or in the caller that expires) and drive expireInterjections from a real tick (scheduler idle edge / session start); keep the row-level status:'expired' as is."
+    },
+    {
+      "id": "F-3",
+      "severity": "high",
+      "file": "packages/mpd-agent-teams-plugin/lib/state.js",
+      "line": 717,
+      "problem": "clearMailboxToWatermark (state.js:508) rewrites each cleared row as a tombstone that drops readAt/deliveryClaimedAt, while readUnreadMailbox (state.js:717) filters on readAt === undefined and — unlike readLiveMailbox (state.js:544) — does not filter tombstone !== true; the scheduler's two delivery reads (scheduler.js:303, :366) go through readUnreadMailbox + deliverableUnread (scheduler.js:235), which only drops kind === INTERJECTION_KIND. Measured: 2 acknowledged records (0 unread) -> one clear -> 2 unread / 2 deliverable, tombstone keys [id,from,to,content,ts,tombstone,clearedAt,clearedToWatermark,archivedTo]; 3 uncleared records -> 3 deliverable empty-content tombstones. Latent today only because the clear has no caller (F-1); it becomes a storm of empty prompts to already-served members the moment one is wired. It also makes the delivered claim 'after clear the read returns only the tombstone' false for the reader the scheduler actually uses.",
+      "requiredFix": "Filter tombstone !== true inside readUnreadMailbox (or in deliverableUnread), and do not let a tombstone re-open an acknowledged record (keep readAt, or carry an explicit clearedAt exclusion). Add the seam test 'after a clear: 0 unread, 0 deliverable' to test/r1-message-channel.test.mjs."
+    },
+    {
+      "id": "F-4",
+      "severity": "medium",
+      "file": "packages/mpd-agent-teams-plugin/lib/state.js",
+      "line": 655,
+      "problem": "decideInterjection writes any decision string verbatim as status. Measured: decision 'banana' -> status 'banana'; the row then leaves readPendingInterjections (state.js:637 filters status==='pending') without being approved or rejected, and a later real decision is refused with 'is already banana'. This is V1's 'returns a value nobody can act on' class relocated to the decision side, and there is no tool layer (F-1) to constrain the argument.",
+      "requiredFix": "Allow-list {approved, rejected} and reject anything else loudly, naming the allowed values."
+    },
+    {
+      "id": "F-5",
+      "severity": "medium",
+      "file": "packages/mpd-agent-teams-plugin/test/r1-message-channel.test.mjs",
+      "problem": "The frozen criterion 'duplicate delivery does not double the member's actions (assert the task-update call count does not double on redelivery)' is asserted nowhere: grep for 'call count|callCount|not double|redeliver' over the plugin tests, self-fix tests and the messaging QA case returns 0 hits, so its passed status rests on nothing — and it is unmeasurable while dedup is unwired.",
+      "requiredFix": "Once F-1(a) lands, assert it at the tool boundary: two identical agent_teams_send_message calls inside the window -> exactly one scheduler delivery and exactly one agent_teams_update_task, recorded as a call count."
+    },
+    {
+      "id": "F-6",
+      "severity": "low",
+      "file": "evidence/omo-align/requirements/wave-next-contract.json",
+      "line": 32,
+      "problem": "The acceptance text reads as 'the durable JSONL still holds all N records folded with dupCount=N', while the shipped primitive keeps ONE record (test/r1-message-channel.test.mjs:55 asserts length === 1; probe confirms 1). The t35 record discloses the real shape, so this is a spec-text divergence rather than a concealed one, but a later auditor reading the criterion literally will fail working code — or 'fix' the primitive to keep N records and re-open the duplicate-delivery path.",
+      "requiredFix": "Record the operative reading ('at-most-once delivery; one surviving record; N stored in dupCount') as a pin-only wording addendum. Do not change the primitive."
+    },
+    {
+      "id": "F-7",
+      "severity": "low",
+      "file": "evidence/omo-align/requirements/frozen-contract.json",
+      "problem": "Two transcription gaps in the C row (neither introduced by R3): complexityGate.signals.C_enumeratedSteps.detect transcribes C1 as ^\\s*(\\d+[.)]|[-*])\\s while the shipped pattern (session-start.js:100) is ^\\s*(?:\\d+[.)]|[-*|])\\s (the table-row alternative is missing), and the C3 prose says clauses 'each pair an action verb with an object' while the shipped test (session-start.js:114) is positional (a clause whose first token, optionally after and|then|also, is a verb). The C2/C3 VERB LISTS are verbatim in both directions, so the R3 acceptance item itself is met.",
+      "requiredFix": "Transcribe C1 exactly and restate C3 as 'a clause whose FIRST token, optionally after and|then|also, is an action verb'. Pin-only; no code change."
+    }
+  ],
+
+  "v1Closure": {
+    "verdict": "closed",
+    "independentlyReproduced": true,
+    "observations": {
+      "contentLessEnqueue": { "returnedStatus": "pending", "normalizedContent": "only a summary", "readableAsPending": 1, "decideResult": "approved" },
+      "absentId": "interjection \"nope\" does not exist",
+      "malformedButPresent": "interjection \"broken\" exists but is MALFORMED (...)",
+      "expiry": { "beforeTtl": [], "atTtl": ["ij-ttl"], "status": "expired", "fromPreserved": "Lead", "requesterInboxRecords": 0 }
+    },
+    "t44ProofSufficiency": "SUFFICIENT for the V1 defect: running the implementer's own 13-assertion file against the pre-repair module (8 pass / 5 fail) and against the shipped module (13 pass / 0 fail) demonstrates defect-sensitivity of exactly the five REPAIR V1 assertions rather than asserting non-tautology. I re-ran that file on the measured revision: 13 pass / 0 fail. Scope caveat: it proves sensitivity to that repair, NOT coverage of the class — F-4 is a live member of the same class on the decision side and is outside the V1 test set."
+  },
+
+  "r3Behaviour": {
+    "verdict": "correctly executed behaviour change; widens the false-positive surface by one verb",
+    "monotonicity": "MONOTONE - no verb was removed from either table, so on a fixed text the signal set can only grow: R3 can add triggers and can never remove one (no new miss is possible by construction).",
+    "verbSets": {
+      "C2_english": ["add", "align", "audit", "build", "change", "check", "consolidate", "implement", "migrate", "overhaul", "port", "refactor", "rewrite", "verify"],
+      "C2_cjk": ["全量", "实现", "审计", "对齐", "改造", "梳理", "移植", "补充", "设计", "迁移", "重构", "验证"],
+      "C3_verbOnly_equals_C2": true,
+      "C3_conjunctions": ["also", "and", "then"],
+      "addedToC2": { "en": ["audit"], "cjk": ["全量", "审计", "对齐", "梳理", "移植", "迁移", "重构"] },
+      "addedToC3": { "en": ["consolidate", "overhaul", "port"], "cjk": [] },
+      "removed": { "C2": [], "C3": [] }
+    },
+    "counterexamples": [
+      {
+        "prompt": "Audit the ledger, build the package, verify the output.",
+        "preR3": { "trigger": false, "signals": [] },
+        "shipped": { "trigger": true, "signals": ["C"] },
+        "why": "pre-R3 C3 = 3 clauses but C2 = 2 distinct verbs (audit was absent from the count-anywhere table); the audit addition supplies the second C sub-signal."
+      },
+      {
+        "prompt": "重构这个模块, 迁移到新接口, 审计日志.",
+        "preR3": { "trigger": false, "signals": [] },
+        "shipped": { "trigger": true, "signals": ["C"] },
+        "why": "pre-R3 C2 CJK held only 设计/实现/验证/改造/补充, so this sentence scored C3 = 3 and C2 = 0; the 7 added CJK verbs make C2 = 3."
+      }
+    ],
+    "calibrationSet": "unchanged in both arms - simple 3/3 silent, frozen complex #1/#3 trigger on C (direct-call table; complex #2's team: prefix is consumed into explicitFlag upstream and is covered by the shipped two-sided case)",
+    "measuredDeltaOnRealPrompts": "20 prompts, 0 flips, 0 triggers in both arms - R3 contributed none of the measured zeros"
+  },
+
+  "optionAJudgement": {
+    "doesOptionAStillHold": "Formally yes; empirically it is calibrated in the wrong direction for the measured population and the data needed to retune it does not exist yet.",
+    "facts": [
+      "0 of 20 real prompts trigger under the post-R3 tables (session-start 0/5, follow-up 0/15); my A/B shows R3 contributed none of those zeros, and the probe's control (frozen complex #1/#3 trigger, simple 3/3 silent) plus my independent re-derivation rule out a broken probe.",
+      "The richest session-start prompt - an explicit alignment ask naming several targets and asking for auto-invocation on complex tasks - produced ZERO signals (1 distinct B verb vs 4; 1 distinct C2 verb vs 3): the observed failure is a MISS, not an over-trigger.",
+      "latinOnly = 0 in the dataset, so the English trigger rate is undefined (n=0) and the bilingual claim is unsupported (recorded as the t39 F2 finding in team-compaction-contract.json:55).",
+      "The session-start stratum is 5 samples, so its 95% false-positive bound is about 46%: 0/20 cannot distinguish 'well calibrated' from 'dormant' on the positive side.",
+      "Option A's stated accepted cost (ordinary multi-clause instruction lists routing) is real but unobserved on this population, and R3 widened exactly that class by one verb."
+    ],
+    "executableRecommendation": [
+      "1. Build a positive stratum first: >= 10 real COMPLEX session-start prompts. A gate that never fires cannot be calibrated by counting false positives; today's evidence only bounds the false-positive rate from above.",
+      "2. Fix the English coverage before any cross-language comparison: add English prompts to the recalibration set or drop the bilingual claim.",
+      "3. Only then re-tune, cheapest-change-first: C3 (positional clause opening) is the sub-signal most likely to match real multi-step asks - relaxing it to verb-with-object, or lowering ACTION_VERB_MIN from 3 to 2, raises recall on the missed class; each candidate must be re-run through the two-sided gate on BOTH strata with the negative control disarmed.",
+      "4. Do NOT touch the C 2-of-3 majority or the signals >= 1 trigger in the same pass: those are what would start routing ordinary prompts and they carry the only measured cost.",
+      "5. Record R3's new boundary (the two counterexamples above) in the accepted-cost text, which currently names only the pre-R3 class, so the ledger describes the surface that actually ships."
+    ]
+  },
+
+  "topRegressionRisk": {
+    "risk": "clearMailboxToWatermark + the scheduler's unread path (F-3).",
+    "why": "R1 exists to make the clear reachable, so the next change wires it - and that change turns a correct-looking primitive into repeated empty prompts to members whose messages were already read. It is invisible in headless QA because the delivered case asserts the clear's own contract (readMailbox/readLiveMailbox) and never asks the scheduler's reader what it would deliver.",
+    "prevention": [
+      "Filter tombstone !== true inside readUnreadMailbox (or in deliverableUnread).",
+      "Keep or re-derive the read/claimed markers on the tombstone so an acknowledged record cannot become unread again.",
+      "Add the seam assertion 'cleared mailbox => deliverableUnread(readUnreadMailbox(...)) is empty' to test/r1-message-channel.test.mjs (two lines; it fails today).",
+      "Second order: fix the comments that describe unwired behaviour (scheduler.js:230-231, state.js:643-645) in the same change that fixes F-1/F-2 - they read as specifications and will mislead the next implementer."
+    ]
+  },
+
+  "artifactHashes": {
+    "evidence/omo-align/review-r1/REVIEW.md": { "bytes": 27998, "sha256": "9b3a7d98ec8e76f25a8bc42c6f20d0c66f91ef3a20a82f06c6d8c25ac3d6fae4" },
+    "evidence/omo-align/review-r1/raw/probe-r1-wiring.mjs": { "bytes": 12702, "sha256": "01de0b4d2eb95d8d3197b355a91334c35da389e202fbe177697ba7c043c19555" },
+    "evidence/omo-align/review-r1/raw/probe-r1-wiring.out.json": { "bytes": 5858, "sha256": "38903f00ba756fbad7b6402e294198c51287206d6019046da35ec5902bba3adf" },
+    "evidence/omo-align/review-r1/raw/probe-r3-ab.mjs": { "bytes": 8440, "sha256": "957091e633b91786c90b63e57c9b124bec72a4381fc4d8b6a48af6740bb80c5f" },
+    "evidence/omo-align/review-r1/raw/probe-r3-ab.out.json": { "bytes": 13064, "sha256": "178b2633a99d7318c50ae5a01d6a3677fd2bab800efd8780d2aafb889afc528e" },
+    "evidence/omo-align/review-r1/raw/qa-messaging-rerun.log": { "bytes": 2154, "sha256": "9ba51a1c4bb4c9b9ef6226b1a66e41cddddd945612bbc6c53b855eb7fd9b1baf" },
+    "evidence/omo-align/review-r1/raw/probe-r1-wiring.err.txt": { "bytes": 0, "note": "clean stderr" },
+    "evidence/omo-align/review-r1/raw/probe-r3-ab.err.txt": { "bytes": 0, "note": "clean stderr" }
+  },
+
+  "commandsRun": [
+    { "command": "node evidence/omo-align/review-r1/raw/probe-r1-wiring.mjs", "status": "passed", "exitCode": 0, "evidence": "wiring scan + dedup/tombstone/resurrection/V1/expiry probes; output at raw/probe-r1-wiring.out.json" },
+    { "command": "node evidence/omo-align/review-r1/raw/probe-r3-ab.mjs", "status": "passed", "exitCode": 0, "evidence": "pre-R3 (facb2de^) vs shipped gate over 6 calibration + 20 real + 3 constructed prompts; output at raw/probe-r3-ab.out.json" },
+    { "command": "bun test packages/mpd-agent-teams-plugin/test/r1-message-channel.test.mjs", "status": "passed", "exitCode": 0, "evidence": "13 pass / 0 fail" },
+    { "command": "bun test packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs", "status": "passed", "exitCode": 0, "evidence": "4 pass / 0 fail" },
+    { "command": "node skills/dsh-qa/scripts/agent-teams-messaging.mjs", "status": "passed", "exitCode": 0, "evidence": "PASS on 7379e28 (state.js fa7fe937, scheduler.js f9ec4a22); log at raw/qa-messaging-rerun.log; its repost step is performed by the script itself (lines 419-427)" },
+    { "command": "git rev-parse --short HEAD && git status --porcelain", "status": "passed", "exitCode": 0, "evidence": "7379e28 on dev; worktree clean for all reviewed paths (only untracked evidence/**)" },
+    { "command": "git show facb2de^:packages/mpd-agent-teams-plugin/lib/session-start.js", "status": "passed", "exitCode": 0, "evidence": "pre-R3 module for the A/B measurement, sha256 b79bde7c..." }
+  ],
+
+  "neutrality": "No retired external project identifier appears in any artifact of this review; the measurement dataset is cited by its in-repo path only."
+}

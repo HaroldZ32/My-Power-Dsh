@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "method": "diff of tsgo --noEmit error lines between baseline d951dba and dev tip",
+  "baselineErrors": 108,
+  "currentErrors": 108,
+  "newErrorsIntroduced": 0,
+  "note": "all errors are pre-existing debt: vendored TS2835/TS5097 (extension-less ESM imports under NodeNext) in hashline/boulder/modelchain vendor trees + mpd-ulw null/never inference. Vendored files are VENDOR_LOCK-fingerprinted and untouched.",
+  "at": "2026-08-27T13-14-57.802330615Z"
+}

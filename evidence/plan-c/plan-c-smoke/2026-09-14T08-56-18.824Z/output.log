@@ -1,0 +1,166 @@
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-wa-yoKKFY/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+所有三个部分都已完成。报告如下：
+
+## 1) 配置——`memory.vcs`
+
+- 写入了 `.mpd/mpd.jsonc`：`{ "ulw": { "maxRounds": 4 }, "memory": { "vcs": "git" } }`
+- `mpd_config_get(key: 'memory.vcs')` → **`"git"`**
+
+它读取新写入的值不需要重新加载（无需 `mpd_config_reload`）。
+
+## 2) Boulder 流程
+
+- `mpd_boulder_start(.mpd/plans/qa.md)` → **workId `qa-068c9852`**，状态为 `active`
+- 任务计时器 `1`：开始 → `running`，结束 → `completed`（`elapsed_ms: 1342`）
+- `mpd_boulder_complete(workId: qa-068c9852)` → **状态 `completed`**，`elapsedMs: 11775`
+- 计划进度已正确解析：`{ total: 2, completed: 1, isComplete: false }`（TODO 1 未勾选，TODO 2 已勾选——符合预期）
+
+## 3) Hashline 编辑
+
+锚点 `2#BB` 通过 `mpd_hashline_edit` 被替换（`3 lines, noop=0, deduped=0`）；最终 `note.txt`：
+
+```
+first
+second2
+third
+```
+
+## 发现的 bug（值得归档）
+
+`mpd_boulder_status` 在任何 work 处于活动状态时会失败，返回 `Error: tool "mpd_boulder_status" returned invalid output: value is not lossless JSON`。复现了 **两次**（带和不带 `planPath`）；在完成后，同样的两个调用都成功。工作区 `.mpd/boulder.json` 是干净的 JSON（没有 `NaN`/`Infinity`/`undefined`），因此不可转换的值是在工具自身对活动 work 路径的返回值中构建的，而不是磁盘上的状态。变通方法：直接读取 `.mpd/boulder.json`。
+
+次要问题：在完成后，该文件仍保留 `active_work_id: "qa-068c9852"`，而该工具报告 `active works: []`——该指针可能应当被清除，或者这是有意为之的恢复指针。
+
+工件保留在 workspace 中供检查：`.mpd/mpd.jsonc`、`.mpd/boulder.json`、`.mpd/plans/qa.md`、`note.txt`。
+dsh: reasoning:
+Now call mpd_config_get with key memory.vcs, and also create .mpd/plans/qa.md.
+
+Wait — I should use the write tool for qa.md since it's a normal file. Let me do config_get and write qa.md in parallel.
+
+qa.md needs: '# QA' and '## TODOs' with '- [ ] 1. First' and '- [x] 2. Second'.
+
+The mpd_boulder_plan_progress parses '## TODOs' items (N.). Let me write the plan file.
+
+Note also mpd_config_get might need a reload since I wrote the config... The tool description says it reads the resolved mpd.jsonc runtime config. It may cache. I'll call mpd_config_get first, and if it doesn't reflect, call mpd_config_reload. Actually let me call mpd_config_reload first then get. But the task says "write ... then call mpd_config_get with key 'memory.vcs' and report the value". Let me just call get; if stale, reload and try again.
+
+Also hashline_read for note.txt.
+dsh: reasoning:
+Config value: "git". 
+
+Now part 2: mpd_boulder_start on .mpd/plans/qa.md, then task timer start/end for task '1', then mpd_boulder_complete.
+
+Let me start the boulder.
+dsh: reasoning:
+workId = qa-068c9852. Now task timer start for taskKey '1', then end.
+
+Let me call start and end sequentially (end depends on start). Actually they're independent calls technically, but logically sequential. I'll do start first, then end.
+
+Actually, I can call start then end in sequence — the end depends on start being recorded. Let me call start first.
+dsh: reasoning:
+Now mpd_boulder_status to capture status, then mpd_boulder_complete. The task says: call mpd_boulder_start, timer start/end, then mpd_boulder_complete. And report workId and status. Let me check status before completing to report, then complete.
+
+Actually, I can call mpd_boulder_status and then complete. Let me get status first to report the "status" — but the report likely wants the status from start/status. Let me do status now, then complete, then status again? To be efficient: call mpd_boulder_status now (shows active), then mpd_boulder_complete, then report. Let me do the status check and the hashline_read in parallel (both independent).
+dsh: reasoning:
+The status tool returned an error: "value is not lossless JSON" — the output contains something non-JSON (possibly NaN for elapsed, etc.). Let me investigate — maybe run it without planPath, or check boulder.json directly. The instruction says: report the workId and status. Let me try the tool again without the planPath argument to see if it's the plan path addition that breaks it.
+
+Also I should report this failure honestly. Let me try alternate forms.
+
+First: mpd_boulder_status with no args.
+
+And meanwhile, do the hashline_edit for line 2.
+
+Hashline anchors: 2#BB. Edit: replace pos "2#BB" with "second2".
+
+Let me do these in parallel — they're independent.
+dsh: reasoning:
+The hashline edit worked. The boulder_status tool consistently errors with "value is not lossless JSON" — a real defect in the tool (probably NaN in elapsed_ms or Infinity). Let me inspect the underlying .mpd/boulder.json to report the status accurately, since the tool itself fails.
+
+Let me read .mpd/boulder.json.
+
+Also now call mpd_boulder_complete. Wait — should I complete first, then inspect? The task says report workId and status. Let me read boulder.json to see the shape (why status tool fails), then complete, then read note.txt.
+
+Let me do: read boulder.json (via read tool) and read note.txt in parallel.
+
+Actually .mpd/boulder.json may be hidden; the read tool should handle it. Let's read it.
+dsh: reasoning:
+The boulder.json is pure valid JSON with no NaN. So why does mpd_boulder_status fail with "value is not lossless JSON"? Perhaps the status tool output includes something else — e.g., it computes "resume options" with undefined values, or the plan progress result. Hmm, "value is not lossless JSON" is the harness rejecting the tool's return value. It's a tool-side defect, not a state defect. Note that JSON with `undefined` values would be dropped... "not lossless JSON" typically means the output contains values like undefined/NaN/Infinity/BigInt, or non-plain objects (Map/Date/class instances). Possibly the tool returns a Date object or something.
+
+Let me try to characterize it a bit for the report — maybe check with a smaller call, but there's no argument variation left. Both with and without planPath failed. This is a reproducible defect.
+
+Let me also double check if the state file mentions anything odd. It's clean.
+
+Now call mpd_boulder_complete for the work, then verify final status by reading boulder.json again.
+
+Let me call mpd_boulder_complete with workId (optional). The active work is qa-068c9852. Call mpd_boulder_complete.
+
+Then read boulder.json again to capture final status (since status tool is broken).
+
+Also, is there anything in .mpd/boulder.json regarding resume options... no.
+
+Let me do complete then read.
+dsh: reasoning:
+Now verify final state via boulder.json read, and also re-try mpd_boulder_status once (maybe completing fixed it? unlikely but cheap). Actually let me check: after complete, active_work_id may be null and the status tool may still fail. Let me retry status once and read the file in parallel.
+dsh: reasoning:
+Interesting! mpd_boulder_status now works after completion — "active works: []" and "resume: []". So the failure occurred while a work was active. This suggests the tool's output when a work is active includes a non-lossless value (perhaps a Date object or something on the active-work path). Let me confirm by triggering? No, I shouldn't re-start a boulder unnecessarily... Actually, a precise diagnosis would be valuable: the failure is on the active-works path. But I could verify cheaply by starting another boulder from the same plan and calling status. That's a reasonable diagnostic since this is a self-test of exactly this tool. But it may create noise. Hmm — the user asked to report config value, workId and status, and final note.txt. The status tool failed during active state; I worked around it by reading the state file. That's an honest report.
+
+Let me be careful: is `active_work_id: qa-068c9852` while status is completed an inconsistency? Yes — top-level active_work_id still points to the completed work, but the status tool reports "active works: []". That's probably fine/by design (active_work_id = last active work), but worth noting. Actually could be a minor state inconsistency: completed work still listed as active_work_id. Let me check if there's anything else. It's probably intentional (resume pointer).
+
+Should I diagnose the lossless-JSON failure more? A quick check: maybe the active-works path includes `progress` from plan parsing which contains something. Let me test: mpd_boulder_plan_progress on the plan file — if that tool's output is lossless, then the issue is in the status assembly. Let me run mpd_boulder_plan_progress to check plan parsing output (it's also part of the wave A toolset presumably, and useful evidence).
+
+Also verify progress parsing: plan has 2 TODOs, one checked → done 1, remaining 1.
+
+Let me also re-run mpd_boulder_status with planPath to check whether it now works (now that no work is active, planPath might trigger progress parsing... but planPath arg probably just adds progress field).
+
+Let me test both to characterize the defect precisely:
+1. mpd_boulder_plan_progress {planPath: '.mpd/plans/qa.md'}
+2. mpd_boulder_status {planPath: '.mpd/plans/qa.md'}
+
+If #2 now fails while #1 works, then it's the progress-embedded-in-status path → likely a Date/undefined in the progress struct. If #2 works, then the failure is confined to the active-work path.
+
+This is cheap and adds diagnostic value. Let's do both in parallel.
+dsh: reasoning:
+So both work now. The failure was specifically on the active-work path (when a work in status=active is present in the list). That path likely includes something non-lossless (maybe a Date object for started_at, or elapsed timer computed as a Date).
+
+Now let me do a final confirmation of the whole state:
+- config value: "git" ✓ (from mpd_config_get key memory.vcs)
+- workId: qa-068c9852, status: completed (11775ms total; task 1 completed with elapsed_ms 1342)
+- note.txt final content: first / second2 / third ✓
+
+Let me also double check the config file is still there and verify the resolved config with a full read (optional). The task said report the config value — "git" ✓.
+
+One more check: confirm note.txt on disk (done via read). Also should I verify that hashline registry etc.? Not needed.
+
+Let me clean up? The task didn't ask to clean up; artifacts (note.txt, .mpd/) are the point of the test. Keep them.
+
+Should I investigate the root cause of the active-path failure more deeply? The user's request is a Wave A self-test with a report. Reporting the defect with a precise characterization is valuable. I could optionally reproduce once more to confirm reproducibility (it failed twice: with and without planPath while active). That's already 2 failures. Good enough evidence.
+
+Actually, let me consider whether the failure could relate to elapsed_ms being computed as a floating number, or `Date` object. Let me see if I can find the plugin source to confirm the root cause... The instructions warn not to inspect plugin source for revising plans, but this is diagnosing a tool bug in a self-test. Hmm, the AgentTeams guidance about not editing/inspecting .agent-teams state files/plugin source applies to plan revision. Here nothing AgentTeams is involved. Diagnosing would be nice but the user asked for a specific report. A quick grep for the status tool implementation could confirm root cause cheaply. But it may be a large bundle; and the tool output isn't accessible.
+
+Let me weigh: the value-add of root-cause is moderate. I could do one quick grep in the plugin dir if it's easily located. Let's do a bounded attempt: find the mpd plugin dir and grep for "boulder status" / "active works". If quick, confirm; else stop. Since the harness has file sandbox workspace-write, reading outside workspace may be denied... reading is usually allowed. Let me try a bounded search with a short timeout.
+
+Actually — I could instead reproduce deterministically: start a new boulder on the same plan, call status, and see it fail again; that confirms trigger = presence of a work with status active. But I already know it failed twice while active and works now. Starting another boulder would leave extra state. Not worth it.
+
+Let me do a quick bounded source hunt (10s) to see if I can identify the non-lossless value. One command, then finalize.
+dsh: reasoning:
+No files found — plugin source isn't in those locations (or the grep found nothing). Let me stop the root-cause hunt; it's not required by the user. I have precise symptom characterization: fails iff at least one work has status active; works when active works list is empty. Both with and without planPath.
+
+Let me do a final consolidated verification for the report, then write the report. Actually I have everything. Let me just double-check the config file content once more and confirm final artifacts in one command for a clean evidence block.
+
+Actually, I already have the config cat output at the start, mpd_config_get result "git", boulder state, and note.txt content. Good.
+
+One consideration: should I note that mpd_config_get returned the just-written value without needing a reload? Yes — that's a useful positive finding (no reload needed).
+
+Report:
+1. Config: memory.vcs = "git" (written and resolved immediately, no reload needed).
+2. Boulder: workId qa-068c9852, status completed (started active → completed; total elapsedMs 11775; task timer '1' start→end, elapsed_ms 1342). Note plan progress: total 2, completed 1, isComplete false (as expected since TODO 1 unchecked).
+3. note.txt final:
+first
+second2
+third
+Hashline: line 2 anchor 2#BB replaced; 3 lines, noop=0, deduped=0.
+
+Defect found: mpd_boulder_status returned "value is not lossless JSON" while a work was active (reproduced twice, with and without planPath); after completion, the same calls succeed. Workaround: read .mpd/boulder.json. Also note top-level active_work_id still points to completed work qa-068c9852 while the tool reports "active works: []" — worth flagging as a possible pointer/state nit.
+
+I'll present concisely with an evidence block.

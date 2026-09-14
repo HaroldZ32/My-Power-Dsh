@@ -1,0 +1,15 @@
+HEAD e2d8df9a62bdc99dd2dfbe696c7aeb9794481ed5
+checks: 20/21
+  FAIL shipped-c2-no-extras-no-missing - C2 pattern vs contract: extras EN [] CJK []; missing EN [] CJK ["设计","实现","验证","改造","补充","对齐","重构","迁移","审计","移植","梳理","全量"]
+caseRows: ["mount-assert","dual-track-smoke","mcp-call","preset-register","codegraph-smoke","agent-teams-adopt","ultrawork-smoke","plan-c-smoke","memory-smoke","vision-smoke","tool-output-validation","skill-catalog-probe","relocate-smoke","team-route-rewire","workmate-library","workmate-team-member","web-client-adapt","agent-teams-dispatch","agent-teams-messaging","session-start-team","explicit-team-trigger","bundle-lifecycle","preset-conformance","agent-teams-sidebar","readonly-deny"]
+159 | writeFileSync(OUT, JSON.stringify(out, null, 2));
+160 | console.log("HEAD", out.head);
+161 | console.log("checks:", out.checks.filter((c) => c.ok).length + "/" + out.checks.length);
+162 | for (const f of out.failures) console.log("  FAIL", f.id, "-", String(f.detail).slice(0, 200));
+163 | console.log("caseRows:", JSON.stringify(rows.map((r) => `${r.row}${r.exists ? "" : " (MISSING)"}`)));
+164 | console.log("skillsCommits:", JSON.stringify(skillsCommits));
+                                                                ^
+ReferenceError: skillsCommits is not defined
+      at /root/dshProj/my-power-dsh/evidence/omo-align/integration-next/raw/consistency.mjs:164:59
+
+Bun v1.3.14 (Linux x64)

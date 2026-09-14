@@ -1,0 +1,87 @@
+{
+  "predicateExtractedFromShippedScheduler": "function deliverableUnread(messages) {",
+  "dedup": {
+    "positive": {
+      "sends": 3,
+      "folded": [
+        false,
+        true,
+        true
+      ],
+      "recordsAfterTripleSend": 1,
+      "dupCountOnRecord": 3,
+      "unreadAfterTripleSend": 1
+    },
+    "negative_differentFrom_folded": false,
+    "negative_differentTo_folded": false,
+    "negative_outOfWindow_folded": false,
+    "recordsAfterNegatives": 3,
+    "contents": [
+      "identical body",
+      "identical body",
+      "identical body"
+    ]
+  },
+  "clear": {
+    "appendedRecords": 3,
+    "clearedCount": 3,
+    "auditKind": "mailbox-cleared",
+    "auditClearedCount": 3,
+    "sidecarFile": "captain.500.jsonl",
+    "sidecarLineCount": 3,
+    "sidecarRecoversPayloadVerbatim": [
+      "payload-alpha",
+      "payload-beta",
+      "payload-gamma"
+    ],
+    "liveAfterClear": {
+      "recordCount": 3,
+      "idsSurvive": 3,
+      "tombstones": 3,
+      "liveContentEmptied": true,
+      "anyPayloadLeftLive": false
+    },
+    "liveUnreadAfterClear": 0
+  },
+  "interjection": {
+    "enqueued": {
+      "returnedStatus": "pending",
+      "pendingInQueueAtEnqueue": 1,
+      "laneRecordCount": 1,
+      "laneId": "ij-1",
+      "laneKind": "interjection-request"
+    },
+    "handPlaced": {
+      "ordinaryInboxUnread": 1,
+      "kinds": [
+        "interjection-request"
+      ],
+      "deliverableAfterFilter": 0,
+      "deliverableIdsAreOnlyPlainMessages": true
+    },
+    "negative_kindBroken_deliverable": 1,
+    "approval": {
+      "decidedStatus": "approved",
+      "stillGated": 0,
+      "requestShapeNeverAutoDelivered": true
+    },
+    "ttl": {
+      "expiredIds": [],
+      "laneStatusesAfter": [
+        "approved"
+      ],
+      "fromPreserved": true
+    }
+  },
+  "callerShape": {
+    "requestWithoutContent": {
+      "returnedStatus": "pending",
+      "readableAsPending": 1,
+      "decideResult": "no error"
+    },
+    "requestWithContent": {
+      "returnedStatus": "pending",
+      "readableAsPending": 2
+    }
+  }
+}

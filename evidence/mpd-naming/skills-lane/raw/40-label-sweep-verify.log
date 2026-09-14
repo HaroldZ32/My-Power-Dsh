@@ -1,0 +1,35 @@
+# t16 addendum — captain-steered branded WORD-LABEL sweep inside t16's two files — 2026-09-14T10:13:45Z
+
+## labels changed (3 lines; labels ONLY — the $CODEX_HOME tier lookup itself is untouched, captain ruling R1/KF-06)
+ast_grep_helper.py:205  "# --- OMO runtime resolution (vendored patch) ---" -> "# --- MPD runtime resolution (vendored patch) ---"
+ast_grep_helper.py:250  "    2. OMO runtime dirs"                          -> "    2. MPD runtime dirs"
+tests/smoke.sh:126      "# Given HOME has an OMO runtime sg executable."   -> "# Given HOME has an MPD runtime sg executable."
+residual OMO-flavoured labels in the two files now:
+  (none)
+
+## CODEX_HOME tier preserved (not deleted, not renamed)
+    codex_home = os.environ.get("CODEX_HOME")
+    if codex_home:
+        candidates.append(Path(codex_home) / "runtime" / "ast-grep" / slug / binary_name)
+    candidates.append(Path.home() / ".mpd" / "runtime" / "ast-grep" / slug / binary_name)
+
+## V1 python3 -m py_compile skills/ast-grep/scripts/ast_grep_helper.py
+EXIT=0
+artifacts under skills/ after cleanup: 0
+
+## V2 bash -n skills/ast-grep/tests/smoke.sh
+EXIT=0
+
+## V3 git grep -n 'omo_' -- skills/ast-grep  (expect NO output)
+EXIT=1 (1 = zero matches = pass)
+
+## smoke suite
+raw/10-smoke.log (re-run after the label sweep): exit 0, 15 PASS / 0 FAIL
+
+## corpus fingerprints for t17 (computed, NOT written; VENDOR_LOCK.json untouched)
+modified skills files: ["skills/ast-grep/AGENTS.md","skills/ast-grep/scripts/ast_grep_helper.py","skills/ast-grep/tests/smoke.sh","skills/ulw-plan/scripts/scaffold-plan.mjs"]
+A current tree (this task's edits + all sibling skills edits): 297 / a0f1febb4111d5884c9af3385963b06753c3f5a38423f7b66f6852c284725f95
+B this task's two files reverted to HEAD (sibling edits only): 297 / 35720bd2428ded2f6438b2d54363860b4f41702fafae3b89e8d22625c73a187d
+C control: every modified skills file reverted to HEAD: 297 / f6bb2053d02a0e256ab5d88debceb4cfbc76b10c6ff03dca69bf446718a583c9
+lock now: 297 / f6bb2053d02a0e256ab5d88debceb4cfbc76b10c6ff03dca69bf446718a583c9
+CONTROL C == lock: true

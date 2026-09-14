@@ -1,0 +1,89 @@
+# t20 history-untouched proof (pre-wave revision 3c1a850 vs worktree), 2026-09-14T10:28:50Z
+
+## 1. modified/deleted paths under evidence/ (must be EMPTY)
+[end: 0 modified/deleted evidence paths]
+
+## 2. every evidence path in the wave diff is an ADDITION (new file, not history)
+NEW (absent at 3c1a850): evidence/mpd-naming/corpus-gate-bytecode/green.log
+NEW (absent at 3c1a850): evidence/mpd-naming/corpus-gate-bytecode/red.log
+NEW (absent at 3c1a850): evidence/mpd-naming/corpus-gate-bytecode/result.json
+NEW (absent at 3c1a850): evidence/mpd-naming/verifier-contract/measure-overlap-relation.mjs
+NEW (absent at 3c1a850): evidence/mpd-naming/verifier-contract/overlap-relation-output.log
+NEW (absent at 3c1a850): evidence/mpd-naming/verifier-contract/overlap-relation-result.json
+
+## 3. process-record paths (must be EMPTY diff)
+[end: 0 process-record paths changed]
+
+## 4. explicit byte-compare: blob at 3c1a850 vs worktree (sha256)
+IDENTICAL  docs/plan-c.md  6980fa9f33f0930dc9ecf383fa2dec58082b136b08302e2edfdb207ff9e95270
+IDENTICAL  docs/plan-d.md  eab47e508144682f243e6748e407ba3fa5ae7cb0934d237cbcd4bde3b9d25e28
+IDENTICAL  docs/plan-e.md  e6ccc875b58aaf1c3cb65ffa77670de68f87ceb5561aa6505e00ec31fdaae5b9
+IDENTICAL  docs/plan-f.md  c6aecf2ec08c97fcb52fa55b51650c13347712161ef80e5af5afb6a221c9f493
+IDENTICAL  docs/omo-parity-gap.md  f755fb27a2aa29e29d7d5418d04afc8d0eb50e5ab375206997a5617116ef0219
+IDENTICAL  docs/decisions.md  5f895c4c3e52aea9370142eea03399129316ab9bb31131eae19290f7036b79ac
+IDENTICAL  docs/bline-report.md  76a0838e3c36a05e074206c4e3df95cd9d02732f555a87ea2d76c136393a4098
+IDENTICAL  docs/review-p0-p3.md  68d402089faebccd609768d33f2eefa8b56e1f384652e9236e0065403192084f
+IDENTICAL  docs/track-a-report.md  6a262c6674491eab1d3aad8d78a324314653186386678e33886b28e8b08ed271
+IDENTICAL  docs/ulw-deepseek-optimization.md  30b24cc5d2502d323821e8c21d8216aafe7be87fbfca918812b29b792e6e4117
+
+## 5. tracked evidence corpus overall
+tracked files under evidence/: 3673
+changed (M/D) among them since 3c1a850: 0
+
+## 6. full wave diff vs pre-wave revision
+M  .gitignore
+M  AGENTS.md
+M  LICENSE-NOTICES.md
+M  README.md
+M  README.zh-CN.md
+M  VENDOR_LOCK.json
+M  docs/architecture.md
+M  docs/architecture.zh-CN.md
+M  docs/feature-audit.md
+M  docs/feature-audit.zh-CN.md
+M  docs/index.md
+M  docs/index.zh-CN.md
+R096  docs/omo-parity-ledger.md	docs/upstream-parity-ledger.md
+R096  docs/omo-parity-ledger.zh-CN.md	docs/upstream-parity-ledger.zh-CN.md
+M  docs/user-guide.md
+M  docs/user-guide.zh-CN.md
+A  evidence/mpd-naming/corpus-gate-bytecode/green.log
+A  evidence/mpd-naming/corpus-gate-bytecode/red.log
+A  evidence/mpd-naming/corpus-gate-bytecode/result.json
+A  evidence/mpd-naming/verifier-contract/measure-overlap-relation.mjs
+A  evidence/mpd-naming/verifier-contract/overlap-relation-output.log
+A  evidence/mpd-naming/verifier-contract/overlap-relation-result.json
+M  package.json
+M  packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+M  packages/mpd-agent-teams-plugin/lib/quality-gates.js
+M  packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs
+M  packages/mpd-boulder-plugin/README.md
+M  packages/mpd-boulder-plugin/README.zh-CN.md
+M  packages/mpd-bundle/README.md
+M  packages/mpd-bundle/README.zh-CN.md
+M  packages/mpd-mcp-astgrep/dist/BUILD.lock
+M  packages/mpd-mcp-gitbash/dist/BUILD.lock
+M  packages/mpd-mcp-gitbash/dist/cli.js
+M  packages/mpd-mcp-lsp/dist/BUILD.lock
+M  packages/mpd-mcp-lsp/dist/cli.js
+M  packages/mpd-modelchain-plugin/README.md
+M  packages/mpd-modelchain-plugin/README.zh-CN.md
+M  packages/mpd-qa-roles-probe/README.md
+M  packages/mpd-qa-roles-probe/README.zh-CN.md
+M  packages/mpd-roles-plugin/README.md
+M  packages/mpd-roles-plugin/README.zh-CN.md
+M  packages/mpd-roles-plugin/package.json
+M  packages/mpd-roles-plugin/src/index.ts
+M  packages/mpd-roles-plugin/src/roles.data.ts
+M  packages/mpd-workmate-plugin/README.md
+M  packages/mpd-workmate-plugin/README.zh-CN.md
+M  packages/mpd-workmate-plugin/src/index.ts
+M  presets/mpd/agent.cordis.yml
+M  scripts/build-mcp.mjs
+M  scripts/verify-vendor.mjs
+M  skills/ast-grep/AGENTS.md
+M  skills/ast-grep/scripts/ast_grep_helper.py
+M  skills/ast-grep/tests/smoke.sh
+M  skills/ulw-plan/scripts/scaffold-plan.mjs
+R100  tests/overlays/omo-bline.yml	tests/overlays/bline.yml
+[end: 55 paths]

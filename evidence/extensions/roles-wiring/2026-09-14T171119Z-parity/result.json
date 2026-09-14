@@ -1,0 +1,68 @@
+{
+  "task": "t4",
+  "attempt": 5,
+  "attempt_id": "cf6e82ee-c6da-4ed9-b4a6-a884a08b9160",
+  "round": "parity repair (scope widened by the captain: scripts/install-profile.mjs)",
+  "measured_at": "2026-09-14T17:11:33Z",
+  "revision": {
+    "head": "6cbb12682679127788657a3551ddffafa1696be1",
+    "branch": "feature/extension-interface",
+    "sha256": {
+      "scripts/install-profile.mjs": "431c68cdeff130a2bb2030296cdcd33946e65281065b6a36f7bb4fde244f24a9",
+      "packages/mpd-bundle/cordis.patch.yml": "b6e69fef4bb9e1e118e43e0602b3c955b5548c2fd81711ccda57b6ff818558f2",
+      "packages/mpd-roles-plugin/src/index.ts": "042ed0f126661d692268282503c6e1dd1578f389c06b1f255a758bdfd2da4976",
+      "packages/mpd-roles-plugin/test/roles.test.ts": "7bf9228056959ab7ae51224e46cb5e602c26e7685ac7aeb81c32c57bff3bac7e",
+      "packages/mpd-roles-plugin/dist/index.js": "41eae81b971679844fde3924cbb13fc46e6ac670a469fb325a1d61e99871dfd5"
+    }
+  },
+  "installer_rows_added": [
+    {
+      "row": "{ id: \"mpd-ext\", name: p(\"packages/mpd-ext-plugin/dist/index.js\"), config: { quiet: false } }",
+      "placement": "directly above mpd-roles (same neighbours as the bundle patch)",
+      "cause": "new with the extension interface (this wave)"
+    },
+    {
+      "row": "{ id: \"mpd-team-compact\", name: p(\"packages/mpd-team-compact-plugin/dist/index.js\"), config: {} }",
+      "placement": "directly above mpd-bootstrap (same order as the bundle patch)",
+      "cause": "PRE-EXISTING gap - already absent at HEAD 6cbb126, fixed here, not caused by this wave"
+    }
+  ],
+  "self_test_pinned": "install-profile.mjs --self-test now also requires the mpd-ext and mpd-team-compact rows, so a future removal fails loudly",
+  "gates": [
+    {
+      "command": "node scripts/verify-rows-parity.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "'ok: 23 row ids match the bundle patch insert list' - the two missing ids mpd-ext + mpd-team-compact are now present on BOTH sides; the check itself is untouched (15 inserted lines in the installer, 0 deleted, no assertion weakened)"
+    },
+    {
+      "command": "node scripts/install-profile.mjs --self-test",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "ok: path model + row set + agent-teams main-code path + profiles.mpd + web-compat entry + id-target render verified"
+    },
+    {
+      "command": "node scripts/install-profile.mjs --dry-run --dsh-home <tmp>",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "renders `- id: mpd-ext / name .../mpd-ext-plugin/dist/index.js / config: quiet: false` and `- id: mpd-team-compact` in the composed plan"
+    },
+    {
+      "command": "bun test packages/mpd-roles-plugin",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "23 pass / 0 fail, 452 expect() calls"
+    },
+    {
+      "command": "bun run typecheck",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "tsgo --noEmit clean"
+    }
+  ],
+  "unchanged_since_attempt_2": {
+    "note": "The round-2 artifacts were NOT re-edited: packages/mpd-bundle/cordis.patch.yml (b6e69fe...), packages/mpd-roles-plugin/src/index.ts (042ed0f...), dist/index.js (41eae81...) keep their attempt-2 hashes, so dist still matches src.",
+    "test_robustness_fix": "packages/mpd-roles-plugin/test/roles.test.ts: the role-count assertions became baseline-relative and the registry assertion ID-based, because t3's <bundle>/extensions/mpd-ext-example now exists and the ext plugin's bundle-plane discovery is ambient (the reference extension is disabled). Assertion strength is unchanged (exactly one role added / refused roles still absent) and the tests no longer depend on ambient state."
+  },
+  "prior_round_evidence": "evidence/extensions/roles-wiring/2026-09-14T170418Z/{result.json,output.log,preset-conformance-real-run.log,preset-conformance-post-rebuild.log,raw/dist-smoke.mjs} (patch row + roles wiring + real mounted boot + shipped-dist smoke)"
+}

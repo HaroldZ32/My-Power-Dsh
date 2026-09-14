@@ -1,0 +1,52 @@
+{
+  "artifact": "packages/mpd-ext-plugin/src/index.ts (fixed source)",
+  "fixture": "alpha-owner (healthy + base-name collision + unreadable persona) and zeta-clone (cross-extension duplicate)",
+  "mpd_ext_list": {
+    "alpha_owner": {
+      "contributions_roles": 1,
+      "roles": [
+        "Verilog Reviewer"
+      ],
+      "pending_roles": [],
+      "errors": [
+        "contributes.roles[2].persona: persona file does not exist: /tmp/t14-home-7rBlN3/.mpd/extensions/alpha-owner/missing.md",
+        "contributes.roles[1]: refused: role name \"Architect\" (contributes.roles[1] of extension \"alpha-owner\") is already taken by the base roster — this extension role is not exposed",
+        "contributes.roles[2]: refused: persona file is not readable: /tmp/t14-home-7rBlN3/.mpd/extensions/alpha-owner/missing.md"
+      ]
+    },
+    "zeta_clone": {
+      "contributions_roles": 0,
+      "roles": [],
+      "pending_roles": [],
+      "errors": [
+        "contributes.roles[0]: refused: role name \"Verilog Reviewer\" (contributes.roles[0] of extension \"zeta-clone\") is already taken by extension \"alpha-owner\" — this extension role is not exposed"
+      ]
+    }
+  },
+  "mpd_ext_show": {
+    "alpha_owner_roles": [
+      "Verilog Reviewer"
+    ],
+    "zeta_clone_roles": []
+  },
+  "project_plane": {
+    "ext_roles": [],
+    "ext_errors": [
+      "contributes.roles[0]: project-level extensions may contribute skills and flows only: tool and provider registration is process-global and cannot be scoped to a session"
+    ],
+    "roster_exposes": []
+  },
+  "roster_resolution": {
+    "exposed": [
+      "alpha-owner:Verilog Reviewer"
+    ],
+    "refused": [
+      "persona file is not readable: /tmp/t14-home-7rBlN3/.mpd/extensions/alpha-owner/missing.md",
+      "project-level extensions may contribute skills and flows only: tool and provider registration is process-global and cannot be scoped to a session",
+      "role name \"Architect\" (contributes.roles[1] of extension \"alpha-owner\") is already taken by the base roster — this extension role is not exposed",
+      "role name \"Verilog Reviewer\" (contributes.roles[0] of extension \"zeta-clone\") is already taken by extension \"alpha-owner\" — this extension role is not exposed"
+    ]
+  },
+  "stale_sentence_present": false,
+  "refused_names_listed_as_usable": []
+}

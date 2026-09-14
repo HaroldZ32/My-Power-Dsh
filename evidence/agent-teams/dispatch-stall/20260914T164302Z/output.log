@@ -1,0 +1,100 @@
+================ t13 dispatch-stall: consolidated output (final bytes) ================
+date: 2026-09-14T17:00:32Z
+git HEAD: 6cbb12682679127788657a3551ddffafa1696be1  (+ working-tree fix)
+scheduler.js sha256: cabb82383dbcd42b5a1dd93ddb069cf3a9df115a85ff5a8c175e813d301f4daf
+mpd-deltas.js sha256: 339e7ae6950a086307999712d30c754d8cf5ee9957aa1200eca8c3b9caf33fea
+
+--- 1. MEASURED live stall (decoded harness session logs; full detail in trace-sessions.log) ---
+approvedAt=2026-09-14T16:36:46.809Z | member turn/start 16:36:46.236..16:36:46.802 (all six MID-TURN) | first delivery 16:37:46.092 | manual reassign 16:38:18.750
+swallow point (pre-fix): scheduler.js:317 first, scheduler.js:338 re-checked inside the lock; false condition: isMemberAvailable (member running its spawn turn)
+
+--- 2. pre-fix regression suite (RED) ---
+failing cases: 4
+Received length: 0
+(fail) the approval-time kick delivers a ready root task to a member whose spawn turn is still running [8.53ms]
+Received length: 0
+(fail) a second kick while the member is mid-turn does not duplicate the queued assignment, and says why [1.33ms]
+Received length: 0
+(fail) the member's own idle edge after the queued assignment does not deliver it twice [0.94ms]
+
+--- 3. post-fix regression suite (GREEN) ---
+(pass) the approval-time kick delivers a ready root task to a member whose spawn turn is still running [11.69ms]
+(pass) a second kick while the member is mid-turn does not duplicate the queued assignment, and says why [1.75ms]
+(pass) the member's own idle edge after the queued assignment does not deliver it twice [122.96ms]
+(pass) an idle edge that resolves no team logs the miss instead of returning silently [6.03ms]
+ 4 pass
+ 0 fail
+
+--- 4. gates on the final bytes ---
+### POST-FIX gates (final bytes)
+scheduler.js sha256: cabb82383dbcd42b5a1dd93ddb069cf3a9df115a85ff5a8c175e813d301f4daf
+mpd-deltas.js sha256: 339e7ae6950a086307999712d30c754d8cf5ee9957aa1200eca8c3b9caf33fea
+
+## 1. bun test packages/mpd-agent-teams-plugin
+
+ 213 pass
+ 0 fail
+ 1541 expect() calls
+Ran 213 tests across 58 files. [5.47s]
+
+## 2. node scripts/patch-agent-teams-fixes.mjs --check
+[patch-agent-teams-fixes] already applied: 46 mpd delta region(s) across 9 adopted file(s)
+exit=0
+
+## 3. self-fix-tests
+
+ 56 pass
+ 0 fail
+ 817 expect() calls
+Ran 56 tests across 10 files. [4.75s]
+
+## 4. node scripts/verify-vendor.mjs
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+
+--- 5. mounted-boot proof (isolated DSH_HOME + sandbox HOME + sandbox workspace) ---
+apply-crash signatures        : 0 (MUST be 0)
+'dispatch declined' in boot   : 0 (MUST be 0: no ready task was declined)
+scheduler sha match           : yes
+dispatch regions present      : 6/6
+in-boot dispatch deliveries   : 1 (must be 1)
+upstream guard absent         : yes (must be yes)
+new team dirs under repo      : 0  (MUST be 0)
+[t13-mount-probe] SCHEDULER_PATH=/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/scheduler.js
+[t13-mount-probe] SCHEDULER_SHA_MATCH=yes
+[t13-mount-probe] DISPATCH_REGIONS_PRESENT=6/6
+[t13-mount-probe] UPSTREAM_GUARD_ABSENT=yes
+[t13-mount-probe] DECLINE_LOGGER_PRESENT=yes
+[t13-mount-probe] AGENT_TEAMS_TOOLS_PRESENT=9/9
+[t13-mount-probe] AGENT_TEAMS_TOOLS=agent_teams_status:ok,agent_teams_create:ok,agent_teams_add_member:ok,agent_teams_create_task:ok,agent_teams_update_task:ok,agent_teams_claim_task:ok,agent_teams_reassign_task:ok,agent_teams_send_message:ok,agent_teams_task_contract:ok
+[t13-mount-probe] LOADER_ENTRIES=unavailable
+[t13-mount-probe] SCHEDULER_EXPORT=installTeamScheduler:ok
+[t13-mount-probe] DISPATCH_PROBE_DELIVERIES=1
+[t13-mount-probe] DISPATCH_PROBE_TASK_STATUS=claimed
+[t13-mount-probe] DISPATCH_PROBE_DECLINE_LOGS=0
+[t13-mount-probe] DONE
+  "dispatch_declined_lines_in_boot": 0,
+  "in_boot_dispatch_deliveries": "1",
+
+--- 6. mount proof result.json ---
+{
+  "proof": "real boot that MOUNTS the rows (instrumentation = a --patch probe row), not a --dump-config composition check",
+  "isolation": {
+    "DSH_HOME": "temp sandbox",
+    "HOME": "temp sandbox",
+    "workspace_cwd": "temp sandbox"
+  },
+  "apply_crash_signatures": 0,
+  "dispatch_declined_lines_in_boot": 0,
+  "probe_reached_final_marker": true,
+  "scheduler_sha_match": "yes",
+  "dispatch_regions_present": "6/6",
+  "agent_teams_tools_registered": "9/9",
+  "in_boot_dispatch_deliveries": "1",
+  "in_boot_task_status": "claimed",
+  "upstream_guard_absent": "yes",
+  "new_state_dirs_in_repo": 0,
+  "boot_exit": 124,
+  "passed": true,
+  "note": "no --dump-config result is cited as load evidence; the probe reads the live tool registry and drives the loaded scheduler inside the boot process"
+}

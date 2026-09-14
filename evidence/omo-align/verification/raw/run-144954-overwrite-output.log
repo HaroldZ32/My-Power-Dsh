@@ -1,0 +1,493 @@
+settle window: 50000 ms at rev c91f26621d11b58911d1d7a0224d06267542363c
+
+---
+
+$ /root/.nvm/versions/node/v24.16.0/bin/node /root/dshProj/my-power-dsh/scripts/install-profile.mjs --yes --dsh-home /root/dshProj/my-power-dsh/evidence/omo-align/verification/sandbox --profile mpd-headless --skip-toolchain
+[[exit=0]]
+[install-profile] dshHome=/root/dshProj/my-power-dsh/evidence/omo-align/verification/sandbox profile=mpd-headless write=true
+[install-profile] profileDir=/root/dshProj/my-power-dsh/evidence/omo-align/verification/sandbox/profiles/mpd-headless
+[install-profile] homePatch=/root/dshProj/my-power-dsh/evidence/omo-align/verification/sandbox/cordis.patch.yml
+[install-profile] presets -> /root/dshProj/my-power-dsh/evidence/omo-align/verification/sandbox/.agent-presets/mpd-*
+[install-profile] toolchain missing=false (use --skip-toolchain to skip)
+[install-profile] rows about to be written to home patch: 21 (id-target=0, insert=21)
+- insert:
+  - id: mpd-web-compat
+    name: "@mpd-dsh/mpd"
+  - id: mcp-astgrep
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "ast_grep"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-astgrep/dist/cli.js"
+      env:
+        MPD_AST_GREP_SG_PATH: "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/sg"
+      toolCallTimeoutMs: 60000
+  - id: mcp-gitbash
+    name: "@deepseek-ai/dsh-mcp-client"
+    disabled: true
+    config:
+      serverName: "git_bash"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-gitbash/dist/cli.js"
+      toolCallTimeoutMs: 60000
+  - id: mcp-lsp
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "lsp"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-lsp/dist/cli.js"
+        - "mcp"
+      toolCallTimeoutMs: 60000
+  - id: mcp-codegraph
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "codegraph"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js"
+      env:
+        MPD_CODEGRAPH_BIN: "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph"
+      toolCallTimeoutMs: 60000
+  - id: mcp-context7
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "context7"
+      transport: "streamable-http"
+      url: "https://mcp.context7.com/mcp"
+      toolCallTimeoutMs: 60000
+  - id: mcp-grepapp
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "grep_app"
+      transport: "streamable-http"
+      url: "https://mcp.grep.app"
+      toolCallTimeoutMs: 60000
+  - id: mpd-codegraph
+    name: "/root/dshProj/my-power-dsh/packages/mpd-codegraph-plugin/dist/index.js"
+    config:
+      autoInit: true
+      initTimeoutMs: 60000
+      binary: "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph"
+  - id: mpd-tools
+    name: "/root/dshProj/my-power-dsh/packages/mpd-tools-plugin/dist/index.js"
+    config:
+      writeGuard: true
+      truncateMaxBytes: 8192
+  - id: mpd-modelchain
+    name: "/root/dshProj/my-power-dsh/packages/mpd-modelchain-plugin/dist/index.js"
+  - id: mpd-ulw
+    name: "/root/dshProj/my-power-dsh/packages/mpd-ulw-plugin/dist/index.js"
+    config:
+      maxRounds: 3
+  - id: mpd-hashline
+    name: "/root/dshProj/my-power-dsh/packages/mpd-hashline-plugin/dist/index.js"
+    config:
+      guardEditTools: true
+  - id: mpd-boulder
+    name: "/root/dshProj/my-power-dsh/packages/mpd-boulder-plugin/dist/index.js"
+  - id: mpd-dsh-adapter
+    name: "/root/dshProj/my-power-dsh/packages/mpd-dsh-adapter-plugin/dist/index.js"
+  - id: mpd-config
+    name: "/root/dshProj/my-power-dsh/packages/mpd-config-plugin/dist/index.js"
+  - id: mpd-comment-checker
+    name: "/root/dshProj/my-power-dsh/packages/mpd-comment-checker-plugin/dist/index.js"
+    config:
+      autoCheck: false
+  - id: mpd-memory
+    name: "/root/dshProj/my-power-dsh/packages/mpd-memory-plugin/dist/index.js"
+    config:
+      vcs: "git"
+  - id: mpd-roles
+    name: "/root/dshProj/my-power-dsh/packages/mpd-roles-plugin/dist/index.js"
+  - id: mpd-workmate
+    name: "/root/dshProj/my-power-dsh/packages/mpd-workmate-plugin/dist/index.js"
+  - id: mpd-bootstrap
+   
+
+---
+
+[simple 0] prompt="Reply with exactly: hello-ok" exit=1
+
+---
+
+[simple 1] prompt="What does the git-master skill do? Answer in one sentence." exit=1
+
+---
+
+[simple 2] prompt="Rename the variable `foo` to `bar` in src/util.ts and run its test." exit=1
+
+---
+
+[complex 0] prompt="Align the bundle with upstream: audit the orchestration surface, then implement the routing change." exit=1
+
+---
+
+[complex 1] prompt="team: fix the flaky test" exit=1
+
+---
+
+[complex 2] prompt="1. Read the patch file\n2. Audit the gates\n3. Implement the change\n4. Verify the boot" exit=1
+
+---
+
+$ bun run typecheck
+[[exit=0]]
+$ tsgo --noEmit
+
+
+---
+
+$ bun test packages/mpd-agent-teams-plugin
+[[exit=0]]
+bun test v1.3.14 (0d9b296a)
+{
+  "workspace": "/root/dshProj/my-power-dsh",
+  "stateRoot": "/root/dshProj/my-power-dsh/.mpd/team",
+  "apply": false,
+  "scanned": 4,
+  "reclaimable": 0,
+  "reclaimed": 0,
+  "manifest": [
+    {
+      "teamId": "agent-teams-sidebar-migration",
+      "phase": "running",
+      "tasks": 10,
+      "approved": true,
+      "residual": false,
+      "archived": false
+    },
+    {
+      "teamId": "mpd-default-d92bc69a",
+      "phase": "running",
+      "tasks": 32,
+      "approved": true,
+      "residual": false,
+      "archived": false
+    },
+    {
+      "teamId": "mpd-default-db53f0d4",
+      "phase": "running",
+      "tasks": 23,
+      "approved": true,
+      "residual": false,
+      "archived": false
+    },
+    {
+      "teamId": "mpd-default-84e50f06",
+      "phase": "staged",
+      "tasks": 8,
+      "approved": false,
+      "residual": false,
+      "archived": false
+    }
+  ]
+}
+[reclaim-staged-teams] DRY RUN: 0 residual of 4 live team(s) (nothing changed)
+
+packages/mpd-agent-teams-plugin/self-fix-tests/scope-semantics.test.mjs:
+(pass) B5: a directory pattern covers its contents WITHOUT a trailing slash [0.72ms]
+(pass) B5: trailing slash and non-trailing slash are equivalent [0.18ms]
+(pass) B5: exact file patterns still match exactly, siblings and suffixes do not [0.26ms]
+(pass) B5: root pattern matches everything; illegal/absolute patterns never match [0.22ms]
+(pass) B5: classifyChangedPath — directory inScope covers files, outOfScope wins [0.41ms]
+(pass) B6: completion reports ALL undeclared paths at once with the owning task id and a fix hint [0.89ms]
+(pass) B6: completion passes when a directory pattern (no trailing slash) covers every changed path [0.15ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs:
+(pass) DEFECT 1: a declared glob covers the files beneath it [1.92ms]
+(pass) DEFECT 1 negative control: globs do not over-match [0.14ms]
+(pass) DEFECT 1: every no-wildcard declaration keeps the pre-delta B5 semantics [0.19ms]
+(pass) DEFECT 1: the completion gate accepts a glob-declared changedPath and still rejects an undeclared one [0.28ms]
+(pass) DEFECT 2 reproduction: the pre-fix generator listed one path in BOTH lists [0.97ms]
+(pass) DEFECT 2 fix: the finding's required path is CARVED OUT of the inherited prohibition [0.56ms]
+(pass) DEFECT 2 fix, REAL wave-1 inputs (team mpd-default-7332aba4 t7 + t10): the required edit is in scope [0.59ms]
+(pass) DEFECT 2 falsifiability: the contradiction guard must not reject legitimate carve-outs [0.24ms]
+(pass) DEFECT 2 falsifiability: the write-task overlap guard still separates colliding declarations [0.23ms]
+(pass) durability: the guard refuses when a delta region is missing (observed failure) [5.56ms]
+(pass) durability: the guard is idempotent on the real tree and restores a stripped tree [124.09ms]
+(pass) F2: every t4-changed line in lib/quality-gates.js sits inside a registered mpd-delta region [51.63ms]
+(pass) F3: healing a RE-MATERIALIZED upstream file refuses instead of emitting a broken module [3.35ms]
+(pass) F3: a clean (region-carrying) tree still heals successfully [49.80ms]
+(pass) F4: stripping every region and healing reproduces the canonical file byte-for-byte [50.93ms]
+(pass) F4: the anchor-indent class is gone with the line keys [0.23ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/quality-loop.test.mjs:
+(pass) Fix1: review auto-wires reviewedTaskId into dependencies (premature dispatch) [1.26ms]
+(pass) Fix1: repair auto-wires sourceTaskId into dependencies [0.12ms]
+(pass) Fix2 + OPT-1: cancelled and FAILED deps are non-blocking; pending still blocks [0.12ms]
+(pass) Fix2: pending dependents blocked only by cancelled deps are cascaded (no deadlock) [1.87ms]
+(pass) Fix3: planQualityFollowUp links reasonTaskId and reason reaches the repair prompt [1.48ms]
+(pass) Fix4: reject without a completed source notifies the captain only (no repair, no escalation) [0.12ms]
+(pass) Fix4: genuine reject of a completed sou
+
+---
+
+$ bun test packages
+[[exit=0]]
+bun test v1.3.14 (0d9b296a)
+{
+  "workspace": "/root/dshProj/my-power-dsh",
+  "stateRoot": "/root/dshProj/my-power-dsh/.mpd/team",
+  "apply": false,
+  "scanned": 4,
+  "reclaimable": 0,
+  "reclaimed": 0,
+  "manifest": [
+    {
+      "teamId": "agent-teams-sidebar-migration",
+      "phase": "running",
+      "tasks": 10,
+      "approved": true,
+      "residual": false,
+      "archived": false
+    },
+    {
+      "teamId": "mpd-default-d92bc69a",
+      "phase": "running",
+      "tasks": 32,
+      "approved": true,
+      "residual": false,
+      "archived": false
+    },
+    {
+      "teamId": "mpd-default-db53f0d4",
+      "phase": "running",
+      "tasks": 23,
+      "approved": true,
+      "residual": false,
+      "archived": false
+    },
+    {
+      "teamId": "mpd-default-84e50f06",
+      "phase": "staged",
+      "tasks": 8,
+      "approved": false,
+      "residual": false,
+      "archived": false
+    }
+  ]
+}
+[reclaim-staged-teams] DRY RUN: 0 residual of 4 live team(s) (nothing changed)
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+[mpd-bootstrap] legacy home-copy cleanup skipped (config)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+[mpd-bootstrap] legacy home-copy cleanup skipped (config)
+[mpd-bootstrap] skill corpus served from /tmp/mpd-corpus-1cxnM1 (provider mpd-bundle, bundle 0.3.2)
+[mpd-bootstrap] legacy home-copy cleanup skipped (config)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+[mpd-bootstrap] legacy home-copy cleanup skipped (config)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+[mpd-bootstrap] legacy home-copy cleanup skipped (config)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+
+packages/mpd-mcp-shared/bin-resolve.test.mjs:
+(pass) ast-grep: $MPD_AST_GREP_BIN_DIR tier wins and prefers ast-grep over sg [2.54ms]
+(pass) ast-grep: a candidate that fails the ast-grep probe is skipped, never accepted by name [0.22ms]
+(pass) ast-grep: createRequire tier resolves the packed optionalDependency [0.25ms]
+(pass) ast-grep: <bundle>/.toolchain tier resolves the link: checkout layout [0.17ms]
+(pass) ast-grep: precedence is bin-dir > require > toolchain [0.30ms]
+(pass) ast-grep: nothing resolvable returns null and never throws [0.13ms]
+(pass) codegraph: <bundle>/.toolchain tier resolves the link: checkout layout [0.44ms]
+(pass) codegraph: createRequire tier reads the package's own bin entry [0.49ms]
+(pass) bundleRootFrom: <bundle>/packages/<pkg>/launch.mjs -> <bundle> [0.07ms]
+(pass) REAL toolchain probe: ast-grep passes, the deprecated sg wrapper fails [11.23ms]
+
+packages/mpd-ulw-plugin/test/engine.test.ts:
+(pass) engine policy: plan -> round -> verify -> quality gate with ledger [4.92ms]
+(pass) engine alias and 2-fruitless-waves stop [0.57ms]
+(pass) DeepSeek V4 / DSH contract: role text in prompt (no persona field), pro for planner/reviewer, compact handoff [0.87ms]
+
+packages/mpd-memory-plugin/test/memory.test.ts:
+(pass) git backend: write -> commit -> read -> reflection due [46.48ms]
+(pass) svn backend REAL svn CLI: repo create, checkout, commit, log [107.91ms]
+(pass) both vcs: commits to git and svn [160.19ms]
+(pass) svn backend wiring with fake svn CLIs [17.99ms]
+
+packages/mpd-config-plugin/test/config.test.ts:
+(pass) stripJsonc removes comments and trailing commas [0.42ms]
+(pass) stripJsonc keeps comments inside strings [0.05ms]
+(pass) deepMerge project wins, nested merged, pollution safe [0.29ms]
+(pass) mpd_config_get result is lossless JSON for a missing key (value null, never undefined) [1.21ms]
+(pass) mpdConfig service 
+
+---
+
+$ /root/.nvm/versions/node/v24.16.0/bin/node scripts/install-profile.mjs --self-test
+[[exit=0]]
+[install-profile self-test] ok: path model + row set + agent-teams main-code path + profiles.mpd + web-compat entry + id-target render verified
+
+
+---
+
+$ /root/.nvm/versions/node/v24.16.0/bin/node scripts/install-profile.mjs --dry-run
+[[exit=0]]
+[install-profile] dshHome=/root/.dsh profile=mpd write=false
+[install-profile] profileDir=/root/.dsh/profiles/mpd
+[install-profile] homePatch=/root/.dsh/cordis.patch.yml
+[install-profile] presets -> /root/.dsh/.agent-presets/mpd-*
+[install-profile] toolchain missing=false (use --skip-toolchain to skip)
+[install-profile] rows about to be written to home patch: 21 (id-target=0, insert=21)
+- insert:
+  - id: mpd-web-compat
+    name: "@mpd-dsh/mpd"
+  - id: mcp-astgrep
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "ast_grep"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-astgrep/dist/cli.js"
+      env:
+        MPD_AST_GREP_SG_PATH: "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/sg"
+      toolCallTimeoutMs: 60000
+  - id: mcp-gitbash
+    name: "@deepseek-ai/dsh-mcp-client"
+    disabled: true
+    config:
+      serverName: "git_bash"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-gitbash/dist/cli.js"
+      toolCallTimeoutMs: 60000
+  - id: mcp-lsp
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "lsp"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-lsp/dist/cli.js"
+        - "mcp"
+      toolCallTimeoutMs: 60000
+  - id: mcp-codegraph
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "codegraph"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js"
+      env:
+        MPD_CODEGRAPH_BIN: "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph"
+      toolCallTimeoutMs: 60000
+  - id: mcp-context7
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "context7"
+      transport: "streamable-http"
+      url: "https://mcp.context7.com/mcp"
+      toolCallTimeoutMs: 60000
+  - id: mcp-grepapp
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "grep_app"
+      transport: "streamable-http"
+      url: "https://mcp.grep.app"
+      toolCallTimeoutMs: 60000
+  - id: mpd-codegraph
+    name: "/root/dshProj/my-power-dsh/packages/mpd-codegraph-plugin/dist/index.js"
+    config:
+      autoInit: true
+      initTimeoutMs: 60000
+      binary: "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph"
+  - id: mpd-tools
+    name: "/root/dshProj/my-power-dsh/packages/mpd-tools-plugin/dist/index.js"
+    config:
+      writeGuard: true
+      truncateMaxBytes: 8192
+  - id: mpd-modelchain
+    name: "/root/dshProj/my-power-dsh/packages/mpd-modelchain-plugin/dist/index.js"
+  - id: mpd-ulw
+    name: "/root/dshProj/my-power-dsh/packages/mpd-ulw-plugin/dist/index.js"
+    config:
+      maxRounds: 3
+  - id: mpd-hashline
+    name: "/root/dshProj/my-power-dsh/packages/mpd-hashline-plugin/dist/index.js"
+    config:
+      guardEditTools: true
+  - id: mpd-boulder
+    name: "/root/dshProj/my-power-dsh/packages/mpd-boulder-plugin/dist/index.js"
+  - id: mpd-dsh-adapter
+    name: "/root/dshProj/my-power-dsh/packages/mpd-dsh-adapter-plugin/dist/index.js"
+  - id: mpd-config
+    name: "/root/dshProj/my-power-dsh/packages/mpd-config-plugin/dist/index.js"
+  - id: mpd-comment-checker
+    name: "/root/dshProj/my-power-dsh/packages/mpd-comment-checker-plugin/dist/index.js"
+    config:
+      autoCheck: false
+  - id: mpd-memory
+    name: "/root/dshProj/my-power-dsh/packages/mpd-memory-plugin/dist/index.js"
+    config:
+      vcs: "git"
+  - id: mpd-roles
+    name: "/root/dshProj/my-power-dsh/packages/mpd-roles-plugin/dist/index.js"
+  - id: mpd-workmate
+    name: "/root/dshProj/my-power-dsh/packages/mpd-workmate-plugin/dist/index.js"
+  - id: mpd-bootstrap
+    name: "/root/dshProj/my-power-dsh/packages/mpd-bootstrap-plugin/dist/index.js"
+  - id: agent-teams
+    name: "/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/index.js"
+    config:
+      stateDir: ".mpd/team"
+      memberProvi
+
+---
+
+$ /root/.nvm/versions/node/v24.16.0/bin/node skills/dsh-qa/scripts/preset-conformance.mjs
+[[exit=0]]
+[preset-conformance] ok=true -> /root/dshProj/my-power-dsh/evidence/dsh-qa/preset-conformance/2026-09-13T14-48-55.264Z
+  conformance: {"ok":true,"checked":30,"schemaFree":6,"parity":{"reference":31,"ours":31,"missing":[],"extra":[]},"problems":[]}
+  auth: {"ok":true,"tokenSeen":true,"cookieSession":true}
+  sessionCreate: {"ok":true,"status":200,"sessionId":"session-1d103898-faf5-4f0f-9fa3-0202ce15cef1","agentPreset":"mpd"}
+  sessionHeader: {"ok":true,"agentPreset":"mpd","log":"/tmp/mpd-preset-main-bP58od/home/sessions/--tmp-mpd-preset-main-bP58od-ws--/session-1d103898-faf5-4f0f-9fa3-0202ce15cef1/session.v3.jsonl.zstd"}
+  bootLog: {"ok":true,"signatures":[]}
+  negativeControl: {"ok":true,"code":"agent-preset/invalid","message":"agent-presets: preset \"mpd\" failed to mount: failed to apply loader entry persona (@deepseek-ai/dsh-persona): invalid config:\n  - $.prefix missing required value (at prefix) (/tmp/mpd-preset-control-2026-09-13T14-48-55.264Z/mpd/agent.cordis.yml)
+[preset-conformance] PASS
+
+
+---
+
+$ bun skills/dsh-qa/scripts/bundle-lifecycle.mjs
+[[exit=0]]
+[bundle-lifecycle] ok=true -> /root/dshProj/my-power-dsh/evidence/dsh-qa/bundle-lifecycle/2026-09-13T14-49-33.449Z
+  install: {"ok":true,"exit":0,"dependency":"link:/root/dshProj/my-power-dsh","bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"],"oneCommand":"dsh plugin --profile w add <repo root>"}
+  composed: {"ok":true,"exit":0}
+  boot: {"ok":true,"http":true,"corpus":"/root/dshProj/my-power-dsh/skills","preset":"/root/dshProj/my-power-dsh/.qa-reloc/bundle-lifecycle-2026-09-13T14-49-33.449Z/home/profiles/w/node_modules/@mpd-dsh/mpd/presets/mpd/agent.cordis.yml","trust":"system","bundleReal":"
+  noHomeCopy: {"ok":true,"skills":[],"presets":[]}
+  layerDurability: {"ok":true,"exit":0,"dependency":true,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"]}
+  uninstall: {"ok":true,"exit":0,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app"],"residue":[],"mpdState":[]}
+[bundle-lifecycle] PASS
+
+
+---
+
+$ /root/.nvm/versions/node/v24.16.0/bin/node scripts/patch-agent-teams-fixes.mjs --check
+[[exit=0]]
+[patch-agent-teams-fixes] already applied: 19 mpd delta region(s) across 5 adopted file(s)
+
+
+---
+
+$ /root/.nvm/versions/node/v24.16.0/bin/node scripts/verify-vendor.mjs
+[[exit=0]]
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] asset OK: skills 329 files
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS

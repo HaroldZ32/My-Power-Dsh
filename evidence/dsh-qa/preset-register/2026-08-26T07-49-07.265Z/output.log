@@ -1,0 +1,12 @@
+[preset-probe] ROOTS=[{"path":"/home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh/config/agent-presets/","trust":"system"},{"path":"/tmp/mpd-dsh-qa-9gWGot/.agent-presets","trust":"user"}]
+[preset-probe] LIST=standard,code,minimal,cordis,mpd-hephaestus,mpd-librarian,mpd-oracle,mpd-prometheus
+CodeGraph MCP skipped: project excluded by OMO CodeGraph policy.
+[preset-probe] RESOLVED={"mpd-oracle":true,"mpd-librarian":true,"mpd-prometheus":true,"mpd-hephaestus":true}
+[preset-probe] PASS
+Noted — the workspace is currently on branch `feature/rename-mpd` with a large in-progress rename (`omo-*` → `mpd-*`, ~214 changed paths, renames staged, plus modified docs/scripts/skills).
+
+What would you like me to do next? A few likely options:
+
+1. **Continue/finish the rename work** — verify the staged renames, update remaining references, run gates (`bun test` + `tsgo --noEmit`), and commit.
+2. **Review the current branch state** — diff summary of what's changed vs `dev`.
+3. **Something else** — just tell me the task.

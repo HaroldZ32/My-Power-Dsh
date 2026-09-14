@@ -1,0 +1,12 @@
+evidence index: 1387 artifacts, 8619642 bytes total
+  67  evidence/mpd-naming/brand-cleanup
+   2  evidence/mpd-naming/captain-rulings
+   3  evidence/mpd-naming/corpus-gate-bytecode
+   4  evidence/mpd-naming/docs-lane
+  11  evidence/mpd-naming/final-allowlist
+  41  evidence/mpd-naming/re-pin
+   2  evidence/mpd-naming/review
+   9  evidence/mpd-naming/skills-lane
+  28  evidence/mpd-naming/verification
+   3  evidence/mpd-naming/verifier-contract
+1217  evidence/mpd-naming/wave2

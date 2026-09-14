@@ -1,0 +1,32 @@
+=== LOCAL ADAPTATION markers ===
+packages/mpd-agent-teams-plugin/lib/mpd-deltas.js:2: * mpd LOCAL ADAPTATION registry for the adopted agent-teams plugin.
+packages/mpd-agent-teams-plugin/lib/mpd-deltas.js:15:    begin: (id) => `//#region ${id} (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)`,
+packages/mpd-agent-teams-plugin/lib/mpd-deltas.js: mpd-delta scope-glob",
+packages/mpd-agent-teams-plugin/lib/mpd-deltas.js: mpd-delta scope-overlap",
+packages/mpd-agent-teams-plugin/lib/mpd-deltas.js: mpd-delta scope-overlap-normalize",
+packages/mpd-agent-teams-plugin/lib/mpd-deltas.js: mpd-delta contract-contradiction",
+packages/mpd-agent-teams-plugin/lib/mpd-deltas.js: mpd-delta create-contract-gate",
+packages/mpd-agent-teams-plugin/lib/mpd-deltas.js: mpd-delta repair-scope",
+packages/mpd-agent-teams-plugin/lib/mpd-deltas.js: mpd-delta repair-scope-fields",
+packages/mpd-agent-teams-plugin/lib/mpd-deltas.js: mpd-delta task-contract",
+packages/mpd-agent-teams-plugin/lib/mpd-deltas.js: mpd-delta task-contract-render",
+packages/mpd-agent-teams-plugin/lib/quality-gates.js: mpd-delta scope-glob (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+packages/mpd-agent-teams-plugin/lib/quality-gates.js: mpd-delta scope-overlap (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+packages/mpd-agent-teams-plugin/lib/quality-gates.js: mpd-delta scope-overlap-normalize (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+packages/mpd-agent-teams-plugin/lib/quality-gates.js: mpd-delta contract-contradiction (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+packages/mpd-agent-teams-plugin/lib/quality-gates.js: mpd-delta create-contract-gate (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+packages/mpd-agent-teams-plugin/lib/quality-gates.js: mpd-delta repair-scope (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+packages/mpd-agent-teams-plugin/lib/quality-gates.js: mpd-delta repair-scope-fields (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+packages/mpd-agent-teams-plugin/lib/tools.js: mpd-delta task-contract (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+packages/mpd-agent-teams-plugin/lib/tools.js: mpd-delta task-contract-render (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+[total markers: 20]
+=== delta registry ids ===
+27:        id: "mpd-delta scope-glob",
+35:        id: "mpd-delta scope-overlap",
+43:        id: "mpd-delta scope-overlap-normalize",
+51:        id: "mpd-delta contract-contradiction",
+59:        id: "mpd-delta create-contract-gate",
+67:        id: "mpd-delta repair-scope",
+75:        id: "mpd-delta repair-scope-fields",
+83:        id: "mpd-delta task-contract",
+91:        id: "mpd-delta task-contract-render",

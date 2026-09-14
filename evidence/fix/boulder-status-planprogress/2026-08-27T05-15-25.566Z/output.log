@@ -1,0 +1,8 @@
+[mpd-codegraph] init status=no-binary binary=- cwd=/tmp/mpd-tov-sRH9U9/ws
+The tool result was:
+
+```
+boulder status: /tmp/mpd-tov-sRH9U9/ws/.mpd/boulder.json
+active works: []
+resume: []
+```

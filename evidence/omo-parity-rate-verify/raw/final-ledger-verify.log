@@ -1,0 +1,5 @@
+HEAD 0d5279419e612c59a73329015634f1866333d71b
+settled: true
+checks: 36/36 passing
+line29: * `complexityGate`) is `trigger = anyExplicitFlag OR (matchedSignals >= 1)` — the
+conflict unaccounted: []

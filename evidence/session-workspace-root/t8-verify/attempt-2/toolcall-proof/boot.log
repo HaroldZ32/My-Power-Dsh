@@ -1,0 +1,31 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=no-binary binary=- cwd=/root/dshProj
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.
+dsh web: http://127.0.0.1:3193/?token=LY8GPimINVGtaq3wGnJPAGImUVlLTNE1x5BsOsHV844
+[t8-probe] HOST_CWD=/root/dshProj
+[t8-probe] REPO=/root/dshProj/my-power-dsh W_BLOCKED=/tmp/mpd-t8-toolcall-zroz6F/ws-blocked W_CLEAN=/tmp/mpd-t8-toolcall-zroz6F/ws-clean
+[t8-probe] SESSION_CWDS=["/root/dshProj/my-power-dsh","/tmp/mpd-t8-toolcall-zroz6F/ws-blocked","/tmp/mpd-t8-toolcall-zroz6F/ws-clean"]
+[t8-probe] REPO_AGENT_HEADER_CWD=/root/dshProj/my-power-dsh
+[t8-probe] AGENTS_FOUND={"repo":true,"blocked":true,"clean":true}
+[t8-probe] ROOTS_ALL=["/root/dshProj/my-power-dsh","/tmp/mpd-t8-toolcall-zroz6F/ws-blocked","/tmp/mpd-t8-toolcall-zroz6F/ws-clean"]
+[t8-probe] ADAPTER_SEAMS={"tools":true,"toolsRegister":true,"toolsGuard":true,"toolsGet":true,"toolsExecute":true,"toolsPostExecute":true,"subagents":true,"subagentsSpawn":true,"skills":true,"skillsProvider":true,"agentPresets":true}
+[t8-probe] CHECK R1_HASHLINE_RELATIVE_READ=PASS ok=true path=/root/dshProj/my-power-dsh/.mpd/hashline-files.json
+[t8-probe] CHECK R2_VERIF_INFO_RESOLVES_REPO=PASS workspace=/root/dshProj/my-power-dsh venv=/root/dshProj/my-power-dsh/.venv-rtl work=/root/dshProj/my-power-dsh/.mpd/verif
+[t8-probe] CHECK R3_MEMORY_STATUS_RESOLVES_REPO=PASS root=/root/dshProj/my-power-dsh/.mpd/memory/agents/agent-my-power-dsh
+[t8-probe] CHECK R4_BOULDER_PLANS_LISTS_REPO_PLAN=PASS count=1 plans=["/root/dshProj/my-power-dsh/.mpd/plans/workmate-rename-delete-contract.md"]
+[t8-probe] CHECK R5_BOULDER_STATUS_FILE=PASS stateFile=/root/dshProj/my-power-dsh/.mpd/boulder.json
+[t8-probe] CHECK S1_TWO_SESSIONS_RESOLVE_DIFFERENTLY=PASS blocked=/tmp/mpd-t8-toolcall-zroz6F/ws-blocked/.mpd/memory/agents/agent-ws-blocked clean=/tmp/mpd-t8-toolcall-zroz6F/ws-clean/.mpd/memory/agents/agent-ws-clean
+[t8-probe] CHECK S2_OTHER_SESSION_DOES_NOT_SEE_REPO_PLAN=PASS count=0
+[t8-probe] CHECK N1_NO_AGENT_FALLS_BACK_TO_HOST_CWD=PASS workspace=/root/dshProj hostCwd=/root/dshProj
+[t8-probe] CHECK N2_WITHOUT_SESSION_REPO_PLAN_INVISIBLE=PASS count=0
+[t8-probe] CHECK N3_WITHOUT_SESSION_RELATIVE_READ_FAILS_AT_HOST_CWD=PASS ok=false err=mpd-hashline: file not found: /root/dshProj/.mpd/hashline-files.json
+[t8-probe] CHECK W1_INIT_CONTROLLED_FIXTURE=PASS ok=true err=
+[t8-probe] CHECK W2_CONTROLLED_BLOCKED_WS_REFUSES=PASS ok=false err=mpd_workmate: "t8wm1" / "t8wm2" is in use by team member(s) blocking-team/t8wm1, blocking-team/t8wm2 — archive or retire those teams and let running spawns finish first
+[t8-probe] CHECK W3_CLEAN_WS_ALLOWS=PASS init=true rename=true name=t8wm4
+[t8-probe] CHECK W4_UNRELATED_KEY_ALLOWED_IN_BLOCKED_WS=PASS ok=true err=
+[t8-probe] CHECK W5_INIT_LIVE_TEAM_KEY=PASS ok=true err=
+[t8-probe] CHECK W6_LIVE_REPO_TEAM_RECORD_BLOCKS_SOURCE_KEY=PASS ok=false err=mpd_workmate: "lead" / "lead-x" is in use by team member(s) agent-teams-sidebar-migration/Lead, mpd-default/Lead, mpd-default-19f64d11/Lead, mpd-default-1f285182/Lead, mpd-default-2d2445da/Lead, mpd-default-47c350bf/Lead, mpd-default-4a3d20e1/Lead, mpd-default-53380813/Lead, mpd-default-5b99df58/Lead, mpd-default-7332aba4/Lead, mpd-default-84e50f06/Lead, mpd-default-98620900/Lead, mpd-default-9b7de114/Lead, mpd-default-b550f267/Lead, mpd-default-c146a414/Lead, mpd-default-c2be0a8a/L
+[t8-probe] CHECK W7_LIVE_REPO_TEAM_RECORD_BLOCKS_TARGET_KEY=PASS initFive=true ok=false err=mpd_workmate: "t8wm5" / "architect" is in use by team member(s) agent-teams-sidebar-migration/Architect, mpd-default/Architect, mpd-default-19f64d11/Architect, mpd-default-1f285182/Architect, mpd-default-2d2445da/Architect, mpd-default-47c350bf/Architect, mpd-default-4a3d20e1/Architect, mpd-default-53380813/Architect, mpd-default-5b99df58/Architect, mpd-default-7332aba4/Architect, mpd-default-84e50f06/Architect, mpd-default-98620900/Architect, mpd-default-9b7de114/Arch
+[t8-probe] CHECK W8_OTHER_WS_DOES_NOT_SEE_REPO_TEAM=PASS ok=true err=
+[t8-probe] DONE

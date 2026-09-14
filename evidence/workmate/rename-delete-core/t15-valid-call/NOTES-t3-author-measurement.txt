@@ -1,0 +1,40 @@
+t6-F1 / t15 — measurement by the t3 AUTHOR (the defect is mine), recorded honestly.
+
+DEFECT OWNERSHIP: the two new tools returned {ok:true,...} while their output schemas declared
+additionalProperties:false WITHOUT an ok property, so the harness output validator rejected every
+SUCCESSFUL call after the mutation had landed. My t12 mount proof said "callable" on the strength of a
+call that used an INVALID name — refused before a value was produced — so the validator never ran there.
+That claim was weaker than it read; corrected in NOTES.md.
+
+MEASURED NOW: src sha 24cd41f4f83cca28, dist sha a7b558e9bc62ebcb  at 14:13:33Z
+
+LANE A — the REPAIRED build, valid-input calls on a real boot (t15-valid-call/boot.log):
+  init1          mpd_workmate_init   ok=true  INVALID_OUTPUT=false
+  rename         mpd_workmate_rename ok=true  INVALID_OUTPUT=false   RENAME_LANDED=true names=["probe-wm-2"]
+  delete-archive mpd_workmate_delete ok=true  INVALID_OUTPUT=false
+  init2          mpd_workmate_init   ok=true  INVALID_OUTPUT=false
+  delete-purge   mpd_workmate_delete ok=true  INVALID_OUTPUT=false   FINAL names=[]
+  INVALID_OUTPUT_ERRORS=0 · loader-apply errors: 0
+  => the mutation and the report AGREE on the repaired bytes (rename landed AND was reported successful).
+
+LANE B — intended FALSIFICATION by mounting a mutated copy (ok stripped from both schemas): NOT VALID.
+  Attempt 1 (--patch overlay, - id: mpd-workmate / name: <copy>): probe ran, 0 invalid-output errors —
+  but a marker line injected into the copy proves it was NEVER LOADED (mutation-boot-marker.log: count 0).
+  Attempt 2 (profile patch /root/.dsh/profiles/mpd/cordis.patch.yml as a top-level array): same result,
+  marker absent (mutation-profile-patch2.log). An earlier append attempt broke the YAML (exit 1).
+  => Lane B ran the FIXED build in every case, so its "0 errors" proves nothing about falsifiability.
+  I am recording it as unproven rather than as a pass.
+
+MECHANISM NOTE (useful to anyone building a failing control): an id-target overlay cannot rebind a row's
+`name:` field — marker-proven, both via --patch and via the profile patch. Rebinding works in the QA dev flow,
+where the rows are DEFINED in the patch file itself and the row text is rewritten (that is exactly how
+skills/dsh-qa/scripts/readonly-deny.mjs repoints the roles row), or by a sandbox copy whose row is
+inserted fresh rather than overridden.
+
+VALIDATOR CALL SITE (source-anchored): dsh-tools/lib/index.js:3418 createSuccessResult ->
+validateJsonSchemaValue(tool.output.schema, detached, "value") -> ToolOutputError; reached from
+tools.execute -> dispatchScheduledExecution -> postExecute (line 3244), which is the path the adapter's
+executeTool uses. So the probe's calls DO traverse the validator.
+
+WHAT REMAINS OPEN (t15 acceptance 3 / t6 verification, not mine): the failing control — the same probe
+against the pre-t15 shape — is NOT demonstrated by me.

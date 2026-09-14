@@ -1,0 +1,54 @@
+=== gate sweep at HEAD=53d617e6c2d29dfadec06278bc4130061055378e 2026-09-14T10:20:27Z ===
+
+exit=0
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+
+exit=0
+[patch-agent-teams-fixes] already applied: 40 mpd delta region(s) across 9 adopted file(s)
+
+exit=0
+$ tsgo --noEmit
+
+exit=0
+packages/mpd-agent-teams-plugin/test/t52-interjection-tools.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/scheduler-dispatch.test.ts:
+
+packages/mpd-agent-teams-plugin/test/update-task-amend-lock-and-guards.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/s1-s4-semantics.test.mjs:
+
+ 206 pass
+ 0 fail
+ 1457 expect() calls
+Ran 206 tests across 54 files. [5.00s]
+
+exit=0
+--- tail ---
+[session-start-team self-test] ok: gate module + bundle patch + installer + persona + BOTH prompt directions verified
+[test:qa] skills/dsh-qa/scripts/skill-catalog-probe.mjs
+[skill-catalog-probe self-test] ok: staged skill corpus present + provider wiring verified
+[test:qa] skills/dsh-qa/scripts/software-smoke.mjs
+[software-smoke self-test] ok: fixture semantics + deterministic self-play (winner P1, 11 plies) + 4 oracle probes green, mutation control RED (9 violation(s))
+[test:qa] skills/dsh-qa/scripts/team-route-rewire.mjs
+[team-route-rewire self-test] ok: 13 checks; staged pack usable
+[test:qa] skills/dsh-qa/scripts/tool-output-validation.mjs
+[tool-output-validation self-test] ok: bundle rows + dist symbols + unit suites verified
+[test:qa] skills/dsh-qa/scripts/ultrawork-smoke.mjs
+[ultrawork-smoke self-test] ok: engine symbols + bundle row verified
+[test:qa] skills/dsh-qa/scripts/vision-smoke.mjs
+[vision-e2e self-test] ok: fixture generator verified (155 bytes)
+[test:qa] skills/dsh-qa/scripts/web-client-adapt.mjs
+[web-client-adapt self-test] ok: 14 checks
+[test:qa] skills/dsh-qa/scripts/workmate-library.mjs
+[workmate-library self-test] ok: 18 checks
+[test:qa] skills/dsh-qa/scripts/workmate-team-member.mjs
+[workmate-team-member self-test] ok: 6 checks
+[test:qa] all self-tests passed
+--- self-test tallies ---
+ok-ish lines: 28
+fail-word lines: 2

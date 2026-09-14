@@ -1,0 +1,186 @@
+BRAND-TOKEN SCAN at the settled revision (working tree, git-tracked non-evidence files)
+regex = BRAND_TOKEN_RE (scripts/build-mcp.mjs:192) + a bare-word OMO/OmO/omo scan
+
+--- A. token-boundary brand tokens ---
+AGENTS.md
+    21:omo-parity-gap, 502:omo-align/requirements/frozen-contract.json
+docs/index.md
+    19:omo-parity-ledger, 19:omo-parity-ledger, 19:omo-parity-align, 19:omo-parity-ledger
+docs/index.zh-CN.md
+    18:omo-parity-ledger, 18:omo-parity-ledger, 18:omo-parity-align, 18:omo-parity-ledger
+docs/omo-parity-gap.md
+    1:OMO, 4:omo-opencode/src/agents/, 29:OMO, 43:OMO, 49:OMO, 58:OMO, 59:omo_agent, 72:omo/plans
+docs/omo-parity-ledger.md
+    1:OMO, 2:omo-parity-ledger, 4:omo-parity-align, 12:omo-parity-gap, 15:omo-align/requirements/frozen-contract.json, 16:omo-align/research/team-vs-mass-ulw/gap.json, 17:omo-align/research/session-policy/output.log, 18:omo-align/requirements/verdict.json, 25:OMO, 41:omo-parity-ledger, 41:omo-parity-ledger, 41:omo-parity-gap, 93:omo-parity-rate/, 94:omo-align/ledger-fix/, 167:omo-align/ledger-fix/gates/, 168:omo-align/ledger-fix/result.json, 176:omo-align/requirements/frozen-contract.json, 179:omo-parity-rate/raw/prompts.jsonl, 191:omo-parity-rate/raw/probe.mjs
+docs/omo-parity-ledger.zh-CN.md
+    1:OMO, 2:omo-parity-ledger, 4:omo-parity-align, 9:omo-parity-gap, 12:omo-align/requirements/frozen-contract.json, 13:omo-align/research/team-vs-mass-ulw/gap.json, 14:omo-align/research/session-policy/output.log, 15:omo-align/requirements/verdict.json, 22:OMO, 38:omo-parity-ledger, 38:omo-parity-ledger, 38:omo-parity-gap, 84:omo-parity-rate/, 85:omo-align/ledger-fix/, 153:omo-align/ledger-fix/gates/, 153:omo-align/ledger-fix/result.json, 162:omo-align/requirements/frozen-contract.json, 165:omo-parity-rate/raw/prompts.jsonl, 177:omo-parity-rate/raw/probe.mjs
+docs/plan-e.md
+    16:OMO-vs-mpd, 21:OMO, 43:omo-parity-gap
+docs/plan-f.md
+    1:OMO, 18:OMO-origin, 43:omo-hephaestus, 82:OMO
+packages/mpd-agent-teams-plugin/lib/session-start.js
+    28:omo-align/requirements/frozen-contract.json
+packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs
+    91:omo-align
+packages/mpd-agent-teams-plugin/test/s1-s4-semantics.test.mjs
+    1:OMO, 171:omo-align/verification/
+packages/mpd-dsh-adapter-plugin/src/index.ts
+    144:omo-align/compact-hinge
+packages/mpd-mcp-gitbash/dist/cli.js
+    320:OMO_CODEX_GIT_BASH_PATH, 457:OMO_CODEX_GIT_BASH_TIMEOUT_MS, 458:OMO_CODEX_EXEC_COMMAND_TIMEOUT_MS
+packages/mpd-mcp-lsp/dist/cli.js
+    5358:_omo, 5368:_omo, 5739:_omo, 6027:_omo, 6080:_omo
+packages/mpd-team-compact-plugin/src/index.ts
+    6:omo-align/requirements/team-compaction-contract.json, 16:omo-align/compact-hinge/result.json
+scripts/build-mcp.mjs
+    2:OMO, 14:OMO, 16:omo-config-core, 26:omo-config-core, 30:omo-config-core, 99:OMO-, 100:OMO_, 101:OMO-, 104:omo, 105:OMO_CODEX_, 109:OMO_DAEMON_PROTOCOL_VERSION, 110:OMO_LSP_DAEMON_CLI, 111:OMO_LSP_DAEMON_DIR, 112:OMO_LSP_DAEMON_VERSION, 113:omo, 114:omo-lsp-daemon, 115:omo-lsp-, 116:omo/ping, 118:OMO_, 118:omo, 118:omo-lsp, 118:omo/ping, 122:OMO_AST_GREP_BIN_DIR, 123:OMO_AST_GREP_SG_PATH
+skills/ast-grep/AGENTS.md
+    23:OMO, 23:omo-opencode/src/cli/install-ast-grep-sg.ts
+skills/ast-grep/README.md
+    133:omo
+skills/ast-grep/scripts/ast_grep_helper.py
+    205:OMO, 207:omo_env_binary, 217:omo_runtime_slug, 230:omo_runtime_binary, 232:omo_runtime_slug, 250:OMO, 255:omo_env_binary, 255:omo_runtime_binary
+skills/ast-grep/tests/smoke.sh
+    31:omo_runtime_slug, 126:OMO, 129:omo_runtime_slug
+skills/dsh-qa/scripts/agent-teams-messaging.mjs
+    232:omo-align/qa-shipped-path/, 369:omo-align, 863:omo-align
+skills/dsh-qa/scripts/session-start-team.mjs
+    26:omo-align/requirements/frozen-contract.json
+skills/lsp-setup/SKILL.md
+    86:omo
+skills/lsp-setup/references/bash/README.md
+    30:omo
+skills/lsp-setup/references/c-cpp/README.md
+    23:omo
+skills/lsp-setup/references/csharp/README.md
+    25:omo
+skills/lsp-setup/references/dart/README.md
+    23:omo
+skills/lsp-setup/references/elixir/README.md
+    24:omo
+skills/lsp-setup/references/go/README.md
+    28:omo
+skills/lsp-setup/references/haskell/README.md
+    30:omo
+skills/lsp-setup/references/java/README.md
+    23:omo
+skills/lsp-setup/references/julia/README.md
+    31:omo
+skills/lsp-setup/references/kotlin/README.md
+    25:omo
+skills/lsp-setup/references/lua/README.md
+    23:omo
+skills/lsp-setup/references/php/README.md
+    23:omo
+skills/lsp-setup/references/python/README.md
+    24:omo
+skills/lsp-setup/references/ruby/README.md
+    25:omo
+skills/lsp-setup/references/rust/README.md
+    25:omo
+skills/lsp-setup/references/swift/README.md
+    23:omo
+skills/lsp-setup/references/terraform/README.md
+    26:omo
+skills/lsp-setup/references/typescript/README.md
+    25:omo
+skills/lsp-setup/references/yaml/README.md
+    21:omo
+skills/lsp-setup/references/zig/README.md
+    24:omo
+skills/review-work/SKILL.md
+    30:OMO
+skills/ultimate-browsing/engine/tests/test_surrogate.py
+    134:OMOB_TEST_TOKEN, 139:OMOB_TEST_TOKEN
+skills/ulw-plan/scripts/scaffold-plan.mjs
+    124:omoRoot, 127:omoRoot, 129:omoReal, 129:omoRoot, 132:omoReal
+files with brand tokens: 46
+
+--- B. bare-word OMO/OmO/omo ---
+AGENTS.md
+    21:omo, 502:omo
+docs/index.md
+    19:omo, 19:omo, 19:omo, 19:omo
+docs/index.zh-CN.md
+    18:omo, 18:omo, 18:omo, 18:omo
+docs/omo-parity-gap.md
+    1:OMO, 4:omo, 29:OMO, 43:OMO, 49:OMO, 58:OMO, 72:omo
+docs/omo-parity-ledger.md
+    1:OMO, 2:omo, 4:omo, 12:omo, 15:omo, 16:omo, 17:omo, 18:omo, 25:OMO, 41:omo, 41:omo, 41:omo, 93:omo, 94:omo, 167:omo, 168:omo, 176:omo, 179:omo, 191:omo
+docs/omo-parity-ledger.zh-CN.md
+    1:OMO, 2:omo, 4:omo, 9:omo, 12:omo, 13:omo, 14:omo, 15:omo, 22:OMO, 38:omo, 38:omo, 38:omo, 84:omo, 85:omo, 153:omo, 153:omo, 162:omo, 165:omo, 177:omo
+docs/plan-e.md
+    16:OMO, 21:OMO, 43:omo
+docs/plan-f.md
+    1:OMO, 18:OMO, 43:omo, 82:OMO
+packages/mpd-agent-teams-plugin/lib/session-start.js
+    28:omo
+packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs
+    91:omo
+packages/mpd-agent-teams-plugin/test/s1-s4-semantics.test.mjs
+    1:OMO, 171:omo
+packages/mpd-dsh-adapter-plugin/src/index.ts
+    144:omo
+packages/mpd-mcp-gitbash/dist/cli.js
+    320:OMO, 457:OMO, 458:OMO
+packages/mpd-team-compact-plugin/src/index.ts
+    6:omo, 16:omo
+scripts/build-mcp.mjs
+    2:OMO, 14:OMO, 16:omo, 26:omo, 30:omo, 99:OMO, 100:OMO, 101:OMO, 104:omo, 105:OMO, 109:OMO, 110:OMO, 111:OMO, 112:OMO, 113:omo, 114:omo, 115:omo, 116:omo, 118:OMO, 118:omo, 118:omo, 118:omo, 122:OMO, 123:OMO
+skills/ast-grep/AGENTS.md
+    23:OMO, 23:omo
+skills/ast-grep/README.md
+    133:omo
+skills/ast-grep/scripts/ast_grep_helper.py
+    205:OMO, 207:omo, 217:omo, 230:omo, 232:omo, 250:OMO, 255:omo, 255:omo
+skills/ast-grep/tests/smoke.sh
+    31:omo, 126:OMO, 129:omo
+skills/dsh-qa/scripts/agent-teams-messaging.mjs
+    232:omo, 369:omo, 863:omo
+skills/dsh-qa/scripts/session-start-team.mjs
+    26:omo
+skills/lsp-setup/SKILL.md
+    86:omo
+skills/lsp-setup/references/bash/README.md
+    30:omo
+skills/lsp-setup/references/c-cpp/README.md
+    23:omo
+skills/lsp-setup/references/csharp/README.md
+    25:omo
+skills/lsp-setup/references/dart/README.md
+    23:omo
+skills/lsp-setup/references/elixir/README.md
+    24:omo
+skills/lsp-setup/references/go/README.md
+    28:omo
+skills/lsp-setup/references/haskell/README.md
+    30:omo
+skills/lsp-setup/references/java/README.md
+    23:omo
+skills/lsp-setup/references/julia/README.md
+    31:omo
+skills/lsp-setup/references/kotlin/README.md
+    25:omo
+skills/lsp-setup/references/lua/README.md
+    23:omo
+skills/lsp-setup/references/php/README.md
+    23:omo
+skills/lsp-setup/references/python/README.md
+    24:omo
+skills/lsp-setup/references/ruby/README.md
+    25:omo
+skills/lsp-setup/references/rust/README.md
+    25:omo
+skills/lsp-setup/references/swift/README.md
+    23:omo
+skills/lsp-setup/references/terraform/README.md
+    26:omo
+skills/lsp-setup/references/typescript/README.md
+    25:omo
+skills/lsp-setup/references/yaml/README.md
+    21:omo
+skills/lsp-setup/references/zig/README.md
+    24:omo
+skills/review-work/SKILL.md
+    30:OMO
+files with bare word: 43

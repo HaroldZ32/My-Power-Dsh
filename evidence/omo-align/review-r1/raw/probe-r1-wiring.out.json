@@ -1,0 +1,176 @@
+{
+  "schema": "mpd-review-r1-probe/1",
+  "reviewer": "Architect (t46, read-only)",
+  "anchoredFiles": {
+    "packages/mpd-agent-teams-plugin/lib/state.js": {
+      "bytes": 57791,
+      "sha256": "fa7fe937f1895c472732fdfdc0b193fcb2281448133fd0b15a490f230fe0ae19"
+    },
+    "packages/mpd-agent-teams-plugin/lib/scheduler.js": {
+      "bytes": 30673,
+      "sha256": "f9ec4a226511b420c660673ccc1838b99fa4c0ac548f4b0f19e0fcf865109011"
+    },
+    "packages/mpd-agent-teams-plugin/lib/tools.js": {
+      "bytes": 149196,
+      "sha256": "026e2ffca86e1254005254144d4c5f4f38dce6c538777f98b0e8217f92db2dcb"
+    }
+  },
+  "staticWiring": {
+    "appendMailboxDeduped": {
+      "definedAt": "state.js:485",
+      "runtimeCallSites": []
+    },
+    "clearMailboxToWatermark": {
+      "definedAt": "state.js:508",
+      "runtimeCallSites": []
+    },
+    "readLiveMailbox": {
+      "definedAt": "state.js:544",
+      "runtimeCallSites": []
+    },
+    "enqueueInterjection": {
+      "definedAt": "state.js:568",
+      "runtimeCallSites": []
+    },
+    "decideInterjection": {
+      "definedAt": "state.js:655",
+      "runtimeCallSites": [
+        "scheduler.js:231"
+      ]
+    },
+    "expireInterjections": {
+      "definedAt": "state.js:645",
+      "runtimeCallSites": []
+    },
+    "readPendingInterjections": {
+      "definedAt": "state.js:637",
+      "runtimeCallSites": []
+    },
+    "readInterjections": {
+      "definedAt": "state.js:629",
+      "runtimeCallSites": []
+    }
+  },
+  "staticWiringVerdict": {
+    "appendMailboxDeduped": "NO RUNTIME CALL SITE",
+    "clearMailboxToWatermark": "NO RUNTIME CALL SITE",
+    "readLiveMailbox": "NO RUNTIME CALL SITE",
+    "enqueueInterjection": "NO RUNTIME CALL SITE",
+    "decideInterjection": "called",
+    "expireInterjections": "NO RUNTIME CALL SITE",
+    "readPendingInterjections": "NO RUNTIME CALL SITE",
+    "readInterjections": "NO RUNTIME CALL SITE"
+  },
+  "sendToolAppendPath": {
+    "toolRegisteredAt": "tools.js:1815",
+    "appendCallsInFile": [
+      "tools.js:1771 -> appendMailbox",
+      "tools.js:1774 -> appendMailbox",
+      "tools.js:1871 -> appendMailbox",
+      "tools.js:1887 -> appendMailbox"
+    ],
+    "importedFromState": "Deduped is NOT imported"
+  },
+  "dedup": {
+    "shippedSendPath_appendMailbox_x3": {
+      "unread": 3,
+      "records": 3
+    },
+    "primitive_appendMailboxDeduped_x3": {
+      "unread": 1,
+      "records": 1,
+      "dupCount": 3
+    },
+    "reading": "the PRIMITIVE folds 3 sends to 1 delivery, but the SHIPPED SEND PATH (appendMailbox) still delivers 3"
+  },
+  "tombstones": {
+    "clearedIds": [
+      "t-0",
+      "t-1",
+      "t-2"
+    ],
+    "audit": {
+      "kind": "mailbox-cleared",
+      "agentKey": "member-a",
+      "watermark": 500,
+      "clearedCount": 3,
+      "clearedIds": [
+        "t-0",
+        "t-1",
+        "t-2"
+      ],
+      "sidecar": "/tmp/mpd-review-r1-YiaIo0/.mpd/team-tomb/review-team/inbox/archive/member-a.500.jsonl",
+      "at": 1000000
+    },
+    "sidecarBytes": 246,
+    "unreadAfterClear": [
+      {
+        "id": "t-0",
+        "content": "",
+        "kind": null,
+        "tombstone": true
+      },
+      {
+        "id": "t-1",
+        "content": "",
+        "kind": null,
+        "tombstone": true
+      },
+      {
+        "id": "t-2",
+        "content": "",
+        "kind": null,
+        "tombstone": true
+      }
+    ],
+    "liveAfterClear": 0,
+    "deliverableUnreadAfterClear": 3,
+    "predicateSource": "return messages.filter((message) => message.kind !== INTERJECTION_KIND);",
+    "reading": "AFTER A CLEAR the scheduler unread path still yields all 3 cleared rows (empty-content tombstones pass deliverableUnread), so the next idle edge would pack 3 empty prompts",
+    "acknowledgedThenCleared": {
+      "unreadAfterAcknowledge": 0,
+      "unreadAfterClear": 2,
+      "deliverableAfterClear": 2,
+      "tombstoneFields": [
+        "id",
+        "from",
+        "to",
+        "content",
+        "ts",
+        "tombstone",
+        "clearedAt",
+        "clearedToWatermark",
+        "archivedTo"
+      ],
+      "reading": "RESURRECTION CONFIRMED: the tombstone keeps id/from/to/ts but DROPS readAt, so records the recipient had already acknowledged come back as unread and pass the scheduler filter"
+    }
+  },
+  "v1Closure": {
+    "noContentEnqueue": {
+      "returnedStatus": "pending",
+      "content": "only a summary",
+      "readableAsPending": 1,
+      "decideResult": "approved"
+    },
+    "absentError": "interjection \"nope\" does not exist",
+    "malformedError": "interjection \"broken\" exists but is MALFORMED (present in the queue but not readable: the mailbox shape requires a non-empty string content and the identity fields); re-enqueue it with content, or inspect the queue file",
+    "arbitraryDecisionStatus": "banana",
+    "reading": "V1 IS CLOSED on this revision: a content-less request is normalized, readable and decidable; an absent id and a malformed-but-present row raise two DIFFERENT errors",
+    "arbitraryDecisionConsequence": {
+      "pendingAfterArbitraryDecision": [],
+      "secondDecisionError": "interjection \"ij-arb\" is already banana",
+      "reading": "decideInterjection persists ANY decision string as `status`: the row leaves the pending view (readPendingInterjections filters status===pending) while being neither approved nor rejected, and a later real decision is refused as \"already banana\". No tool layer exists to constrain the value."
+    }
+  },
+  "ttl": {
+    "expiredBeforeTtl": [],
+    "expiredAtTtl": [
+      "ij-ttl"
+    ],
+    "statusAfterTtl": "expired",
+    "fromPreserved": "Lead",
+    "requesterInboxRecordsAfterTtl": 0,
+    "reading": "expiry flips the row to expired and preserves `from`, but NOTHING is written to the requester: there is no notification path, and expireInterjections has no caller in the shipped runtime"
+  },
+  "scratchRemoved": true
+}

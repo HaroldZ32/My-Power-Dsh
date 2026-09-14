@@ -1,0 +1,6 @@
+# QA use: switch to the compat provider deepseek compatibility track (provider key = directory route name configured by dsh-llm-pi-ai)
+- id: agent-default-model
+  name: '@deepseek-ai/dsh-agent-default-model'
+  config:
+    provider: deepseek
+    model: deepseek-v4-flash

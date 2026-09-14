@@ -1,0 +1,6 @@
+# QA overlay for t3 evidence (see mounted-calls.sh header): the legacy
+# install-profile row list omits mpd-verif, the bundle patch carries it.
+- insert:
+    - id: mpd-verif
+      name: /root/dshProj/my-power-dsh/packages/mpd-verif-plugin/dist/index.js
+      config: {}

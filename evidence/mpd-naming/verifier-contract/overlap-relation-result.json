@@ -1,0 +1,140 @@
+{
+  "headFile": "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+  "headSha256": "3c1a850756e63b7338ca3a8287e7327b9571bdad",
+  "preFixWrongCases": 10,
+  "fixedWrongCases": 0,
+  "measured": [
+    {
+      "left": [
+        "docs/index.md"
+      ],
+      "right": [
+        "scripts/build-mcp.mjs"
+      ],
+      "expected": false,
+      "preFix": true,
+      "fixed": false,
+      "verdictNow": true
+    },
+    {
+      "left": [
+        "docs/upstream-parity-ledger.md"
+      ],
+      "right": [
+        "docs/index.md"
+      ],
+      "expected": false,
+      "preFix": true,
+      "fixed": false,
+      "verdictNow": true
+    },
+    {
+      "left": [
+        "packages/foo/lib"
+      ],
+      "right": [
+        "packages/foo/test"
+      ],
+      "expected": false,
+      "preFix": true,
+      "fixed": false,
+      "verdictNow": true
+    },
+    {
+      "left": [
+        "src/**"
+      ],
+      "right": [
+        "srcx/a.ts"
+      ],
+      "expected": false,
+      "preFix": true,
+      "fixed": false,
+      "verdictNow": true
+    },
+    {
+      "left": [
+        "docs/**"
+      ],
+      "right": [
+        "src/**"
+      ],
+      "expected": false,
+      "preFix": true,
+      "fixed": false,
+      "verdictNow": true
+    },
+    {
+      "left": [
+        "docs"
+      ],
+      "right": [
+        "docs/index.md"
+      ],
+      "expected": true,
+      "preFix": false,
+      "fixed": true,
+      "verdictNow": true
+    },
+    {
+      "left": [
+        "packages/foo"
+      ],
+      "right": [
+        "packages/foo/vendor"
+      ],
+      "expected": true,
+      "preFix": false,
+      "fixed": true,
+      "verdictNow": true
+    },
+    {
+      "left": [
+        "a"
+      ],
+      "right": [
+        "a"
+      ],
+      "expected": true,
+      "preFix": true,
+      "fixed": true,
+      "verdictNow": true
+    },
+    {
+      "left": [
+        "docs/**"
+      ],
+      "right": [
+        "docs/index.md"
+      ],
+      "expected": true,
+      "preFix": false,
+      "fixed": true,
+      "verdictNow": true
+    },
+    {
+      "left": [
+        "packages/*/dist"
+      ],
+      "right": [
+        "packages/foo/dist/cli.js"
+      ],
+      "expected": true,
+      "preFix": false,
+      "fixed": true,
+      "verdictNow": true
+    },
+    {
+      "left": [
+        "**"
+      ],
+      "right": [
+        "docs/index.md"
+      ],
+      "expected": true,
+      "preFix": false,
+      "fixed": true,
+      "verdictNow": true
+    }
+  ]
+}

@@ -1,11 +1,12 @@
-# Prompt Adaptation Log（omo -> DeepSeek）
+# Prompt Adaptation Log (upstream -> DeepSeek)
 
-| 迭代 | 对象 | 改动 | 依据 |
+| Iteration | Target | Change | Basis |
 |---|---|---|---|
-| P4-1 | omo-oracle | 从 ORACLE_DEFAULT_PROMPT 抽身份/专长/决策框架/输出规范；XML->Markdown；删 Claude 特化表述；新增 deepseek_notes（思考内部化、不暴露链式思维、结构紧凑） | 对齐 OMO 原版 + DeepSeek thinking 适配 |
-| P4-1 | omo-librarian | 从 LIBRARIAN prompt 抽身份+证据纪律+日期意识；工具段映射 DSH 现有面（mcp__ast_grep__*、mcp__lsp__*、web 检索、bash）；保留 PHASE 0 分类（缩写版）与"结论先行+证据引用+不确定性标注" | 对齐 OMO 原版 + DSH 工具面 |
-| P4-1 | omo-prometheus | 基本原样移植 prometheus/default.md（其依赖的 ulw-plan 技能已在 bundle 内） | OMO 原版即模型无关 |
-| P4-1 | omo-hephaestus | 依据 Hephaestus agent 职责编写 DeepSeek 原生"配置管理器"人格（只读+diff+风险注记+DSH 术语） | 最小版定义 |
-| P4-1 | 全部 | 增加：运行于 DeepSeek；计划/输出须"决策完备/结构紧凑"；不暴露思考链 | persona 冒烟（Prometheus 自识别）PASS |
+| P4-1 | mpd-oracle | Extracted identity/expertise/decision framework/output spec from ORACLE_DEFAULT_PROMPT; XML->Markdown; removed Claude-specific phrasing; added deepseek_notes (internalize thinking, no chain-of-thought exposure, compact structure) | Aligned with the upstream original + DeepSeek thinking adaptation |
+| P4-1 | mpd-librarian | Extracted identity + evidence discipline + date awareness from the LIBRARIAN prompt; mapped the tools section to the existing DSH surface (mcp__ast_grep__*, mcp__lsp__*, web search, bash); kept the PHASE 0 classification (abbreviated version) and "conclusion-first + evidence citations + uncertainty annotation" | Aligned with the upstream original + the DSH tool surface |
+| P4-1 | mpd-prometheus | Ported prometheus/default.md (its dependency, the ulw-plan skill, is already in the bundle) | The upstream original is already model-agnostic |
+| tool-guarantee | mpd-prometheus | Removed the `skill(name="ulw-plan")` first-action mandate: the vendored skill corpus was deleted, so the reference 404'd; planning loop is now self-contained inline | Tool-call guarantee audit (official dsh v0.1.1-rc.2 reference) |
+| P4-1 | mpd-hephaestus | Wrote a DeepSeek-native "configuration manager" persona based on the Hephaestus agent's responsibilities (read-only + diff + risk notes + DSH terminology) | Minimal definition |
+| P4-1 | All | Added: runs on DeepSeek; plans/output must be "decision-complete/compact"; no chain-of-thought exposure | persona smoke test (Prometheus self-identification) PASS |
 
-待办（P5 金标后）：按 rubric 失败项做 <=3 轮迭代，并在本表追加记录。
+TODO (after the P5 golden pass): iterate <=3 rounds on rubric failures and append records to this table.

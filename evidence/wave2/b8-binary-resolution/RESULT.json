@@ -1,0 +1,98 @@
+{
+  "task": "t6 — B8: make the ast-grep/codegraph MCP binaries resolvable in both install layouts",
+  "attemptId": "443c6377-6be2-4024-a81d-fe9d141c758c",
+  "member": "Deep Worker",
+  "measuredAt": "2026-09-11T06:10:00.000Z",
+  "mechanism": {
+    "summary": "The bundle patch names NO binary path. Each MCP row launches its package's launch.mjs, which resolves the binary bundle-relatively through packages/mpd-mcp-shared/bin-resolve.mjs and sets the upstream env key only when the caller left it unset.",
+    "precedence": [
+      "caller env pin already set -> launcher does nothing",
+      "$MPD_AST_GREP_BIN_DIR/{ast-grep,sg} (ast-grep only)",
+      "createRequire(<launcher>).resolve(<pkg>/package.json) -> package bin (packed layout)",
+      "<bundle>/.toolchain/node_modules/.bin/{ast-grep,sg} | .../codegraph (checkout link: layout)",
+      "nothing -> env left unset; the adopted chain runs its own bundled/provisioned/PATH/download fallback"
+    ],
+    "acceptanceProbe": "existsSync plus, for ast-grep, a --version probe whose output contains 'ast-grep' — this is what rejects .toolchain/node_modules/.bin/sg (deprecated wrapper, exit 1). ast-grep is tried before sg in every tier.",
+    "codegraphNote": "a WRONG MPD_CODEGRAPH_BIN is returned by the adopted resolver even when the file does not exist, which hard-blocks its whole fallback chain — hence the launcher sets it only when unset and only to an existing file."
+  },
+  "changedPaths": [
+    "packages/mpd-bundle/cordis.patch.yml",
+    "packages/mpd-codegraph-plugin/src/index.ts",
+    "packages/mpd-codegraph-plugin/dist/index.js",
+    "packages/mpd-mcp-astgrep/launch.mjs",
+    "packages/mpd-mcp-astgrep/README.md",
+    "packages/mpd-mcp-astgrep/README.zh-CN.md",
+    "packages/mpd-mcp-codegraph/launch.mjs",
+    "packages/mpd-mcp-codegraph/README.md",
+    "packages/mpd-mcp-codegraph/README.zh-CN.md",
+    "packages/mpd-mcp-shared/bin-resolve.mjs",
+    "packages/mpd-mcp-shared/bin-resolve.test.mjs",
+    "scripts/pack-mpd.mjs",
+    "evidence/wave2/b8-binary-resolution"
+  ],
+  "declaredButUnmatched": [
+    "packages/mpd-mcp-astgrep/launch.mjs — the row entry point; without it the fix does not exist (captain-authorized)",
+    "packages/mpd-mcp-codegraph/launch.mjs — same, plus runCodegraphServe() must be called because serve.js only self-starts when it is argv[1] (captain-authorized)",
+    "packages/mpd-mcp-shared/bin-resolve.mjs + bin-resolve.test.mjs — the one shared resolver the launchers import (captain-authorized)",
+    "scripts/pack-mpd.mjs — ship the launchers + shared resolver; hard-FAIL when a launcher is missing (the new failure mode t1 §5 item 4 names); removed the now-dead .toolchain -> <baseUrl>/node_modules/.bin/* rewrites (captain-authorized)",
+    "packages/mpd-mcp-astgrep/README.md + README.zh-CN.md, packages/mpd-mcp-codegraph/README.md + README.zh-CN.md — bilingual pairs documenting the launcher resolution (captain-authorized; 'docs' is inScope, packages/*/README* is the doc surface t1 §10 named)",
+    "evidence/wave2/b8-binary-resolution/t1-decision-record.md — verbatim copy of the t1 output used as source material"
+  ],
+  "inScopeButUntouched": [
+    "packages/mpd-bootstrap-plugin/src + dist/index.js — t1 §3.4 REJECTED boot-time provisioning (the MCP child is spawned during the row's apply and the child env is frozen then; sibling entries are created concurrently, so list order is not a timing guarantee). No bootstrap change is part of this mechanism."
+  ],
+  "gates": {
+    "unitTests": "bun test packages -> 335 pass / 0 fail (10 new resolver tests incl. the REAL .bin/sg probe rejection)",
+    "typecheck": "bun run typecheck -> exit 0",
+    "distSweep": "sweep.mjs --clean-room -> 16 FRESH byte-identical, 0 STALE, clean-room 16/16 (mpd-codegraph-plugin dist rebuilt from the repo root)",
+    "verifyVendor": "node scripts/verify-vendor.mjs -> exit 0",
+    "installerDryRun": "node scripts/install-profile.mjs --dry-run -> exit 0",
+    "presetConformance": "node skills/dsh-qa/scripts/preset-conformance.mjs -> PASS: ok=true, 30 rows checked, parity 31/31, real session created, bootLog signatures [], negative control ok (mount-gates/preset-conformance.result.json)",
+    "bundleLifecycle": "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs -> PASS exit 0: official `dsh plugin add <repo>` link: install + real web boot + uninstall, no residue (mount-gates/bundle-lifecycle.result.json, .boot.log)",
+    "bootProbe": "b8-boot.mjs -> 4/4: current-patch dev boot 0 crash signatures, no MCP child spawn failure, mpd-codegraph init status=ok; HEAD-patch control boots identically (boot.result.json)",
+    "mcpGate": "b8-mcp-gate.mjs -> 5/5: real ast-grep search + real codegraph_explore through the shipped launchers from a cwd outside the bundle, plus both env-pin negative controls (BINARY_NOT_FOUND / codegraph skipped) (mcp-gate.result.json)",
+    "packedGate": "b8-packed-gate.mjs -> 7/7: npm pack tarball ships launchers, real tarball install resolves via createRequire (@ast-grep/cli, @colbymchenry/codegraph), real MCP calls answer, negative control holds (packed-gate.result.json)"
+  },
+  "installLayouts": {
+    "checkoutLink": "resolves through candidate 4 (<bundle>/.toolchain/node_modules/.bin/ast-grep|codegraph) — proven by b8-mcp-gate.mjs and by the mpd-codegraph plugin line `init status=ok binary=.../.toolchain/node_modules/.bin/codegraph` in boot A",
+    "packed": "resolves through candidate 3 (createRequire of the hoisted optionalDependency) — proven end-to-end by b8-packed-gate.mjs with a real `npm pack` tarball install: ast-grep -> <profile>/node_modules/@ast-grep/cli/ast-grep (source=require), codegraph -> <profile>/node_modules/@colbymchenry/codegraph/npm-shim.js (source=require)",
+    "packedNotTested": "nothing — the packed layout IS tested here; only the LIVE LLM-driven tool call could not be run (see envLimits)"
+  },
+  "envLimits": [
+    "Live headless LLM tool calls are unavailable on this machine: every boot ends at MISSING_CREDENTIAL (same class as evidence/dsh-qa/llm-dual-track: ok=false, exit 1). The real MCP call path is therefore proven by driving the shipped launchers as MCP stdio servers (initialize + tools/list + tools/call) — the acceptance explicitly allows 'the equivalent MCP call path'."
+  ],
+  "findings": [
+    {
+      "id": "F-devflavor-mcp-rewrite",
+      "severity": "low",
+      "inB8Objective": false,
+      "problem": "skills/dsh-qa/scripts/preset-register.mjs devPatch() splices the checkout path into a `baseUrl + \"/node_modules/@mpd-dsh/mpd/...\"` expression, producing `baseUrl + \"/node_modules//root/.../launch.mjs\"` (step measured in finding-devmask-cross-reference.txt). MCP rows therefore only work in that dev boot because mcpEnv() pre-sets MPD_DSH_*_CLI (the `||` short-circuit); a dev boot that removes the masking pins (as a B8 gate must) dies with MODULE_NOT_FOUND unless the baseUrl operand is dropped. My b8-boot.mjs implements the correct translation (drop the operand).",
+      "requiredFix": "cross-reference for t7 (skills/** owner): either drop the baseUrl operand in devPatch() or document that the CLI pins are what make MCP rows work in the checkout dev boot."
+    },
+    {
+      "id": "F-codegraph-init-fail-in-sandbox",
+      "severity": "info",
+      "inB8Objective": true,
+      "problem": "In the bundle-lifecycle boot the plugin line is `init status=fail binary=.../.toolchain/node_modules/.bin/codegraph cwd=<.qa-reloc sandbox>`: the binary now RESOLVES (pre-fix it was `status=no-binary binary=-`), but `codegraph init` in that sandbox root does not produce .codegraph/codegraph.db (the sandbox root is an install dir with a huge node_modules).",
+      "requiredFix": "none for B8 — acceptance requires that the log no longer reports no-binary and that a real codegraph call/probe succeeds (both proven); the init failure is a property of that sandbox project, not of resolution."
+    }
+  ],
+  "evidenceFiles": [
+    "RESULT.json",
+    "t1-decision-record.md",
+    "mcp-probe.mjs",
+    "b8-mcp-gate.mjs",
+    "mcp-gate.result.json",
+    "b8-packed-gate.mjs",
+    "packed-gate.result.json",
+    "b8-boot.mjs",
+    "boot.result.json",
+    "boot-current.output.log",
+    "boot-head.output.log",
+    "mount-gates/preset-conformance.result.json",
+    "mount-gates/bundle-lifecycle.result.json",
+    "mount-gates/bundle-lifecycle.boot.log",
+    "sweep-clean-room.txt",
+    "finding-devmask-cross-reference.txt"
+  ]
+}

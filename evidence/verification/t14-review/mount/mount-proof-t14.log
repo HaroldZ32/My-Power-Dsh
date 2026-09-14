@@ -1,0 +1,89 @@
+=== t9 independent MOUNT proof ===
+repo=/root/dshProj/my-power-dsh
+HEAD=98680b1fb2bbf5c10c28cfbe44419e91595e1cb7
+date=2026-09-11T04:21:50Z
+sandbox DSH_HOME=/tmp/t9-mnt-dsh-8BvKBY
+sandbox HOME=/tmp/t9-mnt-home-hYItTC
+precondition iverilog=/opt/osscad/oss-cad-suite/bin/iverilog verilator=/opt/osscad/oss-cad-suite/bin/verilator vcs=absent
+VENDOR_LOCK skills treeSha=ea1f001f6d6c49347816280aa125ece5873b8fa9fb4b181c9b6a079144824153
+VENDOR_LOCK mtime=2026-09-11 11:35:09.434555311 +0800
+
+[exit=0] dsh plugin --profile mpd add --store-dir <sb> <repo>
+[patch] /tmp/t9-mnt-dsh-8BvKBY/t14-probe.yml:
+- insert:
+    - id: t14-mount-probe
+      name: "/root/dshProj/my-power-dsh/evidence/verification/t14-review/mount/t14-mount-probe.mjs"
+
+### real boot with the probe row: dsh --profile mpd --patch <probe> 'say ok'
+[exit=124] real boot (124 = still alive at the 150s cap, normal for a serving profile)
+apply-crash signatures : 0 (MUST be 0)
+probe final marker     : 0 (1 = probe ran to its end)
+live tools             : none
+--- t14-probe lines, verbatim ---
+(no t14-probe output)
+--- end ---
+{
+  "proof": "real boot that MOUNTS the rows (registration instrumentation via a --patch probe row)",
+  "isolation": {
+    "DSH_HOME": "temp sandbox",
+    "HOME": "temp sandbox"
+  },
+  "verifier": "Reviewer (t9), probe written independently of the implementers' evidence",
+  "apply_crash_signatures": 0,
+  "probe_final_marker": false,
+  "boot_exit": 124,
+  "b3_backends": {
+    "IVERILOG": {
+      "raw": null,
+      "ok": null,
+      "isError": null,
+      "error": null,
+      "count": null,
+      "undef_paths": null,
+      "shape": null
+    },
+    "VERILATOR": {
+      "raw": null,
+      "ok": null,
+      "isError": null,
+      "error": null,
+      "count": null,
+      "undef_paths": null,
+      "shape": null
+    },
+    "ALL": {
+      "raw": null,
+      "ok": null,
+      "isError": null,
+      "error": null,
+      "count": null,
+      "undef_paths": null,
+      "shape": null
+    },
+    "VCS": {
+      "raw": null,
+      "ok": null,
+      "isError": null,
+      "error": null,
+      "count": null,
+      "undef_paths": null,
+      "shape": null
+    }
+  },
+  "b4": {
+    "live_type_array": null,
+    "live_lines_node": null,
+    "live_params_undef_paths": null,
+    "read": null,
+    "edit_lines_string": null,
+    "edit_lines_array": null,
+    "final_content": null
+  },
+  "b5": {
+    "main": null,
+    "main_value": null,
+    "on_disk_no_content": null
+  },
+  "note": "no --dump-config result is cited as load evidence"
+}
+DONE

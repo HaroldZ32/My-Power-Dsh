@@ -1,0 +1,276 @@
+{
+  "verdict": "pass",
+  "head": "0e6bdafcdbbb4dde9bea0a8de94220d48c0548aa",
+  "gateFileSha256": "1f0203c69e5e904d878774e1d5d1e9d646de070b8e3fa2908ce77f85b60aefc0",
+  "wave": "omo-parity-align",
+  "task": "t15 (replacement for the unsatisfiable t5)",
+  "criterion": "evidence/omo-align/requirements/frozen-contract.json (18074 B, sha256 d968be96…)",
+  "changedPaths": [
+    "AGENTS.md",
+    "VENDOR_LOCK.json",
+    "packages/mpd-agent-teams-plugin/lib/index.js",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+    "packages/mpd-agent-teams-plugin/lib/session-start.js",
+    "packages/mpd-agent-teams-plugin/lib/tools.js",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+    "packages/mpd-agent-teams-plugin/test/s1-s4-semantics.test.mjs",
+    "packages/mpd-agent-teams-plugin/test/session-start.test.ts",
+    "packages/mpd-bundle/README.md",
+    "packages/mpd-bundle/README.zh-CN.md",
+    "packages/mpd-bundle/cordis.patch.yml",
+    "presets/mpd/agent.cordis.yml",
+    "scripts/install-profile.mjs",
+    "skills/dsh-qa/SKILL.md",
+    "skills/dsh-qa/scripts/session-start-team.mjs",
+    "skills/dsh-qa/scripts/lib/gate-probe.mjs",
+    "evidence/omo-align/implementation/result.json"
+  ],
+  "verified": [
+    {
+      "what": "OPT-1 three-state dependency: a FAILED dependency no longer pins its dependents",
+      "command": "bun test packages/mpd-agent-teams-plugin/test/opt1-failed-dependency.test.mjs",
+      "exit": 0,
+      "evidence": "5/5 pass. dependencyStates() -> {blocking:[], failed:['A']} for a failed dep; unsatisfiedDependencies() no longer lists failed ids; B claimable in <15000 ms after A terminates failed (asserted bound) and the task contract view reports failed_dependencies:['A']; scheduler readiness path dispatches B; after A is retried to completed B proceeds normally; REVERSE CONTROL: pending/claimed/in_progress deps still block exactly as before, unknown id still blocks, completed/cancelled stay non-blocking"
+    },
+    {
+      "what": "OPT-2 ordering: the gate precedes the sizing doctrine in the preset",
+      "command": "bun test packages/mpd-agent-teams-plugin/test/opt2-residual-and-ordering.test.mjs",
+      "exit": 0,
+      "evidence": "preset asserts index(SESSION STARTUP RULE) < index(AGENT TEAM ROUTING), no 'MUST start inside a team' invariant remains, and the PRE-STEP / 'can never force a team into existence' wording is present (the ordering fix landed in t15 commit 902e019)"
+    },
+    {
+      "what": "OPT-2 residual reclamation: archive-only, protected teams untouched, manifest emitted",
+      "command": "node scripts/reclaim-staged-teams.mjs --apply",
+      "exit": 0,
+      "evidence": "Live workspace: scanned 26, reclaimable 22, reclaimed 22. Every reclaimed team is staged && !approvedAt && tasks.length === 0. PROTECTED and byte-identical: agent-teams-sidebar-migration (running/10 tasks), mpd-default-d92bc69a (running/32), mpd-default-db53f0d4 (running/19, the live session), mpd-default-84e50f06 (staged but carries 8 tasks -> NOT residue). Post-apply dry run: 0 residual of 4 live teams; archive/ holds the moved directories. No directory was removed with rm: archival is a rename. Manifest: evidence/omo-align/implementation/raw/reclaim-applied.json (+ reclaim-dryrun.json). NOTE: the live two-sided gate run after the apply reports PASS in evidence/omo-align/implementation/raw/session-start-team-r2.log"
+    },
+    {
+      "what": "two-sided complexity gate on the same settled revision",
+      "command": "node skills/dsh-qa/scripts/session-start-team.mjs",
+      "exit": 0,
+      "evidence": "3/3 simple prompts -> 0 teams, 0 notices; 3/3 complex prompts -> exactly 1 staged MPD Default team (profile mpd, 11 members, spawnedMembers=0) + 1 notice; twoSided.ok=true; settled rev 0e6bdaf, session-start.js sha256 1f0203c69e5e904d stable over 50 s",
+      "evidencePath": "evidence/dsh-qa/session-start-team/2026-09-13T14-16-37.036Z/result.json"
+    },
+    {
+      "what": "gate predicate both directions (offline, frozen prompt sets)",
+      "command": "node skills/dsh-qa/scripts/session-start-team.mjs --self-test",
+      "exit": 0,
+      "evidence": "gate-probe: SIMPLE all untriggered, COMPLEX all triggered, team:/!team markers consumed"
+    },
+    {
+      "what": "sessionTeamPolicy decoupled + configPlane defaults + absent-safety",
+      "command": "node -e 'new (Config)({})'",
+      "exit": 0,
+      "evidence": "maxMembers 16, maxParallelMembers 8, maxMessagesPerRun 10000, maxWallClockMinutes 120, maxMemberTurns 500, messagePayloadMaxBytes 32768, recipientUnreadMaxBytes 262144, mailboxPollIntervalMs 3000, enforcement enforce, memberMaxDepth 1; policy {mode off, autoRoute true}; min guard rejects messagePayloadMaxBytes 512"
+    },
+    {
+      "what": "installer ships the new row defaults + asserts them",
+      "command": "node scripts/install-profile.mjs --self-test",
+      "exit": 0,
+      "evidence": "asserts mode 'off' + autoRoute true + all configPlane values"
+    },
+    {
+      "what": "installer dry-run",
+      "command": "node scripts/install-profile.mjs --dry-run",
+      "exit": 0
+    },
+    {
+      "what": "mpd preset still MOUNTS on the installed harness (no lost row/setting)",
+      "command": "node skills/dsh-qa/scripts/preset-conformance.mjs",
+      "exit": 0,
+      "evidence": "conformance ok=true (30 checked), row parity 31/31 (missing [], extra []), session/create 200 with agentPreset mpd, 0 apply-failure signatures, negative control still fails with $.prefix"
+    },
+    {
+      "what": "bundle install/boot/uninstall lifecycle",
+      "command": "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs",
+      "exit": 0,
+      "evidence": "install ok, boot serves the mpd preset + corpus from the checkout, noHomeCopy ok, uninstall residue []"
+    },
+    {
+      "what": "mpd-delta discipline: every lib/** behaviour change is a registered region",
+      "command": "node scripts/patch-agent-teams-fixes.mjs --check",
+      "exit": 0,
+      "evidence": "18 regions across 4 adopted files (3 new: session-start-gate, message-payload-ceiling, update-task-amend-helper/-terminal/-running), --check clean"
+    },
+    {
+      "what": "vendor baseline still exact after the skills/** re-pin",
+      "command": "node scripts/verify-vendor.mjs",
+      "exit": 0,
+      "evidence": "skills 329 files treeSha OK + all other assets OK + PASS"
+    },
+    {
+      "what": "typecheck",
+      "command": "bun run typecheck",
+      "exit": 0
+    },
+    {
+      "what": "plugin tests incl. the 5 new S1-S4 semantics tests",
+      "command": "bun test packages/mpd-agent-teams-plugin",
+      "exit": 0,
+      "evidence": "124 pass / 0 fail"
+    },
+    {
+      "what": "all package tests",
+      "command": "bun test packages",
+      "exit": 0,
+      "evidence": "306 pass / 0 fail"
+    },
+    {
+      "what": "manual entry names unchanged",
+      "command": "grep -n AGENT_TEAMS_COMMAND/PROFILE_COMMAND_PREFIX lib/command.js",
+      "exit": 0,
+      "evidence": "/agent-teams + generated /agent-teams-<profile> mechanism untouched; all 14 agent_teams_* tool names, profiles.mpd, preset id mpd, .mpd/team untouched (t15 changed no name)"
+    },
+    {
+      "what": "S1-S4 each have a falsifiable assertion bound to the attempt_id plane",
+      "command": "bun test packages/mpd-agent-teams-plugin/test/s1-s4-semantics.test.mjs",
+      "exit": 0,
+      "evidence": "S1 retry revokes the old attempt and keeps completed siblings; S2 amendment resets the amended task + transitive dependents and KEEPS a completed node whose inputs did not change (no-op amendment byte-identical); S3 scheduler readiness dispatches only 'pending'; S4 send_message delivers a bounded notice without changing attempt/attemptId"
+    },
+    {
+      "what": "definitive settled-revision run of the two-sided gate AFTER the R2 code changes",
+      "command": "node skills/dsh-qa/scripts/session-start-team.mjs (log committed INSIDE the measured commit)",
+      "exit": 0,
+      "evidence": "twoSided.ok=true; simpleTeams [0,0,0]/simpleNotices [false,false,false]; complexTeams [1,1,1]/complexNotices [true,true,true]; measured at HEAD d10f8e3 with no tracked edit during the 50 s settle window. An earlier attempt REFUSED with 'revision did not settle' while I was still committing — the settled-hash guard is falsifiable, not decorative. Log: evidence/omo-align/implementation/raw/session-start-team-final.log",
+      "log": "evidence/omo-align/implementation/raw/session-start-team-final.log"
+    },
+    {
+      "what": "OPT-2 assertion (1): a post-reclamation session leaves the repo state root untouched",
+      "command": "node scripts/reclaim-staged-teams.mjs (after the gate run)",
+      "exit": 0,
+      "evidence": "DRY RUN: 0 residual of 4 live team(s) — the gate cases write only into their sandbox workspaces"
+    }
+  ],
+  "notVerified": [
+    {
+      "what": "S2 amendment through a LIVE booted team session (only the real registered tool against a real on-disk team record is exercised)",
+      "why": "S2-S4 are driven at the tool boundary in-process; the two-sided QA case covers the session-start gate end-to-end but not an amend on a running live session"
+    },
+    {
+      "what": "real member behaviour under every configPlane ceiling (maxParallelMembers/maxWallClockMinutes/maxMemberTurns/maxMessagesPerRun are resolved+validated, not enforced at a runtime boundary)",
+      "why": "only messagePayloadMaxBytes has a send-boundary enforcement point today; the other ceilings are declared/validated values with no consumer yet"
+    },
+    {
+      "what": "OPT-2 assertion (2) as literally written: 'agent_teams_status no longer lists archived teams'",
+      "why": "agent_teams_status returns only the CALLING captain's own team (requireParticipantTeam), so it cannot list residue in the first place; I substituted a stronger, mechanical assertion: the archived ids moved out of the live state root into archive/<id>/ and the post-apply manifest reports 0 residual of 4 live teams"
+    }
+  ],
+  "cannotVerify": [
+    {
+      "what": "the frozen contract's literal signal-C wording (>=3 enumerated lines OR >=3 distinct action verbs) discriminating the frozen complex prompt #1",
+      "why": "measured: that prompt has 2 lines and 2 action verbs, so the literal rule yields 0-1 signals and the frozen `complex` side cannot trigger. Implemented the sub-rules as SEPARATE checks (enumerated lines / action verbs / action clauses) so both frozen sides are falsifiable, and recorded this deviation here instead of silently relaxing the threshold"
+    },
+    {
+      "what": "docs/** ledger + index rows",
+      "why": "out of t15 scope (ledger task owns them); untouched and not committed"
+    }
+  ],
+  "commandsRun": [
+    {
+      "command": "cd /root/dshProj/my-power-dsh && bun run typecheck",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && bun test packages/mpd-agent-teams-plugin",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "133 pass / 0 fail"
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && bun test packages",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "315 pass / 0 fail"
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && node scripts/install-profile.mjs --self-test",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && node scripts/install-profile.mjs --dry-run",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && node skills/dsh-qa/scripts/preset-conformance.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "PASS (row parity 31/31, session/create 200 agentPreset mpd, negative control still red). This case boots a web profile and needs >60 s, so it must be run with a raised timeout (raw/preset-conformance-r2.log)."
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && bun skills/dsh-qa/scripts/bundle-lifecycle.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "PASS (uninstall residue [], boot ok) — measured twice: an earlier 60 s foreground wrapper returned exit 1 because it killed the run mid-boot, so the exit code recorded here comes from the unwrapped `timeout 300` invocation, which printed '[bundle-lifecycle] PASS'. The wrapper timeout is a harness artifact, not a gate failure."
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && node skills/dsh-qa/scripts/session-start-team.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "two-sided on a settled revision; see raw/session-start-team-final.log"
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && node scripts/patch-agent-teams-fixes.mjs --check",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "19 regions / 5 adopted files, clean"
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && node scripts/verify-vendor.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "PASS (skills corpus treeSha unchanged by R2)"
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && bun test packages/mpd-agent-teams-plugin/test/opt1-failed-dependency.test.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "OPT-1 targeted: 6 pass / 0 fail (three-state, <15 s claim bound, view failed_dependencies, reverse control, captain takeover, retry-then-proceed)"
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && bun test packages/mpd-agent-teams-plugin/test/opt2-residual-and-ordering.test.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "OPT-2 targeted: 4 pass / 0 fail (residual classification, archive-not-delete, protected teams byte-identical, dry run, gate-before-sizing ordering)"
+    }
+  ],
+  "revision": "R2 (2026-09-13 captain-binding contract revision: OPT-1 + OPT-2)",
+  "contractNote": "The captain quotes frozen-contract.json at 19,937 B / sha256 a38c87dd…; measured on disk at revision time it is 26,013 B / sha256 prefix 4c3c2ded… (a fourth revision). I verified section by section that every clause this implementation depends on is byte-identical to the R2 instruction text: complexityGate (logic, signals, both 3+3 prompt sets), configPlane.frozen (10 keys + 3 rules), massUlwSemantics (S1-S4 incl. the corrected S2), manualEntryNames, requiredQaCases (9), changeLocations (10), isolation. The drift is confined to t4Requirements (now carrying fv4 authoritativePaths + immutabilityRule + residualFieldGap + revisionHistory). NOTE: the current contract file still contains NO OPT-1/OPT-2 section, so the R2 work order text in the captain message is the operative record for this revision.",
+  "finalRevision": "c28c7c1",
+  "branch": "dev",
+  "mergeNote": "R2 commits were made on feature/omo-parity-align (f4f91b5 tip) and the branch was already an ancestor of dev, so `git merge --no-ff` reported 'Already up to date' — dev advanced by fast-forward-equivalent containment. Net: dev HEAD = the R2 commit; nothing was rebased or rewritten and no docs path was included.",
+  "implementer": "Senior Engineer (t15 attempt ecd6af8d); original task t15 is terminal and immutable, so t20 carries the audit trail for the R2 revision",
+  "r2Anchor": {
+    "contract": "evidence/omo-align/requirements/frozen-contract.json",
+    "bytes": 31705,
+    "sha256": "a0d28ebeaf3f204e4a33480670f44f204415b16758999ce22309a99e3c9c2d65",
+    "authority": "schedulerSemantics section (OPT1_failedDependency + OPT2_ordering_and_reclamation + assertionSubstitution + knownGaps)",
+    "caveat": "Before that section existed, only captain message text carried the OPT-1/OPT-2 decisions; this was recorded at the time and is now superseded by the frozen section."
+  },
+  "r2ChangedPaths": [
+    "packages/mpd-agent-teams-plugin/lib/state.js",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+    "packages/mpd-agent-teams-plugin/lib/tools.js",
+    "packages/mpd-agent-teams-plugin/test/opt1-failed-dependency.test.mjs",
+    "packages/mpd-agent-teams-plugin/test/opt2-residual-and-ordering.test.mjs",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/quality-loop.test.mjs",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+    "scripts/reclaim-staged-teams.mjs",
+    "evidence/omo-align/implementation/result.json"
+  ],
+  "r2Commits": {
+    "code": "c28c7c1",
+    "evidence": "c91f266",
+    "branch": "dev",
+    "note": "R2 commits were made on feature/omo-parity-align whose tip was already an ancestor of dev; merge --no-ff reported 'Already up to date' (no rewrite, no rebase)"
+  },
+  "r2ThreeColumnCounts": {
+    "verified": 19,
+    "notVerified": 3,
+    "cannotVerify": 2
+  }
+}

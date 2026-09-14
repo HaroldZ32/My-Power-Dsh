@@ -1,0 +1,20 @@
+== typecheck ==
+$ tsgo --noEmit
+== tests ==
+ 0 fail
+ 215 expect() calls
+Ran 31 tests across 7 files. [490.00ms]
+== test:qa ==
+[mount-assert self-test] ok: presence/absence detection verified on fixture
+== preset-register self ==
+[preset-register self-test] ok: preset + roster fixtures verified
+== team-route-rewire self ==
+[team-route-rewire self-test] ok: 11 checks + staged bundle present
+== relocate-smoke self ==
+[relocate-smoke self-test] ok: staged patch is path-clean
+== vendor ==
+[verify-vendor] PASS
+== installer dry-run ==
+[install-profile] DRY-RUN done (nothing written); add --yes to actually install, and --dsh-home to override the target
+== pack leak check ==
+no dev leak

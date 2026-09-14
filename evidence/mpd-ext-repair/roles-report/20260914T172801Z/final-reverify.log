@@ -1,0 +1,33 @@
+### FINAL settled-state re-verification
+date: 2026-09-14T17:38:39Z
+registry.ts sha256: b50f0defa8c0f188c39226fbf4db141ac57d5a9039bb7a37c070fae1369f9914  (t14)
+core.test.ts sha256: 00e2175e907f113d74c328b8452f8f5beee6663251b0d63afed733077cf4ac26  (t14)
+src/index.ts sha256: d92e357466e705bf3a11b5c38e087804d9ed2693f8f73e0e9f556069b2770456  (ANOTHER LANE, mtime 2026-09-15 01:36:26.981532177 +0800)
+
+## bun test packages/mpd-ext-plugin
+(fail) apply contains a hostile harness: a throwing tool or skill seam never escapes apply [2.71ms]
+
+ 53 pass
+ 2 fail
+ 418 expect() calls
+Ran 55 tests across 4 files. [2.13s]
+
+## t14 cases only (the repair's own contract)
+(fail) apply contains a hostile harness: a throwing tool or skill seam never escapes apply [2.76ms]
+(pass) mcp is pending until the bridge connects it, while roles are NEVER pending (t14/F3) [3.58ms]
+(pass) t14/F3: a live roles contribution reports no pending item and no 'not yet exposed' claim [1.94ms]
+(pass) t14/F4: a role colliding with a BASE roster name is refused with the roster's reason, in both paths [1.98ms]
+(pass) t14/F4: an unreadable OR empty persona is refused, and the empty case is no longer accepted [1.97ms]
+(pass) t14/F4: a CROSS-extension name collision refuses the LATER extension and names the holder [1.86ms]
+(pass) t14: a disabled extension's declared roles are reported as not exposed, never as usable [3.85ms]
+(pass) t14: refusal notes are idempotent — repeated calls neither duplicate nor lose them [1.82ms]
+(pass) t14: the ext report and the ROSTER agree about every role (parity, measured against the resolver) [2.81ms]
+(pass) t14: every spelling of a base roster name collides (case- and separator-insensitive) [1.45ms]
+(fail) apply registers exactly the four tools, no reload, and provides the mpdExtensions service [9.95ms]
+(fail) apply contains a hostile harness: a throwing tool or skill seam never escapes apply [2.76ms]
+ 33 pass
+ 2 fail
+
+## bun run typecheck
+$ tsgo --noEmit
+typecheck exit=0

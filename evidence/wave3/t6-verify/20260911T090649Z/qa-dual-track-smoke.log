@@ -1,0 +1,4 @@
+cmd: node skills/dsh-qa/scripts/dual-track-smoke.mjs
+[llm-dual-track] official ok=false (9325ms, exit=1) -> /root/dshProj/my-power-dsh/evidence/dsh-qa/llm-dual-track/official/2026-09-11T09-19-10.796Z
+[llm-dual-track] deepseek ok=false (4494ms, exit=1) -> /root/dshProj/my-power-dsh/evidence/dsh-qa/llm-dual-track/deepseek/2026-09-11T09-19-15.293Z
+EXIT=1

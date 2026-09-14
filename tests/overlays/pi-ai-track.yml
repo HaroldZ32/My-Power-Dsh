@@ -1,6 +1,0 @@
-# QA 用：切到 pi-ai deepseek 兼容轨（provider key = dsh-llm-pi-ai 配置的目录路由名）
-- id: agent-default-model
-  name: '@deepseek-ai/dsh-agent-default-model'
-  config:
-    provider: deepseek
-    model: deepseek-v4-flash

@@ -1,0 +1,9 @@
+(fail) with DSH-better-sidebar installed > registers the AgentTeams page and the workmate library, and no legacy floater [0.38ms]
+(fail) with DSH-better-sidebar installed > both tab descriptors are valid sidebar pages [0.35ms]
+(fail) with DSH-better-sidebar installed > keeps the locale namespaces registered [0.11ms]
+(fail) workmate page > renders the library from the host routes [1.43ms]
+(fail) AgentTeams sidebar tab descriptor > registers one single-instance tab with the pinned id and order [0.70ms]
+(fail) AgentTeams sidebar tab descriptor > createTab mints a clean tab so the auto-open seed never lands on it [0.49ms]
+(fail) AgentTeams sidebar tab descriptor > offers the auto-open switch as a plugin-owned setting [0.76ms]
+(fail) AgentTeams page rendering > renders the conversation's teams, members, tasks and archived section [1.05ms]
+30

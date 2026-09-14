@@ -1,0 +1,92 @@
+PASS opt1-failed-dep-not-blocking :: blocking=[]
+PASS opt1-failed-dep-surfaced :: failed=["A"]
+PASS control-completed-dep-ready :: blocking=[]
+PASS control-pending-dep-blocks :: blocking=["A"]
+PASS control-claimed-dep-blocks :: blocking=["A"]
+PASS control-in_progress-dep-blocks :: blocking=["A"]
+PASS cancelled-dep-not-blocking :: blocking=[]
+PASS mixed-dep-blocks-only-pending :: blocking=["C"]
+PASS retry-lifecycle-semantics :: failed:[] claimed:["A"] in_progress:["A"] completed:[]
+PASS unknown-dep-blocks :: blocking=["A"]
+PASS view-contract-carries-failed-dependencies :: agent_teams_task_contract -> failed_dependencies present
+INFO view-snapshot-visual-state :: {"visual":"blocked"}
+PASS claim-path-uses-predicate :: agent_teams_claim_task readiness uses unsatisfiedDependencies
+PASS scheduler-uses-predicate :: scheduler.nextReadyTask uses unsatisfiedDependencies
+{
+  "coreAllOk": true,
+  "failedIds": [
+    "view-snapshot-visual-state"
+  ],
+  "results": [
+    {
+      "id": "opt1-failed-dep-not-blocking",
+      "ok": true,
+      "detail": "blocking=[]"
+    },
+    {
+      "id": "opt1-failed-dep-surfaced",
+      "ok": true,
+      "detail": "failed=[\"A\"]"
+    },
+    {
+      "id": "control-completed-dep-ready",
+      "ok": true,
+      "detail": "blocking=[]"
+    },
+    {
+      "id": "control-pending-dep-blocks",
+      "ok": true,
+      "detail": "blocking=[\"A\"]"
+    },
+    {
+      "id": "control-claimed-dep-blocks",
+      "ok": true,
+      "detail": "blocking=[\"A\"]"
+    },
+    {
+      "id": "control-in_progress-dep-blocks",
+      "ok": true,
+      "detail": "blocking=[\"A\"]"
+    },
+    {
+      "id": "cancelled-dep-not-blocking",
+      "ok": true,
+      "detail": "blocking=[]"
+    },
+    {
+      "id": "mixed-dep-blocks-only-pending",
+      "ok": true,
+      "detail": "blocking=[\"C\"]"
+    },
+    {
+      "id": "retry-lifecycle-semantics",
+      "ok": true,
+      "detail": "failed:[] claimed:[\"A\"] in_progress:[\"A\"] completed:[]"
+    },
+    {
+      "id": "unknown-dep-blocks",
+      "ok": true,
+      "detail": "blocking=[\"A\"]"
+    },
+    {
+      "id": "view-contract-carries-failed-dependencies",
+      "ok": true,
+      "detail": "agent_teams_task_contract -> failed_dependencies present"
+    },
+    {
+      "id": "view-snapshot-visual-state",
+      "ok": false,
+      "detail": "taskVisualState(pending,[\"A\"],A=failed) = \"blocked\" (snapshot/status + web panel surface); claimability says READY, this view says \"blocked\""
+    },
+    {
+      "id": "claim-path-uses-predicate",
+      "ok": true,
+      "detail": "agent_teams_claim_task readiness uses unsatisfiedDependencies"
+    },
+    {
+      "id": "scheduler-uses-predicate",
+      "ok": true,
+      "detail": "scheduler.nextReadyTask uses unsatisfiedDependencies"
+    }
+  ]
+}

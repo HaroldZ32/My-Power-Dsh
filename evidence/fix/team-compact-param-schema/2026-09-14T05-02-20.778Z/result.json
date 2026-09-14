@@ -1,0 +1,31 @@
+{
+  "ok": false,
+  "mode": "RED-expect-bad",
+  "sandbox": "/tmp/mpd-param-schema-zcuhe3",
+  "exit": 1,
+  "hashes": {
+    "pluginSrc": "46234b63617b2baa",
+    "pluginDist": "6a8b4e6cb3adcf01",
+    "probeDist": "6926011f2155da12"
+  },
+  "steps": {
+    "booted": {
+      "ok": true,
+      "exit": 1
+    },
+    "providerSchemaError": {
+      "ok": false,
+      "seen": false,
+      "marker": "Invalid schema for function 'mpd_team_compact_run'"
+    },
+    "compactToolsRegistered": {
+      "ok": true,
+      "seen": "TEAM_COMPACT_TOOLS=2/2"
+    },
+    "probe": {
+      "ok": true,
+      "note": "RED mode: the probe assertion is not required to exist yet",
+      "line": null
+    }
+  }
+}

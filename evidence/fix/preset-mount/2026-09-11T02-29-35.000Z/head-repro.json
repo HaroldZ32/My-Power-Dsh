@@ -1,0 +1,16 @@
+{
+  "defect": "the committed mpd preset cannot mount on the installed harness",
+  "how": "git show HEAD:presets/mpd/agent.cordis.yml into a QA preset root, boot the web profile in an isolated DSH_HOME/HOME, POST /api/session/create with agentPreset=mpd",
+  "status": 200,
+  "answer": {
+    "ok": false,
+    "error": {
+      "code": "agent-preset/invalid",
+      "message": "agent-presets: preset \"mpd\" failed to mount: failed to apply loader entry persona (@deepseek-ai/dsh-persona): invalid config:\n  - $.prefix missing required value (at prefix) (/tmp/mpd-head-preset/mpd/agent.cordis.yml)",
+      "details": {
+        "agentPreset": "mpd",
+        "reason": "failed to apply loader entry persona (@deepseek-ai/dsh-persona): invalid config:\n  - $.prefix missing required value (at prefix) (/tmp/mpd-head-preset/mpd/agent.cordis.yml)"
+      }
+    }
+  }
+}

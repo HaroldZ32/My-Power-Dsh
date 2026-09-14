@@ -1,0 +1,14 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=no-binary binary=- cwd=/root/dshProj/my-power-dsh
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.
+[hashline-probe] HASHLINE_TOOLS_PRESENT=4/4
+[hashline-probe] HASHLINE_TOOLS=mpd_hashline_read:ok,mpd_hashline_edit:ok,mpd_hashline_format:ok,mpd_hashline_restore:ok
+[hashline-probe] LIVE_PARAMS_BYTES=417
+[hashline-probe] LIVE_SCHEMA_TYPE_ARRAY=absent
+[hashline-probe] LIVE_LINES_NODE={"oneOf":[{"type":"string"},{"type":"array","items":{"type":"string"}}]}
+[hashline-probe] READ=ok lines=4
+[hashline-probe] EDIT_LINES_STRING=ok lines=3
+[hashline-probe] EDIT_LINES_ARRAY=ok lines=4
+[hashline-probe] FINAL_CONTENT="alpha\nBETA\nGAMMA-1\nGAMMA-2\n"
+[hashline-probe] DONE

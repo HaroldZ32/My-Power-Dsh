@@ -1,0 +1,33 @@
+{
+  "modulePath": "/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/state.js",
+  "originalFailingShape": {
+    "returnedStatus": "pending",
+    "threw": null,
+    "readableAsPending": 1,
+    "normalizedContent": "only a summary",
+    "decideResult": "approved",
+    "invisibleRecordPath": false
+  },
+  "decideTwoCases": {
+    "absentError": "interjection \"nope\" does not exist",
+    "malformedError": "interjection \"broken\" exists but is MALFORMED (present in the queue but not readable: the mailbox shape requires a non-empty string content and the identity fields); re-enqueue it with content, or inspect the queue file",
+    "normalReaderSeesMalformed": 0,
+    "distinguishable": true
+  },
+  "requiredFields": {
+    "errors": {
+      "id": "interjection request is missing required field \"id\"",
+      "from": "interjection request is missing required field \"from\"",
+      "ts": "interjection request is missing required field \"ts\""
+    },
+    "noHalfWrittenRecord": true
+  },
+  "expiry": {
+    "expiredIds": [
+      "ij-ttl"
+    ],
+    "status": "expired",
+    "fromPreserved": "Junior Engineer",
+    "stillPending": 0
+  }
+}

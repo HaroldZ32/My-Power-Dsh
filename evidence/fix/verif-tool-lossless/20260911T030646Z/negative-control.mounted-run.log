@@ -1,0 +1,12 @@
+bash: cannot set terminal process group (-1): Inappropriate ioctl for device
+bash: no job control in this shell
+pyenv: cannot rehash: /root/.pyenv/shims isn't writable
+fixed-dist sha256: 159ac075987876b5df9fc3e75d1bbf87ffecb23de36c7925795e9318b271d7eb  /root/dshProj/my-power-dsh/evidence/fix/verif-tool-lossless/20260911T030646Z/fixed-dist/index.js
+install-profile exit: 0
+pre-fix dist markers:
+137:  const licenseHint = backend === "vcs" ? LICENSE_ENV.vcs.map((k) => `${k}=${process.env[k] ? "set" : "missing"}`) : undefined;
+335:    filelistPath: plan.filelistPath,
+pre-fix mounted exit: 0
+dist restored: identical to fixed-dist backup
+137:  const licenseHint = backend === "vcs" ? LICENSE_ENV.vcs.map((k) => `${k}=${process.env[k] ? "set" : "missing"}`) : null;
+negative-control mounted done

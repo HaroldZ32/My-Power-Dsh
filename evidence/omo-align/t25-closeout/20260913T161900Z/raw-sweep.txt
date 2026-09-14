@@ -1,0 +1,10 @@
+# t25 F2 close-out — settled gate sweep
+
+revision: 787796b399915caf58748f23554aa028f40f59a6 + uncommitted close-out edits (4 files)
+
+patch-agent-teams-fixes --check : PASS (21 regions / 6 files)
+verify-vendor                   : PASS
+bun test packages/mpd-agent-teams-plugin : 153 pass / 0 fail
+bun run typecheck               : PASS
+bun run test:qa                 : PASS (all self-tests)
+pack-mpd + residue rescan       : 1 hit = exempt 'macOS Apple Silicon' line

@@ -1,0 +1,3079 @@
+{
+  "summary": {
+    "totalExports": 261,
+    "crossModule": 215,
+    "moduleInternal": 43,
+    "noProductionCaller": [
+      "SESSION_START_GATE_ID",
+      "teamLockQueueKeys",
+      "readLiveMailbox"
+    ]
+  },
+  "rows": [
+    {
+      "symbol": "TEAM_ACTIVATION_PROMPT",
+      "declared": "lib/capabilities.js:17",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/capabilities.js:55",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "TEAM_MEMBER_PROMPT",
+      "declared": "lib/capabilities.js:18",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/capabilities.js:107",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "installTeamCapabilities",
+      "declared": "lib/capabilities.js:49",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/index.js"
+      ],
+      "firstUse": "lib/index.js:31 (import)",
+      "callSiteCount": 0,
+      "tests": 1
+    },
+    {
+      "symbol": "ActivityPanel",
+      "declared": "lib/client/ActivityPanel.js:413",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/StagingPlanEditor.js",
+        "lib/client/index.js",
+        "lib/client.js",
+        "lib/types/client/ActivityPanel.d.ts"
+      ],
+      "firstUse": "lib/client/index.js:25",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "OPEN_PANEL_EVENT",
+      "declared": "lib/client/AgentTeamsCard.js:18",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client.js",
+        "lib/types/client/AgentTeamsCard.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:586",
+      "callSiteCount": 6,
+      "tests": 0
+    },
+    {
+      "symbol": "AgentTeamsCard",
+      "declared": "lib/client/AgentTeamsCard.js:33",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client/index.js",
+        "lib/client.js",
+        "lib/types/client/AgentTeamsCard.d.ts"
+      ],
+      "firstUse": "lib/client/index.js:48",
+      "callSiteCount": 4,
+      "tests": 0
+    },
+    {
+      "symbol": "StagingPlanEditor",
+      "declared": "lib/client/StagingPlanEditor.js:373",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client.js",
+        "lib/types/client/StagingPlanEditor.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:332",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "COMPACT_DAG_NODE_WIDTH",
+      "declared": "lib/client/activity-model.js:3",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/types/client/activity-model.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:270",
+      "callSiteCount": 4,
+      "tests": 0
+    },
+    {
+      "symbol": "COMPACT_DAG_NODE_HEIGHT",
+      "declared": "lib/client/activity-model.js:4",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/types/client/activity-model.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:269",
+      "callSiteCount": 6,
+      "tests": 0
+    },
+    {
+      "symbol": "COMPACT_DAG_COLUMN_GAP",
+      "declared": "lib/client/activity-model.js:5",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/client/activity-model.d.ts"
+      ],
+      "firstUse": "lib/client/activity-model.js:135",
+      "callSiteCount": 2,
+      "tests": 0
+    },
+    {
+      "symbol": "COMPACT_DAG_ROW_GAP",
+      "declared": "lib/client/activity-model.js:6",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/client/activity-model.d.ts"
+      ],
+      "firstUse": "lib/client/activity-model.js:136",
+      "callSiteCount": 2,
+      "tests": 0
+    },
+    {
+      "symbol": "memberRouteLabel",
+      "declared": "lib/client/activity-model.js:8",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client.js",
+        "lib/types/client/activity-model.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:356",
+      "callSiteCount": 4,
+      "tests": 0
+    },
+    {
+      "symbol": "taskModelLabel",
+      "declared": "lib/client/activity-model.js:21",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client.js",
+        "lib/types/client/activity-model.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:140",
+      "callSiteCount": 8,
+      "tests": 0
+    },
+    {
+      "symbol": "compactModelLabel",
+      "declared": "lib/client/activity-model.js:28",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client.js",
+        "lib/types/client/activity-model.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:267",
+      "callSiteCount": 5,
+      "tests": 0
+    },
+    {
+      "symbol": "liveCaptainTeam",
+      "declared": "lib/client/activity-model.js:36",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/client/activity-model.d.ts"
+      ],
+      "firstUse": "lib/types/client/activity-model.d.ts:57 (import)",
+      "callSiteCount": 0,
+      "tests": 0
+    },
+    {
+      "symbol": "teamIsActive",
+      "declared": "lib/client/activity-model.js:43",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client.js",
+        "lib/types/client/activity-model.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:300",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "teamProgressSummary",
+      "declared": "lib/client/activity-model.js:53",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/client/activity-model.d.ts"
+      ],
+      "firstUse": "lib/types/client/activity-model.d.ts:74 (import)",
+      "callSiteCount": 0,
+      "tests": 0
+    },
+    {
+      "symbol": "usesParallelTaskGrid",
+      "declared": "lib/client/activity-model.js:68",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client.js",
+        "lib/types/client/activity-model.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:223",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "activityPanelExpandedForSession",
+      "declared": "lib/client/activity-model.js:82",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client.js",
+        "lib/types/client/activity-model.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:450",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "activityPanelShouldAutoExpand",
+      "declared": "lib/client/activity-model.js:90",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client.js",
+        "lib/types/client/activity-model.d.ts"
+      ],
+      "firstUse": "lib/types/client/activity-model.d.ts:114",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "dependencyFocusTaskId",
+      "declared": "lib/client/activity-model.js:103",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client.js",
+        "lib/types/client/activity-model.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:221",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "taskStages",
+      "declared": "lib/client/activity-model.js:107",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client.js",
+        "lib/types/client/activity-model.d.ts"
+      ],
+      "firstUse": "lib/client/activity-model.js:130",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "compactDagLayout",
+      "declared": "lib/client/activity-model.js:129",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client.js",
+        "lib/types/client/activity-model.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:222",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "relatedTaskIds",
+      "declared": "lib/client/activity-model.js:180",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client.js",
+        "lib/types/client/activity-model.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:224",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "subscribeActivityMonitorTargets",
+      "declared": "lib/client/activity-monitor.js:18",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client.js",
+        "lib/types/client/activity-monitor.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:437",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "getActivityMonitorTargetsSnapshot",
+      "declared": "lib/client/activity-monitor.js:23",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client.js",
+        "lib/types/client/activity-monitor.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:437",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "monitorAgentTeam",
+      "declared": "lib/client/activity-monitor.js:32",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/AgentTeamsCard.js",
+        "lib/client.js",
+        "lib/types/client/activity-monitor.d.ts"
+      ],
+      "firstUse": "lib/client/AgentTeamsCard.js:40",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "settleActivityMonitorTargets",
+      "declared": "lib/client/activity-monitor.js:67",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client.js",
+        "lib/types/client/activity-monitor.d.ts"
+      ],
+      "firstUse": "lib/client/activity-monitor.js:137",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "subscribeActivitySnapshots",
+      "declared": "lib/client/activity-monitor.js:80",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client/AgentTeamsCard.js",
+        "lib/client.js",
+        "lib/types/client/activity-monitor.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:445",
+      "callSiteCount": 6,
+      "tests": 1
+    },
+    {
+      "symbol": "getActivitySnapshotsSnapshot",
+      "declared": "lib/client/activity-monitor.js:85",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client/AgentTeamsCard.js",
+        "lib/client.js",
+        "lib/types/client/activity-monitor.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:445",
+      "callSiteCount": 8,
+      "tests": 0
+    },
+    {
+      "symbol": "updateActivitySnapshots",
+      "declared": "lib/client/activity-monitor.js:89",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client.js",
+        "lib/types/client/activity-monitor.d.ts"
+      ],
+      "firstUse": "lib/client/activity-monitor.js:136",
+      "callSiteCount": 4,
+      "tests": 0
+    },
+    {
+      "symbol": "ACTIVITY_POLL_MS",
+      "declared": "lib/client/activity-monitor.js:101",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client.js",
+        "lib/types/client/activity-monitor.d.ts"
+      ],
+      "firstUse": "lib/client/activity-monitor.js:147",
+      "callSiteCount": 5,
+      "tests": 0
+    },
+    {
+      "symbol": "ACTIVITY_PROBE_MS",
+      "declared": "lib/client/activity-monitor.js:108",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client.js",
+        "lib/types/client/activity-monitor.d.ts"
+      ],
+      "firstUse": "lib/client/activity-monitor.js:147",
+      "callSiteCount": 5,
+      "tests": 0
+    },
+    {
+      "symbol": "ACTIVITY_STATE_URL",
+      "declared": "lib/client/activity-monitor.js:110",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client.js",
+        "lib/types/client/activity-monitor.d.ts"
+      ],
+      "firstUse": "lib/client.js:291",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "ACTIVITY_HALT_URL",
+      "declared": "lib/client/activity-monitor.js:111",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client.js",
+        "lib/types/client/activity-monitor.d.ts"
+      ],
+      "firstUse": "lib/client.js:292",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "startActivityPolling",
+      "declared": "lib/client/activity-monitor.js:128",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client.js",
+        "lib/types/client/activity-monitor.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:547",
+      "callSiteCount": 4,
+      "tests": 1
+    },
+    {
+      "symbol": "parseAgentTeamsCreateArgs",
+      "declared": "lib/client/agent-teams-card-definition.js:14",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client.js",
+        "lib/types/client/agent-teams-card-definition.d.ts"
+      ],
+      "firstUse": "lib/client/agent-teams-card-definition.js:36",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "agentTeamsCardDefinition",
+      "declared": "lib/client/agent-teams-card-definition.js:31",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/index.js",
+        "lib/client.js",
+        "lib/types/client/agent-teams-card-definition.d.ts"
+      ],
+      "firstUse": "lib/client/index.js:40",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "ART_BASE",
+      "declared": "lib/client/artwork.js:8",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client.js",
+        "lib/types/client/artwork.d.ts"
+      ],
+      "firstUse": "lib/client/artwork.js:23",
+      "callSiteCount": 7,
+      "tests": 0
+    },
+    {
+      "symbol": "LEAD_ART",
+      "declared": "lib/client/artwork.js:23",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client/AgentTeamsCard.js",
+        "lib/client.js",
+        "lib/types/client/artwork.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:332",
+      "callSiteCount": 4,
+      "tests": 0
+    },
+    {
+      "symbol": "ACTION_ART",
+      "declared": "lib/client/artwork.js:25",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client.js",
+        "lib/types/client/artwork.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:361",
+      "callSiteCount": 2,
+      "tests": 0
+    },
+    {
+      "symbol": "memberArtUrl",
+      "declared": "lib/client/artwork.js:36",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client/AgentTeamsCard.js",
+        "lib/client.js",
+        "lib/types/client/artwork.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:361",
+      "callSiteCount": 4,
+      "tests": 0
+    },
+    {
+      "symbol": "inject",
+      "declared": "lib/client/index.js:8",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client.js",
+        "lib/index.js",
+        "lib/tools.js",
+        "lib/types/client/index.d.ts",
+        "lib/types/index.d.ts"
+      ],
+      "firstUse": "lib/client.js:3644",
+      "callSiteCount": 6,
+      "tests": 4
+    },
+    {
+      "symbol": "apply",
+      "declared": "lib/client/index.js:18",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client.js",
+        "lib/members.js",
+        "lib/types/client/index.d.ts",
+        "lib/types/index.d.ts"
+      ],
+      "firstUse": "lib/client.js:3696",
+      "callSiteCount": 4,
+      "tests": 5
+    },
+    {
+      "symbol": "AGENT_TEAMS_LOCALE_NAMESPACE",
+      "declared": "lib/client/locales.js:3",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/index.js",
+        "lib/client.js",
+        "lib/types/client/locales.d.ts"
+      ],
+      "firstUse": "lib/client/index.js:19",
+      "callSiteCount": 5,
+      "tests": 1
+    },
+    {
+      "symbol": "zh",
+      "declared": "lib/client/locales.js:5",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/index.js",
+        "lib/client.js",
+        "lib/types/client/locales.d.ts"
+      ],
+      "firstUse": "lib/client/index.js:19",
+      "callSiteCount": 3,
+      "tests": 3
+    },
+    {
+      "symbol": "en",
+      "declared": "lib/client/locales.js:197",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/activity-model.js",
+        "lib/client/index.js",
+        "lib/client.js",
+        "lib/types/client/locales.d.ts"
+      ],
+      "firstUse": "lib/client/index.js:19",
+      "callSiteCount": 3,
+      "tests": 1
+    },
+    {
+      "symbol": "PANEL_LAYOUT_STORAGE_KEY",
+      "declared": "lib/client/panel-geometry.js:2",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client.js",
+        "lib/types/client/panel-geometry.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:47",
+      "callSiteCount": 6,
+      "tests": 0
+    },
+    {
+      "symbol": "PANEL_COMPACT_BREAKPOINT",
+      "declared": "lib/client/panel-geometry.js:3",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/client/panel-geometry.d.ts"
+      ],
+      "firstUse": "lib/client/panel-geometry.js:58",
+      "callSiteCount": 2,
+      "tests": 0
+    },
+    {
+      "symbol": "PANEL_DEFAULT_WIDTH",
+      "declared": "lib/client/panel-geometry.js:4",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/client/panel-geometry.d.ts"
+      ],
+      "firstUse": "lib/types/client/panel-geometry.d.ts:22",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "PANEL_DEFAULT_HEIGHT",
+      "declared": "lib/client/panel-geometry.js:5",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/client/panel-geometry.d.ts"
+      ],
+      "firstUse": "lib/types/client/panel-geometry.d.ts:23",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "PANEL_MIN_WIDTH",
+      "declared": "lib/client/panel-geometry.js:6",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/client/panel-geometry.d.ts"
+      ],
+      "firstUse": "lib/client/panel-geometry.js:85",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "PANEL_MAX_WIDTH",
+      "declared": "lib/client/panel-geometry.js:7",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/client/panel-geometry.d.ts"
+      ],
+      "firstUse": "lib/client/panel-geometry.js:84",
+      "callSiteCount": 4,
+      "tests": 0
+    },
+    {
+      "symbol": "PANEL_MIN_HEIGHT",
+      "declared": "lib/client/panel-geometry.js:8",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/client/panel-geometry.d.ts"
+      ],
+      "firstUse": "lib/client/panel-geometry.js:88",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "PANEL_DOCK_TOP",
+      "declared": "lib/client/panel-geometry.js:9",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/client/panel-geometry.d.ts"
+      ],
+      "firstUse": "lib/client/panel-geometry.js:90",
+      "callSiteCount": 2,
+      "tests": 0
+    },
+    {
+      "symbol": "PANEL_DOCK_RIGHT",
+      "declared": "lib/client/panel-geometry.js:10",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/client/panel-geometry.d.ts"
+      ],
+      "firstUse": "lib/client/panel-geometry.js:95",
+      "callSiteCount": 2,
+      "tests": 0
+    },
+    {
+      "symbol": "PANEL_DOCK_BOTTOM",
+      "declared": "lib/client/panel-geometry.js:11",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/client/panel-geometry.d.ts"
+      ],
+      "firstUse": "lib/client/panel-geometry.js:68",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "PANEL_FLOAT_MARGIN",
+      "declared": "lib/client/panel-geometry.js:12",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/client/panel-geometry.d.ts"
+      ],
+      "firstUse": "lib/client/panel-geometry.js:67",
+      "callSiteCount": 12,
+      "tests": 0
+    },
+    {
+      "symbol": "DEFAULT_PANEL_LAYOUT",
+      "declared": "lib/client/panel-geometry.js:13",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client.js",
+        "lib/types/client/panel-geometry.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:46",
+      "callSiteCount": 11,
+      "tests": 0
+    },
+    {
+      "symbol": "parsePanelLayout",
+      "declared": "lib/client/panel-geometry.js:28",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client.js",
+        "lib/types/client/panel-geometry.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:47",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "compactPanelForBounds",
+      "declared": "lib/client/panel-geometry.js:57",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client.js",
+        "lib/types/client/panel-geometry.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:452",
+      "callSiteCount": 7,
+      "tests": 0
+    },
+    {
+      "symbol": "panelUsesAutoHeight",
+      "declared": "lib/client/panel-geometry.js:61",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client.js",
+        "lib/types/client/panel-geometry.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:750",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "panelMaximumHeight",
+      "declared": "lib/client/panel-geometry.js:65",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client.js",
+        "lib/types/client/panel-geometry.d.ts"
+      ],
+      "firstUse": "lib/types/client/panel-geometry.d.ts:39",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "resolvePanelGeometry",
+      "declared": "lib/client/panel-geometry.js:72",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client.js",
+        "lib/types/client/panel-geometry.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:451",
+      "callSiteCount": 11,
+      "tests": 0
+    },
+    {
+      "symbol": "floatPanelLayout",
+      "declared": "lib/client/panel-geometry.js:109",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client.js",
+        "lib/types/client/panel-geometry.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:719",
+      "callSiteCount": 5,
+      "tests": 0
+    },
+    {
+      "symbol": "dockPanelLayout",
+      "declared": "lib/client/panel-geometry.js:113",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client.js",
+        "lib/types/client/panel-geometry.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:748",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "movePanelLayout",
+      "declared": "lib/client/panel-geometry.js:117",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client.js",
+        "lib/types/client/panel-geometry.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:719",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "resizePanelLayout",
+      "declared": "lib/client/panel-geometry.js:121",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/ActivityPanel.js",
+        "lib/client.js",
+        "lib/types/client/panel-geometry.d.ts"
+      ],
+      "firstUse": "lib/client/ActivityPanel.js:722",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "openAgentTeamMember",
+      "declared": "lib/client/session-navigation.js:10",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/index.js",
+        "lib/client.js",
+        "lib/types/client/session-navigation.d.ts"
+      ],
+      "firstUse": "lib/types/client/session-navigation.d.ts:22",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "AGENT_TEAMS_COMMAND",
+      "declared": "lib/command.js:8",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/command.d.ts"
+      ],
+      "firstUse": "lib/command.js:9",
+      "callSiteCount": 5,
+      "tests": 0
+    },
+    {
+      "symbol": "profileCommandName",
+      "declared": "lib/command.js:17",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/command.d.ts"
+      ],
+      "firstUse": "lib/command.js:25",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "EXPLICIT_TEAM_NOTICE_MARKER",
+      "declared": "lib/command.js:44",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/command.js:273",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "EXPLICIT_TEAM_INQUIRY_MARKER",
+      "declared": "lib/command.js:46",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/command.js:138",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "ensureExplicitTeam",
+      "declared": "lib/command.js:87",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/command.js:200",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "invokedAgentTeamsInvocation",
+      "declared": "lib/command.js:157",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/command.d.ts"
+      ],
+      "firstUse": "lib/command.js:173",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "invokedAgentTeamsGoal",
+      "declared": "lib/command.js:172",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/command.d.ts"
+      ],
+      "firstUse": "lib/types/command.d.ts:22",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "buildActivationDirective",
+      "declared": "lib/command.js:175",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/command.d.ts"
+      ],
+      "firstUse": "lib/command.js:287",
+      "callSiteCount": 2,
+      "tests": 0
+    },
+    {
+      "symbol": "registerAgentTeamsCommand",
+      "declared": "lib/command.js:203",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/index.js",
+        "lib/types/command.d.ts"
+      ],
+      "firstUse": "lib/index.js:213",
+      "callSiteCount": 2,
+      "tests": 0
+    },
+    {
+      "symbol": "installAgentTeamsGestureBoundary",
+      "declared": "lib/command.js:253",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/index.js",
+        "lib/types/command.d.ts"
+      ],
+      "firstUse": "lib/index.js:215",
+      "callSiteCount": 2,
+      "tests": 0
+    },
+    {
+      "symbol": "appendTeamEvent",
+      "declared": "lib/events.js:26",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/members.js",
+        "lib/session-start.js",
+        "lib/tools.js",
+        "lib/types/events.d.ts"
+      ],
+      "firstUse": "lib/types/events.d.ts:27",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "captainSessionOf",
+      "declared": "lib/events.js:57",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/members.js",
+        "lib/tools.js",
+        "lib/types/events.d.ts"
+      ],
+      "firstUse": "lib/types/events.d.ts:37",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "HOST_PROMPT_QUEUE",
+      "declared": "lib/harness-compat.js:34",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/harness-compat.js:77",
+      "callSiteCount": 5,
+      "tests": 1
+    },
+    {
+      "symbol": "TEAM_MESSAGE_SOURCE",
+      "declared": "lib/harness-compat.js:36",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/harness-compat.js:134",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "sessionOwnEvents",
+      "declared": "lib/harness-compat.js:41",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/members.js"
+      ],
+      "firstUse": "lib/members.js:332",
+      "callSiteCount": 2,
+      "tests": 1
+    },
+    {
+      "symbol": "installContinuableMemberSetup",
+      "declared": "lib/harness-compat.js:66",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/members.js"
+      ],
+      "firstUse": "lib/members.js:21 (import)",
+      "callSiteCount": 0,
+      "tests": 1
+    },
+    {
+      "symbol": "queueMemberPrompt",
+      "declared": "lib/harness-compat.js:133",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/members.js"
+      ],
+      "firstUse": "lib/members.js:610",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "guardSubagentDelivery",
+      "declared": "lib/harness-compat.js:162",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/members.js"
+      ],
+      "firstUse": "lib/members.js:21 (import)",
+      "callSiteCount": 0,
+      "tests": 1
+    },
+    {
+      "symbol": "name",
+      "declared": "lib/index.js:38",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/capabilities.js",
+        "lib/client/ActivityPanel.js",
+        "lib/client/AgentTeamsCard.js",
+        "lib/client/StagingPlanEditor.js",
+        "lib/client/activity-model.js",
+        "lib/client/activity-monitor.js",
+        "lib/client/agent-teams-card-definition.js",
+        "lib/client/artwork.js",
+        "lib/client/index.js",
+        "lib/client/locales.js",
+        "lib/client.js",
+        "lib/command.js",
+        "lib/members.js",
+        "lib/profiles.js",
+        "lib/quality-gates.js",
+        "lib/scheduler.js",
+        "lib/session-start.js",
+        "lib/snapshot.js",
+        "lib/state.js",
+        "lib/tool-names.js",
+        "lib/tools.js",
+        "lib/types/client/AgentTeamsCard.d.ts",
+        "lib/types/client/activity-model.d.ts",
+        "lib/types/client/activity-monitor.d.ts",
+        "lib/types/client/agent-teams-card-definition.d.ts",
+        "lib/types/client/artwork.d.ts",
+        "lib/types/client/locales.d.ts",
+        "lib/types/event-types.d.ts",
+        "lib/types/index.d.ts",
+        "lib/types/members.d.ts",
+        "lib/types/profiles.d.ts",
+        "lib/types/snapshot.d.ts",
+        "lib/types/state.d.ts",
+        "lib/types/tools.d.ts",
+        "lib/types/types.d.ts"
+      ],
+      "firstUse": "lib/capabilities.js:36",
+      "callSiteCount": 269,
+      "tests": 24
+    },
+    {
+      "symbol": "inject",
+      "declared": "lib/index.js:39",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client/index.js",
+        "lib/client.js",
+        "lib/tools.js",
+        "lib/types/client/index.d.ts",
+        "lib/types/index.d.ts"
+      ],
+      "firstUse": "lib/client.js:3644",
+      "callSiteCount": 6,
+      "tests": 4
+    },
+    {
+      "symbol": "Config",
+      "declared": "lib/index.js:47",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/index.d.ts"
+      ],
+      "firstUse": "lib/types/index.d.ts:54",
+      "callSiteCount": 2,
+      "tests": 2
+    },
+    {
+      "symbol": "usageSectionText",
+      "declared": "lib/index.js:119",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/index.d.ts"
+      ],
+      "firstUse": "lib/types/index.d.ts:56",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "apply",
+      "declared": "lib/index.js:134",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/client.js",
+        "lib/members.js",
+        "lib/types/client/index.d.ts",
+        "lib/types/index.d.ts"
+      ],
+      "firstUse": "lib/client.js:3696",
+      "callSiteCount": 4,
+      "tests": 5
+    },
+    {
+      "symbol": "PERSONA_PROTOCOL_MAX_CHARS",
+      "declared": "lib/members.js:27",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/members.d.ts"
+      ],
+      "firstUse": "lib/members.js:471",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "workmateKey",
+      "declared": "lib/members.js:38",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/members.js:58",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "validateMemberLlmSelections",
+      "declared": "lib/members.js:95",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/tools.js",
+        "lib/types/members.d.ts"
+      ],
+      "firstUse": "lib/tools.js:432",
+      "callSiteCount": 3,
+      "tests": 1
+    },
+    {
+      "symbol": "isFallbackFailureCode",
+      "declared": "lib/members.js:114",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/members.d.ts"
+      ],
+      "firstUse": "lib/types/members.d.ts:77",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "selectFallbackRoute",
+      "declared": "lib/members.js:118",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/members.d.ts"
+      ],
+      "firstUse": "lib/members.js:420",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "resolveMemberLlmSelection",
+      "declared": "lib/members.js:175",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/tools.js",
+        "lib/types/members.d.ts"
+      ],
+      "firstUse": "lib/types/members.d.ts:102",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "steerCaptainReport",
+      "declared": "lib/members.js:233",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/tools.js",
+        "lib/types/tools.d.ts"
+      ],
+      "firstUse": "lib/members.js:302",
+      "callSiteCount": 4,
+      "tests": 1
+    },
+    {
+      "symbol": "failMemberOpenAttempt",
+      "declared": "lib/members.js:247",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/members.js:385 (import)",
+      "callSiteCount": 0,
+      "tests": 0
+    },
+    {
+      "symbol": "installMemberSelectionRuntime",
+      "declared": "lib/members.js:321",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/tools.js",
+        "lib/types/members.d.ts"
+      ],
+      "firstUse": "lib/tools.js:314",
+      "callSiteCount": 2,
+      "tests": 1
+    },
+    {
+      "symbol": "memberPersona",
+      "declared": "lib/members.js:487",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/members.d.ts"
+      ],
+      "firstUse": "lib/types/members.d.ts:120",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "memberWelcome",
+      "declared": "lib/members.js:535",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/members.d.ts"
+      ],
+      "firstUse": "lib/types/members.d.ts:127",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "spawnMember",
+      "declared": "lib/members.js:554",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/tools.js",
+        "lib/types/members.d.ts"
+      ],
+      "firstUse": "lib/tools.js:434",
+      "callSiteCount": 4,
+      "tests": 1
+    },
+    {
+      "symbol": "deliverToMember",
+      "declared": "lib/members.js:608",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/scheduler.js",
+        "lib/tools.js",
+        "lib/types/members.d.ts"
+      ],
+      "firstUse": "lib/scheduler.js:324",
+      "callSiteCount": 4,
+      "tests": 3
+    },
+    {
+      "symbol": "interruptMember",
+      "declared": "lib/members.js:625",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/tools.js",
+        "lib/types/members.d.ts"
+      ],
+      "firstUse": "lib/tools.js:201",
+      "callSiteCount": 8,
+      "tests": 1
+    },
+    {
+      "symbol": "installRetiredMemberGuard",
+      "declared": "lib/members.js:650",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/tools.js",
+        "lib/types/members.d.ts"
+      ],
+      "firstUse": "lib/tools.js:313",
+      "callSiteCount": 2,
+      "tests": 1
+    },
+    {
+      "symbol": "memberActivity",
+      "declared": "lib/members.js:668",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/snapshot.js",
+        "lib/tools.js",
+        "lib/types/members.d.ts"
+      ],
+      "firstUse": "lib/snapshot.js:48",
+      "callSiteCount": 3,
+      "tests": 1
+    },
+    {
+      "symbol": "MAX_TEAM_PROFILES",
+      "declared": "lib/profiles.js:13",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/profiles.d.ts"
+      ],
+      "firstUse": "lib/profiles.js:32",
+      "callSiteCount": 2,
+      "tests": 0
+    },
+    {
+      "symbol": "MAX_PROFILE_TASKS",
+      "declared": "lib/profiles.js:15",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/profiles.d.ts"
+      ],
+      "firstUse": "lib/profiles.js:229",
+      "callSiteCount": 2,
+      "tests": 0
+    },
+    {
+      "symbol": "PROFILE_PROTOCOL_PROMPT_LIMIT",
+      "declared": "lib/profiles.js:17",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/profiles.d.ts"
+      ],
+      "firstUse": "lib/profiles.js:137",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "listConfiguredProfiles",
+      "declared": "lib/profiles.js:28",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/profiles.d.ts"
+      ],
+      "firstUse": "lib/profiles.js:56",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "formatProfilesForPrompt",
+      "declared": "lib/profiles.js:55",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/index.js",
+        "lib/types/profiles.d.ts"
+      ],
+      "firstUse": "lib/types/profiles.d.ts:107",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "parseProfileInvocation",
+      "declared": "lib/profiles.js:74",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/command.js",
+        "lib/types/profiles.d.ts"
+      ],
+      "firstUse": "lib/command.js:32",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "resolveTeamProfile",
+      "declared": "lib/profiles.js:98",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/tools.js",
+        "lib/types/profiles.d.ts"
+      ],
+      "firstUse": "lib/tools.js:2450",
+      "callSiteCount": 2,
+      "tests": 1
+    },
+    {
+      "symbol": "resolveProfileTaskPlanning",
+      "declared": "lib/profiles.js:125",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/command.js",
+        "lib/types/profiles.d.ts"
+      ],
+      "firstUse": "lib/command.js:287",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "DEFAULT_REVIEW_ACCEPTANCE",
+      "declared": "lib/quality-gates.js:23",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/quality-gates.d.ts"
+      ],
+      "firstUse": "lib/quality-gates.js:957",
+      "callSiteCount": 2,
+      "tests": 1
+    },
+    {
+      "symbol": "DEFAULT_REVIEW_OBJECTIVE",
+      "declared": "lib/quality-gates.js:27",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/quality-gates.d.ts"
+      ],
+      "firstUse": "lib/types/quality-gates.d.ts:111",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "taskKindOf",
+      "declared": "lib/quality-gates.js:29",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/state.js",
+        "lib/tools.js",
+        "lib/types/quality-gates.d.ts",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/quality-gates.js:469",
+      "callSiteCount": 16,
+      "tests": 2
+    },
+    {
+      "symbol": "isQualityKind",
+      "declared": "lib/quality-gates.js:32",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/state.js",
+        "lib/types/quality-gates.d.ts",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/quality-gates.js:771",
+      "callSiteCount": 4,
+      "tests": 1
+    },
+    {
+      "symbol": "resolveReviewPolicy",
+      "declared": "lib/quality-gates.js:35",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/quality-gates.d.ts"
+      ],
+      "firstUse": "lib/quality-gates.js:682",
+      "callSiteCount": 2,
+      "tests": 1
+    },
+    {
+      "symbol": "isReviewPolicy",
+      "declared": "lib/quality-gates.js:45",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/state.js",
+        "lib/types/quality-gates.d.ts"
+      ],
+      "firstUse": "lib/state.js:1043",
+      "callSiteCount": 3,
+      "tests": 1
+    },
+    {
+      "symbol": "normalizeWorkspacePath",
+      "declared": "lib/quality-gates.js:72",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/quality-gates.d.ts"
+      ],
+      "firstUse": "lib/quality-gates.js:104",
+      "callSiteCount": 8,
+      "tests": 1
+    },
+    {
+      "symbol": "pathMatchesScope",
+      "declared": "lib/quality-gates.js:103",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/state.js",
+        "lib/types/quality-gates.d.ts",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/quality-gates.js:217",
+      "callSiteCount": 8,
+      "tests": 3
+    },
+    {
+      "symbol": "classifyChangedPath",
+      "declared": "lib/quality-gates.js:212",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/state.js",
+        "lib/types/quality-gates.d.ts",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/quality-gates.js:613",
+      "callSiteCount": 4,
+      "tests": 3
+    },
+    {
+      "symbol": "collectChangedPaths",
+      "declared": "lib/quality-gates.js:223",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/state.js",
+        "lib/types/quality-gates.d.ts",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/state.js:21",
+      "callSiteCount": 3,
+      "tests": 1
+    },
+    {
+      "symbol": "inScopeOverlap",
+      "declared": "lib/quality-gates.js:245",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/quality-gates.d.ts"
+      ],
+      "firstUse": "lib/quality-gates.js:477",
+      "callSiteCount": 2,
+      "tests": 2
+    },
+    {
+      "symbol": "contractContradiction",
+      "declared": "lib/quality-gates.js:290",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/quality-gates.js:418",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "repairScopeFromFindings",
+      "declared": "lib/quality-gates.js:321",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/quality-gates.js:719",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "validateCreateTask",
+      "declared": "lib/quality-gates.js:391",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/state.js",
+        "lib/tools.js",
+        "lib/types/quality-gates.d.ts",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/state.js:21",
+      "callSiteCount": 3,
+      "tests": 4
+    },
+    {
+      "symbol": "evaluateQualityCompletion",
+      "declared": "lib/quality-gates.js:558",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/state.js",
+        "lib/tools.js",
+        "lib/types/quality-gates.d.ts",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/state.js:21",
+      "callSiteCount": 3,
+      "tests": 4
+    },
+    {
+      "symbol": "planQualityFollowUp",
+      "declared": "lib/quality-gates.js:659",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/state.js",
+        "lib/tools.js",
+        "lib/types/quality-gates.d.ts",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/state.js:21",
+      "callSiteCount": 4,
+      "tests": 3
+    },
+    {
+      "symbol": "buildCoverageMatrix",
+      "declared": "lib/quality-gates.js:754",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/state.js",
+        "lib/tools.js",
+        "lib/types/quality-gates.d.ts",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/state.js:21",
+      "callSiteCount": 3,
+      "tests": 2
+    },
+    {
+      "symbol": "canDeclareDelivery",
+      "declared": "lib/quality-gates.js:769",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/state.js",
+        "lib/tools.js",
+        "lib/types/quality-gates.d.ts",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/quality-gates.js:1030",
+      "callSiteCount": 5,
+      "tests": 2
+    },
+    {
+      "symbol": "resumeTeamState",
+      "declared": "lib/quality-gates.js:813",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/state.js",
+        "lib/tools.js",
+        "lib/types/quality-gates.d.ts",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/state.js:21",
+      "callSiteCount": 5,
+      "tests": 2
+    },
+    {
+      "symbol": "isReviewFinding",
+      "declared": "lib/quality-gates.js:830",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/quality-gates.d.ts"
+      ],
+      "firstUse": "lib/quality-gates.js:919",
+      "callSiteCount": 2,
+      "tests": 1
+    },
+    {
+      "symbol": "isAcceptanceResult",
+      "declared": "lib/quality-gates.js:841",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/quality-gates.d.ts"
+      ],
+      "firstUse": "lib/quality-gates.js:926",
+      "callSiteCount": 2,
+      "tests": 1
+    },
+    {
+      "symbol": "isCommandResult",
+      "declared": "lib/quality-gates.js:848",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/quality-gates.d.ts"
+      ],
+      "firstUse": "lib/quality-gates.js:930",
+      "callSiteCount": 2,
+      "tests": 1
+    },
+    {
+      "symbol": "normalizeBlankOptionalTaskFields",
+      "declared": "lib/quality-gates.js:870",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/state.js",
+        "lib/tools.js"
+      ],
+      "firstUse": "lib/state.js:21",
+      "callSiteCount": 4,
+      "tests": 3
+    },
+    {
+      "symbol": "hasValidQualityTaskFields",
+      "declared": "lib/quality-gates.js:891",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/state.js",
+        "lib/types/quality-gates.d.ts",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/state.js:21",
+      "callSiteCount": 4,
+      "tests": 3
+    },
+    {
+      "symbol": "isTaskKind",
+      "declared": "lib/quality-gates.js:938",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/quality-gates.d.ts"
+      ],
+      "firstUse": "lib/types/quality-gates.d.ts:132",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "isReviewVerdict",
+      "declared": "lib/quality-gates.js:941",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/quality-gates.d.ts"
+      ],
+      "firstUse": "lib/types/quality-gates.d.ts:133",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "isFindingSeverity",
+      "declared": "lib/quality-gates.js:944",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/quality-gates.d.ts"
+      ],
+      "firstUse": "lib/types/quality-gates.d.ts:134",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "looksLikeGateTestContract",
+      "declared": "lib/quality-gates.js:947",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/quality-gates.d.ts"
+      ],
+      "firstUse": "lib/quality-gates.js:951",
+      "callSiteCount": 3,
+      "tests": 1
+    },
+    {
+      "symbol": "sanitizeReviewObjective",
+      "declared": "lib/quality-gates.js:950",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/state.js",
+        "lib/tools.js",
+        "lib/types/quality-gates.d.ts",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/state.js:21",
+      "callSiteCount": 4,
+      "tests": 2
+    },
+    {
+      "symbol": "sanitizeReviewAcceptance",
+      "declared": "lib/quality-gates.js:955",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/state.js",
+        "lib/tools.js",
+        "lib/types/quality-gates.d.ts",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/state.js:21",
+      "callSiteCount": 4,
+      "tests": 2
+    },
+    {
+      "symbol": "defaultQualityDeliveryGraph",
+      "declared": "lib/quality-gates.js:959",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/state.js",
+        "lib/types/quality-gates.d.ts",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/state.js:21",
+      "callSiteCount": 2,
+      "tests": 1
+    },
+    {
+      "symbol": "qualityPlanningPrompt",
+      "declared": "lib/quality-gates.js:1016",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/index.js",
+        "lib/state.js",
+        "lib/types/quality-gates.d.ts",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/index.js:129",
+      "callSiteCount": 4,
+      "tests": 1
+    },
+    {
+      "symbol": "describeQualityLoop",
+      "declared": "lib/quality-gates.js:1029",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/state.js",
+        "lib/tools.js",
+        "lib/types/quality-gates.d.ts",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/state.js:21",
+      "callSiteCount": 4,
+      "tests": 2
+    },
+    {
+      "symbol": "DEPENDENCY_OUTPUT_MAX_CHARS",
+      "declared": "lib/scheduler.js:18",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/scheduler.d.ts"
+      ],
+      "firstUse": "lib/scheduler.js:109",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "DEPENDENCY_OUTPUTS_TOTAL_MAX_CHARS",
+      "declared": "lib/scheduler.js:20",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/scheduler.d.ts"
+      ],
+      "firstUse": "lib/scheduler.js:119",
+      "callSiteCount": 2,
+      "tests": 0
+    },
+    {
+      "symbol": "collectCompletedDependencyOutputs",
+      "declared": "lib/scheduler.js:36",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/scheduler.d.ts"
+      ],
+      "firstUse": "lib/types/scheduler.d.ts:65",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "formatDependencyOutputs",
+      "declared": "lib/scheduler.js:101",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/scheduler.d.ts"
+      ],
+      "firstUse": "lib/scheduler.js:207",
+      "callSiteCount": 2,
+      "tests": 1
+    },
+    {
+      "symbol": "isTaskReady",
+      "declared": "lib/scheduler.js:157",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/scheduler.js:164",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "assignmentPrompt",
+      "declared": "lib/scheduler.js:168",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/scheduler.d.ts"
+      ],
+      "firstUse": "lib/scheduler.js:427",
+      "callSiteCount": 2,
+      "tests": 1
+    },
+    {
+      "symbol": "installTeamScheduler",
+      "declared": "lib/scheduler.js:252",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/tools.js",
+        "lib/types/scheduler.d.ts"
+      ],
+      "firstUse": "lib/tools.js:317",
+      "callSiteCount": 2,
+      "tests": 4
+    },
+    {
+      "symbol": "DEFAULT_TEAM_NAME",
+      "declared": "lib/session-start.js:83",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/session-start.js:363",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "STARTUP_NOTICE_MARKER",
+      "declared": "lib/session-start.js:85",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/session-start.js:412",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "DELIVERABLE_VERB_PATTERN",
+      "declared": "lib/session-start.js:88",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/session-start.js:198",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "ACTION_VERB_PATTERN",
+      "declared": "lib/session-start.js:98",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/session-start.js:205 (import)",
+      "callSiteCount": 0,
+      "tests": 0
+    },
+    {
+      "symbol": "ENUMERATED_LINE_PATTERN",
+      "declared": "lib/session-start.js:100",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/session-start.js:152",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "CLAUSE_SEPARATOR_PATTERN",
+      "declared": "lib/session-start.js:107",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/session-start.js:164 (import)",
+      "callSiteCount": 0,
+      "tests": 0
+    },
+    {
+      "symbol": "CLAUSE_ACTION_PATTERN",
+      "declared": "lib/session-start.js:114",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/session-start.js:165",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "DELIVERABLE_VERB_MIN",
+      "declared": "lib/session-start.js:116",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/session-start.js:198",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "ENUMERATED_LINE_MIN",
+      "declared": "lib/session-start.js:118",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/session-start.js:204 (import)",
+      "callSiteCount": 0,
+      "tests": 0
+    },
+    {
+      "symbol": "ACTION_VERB_MIN",
+      "declared": "lib/session-start.js:120",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/session-start.js:205 (import)",
+      "callSiteCount": 0,
+      "tests": 0
+    },
+    {
+      "symbol": "C_SUBSIGNAL_MIN",
+      "declared": "lib/session-start.js:122",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/session-start.js:208",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "PLANS_DIR",
+      "declared": "lib/session-start.js:124",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/session-start.js:227",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "consumeExplicitFlag",
+      "declared": "lib/session-start.js:177",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/session-start.js:265",
+      "callSiteCount": 4,
+      "tests": 2
+    },
+    {
+      "symbol": "evaluateComplexityGate",
+      "declared": "lib/session-start.js:194",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/session-start.js:470",
+      "callSiteCount": 1,
+      "tests": 2
+    },
+    {
+      "symbol": "hasPlanArtifact",
+      "declared": "lib/session-start.js:225",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/session-start.js:469",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "consumeFlagFromMessage",
+      "declared": "lib/session-start.js:264",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/session-start.js:531",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "policyEnabled",
+      "declared": "lib/session-start.js:286",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/session-start.js:489",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "autoRouteEnabled",
+      "declared": "lib/session-start.js:292",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/session-start.js:467 (import)",
+      "callSiteCount": 0,
+      "tests": 0
+    },
+    {
+      "symbol": "policyQualifies",
+      "declared": "lib/session-start.js:301",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/session-start.js:498",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "availableTeamId",
+      "declared": "lib/session-start.js:326",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/session-start.js:363",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "provisionSessionTeam",
+      "declared": "lib/session-start.js:353",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/session-start.js:539",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "provisionedNotice",
+      "declared": "lib/session-start.js:406",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/session-start.js:550",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "instructNotice",
+      "declared": "lib/session-start.js:427",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/session-start.js:543",
+      "callSiteCount": 2,
+      "tests": 1
+    },
+    {
+      "symbol": "spliceNotice",
+      "declared": "lib/session-start.js:445",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/session-start.js:555",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "routeDecision",
+      "declared": "lib/session-start.js:460",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/session-start.js:523",
+      "callSiteCount": 1,
+      "tests": 2
+    },
+    {
+      "symbol": "installSessionTeamPolicy",
+      "declared": "lib/session-start.js:487",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/index.js"
+      ],
+      "firstUse": "lib/index.js:184",
+      "callSiteCount": 1,
+      "tests": 2
+    },
+    {
+      "symbol": "installInterjectionExpirySweep",
+      "declared": "lib/session-start.js:579",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/index.js"
+      ],
+      "firstUse": "lib/index.js:195",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "SESSION_START_GATE_ID",
+      "declared": "lib/session-start.js:608",
+      "className": "NO PRODUCTION CALLER",
+      "usedBy": [],
+      "callSiteCount": 0,
+      "tests": 0
+    },
+    {
+      "symbol": "memberModelRoute",
+      "declared": "lib/snapshot.js:23",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/snapshot.d.ts"
+      ],
+      "firstUse": "lib/snapshot.js:110 (import)",
+      "callSiteCount": 0,
+      "tests": 0
+    },
+    {
+      "symbol": "assembleTeamSnapshot",
+      "declared": "lib/snapshot.js:40",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/snapshot.d.ts"
+      ],
+      "firstUse": "lib/snapshot.js:151",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "collectTeamsActivity",
+      "declared": "lib/snapshot.js:131",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/index.js",
+        "lib/types/snapshot.d.ts"
+      ],
+      "firstUse": "lib/index.js:259",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "collectArchivedTeamsActivity",
+      "declared": "lib/snapshot.js:168",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/index.js",
+        "lib/types/snapshot.d.ts"
+      ],
+      "firstUse": "lib/index.js:258",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "CAPTAIN_KEY",
+      "declared": "lib/state.js:23",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/members.js",
+        "lib/profiles.js",
+        "lib/scheduler.js",
+        "lib/snapshot.js",
+        "lib/tools.js",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/members.js:275",
+      "callSiteCount": 27,
+      "tests": 3
+    },
+    {
+      "symbol": "withTeamLock",
+      "declared": "lib/state.js:36",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/command.js",
+        "lib/members.js",
+        "lib/scheduler.js",
+        "lib/session-start.js",
+        "lib/tools.js",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/members.js:303",
+      "callSiteCount": 13,
+      "tests": 2
+    },
+    {
+      "symbol": "teamLockQueueKeys",
+      "declared": "lib/state.js:60",
+      "className": "NO PRODUCTION CALLER",
+      "usedBy": [],
+      "callSiteCount": 0,
+      "tests": 1
+    },
+    {
+      "symbol": "sanitizeKey",
+      "declared": "lib/state.js:87",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/profiles.js",
+        "lib/session-start.js",
+        "lib/tools.js",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/profiles.js:202",
+      "callSiteCount": 14,
+      "tests": 1
+    },
+    {
+      "symbol": "dependencyStates",
+      "declared": "lib/state.js:114",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/tools.js"
+      ],
+      "firstUse": "lib/state.js:137",
+      "callSiteCount": 3,
+      "tests": 2
+    },
+    {
+      "symbol": "unsatisfiedDependencies",
+      "declared": "lib/state.js:136",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/scheduler.js",
+        "lib/tools.js",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/scheduler.js:160",
+      "callSiteCount": 4,
+      "tests": 3
+    },
+    {
+      "symbol": "TASK_TRANSITIONS",
+      "declared": "lib/state.js:144",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/types/state.d.ts:57",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "transitionError",
+      "declared": "lib/state.js:158",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/tools.js",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/tools.js:1397",
+      "callSiteCount": 3,
+      "tests": 1
+    },
+    {
+      "symbol": "activateTaskAttempt",
+      "declared": "lib/state.js:167",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/state.js:181",
+      "callSiteCount": 2,
+      "tests": 0
+    },
+    {
+      "symbol": "beginTaskAttempt",
+      "declared": "lib/state.js:179",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/scheduler.js",
+        "lib/tools.js",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/scheduler.js:370",
+      "callSiteCount": 4,
+      "tests": 1
+    },
+    {
+      "symbol": "cancelUnfinishedTask",
+      "declared": "lib/state.js:188",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/tools.js",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/state.js:225",
+      "callSiteCount": 3,
+      "tests": 1
+    },
+    {
+      "symbol": "cancelCancelledDependents",
+      "declared": "lib/state.js:208",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/state.js:244",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "resolveCancelledDependencyDeadlocks",
+      "declared": "lib/state.js:240",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/scheduler.js",
+        "lib/tools.js"
+      ],
+      "firstUse": "lib/scheduler.js:345",
+      "callSiteCount": 2,
+      "tests": 2
+    },
+    {
+      "symbol": "invalidateTaskAttempt",
+      "declared": "lib/state.js:247",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/scheduler.js",
+        "lib/tools.js",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/scheduler.js:501",
+      "callSiteCount": 5,
+      "tests": 1
+    },
+    {
+      "symbol": "createTeamDir",
+      "declared": "lib/state.js:261",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/tools.js",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/tools.js:623",
+      "callSiteCount": 4,
+      "tests": 1
+    },
+    {
+      "symbol": "readTeam",
+      "declared": "lib/state.js:271",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/command.js",
+        "lib/members.js",
+        "lib/scheduler.js",
+        "lib/session-start.js",
+        "lib/snapshot.js",
+        "lib/tools.js",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/command.js:62",
+      "callSiteCount": 20,
+      "tests": 2
+    },
+    {
+      "symbol": "readTeamSync",
+      "declared": "lib/state.js:297",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/capabilities.js",
+        "lib/members.js",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/capabilities.js:38",
+      "callSiteCount": 4,
+      "tests": 0
+    },
+    {
+      "symbol": "writeTeam",
+      "declared": "lib/state.js:319",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/members.js",
+        "lib/scheduler.js",
+        "lib/tools.js",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/members.js:135",
+      "callSiteCount": 25,
+      "tests": 4
+    },
+    {
+      "symbol": "readRetiredMemberIdsSync",
+      "declared": "lib/state.js:335",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/capabilities.js"
+      ],
+      "firstUse": "lib/capabilities.js:67",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "readRetiredMemberIds",
+      "declared": "lib/state.js:347",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/members.js",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/members.js:652",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "recordRetiredMemberIds",
+      "declared": "lib/state.js:359",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/tools.js",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/tools.js:447",
+      "callSiteCount": 6,
+      "tests": 1
+    },
+    {
+      "symbol": "findTeamByCaptain",
+      "declared": "lib/state.js:377",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/index.js",
+        "lib/tools.js",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/index.js:301",
+      "callSiteCount": 4,
+      "tests": 1
+    },
+    {
+      "symbol": "findTeamByParticipant",
+      "declared": "lib/state.js:410",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/command.js",
+        "lib/scheduler.js",
+        "lib/session-start.js",
+        "lib/tools.js",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/command.js:93",
+      "callSiteCount": 9,
+      "tests": 2
+    },
+    {
+      "symbol": "createMessage",
+      "declared": "lib/state.js:438",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/members.js",
+        "lib/tools.js",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/members.js:275",
+      "callSiteCount": 6,
+      "tests": 2
+    },
+    {
+      "symbol": "appendMailbox",
+      "declared": "lib/state.js:448",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/members.js",
+        "lib/tools.js",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/members.js:281",
+      "callSiteCount": 6,
+      "tests": 3
+    },
+    {
+      "symbol": "MAILBOX_DEDUP_WINDOW_MS",
+      "declared": "lib/state.js:465",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/state.js:486",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "INTERJECTION_TTL_MS",
+      "declared": "lib/state.js:467",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/state.js:625 (import)",
+      "callSiteCount": 0,
+      "tests": 3
+    },
+    {
+      "symbol": "INTERJECTION_QUEUE",
+      "declared": "lib/state.js:469",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/state.js:627",
+      "callSiteCount": 5,
+      "tests": 3
+    },
+    {
+      "symbol": "INTERJECTION_KIND",
+      "declared": "lib/state.js:471",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/scheduler.js"
+      ],
+      "firstUse": "lib/scheduler.js:241",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "messageDedupKey",
+      "declared": "lib/state.js:473",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/state.js:488",
+      "callSiteCount": 2,
+      "tests": 0
+    },
+    {
+      "symbol": "appendMailboxDeduped",
+      "declared": "lib/state.js:485",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/tools.js"
+      ],
+      "firstUse": "lib/tools.js:1877",
+      "callSiteCount": 2,
+      "tests": 1
+    },
+    {
+      "symbol": "clearMailboxToWatermark",
+      "declared": "lib/state.js:520",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/tools.js"
+      ],
+      "firstUse": "lib/tools.js:2422",
+      "callSiteCount": 1,
+      "tests": 2
+    },
+    {
+      "symbol": "readLiveMailbox",
+      "declared": "lib/state.js:576",
+      "className": "NO PRODUCTION CALLER",
+      "usedBy": [],
+      "callSiteCount": 0,
+      "tests": 1
+    },
+    {
+      "symbol": "enqueueInterjection",
+      "declared": "lib/state.js:600",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/tools.js"
+      ],
+      "firstUse": "lib/tools.js:16 (import)",
+      "callSiteCount": 0,
+      "tests": 3
+    },
+    {
+      "symbol": "readInterjections",
+      "declared": "lib/state.js:661",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/tools.js"
+      ],
+      "firstUse": "lib/state.js:670",
+      "callSiteCount": 2,
+      "tests": 3
+    },
+    {
+      "symbol": "readPendingInterjections",
+      "declared": "lib/state.js:669",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/tools.js"
+      ],
+      "firstUse": "lib/state.js:679",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "expireInterjections",
+      "declared": "lib/state.js:677",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/scheduler.js"
+      ],
+      "firstUse": "lib/scheduler.js:300",
+      "callSiteCount": 2,
+      "tests": 1
+    },
+    {
+      "symbol": "decideInterjection",
+      "declared": "lib/state.js:708",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/tools.js"
+      ],
+      "firstUse": "lib/tools.js:2363",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "expireInterjectionsEverywhere",
+      "declared": "lib/state.js:773",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/session-start.js"
+      ],
+      "firstUse": "lib/session-start.js:595",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "readMailbox",
+      "declared": "lib/state.js:812",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/state.js:487",
+      "callSiteCount": 6,
+      "tests": 3
+    },
+    {
+      "symbol": "readUnreadMailbox",
+      "declared": "lib/state.js:845",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/scheduler.js",
+        "lib/snapshot.js",
+        "lib/tools.js",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/scheduler.js:321",
+      "callSiteCount": 9,
+      "tests": 5
+    },
+    {
+      "symbol": "claimMailboxDelivery",
+      "declared": "lib/state.js:887",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/scheduler.js",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/scheduler.js:323",
+      "callSiteCount": 3,
+      "tests": 1
+    },
+    {
+      "symbol": "releaseMailboxDelivery",
+      "declared": "lib/state.js:895",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/members.js",
+        "lib/scheduler.js",
+        "lib/tools.js",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/members.js:305",
+      "callSiteCount": 6,
+      "tests": 1
+    },
+    {
+      "symbol": "acknowledgeMailbox",
+      "declared": "lib/state.js:905",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/members.js",
+        "lib/scheduler.js",
+        "lib/tools.js",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/members.js:304",
+      "callSiteCount": 7,
+      "tests": 3
+    },
+    {
+      "symbol": "replaceFileAtomicOrDirect",
+      "declared": "lib/state.js:954",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/types/state.d.ts:155",
+      "callSiteCount": 3,
+      "tests": 0
+    },
+    {
+      "symbol": "isTeamTask",
+      "declared": "lib/state.js:1100",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/state.js:1142",
+      "callSiteCount": 2,
+      "tests": 0
+    },
+    {
+      "symbol": "removeTeamDir",
+      "declared": "lib/state.js:1204",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/tools.js",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/tools.js:2530",
+      "callSiteCount": 2,
+      "tests": 1
+    },
+    {
+      "symbol": "archiveTeamDir",
+      "declared": "lib/state.js:1240",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/tools.js",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/state.js:1349",
+      "callSiteCount": 4,
+      "tests": 2
+    },
+    {
+      "symbol": "DEFAULT_RECLAIM_STALE_AFTER_MS",
+      "declared": "lib/state.js:1282",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/session-start.js"
+      ],
+      "firstUse": "lib/state.js:1297",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "findStaleStagedTeams",
+      "declared": "lib/state.js:1296",
+      "className": "REACHABLE (module-internal)",
+      "usedBy": [],
+      "firstUse": "lib/state.js:1340",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "reclaimStaleStagedTeams",
+      "declared": "lib/state.js:1339",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/session-start.js"
+      ],
+      "firstUse": "lib/session-start.js:80 (import)",
+      "callSiteCount": 0,
+      "tests": 1
+    },
+    {
+      "symbol": "readArchivedTeam",
+      "declared": "lib/state.js:1365",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/snapshot.js",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/snapshot.js:173",
+      "callSiteCount": 2,
+      "tests": 0
+    },
+    {
+      "symbol": "listArchivedTeamIds",
+      "declared": "lib/state.js:1373",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/snapshot.js",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/types/state.d.ts:213",
+      "callSiteCount": 1,
+      "tests": 0
+    },
+    {
+      "symbol": "taskVisualState",
+      "declared": "lib/state.js:1397",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/snapshot.js",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/types/state.d.ts:223",
+      "callSiteCount": 1,
+      "tests": 2
+    },
+    {
+      "symbol": "failedDependencyIds",
+      "declared": "lib/state.js:1409",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/snapshot.js"
+      ],
+      "firstUse": "lib/snapshot.js:13 (import)",
+      "callSiteCount": 0,
+      "tests": 2
+    },
+    {
+      "symbol": "taskDepthsById",
+      "declared": "lib/state.js:1415",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/snapshot.js",
+        "lib/types/state.d.ts"
+      ],
+      "firstUse": "lib/snapshot.js:42",
+      "callSiteCount": 2,
+      "tests": 0
+    },
+    {
+      "symbol": "TEAM_TOOL_NAMES",
+      "declared": "lib/tool-names.js:2",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/capabilities.js",
+        "lib/index.js"
+      ],
+      "firstUse": "lib/tool-names.js:15",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "MEMBER_TOOL_NAMES",
+      "declared": "lib/tool-names.js:12",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/capabilities.js"
+      ],
+      "firstUse": "lib/tool-names.js:15",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "CAPTAIN_TOOL_NAMES",
+      "declared": "lib/tool-names.js:15",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/members.js"
+      ],
+      "firstUse": "lib/members.js:24 (import)",
+      "callSiteCount": 0,
+      "tests": 2
+    },
+    {
+      "symbol": "haltTeamWork",
+      "declared": "lib/tools.js:225",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/index.js",
+        "lib/types/tools.d.ts"
+      ],
+      "firstUse": "lib/index.js:21 (import)",
+      "callSiteCount": 0,
+      "tests": 1
+    },
+    {
+      "symbol": "stagedPlanApprovedContext",
+      "declared": "lib/tools.js:281",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/index.js"
+      ],
+      "firstUse": "lib/index.js:21 (import)",
+      "callSiteCount": 0,
+      "tests": 1
+    },
+    {
+      "symbol": "stagedPlanDiscardContext",
+      "declared": "lib/tools.js:290",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/tools.d.ts"
+      ],
+      "firstUse": "lib/types/tools.d.ts:92",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "stagedPlanFeedbackContext",
+      "declared": "lib/tools.js:299",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/tools.d.ts"
+      ],
+      "firstUse": "lib/types/tools.d.ts:94",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "registerAgentTeamsTools",
+      "declared": "lib/tools.js:312",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/index.js",
+        "lib/types/tools.d.ts"
+      ],
+      "firstUse": "lib/index.js:169",
+      "callSiteCount": 2,
+      "tests": 9
+    },
+    {
+      "symbol": "initializeProfileTeam",
+      "declared": "lib/tools.js:2449",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/command.js",
+        "lib/session-start.js"
+      ],
+      "firstUse": "lib/command.js:6 (import)",
+      "callSiteCount": 0,
+      "tests": 2
+    },
+    {
+      "symbol": "applyQualityFollowUp",
+      "declared": "lib/tools.js:2634",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/types/tools.d.ts"
+      ],
+      "firstUse": "lib/tools.js:1769",
+      "callSiteCount": 1,
+      "tests": 1
+    },
+    {
+      "symbol": "TERMINAL_TASK_STATUSES",
+      "declared": "lib/types.js:11",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/members.js",
+        "lib/state.js",
+        "lib/tools.js",
+        "lib/types/types.d.ts"
+      ],
+      "firstUse": "lib/members.js:476",
+      "callSiteCount": 6,
+      "tests": 1
+    },
+    {
+      "symbol": "TASK_KINDS",
+      "declared": "lib/types.js:12",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/quality-gates.js",
+        "lib/types/types.d.ts"
+      ],
+      "firstUse": "lib/quality-gates.js:892",
+      "callSiteCount": 3,
+      "tests": 1
+    },
+    {
+      "symbol": "REVIEW_VERDICTS",
+      "declared": "lib/types.js:21",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/quality-gates.js",
+        "lib/types/types.d.ts"
+      ],
+      "firstUse": "lib/quality-gates.js:894",
+      "callSiteCount": 3,
+      "tests": 1
+    },
+    {
+      "symbol": "FINDING_SEVERITIES",
+      "declared": "lib/types.js:22",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/quality-gates.js",
+        "lib/types/types.d.ts"
+      ],
+      "firstUse": "lib/quality-gates.js:834",
+      "callSiteCount": 3,
+      "tests": 1
+    },
+    {
+      "symbol": "RequestBodyError",
+      "declared": "lib/web-routes.js:13",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/index.js"
+      ],
+      "firstUse": "lib/index.js:282",
+      "callSiteCount": 7,
+      "tests": 1
+    },
+    {
+      "symbol": "readJsonRequest",
+      "declared": "lib/web-routes.js:25",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/index.js"
+      ],
+      "firstUse": "lib/index.js:279",
+      "callSiteCount": 2,
+      "tests": 1
+    },
+    {
+      "symbol": "authenticatedWebRoutes",
+      "declared": "lib/web-routes.js:83",
+      "className": "REACHABLE (cross-module)",
+      "usedBy": [
+        "lib/index.js"
+      ],
+      "firstUse": "lib/index.js:242",
+      "callSiteCount": 1,
+      "tests": 1
+    }
+  ]
+}

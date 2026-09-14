@@ -1,0 +1,65 @@
+DISTINCT BRAND-TOKEN SET at the settled revision (BRAND_TOKEN_RE, shipped = tracked minus evidence/)
+token	count	filecount	files
+omo	31	23	scripts/build-mcp.mjs, skills/ast-grep/README.md, skills/lsp-setup/SKILL.md, skills/lsp-setup/references/bash/README.md
+OMO	23	11	docs/omo-parity-gap.md, docs/omo-parity-ledger.md, docs/omo-parity-ledger.zh-CN.md, docs/plan-e.md
+omo-parity-ledger	12	4	docs/index.md, docs/index.zh-CN.md, docs/omo-parity-ledger.md, docs/omo-parity-ledger.zh-CN.md
+_omo	9	2	packages/mpd-mcp-lsp/dist/cli.js, scripts/build-mcp.mjs
+omo-align/requirements/frozen-contract.json	7	5	AGENTS.md, docs/omo-parity-ledger.md, docs/omo-parity-ledger.zh-CN.md, packages/mpd-agent-teams-plugin/lib/session-start.js
+omo-parity-gap	6	4	AGENTS.md, docs/omo-parity-ledger.md, docs/omo-parity-ledger.zh-CN.md, docs/plan-e.md
+OMO-	5	1	scripts/build-mcp.mjs
+omo-parity-align	4	4	docs/index.md, docs/index.zh-CN.md, docs/omo-parity-ledger.md, docs/omo-parity-ledger.zh-CN.md
+OMO_	4	1	scripts/build-mcp.mjs
+omo-git-bash-run-	4	1	scripts/build-mcp.mjs
+omo_runtime_slug	4	2	skills/ast-grep/scripts/ast_grep_helper.py, skills/ast-grep/tests/smoke.sh
+omo-align	3	2	packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs, skills/dsh-qa/scripts/agent-teams-messaging.mjs
+omo-config-core	3	1	scripts/build-mcp.mjs
+OMO_CODEX_	3	1	scripts/build-mcp.mjs
+omoRoot	3	1	skills/ulw-plan/scripts/scaffold-plan.mjs
+omo-align/research/team-vs-mass-ulw/gap.json	2	2	docs/omo-parity-ledger.md, docs/omo-parity-ledger.zh-CN.md
+omo-align/research/session-policy/output.log	2	2	docs/omo-parity-ledger.md, docs/omo-parity-ledger.zh-CN.md
+omo-align/requirements/verdict.json	2	2	docs/omo-parity-ledger.md, docs/omo-parity-ledger.zh-CN.md
+omo-parity-rate/	2	2	docs/omo-parity-ledger.md, docs/omo-parity-ledger.zh-CN.md
+omo-align/ledger-fix/	2	2	docs/omo-parity-ledger.md, docs/omo-parity-ledger.zh-CN.md
+omo-align/ledger-fix/gates/	2	2	docs/omo-parity-ledger.md, docs/omo-parity-ledger.zh-CN.md
+omo-align/ledger-fix/result.json	2	2	docs/omo-parity-ledger.md, docs/omo-parity-ledger.zh-CN.md
+omo-parity-rate/raw/prompts.jsonl	2	2	docs/omo-parity-ledger.md, docs/omo-parity-ledger.zh-CN.md
+omo-parity-rate/raw/probe.mjs	2	2	docs/omo-parity-ledger.md, docs/omo-parity-ledger.zh-CN.md
+OMO_CODEX_GIT_BASH_PATH	2	2	packages/mpd-mcp-gitbash/dist/cli.js, scripts/build-mcp.mjs
+OMO_CODEX_GIT_BASH_TIMEOUT_MS	2	2	packages/mpd-mcp-gitbash/dist/cli.js, scripts/build-mcp.mjs
+OMO_CODEX_EXEC_COMMAND_TIMEOUT_MS	2	2	packages/mpd-mcp-gitbash/dist/cli.js, scripts/build-mcp.mjs
+omo/ping	2	1	scripts/build-mcp.mjs
+OMO_PROVISION_HINT	2	1	scripts/build-mcp.mjs
+omo-runtime	2	1	scripts/build-mcp.mjs
+omo-ast-grep	2	1	scripts/build-mcp.mjs
+omo-git-bash	2	1	scripts/build-mcp.mjs
+omo_env_binary	2	1	skills/ast-grep/scripts/ast_grep_helper.py
+omo_runtime_binary	2	1	skills/ast-grep/scripts/ast_grep_helper.py
+OMOB_TEST_TOKEN	2	1	skills/ultimate-browsing/engine/tests/test_surrogate.py
+omoReal	2	1	skills/ulw-plan/scripts/scaffold-plan.mjs
+omo-opencode/src/agents/	1	1	docs/omo-parity-gap.md
+omo_agent	1	1	docs/omo-parity-gap.md
+omo/plans	1	1	docs/omo-parity-gap.md
+OMO-vs-mpd	1	1	docs/plan-e.md
+OMO-origin	1	1	docs/plan-f.md
+omo-hephaestus	1	1	docs/plan-f.md
+omo-align/verification/	1	1	packages/mpd-agent-teams-plugin/test/s1-s4-semantics.test.mjs
+omo-align/compact-hinge	1	1	packages/mpd-dsh-adapter-plugin/src/index.ts
+omo-align/requirements/team-compaction-contract.json	1	1	packages/mpd-team-compact-plugin/src/index.ts
+omo-align/compact-hinge/result.json	1	1	packages/mpd-team-compact-plugin/src/index.ts
+OMO_DAEMON_PROTOCOL_VERSION	1	1	scripts/build-mcp.mjs
+OMO_LSP_DAEMON_CLI	1	1	scripts/build-mcp.mjs
+OMO_LSP_DAEMON_DIR	1	1	scripts/build-mcp.mjs
+OMO_LSP_DAEMON_VERSION	1	1	scripts/build-mcp.mjs
+omo-lsp-daemon	1	1	scripts/build-mcp.mjs
+omo-lsp-	1	1	scripts/build-mcp.mjs
+omo-lsp	1	1	scripts/build-mcp.mjs
+OMO_AST_GREP_BIN_DIR	1	1	scripts/build-mcp.mjs
+OMO_AST_GREP_SG_PATH	1	1	scripts/build-mcp.mjs
+OMO_AST_GREP_PROJECT_CWD	1	1	scripts/build-mcp.mjs
+omoRuntimeCandidates	1	1	scripts/build-mcp.mjs
+omoRuntime	1	1	scripts/build-mcp.mjs
+omo-	1	1	scripts/build-mcp.mjs
+omo-opencode/src/cli/install-ast-grep-sg.ts	1	1	skills/ast-grep/AGENTS.md
+omo-align/qa-shipped-path/	1	1	skills/dsh-qa/scripts/agent-teams-messaging.mjs
+
+total distinct tokens: 61; total occurrences: 188

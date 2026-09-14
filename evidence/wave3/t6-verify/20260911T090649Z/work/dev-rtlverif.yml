@@ -1,0 +1,382 @@
+# mpd-dsh bundle plugin layer (Plan D): ADDITIVE-ONLY patch, plus ONE id-target
+# (the preset roster row below, whose stock config is a single `default` key).
+# Policy: never id-target rows owned by the stock DSH templates (llm-deepseek /
+# agent-default-model / skill-filesystem / llm-pi-ai) — id-target replaces the
+# WHOLE stock config and would wipe the stock model list / provider defaults.
+# DeepSeek official provider ships with dsh-base as-is; this bundle adds only:
+# MCP servers, the mpd-* plugins, the adopted agent-teams plugin, and the
+# bundle-served preset root (the skill corpus is served by the mpd-bootstrap
+# row's ctx.skills provider — nothing is copied into $DSH_HOME any more).
+
+# ── preset roster: serve the bundle's own presets (no $DSH_HOME copy) ───────
+# The bundle ships its presets at <bundle>/presets and serves them from there by
+# adding a `system`-trust root, so ONE `dsh plugin add` makes the mpd preset
+# selectable and ONE `dsh plugin remove` takes it away with the bundle — no
+# $DSH_HOME/.agent-presets copy, no stale-copy refresh dance.
+#
+# This is an id-target (replace), not an insert: dsh-web-app's own patch already
+# inserts this row with `default: standard`, and a second insert would be a
+# duplicate loader entry id (fatal at boot). The stock row's whole config is
+# exactly `default` — its own comment says "This row only names the default and
+# any deployment-added roots" — so restating it here is complete, and both keys
+# are required to keep the roster working.
+#
+# Profiles WITHOUT the row (headless) log "patch: entry agent-presets not found"
+# and skip it: headless never had a preset roster, so nothing regresses.
+- id: agent-presets
+  name: '@deepseek-ai/dsh-agent-presets'
+  config:
+    default: mpd
+    roots:
+      - path: !!js '"/root/dshProj/my-power-dsh/presets"'
+        trust: system
+
+- insert:
+    # B8 (wave 2): this row names NO binary path any more. It launches
+    # packages/mpd-mcp-astgrep/launch.mjs, which resolves the binary
+    # bundle-relatively (env pin -> $MPD_AST_GREP_BIN_DIR -> createRequire of the
+    # optionalDependency -> <bundle>/.toolchain/node_modules/.bin/ast-grep|sg) and
+    # sets MPD_AST_GREP_SG_PATH only when the caller left it unset, before the
+    # adopted server reads it. The old `env.MPD_AST_GREP_SG_PATH = <baseUrl>/node_modules/.bin/sg`
+    # pin was packed-layout-only AND named the deprecated `sg` wrapper (exit 1);
+    # a mounting boot with no env pin is the gate (never `--dump-config`).
+    - id: mcp-astgrep
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: ast_grep
+        transport: stdio
+        command: node
+        args:
+          - !!js 'process.env.MPD_DSH_ASTGREP_CLI || ("/root/dshProj/my-power-dsh/packages/mpd-mcp-astgrep/launch.mjs")'
+        toolCallTimeoutMs: 60000
+    # git_bash, by the upstream original design, is Windows-only (run is available only on native Windows); this bundle disables it by default;
+    # Windows deployments can change this row to disabled: false to enable it.
+    - id: mcp-gitbash
+      name: '@deepseek-ai/dsh-mcp-client'
+      disabled: true
+      config:
+        serverName: git_bash
+        transport: stdio
+        command: node
+        args:
+          - !!js 'process.env.MPD_DSH_GITBASH_CLI || ("/root/dshProj/my-power-dsh/packages/mpd-mcp-gitbash/dist/cli.js")'
+        toolCallTimeoutMs: 60000
+    - id: mcp-lsp
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: lsp
+        transport: stdio
+        command: node
+        args:
+          - !!js 'process.env.MPD_DSH_LSP_CLI || ("/root/dshProj/my-power-dsh/packages/mpd-mcp-lsp/dist/cli.js")'
+          - mcp
+        toolCallTimeoutMs: 60000
+    # CodeGraph MCP (B8, wave 2): this row names NO binary path any more. It
+    # launches packages/mpd-mcp-codegraph/launch.mjs, which resolves the binary
+    # bundle-relatively (env pin -> createRequire of the optionalDependency ->
+    # <bundle>/.toolchain/node_modules/.bin/codegraph) and sets MPD_CODEGRAPH_BIN
+    # only when the caller left it unset, then calls runCodegraphServe() (serve.js
+    # self-starts only when IT is argv[1]). The old env pin was packed-layout-only,
+    # and a wrong MPD_CODEGRAPH_BIN disables the adopted bundled/provisioned/PATH/
+    # download chain entirely. Project index init/skip-home discipline is handled
+    # by the mpd-codegraph plugin row below.
+    - id: mcp-codegraph
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: codegraph
+        transport: stdio
+        command: node
+        args:
+          - !!js 'process.env.MPD_DSH_CODEGRAPH_CLI || ("/root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/launch.mjs")'
+        toolCallTimeoutMs: 60000
+    # Waveform-read MCP rows (mcp-wave-mcp / mcp-traceweave) are NOT mounted by
+    # default: they wrap EXTERNAL Python MCP servers (wave-mcp / TraceWeave)
+    # that the user installs with pipx or plain pip — NO venv required (the
+    # venv iron rule belongs to cocotb only; pipx keeps the two tools isolated
+    # on its own if their mcp SDK versions ever conflict). A missing or
+    # mismatched mcp SDK on the launching python crashed the MCP client at boot
+    # (ModuleNotFoundError: No module named 'mcp.server.mcpserver'), taking the
+    # whole GUI/agent down → boot-safety rule: optional rows stay COMMENTED
+    # until the tools are installed and the env bins are pinned. To enable:
+    #   1) pipx install wave-mcp && pipx install traceweave-mcp
+    #      (or run node scripts/install-mcp.mjs --with-wave --activate-wave)
+    #   2) export MPD_DSH_WAVE_MCP_BIN=$(command -v wave-mcp)
+    #      export MPD_DSH_TRACEWEAVE_BIN=$(command -v traceweave-mcp)
+    #   3) uncomment the two example rows below (command resolves env-first,
+    #      PATH second).
+    # - id: mcp-wave-mcp
+    #   name: '@deepseek-ai/dsh-mcp-client'
+    #   config:
+    #     serverName: wave_mcp
+    #     transport: stdio
+    #     command: !!js 'process.env.MPD_DSH_WAVE_MCP_BIN || "wave-mcp"'
+    #     # NO --session at startup: wave-mcp 0.1.1 treats --session as an
+    #     # OPTIONAL auto-open and exits with FileNotFoundError when the dir has
+    #     # no session.json yet. The plugin creates the session after a sim run
+    #     # via mcp__wave_mcp__prepare_session.
+    #     toolCallTimeoutMs: 120000
+    # - id: mcp-traceweave
+    #   name: '@deepseek-ai/dsh-mcp-client'
+    #   config:
+    #     serverName: traceweave
+    #     transport: stdio
+    #     command: !!js 'process.env.MPD_DSH_TRACEWEAVE_BIN || "traceweave-mcp"'
+    #     # No env block: the EDA environment (VERDI_HOME/NOVAS_HOME/VCS_HOME +
+    #     # license vars) is inherited from the dsh launching shell; docs instruct
+    #     # exporting them there before starting dsh.
+    #     toolCallTimeoutMs: 120000
+
+# ── B-line plugins (self-written; production uses @mpd-dsh/<pkg> package names) ──
+- insert:
+    # Web-compat self-registration (mirrors @linxin666/dsh-web-ui-all's web-ui-compat
+    # row): the bundle's web client loads only if a LOADER ENTRY named exactly
+    # `@mpd-dsh/mpd` exists — client-modules resolves client rows against
+    # `ctx.loader.entries()` entry names, and entry names come from a patch row's
+    # `name` field. This self-row (loading the bundle's own no-op main plugin)
+    # provides that entry; without it the agent-teams/workmate web client never
+    # appears in the boot graph.
+    - id: mpd-web-compat
+      name: '/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/dist/index.js'
+    # mpd-dsh-adapter FIRST: it is the bundle's ONLY contact surface with the
+    # harness tool/agent/skill/preset seams (ctx.tools register/guard/execute/
+    # post-execute, ctx.subagents.start, ctx.skills.registerProvider,
+    # ctx.agentPresets.resolve). Every mpd row below calls through it, so a
+    # harness release that reshapes a seam is absorbed in that one package.
+    - id: mpd-dsh-adapter
+      name: '/root/dshProj/my-power-dsh/packages/mpd-dsh-adapter-plugin/dist/index.js'
+    # mpd-config next: it provides the mpdConfig service that the rows below
+    # read (apply-time config merges for tools/waterfalls).
+    - id: mpd-config
+      name: '/root/dshProj/my-power-dsh/packages/mpd-config-plugin/dist/index.js'
+    - id: mpd-tools
+      name: '/root/dshProj/my-power-dsh/packages/mpd-tools-plugin/dist/index.js'
+      config:
+        writeGuard: true
+        truncateMaxBytes: 8192
+    - id: mpd-modelchain
+      name: '/root/dshProj/my-power-dsh/packages/mpd-modelchain-plugin/dist/index.js'
+    - id: mpd-roles
+      name: '/root/dshProj/my-power-dsh/packages/mpd-roles-plugin/dist/index.js'
+    - id: mpd-ulw
+      name: '/root/dshProj/my-power-dsh/packages/mpd-ulw-plugin/dist/index.js'
+      config:
+        maxRounds: 3
+    - id: mpd-hashline
+      name: '/root/dshProj/my-power-dsh/packages/mpd-hashline-plugin/dist/index.js'
+      config:
+        guardEditTools: true
+    - id: mpd-boulder
+      name: '/root/dshProj/my-power-dsh/packages/mpd-boulder-plugin/dist/index.js'
+    - id: mpd-comment-checker
+      name: '/root/dshProj/my-power-dsh/packages/mpd-comment-checker-plugin/dist/index.js'
+      config:
+        autoCheck: false
+    - id: mpd-codegraph
+      name: '/root/dshProj/my-power-dsh/packages/mpd-codegraph-plugin/dist/index.js'
+      config:
+        autoInit: true
+        initTimeoutMs: 60000
+    - id: mpd-memory
+      name: '/root/dshProj/my-power-dsh/packages/mpd-memory-plugin/dist/index.js'
+      config:
+        vcs: git
+    - id: mpd-workmate
+      name: '/root/dshProj/my-power-dsh/packages/mpd-workmate-plugin/dist/index.js'
+    # Bundle asset provisioning (no home writes since 0.3.0): registers the
+    # <bundle>/skills corpus as a ctx.skills provider (rank 600 "bundled", below
+    # project/custom/user roots) and removes the version-stamped copies that
+    # bundle <= 0.2.6 left in $DSH_HOME/skills + $DSH_HOME/.agent-presets.
+    # The preset side is served by the agent-presets row at the top of this file.
+    - id: mpd-bootstrap
+      name: '/root/dshProj/my-power-dsh/packages/mpd-bootstrap-plugin/dist/index.js'
+    # RTL verification (Plan A, verification side): eight mpd_verif_* tools,
+    # iverilog/verilator/vcs resolution via MPD_DSH_VERIF_*/PATH (never
+    # vendored), cocotb lane under the project-local venv iron rule and the
+    # VCS-only UVM lane; wave results hand off to mcp-wave-mcp/mcp-traceweave
+    # when those rows are user-wired (graceful degrade otherwise). Details in
+    # docs/rtl-verif-guide.md + packages/mpd-verif-plugin/README.md.
+    - id: mpd-verif
+      name: '/root/dshProj/my-power-dsh/packages/mpd-verif-plugin/dist/index.js'
+
+# ── Remote MCP rows (public services; network required, optional per use) ──
+- insert:
+    # The adopted team plugin is FIRST-CLASS MAIN CODE at
+    # packages/mpd-agent-teams-plugin (MIT provenance; upstream
+    # @nanmicoder/dsh-agent-teams 0.1.16-rc.3-mpd) and loads through the bundle exports map:
+    # pnpm-driven `dsh plugin add` never links a bundle's transitive dependencies
+    # into the profile root, so a plain package-name row would silently self-disable.
+    # Its server runtime closure is vendored at packages/mpd-agent-teams-plugin/_deps
+    # (see scripts/vendor-agent-teams.mjs), so the row always resolves — no guard.
+    - id: agent-teams
+      name: '/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/index.js'
+      config:
+        stateDir: .mpd/team
+        memberProvider: spawn
+        memberMaxDepth: 1
+        maxMembers: 16
+        # SESSION-START TEAM RULE (binding): every qualifying session MUST begin
+        # inside a team. mode=auto provisions the staged default team (profile
+        # `mpd`, approval=required — nothing spawns until the user approves the
+        # Web plan) at the session's first step when the session leads no team,
+        # and injects the startup notice to the captain; presets: [mpd] scopes
+        # the rule to mpd-preset sessions (sessions without any preset, e.g.
+        # headless direct runs, are covered too), and subagent/member sessions
+        # (they carry parentSession) never qualify. Enforcement is mechanical
+        # (lib/session-start.js), not prompt guidance alone.
+        sessionTeamPolicy:
+          mode: auto
+          profile: mpd
+          presets:
+            - mpd
+          name: MPD Default
+          approval: required
+        # The OMO-origin agents become teammate instantiation templates for the
+        # adopted dsh-agent-teams plugin (reusing its architecture + Web GUI).
+        # One named profile `mpd` holds the full normal-named roster and
+        # `taskPlanning: captain` means only the roster is fixed: the captain
+        # designs the task DAG after a staged plan the user reviews in the panel.
+        # /agent-teams --profile mpd <goal> instantiates the roster explicitly.
+        profiles:
+          mpd:
+            description: "The OMO-origin specialist roster surfaced as normal-named teammate templates — captain-planned (roster only; the captain designs the DAG during the staged plan)."
+            protocol: "Read-only members (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) take requirements/review/analysis tasks only and never edit files. Workers (Senior Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) take implementation/verification/integration. The captain leads, designs the DAG, and integrates results. Workmate reuse: before delegating a role task, consult mpd_workmate_list / mpd_workmate_match(task); if a workmate note matches well, delegate to that workmate (member name = workmate name, so its persona/memory are injected), otherwise initialize a fresh workmate with mpd_workmate_init — never force a weak note match."
+            taskPlanning: captain
+            # fallback.provider is ALWAYS deepseek-official (never the bare
+            # "deepseek" compat-track provider): the original layered design
+            # intended dsh-llm-pi-ai ("deepseek") as the degradation tier, but
+            # that row is OFF by default (install-profile --with-compat-track is
+            # gone) and the harness only registers deepseek-official
+            # (dsh-llm-deepseek), so a "deepseek" fallback would fail with
+            # NO_ADAPTER exactly when the fallback is needed. Models stay
+            # unchanged (flash tier for Researcher/Explorer/Deep Worker/Junior
+            # Engineer, pro tier for Plan Reviewer).
+            members:
+              - name: Architect
+                role: architecture review / deep debugging / self-review
+                provider: deepseek-official
+                model: deepseek-v4-pro
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Read-only architecture advisor. You advise, others execute — never edit files. Favor simplicity and existing patterns; give one clear recommendation with concise rationale and evidence."
+              - name: Researcher
+                role: code / open-source evidence search
+                provider: deepseek-official
+                model: deepseek-v4-flash
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Read-only researcher. Gather evidence from the codebase, AST/LSP and web sources; cite file:line and URLs; never edit files or invent findings."
+              - name: Planner
+                role: planning / task decomposition
+                provider: deepseek-official
+                model: deepseek-v4-pro
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Read-only planner. Produce decision-complete, step-ordered plans with a checklist; never implement."
+              - name: Explorer
+                role: read-only codebase exploration
+                provider: deepseek-official
+                model: deepseek-v4-flash
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Read-only explorer. Answer with evidence and absolute file paths; never edit files."
+              - name: Reviewer
+                role: correctness / risk review
+                provider: deepseek-official
+                model: deepseek-v4-pro
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Deep reviewer. Produce correctness/risk findings with evidence; recommend fixes but do not apply them."
+              - name: Plan Reviewer
+                role: work-plan QA review / UI-UX critique
+                provider: deepseek-official
+                model: deepseek-v4-flash
+                fallback: { provider: deepseek-official, model: deepseek-v4-pro }
+                executionPrompt: "Read-only plan reviewer. Verify plans are executable and references valid; reject only true blockers; UI/UX critique only when explicitly asked; never edit files."
+              - name: Vision Analyst
+                role: image / diagram analysis
+                provider: deepseek-official
+                model: deepseek-v4-flash-vision-exp
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Read-only vision analyst. Describe screenshots/diagrams precisely; never edit files or load anything by path."
+              - name: Lead
+                role: orchestration / integration
+                provider: deepseek-official
+                model: deepseek-v4-pro
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Orchestrator. Plan the macro structure, delegate independent units in parallel, integrate and verify results."
+              - name: Deep Worker
+                role: autonomous goal-driven implementation
+                provider: deepseek-official
+                model: deepseek-v4-flash
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Autonomous deep worker. Receive goals, execute them end-to-end with tools, verify every change, report evidence-first."
+              - name: Senior Engineer
+                role: primary implementation
+                provider: deepseek-official
+                model: deepseek-v4-pro
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Primary engineer. Plan small, execute with tools, keep diffs minimal, verify every change, report honestly."
+              - name: Junior Engineer
+                role: small mechanical changes
+                provider: deepseek-official
+                model: deepseek-v4-flash
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny."
+          rtl-ip:
+            description: "RTL IP design workflow aligned to the four-swimlane product flow (product market / system design / digital design / digital verification) with milestone gates 规格设计 IP01 → 代码设计 IP05 → 设计验证 IP08 → IP 发布 IP10 and diamond reviews: requirements (需求说明书/应用场景/可行性报告/需求追踪表 → 需求评审) → spec design (内部用户手册 + DFMEA 初版 + 验证计划/验证方案 → 规格评审/验证评审) → code design (RTL + 详细设计 + 环境/用例开发 + 验证调试 → 设计评审/验证评审; spec-diff rollback) → verification and release (缺陷解决/回归验证 + 设计发布(内/外部用户手册)/发布评审 + 缺陷分析(缺陷报告/Buglist)/缺陷评审). Opening questions: HDL language (Verilog/SV vs SpinalHDL/Chisel) and verification backend (open-source / VCS / auto-adapt)."
+            protocol: "RTL-IP SWIMLANE FLOW (skills/rtl-ip-flow is the binding execution contract). Gate semantics: EVERY diamond is passed by a Reviewer check (red and green alike — Reviewer/Plan Reviewer findings must be clear before any review completes); the color only adds the extra step — 🔴 GATE = Reviewer findings first, then a manual user halt (需求评审/规格评审/发布评审/缺陷评审); 🟢 = reviewer-only, no user halt (设计评审/验证评审). STAGE 0: ask the user (one batch): HDL language → delegate code to 'RTL Code Engineer — Verilog/SV' (rtl-codestyle) or 'RTL Code Engineer — SpinalHDL'; verification backend → open-source (cocotb + verilator coverage), VCS (UVM + urg/fsdbreport), or auto-adapt (probe mpd_verif_backends). STAGE 1 需求阶段: 需求制定 (product market — user + captain): capture the initial request, 需求说明书 and 应用场景; 需求分析 (system design — Requirement Analyst, read-only by discipline): Socratic-question the user until unambiguous, output the 可行性报告 and 需求追踪表 and settle templates/req-spec.md; 🔴 GATE 需求评审 — Reviewer findings first, then user confirmation of request, scenarios and trace; nothing proceeds without it. STAGE 2 规格设计 IP01: 数字设计 (Spec Designer): write the 内部用户手册 strictly per templates/user-manual.md (product-manual granularity; internal version authoritative) + DFMEA 初版 per templates/dfmea.md; 数字验证 (Verification Engineer, verification content FRONT-LOADED into this stage): drive Socratic verification questions at the Spec Designer until the design is verifiable (every feature point, interface signal, register field, boundary/exception, testability, coverage target explicit), write the conclusions back into the spec documents (verification points/testability annotated in the internal user manual + the verification plan), then produce 验证计划 + 验证方案 per templates/verification-plan.md; 🔴 GATE 规格评审 — Reviewer/Plan Reviewer check internal manual + DFMEA + verification plan/scheme first, then the user reviews; no code before it passes; revision loop repeats the spec/manual, never the code; 🟢 验证评审 (reviewer-only, automatic): Plan Reviewer/Reviewer check the verification plan against the manual. STAGE 3 代码设计 IP05: 数字设计 (RTL Code Engineer of the chosen lane): implement per the confirmed manual under the style contract; write the 详细设计 per templates/detail-design.md one-to-one with the code (no code inside the doc); 数字验证 parallel: 环境开发 → 用例开发 → 验证调试 (验证报告 + 验证手册 per templates/validation-report.md / validation-manual.md). Consistency rule: no non-essential difference between detail manual/code and the internal user manual — on real divergence, stash the stage-3 files (git stash / copy aside), re-run stage 2 to correct the manual, get it confirmed, return and redo stage 3; never patch around the divergence. 🟢 设计评审 + 🟢 验证评审 (reviewer-only, no user halt): Reviewer/Plan Reviewer check code + detail manual + validation debug results; the verification engineer reports the manual-vs-code consistency check first. STAGE 4 设计验证 IP08 → IP 发布 IP10: 缺陷解决 (design) ↔ 验证调试/回归 (verification): fix defects, rerun affected cases then full 回归验证 dual-track — track 1 functional per the internal manual (cocotb or UVM lane per backend, all cases PASS), track 2 coverage per the detail design (verilator merge/report or VCS urg + fsdbreport, targets met or justified). 设计发布: 内部 + 外部用户手册 (external = pure subset) per templates/user-manual.md → 🔴 GATE 发布评审 (Reviewer findings first, then user halt). 缺陷分析: 缺陷报告 + Buglist per templates/defect-report.md → 🔴 GATE 缺陷评审 (Reviewer findings first, then user halt; closure before IP10). IP10 = all reviews green + dual-track evidence committed."
+            taskPlanning: captain
+            members:
+              - name: Requirement Analyst
+                role: requirements elicitation (read-only by discipline)
+                provider: deepseek-official
+                model: deepseek-v4-flash
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Read-only requirements analyst. Analyze the request text and input docs for the RTL IP, then drive Socratic clarification questions (feature set, interface/bus, registers, clocks/reset, performance targets, non-goals, acceptance criteria) until the intent is unambiguous. Output: question list + user answers + requirements summary. Never write files, never start design."
+              - name: Spec Designer
+                role: requirements spec + user manual (gate 1 owner)
+                provider: deepseek-official
+                model: deepseek-v4-pro
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Spec designer. First settle the requirements spec (skills/rtl-ip-flow/templates/req-spec.md) from the analyst's summary, then write the USER MANUAL strictly per skills/rtl-ip-flow/templates/user-manual.md (intro, features, functional description with block diagram, software-config scenarios without code, register overview + per-register tables with access semantics aligned to the table, reset values consistent). Report the delivered manual path and wait for the manual review gate."
+              - name: RTL Code Engineer — Verilog/SV
+                role: RTL implementation (Verilog/SV lane)
+                provider: deepseek-official
+                model: deepseek-v4-pro
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "RTL code engineer (Verilog/SystemVerilog). Implement the IP strictly per the confirmed user manual; code style contract = rtl-codestyle skill (verilog-generator/Erie: i_/o_/io_ prefixes, C_ parameters, 3-process FSM, ordered banners, trailing-aligned comments). Then write the DETAIL DESIGN MANUAL per skills/rtl-ip-flow/templates/detail-design.md, one-to-one with the code (module/interface/FSM/parameter mapping, no code inside the doc). Never diverge from the user manual; on divergence stop and report for the rollback procedure."
+              - name: RTL Code Engineer — SpinalHDL
+                role: RTL implementation (SpinalHDL/Chisel lane)
+                provider: deepseek-official
+                model: deepseek-v4-pro
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "RTL code engineer (SpinalHDL/Chisel). Implement the IP strictly per the confirmed user manual, following the project's existing SpinalHDL conventions (RDC-pattern rules: no hardware-computed parameter defaults, no precision-losing resize, split register fields with named fieldAt, doc-sync after every change, no dangling signals). Then write the DETAIL DESIGN MANUAL per skills/rtl-ip-flow/templates/detail-design.md, one-to-one with the code. Never diverge from the user manual; on divergence stop and report."
+              - name: Verification Engineer
+                role: verification code + plan + dual-track verification
+                provider: deepseek-official
+                model: deepseek-v4-pro
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Verification engineer. In stage 3 (parallel with code): derive test points from the user manual, write the verification code and the verification plan per skills/rtl-ip-flow/templates/verification-plan.md; also run the manual-vs-code consistency check and report findings. In stage 4: dual-track verification — functional track per the user manual (cocotb lane or UVM lane per backend; all cases PASS), coverage track per the detail design (verilator coverage merge/report, or VCS urg + fsdbreport; plan targets met or justified). Report evidence paths; no silent target relaxing."
+              - name: Reviewer
+                role: correctness / risk review (gate support)
+                provider: deepseek-official
+                model: deepseek-v4-pro
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "RTL-IP gate reviewer. Produce correctness/risk findings with evidence (file:line); verify manual-vs-code consistency and verification-plan coverage claims; recommend fixes but do not apply them. Review only; never edit files."
+              - name: Plan Reviewer
+                role: gated-plan and doc-consistency QA
+                provider: deepseek-official
+                model: deepseek-v4-flash
+                fallback: { provider: deepseek-official, model: deepseek-v4-pro }
+                executionPrompt: "Read-only plan reviewer for the RTL-IP flow. Verify the staged plan follows the four-gate flow (halts at manual gates, rollback procedure on divergence) and that documents map to their templates; reject only true blockers; never edit files."
+
+- insert:
+    - id: mcp-context7
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: context7
+        transport: streamable-http
+        url: https://mcp.context7.com/mcp
+        toolCallTimeoutMs: 60000
+    - id: mcp-grepapp
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: grep_app
+        transport: streamable-http
+        url: https://mcp.grep.app
+        toolCallTimeoutMs: 60000

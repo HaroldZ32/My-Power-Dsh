@@ -1,0 +1,276 @@
+{
+  "scannedAt": "2026-09-11T04:26:24.164Z",
+  "teamRoot": ".mpd/team",
+  "archivedTeamDirs": 6,
+  "nonArchivedRecords": 19,
+  "records": [
+    {
+      "teamId": "mpd-default",
+      "dir": "mpd-default",
+      "phase": "staged",
+      "createdAt": "2026-09-09T08:15:12.904Z",
+      "approvedAt": null,
+      "members": 11,
+      "tasks": 0,
+      "openTasks": 0,
+      "byStatus": {},
+      "lastDirWrite": "2026-09-09T08:15:12.904Z",
+      "captainSessionId": "session-5a09357c-7859-4eb7-8a03-0dd6accc098a"
+    },
+    {
+      "teamId": "mpd-default-c2be0a8a",
+      "dir": "mpd-default-c2be0a8a",
+      "phase": "staged",
+      "createdAt": "2026-09-09T08:52:38.558Z",
+      "approvedAt": null,
+      "members": 11,
+      "tasks": 0,
+      "openTasks": 0,
+      "byStatus": {},
+      "lastDirWrite": "2026-09-09T08:52:38.559Z",
+      "captainSessionId": "session-71b34114-6cc5-4687-b493-77b06108f33f"
+    },
+    {
+      "teamId": "mpd-default-53380813",
+      "dir": "mpd-default-53380813",
+      "phase": "staged",
+      "createdAt": "2026-09-09T10:20:34.779Z",
+      "approvedAt": null,
+      "members": 11,
+      "tasks": 0,
+      "openTasks": 0,
+      "byStatus": {},
+      "lastDirWrite": "2026-09-09T10:20:34.780Z",
+      "captainSessionId": "session-512d2154-183e-486d-8fbf-8a708a1dfbc3"
+    },
+    {
+      "teamId": "agent-teams-sidebar-migration",
+      "dir": "agent-teams-sidebar-migration",
+      "phase": "running",
+      "createdAt": "2026-09-10T01:39:05.914Z",
+      "approvedAt": "2026-09-10T01:56:18.367Z",
+      "members": 11,
+      "tasks": 10,
+      "openTasks": 1,
+      "byStatus": {
+        "completed": 8,
+        "failed": 1,
+        "pending": 1
+      },
+      "lastDirWrite": "2026-09-10T03:16:04.289Z",
+      "captainSessionId": "session-86ffcf79-1345-4351-aa20-de9706a23999"
+    },
+    {
+      "teamId": "mpd-default-c146a414",
+      "dir": "mpd-default-c146a414",
+      "phase": "staged",
+      "createdAt": "2026-09-10T05:44:32.491Z",
+      "approvedAt": null,
+      "members": 11,
+      "tasks": 0,
+      "openTasks": 0,
+      "byStatus": {},
+      "lastDirWrite": "2026-09-10T05:44:32.493Z",
+      "captainSessionId": "session-39bf6a6a-b67a-4635-9a8c-b1d192ad7000"
+    },
+    {
+      "teamId": "mpd-default-84e50f06",
+      "dir": "mpd-default-84e50f06",
+      "phase": "staged",
+      "createdAt": "2026-09-10T07:04:56.626Z",
+      "approvedAt": null,
+      "members": 11,
+      "tasks": 8,
+      "openTasks": 8,
+      "byStatus": {
+        "pending": 8
+      },
+      "lastDirWrite": "2026-09-10T07:07:23.383Z",
+      "captainSessionId": "session-033a1c01-a3b6-4d81-9446-4da2d24d1db2"
+    },
+    {
+      "teamId": "mpd-default-9b7de114",
+      "dir": "mpd-default-9b7de114",
+      "phase": "staged",
+      "createdAt": "2026-09-10T12:52:32.059Z",
+      "approvedAt": null,
+      "members": 11,
+      "tasks": 0,
+      "openTasks": 0,
+      "byStatus": {},
+      "lastDirWrite": "2026-09-10T12:52:32.063Z",
+      "captainSessionId": "session-6d6ae0b9-d9a6-4b42-b461-7f6d0821aec9"
+    },
+    {
+      "teamId": "mpd-default-cc23f374",
+      "dir": "mpd-default-cc23f374",
+      "phase": "staged",
+      "createdAt": "2026-09-10T13:07:15.665Z",
+      "approvedAt": null,
+      "members": 11,
+      "tasks": 0,
+      "openTasks": 0,
+      "byStatus": {},
+      "lastDirWrite": "2026-09-10T13:07:15.665Z",
+      "captainSessionId": "session-c9d574b1-516d-4c61-9bec-8579c9581fd6"
+    },
+    {
+      "teamId": "mpd-default-1f285182",
+      "dir": "mpd-default-1f285182",
+      "phase": "staged",
+      "createdAt": "2026-09-10T13:08:13.641Z",
+      "approvedAt": null,
+      "members": 11,
+      "tasks": 0,
+      "openTasks": 0,
+      "byStatus": {},
+      "lastDirWrite": "2026-09-10T13:08:13.641Z",
+      "captainSessionId": "session-54c9cbcc-65bd-478c-9ea9-850ea0c6642c"
+    },
+    {
+      "teamId": "mpd-default-98620900",
+      "dir": "mpd-default-98620900",
+      "phase": "staged",
+      "createdAt": "2026-09-10T13:08:28.779Z",
+      "approvedAt": null,
+      "members": 11,
+      "tasks": 0,
+      "openTasks": 0,
+      "byStatus": {},
+      "lastDirWrite": "2026-09-10T13:08:28.779Z",
+      "captainSessionId": "session-0bbfd59c-a1a3-45ef-a1f6-ee6ee9f8363b"
+    },
+    {
+      "teamId": "mpd-default-19f64d11",
+      "dir": "mpd-default-19f64d11",
+      "phase": "staged",
+      "createdAt": "2026-09-10T13:09:15.183Z",
+      "approvedAt": null,
+      "members": 11,
+      "tasks": 0,
+      "openTasks": 0,
+      "byStatus": {},
+      "lastDirWrite": "2026-09-10T13:09:15.183Z",
+      "captainSessionId": "session-fa626247-95a5-49a4-9912-0328e0c51feb"
+    },
+    {
+      "teamId": "mpd-default-4a3d20e1",
+      "dir": "mpd-default-4a3d20e1",
+      "phase": "staged",
+      "createdAt": "2026-09-10T13:09:31.176Z",
+      "approvedAt": null,
+      "members": 11,
+      "tasks": 0,
+      "openTasks": 0,
+      "byStatus": {},
+      "lastDirWrite": "2026-09-10T13:09:31.177Z",
+      "captainSessionId": "session-81295351-985c-4015-b75a-8f2d88383965"
+    },
+    {
+      "teamId": "mpd-default-47c350bf",
+      "dir": "mpd-default-47c350bf",
+      "phase": "staged",
+      "createdAt": "2026-09-10T13:18:20.619Z",
+      "approvedAt": null,
+      "members": 11,
+      "tasks": 0,
+      "openTasks": 0,
+      "byStatus": {},
+      "lastDirWrite": "2026-09-10T13:18:20.619Z",
+      "captainSessionId": "session-7c8ab0ad-5e53-422b-9ada-30c53fcd7eb9"
+    },
+    {
+      "teamId": "mpd-default-5b99df58",
+      "dir": "mpd-default-5b99df58",
+      "phase": "staged",
+      "createdAt": "2026-09-10T13:18:26.880Z",
+      "approvedAt": null,
+      "members": 11,
+      "tasks": 0,
+      "openTasks": 0,
+      "byStatus": {},
+      "lastDirWrite": "2026-09-10T13:18:26.880Z",
+      "captainSessionId": "session-81534fa9-866e-4a4e-8b7a-c7ce73e55c28"
+    },
+    {
+      "teamId": "mpd-default-b550f267",
+      "dir": "mpd-default-b550f267",
+      "phase": "staged",
+      "createdAt": "2026-09-10T13:18:34.337Z",
+      "approvedAt": null,
+      "members": 11,
+      "tasks": 0,
+      "openTasks": 0,
+      "byStatus": {},
+      "lastDirWrite": "2026-09-10T13:18:34.337Z",
+      "captainSessionId": "session-7f90677d-e8e1-4e53-b458-f4dc715c274b"
+    },
+    {
+      "teamId": "mpd-default-2d2445da",
+      "dir": "mpd-default-2d2445da",
+      "phase": "staged",
+      "createdAt": "2026-09-10T13:18:40.230Z",
+      "approvedAt": null,
+      "members": 11,
+      "tasks": 0,
+      "openTasks": 0,
+      "byStatus": {},
+      "lastDirWrite": "2026-09-10T13:18:40.231Z",
+      "captainSessionId": "session-28a5ac5c-47f5-4947-a4aa-bd6d09bc70a8"
+    },
+    {
+      "teamId": "mpd-default-d3943705",
+      "dir": "mpd-default-d3943705",
+      "phase": "staged",
+      "createdAt": "2026-09-10T13:27:35.646Z",
+      "approvedAt": null,
+      "members": 11,
+      "tasks": 0,
+      "openTasks": 0,
+      "byStatus": {},
+      "lastDirWrite": "2026-09-10T13:27:35.647Z",
+      "captainSessionId": "session-e29b687d-7208-4a05-9a6b-f09b1acd1934"
+    },
+    {
+      "teamId": "mpd-default-7332aba4",
+      "dir": "mpd-default-7332aba4",
+      "phase": "running",
+      "createdAt": "2026-09-11T02:39:33.997Z",
+      "approvedAt": "2026-09-11T02:58:38.179Z",
+      "members": 11,
+      "tasks": 14,
+      "openTasks": 1,
+      "byStatus": {
+        "completed": 12,
+        "failed": 1,
+        "in_progress": 1
+      },
+      "lastDirWrite": "2026-09-11T04:26:07.653Z",
+      "captainSessionId": "session-aded9c07-4cd3-4c82-ac31-22ce8c47c5be"
+    },
+    {
+      "teamId": "mpd-default-e35e7807",
+      "dir": "mpd-default-e35e7807",
+      "phase": "staged",
+      "createdAt": "2026-09-11T03:51:32.719Z",
+      "approvedAt": null,
+      "members": 11,
+      "tasks": 0,
+      "openTasks": 0,
+      "byStatus": {},
+      "lastDirWrite": "2026-09-11T03:51:32.719Z",
+      "captainSessionId": "session-7f0c5dea-475b-4175-b698-46fb55a0dc20"
+    }
+  ],
+  "readOnly": {
+    "before": {
+      "sha256": "f2a0f57a3e4f93d4b310624ce1ffeb5bf73b946a6b2e00d057f155934943e8e5",
+      "files": 99
+    },
+    "after": {
+      "sha256": "f2a0f57a3e4f93d4b310624ce1ffeb5bf73b946a6b2e00d057f155934943e8e5",
+      "files": 99
+    },
+    "unchanged": true
+  }
+}

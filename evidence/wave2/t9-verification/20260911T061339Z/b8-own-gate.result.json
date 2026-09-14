@@ -1,0 +1,134 @@
+{
+  "task": "t9 own B8 gate (checkout + resolver ordering + packed)",
+  "stamp": "2026-09-11T06:21:17.545Z",
+  "scrubbedEnvKeys": [
+    "MPD_AST_GREP_SG_PATH",
+    "MPD_AST_GREP_BIN_DIR",
+    "MPD_DSH_ASTGREP_CLI",
+    "MPD_CODEGRAPH_BIN",
+    "MPD_DSH_CODEGRAPH_CLI"
+  ],
+  "cwdOutsideBundle": "/tmp/t9-b8-mw2Mrh/cwd-outside-bundle",
+  "fixture": "/root/dshProj/my-power-dsh/tests/mcp-fixtures/sample.c",
+  "layout": {
+    "checkout": "/root/dshProj/my-power-dsh/packages/mpd-mcp-astgrep/launch.mjs",
+    "packedTgz": "mpd-dsh-mpd-0.3.2.tgz"
+  },
+  "packed": {
+    "skipped": false,
+    "tgz": "mpd-dsh-mpd-0.3.2.tgz",
+    "tier": {
+      "a": {
+        "binary": "/tmp/t9-b8-mw2Mrh/packed-profile/node_modules/@ast-grep/cli/ast-grep",
+        "source": "require"
+      },
+      "c": {
+        "binary": "/tmp/t9-b8-mw2Mrh/packed-profile/node_modules/@colbymchenry/codegraph/npm-shim.js",
+        "source": "require"
+      }
+    }
+  },
+  "checks": [
+    {
+      "name": "checkout: ast-grep launcher starts as a real MCP server from a cwd outside the bundle (no env pins)",
+      "pass": true,
+      "detail": "tools=[\"search\",\"rewrite\",\"scan\"] timeout=undefined stderr="
+    },
+    {
+      "name": "checkout: real ast-grep MCP search returns a real match (not BINARY_NOT_FOUND)",
+      "pass": true,
+      "detail": "{\"schemaVersion\":1,\"ok\":true,\"kind\":\"search\",\"workdir\":\"/tmp/t9-b8-mw2Mrh/cwd-outside-bundle\",\"matches\":[{\"path\":\"/root/dshProj/my-power-dsh/tests/mcp-fixtures/sample.c\",\"language\":\"c\",\"text\":\"return 0;\",\"range\":{\"start\":{\"line\":1,\"column\":17,\"byteOffset\":17},"
+    },
+    {
+      "name": "checkout negative control: MPD_AST_GREP_SG_PATH=/nonexistent/sg -> BINARY_NOT_FOUND",
+      "pass": true,
+      "detail": "{\"schemaVersion\":1,\"ok\":false,\"error\":{\"code\":\"BINARY_NOT_FOUND\",\"message\":\"ast-grep binary not found for linux: no candidate passed the --version probe across the env override, MPD runtime, skill bin cache, PATH, or Homebrew prefixes.\",\"retryable\":false,\"phas"
+    },
+    {
+      "name": "checkout: codegraph launcher serves the real tool surface (no 'skipped' stub)",
+      "pass": true,
+      "detail": "tools=[\"codegraph_explore\"] stderr="
+    },
+    {
+      "name": "checkout: real codegraph_explore call answers with content",
+      "pass": true,
+      "detail": "**Exploration: norm**\n\nFound 25 symbols across 3 files.\n\n**Blast radius — what depends on these (update/verify before editing)**\n\n- `NormalizedProfileTask` (packages/mpd-agent-teams-plugin/lib/types/profiles.d.ts:66) — 1"
+    },
+    {
+      "name": "checkout negative control: MPD_CODEGRAPH_BIN=/nonexistent/codegraph -> unavailable, never a live tool surface",
+      "pass": true,
+      "detail": "tools=[] stderr=CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.\n"
+    },
+    {
+      "name": "resolver: the .toolchain `sg` wrapper is REJECTED by --version (deprecated, exit != 0)",
+      "pass": true,
+      "detail": "exit=1 stdout=\"\" stderr=\"========================================================================\\nWARNING: `sg` is deprecated. Use `ast-grep` instead.\\n==================================\""
+    },
+    {
+      "name": "resolver: the .toolchain `ast-grep` passes --version",
+      "pass": true,
+      "detail": "exit=0 stdout=\"ast-grep 0.45.3\""
+    },
+    {
+      "name": "resolver: checkout layout picks the .toolchain `ast-grep` binary (never the sg wrapper)",
+      "pass": true,
+      "detail": "{\"binary\":\"/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/ast-grep\",\"source\":\"toolchain\"}"
+    },
+    {
+      "name": "resolver: checkout layout picks the .toolchain codegraph binary",
+      "pass": true,
+      "detail": "{\"binary\":\"/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph\",\"source\":\"toolchain\"}"
+    },
+    {
+      "name": "ordering: with both candidates present the resolver picks ast-grep over sg",
+      "pass": true,
+      "detail": "{\"binary\":\"/tmp/t9-b8-mw2Mrh/bin-dir/ast-grep\",\"source\":\"bin-dir\"}"
+    },
+    {
+      "name": "ordering: a bin-dir holding ONLY the deprecated sg wrapper is rejected by the probe (no sg is ever returned)",
+      "pass": true,
+      "detail": "{\"binary\":\"/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/ast-grep\",\"source\":\"toolchain\"}"
+    },
+    {
+      "name": "resolver unit suite passes",
+      "pass": true,
+      "detail": " 10 pass |  0 fail |  22 expect() calls | Ran 10 tests across 1 file. [42.00ms]"
+    },
+    {
+      "name": "packed: npm pack of the staged bundle succeeds",
+      "pass": true,
+      "detail": "exit=0 tgz=mpd-dsh-mpd-0.3.2.tgz npm notice\nnpm notice 📦  @mpd-dsh/mpd@0.3.2\nnpm notice Tarball Contents\nnpm notice 5.2kB LICENSE-NOTICES.md\nnpm notice 4.0kB LICENSE.md\nnpm notice 8.9kB README.md\nnpm notice 8.9kB README.zh-CN.md\nnpm"
+    },
+    {
+      "name": "packed: tarball install succeeds",
+      "pass": true,
+      "detail": "exit=0 \nadded 7 packages in 53s\n"
+    },
+    {
+      "name": "packed: installed tree ships both launchers",
+      "pass": true,
+      "detail": "/tmp/t9-b8-mw2Mrh/packed-profile/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-astgrep/launch.mjs=true /tmp/t9-b8-mw2Mrh/packed-profile/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-codegraph/launch.mjs=true"
+    },
+    {
+      "name": "packed: real ast-grep MCP search through the INSTALLED launcher returns a real match",
+      "pass": true,
+      "detail": "{\"schemaVersion\":1,\"ok\":true,\"kind\":\"search\",\"workdir\":\"/tmp/t9-b8-mw2Mrh/cwd-outside-bundle\",\"matches\":[{\"path\":\"/root/dshProj/my-power-dsh/tests/mcp-fixtures/sample.c\",\"language\":\"c\",\"text\":\"return 0;\",\"range\":{\"start\":{\"line\":1,\"column\":"
+    },
+    {
+      "name": "packed negative control: wrong caller pin -> BINARY_NOT_FOUND",
+      "pass": true,
+      "detail": "{\"schemaVersion\":1,\"ok\":false,\"error\":{\"code\":\"BINARY_NOT_FOUND\",\"message\":\"ast-grep binary not found for linux: no candidate passed the --version probe across the env override, MPD runtime, skill bin"
+    },
+    {
+      "name": "packed: real codegraph call through the INSTALLED launcher answers",
+      "pass": true,
+      "detail": "tools=[\"codegraph_explore\"] stderr="
+    },
+    {
+      "name": "packed: resolution arrives via createRequire (packed optionalDependency), not the checkout toolchain",
+      "pass": true,
+      "detail": "{\"a\":{\"binary\":\"/tmp/t9-b8-mw2Mrh/packed-profile/node_modules/@ast-grep/cli/ast-grep\",\"source\":\"require\"},\"c\":{\"binary\":\"/tmp/t9-b8-mw2Mrh/packed-profile/node_modules/@colbymchenry/codegraph/npm-shim.js\",\"source\":\"require\"}}"
+    }
+  ],
+  "allPass": true
+}

@@ -1,0 +1,88 @@
+{
+  "change": "retier the 5 ex-pro members of the `mpd` team profile to deepseek-v4-flash + reasoning_effort max",
+  "surfaces": {
+    "A_team_profile": "packages/mpd-bundle/cordis.patch.yml (agent-teams row, profiles.mpd.members)",
+    "B_one_shot_roster": "packages/mpd-roles-plugin/src/roles.data.ts (chains; provider+model only, no forced effort)"
+  },
+  "verified_at": "2026-09-13T13:19:57.656Z",
+  "hashes": {
+    "packages/mpd-bundle/cordis.patch.yml": "7dbedcc6b557dc75d0a3a080020d51331087435b72bebbd25a95ba7e18320b04",
+    "packages/mpd-roles-plugin/src/roles.data.ts": "1bb3240476a7409cba83f20ea291bc1ec97a010b886091f7b4f9f6bac52cc53c",
+    "packages/mpd-roles-plugin/test/roles.test.ts": "d33c6e8863a7389fe85c19f5c3a497919fe4b5b33046a8727f1df26bfb24894e",
+    "docs/user-guide.md": "b19b19dd1a6f6d0e7725e0027db969024949d1be928f26d48b5038071c8b4ac9",
+    "docs/user-guide.zh-CN.md": "bf6878c50cf4cb99c20e0c72582aeb4627f635d455a7eea19f5e42723483ef50"
+  },
+  "lane1_row_config_conformance": {
+    "driver": "verify-profile.mjs (bun)",
+    "checks": "26/26",
+    "green": true,
+    "negative_control": "schema rejects reasoning_effort: 42 (type validation)",
+    "red_control_on_HEAD": "15/26 checks — the 5 model + 5 effort + pro-tier-scan assertions fail"
+  },
+  "lane2_isolated_mount_boot": {
+    "driver": "boot-verify.mjs + probe.mjs (bun)",
+    "sandbox": {
+      "home": "/tmp/mpd-retier-QHTYXv/home",
+      "ws": "/tmp/mpd-retier-QHTYXv/ws",
+      "port": 4443,
+      "isolated": true
+    },
+    "profile_members_seen": 11,
+    "expro_after": [
+      {
+        "name": "Architect",
+        "model": "deepseek-v4-flash",
+        "effort": "max",
+        "fallback": "deepseek-v4-flash"
+      },
+      {
+        "name": "Planner",
+        "model": "deepseek-v4-flash",
+        "effort": "max",
+        "fallback": "deepseek-v4-flash"
+      },
+      {
+        "name": "Reviewer",
+        "model": "deepseek-v4-flash",
+        "effort": "max",
+        "fallback": "deepseek-v4-flash"
+      },
+      {
+        "name": "Lead",
+        "model": "deepseek-v4-flash",
+        "effort": "max",
+        "fallback": "deepseek-v4-flash"
+      },
+      {
+        "name": "Senior Engineer",
+        "model": "deepseek-v4-flash",
+        "effort": "max",
+        "fallback": "deepseek-v4-flash"
+      }
+    ],
+    "resolve_lanes": [
+      {
+        "label": "member-expro",
+        "status": "ok",
+        "rest": "provider=deepseek-official model=deepseek-v4-flash effort=max"
+      },
+      {
+        "label": "member-vision",
+        "status": "ok",
+        "rest": "provider=deepseek-official model=deepseek-v4-flash-vision-exp effort=high"
+      }
+    ],
+    "crash_signatures": [],
+    "negative_control": "rejected :: provider \"deepseek-official\" model \"deepseek-v4-flash\" does not support reasoning effort \"bogus-effort\"",
+    "red_control_on_HEAD": "raw/boot.RED.log — the same boot reports model=deepseek-v4-pro effort=undefined"
+  },
+  "gates": {
+    "bun test packages": "298 pass / 0 fail",
+    "bun run typecheck": "clean",
+    "bun run test:qa": "all self-tests passed",
+    "node scripts/verify-vendor.mjs": "PASS",
+    "preset-conformance --self-test": "ok: 30 harness rows conform, row parity 31/31"
+  },
+  "take_effect": "restart the dsh process — the running process loaded the patch layer at session start",
+  "dump_config_note": "no --dump-config result is cited as load evidence (AGENTS.md §4)"
+}

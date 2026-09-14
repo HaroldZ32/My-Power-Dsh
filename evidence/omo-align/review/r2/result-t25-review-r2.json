@@ -1,0 +1,281 @@
+{
+  "schema": "mpd-omo-align-review/1",
+  "task": "t25 (review round 2, reviewed task t24)",
+  "kind": "review",
+  "round": 2,
+  "reviewer": "Reviewer",
+  "attemptId": "49ab8493-296c-47f6-85ca-cec9e456e343",
+  "reviewedTasks": [
+    "t24 (repair r2 of t18 needs_revision)"
+  ],
+  "reviewedAt": "2026-09-13T15:34Z",
+  "verdict": "needs_revision",
+  "verdictScope": "Three of the four repairs are real and I reproduced them myself: F2 view parity (taskVisualState now routes through the same three-state predicate as claim/scheduler, snapshot carries failedDependencies, and the task-contract tool carries failed_dependencies — the dependent really claims), F5 (schema stateDir default is now .mpd/team), and F6 (TEAM_TOOL_NAMES is set-equal to the frozen 14-name list with the task-contract tool captain-only). The F1 repair is HALF right: C is now correctly aggregated into one signal at its own >=2-of-3 bar (the original F1 defect), but the same edit changed the gate's admission threshold from the frozen `matchedSignals >= 2` to `signals.length >= 1`, so the exact false-positive sentence I filed is STILL routed, and a NEW single-signal false-positive class (a bare list of 4 deliverable verbs) now routes too. That contradicts the frozen contract's literal trigger and the review's own 'the false positive must not stage a team' criterion, so this round cannot pass as delivered. NOTE: I confirm the writer's mathematical claim that no rule using only the frozen signals can admit frozen complex #1 and reject my sentence (their sub-signal profiles are identical) — the resolution is one of three captain-level changes, listed in F1's requiredFix.",
+  "revision": {
+    "headAtReview": "6524e759ba3a23c23f6477384ec660e462abf048",
+    "branch": "dev",
+    "settleEvidence": "I ran the mandated QA case myself; its settle step reported rev 6524e75 and gateHash 495d0f4ea986947b5853cf3446eb11af087c778cf7a88011138908cb0fa64208, which is byte-identical to my own sha256 of lib/session-start.js — so the revision I measured is the revision I cite.",
+    "pinnedFileHashes": {
+      "packages/mpd-agent-teams-plugin/lib/session-start.js": "495d0f4ea986947b5853cf3446eb11af087c778cf7a88011138908cb0fa64208",
+      "packages/mpd-agent-teams-plugin/lib/state.js": "085eeb013b61fd0de1ebbb5513cb0151500c8365fe8e0c7d628145bc54bdd065",
+      "packages/mpd-agent-teams-plugin/lib/snapshot.js": "fc534afdd0102314c3d24bf7b468e958295a29c26a9b91c4ddaa5b9fcbe3a365",
+      "packages/mpd-agent-teams-plugin/lib/scheduler.js": "4fff9a9713d3ba86c888ac17048859ba2c87f7dfb0ac7d9379e3787e5e52900f",
+      "packages/mpd-agent-teams-plugin/lib/tool-names.js": "19d3dab403bc27e1cfa845a7db816a18d22cab410407f0953470196f23782884"
+    },
+    "workingTreeAtReview": "only docs/** (4 modified + 2 new ledger docs) and evidence/** untracked; no source file dirty"
+  },
+  "samiReproductions": [
+    {
+      "assertion": "t24 A1/F1: C is ONE signal at its own 2-of-3 bar",
+      "how": "Own import of lib/session-start.js::evaluateComplexityGate with the frozen prompt sets and probes.",
+      "result": "TRUE: signals are never C1/C2/C3; 'check the test' => no C; frozen complex #1 => exactly ['C']. The original F1 defect (three top-level C sub-signals) is genuinely fixed.",
+      "verdict": "reproduced"
+    },
+    {
+      "assertion": "F1 admission: the measured false positive must not stage a team",
+      "how": "Same driver, plus the offline gate probe and the packaged case.",
+      "result": "FALSE: evaluateComplexityGate('Check the test, build the package, verify the output.') => signals ['C'], trigger TRUE, routeDecision => action 'provision'. The trigger became `signals.length >= 1` (MATCHED_SIGNAL_MIN stays 2 but C_SUBSIGNAL_MIN=2 gates the C push, and the trigger no longer uses MATCHED_SIGNAL_MIN at all). 'align migrate refactor audit' (B only) also triggers. See F1.",
+      "verdict": "contradicted"
+    },
+    {
+      "assertion": "F2 view parity (panel vs task-contract) on a real on-disk team record",
+      "how": "Own re-run of the r3 tests and direct read of the shipped wiring; plus the case-level claim path.",
+      "result": "TRUE: taskVisualState(status, tasks, dependencies) returns 'open' for a failed-dependency dependent and 'blocked' for pending/claimed/in_progress/unknown; snapshot.js:105-108 emits failedDependencies; tools.js:2491 + 1962 emit failed_dependencies from the same predicate; the r3-view-parity test claims the dependent through the real agent_teams_claim_task and it succeeds.",
+      "verdict": "reproduced"
+    },
+    {
+      "assertion": "Mandated two-sided case incl. the NEW reverse control (t24 item 4)",
+      "how": "node skills/dsh-qa/scripts/session-start-team.mjs (my own run, exit 0).",
+      "result": "PASS: simpleTeams [0,0,0] / simpleNotices [false,false,false]; complexTeams [1,1,1] / complexNotices [true,true,true] (staged mpd, 11 members, 0 spawned); negativeControl {ok:true, teams:0, notice:false, disarmed:true} via autoRoute=false. The reverse control is a genuine addition and it works.",
+      "verdict": "reproduced"
+    },
+    {
+      "assertion": "F5 stateDir + F6 tool set + skills/VENDOR_LOCK pairing + delta discipline",
+      "how": "new Config({}) ; read of tool-names.js ; git log of skills/VENDOR_LOCK ; patch-agent-teams-fixes --check ; verify-vendor.",
+      "result": "config.stateDir === '.mpd/team'; TEAM_TOOL_NAMES 14 set-equal to the frozen list (task_contract present, MEMBER stays 4, CAPTAIN derived 10 and includes the contract tool); the skills anchors and the single re-pin are in the same commit (ee6b84d0 -> de1bfe89, 329 files) with no later skills commit; --check clean at 20 regions across 6 adopted files; verify-vendor PASS.",
+      "verdict": "reproduced"
+    }
+  ],
+  "acceptanceResults": [
+    {
+      "criterion": "复核验证证据是否真的支撑结论：抽查复现 t17 的至少 3 条断言（自己动手跑），指出任何恒真断言或证据与结论不符之处",
+      "status": "passed",
+      "evidence": "I re-ran five things myself and they are recorded above: the packaged two-sided case (exit 0, rev 6524e75 / gate 495d0f4e…), the C aggregation property, the F2 parity wiring plus a real claim, the F5/F6 assertions, and the gate-admission measurements. Evidence-vs-conclusion defects I found are filed as F1 (the F1 conclusion 'C aggregated' is true but the round's headline claim that the repair closed the false positive is not) and F3 (a tautological argument in the r3 tests: taskVisualState is called with the argument order (tasks, dependencies) while the production call site and the declaration use (tasks, dependencies) — see F3 for the exact inert case)."
+    },
+    {
+      "criterion": "核对仓库绑定规范：适配器唯一接触面、状态只落工作区 .mpd/team、工具名与斜杠指令名未变、双语文档规则、mpd-delta 区域与 self-fix-tests 一致性",
+      "status": "passed",
+      "evidence": "stateDir resolves to the session workspace and the schema default now matches the frozen value; TEAM/MEMBER/CAPTAIN tool sets verified; command.js and profiles.js untouched (no diff in this round); delta --check clean at 20 regions / 6 files including the new ready-task-predicate region; the bundle README pair unchanged this round. docs/** is still uncommitted but that is a separate deferred item, not a rule violation (the EN/zh pairing is intact)."
+    },
+    {
+      "criterion": "核对 skills/** 单写者与 VENDOR_LOCK 配对",
+      "status": "passed",
+      "evidence": "t24 modified skills/dsh-qa/scripts/session-start-team.mjs and did the ONE re-pin in the same commit (skills treeSha ee6b84d0 -> de1bfe89, fileCount 329 unchanged); `git log 6524e75 -- skills/ VENDOR_LOCK.json` shows the pair together and no second skills writer; my verify-vendor re-run PASS. The writer's self-correction of the initially wrong commit-message claim is recorded in the commit message itself."
+    },
+    {
+      "criterion": "核对 OPT-1 的实现是否真的解除了「失败依赖永久钉死下游」，并独立复现一次（构造 failed 依赖 → 下游仍可 claim）；同时确认该改动没有把正常路径也放开（反向控制）",
+      "status": "passed",
+      "evidence": "Predicate and view now agree: failed dependency => dependencyStates.blocking [] => taskVisualState 'open', snapshot.failedDependencies ['A'], task-contract failed_dependencies ['A'], and the dependent really claims through the real tool (r3-view-parity drives agent_teams_claim_task on a real team record). Reverse control holds: pending/claimed/in_progress/cancelled/unknown all still render 'blocked'. The t18 F2 defect is closed."
+    },
+    {
+      "criterion": "本轮在 t27 将复核的 R4 三条（兜底 / 每次先问 / slashCommand:false 告警 + 缺 profile 报错）是否已交付",
+      "status": "failed",
+      "evidence": "NOT DELIVERED — t22 and t26 are still `pending` on the board with empty outputs at review time (the captain message announcing t24 lists them as the still-open dependency chain). My t27 assignment names t22 and t26 as its dependencies and the board still blocks t27 on them. I therefore cannot audit the R4 paths here; the t24 round did not touch them (its changedPaths cover lib/index.js stateDir, session-start.js, state.js, snapshot.js, scheduler.js, tool-names.js, tests and the two-sided case only)."
+    }
+  ],
+  "commandsRun": [
+    {
+      "command": "cd /root/dshProj/my-power-dsh && node skills/dsh-qa/scripts/session-start-team.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "PASS at settled rev 6524e75 / gateHash 495d0f4e…; simple 3/3 silent, complex 3/3 staged (mpd, 11 members, 0 spawned) + 1 notice each; negativeControl disarmed => 0 teams / 0 notices. Evidence dir evidence/dsh-qa/session-start-team/2026-09-13T15-19-10.581Z."
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && node skills/dsh-qa/scripts/session-start-team.mjs --self-test",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "Offline gate probe: SIMPLE all untriggered, COMPLEX all triggered, markers consumed."
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && bun test packages/mpd-agent-teams-plugin/test/r3-f1-signal-c.test.mjs packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "8 pass / 0 fail across the two r3 suites (F1 signal shape, F2 parity + real claim, F5, F6)."
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && node --input-type=module -e \"<evaluateComplexityGate over frozen sets + probes>\"",
+      "status": "failed",
+      "exitCode": 0,
+      "evidence": "Reveals F1: the false-positive sentence and the B-only probe both trigger (signals ['C'] and ['B'] respectively) under the new `signals.length >= 1` trigger, while the frozen contract says `matchedSignals >= 2`."
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && node scripts/patch-agent-teams-fixes.mjs --check && node scripts/verify-vendor.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "20 mpd delta regions across 6 adopted files, already applied; verify-vendor PASS (skills 329 files, treeSha OK)."
+    },
+    {
+      "command": "cd /root/dshProj/my-power-dsh && node -e \"const r=require('./evidence/omo-align/review/result.json'); console.log('verdict:', r.verdict)\"",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "verdict: needs_revision"
+    }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "blocker",
+      "file": "packages/mpd-agent-teams-plugin/lib/session-start.js",
+      "line": 190,
+      "problem": "The F1 repair fixed the SIGNAL SHAPE but silently changed the ADMISSION threshold, so the filed false positive still routes and a new one appeared. `evaluateComplexityGate` now pushes exactly one 'C' when its own sub-signals reach C_SUBSIGNAL_MIN=2 (correct, my measurement confirms signals are never C1/C2/C3), but the same edit set `trigger = explicitFlag || signals.length >= 1`, whereas the frozen contract says `trigger = (matchedSignals >= 2) OR anyExplicitFlag` (MATCHED_SIGNAL_MIN=2 remains exported and is now unused by the trigger). Measured consequences on the settled revision: (a) 'Check the test, build the package, verify the output.' => signals ['C'] => trigger true => routeDecision 'provision' — the exact sentence my t18 F1 filed, which the review criterion says must NOT stage a team; (b) 'align migrate refactor audit' (signal B alone) => trigger true; any single D (plan artifact) also triggers. So the round's headline claim (false positive closed) is contradicted by measurement, and two single-signal classes (a verb list, a plan artifact) bypass the two-signal bar that the frozen contract still declares. I CONFIRM the writer's mathematical argument: the false-positive sentence and frozen complex #1 have IDENTICAL frozen sub-signal profiles (B<4, C1<3, C2>=3, C3>=3 => C only), so no rule over the frozen signals can admit complex #1 and reject the sentence. The resolution is therefore captain-level, and the writer asking for sign-off instead of silently tuning is the right behaviour.",
+      "requiredFix": "One explicit captain decision, then make code, contract and evidence agree: (A) ACCEPT the widened trigger — restore `MATCHED_SIGNAL_MIN` usage becomes a documented contract amendment (`trigger = (anyC >= 2-of-3) OR explicitFlag OR any other single soft signal`) plus a trigger-rate re-measurement on ordinary prompts, because single-signal routing means any three-verb sentence stages a team; or (B) KEEP the frozen >=2 trigger — then the frozen complex prompts #1 and #3 are unreachable and the contract's frozen prompt set must be revised (the contract itself says testPrompts may not be silently re-tuned, so this needs a deliberate amendment); or (C) change the C sub-signal definitions so complex #1 separates from a plain verb list. Do not ship the current combination: code says >=1, contract says >=2, and the review's own counter-example assertion fails.",
+      "statusAtClosure": "closed-by-captain-contract-amendment (option A ratified; see f1ClosureConfirmation)"
+    },
+    {
+      "id": "F2",
+      "severity": "low",
+      "file": "packages/mpd-agent-teams-plugin/lib/types/state.d.ts",
+      "line": 221,
+      "problem": "The shipped type declaration is stale after the F2 repair: `taskVisualState(status, dependencies, tasks)` with `readonly string[]` / `readonly TeamTask[]` still declares the OLD parameter order and types, while the implementation is now `taskVisualState(status, tasks, dependencies)` with array arguments. Nothing in lib/ consumes the d.ts at runtime (no TS consumer calls it in-repo), so this is a type-level drift with a latent hazard for any TS consumer that trusts the declaration — and the stale copy also ships in dist/mpd-package. The r3-view-parity test is not affected because it imports the implementation, but one of its cases silently exercises the wrong slot (the 'unknown dependency id still blocks' case passes ['ghost'] as the tasks argument and [] as dependencies, so it asserts a property of the wrong call rather than the intended unknown-id path).",
+      "requiredFix": "Regenerate/repair `lib/types/state.d.ts` to the new signature (status, tasks, dependencies) and fix the unknown-id case in r3-view-parity to pass the dependency list in the correct slot.",
+      "statusAtClosure": "closed (view parity); residual: stale d.ts signature"
+    },
+    {
+      "id": "F3",
+      "severity": "low",
+      "file": "evidence/omo-align/implementation/r3/result.json",
+      "line": 0,
+      "problem": "One evidence claim overstates what was verified: the F2 entry says `unfilled-failed_dependencies claim was already false after R2 (verified)` and the coverage table says taskContractView already received allTasks in R2. My t18 measurement was the opposite (taskContractView called dependencyStates without allTasks, so failed_dependencies was empty), and the current wiring is right only because tools.js:1962 now passes `team.tasks`. The end state is correct; the provenance wording is inaccurate and would mislead a future audit into believing R2 had already closed it.",
+      "requiredFix": "Correct the wording to 'fixed in this round: tools.js now passes allTasks into taskContractView' (or provide the R2 revision where it was already true). Not a product defect.",
+      "statusAtClosure": "open-low"
+    },
+    {
+      "id": "F4",
+      "severity": "low",
+      "file": "evidence/omo-align/implementation/r3/freeze.json",
+      "line": 0,
+      "problem": "The round's freeze pins head 1c83efc and 9 files, but the delivered training tip of the branch is 6524e75 (two commits later: the S3-predicate commit and the docs/evidence commit). The frozen file hashes still hold at the tip for the lib files I re-measured, so the freeze is not wrong, but it does not pin the revision that is actually on dev.",
+      "requiredFix": "Re-freeze at the tip that lands on dev (or state explicitly that the freeze covers the lib surface and give the tip hash alongside). Documentation/evidence hygiene only.",
+      "statusAtClosure": "open-low"
+    },
+    {
+      "id": "F5",
+      "severity": "low",
+      "file": "docs/omo-parity-ledger.md",
+      "line": 0,
+      "problem": "docs/** remains uncommitted at review time (index + user-guide EN/zh modified; ledger EN/zh untracked). The bilingual pairing is intact, so this is commit discipline rather than a rule violation, and it was previously recorded as deferred.",
+      "requiredFix": "Land the doc pair in one commit before the wave closes, or record the deferral in the wave closure.",
+      "statusAtClosure": "open-low"
+    },
+    {
+      "id": "F6",
+      "severity": "low",
+      "file": "evidence/omo-align/implementation/r3/result.json",
+      "line": 0,
+      "problem": "The S3 entry does not carry the captain-required label: no occurrence of \"predicate-level\"/\"谓词级\" or \"dispatch-level\"/\"派单级\" anywhere in the r3 evidence. The behaviour is right (isTaskReady is exported and driven, with a reverse control), but a future reader cannot tell from the artifact that the assertion is predicate-level and that dispatch-level testing is deliberately out of scope with a named reason (needs exporting nextReadyTask or driving installTeamScheduler).",
+      "requiredFix": "Add one sentence to the S3 acceptance entry naming the evidence level (predicate-level) and the deferred dispatch-level assertion with its reason and the follow-up task.",
+      "statusAtClosure": "open-low (new, label discipline)"
+    }
+  ],
+  "residualRisks": [
+    "If Option A is accepted, the practical trigger rate changes materially: under `signals.length >= 1` any sentence whose clause structure yields 2-of-3 C sub-signals (three distinct action verbs spread over clauses), or any single plan artifact, stages a team. I measured one ordinary sentence doing it; the rate on a realistic prompt corpus is not measured anywhere in this round and should be, before the wave is called done.",
+    "The two-sided case cannot see F1's class: it pins the two frozen prompt sets, which pass exactly, while the failing case is an ordinary sentence outside both sets. The reverse control added this round covers 'gate disarmed', not 'gate too eager'. A calibration corpus (ordinary prompts expected silent) is the missing falsifier.",
+    "Browser rendering of the panel was not exercised (data/view-layer parity only) — carried over from t24's own notVerified note.",
+    "R4's forced-entry paths (fallback staging, ask-first on an existing unapproved team, slashCommand:false warning, missing-profile error, the `explicit-team-trigger` QA case) remain essentially unreviewed because t22/t26 are still pending; when they land, that half of t27 is fresh work, not a re-check."
+  ],
+  "selfReproductionNote": "All measurements above were taken with my own drivers/commands on revision 6524e75, whose lib/session-start.js hash (495d0f4e…) matches the gateHash the QA case itself settled on. No file outside evidence/omo-align/review/** was written by me; the QA case wrote its own evidence under evidence/dsh-qa/session-start-team/**.",
+  "artifactPathNote": "t25 deliverable written to evidence/omo-align/review/r2-result.json to avoid overwriting the terminal t18 record at evidence/omo-align/review/result.json (this wave has already had two delivered-artifact overwrite incidents; the t18 record is immutable history and must stay).",
+  "reviewAnchor": {
+    "reviewedCommit": "6524e759ba3a23c23f6477384ec660e462abf048",
+    "reviewedArtifactFrozenAnchor": "1c83efce4dc947a0d4e8eb66ceb8a1806085be42 (t24 r3/freeze.json)",
+    "method": "git show <commit>:<path> plus the per-file sha256 in r3/freeze.json; the live WORKTREE bytes were NOT used to judge t24.",
+    "anchorHashesMeasuredFromTheCommit": {
+      "packages/mpd-agent-teams-plugin/lib/session-start.js": "495d0f4ea986947b5853cf3446eb11af087c778cf7a88011138908cb0fa64208",
+      "packages/mpd-agent-teams-plugin/lib/state.js": "085eeb013b61fd0de1ebbb5513cb0151500c8365fe8e0c7d628145bc54bdd065",
+      "packages/mpd-agent-teams-plugin/lib/snapshot.js": "fc534afdd0102314c3d24bf7b468e958295a29c26a9b91c4ddaa5b9fcbe3a365",
+      "packages/mpd-agent-teams-plugin/lib/scheduler.js": "4fff9a9713d3ba86c888ac17048859ba2c87f7dfb0ac7d9379e3787e5e52900f",
+      "packages/mpd-agent-teams-plugin/lib/tool-names.js": "19d3dab403bc27e1cfa845a7db816a18d22cab410407f0953470196f23782884"
+    },
+    "worktreeDriftDuringReview": "none for source: at review close `git status --porcelain -- packages/ presets/ scripts/ skills/ VENDOR_LOCK.json` was EMPTY, and the current HEAD (26113aa) carries only evidence/contract changes after the reviewed commit. t22 had not yet touched lib/. Any later t22 in-flight edits are NOT part of this review.",
+    "closureDiscipline": "The captain ratified F1 as option A and amended the frozen contract after this review; see captainAdjudications. The verdict below is the verdict rendered at review time and is not rewritten."
+  },
+  "captainAdjudications": {
+    "schema": "mpd-review-adjudications/1",
+    "addedAt": "2026-09-13T15:34Z",
+    "addedBy": "captain (instruction to Reviewer); additive annotation only",
+    "verdictUnchanged": "needs_revision",
+    "items": {
+      "F1": "The captain has ratified option A as a USER decision and amended the frozen contract accordingly: complexityGate.logic now reads \"trigger = anyExplicitFlag OR (matchedSignals >= 1)\", so code and contract agree again and the threshold contradiction this review filed is closed at contract level. Per the captain's instruction, the false-positive sentence (\"Check the test, build the package, verify the output.\" => C => provision) is an ACCEPTED COST of option A, NOT a defect: t24 records it as such under notVerified (\"NOT a miss ... flagged for the captain's sign-off rather than silently tuned away\"). The measurement in F1 above remains the historical fact recorded at review time (code said >=1 while the then-current contract said >=2); it is annotated, not rewritten. Residual: the ordinary-prompt trigger rate under >=1 is still unmeasured and is the acceptance cost to track in the ledger.",
+      "F2": "Closed and verified in this review: taskVisualState routes through the same three-state predicate as claim/scheduler, snapshot emits failedDependencies, the contract tool emits failed_dependencies from the same predicate, and the parity test claims the dependent through the REAL agent_teams_claim_task. Reverse control holds. The stale lib/types/state.d.ts signature (finding F2-low) remains open.",
+      "F4": "Partially discharged. The DISPATCH-level part is correctly deferred: scheduler.js now exports isTaskReady and the S3 test drives THAT real predicate (s1-s4-semantics.test.mjs), with the two-sided case's autoRoute=false reverse control proving the gate is not a tautological path. What is still missing per the captain's labelling rule: the r3 evidence does not use the words \"predicate-level\"/\"谓词级\" or \"dispatch-level\"/\"派单级\" anywhere, so the \"this wave does X and explicitly does NOT do dispatch-level testing, because it needs a product change (export nextReadyTask / drive installTeamScheduler)\" statement is not written down. Accepted as a low documentation finding, not a re-review of the behaviour.",
+      "F6": "Closed: TEAM_TOOL_NAMES is set-equal to the frozen 14 names (asserted by r3-view-parity against the frozen contract itself); MEMBER_TOOL_NAMES intentionally stays at 4 so agent_teams_task_contract remains captain-only.",
+      "reverseControl": "Verified independently: the two-sided case boots a disarmed gate (autoRoute=false) and measures 0 teams / 0 notices while the armed side stays 3/3 — so the two-sided result is a real trigger measurement, not a constant-true path."
+    }
+  },
+  "findingUpdates": [
+    {
+      "id": "F1",
+      "status": "superseded-by-contract-amendment (captain-ratified option A)",
+      "note": "The review-time defect (code >=1 vs contract >=2) is resolved by amending the contract; the false positive is now an accepted, recorded cost. My measurement stays as history."
+    },
+    {
+      "id": "F2",
+      "status": "closed",
+      "note": "View parity verified; only the stale d.ts signature remains open (still filed as a low finding)."
+    },
+    {
+      "id": "F3",
+      "status": "open-low",
+      "note": "r3 evidence wording about R2 provenance."
+    },
+    {
+      "id": "F4",
+      "status": "open-low",
+      "note": "freeze.json pins 1c83efc while dev landed 6524e75."
+    },
+    {
+      "id": "F5",
+      "status": "open-low",
+      "note": "docs/** uncommitted."
+    },
+    {
+      "id": "F6-new-low",
+      "status": "new",
+      "note": "r3 evidence does not label the S3 assertion as predicate-level nor name the deferred dispatch-level test + reason, as the t25 instruction requires."
+    }
+  ],
+  "closureNote": "statusAtClosure is the POST-ADJUDICATION state as of the captain adjudications above; the problem/requiredFix text is the review-time record and is intentionally not rewritten.",
+  "f1ClosureConfirmation": {
+    "confirmedAt": "2026-09-13T15:40Z",
+    "confirmedBy": "Reviewer, at the captain's request (three-part closure test)",
+    "contractIdentityConfirmed": {
+      "path": "evidence/omo-align/requirements/frozen-contract.json",
+      "sizeBytes": 33022,
+      "sha256": "9916644bc50669b30d857b190a4058a53a31cf2106444b2c3e0091d955d76cb4",
+      "note": "Re-read from disk after the captain's amendment; this is NOT the 31,705 B / a0d28ebe revision my review was anchored to. My verdict text remains anchored to the revision I actually read, as the captain acknowledged."
+    },
+    "point1_textCodeConsistency": {
+      "contract_logic": "trigger = anyExplicitFlag OR (matchedSignals >= 1), with A explicit flag / C >=2 of its three sub-signals / B >=4 deliverable verbs / D a .mpd/plans plan file",
+      "code": "packages/mpd-agent-teams-plugin/lib/session-start.js::evaluateComplexityGate line \"const trigger = input.explicitFlag === true || signals.length >= 1;\" (C is pushed only when its own 2-of-3 bar holds)",
+      "verdict": "CONSISTENT — the contract text, the code, and the user decision (option A) now agree."
+    },
+    "point2_acceptedCosts": {
+      "contractEvidence": [
+        "complexityGate.logicRevisionNote: \"CONSEQUENCE, ACCEPTED AND LEDGERED: a multi-clause request such as 'Check the test, build the package, verify the output.' satisfies C (C2+C3) and therefore DOES route to a team. It is not distinguishable from frozen complex prompt #1\"",
+        "complexityGate.testPrompts.expectation: \"KNOWN AND ACCEPTED: the false-positive sentence ... ALSO stages a team (C2+C3 >= 2) — ledgered as the cost of option A, not a defect.\""
+      ],
+      "confirmedAsAcceptedCostNotDefect": [
+        "the filed false positive \"Check the test, build the package, verify the output.\" routes",
+        "the B-only probe \"align migrate refactor audit\" routes (signals ['B']; direct consequence of >=1, pinned by the r3 F1 suite)",
+        "a lone D (plan artifact exists) routes (signals ['D']; pinned by test/r3-f1-signal-c.test.mjs \"a plan artifact is its own soft signal and reaches the gate\")"
+      ],
+      "rating": "All three are consequences of the ratified >=1 rule with signal shapes already documented and test-pinned in evidence/omo-align/implementation/r3/raw/signal-c-matrix.json. No defect is claimed against any of them. The one live question I keep on the ledger is the ordinary-prompt trigger RATE under >=1, which remains unmeasured."
+    },
+    "point3_unusedConstant": {
+      "symbol": "MATCHED_SIGNAL_MIN",
+      "fact": "Declared and exported at packages/mpd-agent-teams-plugin/lib/session-start.js:105 with comment \"Gate threshold: soft signals that must fire when no explicit flag is present\" and value 2, but it is referenced NOWHERE else in packages/, skills/ or scripts/ (the only other hit is its own text inside the generated db/region registry lib/mpd-deltas.js). Under option A the gate admits a single matched signal, so the constant is dead code whose name and comment now describe the superseded rule.",
+      "classification": "cleanup item, not a defect (captain concurs and has ledgered it). Because it is plain dead code (not a replacement-shaped region), it will SELF-HEAL on a re-materialize; recommend deleting it in the same round as the lib/types/state.d.ts repair so no stale symbol ships."
+    },
+    "verdictEffect": "The F1 blocker from this review is CLOSED by the captain's contract amendment: the contradiction existed against the revision I read and no longer exists on disk. This confirmation is additive; the verdict field stays needs_revision as the review-time record, and this file is not re-issued as a pass."
+  }
+}

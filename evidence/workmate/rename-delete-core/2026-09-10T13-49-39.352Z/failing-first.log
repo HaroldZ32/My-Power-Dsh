@@ -1,0 +1,28 @@
+bun test v1.3.14 (0d9b296a)
+
+evidence/workmate/rename-delete-core/2026-09-10T13-49-39.352Z/failing-first.test.ts:
+OLD-SCHEMA VIOLATIONS: ["\"value.ok\" is not a declared property (additionalProperties: false)"]
+49 |     // The old declaration: `ok` is NOT among the properties, additionalProperties is false.
+50 |     const OLD_SCHEMA = { type: "object", properties: { name: { type: "string" }, from: { type: "string" }, renamedFrom: { type: "array", items: { type: "string" } } }, required: ["name", "from"], additionalProperties: false }
+51 |     // What the regression case asserts: zero violations against the DECLARED schema.
+52 |     const violations = harness.validateJsonSchemaValue(OLD_SCHEMA, value, "value")
+53 |     console.log("OLD-SCHEMA VIOLATIONS: " + JSON.stringify(violations))
+54 |     expect(violations).toEqual([])
+                            ^
+error: expect(received).toEqual(expected)
+
+- []
++ [
++   ""value.ok" is not a declared property (additionalProperties: false)",
++ ]
+
+- Expected  - 1
++ Received  + 3
+
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/workmate/rename-delete-core/2026-09-10T13-49-39.352Z/failing-first.test.ts:54:24)
+(fail) FAILING FIRST: the old schema rejects the value the tool returns [37.76ms]
+
+ 0 pass
+ 1 fail
+ 1 expect() calls
+Ran 1 test across 1 file. [111.00ms]

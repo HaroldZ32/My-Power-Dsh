@@ -1,0 +1,36 @@
+{
+  "ok": false,
+  "dshHome": "/tmp/mpd-wtm-dsh-8rPXC1",
+  "wmHome": "/tmp/mpd-wtm-home-xMS6mb",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "injection": {
+      "ok": true,
+      "sample": " reasoning: | The task is now in_progress with attempt 1, alice is working. Wait for it to complete. Let me wait then check status. | dsh: reasoning: | Still in progress. Let me wait more. The member might be calling reflect etc. Let me wait ~45s again. | dsh: reasoning: | The task is complete. Now step 6: call agent_teams_status and read member alice's output. Let me call status one more time. | dsh: reasoning: | All steps done. The team is still around. The user didn't ask to delete the team; the protocol says present results then delete the team unless the user wants to keep working with it. However, the user's sequence ended with \"End with the word DONE.\" Deleting the team is a judgment "
+    },
+    "reflect": {
+      "ok": true,
+      "tokenCount": 2,
+      "uses": 2
+    },
+    "files": {
+      "ok": true,
+      "memory": "## 2026-09-14T08:58:21.791Z — memorize build token\nalice remembers the build token is PINEAPPLE42\n\n## 2026-09-14T09:00:29.555Z — report build token\nMy independent workmate memory says the build token "
+    },
+    "isolation": {
+      "ok": false,
+      "realWm": "/root/.mpd/workmate"
+    }
+  }
+}

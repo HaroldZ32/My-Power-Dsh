@@ -1,0 +1,3 @@
+[mpd-codegraph] init status=no-binary binary=- cwd=/tmp/mpd-c1-web-qAZdR5/ws
+[mpd-bootstrap] presets installed (0.2.5) -> /tmp/mpd-c1-web-qAZdR5/.agent-presets
+[mpd-bootstrap] skills installed (0.2.5) -> /tmp/mpd-c1-web-qAZdR5/skills

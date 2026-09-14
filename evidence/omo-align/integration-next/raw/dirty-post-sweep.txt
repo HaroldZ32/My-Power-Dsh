@@ -1,0 +1,7 @@
+ M packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+ M packages/mpd-agent-teams-plugin/lib/state.js
+ M packages/mpd-agent-teams-plugin/lib/tools.js
+ M packages/mpd-agent-teams-plugin/test/task-contract-tool.test.mjs
+ M packages/mpd-qa-roles-probe/dist/index.js
+ M packages/mpd-qa-roles-probe/src/index.ts
+ M skills/dsh-qa/scripts/agent-teams-messaging.mjs

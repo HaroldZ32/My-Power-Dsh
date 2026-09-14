@@ -1,0 +1,21 @@
+### final confirmation sweep (after the last docs/feature-audit row repair) ###
+2026-09-14T07:09:32Z
+221171444240f0f55794c5d73b16b92701a7ed72
+
+### bun run typecheck ###
+$ tsgo --noEmit
+TYPECHECK_EXIT=0
+
+### bun test packages ###
+packages/mpd-comment-checker-plugin/test/comment-checker.test.ts:
+
+ 399 pass
+ 0 fail
+ 2783 expect() calls
+Ran 399 tests across 90 files. [15.85s]
+
+### G1 inScope scan ###
+G1_INSCOPE_HITS_EXIT=1 (1 = clean)
+
+### corpus fingerprint must still be 297/4299afc4 ###
+skills files=297 treeSha=4299afc4241a164700c5b2f6785325affb914b01681ed51728a8a4933a83774f

@@ -1,0 +1,15 @@
+=== git log --oneline -3 ===
+8635a6e memory: wave-2 t5 migration of 7 entries orphaned by the cwd-root bug
+c710adb memory: xlsx-word-btlr-mtqzjv46 (fact)
+597dee9 memory: xlsx-word-regexcel-xlsx-template-docx-mtmsbjh2 (fact)
+=== git status --porcelain ===
+=== HEAD --stat ===
+8635a6e memory: wave-2 t5 migration of 7 entries orphaned by the cwd-root bug
+ ...i-dsh-better-sidebar-agent-teams-si-mtuviju2.md | 20 ++++++++++++++++++++
+ .../agentteams-gui-dsh-better-sidebar-mtuyguxk.md  | 22 ++++++++++++++++++++++
+ ...heduler-stall-symptoms-salvage-and--mtva0wbm.md | 19 +++++++++++++++++++
+ ...istry-vs-patch-rows-how-to-test-too-mtv8xwzy.md | 16 ++++++++++++++++
+ ...ngs-closed-and-a-falsifiability-lan-mtw8i46k.md | 12 ++++++++++++
+ ...me-delete-agreed-requirements-2026--mtv8l9rl.md | 15 +++++++++++++++
+ ...me-delete-delivery-closed-two-traps-mtvngffj.md | 13 +++++++++++++
+ 7 files changed, 117 insertions(+)

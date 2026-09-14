@@ -1,0 +1,12 @@
+bun test v1.4.0 (34cbb9a40)
+
+test/memory.test.ts:
+(pass) git backend: write -> commit -> read -> reflection due [9.82ms]
+(pass) svn backend REAL svn CLI: repo create, checkout, commit, log [53.75ms]
+(pass) both vcs: commits to git and svn [55.54ms]
+(pass) svn backend wiring with fake svn CLIs [4.73ms]
+
+ 4 pass
+ 0 fail
+ 27 expect() calls
+Ran 4 tests across 1 file. [130.00ms]

@@ -1,0 +1,23 @@
+bun test v1.3.14 (0d9b296a)
+
+test/regress.test.ts:
+270 |     const probed = readFileSync(pyCapture, "utf8")
+271 |     expect(probed).toContain(sessionPy)
+272 |     expect(probed).not.toContain(join(s, "other"))
+273 |     // ... and the per-case sim got past its gate and ran to completion.
+274 |     expect(r.cases).toHaveLength(1)
+275 |     expect(r.cases[0].status).toBe("pass")
+                                    ^
+error: expect(received).toBe(expected)
+
+Expected: "pass"
+Received: "fail"
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-verif-plugin/test/regress.test.ts:275:31)
+(fail) R1-F1: verifRegress forwards exec so the per-case sim gates on the SESSION venv, not DSH_WORKSPACE_ROOT [10.38ms]
+
+ 0 pass
+ 9 filtered out
+ 1 fail
+ 5 expect() calls
+Ran 1 test across 1 file. [54.00ms]

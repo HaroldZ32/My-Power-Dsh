@@ -1,0 +1,103 @@
+{
+  "ok": true,
+  "slug": "extension-mcp-bridge",
+  "sandbox": "/tmp/mpd-extension-mcp-bridge-B1wTIw",
+  "arms": "live (repo's own stdio MCP server, real call) | dead | hang | schema (keep-or-drop) | dup (zero tools) | containment",
+  "note": "the healthy server is packages/mpd-mcp-lsp/dist/cli.js; the failure arms are local fixture servers started by the bridge itself",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "offered": true,
+      "called": true,
+      "succeeded": true,
+      "reason": "",
+      "resultHead": "Configured LSP servers: 42\nInstalled LSP servers: 1\n\n- typescript: missing; source=builtin; extensions=.ts, .tsx, .js, .jsx, .mjs, .cjs, .mts, .cts\n- deno: missing; source=builtin; extensions=.ts, .tsx, .js, .jsx, .mjs\n- vue: missing; sourc"
+    },
+    "dead": {
+      "vacuous": false,
+      "ok": true,
+      "offeredNoTool": true,
+      "headerSawNoTool": true,
+      "reported": true,
+      "stateText": "extension qa-mcp-dead [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-B1wTIw/run-home/.mpd/extensions/qa-mcp-dead\nsource: /tmp/mpd-extension-mcp-bridge-B1wTIw/run-home/.mpd/extensions/qa-mcp-dead/mpd-ext.json\nskills: (none)\nflows: (none)\nroles: (none)\nmcp: qa_mcp_dead=unavailable\nerror "
+    },
+    "hang": {
+      "vacuous": false,
+      "ok": true,
+      "connectTimeoutMs": 1500,
+      "durationMs": 5404,
+      "offeredNoTool": true,
+      "reported": true,
+      "stateText": "extension qa-mcp-hang [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-B1wTIw/run-home/.mpd/extensions/qa-mcp-hang\nsource: /tmp/mpd-extension-mcp-bridge-B1wTIw/run-home/.mpd/extensions/qa-mcp-hang/mpd-ext.json\nskills: (none)\nflows: (none)\nroles: (none)\nmcp: qa_mcp_hang=unavailable\nerror "
+    },
+    "schema": {
+      "vacuous": false,
+      "ok": true,
+      "goodToolOffered": true,
+      "badInputSkipped": true,
+      "badOutputSkipped": true,
+      "reportedReason": true,
+      "stateText": "extension qa-mcp-schema [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-B1wTIw/run-home/.mpd/extensions/qa-mcp-schema\nsource: /tmp/mpd-extension-mcp-bridge-B1wTIw/run-home/.mpd/extensions/qa-mcp-schema/mpd-ext.json\nskills: (none)\nflows: (none)\nroles: (none)\nmcp: qa_mcp_schema=connected\nerror contributes.mcp[0]: tool \"bad_input\" skipped: its inputSchema cannot be projected onto the har"
+    },
+    "dup": {
+      "vacuous": false,
+      "ok": true,
+      "zeroTools": true,
+      "headerZeroTools": true,
+      "stateText": "extension qa-mcp-dup [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-B1wTIw/run-home/.mpd/extensions/qa-mcp-dup\nsource: /tmp/mpd-extension-mcp-bridge-B1wTIw/run-home/.mpd/extensions/qa-mcp-dup/mpd-ext.json\nskills: (none)\nflows: (none)\nroles: (none)\nmcp: qa_mcp_dup=unavailable\nerror cont",
+      "collisionPremise": "the SAME raw name (dup_tool) advertised twice makes the tool list invalid (\"listed tool ... more than once\"), which rolls the whole generation back to ZERO tools; two DIFFERENT raw names can never collide because any lossy transformation gains a hash suffix"
+    },
+    "containment": {
+      "ok": true,
+      "exit": 0,
+      "control": {
+        "liveToolOffered": true,
+        "liveCallSucceeded": true
+      },
+      "showCallOrder": [
+        "qa-mcp-dead",
+        "qa-mcp-schema",
+        "qa-mcp-dup",
+        "qa-mcp-hang"
+      ],
+      "crashSignatures": [],
+      "offeredMcp": [
+        "mcp__ast_grep__rewrite",
+        "mcp__ast_grep__scan",
+        "mcp__ast_grep__search",
+        "mcp__codegraph__codegraph_explore",
+        "mcp__context7__query-docs",
+        "mcp__context7__resolve-library-id",
+        "mcp__grep_app__searchGitHub",
+        "mcp__lsp__diagnostics",
+        "mcp__lsp__find_references",
+        "mcp__lsp__goto_definition",
+        "mcp__lsp__install_decision",
+        "mcp__lsp__prepare_rename",
+        "mcp__lsp__rename",
+        "mcp__lsp__status",
+        "mcp__lsp__symbols",
+        "mcp__qa_mcp_live__diagnostics",
+        "mcp__qa_mcp_live__find_references",
+        "mcp__qa_mcp_live__goto_definition",
+        "mcp__qa_mcp_live__install_decision",
+        "mcp__qa_mcp_live__prepare_rename",
+        "mcp__qa_mcp_live__rename",
+        "mcp__qa_mcp_live__status",
+        "mcp__qa_mcp_live__symbols",
+        "mcp__qa_mcp_schema__good_tool"
+      ],
+      "isolation": {
+        "ok": true,
+        "checked": 1,
+        "keys": [
+          "--tmp-mpd-extension-mcp-bridge-B1wTIw-ws--"
+        ]
+      }
+    }
+  }
+}

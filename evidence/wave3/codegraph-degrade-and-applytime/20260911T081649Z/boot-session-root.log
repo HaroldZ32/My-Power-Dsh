@@ -1,0 +1,4 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=marker binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/root/dshProj/my-power-dsh/evidence/wave3/codegraph-degrade-and-applytime/20260911T081649Z/boot-run/session-ws
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+dsh web: http://127.0.0.1:3211/?token=<redacted>

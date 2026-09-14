@@ -1,0 +1,48 @@
+{
+  "schema": "mpd-omo-align-r3-freeze/1",
+  "frozenAt": "2026-09-13T15:16:31Z",
+  "head": "1c83efce4dc947a0d4e8eb66ceb8a1806085be42",
+  "headShort": "1c83efc",
+  "branch": "dev",
+  "note": "t24 item 8: frozen AFTER the revision settled, so downstream work (t25) can cite one immutable record instead of a moving tree.",
+  "files": {
+    "packages/mpd-agent-teams-plugin/lib/session-start.js": {
+      "bytes": 25767,
+      "sha256": "495d0f4ea986947b5853cf3446eb11af087c778cf7a88011138908cb0fa64208"
+    },
+    "packages/mpd-agent-teams-plugin/lib/state.js": {
+      "bytes": 42354,
+      "sha256": "085eeb013b61fd0de1ebbb5513cb0151500c8365fe8e0c7d628145bc54bdd065"
+    },
+    "packages/mpd-agent-teams-plugin/lib/snapshot.js": {
+      "bytes": 8003,
+      "sha256": "fc534afdd0102314c3d24bf7b468e958295a29c26a9b91c4ddaa5b9fcbe3a365"
+    },
+    "packages/mpd-agent-teams-plugin/lib/scheduler.js": {
+      "bytes": 29738,
+      "sha256": "4fff9a9713d3ba86c888ac17048859ba2c87f7dfb0ac7d9379e3787e5e52900f"
+    },
+    "packages/mpd-agent-teams-plugin/lib/index.js": {
+      "bytes": 37780,
+      "sha256": "a107df9c955a36e082988a19b25fa1376f2da46b56290ef148fac9243747cc89"
+    },
+    "packages/mpd-agent-teams-plugin/lib/tool-names.js": {
+      "bytes": 989,
+      "sha256": "19d3dab403bc27e1cfa845a7db816a18d22cab410407f0953470196f23782884"
+    },
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": {
+      "bytes": 70643,
+      "sha256": "1a2ed3dbc257d105deefc255e9a6e89ba322ea6bcb411c68fb2f2dc4ff3fcdc1"
+    },
+    "scripts/install-profile.mjs": {
+      "bytes": 21977,
+      "sha256": "37e9c291930d0c07476ec1dcc06d50be5fd75f70fb17ce6a851c9a1be03a465c"
+    },
+    "skills/dsh-qa/scripts/session-start-team.mjs": {
+      "bytes": 14361,
+      "sha256": "e90a40c3723e0ba71332e37bb8a4b1b4c3d0f76f610b138957cae055d502bf39"
+    }
+  },
+  "regions": 20,
+  "adoptedFiles": 6
+}

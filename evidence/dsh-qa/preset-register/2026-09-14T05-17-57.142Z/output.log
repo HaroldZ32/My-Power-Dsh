@@ -1,0 +1,17 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/node_modules/.bun/@colbymchenry+codegraph@1.5.0/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/tmp/mpd-dsh-qa-H48wQT/ws
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+[roles-probe] PRESET_MPD=ok
+[roles-probe] PRESET_PATH=/root/dshProj/my-power-dsh/presets/mpd/agent.cordis.yml trust=system
+[roles-probe] ADAPTER_SEAMS=tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets
+[roles-probe] ADAPTER_TOOL_CALL=ok
+[roles-probe] ROSTER=oracle,librarian,prometheus,hephaestus,sisyphus,atlas,explore,metis,momus,multimodal-looker,sisyphus-junior
+[roles-probe] AGENT_TEAMS_TOOLS=7/7
+[roles-probe] AGENT_TEAMS_NEW_TOOLS_OK=true
+[roles-probe] TEAM_COMPACT_TOOLS=2/2
+[roles-probe] TOOL_PARAM_SCHEMAS=52/52
+[roles-probe] SKILLS=25 BUNDLED=19 SKILL_FIXTURES=5/5
+[roles-probe] SKILL_FIXTURE=ok name=svn-master base=/root/dshProj/my-power-dsh/skills/svn-master bytes=5210
+[roles-probe] FAIL
+
+dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-official"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment

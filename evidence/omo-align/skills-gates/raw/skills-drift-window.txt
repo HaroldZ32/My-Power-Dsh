@@ -1,0 +1,102 @@
+=== commits touching packages/shared-skills/skills in window ===
+8da9cbde9 2026-09-12 docs(omo): route Native ULW guidance through SDK
+689071c09 2026-09-10 Merge remote-tracking branch 'origin/dev' into refactor/omo-senpi-role-names
+ab27ab5d0 2026-09-10 refactor: drop the retired curated ids from code comments and mark the Codex role list
+3a11406db 2026-09-10 refactor(omo-senpi): retire persona names from shared-skill prose and the senpi sync scripts
+91176eaf0 2026-09-10 docs(shared-skills): correct two ambience-reference facts found in gate review
+63441387a 2026-09-10 feat(shared-skills): route ambience and typographic motion to ambience-skill
+8844a2db6 2026-09-10 feat(shared-skills): add a react-bits-anchored ambience reference
+0885eebf4 2026-09-04 docs(shared-skills): make the ulw-research browsing worker binding and render-first
+49da89084 2026-09-04 fix(shared-skills): call the CloakBrowser venv interpreter in the launch step too
+44bd1cd43 2026-09-04 fix(shared-skills): route page work to a real browser before the CLI
+b8fc3a6fe 2026-09-04 refactor(skills): diet the review-work gate description and sync the builtin .ts sources
+279017261 2026-09-04 refactor(skills): rewrite shipped skill descriptions as situation-led routing text
+cd0c0a3c2 2026-09-04 refactor(review-work): replace the five-agent panel with orchestrator QA plus one gate reviewer
+d2632e623 2026-09-03 docs(shared-skills): each ulw-execute phase carries its own concrete goal
+124e43294 2026-09-03 docs(shared-skills): give each ulw-execute wave its own goal and route discovered defects through the orchestrator
+529121594 2026-09-03 docs(shared-skills): tighten the discovered-work checkbox rule in ulw-execute
+bcae3b346 2026-09-03 docs(shared-skills): run web-terminal visual QA with bun in ulw-execute
+a41c75cbb 2026-09-03 docs(shared-skills): ulw-execute registers pre-existing defects as plan checkboxes
+4c8385a93 2026-09-03 docs(shared-skills): ulw-execute dispatches each wave as one workflow run
+92ccdeefd 2026-09-03 docs(shared-skills): ulw-execute runs every phase in its own worktree
+8512ef8f6 2026-09-02 docs: drop CodeGraph from prompts, skills, and docs
+df6217ce5 2026-09-02 Merge branch 'dev' into docs/insane-search-v0.10.0
+89cd17c14 2026-08-29 fix(shared-skills): purge stale uv-default wording after py-kernel change
+35dbdda50 2026-08-29 feat(shared-skills): make the resident py kernel the default polars surface
+bc513358f 2026-08-29 fix(shared-skills): tighten data-scientist failure wording per review
+082c54789 2026-08-29 feat(shared-skills): rewrite data-scientist around resident kernels and placement
+da1b8f4e9 2026-08-29 feat(omo-senpi): route mass ulw research through the dag at mass scale
+dfa171ce8 2026-08-27 Merge pull request #7433 from code-yeongyu/fix/worktree-sweep-windows-timeout
+462e21a59 2026-08-27 test(debugging): give answering dap sessions a realistic request timeout
+6939f6a62 2026-08-27 test(debugging): tolerate cold-start latency in dap session waits
+edf1fa369 2026-08-27 fix(windows): harden dap and atomic persistence
+5fad12bfd 2026-08-27 Merge remote-tracking branch 'origin/dev' into feat/debugging-dap-client
+2dc8f0cd9 2026-08-27 feat(debugging): add zero-dependency DAP client script
+200531da1 2026-08-27 docs(debugging): add Frida, structured-interface, and instrument references
+435f1af11 2026-07-22 docs(ultimate-browsing): sync insane-search reference to engine v0.10.0
+
+=== diffstat shared-skills ===
+ packages/shared-skills/skills/lsp-setup/SKILL.md   |   2 +-
+ packages/shared-skills/skills/programming/SKILL.md |   2 +-
+ packages/shared-skills/skills/refactor/SKILL.md    |   8 +-
+ .../shared-skills/skills/remove-ai-slops/SKILL.md  |   2 +-
+ packages/shared-skills/skills/review-work/SKILL.md | 518 ++++-----------------
+ .../skills/ultimate-browsing/ATTRIBUTION.md        |   2 +-
+ .../skills/ultimate-browsing/SKILL.md              |  33 +-
+ .../ultimate-browsing/references/chrome-stealth.md |  23 +-
+ .../references/insane-search/README.md             |  11 +-
+ packages/shared-skills/skills/ulw-execute/SKILL.md |  28 +-
+ packages/shared-skills/skills/ulw-plan/SKILL.md    |   3 +-
+ .../skills/ulw-plan/scripts/scaffold-plan.mjs      |   2 +-
+ .../shared-skills/skills/ulw-research/SKILL.md     |  11 +-
+ packages/shared-skills/skills/visual-qa/SKILL.md   |   4 +-
+ 50 files changed, 1735 insertions(+), 1294 deletions(-)
+
+=== diffstat omo-senpi/skills ===
+ packages/omo-senpi/skills/AGENTS.md                |   2 +-
+ packages/omo-senpi/skills/dag-library/SKILL.md     |   8 +-
+ packages/omo-senpi/skills/give-me-tips/SKILL.md    |  78 ++++++-
+ packages/omo-senpi/skills/hyperplan/SKILL.md       |   2 +-
+ packages/omo-senpi/skills/init-deep/SKILL.md       |   4 +-
+ packages/omo-senpi/skills/mass-ulw/SKILL.md        |  19 +-
+ .../skills/mass-ulw/references/planning.md         |  34 ++-
+ packages/omo-senpi/skills/onboarding/SKILL.md      |   2 +-
+ packages/omo-senpi/skills/ultrawork/SKILL.md       | 249 ++++++++++++---------
+ packages/omo-senpi/skills/ulw-loop/SKILL.md        |  36 +--
+ .../skills/ulw-loop/references/full-workflow.md    | 146 +++++-------
+ packages/omo-senpi/skills/ulw-plan/SKILL.md        |  18 +-
+ .../skills/ulw-plan/references/full-workflow.md    |  38 ++--
+ .../skills/ulw-plan/references/intent-clear.md     |   4 +-
+ .../skills/ulw-plan/references/intent-unclear.md   |   8 +-
+ .../skills/ulw-plan/scripts/scaffold-plan.mjs      |  11 +-
+ packages/omo-senpi/skills/ulw-research/SKILL.md    |  42 ++--
+ 17 files changed, 399 insertions(+), 302 deletions(-)
+
+=== commits touching mass-ulw / dag-library / hyperplan ===
+279017261 2026-09-04 refactor(skills): rewrite shipped skill descriptions as situation-led routing text
+27ae05c39 2026-09-03 docs(omo-senpi): restore the one-phase-per-run rule and fix the planning caveat header
+91248d23a 2026-09-03 docs(omo-senpi): dedupe per-phase rule and drop duplicated child-handling bullets in ulw-loop refs
+5f232d878 2026-09-03 docs(omo-senpi): make mass-ulw a per-phase workflow run under ulw-loop
+19d571cce 2026-08-29 merge: origin/dev into feat/workflow-tool-rename
+e15238f3f 2026-08-29 fix(omo-senpi): close the workflow rename's missed tool-name call sites
+d8e769c67 2026-08-29 refactor(omo-senpi): rename the dag tool to workflow
+da1b8f4e9 2026-08-29 feat(omo-senpi): route mass ulw research through the dag at mass scale
+16a6f0dd1 2026-08-26 feat(omo-senpi): detach the dag tool's wait by default
+
+=== UPSTREAM TEAM-MODE DEFAULT (verified) ===
+import * as z from "zod"
+
+export const TeamModeConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  tmux_visualization: z.boolean().default(false),
+--- docs/guide/team-mode.md:1-8 ---
+# Team Mode
+
+Parallel multi-agent coordination for omo, modeled after Claude Code's experimental Agent Teams.
+
+## Status
+
+OFF by default. Enable via JSONC config.
+
+--- features/team-mode/AGENTS.md:7 ---
+Spawns coordinated agent teams with shared mailbox, task list, optional tmux layout, and graceful lifecycle. Modeled after Claude Code Agent Teams. **OFF by default.** Enable via `team_mode.enabled` in `.omo/omo.jsonc`; restart OpenCode after enabling. Harness-neutral registry/mailbox/tasklist/state/worktree/tmux-layout primitives are extracted to [`packages/team-core/`](../../../../../packages/team-core); this directory remains the OpenCode adapter for session spawning, hooks, tools, and config integration.

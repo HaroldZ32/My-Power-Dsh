@@ -1,0 +1,8 @@
+[mpd-mcp-codegraph] unavailable fallback: Error: ENOENT: no such file or directory, mkdir '/root/.mpd/codegraph'
+    at async mkdir (node:internal/fs/promises:859:10)
+    at async acquireLock (file:///root/dshProj/my-power-dsh/evidence/wave3/codegraph-degrade-and-applytime/20260911T081649Z/mcp-run/fakebundle/packages/mpd-mcp-codegraph/dist/serve.js:308:3)
+    at async Object.ensureCodegraphProvisioned [as ensureProvisioned] (file:///root/dshProj/my-power-dsh/evidence/wave3/codegraph-degrade-and-applytime/20260911T081649Z/mcp-run/fakebundle/packages/mpd-mcp-codegraph/dist/serve.js:384:19)
+    at async provisionMissingCodegraph (file:///root/dshProj/my-power-dsh/evidence/wave3/codegraph-degrade-and-applytime/20260911T081649Z/mcp-run/fakebundle/packages/mpd-mcp-codegraph/dist/serve.js:9814:18)
+    at async Module.runCodegraphServe (file:///root/dshProj/my-power-dsh/evidence/wave3/codegraph-degrade-and-applytime/20260911T081649Z/mcp-run/fakebundle/packages/mpd-mcp-codegraph/dist/serve.js:9769:25)
+    at async file:///root/dshProj/my-power-dsh/evidence/wave3/codegraph-degrade-and-applytime/20260911T081649Z/mcp-run/fakebundle/packages/mpd-mcp-codegraph/launch.green.mjs:63:22
+CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.

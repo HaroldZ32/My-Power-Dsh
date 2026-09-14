@@ -1,0 +1,16 @@
+### EXERCISE 1 — verify-only on a tree whose deltas were dropped (must FAIL loudly)
+REFUSED: [patch-agent-teams-fixes] FAIL: delta "mpd-delta scope-glob" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js
+exit=0
+
+### EXERCISE 2 — a file whose anchor line is gone as well (must FAIL naming the drift)
+anchor lines also removed
+REFUSED: [patch-agent-teams-fixes] FAIL: delta "mpd-delta scope-glob" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js and its anchor line is gone too ("function isDefaultExcluded(path) {") — the adopted file drifted; restore the delta by hand before re-vendoring
+exit=0
+
+### EXERCISE 3 — the --write restore pass on a clean fixture (must re-insert then verify byte-identical)
+restore: already-applied inserted 0 regions
+re-check: already-applied
+exit=0
+restore: applied | inserted: 7 regions
+re-check: already-applied
+restored behaviour: glob = true | contradiction rejected = true

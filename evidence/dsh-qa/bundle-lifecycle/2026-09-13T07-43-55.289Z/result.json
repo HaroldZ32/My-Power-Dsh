@@ -1,0 +1,55 @@
+{
+  "ok": false,
+  "sandbox": "/root/dshProj/my-power-dsh/.qa-reloc/bundle-lifecycle-2026-09-13T07-43-55.289Z",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0,
+      "dependency": "link:/root/dshProj/my-power-dsh",
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@mpd-dsh/mpd"
+      ],
+      "oneCommand": "dsh plugin --profile w add <repo root>"
+    },
+    "composed": {
+      "ok": true,
+      "exit": 0
+    },
+    "boot": {
+      "ok": false,
+      "http": true,
+      "corpus": "/root/dshProj/my-power-dsh/skills",
+      "preset": "/root/dshProj/my-power-dsh/.qa-reloc/bundle-lifecycle-2026-09-13T07-43-55.289Z/home/profiles/w/node_modules/@mpd-dsh/mpd/presets/mpd/agent.cordis.yml",
+      "trust": "system",
+      "bundleReal": "/root/dshProj/my-power-dsh",
+      "adapterSeams": "tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider"
+    },
+    "noHomeCopy": {
+      "ok": true,
+      "skills": [],
+      "presets": []
+    },
+    "layerDurability": {
+      "ok": true,
+      "exit": 0,
+      "dependency": true,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@mpd-dsh/mpd"
+      ]
+    },
+    "uninstall": {
+      "ok": true,
+      "exit": 0,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app"
+      ],
+      "residue": [],
+      "mpdState": []
+    }
+  }
+}

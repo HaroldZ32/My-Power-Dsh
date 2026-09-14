@@ -1,0 +1,18 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=no-binary binary=- cwd=/root/dshProj/my-power-dsh
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.
+[valid-call] init1 mpd_workmate_init ok=true INVALID_OUTPUT=false
+[valid-call] rename mpd_workmate_rename ok=true INVALID_OUTPUT=false
+[valid-call] list1 mpd_workmate_list ok=true INVALID_OUTPUT=false
+[valid-call] RENAME_LANDED=true names=["probe-wm-2"]
+[valid-call] delete-archive mpd_workmate_delete ok=true INVALID_OUTPUT=false
+[valid-call] init2 mpd_workmate_init ok=true INVALID_OUTPUT=false
+[valid-call] delete-purge mpd_workmate_delete ok=true INVALID_OUTPUT=false
+[valid-call] list2 mpd_workmate_list ok=true INVALID_OUTPUT=false
+[valid-call] FINAL names=[]
+[valid-call] RENAME_OK=true
+[valid-call] DELETE_ARCHIVE_OK=true
+[valid-call] DELETE_PURGE_OK=true
+[valid-call] INVALID_OUTPUT_ERRORS=0
+[valid-call] DONE

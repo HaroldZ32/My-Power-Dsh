@@ -1,0 +1,7 @@
+[build-mcp] mpd LSP overlay applied: server-definitions.ts -> /tmp/mpd-dsh-mcp-build-ndwlYd/src/lsp-core/src/lsp/server-definitions.ts
+[build-mcp] mpd LSP overlay applied: language-mappings.ts -> /tmp/mpd-dsh-mcp-build-ndwlYd/src/lsp-core/src/lsp/language-mappings.ts
+[build-mcp] ext dep: js-yaml <- js-yaml@5.3.0@@repo.huaweicloud.com@@@1
+[build-mcp] ext dep: jsonc-parser <- jsonc-parser@3.3.1@@repo.huaweicloud.com@@@1
+[build-mcp] ext dep: zod <- zod@4.4.3@@repo.huaweicloud.com@@@1
+[build-mcp] FAIL - foreign brand token "OMO" in ast-grep (not on the X1 allowlist declared in this file)
+EXIT=1

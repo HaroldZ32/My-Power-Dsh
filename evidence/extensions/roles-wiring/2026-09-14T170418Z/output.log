@@ -1,0 +1,76 @@
+=== t4 gate sweep — mpd-ext bundle row + extension roles in mpd-roles — 2026-09-14T17:04:23Z
+
+--- 1) bun test packages/mpd-roles-plugin
+(pass) the built dist carries the extension-role wiring (a src-only change would ship dead) [0.31ms]
+
+packages/mpd-roles-plugin/test/roles.test.ts:
+
+ 23 pass
+ 0 fail
+ 452 expect() calls
+Ran 23 tests across 2 files. [155.00ms]
+exit=0
+
+--- 2) bun run typecheck (repo-wide; expects the PRE-EXISTING t2 error in mpd-ext-plugin)
+$ tsgo --noEmit
+exit=0
+
+--- 3) scoped typecheck of the files t4 changed (tsgo, no config)
+exit=0
+
+--- 4) node scripts/verify-rows-parity.mjs
+[verify-rows-parity] FAIL - installer vs bundle patch row ids differ
+  bundle patch inserts (23): mcp-astgrep, mcp-gitbash, mcp-lsp, mcp-codegraph, mpd-web-compat, mpd-dsh-adapter, mpd-config, mpd-tools, mpd-modelchain, mpd-ext, mpd-roles, mpd-ulw, mpd-hashline, mpd-boulder, mpd-comment-checker, mpd-codegraph, mpd-memory, mpd-workmate, mpd-team-compact, mpd-bootstrap, agent-teams, mcp-context7, mcp-grepapp
+  installer rows       (21): mpd-web-compat, mcp-astgrep, mcp-gitbash, mcp-lsp, mcp-codegraph, mcp-context7, mcp-grepapp, mpd-codegraph, mpd-tools, mpd-modelchain, mpd-ulw, mpd-hashline, mpd-boulder, mpd-dsh-adapter, mpd-config, mpd-comment-checker, mpd-memory, mpd-roles, mpd-workmate, mpd-bootstrap, agent-teams
+  MISSING from scripts/install-profile.mjs: mpd-ext, mpd-team-compact
+exit=1
+
+--- 5) node skills/dsh-qa/scripts/preset-conformance.mjs --self-test
+[preset-conformance self-test] ok: 30 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, row parity 31/31
+exit=0
+
+--- 6) bundle patch: mpd-ext row occurrences (loader-entry id uniqueness)
+176:    - id: mpd-ext
+occurrences=1
+
+--- 7) the composed row (config must match MpdExtPluginConfig { quiet?: boolean })
+176:    - id: mpd-ext
+177-      name: '@mpd-dsh/mpd/packages/mpd-ext-plugin/dist/index.js'
+178-      config:
+179-        quiet: false
+
+--- 8) real mounted boot proving the row APPLIED (preset-conformance real run)
+[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | project plane: <session workspace>/.mpd/extensions (per call)
+
+--- 9) real mounted boot: apply-crash signatures (must be empty)
+{
+  "ok": true,
+  "sessionCreate": null,
+  "bootLog": null
+}
+
+=== final sweep at revision (settled): 2026-09-14T17:05:21Z
+--- git:
+6cbb12682679127788657a3551ddffafa1696be1
+ M packages/mpd-bundle/cordis.patch.yml
+ M packages/mpd-roles-plugin/README.md
+ M packages/mpd-roles-plugin/README.zh-CN.md
+ M packages/mpd-roles-plugin/dist/index.js
+ M packages/mpd-roles-plugin/src/index.ts
+ M packages/mpd-roles-plugin/test/roles.test.ts
+--- sha256 of the artifacts under test:
+042ed0f126661d692268282503c6e1dd1578f389c06b1f255a758bdfd2da4976  packages/mpd-roles-plugin/src/index.ts
+63ad4fb72b89a58ee6ca45a72a82b23b3f059e53077c12873683dd1ff0fbfe05  packages/mpd-roles-plugin/test/roles.test.ts
+41eae81b971679844fde3924cbb13fc46e6ac670a469fb325a1d61e99871dfd5  packages/mpd-roles-plugin/dist/index.js
+4eb3117dd8dda6e9d10fcc4fbb5072cc3051c6fafcaf9b3724b5edade0e17cec  packages/mpd-roles-plugin/README.md
+eaed647763849a2cdec14e0fedf6967b944b54b10481cf8b8ab3aeb31ca997ba  packages/mpd-roles-plugin/README.zh-CN.md
+b6e69fef4bb9e1e118e43e0602b3c955b5548c2fd81711ccda57b6ff818558f2  packages/mpd-bundle/cordis.patch.yml
+
+--- 10) shipped-dist smoke (REAL dists of mpd-ext + mpd-roles)
+    "personaHasExtensionText": true
+  },
+  "baseEntryStillIntact": "hephaestus",
+  "warnings": []
+}
+[dist-smoke] PASS
+exit=0

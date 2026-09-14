@@ -1,0 +1,109 @@
+{
+  "schema": "mpd-omo-align-report-integrity/1",
+  "task": "t17 verification — report-integrity note (requested by the captain)",
+  "generatedAt": "2026-09-13T15:01Z",
+  "scope": "Writes confined to evidence/omo-align/verification/**; no packages/presets/scripts/skills/docs file touched; review/** untouchable and untouched.",
+  "overwriteIncident": {
+    "trigger": "evidence/omo-align/verification/run.mjs (not authored by Lead) wrote its own much smaller result.json to the DELIVERED path on every re-run.",
+    "rootCause": "the driver's output write targeted the delivered artifact name; the driver also carried a manualEntries comparison that could never pass (constant-derived name list missing agent_teams_task_contract vs the 14-name frozen list), so each re-run emitted verdict=needs_revision over the delivered report.",
+    "occurrences": [
+      { "time": "2026-09-13T14:47Z", "artifact": "evidence/omo-align/review/raw/verification-result-observed-144744.json", "bytes": 7508, "sha256Prefix": "b73b7be8", "schema": "{verdict,steps,head,generatedAt}", "verdict": "needs_revision", "observedBy": "Reviewer (preserved copy)" },
+      { "time": "2026-09-13T14:49:54Z", "artifact": "evidence/omo-align/verification/raw/run-144954-overwrite-state.json", "bytes": 7757, "sha256": "9f8e977e9f27046b8c2bd2a96d3407ea1e7c562584b9c7eaee02fc9f320179c6", "schema": "{verdict,steps,head,generatedAt}", "verdict": "needs_revision", "observedBy": "Lead (preserved copy, plus its output.log)" },
+      { "time": "~2026-09-13T14:54Z", "artifact": "evidence/omo-align/verification/result.json", "bytes": 7876, "note": "an in-flight process that had loaded the PRE-fix driver code; the fix landed at 14:52 but this process still wrote the delivered name" }
+    ],
+    "manualEntriesFalseNegative": {
+      "reviewerCopy": { "toolNamesCount": 17, "duplicates": ["agent_teams_claim_task", "agent_teams_update_task", "agent_teams_send_message", "agent_teams_status"], "hasTaskContract": false },
+      "leadPreservedCopy": { "toolNamesCount": 13, "duplicates": [], "hasTaskContract": false },
+      "expectedFrozenList": { "uniqueCount": 14, "hasTaskContract": true },
+      "conclusion": "both observed lists omit agent_teams_task_contract and can never equal the 14-name frozen list -> the red was a driver artifact, not a product rename."
+    }
+  },
+  "preservedCopies": {
+    "reviewerOwned": "evidence/omo-align/review/raw/verification-result-observed-144744.json (7508 B / b73b7be8...; Reviewer-owned, read-only, untouched)",
+    "leadOwned": [
+      "evidence/omo-align/verification/raw/run-144954-overwrite-state.json (7757 B / 9f8e977e...)",
+      "evidence/omo-align/verification/raw/run-144954-overwrite-output.log (20406 B)"
+    ],
+    "immutableReportCopy": "evidence/omo-align/verification/raw/t17-report-restored.json (byte-identical to the delivered result.json)"
+  },
+  "prevention": [
+    "1. The driver never writes a delivered name: run.mjs now writes raw/run-<UTC stamp>.json and raw/run-<UTC stamp>.output.log; the old write site at the delivered path is removed (only write sites left are the two raw/ paths).",
+    "2. A re-run gets a NEW timestamped name (stated in an English binding comment at the top of run.mjs: 'NEVER OVERWRITE A DELIVERED ARTIFACT ... a re-run writes a NEW timestamped file').",
+    "3. Delivered artifacts are effectively read-only after delivery: result.json is byte-identical to raw/t17-report-restored.json, so any future same-name writer cannot erase the content; recovery is a single copy."
+  ],
+  "orderOfOperations": {
+    "prescribedByCaptain": "fix run.mjs first, then rebuild result.json (driver output to raw/ first, then assemble the report from it + measured hashes).",
+    "actual": "run.mjs fixed at 22:52:21 (+08:00) -> report rebuilt at 22:56:48 (+08:00): the prescribed order WAS followed. The driver itself was NOT re-executed (per the earlier no-re-run instruction); result.json was assembled from the Lead's own measurements plus the already-present raw/ driver outputs, never the other way round."
+  },
+  "currentReport": {
+    "path": "evidence/omo-align/verification/result.json",
+    "bytes": 45244,
+    "sha256": "90b76b100aaf130b92ceecac2474127f6ac64b5a26b76d459ce74fe358ae9db2",
+    "mtime": "2026-09-13 22:56:48 +0800",
+    "verdict": "pass",
+    "keyCount": 26,
+    "assertions": 10,
+    "acceptanceResults": 8,
+    "findings": 9,
+    "t1CrossCheck": "A1-A10 including the A8 captainAdjudication (accepted-with-exemption)",
+    "pinnedRevisionSessionStartJs": "1f0203c69e5e904d878774e1d5d1e9d646de070b8e3fa2908ce77f85b60aefc0",
+    "verifyCommand": {
+      "command": "node -e \"const r=require('./evidence/omo-align/verification/result.json'); if(!r.verdict) throw new Error('missing verdict'); console.log('verdict:', r.verdict)\"",
+      "observedOutput": "verdict: pass",
+      "exitCode": 0,
+      "observedAt": "2026-09-13T15:00:36Z"
+    },
+    "stability": "two reads 6 s apart returned the same sha256; mtime unchanged since the rebuild"
+  },
+  "runMjs": {
+    "path": "evidence/omo-align/verification/run.mjs",
+    "bytes": 17548,
+    "mtime": "2026-09-13 22:52:21 +0800",
+    "outputConvention": "raw/run-<UTC stamp>.json + raw/run-<UTC stamp>.output.log (stamp = new Date().toISOString().replaceAll(':', '-'))",
+    "writeSites": ["writeFileSync(runJson, ...)", "writeFileSync(runLog, ...)"],
+    "deliveredPathsNoLongerWritten": ["result.json", "output.log"],
+    "manualEntriesFix": {
+      "before": "constant-derived list (17 entries with 4 duplicates in the reviewer's copy; 13 unique in the later revision) compared for JSON equality against the 14-name frozen list -> could never pass",
+      "after": "both sides reduced to sorted UNIQUE sets; ok = command.js constant + baseline constant + set equality + patch stateDir + profiles key + preset file; named diff fields missingVsContract / extraVsRegistered added",
+      "offlineProof": {
+        "method": "reevaluated the driver's own clause set read-only (the driver was NOT re-executed)",
+        "registeredToolCount": 14,
+        "contractToolCountUnique": 14,
+        "missingVsContract": [],
+        "extraVsRegistered": [],
+        "clauses": { "cmdConst": true, "cmdPrefix": true, "baselineCmd": true, "toolSetMatches": true, "stateDir": true, "profileKey": true, "presetFile": true },
+        "ok": true
+      }
+    }
+  },
+  "f4Disposition": {
+    "item": "(a) reverse-control run record for the two-sided case; (b) S3 assertion strength",
+    "a": {
+      "verdict": "already satisfied and now cited explicitly",
+      "realRunRecords": [
+        "evidence/dsh-qa/session-start-team/2026-09-13T14-28-41.689Z (mandated case, simple side 3 real boots: 0 teams / 0 notices)",
+        "evidence/dsh-qa/session-start-team/2026-09-13T14-40-32.418Z (mandated case, same, final revision c91f266)",
+        "evidence/omo-align/verification/raw/isolation-gate-independent.result.json (independent driver, 1 real simple boot: 0 teams / no notice)",
+        "evidence/omo-align/verification/raw/run-144954-overwrite-state.json (second driver, simple side 3 real boots 0/0)"
+      ],
+      "offlineProbeRole": "the gate-probe --self-test is an ADDITIONAL falsifier, never the sole one"
+    },
+    "b": {
+      "verdict": "upheld and DOWNGRADED in writing (the captain's option 'explicitly downgrade and state it in the report')",
+      "why": "nextReadyTask is module-private; scheduler.js exports only DEPENDENCY_OUTPUT_MAX_CHARS, DEPENDENCY_OUTPUTS_TOTAL_MAX_CHARS, collectCompletedDependencyOutputs, formatDependencyOutputs, assignmentPrompt, installTeamScheduler; no test outside scheduler.js references nextReadyTask; the S3 test asserts source substrings plus an INLINE replica of the readiness filter that still uses the pre-OPT-1 rule.",
+      "recordedAs": "source-level + predicate-level evidence, NOT dispatch-level",
+      "externalReferenceCheck": "Precision added after Reviewer independently confirmed it: the ONLY mention of nextReadyTask outside lib/scheduler.js is a COMMENT (test/opt1-failed-dependency.test.mjs:140, 'Mirror lib/scheduler.js nextReadyTask'); no external test CALLS it. The verified report's wording ('no test outside scheduler.js references it') is therefore exact in substance - the downgrade stands.",
+      "whereRecorded": ["assertion A-s1-s4", "t1CrossCheck A3 limitation", "residual R1", "finding reviewF4"],
+      "hardeningPath": "a true dispatch-level assertion requires a product change (export nextReadyTask, or drive installTeamScheduler) - owned by the implementation writer; flagged for t22"
+    }
+  },
+  "stalenessNote": "The captain's message (result.json = 7,757 B / 9f8e977e / needs_revision; run.mjs = 15,604 B at 22:50:39) describes the PRE-fix state. Measured now: result.json = 45,244 B / 90b76b10... / pass and run.mjs = 17,548 B at 22:52:21, with no write site targeting the delivered paths.",
+  "attributionCorrection": {
+    "recordedAt": "2026-09-13T15:03Z",
+    "authoritativeSource": "captain, after Senior Engineer self-reported",
+    "correction": "run.mjs in this directory is the IMPLEMENTER'S SELF-CHECK driver (byte-identical to evidence/omo-align/verification/implementer-selfcheck/run.mjs, sha256 prefix 12689b82c46aa220...; that copy is 17,548 B and carries the Lead fix). Its FIRST revision resolved outDir to the delivered evidence/omo-align/verification/result.json, which is the source of the ~14:54Z overwrite named in overwriteIncident.occurrences[2] - superseding the earlier inference of 'an in-flight process running pre-fix code'.",
+    "implementerAction": "On discovering the collision the implementer stopped, relocated its artifacts to evidence/omo-align/verification/implementer-selfcheck/ (run.mjs + output.log + RESULT.json) and refused to take t17, on the separation-of-duties ground that the t15 implementer cannot self-verify.",
+    "crossEvidenceStatus": "implementer-selfcheck/RESULT.json is CORROBORATING ONLY (its own verdict string: 'pass (corroborating; not the authoritative t17 verdict)'). It does not replace the authoritative t17 verdict, which remains the Lead report at the sha256 in currentReport.",
+    "noMutationOfVerifiedArtifact": "The captain has verified and closed F3 against result.json at sha256 90b76b100aaf130b92ceecac2474127f6ac64b5a26b76d459ce74fe358ae9db2. That artifact was deliberately NOT edited to carry this correction (editing it would invalidate the verified sha); the correction lives here and in section 8 of INCIDENT-overwritten-report.md."
+  }
+}

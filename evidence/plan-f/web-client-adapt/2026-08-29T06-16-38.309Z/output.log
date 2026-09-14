@@ -1,0 +1,7 @@
+[mpd-codegraph] init status=no-binary binary=- cwd=/root/dshProj/my-power-dsh
+[mpd-bootstrap] presets installed (0.2.3) -> /root/dshProj/my-power-dsh/.qa-web-client/.agent-presets
+[mpd-bootstrap] skills installed (0.2.3) -> /root/dshProj/my-power-dsh/.qa-web-client/skills
+CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.
+
+--- client ids ---
+@nanmicoder/dsh-agent-teams,models:separator,models:empty,effort:separator,agent-teams-activity,@mpd-dsh/mpd,mpd-workmate-library,mpd-workmate-toggle

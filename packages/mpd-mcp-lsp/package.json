@@ -1,0 +1,10 @@
+{
+  "name": "@mpd-dsh/mcp-lsp",
+  "private": true,
+  "version": "0.2.3",
+  "type": "module",
+  "description": "lsp MCP integration plugin (P3, pending D2)",
+  "scripts": {
+    "test": "bun test"
+  }
+}

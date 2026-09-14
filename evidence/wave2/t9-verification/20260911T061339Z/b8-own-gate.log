@@ -1,0 +1,39 @@
+PASS checkout: ast-grep launcher starts as a real MCP server from a cwd outside the bundle (no env pins) — tools=["search","rewrite","scan"] timeout=undefined stderr=
+PASS checkout: real ast-grep MCP search returns a real match (not BINARY_NOT_FOUND) — {"schemaVersion":1,"ok":true,"kind":"search","workdir":"/tmp/t9-b8-mw2Mrh/cwd-outside-bundle","matches":[{"path":"/root/dshProj/my-power-dsh/tests/mcp-fixtures/sample.c","language":"c","text":"return 0;","range":{"start":{"line":1,"column":
+PASS checkout negative control: MPD_AST_GREP_SG_PATH=/nonexistent/sg -> BINARY_NOT_FOUND — {"schemaVersion":1,"ok":false,"error":{"code":"BINARY_NOT_FOUND","message":"ast-grep binary not found for linux: no candidate passed the --version probe across the env override, MPD runtime, skill bin cache, PATH, or Homebrew prefixes.","re
+PASS checkout: codegraph launcher serves the real tool surface (no 'skipped' stub) — tools=["codegraph_explore"] stderr=
+PASS checkout: real codegraph_explore call answers with content — **Exploration: norm**
+
+Found 25 symbols across 3 files.
+
+**Blast radius — what depends on these (update/verify before editing)**
+
+- `NormalizedProfileTask` (packages/mpd-agent-teams-plugin/lib/types/profiles.d.ts:66) — 1
+PASS checkout negative control: MPD_CODEGRAPH_BIN=/nonexistent/codegraph -> unavailable, never a live tool surface — tools=[] stderr=CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.
+
+PASS resolver: the .toolchain `sg` wrapper is REJECTED by --version (deprecated, exit != 0) — exit=1 stdout="" stderr="========================================================================\nWARNING: `sg` is deprecated. Use `ast-grep` instead.\n=================================="
+PASS resolver: the .toolchain `ast-grep` passes --version — exit=0 stdout="ast-grep 0.45.3"
+PASS resolver: checkout layout picks the .toolchain `ast-grep` binary (never the sg wrapper) — {"binary":"/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/ast-grep","source":"toolchain"}
+PASS resolver: checkout layout picks the .toolchain codegraph binary — {"binary":"/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph","source":"toolchain"}
+PASS ordering: with both candidates present the resolver picks ast-grep over sg — {"binary":"/tmp/t9-b8-mw2Mrh/bin-dir/ast-grep","source":"bin-dir"}
+PASS ordering: a bin-dir holding ONLY the deprecated sg wrapper is rejected by the probe (no sg is ever returned) — {"binary":"/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/ast-grep","source":"toolchain"}
+PASS resolver unit suite passes —  10 pass |  0 fail |  22 expect() calls | Ran 10 tests across 1 file. [42.00ms]
+PASS packed: npm pack of the staged bundle succeeds — exit=0 tgz=mpd-dsh-mpd-0.3.2.tgz npm notice
+npm notice 📦  @mpd-dsh/mpd@0.3.2
+npm notice Tarball Contents
+npm notice 5.2kB LICENSE-NOTICES.md
+npm notice 4.0kB LICENSE.md
+npm notice 8.9kB README.md
+npm notice 8.9kB README.zh-CN.md
+npm
+PASS packed: tarball install succeeds — exit=0 
+added 7 packages in 53s
+
+PASS packed: installed tree ships both launchers — /tmp/t9-b8-mw2Mrh/packed-profile/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-astgrep/launch.mjs=true /tmp/t9-b8-mw2Mrh/packed-profile/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-codegraph/launch.mjs=true
+PASS packed: real ast-grep MCP search through the INSTALLED launcher returns a real match — {"schemaVersion":1,"ok":true,"kind":"search","workdir":"/tmp/t9-b8-mw2Mrh/cwd-outside-bundle","matches":[{"path":"/root/dshProj/my-power-dsh/tests/mcp-fixtures/sample.c","language":"c","text":"return 0;","range":{"start":{"line":1,"column":
+PASS packed negative control: wrong caller pin -> BINARY_NOT_FOUND — {"schemaVersion":1,"ok":false,"error":{"code":"BINARY_NOT_FOUND","message":"ast-grep binary not found for linux: no candidate passed the --version probe across the env override, MPD runtime, skill bin
+PASS packed: real codegraph call through the INSTALLED launcher answers — tools=["codegraph_explore"] stderr=
+PASS packed: resolution arrives via createRequire (packed optionalDependency), not the checkout toolchain — {"a":{"binary":"/tmp/t9-b8-mw2Mrh/packed-profile/node_modules/@ast-grep/cli/ast-grep","source":"require"},"c":{"binary":"/tmp/t9-b8-mw2Mrh/packed-profile/node_modules/@colbymchenry/codegraph/npm-shim.js","source":"require"}}
+
+PASS — b8-own-gate.result.json (20/20)
+EXIT=0

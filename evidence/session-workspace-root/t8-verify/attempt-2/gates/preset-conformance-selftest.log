@@ -1,0 +1,1 @@
+[preset-conformance self-test] ok: 30 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, row parity 31/31

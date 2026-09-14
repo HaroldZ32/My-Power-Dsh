@@ -1,0 +1,13 @@
+## NEGATIVE CONTROL B5: comment-checker tests with NO provisioned .toolchain binary (isolated copy)
+bun test v1.3.14 (0d9b296a)
+
+test/comment-checker.test.ts:
+(skip) binary resolves from toolchain
+(skip) comment file triggers detection (exit 2)
+(skip) clean file passes (exit 0)
+
+ 0 pass
+ 3 skip
+ 0 fail
+Ran 3 tests across 1 file. [34.00ms]
+B5_CONTROL_EXIT=0

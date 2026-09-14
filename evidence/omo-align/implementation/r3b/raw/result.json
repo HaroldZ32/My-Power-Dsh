@@ -1,0 +1,26 @@
+{
+  "ok": true,
+  "step": "integration",
+  "sessionExit": 1,
+  "liveBefore": [
+    "seed-approved",
+    "seed-running",
+    "seed-stale-1",
+    "seed-stale-2",
+    "seed-stale-3",
+    "seed-with-tasks"
+  ],
+  "liveAfter": [
+    "seed-approved",
+    "seed-running",
+    "seed-with-tasks"
+  ],
+  "archived": [
+    "seed-stale-1",
+    "seed-stale-2",
+    "seed-stale-3"
+  ],
+  "staleStagedArchived": true,
+  "protectedByteIdentical": true,
+  "boundarySeen": false
+}

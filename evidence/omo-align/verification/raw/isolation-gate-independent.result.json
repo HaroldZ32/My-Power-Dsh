@@ -1,0 +1,117 @@
+{
+  "steps": {
+    "installer": {
+      "exit": 0,
+      "ok": true
+    },
+    "sides": [
+      {
+        "label": "simple",
+        "prompt": "Reply with exactly: hello-ok",
+        "teams": 0,
+        "notice": false,
+        "ok": true,
+        "goalTextConsumed": null,
+        "userMessageTexts": [
+          "Reply with exactly: hello-ok",
+          "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent DSH fi",
+          "<system-reminder>\nA skill is a reusable set of task-specific instructions. The following skills are "
+        ],
+        "sessionStoreKeys": [
+          "--tmp-mpd-t17-iso-aENGIJ-side-simple-ws--"
+        ],
+        "sessionStoreKeyIsSandbox": true,
+        "activeMembers": 0
+      },
+      {
+        "label": "complex",
+        "prompt": "team: fix the flaky test",
+        "teams": 1,
+        "notice": true,
+        "ok": true,
+        "goalTextConsumed": true,
+        "userMessageTexts": [
+          "fix the flaky test",
+          "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent DSH fi",
+          "<system-reminder>\nA skill is a reusable set of task-specific instructions. The following skills are ",
+          "[AgentTeams] Session-start team rule: this session was routed by the complexity gate (complexity sig"
+        ],
+        "sessionStoreKeys": [
+          "--tmp-mpd-t17-iso-aENGIJ-side-complex-ws--"
+        ],
+        "sessionStoreKeyIsSandbox": true,
+        "staged": "staged",
+        "members": 11,
+        "activeMembers": 0,
+        "dossier": "mpd-default"
+      }
+    ],
+    "isolation": [
+      {
+        "label": "simple",
+        "keys": [
+          "--tmp-mpd-t17-iso-aENGIJ-side-simple-ws--"
+        ],
+        "sandboxKeyed": true
+      },
+      {
+        "label": "complex",
+        "keys": [
+          "--tmp-mpd-t17-iso-aENGIJ-side-complex-ws--"
+        ],
+        "sandboxKeyed": true
+      }
+    ],
+    "repoTeamPreserved": {
+      "before": [
+        "agent-teams-sidebar-migration",
+        "mpd-default-84e50f06",
+        "mpd-default-d92bc69a",
+        "mpd-default-db53f0d4"
+      ],
+      "after": [
+        "agent-teams-sidebar-migration",
+        "mpd-default-84e50f06",
+        "mpd-default-d92bc69a",
+        "mpd-default-db53f0d4"
+      ],
+      "newIds": []
+    },
+    "realHomePreserved": {
+      "before": [
+        "lsp-daemon",
+        "mcp-servers",
+        "mcp-wave.patch.yml",
+        "mcp.env",
+        "workmate"
+      ],
+      "after": [
+        "lsp-daemon",
+        "mcp-servers",
+        "mcp-wave.patch.yml",
+        "mcp.env",
+        "workmate"
+      ],
+      "newEntries": []
+    }
+  },
+  "verdict": {
+    "twoSided": true,
+    "isolation": true
+  },
+  "baseline": {
+    "repoTeamBefore": [
+      "agent-teams-sidebar-migration",
+      "mpd-default-84e50f06",
+      "mpd-default-d92bc69a",
+      "mpd-default-db53f0d4"
+    ],
+    "realHomeBefore": [
+      "lsp-daemon",
+      "mcp-servers",
+      "mcp-wave.patch.yml",
+      "mcp.env",
+      "workmate"
+    ]
+  }
+}

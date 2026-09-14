@@ -1,0 +1,75 @@
+{
+  "schema": "mpd/evidence/result@1",
+  "task": "t49",
+  "round": "repair-round-2",
+  "attempt": 1,
+  "SUPERSEDED": {
+    "by": "t53 (repair-round-3)",
+    "reason": "t50 review round 2 (verdict needs_revision) proved TWO claims in this file wrong, so this record must not be read on its own.",
+    "whatIsWrong": [
+      "REACHABILITY: line 9's reason and the acceptance line for R1 claim the lane is consumed at the tool boundary. That is true ONLY for the dedup fold; the INTERJECTION lane (enqueueInterjection / decideInterjection) and clearMailboxToWatermark still have NO production caller and stay unreachable from any agent surface. The truth is recorded in this same directory's dead-capability-findings.md, written minutes later.",
+      "CAUSE ATTRIBUTION: the t36 QA case (skills/dsh-qa/scripts/agent-teams-messaging.mjs) exit 1 was attributed to a PRE-EXISTING case defect, 'A/B measured' by reverting a SCHEDULER edit. That arm was invalid: the approved-delivery repost lives in state.js (decideInterjection), so reverting a scheduler line could never change the outcome. The case was GREEN before this wave and went RED because of the new repost.",
+      "STALE PINS: the test-file pin (44acbc827a486546 / 179 lines) and the '177 pass' count describe the pre-50e6497 revision; the settled revision had 410185dc… and 178 tests. See settled-pins.json in this directory."
+    ],
+    "whatStillStands": "Every lib pin and the defects R1W-D1..D3 are unaffected; t50 independently reproduced the dedup guard, the tombstone/read-marker fix, the expiry notice, the closed vocabulary and the call-count proof."
+  },
+  "head": "7379e28bd1b610666d15b245c37edc7ec159d7cb",
+  "decision": {
+    "choice": "(a) wire R1 in this wave",
+    "reason": "t46 rejected R1 as a library with zero call sites; the tool boundary now consumes the fold, so no R1 criterion is passed on an unreferenced export"
+  },
+  "settledFiles": {
+    "packages/mpd-agent-teams-plugin/lib/state.js": { "sha256": "004efcfd27d424a6d4ad6a5432269bd555ccc27a5b935b8a1d58591679ccdf67", "bytes": 61904 },
+    "packages/mpd-agent-teams-plugin/lib/scheduler.js": { "sha256": "27cc18b923443c22b160ed202485499b980cceb22f43e63855bf42e6cd6550a2" },
+    "packages/mpd-agent-teams-plugin/lib/tools.js": { "sha256": "4babeddc7b528c1a" },
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": { "sha256": "87fd502b09dac90e" },
+    "packages/mpd-agent-teams-plugin/lib/session-start.js": { "sha256": "8cfaef47e9959ef7def01003640f768ff4befa50e9c202ff692a0629ca0a2aa6", "note": "UNCHANGED this round; matches the session-start-team gate hash" },
+    "packages/mpd-agent-teams-plugin/test/t49-send-dedup-wiring.test.mjs": { "sha256": "44acbc827a486546", "lines": 179, "new": true },
+    "packages/mpd-agent-teams-plugin/test/r1-message-channel.test.mjs": { "sha256": "bbceac658b782370" },
+    "evidence/omo-align/requirements/frozen-contract.json": { "sha256": "19dc0c6779f8a4790ae4096b637385fa5a277c24b821b6065b327e8c0aec769", "bytes": 36401 }
+  },
+  "defectsFoundAndFixed": [
+    {
+      "id": "R1W-D1",
+      "severity": "high",
+      "problem": "the fold changed the durable file but NOT the behaviour: agent_teams_send_message still ran its live delivery for a folded duplicate, so two identical sends woke the recipient twice",
+      "evidence": "t49 test F first run: deliveries.length was 2 with a single stored record",
+      "fix": "region mpd-delta send-dedup-delivery-guard returns { delivered: 'duplicate' } for a folded send and performs no second delivery"
+    },
+    {
+      "id": "R1W-D2",
+      "severity": "high",
+      "problem": "a folded duplicate re-delivered an ALREADY ACKNOWLEDGED record — the duplicate ACTION the fold exists to stop",
+      "evidence": "test 'duplicate AFTER an acknowledged delivery' failed with deliveries 2 before the fix",
+      "fix": "the primitive returns a transient `_folded` marker (never persisted) and the send guard keys on it"
+    },
+    {
+      "id": "R1W-D3",
+      "severity": "medium",
+      "problem": "after a FAILED live delivery the claim is released, so a duplicate's live attempt could still fire a second wake",
+      "evidence": "test 'live delivery DOWN': first.delivered='mailbox', second.delivered='wake' before the fix",
+      "fix": "same guard; the scheduler keeps sole ownership and delivers the one surviving record exactly once"
+    }
+  ],
+  "acceptance": [
+    { "criterion": "choose (a) wire R1 or (b) mark R1-1/3/4 NOT MET, explicitly", "status": "passed", "evidence": "chose (a); decision block above" },
+    { "criterion": "expiry posts an ordinary message to record.from and is driven from a real tick, row status stays 'expired'", "status": "passed", "evidence": "expireInterjections appends {id: interjection-expired-<id>, from: captain, to: record.from, no kind}; tick = region mpd-delta interjection-expiry-tick inside kickMember; R1 tests assert status 'expired' + the notice" },
+    { "criterion": "filter tombstone !== true in the unread/deliverable reads; a clear cannot re-open an acknowledged record; seam test 'after a clear: 0 unread, 0 deliverable'", "status": "passed", "evidence": "readUnreadMailbox.filter(tombstone!==true) + deliverableUnread.filter(tombstone!==true); clearMailboxToWatermark preserves readAt/deliveredAt; tests at r1-message-channel.test.mjs:253,270 and the scheduler-boundary tombstone test with a positive control on the same kick path" },
+    { "criterion": "decision allow-list {approved,rejected} with a loud error naming allowed values", "status": "passed", "evidence": "ALLOWED_INTERJECTION_DECISIONS; error text names both; R1 test 'the decision vocabulary is CLOSED'" },
+    { "criterion": "assert at the tool boundary that two identical sends -> exactly one scheduler delivery, recorded as a CALL COUNT", "status": "passed", "evidence": "test F drives installTeamScheduler -> runtime.kickMember and counts subagents.prompt calls: 0 before the idle edge, 1 after, 1 after a second kick" },
+    { "criterion": "record the operative reading as pin-only wording (do NOT change the primitive)", "status": "passed", "evidence": "frozen-contract.json.messagingOperativeReading: AT-MOST-ONCE, ONE surviving record per (from,to,content) in the 60 s window, N visible as dupCount=N" },
+    { "criterion": "transcribe C1 exactly and restate C3 as 'a clause whose FIRST token, optionally after and|then|also, is an action verb' (pin-only)", "status": "passed", "evidence": "C_enumeratedSteps.detect: C1 ^\\s*(?:\\d+[.)]|[-*|])\\s is byte-identical to ENUMERATED_LINE_PATTERN (session-start.js:100); C3 restatement matches CLAUSE_ACTION_PATTERN (:114) and its verb set is identical to C2 (:98)" }
+  ],
+  "verifyCommands": [
+    { "command": "node scripts/patch-agent-teams-fixes.mjs --check", "status": "passed", "exitCode": 0, "evidence": "already applied: 26 mpd delta region(s) across 6 adopted file(s)" },
+    { "command": "bun test packages/mpd-agent-teams-plugin", "status": "passed", "exitCode": 0, "evidence": "177 pass / 0 fail / 1147 expect() across 44 files" },
+    { "command": "bun test packages/mpd-agent-teams-plugin/self-fix-tests", "status": "passed", "exitCode": 0, "evidence": "53 pass / 0 fail / 599 expect() across 8 files" },
+    { "command": "bun run typecheck", "status": "passed", "exitCode": 0, "evidence": "tsgo --noEmit, no output" },
+    { "command": "node skills/dsh-qa/scripts/session-start-team.mjs", "status": "passed", "exitCode": 0, "evidence": "PASS; twoSided simpleTeams [0,0,0] vs complexTeams [1,1,1]; negativeControl disarmed; gateHash 8cfaef47…" }
+  ],
+  "knownLimits": [
+    "Multi-member idle-edge auto-delivery driven from a REAL agent/status event is not drivable in isolated headless: one-shot dsh disposes continuable members, so no idle edge is emitted. The tests call runtime.kickMember directly — the exact function the listener calls — which is the closest honest seam available.",
+    "node skills/dsh-qa/scripts/agent-teams-messaging.mjs exits 1 on a PRE-EXISTING case defect (its own manual re-post collides with the library's approved-delivery id ij-1-delivery, so the requester inbox holds 2 records and its length===1 assertion fails). A/B measured: identical failure with the only scheduler edit here reverted. NOT fixed here because skills/** is outside this task's inScope."
+  ],
+  "noGitWrite": "read-only git rev-parse/status/diff only; the captain commits"
+}

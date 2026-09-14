@@ -1,0 +1,52 @@
+{
+  "verify1_filepair": {
+    "command": "test -f docs/upstream-parity-ledger.md && test -f docs/upstream-parity-ledger.zh-CN.md && test ! -e docs/omo-parity-ledger.md && test ! -e docs/omo-parity-ledger.zh-CN.md",
+    "exitCode": 0
+  },
+  "verify2_no_stale_path": {
+    "command": "git grep -n \"omo-parity-ledger\" -- docs/ ':!docs/plan-*.md' ':!docs/omo-parity-gap.md'",
+    "exitCode": 0,
+    "output": "",
+    "expectation": "no output",
+    "passed": true
+  },
+  "verify3_switch_links": {
+    "command": "grep -n \"\\[中文\\]\\|\\[English\\]\" docs/upstream-parity-ledger.md docs/upstream-parity-ledger.zh-CN.md",
+    "exitCode": 0,
+    "matches": [
+      "docs/upstream-parity-ledger.md:2:**English** | [中文](./upstream-parity-ledger.zh-CN.md)",
+      "docs/upstream-parity-ledger.zh-CN.md:2:[English](./upstream-parity-ledger.md) | **中文**"
+    ],
+    "passed": true
+  },
+  "wide_sweep": {
+    "command": "git grep -n \"omo-parity-ledger\" -- . ':!docs/' ':!evidence/'",
+    "output": "",
+    "passed": true
+  },
+  "history_kept": {
+    "wave_id_hits_en": 1,
+    "evidence_citations_en": 8,
+    "evidence_citations_zh": 7,
+    "passed": true
+  },
+  "exempt_records": {
+    "command": "git status --porcelain docs/omo-parity-gap.md docs/plan-*.md docs/decisions.md",
+    "output": "",
+    "passed": true
+  },
+  "files": {
+    "docs/upstream-parity-ledger.md": "28d88f8121fb1407df086a6663c3ebbc64a52d249378460dc525da27959afa00",
+    "docs/upstream-parity-ledger.zh-CN.md": "e16ee5df22addd27de67b4fcaa9a38234382837da39f08a912773110de35001d",
+    "docs/index.md": "3411768d9adf1e9f8c750708fe238e41956db89f86523d1befbc11cca4f4d216",
+    "docs/index.zh-CN.md": "9dc7403b18aed3a61d6c8a6c06f579de7b6a1f020b6909a514af002cce4a6716"
+  },
+  "title_and_links": {
+    "en_title": "# Upstream Parity Ledger — my-power-dsh specialist parity against the pinned baseline",
+    "en_line2": "**English** | [中文](./upstream-parity-ledger.zh-CN.md)",
+    "zh_title": "# 上游对齐台账 —— my-power-dsh 专家体系与钉定基线的对齐",
+    "zh_line2": "[English](./upstream-parity-ledger.md) | **中文**",
+    "switch_targets_exist": true
+  },
+  "allPassed": true
+}

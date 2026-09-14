@@ -1,0 +1,68 @@
+# B1 (t7) root-resolution sweep — command transcript
+# date: 2026-09-11T03:32:03Z   HEAD: 98680b1
+
+$ grep -rn 'DSH_WORKSPACE_ROOT' packages/*/src
+packages/mpd-dsh-adapter-plugin/src/index.ts:138:   *   2. `DSH_WORKSPACE_ROOT`             (process override: operator/QA only)
+packages/mpd-dsh-adapter-plugin/src/index.ts:183:// The harness never defines DSH_WORKSPACE_ROOT; a session's header cwd is the
+packages/mpd-dsh-adapter-plugin/src/index.ts:186:// highest first: session -> DSH_WORKSPACE_ROOT (operator/QA override) ->
+packages/mpd-dsh-adapter-plugin/src/index.ts:203:  const override = process.env.DSH_WORKSPACE_ROOT
+packages/mpd-verif-plugin/src/env.ts:31:// (session header cwd -> DSH_WORKSPACE_ROOT -> process.cwd()); this module only
+
+$ grep -rn 'process.env.DSH_WORKSPACE_ROOT ?? process.cwd()' packages/*/src   (the PRE-FIX expression)
+(no match -> the pre-fix expression is gone from every plugin)
+
+$ grep -rn 'process.cwd()' packages/*/src   (non-comment lines)
+packages/mpd-codegraph-plugin/src/index.ts:76:  const cwd = (process.env.MPD_CODEGRAPH_PROJECT_CWD ?? process.env.MPD_DSH_CODEGRAPH_PROJECT_CWD) || process.cwd()
+packages/mpd-dsh-adapter-plugin/src/index.ts:205:  return process.cwd()
+
+$ grep -rn 'session.header.cwd\|session?.header?.cwd' packages/*/src   (the session fact: adapter only)
+packages/mpd-dsh-adapter-plugin/src/index.ts:137:   *   1. the CALLING SESSION's workspace  (exec.agent.session.header.cwd)
+packages/mpd-dsh-adapter-plugin/src/index.ts:192:    const cwd = agent?.session?.header?.cwd
+
+$ grep -rn 'ctx.tools\|ctx.subagents\|ctx.skills\|ctx.agentPresets\|ctx.get("agents")' packages/*/src   (harness seams: adapter only)
+packages/mpd-bootstrap-plugin/src/index.ts:6://   1) Skill corpus: this row registers a `ctx.skills` provider over
+
+$ grep -rn 'workspaceRoot\|workspaceRootsAll\|workspaceRootOf' packages/*/src   (who resolves, and through what)
+packages/mpd-boulder-plugin/src/index.ts:42:  return config.boulderDir ? config.boulderDir : dsh.workspaceRoot(exec)
+packages/mpd-comment-checker-plugin/src/index.ts:16:import { createDshAdapter, workspaceRootOf } from "../../mpd-dsh-adapter-plugin/src/index"
+packages/mpd-comment-checker-plugin/src/index.ts:81:    cwd: root ?? workspaceRootOf(),
+packages/mpd-comment-checker-plugin/src/index.ts:121:          const res = runCheck(binary, hookInputFor(path, content, dsh.workspaceRoot(exec)), timeoutMs)
+packages/mpd-comment-checker-plugin/src/index.ts:142:      const res = runCheck(binary, hookInputFor(fp, content, dsh.workspaceRoot(exec)), timeoutMs)
+packages/mpd-config-plugin/src/index.ts:102:  let state = loadConfig(config, dsh.workspaceRoot())
+packages/mpd-config-plugin/src/index.ts:104:  function reload(exec?: any): any { state = loadConfig(config, dsh.workspaceRoot(exec)); return state.config }
+packages/mpd-dsh-adapter-plugin/src/index.ts:143:  workspaceRoot(exec?: DshToolExec): string
+packages/mpd-dsh-adapter-plugin/src/index.ts:149:  workspaceRootsAll(): string[]
+packages/mpd-dsh-adapter-plugin/src/index.ts:200:export function workspaceRootOf(exec?: DshToolExec): string {
+packages/mpd-dsh-adapter-plugin/src/index.ts:213:export function workspaceRootsOf(agents: any): string[] {
+packages/mpd-dsh-adapter-plugin/src/index.ts:258:  const workspaceRoot = (exec?: DshToolExec): string => workspaceRootOf(exec)
+packages/mpd-dsh-adapter-plugin/src/index.ts:259:  const workspaceRootsAll = (): string[] => workspaceRootsOf(service("agents"))
+packages/mpd-dsh-adapter-plugin/src/index.ts:290:    workspaceRoot,
+packages/mpd-dsh-adapter-plugin/src/index.ts:291:    workspaceRootsAll,
+packages/mpd-hashline-plugin/src/index.ts:50:  return config.registryFile ? resolve(config.registryFile) : join(dsh.workspaceRoot(exec), ".mpd", "hashline-files.json")
+packages/mpd-hashline-plugin/src/index.ts:56:  return isAbsolute(target) ? resolve(target) : resolve(dsh.workspaceRoot(exec), target)
+packages/mpd-memory-plugin/src/index.ts:40:  const base = basename(dsh.workspaceRoot(exec))
+packages/mpd-memory-plugin/src/index.ts:45:  return join(dsh.workspaceRoot(exec), config.dir ?? ".mpd", "memory", "agents", slug)
+packages/mpd-modelchain-plugin/src/index.ts:128:      const p = memoryPath(dsh.workspaceRoot(exec), config)
+packages/mpd-modelchain-plugin/src/index.ts:143:      const mem = loadMemory(memoryPath(dsh.workspaceRoot(exec), config))
+packages/mpd-ulw-plugin/src/index.ts:85:  return cfg.planDir ?? join(dsh.workspaceRoot(exec), ".mpd", "plans")
+packages/mpd-ulw-plugin/src/index.ts:89:  return cfg.stateDir ?? join(dsh.workspaceRoot(exec), ".mpd", "ulw")
+packages/mpd-verif-plugin/src/index.ts:14:import { paths, venvPath, workDir, BACKEND_IDS, workspaceRoot, type BackendId } from "./env"
+packages/mpd-verif-plugin/src/index.ts:416:  workspaceRoot,
+packages/mpd-verif-plugin/src/env.ts:7:import { workspaceRootOf } from "../../mpd-dsh-adapter-plugin/src/index"
+packages/mpd-verif-plugin/src/env.ts:35:export function workspaceRoot(exec?: any): string {
+packages/mpd-verif-plugin/src/env.ts:36:  return resolve(workspaceRootOf(exec))
+packages/mpd-verif-plugin/src/env.ts:40:  return resolve(override || process.env.MPD_DSH_VERIF_VENV || join(workspaceRoot(exec), ".venv-rtl"))
+packages/mpd-verif-plugin/src/env.ts:44:  return resolve(process.env.MPD_DSH_VERIF_WORK || join(workspaceRoot(exec), ".mpd", "verif"))
+packages/mpd-verif-plugin/src/env.ts:48:  return { workspace: workspaceRoot(exec), venv: venvPath(overrideVenv, exec), work: workDir(exec) }
+packages/mpd-verif-plugin/src/regress.ts:8:import { dateSeedBase, workspaceRoot, workDir, runStamp, type BackendId } from "./env"
+packages/mpd-verif-plugin/src/regress.ts:72:    const root = workspaceRoot(exec)
+packages/mpd-verif-plugin/src/sim.ts:13:import { workspaceRoot, workDir, runStamp } from "./env"
+packages/mpd-verif-plugin/src/sim.ts:212:  const tbPathDirs = resolveTbPathDirs(tbModules, a.sources, workspaceRoot(exec))
+packages/mpd-verif-plugin/src/sim.ts:216:    sources: a.sources.map((s) => (isAbsolute(s) ? s : join(workspaceRoot(exec), s))),
+packages/mpd-verif-plugin/src/sim.ts:217:    includes: (a.includes ?? []).map((i) => (isAbsolute(i) ? i : join(workspaceRoot(exec), i))),
+packages/mpd-workmate-plugin/src/index.ts:18:import { createDshAdapter, workspaceRootOf, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+packages/mpd-workmate-plugin/src/index.ts:336:  const scanRoots = roots && roots.length > 0 ? roots : [workspaceRootOf()]
+packages/mpd-workmate-plugin/src/index.ts:388:  const all = dsh.workspaceRootsAll()
+packages/mpd-workmate-plugin/src/index.ts:389:  return all.length > 0 ? all : [dsh.workspaceRoot()]
+packages/mpd-workmate-plugin/src/index.ts:682:    execute: async (args: any, exec: any) => renameWorkmate(args?.name, args?.new_name, [dsh.workspaceRoot(exec)])
+packages/mpd-workmate-plugin/src/index.ts:697:    execute: async (args: any, exec: any) => deleteWorkmate(args?.name, args?.purge, args?.confirm, [dsh.workspaceRoot(exec)])

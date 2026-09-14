@@ -1,0 +1,97 @@
+{
+  "driver": "raw-fragment-stream-boundary",
+  "measuredAt": "2026-09-11T08:44:34.271Z",
+  "dshHome": "/root/.dsh",
+  "boundary": "MODEL-SIDE, confirmed from the persisted streams: the raw fragment stream is byte-identical to the assembled arguments (exact string equality at the dispatch records), the emitted JSON is complete and valid while missing exactly the key the wave-2 report lost, and neither the plugin (no parseArguments anywhere under lib/) nor the harness parser (plain key-lossless JSON.parse, no size cap; a max-tokens finish drops the call whole) can drop a top-level key.",
+  "residual": "a model-side omission of output/changedPaths stays undetectable by the plugin — stated in the canon and in the tool contract, bounded only by the REQUIRED status parameter plus the split-into-small-calls guidance; the AGENTS.md half of that guidance is still missing (Group F / t8).",
+  "results": [
+    {
+      "case": "t6/Senior Engineer",
+      "session": "47376f28-26ef-4626-9b6a-0c161920b78d",
+      "recordSeq": 1186,
+      "callId": "call_00_pxYRGKFEHpPe2D7ganKe6322",
+      "tool": "agent_teams_update_task",
+      "fragmentCount": 3866,
+      "rawChars": 14080,
+      "rawSha12": "c86ea2adeab4",
+      "expectedSha12": "c86ea2adeab4",
+      "expectedChars": 14080,
+      "shaMatches": true,
+      "charsMatch": true,
+      "validCompleteJson": true,
+      "topLevelKeys": [
+        "acceptanceResults",
+        "changedPaths",
+        "commandsRun",
+        "output",
+        "task_id",
+        "attempt_id"
+      ],
+      "missingTopLevelKey": "status",
+      "missingKeyAbsent": true,
+      "assembledByteIdenticalCopies": 3,
+      "assembledCopyPaths": [
+        "rec[1187]:assistant/message.data.message.content[2].arguments",
+        "rec[1187]:assistant/message.data.stream[8].chunk.block.arguments",
+        "rec[1188]:tool/call.data.arguments"
+      ],
+      "parseArgumentsInPluginLib": [],
+      "jsonParseElsewhereInPluginLib": [
+        "/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/client.js.map",
+        "/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/client.js",
+        "/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/web-routes.js",
+        "/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/state.js",
+        "/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/client/agent-teams-card-definition.js",
+        "/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/client/panel-geometry.js"
+      ],
+      "toolsJsJsonParseCount": 0,
+      "toolsJsSizeHandling": false,
+      "passed": true
+    },
+    {
+      "case": "t10/Reviewer",
+      "session": "07bfb2e6-292c-48e3-aef6-9ae8a7578b4a",
+      "recordSeq": 1031,
+      "callId": "call_00_KACEA7EDqpyKw87LyoAF8911",
+      "tool": "agent_teams_update_task",
+      "fragmentCount": 4153,
+      "rawChars": 14866,
+      "rawSha12": "9f47aa0efd7c",
+      "expectedSha12": "9f47aa0efd7c",
+      "expectedChars": 14866,
+      "shaMatches": true,
+      "charsMatch": true,
+      "validCompleteJson": true,
+      "topLevelKeys": [
+        "acceptanceResults",
+        "commandsRun",
+        "findings",
+        "output",
+        "status",
+        "task_id",
+        "verdict"
+      ],
+      "missingTopLevelKey": "attempt_id",
+      "missingKeyAbsent": true,
+      "assembledByteIdenticalCopies": 3,
+      "assembledCopyPaths": [
+        "rec[1032]:assistant/message.data.message.content[2].arguments",
+        "rec[1032]:assistant/message.data.stream[8].chunk.block.arguments",
+        "rec[1033]:tool/call.data.arguments"
+      ],
+      "parseArgumentsInPluginLib": [],
+      "jsonParseElsewhereInPluginLib": [
+        "/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/client.js.map",
+        "/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/client.js",
+        "/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/web-routes.js",
+        "/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/state.js",
+        "/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/client/agent-teams-card-definition.js",
+        "/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/client/panel-geometry.js"
+      ],
+      "toolsJsJsonParseCount": 0,
+      "toolsJsSizeHandling": false,
+      "passed": true
+    }
+  ],
+  "passed": true
+}

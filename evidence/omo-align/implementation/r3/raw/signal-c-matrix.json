@@ -1,0 +1,129 @@
+{
+  "measuredAt": "2026-09-13T15:19:35.810Z",
+  "purpose": "t24 F1 finalisation evidence: (a) the OLD 'matchedSignals >= 2' rule could not trigger frozen complex #1/#3, and (b) the accepted-cost sentence is indistinguishable from complex #1 under any C-only rule.",
+  "contractAnchor": {
+    "bytes": 33022,
+    "sha256": "9916644bc50669b30d857b190a4058a53a31cf2106444b2c3e0091d955d76cb4",
+    "field": "complexityGate.logic + logicRevisionNote"
+  },
+  "expected": {
+    "simple": "3/3 must be silent (trigger=false)",
+    "complex": "3/3 must each trigger exactly once",
+    "acceptedCost": "the false-positive sentence triggers (C2+C3) — ledgered cost, not a defect"
+  },
+  "rows": [
+    {
+      "label": "complex1",
+      "prompt": "Align the bundle with upstream: audit the orchestration surface, then implement the routing change.",
+      "C1_lines": 0,
+      "C2_verbs": 3,
+      "C3_clauses": 3,
+      "B_deliverableVerbs": 2,
+      "D_planArtifact": false,
+      "explicitFlag": false,
+      "C_subSignalsMet": "2/3",
+      "C_fires": true,
+      "signals": [
+        "C"
+      ],
+      "trigger": true,
+      "countedSignalsUnderOldRule": 2
+    },
+    {
+      "label": "complex2",
+      "prompt": "team: fix the flaky test",
+      "C1_lines": 0,
+      "C2_verbs": 0,
+      "C3_clauses": 0,
+      "B_deliverableVerbs": 0,
+      "D_planArtifact": false,
+      "explicitFlag": true,
+      "C_subSignalsMet": "0/3",
+      "C_fires": false,
+      "signals": [
+        "A"
+      ],
+      "trigger": true,
+      "countedSignalsUnderOldRule": 1
+    },
+    {
+      "label": "complex3",
+      "prompt": "1. Read the patch file\n2. Audit the gates\n3. Implement the change\n4. Verify the boot",
+      "C1_lines": 4,
+      "C2_verbs": 3,
+      "C3_clauses": 3,
+      "B_deliverableVerbs": 1,
+      "D_planArtifact": false,
+      "explicitFlag": false,
+      "C_subSignalsMet": "3/3",
+      "C_fires": true,
+      "signals": [
+        "C"
+      ],
+      "trigger": true,
+      "countedSignalsUnderOldRule": 3
+    },
+    {
+      "label": "simple1",
+      "prompt": "Reply with exactly: hello-ok",
+      "C1_lines": 0,
+      "C2_verbs": 0,
+      "C3_clauses": 0,
+      "B_deliverableVerbs": 0,
+      "D_planArtifact": false,
+      "explicitFlag": false,
+      "C_subSignalsMet": "0/3",
+      "C_fires": false,
+      "signals": [],
+      "trigger": false,
+      "countedSignalsUnderOldRule": 0
+    },
+    {
+      "label": "simple2",
+      "prompt": "What does the git-master skill do? Answer in one sentence.",
+      "C1_lines": 0,
+      "C2_verbs": 0,
+      "C3_clauses": 0,
+      "B_deliverableVerbs": 0,
+      "D_planArtifact": false,
+      "explicitFlag": false,
+      "C_subSignalsMet": "0/3",
+      "C_fires": false,
+      "signals": [],
+      "trigger": false,
+      "countedSignalsUnderOldRule": 0
+    },
+    {
+      "label": "simple3",
+      "prompt": "Rename the variable `foo` to `bar` in src/util.ts and run its test.",
+      "C1_lines": 0,
+      "C2_verbs": 0,
+      "C3_clauses": 0,
+      "B_deliverableVerbs": 0,
+      "D_planArtifact": false,
+      "explicitFlag": false,
+      "C_subSignalsMet": "0/3",
+      "C_fires": false,
+      "signals": [],
+      "trigger": false,
+      "countedSignalsUnderOldRule": 0
+    },
+    {
+      "label": "ACCEPTED-COST false-positive",
+      "prompt": "Check the test, build the package, verify the output.",
+      "C1_lines": 0,
+      "C2_verbs": 3,
+      "C3_clauses": 3,
+      "B_deliverableVerbs": 0,
+      "D_planArtifact": false,
+      "explicitFlag": false,
+      "C_subSignalsMet": "2/3",
+      "C_fires": true,
+      "signals": [
+        "C"
+      ],
+      "trigger": true,
+      "countedSignalsUnderOldRule": 2
+    }
+  ]
+}

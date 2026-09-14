@@ -1,0 +1,37 @@
+## t14 round 2 — F4 pack, F6 agentless, F5 counts, F7 hygiene (verifier-produced, 2026-09-11T04:20:27Z)
+
+### F4: packed artifacts carry the t13 repairs
+mpd-verif-plugin         requireCocotbVenv(undefined, exec)=2 venvStatus(override, exec)=3 sessionPath(fp, dsh, exec)=0 workspaceRootOf=3
+   packed vs committed byte-identical: YES
+   packed mtime=2026-09-11 12:15:00.927586263 +0800  committed mtime=2026-09-11 12:10:24.193513892 +0800
+mpd-hashline-plugin      requireCocotbVenv(undefined, exec)=0 venvStatus(override, exec)=0 sessionPath(fp, dsh, exec)=1 workspaceRootOf=2
+   packed vs committed byte-identical: YES
+   packed mtime=2026-09-11 12:15:00.926586238 +0800  committed mtime=2026-09-11 12:10:24.202514122 +0800
+
+### F5: t8 count fields
+evidence/session-workspace-root/t8-verify/RESULT.json -> pass=19 total=19
+evidence/session-workspace-root/t8-verify/attempt-2/RESULT.json -> pass=19 total=19
+
+### F7: empty evidence dirs + .qa-tmp decision
+(empty list = no empty evidence dirs)
+.qa-tmp still present (KEEP decision recorded)
+
+### F3: AGENTS.md state-root + codegraph wording
+233:- **State**: workspace-scoped only (`.mpd/` under the **calling session's workspace**, never the
+375:| codegraph `skipped: project excluded` | the project root contains an `.mpd` segment or is under /tmp — use a normal project path. Note the root itself: `mpd-codegraph` is the ONE workspace consumer that still resolves at APPLY time (§6 State), so it uses `MPD_CODEGRAPH_PROJECT_CWD` / `MPD_DSH_CODEGRAPH_PROJECT_CWD` → `process.cwd()`, NOT the calling session's workspace — set the env override to index a specific project (routing it through the exec-less `dsh.workspaceRoot()` is a listed follow-up, `evidence/session-workspace-root/t8-verify/attempt-2/repair-t13/`) |
+375:| codegraph `skipped: project excluded` | the project root contains an `.mpd` segment or is under /tmp — use a normal project path. Note the root itself: `mpd-codegraph` is the ONE workspace consumer that still resolves at APPLY time (§6 State), so it uses `MPD_CODEGRAPH_PROJECT_CWD` / `MPD_DSH_CODEGRAPH_PROJECT_CWD` → `process.cwd()`, NOT the calling session's workspace — set the env override to index a specific project (routing it through the exec-less `dsh.workspaceRoot()` is a listed follow-up, `evidence/session-workspace-root/t8-verify/attempt-2/repair-t13/`) |
+CJK in AGENTS.md: 2
+
+### other callers of the repaired APIs (repo-wide, incl. tests/QA)
+packages/mpd-verif-plugin/evidence/smoke/smoke.mjs:54:const st = venvStatus()
+packages/mpd-verif-plugin/test/venv.test.ts:16:    const st = venvStatus()
+packages/mpd-verif-plugin/test/venv.test.ts:33:    const st = venvStatus()
+packages/mpd-verif-plugin/test/venv.test.ts:48:    const st = venvStatus()
+packages/mpd-verif-plugin/test/venv.test.ts:111:    try { requireCocotbVenv() } catch (e) { err = e as VerifError }
+packages/mpd-verif-plugin/src/index.ts:68:        const st = venvStatus(args?.path ? String(args.path) : undefined, exec)
+packages/mpd-verif-plugin/src/venv.ts:68:export function venvStatus(override?: string, exec?: any): VenvStatus {
+packages/mpd-verif-plugin/src/venv.ts:127:  const st = venvStatus(override, exec)
+packages/mpd-verif-plugin/src/venv.ts:140:export function requireCocotbVenv(override?: string, exec?: any): { venv: string; cocotbVersion: string } {
+packages/mpd-verif-plugin/src/venv.ts:141:  const st = venvStatus(override, exec)
+packages/mpd-verif-plugin/src/regress.ts:135:  const gate = requireCocotbVenv(undefined, exec)
+packages/mpd-verif-plugin/src/sim.ts:200:  const gate = requireCocotbVenv(undefined, exec)

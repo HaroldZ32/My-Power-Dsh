@@ -1,0 +1,18 @@
+=== FROZEN-TREE QA RE-RUN 2026-09-11T06:30:49Z ===
+team_json=28
+=== web-client-adapt ===
+web-client-adapt EXIT=1
+  initRoute: {"ok":true,"note":"{\"name\":\"gui-alice\",\"baseId\":\"hephaestus\",\"baseName\":\"Deep Worker\",\"readonly\":false,\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"path\":\"/tmp/mpd-","filesOk":true}
+  isolation: {"ok":true,"realHome":"/root/.mpd/workmate","realLibraryPreExisting":2,"createdInSandbox":true}
+=== preset-register ===
+preset-register EXIT=0
+[preset-register] ok=true -> /root/dshProj/my-power-dsh/evidence/dsh-qa/preset-register/2026-09-11T06-32-04.744Z
+[preset-register] PASS
+=== bundle-lifecycle ===
+bundle-lifecycle EXIT=0
+  uninstall: {"ok":true,"exit":0,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app"],"residue":[],"mpdState":[]}
+[bundle-lifecycle] PASS
+=== AFTER 2026-09-11T06:32:23Z ===
+team_json=28
+new team dirs:
+[end]

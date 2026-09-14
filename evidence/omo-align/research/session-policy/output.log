@@ -1,0 +1,280 @@
+===================================================================
+t3 RESEARCH LOG — 上游团队启用策略/自动路由机制 + 本仓库会话启动策略现状
+generated: 2026-09-13T13:41:11Z
+actor: Explorer (read-only member), task t3
+upstream checkout: /root/dshProj/oh-my-openagent
+ours: /root/dshProj/my-power-dsh
+===================================================================
+
+### [U1] upstream version + commit
+  "version": "5.0.0-beta.62",
+d1557a4b4 Merge pull request #8228 from code-yeongyu/fix/8222-persona-line-replace
+
+### [U2] upstream default state: OFF by default
+packages/omo-opencode/src/features/team-mode/AGENTS.md:7:Spawns coordinated agent teams with shared mailbox, task list, optional tmux layout, and graceful lifecycle. Modeled after Claude Code Agent Teams. **OFF by default.** Enable via `team_mode.enabled` in `.omo/omo.jsonc`; restart OpenCode after enabling. Harness-neutral registry/mailbox/tasklist/state/worktree/tmux-layout primitives are extracted to [`packages/team-core/`](../../../../../packages/team-core); this directory remains the OpenCode adapter for session spawning, hooks, tools, and config integration.
+docs/guide/team-mode.md:7:OFF by default. Enable via JSONC config.
+
+### [U3] upstream config schema (team-core/src/config.ts)
+import * as z from "zod"
+
+export const TeamModeConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  tmux_visualization: z.boolean().default(false),
+  max_parallel_members: z.number().int().min(1).max(8).default(4),
+  max_members: z.number().int().min(1).max(8).default(8),
+  max_messages_per_run: z.number().int().min(1).default(10000),
+  max_wall_clock_minutes: z.number().int().min(1).default(120),
+  max_member_turns: z.number().int().min(1).default(500),
+  base_dir: z.string().optional(),
+  message_payload_max_bytes: z.number().int().min(1024).default(32768),
+  recipient_unread_max_bytes: z.number().int().min(1024).default(262144),
+  mailbox_poll_interval_ms: z.number().int().min(500).default(3000),
+})
+
+export type TeamModeConfig = z.infer<typeof TeamModeConfigSchema>
+
+### [U4] upstream tool registration gate
+  const allToolNames = Object.keys(allTools)
+  const teamToolCount = allToolNames.filter((toolName) => toolName.startsWith("team_")).length
+  log("[tool-registry] Built tool registry", {
+    totalTools: allToolNames.length,
+    teamModeEnabled: pluginConfig.team_mode?.enabled ?? false,
+    teamToolCount,
+  })
+
+  for (const toolDefinition of Object.values(allTools)) {
+    normalizeToolArgSchemas(toolDefinition)
+  }
+
+### [U5] upstream activation keyword (explicit wording only)
+10:export const TEAM_PATTERN = /\bteam[\s_-]?mode\b/i
+[team-mode]
+Team-mode reference detected. Orchestrate via team_* tools (team_create -> team_task_create + team_send_message); NEVER substitute with delegate_task — it is not equivalent. After every team_task_update that completes or fails a task, re-check team_task_list: if every task is terminal, run the closure sequence (team_shutdown_request + team_approve_shutdown per active member, then team_delete) in the same turn. Closing the team is the lead's responsibility, not the user's. If the team_* tools are absent, team_mode is disabled — tell the user to set team_mode.enabled=true and restart opencode.
+
+### [U6] upstream keyword table + conditional hooks
+|---------|---------|--------|
+| `ultrawork` / `ulw` | `/\b(ultrawork|ulw)\b/i` | Full orchestration mode: parallel agents, deep exploration, relentless execution |
+| Team mode | `TEAM_PATTERN` (from `team/`) | Forces orchestration via `team_*` tools when user invokes `team mode` / `team-mode` / `team_mode` / `teammode`; instructs user to enable `team_mode.enabled` if tools are absent and reminds lead to run the closure sequence once every task is terminal |
+| Hyperplan mode | `HYPERPLAN_PATTERN` (from `hyperplan/`) | Loads the `hyperplan` skill and injects adversarial planning mode guidance |
+### Team-mode Hooks (conditional, only when `team_mode.enabled: true`)
+
+| Hook | Tier | Registered In | Purpose |
+|------|------|---------------|---------|
+| `team-mode-status-injector` | Transform | [`create-transform-hooks.ts`](../plugin/hooks/create-transform-hooks.ts) | Inject `<team_mode_status>` block into messages |
+| `team-mailbox-injector` | Transform | [`create-transform-hooks.ts`](../plugin/hooks/create-transform-hooks.ts) | Pull pending team mailbox messages into agent context |
+| `team-tool-gating` | Tool Guard | [`create-tool-guard-hooks.ts`](../plugin/hooks/create-tool-guard-hooks.ts) | Restrict `team_*` tools based on member role + permissions |
+| `team-idle-wake-hint` | event handler | [`src/plugin/event.ts`](../plugin/event.ts) | Nudge idle team members back to work |
+
+### [U7] upstream default_mode schema — ultrawork/goal only, NO team key
+import { z } from "zod"
+
+export const DefaultModeConfigSchema = z.object({
+  /**
+   * Automatically inject ultrawork mode prompt on main session start
+   * without requiring "ultrawork"/"ulw" keyword in the message.
+   * The ultrawork mode system prompt is injected once per session.
+   */
+  ultrawork: z.boolean().default(false),
+ /**
+ * Automatically create a goal from the first main-session message
+ * without requiring the /goal command.
+ * When ultrawork is also enabled, the goal continuation prompt uses ultrawork mode.
+ */
+ goal: z.boolean().default(false),
+})
+
+export type DefaultModeConfig = z.infer<typeof DefaultModeConfigSchema>
+
+### [U8] upstream closure invariant injected with team mode
+
+function buildTeamModeStatusContent(): string {
+  return `${TEAM_MODE_STATUS_MARKER}
+Team mode is ENABLED for this session. Presence of the team_* tools is authoritative proof; do not inspect config files to verify.
+Closure invariant: every team you open is yours to close. After each team_task_update that completes or fails a task, call team_task_list({ teamRunId }); if every task is terminal, run team_shutdown_request + team_approve_shutdown per active member, then team_delete — in the same turn, without waiting for the user to ask. Lingering teams are a defect.
+Load the team-mode skill for the full Closure Contract and Closure Sequence.
+</team_mode_status>`
+}
+
+
+### [U9] upstream member eligibility tiers
+## ELIGIBLE AGENTS
+
+[`AGENT_ELIGIBILITY_REGISTRY`](types.ts) in `types.ts` — three verdict tiers, each with its own rejection message:
+
+| Verdict | Agents | Notes |
+|---------|--------|-------|
+| `eligible` | sisyphus, atlas, sisyphus-junior | Three only |
+| `conditional` | hephaestus | Lacks `teammate: "allow"` permission by default. Either apply D-36 patch (add `teammate: "allow"` in `tool-config-handler.ts`) or use `subagent_type: "sisyphus"` instead |
+| `hard-reject` | oracle, librarian, explore, multimodal-looker, metis, momus, prometheus | Read-only or plan-mode-only — cannot write to mailbox; use `task` (delegate-task) instead |
+
+Hard-reject agents throw at TeamSpec parse with a specific message ("Agent 'X' is read-only…"). The error message points members at delegate-task as the right escape hatch.
+
+### [R1] OUR bundle patch agent-teams row (sessionTeamPolicy)
+        # SESSION-START TEAM RULE (binding): every qualifying session MUST begin
+        # inside a team. mode=auto provisions the staged default team (profile
+        # `mpd`, approval=required — nothing spawns until the user approves the
+        # Web plan) at the session's first step when the session leads no team,
+        # and injects the startup notice to the captain; presets: [mpd] scopes
+        # the rule to mpd-preset sessions (sessions without any preset, e.g.
+        # headless direct runs, are covered too), and subagent/member sessions
+        # (they carry parentSession) never qualify. Enforcement is mechanical
+        # (lib/session-start.js), not prompt guidance alone.
+        sessionTeamPolicy:
+          mode: auto
+          profile: mpd
+          presets:
+            - mpd
+          name: MPD Default
+          approval: required
+
+### [R2] OUR session-start policy module (defaults + gates)
+/** Default display name for the auto-provisioned default team. */
+export const DEFAULT_TEAM_NAME = 'MPD Default';
+/** Notice marker the injected startup message starts with. */
+export const STARTUP_NOTICE_MARKER = '[AgentTeams] Session-start team rule';
+/**
+ * Per-agent settlement: after the policy has run for a session it never runs
+ * again (see module doc). Keyed by agent id; agents are long-lived per
+ * session, so this map stays bounded by live sessions.
+ */
+const settledFor = new Set();
+/**
+ * Whether the policy is enabled.
+ * @param policy - the normalized sessionTeamPolicy config.
+ * @returns true when mode is not 'off'.
+ */
+export function policyEnabled(policy) {
+    return policy?.mode !== undefined && policy.mode !== 'off';
+}
+/**
+ * Whether one agent's session qualifies for the session-start policy.
+ * @param policy - the normalized sessionTeamPolicy config.
+ * @param agent - the stepping agent.
+ * @returns true when the session should be under the team rule.
+ */
+export function policyQualifies(policy, agent) {
+    const header = agent.session.header;
+    // Child sessions (subagents, team members, workflow workers, ralph rounds)
+    // already belong to a parent's team or workflow — never their own team.
+    if (header.parentSession !== undefined)
+        return false;
+    const allowed = policy.presets ?? [];
+    if (allowed.length === 0)
+        return true;
+    // A session that names a preset must be on the allow-list; a session
+    // without any preset (headless direct driver, legacy installs) deploys the
+    // bundle itself and stays covered.
+    return header.agentPreset === undefined || allowed.includes(header.agentPreset);
+}
+
+### [R3] OUR plugin config schema + normalization
+    // session begins inside a team (see lib/session-start.js). Off by default
+    // so the adopted plugin keeps its upstream behavior unless a profile
+    // explicitly enables the rule.
+    sessionTeamPolicy: z.object({
+        mode: z.union([z.const('off'), z.const('auto'), z.const('instruct')]).default('off'),
+        profile: z.string(),
+        presets: z.array(z.string()),
+        name: z.string().default('MPD Default'),
+        description: z.string(),
+        approval: z.union([z.const('required'), z.const('automatic')]).default('required'),
+    }).default({ mode: 'off' }),
+});
+/** The model-facing usage policy: when and how to drive AgentTeams. */
+        maxMembers: config.maxMembers ?? 8,
+        profiles: config.profiles ?? {},
+        sessionTeamPolicy: {
+            mode: config.sessionTeamPolicy?.mode ?? 'off',
+            profile: config.sessionTeamPolicy?.profile,
+            presets: config.sessionTeamPolicy?.presets ?? [],
+            name: config.sessionTeamPolicy?.name ?? 'MPD Default',
+            description: config.sessionTeamPolicy?.description,
+            approval: config.sessionTeamPolicy?.approval ?? 'required',
+        },
+
+### [R4] OUR preset persona: SESSION STARTUP RULE + AGENT TEAM ROUTING
+      SESSION STARTUP RULE (binding, mechanically enforced by the plugin): every session
+      MUST start inside a team. At the first step of a session without a team the plugin
+      auto-provisions the staged default team "MPD Default" (profile `mpd`) and injects its
+      startup notice — you are its captain from that moment. If the default team does not
+      fit the session, archive it with agent_teams_delete and create a fresh one with
+      agent_teams_create(approval="required", profile="mpd") BEFORE any substantive work.
+      Never work a session outside a team; a resumed session's team resumes automatically.
+
+      AGENT TEAM ROUTING — before any team work, FIRST size the task: estimate scope,
+      risk and parallelizable surface, then state your size judgment (small / large + one
+      line of rationale). After sizing you MUST pick exactly one of the two modes:
+        a) SMALL task -> use MPD's built-in team preset:
+           agent_teams_create(approval="required", profile="mpd") — the internal roster of
+           11 normal-named specialists. No separate user confirmation for the mode itself;
+           the Web plan is still reviewed before approval.
+        b) LARGE task (when you judge it necessary) -> use a NON-built-in team group:
+           on-the-spot formation (custom roster staged via agent_teams_add_member, with
+           personas from mpd_role_persona, including specialists pulled from the roster
+           or workmates) or any other team group/profile. BECAUSE this goes beyond the
+           internal preset, you MUST ask the user first (one concise confirmation naming
+           the proposed roster, extras and rationale); create the team only after the
+           user agrees. Both team forms always exist: the internal preset roster AND
+           on-the-spot formation — pick per size, never both at once.
+
+### [R5] OUR installer row + self-test
+    id: "agent-teams", name: p("packages/mpd-agent-teams-plugin/lib/index.js"),
+    config: { stateDir: ".mpd/team", memberProvider: "spawn", memberMaxDepth: 1, maxMembers: 16,
+      // SESSION-START TEAM RULE: mechanically enforce a team per mpd session
+      // (mirrors the bundle patch; see packages/mpd-agent-teams-plugin/lib/session-start.js).
+      sessionTeamPolicy: { mode: "auto", profile: "mpd", presets: ["mpd"], name: "MPD Default", approval: "required" } },
+    configYaml: profiles
+  // session-start team policy must ship in the agent-teams row config
+  const policy = plan.agentTeamsRow.config.sessionTeamPolicy
+  if (!policy || policy.mode !== "auto" || policy.profile !== "mpd" || !Array.isArray(policy.presets) || !policy.presets.includes("mpd")) { console.error("[install-profile self-test] FAIL: agent-teams sessionTeamPolicy"); process.exit(1) }
+
+### [R6] OUR QA case assertions (session-start-team)
+7://   2) composed config actually carries it (mode auto, profile mpd, name MPD Default);
+24:function fail(msg) { console.error("[session-start-team] FAIL: " + msg); process.exit(1) }
+40:  const ok = team.name === "MPD Default"
+81:  if (!existsSync(plugin)) fail("lib/session-start.js missing")
+83:  if (!src.includes("agent/pre-step") || !src.includes("provisionSessionTeam")) fail("session-start.js policy hooks missing")
+85:  if (!patch.includes("sessionTeamPolicy") || !patch.includes("mode: auto") || !patch.includes("profile: mpd")) fail("bundle patch sessionTeamPolicy missing")
+87:  if (!installer.includes("sessionTeamPolicy")) fail("installer row config missing sessionTeamPolicy")
+89:  if (!persona.includes("SESSION STARTUP RULE")) fail("preset persona missing SESSION STARTUP RULE")
+95:  if (!existsSync(creds)) fail("missing credentials at " + creds)
+111:  if (env.DSH_HOME !== sandbox) fail("isolation assertion failed")
+129:  steps.patchRow = { ok: /id:\s*agent-teams/.test(homePatch) && homePatch.includes("sessionTeamPolicy") && homePatch.includes('mode: "auto"') && homePatch.includes('profile: "mpd"') && homePatch.includes("MPD Default"), hasRow: homePatch.includes("agent-teams") }
+133:  steps.compose = { ok: dump.status === 0 && dump.out.includes("agent-teams") && dump.out.includes("sessionTeamPolicy") && dump.out.includes("MPD Default"), exit: dump.status }
+
+### [R7] OUR docs asserting the binding rule
+Every qualifying session MUST begin inside a team — either the auto-provisioned
+default team or one the captain creates. The rule is enforced mechanically by the
+adopted agent-teams plugin (`sessionTeamPolicy` config, implementation in
+`packages/mpd-agent-teams-plugin/lib/session-start.js`), not by prompt guidance alone:
+
+- On the first step of a session that leads no team, `mode: auto` provisions the
+  staged default team **"MPD Default"** (profile `mpd`, `approval: required` — members
+  are only roster rows and spawn after the user reviews and approves the Web plan), and
+  injects a startup notice into the conversation telling the captain the session runs
+  through that team. A session that already has a team (resume) simply stays in it.
+- Scope: `presets: [mpd]` covers mpd-preset sessions plus sessions without any preset
+  (headless direct runs); subagent/member sessions (`parentSession` set) never qualify.
+- The policy settles once per session: a team deleted mid-session is never recreated,
+  and a team the captain creates afterwards is never fought over.
+- The `mpd` preset persona carries the matching SESSION STARTUP RULE so the captain
+  behaves as captain from the first turn.
+
+Set `sessionTeamPolicy.mode: off` (or remove the key) to disable the rule entirely;
+`mode: instruct` keeps the mechanical startup notice but does not auto-create a team.
+### [R8] MEASURED RESIDUE: auto-provisioned default teams in this workspace
+count: 25
+(phase, n_tasks, approved) -> count
+  ('running', 11, True) -> 1
+  ('running', 32, True) -> 1
+  ('staged', 0, False) -> 22
+  ('staged', 8, False) -> 1
+
+### [R9] this session's own record (live proof the policy is auto)
+phase: running | captainSessionId: session-62770d9b-163c-4e8b-8097-d0ceff4bf37e | n_tasks: 11
+members: 11
+
+### [R10] config plane: nothing consumes sessionTeamPolicy from .mpd/mpd.jsonc
+117:    description: "Read the resolved mpd.jsonc runtime config (project .mpd/mpd.jsonc merged over user $DSH_HOME/mpd.jsonc). Consumed keys: memory.vcs/memory.dir/memory.agentSlug/memory.reflectionEvery, team.stateDir, hashline.guardEditTools/hashline.maxDiffChars/hashline.registryFile, commentChecker.autoCheck/commentChecker.bin/commentChecker.timeoutMs/commentChecker.maxMessageChars, modelchain.<chainKey>, boulder.dir, ulw.maxRounds/ulw.planDir/ulw.stateDir/ulw.provider/ulw.model/ulw.reviewerModel/ulw.maxReReviews.",
+
+END OF LOG

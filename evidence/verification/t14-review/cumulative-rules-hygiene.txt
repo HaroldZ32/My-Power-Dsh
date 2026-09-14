@@ -1,0 +1,38 @@
+## t14 round 2 — cumulative rules + hygiene re-check (2026-09-11T04:21:09Z)
+
+### adapter seam rule (no plugin bypasses the seam)
+(empty = clean)
+
+### array-typed schemas (B4 class) — hashline + repo-wide
+hashline grep exit=1 (1 = none)
+repo-wide packages/*/{src,dist} hits: 0
+
+### B3/B4 fixes still present in src+dist
+backends dist licenseHint null: 1
+compile conditional spread:     1
+lines: { oneOf: [{ type: "string" }, { type: "array", items: { type: "string" } }]
+
+### R8 rules (no chdir / env-set / module-level root cache)
+(empty = clean)
+
+### patch/preset untouched
+(empty = untouched)
+
+### hygiene: scratch in the repo, empty evidence dirs
+(no scratch from this review)
+(empty list = no partial evidence dirs)
+
+### t13 live proof isolation + checks (raw excerpt)
+isolation={"HOME":"temp sandbox","DSH_HOME":"temp sandbox"}
+apply_crash_signatures=undefined
+  PASS V1_VENVSTATUS_SESSION :: ok=true venv=/tmp/mpd-repair-t13-3SV4gE/ws-clean/.venv-rtl cocotb=2.0.0-fake
+  PASS V2_VENVSTATUS_NO_EXEC_HOST_ROOT :: ok=false venv=/root/dshProj/.venv-rtl hostCwd=/root/dshProj
+  PASS V3_SIM_GATE_PASSES_FOR_SESSION :: code=VERIF_E_NO_BACKEND msg=backend 'iverilog' not found on this machine
+  PASS V4_SIM_GATE_REFUSES_WITHOUT_SESSION :: code=VERIF_E_NO_VENV msg=cocotb venv missing at /root/dshProj/.venv-rtl (iron rule: project-local venv require
+  PASS V5_REGRESS_GATE_PASSES_FOR_SESSION :: code=VERIF_E_NO_BACKEND msg=backend 'iverilog' not found
+  PASS V6_REGRESS_NO_SESSION_DOES_NOT_USE_A_SESSION_WS :: code=VERIF_E_RUN msg=unexpected internal error: Error: ENOENT: no such file or directory, mkdir '/root/dshProj
+  PASS V7_VENV_INFO_REPORTS_SESSION :: venv=/tmp/mpd-repair-t13-3SV4gE/ws-clean/.venv-rtl
+  PASS G1_SERVICE_RENAME_REFUSED_NO_ROOTS :: init=true code=in-use msg=mpd_workmate: "gui-mate-1" / "gui-mate-2" is in use by team member(s) blocking-team/
+  PASS G2_SERVICE_DELETE_REFUSED_NO_ROOTS :: code=in-use msg=mpd_workmate: "gui-mate-1" is in use by team member(s) blocking-team/gui-mate-1 — archive or r
+  PASS G3_SERVICE_RENAME_ALLOWED_FOR_UNREFERENCED_KEY :: ok=true name=free-mate-2 err=
+  PASS G4_AGENTLESS_UNION_HAS_BOTH_SESSIONS :: roots=["/root/dshProj/my-power-dsh","/tmp/mpd-repair-t13-3SV4gE/ws-blocked","/tmp/mpd-repair-t13-3SV4gE/ws-cle

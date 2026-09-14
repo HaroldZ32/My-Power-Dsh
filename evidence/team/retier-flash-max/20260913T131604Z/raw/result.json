@@ -1,0 +1,148 @@
+{
+  "at": "2026-09-13T13:16:42.066Z",
+  "patch": "/root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml",
+  "results": [
+    {
+      "name": "patch carries the agent-teams row",
+      "ok": true
+    },
+    {
+      "name": "row resolves the adopted main-code entry",
+      "ok": true,
+      "detail": "@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib/index.js"
+    },
+    {
+      "name": "Config(row.config) accepts the row (loader conformance)",
+      "ok": true
+    },
+    {
+      "name": "negative control: a non-string effort is rejected",
+      "ok": true,
+      "detail": "$.profiles.mpd.members[0].reasoning_effort expected string but got 42"
+    },
+    {
+      "name": "profile resolves 11 members",
+      "ok": true,
+      "detail": "got 11"
+    },
+    {
+      "name": "Architect: model flash",
+      "ok": false,
+      "detail": "deepseek-v4-pro"
+    },
+    {
+      "name": "Architect: reasoningEffort max",
+      "ok": false,
+      "detail": "undefined"
+    },
+    {
+      "name": "Planner: model flash",
+      "ok": false,
+      "detail": "deepseek-v4-pro"
+    },
+    {
+      "name": "Planner: reasoningEffort max",
+      "ok": false,
+      "detail": "undefined"
+    },
+    {
+      "name": "Reviewer: model flash",
+      "ok": false,
+      "detail": "deepseek-v4-pro"
+    },
+    {
+      "name": "Reviewer: reasoningEffort max",
+      "ok": false,
+      "detail": "undefined"
+    },
+    {
+      "name": "Lead: model flash",
+      "ok": false,
+      "detail": "deepseek-v4-pro"
+    },
+    {
+      "name": "Lead: reasoningEffort max",
+      "ok": false,
+      "detail": "undefined"
+    },
+    {
+      "name": "Senior Engineer: model flash",
+      "ok": false,
+      "detail": "deepseek-v4-pro"
+    },
+    {
+      "name": "Senior Engineer: reasoningEffort max",
+      "ok": false,
+      "detail": "undefined"
+    },
+    {
+      "name": "Researcher: effort untouched",
+      "ok": true,
+      "detail": "undefined"
+    },
+    {
+      "name": "Explorer: effort untouched",
+      "ok": true,
+      "detail": "undefined"
+    },
+    {
+      "name": "Deep Worker: effort untouched",
+      "ok": true,
+      "detail": "undefined"
+    },
+    {
+      "name": "Junior Engineer: effort untouched",
+      "ok": true,
+      "detail": "undefined"
+    },
+    {
+      "name": "Plan Reviewer: effort untouched",
+      "ok": true,
+      "detail": "undefined"
+    },
+    {
+      "name": "Vision Analyst: effort untouched",
+      "ok": true,
+      "detail": "undefined"
+    },
+    {
+      "name": "Vision Analyst keeps the vision model",
+      "ok": true
+    },
+    {
+      "name": "no member routes to the pro tier (primary or fallback)",
+      "ok": false,
+      "detail": "Architect,Planner,Reviewer,Plan Reviewer,Lead,Senior Engineer"
+    },
+    {
+      "name": "roster keeps exactly one pro reference (Plan Reviewer fallback)",
+      "ok": true,
+      "detail": "      { \"provider\": \"deepseek-official\", \"model\": \"deepseek-v4-pro\" }"
+    },
+    {
+      "name": "roster scans 11 primary routes",
+      "ok": true,
+      "detail": "got 11"
+    },
+    {
+      "name": "no roster primary route is the pro tier",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "passed": 15,
+  "failed": 11,
+  "fail": [
+    "Architect: model flash :: deepseek-v4-pro",
+    "Architect: reasoningEffort max :: undefined",
+    "Planner: model flash :: deepseek-v4-pro",
+    "Planner: reasoningEffort max :: undefined",
+    "Reviewer: model flash :: deepseek-v4-pro",
+    "Reviewer: reasoningEffort max :: undefined",
+    "Lead: model flash :: deepseek-v4-pro",
+    "Lead: reasoningEffort max :: undefined",
+    "Senior Engineer: model flash :: deepseek-v4-pro",
+    "Senior Engineer: reasoningEffort max :: undefined",
+    "no member routes to the pro tier (primary or fallback) :: Architect,Planner,Reviewer,Plan Reviewer,Lead,Senior Engineer"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "ok": false,
+  "missing": [
+    "id: agent-teams",
+    "@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib/index.js",
+    "toolDeny"
+  ],
+  "expectations": [
+    "id: agent-teams",
+    "@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib/index.js",
+    "toolDeny"
+  ],
+  "dshHomeSandbox": true,
+  "dumpBytes": 11037
+}

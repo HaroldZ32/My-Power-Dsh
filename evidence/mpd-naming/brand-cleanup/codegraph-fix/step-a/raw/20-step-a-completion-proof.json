@@ -1,0 +1,59 @@
+{
+  "driver": "step-a-completion-landed",
+  "artifact": "/root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js",
+  "artifact_sha256": "849653683a2e69329e33a6fed4e1ef2fef8f7391ffe8d0967260042f731bedeb",
+  "corrections": {
+    "backup_move_skip": "executePlan backup-move loop: skip when move.from === plan.targetPath",
+    "protected_paths": "executePlan protectedPaths: plan.targetPath removed"
+  },
+  "control_reverted_copy_sha256": "451366faa1ecdf64536eb4e804e6da30f4137632710b79e5e35d37ddb15bee44",
+  "runs": [
+    {
+      "name": "landed-artifact-migration-due",
+      "note": "the landed artifact, migration due",
+      "tested_artifact": "/root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js",
+      "tested_sha256": "849653683a2e69329e33a6fed4e1ef2fef8f7391ffe8d0967260042f731bedeb",
+      "migration_triggered": true,
+      "exit_code": 0,
+      "thrown": null,
+      "config_exists_after": true,
+      "config_bytes_before": 202,
+      "config_bytes_after": 383,
+      "config_rewritten": true,
+      "config_after": "// MPD configuration (seeded legacy document, migration not yet recorded)\n{\n  \"codegraph\": { \"enabled\": true, \"auto_provision\": false },\n  \"legacy_migrations\": {\n    \"projects\": [\n      \"seeded-legacy.jsonc\"\n    ]\n  },\n  \"$schema\": \"https://raw.githubusercontent.com/code-yeongyu/oh-my-openagent/dev/assets/omo.schema.json\",\n  \"_migrations\": [\n    \"2026-07-codex-config-jsonc\"\n  ]\n}\n",
+      "mpd_tree_created": [
+        "config.jsonc.bak.2026-09-14T07-26-38-762Z"
+      ]
+    },
+    {
+      "name": "landed-artifact-already-migrated",
+      "note": "the landed artifact, migration already recorded",
+      "tested_artifact": "/root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js",
+      "tested_sha256": "849653683a2e69329e33a6fed4e1ef2fef8f7391ffe8d0967260042f731bedeb",
+      "migration_triggered": false,
+      "exit_code": 0,
+      "thrown": null,
+      "config_exists_after": true,
+      "config_bytes_before": 223,
+      "config_bytes_after": 223,
+      "config_rewritten": false,
+      "config_after": "// MPD configuration (seeded legacy document)\n{\n  \"codegraph\": { \"enabled\": true, \"auto_provision\": false },\n  \"legacy_migrations\": { \"projects\": [\"seeded-legacy.jsonc\"] },\n  \"_migrations\": [\"2026-07-codex-config-jsonc\"]\n}\n",
+      "mpd_tree_created": []
+    },
+    {
+      "name": "control-pre-completion-copy",
+      "note": "landed minus the two corrections",
+      "tested_artifact": "evidence/mpd-naming/brand-cleanup/codegraph-fix/step-a/raw/work-landed/variants/control-pre-completion-copy/dist/serve.js",
+      "tested_sha256": "451366faa1ecdf64536eb4e804e6da30f4137632710b79e5e35d37ddb15bee44",
+      "migration_triggered": true,
+      "exit_code": 0,
+      "thrown": null,
+      "config_exists_after": true,
+      "config_bytes_before": 202,
+      "config_bytes_after": 202,
+      "config_rewritten": false,
+      "config_after": "// MPD configuration (seeded legacy document, migration not yet recorded)\n{\n  \"codegraph\": { \"enabled\": true, \"auto_provision\": false },\n  \"legacy_migrations\": { \"projects\": [\"seeded-legacy.jsonc\"] }\n}\n",
+      "mpd_tree_created": []
+    }
+  ]
+}

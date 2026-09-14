@@ -1,0 +1,19 @@
+cmd: bun test packages/mpd-codegraph-plugin
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-codegraph-plugin/src/index.test.ts:
+(pass) O-1 apply-time project root > no session and no override falls back to process.cwd() [2.31ms]
+(pass) O-1 apply-time project root > a session workspace (exec-less DSH_WORKSPACE_ROOT) beats the process cwd [0.71ms]
+(pass) O-1 apply-time project root > the explicit project-cwd override wins over the session workspace [0.62ms]
+(pass) O-1 apply-time project root > the status line names the session workspace, and the home skip still applies [0.43ms]
+(pass) O-1 call-time /mpd-codegraph handler > resolves the invocation's session workspace, not the apply-time root [1.03ms]
+(pass) O-1 call-time /mpd-codegraph handler > returns the harness CommandResult shape (kind), never the legacy success flag [0.53ms]
+(pass) O-1 call-time /mpd-codegraph handler > re-resolves per invocation: two sessions, two targets [0.62ms]
+
+packages/mpd-codegraph-plugin/src/index.test.ts:
+
+ 7 pass
+ 0 fail
+ 17 expect() calls
+Ran 7 tests across 2 files. [106.00ms]
+EXIT=0

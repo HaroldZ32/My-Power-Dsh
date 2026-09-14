@@ -1,0 +1,361 @@
+{
+  "task": "t8 — independent verification of B1 (session workspace root resolution)",
+  "method": "REAL model turns (session/prompt) in REAL gateway sessions of a fresh boot whose process cwd is deliberately different from every session workspace; assertions read the durable session logs, not the model's prose",
+  "isolation": {
+    "DSH_HOME": "$SANDBOX/dsh-home",
+    "HOME": "$SANDBOX/user-home"
+  },
+  "launchCwd": "/root/dshProj",
+  "bootChildCwd": "/root/dshProj",
+  "sessionWorkspaces": {
+    "repo": "/root/dshProj/my-power-dsh",
+    "blocked": "/tmp/mpd-t8-5Al42U/ws-blocked",
+    "clean": "/tmp/mpd-t8-5Al42U/ws-clean"
+  },
+  "note": "no --dump-config result is cited as load evidence; the mounting boot log (boot.log) is the load evidence",
+  "applyCrashSignatures": [],
+  "sessions": {
+    "repo": {
+      "sessionId": "session-bc0b8e3e-bbb1-4916-b0dc-7bc784528fbe",
+      "status": 200,
+      "cwd": "/root/dshProj/my-power-dsh",
+      "promptStatus": 200
+    },
+    "blocked": {
+      "sessionId": "session-262ff586-78f2-48ef-af90-a8f23da6c727",
+      "status": 200,
+      "cwd": "/tmp/mpd-t8-5Al42U/ws-blocked",
+      "promptStatus": 200
+    },
+    "clean": {
+      "sessionId": "session-a064d64e-f6de-4e32-967f-629adc6041b2",
+      "status": 200,
+      "cwd": "/tmp/mpd-t8-5Al42U/ws-clean",
+      "promptStatus": 200
+    }
+  },
+  "sessionLogs": {
+    "repo": {
+      "dump": "evidence/session-workspace-root/t8-verify/2026-09-11T03-44-48Z-proof/session-repo.jsonl",
+      "events": 4,
+      "turns": [],
+      "toolResults": []
+    },
+    "blocked": {
+      "dump": "evidence/session-workspace-root/t8-verify/2026-09-11T03-44-48Z-proof/session-blocked.jsonl",
+      "events": 4,
+      "turns": [],
+      "toolResults": []
+    },
+    "clean": {
+      "dump": "evidence/session-workspace-root/t8-verify/2026-09-11T03-44-48Z-proof/session-clean.jsonl",
+      "events": 4,
+      "turns": [],
+      "toolResults": []
+    }
+  },
+  "workmateLibrary": [],
+  "teamTreeHashes": {
+    "before": {
+      "repo": {
+        "sha256": "23c7b9084bc784b20017b80e9e4ee29c96a85cd21ad95012a1c174ba4e7143f6",
+        "files": [
+          "agent-teams-sidebar-migration/inbox/architect.jsonl",
+          "agent-teams-sidebar-migration/inbox/captain.jsonl",
+          "agent-teams-sidebar-migration/inbox/deep-worker.jsonl",
+          "agent-teams-sidebar-migration/inbox/explorer.jsonl",
+          "agent-teams-sidebar-migration/inbox/reviewer.jsonl",
+          "agent-teams-sidebar-migration/inbox/senior-engineer.jsonl",
+          "agent-teams-sidebar-migration/team.json",
+          "archive/mpd-default-38e78dd5/inbox/captain.jsonl",
+          "archive/mpd-default-38e78dd5/inbox/deep-worker.jsonl",
+          "archive/mpd-default-38e78dd5/inbox/junior-engineer.jsonl",
+          "archive/mpd-default-38e78dd5/inbox/lead.jsonl",
+          "archive/mpd-default-38e78dd5/inbox/researcher.jsonl",
+          "archive/mpd-default-38e78dd5/inbox/reviewer.jsonl",
+          "archive/mpd-default-38e78dd5/inbox/senior-engineer.jsonl",
+          "archive/mpd-default-38e78dd5/team.json",
+          "archive/mpd-repo-audit/inbox/architect.jsonl",
+          "archive/mpd-repo-audit/inbox/captain.jsonl",
+          "archive/mpd-repo-audit/inbox/deep-worker.jsonl",
+          "archive/mpd-repo-audit/inbox/explorer.jsonl",
+          "archive/mpd-repo-audit/inbox/junior-engineer.jsonl",
+          "archive/mpd-repo-audit/inbox/lead.jsonl",
+          "archive/mpd-repo-audit/inbox/plan-reviewer.jsonl",
+          "archive/mpd-repo-audit/inbox/planner.jsonl",
+          "archive/mpd-repo-audit/inbox/researcher.jsonl",
+          "archive/mpd-repo-audit/inbox/senior-engineer.jsonl",
+          "archive/mpd-repo-audit/team.json",
+          "archive/repo-scan-fix/inbox/architect.jsonl",
+          "archive/repo-scan-fix/inbox/captain.jsonl",
+          "archive/repo-scan-fix/inbox/deep-worker.jsonl",
+          "archive/repo-scan-fix/inbox/junior-engineer.jsonl",
+          "archive/repo-scan-fix/inbox/lead.jsonl",
+          "archive/repo-scan-fix/inbox/reviewer.jsonl",
+          "archive/repo-scan-fix/inbox/senior-engineer.jsonl",
+          "archive/repo-scan-fix/team.json",
+          "archive/rtl-dev/inbox/captain.jsonl",
+          "archive/rtl-dev/inbox/deep-worker.jsonl",
+          "archive/rtl-dev/inbox/junior-engineer.jsonl",
+          "archive/rtl-dev/inbox/lead.jsonl",
+          "archive/rtl-dev/inbox/plan-reviewer.jsonl",
+          "archive/rtl-dev/inbox/researcher.jsonl",
+          "archive/rtl-dev/inbox/reviewer.jsonl",
+          "archive/rtl-dev/inbox/senior-engineer.jsonl",
+          "archive/rtl-dev/team.json",
+          "archive/rtl-gap-assessment/inbox/captain.jsonl",
+          "archive/rtl-gap-assessment/team.json",
+          "archive/workmate-rename-delete/boot-probe-b.sh",
+          "archive/workmate-rename-delete/boot-probe-c.sh",
+          "archive/workmate-rename-delete/boot-probe.sh",
+          "archive/workmate-rename-delete/boot-probe/boot-b.log",
+          "archive/workmate-rename-delete/boot-probe/boot-c.log",
+          "archive/workmate-rename-delete/boot-probe/boot-probe.log",
+          "archive/workmate-rename-delete/boot-probe/dump.err",
+          "archive/workmate-rename-delete/boot-probe/dump.txt",
+          "archive/workmate-rename-delete/boot-probe/headless.log",
+          "archive/workmate-rename-delete/boot-probe/install-b.log",
+          "archive/workmate-rename-delete/boot-probe/install-c.log",
+          "archive/workmate-rename-delete/dist-drift.txt",
+          "archive/workmate-rename-delete/dist-rebuild-check.js",
+          "archive/workmate-rename-delete/dump.err",
+          "archive/workmate-rename-delete/dump.txt",
+          "archive/workmate-rename-delete/headless.log",
+          "archive/workmate-rename-delete/inbox/captain.jsonl",
+          "archive/workmate-rename-delete/inbox/deep-worker.jsonl",
+          "archive/workmate-rename-delete/inbox/junior-engineer.jsonl",
+          "archive/workmate-rename-delete/inbox/lead.jsonl",
+          "archive/workmate-rename-delete/inbox/reviewer.jsonl",
+          "archive/workmate-rename-delete/inbox/senior-engineer.jsonl",
+          "archive/workmate-rename-delete/inbox/vision-analyst.jsonl",
+          "archive/workmate-rename-delete/install.log",
+          "archive/workmate-rename-delete/paths.txt",
+          "archive/workmate-rename-delete/probe-arch-t7-invariants.mjs",
+          "archive/workmate-rename-delete/probe-arch-t7-schema.mjs",
+          "archive/workmate-rename-delete/probe-result.json",
+          "archive/workmate-rename-delete/t7-evidence/gates.log",
+          "archive/workmate-rename-delete/team.json",
+          "mpd-default-19f64d11/team.json",
+          "mpd-default-1f285182/team.json",
+          "mpd-default-2d2445da/team.json",
+          "mpd-default-47c350bf/team.json",
+          "mpd-default-4a3d20e1/team.json",
+          "mpd-default-53380813/team.json",
+          "mpd-default-5b99df58/team.json",
+          "mpd-default-7332aba4/inbox/captain.jsonl",
+          "mpd-default-7332aba4/inbox/deep-worker.jsonl",
+          "mpd-default-7332aba4/inbox/reviewer.jsonl",
+          "mpd-default-7332aba4/team.json",
+          "mpd-default-84e50f06/team.json",
+          "mpd-default-98620900/team.json",
+          "mpd-default-9b7de114/team.json",
+          "mpd-default-b550f267/team.json",
+          "mpd-default-c146a414/team.json",
+          "mpd-default-c2be0a8a/team.json",
+          "mpd-default-cc23f374/team.json",
+          "mpd-default-d3943705/team.json",
+          "mpd-default/team.json",
+          "retired-members.json"
+        ]
+      },
+      "blocked": {
+        "sha256": "953104ae83a107c2b262f4dc16085ef14286c15ce041c4648f56b600fcab98f0",
+        "files": [
+          "blocking-team/team.json"
+        ]
+      },
+      "clean": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "files": []
+      }
+    },
+    "after": {
+      "repo": {
+        "sha256": "6a7ad338b1828b4cb1207f6c96d2ccfe8d443dec55941395f42dfe8818c98dce",
+        "files": [
+          "agent-teams-sidebar-migration/inbox/architect.jsonl",
+          "agent-teams-sidebar-migration/inbox/captain.jsonl",
+          "agent-teams-sidebar-migration/inbox/deep-worker.jsonl",
+          "agent-teams-sidebar-migration/inbox/explorer.jsonl",
+          "agent-teams-sidebar-migration/inbox/reviewer.jsonl",
+          "agent-teams-sidebar-migration/inbox/senior-engineer.jsonl",
+          "agent-teams-sidebar-migration/team.json",
+          "archive/mpd-default-38e78dd5/inbox/captain.jsonl",
+          "archive/mpd-default-38e78dd5/inbox/deep-worker.jsonl",
+          "archive/mpd-default-38e78dd5/inbox/junior-engineer.jsonl",
+          "archive/mpd-default-38e78dd5/inbox/lead.jsonl",
+          "archive/mpd-default-38e78dd5/inbox/researcher.jsonl",
+          "archive/mpd-default-38e78dd5/inbox/reviewer.jsonl",
+          "archive/mpd-default-38e78dd5/inbox/senior-engineer.jsonl",
+          "archive/mpd-default-38e78dd5/team.json",
+          "archive/mpd-repo-audit/inbox/architect.jsonl",
+          "archive/mpd-repo-audit/inbox/captain.jsonl",
+          "archive/mpd-repo-audit/inbox/deep-worker.jsonl",
+          "archive/mpd-repo-audit/inbox/explorer.jsonl",
+          "archive/mpd-repo-audit/inbox/junior-engineer.jsonl",
+          "archive/mpd-repo-audit/inbox/lead.jsonl",
+          "archive/mpd-repo-audit/inbox/plan-reviewer.jsonl",
+          "archive/mpd-repo-audit/inbox/planner.jsonl",
+          "archive/mpd-repo-audit/inbox/researcher.jsonl",
+          "archive/mpd-repo-audit/inbox/senior-engineer.jsonl",
+          "archive/mpd-repo-audit/team.json",
+          "archive/repo-scan-fix/inbox/architect.jsonl",
+          "archive/repo-scan-fix/inbox/captain.jsonl",
+          "archive/repo-scan-fix/inbox/deep-worker.jsonl",
+          "archive/repo-scan-fix/inbox/junior-engineer.jsonl",
+          "archive/repo-scan-fix/inbox/lead.jsonl",
+          "archive/repo-scan-fix/inbox/reviewer.jsonl",
+          "archive/repo-scan-fix/inbox/senior-engineer.jsonl",
+          "archive/repo-scan-fix/team.json",
+          "archive/rtl-dev/inbox/captain.jsonl",
+          "archive/rtl-dev/inbox/deep-worker.jsonl",
+          "archive/rtl-dev/inbox/junior-engineer.jsonl",
+          "archive/rtl-dev/inbox/lead.jsonl",
+          "archive/rtl-dev/inbox/plan-reviewer.jsonl",
+          "archive/rtl-dev/inbox/researcher.jsonl",
+          "archive/rtl-dev/inbox/reviewer.jsonl",
+          "archive/rtl-dev/inbox/senior-engineer.jsonl",
+          "archive/rtl-dev/team.json",
+          "archive/rtl-gap-assessment/inbox/captain.jsonl",
+          "archive/rtl-gap-assessment/team.json",
+          "archive/workmate-rename-delete/boot-probe-b.sh",
+          "archive/workmate-rename-delete/boot-probe-c.sh",
+          "archive/workmate-rename-delete/boot-probe.sh",
+          "archive/workmate-rename-delete/boot-probe/boot-b.log",
+          "archive/workmate-rename-delete/boot-probe/boot-c.log",
+          "archive/workmate-rename-delete/boot-probe/boot-probe.log",
+          "archive/workmate-rename-delete/boot-probe/dump.err",
+          "archive/workmate-rename-delete/boot-probe/dump.txt",
+          "archive/workmate-rename-delete/boot-probe/headless.log",
+          "archive/workmate-rename-delete/boot-probe/install-b.log",
+          "archive/workmate-rename-delete/boot-probe/install-c.log",
+          "archive/workmate-rename-delete/dist-drift.txt",
+          "archive/workmate-rename-delete/dist-rebuild-check.js",
+          "archive/workmate-rename-delete/dump.err",
+          "archive/workmate-rename-delete/dump.txt",
+          "archive/workmate-rename-delete/headless.log",
+          "archive/workmate-rename-delete/inbox/captain.jsonl",
+          "archive/workmate-rename-delete/inbox/deep-worker.jsonl",
+          "archive/workmate-rename-delete/inbox/junior-engineer.jsonl",
+          "archive/workmate-rename-delete/inbox/lead.jsonl",
+          "archive/workmate-rename-delete/inbox/reviewer.jsonl",
+          "archive/workmate-rename-delete/inbox/senior-engineer.jsonl",
+          "archive/workmate-rename-delete/inbox/vision-analyst.jsonl",
+          "archive/workmate-rename-delete/install.log",
+          "archive/workmate-rename-delete/paths.txt",
+          "archive/workmate-rename-delete/probe-arch-t7-invariants.mjs",
+          "archive/workmate-rename-delete/probe-arch-t7-schema.mjs",
+          "archive/workmate-rename-delete/probe-result.json",
+          "archive/workmate-rename-delete/t7-evidence/gates.log",
+          "archive/workmate-rename-delete/team.json",
+          "mpd-default-19f64d11/team.json",
+          "mpd-default-1f285182/team.json",
+          "mpd-default-2d2445da/team.json",
+          "mpd-default-47c350bf/team.json",
+          "mpd-default-4a3d20e1/team.json",
+          "mpd-default-53380813/team.json",
+          "mpd-default-5b99df58/team.json",
+          "mpd-default-7332aba4/inbox/captain.jsonl",
+          "mpd-default-7332aba4/inbox/deep-worker.jsonl",
+          "mpd-default-7332aba4/inbox/lead.jsonl",
+          "mpd-default-7332aba4/inbox/reviewer.jsonl",
+          "mpd-default-7332aba4/team.json",
+          "mpd-default-84e50f06/team.json",
+          "mpd-default-98620900/team.json",
+          "mpd-default-9b7de114/team.json",
+          "mpd-default-b550f267/team.json",
+          "mpd-default-c146a414/team.json",
+          "mpd-default-c2be0a8a/team.json",
+          "mpd-default-cc23f374/team.json",
+          "mpd-default-d3943705/team.json",
+          "mpd-default/team.json",
+          "retired-members.json"
+        ]
+      },
+      "blocked": {
+        "sha256": "953104ae83a107c2b262f4dc16085ef14286c15ce041c4648f56b600fcab98f0",
+        "files": [
+          "blocking-team/team.json"
+        ]
+      },
+      "clean": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "files": []
+      }
+    }
+  },
+  "checks": [
+    {
+      "id": "P1_LAUNCH_CWD_IS_NOT_SESSION_WORKSPACE",
+      "status": "PASS",
+      "detail": "child /proc cwd=/root/dshProj launchCwd=/root/dshProj sessionWorkspace=/root/dshProj/my-power-dsh"
+    },
+    {
+      "id": "P2_APPLY_CRASH_SIGNATURES_ZERO",
+      "status": "PASS",
+      "detail": "hits=[]"
+    },
+    {
+      "id": "P3_MOUNT_MARKERS",
+      "status": "PASS",
+      "detail": "adapter=true skillsServed=true"
+    },
+    {
+      "id": "R1_HASHLINE_RELATIVE_READ",
+      "status": "FAIL",
+      "detail": "raw="
+    },
+    {
+      "id": "R2_VERIF_INFO_RESOLVES_REPO",
+      "status": "FAIL",
+      "detail": "raw="
+    },
+    {
+      "id": "R3_MEMORY_STATUS_RESOLVES_REPO",
+      "status": "FAIL",
+      "detail": "raw="
+    },
+    {
+      "id": "R4_BOULDER_PLANS_LISTS_REPO_PLAN",
+      "status": "FAIL",
+      "detail": "raw="
+    },
+    {
+      "id": "W1_BLOCKED_WS_GATE_REFUSES",
+      "status": "FAIL",
+      "detail": "raw="
+    },
+    {
+      "id": "W2_CLEAN_WS_ALLOWS_AND_ARCHIVES",
+      "status": "FAIL",
+      "detail": "rename= delete="
+    },
+    {
+      "id": "W3_LIVE_REPO_TEAM_RECORD_SEEN",
+      "status": "FAIL",
+      "detail": "raw="
+    },
+    {
+      "id": "W4_TEAM_STATE_READ_ONLY",
+      "status": "FAIL",
+      "detail": "{\"before\":{\"repo\":{\"sha256\":\"23c7b9084bc784b2\",\"files\":96},\"blocked\":{\"sha256\":\"953104ae83a107c2\",\"files\":1},\"clean\":{\"sha256\":\"e3b0c44298fc1c14\",\"files\":0}},\"after\":{\"repo\":{\"sha256\":\"6a7ad338b1828b4c\",\"files\":97},\"blocked\":{\"sha256\":\"953104ae83a107c2\",\"files\":1},\"clean\":{\"sha256\":\"e3b0c44298fc1c14\",\"files\":0}}}"
+    },
+    {
+      "id": "P4_ALL_EXPECTED_TOOL_CALLS_OBSERVED",
+      "status": "FAIL",
+      "detail": "missing=[\"repo:mpd_hashline_read\",\"repo:mpd_verif_venv\",\"repo:mpd_memory_status\",\"repo:mpd_boulder_plans\",\"repo:mpd_workmate_init\",\"repo:mpd_workmate_rename\",\"blocked:mpd_workmate_init\",\"blocked:mpd_workmate_rename\",\"clean:mpd_workmate_init\",\"clean:mpd_workmate_rename\",\"clean:mpd_workmate_delete\"]"
+    }
+  ],
+  "failedChecks": [
+    "R1_HASHLINE_RELATIVE_READ",
+    "R2_VERIF_INFO_RESOLVES_REPO",
+    "R3_MEMORY_STATUS_RESOLVES_REPO",
+    "R4_BOULDER_PLANS_LISTS_REPO_PLAN",
+    "W1_BLOCKED_WS_GATE_REFUSES",
+    "W2_CLEAN_WS_ALLOWS_AND_ARCHIVES",
+    "W3_LIVE_REPO_TEAM_RECORD_SEEN",
+    "W4_TEAM_STATE_READ_ONLY",
+    "P4_ALL_EXPECTED_TOOL_CALLS_OBSERVED"
+  ],
+  "passed": false
+}

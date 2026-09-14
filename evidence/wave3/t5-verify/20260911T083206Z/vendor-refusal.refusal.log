@@ -1,0 +1,13 @@
+[vendor-agent-teams] vendored @deepseek-ai/cosmokit -> _deps/cosmokit
+[vendor-agent-teams] vendored @deepseek-ai/schemastery -> _deps/schemastery
+[vendor-agent-teams] vendored @deepseek-ai/cordis -> _deps/cordis
+[vendor-agent-teams] vendored @deepseek-ai/dsh-scope -> _deps/dsh-scope
+[vendor-agent-teams] vendored @deepseek-ai/dsh-timeout -> _deps/dsh-timeout
+[vendor-agent-teams] vendored @deepseek-ai/dsh-llm -> _deps/dsh-llm
+[vendor-agent-teams] vendored @deepseek-ai/dsh-session -> _deps/dsh-session
+[vendor-agent-teams] vendored @deepseek-ai/dsh-subagent -> _deps/dsh-subagent
+[vendor-agent-teams] vendored @deepseek-ai/dsh-tools -> _deps/dsh-tools
+[vendor-agent-teams] vendored @deepseek-ai/dsh-agent -> _deps/dsh-agent
+[vendor-agent-teams] vendored zod -> _deps/zod
+[vendor-agent-teams] vendored @standard-schema/spec -> _deps/standard-schema
+[vendor-agent-teams] FAIL: mpd delta guard refused the healed tree — [patch-agent-teams-fixes] FAIL: refusing to heal delta "mpd-delta scope-glob" into packages/mpd-agent-teams-plugin/lib/quality-gates.js (insertion): it declares "pathMatchesScope" but that declaration still exists OUTSIDE any region at line 102 — the file was re-materialized with the OLD body; remove the old declaration (or restore the marked file) before healing, otherwise the healed module fails to import

@@ -1,0 +1,20 @@
+{
+  "driver": "check4k-orphan-rows-all-regions",
+  "regions": 12,
+  "precondition_bodyTailEqualsBeforeContext": [],
+  "r3": {
+    "total": 12,
+    "refused": 12,
+    "namesRegion": 12,
+    "namesLine": 12,
+    "namesRemedy": 12,
+    "untouched": 12
+  },
+  "r5": {
+    "total": 12,
+    "applied": 12,
+    "byteIdentical": 12
+  },
+  "note": "no silent deletion is reproducible: R3 refuses without writing (file byte-untouched) in every region, and the precondition shows the silent-relocation coincidence does not exist",
+  "passed": true
+}

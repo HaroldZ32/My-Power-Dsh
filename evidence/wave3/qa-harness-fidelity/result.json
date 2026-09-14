@@ -1,0 +1,67 @@
+{
+  "task": "t3",
+  "title": "QA-harness fidelity: devPatch MCP operand + its rtl-verif duplicate + deprecated pins + settings/HOME + timing flake + dual-track boot (single skills writer, single re-pin)",
+  "attempt": 1,
+  "attempt_id": "53305066-b396-4727-a9c3-3b94f91a7593",
+  "executed_by": "Junior Engineer",
+  "theme": "These were gates that manufactured their own pass: a broken dev-flavor MCP operand stayed invisible because stub env pins bypassed the B8 launcher, a duplicated devPatch propagated the same bug, a case ran against the real HOME, a hard 60s deadline read a healthy 68.7s boot as a capability failure, and a live case could not boot at all.",
+  "fixes": {
+    "A1_devPatch_operand": {
+      "files": ["skills/dsh-qa/scripts/preset-register.mjs", "skills/dsh-qa/scripts/rtl-verif.mjs", "skills/dsh-qa/scripts/dual-track-smoke.mjs"],
+      "defect": "`.split(\"@mpd-dsh/mpd/\").join(repoRoot + \"/\")` rewrote only the tail of the packed operand, leaving `+ \"/node_modules/\"`, so MCP row commands became `<baseUrl>/node_modules/<abs-repo>/packages/...` which exists nowhere.",
+      "fix": "consume the WHOLE operand: drop the `(typeof baseUrl ...) + ` concat and rewrite the leading `\"/node_modules/@mpd-dsh/mpd/` to the checkout root, producing `process.env.MPD_DSH_X || (\"<repo>/packages/.../launch.mjs\")`.",
+      "pins_removed": ["MPD_DSH_ASTGREP_CLI", "MPD_DSH_GITBASH_CLI", "MPD_DSH_LSP_CLI", "MPD_DSH_CODEGRAPH_CLI", "MPD_AST_GREP_SG_PATH (deprecated .bin/sg wrapper, --version exits 1)", "MPD_CODEGRAPH_BIN"],
+      "self_test_guard": "each of preset-register/rtl-verif/dual-track asserts the rewritten patch contains no `typeof baseUrl`, no `/node_modules/@mpd-dsh/mpd/`, no bare `name: '@mpd-dsh/mpd'`, and that each MCP operand equals the checkout-absolute launcher path that also exists on disk."
+    },
+    "A2_codegraph_smoke_pin_documented": {
+      "file": "skills/dsh-qa/scripts/codegraph-smoke.mjs",
+      "note": "MPD_CODEGRAPH_BIN stays BY DESIGN (the case exists to exercise that binary) and now carries an explicit comment plus a SKILL.md row note saying its green is not evidence for the bundle's B8 resolution chain."
+    },
+    "A3_mcp_call_settings_and_home": {
+      "file": "skills/dsh-qa/scripts/mcp-call.mjs",
+      "fix": "settings.yaml copied when present (alongside .credentials.yaml, at both DSH_HOME and the HOME-shaped location) and HOME is now sandboxed, so the case can no longer read/write real `~/.mpd` state (it previously died on `mkdir '/root/.mpd/codegraph'`, see F-B8-1)."
+    },
+    "A4_web_client_adapt_deadline": {
+      "file": "skills/dsh-qa/scripts/web-client-adapt.mjs",
+      "fix": "boot-graph deadline 60s -> 150s, env-overridable via MPD_DSH_QA_WEB_BOOT_DEADLINE_MS, and bootEntry now records elapsedMs/deadlineMs/timedOut so a slow boot is visibly bounded instead of reading as a missing client entry.",
+      "measurement": "a healthy SOLO run measured elapsedMs=68723 (> the old 60s deadline) and passed."
+    },
+    "A5_dual_track_boot": {
+      "file": "skills/dsh-qa/scripts/dual-track-smoke.mjs",
+      "defect": "passed the committed packed patch to a bare `--profile headless` -> `ERR_MODULE_NOT_FOUND @mpd-dsh/mpd` (`<tmp>/profiles/headless/node_modules/@mpd-dsh/mpd/packages/...`), making the wave-2 workspace-isolation fix in that case inert.",
+      "fix": "dev-flavor rewrite of the patch into the sandbox (same helper shape as preset-register/rtl-verif) before booting; self-test asserts no packed operand remains."
+    },
+    "A6_vendor_lock_repin": {
+      "file": "VENDOR_LOCK.json",
+      "fix": "exactly ONE skills re-pin, computed with verify-vendor.mjs's own algorithm (LF-normalized per-file sha256 + sorted relpath aggregation); fileCount unchanged at 366.",
+      "treeSha": {"before": "5b13e92091e38ed8a001c08b11cd8fc73f650041260ad7fc519c782ab6a6ef45", "after": "3259d07a613c0bb9cf4a0ae8478adcbbb6247ec8bd361fb2075c3092c1c00621"}
+    }
+  },
+  "evidence": {
+    "dev_boot_without_pins": "evidence/dsh-qa/preset-register/2026-09-11T08-17-25.674Z (ok=true, 0 MODULE_NOT_FOUND/BINARY_NOT_FOUND)",
+    "second_independent_boot": "evidence/dsh-qa/rtl-verif/2026-09-11T08-22-44.955Z (ok=true, bootExit=0, lsp dual, verilator flow green, 0 module errors)",
+    "dual_track_boot_repair": "evidence/dsh-qa/llm-dual-track/{official,deepseek}/2026-09-11T08-19-4*/ (0 ERR_MODULE_NOT_FOUND; boot reaches MISSING_CREDENTIAL)",
+    "mcp_call_home": "evidence/dsh-qa/mcp-call/2026-09-11T08-21-57.257Z (0 occurrences of root/.mpd; only MISSING_CREDENTIAL)",
+    "web_client_adapt_deadline": "evidence/plan-f/web-client-adapt/2026-09-11T08-22-45.003Z (ok=true, bootEntry.elapsedMs=68723)",
+    "pre_fix_measurements": ["evidence/dsh-qa/llm-dual-track/official/2026-09-11T05-56-52.220Z/output.log", "evidence/dsh-qa/mcp-call/2026-09-11T07-28-18.537Z/call.log"]
+  },
+  "verification": {
+    "bun run test:qa": "exit 0 — all self-tests passed",
+    "node scripts/verify-vendor.mjs": "exit 0 — PASS (skills 366 files)",
+    "affected --self-test": "preset-register, rtl-verif, mcp-call, dual-track-smoke, codegraph-smoke, web-client-adapt: all exit 0",
+    "real_cases": "preset-register PASS; rtl-verif PASS; web-client-adapt PASS; dual-track-smoke and mcp-call blocked ONLY by the absent DeepSeek API key"
+  },
+  "environment_limitations": [
+    "This sandbox has no DeepSeek API key: ~/.dsh/.credentials.yaml holds only a client-connection/browser-session grant and settings.yaml has `llm-deepseek: {}`. Live-LLM lanes (dual-track-smoke, mcp-call) therefore end in MISSING_CREDENTIAL. Both now get all the way to the model step — no module-resolution or real-HOME crash remains — and their structural assertions are covered by --self-test."
+  ],
+  "changed_paths": [
+    "skills/dsh-qa/scripts/preset-register.mjs",
+    "skills/dsh-qa/scripts/rtl-verif.mjs",
+    "skills/dsh-qa/scripts/mcp-call.mjs",
+    "skills/dsh-qa/scripts/dual-track-smoke.mjs",
+    "skills/dsh-qa/scripts/codegraph-smoke.mjs",
+    "skills/dsh-qa/scripts/web-client-adapt.mjs",
+    "skills/dsh-qa/SKILL.md",
+    "VENDOR_LOCK.json"
+  ]
+}

@@ -1,0 +1,4 @@
+# gate: bun run typecheck
+# date: 2026-09-11T04:15:26Z
+$ tsgo --noEmit
+[exit code: 0]

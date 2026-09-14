@@ -1,0 +1,245 @@
+BRAND-TOKEN INVENTORY (token-boundary regex = the guard's own BRAND_TOKEN_RE from scripts/build-mcp.mjs:192)
+NOTE: a bare substring grep -i omo is UNUSABLE (false positives: 'autonomous', 'promote'); a token boundary is required.
+
+AGENTS.md
+    lines: 21:omo-parity-gap, 30:OMO-derived, 30:OMO_CODEX_, 31:_omo, 44:OMO-origin, 130:OMO-origin, 502:OMO, 502:omo-align/requirements/frozen-contract.json, 512:omo, 525:OMO-origin
+    tokens: ['OMO', 'OMO-derived', 'OMO-origin', 'OMO_CODEX_', '_omo', 'omo', 'omo-align/requirements/frozen-contract.json', 'omo-parity-gap']
+README.md
+    lines: 9:OMO-derived, 12:OMO_CODEX_, 13:_omo, 14:OmO, 24:OmO, 64:OMO-origin, 69:OMO-origin, 151:OMO
+    tokens: ['OMO', 'OMO-derived', 'OMO-origin', 'OMO_CODEX_', 'OmO', '_omo']
+README.zh-CN.md
+    lines: 8:OMO, 12:OMO_CODEX_, 12:_omo, 13:OmO, 21:OmO, 58:OMO, 62:OMO, 127:OMO
+    tokens: ['OMO', 'OMO_CODEX_', 'OmO', '_omo']
+docs/architecture.md
+    lines: 26:OMO-origin, 100:OMO-origin
+    tokens: ['OMO-origin']
+docs/architecture.zh-CN.md
+    lines: 23:OMO, 89:OMO
+    tokens: ['OMO']
+docs/feature-audit.md
+    lines: 15:OMO
+    tokens: ['OMO']
+docs/feature-audit.zh-CN.md
+    lines: 14:OMO
+    tokens: ['OMO']
+docs/index.md
+    lines: 19:omo-parity-ledger, 19:omo-parity-ledger, 19:omo-parity-align, 19:omo-parity-ledger
+    tokens: ['omo-parity-align', 'omo-parity-ledger']
+docs/index.zh-CN.md
+    lines: 18:omo-parity-ledger, 18:omo-parity-ledger, 18:omo-parity-align, 18:omo-parity-ledger
+    tokens: ['omo-parity-align', 'omo-parity-ledger']
+docs/omo-parity-gap.md
+    lines: 1:OMO, 4:omo-opencode/src/agents/, 29:OMO, 43:OMO, 49:OMO, 58:OMO, 59:omo_agent, 72:omo/plans
+    tokens: ['OMO', 'omo-opencode/src/agents/', 'omo/plans', 'omo_agent']
+docs/omo-parity-ledger.md
+    lines: 1:OMO, 2:omo-parity-ledger, 4:omo-parity-align, 12:omo-parity-gap, 15:omo-align/requirements/frozen-contract.json, 16:omo-align/research/team-vs-mass-ulw/gap.json, 17:omo-align/research/session-policy/output.log, 18:omo-align/requirements/verdict.json, 25:OMO, 41:omo-parity-ledger, 41:omo-parity-ledger, 41:omo-parity-gap, 93:omo-parity-rate/, 94:omo-align/ledger-fix/, 167:omo-align/ledger-fix/gates/, 168:omo-align/ledger-fix/result.json, 176:omo-align/requirements/frozen-contract.json, 179:omo-parity-rate/raw/prompts.jsonl, 191:omo-parity-rate/raw/probe.mjs
+    tokens: ['OMO', 'omo-align/ledger-fix/', 'omo-align/ledger-fix/gates/', 'omo-align/ledger-fix/result.json', 'omo-align/requirements/frozen-contract.json', 'omo-align/requirements/verdict.json', 'omo-align/research/session-policy/output.log', 'omo-align/research/team-vs-mass-ulw/gap.json', 'omo-parity-align', 'omo-parity-gap', 'omo-parity-ledger', 'omo-parity-rate/', 'omo-parity-rate/raw/probe.mjs', 'omo-parity-rate/raw/prompts.jsonl']
+docs/omo-parity-ledger.zh-CN.md
+    lines: 1:OMO, 2:omo-parity-ledger, 4:omo-parity-align, 9:omo-parity-gap, 12:omo-align/requirements/frozen-contract.json, 13:omo-align/research/team-vs-mass-ulw/gap.json, 14:omo-align/research/session-policy/output.log, 15:omo-align/requirements/verdict.json, 22:OMO, 38:omo-parity-ledger, 38:omo-parity-ledger, 38:omo-parity-gap, 84:omo-parity-rate/, 85:omo-align/ledger-fix/, 153:omo-align/ledger-fix/gates/, 153:omo-align/ledger-fix/result.json, 162:omo-align/requirements/frozen-contract.json, 165:omo-parity-rate/raw/prompts.jsonl, 177:omo-parity-rate/raw/probe.mjs
+    tokens: ['OMO', 'omo-align/ledger-fix/', 'omo-align/ledger-fix/gates/', 'omo-align/ledger-fix/result.json', 'omo-align/requirements/frozen-contract.json', 'omo-align/requirements/verdict.json', 'omo-align/research/session-policy/output.log', 'omo-align/research/team-vs-mass-ulw/gap.json', 'omo-parity-align', 'omo-parity-gap', 'omo-parity-ledger', 'omo-parity-rate/', 'omo-parity-rate/raw/probe.mjs', 'omo-parity-rate/raw/prompts.jsonl']
+docs/plan-e.md
+    lines: 16:OMO-vs-mpd, 21:OMO, 43:omo-parity-gap
+    tokens: ['OMO', 'OMO-vs-mpd', 'omo-parity-gap']
+docs/plan-f.md
+    lines: 1:OMO, 18:OMO-origin, 43:omo-hephaestus, 82:OMO
+    tokens: ['OMO', 'OMO-origin', 'omo-hephaestus']
+docs/user-guide.md
+    lines: 80:OMO-origin
+    tokens: ['OMO-origin']
+docs/user-guide.zh-CN.md
+    lines: 73:OMO
+    tokens: ['OMO']
+package.json
+    lines: 6:OMO-derived
+    tokens: ['OMO-derived']
+packages/mpd-agent-teams-plugin/lib/session-start.js
+    lines: 28:omo-align/requirements/frozen-contract.json
+    tokens: ['omo-align/requirements/frozen-contract.json']
+packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs
+    lines: 91:omo-align
+    tokens: ['omo-align']
+packages/mpd-agent-teams-plugin/test/s1-s4-semantics.test.mjs
+    lines: 1:OMO, 171:omo-align/verification/
+    tokens: ['OMO', 'omo-align/verification/']
+packages/mpd-bundle/README.md
+    lines: 20:OMO-origin, 25:OMO, 59:OMO
+    tokens: ['OMO', 'OMO-origin']
+packages/mpd-bundle/README.zh-CN.md
+    lines: 8:OMO-origin, 12:OMO
+    tokens: ['OMO', 'OMO-origin']
+packages/mpd-bundle/cordis.patch.yml
+    lines: 261:OMO-origin, 269:OMO-origin
+    tokens: ['OMO-origin']
+packages/mpd-dsh-adapter-plugin/src/index.ts
+    lines: 144:omo-align/compact-hinge
+    tokens: ['omo-align/compact-hinge']
+packages/mpd-mcp-codegraph/dist/serve.js
+    lines: 5795:omo, 8085:OMO_CONFIG, 8827:omo, 8965:OMO, 9716:OMO, 9718:OMO
+    tokens: ['OMO', 'OMO_CONFIG', 'omo']
+packages/mpd-mcp-gitbash/dist/cli.js
+    lines: 320:OMO_CODEX_GIT_BASH_PATH, 457:OMO_CODEX_GIT_BASH_TIMEOUT_MS, 458:OMO_CODEX_EXEC_COMMAND_TIMEOUT_MS
+    tokens: ['OMO_CODEX_EXEC_COMMAND_TIMEOUT_MS', 'OMO_CODEX_GIT_BASH_PATH', 'OMO_CODEX_GIT_BASH_TIMEOUT_MS']
+packages/mpd-mcp-lsp/dist/cli.js
+    lines: 5358:_omo, 5368:_omo, 5739:_omo, 6027:_omo, 6080:_omo
+    tokens: ['_omo']
+packages/mpd-modelchain-plugin/README.md
+    lines: 5:OMO
+    tokens: ['OMO']
+packages/mpd-modelchain-plugin/README.zh-CN.md
+    lines: 5:OMO
+    tokens: ['OMO']
+packages/mpd-qa-roles-probe/README.md
+    lines: 8:OMO
+    tokens: ['OMO']
+packages/mpd-qa-roles-probe/README.zh-CN.md
+    lines: 5:OMO
+    tokens: ['OMO']
+packages/mpd-qa-roles-probe/src/index.ts
+    lines: 2:OMO
+    tokens: ['OMO']
+packages/mpd-roles-plugin/README.md
+    lines: 4:OMO-origin
+    tokens: ['OMO-origin']
+packages/mpd-roles-plugin/README.zh-CN.md
+    lines: 4:OMO-origin
+    tokens: ['OMO-origin']
+packages/mpd-roles-plugin/package.json
+    lines: 6:OMO-origin
+    tokens: ['OMO-origin']
+packages/mpd-roles-plugin/src/index.ts
+    lines: 1:OMO-origin
+    tokens: ['OMO-origin']
+packages/mpd-roles-plugin/src/roles.data.ts
+    lines: 1:OMO-origin
+    tokens: ['OMO-origin']
+packages/mpd-team-compact-plugin/src/index.ts
+    lines: 6:omo-align/requirements/team-compaction-contract.json, 16:omo-align/compact-hinge/result.json
+    tokens: ['omo-align/compact-hinge/result.json', 'omo-align/requirements/team-compaction-contract.json']
+packages/mpd-workmate-plugin/README.md
+    lines: 7:OMO
+    tokens: ['OMO']
+packages/mpd-workmate-plugin/README.zh-CN.md
+    lines: 7:OMO
+    tokens: ['OMO']
+packages/mpd-workmate-plugin/src/index.ts
+    lines: 2:OMO
+    tokens: ['OMO']
+presets/mpd/agent.cordis.yml
+    lines: 6:OMO-origin
+    tokens: ['OMO-origin']
+scripts/build-mcp.mjs
+    lines: 2:OMO, 14:OMO, 16:omo-config-core, 26:omo-config-core, 30:omo-config-core, 99:OMO-, 100:OMO_, 101:OMO-, 104:omo, 105:OMO_CODEX_, 109:OMO_DAEMON_PROTOCOL_VERSION, 110:OMO_LSP_DAEMON_CLI, 111:OMO_LSP_DAEMON_DIR, 112:OMO_LSP_DAEMON_VERSION, 113:omo, 114:omo-lsp-daemon, 115:omo-lsp-, 116:omo/ping, 118:OMO_, 118:omo
+    tokens: ['OMO', 'OMO-', 'OMO_', 'OMO_AST_GREP_BIN_DIR', 'OMO_AST_GREP_PROJECT_CWD', 'OMO_AST_GREP_SG_PATH', 'OMO_CODEX_', 'OMO_CODEX_EXEC_COMMAND_TIMEOUT_MS', 'OMO_CODEX_GIT_BASH_PATH', 'OMO_CODEX_GIT_BASH_TIMEOUT_MS', 'OMO_DAEMON_PROTOCOL_VERSION', 'OMO_LSP_DAEMON_CLI', 'OMO_LSP_DAEMON_DIR', 'OMO_LSP_DAEMON_VERSION', 'OMO_PROVISION_HINT', '_omo', 'omo', 'omo-', 'omo-ast-grep', 'omo-config-core', 'omo-git-bash', 'omo-git-bash-run-', 'omo-lsp', 'omo-lsp-', 'omo-lsp-daemon', 'omo-runtime', 'omo/ping', 'omoRuntime', 'omoRuntimeCandidates']
+skills/ast-grep/AGENTS.md
+    lines: 23:OMO
+    tokens: ['OMO']
+skills/ast-grep/README.md
+    lines: 133:omo
+    tokens: ['omo']
+skills/ast-grep/scripts/ast_grep_helper.py
+    lines: 205:OMO, 207:omo_env_binary, 217:omo_runtime_slug, 230:omo_runtime_binary, 232:omo_runtime_slug, 250:OMO, 255:omo_env_binary, 255:omo_runtime_binary
+    tokens: ['OMO', 'omo_env_binary', 'omo_runtime_binary', 'omo_runtime_slug']
+skills/ast-grep/tests/smoke.sh
+    lines: 31:omo_runtime_slug, 126:OMO, 129:omo_runtime_slug
+    tokens: ['OMO', 'omo_runtime_slug']
+skills/coding-agent-sessions/AGENTS.md
+    lines: 7:OMO/Senpi/pi
+    tokens: ['OMO/Senpi/pi']
+skills/coding-agent-sessions/SKILL.md
+    lines: 3:OMO/Senpi/pi, 3:OMO/Senpi/pi/oh-my-pi/omp/gajae-code/gjc/OpenClaw/Droid/Amp/Kodu/Cursor/Aider/Aside, 18:OMO, 123:OMO
+    tokens: ['OMO', 'OMO/Senpi/pi', 'OMO/Senpi/pi/oh-my-pi/omp/gajae-code/gjc/OpenClaw/Droid/Amp/Kodu/Cursor/Aider/Aside']
+skills/coding-agent-sessions/references/all-platforms.md
+    lines: 13:OMO, 13:omo
+    tokens: ['OMO', 'omo']
+skills/coding-agent-sessions/references/senpi.md
+    lines: 1:OMO, 3:OMO/Senpi, 7:omo, 17:OMO/Senpi
+    tokens: ['OMO', 'OMO/Senpi', 'omo']
+skills/coding-agent-sessions/scripts/tests/test_pi_family_scanners.py
+    lines: 94:omo_and_legacy_home_stores, 99:omo, 102:omo, 119:omo_and_legacy_sessions, 130:omo
+    tokens: ['omo', 'omo_and_legacy_home_stores', 'omo_and_legacy_sessions']
+skills/dsh-qa/SKILL.md
+    lines: 49:OMO
+    tokens: ['OMO']
+skills/dsh-qa/scripts/agent-teams-messaging.mjs
+    lines: 232:omo-align/qa-shipped-path/, 369:omo-align, 863:omo-align
+    tokens: ['omo-align', 'omo-align/qa-shipped-path/']
+skills/dsh-qa/scripts/preset-register.mjs
+    lines: 5:OMO
+    tokens: ['OMO']
+skills/dsh-qa/scripts/session-start-team.mjs
+    lines: 26:omo-align/requirements/frozen-contract.json
+    tokens: ['omo-align/requirements/frozen-contract.json']
+skills/lsp-setup/SKILL.md
+    lines: 86:omo
+    tokens: ['omo']
+skills/lsp-setup/references/bash/README.md
+    lines: 30:omo
+    tokens: ['omo']
+skills/lsp-setup/references/c-cpp/README.md
+    lines: 23:omo
+    tokens: ['omo']
+skills/lsp-setup/references/csharp/README.md
+    lines: 25:omo
+    tokens: ['omo']
+skills/lsp-setup/references/dart/README.md
+    lines: 23:omo
+    tokens: ['omo']
+skills/lsp-setup/references/elixir/README.md
+    lines: 24:omo
+    tokens: ['omo']
+skills/lsp-setup/references/go/README.md
+    lines: 28:omo
+    tokens: ['omo']
+skills/lsp-setup/references/haskell/README.md
+    lines: 30:omo
+    tokens: ['omo']
+skills/lsp-setup/references/java/README.md
+    lines: 23:omo
+    tokens: ['omo']
+skills/lsp-setup/references/julia/README.md
+    lines: 31:omo
+    tokens: ['omo']
+skills/lsp-setup/references/kotlin/README.md
+    lines: 25:omo
+    tokens: ['omo']
+skills/lsp-setup/references/lua/README.md
+    lines: 23:omo
+    tokens: ['omo']
+skills/lsp-setup/references/php/README.md
+    lines: 23:omo
+    tokens: ['omo']
+skills/lsp-setup/references/python/README.md
+    lines: 24:omo
+    tokens: ['omo']
+skills/lsp-setup/references/ruby/README.md
+    lines: 25:omo
+    tokens: ['omo']
+skills/lsp-setup/references/rust/README.md
+    lines: 25:omo
+    tokens: ['omo']
+skills/lsp-setup/references/swift/README.md
+    lines: 23:omo
+    tokens: ['omo']
+skills/lsp-setup/references/terraform/README.md
+    lines: 26:omo
+    tokens: ['omo']
+skills/lsp-setup/references/typescript/README.md
+    lines: 25:omo
+    tokens: ['omo']
+skills/lsp-setup/references/yaml/README.md
+    lines: 21:omo
+    tokens: ['omo']
+skills/lsp-setup/references/zig/README.md
+    lines: 24:omo
+    tokens: ['omo']
+skills/review-work/SKILL.md
+    lines: 30:OMO
+    tokens: ['OMO']
+skills/ultimate-browsing/engine/tests/test_surrogate.py
+    lines: 134:OMOB_TEST_TOKEN, 139:OMOB_TEST_TOKEN
+    tokens: ['OMOB_TEST_TOKEN']
+skills/ulw-plan/scripts/scaffold-plan.mjs
+    lines: 124:omoRoot, 127:omoRoot, 129:omoReal, 129:omoRoot, 132:omoReal
+    tokens: ['omoReal', 'omoRoot']
+
+total files with brand tokens: 80

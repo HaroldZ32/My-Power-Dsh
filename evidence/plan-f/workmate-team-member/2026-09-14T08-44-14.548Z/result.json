@@ -1,0 +1,36 @@
+{
+  "ok": false,
+  "dshHome": "/tmp/mpd-wtm-dsh-9DT7NW",
+  "wmHome": "/tmp/mpd-wtm-home-GSQ8D7",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": false,
+      "exit": 1
+    },
+    "injection": {
+      "ok": false,
+      "sample": "[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-wtm-home-GSQ8D7/ws | [mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free) | [mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2) |  | dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route \"deepseek-official\"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment | "
+    },
+    "reflect": {
+      "ok": false,
+      "tokenCount": 0,
+      "uses": 0
+    },
+    "files": {
+      "ok": false,
+      "memory": ""
+    },
+    "isolation": {
+      "ok": false,
+      "realWm": "/root/.mpd/workmate"
+    }
+  }
+}

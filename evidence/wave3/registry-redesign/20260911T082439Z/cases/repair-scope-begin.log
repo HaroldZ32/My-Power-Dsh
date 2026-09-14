@@ -1,0 +1,44 @@
+=== marker prefix fixtures (one per colliding pair) ===
+repo = /root/dshProj/my-power-dsh
+  fixture: dropped the outer begin marker line 244 for mpd-delta scope-overlap
+
+--- scope-overlap-begin ---
+check:
+    [patch-agent-teams-fixes] FAIL: delta "mpd-delta scope-overlap" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (partially stripped: the end marker at line 261 survived and its partner is gone) (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js
+    check_exit=1
+write:
+    [patch-agent-teams-fixes] applied: 12 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta scope-overlap)
+    write_exit=0
+post:
+    [patch-agent-teams-fixes] already applied: 12 mpd delta region(s) across 2 adopted file(s)
+    post_exit=0
+    diff-lines=0
+    byte-identical-to-canonical=yes
+  fixture: dropped the outer end marker line 262 for mpd-delta scope-overlap
+
+--- scope-overlap-end ---
+check:
+    [patch-agent-teams-fixes] FAIL: delta "mpd-delta scope-overlap" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (partially stripped: the begin marker at line 244 survived and its partner is gone) (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js
+    check_exit=1
+write:
+    [patch-agent-teams-fixes] applied: 12 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta scope-overlap)
+    write_exit=0
+post:
+    [patch-agent-teams-fixes] already applied: 12 mpd delta region(s) across 2 adopted file(s)
+    post_exit=0
+    diff-lines=0
+    byte-identical-to-canonical=yes
+  fixture: dropped the outer begin marker line 714 for mpd-delta repair-scope
+
+--- repair-scope-begin ---
+check:
+    [patch-agent-teams-fixes] FAIL: delta "mpd-delta repair-scope" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (partially stripped: the end marker at line 720 survived and its partner is gone) (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js
+    check_exit=1
+write:
+    [patch-agent-teams-fixes] applied: 12 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta repair-scope)
+    write_exit=0
+post:
+    [patch-agent-teams-fixes] already applied: 12 mpd delta region(s) across 2 adopted file(s)
+    post_exit=0
+    diff-lines=0
+    byte-identical-to-canonical=yes

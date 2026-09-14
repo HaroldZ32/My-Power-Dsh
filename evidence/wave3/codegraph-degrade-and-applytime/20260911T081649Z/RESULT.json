@@ -1,0 +1,77 @@
+{
+  "task": "wave-3 t4 — codegraph F-B8-1 degradation + O-1 apply-time root",
+  "stamp": "2026-09-11T08:16:49Z",
+  "repo": "/root/dshProj/my-power-dsh",
+  "producer": "Deep Worker",
+  "changedPaths": [
+    "packages/mpd-mcp-codegraph/launch.mjs",
+    "packages/mpd-codegraph-plugin/src/index.ts",
+    "packages/mpd-codegraph-plugin/src/index.test.ts",
+    "packages/mpd-codegraph-plugin/dist/index.js",
+    "packages/mpd-codegraph-plugin/README.md",
+    "packages/mpd-codegraph-plugin/README.zh-CN.md",
+    "packages/mpd-mcp-codegraph/README.md",
+    "packages/mpd-mcp-codegraph/README.zh-CN.md"
+  ],
+  "design": {
+    "F-B8-1": "launcher-side, per the t1 decision record (evidence/wave3/registry-redesign/t1-decision-record.txt §A4). dist/serve.js is untouched: it is a sha-pinned prebuilt behind the blocking vendor gate, so a marked delta there would either fail the gate or turn it into a self-attestation. The launcher catches the throw, prints it to stderr, pins MPD_CODEGRAPH_BIN to the path-looking sentinel /nonexistent/mpd-codegraph-unavailable and retries once; the adopted resolver then takes source:'env' and provisionMissingCodegraph returns null at its first guard -> runUnavailableMcp -> 0 tools, exit 0. A retry happens only while process.stdout.bytesWritten === 0 (the MCP stream owns stdout).",
+    "O-1": "packages/mpd-codegraph-plugin/src/index.ts resolves through the shared adapter's workspace plane now: (1) MPD_CODEGRAPH_PROJECT_CWD / MPD_DSH_CODEGRAPH_PROJECT_CWD override, (2) dsh.workspaceRoot(exec) — the call-time /mpd-codegraph handler passes the invocation, the exec-less apply-time call resolves DSH_WORKSPACE_ROOT -> process.cwd(), (3) process.cwd() as the adapter's own last tier. The bare `|| process.cwd()` chain is gone.",
+    "adjacent_fix": "The /mpd-codegraph handler returned {success, error} — dsh-commands' normalizeResult requires a CommandResult {kind} and rejects anything else, so the call-time path could never succeed. It now returns {kind:'success'|'error', text} and re-resolves the root per invocation. This was necessary to prove the call-time O-1 behaviour."
+  },
+  "acceptance": [
+    {
+      "criterion": "F-B8-1: with codegraph unresolvable AND $HOME/.mpd unwritable the MCP child degrades instead of dying uncaught",
+      "status": "passed",
+      "evidence": "degrade-launcher.mjs (real MCP stdio child, measured against the genuinely read-only /root/.mpd): RED (pre-fix bytes) exit 1, 0 stdout bytes, uncaught `Error: ENOENT: no such file or directory, mkdir '/root/.mpd/codegraph'` with the stack acquireLock -> ensureCodegraphProvisioned -> provisionMissingCodegraph -> runCodegraphServe -> launcher (red-launcher.stderr.txt); GREEN exit 0, initialize + tools/list answered with 0 tools, stderr carries the original error under '[mpd-mcp-codegraph] unavailable fallback:' plus 'CodeGraph MCP skipped' (green-launcher.stderr.txt, green-launcher.stdout.jsonl). 6/6 checks pass."
+    },
+    {
+      "criterion": "The fix is durable against a re-vendor or re-pack",
+      "status": "passed",
+      "evidence": "it lands launcher-side in our own code (packages/mpd-mcp-codegraph/launch.mjs); dist/serve.js keeps its VENDOR_LOCK sha (scripts/verify-vendor.mjs re-run by t8 untouched). The whole-package dist sweep reports 0 STALE / 16 FRESH and the launcher copy used by the harness is a byte copy of the shipped file."
+    },
+    {
+      "criterion": "O-1: the apply-time project root no longer resolves through a bare process.cwd() chain; override still wins; order documented",
+      "status": "passed",
+      "evidence": "src/index.ts resolveProjectRoot + README.md/README.zh-CN.md 'Project root resolution (O-1)' section. src/index.test.ts: override wins over the session workspace (both env spellings), session workspace wins over process.cwd, fallback is process.cwd."
+    },
+    {
+      "criterion": "Both changes proven behaviourally, with a no-session fallback and a negative control",
+      "status": "passed",
+      "evidence": "o1-mount-boot.sh runs TWO real dsh MOUNT boots (web profile, isolated DSH_HOME + sandbox HOME, the REAL mcp-codegraph row): with DSH_WORKSPACE_ROOT=<session ws> != process cwd the apply-time line names the session workspace (status=marker), and with no override it names process.cwd (status=ok). degrade-launcher.mjs carries the negative control pair: a resolvable pin reaches the real child and does NOT take the degrade path, and a writable HOME with an injected provisioner resolves to 'provisioned' and runs."
+    },
+    {
+      "criterion": "Rebuilt dist uses the repo-root form; dist sweep 0 STALE / 16 FRESH",
+      "status": "passed",
+      "evidence": "bun build --target node --format esm packages/mpd-codegraph-plugin/src/index.ts --outfile packages/mpd-codegraph-plugin/dist/index.js (banner '# packages/mpd-codegraph-plugin/src/index.ts'); node evidence/session-workspace-root/dist-repair/sweep.mjs --clean-room -> STALE: 0, FRESH byte-identical: 16, clean-room pass1==pass2 16/16, committed==pass2 16/16."
+    },
+    {
+      "criterion": "Gates: package tests, full repo suite, typecheck, mounting boot with 0 apply-crash signatures",
+      "status": "passed",
+      "evidence": "bun test packages/mpd-codegraph-plugin -> 7 pass / 0 fail (it matched no test file before this change: exit 1 'did not match any test files'); bun test packages -> 366 pass / 0 fail; bun run typecheck -> exit 0; both mount boots -> ok=true on two consecutive runs, 0 apply-crash signatures, no uncaught child error. The codegraph MCP child line is informational (the MCP client spawns servers asynchronously): observed in one run as '[CodeGraph MCP] Shared daemon unavailable; serving this session in-process (degraded).'"
+    },
+    {
+      "criterion": "Restart requirement stated",
+      "status": "passed",
+      "evidence": "A dsh RESTART is required: the changed code is the plugin's committed dist/index.js (loaded at plugin mount) and the MCP launcher (spawned by the mcp-codegraph row at boot). A running dsh keeps the previously loaded plugin code and the already-spawned MCP child; the /mpd-codegraph handler re-resolves its root per call but still runs the loaded code."
+    }
+  ],
+  "commandsRun": [
+    { "command": "bun build --target node --format esm packages/mpd-codegraph-plugin/src/index.ts --outfile packages/mpd-codegraph-plugin/dist/index.js", "status": "passed", "exitCode": 0, "evidence": "Bundled 2 modules; repo-root banner" },
+    { "command": "bun test packages/mpd-codegraph-plugin", "status": "passed", "exitCode": 0, "evidence": "7 pass / 0 fail / 17 expect()" },
+    { "command": "bun test packages", "status": "passed", "exitCode": 0, "evidence": "366 pass / 0 fail across 41 files" },
+    { "command": "bun run typecheck", "status": "passed", "exitCode": 0, "evidence": "tsgo --noEmit, no output" },
+    { "command": "node evidence/session-workspace-root/dist-repair/sweep.mjs --clean-room", "status": "passed", "exitCode": 0, "evidence": "STALE 0 | FRESH byte-identical 16 | pass1==pass2 16/16 | committed==pass2 16/16" },
+    { "command": "node evidence/wave3/codegraph-degrade-and-applytime/20260911T081649Z/degrade-launcher.mjs", "status": "passed", "exitCode": 0, "evidence": "6/6 checks; RED dies uncaught, GREEN answers MCP and exits 0" },
+    { "command": "bash evidence/wave3/codegraph-degrade-and-applytime/20260911T081649Z/o1-mount-boot.sh", "status": "passed", "exitCode": 0, "evidence": "o1-boot.result.json ok=true; 2 mount boots (web profile, real mcp-codegraph row); 0 apply-crash signatures; tokens redacted" }
+  ],
+  "artifacts": {
+    "launcher_harness": "degrade-launcher.mjs (+ degrade-launcher.result.json, red-launcher.stderr.txt, green-launcher.stderr.txt, green-launcher.stdout.jsonl, pre-fix-launch.mjs)",
+    "mount_boots": "o1-mount-boot.sh (+ o1-boot.log, o1-boot.result.json, boot-session-root.log, boot-no-override.log, install.log)",
+    "unit_tests": "packages/mpd-codegraph-plugin/src/index.test.ts"
+  },
+  "limitations": [
+    "The dsh mount boot cannot create an unwritable $HOME/.mdp without writing to the real home, so the throw/no-throw pair is measured at the MCP-child level against the real read-only /root/.mdp (degrade-launcher.mjs); the boot instead proves the mounting gate (0 apply-crash signatures, the real mcp-codegraph row alive) and O-1.",
+    "The /mpd-codegraph call-time root is proven at the handler level with the harness CommandInvocation shape ({agent:{session:{header:{cwd}}}); no live web session was driven for this task.",
+    "Boot/sandbox logs are scrubbed of the local web access token; the sandbox (including copied credentials) is deleted by the script."
+  ]
+}

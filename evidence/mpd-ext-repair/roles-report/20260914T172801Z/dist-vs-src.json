@@ -1,0 +1,20 @@
+{
+  "comparison": "rebuilt dist/index.js (attempt 2) vs fixed src/index.ts, same fixture",
+  "identical_after_normalizing_temp_home_paths": true,
+  "dist_values": {
+    "alpha_owner": {
+      "contributions_roles": 1,
+      "roles": [
+        "Verilog Reviewer"
+      ],
+      "pending_roles": 0
+    },
+    "zeta_clone": {
+      "contributions_roles": 0,
+      "roles": [],
+      "pending_roles": 0
+    }
+  },
+  "stale_sentence_present": false,
+  "refused_names_listed_as_usable": []
+}

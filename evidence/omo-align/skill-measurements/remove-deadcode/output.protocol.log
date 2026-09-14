@@ -1,0 +1,35 @@
+### PROTOCOL RUN: the skill's Phase 4 batch protocol (steps 4-6) + Phase 5 + revert path, isolated git probe
+baseline commit: 2bcec61
+
+$ inject dead code (unused param + unused local)
+$ bun run typecheck   # the skill's per-batch gate (script = tsgo with the skill's unused flags)
+$ /root/dshProj/my-power-dsh/node_modules/.bin/tsgo --noEmit --noUnusedLocals --noUnusedParameters -p tsconfig.json
+a.ts(1,33): error TS6133: 'unusedParam' is declared but its value is never read.
+a.ts(2,9): error TS6133: 'unusedLocal' is declared but its value is never read.
+error: script "typecheck" exited with code 1
+EXIT=1
+
+$ apply removal (delete unused local, prefix _ on the required parameter)
+$ /root/dshProj/my-power-dsh/node_modules/.bin/tsgo --noEmit --noUnusedLocals --noUnusedParameters -p tsconfig.json
+typecheck after removal EXIT=0
+
+$ git add <specific file> && git commit -m 'refactor: remove dead code from a.ts'
+removal commit: df87f75
+df87f75 refactor: remove dead code from a.ts
+2bcec61 baseline
+
+$ FAILURE PATH: introduce a type error -> typecheck fails -> git checkout -- a.ts
+a.ts(2,9): error TS2322: Type 'string' is not assignable to type 'number'.
+a.ts(2,9): error TS6133: 'broken' is declared but its value is never read.
+error: script "typecheck" exited with code 1
+typecheck-with-error EXIT=1
+reverted; git status --porcelain:
+(empty above = clean revert)
+$ /root/dshProj/my-power-dsh/node_modules/.bin/tsgo --noEmit --noUnusedLocals --noUnusedParameters -p tsconfig.json
+typecheck after revert EXIT=0
+
+$ rm dead file path (skill step: 'Dead file: delete with rm')
+rm available: /usr/bin/rm
+
+### probe cleanup
+probe removed: YES

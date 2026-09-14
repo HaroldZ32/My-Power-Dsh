@@ -1,0 +1,82 @@
+{
+  "task": "t4 (B4) — remove the array-typed `lines` parameter schema in mpd-hashline, with its own mount proof",
+  "attempt_id": "8f29716a-44c0-497d-80c9-f92c3cc92386",
+  "member": "Senior Engineer",
+  "date": "2026-09-11",
+  "defect": "packages/mpd-hashline-plugin/src/index.ts declared `lines: { type: [\"string\",\"array\"], items: { type: \"string\" } }` in the mpd_hashline_edit PARAMETER schema (and the committed dist carried the same bytes). The installed harness validator (@deepseek-ai/dsh-tools assertSupportedJsonSchema) rejects type ARRAYS with `type must be a single type string (type arrays are not supported)` and a single violation aborts the whole plugin tree at load; it is latent only because this harness release asserts OUTPUT schemas, not parameters.",
+  "fix": "lines: { oneOf: [{ type: \"string\" }, { type: \"array\", items: { type: \"string\" } }] } — the accepted union spelling, keeping both input shapes.",
+  "changed_paths": [
+    "packages/mpd-hashline-plugin/src/index.ts",
+    "packages/mpd-hashline-plugin/dist/index.js",
+    "packages/mpd-hashline-plugin/test/tool-schema.test.ts"
+  ],
+  "dist_rebuild": {
+    "command": "bun build packages/mpd-hashline-plugin/src/index.ts --target node --format esm --outfile packages/mpd-hashline-plugin/dist/index.js",
+    "diff_vs_HEAD": "1 insertion / 1 deletion — the schema line only (proves the artifact is the rebuilt source, not a hand edit)"
+  },
+  "acceptance": [
+    {
+      "criterion": "No `type: [\"...\"]` array schema form remains in src or committed dist (grep proof over both)",
+      "status": "passed",
+      "evidence": "evidence/hashline/schema-union-fix/array-schema-sweep.txt — `grep -nE 'type:\\s*\\[' packages/mpd-hashline-plugin/src/index.ts packages/mpd-hashline-plugin/dist/index.js` -> no match (exit 1); same for `grep -rnE '\"?type\"?\\s*:\\s*\\[\\s*\"' packages/*/src packages/*/dist` across EVERY plugin -> no match"
+    },
+    {
+      "criterion": "A mounting boot (rows really applied, isolated DSH_HOME + sandbox HOME) shows 0 apply-crash signatures for the hashline row; no --dump-config result is used as load evidence",
+      "status": "passed",
+      "evidence": "evidence/hashline/schema-union-fix/20260911T030814Z-mount/mount-proof.result.json — apply_crash_signatures=0, boot_exit=124 (alive at the 75s cap), sandbox DSH_HOME=/tmp/mpd-hl-mnt-dsh-9MoYHf + sandbox HOME=/tmp/mpd-hl-mnt-home-R1bGHF; the probe row was mounted with `--patch`, registration instrumentation read the LIVE tool registry. No --dump-config result appears anywhere in this evidence."
+    },
+    {
+      "criterion": "A real mpd_hashline_read + real mpd_hashline_edit succeed, with `lines` as BOTH a single string and an array of strings",
+      "status": "passed",
+      "evidence": "mount-proof.result.json + mount-boot.log: HASHLINE_TOOLS_PRESENT=4/4, READ=ok lines=4, EDIT_LINES_STRING=ok lines=3, EDIT_LINES_ARRAY=ok lines=4, FINAL_CONTENT=\"alpha\\nBETA\\nGAMMA-1\\nGAMMA-2\\n\" — all through the harness tool runtime in the booted process that loaded the rebuilt dist. The unit test pins the same two shapes plus append with an array."
+    },
+    {
+      "criterion": "Other array-typed schemas are reported as findings, not changed here",
+      "status": "passed",
+      "evidence": "see findings[] below; the repo-wide sweep found NO array-typed schema in any plugin src or committed dist — the only live leftovers are stale build/history copies of this same plugin, untouched."
+    },
+    {
+      "criterion": "dist/index.js is rebuilt from the fixed source",
+      "status": "passed",
+      "evidence": "git diff --numstat packages/mpd-hashline-plugin/dist/index.js = 1/1 (the schema line only); the dist contains `lines: { oneOf: [{ type: \"string\" }, { type: \"array\", items: { type: \"string\" } }] }` and no `type: [`; pinned by test 'the committed src AND dist carry no array-typed schema form, and the dist carries the oneOf fix'"
+    }
+  ],
+  "gates": {
+    "bun test packages/mpd-hashline-plugin": {"exit": 0, "log": "gates/bun-test-hashline.log", "result": "10 pass / 0 fail across 2 files (6 pre-existing vendor tests + 4 new schema/e2e tests)"},
+    "node skills/dsh-qa/scripts/preset-conformance.mjs": {"exit": 0, "log": "gates/preset-conformance.log", "result": "PASS — conformance ok=true (parity 31/31 rows), real session created with agentPreset=mpd, bootLog signatures [] , negative control still fails as designed"},
+    "bun run test:qa": {"exit": 0, "log": "gates/test-qa-self-tests.log", "result": "all 27 QA self-tests passed"},
+    "schema-subset-check (extra, falsifiable)": {"exit": 0, "log": "gates/schema-subset-check.log", "result": "all 8 hashline schemas (4 tools x parameters/output) ACCEPTED by the installed validator; negative control: the pre-fix type array is REJECTED with 'must be a single type string (type arrays are not supported)'"},
+    "bun run typecheck (root)": {"exit": 0, "result": "tsgo --noEmit clean"}
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "low",
+      "problem": "Stale untracked pack artifact dist/mpd-package/packages/mpd-hashline-plugin/dist/index.js still contains the pre-fix `type: [\"string\",\"array\"]` bytes. It is build output (untracked; `git ls-files dist/mpd-package` is empty) regenerated by `node scripts/pack-mpd.mjs`.",
+      "requiredFix": "Regenerate it at release/pack time (`npm run pack`); NOT edited here because it is outside this task's inScope."
+    },
+    {
+      "id": "F2",
+      "severity": "low",
+      "problem": "Historical evidence copy evidence/scan/t3-20260829/build/mpd-hashline-plugin.js (tracked) is a byte-preserved scan artifact of the pre-fix build and still matches the pattern. It is a record, not live code.",
+      "requiredFix": "None — historical evidence is immutable by policy. Listed so the next sweep does not re-file it as a live defect."
+    },
+    {
+      "id": "F3",
+      "severity": "medium",
+      "problem": "AGENTS.md section 12 (troubleshooting row, line 361) still states the hashline parameter schema is a 'Known latent issue, deliberately NOT fixed here' and names src/index.ts:110 as the place. After this change that sentence is stale and now contradicts the shipped code.",
+      "requiredFix": "Rewrite that clause in the same commit at integration time (t11): keep the measured validator lesson, drop 'deliberately NOT fixed here', and state that the parameter form is now `oneOf` with its mount proof at evidence/hashline/schema-union-fix/. AGENTS.md is outside this task's inScope, so it was deliberately NOT edited here."
+    },
+    {
+      "id": "F4",
+      "severity": "info",
+      "problem": "Pattern matches in test matchers/controls (packages/mpd-workmate-plugin/test/rename-delete.test.ts:532, packages/mpd-hashline-plugin/test/tool-schema.test.ts, evidence/hashline/schema-union-fix/schema-subset-check.mjs) and in prose/lockfile files are regexes and negative controls, not schema declarations.",
+      "requiredFix": "None — reported so a future `type: [` sweep is read correctly."
+    }
+  ],
+  "notes": [
+    "Mount proof pattern reused verbatim from evidence/workmate/rename-delete-core/mount-proof.sh (--patch probe row + live registry read + real tool calls).",
+    "The probe reads the LIVE registered parameters of the booted mpd_hashline_edit row (LIVE_SCHEMA_TYPE_ARRAY=absent, LIVE_LINES_NODE={\"oneOf\":[...]}), so the evidence covers the loaded artifact rather than the source text.",
+    "No unrelated cleanup was folded in: the dist diff is exactly one line."
+  ]
+}

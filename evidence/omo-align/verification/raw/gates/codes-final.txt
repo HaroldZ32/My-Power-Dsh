@@ -1,0 +1,5 @@
+typecheck	0	bun run typecheck
+install-selftest	0	node scripts/install-profile.mjs --self-test
+install-dryrun	0	node scripts/install-profile.mjs --dry-run
+patch-check	0	node scripts/patch-agent-teams-fixes.mjs --check
+verify-vendor	0	node scripts/verify-vendor.mjs

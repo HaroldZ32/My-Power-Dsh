@@ -1,0 +1,9 @@
+[mpd-codegraph] init status=no-binary binary=- cwd=/root/dshProj/my-power-dsh
+[mpd-bootstrap] no bundled presets at /root/dshProj/my-power-dsh/presets
+[mpd-bootstrap] skills installed (0.2.3) -> /root/dshProj/my-power-dsh/.tmp-cache/mpd-dsh-qa-maI6ab/skills
+CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.
+[roles-probe] PRESET_MPD=ok
+[roles-probe] ROSTER=oracle,librarian,prometheus,hephaestus,sisyphus,atlas,explore,metis,momus,multimodal-looker,sisyphus-junior
+[roles-probe] PASS
+
+dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-official"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment

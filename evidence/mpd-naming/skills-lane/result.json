@@ -1,0 +1,64 @@
+{
+  "task": "t16 — skills lane: rename the ast-grep omo_* identifiers to mpd_*",
+  "attempt": 1,
+  "attempt_id": "83a993e2-2d3c-4f44-88e7-56501814b189",
+  "outcome": "COMPLETE — the rename is mechanical, the three contract verify commands behave as required, the smoke suite runs green, and no reference breaks.",
+  "renamed_symbols": [
+    {"old": "omo_env_binary", "new": "mpd_env_binary", "kind": "function", "sites": ["skills/ast-grep/scripts/ast_grep_helper.py:207 (def)", "skills/ast-grep/scripts/ast_grep_helper.py:255 (used in the resolve_binary tier tuple)"]},
+    {"old": "omo_runtime_slug", "new": "mpd_runtime_slug", "kind": "function", "sites": ["skills/ast-grep/scripts/ast_grep_helper.py:217 (def)", "skills/ast-grep/scripts/ast_grep_helper.py:232 (called by mpd_runtime_binary)", "skills/ast-grep/tests/smoke.sh:31 (def — the smoke script's own copy)", "skills/ast-grep/tests/smoke.sh:129 (called to build the HOME-runtime fixture path)"]},
+    {"old": "omo_runtime_binary", "new": "mpd_runtime_binary", "kind": "function", "sites": ["skills/ast-grep/scripts/ast_grep_helper.py:230 (def)", "skills/ast-grep/scripts/ast_grep_helper.py:255 (used in the resolve_binary tier tuple)"]}
+  ],
+  "occurrences": {"total_renamed_lines": 7, "helper": 5, "smoke": 2, "repo_wide_old_name_hits_after": 0},
+  "verify": [
+    {"command": "python3 -m py_compile skills/ast-grep/scripts/ast_grep_helper.py", "exit": 0},
+    {"command": "bash -n skills/ast-grep/tests/smoke.sh", "exit": 0},
+    {"command": "git grep -n \"omo_\" -- skills/ast-grep", "observed": "no output; exit 1 (git grep's zero-match code — the documented pass condition)", "falsifiability_control": "the identical grep against HEAD returns exactly the 7 pre-change lines"}
+  ],
+  "no_reference_breaks": {
+    "smoke_suite": "bash skills/ast-grep/tests/smoke.sh -> exit 0, 15 PASS / 0 FAIL (raw/10-smoke.log), including 'MPD HOME runtime resolves before standalone fallback' — the assertion that CALLS the renamed mpd_runtime_slug at smoke.sh:129",
+    "repo_wide_grep": "git grep for the three OLD names across the whole repo -> no matches (exit 1); the NEW names appear only at the 7 expected sites",
+    "static_checks": "py_compile exit 0 + bash -n exit 0"
+  },
+  "corpus_fingerprint_computed_not_written": {
+    "algorithm": "verify-vendor canonical (verify-vendor.mjs:106-114): sorted relative paths; per-file sha256 of LF-normalized bytes (binary raw); h.update(relpath + \"\\n\" + digest + \"\\n\")",
+    "A_current_tree_for_t17": {"fileCount": 297, "treeSha": "2f7bbe36da3465e5d7ff050b4536d569a3dedad48eac43596e6d831ba364e6ff", "meaning": "the value t17 should pin IF the tree is settled as it stands now (my two files + the ulw-plan edit below)"},
+    "B_my_edit_only": {"fileCount": 297, "treeSha": "342f25c939ff32de971ea26448855828ae89627b2f083eac8555a33e34f78d6b", "meaning": "the value if the ulw-plan edit is reverted by its owner and only this task's rename remains"},
+    "C_control_all_modified_skills_files_reverted_to_HEAD": {"fileCount": 297, "treeSha": "f6bb2053d02a0e256ab5d88debceb4cfbc76b10c6ff03dca69bf446718a583c9", "matches_current_VENDOR_LOCK": true, "meaning": "replication proof: my independent implementation reproduces the stored lock exactly once the working-tree deltas are removed, so A and B are trustworthy"},
+    "VENDOR_LOCK.json": "NOT written by this task (out of scope). Its current entry (297 / f6bb2053…) equals scenario C, i.e. the lock still describes the HEAD-state corpus."
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "high",
+      "finding": "The contract's own verify command pollutes the corpus: `python3 -m py_compile skills/ast-grep/scripts/ast_grep_helper.py` writes skills/ast-grep/scripts/__pycache__/ast_grep_helper.cpython-312.pyc, and PYTHONDONTWRITEBYTECODE=1 does NOT suppress it (measured: the .pyc reappeared with the flag set).",
+      "measured_impact": "corpus fileCount becomes 298 while VENDOR_LOCK says 297 -> `node scripts/verify-vendor.mjs` fails with 'asset skills count drifted: 298 vs 297'; and because .gitignore does NOT cover __pycache__/*.pyc, the artifact would otherwise be committed as corpus content.",
+      "proof": "raw/20-corpus-recompute.json (first run, 298 files, taken with the artifact present) vs the same script after removal (297 files)",
+      "remedy_verified": "compile to a cfile OUTSIDE the tree: `python3 -c \"import py_compile,sys; py_compile.compile(sys.argv[1], cfile=sys.argv[2], doraise=True)\" <helper> $(mktemp -d)/helper.pyc` -> exit 0, 0 __pycache__ dirs and 0 .pyc files under skills/",
+      "action_taken": "the artifact was removed; the tree is back to 297 files and the post-edit fingerprint is stable"
+    },
+    {
+      "id": "F2",
+      "severity": "medium",
+      "finding": "This task is NOT the wave's only skills/** writer: `skills/ulw-plan/scripts/scaffold-plan.mjs` is modified in the working tree outside any skills-lane task (git status shows it modified; it is not mine).",
+      "consequence": "the single-writer premise in my contract is false, so the corpus treeSha can move again after this task lands — t17 must compute the pin on the SETTLED revision (AGENTS.md section 7), and scenarios A/B above let it tell the two states apart.",
+      "action_taken": "not touched (outside my inScope)"
+    },
+    {
+      "id": "F3",
+      "severity": "low",
+      "finding": "The dispatch stated the comment labels in the helper 'were already rewritten in the text lane'. Measured: they were not — ast_grep_helper.py:205 still reads '# --- OMO runtime resolution (vendored patch) ---' and :250 still reads '2. OMO runtime dirs'.",
+      "scope_decision": "NOT fixed here. The owner closed both as class R5 (third-party vendored skill body; the tier is functional), t16's scope is the IDENTIFIERS, and the contract's grep is `omo_` (which the labels do not match). Recorded so t9/t10 read the residue correctly rather than as a missed rename.",
+      "action_taken": "reported only"
+    }
+  ],
+  "changed_paths": [
+    "skills/ast-grep/scripts/ast_grep_helper.py",
+    "skills/ast-grep/tests/smoke.sh",
+    "evidence/mpd-naming/skills-lane/output.log",
+    "evidence/mpd-naming/skills-lane/result.json",
+    "evidence/mpd-naming/skills-lane/raw/10-smoke.log",
+    "evidence/mpd-naming/skills-lane/raw/20-corpus-recompute.json",
+    "evidence/mpd-naming/skills-lane/raw/30-pin-scenarios.txt",
+    "evidence/mpd-naming/skills-lane/raw/recompute-corpus.mjs"
+  ]
+}

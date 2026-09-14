@@ -1,0 +1,21 @@
+{
+  "proof": "real boot that MOUNTS the rows (instrumentation = a --patch probe row), not a --dump-config composition check",
+  "isolation": {
+    "DSH_HOME": "temp sandbox",
+    "HOME": "temp sandbox",
+    "workspace_cwd": "temp sandbox"
+  },
+  "apply_crash_signatures": 0,
+  "dispatch_declined_lines_in_boot": 0,
+  "probe_reached_final_marker": true,
+  "scheduler_sha_match": "yes",
+  "dispatch_regions_present": "6/6",
+  "agent_teams_tools_registered": "9/9",
+  "in_boot_dispatch_deliveries": "1",
+  "in_boot_task_status": "claimed",
+  "upstream_guard_absent": "yes",
+  "new_state_dirs_in_repo": 0,
+  "boot_exit": 124,
+  "passed": true,
+  "note": "no --dump-config result is cited as load evidence; the probe reads the live tool registry and drives the loaded scheduler inside the boot process"
+}

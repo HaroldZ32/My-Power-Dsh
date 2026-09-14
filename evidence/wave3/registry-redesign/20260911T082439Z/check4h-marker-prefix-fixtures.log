@@ -1,0 +1,94 @@
+=== marker prefix fixtures (one per colliding pair) ===
+repo = /root/dshProj/my-power-dsh
+  fixture: dropped the outer begin marker line 244 for mpd-delta scope-overlap
+
+--- scope-overlap-begin ---
+check:
+    [patch-agent-teams-fixes] FAIL: delta "mpd-delta scope-overlap" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (partially stripped: the end marker at line 261 survived and its partner is gone) (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js
+    check_exit=1
+write:
+    [patch-agent-teams-fixes] applied: 12 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta scope-overlap)
+    write_exit=0
+post:
+    [patch-agent-teams-fixes] already applied: 12 mpd delta region(s) across 2 adopted file(s)
+    post_exit=0
+    diff-lines=0
+    byte-identical-to-canonical=yes
+  fixture: dropped the outer end marker line 262 for mpd-delta scope-overlap
+
+--- scope-overlap-end ---
+check:
+    [patch-agent-teams-fixes] FAIL: delta "mpd-delta scope-overlap" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (partially stripped: the begin marker at line 244 survived and its partner is gone) (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js
+    check_exit=1
+write:
+    [patch-agent-teams-fixes] applied: 12 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta scope-overlap)
+    write_exit=0
+post:
+    [patch-agent-teams-fixes] already applied: 12 mpd delta region(s) across 2 adopted file(s)
+    post_exit=0
+    diff-lines=0
+    byte-identical-to-canonical=yes
+  fixture: dropped the outer begin marker line 714 for mpd-delta repair-scope
+
+--- repair-scope-begin ---
+check:
+    [patch-agent-teams-fixes] FAIL: delta "mpd-delta repair-scope" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (partially stripped: the end marker at line 720 survived and its partner is gone) (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js
+    check_exit=1
+write:
+    [patch-agent-teams-fixes] applied: 12 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta repair-scope)
+    write_exit=0
+post:
+    [patch-agent-teams-fixes] already applied: 12 mpd delta region(s) across 2 adopted file(s)
+    post_exit=0
+    diff-lines=0
+    byte-identical-to-canonical=yes
+  fixture: dropped the outer end marker line 721 for mpd-delta repair-scope
+
+--- repair-scope-end ---
+check:
+    [patch-agent-teams-fixes] FAIL: delta "mpd-delta repair-scope" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (partially stripped: the begin marker at line 714 survived and its partner is gone) (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js
+    check_exit=1
+write:
+    [patch-agent-teams-fixes] applied: 12 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta repair-scope)
+    write_exit=0
+post:
+    [patch-agent-teams-fixes] already applied: 12 mpd delta region(s) across 2 adopted file(s)
+    post_exit=0
+    diff-lines=0
+    byte-identical-to-canonical=yes
+  fixture: dropped the outer begin marker line 1757 for mpd-delta task-contract
+
+--- task-contract-begin ---
+check:
+    [patch-agent-teams-fixes] FAIL: delta "mpd-delta task-contract" is MISSING from packages/mpd-agent-teams-plugin/lib/tools.js (partially stripped: the end marker at line 1784 survived and its partner is gone) (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js
+    check_exit=1
+write:
+    [patch-agent-teams-fixes] applied: 12 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta task-contract)
+    write_exit=0
+post:
+    [patch-agent-teams-fixes] already applied: 12 mpd delta region(s) across 2 adopted file(s)
+    post_exit=0
+    diff-lines=0
+    byte-identical-to-canonical=yes
+  fixture: dropped the outer end marker line 1785 for mpd-delta task-contract
+
+--- task-contract-end ---
+check:
+    [patch-agent-teams-fixes] FAIL: delta "mpd-delta task-contract" is MISSING from packages/mpd-agent-teams-plugin/lib/tools.js (partially stripped: the begin marker at line 1757 survived and its partner is gone) (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js
+    check_exit=1
+write:
+    [patch-agent-teams-fixes] applied: 12 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta task-contract)
+    write_exit=0
+post:
+    [patch-agent-teams-fixes] already applied: 12 mpd delta region(s) across 2 adopted file(s)
+    post_exit=0
+    diff-lines=0
+    byte-identical-to-canonical=yes
+
+--- intact control (resolved span must equal the grepped line numbers, 1-based) ---
+    mpd-delta scope-overlap @ quality-gates.js: resolved begin/end = 244/262 (1-based), grepped = 244/262, match=true
+    mpd-delta repair-scope @ quality-gates.js: resolved begin/end = 714/721 (1-based), grepped = 714/721, match=true
+    mpd-delta task-contract @ tools.js: resolved begin/end = 1757/1785 (1-based), grepped = 1757/1785, match=true
+    control_check:
+    [patch-agent-teams-fixes] already applied: 12 mpd delta region(s) across 2 adopted file(s)
+    control_check_exit=0

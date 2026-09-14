@@ -1,0 +1,26 @@
+{
+  "id": "rtl-triage-flow",
+  "title": "RTL triage before review",
+  "description": "Walk an RTL change through the reference extension's triage skill, then hand the result to a reviewer. Use before a Verilog/SystemVerilog change is reviewed.",
+  "whenToUse": "Use when a Verilog/SystemVerilog change needs a first pass before review.",
+  "steps": [
+    {
+      "title": "Collect the change",
+      "detail": "Read the diff and list the touched files.",
+      "tool": "bash",
+      "output": "The list of touched files with a one-line purpose each."
+    },
+    {
+      "title": "Apply the triage skill",
+      "detail": "Follow the `rtl-triage` skill: classify functional vs editorial, then name the contract each functional change can break.",
+      "tool": "read",
+      "output": "A ranked list of risks with file and line."
+    },
+    {
+      "title": "Ask the reference MCP server",
+      "detail": "Call the extension's own MCP tool `mcp__example__describe_extension` to confirm which kinds this extension actually contributes in this boot.",
+      "tool": "mcp__example__describe_extension",
+      "output": "The extension id, root and contributed kinds as the running host sees them."
+    }
+  ]
+}

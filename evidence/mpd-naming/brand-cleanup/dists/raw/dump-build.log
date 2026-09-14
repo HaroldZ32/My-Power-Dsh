@@ -1,0 +1,12 @@
+[build-mcp] mpd LSP overlay applied: server-definitions.ts -> /tmp/mpd-dsh-mcp-build-s1mtnU/src/lsp-core/src/lsp/server-definitions.ts
+[build-mcp] mpd LSP overlay applied: language-mappings.ts -> /tmp/mpd-dsh-mcp-build-s1mtnU/src/lsp-core/src/lsp/language-mappings.ts
+[build-mcp] ext dep: js-yaml <- js-yaml@5.3.0@@repo.huaweicloud.com@@@1
+[build-mcp] ext dep: jsonc-parser <- jsonc-parser@3.3.1@@repo.huaweicloud.com@@@1
+[build-mcp] ext dep: zod <- zod@4.4.3@@repo.huaweicloud.com@@@1
+[build-mcp] ast-grep -> /root/dshProj/my-power-dsh/evidence/mpd-naming/brand-cleanup/dists/raw/dump/mpd-mcp-astgrep/dist/cli.js (84651 bytes)
+[build-mcp] git-bash -> /root/dshProj/my-power-dsh/evidence/mpd-naming/brand-cleanup/dists/raw/dump/mpd-mcp-gitbash/dist/cli.js (22651 bytes)
+[build-mcp] lsp -> /root/dshProj/my-power-dsh/evidence/mpd-naming/brand-cleanup/dists/raw/dump/mpd-mcp-lsp/dist/cli.js (234827 bytes)
+[build-mcp] brand guard (primary): 3 artifact(s) byte-compared against the committed dists, 0 byte(s) verified equal
+[build-mcp] brand guard: 3 artifact(s), 3 identifier(s) inspected, 0 allowlisted brand occurrence(s), 0 foreign
+[build-mcp] PASS
+EXIT=0

@@ -1,0 +1,16 @@
+PASS pre-fix bytes are the stale staged package copy and carry NO degradation branch — preFixBytes=1238 fixedBytes=3792 preFixHasFallback=false
+PASS HOME precondition: /root/.mpd is genuinely unwritable in this sandbox — mkdir attempt exit=1
+PASS F-B8-1 RED: pre-fix launcher dies uncaught on an unresolvable binary + read-only $HOME/.mpd — exit={"code":1,"signal":null} stdoutBytes=0 stderr=node:internal/fs/promises:859
+  return await PromisePrototypeThen(
+         ^
+
+Error: ENOENT: no such file or directory, mkdir '/root/.mpd/codegraph'
+    at async mkdir 
+PASS F-B8-1 RED: the crash is uncaught (stack escapes runCodegraphServe), no MCP answer — init=null
+PASS F-B8-1 GREEN: fixed launcher degrades — answers the MCP handshake with 0 tools, exit 0 — exit={"code":0,"signal":null} init=answered tools=[] stderr=[mpd-mcp-codegraph] unavailable fallback: Error: ENOENT: no such file or directory, mkdir '/root/.mpd/codegraph'
+    at async mkdir (node:internal/fs/promises:8
+PASS F-B8-1 GREEN: the degradation names the original error and the skip reason on stderr — [mpd-mcp-codegraph] unavailable fallback: Error: ENOENT: no such file or directory, mkdir '/root/.mpd/codegraph'
+    at async mkdir (node:internal/fs/promises:859:10)
+    at async acquireLock (file:///tmp/t6-fb8-EX2Ybc/f
+
+PASS — fb8-own.result.json (6/6)

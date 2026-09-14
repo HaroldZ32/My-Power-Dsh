@@ -1,0 +1,258 @@
+{
+  "ok": true,
+  "case": "agent-teams-sidebar",
+  "checkedAt": "2026-09-10T02-38-08.459Z",
+  "repoRoot": "/root/dshProj/my-power-dsh",
+  "sandbox": "/tmp/mpd-atsb-QKV7zU",
+  "artifact": {
+    "path": "packages/mpd-bundle-plugin/client.js",
+    "sha256": "0aaa08347d81783e0724b07d7b689ce0a972b7d1afdab34d93632e7298378f15",
+    "bytes": 237582
+  },
+  "steps": {
+    "artifactCopyFaithful": {
+      "ok": true,
+      "repoSha": "0aaa08347d81783e0724b07d7b689ce0a972b7d1afdab34d93632e7298378f15",
+      "copySha": "0aaa08347d81783e0724b07d7b689ce0a972b7d1afdab34d93632e7298378f15",
+      "bytes": 237582
+    },
+    "moduleIds": {
+      "ok": true,
+      "ids": [
+        "@nanmicoder/dsh-agent-teams",
+        "@mpd-dsh/team-page",
+        "@mpd-dsh/mpd"
+      ]
+    },
+    "teamPageModuleInArtifact": {
+      "ok": true
+    },
+    "exactlyOneTeamTab": {
+      "ok": true,
+      "teamTabIds": [
+        "mpd-agent-teams"
+      ],
+      "allTabIds": [
+        "mpd-agent-teams",
+        "mpd-workmate"
+      ]
+    },
+    "teamTabShape": {
+      "ok": true,
+      "order": 85,
+      "single": true,
+      "toggle": "autoOpenOnTeamActivity"
+    },
+    "noLegacyRegistration": {
+      "ok": true,
+      "registeredDefinitions": [
+        "conversation.chat.commandview"
+      ]
+    },
+    "adoptedNeverApplied": {
+      "ok": true,
+      "artifactStillContainsAdoptedStrings": true
+    },
+    "noFloaterDefined": {
+      "ok": true
+    },
+    "commandViewKept": {
+      "ok": true,
+      "slots": [
+        "conversation.chat.commandview"
+      ]
+    },
+    "sourcesRegisterNoRemovedSurface": {
+      "ok": true,
+      "hits": []
+    },
+    "commandViewStillRegisteredBySource": {
+      "ok": true
+    },
+    "buildGatePresent": {
+      "ok": true
+    },
+    "serverHalfMountedByRow": {
+      "ok": true,
+      "note": "row mounted by the bundle patch + server half registering the route"
+    },
+    "adoptedClientBridged": {
+      "ok": true,
+      "missing": []
+    },
+    "artifactCarriesBridge": {
+      "ok": true,
+      "missing": []
+    },
+    "bridgePatchGuarded": {
+      "ok": true
+    },
+    "bridgePatchIdempotent": {
+      "ok": true,
+      "exit": 0,
+      "output": "[patch-agent-teams-client] already applied: packages/mpd-agent-teams-plugin/lib/client.js (17 symbols, 196972 bytes)",
+      "restored": false
+    },
+    "hostRouteMounted": {
+      "ok": true,
+      "mode": "real-boot",
+      "servedClient": {
+        "url": "/plugins/??@mpd-dsh/mpd/client.js&rev=2dcb48c20b3245ad-48",
+        "status": 200,
+        "bytes": 237667,
+        "teamPageModule": true,
+        "teamTabId": true,
+        "bridge": true,
+        "atLeastRepoArtifactBytes": true,
+        "carriesRepoArtifact": true
+      },
+      "stateRoute": {
+        "status": 200,
+        "body": "{\"teams\":[]}",
+        "teamsArray": true
+      },
+      "honestNote": "asserted on a REAL offline web boot: the served @mpd-dsh/mpd client bundle + HTTP state route"
+    }
+  },
+  "realHomeUntouched": true,
+  "mutationProof": {
+    "pristineSrcSha": "eededdd6594800c5b052980cd0a712c9808e855ffc4a9572934426d171ad311a",
+    "pristineClientSha": "0aaa08347d81783e0724b07d7b689ce0a972b7d1afdab34d93632e7298378f15",
+    "mutations": [
+      {
+        "mutation": "A-literal-conversation-chat-node",
+        "code": "ctx.slots.inject(\"conversation.chat.node\", () => ctx.slots.register({ name: \"conversation.chat.node\", key: \"agent-teams\" }, () => null));",
+        "buildExit": 1,
+        "buildOutput": "[build-mpd-client] FAIL: legacy agent-teams surface (inject(\"conversation.chat.node\") is still registered by an mpd client source",
+        "artifactRebuilt": false,
+        "testExit": 0,
+        "testSummary": [
+          " 28 pass",
+          " 0 fail",
+          "Ran 28 tests across 2 files. [11.03s]"
+        ],
+        "failingTests": []
+      },
+      {
+        "mutation": "A2-gate-blind-conversation-chat-node",
+        "code": "const LEGACY_CARD_SLOT = \"conversation.chat.node\";\n    ctx.slots.inject(LEGACY_CARD_SLOT, () => ctx.slots.register({ name: LEGACY_CARD_SLOT, key: \"agent-teams\" }, () => null));",
+        "buildExit": 0,
+        "buildOutput": "[build-mpd-client] wrote packages/mpd-bundle-plugin/client.js (237763 bytes)",
+        "artifactRebuilt": true,
+        "testExit": 1,
+        "testSummary": [
+          " 25 pass",
+          " 3 fail",
+          "Ran 28 tests across 2 files. [11.00s]"
+        ],
+        "failingTests": [
+          "(fail) with DSH-better-sidebar installed > registers the AgentTeams page and the workmate library, and no legacy floater [0.38ms]",
+          "(fail) without DSH-better-sidebar > falls back to the bundle-owned floater and footer toggle [1.17ms]",
+          "(fail) boot safety > without better-sidebar the client warns once and registers no legacy surface [1.29ms]",
+          "(fail) with DSH-better-sidebar installed > registers the AgentTeams page and the workmate library, and no legacy floater [0.38ms]",
+          "(fail) without DSH-better-sidebar > falls back to the bundle-owned floater and footer toggle [1.17ms]",
+          "(fail) boot safety > without better-sidebar the client warns once and registers no legacy surface [1.29ms]"
+        ]
+      },
+      {
+        "mutation": "B-adopted-client-apply",
+        "code": "agentTeams.apply(ctx);",
+        "buildExit": 0,
+        "buildOutput": "[build-mpd-client] wrote packages/mpd-bundle-plugin/client.js (237609 bytes)",
+        "artifactRebuilt": true,
+        "testExit": 1,
+        "testSummary": [
+          " 27 pass",
+          " 1 fail",
+          "Ran 28 tests across 2 files. [10.99s]"
+        ],
+        "failingTests": [
+          "(fail) with DSH-better-sidebar installed > the adopted client half is never applied (it would re-register the removed surfaces) [0.13ms]",
+          "(fail) with DSH-better-sidebar installed > the adopted client half is never applied (it would re-register the removed surfaces) [0.13ms]"
+        ]
+      }
+    ],
+    "control": {
+      "buildExit": 0,
+      "testExit": 0
+    },
+    "transcript": "mutation-proof.log",
+    "rawTestLogs": [
+      "mutation-a2-bun-test.log",
+      "mutation-b-bun-test.log"
+    ],
+    "conclusion": "mutation A (the literal legacy registration) is refused by the build gate before the artifact is written; A2 proves the test assertions are not vacuous (3 tests fail on the rebuilt artifact); B proves the applies-never rule (1 test fails); after every revert the src+client sha256 match the recorded pristine values and the suite is 28 pass / 0 fail"
+  },
+  "caseNegativeControl": {
+    "mutation": "re-introduce the conversation.chat.node card slot under a gate-blind spelling (renamed local variable)",
+    "selfTestExitMutated": 1,
+    "selfTestExitAfterRevert": 0,
+    "catchStep": "noLegacyRegistration",
+    "log": "case-negative-control.log",
+    "conclusion": "the new case detects a re-introduced legacy registration by EVALUATING the shipped artifact, so a renamed local cannot hide it from the assertion"
+  },
+  "sweep": {
+    "rawLog": "sweep.log",
+    "commands": [
+      {
+        "command": "bun test packages",
+        "exit": 0
+      },
+      {
+        "command": "bun run typecheck",
+        "exit": 0
+      },
+      {
+        "command": "bun run test:qa",
+        "exit": 1
+      },
+      {
+        "command": "node scripts/verify-vendor.mjs",
+        "exit": 1
+      },
+      {
+        "command": "node scripts/build-mpd-client.mjs",
+        "exit": 0
+      }
+    ],
+    "bunTestPackages": {
+      "exit": 0,
+      "summaries": [
+        "207 pass / 3 skip / 0 fail / 1173 expect() calls / Ran 210 tests across 28 files. [12.12s] (exit 0)"
+      ],
+      "note": "3 skips are the comment-checker binary tests (binary not installed in this sandbox), unrelated to this change"
+    },
+    "typecheck": {
+      "exit": 0
+    },
+    "testQa": {
+      "exit": 1,
+      "failedAt": "skills/dsh-qa/scripts/web-client-adapt.mjs",
+      "verbatim": "[web-client-adapt] FAIL: self-test: combined client mounts workmate slots | drift-prone seams are awaited, not declared | agent-teams mount is contained",
+      "finding": "the migration left an EXISTING case stale: the web-client-adapt.mjs self-test still pins the removed architecture (agentTeams.apply(ctx) inside the built client, OPTIONAL_SERVICES + ctx.inject awaiting, the 'agent-teams panel unavailable' warning). Because test:qa aborts on the first failure, workmate-library.mjs and workmate-team-member.mjs were re-run individually afterwards and both PASS (follow-up section of sweep.log). The file is inside the verifier writable area but was deliberately NOT rewritten: the stale expectations are not a functional regression, they pin behaviour the migration intentionally deleted, and updating them is the migration owner's call.",
+      "notCoveredByTheSweepLoop": [
+        "workmate-library.mjs",
+        "workmate-team-member.mjs"
+      ]
+    },
+    "verifyVendor": {
+      "exit": 1,
+      "log": "verify-vendor-pristine-worktree.log",
+      "verbatim": [
+        "[verify-vendor] FAIL - asset skills count drifted: 362 vs 361",
+        "[verify-vendor] FAIL - asset skills treeSha mismatch"
+      ],
+      "preExisting": "reproduced on a PRISTINE detached worktree at HEAD f697088 (no migration files present): skills count OK (361 files) but treeSha mismatch -> pre-existing and unrelated to the migration",
+      "newCountDrift": "the working tree additionally reports count 362 vs 361 because this case script (skills/dsh-qa/scripts/agent-teams-sidebar.mjs) adds one file to the skills tree; git status skills/ shows only 'M SKILL.md' plus '?? agent-teams-sidebar.mjs' -> the VENDOR_LOCK skills fingerprint needs the deliberate refresh (or the gate needs to exclude dsh-qa scripts) in the same commit that lands the case"
+    },
+    "buildMpdClient": {
+      "exit": 0,
+      "out": "[build-mpd-client] wrote packages/mpd-bundle-plugin/client.js (237582 bytes)",
+      "artifactShaUnchanged": "0aaa08347d81783e0724b07d7b689ce0a972b7d1afdab34d93632e7298378f15"
+    },
+    "notVerifiedOffline": [
+      "no browser automation was run: the tab is proven at artifact + evaluation + served-bundle level, not by clicking the sidebar in a real browser (acceptance for this migration is offline by decision)",
+      "the in-page auto-open switch and the tab badge behaviour are pinned by the author harness suite (team-page.test.mjs) and were not re-derived here"
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/node_modules/.bun/@colbymchenry+codegraph@1.5.0/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/tmp/t13-mnt-ws-wS2Kws
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+CodeGraph MCP skipped: project excluded by the CodeGraph policy.
+[t13-mount-probe] SCHEDULER_PATH=/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/scheduler.js
+[t13-mount-probe] SCHEDULER_SHA_MATCH=yes
+[t13-mount-probe] DISPATCH_REGIONS_PRESENT=6/6
+[t13-mount-probe] UPSTREAM_GUARD_ABSENT=yes
+[t13-mount-probe] DECLINE_LOGGER_PRESENT=yes
+[t13-mount-probe] AGENT_TEAMS_TOOLS_PRESENT=9/9
+[t13-mount-probe] AGENT_TEAMS_TOOLS=agent_teams_status:ok,agent_teams_create:ok,agent_teams_add_member:ok,agent_teams_create_task:ok,agent_teams_update_task:ok,agent_teams_claim_task:ok,agent_teams_reassign_task:ok,agent_teams_send_message:ok,agent_teams_task_contract:ok
+[t13-mount-probe] LOADER_ENTRIES=unavailable
+[t13-mount-probe] SCHEDULER_EXPORT=installTeamScheduler:ok
+[t13-mount-probe] DISPATCH_PROBE_DELIVERIES=1
+[t13-mount-probe] DISPATCH_PROBE_TASK_STATUS=claimed
+[t13-mount-probe] DISPATCH_PROBE_DECLINE_LOGS=0
+[t13-mount-probe] DONE

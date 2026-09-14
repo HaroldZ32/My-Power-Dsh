@@ -1,0 +1,23 @@
+[mpd-codegraph] init status=no-binary binary=- cwd=/tmp/mpd-c2-E9ocIu/ws
+## Result: `mpd_ultrawork` could not run — harness blocks the engine's child spawns
+
+**Status:** `failed` — tool threw immediately: `Error: subagent depth 1 exceeds maxDepth 0`
+**Verdict:** `null` (never reached)
+**Plan file:** `null` (planner was never spawned; no plan written)
+**State file:** `/tmp/mpd-c2-E9ocIu/ws/.mpd/ulw/ulw-68e855b3/state.json`
+
+### What happened
+I invoked `mpd_ultrawork` exactly as requested (`tier=light`, `plan=true`, `strictReview=true`, `maxRounds=2`). The engine created its state directory and wrote `state.json`, then died on its very first child spawn (the plan-gate planner, since `plan=true`) before any round ran. `state.json` confirms zero progress: `planFile: null`, `verdict: null`, `criteria: []`, `wave: 0`, `fruitlessWaves: 0`.
+
+### Root cause (verified in the harness source)
+- The mpd-ulw plugin's `spawnChild` passes `maxDepth: opts.maxDepth ?? 0` for every child it spawns ([mpd-ulw-plugin/src/index.ts:85](file:///home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/packages/mpd-ulw-plugin/src/index.ts)), and no call site supplies a `maxDepth`, so every spawn requests `maxDepth: 0`.
+- The harness's depth policy ([senpi-task depth-policy.ts](file:///home/haroldzhao/dshProj/oh-my-openagent/packages/senpi-task/src/manager/depth-policy.ts)) admits a child only when `childDepth <= maxDepth`. A child spawned from this session sits at depth 1; `1 <= 0` fails → `depth_denied`.
+- This is an environment-level incompatibility, not a parameter error: I confirmed a plain `subagent` spawn from this session succeeds (returned "ok"), because it doesn't pin `maxDepth` to 0. There is also no config knob — `.mpd/mpd.jsonc` only sets `ulw.maxRounds`, and the plugin's `Config` type has no depth field, so raising `max_depth` config would not help (the plugin's explicit `0` wins over the config default).
+
+### Bottom line
+`mpd_ultrawork`/`mpd_ulw` cannot execute in this harness until the plugin stops hardcoding `maxDepth: 0` (e.g. default to `1`) or the harness treats `0` as "inherit". Retrying with the same parameters would fail identically — this is deterministic.
+
+If you'd like, I can either:
+1. **Complete the objective manually** — create `utils.txt` with `alpha`, `beta`, `gamma` and verify it (no `mpd_ultrawork` engine), or
+2. **Patch the plugin** (`spawnChild` default `maxDepth` to 1) so the engine can run — that edit lives outside the workspace sandbox, so it would need your approval for wider file access.
+CodeGraph MCP skipped: project excluded by OMO CodeGraph policy.

@@ -1,0 +1,101 @@
+bun test v1.3.14 (0d9b296a)
+
+test/wave.test.ts:
+(pass) wave-mcp not wired -> unavailable with the exact install/wire hint (graceful degrade) [1.38ms]
+(pass) no wave file produced -> unavailable with a 'waves on?' message [0.13ms]
+(pass) wired wave-mcp -> calls mcp__wave_mcp__prepare_session with out_dir/wave_path/top [0.80ms]
+(pass) wired vcs lane -> TraceWeave get_sim_paths with verif_root/case_name/sim_log/wave_file [0.42ms]
+(pass) TraceWeave not wired -> unavailable with the no-venv install hint [0.14ms]
+(pass) MCP call throws / returns no value -> failed (still graceful, never an exception) [0.36ms]
+(pass) DP-8: wave session dir defaults to $DSH_HOME/wave-mcp (MPD_DSH_WAVE_MCP_SESSION wins) [0.36ms]
+(pass) partial tool runtime (no get/execute) degrades like absent wiring [0.18ms]
+
+test/uvm.test.ts:
+(pass) layoutCheck: full contract passes; missing pieces are listed [1.86ms]
+(pass) verifUvm compile: fake-vcs captures uvm-1.2 makefile contract argv [8.90ms]
+(pass) verifUvm compile failure: capped attempts + unresolved.md on exhaustion (honest handoff) [10.32ms]
+(pass) verifUvm run: per-case work dir + +UVM_TESTNAME/seed/verbosity args (fake simv capture) [5.16ms]
+(pass) verifUvm run: UVM_ERROR in log -> case fail (exit 0 is not enough) [3.46ms]
+(pass) verifUvm: non-vcs environment refuses with VERIF_E_NO_BACKEND + license hints [0.80ms]
+(pass) verifUvm wave: env gate requires VERDI_HOME/NOVAS_HOME (VERIF_E_ENV checklist) [1.74ms]
+(pass) verifUvm layout contract violated -> VERIF_E_TEMPLATE with expected-file list [1.63ms]
+(pass) verifUvm regress: compiles when simv missing, runs every test/*_test.sv with per-case dirs [10.03ms]
+(pass) verifUvm merge-cov: urg merge argv over per-case cov dirs + VERIF_E_RUN when cov missing [4.52ms]
+(pass) verifUvm run: fsdbreport non-GUI verification hook fires on FEBD output (owner DP-11) [3.00ms]
+(pass) verifUvm run with fsdb wave triggers fsdbreport capture (argv asserted) [3.31ms]
+(pass) verifUvm run: fsdbreport missing → hook degrades with install hint [2.85ms]
+(pass) verifUvm clean removes the work dir; ipDir expands <ip> templates [1.70ms]
+
+test/coverage.test.ts:
+(pass) iverilog coverage is refused (VERIF_E_UNSUPPORTED with lane hint) [0.59ms]
+(pass) verilator merge: verilator_coverage --write merged.dat over discovered .dat files [1.77ms]
+(pass) verilator merge without datasets refuses with VERIF_E_RUN + actionable hint [0.30ms]
+(pass) verilator report: annotates a given/merged dataset (--annotate <dir> <dat>) [1.23ms]
+(pass) vcs coverage: urg merge argv over discovered cov dirs (fake urg capture) [1.83ms]
+(pass) vcs coverage: missing urg resolves to VERIF_E_NO_BACKEND with hint [0.32ms]
+(pass) vcs coverage: no cov payloads refuses with VERIF_E_RUN [0.29ms]
+
+test/venv.test.ts:
+(pass) venvStatus: missing venv -> verdict missing with exact setup command [0.45ms]
+(pass) venvStatus: venv present but cocotb absent -> setup-required (iron rule) [2.50ms]
+(pass) venvStatus: cocotb importable inside venv -> ok + version [2.12ms]
+(pass) venvCreate: python3 -m venv + <venv>/bin/pip install cocotb>=2.0 (argv captured, no --user/--system) [9.17ms]
+(pass) requireCocotbVenv throws VERIF_E_NO_VENV with the setup command in the hint [0.40ms]
+
+test/sim.test.ts:
+(pass) parseResultsXml: pass xml -> per-case statuses + summary [1.16ms]
+(pass) D2 regress: self-closing <failure .../> (cocotb 2.0.1 xUnit) — 3/4 failures must NOT parse as pass [0.46ms]
+(pass) D2 regress: self-closing <error .../> and body-form failure/error variants [0.15ms]
+(pass) parseResultsXml: failure block -> fail status + failure message [0.08ms]
+(pass) verifSim: vcs backend is refused (VERIF_E_UNSUPPORTED -> use mpd_verif_uvm) [1.04ms]
+(pass) verifSim: missing venv -> VERIF_E_NO_VENV with exact setup command (iron rule) [0.36ms]
+(pass) verifSim: venv without cocotb -> VERIF_E_COCOTB_ABSENT [2.44ms]
+(pass) verifSim happy path: runner.py generated, executed via <venv>/bin/python, results parsed, waves collected [7.99ms]
+(pass) verifSim: failing case -> ok=false with VERIF_E_RUN details [6.86ms]
+(pass) verifSim: vvp/runner non-zero exit WITHOUT results.xml -> VERIF_E_RUN with actionable hint [4.61ms]
+(pass) verifSim: backend binary absent (env pinned to missing path) -> VERIF_E_NO_BACKEND [3.31ms]
+(pass) buildSimMakefile: DP-6 Makefile contract (SIM/COCOTB_TOPLEVEL/FST/defines) [0.30ms]
+(pass) collectWaves finds fst/vcd recursively and classifies fmt [0.74ms]
+(pass) verifSim leaves ALL state under workspace work dir (never ~/.dsh) [8.14ms]
+
+test/regress.test.ts:
+(pass) cocotb regression: 2 cases, seedBase+idx seeds, results.json + results.md on disk [20.54ms]
+(pass) cocotb regression: missing venv refuses with the iron-rule code [0.64ms]
+(pass) cocotb regression: stopOnError halts after the first failing case [9.80ms]
+(pass) cocotb regression: maxFailures bound also stops the loop [16.44ms]
+(pass) vcs regression delegates to the UVM lane (layout-driven case discovery) [10.69ms]
+(pass) regress: bad backend id refuses with VERIF_E_UNSUPPORTED [0.38ms]
+(pass) R1 ordering: with NO session the iron gate refuses BEFORE any work-dir creation (blocked work root) [0.53ms]
+(pass) R1 ordering: a session-scoped call passes the gate, stops at backend resolution, and creates no work dir [2.62ms]
+(pass) R1 ordering: the vcs lane also refuses before any work-dir creation [0.35ms]
+
+test/index.test.ts:
+(pass) exactly the owner eight-tool surface (DP-4) is registered [1.28ms]
+(pass) every tool carries parameters + output schema + render + execute [0.17ms]
+(pass) mpd_verif_backends renders and returns structured probes [101.99ms]
+(pass) tool failures cross the seam as structured refusals (never exceptions) [2.90ms]
+(pass) mpd_verif_venv execute: status action returns verdict without exceptions [0.67ms]
+
+test/core.test.ts:
+(pass) resolveBackendBinary: MPD_DSH_* env override wins over PATH [0.18ms]
+(pass) resolveBackendBinary: PATH fallback finds real tooling or null [0.12ms]
+(pass) dateSeedBase is an 8-digit YYYYMMDD int (deterministic per calendar day) [0.07ms]
+(pass) D1 regress: compilePlan creates the build dir BEFORE the tool would spawn (preflight-backed) [4.51ms]
+(pass) D1 regress: verilator compile target also pre-creates the build dir [0.26ms]
+(pass) lintPlan argv contracts per backend (t2 design) [0.74ms]
+(pass) compilePlan argv contracts and vcs simv output [0.42ms]
+(pass) parseDiagnostics: iverilog / verilator / vcs dialects [0.41ms]
+(pass) writeVcsFilelist emits the vcs-native -f file format [0.17ms]
+(pass) refusalOf: VerifError keeps code/message/hint; unknown becomes VERIF_E_RUN [0.16ms]
+
+test/lossless.test.ts:
+(pass) probeBackend is lossless for a PRESENT backend of every kind (the B3 trigger) [4.20ms]
+(pass) probeBackend is lossless for an ABSENT backend of every kind [0.34ms]
+(pass) mpd_verif_backends tool result is lossless for every backend selector [12.23ms]
+(pass) verifCompile lint/compile results are lossless for all three backends [7.41ms]
+(pass) the lane truth table is preserved: optional keys appear only when real [4.91ms]
+
+ 77 pass
+ 0 fail
+ 406 expect() calls
+Ran 77 tests across 9 files. [390.00ms]

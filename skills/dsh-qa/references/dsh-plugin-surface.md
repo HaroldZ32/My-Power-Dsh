@@ -1,17 +1,28 @@
-# dsh 插件面速查（dsh-qa 参考）
+# dsh plugin surface cheat sheet (dsh-qa reference)
 
-来自 @deepseek-ai/dsh 0.1.1-rc.2 已安装包的实测/文档要点。
+Verified/documentation highlights from the installed @deepseek-ai/dsh 0.1.5-rc.1 package.
 
-- bundle：npm 包，package.json 声明 "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }；
-  profile 的 dsh.profile.bundles 按序叠加，profile 与 $DSH_HOME 的 cordis.patch.yml 为上层覆盖。
-- 挂载证明：dsh --profile <name> --dump-config / --dump-default-config。
-- tool 插件：ctx.tools.register(definition)（schema + output 声明 + execute）；
-  瀑布 tools/pre-execute → guards → tools/execute → tools/post-execute → tools/result。
-- 命令：ctx.commands.register({name, description, handler})。
-- 技能：ctx.skills 注册表 + dsh-skill-filesystem（SKILL.md / 平铺 md，root: .dsh/skills、.agents/skills、customSkillDirs）；
-  模型侧由 dsh-tool-skill 暴露 catalog + loader。
-- 人格/预设：dsh-persona（scope-only 行）、agent preset（preset.yml + agent.cordis.yml）；
-  subagent 支持 per-child persona/model/structured output/tool filter/depth limit。
-- LLM：dsh-llm-deepseek（deepseek-official 路由，官方 wire）、dsh-llm-pi-ai（多供应商，deepseek 目录路由）。
-- MCP：dsh-mcp-client（stdio/http，工具名 mcp__<server>__<raw>）。
-- 目标路径：track 每阶段在 PLAN.md 决策点 D1–D9 落定的实例行。
+- bundle: an npm package whose package.json declares "dsh": { "bundle": { "patch": "./cordis.patch.yml" } };
+  the profile's dsh.profile.bundles stack in order, and the profile's cordis.patch.yml plus $DSH_HOME's cordis.patch.yml are the upper-layer overrides.
+- Composition check: dsh --profile <name> --dump-config / --dump-default-config composes rows ONLY and
+  never executes plugin code — it is NOT a mount proof (a schema/apply abort is invisible to it). A real
+  mount proof is a boot that loads the rows in an isolated DSH_HOME with registration instrumentation.
+- tool plugin: ctx.tools.register(definition) (schema + output declaration + execute);
+  waterfall: tools/pre-execute → guards → tools/execute → tools/post-execute → tools/result.
+- Commands: ctx.commands.register({name, description, handler}).
+- Skills: the ctx.skills registry + dsh-skill-filesystem (SKILL.md / flat md, root: .dsh/skills, .agents/skills, customSkillDirs);
+  on the model side, dsh-tool-skill exposes catalog + loader.
+- Persona/presets: dsh-persona (scope-only rows), agent preset (preset.yml + agent.cordis.yml);
+  subagent supports per-child persona/model/structured output/tool filter/depth limit.
+  **Row-config contract (measured on 0.1.5-rc.1 CLI + rc.2 packages):** every row's `config` is
+  validated against its plugin's schemastery `Config` when the row applies. `dsh-persona` takes
+  `prefix` (REQUIRED) + `suffix` — the single `text` key of <= 0.1.2-rc.1 is gone, and a
+  required-key failure makes `dsh-agent-presets.mountPreset` refuse the WHOLE preset
+  (`agent-preset/invalid: … row(s) did not activate`), so every session on it fails to start.
+  An UNKNOWN key is instead kept silently (schemastery does not strip it), so a renamed key loses
+  its setting with no error. `agentPresets.list`/`resolve` and `--dump-config` never validate
+  configs — only a mount does. `preset-conformance` checks both failure modes against the
+  installed schemas and mounts a real session.
+- LLM: dsh-llm-deepseek (deepseek-official routing, official wire), dsh-llm-pi-ai (multi-provider, deepseek directory routing).
+- MCP: dsh-mcp-client (stdio/http, tool names mcp__<server>__<raw>).
+- Target paths: the per-stage instance rows finalized at PLAN.md decision points D1–D9 for each track.

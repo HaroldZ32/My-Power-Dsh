@@ -1,0 +1,32 @@
+=== UPSTREAM dag-related file counts ===
+packages/senpi-task/src/dag                      files=40
+packages/omo-senpi/src/components/task           files=129
+packages/omo-senpi/plugin/runtime/dag            files=2
+
+=== UPSTREAM omo-senpi components ===
+agent-home/
+ast-grep/
+builtin-mcps/
+comment-checker/
+config-resolution/
+config-startup/
+config-watch/
+fallback-architect/
+formatter/
+git-master/
+init-deep-advisor/
+lsp/
+memory/
+model-profile/
+native-badge/
+onboarding/
+post-mutation/
+skill-pointers/
+task/
+telemetry/
+thread/
+todo-fanout-reminder/
+ultrawork/
+ulw-execute-continuation/
+ulw-loop/
+x-search/

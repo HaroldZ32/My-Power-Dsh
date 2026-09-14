@@ -1,0 +1,35 @@
+cmd: EV_OUT=<t7 evidence>/work/mount-round2 bash evidence/wave3/registry-redesign/20260911T082439Z/drivers/check5-mount.sh
+{
+  "driver": "check5-mount",
+  "isolation": {
+    "DSH_HOME": "temp sandbox",
+    "HOME": "temp sandbox",
+    "workspace": "temp sandbox (cwd of the boot)"
+  },
+  "plugin_suite": {
+    "exit": 0,
+    "tail": [
+      " 0 fail",
+      " 664 expect() calls",
+      "Ran 116 tests across 26 files. [1.53s]"
+    ]
+  },
+  "install": {
+    "exit": 0
+  },
+  "mounted_boot": {
+    "exit": 1,
+    "apply_crash_signatures": 2,
+    "probe_reached_done": false,
+    "agent_teams_tools_present": null,
+    "t4_tool_agent_teams_task_contract": null,
+    "probe_lines": []
+  },
+  "isolation_assertions": {
+    "new_team_dirs_in_real_workspace": 0,
+    "real_workspace_session_keys_in_sandbox": 0
+  },
+  "note": "no --dump-config result is cited as load evidence; the probe reads the live tool registry after a settle window",
+  "passed": false
+}
+EXIT=0

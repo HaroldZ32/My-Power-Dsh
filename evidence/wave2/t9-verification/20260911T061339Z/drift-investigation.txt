@@ -1,0 +1,26 @@
+=== revisions now vs my 14:14 fingerprint ===
+029f4c767368b3e64f5cf4ee955f0a0de9151ea23f516b495be85e5a8050f5c5  packages/mpd-agent-teams-plugin/lib/quality-gates.js
+fd106fdbf12a7379672452a321b79bd5156990454b233617621338821deb387c  packages/mpd-agent-teams-plugin/lib/tools.js
+1b908fb79d64c772da68ca5f446856016f20da8b811bcc519c3b12e87025082a  packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+d17736a8a44c31b2a9606abc44b7594b486586f9a4193ff7ca81620110409a3a  scripts/patch-agent-teams-fixes.mjs
+a29dcb76ded9506090704fab397fdea347383a8daafa6d45b5cbca45eec87db3  packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs
+efd078291817cf5396ef10a1477fde33fd71ec72778ff013db4685992df6f3ea  packages/mpd-verif-plugin/src/regress.ts
+d0aee5c79476dfe92ccb1747da6292ea0802a6fdc7d2319735defa8dcabd120e  packages/mpd-verif-plugin/dist/index.js
+e9705e1baf072e8d7192c3bbcd6092881ba7d52eccad9d8a559c0c0ac2f58cb5  packages/mpd-verif-plugin/test/regress.test.ts
+=== mtimes ===
+2026-09-11 14:19:33.375962963 packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+2026-09-11 14:19:24.672742099 packages/mpd-agent-teams-plugin/lib/quality-gates.js
+2026-09-11 13:51:13.572703282 packages/mpd-agent-teams-plugin/lib/tools.js
+2026-09-11 14:21:15.194547014 packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs
+2026-09-11 14:20:41.965703595 scripts/patch-agent-teams-fixes.mjs
+=== does quality-gates.js still carry the scope-glob delta? ===
+102://#region mpd-delta scope-glob (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+179:    return pathMatchesScopeNormalized(normalizedPath, normalizedPattern);
+182://#region mpd-delta scope-glob-core (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+189:function pathMatchesScopeNormalized(normalizedPath, normalizedPattern) {
+246://#region mpd-delta scope-overlap (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+265://#region mpd-delta scope-overlap-normalize (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+278://#region mpd-delta contract-contradiction (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+419:        //#region mpd-delta create-contract-gate (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+716:    //#region mpd-delta repair-scope (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+732:        //#region mpd-delta repair-scope-fields (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)

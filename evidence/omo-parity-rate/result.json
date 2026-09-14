@@ -1,0 +1,160 @@
+{
+  "schema": "mpd.parity-rate/v1",
+  "task": "t37",
+  "wave": "omo-parity-align",
+  "kind": "implementation",
+  "executor": "Deep Worker",
+  "date": "2026-09-14",
+  "objective": "Quantify the accepted cost of the ratified Option A gate predicate on REAL ordinary prompts, and produce the ledger-vs-contract conflict list with a bilingual correction draft.",
+
+  "frozenRuling": {
+    "source": "evidence/omo-align/requirements/wave-next-contract.json (item R2)",
+    "decisions": {
+      "promptSource": "sampled from existing session logs (sanitized before it enters the repo)",
+      "includeCJK": true,
+      "count": ">= 20 real ordinary prompts, MUST NOT reuse the 6 frozen testPrompts (those are the calibration set)",
+      "costMetric": "share of ordinary prompts that trigger a team, plus a human-readable 'one needless team approval every N prompts'",
+      "measureOnSettledHash": true
+    }
+  },
+
+  "anchoring": {
+    "discipline": "Measured on a settled revision: the hashes below were read twice, 50 s apart, and were byte-identical. The gate module was not re-implemented: raw/probe.mjs imports the gate's own exported predicate, so the measured rule IS the shipped rule.",
+    "settled": true,
+    "settleWindowSeconds": 50,
+    "revision": {
+      "dev": "3096455",
+      "commits": ["facb2de (plugin implementation)", "98af744 (QA case + corpus re-pin)", "9132213 (evidence)"],
+      "note": "The measured bytes are now COMMITTED and addressable: every hash below equals `git show 3096455:<path>`. They were working-tree bytes when first read (the implementation had not landed), which is why per-file hashes were recorded rather than a single revision id."
+    },
+    "pinnedCopies": {
+      "dir": "raw/pinned/",
+      "why": "Cheap high-value redundancy: a third party can cross-check three ways (this directory, `git show 3096455:<path>`, and the hashes in this file).",
+      "files": [
+        { "name": "session-start.js", "source": "packages/mpd-agent-teams-plugin/lib/session-start.js", "bytes": 28432, "sha256": "8cfaef47e9959ef7def01003640f768ff4befa50e9c202ff692a0629ca0a2aa6" },
+        { "name": "state.js", "source": "packages/mpd-agent-teams-plugin/lib/state.js", "bytes": 54389, "sha256": "751a4c1eaf1714d37a45baa8c0a83895ee8e2a487f28574d02fd445cd1b8b825" },
+        { "name": "scheduler.js", "source": "packages/mpd-agent-teams-plugin/lib/scheduler.js", "bytes": 30673, "sha256": "f9ec4a226511b420c660673ccc1838b99fa4c0ac548f4b0f19e0fcf865109011" },
+        { "name": "mpd-deltas.js", "source": "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js", "bytes": 88815, "sha256": "47f204cd9678ed87660b18e5ecd01895ce3249fae8155deb0a1d33821f6ff9c5" },
+        { "name": "frozen-contract.json", "source": "evidence/omo-align/requirements/frozen-contract.json", "bytes": 35174, "sha256": "09949c8095d7ccd533329b114a2ef22bad1ce81bd24338240e68cfd0fd66be41" }
+      ],
+      "verified": "each pinned file hashes identically to `git show 3096455:<source>` (measured, all five match)"
+    },
+    "predicateFeaturesAtAnchor": "ACTION_VERB_PATTERN carries the R3 harmonized union (14 English + 12 CJK); C_SUBSIGNAL_MIN = 2; trigger = signals.length >= 1. No re-measurement was needed after the commit: the committed bytes are identical to the bytes measured, so the recorded result already describes revision 3096455.",
+    "hashes": {
+      "packages/mpd-agent-teams-plugin/lib/session-start.js": "8cfaef47e9959ef7def01003640f768ff4befa50e9c202ff692a0629ca0a2aa6",
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "47f204cd9678ed87660b18e5ecd01895ce3249fae8155deb0a1d33821f6ff9c5",
+      "packages/mpd-agent-teams-plugin/lib/state.js": "751a4c1eaf1714d37a45baa8c0a83895ee8e2a487f28574d02fd445cd1b8b825",
+      "evidence/omo-align/requirements/frozen-contract.json": "09949c8095d7ccd533329b114a2ef22bad1ce81bd24338240e68cfd0fd66be41",
+      "evidence/omo-align/requirements/wave-next-contract.json": "62920031eb66b9733502575a914cc29885d74899175357a0828714bd32e86bb3",
+      "evidence/omo-parity-rate/raw/prompts.jsonl": "123dca67e738f85e08a0043c6a33a686d1e91e31e9dbe0568437437414e5f9b5"
+    },
+    "partialAnchoring": "A tracked-only reference to the revision is insufficient for this task: at first read the gate file, the delta registry and the state module were all dirty against HEAD and the frozen contract is untracked. Per-file content hashes were therefore recorded, not a single revision id — and they now double as proof that the committed revision matches what was measured.",
+    "controlCheck": "The probe was validated against the frozen calibration set BEFORE the real measurement: complex #1 and #3 still trigger on C, all three simple prompts still return no signals. Without this control a 0-trigger result would be indistinguishable from a broken probe."
+  },
+
+  "dataset": {
+    "total": 20,
+    "cjk": 20,
+    "latinOnly": 0,
+    "file": "raw/prompts.jsonl",
+    "extractionScript": "raw/extract2.mjs",
+    "calibrationSetReuse": "none — the 6 frozen testPrompts do not appear in the dataset (they are used only as the probe's control)",
+    "source": "human-authored user turns in the human-facing session logs under the DSH home's session store, project key for this repository only",
+    "strata": {
+      "session-start": {
+        "count": 5,
+        "why": "The gate decides ONCE, at a session's first pre-step. Only this stratum is the quantity the gate actually controls."
+      },
+      "follow-up": {
+        "count": 15,
+        "why": "Later human turns in the same sessions. The gate never evaluates these; they are recorded as context (what users actually ask while a team is running)."
+      }
+    },
+    "exclusions": {
+      "rule": "User-role records that are NOT human authorship are excluded by an explicit pattern list in the extraction script",
+      "patterns": [
+        "team join / bootstrap turn (\"You have joined the team ...\")",
+        "parent-agent notice",
+        "[AgentTeams] session-start notice",
+        "<system-reminder> blocks",
+        "staged-plan approval notice",
+        "slash-command expansion turn",
+        "\"Current runtime context.\" snapshot",
+        "background-job completion notice",
+        "\"Background subagent ... finished/was stopped\" notice",
+        "\"Agent <uuid> sent a message:\" delivery notice",
+        "\"AgentTeams message from member ...\" relay",
+        "\"AgentTeams state policy:\" reminder",
+        "tool-repeat warning",
+        "approval/rejection bookkeeping turns"
+      ],
+      "dedup": "first 200 sanitized characters; the earliest stratum occurrence wins",
+      "sizeWindow": "10..2000 characters"
+    },
+    "sanitization": {
+      "repoPaths": "/root/dshProj/<name> -> <repo> or <repo-outside>",
+      "homeFiles": "/root/<file> -> <home-file> (removes a credential-file path that appeared in one prompt)",
+      "tempPaths": "/tmp/... -> <tmp>",
+      "retiredProjectIdentifiers": "neutralised to <retired-project> (the repo forbids naming the extracted external project in new text)",
+      "affectedRows": 4,
+      "provenanceKept": "each row keeps its session id, turn index, stratum and source-log path template so a third party can re-derive the extraction"
+    },
+    "promptSetDigest": "fd43da71babeb020d85754c442b6af75634605fcd57fa5e1491f85b33c0143ec"
+  },
+
+  "measurement": {
+    "predicate": "trigger = explicitFlag || signals.length >= 1   (Option A, ratified)",
+    "note": "Every prompt was evaluated with explicitFlag=false and planArtifact=false, i.e. the text-only decision. Prompts that begin with an AgentTeams slash command are tagged in the rows; that gesture has its own entry path and does not depend on this gate.",
+    "result": {
+      "overall": { "total": 20, "triggered": 0, "falsePositiveRate": 0, "oneNeedlessApprovalEveryN": null },
+      "sessionStart": { "total": 5, "triggered": 0, "falsePositiveRate": 0, "oneNeedlessApprovalEveryN": null },
+      "followUp": { "total": 15, "triggered": 0, "falsePositiveRate": 0, "oneNeedlessApprovalEveryN": null },
+      "signalBreakdown": {
+        "A": 0, "B": 0, "C": 0, "D": 0,
+        "C_subSignals_observed": { "C3_actionClauses": 2, "C1_enumeratedLines": 0, "C2_actionVerbs": 0 },
+        "note": "C fires only at 2-of-3 sub-signals; the two prompts that carried C3 alone therefore did not satisfy C."
+      }
+    },
+    "plainLanguage": {
+      "falsePositive": "Measured false-positive rate is 0/20. The literal phrasing 'one needless team approval every N prompts' has NO finite N in this dataset: no real ordinary prompt in the sample was routed to a team at all. With 20 samples the 95% upper bound on the false-positive share is about 14% (rule of three), and the session-start stratum alone (5 samples) bounds it at about 46%.",
+      "theOppositeCostWasObserved": "The measurable cost in this dataset is the opposite of a false positive: prompts that plausibly DESERVE the team path were skipped. The clearest is the richest session-start prompt (an explicit alignment ask naming several targets and asking for auto-invocation on complex tasks): it matched exactly ONE distinct signal-B verb (对齐) against a threshold of 4, and ONE distinct C2 verb against a threshold of 3, so it produced no signals at all. The CJK verb tables are narrow relative to how these users actually phrase work."
+    },
+    "rawRows": "raw/probe-output.json (per-prompt: signals, C sub-signals, trigger)"
+  },
+
+  "reproducibility": {
+    "driver": "raw/probe.mjs",
+    "invocation": "node evidence/omo-parity-rate/raw/probe.mjs   (add --json for the machine-readable form)",
+    "selfContained": "Imports the gate by absolute path from this repository, reads raw/prompts.jsonl, prints the anchor hashes it computed, the per-prompt verdicts and the summary. No network, no state outside the repo.",
+    "thirdPartyRecompute": "Run the driver and compare the printed anchors and summary against this file. If an anchor differs, the measurement is from a different revision and must not be compared."
+  },
+
+  "retractedClaim": {
+    "note": "Claims that were made and then corrected during this task are recorded so the corrections are auditable.",
+    "methodologyClaim": {
+      "claim": "An intermediate extraction produced 20 prompts that were all mid-session follow-ups and reported a single blended 0/20 rate.",
+      "whyRetracted": "The gate decides once, at a session's first pre-step, so a mid-session follow-up is never evaluated by it. Stratifying the dataset (session-start vs follow-up) is required for the rate to describe the gate's own decision. The blended rate was also misleading because it mixed two different populations.",
+      "corrected": "The dataset is now stratified, the session-start stratum is reported separately, and the gate's decision point is stated explicitly. The 0-trigger result survived the correction in both strata."
+    },
+    "hashClaim": {
+      "claim": "Two ledger file hashes were written into ledger-delta.md from expectation rather than measurement.",
+      "whyRetracted": "The values did not match the files: measured 0454431a… (EN) and 7398ec2d… (zh-CN).",
+      "corrected": "Both were replaced with the measured values and re-checked. Recorded because an unmeasured hash in an anchoring table is exactly the defect class this task exists to prevent."
+    }
+  },
+
+  "knownLimits": [
+    "Only 5 session-start prompts exist in the human-authored logs for this repository; the false-positive bound from that stratum alone is correspondingly loose (about 46% at 95% confidence).",
+    "One user turn in the sample is a bare error report and two are short social/acknowledgement turns; they are ordinary prompts, but they carry little signal either way.",
+    "Prompts whose opening gesture is an AgentTeams slash command are represented in the dataset but are not evidence about this gate: that gesture has its own entry path.",
+    "The measurement reflects the gate as shipped at the anchored hashes, which are dirty against HEAD (the wave's implementation commits had not landed when this ran). Anchors are recorded per file so the reading is exact."
+  ],
+
+  "ledgerConflictList": {
+    "file": "ledger-delta.md",
+    "conflicts": ["CF-1 trigger threshold >=2 vs >=1", "CF-2 signal C rule (lines OR verbs vs 2-of-3)", "CF-3 stale/asymmetric verb tables in the C row", "CF-4 section 8 verification table entirely pending", "CF-6 section 4 S2 quote + section 7 O5 already reconciled by the contract"],
+    "closed": ["CF-5 module doc vs code in the same file — RESOLVED by t35 in commit facb2de; recorded as before/after with the commit hash so the landing slot does not list it as open"],
+    "postT35Reverified": "After dev 3096455 landed, every row was re-read against the committed revision: the ledger was untouched (its hashes unchanged) so CF-1/CF-2/CF-3/CF-4/CF-6 still stand at the same lines, and the measured lib/contract hashes equal the committed bytes.",
+    "draft": "ledger-delta.md also carries complete bilingual replacement bodies for sections 3 and 8, plus a minimal-diff alternative table for a small landing slot."
+  }
+}

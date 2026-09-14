@@ -1,0 +1,12 @@
+repo=/root/dshProj/my-power-dsh
+branch=dev HEAD=98680b1fb2bbf5c10c28cfbe44419e91595e1cb7
+tools.js sha256=406e086e19f712802b6a519f9efed998b818ab08736e4173b2885e9d2a510c85
+quality-gates.js sha256=4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5
+VENDOR_LOCK.json sha256=55150c57f714bec289dcc74c24699a40db9dcc2fc087cacfb4e020dd7130ffe5
+
+[exit=0] node scripts/verify-vendor.mjs
+[exit=0] bun run typecheck
+[exit=0] bun test packages
+[exit=0] bun run test:qa
+[exit=0] node skills/dsh-qa/scripts/preset-conformance.mjs
+[exit=0] node evidence/session-workspace-root/dist-repair/sweep.mjs --clean-room

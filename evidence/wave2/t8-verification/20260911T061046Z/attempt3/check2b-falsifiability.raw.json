@@ -1,0 +1,100 @@
+{
+  "driver": "check2b-falsifiability-probe",
+  "libDir": "/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib",
+  "generated": {
+    "inScope": [
+      "packages/mpd-dsh-adapter-plugin/src/index.ts",
+      "packages/mpd-boulder-plugin/src/**",
+      "packages/mpd-memory-plugin/src/**",
+      "packages/mpd-ulw-plugin/src/**",
+      "packages/mpd-hashline-plugin/src/index.ts",
+      "packages/mpd-config-plugin/src/**",
+      "packages/mpd-comment-checker-plugin/src/**",
+      "packages/mpd-modelchain-plugin/src/**",
+      "packages/mpd-verif-plugin/src/**",
+      "packages/mpd-workmate-plugin/src/**",
+      "packages/mpd-boulder-plugin/dist/index.js",
+      "packages/mpd-memory-plugin/dist/index.js",
+      "packages/mpd-ulw-plugin/dist/index.js",
+      "packages/mpd-hashline-plugin/dist/index.js",
+      "packages/mpd-config-plugin/dist/index.js",
+      "packages/mpd-comment-checker-plugin/dist/index.js",
+      "packages/mpd-modelchain-plugin/dist/index.js",
+      "packages/mpd-verif-plugin/dist/index.js",
+      "packages/mpd-workmate-plugin/dist/index.js",
+      "packages/mpd-dsh-adapter-plugin/dist/index.js",
+      "evidence/**",
+      "dist/mpd-package/packages/mpd-verif-plugin/dist/index.js",
+      "AGENTS.md"
+    ],
+    "outOfScope": [
+      "presets/**",
+      "packages/mpd-bundle/cordis.patch.yml",
+      "VENDOR_LOCK.json",
+      "README.md",
+      "README.zh-CN.md"
+    ]
+  },
+  "requiredFiles": [
+    {
+      "file": "packages/mpd-verif-plugin/src/venv.ts",
+      "classification": "in_scope"
+    },
+    {
+      "file": "packages/mpd-hashline-plugin/src/index.ts",
+      "classification": "in_scope"
+    },
+    {
+      "file": "dist/mpd-package/packages/mpd-verif-plugin/dist/index.js",
+      "classification": "in_scope"
+    },
+    {
+      "file": "AGENTS.md",
+      "classification": "in_scope"
+    },
+    {
+      "file": "packages/mpd-workmate-plugin/src/index.ts",
+      "classification": "in_scope"
+    },
+    {
+      "file": "evidence/session-workspace-root/t8-verify/attempt-2/RESULT.json",
+      "classification": "in_scope"
+    },
+    {
+      "file": "evidence/dsh-qa/agent-teams-dispatch",
+      "classification": "in_scope"
+    }
+  ],
+  "probes": [
+    {
+      "path": "VENDOR_LOCK.json",
+      "classification": "out_of_scope"
+    },
+    {
+      "path": "presets/mpd/agent.cordis.yml",
+      "classification": "out_of_scope"
+    },
+    {
+      "path": "presets/mpd/agent.cordis.yml.bak",
+      "classification": "out_of_scope"
+    },
+    {
+      "path": "README.md",
+      "classification": "out_of_scope"
+    },
+    {
+      "path": "README.zh-CN.md",
+      "classification": "out_of_scope"
+    },
+    {
+      "path": "packages/mpd-bundle/cordis.patch.yml",
+      "classification": "out_of_scope"
+    },
+    {
+      "path": "AGENTS.md",
+      "classification": "in_scope"
+    }
+  ],
+  "contradiction": null,
+  "passed": true
+}

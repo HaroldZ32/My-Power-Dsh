@@ -1,0 +1,102 @@
+{
+  "steps": {
+    "dryRunChangesNothing": {
+      "ok": true,
+      "summary": "[reclaim-staged-teams] re-run with --apply to archive them"
+    },
+    "apply": {
+      "summary": "[reclaim-staged-teams] APPLIED: 2 residual of 5 live team(s), 2 archived",
+      "residueArchivedNotDeleted": true,
+      "runningProtectedByteIdentical": true,
+      "approvedStagedProtected": true,
+      "stagedWithTasksProtected": true,
+      "liveDirAfter": [
+        "approved-staged",
+        "archive",
+        "running",
+        "staged-with-tasks"
+      ]
+    },
+    "ordering": {
+      "ok": true,
+      "preStepListener": true,
+      "globalPrepend": true,
+      "gateEvaluatedInListener": true
+    },
+    "calibration": {
+      "frozenSimpleAllQuiet": true,
+      "frozenComplexAllTrigger": true,
+      "adversarialSimpleTriggers": [
+        "adversarial-simple-list"
+      ]
+    }
+  },
+  "gateCalibration": [
+    {
+      "label": "frozen-simple-1",
+      "trigger": false,
+      "signals": [],
+      "flagConsumed": false
+    },
+    {
+      "label": "frozen-simple-2",
+      "trigger": false,
+      "signals": [],
+      "flagConsumed": false
+    },
+    {
+      "label": "frozen-simple-3",
+      "trigger": false,
+      "signals": [],
+      "flagConsumed": false
+    },
+    {
+      "label": "adversarial-simple-list",
+      "trigger": true,
+      "signals": [
+        "C2",
+        "C3"
+      ],
+      "flagConsumed": false
+    },
+    {
+      "label": "adversarial-simple-cjk",
+      "trigger": false,
+      "signals": [],
+      "flagConsumed": false
+    },
+    {
+      "label": "adversarial-simple-two",
+      "trigger": false,
+      "signals": [],
+      "flagConsumed": false
+    },
+    {
+      "label": "frozen-complex-1",
+      "trigger": true,
+      "signals": [
+        "C2",
+        "C3"
+      ],
+      "flagConsumed": false
+    },
+    {
+      "label": "frozen-complex-2",
+      "trigger": true,
+      "signals": [
+        "A"
+      ],
+      "flagConsumed": true
+    },
+    {
+      "label": "frozen-complex-3",
+      "trigger": true,
+      "signals": [
+        "C1",
+        "C2",
+        "C3"
+      ],
+      "flagConsumed": false
+    }
+  ]
+}

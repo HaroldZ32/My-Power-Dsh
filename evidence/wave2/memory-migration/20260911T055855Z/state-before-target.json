@@ -1,0 +1,29 @@
+{
+  "label": "target",
+  "root": "/root/dshProj/my-power-dsh/.mpd/memory/agents/agent-my-power-dsh",
+  "entryCount": 20,
+  "files": {
+    "ecap-mtl6zmnd.md": "8fde8d3e3c5a098e698e76975ff2806523f0d1e44b3aa25d953ed12a926aa7c5",
+    "ecap-regexcel-user-manual-excel-mtkxxrqv.md": "0094f7a841df9df1039903eb2c0c5c87118fa79cf745fa2619cc9946a1d6d39c",
+    "ecap-type-2-rtl-ip-mti2xw1f.md": "0d3bbd9906ede303643a84f2347bc45922aecb83197728ae0c707ac6ec9406f3",
+    "ecap-type3-rtl-ip-mtifrsw8.md": "6bbc104660f288d284b5608776968a9055015aa40ba85b6cab2898433e15b46f",
+    "final-deliverable-state-mtfuf83z.md": "64f05c8251fa825cdb8c518993650252a4b1a9c364c2f7efa761af6f91fb5f68",
+    "gate-sweep-results-mtfues0x.md": "6d48b5635e881ecd26a6799db5d6ab94120d656e7a4c7c5f8140c59bd0bc48b2",
+    "inscope-ownership-lesson-mtfueenn.md": "54dea1071ddc29b6fabb1c0215e4bfdb3fb65dedfb7d73ba1d7602b32f6074c0",
+    "mcp-dist-baseline-policy-mtfueiop.md": "8e3718a1547caae3cb49b0bce8fb84da5a7a997f35241d1026dc60ac4db121a9",
+    "reflection-mtfufg2k.md": "7286d0a11408e37349f382b7068a49534ebe72a08dfbb6dcd8c3cf3f0650f51a",
+    "regexcel-16-31-16-reserved-32-mtmcr4ix.md": "f06db43c880f367b3fc6b35735d748a67a0b53188c519cee8464344e7233db51",
+    "regexcel-reserved-mtmdgpus.md": "060838c2abd9a1e85ad62f5b8115d6844eb048bc23b142243b22b60f96feedea",
+    "repo-scan-20260830-closure-mtfudqz7.md": "7773e0e9c5fae25240c7a3f5010d6e5a31ed9a4fb5ebf7d1f0ecbe4dc624d84a",
+    "repository-discipline-mtfuezyy.md": "d9cf3c16edcbccc68408a36da63ee8fca82943e672ba776bfb41624aae976586",
+    "rev-lsp-ping-root-cause-mtfueac4.md": "3cc3646b1489af195b35dd2406e0e97997c324fa7ec52ddca179e32b3579189a",
+    "self-iteration-verification-mtfuew09.md": "7564dc7d3bbfd0101962e91647efa19bae8925b8012acfba7532643474b4f452",
+    "subagent-derailment-lesson-mtfuenj8.md": "1fb28ecbcbe813610b6fde2b3783240aafecaafe549544e4227fee657e72259b",
+    "vs-mtigdaii.md": "1e212f75edce5f29d662c9539bc20950493e6395c22941e4bde91c5d4cbd588f",
+    "workmate-library-notes-mtfuf3rq.md": "9d9f4cbe2625bf97ac09f6aa7ec40fdc5fb4a5f9ac341bc2f32360f1efec40cb",
+    "xlsx-word-btlr-mtqzjv46.md": "beb5e4b4d6706b25dafb6c81d5c32e4b213e7f2f1f2f9b01ec72e7361367d6bc",
+    "xlsx-word-regexcel-xlsx-template-docx-mtmsbjh2.md": "d009a63a529128eb50a1bcb2809d368868b321473719907da77df74e16ccdfa3"
+  },
+  "reflectionJsonExists": true,
+  "reflectionJsonSha256": "7ee2e20805ec59fe8cb06981cadc278a81e3b2e6d30412a3845eb73f04799efc"
+}

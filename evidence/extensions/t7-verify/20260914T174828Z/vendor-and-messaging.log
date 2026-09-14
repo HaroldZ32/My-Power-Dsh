@@ -1,0 +1,11 @@
+=== verify-vendor (true exit) ===
+VERIFY_VENDOR_EXIT=1
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+
+=== agent-teams-messaging failure line ===
+[agent-teams-messaging] FAIL: VENDOR_LOCK skills asset is stale: lock=298/08e96f40d9b4 tree=301/0dd4a6ee68e0 (re-pin in the same commit, AGENTS.md §9)
+exit=0

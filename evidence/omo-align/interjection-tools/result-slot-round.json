@@ -1,0 +1,120 @@
+{
+  "schema": "mpd/evidence/result@1",
+  "task": "t52",
+  "round": "slot-claim round (the delivery-address closure + current-revision verification)",
+  "attempt": 1,
+  "subject": "the interjection lane as a CAPABILITY: request / decide / clear tools, real authorization, mount proof, reachability inventory",
+  "revisionNote": "Most of this slot's deliverable landed and was COMMITTED during earlier rounds (the captain folded it into 33ff60a / 4874e37 before this slot could be claimed — t52 was dependency-blocked). This record (a) states what is verified on the CURRENT revision, (b) reports the mount proof RE-RUN at 7/7, and (c) closes the one criterion that was still only partially covered: the delivery ADDRESS to the requester's own session. The earlier, already-delivered record is interjection-tools/result.json and was NOT overwritten.",
+
+  "acceptance": {
+    "1_toolSurface": {
+      "status": "passed",
+      "tools": {
+        "agent_teams_interject_request": "member asks; payload = summary + reason + location; identity comes from the CALLER (there is no `from` argument to spoof)",
+        "agent_teams_interject_decide": "captain only; closed {approved, rejected} refused loudly naming BOTH allowed values; action=\"list\" observes pending",
+        "agent_teams_mailbox_clear": "clears to a watermark; the captain may clear ANY mailbox, a member ONLY its own"
+      },
+      "chainDrivenThroughTheToolSurface": [
+        "member calls agent_teams_interject_request -> status 'pending', from 'Senior Engineer', delivered_to_anyone false",
+        "the row sits in its OWN lane ({kind: interjection-request}); the requester's ordinary inbox is untouched",
+        "captain calls agent_teams_interject_decide {action:'list'} -> sees exactly that pending request (id, from, location)",
+        "captain calls agent_teams_interject_decide {request_id, decision:'approved'} -> status 'approved', requester named",
+        "the library re-posts an ORDINARY record into the requester's inbox (id '<request>-delivery', no interjection kind)",
+        "the EXISTING member-queue seam claims and acknowledges it at the next idle edge"
+      ],
+      "newThisRound_deliveryAddress": {
+        "test": "t52 CHAIN: the approval reaches the REQUESTER's own session at the next idle edge — addressed, once, and nowhere else",
+        "asserted": [
+          "the fixture's sessions are distinct (member != captain != other), so 'the requester' and 'some member' cannot be confused",
+          "NOTHING is delivered before the idle edge: the approval records a decision, it is not itself a delivery",
+          "exactly ONE delivery at the next idle edge — childSessionId === the requester's session id, parentSessionId === the captain's, mode 'continuable', delivery 'queue'",
+          "the payload carries the approved body and the request id",
+          "SILENCE: the other member is never addressed — the decision lane does not broadcast",
+          "the acknowledgement follows the accepted delivery, so a second idle edge re-delivers nothing (deliveries stays 1, unread 0)"
+        ],
+        "addressShape": "queueMemberPrompt receives {parentSessionId: parent.id, childSessionId: brandedSessionId(member.id)}; brandedSessionId is the identity function (members.js:86-88), so the child address IS the member's own session id"
+      },
+      "HONEST_BOUNDARY": "the chain is driven through the shipped TOOL DEFINITIONS (registerAgentTeamsTools) plus the REAL scheduler (installTeamScheduler -> kickMember). The 'real receiving session' in production is the harness session object for that child id; creating one in an isolated boot needs a live model turn, which needs a provider credential this environment does not have. So the ADDRESS and the payload are asserted, and the live session's ACCEPTANCE of that delivery is NOT — the same boundary t48 recorded. t51 additionally covers the shipped path from the QA-case side."
+    },
+    "2_mountProof": {
+      "status": "passed",
+      "runThisRound": "evidence/omo-align/interjection-tools/raw/mount-proof-t52.mjs",
+      "result": "7/7 registered (the assertion was 5/5 when written; it now also covers the two mpd-team-compact tools added later), probe PASS, crashSignatures []",
+      "registers": [
+        "agent_teams_interject_request", "agent_teams_interject_decide", "agent_teams_mailbox_clear",
+        "agent_teams_send_message", "agent_teams_update_task", "mpd_team_compact_run", "mpd_team_compact_status"
+      ],
+      "isolation": "isolated DSH_HOME + sandbox HOME + sandbox workspace; credentials written mode 0o600",
+      "dumpConfigRole": "used ONLY to prove composition; never cited as load evidence (AGENTS.md §4)",
+      "onDiskDrive": "the same driver drives all three tools against a real team.json and asserts a member calling decide is REFUSED ('only the captain'), the decision lands approved, and a clear reports unreadAfterClear 0"
+    },
+    "3_clearProductionCaller": {
+      "status": "passed",
+      "caller": "agent_teams_mailbox_clear (lib/tools.js) -> clearMailboxToWatermark. F-5 closed: the primitive has a production entry point.",
+      "authorizationMeasured": "captain clears a member mailbox (allowed; the member name must exist so a typo cannot silently clear nothing); a member clears its own via the default target (allowed); a member naming another member OR the captain is REFUSED with 'only the captain'",
+      "F3SeamOnTheRealPath": "the tool returns unread_after and the test asserts 0 after clearing an unread record; the tombstone survives (tombstone true, content '') and the archived sidecar path is returned"
+    },
+    "4_readLiveMailboxFate": {
+      "status": "passed",
+      "decision": "KEPT and DOCUMENTED TEST-ONLY at its declaration (lib/state.js:563-576)",
+      "commentStates": "the scheduler composes deliverableUnread(readUnreadMailbox(...)); the tombstone filter is carried INDEPENDENTLY by both, and routing delivery through readLiveMailbox would drop the delivery-lease semantics (no claim/ack). Kept because it states the F-3 invariant in one expression and the seam tests assert it directly."
+    },
+    "5_reachabilityInventory": {
+      "status": "passed",
+      "artifacts": "evidence/omo-align/interjection-tools/reachability.md + raw/reachability-inventory.{mjs,json} — REGENERATED on this revision",
+      "totals": "261 exports declared in lib/**; 215 reachable cross-module; 43 reachable module-internally; 3 with NO production caller",
+      "unreachable": [
+        { "symbol": "readLiveMailbox", "declared": "lib/state.js:576", "decision": "KEPT, documented test-only (criterion 4)" },
+        { "symbol": "teamLockQueueKeys", "declared": "lib/state.js:60", "decision": "KEPT, diagnostic/test-only — a lock-leak check asserted by test/backports.test.ts; production must never read internal lock state" },
+        { "symbol": "SESSION_START_GATE_ID", "declared": "lib/session-start.js:596", "decision": "PRE-EXISTING orphan (in HEAD before this wave), referenced by nothing in lib/**, test/** or skills/**; REPORTED not deleted — it is a frozen diagnostic identifier and removing it is unrelated churn" }
+      ],
+      "laneNowWired": "enqueueInterjection -> agent_teams_interject_request; decideInterjection -> agent_teams_interject_decide; clearMailboxToWatermark -> agent_teams_mailbox_clear",
+      "note": "the three primitives are classified by their importing module (tools.js), so the inventory reports them as reachable cross-module; the TOOLS are proved reachable by registration (mount proof) and by being called (the chain tests)"
+    },
+    "6_noRegression": {
+      "status": "passed",
+      "idempotentDedup": "the shipped dedup behaviour is untouched and still asserted (the t49 suite is green inside the 197/0 run)",
+      "tombstoneFilter": "readUnreadMailbox + deliverableUnread still drop tombstones; the r1 / t49 / t52 suites are green",
+      "expiryNotice": "the r1 suite is green; expiry notify behaviour unchanged",
+      "R3MonotoneTokensAndThresholds": "session-start.js was not touched this round; session-start-team PASS with the same two-sided result",
+      "deltaRegistryUnchanged": "30 regions / 7 adopted files BEFORE and AFTER this round's edits (--check clean both times)"
+    },
+    "7_gates": {
+      "status": "passed",
+      "results": "delta --check 0; plugin 197/0 (1296 expect); self-fix 53/0 (640 expect); typecheck 0; session-start-team PASS; mount proof PASS"
+    },
+    "8_evidenceDiscipline": {
+      "status": "passed",
+      "noOverwrite": "evidence/omo-align/messaging/r1-wiring/** was treated read-only; the earlier interjection-tools/result.json was NOT overwritten (this round's record lives in this new file)",
+      "neutralText": "no retired external project identifier appears",
+      "noGitWrite": "read-only git commands only"
+    }
+  },
+
+  "gates": {
+    "node scripts/patch-agent-teams-fixes.mjs --check": "exit 0 — 30 regions / 7 adopted files",
+    "bun test packages/mpd-agent-teams-plugin": "exit 0 — 197 pass / 0 fail / 1296 expect() calls across 50 files",
+    "bun test packages/mpd-agent-teams-plugin/self-fix-tests": "exit 0 — 53 pass / 0 fail / 640 expect() calls",
+    "bun run typecheck": "exit 0",
+    "bun skills/dsh-qa/scripts/session-start-team.mjs": "exit 0 — PASS (twoSided simple [0,0,0] vs complex [1,1,1]; negative control disarmed)",
+    "evidence/omo-align/interjection-tools/raw/mount-proof-t52.mjs": "PASS — registeredTools 7/7, crashSignatures []"
+  },
+
+  "findingsForTheCaptain": [
+    {
+      "id": "T52-G1",
+      "severity": "low",
+      "problem": "The chain is proven through the tool definitions and the real scheduler, but NOT through a live receiving session: a session accepting the queue delivery needs a running model turn, which needs a provider credential this environment lacks.",
+      "requiredFix": "a credentialed slot can assert the durable acceptance (the member's next turn actually carrying the approved body). t51 covers part of this from the shipped-path QA-case side."
+    },
+    {
+      "id": "T52-G2",
+      "severity": "low",
+      "problem": "lib/tool-names.js still lists 14 names, so the member capability deny list (capabilities.js:94) does not name the three new tools and the captain prompt (index.js:179) does not advertise them.",
+      "mitigation": "NOT a live hole — authorization is enforced inside each tool and measured (a member calling decide is refused) — but the deny list would add defence in depth and the prompt would surface the capability.",
+      "requiredFix": "one line in a slot that owns lib/tool-names.js, plus updating test/r3-view-parity.test.mjs's frozen 14."
+    }
+  ],
+
+  "noGitWrite": "read-only git commands only; the captain commits"
+}

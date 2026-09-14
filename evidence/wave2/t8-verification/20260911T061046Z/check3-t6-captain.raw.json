@@ -1,0 +1,305 @@
+{
+  "driver": "check3-live-contract",
+  "liveTeamJson": ".mpd/team/mpd-wave-2/team.json",
+  "sandbox": "/tmp/mpd-t8-contract-FJsqHG",
+  "caller": {
+    "kind": "captain",
+    "id": "session-aded9c07-4cd3-4c82-ac31-22ce8c47c5be"
+  },
+  "registeredToolCount": 14,
+  "registeredToolNames": [
+    "agent_teams_add_member",
+    "agent_teams_approve",
+    "agent_teams_claim_task",
+    "agent_teams_create",
+    "agent_teams_create_task",
+    "agent_teams_delete",
+    "agent_teams_edit_plan",
+    "agent_teams_reassign_task",
+    "agent_teams_remove_member",
+    "agent_teams_resume",
+    "agent_teams_send_message",
+    "agent_teams_status",
+    "agent_teams_task_contract",
+    "agent_teams_update_task"
+  ],
+  "liveSha256Before": "37b12d8f907f86eb428fd93b135a5532e6f1d2ad6f17f4576a45a6d70d1a54af",
+  "sandboxSha256Before": "37b12d8f907f86eb428fd93b135a5532e6f1d2ad6f17f4576a45a6d70d1a54af",
+  "toolRegistered": true,
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "task_id": {
+        "type": "string",
+        "description": "Task id from the shared task list, e.g. \"t4\"."
+      }
+    }
+  },
+  "hasRender": true,
+  "view": {
+    "task_id": "t6",
+    "subject": "B8: make the ast-grep/codegraph MCP binaries resolvable in both install layouts",
+    "kind": "implementation",
+    "status": "in_progress",
+    "assignee": "Deep Worker",
+    "attempt": 2,
+    "attempt_id": "4a4f14d4-afe8-473d-8088-76b1405d0a3f",
+    "dependencies": [
+      "t1"
+    ],
+    "objective": "Make the ast-grep (and, if t1 scopes it here, codegraph) binaries resolvable in both install layouts, so the MCP tools work instead of returning BINARY_NOT_FOUND.",
+    "in_scope": [
+      "packages/mpd-bundle/cordis.patch.yml",
+      "packages/mpd-bootstrap-plugin/src",
+      "packages/mpd-bootstrap-plugin/dist/index.js",
+      "packages/mpd-codegraph-plugin/src",
+      "packages/mpd-codegraph-plugin/dist/index.js",
+      "docs",
+      "evidence/wave2/b8-binary-resolution"
+    ],
+    "out_of_scope": [
+      "skills/**",
+      "VENDOR_LOCK.json",
+      "packages/mpd-agent-teams-plugin/**",
+      "packages/mpd-verif-plugin/src/regress.ts"
+    ],
+    "acceptance": [
+      "The resolution mechanism decided in t1 is implemented exactly; any deviation is reported as a finding rather than taken silently",
+      "`__ast_grep` tools work end-to-end: a real `mcp__ast_grep__search` (or the equivalent MCP call path) returns a real result instead of BINARY_NOT_FOUND, demonstrated in a boot whose process cwd differs from the session workspace",
+      "The codegraph path is fixed to the same standard if t1 scoped it here: the boot log no longer reports `[mpd-codegraph] init status=no-binary`, and a real codegraph call or probe succeeds",
+      "Both install layouts are addressed as t1 required: state explicitly whether the mechanism works for a packed install, and if it cannot be tested here, say so rather than implying it was",
+      "The change is proven by a MOUNTING boot (isolated DSH_HOME + sandbox HOME) with 0 apply-crash signatures, plus the preset-conformance case still reporting ok:true with its negative control — a patch/preset row change cannot be validated by `--dump-config` alone",
+      "`node scripts/verify-vendor.mjs` still exits 0 and no file under skills/** was modified by this task"
+    ],
+    "verify": [
+      "node skills/dsh-qa/scripts/preset-conformance.mjs",
+      "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs",
+      "a real MCP tool call for ast_grep (and codegraph if scoped here)",
+      "node evidence/session-workspace-root/dist-repair/sweep.mjs --clean-room",
+      "node scripts/verify-vendor.mjs"
+    ],
+    "deliverables": [],
+    "non_goals": [],
+    "reassign_reason": "Re-dispatch with a FRESH attempt_id so the completed work can be submitted. The member's agent_teams_update_task was rejected as `stale attempt for task t6` after its turn was interrupted, so t6 would otherwise sit in_progress forever with the work done and verified on disk. Nothing about the task changed: same contract, same assignee, same revision.\n\nThis is not a retry of failed work. The implementation is complete and self-verified in the working tree: the patch no longer names any binary path, both `env:` blocks are deleted, a shared never-throwing resolver (`packages/mpd-mcp-shared/bin-resolve.mjs`) implements the full precedence (caller env pin -> $MPD_AST_GREP_BIN_DIR -> createRequire -> <bundle>/.toolchain -> leave unset), `ast-grep` is probed before `sg` with a `--version` containing \"ast-grep\" (the real `.bin/sg` is rejected by the probe — unit-tested, which closes the wrong-pin path that my own earlier mis-measurement implied), the codegraph launcher calls `runCodegraphServe()`, and `pack-mpd.mjs` ships both launchers and hard-fails when one is missing.\n\nEvidence is on disk at `evidence/wave2/b8-binary-resolution/` (RESULT.json + 15 files): mcp-gate 5/5 with a real MCP stdio call through the SHIPPED launcher from a cwd outside the bundle plus a `/nonexistent` negative control; packed-gate 7/7 via a real `npm pack` + TARBALL install proving the packed layout resolves through `createRequire` (not inferred); boot probe 4/4 in an isolated DSH_HOME; preset-conformance PASS and bundle-lifecycle PASS; sweep 16 FRESH / 0 STALE; verify-vendor exit 0; bun test packages 335/0; typecheck 0.\n\nOn claiming: submit the structured completion payload verbatim (acceptanceResults and commandsRun per criterion), and in the output declare the authorized DECLARED-BUT-UNMATCHED paths (the two launchers, the shared resolver + its test, `scripts/pack-mpd.mjs`, and the three README pairs) plus the two cross-referenced findings you already reported: the `devPatch()` `baseUrl + \"/node_modules/\"` operand defect in `preset-register.mjs`, and the bundle-lifecycle sandbox's `init status=fail binary=<resolved>` observation. Do not start new work — t12 (R1-F1) is separately queued for you and I will leave it in place.",
+    "acceptance_results": [
+      {
+        "criterion": "The resolution mechanism decided in t1 is implemented exactly; any deviation is reported as a finding rather than taken silently",
+        "status": "passed",
+        "evidence": "RESULT.json .mechanism: the patch names NO binary path (grep for the two env keys in cordis.patch.yml is empty); each MCP row launches <pkg>/launch.mjs, which resolves through packages/mpd-mcp-shared/bin-resolve.mjs with t1 §3.2 precedence (caller env pin -> $MPD_AST_GREP_BIN_DIR -> createRequire of the optionalDependency -> <bundle>/.toolchain/node_modules/.bin/{ast-grep,sg}|codegraph -> env left unset) and the mandatory acceptance probe (existsSync + --version containing 'ast-grep', ast-grep before sg at every tier). The codegraph require tier reads the package's own `bin` entry (1.5.0 ships `bin: {codegraph: npm-shim.js}`) — recorded. Deviations recorded as findings: (F-devflavor-mcp-rewrite) the dev-flavor rewrite must drop the baseUrl operand, and (F-codegraph-init-fail-in-sandbox) an unrelated sandbox init failure."
+      },
+      {
+        "criterion": "`__ast_grep` tools work end-to-end: a real `mcp__ast_grep__search` (or the equivalent MCP call path) returns a real result instead of BINARY_NOT_FOUND, demonstrated in a boot whose process cwd differs from the session workspace",
+        "status": "passed",
+        "evidence": "mcp-gate.result.json (5/5, exit 0): the SHIPPED packages/mpd-mcp-astgrep/launch.mjs is driven as a real MCP stdio server (initialize + tools/list + tools/call search) from cwd = a repo-local temp dir containing neither node_modules nor .toolchain, with MPD_AST_GREP_SG_PATH/$MPD_AST_GREP_BIN_DIR/MPD_DSH_ASTGREP_CLI scrubbed -> returns {\"totalMatches\":1, matches:[return 0;]}; the negative control (MPD_AST_GREP_SG_PATH=/nonexistent/sg) returns BINARY_NOT_FOUND. packed-gate.result.json repeats the real call through the installed packed launcher. boot.result.json proves the rows apply in an isolated DSH_HOME + sandbox HOME boot with no MCP child spawn failure. The LIVE LLM-driven variant is unavailable on this machine (MISSING_CREDENTIAL, same class as evidence/dsh-qa/llm-dual-track ok=false) — stated in RESULT.json .envLimits rather than implied; the acceptance explicitly allows 'the equivalent MCP call path'."
+      },
+      {
+        "criterion": "The codegraph path is fixed to the same standard if t1 scoped it here: the boot log no longer reports `[mpd-codegraph] init status=no-binary`, and a real codegraph call or probe succeeds",
+        "status": "passed",
+        "evidence": "boot.result.json boot A line: `[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph` (the new .toolchain candidate in mpd-codegraph-plugin resolveBinary). mount-gates/bundle-lifecycle.boot.log (real link: install web boot) shows `init status=fail binary=<...>/.toolchain/node_modules/.bin/codegraph` — the binary RESOLVES where the pre-fix line was `status=no-binary binary=-`; the init failure belongs to that sandbox project, not to resolution. Real codegraph calls: mcp-gate check 'codegraph launcher: real codegraph_explore answers with content' and packed-gate 'codegraph launcher serves the real tool surface' (tools=[codegraph_explore], no 'skipped' stub); negative control MPD_CODEGRAPH_BIN=/nonexistent/codegraph -> skipped/unavailable."
+      },
+      {
+        "criterion": "Both install layouts are addressed as t1 required: state explicitly whether the mechanism works for a packed install, and if it cannot be tested here, say so rather than implying it was",
+        "status": "passed",
+        "evidence": "Both layouts are actually TESTED, not inferred. packed-gate.result.json (7/7): `npm pack` of dist/mpd-package produces a tarball (which ships both launchers + the shared resolver), the tarball is installed into a sandbox profile with npm, and from the INSTALLED launcher the resolver reports ast-grep -> <profile>/node_modules/@ast-grep/cli/ast-grep source=require and codegraph -> <profile>/node_modules/@colbymchenry/codegraph/npm-shim.js source=require; real MCP calls answer and the env-pin negative control still yields BINARY_NOT_FOUND. Checkout layout: mcp-gate.result.json + the boot A plugin line resolve through <bundle>/.toolchain. (A `file:<dir>` dependency is symlinked and does NOT install optionalDependencies — same as pnpm link: — which is why the tarball form is used; documented in the gate script.)"
+      },
+      {
+        "criterion": "The change is proven by a MOUNTING boot (isolated DSH_HOME + sandbox HOME) with 0 apply-crash signatures, plus the preset-conformance case still reporting ok:true with its negative control — a patch/preset row change cannot be validated by `--dump-config` alone",
+        "status": "passed",
+        "evidence": "preset-conformance PASS (exit 0): ok=true, 30 rows checked, parity {reference:31, ours:31, missing:[], extra:[]}, a real session created over the API in an isolated home, bootLog signatures [], negativeControl ok (agent-preset/invalid). bundle-lifecycle PASS (exit 0): official `dsh plugin --profile w add <repo>` link: install composes the bundle row, the real web boot serves the corpus/preset/adapter seams, uninstall leaves no residue. b8-boot.mjs 4/4: the dev-flavor patch applies with 0 crash signatures in an isolated DSH_HOME + sandbox HOME (mpd-astgrep/lsp/codegraph rows applied, no MCP child spawn failure), with the HEAD pre-change patch booting identically as a control. Evidence copied to evidence/wave2/b8-binary-resolution/mount-gates/; no --dump-config result is cited as load evidence."
+      },
+      {
+        "criterion": "`node scripts/verify-vendor.mjs` still exits 0 and no file under skills/** was modified by this task",
+        "status": "passed",
+        "evidence": "verify-vendor exit 0 ([verify-vendor] PASS, every asset OK — the adopted ast-grep/codegraph dists were NOT touched). No skills/** path appears in this task's changedPaths; skills/ carries 10 modifications in the working tree but they belong to t7 (QA workspace isolation), not to this task — the B8 masking fix in skills/dsh-qa/scripts/mcp-call.mjs:36-39 is cross-referenced only."
+      }
+    ],
+    "commands_run": [
+      {
+        "command": "node skills/dsh-qa/scripts/preset-conformance.mjs",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "PASS exit 0: ok=true, 30 rows checked, parity 31/31, real session created (sessionHeader ok, agentPreset mpd), bootLog signatures [] , negative control ok. Evidence: evidence/wave2/b8-binary-resolution/mount-gates/preset-conformance.result.json (and evidence/dsh-qa/preset-conformance/2026-09-11T05-59-13.776Z/)."
+      },
+      {
+        "command": "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "PASS exit 0: one-command `dsh plugin --profile w add <repo>` install (link:/root/dshProj/my-power-dsh), real web boot with adapter seams + served corpus/preset, no home copy, layer durability, uninstall with no residue. Embedded boot.log carries `[mpd-codegraph] init status=fail binary=<...>/.toolchain/node_modules/.bin/codegraph` (binary resolved; pre-fix was no-binary). Evidence: mount-gates/bundle-lifecycle.result.json + .boot.log."
+      },
+      {
+        "command": "node evidence/wave2/b8-binary-resolution/b8-mcp-gate.mjs  && node evidence/wave2/b8-binary-resolution/b8-packed-gate.mjs  (a real MCP tool call for ast_grep and codegraph)",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "b8-mcp-gate 5/5 exit 0 (checkout layout): real ast_grep search returns totalMatches:1; negative control BINARY_NOT_FOUND; codegraph tools/list + real codegraph_explore content; codegraph negative control skipped. b8-packed-gate 7/7 exit 0 (packed layout, real npm pack + tarball install): createRequire tier for both binaries, real ast-grep search, codegraph tool surface, negative control holds. Results: mcp-gate.result.json / packed-gate.result.json."
+      },
+      {
+        "command": "node evidence/session-workspace-root/dist-repair/sweep.mjs --clean-room",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "exit 0: packages with dist/index.js: 16; FRESH byte-identical: 16; FRESH banner-only: 0; STALE: 0; clean-room pass1==pass2 16/16 and committed==pass2 16/16 (mpd-codegraph-plugin/dist rebuilt from the repo root). Evidence: evidence/wave2/b8-binary-resolution/sweep-clean-room.txt."
+      },
+      {
+        "command": "node scripts/verify-vendor.mjs",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "exit 0: [verify-vendor] PASS, every vendored asset OK (incl. packages/mpd-mcp-codegraph/dist/serve.js and packages/mpd-mcp-astgrep/dist/cli.js byte-identical — the adopted dists were NOT touched)."
+      }
+    ],
+    "changed_paths": [
+      "packages/mpd-bundle/cordis.patch.yml",
+      "packages/mpd-codegraph-plugin/src/index.ts",
+      "packages/mpd-codegraph-plugin/dist/index.js",
+      "evidence/wave2/b8-binary-resolution"
+    ],
+    "findings_open": 0
+  },
+  "rendered": "Task t6 [in_progress] implementation — B8: make the ast-grep/codegraph MCP binaries resolvable in both install layouts\nAssignee: Deep Worker (attempt 2, attempt_id 4a4f14d4-afe8-473d-8088-76b1405d0a3f)\nDependencies: t1\nContract:\n  Objective: Make the ast-grep (and, if t1 scopes it here, codegraph) binaries resolvable in both install layouts, so the MCP tools work instead of returning BINARY_NOT_FOUND.\n  In scope: packages/mpd-bundle/cordis.patch.yml, packages/mpd-bootstrap-plugin/src, packages/mpd-bootstrap-plugin/dist/index.js, packages/mpd-codegraph-plugin/src, packages/mpd-codegraph-plugin/dist/index.js, docs, evidence/wave2/b8-binary-resolution\n  Out of scope: skills/**, VENDOR_LOCK.json, packages/mpd-agent-teams-plugin/**, packages/mpd-verif-plugin/src/regress.ts\n  Acceptance: The resolution mechanism decided in t1 is implemented exactly; any deviation is reported as a finding rather than taken silently, `__ast_grep` tools work end-to-end: a real `mcp__ast_grep__search` (or the equivalent MCP call path) returns a real result instead of BINARY_NOT_FOUND, demonstrated in a boot whose process cwd differs from the session workspace, The codegraph path is fixed to the same standard if t1 scoped it here: the boot log no longer reports `[mpd-codegraph] init status=no-binary`, and a real codegraph call or probe succeeds, Both install layouts are addressed as t1 required: state explicitly whether the mechanism works for a packed install, and if it cannot be tested here, say so rather than implying it was, The change is proven by a MOUNTING boot (isolated DSH_HOME + sandbox HOME) with 0 apply-crash signatures, plus the preset-conformance case still reporting ok:true with its negative control — a patch/preset row change cannot be validated by `--dump-config` alone, `node scripts/verify-vendor.mjs` still exits 0 and no file under skills/** was modified by this task\n  Verify: node skills/dsh-qa/scripts/preset-conformance.mjs, bun skills/dsh-qa/scripts/bundle-lifecycle.mjs, a real MCP tool call for ast_grep (and codegraph if scoped here), node evidence/session-workspace-root/dist-repair/sweep.mjs --clean-room, node scripts/verify-vendor.mjs\n  Reassignment reason: Re-dispatch with a FRESH attempt_id so the completed work can be submitted. The member's agent_teams_update_task was rejected as `stale attempt for task t6` after its turn was interrupted, so t6 would otherwise sit in_progress forever with the work done and verified on disk. Nothing about the task changed: same contract, same assignee, same revision.\n\nThis is not a retry of failed work. The implementation is complete and self-verified in the working tree: the patch no longer names any binary path, both `env:` blocks are deleted, a shared never-throwing resolver (`packages/mpd-mcp-shared/bin-resolve.mjs`) implements the full precedence (caller env pin -> $MPD_AST_GREP_BIN_DIR -> createRequire -> <bundle>/.toolchain -> leave unset), `ast-grep` is probed before `sg` with a `--version` containing \"ast-grep\" (the real `.bin/sg` is rejected by the probe — unit-tested, which closes the wrong-pin path that my own earlier mis-measurement implied), the codegraph launcher calls `runCodegraphServe()`, and `pack-mpd.mjs` ships both launchers and hard-fails when one is missing.\n\nEvidence is on disk at `evidence/wave2/b8-binary-resolution/` (RESULT.json + 15 files): mcp-gate 5/5 with a real MCP stdio call through the SHIPPED launcher from a cwd outside the bundle plus a `/nonexistent` negative control; packed-gate 7/7 via a real `npm pack` + TARBALL install proving the packed layout resolves through `createRequire` (not inferred); boot probe 4/4 in an isolated DSH_HOME; preset-conformance PASS and bundle-lifecycle PASS; sweep 16 FRESH / 0 STALE; verify-vendor exit 0; bun test packages 335/0; typecheck 0.\n\nOn claiming: submit the structured completion payload verbatim (acceptanceResults and commandsRun per criterion), and in the output declare the authorized DECLARED-BUT-UNMATCHED paths (the two launchers, the shared resolver + its test, `scripts/pack-mpd.mjs`, and the three README pairs) plus the two cross-referenced findings you already reported: the `devPatch()` `baseUrl + \"/node_modules/\"` operand defect in `preset-register.mjs`, and the bundle-lifecycle sandbox's `init status=fail binary=<resolved>` observation. Do not start new work — t12 (R1-F1) is separately queued for you and I will leave it in place.\nCompletion payload so far:\n  acceptanceResults: [{\"criterion\":\"The resolution mechanism decided in t1 is implemented exactly; any deviation is reported as a finding rather than taken silently\",\"status\":\"passed\",\"evidence\":\"RESULT.json .mechanism: the patch names NO binary path (grep for the two env keys in cordis.patch.yml is empty); each MCP row launches <pkg>/launch.mjs, which resolves through packages/mpd-mcp-shared/bin-resolve.mjs with t1 §3.2 precedence (caller env pin -> $MPD_AST_GREP_BIN_DIR -> createRequire of the optionalDependency -> <bundle>/.toolchain/node_modules/.bin/{ast-grep,sg}|codegraph -> env left unset) and the mandatory acceptance probe (existsSync + --version containing 'ast-grep', ast-grep before sg at every tier). The codegraph require tier reads the package's own `bin` entry (1.5.0 ships `bin: {codegraph: npm-shim.js}`) — recorded. Deviations recorded as findings: (F-devflavor-mcp-rewrite) the dev-flavor rewrite must drop the baseUrl operand, and (F-codegraph-init-fail-in-sandbox) an unrelated sandbox init failure.\"},{\"criterion\":\"`__ast_grep` tools work end-to-end: a real `mcp__ast_grep__search` (or the equivalent MCP call path) returns a real result instead of BINARY_NOT_FOUND, demonstrated in a boot whose process cwd differs from the session workspace\",\"status\":\"passed\",\"evidence\":\"mcp-gate.result.json (5/5, exit 0): the SHIPPED packages/mpd-mcp-astgrep/launch.mjs is driven as a real MCP stdio server (initialize + tools/list + tools/call search) from cwd = a repo-local temp dir containing neither node_modules nor .toolchain, with MPD_AST_GREP_SG_PATH/$MPD_AST_GREP_BIN_DIR/MPD_DSH_ASTGREP_CLI scrubbed -> returns {\\\"totalMatches\\\":1, matches:[return 0;]}; the negative control (MPD_AST_GREP_SG_PATH=/nonexistent/sg) returns BINARY_NOT_FOUND. packed-gate.result.json repeats the real call through the installed packed launcher. boot.result.json proves the rows apply in an isolated DSH_HOME + sandbox HOME boot with no MCP child spawn failure. The LIVE LLM-driven variant is unavailable on this machine (MISSING_CREDENTIAL, same class as evidence/dsh-qa/llm-dual-track ok=false) — stated in RESULT.json .envLimits rather than implied; the acceptance explicitly allows 'the equivalent MCP call path'.\"},{\"criterion\":\"The codegraph path is fixed to the same standard if t1 scoped it here: the boot log no longer reports `[mpd-codegraph] init status=no-binary`, and a real codegraph call or probe succeeds\",\"status\":\"passed\",\"evidence\":\"boot.result.json boot A line: `[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph` (the new .toolchain candidate in mpd-codegraph-plugin resolveBinary). mount-gates/bundle-lifecycle.boot.log (real link: install web boot) shows `init status=fail binary=<...>/.toolchain/node_modules/.bin/codegraph` — the binary RESOLVES where the pre-fix line was `status=no-binary binary=-`; the init failure belongs to that sandbox project, not to resolution. Real codegraph calls: mcp-gate check 'codegraph launcher: real codegraph_explore answers with content' and packed-gate 'codegraph launcher serves the real tool surface' (tools=[codegraph_explore], no 'skipped' stub); negative control MPD_CODEGRAPH_BIN=/nonexistent/codegraph -> skipped/unavailable.\"},{\"criterion\":\"Both install layouts are addressed as t1 required: state explicitly whether the mechanism works for a packed install, and if it cannot be tested here, say so rather than implying it was\",\"status\":\"passed\",\"evidence\":\"Both layouts are actually TESTED, not inferred. packed-gate.result.json (7/7): `npm pack` of dist/mpd-package produces a tarball (which ships both launchers + the shared resolver), the tarball is installed into a sandbox profile with npm, and from the INSTALLED launcher the resolver reports ast-grep -> <profile>/node_modules/@ast-grep/cli/ast-grep source=require and codegraph -> <profile>/node_modules/@colbymchenry/codegraph/npm-shim.js source=require; real MCP calls answer and the env-pin negative control still yields BINARY_NOT_FOUND. Checkout layout: mcp-gate.result.json + the boot A plugin line resolve through <bundle>/.toolchain. (A `file:<dir>` dependency is symlinked and does NOT install optionalDependencies — same as pnpm link: — which is why the tarball form is used; documented in the gate script.)\"},{\"criterion\":\"The change is proven by a MOUNTING boot (isolated DSH_HOME + sandbox HOME) with 0 apply-crash signatures, plus the preset-conformance case still reporting ok:true with its negative control — a patch/preset row change cannot be validated by `--dump-config` alone\",\"status\":\"passed\",\"evidence\":\"preset-conformance PASS (exit 0): ok=true, 30 rows checked, parity {reference:31, ours:31, missing:[], extra:[]}, a real session created over the API in an isolated home, bootLog signatures [], negativeControl ok (agent-preset/invalid). bundle-lifecycle PASS (exit 0): official `dsh plugin --profile w add <repo>` link: install composes the bundle row, the real web boot serves the corpus/preset/adapter seams, uninstall leaves no residue. b8-boot.mjs 4/4: the dev-flavor patch applies with 0 crash signatures in an isolated DSH_HOME + sandbox HOME (mpd-astgrep/lsp/codegraph rows applied, no MCP child spawn failure), with the HEAD pre-change patch booting identically as a control. Evidence copied to evidence/wave2/b8-binary-resolution/mount-gates/; no --dump-config result is cited as load evidence.\"},{\"criterion\":\"`node scripts/verify-vendor.mjs` still exits 0 and no file under skills/** was modified by this task\",\"status\":\"passed\",\"evidence\":\"verify-vendor exit 0 ([verify-vendor] PASS, every asset OK — the adopted ast-grep/codegraph dists were NOT touched). No skills/** path appears in this task's changedPaths; skills/ carries 10 modifications in the working tree but they belong to t7 (QA workspace isolation), not to this task — the B8 masking fix in skills/dsh-qa/scripts/mcp-call.mjs:36-39 is cross-referenced only.\"}]\n  commandsRun: [{\"command\":\"node skills/dsh-qa/scripts/preset-conformance.mjs\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"PASS exit 0: ok=true, 30 rows checked, parity 31/31, real session created (sessionHeader ok, agentPreset mpd), bootLog signatures [] , negative control ok. Evidence: evidence/wave2/b8-binary-resolution/mount-gates/preset-conformance.result.json (and evidence/dsh-qa/preset-conformance/2026-09-11T05-59-13.776Z/).\"},{\"command\":\"bun skills/dsh-qa/scripts/bundle-lifecycle.mjs\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"PASS exit 0: one-command `dsh plugin --profile w add <repo>` install (link:/root/dshProj/my-power-dsh), real web boot with adapter seams + served corpus/preset, no home copy, layer durability, uninstall with no residue. Embedded boot.log carries `[mpd-codegraph] init status=fail binary=<...>/.toolchain/node_modules/.bin/codegraph` (binary resolved; pre-fix was no-binary). Evidence: mount-gates/bundle-lifecycle.result.json + .boot.log.\"},{\"command\":\"node evidence/wave2/b8-binary-resolution/b8-mcp-gate.mjs  && node evidence/wave2/b8-binary-resolution/b8-packed-gate.mjs  (a real MCP tool call for ast_grep and codegraph)\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"b8-mcp-gate 5/5 exit 0 (checkout layout): real ast_grep search returns totalMatches:1; negative control BINARY_NOT_FOUND; codegraph tools/list + real codegraph_explore content; codegraph negative control skipped. b8-packed-gate 7/7 exit 0 (packed layout, real npm pack + tarball install): createRequire tier for both binaries, real ast-grep search, codegraph tool surface, negative control holds. Results: mcp-gate.result.json / packed-gate.result.json.\"},{\"command\":\"node evidence/session-workspace-root/dist-repair/sweep.mjs --clean-room\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"exit 0: packages with dist/index.js: 16; FRESH byte-identical: 16; FRESH banner-only: 0; STALE: 0; clean-room pass1==pass2 16/16 and committed==pass2 16/16 (mpd-codegraph-plugin/dist rebuilt from the repo root). Evidence: evidence/wave2/b8-binary-resolution/sweep-clean-room.txt.\"},{\"command\":\"node scripts/verify-vendor.mjs\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"exit 0: [verify-vendor] PASS, every vendored asset OK (incl. packages/mpd-mcp-codegraph/dist/serve.js and packages/mpd-mcp-astgrep/dist/cli.js byte-identical — the adopted dists were NOT touched).\"}]\n  changedPaths: [\"packages/mpd-bundle/cordis.patch.yml\",\"packages/mpd-codegraph-plugin/src/index.ts\",\"packages/mpd-codegraph-plugin/dist/index.js\",\"evidence/wave2/b8-binary-resolution\"]\nOpen findings: 0",
+  "unknownId": "task \"t-does-not-exist\" does not exist in team \"MPD Wave 2\" (known tasks: t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12)",
+  "blankId": "task_id is required",
+  "memberRead": {
+    "ok": true,
+    "in_scope": [
+      "packages/mpd-bundle/cordis.patch.yml",
+      "packages/mpd-bootstrap-plugin/src",
+      "packages/mpd-bootstrap-plugin/dist/index.js",
+      "packages/mpd-codegraph-plugin/src",
+      "packages/mpd-codegraph-plugin/dist/index.js",
+      "docs",
+      "evidence/wave2/b8-binary-resolution"
+    ],
+    "out_of_scope": [
+      "skills/**",
+      "VENDOR_LOCK.json",
+      "packages/mpd-agent-teams-plugin/**",
+      "packages/mpd-verif-plugin/src/regress.ts"
+    ],
+    "acceptance_len": 6
+  },
+  "liveSha256After": "37b12d8f907f86eb428fd93b135a5532e6f1d2ad6f17f4576a45a6d70d1a54af",
+  "sandboxSha256After": "37b12d8f907f86eb428fd93b135a5532e6f1d2ad6f17f4576a45a6d70d1a54af",
+  "liveUntouched": true,
+  "sandboxUntouched": true,
+  "declared": {
+    "subject": "B8: make the ast-grep/codegraph MCP binaries resolvable in both install layouts",
+    "kind": "implementation",
+    "status": "in_progress",
+    "assignee": "Deep Worker",
+    "attempt": 2,
+    "attemptId": "4a4f14d4-afe8-473d-8088-76b1405d0a3f",
+    "dependencies": [
+      "t1"
+    ],
+    "objective": "Make the ast-grep (and, if t1 scopes it here, codegraph) binaries resolvable in both install layouts, so the MCP tools work instead of returning BINARY_NOT_FOUND.",
+    "inScope": [
+      "packages/mpd-bundle/cordis.patch.yml",
+      "packages/mpd-bootstrap-plugin/src",
+      "packages/mpd-bootstrap-plugin/dist/index.js",
+      "packages/mpd-codegraph-plugin/src",
+      "packages/mpd-codegraph-plugin/dist/index.js",
+      "docs",
+      "evidence/wave2/b8-binary-resolution"
+    ],
+    "outOfScope": [
+      "skills/**",
+      "VENDOR_LOCK.json",
+      "packages/mpd-agent-teams-plugin/**",
+      "packages/mpd-verif-plugin/src/regress.ts"
+    ],
+    "acceptance": [
+      "The resolution mechanism decided in t1 is implemented exactly; any deviation is reported as a finding rather than taken silently",
+      "`__ast_grep` tools work end-to-end: a real `mcp__ast_grep__search` (or the equivalent MCP call path) returns a real result instead of BINARY_NOT_FOUND, demonstrated in a boot whose process cwd differs from the session workspace",
+      "The codegraph path is fixed to the same standard if t1 scoped it here: the boot log no longer reports `[mpd-codegraph] init status=no-binary`, and a real codegraph call or probe succeeds",
+      "Both install layouts are addressed as t1 required: state explicitly whether the mechanism works for a packed install, and if it cannot be tested here, say so rather than implying it was",
+      "The change is proven by a MOUNTING boot (isolated DSH_HOME + sandbox HOME) with 0 apply-crash signatures, plus the preset-conformance case still reporting ok:true with its negative control — a patch/preset row change cannot be validated by `--dump-config` alone",
+      "`node scripts/verify-vendor.mjs` still exits 0 and no file under skills/** was modified by this task"
+    ],
+    "verify": [
+      "node skills/dsh-qa/scripts/preset-conformance.mjs",
+      "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs",
+      "a real MCP tool call for ast_grep (and codegraph if scoped here)",
+      "node evidence/session-workspace-root/dist-repair/sweep.mjs --clean-room",
+      "node scripts/verify-vendor.mjs"
+    ]
+  },
+  "fieldComparison": [
+    {
+      "field": "task_id",
+      "match": true,
+      "reported": "t6",
+      "declared": "t6"
+    },
+    {
+      "field": "subject",
+      "match": true,
+      "reported": "B8: make the ast-grep/codegraph MCP binaries resolvable in both install layouts",
+      "declared": "B8: make the ast-grep/codegraph MCP binaries resolvable in both install layouts"
+    },
+    {
+      "field": "kind",
+      "match": true,
+      "reported": "implementation",
+      "declared": "implementation"
+    },
+    {
+      "field": "status",
+      "match": true,
+      "reported": "in_progress",
+      "declared": "in_progress"
+    },
+    {
+      "field": "assignee",
+      "match": true,
+      "reported": "Deep Worker",
+      "declared": "Deep Worker"
+    },
+    {
+      "field": "attempt",
+      "match": true,
+      "reported": "2",
+      "declared": "2"
+    },
+    {
+      "field": "attempt_id",
+      "match": true,
+      "reported": "4a4f14d4-afe8-473d-8088-76b1405d0a3f",
+      "declared": "4a4f14d4-afe8-473d-8088-76b1405d0a3f"
+    },
+    {
+      "field": "dependencies",
+      "match": true,
+      "reported": "[\"t1\"]",
+      "declared": "[\"t1\"]"
+    },
+    {
+      "field": "objective",
+      "match": true,
+      "reported": "Make the ast-grep (and, if t1 scopes it here, codegraph) binaries resolvable in both install layouts, so the MCP tools work instead of returning BINARY_NOT_FOUN",
+      "declared": "Make the ast-grep (and, if t1 scopes it here, codegraph) binaries resolvable in both install layouts, so the MCP tools work instead of returning BINARY_NOT_FOUN"
+    },
+    {
+      "field": "in_scope",
+      "match": true,
+      "reported": "[\"packages/mpd-bundle/cordis.patch.yml\",\"packages/mpd-bootstrap-plugin/src\",\"packages/mpd-bootstrap-plugin/dist/index.js\",\"packages/mpd-codegraph-plugin/src\",\"p",
+      "declared": "[\"packages/mpd-bundle/cordis.patch.yml\",\"packages/mpd-bootstrap-plugin/src\",\"packages/mpd-bootstrap-plugin/dist/index.js\",\"packages/mpd-codegraph-plugin/src\",\"p"
+    },
+    {
+      "field": "out_of_scope",
+      "match": true,
+      "reported": "[\"skills/**\",\"VENDOR_LOCK.json\",\"packages/mpd-agent-teams-plugin/**\",\"packages/mpd-verif-plugin/src/regress.ts\"]",
+      "declared": "[\"skills/**\",\"VENDOR_LOCK.json\",\"packages/mpd-agent-teams-plugin/**\",\"packages/mpd-verif-plugin/src/regress.ts\"]"
+    },
+    {
+      "field": "acceptance",
+      "match": true,
+      "reported": "[\"The resolution mechanism decided in t1 is implemented exactly; any deviation is reported as a finding rather than taken silently\",\"`__ast_grep` tools work end",
+      "declared": "[\"The resolution mechanism decided in t1 is implemented exactly; any deviation is reported as a finding rather than taken silently\",\"`__ast_grep` tools work end"
+    },
+    {
+      "field": "verify",
+      "match": true,
+      "reported": "[\"node skills/dsh-qa/scripts/preset-conformance.mjs\",\"bun skills/dsh-qa/scripts/bundle-lifecycle.mjs\",\"a real MCP tool call for ast_grep (and codegraph if scope",
+      "declared": "[\"node skills/dsh-qa/scripts/preset-conformance.mjs\",\"bun skills/dsh-qa/scripts/bundle-lifecycle.mjs\",\"a real MCP tool call for ast_grep (and codegraph if scope"
+    }
+  ],
+  "allFieldsMatch": true
+}

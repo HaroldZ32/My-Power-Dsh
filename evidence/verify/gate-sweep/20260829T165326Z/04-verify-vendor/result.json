@@ -1,0 +1,8 @@
+{
+  "gate": "04-verify-vendor",
+  "ok": true,
+  "exit": 0,
+  "command": "node scripts/verify-vendor.mjs",
+  "note": "[verify-vendor] PASS (all 6 assets OK)",
+  "evidenceDir": "evidence/verify/gate-sweep/20260829T165326Z/04-verify-vendor"
+}

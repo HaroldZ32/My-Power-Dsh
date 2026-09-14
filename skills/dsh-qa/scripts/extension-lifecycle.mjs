@@ -1,0 +1,431 @@
+#!/usr/bin/env node
+// Case extension-lifecycle: the MPD extension interface, end to end, on a REAL
+// mounted boot in isolation.
+//
+// WHAT CARRIES THE PROOF
+//   1. a REAL `dsh` process (mpd-headless rows composed from THIS checkout,
+//      sandboxed DSH_HOME + HOME + session cwd). The model step is answered by a
+//      local OpenAI-shaped stub (see extension-isolation.mjs), so the tool calls
+//      are really executed by the session and need no provider credential.
+//   2. every claim is read from the HARNESS's own session log
+//      (`lib/session-evidence.mjs`: `tool/call` + non-error `tool/result`, and
+//      `request/header.header.tools[]` for the offered tool list) — never from
+//      the model's prose.
+//   3. the data plane is exercised the way an author uses it: a directory with
+//      `mpd-ext.json` dropped into `<sandbox-ws>/.mpd/extensions/`, discovered
+//      PER CALL, plus a user-plane extension for the kinds the project plane is
+//      forbidden to contribute (roles; `mcp`/`roles` there are rejected per item
+//      by design — C14).
+//
+// ARMS
+//   main            — the project extension is LISTED, its flow is discoverable
+//                     and loadable, its skill is served through the catalog, and
+//                     the user-plane extension's role answers mpd_role_persona
+//                     AND really spawns (the stub answers the child).
+//   failure         — one deliberately broken extension of each kind sits next to
+//                     a healthy one: the boot stays green, the session still
+//                     completes a turn (the malformed skill candidates must not
+//                     break the pre-step), and every broken item is REPORTED
+//                     per item. The extension CLI is used as an independent
+//                     oracle over the same directories.
+//   isolation       — two sessions on ONE host root, different cwds, plus a
+//                     two-sided control (a decoy extension in the LAUNCHER cwd is
+//                     visible to no session; the same decoy IS listed when a
+//                     session's own cwd is that directory).
+//   packed          — runs `node scripts/pack-mpd.mjs` and records the state of
+//                     the packed tree. This wave's expectation is a RED: the
+//                     packed tree does not yet carry `packages/mpd-ext-plugin` or
+//                     `extensions/`, so the packed boot cannot resolve the row.
+//                     THE FIX IS t11's (`PLUGIN_PKGS` + the `extensions/` asset +
+//                     the packed manifest `files`/`exports`) and t11 must produce
+//                     the GREEN packed boot; this case only RECORDS which of the
+//                     two states the tree is in, with the observable evidence.
+//
+// PREREQ: absent-dsh-binary dsh "install DeepSeek Harness (dsh) on PATH"
+// PREREQ: absent-runtime packages/mpd-ext-plugin/dist/index.js "bun build packages/mpd-ext-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ext-plugin/dist/index.js"
+//
+// --self-test is offline: descriptor-contract fixtures (including the code-plane
+// NaN rank that JSON cannot express), the CLI negative control, the stub
+// protocol, and the composed-row/CLI wiring. Evidence ->
+// evidence/extensions/extension-lifecycle/<ts>/{result.json,output.log}.
+import { spawnSync } from "node:child_process"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { pathToFileURL } from "node:url"
+import {
+  FLOW_JSON, PERSONA_MD, REPO, SKILL_MD, binaryPresent, bootSession, callsOf, crashSignatures, createSandbox,
+  cleanup, gatePrereqs, installProfile, isolationArm, isolationStep, keepRawSession, manifest, makeStubModel,
+  runAsync, sessionEvidence, timestamp, toolResultsByCallId, useStubRoute, writeEvidence, writeExtension,
+} from "./extension-isolation.mjs"
+
+export const SLUG = "extension-lifecycle"
+
+const PROJ_ID = "qa-ext-proj"
+const USER_ID = "qa-ext-user"
+const HEALTHY_ID = "qa-ext-healthy"
+const SKILL_NAME = "qa-ext-skill"
+const FLOW_ID = "qa-ext-flow"
+const ROLE_NAME = "QA Extension Reviewer"
+const PERSONA_MARKER = "QA-MARKER-PERSONA-USER"
+const SKILL_MARKER = "QA-MARKER-SKILL-PROJ"
+const FLOW_MARKER = "QA-MARKER-FLOW-PROJ"
+const ROLE_CHILD_MARKER = "QA-CHILD-MARKER-ROLE"
+const PROJECT_REJECTION = "project-level extensions may contribute skills and flows only"
+
+
+/**
+ * The regression test that WOULD HAVE CAUGHT the seam defect (measured
+ * 2026-09-14): the built row must DECLARE the seams it registers through, and a
+ * boot whose seams are unavailable must be LOUD on stdout and must never print
+ * the success summary. Both halves fail on the pre-fix artifact (`inject: []`
+ * plus an unconditional success line) and pass on the fixed one, so this is a
+ * real falsifiable check rather than a re-statement of the fix.
+ */
+async function seamRegressionCheck(artifactPath) {
+  const distPath = artifactPath ?? join(REPO, "packages", "mpd-ext-plugin", "dist", "index.js")
+  if (!existsSync(distPath)) return "the built plugin dist is missing: " + distPath
+  const dist = await import(pathToFileURL(distPath).href + "?v=" + Date.now())
+  if (!Array.isArray(dist.inject) || !dist.inject.includes("tools") || !dist.inject.includes("skills")) {
+    return "the built row must declare the seams it registers through (inject must include tools and skills; got " + JSON.stringify(dist.inject) + ")"
+  }
+  const captured = []
+  const originalLog = console.log
+  console.log = (...args) => { captured.push(args.map((part) => String(part)).join(" ")) }
+  try {
+    // HOSTILE ctx: the services are NOT plain properties and get() resolves
+    // nothing — the exact composition that used to fail with no visible line.
+    const ctx = { logger: { warn: () => {} }, get: () => undefined, provide: () => {} }
+    await dist.apply(ctx, {})
+  } catch (error) {
+    console.log = originalLog
+    return "apply threw out of the row (it must contain every failure): " + String(error && error.message ? error.message : error)
+  } finally {
+    console.log = originalLog
+  }
+  const text = captured.join("\n")
+  if (!/FATAL/.test(text)) return "an unavailable seam must be reported LOUDLY on stdout, not only through ctx.logger.warn"
+  if (/mpdExtensions provided/.test(text)) return "the success summary must never be printed when the four tools did not register"
+  return undefined
+}
+
+async function selfTest() {
+  const problems = []
+  const check = (condition, message) => { if (!condition) problems.push(message) }
+
+  // 1) the bundle really composes the row this case boots.
+  const patch = readFileSync(join(REPO, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
+  check(/- id: mpd-ext\b/.test(patch), "the bundle patch does not carry the mpd-ext row")
+  check(patch.includes("packages/mpd-ext-plugin/dist/index.js"), "the mpd-ext row does not point at the plugin dist")
+  const installer = readFileSync(join(REPO, "scripts", "install-profile.mjs"), "utf8")
+  check(installer.includes('"mpd-ext"'), "install-profile.mjs does not write the mpd-ext row")
+
+  // 2) the descriptor contract rejects what this case's failure arm relies on,
+  //    including the code-plane `rank: NaN` that a JSON manifest cannot express.
+  const registry = join(REPO, "packages", "mpd-ext-plugin", "src", "registry.ts")
+  check(existsSync(registry), "the runtime validator source is missing")
+  if (existsSync(registry)) {
+    const result = spawnSync("bun", ["-e", [
+      'import { validateDescriptor } from "' + registry + '"',
+      'const bad = validateDescriptor({ apiVersion: 1, id: "x", contributes: { skills: [{ root: "skills", rank: Number.NaN }], flows: [{ dir: "../escape" }] } })',
+      'const version = validateDescriptor({ apiVersion: 9, id: "x" })',
+      'const noId = validateDescriptor({ apiVersion: 1 })',
+      'console.log(JSON.stringify({ skills: bad.descriptor?.contributes.skills.length, flows: bad.descriptor?.contributes.flows.length, reasons: bad.errors.map((e) => e.item), versionRejected: version.rejected, noIdRejected: noId.rejected }))',
+    ].join("; ")], { encoding: "utf8", timeout: 120000 })
+    check(result.status === 0, "the validator probe failed: " + (result.stderr ?? "").slice(0, 200))
+    let parsed = {}
+    try { parsed = JSON.parse((result.stdout ?? "").trim()) } catch { /* reported below */ }
+    check(parsed.skills === 0, "a NaN rank must reject the skills item")
+    check(parsed.flows === 0, "an escaping flows dir must reject the flows item")
+    check(parsed.versionRejected === true, "apiVersion 9 must reject the descriptor")
+    check(parsed.noIdRejected === true, "a missing id must reject the descriptor")
+  }
+
+  // 3) the extension developer CLI is a working independent oracle.
+  const cli = join(REPO, "scripts", "mpd-ext.mjs")
+  check(existsSync(cli), "the extension developer CLI (scripts/mpd-ext.mjs) is missing")
+  if (existsSync(cli)) {
+    const okRun = spawnSync("bun", [cli, "validate", join(REPO, "extensions", "mpd-ext-example")], { encoding: "utf8", timeout: 120000 })
+    check(okRun.status === 0, "the CLI must accept the shipped example (exit " + okRun.status + ")")
+  }
+
+  // 4) the fixtures this case writes are contract-shaped, and the skill fixture
+  //    is a servable candidate (non-empty description).
+  const projectManifest = manifest(PROJ_ID, { skills: [{ root: "skills" }], flows: [{ dir: "flows" }] })
+  check(projectManifest.apiVersion === 1, "the fixture manifest must declare apiVersion 1")
+  check(FLOW_JSON(FLOW_ID, "QA flow", FLOW_MARKER).id === FLOW_ID, "the flow fixture must carry the requested id")
+  check(FLOW_JSON(FLOW_ID, "QA flow", FLOW_MARKER).steps.length > 0, "the flow fixture must carry steps")
+  check(SKILL_MD(SKILL_NAME, SKILL_MARKER).includes(SKILL_MARKER), "the skill fixture must carry its marker")
+  check(/description: ".+"/.test(SKILL_MD(SKILL_NAME, SKILL_MARKER)), "the skill fixture must declare a non-empty description")
+
+  // 5) the regression test for the seam defect (declared seams + loud failure +
+  //    no false success claim), proven FALSIFIABLE: the same check must go RED on
+  //    a mutated copy of the built artifact (the pre-fix `inject: []`, and a
+  //    forced success branch). A check that cannot fail proves nothing.
+  const seamProblem = await seamRegressionCheck()
+  check(seamProblem === undefined, String(seamProblem))
+
+  const distSource = readFileSync(join(REPO, "packages", "mpd-ext-plugin", "dist", "index.js"), "utf8")
+  const mutations = [
+    { name: "pre-fix inject", from: "var inject = [...REQUIRED_SEAMS];", to: "var inject = [];" },
+    { name: "forced success branch", from: "if (missingTools.length > 0) {", to: "if (false) {" },
+  ]
+  const mutateDir = mkdtempSync(join(tmpdir(), "mpd-ext-mutant-"))
+  try {
+    for (const mutation of mutations) {
+      if (!distSource.includes(mutation.from)) {
+        check(false, "mutation anchor missing from the bundle (" + mutation.name + "): " + mutation.from)
+        continue
+      }
+      const mutantPath = join(mutateDir, mutation.name.replace(/[^a-z0-9]+/gi, "-") + ".mjs")
+      writeFileSync(mutantPath, distSource.replace(mutation.from, mutation.to))
+      const red = await seamRegressionCheck(mutantPath)
+      check(red !== undefined, "the seam check must go RED on the "+ mutation.name + " mutant, but it passed")
+    }
+  } finally {
+    rmSync(mutateDir, { recursive: true, force: true })
+  }
+
+  if (problems.length > 0) {
+    for (const problem of problems) console.error("[" + SLUG + " self-test] FAIL: " + problem)
+    process.exit(1)
+  }
+  console.log("[" + SLUG + " self-test] ok: composed row + validator rejections (incl. NaN rank via the code plane) + CLI oracle + seam regression (inject declared, failure LOUD, no false success) + fixtures verified")
+}
+
+// ── arms ────────────────────────────────────────────────────────────────────
+
+async function mainArm({ box, outDir, logs }) {
+  const projectSkills = join(box.ws, ".mpd", "extensions")
+  writeExtension(projectSkills, PROJ_ID, manifest(PROJ_ID, {
+    skills: [{ root: "skills" }],
+    flows: [{ dir: "flows" }],
+    // Both kinds below are ILLEGAL in the project plane (process-global
+    // registration cannot be scoped to a session): they must be rejected per
+    // item with the stated reason and contribute nothing.
+    mcp: [{ serverName: "qa_proj_mcp", transport: "stdio", command: "node" }],
+    roles: [{ name: "QA Project Role", persona: "persona.md" }],
+  }), {
+    skills: { [SKILL_NAME]: SKILL_MD(SKILL_NAME, SKILL_MARKER) },
+    flows: { [FLOW_ID + ".json"]: FLOW_JSON(FLOW_ID, "QA extension flow", FLOW_MARKER) },
+    files: { "persona.md": PERSONA_MD("PROJ") },
+  })
+  writeExtension(join(box.runHome, ".mpd", "extensions"), USER_ID, manifest(USER_ID, {
+    skills: [{ root: "skills" }],
+    roles: [{ name: ROLE_NAME, description: "QA extension role", readonly: true, persona: "persona.md" }],
+  }), {
+    skills: { "qa-ext-user-skill": SKILL_MD("qa-ext-user-skill", "USER") },
+    files: { "persona.md": PERSONA_MD(PERSONA_MARKER) },
+  })
+
+  const script = [
+    { tool: "mpd_ext_list", args: {} },
+    { tool: "mpd_ext_show", args: { id: PROJ_ID } },
+    { tool: "mpd_flow_list", args: {} },
+    { tool: "mpd_flow_show", args: { id: FLOW_ID } },
+    { tool: "skill", args: { name: SKILL_NAME } },
+    { tool: "mpd_role_persona", args: { role: ROLE_NAME } },
+    { tool: "mpd_role_spawn", args: { role: ROLE_NAME, task: "Reply with exactly " + ROLE_CHILD_MARKER } },
+    { text: "lifecycle-main-done" },
+  ]
+  // A spawned role child must report through the harness's `structured_output`
+  // tool (the subagent driver attaches it), so the stub drives that call — an
+  // empty summary would otherwise look like a successful spawn with no child turn.
+  const stub = makeStubModel({
+    script,
+    childMarker: ROLE_CHILD_MARKER,
+    childAnswer: ROLE_CHILD_MARKER + "-OK",
+    childScript: [{ tool: "structured_output", args: { role: ROLE_NAME, summary: ROLE_CHILD_MARKER + "-OK", recommendation: "none", details: "extension-lifecycle QA", evidence: ["mpd_role_spawn"] } }],
+    label: "lifecycle-main",
+  })
+  const port = await stub.listen()
+  useStubRoute(box.dshHome, port)
+  const run = await bootSession({ slug: SLUG, env: box.env, cwd: box.ws, prompt: "Run the extension inspection calls in order, then report what you saw.", stub })
+  const names = ["mpd_ext_list", "mpd_ext_show", "mpd_flow_list", "mpd_flow_show", "skill", "mpd_role_persona", "mpd_role_spawn"]
+  const evidence = sessionEvidence(box.dshHome, box.ws, names)
+  await stub.close()
+  keepRawSession(outDir, "main", evidence.store)
+  logs.push("=== main arm (exit " + run.status + ", " + run.durationMs + "ms) ===\n" + run.out.slice(-6000))
+  // Bind every assertion to ITS OWN call result: `findToolCall().resultText` joins
+  // the results of every call of that tool name, which would let one call's text
+  // satisfy another call's assertion.
+  const results = toolResultsByCallId(evidence.store)
+  const text = (name) => {
+    const call = callsOf(evidence.store, name)[0]
+    return call === undefined ? "" : (results.get(call.callId)?.text ?? "")
+  }
+  const offered = stub.trace[0]?.offeredTools ?? []
+  return {
+    ok: run.status === 0
+      && names.every((name) => evidence.calls[name]?.succeeded === true)
+      && text("mpd_ext_list").includes(PROJ_ID)
+      && text("mpd_ext_list").includes(USER_ID)
+      && text("mpd_ext_list").includes(PROJECT_REJECTION)
+      && text("mpd_flow_show").includes(FLOW_MARKER)
+      && text("skill").includes(SKILL_MARKER)
+      && text("mpd_role_persona").includes(PERSONA_MARKER)
+      && text("mpd_role_spawn").includes(ROLE_CHILD_MARKER + "-OK"),
+    exit: run.status,
+    durationMs: run.durationMs,
+    offeredExtTools: offered.filter((name) => name.startsWith("mpd_ext_") || name.startsWith("mpd_flow_")),
+    recordedTools: names.filter((name) => evidence.names.includes(name)),
+    calls: Object.fromEntries(names.map((name) => [name, {
+      succeeded: Boolean(evidence.calls[name]?.succeeded),
+      reason: evidence.calls[name]?.reason ?? "",
+      resultHead: text(name).slice(0, 240),
+    }])),
+    sawProjectId: text("mpd_ext_list").includes(PROJ_ID),
+    sawUserId: text("mpd_ext_list").includes(USER_ID),
+    sawProjectRejection: text("mpd_ext_list").includes(PROJECT_REJECTION),
+    sawFlow: text("mpd_flow_show").includes(FLOW_MARKER),
+    sawSkill: text("skill").includes(SKILL_MARKER),
+    sawPersona: text("mpd_role_persona").includes(PERSONA_MARKER),
+    sawRoleChild: text("mpd_role_spawn").includes(ROLE_CHILD_MARKER + "-OK"),
+    crashSignatures: crashSignatures(run.out),
+    isolation: isolationStep(box.dshHome, box.sandbox, SLUG + ":main"),
+  }
+}
+
+async function failureArm({ box, outDir, logs }) {
+  const root = join(box.ws, ".mpd", "extensions")
+  writeExtension(root, "qa-bad-json", "{ this is not json")
+  writeExtension(root, "qa-bad-version", { apiVersion: 9, id: "qa-bad-version", contributes: {} })
+  writeExtension(root, "qa-bad-skill", manifest("qa-bad-skill", { skills: [{ root: "skills" }], flows: [{ dir: "flows", rank: "300" }] }), {
+    skills: {
+      "qa-good-sibling": SKILL_MD("qa-good-sibling", "SIBLING"),
+      "qa-broken-empty": SKILL_MD("qa-broken-empty", "BROKEN", ""),
+      "QA-BAD-NAME": SKILL_MD("QA-BAD-NAME", "BROKEN"),
+    },
+  })
+  writeExtension(root, "qa-bad-asset", manifest("qa-bad-asset", { skills: [{ root: "../escape" }] }))
+  writeExtension(root, HEALTHY_ID, manifest(HEALTHY_ID, { skills: [{ root: "skills" }], flows: [{ dir: "flows" }] }), {
+    skills: { "qa-ext-healthy-skill": SKILL_MD("qa-ext-healthy-skill", "HEALTHY") },
+    flows: { "qa-ext-healthy-flow.json": FLOW_JSON("qa-ext-healthy-flow", "Healthy flow", "HEALTHY-FLOW") },
+  })
+  writeExtension(root, "qa-project-host-kinds", manifest("qa-project-host-kinds", {
+    skills: [{ root: "skills" }],
+    mcp: [{ serverName: "qa_proj_only", transport: "stdio", command: "node" }],
+    roles: [{ name: "QA Project Only", persona: "persona.md" }],
+  }), { skills: { "qa-project-host-kind-skill": SKILL_MD("qa-project-host-kind-skill", "PROJHOST") }, files: { "persona.md": PERSONA_MD("PROJONLY") } })
+
+  const stub = makeStubModel({
+    script: [
+      { tool: "mpd_ext_list", args: {} },
+      { tool: "mpd_flow_list", args: {} },
+      { tool: "mpd_flow_show", args: { id: "qa-ext-healthy-flow" } },
+      { text: "lifecycle-failure-done" },
+    ],
+    label: "lifecycle-failure",
+  })
+  const port = await stub.listen()
+  useStubRoute(box.dshHome, port)
+  const run = await bootSession({ slug: SLUG, env: box.env, cwd: box.ws, prompt: "List the extensions, the flows and show the healthy flow.", stub })
+  const evidence = sessionEvidence(box.dshHome, box.ws, ["mpd_ext_list", "mpd_flow_list", "mpd_flow_show"])
+  await stub.close()
+  keepRawSession(outDir, "failure", evidence.store)
+  logs.push("=== failure arm (exit " + run.status + ") ===\n" + run.out.slice(-6000))
+  const listed = evidence.calls.mpd_ext_list?.resultText ?? ""
+
+  // The CLI is an independent oracle over the SAME directories: it must accept
+  // the healthy extension and reject each broken one per item.
+  const cli = join(REPO, "scripts", "mpd-ext.mjs")
+  const cliChecks = {}
+  for (const id of ["qa-bad-json", "qa-bad-version", "qa-bad-skill", "qa-bad-asset", HEALTHY_ID]) {
+    const result = spawnSync("bun", [cli, "validate", join(root, id)], { encoding: "utf8", timeout: 120000 })
+    cliChecks[id] = { exit: result.status, tail: ((result.stderr ?? "") + (result.stdout ?? "")).trim().split("\n").slice(-2).join(" | ").slice(0, 200) }
+  }
+  return {
+    ok: run.status === 0
+      && Boolean(evidence.calls.mpd_ext_list?.succeeded)
+      && Boolean(evidence.calls.mpd_flow_list?.succeeded)
+      && Boolean(evidence.calls.mpd_flow_show?.succeeded)
+      && listed.includes(HEALTHY_ID)
+      && evidence.calls.mpd_flow_show.resultText.includes("HEALTHY-FLOW")
+      && listed.includes("qa-bad-version")
+      && listed.includes("rejected")
+      && listed.includes(PROJECT_REJECTION)
+      && cliChecks[HEALTHY_ID].exit === 0
+      && ["qa-bad-json", "qa-bad-version", "qa-bad-skill", "qa-bad-asset"].every((id) => cliChecks[id].exit === 1),
+    exit: run.status,
+    sessionCompleted: run.status === 0,
+    listedHealthy: listed.includes(HEALTHY_ID),
+    flowToolStillWorks: evidence.calls.mpd_flow_show?.resultText.includes("HEALTHY-FLOW") ?? false,
+    reportedProjectRejection: listed.includes(PROJECT_REJECTION),
+    reportedRejections: ["qa-bad-json", "qa-bad-version"].filter((id) => listed.includes(id)),
+    cliChecks,
+    crashSignatures: crashSignatures(run.out),
+    resultHead: listed.slice(0, 600),
+    isolation: isolationStep(box.dshHome, box.sandbox, SLUG + ":failure"),
+  }
+}
+
+async function packedArm({ outDir, logs }) {
+  const packRun = await runAsync(process.execPath, [join(REPO, "scripts", "pack-mpd.mjs")], { cwd: REPO, timeoutMs: 900000 })
+  const packed = join(REPO, "dist", "mpd-package")
+  const packedPlugin = join(packed, "packages", "mpd-ext-plugin")
+  const packedExtensions = join(packed, "extensions")
+  const packedPatch = join(packed, "cordis.patch.yml")
+  const patchText = existsSync(packedPatch) ? readFileSync(packedPatch, "utf8") : ""
+  const hasRow = /- id: mpd-ext\b/.test(patchText)
+  const hasPlugin = existsSync(packedPlugin)
+  const hasExtensions = existsSync(packedExtensions)
+  // Import-time artifact of the reference extension: the packed tree must carry it
+  // BEFORE the row can contribute anything, which is exactly what t11 fixes.
+  const red = hasRow && (!hasPlugin || !hasExtensions)
+  logs.push("=== packed arm (pack exit " + packRun.status + ") ===\n" + packRun.out.slice(-3000))
+  return {
+    ok: packRun.status === 0 && hasRow && (hasPlugin && hasExtensions ? true : red),
+    packExit: packRun.status,
+    packedRoot: packed,
+    rows: { mpdExtRowInPackedPatch: hasRow },
+    assets: { pluginDist: hasPlugin, extensionsAsset: hasExtensions },
+    // The RED is a PROPERTY OF THE TREE, not of this case: t11 owns the fix and
+    // the GREEN packed boot (PLUGIN_PKGS + the extensions/ asset + the packed
+    // manifest files/exports). This case records which state the tree is in.
+    status: hasPlugin && hasExtensions ? "GREEN (t11's pack fix has landed: the packed tree carries the plugin and extensions/)" : "RED (expected for this wave: the packed tree cannot resolve the mpd-ext row / discover <bundle>/extensions; the GREEN is t11's)",
+    greenOwner: "t11",
+    note: "no packed-tree file was modified by this case; the expectation is recorded, never patched",
+    packTail: packRun.out.trim().split("\n").slice(-3).join(" | ").slice(0, 300),
+  }
+}
+
+async function runReal() {
+  gatePrereqs({ slug: SLUG, prereqs: [
+    { code: "absent-dsh-binary", probe: "dsh", remedy: "install DeepSeek Harness (dsh) on PATH", present: () => binaryPresent("dsh") },
+    { code: "absent-runtime", probe: "packages/mpd-ext-plugin/dist/index.js", remedy: "bun build packages/mpd-ext-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ext-plugin/dist/index.js", present: () => existsSync(join(REPO, "packages", "mpd-ext-plugin", "dist", "index.js")) },
+  ] })
+  const ts = timestamp()
+  const outDir = join(REPO, "evidence", "extensions", SLUG, ts)
+  mkdirSync(outDir, { recursive: true })
+  const box = createSandbox(SLUG)
+  const logs = []
+  const steps = {}
+  do {
+    const inst = await installProfile({ sandbox: box.sandbox, dshHome: box.dshHome, env: box.env })
+    steps.install = { ok: inst.status === 0, exit: inst.status, tail: inst.out.slice(-400) }
+    logs.push("=== install ===\n" + inst.out.slice(-2000))
+    if (!steps.install.ok) break
+    steps.main = await mainArm({ box, outDir, logs })
+    steps.failure = await failureArm({ box, outDir, logs })
+    const iso = await isolationArm({ slug: SLUG, sandbox: box.sandbox, dshHome: box.dshHome, env: box.env, decoy: box.decoy, outDir })
+    steps.isolation = { ok: iso.steps.ok, sessions: iso.steps }
+    logs.push(...iso.logs)
+    steps.packed = await packedArm({ outDir, logs })
+  } while (false)
+  steps.isolationFinal = isolationStep(box.dshHome, box.sandbox, SLUG)
+  const ok = Object.values(steps).every((step) => step.ok === true)
+  const wrote = writeEvidence(outDir, SLUG, {
+    ok,
+    sandbox: box.sandbox,
+    arms: "main (mount + list + flow + skill + role persona/spawn) | failure (broken of each kind beside a healthy one, CLI oracle) | isolation (two sessions, one host, decoy control) | packed (t5 records the state; t11 owns the GREEN)",
+    rankLadder: "100 project-dsh < 200 project-agents < 250 runtime < 300 ours < 400 user-dsh < 500 user-agents < 600 bundled; lower wins inside a layer, nearest layer wins outright",
+    steps,
+  }, logs.join("\n\n"))
+  cleanup(box.sandbox)
+  process.exit(ok ? 0 : 1)
+}
+
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  if (process.argv.includes("--self-test")) await selfTest()
+  else await runReal()
+}

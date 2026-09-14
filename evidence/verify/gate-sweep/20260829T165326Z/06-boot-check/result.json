@@ -1,0 +1,12 @@
+{
+  "gate": "06-boot-check",
+  "ok": true,
+  "exit": 0,
+  "dshHomeSandbox": true,
+  "sandboxPrefix": true,
+  "missing": [],
+  "expectedCount": 19,
+  "credentialsCopiedOnce": true,
+  "realHomeUntouched": true,
+  "dumpBytes": 20752
+}

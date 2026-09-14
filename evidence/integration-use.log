@@ -1,0 +1,8 @@
+CodeGraph MCP skipped: project excluded by OMO CodeGraph policy.
+All 4 steps completed and verified. Final report:
+
+- **memory**: `mission` saved → `review sample.c` ✓
+- **resolve**: role `librarian` → `deepseek-official/deepseek-v4-flash` (chain 1 entries) ✓
+- **teamId**: `team-8d3d3776` (2 members: librarian + oracle; both contributed suggestions) ✓
+- **ulw**: `status=complete rounds=1` — wrote both members' suggestions to `tests/golden/out/integration-review.md` (verified, 25 lines) ✓
+EXIT=0

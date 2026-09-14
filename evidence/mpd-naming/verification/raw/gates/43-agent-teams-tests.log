@@ -1,0 +1,371 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-agent-teams-plugin/self-fix-tests/scope-semantics.test.mjs:
+(pass) B5: a directory pattern covers its contents WITHOUT a trailing slash [0.76ms]
+(pass) B5: trailing slash and non-trailing slash are equivalent [0.10ms]
+(pass) B5: exact file patterns still match exactly, siblings and suffixes do not [0.21ms]
+(pass) B5: root pattern matches everything; illegal/absolute patterns never match [0.16ms]
+(pass) B5: classifyChangedPath — directory inScope covers files, outOfScope wins [0.40ms]
+(pass) B6: completion reports ALL undeclared paths at once with the owning task id and a fix hint [0.80ms]
+(pass) B6: completion passes when a directory pattern (no trailing slash) covers every changed path [0.13ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs:
+(pass) DEFECT 1: a declared glob covers the files beneath it [1.56ms]
+(pass) DEFECT 1 negative control: globs do not over-match [0.12ms]
+(pass) DEFECT 1: every no-wildcard declaration keeps the pre-delta B5 semantics [0.17ms]
+(pass) DEFECT 1: the completion gate accepts a glob-declared changedPath and still rejects an undeclared one [0.26ms]
+(pass) DEFECT 2 reproduction: the pre-fix generator listed one path in BOTH lists [0.87ms]
+(pass) DEFECT 2 fix: the finding's required path is CARVED OUT of the inherited prohibition [0.52ms]
+(pass) DEFECT 2 fix, REAL wave-1 inputs (team mpd-default-7332aba4 t7 + t10): the required edit is in scope [0.49ms]
+(pass) DEFECT 2 falsifiability: the contradiction guard must not reject legitimate carve-outs [0.45ms]
+(pass) DEFECT 2 falsifiability: the write-task overlap guard is a real may-two-writers-touch-it relation [0.44ms]
+(pass) durability: the guard refuses when a delta region is missing (observed failure) [5.11ms]
+(pass) durability: the guard is idempotent on the real tree and restores a stripped tree [209.55ms]
+(pass) F2: every t4-changed line in lib/quality-gates.js sits inside a registered mpd-delta region [55.58ms]
+(pass) F3: healing a RE-MATERIALIZED upstream file refuses instead of emitting a broken module [3.40ms]
+(pass) F3: a clean (region-carrying) tree still heals successfully [86.62ms]
+(pass) F4: stripping every region and healing reproduces the canonical file byte-for-byte [91.96ms]
+(pass) F4: the anchor-indent class is gone with the line keys [0.25ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/quality-loop.test.mjs:
+(pass) Fix1: review auto-wires reviewedTaskId into dependencies (premature dispatch) [0.45ms]
+(pass) Fix1: repair auto-wires sourceTaskId into dependencies [0.12ms]
+(pass) Fix2 + OPT-1: cancelled and FAILED deps are non-blocking; pending still blocks [0.11ms]
+(pass) Fix2: pending dependents blocked only by cancelled deps are cascaded (no deadlock) [0.47ms]
+(pass) Fix3: planQualityFollowUp links reasonTaskId and reason reaches the repair prompt [1.45ms]
+(pass) Fix4: reject without a completed source notifies the captain only (no repair, no escalation) [0.12ms]
+(pass) Fix4: genuine reject of a completed source still escalates [0.07ms]
+(pass) Fix3b: reasonTaskId / reassignReason survive task validation [0.22ms]
+(pass) Fix3c: assignmentPrompt renders reassignReason and captain guidance digest [0.40ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs:
+(pass) t2: strip-healing ALL adopted files from the same state is byte-identical [154.70ms]
+(pass) t2: a stripped tools.js heals byte-for-byte and the task-contract region lands at its canonical line [100.16ms]
+(pass) t2: quality-gates.js strip-heal stays byte-identical (no trade between the two files) [70.84ms]
+(pass) t2: a region heals to its canonical position under partial insertion histories [1931.48ms]
+(pass) t2: every colliding pair is a real prefix collision (the fixture is meaningful) [3.61ms]
+(pass) t2: a nested colliding pair resolves the OUTER region to its OWN end marker [0.20ms]
+(pass) t2: intact control — the resolved span equals the independently grepped lines [5.09ms]
+(pass) t2: a dangling outer END marker is a partially stripped region, never a half-open pair [22.00ms]
+(pass) t2: a dangling outer BEGIN marker is a partially stripped region, never a half-open pair [21.48ms]
+(pass) t2: --write re-brackets a partially stripped region byte-faithfully (both dangling shapes) [522.51ms]
+(pass) t2: the registry carries context pairs and no line-keyed anchor fields [0.54ms]
+(pass) t9 R1: both markers present but inverted is the ONLY row that may say 'half-open marker pair' [4.95ms]
+(pass) t9 R2: begin present + end absent + body byte-equal re-brackets in place (all three pairs) [227.18ms]
+(pass) t9 R3: begin present + end absent + body DRIFTED refuses, naming the region and the line [4.58ms]
+(pass) t9 R4: end present + begin absent + body byte-equal re-brackets in place (all three pairs) [204.56ms]
+(pass) t9 R5: end present + begin absent + NOTHING survived drops the orphan line and heals [83.30ms]
+(pass) t9 (A): assertRegistryFormat refuses the OLD anchor format with the migration message [0.54ms]
+(pass) t9 (A): the CLI refuses a pre-migration registry by name, and --write-registry still migrates [175.94ms]
+(pass) t9: all four states of the ONLY shared seam heal byte-identically [265.75ms]
+(pass) t9: a re-materialized tools.js is REFUSED, byte-untouched, with key counts unchanged [18.16ms]
+(pass) t9: the targeted re-materialize shape (upstream twins restored at the literal) is REFUSED too [24.10ms]
+
+packages/mpd-agent-teams-plugin/test/opt1-failed-dependency.test.mjs:
+(pass) OPT-1: a FAILED dependency no longer blocks its dependent (three-state) [0.15ms]
+(pass) OPT-1 reverse control: a RUNNING dependency still blocks exactly as before [0.17ms]
+(pass) OPT-1: B stays CLAIMABLE after A fails, and its view names the failed dependency [20.15ms]
+(pass) OPT-1: the captain-takeover path (reassign_task) also stops blocking on a failed dep [12.92ms]
+(pass) OPT-1: B dispatches within the scheduler readiness path after A fails [0.13ms]
+(pass) OPT-1: after A is retried to completed, B proceeds on the dependency result [6.38ms]
+
+packages/mpd-agent-teams-plugin/test/opt2-residual-and-ordering.test.mjs:
+{
+  "workspace": "/root/dshProj/my-power-dsh",
+  "stateRoot": "/root/dshProj/my-power-dsh/.mpd/team",
+  "apply": false,
+  "scanned": 5,
+  "reclaimable": 0,
+  "reclaimed": 0,
+  "manifest": [
+    {
+      "teamId": "agent-teams-sidebar-migration",
+      "phase": "running",
+      "tasks": 10,
+      "approved": true,
+      "residual": false,
+      "archived": false
+    },
+    {
+      "teamId": "mpd-default-d92bc69a",
+      "phase": "running",
+      "tasks": 32,
+      "approved": true,
+      "residual": false,
+      "archived": false
+    },
+    {
+      "teamId": "mpd-default-e1f54e18",
+      "phase": "running",
+      "tasks": 18,
+      "approved": true,
+      "residual": false,
+      "archived": false
+    },
+    {
+      "teamId": "mpd-default-db53f0d4",
+      "phase": "running",
+      "tasks": 54,
+      "approved": true,
+      "residual": false,
+      "archived": false
+    },
+    {
+      "teamId": "mpd-default-84e50f06",
+      "phase": "staged",
+      "tasks": 8,
+      "approved": false,
+      "residual": false,
+      "archived": false
+    }
+  ]
+}
+[reclaim-staged-teams] DRY RUN: 0 residual of 5 live team(s) (nothing changed)
+(pass) OPT-2 classification: only empty staged unapproved teams are residual [0.17ms]
+(pass) OPT-2: reclamation archives residue, protects live teams, and emits a manifest [43.97ms]
+(pass) OPT-2: a dry run reclaims nothing [42.32ms]
+(pass) OPT-2 ordering: the preset puts the gate BEFORE the sizing doctrine [0.28ms]
+
+packages/mpd-agent-teams-plugin/test/workmate-key.test.ts:
+(pass) workmateKey maps the five multi-word roster members to kebab keys [0.17ms]
+(pass) workmateKey mirrors sanitizeName edge cases [0.09ms]
+
+packages/mpd-agent-teams-plugin/test/r3-auto-reclaim.test.mjs:
+(pass) R3 assertion 1: three stale empty staged teams are ARCHIVED, not deleted [3.26ms]
+(pass) R3 assertion 2: staged-with-tasks, approved, and running teams are byte-identical [1.79ms]
+(pass) R3 assertion 3: the calling session's OWN stale staged team is never archived [0.94ms]
+(pass) R3: a FRESH staged team is not residue (age threshold is real) [0.67ms]
+(pass) R3 assertion (contract): threshold 0 DISABLES the age gate but still protects live work [1.25ms]
+(pass) R3: the threshold comes from config with a 1 h default [1.75ms]
+(pass) F2 (t22 finalisation): panel view and contract view agree, and a claimable dependent is not blocked [6.93ms]
+
+packages/mpd-agent-teams-plugin/test/session-start.test.ts:
+(pass) policyEnabled: off disables unless the autoRoute gate is enabled [0.15ms]
+(pass) policyQualifies: child sessions never qualify [0.15ms]
+(pass) policyQualifies: allow-list scoping and preset-less coverage [0.07ms]
+(pass) availableTeamId: free base, deterministic per-captain suffix, exhaustion [1.68ms]
+(pass) notices carry the startup marker, mention the team, and are user-role messages [0.58ms]
+(pass) complexity gate: both directions on the frozen prompt sets [1.58ms]
+(pass) explicit flag is consumed out of the goal text [0.10ms]
+(pass) routeDecision: off+autoRoute gates, auto/instruct keep the legacy paths [0.79ms]
+(pass) spliceNotice inserts after the last claimed message and preserves the decision [0.36ms]
+
+packages/mpd-agent-teams-plugin/test/t49-send-dedup-wiring.test.mjs:
+(pass) R1 WIRING: two identical agent_teams_send_message calls -> ONE durable record (at-most-once) [7.99ms]
+(pass) R1 WIRING NEGATIVE CONTROL: different content is NOT folded [4.16ms]
+(pass) R1 WIRING: the captain path dedups too (both append sites are wired) [4.86ms]
+(pass) R1 WIRING: two identical sends with live delivery DOWN -> the scheduler delivers exactly ONCE [7.89ms]
+(pass) R1 SEAM: the scheduler's last delivery gate drops CLEARED tombstones [7.01ms]
+(pass) R1 WIRING: two identical sends -> exactly ONE delivery and exactly ONE task assignment [6.98ms]
+(pass) R1 WIRING: a duplicate send AFTER an acknowledged delivery cannot re-open it [3.85ms]
+
+packages/mpd-agent-teams-plugin/test/update-task-diagnostics.test.mjs:
+(pass) DEFECT 5: an OMITTED attempt_id is reported as required, never as stale ownership [5.01ms]
+(pass) DEFECT 5: a PRESENT but mismatched attempt_id still reports stale ownership [3.81ms]
+(pass) DEFECT 6: an omitted status is rejected instead of silently persisting the rest [2.63ms]
+(pass) DEFECT 6: a blank or out-of-enum status is refused loudly, never persisted [2.06ms]
+(pass) DEFECT 6: the tool contract marks status required and documents the minimal terminal call [1.96ms]
+(pass) the happy path still works: status + current attempt_id completes the task [5.18ms]
+
+packages/mpd-agent-teams-plugin/test/t53-dormant-expiry.test.mjs:
+(pass) R1 DORMANT: a past-due request is expired and its requester TOLD without any scheduler kick [3.09ms]
+(pass) R1 DORMANT NEGATIVE CONTROL: a request still inside its TTL is left ALONE [0.78ms]
+(pass) R1 DORMANT NEGATIVE CONTROL: an empty/absent state root is a no-op, never a throw [0.52ms]
+(pass) R1 DORMANT: the sweep is ONCE PER SESSION, not once per step [2.75ms]
+(pass) R1 DORMANT: the SHIPPED session-start hook runs the sweep (and only the session's own workspace) [1.87ms]
+(pass) R1 DORMANT: a failing sweep degrades to a warning and still returns the decision [0.82ms]
+(pass) R1 DORMANT: room left for the durable side effect — the notice is an ordinary record [1.04ms]
+
+packages/mpd-agent-teams-plugin/test/r1-message-channel.test.mjs:
+(pass) R1 dedup: N identical sends in the window fold to ONE record with dupCount=N [1.41ms]
+(pass) R1 dedup NEGATIVE CONTROL: same content, different from/to is NOT folded [0.85ms]
+(pass) R1 dedup: a send OUTSIDE the 60 s window is a new record (window is real) [0.76ms]
+(pass) R1 clear: archive-first tombstone + recoverable sidecar + audit event [2.48ms]
+(pass) R1 clear NEGATIVE CONTROL: no hard-delete path — cleared bytes survive on disk [1.01ms]
+(pass) R1 interjection: pending requests are NOT deliverable unread (negative control on the read path) [0.84ms]
+(pass) R1 interjection: TTL silence is a DENY (status expired) [1.15ms]
+(pass) R1 interjection: approval is recorded and cannot be re-decided [1.67ms]
+(pass) REPAIR V1: a request WITHOUT content is NORMALIZED (never silently invisible) [1.54ms]
+(pass) REPAIR V1: the content fallback priority is summary -> reason -> location [1.14ms]
+(pass) REPAIR V1: identity is REQUIRED and rejected loudly, naming the field [0.62ms]
+(pass) REPAIR V1: decide distinguishes MALFORMED-but-present from truly ABSENT [1.13ms]
+(pass) REPAIR V1: a normalized request still expires on captain silence (default DENY usable) [1.14ms]
+(pass) R1 SEAM: after a clear -> 0 unread and 0 deliverable (tombstones never re-open) [1.47ms]
+(pass) R1 SEAM: a clear cannot RE-OPEN an acknowledged record [1.32ms]
+(pass) R1: the decision vocabulary is CLOSED — anything but approved|rejected is named loudly [0.97ms]
+(pass) R1: an APPROVED interjection is re-posted as an ORDINARY message to the requester [2.75ms]
+(pass) R1: expiry notifies the requesting member with an ordinary message [0.97ms]
+
+packages/mpd-agent-teams-plugin/test/export-bridge.test.mjs:
+(pass) adopted client export bridge > registers under the adopted module id and keeps apply/inject [0.08ms]
+(pass) adopted client export bridge > exposes every bridged symbol at load time [0.14ms]
+(pass) adopted client export bridge > exports the panel CSS-module class map, not a renamed copy [0.07ms]
+(pass) adopted client export bridge > carries every class the sidebar page renders, and the adopted archivedWrap quirk [0.19ms]
+(pass) adopted client export bridge > locale dictionaries and monitor store survive the bridge [0.10ms]
+(pass) adopted client export bridge > the bridge is purely additive: exports grow by exactly the pinned list [1.43ms]
+(pass) adopted client export bridge > re-running the bridge is a no-op that leaves the file byte-identical [1.67ms]
+(pass) adopted client export bridge > drift guard: an unknown symbol is reported as undeclared [1.00ms]
+(pass) adopted client export bridge > a re-vendor re-applies the bridge [0.08ms]
+
+packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs:
+(pass) F2: a dependent of a FAILED dependency is NOT rendered blocked in the panel view [0.22ms]
+(pass) F2: panel view and task-contract view agree on the same team record [5.47ms]
+(pass) F5: the schema default stateDir is the frozen .mpd/team [0.54ms]
+(pass) F6: TEAM_TOOL_NAMES carries the frozen 14-name manual-entry set [0.48ms]
+
+packages/mpd-agent-teams-plugin/test/r3-f1-signal-c.test.mjs:
+(pass) F1: C requires its own 2-of-3 majority, and never appears as C1/C2/C3 top-level signals [0.21ms]
+(pass) F1: no route from C1/C2/C3 as separate signals (the pre-fix false-positive shape) [0.14ms]
+(pass) F1: the frozen two-sided prompt set still behaves 3 silent / 3 complex [0.89ms]
+(pass) F1: a plan artifact is its own soft signal and reaches the gate [0.11ms]
+
+packages/mpd-agent-teams-plugin/test/member-readonly-deny.test.mjs:
+(pass) the profile parser normalizes `toolDeny` and rejects non-lists or empty entries [1.37ms]
+(pass) the member spawn passes the member's deny list to the harness, merged with the captain-only denial [1.14ms]
+(pass) the shipped `mpd` profile marks exactly the six read-only members with the canonical names [0.39ms]
+(pass) `agent_teams_add_member` exposes `toolDeny` so a runtime-added member can be read-only too [2.01ms]
+
+packages/mpd-agent-teams-plugin/test/backports.test.ts:
+(pass) withTeamLock: settled locks release their queue entry > a completed lock leaves no queue entry behind [0.30ms]
+(pass) withTeamLock: settled locks release their queue entry > a rejected mutation still releases its entry [0.26ms]
+(pass) withTeamLock: settled locks release their queue entry > serialization is preserved and the last waiter cleans up [11.31ms]
+(pass) blank optional task fields are normalized to absent > blank scalars are dropped and blank list entries are filtered [0.18ms]
+(pass) blank optional task fields are normalized to absent > non-blank values pass through untouched [0.05ms]
+(pass) blank optional task fields are normalized to absent > a legacy dirty record still loads instead of bricking the team [1.22ms]
+(pass) Web routes: authentication fence and bounded body > a missing Connection service fails closed with 503 [0.57ms]
+(pass) Web routes: authentication fence and bounded body > a rejected request never reaches the handler [0.20ms]
+(pass) Web routes: authentication fence and bounded body > an admitted request runs the route handler unchanged [0.15ms]
+(pass) Web routes: authentication fence and bounded body > readJsonRequest parses objects and refuses arrays, bad JSON, and oversized bodies [4.43ms]
+
+packages/mpd-agent-teams-plugin/test/task-contract-tool.test.mjs:
+(pass) DEFECT 3: a RUNNING task's contract is readable and matches what was declared [5.05ms]
+(pass) DEFECT 3: the full agent-teams tool surface registers, with the contract tool among it [2.08ms]
+(pass) DEFECT 3: the read-only surface is available to a member too and rejects unknown ids [3.11ms]
+
+packages/mpd-agent-teams-plugin/test/r4-explicit-team.test.mjs:
+(pass) R4: with no team yet the PLUGIN stages one (approval=required, zero members spawned) [4.87ms]
+(pass) R4 ask-first: an existing STAGED team yields an inquiry, never a second team [1.15ms]
+(pass) R4 silent-failure: an AMBIGUOUS session (two teams) warns instead of guessing [2.54ms]
+(pass) R4 silent-failure: a missing profile roster warns instead of staying quiet [0.41ms]
+
+packages/mpd-agent-teams-plugin/test/capabilities.test.ts:
+(pass) agent-scoped AgentTeams instructions > the captain gets the activation prompt, the member gets member rules [1.22ms]
+(pass) agent-scoped AgentTeams instructions > a member is denied every captain-only business tool [0.23ms]
+(pass) agent-scoped AgentTeams instructions > cold-resumed members are recognized from the durable retired index [0.41ms]
+(pass) agent-scoped AgentTeams instructions > a live team record decides membership without any spawn filter [0.57ms]
+(pass) agent-scoped AgentTeams instructions > damaged state warns and falls back to the captain protocol instead of throwing [0.35ms]
+(pass) agent-scoped AgentTeams instructions > agents created after install are attached on agent/session-start [0.21ms]
+
+packages/mpd-agent-teams-plugin/test/harness-compat.test.ts:
+(pass) queueMemberPrompt: delivery follows the host generation > 0.1.5-rc.2 host: the public prompt seam carries the team turn as a queued turn [0.34ms]
+(pass) queueMemberPrompt: delivery follows the host generation > 0.1.5-rc.2 host: public sendMessage is never used for team work [0.15ms]
+(pass) queueMemberPrompt: delivery follows the host generation > Alpha.5 … 0.1.2-rc.1 host: the symbol-keyed FIFO queue still carries the turn [0.27ms]
+(pass) queueMemberPrompt: delivery follows the host generation > legacy host: the receiver-bound followup still wins when present [0.26ms]
+(pass) queueMemberPrompt: delivery follows the host generation > neither contract: refuses instead of silently dropping the turn [0.24ms]
+(pass) deliverToMember: the scheduler's wakeup path > 0.1.5-rc.2 runtime delivers through the public prompt seam and reports success [0.26ms]
+(pass) deliverToMember: the scheduler's wakeup path > a host without any delivery contract reports failure instead of throwing [0.25ms]
+(pass) installContinuableMemberSetup: setup follows the host generation > legacy host registers the seam directly, never the session-start listener [0.10ms]
+(pass) installContinuableMemberSetup: setup follows the host generation > 0.1.5-rc.2 host: setup receives the live Agent and never reads childCtx.agent [0.52ms]
+(pass) installContinuableMemberSetup: setup follows the host generation > a host without either seam degrades with a warning instead of aborting apply() [0.11ms]
+(pass) sessionOwnEvents: child history excludes the inherited prefix > prefers the modern ownEvents() [0.13ms]
+(pass) sessionOwnEvents: child history excludes the inherited prefix > legacy session logs are sliced at seedLength [0.06ms]
+(pass) sessionOwnEvents: child history excludes the inherited prefix > an unreadable log is refused loudly [0.06ms]
+(pass) retired-member guard covers every resumable face > 0.1.5-rc.2 host: the public prompt seam rejects a retired member and passes others [0.95ms]
+(pass) retired-member guard covers every resumable face > Alpha.5 … 0.1.2-rc.1 host: the FIFO queue rejects a retired member and passes others [0.36ms]
+(pass) retired-member guard covers every resumable face > legacy host: followup is guarded without inventing the method [0.31ms]
+(pass) retired-member guard covers every resumable face > a runtime with no delivery face no longer pretends to guard one [0.11ms]
+
+packages/mpd-agent-teams-plugin/test/t52-root-registration.test.mjs:
+(pass) t52 COMPOSITION ROOT: apply() resolves a past-due request even with the team policy OFF [6.40ms]
+(pass) t52 COMPOSITION ROOT NEGATIVE CONTROL: with no apply() the request stays pending [0.52ms]
+
+packages/mpd-agent-teams-plugin/test/t52-interjection-tools.test.mjs:
+(pass) t52: the three lane tools are REGISTERED on the shipped surface [3.04ms]
+(pass) t52 CHAIN: member requests -> captain sees pending -> approves -> ordinary record for the requester [7.12ms]
+(pass) t52 CHAIN: the approval reaches the REQUESTER's own session at the next idle edge — addressed, once, and nowhere else [4.95ms]
+(pass) t52 CHAIN: the requester's own lane then records the approval once it is collected [3.94ms]
+(pass) t52 AUTHZ: a MEMBER cannot decide — refused loudly, with a reason [3.79ms]
+(pass) t52 AUTHZ: the decision vocabulary is closed AT THE TOOL BOUNDARY [5.35ms]
+(pass) t52 AUTHZ: a member may clear ONLY its own mailbox [3.71ms]
+(pass) t52 AUTHZ+F3: the captain may clear ANY mailbox, and a cleared record is not unread after [3.72ms]
+(pass) t52 AUTHZ: the captain cannot clear a mailbox that does not exist [2.26ms]
+(pass) t52 BOUNDARY: the request carries identity from the CALLER, never from an argument [3.45ms]
+
+packages/mpd-agent-teams-plugin/test/scheduler-dispatch.test.ts:
+(pass) scheduler dispatch across a dependency boundary > the first batch is delivered and dependents stay parked [2.55ms]
+(pass) scheduler dispatch across a dependency boundary > completing the first batch dispatches the next batch to its idle members [3.48ms]
+(pass) scheduler dispatch across a dependency boundary > a member's idle edge delivers its own newly unblocked task [6.02ms]
+(pass) scheduler dispatch across a dependency boundary > a real delivery failure is reported, not swallowed as success [2.36ms]
+
+packages/mpd-agent-teams-plugin/test/update-task-amend-lock-and-guards.test.mjs:
+(pass) captain amend on a RUNNING task settles instead of self-deadlocking the team lock [6.38ms]
+(pass) a MEMBER's amend is refused loudly instead of silently persisting nothing [3.07ms]
+(pass) a terminal task refuses EVERY field change loudly, not just status/output [3.83ms]
+(pass) a PENDING task is amendable (status enum accepts pending) and the amendment persists [4.76ms]
+(pass) inScope/outOfScope are amendable by the captain (contract repair without a fail-and-re-run) [4.92ms]
+
+packages/mpd-agent-teams-plugin/test/s1-s4-semantics.test.mjs:
+(pass) S2: amending a definition re-runs the amended task and its TRANSITIVE DEPENDENTS only [4.96ms]
+(pass) S2 falsifiability: a NO-OP amendment does not re-run anything [4.40ms]
+(pass) S3: the scheduler's REAL readiness predicate never re-dispatches terminal work [0.58ms]
+(pass) S4: a bounded notice reaches a RUNNING member without restarting its attempt [3.17ms]
+(pass) S1: a terminal failed task is retryable and completed siblings keep their results [3.88ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/scope-semantics.test.mjs:
+
+packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs:
+
+packages/mpd-agent-teams-plugin/self-fix-tests/quality-loop.test.mjs:
+
+packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/opt1-failed-dependency.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/opt2-residual-and-ordering.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/workmate-key.test.ts:
+
+packages/mpd-agent-teams-plugin/test/r3-auto-reclaim.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/session-start.test.ts:
+
+packages/mpd-agent-teams-plugin/test/t49-send-dedup-wiring.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/update-task-diagnostics.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/t53-dormant-expiry.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/r1-message-channel.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/export-bridge.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/r3-f1-signal-c.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/member-readonly-deny.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/backports.test.ts:
+
+packages/mpd-agent-teams-plugin/test/task-contract-tool.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/r4-explicit-team.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/capabilities.test.ts:
+
+packages/mpd-agent-teams-plugin/test/harness-compat.test.ts:
+
+packages/mpd-agent-teams-plugin/test/t52-root-registration.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/t52-interjection-tools.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/scheduler-dispatch.test.ts:
+
+packages/mpd-agent-teams-plugin/test/update-task-amend-lock-and-guards.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/s1-s4-semantics.test.mjs:
+
+ 206 pass
+ 0 fail
+ 1457 expect() calls
+Ran 206 tests across 54 files. [5.00s]

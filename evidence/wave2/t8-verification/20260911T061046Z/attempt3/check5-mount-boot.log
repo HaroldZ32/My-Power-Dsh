@@ -1,0 +1,8 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-t8-mnt-ws-hkyxiv
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+CodeGraph MCP skipped: project excluded by OMO CodeGraph policy.
+[mount-probe] AGENT_TEAMS_TOOLS_PRESENT=14/14
+[mount-probe] AGENT_TEAMS_TOOLS=agent_teams_create:ok,agent_teams_approve:ok,agent_teams_edit_plan:ok,agent_teams_add_member:ok,agent_teams_remove_member:ok,agent_teams_create_task:ok,agent_teams_reassign_task:ok,agent_teams_claim_task:ok,agent_teams_update_task:ok,agent_teams_send_message:ok,agent_teams_status:ok,agent_teams_resume:ok,agent_teams_delete:ok,agent_teams_task_contract:ok
+[mount-probe] T4_TOOL_agent_teams_task_contract=REGISTERED
+[mount-probe] DONE

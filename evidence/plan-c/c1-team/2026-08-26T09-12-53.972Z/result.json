@@ -1,0 +1,127 @@
+{
+  "ok": true,
+  "sandbox": "/tmp/mpd-c1-fFRzaU",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "bundleRow": {
+      "ok": true,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-headless",
+        "@nanmicoder/dsh-agent-teams"
+      ]
+    },
+    "override": {
+      "ok": true,
+      "hasPatch": true
+    },
+    "compose": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "teamState": {
+      "ok": true,
+      "teamIds": [
+        "c1qa"
+      ],
+      "inbox": [
+        [
+          "captain.jsonl"
+        ]
+      ],
+      "teamJson": [
+        {
+          "name": "c1qa",
+          "id": "c1qa",
+          "description": "C1 adoption QA",
+          "captainSessionId": "session-ba4bc5bb-1a88-4d2f-adf2-c67dc8d1abd4",
+          "createdAt": 1787735646175,
+          "members": [
+            {
+              "id": "54b90b0b-8b89-44ca-bef7-1890c42a2c2e",
+              "name": "oracle",
+              "role": "oracle",
+              "provider": "deepseek-official",
+              "model": "deepseek-v4-flash",
+              "reasoningEffort": "high",
+              "joinedAt": 1787735648768,
+              "status": "removed"
+            },
+            {
+              "id": "d13dde82-04cd-42a9-926f-7ff595e97e07",
+              "name": "librarian",
+              "role": "librarian",
+              "provider": "deepseek-official",
+              "model": "deepseek-v4-flash",
+              "reasoningEffort": "high",
+              "joinedAt": 1787735648773,
+              "status": "removed"
+            }
+          ],
+          "tasks": [
+            {
+              "id": "t1",
+              "subject": "Summarize the QA goal in one line",
+              "description": "Write a single-line summary of the QA goal for team c1qa (C1 adoption QA).",
+              "status": "completed",
+              "assignee": "librarian",
+              "dependencies": [],
+              "attempt": 1,
+              "createdAt": 1787735652434,
+              "updatedAt": 1787735664784,
+              "attemptId": "8e647bc1-a581-4c14-83cf-2eadb7107885",
+              "reassigning": false,
+              "output": "QA goal: Verify that C1 (the target component) has been successfully adopted — confirming the adoption is complete, correct, and meets the acceptance/quality criteria through systematic QA checks."
+            },
+            {
+              "id": "t2",
+              "subject": "Approve or reject the summary",
+              "description": "Review the one-line summary produced by librarian in task t1 and either approve or reject it.",
+              "status": "completed",
+              "assignee": "oracle",
+              "dependencies": [
+                "t1"
+              ],
+              "attempt": 1,
+              "createdAt": 1787735655527,
+              "updatedAt": 1787735676210,
+              "attemptId": "c53192e4-cac6-46a7-93d1-e676629104ba",
+              "reassigning": false,
+              "output": "APPROVED. The t1 summary (\"QA goal: Verify that C1 (the target component) has been successfully adopted — confirming the adoption is complete, correct, and meets the acceptance/quality criteria through systematic QA checks.\") is one concise line, states the objective clearly, defines success criteria (complete, correct, meets acceptance/quality criteria), and names the method (systematic QA checks). Accurate and complete — no revisions needed."
+            }
+          ],
+          "taskSeq": 2
+        }
+      ]
+    },
+    "archive": {
+      "ok": true,
+      "archiveIds": [
+        "c1qa"
+      ]
+    },
+    "taskTerminal": {
+      "ok": true,
+      "tasks": 2,
+      "taskTerminal": true
+    },
+    "webInstaller": {
+      "ok": true,
+      "exit": 0
+    },
+    "webRoute": {
+      "ok": true,
+      "status": 200,
+      "body": "{\"teams\":[]}",
+      "webLog": "/home/haroldzhao/dshProj/oh-my-openagent/.omo/port/mpd-dsh/evidence/plan-c/c1-team/2026-08-26T09-12-53.972Z/web.log"
+    }
+  },
+  "totalSteps": 10
+}

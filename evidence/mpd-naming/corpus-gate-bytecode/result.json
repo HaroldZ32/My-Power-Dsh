@@ -1,0 +1,40 @@
+{
+  "defect": "verify-vendor's corpus walk counted bytecode caches as corpus content",
+  "reported_by": "t16 / Deep Worker (finding F1), reproduced and fixed at the root by the captain",
+  "symptom": "`python3 -m py_compile <helper>` (a documented verify command) writes skills/ast-grep/scripts/__pycache__/*.pyc; the corpus then reads 298 files and the gate fails with 'asset skills count drifted: 298 vs 297'. The .pyc was not gitignored, so it could also have been committed as corpus content.",
+  "fix": {
+    "scripts/verify-vendor.mjs": "listFiles() now skips `__pycache__` directories and `*.pyc` / `*.pyo` files, the same way it already skipped `node_modules`",
+    ".gitignore": "adds `__pycache__/`, `*.pyc`, `*.pyo`",
+    "pin_impact": "none - the current corpus contains no bytecode, so the computed fileCount/treeSha are unchanged"
+  },
+  "measurement": {
+    "method": "isolated git worktree at the wave's HEAD revision, one bytecode file placed under skills/ast-grep/scripts/__pycache__/",
+    "red": {
+      "walker": "HEAD revision (before the fix)",
+      "command": "MPD_UPSTREAM_ROOT=<upstream> node scripts/verify-vendor.mjs",
+      "exit": 1,
+      "observed": [
+        "asset skills count drifted: 298 vs 297",
+        "asset skills treeSha mismatch"
+      ],
+      "log": "evidence/mpd-naming/corpus-gate-bytecode/red.log"
+    },
+    "green": {
+      "walker": "hardened (working tree)",
+      "same_bytecode_file_present": true,
+      "command": "MPD_UPSTREAM_ROOT=<upstream> node scripts/verify-vendor.mjs",
+      "exit": 0,
+      "observed": [
+        "asset OK: skills 297 files",
+        "PASS"
+      ],
+      "log": "evidence/mpd-naming/corpus-gate-bytecode/green.log"
+    },
+    "tree_count_with_bytecode": 298,
+    "corpus_after_fix": 297
+  },
+  "files": {
+    "red.log": "888c3a14fcc77af6e64b93a497291f83fd0e7f8933f8999f4af31fa2503cd68a",
+    "green.log": "b937f79599f034ed68880144695403e7ddc0fe1bb2fa5fd34559029fb9752128"
+  }
+}

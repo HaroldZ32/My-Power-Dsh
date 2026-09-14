@@ -1,0 +1,14 @@
+[agent-teams-sidebar] ts=2026-09-10T10-19-22.672Z
+sandbox=/tmp/mpd-atsb-5pQM9f (isolated; the artifact under test is the sandbox COPY)
+offline artifact steps: artifactCopyFaithful=true moduleIds=true teamPageModuleInArtifact=true exactlyOneTeamTab=true teamTabShape=true noLegacyRegistration=true adoptedNeverApplied=true noFloaterDefined=true commandViewKept=true panelInteriorParity=true sourcesRegisterNoRemovedSurface=true commandViewStillRegisteredBySource=true buildGatePresent=true serverHalfMountedByRow=true adoptedClientBridged=true artifactCarriesBridge=true bridgePatchGuarded=true bridgePatchIdempotent=true
+host route: mode=real-boot ok=false
+  served client: {"url":"/plugins/??@mpd-dsh/mpd/client.js&rev=8cc166238a35801e-48","status":200,"bytes":242720,"teamPageModule":true,"teamTabId":true,"bridge":true,"atLeastRepoArtifactBytes":true,"carriesRepoArtifact":true}
+  state route: {"status":401,"body":"{\"error\":\"unauthorized\"}","teamsArray":false}
+
+--- web boot log (tail) ---
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=no-binary binary=- cwd=/root/dshProj/my-power-dsh
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.
+dsh web: http://127.0.0.1:3194/?token=2Hw6KRyAvdVQykLmgHoQoUbqwubApbEhlXU2ANUL5-k
+

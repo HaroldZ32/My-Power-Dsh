@@ -1,0 +1,97 @@
+t3 — QA-harness fidelity — raw verification output (2026-09-11)
+
+=== A. affected cases' --self-test ===
+$ for f in preset-register rtl-verif mcp-call dual-track-smoke codegraph-smoke web-client-adapt; do node skills/dsh-qa/scripts/$f.mjs --self-test; done
+[preset-register self-test] ok: preset + roster fixtures + web-compat/preset-root/MCP-operand normalization verified  (exit=0)
+[rtl-verif self-test] ok: bundle wiring (mpd-verif active + wave rows commented) + golden fixture + eight-tool dist surface + iron-rule strings + devPatch operand guard  (exit=0)
+[mcp-call self-test] ok: tool-name detection verified on fixture  (exit=0)
+[llm-dual-track self-test] ok: track fixture assertions + devPatch boot operand verified  (exit=0)
+[codegraph-smoke self-test] ok: project-path precondition verified on fixture  (exit=0)
+[web-client-adapt self-test] ok: 14 checks  (exit=0)
+
+=== B. bun run test:qa ===
+$ bun run test:qa
+... (every script's --self-test)
+[test:qa] all self-tests passed
+(exit=0)
+
+=== C. node scripts/verify-vendor.mjs (after the SINGLE skills re-pin) ===
+$ node scripts/verify-vendor.mjs
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] asset OK: skills 366 files
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+(exit=0)
+skills treeSha recomputed with verify-vendor's own algorithm (LF-normalized per-file sha256, sorted relpath, `path\nhash\n` aggregation):
+  5b13e92091e38ed8a001c08b11cd8fc73f650041260ad7fc519c782ab6a6ef45  ->  3259d07a613c0bb9cf4a0ae8478adcbbb6247ec8bd361fb2075c3092c1c00621
+  fileCount unchanged: 366
+
+=== D. dev boot WITHOUT any MCP CLI/binary pre-set pin (acceptance 1) ===
+$ node skills/dsh-qa/scripts/preset-register.mjs
+[preset-register] ok=true -> evidence/dsh-qa/preset-register/2026-09-11T08-17-25.674Z
+[preset-register] PASS
+evidence/dsh-qa/preset-register/2026-09-11T08-17-25.674Z/result.json:
+  ok=true, exit=1 (MISSING_CREDENTIAL on the trailing headless prompt — probe-based provability, unchanged),
+  bundleServedPreset=true, presetPath=/root/dshProj/my-power-dsh/presets/mpd/agent.cordis.yml, trust=system, roster=11
+$ grep -c "MODULE_NOT_FOUND\|BINARY_NOT_FOUND" evidence/dsh-qa/preset-register/2026-09-11T08-17-25.674Z/output.log
+0
+(The pre-fix failure mode was exactly `Cannot find module '<profile>/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-astgrep/launch.mjs'`
+ — the measured pre-fix path is in evidence/dsh-qa/llm-dual-track/official/2026-09-11T05-56-52.220Z/output.log.
+ The MCP rows now resolve through the real launcher chain with NO MPD_DSH_*_CLI pin present.)
+
+=== E. second independent boot with the same fix (acceptance 2) ===
+$ node skills/dsh-qa/scripts/rtl-verif.mjs
+[rtl-verif] ok=true -> evidence/dsh-qa/rtl-verif/2026-09-11T08-22-44.955Z
+[rtl-verif] PASS
+result.json key fields: bootExit=0, mountMpdVerifRow=true, mountMcpLspRow=true, lspBuiltinDual=true,
+  flow="verilator=true lint=true sim=true regress=true", resultsXml=true, vcd=true, makefileFlow=true,
+  regressPassed=1, noFst=true, systemPythonCocotbFree=true, realHomeUntouched=true
+$ grep -c "MODULE_NOT_FOUND\|ERR_MODULE" evidence/dsh-qa/rtl-verif/2026-09-11T08-22-44.955Z/output.log
+0
+
+=== F. dual-track boot repair (acceptance 6) ===
+$ node skills/dsh-qa/scripts/dual-track-smoke.mjs
+[llm-dual-track] official ok=false (7404ms, exit=1) -> evidence/dsh-qa/llm-dual-track/official/2026-09-11T08-19-45.696Z
+[llm-dual-track] deepseek ok=false (6887ms, exit=1) -> evidence/dsh-qa/llm-dual-track/deepseek/2026-09-11T08-19-52.585Z
+$ grep -c "ERR_MODULE_NOT_FOUND\|Cannot find module" <both new logs>
+0                            # PRE-FIX: 1 per lane (`Cannot find module '<tmp>/profiles/headless/node_modules/@mpd-dsh/mpd/packages/...'`)
+$ tail -3 evidence/dsh-qa/llm-dual-track/official/2026-09-11T08-19-45.696Z/output.log
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-official"; ...
+=> the boot now composes the whole tree and reaches the MODEL step; this sandbox has NO DeepSeek API key
+   (~/.dsh/.credentials.yaml carries only a browser-session grant, settings.yaml has `llm-deepseek: {}`),
+   so a green live-LLM lane is impossible here. Environment limit, not a boot defect. The boot-repair
+   assertion (no ERR_MODULE_NOT_FOUND) is what this case's repair needed, and it holds.
+
+=== G. mcp-call: settings.yaml + sandboxed HOME (acceptance 4) ===
+$ node skills/dsh-qa/scripts/mcp-call.mjs
+[mcp-call] ok=false -> evidence/dsh-qa/mcp-call/2026-09-11T08-21-57.257Z   (both lanes: MISSING_CREDENTIAL, env limit)
+$ grep -c "MISSING_CREDENTIAL" evidence/dsh-qa/mcp-call/2026-09-11T08-21-57.257Z/enum.log evidence/dsh-qa/mcp-call/2026-09-11T08-21-57.257Z/call.log
+1 and 1
+$ grep -c "root/.mpd\|ERR_MODULE_NOT_FOUND" evidence/dsh-qa/mcp-call/2026-09-11T08-21-57.257Z/enum.log evidence/dsh-qa/mcp-call/2026-09-11T08-21-57.257Z/call.log
+0 and 0
+(PRE-FIX with the real HOME: the codegraph MCP child crashed with
+ `Error: ENOENT: no such file or directory, mkdir '/root/.mpd/codegraph'` in both lanes —
+ see evidence/dsh-qa/mcp-call/2026-09-11T07-28-18.537Z/call.log. Sandboxed HOME removes that
+ real-state dependency; no assertion now depends on anything under the real HOME. settings.yaml is
+ copied alongside .credentials.yaml at BOTH the DSH_HOME and the HOME-shaped location.)
+
+=== H. web-client-adapt timing deadline (acceptance 5) ===
+$ node skills/dsh-qa/scripts/web-client-adapt.mjs
+[web-client-adapt] ok=true -> evidence/plan-f/web-client-adapt/2026-09-11T08-22-45.003Z
+  listUp ok=true
+  rootStatus {"ok":true,"http":200,"tokenSeen":true,"cookieSession":true}
+  bootEntry  {"ok":true,"id":"@mpd-dsh/mpd","elapsedMs":68723,"deadlineMs":150000,"timedOut":false}
+  clientJs   ok=true (servedSurface all true)
+  noUnregisteredService {"ok":true,"unregistered":[]}
+  initRoute  ok=true, isolation ok=true
+(MEASURED: a healthy SOLO boot took 68723 ms — the old hard 60 s deadline would have read this PASS
+ as a capability failure, exactly the red-at-~69 s band. The deadline is now 150 s (env-overridable
+ MPD_DSH_QA_WEB_BOOT_DEADLINE_MS) and the elapsed/deadline/timedOut triple is recorded, so a timing
+ miss can never masquerade as "the @mpd-dsh/mpd client entry is missing" again.)

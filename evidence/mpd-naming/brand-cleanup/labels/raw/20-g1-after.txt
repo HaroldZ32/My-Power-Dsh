@@ -1,0 +1,8 @@
+### G1 (frozen regex, rule.json R6_acceptance_criteria.greps[0]) — AFTER t2 ###
+measured: 2026-09-14T07:08:18Z  HEAD=221171444240f0f55794c5d73b16b92701a7ed72
+$ git ls-files | grep -vE '<history>' | xargs grep -nE '<retired phrasings>'
+scripts/build-mcp.mjs:2:// Offline build of ast-grep/git-bash MCP: copy source from the OMO upstream checkout (read-only) into a temp workspace,
+hits_above=1 (scripts/build-mcp.mjs:2 only; scripts/ is OUT of t2 scope -> t6 lane)
+
+### same grep restricted to the t2 inScope set ###
+inScope_hits=1 (1 = none)

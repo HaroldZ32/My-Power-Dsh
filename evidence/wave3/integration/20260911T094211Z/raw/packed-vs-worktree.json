@@ -1,0 +1,27 @@
+{
+ "packedFiles": 1160,
+ "modes": {
+  "420": 1148,
+  "493": 12
+ },
+ "nonConforming": [],
+ "executables": 12,
+ "execSample": [
+  "packages/mpd-mcp-astgrep/dist/cli.js",
+  "packages/mpd-mcp-codegraph/dist/serve.js",
+  "packages/mpd-mcp-gitbash/dist/cli.js",
+  "packages/mpd-mcp-lsp/dist/cli.js",
+  "skills/ast-grep/install.sh",
+  "skills/ast-grep/scripts/ast_grep_helper.py",
+  "skills/ast-grep/tests/smoke.sh",
+  "skills/programming/scripts/go/check-no-excuse-rules.sh",
+  "skills/programming/scripts/go/new-project.py",
+  "skills/programming/scripts/rust/check-no-excuse-rules.py",
+  "skills/programming/scripts/rust/check-no-excuse-rules.sh",
+  "skills/programming/scripts/rust/new-project.py"
+ ],
+ "byteIdenticalToWorkingTree": 785,
+ "different": 0,
+ "diffList": [],
+ "missingSource": 0
+}

@@ -1,0 +1,24 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/root/dshProj/my-power-dsh/.cg-qa
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/dist/mpd-package/skills (provider mpd-bundle, bundle 0.3.2)
+dsh: reasoning:
+The user asks me to call mcp__codegraph__codegraph_explore targeting the `norm` function in src/util.ts, and report the returned content verbatim. Do not use bash.
+
+Let me check the workspace first... Actually, the instruction says not to use bash. I can use glob/read to find src/util.ts, but the main task is just to call the codegraph explore tool. Let me just call it directly.
+
+The tool requires a "query" parameter. I should pass something like "norm src/util.ts". Let me also check if there's a project path needed. The working directory is /tmp/mpd-dsh-qa-2gqyAn/ws. Let me pass projectPath maybe. Let me first just call it with query "norm function in src/util.ts".
+
+Let me call the tool.
+dsh: reasoning:
+The tool was called and returned a message. The user asked me to report the returned content verbatim. I should report exactly what was returned.
+
+Should I also try without projectPath? The message says don't call codegraph for it again this session. I called with projectPath; maybe the default project would be different? But the message explicitly says the project at the workspace isn't indexed, and to not call codegraph again this session. So I should report verbatim and stop.
+
+Let me report the returned content verbatim.
+I called `mcp__codegraph__codegraph_explore` with `query: "norm src/util.ts"` and `projectPath: "/tmp/mpd-dsh-qa-2gqyAn/ws"`. Here is the returned content, verbatim:
+
+```
+The project at /tmp/mpd-dsh-qa-2gqyAn/ws isn't indexed with codegraph (no .codegraph/ directory found walking up from it), so codegraph cannot query it. Use your built-in tools (Read/Grep/Glob) for that codebase instead, and don't call codegraph for it again this session. Indexing is the user's decision — they can run 'codegraph init' in that project to enable it.
+```
+
+That is the complete response — no source code for `norm` was returned, because the workspace has no `.codegraph/` index. The tool's own guidance is to use built-in tools for this codebase and not to re-query codegraph this session. If you'd like, I can locate `src/util.ts` and read the `norm` function with the regular file tools, or you can run `codegraph init` in the project to enable indexed queries.

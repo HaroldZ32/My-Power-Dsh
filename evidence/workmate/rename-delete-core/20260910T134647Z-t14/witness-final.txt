@@ -1,0 +1,19 @@
+WITNESS RUN BY THE REVIEWER (non-author) ON THE FROZEN BYTES
+case sha256 (shipped == my byte-identical copy): 6daf888401025bc058cdf437ede6999cb96ee9af964cc34748c34b3a858e2918
+sequencing: verify-vendor exit 0 PASS; `find skills -newer VENDOR_LOCK.json -type f` -> prints nothing
+
+A) SHIPPED ASSERTIONS executed on my byte-identical copy (witness-case.mjs): exit 0, PASS
+   enforcement       : {"ok": true, "childRequests": 1, "childToolCounts": [81], "childLeaksWriteCapable": [], "childHasStructuredOutput": true, "parentToolCount": 87, "parentHasAllSeven": true}
+   reinjectionControl: {"ok": true, "childRequestsUnderRestriction": 0, "parentToolCount": 87, "refusalSeen": false}
+   [positive] call#1: 87 tools, writeCapable=['bash', 'edit', 'mcp__ast_grep__rewrite', 'mcp__ast_grep__scan', 'mcp__lsp__rename', 'mpd_hashline_edit', 'write'], structured_output=False | call#2: 0 tools, writeCapable=[], structured_output=False | call#3: 81 tools, writeCapable=[], structured_output=True | call#4: 87 tools, writeCapable=['bash', 'edit', 'mcp__ast_grep__rewrite', 'mcp__ast_grep__scan', 'mcp__lsp__rename', 'mpd_hashline_edit', 'write'], structured_output=False
+   [reinjectionDiagnostic] call#1: 87 tools, writeCapable=['bash', 'edit', 'mcp__ast_grep__rewrite', 'mcp__ast_grep__scan', 'mcp__lsp__rename', 'mpd_hashline_edit', 'write'], structured_output=False | call#2: 0 tools, writeCapable=[], structured_output=False | call#3: 87 tools, writeCapable=['bash', 'edit', 'mcp__ast_grep__rewrite', 'mcp__ast_grep__scan', 'mcp__lsp__rename', 'mpd_hashline_edit', 'write'], structured_output=False
+
+B) INDEPENDENT PRE-t13 INSTRUMENT (probe-enforce.mjs, own fields, no t13 classifier): exit 0, PASS
+   [positive] call#1: 87 tools, writeCapableSeen=['bash', 'edit', 'mcp__ast_grep__rewrite', 'mcp__ast_grep__scan', 'mcp__lsp__rename', 'mpd_hashline_edit', 'write'] | call#2: 0 tools, writeCapableSeen=[] | call#3: 81 tools, writeCapableSeen=[] | call#4: 87 tools, writeCapableSeen=['bash', 'edit', 'mcp__ast_grep__rewrite', 'mcp__ast_grep__scan', 'mcp__lsp__rename', 'mpd_hashline_edit', 'write']
+   [reinjectionDiagnostic] call#1: 0 tools, writeCapableSeen=[] | call#2: 87 tools, writeCapableSeen=['bash', 'edit', 'mcp__ast_grep__rewrite', 'mcp__ast_grep__scan', 'mcp__lsp__rename', 'mpd_hashline_edit', 'write']
+
+C) t13's predicate applied BY THE REVIEWER to the shipped traces:
+   [positive] childRequests=1 -> enforcement.ok=True
+   [reinjectionDiagnostic] childRequests=0 -> enforcement.ok=False
+
+wrote evidence/workmate/rename-delete-core/20260910T134647Z-t14/witness-final.json

@@ -1,0 +1,34 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index f3a9382..24fceb8 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -71,12 +71,14 @@ License: SUL-1.0 (`LICENSE.md`); inheritance declared in `README.md`.
+ - **Adopted plugins keep their plugin ids and tool names** (intentional namespace
+   exception, same rule as the `context7`/`grep_app` remote MCP rows): the `agent-teams`
+   plugin (tools `agent_teams_*`, Web activity panel) is adopted from
+-  `@nanmicoder/dsh-agent-teams` (MIT, v0.1.14) and ships as **first-class main code** at
+-  `packages/mpd-agent-teams-plugin/` (runtime closure under `_deps/`): it loads from the
+-  bundle exports map, so it needs no npm dependency and works under every install layout
+-  (pnpm never links a bundle's transitive deps into the profile root — see §12). See
+-  LICENSE-NOTICES.md. Its `stateDir` is overridden to `.mpd/team` so all our state stays
+-  under one `.mpd` root.
++  `@nanmicoder/dsh-agent-teams` (MIT; adopted package version `0.1.16-rc.3-mpd`) and ships
++  as **first-class main code** at `packages/mpd-agent-teams-plugin/` (runtime closure under
++  `_deps/`): it loads from the bundle exports map, so it needs no npm dependency and works
++  under every install layout (pnpm never links a bundle's transitive deps into the profile
++  root — see §12). That version is a **0.1.14 body with the audited 0.1.16-rc.3 deltas
++  backported**, and `lib/client.js` is still the 0.1.14 client build — so the 0.1.14 body is
++  real provenance, never a stale claim; LICENSE-NOTICES.md is the authoritative record.
++  Its `stateDir` is overridden to `.mpd/team` so all our state stays under one `.mpd` root.
+ 
+ ---
+ 
+@@ -358,7 +360,7 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
+ | a plugin crashes with `cannot get property "x" without inject` / `... is not a function` | a harness seam changed shape — fix it in `packages/mpd-dsh-adapter-plugin/src/index.ts` only, rebuild, re-pack; plugin rows must not touch `ctx.tools`/`ctx.subagents`/`ctx.skills`/`ctx.agentPresets` directly (§6) |
+ | `MISSING_CREDENTIAL` in isolated QA | sandbox has no `.credentials.yaml` — copy it; live-LLM cases also need `settings.yaml` when the home uses gateway providers (see §7) |
+ | `patch: entry ... not found` | id-targeted row for a row absent in that profile — use `insert:` for new rows |
+-| a plugin change looks green in `--dump-config` but the plugin does nothing at runtime (tools missing, routes 404, or the whole tree dead) | `--dump-config` only COMPOSES rows — it never executes plugin code, so it cannot see an apply/schema abort (§4). Reproduce with a boot that MOUNTS the rows in an isolated `DSH_HOME` + sandbox `HOME` (registration instrumentation; the `mount-proof.sh` pattern, or `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs`) and read the boot log for the apply-crash signatures (`unsupported JSON schema`, `JsonSchemaError`, `plugin tree failed to load`, `failed to apply loader entry`). The measured instance of this class: a `type: ["string","null"]` ARRAY in an **output** schema is REJECTED by this harness and takes the whole plugin tree down (the accepted null form is `oneOf: [{type:"string"},{type:"null"}]`, proven by booting). **Known latent issue, deliberately NOT fixed here:** `packages/mpd-hashline-plugin/src/index.ts:110` declares `lines: { type: ["string","array"] }` in tool PARAMETERS and ships it in its dist — measured harmless today (a real boot composes that row with 0 loader-apply errors, i.e. this harness validates output schemas but not parameter schemas, which matches the validator error text naming only output-schema paths), but it is one harness release away from aborting the tree the same way. Record it; do NOT "clean it up" inside an unrelated change — it belongs in its own scoped change with its own mount proof |
++| a plugin change looks green in `--dump-config` but the plugin does nothing at runtime (tools missing, routes 404, or the whole tree dead) | `--dump-config` only COMPOSES rows — it never executes plugin code, so it cannot see an apply/schema abort (§4). Reproduce with a boot that MOUNTS the rows in an isolated `DSH_HOME` + sandbox `HOME` (registration instrumentation; the `mount-proof.sh` pattern, or `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs`) and read the boot log for the apply-crash signatures (`unsupported JSON schema`, `JsonSchemaError`, `plugin tree failed to load`, `failed to apply loader entry`). The measured instance of this class: a `type: ["string","null"]` ARRAY (and likewise `["string","array"]`) is REJECTED by this harness and takes the whole plugin tree down — the validator's own error text is `type must be a single type string (type arrays are not supported)`, and the accepted union spelling is `oneOf: [{type:"string"},{type:"null"}]` (or the matching `items:` variant), proven by booting. **RESOLVED instance (was the `lines` parameter of `mpd_hashline_edit`):** `packages/mpd-hashline-plugin/src/index.ts:110` now declares `lines: { oneOf: [{type:"string"},{type:"array",items:{type:"string"}}] }` in tool PARAMETERS and the committed `dist/index.js` carries the same form after its rebuild; the scoped change was B4/t4 with its own proof at `evidence/hashline/schema-union-fix/` — a mounting boot with 0 apply-crash signatures plus `schema-subset-check`, which proves the installed `assertSupportedJsonSchema` ACCEPTS the new form and REJECTS the pre-fix form (`NEGATIVE_CONTROL_MESSAGE = "unsupported JSON schema: schema.properties.edits.items.properties.lines.type must be a single type string (type arrays are not supported)"`). It stayed latent only because this harness release asserts OUTPUT schemas and not parameter schemas (measured, t4 `RESULT.json`) — never rely on that asymmetry: **the standing rule for FUTURE instances of this class is to record it, do NOT "clean it up" inside an unrelated change — it belongs in its own scoped change with its own mount proof** |
+ | codegraph `skipped: project excluded` | cwd contains an `.mpd` segment or is under /tmp — use a normal project path |
+ | codegraph provision crash | binary missing + read-only home — set `MPD_CODEGRAPH_BIN`/bundle env |
+ | bash tool hangs after dsh | MCP children hold fds — stdio to files, or `setsid … > log` pattern |

@@ -1,0 +1,30 @@
+CodeGraph MCP skipped: project excluded by OMO CodeGraph policy.
+评审完成 ✅。以下是完整汇报：
+
+## 1. omo_team_spawn 结果
+
+**teamId**: `team-bff69565`
+**members** (2 人): `librarian` + `oracle`
+**state 文件**: `.omo-dsh/team/team-bff69565.json`
+
+## 2. Report 摘要
+
+被评审对象：`tests/mcp-fixtures/sample.c`（内容仅一行 `int main(void) { return 0; }`）
+
+### 📚 librarian（证据检索）
+- **同类编码证据**：仓库中唯一的另一份 repo 自写 C 文件 `.toolchain/.test/t.c` 是同样的单行 `int main(void){return 0;}` 片段，sample.c 与其一致（仅花括号空格略有差异）；仓库无 `.clang-format`、无 C 编码风格文档，无约定被违反。
+- **关键发现**：该文件是 `skills/dsh-qa/scripts/mcp-call.mjs` 的扫描目标——QA 用例（mcp-call.mjs:13、:56）通过 `mcp__ast_grep__search` 扫描 `return 0` 模式，**`return 0` token 是功能性负载**，不能改。且有 evidence/bline-b1b4.log 证明文件受写保护（需用 edit 工具）。
+- **建议**：可展开为规范多行布局 `int main(void) {\n    return 0;\n}`（保留 load-bearing token，不影响 QA 断言）。
+
+### 🧠 oracle（一行改进建议）
+- 文件本身已是规范的 C99/C11 最小入口点（`int main(void)` 正确原型、显式 `return 0`、末尾换行齐全、无需 `#include`），无需行为改动。
+- **一行建议**：前置一行自文档注释：
+  ```c
+  /* MCP fixture: minimal C entry point scanned by skills/dsh-qa/scripts/mcp-call.mjs — keep valid C and minimal. */
+  ```
+  理由：文件在纯 TS/Bun 仓库中是孤立且无说明的 C fixture，注释可解决可发现性问题且不改动行为。
+
+## 3. omo_team_status(team-bff69565) 确认
+
+mailbox 状态正常：两个成员均 `"stopReason": "completed"`，各自返回了 `structured.summary`、`recommendation` 和 `evidence` 数组，无 pending/失败项。团队状态文件 `.omo-dsh/team/team-bff69565.json` 已落盘。
+EXIT=0

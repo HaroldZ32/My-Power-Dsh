@@ -1,0 +1,11 @@
+build exit=0
+bridge-check exit=0
+bun-test-packages exit=0
+typecheck exit=0
+test-qa exit=0
+verify-vendor exit=0
+pack exit=0
+install-dry-run exit=0
+agent-teams-sidebar exit=0
+web-client-adapt exit=0
+real-react-render exit=0

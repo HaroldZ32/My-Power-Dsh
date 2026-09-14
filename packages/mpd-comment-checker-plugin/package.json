@@ -1,0 +1,10 @@
+{
+  "name": "@mpd-dsh/comment-checker",
+  "private": true,
+  "version": "0.2.3",
+  "type": "module",
+  "description": "Comment/docstring detection plugin (Plan C / C4, opt-in binary)",
+  "scripts": {
+    "test": "bun test"
+  }
+}

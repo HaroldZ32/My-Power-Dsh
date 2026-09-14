@@ -1,0 +1,46 @@
+=== A7 hygiene: scratch/backup/stray files ===
+--- root-level dot dirs ---
+.codegraph
+.dsh
+.git
+.gitattributes
+.git-home
+.gitignore
+.mpd
+.mpd-dsh
+.npm-cache
+.qa-reloc
+.qa-tmp
+.qa-web-client
+.tmp-cache
+.toolchain
+.venv-rtl
+--- empty evidence dirs ---
+[scan done]
+=== .gitignore coverage of root QA scratch ===
+.codegraph       ignored=yes tracked_files=0
+.dsh             ignored=no tracked_files=0
+.mpd             ignored=yes tracked_files=0
+.mpd-dsh         ignored=yes tracked_files=0
+.npm-cache       ignored=yes tracked_files=0
+.qa-reloc        ignored=yes tracked_files=0
+.qa-tmp          ignored=yes tracked_files=0
+.qa-web-client   ignored=yes tracked_files=0
+.tmp-cache       ignored=yes tracked_files=0
+.toolchain       ignored=no tracked_files=2
+.venv-rtl        ignored=yes tracked_files=0
+.git-home        ignored=yes tracked_files=0
+=== wave2 evidence dirs missing result.json (partial?) ===
+no result.json: evidence/wave2/adopted-tooling-repair/f2
+no result.json: evidence/wave2/adopted-tooling-repair/f3
+no result.json: evidence/wave2/adopted-tooling-repair/drivers
+no result.json: evidence/wave2/adopted-tooling-repair/gates
+no result.json: evidence/wave2/adopted-tooling-repair/f1
+no result.json: evidence/wave2/t9-verification/20260911T061339Z
+no result.json: evidence/wave2/adopted-tooling-repair-f4/drivers-attempt2
+no result.json: evidence/wave2/adopted-tooling-repair-f4/drivers
+no result.json: evidence/wave2/adopted-tooling-repair-f4/f4
+no result.json: evidence/wave2/adopted-tooling-repair-f4/gates
+no result.json: evidence/wave2/b8-binary-resolution/mount-gates
+no result.json: evidence/wave2/t10-review/20260911T063000Z
+[done]

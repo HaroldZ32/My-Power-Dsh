@@ -1,0 +1,25 @@
+{
+ "driver": "packed-vs-worktree-full",
+ "packedFiles": 1160,
+ "identical": 1158,
+ "different": 1,
+ "differentPaths": [
+  "package.json"
+ ],
+ "missingSource": 1,
+ "missingPaths": [
+  "cordis.patch.yml"
+ ],
+ "widenedClasses": {
+  "launchersAndResolver": [],
+  "dshQaScripts": [],
+  "adoptedTooling": [],
+  "projectsScripts": [],
+  "counts": {
+   "launchersAndResolver": 0,
+   "dshQaScripts": 0,
+   "adoptedTooling": 0,
+   "projectsScripts": 0
+  }
+ }
+}

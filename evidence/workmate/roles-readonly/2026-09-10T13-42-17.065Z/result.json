@@ -1,0 +1,189 @@
+{
+  "ok": false,
+  "slug": "readonly-deny",
+  "defect": "names unknown global tool",
+  "expectedDenyList": [
+    "write",
+    "edit",
+    "mpd_hashline_edit",
+    "bash",
+    "mcp__ast_grep__rewrite",
+    "mcp__ast_grep__scan",
+    "mcp__lsp__rename"
+  ],
+  "deadNames": [
+    "str_replace_editor",
+    "apply_patch"
+  ],
+  "method": "local OpenAI-shaped stub drives the parent into one mpd_role_spawn in a FRESH dsh process (throwaway key), with a negative control that re-injects the pre-fix names in the sandbox copy",
+  "steps": {
+    "positive": {
+      "exit": 0,
+      "restrictError": false,
+      "missingCredential": false,
+      "authFailed": false,
+      "stubCalls": 4,
+      "stubTrace": [
+        {
+          "call": 1,
+          "hasTools": true,
+          "bytes": 110690,
+          "toolCount": 87,
+          "writeCapableVisible": [
+            "write",
+            "edit",
+            "mpd_hashline_edit",
+            "bash",
+            "mcp__ast_grep__rewrite",
+            "mcp__ast_grep__scan",
+            "mcp__lsp__rename"
+          ],
+          "isChildRequest": false
+        },
+        {
+          "call": 2,
+          "hasTools": false,
+          "bytes": 6942,
+          "toolCount": 0,
+          "writeCapableVisible": [],
+          "isChildRequest": false
+        },
+        {
+          "call": 3,
+          "hasTools": true,
+          "bytes": 104810,
+          "toolCount": 81,
+          "writeCapableVisible": [],
+          "isChildRequest": false
+        },
+        {
+          "call": 4,
+          "hasTools": true,
+          "bytes": 110966,
+          "toolCount": 87,
+          "writeCapableVisible": [
+            "write",
+            "edit",
+            "mpd_hashline_edit",
+            "bash",
+            "mcp__ast_grep__rewrite",
+            "mcp__ast_grep__scan",
+            "mcp__lsp__rename"
+          ],
+          "isChildRequest": false
+        }
+      ],
+      "spawnDriven": true,
+      "rejectedName": null,
+      "filterSent": {
+        "deny": [
+          "write",
+          "edit",
+          "mpd_hashline_edit",
+          "bash",
+          "mcp__ast_grep__rewrite",
+          "mcp__ast_grep__scan",
+          "mcp__lsp__rename"
+        ]
+      },
+      "fullOutput": "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)\n[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-rd-pos-home-8WMGFg/ws\n[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)\n[CodeGraph MCP] Shared daemon unavailable; serving this session in-process (degraded).\n[ADAPTER-PROBE] toolFilter={\"deny\":[\"write\",\"edit\",\"mpd_hashline_edit\",\"bash\",\"mcp__ast_grep__rewrite\",\"mcp__ast_grep__scan\",\"mcp__lsp__rename\"]}\nprobe-child-answered\n"
+    },
+    "enforcement": {
+      "ok": false,
+      "childRequests": 0,
+      "parentRequests": 4,
+      "childToolCounts": [],
+      "parentToolCounts": [
+        87,
+        0,
+        81,
+        87
+      ],
+      "childLeaksWriteCapable": [],
+      "parentHasAllSeven": true,
+      "note": "read-only authority is ENFORCED: the child's own requests cannot see any of the seven write-capable tools, while the parent's sees all of them"
+    },
+    "positiveOk": {
+      "ok": true,
+      "note": "the seven-name list reached tools.restrict(), the child was created and answered, and the child's visible toolset excludes all seven write-capable names"
+    },
+    "reinjectionDiagnostic": {
+      "exit": 0,
+      "restrictError": false,
+      "missingCredential": false,
+      "authFailed": false,
+      "stubCalls": 3,
+      "stubTrace": [
+        {
+          "call": 1,
+          "hasTools": true,
+          "bytes": 110646,
+          "toolCount": 87,
+          "writeCapableVisible": [
+            "write",
+            "edit",
+            "mpd_hashline_edit",
+            "bash",
+            "mcp__ast_grep__rewrite",
+            "mcp__ast_grep__scan",
+            "mcp__lsp__rename"
+          ],
+          "isChildRequest": false
+        },
+        {
+          "call": 2,
+          "hasTools": false,
+          "bytes": 6898,
+          "toolCount": 0,
+          "writeCapableVisible": [],
+          "isChildRequest": false
+        },
+        {
+          "call": 3,
+          "hasTools": true,
+          "bytes": 112582,
+          "toolCount": 87,
+          "writeCapableVisible": [
+            "write",
+            "edit",
+            "mpd_hashline_edit",
+            "bash",
+            "mcp__ast_grep__rewrite",
+            "mcp__ast_grep__scan",
+            "mcp__lsp__rename"
+          ],
+          "isChildRequest": false
+        }
+      ],
+      "spawnDriven": true,
+      "rejectedName": null,
+      "filterSent": {
+        "deny": [
+          "str_replace_editor",
+          "apply_patch",
+          "write",
+          "edit",
+          "mpd_hashline_edit",
+          "bash",
+          "mcp__ast_grep__rewrite",
+          "mcp__ast_grep__scan",
+          "mcp__lsp__rename"
+        ]
+      },
+      "fullOutput": "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)\n[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-rd-neg-home-d5oKNT/ws\n[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)\n[ADAPTER-PROBE] toolFilter={\"deny\":[\"str_replace_editor\",\"apply_patch\",\"write\",\"edit\",\"mpd_hashline_edit\",\"bash\",\"mcp__ast_grep__rewrite\",\"mcp__ast_grep__scan\",\"mcp__lsp__rename\"]}\nprobe-child-answered\n"
+    },
+    "reinjectionControl": {
+      "ok": false,
+      "childToolCounts": [],
+      "childSeesWriteCapable": [],
+      "refusalSeen": false,
+      "note": "control: with the unregistered names re-injected the restriction silently stops applying and the child sees the write-capable tools again — the exact degradation the enforcement assertion above exists to catch"
+    },
+    "reinjectionNote": "with the unregistered names re-injected, the sandbox boot still composed the child and emitted no refusal (refusalSeen=false) — the refusal is therefore NOT reproducible in this profile, so the positive lane carries the proof",
+    "isolation": {
+      "ok": true,
+      "realWorkmateUntouched": true,
+      "realWm": "/root/.mpd/workmate"
+    }
+  }
+}

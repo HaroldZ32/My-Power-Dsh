@@ -1,0 +1,4 @@
+{"type":"session","version":3,"id":"session-262ff586-78f2-48ef-af90-a8f23da6c727","createdAt":1789098300431,"cwd":"/tmp/mpd-t8-5Al42U/ws-blocked","isSeeded":false,"delegationDepth":0,"agentPreset":"mpd"}
+{"type":"permission/preset","seq":0,"time":1789098300443,"data":{"preset":"workspace-write"}}
+{"type":"sandbox/mode","seq":1,"time":1789098300444,"data":{"mode":"workspace-write"}}
+{"type":"approval/policy","seq":2,"time":1789098300444,"data":{"policy":"ask"}}

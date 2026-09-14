@@ -1,0 +1,38 @@
+{
+  "check": "t12 requirements-round-4 acceptance verification",
+  "checkedAt": "2026-09-13T13:53:05.687Z",
+  "head": "0e6bdafcdbbb4dde9bea0a8de94220d48c0548aa",
+  "acceptance": {
+    "c1_contractPatchesAppliedToTasks": {
+      "status": "not-addressed",
+      "evidence": "t4 Acceptance=(none) via agent_teams_task_contract; t5 acceptance text unchanged from the pre-freeze wording; no ledger task in .mpd/team/.../team.json tasks[] (14 tasks enumerated)"
+    },
+    "c2_frozenVerifiableProduct": {
+      "status": "partially-addressed",
+      "evidence": "evidence/omo-align/requirements/frozen-contract.json exists (16543 B) and carries frozenDecisions/complexityGate/configPlane/massUlwSemantics/manualEntryNames/requiredQaCases/changeLocations, but contains no t5 acceptanceAdd, no t6 hashPin, no t4 rowSet/acceptanceAdd text (grep counts: acceptanceAdd=0, hashPin=0, contractPatches=0)"
+    },
+    "c3_dropT1References": {
+      "status": "partially-addressed",
+      "evidence": "t5 deps are now t12,t2,t3 (t1 removed) and its acceptance no longer cites t1; t6 Objective/Acceptance still cite t1 (agent_teams_task_contract t6)"
+    },
+    "c4_ledgerTaskOrT6Scope": {
+      "status": "not-addressed",
+      "evidence": "no ledger task in team.json tasks[]; t6 inScope = evidence/omo-align/verification/** only; ledger deliverables exist as untracked files docs/omo-parity-ledger.md + .zh-CN.md with index rows (EN+zh) but carry no owning task"
+    },
+    "c5_t5AcceptanceAddAndT6HashPin": {
+      "status": "not-addressed",
+      "evidence": "t5 contract verify list has only the 6 original commands (no agent-teams-adopt/dispatch/sidebar/team-route-rewire/session-start-team; no hashPin); t6 contract verify has no rev-parse/sha256 pin step"
+    },
+    "c6_t4AcceptanceAdd": {
+      "status": "not-addressed",
+      "evidence": "t4 contract Acceptance=(none); gap.json (64 items) keys are id/name/upstreamPath/... — all 64 items lack every one of the 7 required columns; t4 Deliverables still name the deleted evidence/omo-align/research/skills-and-capability-gap/ path"
+    }
+  },
+  "mechanicalFacts": {
+    "gapItems": 0,
+    "gapItemsMissingRequiredColumn": 0,
+    "ledgerEnExists": true,
+    "ledgerZhExists": true,
+    "ledgerTaskInTeamJson": false
+  }
+}

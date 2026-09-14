@@ -1,0 +1,8 @@
+PASS ast-grep launcher answers as a real MCP stdio server (no pins, cwd outside the bundle) — tools=["search","rewrite","scan"] timeout=undefined stderr=
+PASS ast-grep real search returns a real match (not BINARY_NOT_FOUND) — {"schemaVersion":1,"ok":true,"kind":"search","workdir":"/tmp/t6-b8-NQdIqq/cwd-outside-bundle","matches":[{"path":"/root/dshProj/my-power-dsh/tests/mcp-fixtures/sample.c","language":"c","text":"return 
+PASS negative control: wrong caller pin -> BINARY_NOT_FOUND (the launcher did not override it) — {"schemaVersion":1,"ok":false,"error":{"code":"BINARY_NOT_FOUND","message":"ast-grep binary not found for linux: no candidate passed the --version probe across the env override, MPD runtime, skill bin
+PASS checkout resolution arrives via the toolchain tier (not a pinned env key) — {"resolved":{"binary":"/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/ast-grep","source":"toolchain"},"sgWrapperProbe":false}
+PASS the deprecated `.bin/sg` wrapper is rejected by the resolver's own probe — {"resolved":{"binary":"/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/ast-grep","source":"toolchain"},"sgWrapperProbe":false}
+PASS codegraph launcher answers the MCP handshake with a resolvable binary — tools=["codegraph_explore"] timeout=undefined stderr=
+
+PASS — b8-own-gate.result.json (6/6)

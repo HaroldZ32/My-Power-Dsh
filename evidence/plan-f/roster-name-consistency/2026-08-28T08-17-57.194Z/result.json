@@ -1,0 +1,16 @@
+{
+  "ok": true,
+  "domain": "plan-f",
+  "slug": "roster-name-consistency",
+  "checks": {
+    "freshBundleRepack": true,
+    "isolatedInstall": true,
+    "headlessBoot": true,
+    "realMpdRolesList": "11 roles; names: Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer, Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer",
+    "realMpdRolePersonaHephaestus": "You are the Deep Worker, an autonomous deep worker for software engineering.",
+    "realMpdRolePersonaMomus": "You are the Plan Reviewer, a practical work plan review consultant.",
+    "noOldNamesInRoster": true,
+    "oldNamesAbsentFromPersonas": true
+  },
+  "note": "Real headless dsh boot with the machine-configured DeepSeek key env (member LLM resolved by DSH, no key in any plugin — dsh-agent-teams pattern). Freshly packed bundle; agent called mpd_roles_list + mpd_role_persona via real model turn."
+}

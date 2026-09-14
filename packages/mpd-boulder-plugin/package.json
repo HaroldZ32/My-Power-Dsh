@@ -1,0 +1,10 @@
+{
+  "name": "@mpd-dsh/boulder",
+  "private": true,
+  "version": "0.2.3",
+  "type": "module",
+  "description": "Boulder durable work-state machine plugin (Plan C / C5)",
+  "scripts": {
+    "test": "bun test"
+  }
+}

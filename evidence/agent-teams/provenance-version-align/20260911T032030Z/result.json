@@ -1,0 +1,39 @@
+{
+  "ok": true,
+  "task": "t6",
+  "slug": "provenance-version-align",
+  "steps": {
+    "AGENTS.md \u00a71 states the shipped adopted version (0.1.16-rc.3-mpd)": {
+      "ok": true,
+      "evidence": "AGENTS.md:74 now reads 'MIT; adopted package version `0.1.16-rc.3-mpd`'; the old '(MIT, v0.1.14)' claim no longer exists anywhere in the file"
+    },
+    "0.1.14 mentions are explained provenance, not stale claims": {
+      "ok": true,
+      "evidence": "the paragraph explains the 0.1.14 body + client build and names LICENSE-NOTICES.md as the authoritative record"
+    },
+    "package.json version read back (verify cmd 2)": {
+      "ok": true,
+      "evidence": "node -e require('./packages/mpd-agent-teams-plugin/package.json').version => 0.1.16-rc.3-mpd"
+    },
+    "README pair carries no claim and is untouched": {
+      "ok": true,
+      "evidence": "git status shows no change under README.md / README.zh-CN.md; neither contains an agent-teams version string (grep hits: none)"
+    },
+    "exempt upstream docs + docs/ untouched": {
+      "ok": true,
+      "evidence": "git status: no changes under packages/mpd-agent-teams-plugin or docs/"
+    },
+    "\u00a712 hashline row rewritten into a RESOLVED entry (captain-authorized)": {
+      "ok": true,
+      "evidence": "keeps the type-array rejection lesson + the validator's own error text + the --dump-config composition-only lesson; states the new oneOf parameter form, the rebuilt dist, B4/t4 and its proof dir; re-states the do-not-fix-inside-an-unrelated-change rule for FUTURE instances"
+    },
+    "\u00a71 other provenance claims consistent (finding check)": {
+      "ok": true,
+      "evidence": "VENDOR_LOCK.json confirms base commit 8c57e46\u2026, version 5.0.0-beta.20, upstream code-yeongyu \u2014 no contradiction found to report"
+    },
+    "no gate depends on the removed wording": {
+      "ok": true,
+      "evidence": "grep across skills/ packages/ scripts/ tests/ for the removed sentence: no hits; only historical docs (docs/plan-e.md, .qa-tmp refs) mention v0.1.14 and they are exempt process records, not gates"
+    }
+  }
+}

@@ -1,0 +1,140 @@
+# t10 RE-VERIFICATION round 2 (post-t15) — 2026-09-14T17:39:21Z — head 6cbb126
+
+## 1. same checker, settled post-t15 tree (results diff vs attempt 4)
+$ node evidence/agent-teams/t10-docs-verify/20260914T173105Z/verify.mjs
+{
+ "existence": true,
+ "paritySameSectionCount": true,
+ "links": "73/0 dead",
+ "pathClaims": "205/0 missing",
+ "badConfigRows": [],
+ "dirsOnDiskNotListed": [],
+ "postRepair": {
+  "f1": {
+   "id": "F1",
+   "falseRowGoneEn": true,
+   "falseRowGoneZh": true,
+   "realityNoteEn": true,
+   "realityNoteZh": true,
+   "consumedKeyListOmitsCodegraph": true,
+   "noPluginReadsIt": true,
+   "ok": true
+  },
+  "f2": {
+   "id": "F2",
+   "universalClaimGoneEn": true,
+   "universalClaimGoneZh": true,
+   "exceptionsStatedEn": true,
+   "mcpSharedListedEn": true,
+   "mcpSharedListedZh": true,
+   "teamCompactReadmePair": true,
+   "exceptionsAreTrue": true,
+   "ok": true,
+   "undocumentedException": []
+  }
+ },
+ "findings": 0
+}
+
+## 2. F1 closed (both languages)
+$ grep -n 'codegraph\.\*' docs/user-guide.md docs/user-guide.zh-CN.md
+docs/user-guide.md:252:reads a `codegraph.*` key through `mpd.jsonc`. Its row ships `autoInit: true` and
+docs/user-guide.zh-CN.md:230:`codegraph.*` 键。它的行在 `packages/mpd-bundle/cordis.patch.yml` 中自带 `autoInit: true` 与
+  (the only remaining occurrences are the repair's own note, which says the key is NOT read)
+
+$ sed -n '248,254p' docs/user-guide.md
+| `team.stateDir` | agent-teams | where team state lives (defaults to `.mpd/team`) |
+
+`mpd-codegraph` is deliberately absent from this table: it takes `autoInit`, `initTimeoutMs`,
+`cooldownMs` and `binary` from its **bundle-patch row** options (read at apply time), and no plugin
+reads a `codegraph.*` key through `mpd.jsonc`. Its row ships `autoInit: true` and
+`initTimeoutMs: 60000` in `packages/mpd-bundle/cordis.patch.yml`.
+
+
+$ grep -rn 'get("codegraph' packages/*/src/*.ts
+  (empty = no plugin reads it)
+
+$ grep -o 'Consumed keys:[^"]*' packages/mpd-config-plugin/src/index.ts
+Consumed keys: memory.vcs/memory.dir/memory.agentSlug/memory.reflectionEvery, team.stateDir, hashline.guardEditTools/hashline.maxDiffChars/hashline.registryFile, commentChecker.autoCheck/commentChecker.bin/commentChecker.timeoutMs/commentChecker.maxMessageChars, modelchain.<chainKey>, boulder.dir, ulw.maxRounds/ulw.planDir/ulw.stateDir/ulw.provider/ulw.model/ulw.reviewerModel/ulw.maxReReviews.
+
+## 3. F2 closed (both languages)
+$ sed -n '28,37p' docs/index.md
+## Package reference
+
+Each package under `packages/<name>/` carries a bilingual `README.md` + `README.zh-CN.md`, with two
+stated exceptions: **`mpd-mcp-shared`** (the helper module shared by the MCP servers) ships source and
+tests only — its README pair is a recorded follow-up — and the adopted
+**`mpd-agent-teams-plugin`** keeps upstream's `README.md` verbatim as provenance, which the bilingual
+rule exempts.
+
+- **Host plugins** — `mpd-dsh-adapter-plugin` (the single harness-seam adapter every row calls
+  through), `mpd-config-plugin`, `mpd-tools-plugin`, `mpd-modelchain-plugin`,
+
+$ README pair audit
+  mpd-agent-teams-plugin         EN --
+  mpd-bootstrap-plugin           EN ZH
+  mpd-boulder-plugin             EN ZH
+  mpd-bundle                     EN ZH
+  mpd-bundle-plugin              EN ZH
+  mpd-codegraph-plugin           EN ZH
+  mpd-comment-checker-plugin     EN ZH
+  mpd-config-plugin              EN ZH
+  mpd-dsh-adapter-plugin         EN ZH
+  mpd-ext-plugin                 EN ZH
+  mpd-hashline-plugin            EN ZH
+  mpd-mcp-astgrep                EN ZH
+  mpd-mcp-codegraph              EN ZH
+  mpd-mcp-gitbash                EN ZH
+  mpd-mcp-lsp                    EN ZH
+  mpd-mcp-shared                 -- --
+  mpd-memory-plugin              EN ZH
+  mpd-modelchain-plugin          EN ZH
+  mpd-qa-roles-probe             EN ZH
+  mpd-roles-plugin               EN ZH
+  mpd-team-compact-plugin        EN ZH
+  mpd-tools-plugin               EN ZH
+  mpd-ulw-plugin                 EN ZH
+  mpd-workmate-plugin            EN ZH
+
+  claimed exceptions: mpd-mcp-shared (source+tests only) and mpd-agent-teams-plugin (upstream README verbatim) — both TRUE above, and no third undocumented exception exists
+
+## 4. the new README pair (added by t15)
+$ head -5 packages/mpd-team-compact-plugin/README.md
+# mpd-team-compact-plugin
+
+**English** | [中文](./README.zh-CN.md)
+
+Compaction for **finished teams**: when every task of a team is terminal and every member is idle,
+
+$ head -5 packages/mpd-team-compact-plugin/README.zh-CN.md
+# mpd-team-compact-plugin
+
+[English](./README.md) | **中文**
+
+面向 **已结束团队** 的上下文压缩：当一个团队的每个任务都已终结、且每位成员都处于空闲时，
+
+$ headings/tables/bullets/tools parity
+  headings 7 / 7 | table rows 7 / 7 | bullets 17 / 17
+
+$ tool names in the new pair exist
+480:    name: "mpd_team_compact_run",
+508:    name: "mpd_team_compact_status",
+
+## 5. no new dead link introduced
+$ per-file link resolution (round 2)
+  README.md                      links=13 dead=0 external=2
+  README.zh-CN.md                links=13 dead=0 external=2
+  docs/index.md                  links=16 dead=0 external=0
+  docs/index.zh-CN.md            links=15 dead=0 external=0
+  docs/user-guide.md             links=4 dead=0 external=0
+  docs/user-guide.zh-CN.md       links=4 dead=0 external=0
+  docs/architecture.md           links=1 dead=0 external=0
+  docs/architecture.zh-CN.md     links=1 dead=0 external=0
+  docs/development.md            links=1 dead=0 external=0
+  docs/development.zh-CN.md      links=1 dead=0 external=0
+  docs/extensions.md             links=2 dead=0 external=0
+  docs/extensions.zh-CN.md       links=2 dead=0 external=0
+
+$ new README pair links
+  packages/mpd-team-compact-plugin/README.md links=3 dead=0
+  packages/mpd-team-compact-plugin/README.zh-CN.md links=3 dead=0

@@ -1,0 +1,127 @@
+{
+  "schema": "mpd.compact-hinge/v1",
+  "task": "t45",
+  "wave": "omo-parity-align",
+  "kind": "verification",
+  "executor": "Deep Worker",
+  "date": "2026-09-14",
+  "objective": "Prove or disprove the hinge: can a HOST-plane plugin resolve and drive the compaction engine that serves member sessions (a preset isolate realm)? Plus: member id -> live Agent, inject safety, and a minimal end-to-end drive with a busy control.",
+
+  "anchor": {
+    "revision": "7379e28bd1b610666d15b245c37edc7ec159d7cb",
+    "verifiedBy": "real mounted boot (NOT --dump-config)",
+    "probeSources": {
+      "raw/probe-host.mjs": "d5dbbe3ece28e215",
+      "raw/probe-host-inject.mjs": "4b4b332b66e1f2f8",
+      "raw/probe-drive.mjs": "04d28cb42d53e117",
+      "raw/boot-driver.mjs": "ae240de99f24df02"
+    }
+  },
+
+  "isolatedBoot": {
+    "shape": "DSH_HOME=<mkdtemp> + HOME=<mkdtemp> + workspace=<mkdtemp>/ws, profile mpd-headless installed from this checkout, then a REAL dsh boot",
+    "credentialBoundary": "This environment has no provider key, so every boot ends with `dsh: MISSING_CREDENTIAL: llm-deepseek ...` (exit 1). That is a property of the environment, NOT of the probe: the boot got far enough to create a real session and register a live idle Agent (observed), which is what the hinge needs. No boot produced an apply/schema crash signature.",
+    "crashSignatures": [],
+    "pendingEntries": []
+  },
+
+  "criterion1_hinge": {
+    "verdict": "PROVEN, with an important qualifier",
+    "statement": "A host-plane plugin CAN reach a compaction engine with a callable compactNow, but the reaching differs by path; the engine that serves a member session is the one on the MEMBER'S scoped context.",
+    "observations": {
+      "hostPlaneServiceWithoutInject": "`ctx.get(\"compaction\")` at apply time returned undefined (variant A) — the service is not synchronously present for an inject-free host row.",
+      "hostPlaneServiceWithInject": "With `inject: [\"compaction\"]` (variant B) the same lookup returned an OBJECT with `compactNow` of type function at apply time. So the host plane DOES have a compaction service; the loader defers the row until it exists.",
+      "memberScopedEngine": "`ctx.agents.get(<memberId>).ctx.get(\"compaction\")` returned an OBJECT whose `compactNow` is a function — resolved in BOTH variants and with NO inject declaration.",
+      "identity": "The two resolved engines are NOT the same object (`sameObject: false`) while both report `name: \"compaction\"` and carry the same keys (`ctx, name, config, warnedPressureConfigTargets, overflowRetries, overflowAgents`). Each realm therefore exposes its own `BasicCompactionEngine` instance under the same service name.",
+      "callPathReachesTheEngine": "A real `compactNow(agent, signal)` against the member-scoped engine returned `null` — which the shipped source documents as 'no safe useful range exists'. It did NOT throw `busy` and did NOT crash, so the call travelled the whole path into `selectCompactableRange` and answered."
+    },
+    "whyNullNotSuccess": "The shipped selector returns null when the session has no priced nodes. The isolated headless session cannot accumulate content (no provider key ⇒ no model turn), so a non-null compaction is not reachable in this environment. Recorded as a limit, not dressed up as success.",
+    "designConclusion": "The planned plugin must drive the engine through the MEMBER's scoped context (`agent.ctx.get(\"compaction\")`), never through a host-plane `ctx.get(\"compaction\")`: the host instance is a different object and would target the wrong realm."
+  },
+
+  "criterion2_memberToLiveAgent": {
+    "verdict": "PROVEN",
+    "observation": {
+      "lookup": "ctx.agents.list() returned exactly one live agent; its id is the shared session/agent id (session-19d8a7a3-…).",
+      "measuredFields": {
+        "id": "session-19d8a7a3-7a26-4b78-bb89-e27a7f7a781a",
+        "hasSession": true,
+        "hasRunMaintenance": true,
+        "hasCtx": true,
+        "status": "idle"
+      },
+      "sessionObjectKeys": ["log", "surfaceManager", "header", "inheritedEventCount", "firstLiveSeq", "eventsSnapshot", "headerFold", "headerFoldSeq", "contextFold", "contextFoldSeq", "derived", "derivedNodes", "derivedGeneration"],
+      "note": "Session exposes `log` + `eventsSnapshot` (no top-level `read`), which is how a durable-drive observer should look for `compaction/start`/`compaction/end`."
+    },
+    "stagedCase": "Not exercised in this pass: the staged-not-yet-spawned shape (`members[].id === \"\"`) belongs to the agent-teams record and does not arise in a single-session boot. The implication is recorded from the plugin's own contract, not measured here: a staged team has no live agent, so it cannot be compacted."
+  },
+
+  "criterion3_injectSafety": {
+    "verdict": "PROVEN",
+    "a_injectEmpty": {
+      "measured": "variant A mounted and applied cleanly with `inject: []`; no crash signature; no pending loader entry; the plugin then resolved the service lazily later (the probe's retry loop is the pattern a lazy plugin would need).",
+      "degradation": "Because `ctx.get('compaction')` answered undefined at apply time and the platform never signalled the service, an inject-free host plugin must poll/retry to notice the engine. A plugin that assumed availability at apply would silently never compact."
+    },
+    "b_injectDeclared": {
+      "measured": "variant B declared `inject: [\"compaction\"]` in a composition where the compaction GROUP lives in the preset plane. The boot produced NO pending loader entry and NO crash; the row applied only once the service existed, and the lookup then resolved.",
+      "expectedByContract": "The task contract anticipated that declaring the inject might leave the loader entry pending or take the tree down when no compaction plane exists.",
+      "result": "CONTRADICTED in this configuration: it did neither. The host plane owns a compaction service instance, so the declared inject is satisfiable and the row simply defers."
+    },
+    "guidanceForTheNewPlugin": "Prefer `inject: [\"compaction\"]` for the host-plane row: availability then gates the apply deterministically, with no polling race, and the measured cost is zero (no pending entry, no crash). If the plugin must also tolerate a composition WITHOUT any compaction service, keep the lookup defensive and degrade with a warning instead of assuming the seam."
+  },
+
+  "criterion4_endToEnd": {
+    "verdict": "PARTIALLY PROVEN — the call path is driven, the success value is not reachable in this environment",
+    "driveCall": {
+      "target": "member-scoped engine via agent.ctx.get(\"compaction\")",
+      "return": null,
+      "threw": false,
+      "interpretation": "documented 'no safe useful range' for a content-free session"
+    },
+    "busyNegativeControl": {
+      "expectedByContract": "a second call on a non-idle member must yield the `busy` failure code",
+      "measured": "the concurrent second call threw `Error: cannot get required service \"tokenMeter\" in inactive context` (no ManualCompactionError, no `busy` code)",
+      "assessment": "The expected busy code was NOT observed. The thrown text names a Cordis lifecycle problem (an inactive context still holding a required-service lookup) rather than the idle-agent guard. This is recorded as a CONTRADICTION of the criterion's expectation, not smoothed over.",
+      "consequence": "Two things the design must not assume: (i) that a concurrent drive necessarily surfaces `busy`; (ii) that the engine can be called from a context whose lifecycle has moved on. The drive must be issued from a live context and must handle this error class explicitly."
+    },
+    "observabilityLimit": "`compaction/start` and `compaction/end` could not be observed because no non-null compaction ran: the isolated session held no priced nodes, and generating content requires a provider key this environment does not have. A durable-event assertion is therefore still owed, and it needs a credentialed boot."
+  },
+
+  "criterion5_alternativeIfDisproven": {
+    "verdict": "NOT TRIGGERED (the hinge was not disproven)",
+    "reservedPlan": "Had the agent-scoped engine been unreachable, the fallback was to place the row inside the preset's compaction group. The preset declares `isolate: { compaction: true, toolResultPruner: true }` around the compaction group (presets/mpd/agent.cordis.yml:275-280), whose children are `dsh-compaction-basic` and the command row — i.e. the realm that owns the member-facing engine. The measured `sameObject: false` supports that reading, but the realm placement was not exercised and remains untested.",
+    "note": "The finding that the agent-scoped engine resolves from the host plane makes the fallback unnecessary, but the row-placement question is still open for the owner of that composition."
+  },
+
+  "criterion6_conclusionsRecorded": {
+    "verdict": "PASSED",
+    "file": "this file",
+    "rawEvidence": [
+      "raw/probe-inject-none.jsonl (variant A: host lookup undefined, agent-scoped engine resolved)",
+      "raw/probe-inject-declared.jsonl (variant B: host lookup resolved after deferral)",
+      "raw/probe-drive.jsonl (identity comparison, fields, real compactNow call, concurrent control)",
+      "raw/boot-inject-none.{json,log}, raw/boot-inject-declared.{json,log}, raw/boot-drive.{json,log}"
+    ]
+  },
+
+  "criterion7_isolationAndNeutrality": {
+    "verdict": "PASSED",
+    "productFilesTouched": "none — `git status` shows no tracked change outside evidence/omo-align/compact-hinge/",
+    "evidenceOverwritten": "none (new directory)",
+    "neutrality": "no withdrawn external-project identifier appears in this evidence"
+  },
+
+  "recommendationForTheOwner": [
+    "Build the host-plane plugin with `inject: [\"compaction\"]` (measured safe) and resolve the MEMBER engine per agent via `agent.ctx.get(\"compaction\")`; never call a host-plane `ctx.get(\"compaction\")` for a member.",
+    "Gate the drive on a live agent: a staged team has no agent id, so it cannot be compacted — assert `agent` exists before attempting, and treat the empty-id case as 'not yet compactable'.",
+    "Do NOT assume `busy` is the failure signal for a concurrent drive; handle the inactive-context/tokenMeter error class explicitly and re-issue from a live context.",
+    "Treat a `null` return as 'no safe useful range' (documented) rather than an error, and record it in the audit.",
+    "A credentialed end-to-end pass is still owed to assert the durable `compaction/start`/`compaction/end` pair and a non-null result."
+  ],
+
+  "knownLimits": [
+    "No provider key in this environment: no model turn, therefore no priced session content, therefore no non-null compaction and no durable event pair.",
+    "The busy control was taken concurrently with the first call rather than against a genuinely mid-turn agent; it yielded a lifecycle error, so the true busy path remains unmeasured.",
+    "The preset-plane row-placement fallback was reasoned from the composition and the measured object identity, not exercised."
+  ]
+}

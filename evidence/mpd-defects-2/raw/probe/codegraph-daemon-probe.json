@@ -1,0 +1,54 @@
+{
+  "checkedAt": "2026-09-14T14:58:37.533Z",
+  "launcher": "/root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/launch.mjs",
+  "binary": "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph",
+  "project": "evidence/mpd-defects-2/raw/probe/proj",
+  "arms": [
+    {
+      "arm": "A-default-in-process",
+      "env": {},
+      "toolCount": 1,
+      "exploreAnswered": true,
+      "exploreIsError": null,
+      "exploreHasNorm": true,
+      "exploreChars": 498,
+      "daemonArtifacts": {
+        "pid": false,
+        "socket": false,
+        "log": false,
+        "db": true
+      },
+      "policyNotice": "[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged \"Shared daemon connection lost … serving this session in-process\"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)",
+      "sharedDaemonLines": [],
+      "stderrOther": []
+    },
+    {
+      "arm": "B-shared-daemon-enabled",
+      "env": {
+        "MPD_CODEGRAPH_DAEMON": "1"
+      },
+      "toolCount": 1,
+      "exploreAnswered": true,
+      "exploreIsError": null,
+      "exploreHasNorm": true,
+      "exploreChars": 498,
+      "daemonArtifacts": {
+        "pid": false,
+        "socket": false,
+        "log": false,
+        "db": true
+      },
+      "policyNotice": null,
+      "sharedDaemonLines": [],
+      "stderrOther": []
+    }
+  ],
+  "verdict": {
+    "A_answered_without_daemon": true,
+    "A_no_degrade_line": true,
+    "A_policy_notice_present": true,
+    "B_policy_notice_absent": true,
+    "B_tool_still_served": true,
+    "B_daemon_socket_observed": false
+  }
+}

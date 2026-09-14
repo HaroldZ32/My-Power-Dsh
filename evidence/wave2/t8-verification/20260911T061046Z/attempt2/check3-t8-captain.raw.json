@@ -1,0 +1,263 @@
+{
+  "driver": "check3-live-contract",
+  "liveTeamJson": ".mpd/team/mpd-wave-2/team.json",
+  "sandbox": "/tmp/mpd-t8-contract-SZ0bGQ",
+  "caller": {
+    "kind": "captain",
+    "id": "session-aded9c07-4cd3-4c82-ac31-22ce8c47c5be"
+  },
+  "registeredToolCount": 14,
+  "registeredToolNames": [
+    "agent_teams_add_member",
+    "agent_teams_approve",
+    "agent_teams_claim_task",
+    "agent_teams_create",
+    "agent_teams_create_task",
+    "agent_teams_delete",
+    "agent_teams_edit_plan",
+    "agent_teams_reassign_task",
+    "agent_teams_remove_member",
+    "agent_teams_resume",
+    "agent_teams_send_message",
+    "agent_teams_status",
+    "agent_teams_task_contract",
+    "agent_teams_update_task"
+  ],
+  "liveSha256Before": "9f1a8cfc75f7aeb37200845f13ca45ec752f0aad0f9f1f362b386962725e6339",
+  "sandboxSha256Before": "9f1a8cfc75f7aeb37200845f13ca45ec752f0aad0f9f1f362b386962725e6339",
+  "toolRegistered": true,
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "task_id": {
+        "type": "string",
+        "description": "Task id from the shared task list, e.g. \"t4\"."
+      }
+    }
+  },
+  "hasRender": true,
+  "view": {
+    "task_id": "t8",
+    "subject": "Verify the adopted-tooling fixes: `**` expansion, contract consistency, contract readability, vendor-refresh durability",
+    "kind": "verification",
+    "status": "in_progress",
+    "assignee": "Lead",
+    "attempt": 2,
+    "attempt_id": "ab227500-f5bf-4c71-a7a4-992c001d1863",
+    "dependencies": [
+      "t4"
+    ],
+    "objective": "Independently verify that the adopted agent-teams tooling fixes actually close the inScope `**` gap, prevent contradictory contract generation, expose a running task's contract, and survive a vendor refresh.",
+    "in_scope": [],
+    "out_of_scope": [],
+    "acceptance": [
+      "The `**` defect is reproduced against the PRE-FIX code (a declared directory-prefix pattern fails to cover the files beneath it) and then shown to be honored after the fix — a driven fixture or test, not an assertion",
+      "The contract contradiction is reproduced against pre-fix generation and shown to be impossible after the fix, with the reproduction raw output recorded",
+      "A LIVE running task's contract is read through the new surface and compared field-by-field against what was actually declared for it — inScope, outOfScope, dependencies and acceptance — and a field-level mismatch is reported rather than glossed",
+      "The vendor-refresh durability claim is tested by actually exercising the re-apply guard's failure mode (remove/rename its anchor and show it fails loudly), then restoring",
+      "No agent-teams regression: the plugin's own suite is green and a boot applying the agent-teams row shows 0 apply-crash signatures, with no --dump-config result cited as load evidence",
+      "Every acceptance criterion of t4 is checked against raw output the verifier produced; anything unreproducible is reported as a failure, not waved through"
+    ],
+    "verify": [
+      "bun test packages/mpd-agent-teams-plugin",
+      "a mounted boot applying the agent-teams row (0 apply-crash signatures)",
+      "the vendor-refresh guard exercised with its anchor removed",
+      "a live-task contract read compared against its declaration"
+    ],
+    "deliverables": [],
+    "non_goals": [],
+    "reassign_reason": "RETRY after repair t13 landed. All three findings you raised are claimed closed; I verified the substance myself before writing this, so you know what to re-derive rather than what to trust:\n- `bun test packages` = 340 pass / 0 fail.\n- F2: `lib/mpd-deltas.js` now registers 9 regions, including the three groups you named as unmarked (scope-overlap, scope-overlap-normalize, create-contract-gate); `pathMatchesScope` is wholly inside scope-glob so a re-materialize cannot strand an upstream copy.\n- F1: the carve-out is real — `quality-gates.js:347-348`: `const carved = sourceOutOfScope.filter((pattern) => !required.some((file) => pathMatchesScope(file, pattern)))` returned as the new outOfScope alongside `allowed` in inScope.\n- F3: the heal path now refuses when a module-scope name it declares still exists outside every region, plus post-heal validation, and `vendor-agent-teams.mjs` turns the refusal into exit 1.\n\nTWO OF YOUR OWN DRIVERS HAVE STALE EXPECTATIONS NOW — do not read them as regressions:\n1. `check4-guard` hard-codes \"7 regions\" (the registry is 9 now), and its S5 mutates the `scope-glob-core` region, which no longer exists as a separate region (it was merged into `scope-glob`). So S5's mutation silently no-ops and S1 prints 9. The in-region drift case S5 is trying to exercise IS verified, just not by that path: mutating one line inside `scope-glob` makes `--check` exit 1 naming the exact line (\"lines 102-195 … first difference at line 118\") while the pristine tree exits 0. Update those two constants in your drivers and re-run, rather than reporting S5's `exit=0 … want 1` as a failure.\n2. `check5-mount`'s `passed:false` is its WORKSPACE-ISOLATION counter, not the mount. The flagged `.mpd/team/mpd-default-587132ea` was created at 14:19:47 by captain session `session-8954c880-eee` — a CONCURRENT session, not this boot. That boot's own leak counter is 0 (`real_workspace_session_keys_in_sandbox=0`) and it reports 14/14 tools with 0 apply-crash signatures. Before calling any flagged record a leak, check the creating session id.\n   Mechanism worth recording: the SESSION-START TEAM POLICY auto-provisions a team for every new session in this workspace, so concurrent members' sessions legitimately create `mpd-default-*` records in `<repo>/.mpd/team`. That is expected behavior and NOT t7's isolation failing — it is why the repo accumulates these records, and it is why that counter is noisy while other sessions run.\n\nWHAT TO DO: re-run your FULL t8 contract against the current tree — the tree moved (quality-gates.js, mpd-deltas.js, the self-fix test, both scripts), so treat your attempt-1 pass list as requiring re-confirmation rather than transferable. Specifically re-check the three findings against the REAL archived inputs (F1's success signal: the finding's file is `in_scope` while prohibitions NO finding requires — VENDOR_LOCK.json, presets/mpd/agent.cordis.yml — still hold; that preserved-prohibition side is the falsifiability control, so verify it did not get over-carved), the region coverage (no executable added line outside a region), and the F3 refusal (non-zero exit naming the symbol and line, refused file byte-identical to its input, clean re-materialize still heals byte-identically).\nIf everything holds, complete t8 as a pass; t10 has been waiting on it since attempt 1.",
+    "acceptance_results": [
+      {
+        "criterion": "The `**` defect is reproduced against the PRE-FIX code (a declared directory-prefix pattern fails to cover the files beneath it) and then shown to be honored after the fix — a driven fixture or test, not an assertion",
+        "status": "passed",
+        "evidence": "check1-prefix/postfix.raw.json: pre-fix pathMatchesScope('packages/foo/test/a.test.mjs','packages/foo/test/**')=false, classifyChangedPath=undeclared, completion gate ok=false ('1 changed path(s) not covered by inScope'); post-fix true/in_scope/ok=true. Negative controls identical in both; real wave-1 t7 replay flips from ok=false (2 uncovered src paths) to ok=true."
+      },
+      {
+        "criterion": "The contract contradiction is reproduced against pre-fix generation and shown to be impossible after the fix, with the reproduction raw output recorded",
+        "status": "failed",
+        "evidence": "The duplicate-listing contradiction IS reproduced pre-fix (exact replay of the real t7+t10 inputs reproduces the recorded t13 contract byte-for-byte; 24/60 sweep contradictions; pre-fix validateCreateTask accepted it) and IS impossible post-fix (0/60; create gate refuses; carve-outs still legal). But the task body's required OUTCOME is not prevented: under the post-fix generated scope the finding F3/AGENTS.md whose requiredFix the repair's acceptance carries is still classified out_of_scope, i.e. the REQUIRED edit is still rejected — 'a fix that only narrows the window is not a pass'. See finding F1."
+      },
+      {
+        "criterion": "A LIVE running task's contract is read through the new surface and compared field-by-field against what was actually declared for it — inScope, outOfScope, dependencies and acceptance — and a field-level mismatch is reported rather than glossed",
+        "status": "passed",
+        "evidence": "check3-*.raw.json: REAL registration driven against a byte-identical copy of the live record; 14/14 tools incl. agent_teams_task_contract; t4/t6(in_progress)/t8(in_progress) 13/13 fields identical, including in_scope/out_of_scope/dependencies/acceptance; t8 view equals its assignment prompt verbatim; member read OK; unknown+blank ids refused; live team.json sha256 unchanged."
+      },
+      {
+        "criterion": "The vendor-refresh durability claim is tested by actually exercising the re-apply guard's failure mode (remove/rename its anchor and show it fails loudly), then restoring",
+        "status": "passed",
+        "evidence": "check4-guard.raw.json: region stripped -> --check exit 1 naming the delta; region+anchor removed -> --write exit 1 ('its anchor line is gone too (function isDefaultExcluded(path) {)'); region body edited -> exit 1 ('no longer matches … first difference at line 192'); --write restores byte-identically, next --check exit 0; live tree sha256 unchanged. (The separate HEALING-path defect on a re-vendored file is finding F3.)"
+      },
+      {
+        "criterion": "No agent-teams regression: the plugin's own suite is green and a boot applying the agent-teams row shows 0 apply-crash signatures, with no --dump-config result cited as load evidence",
+        "status": "passed",
+        "evidence": "check5-plugin-suite.log 83 pass/0 fail; check5-mount.raw.json: isolated DSH_HOME+HOME+workspace boot with a --patch registration probe row -> 0 apply-crash signatures, AGENT_TEAMS_TOOLS_PRESENT=14/14 with agent_teams_task_contract=REGISTERED (proves the post-fix module loaded), exit 124 (alive at the 90s cap), 0 leaked team records/session keys. No --dump-config cited."
+      },
+      {
+        "criterion": "Every acceptance criterion of t4 is checked against raw output the verifier produced; anything unreproducible is reported as a failure, not waved through",
+        "status": "passed",
+        "evidence": "result.json t4_acceptance_map: criterion 1 PASS (C1), 2 PASS on its literal wording with the outcome gap recorded as F1, 3 PASS (C3), 4 FAIL (F2: 17 lines outside every region), 5 PARTIAL/FAIL (C4 loud+byte-exact for our own file; F3 shows the vendor run's healing mode breaks the module and silently drops unmarked changes), 6 PASS (C5), 7 PASS (t4 output + evidence cite t3/t4/t7/t13 and the t13 contradiction). All measured, none waved through."
+      }
+    ],
+    "commands_run": [
+      {
+        "command": "bun test packages/mpd-agent-teams-plugin",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "83 pass / 0 fail / 312 expect() calls across 11 files — check5-plugin-suite.log"
+      },
+      {
+        "command": "a mounted boot applying the agent-teams row (0 apply-crash signatures)",
+        "status": "passed",
+        "exitCode": 124,
+        "evidence": "isolated DSH_HOME+HOME+workspace, dsh plugin --profile mpd add <repo> + boot with a --patch registration probe: apply-crash signatures 0, probe DONE, AGENT_TEAMS_TOOLS_PRESENT=14/14 incl. agent_teams_task_contract=REGISTERED, no workspace/session leakage — check5-mount.log, check5-mount.raw.json"
+      },
+      {
+        "command": "the vendor-refresh guard exercised with its anchor removed",
+        "status": "passed",
+        "exitCode": 1,
+        "evidence": "region+anchor removed -> --write exit 1 'its anchor line is gone too (\"function isDefaultExcluded(path) {\")'; region stripped -> --check exit 1; body edited -> exit 1 at line 192; restored byte-identically afterwards (live tree sha256 unchanged) — check4-guard.log, check4-guard.raw.json"
+      },
+      {
+        "command": "a live-task contract read compared against its declaration",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "t4/t6/t8 read through the REAL agent_teams_task_contract registration against a byte-identical copy of .mpd/team/mpd-wave-2/team.json: 13/13 fields match (in_scope, out_of_scope, dependencies, acceptance included); t8 also matches its assignment prompt verbatim — check3-*.raw.json"
+      }
+    ],
+    "changed_paths": [
+      "evidence/wave2/t8-verification/20260911T061046Z/README.md",
+      "evidence/wave2/t8-verification/20260911T061046Z/result.json",
+      "evidence/wave2/t8-verification/20260911T061046Z/drivers/check1-glob.mjs",
+      "evidence/wave2/t8-verification/20260911T061046Z/drivers/check2-contract.mjs",
+      "evidence/wave2/t8-verification/20260911T061046Z/drivers/check3-live-contract.mjs",
+      "evidence/wave2/t8-verification/20260911T061046Z/drivers/check4-guard-failure.sh",
+      "evidence/wave2/t8-verification/20260911T061046Z/drivers/check4d-revendor-heal.sh",
+      "evidence/wave2/t8-verification/20260911T061046Z/drivers/check5-mount.sh",
+      "evidence/wave2/t8-verification/20260911T061046Z/drivers/agent-teams-mount-probe.mjs"
+    ],
+    "findings_open": 3
+  },
+  "rendered": "Task t8 [in_progress] verification — Verify the adopted-tooling fixes: `**` expansion, contract consistency, contract readability, vendor-refresh durability\nAssignee: Lead (attempt 2, attempt_id ab227500-f5bf-4c71-a7a4-992c001d1863)\nDependencies: t4\nContract:\n  Objective: Independently verify that the adopted agent-teams tooling fixes actually close the inScope `**` gap, prevent contradictory contract generation, expose a running task's contract, and survive a vendor refresh.\n  In scope: (none)\n  Out of scope: (none)\n  Acceptance: The `**` defect is reproduced against the PRE-FIX code (a declared directory-prefix pattern fails to cover the files beneath it) and then shown to be honored after the fix — a driven fixture or test, not an assertion, The contract contradiction is reproduced against pre-fix generation and shown to be impossible after the fix, with the reproduction raw output recorded, A LIVE running task's contract is read through the new surface and compared field-by-field against what was actually declared for it — inScope, outOfScope, dependencies and acceptance — and a field-level mismatch is reported rather than glossed, The vendor-refresh durability claim is tested by actually exercising the re-apply guard's failure mode (remove/rename its anchor and show it fails loudly), then restoring, No agent-teams regression: the plugin's own suite is green and a boot applying the agent-teams row shows 0 apply-crash signatures, with no --dump-config result cited as load evidence, Every acceptance criterion of t4 is checked against raw output the verifier produced; anything unreproducible is reported as a failure, not waved through\n  Verify: bun test packages/mpd-agent-teams-plugin, a mounted boot applying the agent-teams row (0 apply-crash signatures), the vendor-refresh guard exercised with its anchor removed, a live-task contract read compared against its declaration\n  Reassignment reason: RETRY after repair t13 landed. All three findings you raised are claimed closed; I verified the substance myself before writing this, so you know what to re-derive rather than what to trust:\n- `bun test packages` = 340 pass / 0 fail.\n- F2: `lib/mpd-deltas.js` now registers 9 regions, including the three groups you named as unmarked (scope-overlap, scope-overlap-normalize, create-contract-gate); `pathMatchesScope` is wholly inside scope-glob so a re-materialize cannot strand an upstream copy.\n- F1: the carve-out is real — `quality-gates.js:347-348`: `const carved = sourceOutOfScope.filter((pattern) => !required.some((file) => pathMatchesScope(file, pattern)))` returned as the new outOfScope alongside `allowed` in inScope.\n- F3: the heal path now refuses when a module-scope name it declares still exists outside every region, plus post-heal validation, and `vendor-agent-teams.mjs` turns the refusal into exit 1.\n\nTWO OF YOUR OWN DRIVERS HAVE STALE EXPECTATIONS NOW — do not read them as regressions:\n1. `check4-guard` hard-codes \"7 regions\" (the registry is 9 now), and its S5 mutates the `scope-glob-core` region, which no longer exists as a separate region (it was merged into `scope-glob`). So S5's mutation silently no-ops and S1 prints 9. The in-region drift case S5 is trying to exercise IS verified, just not by that path: mutating one line inside `scope-glob` makes `--check` exit 1 naming the exact line (\"lines 102-195 … first difference at line 118\") while the pristine tree exits 0. Update those two constants in your drivers and re-run, rather than reporting S5's `exit=0 … want 1` as a failure.\n2. `check5-mount`'s `passed:false` is its WORKSPACE-ISOLATION counter, not the mount. The flagged `.mpd/team/mpd-default-587132ea` was created at 14:19:47 by captain session `session-8954c880-eee` — a CONCURRENT session, not this boot. That boot's own leak counter is 0 (`real_workspace_session_keys_in_sandbox=0`) and it reports 14/14 tools with 0 apply-crash signatures. Before calling any flagged record a leak, check the creating session id.\n   Mechanism worth recording: the SESSION-START TEAM POLICY auto-provisions a team for every new session in this workspace, so concurrent members' sessions legitimately create `mpd-default-*` records in `<repo>/.mpd/team`. That is expected behavior and NOT t7's isolation failing — it is why the repo accumulates these records, and it is why that counter is noisy while other sessions run.\n\nWHAT TO DO: re-run your FULL t8 contract against the current tree — the tree moved (quality-gates.js, mpd-deltas.js, the self-fix test, both scripts), so treat your attempt-1 pass list as requiring re-confirmation rather than transferable. Specifically re-check the three findings against the REAL archived inputs (F1's success signal: the finding's file is `in_scope` while prohibitions NO finding requires — VENDOR_LOCK.json, presets/mpd/agent.cordis.yml — still hold; that preserved-prohibition side is the falsifiability control, so verify it did not get over-carved), the region coverage (no executable added line outside a region), and the F3 refusal (non-zero exit naming the symbol and line, refused file byte-identical to its input, clean re-materialize still heals byte-identically).\nIf everything holds, complete t8 as a pass; t10 has been waiting on it since attempt 1.\nCompletion payload so far:\n  acceptanceResults: [{\"criterion\":\"The `**` defect is reproduced against the PRE-FIX code (a declared directory-prefix pattern fails to cover the files beneath it) and then shown to be honored after the fix — a driven fixture or test, not an assertion\",\"status\":\"passed\",\"evidence\":\"check1-prefix/postfix.raw.json: pre-fix pathMatchesScope('packages/foo/test/a.test.mjs','packages/foo/test/**')=false, classifyChangedPath=undeclared, completion gate ok=false ('1 changed path(s) not covered by inScope'); post-fix true/in_scope/ok=true. Negative controls identical in both; real wave-1 t7 replay flips from ok=false (2 uncovered src paths) to ok=true.\"},{\"criterion\":\"The contract contradiction is reproduced against pre-fix generation and shown to be impossible after the fix, with the reproduction raw output recorded\",\"status\":\"failed\",\"evidence\":\"The duplicate-listing contradiction IS reproduced pre-fix (exact replay of the real t7+t10 inputs reproduces the recorded t13 contract byte-for-byte; 24/60 sweep contradictions; pre-fix validateCreateTask accepted it) and IS impossible post-fix (0/60; create gate refuses; carve-outs still legal). But the task body's required OUTCOME is not prevented: under the post-fix generated scope the finding F3/AGENTS.md whose requiredFix the repair's acceptance carries is still classified out_of_scope, i.e. the REQUIRED edit is still rejected — 'a fix that only narrows the window is not a pass'. See finding F1.\"},{\"criterion\":\"A LIVE running task's contract is read through the new surface and compared field-by-field against what was actually declared for it — inScope, outOfScope, dependencies and acceptance — and a field-level mismatch is reported rather than glossed\",\"status\":\"passed\",\"evidence\":\"check3-*.raw.json: REAL registration driven against a byte-identical copy of the live record; 14/14 tools incl. agent_teams_task_contract; t4/t6(in_progress)/t8(in_progress) 13/13 fields identical, including in_scope/out_of_scope/dependencies/acceptance; t8 view equals its assignment prompt verbatim; member read OK; unknown+blank ids refused; live team.json sha256 unchanged.\"},{\"criterion\":\"The vendor-refresh durability claim is tested by actually exercising the re-apply guard's failure mode (remove/rename its anchor and show it fails loudly), then restoring\",\"status\":\"passed\",\"evidence\":\"check4-guard.raw.json: region stripped -> --check exit 1 naming the delta; region+anchor removed -> --write exit 1 ('its anchor line is gone too (function isDefaultExcluded(path) {)'); region body edited -> exit 1 ('no longer matches … first difference at line 192'); --write restores byte-identically, next --check exit 0; live tree sha256 unchanged. (The separate HEALING-path defect on a re-vendored file is finding F3.)\"},{\"criterion\":\"No agent-teams regression: the plugin's own suite is green and a boot applying the agent-teams row shows 0 apply-crash signatures, with no --dump-config result cited as load evidence\",\"status\":\"passed\",\"evidence\":\"check5-plugin-suite.log 83 pass/0 fail; check5-mount.raw.json: isolated DSH_HOME+HOME+workspace boot with a --patch registration probe row -> 0 apply-crash signatures, AGENT_TEAMS_TOOLS_PRESENT=14/14 with agent_teams_task_contract=REGISTERED (proves the post-fix module loaded), exit 124 (alive at the 90s cap), 0 leaked team records/session keys. No --dump-config cited.\"},{\"criterion\":\"Every acceptance criterion of t4 is checked against raw output the verifier produced; anything unreproducible is reported as a failure, not waved through\",\"status\":\"passed\",\"evidence\":\"result.json t4_acceptance_map: criterion 1 PASS (C1), 2 PASS on its literal wording with the outcome gap recorded as F1, 3 PASS (C3), 4 FAIL (F2: 17 lines outside every region), 5 PARTIAL/FAIL (C4 loud+byte-exact for our own file; F3 shows the vendor run's healing mode breaks the module and silently drops unmarked changes), 6 PASS (C5), 7 PASS (t4 output + evidence cite t3/t4/t7/t13 and the t13 contradiction). All measured, none waved through.\"}]\n  commandsRun: [{\"command\":\"bun test packages/mpd-agent-teams-plugin\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"83 pass / 0 fail / 312 expect() calls across 11 files — check5-plugin-suite.log\"},{\"command\":\"a mounted boot applying the agent-teams row (0 apply-crash signatures)\",\"status\":\"passed\",\"exitCode\":124,\"evidence\":\"isolated DSH_HOME+HOME+workspace, dsh plugin --profile mpd add <repo> + boot with a --patch registration probe: apply-crash signatures 0, probe DONE, AGENT_TEAMS_TOOLS_PRESENT=14/14 incl. agent_teams_task_contract=REGISTERED, no workspace/session leakage — check5-mount.log, check5-mount.raw.json\"},{\"command\":\"the vendor-refresh guard exercised with its anchor removed\",\"status\":\"passed\",\"exitCode\":1,\"evidence\":\"region+anchor removed -> --write exit 1 'its anchor line is gone too (\\\"function isDefaultExcluded(path) {\\\")'; region stripped -> --check exit 1; body edited -> exit 1 at line 192; restored byte-identically afterwards (live tree sha256 unchanged) — check4-guard.log, check4-guard.raw.json\"},{\"command\":\"a live-task contract read compared against its declaration\",\"status\":\"passed\",\"exitCode\":0,\"evidence\":\"t4/t6/t8 read through the REAL agent_teams_task_contract registration against a byte-identical copy of .mpd/team/mpd-wave-2/team.json: 13/13 fields match (in_scope, out_of_scope, dependencies, acceptance included); t8 also matches its assignment prompt verbatim — check3-*.raw.json\"}]\n  changedPaths: [\"evidence/wave2/t8-verification/20260911T061046Z/README.md\",\"evidence/wave2/t8-verification/20260911T061046Z/result.json\",\"evidence/wave2/t8-verification/20260911T061046Z/drivers/check1-glob.mjs\",\"evidence/wave2/t8-verification/20260911T061046Z/drivers/check2-contract.mjs\",\"evidence/wave2/t8-verification/20260911T061046Z/drivers/check3-live-contract.mjs\",\"evidence/wave2/t8-verification/20260911T061046Z/drivers/check4-guard-failure.sh\",\"evidence/wave2/t8-verification/20260911T061046Z/drivers/check4d-revendor-heal.sh\",\"evidence/wave2/t8-verification/20260911T061046Z/drivers/check5-mount.sh\",\"evidence/wave2/t8-verification/20260911T061046Z/drivers/agent-teams-mount-probe.mjs\"]\nOpen findings: 3",
+  "unknownId": "task \"t-does-not-exist\" does not exist in team \"MPD Wave 2\" (known tasks: t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13)",
+  "blankId": "task_id is required",
+  "memberRead": {
+    "ok": true,
+    "in_scope": [],
+    "out_of_scope": [],
+    "acceptance_len": 6
+  },
+  "liveSha256After": "9f1a8cfc75f7aeb37200845f13ca45ec752f0aad0f9f1f362b386962725e6339",
+  "sandboxSha256After": "9f1a8cfc75f7aeb37200845f13ca45ec752f0aad0f9f1f362b386962725e6339",
+  "liveUntouched": true,
+  "sandboxUntouched": true,
+  "declared": {
+    "subject": "Verify the adopted-tooling fixes: `**` expansion, contract consistency, contract readability, vendor-refresh durability",
+    "kind": "verification",
+    "status": "in_progress",
+    "assignee": "Lead",
+    "attempt": 2,
+    "attemptId": "ab227500-f5bf-4c71-a7a4-992c001d1863",
+    "dependencies": [
+      "t4"
+    ],
+    "objective": "Independently verify that the adopted agent-teams tooling fixes actually close the inScope `**` gap, prevent contradictory contract generation, expose a running task's contract, and survive a vendor refresh.",
+    "inScope": [],
+    "outOfScope": [],
+    "acceptance": [
+      "The `**` defect is reproduced against the PRE-FIX code (a declared directory-prefix pattern fails to cover the files beneath it) and then shown to be honored after the fix — a driven fixture or test, not an assertion",
+      "The contract contradiction is reproduced against pre-fix generation and shown to be impossible after the fix, with the reproduction raw output recorded",
+      "A LIVE running task's contract is read through the new surface and compared field-by-field against what was actually declared for it — inScope, outOfScope, dependencies and acceptance — and a field-level mismatch is reported rather than glossed",
+      "The vendor-refresh durability claim is tested by actually exercising the re-apply guard's failure mode (remove/rename its anchor and show it fails loudly), then restoring",
+      "No agent-teams regression: the plugin's own suite is green and a boot applying the agent-teams row shows 0 apply-crash signatures, with no --dump-config result cited as load evidence",
+      "Every acceptance criterion of t4 is checked against raw output the verifier produced; anything unreproducible is reported as a failure, not waved through"
+    ],
+    "verify": [
+      "bun test packages/mpd-agent-teams-plugin",
+      "a mounted boot applying the agent-teams row (0 apply-crash signatures)",
+      "the vendor-refresh guard exercised with its anchor removed",
+      "a live-task contract read compared against its declaration"
+    ]
+  },
+  "fieldComparison": [
+    {
+      "field": "task_id",
+      "match": true,
+      "reported": "t8",
+      "declared": "t8"
+    },
+    {
+      "field": "subject",
+      "match": true,
+      "reported": "Verify the adopted-tooling fixes: `**` expansion, contract consistency, contract readability, vendor-refresh durability",
+      "declared": "Verify the adopted-tooling fixes: `**` expansion, contract consistency, contract readability, vendor-refresh durability"
+    },
+    {
+      "field": "kind",
+      "match": true,
+      "reported": "verification",
+      "declared": "verification"
+    },
+    {
+      "field": "status",
+      "match": true,
+      "reported": "in_progress",
+      "declared": "in_progress"
+    },
+    {
+      "field": "assignee",
+      "match": true,
+      "reported": "Lead",
+      "declared": "Lead"
+    },
+    {
+      "field": "attempt",
+      "match": true,
+      "reported": "2",
+      "declared": "2"
+    },
+    {
+      "field": "attempt_id",
+      "match": true,
+      "reported": "ab227500-f5bf-4c71-a7a4-992c001d1863",
+      "declared": "ab227500-f5bf-4c71-a7a4-992c001d1863"
+    },
+    {
+      "field": "dependencies",
+      "match": true,
+      "reported": "[\"t4\"]",
+      "declared": "[\"t4\"]"
+    },
+    {
+      "field": "objective",
+      "match": true,
+      "reported": "Independently verify that the adopted agent-teams tooling fixes actually close the inScope `**` gap, prevent contradictory contract generation, expose a running",
+      "declared": "Independently verify that the adopted agent-teams tooling fixes actually close the inScope `**` gap, prevent contradictory contract generation, expose a running"
+    },
+    {
+      "field": "in_scope",
+      "match": true,
+      "reported": "[]",
+      "declared": "[]"
+    },
+    {
+      "field": "out_of_scope",
+      "match": true,
+      "reported": "[]",
+      "declared": "[]"
+    },
+    {
+      "field": "acceptance",
+      "match": true,
+      "reported": "[\"The `**` defect is reproduced against the PRE-FIX code (a declared directory-prefix pattern fails to cover the files beneath it) and then shown to be honored ",
+      "declared": "[\"The `**` defect is reproduced against the PRE-FIX code (a declared directory-prefix pattern fails to cover the files beneath it) and then shown to be honored "
+    },
+    {
+      "field": "verify",
+      "match": true,
+      "reported": "[\"bun test packages/mpd-agent-teams-plugin\",\"a mounted boot applying the agent-teams row (0 apply-crash signatures)\",\"the vendor-refresh guard exercised with it",
+      "declared": "[\"bun test packages/mpd-agent-teams-plugin\",\"a mounted boot applying the agent-teams row (0 apply-crash signatures)\",\"the vendor-refresh guard exercised with it"
+    }
+  ],
+  "allFieldsMatch": true
+}

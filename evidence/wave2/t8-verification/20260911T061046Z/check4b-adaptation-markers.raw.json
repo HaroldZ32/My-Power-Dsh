@@ -1,0 +1,128 @@
+{
+  "driver": "check4b-adaptation-markers",
+  "files": {
+    "packages/mpd-agent-teams-plugin/lib/quality-gates.js": {
+      "regions": [
+        {
+          "id": "mpd-delta scope-glob",
+          "begin": 102,
+          "end": 181,
+          "region_line": "//#region mpd-delta scope-glob (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)"
+        },
+        {
+          "id": "mpd-delta scope-glob-core",
+          "begin": 182,
+          "end": 197,
+          "region_line": "//#region mpd-delta scope-glob-core (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)"
+        },
+        {
+          "id": "mpd-delta contract-contradiction",
+          "begin": 274,
+          "end": 363,
+          "region_line": "//#region mpd-delta contract-contradiction (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)"
+        },
+        {
+          "id": "mpd-delta repair-scope",
+          "begin": 700,
+          "end": 707,
+          "region_line": "//#region mpd-delta repair-scope (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)"
+        },
+        {
+          "id": "mpd-delta repair-scope-fields",
+          "begin": 716,
+          "end": 718,
+          "region_line": "//#region mpd-delta repair-scope-fields (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)"
+        }
+      ],
+      "added_lines": 198,
+      "added_lines_outside_regions": [
+        {
+          "line": 252,
+          "text": "            const hit = a === b"
+        },
+        {
+          "line": 253,
+          "text": "                ? true"
+        },
+        {
+          "line": 254,
+          "text": "                : scopePatternsOverlap(normalizeScopePattern(a), normalizeScopePattern(b))"
+        },
+        {
+          "line": 255,
+          "text": "            if (hit) {"
+        },
+        {
+          "line": 263,
+          "text": "/** Normalize a scope pattern for the overlap relation (`undefined` -> empty). */"
+        },
+        {
+          "line": 264,
+          "text": "function normalizeScopePattern(pattern) {"
+        },
+        {
+          "line": 265,
+          "text": "    const normalized = normalizeWorkspacePath(pattern.trim().replaceAll('\\\\', '/'));"
+        },
+        {
+          "line": 266,
+          "text": "    return normalized === undefined || normalized === '' ? '.' : normalized;"
+        },
+        {
+          "line": 267,
+          "text": "}"
+        },
+        {
+          "line": 405,
+          "text": "        const contradiction = contractContradiction(input.inScope, input.outOfScope ?? [])"
+        },
+        {
+          "line": 406,
+          "text": "        if (contradiction !== undefined) {"
+        },
+        {
+          "line": 407,
+          "text": "            return {"
+        },
+        {
+          "line": 408,
+          "text": "                ok: false,"
+        },
+        {
+          "line": 409,
+          "text": "                error: `${kind} contract is unsatisfiable: no path can ever be in scope \u2014 "
+        },
+        {
+          "line": 410,
+          "text": "                    + `\\nFix: drop the duplicate from outOfScope or narrow it (e.g. outOfS"
+        },
+        {
+          "line": 411,
+          "text": "            };"
+        },
+        {
+          "line": 412,
+          "text": "        }"
+        }
+      ]
+    },
+    "packages/mpd-agent-teams-plugin/lib/tools.js": {
+      "regions": [
+        {
+          "id": "mpd-delta task-contract",
+          "begin": 1733,
+          "end": 1761,
+          "region_line": "//#region mpd-delta task-contract (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)"
+        },
+        {
+          "id": "mpd-delta task-contract-render",
+          "begin": 2259,
+          "end": 2335,
+          "region_line": "//#region mpd-delta task-contract-render (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)"
+        }
+      ],
+      "added_lines": 106,
+      "added_lines_outside_regions": []
+    }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "task": "t6 own B8 gate (checkout, pins scrubbed, cwd outside the bundle)",
+  "stamp": "2026-09-11T09:10:44.451Z",
+  "scrubbedEnvKeys": [
+    "MPD_AST_GREP_SG_PATH",
+    "MPD_AST_GREP_BIN_DIR",
+    "MPD_DSH_ASTGREP_CLI",
+    "MPD_CODEGRAPH_BIN",
+    "MPD_DSH_CODEGRAPH_CLI",
+    "MPD_CODEGRAPH_PROJECT_CWD",
+    "MPD_DSH_CODEGRAPH_PROJECT_CWD"
+  ],
+  "cwdOutsideBundle": "/tmp/t6-b8-NQdIqq/cwd-outside-bundle",
+  "fixture": "/root/dshProj/my-power-dsh/tests/mcp-fixtures/sample.c",
+  "checks": [
+    {
+      "name": "ast-grep launcher answers as a real MCP stdio server (no pins, cwd outside the bundle)",
+      "pass": true,
+      "detail": "tools=[\"search\",\"rewrite\",\"scan\"] timeout=undefined stderr="
+    },
+    {
+      "name": "ast-grep real search returns a real match (not BINARY_NOT_FOUND)",
+      "pass": true,
+      "detail": "{\"schemaVersion\":1,\"ok\":true,\"kind\":\"search\",\"workdir\":\"/tmp/t6-b8-NQdIqq/cwd-outside-bundle\",\"matches\":[{\"path\":\"/root/dshProj/my-power-dsh/tests/mcp-fixtures/sample.c\",\"language\":\"c\",\"text\":\"return 0;\",\"range\":{\"start\":{\"line\":1,\"column\":17,\"byteOffset\":17},\"end\":{\"line\":1,\"column\":26,\"byteOffset\""
+    },
+    {
+      "name": "negative control: wrong caller pin -> BINARY_NOT_FOUND (the launcher did not override it)",
+      "pass": true,
+      "detail": "{\"schemaVersion\":1,\"ok\":false,\"error\":{\"code\":\"BINARY_NOT_FOUND\",\"message\":\"ast-grep binary not found for linux: no candidate passed the --version probe across the env override, MPD runtime, skill bin"
+    },
+    {
+      "name": "checkout resolution arrives via the toolchain tier (not a pinned env key)",
+      "pass": true,
+      "detail": "{\"resolved\":{\"binary\":\"/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/ast-grep\",\"source\":\"toolchain\"},\"sgWrapperProbe\":false}"
+    },
+    {
+      "name": "the deprecated `.bin/sg` wrapper is rejected by the resolver's own probe",
+      "pass": true,
+      "detail": "{\"resolved\":{\"binary\":\"/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/ast-grep\",\"source\":\"toolchain\"},\"sgWrapperProbe\":false}"
+    },
+    {
+      "name": "codegraph launcher answers the MCP handshake with a resolvable binary",
+      "pass": true,
+      "detail": "tools=[\"codegraph_explore\"] timeout=undefined stderr="
+    }
+  ],
+  "allPass": true
+}

@@ -1,0 +1,7 @@
+{
+  "name": "@mpd-dsh/bootstrap",
+  "private": true,
+  "version": "0.2.3",
+  "type": "module",
+  "description": "Bootstrap provisioning inside the bundle package (presets auto-copy)"
+}

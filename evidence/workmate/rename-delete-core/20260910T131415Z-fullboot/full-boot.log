@@ -1,0 +1,43 @@
+=== FULL-PROFILE boot check (profile: mpd) ===
+repo=/root/dshProj/my-power-dsh
+sandbox DSH_HOME=/tmp/mpd-wm-full-dsh-keTzDH
+sandbox HOME=/tmp/mpd-wm-full-home-aalFoA
+HEAD=f69708809ed63a57461aa6730d297afc09e772a3
+src schema line:   0 type-array occurrence(s)
+dist schema line:  0 type-array occurrence(s)
+
+[setup] copied .credentials.yaml into the sandbox
+[setup] copied settings.yaml into the sandbox
+[exit=0] dsh plugin --profile mpd add <repo>
+
+### check 1: dsh --profile mpd --dump-config
+[exit=0] dump-config (bytes: 32246)
+mpd rows in the full profile: 16
+id: mpd-workmate present: 1
+436:- id: mpd-workmate
+437-  name: '@mpd-dsh/mpd/packages/mpd-workmate-plugin/dist/index.js'
+438-- id: mpd-bootstrap
+439-  name: '@mpd-dsh/mpd/packages/mpd-bootstrap-plugin/dist/index.js'
+
+### check 2: REAL boot: dsh --profile mpd (applies the tree)
+[exit=124] real boot (124 = still alive at the 120s cap, normal for a serving profile)
+loader-apply errors: 0 (MUST be 0)
+--- boot stdout, verbatim ---
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=no-binary binary=- cwd=/root/dshProj/my-power-dsh
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.3.2)
+CodeGraph MCP skipped: codegraph binary not found. Install CodeGraph or set MPD_CODEGRAPH_BIN.
+--- end boot stdout ---
+[exit=0] full-profile checks: dump row present AND no loader-apply abort
+{
+  "check": "FULL profile (mpd) in an isolated DSH_HOME + sandbox HOME",
+  "install_exit": 0,
+  "dump_config_exit": 0,
+  "mpd_rows_in_full_profile": 16,
+  "mpd_workmate_row_present": true,
+  "real_boot_exit": 124,
+  "loader_apply_errors": 0,
+  "verdict": "plugin tree APPLIED on the full profile",
+  "note": "--dump-config alone cannot close this class (it never applies plugin code); the real boot is the decisive check"
+}
+SWEEP_DONE

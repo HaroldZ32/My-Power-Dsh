@@ -1,0 +1,38 @@
+=== wave-3 t4 O-1 mount boots ===
+repo=/root/dshProj/my-power-dsh
+HEAD=98680b1fb2bbf5c10c28cfbe44419e91595e1cb7
+date=2026-09-11T09:01:33Z
+sandbox DSH_HOME=/root/dshProj/my-power-dsh/evidence/wave3/codegraph-degrade-and-applytime/20260911T081649Z/boot-run/dsh
+sandbox HOME=/root/dshProj/my-power-dsh/evidence/wave3/codegraph-degrade-and-applytime/20260911T081649Z/boot-run/home
+process cwd of both boots = /root/dshProj/my-power-dsh/evidence/wave3/codegraph-degrade-and-applytime/20260911T081649Z/boot-run/project (session workspace = /root/dshProj/my-power-dsh/evidence/wave3/codegraph-degrade-and-applytime/20260911T081649Z/boot-run/session-ws)
+MPD_DSH_CODEGRAPH_CLI is NOT set: the real mcp-codegraph row (bundle-relative launcher) is exercised
+web port=3211; each boot waits for the codegraph MCP child line, then is stopped
+
+[exit=0] dsh plugin --profile mpd add --store-dir <sb> <repo>
+[session-root] stopped after 4 log lines (the child line, when emitted, is the wait condition)
+[no-override] stopped after 4 log lines (the child line, when emitted, is the wait condition)
+{
+  "proof": "real dsh MOUNT boots (isolated DSH_HOME + sandbox HOME, web profile); no --dump-config cited",
+  "boot_with_session_root": {
+    "apply_line_cwd": "/root/dshProj/my-power-dsh/evidence/wave3/codegraph-degrade-and-applytime/20260911T081649Z/boot-run/session-ws",
+    "session_workspace": "/root/dshProj/my-power-dsh/evidence/wave3/codegraph-degrade-and-applytime/20260911T081649Z/boot-run/session-ws",
+    "process_cwd": "/root/dshProj/my-power-dsh/evidence/wave3/codegraph-degrade-and-applytime/20260911T081649Z/boot-run/project",
+    "session_differs_from_process_cwd": true,
+    "ok": true,
+    "status": "marker"
+  },
+  "boot_without_override": {
+    "apply_line_cwd": "/root/dshProj/my-power-dsh/evidence/wave3/codegraph-degrade-and-applytime/20260911T081649Z/boot-run/project",
+    "expected_fallback_process_cwd": "/root/dshProj/my-power-dsh/evidence/wave3/codegraph-degrade-and-applytime/20260911T081649Z/boot-run/project",
+    "ok": true,
+    "status": "ok"
+  },
+  "mount": {
+    "apply_crash_signatures": 0,
+    "mcp_child_observed": false,
+    "child_uncaught_error": false,
+    "note": "the MCP child line is INFORMATIONAL: the MCP client spawns its servers asynchronously and may not emit it inside the boot window; F-B8-1's throw/degrade pair is proven by degrade-launcher.mjs"
+  },
+  "ok": true
+}
+DONE

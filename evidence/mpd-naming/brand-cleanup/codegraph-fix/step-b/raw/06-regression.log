@@ -1,0 +1,7 @@
+=== bun run typecheck ===
+$ tsgo --noEmit
+typecheck exit=0
+
+=== agent-teams-messaging --self-test (VENDOR_LOCK pin) ===
+[agent-teams-messaging self-test] ok: R1 exports + SHIPPED send/clear/interject wiring + this case drives the tool surface + scheduler exclusion on both reads + RED-arm transform applies + VENDOR_LOCK skills pin current (297 files/1d277907045e) + SKILL.md row + test:qa glob
+messaging exit=0

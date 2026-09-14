@@ -1,0 +1,10 @@
+{
+  "name": "@mpd-dsh/ulw",
+  "private": true,
+  "version": "0.2.3",
+  "type": "module",
+  "description": "ulw-loop/ultrawork loop discipline plugin (B3)",
+  "scripts": {
+    "test": "bun test"
+  }
+}

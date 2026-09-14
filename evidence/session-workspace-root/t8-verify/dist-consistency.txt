@@ -1,0 +1,49 @@
+mpd-bootstrap-plugin: REAL DIFF vs fresh source build (44 diff lines) — dist is STALE
+6a7
+> import { resolve } from "node:path";
+14a16,50
+> function sessionCwdOf(agent) {
+>   try {
+>     const cwd = agent?.session?.header?.cwd;
+>     return typeof cwd === "string" && cwd.length > 0 ? cwd : undefined;
+>   } catch {
+mpd-boulder-plugin: IDENTICAL (sha256 a15872148b34caee)
+mpd-bundle-plugin: IDENTICAL (sha256 d30b30fa7dcbe247)
+mpd-codegraph-plugin: IDENTICAL (sha256 d66079901dd8942e)
+mpd-comment-checker-plugin: IDENTICAL (sha256 e27dd3cececbe6bf)
+mpd-config-plugin: IDENTICAL (sha256 189d76a6cca3e4e4)
+mpd-dsh-adapter-plugin: IDENTICAL (sha256 fe3ea3015bcc391e)
+mpd-hashline-plugin: IDENTICAL (sha256 7152de89783e4018)
+mpd-memory-plugin: IDENTICAL (sha256 0f9e3a53273b40d6)
+mpd-modelchain-plugin: IDENTICAL (sha256 e3c0b2466c54f32c)
+mpd-qa-roles-probe: REAL DIFF vs fresh source build (44 diff lines) — dist is STALE
+0a1
+> import { resolve } from "node:path";
+8a10,44
+> function sessionCwdOf(agent) {
+>   try {
+>     const cwd = agent?.session?.header?.cwd;
+>     return typeof cwd === "string" && cwd.length > 0 ? cwd : undefined;
+>   } catch {
+mpd-roles-plugin: REAL DIFF vs fresh source build (52 diff lines) — dist is STALE
+2c2
+< import { dirname, join, resolve } from "node:path";
+---
+> import { dirname, join, resolve as resolve2 } from "node:path";
+131a132
+> import { resolve } from "node:path";
+139a141,175
+> function sessionCwdOf(agent) {
+mpd-tools-plugin: REAL DIFF vs fresh source build (44 diff lines) — dist is STALE
+2a3
+> import { resolve } from "node:path";
+10a12,46
+> function sessionCwdOf(agent) {
+>   try {
+>     const cwd = agent?.session?.header?.cwd;
+>     return typeof cwd === "string" && cwd.length > 0 ? cwd : undefined;
+>   } catch {
+mpd-ulw-plugin: IDENTICAL (sha256 e116ee3e8017450a)
+mpd-verif-plugin: IDENTICAL (sha256 2958504a65f4603d)
+mpd-workmate-plugin: IDENTICAL (sha256 e10a87fcf2fe3096)
+--- packages checked: 22; real-diff(stale): 4

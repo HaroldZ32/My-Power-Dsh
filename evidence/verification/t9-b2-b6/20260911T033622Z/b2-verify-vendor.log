@@ -1,0 +1,76 @@
+## B2 independent verification (verifier-produced)
+HEAD=98680b1fb2bbf5c10c28cfbe44419e91595e1cb7  date=2026-09-11T03:36:33Z
+
+### 1) B2's own diff paths (the declared B2 change)
+VENDOR_LOCK.json
+scripts/verify-vendor.mjs
+
+### 2) any skills/ paths in the worktree diff (B2's criterion: none from B2)
+skills/dsh-qa/scripts/workmate-library.mjs
+
+=== (a) baseline gate on the current tree ===
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] asset OK: skills 365 files
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+BASELINE_EXIT=0
+=== (b) DELIBERATE MUTATION 1: append one byte to skills/dsh-qa/SKILL.md (sha before=a6e773713315d222d51cd1c2322976ddf8f4a4b965af11a125c18f93ecd20147) ===
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] FAIL - asset skills treeSha mismatch
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+MUTATION1_EXIT=1
+(asset OK: skills lines in log so far: 1)
+RESTORED_SHA=a6e773713315d222d51cd1c2322976ddf8f4a4b965af11a125c18f93ecd20147 (before=a6e773713315d222d51cd1c2322976ddf8f4a4b965af11a125c18f93ecd20147) match=yes
+=== (c) DELIBERATE MUTATION 2: add a temp file under skills/ (count drift) ===
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] FAIL - asset skills count drifted: 366 vs 365
+[verify-vendor] FAIL - asset skills treeSha mismatch
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+MUTATION2_EXIT=1
+temp file removed: gone
+=== (d) root-cause isolation: swap ONLY skills/dsh-qa/scripts/workmate-library.mjs to its HEAD bytes ===
+worktree WL sha256 before = 5741ac4bc03ae4e655e7b71e1b9becb7904216575b18dfe25e1a2f85dbdfaed4
+backup1 sha256 = 5741ac4bc03ae4e655e7b71e1b9becb7904216575b18dfe25e1a2f85dbdfaed4
+backup2 sha256 = 5741ac4bc03ae4e655e7b71e1b9becb7904216575b18dfe25e1a2f85dbdfaed4
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] FAIL - asset skills treeSha mismatch
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+HEAD_SWAP_EXIT=1
+worktree WL sha256 after restore = 5741ac4bc03ae4e655e7b71e1b9becb7904216575b18dfe25e1a2f85dbdfaed4 (match=yes)
+=== (e) final state re-check ===
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] asset OK: skills 365 files
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+FINAL_EXIT=0
+ M skills/dsh-qa/scripts/workmate-library.mjs

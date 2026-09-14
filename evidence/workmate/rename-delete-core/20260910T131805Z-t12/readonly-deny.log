@@ -1,0 +1,7 @@
+[readonly-deny] ok=true -> /root/dshProj/my-power-dsh/evidence/fix/readonly-deny/2026-09-10T13-19-43.601Z
+  positive: {"exit":0,"restrictError":false,"missingCredential":false,"authFailed":false,"stubCalls":4,"stubTrace":[{"call":1,"hasTools":true,"bytes":105748},{"call":2,"hasTools":false,"bytes":6895},{"call":3,"hasTools":true,"bytes":99868},{"call":4,"hasTools":true,"bytes":106024}],"spawnDriven":true,"rejectedN
+  positiveOk: {"ok":true,"note":"the seven-name list reached tools.restrict() and the harness accepted it: the child was created and answered, with no unknown-tool refusal"}
+  reinjectionDiagnostic: {"exit":0,"restrictError":false,"missingCredential":false,"authFailed":false,"stubCalls":3,"stubTrace":[{"call":1,"hasTools":true,"bytes":105704},{"call":2,"hasTools":false,"bytes":6851},{"call":3,"hasTools":true,"bytes":107498}],"spawnDriven":true,"rejectedName":null,"filterSent":{"deny":["str_repl
+  reinjectionNote: "with the unregistered names re-injected, the sandbox boot still composed the child and emitted no refusal (refusalSeen=false) — the refusal is therefore NOT reproducible in this profile, so the positive lane carries the proof"
+  isolation: {"ok":true,"realWorkmateUntouched":true,"realWm":"/root/.mpd/workmate"}
+[readonly-deny] PASS

@@ -1,0 +1,49 @@
+=== LANE B: pre-t15 shape (ok stripped from both output schemas) ===
+measured_at=14:07:00
+src_sha=24cd41f4f83cca28
+dist_sha=a7b558e9bc62ebcb
+dist ok-declarations (original): 2
+mutated ok-declarations (must be 0): 0
+mutated file is otherwise identical except that token: 0 diff lines
+dsh: initialized profile mpd at /tmp/vcm-dsh-6J2ipX/profiles/mpd
+
+dependencies:
++ @mpd-dsh/mpd link:/root/dshProj/my-power-dsh
+
+Already up to date
+Done in 150ms using pnpm v11.23.0
+
+   ╭─────────────────────────────────────────╮
+   │                                         │
+   │   Update available! 11.23.0 → 12.3.4.   │
+   │   Changelog: https://pnpm.io/v/12.3.4   │
+   │    To update, run: pnpm self-update     │
+   │                                         │
+   ╰─────────────────────────────────────────╯
+
+[exit=0] install
+--- patch ---
+- id: mpd-workmate
+  name: "/tmp/vcm-dsh-6J2ipX/mutated-workmate/index.js"
+- insert:
+    - id: valid-call-probe
+      name: "/root/dshProj/my-power-dsh/evidence/workmate/rename-delete-core/t15-valid-call-probe.mjs"
+[exit=124] boot (124 = alive at the 60s cap)
+[valid-call] init1 mpd_workmate_init ok=true INVALID_OUTPUT=false
+[valid-call] rename mpd_workmate_rename ok=true INVALID_OUTPUT=false
+[valid-call] list1 mpd_workmate_list ok=true INVALID_OUTPUT=false
+[valid-call] RENAME_LANDED=true names=["probe-wm-2"]
+[valid-call] delete-archive mpd_workmate_delete ok=true INVALID_OUTPUT=false
+[valid-call] init2 mpd_workmate_init ok=true INVALID_OUTPUT=false
+[valid-call] delete-purge mpd_workmate_delete ok=true INVALID_OUTPUT=false
+[valid-call] list2 mpd_workmate_list ok=true INVALID_OUTPUT=false
+[valid-call] FINAL names=[]
+[valid-call] RENAME_OK=true
+[valid-call] DELETE_ARCHIVE_OK=true
+[valid-call] DELETE_PURGE_OK=true
+[valid-call] INVALID_OUTPUT_ERRORS=0
+[valid-call] DONE
+loader-apply errors: 0
+--- mutated row actually mounted? ---
+0
+DONE

@@ -1,0 +1,61 @@
+=== re-vendor simulation: upstream (HEAD) quality-gates.js + our tools.js/mpd-deltas.js ===
+sb=/tmp/mpd-t8-revendor-0xKgWp
+
+--- --check on the re-vendored tree ---
+[patch-agent-teams-fixes] FAIL: delta "mpd-delta scope-glob" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js
+exit=1
+
+--- --write (the healing pass) ---
+[patch-agent-teams-fixes] applied: 7 mpd delta region(s) across 2 adopted file(s) (inserted: mpd-delta scope-glob, mpd-delta scope-glob-core, mpd-delta contract-contradiction, mpd-delta repair-scope, mpd-delta repair-scope-fields)
+exit=0
+
+--- --check again ---
+[patch-agent-teams-fixes] already applied: 7 mpd delta region(s) across 2 adopted file(s)
+exit=0
+
+--- diff: guard-restored file vs the working-tree file (what the guard does NOT restore) ---
+102,119d101
+< export function pathMatchesScope(path, pattern) {
+<     const normalizedPath = normalizeWorkspacePath(path);
+<     if (normalizedPath === undefined)
+<         return false;
+<     const rawPattern = pattern.trim().replaceAll('\\', '/');
+<     if (rawPattern.startsWith('~') || rawPattern.startsWith('/') || /^[A-Za-z]:/.test(rawPattern))
+<         return false;
+<     const normalizedPattern = normalizeWorkspacePath(rawPattern);
+<     if (normalizedPattern === undefined) {
+<         if (rawPattern === './' || rawPattern === '/' || rawPattern === '.')
+<             return true;
+<         return false;
+<     }
+<     if (normalizedPattern === '')
+<         return true;
+<     return normalizedPath === normalizedPattern
+<         || normalizedPath.startsWith(`${normalizedPattern}/`);
+< }
+270c252,255
+<             if (pathMatchesScope(a, b) || pathMatchesScope(b, a) || a === b) {
+---
+>             const hit = a === b
+>                 ? true
+>                 : scopePatternsOverlap(normalizeScopePattern(a), normalizeScopePattern(b));
+>             if (hit) {
+277a263,267
+> /** Normalize a scope pattern for the overlap relation (`undefined` -> empty). */
+> function normalizeScopePattern(pattern) {
+>     const normalized = normalizeWorkspacePath(pattern.trim().replaceAll('\\', '/'));
+>     return normalized === undefined || normalized === '' ? '.' : normalized;
+> }
+414a405,412
+>         const contradiction = contractContradiction(input.inScope, input.outOfScope ?? []);
+>         if (contradiction !== undefined) {
+>             return {
+>                 ok: false,
+>                 error: `${kind} contract is unsatisfiable: no path can ever be in scope — declared "${contradiction.inScope}" is forbidden by outOfScope "${contradiction.outOfScope}"`
+>                     + `\nFix: drop the duplicate from outOfScope or narrow it (e.g. outOfScope "packages/foo/vendor" instead of "packages/foo").`,
+>             };
+>         }
+718,719d715
+<         inScope: files.length > 0 ? files : source?.inScope,
+<         outOfScope: source?.outOfScope,
+diff-exit=1

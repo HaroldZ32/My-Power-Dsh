@@ -1,0 +1,218 @@
+{
+  "schema": "mpd.external-bundle-purge/v1",
+  "task": "t33",
+  "wave": "omo-parity-align",
+  "kind": "integration",
+  "executor": "Deep Worker",
+  "date": "2026-09-13",
+  "objective": "Purge every repository-visible identifier of the separately maintained RTL/EDA bundle: remove the cross-bundle profile carrier hook and its tooling, neutralize the publishable and internal documents, delete the residual and orphaned evidence trees, and re-pin the skill corpus in the same commit.",
+
+  "baseline": {
+    "head": "d788639",
+    "branchAtStart": "dev",
+    "registryMachineIdiom": "22 mpd delta region(s) across 7 adopted file(s)",
+    "registryLiteralIdiom": "grep -c 'id: \"mpd-delta' = 22",
+    "vendorLockSkills": { "fileCount": 330, "treeSha": "8582b87ae694f468e90c77a77ddcb00cb35247aaf4abd744e33de11ea7612e99" },
+    "note": "Two counting idioms are recorded because their numbers differ by construction; both are reported after the change so neither is ambiguous."
+  },
+
+  "threeColumn": {
+    "verified": [
+      "Carrier hook removed from the adopted entrypoint: the marked region is gone from `packages/mpd-agent-teams-plugin/lib/index.js` and `config.profiles` is again sourced only from this repository's own patch/config.",
+      "Registry regenerated with `--write-registry`; `--check` clean both before (22/7) and after (21/6).",
+      "Every deletion target is recorded by its pre-delete tree/blob identity (see deletionManifest) so the removed bytes are independently checkable without restating any withdrawn name.",
+      "Identifier-set scan over tracked files returns 0 real hits; the only remaining match is the sanctioned third-party platform brand.",
+      "Skill corpus re-pinned inside this same commit: fileCount unchanged at 330, treeSha changed (see vendorLock).",
+      "All five contract verify commands plus the wider package suite and the row-conformance case are green (see commandsRun)."
+    ],
+    "corrected": [
+      "`self-fix-tests/registry-context-heal.test.mjs` assumed every adopted lib file carries at least one registered region (`deltas[0].id`). After the carrier hook was removed, the entrypoint legitimately carries zero regions, so the partial-insertion test now skips region-free files and asserts non-vacuity (`filesWithRegions > 0`) instead of dereferencing an empty list.",
+      "`AGENTS.md` registry paragraph carried stale counts (12 / 13 regions across 3 files); rewritten to the measured 21 regions across 6 adopted files.",
+      "`AGENTS.md` layout line and the two READMEs described the extracted surface by naming an external bundle and checkout; rewritten to describe the same fact without naming anything external.",
+      "`package.json` lost the `verify:rtl-refs` script entry (adjacent `verify:vendor` / `verify:rows` untouched)."
+    ],
+    "unresolved": [
+      "Historical evidence logs from earlier waves still contain generic RTL test-case names (e.g. retired case slugs) as log lines. Per the ruling these are incidental historical content, not project identifiers, and were deliberately left untouched; they are outside the identifier set the gate scans.",
+      "The pre-delete manifest records identities, not path names: the deleted path set is recoverable from the repository history (the deletion commit) for audit, which is the neutral equivalent of restating those paths."
+    ]
+  },
+
+  "deletionManifest": {
+    "note": "Pre-delete identity per deleted item. 'tree' is the git tree object id; 'content' is sha256 over the item's sorted 'blobSha path' lines (first 16 hex chars); 'blob' is the single-file hash. Only neutral categories are recorded.",
+    "items": [
+      { "category": "residual evidence tree (RTL extraction wave)", "tree": "96f29f38013e0c6105cde098ba872c38e248520d", "content": "155544f84745a849", "trackedFiles": 4082 },
+      { "category": "residual QA evidence — profile case", "tree": "2a42d32830a54109b5fff2314c36b9fd50a7dddd", "content": "0161aed1b7b74a13", "trackedFiles": 2 },
+      { "category": "residual QA evidence — verification case", "tree": "671a36cbf7e7038bb13cabe9224d1e23bb5b2880", "content": "9cb20e1d4cda0243", "trackedFiles": 20 },
+      { "category": "extraction state record", "tree": "c75c4ea24aa0e439c24503db9ed74971575d4556", "blob": "a64e8f2a4ef71b1dc055ed32729e1c0f477022f8", "trackedFiles": 1 },
+      { "category": "cross-repo closure note directory", "tree": "aca693c9db1b6ef9f593746c8b2c066aa1a204cd", "content": "65aa54de0bd0e47a", "trackedFiles": 2 },
+      { "category": "orphaned extraction-wave verification evidence (A)", "tree": "d2d6a80ff438accd9b5c751ebb9edc88f7cff325", "content": "45996ba54321714a", "trackedFiles": 17 },
+      { "category": "orphaned extraction-wave gate evidence (B)", "tree": "1602a6e7112359812bcff657a8590fbae72ff0c5", "content": "0804a3f56b05c72a", "trackedFiles": 18 },
+      { "category": "orphaned extraction-wave gate evidence (C)", "tree": "7ff833e9ccea3f56590b9998ed1393047fca7dd7", "content": "7233559e8147073d", "trackedFiles": 7 },
+      { "category": "internal QA reference doc (fixture A)", "blob": "59154fbfc11f5f03f307733b50cd18e923f5d785" },
+      { "category": "internal QA reference doc (fixture B)", "blob": "15507931f247715b25d9866245cb0d8b55a00f4c" },
+      { "category": "cross-repo reference verifier script", "blob": "4fa9aaf2fe7a4f301addfa88bac119cb2c422899" },
+      { "category": "probe artifact (carrier probe, no source to rebuild from)", "blob": "870b5b362cfc1c17ea8648ad7d6197fcf89c1765" }
+    ],
+    "totals": { "trackedFilesDeleted": 4153, "singleFiles": 4 }
+  },
+
+  "liveCodeAndDocs": {
+    "carrierHook": {
+      "file": "packages/mpd-agent-teams-plugin/lib/index.js",
+      "action": "removed the whole marked region (note block + loader helper + the config merge line) and the now-empty region marker pair",
+      "regenerated": "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+      "registryBefore": { "machineIdiom": "22 regions / 7 adopted files", "literalIdiom": 22 },
+      "registryAfter": { "machineIdiom": "21 regions / 6 adopted files", "literalIdiom": 21 },
+      "checkAfter": "already applied: 21 mpd delta region(s) across 6 adopted file(s) (exit 0)"
+    },
+    "documents": [
+      "README.md — two passages rewritten to state the same facts without naming anything external",
+      "README.zh-CN.md — both passages rewritten in the same commit (bilingual pairing kept)",
+      "AGENTS.md — layout line de-linked; the local-adaptation table row for the carrier hook removed with the table structure intact; registry paragraph counts corrected",
+      "packages/mpd-bootstrap-plugin/test/bootstrap.test.ts — two comments neutralized",
+      "skills/dsh-qa/SKILL.md — corpus scope paragraph neutralized",
+      "skills/lsp-setup/SKILL.md — description sentence plus the two HDL routing rows rewritten to neutral wording",
+      "package.json — `verify:rtl-refs` entry removed only"
+    ]
+  },
+
+  "vendorLock": {
+    "asset": "skills",
+    "before": { "fileCount": 330, "treeSha": "8582b87ae694f468e90c77a77ddcb00cb35247aaf4abd744e33de11ea7612e99" },
+    "after": { "fileCount": 330, "treeSha": "3f420502eb535a6a1ea7a710ad41c11c80454946e3daeab10dc6176cbb335a2e" },
+    "assertion": "fileCount unchanged (both skill edits rewrite existing lines) and only treeSha moved — as predicted.",
+    "note": "The re-pin is the SECOND paired re-pin of this wave: the earlier one belongs to the preceding implementation commit, which added a new QA case (328 -> 330 files). Each writer re-pinned inside its own commit; neither was merged into the other."
+  },
+
+  "selfCheck": {
+    "targetSet": "project name (all case variants) + organisation name + package-name form + cross-repo relative paths + the project-specific environment variable names",
+    "scope": [
+      "tracked files across the whole repository (git grep)",
+      "worktree files that are not gitignored"
+    ],
+    "exemptions": [
+      { "what": "the third-party platform brand string in skills/ast-grep/references/install.md", "reason": "unrelated vendor brand (an OS platform name), not this project's identifier; changing it would be wrong and would keep the gate permanently red" },
+      { "what": "gitignored scratch/cache/index directories", "reason": "temporary copies that are neither tracked nor published" }
+    ],
+    "trackedResult": {
+      "rawMatchCount": 1,
+      "realMatchCount": 0,
+      "rawMatchResolution": "the single raw match is the exempted third-party brand string",
+      "command": "case-insensitive identifier-set scan over tracked files (git grep -iE), then the exempted brand string subtracted"
+    },
+    "worktreeResult": {
+      "note": "the only additional matches live under the gitignored team-state directory (runtime mailbox records of a prior wave); they are exempted and were not edited"
+    },
+    "evidenceTextNeutrality": "this file is itself inside the repository, so it records identities and neutral categories only; no withdrawn name appears in it."
+  },
+
+  "acceptanceResults": [
+    { "criterion": "Deletion surface removed and recorded by neutral category + pre-delete identity (no withdrawn path names in the evidence)", "status": "passed", "evidence": "12 manifest entries in deletionManifest (9 trees + 4 single blobs, one entry carrying both); 4153 tracked files staged as deletions; the manifest uses tree/content/blob ids plus neutral categories only" },
+    { "criterion": "Both orphaned extraction-wave evidence directories deleted as well; other historical evidence left untouched", "status": "passed", "evidence": "git rm tracked 42 files across the three orphaned subtrees (17 + 18 + 7); a pre-delete check showed 0 live script references; historical wave2/wave3/workmate evidence trees were not modified (git status shows no changes under them)" },
+    { "criterion": "Live code and publishable surface cleaned: carrier hook removed, registry regenerated and clean with a net -1 region, script + package entry removed, both READMEs and AGENTS.md neutralized, bootstrap test comments neutralized", "status": "passed", "evidence": "identifier scan in the entrypoint returns 0; --check clean at 21/6 (was 22/7); package.json keeps verify:vendor and verify:rows; AGENTS.md table still parses with the row removed" },
+    { "criterion": "Skill files edited with the lock re-pinned in the same commit; verify-vendor green; before/after recorded", "status": "passed", "evidence": "vendorLock before/after shows fileCount 330 -> 330 and only treeSha moved; verify-vendor exits 0 reporting 'asset OK: skills 330 files'" },
+    { "criterion": "Identifier-set self-check returns 0 hits over tracked files and non-ignored worktree files, with the two exemptions justified", "status": "passed", "evidence": "tracked raw match count 1, real match count 0 (the one raw match is the exempted third-party brand); see selfCheck" },
+    { "criterion": "No regression: typecheck, plugin tests, registry check, vendor gate, two-sided gate and row conformance all green; fix/ branch used; evidence carries the three columns plus manifest and scan output", "status": "passed", "evidence": "all commandsRun entries passed; commit made on a fix/ branch; this file holds the three columns, the manifest and the scan criteria/result" }
+  ],
+
+  "commandsRun": [
+    { "command": "node scripts/patch-agent-teams-fixes.mjs --check", "status": "passed", "exitCode": 0, "evidence": "already applied: 21 mpd delta region(s) across 6 adopted file(s)" },
+    { "command": "node scripts/verify-vendor.mjs", "status": "passed", "exitCode": 0, "evidence": "PASS; asset OK: skills 330 files (treeSha 3f420502eb535a6a1ea7a710ad41c11c80454946e3daeab10dc6176cbb335a2e)" },
+    { "command": "bun run typecheck", "status": "passed", "exitCode": 0, "evidence": "tsgo --noEmit reported no diagnostics" },
+    { "command": "bun test packages/mpd-agent-teams-plugin", "status": "passed", "exitCode": 0, "evidence": "153 pass / 0 fail, 994 expect() calls, 40 files" },
+    { "command": "bun skills/dsh-qa/scripts/session-start-team.mjs", "status": "passed", "exitCode": 0, "evidence": "PASS; twoSided ok with simpleTeams [0,0,0] / simpleNotices all false and complexTeams [1,1,1] / complexNotices all true; negativeControl disarmed=true; revision d7886395b842cf401fe90ceb5fb0f6f305d267b6" },
+    { "command": "node skills/dsh-qa/scripts/preset-conformance.mjs", "status": "passed", "exitCode": 0, "evidence": "PASS; checked 30 rows, parity 31/31 with no missing/extra; boot log signatures []; negative control still red (agent-preset/invalid, persona prefix missing)" },
+    { "command": "bun test packages", "status": "passed", "exitCode": 0, "evidence": "335 pass / 0 fail, 2408 expect() calls, 78 files" }
+  ],
+
+  "repoFlow": {
+    "branch": "fix/external-bundle-purge",
+    "merge": "--no-ff into dev",
+    "guidance": "The pre-existing untracked user-facing ledger and prior-wave QA evidence directories were deliberately NOT staged or committed by this task."
+  },
+
+  "taskRecordCaveat": {
+    "status": "failed (validator-blocked, NOT a work failure)",
+    "cause": "The task contract's inScope enumerated only the files to EDIT, while the same contract's acceptance required deleting directories outside that list. The completion validator therefore rejected 11 changed paths as undeclared and forbade a 'completed' verdict.",
+    "workState": "All acceptance criteria were measured as passed and the change is merged into dev (fix commit 1efb30b, merge commit 1f2b38e).",
+    "resolutionNeeded": "Re-declare inScope to cover the deletion surface plus the self-fix test file, and re-issue the completion so the terminal record carries the acceptance/verify evidence.",
+    "deviation": "packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs is outside the declared inScope but was required: with the carrier region gone the entrypoint carries zero registered regions, and that fixture dereferenced an empty region list (measured 1 fail / 152 pass before the fix, 153 pass / 0 fail after). The change is minimal: skip region-free adopted files and assert non-vacuity."
+  },
+
+  "followUpBatch": {
+    "note": "Three small fixes the captain folded into this slot (same batch of files, same writer). They extend the committed change; all gates were re-run on the resulting revision.",
+    "items": [
+      {
+        "id": "H1",
+        "file": "packages/mpd-agent-teams-plugin/lib/types/state.d.ts",
+        "problem": "The published declaration still described the pre-OPT-1 parameter order while the implementation takes (status, tasks, dependencies). The file is copied wholesale into the release package by the pack script, so the mismatch was a real shipped defect.",
+        "fix": "Signature corrected to (status, tasks, dependencies) and the docstring now states that a terminal-failed (or cancelled) dependency does not block, so the dependent stays open and claimable.",
+        "evidence": "direct invocation on the real module: correct order -> 'open'; the old/wrong order -> 'blocked' (decisive two-way evidence, no throw)"
+      },
+      {
+        "id": "H2",
+        "file": "packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs",
+        "problem": "Requested slot correction at the unknown-dependency assertion plus an OPT-1 assertion at the correct slots.",
+        "fix": "Accepted with a correction: the slots at that line were ALREADY correct (the local helper returns a task list whose failed entry is named A, so passing (tasks, ['ghost']) is right) — only a clarifying comment was needed. The OPT-1 assertion for a failed dependency already existed at the correct slots. The file also carries a second correct-slot call in the F2 parity test.",
+        "evidence": "153/0 plugin tests including this file; the wrong-order invocation is separately shown to answer 'blocked'"
+      },
+      {
+        "id": "H3",
+        "file": "packages/mpd-agent-teams-plugin/lib/session-start.js",
+        "problem": "Dead exported constant (declared once, referenced nowhere) left over from the superseded threshold rule.",
+        "fix": "Constant removed and the trigger comment rewritten to name Option A, cite the frozen contract's complexityGate.logicRevisionNote as the superseding decision, and state explicitly that a counted-signal >= 2 threshold must NOT be restored (with the measured reason and the accepted, ledgered cost).",
+        "evidence": "grep for the constant across lib/ and test/ returns 0; the registry region body was regenerated so the delta stays byte-faithful (--check clean at 21 regions / 6 files)"
+      }
+    ],
+    "gatesAfter": {
+      "registryCheck": "already applied: 21 mpd delta region(s) across 6 adopted file(s)",
+      "pluginTests": "153 pass / 0 fail",
+      "allPackages": "335 pass / 0 fail",
+      "typecheck": "exit 0",
+      "vendorGate": "PASS (no skills/** change, so the lock is untouched)",
+      "twoSidedGate": "PASS (simple [0,0,0] no notices; complex [1,1,1] one notice each; negative control disarmed)"
+    }
+  },
+
+  "duplicateWorkAndConcurrency": {
+    "finding": "The three folded-in fixes were implemented TWICE. This executor applied and verified them, then a concurrent writer switched branches in the shared checkout mid-task (reflog: checkout to a t25-closeout fix branch, commit, then a reset of dev), which discarded the uncommitted first attempt. The other writer's merge (06503cd) carries the same three fixes, including the identical trigger-comment rationale and the same line placement, so nothing needed re-committing; the second attempt was verified and discarded as a no-op.",
+    "finalState": "No functional divergence: the declaration signature, the removed dead constant and the trigger note are present exactly once in the merged revision; the registry stays byte-faithful at 21 regions / 6 files.",
+    "hazardForTheRecord": "A reset was run on the shared integration branch while a merge-parent was at its tip. That operation is only 'safe' by luck: had the tip been a merge commit, the reset would have dropped the entire merge with it. Multiple writers sharing one checkout must serialize branch switching, never run a reset on the shared branch, and never trust an uncommitted attempt to survive another writer's checkout."
+  },
+
+  "scanCriterionCorrection": {
+    "finding": "The first execution of this task scanned TRACKED files only. Two whole residue classes live outside that set and were missed by the executor AND by the first gate: (a) a build-artifact directory that is NOT gitignored, and (b) an untracked, non-ignored evidence directory left on disk after its tracked files were deleted.",
+    "criterionNow": "The gate must scan tracked files UNION non-ignored worktree files: `git ls-files --cached --others --exclude-standard`. A tracked-only scan is insufficient by construction. Exemptions stay: gitignored cache/scratch copies, and the live team-state directory of a running session.",
+    "classA_buildArtifact": {
+      "item": "the packed release directory produced by the pack script (dist/mpd-package)",
+      "state": "NOT gitignored, 1121 files / 15 MB, present on disk as a snapshot of an older pack run",
+      "measuredCorrection": "The report that this snapshot still carried withdrawn names was STALE by the time it was checked: it had been regenerated after the purge (mtime 00:33, post-dating the purge commit), and a full scan of it returned ZERO withdrawn-name hits — its two READMEs and both skill files already carry the neutral wording. It was still removed per the standing default (a build artifact is reproducible and is a distribution vector if re-packed or shipped).",
+      "preDeleteIdentity": {
+        "fileCount": 1121,
+        "size": "15 MB",
+        "blobs": [
+          "cb51489762957c0d3ee7dcb74573d63b4ad6449e",
+          "c121ed5c0e875031f0fd6a68a64a15ef37de5f63",
+          "d5b9593a6f90c34a7b185680399ba07a6a088e52",
+          "9aa5d61781e52f883ef30184eca4fe75153ab9e1"
+        ]
+      },
+      "action": "removed (rebuildable at any time with the pack script)"
+    },
+    "classB_untrackedEvidenceDir": {
+      "item": "the extraction-wave residual evidence directory (tracked files were deleted by this task; the directory itself survived on disk)",
+      "measuredBy": "the captain, independently",
+      "state": "866 untracked, NON-ignored files / 51 MB, including a nested dependency tree carrying the withdrawn package name in its literal paths",
+      "action": "removed by the captain; no commit was needed because nothing in it was tracked",
+      "lesson": "Deleting the tracked files of a directory does not delete the directory's untracked remainder. The worktree scan is what catches it."
+    },
+    "postFixScan": {
+      "trackedRealHits": 0,
+      "nonIgnoredWorktreeHits": 2,
+      "remaining": [
+        "an untracked scan script belonging to the verification task (token supplied at run time, so it never re-embeds a withdrawn name) — a self-reference that the verification task should exempt or exclude",
+        "a tracked verification record that discusses the exemption in prose — flagged to the captain, who has already opened a fix for the dangling references"
+      ]
+    }
+  }
+}

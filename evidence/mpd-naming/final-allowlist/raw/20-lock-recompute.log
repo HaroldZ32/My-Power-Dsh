@@ -1,0 +1,9 @@
+repoRoot=/root/dshProj/my-power-dsh
+HEAD-from-VENDOR_LOCK.lockedAt=2026-09-14T09:15:59.000Z
+{"asset":"skills","declaredFileCount":297,"actualFileCount":297,"actualTreeSha":"f6bb2053d02a0e256ab5d88debceb4cfbc76b10c6ff03dca69bf446718a583c9","declaredTreeSha":"f6bb2053d02a0e256ab5d88debceb4cfbc76b10c6ff03dca69bf446718a583c9"}
+{"asset":"packages/mpd-agent-teams-plugin/_deps","declaredFileCount":635,"actualFileCount":635,"actualTreeSha":"d1d106032b198d2392ca2fe36ea4b563c3010496192791a6e4812638b7cf8e37","declaredTreeSha":"d1d106032b198d2392ca2fe36ea4b563c3010496192791a6e4812638b7cf8e37"}
+{"asset":"packages/mpd-mcp-astgrep/dist/cli.js","declaredFileCount":1,"actualFileCount":1,"actualSha256":"f06bba310cad306b5638efb90a69e50b2c6a7416c0c536867f02c70f4b4fa4c5","declaredSha256":"f06bba310cad306b5638efb90a69e50b2c6a7416c0c536867f02c70f4b4fa4c5"}
+{"asset":"packages/mpd-mcp-gitbash/dist/cli.js","declaredFileCount":1,"actualFileCount":1,"actualSha256":"0484a8ff1714c949bc52a4fc0de89c756dcab975b0691a2823706f008475f38e","declaredSha256":"0484a8ff1714c949bc52a4fc0de89c756dcab975b0691a2823706f008475f38e"}
+{"asset":"packages/mpd-mcp-lsp/dist/cli.js","declaredFileCount":1,"actualFileCount":1,"actualSha256":"9f41d4258c204aca959de98a5bea59a7459f9e298885f187cfc0268e1d18ce69","declaredSha256":"9f41d4258c204aca959de98a5bea59a7459f9e298885f187cfc0268e1d18ce69"}
+{"asset":"packages/mpd-mcp-codegraph/dist/serve.js","declaredFileCount":1,"actualFileCount":1,"actualSha256":"ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375","declaredSha256":"ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375"}
+LOCK-RECOMPUTE=MATCH

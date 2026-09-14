@@ -1,0 +1,24 @@
+--- BEFORE affected-case sweep ---
+team_json=28
+8898314f119ac2778213f6d9c69b2848523679380bfcbdc538a3a377f872b17b  -
+=== mcp-call ===
+mcp-call EXIT=1
+[mcp-call] ok=false -> /root/dshProj/my-power-dsh/evidence/dsh-qa/mcp-call/2026-09-11T06-21-10.366Z
+=== web-client-adapt ===
+web-client-adapt EXIT=1
+  initRoute: {"ok":true,"note":"{\"name\":\"gui-alice\",\"baseId\":\"hephaestus\",\"baseName\":\"Deep Worker\",\"readonly\":false,\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"path\":\"/tmp/mpd-","filesOk":true}
+  isolation: {"ok":true,"realHome":"/root/.mpd/workmate","realLibraryPreExisting":2,"createdInSandbox":true}
+=== agent-teams-sidebar ===
+agent-teams-sidebar EXIT=0
+  hostRouteMounted: {"ok":true,"mode":"real-boot","servedClient":{"url":"/plugins/??@mpd-dsh/mpd/client.js&rev=507a65f6f37e26e6-46","status":200,"bytes":259290,"teamPageModule":true,"teamTabId":true,"bridge":true,"atLeastRepoArtifactBytes":true,"carriesRepoArt
+[agent-teams-sidebar] PASS
+=== bundle-lifecycle (bun) ===
+bundle-lifecycle EXIT=0
+  layerDurability: {"ok":true,"exit":0,"dependency":true,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"]}
+  uninstall: {"ok":true,"exit":0,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app"],"residue":[],"mpdState":[]}
+[bundle-lifecycle] PASS
+--- AFTER affected-case sweep ---
+team_json=28
+a02c2b41f7977fdcc407fe53d9fa7471dbd1f2ab40372cb8761f56d60901afa7  -
+new team dirs:
+[none above = no new records]

@@ -1,0 +1,5 @@
+=== [typecheck] bun run typecheck ===
+=== [typecheck] exit=0 ===
+=== [test-plugin] bun test packages/mpd-agent-teams-plugin ===
+=== [test-plugin] exit=0 ===
+=== [test-packages] bun test packages ===

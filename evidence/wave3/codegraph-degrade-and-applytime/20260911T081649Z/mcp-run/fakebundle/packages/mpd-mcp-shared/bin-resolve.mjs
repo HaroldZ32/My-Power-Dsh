@@ -1,0 +1,148 @@
+// Shared, side-effect-free binary resolver for the mpd MCP launchers (wave-2 B8).
+//
+// Why this exists: the bundle patch used to PIN the two MCP rows'
+// MPD_AST_GREP_SG_PATH / MPD_CODEGRAPH_BIN to a packed-layout-only path, which is
+// a WRONG NON-EMPTY value in a `link:` checkout install (and a wrong env pin
+// disables the codegraph child's whole fallback machinery). Resolution now lives
+// in the MCP package launcher — our code, bundle-relative — so the patch names no
+// binary path at all.
+//
+// Precedence (decision record t1 §3.2, implemented exactly):
+//   0. an env pin already set by the caller -> the launcher does nothing (checked by the launcher)
+//   1. $MPD_AST_GREP_BIN_DIR/{ast-grep,sg}                                  (ast-grep only, upstream env contract)
+//   2. createRequire(<launcher>).resolve(<pkg>/package.json) -> package bin (packed, any node linker)
+//   3. <bundle>/.toolchain/node_modules/.bin/{ast-grep,sg} | .../codegraph  (checkout `link:` install)
+//   4. null -> the launcher leaves the env UNSET and the adopted code runs its own chain untouched
+//
+// Acceptance for a candidate: existsSync plus, for ast-grep, a `--version` probe
+// whose output contains "ast-grep". The probe is what rejects `.bin/sg` — the
+// deprecated wrapper that exits 1 with a deprecation warning. `ast-grep` is tried
+// before `sg` in every tier.
+//
+// Never throws: a launcher failure would take its MCP row's startup down.
+import { execFileSync } from "node:child_process"
+import { existsSync, readFileSync } from "node:fs"
+import { createRequire } from "node:module"
+import { dirname, isAbsolute, join, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
+
+/** ast-grep candidate names, preferred order (never `sg` before `ast-grep`). */
+export const AST_GREP_NAMES = ["ast-grep", "sg"]
+
+/** <bundle> for a launcher at <bundle>/packages/<pkg>/launch.mjs. */
+export function bundleRootFrom(launcherUrl) {
+  return resolve(dirname(fileURLToPath(launcherUrl)), "..", "..")
+}
+
+function nonEmpty(value) {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null
+}
+
+/**
+ * Default ast-grep acceptance probe: `--version` must print "ast-grep".
+ * `.toolchain/node_modules/.bin/sg` fails this (deprecated wrapper, exit 1).
+ */
+export function probeAstGrep(binary) {
+  try {
+    const out = execFileSync(binary, ["--version"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+      timeout: 20_000,
+    })
+    return String(out).toLowerCase().includes("ast-grep")
+  } catch {
+    return false
+  }
+}
+
+/** Resolve `spec` (a package.json path) from the launcher's module location. */
+function packageJsonFor(launcherUrl, spec, opts) {
+  try {
+    if (typeof opts.requireResolve === "function") return opts.requireResolve(spec)
+    return createRequire(launcherUrl).resolve(spec)
+  } catch {
+    return null
+  }
+}
+
+function normalizeBinEntry(bin, pkgDir) {
+  const rel = typeof bin === "string" ? bin : (bin && typeof bin === "object" ? Object.values(bin)[0] : null)
+  if (typeof rel !== "string" || rel.length === 0) return null
+  return isAbsolute(rel) ? rel : join(pkgDir, rel.replace(/^\.\//, ""))
+}
+
+function firstAccepted(candidates, exists, probe) {
+  for (const c of candidates) {
+    if (!c.path || !exists(c.path)) continue
+    if (probe && !probe(c.path)) continue
+    return { binary: c.path, source: c.source }
+  }
+  return null
+}
+
+/**
+ * Resolve the ast-grep binary for an MCP launcher.
+ * @returns {{binary:string, source:"bin-dir"|"require"|"toolchain"}|null}
+ */
+export function resolveAstGrepBinary(launcherUrl, opts = {}) {
+  try {
+    const env = opts.env ?? process.env
+    const exists = opts.exists ?? existsSync
+    const probe = opts.probe ?? probeAstGrep
+    const bundleRoot = opts.bundleRoot ?? bundleRootFrom(launcherUrl)
+    const candidates = []
+
+    const binDir = nonEmpty(env.MPD_AST_GREP_BIN_DIR)
+    if (binDir) {
+      for (const n of AST_GREP_NAMES) candidates.push({ path: join(binDir, n), source: "bin-dir" })
+    }
+
+    const pkgJson = packageJsonFor(launcherUrl, "@ast-grep/cli/package.json", opts)
+    if (pkgJson) {
+      const pkgDir = dirname(pkgJson)
+      for (const n of AST_GREP_NAMES) candidates.push({ path: join(pkgDir, n), source: "require" })
+    }
+
+    for (const n of AST_GREP_NAMES) {
+      candidates.push({ path: join(bundleRoot, ".toolchain", "node_modules", ".bin", n), source: "toolchain" })
+    }
+
+    return firstAccepted(candidates, exists, probe)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Resolve the codegraph binary for an MCP launcher.
+ * The require tier reads the package's own `bin` entry (1.5.0 ships
+ * `bin: { codegraph: "npm-shim.js" }`), falling back to the adopted code's known
+ * shim names.
+ * @returns {{binary:string, source:"require"|"toolchain"}|null}
+ */
+export function resolveCodegraphBinary(launcherUrl, opts = {}) {
+  try {
+    const exists = opts.exists ?? existsSync
+    const bundleRoot = opts.bundleRoot ?? bundleRootFrom(launcherUrl)
+    const candidates = []
+
+    const pkgJson = packageJsonFor(launcherUrl, "@colbymchenry/codegraph/package.json", opts)
+    if (pkgJson) {
+      const pkgDir = dirname(pkgJson)
+      let binPath = null
+      try {
+        binPath = normalizeBinEntry(JSON.parse(readFileSync(pkgJson, "utf8")).bin, pkgDir)
+      } catch { binPath = null }
+      for (const p of [binPath, join(pkgDir, "bin", "codegraph.js"), join(pkgDir, "npm-shim.js")]) {
+        if (p) candidates.push({ path: p, source: "require" })
+      }
+    }
+
+    candidates.push({ path: join(bundleRoot, ".toolchain", "node_modules", ".bin", "codegraph"), source: "toolchain" })
+
+    const seen = new Set()
+    return firstAccepted(candidates.filter((c) => (seen.has(c.path) ? false : (seen.add(c.path), true))), exists, null)
+  } catch {
+    return null
+  }
+}

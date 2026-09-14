@@ -1,0 +1,4 @@
+### gate 01: bun run typecheck (tsgo --noEmit)
+start: 2026-08-29T16:53:54Z
+$ tsgo --noEmit
+gate01_exit=0

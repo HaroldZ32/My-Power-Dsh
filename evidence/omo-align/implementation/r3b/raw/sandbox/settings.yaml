@@ -1,0 +1,18 @@
+ui-onboarding:
+  welcomeNoticeVersion: 2026-08-13.1
+skin-custom-theme:
+  applied: false
+pet:
+  petId: whale-girl-refined
+  visible: true
+  size: 160
+  right: 26
+  bottom: 115
+agent-default-model:
+  provider: deepseek-official
+  model: deepseek-flash
+  reasoningEffort: max
+llm-deepseek: {}
+dsh-session-archive:
+  autoDeleteEnabled: true
+  autoArchiveEnabled: true

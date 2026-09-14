@@ -1,0 +1,10 @@
+{
+  "name": "@mpd-dsh/config",
+  "private": true,
+  "version": "0.2.3",
+  "type": "module",
+  "description": "Minimal mpd.jsonc runtime config layer plugin (Plan C / C7)",
+  "scripts": {
+    "test": "bun test"
+  }
+}

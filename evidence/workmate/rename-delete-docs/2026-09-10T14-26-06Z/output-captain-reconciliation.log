@@ -1,0 +1,139 @@
+=== t10 captain-request reconciliation — 2026-09-10T14:42:35Z ===
+
+### ITEM 1 — VENDOR GATE + FINGERPRINT (both required checks, run as the LAST action after the last skills/** write)
+--- CHECK 1: node scripts/verify-vendor.mjs
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] asset OK: skills 364 files
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+verify-vendor exit=0
+
+--- CHECK 2: find skills -newer VENDOR_LOCK.json -type f   (MUST print NOTHING)
+(NOTHING — verified empty)
+
+--- lock state
+-rw-r--r-- 1 root root 2776 2026-09-10 22:42:11.507622111 +0800 VENDOR_LOCK.json
+fileCount: 364
+treeSha  : 54e6cf4464a3ad10643717c39d539b2a9697e72af9e01b858a5d6e319e2f083f
+
+--- treeSha lineage (three distinct values were in play; each is correct for ITS moment)
+92209d2a85f601bad867726c3dc22993c0d141aeb3f4fae64a0c2ab592bb2f88  <- value quoted in the captain's message; matches NEITHER the tree nor the lock at any point I measured
+d4a05ae26a0ead30912565f7fd8c2fbe120645c4cc3558e6ce53db103dadc606  <- locked value BEFORE this turn's SKILL.md edit (t17's refresh, 22:36:44) and ALSO the value my helper recomputed against the tree before the edit
+54e6cf4464a3ad10643717c39d539b2a9697e72af9e01b858a5d6e319e2f083f  <- CURRENT, after the t10 clarification edit to the readonly-deny row
+method: evidence/workmate/rename-delete-docs/refresh-skills-fingerprint.mjs reimplements verify-vendor's own readBytes (LF-normalised text, raw binary) + listFiles (walks hidden entries, skips only a node_modules entry) 1:1.
+why the quoted value cannot be current: the gate validates the WHOLE tree hash, so any single changed byte under skills/** (including a comment-only edit) moves it. It is a claim about a moment, never a constant.
+verdict: trust the gate's helpers + the two checks above; the quoted value is stale.
+
+### ITEM 2 — the two doc contradictions: CONFIRMING THE CURRENT BYTES (both were rewritten in the previous turn)
+--- AGENTS.md section 4 boot gate row (current)
+157:| Boot check (MOUNT) | a boot that really applies the rows in an isolated `DSH_HOME` + sandbox `HOME` — e.g. `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs` (or the `full-profile-boot.sh` / `mount-proof.sh` pattern with registration instrumentation) | any patch change, and REQUIRED for any tool-schema change |
+--- AGENTS.md section 4 explanation incl. the composition-only statement
+166:`--dump-config` result is cited as load evidence. **`--dump-config` proves COMPOSITION ONLY —
+266:  `--dump-config` rows. `--dump-config` proves COMPOSITION ONLY and never a plugin load (§4): it does
+--- AGENTS.md section 7 provability (current)
+265:- Provability: assert a REAL tool result (never just "it ran"), or — for composition-only questions —
+--- the retired wording must be gone from the gate/provability context
+occurrences of "dsh --profile headless --dump-config": 0
+(remaining --dump-config mentions are troubleshooting rows that use it for COMPOSITION checks, which is correct: rows/presets/id-targeted patch landing.)
+
+### ITEM 3 — SKILL.md readonly-deny row: t13's dimension
+EXPOSE NONE of the seven:  1
+mutationLoaded:            1
+falsifiable:               1
+independently witnessed:   1
+SILENT UN-GUARDING:        1
+row length (bytes): 2694
+
+### t10 evidence lane exists (the captain's last note)
+path: evidence/workmate/rename-delete-docs/
+total 16
+drwxr-xr-x 3 root root 4096 Sep 10 22:26 .
+drwxr-xr-x 8 root root 4096 Sep 10 22:38 ..
+drwxr-xr-x 2 root root 4096 Sep 10 22:42 2026-09-10T14-26-06Z
+-rw------- 1 root root 2452 Sep 10 22:24 refresh-skills-fingerprint.mjs
+
+### FINAL GATE SWEEP on the post-edit tree — 2026-09-10T14:42:44Z
+HEAD: f69708809ed63a57461aa6730d297afc09e772a3
+--- bun run test:qa
+$ for f in skills/dsh-qa/scripts/*.mjs; do echo "[test:qa] $f"; bun "$f" --self-test || { echo "[test:qa] FAILED: $f"; exit 1; }; done; echo "[test:qa] all self-tests passed"
+[test:qa] skills/dsh-qa/scripts/agent-teams-adopt.mjs
+[agent-teams-adopt self-test] ok: notice + adopted LICENSE + 0.1.16-rc.3-mpd + _deps + AGENTS.md + installer self-test verified
+[test:qa] skills/dsh-qa/scripts/agent-teams-dispatch.mjs
+  ok   installed host exposes no subagent followup member
+  ok   installed host owns the symbol-keyed prompt queue
+  ok   member delivery uses the audited boundary
+  ok   no call site uses ctx.subagents.followup
+  ok   legacy followup is used only when the host really has it
+  ok   the modern queue is the rc.1 symbol
+  ok   task mutations kick the whole team
+  ok   member idle edges kick that member
+  ok   delivery failure rolls the claim back instead of stranding it
+  ok   capabilities deny all captain-only tools for members
+  ok   members receive member instructions, not the captain protocol
+[agent-teams-dispatch self-test] ok: 11 checks
+[test:qa] skills/dsh-qa/scripts/agent-teams-sidebar.mjs
+[agent-teams-sidebar self-test] ok: 16 checks (mpd-agent-teams,mpd-workmate; @nanmicoder/dsh-agent-teams,@mpd-dsh/team-page,@mpd-dsh/mpd)
+[test:qa] skills/dsh-qa/scripts/bundle-lifecycle.mjs
+[bundle-lifecycle self-test] ok: repo root IS the bundle + bundle-served preset row + provider wiring + probe + pnpm
+[test:qa] skills/dsh-qa/scripts/codegraph-smoke.mjs
+[codegraph-smoke self-test] ok: project-path precondition verified on fixture
+[test:qa] skills/dsh-qa/scripts/dual-track-smoke.mjs
+[llm-dual-track self-test] ok: track fixture assertions verified
+[test:qa] skills/dsh-qa/scripts/mcp-call.mjs
+[mcp-call self-test] ok: tool-name detection verified on fixture
+[test:qa] skills/dsh-qa/scripts/memory-smoke.mjs
+[memory-smoke self-test] ok: bundle row + dist symbols + unit suite verified
+[test:qa] skills/dsh-qa/scripts/mount-assert.mjs
+[mount-assert self-test] ok: presence/absence detection verified on fixture
+[test:qa] skills/dsh-qa/scripts/plan-c-smoke.mjs
+[plan-c-smoke self-test] ok: rows + unit suites verified
+[test:qa] skills/dsh-qa/scripts/preset-register.mjs
+[preset-register self-test] ok: preset + roster fixtures + web-compat/preset-root normalization verified
+[test:qa] skills/dsh-qa/scripts/readonly-deny.mjs
+[readonly-deny self-test] ok: 23 checks
+[test:qa] skills/dsh-qa/scripts/relocate-smoke.mjs
+[relocate-smoke self-test] ok: staged patch is path-clean
+[test:qa] skills/dsh-qa/scripts/rtl-ip-profile.mjs
+[rtl-ip-profile self-test] ok: profile + 7 members + swimlane/flow markers + skill + 8 templates + bilingual guide verified
+[test:qa] skills/dsh-qa/scripts/rtl-verif.mjs
+[rtl-verif self-test] ok: bundle wiring (mpd-verif active + wave rows commented) + golden fixture + eight-tool dist surface + iron-rule strings + devPatch guard
+[test:qa] skills/dsh-qa/scripts/session-start-team.mjs
+[session-start-team self-test] ok: policy module + bundle patch + installer + persona verified
+[test:qa] skills/dsh-qa/scripts/skill-catalog-probe.mjs
+[skill-catalog-probe self-test] ok: staged skill corpus present + provider wiring verified
+[test:qa] skills/dsh-qa/scripts/team-route-rewire.mjs
+[team-route-rewire self-test] ok: 12 checks + staged bundle present
+[test:qa] skills/dsh-qa/scripts/tool-output-validation.mjs
+[tool-output-validation self-test] ok: bundle rows + dist symbols + unit suites verified
+[test:qa] skills/dsh-qa/scripts/ultrawork-smoke.mjs
+[ultrawork-smoke self-test] ok: engine symbols + bundle row verified
+[test:qa] skills/dsh-qa/scripts/vision-smoke.mjs
+[vision-e2e self-test] ok: fixture generator verified (155 bytes)
+[test:qa] skills/dsh-qa/scripts/web-client-adapt.mjs
+[web-client-adapt self-test] ok: 14 checks
+[test:qa] skills/dsh-qa/scripts/workmate-library.mjs
+[workmate-library self-test] ok: 18 checks
+[test:qa] skills/dsh-qa/scripts/workmate-team-member.mjs
+[workmate-team-member self-test] ok: 6 checks
+[test:qa] all self-tests passed
+exit=0
+--- bun test packages
+ 290 pass
+ 3 skip
+ 0 fail
+ 1904 expect() calls
+Ran 293 tests across 33 files. [12.39s]
+exit=0
+--- bun run typecheck
+$ tsgo --noEmit
+exit=0
+--- node scripts/verify-vendor.mjs (re-run for the record)
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+exit=0

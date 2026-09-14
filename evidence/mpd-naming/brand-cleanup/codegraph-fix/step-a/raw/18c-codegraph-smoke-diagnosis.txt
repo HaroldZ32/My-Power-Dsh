@@ -1,0 +1,11 @@
+=== codegraph-smoke on the freshly staged bundle (run by t5) ===
+bun skills/dsh-qa/scripts/codegraph-smoke.mjs -> exit 1
+result: evidence/dsh-qa/codegraph/2026-09-14T07-20-58.060Z/result.json = {ok:false,exit:1}
+root cause (NOT this change): the harness headless boot fails to import loader entry
+  mpd-team-compact (@mpd-dsh/mpd/packages/mpd-team-compact-plugin/dist/index.js)
+  ERR_MODULE_NOT_FOUND inside /tmp/mpd-dsh-qa-.../profiles/headless/node_modules/@mpd-dsh/mpd/
+measured: packages/mpd-team-compact-plugin/ EXISTS in the repo, the bundle patch names it
+at packages/mpd-bundle/cordis.patch.yml:191-192, but scripts/pack-mpd.mjs never names it,
+so the staged dist/mpd-package/packages/ tree omits it. Pre-existing packaging gap.
+Pre-change control: the same gate also exits 1 BEFORE any staging ('missing staged bundle'),
+so it cannot witness this task's bytes either way.

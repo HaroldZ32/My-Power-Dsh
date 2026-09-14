@@ -1,0 +1,162 @@
+{
+  "task": "t18",
+  "kind": "verification",
+  "attempt_id": "eee5ff4b-16f2-4edc-859e-9da9d1dcdbd4",
+  "author": "Reviewer (independent verifier — authored none of the lanes' work and not the captain)",
+  "wave": "mpd-naming (OMO-naming cleanup)",
+  "verdict": "PASS — 0 blocking findings, 3 disclosed non-blocking residuals",
+
+  "revision": {
+    "head": "53d617e6c2d29dfadec06278bc4130061055378e",
+    "branch": "dev",
+    "head_subject_seen_from_rule_json": "fix(agent-teams,qa): amend guards, member read-only deny, and QA isolation/auth drift",
+    "tree_state": "DIRTY: 39 modified tracked product files + 9 untracked evidence/mpd-naming/** dirs (git status --porcelain = 48 lines)",
+    "frozen_rule_revision": "3c1a850756e63b7338ca3a8287e7327b9571bdad",
+    "head_moved_since_freeze": "YES — 3c1a850 -> 53d617e (t17's LOCK re-pin landed as a commit). The frozen rule's own pin caveat applies: HEAD alone does NOT pin content, so every artifact judged here is pinned by sha256 below."
+  },
+
+  "settle_proof": {
+    "method": "hashed every tracked file before and after a >=50 s settle window, then a third time after the whole gate sweep",
+    "T1": { "when": "2026-09-14T10:17Z (approx)", "modified_files_snapshot": "raw/13-modified-hashes-T1.sha256 (39 files)", "tracked_tree_snapshot": "raw/10-snapshot-worktree.sha256 (4948 files)" },
+    "T2": { "when": "T1 + 60 s", "window_seconds": 60, "modified_files_snapshot": "raw/21-modified-hashes-T2.sha256" },
+    "T3": { "when": "after the full gate sweep", "modified_files_snapshot": "raw/23-modified-hashes-T3.sha256" },
+    "result": "T1 == T2 == T3 for all 39 modified product files AND for all 4948 tracked files; git rev-parse HEAD identical at all three reads",
+    "scope_caveat": "The 39-file modified set was byte-stable; the only intended additions were this task's own untracked evidence/mpd-naming/verification/** files",
+    "log": "raw/20-settle.log"
+  },
+
+  "hash_pins": {
+    "VENDOR_LOCK.json": "921b3ad20efc6cbdcd95a7ff18d66c33d5e81ec4049a70692603a87d848d0a08",
+    "packages/mpd-mcp-gitbash/dist/cli.js": "6458a82ee2cfcec319a03d2ffe8100c695d0980e7a366408fa5ef1467ca157b5",
+    "packages/mpd-mcp-lsp/dist/cli.js": "a7cebcf9ec79ec480c98d3a9cd1392837927ada57bf9bbb18e0620ba863f3148",
+    "packages/mpd-mcp-codegraph/dist/serve.js": "ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375",
+    "packages/mpd-mcp-astgrep/dist/cli.js": "f06bba310cad306b5638efb90a69e50b2c6a7416c0c536867f02c70f4b4fa4c5",
+    "scripts/build-mcp.mjs": "5f5d82629870fe138175c4040d5bc526dec45087771282fcb0ea0b670824d54e",
+    "presets/mpd/agent.cordis.yml": "bd953a8e068722a2cdedced54ef46efba7f70e7f50441399ab72bc5451169d71",
+    "docs/upstream-parity-ledger.md": "28d88f8121fb1407df086a6663c3ebbc64a52d249378460dc525da27959afa00",
+    "docs/upstream-parity-ledger.zh-CN.md": "e16ee5df22addd27de67b4fcaa9a38234382837da39f08a912773110de35001d",
+    "docs/index.md": "3411768d9adf1e9f8c750708fe238e41956db89f86523d1befbc11cca4f4d216",
+    "docs/index.zh-CN.md": "9dc7403b18aed3a61d6c8a6c06f579de7b6a1f020b6909a514af002cce4a6716",
+    "frozen_rule.json": "d3a7403aa63df7390c4268d368e6b2b5d385582b2910736b6c0a25130fc15fda",
+    "frozen_result.json": "032566d83389ab2da9e4a7f97fdbb8df723cb9f470def3b297f090d874796515",
+    "full_map": "raw/10-snapshot-worktree.sha256 (4948 tracked files), raw/11-frozen-artifacts.sha256"
+  },
+
+  "acceptance_greps": {
+    "driver": "bash evidence/mpd-naming/final-allowlist/raw/acceptance-greps.sh (frozen artifact, sha256 d3b36243f099b70a3606bfeb8fd0cf12203468b8776d166174bb1d2fcc458306, unmodified)",
+    "ran_on": "53d617e…, dirty tree, after the 60 s settle window",
+    "log": "raw/30-greps-at-T2.log",
+    "results": [
+      { "id": "G1", "expect": "0 lines", "got": 0, "verdict": "PASS", "note": "identity-label sweep clean outside the exempt provenance/history roots" },
+      { "id": "G2", "expect": "only allowlisted brand tokens", "got": "37 files", "verdict": "PASS", "note": "compared file-by-file against rename_list + keep_allowlist: every listed file is a KP-*/KF-*/KH-*/KN-* site or a third-party skill body (AGENTS.md provenance, docs/omo-parity-gap.md, docs/plan-e.md, docs/plan-f.md, scripts/build-mcp.mjs scrub table, lsp-setup foreign references, review-work/visual-qa Codex mappings, agent-teams/team-compact/adapter historical evidence citations)" },
+      { "id": "G3", "expect": "only allowlisted foreign literals", "got": "31 lines", "verdict": "PASS", "note": "KF-04/KF-05/KF-06 sites (lsp cli.js:365-367/6153/6228-6230, astgrep cli.js:437, ast_grep_helper.py:235, smoke.sh:136), KF-07 provider ids, KF-08 preset rows (agent.cordis.yml:347), plus third-party skill bodies and exempt history (PLAN.md, docs/ulw-deepseek-optimization.md). ZERO hits in packages/mpd-mcp-codegraph/dist/serve.js" },
+      { "id": "G4", "expect": "0 lines", "got": 0, "verdict": "PASS", "note": "the `_omo` envelope is gone; `_mpd` present at exactly 5 sites" },
+      { "id": "G5", "expect": "0 lines", "got": 0, "verdict": "PASS", "note": "STRONGER than the frozen expectation, which anticipated 9 residual lines at 3c1a850; t14/t17 subsequently removed the last OMO_CODEX literals from the shipped bytes (verified against HEAD: `git grep -c OMO_CODEX` = 3 in gitbash/cli.js + 6 in build-mcp.mjs at HEAD, 0+0 in the worktree)" },
+      { "id": "G6", "expect": "0 lines", "got": 0, "verdict": "PASS", "note": "ast-grep identifiers are mpd_*" },
+      { "id": "G7", "expect": "0 lines outside evidence/**", "got": 0, "verdict": "PASS", "note": "the old ledger path `omo-parity-ledger` exists nowhere; the tracked paths are docs/upstream-parity-ledger{,.zh-CN}.md and the old files are gone from disk" },
+      { "id": "G8", "expect": "only keep_allowlist sites", "got": "15 lines", "verdict": "PASS", "note": "all sites accounted for: KH-03 (docs/omo-parity-gap.md, docs/plan-e.md, docs/plan-f.md — exempt history), KH-02 (agent-teams test comment), KH-04 (build-mcp.mjs:137-138 scrub-table INPUT pair + :140 residual list, which KF-01 explicitly requires), KF-01/third-party skill body (skills/review-work/SKILL.md:30)" },
+      { "id": "G9", "expect": "only new evidence/mpd-naming/** entries", "got": "9 untracked dirs", "verdict": "PASS", "note": "the 3 frozen (brand-cleanup/labels, brand-cleanup/requirements, final-allowlist) + captain-rulings, docs-lane, re-pin, skills-lane, wave2, verification — every one untracked-new (`??`), no modified/deleted history entry; history stays byte-identical" },
+      { "id": "G10", "expect": "MIGRATION_ID + [senpi] read PRESENT", "got": "4 lines (8819, 8851, 8854, 8877)", "verdict": "PASS", "note": "owner ruling (b) honoured — a MUST-PRESENT keep survived" },
+      { "id": "G11", "expect": "the .codex discovery defaults PRESENT", "got": "2 lines (366, 367)", "verdict": "PASS", "note": "owner ruling (b) honoured" },
+      { "id": "G12", "expect": "2 MPD-worded lines, 0 OMO", "got": "2 lines, both MPD-worded", "verdict": "PASS" },
+      { "id": "G13", "expect": "2 rows (hard floor F6)", "got": "2 rows (342, 351)", "verdict": "PASS" },
+      { "id": "G17", "expect": "0 lines / 0 brand tokens", "got": 0, "verdict": "PASS", "note": "the codegraph foreign surface is gone (HARNESS_IDS / [opencode] / [codex] / MPD_SCHEMA_URL all absent)" },
+      { "id": "G14", "expect": "LOCK-RECOMPUTE=MATCH", "got": "MATCH for all 6 assets", "verdict": "PASS", "note": "see lock_recompute below" },
+      { "id": "G15", "expect": "the whole driver re-run", "got": "this run", "verdict": "PASS" },
+      { "id": "G16", "expect": "node scripts/verify-vendor.mjs exit 0", "got": "exit 0 / PASS", "verdict": "PASS", "note": "run in the gate sweep below" }
+    ]
+  },
+
+  "allowlist_conformance": {
+    "driver": "bash evidence/mpd-naming/final-allowlist/raw/check-keep-allowlist.sh (frozen, sha256 8922bc9c45b5a489895f64b637cae05b6995fb4452026d7b27e13670b334c0a8, unmodified)",
+    "log": "raw/31-keep-allowlist-at-T2.log",
+    "summary": "20 / 21 checks OK; the one FAIL (KH-02) is a DOCUMENTED RELOCATION, not a vanished KEEP (see non_blocking_residuals R1)",
+    "keeps_verified_present": ["KP-01", "KP-02", "KP-03", "KP-04", "KP-06-AFTER-T5(ABSENT as required)", "KF-01", "KF-02", "KF-03", "KF-04", "KF-05", "KF-06", "KF-07", "KF-08", "KF-09", "KH-01", "KH-03", "KH-04", "KN-01", "KN-02", "KN-03"],
+    "no_rename_left_undone": "G1/G4/G5/G6/G7 are all 0 at this revision, and the rename_list's artifacts are present in their MPD form (build-mcp.mjs scrub table, gitbash deletion, lsp `_mpd` envelope, ast-grep mpd_* identifiers, renamed ledger pair)"
+  },
+
+  "lock_recompute": {
+    "assets": [
+      { "asset": "skills", "declaredFileCount": 297, "actualFileCount": 297, "sha256_match": true, "value": "a0f1febb4111d5884c9af3385963b06753c3f5a38423f7b66f6852c284725f95" },
+      { "asset": "packages/mpd-agent-teams-plugin/_deps", "declaredFileCount": 635, "actualFileCount": 635, "sha256_match": true },
+      { "asset": "packages/mpd-mcp-astgrep/dist/cli.js", "sha256_match": true },
+      { "asset": "packages/mpd-mcp-gitbash/dist/cli.js", "sha256_match": true },
+      { "asset": "packages/mpd-mcp-lsp/dist/cli.js", "sha256_match": true },
+      { "asset": "packages/mpd-mcp-codegraph/dist/serve.js", "sha256_match": true }
+    ],
+    "verdict": "LOCK-RECOMPUTE=MATCH",
+    "single_repin_proof": "git diff -U0 -- VENDOR_LOCK.json yields exactly 8 changed value lines = one re-pin of the wave: skills treeSha f6bb2053->a0f1febb (count unchanged 297), gitbash sha 0484a8ff->6458a82e, lsp sha 9f41d425->a7cebcf9, lockedAt 2026-09-14T09:15:59Z->2026-09-14T10:15:51Z; _deps and astgrep and codegraph values are UNCHANGED and recompute-equal (recomputed, not assumed). No second re-pin exists in the diff."
+  },
+
+  "gate_sweep": {
+    "verify-vendor": { "cmd": "node scripts/verify-vendor.mjs", "exit": 0, "tail": "[verify-vendor] asset OK: … (x4 dists)\n[verify-vendor] PASS", "log": "raw/gates/40-verify-vendor.log" },
+    "patch-agent-teams-fixes-check": { "cmd": "node scripts/patch-agent-teams-fixes.mjs --check", "exit": 0, "tail": "[patch-agent-teams-fixes] already applied: 40 mpd delta region(s) across 9 adopted file(s)", "log": "raw/gates/41-patch-check.log" },
+    "typecheck": { "cmd": "bun run typecheck", "exit": 0, "tail": "$ tsgo --noEmit", "log": "raw/gates/42-typecheck.log" },
+    "agent_teams_tests": { "cmd": "bun test packages/mpd-agent-teams-plugin", "exit": 0, "tail": "206 pass\n 0 fail\n 1457 expect() calls\nRan 206 tests across 54 files. [5.00s]", "log": "raw/gates/43-agent-teams-tests.log" },
+    "test_qa": { "cmd": "bun run test:qa", "exit": 0, "tail": "[workmate-team-member self-test] ok: 6 checks\n[test:qa] all self-tests passed", "log": "raw/gates/44-test-qa.log" },
+    "summary_log": "raw/gates/sweep-summary.log"
+  },
+
+  "bilingual_mechanical": {
+    "checker": "raw/check-bilingual-links.mjs (authored by this verification task)",
+    "log": "raw/50-bilingual-links.json",
+    "audited_files": 24,
+    "pairs": "the renamed ledger pair + docs/index pair + README.md pair + architecture pair + user-guide pair + feature-audit pair + the 5 modified packages/*/README pairs (boulder, bundle, modelchain, qa-roles-probe, roles, workmate) = 12 pairs",
+    "result": "24/24 files OK: every counterpart exists, every [中文]/[English] switch link sits on the line directly under the title (line 2), and every one of the audited files' relative links resolves (docs/index*.md link-resolution included)",
+    "switch_link_lines": "all 24 at line 2 (immediately under the H1)",
+    "dangling": "none"
+  },
+
+  "negative_controls": {
+    "claim": "the sweeps are falsifiable — injected defects flip them RED",
+    "controls": [
+      { "id": "NC-1", "target": "identity-label grep (G1)", "how": "injected 'OMO-origin specialists and the OMO roster' into a scratch copy of AGENTS.md", "real": 0, "sabotaged": 54, "log": "raw/neg-control2 (inline measurement, transcript in the task output)" },
+      { "id": "NC-2", "target": "scrub-outcome grep (G12)", "how": "replaced 'MPD runtime' with 'OMO runtime' in a scratch copy of the ast-grep dist", "real": "1 OMO hit = 0", "sabotaged": "1 OMO hit found at line 504", "result": "FAILS as it must when the token is present" },
+      { "id": "NC-3", "target": "KEEP-presence check (KF-05)", "how": "blanked LSP_TOOLS_MCP_ in a scratch copy of the lsp dist", "real": 7, "sabotaged": 0, "result": "the KEEP check would report FAIL — a vanished KEEP is detectable, not silently tolerated" },
+      { "id": "NC-4", "target": "the bilingual/link checker itself", "how": "built a scratch control tree (30 files), removed the EN ledger's switch link, deleted packages/mpd-roles-plugin/README.zh-CN.md, re-ran the checker with --broken", "result": "control verdict FAIL with 7 findings: R2/R3-switch-link missing (the injected defect), R1-pair-exists + R0-exists (the deleted counterpart), plus R5 findings that are artifacts of the scratch tree, not the repo", "log": "raw/51-neg-control.json" }
+    ],
+    "conclusion": "at least four assertions were shown to go RED on a deliberately broken copy; the PASS verdicts above are therefore falsifiable, not vacuous"
+  },
+
+  "non_blocking_residuals": [
+    {
+      "id": "R1",
+      "severity": "low",
+      "what": "The frozen KEEP expectation KH-02 (`grep -n 'omo-parity-align' docs/index.md` = PRESENT) now measures 0 hits.",
+      "evidence": "raw/31-keep-allowlist-at-T2.log [KH-02] want=PRESENT got=0 FAIL. The literal itself is NOT gone: `git grep -n omo-parity-align` matches docs/upstream-parity-ledger.md:4 and docs/upstream-parity-ledger.zh-CN.md:4 (the historical wave banner), which is exactly the 'kept as history' reason t15 declared — the wave id moved OUT of the index rows when the index rows were retargeted at the renamed paths.",
+      "assessment": "NOT a vanished KEEP and NOT a defect: the kept historical content is byte-present at a new (documented) site. The frozen rule text simply names the pre-rename location.",
+      "recommendation": "for a future freeze, phrase KH-02 location-independently (e.g. `git grep -n omo-parity-align -- docs/`), not by the file that the rename itself retargets."
+    },
+    {
+      "id": "R2",
+      "severity": "low",
+      "what": "The frozen G9 expectation enumerates 3 untracked evidence entries; at the settled revision there are 9.",
+      "evidence": "raw/30-greps-at-T2.log G9 -> the 3 frozen plus captain-rulings/, docs-lane/, re-pin/, skills-lane/, wave2/, verification/.",
+      "assessment": "Expected growth after the freeze (5 downstream lanes + this verification wrote evidence). Every entry is untracked-new (`??`); no historical evidence file is modified or deleted, so the 'history stays byte-identical' ruling holds. Recorded rather than repaired, because the frozen expectation was correct at 3c1a850 — a later task wrote more evidence by design."
+    },
+    {
+      "id": "R3",
+      "severity": "low",
+      "what": "`nonEmptyEnvValue` remains defined in packages/mpd-mcp-gitbash/dist/cli.js:366 after t14 deleted its only caller (the env tier of resolveGitBash).",
+      "evidence": "grep shows the definition present and no `source: \"env\"` branch and no GIT_BASH_ENV_KEY anywhere in the file; the real-tree control still counts 7 LSP_TOOLS_MCP_ keys in the lsp dist, while this file carries 0 OMO-shaped tokens.",
+      "assessment": "t14 disclosed this as O4 and it is a dead helper in a BUNDLED artifact, carrying no brand token. It is inert at runtime (not reachable), so it is a tidiness residual, not a correctness or naming defect.",
+      "recommendation": "leave it for minimal-diff discipline, or drop it in an explicit future dist change that can re-run the byte-equality guard."
+    },
+    {
+      "id": "R4",
+      "severity": "medium",
+      "what": "The `_omo` -> `_mpd` lsp envelope rename is a BREAKING change for an already-running version-scoped daemon.",
+      "evidence": "t14's own wave2/result.json.lsp_envelope_skew_statement documents the behaviour (a stale daemon answers AUTH_ERROR -32001; the client then fails with DaemonUnreachableError after its ready timeout) and the remedy (stop the stale daemon once — `kill $(cat ~/.mpd/lsp-daemon/v<version>/daemon.pid)` or delete that version dir; restarting dsh alone is NOT sufficient). This matches frozen open_item O3, which explicitly corrects the earlier claim that the skew surfaces as PROTOCOL_ERROR.",
+      "assessment": "A loud, recoverable failure with a documented remedy in the lane's own evidence — acceptable and correctly disclosed, but it is a user-visible consequence the captain must carry into the landing notes.",
+      "recommendation": "surface R4 in the integration/landing summary; do not repeat the retired PROTOCOL_ERROR wording."
+    }
+  ],
+
+  "notes": [
+    "This task wrote ONLY under evidence/mpd-naming/verification/ (inScope) — no scripts/, packages/, skills/, docs/, VENDOR_LOCK.json change was made by the verifier. Verified: `git status --porcelain` lists exactly the 39 wave-modified product files + untracked evidence/mpd-naming/** dirs, with nothing from this task outside verification/.",
+    "The frozen drivers were executed UNMODIFIED (their sha256 values are recorded above and in raw/11-frozen-artifacts.sha256).",
+    "The tree is still dirty (39 modified + 10 untracked evidence dirs), so this verdict is anchored to the per-file sha256 map, never to HEAD alone (AGENTS.md §7).",
+    "Raw command output for every gate is filed under raw/gates/ with exit codes in raw/gates/sweep-summary.log.",
+    "Per-file sha256 of this evidence tree: raw/70-verification-manifest.sha256."
+  ]
+}

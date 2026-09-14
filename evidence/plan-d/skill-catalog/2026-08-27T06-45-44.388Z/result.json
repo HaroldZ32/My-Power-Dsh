@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "copy": {
+      "ok": true,
+      "count": 19
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    }
+  }
+}

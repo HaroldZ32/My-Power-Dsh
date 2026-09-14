@@ -1,0 +1,192 @@
+{
+ "head": "53d617e6c2d29dfadec06278bc4130061055378e",
+ "branch": "dev",
+ "preWaveRevision": "3c1a850",
+ "modifiedTracked": 39,
+ "untrackedFiles": 1345,
+ "byLane": {
+  "t2 text lane (manual/overview/manifest/preset)": [
+   "AGENTS.md",
+   "LICENSE-NOTICES.md",
+   "README.md",
+   "README.zh-CN.md",
+   "package.json",
+   "presets/mpd/agent.cordis.yml"
+  ],
+  "t17 re-pin: the wave's SINGLE VENDOR_LOCK change": [
+   "VENDOR_LOCK.json"
+  ],
+  "t2 text lane (bilingual docs prose)": [
+   "docs/architecture.md",
+   "docs/architecture.zh-CN.md",
+   "docs/feature-audit.md",
+   "docs/feature-audit.zh-CN.md",
+   "docs/user-guide.md",
+   "docs/user-guide.zh-CN.md"
+  ],
+  "t2 text lane (package READMEs)": [
+   "packages/mpd-boulder-plugin/README.md",
+   "packages/mpd-boulder-plugin/README.zh-CN.md",
+   "packages/mpd-bundle/README.md",
+   "packages/mpd-bundle/README.zh-CN.md",
+   "packages/mpd-modelchain-plugin/README.md",
+   "packages/mpd-modelchain-plugin/README.zh-CN.md",
+   "packages/mpd-qa-roles-probe/README.md",
+   "packages/mpd-qa-roles-probe/README.zh-CN.md",
+   "packages/mpd-roles-plugin/README.md",
+   "packages/mpd-roles-plugin/README.zh-CN.md",
+   "packages/mpd-workmate-plugin/README.md",
+   "packages/mpd-workmate-plugin/README.zh-CN.md"
+  ],
+  "t14 dists lane": [
+   "packages/mpd-mcp-astgrep/dist/BUILD.lock",
+   "packages/mpd-mcp-gitbash/dist/BUILD.lock",
+   "packages/mpd-mcp-gitbash/dist/cli.js",
+   "packages/mpd-mcp-lsp/dist/BUILD.lock",
+   "packages/mpd-mcp-lsp/dist/cli.js",
+   "scripts/build-mcp.mjs"
+  ],
+  "UNCLASSIFIED": [
+   "packages/mpd-roles-plugin/package.json",
+   "packages/mpd-roles-plugin/src/index.ts",
+   "packages/mpd-roles-plugin/src/roles.data.ts",
+   "packages/mpd-workmate-plugin/src/index.ts"
+  ],
+  "t16 skills lane + captain sk-07 (same file, two writers)": [
+   "skills/ast-grep/AGENTS.md"
+  ],
+  "t16 skills lane": [
+   "skills/ast-grep/scripts/ast_grep_helper.py",
+   "skills/ast-grep/tests/smoke.sh"
+  ],
+  "captain out-of-lane sk-08": [
+   "skills/ulw-plan/scripts/scaffold-plan.mjs"
+  ]
+ },
+ "unclassified": [
+  "packages/mpd-roles-plugin/package.json",
+  "packages/mpd-roles-plugin/src/index.ts",
+  "packages/mpd-roles-plugin/src/roles.data.ts",
+  "packages/mpd-workmate-plugin/src/index.ts"
+ ],
+ "alreadyLandedInWaveCommits": [
+  {
+   "path": ".gitignore",
+   "status": "M"
+  },
+  {
+   "path": "docs/index.md",
+   "status": "M"
+  },
+  {
+   "path": "docs/index.zh-CN.md",
+   "status": "M"
+  },
+  {
+   "path": "docs/omo-parity-ledger.md",
+   "status": "R096"
+  },
+  {
+   "path": "docs/upstream-parity-ledger.md",
+   "status": "R096"
+  },
+  {
+   "path": "docs/omo-parity-ledger.zh-CN.md",
+   "status": "R096"
+  },
+  {
+   "path": "docs/upstream-parity-ledger.zh-CN.md",
+   "status": "R096"
+  },
+  {
+   "path": "evidence/mpd-naming/corpus-gate-bytecode/green.log",
+   "status": "A"
+  },
+  {
+   "path": "evidence/mpd-naming/corpus-gate-bytecode/red.log",
+   "status": "A"
+  },
+  {
+   "path": "evidence/mpd-naming/corpus-gate-bytecode/result.json",
+   "status": "A"
+  },
+  {
+   "path": "evidence/mpd-naming/verifier-contract/measure-overlap-relation.mjs",
+   "status": "A"
+  },
+  {
+   "path": "evidence/mpd-naming/verifier-contract/overlap-relation-output.log",
+   "status": "A"
+  },
+  {
+   "path": "evidence/mpd-naming/verifier-contract/overlap-relation-result.json",
+   "status": "A"
+  },
+  {
+   "path": "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+   "status": "M"
+  },
+  {
+   "path": "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+   "status": "M"
+  },
+  {
+   "path": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+   "status": "M"
+  },
+  {
+   "path": "scripts/verify-vendor.mjs",
+   "status": "M"
+  },
+  {
+   "path": "tests/overlays/omo-bline.yml",
+   "status": "R100"
+  },
+  {
+   "path": "tests/overlays/bline.yml",
+   "status": "R100"
+  }
+ ],
+ "untrackedByDir": [
+  [
+   "evidence/mpd-naming/brand-cleanup",
+   27
+  ],
+  [
+   "evidence/mpd-naming/captain-rulings",
+   2
+  ],
+  [
+   "evidence/mpd-naming/docs-lane",
+   4
+  ],
+  [
+   "evidence/mpd-naming/final-allowlist",
+   11
+  ],
+  [
+   "evidence/mpd-naming/landing",
+   4
+  ],
+  [
+   "evidence/mpd-naming/re-pin",
+   41
+  ],
+  [
+   "evidence/mpd-naming/review",
+   2
+  ],
+  [
+   "evidence/mpd-naming/skills-lane",
+   9
+  ],
+  [
+   "evidence/mpd-naming/verification",
+   28
+  ],
+  [
+   "evidence/mpd-naming/wave2",
+   1217
+  ]
+ ]
+}

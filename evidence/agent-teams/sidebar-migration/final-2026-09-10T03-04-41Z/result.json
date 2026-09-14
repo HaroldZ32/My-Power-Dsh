@@ -1,0 +1,37 @@
+{
+  "case": "agent-teams sidebar migration — authoring + repair round 1",
+  "capturedAt": "2026-09-10T03:05:16Z",
+  "tree": "branch dev, uncommitted working tree",
+  "frozenTreeHashes": {
+    "packages/mpd-bundle-plugin/client.js": "cfda0e5f1c1d7d0a3795fba4e8d83dc1848df7fa9218194a340eb11b5cc4942a",
+    "packages/mpd-agent-teams-plugin/lib/client.js": "252030fcb9207cb2d327aaad7a100b393f47a61a86b7bd44560046cc697e8ddd",
+    "packages/mpd-bundle-plugin/src/web-client.js": "169434f577d05ffc6000d92f7b585607c79743a94ad45e0e8e1d12c50ff31248",
+    "packages/mpd-bundle-plugin/src/team-page.js": "15f1714c5859519de80dc94eb09c19edc2a830d129c9557367ad436a6b03e354",
+    "VENDOR_LOCK.json assets.skills": "fileCount 362, treeSha 939165ca47a998fafbd963c49ec9f094c98e14052d312a80f082f6ddb1a78f4b"
+  },
+  "postReviewDelta": "Review round 2 passed on the tree carrying team-page src e18436f1…; the only change afterwards is the removal of one dead declaration (`let autoOpenPolicy = undefined;`) flagged as a non-blocking nit — no behaviour change. Every gate in this file was then re-run on the new frozen revision (the hashes above describe exactly that revision).",
+  "gates": {
+    "node scripts/build-mpd-client.mjs": { "exit": 0, "evidence": "build.log", "note": "238701 bytes" },
+    "bun test packages": { "exit": 0, "evidence": "bun-test-packages.log", "note": "211 tests, 0 fail (3 skip: comment-checker binary absent)" },
+    "bun run typecheck": { "exit": 0, "evidence": "typecheck.log" },
+    "bun run test:qa": { "exit": 0, "evidence": "test-qa.log", "note": "all self-tests passed, including the rewritten web-client-adapt and the new agent-teams-sidebar case" },
+    "node skills/dsh-qa/scripts/agent-teams-sidebar.mjs": { "exit": 0, "evidence": "case-real-run.log", "note": "PASS with a real offline sandbox web boot (client.js served 200 and carrying the team-page module + tab id + bridge; /plugins/dsh-agent-teams/state 200)" },
+    "node scripts/verify-vendor.mjs": { "exit": 0, "evidence": "verify-vendor.log", "note": "PASS — skills asset OK at 362 files after the deliberate re-pin" },
+    "node scripts/pack-mpd.mjs": { "exit": 0, "evidence": "pack.log", "note": "packed client.js carries @mpd-dsh/team-page" },
+    "node scripts/install-profile.mjs --dry-run": { "exit": 0, "evidence": "install-dry-run.log", "note": "nothing written" }
+  },
+  "repairRound1": {
+    "source": "independent review round 1 (verdict needs_revision)",
+    "findings": {
+      "F1": "closed — VENDOR_LOCK.json skills fingerprint re-pinned on the frozen tree with verify-vendor.mjs's own algorithm; recomputed treeSha 939165ca… matches the value the reviewer computed independently; gate prints PASS",
+      "F2": "closed — this directory is the single authoritative sweep for the delivered tree (hashes + every gate log at the frozen revision); the earlier 2026-09-10T02-38-08 dir stays as the historical pre-repair record",
+      "F3": "closed — historicCardTeam is documented as an intentional drop in MIGRATION-FACTS §5b and in a code comment at the archived-section render (its branch was fed by the removed card's conversationEvents registry, so it is unreachable); the export stays for parity",
+      "F4": "closed — mountAgentTeams wraps the page require + commandview inject in try/catch with one warning; pinned by a new containment test that applies the client with the page module absent (no throw, exactly one warning)"
+    }
+  },
+  "limits": [
+    "No browser click-through and no in-page proof that the tab renders or that auto-open expands the panel — the user chose offline acceptance; the contract is pinned against the installed dsh-better-sidebar v0.18.0 sources and the user confirms visually after a page refresh.",
+    "The real-React render of the adopted TeamSection/StagingPlanEditor is not exercised offline (props and real exports are asserted; the harness uses an adopted stub).",
+    "The historic-card branch is unreachable by construction and therefore untested."
+  ]
+}

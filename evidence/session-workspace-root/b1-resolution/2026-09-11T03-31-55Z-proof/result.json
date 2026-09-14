@@ -1,0 +1,126 @@
+{
+  "proof": "real boot that MOUNTS the rows (registration instrumentation via a --patch probe row) with the launch cwd deliberately different from the session workspace",
+  "isolation": {
+    "HOME": "temp sandbox",
+    "DSH_HOME": "temp sandbox"
+  },
+  "launchCwd": "/root/dshProj",
+  "sessionWorkspaces": {
+    "repo": "/root/dshProj/my-power-dsh",
+    "blocked": "/tmp/mpd-b1-proof-qqFlOS/ws-blocked",
+    "clean": "/tmp/mpd-b1-proof-qqFlOS/ws-clean"
+  },
+  "probeInfo": {
+    "HOST_CWD": "/root/dshProj",
+    "REPO": "/root/dshProj/my-power-dsh W_BLOCKED=/tmp/mpd-b1-proof-qqFlOS/ws-blocked W_CLEAN=/tmp/mpd-b1-proof-qqFlOS/ws-clean",
+    "SESSION_CWDS": "[\"/root/dshProj/my-power-dsh\",\"/tmp/mpd-b1-proof-qqFlOS/ws-blocked\",\"/tmp/mpd-b1-proof-qqFlOS/ws-clean\"]",
+    "AGENTS_FOUND": "{\"repo\":true,\"blocked\":true,\"clean\":true}",
+    "ROOTS_ALL": "[\"/root/dshProj/my-power-dsh\",\"/tmp/mpd-b1-proof-qqFlOS/ws-blocked\",\"/tmp/mpd-b1-proof-qqFlOS/ws-clean\"]"
+  },
+  "applyCrashSignatures": 0,
+  "probeReachedFinalMarker": true,
+  "checks": [
+    {
+      "id": "R1_HASHLINE_RELATIVE_READ",
+      "status": "PASS",
+      "detail": "ok=true path=/root/dshProj/my-power-dsh/packages/mpd-hashline-plugin/package.json"
+    },
+    {
+      "id": "R2_VERIF_INFO_WORKSPACE",
+      "status": "PASS",
+      "detail": "workspace=/root/dshProj/my-power-dsh venv=/root/dshProj/my-power-dsh/.venv-rtl work=/root/dshProj/my-power-dsh/.mpd/verif"
+    },
+    {
+      "id": "R3_MEMORY_STATUS_ROOT",
+      "status": "PASS",
+      "detail": "root=/root/dshProj/my-power-dsh/.mpd/memory/agents/agent-my-power-dsh"
+    },
+    {
+      "id": "R4_BOULDER_PLANS_LISTS_REPO_PLAN",
+      "status": "PASS",
+      "detail": "count=1 plans=[\"/root/dshProj/my-power-dsh/.mpd/plans/workmate-rename-delete-contract.md\"]"
+    },
+    {
+      "id": "R5_BOULDER_STATUS_FILE",
+      "status": "PASS",
+      "detail": "stateFile=/root/dshProj/my-power-dsh/.mpd/boulder.json"
+    },
+    {
+      "id": "S1_SESSION_ISOLATION_BLOCKED",
+      "status": "PASS",
+      "detail": "root=/tmp/mpd-b1-proof-qqFlOS/ws-blocked/.mpd/memory/agents/agent-ws-blocked"
+    },
+    {
+      "id": "S2_SESSION_ISOLATION_CLEAN",
+      "status": "PASS",
+      "detail": "root=/tmp/mpd-b1-proof-qqFlOS/ws-clean/.mpd/memory/agents/agent-ws-clean"
+    },
+    {
+      "id": "S3_TWO_SESSIONS_DIFFER",
+      "status": "PASS",
+      "detail": "repo=/root/dshProj/my-power-dsh blocked=/tmp/mpd-b1-proof-qqFlOS/ws-blocked"
+    },
+    {
+      "id": "N1_NO_AGENT_FALLS_BACK_TO_HOST_CWD",
+      "status": "PASS",
+      "detail": "workspace=/root/dshProj hostCwd=/root/dshProj"
+    },
+    {
+      "id": "BEFORE1_BOULDER_PLANS_INVISIBLE_WITHOUT_SESSION",
+      "status": "PASS",
+      "detail": "count=0 plans=[]"
+    },
+    {
+      "id": "BEFORE2_RELATIVE_READ_FAILS_WITHOUT_SESSION",
+      "status": "PASS",
+      "detail": "ok=false err=mpd-hashline: file not found: /root/dshProj/packages/mpd-hashline-plugin/package.json"
+    },
+    {
+      "id": "W1_INIT",
+      "status": "PASS",
+      "detail": "ok=true err="
+    },
+    {
+      "id": "W2_RENAME_REFUSED_IN_BLOCKED_WS",
+      "status": "PASS",
+      "detail": "ok=false err=mpd_workmate: \"oracle-1\" / \"oracle-2\" is in use by team member(s) blocking-team/oracle-1, blocking-team/oracle-2 — archive or retire those teams and let running spawns finish first"
+    },
+    {
+      "id": "W3_RENAME_ALLOWED_IN_CLEAN_WS",
+      "status": "PASS",
+      "detail": "ok=true name=oracle-2"
+    },
+    {
+      "id": "W4_DELETE_REFUSED_IN_BLOCKED_WS",
+      "status": "PASS",
+      "detail": "ok=false err=mpd_workmate: \"oracle-2\" is in use by team member(s) blocking-team/oracle-2 — archive or retire those teams and let running spawns finish first"
+    },
+    {
+      "id": "W5_AGENTLESS_USES_HOST_ROOT",
+      "status": "PASS",
+      "detail": "ok=true name=oracle-3"
+    },
+    {
+      "id": "W6_DELETE_ALLOWED_IN_CLEAN_WS",
+      "status": "PASS",
+      "detail": "ok=true archived=/tmp/mpd-b1-proof-qqFlOS/userhome/.mpd/workmate/.archive/oracle-3-2026-09-11T033211Z"
+    }
+  ],
+  "checksFailed": [],
+  "sessionsCreated": {
+    "repo": {
+      "status": 200,
+      "ok": true
+    },
+    "blocked": {
+      "status": 200,
+      "ok": true
+    },
+    "clean": {
+      "status": 200,
+      "ok": true
+    }
+  },
+  "passed": true,
+  "note": "no --dump-config result is cited as load evidence; every assertion is a real tool call made through the harness runtime with the live agent of a session created over the gateway API"
+}

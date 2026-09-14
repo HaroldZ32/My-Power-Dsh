@@ -1,0 +1,9 @@
+=== revision anchor at t10 start (2026-09-11T07:14:34Z) ===
+4e94f7f6f60a8f49433a4cfb49833deab94ed24644949c464d4c1eb41abe0bd5  packages/mpd-agent-teams-plugin/lib/quality-gates.js
+fd106fdbf12a7379672452a321b79bd5156990454b233617621338821deb387c  packages/mpd-agent-teams-plugin/lib/tools.js
+9680c7b816fa129773ceabffc55305b34a74653dc23128de85ee7058ea85c558  packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+aedb9198e1328d2a216f382ac73e13ef71141367167eac07df76cedb0f6a0576  scripts/patch-agent-teams-fixes.mjs
+0c6d097afaead13c3e2ab62e60a49fb94f348adc84cc5dd8e77727b7289b5237  scripts/vendor-agent-teams.mjs
+d0aee5c79476dfe92ccb1747da6292ea0802a6fdc7d2319735defa8dcabd120e  packages/mpd-verif-plugin/dist/index.js
+88ad2cb2d08ab7f5419e894ebd86b17dc6791794835325653ceeff294ca353fb  packages/mpd-bundle/cordis.patch.yml
+aa168d9cf8d65129ec29a658eb586fe306bba5f2746df6184b0b08d847a1ae6b  VENDOR_LOCK.json

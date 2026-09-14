@@ -1,0 +1,13 @@
+{
+  "objective_match": true,
+  "acceptance_match": true,
+  "verify_match": true,
+  "acceptance_len": [
+    6,
+    6
+  ],
+  "verify_len": [
+    4,
+    4
+  ]
+}

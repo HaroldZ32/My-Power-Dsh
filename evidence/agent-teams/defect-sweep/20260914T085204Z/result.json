@@ -1,0 +1,81 @@
+{
+  "task": "fix ALL outstanding defects (the naming wave is deferred by owner ruling)",
+  "measuredAt": "2026-09-14",
+  "defects": [
+    {
+      "id": "D1-amend-deadlock",
+      "severity": "blocker",
+      "symptom": "agent_teams_update_task with an `amend` payload on a RUNNING task never returns (the caller saw 'interrupted after it was recorded, but no result durably recorded')",
+      "rootCause": "our delta region `mpd-delta update-task-amend-running` called scheduler.kickTeam(...) INSIDE withTeamLock(teamLockKey(...)); kickTeam -> kickMember -> withTeamLock re-acquires the SAME key, and withTeamLock is a non-reentrant promise chain, so the inner acquisition waits for the outer one that awaits it",
+      "fix": "removed the inner kick; the call site below the lock already kicks once for every path through the tool",
+      "proof": "packages/mpd-agent-teams-plugin/test/update-task-amend-lock-and-guards.test.mjs — RED (kick re-introduced) = 'DEADLOCK: ... did not settle within 1500 ms' (1516 ms); GREEN (fixed) = pass in 25 ms"
+    },
+    {
+      "id": "D2-member-amend-silent-noop",
+      "severity": "high",
+      "symptom": "a MEMBER's `amend` returned success and persisted NOTHING (measured 4x by a member)",
+      "fix": "region `mpd-delta update-task-amend-captain-only`: a member passing `amend` is refused loudly and pointed at the captain"
+    },
+    {
+      "id": "D3-terminal-field-silent-noop",
+      "severity": "high",
+      "symptom": "a changed findings/verdict/acceptanceResults/commandsRun/changedPaths on a TERMINAL task answered success while the record was unchanged (seen as `resolved` staying false)",
+      "fix": "region `mpd-delta update-task-terminal-immutable-fields` + helper `terminalTaskChangedField`; every field is compared and any real change is refused loudly"
+    },
+    {
+      "id": "D4-pending-task-unamendable",
+      "severity": "medium",
+      "symptom": "a captain could not amend a task that had not started (`pending` was not an accepted status value), so a defective contract forced a fail-and-retry cycle",
+      "fix": "`pending` added to the status enum + description (region `update-task-required-status-param`)"
+    },
+    {
+      "id": "D5-scope-unamendable",
+      "severity": "medium",
+      "symptom": "inScope/outOfScope were amendable by NOBODY",
+      "fix": "region `mpd-delta update-task-amend-scope` + `amendChangesDefinition` comparisons + both appliers"
+    },
+    {
+      "id": "D6-packed-install-boot-dead",
+      "severity": "high",
+      "symptom": "`npm run pack` exited 0 while the packed tree OMITTED packages/mpd-team-compact-plugin (which the bundle patch mounts as loader entry `mpd-team-compact`), so a packed install died with ERR_MODULE_NOT_FOUND on that entry; a checkout install was unaffected, which is why no gate caught it",
+      "rootCause": "scripts/pack-mpd.mjs PLUGIN_PKGS listed 13 plugin packages and never included mpd-team-compact-plugin",
+      "fix": "added it to PLUGIN_PKGS with the rule spelled out in-file (every package the patch mounts must be listed; mpd-qa-roles-probe stays out because an overlay mounts it)",
+      "proof": "pack + completeness check = 19/19 mounted packages present; the real packed-boot QA case now gets past the loader rows (no mpd-team-compact import error) and stops only at MISSING_CREDENTIAL, the documented sandbox-credential requirement"
+    },
+    {
+      "id": "D7-team-member-read-only-not-enforced",
+      "severity": "high",
+      "symptom": "a roster member the profile calls READ-ONLY still held write/edit/bash in a TEAM: the member spawn passed toolFilter.deny = CAPTAIN_TOOL_NAMES alone and the restriction was prompt-level ('never edit files'). Measured from inside a member's own session, whose probe ran `pwd` for real",
+      "rootCause": "the one-shot roster path denies the seven write-capable names (READONLY_DENY) but the TEAM path had no equivalent, and the adopted plugin cannot import across packages",
+      "fix": "`toolDeny` (string[]) as PROFILE DATA, threaded end to end: profiles.js parses/validates it, the zod Config keeps it, members.js merges it into the harness toolFilter, tools.js `agent_teams_add_member` accepts it; the shipped `mpd` profile now marks exactly the six read-only members with the seven canonical names",
+      "proof": "packages/mpd-agent-teams-plugin/test/member-readonly-deny.test.mjs (4 tests): parser normalizes/rejects, spawn passes the merged list (workers keep only the captain denial), the shipped profile data equals the canonical names, add_member exposes the parameter"
+    },
+    {
+      "id": "D8-live-QA-cases-missing-settings",
+      "severity": "medium",
+      "symptom": "live QA cases staged `.credentials.yaml` but not `settings.yaml`, so on a home whose model chain comes from gateway providers the sandbox fell back to the base `deepseek-official` route and died with MISSING_CREDENTIAL",
+      "fix": "the documented AGENTS.md §7 idiom added to the 11 cases that lacked it (codegraph-smoke, agent-teams-sidebar, bundle-lifecycle, memory-smoke, plan-c-smoke, preset-register, relocate-smoke, team-route-rewire, tool-output-validation, ultrawork-smoke, workmate-team-member)",
+      "proof": "bundle-lifecycle flipped red→green; agent-teams-sidebar green. The remaining live cases need a real model credential this environment does not have (see environmentGaps)"
+    },
+    {
+      "id": "D9-qa-fixture-rot",
+      "severity": "low",
+      "symptom": "registering a region in a file the self-fix fixtures did not stage made the applier walk the registry against a scratch tree and die with ENOENT (13 tests)",
+      "fix": "both fixtures now DERIVE their file lists from MPD_DELTAS, so a newly registered region file can never break them again",
+      "proof": "packages/mpd-agent-teams-plugin (206 pass / 0 fail) after the change"
+    }
+  ],
+  "environmentGaps": {
+    "note": "NOT defects — measured as environment limitations, identical before and after this change",
+    "finding": "this home carries no LLM credential: `~/.dsh/.credentials.yaml` holds exactly one record (`client-connection/browser-session`), no `DEEPSEEK_API_KEY` is exported, and `settings.yaml` points the default model at the base `deepseek-official` route",
+    "consequence": "9 live cases (codegraph-smoke, memory-smoke, plan-c-smoke, preset-register, relocate-smoke, tool-output-validation, ultrawork-smoke, workmate-team-member, team-route-rewire) stop at MISSING_CREDENTIAL"
+  },
+  "gates": {
+    "bun test packages/mpd-agent-teams-plugin": "206 pass / 0 fail / 54 files",
+    "bun run typecheck": "exit 0",
+    "node scripts/patch-agent-teams-fixes.mjs --check": "already applied: 40 mpd delta region(s) across 9 adopted file(s)",
+    "node scripts/verify-vendor.mjs": "PASS (re-pinned after this change's skills/** edits: 297 files / treeSha c088a0b92ef0…)",
+    "bun run test:qa": "all self-tests passed (after the corpus re-pin)"
+  },
+  "deferred_by_owner": "the OMO/DSH-only naming wave (its t2 + t5 work sits uncommitted in the working tree; t6/t7 and the verification/review/integration lanes never ran)"
+}

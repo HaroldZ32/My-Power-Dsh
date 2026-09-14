@@ -1,0 +1,23 @@
+{
+  "tag": "fv4",
+  "writtenAt": "2026-09-13T14:00:29.361Z",
+  "files": {
+    "gap.json": {
+      "bytes": 82509,
+      "sha256": "cade32a6ae0346bf0e01aa96fd8b28d7ab8a0167ee6f94529e1511be971ce067"
+    },
+    "gap-verdict-table.md": {
+      "bytes": 50613,
+      "sha256": "81855a4fed7630268fba86e35f28f1b36414262edc9452ff464f544915f427c8"
+    }
+  },
+  "rows": 32,
+  "verdictDistribution": {
+    "applicable": 16,
+    "uncertain": 13,
+    "already-have": 2,
+    "adoptable": 1
+  },
+  "adoptable": 1,
+  "note": "Immutable snapshot. Rebuild writes a NEW revisions/ dir; this one must never be rewritten."
+}
