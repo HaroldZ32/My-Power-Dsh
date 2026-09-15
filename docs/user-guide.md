@@ -287,9 +287,11 @@ manifest, in `.mpd/mpd.jsonc`:
 `disable` wins over `enable`, which wins over the manifest's own `enabled`.
 
 **Checking what loaded.** `mpd_ext_list` shows every known extension with its plane, effective
-enabled state, contribution counts and per-item errors; `mpd_ext_show { id }` shows one extension
-in full, including each MCP server's exact state (`connected`, `unavailable`, `failed`,
-`disabled`) and the tools it published. `mpd_flow_list` / `mpd_flow_show` inspect contributed
+enabled state, contribution counts, per-item errors and — per extension — which of its claimed skill
+names the harness catalog really serves; `mpd_ext_show { id }` shows one extension
+in full, including that serving check, each MCP server's exact state (`connected`, `unavailable`,
+`failed`, `disabled`) and the tools it published. (`mpd_ext_show` redacts the MCP `env` values an
+author declared — the keys stay visible, the secrets do not reach your session log.) `mpd_flow_list` / `mpd_flow_show` inspect contributed
 flows. Validate a directory before trusting it:
 
 ```bash
@@ -333,8 +335,11 @@ bun scripts/mpd-ext.mjs scaffold my-ext --dir /tmp   # start from a working skel
   restarted. A rejected manifest is reported by `mpd_ext_list` with its per-item reason.
 - **An extension's MCP tools are missing** → `mpd_ext_show { id }` reports the server's state:
   `unavailable`/`failed` carry the child's stderr tail and the reason; `disabled` means the
-  extension is off or `extensions.mcp.enabled` is false. A tool whose schema cannot be projected
-  onto the harness subset is skipped loudly (it appears as a recorded error), not silently.
+  extension is off or `extensions.mcp.enabled` is false. A tool whose **arguments** cannot be
+  projected onto the harness subset is skipped loudly (it appears as a recorded error), not
+  silently; a foreign `outputSchema` costs the tool only its `structuredContent` — the tool still
+  registers, with the reason recorded. A skill that is claimed but not served is reported as
+  `notServed` (`served` means the harness catalog really resolves the name to that extension).
 - **A project-level extension's `mcp`/`roles` items were rejected** → expected: only host-wide
   roots (`~/.mpd/extensions/`, `<bundle>/extensions/`) may contribute tools and providers. Move
   the directory, or drop the unsupported kinds from the manifest.

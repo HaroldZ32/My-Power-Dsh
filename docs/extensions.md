@@ -388,7 +388,7 @@ surfaced by `mpd_ext_list` / `mpd_ext_show`. Nothing in the extension interface 
 | a project manifest declaring `mcp` or `roles` | rejected per item, with the reason quoted in §4.2 |
 | a `SKILL.md` with a missing/invalid `name` or `description` | that candidate is **skipped and warned** — deliberately stricter than the harness, which treats `invocation` as optional and then dereferences it unguarded in every session's pre-step |
 | two skills with the same name **inside one extension** | skip + warn + load-error entry |
-| a skill name colliding with a lower-ranked provider | the rank ladder decides; **the losing candidate is dropped by the harness and is not observable to a provider**, so `mpd_ext_list` cannot flag it (an accepted v1 limit) |
+| a skill name colliding with a lower-ranked provider | the rank ladder decides; the losing candidate is dropped by the harness. Both surfaces are now reported: a collision between two EXTENSIONS is annotated on the loser (`skill surface:` in its error list, naming the winner and both ranks), and every claimed name is checked against the harness's own catalog by `mpd_ext_list` / `mpd_ext_show` (`skillServing.served` / `.notServed`) |
 | an MCP tool name colliding with a live tool | that tool is skipped and recorded; the number of tools that survive from a failed swap is **zero**, never a half-mounted server |
 | an MCP server that is unreachable, hangs or dies | per-server state `connecting`/`connected`/`unavailable`/`failed`/`disabled` plus a stderr tail in `mpd_ext_show`; the boot is neither blocked nor failed |
 | a role name already taken by a base role or by another extension | refused per role, reported in `mpd_roles_list`'s `refused` list and logged once; the roster and the boot keep working |
@@ -403,8 +403,8 @@ plugin-module change needs a process restart anyway. **The honest reload is a re
 
 | Tool | What it answers |
 |---|---|
-| `mpd_ext_list` | every extension known to this host: id, origin (`plugin`/`directory`), plane (`project`/`user`/`bundle`), root, **effective** enabled state, contribution counts, per-item errors, pending kinds, shadowed ids and rejected manifests |
-| `mpd_ext_show` | one extension in full: descriptor, resolved asset roots, contributed skill/flow/role names, each MCP server's state + discovered tool names + stderr tail, and its error list (an unknown id reports the known ids) |
+| `mpd_ext_list` | every extension known to this host: id, origin (`plugin`/`directory`), plane (`project`/`user`/`bundle`), root, **effective** enabled state, contribution counts, per-item errors, pending kinds, shadowed ids, rejected manifests, and per extension which of its claimed skill names the harness catalog really **serves** |
+| `mpd_ext_show` | one extension in full: descriptor (**`env` values redacted**), resolved asset roots, contributed skill/flow/role names, the serving check of every claimed name, each MCP server's state + discovered tool names + stderr tail, and its error list (an unknown id reports the known ids) |
 | `mpd_flow_list` | every flow from an enabled extension: id, title, `whenToUse`, step count, owning extension |
 | `mpd_flow_show` | one flow in full: description, `whenToUse` and every step with its tool hint and expected output |
 
@@ -486,10 +486,14 @@ stdio is enough.
 The bridge replicates the harness's public naming (`mcp__<server>__<tool>`, 64-char cap, `_<hash>`
 on lossy transformation) so a tool call written against one path keeps working on the other. It
 also treats a **foreign `output.schema`** the way the harness does: keep it if it satisfies the
-supported subset, otherwise **drop that tool with a loud reason** — a third party's schema is never
-rewritten, because a rewritten schema would no longer describe what the server returns. The
-parameter sanitiser is defence-in-depth against a future harness (this release does not validate
-`parameters` at registration).
+supported subset, otherwise **drop the SCHEMA and keep the tool** — it is registered without
+`structuredContent` and the reason is recorded, because a third party's schema is never rewritten
+(a rewritten schema would no longer describe what the server returns) and because the harness's own
+`supportedOutputSchema` does exactly this. An `inputSchema` is projected onto the subset and its
+**root normalized onto an object** (a tool call always carries an arguments object, so a scalar or
+array root moves its payload under a single `value` property, recorded as a note); only a tool whose
+arguments cannot be described at all is skipped. The parameter sanitiser is defence-in-depth against
+a future harness (this release does not validate `parameters` at registration).
 
 ## 10. Trust model
 
@@ -520,8 +524,10 @@ Stated plainly, so nobody discovers them from a failure:
 - **No reload** — restart dsh; a failed MCP server is retried on the next boot.
 - **`extensions.*` config is process-level, not per session** (§4.3), because `mpdConfig` is an
   apply-time process-level snapshot.
-- **A cross-provider skill shadow is invisible to us** — the harness drops the losing candidate by
-  rank and a provider cannot observe that.
+- **A cross-provider skill shadow needs a catalog read to be visible** — our own registry can only
+  compare extensions, so `mpd_ext_list` / `mpd_ext_show` ask the harness's catalog
+  (`ctx.skills.list`) and report each claim as `served` or `notServed`. If that read fails, the
+  report says `checked: false` with the reason instead of guessing.
 - **A role refused by the roster is still listed by `mpd_ext_list` as declared** — the roster
   reports the refusal (`mpd_roles_list.refused`), the extension registry does not; making the two
   surfaces agree is a follow-up.
@@ -569,8 +575,9 @@ those kinds are process-global and cannot be scoped to a session. Move the exten
 item and recorded, which is exactly why the validator does not rely on a silently-permissive schema.
 
 **Why is my extension listed but its skill missing?** Check the effective enabled state first
-(`enabled: false` in the manifest, or a config `disable`), then the load errors in
-`mpd_ext_show`. A skill dropped by rank against a lower-ranked provider cannot be reported.
+(`enabled: false` in the manifest, or a config `disable`), then the `skillServing` block
+`mpd_ext_show` prints: `notServed` names every claim the catalog resolves elsewhere (with the
+provider that won), and `checked: false` means the catalog could not be read at all.
 
 **Why does `validate` print `pending` for an MCP server?** Because the CLI never connects: it is an
 offline contract checker. The runtime bridge connects the server at apply time and

@@ -651,7 +651,7 @@ function createSkillProvider(options) {
       const failure = `skill enumeration failed: ${message2(error)}`;
       options.warn(failure);
       options.onSkip?.(failure);
-      return [];
+      return { candidates: [], complete: false };
     }
     const candidates = [];
     const seen = new Set;
@@ -666,19 +666,19 @@ function createSkillProvider(options) {
       const violation = candidateViolation(candidate, options.name);
       if (violation !== undefined) {
         options.warn(`skill candidate skipped: ${violation}`);
-        options.onSkip?.(violation);
+        options.onSkip?.(violation, candidate.name);
         continue;
       }
       if (seen.has(candidate.name)) {
         const duplicate = `duplicate name "${candidate.name}" inside provider "${options.name}"`;
         options.warn(`skill candidate skipped: ${duplicate}`);
-        options.onSkip?.(duplicate);
+        options.onSkip?.(duplicate, candidate.name);
         continue;
       }
       seen.add(candidate.name);
       candidates.push(candidate);
     }
-    return candidates;
+    return { candidates, complete: true };
   };
   return {
     name: options.name,
@@ -686,8 +686,10 @@ function createSkillProvider(options) {
       try {
         return emit(listOptions);
       } catch (error) {
-        options.warn(`skill provider "${options.name}" list() failed: ${message2(error)}`);
-        return [];
+        const failure = `skill provider "${options.name}" list() failed: ${message2(error)}`;
+        options.warn(failure);
+        options.onSkip?.(failure);
+        return { candidates: [], complete: false };
       }
     },
     async get(candidate, listOptions) {
@@ -1080,6 +1082,7 @@ function unknownKeyErrors(value, allowed, item) {
   return errors;
 }
 var ROLE_REFUSAL_PREFIX = "refused: ";
+var ROLE_NOT_EXPOSED_PREFIX = "not exposed: ";
 function roleNameKey(name) {
   return String(name ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
@@ -1104,14 +1107,15 @@ function readRolePersona(path) {
     return "";
   }
 }
-function annotateRoleSurfaces(entries) {
+function annotateRoleSurfaces(entries, isEnabled) {
   const owner = new Map;
   for (const role of ROLES)
     owner.set(roleNameKey(role.name), "the base roster");
   for (const entry of entries) {
     const notes = [];
     const usable = [];
-    if (entry.enabled !== false) {
+    const live = isEnabled === undefined ? entry.enabled !== false : isEnabled(entry);
+    if (live) {
       for (const candidate of entry.roleCandidates) {
         const key = roleNameKey(candidate.name);
         const takenBy = owner.get(key);
@@ -1133,17 +1137,60 @@ function annotateRoleSurfaces(entries) {
     entry.roles = usable;
     entry.contributions = { ...entry.contributions, roles: usable.length };
     entry.errors = [...entry.errors.filter((line) => !line.reason.startsWith(ROLE_REFUSAL_PREFIX)), ...notes];
-    entry.pending = entry.pending.filter((line) => line.item !== "contributes.roles");
-    if (entry.enabled === false && entry.roleCandidates.length > 0) {
+    entry.pending = entry.pending.filter((line) => !line.reason.startsWith(ROLE_NOT_EXPOSED_PREFIX));
+    if (!live && entry.roleCandidates.length > 0) {
       entry.pending.push({
         item: "contributes.roles",
-        reason: `not exposed: this extension is disabled (enabled=false), so none of its ${entry.roleCandidates.length} declared role(s) is resolved`
+        reason: ROLE_NOT_EXPOSED_PREFIX + `not exposed: this extension is ${entry.enabled === false ? "disabled (enabled=false)" : "disabled by config (extensions.disable)"}` + `, so none of its ${entry.roleCandidates.length} declared role(s) is resolved`
       });
     }
   }
 }
 function positiveFinite(value) {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
+var SKILL_SURFACE_PREFIX = "skill surface: ";
+function skillClaims(entry) {
+  return [...entry.skillEntries, ...entry.flowEntries];
+}
+function claimItem(entry) {
+  return entry.locator?.kind === "flow" ? "contributes.flows" : "contributes.skills";
+}
+function annotateSkillSurfaces(entries, isEnabled) {
+  const live = (entry) => isEnabled === undefined ? entry.enabled !== false : isEnabled(entry);
+  const winner = new Map;
+  for (const entry of entries) {
+    if (!live(entry))
+      continue;
+    for (const claim of skillClaims(entry)) {
+      const current = winner.get(claim.document.name);
+      if (current === undefined || claim.rank < current.rank)
+        winner.set(claim.document.name, { rank: claim.rank, entry });
+    }
+  }
+  for (const entry of entries) {
+    const notes = [];
+    if (live(entry)) {
+      for (const claim of skillClaims(entry)) {
+        const holder = winner.get(claim.document.name);
+        if (holder === undefined || holder.entry.id === entry.id)
+          continue;
+        notes.push({
+          item: claimItem(claim),
+          reason: SKILL_SURFACE_PREFIX + `"${claim.document.name}" (rank ${claim.rank}) is also claimed by extension "${holder.entry.id}" (rank ${holder.rank}),` + ` which the harness serves instead — the lowest rank wins and the other candidate is dropped with a warning`
+        });
+      }
+    }
+    entry.errors = [...entry.errors.filter((line) => !line.reason.startsWith(SKILL_SURFACE_PREFIX)), ...notes];
+    const declared = skillClaims(entry).length;
+    entry.pending = entry.pending.filter((line) => !line.reason.startsWith(SKILL_SURFACE_PREFIX));
+    if (!live(entry) && declared > 0) {
+      entry.pending.push({
+        item: "contributes.skills",
+        reason: SKILL_SURFACE_PREFIX + `not served: this extension is ${entry.enabled === false ? "disabled (enabled=false)" : "disabled by config (extensions.disable)"}` + `, so none of its ${declared} declared skill candidate(s) reaches the catalog`
+      });
+    }
+  }
 }
 function validateSkillsItem(raw, item) {
   const errors = [];
@@ -1546,7 +1593,7 @@ class MpdExtensionRegistry {
   rejected() {
     return [...this.rejectedRecords];
   }
-  view(project) {
+  view(project, options = {}) {
     const seen = new Map;
     for (const entry of project.entries)
       seen.set(entry.id, entry);
@@ -1560,7 +1607,8 @@ class MpdExtensionRegistry {
       seen.set(entry.id, entry);
     }
     const entries = [...seen.values()];
-    annotateRoleSurfaces(entries);
+    annotateRoleSurfaces(entries, options.isEnabled);
+    annotateSkillSurfaces(entries, options.isEnabled);
     return { entries, shadowed, rejected: [...this.rejectedRecords, ...project.rejected] };
   }
 }
@@ -2491,6 +2539,28 @@ function projectNode(projector, node, path) {
   }
   return projected;
 }
+function objectRootedSchema(value) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return { ok: false, wrapped: false, rootType: typeof value, schema: {}, reason: "the schema is not an object" };
+  }
+  const schema = value;
+  const declared = schema.type;
+  const rootType = typeof declared === "string" ? declared : "unspecified";
+  if (declared === "object" || declared === undefined && (Object.hasOwn(schema, "properties") || Object.hasOwn(schema, "required") || Object.hasOwn(schema, "additionalProperties") || schema.oneOf === undefined)) {
+    return { ok: true, wrapped: false, rootType, schema };
+  }
+  return {
+    ok: true,
+    wrapped: true,
+    rootType,
+    schema: {
+      type: "object",
+      properties: { value: schema },
+      required: ["value"],
+      additionalProperties: false
+    }
+  };
+}
 function projectSchema(value) {
   const projector = { notes: [], unprojectable: [], depth: 0 };
   const schema = projectNode(projector, value, "schema");
@@ -2656,8 +2726,9 @@ class ServerRuntime {
     const advertised = await client.listTools(timeoutMs);
     const next = new Map;
     const skipped = [];
+    const notes = [];
     for (const tool of advertised) {
-      const built = this.buildDefinition(client, tool, skipped);
+      const built = this.buildDefinition(client, tool, skipped, notes);
       if (built === undefined)
         continue;
       if (next.has(built.name)) {
@@ -2685,10 +2756,12 @@ class ServerRuntime {
     }
     for (const line of skipped)
       addError(this.entry, pendingItem(this.index), line);
-    this.warn(`extension "${this.extension}" mcp server "${this.serverName}": ${this.disposers.size} tool(s) published` + (skipped.length > 0 ? `, ${skipped.length} skipped` : ""));
+    for (const line of notes)
+      addError(this.entry, pendingItem(this.index), line);
+    this.warn(`extension "${this.extension}" mcp server "${this.serverName}": ${this.disposers.size} tool(s) published` + (skipped.length > 0 ? `, ${skipped.length} skipped` : "") + (notes.length > 0 ? `, ${notes.length} downgraded` : ""));
     this.record();
   }
-  buildDefinition(client, tool, skipped) {
+  buildDefinition(client, tool, skipped, notes) {
     const publicName = publicToolName(this.serverName, tool.name);
     let parameters = {};
     if (tool.inputSchema !== undefined) {
@@ -2697,20 +2770,31 @@ class ServerRuntime {
         skipped.push(`tool "${tool.name}" skipped: its inputSchema cannot be projected onto the harness subset (${projection.violations.join("; ")})`);
         return;
       }
-      parameters = projection.schema;
+      const rooted = objectRootedSchema(projection.schema);
+      if (!rooted.ok) {
+        skipped.push(`tool "${tool.name}" skipped: its inputSchema has no object root and cannot be normalized (${rooted.reason})`);
+        return;
+      }
+      const rootedViolations = schemaViolations(rooted.schema);
+      if (rootedViolations.length > 0) {
+        skipped.push(`tool "${tool.name}" skipped: normalizing its inputSchema root produced a schema outside the harness subset (${rootedViolations.join("; ")})`);
+        return;
+      }
+      if (rooted.wrapped) {
+        notes.push(`tool "${tool.name}": the server advertises a non-object inputSchema root ("${rooted.rootType}"); every harness tool call carries an ARGUMENTS OBJECT,` + ` so the payload is projected under the single property "value" — the server should declare an object root`);
+      }
+      parameters = rooted.schema;
     }
     let structuredSchema;
     if (tool.outputSchema !== undefined) {
       const projection = projectSchema(tool.outputSchema);
       if (projection.schema === undefined) {
-        skipped.push(`tool "${tool.name}" skipped: its outputSchema is outside the harness subset (${projection.violations.join("; ")})`);
-        return;
+        notes.push(`tool "${tool.name}": its outputSchema is outside the harness subset (${projection.violations.join("; ")})` + ` — the tool is registered WITHOUT structuredContent (the schema is dropped, never rewritten)`);
+      } else if (projection.lossy) {
+        notes.push(`tool "${tool.name}": its outputSchema would have to be rewritten for the harness subset (${projection.notes.join("; ")})` + ` — the tool is registered WITHOUT structuredContent (the schema is dropped, never rewritten)`);
+      } else {
+        structuredSchema = projection.schema;
       }
-      if (projection.lossy) {
-        skipped.push(`tool "${tool.name}" skipped: its outputSchema would have to be rewritten for the harness subset (${projection.notes.join("; ")})`);
-        return;
-      }
-      structuredSchema = projection.schema;
     }
     const outputSchema = {
       type: "object",
@@ -2892,6 +2976,7 @@ function toView(entry, config) {
     source: entry.source,
     enabled: effectiveEnabled(entry, config),
     descriptor: entry.descriptor,
+    providerName: entry.providerName,
     contributions: { ...entry.contributions },
     errors: entry.errors.map((error) => ({ ...error })),
     pending,
@@ -2967,8 +3052,8 @@ async function mount(ctx, config = {}) {
         entries: (listOptions) => {
           if (!effectiveEnabled(entry, extensionConfig(ctx)))
             return [];
-          const root = cwdOf(listOptions) ?? dsh.workspaceRoot();
-          if (projectExtensionIds(root).has(entry.id))
+          const root = cwdOf(listOptions);
+          if (root !== undefined && projectExtensionIds(root).has(entry.id))
             return [];
           return [...entry.skillEntries, ...entry.flowEntries];
         }
@@ -3003,12 +3088,28 @@ async function mount(ctx, config = {}) {
       warn(`plane "${plane}" discovery failed: ` + message7(error));
     }
   }
+  let projectClaimDir;
+  const projectSkillSkips = new Map;
+  const PROJECT_SKIP_MAX = 128;
+  const recordProjectSkip = (dir, name2, reason) => {
+    if (projectSkillSkips.size >= PROJECT_SKIP_MAX)
+      projectSkillSkips.clear();
+    projectSkillSkips.set(`${dir}\x00${name2 ?? "*"}`, reason);
+  };
   try {
     const projectProvider = createSkillProvider({
       name: projectProviderName,
       warn,
+      onSkip: (reason, name2) => {
+        const dir = projectClaimDir;
+        if (dir !== undefined)
+          recordProjectSkip(dir, name2, reason);
+      },
       entries: (listOptions) => {
-        const root = cwdOf(listOptions) ?? dsh.workspaceRoot();
+        const root = cwdOf(listOptions);
+        projectClaimDir = root === undefined ? undefined : projectExtensionsDir(root);
+        if (root === undefined)
+          return [];
         const discovery = discoverPlane({
           plane: "project",
           dir: projectExtensionsDir(root),
@@ -3045,7 +3146,17 @@ async function mount(ctx, config = {}) {
       warn("project-plane discovery failed: " + message7(error));
     }
     const current = extensionConfig(ctx);
-    const merged = registry.view(discovery);
+    for (const entry of discovery.entries) {
+      for (const document of [...entry.skillEntries, ...entry.flowEntries]) {
+        const reason = projectSkillSkips.get(`${dir}\x00${document.document.name}`) ?? projectSkillSkips.get(`${dir}\x00*`);
+        if (reason === undefined)
+          continue;
+        if (entry.errors.some((error) => error.reason === reason))
+          continue;
+        entry.errors.push({ item: "contributes.skills", reason });
+      }
+    }
+    const merged = registry.view(discovery, { isEnabled: (entry) => effectiveEnabled(entry, current) });
     const extensions = merged.entries.map((entry) => toView(entry, current));
     const warnings = [];
     for (const record of merged.shadowed) {
@@ -3127,7 +3238,94 @@ async function mount(ctx, config = {}) {
   };
   const EXPECTED_TOOLS = ["mpd_ext_list", "mpd_ext_show", "mpd_flow_list", "mpd_flow_show"];
   const shadowsFor = (view, entry) => view.shadowed.filter((record) => record.kept.plane === entry.plane && record.kept.root === entry.root);
-  const listValue = (view) => ({
+  const skillCatalog = async (exec) => {
+    try {
+      const root = dsh.workspaceRoot(exec);
+      const summaries = await dsh.listSkills({ cwd: root });
+      const holders = new Map;
+      for (const summary of summaries) {
+        const name2 = summary?.name;
+        if (typeof name2 !== "string" || holders.has(name2))
+          continue;
+        holders.set(name2, {
+          provider: typeof summary.provider === "string" ? summary.provider : "",
+          source: typeof summary.source === "string" ? summary.source : ""
+        });
+      }
+      return { checked: true, reason: "", holders };
+    } catch (error) {
+      return { checked: false, reason: message7(error), holders: new Map };
+    }
+  };
+  const skillServingFor = (entry, catalog) => {
+    const claimed = [...entry.skills, ...entry.flows];
+    const served = [];
+    const notServed = [];
+    const detail = [];
+    for (const name2 of claimed) {
+      const holder = catalog.holders.get(name2);
+      if (!catalog.checked) {
+        detail.push({ name: name2, served: false, provider: "", source: "", note: `not verified: the harness catalog could not be read (${catalog.reason})` });
+        continue;
+      }
+      const mine = holder !== undefined && holder.provider === entry.providerName && holder.source === entry.source;
+      if (mine) {
+        served.push(name2);
+        detail.push({ name: name2, served: true, provider: holder.provider, source: holder.source, note: "" });
+        continue;
+      }
+      notServed.push(name2);
+      detail.push({
+        name: name2,
+        served: false,
+        provider: holder?.provider ?? "",
+        source: holder?.source ?? "",
+        note: holder === undefined ? "not in the current catalog (the name may lose to another provider, or the extension may be disabled)" : holder.provider === entry.providerName ? `served by another extension under the same provider "${entry.providerName}" (source ${holder.source})` : `served by provider "${holder.provider}" instead of "${entry.providerName}"`
+      });
+    }
+    return { checked: catalog.checked, reason: catalog.reason, served, notServed, detail };
+  };
+  const SKILL_SERVING_SCHEMA = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      checked: { type: "boolean", description: "true when the harness skill catalog was readable; false means the claims below are NOT verified" },
+      reason: { type: "string" },
+      served: STRING_ARRAY_SCHEMA,
+      notServed: STRING_ARRAY_SCHEMA,
+      detail: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: { name: { type: "string" }, served: { type: "boolean" }, provider: { type: "string" }, source: { type: "string" }, note: { type: "string" } },
+          required: ["name", "served", "provider", "source", "note"]
+        }
+      }
+    },
+    required: ["checked", "reason", "served", "notServed", "detail"]
+  };
+  const redactedDescriptor = (entry) => {
+    const descriptor = entry.descriptor;
+    const servers = descriptor?.contributes?.mcp;
+    if (!Array.isArray(servers) || servers.length === 0)
+      return entry.descriptor;
+    return {
+      ...entry.descriptor,
+      contributes: {
+        ...descriptor?.contributes,
+        mcp: servers.map((server) => {
+          const record = server;
+          const env = record.env;
+          if (env === undefined || env === null || typeof env !== "object")
+            return record;
+          const keys = Object.keys(env);
+          return { ...record, env: Object.fromEntries(keys.map((key) => [key, "<redacted>"])) };
+        })
+      }
+    };
+  };
+  const listValue = (view, catalog) => ({
     extensions: view.extensions.map((entry) => ({
       id: entry.id,
       origin: entry.origin,
@@ -3138,6 +3336,7 @@ async function mount(ctx, config = {}) {
       skills: [...entry.skills],
       flows: [...entry.flows],
       roles: [...entry.roles],
+      skillServing: skillServingFor(entry, catalog),
       errors: entry.errors.map((error) => ({ item: error.item, reason: error.reason })),
       pending: entry.pending.map((error) => ({ item: error.item, reason: error.reason })),
       shadows: shadowsFor(view, entry).map((record) => ({ plane: record.shadowed.plane, root: record.shadowed.root }))
@@ -3185,11 +3384,12 @@ async function mount(ctx, config = {}) {
                 skills: STRING_ARRAY_SCHEMA,
                 flows: STRING_ARRAY_SCHEMA,
                 roles: STRING_ARRAY_SCHEMA,
+                skillServing: SKILL_SERVING_SCHEMA,
                 errors: { type: "array", items: ERROR_SCHEMA },
                 pending: { type: "array", items: ERROR_SCHEMA },
                 shadows: { type: "array", items: SHADOW_PAIR_SCHEMA }
               },
-              required: ["id", "origin", "plane", "root", "enabled", "contributions", "skills", "flows", "roles", "errors", "pending", "shadows"]
+              required: ["id", "origin", "plane", "root", "enabled", "contributions", "skills", "flows", "roles", "skillServing", "errors", "pending", "shadows"]
             }
           },
           shadowed: { type: "array", items: SHADOW_RECORD_SCHEMA },
@@ -3218,6 +3418,11 @@ async function mount(ctx, config = {}) {
         ];
         for (const entry of value.extensions) {
           lines.push(`- ${entry.id} [${entry.plane}/${entry.origin}] ${entry.enabled ? "enabled" : "disabled"}` + ` skills=${entry.contributions.skills} flows=${entry.contributions.flows} mcp=${entry.contributions.mcp} roles=${entry.contributions.roles}` + (entry.roles.length > 0 ? ` (roles: ${entry.roles.join(", ")})` : ""));
+          if (entry.skillServing.checked !== true) {
+            lines.push(`    skill serving UNVERIFIED: ${entry.skillServing.reason}`);
+          } else if (entry.skillServing.notServed.length > 0) {
+            lines.push(`    not served: ${entry.skillServing.notServed.join(", ")}`);
+          }
           for (const error of entry.errors)
             lines.push(`    error ${error.item}: ${error.reason}`);
           for (const pending of entry.pending)
@@ -3231,7 +3436,10 @@ async function mount(ctx, config = {}) {
 `));
       }
     },
-    execute: async (_args, exec) => listValue(snapshot(exec))
+    execute: async (_args, exec) => {
+      const catalog = await skillCatalog(exec);
+      return listValue(snapshot(exec), catalog);
+    }
   }, warn);
   safeRegisterTool({
     name: "mpd_ext_show",
@@ -3268,6 +3476,7 @@ async function mount(ctx, config = {}) {
           skills: STRING_ARRAY_SCHEMA,
           flows: STRING_ARRAY_SCHEMA,
           roles: STRING_ARRAY_SCHEMA,
+          skillServing: SKILL_SERVING_SCHEMA,
           mcp: {
             type: "array",
             items: {
@@ -3286,7 +3495,7 @@ async function mount(ctx, config = {}) {
           pending: { type: "array", items: ERROR_SCHEMA },
           shadows: { type: "array", items: SHADOW_PAIR_SCHEMA }
         },
-        required: ["id", "origin", "plane", "root", "source", "enabled", "descriptor", "resolvedRoots", "skills", "flows", "roles", "mcp", "errors", "pending", "shadows"]
+        required: ["id", "origin", "plane", "root", "source", "enabled", "descriptor", "resolvedRoots", "skills", "flows", "roles", "skillServing", "mcp", "errors", "pending", "shadows"]
       },
       render: (_args, value) => {
         const lines = [
@@ -3298,6 +3507,16 @@ async function mount(ctx, config = {}) {
           `roles: ${value.roles.length > 0 ? value.roles.join(", ") : "(none)"}`,
           `mcp: ${value.mcp.length > 0 ? value.mcp.map((server) => `${server.serverName}=${server.state}`).join(", ") : "(none)"}`
         ];
+        if (value.skillServing.checked !== true) {
+          lines.push(`skill serving UNVERIFIED: ${value.skillServing.reason}`);
+        } else {
+          lines.push(`served skills: ${value.skillServing.served.length > 0 ? value.skillServing.served.join(", ") : "(none)"}`);
+          for (const detail of value.skillServing.detail) {
+            if (detail.served === true)
+              continue;
+            lines.push(`not served: ${detail.name} — ${detail.note}`);
+          }
+        }
         for (const error of value.errors)
           lines.push(`error ${error.item}: ${error.reason}`);
         for (const pending of value.pending)
@@ -3321,7 +3540,7 @@ async function mount(ctx, config = {}) {
         root: entry.root,
         source: entry.source,
         enabled: entry.enabled,
-        descriptor: entry.descriptor,
+        descriptor: redactedDescriptor(entry),
         resolvedRoots: {
           root: entry.resolvedRoots.root,
           skills: [...entry.resolvedRoots.skills],
@@ -3331,6 +3550,7 @@ async function mount(ctx, config = {}) {
         skills: [...entry.skills],
         flows: [...entry.flows],
         roles: [...entry.roles],
+        skillServing: skillServingFor(entry, await skillCatalog(exec)),
         mcp: entry.mcp.map((server) => ({
           serverName: server.serverName,
           state: server.state,

@@ -181,7 +181,7 @@ anchors. The wave's own frozen values and gate code were byte-identical across t
 | Gate | Command | State |
 |---|---|---|
 | typecheck | `bun run typecheck` | verified (exit 0) |
-| plugin tests | `bun test packages/mpd-agent-teams-plugin` | verified at this anchor (161 pass / 0 fail, 42 files). **Current tree (v0.9.0):** 213 pass / 0 fail over 58 files — the plugin gained the dispatch-stall regression + region-pinning suites (`evidence/agent-teams/dispatch-stall/`) |
+| plugin tests | `bun test packages/mpd-agent-teams-plugin` | verified at this anchor (161 pass / 0 fail, 42 files). **Current tree (v0.9.1):** 220 pass / 0 fail over 60 files — the plugin gained the dispatch-stall regression + region-pinning suites (`evidence/agent-teams/dispatch-stall/`) and, in v0.9.1, the pool-capability guard (`self-fix-tests/pool-capability-guard.test.mjs`; registry 46 → 48 regions) |
 | QA self-tests | `bun run test:qa` | verified (exit 0, all self-tests passed) |
 | runtime boot | `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs` | verified (PASS; one-command install, no home copy, uninstall leaves no residue) |
 | two-sided gate case | `bun skills/dsh-qa/scripts/session-start-team.mjs` | verified (PASS: simple 3/3 silent, complex 3/3 exactly one staged team + one notice, negative control disarmed = true) |

@@ -639,7 +639,7 @@ test("a foreign inputSchema is projected for parameters while the wire schema st
   }
 })
 
-test("tools with an unprojectable or foreign output schema are skipped loudly while their siblings register", async () => {
+test("an unsupported outputSchema drops the SCHEMA and keeps the tool, while an unprojectable inputSchema skips its tool", async () => {
   const fixture = makeFixture({
     tools: [
       { name: "good", description: "Good tool", inputSchema: { type: "object" } },
@@ -656,17 +656,77 @@ test("tools with an unprojectable or foreign output schema are skipped loudly wh
     warn: () => {},
   })
   try {
-    expect(harness.registered.map((tool) => tool.name)).toEqual(["mcp__fixture__good"])
+    // F1: the harness's own bridge drops the SCHEMA and keeps the tool
+    // (H/dsh-mcp-client `supportedOutputSchema`); dropping the whole tool was the
+    // blunter REV4 wording. `badinput` stays a SKIP: a tool whose arguments cannot
+    // be described at all is not callable.
+    expect(harness.registered.map((tool) => tool.name)).toEqual(["mcp__fixture__good", "mcp__fixture__badoutput"])
     const reasons = entry.errors.map((error) => error.reason).join("\n")
     expect(reasons).toContain('tool "badinput" skipped')
     expect(reasons).toContain("inputSchema cannot be projected")
-    expect(reasons).toContain('tool "badoutput" skipped')
-    expect(reasons).toContain("outputSchema would have to be rewritten")
-    // The surviving tool's schemas are all on the enforced subset.
+    expect(reasons).not.toContain('tool "badoutput" skipped')
+    expect(reasons).toContain('tool "badoutput": its outputSchema would have to be rewritten')
+    expect(reasons).toContain("registered WITHOUT structuredContent")
+    // The downgraded tool is fully usable: canonical object schema, no
+    // structuredContent, and a real call still answers.
+    const downgraded = harness.registered.find((tool) => tool.name === "mcp__fixture__badoutput")
+    expect(schemaViolations(downgraded.output.schema)).toEqual([])
+    expect(downgraded.output.schema.properties.structuredContent).toBeUndefined()
+    expect(downgraded.output.schema.required).toEqual(["content"])
+    const called = await downgraded.execute({}, { signal: undefined })
+    expect(called.structuredContent).toBeUndefined()
+    expect(Array.isArray(called.content)).toBe(true)
+    // The surviving tools' schemas are all on the enforced subset.
     for (const definition of harness.registered) {
       expect(schemaViolations(definition.output.schema)).toEqual([])
       expect(schemaViolations(definition.parameters)).toEqual([])
     }
+  } finally {
+    await bridge.dispose()
+  }
+})
+
+test("a non-object-rooted inputSchema is normalized onto an object root instead of being passed through", async () => {
+  const fixture = makeFixture({
+    tools: [
+      { name: "scalarinput", description: "Scalar root", inputSchema: { type: "string", description: "one value" } },
+      { name: "mappedinput", description: "Map root", inputSchema: { type: "array", items: { type: "string" } } },
+      { name: "openinput", description: "No root type", inputSchema: { description: "anything" } },
+    ],
+  })
+  const wire = JSON.parse(readFileSync(fixture.state, "utf8"))
+  const entry = fixtureEntry({ servers: [fixtureServer(fixture)] })
+  const harness = makeHarness()
+  const bridge = await connectExtensionMcpServers({
+    dsh: (await import("../../mpd-dsh-adapter-plugin/src/index.ts")).createDshAdapter(harness.ctx),
+    entries: [entry],
+    config: () => DEFAULT_EXTENSION_CONFIG,
+    warn: () => {},
+  })
+  try {
+    // F2: every harness tool call carries an ARGUMENTS OBJECT, so a foreign root that
+    // is not an object is projected under a single `value` property (the payload keeps
+    // the server's own type and annotations) and the downgrade is RECORDED.
+    const scalar = toolNamed(harness.registered, "mcp__fixture__scalarinput")
+    expect(scalar.parameters).toEqual({
+      type: "object",
+      properties: { value: { type: "string", description: "one value" } },
+      required: ["value"],
+      additionalProperties: false,
+    })
+    expect(schemaViolations(scalar.parameters)).toEqual([])
+    const mapped = toolNamed(harness.registered, "mcp__fixture__mappedinput")
+    expect(mapped.parameters.properties.value).toEqual({ type: "array", items: { type: "string" } })
+    expect(mapped.parameters.required).toEqual(["value"])
+    // A root that only carries annotations already IS an unconstrained object root.
+    const open = toolNamed(harness.registered, "mcp__fixture__openinput")
+    expect(open.parameters).toEqual({ description: "anything" })
+    const notes = entry.errors.map((error) => error.reason).join("\n")
+    expect(notes).toContain('tool "scalarinput": the server advertises a non-object inputSchema root ("string")')
+    expect(notes).toContain('tool "mappedinput": the server advertises a non-object inputSchema root ("array")')
+    expect(notes).not.toContain('tool "openinput"')
+    // The wire object is never mutated in place.
+    expect(JSON.stringify(wire.tools)).toBe(JSON.stringify(JSON.parse(readFileSync(fixture.state, "utf8")).tools))
   } finally {
     await bridge.dispose()
   }

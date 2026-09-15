@@ -28,7 +28,7 @@ import {
 } from "./registry"
 import { MPD_EXT_CONTRACT } from "./sdk"
 import { McpStdioClient, publicToolName, type McpToolInfo } from "./mcp-client"
-import { projectSchema, schemaViolations } from "./schema-sanitize"
+import { objectRootedSchema, projectSchema, schemaViolations } from "./schema-sanitize"
 
 /** The exact state vocabulary of `mpd_ext_show` (frozen contract §1.5 tool 2). */
 export type McpServerState = "connecting" | "connected" | "unavailable" | "failed" | "disabled"
@@ -270,8 +270,9 @@ class ServerRuntime {
     const advertised = await client.listTools(timeoutMs)
     const next = new Map<string, DshToolDef>()
     const skipped: string[] = []
+    const notes: string[] = []
     for (const tool of advertised) {
-      const built = this.buildDefinition(client, tool, skipped)
+      const built = this.buildDefinition(client, tool, skipped, notes)
       if (built === undefined) continue
       if (next.has(built.name)) {
         throw new Error(`server "${this.serverName}" listed tool "${tool.name}" more than once — invalid tool list`)
@@ -302,20 +303,24 @@ class ServerRuntime {
       )
     }
     for (const line of skipped) addError(this.entry, pendingItem(this.index), line)
+    for (const line of notes) addError(this.entry, pendingItem(this.index), line)
     this.warn(
       `extension "${this.extension}" mcp server "${this.serverName}": ${this.disposers.size} tool(s) published`
-        + (skipped.length > 0 ? `, ${skipped.length} skipped` : ""),
+        + (skipped.length > 0 ? `, ${skipped.length} skipped` : "")
+        + (notes.length > 0 ? `, ${notes.length} downgraded` : ""),
     )
     this.record()
   }
 
   /** Build one harness tool definition, or record a per-tool skip. */
-  private buildDefinition(client: McpStdioClient, tool: McpToolInfo, skipped: string[]): DshToolDef | undefined {
+  private buildDefinition(client: McpStdioClient, tool: McpToolInfo, skipped: string[], notes: string[]): DshToolDef | undefined {
     const publicName = publicToolName(this.serverName, tool.name)
 
     // parameters — PROJECTED onto the subset (defense-in-depth: this harness
     // release never validates `parameters`, its own bridge passes `inputSchema`
-    // straight through). An unprojectable schema skips that tool loudly.
+    // straight through). An unprojectable schema skips that tool loudly; a
+    // projectable one whose ROOT is not `object` is normalized onto an object root
+    // (the tool-argument contract), recorded as a note.
     let parameters: Record<string, unknown> = {}
     if (tool.inputSchema !== undefined) {
       const projection = projectSchema(tool.inputSchema)
@@ -325,29 +330,48 @@ class ServerRuntime {
         )
         return undefined
       }
-      parameters = projection.schema
+      const rooted = objectRootedSchema(projection.schema)
+      if (!rooted.ok) {
+        skipped.push(`tool "${tool.name}" skipped: its inputSchema has no object root and cannot be normalized (${rooted.reason})`)
+        return undefined
+      }
+      const rootedViolations = schemaViolations(rooted.schema)
+      if (rootedViolations.length > 0) {
+        skipped.push(
+          `tool "${tool.name}" skipped: normalizing its inputSchema root produced a schema outside the harness subset (${rootedViolations.join("; ")})`,
+        )
+        return undefined
+      }
+      if (rooted.wrapped) {
+        notes.push(
+          `tool "${tool.name}": the server advertises a non-object inputSchema root ("${rooted.rootType}"); every harness tool call carries an ARGUMENTS OBJECT,`
+            + ` so the payload is projected under the single property "value" — the server should declare an object root`,
+        )
+      }
+      parameters = rooted.schema
     }
 
-    // output.schema — KEEP-OR-DROP: the harness asserts it at register time, so a
-    // foreign schema is either already on the subset or that tool is dropped. It
-    // is never rewritten: a rewritten schema would no longer describe what the
-    // server returns.
+    // output.schema — KEEP-OR-DROP on the SCHEMA, never on the tool (this is the
+    // harness's own posture: `supportedOutputSchema` drops a foreign schema to `{}`
+    // and keeps the tool, H/dsh-mcp-client/lib/index.js:186-196,231-244). A schema
+    // is never rewritten: a rewritten one would no longer describe what the server
+    // returns, so the honest downgrade is "no structuredContent, loud note".
     let structuredSchema: Record<string, unknown> | undefined
     if (tool.outputSchema !== undefined) {
       const projection = projectSchema(tool.outputSchema)
       if (projection.schema === undefined) {
-        skipped.push(
-          `tool "${tool.name}" skipped: its outputSchema is outside the harness subset (${projection.violations.join("; ")})`,
+        notes.push(
+          `tool "${tool.name}": its outputSchema is outside the harness subset (${projection.violations.join("; ")})`
+            + ` — the tool is registered WITHOUT structuredContent (the schema is dropped, never rewritten)`,
         )
-        return undefined
-      }
-      if (projection.lossy) {
-        skipped.push(
-          `tool "${tool.name}" skipped: its outputSchema would have to be rewritten for the harness subset (${projection.notes.join("; ")})`,
+      } else if (projection.lossy) {
+        notes.push(
+          `tool "${tool.name}": its outputSchema would have to be rewritten for the harness subset (${projection.notes.join("; ")})`
+            + ` — the tool is registered WITHOUT structuredContent (the schema is dropped, never rewritten)`,
         )
-        return undefined
+      } else {
+        structuredSchema = projection.schema
       }
-      structuredSchema = projection.schema
     }
 
     const outputSchema: Record<string, unknown> = {

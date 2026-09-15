@@ -1,0 +1,332 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-ext-plugin/test/core.test.ts:
+(pass) apply registers exactly the four tools, no reload, and provides the mpdExtensions service [10.57ms]
+[mpd-ext] FATAL: the harness seams this row registers through are unavailable (toolsRegister=false, skillsProvider=false) — the four tools and the skills provider will NOT be registered in this session. This row must declare inject: ["tools","skills"].
+[mpd-ext] skill provider for "mpd-ext-example" not registered: mpd-dsh-adapter: harness service "skills" is unavailable — cannot register a skill provider
+[mpd-ext] project-plane skill provider not registered: mpd-dsh-adapter: harness service "skills" is unavailable — cannot register a skill provider
+[mpd-ext] tool "mpd_ext_list" not registered: mpd-dsh-adapter: harness service "tools" is unavailable — cannot register tool "mpd_ext_list"
+[mpd-ext] tool "mpd_ext_show" not registered: mpd-dsh-adapter: harness service "tools" is unavailable — cannot register tool "mpd_ext_show"
+[mpd-ext] tool "mpd_flow_list" not registered: mpd-dsh-adapter: harness service "tools" is unavailable — cannot register tool "mpd_flow_list"
+[mpd-ext] tool "mpd_flow_show" not registered: mpd-dsh-adapter: harness service "tools" is unavailable — cannot register tool "mpd_flow_show"
+[mpd-ext] FATAL: only 0/4 tools registered (missing: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show) — the extension interface is NOT usable in this session; the row declares inject: ["tools","skills"], so check the harness seams above
+[mpd-ext] skill provider for "hostile" not registered: skills seam gone
+[mpd-ext] skill provider for "mpd-ext-example" not registered: skills seam gone
+[mpd-ext] project-plane skill provider not registered: skills seam gone
+[mpd-ext] tool "mpd_ext_list" not registered: tools seam gone
+[mpd-ext] tool "mpd_ext_show" not registered: tools seam gone
+[mpd-ext] tool "mpd_flow_list" not registered: tools seam gone
+[mpd-ext] tool "mpd_flow_show" not registered: tools seam gone
+[mpd-ext] FATAL: only 0/4 tools registered (missing: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show) — the extension interface is NOT usable in this session; the row declares inject: ["tools","skills"], so check the harness seams above
+(pass) apply contains a hostile harness: a throwing tool or skill seam never escapes apply [3.81ms]
+(pass) the four tools emit values that satisfy their own output schemas [6.63ms]
+(pass) mpd_ext_show and mpd_flow_show report an unknown id as an error naming the known ids [1.27ms]
+(pass) descriptor validation rejects unknown keys, bad apiVersion, missing id, escapes and bad rank [0.49ms]
+(pass) role provider/model must be paired and persona must stay inside the root [0.21ms]
+(pass) effectiveEnabled follows disable > enable > descriptor [0.18ms]
+494 |   expect(userExtensionsDir()).toBe(userRoot)
+495 | 
+496 |   // The apply-time provider of the shadowed user extension emits nothing while a
+497 |   // project extension with the same id is present...
+498 |   const userProvider = providerNamed(providers, "mpd-ext:shared")
+499 |   expect(await userProvider.list({ cwd: workspace })).toEqual({ candidates: [], complete: true })
+                                                            ^
+error: expect(received).toEqual(expected)
+
+- {
+-   "candidates": [],
+-   "complete": true,
+- }
++ []
+
+- Expected  - 4
++ Received  + 1
+
+      at <anonymous> (/root/dshProj/my-power-dsh/.mpd/red-before/packages/mpd-ext-plugin/test/core.test.ts:499:55)
+(fail) discovery precedence is project > user > bundle and shadowing is recorded, never fatal [2.34ms]
+[mpd-ext] bad-json (/tmp/mpd-ext-ws-xqubeB/.mpd/extensions/bad-json/mpd-ext.json) rejected: invalid JSON: JSON Parse error: Expected '}'
+[mpd-ext] bad-version (/tmp/mpd-ext-ws-xqubeB/.mpd/extensions/bad-version/mpd-ext.json) rejected: apiVersion must equal 1 (got 9)
+[mpd-ext] no-id (/tmp/mpd-ext-ws-xqubeB/.mpd/extensions/no-id/mpd-ext.json) rejected: id is required and must match ^[a-z0-9][a-z0-9-]{0,63}$
+(pass) a malformed manifest is reported per item and never aborts apply or another extension [2.12ms]
+(pass) the project plane is re-read per call and never leaks across workspaces [1.47ms]
+(pass) skill candidates are pre-validated: a bad candidate is skipped, warned and never emitted [2.06ms]
+581 |         source: "test",
+582 |         rank: 300,
+583 |       },
+584 |     ],
+585 |   })
+586 |   expect(await provider.list({})).toEqual({ candidates: [], complete: true })
+                                        ^
+error: expect(received).toEqual(expected)
+
+- {
+-   "candidates": [],
+-   "complete": true,
+- }
++ []
+
+- Expected  - 4
++ Received  + 1
+
+      at <anonymous> (/root/dshProj/my-power-dsh/.mpd/red-before/packages/mpd-ext-plugin/test/core.test.ts:586:35)
+(fail) the provider pre-validates at emit time too, and reports the skip to the owner [0.41ms]
+(pass) a loaded candidate is recorded on the extension when its items are unusable [0.70ms]
+613 |   apply(ctx, { quiet: true })
+614 |   const provider = providerNamed(providers, "mpd-ext:project-plane")
+615 |   const inA = observed(await provider.list({ cwd: workspaceA })).candidates
+616 |   expect(inA.map((candidate: any) => candidate.name)).toEqual(["rtl-review"])
+617 |   expect(inA[0].provider).toBe("mpd-ext:project-plane")
+618 |   expect(await provider.list({ cwd: workspaceB })).toEqual({ candidates: [], complete: true })
+                                                         ^
+error: expect(received).toEqual(expected)
+
+- {
+-   "candidates": [],
+-   "complete": true,
+- }
++ []
+
+- Expected  - 4
++ Received  + 1
+
+      at <anonymous> (/root/dshProj/my-power-dsh/.mpd/red-before/packages/mpd-ext-plugin/test/core.test.ts:618:52)
+(fail) the project-plane skill provider resolves per call from provider.list({ cwd }) [1.67ms]
+632 |   // F3: an enumeration failure must be reported as an INCOMPLETE observation. An
+633 |   // ARRAY would be read as `{candidates:[], complete:true}` and CACHED per
+634 |   // (cwd, scope, revision) by the harness, so one transient filesystem failure would
+635 |   // hide this provider's skills for the rest of the session
+636 |   // (H/dsh-skill/lib/index.js:414-426 + collect()'s cache write).
+637 |   expect(await provider.list({})).toEqual({ candidates: [], complete: false })
+                                        ^
+error: expect(received).toEqual(expected)
+
+- {
+-   "candidates": [],
+-   "complete": false,
+- }
++ []
+
+- Expected  - 4
++ Received  + 1
+
+      at <anonymous> (/root/dshProj/my-power-dsh/.mpd/red-before/packages/mpd-ext-plugin/test/core.test.ts:637:35)
+(fail) a skill provider never throws out of list()/get() when discovery fails [0.48ms]
+(pass) provider names are unique by construction [0.11ms]
+(pass) flows render into skill candidates and a flow id outside the skill grammar is rejected loudly [0.35ms]
+(pass) a broken flow file is skipped and recorded while its siblings keep working [0.87ms]
+699 |   expect(observed(await provider.list({ cwd: workspace })).candidates.length).toBe(1)
+700 |   expect(await enabledOf()).toBe(true)
+701 | 
+702 |   // The value changes AFTER apply: nothing was captured at apply time.
+703 |   state["extensions.disable"] = ["toggled"]
+704 |   expect(await provider.list({ cwd: workspace })).toEqual({ candidates: [], complete: true })
+                                                        ^
+error: expect(received).toEqual(expected)
+
+- {
+-   "candidates": [],
+-   "complete": true,
+- }
++ []
+
+- Expected  - 4
++ Received  + 1
+
+      at <anonymous> (/root/dshProj/my-power-dsh/.mpd/red-before/packages/mpd-ext-plugin/test/core.test.ts:704:51)
+(fail) config is read lazily per use: disable/enable are honoured after apply [1.92ms]
+(pass) extensionConfig reads every extensions.* key lazily from mpdConfig (declared process-level limit) [0.26ms]
+(pass) mcp.enabled=false is honoured per call and surfaced instead of silently pending [10.15ms]
+(pass) a missing mpdConfig degrades to the documented defaults [1.51ms]
+(pass) the code plane registers through ctx.get("mpdExtensions") and shares the same validation [2.49ms]
+(pass) describe() answers the frozen descriptor shape for a known extension [1.89ms]
+(pass) one broken extension of each kind leaves the good ones working [4.23ms]
+(pass) mcp is pending until the bridge connects it, while roles are NEVER pending (t14/F3) [4.08ms]
+(pass) t14/F3: a live roles contribution reports no pending item and no 'not yet exposed' claim [2.44ms]
+(pass) t14/F4: a role colliding with a BASE roster name is refused with the roster's reason, in both paths [2.57ms]
+(pass) t14/F4: an unreadable OR empty persona is refused, and the empty case is no longer accepted [2.22ms]
+(pass) t14/F4: a CROSS-extension name collision refuses the LATER extension and names the holder [1.92ms]
+(pass) t14: a disabled extension's declared roles are reported as not exposed, never as usable [2.56ms]
+(pass) t14: refusal notes are idempotent — repeated calls neither duplicate nor lose them [2.27ms]
+(pass) t14: the ext report and the ROSTER agree about every role (parity, measured against the resolver) [3.10ms]
+(pass) t14: every spelling of a base roster name collides (case- and separator-insensitive) [1.65ms]
+(pass) discoverPlane never throws for a missing root [0.20ms]
+(pass) t16: the ext report and the ROSTER agree about a PROJECT-plane role (nothing usable, same reason) [1.75ms]
+1203 |   const clone = listed.extensions.find((candidate: any) => candidate.id === "zeta-clone")
+1204 | 
+1205 |   // The winner carries no note…
+1206 |   expect(skillSurfaceNotes(owner)).toEqual([])
+1207 |   // …the loser names the winner AND the ranks that decided it.
+1208 |   expect(skillSurfaceNotes(clone)).toEqual([
+                                          ^
+error: expect(received).toEqual(expected)
+
+- [
+-   ""verilog-style" (rank 600) is also claimed by extension "alpha-owner" (rank 100), which the harness serves instead — the lowest rank wins and the other candidate is dropped with a warning",
+- ]
++ []
+
+- Expected  - 3
++ Received  + 1
+
+      at <anonymous> (/root/dshProj/my-power-dsh/.mpd/red-before/packages/mpd-ext-plugin/test/core.test.ts:1208:36)
+(fail) F4: a same-name skill claimed by two extensions is reported on the loser WITH the winner and both ranks [1.89ms]
+1238 |   }))
+1239 |   apply(ctx, { quiet: true })
+1240 |   const listed = await callTool(registered, "mpd_ext_list", {}, makeDir("mpd-ext-ws-"))
+1241 |   const entry = listed.extensions.find((candidate: any) => candidate.id === "shadowed")
+1242 | 
+1243 |   expect(entry.skillServing.checked).toBe(true)
+                      ^
+TypeError: undefined is not an object (evaluating 'entry.skillServing.checked')
+      at <anonymous> (/root/dshProj/my-power-dsh/.mpd/red-before/packages/mpd-ext-plugin/test/core.test.ts:1243:16)
+(fail) F4: a claim the catalog resolves to a NON-extension provider is reported as not served [1.59ms]
+1265 |   const listed = await callTool(registered, "mpd_ext_list", {}, workspace)
+1266 |   const a = listed.extensions.find((candidate: any) => candidate.id === "proj-a")
+1267 |   const b = listed.extensions.find((candidate: any) => candidate.id === "proj-b")
+1268 | 
+1269 |   const note = 'duplicate name "verilog-style" inside provider "mpd-ext:project-plane"'
+1270 |   expect(a.errors.some((error: any) => error.reason === note)).toBe(true)
+                                                                      ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/root/dshProj/my-power-dsh/.mpd/red-before/packages/mpd-ext-plugin/test/core.test.ts:1270:64)
+(fail) F4: a duplicate project-plane skill name is attributed to the PROJECT entry that claims it [1.67ms]
+1283 |   apply(ctx, { quiet: true })
+1284 |   const provider = providerNamed(providers, "mpd-ext:project-plane")
+1285 |   const saved = process.env.DSH_WORKSPACE_ROOT
+1286 |   process.env.DSH_WORKSPACE_ROOT = workspace
+1287 |   try {
+1288 |     expect(await provider.list({})).toEqual({ candidates: [], complete: true })
+                                           ^
+error: expect(received).toEqual(expected)
+
+- {
+-   "candidates": [],
+-   "complete": true,
+- }
++ [
++   {
++     "description": "Check Verilog style against the in-house rules.",
++     "invocation": {
++       "modelInvocable": true,
++       "userInvocable": true,
++     },
++     "locator": {
++       "directory": "/tmp/mpd-ext-cwd-jmrmTa/.mpd/extensions/only-project/skills/verilog-style",
++       "kind": "skill",
++       "path": "/tmp/mpd-ext-cwd-jmrmTa/.mpd/extensions/only-project/skills/verilog-style/SKILL.md",
++     },
++     "name": "verilog-style",
++     "path": "/tmp/mpd-ext-cwd-jmrmTa/.mpd/extensions/only-project/skills/verilog-style/SKILL.md",
++     "provider": "mpd-ext:project-plane",
++     "rank": 300,
++     "resourceBase": {
++       "kind": "directory",
++       "path": "/tmp/mpd-ext-cwd-jmrmTa/.mpd/extensions/only-project/skills/verilog-style",
++     },
++     "source": "/tmp/mpd-ext-cwd-jmrmTa/.mpd/extensions/only-project/mpd-ext.json",
++   },
++ ]
+
+- Expected  - 4
++ Received  + 23
+
+      at <anonymous> (/root/dshProj/my-power-dsh/.mpd/red-before/packages/mpd-ext-plugin/test/core.test.ts:1288:37)
+(fail) F5: a provider call with NO cwd serves nothing from the project plane (never process.cwd()) [1.93ms]
+(pass) F5: a host-wide extension is still served when the caller names no workspace [1.18ms]
+1315 |     mcp: [{ serverName: "envserver", transport: "stdio", command: "node", args: ["-e", "process.exit(1)"], env: { API_KEY: "sk-super-secret-value", PLAIN: "visible-value" } }],
+1316 |   }, { enabled: false }))
+1317 |   const { ctx, registered } = makeCtx()
+1318 |   apply(ctx, { quiet: true })
+1319 |   const shown = await callTool(registered, "mpd_ext_show", { id: "with-env" }, makeDir("mpd-ext-ws-"))
+1320 |   expect(JSON.stringify(shown)).not.toContain("sk-super-secret-value")
+                                           ^
+error: expect(received).not.toContain(expected)
+
+Expected to not contain: "sk-super-secret-value"
+Received: "{\"id\":\"with-env\",\"origin\":\"directory\",\"plane\":\"user\",\"root\":\"/tmp/mpd-ext-home-chS6VQ/.mpd/extensions/with-env\",\"source\":\"/tmp/mpd-ext-home-chS6VQ/.mpd/extensions/with-env/mpd-ext.json\",\"enabled\":false,\"descriptor\":{\"apiVersion\":1,\"id\":\"with-env\",\"description\":\"The with-env extension\",\"enabled\":false,\"contributes\":{\"skills\":[],\"flows\":[],\"mcp\":[{\"serverName\":\"envserver\",\"transport\":\"stdio\",\"command\":\"node\",\"args\":[\"-e\",\"process.exit(1)\"],\"env\":{\"API_KEY\":\"sk-super-secret-value\",\"PLAIN\":\"visible-value\"},\"cwd\":\".\",\"toolCallTimeoutMs\":60000,\"connectTimeoutMs\":10000}],\"roles\":[]}},\"resolvedRoots\":{\"root\":\"/tmp/mpd-ext-home-chS6VQ/.mpd/extensions/with-env\",\"skills\":[],\"flows\":[],\"roles\":[]},\"skills\":[],\"flows\":[],\"roles\":[],\"mcp\":[{\"serverName\":\"envserver\",\"state\":\"disabled\",\"tools\":[]}],\"errors\":[],\"pending\":[{\"item\":\"contributes.mcp[0]\",\"reason\":\"disabled: extensions.mcp.enabled=false — server \\\"envserver\\\" is not connected\"}],\"shadows\":[]}"
+
+      at <anonymous> (/root/dshProj/my-power-dsh/.mpd/red-before/packages/mpd-ext-plugin/test/core.test.ts:1320:37)
+(fail) F6: mpd_ext_show redacts author-declared env VALUES in the echoed descriptor [1.79ms]
+1342 |   const listed = await callTool(registered, "mpd_ext_list", {}, makeDir("mpd-ext-ws-"))
+1343 |   const off = listed.extensions.find((candidate: any) => candidate.id === "alpha-off")
+1344 |   const on = listed.extensions.find((candidate: any) => candidate.id === "beta-on")
+1345 | 
+1346 |   expect(off.enabled).toBe(false)
+1347 |   expect(refusalNotes(on)).toEqual([])
+                                  ^
+error: expect(received).toEqual(expected)
+
+- []
++ [
++   "role name "Shared Role" (contributes.roles[0] of extension "beta-on") is already taken by extension "alpha-off" — this extension role is not exposed",
++ ]
+
+- Expected  - 1
++ Received  + 3
+
+      at <anonymous> (/root/dshProj/my-power-dsh/.mpd/red-before/packages/mpd-ext-plugin/test/core.test.ts:1347:28)
+(fail) F7: a CONFIG-disabled extension claims no role name, so the next claimant is exposed [1.83ms]
+1369 |   const provider = createSkillProvider({
+1370 |     name: "mpd-ext:transient",
+1371 |     warn: () => {},
+1372 |     entries: () => { throw new Error("ENOENT: the skills root vanished mid-scan") },
+1373 |   })
+1374 |   expect(observed(await provider.list({ cwd: "/somewhere" }))).toEqual({ candidates: [], complete: false })
+                                                                      ^
+error: expect(received).toEqual(expected)
+
+  {
+    "candidates": [],
+-   "complete": false,
++   "complete": true,
+  }
+
+- Expected  - 1
++ Received  + 1
+
+      at <anonymous> (/root/dshProj/my-power-dsh/.mpd/red-before/packages/mpd-ext-plugin/test/core.test.ts:1374:64)
+(fail) F3: an enumeration failure is reported as an INCOMPLETE observation, never a cacheable empty catalog [0.45ms]
+1397 |   const savedWorkspace = process.env.DSH_WORKSPACE_ROOT
+1398 |   process.env.DSH_WORKSPACE_ROOT = workspace
+1399 |   try {
+1400 |     // No cwd: the guard cannot be evaluated, so it is SKIPPED — serving host-wide
+1401 |     // content is the safe direction; hiding it is not.
+1402 |     expect((await observedNames(provider, {})).names).toEqual(["verilog-style"])
+                                                             ^
+error: expect(received).toEqual(expected)
+
+- [
+-   "verilog-style",
+- ]
++ []
+
+- Expected  - 3
++ Received  + 1
+
+      at <anonymous> (/root/dshProj/my-power-dsh/.mpd/red-before/packages/mpd-ext-plugin/test/core.test.ts:1402:55)
+(fail) F5: with no cwd a host-wide extension is SERVED, not silently shadowed by a guessed workspace [1.71ms]
+
+13 tests failed:
+(fail) discovery precedence is project > user > bundle and shadowing is recorded, never fatal [2.34ms]
+(fail) the provider pre-validates at emit time too, and reports the skip to the owner [0.41ms]
+(fail) the project-plane skill provider resolves per call from provider.list({ cwd }) [1.67ms]
+(fail) a skill provider never throws out of list()/get() when discovery fails [0.48ms]
+(fail) config is read lazily per use: disable/enable are honoured after apply [1.92ms]
+(fail) F4: a same-name skill claimed by two extensions is reported on the loser WITH the winner and both ranks [1.89ms]
+(fail) F4: a claim the catalog resolves to a NON-extension provider is reported as not served [1.59ms]
+(fail) F4: a duplicate project-plane skill name is attributed to the PROJECT entry that claims it [1.67ms]
+(fail) F5: a provider call with NO cwd serves nothing from the project plane (never process.cwd()) [1.93ms]
+(fail) F6: mpd_ext_show redacts author-declared env VALUES in the echoed descriptor [1.79ms]
+(fail) F7: a CONFIG-disabled extension claims no role name, so the next claimant is exposed [1.83ms]
+(fail) F3: an enumeration failure is reported as an INCOMPLETE observation, never a cacheable empty catalog [0.45ms]
+(fail) F5: with no cwd a host-wide extension is SERVED, not silently shadowed by a guessed workspace [1.71ms]
+
+ 32 pass
+ 13 fail
+ 339 expect() calls
+Ran 45 tests across 1 file. [146.00ms]
+ext-core exit=1

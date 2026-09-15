@@ -66,12 +66,17 @@ bun scripts/mpd-ext.mjs --self-test                           # CLI 自身的检
   绝不会继承主机上名字形如凭据的变量；它需要什么请在该清单的 `env` 中声明。
   插件被释放时它会被回收。
 - **第三方 schema 不会被静默改写。** 服务器的 `inputSchema` 会被投影到 harness 接受的
-  schema 子集上；而超出该子集的 `outputSchema` 会让那一个工具被明确丢弃，而不是被改写。
+  schema 子集上，且根不是 object 时会被归一化到 object 根（每次工具调用携带的都是一个
+  参数对象，因此载荷会移入单一的 `value` 属性，并且这一降级会被记录）；而超出该子集的
+  `outputSchema` 只会让该工具失去 **schema**、不会失去工具本身——它会在没有
+  `structuredContent` 的情况下完成注册，原因同样会被记录。
 - **这种净化作用的诚实边界。** 本版 harness 在注册时校验的是 `outputSchema`，而
   `inputSchema` 是原样透传的（harness 自带的 MCP 桥接就是这么做的），因此对
   `inputSchema` 的投影是 **面向未来 harness 的纵深防御**，并非针对当前会发生的失败。
-  今天真正承重的是 `outputSchema` 的"保留或丢弃"规则：一个被 harness 拒绝的 schema
-  会从工具注册处抛出，进而拖垮整棵插件树，所以这里选择丢弃该工具。
+  今天真正承重的是 `outputSchema` 的"保留或丢弃"规则，且它遵循 harness 自身的姿态
+  （`supportedOutputSchema`）：被 harness 拒绝的 schema 丢弃的是 **schema**、保留的是
+  工具——否则该拒绝会从工具注册处抛出，进而拖垮整棵插件树。只有连 **参数** 都无法描述的
+  工具才会被跳过。
 - 搬运一个扩展意味着复制它的整个目录：清单中的资源引用都相对于扩展根解析，绝对路径或
   `..` 逃逸会被拒绝。
 

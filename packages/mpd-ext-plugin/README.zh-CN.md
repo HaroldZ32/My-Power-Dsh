@@ -67,8 +67,8 @@
 
 | 工具 | 用途 |
 |---|---|
-| `mpd_ext_list` | 列出全部扩展：id、origin、plane、root、有效启用状态、贡献数量、按条目错误、待实现种类、被遮蔽的重复 id 与被整体拒绝的 manifest |
-| `mpd_ext_show` | 查看单个扩展的完整信息：描述符、解析出的根目录、技能/流程/角色名、MCP 服务器及状态、错误列表 |
+| `mpd_ext_list` | 列出全部扩展：id、origin、plane、root、有效启用状态、贡献数量、声明的技能名里有哪些真的被 harness 目录**服务**、按条目错误、待实现种类、被遮蔽的重复 id 与被整体拒绝的 manifest |
+| `mpd_ext_show` | 查看单个扩展的完整信息：描述符（**`env` 值已脱敏**）、解析出的根目录、技能/流程/角色名及其服务校验、MCP 服务器及状态、错误列表 |
 | `mpd_flow_list` | 列出全部流程：id、标题、whenToUse、步骤数、所属扩展、是否可加载 |
 | `mpd_flow_show` | 展示单个流程的完整过程（步骤、工具提示、期望输出） |
 
@@ -104,9 +104,11 @@
 
 扩展、它的某个条目、某个流程文件、某台 MCP 服务器或某个角色都可以失败，而**不影响**其他任何东西：失败会附带一行原因被记录，并由 `mpd_ext_list` / `mpd_ext_show` 呈现。本插件不会让异常抛出 `apply`，任何失败也不会中止其他扩展的激活。有三处接口需要显式护栏，且都已具备：技能 provider（一个畸形候选会破坏每个会话的 pre-step，因此每个候选都会被预校验，违规者按条目**跳过并告警**）、技能 provider 注册（重名会抛异常，因此名字在构造上唯一且注册被包裹）、MCP 工具代际切换（部分注册必须回滚——随 MCP 桥任务落地）。
 
+第三方 schema 遵循两条不同的规则，且都不会改写作者的 schema：MCP 工具的 `inputSchema` 会被投影到 harness 子集，且**根会被归一化到 object**（工具调用携带的永远是一个参数对象）；而超出子集的 `outputSchema` 只让该工具失去 **schema**、不会失去工具本身——它会在没有 `structuredContent` 的情况下注册并记录原因，这正是 harness 自带 `supportedOutputSchema` 的姿态。只有连**参数**都无法描述的工具才会被跳过。
+
 ## 状态与已记录的 v1 限制
 
-- **与更低 rank 的 provider 同名的技能会被其遮蔽，而这件事我们看不见。** harness 会按 rank 告警并丢弃落败的候选，而这次丢弃对 provider 不可观测——于是该技能就是「未被提供」，`mpd_ext_list` 也不会标注它。这是正确的优先级行为（project-dsh 100、project-agents 200、runtime 250 都高于我们默认的 300），不是错误。**同一扩展内部**的重复名会被记录（跳过 + 告警 + 载入错误条目）；跨 provider 的遮蔽不会——这是已接受的 v1 限制。
+- **与更低 rank 的 provider 同名的技能会被其遮蔽。** harness 会按 rank 告警并丢弃落败的候选。这是正确的优先级行为（project-dsh 100、project-agents 200、runtime 250 都高于我们默认的 300），不是错误——而且它不再不可见：两个**扩展**之间的相撞会标注在落败方（其载入错误里出现 `skill surface:`，写明赢家与双方 rank），两个工具还会把每个声明拿去与 harness 自身的目录（`ctx.skills.list`）比对，报成 `served` / `notServed`。这次目录读取是唯一能看见**非扩展** provider（语料库、用户技能根）投下遮蔽的方式；读取失败时报告会给出 `checked: false` 与原因，而不是下断言。
 - `mcp` 种类已经**声明并校验**，但尚未真正连接——在运行时 stdio 桥任务落地前，`mpd_ext_show` 会把每台服务器报告为 pending。角色在此声明，待角色表的“每次调用解析”函数落地后即可使用。
 - 仅 stdio MCP；仅 JSON 流程文件（YAML 为后续项）；无 MCP resources/prompts；无 GUI 面板；无市场/注册表/远程下载/版本求解；扩展不能贡献 agent preset；扩展角色不会成为 agent-teams 队友（该成员列表是静态补丁配置）。
 

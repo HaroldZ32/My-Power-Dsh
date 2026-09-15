@@ -1,0 +1,155 @@
+ok   packed manifest version is 0.9.1 (0.9.1)
+ok   packed manifest files covers extensions/**
+ok   packed manifest exports covers ./extensions/*
+ok   packed manifest exports covers ./packages/*
+ok   packed packages/mpd-ext-plugin/dist/index.js equals the repo bytes (7a91509eed2c40a2)
+ok   packed packages/mpd-ext-plugin/dist/sdk.js equals the repo bytes (4117a1d5d11dbbda)
+ok   packed packages/mpd-roles-plugin/dist/index.js equals the repo bytes (898ebf8bccb04f48)
+ok   packed packages/mpd-agent-teams-plugin/lib/scheduler.js equals the repo bytes (87daf3777f94b72e)
+ok   packed packages/mpd-agent-teams-plugin/lib/mpd-deltas.js equals the repo bytes (4863ecc53d0582ca)
+ok   F1 packed: the tool is kept and only the schema is dropped
+ok   F2 packed: a non-object inputSchema root is normalized
+ok   F3 packed: an incomplete observation is returned on a failed enumeration
+ok   F4 packed: the catalog-backed serving report ships
+ok   F4 packed: the collision note prefix ships
+ok   F5 packed: no process-cwd fallback in the provider paths
+ok   F6 packed: descriptor env values are redacted
+ok   F7 packed: the effective-enabled predicate is passed into the view
+ok   POOL packed: the capability guard ships
+ok   POOL packed: both regions are registered
+ok   packed EN README states the serving check
+ok   packed ZH README states the serving check
+ok   packed EN README no longer says the tool is dropped
+ok   packed patch carries the mpd-ext row
+ok   packed patch has zero dev-path leaks
+
+[packed-tree-assertions] 24/24 ok
+[packed-tree-assertions] INSTALL: not run on this host (pnpm store [ERR_SQLITE_ERROR], carried over from v0.9.0) — these assertions are the packed proof
+{
+  "wave": "v0.9.1",
+  "packed": "/root/dshProj/my-power-dsh/dist/mpd-package",
+  "checks": [
+    {
+      "label": "packed manifest version is 0.9.1",
+      "ok": true,
+      "detail": "0.9.1"
+    },
+    {
+      "label": "packed manifest files covers extensions/**",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "packed manifest exports covers ./extensions/*",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "packed manifest exports covers ./packages/*",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "packed packages/mpd-ext-plugin/dist/index.js equals the repo bytes",
+      "ok": true,
+      "detail": "7a91509eed2c40a2"
+    },
+    {
+      "label": "packed packages/mpd-ext-plugin/dist/sdk.js equals the repo bytes",
+      "ok": true,
+      "detail": "4117a1d5d11dbbda"
+    },
+    {
+      "label": "packed packages/mpd-roles-plugin/dist/index.js equals the repo bytes",
+      "ok": true,
+      "detail": "898ebf8bccb04f48"
+    },
+    {
+      "label": "packed packages/mpd-agent-teams-plugin/lib/scheduler.js equals the repo bytes",
+      "ok": true,
+      "detail": "87daf3777f94b72e"
+    },
+    {
+      "label": "packed packages/mpd-agent-teams-plugin/lib/mpd-deltas.js equals the repo bytes",
+      "ok": true,
+      "detail": "4863ecc53d0582ca"
+    },
+    {
+      "label": "F1 packed: the tool is kept and only the schema is dropped",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "F2 packed: a non-object inputSchema root is normalized",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "F3 packed: an incomplete observation is returned on a failed enumeration",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "F4 packed: the catalog-backed serving report ships",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "F4 packed: the collision note prefix ships",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "F5 packed: no process-cwd fallback in the provider paths",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "F6 packed: descriptor env values are redacted",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "F7 packed: the effective-enabled predicate is passed into the view",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "POOL packed: the capability guard ships",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "POOL packed: both regions are registered",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "packed EN README states the serving check",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "packed ZH README states the serving check",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "packed EN README no longer says the tool is dropped",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "packed patch carries the mpd-ext row",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "packed patch has zero dev-path leaks",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "failed": [],
+  "installRun": false
+}

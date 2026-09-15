@@ -106,6 +106,8 @@ interface ExtensionView {
   source: string
   enabled: boolean
   descriptor: unknown
+  /** The provider name this extension's skill candidates carry (the serving identity). */
+  providerName: string
   contributions: { skills: number; flows: number; mcp: number; roles: number }
   errors: MpdExtLoadError[]
   pending: MpdExtLoadError[]
@@ -144,6 +146,7 @@ function toView(entry: ExtensionEntry, config: ExtensionConfig): ExtensionView {
     source: entry.source,
     enabled: effectiveEnabled(entry, config),
     descriptor: entry.descriptor,
+    providerName: entry.providerName,
     contributions: { ...entry.contributions },
     errors: entry.errors.map((error) => ({ ...error })),
     pending,
@@ -248,8 +251,12 @@ async function mount(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
         },
         entries: (listOptions) => {
           if (!effectiveEnabled(entry, extensionConfig(ctx))) return []
-          const root = cwdOf(listOptions) ?? dsh.workspaceRoot()
-          if (projectExtensionIds(root).has(entry.id)) return []
+          // The project-shadow guard needs the CALLER's workspace. With no cwd it
+          // cannot be evaluated — and a guess (`dsh.workspaceRoot()` -> process.cwd())
+          // can only HIDE a host-wide extension that really is served, so the guard
+          // is skipped instead: hiding live content is the worse failure (F5).
+          const root = cwdOf(listOptions)
+          if (root !== undefined && projectExtensionIds(root).has(entry.id)) return []
           return [...entry.skillEntries, ...entry.flowEntries]
         },
       })
@@ -286,16 +293,44 @@ async function mount(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
     }
   }
 
+  let projectClaimDir: string | undefined
+
   // ── the per-call project plane ─────────────────────────────────────────────
   // One provider serves every project extension: registration is process-global
   // and cannot be scoped to a session, so the project plane is re-discovered
   // inside list()/get() from the caller's own cwd.
+  //
+  // ATTRIBUTION (F4): the project provider needs the same `onSkip` record the
+  // apply-time providers have, or a skipped project candidate is a warning nobody
+  // can see and `mpd_ext_list` keeps claiming a skill that is not served.
+  //
+  // The provider discovers its OWN entry objects per call, so a note pushed there
+  // would die with that call; skips are therefore keyed by `(workspace dir,
+  // candidate name)` and attached to the matching entry by `snapshot()` below.
+  // `*` is the whole-plane key (an enumeration failure has no candidate name).
+  const projectSkillSkips = new Map<string, string>()
+  const PROJECT_SKIP_MAX = 128
+  const recordProjectSkip = (dir: string, name: string | undefined, reason: string): void => {
+    if (projectSkillSkips.size >= PROJECT_SKIP_MAX) projectSkillSkips.clear()
+    projectSkillSkips.set(`${dir}\u0000${name ?? "*"}`, reason)
+  }
   try {
     const projectProvider = createSkillProvider({
       name: projectProviderName,
       warn,
+      onSkip: (reason, name) => {
+        const dir = projectClaimDir
+        if (dir !== undefined) recordProjectSkip(dir, name, reason)
+      },
       entries: (listOptions) => {
-        const root = cwdOf(listOptions) ?? dsh.workspaceRoot()
+        // F5: no `?? dsh.workspaceRoot()` here. That fallback reaches
+        // `DSH_WORKSPACE_ROOT` and then `process.cwd()`, i.e. the launcher's
+        // directory — in a one-host/many-sessions process another project's
+        // extensions would be served into this session's catalog. An unknown cwd
+        // means this caller HAS no project plane (per-call discovery, contract §3).
+        const root = cwdOf(listOptions)
+        projectClaimDir = root === undefined ? undefined : projectExtensionsDir(root)
+        if (root === undefined) return []
         const discovery = discoverPlane({
           plane: "project",
           dir: projectExtensionsDir(root),
@@ -333,7 +368,18 @@ async function mount(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
       warn("project-plane discovery failed: " + message(error))
     }
     const current = extensionConfig(ctx)
-    const merged = registry.view(discovery)
+    // Attribute the skips the project provider recorded for THIS workspace: its
+    // per-call entry objects are gone by now, so the note is matched back by
+    // `(workspace dir, candidate name)` — `*` is the whole-plane key (F4).
+    for (const entry of discovery.entries) {
+      for (const document of [...entry.skillEntries, ...entry.flowEntries]) {
+        const reason = projectSkillSkips.get(`${dir}\u0000${document.document.name}`) ?? projectSkillSkips.get(`${dir}\u0000*`)
+        if (reason === undefined) continue
+        if (entry.errors.some((error) => error.reason === reason)) continue
+        entry.errors.push({ item: "contributes.skills", reason })
+      }
+    }
+    const merged = registry.view(discovery, { isEnabled: (entry) => effectiveEnabled(entry, current) })
     const extensions = merged.entries.map((entry) => toView(entry, current))
     const warnings: string[] = []
     for (const record of merged.shadowed) {
@@ -435,7 +481,130 @@ async function mount(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
   const shadowsFor = (view: ExtensionViewSnapshot, entry: ExtensionView): ShadowRecord[] =>
     view.shadowed.filter((record) => record.kept.plane === entry.plane && record.kept.root === entry.root)
 
-  const listValue = (view: ExtensionViewSnapshot): Record<string, unknown> => ({
+  /**
+   * What the harness's OWN catalog says about the names this view claims (F4).
+   *
+   * The registry can only see collisions between two extensions; a name that loses
+   * to the skill corpus, to a user skills root or to a sibling provider is decided
+   * inside `ctx.skills`, so the only honest answer is to ask it — `list()` returns
+   * the merged winning summaries, each carrying the `provider` that serves it
+   * (H/dsh-skill/lib/index.js:224-226, 491-501). This runs in the TOOL path on
+   * purpose: calling the catalog from inside our own provider would recurse
+   * (`snapshot()` -> `provider.list()` -> `snapshot()`).
+   *
+   * A catalog read that fails is reported as `checked:false`, never as "not served":
+   * an unverifiable claim and a disproved one are different facts.
+   */
+  const skillCatalog = async (exec: unknown): Promise<{ checked: boolean; reason: string; holders: Map<string, { provider: string; source: string }> }> => {
+    try {
+      const root = dsh.workspaceRoot(exec as DshToolExec | undefined)
+      const summaries = await dsh.listSkills({ cwd: root })
+      const holders = new Map<string, { provider: string; source: string }>()
+      for (const summary of summaries) {
+        const name = summary?.name
+        if (typeof name !== "string" || holders.has(name)) continue
+        holders.set(name, {
+          provider: typeof summary.provider === "string" ? summary.provider : "",
+          source: typeof summary.source === "string" ? summary.source : "",
+        })
+      }
+      return { checked: true, reason: "", holders }
+    } catch (error) {
+      return { checked: false, reason: message(error), holders: new Map() }
+    }
+  }
+
+  /**
+   * The serving report for ONE view entry, against the catalog read once per call.
+   *
+   * The identity test is the `(provider, source)` pair, not the provider name alone:
+   * every project-plane extension shares ONE provider (`mpd-ext:project-plane`), so the
+   * name alone cannot tell two project entries apart — and their `source` (the manifest
+   * each candidate came from) can.
+   */
+  const skillServingFor = (
+    entry: ExtensionView,
+    catalog: { checked: boolean; reason: string; holders: Map<string, { provider: string; source: string }> },
+  ): Record<string, unknown> => {
+    const claimed = [...entry.skills, ...entry.flows]
+    const served: string[] = []
+    const notServed: string[] = []
+    const detail: Array<{ name: string; served: boolean; provider: string; source: string; note: string }> = []
+    for (const name of claimed) {
+      const holder = catalog.holders.get(name)
+      if (!catalog.checked) {
+        detail.push({ name, served: false, provider: "", source: "", note: `not verified: the harness catalog could not be read (${catalog.reason})` })
+        continue
+      }
+      const mine = holder !== undefined && holder.provider === entry.providerName && holder.source === entry.source
+      if (mine) {
+        served.push(name)
+        detail.push({ name, served: true, provider: holder.provider, source: holder.source, note: "" })
+        continue
+      }
+      notServed.push(name)
+      detail.push({
+        name,
+        served: false,
+        provider: holder?.provider ?? "",
+        source: holder?.source ?? "",
+        note: holder === undefined
+          ? "not in the current catalog (the name may lose to another provider, or the extension may be disabled)"
+          : holder.provider === entry.providerName
+            ? `served by another extension under the same provider "${entry.providerName}" (source ${holder.source})`
+            : `served by provider "${holder.provider}" instead of "${entry.providerName}"`,
+      })
+    }
+    return { checked: catalog.checked, reason: catalog.reason, served, notServed, detail }
+  }
+
+  const SKILL_SERVING_SCHEMA = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      checked: { type: "boolean", description: "true when the harness skill catalog was readable; false means the claims below are NOT verified" },
+      reason: { type: "string" },
+      served: STRING_ARRAY_SCHEMA,
+      notServed: STRING_ARRAY_SCHEMA,
+      detail: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: { name: { type: "string" }, served: { type: "boolean" }, provider: { type: "string" }, source: { type: "string" }, note: { type: "string" } },
+          required: ["name", "served", "provider", "source", "note"],
+        },
+      },
+    },
+    required: ["checked", "reason", "served", "notServed", "detail"],
+  } as const
+
+  /**
+   * The descriptor as a tool may echo it (F6): the author-declared `env` VALUES of
+   * every MCP server are redacted, because a tool result lands in a session log and
+   * in the model's context — and a manifest env block is exactly where an API key
+   * goes. The KEYS stay visible (they are the interface), the count stays visible.
+   */
+  const redactedDescriptor = (entry: ExtensionView): Record<string, unknown> => {
+    const descriptor = entry.descriptor as { contributes?: { mcp?: unknown[] } } | undefined
+    const servers = descriptor?.contributes?.mcp
+    if (!Array.isArray(servers) || servers.length === 0) return entry.descriptor as Record<string, unknown>
+    return {
+      ...(entry.descriptor as Record<string, unknown>),
+      contributes: {
+        ...(descriptor?.contributes as Record<string, unknown>),
+        mcp: servers.map((server) => {
+          const record = server as Record<string, unknown>
+          const env = record.env
+          if (env === undefined || env === null || typeof env !== "object") return record
+          const keys = Object.keys(env as Record<string, unknown>)
+          return { ...record, env: Object.fromEntries(keys.map((key) => [key, "<redacted>"])) }
+        }),
+      },
+    }
+  }
+
+  const listValue = (view: ExtensionViewSnapshot, catalog: Awaited<ReturnType<typeof skillCatalog>>): Record<string, unknown> => ({
     extensions: view.extensions.map((entry) => ({
       id: entry.id,
       origin: entry.origin,
@@ -449,6 +618,9 @@ async function mount(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
       skills: [...entry.skills],
       flows: [...entry.flows],
       roles: [...entry.roles],
+      // …and whether the catalog really serves them: a claimed name that the
+      // harness resolves to another provider is reported, not asserted (F4).
+      skillServing: skillServingFor(entry, catalog),
       errors: entry.errors.map((error) => ({ item: error.item, reason: error.reason })),
       pending: entry.pending.map((error) => ({ item: error.item, reason: error.reason })),
       shadows: shadowsFor(view, entry).map((record) => ({ plane: record.shadowed.plane, root: record.shadowed.root })),
@@ -498,11 +670,12 @@ async function mount(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
                 skills: STRING_ARRAY_SCHEMA,
                 flows: STRING_ARRAY_SCHEMA,
                 roles: STRING_ARRAY_SCHEMA,
+                skillServing: SKILL_SERVING_SCHEMA,
                 errors: { type: "array", items: ERROR_SCHEMA },
                 pending: { type: "array", items: ERROR_SCHEMA },
                 shadows: { type: "array", items: SHADOW_PAIR_SCHEMA },
               },
-              required: ["id", "origin", "plane", "root", "enabled", "contributions", "skills", "flows", "roles", "errors", "pending", "shadows"],
+              required: ["id", "origin", "plane", "root", "enabled", "contributions", "skills", "flows", "roles", "skillServing", "errors", "pending", "shadows"],
             },
           },
           shadowed: { type: "array", items: SHADOW_RECORD_SCHEMA },
@@ -535,6 +708,13 @@ async function mount(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
             + ` skills=${entry.contributions.skills} flows=${entry.contributions.flows} mcp=${entry.contributions.mcp} roles=${entry.contributions.roles}`
             + (entry.roles.length > 0 ? ` (roles: ${entry.roles.join(", ")})` : ""),
           )
+          // A claimed name the harness resolves elsewhere is REPORTED, never
+          // asserted as usable (F4): the serving fact, not the declaration.
+          if (entry.skillServing.checked !== true) {
+            lines.push(`    skill serving UNVERIFIED: ${entry.skillServing.reason}`)
+          } else if (entry.skillServing.notServed.length > 0) {
+            lines.push(`    not served: ${entry.skillServing.notServed.join(", ")}`)
+          }
           for (const error of entry.errors) lines.push(`    error ${error.item}: ${error.reason}`)
           for (const pending of entry.pending) lines.push(`    pending ${pending.item}: ${pending.reason}`)
           if (entry.shadows.length > 0) lines.push(`    shadows ${entry.shadows.map((shadow: any) => shadow.plane).join(", ")}`)
@@ -543,7 +723,13 @@ async function mount(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
         return text(lines.join("\n"))
       },
     },
-    execute: async (_args: unknown, exec: unknown) => listValue(snapshot(exec)),
+    execute: async (_args: unknown, exec: unknown) => {
+      // The catalog is read BEFORE the view: asking the harness runs our own providers,
+      // which is where a project-plane skip is recorded, so the report a caller gets
+      // includes the skips of the very call it made (F4).
+      const catalog = await skillCatalog(exec)
+      return listValue(snapshot(exec), catalog)
+    },
   }, warn)
 
   safeRegisterTool({
@@ -582,6 +768,7 @@ async function mount(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
           skills: STRING_ARRAY_SCHEMA,
           flows: STRING_ARRAY_SCHEMA,
           roles: STRING_ARRAY_SCHEMA,
+          skillServing: SKILL_SERVING_SCHEMA,
           mcp: {
             type: "array",
             items: {
@@ -600,7 +787,7 @@ async function mount(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
           pending: { type: "array", items: ERROR_SCHEMA },
           shadows: { type: "array", items: SHADOW_PAIR_SCHEMA },
         },
-        required: ["id", "origin", "plane", "root", "source", "enabled", "descriptor", "resolvedRoots", "skills", "flows", "roles", "mcp", "errors", "pending", "shadows"],
+        required: ["id", "origin", "plane", "root", "source", "enabled", "descriptor", "resolvedRoots", "skills", "flows", "roles", "skillServing", "mcp", "errors", "pending", "shadows"],
       },
       render: (_args: unknown, value: any) => {
         const lines = [
@@ -612,6 +799,15 @@ async function mount(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
           `roles: ${value.roles.length > 0 ? value.roles.join(", ") : "(none)"}`,
           `mcp: ${value.mcp.length > 0 ? value.mcp.map((server: any) => `${server.serverName}=${server.state}`).join(", ") : "(none)"}`,
         ]
+        if (value.skillServing.checked !== true) {
+          lines.push(`skill serving UNVERIFIED: ${value.skillServing.reason}`)
+        } else {
+          lines.push(`served skills: ${value.skillServing.served.length > 0 ? value.skillServing.served.join(", ") : "(none)"}`)
+          for (const detail of value.skillServing.detail) {
+            if (detail.served === true) continue
+            lines.push(`not served: ${detail.name} — ${detail.note}`)
+          }
+        }
         for (const error of value.errors) lines.push(`error ${error.item}: ${error.reason}`)
         for (const pending of value.pending) lines.push(`pending ${pending.item}: ${pending.reason}`)
         return text(lines.join("\n"))
@@ -632,7 +828,10 @@ async function mount(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
         root: entry.root,
         source: entry.source,
         enabled: entry.enabled,
-        descriptor: entry.descriptor,
+        // Redacted on purpose (F6): a tool result reaches the session log and the
+        // model's context, and `contributes.mcp[].env` is where an author's API key
+        // lives. Keys stay, values become `<redacted>`.
+        descriptor: redactedDescriptor(entry),
         resolvedRoots: {
           root: entry.resolvedRoots.root,
           skills: [...entry.resolvedRoots.skills],
@@ -642,6 +841,7 @@ async function mount(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
         skills: [...entry.skills],
         flows: [...entry.flows],
         roles: [...entry.roles],
+        skillServing: skillServingFor(entry, await skillCatalog(exec)),
         mcp: entry.mcp.map((server) => ({
           serverName: server.serverName,
           state: server.state,
