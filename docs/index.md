@@ -13,6 +13,7 @@ back here for the full set.
 | [`../README.md`](../README.md) | everyone | The product page: what the bundle is, the capability inventory, one-command install, quick start. |
 | [`user-guide.md`](user-guide.md) | users | The task-oriented guide: install/uninstall, the `mpd` preset, tools by job, the specialist roster, the workmate library, team mode, the Web GUI, `mpd.jsonc` configuration, extensions from a user's point of view, troubleshooting. |
 | [`extensions.md`](extensions.md) | extension authors | **New**: the extension interface — the frozen descriptor contract, the four contribution kinds (skills, flows, MCP servers, roles), the discovery roots and the developer CLI. |
+| [`tui.md`](tui.md) | users of a TUI session | **New**: the DSH-TUI edition — the install command, the TUI-native surfaces, the admission and distribution artifacts, the per-package compatibility ledger and the explicit NOT-CLAIMED list. |
 | [`architecture.md`](architecture.md) | engineers, curious users | How the bundle is assembled and mounts: patch layers, boot chain, plugin inventory, interaction flows, state layout, web-client wiring. |
 | [`development.md`](development.md) | developers | Repo layout, build/test commands, the QA case catalog, gates, packing/installing, vendoring, git model, common pitfalls. |
 | [`../AGENTS.md`](../AGENTS.md) | agents + maintainers | The binding repository manual: conventions, gates, git model, troubleshooting. |
@@ -59,6 +60,8 @@ rule exempts.
 `docs/plan-{c,d,e,f}.md`, `docs/decisions.md` and the `track-a-report.md` / `bline-report.md`
 records document the port decisions and the evidence timeline. They are history, not the current
 spec; `AGENTS.md`, `docs/feature-audit.md` and the docs above are current.
+`docs/plan-tui-edition.md` and `docs/tui-edition-report.md` are the same kind of record for the
+DSH-TUI edition: the frozen acceptance contract, and the delivery report that judges it.
 
 ## QA evidence
 

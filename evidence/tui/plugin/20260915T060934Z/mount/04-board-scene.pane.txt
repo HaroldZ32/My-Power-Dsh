@@ -1,0 +1,46 @@
+   0 transcript row(s)                                        
+   workspace  /root/dshProj/my-power-dsh                                                   
+   team       MPD Default (mpd-default-c8811afd) · phase staged                          
+   members    11                                                                        
+   tasks      0 total · 0 completed · 0 in progress · 0 pending · 0 claimed · 0 failed   
+   boulder    (no work ledger)                                                             
+   plans      3 · newest workmate-rename-delete-contract.md                          
+   workmates  1 · demo-workmate                                                  
+   note       team archive: unreadable                                               
+   esc/q close · r refresh                                                           
+                                                                                     
+                                                                       
+                                                                      
+                                                                                                              
+                                                                                                                                                   
+                                                                                                                                                     
+
+                                
+
+
+                                                                                                                     
+
+
+
+
+
+
+
+
+                                                                
+
+                                                                                                                                                    
+       
+
+     C     aph MCP] Auto-synced 1 file(s) in 355ms
+                                                                                                                                                    
+                                                                                                                                                    
+                                                                                                                                                    
+                                                                                                                                                    
+                                1 file(s) in 339msince last run                                                                                     
+                                                                                                                                                    
+                                      
+
+[CodeGraph MCP] Auto-synced 1 file(s) in 11ms
+[CodeGraph MCP] Auto-synced 1 file(s) in 14ms
+

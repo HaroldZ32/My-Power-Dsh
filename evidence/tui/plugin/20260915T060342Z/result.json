@@ -1,0 +1,107 @@
+{
+  "delta": "Captain screening fix — theme asset re-keyed to the current semantic keys + the dist-matches-final-src guarantee",
+  "producedBy": "Senior Engineer",
+  "timestamp": "20260915T060342Z",
+  "addressed": [
+    {
+      "item": "❌ theme asset used LEGACY keys (claude / claudeShimmer)",
+      "fix": "renamed to accent / accentShimmer; every other key (permission, promptBorder, text, inactive, subtle, selectionBg, success, error, warning) was already a current semantic key and stays",
+      "evidence": "theme-check.json — base valid, name not reserved, 0 legacy/retired keys, every key in the Theme block of the host source at b246411, claude/claudeShimmer absent",
+      "verifiedBy": "theme-check.mjs parses the host src/theme.ts: the allowed set from the `export type Theme = {` block, the forbidden set from DeprecatedThemeKey + RETIRED_THEME_KEYS"
+    },
+    {
+      "item": "❓ dsh-plugin.json name (@mpd-dsh/mpd-tui) vs version (0.9.1) describes two packages",
+      "fix": "NOT MINE and not touched: dsh-plugin.json is the bundle-root manifest (t5, currently held by the captain); my package identity is packages/mpd-tui-plugin/package.json = @mpd-dsh/mpd-tui 0.1.0, unchanged",
+      "evidence": "my inScope is packages/mpd-tui-plugin/** + evidence/**; the AC-10 decision belongs to t5/t13"
+    },
+    {
+      "item": "dist must be built from FINAL src, with the command, the hash and the row resolution recorded",
+      "fix": "rebuilt from a removed dist/ with the repo toolchain; the result is BYTE-IDENTICAL to the t21 build, which is the guarantee that the committed dist matches the final src (only themes/ changed since)",
+      "evidence": "build.log + row-specifier.json (specifier -> absolute path -> sha256 identical) + typecheck.log + test.log"
+    }
+  ],
+  "artifact": {
+    "entry": "packages/mpd-tui-plugin/dist/index.js",
+    "bytes": 93650,
+    "sha256": "710d3eef5d0f451bff220da151f45c9ccccb5b264ecfc215ce61be8b667e9fc3",
+    "builtFrom": "packages/mpd-tui-plugin/src/** (18 modules bundled, only Node builtins left external)",
+    "unchangedByThisFix": true
+  },
+  "theme": {
+    "path": "packages/mpd-tui-plugin/themes/mpd-tui.json",
+    "sha256": "519b76863ec1078832c729dac21cbee593663dac162fba92f7be47c535cbd1fb",
+    "keys": [
+      "accent",
+      "accentShimmer",
+      "permission",
+      "promptBorder",
+      "text",
+      "inactive",
+      "subtle",
+      "selectionBg",
+      "success",
+      "error",
+      "warning"
+    ],
+    "base": "dark",
+    "name": "mpd-tui",
+    "install": "copy into ~/.dsh-tui/themes/ (static asset; this row does not install it)"
+  },
+  "rowResolution": {
+    "profile": "/root/dshProj/my-power-dsh/.mpd/recon/qa/dshhome/profiles/dsh-tui/package.json",
+    "specifier": "@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js",
+    "resolvedAbsolutePath": "/root/dshProj/my-power-dsh/packages/mpd-tui-plugin/dist/index.js",
+    "resolvesToRepoPath": true,
+    "resolvedSha256": "710d3eef5d0f451bff220da151f45c9ccccb5b264ecfc215ce61be8b667e9fc3",
+    "repoDistSha256": "710d3eef5d0f451bff220da151f45c9ccccb5b264ecfc215ce61be8b667e9fc3",
+    "identical": true,
+    "ok": true
+  },
+  "commands": [
+    {
+      "command": "rm -rf packages/mpd-tui-plugin/dist && bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js",
+      "exitCode": 0,
+      "log": "build.log",
+      "evidence": "93650 bytes, sha256 710d3eef5d0f451bff220da151f45c9ccccb5b264ecfc215ce61be8b667e9fc3 (byte-identical to the t21 rebuild)"
+    },
+    {
+      "command": "node evidence/tui/plugin/20260915T060342Z/theme-check.mjs",
+      "exitCode": 0,
+      "log": "theme-check.json",
+      "evidence": "theme-check.stdout: 6/6 PASS"
+    },
+    {
+      "command": "node evidence/tui/plugin/20260915T060342Z/row-specifier-resolve.mjs",
+      "exitCode": 0,
+      "log": "row-specifier.json",
+      "evidence": "the row specifier resolves through the profile exports map to /root/dshProj/my-power-dsh/packages/mpd-tui-plugin/dist/index.js and the resolved sha256 equals the repo dist sha"
+    },
+    {
+      "command": "bun run typecheck",
+      "exitCode": 0,
+      "log": "typecheck.log",
+      "evidence": "tsgo --noEmit exit 0"
+    },
+    {
+      "command": "bun test packages/mpd-tui-plugin",
+      "exitCode": 0,
+      "log": "test.log",
+      "evidence": "31 pass / 0 fail / exit 0"
+    }
+  ],
+  "changedPaths": [
+    "evidence/tui/plugin/20260915T060342Z/build.log",
+    "evidence/tui/plugin/20260915T060342Z/row-specifier-resolve.mjs",
+    "evidence/tui/plugin/20260915T060342Z/row-specifier.json",
+    "evidence/tui/plugin/20260915T060342Z/test.log",
+    "evidence/tui/plugin/20260915T060342Z/theme-check.json",
+    "evidence/tui/plugin/20260915T060342Z/theme-check.mjs",
+    "evidence/tui/plugin/20260915T060342Z/theme-check.stdout",
+    "evidence/tui/plugin/20260915T060342Z/typecheck.log",
+    "packages/mpd-tui-plugin/themes/mpd-tui.json"
+  ],
+  "stillOpen": [
+    "P0 (reported, still unauthorized/unfixed): the row is INERT in a real dsh-tui boot — an inject-free row reaches no service through ctx.get(id,false), so no seam registers. Fix shape proven: one ctx.inject([id], scoped => …) per seam. Evidence: evidence/tui/plugin/20260915T054343Z/mount-instrumentation/FINDING.md.",
+    "t3 conventions deltas still unfixed in this package: the status key must be mpd-tui (src/status.ts uses mpd); the /mpd command semantics (bare=picker, <value>=direct); the scene flexGrow/useTerminalSize adaptation."
+  ]
+}

@@ -1,0 +1,152 @@
+{
+  "slug": "tui-panels",
+  "ok": false,
+  "steps": {
+    "surfaces": [
+      {
+        "surface": "tuiStatus",
+        "step": "boot",
+        "keys": [],
+        "waitMs": 0,
+        "pattern": "/mpd:\\s+team /",
+        "label": "keyed status line above the prompt",
+        "rendered": true,
+        "paneChars": 2195
+      },
+      {
+        "surface": "commands",
+        "step": "cmd-status",
+        "keys": [
+          "/mpd status",
+          "Enter"
+        ],
+        "waitMs": 7000,
+        "pattern": "/mpd:\\s+team /",
+        "label": "/mpd status printed the status text",
+        "rendered": true,
+        "paneChars": 2812
+      },
+      {
+        "surface": "tuiCommandTrees",
+        "step": "cmd-tree",
+        "keys": [
+          "/mpd ",
+          "Escape"
+        ],
+        "waitMs": 5000,
+        "pattern": "/workmates/",
+        "label": "/mpd completion advertised the tree children",
+        "rendered": true,
+        "paneChars": 3248
+      },
+      {
+        "surface": "tuiScenes",
+        "step": "scene",
+        "keys": [
+          "/mpd board",
+          "Enter"
+        ],
+        "waitMs": 7000,
+        "pattern": "/MPD board/",
+        "label": "the board scene opened (title rendered)",
+        "rendered": true,
+        "paneChars": 3377
+      },
+      {
+        "surface": "tuiRenderers",
+        "step": "renderer",
+        "keys": [
+          "Escape"
+        ],
+        "waitMs": 4000,
+        "pattern": "/board opened via/",
+        "label": "the log-only event rendered a transcript row",
+        "rendered": false,
+        "paneChars": 3288
+      },
+      {
+        "surface": "tuiSettingsSections",
+        "step": "settings",
+        "keys": [
+          "/settings",
+          "Enter"
+        ],
+        "waitMs": 7000,
+        "pattern": "/MPD bundle/",
+        "label": "the /settings section rendered",
+        "rendered": false,
+        "paneChars": 8714
+      },
+      {
+        "surface": "tuiDialogs",
+        "step": "dialog",
+        "keys": [
+          "Escape",
+          "M-w"
+        ],
+        "waitMs": 7000,
+        "pattern": "/mpd workmates/",
+        "label": "the managed select dialog appeared",
+        "rendered": true,
+        "paneChars": 8779
+      }
+    ],
+    "negativeControl": {
+      "ok": false,
+      "results": [
+        {
+          "surface": "negative-control",
+          "step": "boot",
+          "pattern": "/MPD-PANELS-CONTROL-CANNOT-APPEAR/",
+          "label": "impossible expectation on the real pane",
+          "rendered": false,
+          "paneChars": 2195
+        }
+      ]
+    }
+  },
+  "surfaces": [
+    {
+      "surface": "tuiStatus",
+      "rendered": true,
+      "label": "keyed status line above the prompt"
+    },
+    {
+      "surface": "commands",
+      "rendered": true,
+      "label": "/mpd status printed the status text"
+    },
+    {
+      "surface": "tuiCommandTrees",
+      "rendered": true,
+      "label": "/mpd completion advertised the tree children"
+    },
+    {
+      "surface": "tuiScenes",
+      "rendered": true,
+      "label": "the board scene opened (title rendered)"
+    },
+    {
+      "surface": "tuiRenderers",
+      "rendered": false,
+      "label": "the log-only event rendered a transcript row"
+    },
+    {
+      "surface": "tuiSettingsSections",
+      "rendered": false,
+      "label": "the /settings section rendered"
+    },
+    {
+      "surface": "tuiDialogs",
+      "rendered": true,
+      "label": "the managed select dialog appeared"
+    }
+  ],
+  "negativeControl": {
+    "expected": "fail",
+    "observed": false,
+    "artifact": "negative/control.json"
+  },
+  "sandboxRoot": "/root/dshProj/my-power-dsh/.mpd/recon/qa",
+  "sessions": 19
+}

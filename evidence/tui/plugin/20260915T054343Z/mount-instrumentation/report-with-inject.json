@@ -1,0 +1,23 @@
+{
+  "when": "2026-09-15T05:54:50.598Z",
+  "withInjectExport": {
+    "commands": "object",
+    "tuiStatus": "absent",
+    "tuiPluginHost": "absent"
+  },
+  "injected": {
+    "commands": "object",
+    "tuiSettingsSections": "object",
+    "tuiCommandTrees": "object",
+    "tuiScenes": "object",
+    "tuiDialogs": "object",
+    "tuiStatus": "object",
+    "tuiShortcuts": "object",
+    "tuiRenderers": "object",
+    "tuiPluginHost": "object",
+    "settings": "object"
+  },
+  "registerInInject": "ok",
+  "sceneRegister": "ok",
+  "statusSet": "ok"
+}

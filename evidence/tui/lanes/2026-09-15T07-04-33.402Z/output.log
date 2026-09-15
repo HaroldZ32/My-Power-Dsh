@@ -1,0 +1,6 @@
+sandbox root=/root/dshProj/my-power-dsh/.mpd/recon/qa explicit=true warm=true fresh=false
+profile bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"] (dump-config carries 0 row(s))
+dump-config exit=0 bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"] rowComposed=true
+statusLine=true counters=true crashes=[]
+session keys created=[] inherited=["--root-dshProj-my-power-dsh--","--root-dshProj-my-power-dsh-.mpd-recon-qa-ws--"]
+preset=mpd session=34a61b5c-9c21-4379-9f35-8ec23eaa7ac3 isolationOffenders=0

@@ -1,0 +1,36 @@
+== anchors at commit time (2026-09-15T07:33:27Z) ==
+84ed4a5d5aac3fb07949f0f62bb7e7afdfa1e96de2c19de02974381eeb1201c9  dsh-plugin.json
+5dce2563fd0e3b20afede061297b9bfc9856593703974fac44f8642830b85e6f  packages/mpd-tui-plugin/dist/index.js
+3866dc11b52aa3ae6fc49f8918d594729cd2bdc1144e1d563035ffee7db2e0cc  packages/mpd-bundle/cordis.patch.yml
+0be8781f1570e9cac4e512bc26cbe30b4e398ac44a35141e3c2403869d910be1  presets/mpd/agent.cordis.yml
+0d899a4d308fdf17f340efc9a97811c5152416399e5302949ddf270014321767  docs/tui.md
+c1c0dc39ba6485af46d29176a4b95b3429e4fd36dff8d8981521416caa9dd03d  docs/tui.zh-CN.md
+98883 packages/mpd-tui-plugin/dist/index.js
+
+== verify-vendor (final) ==
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] asset OK: skills 307 files
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+verify-vendor exit=0
+
+== R7 ==
+R7 ok
+
+== t27 doc checker ==
+t27 doc-assertion verdict: passed checks: 28 failed: 0
+
+== cited paths ==
+[cited-paths] docs/tui-edition-report.md: 32 repo-relative citations, 0 missing, 0 exempt
+[cited-paths] evidence/tui/ACCEPTANCE-LEDGER.md: 37 repo-relative citations, 0 missing, 0 exempt
+[cited-paths] evidence/tui/EVIDENCE-INDEX.md: 44 repo-relative citations, 0 missing, 0 exempt
+[cited-paths] docs/plan-tui-edition.md: 32 repo-relative citations, 0 missing, 1 exempt
+  EXEMPT (documented): skills/example-skill/
+[cited-paths] total missing: 0 (exempt: 1)
+[cited-paths] PASS

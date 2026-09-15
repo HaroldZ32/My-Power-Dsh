@@ -1,0 +1,7 @@
+=== authority: the captain's assertion + the precise integrity signal ===
+raw: grep -c '"mpd-tui-plugin"' scripts/pack-mpd.mjs -> 2
+51:  "mpd-tui-plugin",
+132:    "mpd-tui-plugin": ["themes", "skills"],
+
+PLUGIN_PKGS elements: 17 | mpd-tui-plugin array elements: 1 | duplicate elements: 0
+node --check: ok

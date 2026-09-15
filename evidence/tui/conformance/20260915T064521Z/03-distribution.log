@@ -1,0 +1,10 @@
+$ bun skills/dsh-qa/scripts/tui-distribution.mjs --sandbox-root .mpd/recon/qa
+[tui-distribution] structural findings=[]
+[tui-distribution] protocol repo copied to .mpd/recon/qa/distribution-protocol
+[tui-distribution] install -> status=0
+[tui-distribution] build -> status=0
+[tui-distribution] check -> status=0
+[tui-distribution] fullyValidated=true blocker=undefined
+[tui-distribution] ok=true -> /root/dshProj/my-power-dsh/evidence/tui/lanes/2026-09-15T06-47-35.714Z
+[tui-distribution] PASS: structural rules hold; protocol CLI exit 0
+[exit 0]

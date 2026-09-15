@@ -1,0 +1,77 @@
+{
+  "descriptor": "dsh-distribution.json",
+  "pins": {
+    "packages/core/schema/descriptor.schema.json": "2437906cdb3f134f250a4acb893a0701e533b75ee3ae8c4c5a54353ec498af9a",
+    "packages/composition/schema/composition.schema.json": "4e6eef9c19b27eaf76aa3706eb749dd7c530f7bbbb551bb1a585052529e298c8",
+    "packages/layout/schema/layout.schema.json": "4b5b0b65e3d99671a00bda61c79200f56d799480524961b86a12cd3e29f751f5",
+    "packages/layout/src/index.ts": "1998980572897e8e70c1594a268418847e30109e745418e62dc14fbdf0abd4d7"
+  },
+  "checks": [
+    {
+      "id": "parse",
+      "status": "passed",
+      "detail": "dsh-distribution.json parsed as JSON"
+    },
+    {
+      "id": "descriptor.additionalProperties",
+      "status": "passed",
+      "detail": "only schema-declared top-level keys"
+    },
+    {
+      "id": "descriptor.required",
+      "status": "passed",
+      "detail": "present: apiVersion, kind, distribution, protocols"
+    },
+    {
+      "id": "descriptor.apiVersion",
+      "status": "passed",
+      "detail": "distribution.dsh.dev/v1alpha1"
+    },
+    {
+      "id": "descriptor.kind",
+      "status": "passed",
+      "detail": "DistributionDescriptor"
+    },
+    {
+      "id": "distribution.id",
+      "status": "passed",
+      "detail": "urn:dsh:distribution:mpd:my-power-dsh"
+    },
+    {
+      "id": "distribution.version",
+      "status": "passed",
+      "detail": "0.9.1"
+    },
+    {
+      "id": "distribution.version-matches-package-json",
+      "status": "passed",
+      "detail": "@mpd-dsh/mpd@0.9.1"
+    },
+    {
+      "id": "protocols[0].composition",
+      "status": "passed",
+      "detail": "8 components, every dependsOn edge resolved in-composition"
+    },
+    {
+      "id": "protocols[1].layout",
+      "status": "passed",
+      "detail": "9 resources, roles/ownership/portability/sensitivity consistent"
+    },
+    {
+      "id": "not-declared.EnvironmentLifecycle",
+      "status": "passed",
+      "detail": "omitted on purpose: no implemented capability backs it (see docs/tui.md)"
+    },
+    {
+      "id": "not-declared.EnvironmentPortability",
+      "status": "passed",
+      "detail": "omitted on purpose: no implemented capability backs it (see docs/tui.md)"
+    },
+    {
+      "id": "not-declared.EnvironmentDiscovery",
+      "status": "passed",
+      "detail": "omitted on purpose: no implemented capability backs it (see docs/tui.md)"
+    }
+  ],
+  "failed": 0
+}

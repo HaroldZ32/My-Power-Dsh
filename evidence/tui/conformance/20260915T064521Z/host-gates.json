@@ -1,0 +1,20 @@
+{
+  "lane": "R10 / AC-20",
+  "verdict": "BLOCKED",
+  "attempted": "node's own verify:plugin-spec (the first plugin gate in the host's verify:build chain) from a workspace-local copy of the host checkout",
+  "commands": [
+    "mkdir -p .mpd/recon/host-copy && tar -C /root/dshProj/tui/dsh-TUI --exclude=.git --exclude=node_modules -cf - . | tar -C .mpd/recon/host-copy -xf -",
+    "cd .mpd/recon/host-copy && timeout 150 npm run verify:plugin-spec"
+  ],
+  "copyState": {
+    "filesCopied": "see 08-r10-host-gates.log",
+    "node_modules": "absent",
+    "lib": "absent",
+    "vendorDshStd": "absent (unbuilt)"
+  },
+  "blocker": "Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'tsx' imported from /root/dshProj/my-power-dsh/.mpd/recon/host-copy/ — the gate is a `node --import tsx/esm scripts/verify-plugin-spec.ts` step and the checkout ships neither node_modules nor a built lib/",
+  "notAttempted": "a full dev-toolchain install (`pnpm install`) of the host checkout in scratch: network-dependent and outside this lane's budget; the plan's R10 explicitly allows reporting the gate set BLOCKED with the exact blocker",
+  "interpretation": "even a green host gate set would validate the HOST's plugin subsystem, never this bundle (plan W-6/AC-20); the gate set is therefore recorded BLOCKED, not as a conformance verdict",
+  "evidence": "08-r10-host-gates.log",
+  "classification": "see host-gates-classification.json (added with the stale re-dispatch of this completed task): which gates are meaningful for a third-party plugin vs host-internal regression only"
+}

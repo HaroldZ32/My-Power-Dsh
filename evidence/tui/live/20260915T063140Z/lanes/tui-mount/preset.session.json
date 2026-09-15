@@ -1,0 +1,13 @@
+{
+  "note": "decoded header records from the sandbox session store",
+  "records": [
+    {
+      "sessionId": "2bad946f-86ba-4231-a8a1-900e845d5d1d",
+      "projectKey": "--root-dshProj-my-power-dsh-.mpd-recon-qa-t8-reviewer-20260915T063140Z-ws--",
+      "store": ".mpd/recon/qa/t8-reviewer-20260915T063140Z/dshhome/sessions/--root-dshProj-my-power-dsh-.mpd-recon-qa-t8-reviewer-20260915T063140Z-ws--/2bad946f-86ba-4231-a8a1-900e845d5d1d/session.v3.jsonl.zstd",
+      "storeSha256": "sha256:56338b389a525b665305c7bec44c7ec880dc57515ffd2d17a273fe9576c933e9",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/my-power-dsh/.mpd/recon/qa/t8-reviewer-20260915T063140Z/ws"
+    }
+  ]
+}

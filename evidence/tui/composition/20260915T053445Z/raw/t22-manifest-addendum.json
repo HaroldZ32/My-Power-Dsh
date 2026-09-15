@@ -1,0 +1,14 @@
+{
+  "task": "t22 (repair of t5's dsh-plugin.json disclosure)",
+  "recordedAt": "2026-09-15T06:13:19Z",
+  "note": "This t5 ledger records the manifest digest it measured. The manifest has since moved by a DISCLOSURE-ONLY repair (t22): no permission, contract, subscription, contribution, facet or entry changed; only x-mpd-tui-surfaces.decisionEvents text. Nothing in this directory was rewritten.",
+  "manifestDigestAtT5Measurement": "sha256:31587972f69568d8a54fc38b2fb269541676ae10264abc3609cac898733157d1",
+  "manifestDigestNow": "sha256:7701c48c066c528046d361752ff72671cc1093340260e144f8390345248fe7a7",
+  "t22Evidence": "evidence/tui/composition/20260915T061016Z/RESULT.md",
+  "semanticIdentityProof": "evidence/tui/composition/20260915T061016Z/raw/t22-structure-check.json",
+  "stillValidInThisDirectory": [
+    "ledger.json / ledger.md package classifications and observations (no package changed)",
+    "raw/session-evidence.json + raw/boot-scan.json presetScreen (the composition is unchanged)",
+    "raw/admission-static.json (pre-repair digest; the after-state re-run is in the t22 directory)"
+  ]
+}

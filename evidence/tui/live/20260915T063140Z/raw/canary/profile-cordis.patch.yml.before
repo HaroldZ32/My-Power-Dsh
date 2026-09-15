@@ -1,0 +1,4 @@
+# t8 canary layer (Reviewer, read-only host): one insert row, my sandbox only.
+- insert:
+    - id: t8-canary-renderers
+      name: '/root/dshProj/my-power-dsh/evidence/tui/live/20260915T063140Z/raw/canary/t8-canary-renderers.mjs'

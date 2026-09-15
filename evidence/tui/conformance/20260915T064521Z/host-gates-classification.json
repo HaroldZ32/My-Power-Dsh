@@ -1,0 +1,59 @@
+{
+  "supplementTo": "host-gates.json (t9, attempt 2)",
+  "recorded": "2026-09-15, after a stale re-dispatch of the completed t9 carried a description-level requirement not spelled out in the first evidence pass: \"name which gates are even meaningful for a third-party plugin and which are host-internal regression only\". This file adds that naming; the task record itself is immutable and nothing was re-run.",
+  "statusOfEveryGate": "BLOCKED in this environment — measured: `cd .mpd/recon/host-copy && npm run verify:plugin-*` dies with ERR_MODULE_NOT_FOUND for 'tsx' (the copy ships no node_modules, no built lib/, no vendor/dsh-std build). NOTHING below was executed; this is a classification by committed script header and by which host surface our artifacts touch, not a run.",
+  "standingRule": "Per plan W-6 / AC-20: even a GREEN host gate validates the HOST's plugin subsystem and is never a conformance verdict on @mpd-dsh/mpd.",
+  "basis": "read-only headers of /root/dshProj/tui/dsh-TUI/scripts/verify-*.ts at commit b246411",
+  "meaningfulForThirdParty": [
+    {
+      "gate": "verify:plugin-spec",
+      "hostSurface": "the vendored plugin-spec library: registry/contract-profile parity plus the 26 validate fixtures",
+      "whyItMattersHere": "this is the same manifest parse/project/validate algorithm our admission lane drives against dsh-plugin.json; a change in it is a change in how our manifest is judged"
+    },
+    {
+      "gate": "verify:plugin-negotiation",
+      "hostSurface": "/plugins diagnostics + Host Descriptor + the 8-permission grant matrix and negotiation outcomes",
+      "whyItMattersHere": "our manifest negotiation result is waiting_authorization/PERMISSION_NOT_GRANTED (the ruled state) and our live /plugins check depends on exactly this surface"
+    },
+    {
+      "gate": "verify:plugin-grants",
+      "hostSurface": "the unified GrantStore: registry-driven defaults (7 deny + invoke allow), denies revocation, fail-closed on unknown/corrupt",
+      "whyItMattersHere": "the four declared session.*.intercept permissions are default-deny; this battery pins the semantics that force our state"
+    },
+    {
+      "gate": "verify:plugin-lifecycle",
+      "hostSurface": "real Cordis lifecycle ownership — a plugin-owned effect must never become root-owned",
+      "whyItMattersHere": "the public extension services' effect ownership is the rule our cleanup relies on (scoped.effect) and the reason a leaking registration would survive unload"
+    },
+    {
+      "gate": "verify:plugin-ledger",
+      "hostSurface": "the effect ledger: five operations, activation-instance triplets, undeclared/host attribution",
+      "whyItMattersHere": "our rows are attributed \"undeclared\" today and the renderer-type probes measured tuiEffectLedger as unreachable from the services' ctx — both are ledger semantics this battery defines"
+    },
+    {
+      "gate": "verify:plugin-commands",
+      "hostSurface": "the mediated commands contract (C-041) and error mapping (DUPLICATE_CONTRIBUTION_ID)",
+      "whyItMattersHere": "we register /mpd through the PLAIN command path, so this battery is only partially meaningful for us: it pins the mediated path we deliberately do not use (no identity), and the duplicate-id error we would hit if a name collided"
+    },
+    {
+      "gate": "verify:runtime-themes",
+      "hostSurface": "runtime plugin theme registration (ctx.tuiThemes)",
+      "whyItMattersHere": "we ship a STATIC theme asset only and claim no runtime registration, so this battery constrains a surface we do not use — listed for completeness, not as evidence about our asset"
+    }
+  ],
+  "hostInternalOnly": [
+    {
+      "gate": "verify:plugin-storage",
+      "reason": "storage.local is identity-gated; this bundle explicitly does NOT claim it (plan W-2)"
+    },
+    {
+      "gate": "verify:plugin-messages",
+      "reason": "messages.observe is identity-gated and not claimed (plan W-2)"
+    },
+    {
+      "gates": "verify:boundary, verify:contract, verify:herdr, verify:manifest-deps, verify:patch-surface, verify:web-coexistence, verify:i18n, verify:source-hygiene, verify:packaged-presets, verify:minimal-preset-tools, verify:adapter-*, verify:channel-*, and the remaining UI/session batteries in the verify:build chain",
+      "reason": "host-internal regression batteries over the host's own modules, fixtures and vendored schemas; they neither load nor judge a third-party plugin row"
+    }
+  ],
+  "conclusion": "The extra lane is recorded as BLOCKED-with-exact-blocker (host-gates.json) and now also classified: the meaningful subset is the public contract surface our artifacts actually touch (spec/grant/negotiation/lifecycle/ledger, with commands and runtime-themes partial), and the rest is host-internal regression. No gate was run, and no green-hosten-gate reading may be transferred to this bundle."
+}

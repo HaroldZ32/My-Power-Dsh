@@ -1,0 +1,7 @@
+=== NEGATIVE CONTROL A: same import command, complete vs incomplete closure ===
+[1] complete closure (both launcher imports resolvable):
+    exit=0 (0 expected: imports)
+[2] now remove ./daemon-policy.mjs — the measured pre-fix state — and re-run the SAME command:
+node:internal/modules/esm/resolve:271
+    throw new ERR_MODULE_NOT_FOUND(
+    exit=1 (nonzero expected: the check CAN fail)

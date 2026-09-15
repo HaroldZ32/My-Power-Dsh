@@ -1,0 +1,7 @@
+=== node --check scripts/pack-mpd.mjs ===
+exit=0 (syntax ok)
+
+=== node scripts/pack-mpd.mjs (real release step) ===
+[pack-mpd] modes normalized: 1122 files (644: 1110, 755: 12)
+[pack-mpd] staged package -> /root/dshProj/my-power-dsh/dist/mpd-package
+exit=0

@@ -160,6 +160,7 @@ dsh plugin remove @mpd-dsh/mpd
 |---|---|
 | [`docs/user-guide.zh-CN.md`](./docs/user-guide.zh-CN.md) | 安装/卸载、preset、工具、专家、workmate、团队、GUI、配置、扩展、故障排查 |
 | [`docs/extensions.zh-CN.md`](./docs/extensions.zh-CN.md) | 扩展开发者指南：契约、四种贡献种类、CLI |
+| [`docs/tui.zh-CN.md`](./docs/tui.zh-CN.md) | DSH-TUI 版本：安装、TUI 原生界面、准入与分发产物、兼容性台账、NOT-CLAIMED 清单 |
 | [`docs/architecture.zh-CN.md`](./docs/architecture.zh-CN.md) | bundle 如何组装与挂载：启动链、插件清单、状态布局 |
 | [`docs/development.zh-CN.md`](./docs/development.zh-CN.md) | 本仓库的构建、测试、QA 关卡、打包与发布 |
 | [`docs/index.zh-CN.md`](./docs/index.zh-CN.md) | 文档中心与阅读顺序 |

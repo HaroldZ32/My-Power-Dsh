@@ -1,0 +1,32 @@
+{
+  "recordedAt": "2026-09-15T06:29:00Z",
+  "note": "dsh-plugin.json digest chain for the DSH-TUI edition. Every move is disclosure/identity-only; no permission, contract, subscription or contribution ever changed (proven per move by a before/after semantic-identity check). Older links are unchanged; files that cite a superseded digest carry a T24-DIGEST-ANNOTATION.md beside them.",
+  "chain": [
+    {
+      "digest": "sha256:31587972f69568d8a54fc38b2fb269541676ae10264abc3609cac898733157d1",
+      "by": "t5 (Deep Worker)",
+      "what": "bundle-level manifest after the conventions-ruling disclosure (identityDeviation + hostReservations)",
+      "evidence": "evidence/tui/composition/20260915T053445Z/ (ledger.json.revision) + 20260915T061519Z/"
+    },
+    {
+      "digest": "sha256:7701c48c066c528046d361752ff72671cc1093340260e144f8390345248fe7a7",
+      "by": "t22 (Deep Worker, repair)",
+      "what": "decisionEvents disclosure rewritten to the measured admission chain + grant-row unblock",
+      "evidence": "evidence/tui/composition/20260915T061016Z/"
+    },
+    {
+      "digest": "sha256:824b74f8a4f88e5b6e71200f9cc4b76183a91c446271cdc2122275503b7870db",
+      "by": "captain-ordered consequence statement (this pass)",
+      "what": "decisionEvents now states the EXPECTED result and its duration explicitly (waiting_authorization until a grant row exists; rows stay undeclared until then) and why the four permissions are declared rather than omitted",
+      "evidence": "evidence/tui/composition/20260915T062602Z/"
+    },
+    {
+      "digest": "sha256:84ed4a5d5aac3fb07949f0f62bb7e7afdfa1e96de2c19de02974381eeb1201c9",
+      "by": "t24 (Deep Worker, repair \u2014 finding T13-IDENTITY-1)",
+      "what": "identity pair made self-consistent: name @mpd-dsh/mpd-tui -> @mpd-dsh/mpd (the carrier package, version kept 0.9.1); id unchanged; the x- note now names @mpd-dsh/mpd-tui (0.1.0) as the facet's implementing package while the disclosure text keeps its deviation wording",
+      "evidence": "evidence/tui/composition/20260915T064009Z/",
+      "declarationsUntouched": true
+    }
+  ],
+  "current": "sha256:84ed4a5d5aac3fb07949f0f62bb7e7afdfa1e96de2c19de02974381eeb1201c9"
+}

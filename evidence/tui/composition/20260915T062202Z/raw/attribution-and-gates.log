@@ -1,0 +1,14 @@
+=== (a) attribution: pack-mpd.mjs hunks (which writer) ===
+--- hunk 1: PLUGIN_PKGS entry (t17/Lead) ---
+--- hunk 2: cpAssets asset table (this worker, previous turn) ---
+
+=== PLUGIN_PKGS array integrity ===
+elements: 17 | mpd-tui-plugin count: 1 | duplicates: 0
+node --check: ok
+
+=== (b) install-profile.mjs mirror row + parity gate ===
+176:      id: "mpd-tui", name: p("packages/mpd-tui-plugin/dist/index.js"),
+[verify-rows-parity] ok: 24 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)
+rows-parity exit=0
+R11 ok: 16 patch rows present in pack-mpd PLUGIN_PKGS
+R11 exit=0

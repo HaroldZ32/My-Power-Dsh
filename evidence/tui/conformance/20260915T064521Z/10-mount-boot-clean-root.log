@@ -1,0 +1,11 @@
+$ bun skills/dsh-qa/scripts/tui-mount.mjs --sandbox-root .mpd/recon/t9-clean
+# clean-ish root: installed profile copied, session store and ledger wiped
+[tui-mount] sandbox root=/root/dshProj/my-power-dsh/.mpd/recon/t9-clean explicit=true warm=true fresh=false
+[tui-mount] profile bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"] (dump-config carries 0 row(s))
+[tui-mount] dump-config exit=0 bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"] rowComposed=true
+[tui-mount] statusLine=true counters=true crashes=[]
+[tui-mount] session keys created=["--root-dshProj-my-power-dsh-.mpd-recon-t9-clean-ws--"] inherited=[]
+[tui-mount] preset=mpd session=2a0dbbd8-4d62-4dbb-b5b5-98f2668c67a0 isolationOffenders=0
+[tui-mount] ok=true -> /root/dshProj/my-power-dsh/evidence/tui/lanes/2026-09-15T06-51-58.635Z
+[tui-mount] PASS: third layer mounted, 1 session record(s) decoded, zero apply-crash signatures
+[exit 0]

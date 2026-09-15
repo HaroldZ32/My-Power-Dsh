@@ -1,0 +1,612 @@
+{
+  "generatedAt": "2026-09-15T06:07:55.114Z",
+  "subject": "Per-package TUI compatibility of @mpd-dsh/mpd under a dsh-tui profile (t5 deliverable C)",
+  "revision": {
+    "repoHead": "c582254b5edd9956620acaf89bbaed0eb750bf86",
+    "manifestSha256": "sha256:31587972f69568d8a54fc38b2fb269541676ae10264abc3609cac898733157d1",
+    "bundlePatchSha256": "sha256:39a221f39f82fe2ec5af65ea453e54a20dfc67b8c2f72c90a98872e08500c511",
+    "mpdTuiPluginDistSha256": "sha256:710d3eef5d0f451bff220da151f45c9ccccb5b264ecfc215ce61be8b667e9fc3",
+    "mpdTuiPluginSrcSha256": "sha256:24099d777bcb99ca005e5ac483c6facf109291906a65f524024d57d138b13d67",
+    "note": "t4 (packages/mpd-tui-plugin) was still being written when this ledger was measured; the plugin hashes above are the measured revision and may move with t4. No other package changed."
+  },
+  "composition": {
+    "profile": "dsh-tui",
+    "engine": "dsh 0.1.5-rc.1 CLI + 0.1.5-rc.2 packages",
+    "host": "@deepseek-harness-tui/dsh-tui 0.10.1",
+    "bundles": [
+      "@deepseek-ai/dsh-base",
+      "@deepseek-harness-tui/dsh-tui",
+      "@mpd-dsh/mpd"
+    ],
+    "ourRowCount": 24,
+    "crashSignatureTotal": 0,
+    "duplicateEntryIds": [],
+    "sandbox": {
+      "dshHome": ".mpd/recon/qa/dshhome",
+      "home": ".mpd/recon/qa/home",
+      "caches": ".mpd/recon/qa/{npm-cache,pnpm-home,config,data}",
+      "workspace": "the TUI's own sandbox state pins the session workspace to /root/dshProj/my-power-dsh (see session-evidence.json cwd)"
+    }
+  },
+  "observationKinds": {
+    "live-mount:tool-list": "the package's tools appear in a recorded live dsh-TUI session's request/header.tools[] (tool-list.json)",
+    "live-mount:plugin-log": "the package's own apply-time line in the raw tmux pane log",
+    "live-mount:status-line": "the live session's own aggregate counters (skills/tools)",
+    "live-mount:boot-log": "the row mounted in a live boot with 0 apply-crash signature hits",
+    "composition:dump-config": "the host's own composed config (dsh --profile dsh-tui --dump-config) — composition evidence only, never load evidence",
+    "source-read": "the package's own source/entry files"
+  },
+  "classificationSemantics": {
+    "usable": "the package's function is reachable from a TUI session and at least one thing this lane ACTUALLY SAW proves it: a live tool name in a recorded request/header, the package's own apply-time log line, or the row applying in a live boot with zero apply-crash signatures.",
+    "inert": "the row never runs under a dsh-tui profile (disabled in the composition, or not composed at all): nothing could be exercised, and the ledger says so instead of guessing.",
+    "web-only": "the package's only face is the browser client; the live TUI boot does not load it, which is recorded as a negative observation rather than inferred from a filename."
+  },
+  "notExercised": [
+    {
+      "name": "mpd-bundle",
+      "why": "The composition layer itself: what was observed is that the host's own composed config lists its 24 rows and that a live boot mounted them with 0 apply-crash signatures. There is no separate runtime surface to exercise."
+    },
+    {
+      "name": "mpd-tools-plugin",
+      "why": "Only the row applying was observed (0 apply-crash signatures). It owns no tool name and prints no apply-time line, and its write guard / truncation / post-execute waterfall needs a real write-tool call to witness - NOT exercised beyond apply in this lane; a guard probe belongs to the live/panels lane (t8)."
+    },
+    {
+      "name": "mpd-mcp-gitbash",
+      "why": "NOT exercised by construction: the composed row carries `disabled: true` (upstream design, Windows-only), so no process was started and no tool appeared. The observation is the composed row's disabled flag plus its absence from the live tool list."
+    },
+    {
+      "name": "mpd-qa-roles-probe",
+      "why": "NOT composed in any user-facing profile: no row in the bundle patch references it, so the live TUI never loaded it. Observed: absent from the host's composed dsh-tui config; mounted only by the QA overlay tests/overlays/roles-probe.yml."
+    },
+    {
+      "name": "mpd-mcp-shared",
+      "why": "A library with no loader row of its own: NOT exercised directly. Its effect is witnessed indirectly - the ast_grep and lsp MCP children that import it launched and contributed 11 tools to the live session."
+    },
+    {
+      "name": "mpd-bundle-plugin",
+      "why": "NOT exercised under the TUI, and that is the finding: it is the browser bundle. Observed negatively - the live TUI pane log contains no `better-sidebar` / registerTab / floater line, its `mpd-web-compat` row loads a no-op main, and no tool or skill in the live counters (93 tools / 18 skills) comes from it. Its web face needs the web profile, which is out of this lane."
+    }
+  ],
+  "packages": [
+    {
+      "name": "mpd-bundle",
+      "role": "composition layer (the bundle patch itself)",
+      "classification": "usable",
+      "liveTools": [],
+      "rowIds": [],
+      "exercised": false,
+      "exerciseNote": "The composition layer itself: what was observed is that the host's own composed config lists its 24 rows and that a live boot mounted them with 0 apply-crash signatures. There is no separate runtime surface to exercise.",
+      "observations": [
+        {
+          "kind": "composition:dump-config",
+          "evidence": "raw/dsh-tui-dump-config.txt",
+          "quote": "The `# == @mpd-dsh/mpd` section of the host's own composed config lists 24 rows, incl. `mpd-tui` and the `dsh-tui-agent-presets` roster override."
+        },
+        {
+          "kind": "live-mount:boot-log",
+          "evidence": "raw/boot-scan.json",
+          "quote": "The live dsh-TUI boot mounts those rows with 0 apply-crash signature hits (boot-scan.json logs.*.crashSignatureTotal)."
+        }
+      ]
+    },
+    {
+      "name": "mpd-dsh-adapter-plugin",
+      "role": "single contact surface with the harness seams",
+      "classification": "usable",
+      "liveTools": [],
+      "rowIds": [
+        "mpd-dsh-adapter"
+      ],
+      "exercised": true,
+      "observations": [
+        {
+          "kind": "live-mount:plugin-log",
+          "evidence": "raw/tui-turn-pane.log",
+          "quote": "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)"
+        }
+      ]
+    },
+    {
+      "name": "mpd-config-plugin",
+      "role": "mpd.jsonc runtime config layer",
+      "classification": "usable",
+      "liveTools": [
+        "mpd_config_get",
+        "mpd_config_reload"
+      ],
+      "rowIds": [
+        "mpd-config"
+      ],
+      "exercised": true,
+      "observations": [
+        {
+          "kind": "live-mount:tool-list",
+          "evidence": "tool-list.json",
+          "quote": "mpd_config_get, mpd_config_reload"
+        }
+      ]
+    },
+    {
+      "name": "mpd-tools-plugin",
+      "role": "write guard / truncation / post-execute waterfall",
+      "classification": "usable",
+      "liveTools": [],
+      "rowIds": [
+        "mpd-tools"
+      ],
+      "exercised": false,
+      "exerciseNote": "Only the row applying was observed (0 apply-crash signatures). It owns no tool name and prints no apply-time line, and its write guard / truncation / post-execute waterfall needs a real write-tool call to witness - NOT exercised beyond apply in this lane; a guard probe belongs to the live/panels lane (t8).",
+      "observations": [
+        {
+          "kind": "composition:dump-config",
+          "evidence": "raw/dsh-tui-dump-config.txt",
+          "quote": "row `mpd-tools` composed with config writeGuard: true, truncateMaxBytes: 8192"
+        },
+        {
+          "kind": "source-read",
+          "evidence": "packages/mpd-tools-plugin/src/index.ts",
+          "quote": "Registers ctx guards/waterfalls through the adapter; it owns no tool name, so no tool-list entry can witness it (runtime guard effect not separately probed here)."
+        }
+      ]
+    },
+    {
+      "name": "mpd-modelchain-plugin",
+      "role": "model-chain resolution + workspace memory",
+      "classification": "usable",
+      "liveTools": [
+        "mpd_modelchain_resolve"
+      ],
+      "rowIds": [
+        "mpd-modelchain"
+      ],
+      "exercised": true,
+      "observations": [
+        {
+          "kind": "live-mount:tool-list",
+          "evidence": "tool-list.json",
+          "quote": "mpd_modelchain_resolve"
+        }
+      ]
+    },
+    {
+      "name": "mpd-ext-plugin",
+      "role": "extension registry (skills/flows/roles/MCP)",
+      "classification": "usable",
+      "liveTools": [
+        "mpd_ext_list",
+        "mpd_ext_show",
+        "mpd_flow_list",
+        "mpd_flow_show"
+      ],
+      "rowIds": [
+        "mpd-ext"
+      ],
+      "exercised": true,
+      "observations": [
+        {
+          "kind": "live-mount:tool-list",
+          "evidence": "tool-list.json",
+          "quote": "mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show"
+        }
+      ]
+    },
+    {
+      "name": "mpd-roles-plugin",
+      "role": "specialist roster",
+      "classification": "usable",
+      "liveTools": [
+        "mpd_role_persona",
+        "mpd_role_spawn",
+        "mpd_roles_list"
+      ],
+      "rowIds": [
+        "mpd-roles"
+      ],
+      "exercised": true,
+      "observations": [
+        {
+          "kind": "live-mount:tool-list",
+          "evidence": "tool-list.json",
+          "quote": "mpd_role_persona, mpd_role_spawn, mpd_roles_list"
+        }
+      ]
+    },
+    {
+      "name": "mpd-ulw-plugin",
+      "role": "ulw loop discipline",
+      "classification": "usable",
+      "liveTools": [
+        "mpd_ultrawork",
+        "mpd_ulw"
+      ],
+      "rowIds": [
+        "mpd-ulw"
+      ],
+      "exercised": true,
+      "observations": [
+        {
+          "kind": "live-mount:tool-list",
+          "evidence": "tool-list.json",
+          "quote": "mpd_ultrawork, mpd_ulw"
+        }
+      ]
+    },
+    {
+      "name": "mpd-hashline-plugin",
+      "role": "anchored edit discipline",
+      "classification": "usable",
+      "liveTools": [
+        "mpd_hashline_edit",
+        "mpd_hashline_format",
+        "mpd_hashline_read",
+        "mpd_hashline_restore"
+      ],
+      "rowIds": [
+        "mpd-hashline"
+      ],
+      "exercised": true,
+      "observations": [
+        {
+          "kind": "live-mount:tool-list",
+          "evidence": "tool-list.json",
+          "quote": "mpd_hashline_edit, mpd_hashline_format, mpd_hashline_read, mpd_hashline_restore"
+        }
+      ]
+    },
+    {
+      "name": "mpd-boulder-plugin",
+      "role": "durable work ledger",
+      "classification": "usable",
+      "liveTools": [
+        "mpd_boulder_complete",
+        "mpd_boulder_plan_progress",
+        "mpd_boulder_plans",
+        "mpd_boulder_start",
+        "mpd_boulder_status",
+        "mpd_boulder_task_timer"
+      ],
+      "rowIds": [
+        "mpd-boulder"
+      ],
+      "exercised": true,
+      "observations": [
+        {
+          "kind": "live-mount:tool-list",
+          "evidence": "tool-list.json",
+          "quote": "mpd_boulder_complete, mpd_boulder_plan_progress, mpd_boulder_plans, mpd_boulder_start, mpd_boulder_status, mpd_boulder_task_timer"
+        }
+      ]
+    },
+    {
+      "name": "mpd-comment-checker-plugin",
+      "role": "comment/docstring detector (opt-in binary)",
+      "classification": "usable",
+      "liveTools": [
+        "mpd_comment_check"
+      ],
+      "rowIds": [
+        "mpd-comment-checker"
+      ],
+      "exercised": true,
+      "observations": [
+        {
+          "kind": "live-mount:tool-list",
+          "evidence": "tool-list.json",
+          "quote": "mpd_comment_check (autoCheck false by config; the tool is registered)"
+        }
+      ]
+    },
+    {
+      "name": "mpd-codegraph-plugin",
+      "role": "codegraph project init + binary resolve",
+      "classification": "usable",
+      "liveTools": [],
+      "rowIds": [
+        "mpd-codegraph"
+      ],
+      "exercised": true,
+      "observations": [
+        {
+          "kind": "live-mount:plugin-log",
+          "evidence": "raw/tui-turn-pane.log",
+          "quote": "[mpd-codegraph] init status=marker binary=…/codegraph/npm-shim.js cwd=<sandbox workspace>"
+        }
+      ],
+      "caveat": "`status=marker` and the MCP server's `CodeGraph MCP skipped: project excluded by the CodeGraph policy.` mean the SANDBOX workspace path contains an `.mpd` segment, which the CodeGraph policy excludes — a sandbox artifact documented in AGENTS.md §12, not a TUI limitation."
+    },
+    {
+      "name": "mpd-memory-plugin",
+      "role": "git/svn-backed memory + reflection",
+      "classification": "usable",
+      "liveTools": [
+        "mpd_memory_read",
+        "mpd_memory_recall",
+        "mpd_memory_reflect",
+        "mpd_memory_reflect_complete",
+        "mpd_memory_save",
+        "mpd_memory_status",
+        "mpd_memory_write"
+      ],
+      "rowIds": [
+        "mpd-memory"
+      ],
+      "exercised": true,
+      "observations": [
+        {
+          "kind": "live-mount:tool-list",
+          "evidence": "tool-list.json",
+          "quote": "mpd_memory_read, mpd_memory_recall, mpd_memory_reflect, mpd_memory_reflect_complete, mpd_memory_save, mpd_memory_status, mpd_memory_write"
+        }
+      ]
+    },
+    {
+      "name": "mpd-workmate-plugin",
+      "role": "durable evolving agent library",
+      "classification": "usable",
+      "liveTools": [
+        "mpd_workmate_delete",
+        "mpd_workmate_init",
+        "mpd_workmate_list",
+        "mpd_workmate_match",
+        "mpd_workmate_reflect",
+        "mpd_workmate_rename",
+        "mpd_workmate_spawn"
+      ],
+      "rowIds": [
+        "mpd-workmate"
+      ],
+      "exercised": true,
+      "observations": [
+        {
+          "kind": "live-mount:tool-list",
+          "evidence": "tool-list.json",
+          "quote": "mpd_workmate_delete, mpd_workmate_init, mpd_workmate_list, mpd_workmate_match, mpd_workmate_reflect, mpd_workmate_rename, mpd_workmate_spawn"
+        }
+      ]
+    },
+    {
+      "name": "mpd-team-compact-plugin",
+      "role": "finished-team compaction",
+      "classification": "usable",
+      "liveTools": [
+        "mpd_team_compact_run",
+        "mpd_team_compact_status"
+      ],
+      "rowIds": [
+        "mpd-team-compact"
+      ],
+      "exercised": true,
+      "observations": [
+        {
+          "kind": "live-mount:tool-list",
+          "evidence": "tool-list.json",
+          "quote": "mpd_team_compact_run, mpd_team_compact_status"
+        }
+      ]
+    },
+    {
+      "name": "mpd-bootstrap-plugin",
+      "role": "serves the bundle's skills corpus (no home copy)",
+      "classification": "usable",
+      "liveTools": [],
+      "rowIds": [
+        "mpd-bootstrap"
+      ],
+      "exercised": true,
+      "observations": [
+        {
+          "kind": "live-mount:plugin-log",
+          "evidence": "raw/tui-turn-pane.log",
+          "quote": "[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills"
+        },
+        {
+          "kind": "live-mount:status-line",
+          "evidence": "raw/boot-scan.json",
+          "quote": "a live TUI session reports 技能18 / 18 skills"
+        }
+      ]
+    },
+    {
+      "name": "mpd-tui-plugin",
+      "role": "the TUI-native surface package (this edition)",
+      "classification": "usable",
+      "liveTools": [],
+      "rowIds": [
+        "mpd-tui"
+      ],
+      "exercised": true,
+      "observations": [
+        {
+          "kind": "composition:dump-config",
+          "evidence": "raw/dsh-tui-dump-config.txt",
+          "quote": "row `mpd-tui` → module '@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js'"
+        },
+        {
+          "kind": "live-mount:boot-log",
+          "evidence": "raw/boot-scan.json",
+          "quote": "the row mounted in the live dsh-TUI boot; 0 apply-crash signature hits; entry sha256 recorded in ledger.json.revision"
+        }
+      ],
+      "caveat": "The seven seam surfaces' RENDERING is verified by the panels lane (t4 evidence + t7/t8 lanes, AC-4) — this ledger only owns the composition/pre-mount fact. packages/mpd-tui-plugin was still being written by t4 while this ledger was measured; the measured hashes are recorded."
+    },
+    {
+      "name": "mpd-agent-teams-plugin",
+      "role": "adopted AgentTeams plugin (tools + Web panel)",
+      "classification": "usable",
+      "liveTools": [
+        "agent_teams_add_member",
+        "agent_teams_approve",
+        "agent_teams_claim_task",
+        "agent_teams_create",
+        "agent_teams_create_task",
+        "agent_teams_delete",
+        "agent_teams_edit_plan",
+        "agent_teams_interject_decide",
+        "agent_teams_interject_request",
+        "agent_teams_mailbox_clear",
+        "agent_teams_reassign_task",
+        "agent_teams_remove_member",
+        "agent_teams_resume",
+        "agent_teams_send_message",
+        "agent_teams_status",
+        "agent_teams_task_contract",
+        "agent_teams_update_task"
+      ],
+      "rowIds": [
+        "agent-teams"
+      ],
+      "exercised": true,
+      "observations": [
+        {
+          "kind": "live-mount:tool-list",
+          "evidence": "tool-list.json",
+          "quote": "17 tools: agent_teams_add_member, agent_teams_approve, agent_teams_claim_task, agent_teams_create, agent_teams_create_task, agent_teams_delete, …"
+        }
+      ],
+      "caveat": "Its browser activity panel / sidebar is a web-only face (NOT CLAIMED W-3); the team machinery itself is tool-driven and fully usable from the TUI."
+    },
+    {
+      "name": "mpd-mcp-astgrep",
+      "role": "ast-grep MCP server (stdio launcher)",
+      "classification": "usable",
+      "liveTools": [
+        "mcp__ast_grep__rewrite",
+        "mcp__ast_grep__scan",
+        "mcp__ast_grep__search"
+      ],
+      "rowIds": [],
+      "exercised": true,
+      "observations": [
+        {
+          "kind": "live-mount:tool-list",
+          "evidence": "tool-list.json",
+          "quote": "mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__ast_grep__search"
+        }
+      ]
+    },
+    {
+      "name": "mpd-mcp-lsp",
+      "role": "LSP MCP server (stdio launcher)",
+      "classification": "usable",
+      "liveTools": [
+        "mcp__lsp__diagnostics",
+        "mcp__lsp__find_references",
+        "mcp__lsp__goto_definition",
+        "mcp__lsp__install_decision",
+        "mcp__lsp__prepare_rename",
+        "mcp__lsp__rename",
+        "mcp__lsp__status",
+        "mcp__lsp__symbols"
+      ],
+      "rowIds": [],
+      "exercised": true,
+      "observations": [
+        {
+          "kind": "live-mount:tool-list",
+          "evidence": "tool-list.json",
+          "quote": "mcp__lsp__diagnostics, mcp__lsp__find_references, mcp__lsp__goto_definition, mcp__lsp__install_decision, mcp__lsp__prepare_rename, mcp__lsp__rename, mcp__lsp__status, mcp__lsp__symbols"
+        }
+      ]
+    },
+    {
+      "name": "mpd-mcp-codegraph",
+      "role": "codegraph MCP server (stdio launcher)",
+      "classification": "usable",
+      "liveTools": [],
+      "rowIds": [],
+      "exercised": true,
+      "observations": [
+        {
+          "kind": "live-mount:plugin-log",
+          "evidence": "raw/tui-turn-pane.log",
+          "quote": "[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): …"
+        }
+      ],
+      "caveat": "In THIS sandbox the server contributed 0 tools because the CodeGraph policy excludes a project root containing `.mpd` (`CodeGraph MCP skipped: project excluded by the CodeGraph policy.`); the row and server are alive, and the tool set appears in a normal workspace (cf. the captain's recon boot log line `[CodeGraph MCP] Caught up 1 file(s) changed since last run`)."
+    },
+    {
+      "name": "mpd-mcp-gitbash",
+      "role": "git-bash MCP server (Windows-only upstream)",
+      "classification": "inert",
+      "liveTools": [],
+      "rowIds": [],
+      "exercised": false,
+      "exerciseNote": "NOT exercised by construction: the composed row carries `disabled: true` (upstream design, Windows-only), so no process was started and no tool appeared. The observation is the composed row's disabled flag plus its absence from the live tool list.",
+      "observations": [
+        {
+          "kind": "composition:dump-config",
+          "evidence": "raw/dsh-tui-dump-config.txt",
+          "quote": "row `mcp-gitbash` is composed with `disabled: true` (upstream design: run is available only on native Windows), so it launches nothing under any profile — no TUI limitation."
+        }
+      ]
+    },
+    {
+      "name": "mpd-mcp-shared",
+      "role": "shared binary resolver used by the MCP launchers",
+      "classification": "usable",
+      "liveTools": [],
+      "rowIds": [],
+      "exercised": false,
+      "exerciseNote": "A library with no loader row of its own: NOT exercised directly. Its effect is witnessed indirectly - the ast_grep and lsp MCP children that import it launched and contributed 11 tools to the live session.",
+      "observations": [
+        {
+          "kind": "source-read",
+          "evidence": "packages/mpd-mcp-shared/bin-resolve.mjs",
+          "quote": "Imported by the mcp-* launch.mjs launchers; it owns no loader row of its own — witnessed indirectly by the ast_grep / lsp MCP children that launched (tool-list.json)."
+        }
+      ],
+      "caveat": "Support library: no row, no tool name; its live witness is the launch of the MCP rows that import it."
+    },
+    {
+      "name": "mpd-bundle-plugin",
+      "role": "bundle web-compat package (browser client + no-op main)",
+      "classification": "web-only",
+      "liveTools": [],
+      "rowIds": [],
+      "exercised": false,
+      "exerciseNote": "NOT exercised under the TUI, and that is the finding: it is the browser bundle. Observed negatively - the live TUI pane log contains no `better-sidebar` / registerTab / floater line, its `mpd-web-compat` row loads a no-op main, and no tool or skill in the live counters (93 tools / 18 skills) comes from it. Its web face needs the web profile, which is out of this lane.",
+      "observations": [
+        {
+          "kind": "source-read",
+          "evidence": "packages/mpd-bundle-plugin/src/web-client.js + client.js",
+          "quote": "The package's deliverable is the browser bundle (agent-teams panel, workmate tab registered through ctx.betterSidebar.registerTab, bundle floater fallback); the root package.json declares dsh.client.platform = web."
+        },
+        {
+          "kind": "source-read",
+          "evidence": "packages/mpd-bundle-plugin/src/index.js",
+          "quote": "Its `mpd-web-compat` row loads a no-op main plugin whose only job is to mint the loader entry name the web client row resolves against."
+        }
+      ],
+      "caveat": "No TUI rendering face; the TUI equivalents are the mpd-tui-plugin status line / board / dialogs (D8, NOT CLAIMED W-3)."
+    },
+    {
+      "name": "mpd-qa-roles-probe",
+      "role": "QA-only probe package",
+      "classification": "inert",
+      "liveTools": [],
+      "rowIds": [],
+      "exercised": false,
+      "exerciseNote": "NOT composed in any user-facing profile: no row in the bundle patch references it, so the live TUI never loaded it. Observed: absent from the host's composed dsh-tui config; mounted only by the QA overlay tests/overlays/roles-probe.yml.",
+      "observations": [
+        {
+          "kind": "composition:dump-config",
+          "evidence": "raw/dsh-tui-dump-config.txt",
+          "quote": "No row in the bundle patch references it; the composed dsh-tui config has no row for it (it is mounted only by the QA overlay tests/overlays/roles-probe.yml)."
+        }
+      ]
+    }
+  ],
+  "counts": {
+    "usable": 22,
+    "inert": 2,
+    "web-only": 1,
+    "total": 25
+  },
+  "disclosedGaps": [
+    "Web-only faces (agent-teams sidebar, workmate tab, bundle floater) have no TUI rendering face — NOT CLAIMED W-3.",
+    "The decision-event seam is ready-but-not-activated: host admission is unreachable for a profile-installed plugin — NOT CLAIMED W-1.",
+    "Engine skew: the host prints that the 0.1.5-rc.2 engine is newer than the 0.1.5-rc.1 it was validated against — NOT CLAIMED W-4.",
+    "In this sandbox the CodeGraph project is excluded (workspace path contains `.mpd`), so mpd-mcp-codegraph contributed 0 tools here.",
+    "packages/mpd-tui-plugin was still being written by t4 at measurement time; its seam-rendering verification belongs to the panels lane (AC-4 / t8), not to this ledger."
+  ]
+}

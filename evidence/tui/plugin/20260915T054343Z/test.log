@@ -1,0 +1,48 @@
+$ bun test packages/mpd-tui-plugin
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-tui-plugin/test/state.test.ts:
+(pass) state projection > reads the newest team record, the task ledger, boulder, plans and workmates [3.79ms]
+(pass) state projection > a missing state tree degrades to empty sections without throwing [0.69ms]
+(pass) state projection > a broken team record is reported as a note, not as a crash [0.77ms]
+(pass) state projection > the status line is one bounded line [0.69ms]
+(pass) sanitizer > accepts scalars only and drops everything else [0.34ms]
+(pass) sanitizer > strips control characters and collapses whitespace [0.08ms]
+(pass) sanitizer > clamps by terminal cell, not by code-unit count [0.21ms]
+(pass) sanitizer > scalarLines bounds the line count and per-line width [1.31ms]
+(pass) transcript renderers > every declared type has a renderer and maps a payload to text rows [0.45ms]
+(pass) transcript renderers > renderers never throw and always emit strings, whatever the payload [0.69ms]
+(pass) transcript renderers > renderer output is clamped (a huge payload cannot flood the transcript) [0.34ms]
+(pass) log-only event registration > registerInto reports and mutates truthfully [0.15ms]
+(pass) log-only event registration > candidateAnchors is deduplicated and never empty [0.38ms]
+(pass) log-only event registration > appendBoardOpened refuses to write an unregistered type [0.33ms]
+(pass) log-only event registration > a throwing session.append is contained [0.10ms]
+[mpd-tui-test] info
+[mpd-tui-test] warn
+(pass) logging > never writes to stdout and falls back to stderr only for info/warn [2.74ms]
+
+packages/mpd-tui-plugin/test/plugin.test.ts:
+(pass) plugin contract > exports name / Config (type + schema) / apply and NO default export [0.07ms]
+(pass) plugin contract > every config key has a default in the schema [1.18ms]
+(pass) plugin contract > the schema rejects a wrong type instead of silently dropping it [0.36ms]
+(pass) plugin contract > resolveConfig defaults every key and repairs an invalid interval [0.34ms]
+(pass) degraded composition (every TUI service absent) > apply does not throw when no service exists and logs ONE aggregate warning [1.88ms]
+[mpd-tui] no DSH-TUI service is composed in this profile (web composition?): every mpd TUI surface was skipped
+(pass) degraded composition (every TUI service absent) > apply survives a ctx without a logger and without effect() [0.29ms]
+(pass) degraded composition (every TUI service absent) > apply survives a throwing ctx.get (cordis proxy without inject) [0.25ms]
+(pass) degraded composition (every TUI service absent) > cleanup is owned by ctx.effect and calls every disposer [13.25ms]
+(pass) full composition (every TUI service present) > each of the seven seams is probed with ctx.get(id, false) and registers [10.65ms]
+(pass) full composition (every TUI service present) > each seam can be disabled by config, and disabling keeps apply inert [0.22ms]
+(pass) full composition (every TUI service present) > /mpd routes board / status / workmates and refuses an unknown subcommand [53.60ms]
+(pass) decision-event seam (ready but not activated) > a refusal cannot break apply and is logged exactly once for all four points [11.54ms]
+(pass) decision-event seam (ready but not activated) > without tuiPluginHost the seam is skipped without a refusal warning [12.33ms]
+
+packages/mpd-tui-plugin/test/state.test.ts:
+
+packages/mpd-tui-plugin/test/plugin.test.ts:
+
+ 29 pass
+ 0 fail
+ 238 expect() calls
+Ran 29 tests across 4 files. [240.00ms]
+[exit 0]

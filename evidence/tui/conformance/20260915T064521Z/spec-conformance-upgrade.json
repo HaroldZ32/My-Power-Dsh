@@ -1,0 +1,43 @@
+{
+  "supplementTo": "result.json acceptance item 3 (recovered ecosystem conformance suite)",
+  "recorded": "2026-09-15 — attempted after the captain asked me to try the copy-and-build route the distribution lane proved, rather than settling for the first blocker. The task is terminal; this is evidence, not a status change.",
+  "previousBlocker": "both suite attempts exit 1 because vendor/dsh-std/packages/core/lib/index.js is unbuilt (the checkout is read-only and ships no node_modules/lib)",
+  "whatWasTried": {
+    "why": "the suite resolves nine @dsh-std packages from DSH_STD_ROOT/packages/<name>/lib/index.js (conformance/tests/std-modules.js:16-19); the installed dsh-tui payload ships seven of them BUILT, and the checkout vendor tree is unbuilt",
+    "recipe": [
+      "copy the vendored dsh-std SOURCE tree into .mpd/recon/std-root/vendor/dsh-std (19 packages, package.json + src)",
+      "copy the nine-minus-two BUILT lib/ trees from the installed payload (core, connection, manifest, command, storage, messages, presentation)",
+      "bun build from source -> lib/index.js for composition, session, lifecycle, workspace (all exit 0; @dsh-std/* left external, which are their only runtime imports besides builtins)",
+      "node_modules shim inside the tree so a bare @dsh-std/* import resolves to the same built files",
+      "build a spec copy whose vendor/dsh-std points at that tree, then run the lane with MPD_TUI_SPEC_ROOT=<copy>"
+    ],
+    "logs": [
+      "11-spec-std-build.log",
+      "12-spec-conformance-upgraded.log"
+    ]
+  },
+  "upgradedOutcome": {
+    "boundRevision": {
+      "manifestDigest": "84ed4a5d5aac3fb07949f0f62bb7e7afdfa1e96de2c19de02974381eeb1201c9",
+      "artifact": {
+        "path": "packages/mpd-tui-plugin/dist/index.js",
+        "sha256": "5dce2563fd0e3b20afede061297b9bfc9856593703974fac44f8642830b85e6f",
+        "bytes": 98883,
+        "mtimeLocal": "2026-09-15T06:23:20.169Z",
+        "mtimeUtc": "2026-09-15T06:23:20.169Z"
+      }
+    },
+    "pinnedCli": {
+      "status": 0,
+      "verdict": "valid=true, decision=waiting_authorization, reasonCode=PERMISSION_NOT_GRANTED, deniedPermissions=[the four session.*.intercept]",
+      "meaning": "the protocol own CLI now EXECUTES against our manifest — an independent second confirmation of the ruled admission state, previously not-run"
+    },
+    "pinnedSuite": {
+      "status": 1,
+      "stderr": "error: pathspec 'vendor/dsh-std' did not match any file(s) known to git",
+      "newBlocker": "conformance.mjs:91 runs `git submodule update --init --recursive vendor/dsh-std` — the full suite requires a git work tree AND a network fetch of the dsh-std submodule (https://github.com/Yan-Zero/dsh-std.git). Our workspace copy has no .git, the checkout is read-only, and git write commands are forbidden by this task, so this lane stays NOT-RUN with this exact reason."
+    },
+    "requirements": "all 7 pinned requirements (BASE-STD-001, TUI-PKG-001, TUI-PKG-002, TUI-PRIVATE-001, TUI-HOST-001, TUI-OBS-001, TUI-TRUST-001) evaluated with the pinned parser; statuses unchanged (pass)"
+  },
+  "netEffect": "AC-14 moves from \"both lanes not-run because a vendored dependency is unbuilt\" to: the pinned CLI EXECUTED (exit 0) and produced its own verdict on our manifest, while the single remaining not-run lane is named with a sharper, verified blocker (git submodule init + network, forbidden here). No further upgrade is possible without a git write and network access."
+}

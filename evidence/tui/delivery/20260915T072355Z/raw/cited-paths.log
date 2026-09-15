@@ -1,0 +1,7 @@
+[cited-paths] docs/tui-edition-report.md: 30 repo-relative citations, 0 missing, 0 exempt
+[cited-paths] evidence/tui/ACCEPTANCE-LEDGER.md: 33 repo-relative citations, 0 missing, 0 exempt
+[cited-paths] evidence/tui/EVIDENCE-INDEX.md: 44 repo-relative citations, 0 missing, 0 exempt
+[cited-paths] docs/plan-tui-edition.md: 32 repo-relative citations, 0 missing, 1 exempt
+  EXEMPT (documented): skills/example-skill/
+[cited-paths] total missing: 0 (exempt: 1)
+[cited-paths] PASS

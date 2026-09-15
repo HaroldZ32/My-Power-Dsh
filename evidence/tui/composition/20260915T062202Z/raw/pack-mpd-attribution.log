@@ -1,0 +1,63 @@
+=== pack-mpd.mjs full diff (two writers, two hunks) ===
+diff --git a/scripts/pack-mpd.mjs b/scripts/pack-mpd.mjs
+index 76144f2..302b425 100644
+--- a/scripts/pack-mpd.mjs
++++ b/scripts/pack-mpd.mjs
+@@ -41,4 +41,13 @@ const PLUGIN_PKGS = [
+   // cpAssets() and declared in the packed manifest's files/exports below.
+   "mpd-ext-plugin",
++  // mpd-tui-plugin is MOUNTED by the bundle patch (row `mpd-tui`, the DSH-TUI
++  // edition) and was missing from this list: the packed tree would omit
++  // `packages/mpd-tui-plugin/dist/` while `npm run pack` still exited 0, and the
++  // packed boot would die ERR_MODULE_NOT_FOUND on that row — the same
++  // silent-omission class the comments above record for mpd-team-compact-plugin and
++  // mpd-ext-plugin. Adding the entry fixes this package; the whole CLASS is gated by
++  // regression command R11 in .mpd/plans/dsh-tui-edition.md, which asserts every
++  // `@mpd-dsh/mpd/packages/<pkg>/dist/index.js` row of the bundle patch is listed here.
++  "mpd-tui-plugin",
+   "mpd-bundle-plugin"
+ ]
+@@ -106,4 +115,24 @@ function cpAssets() {
+   cpSync(join(repoRoot, "scripts", "install-mcp.mjs"), join(outDir, "scripts", "install-mcp.mjs"))
+   cpSync(join(repoRoot, "scripts", "mpd-ext.mjs"), join(outDir, "scripts", "mpd-ext.mjs"))
++  // Per-package assets that are NOT under dist/. cpDist() ships `dist/` only, so a
++  // package whose runtime or distribution surface includes sibling asset directories
++  // needs them copied explicitly — and the omission is INVISIBLE in a checkout install
++  // (which reads the repo directly), which is why the class needs a named entry here
++  // and a gate rather than trust. The TUI package (row `mpd-tui`) is the measured
++  // instance: it ships `themes/mpd-tui.json` (the host-format theme asset) and a
++  // packaged skill `skills/mpd-tui/SKILL.md`, and a packed bundle that carried only
++  // `dist/` would drop both while `npm run pack` still exited 0.
++  for (const [p, dirs] of Object.entries({
++    "mpd-tui-plugin": ["themes", "skills"],
++  })) {
++    for (const dir of dirs) {
++      const src = join(repoRoot, "packages", p, dir)
++      if (!existsSync(src)) {
++        console.error("[pack-mpd] FAIL: missing " + src + " — the " + p + " package ships it; a packed bundle must not silently drop a shipped asset")
++        process.exit(1)
++      }
++      cpSync(src, join(outDir, "packages", p, dir), { recursive: true })
++    }
++  }
+   // Per-package bilingual README pair for every shipped plugin/MCP package
+   // (the adopted mpd-agent-teams-plugin is copied wholesale above, READMEs included).
+
+=== install-profile.mjs full diff (this worker, under t5) ===
+diff --git a/scripts/install-profile.mjs b/scripts/install-profile.mjs
+index 3f06957..dd8624b 100644
+--- a/scripts/install-profile.mjs
++++ b/scripts/install-profile.mjs
+@@ -169,4 +169,12 @@ function buildPlan(o) {
+       config: {}
+     },
++    {
++      // DSH-TUI edition (t5): the TUI-native surface row. Mirrors the bundle
++      // patch verbatim; it is NOT disabled here — under a web/headless profile
++      // the plugin probes every tui* seam with ctx.get(id, false) and degrades
++      // with a warning instead of failing the row.
++      id: "mpd-tui", name: p("packages/mpd-tui-plugin/dist/index.js"),
++      config: {}
++    },
+     // B9: every row mirrors the bundle patch verbatim (same id, entry and empty
+     // config) and in the same order (packages/mpd-bundle/cordis.patch.yml).

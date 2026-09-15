@@ -1,0 +1,88 @@
+{
+  "task": "t29 — repair-round-3 verification (bytes) + /mpd commands-service disclosure",
+  "measuredAt": "2026-09-15T07:18:30.764Z",
+  "anchors": {
+    "manifest": "84ed4a5d5aac3fb07949f0f62bb7e7afdfa1e96de2c19de02974381eeb1201c9",
+    "entry": "5dce2563fd0e3b20afede061297b9bfc9856593703974fac44f8642830b85e6f"
+  },
+  "docDigestsAtT27": {
+    "docs/tui.md": "1afda0fd7a88d8274cf67964f1da63856f1937a2db3d732daa429b7b13807a9c",
+    "docs/tui.zh-CN.md": "6e7a61a9ffcf5d030e3633d66a5f815da1b38d4355eede3bdf937b186fa1c0e7"
+  },
+  "docDigestsNow": {
+    "docs/tui.md": "0d899a4d308fdf17f340efc9a97811c5152416399e5302949ddf270014321767",
+    "docs/tui.zh-CN.md": "6e7a61a9ffcf5d030e3633d66a5f815da1b38d4355eede3bdf937b186fa1c0e7"
+  },
+  "pendingAmendmentForT27Scope": [
+    "docs/tui.zh-CN.md",
+    "evidence/tui/docs/"
+  ],
+  "checks": [
+    {
+      "id": "manifest-unmoved",
+      "status": "passed",
+      "detail": "dsh-plugin.json still 84ed4a5d…"
+    },
+    {
+      "id": "entry-unmoved",
+      "status": "passed",
+      "detail": "packages/mpd-tui-plugin/dist/index.js still 5dce2563…"
+    },
+    {
+      "id": "item1.docs/tui.md",
+      "status": "passed",
+      "detail": "renderer disclosure, citations, limits present; no superseded digest"
+    },
+    {
+      "id": "item1.docs/tui.zh-CN.md",
+      "status": "passed",
+      "detail": "renderer disclosure, citations, limits present; no superseded digest"
+    },
+    {
+      "id": "item1.softened.docs/tui.md",
+      "status": "passed",
+      "detail": "renderer no longer asserted as a delivered surface"
+    },
+    {
+      "id": "item1.softened.docs/tui.zh-CN.md",
+      "status": "passed",
+      "detail": "renderer no longer asserted as a delivered surface"
+    },
+    {
+      "id": "item2.docs/tui.md",
+      "status": "passed",
+      "detail": "bound to delivered digests + delivered lane evidence; no pending panels row"
+    },
+    {
+      "id": "item2.docs/tui.zh-CN.md",
+      "status": "passed",
+      "detail": "bound to delivered digests + delivered lane evidence; no pending panels row"
+    },
+    {
+      "id": "item2.chain-note",
+      "status": "passed",
+      "detail": "the full chain is recorded as history in REVISION-BINDING.md"
+    },
+    {
+      "id": "item3.docs/tui.md",
+      "status": "passed",
+      "detail": "commands-service rationale sharpened docs-side"
+    },
+    {
+      "id": "item3.docs/tui.zh-CN.md",
+      "status": "failed",
+      "detail": "zh mirror NOT landed — docs/tui.zh-CN.md is not in this task's inScope; the ready-to-paste Chinese text is zh-6.4-snippet.md in this evidence directory"
+    },
+    {
+      "id": "wiring.docs/tui.md",
+      "status": "passed",
+      "detail": "switch link, R8 keys, wording clean"
+    },
+    {
+      "id": "wiring.docs/tui.zh-CN.md",
+      "status": "passed",
+      "detail": "switch link, R8 keys, wording clean"
+    }
+  ],
+  "verdict": "failed"
+}

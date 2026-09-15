@@ -1,0 +1,10 @@
+{
+  "when": "2026-09-15T06:34:34.366Z",
+  "steps": [
+    "command registered",
+    "mpd-tui/board-opened register: function",
+    "control register: function",
+    "appended mpd-tui/board-opened",
+    "appended control"
+  ]
+}

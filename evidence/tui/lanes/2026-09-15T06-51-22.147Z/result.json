@@ -1,0 +1,70 @@
+{
+  "slug": "tui-mount",
+  "ok": false,
+  "steps": {
+    "face": {
+      "ok": false,
+      "layering": {
+        "ok": true,
+        "missing": [],
+        "ordered": true,
+        "bundles": [
+          "@deepseek-ai/dsh-base",
+          "@deepseek-harness-tui/dsh-tui",
+          "@mpd-dsh/mpd"
+        ],
+        "reason": "triple layer in order"
+      },
+      "crashSignatures": [],
+      "statusLine": true,
+      "counters": true,
+      "rendered": true,
+      "rowComposed": true,
+      "isolationOffenders": [],
+      "sessionKeysCreated": [],
+      "sessionKeysInherited": [
+        "--root-dshProj-my-power-dsh--",
+        "--root-dshProj-my-power-dsh-.mpd-recon-qa-ws--"
+      ],
+      "expectedProjectKey": "--root-dshProj-my-power-dsh-.mpd-recon-qa-ws--",
+      "sandboxSessions": 0,
+      "sandboxRoot": "/root/dshProj/my-power-dsh/.mpd/recon/qa",
+      "layeringEvidence": "dump-config.txt",
+      "paneEvidence": "boot.pane.txt + tui-pane.log",
+      "presetEvidence": "preset.pane.txt + preset.session.json + evidence/tui/lanes/2026-09-15T06-51-22.147Z/preset.session.json"
+    },
+    "rowComposed": true,
+    "isolation": []
+  },
+  "face": {
+    "ok": false,
+    "layering": {
+      "ok": true,
+      "missing": [],
+      "ordered": true,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-harness-tui/dsh-tui",
+        "@mpd-dsh/mpd"
+      ],
+      "reason": "triple layer in order"
+    },
+    "crashSignatures": [],
+    "statusLine": true,
+    "counters": true,
+    "rendered": true,
+    "rowComposed": true,
+    "isolationOffenders": [],
+    "sessionKeysCreated": [],
+    "sessionKeysInherited": [
+      "--root-dshProj-my-power-dsh--",
+      "--root-dshProj-my-power-dsh-.mpd-recon-qa-ws--"
+    ],
+    "expectedProjectKey": "--root-dshProj-my-power-dsh-.mpd-recon-qa-ws--",
+    "sandboxSessions": 0,
+    "sandboxRoot": "/root/dshProj/my-power-dsh/.mpd/recon/qa",
+    "layeringEvidence": "dump-config.txt",
+    "paneEvidence": "boot.pane.txt + tui-pane.log",
+    "presetEvidence": "preset.pane.txt + preset.session.json + evidence/tui/lanes/2026-09-15T06-51-22.147Z/preset.session.json"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "note": "decoded header records from the sandbox session store",
+  "records": [
+    {
+      "sessionId": "2a0dbbd8-4d62-4dbb-b5b5-98f2668c67a0",
+      "projectKey": "--root-dshProj-my-power-dsh-.mpd-recon-t9-clean-ws--",
+      "store": ".mpd/recon/t9-clean/dshhome/sessions/--root-dshProj-my-power-dsh-.mpd-recon-t9-clean-ws--/2a0dbbd8-4d62-4dbb-b5b5-98f2668c67a0/session.v3.jsonl.zstd",
+      "storeSha256": "sha256:ba774027d1be8454b14bfa302b8f4d27b8b88b4b27b759e4f5c211d07adf9df4",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/my-power-dsh/.mpd/recon/t9-clean/ws"
+    }
+  ]
+}

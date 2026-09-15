@@ -1,0 +1,24 @@
+{
+  "note": "the lane's own assertion engine, re-run on the REAL captured panes with one impossible expectation",
+  "control": {
+    "ok": false,
+    "results": [
+      {
+        "surface": "negative-control",
+        "step": "boot",
+        "source": "pane",
+        "pattern": "/MPD-PANELS-CONTROL-CANNOT-APPEAR/",
+        "label": "impossible expectation on the real pane",
+        "requiredPatterns": [
+          "/MPD-PANELS-CONTROL-CANNOT-APPEAR/"
+        ],
+        "missingPatterns": [
+          "/MPD-PANELS-CONTROL-CANNOT-APPEAR/"
+        ],
+        "rendered": false,
+        "sourceChars": 2198,
+        "paneChars": 2198
+      }
+    ]
+  }
+}

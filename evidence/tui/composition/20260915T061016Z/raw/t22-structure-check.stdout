@@ -1,0 +1,42 @@
+{
+  "check": "t22 — disclosure-only repair of dsh-plugin.json",
+  "digests": {
+    "before": "sha256:31587972f69568d8a54fc38b2fb269541676ae10264abc3609cac898733157d1",
+    "after": "sha256:7701c48c066c528046d361752ff72671cc1093340260e144f8390345248fe7a7"
+  },
+  "declarationIdentity": {
+    "identicalOutsideDisclosure": true,
+    "permissionsUnchanged": true,
+    "contractsUnchanged": true,
+    "contributionsUnchanged": true,
+    "subscriptionsUnchanged": true,
+    "optionalFallbackUnchanged": true,
+    "changedTopLevelKeys": [
+      "x-mpd-tui-surfaces"
+    ]
+  },
+  "structure": {
+    "missingRequiredKeys": [],
+    "idMatchesNamespacedId": true,
+    "hostFacetEntry": "packages/mpd-tui-plugin/dist/index.js",
+    "forbidden": {
+      "provides": false,
+      "requiresServices": false
+    }
+  },
+  "parser": {
+    "pinnedParserAccepted": true,
+    "projectedFacetEntry": "packages/mpd-tui-plugin/dist/index.js"
+  },
+  "disclosureContent": {
+    "statesDenyDefault": true,
+    "statesWaitingAuthorization": true,
+    "statesNoIdentityBound": true,
+    "statesLedgerUndeclared": true,
+    "namesGrantFileAndId": true,
+    "namesAllFourScopes": true,
+    "statesCompatibleAlternative": true,
+    "forbiddenWordingAbsent": true
+  },
+  "ok": true
+}

@@ -1,0 +1,52 @@
+[CodeGraph MCP] File watcher active — graph will auto-sync on changes
+
+                                            ✦ dsh-TUI  v0.10.1
+                                            █▀▀▀▄ █▀▀▀▀ █▀▀▀▀ █▀▀▀▄ █▀▀▀▀ █▀▀▀▀ █▀▀▀▀ █   █
+                 ▄▄▄▄                       █   █ █     █     █   █ █     █     █     █ █
+                  ▄▀        ▄▀▄       ▄     █   █ █▀▀▀  █▀▀▀  █▄▄▄▀  ▀▀▀▄ █▀▀▀  █▀▀▀  ██
+                 ▀▀▀▀       ▀▀▀▀    ▄▀▀▀    █   █ █     █     █         █ █     █     █ █
+         ▄▄▄▀▀▀▀▄▄          ▀▀▀▀▀▄▀▀▀▀▀▀    █▄▄▄▀ █▄▄▄▄ █▄▄▄▄ █     █▄▄▄▀ █▄▄▄▄ █▄▄▄▄ █   █
+       ▄▀▀▀▀▀▀▀▀▀▀▀▀▄▄       ▀▀▀▀▀▀▀▀▀▀     █   █  ▄▀▄  █▀▀▀▄ █   █ █▀▀▀▀ █▀▀▀▀ █▀▀▀▀
+     ▄▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄  ▄▄▄▀▀▀▀▀▀▀       █   █ █   █ █   █ ██  █ █     █     █
+     ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀         █▀▀▀█ █▀▀▀█ █▄▄▄▀ █ █ █ █▀▀▀   ▀▀▀▄  ▀▀▀▄
+     ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀           █   █ █   █ █ █   █  ██ █         █     █
+     ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀            █   █ █   █ █   █ █   █ █▄▄▄▄ █▄▄▄▀ █▄▄▄▀
+      ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀              deepseek-flash · Max effort
+        ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄             /root/dshProj/my-power-dsh
+           ▀▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀             Tip: Ctrl+A opens the subagent dashboard; Enter details, X interrupt, Esc close · /tips more tips
+                                            ⚠ The dsh engine (0.1.5-rc.2) is newer than the 0.1.5-rc.1 this UI is validated against, so issues are 
+                                            possible; downgrade via npm i -g @deepseek-ai/dsh@0.1.5-rc.1 for stability, or wait for a dsh-tui update.
+
+          Explore the uncharted!
+
+
+   ▶ （Ctrl+P to expand） Context loaded · System prompt 17 sections · Runtime context 2 items · Skills 18 · Tools 93
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  mpd: team MPD Default 11·0/0 · plans 3 · workmates 2 · notes 1
+
+  ╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+  ❯ [CodeGraph MCP] Caught up 2 file(s) changed since last run                                                                                     ⛶
+  ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+   deepseek-flash · max · my-power-dsh
+
+

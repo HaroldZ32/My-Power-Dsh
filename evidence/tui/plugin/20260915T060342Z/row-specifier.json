@@ -1,0 +1,10 @@
+{
+  "profile": "/root/dshProj/my-power-dsh/.mpd/recon/qa/dshhome/profiles/dsh-tui/package.json",
+  "specifier": "@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js",
+  "resolvedAbsolutePath": "/root/dshProj/my-power-dsh/packages/mpd-tui-plugin/dist/index.js",
+  "resolvesToRepoPath": true,
+  "resolvedSha256": "710d3eef5d0f451bff220da151f45c9ccccb5b264ecfc215ce61be8b667e9fc3",
+  "repoDistSha256": "710d3eef5d0f451bff220da151f45c9ccccb5b264ecfc215ce61be8b667e9fc3",
+  "identical": true,
+  "ok": true
+}

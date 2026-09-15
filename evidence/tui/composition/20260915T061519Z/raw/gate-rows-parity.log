@@ -1,0 +1,3 @@
+=== A: node scripts/verify-rows-parity.mjs ===
+[verify-rows-parity] ok: 24 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)
+exit=0

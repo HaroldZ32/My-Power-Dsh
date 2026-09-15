@@ -1,0 +1,61 @@
+{
+  "recorded": "2026-09-15 — self-check requested by the captain after t8 reported T8-F1 (the lane's --install remedy is unreachable and a skipped lane exits 0 with `[mpd-qa] SKIP case=<lane> reason=absent-fixture`).",
+  "ruleAdopted": "a SKIP / absent-fixture marker is NOT-RUN, never a pass; and every run must record which root it used.",
+  "check": {
+    "what": "grepped every log in this evidence dir and every lane tree produced by my t9 runs for `SKIP` / `absent-fixture` / `not-run`, and grepped my own command lines for `--install` / `--fresh`",
+    "skipMarkersFound": 0,
+    "installOrFreshInvocations": 0,
+    "conclusion": "no t9 lane result came from a skipped lane: every lane below actually executed against an existing populated profile."
+  },
+  "runs": [
+    {
+      "lane": "tui-admission --static-only",
+      "root": "not used (--static-only)",
+      "mode": "static only, no boot",
+      "executed": true
+    },
+    {
+      "lane": "tui-admission (live)",
+      "root": ".mpd/recon/qa",
+      "mode": "warm root, profile present (host + bundle)",
+      "executed": true
+    },
+    {
+      "lane": "tui-distribution",
+      "root": ".mpd/recon/qa",
+      "mode": "warm root; protocol repo copied in-sandbox and built",
+      "executed": true
+    },
+    {
+      "lane": "tui-spec-conformance (first pass)",
+      "root": ".mpd/recon/qa",
+      "mode": "warm root; pinned-cli/pinned-suite exit 1 on the unbuilt vendored std",
+      "executed": "executed, lanes not-run with a named blocker"
+    },
+    {
+      "lane": "tui-mount (warm root)",
+      "root": ".mpd/recon/qa",
+      "mode": "warm root, but its session store was contaminated by my earlier manual boots",
+      "executed": "executed; failed the preset/session assertion"
+    },
+    {
+      "lane": "tui-mount (clean store)",
+      "root": ".mpd/recon/t9-clean",
+      "mode": "profile copied to a root at the same depth, session store/ledger/console state wiped",
+      "executed": true
+    },
+    {
+      "lane": "tui-spec-conformance (upgrade attempt)",
+      "root": ".mpd/recon/t9-clean",
+      "mode": "MPD_TUI_SPEC_ROOT pointed at a workspace spec copy with a fully built @dsh-std tree",
+      "executed": "pinned-cli EXECUTED (exit 0); pinned-suite still not-run with the verified git-submodule blocker"
+    }
+  ],
+  "corroborationFromT8": "t8 independently ran from its own self-installed fresh root: the package is live at the same revision (status line, command tree, board scene, settings section, dialog; preset mpd; zero apply-crash signatures; artifact 5dce2563…), and the transcript-renderer surface was verified host-side with its own canary plugin (apply entered, inject fired, tuiRenderers reachable, register() returned, no row) — cited here as t8's measurement, not mine.",
+  "crossRevisionNote": {
+    "issue": "t8's live evidence cites a manifest digest that t24 has since superseded; the captain asked that any citation of t8's numbers name the revision they were measured at.",
+    "chain": "the manifest revision chain (824b74f8… -> 84ed4a5d…) is documented by the composition lane in evidence/tui/composition/*/T24-DIGEST-ANNOTATION.md; reference that file rather than restating the chain.",
+    "myPin": "my t9 verdicts are bound to 84ed4a5d5aac3fb07949f0f62bb7e7afdfa1e96de2c19de02974381eeb1201c9 (post-t24) with the artifact at 5dce2563fd0e3b20afede061297b9bfc9856593703974fac44f8642830b85e6f / 98883 bytes / mtime 2026-09-15T06:23:20.169Z, recorded per lane in each result.json revision block.",
+    "t8Numbers": "when citing t8's clean-room results, name them as measured at the pre-t24 manifest revision; its package-side conclusions are unaffected because the artifact digest is the same 5dce2563…"
+  }
+}

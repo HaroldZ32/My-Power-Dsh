@@ -1,0 +1,101 @@
+{
+  "task": "captain-directed paste — Chinese mirror of §6.4 + the §4.1 pointer into docs/tui.zh-CN.md",
+  "closes": "t30 T30-DOCS-1 (medium, unresolved) / t29 doc-assertion item3.docs/tui.zh-CN.md",
+  "measuredAt": "2026-09-15T07:22:27.448Z",
+  "anchors": {
+    "manifest": "84ed4a5d5aac3fb07949f0f62bb7e7afdfa1e96de2c19de02974381eeb1201c9",
+    "entry": "5dce2563fd0e3b20afede061297b9bfc9856593703974fac44f8642830b85e6f",
+    "patch": "3866dc11b52aa3ae6fc49f8918d594729cd2bdc1144e1d563035ffee7db2e0cc",
+    "preset": "0be8781f1570e9cac4e512bc26cbe30b4e398ac44a35141e3c2403869d910be1"
+  },
+  "docs": {
+    "docs/tui.md": {
+      "sha256": "0d899a4d308fdf17f340efc9a97811c5152416399e5302949ddf270014321767",
+      "note": "unchanged by this paste (t29 landed the English half)"
+    },
+    "docs/tui.zh-CN.md": {
+      "sha256Before": "6e7a61a9ffcf5d030e3633d66a5f815da1b38d4355eede3bdf937b186fa1c0e7",
+      "sha256After": "c1c0dc39ba6485af46d29176a4b95b3429e4fd36dff8d8981521416caa9dd03d",
+      "advancedBy": "captain-directed paste"
+    }
+  },
+  "t29PredicateResidual": {
+    "predicate": "/commands` service|commands 服务|commands 服务/",
+    "onZhDocument": false,
+    "onPreStagedSnippet": false,
+    "reading": "t29's zh branch looks for `commands service` / `commands 服务` without the backtick the payload actually carries; it is false for the payload itself, so it cannot witness the mirror. Not a doc defect; recorded as a checker under-specification for the delivery report."
+  },
+  "checks": [
+    {
+      "id": "anchor.manifest",
+      "status": "passed",
+      "detail": "dsh-plugin.json still 84ed4a5d…"
+    },
+    {
+      "id": "anchor.entry",
+      "status": "passed",
+      "detail": "packages/mpd-tui-plugin/dist/index.js still 5dce2563…"
+    },
+    {
+      "id": "anchor.patch",
+      "status": "passed",
+      "detail": "packages/mpd-bundle/cordis.patch.yml still 3866dc11…"
+    },
+    {
+      "id": "anchor.preset",
+      "status": "passed",
+      "detail": "presets/mpd/agent.cordis.yml still 0be8781f…"
+    },
+    {
+      "id": "paste.blocks-found",
+      "status": "passed",
+      "detail": "snippet carries 2 fenced payloads"
+    },
+    {
+      "id": "paste.block1",
+      "status": "passed",
+      "detail": "1/1 lines present verbatim in docs/tui.zh-CN.md"
+    },
+    {
+      "id": "paste.block2",
+      "status": "passed",
+      "detail": "16/16 lines present verbatim in docs/tui.zh-CN.md"
+    },
+    {
+      "id": "item3.zh-intent",
+      "status": "passed",
+      "detail": "Chinese page names the harness `commands` service and the contract"
+    },
+    {
+      "id": "item3.t29-predicate-is-false-negative",
+      "status": "passed",
+      "detail": "t29's zh branch is false for the document AND for the snippet it instructed to paste, so the pasted text is not the cause"
+    },
+    {
+      "id": "item3.en-intent",
+      "status": "passed",
+      "detail": "English page names the harness `commands` service and the contract"
+    },
+    {
+      "id": "invariants.docs/tui.md",
+      "status": "passed",
+      "detail": "not-claimed item, digests, switch link intact"
+    },
+    {
+      "id": "invariants.docs/tui.zh-CN.md",
+      "status": "passed",
+      "detail": "not-claimed item, digests, switch link intact"
+    },
+    {
+      "id": "wording.zh-CN",
+      "status": "passed",
+      "detail": "no forbidden certification wording in the pasted page"
+    },
+    {
+      "id": "t27-checker.present",
+      "status": "passed",
+      "detail": "evidence/tui/docs/20260915T070743Z/doc-assertion.mjs present (run separately; its stdout is raw/t27-doc-assertion.json)"
+    }
+  ],
+  "verdict": "passed"
+}

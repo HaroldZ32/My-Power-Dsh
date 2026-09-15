@@ -1,0 +1,3 @@
+=== R11 (plan-amended regression; the mpd-tui row I added is the row under test) ===
+R11 ok: 16 patch rows present in pack-mpd PLUGIN_PKGS
+exit=0

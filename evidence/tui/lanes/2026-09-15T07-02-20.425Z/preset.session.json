@@ -1,0 +1,165 @@
+{
+  "note": "decoded header records from the sandbox session store",
+  "records": [
+    {
+      "sessionId": "ff18b730-b016-4dd7-99cb-57e4f242d132",
+      "projectKey": "--root-dshProj-my-power-dsh--",
+      "store": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/ff18b730-b016-4dd7-99cb-57e4f242d132/session.v3.jsonl.zstd",
+      "storeSha256": "sha256:d5570634bf4cf18e340ab481883afe794bf750bdac8c66a2fad0aa345f1b376e",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/my-power-dsh"
+    },
+    {
+      "sessionId": "e11887f7-74b4-4cd7-af94-7a33669dd451",
+      "projectKey": "--root-dshProj-my-power-dsh--",
+      "store": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/e11887f7-74b4-4cd7-af94-7a33669dd451/session.v3.jsonl.zstd",
+      "storeSha256": "sha256:6f3e02ec3b2eceb04334af8108834828f56356e231981719f7963e71249b5255",
+      "agentPreset": "standard",
+      "cwd": "/root/dshProj/my-power-dsh"
+    },
+    {
+      "sessionId": "fc5df0ec-8387-478d-a285-4d1e5c4261c5",
+      "projectKey": "--root-dshProj-my-power-dsh--",
+      "store": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/fc5df0ec-8387-478d-a285-4d1e5c4261c5/session.v3.jsonl.zstd",
+      "storeSha256": "sha256:f7b2ecccdb479432c891578b4341ff202fadce2d41078cdc5bf6c7c69d0898c6",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/my-power-dsh"
+    },
+    {
+      "sessionId": "a9eea0a3-aa4e-45e2-8d4d-3856b0b606d1",
+      "projectKey": "--root-dshProj-my-power-dsh--",
+      "store": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/a9eea0a3-aa4e-45e2-8d4d-3856b0b606d1/session.v3.jsonl.zstd",
+      "storeSha256": "sha256:225152d4eb4bb04c037b9d455562d8af03c136a898ea287d37fb9f5c958c8763",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/my-power-dsh"
+    },
+    {
+      "sessionId": "818b7a8f-4861-408a-b4fa-bbe482e01048",
+      "projectKey": "--root-dshProj-my-power-dsh--",
+      "store": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/818b7a8f-4861-408a-b4fa-bbe482e01048/session.v3.jsonl.zstd",
+      "storeSha256": "sha256:cd68e9bcc2592b4ef70e8e60358deb0019cc1c680abacd3ef1969cb88363dd77",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/my-power-dsh"
+    },
+    {
+      "sessionId": "f4bf6b54-ad8c-4b21-b288-a7f00845bdc4",
+      "projectKey": "--root-dshProj-my-power-dsh--",
+      "store": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/f4bf6b54-ad8c-4b21-b288-a7f00845bdc4/session.v3.jsonl.zstd",
+      "storeSha256": "sha256:2e4cc0be4f4a3ffe70d01d9ab329627bfd3e9422bd0b2feb32e14eb8c077208d",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/my-power-dsh"
+    },
+    {
+      "sessionId": "c9360496-41db-40c0-8924-9073755c9e7b",
+      "projectKey": "--root-dshProj-my-power-dsh--",
+      "store": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/c9360496-41db-40c0-8924-9073755c9e7b/session.v3.jsonl.zstd",
+      "storeSha256": "sha256:44a86c5f139d6104f9aa2f1106ab825065289f23b810b7103f3428c8916d9e12",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/my-power-dsh"
+    },
+    {
+      "sessionId": "05800047-a021-4473-819c-80fb775fb338",
+      "projectKey": "--root-dshProj-my-power-dsh--",
+      "store": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/05800047-a021-4473-819c-80fb775fb338/session.v3.jsonl.zstd",
+      "storeSha256": "sha256:c7be0327fe4215240de3ab363f216ecbe26085525d10f54e1405e875e5d03b38",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/my-power-dsh"
+    },
+    {
+      "sessionId": "21d2bebe-c47e-4236-b7f7-1cdbaf08b00c",
+      "projectKey": "--root-dshProj-my-power-dsh--",
+      "store": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/21d2bebe-c47e-4236-b7f7-1cdbaf08b00c/session.v3.jsonl.zstd",
+      "storeSha256": "sha256:4b800b16e64b6e7a64b9d2ccd69df338646d153649ad338a0f8d2c249b5de432",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/my-power-dsh"
+    },
+    {
+      "sessionId": "f07f92c9-c5e7-47d8-a134-f650947f9442",
+      "projectKey": "--root-dshProj-my-power-dsh--",
+      "store": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/f07f92c9-c5e7-47d8-a134-f650947f9442/session.v3.jsonl.zstd",
+      "storeSha256": "sha256:9d458ea04bfc526e0e9071ebd43c48ca4ae5f15fe7af2f510303248af7c3272b",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/my-power-dsh"
+    },
+    {
+      "sessionId": "3716e001-553a-44fc-9988-6186510460cf",
+      "projectKey": "--root-dshProj-my-power-dsh--",
+      "store": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/3716e001-553a-44fc-9988-6186510460cf/session.v3.jsonl.zstd",
+      "storeSha256": "sha256:4c8677eea28e641902bbeeec92581f4bf365fb59e8b08086c6664b248e7dd5fa",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/my-power-dsh"
+    },
+    {
+      "sessionId": "b1a5ca70-55f8-4539-84f8-7544e9cd9a27",
+      "projectKey": "--root-dshProj-my-power-dsh--",
+      "store": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/b1a5ca70-55f8-4539-84f8-7544e9cd9a27/session.v3.jsonl.zstd",
+      "storeSha256": "sha256:b899dfdc66cd901587ddb66e27969c293ec04cbf80f83aaea53d730ee7d158fe",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/my-power-dsh"
+    },
+    {
+      "sessionId": "43348cd0-b47e-4651-8b05-b7098f7d3e31",
+      "projectKey": "--root-dshProj-my-power-dsh--",
+      "store": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/43348cd0-b47e-4651-8b05-b7098f7d3e31/session.v3.jsonl.zstd",
+      "storeSha256": "sha256:945e9a805ac927d00cb8a12c451e1f575bcf5ffe7cdbb522ab8d4d0ddf667c11",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/my-power-dsh"
+    },
+    {
+      "sessionId": "683c0f89-d2ea-4bf1-817e-3593eb765441",
+      "projectKey": "--root-dshProj-my-power-dsh--",
+      "store": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/683c0f89-d2ea-4bf1-817e-3593eb765441/session.v3.jsonl.zstd",
+      "storeSha256": "sha256:d78ddb81aafad905ba8085db6f86d64807f5043ddadb884f39337c9f9e147689",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/my-power-dsh"
+    },
+    {
+      "sessionId": "64458e04-fe73-4c9b-b334-f193c84f5f33",
+      "projectKey": "--root-dshProj-my-power-dsh--",
+      "store": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/64458e04-fe73-4c9b-b334-f193c84f5f33/session.v3.jsonl.zstd",
+      "storeSha256": "sha256:64887976147226c43208d7084f1f90adb136d68ee2cc981e19a3244d583fb737",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/my-power-dsh"
+    },
+    {
+      "sessionId": "60eeda92-08a8-49f0-a96d-a4ecc20b25d5",
+      "projectKey": "--root-dshProj-my-power-dsh--",
+      "store": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/60eeda92-08a8-49f0-a96d-a4ecc20b25d5/session.v3.jsonl.zstd",
+      "storeSha256": "sha256:082dbb596fcb635cc3671390be94f038ea36328a2dc5f4140903ddca404b8f92",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/my-power-dsh"
+    },
+    {
+      "sessionId": "00fb7066-56e7-48ce-b650-92c11ee46bc6",
+      "projectKey": "--root-dshProj-my-power-dsh--",
+      "store": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/00fb7066-56e7-48ce-b650-92c11ee46bc6/session.v3.jsonl.zstd",
+      "storeSha256": "sha256:be755d1cc912da5d1bb9aa41e4f9ce6f919f34b7619064c2ab4def30fe24cee8",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/my-power-dsh"
+    },
+    {
+      "sessionId": "de5fde53-5505-45f6-aa7d-03dda2200567",
+      "projectKey": "--root-dshProj-my-power-dsh--",
+      "store": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/de5fde53-5505-45f6-aa7d-03dda2200567/session.v3.jsonl.zstd",
+      "storeSha256": "sha256:0e67008c2e7940f19cef8b47f86c35130eb8d42bafad1389561a0d904c197e2b",
+      "agentPreset": "standard",
+      "cwd": "/root/dshProj/my-power-dsh"
+    },
+    {
+      "sessionId": "2a733596-1a0a-4b19-ab87-f2bb36139e73",
+      "projectKey": "--root-dshProj-my-power-dsh--",
+      "store": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/2a733596-1a0a-4b19-ab87-f2bb36139e73/session.v3.jsonl.zstd",
+      "storeSha256": "sha256:908f874107b67798097fa45729f0c7fb08915e038f61193d80a7d51fc54be1fc",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/my-power-dsh"
+    },
+    {
+      "sessionId": "ab0c9a62-aa93-4b2d-be57-9ffe13902a8f",
+      "projectKey": "--root-dshProj-my-power-dsh--",
+      "store": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/ab0c9a62-aa93-4b2d-be57-9ffe13902a8f/session.v3.jsonl.zstd",
+      "storeSha256": "sha256:68ee943e8eda6489faaa743bc04da7df83de327301adbe8213caeaf3e300969e",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/my-power-dsh"
+    }
+  ]
+}

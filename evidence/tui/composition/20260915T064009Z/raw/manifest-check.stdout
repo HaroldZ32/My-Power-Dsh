@@ -1,0 +1,49 @@
+{
+  "check": "t24 — manifest identity pair describes the package that carries the file",
+  "digests": {
+    "before": "sha256:824b74f8a4f88e5b6e71200f9cc4b76183a91c446271cdc2122275503b7870db",
+    "after": "sha256:84ed4a5d5aac3fb07949f0f62bb7e7afdfa1e96de2c19de02974381eeb1201c9"
+  },
+  "identityPair": {
+    "name": "@mpd-dsh/mpd",
+    "version": "0.9.1",
+    "id": "com.mpd-dsh.mpd-tui",
+    "carrierPackage": "@mpd-dsh/mpd@0.9.1",
+    "facetImplementingPackage": "@mpd-dsh/mpd-tui@0.1.0",
+    "nameVersionEqualCarrier": true,
+    "noPairReconstructsAMissingVersion": true,
+    "nameVersionEqualImplementingPackage": false,
+    "noteNamesImplementingPackage": true,
+    "noteExplainsWhyTheCarrierIsNamed": true,
+    "idUnchanged": true
+  },
+  "declarations": {
+    "changedTopLevelKeys": [
+      "name",
+      "x-mpd-tui-surfaces"
+    ],
+    "permissionsUnchanged": true,
+    "contractsUnchanged": true,
+    "contributionsUnchanged": true,
+    "subscriptionsUnchanged": true,
+    "optionalFallbackUnchanged": true,
+    "onlyIdentityAndDisclosureMoved": true
+  },
+  "structure": {
+    "missingRequiredKeys": [],
+    "idMatchesNamespacedId": true,
+    "hostFacetEntry": "packages/mpd-tui-plugin/dist/index.js",
+    "provides": false,
+    "requiresServices": false
+  },
+  "t22DisclosureStillHolds": {
+    "measuredChain": true,
+    "unblock": true
+  },
+  "parser": {
+    "pinnedParserAccepted": true,
+    "parserSeesName": "@mpd-dsh/mpd",
+    "projectedFacetEntry": "packages/mpd-tui-plugin/dist/index.js"
+  },
+  "ok": true
+}

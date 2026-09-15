@@ -1,0 +1,28 @@
+== R1 typecheck ==
+$ tsgo --noEmit
+typecheck exit=0
+
+== bun test packages ==
+packages/mpd-hashline-plugin/test/hashline.test.ts:
+
+packages/mpd-hashline-plugin/test/tool-schema.test.ts:
+
+packages/mpd-bootstrap-plugin/test/bootstrap.test.ts:
+
+packages/mpd-comment-checker-plugin/test/comment-checker.test.ts:
+
+ 547 pass
+ 0 fail
+ 4261 expect() calls
+Ran 547 tests across 110 files. [19.86s]
+
+== installer dry-run ==
+            - name: Junior Engineer
+              role: small mechanical changes
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny."
+
+[install-profile] DRY-RUN done (nothing written); add --yes to actually install, and --dsh-home to override the target
+installer dry-run exit=0

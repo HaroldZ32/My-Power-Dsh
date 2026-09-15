@@ -1,0 +1,5 @@
+seeded workmate library at .mpd/recon/qa/t8-reviewer-20260915T063140Z/home/.mpd/workmate/qa-tui-probe
+harness command records THIS run: [{"sessionId":"b003aeb8-495c-4ca0-9917-474626b9eef6","commandId":"cmd-fa70fd11-1","kind":"success","text":"mpd workmates (1): qa-tui-probe"},{"sessionId":"b003aeb8-495c-4ca0-9917-474626b9eef6","commandId":"cmd-fa70fd11-2","kind":"success"}]
+surfaces: tuiStatus=rendered tuiCommandTrees=rendered commands=rendered tuiScenes=rendered tuiRenderers=MISSING tuiSettingsSections=rendered tuiDialogs=rendered
+negative control ok=false (must be false)
+board-opened events in the sandbox store=1 scene-reported transcript rows=0
