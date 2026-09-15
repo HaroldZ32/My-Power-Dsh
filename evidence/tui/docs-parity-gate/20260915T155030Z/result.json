@@ -1,0 +1,65 @@
+{
+  "task": "t60 — promote the doc-pair parity prototype to a repo gate",
+  "producedBy": "Junior Engineer (attempt 2)",
+  "measuredAt": "2026-09-15T15:50:30Z",
+  "verdict": "passed",
+  "gate": {
+    "path": "scripts/verify-docs-parity.mjs",
+    "sha256": "see output.log / the captain's tree",
+    "prototype": "evidence/tui/docs-completeness/20260915T153835Z/docs-parity.mjs — generalised into repo-wide discovery (root, docs/, packages/, extensions/), the doc-pair policy, explicit exemptions, a CJK-content check, and a --self-test with negative controls",
+    "cli": "node scripts/verify-docs-parity.mjs [--root <dir>] [--json <path>] [--self-test]"
+  },
+  "census": {
+    "pairsChecked": 33,
+    "failed": 0,
+    "exempt": 15,
+    "summaryLine": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=33 failed=0 exempt=15 — PASS"
+  },
+  "exemptions": {
+    "adoptedUpstream": "packages/mpd-agent-teams-plugin/README.md (upstream verbatim, kept as provenance)",
+    "noReadme": "packages/mpd-mcp-shared (ships no README; recorded follow-up)",
+    "processRecords": ["docs/plan-*.md (incl. docs/plan-team-watchdog.md)", "docs/decisions.md"],
+    "priorPhaseReports": ["docs/bline-report.md", "docs/omo-parity-gap.md", "docs/review-p0-p3.md", "docs/track-a-report.md", "docs/ulw-deepseek-optimization.md"],
+    "internalQaGolden": ["docs/adder4.md", "docs/cnt8.md"]
+  },
+  "exemptionPolicy": "An exemption suppresses ONLY the missing-twin rule, and every exemption is printed with its reason (never a silent skip). An exempt file that GAINS a zh-CN twin is checked like any other pair: the self-test materialises docs/decisions.zh-CN.md with a bad heading tree (the pair FAILS) and then with a conformant twin (the pair PASSES).",
+  "findings": [
+    {
+      "id": "T60-F1",
+      "severity": "low",
+      "file": "docs/tui-edition-report.md",
+      "problem": "No zh-CN twin. It is a prior-phase report (the TUI edition delivery report) — the CLASS AGENTS.md §3 exempts — but it is not named in that section's enumeration.",
+      "disposition": "Treated as exempt BY CLASS and reported with its reason by the gate. No zh translation was created: authoring a translation of a process record is not a mechanical repair. The captain may add it to the §3 enumeration or rule otherwise."
+    },
+    {
+      "id": "T60-F2",
+      "severity": "info",
+      "file": "packages/node_modules",
+      "problem": "The first census run reported packages/node_modules as a package without a README.",
+      "disposition": "Fixed in the scanner: directories named node_modules or starting with a dot are not packages. A scanner false positive, not a repo violation."
+    }
+  ],
+  "repairs": "NONE NEEDED — the untouched tree has zero parity violations (33/33 checked pairs pass), so this task changed no documentation content.",
+  "wiring": {
+    "npmScript": "package.json -> \"verify:docs\": \"node scripts/verify-docs-parity.mjs\"; the exit code propagates (a broken root makes the npm script exit 1 — measured)",
+    "agentsGateRow": "AGENTS.md §4 gains exactly one row: 'Doc pairs | bun run verify:docs (scripts/verify-docs-parity.mjs; ships --self-test with a negative control) | any human-facing doc change (README*.md, docs/**, packages/*/README*.md, extensions/**); before release'",
+    "agentsPolicyPointer": "AGENTS.md Language policy gains one sentence pointing at the gate"
+  },
+  "gates": {
+    "bun scripts/verify-docs-parity.mjs --self-test": "7/7 checks passed — PASS (exit 0)",
+    "bun run verify:docs": "pairs=33 failed=0 exempt=15 — PASS (exit 0)",
+    "bun run typecheck": "exit 0",
+    "bun skills/dsh-qa/scripts/tui-spec-conformance.mjs --self-test": "exit 0"
+  },
+  "negativeControls": {
+    "inProcess": [
+      "missing switch link -> FAIL",
+      "re-levelled heading -> FAIL",
+      "pure-ASCII zh file -> FAIL",
+      "exempt file with a non-conformant twin -> FAIL (checked, not skipped)",
+      "exempt file with a conformant twin -> PASS"
+    ],
+    "cli": "node scripts/verify-docs-parity.mjs --root <broken fixture> -> FAIL exit 1; bun run verify:docs -- --root <broken fixture> -> 'error: script \"verify:docs\" exited with code 1', exit 1"
+  },
+  "changedPaths": ["scripts/verify-docs-parity.mjs", "package.json", "AGENTS.md"]
+}

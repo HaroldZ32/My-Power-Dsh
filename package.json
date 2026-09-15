@@ -32,6 +32,7 @@
     "test:qa:all": "for c in agent-teams-adopt agent-teams-dispatch agent-teams-sidebar bundle-lifecycle codegraph-smoke dual-track-smoke extension-isolation extension-lifecycle extension-mcp-bridge mcp-call memory-smoke mount-assert plan-c-smoke preset-conformance preset-register relocate-smoke session-start-team skill-catalog-probe software-smoke team-route-rewire tool-output-validation ultrawork-smoke vision-smoke web-client-adapt web-settings-bridge workmate-library workmate-team-member; do echo \"[test:qa:all] $c\"; bun \"skills/dsh-qa/scripts/$c.mjs\" --no-skip || { echo \"[test:qa:all] FAILED: $c\"; exit 1; }; done; bun scripts/mpd-ext.mjs --self-test || { echo \"[test:qa:all] FAILED: scripts/mpd-ext.mjs --self-test\"; exit 1; }; bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example || { echo \"[test:qa:all] FAILED: scripts/mpd-ext.mjs validate extensions/mpd-ext-example\"; exit 1; }; echo \"[test:qa:all] real-lane subset passed (real headless boot and/or live provider)\"",
     "verify:vendor": "node scripts/verify-vendor.mjs",
     "verify:rows": "node scripts/verify-rows-parity.mjs",
+    "verify:docs": "node scripts/verify-docs-parity.mjs",
     "bootstrap": "node scripts/bootstrap.mjs",
     "evidence:mount": "node skills/dsh-qa/scripts/mount-assert.mjs --expect \"name: '@deepseek-ai/dsh-llm'\"",
     "pack": "node scripts/pack-mpd.mjs"

@@ -9,6 +9,7 @@ repository is English-only (see Language Policy).
 - **Human-facing documentation is BILINGUAL**: every doc a person reads — `README.md`,
   `docs/*.md`, and every `packages/*/README.md` — ships BOTH an English file and a
   **简体中文** (`*.zh-CN.md`) translation. Both versions must exist and stay in sync.
+- The policy is executable: `bun run verify:docs` (`scripts/verify-docs-parity.mjs`) enforces the pair, the switch link, the heading tree and real CJK content, and reports the documented exemptions (see §4).
 - **Every bilingual doc carries a language switch link directly under its title**:
   the English file links `[中文](./<name>.zh-CN.md)`, the Chinese file links
   `[English](./<name>.md)`.
@@ -19,7 +20,8 @@ repository is English-only (see Language Policy).
   `docs/cnt8.md`) and historical/process records — plan files
   (`docs/plan-*.md`, `docs/decisions.md`) **and** prior-phase reports
   (`docs/bline-report.md`, `docs/omo-parity-gap.md`, `docs/review-p0-p3.md`,
-  `docs/track-a-report.md`, `docs/ulw-deepseek-optimization.md`) — are process
+  `docs/track-a-report.md`, `docs/ulw-deepseek-optimization.md`,
+  `docs/tui-edition-report.md`) — are process
   artifacts exempt from the bilingual requirement (see §3).
 
 ---
@@ -170,6 +172,7 @@ mpd-dsh/
 | QA self-tests | `bun run test:qa` (all `--self-test`) | every plugin/QA-script change |
 | QA real cases | `node skills/dsh-qa/scripts/<case>.mjs` | runtime-behavior changes |
 | Installer | `node scripts/install-profile.mjs --dry-run` | any bundle-patch/installer change |
+| Doc pairs | `bun run verify:docs` (`scripts/verify-docs-parity.mjs`; ships `--self-test` with a negative control) | any human-facing doc change (`README*.md`, `docs/**`, `packages/*/README*.md`, `extensions/**`); before release |
 | Extension CLI | `bun scripts/mpd-ext.mjs --self-test` + `bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example` (exit 0; a deliberately broken extension MUST exit 1 with per-item errors) | any extension-interface/manifest/CLI change |
 | Boot check (MOUNT) | a boot that really applies the rows in an isolated `DSH_HOME` + sandbox `HOME` — e.g. `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs` (host rows) and `node skills/dsh-qa/scripts/preset-conformance.mjs` (the `mpd` preset's standing mount + every harness-owned row config; its negative control proves the assertion is falsifiable), or the `full-profile-boot.sh` / `mount-proof.sh` pattern with registration instrumentation | any patch change, any preset/row change, and REQUIRED for any tool-schema change |
 
