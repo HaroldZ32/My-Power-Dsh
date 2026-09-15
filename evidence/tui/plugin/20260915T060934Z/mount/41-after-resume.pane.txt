@@ -1,0 +1,60 @@
+
+
+                                            ✦ dsh-TUI  v0.10.1
+                                            █▀▀▀▄ █▀▀▀▀ █▀▀▀▀ █▀▀▀▄ █▀▀▀▀ █▀▀▀▀ █▀▀▀▀ █   █
+                                            █   █ █     █     █   █ █     █     █     █ █
+                                            █   █ █▀▀▀  █▀▀▀  █▄▄▄▀  ▀▀▀▄ █▀▀▀  █▀▀▀  ██
+                                 ▄▀▄        █   █ █     █     █         █ █     █     █ █
+         ▄▄▄▄▄▄▄▄▄              ▀▀▀▀        █▄▄▄▀ █▄▄▄▄ █▄▄▄▄ █     █▄▄▄▀ █▄▄▄▄ █▄▄▄▄ █   █
+       ▄▀▀▀▀▀▀▀▀▀▀▀▀▄▄         ▀▀▀▀▀    ▄   █   █  ▄▀▄  █▀▀▀▄ █   █ █▀▀▀▀ █▀▀▀▀ █▀▀▀▀
+     ▄▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄     ▄▀▀▀▀▀▀▀▀▀▀▀  █   █ █   █ █   █ ██  █ █     █     █
+     ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀   █▀▀▀█ █▀▀▀█ █▄▄▄▀ █ █ █ █▀▀▀   ▀▀▀▄  ▀▀▀▄
+     ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀     █   █ █   █ █ █   █  ██ █         █     █
+     ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀          █   █ █   █ █   █ █   █ █▄▄▄▄ █▄▄▄▀ █▄▄▄▀
+      ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀            deepseek-flash · Max effort
+        ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄             /root/dshProj/my-power-dsh/.mpd/recon/qa/ws
+           ▀▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀             Tip: Drag-select copies instantly in fullscreen; Esc cancels · /tips more tips
+                                            ⚠ The dsh engine (0.1.5-rc.2) is newer than the 0.1.5-rc.1 this UI is validated against, so issues are 
+                                            possible; downgrade via npm i -g @deepseek-ai/dsh@0.1.5-rc.1 for stability, or wait for a dsh-tui update.
+
+          Explore the uncharted!
+
+  ❯ hello world
+
+   turn error · llm-deepseek: no API key for provider route "deepseek-official"; store DEEPSEEK_API_KEY through the credentials service (the web Mode…
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                                                                                                                    
+
+                                      
+  mpd: team - · plans 0 · workmates 2                           
+                                                                                                                                                   
+  ╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+  ❯                                                                                                                                                ⛶
+  ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+   deepseek-flash · max · ws
+
+

@@ -1,0 +1,11 @@
+== settle: digests ==
+84ed4a5d5aac3fb07949f0f62bb7e7afdfa1e96de2c19de02974381eeb1201c9  dsh-plugin.json
+5dce2563fd0e3b20afede061297b9bfc9856593703974fac44f8642830b85e6f  packages/mpd-tui-plugin/dist/index.js
+1afda0fd7a88d8274cf67964f1da63856f1937a2db3d732daa429b7b13807a9c  docs/tui.md
+6e7a61a9ffcf5d030e3633d66a5f815da1b38d4355eede3bdf937b186fa1c0e7  docs/tui.zh-CN.md
+== doc assertion ==
+doc-assertion exit=0
+== typecheck ==
+typecheck exit=0
+== rows parity ==
+rows exit=0

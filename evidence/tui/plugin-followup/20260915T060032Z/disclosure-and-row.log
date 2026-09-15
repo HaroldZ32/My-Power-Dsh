@@ -1,0 +1,30 @@
+# the bundle patch row still resolves to the rebuilt artifact
+$ grep -n -A2 'id: mpd-tui' packages/mpd-bundle/cordis.patch.yml
+294:    - id: mpd-tui
+295-      name: '@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js'
+296-
+$ ls -l packages/mpd-tui-plugin/dist/index.js; sha256sum packages/mpd-tui-plugin/dist/index.js
+-rw-r--r-- 1 root root 93650 Sep 15 14:00 packages/mpd-tui-plugin/dist/index.js
+710d3eef5d0f451bff220da151f45c9ccccb5b264ecfc215ce61be8b667e9fc3  packages/mpd-tui-plugin/dist/index.js
+
+# the on-screen disclosure is in the metadata the section registers
+$ grep -n 'mpd.jsonc\|UNBRIDGED' packages/mpd-tui-plugin/src/settings.ts
+4:// `.mpd/mpd.jsonc` knobs — the runtime config layer the mpd plugins read
+9:// it does not rewrite `.mpd/mpd.jsonc`. The bridge is a NAMED follow-up
+13:// by the RENDERED METADATA too. Every field hint names its mpd.jsonc key and then
+32:/** The mpd.jsonc knob schema (mirrors packages/mpd-config-plugin's consumed keys). */
+45: * Every hint that names an `.mpd/mpd.jsonc` key carries this marker, because the
+47: * writes the harness settings document, NOT the mpd.jsonc layer, and the bridge
+51:export const UNBRIDGED_MARKER = "not bridged: a save here does not rewrite .mpd/mpd.jsonc"
+53:/** One field hint: the real mpd.jsonc key PLUS the on-screen disclosure. */
+54:function knobHint(key: string): string {
+55:  return `mpd.jsonc ${key} — ${UNBRIDGED_MARKER}`
+64:    hint: knobHint("hashline.maxDiffChars"),
+71:    hint: knobHint("commentChecker.autoCheck"),
+78:    hint: knobHint("ulw.maxRounds"),
+85:    hint: knobHint("memory.vcs"),
+96:    hint: knobHint("team.stateDir"),
+103:    hint: knobHint("boulder.dir"),
+111: * Every `hint` is built by {@link knobHint} and therefore carries
+112: * {@link UNBRIDGED_MARKER}: the user reading `/settings` learns at the point of
+113: * use that an edit here does not rewrite `.mpd/mpd.jsonc`.

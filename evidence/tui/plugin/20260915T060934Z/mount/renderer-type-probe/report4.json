@@ -1,0 +1,10 @@
+{
+  "when": "2026-09-15T06:31:23.113Z",
+  "steps": [
+    "command registered",
+    "renderers inject fired",
+    "renderer register returned: function",
+    "ledger: absent",
+    "appended t4probe/notice"
+  ]
+}

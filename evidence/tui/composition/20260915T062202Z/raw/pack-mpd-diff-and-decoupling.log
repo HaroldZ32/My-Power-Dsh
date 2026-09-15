@@ -1,0 +1,46 @@
+=== packed patch: mpd-tui row + absolute-path scrub ===
+295:      name: '@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js'
+absolute dev paths in packed patch: 0
+=== pack-mpd diff (this pass) ===
+ scripts/pack-mpd.mjs | 29 +++++++++++++++++++++++++++++
+ 1 file changed, 29 insertions(+)
+diff --git a/scripts/pack-mpd.mjs b/scripts/pack-mpd.mjs
+index 76144f2..302b425 100644
+--- a/scripts/pack-mpd.mjs
++++ b/scripts/pack-mpd.mjs
+@@ -40,6 +40,15 @@ const PLUGIN_PKGS = [
+   // mpd-team-compact-plugin. Its discovery root `<bundle>/extensions/` is copied by
+   // cpAssets() and declared in the packed manifest's files/exports below.
+   "mpd-ext-plugin",
++  // mpd-tui-plugin is MOUNTED by the bundle patch (row `mpd-tui`, the DSH-TUI
++  // edition) and was missing from this list: the packed tree would omit
++  // `packages/mpd-tui-plugin/dist/` while `npm run pack` still exited 0, and the
++  // packed boot would die ERR_MODULE_NOT_FOUND on that row — the same
++  // silent-omission class the comments above record for mpd-team-compact-plugin and
++  // mpd-ext-plugin. Adding the entry fixes this package; the whole CLASS is gated by
++  // regression command R11 in .mpd/plans/dsh-tui-edition.md, which asserts every
++  // `@mpd-dsh/mpd/packages/<pkg>/dist/index.js` row of the bundle patch is listed here.
++  "mpd-tui-plugin",
+   "mpd-bundle-plugin"
+ ]
+ const MCP_PKGS = ["mpd-mcp-astgrep", "mpd-mcp-gitbash", "mpd-mcp-lsp", "mpd-mcp-codegraph"]
+@@ -105,6 +114,26 @@ function cpAssets() {
+   mkdirSync(join(outDir, "scripts"), { recursive: true })
+   cpSync(join(repoRoot, "scripts", "install-mcp.mjs"), join(outDir, "scripts", "install-mcp.mjs"))
+   cpSync(join(repoRoot, "scripts", "mpd-ext.mjs"), join(outDir, "scripts", "mpd-ext.mjs"))
++  // Per-package assets that are NOT under dist/. cpDist() ships `dist/` only, so a
++  // package whose runtime or distribution surface includes sibling asset directories
++  // needs them copied explicitly — and the omission is INVISIBLE in a checkout install
++  // (which reads the repo directly), which is why the class needs a named entry here
++  // and a gate rather than trust. The TUI package (row `mpd-tui`) is the measured
++  // instance: it ships `themes/mpd-tui.json` (the host-format theme asset) and a
++  // packaged skill `skills/mpd-tui/SKILL.md`, and a packed bundle that carried only
++  // `dist/` would drop both while `npm run pack` still exited 0.
++  for (const [p, dirs] of Object.entries({
++    "mpd-tui-plugin": ["themes", "skills"],
++  })) {
++    for (const dir of dirs) {
++      const src = join(repoRoot, "packages", p, dir)
++      if (!existsSync(src)) {
++        console.error("[pack-mpd] FAIL: missing " + src + " — the " + p + " package ships it; a packed bundle must not silently drop a shipped asset")
++        process.exit(1)

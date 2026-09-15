@@ -1,0 +1,104 @@
+{
+  "entry": "packages/mpd-tui-plugin/dist/index.js",
+  "bytes": 93493,
+  "sha256": "695f68c4858745cc35544ac77dbdb87907d6991c62f9435661e1fc02264f77ac",
+  "checks": [
+    {
+      "name": "name === 'mpd-tui'",
+      "ok": true,
+      "detail": "mpd-tui"
+    },
+    {
+      "name": "apply is a function",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "Config is a callable schemastery schema",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "no default export",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "the schema defaults every key",
+      "ok": true,
+      "detail": "{\"statusLine\":true,\"statusIntervalMs\":3000,\"renderers\":true,\"settingsSection\":true,\"scene\":true,\"commandTrees\":true,\"commands\":true,\"shortcuts\":true,\"dialogs\":true,\"sessionEvents\":true,\"decisionEvents\":true,\"logPrefix\":\"mpd-tui\"}"
+    },
+    {
+      "name": "apply() does not throw without any TUI service",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "a service-less composition logs one aggregate warning",
+      "ok": true,
+      "detail": "[\"[mpd-tui] no DSH-TUI service is composed in this profile (web composition?): every mpd TUI surface was skipped\"]"
+    },
+    {
+      "name": "apply() does not throw in a full composition",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "every seam is probed with ctx.get(id, false)",
+      "ok": true,
+      "detail": "mpdDsh,tuiStatus,agents,tuiScenes,tuiDialogs,tuiRenderers,settings,tuiSettingsSections,tuiCommandTrees,tuiShortcuts,commands,tuiPluginHost"
+    },
+    {
+      "name": "tuiStatus received the mpd key",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "tuiRenderers registered 11 event types",
+      "ok": true,
+      "detail": "11"
+    },
+    {
+      "name": "the settings section is the mpd.jsonc knob section",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "the board scene is registered",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "three shortcuts are registered",
+      "ok": true,
+      "detail": "alt+m,alt+w,alt+r"
+    },
+    {
+      "name": "the command tree root matches the registered command",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "the settings namespace is registered",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "the decision seam attempts all four intercept points",
+      "ok": true,
+      "detail": "tui/input,tui/rewind-prompt,tui/session-switch,tui/compact"
+    },
+    {
+      "name": "the refusal is logged exactly once and discloses the gap",
+      "ok": true,
+      "detail": "[\"[mpd-tui] decision-event seam is ready but NOT activated: tui.dsh/v1alpha1#DecisionEvents registration was refused (first refusal: dsh-tui: Component identity is not verified for this activation). No input/rewind/session-switch/compact interception is claimed.\"]"
+    },
+    {
+      "name": "no seam disposer ran during apply (cleanup is fiber-owned)",
+      "ok": true,
+      "detail": "0"
+    }
+  ],
+  "failures": [],
+  "ok": true
+}

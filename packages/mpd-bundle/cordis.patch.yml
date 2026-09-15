@@ -1,5 +1,7 @@
-# mpd-dsh bundle plugin layer (Plan D): ADDITIVE-ONLY patch, plus ONE id-target
-# (the preset roster row below, whose stock config is a single `default` key).
+# mpd-dsh bundle plugin layer (Plan D): ADDITIVE-ONLY patch, plus TWO id-targets
+# (the two preset-roster rows below: `agent-presets` on the web/base plane and
+# `dsh-tui-agent-presets` on the dsh-tui plane — each exists in exactly ONE
+# composition, so neither target can ever duplicate the other's loader entry id).
 # Policy: never id-target rows owned by the stock DSH templates (llm-deepseek /
 # agent-default-model / skill-filesystem / llm-pi-ai) — id-target replaces the
 # WHOLE stock config and would wipe the stock model list / provider defaults.
@@ -24,6 +26,71 @@
 # Profiles WITHOUT the row (headless) log "patch: entry agent-presets not found"
 # and skip it: headless never had a preset roster, so nothing regresses.
 - id: agent-presets
+  name: '@deepseek-ai/dsh-agent-presets'
+  config:
+    default: mpd
+    roots:
+      - path: !!js '(typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/presets"'
+        trust: system
+
+# ── preset roster, dsh-tui plane: the same default, for the TUI composition ──
+# MEASURED (2026-09-15, dsh-tui@0.10.1 + engine 0.1.5-rc.2, isolated sandbox):
+# the id-target above is SKIPPED in a dsh-tui profile, because no layer of that
+# composition inserts an `agent-presets` row — dsh-web-app owns it, and dsh-tui
+# does not use that layer. The TUI's own roster row carries the scoped id
+# `dsh-tui-agent-presets` (name `@deepseek-ai/dsh-agent-presets`, config
+# `{ default: 'standard' }`, `disabled: <an enabled `agent-presets` entry
+# exists>`), so a live session recorded `agentPreset: "standard"` — user
+# decision D10 ("TUI sessions must default to the mpd preset") was NOT satisfied
+# by the web-plane row alone.
+#
+# This id-target replaces that row's WHOLE config (loader semantics), so the
+# stock config is restated: `default: mpd` plus the bundle's own preset root —
+# exactly the same two keys the web-plane row above declares. The stock
+# expression's other branch (a fallback root for legacy packages that ship NO
+# bundled `presets/` directory) is deliberately NOT restated: the validated pin
+# `@deepseek-ai/dsh-agent-presets@0.1.5-rc.2` ships `presets/{standard,ptc,
+# cordis,minimal}`, so that branch is dead here, and re-adding the dsh CLI's own
+# preset directory as a second root would shadow preset ids the package already
+# serves. Its `disabled` expression is left untouched (no override), so the row
+# stays enabled in a dsh-tui composition.
+#
+# Safety of the pair: each row exists in exactly one composition (the TUI row is
+# minted by dsh-tui's own patch, the plain row by dsh-web-app's), so the other
+# profile only logs `patch: entry <id> not found` and applies nothing — no
+# duplicate loader entry id is possible in either. Loader semantics that make the
+# pair safe and this id-target complete: an id-target is a per-key shallow
+# override (cordis-plugin-include src/index.ts:120-124 assigns only the keys this
+# file carries and skips `id`), so the host row's own `disabled` expression
+# survives; a missing id-target is a WARN (same file, :112), never an error; a
+# duplicate entry id is fatal (cordis-plugin-loader src/config/group.ts:64).
+#
+# Evidence, split by claim — every citation names an artifact that exists AND says
+# what it proves (a `--dump-config` file proves COMPOSITION only, never a load):
+#  • D10 (a TUI session really ran the mpd preset) — SESSION RECORDS, shipped as
+#    durable byte-identical copies inside this bundle's own evidence dir (sha256
+#    asserted equal to the sandbox original; every record, relied-upon or not, is
+#    indexed in evidence/tui/composition/20260915T053445Z/raw/session-records-index.json):
+#      · evidence/tui/composition/20260915T053445Z/raw/sessions/--root-dshProj-my-power-dsh--/
+#        683c0f89-d2ea-4bf1-817e-3593eb765441/session.v3.jsonl.zstd
+#        sha256 d78ddb81aafad905ba8085db6f86d64807f5043ddadb884f39337c9f9e147689 — agentPreset "mpd"
+#        (concatenated-zstd frames, header line `{"type":"session",…,"agentPreset":"mpd"}`)
+#      · the same directory holds a9eea0a3-aa4e-45e2-8d4d-3856b0b606d1
+#        (sha256 225152d4eb4bb04c037b9d455562d8af03c136a898ea287d37fb9f5c958c8763) and
+#        c7f6db60-5246-4223-9b2c-ad38ac87eea6
+#        (sha256 4471a31dab863c1fda8733de49bb29e3edaa2ec61e0366e08077780409671f03), each "mpd".
+#    The CONTRAST ships beside them: the same-shaped records from BEFORE this id-target
+#    existed, each recording `agentPreset: "standard"` — the measured "before" this fix
+#    answers (de5fde53-…/sha256 0e67008c…, 1a5d7e6f-…/ff7954b5…, e11887f7-…/6f3e02ec…,
+#    all three in the index).
+#  • The web profile is unchanged — a COMPOSITION check only:
+#    evidence/tui/composition/20260915T053445Z/raw/web-dump-config.err (its sole
+#    warning is `patch: entry "dsh-tui-agent-presets" not found`) and
+#    …/raw/web-dump-config.txt (exactly ONE @deepseek-ai/dsh-agent-presets row).
+#    The BOOT proof for that profile is the bundle-lifecycle mounting boot (R6,
+#    `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs`), which really mounts the web
+#    profile — never a `--dump-config` result, which only composes rows (AGENTS.md §4).
+- id: dsh-tui-agent-presets
   name: '@deepseek-ai/dsh-agent-presets'
   config:
     default: mpd
@@ -219,6 +286,19 @@
     # The preset side is served by the agent-presets row at the top of this file.
     - id: mpd-bootstrap
       name: '@mpd-dsh/mpd/packages/mpd-bootstrap-plugin/dist/index.js'
+    # DSH-TUI edition (D1/D2/D6/D10): the TUI-native surface package for this
+    # bundle. It binds the host's activation-gated UI service seams (tuiStatus,
+    # tuiRenderers, tuiSettingsSections, tuiScenes, tuiCommandTrees,
+    # tuiShortcuts, tuiDialogs) and probes every one of them with
+    # `ctx.get(id, false)` + warn-once degrade, so under a profile that provides
+    # none of them (web/headless) the row degrades instead of taking the boot
+    # down. The same package's admission facet is declared ONCE, bundle-level, by
+    # dsh-plugin.json at the repo root (`facets.host.entry` = the module below);
+    # the package ships NO cordis.patch.yml of its own, so this row is the only
+    # mount and no composition can duplicate the `mpd-tui` loader entry id
+    # (verify-rows-parity + the boot-log scan are the gates).
+    - id: mpd-tui
+      name: '@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js'
 
 # ── Remote MCP rows (public services; network required, optional per use) ──
 - insert:

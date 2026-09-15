@@ -1,0 +1,11 @@
+$ bun skills/dsh-qa/scripts/tui-mount.mjs --sandbox-root .mpd/recon/qa
+# manifest digest at lane start: 84ed4a5d5aac3fb07949f0f62bb7e7afdfa1e96de2c19de02974381eeb1201c9
+[tui-mount] sandbox root=/root/dshProj/my-power-dsh/.mpd/recon/qa explicit=true warm=true fresh=false
+[tui-mount] profile bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"] (dump-config carries 0 row(s))
+[tui-mount] dump-config exit=0 bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"] rowComposed=true
+[tui-mount] statusLine=true counters=true crashes=[]
+[tui-mount] session keys created=[] inherited=["--root-dshProj-my-power-dsh--","--root-dshProj-my-power-dsh-.mpd-recon-qa-ws--"]
+[tui-mount] preset=undefined session=undefined isolationOffenders=0
+[tui-mount] ok=false -> /root/dshProj/my-power-dsh/evidence/tui/lanes/2026-09-15T06-51-22.147Z
+[tui-mount] FAIL: {"face":{"ok":false,"layering":{"ok":true,"missing":[],"ordered":true,"bundles":["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"],"reason":"triple layer in order"},"crashSignatures":[],"statusLine":true,"counters":true,"rendered":true,"rowComposed":true,"isolationOffenders":[],"sessionKeysCreated":[],"sessionKeysInherited":["--root-dshProj-my-power-dsh--","--root-dshProj-my-power-dsh-.mpd-recon-qa-ws--"],"expectedProjectKey":"--root-dshProj-my-power-dsh-.mpd-recon-qa-ws--","sandboxSessions":0,"sandboxRoot":"/root/dshProj/my-power-dsh/.mpd/recon/qa","layeringEvidence":"dump-config.txt","paneEvidence":"boot.pane.txt + tui-pane.log","presetEvidence":"preset.pane.txt + preset.session.json + evidence/tui/lanes/2026-09-15T06-51-22.147Z/preset.session.json"},"rowComposed":true,"isolation":[]}
+[exit 1]

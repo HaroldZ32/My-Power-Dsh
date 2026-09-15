@@ -1,0 +1,25 @@
+{
+  "name": "@mpd-dsh/mpd-tui",
+  "private": true,
+  "version": "0.1.0",
+  "description": "DSH-TUI native surfaces for the @mpd-dsh/mpd bundle: keyed status line, transcript renderers, /settings section, full-screen board scene, /mpd command + command tree, keyboard shortcuts, mediated dialogs, and the ready-but-not-activated decision-event seam",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "skills",
+    "themes",
+    "README.md",
+    "README.zh-CN.md"
+  ],
+  "scripts": {
+    "build": "bun build src/index.ts --target node --format esm --outfile dist/index.js",
+    "test": "bun test"
+  },
+  "license": "SEE LICENSE IN ../../LICENSE.md"
+}

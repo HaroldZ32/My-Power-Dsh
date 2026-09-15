@@ -1,0 +1,43 @@
+{
+  "pass": "attribution + gate confirmation for pack-mpd.mjs / install-profile.mjs",
+  "packMpd": {
+    "pluginPkgsEntry": {
+      "author": "Lead (task t17 repair) \u2014 NOT this worker",
+      "evidence": "git diff hunk @@ -41,4 +41,13 @@ : +9 lines (defect-class comment + \"mpd-tui-plugin\",)",
+      "arrayIntegrity": {
+        "elements": 17,
+        "mpdTuiPluginOccurrences": 1,
+        "duplicates": 0,
+        "nodeCheck": "ok"
+      },
+      "workerAction": "read only; entry left exactly as it is, not re-added"
+    },
+    "workerOwnedEdit": {
+      "author": "this worker (previous turn)",
+      "region": "cpAssets() \u2014 new per-package asset table copying mpd-tui-plugin/{themes,skills}",
+      "evidence": "git diff hunk @@ -106,4 +115,24 @@ (+20 lines)",
+      "doesNotTouch": "PLUGIN_PKGS",
+      "reason": "the row's packaging consequence: cpDist() ships dist/ only, so themes/ and skills/ were dropped from the packed tree while pack exited 0",
+      "verified": "node scripts/pack-mpd.mjs exit 0; packed tree carries dist/index.js + README pair + skills/mpd-tui/SKILL.md + themes/mpd-tui.json",
+      "revertible": true
+    }
+  },
+  "installProfile": {
+    "mirrorRow": {
+      "author": "this worker (under t5, before the captain's takeover)",
+      "line": "scripts/install-profile.mjs:172-177 (id: \"mpd-tui\", name: p(\"packages/mpd-tui-plugin/dist/index.js\"))",
+      "shippedIn": "t5, completed by the captain after amending t5.inScope to include scripts/install-profile.mjs"
+    },
+    "gate": {
+      "command": "node scripts/verify-rows-parity.mjs",
+      "exitCode": 0,
+      "quote": "[verify-rows-parity] ok: 24 row ids match the bundle patch insert list (\u2026 mpd-tui \u2026)"
+    }
+  },
+  "classGate": {
+    "command": "R11 (PLUGIN_PKGS class gate)",
+    "exitCode": 0,
+    "quote": "R11 ok: 16 patch rows present in pack-mpd PLUGIN_PKGS"
+  },
+  "evidenceDir": "evidence/tui/composition/20260915T062202Z"
+}

@@ -1,0 +1,14 @@
+{
+  "arm": "resume/replay on a session that already carries mpd-tui/board-opened",
+  "resumedSession": "b003aeb8-495c-4ca0-9917-474626b9eef6",
+  "tmuxFailures": [],
+  "bootPaneChars": [
+    2157,
+    2157
+  ],
+  "ourRowRendered": false,
+  "canaryRowRendered": false,
+  "anyTranscriptRowOfOurs": false,
+  "chatScreenReached": true,
+  "statusLineRendered": true
+}

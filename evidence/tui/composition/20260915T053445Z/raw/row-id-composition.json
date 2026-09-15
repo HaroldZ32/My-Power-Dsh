@@ -1,0 +1,118 @@
+{
+  "note": "Row ids of the host's OWN composed config (dsh --profile <p> --dump-config) — composition evidence only; the authoritative load evidence is the boot-log scan in boot-scan.json. `duplicates` counts repeated top-level `- id:` lines in the composed list, which is exactly what the loader rejects as 'duplicate loader entry id'.",
+  "dshTui": {
+    "stderr": "dsh: [@mpd-dsh/mpd] patch: entry \"agent-presets\" not found",
+    "ourRows": [
+      {
+        "id": "mcp-astgrep",
+        "name": "@deepseek-ai/dsh-mcp-client"
+      },
+      {
+        "id": "mcp-gitbash",
+        "name": "@deepseek-ai/dsh-mcp-client"
+      },
+      {
+        "id": "mcp-lsp",
+        "name": "@deepseek-ai/dsh-mcp-client"
+      },
+      {
+        "id": "mcp-codegraph",
+        "name": "@deepseek-ai/dsh-mcp-client"
+      },
+      {
+        "id": "mpd-web-compat",
+        "name": "@mpd-dsh/mpd"
+      },
+      {
+        "id": "mpd-dsh-adapter",
+        "name": "@mpd-dsh/mpd/packages/mpd-dsh-adapter-plugin/dist/index.js"
+      },
+      {
+        "id": "mpd-config",
+        "name": "@mpd-dsh/mpd/packages/mpd-config-plugin/dist/index.js"
+      },
+      {
+        "id": "mpd-tools",
+        "name": "@mpd-dsh/mpd/packages/mpd-tools-plugin/dist/index.js"
+      },
+      {
+        "id": "mpd-modelchain",
+        "name": "@mpd-dsh/mpd/packages/mpd-modelchain-plugin/dist/index.js"
+      },
+      {
+        "id": "mpd-ext",
+        "name": "@mpd-dsh/mpd/packages/mpd-ext-plugin/dist/index.js"
+      },
+      {
+        "id": "mpd-roles",
+        "name": "@mpd-dsh/mpd/packages/mpd-roles-plugin/dist/index.js"
+      },
+      {
+        "id": "mpd-ulw",
+        "name": "@mpd-dsh/mpd/packages/mpd-ulw-plugin/dist/index.js"
+      },
+      {
+        "id": "mpd-hashline",
+        "name": "@mpd-dsh/mpd/packages/mpd-hashline-plugin/dist/index.js"
+      },
+      {
+        "id": "mpd-boulder",
+        "name": "@mpd-dsh/mpd/packages/mpd-boulder-plugin/dist/index.js"
+      },
+      {
+        "id": "mpd-comment-checker",
+        "name": "@mpd-dsh/mpd/packages/mpd-comment-checker-plugin/dist/index.js"
+      },
+      {
+        "id": "mpd-codegraph",
+        "name": "@mpd-dsh/mpd/packages/mpd-codegraph-plugin/dist/index.js"
+      },
+      {
+        "id": "mpd-memory",
+        "name": "@mpd-dsh/mpd/packages/mpd-memory-plugin/dist/index.js"
+      },
+      {
+        "id": "mpd-workmate",
+        "name": "@mpd-dsh/mpd/packages/mpd-workmate-plugin/dist/index.js"
+      },
+      {
+        "id": "mpd-team-compact",
+        "name": "@mpd-dsh/mpd/packages/mpd-team-compact-plugin/dist/index.js"
+      },
+      {
+        "id": "mpd-bootstrap",
+        "name": "@mpd-dsh/mpd/packages/mpd-bootstrap-plugin/dist/index.js"
+      },
+      {
+        "id": "mpd-tui",
+        "name": "@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js"
+      },
+      {
+        "id": "agent-teams",
+        "name": "@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib/index.js"
+      },
+      {
+        "id": "mcp-context7",
+        "name": "@deepseek-ai/dsh-mcp-client"
+      },
+      {
+        "id": "mcp-grepapp",
+        "name": "@deepseek-ai/dsh-mcp-client"
+      }
+    ],
+    "ourRowCount": 24,
+    "total": 125,
+    "duplicates": [],
+    "hasMpdTuiRow": true,
+    "rosterRow": {
+      "id": "dsh-tui-agent-presets",
+      "override": "config.default = mpd (id-target; the row's own `disabled` expression is untouched)"
+    }
+  },
+  "web": {
+    "stderr": "dsh: [@mpd-dsh/mpd] patch: entry \"dsh-tui-agent-presets\" not found",
+    "total": 201,
+    "duplicates": [],
+    "agentPresetsDefault": "mpd"
+  }
+}

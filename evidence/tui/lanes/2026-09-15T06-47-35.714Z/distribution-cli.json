@@ -1,0 +1,33 @@
+{
+  "descriptor": "/root/dshProj/my-power-dsh/dsh-distribution.json",
+  "steps": [
+    {
+      "name": "install",
+      "command": "pnpm install --frozen-lockfile",
+      "status": 0,
+      "stdout": "Scope: all 9 workspace projects\nAlready up to date\nDone in 157ms using pnpm v11.21.0\n",
+      "stderr": ""
+    },
+    {
+      "name": "build",
+      "command": "pnpm build",
+      "status": 0,
+      "stdout": "",
+      "stderr": "$ tsc -b\n"
+    },
+    {
+      "name": "check",
+      "command": "/root/.nvm/versions/node/v24.16.0/lib/node_modules/bun/bin/bun.exe /root/dshProj/my-power-dsh/.mpd/recon/qa/distribution-protocol/packages/conformance/lib/cli.js /root/dshProj/my-power-dsh/dsh-distribution.json",
+      "status": 0,
+      "stdout": "{\n  \"valid\": true,\n  \"complete\": true,\n  \"issues\": [],\n  \"unchecked\": []\n}\n",
+      "stderr": ""
+    }
+  ],
+  "cliReport": {
+    "valid": true,
+    "complete": true,
+    "issues": [],
+    "unchecked": []
+  },
+  "fullyValidated": true
+}

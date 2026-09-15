@@ -1,0 +1,17 @@
+# the bundle patch row resolves to the built artifact this task produced
+$ grep -n -B2 -A4 "id: mpd-tui" packages/mpd-bundle/cordis.patch.yml
+269-    # mount and no composition can duplicate the `mpd-tui` loader entry id
+270-    # (verify-rows-parity + the boot-log scan are the gates).
+271:    - id: mpd-tui
+272-      name: '@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js'
+273-
+274-# ── Remote MCP rows (public services; network required, optional per use) ──
+275-- insert:
+
+$ ls -l packages/mpd-tui-plugin/dist/index.js && sha256sum packages/mpd-tui-plugin/dist/index.js
+-rw-r--r-- 1 root root 93493 Sep 15 13:47 packages/mpd-tui-plugin/dist/index.js
+695f68c4858745cc35544ac77dbdb87907d6991c62f9435661e1fc02264f77ac  packages/mpd-tui-plugin/dist/index.js
+
+$ node scripts/verify-rows-parity.mjs
+[verify-rows-parity] ok: 24 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)
+[exit 0]

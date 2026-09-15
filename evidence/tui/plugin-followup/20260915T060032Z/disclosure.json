@@ -1,0 +1,36 @@
+{
+  "entry": "packages/mpd-tui-plugin/dist/index.js",
+  "bytes": 93650,
+  "sha256": "710d3eef5d0f451bff220da151f45c9ccccb5b264ecfc215ce61be8b667e9fc3",
+  "sectionNs": "mpd",
+  "fieldCount": 6,
+  "fields": [
+    {
+      "path": "hashline.maxDiffChars",
+      "hint": "mpd.jsonc hashline.maxDiffChars — not bridged: a save here does not rewrite .mpd/mpd.jsonc"
+    },
+    {
+      "path": "commentChecker.autoCheck",
+      "hint": "mpd.jsonc commentChecker.autoCheck — not bridged: a save here does not rewrite .mpd/mpd.jsonc"
+    },
+    {
+      "path": "ulw.maxRounds",
+      "hint": "mpd.jsonc ulw.maxRounds — not bridged: a save here does not rewrite .mpd/mpd.jsonc"
+    },
+    {
+      "path": "memory.vcs",
+      "hint": "mpd.jsonc memory.vcs — not bridged: a save here does not rewrite .mpd/mpd.jsonc"
+    },
+    {
+      "path": "team.stateDir",
+      "hint": "mpd.jsonc team.stateDir — not bridged: a save here does not rewrite .mpd/mpd.jsonc"
+    },
+    {
+      "path": "boulder.dir",
+      "hint": "mpd.jsonc boulder.dir — not bridged: a save here does not rewrite .mpd/mpd.jsonc"
+    }
+  ],
+  "marker": "does not rewrite .mpd/mpd.jsonc",
+  "failures": [],
+  "ok": true
+}

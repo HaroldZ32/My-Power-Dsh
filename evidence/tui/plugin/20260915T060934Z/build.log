@@ -1,0 +1,11 @@
+# t23 final clean rebuild (dist removed first, repo toolchain only)
+$ rm -rf packages/mpd-tui-plugin/dist
+$ bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js
+Bundled 18 modules in 9ms
+
+  index.js  98.88 KB  (entry point)
+
+[exit 0]
+$ stat -c '%s bytes' packages/mpd-tui-plugin/dist/index.js; sha256sum packages/mpd-tui-plugin/dist/index.js
+98883 bytes
+5dce2563fd0e3b20afede061297b9bfc9856593703974fac44f8642830b85e6f  packages/mpd-tui-plugin/dist/index.js

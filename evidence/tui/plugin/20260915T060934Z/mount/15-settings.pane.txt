@@ -1,0 +1,52 @@
+[CodeGraph MCP] File watcher active — graph will auto-sync on changes
+   MPD board — 11 line(s) · 146x50
+   0 transcript row(s)                                        
+   workspace  /root/dshProj/my-power-dsh                                                   
+   team       MPD Default (mpd-default-c8811afd) · phase staged                          
+   members    11                                                                        
+   tasks      0 total · 0 completed · 0 in progress · 0 pending · 0 claimed · 0 failed   
+   boulder    (no work ledger)                                                             
+   plans      3 · newest workmate-rename-delete-contract.md                          
+   workmates  2 · demo-workmate, qa-tui-probe                                    
+   note       team archive: unreadable                                               
+   esc/q close · r refresh                                                           
+                                                                                     
+                                                                       
+                                                                      
+                                                                                                                                                      
+                                                                                                                                                   
+                                                                                                                                                     
+
+                                
+
+
+                                                                                                                     
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                                
+
+                                                                                                                                                    
+                                                                                                                                                    
+                                                                                                                                                    
+                                                                                                                                                    
+                  ] Caught up 2 file(s) changed since last run                                                                                      
+                                                                                                                                                    
+                                      
+
+

@@ -1,0 +1,45 @@
+{
+  "measuredBy": "Reviewer (t8, attempt 2) — supplementary resolution after t8 was already terminal",
+  "measuredAt": "2026-09-15T06:45Z (approx)",
+  "artifact": {
+    "path": "packages/mpd-tui-plugin/dist/index.js",
+    "sha256": "5dce2563fd0e3b20afede061297b9bfc9856593703974fac44f8642830b85e6f",
+    "bytes": 98883,
+    "mtimeLocal": "2026-09-15 14:23:20 +0800",
+    "mtimeUtc": "2026-09-15T06:23:20Z"
+  },
+  "proofThisIsWhatTheLanesRan": [
+    "artifact mtime 06:23:20Z precedes tui-mount 06:34:12Z and tui-panels 06:34:39Z",
+    "the digest is unchanged when re-measured after the runs",
+    "no file under packages/mpd-tui-plugin has been rebuilt after 06:23:21Z"
+  ],
+  "composition": {
+    "sandboxRoot": "/root/dshProj/my-power-dsh/.mpd/recon/qa/t8-reviewer-20260915T063140Z",
+    "workspaceTarget": "<root>/ws (required; proved by the sandbox store key)",
+    "profile": "dsh-tui (host @deepseek-harness-tui/dsh-tui@0.10.1), presets default mpd",
+    "profileBundles": ["@deepseek-ai/dsh-base", "@deepseek-harness-tui/dsh-tui", "@mpd-dsh/mpd"],
+    "sessionKeysCreated": ["--root-dshProj-my-power-dsh-.mpd-recon-qa-t8-reviewer-20260915T063140Z-ws--"],
+    "sessionKeysInherited": [],
+    "isolationOffenders": []
+  },
+  "answer": {
+    "question": "at the CURRENT revision, in the CURRENT lane composition, do the seams register?",
+    "verdict": "YES — six of seven register and take effect",
+    "registering": ["tuiStatus", "commands", "tuiCommandTrees", "tuiScenes", "tuiSettingsSections", "tuiDialogs"],
+    "notRegistering": ["tuiRenderers"],
+    "rendererAttribution": "host-side projection gap, NOT CLAIMED (see T8-F2); excluded from this question by the captain"
+  },
+  "revisionChronology": [
+    { "sha256Prefix": "695f68c4858745cc", "bytes": 93206, "when": "t4 era / ~05:34Z", "behaviour": "INERT", "provenance": "evidence/tui/composition/20260915T053445Z/raw/admission-static.json + evidence/tui/docs/20260915T060010Z/" },
+    { "sha256Prefix": "710d3eef5d0f451b", "when": "built ~06:00Z", "behaviour": "5-6 seams take effect (Lead runs 06:12-06:22Z)", "provenance": "evidence/tui/plugin-followup/20260915T060032Z/" },
+    { "sha256Prefix": "5dce2563fd0e3b20", "bytes": 98883, "when": "rebuilt 06:23:20Z", "behaviour": "6/7 seams register (Reviewer run 06:34Z)", "provenance": "evidence/tui/live/20260915T063140Z/ + evidence/tui/composition/20260915T062602Z/ + .../064009Z/" }
+  ],
+  "contradictionResolvedBy": "different artifact revisions of the same package — NOT a composition difference; the profile, triple layering and workspace-target rule are the same shape across all three measurements",
+  "gapFound": {
+    "id": "T8-F5",
+    "severity": "medium",
+    "owner": "t7 (lane author)",
+    "problem": "neither lane result records the artifact revision: lanes/tui-mount/result.json and lanes/tui-panels/result.json contain zero occurrences of 5dce2563 and zero mentions of dist/index.js, so a lane result cannot say which bytes it proved anything about",
+    "requiredFix": "each lane writes the measured {path, sha256, bytes, mtime} of packages/mpd-tui-plugin/dist/index.js beside result.json and fails loudly if the digest changes mid-run"
+  }
+}

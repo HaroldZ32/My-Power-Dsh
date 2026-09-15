@@ -1,0 +1,5 @@
+--- node --input-type=module -e "await import('dist/mpd-package/packages/mpd-mcp-astgrep/launch.mjs')" < /dev/null ---
+exit=0
+--- node --input-type=module -e "await import('dist/mpd-package/packages/mpd-mcp-codegraph/launch.mjs')" < /dev/null ---
+[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+exit=0

@@ -1,0 +1,55 @@
+$ bun test packages/mpd-tui-plugin
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-tui-plugin/test/state.test.ts:
+(pass) state projection > reads the newest team record, the task ledger, boulder, plans and workmates [4.10ms]
+(pass) state projection > a missing state tree degrades to empty sections without throwing [0.68ms]
+(pass) state projection > a broken team record is reported as a note, not as a crash [0.78ms]
+(pass) state projection > the status line is one bounded line [0.68ms]
+(pass) sanitizer > accepts scalars only and drops everything else [0.33ms]
+(pass) sanitizer > strips control characters and collapses whitespace [0.09ms]
+(pass) sanitizer > clamps by terminal cell, not by code-unit count [0.20ms]
+(pass) sanitizer > scalarLines bounds the line count and per-line width [1.47ms]
+(pass) transcript renderers > every declared type has a renderer and maps a payload to text rows [0.47ms]
+(pass) transcript renderers > renderers never throw and always emit strings, whatever the payload [1.03ms]
+(pass) transcript renderers > renderer output is clamped (a huge payload cannot flood the transcript) [0.34ms]
+(pass) log-only event registration > registerInto reports and mutates truthfully [0.22ms]
+(pass) log-only event registration > candidateAnchors is deduplicated and never empty [0.48ms]
+(pass) log-only event registration > appendBoardOpened refuses to write an unregistered type [0.41ms]
+(pass) log-only event registration > a throwing session.append is contained [0.10ms]
+[mpd-tui-test] info
+[mpd-tui-test] warn
+(pass) logging > never writes to stdout and falls back to stderr only for info/warn [3.18ms]
+
+packages/mpd-tui-plugin/test/plugin.test.ts:
+(pass) plugin contract > exports name / Config (type + schema) / apply and NO default export [0.05ms]
+(pass) plugin contract > every config key has a default in the schema [0.81ms]
+(pass) plugin contract > the schema rejects a wrong type instead of silently dropping it [0.30ms]
+(pass) plugin contract > resolveConfig defaults every key and repairs an invalid interval [0.30ms]
+(pass) T4-INERT-1: activation requires the inject form > a ctx WITHOUT inject registers nothing, even when get() would answer [23.27ms]
+(pass) T4-INERT-1: activation requires the inject form > with inject supported but no service composed, nothing is registered and nothing throws [0.58ms]
+(pass) T4-INERT-1: activation requires the inject form > apply survives a throwing ctx.get and a ctx without effect() [0.40ms]
+(pass) full composition (every service injected) > every seam activates through ctx.inject and reports an honest outcome [15.87ms]
+(pass) full composition (every service injected) > cleanup runs on the injected scope: status cleared, registrations released [11.60ms]
+(pass) full composition (every service injected) > each seam can be disabled by config, and disabling keeps apply inert [0.31ms]
+(pass) honest outcomes (no disposer-type inference) > a refused shortcut registration is reported refused, never confirmed [0.59ms]
+(pass) honest outcomes (no disposer-type inference) > a refused renderer registration is reported requested, never confirmed [0.46ms]
+(pass) honest outcomes (no disposer-type inference) > a missing decision grant with a no-op disposer is refused, and the disposer is not called as a probe [0.43ms]
+(pass) honest outcomes (no disposer-type inference) > a granted decision subscription is confirmed [0.37ms]
+(pass) honest outcomes (no disposer-type inference) > without tuiPluginHost the seam is absent and no refusal is claimed [12.02ms]
+(pass) honest outcomes (no disposer-type inference) > admin: the four intercept points are the only decision attempts [0.14ms]
+(pass) /mpd command grammar (bare = picker, value = direct, status = print) > bare /mpd uses the picker, then applies the chosen action [23.79ms]
+(pass) /mpd command grammar (bare = picker, value = direct, status = print) > bare /mpd falls back to the board when no dialog seam is composed [13.63ms]
+(pass) /mpd command grammar (bare = picker, value = direct, status = print) > direct actions and the unknown-action error [25.56ms]
+(pass) settings section disclosure (t21) > every mpd.jsonc-referencing hint states that a save is NOT bridged [0.18ms]
+(pass) settings section disclosure (t21) > the marker itself says the save does not rewrite the config file [0.03ms]
+
+packages/mpd-tui-plugin/test/state.test.ts:
+
+packages/mpd-tui-plugin/test/plugin.test.ts:
+
+ 37 pass
+ 0 fail
+ 302 expect() calls
+Ran 37 tests across 4 files. [273.00ms]
+[exit 0]

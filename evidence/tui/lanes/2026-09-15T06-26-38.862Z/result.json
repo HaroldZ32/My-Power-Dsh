@@ -1,0 +1,157 @@
+{
+  "slug": "tui-admission",
+  "ok": true,
+  "steps": {
+    "static": {
+      "ok": true,
+      "specRoot": "installed-payload",
+      "specDir": "/root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-harness-tui/dsh-tui/dsh-ecosystem-spec",
+      "profileVersion": "tui-admission/0.15",
+      "parse": "ok",
+      "projected": {
+        "apiVersion": "manifest.dsh/internal/v1alpha1",
+        "kind": "Component",
+        "metadata": {
+          "name": "com.mpd-dsh.mpd-tui",
+          "displayName": "@mpd-dsh/mpd-tui",
+          "version": "0.9.1"
+        },
+        "spec": {
+          "facets": [
+            {
+              "name": "host",
+              "activation": {
+                "apiVersion": "lifecycle.dsh/v1alpha1",
+                "kind": "FacetModule",
+                "spec": {
+                  "module": "packages/mpd-tui-plugin/dist/index.js"
+                }
+              },
+              "protocols": {
+                "requires": [
+                  {
+                    "apiVersion": "tui.dsh/v1alpha1",
+                    "kind": "DecisionEvents",
+                    "optional": true,
+                    "x-community-fallback": "Decision interception is skipped after one warning and nothing else degrades: the status line, transcript renderers, /settings section, full-screen board, command tree, shortcuts and dialogs all keep working. No input, rewind, session-switch or compact decision is intercepted or claimed without the permission grant, so the plugin stays fully usable on a host that never admits it."
+                  }
+                ]
+              },
+              "permissions": [
+                {
+                  "apiVersion": "community.dsh/v1alpha1",
+                  "kind": "Permission",
+                  "action": "session.input.intercept",
+                  "reason": "subscribe to the tui/input decision point; the subscription is attempted at most once with the tui.dsh/v1alpha1#DecisionEvents contract and is never activated while no grant exists",
+                  "spec": {
+                    "scope": "tui/input"
+                  }
+                },
+                {
+                  "apiVersion": "community.dsh/v1alpha1",
+                  "kind": "Permission",
+                  "action": "session.rewind.intercept",
+                  "reason": "subscribe to the tui/rewind-prompt decision point under the same optional DecisionEvents contract",
+                  "spec": {
+                    "scope": "tui/rewind-prompt"
+                  }
+                },
+                {
+                  "apiVersion": "community.dsh/v1alpha1",
+                  "kind": "Permission",
+                  "action": "session.switch.intercept",
+                  "reason": "subscribe to the tui/session-switch decision point under the same optional DecisionEvents contract",
+                  "spec": {
+                    "scope": "tui/session-switch"
+                  }
+                },
+                {
+                  "apiVersion": "community.dsh/v1alpha1",
+                  "kind": "Permission",
+                  "action": "session.compact.intercept",
+                  "reason": "subscribe to the tui/compact decision point under the same optional DecisionEvents contract",
+                  "spec": {
+                    "scope": "tui/compact"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "manifest": {
+        "id": "com.mpd-dsh.mpd-tui",
+        "manifestVersion": "0.15",
+        "entry": "packages/mpd-tui-plugin/dist/index.js",
+        "apiVersion": "v1alpha1",
+        "requiredContracts": [],
+        "optionalContracts": [
+          "tui.dsh/v1alpha1#DecisionEvents"
+        ],
+        "permissions": [
+          "session.input.intercept@tui/input",
+          "session.rewind.intercept@tui/rewind-prompt",
+          "session.switch.intercept@tui/session-switch",
+          "session.compact.intercept@tui/compact"
+        ],
+        "subscriptions": []
+      },
+      "structural": {
+        "provides": false,
+        "requires.services": false,
+        "findings": [],
+        "entryExists": true,
+        "entrySha256": "sha256:5dce2563fd0e3b20afede061297b9bfc9856593703974fac44f8642830b85e6f"
+      },
+      "validatePlugin": "ok",
+      "negotiation": {
+        "decision": "waiting_authorization",
+        "reasonCode": "PERMISSION_NOT_GRANTED",
+        "deniedPermissions": [
+          "session.input.intercept@tui/input",
+          "session.rewind.intercept@tui/rewind-prompt",
+          "session.switch.intercept@tui/session-switch",
+          "session.compact.intercept@tui/compact"
+        ]
+      },
+      "controls": {
+        "brokenSyntax": "SyntaxError",
+        "optionalWithoutFallback": "optional protocol requires a TUI fallback: tui.dsh/v1alpha1#DecisionEvents",
+        "unknownPermission": "permission is not admitted by the TUI profile: mpd-dsh.not-a-registered-permission"
+      },
+      "inputDigests": {
+        "manifest": "sha256:824b74f8a4f88e5b6e71200f9cc4b76183a91c446271cdc2122275503b7870db",
+        "manifestLib": "sha256:1041a84e010c5b6924d9d921e82719a63a54ae2a697d041de24c5a32b2ae6dce",
+        "manifestSchema": "sha256:78392a63585c202ca1fbd262aa17145a320ee99ba72f0a257f99daa752603b33",
+        "registry": "sha256:c3090dd129aadb06f87b56ad148dfbcec2ce4eed2404dda5eed9cf1dbae51f54",
+        "permissions": "sha256:1e2cfeaa860936f1608cb8a8bffdf6343de6f513645eb98f6765d72157d5a1a7",
+        "schemas": [
+          {
+            "name": "conformance-claim.schema.json",
+            "sha256": "sha256:447940843bd9324a8864a9cb0018a9a6bc1fd1834865d15419f1e6f85631834f"
+          },
+          {
+            "name": "effect-ledger-record.schema.json",
+            "sha256": "sha256:bfa0ea159daa1ab801053a946eb4c8f902cb96f83851502f7c3ae314d1ee75aa"
+          },
+          {
+            "name": "host-descriptor.schema.json",
+            "sha256": "sha256:4b76c43de2d7f8d0b8e171dd96a7a5c9c7732775e0f552e7345074bf95f5755e"
+          }
+        ],
+        "specProfileVersion": "tui-admission/0.15"
+      }
+    },
+    "live": {
+      "ok": true,
+      "state": "waiting_authorization",
+      "acceptable": true,
+      "forbidden": [],
+      "reason": "state waiting_authorization"
+    }
+  },
+  "sandboxRoot": "/root/dshProj/my-power-dsh/.mpd/recon/qa",
+  "manifestPath": "/root/dshProj/my-power-dsh/dsh-plugin.json",
+  "livePane": "plugins-check.pane.txt",
+  "descriptorPane": "plugins-descriptor.pane.txt"
+}

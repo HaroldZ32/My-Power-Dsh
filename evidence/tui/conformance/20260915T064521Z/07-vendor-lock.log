@@ -1,0 +1,14 @@
+=== VENDOR_LOCK / skills corpus state (authoritative checker) ===
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] FAIL - asset skills count drifted: 307 vs 301
+[verify-vendor] FAIL - asset skills treeSha mismatch
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[exit 1]
+fresh skills treeSha (verify-vendor algorithm, replicated): 88a20af40a1a5696c385bb8e8649825ef4589b4089a1543a0e1a8c5159daaba4
+fileCount: 307 (VENDOR_LOCK pins 301 — t7 added the QA lanes under skills/**)

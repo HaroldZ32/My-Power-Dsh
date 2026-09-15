@@ -1,0 +1,140 @@
+{
+  "task": "t4 — Implement the TUI plugin package packages/mpd-tui-plugin with every requested seam surface",
+  "attempt": 1,
+  "attemptId": "b6cff9b3-9bdf-4bb5-9861-c51775c86cd8",
+  "producedBy": "Senior Engineer",
+  "timestamp": "20260915T054343Z",
+  "artifact": {
+    "entry": "packages/mpd-tui-plugin/dist/index.js",
+    "moduleSpecifier": "@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js (owned by the bundle patch — this package ships NO cordis.patch.yml)",
+    "bytes": 93493,
+    "sha256": "695f68c4858745cc35544ac77dbdb87907d6991c62f9435661e1fc02264f77ac",
+    "selfContained": "only Node builtin imports remain in the bundle (schemastery + the mpd-dsh-adapter are inlined by bun build)",
+    "exports": [
+      "Config",
+      "apply",
+      "name",
+      "resolveConfig",
+      "workspaceResolver",
+      "no default export"
+    ]
+  },
+  "commands": [
+    {
+      "command": "rm -rf packages/mpd-tui-plugin/dist && bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js",
+      "exitCode": 0,
+      "log": "build.log",
+      "evidence": "clean-tree rebuild (dist removed first): 24 modules bundled, dist/index.js written"
+    },
+    {
+      "command": "node evidence/tui/plugin/20260915T054343Z/probe.mjs",
+      "exitCode": 0,
+      "log": "probe.json",
+      "evidence": "19 assertions against the BUILT entry: 19 passed, 0 failed"
+    },
+    {
+      "command": "bun run typecheck",
+      "exitCode": 0,
+      "log": "typecheck.log",
+      "evidence": "tsgo --noEmit over packages/*/src — exit 0, no error line"
+    },
+    {
+      "command": "bun test packages/mpd-tui-plugin",
+      "exitCode": 0,
+      "log": "test.log",
+      "evidence": "29 tests across 4 files: 29 pass, 0 fail, 238 assertions"
+    },
+    {
+      "command": "node scripts/verify-rows-parity.mjs",
+      "exitCode": 0,
+      "log": "row-resolution.log",
+      "evidence": "24 row ids match the bundle patch insert list, including mpd-tui -> the built artifact of this task"
+    }
+  ],
+  "acceptance": [
+    {
+      "criterion": "The package builds from a clean checkout with the existing toolchain and the built entry packages/mpd-tui-plugin/dist/index.js exists and is what the row resolves.",
+      "status": "passed",
+      "evidence": "build.log (dist deleted, rebuilt with bun, exit 0) + probe.json (loads the BUILT entry and asserts its exports) + row-resolution.log (the bundle patch row mpd-tui names exactly that path; its sha256 is identical in build.log, probe.json and row-resolution.log)"
+    },
+    {
+      "criterion": "The plugin contract holds: name/Config(type)/Config(schema)/apply, no default export, .js relative import suffixes, all config keys defaulted, ctx.effect cleanup, and no thrown error when every TUI service is absent.",
+      "status": "passed",
+      "evidence": "probe.json: name/Config/apply present, no default export, Config({}) defaults all 12 keys, a bare ctx apply() does not throw and logs one aggregate warning; test/plugin.test.ts covers the degraded composition (no logger, no effect(), throwing ctx.get, all services absent) and the ctx.effect cleanup; contract-check.log §3 audits the relative-import suffixes (only the vendored schemastery package directory is extensionless — documented in src/index.ts, src/settings.ts and both READMEs)"
+    },
+    {
+      "criterion": "Each of the seven UI seams calls ctx.get(service, false) and registers only when present; the decision-event attempt is wrapped so a refusal cannot break apply, and the refusal is logged once.",
+      "status": "passed",
+      "evidence": "probe.json + test/plugin.test.ts: all seven ids are probed, per-seam registration counts are asserted (status set, 11 renderers, 1 section, 1 scene, 3 shortcuts, 1 tree, dialogs facade), a disable-everything config registers nothing, and the four intercept points are attempted with the refusal logged exactly once and disclosed"
+    },
+    {
+      "criterion": "No cordis.patch.yml is added inside the package and no loader entry id is introduced by this task.",
+      "status": "passed",
+      "evidence": "contract-check.log §1-2: find/grep show no patch file and no insert: row in the package, package.json has no dsh.bundle key, and every path this task changed lives under packages/mpd-tui-plugin/ or evidence/tui/plugin/"
+    },
+    {
+      "criterion": "bun run typecheck and bun test packages/mpd-tui-plugin pass, with evidence (logs) under evidence/tui/plugin/<timestamp>/.",
+      "status": "passed",
+      "evidence": "typecheck.log (exit 0) and test.log (29 pass / 0 fail / exit 0) in evidence/tui/plugin/20260915T054343Z/"
+    }
+  ],
+  "changedPaths": [
+    "evidence/tui/plugin/20260915T054343Z/build.log",
+    "evidence/tui/plugin/20260915T054343Z/contract-check.log",
+    "evidence/tui/plugin/20260915T054343Z/probe.err",
+    "evidence/tui/plugin/20260915T054343Z/probe.json",
+    "evidence/tui/plugin/20260915T054343Z/probe.mjs",
+    "evidence/tui/plugin/20260915T054343Z/result.json",
+    "evidence/tui/plugin/20260915T054343Z/row-resolution.log",
+    "evidence/tui/plugin/20260915T054343Z/test.log",
+    "evidence/tui/plugin/20260915T054343Z/typecheck.log",
+    "packages/mpd-tui-plugin/README.md",
+    "packages/mpd-tui-plugin/README.zh-CN.md",
+    "packages/mpd-tui-plugin/dist/index.js",
+    "packages/mpd-tui-plugin/package.json",
+    "packages/mpd-tui-plugin/skills/mpd-tui/SKILL.md",
+    "packages/mpd-tui-plugin/src/command-trees.ts",
+    "packages/mpd-tui-plugin/src/commands.ts",
+    "packages/mpd-tui-plugin/src/decisions.ts",
+    "packages/mpd-tui-plugin/src/dialogs.ts",
+    "packages/mpd-tui-plugin/src/host.ts",
+    "packages/mpd-tui-plugin/src/index.ts",
+    "packages/mpd-tui-plugin/src/log.ts",
+    "packages/mpd-tui-plugin/src/registration.ts",
+    "packages/mpd-tui-plugin/src/renderers.ts",
+    "packages/mpd-tui-plugin/src/sanitize.ts",
+    "packages/mpd-tui-plugin/src/scenes.ts",
+    "packages/mpd-tui-plugin/src/session-events.d.ts",
+    "packages/mpd-tui-plugin/src/settings.ts",
+    "packages/mpd-tui-plugin/src/shortcuts.ts",
+    "packages/mpd-tui-plugin/src/state.ts",
+    "packages/mpd-tui-plugin/src/status.ts",
+    "packages/mpd-tui-plugin/src/types.ts",
+    "packages/mpd-tui-plugin/test/plugin.test.ts",
+    "packages/mpd-tui-plugin/test/state.test.ts",
+    "packages/mpd-tui-plugin/themes/mpd-tui.json"
+  ],
+  "knownLimits": [
+    "The decision-event seam is READY BUT NOT ACTIVATED: tui.dsh/v1alpha1#DecisionEvents cannot be registered by a profile-installed plugin (admission is token-gated and unreachable at host revision b246411). The attempt is wrapped, the refusal is logged once, and no input/rewind/session-switch/compact interception is claimed. admit()/admitInternal/the test-only token are never used, and no identity is faked.",
+    "The /settings section declares the real .mpd/mpd.jsonc knobs but edits them under the harness settings namespace mpd (registered so the screen does not render the section as unavailable). No bridge to .mpd/mpd.jsonc ships in this wave — disclosed in src/settings.ts, both READMEs and the packaged skill.",
+    "The packaged skill packages/mpd-tui-plugin/skills/mpd-tui/SKILL.md is an asset only: the bundle corpus is served from <bundle>/skills by mpd-bootstrap, so this row does not register it.",
+    "Web-only surfaces (agent-teams sidebar, workmate tab, bundle floater) have no TUI rendering face; the board/status/dialogs are equivalents, not parity. The web profile is untouched (this row is inert without TUI services).",
+    "Live TUI rendering (panels lane), the manifest/admission lanes, the seam-API audit against host source and the repo regression sweep are other tasks lanes (t7/t8/t9/t10) — this task proves the artifact, the plugin contract, the degraded composition and the refusal containment only.",
+    "The Config schema and the settings namespace schema come from the schemastery copy the bundle already vendors at packages/mpd-agent-teams-plugin/_deps/schemastery (the one relative specifier that names a package directory, resolved through its package.json). The built bundle inlines it, so the shipped artifact performs no runtime module resolution beyond Node builtins.",
+    "The log-only session record (mpd-tui/board-opened) is appended only after registration.ts VERIFIED that a reachable dsh-session copy knows the type; in a layout where no anchor resolves the live copy the record is skipped by design (iron rule 2) rather than risking an unresumable session."
+  ],
+  "correction": {
+    "recorded": "2026-09-15 (added after the fact; the acceptance array below is left EXACTLY as submitted — history is annotated, not rewritten)",
+    "status": "THE RECORD BELOW IS NOT VALID AS A VERIFICATION OF THE PACKAGE IN A REAL BOOT",
+    "whatIsWrong": [
+      "criterion 3 (\"seven seams register when present, refusal logged once\") is recorded as passed on the strength of unit tests whose fake context returned services from ctx.get() unconditionally. In a real dsh-tui boot the artifact registered NOTHING: a service is only reachable from a context that INJECTED it, so an inject-free row gets undefined for commands, settings and every tui* service (measured with instrumented rows: mount-instrumentation/FINDING.md, report-no-inject.json vs report-with-inject.json).",
+      "criterion 2's \"no thrown error when every TUI service is absent\" was true but empty: the package was equally inert WITH the services present.",
+      "the artifact hash recorded below (695f68c4…) is the pre-repair build; the current, repaired artifact is 5dce2563fd0e3b20afede061297b9bfc9856593703974fac44f8642830b85e6f under t23."
+    ],
+    "correctedBy": [
+      "t23 (repair, sourceFindingIds [T4-INERT-1, T10-F1, T4-CONVENTIONS-1]) — evidence/tui/plugin/20260915T060934Z/: deferred ctx.inject per seam, inject-modelling tests, six-boot mount lane with pane captures, corrected t4 record.",
+      "this directory's CORRECTION.md (plain-language summary) and mount-instrumentation/FINDING.md (the measurement that first proved the artifact inert)."
+    ],
+    "plainLanguage": "INERT IN A REAL BOOT: the first version of packages/mpd-tui-plugin registered nothing when mounted in a real dsh-tui profile. Its gates passed because the unit-test fakes did not model how the host exposes services (a service must be INJECTED to be reachable). Anyone reading criterion 3 below must read this block first."
+  }
+}

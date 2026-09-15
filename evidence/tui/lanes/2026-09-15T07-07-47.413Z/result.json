@@ -1,0 +1,51 @@
+{
+  "slug": "tui-distribution",
+  "ok": true,
+  "revision": {
+    "path": "packages/mpd-tui-plugin/dist/index.js",
+    "sha256": "5dce2563fd0e3b20afede061297b9bfc9856593703974fac44f8642830b85e6f",
+    "bytes": 98883,
+    "mtimeLocal": "2026-09-15T06:23:20.169Z",
+    "mtimeUtc": "2026-09-15T06:23:20.169Z"
+  },
+  "revisionDelta": {
+    "changed": false,
+    "before": "5dce2563fd0e3b20afede061297b9bfc9856593703974fac44f8642830b85e6f",
+    "after": "5dce2563fd0e3b20afede061297b9bfc9856593703974fac44f8642830b85e6f",
+    "reason": "unchanged across the run"
+  },
+  "manifestDigest": "84ed4a5d5aac3fb07949f0f62bb7e7afdfa1e96de2c19de02974381eeb1201c9",
+  "steps": {
+    "findings": [],
+    "steps": [
+      {
+        "name": "install",
+        "command": "pnpm install --frozen-lockfile",
+        "status": 0
+      },
+      {
+        "name": "build",
+        "command": "pnpm build",
+        "status": 0
+      },
+      {
+        "name": "check",
+        "command": "/root/.nvm/versions/node/v24.16.0/lib/node_modules/bun/bin/bun.exe /root/dshProj/my-power-dsh/.mpd/recon/qa/distribution-protocol/packages/conformance/lib/cli.js /root/dshProj/my-power-dsh/dsh-distribution.json",
+        "status": 0
+      }
+    ],
+    "fullyValidated": true,
+    "cliReport": {
+      "valid": true,
+      "complete": true,
+      "issues": [],
+      "unchecked": []
+    }
+  },
+  "descriptor": {
+    "path": "dsh-distribution.json",
+    "id": "urn:dsh:distribution:mpd:my-power-dsh",
+    "version": "0.9.1"
+  },
+  "validation": "the protocol's own CLI validated the descriptor"
+}

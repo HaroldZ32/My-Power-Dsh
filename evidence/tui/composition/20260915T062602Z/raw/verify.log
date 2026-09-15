@@ -1,0 +1,6 @@
+=== bun run typecheck ===
+$ tsgo --noEmit
+exit=0
+=== node -e structure check ===
+manifest structure ok
+exit=0

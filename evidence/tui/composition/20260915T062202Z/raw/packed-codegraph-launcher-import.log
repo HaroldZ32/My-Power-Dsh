@@ -1,0 +1,5 @@
+=== import the packed codegraph launcher (its own imports must resolve) ===
+IMPORT FAILED: ERR_MODULE_NOT_FOUND Cannot find module '/root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-mcp-codegraph/daemon-policy.mjs' imported from /root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-mcp-codegraph/launch.mjs
+=== source import graph of that launcher ===
+35:import { resolveCodegraphBinary } from "../mpd-mcp-shared/bin-resolve.mjs"
+36:import { applyDaemonPolicy } from "./daemon-policy.mjs"

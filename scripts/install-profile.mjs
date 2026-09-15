@@ -168,6 +168,14 @@ function buildPlan(o) {
       id: "mpd-bootstrap", name: p("packages/mpd-bootstrap-plugin/dist/index.js"),
       config: {}
     },
+    {
+      // DSH-TUI edition (t5): the TUI-native surface row. Mirrors the bundle
+      // patch verbatim; it is NOT disabled here — under a web/headless profile
+      // the plugin probes every tui* seam with ctx.get(id, false) and degrades
+      // with a warning instead of failing the row.
+      id: "mpd-tui", name: p("packages/mpd-tui-plugin/dist/index.js"),
+      config: {}
+    },
     // B9: every row mirrors the bundle patch verbatim (same id, entry and empty
     // config) and in the same order (packages/mpd-bundle/cordis.patch.yml).
     // Row-id parity with the patch insert list is enforced by

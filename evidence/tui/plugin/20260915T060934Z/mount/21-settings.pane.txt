@@ -1,0 +1,52 @@
+
+  Plugin settings                                                                                                                               1/26
+  ╭─ MPD bundle (mpd) ─────────────────────────────────────────────────────────────────────────────────────────────────────── [applies on restart] ╮
+  │ ❯ Inline diff limit                                                                                                                      20000 │
+  │   Comment checker                                                                                                                         [✓ ] │
+  │   Ultrawork rounds                                                                                                                           6 │
+  │   Memory backend                                                                                                                       ‹ git › │
+  │   Team state directory                                                                                                               .mpd/team │
+  │   Boulder directory                                                                                                                       .mpd │
+  ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+                                                                                     
+  ╭─ dsh-tui (dsh-tui) ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+  │   Language                                                                                                                         ‹ English › │
+  │   Fullscreen mode                                                                                                                         [✓ ] │
+  │   Terminal image previews                                                                                                                 [✓ ] │
+  │   Diff layout                                                                                                              ‹ Auto (by width) › │
+  │   Thinking display                                                                                                     ‹ Preview (2-3 lines) › │
+  │   Tool background                                                                                                                     ‹ None › │ 
+  │   Transcript gutter                                                                                                          ‹ Turn timeline › │
+  │   Page margin                                                                                                                       ‹ Normal › │
+  │   Fold terminal command                                                                                                                   [  ] │
+  │   Session name chip                                                                                                                       [  ] │
+  │   Fullscreen draft editor                                                                                                                 [✓ ] │
+  │   Smooth streaming                                                                                                                        [✓ ] │
+  │   Auto recap on open                                                                                                                      [✓ ] │
+  │   Default reasoning effort                                                                                                             ‹ Max › │
+  │   Whale art                                                                                                                               [✓ ] │
+  │   Welcome whale idle                                                                                                                      [✓ ] │
+  │   Minimal mode                                                                                                                            [  ] │
+  │   Status bar                                                                                                                                 › │
+  │   Shortcuts                                                                                                                                  › │
+  │   Session                                                                                                                                    › │
+  ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+                                                                                                                                                    
+                                                                                                                                                    
+                                                                                                                                                    
+                                                                                                                                                    
+               MCP] Auto-synced 1 file(s) in 13msince last run                                                                                      
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+                                      
+  mpd.jsonc hashline.maxDiffChars — not bridged: a save here does not rewrite .mpd/mpd.jsonc          Enter open/edit/toggle (auto-saves) · Esc exit
+

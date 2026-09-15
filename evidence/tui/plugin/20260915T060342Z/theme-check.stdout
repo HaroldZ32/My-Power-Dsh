@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "checks": [
+    "PASS base is one of light|dark|dark-ansi (dark)",
+    "PASS name is not a reserved theme name (mpd-tui)",
+    "PASS no legacy/retired key is used ((none))",
+    "PASS every colour key is a current semantic key ((none))",
+    "PASS accent + accentShimmer present (the legacy pair that was renamed) (undefined)",
+    "PASS claude/claudeShimmer absent (undefined)"
+  ]
+}

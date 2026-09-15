@@ -1,0 +1,33 @@
+=== R1 bun run typecheck ===
+$ tsgo --noEmit
+[exit 0]
+
+=== R2 bun test packages ===
+packages/mpd-hashline-plugin/test/hashline.test.ts:
+
+packages/mpd-hashline-plugin/test/tool-schema.test.ts:
+
+packages/mpd-bootstrap-plugin/test/bootstrap.test.ts:
+
+packages/mpd-comment-checker-plugin/test/comment-checker.test.ts:
+
+ 547 pass
+ 0 fail
+ 4261 expect() calls
+Ran 547 tests across 110 files. [19.74s]
+[exit 0]
+
+=== R4 node scripts/verify-rows-parity.mjs ===
+[verify-rows-parity] ok: 24 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)
+[exit 0]
+
+=== R5 node skills/dsh-qa/scripts/preset-conformance.mjs ===
+[preset-conformance] ok=true -> /root/dshProj/my-power-dsh/evidence/dsh-qa/preset-conformance/2026-09-15T06-48-25.526Z
+  conformance: {"ok":true,"checked":31,"schemaFree":6,"parity":{"reference":31,"ours":31,"missing":[],"extra":[]},"problems":[]}
+  auth: {"ok":true,"tokenSeen":true,"cookieSession":true}
+  sessionCreate: {"ok":true,"status":200,"sessionId":"session-a7ba2606-2584-4911-9d3e-5f0f23f5976b","agentPreset":"mpd"}
+  sessionHeader: {"ok":true,"agentPreset":"mpd","log":"/tmp/mpd-preset-main-VqHMTa/home/sessions/--tmp-mpd-preset-main-VqHMTa-ws--/session-a7ba2606-2584-4911-9d3e-5f0f23f5976b/session.v3.jsonl.zstd"}
+  bootLog: {"ok":true,"signatures":[]}
+  negativeControl: {"ok":true,"code":"agent-preset/invalid","message":"agent-presets: preset \"mpd\" failed to mount: failed to apply loader entry persona (@deepseek-ai/dsh-persona): invalid config:\n  - $.prefix missing required value (at prefix) (/tmp/mpd-preset-control-2026-09-15T06-48-25.526Z/mpd/agent.cordis.yml)
+[preset-conformance] PASS
+[exit 0]

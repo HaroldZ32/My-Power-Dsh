@@ -1,0 +1,6 @@
+=== NEGATIVE CONTROL B: the pack script still CARRIES each loud-FAIL branch ===
+must not silently drop a shipped asset                     count=1
+does not resolve in the source tree                        count=1
+the patch mounts packages/                                 count=1
+a bundle must never ship a mounted row without its module  count=1
+is outside packages/                                       count=1

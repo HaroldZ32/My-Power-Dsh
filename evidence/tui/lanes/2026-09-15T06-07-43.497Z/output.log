@@ -1,0 +1,4 @@
+sandbox root=/root/dshProj/my-power-dsh/.mpd/recon/qa explicit=true warm=true fresh=false
+dump-config exit=0 bundles=[] rowComposed=true
+statusLine=false counters=false crashes=[]
+preset=mpd session=a9eea0a3-aa4e-45e2-8d4d-3856b0b606d1 isolationOffenders=1

@@ -1,0 +1,11 @@
+=== t22 re-verification on the CURRENT revision (stale re-dispatch check) ===
+manifest digest now: 824b74f8a4f88e5b6e71200f9cc4b76183a91c446271cdc2122275503b7870db
+t22 completion digest was: 7701c48c066c528046d361752ff72671cc1093340260e144f8390345248fe7a7
+
+=== verify #1: bun run typecheck ===
+$ tsgo --noEmit
+exit=0
+
+=== verify #2: contract node -e structure check ===
+manifest structure ok
+exit=0

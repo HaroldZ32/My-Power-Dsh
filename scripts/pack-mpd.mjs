@@ -5,7 +5,7 @@
 // name '@mpd-dsh/mpd/packages/...' and every path-bearing value via the loader's
 // baseUrl (the profile directory) — no checkout-absolute paths anywhere.
 import { chmodSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
-import { dirname, join } from "node:path"
+import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)))
@@ -40,6 +40,15 @@ const PLUGIN_PKGS = [
   // mpd-team-compact-plugin. Its discovery root `<bundle>/extensions/` is copied by
   // cpAssets() and declared in the packed manifest's files/exports below.
   "mpd-ext-plugin",
+  // mpd-tui-plugin is MOUNTED by the bundle patch (row `mpd-tui`, the DSH-TUI
+  // edition) and was missing from this list: the packed tree would omit
+  // `packages/mpd-tui-plugin/dist/` while `npm run pack` still exited 0, and the
+  // packed boot would die ERR_MODULE_NOT_FOUND on that row — the same
+  // silent-omission class the comments above record for mpd-team-compact-plugin and
+  // mpd-ext-plugin. Adding the entry fixes this package; the whole CLASS is gated by
+  // regression command R11 in .mpd/plans/dsh-tui-edition.md, which asserts every
+  // `@mpd-dsh/mpd/packages/<pkg>/dist/index.js` row of the bundle patch is listed here.
+  "mpd-tui-plugin",
   "mpd-bundle-plugin"
 ]
 const MCP_PKGS = ["mpd-mcp-astgrep", "mpd-mcp-gitbash", "mpd-mcp-lsp", "mpd-mcp-codegraph"]
@@ -105,6 +114,32 @@ function cpAssets() {
   mkdirSync(join(outDir, "scripts"), { recursive: true })
   cpSync(join(repoRoot, "scripts", "install-mcp.mjs"), join(outDir, "scripts", "install-mcp.mjs"))
   cpSync(join(repoRoot, "scripts", "mpd-ext.mjs"), join(outDir, "scripts", "mpd-ext.mjs"))
+  // Per-package assets that are NOT under dist/. cpDist() ships `dist/` only, so a
+  // package whose runtime or distribution surface includes sibling asset directories
+  // needs them copied explicitly — and the omission is INVISIBLE in a checkout install
+  // (which reads the repo directly), which is why the class needs a named entry here
+  // and a gate rather than trust. The TUI package (row `mpd-tui`) is the measured
+  // instance: it ships `themes/mpd-tui.json` (the host-format theme asset) and a
+  // packaged skill `skills/mpd-tui/SKILL.md`, and a packed bundle that carried only
+  // `dist/` would drop both while `npm run pack` still exited 0.
+  // READER NOTE: the key below is an asset-table key, NOT a PLUGIN_PKGS entry — the
+  // integrity signal for the array is `PLUGIN_PKGS`'s own element count (one
+  // mpd-tui-plugin element, asserted by R11 and by the attribution check), so a raw
+  // double-quoted grep of this package name on this file legitimately prints 2 (line
+  // 51's array element + this table key), never 1. (This note spells the name without
+  // double quotes on purpose, so it does not itself raise that count.)
+  for (const [p, dirs] of Object.entries({
+    "mpd-tui-plugin": ["themes", "skills"],
+  })) {
+    for (const dir of dirs) {
+      const src = join(repoRoot, "packages", p, dir)
+      if (!existsSync(src)) {
+        console.error("[pack-mpd] FAIL: missing " + src + " — the " + p + " package ships it; a packed bundle must not silently drop a shipped asset")
+        process.exit(1)
+      }
+      cpSync(src, join(outDir, "packages", p, dir), { recursive: true })
+    }
+  }
   // Per-package bilingual README pair for every shipped plugin/MCP package
   // (the adopted mpd-agent-teams-plugin is copied wholesale above, READMEs included).
   for (const p of [...PLUGIN_PKGS, ...MCP_PKGS]) {
@@ -113,19 +148,75 @@ function cpAssets() {
       if (existsSync(s)) cpSync(s, join(outDir, "packages", p, f))
     }
   }
-  // B8 (wave 2): the two MCP rows launch <pkg>/launch.mjs, which resolves the
+  // B8 (wave 2) + t25: the MCP rows launch <pkg>/launch.mjs, which resolves the
   // binary bundle-relatively and hands it to the adopted server. A packed bundle
-  // that omits a launcher ships a row that cannot start, so this is a hard FAIL
-  // (the new failure mode t1 §5 item 4 says the gate must catch).
+  // that omits a launcher — OR any module the launcher imports statically — ships a
+  // row that cannot start while `npm run pack` still exits 0 (measured: the packed
+  // `mpd-mcp-codegraph/launch.mjs:36` imports `./daemon-policy.mjs`, which the packed
+  // tree lacked; `node --input-type=module -e "import('…/launch.mjs')"` then failed
+  // ERR_MODULE_NOT_FOUND while pack had exited 0). So the closure is walked, not
+  // guessed: every statically imported RELATIVE module comes along, recursively, and
+  // a specifier that does not resolve in the SOURCE tree is a hard FAIL because it
+  // means the walker (or the source) is wrong — never a silent omission.
   cpSync(join(repoRoot, "packages", "mpd-mcp-shared"), join(outDir, "packages", "mpd-mcp-shared"), { recursive: true, filter: (s) => !/\.test\.mjs$/.test(s) })
-  for (const p of ["mpd-mcp-astgrep", "mpd-mcp-codegraph"]) {
-    const launch = join(repoRoot, "packages", p, "launch.mjs")
-    if (!existsSync(launch)) {
-      console.error("[pack-mpd] FAIL: missing " + launch + " — the " + p + " MCP row launches it; a bundle must never ship without it")
+  const packagesRoot = join(repoRoot, "packages")
+  /** Copy `packages/<pkg>/<file>` plus its static relative-import closure into the packed tree. */
+  const copyLauncherClosure = (absFile, seen) => {
+    if (!existsSync(absFile)) {
+      console.error("[pack-mpd] FAIL: missing " + absFile + " — a bundle must never ship a mounted row without its module")
       process.exit(1)
     }
-    cpSync(launch, join(outDir, "packages", p, "launch.mjs"))
+    const rel = relative(packagesRoot, absFile)
+    if (rel.startsWith("..")) {
+      console.error("[pack-mpd] FAIL: " + absFile + " is outside packages/ — refusing to pack it")
+      process.exit(1)
+    }
+    const outFile = join(outDir, "packages", rel)
+    mkdirSync(dirname(outFile), { recursive: true })
+    cpSync(absFile, outFile)
+    if (seen.has(absFile)) return
+    seen.add(absFile)
+    for (const spec of staticRelativeImports(readFileSync(absFile, "utf8"))) {
+      const target = resolve(dirname(absFile), spec)
+      if (!existsSync(target)) {
+        console.error("[pack-mpd] FAIL: " + rel + " imports " + spec + " which does not resolve in the source tree — refusing to ship a broken closure")
+        process.exit(1)
+      }
+      if (relative(packagesRoot, target).startsWith("..")) {
+        console.error("[pack-mpd] FAIL: " + rel + " imports " + spec + " outside packages/ — the closure walker cannot ship it")
+        process.exit(1)
+      }
+      copyLauncherClosure(target, seen)
+    }
   }
+  for (const p of MCP_PKGS) {
+    if (existsSync(join(repoRoot, "packages", p, "launch.mjs"))) {
+      copyLauncherClosure(join(repoRoot, "packages", p, "launch.mjs"), new Set())
+    }
+    // Licensing completeness for a package that vendors a third-party binary: the
+    // licence/notice files travel with the copy or the distribution is incomplete.
+    for (const f of ["LICENSE", "NODE-RUNTIME-LICENSES.md", "NOTICE"]) {
+      if (existsSync(join(repoRoot, "packages", p, f))) cpSync(join(repoRoot, "packages", p, f), join(outDir, "packages", p, f))
+    }
+  }
+  // Positive closure check against the PATCH itself: every `packages/<pkg>/<file>`
+  // path a mounted row executes must exist in the packed tree (t25 acceptance).
+  const patchText = readFileSync(devPatch, "utf8")
+  for (const m of patchText.matchAll(/packages\/([a-z0-9-]+)\/(launch\.mjs|dist\/[A-Za-z0-9._/-]+\.js)/g)) {
+    const packed = join(outDir, "packages", m[1], m[2])
+    if (!existsSync(packed)) {
+      console.error("[pack-mpd] FAIL: the patch mounts packages/" + m[1] + "/" + m[2] + " but the packed tree has no such file")
+      process.exit(1)
+    }
+  }
+}
+
+/** Relative static-import specifiers of an ESM module (import/export ... from "./x.mjs"). */
+function staticRelativeImports(text) {
+  const specs = new Set()
+  for (const m of text.matchAll(/(?:^|\n)\s*(?:import|export)[^\n]*?from\s*["'](\.[^"']+)["']/g)) specs.add(m[1])
+  for (const m of text.matchAll(/(?:^|\n)\s*import\s*["'](\.[^"']+)["']/g)) specs.add(m[1])
+  return [...specs]
 }
 
 function decouplePatch(srcPatch) {

@@ -1,0 +1,179 @@
+{
+  "apiVersion": "distribution.dsh.dev/v1alpha1",
+  "kind": "DistributionDescriptor",
+  "distribution": {
+    "id": "urn:dsh:distribution:mpd:my-power-dsh",
+    "version": "0.9.1"
+  },
+  "displayName": "my-power-dsh — DSH plugin bundle (web edition + dsh-tui edition)",
+  "protocols": [
+    {
+      "apiVersion": "composition.distribution.dsh.dev/v1alpha1",
+      "kind": "EnvironmentComposition",
+      "required": false,
+      "spec": {
+        "components": [
+          {
+            "id": "host-base",
+            "ref": "pkg:npm/@deepseek-ai/dsh-base"
+          },
+          {
+            "id": "host-tui",
+            "ref": "pkg:npm/@deepseek-harness-tui/dsh-tui@0.10.1"
+          },
+          {
+            "id": "bundle",
+            "ref": "urn:dsh:distribution:mpd:my-power-dsh@0.9.1",
+            "dependsOn": [
+              "host-base"
+            ]
+          },
+          {
+            "id": "plugins",
+            "ref": "urn:dsh:component:mpd:plugins@0.9.1",
+            "dependsOn": [
+              "bundle"
+            ]
+          },
+          {
+            "id": "mcp-servers",
+            "ref": "urn:dsh:component:mpd:mcp-servers@0.9.1",
+            "dependsOn": [
+              "bundle"
+            ]
+          },
+          {
+            "id": "skills-corpus",
+            "ref": "urn:dsh:component:mpd:skills-corpus@0.9.1",
+            "dependsOn": [
+              "bundle"
+            ]
+          },
+          {
+            "id": "web-client",
+            "ref": "urn:dsh:component:mpd:web-client@0.9.1",
+            "dependsOn": [
+              "bundle"
+            ]
+          },
+          {
+            "id": "tui-edition",
+            "ref": "urn:dsh:component:mpd:tui-edition@0.9.1",
+            "dependsOn": [
+              "bundle",
+              "host-tui"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "layout.distribution.dsh.dev/v1alpha1",
+      "kind": "ManagedLayout",
+      "required": true,
+      "spec": {
+        "resources": [
+          {
+            "id": "workspace-config",
+            "role": "config",
+            "location": {
+              "type": "uri",
+              "value": "dsh-workspace:.mpd/mpd.jsonc"
+            },
+            "ownership": "exclusive",
+            "portability": "portable",
+            "sensitivity": "private"
+          },
+          {
+            "id": "workspace-state",
+            "role": "state",
+            "location": {
+              "type": "uri",
+              "value": "dsh-workspace:.mpd"
+            },
+            "ownership": "exclusive",
+            "portability": "conditional",
+            "sensitivity": "private"
+          },
+          {
+            "id": "codegraph-cache",
+            "role": "cache",
+            "location": {
+              "type": "uri",
+              "value": "dsh-workspace:.codegraph"
+            },
+            "ownership": "exclusive",
+            "portability": "nonportable",
+            "sensitivity": "private"
+          },
+          {
+            "id": "workmate-library",
+            "role": "data",
+            "location": {
+              "type": "uri",
+              "value": "dsh-home:.mpd/workmate"
+            },
+            "ownership": "shared",
+            "portability": "conditional",
+            "sensitivity": "private"
+          },
+          {
+            "id": "workspace-extensions",
+            "role": "extensions",
+            "location": {
+              "type": "uri",
+              "value": "dsh-workspace:.mpd/extensions"
+            },
+            "ownership": "exclusive",
+            "portability": "portable",
+            "sensitivity": "private"
+          },
+          {
+            "id": "user-extensions",
+            "role": "extensions",
+            "location": {
+              "type": "uri",
+              "value": "dsh-home:.mpd/extensions"
+            },
+            "ownership": "shared",
+            "portability": "portable",
+            "sensitivity": "private"
+          },
+          {
+            "id": "bundle-extensions",
+            "role": "extensions",
+            "location": {
+              "type": "uri",
+              "value": "dsh-bundle:extensions"
+            },
+            "ownership": "exclusive",
+            "portability": "portable",
+            "sensitivity": "public"
+          },
+          {
+            "id": "bundle-install",
+            "role": "data",
+            "location": {
+              "type": "uri",
+              "value": "dsh-profile:node_modules/@mpd-dsh/mpd"
+            },
+            "ownership": "exclusive",
+            "portability": "nonportable",
+            "sensitivity": "public"
+          },
+          {
+            "id": "credentials",
+            "role": "secrets",
+            "location": {
+              "type": "uri",
+              "value": "dsh-external:host-managed-credential-store"
+            },
+            "ownership": "external",
+            "portability": "external",
+            "sensitivity": "secret"
+          }
+        ]
+      }
+    }
+  ]
+}

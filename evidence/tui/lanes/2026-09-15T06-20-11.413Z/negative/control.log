@@ -1,0 +1,13 @@
+control.ok=false (must be false)
+[
+  {
+    "surface": "negative-control",
+    "step": "boot",
+    "source": "pane",
+    "pattern": "/MPD-PANELS-CONTROL-CANNOT-APPEAR/",
+    "label": "impossible expectation on the real pane",
+    "rendered": false,
+    "sourceChars": 2182,
+    "paneChars": 2182
+  }
+]

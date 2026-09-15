@@ -172,6 +172,7 @@ workmate library (`~/.mpd/workmate/`) and each workspace's `.mpd/` state stay yo
 |---|---|
 | [`docs/user-guide.md`](./docs/user-guide.md) | Install/uninstall, the preset, tools, specialists, workmates, teams, the GUI, configuration, extensions, troubleshooting |
 | [`docs/extensions.md`](./docs/extensions.md) | The extension developer guide: the contract, the four kinds, the CLI |
+| [`docs/tui.md`](./docs/tui.md) | The DSH-TUI edition: install, TUI-native surfaces, admission + distribution artifacts, compatibility ledger, NOT-CLAIMED list |
 | [`docs/architecture.md`](./docs/architecture.md) | How the bundle is assembled and mounts: boot chain, plugin inventory, state layout |
 | [`docs/development.md`](./docs/development.md) | Building, testing, QA gates, packing and releasing this repository |
 | [`docs/index.md`](./docs/index.md) | The documentation hub and reading order |

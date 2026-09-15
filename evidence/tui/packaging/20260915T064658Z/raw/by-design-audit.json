@@ -1,0 +1,64 @@
+{
+  "task": "t25 (completed, attempt 2) \u2014 by-design audit recorded in THIS task's evidence",
+  "provenance": "captain-directed evidence completion after t25 went terminal (mail requirement 3: 'record it in t25's evidence, not just in a message'). Evidence-only; no product file touched. Same treatment the captain applied to evidence/tui/composition/20260915T061519Z/ (captain-directed pass indexed by t14).",
+  "recordedAt": "2026-09-15T06:55:24Z",
+  "derivedFrom": "the CURRENT revision (packed tree dist/mpd-package from this task's own pack run + source tree)",
+  "crossReference": "the same five items were first recorded in evidence/tui/composition/20260915T062202Z/PACKAGING.md section 4 (discovery pass); this file re-derives them on the revision t25 measured so t25's own evidence is self-contained",
+  "byDesign": {
+    "perPackagePackageJsonAbsent": {
+      "count": 21,
+      "packages": [
+        "mpd-bootstrap-plugin",
+        "mpd-boulder-plugin",
+        "mpd-bundle",
+        "mpd-bundle-plugin",
+        "mpd-comment-checker-plugin",
+        "mpd-config-plugin",
+        "mpd-dsh-adapter-plugin",
+        "mpd-ext-plugin",
+        "mpd-hashline-plugin",
+        "mpd-mcp-astgrep",
+        "mpd-mcp-gitbash",
+        "mpd-mcp-lsp",
+        "mpd-memory-plugin",
+        "mpd-modelchain-plugin",
+        "mpd-qa-roles-probe",
+        "mpd-roles-plugin",
+        "mpd-team-compact-plugin",
+        "mpd-tools-plugin",
+        "mpd-tui-plugin",
+        "mpd-ulw-plugin",
+        "mpd-workmate-plugin"
+      ],
+      "why": "the packed rows resolve through the ROOT packed manifest's \"./packages/*\" export and the root declares \"type\": \"module\", so no sub-package manifest is needed; absent for every plugin package, by design."
+    },
+    "bundleDirAtPackageRoot": {
+      "packedPachAtRoot": true,
+      "packedRootReadmes": [
+        "README.md",
+        "README.zh-CN.md"
+      ],
+      "packagesMpdBundleInPacked": false,
+      "why": "packages/mpd-bundle is the layer itself: its patch ships as <outDir>/cordis.patch.yml and the root README pair ships at <outDir>/, so the directory is intentionally not copied as a package."
+    },
+    "mpdQaRolesProbe": {
+      "inPackedTree": false,
+      "why": "QA-only probe, mounted by tests/overlays/roles-probe.yml, never by the shipped patch \u2014 deliberately never shipped."
+    },
+    "filteredDevTest": {
+      "binResolveTestInPacked": false,
+      "binResolveInPacked": true,
+      "why": "mpd-mcp-shared is copied wholesale with a filter that drops *.test.mjs (dev-only); the runtime module bin-resolve.mjs ships."
+    },
+    "lspOverlay": {
+      "inPackedTree": false,
+      "inSourceTree": true,
+      "referencedByBuildScript": [
+        "// --- mpd LSP overlay: in-repo patched copies of the upstream lsp-core files ---",
+        "// The overlay lives at packages/mpd-mcp-lsp/overlay/lsp/ and carries a"
+      ],
+      "why": "packages/mpd-mcp-lsp/overlay/ is a BUILD-TIME input for scripts/build-mcp.mjs (patched copies of upstream lsp-core files), not a runtime asset \u2014 its absence from the packed tree is intended."
+    }
+  },
+  "purpose": "This list is what stops the next reader from re-chasing all five as suspected packing defects."
+}

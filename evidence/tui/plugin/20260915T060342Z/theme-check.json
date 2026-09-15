@@ -1,0 +1,61 @@
+{
+  "asset": "packages/mpd-tui-plugin/themes/mpd-tui.json",
+  "assetSha256": "519b76863ec1078832c729dac21cbee593663dac162fba92f7be47c535cbd1fb",
+  "hostSource": "/root/dshProj/tui/dsh-TUI/src/theme.ts",
+  "hostRevision": "b246411 (dsh-tui v0.10.1 checkout; read-only)",
+  "assetKeys": [
+    "accent",
+    "accentShimmer",
+    "permission",
+    "promptBorder",
+    "text",
+    "inactive",
+    "subtle",
+    "selectionBg",
+    "success",
+    "error",
+    "warning"
+  ],
+  "allowedSemanticKeys": 73,
+  "deprecatedKeys": [
+    "claude",
+    "claudeShimmer",
+    "claudeBlue_FOR_SYSTEM_SPINNER",
+    "claudeBlueShimmer_FOR_SYSTEM_SPINNER",
+    "clawd_body",
+    "clawd_background",
+    "briefLabelYou"
+  ],
+  "retiredKeyCount": 23,
+  "checks": [
+    {
+      "name": "base is one of light|dark|dark-ansi",
+      "ok": true,
+      "detail": "dark"
+    },
+    {
+      "name": "name is not a reserved theme name",
+      "ok": true,
+      "detail": "mpd-tui"
+    },
+    {
+      "name": "no legacy/retired key is used",
+      "ok": true,
+      "detail": "(none)"
+    },
+    {
+      "name": "every colour key is a current semantic key",
+      "ok": true,
+      "detail": "(none)"
+    },
+    {
+      "name": "accent + accentShimmer present (the legacy pair that was renamed)",
+      "ok": true
+    },
+    {
+      "name": "claude/claudeShimmer absent",
+      "ok": true
+    }
+  ],
+  "ok": true
+}

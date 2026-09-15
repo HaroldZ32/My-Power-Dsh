@@ -1,0 +1,6 @@
+# t8/t12 cross canary (Reviewer): two rows, my sandbox only.
+- insert:
+    - id: t8-canary-renderers
+      name: 'evidence/tui/live/20260915T063140Z/raw/canary/t8-canary-renderers.mjs'
+    - id: t4probe9-copy
+      name: 'evidence/tui/live/20260915T063140Z/raw/canary/probe9-copy.mjs'

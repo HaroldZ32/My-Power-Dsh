@@ -1,0 +1,66 @@
+{
+  "slug": "tui-mount",
+  "ok": false,
+  "steps": {
+    "face": {
+      "ok": false,
+      "layering": {
+        "ok": false,
+        "missing": [
+          "@deepseek-ai/dsh-base",
+          "@deepseek-harness-tui/dsh-tui",
+          "@mpd-dsh/mpd"
+        ],
+        "ordered": false,
+        "bundles": [],
+        "reason": "missing bundle layer(s): @deepseek-ai/dsh-base, @deepseek-harness-tui/dsh-tui, @mpd-dsh/mpd"
+      },
+      "crashSignatures": [],
+      "statusLine": false,
+      "counters": false,
+      "rendered": true,
+      "presetSessionId": "a9eea0a3-aa4e-45e2-8d4d-3856b0b606d1",
+      "presetAgentPreset": "mpd",
+      "rowComposed": true,
+      "isolationOffenders": [
+        "--root-dshProj-my-power-dsh--"
+      ],
+      "sandboxRoot": "/root/dshProj/my-power-dsh/.mpd/recon/qa",
+      "layeringEvidence": "dump-config.txt",
+      "paneEvidence": "boot.pane.txt + tui-pane.log",
+      "presetEvidence": "preset.pane.txt + preset.session.json + evidence/tui/lanes/2026-09-15T06-07-43.497Z/preset.session.json"
+    },
+    "rowComposed": true,
+    "isolation": [
+      "--root-dshProj-my-power-dsh--"
+    ]
+  },
+  "face": {
+    "ok": false,
+    "layering": {
+      "ok": false,
+      "missing": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-harness-tui/dsh-tui",
+        "@mpd-dsh/mpd"
+      ],
+      "ordered": false,
+      "bundles": [],
+      "reason": "missing bundle layer(s): @deepseek-ai/dsh-base, @deepseek-harness-tui/dsh-tui, @mpd-dsh/mpd"
+    },
+    "crashSignatures": [],
+    "statusLine": false,
+    "counters": false,
+    "rendered": true,
+    "presetSessionId": "a9eea0a3-aa4e-45e2-8d4d-3856b0b606d1",
+    "presetAgentPreset": "mpd",
+    "rowComposed": true,
+    "isolationOffenders": [
+      "--root-dshProj-my-power-dsh--"
+    ],
+    "sandboxRoot": "/root/dshProj/my-power-dsh/.mpd/recon/qa",
+    "layeringEvidence": "dump-config.txt",
+    "paneEvidence": "boot.pane.txt + tui-pane.log",
+    "presetEvidence": "preset.pane.txt + preset.session.json + evidence/tui/lanes/2026-09-15T06-07-43.497Z/preset.session.json"
+  }
+}

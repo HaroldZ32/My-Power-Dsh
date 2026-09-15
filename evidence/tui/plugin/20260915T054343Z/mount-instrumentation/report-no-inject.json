@@ -1,0 +1,36 @@
+{
+  "when": "2026-09-15T05:53:14.046Z",
+  "probes": {
+    "commands": "absent",
+    "settings": "absent",
+    "tuiStatus": "absent",
+    "tuiRenderers": "absent",
+    "tuiSettingsSections": "absent",
+    "tuiScenes": "absent",
+    "tuiCommandTrees": "absent",
+    "tuiShortcuts": "absent",
+    "tuiDialogs": "absent",
+    "tuiPluginHost": "absent",
+    "mpdDsh": "object",
+    "agents": "absent",
+    "skills": "absent"
+  },
+  "strict": {
+    "commands": "absent",
+    "settings": "absent",
+    "tuiStatus": "absent",
+    "tuiRenderers": "absent",
+    "tuiSettingsSections": "absent",
+    "tuiScenes": "absent",
+    "tuiCommandTrees": "absent",
+    "tuiShortcuts": "absent",
+    "tuiDialogs": "absent",
+    "tuiPluginHost": "absent",
+    "mpdDsh": "absent",
+    "agents": "absent",
+    "skills": "absent"
+  },
+  "register": "service absent",
+  "effect": "function",
+  "logger": "function"
+}

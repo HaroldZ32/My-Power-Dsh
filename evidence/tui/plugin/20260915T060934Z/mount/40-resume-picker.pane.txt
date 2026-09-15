@@ -1,0 +1,60 @@
+
+   ↻ Resume session                                                                                                           4 sessions · 25 empty
+  ╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+  │ ▣ Working directory  /root/dshProj/my-power-dsh                                                                             ← choose directory │
+  │ ⌕                                                                                                      Type to search · /root/dshProj/my-power-│sh
+  ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+     ◎ All working directories 1 d…  ❯ ☆ hello world                                                                                                
+     browse across directories ·…      4m ago · feature/tui-edition · 62.6 KB · deepseek-flash                                                      
+     ▣ my-power-dsh ✓ current · 4 …    ☆ /t4probe                                    
+     /root/dshProj/my-power-dsh …      26m ago · feature/tui-edition · 63.8 KB · deepseek-flash
+                                       ☆ /mpd status                                 
+                                       29m ago · feature/tui-edition · 64.3 KB · deepseek-flash
+                                       ☆ Reply with the single word:                 
+                                       33m ago · feature/tui-edition · 62.9 KB · deepseek-flash
+                                                                      
+                                                                                                              
+                                                                                                                                                   
+                                                                                                                                                     
+
+                                
+
+
+                                                                                                                     
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                                                                                                                    
+                                                                                                                                                    
+                                                                                                                                                    
+                                                                                                                                                    
+            ph MCP] Auto-synced 1 file(s) in 18msince last run                                                                                      
+                                                                                                                                                    
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Enter resume · ctrl+p ★ · ← dirs · Esc
+

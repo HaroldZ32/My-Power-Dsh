@@ -1,0 +1,137 @@
+// The `/mpd` command — the documented entry point for the mpd surfaces.
+//
+// Grammar (t3 brief §c, uniform with the host's own commands):
+//   `/mpd`             -> picker (the host dialog supplies the labels)
+//   `/mpd <value>`     -> apply that action directly
+//   `/mpd status`      -> print the current state
+//
+// The command registry is the HARNESS command service (`ctx.commands`,
+// dsh-commands): it is not one of the four harness seams owned by
+// packages/mpd-dsh-adapter-plugin, and the host TUI guide registers the
+// scene-opening command directly (spec §接缝八 step 2). It is activated through
+// the deferred inject form like every other seam here.
+//
+// Registering it is what makes the `tuiCommandTrees` provider truthful: the
+// tree's must match a real command-registry entry.
+//
+// The board action is also the ONLY place this plugin appends its log-only
+// session event, and only after `registration.ts` VERIFIED that the event type is
+// known to a reachable dsh-session copy — an unregistered log-only event would
+// make the user's session unresumable (iron rule 2).
+import type { CommandsLike, PluginContextLike, SeamOutcome, SessionLike } from "./types.js"
+import type { Log } from "./log.js"
+import { onService } from "./host.js"
+import { scalarText } from "./sanitize.js"
+import { BOARD_OPENED_EVENT } from "./registration.js"
+import { COMMAND_ACTIONS, COMMAND_ROOT } from "./command-trees.js"
+
+/** What the command needs from the rest of the plugin. */
+export interface CommandActions {
+  openBoard(via: "command" | "shortcut"): boolean
+  statusText(): string
+  workmatesText(): string
+  /** Picker for the bare form; undefined when no dialog seam is available. */
+  pickAction(): Promise<string | undefined>
+  /** Append the log-only board-opened record when it is safe to do so. */
+  recordBoardOpened(via: "command" | "shortcut", session: SessionLike | undefined): void
+}
+
+type CommandResult = { kind: "success"; text?: string } | { kind: "error"; text: string }
+
+const USAGE = `/${COMMAND_ROOT} [${COMMAND_ACTIONS.join("|")}]`
+
+/**
+ * Activate `/mpd`.
+ * @param ctx - the plugin context.
+ * @param log - diagnostics.
+ * @param actions - the handlers.
+ * @returns the seam handle.
+ */
+export function registerCommands(ctx: PluginContextLike, log: Log, actions: CommandActions): { outcome(): SeamOutcome } {
+  let outcome: SeamOutcome = { state: "absent", detail: "commands was not injected" }
+
+  onService(ctx, "commands", (_scoped, service) => {
+    const commands = service as CommandsLike
+    if (typeof commands?.register !== "function") {
+      outcome = { state: "refused", detail: "commands.register is missing" }
+      return
+    }
+    try {
+      commands.register({
+        name: COMMAND_ROOT,
+        description: "MPD: open the board, list the workmate library, or print the status line",
+        handler: async (invocation): Promise<CommandResult> => {
+          const raw = typeof invocation?.rawInput === "string" ? invocation.rawInput.trim().toLowerCase() : ""
+          const session = invocation?.agent?.session
+          if (raw === "") {
+            // Bare form = picker. The host dialog supplies the localized chrome;
+            // labels stay the host's where the contract wants that.
+            const picked = await actions.pickAction()
+            return runAction(picked ?? "board", actions, session)
+          }
+          const head = raw.split(/\s+/u)[0] ?? ""
+          return runAction(head, actions, session)
+        },
+      })
+      // No read-back for a command registration in this composition, and a
+      // failed register throws instead of returning a sentinel: `requested`.
+      outcome = { state: "requested", detail: `/${COMMAND_ROOT} requested (no host read-back at apply time)` }
+    } catch (error) {
+      outcome = { state: "refused", detail: String((error as Error)?.message ?? error) }
+      log.debug(`/${COMMAND_ROOT} registration refused: ${outcome.detail ?? ""}`)
+    }
+  })
+
+  return { outcome: () => outcome }
+}
+
+/** One action of the `/mpd` grammar. */
+function runAction(action: string, actions: CommandActions, session: SessionLike | undefined): CommandResult {
+  if (action === "board") {
+    // Record BEFORE opening: the transcript row must be projected while the chat
+    // is still the active screen (a scene hides it until it closes).
+    actions.recordBoardOpened("command", session)
+    const opened = actions.openBoard("command")
+    return opened
+      ? { kind: "success" }
+      : { kind: "error", text: "mpd: the board scene is not available in this composition" }
+  }
+  if (action === "workmates") return { kind: "success", text: clamp(actions.workmatesText()) }
+  if (action === "status") return { kind: "success", text: clamp(actions.statusText()) }
+  return { kind: "error", text: `mpd: unknown action "${clamp(action, 40)}" — usage: ${USAGE}` }
+}
+
+/**
+ * Append the log-only board-opened record to the invoking session.
+ * @param session - the live session, when the command registry supplied one.
+ * @param typeKnown - the verification result from `registration.ts`.
+ * @param via - which entry point opened the board.
+ * @param view - the opened view id.
+ * @param log - diagnostics.
+ */
+export function appendBoardOpened(
+  session: SessionLike | undefined,
+  typeKnown: boolean,
+  via: "command" | "shortcut",
+  view: string,
+  log: Log,
+): boolean {
+  if (session === undefined || typeof session.append !== "function") return false
+  if (!typeKnown) {
+    // Iron rule 2 is not satisfied for any reachable dsh-session copy: skip the
+    // record instead of risking an unresumable session log.
+    log.debug("board-opened record skipped: the event type is not known to the live dsh-session copy")
+    return false
+  }
+  try {
+    session.append(BOARD_OPENED_EVENT, { view, via, at: Date.now() })
+    return true
+  } catch (error) {
+    log.debug(`board-opened record failed: ${String((error as Error)?.message ?? error)}`)
+    return false
+  }
+}
+
+function clamp(value: string, maxCells = 800): string {
+  return scalarText(value, maxCells) ?? ""
+}

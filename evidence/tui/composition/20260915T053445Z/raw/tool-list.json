@@ -1,0 +1,295 @@
+{
+  "note": "request/header.data.header.tools[] from the recorded live dsh-TUI turn in the sandbox (the repo's own tool-list evidence: skills/dsh-qa/scripts/lib/session-evidence.mjs). The model call itself failed with 'no API key for provider route deepseek-official' (the sandbox carries no route key) — the header is written BEFORE the request and is unaffected.",
+  "session": "683c0f89-d2ea-4bf1-817e-3593eb765441",
+  "pinnedSession": "683c0f89-d2ea-4bf1-817e-3593eb765441",
+  "selection": "pinned (the session tui-boot-turn.sh drove)",
+  "workspace": "/root/dshProj/my-power-dsh",
+  "toolCount": 96,
+  "tools": [
+    "agent_teams_add_member",
+    "agent_teams_approve",
+    "agent_teams_claim_task",
+    "agent_teams_create",
+    "agent_teams_create_task",
+    "agent_teams_delete",
+    "agent_teams_edit_plan",
+    "agent_teams_interject_decide",
+    "agent_teams_interject_request",
+    "agent_teams_mailbox_clear",
+    "agent_teams_reassign_task",
+    "agent_teams_remove_member",
+    "agent_teams_resume",
+    "agent_teams_send_message",
+    "agent_teams_status",
+    "agent_teams_task_contract",
+    "agent_teams_update_task",
+    "ask_user_question",
+    "bash",
+    "create_goal",
+    "edit",
+    "exit_plan_mode",
+    "get_goal",
+    "glob",
+    "grep",
+    "interrupt_agent",
+    "job_kill",
+    "job_list",
+    "job_output",
+    "list_agents",
+    "mcp__ast_grep__rewrite",
+    "mcp__ast_grep__scan",
+    "mcp__ast_grep__search",
+    "mcp__context7__query-docs",
+    "mcp__context7__resolve-library-id",
+    "mcp__grep_app__searchGitHub",
+    "mcp__lsp__diagnostics",
+    "mcp__lsp__find_references",
+    "mcp__lsp__goto_definition",
+    "mcp__lsp__install_decision",
+    "mcp__lsp__prepare_rename",
+    "mcp__lsp__rename",
+    "mcp__lsp__status",
+    "mcp__lsp__symbols",
+    "mpd_boulder_complete",
+    "mpd_boulder_plan_progress",
+    "mpd_boulder_plans",
+    "mpd_boulder_start",
+    "mpd_boulder_status",
+    "mpd_boulder_task_timer",
+    "mpd_comment_check",
+    "mpd_config_get",
+    "mpd_config_reload",
+    "mpd_ext_list",
+    "mpd_ext_show",
+    "mpd_flow_list",
+    "mpd_flow_show",
+    "mpd_hashline_edit",
+    "mpd_hashline_format",
+    "mpd_hashline_read",
+    "mpd_hashline_restore",
+    "mpd_memory_read",
+    "mpd_memory_recall",
+    "mpd_memory_reflect",
+    "mpd_memory_reflect_complete",
+    "mpd_memory_save",
+    "mpd_memory_status",
+    "mpd_memory_write",
+    "mpd_modelchain_resolve",
+    "mpd_role_persona",
+    "mpd_role_spawn",
+    "mpd_roles_list",
+    "mpd_team_compact_run",
+    "mpd_team_compact_status",
+    "mpd_ultrawork",
+    "mpd_ulw",
+    "mpd_workmate_delete",
+    "mpd_workmate_init",
+    "mpd_workmate_list",
+    "mpd_workmate_match",
+    "mpd_workmate_reflect",
+    "mpd_workmate_rename",
+    "mpd_workmate_spawn",
+    "present",
+    "ralph",
+    "read",
+    "read_image",
+    "send_message",
+    "skill",
+    "subagent",
+    "subagent_fork",
+    "todo_write",
+    "update_goal",
+    "web_search",
+    "workflow",
+    "write"
+  ],
+  "byFamily": {
+    "agent_teams": [
+      "agent_teams_add_member",
+      "agent_teams_approve",
+      "agent_teams_claim_task",
+      "agent_teams_create",
+      "agent_teams_create_task",
+      "agent_teams_delete",
+      "agent_teams_edit_plan",
+      "agent_teams_interject_decide",
+      "agent_teams_interject_request",
+      "agent_teams_mailbox_clear",
+      "agent_teams_reassign_task",
+      "agent_teams_remove_member",
+      "agent_teams_resume",
+      "agent_teams_send_message",
+      "agent_teams_status",
+      "agent_teams_task_contract",
+      "agent_teams_update_task"
+    ],
+    "ask_user": [
+      "ask_user_question"
+    ],
+    "bash": [
+      "bash"
+    ],
+    "create_goal": [
+      "create_goal"
+    ],
+    "edit": [
+      "edit"
+    ],
+    "exit_plan": [
+      "exit_plan_mode"
+    ],
+    "get_goal": [
+      "get_goal"
+    ],
+    "glob": [
+      "glob"
+    ],
+    "grep": [
+      "grep"
+    ],
+    "interrupt_agent": [
+      "interrupt_agent"
+    ],
+    "job_kill": [
+      "job_kill"
+    ],
+    "job_list": [
+      "job_list"
+    ],
+    "job_output": [
+      "job_output"
+    ],
+    "list_agents": [
+      "list_agents"
+    ],
+    "mcp__ast_grep": [
+      "mcp__ast_grep__rewrite",
+      "mcp__ast_grep__scan",
+      "mcp__ast_grep__search"
+    ],
+    "mcp__context7": [
+      "mcp__context7__query-docs",
+      "mcp__context7__resolve-library-id"
+    ],
+    "mcp__grep_app": [
+      "mcp__grep_app__searchGitHub"
+    ],
+    "mcp__lsp": [
+      "mcp__lsp__diagnostics",
+      "mcp__lsp__find_references",
+      "mcp__lsp__goto_definition",
+      "mcp__lsp__install_decision",
+      "mcp__lsp__prepare_rename",
+      "mcp__lsp__rename",
+      "mcp__lsp__status",
+      "mcp__lsp__symbols"
+    ],
+    "mpd_boulder": [
+      "mpd_boulder_complete",
+      "mpd_boulder_plan_progress",
+      "mpd_boulder_plans",
+      "mpd_boulder_start",
+      "mpd_boulder_status",
+      "mpd_boulder_task_timer"
+    ],
+    "mpd_comment": [
+      "mpd_comment_check"
+    ],
+    "mpd_config": [
+      "mpd_config_get",
+      "mpd_config_reload"
+    ],
+    "mpd_ext": [
+      "mpd_ext_list",
+      "mpd_ext_show"
+    ],
+    "mpd_flow": [
+      "mpd_flow_list",
+      "mpd_flow_show"
+    ],
+    "mpd_hashline": [
+      "mpd_hashline_edit",
+      "mpd_hashline_format",
+      "mpd_hashline_read",
+      "mpd_hashline_restore"
+    ],
+    "mpd_memory": [
+      "mpd_memory_read",
+      "mpd_memory_recall",
+      "mpd_memory_reflect",
+      "mpd_memory_reflect_complete",
+      "mpd_memory_save",
+      "mpd_memory_status",
+      "mpd_memory_write"
+    ],
+    "mpd_modelchain": [
+      "mpd_modelchain_resolve"
+    ],
+    "mpd_role": [
+      "mpd_role_persona",
+      "mpd_role_spawn"
+    ],
+    "mpd_roles": [
+      "mpd_roles_list"
+    ],
+    "mpd_team": [
+      "mpd_team_compact_run",
+      "mpd_team_compact_status"
+    ],
+    "mpd_ultrawork": [
+      "mpd_ultrawork"
+    ],
+    "mpd_ulw": [
+      "mpd_ulw"
+    ],
+    "mpd_workmate": [
+      "mpd_workmate_delete",
+      "mpd_workmate_init",
+      "mpd_workmate_list",
+      "mpd_workmate_match",
+      "mpd_workmate_reflect",
+      "mpd_workmate_rename",
+      "mpd_workmate_spawn"
+    ],
+    "present": [
+      "present"
+    ],
+    "ralph": [
+      "ralph"
+    ],
+    "read": [
+      "read"
+    ],
+    "read_image": [
+      "read_image"
+    ],
+    "send_message": [
+      "send_message"
+    ],
+    "skill": [
+      "skill"
+    ],
+    "subagent": [
+      "subagent"
+    ],
+    "subagent_fork": [
+      "subagent_fork"
+    ],
+    "todo_write": [
+      "todo_write"
+    ],
+    "update_goal": [
+      "update_goal"
+    ],
+    "web_search": [
+      "web_search"
+    ],
+    "workflow": [
+      "workflow"
+    ],
+    "write": [
+      "write"
+    ]
+  },
+  "turnEndedWithCredentialError": true
+}

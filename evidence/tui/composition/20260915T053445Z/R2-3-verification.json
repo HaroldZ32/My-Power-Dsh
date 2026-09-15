@@ -1,0 +1,18 @@
+{
+  "verified": [
+    "every cited full digest matches its durable copy byte-for-byte",
+    "every cited contrast prefix matches its durable copy",
+    "web-dump-config.err carries exactly the quoted sole warning",
+    "web-dump-config.txt contains exactly ONE agent-presets row with default: mpd",
+    "the comment labels the web artifact COMPOSITION only and names R6 as the boot proof; no boot is claimed"
+  ],
+  "contrastCount": 3,
+  "presetDistribution": {
+    "standard": 3,
+    "mpd": 36
+  },
+  "gatesAfterEdit": {
+    "rowsParity": "exit 0, 24 ids",
+    "R11": "exit 0, 16 patch rows"
+  }
+}

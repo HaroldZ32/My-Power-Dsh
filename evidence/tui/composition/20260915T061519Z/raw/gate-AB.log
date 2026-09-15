@@ -1,0 +1,9 @@
+=== A: installer mirror present? ===
+176:      id: "mpd-tui", name: p("packages/mpd-tui-plugin/dist/index.js"),
+=== B: pack-mpd PLUGIN_PKGS contains the package? ===
+43:  // mpd-tui-plugin is MOUNTED by the bundle patch (row `mpd-tui`, the DSH-TUI
+45:  // `packages/mpd-tui-plugin/dist/` while `npm run pack` still exited 0, and the
+51:  "mpd-tui-plugin",
+=== B: R11 ===
+R11 ok: 16 patch rows present in pack-mpd PLUGIN_PKGS
+exit=0

@@ -1,0 +1,7 @@
+=== verify #1: bun run typecheck ===
+$ tsgo --noEmit
+exit=0
+
+=== verify #2: contract structure check ===
+manifest structure ok, name=@mpd-dsh/mpd version=0.9.1 id=com.mpd-dsh.mpd-tui
+exit=0
