@@ -314,6 +314,42 @@ AgentTeams 页面驱动采纳的监控 store，后者轮询
 `webServer.register` 注册并在 `internal/service` 绑定时重试（无 web 的 profile 保持
 纯工具模式）。
 
+## 7b. TUI 版本接线（§7 的对应章节）
+
+同一个 bundle 作为**第三层** patch 层挂载在宿主的 `dsh-tui` profile 下：host-base
+（`@deepseek-ai/dsh-base`）→ host-tui（`@deepseek-harness-tui/dsh-tui`）→ 本 bundle，实测为
+`dsh.profile.bundles = ["@deepseek-ai/dsh-base", "@deepseek-harness-tui/dsh-tui", "@mpd-dsh/mpd"]`
+（`evidence/tui/composition/20260915T053445Z/`）。bundle patch 只贡献一行 TUI 行：
+
+- `mpd-tui` → `@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js`。该包自身**不**携带
+  `cordis.patch.yml`：这一行 id 由 bundle patch 独占，第二次挂载会重复 loader entry id，而 loader 会
+  直接拒绝。
+
+该插件做什么、以及刻意不做什么：
+
+- **做**：绑定宿主那些需激活的 TUI 接缝，每一个都通过软探测（`ctx.get(id, false)`）访问，因此服务缺席
+  时只降级并给出警告，而不会让启动失败：带 key 的状态行（`tuiStatus`）、`/settings` 分区
+  （`tuiSettingsSections`）、全屏看板（`tuiScenes`）、`/mpd` 命令树（`tuiCommandTrees`）、快捷键
+  （`tuiShortcuts`）、受管对话框（`tuiDialogs`）以及 transcript renderer 的注册（`tuiRenderers`；宿主
+  不为 bundle 的 renderer 事件投射任何行）。所有注册都通过 `ctx.effect` 释放。
+- **不做**：完全不写文件系统 —— settings 回写位于 `packages/mpd-config-plugin`（见下），而 TUI 包的
+  零写入属性由它自己的 lane 断言（`tui-settings-bridge.mjs` 的 T7 检查）。它也不主张任何已准入的
+  Component 身份：bundle 级 `dsh-plugin.json` 声明 host facet，而宿主自身的准入对四个默认拒绝的
+  decision-event 权限给出 `waiting_authorization`，因此 effect ledger 把这次注册记为 `undeclared`
+  （`docs/tui.zh-CN.md` §4 与 §6.1）。
+
+**接缝提供方，按组合解析顺序。**（1）**settings 分区提供方**是 `packages/mpd-config-plugin`：它通过
+适配器的 `settingsRegister` 注册 `mpd` 命名空间，其 base **来自文件** —— 恰好一个会话根存活时取该工作区
+的 `<workspace>/.mpd/mpd.jsonc` 值，一个都没有时取挂载时（无 exec）根，多个时给出
+`ambiguous-multi-root`（绝不臆造 base）—— 并且由它负责**回写**：触发源是宿主
+`settings/document-updated(ns, revision)` 事件中 `source === 'update'` 的那一支，在锁 + 原始字节
+compare-and-swap + 同目录临时文件 + 原子 rename 下完成。（2）**宿主提供的 `tuiSettingsSections` 接缝**
+负责渲染该分区：TUI 包为命名空间 `mpd` 注册一个分区（对缺少 config 插件的组合保留一个带保护的
+fallback），宿主把这次注册绑定到它自己的 `/settings` 界面 —— 这个"提供方/宿主"分工正是界面能按文件值
+打开、而 TUI 包自身从不读文件的原因。（3）**状态发布方**是 TUI 包的 `tuiStatus` 键：每个键都取自会话
+工作区的 `.mpd` 状态（工作区按调用通过适配器解析），并用插件自身的 `ctx.effect` 释放，因此插件重载不会
+留下过期的一行。
+
 ## 8. 安全与隔离
 
 - 任何插件都不存储、记录或回显凭据；QA 只复制一次沙箱的 `.credentials.yaml` 并断言

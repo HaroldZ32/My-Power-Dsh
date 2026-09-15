@@ -83,8 +83,8 @@ The only shipped preset is **MPD (Main Working Agent)**. Its conventions:
 | Consult a specialist | `mpd_roles_list`, `mpd_role_spawn`, `mpd_role_persona` | one-shot subagents; read-only roles are denied write tools |
 | Keep an evolving agent | `mpd_workmate_list/init/spawn/reflect/match/rename/delete` | see §5 |
 | Run a team | `agent_teams_*` + the AgentTeams tab | see §6 |
-| Configure the bundle | `.mpd/mpd.jsonc`, `mpd_config_get`, `mpd_config_reload` | see §8 |
-| Extend the bundle | `mpd_ext_list`, `mpd_ext_show`, `mpd_flow_list`, `mpd_flow_show` | see §9 |
+| Configure the bundle | `.mpd/mpd.jsonc`, `mpd_config_get`, `mpd_config_reload` | see §9 |
+| Extend the bundle | `mpd_ext_list`, `mpd_ext_show`, `mpd_flow_list`, `mpd_flow_show` | see §10 |
 | Resolve a model route | `mpd_modelchain_resolve` | resolves the provider/model a specialist would use |
 | Inspect retired teams | `mpd_team_compact_run`, `mpd_team_compact_status` | compaction audit for finished teams |
 
@@ -198,9 +198,81 @@ agent_teams_status / agent_teams_send_message / agent_teams_reassign_task
   of forcing it.
 - **Extension roles are not team members**: an extension can contribute a role usable by
   `mpd_role_spawn` / `mpd_role_persona`, but the team member list is fixed patch configuration, so
-  extension roles never become teammates (see §9).
+  extension roles never become teammates (see §10).
 
-## 7. Web GUI
+## 7. DSH-TUI edition (the terminal UI)
+
+The same bundle runs as a **TUI edition** under the host's `dsh-tui` profile: the profile's own
+terminal UI hosts TUI-native surfaces for what the web GUI renders as tabs. The edition is documented
+in depth in [`tui.md`](tui.md); this chapter is the day-to-day summary.
+
+```sh
+dsh plugin --profile dsh-tui add /path/to/my-power-dsh
+```
+
+That ONE command is the whole install (plugin code, the bundle-level `dsh-plugin.json`, the skills
+corpus, the MCP rows). There is no per-package `dsh plugin add`, and the TUI package ships no
+`cordis.patch.yml` of its own — the bundle patch owns the single `mpd-tui` row, because a second mount
+would duplicate a loader entry id, which the loader rejects outright. After that install
+`dsh.profile.bundles` is `["@deepseek-ai/dsh-base", "@deepseek-harness-tui/dsh-tui", "@mpd-dsh/mpd"]`
+— this bundle is the **third** patch layer — and a session created in the TUI defaults to the **mpd**
+preset. The host needs a real terminal: `dsh-tui` refuses to start when stdout is not a TTY
+(`dsh-tui requires an interactive terminal (stdout must be a TTY)`), so it is never driven through a
+pipe.
+
+### 7.1 TUI-native surfaces and their web counterparts
+
+| Web surface | TUI equivalent |
+|---|---|
+| AgentTeams sidebar tab | the `tuiScenes` full-screen board plus the keyed `tuiStatus` line |
+| Workmates sidebar tab | the `/mpd` command tree (`tuiCommandTrees`) plus `tuiDialogs` |
+| Bundle floater | the `tuiStatus` line |
+| Settings → Plugins card | the `/settings` section (`tuiSettingsSections`) |
+| — | `tuiShortcuts` keyboard shortcuts |
+
+These are **equivalents, not parity**: each surface is rebuilt on the host's own TUI seams, and two
+seams are deliberately not claimed — the host offers no prompt slot (`tuiPrompt` is host-unavailable)
+and it projects no transcript row for the bundle's renderer event, so neither a prompt slot nor a
+transcript line is claimed. The full list is §10 NOT-CLAIMED of [`tui.md`](tui.md).
+
+### 7.2 The `/settings` screen and the `mpd.jsonc` bridge
+
+`/settings` edits the six real `mpd.jsonc` knobs — `hashline.maxDiffChars`,
+`commentChecker.autoCheck`, `ulw.maxRounds`, `memory.vcs`, `team.stateDir`, `boulder.dir` — under the
+harness settings namespace `mpd`. That namespace is served by `packages/mpd-config-plugin`, whose base
+is the workspace FILE value, so the screen opens on your file rather than on a schema default; a save
+**writes `<workspace>/.mpd/mpd.jsonc`** for the live session workspace, preserving comments, key order
+and trailing commas — the same write-back the Web GUI card triggers (§3.1 of [`tui.md`](tui.md)).
+
+Two things to know before you rely on it:
+
+- **It takes effect after a restart.** The mpd plugins capture their configuration when they mount
+  (`applies: "restart"`), and the host exposes no disposal handle for a live namespace registration, so
+  a saved knob is used by the plugins after you restart the session. The on-screen hint says exactly
+  that.
+- **Two named skip cases.** The settings path carries no workspace identity, so the write target is
+  the live session workspaces at the moment of the save: with **no** live session the save is stored in
+  the host settings document and reported as `no-live-session`; with **more than one** live workspace it
+  is refused as `ambiguous-multi-root` and every candidate is named. In both cases **no file is
+  changed** and the value is **not lost** — it lives in the settings document and the config layer
+  applies it to every workspace immediately; only the file write waits for exactly one live session.
+
+A duplicated key in `mpd.jsonc` is edited at its **last** occurrence (the one `JSON.parse` reads) and
+the diagnostic names every occurrence line; a duplicated intermediate object is refused as
+`ambiguous-intermediate` with the file byte-untouched (§6.5 of [`tui.md`](tui.md)).
+
+### 7.3 The `/mpd` command and the status line
+
+`/mpd` is the TUI command tree over the same state the sidebar tabs showed: a bare `/mpd` opens the
+picker, `/mpd <value>` goes direct, and `/mpd status` prints the summary. The **status line**
+(`tuiStatus`) is a keyed single line above the prompt reporting the bundle's live state — team,
+boulder/plan and the workmate library — read from the `.mpd` state of the session's workspace. It is
+display-only; the interactive half lives in the board scene, the dialogs and the shortcuts.
+
+For the admission and distribution artifacts, the per-package compatibility ledger, the version
+strings, the state scopes and the explicit NOT-CLAIMED list, read [`tui.md`](tui.md).
+
+## 8. Web GUI
 
 - **AgentTeams sidebar tab** (the only team surface): the whole team GUI is one tab in
   **DSH-better-sidebar** (the community sidebar bundle; tab id `mpd-agent-teams`). It lists the
@@ -228,7 +300,7 @@ agent_teams_status / agent_teams_send_message / agent_teams_reassign_task
   tools and the `.mpd/team` state, and the workmate library is still fully usable through the
   `mpd_workmate_*` tools.
 
-## 8. Configuration (`mpd.jsonc`)
+## 9. Configuration (`mpd.jsonc`)
 
 `mpd-config` merges the project layer `.mpd/mpd.jsonc` over the user layer `$DSH_HOME/mpd.jsonc`
 (per key, project wins). Query the resolved values with `mpd_config_get` and re-read them with
@@ -242,7 +314,7 @@ agent_teams_status / agent_teams_send_message / agent_teams_reassign_task
 | `hashline.*` | mpd-hashline | guard flag, diff cap, registry file |
 | `commentChecker.*` | mpd-comment-checker | autoCheck, binary, timeouts |
 | `ulw.*` | mpd-ulw | rounds, plan/state dirs, provider/model routes |
-| `extensions.enable`, `extensions.disable` | mpd-ext | per-id enable/disable lists for extensions (process-level: see §9) |
+| `extensions.enable`, `extensions.disable` | mpd-ext | per-id enable/disable lists for extensions (process-level: see §10) |
 | `extensions.mcp.*` | mpd-ext | MCP bridge defaults: `enabled`, `connectTimeoutMs`, `toolCallTimeoutMs` |
 | `modelchain.*` | mpd-modelchain | provider/model chains per roster role |
 | `team.stateDir` | agent-teams | where team state lives (defaults to `.mpd/team`) |
@@ -252,7 +324,7 @@ agent_teams_status / agent_teams_send_message / agent_teams_reassign_task
 reads a `codegraph.*` key through `mpd.jsonc`. Its row ships `autoInit: true` and
 `initTimeoutMs: 60000` in `packages/mpd-bundle/cordis.patch.yml`.
 
-## 9. Extensions, from your side
+## 10. Extensions, from your side
 
 The extension interface lets a package — or a plain directory — add skills, flows, MCP servers
 and specialist roles to your DSH setup without touching the bundle. The full contract for authors
@@ -314,7 +386,7 @@ bun scripts/mpd-ext.mjs scaffold my-ext --dir /tmp   # start from a working skel
 - **A fourth-party MCP server is a child process.** It never inherits credential-shaped variables
   from your host environment; declare what it needs in the manifest's `env`.
 
-## 10. Troubleshooting quick map
+## 11. Troubleshooting quick map
 
 - `mpd_role_spawn` reports an unknown role → roles answer to their NAMES (`Architect`,
   `Deep Worker`, `plan reviewer` — any case/space/hyphen spelling); run `mpd_roles_list`.

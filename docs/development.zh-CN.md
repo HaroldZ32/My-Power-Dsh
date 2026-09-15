@@ -94,12 +94,32 @@ QA skill 是 `skills/dsh-qa`（`SKILL.md`）。每个 case 脚本都带 `--self-
 | `workmate-team-member` | workmate 支撑成员注入 + 真实团队中的自我反思 | `node skills/dsh-qa/scripts/workmate-team-member.mjs` |
 | `web-client-adapt` | `@mpd-dsh/mpd` 的 boot-graph client entry + client.js id + workmate host 路由（含 client 的重命名/删除 URL） | `node skills/dsh-qa/scripts/web-client-adapt.mjs` |
 | `preset-conformance` | 每一个 Harness 自有行配置（preset + bundle patch + QA overlay）都与**已安装**的 Harness schema 相符，`mpd` preset 的行集合与已安装 `standard` preset 完全一致，并且以 `agentPreset: "mpd"` 真实创建的会话确实**挂载成功** —— 并带一个必须失败的负向对照 | `node skills/dsh-qa/scripts/preset-conformance.mjs` |
+| `tui-mount` | **真实** dsh-TUI 启动：bundle 作为第三层 patch 层（`dsh.profile.bundles` = [dsh-base, dsh-tui, @mpd-dsh/mpd]）、`mpd-tui` 行已被组合、原始日志中**零**条 apply-crash 特征、状态行已渲染，且该次启动自己产生的会话记录携带 `agentPreset: "mpd"` | `bun skills/dsh-qa/scripts/tui-mount.mjs` |
+| `tui-panels` | 七个需激活的 TUI 界面**确实渲染**（状态行、`/mpd status`、`/mpd` 补全树、看板场景、renderer 行、带桥接+重启披露的 `/settings` 分区，以及受管对话框）—— 渲染不出内容的界面直接判该 lane FAIL；该 lane 还证明 `/mpd` 从未到达模型，并在同一批 pane 上用一条不可能成立的期望重跑引擎作为负向对照 | `bun skills/dsh-qa/scripts/tui-panels.mjs` |
+| `tui-admission` | 用**宿主自己的**固定版准入算法检验 bundle 级 `dsh-plugin.json`：vendored `@dsh-std/manifest` 解析 + 投影 + 宿主的 `validatePlugin` + 五态 `negotiate`，再在真实 TUI 内驱动宿主的 `/plugins check`；spec 数据根必须先**解析成功**，并记录三条负向对照 | `bun skills/dsh-qa/scripts/tui-admission.mjs` |
+| `tui-distribution` | 用 dsh-distribution 协议**自带**的一致性 CLI（在沙箱内拷贝协议仓库）校验 `dsh-distribution.json`；构建无法完成时逐字记录具体阻塞点，并把该描述符标记为**未完全验证**，而不是近似成通过 | `bun skills/dsh-qa/scripts/tui-distribution.mjs` |
+| `tui-spec-conformance` | 用**宿主自己**的固定版一致性套件检验我们的 manifest 与捕获到的 host descriptor，记录套件 revision 与每一份输入摘要，并重新测量载荷的三方 sha256 一致性 | `bun skills/dsh-qa/scripts/tui-spec-conformance.mjs` |
+| `tui-settings-bridge` | settings 桥接的 TUI 分支，判定对象是**构建后的字节**：每条 `/settings` 提示都带桥接后的真实披露（`a save writes <workspace>/.mpd/mpd.jsonc … after a restart`）、桥接前那句 "not bridged" 已**删除**、`no-live-session` 运行时提示既存在又已接入状态行组合，且 TUI dist **零**文件系统写入 | `bun skills/dsh-qa/scripts/tui-settings-bridge.mjs` |
+
 | `agent-teams-adopt`（历史 C1） | MIT 声明 + 采纳接线 | `node skills/dsh-qa/scripts/agent-teams-adopt.mjs` |
 | `extension-lifecycle` / `extension-mcp-bridge` / `extension-isolation`（**新增**） | 在**真实挂载启动**上验证扩展接口：放进 `<sandbox-ws>/.mpd/extensions/` 的数据面扩展出现在 `mpd_ext_list` 中、它的 flow 可加载、它的 role 可 spawn；运行时 stdio MCP 桥发布 `mcp__<server>__<tool>` 且真实工具调用成功；每一种坏扩展都不会影响正常扩展，且同一主机上两个 cwd 不同的会话只看到各自工作区的工程扩展 | `bun skills/dsh-qa/scripts/extension-lifecycle.mjs`（以及两个同级 case；各自都带 `--self-test`） |
 
 两个 npm 脚本，两条通道（t8）：`bun run test:qa` 运行**每个** case 的离线 `--self-test`；
 `bun run test:qa:all` 运行“重量/联机子集”的**真实通道**，其成员在 `package.json` 中按名字逐一列举
 （判据：该 case 需要真实的 headless dsh 启动和/或真实 provider）。显式白名单保证新 case 不会被静默当作重量用例。
+
+**TUI lane 与 TUI 打包路径。** 上面六个 DSH-TUI case 照例带离线 `--self-test`，但它们的**实时**分支需要
+真实终端：stdout 不是 TTY 时 `dsh-tui` 拒绝启动，所以它们在 tmux 中驱动界面并抓取 pane —— 这也是它们不在
+`bun run test:qa` 的 self-test 扫描范围之内的原因（`docs/tui.zh-CN.md` §2）。打包步骤同样覆盖 TUI 形态：
+`node scripts/pack-mpd.mjs` 会把 `packages/mpd-tui-plugin/{dist/**, README.md, README.zh-CN.md,
+themes/mpd-tui.json, skills/mpd-tui/SKILL.md}` 写进 `dist/mpd-package/`，并把打包后 patch 里的 `mpd-tui`
+行保持为可解析的 specifier `@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js`；安装仍是普通那一条
+（`dsh plugin --profile dsh-tui add <repo | dist/mpd-package>`）。
+
+**TUI 版本的 NOT-CLAIMED 纪律。** 本环境既没有 TTY 也没有浏览器，因此渲染相关的验收标准一律记为
+**not-claimed**，绝不写成 "passed"：清单在 `docs/tui.zh-CN.md` §10，而每个 lane 会记录它无法驱动的
+限制（击键分支、浏览器渲染），而不是用代理指标顶替。格式或解析器校验通过不等于安全或行为结论 ——
+兼容性、验证级别与限制必须分开陈述。
 
 **QA 硬规则**（AGENTS.md §7）：沙箱 `DSH_HOME=<mktemp>`；只复制一次凭据；断言沙箱
 路径；绝不碰真实 `~/.dsh`；workmate 类 case 额外沙箱化 `HOME`（`~/.mpd/workmate`
