@@ -212,6 +212,91 @@ export function isTaskReady(tasks, task) {
         && unsatisfiedDependencies([...tasks], task.dependencies).length === 0;
 }
 //#endregion mpd-delta ready-task-predicate
+//#region mpd-delta pool-capability-guard (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/**
+ * What a task NEEDS to be executable, and what a member's `toolDeny` withholds.
+ *
+ * DEFECT (measured 2026-09-14, twice — the read-only Architect and Reviewer members
+ * were handed pooled implementation tasks): the pool branch of `nextReadyTask` offers
+ * the first ready task with no capability test, so a read-only member (the roster's six
+ * read-only roles carry the seven write-capable names in `toolDeny`) received a write
+ * task it could not execute, discovered the denial mid-turn and had to be reassigned
+ * after its attempt was already rotating.
+ *
+ * The need is read from the task itself: a WRITE half from `kind`
+ * (implementation/repair) or from a declared `inScope`; an EXECUTION half (verify
+ * commands) from a declared `verify`. Only the tool names that make those halves
+ * possible take part in the comparison.
+ * @param task - the candidate task.
+ * @returns which halves the task needs.
+ */
+function taskCapabilityNeed(task) {
+    return {
+        writes: task.kind === 'implementation' || task.kind === 'repair' || (task.inScope ?? []).length > 0,
+        exec: (task.verify ?? []).length > 0,
+    };
+}
+/**
+ * The tools a task needs that this member's `toolDeny` withholds (empty = it can run it).
+ * @param task - the candidate task.
+ * @param member - the member about to be woken, or undefined when unknown.
+ * @returns the withheld tool names, in the order they are reported.
+ */
+function taskCapabilityGap(task, member) {
+    const denied = new Set(member?.toolDeny ?? []);
+    const need = taskCapabilityNeed(task);
+    const missing = [];
+    if (need.writes)
+        for (const tool of ['write', 'edit', 'mpd_hashline_edit'])
+            if (denied.has(tool))
+                missing.push(tool);
+    if (need.exec && denied.has('bash'))
+        missing.push('bash');
+    return missing;
+}
+/**
+ * The capability-aware pool selection the dispatch uses.
+ *
+ * The member's OWN task always wins: an explicit assignment is the captain's decision,
+ * so it is dispatched even to a restricted member — LOUDLY, because that pairing is a
+ * defect the captain should see before the member reports it. A POOLED task is
+ * different: it belongs to whoever can run it, so a candidate this member cannot
+ * execute is reported and LEFT IN THE POOL instead of being delivered.
+ * @param tasks - the team's tasks.
+ * @param member - the member about to be woken.
+ * @param onWithhold - called as `(task, gap, explicit)` per skipped candidate.
+ * @returns the task to deliver, or undefined when nothing is left for this member.
+ */
+export function nextCapableTask(tasks, member, onWithhold) {
+    const reported = new Set();
+    const withhold = (task, gap, explicit) => {
+        if (reported.has(task.id))
+            return;
+        reported.add(task.id);
+        onWithhold(task, gap, explicit);
+    };
+    // The upstream selection stays the entry point: it owns the member's own-task
+    // preference and the pool order, and this guard only widens the pool scan.
+    const candidate = nextReadyTask(tasks, member.name);
+    if (candidate === undefined)
+        return undefined;
+    if (candidate.assignee === member.name) {
+        const ownGap = taskCapabilityGap(candidate, member);
+        if (ownGap.length > 0)
+            withhold(candidate, ownGap, true);
+        return candidate;
+    }
+    for (const task of tasks.filter(entry => isTaskReady(tasks, entry) && entry.assignee === undefined)) {
+        const gap = taskCapabilityGap(task, member);
+        if (gap.length > 0) {
+            withhold(task, gap, false);
+            continue;
+        }
+        return task;
+    }
+    return undefined;
+}
+//#endregion mpd-delta pool-capability-guard
 function nextReadyTask(tasks, memberName) {
     const ready = tasks.filter(task => isTaskReady(tasks, task));
     return ready.find(task => task.assignee === memberName)
@@ -430,9 +515,17 @@ export function installTeamScheduler(ctx, config) {
                     const parkedAttemptId = parkedAttempts.get(currentMember.id);
                     const recoverOwned = owned !== undefined
                         && (owned.attemptId === undefined || owned.attemptId !== parkedAttemptId);
+                    //#region mpd-delta pool-capability-select (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                    // REPLACES the upstream `nextReadyTask` call: a pooled task this member
+                    // cannot execute is not delivered (see nextCapableTask) but left in the
+                    // pool for a member that can, and the withholding is logged once per
+                    // (team, member, reason).
                     const task = recoverOwned ? owned : owned === undefined
-                        ? nextReadyTask(fresh.tasks, currentMember.name)
+                        ? nextCapableTask(fresh.tasks, currentMember, (blocked, gap, explicit) => noteDispatchDecline(ctx.logger, fresh.id, currentMember.name, explicit
+                            ? `task ${blocked.id} (${blocked.kind ?? 'work'}) is assigned to this member, but its toolDeny withholds ${gap.join(', ')} — dispatched anyway, expect a blocked report`
+                            : `ready task ${blocked.id} (${blocked.kind ?? 'work'}) needs ${gap.join(', ')}, which this member's toolDeny withholds — left in the pool`))
                         : undefined;
+                    //#endregion mpd-delta pool-capability-select
                     if (task === undefined) {
                         if (currentMember.status !== 'idle' || deadlockVictims.length > 0) {
                             currentMember.status = 'idle';
