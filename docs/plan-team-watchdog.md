@@ -413,3 +413,71 @@ that depend on the repair + its verification).
 | # | Task | What changed | Why |
 |---|---|---|---|
 | 1 | `t46` | §0 D3's mechanism note; §2.1 (three OUR-files + live tuning + the adapter extension); §3 AC-2 (POST semantics), AC-7/AC-8 rewritten, **AC-17 added**, AC-11 (exact knobs + live tuning), AC-14 (watermark + acknowledge); §4 (card `FIELDS`, adapter `tools/execute`, TUI verify-only); §5 re-numbered with H1b/H2b/H2c; §6 w2 re-scoped, w7 rewritten, w8 edge + re-sequence note; new §8 arithmetic; §9 W-2 resolved-record, W-6 settled, **W-8/W-9 added** | the decisions-scoped dossier `HOST-AND-PLUGIN-SEAMS.md` measured the halt mass-cancel, the three-file knob wrinkle, the read-only PRE hook and the seen/unread gap |
+
+---
+
+## AMENDMENT 2 — the captain's fold-in of the w2 seam audit (t53), 2026-09-15
+
+Applied through this file's own §10 change channel (as AMENDMENT 1 was). No AC changed status; the
+corrections below are binding on w3–w12. Source: `evidence/team-watchdog/seam-audit/20260915T154132Z/REPORT.md`
+(w2, Explorer, read-only; payload persisted verbatim by w1b/t56).
+
+**A2-1 — §5-H2b MECHANISM CORRECTION (binding on w7).** A bare sidecar hold CANNOT enforce the pause:
+`state.js` owns `team.json` and every reader goes through `readTeam` (`:271-283` → `coerceTeamState`
+`:1061-1099` → `isTeamState` `:1128-1153`, which DOES tolerate an added field), so a sidecar is
+invisible to all three decline gates. w7 MUST therefore land one of: (a) the hold as a field on the
+team record written through the adopted locked path (`writeTeam` `:319-321` inside the per-team lock
+`:36-45`), or (b) the sidecar as the durable record PLUS a stable synchronous reader that the gates
+consult (e.g. `ctx.get('mpdWatchdog', false)?.isHeld(teamId)`), with the fail-open rule stated (watchdog
+row absent ⇒ no hold ⇒ dispatch behaves exactly as today) and the cross-process caveat recorded (a
+second process learns of a hold when it hydrates). w3 must name the option it implements and expose the
+reader signature; w7 must match it.
+
+**A2-2 — §2.1 line corrections (substance unchanged).** Knobs = **TWO** edits, not three:
+`packages/mpd-config-plugin/src/settings-schema.ts` (`SettingsSchema` `:17-24` + `SETTINGS_KNOBS`
+`:53-60`) and `packages/mpd-bundle-plugin/src/settings-card.js` (its own literal `FIELDS` at `:49-56`,
+not `:46`). `packages/mpd-tui-plugin/src/settings.ts` is **verify-only** and provably derived
+(`:99 SETTINGS_FIELDS = SETTINGS_KNOBS.map(...)`). Registration lives at
+`packages/mpd-config-plugin/src/index.ts:544` (not `:511`); the `settings/document-updated`
+subscription at `:488` (not `:478`); the reader seam is `ctx.provide("mpdConfig", { get, reload, states })`
+`:579-597`. AC-11's claim set is unchanged.
+
+**A2-3 — §5-H1b is an ADAPTER-surface gap, not a harness gap.** `tools/pre-execute` (`:38`),
+`tools/execute` (`:49`) and the observe-only `tools/result` (`:83`, emit `:3290-3295`) all exist; our
+adapter exposes only `guardTool` (`:273`/`:529-533` = `tools.guard`, contract "read only, never
+mutate"). A pre-dispatch stamp is therefore reachable by extending OUR adapter, with zero adopted-code
+edits — it stays out of this wave's scope, so AC-2 asserts the POST stamp only and a pre-stamp is
+`not-claimed` (W-9 stands).
+
+**A2-4 — heartbeats and the captain are CONFIRMED reachable (no carve-out).** `agent/pre-step` fires per
+model step (`$H/dsh-agent-loop/lib/index.js:894`; decl `$H/dsh-agent/lib/types/runtime-types.d.ts:313-319`;
+the payload also carries `turn`) and a PLAIN-context listener is admitted globally
+(`$H/dsh-scope/lib/index.js:327-340`: `const tag = scopeOf(ctx); if (tag === void 0) return true;`). The
+adapter's POST hook (`src/index.ts:274` decl, `:535-546` impl) stamps on COMPLETION. The CAPTAIN IS
+OBSERVABLE (`$L/scheduler.js:129-133` `liveCaptain(...) → ctx.agents.get(captainSessionId)`), so D1/D5's
+"members AND the captain" is buildable, not an aspiration. Corollary correction: `dsh-tools
+/lib/types/index.d.ts:612` documents `guard()`, NOT listener scope — cite `:34/:45/:56/:78` +
+`dsh-scope :327-340`.
+
+**A2-5 — THE ROW'S PLANE IS LOAD-BEARING (binding on w3).** A `presets/mpd/agent.cordis.yml` row mounts
+under `createScope` (`$H/dsh-agent-presets/lib/index.js:1779`, `:1789 mountPreset(scope.ctx, preset)`),
+so its listeners are TAGGED and would see exactly one agent — captain+member coverage would collapse
+silently. The watchdog MUST be a host-plane bundle-patch row (beside `cordis.patch.yml:216-217`).
+
+**A2-6 — region inventory for w7/w9/w12.** `scheduler.js:422-423` sits INSIDE
+`mpd-delta kick-team-decline-logs` (`416-429`) and `:490-491` INSIDE `kick-member-locked-decline-logs`
+(`486-502`) → in-region edits + one `--write-registry`; `:454-455`, `:397`, `:515-548`, `:620-630`, every
+`tools.js` site (`111/228/238-243/266-273/1139/1343/1366-1430/1991/2217`) and `quality-gates.js:839-855`
+are OUTSIDE every region → ADDITIVE regions available. `agent_teams_claim_task`'s missing `halted` guard
+is CONFIRMED (body `:1366-1430`; guards exist only at `:111/:228/:1139/:1991`). Registry state at audit
+time: `--check` exit 0, **48** regions across 9 adopted files.
+
+**A2-7 — the D13/D14 "loud refusal under F3" class is UNVERIFIED FROM READ.** The applier's predicate
+(`declaredNames :269-277`) collects COLUMN-0 declarations only; replaying it finds 0 module-scope names in
+`update-task-contract`'s block vs 6 in `scope-glob`'s. w6 must TEST that class before any task relies on a
+loud refusal for a description-line edit; until then it is a hypothesis, not a guard.
+
+**A2-8 — §8/§9 refinement.** W-2's residual is now narrower than the first freeze said: the per-tool-call
+heartbeat needs ZERO adopted edits; only the PRE-call stamp needs the adapter extension (A2-3). Everything
+else in §9 stands verbatim.
+| 2 | captain | A2-1 hold enforcement mechanism (§5-H2b) — sidecar alone cannot reach the gates; A2-2 knob line corrections + verify-only TUI section; A2-3 the PRE gap is adapter-surface; A2-4 heartbeat/captain reachability confirmed + the citation correction; A2-5 host-plane row binding; A2-6 region inventory + confirmed delta state; A2-7 D13/D14 heal class marked UNVERIFIED-FROM-READ; A2-8 W-2 narrowing | the w2 seam audit (t53) measured 10 citation/mechanism corrections and two blocker-class consequences the frozen plan had to absorb |
