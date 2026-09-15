@@ -30,7 +30,9 @@ The rule is binding (AGENTS.md §6): **a plugin row must not call `ctx.tools`,
 **Boundary:** the adopted `agent-teams` plugin (`packages/mpd-agent-teams-plugin`) is
 upstream MIT main code re-vendored from upstream on upgrades, so it keeps its own
 `ctx.*` calls (its one local adaptation is the `registerContinuableSetup` boot-safety
-guard). Every self-written mpd plugin goes through this adapter.
+guard). Every self-written mpd plugin goes through this adapter — including the TUI edition:
+`packages/mpd-tui-plugin` imports `createDshAdapter` from here and reads the mounted `mpdDsh`
+service for the workspace-root union, exactly like every other self-written row.
 
 The adapter is deliberately `inject`-free: every seam is resolved lazily at call time
 and probed defensively, because the loader applies sibling rows concurrently (a

@@ -23,7 +23,7 @@ Harness 更新是常态，但“每次更新都改所有调用点”不是。本
 
 **边界：** 采纳的 `agent-teams` 插件（`packages/mpd-agent-teams-plugin`）是升级时会从上游重新
 vendor 的 MIT 主代码，因此保留自己的 `ctx.*` 调用（唯一本地适配是 `registerContinuableSetup`
-启动安全守卫）。所有自研 mpd 插件都经由本适配器。
+启动安全守卫）。所有自研 mpd 插件都经由本适配器——TUI 版本也一样：`packages/mpd-tui-plugin` 从这里导入 `createDshAdapter`，并通过已挂载的 `mpdDsh` 服务取得工作区根并集，与其他所有自研行完全一致。
 
 适配器刻意不声明 `inject`：每个接缝都在调用时惰性解析并做防御性探测——因为 loader 会并发应用同级行（在 `apply` 时取快照会漏报），且 Cordis 中把未注入的服务当属性读取会抛错。接缝缺失时：调用点给出可操作的错误，或由 `capabilities()` 暴露标志供调用方分支处理。
 

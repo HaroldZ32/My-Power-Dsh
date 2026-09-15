@@ -1,0 +1,339 @@
+{
+  "task": "t57 — per-package README TUI coverage audit",
+  "measuredAt": "2026-09-15T15:37:26.746Z",
+  "editedFiles": [
+    {
+      "file": "packages/mpd-bundle-plugin/README.md",
+      "insertedBytes": 733,
+      "bytesAfter": 4338,
+      "sha256After": "4128eeb5666a3cbe4dc436bb07076161b24292db34bed3da88cec3486b13e951",
+      "bytesBeforeReconstructed": 3605,
+      "sha256BeforeReconstructed": "31018f8e73a8417cfa5033644747604bff1f424e2474b5efebb5d619f8cef166",
+      "reconstruction": "exact removal of the documented insertion"
+    },
+    {
+      "file": "packages/mpd-bundle-plugin/README.zh-CN.md",
+      "insertedBytes": 677,
+      "bytesAfter": 4144,
+      "sha256After": "cc95592cc5e6aa7d7514296ecf09e95c7dcea97c9aff014b93ecdb455fd88c58",
+      "bytesBeforeReconstructed": 3467,
+      "sha256BeforeReconstructed": "947b4c3a70fa740d283cec820eb4db4078eb0d7ddb33e7b561fa043a68b36155",
+      "reconstruction": "exact removal of the documented insertion"
+    },
+    {
+      "file": "packages/mpd-bundle/README.md",
+      "insertedBytes": 504,
+      "bytesAfter": 4689,
+      "sha256After": "d52e0b1a98400aa1a48bd7c58810c1aa765f7793fae33d63580ad89756761e3d",
+      "bytesBeforeReconstructed": 4185,
+      "sha256BeforeReconstructed": "52a441862e39f655796f30b2235b017d8598bfc05298fdab2013747b95537b80",
+      "reconstruction": "exact removal of the documented insertion"
+    },
+    {
+      "file": "packages/mpd-bundle/README.zh-CN.md",
+      "insertedBytes": 456,
+      "bytesAfter": 4521,
+      "sha256After": "5792716772cf5948351565f230e3741049def5af00630da9c142f0982103a7df",
+      "bytesBeforeReconstructed": 4065,
+      "sha256BeforeReconstructed": "cf025eeb613ac53e3cbf99e63e1e00f91db3979e0389d77dd9be9525cd3b850a",
+      "reconstruction": "exact removal of the documented insertion"
+    },
+    {
+      "file": "packages/mpd-dsh-adapter-plugin/README.md",
+      "insertedBytes": 206,
+      "bytesAfter": 4261,
+      "sha256After": "5350548ee57fb4bd1d67964ffb444444164e41c341bb976baf107ee4d56b9b2d",
+      "bytesBeforeReconstructed": 4055,
+      "sha256BeforeReconstructed": "b9115480a4a9251601dcab2379cb704314ea892ed73c3e8b237178adf029f49e",
+      "reconstruction": "exact removal of the documented insertion"
+    },
+    {
+      "file": "packages/mpd-dsh-adapter-plugin/README.zh-CN.md",
+      "insertedBytes": 194,
+      "bytesAfter": 4182,
+      "sha256After": "99bb298e07bda5068dd6a754d281831cb62116aea51e00c9372eb69eaaf24869",
+      "bytesBeforeReconstructed": 3988,
+      "sha256BeforeReconstructed": "0f27701c4f726f20d666eb1dfcbd87336a3ce341ff80f534ab70faf424a450b5",
+      "reconstruction": "exact removal of the documented insertion"
+    },
+    {
+      "file": "packages/mpd-config-plugin/README.md",
+      "insertedBytes": 63,
+      "bytesAfter": 4404,
+      "sha256After": "3cacbc7622e4bac29231906bc70692ad0336cfc1ee0e81fea87a7b007533a466",
+      "bytesBeforeReconstructed": 4341,
+      "sha256BeforeReconstructed": "9b83e39abb12ec2e6a3a9fb29eabdfaccdcdacf3da6308cc5723047d65ab0863",
+      "reconstruction": "exact removal of the documented insertion"
+    },
+    {
+      "file": "packages/mpd-config-plugin/README.zh-CN.md",
+      "insertedBytes": 56,
+      "bytesAfter": 4364,
+      "sha256After": "32e94dce33cd5545e0d3a1473eae2218bb18ff02f8637db5a7247b98c8bf34b4",
+      "bytesBeforeReconstructed": 4308,
+      "sha256BeforeReconstructed": "00f254950d568bd8106a424e3c1041b1a5ae943ff9e8f713c67c3f48909d7924",
+      "reconstruction": "exact removal of the documented insertion"
+    }
+  ],
+  "pairs": [
+    {
+      "package": "mpd-bootstrap-plugin",
+      "enExists": true,
+      "zhExists": true,
+      "enSwitchLink": true,
+      "zhSwitchLink": true,
+      "enLevels": "#########",
+      "zhLevels": "#########",
+      "headingTreeParity": true,
+      "edited": false
+    },
+    {
+      "package": "mpd-boulder-plugin",
+      "enExists": true,
+      "zhExists": true,
+      "enSwitchLink": true,
+      "zhSwitchLink": true,
+      "enLevels": "#####",
+      "zhLevels": "#####",
+      "headingTreeParity": true,
+      "edited": false
+    },
+    {
+      "package": "mpd-bundle",
+      "enExists": true,
+      "zhExists": true,
+      "enSwitchLink": true,
+      "zhSwitchLink": true,
+      "enLevels": "#######",
+      "zhLevels": "#######",
+      "headingTreeParity": true,
+      "edited": true
+    },
+    {
+      "package": "mpd-bundle-plugin",
+      "enExists": true,
+      "zhExists": true,
+      "enSwitchLink": true,
+      "zhSwitchLink": true,
+      "enLevels": "#######",
+      "zhLevels": "#######",
+      "headingTreeParity": true,
+      "edited": true
+    },
+    {
+      "package": "mpd-codegraph-plugin",
+      "enExists": true,
+      "zhExists": true,
+      "enSwitchLink": true,
+      "zhSwitchLink": true,
+      "enLevels": "#############",
+      "zhLevels": "#############",
+      "headingTreeParity": true,
+      "edited": false
+    },
+    {
+      "package": "mpd-comment-checker-plugin",
+      "enExists": true,
+      "zhExists": true,
+      "enSwitchLink": true,
+      "zhSwitchLink": true,
+      "enLevels": "#######",
+      "zhLevels": "#######",
+      "headingTreeParity": true,
+      "edited": false
+    },
+    {
+      "package": "mpd-config-plugin",
+      "enExists": true,
+      "zhExists": true,
+      "enSwitchLink": true,
+      "zhSwitchLink": true,
+      "enLevels": "#######",
+      "zhLevels": "#######",
+      "headingTreeParity": true,
+      "edited": true
+    },
+    {
+      "package": "mpd-dsh-adapter-plugin",
+      "enExists": true,
+      "zhExists": true,
+      "enSwitchLink": true,
+      "zhSwitchLink": true,
+      "enLevels": "#########",
+      "zhLevels": "#########",
+      "headingTreeParity": true,
+      "edited": true
+    },
+    {
+      "package": "mpd-ext-plugin",
+      "enExists": true,
+      "zhExists": true,
+      "enSwitchLink": true,
+      "zhSwitchLink": true,
+      "enLevels": "###################",
+      "zhLevels": "###################",
+      "headingTreeParity": true,
+      "edited": false
+    },
+    {
+      "package": "mpd-hashline-plugin",
+      "enExists": true,
+      "zhExists": true,
+      "enSwitchLink": true,
+      "zhSwitchLink": true,
+      "enLevels": "#######",
+      "zhLevels": "#######",
+      "headingTreeParity": true,
+      "edited": false
+    },
+    {
+      "package": "mpd-mcp-astgrep",
+      "enExists": true,
+      "zhExists": true,
+      "enSwitchLink": true,
+      "zhSwitchLink": true,
+      "enLevels": "#######",
+      "zhLevels": "#######",
+      "headingTreeParity": true,
+      "edited": false
+    },
+    {
+      "package": "mpd-mcp-codegraph",
+      "enExists": true,
+      "zhExists": true,
+      "enSwitchLink": true,
+      "zhSwitchLink": true,
+      "enLevels": "#######",
+      "zhLevels": "#######",
+      "headingTreeParity": true,
+      "edited": false
+    },
+    {
+      "package": "mpd-mcp-gitbash",
+      "enExists": true,
+      "zhExists": true,
+      "enSwitchLink": true,
+      "zhSwitchLink": true,
+      "enLevels": "#######",
+      "zhLevels": "#######",
+      "headingTreeParity": true,
+      "edited": false
+    },
+    {
+      "package": "mpd-mcp-lsp",
+      "enExists": true,
+      "zhExists": true,
+      "enSwitchLink": true,
+      "zhSwitchLink": true,
+      "enLevels": "#######",
+      "zhLevels": "#######",
+      "headingTreeParity": true,
+      "edited": false
+    },
+    {
+      "package": "mpd-memory-plugin",
+      "enExists": true,
+      "zhExists": true,
+      "enSwitchLink": true,
+      "zhSwitchLink": true,
+      "enLevels": "#########",
+      "zhLevels": "#########",
+      "headingTreeParity": true,
+      "edited": false
+    },
+    {
+      "package": "mpd-modelchain-plugin",
+      "enExists": true,
+      "zhExists": true,
+      "enSwitchLink": true,
+      "zhSwitchLink": true,
+      "enLevels": "#########",
+      "zhLevels": "#########",
+      "headingTreeParity": true,
+      "edited": false
+    },
+    {
+      "package": "mpd-qa-roles-probe",
+      "enExists": true,
+      "zhExists": true,
+      "enSwitchLink": true,
+      "zhSwitchLink": true,
+      "enLevels": "#####",
+      "zhLevels": "#####",
+      "headingTreeParity": true,
+      "edited": false
+    },
+    {
+      "package": "mpd-roles-plugin",
+      "enExists": true,
+      "zhExists": true,
+      "enSwitchLink": true,
+      "zhSwitchLink": true,
+      "enLevels": "#######",
+      "zhLevels": "#######",
+      "headingTreeParity": true,
+      "edited": false
+    },
+    {
+      "package": "mpd-team-compact-plugin",
+      "enExists": true,
+      "zhExists": true,
+      "enSwitchLink": true,
+      "zhSwitchLink": true,
+      "enLevels": "#############",
+      "zhLevels": "#############",
+      "headingTreeParity": true,
+      "edited": false
+    },
+    {
+      "package": "mpd-tools-plugin",
+      "enExists": true,
+      "zhExists": true,
+      "enSwitchLink": true,
+      "zhSwitchLink": true,
+      "enLevels": "#######",
+      "zhLevels": "#######",
+      "headingTreeParity": true,
+      "edited": false
+    },
+    {
+      "package": "mpd-tui-plugin",
+      "enExists": true,
+      "zhExists": true,
+      "enSwitchLink": true,
+      "zhSwitchLink": true,
+      "enLevels": "###################",
+      "zhLevels": "###################",
+      "headingTreeParity": true,
+      "edited": false
+    },
+    {
+      "package": "mpd-ulw-plugin",
+      "enExists": true,
+      "zhExists": true,
+      "enSwitchLink": true,
+      "zhSwitchLink": true,
+      "enLevels": "#########",
+      "zhLevels": "#########",
+      "headingTreeParity": true,
+      "edited": false
+    },
+    {
+      "package": "mpd-workmate-plugin",
+      "enExists": true,
+      "zhExists": true,
+      "enSwitchLink": true,
+      "zhSwitchLink": true,
+      "enLevels": "#####################",
+      "zhLevels": "#####################",
+      "headingTreeParity": true,
+      "edited": false
+    }
+  ],
+  "excluded": {
+    "mpd-agent-teams-plugin": "adopted upstream main code; its README is kept verbatim as provenance",
+    "mpd-mcp-shared": "ships no README at all (documented exception in docs/index.md)",
+    "mpd-team-watchdog-plugin": "package/README owned by a live task; the directory does not exist yet"
+  },
+  "verdict": "passed"
+}

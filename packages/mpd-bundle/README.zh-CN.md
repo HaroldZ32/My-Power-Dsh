@@ -25,3 +25,8 @@ DSH bundle 聚合包：`cordis.patch.yml` 挂载每一个 mpd-dsh plugin row —
 ## 配置平面
 
 该行同时携带对齐上游 `team_mode` 的上限键（全部**缺省安全**，默认落到本地冻结取值）：`maxMembers: 16`（保留本地上限）、`maxParallelMembers: 8`、`maxMessagesPerRun: 10000`、`maxWallClockMinutes: 120`、`maxMemberTurns: 500`、`messagePayloadMaxBytes: 32768`（min 1024）、`recipientUnreadMaxBytes: 262144`（min 1024）、`mailboxPollIntervalMs: 3000`（min 500）、`memberMaxDepth: 1`、`stateDir: .mpd/team`，以及 `enforcement: enforce`（超限发送被挡下；`observe` 仅记录 —— 与上游语义一致）。
+
+## TUI 组合
+
+同一个 patch 也组合 TUI 版本：`mpd-tui` 行挂载
+`@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js`（该包自身不带 patch，因此这一行是唯一挂载点，任何组合都无法重复该 loader 条目 id）；`dsh-tui-agent-presets` 行则在该 profile 实际组合的平面上给出同样的默认值（`mpd`）——web 平面的 `agent-presets` id-target 在那里会被跳过。对 web 安装没有其他影响。

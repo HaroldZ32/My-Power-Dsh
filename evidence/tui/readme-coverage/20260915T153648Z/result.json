@@ -1,0 +1,140 @@
+{
+  "task": "t57 — per-package README TUI coverage audit (explicit verdict per package + minimal true additions, bilingual)",
+  "producedBy": "Junior Engineer (attempt 2)",
+  "measuredAt": "2026-09-15T15:38:16.974Z",
+  "verdict": "passed",
+  "auditedPackages": [
+    "mpd-bootstrap-plugin",
+    "mpd-boulder-plugin",
+    "mpd-bundle",
+    "mpd-bundle-plugin",
+    "mpd-codegraph-plugin",
+    "mpd-comment-checker-plugin",
+    "mpd-config-plugin",
+    "mpd-dsh-adapter-plugin",
+    "mpd-ext-plugin",
+    "mpd-hashline-plugin",
+    "mpd-mcp-astgrep",
+    "mpd-mcp-codegraph",
+    "mpd-mcp-gitbash",
+    "mpd-mcp-lsp",
+    "mpd-memory-plugin",
+    "mpd-modelchain-plugin",
+    "mpd-qa-roles-probe",
+    "mpd-roles-plugin",
+    "mpd-team-compact-plugin",
+    "mpd-tools-plugin",
+    "mpd-tui-plugin",
+    "mpd-ulw-plugin",
+    "mpd-workmate-plugin"
+  ],
+  "pairsOk": 23,
+  "verdictsYes": [
+    "mpd-tui-plugin (verified only)",
+    "mpd-bundle",
+    "mpd-bundle-plugin",
+    "mpd-dsh-adapter-plugin",
+    "mpd-config-plugin"
+  ],
+  "verdictsNo": [
+    "mpd-bootstrap-plugin",
+    "mpd-boulder-plugin",
+    "mpd-codegraph-plugin",
+    "mpd-comment-checker-plugin",
+    "mpd-ext-plugin",
+    "mpd-hashline-plugin",
+    "mpd-mcp-astgrep",
+    "mpd-mcp-codegraph",
+    "mpd-mcp-gitbash",
+    "mpd-mcp-lsp",
+    "mpd-memory-plugin",
+    "mpd-modelchain-plugin",
+    "mpd-qa-roles-probe",
+    "mpd-roles-plugin",
+    "mpd-team-compact-plugin",
+    "mpd-tools-plugin",
+    "mpd-tui-plugin",
+    "mpd-ulw-plugin",
+    "mpd-workmate-plugin"
+  ],
+  "excluded": {
+    "mpd-agent-teams-plugin": "adopted upstream main code; its README is kept verbatim as provenance",
+    "mpd-mcp-shared": "ships no README at all (documented exception in docs/index.md)",
+    "mpd-team-watchdog-plugin": "package/README owned by a live task; the directory does not exist yet"
+  },
+  "editedFiles": [
+    {
+      "file": "packages/mpd-bundle-plugin/README.md",
+      "bytesBeforeReconstructed": 3605,
+      "bytesAfter": 4338,
+      "sha256BeforeReconstructed": "31018f8e73a8417cfa5033644747604bff1f424e2474b5efebb5d619f8cef166",
+      "sha256After": "4128eeb5666a3cbe4dc436bb07076161b24292db34bed3da88cec3486b13e951",
+      "insertedBytes": 733
+    },
+    {
+      "file": "packages/mpd-bundle-plugin/README.zh-CN.md",
+      "bytesBeforeReconstructed": 3467,
+      "bytesAfter": 4144,
+      "sha256BeforeReconstructed": "947b4c3a70fa740d283cec820eb4db4078eb0d7ddb33e7b561fa043a68b36155",
+      "sha256After": "cc95592cc5e6aa7d7514296ecf09e95c7dcea97c9aff014b93ecdb455fd88c58",
+      "insertedBytes": 677
+    },
+    {
+      "file": "packages/mpd-bundle/README.md",
+      "bytesBeforeReconstructed": 4185,
+      "bytesAfter": 4689,
+      "sha256BeforeReconstructed": "52a441862e39f655796f30b2235b017d8598bfc05298fdab2013747b95537b80",
+      "sha256After": "d52e0b1a98400aa1a48bd7c58810c1aa765f7793fae33d63580ad89756761e3d",
+      "insertedBytes": 504
+    },
+    {
+      "file": "packages/mpd-bundle/README.zh-CN.md",
+      "bytesBeforeReconstructed": 4065,
+      "bytesAfter": 4521,
+      "sha256BeforeReconstructed": "cf025eeb613ac53e3cbf99e63e1e00f91db3979e0389d77dd9be9525cd3b850a",
+      "sha256After": "5792716772cf5948351565f230e3741049def5af00630da9c142f0982103a7df",
+      "insertedBytes": 456
+    },
+    {
+      "file": "packages/mpd-dsh-adapter-plugin/README.md",
+      "bytesBeforeReconstructed": 4055,
+      "bytesAfter": 4261,
+      "sha256BeforeReconstructed": "b9115480a4a9251601dcab2379cb704314ea892ed73c3e8b237178adf029f49e",
+      "sha256After": "5350548ee57fb4bd1d67964ffb444444164e41c341bb976baf107ee4d56b9b2d",
+      "insertedBytes": 206
+    },
+    {
+      "file": "packages/mpd-dsh-adapter-plugin/README.zh-CN.md",
+      "bytesBeforeReconstructed": 3988,
+      "bytesAfter": 4182,
+      "sha256BeforeReconstructed": "0f27701c4f726f20d666eb1dfcbd87336a3ce341ff80f534ab70faf424a450b5",
+      "sha256After": "99bb298e07bda5068dd6a754d281831cb62116aea51e00c9372eb69eaaf24869",
+      "insertedBytes": 194
+    },
+    {
+      "file": "packages/mpd-config-plugin/README.md",
+      "bytesBeforeReconstructed": 4341,
+      "bytesAfter": 4404,
+      "sha256BeforeReconstructed": "9b83e39abb12ec2e6a3a9fb29eabdfaccdcdacf3da6308cc5723047d65ab0863",
+      "sha256After": "3cacbc7622e4bac29231906bc70692ad0336cfc1ee0e81fea87a7b007533a466",
+      "insertedBytes": 63
+    },
+    {
+      "file": "packages/mpd-config-plugin/README.zh-CN.md",
+      "bytesBeforeReconstructed": 4308,
+      "bytesAfter": 4364,
+      "sha256BeforeReconstructed": "00f254950d568bd8106a424e3c1041b1a5ae943ff9e8f713c67c3f48909d7924",
+      "sha256After": "32e94dce33cd5545e0d3a1473eae2218bb18ff02f8637db5a7247b98c8bf34b4",
+      "insertedBytes": 56
+    }
+  ],
+  "gates": {
+    "bun skills/dsh-qa/scripts/tui-spec-conformance.mjs --self-test": "exit 0 — ok: matrix mapping two-sided, identity table reproduces on 8 files",
+    "node scripts/pack-mpd.mjs (the located doc-pair gate; located via grep -rln zh-CN scripts/ skills/dsh-qa/ packages/*/test/)": "exit 0 — modes normalized 1125 files; staged package -> dist/mpd-package",
+    "node evidence/tui/readme-coverage/20260915T153648Z/measure.mjs": "exit 0 — 23/23 pairs exist with switch links and identical heading-level sequences",
+    "grep -n ^# per edited pair": "same heading-level sequence in both languages (see edited-pairs-headings.log)"
+  },
+  "measurementCaveat": "pre-edit digests were not captured before editing; before = current file minus the documented insertion (reconstruction, labelled as such, re-runnable via measure.mjs)",
+  "buildSideEffect": "node scripts/pack-mpd.mjs refreshed the gitignored build tree dist/mpd-package/** (not a source change); it now carries the current READMEs",
+  "changedPathCount": 8
+}

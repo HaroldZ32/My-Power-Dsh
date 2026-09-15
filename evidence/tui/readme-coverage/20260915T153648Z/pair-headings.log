@@ -1,0 +1,70 @@
+== pair heading-tree + switch links (23 pairs) ==
+--- mpd-bootstrap-plugin ---
+# mpd-bootstrap-plugin|## What it does|## Config|## Why it exists|## Usage|
+# mpd-bootstrap-plugin|## 它做什么|## 配置|## 为什么存在|## 用法|
+--- mpd-boulder-plugin ---
+# mpd-boulder-plugin|## Tools|## Build / test|
+# mpd-boulder-plugin|## 工具|## 构建 / 测试|
+--- mpd-bundle ---
+# mpd-bundle|## Session-start team gate (binding)|## Configuration plane|## TUI composition|
+# mpd-bundle|## 会话启动团队门（强制）|## 配置平面|## TUI 组合|
+--- mpd-bundle-plugin ---
+# mpd-bundle-plugin|## Config|## Regenerating the client|## Files|
+# mpd-bundle-plugin|## 配置|## 重新生成客户端|## 文件|
+--- mpd-codegraph-plugin ---
+# mpd-codegraph-plugin|## What it does|## Project root resolution (O-1)|## State|## Config|## Env|## Usage|
+# mpd-codegraph-plugin|## 它做什么|## 项目根解析（O-1）|## 状态（State）|## 配置|## 环境变量|## 用法|
+--- mpd-comment-checker-plugin ---
+# mpd-comment-checker-plugin|## Tools / hooks|## Install|## Build / test|
+# mpd-comment-checker-plugin|## 工具 / 钩子|## 安装|## 构建 / 测试|
+--- mpd-config-plugin ---
+# mpd-config-plugin|## Known keys|## Service / tools|## The `/settings` bridge (write-back)|
+# mpd-config-plugin|## 已知 key|## 服务 / 工具|## `/settings` 打通（回写）|
+--- mpd-dsh-adapter-plugin ---
+# mpd-dsh-adapter-plugin|## Wrapped seams|## Why it exists|## Usage|## Config|
+# mpd-dsh-adapter-plugin|## 封装的接缝|## 为什么存在|## 用法|## 配置|
+--- mpd-ext-plugin ---
+# mpd-ext-plugin — the MPD extension interface|## What this adds, and what already works|## The contract|## Three roots, two lifecycles|## The tools|## Configuration (`.mpd/mpd.jsonc`)|## Extension developers|## Failure policy (binding)|## Status and documented limits (v1)|## Tests|
+# mpd-ext-plugin — MPD 扩展接口|## 它新增了什么，以及本来就能用的路径|## 契约|## 三个根目录，两种生命周期|## 工具|## 配置（`.mpd/mpd.jsonc`）|## 扩展开发者|## 失败策略（强制）|## 状态与已记录的 v1 限制|## 测试|
+--- mpd-hashline-plugin ---
+# mpd-hashline-plugin|## Tools|## Guard|## Build / test|
+# mpd-hashline-plugin|## 工具|## Guard|## 构建 / 测试|
+--- mpd-mcp-astgrep ---
+# mpd-mcp-astgrep|## What it does|## Bundle row|## Notes|
+# mpd-mcp-astgrep|## 功能|## Bundle row|## 注意事项|
+--- mpd-mcp-codegraph ---
+# mpd-mcp-codegraph|## What it does|## Proof|## Usage|
+# mpd-mcp-codegraph|## 它做什么|## 证明|## 用法|
+--- mpd-mcp-gitbash ---
+# mpd-mcp-gitbash|## What it does|## Bundle row|## Notes|
+# mpd-mcp-gitbash|## 功能|## Bundle row|## 注意事项|
+--- mpd-mcp-lsp ---
+# mpd-mcp-lsp|## What it does|## Bundle row|## Notes|
+# mpd-mcp-lsp|## 功能|## Bundle row|## 注意事项|
+--- mpd-memory-plugin ---
+# mpd-memory-plugin|## VCS backends (`memory.vcs`: git | svn | both)|## Paths|## Tools|## Build / test|
+# mpd-memory-plugin|## VCS 后端（`memory.vcs`: git | svn | both）|## 路径|## 工具|## 构建 / 测试|
+--- mpd-modelchain-plugin ---
+# mpd-modelchain-plugin|## Tools|## Service usage|## Config|## Usage|
+# mpd-modelchain-plugin|## 工具|## 服务用法|## 配置|## 用法|
+--- mpd-qa-roles-probe ---
+# mpd-qa-roles-probe|## What it does|## Usage|
+# mpd-qa-roles-probe|## 它做什么|## 用法|
+--- mpd-roles-plugin ---
+# mpd-roles-plugin|## Surface|## Extension-contributed roles|## Team mode|
+# mpd-roles-plugin|## Surface|## 由扩展贡献的 role|## Team mode|
+--- mpd-team-compact-plugin ---
+# mpd-team-compact-plugin|## Tools|## Semantics|## Design constraints (each one measured)|## State|## Gates|## Related|
+# mpd-team-compact-plugin|## 工具|## 语义|## 设计约束（每一条都经过实测）|## 状态|## 关卡|## 相关|
+--- mpd-tools-plugin ---
+# mpd-tools-plugin|## What it does|## Config|## Usage|
+# mpd-tools-plugin|## 功能|## 配置|## 使用|
+--- mpd-tui-plugin ---
+# mpd-tui — DSH-TUI surfaces for `@mpd-dsh/mpd`|## What it provides|## Static assets|## Plugin contract|### Config keys|### Diagnostics|## What is NOT claimed|## Build and test|## License|
+# mpd-tui — `@mpd-dsh/mpd` 的 DSH-TUI 界面|## 提供的能力|## 静态资产|## 插件契约|### 配置键|### 诊断|## 明确不声明（NOT CLAIMED）|## 构建与测试|## 许可证|
+--- mpd-ulw-plugin ---
+# mpd-ulw-plugin|## Policy (adapted from upstream ultrawork, base 8c57e46)|## Tools|## State|## Build / test|
+# mpd-ulw-plugin|## 策略（改编自上游 ultrawork，base 8c57e46）|## 工具|## 状态|## 构建 / 测试|
+--- mpd-workmate-plugin ---
+# mpd-workmate-plugin|## Library layout|## Naming rule (ASCII-only)|## Tools|## Rename and delete|### Refused while in use|### HTTP routes (web profile)|## GUI (Workmates sidebar tab)|## Team integration (dsh-agent-teams)|## Build / test|
+# mpd-workmate-plugin|## 库布局|## 命名规则（仅 ASCII）|## 工具|## 重命名与删除|### 正在被使用时拒绝|### HTTP 路由（web profile）|## GUI（Workmates 侧边栏 Tab）|## 团队集成（dsh-agent-teams）|## 构建 / 测试|

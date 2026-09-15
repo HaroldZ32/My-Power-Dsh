@@ -40,6 +40,15 @@ The `@mpd-dsh/mpd` bundle's own main plugin and web-client surface. Two jobs:
      `agent-teams-activity`, `conversation.chat.node`, `shell.overlay` or
      `sidebar.footer.action`.
 
+**TUI counterpart.** The settings card this client registers is the browser half of the same
+`mpd` settings namespace the TUI edition renders as its `/settings` section
+(`packages/mpd-tui-plugin/src/settings.ts`): labels, hints and zh descriptions are mirrored
+between the two front doors, a test asserts the two lists stay identical, and both state the same
+bridge disclosure — a save writes `<workspace>/.mpd/mpd.jsonc` for the live session workspace(s)
+and the mpd plugins act on it after a restart. The browser reaches the bridge only through the
+public settings seam; the write-back itself belongs to `packages/mpd-config-plugin`. Rebuild the
+combined client (`node scripts/build-mpd-client.mjs`) after touching either half.
+
 ## Config
 
 None. This is infrastructure: the self-row carries no config in the bundle patch.

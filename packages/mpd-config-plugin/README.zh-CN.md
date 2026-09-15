@@ -52,7 +52,7 @@ Plan C / C7 —— 极简的 `mpd.jsonc` 运行时配置层。
 - **重复键：** `SET` 编辑该路径的**最后一处**，并在警告中列出所有出现行；`UNSET`
   一次由后向前的扫描删除**每一处**（留下较早的一处会让它在文件里继续生效，而 settings
   层却报告已取消）。只有无法证明的区段、被重复的中间键（`ambiguous-intermediate`）、
-  无法解析的文档与只读目标才被拒绝。
+  无法解析的文档与只读目标才被拒绝。该规则面向用户的陈述见 `docs/tui.md` §6.5。
 
 证据：`evidence/mpd-bridge/implementation/20260915T080138Z/`（两次真实启动，分别对应
 一个活动根与两个活动根）、通道 `skills/dsh-qa/scripts/tui-settings-bridge.mjs`、复审
