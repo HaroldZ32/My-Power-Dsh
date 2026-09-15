@@ -64,3 +64,12 @@ The row also carries the upstream-aligned limits (measured against the upstream
 (min 1024), `mailboxPollIntervalMs: 3000` (min 500), `memberMaxDepth: 1`,
 `stateDir: .mpd/team`, and `enforcement: enforce` (over-limit sends are blocked;
 `observe` logs only — the upstream semantics).
+
+## TUI composition
+
+The same patch also composes the TUI edition: the `mpd-tui` row mounts
+`@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js` (that package ships no patch of its own, so
+this row is the only mount and no composition can duplicate the loader entry id), and the
+`dsh-tui-agent-presets` row gives a `dsh-tui` profile the same default (`mpd`) on the plane that
+profile actually composes — the web-plane `agent-presets` id-target is skipped there. Nothing else
+changes for a web install.

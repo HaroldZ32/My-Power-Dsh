@@ -1,0 +1,7 @@
+=== node scripts/pack-mpd.mjs (the release step that carries the README pair) ===
+[pack-mpd] modes normalized: 1125 files (644: 1113, 755: 12)
+[pack-mpd] staged package -> /root/dshProj/my-power-dsh/dist/mpd-package
+exit=0
+--- packed README pair present? ---
+  -rw-r--r-- 1 root root 11905 Sep 15 23:39 dist/mpd-package/README.md
+  -rw-r--r-- 1 root root 12013 Sep 15 23:39 dist/mpd-package/README.zh-CN.md

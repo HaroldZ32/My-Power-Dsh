@@ -365,6 +365,48 @@ polls `/plugins/dsh-agent-teams/{state,halt,plan,assets}`. All register via
 `webServer.register` and retry on `internal/service` binding (a webless profile stays
 tool-only).
 
+## 7b. TUI edition wiring (the counterpart of §7)
+
+The same bundle mounts under the host's `dsh-tui` profile as the **third** patch layer: host-base
+(`@deepseek-ai/dsh-base`) → host-tui (`@deepseek-harness-tui/dsh-tui`) → this bundle, measured as
+`dsh.profile.bundles = ["@deepseek-ai/dsh-base", "@deepseek-harness-tui/dsh-tui", "@mpd-dsh/mpd"]`
+(`evidence/tui/composition/20260915T053445Z/`). The bundle patch contributes ONE TUI row:
+
+- `mpd-tui` → `@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js`. The package ships **no**
+  `cordis.patch.yml` of its own: the bundle patch owns that row id, and a second mount would duplicate
+  a loader entry id, which the loader rejects outright.
+
+What that plugin does — and what it deliberately does not:
+
+- **Does** bind the host's activation-gated TUI seams, each through a soft probe
+  (`ctx.get(id, false)`) so an absent service degrades with a warning instead of failing the boot: the
+  keyed status line (`tuiStatus`), the `/settings` section (`tuiSettingsSections`), the full-screen
+  board (`tuiScenes`), the `/mpd` command tree (`tuiCommandTrees`), keyboard shortcuts
+  (`tuiShortcuts`), managed dialogs (`tuiDialogs`) and the transcript-renderer registration
+  (`tuiRenderers`; the host projects no row for the bundle's renderer event). Every registration is
+  disposed through `ctx.effect`.
+- **Does not** write to the filesystem at all — the settings write-back lives in
+  `packages/mpd-config-plugin` (below), and the TUI package's zero-write property is asserted by its own
+  lane (`tui-settings-bridge.mjs`, check T7). It also claims no admitted Component identity: the
+  bundle-level `dsh-plugin.json` declares the host facet, and the host's own admission answers
+  `waiting_authorization` for the four default-deny decision-event permissions, so the effect ledger
+  attributes the registration as `undeclared` (`docs/tui.md` §4 and §6.1).
+
+**The seam providers, in the order the composition resolves them.** (1) The **settings-section
+provider** is `packages/mpd-config-plugin`: it registers the `mpd` namespace through the adapter's
+`settingsRegister` with a **file-derived base** — the workspace's `<workspace>/.mpd/mpd.jsonc` value
+when exactly one session root is live, the mount-time (exec-less) root when none is, and
+`ambiguous-multi-root` (no invented base) when several are — and it owns the **write-back**, triggered
+by the host's `settings/document-updated(ns, revision)` event filtered to `source === 'update'`, under
+a lock plus compare-and-swap, a sibling temp file and an atomic rename. (2) The **host-served
+`tuiSettingsSections` seam** is what renders the section: the TUI package registers a section for the
+namespace `mpd` (with a guarded fallback for compositions that lack the config plugin) and the host
+binds that registration to its own `/settings` screen — that provider/host split is why the screen can
+open on the file value while the TUI package itself never reads the file. (3) The **status publisher**
+is the TUI package's `tuiStatus` keys: each key is set from the session workspace's `.mpd` state
+(workspace resolved per call through the adapter) and disposed with the plugin's own `ctx.effect`, so a
+plugin reload cannot leave a stale line behind.
+
 ## 8. Security & isolation
 
 - Credentials are never stored, logged, or echoed by any plugin; QA copies the

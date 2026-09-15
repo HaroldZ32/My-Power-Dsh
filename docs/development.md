@@ -101,6 +101,13 @@ The QA skill is `skills/dsh-qa` (`SKILL.md`). Every case script ships `--self-te
 | `web-client-adapt` | the `@mpd-dsh/mpd` boot-graph client entry + client.js ids + workmate host routes (incl. the client's rename/delete URLs) | `node skills/dsh-qa/scripts/web-client-adapt.mjs` |
 | `preset-conformance` | every harness-owned row config (preset + bundle patch + QA overlays) conforms to the INSTALLED harness schemas, the `mpd` preset's row set equals the installed `standard` preset's, and a real session created with `agentPreset: "mpd"` MOUNTS — with a negative control that must fail | `node skills/dsh-qa/scripts/preset-conformance.mjs` |
 | `software-smoke` | software dev flow: a REAL headless mpd session (local OpenAI-shaped stub, throwaway key — no provider credential) writes a tiny deterministic game with the `write` tool and runs it with the `bash` tool in a SANDBOX workspace; the case replays the REAL transcript through its own oracle (legality, optimality, winner, determinism) and requires the mutation control to go RED | `node skills/dsh-qa/scripts/software-smoke.mjs` |
+| `tui-mount` | the REAL dsh-TUI boot: the bundle as the third patch layer (`dsh.profile.bundles` = [dsh-base, dsh-tui, @mpd-dsh/mpd]), the `mpd-tui` row composed, ZERO apply-crash signatures in the raw log, the status line rendered, and the boot's own session record carrying `agentPreset: "mpd"` | `bun skills/dsh-qa/scripts/tui-mount.mjs` |
+| `tui-panels` | each of the seven activation-gated TUI surfaces really RENDERS (status line, `/mpd status`, the `/mpd` completion tree, the board scene, the renderer row, the `/settings` section with its bridge+restart disclosure, and the managed dialog) — a surface that renders nothing FAILS the lane; the lane also proves `/mpd` never reached the model, and re-runs its engine on a deliberately impossible expectation as a negative control | `bun skills/dsh-qa/scripts/tui-panels.mjs` |
+| `tui-admission` | the HOST's own pinned admission algorithm against the bundle-level `dsh-plugin.json`: vendored `@dsh-std/manifest` parse + projection + the host's `validatePlugin` + five-state `negotiate`, then the host's `/plugins check` driven inside a live TUI; the spec-data root must RESOLVE first, and three negative controls are recorded | `bun skills/dsh-qa/scripts/tui-admission.mjs` |
+| `tui-distribution` | `dsh-distribution.json` validated by the dsh-distribution protocol's OWN conformance CLI from an in-sandbox copy of the protocol repo; when its build cannot complete, the exact blocker is recorded and the descriptor is marked NOT fully validated rather than approximated as a pass | `bun skills/dsh-qa/scripts/tui-distribution.mjs` |
+| `tui-spec-conformance` | the HOST's own pinned conformance suite against our manifest and a captured host descriptor, with the suite revision and every input digest recorded, and the three-way sha256 identity of the payload re-measured | `bun skills/dsh-qa/scripts/tui-spec-conformance.mjs` |
+| `tui-settings-bridge` | the TUI arm of the settings bridge, judged against the BUILT bytes: every `/settings` hint carries the post-bridge disclosure (`a save writes <workspace>/.mpd/mpd.jsonc … after a restart`), the pre-bridge "not bridged" sentence is DELETED, the `no-live-session` runtime notice is present AND wired into the status-line composition, and the TUI dist performs ZERO filesystem writes | `bun skills/dsh-qa/scripts/tui-settings-bridge.mjs` |
+
 | `agent-teams-adopt` (historical C1) | MIT notice + adoption wiring | `node skills/dsh-qa/scripts/agent-teams-adopt.mjs` |
 | `extension-lifecycle` / `extension-mcp-bridge` / `extension-isolation` (**new**) | the extension interface on REAL mounted boots: a data-plane extension in `<sandbox-ws>/.mpd/extensions/` appears in `mpd_ext_list`, its flow loads, its role spawns; the runtime stdio MCP bridge publishes `mcp__<server>__<tool>` and a real tool call succeeds; a broken extension of each kind leaves the good ones working, and two sessions with different cwds on one host see only their own project extensions | `bun skills/dsh-qa/scripts/extension-lifecycle.mjs` (and the two sibling cases; each ships `--self-test`) |
 
@@ -108,6 +115,21 @@ Two npm scripts, two lanes (t8): `bun run test:qa` runs EVERY case's offline `--
 `bun run test:qa:all` runs the REAL lane of the heavy/live subset, enumerated by name in
 `package.json` (criterion: the case needs a real headless dsh boot and/or a live provider).
 The allowlist is explicit so a new case is never silently treated as heavy.
+
+**TUI lanes and the TUI packaging path.** The six DSH-TUI cases above ship the usual offline
+`--self-test`, but their LIVE legs need a real terminal: `dsh-tui` refuses to boot when stdout is not a
+TTY, so they drive the UI inside tmux and capture panes — which is why they are not part of
+`bun run test:qa`'s self-test sweep (`docs/tui.md` §2). The packaging step ships the TUI flavor too:
+`node scripts/pack-mpd.mjs` writes `packages/mpd-tui-plugin/{dist/**, README.md, README.zh-CN.md,
+themes/mpd-tui.json, skills/mpd-tui/SKILL.md}` into `dist/mpd-package/` and keeps the packed patch's
+`mpd-tui` row as the resolvable specifier `@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js`; the
+install is the ordinary one (`dsh plugin --profile dsh-tui add <repo | dist/mpd-package>`).
+
+**NOT-CLAIMED discipline for the TUI edition.** With no TTY and no browser in this environment the
+render-acceptance criteria are recorded as **not-claimed**, never as "passed": `docs/tui.md` §10 carries
+the list, and each lane records the limitation it could not drive (a keystroke leg, a browser render)
+instead of substituting a proxy. Passing format or parser validation is not a safety or behaviour
+verdict — keep compatibility, verification level and restrictions as separate statements.
 
 **QA hard rules** (AGENTS.md §7): sandbox `DSH_HOME=<mktemp>`; copy credentials once;
 assert the sandbox path; never touch the real `~/.dsh`; workmate cases additionally

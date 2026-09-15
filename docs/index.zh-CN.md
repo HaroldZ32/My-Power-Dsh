@@ -10,10 +10,10 @@ my-power-dsh（DeepSeek Harness，DSH 的插件 bundle）的文档中心。如�
 | 文档 | 读者 | 内容 |
 |---|---|---|
 | [`../README.zh-CN.md`](../README.zh-CN.md) | 所有人 | 产品页：bundle 是什么、能力清单、一条命令安装、快速上手。 |
-| [`user-guide.zh-CN.md`](user-guide.zh-CN.md) | 使用者 | 面向任务的指南：安装/卸载、`mpd` preset、按用途划分的工具、专家名册、workmate 库、团队模式、Web GUI、`mpd.jsonc` 配置、从使用者视角看扩展、故障排查。 |
+| [`user-guide.zh-CN.md`](user-guide.zh-CN.md) | 使用者 | 面向任务的指南：安装/卸载、`mpd` preset、按用途划分的工具、专家名册、workmate 库、团队模式、DSH-TUI 版本章节、Web GUI、`mpd.jsonc` 配置、从使用者视角看扩展、故障排查。 |
 | [`extensions.zh-CN.md`](extensions.zh-CN.md) | 扩展作者 | **新增**：扩展接口 —— 冻结的描述符契约、四种贡献种类（skills、flows、MCP 服务器、roles）、发现根与开发者 CLI。 |
 | [`tui.zh-CN.md`](tui.zh-CN.md) | TUI 会话使用者 | **新增**：DSH-TUI 版本 —— 安装命令、TUI 原生界面、准入与分发产物、逐包兼容性台账，以及明确的 NOT-CLAIMED 清单。 |
-| [`architecture.zh-CN.md`](architecture.zh-CN.md) | 工程师、好奇的使用者 | bundle 如何组装与挂载：补丁层、启动链、插件清单、交互流程、状态布局、web 客户端接线。 |
+| [`architecture.zh-CN.md`](architecture.zh-CN.md) | 工程师、好奇的使用者 | bundle 如何组装与挂载：补丁层、启动链、插件清单、交互流程、状态布局、web 客户端接线、TUI 版本接线。 |
 | [`development.zh-CN.md`](development.zh-CN.md) | 开发者 | 仓库布局、构建/测试命令、QA 用例目录、关卡、打包/安装、vendor、git 模型、常见坑。 |
 | [`../AGENTS.md`](../AGENTS.md) | 智能体 + 维护者 | 有约束力的仓库手册（英文）：约定、关卡、git 模型、故障排查。 |
 | [`../extensions/README.zh-CN.md`](../extensions/README.zh-CN.md) | 扩展作者 | bundle 自带的发现根目录：三个根、各自的生命周期，以及随包提供的参考扩展。 |

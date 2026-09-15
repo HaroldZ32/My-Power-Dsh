@@ -1,0 +1,204 @@
+diff --git a/packages/mpd-tui-plugin/src/index.ts b/packages/mpd-tui-plugin/src/index.ts
+index a9e2e26..c806892 100644
+--- a/packages/mpd-tui-plugin/src/index.ts
++++ b/packages/mpd-tui-plugin/src/index.ts
+@@ -48,7 +48,7 @@ import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
+ import type { PluginContextLike, SeamOutcome, SessionLike } from "./types.js"
+ import { createLog, type Log } from "./log.js"
+ import { describeOutcome, onService, serviceOf } from "./host.js"
+-import { AMBIGUOUS_MULTI_ROOT_NOTICE, NO_LIVE_SESSION_NOTICE, readBoardState } from "./state.js"
++import { AMBIGUOUS_MULTI_ROOT_NOTICE, NO_FILE_BASE_NOTICE, NO_LIVE_SESSION_NOTICE, readBoardState } from "./state.js"
+ import { registerStatus } from "./status.js"
+ import { registerRenderers } from "./renderers.js"
+ import { registerSettingsSection } from "./settings.js"
+@@ -227,9 +227,14 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport
+   // a save with no live session workspace stays in settings and says so on screen. `mpdConfig`
+   // is another plugin's service, so it is reached with the deferred inject form (a one-shot
+   // probe cannot see it, and a declared dependency would park this entry).
+-  let configHandle: { states?: () => { writeback?: { skipped?: string } | null } } | undefined
++  let configHandle: { states?: () => { writeback?: { skipped?: string } | null; settings?: { baseFromFiles?: boolean } } } | undefined
+   const bridgeRead = (): string | undefined => {
+     try {
++      // The RESIDUAL hazard (captain's addendum): if the namespace could not derive a base from a
++      // workspace file, this screen cannot show a value that lives only in that file — say so on the
++      // line, so a user never "fixes" the default over their own configuration.
++      const settings = configHandle?.states?.()?.settings
++      if (settings?.baseFromFiles === false) return NO_FILE_BASE_NOTICE
+       const skipped = configHandle?.states?.()?.writeback?.skipped
+       // Both refusal reasons are surfaced, each with its own sentence: a settings-only save must
+       // never read as a lost one (captain's ruling 1).
+@@ -241,7 +246,7 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport
+     }
+   }
+   onService(ctx, "mpdConfig", (_scoped: PluginContextLike, service: unknown) => {
+-    configHandle = service as { states?: () => { writeback?: { skipped?: string } | null } }
++    configHandle = service as { states?: () => { writeback?: { skipped?: string } | null; settings?: { baseFromFiles?: boolean } } }
+   })
+ 
+   const status = resolved.statusLine
+diff --git a/packages/mpd-tui-plugin/src/state.ts b/packages/mpd-tui-plugin/src/state.ts
+index 2bedad9..3ec3272 100644
+--- a/packages/mpd-tui-plugin/src/state.ts
++++ b/packages/mpd-tui-plugin/src/state.ts
+@@ -250,6 +250,14 @@ export function readBoardState(workspace: string, home: string = homedir()): Boa
+  */
+ export const NO_LIVE_SESSION_NOTICE = "saved to settings — not yet written to any .mpd/mpd.jsonc (no live session)"
+ 
++/**
++ * The notice for the RESIDUAL case where the namespace could not derive a base from the workspace
++ * file (no single live workspace at mount, so the base stayed at the schema defaults). Without it a
++ * user whose file says 9999 could see the default here and "fix" it by saving the default over their
++ * own file value — the silent divergence this bridge exists to remove.
++ */
++export const NO_FILE_BASE_NOTICE = "these fields show the settings value; the mpd plugins read <workspace>/.mpd/mpd.jsonc — no single workspace file was available when this screen's namespace was registered, so a value that lives only in the file is NOT shown here"
++
+ /**
+  * The notice for the N-root refusal: settings-only, with the candidates in the bridge's log line.
+  * Same two-part honesty as above — persisted, not written, and never lost.
+diff --git a/packages/mpd-tui-plugin/test/plugin.test.ts b/packages/mpd-tui-plugin/test/plugin.test.ts
+index f21cbaf..0175e89 100644
+--- a/packages/mpd-tui-plugin/test/plugin.test.ts
++++ b/packages/mpd-tui-plugin/test/plugin.test.ts
+@@ -12,7 +12,7 @@ import { describe, expect, test } from "bun:test"
+ import * as mod from "../src/index"
+ import { TRANSCRIPT_TYPES } from "../src/renderers"
+ import { BRIDGE_DISCLOSURE, BRIDGE_NO_WORKSPACE_NOTICE, BRIDGE_NOT_LOST, SETTINGS_FIELDS } from "../src/settings"
+-import { AMBIGUOUS_MULTI_ROOT_NOTICE, NO_LIVE_SESSION_NOTICE, readBoardState, statusLine } from "../src/state"
++import { AMBIGUOUS_MULTI_ROOT_NOTICE, NO_FILE_BASE_NOTICE, NO_LIVE_SESSION_NOTICE, readBoardState, statusLine } from "../src/state"
+ import { SHORTCUT_BINDINGS } from "../src/shortcuts"
+ import { STATUS_KEY } from "../src/status"
+ import { DECISION_EVENTS } from "../src/decisions"
+@@ -514,6 +514,22 @@ describe("settings section disclosure (t21)", () => {
+ })
+ 
+ 
++describe("the no-file-base notice (the residual silent-divergence case)", () => {
++  test("it is DEFINED and WIRED: the status line shows it exactly while the namespace has no file base", () => {
++    const noBase = allServices({ mpdConfig: { states: () => ({ files: [], errors: [], writeback: null, settings: { baseFromFiles: false, baseReason: "ambiguous-multi-root" } }) } })
++    mod.apply(hostDouble(noBase.services).ctx as never, { statusIntervalMs: 0 })
++    const published = noBase.calls.statusSet.filter((entry: any) => entry.key === STATUS_KEY)
++    expect(published.length).toBeGreaterThan(0)
++    expect(String(published.at(-1).text)).toContain(NO_FILE_BASE_NOTICE)
++
++    // with a FILE-derived base the notice is absent (it is not decoration)
++    const withBase = allServices({ mpdConfig: { states: () => ({ files: [], errors: [], writeback: null, settings: { baseFromFiles: true, baseReason: "one-live-root" } }) } })
++    mod.apply(hostDouble(withBase.services).ctx as never, { statusIntervalMs: 0 })
++    const ok = withBase.calls.statusSet.filter((entry: any) => entry.key === STATUS_KEY)
++    expect(String(ok.at(-1).text)).not.toContain(NO_FILE_BASE_NOTICE)
++  })
++})
++
+ describe("the §D.2 runtime notice (a save with no live session workspace)", () => {
+   test("the notice constant is the design's exact sentence and matches the exported one", () => {
+     expect(NO_LIVE_SESSION_NOTICE).toBe("saved to settings — not yet written to any .mpd/mpd.jsonc (no live session)")
+diff --git a/skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs b/skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs
+index 67c4126..87cbc30 100644
+--- a/skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs
++++ b/skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs
+@@ -63,7 +63,38 @@ const VALUE_AMBIGUOUS = 27182
+ export const VALUE_INITIAL = 35000
+ 
+ /** The fixture: comments, a trailing comma and a non-alphabetical order — all must survive. */
+-export function fixture(value) {
++export /**
++ * Find one namespace descriptor anywhere in a describe response. The RPC envelope's nesting is the
++ * HOST's business (measured: `settings/mutate` answers `{ok, value:<descriptor>}`), so the lane
++ * searches structurally instead of assuming a shape — and records the observed keys in the result.
++ */
++function findNamespaceDescriptor(payload, ns) {
++  const seen = new Set()
++  const stack = [payload]
++  while (stack.length > 0) {
++    const node = stack.pop()
++    if (node === null || node === undefined || typeof node !== "object" || seen.has(node)) continue
++    seen.add(node)
++    if (Array.isArray(node)) {
++      for (const item of node) if (item !== null && typeof item === "object") stack.push(item)
++      continue
++    }
++    if (String(node.ns ?? "") === ns) return node
++    for (const value of Object.values(node)) if (value !== null && typeof value === "object") stack.push(value)
++  }
++  return undefined
++}
++
++/** Minimal JSONC read for the lane's own agreement check (comments + trailing commas). */
++function readJsoncLike(text) {
++  const stripped = String(text)
++    .replace(/\/\*[\s\S]*?\*\//g, "")
++    .replace(/(^|[^:])\/\/[^\n]*/g, "$1")
++    .replace(/,(\s*[}\]])/g, "$1")
++  return JSON.parse(stripped)
++}
++
++function fixture(value) {
+   return `{\n  // human comment: must survive the write-back\n  "hashline": {\n    "maxDiffChars": ${value},\n  },\n  "ulw": { "maxRounds": 6 },\n}\n`
+ }
+ 
+@@ -136,6 +167,19 @@ export function evaluateBridge(observed) {
+     // §10.1: THIS is why `mpd-config` owns the registration — the namespace serves the FILE-DERIVED
+     // base, so a front door shows the real inherited value instead of a schema default (the fixture's
+     // file value differs from the schema default on purpose).
++    // AGREEMENT: the namespace's resolved value (settings surface) must equal the value the durable
++    // file carries (the two-surface check item 2 asks for). Both are read independently: the file
++    // from disk, the value from the host's own read surface.
++    const fileValueAtRead = (() => {
++      try {
++        const parsed = readJsoncLike(String(observed.fileAfter))
++        return parsed?.hashline?.maxDiffChars
++      } catch {
++        return undefined
++      }
++    })()
++    add("W15", observed.describedValue === observed.expectedValue, "the AUTHORITATIVE read surface (settings/describe) agrees: its resolved value is " + observed.expectedValue + " (read " + JSON.stringify(observed.describedValue) + ")")
++    add("W14", fileValueAtRead === observed.expectedValue && observed.mutate?.resolved === observed.expectedValue, "the TWO SURFACES AGREE: the settings namespace's resolved value (" + JSON.stringify(observed.mutate?.resolved) + ") equals the value the file on disk carries (" + JSON.stringify(fileValueAtRead) + ")")
+     add("W13", observed.mutate?.base === observed.initialValue, "the namespace's BASE is the FILE value " + String(observed.initialValue) + " (" + JSON.stringify(observed.mutate?.base) + "), not the schema default 20000 — §10.1's reason for mpd-config owning the registration, and the falsifier t39 asks for")
+   }
+ 
+@@ -434,6 +478,8 @@ export function selfTest(arm = "web") {
+       mutate: { ok: true, detail: "status 200 revision 3", resolved: VALUE_WRITE, user: VALUE_WRITE, base: VALUE_INITIAL },
+       expectedValue: VALUE_WRITE,
+       initialValue: VALUE_INITIAL,
++      describedValue: VALUE_WRITE,
++      describedBase: VALUE_INITIAL,
+       fileBefore: fixture(VALUE_INITIAL),
+       fileAfter: fixture(VALUE_WRITE),
+       log: 'x\n[mpd-config] settings bridge WROTE: {"writtenTo":["/ws/.mpd/mpd.jsonc"],"skipped":null,"candidates":[],"results":[{"root":"/ws","file":"/ws/.mpd/mpd.jsonc","outcome":"written"}],"applies":"restart","source":"update","revision":3}\n',
+@@ -466,6 +512,8 @@ export function selfTest(arm = "web") {
+     ["W9", "write", (copy) => { copy.log = copy.log.replace('"applies":"restart"', '"applies":"immediate"') }, "a wrong applies timing"],
+     ["W11", "write", (copy) => { copy.mutate.resolved = 20000 }, "a resolved value the config layer never saw (the file changed but the value did not)"],
+     ["W12", "write", (copy) => { copy.mutate.user = undefined }, "an empty user section (nothing for the L3 layer to merge)"],
++    ["W15", "write", (copy) => { copy.describedValue = 20000 }, "a describe surface that disagrees with the written value"],
++    ["W14", "write", (copy) => { copy.fileAfter = copy.fileAfter.replace(String(copy.expectedValue), "1") }, "a file whose value disagrees with the namespace (the two-surface agreement check)"],
+     ["W13", "write", (copy) => { copy.mutate.base = 20000 }, "a base carrying the schema default instead of the file value (§10.1's whole point)"],
+     ["D2", "disabled", (copy) => { copy.fileAfter = fixture(VALUE_WRITE) }, "the disabled switch writing anyway (A6)"],
+     ["D3", "disabled", (copy) => { copy.log = "no report" }, "a disabled run with no report"],
+@@ -592,7 +640,19 @@ export async function runWebArm(argv) {
+   say("[mutate] one root: status=" + String(mutateOne.status) + " " + JSON.stringify(mutateOne.error ?? mutateOne.result ?? mutateOne.transport ?? {}))
+   await sleep(2500)
+   const afterWrite = readFileSync(one.file, "utf8")
++  // ── THE AUTHORITATIVE READ-BACK SURFACE, named and exercised directly ──
++  // `settings/describe` is the namespace's own read surface — the same one the Web card and the TUI
++  // screen go through; the mutation response is derived from it. Reading it explicitly means a
++  // reviewer can see WHICH surface the resolved value came from, and the check below asserts it
++  // AGREES with the durable file.
++  const describeCall = await rpc(PORT_MAIN, mainBoot.cookie, "settings/describe", {})
++  const mpdDescriptor = findNamespaceDescriptor(describeCall.result, "mpd")
++  const describeShape = describeCall.result === null || describeCall.result === undefined ? "null" : (Array.isArray(describeCall.result) ? "array[" + String(describeCall.result.length) + "]" : Object.keys(describeCall.result).join(","))
++  const described = KNOB.reduce((acc, part) => (acc === null || acc === undefined ? undefined : acc[part]), mpdDescriptor?.value)
++  say("[read-back] settings/describe: status=" + String(describeCall.status) + " envelope=" + describeShape + " ns=" + String(mpdDescriptor?.ns ?? "MISSING") + " resolved=" + JSON.stringify(described) + " base=" + JSON.stringify(mpdDescriptor?.base))
+   const writeObserved = {
++    describedValue: described,
++    describedBase: mpdDescriptor?.base,
+     mode: "write",
+     mutate: mutateOutcome(mutateOne, VALUE_WRITE),
+     expectedValue: VALUE_WRITE,
+@@ -601,7 +661,7 @@ export async function runWebArm(argv) {
+     fileAfter: afterWrite,
+     log: mainBoot.readLog(),
+   }
+-  result.boots.write = { file: one.file, value: VALUE_WRITE, initialValue: VALUE_INITIAL, fileBefore: beforeWrite, fileAfter: afterWrite, mutate: mutateOne.result }
++  result.boots.write = { file: one.file, value: VALUE_WRITE, initialValue: VALUE_INITIAL, fileBefore: beforeWrite, fileAfter: afterWrite, mutate: mutateOne.result, describeStatus: describeCall.status, describeEnvelope: describeShape, describeResolved: described, describeBase: mpdDescriptor?.base }
+   result.verdicts.write = evaluateBridge(writeObserved)
+   say("[write] " + result.verdicts.write.checks.map((check) => check.id + (check.ok ? "=ok" : "=FAIL")).join(" "))
+ 

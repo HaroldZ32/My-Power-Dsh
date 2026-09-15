@@ -10,6 +10,8 @@
    - 一个 `@mpd-dsh/team-page` 注册，其 factory 为 `src/team-page.js`：**AgentTeams 页面**，作为 **DSH-better-sidebar** 的一个 Tab 注册（id `mpd-agent-teams`，order 85，`single: true`，进行中团队数角标，`autoOpenOnTeamActivity` 开关，按对话作用域）。它是唯一的团队 GUI：没有该侧边栏时只输出一条警告且不注册任何内容。页面渲染的是被删除浮窗自己的内部结构——采纳的 `panel` 类（它作用域化了每条采纳规则都读的 `--dsw-alias-*` 变量）、带标题/忙碌圆点/收起控件的 `panelHead`、`teams` 主体与采纳的空态提示——只有窗口管理器那一半（定位、拖拽/改宽、浮动外框）被去掉，
    - 一个 `@mpd-dsh/mpd` 注册，其 factory 把 workmate 库贡献为它自己的 **DSH-better-sidebar** Tab（`mpd-workmate`，order 90，`single: true`），它通过 `GET /plugins/mpd-workmate/{list,roster,get}` + `POST /plugins/mpd-workmate/init` 读取和创建 workmate，并通过 `POST /plugins/mpd-workmate/{rename,delete}` 重命名/删除 —— 按 reason 编码的拒绝分支处理（`invalid-name` / `confirm-required` / `unknown` / `collision` / `in-use`（带阻塞团队列表）），删除是显式两步（确认 → 归档，或输入名称后彻底删除），文案 zh/en。它还注册了隐藏 `/agent-teams` 命令结果的 `conversation.chat.commandview` 空行。两个页面都**没有**浮动回退：只要有 mpd client 源注册了 `agent-teams-activity`、`conversation.chat.node`、`shell.overlay` 或 `sidebar.footer.action`，`scripts/build-mpd-client.mjs` 就会让构建失败。
 
+**TUI 对应面。** 本客户端注册的设置卡片，与 TUI 版本渲染的 `/settings` 区块是**同一个** `mpd` settings 命名空间的两半（`packages/mpd-tui-plugin/src/settings.ts`）：两个前门的标签、提示与中文描述互为镜像，并有测试断言两份列表保持一致；两者也陈述同一句桥接披露——保存会写入 `<workspace>/.mpd/mpd.jsonc`（针对当时处于 live 的会话工作区），mpd 插件在重启后按其生效。浏览器只通过公开的 settings 接缝抵达该桥；回写本身属于 `packages/mpd-config-plugin`。改动任一半后请重建合并客户端（`node scripts/build-mpd-client.mjs`）。
+
 ## 配置
 
 无。这是基础设施：自引用行在 bundle patch 中不携带任何配置。

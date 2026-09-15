@@ -79,8 +79,8 @@ node scripts/install-profile.mjs            # --dry-run 只打印计划，不写
 | 咨询专家 | `mpd_roles_list`、`mpd_role_spawn`、`mpd_role_persona` | 一次性子智能体；只读角色会被禁用写入类工具 |
 | 养一个会成长的智能体 | `mpd_workmate_list/init/spawn/reflect/match/rename/delete` | 见 §5 |
 | 运行一个团队 | `agent_teams_*` 以及 AgentTeams 标签页 | 见 §6 |
-| 配置本 bundle | `.mpd/mpd.jsonc`、`mpd_config_get`、`mpd_config_reload` | 见 §8 |
-| 扩展本 bundle | `mpd_ext_list`、`mpd_ext_show`、`mpd_flow_list`、`mpd_flow_show` | 见 §9 |
+| 配置本 bundle | `.mpd/mpd.jsonc`、`mpd_config_get`、`mpd_config_reload` | 见 §9 |
+| 扩展本 bundle | `mpd_ext_list`、`mpd_ext_show`、`mpd_flow_list`、`mpd_flow_show` | 见 §10 |
 | 解析模型路由 | `mpd_modelchain_resolve` | 解析某位专家会使用的 provider/model |
 | 查看已结束团队 | `mpd_team_compact_run`、`mpd_team_compact_status` | 已完结团队的压缩审计 |
 
@@ -182,9 +182,73 @@ agent_teams_status / agent_teams_send_message / agent_teams_reassign_task
   回写进该 workmate。captain 的行为准则：委派前先查 `mpd_workmate_match`；匹配很弱就新建一个
   workmate，而不是硬用。
 - **扩展 role 不是团队成员**：扩展可以贡献一个能被 `mpd_role_spawn` / `mpd_role_persona` 使用
-  的 role，但团队成员列表是静态的 patch 配置，所以扩展 role 永远不会成为队友（见 §9）。
+  的 role，但团队成员列表是静态的 patch 配置，所以扩展 role 永远不会成为队友（见 §10）。
 
-## 7. Web GUI
+## 7. DSH-TUI 版本（终端界面）
+
+同一个 bundle 在宿主 `dsh-tui` profile 下就是 **TUI 版本**：由 profile 自带的终端界面承载与 Web GUI
+标签页对应的 TUI 原生界面。深入说明见 [`tui.zh-CN.md`](tui.zh-CN.md)；本章只讲日常使用。
+
+```sh
+dsh plugin --profile dsh-tui add /path/to/my-power-dsh
+```
+
+这一条命令就是全部安装（插件代码、bundle 级 `dsh-plugin.json`、skills 语料、MCP 行）。没有按包执行的
+`dsh plugin add`，而且 TUI 包自身不携带 `cordis.patch.yml` —— `mpd-tui` 这一行由 bundle patch 独占，
+因为第二次挂载会重复 loader entry id，而 loader 会直接拒绝。安装后
+`dsh.profile.bundles` 为 `["@deepseek-ai/dsh-base", "@deepseek-harness-tui/dsh-tui", "@mpd-dsh/mpd"]`
+—— 本 bundle 是**第三层** patch 层 —— 且 TUI 中创建的会话默认使用 **mpd** preset。宿主需要真实终端：
+stdout 不是 TTY 时 `dsh-tui` 拒绝启动
+（`dsh-tui requires an interactive terminal (stdout must be a TTY)`），所以永远不要用管道驱动它。
+
+### 7.1 TUI 原生界面与对应的 Web 界面
+
+| Web 界面 | TUI 等价物 |
+|---|---|
+| AgentTeams 侧边栏标签页 | `tuiScenes` 全屏看板 + 带 key 的 `tuiStatus` 状态行 |
+| Workmates 侧边栏标签页 | `/mpd` 命令树（`tuiCommandTrees`）+ `tuiDialogs` |
+| bundle 悬浮面板 | `tuiStatus` 状态行 |
+| Settings → Plugins 卡片 | `/settings` 分区（`tuiSettingsSections`） |
+| — | `tuiShortcuts` 快捷键 |
+
+这些是**等价物，不是等价功能（parity）**：每个界面都重建在宿主自身的 TUI 接缝上，且有两个接缝被明确
+声明为未主张 —— 宿主不提供 prompt 插槽（`tuiPrompt` 宿主不可用），也不为 bundle 的 renderer 事件投射
+任何 transcript 行，因此 prompt 插槽与 transcript 行都不作主张。完整清单位于
+[`tui.zh-CN.md`](tui.zh-CN.md) §10 NOT-CLAIMED。
+
+### 7.2 `/settings` 界面与 `mpd.jsonc` 桥接
+
+`/settings` 编辑六个真实的 `mpd.jsonc` 旋钮 —— `hashline.maxDiffChars`、`commentChecker.autoCheck`、
+`ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir` —— 它们位于 harness settings 命名空间
+`mpd` 之下。该命名空间由 `packages/mpd-config-plugin` 提供，其 base 是工作区**文件**里的值，所以界面
+打开时显示的是你的文件值而不是 schema 默认值；保存会**写入 `<workspace>/.mpd/mpd.jsonc`**（针对当时
+存活的会话工作区），并保留注释、键顺序与尾随逗号 —— 与 Web GUI 卡片触发的是同一条回写路径（
+[`tui.zh-CN.md`](tui.zh-CN.md) §3.1）。
+
+在依赖它之前需要知道两件事：
+
+- **重启后才生效。** mpd 插件在挂载时读取配置（`applies: "restart"`），而宿主不提供注销一个已注册
+  命名空间的句柄，所以保存后的旋钮要等你重启会话后才被插件使用。界面上的提示就是这么写的。
+- **两个具名跳过场景。** settings 路径本身不携带工作区身份，所以写入目标是保存那一刻存活的会话工作区：
+  没有任何存活会话时，保存只写入宿主 settings 文档并报告 `no-live-session`；有**多于一个**存活工作区时
+  会被拒绝为 `ambiguous-multi-root`，并逐一列出候选。这两种情况下**不会改动任何文件**，而值**不会丢失**
+  —— 它保存在 settings 文档中，配置层立即对所有工作区生效；只有文件写入在等待"恰好一个"存活会话。
+
+`mpd.jsonc` 中重复的键会编辑其**最后**一次出现（即 `JSON.parse` 读到的那一个），诊断信息会列出每一处
+出现所在行；重复的中间对象则被拒绝为 `ambiguous-intermediate`，文件保持逐字节不变（
+[`tui.zh-CN.md`](tui.zh-CN.md) §6.5）。
+
+### 7.3 `/mpd` 命令与状态行
+
+`/mpd` 是覆盖侧边栏标签页原有状态的 TUI 命令树：裸 `/mpd` 打开选择器，`/mpd <值>` 直接执行，
+`/mpd status` 打印摘要。**状态行**（`tuiStatus`）是提示框上方的一行带 key 读数，报告 bundle 的实时
+状态 —— 团队、boulder/计划与 workmate 库 —— 读自会话工作区的 `.mpd` 状态。它只用于显示；可交互的部分
+在看板场景、对话框与快捷键里。
+
+准入与分发产物、逐包兼容性台账、版本字符串、状态作用域以及明确的 NOT-CLAIMED 清单，请读
+[`tui.zh-CN.md`](tui.zh-CN.md)。
+
+## 8. Web GUI
 
 - **AgentTeams 侧边栏标签页**（唯一的团队界面）：整个团队 GUI 是 **DSH-better-sidebar**
   （社区侧边栏 bundle；标签 id `mpd-agent-teams`）中的一个标签页。它列出 *本会话* 的团队 ——
@@ -207,7 +271,7 @@ agent_teams_status / agent_teams_send_message / agent_teams_reassign_task
   一条警告且不注册任何东西。团队工作仍然可以通过 `agent_teams_*` 工具与 `.mpd/team` 状态运行，
   workmate 库也仍然可以通过 `mpd_workmate_*` 工具完整使用。
 
-## 8. 配置（`mpd.jsonc`）
+## 9. 配置（`mpd.jsonc`）
 
 `mpd-config` 把项目层 `.mpd/mpd.jsonc` 合并到用户层 `$DSH_HOME/mpd.jsonc` 之上（逐键合并，项目
 优先）。用 `mpd_config_get` 查询解析后的值，用 `mpd_config_reload` 重新读取。插件会读取的键：
@@ -220,7 +284,7 @@ agent_teams_status / agent_teams_send_message / agent_teams_reassign_task
 | `hashline.*` | mpd-hashline | 守卫开关、diff 上限、注册表文件 |
 | `commentChecker.*` | mpd-comment-checker | autoCheck、二进制、超时 |
 | `ulw.*` | mpd-ulw | 轮数、计划/状态目录、provider/model 路由 |
-| `extensions.enable`、`extensions.disable` | mpd-ext | 按 id 的扩展启用/禁用列表（进程级：见 §9） |
+| `extensions.enable`、`extensions.disable` | mpd-ext | 按 id 的扩展启用/禁用列表（进程级：见 §10） |
 | `extensions.mcp.*` | mpd-ext | MCP 桥默认值：`enabled`、`connectTimeoutMs`、`toolCallTimeoutMs` |
 | `modelchain.*` | mpd-modelchain | 各名册角色的 provider/model 链 |
 | `team.stateDir` | agent-teams | 团队状态位置（默认 `.mpd/team`） |
@@ -230,7 +294,7 @@ agent_teams_status / agent_teams_send_message / agent_teams_reassign_task
 `codegraph.*` 键。它的行在 `packages/mpd-bundle/cordis.patch.yml` 中自带 `autoInit: true` 与
 `initTimeoutMs: 60000`。
 
-## 9. 从使用者视角看扩展
+## 10. 从使用者视角看扩展
 
 扩展接口让一个包 —— 或一个普通目录 —— 在不改动 bundle 的前提下，为你的 DSH 环境增加 skill、
 flow、MCP 服务器与专家 role。作者的完整契约见 [extensions.zh-CN.md](extensions.zh-CN.md)；本节
@@ -286,7 +350,7 @@ bun scripts/mpd-ext.mjs scaffold my-ext --dir /tmp   # 从一个可工作的骨�
 - **第四方 MCP 服务器是一个子进程。** 它绝不会从你的宿主环境继承名字形如凭据的变量；它需要什么
   就在 manifest 的 `env` 中声明。
 
-## 10. 故障排查速查
+## 11. 故障排查速查
 
 - `mpd_role_spawn` 报未知角色 → 角色按 **名字** 应答（`Architect`、`Deep Worker`、
   `plan reviewer` —— 大小写/空格/连字符写法都可以）；运行 `mpd_roles_list`。

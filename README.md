@@ -80,6 +80,17 @@ memory.
 Both tabs are contributed to the community sidebar bundle `dsh-better-sidebar` and appear in its
 tab strip. Team work also runs entirely through the `agent_teams_*` tools if you prefer.
 
+### DSH-TUI edition
+
+The same bundle mounts under the host's `dsh-tui` profile (`dsh plugin --profile dsh-tui add
+/path/to/my-power-dsh`), where the terminal UI hosts the equivalents of the web tabs: a keyed status
+line, a full-screen board, the `/mpd` command tree, managed dialogs, shortcuts and a `/settings`
+section for the six `mpd.jsonc` knobs — the section is bridged to `<workspace>/.mpd/mpd.jsonc` and
+takes effect **after a restart**. The deep detail (surfaces, admission and distribution artifacts,
+per-package compatibility ledger, explicit NOT-CLAIMED list) is in
+[`docs/tui.md`](./docs/tui.md), with the Chinese twin at
+[`docs/tui.zh-CN.md`](./docs/tui.zh-CN.md).
+
 ### Skills
 
 18 skills ship inside the bundle and are **served, not copied**: the corpus and the `mpd` preset

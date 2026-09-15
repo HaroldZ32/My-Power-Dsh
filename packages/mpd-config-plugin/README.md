@@ -66,7 +66,7 @@ and a saved edit is projected into the workspace's `<workspace>/.mpd/mpd.jsonc`.
   pass (leaving one behind would keep the key effective in the file while the
   settings layer reports it unset). Refusal is reserved for unprovable spans,
   duplicated intermediates (`ambiguous-intermediate`), unparsable documents and
-  read-only targets.
+  read-only targets. The user-facing statement of this rule is `docs/tui.md` §6.5.
 
 Evidence: `evidence/mpd-bridge/implementation/20260915T080138Z/` (two real boots,
 one live root and two live roots), lane `skills/dsh-qa/scripts/tui-settings-bridge.mjs`,

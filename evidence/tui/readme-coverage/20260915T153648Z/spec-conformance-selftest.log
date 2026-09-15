@@ -1,0 +1,3 @@
+== bun skills/dsh-qa/scripts/tui-spec-conformance.mjs --self-test ==
+[tui-spec-conformance self-test] ok: matrix mapping two-sided, identity table reproduces on 8 files
+exit=0

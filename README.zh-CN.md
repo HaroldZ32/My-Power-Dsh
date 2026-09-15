@@ -73,6 +73,15 @@ captain 设计名册与任务 DAG，你在 AgentTeams 标签页中审阅并批�
 这两个标签页都贡献给社区侧边栏 bundle `dsh-better-sidebar`，出现在它的标签条中。如果你更偏好
 命令行，团队工作也完全可以只通过 `agent_teams_*` 工具运行。
 
+### DSH-TUI 版本
+
+同一个 bundle 也可挂载在宿主 `dsh-tui` profile 下（`dsh plugin --profile dsh-tui add
+/path/to/my-power-dsh`）：由终端界面承载与 Web 标签页等价的界面 —— 带 key 的状态行、全屏看板、`/mpd`
+命令树、受管对话框、快捷键，以及编辑六个 `mpd.jsonc` 旋钮的 `/settings` 分区；该分区桥接到
+`<workspace>/.mpd/mpd.jsonc`，并在**重启之后**生效。深入细节（界面清单、准入与分发产物、逐包兼容性
+台账、明确的 NOT-CLAIMED 清单）见 [`docs/tui.zh-CN.md`](./docs/tui.zh-CN.md)，英文版为
+[`docs/tui.md`](./docs/tui.md)。
+
 ### Skills
 
 18 个 skill 随包提供，并且是 **按引用提供，而非复制**：语料库与 `mpd` preset 都位于 bundle 内，

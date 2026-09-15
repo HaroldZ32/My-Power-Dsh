@@ -1,0 +1,89 @@
+ok   exists:README.md
+ok   exists:README.zh-CN.md
+ok   switch:README.md
+ok   switch:README.zh-CN.md
+ok   heading-tree:README.md
+ok   exists:docs/user-guide.md
+ok   exists:docs/user-guide.zh-CN.md
+ok   switch:docs/user-guide.md
+ok   switch:docs/user-guide.zh-CN.md
+ok   heading-tree:docs/user-guide.md
+ok   exists:docs/architecture.md
+ok   exists:docs/architecture.zh-CN.md
+ok   switch:docs/architecture.md
+ok   switch:docs/architecture.zh-CN.md
+ok   heading-tree:docs/architecture.md
+ok   exists:docs/development.md
+ok   exists:docs/development.zh-CN.md
+ok   switch:docs/development.md
+ok   switch:docs/development.zh-CN.md
+ok   heading-tree:docs/development.md
+ok   exists:docs/index.md
+ok   exists:docs/index.zh-CN.md
+ok   switch:docs/index.md
+ok   switch:docs/index.zh-CN.md
+ok   heading-tree:docs/index.md
+ok   marker:docs/user-guide.md:## 7. DSH-TUI edition
+ok   marker:docs/user-guide.md:### 7.1
+ok   marker:docs/user-guide.md:### 7.2
+ok   marker:docs/user-guide.md:### 7.3
+ok   marker:docs/user-guide.md:ambiguous-multi-root
+ok   marker:docs/user-guide.md:no-live-session
+ok   marker:docs/user-guide.md:after a restart
+ok   marker:docs/user-guide.zh-CN.md:## 7. DSH-TUI 版本
+ok   marker:docs/user-guide.zh-CN.md:### 7.1
+ok   marker:docs/user-guide.zh-CN.md:### 7.2
+ok   marker:docs/user-guide.zh-CN.md:### 7.3
+ok   marker:docs/user-guide.zh-CN.md:ambiguous-multi-root
+ok   marker:docs/user-guide.zh-CN.md:no-live-session
+ok   marker:docs/user-guide.zh-CN.md:重启
+ok   marker:docs/architecture.md:## 7b. TUI edition wiring
+ok   marker:docs/architecture.md:mpd-tui
+ok   marker:docs/architecture.md:@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js
+ok   marker:docs/architecture.md:tuiSettingsSections
+ok   marker:docs/architecture.md:tuiStatus
+ok   marker:docs/architecture.md:zero-write
+ok   marker:docs/architecture.zh-CN.md:## 7b. TUI 版本接线
+ok   marker:docs/architecture.zh-CN.md:mpd-tui
+ok   marker:docs/architecture.zh-CN.md:@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js
+ok   marker:docs/architecture.zh-CN.md:tuiSettingsSections
+ok   marker:docs/architecture.zh-CN.md:tuiStatus
+ok   marker:docs/architecture.zh-CN.md:零写入
+ok   marker:docs/development.md:tui-mount
+ok   marker:docs/development.md:tui-panels
+ok   marker:docs/development.md:tui-admission
+ok   marker:docs/development.md:tui-distribution
+ok   marker:docs/development.md:tui-spec-conformance
+ok   marker:docs/development.md:tui-settings-bridge
+ok   marker:docs/development.md:pack-mpd.mjs
+ok   marker:docs/development.md:not-claimed
+ok   marker:docs/development.zh-CN.md:tui-mount
+ok   marker:docs/development.zh-CN.md:tui-panels
+ok   marker:docs/development.zh-CN.md:tui-admission
+ok   marker:docs/development.zh-CN.md:tui-distribution
+ok   marker:docs/development.zh-CN.md:tui-spec-conformance
+ok   marker:docs/development.zh-CN.md:tui-settings-bridge
+ok   marker:docs/development.zh-CN.md:pack-mpd.mjs
+ok   marker:docs/development.zh-CN.md:not-claimed
+ok   marker:README.md:### DSH-TUI edition
+ok   marker:README.md:docs/tui.md
+ok   marker:README.md:after a restart
+ok   marker:README.zh-CN.md:### DSH-TUI 版本
+ok   marker:README.zh-CN.md:docs/tui.md
+ok   marker:README.zh-CN.md:重启
+ok   marker:docs/index.md:DSH-TUI edition chapter
+ok   marker:docs/index.md:TUI edition wiring
+ok   marker:docs/index.zh-CN.md:DSH-TUI 版本章节
+ok   marker:docs/index.zh-CN.md:TUI 版本接线
+ok   no-rtl-eda:docs/user-guide.md
+ok   no-rtl-eda:docs/user-guide.zh-CN.md
+ok   no-rtl-eda:docs/architecture.md
+ok   no-rtl-eda:docs/architecture.zh-CN.md
+ok   no-rtl-eda:docs/development.md
+ok   no-rtl-eda:docs/development.zh-CN.md
+ok   no-rtl-eda:README.md
+ok   no-rtl-eda:README.zh-CN.md
+ok   no-rtl-eda:docs/index.md
+ok   no-rtl-eda:docs/index.zh-CN.md
+
+87/87 checks passed; ok=true
