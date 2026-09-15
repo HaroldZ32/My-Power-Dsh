@@ -1,0 +1,264 @@
+{
+  "wave": "v0.9.1-known-defects",
+  "branch": "fix/v0.9.1-known-defects",
+  "baseRevision": "d6a6f5999ef82137adf9c572905719209f98b43d",
+  "baseRevisionNote": "dev tip the branch was cut from; the fix commits are recorded below by their own shas once made",
+  "scope": "every finding recorded by the v0.9.0 adversarial review (t6: F1-F7), the t7 prose item, and the one known gap recorded after that wave (pooled write tasks reaching read-only members)",
+  "notFixed": [
+    "packages/mpd-mcp-shared ships no README \u2014 not a defect: the directory has no package.json and is not a workspace member (it is the shared binary resolver module, documented by the MCP packages that consume it and by AGENTS.md \u00a712)",
+    "host-limited verifications carried over from v0.9.0 (pnpm-path packed install, bun run test:qa:all, Web GUI, cross-platform) stay unverified on this host \u2014 unchanged by this wave"
+  ],
+  "findings": [
+    {
+      "id": "F3",
+      "severity": "medium",
+      "source": "t6 review (v0.9.0 wave), packages/mpd-ext-plugin/src/skills.ts:343,375-381",
+      "defect": "a failed skill enumeration returned an ARRAY, which the harness reads as {candidates, complete:true} and CACHES per (cwd, scope, revision) \u2014 one transient failure hid a provider's skills until a restart",
+      "fix": "emit()/list() now return {candidates: [], complete: false} on an enumeration failure (data-level per-candidate skips stay complete:true, they are permanent until the files change)",
+      "files": [
+        "packages/mpd-ext-plugin/src/skills.ts"
+      ],
+      "red": {
+        "log": "raw/red-ext-core.log",
+        "test": "F3: an enumeration failure is reported as an INCOMPLETE observation, never a cacheable empty catalog",
+        "observed": "expected {candidates:[],complete:false}, received [] (= complete:true)"
+      },
+      "green": {
+        "log": "raw/green-ext-plugin.log",
+        "test": "same"
+      }
+    },
+    {
+      "id": "F4",
+      "severity": "medium",
+      "source": "t6 review, packages/mpd-ext-plugin/src/index.ts:291-306 + registry.ts:279-330",
+      "defect": "skill-name collisions were never recorded: the project provider had no onSkip and the view had no cross-extension skill annotation, so mpd_ext_list claimed skills the harness does not serve (and a NON-extension collision \u2014 the corpus \u2014 was invisible)",
+      "fix": "(a) the project provider records its skips keyed by (workspace dir, candidate name) and snapshot() attributes them to the owning entry; (b) annotateSkillSurfaces records an extension-vs-extension collision on the loser with the winner and both ranks; (c) mpd_ext_list/mpd_ext_show read the harness's own catalog (dsh.listSkills) and report every claim as served/notServed with a checked/reason envelope",
+      "files": [
+        "packages/mpd-ext-plugin/src/index.ts",
+        "packages/mpd-ext-plugin/src/registry.ts",
+        "packages/mpd-ext-plugin/src/skills.ts"
+      ],
+      "red": {
+        "log": "raw/red-ext-core.log",
+        "tests": [
+          "F4: a same-name skill claimed by two extensions is reported on the loser WITH the winner and both ranks",
+          "F4: a claim the catalog resolves to a NON-extension provider is reported as not served",
+          "F4: a duplicate project-plane skill name is attributed to the PROJECT entry that claims it"
+        ],
+        "observed": "entry.skillServing undefined (TypeError) / collision note absent"
+      },
+      "green": {
+        "log": "raw/green-ext-plugin.log"
+      }
+    },
+    {
+      "id": "F1",
+      "severity": "medium",
+      "source": "t6 review, packages/mpd-ext-plugin/src/mcp.ts:342,348 (deviation introduced by the plan's own REV4 wording)",
+      "defect": "an unsupported or lossy advertised outputSchema dropped the WHOLE TOOL, where the harness posture drops only the SCHEMA and keeps the tool (H/dsh-mcp-client supportedOutputSchema)",
+      "fix": "keep the tool, drop structuredContent, record the reason as a per-tool note ('downgraded' in the server's warn line); only an unprojectable inputSchema still skips its tool",
+      "files": [
+        "packages/mpd-ext-plugin/src/mcp.ts",
+        "packages/mpd-ext-plugin/src/schema-sanitize.ts"
+      ],
+      "red": {
+        "log": "raw/red-ext-mcp.log",
+        "test": "an unsupported outputSchema drops the SCHEMA and keeps the tool, while an unprojectable inputSchema skips its tool",
+        "observed": "registered tools were ['mcp__fixture__good'] only"
+      },
+      "green": {
+        "log": "raw/green-ext-plugin.log"
+      }
+    },
+    {
+      "id": "F2",
+      "severity": "medium",
+      "source": "t6 review, packages/mpd-ext-plugin/src/mcp.ts:319-328 vs the contract's sanitizer policy",
+      "defect": "a non-object-rooted foreign inputSchema was passed through as `parameters` (measured: projectSchema({type:'string'}) -> {type:'string'}), so the tool's arguments could not be described at all",
+      "fix": "objectRootedSchema() normalizes a non-object root onto an object carrying the payload under a single `value` property (annotations stay with the payload), validates the result against the harness subset, and records the downgrade as a note",
+      "files": [
+        "packages/mpd-ext-plugin/src/schema-sanitize.ts",
+        "packages/mpd-ext-plugin/src/mcp.ts"
+      ],
+      "red": {
+        "log": "raw/red-ext-mcp.log",
+        "test": "a non-object-rooted inputSchema is normalized onto an object root instead of being passed through",
+        "observed": "parameters were the scalar/array schema itself"
+      },
+      "green": {
+        "log": "raw/green-ext-plugin.log"
+      }
+    },
+    {
+      "id": "F5",
+      "severity": "low",
+      "source": "t6 review, both provider paths",
+      "defect": "`cwdOf(listOptions) ?? dsh.workspaceRoot()` fell back to DSH_WORKSPACE_ROOT and then process.cwd(): the project plane could serve ANOTHER project's extensions, and the apply-time shadow guard could hide a host-wide extension because of a workspace the caller never named",
+      "fix": "the project plane requires the caller's cwd (no fallback; an unknown cwd means 'no project plane'); the apply-time shadow guard is SKIPPED when the caller names no workspace (a guess can only hide live content)",
+      "files": [
+        "packages/mpd-ext-plugin/src/index.ts"
+      ],
+      "red": {
+        "log": "raw/red-ext-core.log",
+        "tests": [
+          "F5: a provider call with NO cwd serves nothing from the project plane (never process.cwd())",
+          "F5: with no cwd a host-wide extension is SERVED, not silently shadowed by a guessed workspace"
+        ]
+      },
+      "green": {
+        "log": "raw/green-ext-plugin.log"
+      }
+    },
+    {
+      "id": "F6",
+      "severity": "low",
+      "source": "t6 review, mpd_ext_show descriptor echo",
+      "defect": "mpd_ext_show echoed the raw descriptor, including author-declared MCP `env` VALUES \u2014 exactly where an API key lives \u2014 into the session log and the model's context",
+      "fix": "redactedDescriptor() masks every env value as <redacted> (keys stay: they are the interface)",
+      "files": [
+        "packages/mpd-ext-plugin/src/index.ts"
+      ],
+      "red": {
+        "log": "raw/red-ext-core.log",
+        "test": "F6: mpd_ext_show redacts author-declared env VALUES in the echoed descriptor",
+        "observed": "the secret value appeared verbatim in the tool result"
+      },
+      "green": {
+        "log": "raw/green-ext-plugin.log"
+      }
+    },
+    {
+      "id": "F7",
+      "severity": "low",
+      "source": "t6 review, registry.ts annotateRoleSurfaces 'known residual' (and the same gap for skills)",
+      "defect": "the whole-view claim maps only knew the DESCRIPTOR `enabled` flag, so a CONFIG-disabled extension still claimed its role (and skill) names and a later claimant was reported refused while the roster would have exposed it",
+      "fix": "registry.view() takes the caller's EFFECTIVE enabled predicate and passes it to both annotations; the 'disabled' note now says WHICH kind of disable it is, and role/skill notes are re-derived by reason prefix instead of by item name",
+      "files": [
+        "packages/mpd-ext-plugin/src/registry.ts",
+        "packages/mpd-ext-plugin/src/index.ts"
+      ],
+      "red": {
+        "log": "raw/red-ext-core.log",
+        "test": "F7: a CONFIG-disabled extension claims no role name, so the next claimant is exposed",
+        "observed": "beta-on was refused with the refusal note; contributions.roles was 0"
+      },
+      "green": {
+        "log": "raw/green-ext-plugin.log"
+      }
+    },
+    {
+      "id": "POOL-TOOLDENY",
+      "severity": "medium",
+      "source": "known gap recorded after the v0.9.0 wave (occurred twice: tasks t15/t16)",
+      "defect": "the scheduler's pool branch had no capability test, so a read-only member (the roster's read-only roles carry the seven write-capable names in toolDeny) was handed a pooled implementation/repair task it could not execute",
+      "fix": "nextCapableTask (regions mpd-delta pool-capability-guard/-select in lib/scheduler.js): the member's OWN task still dispatches (loudly, including when its toolDeny blocks it), a pooled task it cannot run stays IN THE POOL and the withholding is logged once per (team, member, reason)",
+      "files": [
+        "packages/mpd-agent-teams-plugin/lib/scheduler.js",
+        "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+        "packages/mpd-agent-teams-plugin/self-fix-tests/pool-capability-guard.test.mjs"
+      ],
+      "red": {
+        "log": "raw/red-pool-capability.log",
+        "tests": "all 7 in self-fix-tests/pool-capability-guard.test.mjs",
+        "observed": "nextCapableTask does not exist in the pre-fix module (0 pass / 7 fail)"
+      },
+      "green": {
+        "log": "raw/green-agent-teams.log"
+      }
+    },
+    {
+      "id": "T7-F3",
+      "severity": "low",
+      "source": "t7 verification record (v0.9.0)",
+      "defect": "a terminal task record's objective still says 'five tools' while the binding acceptance line, plan \u00a71.5 and the frozen contract all say FOUR",
+      "fix": "recorded, not amended (the task is terminal and immutable): re-checked that no HUMAN-facing doc claims five \u2014 docs/extensions.md:400 and its zh pair already state four shipped / a fifth (mpd_ext_reload) cut, which is the honest history",
+      "files": [],
+      "red": {
+        "observed": "n/a \u2014 prose-only item, no behaviour to reproduce"
+      },
+      "green": {
+        "observed": "grep over README.md, docs/*.md (EN+zh) and packages/*/README*.md finds no 'five tools' claim"
+      }
+    }
+  ],
+  "gates": [
+    {
+      "gate": "unit tests (ext plugin)",
+      "command": "bun test packages/mpd-ext-plugin",
+      "exit": 0,
+      "evidence": "raw/green-ext-plugin.log (66 pass / 0 fail)"
+    },
+    {
+      "gate": "unit tests (adopted agent-teams)",
+      "command": "bun test packages/mpd-agent-teams-plugin",
+      "exit": 0,
+      "evidence": "raw/green-agent-teams.log (220 pass / 0 fail)"
+    },
+    {
+      "gate": "unit tests (whole repo)",
+      "command": "bun test packages",
+      "exit": 0,
+      "evidence": "raw/green-all-packages.log (510 pass / 0 fail, 106 files)"
+    },
+    {
+      "gate": "typecheck",
+      "command": "bun run typecheck",
+      "exit": 0,
+      "evidence": "raw/gate-typecheck.log"
+    },
+    {
+      "gate": "vendor baseline",
+      "command": "node scripts/verify-vendor.mjs",
+      "exit": 0,
+      "evidence": "raw/gate-vendor.log"
+    },
+    {
+      "gate": "QA self-tests",
+      "command": "bun run test:qa",
+      "exit": 0,
+      "evidence": "raw/gate-test-qa.log"
+    },
+    {
+      "gate": "row parity",
+      "command": "node scripts/verify-rows-parity.mjs",
+      "exit": 0,
+      "evidence": "raw/gate-rows-parity.log"
+    },
+    {
+      "gate": "extension CLI",
+      "command": "bun scripts/mpd-ext.mjs --self-test (+ validate extensions/mpd-ext-example)",
+      "exit": 0,
+      "evidence": "raw/gate-ext-cli.log (19 checks; validate exit 0)"
+    },
+    {
+      "gate": "delta registry",
+      "command": "node scripts/patch-agent-teams-fixes.mjs --check",
+      "exit": 0,
+      "evidence": "raw/gate-delta-registry.log (48 regions / 9 files)"
+    },
+    {
+      "gate": "installer dry-run",
+      "command": "node scripts/install-profile.mjs --dry-run",
+      "exit": 0,
+      "evidence": "raw/gate-installer-dryrun.log"
+    },
+    {
+      "gate": "MOUNT (real boot, isolated DSH_HOME + HOME + cwd)",
+      "command": "bun skills/dsh-qa/scripts/extension-lifecycle.mjs --no-skip",
+      "exit": 0,
+      "evidence": "raw/mount-extension-lifecycle.log + ../extension-lifecycle/2026-09-15T01-16-15.149Z (all four tools offered AND called; failure/isolation arms ok; packed arm GREEN, owner t11)"
+    }
+  ],
+  "redMeasurement": {
+    "method": "a detached git worktree at the pre-fix revision (d6a6f59) with ONLY the three post-fix test files copied in, run as `bun test --cwd <worktree> <abs path>`",
+    "whyCwd": "measured trap: without --cwd a relative test path is also resolved against the MAIN checkout, so the same file is loaded twice (once pre-fix, once post-fix) and the verdict is worthless \u2014 the first RED attempt showed '90 tests across 2 files' for a single-file argument and was discarded",
+    "driver": "red-before-run.sh",
+    "results": {
+      "red-ext-core.log": "32 pass / 13 fail (8 finding tests + 5 tests amended for the new observation shape)",
+      "red-ext-mcp.log": "19 pass / 2 fail (both F1/F2 tests)",
+      "red-pool-capability.log": "0 pass / 7 fail"
+    }
+  },
+  "artifacts": {}
+}

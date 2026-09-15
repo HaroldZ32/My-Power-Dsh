@@ -1,0 +1,87 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-agent-teams-plugin/self-fix-tests/pool-capability-guard.test.mjs:
+51 | const writer = (name) => ({ name, toolDeny: [] })
+52 | 
+53 | test("a pooled write task is LEFT IN THE POOL for a read-only member and reported", () => {
+54 |   const tasks = [implementationTask("t1"), reviewTask("t2")]
+55 |   const withheld = []
+56 |   const picked = nextCapableTask(tasks, readOnly("Architect"), (task, gap, explicit) => withheld.push({ id: task.id, gap, explicit }))
+                      ^
+TypeError: nextCapableTask is not a function. (In 'nextCapableTask(tasks, readOnly("Architect"), (task, gap, explicit) => withheld.push({ id: task.id, gap, explicit }))', 'nextCapableTask' is undefined)
+      at <anonymous> (/root/dshProj/my-power-dsh/.mpd/red-before/packages/mpd-agent-teams-plugin/self-fix-tests/pool-capability-guard.test.mjs:56:18)
+(fail) a pooled write task is LEFT IN THE POOL for a read-only member and reported [1.19ms]
+61 | })
+62 | 
+63 | test("a write-capable member still gets the pooled write task (the guard is not a blanket refusal)", () => {
+64 |   const tasks = [implementationTask("t1"), reviewTask("t2")]
+65 |   const withheld = []
+66 |   const picked = nextCapableTask(tasks, writer("Senior Engineer"), (task, gap, explicit) => withheld.push({ id: task.id, gap, explicit }))
+                      ^
+TypeError: nextCapableTask is not a function. (In 'nextCapableTask(tasks, writer("Senior Engineer"), (task, gap, explicit) => withheld.push({ id: task.id, gap, explicit }))', 'nextCapableTask' is undefined)
+      at <anonymous> (/root/dshProj/my-power-dsh/.mpd/red-before/packages/mpd-agent-teams-plugin/self-fix-tests/pool-capability-guard.test.mjs:66:18)
+(fail) a write-capable member still gets the pooled write task (the guard is not a blanket refusal) [0.16ms]
+69 | })
+70 | 
+71 | test("a member whose deny blocks nothing relevant is unaffected by an unrelated deny entry", () => {
+72 |   const tasks = [implementationTask("t1")]
+73 |   const partial = { name: "Vision Analyst", toolDeny: ["mcp__lsp__rename"] }
+74 |   expect(nextCapableTask(tasks, partial, () => {})?.id).toBe("t1")
+              ^
+TypeError: nextCapableTask is not a function. (In 'nextCapableTask(tasks, { name: "Vision Analyst", toolDeny: ["mcp__lsp__rename"] }, () => {})', 'nextCapableTask' is undefined)
+      at <anonymous> (/root/dshProj/my-power-dsh/.mpd/red-before/packages/mpd-agent-teams-plugin/self-fix-tests/pool-capability-guard.test.mjs:74:10)
+(fail) a member whose deny blocks nothing relevant is unaffected by an unrelated deny entry [0.10ms]
+77 | test("an EXPLICIT assignment is still dispatched to a restricted member, and says so", () => {
+78 |   // The captain's explicit pairing is the captain's decision: refusing it silently
+79 |   // would stall the DAG. It is dispatched, with a note that names the restriction.
+80 |   const tasks = [{ ...implementationTask("t1"), assignee: "Architect" }]
+81 |   const withheld = []
+82 |   const picked = nextCapableTask(tasks, readOnly("Architect"), (task, gap, explicit) => withheld.push({ id: task.id, gap, explicit }))
+                      ^
+TypeError: nextCapableTask is not a function. (In 'nextCapableTask(tasks, readOnly("Architect"), (task, gap, explicit) => withheld.push({ id: task.id, gap, explicit }))', 'nextCapableTask' is undefined)
+      at <anonymous> (/root/dshProj/my-power-dsh/.mpd/red-before/packages/mpd-agent-teams-plugin/self-fix-tests/pool-capability-guard.test.mjs:82:18)
+(fail) an EXPLICIT assignment is still dispatched to a restricted member, and says so [0.10ms]
+84 |   expect(withheld).toEqual([{ id: "t1", gap: ["write", "edit", "mpd_hashline_edit", "bash"], explicit: true }])
+85 | })
+86 | 
+87 | test("a member's own ready task outranks a pooled task it could also run", () => {
+88 |   const tasks = [{ ...reviewTask("t1"), assignee: "Architect" }, reviewTask("t2"), implementationTask("t3")]
+89 |   const picked = nextCapableTask(tasks, readOnly("Architect"), () => {})
+                      ^
+TypeError: nextCapableTask is not a function. (In 'nextCapableTask(tasks, readOnly("Architect"), () => {})', 'nextCapableTask' is undefined)
+      at <anonymous> (/root/dshProj/my-power-dsh/.mpd/red-before/packages/mpd-agent-teams-plugin/self-fix-tests/pool-capability-guard.test.mjs:89:18)
+(fail) a member's own ready task outranks a pooled task it could also run [0.09ms]
+91 | })
+92 | 
+93 | test("nothing executable is left: undefined, and every withheld candidate is reported", () => {
+94 |   const tasks = [implementationTask("t1"), implementationTask("t2")]
+95 |   const withheld = []
+96 |   const picked = nextCapableTask(tasks, readOnly("Architect"), (task, gap, explicit) => withheld.push({ id: task.id, explicit }))
+                      ^
+TypeError: nextCapableTask is not a function. (In 'nextCapableTask(tasks, readOnly("Architect"), (task, gap, explicit) => withheld.push({ id: task.id, explicit }))', 'nextCapableTask' is undefined)
+      at <anonymous> (/root/dshProj/my-power-dsh/.mpd/red-before/packages/mpd-agent-teams-plugin/self-fix-tests/pool-capability-guard.test.mjs:96:18)
+(fail) nothing executable is left: undefined, and every withheld candidate is reported [0.08ms]
+104 |   const stripped = source.replace(/\/\/#region mpd-delta [\s\S]*?\/\/#endregion mpd-delta [A-Za-z0-9-]+/g, "")
+105 |   for (const token of ["nextCapableTask", "taskCapabilityGap", "taskCapabilityNeed", "pool-capability"])
+106 |     expect(stripped).not.toContain(token)
+107 |   // (2) The replacement is registered where the seam is.
+108 |   const ids = MPD_DELTAS.filter((delta) => delta.file.endsWith("scheduler.js")).map((delta) => delta.id)
+109 |   expect(ids).toContain("mpd-delta pool-capability-guard")
+                    ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "mpd-delta pool-capability-guard"
+Received: [ "mpd-delta dispatch-decline-guard", "mpd-delta ready-task-predicate",
+  "mpd-delta interjection-not-auto-delivered", "mpd-delta kick-team-decline-logs", "mpd-delta interjection-expiry-tick",
+  "mpd-delta kick-member-decline-logs", "mpd-delta kick-member-locked-decline-logs", "mpd-delta idle-edge-no-team-log",
+  "mpd-delta idle-edge-nonmember-log"
+]
+
+      at <anonymous> (/root/dshProj/my-power-dsh/.mpd/red-before/packages/mpd-agent-teams-plugin/self-fix-tests/pool-capability-guard.test.mjs:109:15)
+(fail) the guard is region-registered and its replacement is REFUSED after a re-materialize [2.25ms]
+
+ 0 pass
+ 7 fail
+ 5 expect() calls
+Ran 7 tests across 1 file. [96.00ms]
+pool-capability exit=1
