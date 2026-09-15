@@ -1,0 +1,20 @@
+=== t47 verify (2026-09-15T15:44:45Z) ===
+--- 1 bun run typecheck
+exit=0
+--- 2 four suites
+ 208 pass
+ 0 fail
+ 1273 expect() calls
+Ran 208 tests across 24 files. [11.70s]
+--- 3 tui-settings-bridge self-test
+[tui-settings-bridge self-test] ok: 18 web-arm + 7 TUI-arm injected faults each flip their own check; both synthetic green artifacts pass
+exit=0
+--- 4 tui-panels self-test
+[tui-panels self-test] ok: 7 surfaces asserted, negative controls fail as required
+exit=0
+--- 5 zero-write grep
+0
+(0 matches => exit 1)
+--- 6 test:qa
+$ for f in skills/dsh-qa/scripts/*.mjs; do echo "[test:qa] $f"; bun "$f" --self-test || { echo "[test:qa] FAILED: $f"; exit 1; }; done; bun scripts/mpd-ext.mjs --self-test || { echo "[test:qa] FAILED: scripts/mpd-ext.mjs --self-test"; exit 1; }; bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example || { echo "[test:qa] FAILED: scripts/mpd-ext.mjs validate extensions/mpd-ext-example"; exit 1; }; echo "[test:qa] all self-tests passed"
+[agent-teams-messaging] FAIL: VENDOR_LOCK skills asset is stale: lock=310/8ec53287296e tree=310/87521eda2ee8 (re-pin in the same commit, AGENTS.md §9)
