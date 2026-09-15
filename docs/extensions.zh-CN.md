@@ -322,7 +322,7 @@ manifest 条目及其 persona 文件（`extensions/mpd-ext-example/personas/exam
 | project manifest 声明 `mcp` 或 `roles` | 逐项拒绝，理由见 §4.2 原文 |
 | `SKILL.md` 的 `name` 或 `description` 缺失/不合法 | 该候选**被跳过并告警**——刻意比 harness 更严：harness 把 `invocation` 视为可选，却在每个会话的 pre-step 中无保护地解引用它 |
 | **同一个扩展内**两个 skill 同名 | 跳过 + 告警 + 记录加载错误 |
-| skill 名与更低 rank 的 provider 相撞 | 由 rank 阶梯裁定；**落败的候选会被 harness 丢弃，且 provider 无法观测到**，因此 `mpd_ext_list` 无法标记（v1 已接受的限制） |
+| skill 名与更低 rank 的 provider 相撞 | 由 rank 阶梯裁定，落败的候选会被 harness 丢弃；现在两种情形都会被报告：两个**扩展**之间的相撞会标注在落败方（其错误列表里出现 `skill surface:`，写明赢家与双方的 rank），而每个被声明的名字都会由 `mpd_ext_list` / `mpd_ext_show` 与 harness 自身的目录比对（`skillServing.served` / `.notServed`） |
 | MCP 工具名与已存在的工具相撞 | 该工具被跳过并记录；一次失败的 swap 之后存活的工具数是 **零**，绝不会是半挂载的 server |
 | MCP server 不可达、卡住或退出 | `mpd_ext_show` 给出每个 server 的状态 `connecting`/`connected`/`unavailable`/`failed`/`disabled` 以及 stderr 尾部；启动既不被阻塞也不失败 |
 | role 名已被基础 role 或另一个扩展占用 | 逐个 role 拒绝，出现在 `mpd_roles_list` 的 `refused` 列表并记录一次日志；名册与启动照常工作 |
@@ -335,8 +335,8 @@ v1 提供**四个**工具——早期计划里数到五个，其中 `mpd_ext_rel
 
 | 工具 | 它回答什么 |
 |---|---|
-| `mpd_ext_list` | 本宿主已知的每个扩展：id、origin（`plugin`/`directory`）、plane（`project`/`user`/`bundle`）、root、**生效的**启用状态、各类贡献计数、逐项错误、pending 类型、被遮蔽的 id 与被拒绝的 manifest |
-| `mpd_ext_show` | 单个扩展的完整信息：描述符、解析后的资源根、贡献的 skill/flow/role 名称、每个 MCP server 的状态 + 发现的工具名 + stderr 尾部，以及错误列表（未知 id 会报出已知 id） |
+| `mpd_ext_list` | 本宿主已知的每个扩展：id、origin（`plugin`/`directory`）、plane（`project`/`user`/`bundle`）、root、**生效的**启用状态、各类贡献计数、逐项错误、pending 类型、被遮蔽的 id、被拒绝的 manifest，以及每个扩展声明的 skill 名里有哪些真的被 harness 目录**服务** |
+| `mpd_ext_show` | 单个扩展的完整信息：描述符（**`env` 值已脱敏**）、解析后的资源根、贡献的 skill/flow/role 名称、每个声明名的服务校验、每个 MCP server 的状态 + 发现的工具名 + stderr 尾部，以及错误列表（未知 id 会报出已知 id） |
 | `mpd_flow_list` | 来自已启用扩展的每个 flow：id、title、`whenToUse`、步骤数、所属扩展 |
 | `mpd_flow_show` | 单个 flow 的完整内容：description、`whenToUse`，以及每一步的工具提示与预期产出 |
 
@@ -401,7 +401,7 @@ bun scripts/mpd-ext.mjs --self-test   # scaffold -> validate -> list，仅使用
 
 当 server 属于"你的包**本身**是什么"的一部分（并且你想要 harness 自身的 client 语义、传输与重连行为）时，选**安装面**；当 server 是用户应当能不改 profile 就增删的内容、且 stdio 足够时，选**运行时桥**。
 
-桥复刻了 harness 的公开命名（`mcp__<server>__<tool>`，64 字符上限，有损变换时追加 `_<hash>`），因此在一条路径上写下的工具调用在另一条路径上依然可用。它对**外来 `output.schema`** 也采用 harness 的态度：满足受支持子集就保留，否则**以响亮理由丢弃该工具**——绝不重写第三方的 schema，因为被重写的 schema 将不再描述 server 实际返回的内容。参数净化器是对未来 harness 的纵深防御（本版本在注册时并不校验 `parameters`）。
+桥复刻了 harness 的公开命名（`mcp__<server>__<tool>`，64 字符上限，有损变换时追加 `_<hash>`），因此在一条路径上写下的工具调用在另一条路径上依然可用。它对**外来 `output.schema`** 也采用 harness 的态度：满足受支持子集就保留，否则**丢弃的是 schema、保留的是工具**——该工具会在没有 `structuredContent` 的情况下注册，并记录原因：绝不重写第三方的 schema（被重写就不再描述 server 实际返回的内容），而且 harness 自带的 `supportedOutputSchema` 正是这么做的。`inputSchema` 会被投影到受支持子集，且**根会被归一化到 object**（工具调用携带的永远是一个参数对象，因此标量或数组根会把载荷移入单一的 `value` 属性，并作为一条 notice 记录）；只有连参数都无法描述的工具才会被跳过。参数净化器是对未来 harness 的纵深防御（本版本在注册时并不校验 `parameters`）。
 
 ## 10. 信任模型
 
@@ -419,7 +419,7 @@ bun scripts/mpd-ext.mjs --self-test   # scaffold -> validate -> list，仅使用
 - **扩展 role 永远不会成为 agent-teams 的 teammate**——那份成员列表是静态 patch 配置。
 - **没有 reload**——重启 dsh；失败的 MCP server 会在下次启动时重试。
 - **`extensions.*` 配置是进程级、不是按会话的**（§4.3），因为 `mpdConfig` 是 apply 期的进程级快照。
-- **跨 provider 的 skill 遮蔽对我们不可见**——harness 按 rank 丢弃落败候选，而 provider 无法观测。
+- **跨 provider 的 skill 遮蔽需要读一次目录才可见**——我们自己的注册表只能比较扩展之间，因此 `mpd_ext_list` / `mpd_ext_show` 会去问 harness 的目录（`ctx.skills.list`），并把每个声明报成 `served` 或 `notServed`；若这次读取失败，报告会给出 `checked: false` 与原因，而不是猜测。
 - **被名册拒绝的 role 仍会被 `mpd_ext_list` 列为已声明**——名册侧报告拒绝（`mpd_roles_list.refused`），扩展 registry 侧不会；让两个 surface 一致属于后续项。
 - **没有 GUI 面板、没有市场、没有远程下载、没有版本求解。**
 - RTL/EDA 与 HarmonyOS 的能力面**本身不在此构建**：本版本交付的是让它们作为独立扩展或独立包到来的接口。
@@ -455,7 +455,7 @@ grep -n "defaultRank\|idPattern\|skillNamePattern\|serverNamePattern" packages/m
 
 **我改了一个键名，却什么都没发生。** 在这里不可能：未知键会被逐项拒绝并记录，这正是校验器不依赖"静默宽容 schema"的原因。
 
-**为什么扩展被列出了，它的 skill 却不见了？** 先看生效的启用状态（manifest 里的 `enabled: false`，或配置里的 `disable`），再看 `mpd_ext_show` 里的加载错误。因 rank 竞争而被更低 rank provider 挤掉的 skill 是无法报告的。
+**为什么扩展被列出了，它的 skill 却不见了？** 先看生效的启用状态（manifest 里的 `enabled: false`，或配置里的 `disable`），再看 `mpd_ext_show` 打印的 `skillServing` 区块：`notServed` 会列出每一个被目录判给别处的声明（并给出赢家 provider），而 `checked: false` 表示这次目录读取本身失败了。
 
 **为什么 `validate` 会对某个 MCP server 打印 `pending`？** 因为 CLI 从不连接：它是一个离线契约检查器。运行时桥会在 apply 阶段连接该 server，实际状态以 `mpd_ext_show` 为准。
 
