@@ -19,7 +19,7 @@ Cordis 插件行（`mpd-tui`），其模块说明符由 bundle patch 持有：
 |---|---|---|
 | 状态行 | `ctx.tuiStatus` | 提示框上方一个键控的 `mpd` 贡献：`mpd: team … · boulder … · plans … · workmates …` |
 | 条目渲染器 | `ctx.tuiRenderers` | 本包的 log-only 会话事件（`agent-teams/*`、`mpd-tui/board-opened`）渲染为纯文本行，实时与回放同路径 |
-| 设置区块 | `ctx.tuiSettingsSections` | 把 mpd.jsonc 的可调项声明为 `/settings` 中可编辑的字段 —— **未与文件打通**；每个字段的提示在界面上直接写明（见"明确不声明"第 2 条） |
+| 设置区块 | `ctx.tuiSettingsSections` | 把 mpd.jsonc 的可调项声明为 `/settings` 中可编辑的字段 —— **已与 `<workspace>/.mpd/mpd.jsonc` 打通**（保存会写入文件；插件行为需重启后生效）；每个字段的提示在界面上直接写明（见"明确不声明"第 2 条） |
 | 全屏场景 | `ctx.tuiScenes` | 团队与任务账本、boulder 工作账本、计划、workmate 库 |
 | 命令树 | `ctx.tuiCommandTrees` | `/mpd board`、`/mpd status`、`/mpd workmates` 补全 |
 | 快捷键 | `ctx.tuiShortcuts` | `alt+m` 打开面板 · `alt+w` workmate 选择器 · `alt+r` 立即刷新状态行 |
@@ -45,7 +45,7 @@ TUI 原生等价物。它**只读**状态：
 
 - `themes/mpd-tui.json` —— 一套深色 TUI 主题（部分配色的覆盖）。主题接缝本就是
   静态资产：把文件复制到 `~/.dsh-tui/themes/` 即可选用。本行**不**代为安装。
-- `skills/mpd-tui/SKILL.md` —— 仅为资产，见"明确不声明"第 4 条。
+- `packages/mpd-tui-plugin/skills/mpd-tui/SKILL.md` —— 仅为资产，见"明确不声明"第 4 条。
 
 ## 插件契约
 
@@ -98,20 +98,34 @@ harness 接缝（tools、skills、agent registry、subagents）不在此处直�
    告警一次**，并且不注册任何东西。它绝不调用 `admit`/`admitInternal`，绝不使用
    测试专用 token，绝不伪造身份。**不声明任何输入 / rewind / 会话切换 / 压缩
    拦截能力。**
-2. **`/settings` 区块未与 `.mpd/mpd.jsonc` 打通。** 字段声明的是真实的 mpd.jsonc
-   可调项（`hashline.maxDiffChars`、`commentChecker.autoCheck`、`ulw.maxRounds`、
-   `memory.vcs`、`team.stateDir`、`boulder.dir`），而区块在 harness 设置命名空间
-   `mpd` 下编辑它们（本插件注册该命名空间，以免界面把它显示为不可用）。mpd 各
-   插件读的是 `.mpd/mpd.jsonc`（经 `packages/mpd-config-plugin`），**不是** harness
-   设置文档：保存的编辑落在设置文档里，**不会**改写 `.mpd/mpd.jsonc`。**这一点在
-   界面上也写明，而不只是写在这里**：每个字段提示都是
-   `mpd.jsonc <键> — not bridged: a save here does not rewrite .mpd/mpd.jsonc`。
-   打通二者是**已命名的后续工作 `mpd-settings-bridge`**（由设置区块回写项目/用户
-   JSONC），不是本次交付的行为。
+2. **`/settings` 区块已与 `<workspace>/.mpd/mpd.jsonc` 打通，但行为变更需要重启。** 字段声明的
+   是真实的 mpd.jsonc 可调项（`hashline.maxDiffChars`、`commentChecker.autoCheck`、
+   `ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir`），并在 harness
+   设置命名空间 `mpd` 下编辑它们。该命名空间**由 `packages/mpd-config-plugin`
+   提供**（设计 §10.1）：它以推导出的 `base` 注册，因此两个前门展示的都是文件中的真实
+   取值，而不是 schema 默认值；本插件是**纯消费者**，仅在没有 config 插件的组合中作为
+   **受保护的兜底**注册。`base` 遵循**数量规则**：一个活动根 ⇒ 该工作区的
+   `<workspace>/.mpd/mpd.jsonc`；零个根 ⇒ 挂载时（无 exec）的根，那里文件缺失即得到空
+   base（schema 默认值）——这是常规启动路径，因为本行通常先于任何活动会话；多于一个根 ⇒
+   **不虚构任何文件 base**（`base: undefined`、`ambiguous-multi-root`，逐一点名全部候选
+   并由 `states()` 暴露），因此在恰好一个工作区活动之前该命名空间显示 schema 默认值。
+   `base` 在整个**进程生命周期内固定**（宿主对一次活动注册不提供注销句柄）——这正是下方
+   句子写作"重启后生效"的诚实理由——而插件真正使用的是**已解析的值**与配置层的
+   **逐次调用文件读取**。保存的编辑会回写到
+   当前会话工作区的 `<workspace>/.mpd/mpd.jsonc`，并保留注释与键顺序，配置层立即对所有工作区
+   生效。**本区块的每个开关对插件行为的影响都需要重启**，因为 mpd 消费方在
+   `apply()` 时读取配置——界面上同样如此说明：每个字段提示为 `mpd.jsonc <键> — a
+   save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and
+   takes effect for the mpd plugins after a restart (this knob is read at plugin
+   mount)`，并附上「仅存于设置中的保存不会丢失」的说明。当目标不明确时回写会
+   **明确拒绝且不写文件**（无活动会话 `no-live-session`；多个活动工作区
+   `ambiguous-multi-root` 并列出全部候选；只读/不可解析/冲突的文件），而设置值仍然
+   生效；状态行会显示对应的运行时提示。不声明：某个具体前门的渲染效果（Web 卡片的
+   浏览器渲染由用户在自己的 GUI 中验证）。
 3. **web 专有界面在 TUI 中没有渲染面。** agent-teams 侧边栏、workmate 标签页与
    bundle 浮层（`dsh.client.platform = web`）在 TUI 中不渲染。面板、状态行与
    对话框是**等价物**，不是像素或功能对齐声明。web profile 未受影响。
-4. **随包技能仅为资产。** `skills/mpd-tui/SKILL.md` 随包分发，但技能语料由
+4. **随包技能仅为资产。** `packages/mpd-tui-plugin/skills/mpd-tui/SKILL.md` 随包分发，但技能语料由
    `mpd-bootstrap` 从 `<bundle>/skills` 提供；本包内这份副本并未由该行注册。
 5. **引擎版本偏差。** 宿主会提示 dsh 引擎比其 UI 验证版本更新；验证针对已安装
    引擎进行，而非该修订。

@@ -52,21 +52,21 @@ afterEach(() => {
 // ── fixtures ────────────────────────────────────────────────────────────────
 
 const GOOD_SKILL = `---
-name: verilog-style
-description: "Check Verilog style against the in-house rules."
+name: style-check
+description: "Check style against the in-house rules."
 ---
 
-# verilog-style
+# style-check
 
 Run the style checks.
 `
 
 const SECOND_SKILL = `---
-name: rtl-lint
-description: "Lint RTL sources with the bundled linter."
+name: lint-mcp
+description: "Lint sources with the bundled linter."
 ---
 
-# rtl-lint
+# lint-mcp
 
 Lint the design.
 `
@@ -80,10 +80,10 @@ description: ""
 `
 
 const GOOD_FLOW = {
-  id: "rtl-review",
-  title: "RTL review",
-  description: "Review an RTL module before it lands.",
-  whenToUse: "Use when a Verilog/SystemVerilog module needs review.",
+  id: "change-review",
+  title: "Change review",
+  description: "Review a change before it lands.",
+  whenToUse: "Use when a change needs review.",
   steps: [
     { title: "Read the module", detail: "Open the module top-to-bottom.", tool: "read" },
     { title: "Summarize risks", output: "A list of ranked risks." },
@@ -345,7 +345,7 @@ test("apply contains a hostile harness: a throwing tool or skill seam never esca
 
   // (3) Present but throwing seams: containment + the same loud summary.
   const userRoot = join(process.env.HOME as string, ".mpd", "extensions")
-  writeExtension(userRoot, "hostile", extensionManifest("hostile", { skills: [{ root: "skills" }] }), { skills: { "verilog-style": GOOD_SKILL } })
+  writeExtension(userRoot, "hostile", extensionManifest("hostile", { skills: [{ root: "skills" }] }), { skills: { "style-check": GOOD_SKILL } })
   const provided: Record<string, any> = {}
   const warnings: string[] = []
   const ctx: any = {
@@ -369,37 +369,37 @@ test("apply contains a hostile harness: a throwing tool or skill seam never esca
 
 test("the four tools emit values that satisfy their own output schemas", async () => {
   const workspace = makeDir("mpd-ext-ws-")
-  writeExtension(projectExtensionsDir(workspace), "rtl-verilog", extensionManifest("rtl-verilog", {
+  writeExtension(projectExtensionsDir(workspace), "authoring-flows", extensionManifest("authoring-flows", {
     skills: [{ root: "skills" }],
     flows: [{ dir: "flows" }],
-    mcp: [{ serverName: "rtl-lint", transport: "stdio", command: "node" }],
-    roles: [{ name: "Verilog Reviewer", persona: "reviewer.md" }],
+    mcp: [{ serverName: "lint-mcp", transport: "stdio", command: "node" }],
+    roles: [{ name: "Code Reviewer", persona: "reviewer.md" }],
   }), {
-    skills: { "verilog-style": GOOD_SKILL },
-    flows: { "rtl-review.json": GOOD_FLOW },
-    personas: { "reviewer.md": "You review RTL." },
+    skills: { "style-check": GOOD_SKILL },
+    flows: { "change-review.json": GOOD_FLOW },
+    personas: { "reviewer.md": "You review a change." },
   })
   const { ctx, registered } = makeCtx()
   apply(ctx, { quiet: true })
 
   const listed = await callTool(registered, "mpd_ext_list", {}, workspace)
-  const shown = await callTool(registered, "mpd_ext_show", { id: "rtl-verilog" }, workspace)
+  const shown = await callTool(registered, "mpd_ext_show", { id: "authoring-flows" }, workspace)
   const flows = await callTool(registered, "mpd_flow_list", {}, workspace)
-  const flow = await callTool(registered, "mpd_flow_show", { id: "rtl-review" }, workspace)
+  const flow = await callTool(registered, "mpd_flow_show", { id: "change-review" }, workspace)
 
-  const rtl = listed.extensions.find((entry: any) => entry.id === "rtl-verilog")
-  expect(rtl.plane).toBe("project")
-  expect(rtl.contributions.skills).toBe(1)
-  expect(rtl.contributions.flows).toBe(1)
+  const ext = listed.extensions.find((entry: any) => entry.id === "authoring-flows")
+  expect(ext.plane).toBe("project")
+  expect(ext.contributions.skills).toBe(1)
+  expect(ext.contributions.flows).toBe(1)
   // A project manifest may contribute skills and flows ONLY: mcp and roles are
   // rejected per item with the stated reason and contribute nothing.
-  expect(rtl.contributions.mcp).toBe(0)
-  expect(rtl.contributions.roles).toBe(0)
-  expect(rtl.errors.find((error: any) => error.item === "contributes.mcp[0]")?.reason).toBe(MPD_EXT_CONTRACT.projectRejectionReason)
-  expect(shown.skills).toEqual(["verilog-style"])
-  expect(shown.flows).toEqual(["rtl-review"])
+  expect(ext.contributions.mcp).toBe(0)
+  expect(ext.contributions.roles).toBe(0)
+  expect(ext.errors.find((error: any) => error.item === "contributes.mcp[0]")?.reason).toBe(MPD_EXT_CONTRACT.projectRejectionReason)
+  expect(shown.skills).toEqual(["style-check"])
+  expect(shown.flows).toEqual(["change-review"])
   expect(shown.mcp).toEqual([])
-  expect(flows.flows.find((entry: any) => entry.id === "rtl-review").loadable).toBe(true)
+  expect(flows.flows.find((entry: any) => entry.id === "change-review").loadable).toBe(true)
   expect(flow.steps.length).toBe(2)
   expect(flow.steps[0].tool).toBe("read")
   expect(flow.steps[1].output).toBe("A list of ranked risks.")
@@ -485,9 +485,9 @@ test("effectiveEnabled follows disable > enable > descriptor", () => {
 
 test("discovery precedence is project > user > bundle and shadowing is recorded, never fatal", async () => {
   const userRoot = join(process.env.HOME as string, ".mpd", "extensions")
-  writeExtension(userRoot, "shared", extensionManifest("shared", { skills: [{ root: "skills" }] }), { skills: { "verilog-style": GOOD_SKILL } })
+  writeExtension(userRoot, "shared", extensionManifest("shared", { skills: [{ root: "skills" }] }), { skills: { "style-check": GOOD_SKILL } })
   const workspace = makeDir("mpd-ext-ws-")
-  writeExtension(projectExtensionsDir(workspace), "shared", extensionManifest("shared", { skills: [{ root: "skills" }] }), { skills: { "rtl-lint": SECOND_SKILL } })
+  writeExtension(projectExtensionsDir(workspace), "shared", extensionManifest("shared", { skills: [{ root: "skills" }] }), { skills: { "lint-mcp": SECOND_SKILL } })
 
   const { ctx, registered, providers } = makeCtx()
   apply(ctx, { quiet: true })
@@ -498,7 +498,7 @@ test("discovery precedence is project > user > bundle and shadowing is recorded,
   const userProvider = providerNamed(providers, "mpd-ext:shared")
   expect(await userProvider.list({ cwd: workspace })).toEqual({ candidates: [], complete: true })
   // ...and emits again from a workspace without the shadowing extension.
-  expect((await observedNames(userProvider, { cwd: makeDir("mpd-ext-ws-") })).names).toEqual(["verilog-style"])
+  expect((await observedNames(userProvider, { cwd: makeDir("mpd-ext-ws-") })).names).toEqual(["style-check"])
 
   // The registry view keeps the project entry and records the shadow pair.
   const registry = new MpdExtensionRegistry()
@@ -525,7 +525,7 @@ test("a malformed manifest is reported per item and never aborts apply or anothe
   writeExtension(root, "bad-json", "{ not json")
   writeExtension(root, "bad-version", extensionManifest("bad-version", {}, { apiVersion: 9 }))
   writeExtension(root, "no-id", { apiVersion: 1, contributes: {} })
-  writeExtension(root, "good-one", extensionManifest("good-one", { skills: [{ root: "skills" }] }), { skills: { "verilog-style": GOOD_SKILL } })
+  writeExtension(root, "good-one", extensionManifest("good-one", { skills: [{ root: "skills" }] }), { skills: { "style-check": GOOD_SKILL } })
 
   const { ctx, registered } = makeCtx()
   apply(ctx, { quiet: true })
@@ -538,7 +538,7 @@ test("a malformed manifest is reported per item and never aborts apply or anothe
 test("the project plane is re-read per call and never leaks across workspaces", async () => {
   const workspaceA = makeDir("mpd-ext-a-")
   const workspaceB = makeDir("mpd-ext-b-")
-  writeExtension(projectExtensionsDir(workspaceA), "only-a", extensionManifest("only-a", { skills: [{ root: "skills" }] }), { skills: { "verilog-style": GOOD_SKILL } })
+  writeExtension(projectExtensionsDir(workspaceA), "only-a", extensionManifest("only-a", { skills: [{ root: "skills" }] }), { skills: { "style-check": GOOD_SKILL } })
   const { ctx, registered } = makeCtx()
   apply(ctx, { quiet: true })
   const inA = await callTool(registered, "mpd_ext_list", {}, workspaceA)
@@ -552,13 +552,13 @@ test("the project plane is re-read per call and never leaks across workspaces", 
 test("skill candidates are pre-validated: a bad candidate is skipped, warned and never emitted", async () => {
   const userRoot = join(process.env.HOME as string, ".mpd", "extensions")
   writeExtension(userRoot, "mixed", extensionManifest("mixed", { skills: [{ root: "skills" }] }), {
-    skills: { "verilog-style": GOOD_SKILL, "rtl-lint": SECOND_SKILL, "broken-style": EMPTY_DESCRIPTION_SKILL },
+    skills: { "style-check": GOOD_SKILL, "lint-mcp": SECOND_SKILL, "broken-style": EMPTY_DESCRIPTION_SKILL },
   })
   const { ctx, providers } = makeCtx()
   apply(ctx, { quiet: true })
   const provider = providerNamed(providers, "mpd-ext:mixed")
   const candidates = observed(await provider.list({ cwd: makeDir("mpd-ext-ws-") })).candidates
-  expect(candidates.map((candidate: any) => candidate.name).sort()).toEqual(["rtl-lint", "verilog-style"])
+  expect(candidates.map((candidate: any) => candidate.name).sort()).toEqual(["lint-mcp", "style-check"])
   for (const candidate of candidates) {
     expect(candidateViolation(candidate, "mpd-ext:mixed")).toBeUndefined()
     expect(candidate.provider).toBe("mpd-ext:mixed")
@@ -590,7 +590,7 @@ test("the provider pre-validates at emit time too, and reports the skip to the o
 test("a loaded candidate is recorded on the extension when its items are unusable", () => {
   const userRoot = join(process.env.HOME as string, ".mpd", "extensions")
   const dir = writeExtension(userRoot, "mixed", extensionManifest("mixed", { skills: [{ root: "skills" }] }), {
-    skills: { "verilog-style": GOOD_SKILL, "broken-style": EMPTY_DESCRIPTION_SKILL },
+    skills: { "style-check": GOOD_SKILL, "broken-style": EMPTY_DESCRIPTION_SKILL },
   })
   const built = buildExtension({
     input: JSON.parse(readFileSync(join(dir, MPD_EXT_CONTRACT.manifestFile), "utf8")),
@@ -601,24 +601,24 @@ test("a loaded candidate is recorded on the extension when its items are unusabl
     fallbackId: "mixed",
     providerName: "mpd-ext:mixed",
   })
-  expect(built.entry?.skills).toEqual(["verilog-style"])
+  expect(built.entry?.skills).toEqual(["style-check"])
   expect(built.entry?.errors.some((error) => error.item.includes("broken-style") && error.reason.includes("description"))).toBe(true)
 })
 
 test("the project-plane skill provider resolves per call from provider.list({ cwd })", async () => {
   const workspaceA = makeDir("mpd-ext-a-")
   const workspaceB = makeDir("mpd-ext-b-")
-  writeExtension(projectExtensionsDir(workspaceA), "proj", extensionManifest("proj", { flows: [{ dir: "flows" }] }), { flows: { "rtl-review.json": GOOD_FLOW } })
+  writeExtension(projectExtensionsDir(workspaceA), "proj", extensionManifest("proj", { flows: [{ dir: "flows" }] }), { flows: { "change-review.json": GOOD_FLOW } })
   const { ctx, providers } = makeCtx()
   apply(ctx, { quiet: true })
   const provider = providerNamed(providers, "mpd-ext:project-plane")
   const inA = observed(await provider.list({ cwd: workspaceA })).candidates
-  expect(inA.map((candidate: any) => candidate.name)).toEqual(["rtl-review"])
+  expect(inA.map((candidate: any) => candidate.name)).toEqual(["change-review"])
   expect(inA[0].provider).toBe("mpd-ext:project-plane")
   expect(await provider.list({ cwd: workspaceB })).toEqual({ candidates: [], complete: true })
   // get() serves the rendered flow document, re-validated against its candidate.
   const definition = await provider.get(inA[0], { cwd: workspaceA })
-  expect(definition.name).toBe("rtl-review")
+  expect(definition.name).toBe("change-review")
   expect(definition.content).toContain("## Steps")
   expect(definition.provider).toBe("mpd-ext:project-plane")
 })
@@ -644,9 +644,9 @@ test("a skill provider never throws out of list()/get() when discovery fails", a
 
 test("provider names are unique by construction", () => {
   const taken = new Set<string>()
-  expect(allocateProviderName(taken, "mpd-ext:rtl")).toBe("mpd-ext:rtl")
-  expect(allocateProviderName(taken, "mpd-ext:rtl")).toBe("mpd-ext:rtl-2")
-  expect(allocateProviderName(taken, "mpd-ext:rtl")).toBe("mpd-ext:rtl-3")
+  expect(allocateProviderName(taken, "mpd-ext:style")).toBe("mpd-ext:style")
+  expect(allocateProviderName(taken, "mpd-ext:style")).toBe("mpd-ext:style-2")
+  expect(allocateProviderName(taken, "mpd-ext:style")).toBe("mpd-ext:style-3")
   expect(taken.size).toBe(3)
 })
 
@@ -665,7 +665,7 @@ test("flows render into skill candidates and a flow id outside the skill grammar
   expect(noSteps.errors.some((error) => error.reason.includes("non-empty array"))).toBe(true)
 
   const rendered = renderFlowSkill(GOOD_FLOW as any)
-  expect(rendered).toContain("# RTL review")
+  expect(rendered).toContain("# Change review")
   expect(rendered).toContain("## Steps")
   expect(rendered).toContain("`read`")
 })
@@ -677,7 +677,7 @@ test("a broken flow file is skipped and recorded while its siblings keep working
   })
   const discovery = discoverPlane({ plane: "project", dir: projectExtensionsDir(workspace), providerNameFor: () => "mpd-ext:project-plane", warn: () => {} })
   const entry = discovery.entries[0]
-  expect(entry.flows).toEqual(["rtl-review"])
+  expect(entry.flows).toEqual(["change-review"])
   expect(entry.flowEntries.length).toBe(1)
   expect(entry.errors.filter((error) => error.item.includes("bad-")).length).toBe(2)
 })
@@ -686,7 +686,7 @@ test("a broken flow file is skipped and recorded while its siblings keep working
 
 test("config is read lazily per use: disable/enable are honoured after apply", async () => {
   const userRoot = join(process.env.HOME as string, ".mpd", "extensions")
-  writeExtension(userRoot, "toggled", extensionManifest("toggled", { skills: [{ root: "skills" }] }), { skills: { "verilog-style": GOOD_SKILL } })
+  writeExtension(userRoot, "toggled", extensionManifest("toggled", { skills: [{ root: "skills" }] }), { skills: { "style-check": GOOD_SKILL } })
   const state: any = { "extensions.disable": [], "extensions.enable": [], "extensions.mcp": { enabled: true, connectTimeoutMs: 1234, toolCallTimeoutMs: 5678 } }
   const config = { get: (key: string) => state[key], reload: () => {}, states: () => ({ files: [], errors: [] }) }
   const { ctx, registered, providers } = makeCtx(config)
@@ -760,7 +760,7 @@ test("mcp.enabled=false is honoured per call and surfaced instead of silently pe
 
 test("a missing mpdConfig degrades to the documented defaults", async () => {
   const userRoot = join(process.env.HOME as string, ".mpd", "extensions")
-  writeExtension(userRoot, "plain", extensionManifest("plain", { skills: [{ root: "skills" }] }), { skills: { "verilog-style": GOOD_SKILL } })
+  writeExtension(userRoot, "plain", extensionManifest("plain", { skills: [{ root: "skills" }] }), { skills: { "style-check": GOOD_SKILL } })
   const { ctx, registered } = makeCtx(undefined)
   apply(ctx, { quiet: true })
   const listed = await callTool(registered, "mpd_ext_list", {}, makeDir("mpd-ext-ws-"))
@@ -807,8 +807,8 @@ test("the code plane registers through ctx.get(\"mpdExtensions\") and shares the
 test("describe() answers the frozen descriptor shape for a known extension", () => {
   const userRoot = join(process.env.HOME as string, ".mpd", "extensions")
   writeExtension(userRoot, "shape", extensionManifest("shape", { skills: [{ root: "skills" }], flows: [{ dir: "flows" }] }), {
-    skills: { "verilog-style": GOOD_SKILL },
-    flows: { "rtl-review.json": GOOD_FLOW },
+    skills: { "style-check": GOOD_SKILL },
+    flows: { "change-review.json": GOOD_FLOW },
   })
   const { ctx, provided } = makeCtx()
   apply(ctx, { quiet: true })
@@ -819,8 +819,8 @@ test("describe() answers the frozen descriptor shape for a known extension", () 
   expect(described.descriptor.apiVersion).toBe(1)
   expect(described.descriptor.contributes.skills[0].rank).toBe(MPD_EXT_CONTRACT.defaultRank)
   expect(described.descriptor.contributes.flows[0].rank).toBe(MPD_EXT_CONTRACT.defaultRank)
-  expect(described.skills).toEqual(["verilog-style"])
-  expect(described.flows).toEqual(["rtl-review"])
+  expect(described.skills).toEqual(["style-check"])
+  expect(described.flows).toEqual(["change-review"])
 })
 
 // ── failure isolation and declared-but-pending kinds ────────────────────────
@@ -828,17 +828,17 @@ test("describe() answers the frozen descriptor shape for a known extension", () 
 test("one broken extension of each kind leaves the good ones working", async () => {
   const userRoot = join(process.env.HOME as string, ".mpd", "extensions")
   writeExtension(userRoot, "broken-skills", extensionManifest("broken-skills", { skills: [{ root: "missing-dir" }, { root: "skills" }] }), {
-    skills: { "verilog-style": EMPTY_DESCRIPTION_SKILL },
+    skills: { "style-check": EMPTY_DESCRIPTION_SKILL },
   })
   writeExtension(userRoot, "broken-roles", extensionManifest("broken-roles", { roles: [{ name: "R", persona: "persona.md" }] }))
   writeExtension(userRoot, "broken-mcp", extensionManifest("broken-mcp", { mcp: [{ serverName: "bad name", transport: "stdio", command: "" }] }))
-  writeExtension(userRoot, "healthy", extensionManifest("healthy", { skills: [{ root: "skills" }] }), { skills: { "rtl-lint": SECOND_SKILL } })
+  writeExtension(userRoot, "healthy", extensionManifest("healthy", { skills: [{ root: "skills" }] }), { skills: { "lint-mcp": SECOND_SKILL } })
 
   const { ctx, providers, registered } = makeCtx()
   apply(ctx, { quiet: true })
   expect(registered.map((definition) => definition.name).sort()).toEqual(["mpd_ext_list", "mpd_ext_show", "mpd_flow_list", "mpd_flow_show"])
   const healthy = providerNamed(providers, "mpd-ext:healthy")
-  expect((await observedNames(healthy, {})).names).toEqual(["rtl-lint"])
+  expect((await observedNames(healthy, {})).names).toEqual(["lint-mcp"])
 
   const listed = await callTool(registered, "mpd_ext_list", {}, makeDir("mpd-ext-ws-"))
   const find = (id: string): any => listed.extensions.find((entry: any) => entry.id === id)
@@ -851,9 +851,9 @@ test("one broken extension of each kind leaves the good ones working", async () 
 test("mcp is pending until the bridge connects it, while roles are NEVER pending (t14/F3)", async () => {
   const userRoot = join(process.env.HOME as string, ".mpd", "extensions")
   writeExtension(userRoot, "declare-all", extensionManifest("declare-all", {
-    mcp: [{ serverName: "rtl-lint", transport: "stdio", command: "node" }],
-    roles: [{ name: "Verilog Reviewer", persona: "reviewer.md" }],
-  }), { personas: { "reviewer.md": "You review RTL." } })
+    mcp: [{ serverName: "lint-mcp", transport: "stdio", command: "node" }],
+    roles: [{ name: "Code Reviewer", persona: "reviewer.md" }],
+  }), { personas: { "reviewer.md": "You review a change." } })
   const { ctx, registered } = makeCtx()
   apply(ctx, { quiet: true })
   const workspace = makeDir("mpd-ext-ws-")
@@ -866,7 +866,7 @@ test("mcp is pending until the bridge connects it, while roles are NEVER pending
   expect(entry.pending.some((item: any) => item.item === "contributes.roles")).toBe(false)
   expect(entry.contributions.roles).toBe(1)
   const shown = await callTool(registered, "mpd_ext_show", { id: "declare-all" }, workspace)
-  expect(shown.roles).toEqual(["Verilog Reviewer"])
+  expect(shown.roles).toEqual(["Code Reviewer"])
   expect(shown.pending.some((item: any) => item.item === "contributes.roles")).toBe(false)
   expect(listed.warnings.some((line: string) => line.includes("pending:"))).toBe(true)
 })
@@ -918,8 +918,8 @@ function builtEntry(id: string, contributes: Record<string, unknown>, root: stri
 
 test("t14/F3: a live roles contribution reports no pending item and no 'not yet exposed' claim", async () => {
   writeExtension(userExtensionsRoot(), "live-roles", extensionManifest("live-roles", {
-    roles: [{ name: "Verilog Reviewer", persona: "reviewer.md" }],
-  }), { personas: { "reviewer.md": "You review RTL." } })
+    roles: [{ name: "Code Reviewer", persona: "reviewer.md" }],
+  }), { personas: { "reviewer.md": "You review a change." } })
   const { ctx, registered } = makeCtx()
   apply(ctx, { quiet: true })
   const workspace = makeDir("mpd-ext-ws-")
@@ -931,7 +931,7 @@ test("t14/F3: a live roles contribution reports no pending item and no 'not yet 
   expect(refusalNotes(entry)).toEqual([])
 
   const shown = await callTool(registered, "mpd_ext_show", { id: "live-roles" }, workspace)
-  expect(shown.roles).toEqual(["Verilog Reviewer"])
+  expect(shown.roles).toEqual(["Code Reviewer"])
   expect(shown.resolvedRoots.roles).toHaveLength(1)
   expect(shown.pending.some((item: any) => item.item === "contributes.roles")).toBe(false)
 
@@ -947,7 +947,7 @@ test("t14/F4: a role colliding with a BASE roster name is refused with the roste
   // case-insensitive, so this collides — and the base always wins.
   const root = writeExtension(userExtensionsRoot(), "base-collision", extensionManifest("base-collision", {
     roles: [{ name: "architect", persona: "reviewer.md" }],
-  }), { personas: { "reviewer.md": "You review RTL." } })
+  }), { personas: { "reviewer.md": "You review a change." } })
 
   // The dev CLI's `validate` path builds an entry with NO view (no activation), so
   // the refusal must be decided at build time too.
@@ -1060,13 +1060,13 @@ test("t14: the ext report and the ROSTER agree about every role (parity, measure
   // One healthy role, plus one role per refusal class.
   writeExtension(userExtensionsRoot(), "alpha-owner", extensionManifest("alpha-owner", {
     roles: [
-      { name: "Verilog Reviewer", persona: "ok.md" },
+      { name: "Code Reviewer", persona: "ok.md" },
       { name: "Architect", persona: "ok.md" },
       { name: "Roster Clone", persona: "missing.md" },
     ],
   }), { personas: { "ok.md": "healthy" } })
   writeExtension(userExtensionsRoot(), "zeta-clone", extensionManifest("zeta-clone", {
-    roles: [{ name: "Verilog Reviewer", persona: "ok.md" }],
+    roles: [{ name: "Code Reviewer", persona: "ok.md" }],
   }), { personas: { "ok.md": "clone" } })
 
   const { ctx, registered, provided } = makeCtx()
@@ -1096,7 +1096,7 @@ test("t14: the ext report and the ROSTER agree about every role (parity, measure
     .extensions.flatMap((entry: any) => entry.roles)
     .sort()
   expect(myUsable).toEqual(resolved.roles.map((role: any) => role.name).sort())
-  expect(myUsable).toContain("Verilog Reviewer")
+  expect(myUsable).toContain("Code Reviewer")
 
   // (3) The base-name rule uses the roster's OWN name key: case-, space-, hyphen- and
   //     underscore-insensitive, so every spelling of a base name collides — pinned
@@ -1193,9 +1193,9 @@ function skillSurfaceNotes(entry: any): string[] {
 
 test("F4: a same-name skill claimed by two extensions is reported on the loser WITH the winner and both ranks", async () => {
   // No `onSkip` and no cross-extension skill annotation pre-fix: `mpd_ext_list` listed
-  // BOTH extensions as contributing `verilog-style` while the harness serves exactly one.
-  writeExtension(userExtensionsRoot(), "alpha-owner", extensionManifest("alpha-owner", { skills: [{ root: "skills", rank: 100 }] }), { skills: { "verilog-style": GOOD_SKILL } })
-  writeExtension(userExtensionsRoot(), "zeta-clone", extensionManifest("zeta-clone", { skills: [{ root: "skills", rank: 600 }] }), { skills: { "verilog-style": GOOD_SKILL } })
+  // BOTH extensions as contributing `style-check` while the harness serves exactly one.
+  writeExtension(userExtensionsRoot(), "alpha-owner", extensionManifest("alpha-owner", { skills: [{ root: "skills", rank: 100 }] }), { skills: { "style-check": GOOD_SKILL } })
+  writeExtension(userExtensionsRoot(), "zeta-clone", extensionManifest("zeta-clone", { skills: [{ root: "skills", rank: 600 }] }), { skills: { "style-check": GOOD_SKILL } })
   const { ctx, registered } = makeCtx()
   apply(ctx, { quiet: true })
   const listed = await callTool(registered, "mpd_ext_list", {}, makeDir("mpd-ext-ws-"))
@@ -1206,13 +1206,13 @@ test("F4: a same-name skill claimed by two extensions is reported on the loser W
   expect(skillSurfaceNotes(owner)).toEqual([])
   // …the loser names the winner AND the ranks that decided it.
   expect(skillSurfaceNotes(clone)).toEqual([
-    '"verilog-style" (rank 600) is also claimed by extension "alpha-owner" (rank 100), which the harness serves instead — the lowest rank wins and the other candidate is dropped with a warning',
+    '"style-check" (rank 600) is also claimed by extension "alpha-owner" (rank 100), which the harness serves instead — the lowest rank wins and the other candidate is dropped with a warning',
   ])
   // The same fact from the catalog side: one entry really serves the name.
   expect(owner.skillServing.checked).toBe(true)
-  expect(owner.skillServing.served).toEqual(["verilog-style"])
+  expect(owner.skillServing.served).toEqual(["style-check"])
   expect(clone.skillServing.served).toEqual([])
-  expect(clone.skillServing.notServed).toEqual(["verilog-style"])
+  expect(clone.skillServing.notServed).toEqual(["style-check"])
   // The note is re-derived per call, so a second report neither duplicates nor loses it.
   const again = await callTool(registered, "mpd_ext_show", { id: "zeta-clone" }, makeDir("mpd-ext-ws-"))
   expect(skillSurfaceNotes(again)).toEqual(skillSurfaceNotes(clone))
@@ -1222,12 +1222,12 @@ test("F4: a claim the catalog resolves to a NON-extension provider is reported a
   // The registry can only see extension-vs-extension collisions. A name lost to the
   // skill corpus (or a user skills root) is decided inside ctx.skills, so the tool asks
   // the catalog — without that, this entry's claim was indistinguishable from reality.
-  writeExtension(userExtensionsRoot(), "shadowed", extensionManifest("shadowed", { skills: [{ root: "skills", rank: 500 }] }), { skills: { "verilog-style": GOOD_SKILL } })
+  writeExtension(userExtensionsRoot(), "shadowed", extensionManifest("shadowed", { skills: [{ root: "skills", rank: 500 }] }), { skills: { "style-check": GOOD_SKILL } })
   const { ctx, registered } = makeCtx()
   ctx.skills.registerProvider(() => ({
     name: "corpus",
     list: () => [{
-      name: "verilog-style",
+      name: "style-check",
       description: "the corpus copy",
       invocation: { modelInvocable: true, userInvocable: true },
       source: "corpus",
@@ -1242,7 +1242,7 @@ test("F4: a claim the catalog resolves to a NON-extension provider is reported a
 
   expect(entry.skillServing.checked).toBe(true)
   expect(entry.skillServing.served).toEqual([])
-  expect(entry.skillServing.notServed).toEqual(["verilog-style"])
+  expect(entry.skillServing.notServed).toEqual(["style-check"])
   expect(entry.skillServing.detail[0].provider).toBe("corpus")
   expect(entry.skillServing.detail[0].note).toContain('served by provider "corpus"')
   // …and this collision is exactly the one the registry CANNOT see, which is why the
@@ -1250,7 +1250,7 @@ test("F4: a claim the catalog resolves to a NON-extension provider is reported a
   expect(skillSurfaceNotes(entry)).toEqual([])
   // The rendered text a model reads must not silently claim the skill either.
   const rendered = toolOf(registered, "mpd_ext_list").output.render({}, listed)[0].text
-  expect(rendered).toContain("not served: verilog-style")
+  expect(rendered).toContain("not served: style-check")
 })
 
 test("F4: a duplicate project-plane skill name is attributed to the PROJECT entry that claims it", async () => {
@@ -1258,19 +1258,19 @@ test("F4: a duplicate project-plane skill name is attributed to the PROJECT entr
   // `console.warn` nobody could see and `mpd_ext_list` still claimed both entries.
   const workspace = makeDir("mpd-ext-ws-")
   const dir = projectExtensionsDir(workspace)
-  writeExtension(dir, "proj-a", extensionManifest("proj-a", { skills: [{ root: "skills" }] }), { skills: { "verilog-style": GOOD_SKILL } })
-  writeExtension(dir, "proj-b", extensionManifest("proj-b", { skills: [{ root: "skills" }] }), { skills: { "verilog-style": GOOD_SKILL } })
+  writeExtension(dir, "proj-a", extensionManifest("proj-a", { skills: [{ root: "skills" }] }), { skills: { "style-check": GOOD_SKILL } })
+  writeExtension(dir, "proj-b", extensionManifest("proj-b", { skills: [{ root: "skills" }] }), { skills: { "style-check": GOOD_SKILL } })
   const { ctx, registered } = makeCtx()
   apply(ctx, { quiet: true })
   const listed = await callTool(registered, "mpd_ext_list", {}, workspace)
   const a = listed.extensions.find((candidate: any) => candidate.id === "proj-a")
   const b = listed.extensions.find((candidate: any) => candidate.id === "proj-b")
 
-  const note = 'duplicate name "verilog-style" inside provider "mpd-ext:project-plane"'
+  const note = 'duplicate name "style-check" inside provider "mpd-ext:project-plane"'
   expect(a.errors.some((error: any) => error.reason === note)).toBe(true)
   expect(b.errors.some((error: any) => error.reason === note)).toBe(true)
   // The catalog says which one really serves it, which is the fact that matters.
-  const served = [a, b].filter((entry: any) => entry.skillServing.served.includes("verilog-style"))
+  const served = [a, b].filter((entry: any) => entry.skillServing.served.includes("style-check"))
   expect(served.map((entry: any) => entry.id)).toEqual(["proj-a"])
 })
 
@@ -1278,7 +1278,7 @@ test("F5: a provider call with NO cwd serves nothing from the project plane (nev
   // Pre-fix the fallback was `dsh.workspaceRoot()` -> DSH_WORKSPACE_ROOT -> process.cwd(),
   // so a caller that named no workspace was served another project's extensions.
   const workspace = makeDir("mpd-ext-cwd-")
-  writeExtension(projectExtensionsDir(workspace), "only-project", extensionManifest("only-project", { skills: [{ root: "skills" }] }), { skills: { "verilog-style": GOOD_SKILL } })
+  writeExtension(projectExtensionsDir(workspace), "only-project", extensionManifest("only-project", { skills: [{ root: "skills" }] }), { skills: { "style-check": GOOD_SKILL } })
   const { ctx, providers } = makeCtx()
   apply(ctx, { quiet: true })
   const provider = providerNamed(providers, "mpd-ext:project-plane")
@@ -1289,7 +1289,7 @@ test("F5: a provider call with NO cwd serves nothing from the project plane (nev
     expect(await provider.list(undefined)).toEqual({ candidates: [], complete: true })
     expect(await provider.list({ cwd: "" })).toEqual({ candidates: [], complete: true })
     // The caller's OWN workspace still resolves — the fix removes a guess, not the plane.
-    expect((await observedNames(provider, { cwd: workspace })).names).toEqual(["verilog-style"])
+    expect((await observedNames(provider, { cwd: workspace })).names).toEqual(["style-check"])
   } finally {
     if (saved === undefined) delete process.env.DSH_WORKSPACE_ROOT
     else process.env.DSH_WORKSPACE_ROOT = saved
@@ -1299,13 +1299,13 @@ test("F5: a provider call with NO cwd serves nothing from the project plane (nev
 test("F5: a host-wide extension is still served when the caller names no workspace", async () => {
   // The shadow guard needs a workspace; with none it must FAIL TOWARDS SERVING the
   // host-wide extension, never towards hiding it (the opposite error is worse).
-  writeExtension(userExtensionsRoot(), "host-wide", extensionManifest("host-wide", { skills: [{ root: "skills" }] }), { skills: { "verilog-style": GOOD_SKILL } })
+  writeExtension(userExtensionsRoot(), "host-wide", extensionManifest("host-wide", { skills: [{ root: "skills" }] }), { skills: { "style-check": GOOD_SKILL } })
   const { ctx, providers } = makeCtx()
   apply(ctx, { quiet: true })
   const provider = providerNamed(providers, "mpd-ext:host-wide")
-  expect((await observedNames(provider, {})).names).toEqual(["verilog-style"])
+  expect((await observedNames(provider, {})).names).toEqual(["style-check"])
   // With a workspace that has NO same-id project extension it is served there too.
-  expect((await observedNames(provider, { cwd: makeDir("mpd-ext-ws-") })).names).toEqual(["verilog-style"])
+  expect((await observedNames(provider, { cwd: makeDir("mpd-ext-ws-") })).names).toEqual(["style-check"])
 })
 
 test("F6: mpd_ext_show redacts author-declared env VALUES in the echoed descriptor", async () => {
@@ -1389,8 +1389,8 @@ test("F5: with no cwd a host-wide extension is SERVED, not silently shadowed by 
   // project extension the guard fired and the host-wide extension emitted NOTHING —
   // a host-wide capability hidden by a workspace the caller never named.
   const workspace = makeDir("mpd-ext-shadow-")
-  writeExtension(projectExtensionsDir(workspace), "shared", extensionManifest("shared", { skills: [{ root: "skills" }] }), { skills: { "rtl-lint": SECOND_SKILL } })
-  writeExtension(userExtensionsRoot(), "shared", extensionManifest("shared", { skills: [{ root: "skills" }] }), { skills: { "verilog-style": GOOD_SKILL } })
+  writeExtension(projectExtensionsDir(workspace), "shared", extensionManifest("shared", { skills: [{ root: "skills" }] }), { skills: { "lint-mcp": SECOND_SKILL } })
+  writeExtension(userExtensionsRoot(), "shared", extensionManifest("shared", { skills: [{ root: "skills" }] }), { skills: { "style-check": GOOD_SKILL } })
   const { ctx, providers } = makeCtx()
   apply(ctx, { quiet: true })
   const provider = providerNamed(providers, "mpd-ext:shared")
@@ -1399,11 +1399,11 @@ test("F5: with no cwd a host-wide extension is SERVED, not silently shadowed by 
   try {
     // No cwd: the guard cannot be evaluated, so it is SKIPPED — serving host-wide
     // content is the safe direction; hiding it is not.
-    expect((await observedNames(provider, {})).names).toEqual(["verilog-style"])
+    expect((await observedNames(provider, {})).names).toEqual(["style-check"])
     // With the caller's own workspace the guard DOES run and the project plane wins.
     expect(await provider.list({ cwd: workspace })).toEqual({ candidates: [], complete: true })
     // …and a workspace without that project extension serves it again.
-    expect((await observedNames(provider, { cwd: makeDir("mpd-ext-other-") })).names).toEqual(["verilog-style"])
+    expect((await observedNames(provider, { cwd: makeDir("mpd-ext-other-") })).names).toEqual(["style-check"])
   } finally {
     if (savedWorkspace === undefined) delete process.env.DSH_WORKSPACE_ROOT
     else process.env.DSH_WORKSPACE_ROOT = savedWorkspace

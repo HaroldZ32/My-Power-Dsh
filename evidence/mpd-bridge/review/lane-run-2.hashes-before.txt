@@ -1,0 +1,5 @@
+559eb3e031cf941e packages/mpd-config-plugin/src/index.ts
+b0df5d4c7b8f101a packages/mpd-config-plugin/src/settings-bridge.ts
+225c171bcd7bc4d4 packages/mpd-config-plugin/dist/index.js
+9a915746447c7a25 packages/mpd-dsh-adapter-plugin/dist/index.js
+0a1794e6b23fe355 packages/mpd-dsh-adapter-plugin/src/index.ts

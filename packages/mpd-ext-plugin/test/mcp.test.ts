@@ -914,7 +914,7 @@ test("the shipped example's stdio MCP server starts, lists its tool and answers 
   })
   try {
     expect(bridge.view()[0].state).toBe("connected")
-    const tool = toolNamed(harness.registered, "mcp__example__describe_extension")
+    const tool = toolNamed(harness.registered, "mcp__lint-mcp__describe_extension")
     const value = await tool.execute({}, {})
     const described = JSON.parse(value.content[0].text)
     expect(described.id).toBe("mpd-ext-example")

@@ -1,0 +1,26 @@
+# t35 gate sweep — FINAL state (two lanes, card removed, design-conformance changes applied)
+[bun run typecheck] exit 0
+[bun test packages/mpd-config-plugin packages/mpd-tui-plugin packages/mpd-dsh-adapter-plugin packages/mpd-bundle-plugin] 199 pass / 0 fail / 1226 expect() calls / 20 files
+[bun skills/dsh-qa/scripts/web-settings-bridge.mjs --self-test] ok: 15 web-arm + 6 TUI-arm injected faults each flip their own check
+[bun skills/dsh-qa/scripts/tui-settings-bridge.mjs --self-test] ok (same)
+[bun skills/dsh-qa/scripts/web-settings-bridge.mjs --out .../lane-web] PASS 46.7 s — W1-W12 (incl. the resolved-value observations), A1-A5, D1-D4, S1-S3, injected-fault control red, sessions sandboxed
+[bun skills/dsh-qa/scripts/tui-settings-bridge.mjs --out .../lane-tui] PASS — T1-T7 (disclosure, §D.2 notice + its statusLine wiring, zero-write)
+[node skills/dsh-qa/scripts/tui-panels.mjs --self-test] ok: 7 surfaces asserted, negative controls fail as required
+[bun skills/dsh-qa/scripts/extension-isolation.mjs --self-test] exit 0 (the t33 one-liner at :507 holds)
+[grep -rIl 'rtl-triage|rtl-demo|verilog-reviewer|rtl-lint' skills/] 0 files
+[grep -cE 'writeFileSync|appendFileSync|mkdirSync|cpSync|rmSync|unlinkSync|createWriteStream' packages/mpd-tui-plugin/dist/index.js] 0 matches (TUI zero-write invariant)
+[git status --porcelain -- packages/mpd-bundle-plugin/ scripts/] 0 entries — the web client bundle is unchanged
+[bun run test:qa] exit 1 ONLY on the expected VENDOR_LOCK skills-pairing case: lock=307/ba0c39228896 tree=310/f02831226271 (the captain's single re-pin; VENDOR_LOCK.json untouched)
+[duplicate registration] host guard cited: @deepseek-ai/dsh-settings/lib/index.js:283 throws 'settings namespace "<ns>" is already registered'
+[row order] packages/mpd-bundle/cordis.patch.yml: mpd-config line 216 before mpd-tui line 300
+[workspaceRootsAll] adapter unit test: dedup, resolve, cwd-less skip, no-registry [], throwing registry [], deleted cwd keeps its path
+[node skills/dsh-qa/scripts/web-client-adapt.mjs --self-test] ok: 14 checks (deferred-inject rule holds with the card in the bundle)
+[bun test packages/mpd-bundle-plugin] 68 pass / 0 fail (incl. the card's own 12 tests: registration shape, generator inject both modelled, read-only honesty, TUI field parity)
+[card artifact] packages/mpd-bundle-plugin/client.js 282106 bytes sha256 3594df6d82e0cf0605dd583ed7251f60296615fba3c21fd0da7c9eeadb2be66e (rebuilt via node scripts/build-mpd-client.mjs)
+[W3] NOT-CLAIMED: no browser binary in this environment; the rendered card is the user's own GUI check
+[§10.1 ownership] two-plugin-ownership.test.ts: in every composition order exactly ONE successful registration; the fallback's skip is logged; a duplicate-registration double throws like the host
+[§10.1 base] lane W13: the namespace's served base is the FILE value (12345) not the schema default (20000); boot log: 'registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)'
+[§1.3 base refresh] MEASURED: no disposal handle exists for a live registration (dsh-settings register() returns {get,watch,update,replace}; removal is an internal ctx.effect; the host's own installSection keeps its base fixed) => the documented fixed-base fallback governs
+[ruling 1 'not lost'] settings-wiring.test.ts: after an ambiguous-multi-root refusal the config layer resolves the new value for EVERY workspace from the host-global settings layer
+[test:qa:all decision evidence] `bun skills/dsh-qa/scripts/web-settings-bridge.mjs --no-skip --out .../lane-web-noskip` => EXIT=0, skip-free (W1-W13, A1-A5, D1-D4, W2a-W2e, injected-fault control red). The web arm therefore COULD be added to `test:qa:all` on a machine without the TUI host, but `package.json` stays untouched because t39's contract forbids changing it (acceptance 7); the TUI arm must NOT be added (it needs the TUI host + tmux). Decision recorded per the captain's item 5.
+[VENDOR_LOCK, fresh measurement] [agent-teams-messaging] lock=307/ba0c39228896 tree=310/8ec53287296e (moved again by later skills/** edits; the captain re-pins once at commit time)

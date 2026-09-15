@@ -684,6 +684,22 @@
     return { registerTeamSidebarTab: () => false };
   }
 
+  /**
+  * Load the mpd settings card module defensively. It is an ADDITIVE feature: a missing or broken
+  * card must cost the card ONLY — never the sidebar pages and never the client entry (a throwing
+  * client entry fails the whole page as `entry: pending`).
+  */
+  function loadSettingsCard() {
+    try {
+      const card = require("@mpd-dsh/settings-card");
+      if (card !== undefined && card !== null && typeof card.mountSettingsCard === "function") return card;
+      console.warn("[mpd] settings card module exposes no mountSettingsCard — the mpd card is unavailable");
+    } catch (error) {
+      console.warn("[mpd] settings card module failed to load: " + String(error));
+    }
+    return { mountSettingsCard: () => false };
+  }
+
   function apply(ctx) {
     // The slash-command admission row (not a GUI panel) goes in immediately: `slots` is a
     // declared dependency, so it is present.
@@ -695,6 +711,14 @@
     // ctx.inject callback, never from a probe here (that race is what left the sidebar's
     // "+" menu with no mpd row at all). A profile without the sidebar fires nothing.
     mountSidebarPages(ctx, loadTeamPage());
+    // The settings card: the Web HALF of the same `mpd` namespace the TUI /settings section edits.
+    // It rides the host's keyed slot for the Plugins tab; its mount is deferred (the settings scope
+    // is a plugin-provided service, so it is awaited with ctx.inject, never declared here).
+    try {
+      loadSettingsCard().mountSettingsCard(ctx);
+    } catch (error) {
+      console.warn("[mpd] settings card mount failed: " + String(error));
+    }
   }
 
   // zh is the key-set source of truth; en must stay key-complete against it. Exported so
@@ -704,6 +728,6 @@
   // `inject`/`apply` are the client-module contract; the view plus the two pure helpers
   // (dictionaries and the §D failure mapper) are exported so the offline harness
   // (packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs) can pin them without a browser.
-  module.exports = { inject, apply, WorkmateLibraryView, SIDEBAR_TAB_ID, describeFailure, failureReason, dictionaries };
+  module.exports = { inject, apply, WorkmateLibraryView, SIDEBAR_TAB_ID, describeFailure, failureReason, dictionaries, loadSettingsCard };
   return module.exports;
 }

@@ -1,0 +1,26 @@
+# t41 verify outputs (2026-09-15T09:27:21Z)
+
+$ bun run typecheck
+$ tsgo --noEmit
+exit=0
+
+$ bun test packages/mpd-bundle-plugin
+packages/mpd-bundle-plugin/test/settings-card.test.mjs:
+
+ 68 pass
+ 0 fail
+ 551 expect() calls
+Ran 68 tests across 8 files. [11.26s]
+
+$ node scripts/build-mpd-client.mjs
+[build-mpd-client] wrote packages/mpd-bundle-plugin/client.js (277939 bytes)
+
+$ sha256sum + size
+dd9c88933a31627739eb04d0ad46208499ab4a5eb8a415f209477d30c9d999b7  packages/mpd-bundle-plugin/client.js
+282453
+
+$ node skills/dsh-qa/scripts/agent-teams-sidebar.mjs --self-test
+[agent-teams-sidebar self-test] ok: 17 checks (mpd-agent-teams,mpd-workmate; @nanmicoder/dsh-agent-teams,@mpd-dsh/team-page,@mpd-dsh/settings-card,@mpd-dsh/mpd)
+
+$ bun skills/dsh-qa/scripts/web-client-adapt.mjs --self-test
+[web-client-adapt self-test] ok: 14 checks

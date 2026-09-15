@@ -1,0 +1,13 @@
+# t33 follow-up routed to the skills writer (t35 inScope: skills/dsh-qa/)
+$ grep -rn 'rtl-triage\|rtl-demo\|verilog-reviewer\|rtl-lint' skills/   # BEFORE
+skills/dsh-qa/scripts/extension-isolation.mjs:507:    check(existsSync(join(exampleDir, "flows", "rtl-triage-flow.json")), "the example flow file is missing")
+  rtl-triage=1 rtl-demo=0 verilog-reviewer=0 rtl-lint=0
+
+# fix: the ONE stale literal, filename only, message text unchanged
+
+$ bun skills/dsh-qa/scripts/extension-isolation.mjs --self-test
+[extension-isolation self-test] ok: stub protocol (tool call, advance, child marker, no-tools text) + descriptor contract + shipped example + boot recipe verified
+[exit 0]
+
+$ grep -rn 'rtl-triage\|rtl-demo\|verilog-reviewer\|rtl-lint' skills/   # AFTER
+(no hits: the skills tree is free of the old names)

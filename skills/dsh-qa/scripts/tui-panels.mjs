@@ -52,7 +52,7 @@ export const SURFACES = [
   { surface: "commands", step: "cmd-workmates", source: "store", keys: ["/mpd workmates", "Enter"], waitMs: 7000, pattern: /mpd workmates \(/, label: "the command really ran (command/done text recorded by the harness)" },
   { surface: "tuiScenes", step: "scene", source: "pane", keys: ["/mpd board", "Enter"], waitMs: 8000, pattern: /MPD board/, label: "the board scene opened (title rendered)" },
   { surface: "tuiRenderers", step: "renderer", source: "pane", keys: ["Escape"], waitMs: 6000, pattern: /board opened via/, label: "the log-only event rendered a transcript row" },
-  { surface: "tuiSettingsSections", step: "settings", source: "pane", keys: ["/settings", "Enter"], waitMs: 8000, pattern: /MPD 插件包|MPD bundle/, allPatterns: [/MPD 插件包|MPD bundle/, /not bridged: a save here does not rewrite/], label: "the /settings section rendered WITH its unbridged marker" },
+  { surface: "tuiSettingsSections", step: "settings", source: "pane", keys: ["/settings", "Enter"], waitMs: 8000, pattern: /MPD 插件包|MPD bundle/, allPatterns: [/MPD 插件包|MPD bundle/, /a save writes <workspace>\/\.mpd\/mpd\.jsonc for the live session workspace\(s\)/, /takes effect for the mpd plugins after a restart/, /never lost/], label: "the /settings section rendered WITH its bridge+restart+never-lost disclosure" },
   { surface: "tuiDialogs", step: "dialog", source: "pane", pre: ["Escape"], keys: ["M-w"], waitMs: 8000, pattern: /mpd workmates/, label: "the managed select dialog appeared" },
 ]
 
@@ -69,7 +69,7 @@ export function evaluateSurfaces(panes, surfaces = SURFACES, extra = [], store) 
       ? (store?.dones ?? []).map((done) => String(done.text ?? "")).join("\n")
       : byName.get(surface.step) ?? panes.at(-1)?.text ?? ""
     // A surface may require SEVERAL patterns in the same capture (e.g. the settings
-    // section must show its title AND its unbridged marker). Every one must match.
+    // section must show its title AND its bridge+restart disclosure). Every one must match.
     const required = surface.allPatterns ?? [surface.pattern].filter((entry) => entry !== undefined)
     const missing = required.filter((entry) => !entry.test(text)).map((entry) => String(entry))
     const rendered = required.length > 0 && missing.length === 0
@@ -117,7 +117,7 @@ function fixturePanes() {
     { name: "cmd-tree", text: "> /mpd \n board      Open the mpd board scene\n status     Print the mpd status line\n workmates  List the durable workmate library\n" },
     { name: "scene", text: "MPD board\n team: none\n q/Esc to close\n" },
     { name: "renderer", text: "mpd board\n board opened via command at 2026-09-15T00:00:00.000Z\n" },
-    { name: "settings", text: "插件设置\n ╭─ MPD 插件包 (mpd) ─╮\n │ ❯ 行内 diff 上限  20000 │\n  mpd.jsonc hashline.maxDiffChars — not bridged: a save here does not rewrite .mpd/mpd.jsonc   Enter\n" },
+    { name: "settings", text: "插件设置\n ╭─ MPD 插件包 (mpd) ─╮\n │ ❯ 行内 diff 上限  20000 │\n  mpd.jsonc hashline.maxDiffChars — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session   Enter\n" },
     { name: "dialog", text: "mpd workmates\n qa-tui-probe\n" },
   ]
 }

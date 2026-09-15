@@ -1,0 +1,19 @@
+== heavy gates (2026-09-15T09:53:48Z) ==
+
+--- R5 preset-conformance ---
+  bootLog: {"ok":true,"signatures":[]}
+  negativeControl: {"ok":true,"code":"agent-preset/invalid","message":"agent-presets: preset \"mpd\" failed to mount: failed to apply loader entry persona (@deepseek-ai/dsh-persona): invalid config:\n  - $.prefix missing required value (at prefix) (/tmp/mpd-preset-control-2026-09-15T09-53-48.953Z/mpd/agent.cordis.yml)
+[preset-conformance] PASS
+
+--- R6 bundle-lifecycle (web profile boot) ---
+  noHomeCopy: {"ok":true,"skills":[],"presets":[]}
+  layerDurability: {"ok":true,"exit":0,"dependency":true,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"]}
+  uninstall: {"ok":true,"exit":0,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app"],"residue":[],"mpdState":[]}
+[bundle-lifecycle] PASS
+
+--- the NEW test:qa:all entry, run exactly as the suite runs it ---
+[mutate] disabled control: status=200 "ok"
+[disabled] D1=ok D2=ok D3=ok D4=ok
+[negative control] injected fan-out fault -> verdict red as required
+[settings-bridge] PASS -> evidence/mpd-bridge/web-settings-bridge/20260915T095438Z
+web-arm exit=0

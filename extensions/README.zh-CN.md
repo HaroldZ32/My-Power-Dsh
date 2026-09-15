@@ -43,7 +43,7 @@ cp -r extensions/mpd-ext-example ~/.mpd/extensions/
 - `mpd_ext_show` —— 解析后的资源根、skill/flow/role 名称，以及每个 MCP 服务器的确切状态
   （`connected`、`unavailable`、`failed`、`disabled`）；
 - `mpd_flow_list` / `mpd_flow_show` —— 所贡献的 flow；
-- MCP 工具 `mcp__example__describe_extension` —— 对示例服务器的一次真实调用。
+- MCP 工具 `mcp__lint-mcp__describe_extension` —— 对示例服务器的一次真实调用。
 
 ## 校验与脚手架
 

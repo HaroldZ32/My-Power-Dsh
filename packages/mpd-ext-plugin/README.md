@@ -34,17 +34,17 @@ Both authoring forms produce the same registry entry:
 // data plane: <root>/mpd-ext.json — the directory IS the root
 {
   "apiVersion": 1,                       // required, must equal 1
-  "id": "rtl-verilog",                   // required, ^[a-z0-9][a-z0-9-]{0,63}$
-  "description": "Verilog authoring flows",
+  "id": "authoring-flows",                   // required, ^[a-z0-9][a-z0-9-]{0,63}$
+  "description": "Authoring flows for code changes",
   "enabled": true,                       // default true
   "contributes": {
     "skills": [{ "root": "skills", "rank": 300 }],
     "flows":  [{ "dir": "flows",  "rank": 300 }],
-    "mcp":    [{ "serverName": "rtl-lint", "transport": "stdio", "command": "node",
+    "mcp":    [{ "serverName": "lint-mcp", "transport": "stdio", "command": "node",
                  "args": ["server.js"], "env": { "K": "V" }, "cwd": ".",
                  "toolCallTimeoutMs": 60000, "connectTimeoutMs": 10000 }],
-    "roles":  [{ "name": "Verilog Reviewer", "description": "…", "readonly": true,
-                 "persona": "personas/verilog-reviewer.md",
+    "roles":  [{ "name": "Code Reviewer", "description": "…", "readonly": true,
+                 "persona": "personas/code-reviewer.md",
                  "provider": "deepseek-official", "model": "deepseek-v4-flash" }]
   }
 }
@@ -104,7 +104,7 @@ hot-reloaded anyway — **the honest reload is a restart**.
 ```jsonc
 {
   "extensions": {
-    "enable": ["rtl-verilog"],           // force-enable ids
+    "enable": ["authoring-flows"],           // force-enable ids
     "disable": ["noisy-experiment"],     // force-disable ids (wins over enable)
     "mcp": { "enabled": true, "connectTimeoutMs": 10000, "toolCallTimeoutMs": 60000 }
   }

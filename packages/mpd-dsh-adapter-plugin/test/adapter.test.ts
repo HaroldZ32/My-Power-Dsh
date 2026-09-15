@@ -263,3 +263,116 @@ describe("row entry", () => {
     expect(decision.block("nope")).toEqual({ kind: "block", feedback: "nope" })
   })
 })
+
+describe("settings plane (t34 §2.1 / §1.2, captain ruling 1)", () => {
+  // MEASURED host order inside one synchronous write(): bumpRevision
+  // (settings/document-updated) THEN commit (settings/updated(ns,next,prev,source))
+  // — @deepseek-ai/dsh-settings/lib/index.js:466-467 and :497-498.
+  function settingsHarness(settings: any) {
+    const handlers = new Map<string, Set<(...args: any[]) => unknown>>()
+    const ctx = {
+      get: (serviceName: string) => (serviceName === "settings" ? settings : undefined),
+      on: (event: string, listener: (...args: any[]) => unknown) => {
+        const set = handlers.get(event) ?? new Set()
+        set.add(listener)
+        handlers.set(event, set)
+        return () => { set.delete(listener) }
+      },
+    }
+    const emit = (event: string, ...args: any[]) => { for (const listener of [...(handlers.get(event) ?? [])]) listener(...args) }
+    const write = (ns: string, revision: number, source: string | undefined, next: unknown = {}, prev: unknown = {}) => {
+      emit("settings/document-updated", ns, revision)
+      emit("settings/updated", ns, next, prev, source)
+    }
+    return { ctx, emit, write }
+  }
+
+  test("the source of the SAME change is delivered, not the previous one's", async () => {
+    const { ctx, write } = settingsHarness({})
+    const seen: Array<[number | undefined, string | undefined]> = []
+    createDshAdapter(ctx).onSettingsDocumentUpdated("mpd", (revision, source) => { seen.push([revision, source]) })
+    write("mpd", 1, "provider")
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    write("mpd", 2, "update")
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(seen).toEqual([[1, "provider"], [2, "update"]])
+  })
+
+  test("a raw-section change whose RESOLVED value did not change reports source undefined", async () => {
+    const { ctx, emit } = settingsHarness({})
+    const seen: Array<[number | undefined, string | undefined]> = []
+    createDshAdapter(ctx).onSettingsDocumentUpdated("mpd", (revision, source) => { seen.push([revision, source]) })
+    emit("settings/document-updated", "mpd", 7)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(seen).toEqual([[7, undefined]])
+  })
+
+  test("another namespace is ignored, and the disposer stops delivery", async () => {
+    const { ctx, write } = settingsHarness({})
+    const seen: unknown[] = []
+    const off = createDshAdapter(ctx).onSettingsDocumentUpdated("mpd", (revision, source) => { seen.push([revision, source]) })
+    write("other", 1, "update")
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(seen).toEqual([])
+    off()
+    write("mpd", 2, "update")
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(seen).toEqual([])
+  })
+
+  test("a throwing listener never escapes into the host's emit", async () => {
+    const { ctx, write } = settingsHarness({})
+    createDshAdapter(ctx).onSettingsDocumentUpdated("mpd", () => { throw new Error("bridge exploded") })
+    expect(() => write("mpd", 1, "update")).not.toThrow()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  })
+
+  test("settingsReader describes the namespace and degrades when it is absent", () => {
+    const described = { ns: "mpd", value: { ulw: { maxRounds: 6 } }, revision: 4, user: { ulw: { maxRounds: 6 } }, base: {}, applies: "restart" }
+    const full = settingsHarness({ get: (ns: string) => (ns === "mpd" ? { ulw: { maxRounds: 6 } } : undefined), describe: () => [described] })
+    const reader = createDshAdapter(full.ctx).settingsReader("mpd")
+    expect(reader?.get()).toEqual({ ulw: { maxRounds: 6 } })
+    expect(reader?.describe()).toEqual({ value: described.value, revision: 4, user: described.user, base: {}, applies: "restart" })
+    const absent = createDshAdapter(settingsHarness({}).ctx).settingsReader("mpd")
+    expect(absent?.get()).toBeUndefined()
+    expect(absent?.describe()).toBeUndefined()
+    expect(createDshAdapter({ get: () => undefined }).settingsReader("mpd")).toBeUndefined()
+  })
+
+  test("settingsMutate writes through the service with the revision fence", async () => {
+    const calls: any[] = []
+    const settings = {
+      mutate: async (ns: string, ops: any, revision?: number) => { calls.push({ ns, ops, revision }); if (ops[0].path[0] === "boom") { const conflict = new Error("settings conflict for \"mpd\""); conflict.name = "SettingsConflictError"; throw conflict } },
+    }
+    const adapter = createDshAdapter(settingsHarness(settings).ctx)
+    expect(await adapter.settingsMutate("mpd", [{ op: "unset", path: ["ulw", "maxRounds"] }], 4)).toEqual({ ok: true })
+    expect(calls[0]).toEqual({ ns: "mpd", ops: [{ op: "unset", path: ["ulw", "maxRounds"] }], revision: 4 })
+    expect(await adapter.settingsMutate("mpd", [{ op: "set", path: ["boom"], value: 1 }], 5)).toEqual({ ok: false, error: 'settings conflict for "mpd"', conflict: true })
+    expect(await createDshAdapter({ get: () => undefined }).settingsMutate("mpd", [])).toEqual({ ok: false, error: "settings service is unavailable" })
+  })
+})
+
+describe("workspaceRootsAll(): the design's stated-unverified facts (§A.1, measured here)", () => {
+  const agent = (cwd: string | undefined) => ({ id: "a-" + String(Math.random()), ctx: {}, session: { header: cwd === undefined ? {} : { cwd } } })
+
+  test("duplicates collapse, relative cwds resolve, a cwd-less agent is skipped, no registry is []", () => {
+    const agents = {
+      list: () => [
+        agent("/ws/one"),
+        agent("/ws/one"),          // duplicate: ONE candidate, never two
+        agent("/ws/one/../one"),   // same directory through a different spelling
+        agent("/ws/two"),
+        agent(undefined),          // a session with no cwd cannot be a candidate
+      ],
+    }
+    const roots = createDshAdapter({ get: (n: string) => (n === "agents" ? agents : undefined) }).workspaceRootsAll()
+    expect(roots).toEqual(["/ws/one", "/ws/two"])
+    // the adapter does NOT touch the filesystem: a deleted cwd still yields its path, which the
+    // writer then reports per root (E11) — it is never silently dropped or guessed around
+    const deleted = createDshAdapter({ get: (n: string) => (n === "agents" ? { list: () => [agent("/ws/gone")] } : undefined) }).workspaceRootsAll()
+    expect(deleted).toEqual(["/ws/gone"])
+    expect(createDshAdapter({ get: () => undefined }).workspaceRootsAll()).toEqual([])
+    expect(createDshAdapter({ get: () => ({ list: () => "not-an-array" }) }).workspaceRootsAll()).toEqual([])
+    expect(createDshAdapter({ get: () => ({ list: () => { throw new Error("registry exploded") } }) }).workspaceRootsAll()).toEqual([])
+  })
+})

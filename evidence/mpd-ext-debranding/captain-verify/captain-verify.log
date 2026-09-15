@@ -1,0 +1,17 @@
+== captain independent verification of t33 (2026-09-15T07:53:57Z) ==
+
+-- the contract's zero-grep --
+grep exit=1 (1 = no hits)
+
+-- canonical names present --
+extensions/mpd-ext-example/flows/:
+change-triage-flow.json
+
+extensions/mpd-ext-example/personas/:
+code-reviewer.md
+
+extensions/mpd-ext-example/skills/:
+change-triage
+
+-- the 4 previously-undeclared paths, RTL-free --
+exit=1 (1 = clean)

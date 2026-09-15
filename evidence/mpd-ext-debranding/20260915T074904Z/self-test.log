@@ -1,0 +1,22 @@
+== bun scripts/mpd-ext.mjs --self-test ==
+  ok scaffold exits 0 (got 0): 
+  ok scaffold wrote mpd-ext.json
+  ok scaffold wrote skills/demo-ext-skill/SKILL.md
+  ok scaffold wrote flows/demo-ext-flow.json
+  ok scaffold wrote personas/demo-ext-reviewer.md
+  ok scaffold wrote server.mjs
+  ok validate accepts the scaffold (got 0): 
+  ok validate exits 1 on a broken extension (got 1)
+  ok the broken run reports "typoKey"
+  ok the broken run reports "serverName"
+  ok the broken run reports "contributes.skills[0].root"
+  ok the broken run reports "escapes are rejected"
+  ok the broken run reports "surprise"
+  ok the broken run reports "persona file does not exist"
+  ok validate accepts extensions/mpd-ext-example (got 0): 
+  ok list exits 0 (got 0)
+  ok list names the bundle plane
+  ok list sees the shipped example
+  ok no command prints usage or fails
+[mpd-ext] --self-test passed (19 checks)
+self-test exit=0

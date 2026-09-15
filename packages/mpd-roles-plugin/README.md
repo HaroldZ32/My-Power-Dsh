@@ -59,11 +59,11 @@ they work on every surface a base role does:
 
 - `mpd_roles_list` lists them with their owning extension (`extension: <extension-id>`), and
   `mpd_role_spawn` / `mpd_role_persona` address them by their declared name in any spelling
-  (`Verilog Reviewer`, `verilog-reviewer`, `verilogreviewer`).
+  (`Code Reviewer`, `code-reviewer`, `codereviewer`).
 - A role the extension declares `readonly` spawns with the same write-deny toolFilter as the
   read-only base roles.
 - The `mpdRoles` service serves them too, so they are usable as **workmate BASE templates**
-  (`mpd_workmate_init base="Verilog Reviewer"`) and resolve through `mpd_modelchain_resolve`
+  (`mpd_workmate_init base="Code Reviewer"`) and resolve through `mpd_modelchain_resolve`
   when the extension declared a `provider` + `model` pair.
 - The stable id is namespaced (`ext-<extension-id>-<slug of the name>`), so it can never
   collide with a base id.

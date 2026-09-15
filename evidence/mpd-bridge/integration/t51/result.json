@@ -1,0 +1,161 @@
+{
+  "task": "t51",
+  "subject": "Docs closure: the base cardinality + fixed-lifetime disclosure (§6.2), the D1 cross-home boundary (§6.6), and the complete Web-card evidence level (§3.1) — both languages",
+  "producedBy": "Lead (orchestration / integration), attempt 1",
+  "attemptId": "dd9a5ab3-8bb6-437b-b854-2999c19080f9",
+  "measuredAt": "2026-09-15T17:56:00+08:00",
+  "verdict": "passed",
+  "scope": {
+    "inScope": [
+      "docs/tui.md",
+      "docs/tui.zh-CN.md",
+      "packages/mpd-tui-plugin/README.md",
+      "packages/mpd-tui-plugin/README.zh-CN.md",
+      "packages/mpd-config-plugin/README.md",
+      "packages/mpd-config-plugin/README.zh-CN.md",
+      "docs/tui-edition-report.md",
+      "evidence/tui/ACCEPTANCE-LEDGER.md",
+      "evidence/tui/EVIDENCE-INDEX.md",
+      "evidence/mpd-bridge/integration/",
+      ".mpd/plans/dsh-tui-edition-report.md"
+    ],
+    "untouched": [
+      "VENDOR_LOCK.json",
+      "package.json",
+      "skills/**",
+      "packages/*/src/**",
+      "packages/mpd-bundle-plugin/**",
+      "extensions/**",
+      "scripts/**",
+      "evidence/mpd-bridge/{requirements,design,implementation,review,captain,dual-path}/",
+      "evidence/mpd-ext-debranding/"
+    ],
+    "additiveOnly": "no already-correct section was rewritten; every correction is appended or marked superseded (report §9's blockquote gains a dated supersession line; t50's integration REPORT.md gains a §5 correction)"
+  },
+  "changedPaths": [
+    "docs/tui.md",
+    "docs/tui.zh-CN.md",
+    "packages/mpd-tui-plugin/README.md",
+    "packages/mpd-tui-plugin/README.zh-CN.md",
+    "packages/mpd-config-plugin/README.md",
+    "packages/mpd-config-plugin/README.zh-CN.md",
+    "docs/tui-edition-report.md",
+    ".mpd/plans/dsh-tui-edition-report.md",
+    "evidence/tui/ACCEPTANCE-LEDGER.md",
+    "evidence/tui/EVIDENCE-INDEX.md",
+    "evidence/mpd-bridge/integration/t51/AMENDMENT-4.md",
+    "evidence/mpd-bridge/integration/t51/result.json",
+    "evidence/mpd-bridge/integration/REPORT.md"
+  ],
+  "hashes": {
+    "docs/tui.md": "077188679b47d26eaec9accbd1f627d35a8ff728def51e5103d4f93f0a69e90f",
+    "docs/tui.zh-CN.md": "a92375fb36cae040002a441e106c1a4b5abd3e7d7b1758871164ad495d70c63b",
+    "packages/mpd-tui-plugin/README.md": "3c57f331e7e61a4ab7b3745b5403ee1b2e43845309ecadfa4766770846da3217",
+    "packages/mpd-tui-plugin/README.zh-CN.md": "c58143f99a37196242417da71a2a8d4afce543b1873b849de74a4b462af16d56",
+    "packages/mpd-config-plugin/README.md": "9b83e39abb12ec2e6a3a9fb29eabdfaccdcdacf3da6308cc5723047d65ab0863",
+    "packages/mpd-config-plugin/README.zh-CN.md": "00f254950d568bd8106a424e3c1041b1a5ae943ff9e8f713c67c3f48909d7924",
+    "docs/tui-edition-report.md": "0d5a8e622697cad29eeb5748df5722edb7015abcd2dace11db03f5d7d27d62dd",
+    ".mpd/plans/dsh-tui-edition-report.md": "adfa6a99ca84b49129ea26301da8ea21bfb1246333e786075b35ed4b1f2411a9",
+    "evidence/tui/ACCEPTANCE-LEDGER.md": "6054876ca6be94b222c5c306d5dc524bc769e635c65ba5078d7515abf95b746c",
+    "evidence/tui/EVIDENCE-INDEX.md": "a640b3ade96e5daa0dd40e841c729a90ed291473e54b6cf7bac68a33a98fd58f",
+    "evidence/mpd-bridge/integration/t51/AMENDMENT-4.md": "9aab66e78e19ad526515385f0730dddd290e35a61310a8833e4f109985769ab9",
+    "evidence/mpd-bridge/integration/t51/result.json": null,
+    "evidence/mpd-bridge/integration/REPORT.md": "4830d2c699b39405f7a0c649f7a133d6c168d29da01b5b089ea2041f7e064452"
+  },
+  "inputs": [
+    "evidence/mpd-bridge/review/REREVIEW-t49.md",
+    "evidence/mpd-bridge/review/RESOLUTION-ruling-and-base.md (§2, the FINAL base/ownership state)",
+    "evidence/mpd-bridge/dual-path/REPORT.md (D1 at :78, scopes at :58-65, cross-door measurement at :44-45)",
+    "evidence/mpd-bridge/web-card/report.md §4 + result.json claims.{witnessed,notClaimed,reproSteps}",
+    "evidence/mpd-bridge/implementation/20260915T080138Z/REPORT.md §5",
+    "packages/mpd-config-plugin/src/index.ts:511 (baseForNamespace)"
+  ],
+  "acceptance": [
+    {
+      "criterion": "§6.2 (both languages) states the registration base and its cardinality rule exactly as the shipped code behaves: ONE live root ⇒ that workspace's .mpd/mpd.jsonc; ZERO roots ⇒ the mount-time (exec-less) root, an absent file there meaning an empty base (schema defaults); MORE THAN ONE root ⇒ NO file base invented (base: undefined, reason ambiguous-multi-root, warn naming every candidate plus states()), while the per-workspace read-in still resolves each session's own file",
+      "status": "passed",
+      "evidence": "docs/tui.md §6.2 now carries a three-row cardinality table (:225-227 region) matching packages/mpd-config-plugin/src/index.ts:511 baseForNamespace() verbatim in substance (one-live-root / mount-time-root with 'an absent file there yields an EMPTY base, i.e. effectively the schema defaults' and 'this is the normal boot path' / N roots ⇒ base undefined + ambiguous-multi-root + warn + states(), with 'the per-workspace read-in still resolves each session's own file'); zh twin identical in structure. Mirrored in packages/mpd-tui-plugin/README{,.zh-CN}.md item 2 and both mpd-config-plugin READMEs."
+    },
+    {
+      "criterion": "§6.2 (both languages) carries the honest timing disclosure: the base is FIXED for the process lifetime because the host exposes no disposal handle for a live registration — which is exactly why the shipped sentence is 'takes effect for the mpd plugins after a restart'; and it states that the RESOLVED value plus the per-call file reads are what the plugins actually use. No shipped sentence may imply a live-refreshed base.",
+      "status": "passed",
+      "evidence": "docs/tui.md §6.2 'The base is fixed for the process lifetime — the host exposes no disposal handle for a live registration, and its own settings installers keep their base fixed the same way. That is exactly why the shipped sentence is \"takes effect for the mpd plugins after a restart\"' + 'What the plugins actually use is the resolved value plus the config layer's per-call file reads'; zh twin. The only occurrence of the phrase 'live-refreshed base' is the explicit denial ('No sentence on this page promises a live-refreshed base') — grep over both docs: 1 hit each, both negations."
+    },
+    {
+      "criterion": "The D1 boundary from t38 exists as a first-class passage (both languages): one DSH home ⇒ settings.yaml shared; separate DSH homes ⇒ two settings documents, an edit invisible as a settings VALUE across doors, while <workspace>/.mpd/mpd.jsonc still converges because both doors write that same file. The other scopes are stated by mechanism: workspace .mpd/**, HOME ~/.mpd/workmate, DSH-HOME settings.yaml + user mpd.jsonc, bundle presets + skill corpus.",
+      "status": "passed",
+      "evidence": "new docs/tui.md §6.6 'Where state lives — the scopes and the cross-home boundary' (a four-row scope table by mechanism + the boundary paragraph + the one-sentence summary) and its zh twin; sources cited inline: evidence/mpd-bridge/dual-path/REPORT.md (D1 at :78; scopes at :58-65). Heading parity checked: both docs now carry §6.6 (21 headings each, identical numbering)."
+    },
+    {
+      "criterion": "§3.1 (both languages) states the Web card's evidence level completely: the module's behaviour WAS witnessed in the offline hook harness and the registration in the built/served bytes; a REAL BROWSER RENDER and a CLICK-DRIVEN SAVE are NOT witnessed (cardClaim.W3.witnessed === false), with the human repro steps retained.",
+      "status": "passed",
+      "evidence": "docs/tui.md §3.1 now lists the witnessed set (registration contract in the built and served client.js dd9c8893…/282453 B, the registration shape + field parity in the card's suite, the module's render/scope-write/refuse/read-only behaviour in the OFFLINE HOOK HARNESS, and the end-to-end write path via the host's authenticated API web-settings-bridge.mjs W1-W13) and the not-witnessed set (real browser render, click-driven save; cardClaim.W3.witnessed === false), then the human repro steps (dsh web → Settings → Plugins → Plugin configuration → edit+Save, with the one-live-session write and the two named refusals); zh twin. Facts match evidence/mpd-bridge/web-card/result.json claims.{witnessed,notClaimed,reproSteps}."
+    },
+    {
+      "criterion": "The two package README pairs, docs/tui-edition-report.md + its .mpd twin, the ledger and the evidence index stay in sync with these additions (same pass, both languages, no new claim without evidence); the shipped bilingual checker is re-run and its verdict recorded, and the expanding path-existence check over everything edited returns no missing path.",
+      "status": "passed",
+      "evidence": "README pairs carry the same base/timing facts (EN + zh); report pair carries Amendment 4 + §10 (byte-identical to evidence/mpd-bridge/integration/t51/AMENDMENT-4.md; the two copies differ only by the committed copy's 9-line header); ledger fourth amendment; index §7.1 rows for the base/D1/card claims + the t51 raw logs. Checkers: node evidence/tui/docs/20260915T070743Z/doc-assertion.mjs → verdict passed, 28/28 checks, exit 0 on docs/tui.md 07718867… / docs/tui.zh-CN.md a92375fb… (raw/doc-assertion-t27-t51.log); cited-paths-exist.mjs over the 11 edited/created files → total missing: 0, PASS, exit 0 (raw/cited-paths-t51.log)."
+    },
+    {
+      "criterion": "Nothing else is reopened: the already-landed t50 content stays as it is (no re-writes of already-correct sections), and no source, skills/**, VENDOR_LOCK.json or package.json is touched.",
+      "status": "passed",
+      "evidence": "All edits are additive: §6.2 gained a paragraph + table, §3.1's evidence block was completed, §6.6 is new, README sections gained the base facts, the report pair gained §10 (+ one supersession line under §9's blockquote), the ledger gained a fourth amendment, the index gained rows. Out-of-scope paths untouched by this pass: VENDOR_LOCK.json and package.json were modified by the CAPTAIN at 17:52 (the re-pin + the test:qa one-liner) — not by t51; skills/** was untouched by t51 (its three new lane files are the wave's, and they are what the captain pinned)."
+    }
+  ],
+  "commandsRun": [
+    {
+      "command": "node evidence/tui/docs/20260915T070743Z/doc-assertion.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "verdict passed, 28/28 checks on docs/tui.md 07718867… / docs/tui.zh-CN.md a92375fb… → raw/doc-assertion-t27-t51.log"
+    },
+    {
+      "command": "node evidence/tui/delivery/20260915T072355Z/cited-paths-exist.mjs <11 edited/created files>",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "total missing: 0, PASS → raw/cited-paths-t51.log"
+    },
+    {
+      "command": "EN/zh heading-numbering parity check",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "21 headings each, identical numbering incl. the new §6.6"
+    },
+    {
+      "command": "node scripts/verify-vendor.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "asset OK: skills 310 files + PASS, matching the captain's landed re-pin (assets/skills 310 / 8ec53287296edb43b1f622046ff932a8e339f081184622854db4a2c0445a3268) → raw/verify-vendor-t51.log"
+    },
+    {
+      "command": "bun run test:qa",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "all self-tests passed → raw/test-qa-t51.log"
+    }
+  ],
+  "repinState": {
+    "status": "landed by the captain during t51 (17:52)",
+    "lock": "310 files / treeSha 8ec53287296edb43b1f622046ff932a8e339f081184622854db4a2c0445a3268",
+    "verifyVendor": "exit 0",
+    "testQa": "exit 0",
+    "t51Touched": "nothing (VENDOR_LOCK.json and skills/** are out of scope); the earlier t50 blocker statements are superseded by a dated correction in the report pair, the ledger, the index and the t50 integration REPORT.md"
+  },
+  "stillNotClaimed": [
+    "AC-4 6/7 (renderer transcript row, NOT-CLAIMED #10)",
+    "AC-20 blocked host gates",
+    "the Web card's real browser render and click-driven save",
+    "packed-install e2e boot",
+    "the t29 checker's stale entry pin (left byte-untouched)"
+  ],
+  "artifacts": {
+    "record": "evidence/mpd-bridge/integration/t51/AMENDMENT-4.md",
+    "raw": [
+      "evidence/mpd-bridge/integration/t51/raw/doc-assertion-t27-t51.log",
+      "evidence/mpd-bridge/integration/t51/raw/cited-paths-t51.log",
+      "evidence/mpd-bridge/integration/t51/raw/verify-vendor-t51.log",
+      "evidence/mpd-bridge/integration/t51/raw/test-qa-t51.log",
+      "evidence/mpd-bridge/integration/t51/raw/changed-files-hashes.txt"
+    ]
+  }
+}

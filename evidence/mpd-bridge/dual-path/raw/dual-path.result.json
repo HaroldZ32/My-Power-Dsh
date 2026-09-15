@@ -1,0 +1,180 @@
+{
+  "sandbox": "/root/dshProj/my-power-dsh/evidence/mpd-bridge/dual-path/sandbox",
+  "profileBundles": {
+    "w": [
+      "@deepseek-ai/dsh-base",
+      "@deepseek-ai/dsh-web-app",
+      "@mpd-dsh/mpd"
+    ],
+    "dsh-tui": [
+      "@deepseek-ai/dsh-base",
+      "@deepseek-harness-tui/dsh-tui",
+      "@mpd-dsh/mpd"
+    ]
+  },
+  "fixtures": {
+    "workspaceJsonc": {
+      "path": "/root/dshProj/my-power-dsh/evidence/mpd-bridge/dual-path/sandbox/ws/.mpd/mpd.jsonc",
+      "sha256": "sha256:0c6002c7ed713e8df36334eb7dd1be7ecb08f6bb4c57ef1fa78c647c8bd35e89",
+      "value": 35000
+    },
+    "workspaceMemory": {
+      "path": "/root/dshProj/my-power-dsh/evidence/mpd-bridge/dual-path/sandbox/ws/.mpd/memory.json",
+      "sha256": "sha256:d90e6144a7a6474191e9b24d8f960b1c27c79aed03f378b3038e0966215bfd7b"
+    },
+    "workmateLibrary": {
+      "path": "/root/dshProj/my-power-dsh/evidence/mpd-bridge/dual-path/sandbox/home/.mpd/workmate/t38-shared",
+      "homeScoped": true
+    }
+  },
+  "boots": {
+    "tui1": {
+      "tmuxFailures": [],
+      "crashSignatures": [],
+      "paneHasStatusLine": true,
+      "paneWorkmateCount": "1",
+      "corpusServedFrom": "/root/dshProj/my-power-dsh/skills",
+      "bridgeLines": [
+        "settings bridge: registered the \"mpd\" namespace with the file-derived base (applies:'restart', design §10.1)\r"
+      ],
+      "sessions": [
+        {
+          "agentPreset": "mpd",
+          "cwd": "/root/dshProj/my-power-dsh/evidence/mpd-bridge/dual-path/sandbox/ws",
+          "projectKey": "--root-dshProj-my-power-dsh-evidence-mpd-bridge-dual-path-sandbox-ws--"
+        }
+      ],
+      "pane": "      ▀▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀             /root/dshProj/my-power-dsh/evidence/mpd-bridge/dual-path/sandbox/ws\n                                            提示：/jobs 面板实时跟踪后台任务：状态、运行时长、退出码，k 键停止 · /tips 更多技巧\n                                            ⚠ dsh 引擎为 0.1.5-rc.2，比本界面验证过的 0.1.5-rc.1 新，可能出现兼容问题；求稳可执行 npm i -g @deepseek-ai/dsh@0.1.5-rc.1 降级，或等待 dsh-tui 适配新版。\n\n              探索未至之境！\n\n\n   ▶ （Ctrl+P 展开） 已加载上下文 · 系统提示词 17 段 · 运行时上下文 2 项 · 技能 18 · 工具 94\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n  mpd: team - · plans 0 · workmates 1\n\n  ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮\n  ❯                                                                                                                                                                                                                      ⛶\n  ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯\n   deepseek-flash · max · ws\n\n\n"
+    },
+    "web": {
+      "cookieAcquired": true,
+      "bundleRoute": {
+        "status": 200
+      },
+      "sessionCreate": {
+        "status": 200,
+        "agentPreset": null,
+        "sessionId": null
+      },
+      "settingsDocument": {
+        "before": {
+          "path": "/root/dshProj/my-power-dsh/evidence/mpd-bridge/dual-path/sandbox/dshhome/settings.yaml",
+          "sha256": null,
+          "exists": false
+        },
+        "after": {
+          "path": "/root/dshProj/my-power-dsh/evidence/mpd-bridge/dual-path/sandbox/dshhome/settings.yaml",
+          "sha256": "sha256:caa38c966f16e95fd0da262c93b9e945affbc8d8d178e4125d582b5d495efc05",
+          "exists": true
+        },
+        "changed": true
+      },
+      "mutate": {
+        "status": 200,
+        "resolved": {
+          "hashline": {
+            "maxDiffChars": 31415
+          },
+          "commentChecker": {
+            "autoCheck": true
+          },
+          "ulw": {
+            "maxRounds": 6
+          },
+          "memory": {
+            "vcs": "git"
+          },
+          "team": {
+            "stateDir": ".mpd/team"
+          },
+          "boulder": {
+            "dir": ".mpd"
+          }
+        },
+        "base": {
+          "hashline": {
+            "maxDiffChars": 35000
+          },
+          "ulw": {
+            "maxRounds": 6
+          }
+        },
+        "user": {
+          "hashline": {
+            "maxDiffChars": 31415
+          }
+        },
+        "revision": 1
+      },
+      "crashSignatures": [],
+      "corpusServedFrom": "/root/dshProj/my-power-dsh/skills",
+      "bridgeLines": [
+        "settings bridge: registered the \"mpd\" namespace with the file-derived base (applies:'restart', design §10.1)",
+        "settings bridge WROTE: {\"writtenTo\":[\"/root/dshProj/my-power-dsh/evidence/mpd-bridge/dual-path/sandbox/ws/.mpd/mpd.jsonc\"],\"skipped\":null,\"candidates\":[],\"results\":[{\"root\":\"/root/dshProj/my-power-dsh/evidence/mpd-b"
+      ]
+    },
+    "tui2": {
+      "tmuxFailures": [],
+      "crashSignatures": [],
+      "paneHasStatusLine": true,
+      "paneWorkmateCount": "1",
+      "corpusServedFrom": "/root/dshProj/my-power-dsh/skills",
+      "bridgeLines": [
+        "settings bridge: registered the \"mpd\" namespace with the file-derived base (applies:'restart', design §10.1)\r"
+      ],
+      "sessions": [
+        {
+          "agentPreset": "mpd",
+          "cwd": "/root/dshProj/my-power-dsh/evidence/mpd-bridge/dual-path/sandbox/ws",
+          "projectKey": "--root-dshProj-my-power-dsh-evidence-mpd-bridge-dual-path-sandbox-ws--"
+        },
+        {
+          "agentPreset": "mpd",
+          "cwd": "/root/dshProj/my-power-dsh/evidence/mpd-bridge/dual-path/sandbox/ws",
+          "projectKey": "--root-dshProj-my-power-dsh-evidence-mpd-bridge-dual-path-sandbox-ws--"
+        },
+        {
+          "agentPreset": "mpd",
+          "cwd": "/root/dshProj/my-power-dsh/evidence/mpd-bridge/dual-path/sandbox/ws",
+          "projectKey": "--root-dshProj-my-power-dsh-evidence-mpd-bridge-dual-path-sandbox-ws--"
+        }
+      ],
+      "pane": " effort\n           ▀▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀             /root/dshProj/my-power-dsh/evidence/mpd-bridge/dual-path/sandbox/ws\n                                            提示：/clear 只清视图不动会话日志，放心用 · /tips 更多技巧\n                                            ⚠ dsh 引擎为 0.1.5-rc.2，比本界面验证过的 0.1.5-rc.1 新，可能出现兼容问题；求稳可执行 npm i -g @deepseek-ai/dsh@0.1.5-rc.1 降级，或等待 dsh-tui 适配新版。\n\n              探索未至之境！\n\n\n   ▶ （Ctrl+P 展开） 已加载上下文 · 系统提示词 17 段 · 运行时上下文 2 项 · 技能 18 · 工具 94\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n  mpd: team - · plans 0 · workmates 1\n\n  ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮\n  ❯                                                                                                                                                                                                                      ⛶\n  ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯\n   deepseek-flash · max · ws\n\n\n"
+    }
+  },
+  "sharing": {
+    "a_presetRosterFromBundle": {
+      "web": true,
+      "tui": true,
+      "note": "preset + roster are served from <bundle>/presets in both profiles (dump-config showed default: mpd + the mpd/presets root in each)"
+    },
+    "b_corpus": {
+      "tui": "/root/dshProj/my-power-dsh/skills",
+      "web": "/root/dshProj/my-power-dsh/skills"
+    },
+    "c_workspaceJsonc": {
+      "file": "/root/dshProj/my-power-dsh/evidence/mpd-bridge/dual-path/sandbox/ws/.mpd/mpd.jsonc",
+      "sha256": "sha256:0c6002c7ed713e8df36334eb7dd1be7ecb08f6bb4c57ef1fa78c647c8bd35e89",
+      "webNamespaceBase": "35000",
+      "tuiBridgeLines": [
+        "settings bridge: registered the \"mpd\" namespace with the file-derived base (applies:'restart', design §10.1)\r"
+      ]
+    },
+    "d_settingsDocument": {
+      "path": "/root/dshProj/my-power-dsh/evidence/mpd-bridge/dual-path/sandbox/dshhome/settings.yaml",
+      "beforeWebEdit": null,
+      "afterWebEdit": "sha256:caa38c966f16e95fd0da262c93b9e945affbc8d8d178e4125d582b5d495efc05",
+      "visibleToTui2": [
+        "settings bridge: registered the \"mpd\" namespace with the file-derived base (applies:'restart', design §10.1)\r"
+      ]
+    },
+    "e_homeScoped": {
+      "workmatesInTuiPane": "1",
+      "workmateLibrary": "/root/dshProj/my-power-dsh/evidence/mpd-bridge/dual-path/sandbox/home/.mpd/workmate/t38-shared",
+      "workspaceMemory": "/root/dshProj/my-power-dsh/evidence/mpd-bridge/dual-path/sandbox/ws/.mpd/memory.json"
+    }
+  },
+  "sha": {
+    "settingsAfterWebEdit": "sha256:caa38c966f16e95fd0da262c93b9e945affbc8d8d178e4125d582b5d495efc05"
+  }
+}

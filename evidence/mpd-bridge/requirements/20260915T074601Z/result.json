@@ -1,0 +1,75 @@
+{
+  "task": "t32",
+  "kind": "requirements",
+  "subject": "Host seam dossier: settings service, web settings card, workspace identity, and offline JSONC editing",
+  "member": "Researcher",
+  "attemptId": "9ab97a10-b33a-4dfc-a8d6-3e163f32e31c",
+  "measuredAt": "2026-09-15T07:46Z",
+  "deliverable": "evidence/mpd-bridge/requirements/20260915T074601Z/HOST-SEAMS.md",
+  "writesPerformed": ["evidence/mpd-bridge/requirements/20260915T074601Z/HOST-SEAMS.md", "evidence/mpd-bridge/requirements/20260915T074601Z/result.json"],
+  "pins": {
+    "hostEngine": "@deepseek-ai/dsh 0.1.5-rc.1 (packages 0.1.5-rc.2) at /root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/",
+    "tuiHost": "@deepseek-harness-tui/dsh-tui 0.10.1 at /root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-harness-tui/dsh-tui/",
+    "repo": "/root/dshProj/my-power-dsh"
+  },
+  "acceptance": [
+    {
+      "criterion": "Every seam claim carries file:line evidence from the INSTALLED host packages.",
+      "status": "passed",
+      "evidence": "All citations resolve under the installed prefix (see sources[]). No claim rests on memory or spec prose; the three packages inspected are dsh-settings, dsh-settings-file, dsh-api-settings-controller, dsh-client-ui-settings, dsh-client-ui-settings-plugins, dsh-client-ui-slots (types only) plus dsh-tool-fs for the single jsonc token."
+    },
+    {
+      "criterion": "The settings-service section names the exact call a plugin uses to READ, SUBSCRIBE and WRITE (or explains with evidence that a plugin cannot write), plus where values persist and in what format.",
+      "status": "passed",
+      "evidence": "READ ctx.settings.get(ns) (index.d.ts:243) / describe() (:236); SUBSCRIBE scope.watch (index.d.ts:92-96) and the events settings/updated (types.d.ts:89) + settings/document-updated (types.d.ts:100-103); WRITE update/replace/mutate with expectedRevision (index.d.ts:256, 268, 282) and SettingsConflictError (index.d.ts:116-134); DECLARE ctx.settings.register (index.d.ts:216, our call at packages/mpd-tui-plugin/src/settings.ts:141); PERSIST <DSH_HOME>/settings.yaml, .yaml/.yml/.json only, comment-preserving YAML leaf diff + writer lock + atomic write (dsh-settings-file/lib/index.js:21-23, 32, 34, 48-59, 160-175, 265-275)."
+    },
+    {
+      "criterion": "The workspace-selection question is answered with evidence; if settings carry no identity, say so and list candidate rules with failure modes.",
+      "status": "passed",
+      "evidence": "No session/cwd/workspace in the service API (index.d.ts:216, 243, 256, 268, 282), the provider path (dsh-settings-file/lib/index.js:32 + a workspaceRoot/workspacePath/cwd grep returning nothing across the three settings packages), the wire signatures (typert.remote-client.d.ts settings/*), or the change events (types.d.ts:89, 100-103). Candidate rules R1 per-session / R2 last-writer / R3 explicit workspace / R4 user-layer-only with failure modes are tabulated in the dossier §c."
+    },
+    {
+      "criterion": "The web-card section names the exact slot/registration API, the props, how a card reads/writes, and whether a served namespace without a card renders.",
+      "status": "passed",
+      "evidence": "Slot type keyed by namespace with EMPTY owner props (slot-contract.d.ts:19-30); registration ctx.slots.inject('settings.plugin.item', …) → ctx.slots.register({name, key, locale, inject}, Card) (dsh-client-ui-settings-plugins/lib/client.js:1785-1806); dispatch renderSlot('settings.plugin.item', {}, { entryKey: ns }) (:412-416); a served namespace with no card renders NOTHING (:1091-1096); card props (PluginCard.d.ts:20-34); read/write via ctx.settingsScope.bind + SettingsScope.mutate (settings-scope.d.ts, settings-contract.d.ts:8-100) landing on settings/mutate(ns, ops, expectedRevision) (typert.remote-client.d.ts), as the host's own card does at client.js:1354-1361; non-loopback pages run in memory mode and never reach the host document (:1345, :981-989, :1075)."
+    },
+    {
+      "criterion": "The JSONC section states which comment-preserving editing facility is available offline, or that none is, and the implication.",
+      "status": "passed",
+      "evidence": "Available: a comment-aware READER only — packages/mpd-config-plugin/src/index.ts:21-51 stripJsonc (+ parseJsonc :48-51, exports :94); writeFileSync imported but never called (:8). NOT available: no jsonc-parser/comment-json/json5/strip-json-comments/yaml in repo node_modules, only _deps present is packages/mpd-agent-teams-plugin/_deps, copies of those libs exist only inside unrelated global tools, the host's settings-file accepts .yaml/.yml/.json only and its comment preservation is the YAML Document API, and the host's single jsonc token is a language-label map (dsh-tool-fs/lib/index.js:128). Implication: comment-preserving write-back must be implemented (extend the existing scanner) or vendored under _deps."
+    },
+    {
+      "criterion": "The dossier ends with a RECOMMENDATION naming the minimal design and the owning module per piece.",
+      "status": "passed",
+      "evidence": "HOST-SEAMS.md §RECOMMENDATION: namespace 'mpd' stays the single edit surface (both front doors already write it); the bridge is owned by packages/mpd-config-plugin (workspace root + JSONC reader + deepMerge already there); read-in republishes the JSONC baseline into the settings layer; write-back subscribes to scope.watch / settings(document-updated) and writes through a surgical JSONC editor; workspace selection = R1 per-session with R4-style honesty for unattributable Web edits; the Web card is added to the existing bundle client (packages/mpd-bundle-plugin/src/web-client.js + scripts/build-mpd-client.mjs); the TUI package keeps metadata only and performs no filesystem write."
+    }
+  ],
+  "sources": [
+    "dsh-settings/lib/index.js:238 — super(ctx, \"settings\")",
+    "dsh-settings/lib/types/index.d.ts:20,22-48,50-73,75-84,92-96,102,109,111-115,116-134,143-150,157,216,236,243,256,268,282,285-306",
+    "dsh-settings/lib/types/types.d.ts:15,73-104 (89 settings/updated, 100-103 settings/document-updated)",
+    "dsh-settings-file/lib/index.js:6,21-23,32,34,48-59,160-175,265-275",
+    "dsh-settings-file/lib/types/index.d.ts:1-19 (path/dshHome/watch/debounceMs)",
+    "dsh-api-settings-controller/lib/typert.remote-client.d.ts — settings/describe|mutate|replace|update|openSettingsDocument signatures",
+    "dsh-client-ui-settings-plugins/lib/types/client/slot-contract.d.ts:19-30",
+    "dsh-client-ui-settings-plugins/lib/types/client/PluginCard.d.ts:1-13,20-34",
+    "dsh-client-ui-settings-plugins/lib/client.js:412-416,981-989,1075,1091-1096,1343-1361,1345,1726-1730,1785-1806",
+    "dsh-client-ui-settings/lib/types/client/index.d.ts:1-13",
+    "dsh-client-ui-settings/lib/types/client/settings-scope.d.ts — SettingsScopeBinder.bind, persistence 'host'|'memory'",
+    "dsh-client-ui-settings/lib/types/client/settings-contract.d.ts:8-27,29-100",
+    "dsh-tool-fs/lib/index.js:128 — jsonc: \"json\" (language label, not a parser)",
+    "@deepseek-harness-tui/dsh-tui/lib/types/adapter/ports/channel-settings.d.ts:181-196,198-205,206-255,257,267-272",
+    "@deepseek-harness-tui/dsh-tui/lib/types/dsh-adapter/settings-sections.d.ts:1-13,17-20",
+    "packages/mpd-tui-plugin/src/settings.ts:30,33-41,54-58,60-125,127-137,134-146,141,157",
+    "packages/mpd-config-plugin/src/index.ts:1-7,8,21-51,48-51,76-94,94",
+    "packages/mpd-bundle-plugin/src/web-client.js:39,50,62,88-110,707",
+    "scripts/build-mpd-client.mjs:1-6"
+  ],
+  "notClaimed": [
+    "No live write was performed against ctx.settings and no settings document was read or modified — the write/revision semantics are read from the shipped type surface and implementation, not exercised.",
+    "The Web card did not render: its behaviour is read from the shipped client source (slot dispatch, card props, persistence resolution), not observed in a browser.",
+    "The TUI screen's mutate call site is the host's own documented claim (settings-sections.d.ts:1-13) plus the file-backed provider's persist path; no TUI settings save was driven in this task.",
+    "The file-backed provider's YAML comment preservation was read from its implementation (parseDocument/setIn/deleteIn); it was not exercised against a commented settings.yaml.",
+    "No mpd.jsonc file was written; the comment-preserving editor does not exist yet (that is the recommendation's work item)."
+  ]
+}

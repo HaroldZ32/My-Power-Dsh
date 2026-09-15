@@ -20,18 +20,16 @@ dist/mpd-package/
 # workspace-scoped runtime state (team/memory/plans/config) — never committed
 .mpd/
 
-# RTL phase-1 scratch: research clones (.research/) and the workspace-local cocotb venv (.venv-rtl/, .venv*)
+# local scratch: research clones (.research/) and workspace-local virtualenvs (.venv*)
 .research/
-.venv-rtl/
 .venv*/
 
-# verilator/cocotb build artifacts (never commit compiled objects)
+# compiled build artifacts (never commit objects)
 .sim_build/
 sim_build/
 obj_dir/
 *.o
 *.a
-simv_iverilog
 compile.log
 .review-tmp2/
 .review-tmp*/
@@ -45,3 +43,10 @@ __pycache__/
 # files, and one command regenerates any artifact:
 #   node evidence/mpd-naming/wave2/raw/build-repro.mjs <artifact> --apply-scrub --compare
 evidence/**/raw/scratch/
+
+# Sandbox WORKING AREAS that lanes create inside their own evidence dir. They hold an isolated
+# DSH home, a sandbox HOME, the fixture workspace and a package store — machine-generated
+# hundreds of MB that a lane regenerates on every run (measured 2026-09-15: 291 MB / 5308 files
+# under evidence/mpd-bridge/dual-path/sandbox alone). The EVIDENCE is REPORT.md + raw/ beside it,
+# never this: committing a store snapshot would bloat the repository for no information.
+evidence/**/sandbox/

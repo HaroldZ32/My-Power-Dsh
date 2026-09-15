@@ -27,6 +27,9 @@ const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)))
 const agentTeamsClient = readFileSync(join(repoRoot, "packages", "mpd-agent-teams-plugin", "lib", "client.js"), "utf8")
 const teamPageFactory = readFileSync(join(repoRoot, "packages", "mpd-bundle-plugin", "src", "team-page.js"), "utf8").trim()
 const webClientFactory = readFileSync(join(repoRoot, "packages", "mpd-bundle-plugin", "src", "web-client.js"), "utf8").trim()
+// The mpd settings card (t35) is an ADDITIVE, ISOLATED client module: removing the feature is this
+// file plus the one registration line in web-client.js, and nothing else may reference it.
+const settingsCardFactory = readFileSync(join(repoRoot, "packages", "mpd-bundle-plugin", "src", "settings-card.js"), "utf8").trim()
 if (!agentTeamsClient.includes('id: "@nanmicoder/dsh-agent-teams"')) {
   console.error("[build-mpd-client] FAIL: agent-teams client.js no longer self-registers @nanmicoder/dsh-agent-teams")
   process.exit(1)
@@ -55,6 +58,8 @@ for (const [label, legacy] of LEGACY_SURFACES) {
 const out = agentTeamsClient
   + "\n\n// ==== @mpd-dsh/team-page: AgentTeams rendered inside a DSH-better-sidebar tab ====\n"
   + "window.__ModuleLoader__.load({ id: \"@mpd-dsh/team-page\", factory: " + teamPageFactory + " });\n"
+  + "\n// ==== @mpd-dsh/settings-card: the mpd settings card (t35, additive + isolated) ====\n"
+  + "window.__ModuleLoader__.load({ id: \"@mpd-dsh/settings-card\", factory: " + settingsCardFactory + " });\n"
   + "\n// ==== @mpd-dsh/mpd bundled client: team page + workmate library ====\n"
   + "window.__ModuleLoader__.load({ id: \"@mpd-dsh/mpd\", factory: " + webClientFactory + " });\n"
 writeFileSync(join(repoRoot, "packages", "mpd-bundle-plugin", "client.js"), out)

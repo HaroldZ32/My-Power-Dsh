@@ -1,0 +1,4 @@
+15733c1e0791aee179903e0c0b560777834215b14562b07259359c9de3b7cddd  packages/mpd-config-plugin/dist/index.js
+ea232983e5571af4e56a4a1d0e177f98f23f6872b0b4527a23188886af3498cb  packages/mpd-dsh-adapter-plugin/dist/index.js
+cf4b3813a344c9d5fd58d12ec74af1f062d14b5f562affb59ae514178745de14  packages/mpd-tui-plugin/dist/index.js
+dd9c88933a31627739eb04d0ad46208499ab4a5eb8a415f209477d30c9d999b7  packages/mpd-bundle-plugin/client.js

@@ -1,0 +1,81 @@
+{
+  "task": "t43",
+  "kind": "requirements",
+  "subject": "Watchdog groundwork: hard-code heartbeat, scene snapshot, stuck notice, and what the Reviewer wedge proves",
+  "member": "Researcher",
+  "attemptId": "23b39395-6003-4e72-ab75-0f0f262386a9",
+  "measuredAt": "2026-09-15T09:04Z",
+  "deliverable": "evidence/team-watchdog/requirements/20260915T090440Z/HOST-WATCHDOG.md",
+  "writesPerformed": [
+    "evidence/team-watchdog/requirements/20260915T090440Z/HOST-WATCHDOG.md",
+    "evidence/team-watchdog/requirements/20260915T090440Z/result.json"
+  ],
+  "pins": {
+    "repo": "/root/dshProj/my-power-dsh",
+    "harness": "@deepseek-ai/dsh 0.1.5-rc.1 (packages 0.1.5-rc.2) under /root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/",
+    "tuiHost": "@deepseek-harness-tui/dsh-tui 0.10.1",
+    "adoptedPlugin": "packages/mpd-agent-teams-plugin/lib (48 delta regions)"
+  },
+  "acceptance": [
+    {
+      "criterion": "The dossier names, with file:line evidence, every place a per-step heartbeat COULD be written and every place a watchdog COULD observe it: the member turn lifecycle in lib/**, the scheduler's idle/wake edges, the harness subagent seams the plugin probes, and the surfaces that could publish a stuck state.",
+      "status": "passed",
+      "evidence": "(a) lifecycle table: apply lib/index.js:140; spawn members.js:554; delivery members.js:615 -> harness-compat.js:1-20,/85-101; idle edge scheduler.js:715 with syncMemberStatus 706-709 + kickMember 712-713; cancel interruptMember members.js:643-655; halt tools.js:225 + drain 188-215; resume tools.js:2216. Harness moments: agent/session-start dsh-agent-loop/lib/index.js:1720; agent/pre-step :894; agent/assistant-stream :1032; agent/turn-stopping :967; agent/status :781; dispatcher dsh-agent/lib/index.js:209-219 + emitAgentEvent :248-250. Publish surfaces: /plugins/dsh-agent-teams/state index.js:253-273, halt :276-329, plan :332-475, assets :492-523; TUI tuiToast toast.d.ts:1-80 and tuiStatus status.ts:49-75; team page packages/mpd-bundle-plugin/src/team-page.js:101-165."
+    },
+    {
+      "criterion": "For EACH candidate hook point the dossier states whether it is reachable WITHOUT re-materialising adopted upstream code — delta REGION, NEW local module, or only upstream-shaped editing — and names the region-vs-new-file consequence (--write-registry, refusal shapes, re-heal).",
+      "status": "passed",
+      "evidence": "(b) states the three admissible shapes and the one forbidden one, with the applier's refusal lines: half-open markers :80; missing region / drifted context pair 'never guesses an insertion site' :177 and :191; F3 re-declaration guard :306-307; post-heal occurrence check :327; incomplete pair :350/:357-360; orphan begin with edited body :374; old anchor format :393; verify-only drop :431. Consequences: ADDITIVE region -> self-heals after a hand re-materialise via --write (context-pair keyed), needs one --write-registry when authored; REPLACEMENT-shaped region -> heal REFUSES loudly, file byte-untouched (D13/D14 pool-capability-select class); new local module -> invisible to the registry, cannot be dropped; separate bundle plugin row -> zero adopted-code edits; upstream-shaped edit without a region -> --check fails and vendor-agent-teams.mjs exits 1 (D10)."
+    },
+    {
+      "criterion": "The dossier reports, with paths, exactly which state exists on disk today for a live team/member and therefore what a 'save the scene' snapshot could capture and how a later resume could distinguish 'resume the same attempt' from 'start a fresh one'.",
+      "status": "passed",
+      "evidence": "(d) table with paths and owners: team.json (state.js:1-10 doc, reader :271-299, writer :319-320, atomic :264) with the re-measured live shape (phase/halted/haltedAt, members[] with status, tasks[] with attempt/attemptId/reassignReason); inbox/<agentKey>.jsonl (appendMailbox :448-454, createMessage :438-439 -> {id,from,to,content,ts}) + MAILBOX_DELIVERY_LEASE_MS :26-27; retired-members.json :29 + guard members.js:665-680; member session log <DSH_HOME>/sessions/<projectKey>/<childSessionId>/session.v3.jsonl.zstd; appendTeamEvent events.js:26-40 (informational, type-gated :33-38); boulder per-task timers exist as a mechanism but .mpd/boulder.json is absent in this workspace. Resume-vs-fresh rule: activateTaskAttempt state.js:167-176 mints a new attemptId, beginTaskAttempt :178-181 increments attempt, revocation clears attemptId -> same attemptId+attempt = resume, otherwise fresh. Two non-durable items a snapshot must add: per-step progress and the in-process parkedAttempts map (scheduler.js:397, 515-548, 624-630, 649-705)."
+    },
+    {
+      "criterion": "The TUI and Web publication surfaces are enumerated with the real seam each uses, including how an unseen stuck-notice is surfaced to a user who was not looking at the moment it fired.",
+      "status": "passed",
+      "evidence": "(e) Web: authenticated route /plugins/dsh-agent-teams/state (index.js:253-273 via authenticatedWebRoutes web-routes.js:73-100) with snapshots from collectTeamsActivity snapshot.js:131 carrying member status + activity working|idle|unknown snapshot.js:40-80; sibling routes halt/plan/assets; the bundle client team page packages/mpd-bundle-plugin/src/team-page.js:101-165; host activity surfaces (better-sidebar tab, dsh-client-ui-subagent). TUI: ctx.tuiToast (service id tuiToast; toast.d.ts:1-80 - transient, 200-cell cap, 20/min, dropped with no sink) is NOT probed by any of our packages today, plus the persistent tuiStatus line (packages/mpd-tui-plugin/src/status.ts:49-75), tuiScenes (scenes.ts:155), tuiDialogs (dialogs.ts:39). Not-watching case answered: a toast cannot satisfy it (no persistence/replay, toast.d.ts:34-52) and appendTeamEvent is type-gated (events.js:33-38), so the design needs a DURABLE record read by the Web route and the next TUI render, with the status line holding the condition."
+    },
+    {
+      "criterion": "The dossier records whether ANY timeout/watchdog/cancel machinery already exists in the adopted plugin or the harness, so the design extends or reuses rather than duplicating — and says plainly where nothing exists today.",
+      "status": "passed",
+      "evidence": "(c) Harness: @deepseek-ai/dsh-timeout ships deadline()/timeoutOf() and idleWatchdog (types/index.d.ts:80-89; IdleWatchdog :44-66) whose contract is 'the timer exists only while next() is outstanding'; its only users are the two LLM providers (dsh-llm-deepseek/lib/index.js:1627, DEFAULT_STREAM_IDLE_TIMEOUT_MS = 3e5 :1390, code LLM_STREAM_IDLE_TIMEOUT :1411, raise :1642, config :1897) -> provider-stream silence is covered, a wedged TURN is not. Plugin reuse table: memberActivity scheduler.js:184-190; idle edge + kickMember :712-715; parkedAttempts :397/:515-548/:624-630/:649-705; interruptMember members.js:643-655 (callers tools.js:201/450/971/1044); haltTeamWork tools.js:225 + drain :188-215; agent_teams_resume :2216 + resumeTeamState quality-gates.js:839; attempt lifecycle state.js:167-195; retired-member guard members.js:665-680; delivery lease state.js:26-27; narrow stale reclaim (stale-staged-reclaim, 1 h, empty staged teams only). Plainly absent: no heartbeat/watchdog/stuck/liveness/lastSeen symbol in lib/** or packages/mpd-tui-plugin/src/**, no per-turn timer, no durable progress record, no notification on silence; ps shows no stray child."
+    },
+    {
+      "criterion": "The failure mode we MEASURED is used as the acceptance fixture ... which signals WERE available in that incident and which were missing, i.e. shows the design could have detected it.",
+      "status": "passed",
+      "evidence": "(f) The incident is recorded verbatim on disk: team.json task t36 reassignReason ('wrote substantive evidence at 16:28 and 16:32 ... produced nothing for ~20 minutes while the runtime still showed it running, with no stray child process alive'). Timeline from measured mtimes + mailbox ts: last artifact write 16:32:37.003 (lane-run-2.hashes-after.txt; lane-run-1 16:28:25/46, lane-run-2 16:31:45/16:32:12/16:32:36); silence until the captain's reassignment 16:52:34 (t36.updatedAt, attempt 2, attemptId 42e63c6f-...) and the 16:52:49 message ('your previous t36 turn wedged and I interrupted it'); member session 33a90346-ab14-44f1-b88f-2096c1c6cff7 exists under the session store. Signals present: artifact mtimes, durable attempt identity + reassignReason, a live 'running' projection (scheduler.js:184-190, snapshot.js:40-80), the member session log, mailbox ts records. Signals absent: no heartbeat, no watchdog (only the provider-stream one), no notification, no durable stuck state, no stray child. Conclusion stated: a per-step heartbeat would have aged past T << 20 min and the watchdog could have snapshotted, paused via the existing halt path, and notified; detection latency becomes T instead of 'the user noticed'."
+    }
+  ],
+  "sources": [
+    "packages/mpd-agent-teams-plugin/lib/index.js:140,175,180,190,201,248-273,276,332,475,492,523,526",
+    "packages/mpd-agent-teams-plugin/lib/members.js:333,446,554,577,615-621,643-655,665-680",
+    "packages/mpd-agent-teams-plugin/lib/harness-compat.js:1-20,85-101",
+    "packages/mpd-agent-teams-plugin/lib/scheduler.js:2-12,184-190,397,515-548,624-630,649-705,706-715",
+    "packages/mpd-agent-teams-plugin/lib/tools.js:188-215,201,225-277,450,971,1044,2216-2235",
+    "packages/mpd-agent-teams-plugin/lib/state.js:1-10,26-27,29,167-195,264,271-299,319-320,438-439,448-454",
+    "packages/mpd-agent-teams-plugin/lib/events.js:26-40",
+    "packages/mpd-agent-teams-plugin/lib/snapshot.js:40-80,131",
+    "packages/mpd-agent-teams-plugin/lib/quality-gates.js:839",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js (48 regions incl. stale-staged-reclaim)",
+    "scripts/patch-agent-teams-fixes.mjs:13-18,80,177,191,306-307,327,350,357-360,374,393,431",
+    "dsh-agent-loop/lib/index.js:781,894,967,1032,1720",
+    "dsh-agent/lib/index.js:209-219,248-250",
+    "dsh-timeout/lib/types/index.d.ts:44-66,80-89",
+    "dsh-llm-deepseek/lib/index.js:1390,1411,1627,1642,1897",
+    "dsh-subagent/lib/types/index.d.ts:161,249",
+    "@deepseek-harness-tui/dsh-tui/lib/types/dsh-adapter/toast.d.ts:1-80",
+    "packages/mpd-tui-plugin/src/status.ts:49-75 ; src/scenes.ts:155 ; src/dialogs.ts:39",
+    "packages/mpd-bundle-plugin/src/team-page.js:101-165",
+    ".mpd/team/mpd-default/team.json (t36 attempt/attemptId/updatedAt/reassignReason; member Reviewer id 33a90346-ab14-44f1-b88f-2096c1c6cff7)",
+    ".mpd/team/mpd-default/inbox/reviewer.jsonl (ts 1789462276617, 1789462369607)",
+    "evidence/mpd-bridge/review/** file mtimes (16:28:25-16:32:37 local)"
+  ],
+  "notClaimed": [
+    "No code was written and no wedge was reproduced; the fixture is the recorded incident plus measured file mtimes and mailbox timestamps.",
+    "Harness event payload shapes beyond the quoted emit sites were not exercised at runtime.",
+    "No threshold T is proposed; the fixture only bounds the proven silence at >= 19 minutes.",
+    "Whether a new plugin row can reach the halt path with captain authority (tool execution vs direct primitives) is left to the implementation task; both options and the trade-off are named."
+  ]
+}

@@ -314,8 +314,27 @@ export function createHarness(options = {}) {
       } };
     },
     slots: {
-      inject: (key, cb) => { calls.slots = calls.slots ?? []; calls.slots.push(key); cb(); return () => {}; },
-      register: (definition) => { calls.slotsRegistered = calls.slotsRegistered ?? []; calls.slotsRegistered.push(definition); return () => {}; },
+      // The host's own cards pass a GENERATOR to `slots.inject` (`function* () { yield
+      // ctx.slots.register(...) }`), and the slot machinery drives it so the yielded
+      // registrations/disposers are collected. The double models both shapes.
+      inject: (key, cb) => {
+        calls.slots = calls.slots ?? [];
+        calls.slots.push(key);
+        const returned = cb();
+        if (returned !== null && returned !== undefined && typeof returned.next === "function") {
+          let step = returned.next();
+          while (step.done !== true) {
+            calls.slotYields = calls.slotYields ?? [];
+            calls.slotYields.push(step.value);
+            step = returned.next();
+          }
+        }
+        return () => {};
+      },
+      // `slots.register(options, component)` — the host's keyed-slot shape (its own cards pass the
+      // options object and the component separately). The component is recorded too, so an offline
+      // test can render a registered card in the hook runtime.
+      register: (definition, component) => { calls.slotsRegistered = calls.slotsRegistered ?? []; calls.slotsRegistered.push({ ...definition, component }); return () => {}; },
     },
     // The dictionaries ride along: capturing only the namespace made the zh/en key-parity
     // assertion (contract §L A7) impossible offline. `calls.locale` stays the namespace list;

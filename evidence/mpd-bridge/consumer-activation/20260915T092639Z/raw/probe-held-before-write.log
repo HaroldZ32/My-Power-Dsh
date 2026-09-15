@@ -1,0 +1,45 @@
+[mpd-config] settings bridge: could not register the "mpd" namespace (settings service is unavailable) — the TUI fallback owns it now.
+{
+  "ok": true,
+  "mode": "hold",
+  "steps": [
+    {
+      "phase": "apply",
+      "pid": 183,
+      "consumerDiffLength": null,
+      "fileValue": 30,
+      "configLayerValue": 30,
+      "registeredTools": [
+        "mpd_config_get",
+        "mpd_config_reload",
+        "mpd_hashline_read",
+        "mpd_hashline_edit",
+        "mpd_hashline_format",
+        "mpd_hashline_restore"
+      ]
+    },
+    {
+      "phase": "first-observation",
+      "pid": 183,
+      "consumerDiffLength": 30,
+      "fileValue": 30,
+      "configLayerValue": 30,
+      "diffHead": "--- /root/dshProj/my-power-dsh"
+    },
+    {
+      "phase": "after-external-change-same-process",
+      "pid": 183,
+      "consumerDiffLength": null,
+      "fileValue": 31415,
+      "configLayerValue": 31415
+    },
+    {
+      "phase": "same-process-re-invocation",
+      "pid": 183,
+      "consumerDiffLength": 30,
+      "fileValue": 31415,
+      "configLayerValue": 31415,
+      "diffHead": "--- /root/dshProj/my-power-dsh"
+    }
+  ]
+}

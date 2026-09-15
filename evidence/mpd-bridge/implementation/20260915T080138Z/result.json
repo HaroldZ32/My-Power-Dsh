@@ -1,0 +1,267 @@
+{
+  "task": "t35",
+  "slug": "mpd-settings-bridge",
+  "ok": true,
+  "design": {
+    "path": "evidence/mpd-bridge/design/DESIGN.md",
+    "measuredSha256": "002beaca748c97219ff7c3fc97bf2583f9230402685db4d5f7b51b1ee29792c9",
+    "measuredLines": 694,
+    "captainQuoted": {
+      "lines": 505,
+      "sha256": "391b85b31ef6b6cb8866c9b1cf3dba619b0cdb7d1ce0ca075da83ee27a5d0571"
+    },
+    "difference": "the 189 extra lines are the design author's ERRATUM \u2014 t40 (2026-09-15), which strikes the stale \u00a77 'fan-out' sentence and records the ambiguous-multi-root REFUSAL as governing; \u00a7B and \u00a7D unchanged",
+    "architectQuoted": {
+      "lines": 651,
+      "sha256": "2e990f1b750f2081230fec4128c84816ed20548cc9b50690d099576798f139eb",
+      "note": "the current design file records this as its OWN pre-erratum digest (DESIGN.md:54) \u2014 the Architect's message predates the design author's erratum"
+    }
+  },
+  "lanes": {
+    "structure": "two lane files over one shared engine (lib/settings-bridge-lane.mjs)",
+    "web": {
+      "slug": "web-settings-bridge",
+      "arm": "web (the HOST's own authenticated API: launch-token cookie + settings/mutate)",
+      "ok": true,
+      "elapsedMs": 46685,
+      "verdicts": {
+        "static": {
+          "ok": true,
+          "checks": 3,
+          "failed": []
+        },
+        "write": {
+          "ok": true,
+          "checks": 13,
+          "failed": []
+        },
+        "ambiguous": {
+          "ok": true,
+          "checks": 5,
+          "failed": []
+        },
+        "disabled": {
+          "ok": true,
+          "checks": 4,
+          "failed": []
+        }
+      },
+      "negativeControlGoesRed": true,
+      "sessionsSandboxed": true,
+      "cardClaim": {
+        "W2": {
+          "witnessed": true,
+          "checks": [
+            {
+              "id": "W2a",
+              "ok": true,
+              "detail": "the BUILT client registers into `settings.plugin.item` with `key: 'mpd'` and a locale"
+            },
+            {
+              "id": "W2b",
+              "ok": true,
+              "detail": "the built client names the slot and the namespace"
+            },
+            {
+              "id": "W2c",
+              "ok": true,
+              "detail": "the card's mount is DEFERRED through ctx.inject (never a declared dependency)"
+            },
+            {
+              "id": "W2d",
+              "ok": true,
+              "detail": "the client still declares only the stable seams"
+            },
+            {
+              "id": "W2e",
+              "ok": true,
+              "detail": "the card's copy is the same disclosure the TUI states"
+            }
+          ],
+          "artifact": {
+            "path": "packages/mpd-bundle-plugin/client.js",
+            "bytes": 282453,
+            "sha256": "dd9c88933a31627739eb04d0ad46208499ab4a5eb8a415f209477d30c9d999b7"
+          }
+        },
+        "W3": {
+          "witnessed": false,
+          "claim": "NOT-CLAIMED: no browser binary exists in this environment, so the rendered card and a click that produces the mutate are the user's own GUI check"
+        }
+      }
+    },
+    "tui": {
+      "slug": "tui-settings-bridge",
+      "arm": "tui (built bytes: the hint disclosure, the \u00a7D.2 runtime notice, zero-write)",
+      "ok": true,
+      "checks": [
+        {
+          "id": "T1",
+          "ok": true
+        },
+        {
+          "id": "T2",
+          "ok": true
+        },
+        {
+          "id": "T3",
+          "ok": true
+        },
+        {
+          "id": "T4",
+          "ok": true
+        },
+        {
+          "id": "T5",
+          "ok": true
+        },
+        {
+          "id": "T6",
+          "ok": true
+        },
+        {
+          "id": "T8",
+          "ok": true
+        },
+        {
+          "id": "T7",
+          "ok": true
+        }
+      ],
+      "surface": {
+        "drives": "the built TUI bytes + the status-line notice path; NOT TUI keystrokes (tui-panels owns that)",
+        "tuiKeystrokes": "not-run: a keystroke drive needs a real TTY",
+        "webCardRendered": "NOT-CLAIMED: the card was cut by the user and no browser exists here"
+      }
+    }
+  },
+  "webCard": {
+    "state": "PRESENT \u2014 the captain reversed the scope change and the user asked for it",
+    "module": "packages/mpd-bundle-plugin/src/settings-card.js",
+    "registration": "ctx.slots.inject(\"settings.plugin.item\", function* () { yield ctx.slots.register({ name, key: \"mpd\", locale: \"mpdSettings\", inject: () => controller.inject() }, Card) })",
+    "mount": "deferred: ctx.inject([\"settingsScope\"], \u2026), never a declared dependency",
+    "writePath": "ctx.settingsScope.bind({namespace:'mpd'}) -> mutate(ops, revision) (nested paths)",
+    "artifact": {
+      "path": "packages/mpd-bundle-plugin/client.js",
+      "bytes": 282106,
+      "sha256": "3594df6d82e0cf0605dd583ed7251f60296615fba3c21fd0da7c9eeadb2be66e"
+    },
+    "claims": {
+      "W1": "witnessed (lane-web: the host's own settings/mutate -> bridge -> file -> resolved value)",
+      "W2": "witnessed (lane-web W2a-W2e + settings-card.test.mjs against the built/served bytes)",
+      "W3": "NOT-CLAIMED \u2014 no browser binary exists here; the user's own GUI is the render check"
+    },
+    "bugsCaughtByItsOwnTest": [
+      "`const { section } = section()` shadowing TDZ",
+      "`let saving` declared below the first projection (TDZ)"
+    ]
+  },
+  "designConformanceChangesThisRound": [
+    "duplicate LEAF key now edits the LAST occurrence (design E5/D-11/U6/\u00a710.3/\u00a710.6), replacing my earlier refusal; a duplicated intermediate still refuses `ambiguous-intermediate`",
+    "refusal vocabulary aligned: ambiguous-intermediate / span-not-proven / unsupported-shape; E11 status `denied` now carries reason `read-only`",
+    "\u00a7D.2's no-live-session RUNTIME NOTICE published on the TUI status line (exact sentence, single exported constant, cleared by a successful write-back)"
+  ],
+  "gates": {
+    "typecheck": "exit 0",
+    "packages": "199 pass / 0 fail / 24 files (mpd-config, mpd-dsh-adapter, mpd-tui, mpd-bundle)",
+    "laneSelfTests": "web: 15 injected faults; tui: 6 injected faults; both lanes falsify both evaluators",
+    "tuiPanelsSelfTest": "ok",
+    "extensionIsolationSelfTest": "exit 0",
+    "tuiZeroWriteGrep": 0,
+    "webClientBundleUnchanged": "0 changed paths in packages/mpd-bundle-plugin/ and scripts/",
+    "testQa": "exit 1 ONLY on the VENDOR_LOCK skills-pairing case: lock=307/ba0c39228896 tree=310/f02831226271 (one re-pin owed by the captain; VENDOR_LOCK.json untouched)",
+    "webClientAdaptSelfTest": "ok: 14 checks (the deferred-inject rule still holds)",
+    "contractVerify": {
+      "bun run typecheck": "exit 0",
+      "bun test packages/mpd-config-plugin packages/mpd-tui-plugin packages/mpd-dsh-adapter-plugin": "139 pass / 0 fail / 16 files",
+      "bun skills/dsh-qa/scripts/tui-settings-bridge.mjs --self-test": "ok (16 web-arm + 7 TUI-arm injected faults)",
+      "grep zero-write on packages/mpd-tui-plugin/dist/index.js": "0 matches (grep exits 1 because there is nothing to match \u2014 the asserted state)"
+    }
+  },
+  "notWitnessed": [
+    "a consumer plugin's post-restart runtime behaviour (design F3) \u2014 needs a live session + restart with a consumer probe",
+    "a TUI keystroke edit in /settings (needs a real TTY; tui-panels owns that surface)",
+    "any rendered web card (cut by the user; no browser in this environment)"
+  ],
+  "apiConformance": {
+    "modules": [
+      "packages/mpd-config-plugin/src/jsonc-edit.ts",
+      "packages/mpd-config-plugin/src/bridge.ts"
+    ],
+    "exports": [
+      "surgicalEdit (accepts the DELETE sentinel, handled before serialisation)",
+      "surgicalDelete",
+      "locateValueSpan -> {start,end,hasTrailingComma,eol} | {reason}",
+      "detectStyle",
+      "readJsonc",
+      "stripJsoncText",
+      "EditResult",
+      "EditRefusal",
+      "DELETE"
+    ],
+    "switchKeys": [
+      "config.writeBack (design \u00a710.2, composed by the lane's patch layer)",
+      "config.settingsBridge.writeBack (captain ruling 2)",
+      "env MPD_DSH_TUI_SETTINGS_BRIDGE=off (secondary)"
+    ],
+    "switchReportedIn": "states().settings.writeBackEnabled"
+  },
+  "measuredThisRound": {
+    "workspaceRootsAll": "duplicates collapse; relative cwds resolve; cwd-less agents skipped; no registry or a throwing registry => []; a deleted cwd still yields its path (the writer then reports it per E11)",
+    "duplicateRegistration": "the host guard throws: @deepseek-ai/dsh-settings/lib/index.js:283 'settings namespace \"<ns>\" is already registered'",
+    "rowOrder": "packages/mpd-bundle/cordis.patch.yml: mpd-config at line 216, mpd-tui at line 300 (mpd-config applies first)"
+  },
+  "rulings": {
+    "ruling1_multiRootRefusal": {
+      "implemented": "1 root writes; 0 roots => no-live-session; N roots => ambiguous-multi-root naming every candidate, no file written (unchanged, \u00a7A.1/D-5/D-12/\u00a710.3)",
+      "notALostEditEvidence": "settings-wiring.test.ts: with 2 roots refused, the config layer resolves the NEW value for EACH workspace from the host-global settings layer (L3), while neither file changed",
+      "wording": "TUI hint carries BRIDGE_NOT_LOST ('never lost \u2026 applies it to every workspace immediately'); the status line has a distinct sentence per skip reason (no-live-session / ambiguous-multi-root); the card mirrors the clause; T8 + tui-panels assert it",
+      "docsFollowUp": "docs are out of scope: docs/** + README*.md must carry the three cases and the 'not written to a file \u2260 lost' sentence"
+    },
+    "ruling2_ownership": {
+      "owner": "packages/mpd-config-plugin registers the namespace through the adapter (settingsRegister, applies:'restart') with the file-derived base (L1+L2)",
+      "tui": "pure consumer with a guarded fallback: deterministic owner check (mpdConfig service present) then the served probe (describe/get); warns/infos once when skipping; zero filesystem writes unchanged",
+      "guardProof": "packages/mpd-tui-plugin/test/two-plugin-ownership.test.ts \u2014 config-present (1 registration, fallback skipped+logged), config-absent (1 registration by the fallback), both-present in either order (still exactly 1, loser reported), and owner-present-but-not-yet-registered (fallback yields)",
+      "defectsFixed": [
+        "the settings provider is not always mounted at mpd-config's row position (rows apply concurrently) => registration is deferred through the new adapter seam whenSettingsAvailable",
+        "both plugins parked on the same dependency and the fallback won the race => the TUI now yields to the owner deterministically via its mpdConfig service"
+      ],
+      "fileDerivedBaseWitnessed": "lane W13: the served base is the fixture's FILE value 12345 (the schema default is 20000, so it can only come from the file); boot log line confirms the registration",
+      "baseFixedByMeasurement": "no disposal handle exists for a live registration (register returns {get,watch,update,replace}; removal is an internal ctx.effect; the host's own installSection keeps its base fixed) => the design's \u00a71.3 fallback governs and the card says 'inherited (read at mount)'"
+    }
+  },
+  "t39": {
+    "correction1_duplicateKeys": {
+      "set": "updates the LAST occurrence and succeeds; the first is byte-identical; the result carries a loud note with every occurrence line, forwarded by the bridge and warned by mpd-config",
+      "unset": "removes EVERY occurrence of that exact path (captain's delta vs the design), refusing the whole edit byte-untouched if any span is unprovable",
+      "refusalUnchanged": "ambiguous duplicated intermediates, unparsable documents, span-not-proven/unsupported shapes, read-only targets",
+      "tests": [
+        "packages/mpd-config-plugin/test/jsonc-edit.test.ts (bytes + note + lines + DELETE sentinel + ambiguous intermediate)",
+        "packages/mpd-config-plugin/test/bridge.test.ts (the writer reports the note; the parsed document is last-wins)"
+      ],
+      "diagnosticExample": "key \"ulw.maxRounds\" appears 2 times at lines 3, 4; the last occurrence is the effective value and was updated"
+    },
+    "correction2_fileDerivedBase": {
+      "owner": "packages/mpd-config-plugin registers with the file-derived base",
+      "cardinalityRule": {
+        "one": "that workspace's file",
+        "zero": "the mount-time (exec-less) root; empty base if no file",
+        "many": "NO base invented + ambiguity surfaced (warn + states().settings.baseReason/baseCandidates)"
+      },
+      "falsifyingObservation": "lane W13 (web arm): the fixture file carries hashline.maxDiffChars 35000 with NO settings leaf, and the served namespace's base is 35000 \u2014 not the schema default 20000 \u2014 read from the running host",
+      "fixedBaseLimitation": "measured: no disposal handle for a live registration, so the base cannot be refreshed in-process; the declared per-session read-in is unaffected",
+      "rowOrderFollowUp": "packages/mpd-bundle/cordis.patch.yml mpd-config row (line 216) \u2014 NOT moved (out of scope); the code works around it with the deferred registration + deterministic owner check"
+    }
+  },
+  "testQaAllDecision": {
+    "webArmSkipFree": {
+      "command": "bun skills/dsh-qa/scripts/web-settings-bridge.mjs --no-skip",
+      "exitCode": 0,
+      "evidence": "lane-web-noskip/ (all checks ok, no skip path taken)"
+    },
+    "tuiArm": "must NOT be added (needs the TUI host + tmux)",
+    "packageJsonChanged": false,
+    "reason": "t39 contract acceptance 7 forbids changing package.json; the decision evidence is recorded instead"
+  },
+  "vendorLockFreshMeasurement": "lock=307/ba0c39228896 tree=310/8ec53287296e"
+}

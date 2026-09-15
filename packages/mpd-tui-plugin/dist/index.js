@@ -1441,6 +1441,126 @@ function createDshAdapter(ctx, config = {}) {
         ...preset?.broken === undefined ? {} : { broken: String(preset.broken) }
       };
     },
+    settingsReader(namespace) {
+      const settings = service("settings");
+      if (settings === undefined || settings === null)
+        return;
+      return {
+        get() {
+          try {
+            return typeof settings.get === "function" ? settings.get(namespace) : undefined;
+          } catch {
+            return;
+          }
+        },
+        describe() {
+          try {
+            if (typeof settings.describe !== "function")
+              return;
+            const list = settings.describe();
+            if (!Array.isArray(list))
+              return;
+            const found = list.find((entry) => entry?.ns === namespace);
+            if (found === undefined)
+              return;
+            return {
+              value: found.value,
+              revision: typeof found.revision === "number" ? found.revision : undefined,
+              user: found.user,
+              base: found.base,
+              applies: typeof found.applies === "string" ? found.applies : undefined
+            };
+          } catch {
+            return;
+          }
+        }
+      };
+    },
+    onSettingsDocumentUpdated(namespace, listener) {
+      let pendingRevision;
+      let pendingSource;
+      let hasPending = false;
+      let scheduled = false;
+      const flush = () => {
+        scheduled = false;
+        if (!hasPending)
+          return;
+        const revision = pendingRevision;
+        const source = pendingSource;
+        pendingRevision = undefined;
+        pendingSource = undefined;
+        hasPending = false;
+        try {
+          listener(revision, source);
+        } catch {}
+      };
+      const offUpdated = adapter.onEvent("settings/updated", (ns, _next, _prev, from) => {
+        if (String(ns) !== namespace)
+          return;
+        pendingSource = from === undefined ? undefined : String(from);
+        return;
+      });
+      const offDocument = adapter.onEvent("settings/document-updated", (ns, revision) => {
+        if (String(ns) !== namespace)
+          return;
+        pendingRevision = typeof revision === "number" ? revision : undefined;
+        hasPending = true;
+        if (!scheduled) {
+          scheduled = true;
+          Promise.resolve().then(flush);
+        }
+        return;
+      });
+      return () => {
+        try {
+          offUpdated?.();
+        } catch {}
+        try {
+          offDocument?.();
+        } catch {}
+      };
+    },
+    whenSettingsAvailable(callback) {
+      if (typeof ctx?.inject !== "function") {
+        try {
+          callback();
+        } catch {}
+        return;
+      }
+      try {
+        ctx.inject(["settings"], () => {
+          try {
+            callback();
+          } catch {}
+        });
+      } catch {}
+    },
+    settingsRegister(namespace, schema, options) {
+      const settings = service("settings");
+      if (settings === undefined || settings === null || typeof settings.register !== "function") {
+        return { ok: false, error: "settings service is unavailable" };
+      }
+      try {
+        settings.register(namespace, schema, { ...options?.base === undefined ? {} : { base: options.base }, ...options?.applies === undefined ? {} : { applies: options.applies } });
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, error: String(error?.message ?? error) };
+      }
+    },
+    async settingsMutate(namespace, ops, expectedRevision) {
+      const settings = service("settings");
+      if (settings === undefined || settings === null || typeof settings.mutate !== "function") {
+        return { ok: false, error: "settings service is unavailable" };
+      }
+      try {
+        await settings.mutate(namespace, ops.map((op) => op.op === "unset" ? { op: "unset", path: [...op.path] } : { op: "set", path: [...op.path], value: op.value }), expectedRevision);
+        return { ok: true };
+      } catch (error) {
+        const name = String(error?.name ?? "");
+        const conflict = name === "SettingsConflictError" || /conflict/i.test(String(error?.message ?? ""));
+        return { ok: false, error: String(error?.message ?? error), ...conflict ? { conflict: true } : {} };
+      }
+    },
     text: textBlock
   };
   return adapter;
@@ -1749,7 +1869,9 @@ function readBoardState(workspace, home = homedir()) {
     problems.length = MAX_PROBLEMS;
   return state;
 }
-function statusLine(state) {
+var NO_LIVE_SESSION_NOTICE = "saved to settings — not yet written to any .mpd/mpd.jsonc (no live session)";
+var AMBIGUOUS_MULTI_ROOT_NOTICE = "saved to settings — not written to any file: several live workspaces, so the target is ambiguous (see the log for the candidates)";
+function statusLine(state, notice) {
   const parts = [];
   if (state.team !== undefined) {
     const done = state.team.tasks.completed;
@@ -1766,6 +1888,8 @@ function statusLine(state) {
   parts.push(`workmates ${state.workmates.count}`);
   if (state.problems.length > 0)
     parts.push(`notes ${state.problems.length}`);
+  if (notice !== undefined && notice.length > 0)
+    parts.push(notice);
   return `mpd: ${parts.join(" · ")}`;
 }
 function boardLines(state) {
@@ -1799,7 +1923,7 @@ function boardLines(state) {
 
 // packages/mpd-tui-plugin/src/status.ts
 var STATUS_KEY = "mpd-tui";
-function registerStatus(ctx, log, workspaceRoot, home, intervalMs) {
+function registerStatus(ctx, log, workspaceRoot, home, intervalMs, bridgeNotice) {
   let outcome = { state: "absent", detail: "tuiStatus was not injected" };
   let refresh = () => {};
   onService(ctx, "tuiStatus", (scoped, service) => {
@@ -1813,7 +1937,7 @@ function registerStatus(ctx, log, workspaceRoot, home, intervalMs) {
     let published;
     const publish = () => {
       try {
-        const text = statusLine(readBoardState(workspaceRoot(), home()));
+        const text = statusLine(readBoardState(workspaceRoot(), home()), bridgeNotice?.());
         if (text === published)
           return;
         published = text;
@@ -2038,7 +2162,7 @@ function registerRenderers(ctx, log) {
   return { outcome: () => outcome };
 }
 
-// packages/mpd-tui-plugin/src/settings.ts
+// packages/mpd-config-plugin/src/settings-schema.ts
 var import_schemastery = __toESM(require_lib(), 1);
 var SETTINGS_NS = "mpd";
 var SettingsSchema = import_schemastery.default.object({
@@ -2049,58 +2173,50 @@ var SettingsSchema = import_schemastery.default.object({
   team: import_schemastery.default.object({ stateDir: import_schemastery.default.string().default(".mpd/team") }),
   boulder: import_schemastery.default.object({ dir: import_schemastery.default.string().default(".mpd") })
 });
-var UNBRIDGED_MARKER = "not bridged: a save here does not rewrite .mpd/mpd.jsonc";
-function knobHint(key) {
-  return `mpd.jsonc ${key} — ${UNBRIDGED_MARKER}`;
-}
-var SETTINGS_FIELDS = [
-  {
-    path: ["hashline", "maxDiffChars"],
-    label: "Inline diff limit",
-    descriptions: { zh: "行内 diff 上限" },
-    hint: knobHint("hashline.maxDiffChars"),
-    kind: "number"
-  },
-  {
-    path: ["commentChecker", "autoCheck"],
-    label: "Comment checker",
-    descriptions: { zh: "注释检查" },
-    hint: knobHint("commentChecker.autoCheck"),
-    kind: "boolean"
-  },
-  {
-    path: ["ulw", "maxRounds"],
-    label: "Ultrawork rounds",
-    descriptions: { zh: "Ultrawork 轮数" },
-    hint: knobHint("ulw.maxRounds"),
-    kind: "number"
-  },
-  {
-    path: ["memory", "vcs"],
-    label: "Memory backend",
-    descriptions: { zh: "记忆后端" },
-    hint: knobHint("memory.vcs"),
-    kind: "select",
-    options: [
-      { value: "git", label: "git" },
-      { value: "svn", label: "svn" }
-    ]
-  },
-  {
-    path: ["team", "stateDir"],
-    label: "Team state directory",
-    descriptions: { zh: "团队状态目录" },
-    hint: knobHint("team.stateDir"),
-    kind: "text"
-  },
-  {
-    path: ["boulder", "dir"],
-    label: "Boulder directory",
-    descriptions: { zh: "Boulder 目录" },
-    hint: knobHint("boulder.dir"),
-    kind: "text"
-  }
+var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount)";
+var BRIDGE_NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session";
+var SETTINGS_KNOBS = [
+  { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
+  { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
+  { path: ["ulw", "maxRounds"], label: "Ultrawork rounds", zh: "Ultrawork 轮数", kind: "number" },
+  { path: ["memory", "vcs"], label: "Memory backend", zh: "记忆后端", kind: "select", options: ["git", "svn"] },
+  { path: ["team", "stateDir"], label: "Team state directory", zh: "团队状态目录", kind: "text" },
+  { path: ["boulder", "dir"], label: "Boulder directory", zh: "Boulder 目录", kind: "text" }
 ];
+
+// packages/mpd-tui-plugin/src/settings.ts
+function knobHint(key) {
+  return `mpd.jsonc ${key} — ${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`;
+}
+function isServed(provider) {
+  try {
+    if (typeof provider.describe === "function") {
+      const described = provider.describe();
+      if (Array.isArray(described) && described.some((entry) => String(entry?.ns ?? "") === SETTINGS_NS))
+        return true;
+    }
+  } catch {}
+  try {
+    return typeof provider.get === "function" && provider.get(SETTINGS_NS) !== undefined;
+  } catch {
+    return false;
+  }
+}
+function configPluginPresent(ctx) {
+  try {
+    return typeof ctx.get === "function" && ctx.get("mpdConfig") !== undefined;
+  } catch {
+    return false;
+  }
+}
+var SETTINGS_FIELDS = SETTINGS_KNOBS.map((knob) => ({
+  path: [...knob.path],
+  label: knob.label,
+  descriptions: { zh: knob.zh },
+  hint: knobHint(knob.path.join(".")),
+  kind: knob.kind,
+  ...knob.options === undefined ? {} : { options: knob.options.map((value) => ({ value, label: value })) }
+}));
 var SETTINGS_SECTION = {
   ns: SETTINGS_NS,
   title: "MPD bundle",
@@ -2116,9 +2232,19 @@ function registerSettingsSection(ctx, log) {
       namespace = { state: "refused", detail: "settings.register is missing" };
       return;
     }
+    if (configPluginPresent(ctx)) {
+      namespace = { state: "absent", detail: `namespace ${SETTINGS_NS} is owned by mpd-config in this composition — the fallback registration was skipped` };
+      log.info(`settings namespace ${SETTINGS_NS}: mpd-config owns the registration — fallback skipped (design §10.1)`);
+      return;
+    }
+    if (isServed(provider)) {
+      namespace = { state: "absent", detail: `namespace ${SETTINGS_NS} is already served by mpd-config — the fallback registration was skipped` };
+      log.info(`settings namespace ${SETTINGS_NS} is already served — fallback registration skipped (design §10.1)`);
+      return;
+    }
     try {
       provider.register(SETTINGS_NS, SettingsSchema, { applies: "restart" });
-      namespace = { state: "requested", detail: `namespace ${SETTINGS_NS} requested (no host read-back)` };
+      namespace = { state: "requested", detail: `namespace ${SETTINGS_NS} requested by the fallback (no other registrant) (no host read-back)` };
     } catch (error) {
       namespace = { state: "refused", detail: String(error?.message ?? error) };
       log.warn(`settings namespace ${SETTINGS_NS} not registered: ${namespace.detail ?? ""}`);
@@ -2604,7 +2730,23 @@ function apply(ctx, config = {}) {
   const record = (id, outcome) => {
     outcomes.push({ id, outcome });
   };
-  const status = resolved.statusLine ? registerStatus(ctx, log, workspaceRoot, home, resolved.statusIntervalMs) : { outcome: () => ({ state: "absent", detail: "disabled by config" }), refresh: () => {} };
+  let configHandle;
+  const bridgeRead = () => {
+    try {
+      const skipped = configHandle?.states?.()?.writeback?.skipped;
+      if (skipped === "no-live-session")
+        return NO_LIVE_SESSION_NOTICE;
+      if (skipped === "ambiguous-multi-root")
+        return AMBIGUOUS_MULTI_ROOT_NOTICE;
+      return;
+    } catch {
+      return;
+    }
+  };
+  onService(ctx, "mpdConfig", (_scoped, service) => {
+    configHandle = service;
+  });
+  const status = resolved.statusLine ? registerStatus(ctx, log, workspaceRoot, home, resolved.statusIntervalMs, bridgeRead) : { outcome: () => ({ state: "absent", detail: "disabled by config" }), refresh: () => {} };
   const scene = resolved.scene ? registerScene(ctx, log, workspaceRoot, home) : { outcome: () => ({ state: "absent", detail: "disabled by config" }), open: () => false };
   const dialogs = createDialogs(ctx, log);
   const renderers = resolved.renderers ? registerRenderers(ctx, log) : { outcome: () => ({ state: "absent", detail: "disabled by config" }) };

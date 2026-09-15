@@ -47,8 +47,8 @@ import z from "../../mpd-agent-teams-plugin/_deps/schemastery"
 import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { PluginContextLike, SeamOutcome, SessionLike } from "./types.js"
 import { createLog, type Log } from "./log.js"
-import { describeOutcome, serviceOf } from "./host.js"
-import { readBoardState } from "./state.js"
+import { describeOutcome, onService, serviceOf } from "./host.js"
+import { AMBIGUOUS_MULTI_ROOT_NOTICE, NO_LIVE_SESSION_NOTICE, readBoardState } from "./state.js"
 import { registerStatus } from "./status.js"
 import { registerRenderers } from "./renderers.js"
 import { registerSettingsSection } from "./settings.js"
@@ -223,8 +223,29 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   }
 
   // ── the seven activation-gated UI seams ───────────────────────────────────
+  // The settings-bridge outcome, surfaced as a RUNTIME notice on the status line (§D.2 row 2):
+  // a save with no live session workspace stays in settings and says so on screen. `mpdConfig`
+  // is another plugin's service, so it is reached with the deferred inject form (a one-shot
+  // probe cannot see it, and a declared dependency would park this entry).
+  let configHandle: { states?: () => { writeback?: { skipped?: string } | null } } | undefined
+  const bridgeRead = (): string | undefined => {
+    try {
+      const skipped = configHandle?.states?.()?.writeback?.skipped
+      // Both refusal reasons are surfaced, each with its own sentence: a settings-only save must
+      // never read as a lost one (captain's ruling 1).
+      if (skipped === "no-live-session") return NO_LIVE_SESSION_NOTICE
+      if (skipped === "ambiguous-multi-root") return AMBIGUOUS_MULTI_ROOT_NOTICE
+      return undefined
+    } catch {
+      return undefined
+    }
+  }
+  onService(ctx, "mpdConfig", (_scoped: PluginContextLike, service: unknown) => {
+    configHandle = service as { states?: () => { writeback?: { skipped?: string } | null } }
+  })
+
   const status = resolved.statusLine
-    ? registerStatus(ctx, log, workspaceRoot, home, resolved.statusIntervalMs)
+    ? registerStatus(ctx, log, workspaceRoot, home, resolved.statusIntervalMs, bridgeRead)
     : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }), refresh: () => {} }
   const scene = resolved.scene ? registerScene(ctx, log, workspaceRoot, home) : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }), open: () => false }
   const dialogs = createDialogs(ctx, log)

@@ -194,8 +194,7 @@ This bundle stands on other people's work, and it is worth being precise about w
   own licence and notices are preserved in [LICENSE-NOTICES.md](./LICENSE-NOTICES.md).
 - **Written here.** The DSH plumbing (the harness adapter, the runtime plugins, the `mpd` preset,
   the combined web client), the QA suite, the documentation and the extension interface are this
-  project's own work. The RTL/EDA capability surface that once lived here has been extracted into
-  a separate bundle maintained elsewhere.
+  project's own work.
 
 Thanks are due to the OMO authors and contributors, and to the authors of `dsh-agent-teams` for
 publishing their work under a licence that permits this adoption.

@@ -1,0 +1,69 @@
+{
+  "task": "t43",
+  "artifact": "evidence/team-watchdog/requirements/HOST-AND-PLUGIN-SEAMS.md",
+  "kind": "requirements (decisions-scoped companion to 20260915T090440Z/HOST-WATCHDOG.md)",
+  "member": "Researcher",
+  "attemptId": "23b39395-6003-4e72-ab75-0f0f262386a9",
+  "measuredAt": "2026-09-15T09:20Z",
+  "note": "t43 is already terminal (completed, attempt 1, verdict pass). This companion was produced from the captain's decisions mail and written inside the task's granted inScope dir (evidence/team-watchdog/requirements/). No task-state mutation was possible or attempted; t45 reads this path.",
+  "decisionsCovered": [
+    {
+      "decision": 1,
+      "text": "Heartbeat every model step and every tool call, for members AND the captain.",
+      "answer": "Both moments exist as ordinary Cordis events and neither is private. Per step: agent/pre-step waterfall, $H/dsh-agent-loop/lib/index.js:894 (finer: agent/assistant-stream :1032). Per tool call: tools/pre-execute ($H/dsh-tools/lib/types/index.d.ts:38), tools/execute (around-dispatch, :49), tools/post-execute (:61), tools/result (:83); they are dsh-scope filtered by agent with plain-context listeners applying globally (:612), so one process-level listener sees member AND captain calls. OUR adapter already wraps both families: guardTool (pre, packages/mpd-dsh-adapter-plugin/src/index.ts:273/:529) and onPostToolExecute (post, :274/:535) => a NEW bundle plugin row stamps every step and every tool call with ZERO adopted-code edits. Honest limits: the adapter exposes no pre-call hook for a mutate-shaped stamp (guardTool is contractually read-only) — a pre-stamp needs an adapter extension to tools/execute; and a stamp written inside $L/** would be an ADDITIVE region (self-heals) with --write-registry once.",
+      "regionVerdict": "no adopted-code change required (new module + existing adapter hooks); additive region only if the stamp must be written inside lib/**"
+    },
+    {
+      "decision": 2,
+      "text": "Sensible defaults AND configurable, knobs in the bridged mpd namespace so TUI /settings and the Web card expose them through the same path.",
+      "answer": "The bridge wave landed: packages/mpd-config-plugin/src/settings-schema.ts is the single source (SETTINGS_NS 'mpd' :11, SettingsSchema, SETTINGS_KNOBS, disclosure constants); registration with the file-derived base at packages/mpd-config-plugin/src/index.ts:511 (dsh.settingsRegister(..., {base, applies:'restart'})), reader :232/:418, mutate :319/:463, doc-updated :478; the TUI section DERIVES its fields (packages/mpd-tui-plugin/src/settings.ts:99 SETTINGS_KNOBS.map). WRINKLE: the Web card keeps its OWN field list (packages/mpd-bundle-plugin/src/settings-card.js:46 FIELDS) => adding knobs = 3 files in our packages (schema+knobs, card FIELDS, nothing in $L/**). Proposed paths under a watchdog group: watchdog.warnSilenceMs (number, 90000) read by the process tick; watchdog.tickIntervalMs (number, 15000, < warnSilenceMs) read by the tick; watchdog.warnStreakToEscalate (number, 3) read by the escalator; watchdog.pauseOnEscalate (boolean, true) OR watchdog.actionOnEscalate (select pause|warn-only) read by the escalator (pick one spelling when freezing). Because the namespace is registered applies:'restart', live tuning requires the tick to re-read on settings/document-updated (the bridge subscribes exactly that way at index.ts:478).",
+      "regionVerdict": "no delta involvement at all (our packages only)"
+    },
+    {
+      "decision": 3,
+      "text": "Pause the affected TEAM only — scheduler halt plus members no longer claiming work, scene preserved, resumable by one agent_teams_resume.",
+      "answer": "The team-scoped gates already exist: scheduler dispatch declines on halted ($L/scheduler.js:422-423 inside region mpd-delta kick-team-decline-logs), kick declines on halted/staged (:454-455), re-check under the lock (:490-491); halt sets team.halted/haltedAt ($L/tools.js:249-250) and one-action resume exists (:2216, quality-gates.js:839-852). BLOCKER (measured): haltTeamWork CANCELS every non-terminal task before halting ($L/tools.js:241-246 cancelUnfinishedTask('Stopped from the captain chat.')), then cancels the captain turn (:267) and drains members (:268), while the resume explicitly 'Does not recreate cancelled tasks; only still-pending work is scheduled' (:2217) and resumeTeamState only flips the flag. So pausing a wedged team with today's halt destroys the work the watchdog protects and the requested single resume cannot restore it (same class as AGENTS.md §12's cancelled-dependency note). ALSO: agent_teams_claim_task has NO halted guard in its body (:1343-1420) — 'no longer claiming work' is enforced only by the scheduler decline plus the activation drain. Options for the plan: (a) a distinct PRESERVING pause (durable watchdogHold/paused record + the same decline gates, leaving statuses/attempts untouched) with a new ADDITIVE gate region mirroring the existing decline regions; (b) reuse halted but stop the mass cancel (REPLACEMENT-shaped change to tools.js:241-246 => loud refusal after a re-materialise, D13/D14 class); (c) add halted guards to claim_task/update_task (one ADDITIVE region each). Resume must re-arm still-claimed attempts via the existing parked-attempt machinery ($L/scheduler.js:397/:515-548/:620-630), not resumeTeamState alone.",
+      "regionVerdict": "option (a)/(c) additive regions (self-heal); option (b) replacement-shaped (refuses after re-materialise; restore or re-author + --write-registry)"
+    },
+    {
+      "decision": 4,
+      "text": "Web banner at the top of the AgentTeams panel + activity record; TUI status-line row + dialog/notice; a user who was not watching must still learn on the next start.",
+      "answer": "Web: the panel header is rendered by our bundle client (packages/mpd-bundle-plugin/src/team-page.js:437-448) from snapshot.teams (:121-122); the banner needs a new field in $L/snapshot.js (payload today: phase, halted-only-when-true :98, per-member activity :71-79, unread :84) plus the banner element. Activity record: a durable record written by the watchdog next to team.json (JSONL or scene field) is the only option that satisfies 'not watching'; appendTeamEvent ($L/events.js:26-40) is type-gated (:33-38) and cannot be the sole record. TUI: the status-line notice mechanism already exists end-to-end (packages/mpd-tui-plugin/src/status.ts:44 bridgeNotice -> state.ts:259-275 statusLine(..., notice), wired for the bridge at index.ts:226) so a stuck row rides the SAME path; the dialog/notice uses ctx.tuiToast ($T/lib/types/dsh-adapter/toast.d.ts:1-80; transient, 20/min, dropped with no sink) plus tuiDialogs (packages/mpd-tui-plugin/src/dialogs.ts:39). Unread replay readers measured: the Web panel's first poll (team-page.js:101-165), the TUI status publisher interval (status.ts), the plugin session-start path ($L/capabilities.js:110). NOTHING records 'the user saw this notice' today; the precedent to extend is the mailbox unread model ($L/snapshot.js:49-56, :84) — record + read watermark, else replay degrades to permanent re-display.",
+      "regionVerdict": "no adopted-code change needed (our packages + a new durable file); a session-event-type notice would touch adopted code and is not recommended as the primary path"
+    },
+    {
+      "decision": 5,
+      "text": "Coverage includes the captain; the captain cannot rescue itself, so plan a process-level tick that writes the scene to disk for the next start or a front door to surface.",
+      "answer": "A process-level tick precedent already exists in the adopted plugin ($L/index.js:537-547 setInterval + ctx.effect(clearInterval)), and the composition-root registration pattern is already a region: mpd-delta interjection-expiry-registration ($L/mpd-deltas.js:539-546) with its tick body at :447-454. Crucially the tick does NOT have to live in adopted code: a new bundle plugin row can call ctx.setInterval because the harness loads @deepseek-ai/cordis-plugin-timer when the timer service is absent (@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:323). The tick is the ONLY mechanism that covers a wedged captain, because every other hook is emitted by the agent that is working. It reads heartbeats from disk, applies decision 2's thresholds, and on ESCALATE writes the scene, pauses the team (decision 3) and notifies (decision 4). OPEN: the pause path needs captain authority (agent_teams_halt / haltTeamWork(input.captain)) — either execute the tool through the adapter's internal tool seam (packages/mpd-dsh-adapter-plugin/src/index.ts:279/:564) or operate on the primitives; unresolved and named for the plan.",
+      "regionVerdict": "no adopted-code change required (new module ticks itself); the in-repo precedent shows the region shape if the tick is ever placed in lib/**"
+    }
+  ],
+  "wedgeFixture": {
+    "record": "team.json task t36 reassignReason, verbatim: the Reviewer's turn wedged, evidence written at 16:28 and 16:32, then ~20 minutes of nothing while the runtime reported running, no stray child process, captain interrupted, reassignment issued.",
+    "measuredTimeline": [
+      "16:28:25.277 lane-run-1/raw/boot-main.log",
+      "16:28:46.566 lane-run-1/{output.log,result.json}",
+      "16:31:45.766 lane-run-2.hashes-before.txt",
+      "16:32:12.699 lane-run-2/raw/boot-main.log",
+      "16:32:36.351-392 raw/degradation-probe.mjs + raw/degradation/*",
+      "16:32:36.991-37.003 lane-run-2/{boot-disabled.log,output.log,result.json} + hashes-after.txt => LAST WRITE",
+      "16:52:34 t36.updatedAt (attempt 2, attemptId 42e63c6f-...) => reassignment",
+      "16:52:49 captain->Reviewer 'your previous t36 turn wedged and I interrupted it' (ts 1789462369607)"
+    ],
+    "memberSession": "33a90346-ab14-44f1-b88f-2096c1c6cff7 (session store dir; session.v3.jsonl.zstd mtime 17:00:50 after the resume)",
+    "hooksThatWouldHaveCaught": [
+      "agent/pre-step + tools/post-execute heartbeats: lastSeen stops at 16:32:37; 90 s threshold crossed at 16:34:07",
+      "process-level tick: WARN + scene snapshot ~16:34; 3rd consecutive WARN for t36 => ESCALATE ~16:37 (≈15 min before the human noticed)"
+    ],
+    "hooksThatWouldNot": [
+      "provider idleWatchdog (armed only while an iterator demand is outstanding; dsh-timeout types:80-89, dsh-llm-deepseek:1627/1390)",
+      "scheduler idle edge (agent/status fires only on a transition; dsh-agent-loop:781) — the runtime kept reporting running"
+    ]
+  },
+  "notClaimed": [
+    "No code written, no wedge reproduced; every claim is a read at the pins above.",
+    "The adapter post-execute hook was read, not exercised.",
+    "D2 knob names/defaults are a proposal to freeze, not an implemented schema.",
+    "The pause-authority question and the preserving-pause choice are left to the plan."
+  ]
+}

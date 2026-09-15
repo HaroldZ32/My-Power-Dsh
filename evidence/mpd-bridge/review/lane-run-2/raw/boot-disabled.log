@@ -1,0 +1,9 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=fail binary=/root/dshProj/my-power-dsh/node_modules/.bun/@colbymchenry+codegraph@1.5.0/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/tmp/mpd-settings-bridge-disabled-7KB7ai
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+[CodeGraph MCP] File watcher active — graph will auto-sync on changes
+dsh web: http://127.0.0.1:41309/?token=<redacted>
+[mpd-config] settings bridge: write-back is DISABLED by config (settingsBridge.writeBack=false or MPD_DSH_TUI_SETTINGS_BRIDGE=off) — the settings value took effect, no file was written.
+[mpd-config] settings bridge DISABLED: {"writtenTo":[],"skipped":"disabled","candidates":[],"results":[],"applies":"restart","source":"update","revision":1}

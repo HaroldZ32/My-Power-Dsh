@@ -50,7 +50,7 @@ Then confirm from a session:
 - `mpd_ext_show` — its resolved roots, its skill/flow/role names and the exact
   state of each MCP server (`connected`, `unavailable`, `failed`, `disabled`);
 - `mpd_flow_list` / `mpd_flow_show` — the contributed flow;
-- the MCP tool `mcp__example__describe_extension` — a live call into the example
+- the MCP tool `mcp__lint-mcp__describe_extension` — a live call into the example
   server.
 
 ## Validating and scaffolding

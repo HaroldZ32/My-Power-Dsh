@@ -1,0 +1,10 @@
+077188679b47d26eaec9accbd1f627d35a8ff728def51e5103d4f93f0a69e90f  docs/tui.md
+a92375fb36cae040002a441e106c1a4b5abd3e7d7b1758871164ad495d70c63b  docs/tui.zh-CN.md
+0d5a8e622697cad29eeb5748df5722edb7015abcd2dace11db03f5d7d27d62dd  docs/tui-edition-report.md
+adfa6a99ca84b49129ea26301da8ea21bfb1246333e786075b35ed4b1f2411a9  .mpd/plans/dsh-tui-edition-report.md
+6054876ca6be94b222c5c306d5dc524bc769e635c65ba5078d7515abf95b746c  evidence/tui/ACCEPTANCE-LEDGER.md
+a640b3ade96e5daa0dd40e841c729a90ed291473e54b6cf7bac68a33a98fd58f  evidence/tui/EVIDENCE-INDEX.md
+3c57f331e7e61a4ab7b3745b5403ee1b2e43845309ecadfa4766770846da3217  packages/mpd-tui-plugin/README.md
+c58143f99a37196242417da71a2a8d4afce543b1873b849de74a4b462af16d56  packages/mpd-tui-plugin/README.zh-CN.md
+9b83e39abb12ec2e6a3a9fb29eabdfaccdcdacf3da6308cc5723047d65ab0863  packages/mpd-config-plugin/README.md
+00f254950d568bd8106a424e3c1041b1a5ae943ff9e8f713c67c3f48909d7924  packages/mpd-config-plugin/README.zh-CN.md

@@ -31,6 +31,8 @@ export interface StatusSeam {
  * @param workspaceRoot - resolves the workspace root per call.
  * @param home - resolves the home directory per call.
  * @param intervalMs - refresh cadence; 0 keeps it manual.
+ * @param bridgeNotice - the last settings-bridge outcome, when one is available; a save
+ *   with no live session workspace surfaces its notice on the line (§D.2 row 2).
  * @returns the seam handle.
  */
 export function registerStatus(
@@ -39,6 +41,7 @@ export function registerStatus(
   workspaceRoot: () => string,
   home: () => string,
   intervalMs: number,
+  bridgeNotice?: () => string | undefined,
 ): StatusSeam {
   let outcome: SeamOutcome = { state: "absent", detail: "tuiStatus was not injected" }
   let refresh: () => void = () => {}
@@ -54,7 +57,7 @@ export function registerStatus(
     let published: string | undefined
     const publish = (): void => {
       try {
-        const text = statusLine(readBoardState(workspaceRoot(), home()))
+        const text = statusLine(readBoardState(workspaceRoot(), home()), bridgeNotice?.())
         // Only publish a CHANGED line: the host records every set() as a
         // `replace status` ledger effect, so a fixed-cadence republish would
         // churn the ledger (~20 records/minute) for an identical string.

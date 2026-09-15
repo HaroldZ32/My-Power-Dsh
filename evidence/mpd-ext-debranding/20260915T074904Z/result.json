@@ -1,0 +1,76 @@
+{
+  "task": "t33 — de-brand the RTL/EDA surface",
+  "producedBy": "Junior Engineer (attempt 1)",
+  "measuredAt": "2026-09-15T07:51:29.394Z",
+  "verdict": "passed",
+  "canonicalRename": {
+    "skill": "change-triage",
+    "flow": "change-triage-flow",
+    "role": "Code Reviewer",
+    "server": "lint-mcp",
+    "scaffold": "demo-ext"
+  },
+  "grep": {
+    "command": "grep -rniE '\\brtl\\b|verilog|vhdl|verilator|cocotb|iverilog|yosys|netlist|systemverilog|数字IC' README.md README.zh-CN.md AGENTS.md docs/*.md packages/*/README.md packages/*/README.zh-CN.md extensions/ scripts/ | grep -v '^docs/plan-tui-edition'",
+    "output": "(empty)"
+  },
+  "gates": {
+    "bun scripts/mpd-ext.mjs --self-test": "exit 0 (19 checks)",
+    "bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example": "exit 0, loadable, 1/1/1/1 kinds",
+    "bun test packages/mpd-ext-plugin": "66 pass / 0 fail",
+    "bun test packages/mpd-roles-plugin": "24 pass / 0 fail (after the fixture rename)",
+    "bun run typecheck": "exit 0",
+    "grep": "ZERO user-visible RTL/EDA hits"
+  },
+  "digests": {
+    "docs/extensions.md": "182666cc2a2ef81b4df015dd47cd528706b2f8b402c410e81ab41925c8d0846a",
+    "docs/extensions.zh-CN.md": "29ca278e7e086b1d54ef00630c52923d703e2deb117cfa07f714a7f89b4d1ae8",
+    "README.md": "cefe6ce8ad11247e8a8ebaeb324f2b7f63f327ea599001928ce2bbccacac888f",
+    "README.zh-CN.md": "8bea304a7a1210ce842e30d9b81a2f784163022a54ebc3bd1df5a239d756499f",
+    "AGENTS.md": "ffa3d8245ea3fa1b453dce2b408eee049bc262a2214e2a70ade83d691ce733b2",
+    ".gitignore": "423dd170d823f2e9165ed0b16b214ca53316dca8e501a8f3f7907e578923f46c",
+    "extensions/README.md": "26bb0f893f1d13fa1471274920316fbf1033c4c3f1f1f47c5a7567f052b39d8d",
+    "extensions/README.zh-CN.md": "5c03604c81c5549c4963e1a351ba144e4c0f194ef0624eb0a0cfc6f9ba074138",
+    "extensions/mpd-ext-example/mpd-ext.json": "72b395d6b9e388b42c4d58861ff1a77838fecc4867e0251360e7c44eaa82d3e6",
+    "extensions/mpd-ext-example/skills/change-triage/SKILL.md": "d2e3aca47137ee57bee16201f97f93f2400ea556078b0d3c69ad64b900df083b",
+    "extensions/mpd-ext-example/flows/change-triage-flow.json": "eda0dbba2e7f05f64640b37a4ae7a38a57f4336f2205c7d2b2f235abb0a632bf",
+    "extensions/mpd-ext-example/personas/code-reviewer.md": "d4e5b63e8d5393c8f95d4ae36710d5933b8db099088e5d10458ad410949a7a32",
+    "packages/mpd-ext-plugin/README.md": "96f43490261d6e835bf72b7b871671aa643bde6f3d90992499eef03eb3363a93",
+    "packages/mpd-ext-plugin/README.zh-CN.md": "a59ea5f153d7258c43e645af41462e9eb70b9c8903dae2bc6222d234da939267",
+    "packages/mpd-ext-plugin/test/core.test.ts": "af57a6fd2b20d7ba01326b385fd21301e903c0880d19a57c6f9c8797d6dfec39",
+    "packages/mpd-ext-plugin/test/mcp.test.ts": "a47fce3e92bad949fbc3817e16c54547a4b703cec2b2ef52d6091dd9dc88f578",
+    "docs/review-p0-p3.md": "e664a37cf7ab8751acfbbb5c98da18d9c934a71e9bd3348b4ed6042885895e8e",
+    "packages/mpd-roles-plugin/README.md": "e75bd1fb6eb34b91e2f067c4ea0ed4bce4bf98a2baafe53adbb86353cf6e5149",
+    "packages/mpd-roles-plugin/README.zh-CN.md": "3039cf244cc6dee71f3e249cbd735e3c82f9a82b41cdb162284496124648b459",
+    "packages/mpd-roles-plugin/test/roles.test.ts": "be215214dba5679ddbb1ef4f40dd72b9b05cf3453059fb746c650c34f7e55c54"
+  },
+  "filesFoundBeyondTheCaptainsList": [
+    "docs/review-p0-p3.md:76 — historical process record; one phrase neutralized (the recommendation now says a non-JS/TS language sample)",
+    "packages/mpd-roles-plugin/README.md:62,66 + README.zh-CN.md:37,39 — user-visible package docs; the Verilog Reviewer example role is now Code Reviewer",
+    "packages/mpd-roles-plugin/test/roles.test.ts — fixture extension id/role/persona renamed to authoring-flows / Code Reviewer"
+  ],
+  "gitignore": {
+    "dropped": [
+      ".venv-rtl/ (absent, and subsumed by .venv*/)",
+      "simv_iverilog (absent)"
+    ],
+    "kept": [
+      ".research/",
+      ".venv*/",
+      ".sim_build/",
+      "sim_build/",
+      "obj_dir/",
+      "*.o",
+      "*.a",
+      "compile.log"
+    ]
+  },
+  "knownBreakage": {
+    "file": "skills/dsh-qa/scripts/extension-isolation.mjs:507",
+    "symptom": "[extension-isolation self-test] FAIL: the example flow file is missing (exit 1)",
+    "cause": "the check hard-codes flows/rtl-triage-flow.json",
+    "fix": "change the literal to flows/change-triage-flow.json",
+    "whyNotFixed": "skills/** is out of this tasks inScope and is the wave single-writer area",
+    "evidence": "qa-isolation-breakage.log"
+  }
+}

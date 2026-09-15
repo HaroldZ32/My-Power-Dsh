@@ -1,0 +1,15 @@
+[cited-paths] docs/tui.md: 22 repo-relative citations, 0 missing, 0 exempt
+[cited-paths] docs/tui.zh-CN.md: 22 repo-relative citations, 0 missing, 0 exempt
+[cited-paths] docs/tui-edition-report.md: 49 repo-relative citations, 0 missing, 0 exempt
+[cited-paths] evidence/tui/ACCEPTANCE-LEDGER.md: 49 repo-relative citations, 0 missing, 0 exempt
+[cited-paths] evidence/tui/EVIDENCE-INDEX.md: 65 repo-relative citations, 0 missing, 0 exempt
+[cited-paths] packages/mpd-tui-plugin/README.md: 2 repo-relative citations, 0 missing, 0 exempt
+[cited-paths] packages/mpd-tui-plugin/README.zh-CN.md: 2 repo-relative citations, 0 missing, 0 exempt
+[cited-paths] packages/mpd-config-plugin/README.md: 4 repo-relative citations, 0 missing, 0 exempt
+[cited-paths] packages/mpd-config-plugin/README.zh-CN.md: 4 repo-relative citations, 0 missing, 0 exempt
+[cited-paths] evidence/mpd-bridge/integration/REPORT.md: 17 repo-relative citations, 0 missing, 0 exempt
+[cited-paths] evidence/mpd-bridge/integration/AMENDMENT-3.md: 20 repo-relative citations, 0 missing, 0 exempt
+[cited-paths] evidence/mpd-bridge/integration/LEDGER-AMENDMENT-T50.md: 11 repo-relative citations, 0 missing, 0 exempt
+[cited-paths] evidence/mpd-bridge/integration/INDEX-SECTION-T50.md: 23 repo-relative citations, 0 missing, 0 exempt
+[cited-paths] total missing: 0 (exempt: 0)
+[cited-paths] PASS

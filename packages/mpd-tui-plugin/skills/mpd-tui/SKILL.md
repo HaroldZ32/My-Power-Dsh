@@ -22,7 +22,9 @@ package `packages/mpd-tui-plugin`). In a `dsh-tui` profile it provides:
   (`agent-teams/*`, `mpd-tui/board-opened`) render as plain text rows, live and
   on replay.
 - **`/settings` section** — the mpd.jsonc knobs declared as editable fields; every
-  hint states on screen that a save is **not bridged** to `.mpd/mpd.jsonc`.
+  hint states on screen that a save **is written** to `<workspace>/.mpd/mpd.jsonc` for the
+  live session workspace(s) and that its behaviour change **needs a restart** (the knobs are read
+  at plugin mount). The pre-t35 "not bridged" claim is deleted.
 
 ## What is NOT claimed (say this plainly, do not over-claim)
 
@@ -31,11 +33,16 @@ package `packages/mpd-tui-plugin`). In a `dsh-tui` profile it provides:
    token-gated and unreachable). The plugin attempts the mediated registration,
    expects the refusal, warns once, and intercepts nothing: no input, rewind,
    session-switch or compact hook exists.
-2. **The `/settings` section is not bridged to `.mpd/mpd.jsonc`.** The section
-   declares the real mpd.jsonc knobs, and it edits them under the harness
-   settings namespace `mpd`; a saved edit does not rewrite `.mpd/mpd.jsonc`.
-   The field hints say exactly this on screen. The bridge is the named follow-up
-   `mpd-settings-bridge`.
+2. **The `/settings` section is bridged to `.mpd/mpd.jsonc` (t35), with a
+   RESTART for the behaviour change.** The section declares the real mpd.jsonc
+   knobs and edits them under the harness settings namespace `mpd`;
+   `mpd-config` observes that namespace through the adapter's settings seam and
+   rewrites the value into `<workspace>/.mpd/mpd.jsonc` (comments and key order
+   preserved) for the live session workspace(s). The config layer sees the value
+   immediately; the *plugins* read their config at mount, so the behaviour
+   change waits for a restart. With no live session there is no workspace to
+   write to: the save stays in settings and the surfaces say so. The field hints
+   carry that two-part statement on screen.
 3. **The web-only surfaces have no rendering face in the TUI.** The agent-teams
    sidebar, the workmate tab and the bundle floater do not render there; the
    board, status line and dialogs are *equivalents*, not parity.

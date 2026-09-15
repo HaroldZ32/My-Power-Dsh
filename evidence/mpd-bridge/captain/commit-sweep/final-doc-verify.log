@@ -1,0 +1,21 @@
+== captain final doc verification on the frozen tree (2026-09-15T09:55:48Z) ==
+
+--- shipped bilingual checker (t27's, 28 checks) ---
+verdict: passed checks: 28 failed: 0
+
+--- cited paths over the doc set ---
+[cited-paths] packages/mpd-tui-plugin/README.md: 2 repo-relative citations, 0 missing, 0 exempt
+[cited-paths] packages/mpd-config-plugin/README.md: 4 repo-relative citations, 0 missing, 0 exempt
+[cited-paths] total missing: 0 (exempt: 0)
+[cited-paths] PASS
+
+--- the frozen docs ---
+077188679b47d26eaec9 docs/tui.md
+a92375fb36cae040002a docs/tui.zh-CN.md
+40214 docs/tui.md
+39003 docs/tui.zh-CN.md
+
+--- no writer active? (mtimes newer than the sweep start) ---
+docs/tui-edition-report.md
+skills/dsh-qa/SKILL.md
+(empty = frozen)
