@@ -1,0 +1,57 @@
+{
+  "task": "t61 — declare the five watchdog knobs in the shared settings schema + the Web card FIELDS",
+  "producedBy": "Junior Engineer (attempt 1)",
+  "measuredAt": "2026-09-15T16:21:58Z",
+  "verdict": "passed",
+  "declaration": {
+    "shared": "packages/mpd-config-plugin/src/settings-schema.ts — SettingsSchema gains a `watchdog` object (enabled boolean true, warnSilenceMs 90000, tickIntervalMs 15000, warnStreakToEscalate 3, actionOnEscalate union pause|warn-only default pause) and SETTINGS_KNOBS gains the five mirrored rows (path/label/zh/kind/options); the 'six knobs' comments became 'eleven knobs'",
+    "card": "packages/mpd-bundle-plugin/src/settings-card.js — FIELDS gains the same five rows with identical path/label/zh/kind (the shipped identity test compares them against the shared declaration)",
+    "tui": "packages/mpd-tui-plugin/src/settings.ts is UNTOUCHED — it still derives its section from SETTINGS_KNOBS.map(...); only the count assertion in its test changed"
+  },
+  "rebuiltArtifacts": [
+    { "path": "packages/mpd-config-plugin/dist/index.js", "command": "bun build packages/mpd-config-plugin/src/index.ts --target node --format esm --outfile packages/mpd-config-plugin/dist/index.js", "bytesBefore": 99868, "bytesAfter": 100368 },
+    { "path": "packages/mpd-bundle-plugin/client.js", "command": "node scripts/build-mpd-client.mjs", "bytesBefore": 282453, "bytesAfter": 283140, "idempotent": "a second run produced the identical bytes and sha256 (283140 / 9bad27fd104715772e28cce754a6f37881709d125f38332139cf8b3a21e38f5c)" },
+    { "path": "packages/mpd-tui-plugin/dist/index.js", "command": "bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js", "bytesBefore": 105305, "bytesAfter": 106479 }
+  ],
+  "testCounts": {
+    "packages/mpd-bundle-plugin/test/settings-card.test.mjs": "expect(FIELDS).toHaveLength(6) -> 11 (the test title now says eleven)",
+    "packages/mpd-tui-plugin/test/plugin.test.ts": "expect(calls.sections[0].fields).toHaveLength(6) -> 11",
+    "otherAssertions": "none loosened"
+  },
+  "visibility": {
+    "measuredBy": "evidence/team-watchdog/config/20260915T162158Z/probe-watchdog-knobs.mjs (15/15 checks, exit 0)",
+    "method": "the BUILT packages/mpd-config-plugin/dist/index.js is mounted through a stub mpdDsh seam (settingsRegister captured) — the plugin's own registration path, not a source grep; the watchdog precedence arm mounts the BUILT packages/mpd-team-watchdog-plugin/dist/index.js (read-only)",
+    "namespaceDefaults": "the registered `mpd` schema resolves watchdog.enabled=true, warnSilenceMs=90000, tickIntervalMs=15000, warnStreakToEscalate=3, actionOnEscalate=\"pause\"",
+    "cardIdentity": "all five rows match the shared declaration path/label/zh/kind exactly (11 fields)",
+    "precedence": {
+      "rule": "the row config is the DEFAULTS layer; the `mpd` namespace is the live authority (engine.ts knobDefaults() + readNamespaceKnobs())",
+      "measurementEmptyNamespace": "namespace {} + the row's own five values -> knobs equal the ROW values exactly (nothing shadowed)",
+      "measurementExplicitNamespace": "namespace {watchdog:{warnSilenceMs:12345, actionOnEscalate:'warn-only'}} -> warnSilenceMs 12345 (over the row's 90000) and actionOnEscalate 'warn-only' (over 'pause'), warnStreakToEscalate stays at the row's 3, and the row's own guard still applied: tickIntervalMs clamped 15000 -> 4115 because it must stay < warnSilenceMs (issue recorded in the probe output)"
+    }
+  },
+  "gates": {
+    "bun run typecheck": "exit 0",
+    "bun test packages/mpd-config-plugin packages/mpd-bundle-plugin packages/mpd-tui-plugin": "178 pass / 0 fail / 1236 expect() calls across 22 files, exit 0",
+    "bun run verify:docs": "pairs=34 failed=0 exempt=15 — PASS, exit 0",
+    "bun skills/dsh-qa/scripts/tui-settings-bridge.mjs --self-test": "exit 0 — 16 web-arm + 7 TUI-arm injected faults each flip their own check",
+    "node scripts/build-mpd-client.mjs": "exit 0; a second run changed no bytes (idempotent)"
+  },
+  "outOfScopeUntouched": ["skills/", "packages/mpd-team-watchdog-plugin/", "packages/mpd-agent-teams-plugin/", "packages/mpd-tui-plugin/src/", "VENDOR_LOCK.json", "docs/"],
+  "changedPaths": [
+    "packages/mpd-config-plugin/src/settings-schema.ts",
+    "packages/mpd-config-plugin/dist/index.js",
+    "packages/mpd-bundle-plugin/src/settings-card.js",
+    "packages/mpd-bundle-plugin/test/settings-card.test.mjs",
+    "packages/mpd-bundle-plugin/client.js",
+    "packages/mpd-tui-plugin/test/plugin.test.ts",
+    "packages/mpd-tui-plugin/dist/index.js",
+    "evidence/team-watchdog/config/20260915T162158Z/probe-watchdog-knobs.mjs",
+    "evidence/team-watchdog/config/20260915T162158Z/probe.json",
+    "evidence/team-watchdog/config/20260915T162158Z/probe.stdout.log",
+    "evidence/team-watchdog/config/20260915T162158Z/probe.err",
+    "evidence/team-watchdog/config/20260915T162158Z/builds.log",
+    "evidence/team-watchdog/config/20260915T162158Z/gates.log",
+    "evidence/team-watchdog/config/20260915T162158Z/result.json",
+    "evidence/team-watchdog/config/20260915T162158Z/README.md"
+  ]
+}

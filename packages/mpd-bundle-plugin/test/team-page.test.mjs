@@ -355,7 +355,13 @@ describe("badge and polling", () => {
     expect(client.tab.badge(client.ctx, SCOPE)).toBe(1);
     expect(client.tab.badge(client.ctx, { sessionId: "s2" })).toBe(1);
     expect(client.tab.badge(client.ctx, { sessionId: "s3" })).toBeUndefined();
-    expect(client.calls.fetched.every((entry) => entry.url === STATE_URL)).toBe(true);
+    // The page talks to exactly TWO routes: the adopted team-state route, and the
+    // bundle's own stuck-team route (the watchdog web reader, whose query names the
+    // per-reader watermark key). No other origin is ever contacted — a foreign fetch
+    // (a third route, an absolute URL) still fails this pin.
+    const KNOWN_URLS = [STATE_URL, "/plugins/mpd-team-watchdog/state?reader=web-panel"];
+    expect(client.calls.fetched.every((entry) => KNOWN_URLS.includes(entry.url))).toBe(true);
+    expect(client.calls.fetched.some((entry) => entry.url === KNOWN_URLS[1])).toBe(true);
     client.restore();
   });
 

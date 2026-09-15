@@ -1,0 +1,137 @@
+{
+  "task": "t54",
+  "kind": "REPAIR after the late-arriving briefing (AMENDMENT 2 / A2-1)",
+  "assignee": "Deep Worker",
+  "attemptId": "ad5aacf7-0fbe-4b84-bf57-e07e5a403d3b",
+  "whyThisDirectory": "The captain's instruction is explicit: a re-run gets a NEW timestamp and never writes into an existing evidence directory. The first run's evidence stays at evidence/team-watchdog/plugin/20260915T160657Z/ untouched.",
+  "boardStateWhenRepairStarted": "t54 was already `completed` on the board (attemptId ad5aacf7-0fbe-4b84-bf57-e07e5a403d3b) from the first run, so this repair records its result as evidence + a captain report rather than a status transition. Re-opening or re-scoping the task is the captain's call.",
+  "whatWasMissing": {
+    "finding": "This session's recon read the plan's \u00a70\u2013\u00a73 and \u00a79 but NOT its tail, so AMENDMENT 2 (lines 419-483) was never read while the package was built. The plan file's mtime is 2026-09-15T23:49:35 local (15:49:35Z) and the first package file was written at 23:57:12 local (15:57:12Z), so AMENDMENT 2 existed BEFORE the first line of code was written. This is a recon miss, disclosed rather than hidden.",
+    "A2_2_to_A2_8_impact": "None on this package: A2-2 (knob line corrections), A2-3 (the PRE-stamp is an adapter-surface gap), A2-6 (region inventory), A2-7 (the D13/D14 heal class is UNVERIFIED-FROM-READ) target w4/w6/w7/w9. A2-4/A2-8 confirm the heartbeat approach already implemented (per-step `agent/pre-step` + POST tool stamps + captain coverage, zero adopted edits).",
+    "A2_5_impact": "Satisfied before and after: the row was and is a HOST-plane bundle-patch row, never a preset row. The repair ALSO moved it to sit directly beneath the `mpd-config` row, the neighbour A2-5 names, so the locator matches the binding text as well as the plane.",
+    "A2_1_impact": "THE REAL GAP. A2-1 says a bare sidecar cannot enforce the pause (state.js owns team.json; every reader goes through readTeam), and that w3 must NAME the option it implements and EXPOSE the reader signature w7 will match. The first run shipped the durable sidecar but published NO reader. Nothing in the package answered `isHeld`."
+  },
+  "deliveredByThisRepair": {
+    "optionChosen": "(b) the sidecar stays the durable, authoritative record PLUS a stable synchronous reader \u2014 the captain's stated preference",
+    "newFile": "packages/mpd-team-watchdog-plugin/src/holds.ts (the HoldRegistry + the `mpdWatchdog` service contract)",
+    "serviceId": "mpdWatchdog",
+    "members": [
+      "isHeld",
+      "holds",
+      "list",
+      "hydrate",
+      "hydratedRoots",
+      "gateCall"
+    ],
+    "isHeldSignature": "(teamId, workspace?) => { held, holdId, at, reason, taskId, attemptId, workspace, source }",
+    "gateCallShape": "ctx.get(\"mpdWatchdog\", false)?.isHeld(teamId, workspace)?.held === true",
+    "failOpenRule": "the watchdog row absent => `ctx.get(\"mpdWatchdog\", false)` is undefined => isHeld is never called => dispatch behaves EXACTLY as today; the watchdog can only ADD a decline, never keep a team stopped because its own row failed to load",
+    "crossProcessCaveat": "the map hydrates at apply from every hold file under the roots this process knows and is updated on every hold/resume this process performs; an unknown team costs ONE small file read, which is how a second process learns of a hold another process wrote (no restart, writer need not be alive)",
+    "otherChanges": [
+      "engine.ts re-reads the knobs on EVERY tick in addition to settings/document-updated: the `mpd` namespace is registered DEFERRED (mpd-config parks its registration on the settings service), so a row that applied first would otherwise keep its row-config defaults until somebody edited settings",
+      "actions.ts records every successful hold and forgets every verified clear in the registry, so both the tool path and the direct-write fallback keep the reader in step; `session-watchdog-status` now reports what the gates would answer for that team",
+      "packages/mpd-bundle/cordis.patch.yml: the row moved directly beneath `mpd-config` (A2-5's named neighbour); the file's diff against HEAD is +19 inserted lines and NOTHING else (the displaced bootstrap comment was restored, verified by `git diff --stat`)",
+      "README pair: a new `## Hold enforcement \u2014 the reader w7 consults` section (EN + zh-CN, identical heading trees) naming option (b), the signature table, and the three properties"
+    ]
+  },
+  "changedPaths": [
+    "packages/mpd-team-watchdog-plugin/src/holds.ts",
+    "packages/mpd-team-watchdog-plugin/src/index.ts",
+    "packages/mpd-team-watchdog-plugin/src/engine.ts",
+    "packages/mpd-team-watchdog-plugin/src/actions.ts",
+    "packages/mpd-team-watchdog-plugin/dist/index.js",
+    "packages/mpd-team-watchdog-plugin/test/holds.test.ts",
+    "packages/mpd-team-watchdog-plugin/test/support.ts",
+    "packages/mpd-team-watchdog-plugin/README.md",
+    "packages/mpd-team-watchdog-plugin/README.zh-CN.md",
+    "packages/mpd-bundle/cordis.patch.yml",
+    "evidence/team-watchdog/plugin/20260915T162351Z/"
+  ],
+  "acceptance": [
+    {
+      "criterion": "A2-1 / hold enforcement: the package NAMES the option it implements and EXPOSES the reader signature w7 must match",
+      "status": "passed",
+      "evidence": "Option (b) is named in README.md (\u00a7'Hold enforcement \u2014 the reader w7 consults'), in README.zh-CN.md, in the module header of src/holds.ts and in this result. The reader is published as the `mpdWatchdog` service and the driver records its full surface: raw/driver.result.json \u2192 holdReader.members = [gateCall, holds, hydrate, hydratedRoots, isHeld, list], gateCall = the documented expression, view = {held:true, holdId, at, reason:'silence', taskId:'t1', attemptId:'att-1', workspace, source:'memory'}."
+    },
+    {
+      "criterion": "the reader is SYNCHRONOUS and answers the gate across the hold's life",
+      "status": "passed",
+      "evidence": "driver holdReader: gateBeforeEscalate=false \u2192 gateAfterEscalate=true, evaluated with the exact gate expression against the real row. Unit: 'an unknown team is not held, and a recorded hold makes it held', 'the documented gate call shape returns exactly what a decline gate branches on' (false \u2192 true through the plugin's own action; a same-named team in another workspace stays false)."
+    },
+    {
+      "criterion": "the map is HYDRATED AT APPLY and a second process learns of a hold via the cheap file fallback",
+      "status": "passed",
+      "evidence": "Unit 'hydrate at apply loads the holds that already exist on disk' (report.hydratedHolds===1, holdService==='mpdWatchdog', the published service answers holdId 'h-existing'). Cross-process: unit 'the file fallback answers for a hold ANOTHER process wrote' and driver holdReader.otherTeamView.source === 'file' on the first read after a foreign write, then 'memory' on the second (cached) \u2014 raw/driver.result.json."
+    },
+    {
+      "criterion": "FAIL-OPEN: with the watchdog row absent, dispatch behaves exactly as today",
+      "status": "passed",
+      "evidence": "Unit 'FAIL-OPEN: a context without ctx.provide publishes no service, and the gate expression is simply false' (report.applied===true, report.holdService===null, ctx.get('mpdWatchdog', false) === undefined, so isHeld is never called). Unit 'never throws on a hostile path' (a FILE where the hold directory belongs \u2192 {held:false, source:'none'}, no throw) \u2014 a decline gate runs in the scheduler's hot path and must never throw."
+    },
+    {
+      "criterion": "the reader stays in step with every mutation the plugin performs",
+      "status": "passed",
+      "evidence": "Unit 'a mutation through the plugin's own actions keeps the reader in step, both ways' (hold via the tool seam \u2192 held; resume \u2192 not held and the file gone) and 'an ESCALATE hold lands in the registry through the plugin's own tool action' (the engine's escalation path, toolExecutes contains session-watchdog-hold, the published view's holdId equals the on-disk hold's id)."
+    },
+    {
+      "criterion": "live tuning survives a namespace that registers AFTER apply (the deferred-registration hazard)",
+      "status": "passed",
+      "evidence": "Unit 'a namespace that registers AFTER apply still tunes the tick (per-tick knob re-read)': apply with NO namespace (defaults 7_200_000/3_600_000) \u2192 30 s of silence does not warn; the namespace then appears with warnSilenceMs 20_000 \u2192 the very next tick WARNs and getKnobs() reports 20_000. driver namespaceAuthority: the namespace still outranks the row config (1234/111/7/warn-only at apply) and a document-updated re-read moves it to 4321/222/2/pause."
+    },
+    {
+      "criterion": "A2-5: the row is a HOST-plane bundle-patch row (not a preset row), placed at the neighbour A2-5 names",
+      "status": "passed",
+      "evidence": "packages/mpd-bundle/cordis.patch.yml: `- id: mpd-team-watchdog` now sits directly under the `mpd-config` row (patch line 227, mpd-config at 216) inside the same `- insert:` block that mounts every other host-plane mpd row; `git diff --stat packages/mpd-bundle/cordis.patch.yml` = 19 insertions, 0 deletions. The real mount proves it loads from that plane (raw/mount-boot.log)."
+    },
+    {
+      "criterion": "the `mpdWatchdog` service really publishes on a mounted host (not just in a stub)",
+      "status": "passed",
+      "evidence": "raw/mount-boot.log line 4 of the isolated bundle-lifecycle boot: `[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0`. `holdService=mpdWatchdog` can only be printed when `ctx.provide` existed on the row's own context and the call did not throw."
+    },
+    {
+      "criterion": "the five declared verify commands still pass, and no adopted file was touched",
+      "status": "passed",
+      "evidence": "raw/typecheck.log exit 0; raw/tests-package.log 52 pass / 0 fail / 220 expect() calls; raw/rows-parity.log ok 25/25; raw/bundle-lifecycle.log PASS with an empty crash scan; raw/preset-conformance.log PASS. Extras: raw/tests-all.log 686 pass / 0 fail; raw/docs-parity.log pairs=34 failed=0. raw/adopted-tree-status.log is EMPTY."
+    }
+  ],
+  "verify": [
+    {
+      "command": "bun run typecheck",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "raw/typecheck.log \u2014 `$ tsgo --noEmit`, no diagnostics"
+    },
+    {
+      "command": "bun test packages/mpd-team-watchdog-plugin",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "raw/tests-package.log \u2014 52 pass / 0 fail / 220 expect() calls / 12 files (10 new hold-registry tests on top of the 42)"
+    },
+    {
+      "command": "node scripts/verify-rows-parity.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "raw/rows-parity.log \u2014 ok: 25 row ids match (\u2026 mpd-team-compact, mpd-team-watchdog, mpd-tools \u2026)"
+    },
+    {
+      "command": "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "raw/bundle-lifecycle.log PASS; raw/mount-boot.log carries the row's apply line INCLUDING holdService=mpdWatchdog; raw/mount-crash-scan.log is empty"
+    },
+    {
+      "command": "node skills/dsh-qa/scripts/preset-conformance.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "raw/preset-conformance.log \u2014 PASS, conformance 31 with missing=[] extra=[], bootLog signatures []"
+    }
+  ],
+  "notClaimed": [
+    "No dispatch gate is wired: this repair makes the hold ENFORCEABLE by w7 (the reader + the documented call shape); the edits that consult it in scheduler.js/tools.js are w7's scope and ZERO adopted files were touched here.",
+    "The hydrated-at-apply count in the real mount is 0 because that sandbox has no pre-existing hold; the hydration path itself is proven by the driver's fixture and the unit suite, not by the mount.",
+    "No live-LLM member turn and no authenticated settings write against a mounted host (no model credential in this environment) \u2014 unchanged from the first run.",
+    "The task-board status of t54 was already `completed` when this repair started; no status transition is claimed here."
+  ],
+  "finalRevision": "3dec3bd2994d78ae64c30e33118642987a0401cf",
+  "finalRevisionNote": "All gates were re-run at this revision, WITH the w4 knob-declaration edits (packages/mpd-config-plugin/src/settings-schema.ts, packages/mpd-bundle-plugin/src/settings-card.js) already present in the working tree, so the results are not stale relative to a moving checkout."
+}

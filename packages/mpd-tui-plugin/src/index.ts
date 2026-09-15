@@ -56,6 +56,7 @@ import { boardSummary, registerScene } from "./scenes.js"
 import { registerCommandTrees } from "./command-trees.js"
 import { registerShortcuts } from "./shortcuts.js"
 import { createDialogs } from "./dialogs.js"
+import { attachWatchdogFrontDoor, composeNotices, type WatchdogFrontDoor } from "./watchdog.js"
 import { attemptDecisionEvents } from "./decisions.js"
 import { appendBoardOpened, registerCommands } from "./commands.js"
 import { BOARD_OPENED_EVENT, registerLogOnlyEventType } from "./registration.js"
@@ -244,11 +245,26 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
     configHandle = service as { states?: () => { writeback?: { skipped?: string } | null } }
   })
 
-  const status = resolved.statusLine
-    ? registerStatus(ctx, log, workspaceRoot, home, resolved.statusIntervalMs, bridgeRead)
+  // The watchdog front door's notice is composed into the SAME status value as the bridge notice
+  // (w6): a held team and an unread-incident replay are line content, not a constant nobody renders.
+  // It is built BEFORE the status seam so the FIRST publish already carries it; the acknowledge
+  // callback reaches the status handle through a mutable reference (the seam is created below).
+  const dialogs = createDialogs(ctx, log)
+  let status: { outcome(): SeamOutcome; refresh(): void } = {
+    outcome: () => ({ state: "absent" as const, detail: "not wired yet" }),
+    refresh: () => {},
+  }
+  const watchdogFrontDoor = attachWatchdogFrontDoor(ctx, log, {
+    workspaceRoot,
+    dialogs,
+    onAcknowledged: () => status.refresh(),
+  })
+  const noticeRead = (): string | undefined => composeNotices(bridgeRead(), watchdogFrontDoor.notice())
+
+  status = resolved.statusLine
+    ? registerStatus(ctx, log, workspaceRoot, home, resolved.statusIntervalMs, noticeRead)
     : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }), refresh: () => {} }
   const scene = resolved.scene ? registerScene(ctx, log, workspaceRoot, home) : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }), open: () => false }
-  const dialogs = createDialogs(ctx, log)
   const renderers = resolved.renderers ? registerRenderers(ctx, log) : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }) }
   const settings = resolved.settingsSection ? registerSettingsSection(ctx, log) : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }) }
   const trees = resolved.commandTrees ? registerCommandTrees(ctx, log) : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }) }

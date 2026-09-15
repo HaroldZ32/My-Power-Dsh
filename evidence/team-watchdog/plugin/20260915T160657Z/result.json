@@ -1,0 +1,131 @@
+{
+  "task": "t54",
+  "subject": "w3 Watchdog core plugin: heartbeat store, WARN\u2192ESCALATE machine, scene snapshot, hold/incident sidecars, bundle row",
+  "assignee": "Deep Worker",
+  "deliverable": "packages/mpd-team-watchdog-plugin/ (src + dist + test + README pair) + the mpd-team-watchdog bundle row + evidence/team-watchdog/plugin/20260915T160657Z/",
+  "harnessPins": {
+    "installedCli": "0.1.5-rc.1",
+    "installedPackages": "0.1.5-rc.2",
+    "note": "no model credential is available in this environment, so no live-LLM member turn was driven here; the fault-injection and live-wedge lanes are w8/w9's deliverables (plan \u00a73)."
+  },
+  "changedPaths": [
+    "packages/mpd-team-watchdog-plugin/package.json",
+    "packages/mpd-team-watchdog-plugin/src/paths.ts",
+    "packages/mpd-team-watchdog-plugin/src/store.ts",
+    "packages/mpd-team-watchdog-plugin/src/team.ts",
+    "packages/mpd-team-watchdog-plugin/src/machine.ts",
+    "packages/mpd-team-watchdog-plugin/src/scene.ts",
+    "packages/mpd-team-watchdog-plugin/src/sidecars.ts",
+    "packages/mpd-team-watchdog-plugin/src/engine.ts",
+    "packages/mpd-team-watchdog-plugin/src/actions.ts",
+    "packages/mpd-team-watchdog-plugin/src/index.ts",
+    "packages/mpd-team-watchdog-plugin/dist/index.js",
+    "packages/mpd-team-watchdog-plugin/test/support.ts",
+    "packages/mpd-team-watchdog-plugin/test/heartbeat.test.ts",
+    "packages/mpd-team-watchdog-plugin/test/machine.test.ts",
+    "packages/mpd-team-watchdog-plugin/test/scene.test.ts",
+    "packages/mpd-team-watchdog-plugin/test/sidecars.test.ts",
+    "packages/mpd-team-watchdog-plugin/test/failsafe.test.ts",
+    "packages/mpd-team-watchdog-plugin/README.md",
+    "packages/mpd-team-watchdog-plugin/README.zh-CN.md",
+    "packages/mpd-bundle/cordis.patch.yml"
+  ],
+  "filesOutsideThisTask": {
+    "scripts/install-profile.mjs": "NOT edited by this task. The row-parity gate required a mirror row there; this task's inScope excluded it, so the need was reported to the captain at 20260915T1606Z and the mirror (`id: mpd-team-watchdog`, same config) was added by another writer while this task was running. `git diff` confirms the added block is the only change and it matches this row's config byte for byte."
+  },
+  "acceptance": [
+    {
+      "criterion": "packages/mpd-team-watchdog-plugin mounts as a real bundle row in an isolated boot (not just --dump-config composition): the boot log shows the row applied and no apply-crash signature",
+      "status": "passed",
+      "evidence": "bundle-lifecycle (isolated DSH_HOME + sandbox HOME, web profile, one-command `dsh plugin add` from the checkout) PASS; its boot.log line 4 = `[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5`; the crash-signature scan over the same boot log (`unsupported JSON schema|JsonSchemaError|plugin tree failed to load|failed to apply loader entry|did not activate|pending (waiting`) found NOTHING (raw/mount-crash-scan.log). The same boot also reports `[mpd-dsh-adapter] mpdDsh provided` and `[roles-probe] TOOL_PARAM_SCHEMAS=56/56`."
+    },
+    {
+      "criterion": "the heartbeat store is written on model steps and on POST tool completion and is read back by a FRESH process from disk (not asserted from an in-process call log)",
+      "status": "passed",
+      "evidence": "raw/driver.log: the real `apply()` + the real installed handlers wrote heartbeat files under raw/ws/.mpd/team/watchdog/heartbeat/, then a SEPARATE `node reader.mjs` process (importing no plugin code at all) read them from disk and exited 0 with failures=[]: architect.jsonl carries >= 3 distinct `step` timestamps AND one `kind:'tool'` stamp naming the tool, and captain.jsonl carries both kinds. Unit side: bun test 'a model step stamps the member AND the task the member owns', 'the captain is stamped under its own key', 'the POST tool hook stamps a completed tool call, never a pre-dispatch one', 'timestamps advance across a turn (>= 3 distinct lastSeen values)'."
+    },
+    {
+      "criterion": "silence > warnSilenceMs emits exactly one WARN with a snapshot; the same task's third consecutive WARN emits exactly one ESCALATE and no fourth WARN for that streak",
+      "status": "passed",
+      "evidence": "raw/driver.log tickShape = {tick1:['warn'], tick2:['warn'], tick3:['escalate'], tick4:[]} with engineStats {scenes:3, holdsApplied:1, incidents:3}; the reader independently reports the incident log as warn,warn,escalate with each WARN carrying its scene path. Unit side: 'exactly one WARN per silent tick, and the third WARN escalates once' (a 4th observation returns []), 'a new attemptId starts a clean streak', 'any recent stamp resets the streak'. A claimed task whose owner NEVER stamped is counted as a non-escalating `never-started` (driver neverStartedObservations = 1)."
+    },
+    {
+      "criterion": "the scene snapshot carries the AC-5 field set and parses in a fresh process; an unwritable scene path degrades loudly and does not kill the host",
+      "status": "passed",
+      "evidence": "the fresh reader parsed scene/team-a/latest.json and asserted the whole field set: schemaVersion/at/reason/cause{kind:'silence',ms}, team{id,name,phase,halted,haltedAt,hold(non-null: the escalation scene carries the hold it created)}, tasks[{id,status,assignee,attempt,attemptId,lastSeen,streak}], members[{id,name,status,unread,currentTask,lastSeen}], mailbox (the read watermark map), parkedAttempts, incidents with the two WARN predecessors and their scene paths \u2014 failures=[]. Degradation: scene.test.ts 'an unwritable scene location degrades LOUDLY, still attempts the hold and still records the incident' (sceneFailures=1, incidents=3, hold present, a named `scene write failed at` warning) and 'writeScene returns ok:false instead of throwing'; idempotence/atomicity: 'write -> read round-trips byte-identically and a second identical write changes no bytes' (same mtime) and 'a scene file name is unique per incident even inside one millisecond'."
+    },
+    {
+      "criterion": "the four knobs are read from the mpd namespace and re-read on settings/document-updated so a live change takes effect without a host restart",
+      "status": "passed",
+      "evidence": "raw/driver.log namespaceAuthority: a second real `apply()` whose namespace says warnSilenceMs=1234/tickIntervalMs=111/warnStreakToEscalate=7/actionOnEscalate=warn-only resolves exactly those (the namespace OUTRANKS the row config, which is the defaults layer), and a settings/document-updated re-read then resolves 4321/222/2/pause with no restart (intervalMs follows to 222). Unit side: 'the watchdog section is read from the mpd namespace by its exact paths', 'a live knob change is picked up without a restart' (30 s of silence does not warn at 90 s, then warms after the threshold is lowered to 20 s), 'a cadence at or beyond the silence threshold is clamped loudly, not thrown', 'the env kill switch forces the watchdog off'. Real-mount side: the boot log carries `[mpd-config] settings bridge: registered the \"mpd\" namespace with the file-derived base (applies:'restart')`, i.e. the namespace the row reads exists in the mounted composition. LIMIT: the re-read was driven through the adapter's own `onSettingsDocumentUpdated` seam (stub host), not by an authenticated settings write against a mounted host \u2014 that live write belongs to AC-11's config lane (a later task)."
+    },
+    {
+      "criterion": "the watchdogHold + incident records are written as sidecars beside team.json and the adopted team.json bytes are untouched by this package",
+      "status": "passed",
+      "evidence": "raw/driver.log adoptedRecordUnchanged = {sha256Before == sha256After (3a7675fb17ee7ee914fa782973e47f338b2579402d0be6301d2d46dd8ebf26bf), identical: true} after 8 heartbeat writes, 3 scenes, 1 hold and 3 incidents; the fresh reader found hold/team-a.json with {id,teamId,since,cause,taskId:'t1',attemptId:'att-1',sceneAt} and incidents.jsonl with 3 records. Unit side: 'lives beside team.json and never changes a byte of it' (byte-compare before/after), 'is idempotent by id: a second identical write changes no bytes', 'a record per incident plus a watermark per reader'."
+    },
+    {
+      "criterion": "the plugin's own session-watchdog-hold/-resume actions exist and are reachable through the adapter internal tool seam (they are wired by w7, not here)",
+      "status": "passed",
+      "evidence": "raw/driver.log tools = ['session-watchdog-hold','session-watchdog-resume','session-watchdog-status'] registered by the real `apply()`; the ESCALATE hold was persisted THROUGH that seam (engineStats.holdsApplied=1, and the tool-seam call is the engine's first choice). Unit side: 'apply() registers exactly the three actions on the adapter' and 'the hold and resume actions are reachable through the adapter's internal tool seam' (hold applied, resume resumed=true, a second resume resumed=false reason='not-held', status returns the workspace). No adopted dispatch gate was wired \u2014 that is w7's scope, and this task edited ZERO files under packages/mpd-agent-teams-plugin/."
+    },
+    {
+      "criterion": "bun run typecheck exits 0 and every declared verify command passes with raw output in the completion",
+      "status": "passed",
+      "evidence": "raw/typecheck.log (exit 0, no diagnostics), raw/tests-package.log (42 pass / 0 fail / 178 expect() calls / 10 files), raw/rows-parity.log (25 row ids match), raw/bundle-lifecycle.log (PASS), raw/preset-conformance.log (PASS, bootLog signatures []); raw/tests-all.log (676 pass / 0 fail, the whole packages/ suite) and raw/docs-parity.log (pairs=34 failed=0 \u2014 the new bilingual README pair) were added on top."
+    },
+    {
+      "criterion": "ZERO files under packages/mpd-agent-teams-plugin/** were modified (git status proves it)",
+      "status": "passed",
+      "evidence": "raw/adopted-tree-status.log is empty (`git status --porcelain packages/mpd-agent-teams-plugin` printed nothing, exit 0). raw/git-status.log shows only ` M packages/mpd-bundle/cordis.patch.yml`, ` M scripts/install-profile.mjs` (another writer's parity mirror, not this task) and untracked evidence/ and the new package."
+    }
+  ],
+  "verify": [
+    {
+      "command": "bun run typecheck",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "raw/typecheck.log \u2014 `$ tsgo --noEmit` with no diagnostics"
+    },
+    {
+      "command": "bun test packages/mpd-team-watchdog-plugin",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "raw/tests-package.log \u2014 42 pass / 0 fail / 178 expect() calls / 10 files"
+    },
+    {
+      "command": "node scripts/verify-rows-parity.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "raw/rows-parity.log \u2014 `ok: 25 row ids match the bundle patch insert list (\u2026 mpd-team-compact, mpd-team-watchdog, mpd-tools \u2026)`. RED before the parity mirror landed (MISSING from scripts/install-profile.mjs: mpd-team-watchdog); the mirror is another writer's edit, reported and requested by this task (see filesOutsideThisTask)."
+    },
+    {
+      "command": "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "raw/bundle-lifecycle.log \u2014 PASS, boot.ok true, boot log carries the row's `applied:` line and no apply-crash signature (raw/mount-boot.log, raw/mount-crash-scan.log)"
+    },
+    {
+      "command": "node skills/dsh-qa/scripts/preset-conformance.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "raw/preset-conformance.log \u2014 PASS, conformance 31 checked with missing=[] extra=[] against the installed `standard` preset, sessionCreate 200 with agentPreset mpd, bootLog signatures [], and the negative control reddens as designed"
+    }
+  ],
+  "independentEvidence": {
+    "driver": "evidence/team-watchdog/plugin/20260915T160657Z/driver.mjs (the real plugin code, both mounts)",
+    "reader": "evidence/team-watchdog/plugin/20260915T160657Z/reader.mjs (a separate `node` process that imports NO plugin code)",
+    "fixture": "evidence/team-watchdog/plugin/20260915T160657Z/raw/ws (workspace left on disk; stateDir 'state/team' on purpose \u2014 `.mpd/` is gitignored at any depth, and this fixture must stay committed: heartbeat/, scene/team-a/{2 warn + 1 escalate + latest.json}, hold/team-a.json, incidents.jsonl, read-watermark.json)",
+    "driverResult": "evidence/team-watchdog/plugin/20260915T160657Z/raw/driver.result.json"
+  },
+  "notClaimed": [
+    "NO live-LLM member turn was driven (no model credential in this environment). AC-1/AC-2's live-turn lane (`team-watchdog-heartbeat.mjs`) and the fault-injection lanes are w8/w9 deliverables; here the writers were driven through the real installed handlers with a stub host and the artifacts were read back by a separate process.",
+    "NO authenticated settings write against a mounted host was performed (AC-11's config lane owns it). The re-read was exercised through the adapter's own settings seam.",
+    "The adopted dispatch gates and tool guards that HONOUR a hold are NOT wired \u2014 that is w7's scope, and no adopted file was edited.",
+    "The Web banner / TUI status row / dialog surfaces are NOT implemented (later tasks). The notice-of-record here is the durable incident record the three readers consume.",
+    "No pre-dispatch tool stamp exists (POST only), per W-9.",
+    "`members[].unread` mirrors the adopted unread predicate (`state.js:845-855`) and `parkedAttempts` is the durable projection rather than the adopted scheduler's in-process Map; both are documented in the package README.",
+    "The timer-count assertion is made against a patched global setInterval in the unit suite; the mounted boot's single-timer claim is supported by the apply line (disposers=5) and the process staying up, not by an in-host timer census.",
+    "The evidence fixture uses an explicit `stateDir: state/team` (not the shipped `.mpd/team`) because `.mpd/` is gitignored at any depth and the artifacts must stay committed for inspection. The SHIPPED default is exercised by the mounted boot (boot line `stateDir=.mpd/team`) and by the unit suite."
+  ]
+}

@@ -198,13 +198,13 @@ describe("isolation and front-door parity", () => {
     expect(readFileSync(join(REPO, "scripts", "build-mpd-client.mjs"), "utf8")).toContain("@mpd-dsh/settings-card")
   })
 
-  test("the card's six fields/labels/zh descriptions are IDENTICAL to the ONE shared declaration (no drift)", () => {
+  test("the card's eleven fields/labels/zh descriptions are IDENTICAL to the ONE shared declaration (no drift)", () => {
     // Both front doors now read the knob list from `packages/mpd-config-plugin/src/settings-schema.ts`
     // (the TUI imports it; the card mirrors it), so this compares the card against that single source.
     const shared = readFileSync(join(REPO, "packages", "mpd-config-plugin", "src", "settings-schema.ts"), "utf8")
     const { FIELDS } = (0, eval)("(" + CARD_SOURCE + ")")((name) => ({ react: {}, locales: {} })[name] ?? {})
     expect(Array.isArray(FIELDS)).toBe(true)
-    expect(FIELDS).toHaveLength(6)
+    expect(FIELDS).toHaveLength(11)
     for (const field of FIELDS) {
       expect(shared).toContain(`path: ["${field.path[0]}", "${field.path[1]}"]`)
       expect(shared).toContain(`label: "${field.label}"`)

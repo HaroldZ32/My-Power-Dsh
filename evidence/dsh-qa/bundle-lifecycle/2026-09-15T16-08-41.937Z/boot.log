@@ -1,0 +1,21 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=fail binary=/root/dshProj/my-power-dsh/node_modules/.bun/@colbymchenry+codegraph@1.5.0/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/root/dshProj/my-power-dsh/.qa-reloc/bundle-lifecycle-2026-09-15T16-08-41.937Z
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5
+[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[CodeGraph MCP] File watcher active — graph will auto-sync on changes
+[roles-probe] PRESET_MPD=ok
+[roles-probe] PRESET_PATH=/root/dshProj/my-power-dsh/.qa-reloc/bundle-lifecycle-2026-09-15T16-08-41.937Z/home/profiles/w/node_modules/@mpd-dsh/mpd/presets/mpd/agent.cordis.yml trust=system
+[roles-probe] ADAPTER_SEAMS=tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agents,events ABSENT=agentPresets,compaction,compactionForAgent
+[roles-probe] ADAPTER_TOOL_CALL=ok
+[roles-probe] ROSTER=oracle,librarian,prometheus,hephaestus,sisyphus,atlas,explore,metis,momus,multimodal-looker,sisyphus-junior
+[roles-probe] ROSTER_NAMES=Architect,Researcher,Planner,Deep Worker,Senior Engineer,Lead,Explorer,Reviewer,Plan Reviewer,Vision Analyst,Junior Engineer
+[roles-probe] AGENT_TEAMS_TOOLS=7/7
+[roles-probe] AGENT_TEAMS_NEW_TOOLS_OK=true
+[roles-probe] TEAM_COMPACT_TOOLS=2/2
+[roles-probe] TOOL_PARAM_SCHEMAS=56/56
+[roles-probe] SKILLS=18 BUNDLED=18 SKILL_FIXTURES=5/5
+[roles-probe] SKILL_FIXTURE=ok name=svn-master base=/root/dshProj/my-power-dsh/skills/svn-master bytes=5210
+[roles-probe] PASS

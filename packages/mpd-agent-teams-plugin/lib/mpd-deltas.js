@@ -111,6 +111,17 @@ export const MPD_DELTAS = [
     },
     {
         file: "packages/mpd-agent-teams-plugin/lib/tools.js",
+        id: "mpd-delta watchdog-hold-reader",
+        beforeContext: [
+            "import { resolveTeamProfile } from \"./profiles.js\";",
+        ],
+        afterContext: [
+            "/** The caller agent, or a loud failure for non-agent callers. */",
+        ],
+        block: "//#region mpd-delta watchdog-hold-reader (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n/**\n * The team watchdog's PRESERVING hold, read through the watchdog's OWN service.\n *\n * `ctx.get(name, false)` is cordis's inject-free lookup (`Context#get`: \"Read a\n * service from the store without the inject requirement\"), so a host-plane row can\n * consult another host-plane row's service without declaring it — which matters here,\n * because this gate lives in adopted code whose `inject` list is not ours to change.\n *\n * The SERVICE is the only read this gate performs:\n *   * synchronous and non-throwing;\n *   * hydrated at its own row's apply and updated on every hold/resume THAT process\n *     performs, and it falls back to the durable `watchdog/hold/<teamId>.json` record\n *     itself for a hold another process wrote (the view reports which it used).\n *\n * FAIL-OPEN (binding): with the watchdog row absent the service is undefined, so this\n * gate reads NOTHING — a hold-looking file on disk alone changes no dispatch decision —\n * and a throwing reader is swallowed. Dispatch then behaves exactly as it does today.\n *\n * @param ctx - the plugin context (the service store).\n * @param teamId - the team to ask about.\n * @param workspace - that team's workspace (one host serves many sessions).\n * @returns the hold view, or undefined when the team is not held.\n */\nconst WATCHDOG_HOLD_SERVICE = \"mpdWatchdog\";\nfunction watchdogHoldOf(ctx, teamId, workspace) {\n    try {\n        const watchdog = typeof ctx?.get === 'function' ? ctx.get(WATCHDOG_HOLD_SERVICE, false) : undefined;\n        const view = typeof watchdog?.isHeld === 'function' ? watchdog.isHeld(teamId, workspace) : undefined;\n        if (view === undefined || view === null || view.held !== true)\n            return undefined;\n        return {\n            holdId: String(view.holdId ?? ''),\n            at: typeof view.at === 'number' ? view.at : 0,\n            reason: String(view.reason ?? ''),\n            source: view.source === undefined ? null : String(view.source),\n        };\n    }\n    catch {\n        return undefined;\n    }\n}\n//#endregion mpd-delta watchdog-hold-reader",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/tools.js",
         id: "mpd-delta member-tool-deny-param",
         beforeContext: [
             "        description: 'Add a member to the team roster. In a staged team this only adds an editable plan row and does not spawn a child; approval spawns the final configuration. In a running team it creates the durable continuable member immediately.',",
@@ -131,6 +142,19 @@ export const MPD_DELTAS = [
             "                    joinedAt: Date.now(),",
         ],
         block: "                    //#region mpd-delta member-tool-deny-add (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n                    // DEFECT (measured 2026-09-14): a member added at runtime could not declare\n                    // itself read-only, so `agent_teams_add_member` produced a \"read-only\" member\n                    // that still held write/edit/bash. The roster path carries `toolDeny` as\n                    // profile data; the runtime path accepts the same list here.\n                    ...(args.toolDeny === undefined ? {} : { toolDeny: [...args.toolDeny] }),\n                    //#endregion mpd-delta member-tool-deny-add",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/tools.js",
+        id: "mpd-delta claim-task-hold-guard",
+        beforeContext: [
+            "            return withTeamLock(teamLockKey(stateRoot, team.id), async () => {",
+            "                const { team: fresh, identity } = await requireFreshParticipant(stateRoot, team.id, caller.id);",
+        ],
+        afterContext: [
+            "                const task = requireTask(fresh, args.task_id);",
+            "                if (task.reassigning === true) {",
+        ],
+        block: "                //#region mpd-delta claim-task-hold-guard (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n                // The hold stops NEW work at the tool boundary as well, so a member that\n                // already owns an attempt cannot keep advancing a held team. Loud, named,\n                // and it writes NOTHING — which is what keeps the pause preserving.\n                const claimHold = watchdogHoldOf(ctx, fresh.id, workspace);\n                if (claimHold !== undefined) {\n                    throw new Error(`team ${fresh.id} is held by the team watchdog (hold ${claimHold.holdId} since ${new Date(claimHold.at).toISOString()}: ${claimHold.reason}); the team must be released with the watchdog's own session-watchdog-resume action before any further work`);\n                }\n                //#endregion mpd-delta claim-task-hold-guard",
     },
     {
         file: "packages/mpd-agent-teams-plugin/lib/tools.js",
@@ -179,6 +203,19 @@ export const MPD_DELTAS = [
             "                    verify: { type: 'array', items: { type: 'string' }, description: 'Complete replacement verify list.' },",
         ],
         block: "                    //#region mpd-delta update-task-amend-scope (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n                    // Wave-4 GAP 5 (measured live): `inScope`/`outOfScope` were amendable by\n                    // NOBODY — no captain surface exposed them and a scope is frozen once the\n                    // task exists — so a captain-authored scope defect could only be repaired\n                    // by failing the task and re-running its dependents (measured twice in one\n                    // wave, each costing a fail-and-retry cycle). They are plain definition\n                    // fields, amended exactly like the other lists. The region ends BEFORE\n                    // `verify` on purpose: the closing braces after it are not a unique\n                    // anchor window, and the applier refuses a far-away or ambiguous one.\n                    inScope: { type: 'array', items: { type: 'string' }, description: 'Complete replacement of the workspace-relative POSIX paths this task may change.' },\n                    outOfScope: { type: 'array', items: { type: 'string' }, description: 'Complete replacement of the paths this task must NOT change.' },\n                    //#endregion mpd-delta update-task-amend-scope",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/tools.js",
+        id: "mpd-delta update-task-hold-guard",
+        beforeContext: [
+            "            const updated = await withTeamLock(teamLockKey(stateRoot, team.id), async () => {",
+            "                const { team: fresh, identity } = await requireFreshParticipant(stateRoot, team.id, caller.id);",
+        ],
+        afterContext: [
+            "                const task = requireTask(fresh, args.task_id);",
+            "                if (identity.kind === 'captain'",
+        ],
+        block: "                //#region mpd-delta update-task-hold-guard (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n                // Same boundary as claim_task: a held team accepts no further updates.\n                // The refusal changes NO record byte, so the in-flight attempt survives it.\n                const updateHold = watchdogHoldOf(ctx, fresh.id, workspace);\n                if (updateHold !== undefined) {\n                    throw new Error(`team ${fresh.id} is held by the team watchdog (hold ${updateHold.holdId} since ${new Date(updateHold.at).toISOString()}: ${updateHold.reason}); the team must be released with the watchdog's own session-watchdog-resume action before any further work`);\n                }\n                //#endregion mpd-delta update-task-hold-guard",
     },
     {
         file: "packages/mpd-agent-teams-plugin/lib/tools.js",
@@ -385,6 +422,18 @@ export const MPD_DELTAS = [
     },
     {
         file: "packages/mpd-agent-teams-plugin/lib/scheduler.js",
+        id: "mpd-delta watchdog-hold-reader",
+        beforeContext: [
+            "    return `team:${stateRoot}:${teamId}`;",
+            "}",
+        ],
+        afterContext: [
+            "function liveCaptain(ctx, captainSessionId, supplied) {",
+        ],
+        block: "//#region mpd-delta watchdog-hold-reader (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n/**\n * The team watchdog's PRESERVING hold, read through the watchdog's OWN service.\n *\n * `ctx.get(name, false)` is cordis's inject-free lookup (`Context#get`: \"Read a\n * service from the store without the inject requirement\"), so a host-plane row can\n * consult another host-plane row's service without declaring it — which matters here,\n * because this gate lives in adopted code whose `inject` list is not ours to change.\n *\n * The SERVICE is the only read this gate performs:\n *   * synchronous and non-throwing;\n *   * hydrated at its own row's apply and updated on every hold/resume THAT process\n *     performs, and it falls back to the durable `watchdog/hold/<teamId>.json` record\n *     itself for a hold another process wrote (the view reports which it used).\n *\n * FAIL-OPEN (binding): with the watchdog row absent the service is undefined, so this\n * gate reads NOTHING — a hold-looking file on disk alone changes no dispatch decision —\n * and a throwing reader is swallowed. Dispatch then behaves exactly as it does today.\n *\n * @param ctx - the plugin context (the service store).\n * @param teamId - the team to ask about.\n * @param workspace - that team's workspace (one host serves many sessions).\n * @returns the hold view, or undefined when the team is not held.\n */\nconst WATCHDOG_HOLD_SERVICE = \"mpdWatchdog\";\nfunction watchdogHoldOf(ctx, teamId, workspace) {\n    try {\n        const watchdog = typeof ctx?.get === 'function' ? ctx.get(WATCHDOG_HOLD_SERVICE, false) : undefined;\n        const view = typeof watchdog?.isHeld === 'function' ? watchdog.isHeld(teamId, workspace) : undefined;\n        if (view === undefined || view === null || view.held !== true)\n            return undefined;\n        return {\n            holdId: String(view.holdId ?? ''),\n            at: typeof view.at === 'number' ? view.at : 0,\n            reason: String(view.reason ?? ''),\n            source: view.source === undefined ? null : String(view.source),\n        };\n    }\n    catch {\n        return undefined;\n    }\n}\n//#endregion mpd-delta watchdog-hold-reader",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/scheduler.js",
         id: "mpd-delta dispatch-decline-guard",
         beforeContext: [
             "    return ctx.agents.get(member.id);",
@@ -440,7 +489,7 @@ export const MPD_DELTAS = [
         afterContext: [
             "            for (const member of team.members) {",
         ],
-        block: "        //#region mpd-delta kick-team-decline-logs (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n        async kickTeam(workspace, teamId, suppliedCaptain) {\n            const stateRoot = stateRootOf(workspace, config);\n            const team = await readTeam(stateRoot, teamId);\n            if (team === undefined)\n                return noteDispatchDecline(ctx.logger, teamId, '*', 'no team record exists at this state root');\n            if (team.halted === true)\n                return noteDispatchDecline(ctx.logger, teamId, '*', 'the team is halted');\n            if (team.phase === 'staged')\n                return noteDispatchDecline(ctx.logger, teamId, '*', 'the team is still staged; approval has not committed yet');\n            const captain = liveCaptain(ctx, team.captainSessionId, suppliedCaptain);\n            if (captain === undefined)\n                return noteDispatchDecline(ctx.logger, teamId, '*', 'no live captain session is resolvable, so no member turn can be authorized');\n        //#endregion mpd-delta kick-team-decline-logs",
+        block: "        //#region mpd-delta kick-team-decline-logs (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n        async kickTeam(workspace, teamId, suppliedCaptain) {\n            const stateRoot = stateRootOf(workspace, config);\n            const team = await readTeam(stateRoot, teamId);\n            if (team === undefined)\n                return noteDispatchDecline(ctx.logger, teamId, '*', 'no team record exists at this state root');\n            if (team.halted === true)\n                return noteDispatchDecline(ctx.logger, teamId, '*', 'the team is halted');\n            if (team.phase === 'staged')\n                return noteDispatchDecline(ctx.logger, teamId, '*', 'the team is still staged; approval has not committed yet');\n            const teamHold = watchdogHoldOf(ctx, teamId, workspace);\n            if (teamHold !== undefined)\n                return noteDispatchDecline(ctx.logger, teamId, '*', `the team is held by the team watchdog (hold ${teamHold.holdId} since ${new Date(teamHold.at).toISOString()}: ${teamHold.reason})`);\n            const captain = liveCaptain(ctx, team.captainSessionId, suppliedCaptain);\n            if (captain === undefined)\n                return noteDispatchDecline(ctx.logger, teamId, '*', 'no live captain session is resolvable, so no member turn can be authorized');\n        //#endregion mpd-delta kick-team-decline-logs",
     },
     {
         file: "packages/mpd-agent-teams-plugin/lib/scheduler.js",
@@ -452,6 +501,18 @@ export const MPD_DELTAS = [
             "            const queueKey = memberQueueKey(stateRoot, teamId, memberName);",
         ],
         block: "            //#region mpd-delta interjection-expiry-tick (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n            // R1: the scheduler's idle edge IS the clock for \"captain silence = DENY\". An\n            // expired request flips pending -> expired and notifies the requester; the tick\n            // is best-effort so a bookkeeping failure can never block a real wake-up.\n            try {\n                const expired = await expireInterjections(stateRoot, teamId);\n                if (expired.length > 0)\n                    ctx.logger?.info?.(`agent-teams: expired ${expired.length} unanswered interjection request(s): ${expired.join(', ')}`);\n            }\n            catch (error) {\n                ctx.logger?.warn?.(`agent-teams: interjection expiry tick failed: ${String(error)}`);\n            }\n            //#endregion mpd-delta interjection-expiry-tick",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/scheduler.js",
+        id: "mpd-delta kick-member-hold-decline",
+        beforeContext: [
+            "                if (team === undefined || team.halted === true || team.phase === 'staged')",
+            "                    return;",
+        ],
+        afterContext: [
+            "                const captain = liveCaptain(ctx, team.captainSessionId, suppliedCaptain);",
+        ],
+        block: "                //#region mpd-delta kick-member-hold-decline (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n                // The team watchdog's PRESERVING hold, honoured where every other\n                // dispatch decline is honoured. It stops NEW work and touches nothing.\n                const memberHold = watchdogHoldOf(ctx, teamId, workspace);\n                if (memberHold !== undefined) {\n                    noteDispatchDecline(ctx.logger, teamId, memberName, `the team is held by the team watchdog (hold ${memberHold.holdId} since ${new Date(memberHold.at).toISOString()}: ${memberHold.reason})`);\n                    return;\n                }\n                //#endregion mpd-delta kick-member-hold-decline",
     },
     {
         file: "packages/mpd-agent-teams-plugin/lib/scheduler.js",
@@ -474,7 +535,7 @@ export const MPD_DELTAS = [
         afterContext: [
             "                    // Resolve cancelled-dependency deadlocks before selecting the",
         ],
-        block: "                    //#region mpd-delta kick-member-locked-decline-logs (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n                    const fresh = await readTeam(stateRoot, team.id);\n                    if (fresh === undefined)\n                        return noteDispatchDecline(ctx.logger, team.id, memberName, 'the team record disappeared while this kick waited for the lock');\n                    if (fresh.halted === true)\n                        return noteDispatchDecline(ctx.logger, team.id, memberName, 'the team was halted while this kick waited for the lock');\n                    if (fresh.phase === 'staged')\n                        return noteDispatchDecline(ctx.logger, team.id, memberName, 'the team returned to staged while this kick waited for the lock');\n                    const currentMember = fresh.members.find(candidate => candidate.name === memberName && candidate.status !== 'removed');\n                    if (currentMember === undefined)\n                        return noteDispatchDecline(ctx.logger, team.id, memberName, 'the member left the team while this kick waited for the lock');\n                    if (currentMember.id === '')\n                        return noteDispatchDecline(ctx.logger, team.id, memberName, 'the member has no spawned child session yet');\n                    const owned = ownedOpenTask(fresh.tasks, currentMember.name);\n                    if (memberActivity(ctx, currentMember) === 'busy' && owned !== undefined)\n                        return noteDispatchDecline(ctx.logger, team.id, memberName, 'the member is running the turn of an attempt it already owns');\n                    //#endregion mpd-delta kick-member-locked-decline-logs",
+        block: "                    //#region mpd-delta kick-member-locked-decline-logs (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n                    const fresh = await readTeam(stateRoot, team.id);\n                    if (fresh === undefined)\n                        return noteDispatchDecline(ctx.logger, team.id, memberName, 'the team record disappeared while this kick waited for the lock');\n                    if (fresh.halted === true)\n                        return noteDispatchDecline(ctx.logger, team.id, memberName, 'the team was halted while this kick waited for the lock');\n                    if (fresh.phase === 'staged')\n                        return noteDispatchDecline(ctx.logger, team.id, memberName, 'the team returned to staged while this kick waited for the lock');\n                        const lockedHold = watchdogHoldOf(ctx, team.id, workspace);\n                        if (lockedHold !== undefined)\n                            return noteDispatchDecline(ctx.logger, team.id, memberName, `the team is held by the team watchdog (hold ${lockedHold.holdId} since ${new Date(lockedHold.at).toISOString()}: ${lockedHold.reason})`);\n                    const currentMember = fresh.members.find(candidate => candidate.name === memberName && candidate.status !== 'removed');\n                    if (currentMember === undefined)\n                        return noteDispatchDecline(ctx.logger, team.id, memberName, 'the member left the team while this kick waited for the lock');\n                    if (currentMember.id === '')\n                        return noteDispatchDecline(ctx.logger, team.id, memberName, 'the member has no spawned child session yet');\n                    const owned = ownedOpenTask(fresh.tasks, currentMember.name);\n                    if (memberActivity(ctx, currentMember) === 'busy' && owned !== undefined)\n                        return noteDispatchDecline(ctx.logger, team.id, memberName, 'the member is running the turn of an attempt it already owns');\n                    //#endregion mpd-delta kick-member-locked-decline-logs",
     },
     {
         file: "packages/mpd-agent-teams-plugin/lib/scheduler.js",

@@ -1,0 +1,38 @@
+## bun test packages/mpd-tui-plugin packages/mpd-team-watchdog-plugin
+
+ 108 pass
+ 0 fail
+ 680 expect() calls
+Ran 108 tests across 20 files. [462.00ms]
+exit=0
+
+## bun run typecheck
+$ tsgo --noEmit
+exit=0
+
+## bun run verify:docs
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=34 failed=0 exempt=15 — PASS
+exit=0
+
+## bun test packages (whole repo)
+packages/mpd-hashline-plugin/test/hashline.test.ts:
+
+packages/mpd-hashline-plugin/test/tool-schema.test.ts:
+
+packages/mpd-bootstrap-plugin/test/bootstrap.test.ts:
+
+packages/mpd-comment-checker-plugin/test/comment-checker.test.ts:
+
+ 699 pass
+ 0 fail
+ 5080 expect() calls
+Ran 699 tests across 134 files. [21.33s]
+exit=0
+## the watchdog's apply still publishes mpdWatchdog (from the suite run of the current tree)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=1
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+
+## corroboration: w7's driver log line (t62 evidence, read-only)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0

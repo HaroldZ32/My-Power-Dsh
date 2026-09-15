@@ -1,0 +1,51 @@
+{
+  "task": "t58",
+  "kind": "work",
+  "owner": "Reviewer",
+  "attempt": 1,
+  "attemptId": "d8691fe3-86cf-40e9-a30c-56b2919b44a1",
+  "subject": "x1 Pool-capability guard miss: reproduce why a pooled implementation task reached the read-only Researcher (findings only)",
+  "verdict": "root cause identified and reproduced; no fix applied",
+  "rootCause": {
+    "summary": "The guard tests `member.toolDeny`, but the object the scheduler hands it is the TEAM member record, which has no such field; the deny list lives in the roster PROFILE data and is consumed only at spawn (toolFilter). With `member.toolDeny === undefined`, `new Set(member?.toolDeny ?? [])` is empty, `taskCapabilityGap` returns [], and the pooled implementation task is delivered.",
+    "candidate": "b/e — a capability flag whose value is applied at spawn and read from a different source than the scheduler's member record",
+    "ruledOut": {
+      "a_guard_only_repair": "taskCapabilityNeed lists 'implementation' explicitly (scheduler.js:235); repro shape A withholds an implementation task",
+      "c_bypass_path": "the guard IS the entry for unassigned tasks (scheduler.js:518-528) and filters assignee===undefined (:289)",
+      "d_logs_but_returns": "the withhold branch calls withhold(...) then continue (:291-293)"
+    }
+  },
+  "quotedCode": [
+    { "file": "packages/mpd-agent-teams-plugin/lib/scheduler.js", "line": 235, "quote": "writes: task.kind === 'implementation' || task.kind === 'repair' || (task.inScope ?? []).length > 0," },
+    { "file": "packages/mpd-agent-teams-plugin/lib/scheduler.js", "line": 246, "quote": "const denied = new Set(member?.toolDeny ?? []);" },
+    { "file": "packages/mpd-agent-teams-plugin/lib/scheduler.js", "line": 289, "quote": "for (const task of tasks.filter(entry => isTaskReady(tasks, entry) && entry.assignee === undefined)) {" },
+    { "file": "packages/mpd-agent-teams-plugin/lib/scheduler.js", "line": 494, "quote": "const currentMember = fresh.members.find(candidate => candidate.name === memberName && candidate.status !== 'removed');" },
+    { "file": "packages/mpd-agent-teams-plugin/lib/scheduler.js", "line": 524, "quote": "? nextCapableTask(fresh.tasks, currentMember, (blocked, gap, explicit) => noteDispatchDecline(...))" },
+    { "file": "packages/mpd-agent-teams-plugin/lib/members.js", "line": 586, "quote": "toolFilter: { deny: [...CAPTAIN_TOOL_NAMES, ...(member.toolDeny ?? [])] }," },
+    { "file": "packages/mpd-agent-teams-plugin/lib/profiles.js", "line": 334, "quote": "toolDeny: optionalStringList(raw['toolDeny'], `${path}.toolDeny`)" },
+    { "file": "packages/mpd-bundle/cordis.patch.yml", "line": 407, "quote": "toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]  (Researcher row)" },
+    { "file": ".mpd/team/mpd-default/team.json", "line": 0, "quote": "Researcher record keys = id,name,role,provider,model,reasoningEffort,executionPrompt,fallback,joinedAt,status  (no toolDeny)" },
+    { "file": "packages/mpd-agent-teams-plugin/self-fix-tests/pool-capability-guard.test.mjs", "line": 50, "quote": "const readOnly = (name) => ({ name, toolDeny: READONLY_DENY })" }
+  ],
+  "reproduction": {
+    "path": "evidence/team-watchdog/pool-guard/20260915T1745Z/repro.mjs",
+    "treeEdited": false,
+    "method": "imports the real exported nextCapableTask and drives it with one pooled implementation task and two member shapes; shape B is the live team record read verbatim from team.json",
+    "shapeA_profileShaped": { "picked": null, "withheldGap": ["write", "edit", "mpd_hashline_edit"] },
+    "shapeB_liveTeamRecord": { "toolDeny": null, "picked": "t55", "withheld": [] },
+    "conclusion": "MISS REPRODUCED"
+  },
+  "regressionSuite": { "command": "bun test packages/mpd-agent-teams-plugin/self-fix-tests/pool-capability-guard.test.mjs", "result": "7 pass / 0 fail", "blindness": "the fixture builds profile-shaped members ({name, toolDeny}) while production passes team-record-shaped members" },
+  "fixRecommendation": {
+    "implemented": false,
+    "shape": "two ADDITIVE pieces; either closes today's hole",
+    "piece1": "carry toolDeny onto the team member record where the profile member is in hand (lib/members.js, mpd-delta member-tool-deny-* region) so the existing guard read becomes truthful",
+    "piece2": "in mpd-delta pool-capability-guard, treat an absent toolDeny on a known read-only roster NAME as denied writes",
+    "wave": "separate follow-up, not this wave (scheduler correctness in the adopted plugin; needs its own fix + mount proof)"
+  },
+  "notDetermined": "whether any OTHER reader of member.toolDeny on a team record is equally blind (only the scheduler and members paths were traced)",
+  "commandsRun": [
+    { "command": "bun evidence/team-watchdog/pool-guard/20260915T1745Z/repro.mjs", "exitCode": 0, "evidence": "shape A withheld (gap write/edit/mpd_hashline_edit), shape B delivered t55 with no withhold → MISS REPRODUCED" },
+    { "command": "bun test packages/mpd-agent-teams-plugin/self-fix-tests/pool-capability-guard.test.mjs", "exitCode": 0, "evidence": "7 pass / 0 fail — green while production misses, blind by fixture shape" }
+  ]
+}

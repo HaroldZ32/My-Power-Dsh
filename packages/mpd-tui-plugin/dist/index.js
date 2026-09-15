@@ -2171,7 +2171,14 @@ var SettingsSchema = import_schemastery.default.object({
   ulw: import_schemastery.default.object({ maxRounds: import_schemastery.default.number().default(6) }),
   memory: import_schemastery.default.object({ vcs: import_schemastery.default.union([import_schemastery.default.const("git"), import_schemastery.default.const("svn")]).default("git") }),
   team: import_schemastery.default.object({ stateDir: import_schemastery.default.string().default(".mpd/team") }),
-  boulder: import_schemastery.default.object({ dir: import_schemastery.default.string().default(".mpd") })
+  boulder: import_schemastery.default.object({ dir: import_schemastery.default.string().default(".mpd") }),
+  watchdog: import_schemastery.default.object({
+    enabled: import_schemastery.default.boolean().default(true),
+    warnSilenceMs: import_schemastery.default.number().default(90000),
+    tickIntervalMs: import_schemastery.default.number().default(15000),
+    warnStreakToEscalate: import_schemastery.default.number().default(3),
+    actionOnEscalate: import_schemastery.default.union([import_schemastery.default.const("pause"), import_schemastery.default.const("warn-only")]).default("pause")
+  })
 });
 var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount)";
 var BRIDGE_NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session";
@@ -2181,7 +2188,12 @@ var SETTINGS_KNOBS = [
   { path: ["ulw", "maxRounds"], label: "Ultrawork rounds", zh: "Ultrawork 轮数", kind: "number" },
   { path: ["memory", "vcs"], label: "Memory backend", zh: "记忆后端", kind: "select", options: ["git", "svn"] },
   { path: ["team", "stateDir"], label: "Team state directory", zh: "团队状态目录", kind: "text" },
-  { path: ["boulder", "dir"], label: "Boulder directory", zh: "Boulder 目录", kind: "text" }
+  { path: ["boulder", "dir"], label: "Boulder directory", zh: "Boulder 目录", kind: "text" },
+  { path: ["watchdog", "enabled"], label: "Watchdog enabled", zh: "看门狗启用", kind: "boolean" },
+  { path: ["watchdog", "warnSilenceMs"], label: "Silence warning threshold (ms)", zh: "静默告警阈值（毫秒）", kind: "number" },
+  { path: ["watchdog", "tickIntervalMs"], label: "Watchdog tick interval (ms)", zh: "看门狗轮询间隔（毫秒）", kind: "number" },
+  { path: ["watchdog", "warnStreakToEscalate"], label: "Warn streak before escalation", zh: "升级前连续告警次数", kind: "number" },
+  { path: ["watchdog", "actionOnEscalate"], label: "Action on escalation", zh: "升级时的动作", kind: "select", options: ["pause", "warn-only"] }
 ];
 
 // packages/mpd-tui-plugin/src/settings.ts
@@ -2521,6 +2533,120 @@ function createDialogs(ctx, log, defaultTimeoutMs = 30000) {
   return { available, outcome: () => outcome, select, confirm };
 }
 
+// packages/mpd-tui-plugin/src/watchdog.ts
+var WATCHDOG_SERVICE = "mpdWatchdog";
+var WATCHDOG_READER = "mpd-tui";
+var WATCHDOG_NOTICE_PREFIX = "watchdog";
+var ACKNOWLEDGE_OPTION = "acknowledge";
+var EMPTY_WATCHDOG_VIEW = { holds: [], unread: [] };
+function readWatchdogView(service, reader, workspace) {
+  if (service === undefined || service === null)
+    return EMPTY_WATCHDOG_VIEW;
+  try {
+    if (typeof service.view === "function") {
+      const view = service.view(reader, workspace);
+      if (view !== undefined && view !== null)
+        return { holds: [...view.holds ?? []], unread: [...view.unread ?? []] };
+    }
+    const holds = typeof service.heldTeams === "function" ? service.heldTeams(workspace) ?? [] : [];
+    const unread = typeof service.unread === "function" ? service.unread(reader, workspace) ?? [] : [];
+    return { holds: [...holds], unread: [...unread] };
+  } catch {
+    return EMPTY_WATCHDOG_VIEW;
+  }
+}
+function watchdogNotice(view) {
+  const parts = [];
+  if (view.holds.length > 0)
+    parts.push(`held ${view.holds.join(", ")}`);
+  if (view.unread.length > 0)
+    parts.push(`${view.unread.length} unread incident${view.unread.length === 1 ? "" : "s"}`);
+  return parts.length === 0 ? undefined : `${WATCHDOG_NOTICE_PREFIX}: ${parts.join(" · ")}`;
+}
+function composeNotices(...notices) {
+  const parts = notices.filter((notice) => typeof notice === "string" && notice.length > 0);
+  return parts.length === 0 ? undefined : parts.join(" · ");
+}
+function watchdogDialog(view) {
+  const detail = view.holds.length > 0 ? `Team ${view.holds.join(", ")} is held by the team watchdog (a member went silent).` : "The team watchdog recorded incidents while nobody was watching.";
+  return {
+    title: `${watchdogNotice(view) ?? WATCHDOG_NOTICE_PREFIX} — ${detail}`,
+    options: [
+      { id: ACKNOWLEDGE_OPTION, label: "Acknowledge", description: "mark these incidents as read so they stop being replayed" },
+      { id: "later", label: "Later", description: "keep them unread; they will be shown again on the next start" }
+    ]
+  };
+}
+function attachWatchdogFrontDoor(ctx, log, options) {
+  let service;
+  let dialogsReady = false;
+  let warnedAbsent = false;
+  let replayed = false;
+  const available = () => service !== undefined && service !== null;
+  const read = () => {
+    try {
+      return readWatchdogView(service, WATCHDOG_READER, options.workspaceRoot());
+    } catch (error) {
+      log.debug(`watchdog read failed: ${String(error?.message ?? error)}`);
+      return EMPTY_WATCHDOG_VIEW;
+    }
+  };
+  const acknowledge = (upTo) => {
+    if (!available() || typeof service?.acknowledge !== "function") {
+      return { ok: false, watermark: 0, error: `the ${WATCHDOG_SERVICE} service is not mounted — the watchdog store was not written` };
+    }
+    try {
+      const result = service.acknowledge(WATCHDOG_READER, upTo, options.workspaceRoot());
+      if (result !== undefined && result !== null && result.ok === true)
+        options.onAcknowledged?.();
+      return result ?? { ok: false, watermark: 0, error: "the acknowledge returned nothing" };
+    } catch (error) {
+      return { ok: false, watermark: 0, error: String(error?.message ?? error) };
+    }
+  };
+  const offer = async () => {
+    if (!available()) {
+      if (!warnedAbsent) {
+        warnedAbsent = true;
+        log.warn(`the ${WATCHDOG_SERVICE} service is not mounted: the watchdog notice and its acknowledge are unavailable (no held team or unread incident can be shown)`);
+      }
+      return;
+    }
+    const view = read();
+    if (view.unread.length === 0)
+      return;
+    if (!options.dialogs.available())
+      return;
+    const request = watchdogDialog(view);
+    const choice = await options.dialogs.select(request.title, request.options);
+    if (choice === ACKNOWLEDGE_OPTION) {
+      const upTo = view.unread.reduce((max, record) => Math.max(max, record.at), 0);
+      acknowledge(upTo);
+    }
+    return choice;
+  };
+  const maybeReplay = () => {
+    if (replayed || !dialogsReady || !available())
+      return;
+    replayed = true;
+    offer().catch((error) => {
+      log.debug(`watchdog replay failed: ${String(error?.message ?? error)}`);
+    });
+  };
+  onService(ctx, WATCHDOG_SERVICE, (_scoped, resolved) => {
+    service = resolved;
+    if (options.replayOnAttach !== false)
+      maybeReplay();
+  });
+  if (options.replayOnAttach !== false) {
+    onService(ctx, "tuiDialogs", () => {
+      dialogsReady = true;
+      maybeReplay();
+    });
+  }
+  return { available, notice: () => watchdogNotice(read()), view: read, offer, acknowledge };
+}
+
 // packages/mpd-tui-plugin/src/decisions.ts
 var DECISION_EVENTS = [
   { event: "tui/input", permission: "session.input.intercept" },
@@ -2746,9 +2872,19 @@ function apply(ctx, config = {}) {
   onService(ctx, "mpdConfig", (_scoped, service) => {
     configHandle = service;
   });
-  const status = resolved.statusLine ? registerStatus(ctx, log, workspaceRoot, home, resolved.statusIntervalMs, bridgeRead) : { outcome: () => ({ state: "absent", detail: "disabled by config" }), refresh: () => {} };
-  const scene = resolved.scene ? registerScene(ctx, log, workspaceRoot, home) : { outcome: () => ({ state: "absent", detail: "disabled by config" }), open: () => false };
   const dialogs = createDialogs(ctx, log);
+  let status = {
+    outcome: () => ({ state: "absent", detail: "not wired yet" }),
+    refresh: () => {}
+  };
+  const watchdogFrontDoor = attachWatchdogFrontDoor(ctx, log, {
+    workspaceRoot,
+    dialogs,
+    onAcknowledged: () => status.refresh()
+  });
+  const noticeRead = () => composeNotices(bridgeRead(), watchdogFrontDoor.notice());
+  status = resolved.statusLine ? registerStatus(ctx, log, workspaceRoot, home, resolved.statusIntervalMs, noticeRead) : { outcome: () => ({ state: "absent", detail: "disabled by config" }), refresh: () => {} };
+  const scene = resolved.scene ? registerScene(ctx, log, workspaceRoot, home) : { outcome: () => ({ state: "absent", detail: "disabled by config" }), open: () => false };
   const renderers = resolved.renderers ? registerRenderers(ctx, log) : { outcome: () => ({ state: "absent", detail: "disabled by config" }) };
   const settings = resolved.settingsSection ? registerSettingsSection(ctx, log) : { outcome: () => ({ state: "absent", detail: "disabled by config" }) };
   const trees = resolved.commandTrees ? registerCommandTrees(ctx, log) : { outcome: () => ({ state: "absent", detail: "disabled by config" }) };

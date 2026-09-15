@@ -19,6 +19,49 @@ export { steerCaptainReport } from "./members.js";
 import { TERMINAL_TASK_STATUSES } from "./types.js";
 import { installTeamScheduler } from "./scheduler.js";
 import { resolveTeamProfile } from "./profiles.js";
+//#region mpd-delta watchdog-hold-reader (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/**
+ * The team watchdog's PRESERVING hold, read through the watchdog's OWN service.
+ *
+ * `ctx.get(name, false)` is cordis's inject-free lookup (`Context#get`: "Read a
+ * service from the store without the inject requirement"), so a host-plane row can
+ * consult another host-plane row's service without declaring it — which matters here,
+ * because this gate lives in adopted code whose `inject` list is not ours to change.
+ *
+ * The SERVICE is the only read this gate performs:
+ *   * synchronous and non-throwing;
+ *   * hydrated at its own row's apply and updated on every hold/resume THAT process
+ *     performs, and it falls back to the durable `watchdog/hold/<teamId>.json` record
+ *     itself for a hold another process wrote (the view reports which it used).
+ *
+ * FAIL-OPEN (binding): with the watchdog row absent the service is undefined, so this
+ * gate reads NOTHING — a hold-looking file on disk alone changes no dispatch decision —
+ * and a throwing reader is swallowed. Dispatch then behaves exactly as it does today.
+ *
+ * @param ctx - the plugin context (the service store).
+ * @param teamId - the team to ask about.
+ * @param workspace - that team's workspace (one host serves many sessions).
+ * @returns the hold view, or undefined when the team is not held.
+ */
+const WATCHDOG_HOLD_SERVICE = "mpdWatchdog";
+function watchdogHoldOf(ctx, teamId, workspace) {
+    try {
+        const watchdog = typeof ctx?.get === 'function' ? ctx.get(WATCHDOG_HOLD_SERVICE, false) : undefined;
+        const view = typeof watchdog?.isHeld === 'function' ? watchdog.isHeld(teamId, workspace) : undefined;
+        if (view === undefined || view === null || view.held !== true)
+            return undefined;
+        return {
+            holdId: String(view.holdId ?? ''),
+            at: typeof view.at === 'number' ? view.at : 0,
+            reason: String(view.reason ?? ''),
+            source: view.source === undefined ? null : String(view.source),
+        };
+    }
+    catch {
+        return undefined;
+    }
+}
+//#endregion mpd-delta watchdog-hold-reader
 /** The caller agent, or a loud failure for non-agent callers. */
 function requireCaptain(exec) {
     if (!exec.agent) {
@@ -1370,6 +1413,15 @@ export function registerAgentTeamsTools(ctx, config) {
             const team = await requireParticipantTeam(workspace, config, caller);
             return withTeamLock(teamLockKey(stateRoot, team.id), async () => {
                 const { team: fresh, identity } = await requireFreshParticipant(stateRoot, team.id, caller.id);
+                //#region mpd-delta claim-task-hold-guard (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                // The hold stops NEW work at the tool boundary as well, so a member that
+                // already owns an attempt cannot keep advancing a held team. Loud, named,
+                // and it writes NOTHING — which is what keeps the pause preserving.
+                const claimHold = watchdogHoldOf(ctx, fresh.id, workspace);
+                if (claimHold !== undefined) {
+                    throw new Error(`team ${fresh.id} is held by the team watchdog (hold ${claimHold.holdId} since ${new Date(claimHold.at).toISOString()}: ${claimHold.reason}); the team must be released with the watchdog's own session-watchdog-resume action before any further work`);
+                }
+                //#endregion mpd-delta claim-task-hold-guard
                 const task = requireTask(fresh, args.task_id);
                 if (task.reassigning === true) {
                     throw new Error(`task ${task.id} is being reassigned; wait for the handoff to finish`);
@@ -1657,6 +1709,14 @@ export function registerAgentTeamsTools(ctx, config) {
             const team = await requireParticipantTeam(workspace, config, caller);
             const updated = await withTeamLock(teamLockKey(stateRoot, team.id), async () => {
                 const { team: fresh, identity } = await requireFreshParticipant(stateRoot, team.id, caller.id);
+                //#region mpd-delta update-task-hold-guard (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                // Same boundary as claim_task: a held team accepts no further updates.
+                // The refusal changes NO record byte, so the in-flight attempt survives it.
+                const updateHold = watchdogHoldOf(ctx, fresh.id, workspace);
+                if (updateHold !== undefined) {
+                    throw new Error(`team ${fresh.id} is held by the team watchdog (hold ${updateHold.holdId} since ${new Date(updateHold.at).toISOString()}: ${updateHold.reason}); the team must be released with the watchdog's own session-watchdog-resume action before any further work`);
+                }
+                //#endregion mpd-delta update-task-hold-guard
                 const task = requireTask(fresh, args.task_id);
                 if (identity.kind === 'captain'
                     && task.assignee !== undefined

@@ -1,0 +1,60 @@
+{
+  "task": "t59",
+  "kind": "work",
+  "owner": "Reviewer",
+  "attempt": 2,
+  "attemptId": "db85dea8-7e2a-4de0-aabb-e255ca37eb65",
+  "subject": "x1b Close x1's open gap: complete inventory of toolDeny readers/writers on the team-record shape (findings only)",
+  "verdict": "inventory complete; the open question is answered with a SECOND blind reader found (not NONE); no fix applied, no tree edited",
+  "searchesRun": [
+    "grep -rn \"toolDeny\" packages/mpd-agent-teams-plugin/lib/ --include=*.js | grep -v mpd-deltas.js",
+    "grep -rn \"toolFilter\" packages/mpd-agent-teams-plugin/lib/ --include=*.js | grep -v mpd-deltas.js",
+    "grep -rn \"CAPTAIN_TOOL_NAMES\" packages/mpd-agent-teams-plugin/lib/ --include=*.js",
+    "grep -rn \"MEMBER_TOOL_NAMES\\|readOnly\\|readonly\" packages/mpd-agent-teams-plugin/lib/ --include=*.js | grep -v mpd-deltas.js",
+    "grep -rn \"taskCapabilityGap(\\|taskCapabilityNeed(\" packages/mpd-agent-teams-plugin/lib/ --include=*.js | grep -v mpd-deltas.js",
+    "grep -rn \"members.push\\|members: \\[\\|\\.members = \\|members.splice\\|members.map\" packages/mpd-agent-teams-plugin/lib/*.js | grep -v mpd-deltas.js",
+    "grep -o '\"mpd-delta [a-z-]*\"' packages/mpd-agent-teams-plugin/lib/mpd-deltas.js | sort -u"
+  ],
+  "readers": [
+    { "id": "R1", "path": "lib/scheduler.js", "line": 246, "quote": "const denied = new Set(member?.toolDeny ?? []);", "suppliedBy": "scheduler.js:494 `fresh.members.find(...)` — the persisted team record", "verdict": "TEAM-record → BLIND (t58 root cause)" },
+    { "id": "R2", "path": "lib/members.js", "line": 586, "quote": "toolFilter: { deny: [...CAPTAIN_TOOL_NAMES, ...(member.toolDeny ?? [])] },", "suppliedBy": "spawnMember's `member` param, called from tools.js:2619 (draft.members built at :2582), tools.js:434 (staged commit barrier) and tools.js:959 (runtime add-member record)", "verdict": "BLIND for roster-created and staged teams; SAFE for runtime-added members — THE SECOND BLIND READER" },
+    { "id": "R3", "path": "lib/capabilities.js", "line": 94, "quote": "deny: TEAM_TOOL_NAMES.filter(name => !MEMBER_TOOL_NAMES.includes(name)),", "suppliedBy": "constant name sets imported at capabilities.js:16 — no member record", "verdict": "SAFE" },
+    { "id": "R4", "path": "lib/profiles.js", "line": 21, "quote": "const MEMBER_KEYS = ['name','role','provider','model','reasoning_effort','executionPrompt','fallback','toolDeny'];", "suppliedBy": "profile parsing", "verdict": "PROFILE → SAFE" },
+    { "id": "R5", "path": "lib/profiles.js", "line": 334, "quote": "toolDeny: optionalStringList(raw['toolDeny'], `${path}.toolDeny`) });", "suppliedBy": "the raw roster entry", "verdict": "PROFILE → SAFE" },
+    { "id": "R6", "path": "lib/profiles.js", "line": 583, "quote": "* @param value - the raw `toolDeny` entry.", "suppliedBy": "validator docstring", "verdict": "SAFE (not a reader)" },
+    { "id": "R7", "path": "lib/index.js", "line": 70, "quote": "toolDeny: z.array(z.string()),", "suppliedBy": "zod schema for member config input", "verdict": "SAFE (validator)" },
+    { "id": "R8", "path": "lib/tools.js", "line": 879, "quote": "toolDeny: {", "suppliedBy": "agent_teams_add_member parameter schema", "verdict": "SAFE (validator)" }
+  ],
+  "openQuestionAnswer": "NOT NONE — a second blind reader exists: R2 (members.js:586) is blind for every team created from a roster profile, because the creation mapping at tools.js:2582 never carries template.toolDeny into the record that the spawn loop (tools.js:2617-2619) passes to spawnMember. Consequence: for a roster-created team a read-only member can receive a pooled implementation/repair task (R1) AND its own session is not restricted from write/edit/bash by the member-tool-deny-filter delta (R2), i.e. that delta is inert on the main creation path.",
+  "writers": [
+    { "id": "W1", "path": "lib/tools.js", "line": 2582, "quote": "members: profile.members.map((template, index) => { ... return { id:'', name: template.name, role: template.role, provider, model, reasoningEffort, executionPrompt, ...fallback, joinedAt: now, status: 'idle' }; })", "survives": "NO — DROPPED (root write defect); persisted to team.json so a later process is blind too" },
+    { "id": "W2", "path": "lib/tools.js", "line": 940, "quote": "const member = { ... ...(args.toolDeny === undefined ? {} : { toolDeny: [...args.toolDeny] }), joinedAt, status:'idle' }; ... fresh.members.push(member); await writeTeam(...)", "survives": "YES when args.toolDeny supplied; NO when omitted (runtime add-member only)" },
+    { "id": "W3", "path": "lib/tools.js", "line": 392, "quote": "fresh.members = fresh.members.filter(candidate => candidate !== member);", "survives": "PRESERVED (filter, no field rebuild)" },
+    { "id": "W4", "path": "lib/tools.js", "line": 2295, "quote": "const roster = fresh.members.map(member => ({ ...member }));", "survives": "PRESERVED (spread copy)" },
+    { "id": "W5", "path": "lib/profiles.js", "line": 211, "quote": "members.push(member);", "survives": "N/A — profile list, the place the field EXISTS" },
+    { "id": "W6", "path": "lib/tools.js", "line": 434, "quote": "for (const [member, selection] of selections) { await spawnMember(..., member, ...) }", "survives": "does not create a record; spawns the staged members — blind whenever they came from W1" },
+    { "id": "W7", "path": "lib/tools.js", "line": 0, "quote": "reassign_task sets task.assignee/attempt fields only — no member-record write", "survives": "N/A — no capability copy involved" }
+  ],
+  "deltaRegions": {
+    "toolDenyRegions": ["member-tool-deny-add", "member-tool-deny-config", "member-tool-deny-filter", "member-tool-deny-helper", "member-tool-deny-keys", "member-tool-deny-param", "member-tool-deny-parse"],
+    "finding": "NO region carries toolDeny from the profile template into the team member record — the creation mapping W1 is untouched by every region, so the hole is a region that was never written (not a regression, not a heal failure)"
+  },
+  "fixCoverage": {
+    "necessary1": "W1 — tools.js:2582 creation mapping: add `...(template.toolDeny === undefined ? {} : { toolDeny: [...template.toolDeny] })`. Repairs R1, R2 and the staged route, and persists the field so a LATER process is not blind. New ADDITIVE region.",
+    "necessary2": "already-persisted records (teams written before the fix never get the field): either a migration/backfill from the roster profile at team load, or t58's piece 2 (an absent toolDeny on a known read-only roster NAME counts as denied writes). NECESSARY for existing teams, not merely defensive — and piece 2 alone fixes only the scheduler reader, not the spawn filter.",
+    "defensive": "keeping a belt check in the guard even after W1 carries the field",
+    "docs": "correct the comments that assert the record carries the names — scheduler.js:222 and members.js:578-583",
+    "placement": "separate follow-up with its own mount proof (a fixture that spawns a roster team and asserts both the record field and the effective deny set), because it changes every team's spawn filter"
+  },
+  "limits": [
+    "Data paths were verified end to end; a live member session's tool list was NOT witnessed (no model credentials in this environment — the same limit t42 declares). Recommended falsifier: one member-session tool-list read or a fixture assertion on the effective toolFilter.",
+    "client.js also shapes member objects for display (493, 2680) — a snapshot consumer, not a team-state writer, but a capability UI would read the same blind field."
+  ],
+  "commandsRun": [
+    { "command": "grep -rn \"toolDeny\" packages/mpd-agent-teams-plugin/lib/ --include=*.js | grep -v mpd-deltas.js", "exitCode": 0, "evidence": "14 hits: R1 scheduler.js:246; R2 members.js:586; R4-R6 profiles.js:21/334/583; R7 index.js:70; R8 tools.js:879/951/953; plus comments — full set classified in REPORT.md §1" },
+    { "command": "grep -rn \"toolFilter\" packages/mpd-agent-teams-plugin/lib/ --include=*.js | grep -v mpd-deltas.js", "exitCode": 0, "evidence": "members.js:569 (capability gate), members.js:586 (the merge — R2), profiles.js:578 (comment) — no other toolFilter consumer" },
+    { "command": "grep -rn \"MEMBER_TOOL_NAMES\\|readOnly\\|readonly\" packages/mpd-agent-teams-plugin/lib/ --include=*.js | grep -v mpd-deltas.js", "exitCode": 0, "evidence": "capabilities.js:16/94 (constant-set deny — R3, SAFE) + tool-names.js:12/15; no record-based capability read" },
+    { "command": "grep -rn \"taskCapabilityGap(\\|taskCapabilityNeed(\" packages/mpd-agent-teams-plugin/lib/ --include=*.js | grep -v mpd-deltas.js", "exitCode": 0, "evidence": "definitions at scheduler.js:233/245 and callers only at scheduler.js:284/290 — the guard is the sole consumer of taskCapabilityGap" },
+    { "command": "grep -o '\"mpd-delta [a-z-]*\"' packages/mpd-agent-teams-plugin/lib/mpd-deltas.js | sort -u", "exitCode": 0, "evidence": "registry lists member-tool-deny-{add,config,filter,helper,keys,param,parse} and pool-capability-{guard,select} — NO region touches the tools.js:2582 creation mapping" }
+  ]
+}

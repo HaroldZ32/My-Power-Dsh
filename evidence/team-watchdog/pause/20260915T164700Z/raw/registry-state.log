@@ -1,0 +1,23 @@
+== every mpd-delta region block, per adopted file (region markers) ==
+command.js                               1
+index.js                                 2
+members.js                               1
+profiles.js                              3
+quality-gates.js                         7
+scheduler.js                             13
+session-start.js                         2
+state.js                                 4
+tools.js                                 20
+
+== registry entries ==
+53
+== --check ==
+[patch-agent-teams-fixes] already applied: 53 mpd delta region(s) across 9 adopted file(s)
+== the gate read, as it now stands in both files ==
+packages/mpd-agent-teams-plugin/lib/scheduler.js:154:function watchdogHoldOf(ctx, teamId, workspace) {
+packages/mpd-agent-teams-plugin/lib/scheduler.js:469:            const teamHold = watchdogHoldOf(ctx, teamId, workspace);
+packages/mpd-agent-teams-plugin/lib/scheduler.js:505:                const memberHold = watchdogHoldOf(ctx, teamId, workspace);
+packages/mpd-agent-teams-plugin/lib/scheduler.js:549:                        const lockedHold = watchdogHoldOf(ctx, team.id, workspace);
+packages/mpd-agent-teams-plugin/lib/tools.js:47:function watchdogHoldOf(ctx, teamId, workspace) {
+packages/mpd-agent-teams-plugin/lib/tools.js:1420:                const claimHold = watchdogHoldOf(ctx, fresh.id, workspace);
+packages/mpd-agent-teams-plugin/lib/tools.js:1715:                const updateHold = watchdogHoldOf(ctx, fresh.id, workspace);

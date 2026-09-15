@@ -215,6 +215,25 @@
     # read (apply-time config merges for tools/waterfalls).
     - id: mpd-config
       name: '@mpd-dsh/mpd/packages/mpd-config-plugin/dist/index.js'
+    # Team watchdog (w3 core): per-step/per-tool heartbeat store for members AND the
+    # captain, the configurable WARN→ESCALATE machine over the `mpd` namespace's
+    # watchdog.* knobs, the atomic restorable scene snapshot, and the durable
+    # watchdogHold + incident/read-watermark sidecars written BESIDE the adopted
+    # `team.json` (that record keeps its single writer, state.js). It owns its own
+    # `session-watchdog-hold`/`-resume` actions; wiring the adopted dispatch gates
+    # that honour a hold is a later task, so this row registers the contract only.
+    # HOST plane on purpose: a preset row's listeners are scoped to one agent, so a
+    # preset-mounted tick could not witness a wedged CAPTAIN (AC-9).
+    - id: mpd-team-watchdog
+      name: '@mpd-dsh/mpd/packages/mpd-team-watchdog-plugin/dist/index.js'
+      config:
+        # A composition that writes no `watchdog` section in the `mpd` namespace keeps
+        # these; any settings edit wins from the next tick on (live re-read).
+        stateDir: '.mpd/team'
+        warnSilenceMs: 90000
+        tickIntervalMs: 15000
+        warnStreakToEscalate: 3
+        actionOnEscalate: pause
     - id: mpd-tools
       name: '@mpd-dsh/mpd/packages/mpd-tools-plugin/dist/index.js'
       config:

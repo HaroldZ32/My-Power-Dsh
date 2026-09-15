@@ -1,0 +1,13 @@
+== rebuild TUI dist ==
+Bundled 20 modules in 8ms
+
+  index.js  111.40 KB  (entry point)
+
+exit=0
+
+== rebuild watchdog dist ==
+Bundled 13 modules in 8ms
+
+  index.js  113.92 KB  (entry point)
+
+exit=0

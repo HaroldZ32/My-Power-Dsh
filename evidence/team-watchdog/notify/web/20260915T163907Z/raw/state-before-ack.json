@@ -1,0 +1,60 @@
+{
+  "ok": true,
+  "reader": "web-panel",
+  "generatedAt": "2026-09-15T16:46:34.229Z",
+  "stateDir": ".mpd/team",
+  "workspaces": [
+    "/root/dshProj/my-power-dsh/evidence/team-watchdog/notify/web/20260915T163907Z/raw/ws"
+  ],
+  "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/notify/web/20260915T163907Z/raw/ws",
+  "stuck": true,
+  "held": [
+    {
+      "id": "hold-alpha-1",
+      "teamId": "alpha",
+      "since": 1789460000000,
+      "cause": "silence 120000 ms",
+      "taskId": "t9",
+      "attemptId": "a1",
+      "sceneAt": 1789460000000
+    }
+  ],
+  "banner": {
+    "kind": "held",
+    "teamId": "alpha",
+    "holdId": "hold-alpha-1",
+    "incidentId": "inc-1",
+    "cause": "silence for 120000 ms",
+    "since": 1789460000000,
+    "taskId": "t9",
+    "attemptId": "a1",
+    "scene": "/root/dshProj/my-power-dsh/evidence/team-watchdog/notify/web/20260915T163907Z/raw/ws/.mpd/team/watchdog/scene/alpha/latest.json",
+    "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/notify/web/20260915T163907Z/raw/ws"
+  },
+  "activity": [
+    {
+      "id": "inc-1",
+      "teamId": "alpha",
+      "kind": "escalate",
+      "at": 1789460000000,
+      "label": "escalated",
+      "cause": "silence for 120000 ms",
+      "ms": 120000,
+      "taskId": "t9",
+      "attemptId": "a1",
+      "scene": "/root/dshProj/my-power-dsh/evidence/team-watchdog/notify/web/20260915T163907Z/raw/ws/.mpd/team/watchdog/scene/alpha/latest.json",
+      "hold": "applied",
+      "acknowledgedBy": [],
+      "ackRequired": true,
+      "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/notify/web/20260915T163907Z/raw/ws"
+    }
+  ],
+  "unread": [
+    "inc-1"
+  ],
+  "watermarks": {
+    "tui-panel": 5
+  },
+  "replay": true,
+  "errors": []
+}
