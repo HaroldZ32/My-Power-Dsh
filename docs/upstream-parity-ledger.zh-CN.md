@@ -167,7 +167,7 @@ verify`；中文 12 个 —— `设计, 实现, 验证, 改造, 补充, 对齐, 
 | 门禁 | 命令 | 状态 |
 |---|---|---|
 | typecheck | `bun run typecheck` | 已验证（退出码 0） |
-| 插件测试 | `bun test packages/mpd-agent-teams-plugin` | 在该锚点已验证（161 通过 / 0 失败，42 个文件）。**当前树（v0.9.0）：** 213 通过 / 0 失败、58 个文件 —— 插件新增了 dispatch-stall 回归与 region 钉定测试套件（`evidence/agent-teams/dispatch-stall/`） |
+| 插件测试 | `bun test packages/mpd-agent-teams-plugin` | 在该锚点已验证（161 通过 / 0 失败，42 个文件）。**当前树（v0.9.1）：** 220 通过 / 0 失败、60 个文件 —— 插件新增了 dispatch-stall 回归与 region 钉定测试套件（`evidence/agent-teams/dispatch-stall/`），并在 v0.9.1 加入了 pool-capability 守卫（`self-fix-tests/pool-capability-guard.test.mjs`；region 46 → 48） |
 | QA 自检 | `bun run test:qa` | 已验证（退出码 0，全部自检通过） |
 | 运行时启动 | `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs` | 已验证（PASS：一条命令安装、home 无副本、卸载无残留） |
 | 双向门控用例 | `bun skills/dsh-qa/scripts/session-start-team.mjs` | 已验证（PASS：simple 3/3 静默、complex 3/3 恰好一个 staged 团队 + 一条通知、反向控制 disarmed = true） |
