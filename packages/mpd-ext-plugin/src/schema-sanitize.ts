@@ -7,16 +7,22 @@
 // and `outputSchema` are foreign data and must never be handed to the harness
 // unchecked.
 //
-// Two policies, deliberately different (frozen contract §1.4 mcp, REV4):
-//   · `parameters` — PROJECT the foreign schema onto the subset. This harness
-//     release does not validate `parameters` at all (H/dsh-mcp-client/lib/index.js:203-207
-//     passes `tool.inputSchema` straight through), so the projection is
-//     DEFENSE-IN-DEPTH against a future harness, not a fix for a live abort.
-//   · `output.schema` — KEEP-OR-DROP: either the schema already belongs to the
-//     subset unchanged, or that tool is dropped loudly. A third party's output
-//     schema is never rewritten, because a rewritten schema would no longer
-//     describe what the server actually returns (H/dsh-mcp-client/lib/index.js:181-196
-//     `supportedOutputSchema` is the same keep-or-drop posture).
+// Two policies, deliberately different (frozen contract §1.4 mcp, REV4 + release
+// findings F1/F2):
+//   · `parameters` — PROJECT the foreign schema onto the subset and normalize its
+//     ROOT onto an object (a tool call always carries an arguments object, so a
+//     scalar/array/oneOf root is not callable as-is). This harness release does not
+//     validate `parameters` at all (H/dsh-mcp-client/lib/index.js:203-207 passes
+//     `tool.inputSchema` straight through), so the projection is DEFENSE-IN-DEPTH
+//     against a future harness, not a fix for a live abort.
+//   · `output.schema` — KEEP-OR-DROP THE SCHEMA, NEVER THE TOOL: a schema outside
+//     the subset, or one that would have to be rewritten to fit, is dropped so the
+//     tool still registers without `structuredContent`. That is exactly the harness's
+//     posture (H/dsh-mcp-client/lib/index.js:186-196 `supportedOutputSchema` keeps
+//     the tool and drops the schema to `{}`); the REV4 wording ("drop that tool")
+//     was strictly blunter than the seam it mirrors. A third party's schema is
+//     never rewritten, because a rewritten schema would no longer describe what the
+//     server actually returns.
 //
 // The reported `lossy` flag is what separates the two policies: `lossy === false`
 // means the projection is byte-for-byte the input schema (so keep-or-drop may
@@ -511,6 +517,52 @@ function projectNode(projector: Projector, node: unknown, path: string): Project
   }
 
   return projected
+}
+
+/**
+ * Normalize a projected schema onto an OBJECT root.
+ *
+ * Every harness tool is called with an ARGUMENTS OBJECT (`execute(args, exec)`,
+ * and the adapter's own default is an object-rooted `parameters`), so a foreign
+ * `inputSchema` whose root is not `type: "object"` cannot be used verbatim: the
+ * caller has no object to put it in. Two sub-cases:
+ *   · the root already IS an object schema — returned byte-identical, `wrapped:false`
+ *     (this is the only shape a well-formed MCP server advertises: `arguments` is an
+ *     object in the wire protocol);
+ *   · any other projected root is wrapped in one object carrying the payload under a
+ *     single `value` property, so the tool stays callable and its `value` keeps the
+ *     server's own type/annotation keywords. `wrapped:true` is returned so the caller
+ *     records the downgrade instead of hiding it.
+ *
+ * A root that cannot be wrapped at all (not an object at all, e.g. a boolean schema)
+ * is refused with a reason.
+ */
+export function objectRootedSchema(value: unknown): { ok: boolean; wrapped: boolean; rootType: string; schema: Record<string, unknown>; reason?: string } {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return { ok: false, wrapped: false, rootType: typeof value, schema: {}, reason: "the schema is not an object" }
+  }
+  const schema = value as Record<string, unknown>
+  const declared = schema.type
+  const rootType = typeof declared === "string" ? declared : "unspecified"
+  if (declared === "object" || (declared === undefined && (Object.hasOwn(schema, "properties") || Object.hasOwn(schema, "required") || Object.hasOwn(schema, "additionalProperties") || schema.oneOf === undefined))) {
+    // An object root, or a keyword-less root (`{}`), which the harness reads as an
+    // unconstrained object — nothing to normalize.
+    return { ok: true, wrapped: false, rootType, schema }
+  }
+  // The author's own annotations stay on the wrapped schema (inside `value`): the
+  // wrapper describes the ARGUMENTS OBJECT, which is a different thing from what the
+  // server declared, so copying a description onto it would state the wrong subject.
+  return {
+    ok: true,
+    wrapped: true,
+    rootType,
+    schema: {
+      type: "object",
+      properties: { value: schema },
+      required: ["value"],
+      additionalProperties: false,
+    },
+  }
 }
 
 /**

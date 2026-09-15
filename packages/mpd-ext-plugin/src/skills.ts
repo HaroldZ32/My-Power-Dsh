@@ -311,28 +311,42 @@ export interface SkillProviderOptions {
   name: string
   warn: (message: string) => void
   /** Called per skipped candidate so the owning extension can record the reason. */
-  onSkip?: (reason: string) => void
+  onSkip?: (reason: string, name?: string) => void
   /** Called per `list()`/`get()` with the caller's lookup options (never cached). */
   entries: (listOptions: unknown) => SkillDocumentEntry[] | Promise<SkillDocumentEntry[]>
 }
 
+/**
+ * The harness's provider-observation shape (`normalizeProviderObservation`,
+ * H/dsh-skill/lib/index.js:414-426). It matters which of the two an
+ * implementation returns: an ARRAY is read as `{candidates, complete:true}` and
+ * the result is then CACHED per `(cwd, scope, revision)`, while `complete:false`
+ * is never cached and suppresses publication, so the consumer keeps the last good
+ * catalog and retries at its next request boundary.
+ */
+export interface SkillObservation {
+  candidates: SkillCandidate[]
+  complete: boolean
+}
+
 export interface SkillProvider {
   name: string
-  list(options?: unknown): Promise<SkillCandidate[]>
+  list(options?: unknown): Promise<SkillCandidate[] | SkillObservation>
   get(candidate: unknown, options?: unknown): Promise<Record<string, unknown> | undefined>
 }
 
 /**
  * Build the provider for ONE extension (or for the per-call project plane).
  *
- * Nothing here throws: a discovery failure yields an empty catalog, a violating
- * candidate is skipped and warned per item, and a definition that fails its own
- * re-validation is dropped. Provider NAMES are allocated by the caller and are
- * unique by construction; a duplicate name would make the harness throw at
- * registration, which is why registration is wrapped on the caller's side.
+ * Nothing here throws: a discovery failure yields an EMPTY, explicitly
+ * INCOMPLETE observation, a violating candidate is skipped and warned per item,
+ * and a definition that fails its own re-validation is dropped. Provider NAMES are
+ * allocated by the caller and are unique by construction; a duplicate name would
+ * make the harness throw at registration, which is why registration is wrapped on
+ * the caller's side.
  */
 export function createSkillProvider(options: SkillProviderOptions): SkillProvider {
-  const emit = (listOptions: unknown): SkillCandidate[] => {
+  const emit = (listOptions: unknown): SkillObservation => {
     let entries: SkillDocumentEntry[]
     try {
       entries = options.entries(listOptions) as SkillDocumentEntry[]
@@ -340,7 +354,13 @@ export function createSkillProvider(options: SkillProviderOptions): SkillProvide
       const failure = `skill enumeration failed: ${message(error)}`
       options.warn(failure)
       options.onSkip?.(failure)
-      return []
+      // `complete:false` is load-bearing, not decoration: an ARRAY here would be
+      // read as a COMPLETE observation and CACHED for this `(cwd, scope)` until a
+      // registration change or a restart, so ONE transient enumeration failure
+      // would hide this provider's skills for the rest of the session even after
+      // the filesystem recovered. An incomplete observation is never cached, so
+      // the next request boundary retries.
+      return { candidates: [], complete: false }
     }
     const candidates: SkillCandidate[] = []
     const seen = new Set<string>()
@@ -355,19 +375,19 @@ export function createSkillProvider(options: SkillProviderOptions): SkillProvide
       const violation = candidateViolation(candidate, options.name)
       if (violation !== undefined) {
         options.warn(`skill candidate skipped: ${violation}`)
-        options.onSkip?.(violation)
+        options.onSkip?.(violation, candidate.name)
         continue
       }
       if (seen.has(candidate.name)) {
         const duplicate = `duplicate name "${candidate.name}" inside provider "${options.name}"`
         options.warn(`skill candidate skipped: ${duplicate}`)
-        options.onSkip?.(duplicate)
+        options.onSkip?.(duplicate, candidate.name)
         continue
       }
       seen.add(candidate.name)
       candidates.push(candidate)
     }
-    return candidates
+    return { candidates, complete: true }
   }
 
   return {
@@ -376,8 +396,10 @@ export function createSkillProvider(options: SkillProviderOptions): SkillProvide
       try {
         return emit(listOptions)
       } catch (error) {
-        options.warn(`skill provider "${options.name}" list() failed: ${message(error)}`)
-        return []
+        const failure = `skill provider "${options.name}" list() failed: ${message(error)}`
+        options.warn(failure)
+        options.onSkip?.(failure)
+        return { candidates: [], complete: false }
       }
     },
     async get(candidate: unknown, listOptions?: unknown) {
