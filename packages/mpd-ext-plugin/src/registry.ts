@@ -215,6 +215,9 @@ function unknownKeyErrors(value: Record<string, unknown>, allowed: readonly stri
 /** Prefix every refusal note carries, so a refusal is greppable and never a bare load error. */
 export const ROLE_REFUSAL_PREFIX = "refused: "
 
+/** Prefix on the "this extension is disabled, so nothing of it is exposed" note. */
+export const ROLE_NOT_EXPOSED_PREFIX = "not exposed: "
+
 /** Collapsed role-name key: case-, space-, hyphen- and underscore-insensitive. */
 export function roleNameKey(name: string): string {
   return String(name ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "")
@@ -268,21 +271,25 @@ function readRolePersona(path: string): string {
  * per-call `view()` cannot accumulate duplicates while errors written by anyone
  * else (validation, the MCP bridge) are preserved untouched.
  *
- * Known residual: the claim map cannot see `extensions.disable[]`, because the
- * EFFECTIVE enabled state is resolved by the caller (`toView` -> `effectiveEnabled`,
- * outside this module). A descriptor-disabled extension claims nothing here,
- * exactly like the roster; a CONFIG-disabled one is still treated as claiming, so a
- * later extension's same-named role is reported refused while the roster would
- * expose it. Both tools already report `enabled: false` for that extension, and
- * closing the gap needs the caller's config — see the t14 evidence.
+ * Known residual: a CONFIG-disabled entry (`extensions.disable[]`) is invisible to
+ * this module unless the caller passes its effective predicate — the EFFECTIVE
+ * enabled state is resolved by the caller (`toView` -> `effectiveEnabled`). The
+ * caller therefore passes `isEnabled`, and `view()` does exactly that: without it a
+ * config-disabled extension still claimed its names, so a later extension's
+ * same-named role was reported refused while the roster would have exposed it.
+ *
+ * @param entries - the whole view, in exposure order.
+ * @param isEnabled - the caller's EFFECTIVE enabled predicate; absent means
+ *   "descriptor `enabled` only" (the pre-fix behaviour, kept for direct callers).
  */
-export function annotateRoleSurfaces(entries: ExtensionEntry[]): void {
+export function annotateRoleSurfaces(entries: ExtensionEntry[], isEnabled?: (entry: ExtensionEntry) => boolean): void {
   const owner = new Map<string, string>()
   for (const role of ROLES) owner.set(roleNameKey(role.name), "the base roster")
   for (const entry of entries) {
     const notes: MpdExtLoadError[] = []
     const usable: string[] = []
-    if (entry.enabled !== false) {
+    const live = isEnabled === undefined ? entry.enabled !== false : isEnabled(entry)
+    if (live) {
       for (const candidate of entry.roleCandidates) {
         const key = roleNameKey(candidate.name)
         const takenBy = owner.get(key)
@@ -306,11 +313,13 @@ export function annotateRoleSurfaces(entries: ExtensionEntry[]): void {
     entry.errors = [...entry.errors.filter((line) => !line.reason.startsWith(ROLE_REFUSAL_PREFIX)), ...notes]
     // A disabled extension exposes nothing (the roster skips disabled views), so its
     // declared roles are NOT live — say so once instead of listing them as usable.
-    entry.pending = entry.pending.filter((line) => line.item !== "contributes.roles")
-    if (entry.enabled === false && entry.roleCandidates.length > 0) {
+    entry.pending = entry.pending.filter((line) => !line.reason.startsWith(ROLE_NOT_EXPOSED_PREFIX))
+    if (!live && entry.roleCandidates.length > 0) {
       entry.pending.push({
         item: "contributes.roles",
-        reason: `not exposed: this extension is disabled (enabled=false), so none of its ${entry.roleCandidates.length} declared role(s) is resolved`,
+        reason: ROLE_NOT_EXPOSED_PREFIX
+          + `not exposed: this extension is ${entry.enabled === false ? "disabled (enabled=false)" : "disabled by config (extensions.disable)"}`
+          + `, so none of its ${entry.roleCandidates.length} declared role(s) is resolved`,
       })
     }
   }
@@ -318,6 +327,90 @@ export function annotateRoleSurfaces(entries: ExtensionEntry[]): void {
 
 function positiveFinite(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0
+}
+
+/**
+ * Prefix on every SKILL-surface note this module owns: one prefix for both the
+ * collision note (on the loser, in `errors`) and the not-served note (on a disabled
+ * extension, in `pending`), so a per-call re-derivation can strip exactly its own
+ * lines and never accumulate duplicates (the `ROLE_REFUSAL_PREFIX` discipline).
+ */
+export const SKILL_SURFACE_PREFIX = "skill surface: "
+
+/** The skill candidates one entry would emit: its skills roots plus its flow docs. */
+function skillClaims(entry: ExtensionEntry): SkillDocumentEntry[] {
+  return [...entry.skillEntries, ...entry.flowEntries]
+}
+
+/** The descriptor item a claim came from (`contributes.skills` or `contributes.flows`). */
+function claimItem(entry: SkillDocumentEntry): string {
+  return (entry.locator as { kind?: unknown } | undefined)?.kind === "flow" ? "contributes.flows" : "contributes.skills"
+}
+
+/**
+ * Record the skill-NAME collisions the harness resolves silently.
+ *
+ * The harness keeps exactly one candidate per name within a layer: it sorts by
+ * `rank`, then registration order, then local order, and WARN+DROPS every later
+ * same-name candidate (H/dsh-skill/lib/index.js:314-325 with
+ * `compareIndexedCandidates` :518-520). Our providers live in the same layer as the
+ * bundled corpus, so a name two contributors claim is a REAL, silent loss for one
+ * of them — and `mpd_ext_list` used to list both as contributed. This annotation
+ * re-derives the whole-view decision per call and notes the loser with the exact
+ * winner and ranks.
+ *
+ * Only collisions between TWO EXTENSIONS are visible here (the registry knows its
+ * own providers); a name lost to a non-extension provider — the skill corpus, a
+ * user skills root — cannot be decided from this side, which is why the two list
+ * tools verify their claims against the harness's own catalog
+ * (`dsh.listSkills`) before reporting them as served.
+ *
+ * Idempotent by construction: every note this function owns carries
+ * `SKILL_SURFACE_PREFIX` and is removed before the current notes are appended.
+ *
+ * @param entries - the whole view, in serving order.
+ * @param isEnabled - the caller's EFFECTIVE enabled predicate (config-aware); a
+ *   `false` return means the entry claims nothing, so a config-disabled extension
+ *   no longer steals a name from one that really serves it.
+ */
+export function annotateSkillSurfaces(entries: ExtensionEntry[], isEnabled?: (entry: ExtensionEntry) => boolean): void {
+  const live = (entry: ExtensionEntry): boolean => (isEnabled === undefined ? entry.enabled !== false : isEnabled(entry))
+  const winner = new Map<string, { rank: number; entry: ExtensionEntry }>()
+  for (const entry of entries) {
+    if (!live(entry)) continue
+    for (const claim of skillClaims(entry)) {
+      const current = winner.get(claim.document.name)
+      if (current === undefined || claim.rank < current.rank) winner.set(claim.document.name, { rank: claim.rank, entry })
+    }
+  }
+  for (const entry of entries) {
+    const notes: MpdExtLoadError[] = []
+    if (live(entry)) {
+      for (const claim of skillClaims(entry)) {
+        const holder = winner.get(claim.document.name)
+        if (holder === undefined || holder.entry.id === entry.id) continue
+        notes.push({
+          item: claimItem(claim),
+          reason: SKILL_SURFACE_PREFIX
+            + `"${claim.document.name}" (rank ${claim.rank}) is also claimed by extension "${holder.entry.id}" (rank ${holder.rank}),`
+            + ` which the harness serves instead — the lowest rank wins and the other candidate is dropped with a warning`,
+        })
+      }
+    }
+    entry.errors = [...entry.errors.filter((line) => !line.reason.startsWith(SKILL_SURFACE_PREFIX)), ...notes]
+    // A disabled extension's skills are not in the catalog at all; say it once,
+    // next to the same statement the roles surface makes.
+    const declared = skillClaims(entry).length
+    entry.pending = entry.pending.filter((line) => !line.reason.startsWith(SKILL_SURFACE_PREFIX))
+    if (!live(entry) && declared > 0) {
+      entry.pending.push({
+        item: "contributes.skills",
+        reason: SKILL_SURFACE_PREFIX
+          + `not served: this extension is ${entry.enabled === false ? "disabled (enabled=false)" : "disabled by config (extensions.disable)"}`
+          + `, so none of its ${declared} declared skill candidate(s) reaches the catalog`,
+      })
+    }
+  }
 }
 
 // ── descriptor validation ───────────────────────────────────────────────────
@@ -794,8 +887,13 @@ export class MpdExtensionRegistry {
    * Merge the per-call PROJECT plane in front of the apply-time planes: the
    * project plane has the highest precedence (first wins) and its shadowing of
    * an apply-time id is recorded, never fatal.
+   *
+   * Both cross-extension surfaces (roles, skill names) are re-derived here, in
+   * serving order, and both need the caller's EFFECTIVE enabled predicate: a
+   * config-disabled extension (`extensions.disable[]`) must claim nothing, or it
+   * would be reported as the winner of a name it does not serve.
    */
-  view(project: DiscoveryResult): {
+  view(project: DiscoveryResult, options: { isEnabled?: (entry: ExtensionEntry) => boolean } = {}): {
     entries: ExtensionEntry[]
     shadowed: ShadowRecord[]
     rejected: RejectedExtension[]
@@ -811,10 +909,11 @@ export class MpdExtensionRegistry {
       }
       seen.set(entry.id, entry)
     }
-    // The role surface is a WHOLE-VIEW decision (first claimant wins), so it is
+    // Both surfaces are WHOLE-VIEW decisions (first claimant wins), so they are
     // re-derived on every view — the same order the roster iterates.
     const entries = [...seen.values()]
-    annotateRoleSurfaces(entries)
+    annotateRoleSurfaces(entries, options.isEnabled)
+    annotateSkillSurfaces(entries, options.isEnabled)
     return { entries, shadowed, rejected: [...this.rejectedRecords, ...project.rejected] }
   }
 }

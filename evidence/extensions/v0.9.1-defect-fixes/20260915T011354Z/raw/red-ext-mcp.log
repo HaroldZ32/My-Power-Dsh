@@ -1,0 +1,79 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-ext-plugin/test/mcp.test.ts:
+(pass) publicToolName replicates the harness algorithm: verbatim, sanitized+hashed, truncated+hashed [3.29ms]
+(pass) childEnv inherits only the SDK safe list and never a credential-shaped parent variable [0.86ms]
+(pass) the client completes initialize -> initialized -> tools/list against the repo's own stdio MCP server [98.65ms]
+(pass) the client reports a non-JSON stdout line as a protocol error instead of dying [69.28ms]
+[mpd-ext] extension "fixture-ext" mcp server "fixture": 1 tool(s) published
+(pass) apply connects declared servers, publishes their tools before activation completes, and mpd_ext_show reports the state [53.09ms]
+[mpd-ext] extension "half-ext" mcp server "fixture" unavailable: mcp-client(fixture): the server process exited (code=3, signal=null)
+(pass) apply keeps the extension's pending line truthful while a server is disconnected [102.03ms]
+(pass) startup failure is contained: a dead server is unavailable with its stderr tail while its sibling still connects [129.88ms]
+(pass) a hanging server is time-boxed and the others still publish in parallel [459.54ms]
+(pass) a later tool-list change is swapped in, and a mid-list conflict rolls back to ZERO tools [72.03ms]
+(pass) a server-initiated tools/list_changed notification triggers a re-sync [92.26ms]
+(pass) a foreign inputSchema is projected for parameters while the wire schema stays untouched [70.49ms]
+658 |   try {
+659 |     // F1: the harness's own bridge drops the SCHEMA and keeps the tool
+660 |     // (H/dsh-mcp-client `supportedOutputSchema`); dropping the whole tool was the
+661 |     // blunter REV4 wording. `badinput` stays a SKIP: a tool whose arguments cannot
+662 |     // be described at all is not callable.
+663 |     expect(harness.registered.map((tool) => tool.name)).toEqual(["mcp__fixture__good", "mcp__fixture__badoutput"])
+                                                              ^
+error: expect(received).toEqual(expected)
+
+  [
+    "mcp__fixture__good",
+-   "mcp__fixture__badoutput",
+  ]
+
+- Expected  - 1
++ Received  + 0
+
+      at <anonymous> (/root/dshProj/my-power-dsh/.mpd/red-before/packages/mpd-ext-plugin/test/mcp.test.ts:663:57)
+(fail) an unsupported outputSchema drops the SCHEMA and keeps the tool, while an unprojectable inputSchema skips its tool [80.34ms]
+706 |   try {
+707 |     // F2: every harness tool call carries an ARGUMENTS OBJECT, so a foreign root that
+708 |     // is not an object is projected under a single `value` property (the payload keeps
+709 |     // the server's own type and annotations) and the downgrade is RECORDED.
+710 |     const scalar = toolNamed(harness.registered, "mcp__fixture__scalarinput")
+711 |     expect(scalar.parameters).toEqual({
+                                    ^
+error: expect(received).toEqual(expected)
+
+  {
+-   "additionalProperties": false,
+-   "properties": {
+-     "value": {
+-       "description": "one value",
+-       "type": "string",
+-     },
+-   },
+-   "required": [
+-     "value",
+-   ],
+-   "type": "object",
++   "description": "one value",
++   "type": "string",
+  }
+
+- Expected  - 11
++ Received  + 2
+
+      at <anonymous> (/root/dshProj/my-power-dsh/.mpd/red-before/packages/mpd-ext-plugin/test/mcp.test.ts:711:31)
+(fail) a non-object-rooted inputSchema is normalized onto an object root instead of being passed through [71.30ms]
+(pass) a public-name collision with an existing tool skips that tool and is recorded [69.74ms]
+(pass) tools/call maps content, structured content and isError onto the harness result contract [332.38ms]
+(pass) the child env carries no credential-shaped variable inherited from the parent, and the child is reaped on dispose [72.35ms]
+(pass) a disabled extension never spawns a child and reports state disabled [0.95ms]
+(pass) extensions.mcp.enabled=false connects nothing even for an enabled extension [0.56ms]
+(pass) a server's relative args and cwd resolve against the EXTENSION ROOT, not the dsh process cwd [69.69ms]
+(pass) the shipped example's stdio MCP server starts, lists its tool and answers a real call [70.82ms]
+(pass) the shipped example extension is discoverable, disabled, and contributes all four kinds [0.99ms]
+
+ 19 pass
+ 2 fail
+ 107 expect() calls
+Ran 21 tests across 1 file. [1.97s]
+ext-mcp exit=1

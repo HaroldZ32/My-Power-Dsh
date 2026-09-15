@@ -262,9 +262,11 @@ flows 就可以放在工作区级），然后重启 `dsh`。没有 reload 工具
 
 `disable` 优先于 `enable`，`enable` 优先于 manifest 自身的 `enabled`。
 
-**查看加载了什么。** `mpd_ext_list` 显示所有已知扩展及其 plane、有效启用状态、贡献计数与逐条目
-错误；`mpd_ext_show { id }` 显示单个扩展的全部信息，包括每个 MCP 服务器的确切状态
-（`connected`、`unavailable`、`failed`、`disabled`）以及它发布的工具。`mpd_flow_list` /
+**查看加载了什么。** `mpd_ext_list` 显示所有已知扩展及其 plane、有效启用状态、贡献计数、逐条目
+错误，以及每个扩展声明的技能名里有哪些真的被 harness 目录服务；`mpd_ext_show { id }` 显示单个
+扩展的全部信息，包括这份服务校验、每个 MCP 服务器的确切状态
+（`connected`、`unavailable`、`failed`、`disabled`）以及它发布的工具。（`mpd_ext_show` 会把作者
+声明的 MCP `env` 值脱敏——键仍然可见，密钥不会进入你的会话日志。）`mpd_flow_list` /
 `mpd_flow_show` 用于查看所贡献的 flow。在信任一个目录之前先校验它：
 
 ```bash
@@ -302,8 +304,10 @@ bun scripts/mpd-ext.mjs scaffold my-ext --dir /tmp   # 从一个可工作的骨�
   之下，并且 `dsh` 已重启。被拒绝的清单会由 `mpd_ext_list` 连同逐条目原因一起报告。
 - **扩展的 MCP 工具缺失** → `mpd_ext_show { id }` 会报告该服务器的状态：`unavailable`/`failed`
   会带上子进程的 stderr 尾部与原因；`disabled` 表示扩展被关闭或 `extensions.mcp.enabled` 为
-  false。schema 无法投影到 harness 子集的工具会被明确跳过（作为已记录的错误出现），而不是静默
-  消失。
+  false。**参数** 无法投影到 harness 子集的工具会被明确跳过（作为已记录的错误出现），而不是静默
+  消失；而外来的 `outputSchema` 只让该工具失去 `structuredContent`——工具仍然注册，并记录原因。
+  被声明却未被服务的技能会报成 `notServed`（`served` 表示 harness 目录确实把该名字解析到了这个
+  扩展）。
 - **工作区级扩展的 `mcp`/`roles` 条目被拒绝** → 符合预期：只有主机级根
   （`~/.mpd/extensions/`、`<bundle>/extensions/`）可以贡献工具与 provider。请移动该目录，或从
   清单中去掉不支持的种类。

@@ -90,8 +90,8 @@ reported by `mpd_ext_list` — never fatal, never silent.
 
 | Tool | Purpose |
 |---|---|
-| `mpd_ext_list` | every extension: id, origin, plane, root, effective enabled state, contribution counts, per-item errors, pending kinds, shadowed duplicates and rejected manifests |
-| `mpd_ext_show` | one extension in full: descriptor, resolved roots, skill/flow/role names, MCP servers + state, error list |
+| `mpd_ext_list` | every extension: id, origin, plane, root, effective enabled state, contribution counts, which claimed skill names the harness catalog really **serves**, per-item errors, pending kinds, shadowed duplicates and rejected manifests |
+| `mpd_ext_show` | one extension in full: descriptor (**`env` values redacted**), resolved roots, skill/flow/role names with the serving check of each, MCP servers + state, error list |
 | `mpd_flow_list` | every contributed flow: id, title, whenToUse, step count, owning extension, loadability |
 | `mpd_flow_show` | one flow's full procedure (steps, tool hints, expected outputs) |
 
@@ -148,14 +148,23 @@ with both booleans is REQUIRED and always emitted), skills-provider registration
 throws, so names are unique by construction and registration is wrapped), and the MCP tool-generation
 swap (a partial registration rolls back) — the last one lands with the MCP bridge task.
 
+Third-party schemas follow two different rules, and neither rewrites the author's schema (an MCP
+tool's `inputSchema` is projected onto the harness subset and its **root normalized onto an object**,
+because a tool call always carries an arguments object; an `outputSchema` outside the subset costs
+the tool its **schema** and never the tool — it registers without `structuredContent` and the reason
+is recorded, which is the harness's own `supportedOutputSchema` posture). Only a tool whose
+**arguments** cannot be described at all is skipped.
+
 ## Status and documented limits (v1)
 
-- **A skill name that collides with a lower-ranked provider is shadowed by it, and we cannot see
-  that.** The harness warns and drops the losing candidate by rank, and the drop is not observable
-  to a provider — so the skill is simply not served and `mpd_ext_list` does not flag it. That is
-  correct precedence (project-dsh 100, project-agents 200 and runtime 250 all outrank our default
-  300), not an error. Duplicate names **inside one extension** ARE recorded (skip + warn +
-  load-error entry); cross-provider shadows are not — an accepted v1 limit.
+- **A skill name that collides with a lower-ranked provider is shadowed by it.** The harness warns
+  and drops the losing candidate by rank. Correct precedence (project-dsh 100, project-agents 200
+  and runtime 250 all outrank our default 300), not an error — and no longer invisible: a collision
+  between two **extensions** is annotated on the loser (`skill surface:` in its load errors, naming
+  the winner and both ranks), and both tools verify every claim against the harness's own catalog
+  (`ctx.skills.list`) and report it as `served` / `notServed`. That read is the only way to see a
+  shadow cast by a NON-extension provider (the corpus, a user skills root); when it fails, the
+  report says `checked: false` with the reason instead of asserting anything.
 - The `mcp` kind is **declared and validated** but not yet connected — `mpd_ext_show` reports each
   server as pending until the runtime stdio bridge task lands. Roles are declared here and become
   usable when the roster's per-call resolution function lands.

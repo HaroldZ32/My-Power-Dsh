@@ -78,15 +78,20 @@ safe to use in CI.
   the host; declare what it needs in the manifest's `env`. It is reaped when the
   plugin is disposed.
 - **A third-party schema is never rewritten silently.** The server's `inputSchema`
-  is projected onto the schema subset the harness accepts; an `outputSchema`
-  outside that subset drops that one tool loudly instead of being rewritten.
+  is projected onto the schema subset the harness accepts, and a root that is not an
+  object is normalized onto one (every tool call carries an arguments object, so the
+  payload moves under a single `value` property and the downgrade is recorded); an
+  `outputSchema` outside that subset costs that tool its **schema**, never the tool —
+  it is registered without `structuredContent`, and the reason is recorded.
 - **Honest scope of that sanitizing.** This harness release asserts `outputSchema`
   at registration and passes `inputSchema` through raw (the harness's own MCP bridge
   does exactly the same), so projecting `inputSchema` is **defense-in-depth against a
   future harness**, not a fix for a live abort. The load-bearing half today is the
-  keep-or-drop rule for `outputSchema`: a schema the harness rejects would otherwise
-  throw out of tool registration and take the whole plugin tree down, so that tool is
-  dropped instead.
+  keep-or-drop rule for `outputSchema`, and it follows the harness's own posture
+  (`supportedOutputSchema`): a schema the harness rejects drops the **schema** and
+  keeps the tool, because that rejection would otherwise throw out of tool
+  registration and take the whole plugin tree down. Only a tool whose **arguments**
+  cannot be described at all is skipped.
 - Vendoring an extension means copying its whole directory: the manifest's asset
   references are resolved relative to the extension root, and absolute paths or
   `..` escapes are rejected.

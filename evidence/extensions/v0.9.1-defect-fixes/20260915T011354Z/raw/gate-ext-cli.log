@@ -1,0 +1,3 @@
+  ok no command prints usage or fails
+[mpd-ext] --self-test passed (19 checks)
+validate exit=0
