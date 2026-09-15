@@ -24,17 +24,17 @@
 // 数据面：<root>/mpd-ext.json —— 该目录本身就是 root
 {
   "apiVersion": 1,                       // 必填，必须等于 1
-  "id": "rtl-verilog",                   // 必填，^[a-z0-9][a-z0-9-]{0,63}$
-  "description": "Verilog 编写流程",
+  "id": "authoring-flows",                   // 必填，^[a-z0-9][a-z0-9-]{0,63}$
+  "description": "面向变更的编写流程",
   "enabled": true,                       // 默认 true
   "contributes": {
     "skills": [{ "root": "skills", "rank": 300 }],
     "flows":  [{ "dir": "flows",  "rank": 300 }],
-    "mcp":    [{ "serverName": "rtl-lint", "transport": "stdio", "command": "node",
+    "mcp":    [{ "serverName": "lint-mcp", "transport": "stdio", "command": "node",
                  "args": ["server.js"], "env": { "K": "V" }, "cwd": ".",
                  "toolCallTimeoutMs": 60000, "connectTimeoutMs": 10000 }],
-    "roles":  [{ "name": "Verilog Reviewer", "description": "…", "readonly": true,
-                 "persona": "personas/verilog-reviewer.md",
+    "roles":  [{ "name": "Code Reviewer", "description": "…", "readonly": true,
+                 "persona": "personas/code-reviewer.md",
                  "provider": "deepseek-official", "model": "deepseek-v4-flash" }]
   }
 }
@@ -79,7 +79,7 @@
 ```jsonc
 {
   "extensions": {
-    "enable": ["rtl-verilog"],           // 强制启用
+    "enable": ["authoring-flows"],           // 强制启用
     "disable": ["noisy-experiment"],     // 强制禁用（优先于 enable）
     "mcp": { "enabled": true, "connectTimeoutMs": 10000, "toolCallTimeoutMs": 60000 }
   }

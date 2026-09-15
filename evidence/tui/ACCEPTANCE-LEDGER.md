@@ -81,3 +81,98 @@ negative/incomplete) or `not-claimed` (no evidence supports the claim; nothing w
 
 Everything else is backed by a run on the pinned revision, with the digest recorded per result
 (`REVISION.json` beside each lane result) — no ledger row rests on a stale artifact digest.
+
+## Third amendment — the settings-bridge wave (t50, 2026-09-15)
+
+The bridge capability was built and verified by t35–t49; t50 is its documentation and record half. **No
+AC row above changes status** — this amendment records what the docs and the records now say, and two
+checker observations that a later reader must not mistake for regressions.
+
+1. **AC-16 (bilingual docs exist and stay wired) — re-witnessed on the t50 text.** The shipped checker
+   `evidence/tui/docs/20260915T070743Z/doc-assertion.mjs` was re-run on the amended pair and returns
+   `"verdict": "passed"`, **28/28 items, exit 0** (raw:
+   `evidence/mpd-bridge/integration/raw/doc-assertion-t27-t50.log`), on `docs/tui.md` sha256
+   `ee99c11ea97332f8…` and `docs/tui.zh-CN.md` sha256 `63f282fa12a63d94…`. The new sections exist in
+   both languages: §3.1 (Web card), §6.2 (bridged behaviour), §6.5 (duplicate keys), §11.1
+   (superseding table).
+2. **AC-17 (the docs are honest) — extended, same standard.** The bridge is documented with its measured
+   evidence level (`Observed`, two real boots), its two disclosed skip cases (`no-live-session`,
+   `ambiguous-multi-root` — no file written, value never lost), its restart caveat, and the Web card's
+   **not witnessed** browser render. NOT-CLAIMED #9 no longer leads with the bridge; the §11 statements
+   the wave moved are superseded in §11.1 rather than rewritten.
+3. **A stale checker pin, named — not a regression.** t29's frozen checker
+   (`evidence/tui/composition/20260915T071619Z-docs-mpd-command/doc-assertion-t29.mjs`) now reports
+   **two** failures instead of one: the already-recorded predicate residual (`item3.docs/tui.zh-CN.md`)
+   plus `entry-unmoved`, because that script pins the TUI-edition entry digest `5dce2563…` while the
+   bridge wave legitimately rebuilt the package to `cf4b3813…`. The script was **left untouched** (it is
+   another task's evidence) and its pin is superseded by the t27 checker above, which is green on the
+   current revision. Neither failure is caused by this pass's text.
+4. **A phantom-reference class closed.** The captain's independent checker
+   `evidence/tui/delivery/20260915T072355Z/cited-paths-exist.mjs`, re-run across all nine amended files,
+   now reports **0 missing** (it previously flagged 11: 14 bare .mpd/mpd.jsonc tokens that are
+   workspace-relative rather than repo-relative, the package-local skills/mpd-tui/SKILL.md, and one
+   protocol-checkout command path). Each was made precise (`<workspace>/.mpd/mpd.jsonc`,
+   `packages/mpd-tui-plugin/skills/mpd-tui/SKILL.md`, `<protocol-repo>/packages/conformance/lib/cli.js`)
+   — no citation was deleted and no path was invented. Raw:
+   `evidence/mpd-bridge/integration/raw/cited-paths-t50.log`.
+5. **Pins moved by the wave, re-measured at write time.** `packages/mpd-tui-plugin/dist/index.js`
+   `5dce2563fd0e3b20…` (98883 bytes) → `cf4b3813a344c9d5…` (**105305 bytes**);
+   `packages/mpd-config-plugin/dist/index.js` `15733c1e0791aee1…` (99868 bytes);
+   `packages/mpd-bundle-plugin/client.js` `dd9c88933a316277…` (282453 bytes, unchanged);
+   `dsh-plugin.json` `84ed4a5d5aac3fb0…` (8088 bytes, unchanged). `VENDOR_LOCK.json` carries the wave's
+   single re-pin (`assets/skills`: 307 files / treeSha `ba0c3922889614225dfd…`) and was not touched here.
+6. **What is still NOT claimed after this pass** — unchanged from the rows above and from t49: the Web
+   card's real browser render, a specific front door's rendering, the decision-event seam, the seventh
+   activation-gated surface (NOT-CLAIMED #10), and the spec-suite/host-gate blockers (AC-20).
+7. **Merge blocker found by this pass (not caused by it; outside t50's scope).** On the working tree the
+   vendor pairing is **red**: `node scripts/verify-vendor.mjs` exits 1 (`FAIL - asset skills count
+   drifted: 310 vs 307` + treeSha mismatch) and `bun run test:qa` exits 1 at `agent-teams-messaging`
+   (`VENDOR_LOCK skills asset is stale: lock=307/ba0c39228896 tree=310/8ec53287296e`). Cause: the bridge
+   wave added three files under `skills/` (`skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs`,
+   `skills/dsh-qa/scripts/tui-settings-bridge.mjs`, `skills/dsh-qa/scripts/web-settings-bridge.mjs`) and
+   modified three tracked ones (`skills/dsh-qa/SKILL.md`, `skills/dsh-qa/scripts/tui-panels.mjs`,
+   `skills/dsh-qa/scripts/extension-isolation.mjs`) **after** the wave's single re-pin (307 /
+   `ba0c3922…`); the three new files are still untracked, so the re-pin for this second invalidation has
+   not landed. **AC-18's `passed` row rests on the earlier green sweep and stays as the record of that
+   revision** — the required action is the captain's single re-pin of `assets/skills` in the same commit
+   as those `skills/**` changes (§9/§11), which t50 may not perform (`VENDOR_LOCK.json` and `skills/**`
+   are outside its scope). Raw: `evidence/mpd-bridge/integration/raw/{verify-vendor-t50.log,test-qa-t50.log}`.
+
+## Fourth amendment — the documentation closure (t51, 2026-09-15)
+
+Three documentation deltas that t50 could not carry (it was terminal when their dispatch arrived) are
+closed additively. **No AC row changes status.**
+
+1. **AC-17 (the docs are honest) — extended.** `docs/tui.md` §6.2 (+ zh twin) now carries the namespace
+   base's **cardinality rule** exactly as the shipped `baseForNamespace()`
+   (`packages/mpd-config-plugin/src/index.ts:511`) behaves: one live root ⇒ that workspace's
+   `<workspace>/.mpd/mpd.jsonc`; zero roots ⇒ the mount-time (exec-less) root, an absent file there
+   giving an empty base (schema defaults) — the normal boot path; more than one root ⇒ **no file base
+   invented** (`base: undefined`, reason `ambiguous-multi-root`, every candidate warned and surfaced by
+   `states()`), with the per-workspace read-in still resolving each session's own file. It also carries
+   the honest timing disclosure: the base is **fixed for the process lifetime** because the host exposes
+   **no disposal handle** for a live registration — the reason the shipped sentence says "after a
+   restart" — while the **resolved value** plus the config layer's **per-call file reads** are what the
+   plugins use.
+2. **New `docs/tui.md` §6.6 (+ zh twin) — the scopes and the cross-home boundary (t38's D1).** One DSH
+   home ⇒ the settings document (`$DSH_HOME/settings.yaml`) is shared; **separate DSH homes ⇒ two
+   settings documents, so an edit in one front door is invisible as a settings VALUE to the other —
+   while `<workspace>/.mpd/mpd.jsonc` still converges because both doors write that same file.** The
+   other scopes are stated by mechanism (workspace `<workspace>/.mpd/**`; HOME `~/.mpd/workmate`;
+   DSH-HOME `settings.yaml` + user `mpd.jsonc`; bundle presets + skill corpus).
+3. **§3.1's Web-card evidence level completed.** Witnessed: the registration contract in the built and
+   served `client.js` (`dd9c8893…`, 282453 bytes), the registration shape and field parity in the
+   card's own suite, the module's render/write/refuse/read-only behaviour in the **offline hook
+   harness**, and the write path end to end through the host's authenticated settings API
+   (`web-settings-bridge.mjs` W1–W13). **NOT witnessed:** a real browser render and a click-driven save
+   (`cardClaim.W3.witnessed === false`), with the human repro steps retained.
+4. **Sync + integrity.** The two package README pairs carry the same base/timing facts; the report pair
+   carries Amendment 4 / §10; this ledger and `evidence/tui/EVIDENCE-INDEX.md` §7.1 are updated in the
+   same pass. The shipped bilingual checker and the captain's cited-path checker were re-run over the
+   edited files, verdicts below (raw: `evidence/mpd-bridge/integration/t51/raw/`).
+5. **The re-pin LANDED while t51 was in progress — the third amendment's item 7 is superseded.** The
+   captain re-pinned `VENDOR_LOCK.json`: `assets/skills` is now **310 files / treeSha
+   `8ec53287296edb43b1f622046ff932a8e339f081184622854db4a2c0445a3268`**, `node scripts/verify-vendor.mjs`
+   exits **0** (`asset OK: skills 310 files`, `PASS`) and `bun run test:qa` exits **0** (`all self-tests
+   passed`) — `evidence/mpd-bridge/integration/t51/raw/{verify-vendor-t51.log,test-qa-t51.log}`. Item 7 of the third
+   amendment stays as the record of the moment it measured; nothing is owed on that count.

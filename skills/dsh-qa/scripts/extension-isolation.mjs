@@ -504,7 +504,7 @@ async function selfTest() {
     check(example.apiVersion === 1, "the shipped example must declare apiVersion 1")
     check(example.enabled === false, "the shipped example must stay disabled by default")
     check(existsSync(join(exampleDir, example.contributes.roles[0].persona)), "the example role persona is missing")
-    check(existsSync(join(exampleDir, "flows", "rtl-triage-flow.json")), "the example flow file is missing")
+    check(existsSync(join(exampleDir, "flows", "change-triage-flow.json")), "the example flow file is missing")
   }
 
   // 4) the boot recipe this module depends on still exists and is wired.

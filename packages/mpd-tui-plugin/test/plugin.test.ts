@@ -11,7 +11,8 @@
 import { describe, expect, test } from "bun:test"
 import * as mod from "../src/index"
 import { TRANSCRIPT_TYPES } from "../src/renderers"
-import { SETTINGS_FIELDS, UNBRIDGED_MARKER } from "../src/settings"
+import { BRIDGE_DISCLOSURE, BRIDGE_NO_WORKSPACE_NOTICE, BRIDGE_NOT_LOST, SETTINGS_FIELDS } from "../src/settings"
+import { AMBIGUOUS_MULTI_ROOT_NOTICE, NO_LIVE_SESSION_NOTICE, readBoardState, statusLine } from "../src/state"
 import { SHORTCUT_BINDINGS } from "../src/shortcuts"
 import { STATUS_KEY } from "../src/status"
 import { DECISION_EVENTS } from "../src/decisions"
@@ -103,6 +104,9 @@ function allServices(overrides: Record<string, any> = {}): {
     disposed.count += 1
   }
   const services: Record<string, any> = {
+    // The config layer's own surface: the status line reads the LAST settings-bridge outcome
+    // from it (§D.2 row 2). Overridable per test through `overrides`.
+    mpdConfig: { states: () => ({ files: [], errors: [], writeback: null }) },
     tuiStatus: {
       set(key: string, text: unknown) {
         calls.statusSet.push({ key, text })
@@ -282,6 +286,8 @@ describe("full composition (every service injected)", () => {
     expect(published.length).toBeGreaterThan(0)
     expect(String(published[0].text).startsWith("mpd:")).toBe(true)
     expect(outcomeOf(report, "tuiStatus").state).toBe("requested")
+    // No bridge outcome yet: the line carries the counts and NO notice.
+    expect(String(published[0].text)).not.toContain("no live session")
 
     // tuiRenderers: one renderer per declared log-only type.
     expect(calls.renderers.map((entry) => entry.type)).toEqual([...TRANSCRIPT_TYPES])
@@ -293,7 +299,8 @@ describe("full composition (every service injected)", () => {
     expect(calls.sections[0].fields).toHaveLength(6)
     for (const field of calls.sections[0].fields) {
       expect(field.hint).toContain("mpd.jsonc")
-      expect(field.hint).toContain(UNBRIDGED_MARKER)
+      expect(field.hint).toContain(BRIDGE_DISCLOSURE)
+      expect(field.hint).toContain(BRIDGE_NOT_LOST)
     }
 
     // tuiScenes: the board scene.
@@ -488,11 +495,57 @@ describe("settings section disclosure (t21)", () => {
     for (const field of SETTINGS_FIELDS) {
       expect(field.hint).toBeString()
       expect(field.hint).toContain("mpd.jsonc")
-      expect(field.hint).toContain(UNBRIDGED_MARKER)
+      expect(field.hint).toContain(BRIDGE_DISCLOSURE)
     }
   })
 
   test("the marker itself says the save does not rewrite the config file", () => {
-    expect(UNBRIDGED_MARKER).toContain("does not rewrite .mpd/mpd.jsonc")
+    // t35 reword: the claim is now the BRIDGE plus the restart, and the old false claim
+    // ("not bridged: a save here does not rewrite .mpd/mpd.jsonc") is DELETED, not softened.
+    expect(BRIDGE_DISCLOSURE).toContain("a save writes <workspace>/.mpd/mpd.jsonc")
+    expect(BRIDGE_DISCLOSURE).toContain("takes effect for the mpd plugins after a restart")
+    expect(BRIDGE_DISCLOSURE).not.toContain("not bridged")
+    expect(BRIDGE_DISCLOSURE).not.toContain("does not rewrite")
+    expect(BRIDGE_NO_WORKSPACE_NOTICE).toBe("saved to settings — not yet written to any .mpd/mpd.jsonc (no live session)")
+    // captain ruling 1: the hint also carries the "never lost" clause
+    expect(BRIDGE_NOT_LOST).toContain("never lost")
+    expect(BRIDGE_NOT_LOST).toContain("every workspace immediately")
+  })
+})
+
+
+describe("the §D.2 runtime notice (a save with no live session workspace)", () => {
+  test("the notice constant is the design's exact sentence and matches the exported one", () => {
+    expect(NO_LIVE_SESSION_NOTICE).toBe("saved to settings — not yet written to any .mpd/mpd.jsonc (no live session)")
+    expect(NO_LIVE_SESSION_NOTICE).toBe(BRIDGE_NO_WORKSPACE_NOTICE)
+    const state = readBoardState(process.cwd(), process.env.HOME ?? process.cwd())
+    expect(statusLine(state)).not.toContain(NO_LIVE_SESSION_NOTICE)
+    const withNotice = statusLine(state, NO_LIVE_SESSION_NOTICE)
+    expect(withNotice).toContain(NO_LIVE_SESSION_NOTICE)
+    expect(withNotice.startsWith("mpd:")).toBe(true)
+    // the counts survive in front of the notice
+    expect(withNotice.indexOf("plans ")).toBeLessThan(withNotice.indexOf(NO_LIVE_SESSION_NOTICE))
+  })
+
+  test("the status line publishes the notice only while the last write-back was skipped for no-live-session", () => {
+    const notLive = allServices({ mpdConfig: { states: () => ({ files: [], errors: [], writeback: { skipped: "no-live-session", writtenTo: [], applies: "restart" } }) } })
+    mod.apply(hostDouble(notLive.services).ctx as never, { statusIntervalMs: 0 })
+    const published = notLive.calls.statusSet.filter((entry: any) => entry.key === STATUS_KEY)
+    expect(published.length).toBeGreaterThan(0)
+    expect(String(published.at(-1).text)).toContain(NO_LIVE_SESSION_NOTICE)
+
+    // an ambiguous-multi-root refusal gets its OWN sentence (settings-only, candidates in the log)
+    const other = allServices({ mpdConfig: { states: () => ({ files: [], errors: [], writeback: { skipped: "ambiguous-multi-root", writtenTo: [], applies: "restart" } }) } })
+    mod.apply(hostDouble(other.services).ctx as never, { statusIntervalMs: 0 })
+    const otherPublished = other.calls.statusSet.filter((entry: any) => entry.key === STATUS_KEY)
+    expect(otherPublished.length).toBeGreaterThan(0)
+    expect(String(otherPublished.at(-1).text)).toContain(AMBIGUOUS_MULTI_ROOT_NOTICE)
+    expect(String(otherPublished.at(-1).text)).not.toContain("no live session")
+
+    // and a successful write-back clears it again
+    const cleared = allServices({ mpdConfig: { states: () => ({ files: [], errors: [], writeback: { writtenTo: ["/ws/.mpd/mpd.jsonc"], results: [], applies: "restart" } }) } })
+    mod.apply(hostDouble(cleared.services).ctx as never, { statusIntervalMs: 0 })
+    const clearedPublished = cleared.calls.statusSet.filter((entry: any) => entry.key === STATUS_KEY)
+    expect(String(clearedPublished.at(-1).text)).not.toContain("no live session")
   })
 })

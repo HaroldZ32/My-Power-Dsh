@@ -121,8 +121,9 @@ describe("with DSH-better-sidebar installed", () => {
     const definitions = client.calls.slotsRegistered ?? [];
     expect(definitions.some((definition) => definition.id === "agent-teams-activity")).toBe(false);
     expect(definitions.some((definition) => definition.name === "conversation.chat.node")).toBe(false);
-    // The slash-command admission surface stays: it is not a GUI panel.
-    expect(client.calls.slots ?? []).toEqual(["conversation.chat.commandview"]);
+    // Non-sidebar surfaces: the slash-command admission row (never a GUI panel) and the t35
+    // settings card, which the Plugins tab dispatches by settings namespace.
+    expect(client.calls.slots ?? []).toEqual(["conversation.chat.commandview", "settings.plugin.item"]);
   });
   test("the adopted client half is never applied (it would re-register the removed surfaces)", () => {
     expect(client.calls.agentTeamsApplied).toBeUndefined();
@@ -571,9 +572,12 @@ describe("without DSH-better-sidebar", () => {
       console.warn = original;
     }
     expect(client.calls.registerTab.length).toBe(0);
-    // No overlay, no footer toggle: the ONLY registration left is the non-GUI slash-command
-    // admission row that hides the duplicated command result.
-    expect(client.calls.slots ?? []).toEqual(["conversation.chat.commandview"]);
+    // No overlay, no footer toggle: the registrations left are the non-GUI slash-command
+    // admission row and the t35 settings card (which targets the Plugins tab's keyed slot, not
+    // the sidebar) — a profile without the sidebar still gets both. The card's own ACTUAL
+    // registration additionally needs the `settingsScope` service, which this harness does not
+    // mount; the card's own test file provides it and asserts the keyed registration.
+    expect(client.calls.slots ?? []).toEqual(["conversation.chat.commandview", "settings.plugin.item"]);
     const definitions = client.calls.slotsRegistered ?? [];
     expect(definitions.map((definition) => definition.name)).toEqual(["conversation.chat.commandview"]);
     // Nothing is registered, and nothing is warned about either: the injection simply never

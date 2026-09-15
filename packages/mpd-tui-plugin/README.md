@@ -20,7 +20,7 @@ would duplicate a loader entry id (the loader rejects duplicates outright).
 |---|---|---|
 | Status line | `ctx.tuiStatus` | one keyed `mpd` contribution above the prompt: `mpd: team … · boulder … · plans … · workmates …` |
 | Transcript renderers | `ctx.tuiRenderers` | the bundle's log-only session events (`agent-teams/*`, `mpd-tui/board-opened`) as plain text rows, live and on replay |
-| Settings section | `ctx.tuiSettingsSections` | the mpd.jsonc knobs declared as editable `/settings` fields — **not bridged** to the file; every field hint says so on screen (see NOT CLAIMED #2) |
+| Settings section | `ctx.tuiSettingsSections` | the mpd.jsonc knobs declared as editable `/settings` fields — **bridged** to `<workspace>/.mpd/mpd.jsonc` (a save writes the file; the plugin behaviour needs a restart); every field hint says so on screen (see NOT CLAIMED #2) |
 | Full-screen board | `ctx.tuiScenes` | team + task ledger, boulder work ledger, plans, workmate library |
 | Command tree | `ctx.tuiCommandTrees` | `/mpd board`, `/mpd status`, `/mpd workmates` completion |
 | Shortcuts | `ctx.tuiShortcuts` | `alt+m` board · `alt+w` workmate picker · `alt+r` refresh the status line |
@@ -47,7 +47,7 @@ never the dsh process cwd.
 - `themes/mpd-tui.json` — a dark TUI theme (a partial colour override). The
   theme seam is a static asset by design: copy the file into
   `~/.dsh-tui/themes/` to make it selectable. This row does **not** install it.
-- `skills/mpd-tui/SKILL.md` — an asset only; see "What is NOT claimed" #4.
+- `packages/mpd-tui-plugin/skills/mpd-tui/SKILL.md` — an asset only; see "What is NOT claimed" #4.
 
 ## Plugin contract
 
@@ -107,24 +107,44 @@ only when no logger exists to `stderr`, with `debug` gated behind
    nothing. It never calls `admit`/`admitInternal`, never uses the test-only
    token, and never fakes an identity. **No input, rewind, session-switch or
    compact interception is claimed.**
-2. **The `/settings` section is not bridged to `.mpd/mpd.jsonc`.** The fields
-   declare the real mpd.jsonc knobs (`hashline.maxDiffChars`,
-   `commentChecker.autoCheck`, `ulw.maxRounds`, `memory.vcs`, `team.stateDir`,
-   `boulder.dir`), and the section edits them under the harness settings
-   namespace `mpd` (registered by this plugin so the screen does not render it as
-   unavailable). The mpd plugins read `.mpd/mpd.jsonc` through
-   `packages/mpd-config-plugin`, **not** the harness settings document: a saved
-   edit persists in the settings document and does **not** rewrite
-   `.mpd/mpd.jsonc`. **This is stated on screen, not only here**: every field
-   hint reads `mpd.jsonc <key> — not bridged: a save here does not rewrite
-   .mpd/mpd.jsonc`. The bridge is the NAMED follow-up `mpd-settings-bridge`
-   (writing the project/user JSONC from a settings section), not a shipped
-   behaviour.
+2. **The `/settings` section IS bridged to `<workspace>/.mpd/mpd.jsonc`, and the behaviour
+   change needs a restart.** The fields declare the real mpd.jsonc knobs
+   (`hashline.maxDiffChars`, `commentChecker.autoCheck`, `ulw.maxRounds`,
+   `memory.vcs`, `team.stateDir`, `boulder.dir`) and edit them under the harness
+   settings namespace `mpd`. That namespace is **served by
+   `packages/mpd-config-plugin`** (design §10.1), which registers it with a
+   `base`, so both front doors display the file's real values instead of the
+   schema defaults; this plugin is a pure consumer and only registers as a
+   guarded **fallback** when a composition has no config plugin. The base follows
+   a **cardinality rule**: one live root ⇒ that workspace's `<workspace>/.mpd/mpd.jsonc`;
+   zero roots ⇒ the mount-time (exec-less) root, an absent file there giving an
+   empty base (schema defaults) — the normal boot path, since this row usually
+   precedes any live session; more than one root ⇒ **no file base is invented**
+   (`base: undefined`, `ambiguous-multi-root`, every candidate warned and surfaced
+   by `states()`), so the namespace shows schema defaults until exactly one
+   workspace is live. The base is **fixed for the process lifetime** (the host
+   exposes no disposal handle for a live registration) — the honest reason the
+   sentence below says "after a restart" — while the **resolved value** and the
+   config layer's **per-call file reads** are what the plugins actually use. A saved edit is written back into the live session
+   workspace's `<workspace>/.mpd/mpd.jsonc` with comments and key order preserved, and the
+   config layer applies it to every workspace immediately. **The plugin
+   BEHAVIOUR change needs a restart** for every knob in this section, because the
+   mpd consumers capture their config at `apply()` — stated in the same words on
+   screen: every field hint reads `mpd.jsonc <key> — a save writes
+   <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect
+   for the mpd plugins after a restart (this knob is read at plugin mount)`,
+   followed by the clause that a settings-only save is never a lost save. The
+   write-back **refuses** (loudly, writing no file) when the target is ambiguous
+   — no live session (`no-live-session`), several live workspaces
+   (`ambiguous-multi-root`, every candidate named), a read-only/unparsable/
+   conflicting file — while the settings value still applies; the status line
+   carries the matching runtime notice. Not claimed: a specific front door's
+   rendering (the Web card's browser render is verified by the user in their GUI).
 3. **Web-only surfaces have no TUI rendering face.** The agent-teams sidebar,
    the workmate tab and the bundle floater (`dsh.client.platform = web`) do not
    render in the TUI. The board, the status line and the dialogs are equivalents
    — not a pixel or feature parity claim. The web profile is untouched.
-4. **The packaged skill is an asset only.** `skills/mpd-tui/SKILL.md` ships with
+4. **The packaged skill is an asset only.** `packages/mpd-tui-plugin/skills/mpd-tui/SKILL.md` ships with
    the package, but the bundle's corpus is served from `<bundle>/skills` by
    `mpd-bootstrap`; this package-local copy is not registered by this row.
 5. **Engine version skew.** The host prints that the dsh engine is newer than

@@ -185,4 +185,8 @@ export interface SessionLike {
 /** `ctx.settings` — the harness settings service (namespace registration). */
 export interface SettingsProviderLike {
   register(ns: string, schema: unknown, options?: unknown): unknown
+  /** The provider's read surface, used ONLY to probe whether a namespace is already served. */
+  get?(ns: string): unknown
+  /** Served namespaces, when the provider can enumerate them (the documented guard input). */
+  describe?(): unknown
 }

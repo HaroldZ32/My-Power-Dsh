@@ -1,0 +1,147 @@
+{
+  "task": "t34",
+  "kind": "work",
+  "subject": "Bridge design: layering, write-back ownership, workspace selection and comment preservation",
+  "member": "Architect",
+  "role_discipline": "read-only role; the ONLY writes are the two files in the granted inScope directory evidence/mpd-bridge/design/. No source, docs, skill or script file was modified.",
+  "attempt_id": "767661e6-a36e-4d8d-8073-4bf5b698f51e",
+  "status": "design complete, REVISED THRICE: (1) to the captain's dispatch (canonical filename DESIGN.md, refuse-first rule, full JSONC edge-case matrix, loopback-only web evidence levels, restart-vs-immediate semantics); (2) to t35 acceptance A3 and the implementer's 6 interface questions — N live roots now REFUSE `ambiguous-multi-root` instead of fanning out, plus a new §10 interface contract; (3) t40 ERRATUM — the last stale fan-out sentence (§7 item 3) is corrected in place and recorded in an ERRATUM block at the top of DESIGN.md, with the original wording kept visible and the governing ruling cited.",
+  "errata": [
+    {
+      "id": "ERRATUM-t40-1",
+      "date": "2026-09-15",
+      "task": "t40",
+      "file": "evidence/mpd-bridge/design/DESIGN.md",
+      "superseded": "§7 item 3 — \"Fan-out is real: one settings document + N live workspaces ⇒ one edit writes N files, reported per root.\" (first-draft wording, struck through in place and quoted verbatim in the ERRATUM block at the top of DESIGN.md)",
+      "governing": "N > 1 live session workspaces ⇒ the write-back REFUSES with reason `ambiguous-multi-root`, names every candidate root and writes NO file. There is no fan-out in this design.",
+      "governing_sections": ["§A.1", "§3", "§10.3", "D-5", "D-12", "U14", "F5"],
+      "authority": "Captain ruling of 2026-09-15 (message c8a03ba6), which resolved the conflict between this design's first-draft fan-out and t35 acceptance A3 (\"never silently write to a guessed path\") in favour of REFUSE. The implementation matches REFUSE.",
+      "scope": "one paragraph in §7 plus the ERRATUM block in DESIGN.md, plus this entry. Nothing else in the design was revised, so the implementer's work in flight stays valid.",
+      "digests": {
+        "design_md_pre_erratum_sha256": "2e990f1b750f2081230fec4128c84816ed20548cc9b50690d099576798f139eb",
+        "design_md_post_erratum_sha256": "002beaca748c97219ff7c3fc97bf2583f9230402685db4d5f7b51b1ee29792c9",
+        "design_md_post_erratum_payload_digest_note": "DESIGN.md also quotes a VERIFIABLE PAYLOAD DIGEST (sha256 of the file with the quoted digest replaced by 64 '1' characters) = 3d8cd3c0211f615154348a6c03347a7fd0141ac90263a80df1afbe91639cd339. A file cannot contain its own SHA-256, so the in-file quote is the payload digest and the true file hash is recorded here."
+      }
+    }
+  ],
+  "deliverables": [
+    {
+      "path": "evidence/mpd-bridge/design/DESIGN.md",
+      "lines": 694,
+      "bytes": 53245,
+      "sha256": "002beaca748c97219ff7c3fc97bf2583f9230402685db4d5f7b51b1ee29792c9",
+      "in_file_payload_digest": "3d8cd3c0211f615154348a6c03347a7fd0141ac90263a80df1afbe91639cd339",
+      "what": "The reviewable design. Opens with the t40 ERRATUM (superseded §7 fan-out sentence, governing rule and authority). §A the workspace-target decision, §B refuse-rather-than-corrupt plus the E1-E11 JSONC edge-case matrix, §C the loopback-only web card and its honest evidence levels, §D the applies:'restart' per-knob table and the post-bridge TUI hint wording, §10 the implementer interface contract; then layering, write-back ownership, invariants, migration, disclosures, a decision log and a falsifying test plan."
+    },
+    {
+      "path": "evidence/mpd-bridge/design/result.json",
+      "what": "This file: acceptance evidence, recorded decisions, measured facts, unverified carry-forwards."
+    }
+  ],
+  "superseded": [
+    {
+      "path": "evidence/mpd-bridge/design/DESIGN-mpd-settings-bridge.md",
+      "action": "removed",
+      "reason": "The captain's dispatch specifies the contracted path evidence/mpd-bridge/design/DESIGN.md. The earlier filename is deleted rather than left beside the canonical one, so the implementation task (t35) has exactly ONE design document to read."
+    }
+  ],
+  "captain_dispatch_inputs": [
+    {
+      "input": "1. No workspace identity anywhere in the settings path; the write-back target is a DECISION with a stated failure mode; no silent multi-root guess.",
+      "answer": "DESIGN §A. Target set = the DISTINCT LIVE SESSION WORKSPACE ROOTS at event time via the adapter's existing dsh.workspaceRootsAll() (measured packages/mpd-dsh-adapter-plugin/src/index.ts:173,298,415). 0 roots: write no file, persist in settings, warn once, report writtenTo:[] with reason 'no-live-session', and tell the user to start a session in the intended workspace; 1 root: write it and say so; N roots: REFUSE with reason 'ambiguous-multi-root', name every candidate root, write no file, and tell the user how to make it unambiguous — this REVERSES the first draft's fan-out, because t35 acceptance A3 requires the ambiguous multi-root path to warn and never silently write to a guessed path (D-12). process.cwd() is never a fallback. 'Per-session attribution where the event carries it' is recorded as IMPOSSIBLE because both settings events are namespace-only; last-writer-wins and any single guessed root are rejected by name as the forbidden silent mis-targeting. User-visible wording is given for each of the three cases."
+    },
+    {
+      "input": "2. No comment-preserving JSONC writer exists offline; the editor must REFUSE rather than corrupt; specify strings/escapes, comments, trailing commas, arrays, duplicate keys, missing key path, CRLF/LF, and a file changed between read and write.",
+      "answer": "DESIGN §B. The writer is REFUSE-FIRST: surgicalEdit(rawText, path, value) returns {ok:true,text} only when the exact span is proven, else {ok:false,reason} with the file BYTE-UNTOUCHED, a loud warning, and the settings layer still taking effect (a config file destroyed by a UI save is the worst outcome). Editor = the repo's own scanner (packages/mpd-config-plugin/src/index.ts:22-48) extended into a path-addressed value-span rewriter; vendoring is the explicit fallback only. E1-E11 matrix: string/escape handling with decoded-key matching; comments before/inside objects and after the last member survive verbatim; trailing-comma style detected and matched and delete re-checks for ',,'; arrays supported including delete-to-empty; DUPLICATE KEYS edit the LAST occurrence (JSON.parse is last-wins, measured) and REFUSE on an ambiguous duplicated intermediate; a missing key path materialises intermediates and appends as the LAST member with no invented comment; CRLF/LF detected and preserved with new lines matching the dominant ending; a read/write race is handled by compare-and-swap with N=3 retries then 'conflict' leaving the human's file untouched; unparsable => no edit attempted; missing => created with a header comment; read-only => loud 'denied' with path+errno."
+    },
+    {
+      "input": "3. The web write path has a trap: a NON-LOOPBACK page runs in memory persistence and never reaches the host document; exercise the card from a LOOPBACK page and state the honest evidence level when that cannot be witnessed (no browser here).",
+      "answer": "DESIGN §C. The card must be exercised from a LOOPBACK page, and the card's own copy states that a remote page is effectively read-only. Evidence levels are split and labelled: W1 witnessable (the authenticated settings/mutate over the host HTTP API changes the namespace, the bridge runs, the file changes) proves the BRIDGE, which is this design's subject; W2 witnessable statically (the built client contains the settings.plugin.item registration for key 'mpd', asserted against shipped/served bytes); W3 NOT witnessable here (that the card renders, is dispatched for the mpd namespace, and a click produces the mutate) is explicitly NOT-CLAIMED with the reason recorded. The design therefore claims 'a loopback client's mutate persists', never 'the Web page always persists'."
+    },
+    {
+      "input": "4. applies:'restart' — say which knobs take effect immediately and which genuinely need a restart, and what the TUI hints must say after the bridge.",
+      "answer": "DESIGN §D. Measured per-knob: every knob the /settings section exposes is captured at apply() by its consumer (mpd-boulder-plugin:31,45; mpd-comment-checker-plugin:26,99; mpd-hashline-plugin:40; mpd-ulw-plugin:26; mpd-memory-plugin:24) => RESTART for hashline.maxDiffChars, commentChecker.autoCheck (+bin/timeout/maxMessageChars), ulw.maxRounds, memory.vcs, team.stateDir and boulder.dir. The ONE immediate family is extensions.*, read lazily per use by mpd-ext-plugin (src/manifest.ts:193-210, src/mcp.ts:50) and not exposed by the section. The config layer itself is immediate via mpd_config_get after mpd_config_reload (measured index.ts:104,134-141; its README claims no more). Post-bridge hints: the word 'not bridged' is DELETED, not softened, and replaced by a two-part statement naming the file written and the restart requirement, with a runtime notice for the no-live-session case; one constant + one helper remain single-sourced and the existing test/plugin.test.ts assertion is extended."
+    }
+  ],
+  "source_material": {
+    "dossier": "evidence/mpd-bridge/requirements/20260915T074601Z/HOST-SEAMS.md",
+    "dossier_lines": 272,
+    "usage": "cited inline as [DOSSIER p.N]; every dossier fact used as a premise is quoted with its path/line, and every open question the dossier leaves is answered explicitly as [DECIDED]."
+  },
+  "acceptance_evidence": [
+    {
+      "criterion": "A LAYER PRECEDENCE table states, for each of project .mpd/mpd.jsonc, user $DSH_HOME/mpd.jsonc and the settings namespace, which wins and why, and shows what a user sees after an edit in each front door when a key exists in more than one layer.",
+      "status": "passed",
+      "where": "DESIGN §1.1 (L0 schema defaults < L1 $DSH_HOME/mpd.jsonc < L2 <workspace>/.mpd/mpd.jsonc < L3 settings user; L3 wins at runtime, L2 is the durable home) and §1.2 (a four-step worked trace of a UI edit over an existing file key, including the L3>L2 trap and the rule that a file edit CLEARS the overlapping override via the provider's unset/reset path). §1.3 records the measured installSection constraint with D-8 and the fallback."
+    },
+    {
+      "criterion": "The WRITE-BACK design names the owning module, the exact trigger (which host event/call), the write path, atomicity/partial-write handling, and what happens when the target file is read-only, missing, or being edited concurrently by the user.",
+      "status": "passed",
+      "where": "DESIGN §2 (owner mpd-config-plugin, D-3; trigger settings/document-updated filtered to source==='update', D-4, with settings/updated secondary; the ordered sequence at §2.2), §B.3 (lock + compare-and-swap + sibling temp + atomic rename; multi-file writes explicitly not transactional, reported per root), and §B.2 E8/E9/E10/E11 (concurrent => retry x3 then 'conflict' leaving the human's file untouched; unparsable => no edit attempted; missing => created with a header comment; read-only => loud 'denied' with path + errno while the settings edit still succeeds)."
+    },
+    {
+      "criterion": "The WORKSPACE-SELECTION rule is stated for zero, one and several live session roots, with the failure mode of each and the loud degradation when the target is ambiguous (never a silent best-guess).",
+      "status": "passed",
+      "where": "DESIGN §A.1 — a three-row table giving the target, the failure mode and the exact USER-VISIBLE message for 0 / 1 / N live roots: 1 root writes it, 0 roots persist to settings and warn 'no-live-session', and N roots REFUSE with 'ambiguous-multi-root' naming every candidate and writing nothing (the fan-out of the first draft is REVERSED, D-12, to satisfy t35 acceptance A3's 'never silently write to a guessed path'). The target set is read from the adapter's workspaceRootsAll() because the settings events carry no identity (DOSSIER §c). Explicitly rejected: per-session attribution (impossible), last-writer-wins, and any single guessed root. process.cwd() is never a fallback. §A.1 also records the later-started-session behaviour and marks workspaceRootsAll()'s dedup/deleted-cwd behaviour UNVERIFIED for the lane to pin."
+    },
+    {
+      "criterion": "The COMMENT-PRESERVATION strategy is specified: which editor/parser performs the edit, how key order and comments survive, and what happens for a key path that does not exist yet.",
+      "status": "passed",
+      "where": "DESIGN §B. Refuse-first result contract; editor = the in-repo string-aware scanner at packages/mpd-config-plugin/src/index.ts:22-48 extended into a path-addressed value-span rewriter (D-6); byte-identical elsewhere by construction because only the target span is spliced. Missing key path = E6 (materialise intermediates at the deepest existing point, append as the LAST member, no invented comment; D-7 rejects alphabetical insert because it reorders a human's file). Every case the captain named is a numbered row: E1 strings/escapes, E2 comments, E3 trailing commas, E4 arrays, E5 duplicate keys, E7 CRLF/LF, E8 read/write race, E9 unparsable, E10 missing, E11 read-only."
+    },
+    {
+      "criterion": "The INVARIANTS section states how the design keeps: (1) mpd-tui-plugin performing ZERO filesystem writes, (2) mpd-dsh-adapter-plugin as the only contact surface with harness services, (3) mpd-config-plugin as the owner of the config layer, (4) no new filesystem write from any web/client code.",
+      "status": "passed",
+      "where": "DESIGN §5, one row per invariant. (1) the bridge lives in mpd-config-plugin and the TUI change is a STRING CONSTANT only; measured today the package imports only readFileSync/readdirSync/statSync (src/state.ts:11, src/registration.ts:17) with no write API in src/ or dist/, and U16 asserts it stays so. (2) ctx.settings is reached only through a NEW adapter seam, never a bare ctx.get('settings'). (3) mpd-config-plugin owns registration, both file layers, precedence and per-call root resolution (never a cached const, never chdir). (4) the card writes via settingsScope.mutate so the write rides the settings/mutate RPC and no client-side filesystem write exists."
+    },
+    {
+      "criterion": "A FAILURE-MODES AND DISCLOSURES list says exactly what the docs must then disclose (including anything the bridge still cannot do), so the documentation task can be honest without inventing.",
+      "status": "passed",
+      "where": "DESIGN §7, eight numbered disclosures: no-live-session => no file write with the user-visible wording, non-loopback pages never reach the host document (memory mode), N-workspace fan-out, applies:'restart' with the per-knob table reference, file-edit-clears-override, inserted keys carry no comment, refuse-first outcomes leaving the file byte-untouched while the settings value still applies, and an explicit still-not-bridged list to be enumerated by name. §7 also requires items 1-4 and 7 to be visible in the product surface, not only the docs, and §C.3 forces the rendered web card to be recorded NOT-CLAIMED."
+    },
+    {
+      "criterion": "A TEST PLAN names the unit tests and the two live lanes (TUI edit -> file changed -> plugin behaviour changed; web card edit -> same) that would falsify the design if wrong, with the exact commands where they exist.",
+      "status": "passed",
+      "where": "DESIGN §9. Unit tests U1-U17, one per edge case and invariant (byte fidelity, escapes, nested missing path, delete, arrays, duplicate keys including the ambiguous-intermediate refusal, CRLF, compare-and-swap, unparsable, read-only, missing, precedence both directions, no-workspace-identity, fan-out, migration idempotence, TUI zero-write, restart timing). Two live lanes with concrete commands: `node skills/dsh-qa/scripts/tui-settings-bridge.mjs` (tmux, real TTY, excluded from the automated sweep exactly like the existing TUI lanes) and `node skills/dsh-qa/scripts/web-settings-bridge.mjs` (loopback 303 + launch-token cookie, then the same settings/mutate the card emits, plus the static client-bundle assertion). Each asserts all three of accepted / file-changed-with-comments-intact / consumer-behaviour-changed-after-restart, on its own lane-root sandbox. §9.3 lists falsifiers F1-F9 and rules that a lane asserting only 'the edit was accepted' is not a pass."
+    }
+  ],
+  "decisions_recorded": [
+    {"id": "D-1", "decision": "runtime precedence L0 < L1 < L2 < L3 (settings user wins at runtime)", "rationale": "a UI edit must be visible immediately; making the file outrank the settings layer is the bug being fixed."},
+    {"id": "D-2", "decision": "a file edit CLEARS the overlapping settings override via unset", "rationale": "otherwise L3 > L2 silently swallows every later file edit (the trap traced in §1.2)."},
+    {"id": "D-3", "decision": "write-back owned by packages/mpd-config-plugin", "rationale": "the only module owning both file layers, the JSONC reader, deepMerge and the workspace helper; keeps the TUI zero-write property."},
+    {"id": "D-4", "decision": "trigger is settings/document-updated filtered to source==='update'", "rationale": "document-updated fires on raw-section change regardless of the deep-equal gate; the source filter prevents a write-back/reload echo loop."},
+    {"id": "D-5", "decision": "target set = live roots at event time; write all N; [] => persist + warn, never guess", "rationale": "the settings path carries no workspace identity (DOSSIER §c), and silent mis-targeting is the forbidden outcome."},
+    {"id": "D-6", "decision": "in-repo surgical span rewriter; vendoring is the fallback", "rationale": "no comment-preserving JSONC editor exists offline; the repo already has the hard half of the scanner."},
+    {"id": "D-7", "decision": "new keys appended as the last member of their object", "rationale": "preserves human key order everywhere else; alphabetical insert would reorder the file on unrelated edits."},
+    {"id": "D-8", "decision": "base refresh by re-registration; fixed-base is the documented fallback", "rationale": "installSection is register+hooks and duplicate registration fails loud (measured at $H/dsh-settings/lib/index.js:327-331), so a second installSection call is impossible."},
+    {"id": "D-9", "decision": "TUI keeps a FALLBACK namespace registration, not a second owner", "rationale": "duplicate registration fails loud, but the section must not go 'unavailable' in a composition without the config plugin."},
+    {"id": "D-10", "decision": "the web card claims loopback-only persistence and the RENDERED card stays NOT-CLAIMED here", "rationale": "no browser exists in this environment, so 'the card renders / a click produces the mutate' is unverifiable and must not be asserted; only the protocol-level bridge and a static client-bundle assertion are witnessable."},
+    {"id": "D-11", "decision": "duplicate keys: edit the LAST occurrence, refuse on an ambiguous duplicated intermediate", "rationale": "JSON.parse is last-wins (measured), so editing the first occurrence would look successful and change nothing observable."},
+    {"id": "D-12", "decision": "N live roots REFUSE `ambiguous-multi-root` (candidate list named, no file written) instead of fanning out to all N — this REVERSES the first draft", "rationale": "t35 acceptance A3 requires the ambiguous multi-root path to warn and never silently write to a guessed path; N candidates mean the target cannot be PROVEN, and an unprovable target is refused exactly like an unprovable key span. Accepted cost, disclosed: with several live sessions a front-door edit persists to settings but not to a file until one workspace is live."},
+    {"id": "D-13", "decision": "mpd-config-plugin registers the `mpd` namespace (serving the file-derived base); mpd-tui-plugin becomes a pure consumer with a fallback registration only when the namespace is otherwise unserved", "rationale": "the namespace must serve the file-derived base, which only the module reading the files can supply; the TUI package still performs zero filesystem writes."},
+    {"id": "D-14", "decision": "the A6 negative-control hook is the row config key `writeBack: false` (default true), with env MPD_DSH_TUI_SETTINGS_BRIDGE=off as a secondary debugging lever; the switch disables ONLY the file write-back, never the namespace or precedence", "rationale": "a row key is composable from the lane's own patch layer, which is what a negative control needs; disabling the namespace too would make the control indistinguishable from an absent feature."},
+    {"id": "D-15", "decision": "a MISSING key path is INSERTED (never refused) and `span-not-proven` is reserved for genuinely unprovable shapes", "rationale": "the captain ruled insertion explicitly; otherwise a first-time key could never be written."}
+  ],
+  "measured_facts_relied_on": [
+    "packages/mpd-config-plugin/src/index.ts:22-48 stripJsonc (string-aware, skips escaped quotes, detects trailing commas before }/]); :50-52 parseJsonc; :94 re-export of deepMerge; :8 writeFileSync imported and never called; :104,134-141 reload + the mpd_config_reload tool (refreshes only the layer's own state).",
+    "packages/mpd-config-plugin/src/index.ts:79-92 loadConfig reads userFile then projectFile and deep-merges project-over-user; :102-104 apply-time snapshot plus reload(exec).",
+    "packages/mpd-tui-plugin/src/settings.ts:29 SETTINGS_NS='mpd'; :32-39 schema; :50 UNBRIDGED_MARKER; :53-55 knobHint; :141 register(SETTINGS_NS, SettingsSchema, {applies:'restart'}).",
+    "packages/mpd-tui-plugin/src/state.ts:11 and src/registration.ts:17 import only readFileSync/readdirSync/statSync; no write API appears in src/ or dist/index.js.",
+    "packages/mpd-dsh-adapter-plugin/src/index.ts:167,173,239,252,297-298,414-415 expose workspaceRoot(exec) and workspaceRootsAll().",
+    "Apply-time captures (the reason applies:'restart' is real for these knobs): packages/mpd-boulder-plugin/src/index.ts:31,45; packages/mpd-comment-checker-plugin/src/index.ts:26,99; packages/mpd-hashline-plugin/src/index.ts:40; packages/mpd-ulw-plugin/src/index.ts:26; packages/mpd-memory-plugin/src/index.ts:24. The single LAZY exception: packages/mpd-ext-plugin/src/manifest.ts:193-210 and src/mcp.ts:50.",
+    "$H/dsh-settings/lib/index.js:327-331 installSection = register(ns, schema, {base: entry}) + hooks, so the base is fixed at registration and a second call would be a duplicate registration.",
+    "JSON.parse duplicate-key behaviour is last-wins (measured: JSON.parse('{\"a\":1,\"a\":2}') === {\"a\":2}).",
+    "DOSSIER pp.20-79 (settings service surface, persistence, revision fence), pp.81-137 (web card contract, loopback caveat), pp.139-167 (workspace identity absent + R1-R4 failure modes), pp.169-196 (JSONC reader exists, no editor, YAML-only host machinery), pp.198-223 (TUI section metadata contract), pp.227-272 (recommendation)."
+  ],
+  "unverified_carried_forward": [
+    "Whether re-registration can safely refresh a live namespace's base, or whether the fixed-base fallback is required — needs a mounted boot (DESIGN §1.3, §10).",
+    "Whether workspaceRootsAll() deduplicates and how it treats a session whose cwd was deleted — needs a lanes measurement (DESIGN §A.1).",
+    "The exact adapter method names/shapes for the settings seam — a naming/typing question for the adapter owner (DESIGN §10).",
+    "Performance of the span rewriter on very large files — not measured; the editor is O(n) and the config file is small by nature.",
+    "W3: that the web card renders, is dispatched for the mpd namespace and a human click produces the mutate — NOT witnessed here (no browser) and explicitly NOT-CLAIMED (DESIGN §C.3)."
+  ],
+  "not_done_by_design": [
+    "No implementation: no source, docs, skill or script file was created or modified.",
+    "No test was run: this task's deliverable is the design and its falsifying test plan, to be executed by the implementation (t35) and verification tasks."
+  ]
+}

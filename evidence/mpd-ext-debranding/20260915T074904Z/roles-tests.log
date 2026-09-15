@@ -1,0 +1,40 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-roles-plugin/test/roles.test.ts:
+(pass) roster: 11 roles, unique ids, non-empty chains and fields [1.34ms]
+(pass) persona assets exist for every role and contain real instructions [0.73ms]
+(pass) normalizeRoleKey: canonical, chain keys and legacy mpd- ids [0.13ms]
+(pass) normalizeRoleKey: team-style normal names resolve to the same role as their id [0.47ms]
+(pass) a one-shot spawn is labelled with the team-style normal name, not the id [3.46ms]
+(pass) no surface advertises an upstream alias: names plus what a role does [3.22ms]
+(pass) the roster tool payloads carry no id field (an alias is not part of a result) [1.30ms]
+(pass) mpdRoles service: list 11, get resolves aliases, unknown is null [1.33ms]
+(pass) mpd_role_persona returns the extracted persona text under the role's NAME [0.52ms]
+(pass) mpd_role_spawn: read-only roles get write-deny toolFilter, workers none [1.00ms]
+(pass) mpd_roles_list returns the full roster summary [0.60ms]
+(pass) read-only deny list covers every write-capable tool (no shell/AST/LSP write bypass) [0.68ms]
+(pass) read-only deny list carries no dead tool name (the defect that broke every read-only spawn) [0.07ms]
+(pass) the same dead names must not reappear in the roles source or its built dist [0.30ms]
+(pass) the built dist renders no role as `Name (upstream-alias)` [0.57ms]
+(pass) roles and workmate read-only deny lists are exactly equal (drift guard) [0.29ms]
+[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+(pass) extension roles: a real mpd-ext registration joins the roster with its owning extension [15.08ms]
+[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+(pass) extension roles: resolved PER CALL — later registration and disabled extensions take effect next call [2.62ms]
+[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+(pass) extension roles: a name colliding with a base role or another extension is refused loudly, never fatally [4.04ms]
+[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+(pass) extension roles: usable as a workmate BASE template (real mpd_workmate_init) [3.29ms]
+(pass) extension roles: an absent or broken mpdExtensions service leaves the base roster answering [2.14ms]
+[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+(pass) extension roles do NOT enter the agent-teams `mpd` profile member list (documented limit) [1.63ms]
+(pass) the built dist carries the extension-role wiring (a src-only change would ship dead) [0.29ms]
+[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+(pass) extension roles: a PROJECT-plane extension's role is refused (the contract rejects it) [2.86ms]
+
+packages/mpd-roles-plugin/test/roles.test.ts:
+
+ 24 pass
+ 0 fail
+ 462 expect() calls
+Ran 24 tests across 2 files. [181.00ms]

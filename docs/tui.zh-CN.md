@@ -58,7 +58,7 @@ TUI 会话默认使用 **mpd** 预设，由组合中的 `dsh-tui-agent-presets` 
 | AgentTeams 侧边栏面板 | `tuiScenes` 全屏面板 + `tuiStatus` 状态行 | 已在实机通道中渲染——`evidence/tui/live/20260915T063140Z/result.json`（t8；7 个界面中 6 个） |
 | Workmate 库标签页 | `tuiCommandTrees`（`/mpd …`）+ `tuiDialogs` | 同上（同一实机通道证据） |
 | Bundle 悬浮窗 | `tuiStatus` 状态行；`tuiRenderers` 转写行**宿主未投影** | 状态行已渲染；渲染器行**未渲染**——见明确不声明第 10 条 |
-| — | `tuiSettingsSections`（mpd.jsonc 可调项的 `/settings` 区块） | 已渲染——同上，另有限制见 §6.2 |
+| — | `tuiSettingsSections`（mpd.jsonc 可调项的 `/settings` 区块） | 已渲染——同上；该区块写明与 `<workspace>/.mpd/mpd.jsonc` 的**打通**、重启提示与"绝不丢失"条款（§6.2），通道以 `allPatterns` 断言这段披露文本 |
 | — | `tuiShortcuts` | 已渲染——同上 |
 
 13 个接缝在范围内：本波次新建 8 个（settings 区块、场景、对话框、状态、快捷键、渲染器**注册**、
@@ -66,6 +66,29 @@ TUI 会话默认使用 **mpd** 预设，由组合中的 `dsh-tui-agent-presets` 
 profile 组合）；**1 个（`tuiPrompt`）宿主不提供，完全不声明**；**另 1 个（`tuiRenderers`）虽已注册，
 但宿主不投影任何转写行，因此其转写行同样不声明**——与 `tuiPrompt` 采用同一种明确处理，记为明确不
 声明第 10 条。
+
+### 3.1 Web 界面的设置卡片（设置 → 插件）
+
+同样的六个可调项也能在 Web 界面里编辑：**设置 → 插件 → `mpd` 卡片**。该卡片按宿主自有插件的注册方式
+注册（`ctx.slots.inject("settings.plugin.item", …)` → `ctx.slots.register({ name, key: "mpd", locale, inject }, Card)`，
+形状取自 `dsh-client-ui-settings-plugins/lib/client.js` 的实测），因此它以 settings 命名空间为键出现在
+"插件"标签页中；一个被服务、但没有卡片的命名空间什么也不渲染——这正是此前六个可调项不可见的原因。写入走
+公开的 `ctx.settingsScope.bind({ namespace: 'mpd' }).mutate(ops, revision)` 接缝（支持嵌套路径；复位用
+`unset`），不可写的 scope 会带原因渲染为只读，并且绝不尝试写入。卡片的字段、标签与中文描述由它自己的测试
+与 TUI 区块的描述符逐一比对，因此两扇门不会各自漂移。
+
+**证据级别——已见证：** **已构建且已服务**的客户端字节中的注册契约
+（`packages/mpd-bundle-plugin/client.js`，sha256 `dd9c88933a316277…`，282453 字节；通道会重新哈希它所
+判定的那份产物）、该卡片自身测试套件中的注册形状与字段一致性、卡片模块在**离线钩子测试台（offline hook
+harness）**中的行为——渲染六个字段、以正确的路径/值/revision 驱动 scope 写入、拒绝非法草稿、以及带原因
+渲染为只读——以及经由宿主自身带认证的 settings API 完成的**端到端写入路径**
+（`web-settings-bridge.mjs` W1–W13）。
+
+**证据级别——本环境未见证：** **真实浏览器渲染**（宿主在真实页面中分发该 key）与**点击驱动的保存**。
+本环境没有浏览器可执行文件；通道以 `cardClaim.W3.witnessed === false` 记录这一点及原因，本页重复该结论，
+绝不暗示相反。要自己看到它：启动 `dsh web`，打开界面，进入 **设置 → 插件 → 插件配置**，应看到带六个字段的
+`mpd` 卡片，编辑一项并保存——恰好一个活动会话时，工作区的 `<workspace>/.mpd/mpd.jsonc` 会在保留注释的
+前提下改变；否则打通功能会大声拒绝（`no-live-session` / `ambiguous-multi-root`）并说明取值并未丢失。
 
 ## 4. 准入与分发产物
 
@@ -117,8 +140,8 @@ Web 客户端、TUI 版本）和一个覆盖真实数据位置的 `ManagedLayout
   bundle 没有实现版本化的生命周期操作，也没有 clone/export/migrate 能力，并且不发布安装实例身份。
   声明为空的这些字段在结构上合法，却等于什么都没说。
 - 由该协议自带一致性 CLI 执行的校验现已交付：分发通道（`t9`）把协议仓库复制进沙箱、完成构建
-  （`pnpm install --frozen-lockfile` 与 `pnpm build` 均退出 0），并运行
-  `packages/conformance/lib/cli.js dsh-distribution.json`（退出 0）——描述符由协议自带工具验证，
+  （`pnpm install --frozen-lockfile` 与 `pnpm build` 均退出 0），并运行该协议副本自带的
+  `<protocol-repo>/packages/conformance/lib/cli.js dsh-distribution.json`（退出 0）——描述符由协议自带工具验证，
   而不是由重新实现验证（`evidence/tui/conformance/20260915T064521Z/03-distribution.log`）。通过该
   CLI 仍然只证明格式与内部一致性，绝不证明数据安全。按协议 schema 文件做的本仓库结构检查另记录在
   `evidence/tui/docs/20260915T060010Z/descriptor-check.json`。
@@ -161,18 +184,53 @@ profile 安装的插件无法注册 `tui.dsh/v1alpha1#DecisionEvents`：在宿�
 相关：`trusted-in-process` 是**兼容性/审计标签，不是安全边界**。SHA-256 摘要只能证明字节一致，
 **不能**证明发布者身份。
 
-### 6.2 `/settings` 区块未与 `.mpd/mpd.jsonc` 打通
+### 6.2 `/settings` 区块**已**与 `<workspace>/.mpd/mpd.jsonc` 打通——附带一次重启与两种具名跳过情形
 
-该区块声明的是真实的 mpd.jsonc 可调项（`hashline.maxDiffChars`、`commentChecker.autoCheck`、
-`ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir`），并在宿主的 settings 命名空间
-`mpd` 下编辑它们。而 mpd 插件通过 `packages/mpd-config-plugin` 读取 `.mpd/mpd.jsonc`，**不是**
-宿主的 settings 文档：保存的结果只写入 settings 文档，**不会**改写 `.mpd/mpd.jsonc`。现在全部六个字段
-提示都已在界面上写明这一点（`mpd.jsonc <key> — not bridged: a save here does not rewrite
-.mpd/mpd.jsonc`，存在于交付产物 `dist/index.js`，sha256 `5dce2563fd0e3b20…`）。真正的打通是一个已命名
-的后续任务（`mpd-settings-bridge`），不是已交付行为。界面级披露已由后续任务验证：
-`evidence/tui/plugin-followup/20260915T060032Z/`（`disclosure.json` 打印六个已注册提示，
-`result.json` 记录验收行）。**证据级别：** 对构建产物的提示文本为 `Observed`——这并不主张"在界面上
-编辑会写入配置文件"，事实恰恰相反。
+该区块在宿主 settings 命名空间 `mpd` 下声明的就是真实的 mpd.jsonc 可调项（`hashline.maxDiffChars`、
+`commentChecker.autoCheck`、`ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir`），而该命名空间
+由 `packages/mpd-config-plugin` **提供**（本包只是纯消费者，只在没有配置插件参与组合时才注册一个带守卫的
+兜底）。如今一次保存会发生什么：
+
+**`base` 是一条规则，不是一次查表。** 提供该命名空间的包自行推导 base（`baseForNamespace()`，
+`packages/mpd-config-plugin/src/index.ts:511`，经适配器注册），规则按活动根的数量分档：
+
+| 活动会话根 | 命名空间 base |
+|---|---|
+| **恰好一个** | 该工作区的 `<workspace>/.mpd/mpd.jsonc`——常规路径 |
+| **零个** | **挂载时**（无 exec）的根——`DSH_WORKSPACE_ROOT` 或进程 cwd——它是任何会话存在之前唯一存在的根；那里的文件缺失即得到**空 base**，实际上等同于 schema 默认值。由于 `mpd-config` 所在行通常先于任何活动会话生效，这就是**常规启动路径** |
+| **多于一个** | **不虚构任何文件 base**：`base: undefined`，原因 `ambiguous-multi-root`，逐一点名全部候选并写入 `states()`。在恰好一个工作区活动之前，该命名空间显示 schema 默认值；此状态下的保存会被**拒绝**（见下），因此这种歧义不可能落到磁盘 |
+
+**base 在整个进程生命周期内固定**——宿主对一次活动注册**不提供任何注销（disposal）句柄**，它自己的
+settings 安装器同样保持 base 固定。这正是界面上的句子写作"**重启后**对 mpd 插件生效"的原因：那是诚实的
+后果，而不是含糊其辞。插件真正使用的是**已解析的值（resolved value）**加上配置层的**逐次调用文件读取**：
+L1/L2 文件层在每次解析时都会被重新读取，因此即便 base 被冻结，**按工作区读取仍然解析各自会话自己的
+文件**。本页没有任何句子承诺 base 会被实时刷新。
+
+- **读入优先级** —— L0 schema 默认值 < L1 `$DSH_HOME/mpd.jsonc` < L2 `<workspace>/.mpd/mpd.jsonc` <
+  **L3 settings 用户区段**（运行期以其为准）；此后若**文件**被再次编辑，重叠的 settings 叶子会被
+  **取消设置**，于是文件里的新值重新生效，两个方向都不会静默丢失。
+- **写回** —— 由 `packages/mpd-config-plugin` 拥有（绝不由本 TUI 包执行，后者保持已验证的零写入性质）。
+  触发点是宿主的 `settings/document-updated(ns, revision)` 事件，并过滤为 `source === 'update'`
+  （原始区段事件，因此深比较门不会把变更丢掉）；写入对象是事件时刻实机会话工作区的
+  `<workspace>/.mpd/mpd.jsonc`，写入过程持锁、对原始字节做 compare-and-swap、写同目录临时文件、再原子改名。
+  **注释、键顺序与尾随逗号都保留**：一次实际启动把 JSONC 文件里的 `hashline.maxDiffChars` 从 20000 改为
+  31415，注释、键顺序与尾随逗号均未改变。
+- **工作区目标** —— settings 路径不携带身份，因此目标集合是**事件时刻的实机会话工作区**：恰好一个 ⇒
+  写入该文件；**零个 ⇒ `no-live-session`**；**多于一个 ⇒ `ambiguous-multi-root`**，并逐一列出候选。
+  两种跳过情形下**都不改动任何文件**，而且这次编辑**没有丢失**：它已存入宿主全局 settings 文档，配置层
+  会立刻对所有工作区生效——只有**文件写入**在等"恰好一个实机会话"。TUI 状态行与 Web 卡片都写明了这一条。
+- **生效时机** —— mpd 的消费者在插件 `apply()` 时读取配置（`applies: 'restart'`），因此保存的编辑
+  **在重启后对这些插件生效**；界面提示就是这么写的。
+- **退化目标会大声报错** —— 文件缺失（创建并带头部注释）、只读（`denied` + 路径 + errno，settings 编辑
+  仍然成功）、并发（重试 ×3 后 `conflict`，人的文件保持原样）、无法解析（`unparsable`，绝不"修复"）。
+
+**证据级别：** `Observed` —— 沙箱内两次真实启动（ok: true），见
+`evidence/mpd-bridge/implementation/20260915T080138Z/`；另有通道
+`skills/dsh-qa/scripts/tui-settings-bridge.mjs` 与复审 PASS
+`evidence/mpd-bridge/review/REREVIEW-t49.md`。打通之前的版本
+（`packages/mpd-tui-plugin/dist/index.js` sha256 `5dce2563fd0e3b20…`）携带的是旧的界面文本
+（`mpd.jsonc <key> — not bridged: a save here does not rewrite .mpd/mpd.jsonc`）；该文本与"已命名的后续
+任务"这一措辞在当前版本（`dist/index.js` sha256 `cf4b3813a344c9d5…`）**已不成立**。
 
 ### 6.3 包内技能只是资源
 
@@ -195,6 +253,39 @@ Command 能力注册任何 host Command"。由清单中介的 Command **贡献**
 由明确不声明第 10 条覆盖）。另一种读法——在清单里声明该命令——需要已授予的 `commands.invoke` 权限，以及
 profile 安装的插件无法到达的准入路径（§6.1），因此不是本版本选择的读法。生态最终采用哪种读法，由交付报告
 说明。
+
+### 6.5 `mpd.jsonc` 中的重复键——已定规则
+
+`JSON.parse` 是"后者胜出"，因此一个被声明多次的路径只有一个可观测值。打通功能按此编辑持久投影，规则以
+队长的最终表格为准（`evidence/mpd-bridge/captain/RULING-duplicate-unset-FINAL.md`）：
+
+| 操作 | 同一路径被声明多次时 | 依据 |
+|---|---|---|
+| **SET** | 编辑**最后一处**，成功返回，并警告时列出**每一处**所在行 | 最后一处才是 `JSON.parse` 唯一能观测到的值 |
+| **UNSET**（直接调用或 `DELETE` 哨兵） | 一次由后向前的区段扫描，删除该路径的**每一处** | 取消设置后键必须**不存在**：留下较早的一处会让它在文件里继续生效，而 settings 层却报告已取消——这正是打通功能要消除的静默分歧 |
+| **拒绝** | 仅限无法证明的区段、被重复的**中间**键（`ambiguous-intermediate`，两个方向）、无法解析的文档、或 `read-only` 目标 | 这些情形下目标区段无法被证明，因此不写任何内容，并给出具名原因 |
+
+投影理由一句话：文件是 settings 层的**持久投影**，不是不可触碰的用户原件——这就是 UNSET 删除所有出现处、
+而 SET 只改运行时真正读取的那一处的原因。
+
+### 6.6 状态各自存放在哪里——作用域与跨 home 边界
+
+打通功能横跨四个作用域；按机制把它们命名清楚，两扇前门的行为才是可预测的
+（`evidence/mpd-bridge/dual-path/REPORT.md`，发现 D1）：
+
+| 作用域 | 状态 | 共享条件 |
+|---|---|---|
+| **DSH-HOME**（`$DSH_HOME/settings.yaml` + 用户 `mpd.jsonc`） | 宿主的 settings 文档 | 两扇前门位于**同一个 DSH home** |
+| **workspace**（`<workspace>/.mpd/**`） | `mpd.jsonc`（打通的持久投影）、`memory.json`、team/plan/boulder 状态 | 两扇门运行在**同一工作区**——由构造保证 |
+| **HOME**（`~/.mpd/workmate`） | 用户的跨项目 workmate 库 | 同一 `HOME`，即同一用户的多个 profile 之间；两个用户之间相互独立 |
+| **bundle**（`<bundle>/…`） | `mpd` preset/roster 与技能语料（按引用提供，不复制） | 两扇门**就是同一次安装**，与 home 无关 |
+
+**必须知道的边界：** 只有一个 DSH home 时，settings 文档是共享的，因此一次设置编辑对两扇前门同时可见。
+而**不同的 DSH home 会有两份 settings 文档**——`settings.yaml` 是 DSH-HOME 作用域的——所以在一扇门里做的
+编辑，对另一扇门而言**作为 settings 取值（VALUE）是不可见的**。持久状态仍然会收敛：回写的目标是
+**工作区**文件，两扇门写的是同一个 `<workspace>/.mpd/mpd.jsonc`。一句话概括：*同一个 DSH home ⇒ settings
+取值共享；不同 home ⇒ settings 取值不同，但工作区的 `<workspace>/.mpd/mpd.jsonc` 仍然收敛。* 这是两扇门有可能对同一个
+继承值给出不同显示的唯一情形。
 
 ## 7. 对生态惯例的刻意偏离
 
@@ -290,7 +381,8 @@ profile 安装的插件无法到达的准入路径（§6.1），因此不是本�
    被排除在自动化的 `bun run test:qa` 扫描之外；自动化通道无法见证 TUI 界面。
 8. **未发布一致性声明，也不构成数据安全认证** —— 描述符合法不等于安全保证，我们的通道也不是证书
    （`TUI-DEP-001`）。
-9. **`/settings` 打通、包内技能资源、刻意的偏离** —— 见 §6.2、§6.3 与 §7。
+9. **包内技能资源与刻意的偏离** —— 见 §6.3 与 §7。（`/settings` 打通曾列在此处；自打通波次起，它已是
+   受声明、有证据的能力——`Observed`，两次真实启动——见 §6.2，并在 §11.1 记为被取代。）
 10. **`tuiRenderers` 转写行未被宿主投影。** 插件为其纯日志事件 `mpd-tui/board-opened` 注册了渲染器，
    该事件在持久存储中确有记录，但**界面上没有出现任何转写行**，而其余六个受激活门控的界面都正常渲染：
    `evidence/tui/live/20260915T063140Z/result.json` 记录 `"tuiRenderers": false`（以及
@@ -329,3 +421,18 @@ profile 安装的插件无法到达的准入路径（§6.1），因此不是本�
 本 bundle 到已准入要求套件的映射已经存在，该通道也已在固定输入上执行、并为每一行记录了逐条状态；尚待
 处理的是被记录的规范套件阻断、web profile 启动，以及船长的单次重新固定——本页不会把其中任何一项变成
 "通过"。
+
+### 11.1 打通波次之后的修订（t50，2026-09-15）
+
+上表是 TUI 版本当时的记录，保持原样。settings 打通波次（t35–t50）移动了其中两个被点名的产物，并关闭了
+其中一项残留，因此以下内容取代它们。下列每个数字都在写入本段的同一步用 `sha256sum` / `stat -c %s`
+重新测量——既不推算，也不凭记忆：
+
+| 被取代的表述 | 原为 | 现为（2026-09-15 实测，t50） |
+|---|---|---|
+| §11 版本绑定中的入口摘要 | `packages/mpd-tui-plugin/dist/index.js` sha256 `5dce2563…`，98883 字节 | sha256 `cf4b3813a344c9d5…`，**105305 字节**——打通波次改写了 `/settings` 的披露文案，因此该包被重建。`dsh-plugin.json` sha256 `84ed4a5d…` 未变（8088 字节）；该波次新增的两个产物是 `packages/mpd-config-plugin/dist/index.js` sha256 `15733c1e…`（99868 字节）与 `packages/mpd-bundle-plugin/client.js` sha256 `dd9c8893…`（282453 字节） |
+| §11 的 R3 行 | `bun run test:qa`"按设计失败"，直到船长的单次 `VENDOR_LOCK` 重钉落地 | **通过**——单次重钉已落地（`VENDOR_LOCK.json` 的 `assets/skills`：307 个文件，treeSha `ba0c3922…`），套件报告全部自测通过，退出码 0 |
+| 明确不声明第 9 条（其开头是 `/settings` 打通） | "`/settings` 打通、包内技能资源、刻意的偏离" | 打通**已是受声明、有证据的能力**（§6.2，`Observed`，两次真实启动）；第 9 条现覆盖包内技能资源与刻意的偏离（§6.3、§7） |
+| §3 的 settings 行 | "另有限制见 §6.2" | 打通后的行为，附一次重启提示与两种具名跳过情形（§6.2）、重复键规则（§6.5）与 Web 卡片证据级别（§3.1） |
+
+原有表述未被改写——它们在本标题下就地被取代。

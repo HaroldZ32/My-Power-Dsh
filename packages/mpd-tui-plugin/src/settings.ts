@@ -4,10 +4,12 @@
 // `.mpd/mpd.jsonc` knobs — the runtime config layer the mpd plugins read through
 // `packages/mpd-config-plugin`. That layer is NOT the harness settings document
 // this screen writes to: the section declares and edits those knobs under the
-// harness settings namespace `mpd`, and the two are NOT bridged. A saved edit
-// therefore persists in the harness settings document; it does not rewrite
-// `.mpd/mpd.jsonc`. The bridge is a NAMED follow-up (`mpd-settings-bridge`) and is
-// NOT claimed here (README §"What is not claimed").
+// harness settings namespace `mpd`, and the two are BRIDGED (t35): `mpd-config`
+// observes the namespace through the adapter's settings seam and rewrites the value
+// into `<workspace>/.mpd/mpd.jsonc` with comments and key order preserved. The
+// settings value is visible to the config layer immediately, while a RUNNING
+// session's plugin behaviour changes only after a restart — every knob in this
+// section is captured at plugin mount (design §D.1).
 //
 // The disclosure is not only in this header and the READMEs — it is carried by
 // the RENDERED METADATA too (t21): every field hint names its mpd.jsonc key and
@@ -20,96 +22,96 @@
 // available (an unregistered namespace is rendered as unavailable by design).
 // `z` comes from the bundle's already-vendored schemastery copy. Same directory
 // specifier rule as `index.ts`.
-import z from "../../mpd-agent-teams-plugin/_deps/schemastery"
 import type { PluginContextLike, SeamOutcome, SettingsProviderLike, TuiSettingsSectionLike, TuiSettingsSectionsLike } from "./types.js"
+// ONE source for the namespace schema, the six knobs and the disclosure: `mpd-config-plugin`
+// owns the namespace (design §10.1) and exports them; this package consumes them for its
+// guarded FALLBACK registration and for the section it declares.
+import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, SettingsSchema, SETTINGS_KNOBS, SETTINGS_NS } from "../../mpd-config-plugin/src/settings-schema"
 import type { Log } from "./log.js"
 import { onService } from "./host.js"
 
-/** The settings namespace the section edits. */
-export const SETTINGS_NS = "mpd"
+export { SETTINGS_NS }
 
-/** The mpd.jsonc knob schema (mirrors packages/mpd-config-plugin's consumed keys). */
-export const SettingsSchema = z.object({
-  hashline: z.object({ maxDiffChars: z.number().default(20000) }),
-  commentChecker: z.object({ autoCheck: z.boolean().default(true) }),
-  ulw: z.object({ maxRounds: z.number().default(6) }),
-  memory: z.object({ vcs: z.union([z.const("git"), z.const("svn")]).default("git") }),
-  team: z.object({ stateDir: z.string().default(".mpd/team") }),
-  boulder: z.object({ dir: z.string().default(".mpd") }),
-})
+/** Re-exported so this package's tests and consumers keep one name for the schema. */
+export { SettingsSchema }
 
 /**
- * The disclosure a user must be able to read ON SCREEN (t21).
+ * The disclosure a user must be able to read ON SCREEN (t21, reworded by t35).
  *
- * Every hint that names an `.mpd/mpd.jsonc` key carries this marker, because the
- * screen is the only place a user learns what saving a field does: the section
- * writes the harness settings document, NOT the mpd.jsonc layer, and the bridge
- * between them is a named follow-up (`mpd-settings-bridge`) rather than shipped
- * behaviour.
+ * Every hint that names an `.mpd/mpd.jsonc` key carries this sentence, because the
+ * screen is the only place a user learns what saving a field does. It has TWO parts
+ * and both are load-bearing: the save IS written to the workspace file for the live
+ * session workspace(s), and the BEHAVIOUR change still needs a restart because the
+ * knobs are read at plugin mount. The old "not bridged" claim was true before t35 and
+ * is now deleted, not softened — a hint that kept it would be a lie.
  */
-export const UNBRIDGED_MARKER = "not bridged: a save here does not rewrite .mpd/mpd.jsonc"
+export { BRIDGE_DISCLOSURE }
+export { BRIDGE_NOT_LOST }
 
-/** One field hint: the real mpd.jsonc key PLUS the on-screen disclosure. */
+/**
+ * The runtime notice the surfaces show when the save had no live session workspace to
+ * write to (design §D.2 "no live root at save time"). Exported so the same sentence is
+ * used by every surface that reports a save outcome.
+ */
+export const BRIDGE_NO_WORKSPACE_NOTICE = "saved to settings — not yet written to any .mpd/mpd.jsonc (no live session)"
+
+/**
+ * One field hint: the real mpd.jsonc key PLUS both on-screen statements — the bridge+restart
+ * truth AND the clause that keeps a settings-only save from reading as a lost one (captain's
+ * ruling 1: with 0 or N live roots the value persists in the host settings document and the
+ * read-in layer applies it to every workspace immediately).
+ */
 function knobHint(key: string): string {
-  return `mpd.jsonc ${key} — ${UNBRIDGED_MARKER}`
+  return `mpd.jsonc ${key} — ${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`
 }
 
-/** The fields the section renders (path vocabulary = the settings document paths). */
-export const SETTINGS_FIELDS: readonly TuiSettingsSectionLike["fields"][number][] = [
-  {
-    path: ["hashline", "maxDiffChars"],
-    label: "Inline diff limit",
-    descriptions: { zh: "行内 diff 上限" },
-    hint: knobHint("hashline.maxDiffChars"),
-    kind: "number",
-  },
-  {
-    path: ["commentChecker", "autoCheck"],
-    label: "Comment checker",
-    descriptions: { zh: "注释检查" },
-    hint: knobHint("commentChecker.autoCheck"),
-    kind: "boolean",
-  },
-  {
-    path: ["ulw", "maxRounds"],
-    label: "Ultrawork rounds",
-    descriptions: { zh: "Ultrawork 轮数" },
-    hint: knobHint("ulw.maxRounds"),
-    kind: "number",
-  },
-  {
-    path: ["memory", "vcs"],
-    label: "Memory backend",
-    descriptions: { zh: "记忆后端" },
-    hint: knobHint("memory.vcs"),
-    kind: "select",
-    options: [
-      { value: "git", label: "git" },
-      { value: "svn", label: "svn" },
-    ],
-  },
-  {
-    path: ["team", "stateDir"],
-    label: "Team state directory",
-    descriptions: { zh: "团队状态目录" },
-    hint: knobHint("team.stateDir"),
-    kind: "text",
-  },
-  {
-    path: ["boulder", "dir"],
-    label: "Boulder directory",
-    descriptions: { zh: "Boulder 目录" },
-    hint: knobHint("boulder.dir"),
-    kind: "text",
-  },
-]
+/**
+ * Is the namespace already served? Probed through the provider's own read surface: `describe()`
+ * is the documented way to enumerate served namespaces, with `get()` as the fallback for a
+ * provider that answers only reads.
+ */
+function isServed(provider: SettingsProviderLike): boolean {
+  try {
+    if (typeof provider.describe === "function") {
+      const described = provider.describe()
+      if (Array.isArray(described) && described.some((entry) => String((entry as { ns?: unknown })?.ns ?? "") === SETTINGS_NS)) return true
+    }
+  } catch {
+    /* an unreadable describe must not be read as "unserved" by itself */
+  }
+  try {
+    return typeof provider.get === "function" && provider.get(SETTINGS_NS) !== undefined
+  } catch {
+    return false
+  }
+}
+
+/** Is the config plugin in this composition? Its `mpdConfig` service is the signal (design §10.1). */
+function configPluginPresent(ctx: PluginContextLike): boolean {
+  try {
+    return typeof ctx.get === "function" && ctx.get("mpdConfig") !== undefined
+  } catch {
+    return false
+  }
+}
+
+/** The fields the section renders, built from the ONE shared knob list plus the shared disclosure. */
+export const SETTINGS_FIELDS: readonly TuiSettingsSectionLike["fields"][number][] = SETTINGS_KNOBS.map((knob) => ({
+  path: [...knob.path],
+  label: knob.label,
+  descriptions: { zh: knob.zh },
+  hint: knobHint(knob.path.join(".")),
+  kind: knob.kind,
+  ...(knob.options === undefined ? {} : { options: knob.options.map((value) => ({ value, label: value })) }),
+}))
 
 /**
  * The section this plugin declares.
  *
  * Every `hint` is built by {@link knobHint} and therefore carries
- * {@link UNBRIDGED_MARKER}: the user reading `/settings` learns at the point of
- * use that an edit here does not rewrite `.mpd/mpd.jsonc`.
+ * {@link BRIDGE_DISCLOSURE}: the user reading `/settings` learns at the point of
+ * use that an edit here is written to the workspace file AND that its behaviour
+ * change waits for a restart.
  */
 export const SETTINGS_SECTION: TuiSettingsSectionLike = {
   ns: SETTINGS_NS,
@@ -128,18 +130,36 @@ export function registerSettingsSection(ctx: PluginContextLike, log: Log): { out
   let namespace: SeamOutcome = { state: "absent", detail: "settings was not injected" }
   let section: SeamOutcome = { state: "absent", detail: "tuiSettingsSections was not injected" }
 
-  // 1) Namespace: makes the section live rather than "unavailable". A failure (a
-  //    duplicate namespace, a schema the provider rejects) is contained and
-  //    reported; the section is still declared.
+  // 1) Namespace: a GUARDED FALLBACK (design §10.1). `mpd-config-plugin` owns the registration,
+  //    because only it can serve the file-derived `base`. This package registers ONLY when the
+  //    namespace is genuinely unserved — duplicate registration fails loud on this host
+  //    (`dsh-settings` `register()` throws `settings namespace "<ns>" is already registered`), so
+  //    the probe below is the guard that keeps the two owners from colliding.
   onService(ctx, "settings", (_scoped, service) => {
     const provider = service as SettingsProviderLike
     if (typeof provider?.register !== "function") {
       namespace = { state: "refused", detail: "settings.register is missing" }
       return
     }
+    // DETERMINISTIC owner check first: `mpd-config` provides the `mpdConfig` service, and a service
+    // is visible to `ctx.get` once its provider's fiber is active. This row mounts AFTER the config
+    // plugin, so its presence means the owner IS in this composition and will register the moment
+    // the settings provider is up — the fallback must not race it (MEASURED in a real boot: both
+    // plugins parked on `ctx.inject(["settings"])` and the fallback won, leaving the namespace with
+    // no file-derived base).
+    if (configPluginPresent(ctx)) {
+      namespace = { state: "absent", detail: `namespace ${SETTINGS_NS} is owned by mpd-config in this composition — the fallback registration was skipped` }
+      log.info(`settings namespace ${SETTINGS_NS}: mpd-config owns the registration — fallback skipped (design §10.1)`)
+      return
+    }
+    if (isServed(provider)) {
+      namespace = { state: "absent", detail: `namespace ${SETTINGS_NS} is already served by mpd-config — the fallback registration was skipped` }
+      log.info(`settings namespace ${SETTINGS_NS} is already served — fallback registration skipped (design §10.1)`)
+      return
+    }
     try {
       provider.register(SETTINGS_NS, SettingsSchema, { applies: "restart" })
-      namespace = { state: "requested", detail: `namespace ${SETTINGS_NS} requested (no host read-back)` }
+      namespace = { state: "requested", detail: `namespace ${SETTINGS_NS} requested by the fallback (no other registrant) (no host read-back)` }
     } catch (error) {
       namespace = { state: "refused", detail: String((error as Error)?.message ?? error) }
       log.warn(`settings namespace ${SETTINGS_NS} not registered: ${namespace.detail ?? ""}`)

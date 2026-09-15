@@ -1,0 +1,3 @@
+== bun run typecheck ==
+$ tsgo --noEmit
+typecheck exit=0

@@ -1,0 +1,341 @@
+{
+  "ok": true,
+  "fileValue": 30,
+  "writtenValue": 31415,
+  "verdict": {
+    "fileLayerCarriesWrittenValue": true,
+    "commentsAndTrailingCommaIntact": true,
+    "consumerBeforeWrite": 30,
+    "consumerSameProcessAfterWrite": 30,
+    "consumerSameProcessConfigLayerAfterWrite": 31415,
+    "consumerAfterRestart": 1032,
+    "consumerFreshHomeFileOnly": 1032,
+    "freshHomeConfigLayerValue": 31415,
+    "consumerUsesNewValueAfterRestart": true,
+    "restartIsGenuinelyRequired": true,
+    "fileIsDurableCarrier": true
+  },
+  "steps": [
+    {
+      "step": "fixture",
+      "ws": "/root/dshProj/my-power-dsh/evidence/mpd-bridge/consumer-activation/20260915T092639Z/sandbox/ws",
+      "target": "/root/dshProj/my-power-dsh/evidence/mpd-bridge/consumer-activation/20260915T092639Z/sandbox/ws/consumer-target.txt",
+      "fileValue": 30,
+      "note": "the FILE layer (L2) carries the small value; the consumer truncates its diff to it"
+    },
+    {
+      "step": "boot",
+      "port": 45335,
+      "token": true,
+      "cookie": true,
+      "dshHome": "/root/dshProj/my-power-dsh/evidence/mpd-bridge/consumer-activation/20260915T092639Z/sandbox/dshhome",
+      "log": "raw/boot-main.log"
+    },
+    {
+      "step": "session-create",
+      "status": 200,
+      "liveRoot": "/root/dshProj/my-power-dsh/evidence/mpd-bridge/consumer-activation/20260915T092639Z/sandbox/ws",
+      "rawResult": {
+        "ok": true,
+        "value": {
+          "sessionId": "session-d89ca5f9-3d42-49c6-9389-5627853bea6c",
+          "agentPreset": "mpd"
+        }
+      },
+      "error": null
+    },
+    {
+      "step": "consumer-before-write",
+      "probe": {
+        "phase": "first-observation",
+        "pid": 183,
+        "consumerDiffLength": 30,
+        "fileValue": 30,
+        "configLayerValue": 30,
+        "diffHead": "--- /root/dshProj/my-power-dsh"
+      },
+      "pid": 183,
+      "heldJsonWhileRunning": true
+    },
+    {
+      "step": "settings-mutate",
+      "status": 200,
+      "rawResult": {
+        "ok": true,
+        "value": {
+          "ns": "mpd",
+          "schema": {
+            "uid": 20,
+            "refs": {
+              "1": {
+                "type": "number",
+                "meta": {
+                  "default": 20000
+                }
+              },
+              "2": {
+                "type": "object",
+                "meta": {
+                  "default": {}
+                },
+                "dict": {
+                  "maxDiffChars": 1
+                }
+              },
+              "4": {
+                "type": "boolean",
+                "meta": {
+                  "default": true
+                }
+              },
+              "5": {
+                "type": "object",
+                "meta": {
+                  "default": {}
+                },
+                "dict": {
+                  "autoCheck": 4
+                }
+              },
+              "7": {
+                "type": "number",
+                "meta": {
+                  "default": 6
+                }
+              },
+              "8": {
+                "type": "object",
+                "meta": {
+                  "default": {}
+                },
+                "dict": {
+                  "maxRounds": 7
+                }
+              },
+              "9": {
+                "type": "const",
+                "meta": {},
+                "value": "git"
+              },
+              "10": {
+                "type": "const",
+                "meta": {},
+                "value": "svn"
+              },
+              "12": {
+                "type": "union",
+                "meta": {
+                  "default": "git"
+                },
+                "list": [
+                  9,
+                  10
+                ]
+              },
+              "13": {
+                "type": "object",
+                "meta": {
+                  "default": {}
+                },
+                "dict": {
+                  "vcs": 12
+                }
+              },
+              "15": {
+                "type": "string",
+                "meta": {
+                  "default": ".mpd/team"
+                }
+              },
+              "16": {
+                "type": "object",
+                "meta": {
+                  "default": {}
+                },
+                "dict": {
+                  "stateDir": 15
+                }
+              },
+              "18": {
+                "type": "string",
+                "meta": {
+                  "default": ".mpd"
+                }
+              },
+              "19": {
+                "type": "object",
+                "meta": {
+                  "default": {}
+                },
+                "dict": {
+                  "dir": 18
+                }
+              },
+              "20": {
+                "type": "object",
+                "meta": {
+                  "default": {}
+                },
+                "dict": {
+                  "hashline": 2,
+                  "commentChecker": 5,
+                  "ulw": 8,
+                  "memory": 13,
+                  "team": 16,
+                  "boulder": 19
+                }
+              }
+            }
+          },
+          "value": {
+            "hashline": {
+              "maxDiffChars": 31415
+            },
+            "commentChecker": {
+              "autoCheck": true
+            },
+            "ulw": {
+              "maxRounds": 6
+            },
+            "memory": {
+              "vcs": "git"
+            },
+            "team": {
+              "stateDir": ".mpd/team"
+            },
+            "boulder": {
+              "dir": ".mpd"
+            }
+          },
+          "base": {
+            "hashline": {
+              "maxDiffChars": 30
+            },
+            "ulw": {
+              "maxRounds": 6
+            }
+          },
+          "user": {
+            "hashline": {
+              "maxDiffChars": 31415
+            }
+          },
+          "applies": "restart",
+          "secrets": [],
+          "revision": 1
+        }
+      },
+      "error": null,
+      "fileValueAfter": 31415,
+      "fileBytes": "{\\n  // human comment: must survive the write-back\\n  \"hashline\": {\\n    \"maxDiffChars\": 31415,\\n  },\\n  \"ulw\": { \"maxRounds\": 6 },\\n}\\n",
+      "bridgeLines": [
+        "[mpd-config] settings bridge: registered the \"mpd\" namespace with the file-derived base (applies:'restart', design §10.1)",
+        "[mpd-config] settings bridge WROTE: {\"writtenTo\":[\"/root/dshProj/my-power-dsh/evidence/mpd-bridge/consumer-activation/20260915T092639Z/sandbox/ws/.mpd/mpd.jsonc\"],\"skipped\":null,\"candidates\":[],\"results\":[{\"root\":\"/root/dshProj/my-power-dsh/evidence/mpd-bridge/consumer-activation/20260915T092639Z/sandbox/ws\",\"file\":\"/root/dshProj/my-power-dsh/evidence/mpd-bridge/consumer-activation/20260915T092639Z/sandbox/ws/.mpd/mpd.jsonc\",\"outcome\":\"written\"}],\"applies\":\"restart\",\"source\":\"update\",\"revision\":1}"
+      ]
+    },
+    {
+      "step": "consumer-same-process-after-write",
+      "steps": [
+        {
+          "phase": "apply",
+          "pid": 183,
+          "consumerDiffLength": null,
+          "fileValue": 30,
+          "configLayerValue": 30,
+          "registeredTools": [
+            "mpd_config_get",
+            "mpd_config_reload",
+            "mpd_hashline_read",
+            "mpd_hashline_edit",
+            "mpd_hashline_format",
+            "mpd_hashline_restore"
+          ]
+        },
+        {
+          "phase": "first-observation",
+          "pid": 183,
+          "consumerDiffLength": 30,
+          "fileValue": 30,
+          "configLayerValue": 30,
+          "diffHead": "--- /root/dshProj/my-power-dsh"
+        },
+        {
+          "phase": "after-external-change-same-process",
+          "pid": 183,
+          "consumerDiffLength": null,
+          "fileValue": 31415,
+          "configLayerValue": 31415
+        },
+        {
+          "phase": "same-process-re-invocation",
+          "pid": 183,
+          "consumerDiffLength": 30,
+          "fileValue": 31415,
+          "configLayerValue": 31415,
+          "diffHead": "--- /root/dshProj/my-power-dsh"
+        }
+      ]
+    },
+    {
+      "step": "restart",
+      "note": "the host process is gone; the next consumer observation is a fresh process"
+    },
+    {
+      "step": "consumer-after-restart",
+      "steps": [
+        {
+          "phase": "apply",
+          "pid": 196,
+          "consumerDiffLength": null,
+          "fileValue": 31415,
+          "configLayerValue": 31415,
+          "registeredTools": [
+            "mpd_config_get",
+            "mpd_config_reload",
+            "mpd_hashline_read",
+            "mpd_hashline_edit",
+            "mpd_hashline_format",
+            "mpd_hashline_restore"
+          ]
+        },
+        {
+          "phase": "first-observation",
+          "pid": 196,
+          "consumerDiffLength": 1032,
+          "fileValue": 31415,
+          "configLayerValue": 31415,
+          "diffHead": "--- /root/dshProj/my-power-dsh/evidence/"
+        }
+      ]
+    },
+    {
+      "step": "consumer-fresh-home-file-only",
+      "dshHome": "/root/dshProj/my-power-dsh/evidence/mpd-bridge/consumer-activation/20260915T092639Z/sandbox/dshhome-fresh",
+      "steps": [
+        {
+          "phase": "apply",
+          "pid": 203,
+          "consumerDiffLength": null,
+          "fileValue": 31415,
+          "configLayerValue": 31415,
+          "registeredTools": [
+            "mpd_config_get",
+            "mpd_config_reload",
+            "mpd_hashline_read",
+            "mpd_hashline_edit",
+            "mpd_hashline_format",
+            "mpd_hashline_restore"
+          ]
+        },
+        {
+          "phase": "first-observation",
+          "pid": 203,
+          "consumerDiffLength": 1032,
+          "fileValue": 31415,
+          "configLayerValue": 31415,
+          "diffHead": "--- /root/dshProj/my-power-dsh/evidence/"
+        }
+      ]
+    }
+  ]
+}

@@ -243,7 +243,20 @@ export function readBoardState(workspace: string, home: string = homedir()): Boa
 }
 
 /** One compact line for the keyed status contribution (`tuiStatus`). */
-export function statusLine(state: BoardState): string {
+/**
+ * The runtime notice a save with no live session workspace produces (§D.2 row 2). It is a
+ * CONSTANT because the same sentence must appear on every surface that reports the outcome,
+ * and it is passed in (never read from disk) because this package performs zero writes.
+ */
+export const NO_LIVE_SESSION_NOTICE = "saved to settings — not yet written to any .mpd/mpd.jsonc (no live session)"
+
+/**
+ * The notice for the N-root refusal: settings-only, with the candidates in the bridge's log line.
+ * Same two-part honesty as above — persisted, not written, and never lost.
+ */
+export const AMBIGUOUS_MULTI_ROOT_NOTICE = "saved to settings — not written to any file: several live workspaces, so the target is ambiguous (see the log for the candidates)"
+
+export function statusLine(state: BoardState, notice?: string): string {
   const parts: string[] = []
   if (state.team !== undefined) {
     const done = state.team.tasks.completed
@@ -257,6 +270,9 @@ export function statusLine(state: BoardState): string {
   parts.push(`plans ${state.plans.count}`)
   parts.push(`workmates ${state.workmates.count}`)
   if (state.problems.length > 0) parts.push(`notes ${state.problems.length}`)
+  // The bridge notice goes LAST so the counts stay readable, and it is the exact sentence
+  // the design fixes for this case (never a paraphrase).
+  if (notice !== undefined && notice.length > 0) parts.push(notice)
   return `mpd: ${parts.join(" · ")}`
 }
 

@@ -1,0 +1,7 @@
+{
+  // human comment
+  "hashline": {
+    "maxDiffChars": 20000,
+  },
+  "ulw": { "maxRounds": 6 },
+}

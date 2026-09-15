@@ -1,0 +1,68 @@
+### plugin --profile w add --store-dir /root/dshProj/my-power-dsh/evidence/mpd-bridge/dual-path/sandbox/store /root/dshProj/my-power-dsh
+Already up to date
+
+dependencies:
++ @mpd-dsh/mpd 0.9.1 <- ../../../../../../..
+
+Done in 163ms using pnpm v11.23.0
+
+   ╭─────────────────────────────────────────╮
+   │                                         │
+   │   Update available! 11.23.0 → 12.4.1.   │
+   │   Changelog: https://pnpm.io/v/12.4.1   │
+   │    To update, run: pnpm self-update     │
+   │                                         │
+   ╰─────────────────────────────────────────╯
+
+### exit=0
+### plugin --profile dsh-tui add --store-dir /root/dshProj/my-power-dsh/evidence/mpd-bridge/dual-path/sandbox/store @deepseek-harness-tui/dsh-tui@0.10.1
+dsh: initialized profile dsh-tui at /root/dshProj/my-power-dsh/evidence/mpd-bridge/dual-path/sandbox/dshhome/profiles/dsh-tui
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Progress: resolved 13, reused 0, downloaded 0, added 0
+Progress: resolved 23, reused 0, downloaded 0, added 0
+Progress: resolved 25, reused 0, downloaded 0, added 0
+Progress: resolved 35, reused 0, downloaded 0, added 0
+Progress: resolved 69, reused 0, downloaded 0, added 0
+Progress: resolved 70, reused 0, downloaded 0, added 0
+Progress: resolved 78, reused 0, downloaded 0, added 0
+[WARN] Issues with peer dependencies found. Run "pnpm peers check" to list them.
+
+dependencies:
++ @deepseek-harness-tui/dsh-tui 0.10.1
+
+Packages: +74
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 98, reused 0, downloaded 0, added 0
+Packages are hard linked from the content-addressable store to the virtual store.
+  Content-addressable store is at: /root/dshProj/my-power-dsh/evidence/mpd-bridge/dual-path/sandbox/store/v11
+  Virtual store is at:             node_modules/.pnpm
+Progress: resolved 98, reused 0, downloaded 52, added 49
+Progress: resolved 98, reused 0, downloaded 68, added 68
+Progress: resolved 98, reused 0, downloaded 69, added 69
+[WARN] Tarball download average speed 3 KiB/s (size 11 KiB) is below 50 KiB/s: https://registry.npmjs.org/@alcalzone/ansi-tokenize/-/ansi-tokenize-0.3.0.tgz (GET)
+Progress: resolved 98, reused 0, downloaded 71, added 73
+Progress: resolved 98, reused 0, downloaded 72, added 73
+Progress: resolved 98, reused 0, downloaded 72, added 74, done
+Done in 15.6s using pnpm v11.23.0
+### exit=0
+### plugin --profile dsh-tui add --store-dir /root/dshProj/my-power-dsh/evidence/mpd-bridge/dual-path/sandbox/store /root/dshProj/my-power-dsh
+✓ Lockfile passes supply-chain policies (verified 7s ago)
+Progress: resolved 1, reused 0, downloaded 0, added 0
+[WARN] Issues with peer dependencies found. Run "pnpm peers check" to list them.
+
+dependencies:
++ @mpd-dsh/mpd link:/root/dshProj/my-power-dsh
+
+Packages: -33
+---------------------------------
+Progress: resolved 98, reused 12, downloaded 0, added 0, done
+Done in 787ms using pnpm v11.23.0
+[WARN] Tarball download average speed 41 KiB/s (size 123 KiB) is below 50 KiB/s: https://registry.npmjs.org/@img/sharp-linuxmusl-x64/-/sharp-linuxmusl-x64-0.35.3.tgz (GET)
+[WARN] Tarball download average speed 25 KiB/s (size 107 KiB) is below 50 KiB/s: https://registry.npmjs.org/@img/sharp-darwin-arm64/-/sharp-darwin-arm64-0.35.3.tgz (GET)
+[WARN] Tarball download average speed 21 KiB/s (size 105 KiB) is below 50 KiB/s: https://registry.npmjs.org/@img/sharp-linux-s390x/-/sharp-linux-s390x-0.35.3.tgz (GET)
+[WARN] Tarball download average speed 15 KiB/s (size 112 KiB) is below 50 KiB/s: https://registry.npmjs.org/@img/sharp-darwin-x64/-/sharp-darwin-x64-0.35.3.tgz (GET)
+### exit=0
+### bundles: web
+["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"]
+### bundles: dsh-tui
+["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"]

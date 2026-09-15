@@ -154,6 +154,24 @@ export interface DshLiveAgent {
   runMaintenance?: unknown
 }
 
+/**
+ * The harness settings-service subset the mpd settings bridge needs (t34 design
+ * §5 invariant 2: no mpd plugin may touch a harness service directly).
+ *
+ * The NAMESPACE IS REGISTERED BY `mpd-tui-plugin` (captain ruling, 2026-09-15);
+ * this seam therefore only READS and SUBSCRIBES — it never registers, so a second
+ * registration (which the provider rejects loudly) is impossible by construction.
+ */
+/** The outcome of {@link DshAdapter.settingsMutate}: never a throw, always a result. */
+export type DshSettingsMutateResult = { ok: true } | { ok: false; error: string; conflict?: boolean }
+
+export interface DshSettingsReader {
+  /** Resolved value of the namespace (`undefined` while it is not served). */
+  get(): unknown
+  /** The namespace descriptor when available: value/revision/user/base/applies. */
+  describe(): { value?: unknown; revision?: number; user?: unknown; base?: unknown; applies?: string } | undefined
+}
+
 export interface DshAdapter {
   capabilities(): DshCapabilities
   /**
@@ -186,6 +204,70 @@ export interface DshAdapter {
   compactionEngineForAgent(agentId: string): unknown
   /** Subscribe to a harness event; returns a disposer, or undefined when unavailable. */
   onEvent(event: string, handler: (...args: unknown[]) => unknown): (() => void) | undefined
+  /** Reader for one settings namespace, or undefined when the service is absent. */
+  settingsReader(namespace: string): DshSettingsReader | undefined
+  /**
+   * Subscribe to `settings/document-updated(ns, revision)` — the RAW-section change
+   * event (fires even when the resolved value did not change), which is the
+   * write-back trigger.
+   *
+   * `revision` and `source` describe the SAME change. The host emits
+   * `bumpRevision` (=> `settings/document-updated`) BEFORE `commit`
+   * (=> `settings/updated(ns,next,prev,source)`) inside one synchronous
+   * `write()`/`publish()` call — MEASURED in
+   * `@deepseek-ai/dsh-settings/lib/index.js:466-467` and `:497-498` — so the
+   * source cannot be read at document-updated time. This seam therefore
+   * COALESCES the two events per tick and calls the listener on the next
+   * microtask, after both have fired, with the source of the same change.
+   *
+   * `source === undefined` means the raw section changed while the resolved value
+   * did not (`commit` returns early), so no `settings/updated` fired; callers must
+   * gate such a change on their own value diff rather than treating it as a
+   * front-door edit.
+   */
+  onSettingsDocumentUpdated(
+    namespace: string,
+    listener: (revision: number | undefined, source: string | undefined) => void,
+  ): () => void
+  /**
+   * REGISTER a settings namespace and receive its owner scope (design §10.1 places this call in
+   * `mpd-config-plugin`, because only it can supply the file-derived `base`). Duplicate
+   * registration fails loud on this host (`dsh-settings` `register()` line 283), which is why the
+   * TUI package's fallback must probe first.
+   *
+   * NOTE, MEASURED: the host exposes NO disposal handle for a live registration — `register()`
+   * returns only `{get, watch, update, replace}` and removes the namespace from an internal
+   * `ctx.effect`. The design's §1.3 fallback therefore governs: the base is fixed for the process
+   * lifetime and the resolved value is the authority (the host's own `installSection` does the
+   * same, `dsh-settings/lib/index.js:327-350`).
+   */
+  settingsRegister(
+    namespace: string,
+    schema: unknown,
+    options?: { base?: unknown; applies?: string },
+  ): { ok: true } | { ok: false; error: string }
+  /**
+   * Run `callback` once the settings provider is MOUNTED. MEASURED: a loader applies rows
+   * concurrently, so `service("settings")` can be undefined while a row that mounts before the
+   * provider is applying — `mpd-config`'s registration attempt then fails with "settings service is
+   * unavailable" and the TUI fallback ends up owning the namespace without a file-derived base.
+   * The callback parks on `ctx.inject(["settings"], …)` inside the adapter (invariant 2: the
+   * adapter is the only place allowed to reach the harness directly).
+   */
+  whenSettingsAvailable(callback: () => void): void
+  /**
+   * Write ops into a namespace this plugin does NOT register
+   * (`settings.mutate(ns, ops, expectedRevision)`; the revision fence raises the
+   * host's `SettingsConflictError` on a concurrent change). Used by the bridge's
+   * §1.2 clearing rule: a fresh FILE edit unsets the overlapping settings override.
+   * Returns the mode name on success, or `{ error }` — never throws into an event
+   * listener.
+   */
+  settingsMutate(
+    namespace: string,
+    ops: readonly { op: "set" | "unset"; path: readonly string[]; value?: unknown }[],
+    expectedRevision?: number,
+  ): Promise<DshSettingsMutateResult>
   registerTool(definition: DshToolDef): () => void
   registerTools(definitions: DshToolDef[]): () => void
   guardTool(guard: (exec: DshToolExec) => string | undefined): () => void
@@ -563,6 +645,153 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         ...(preset?.path === undefined ? {} : { path: String(preset.path) }),
         ...(preset?.trust === undefined ? {} : { trust: String(preset.trust) }),
         ...(preset?.broken === undefined ? {} : { broken: String(preset.broken) }),
+      }
+    },
+
+    // ── settings plane (t34 §5 invariant 2: the ONE harness contact surface) ──
+    settingsReader(namespace: string): DshSettingsReader | undefined {
+      const settings = service("settings")
+      if (settings === undefined || settings === null) return undefined
+      return {
+        get(): unknown {
+          try {
+            return typeof settings.get === "function" ? settings.get(namespace) : undefined
+          } catch {
+            return undefined
+          }
+        },
+        describe() {
+          try {
+            if (typeof settings.describe !== "function") return undefined
+            const list = settings.describe() as Array<Record<string, unknown>>
+            if (!Array.isArray(list)) return undefined
+            const found = list.find((entry) => entry?.ns === namespace)
+            if (found === undefined) return undefined
+            return {
+              value: found.value,
+              revision: typeof found.revision === "number" ? found.revision : undefined,
+              user: found.user,
+              base: found.base,
+              applies: typeof found.applies === "string" ? found.applies : undefined,
+            }
+          } catch {
+            return undefined
+          }
+        },
+      }
+    },
+
+    onSettingsDocumentUpdated(
+      namespace: string,
+      listener: (revision: number | undefined, source: string | undefined) => void,
+    ): () => void {
+      // Both events fire synchronously inside ONE host write, document-updated FIRST,
+      // so the change's source is only known after the tick: coalesce, then defer.
+      let pendingRevision: number | undefined
+      let pendingSource: string | undefined
+      let hasPending = false
+      let scheduled = false
+      const flush = (): void => {
+        scheduled = false
+        if (!hasPending) return
+        const revision = pendingRevision
+        const source = pendingSource
+        pendingRevision = undefined
+        pendingSource = undefined
+        hasPending = false
+        try {
+          listener(revision, source)
+        } catch {
+          // A bridge failure must never break the settings commit that emitted it.
+        }
+      }
+      const offUpdated = adapter.onEvent("settings/updated", (ns: unknown, _next: unknown, _prev: unknown, from: unknown) => {
+        if (String(ns) !== namespace) return undefined
+        pendingSource = from === undefined ? undefined : String(from)
+        return undefined
+      })
+      const offDocument = adapter.onEvent("settings/document-updated", (ns: unknown, revision: unknown) => {
+        if (String(ns) !== namespace) return undefined
+        pendingRevision = typeof revision === "number" ? revision : undefined
+        hasPending = true
+        if (!scheduled) {
+          scheduled = true
+          // Promise.resolve().then() = a microtask: it runs after the host's
+          // synchronous write()/publish() returned, i.e. after settings/updated.
+          void Promise.resolve().then(flush)
+        }
+        return undefined
+      })
+      return () => {
+        try {
+          offUpdated?.()
+        } catch {
+          // best effort
+        }
+        try {
+          offDocument?.()
+        } catch {
+          // best effort
+        }
+      }
+    },
+
+    whenSettingsAvailable(callback: () => void): void {
+      if (typeof ctx?.inject !== "function") {
+        // No deferred-inject seam: try once immediately rather than never.
+        try {
+          callback()
+        } catch {
+          /* the caller reports its own failure */
+        }
+        return
+      }
+      try {
+        ctx.inject(["settings"], () => {
+          try {
+            callback()
+          } catch {
+            /* the caller reports its own failure */
+          }
+        })
+      } catch {
+        /* an unusable inject seam leaves the caller's own degradation path */
+      }
+    },
+
+    settingsRegister(
+      namespace: string,
+      schema: unknown,
+      options?: { base?: unknown; applies?: string },
+    ): { ok: true } | { ok: false; error: string } {
+      const settings = service("settings")
+      if (settings === undefined || settings === null || typeof settings.register !== "function") {
+        return { ok: false, error: "settings service is unavailable" }
+      }
+      try {
+        settings.register(namespace, schema, { ...(options?.base === undefined ? {} : { base: options.base }), ...(options?.applies === undefined ? {} : { applies: options.applies }) })
+        return { ok: true }
+      } catch (error) {
+        return { ok: false, error: String((error as Error)?.message ?? error) }
+      }
+    },
+
+    async settingsMutate(
+      namespace: string,
+      ops: readonly { op: "set" | "unset"; path: readonly string[]; value?: unknown }[],
+      expectedRevision?: number,
+    ): Promise<DshSettingsMutateResult> {
+      const settings = service("settings")
+      if (settings === undefined || settings === null || typeof settings.mutate !== "function") {
+        return { ok: false, error: "settings service is unavailable" }
+      }
+      try {
+        await settings.mutate(namespace, ops.map((op) => (op.op === "unset" ? { op: "unset", path: [...op.path] } : { op: "set", path: [...op.path], value: op.value })), expectedRevision)
+        return { ok: true }
+      } catch (error) {
+        const name = String((error as { name?: unknown })?.name ?? "")
+        const conflict = name === "SettingsConflictError" || /conflict/i.test(String((error as Error)?.message ?? ""))
+        return { ok: false, error: String((error as Error)?.message ?? error), ...(conflict ? { conflict: true } : {}) }
       }
     },
 

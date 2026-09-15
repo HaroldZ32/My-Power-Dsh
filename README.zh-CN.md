@@ -179,8 +179,7 @@ dsh plugin remove @mpd-dsh/mpd
   的启动安全守卫、live-agent 成员初始化、workmate 人设注入，以及客户端导出桥）。它自身的许可证与
   声明保存在 [LICENSE-NOTICES.md](./LICENSE-NOTICES.md)。
 - **本仓库自己写的部分。** DSH 管道（harness 适配器、运行时插件、`mpd` preset、合并后的 web
-  客户端）、QA 套件、文档以及扩展接口，都是本项目自己的工作。曾经存在于此的 RTL/EDA 能力面已被
-  抽取到一个独立维护的 bundle 中。
+  客户端）、QA 套件、文档以及扩展接口，都是本项目自己的工作。
 
 在此感谢 OMO 的作者与贡献者，也感谢 `dsh-agent-teams` 的作者以允许这种采纳的许可证发布他们的
 工作。

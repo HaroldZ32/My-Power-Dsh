@@ -1,0 +1,240 @@
+{
+  "task": "t50",
+  "subject": "Integrate the bridge: bilingual docs, duplicate-key table, card docs, records and evidence index",
+  "producedBy": "Lead (orchestration / integration), attempt 1",
+  "attemptId": "1eaded5a-3a92-4acf-89e5-fc80673e3c91",
+  "measuredAt": "2026-09-15T09:52:00Z",
+  "verdict": "passed",
+  "scope": {
+    "inScope": [
+      "docs/tui.md",
+      "docs/tui.zh-CN.md",
+      "packages/mpd-tui-plugin/README.md",
+      "packages/mpd-tui-plugin/README.zh-CN.md",
+      "packages/mpd-config-plugin/README.md",
+      "packages/mpd-config-plugin/README.zh-CN.md",
+      "docs/tui-edition-report.md",
+      "docs/plan-tui-edition.md",
+      "evidence/tui/ACCEPTANCE-LEDGER.md",
+      "evidence/tui/EVIDENCE-INDEX.md",
+      "evidence/mpd-bridge/integration/",
+      ".mpd/plans/dsh-tui-edition-report.md"
+    ],
+    "untouchedOutOfScope": [
+      "VENDOR_LOCK.json",
+      "package.json",
+      "skills/",
+      "extensions/",
+      "scripts/",
+      "packages/*/src/",
+      "packages/mpd-bundle-plugin/",
+      "evidence/mpd-bridge/{requirements,design,implementation,review,captain}/"
+    ],
+    "notTouchedReason": "docs/plan-tui-edition.md is the frozen contract; it was read but deliberately not amended (a frozen contract is superseded by an amendment block in the report, never rewritten in place)"
+  },
+  "changedPaths": [
+    "docs/tui.md",
+    "docs/tui.zh-CN.md",
+    "docs/tui-edition-report.md",
+    ".mpd/plans/dsh-tui-edition-report.md",
+    "evidence/tui/ACCEPTANCE-LEDGER.md",
+    "evidence/tui/EVIDENCE-INDEX.md",
+    "packages/mpd-tui-plugin/README.md",
+    "packages/mpd-tui-plugin/README.zh-CN.md",
+    "packages/mpd-config-plugin/README.md",
+    "packages/mpd-config-plugin/README.zh-CN.md",
+    "evidence/mpd-bridge/integration/REPORT.md",
+    "evidence/mpd-bridge/integration/result.json",
+    "evidence/mpd-bridge/integration/AMENDMENT-3.md",
+    "evidence/mpd-bridge/integration/LEDGER-AMENDMENT-T50.md",
+    "evidence/mpd-bridge/integration/INDEX-SECTION-T50.md"
+  ],
+  "hashes": {
+    "docs/tui.md": "ee99c11ea97332f8329f87c3e20a0bd5ab09a14c31e221ec000b0884c9149b31",
+    "docs/tui.zh-CN.md": "63f282fa12a63d94a97cc76aa2fc916a9038d5645b39f336ffe7437e31733b76",
+    "docs/tui-edition-report.md": "36fdecfd045af2695341821eab3b3d59166f9efc742c0dd573995a99f86339fc",
+    ".mpd/plans/dsh-tui-edition-report.md": "7a6119ea174c79c3a6427a70f115fb1f769a3b61e203696c1e171b1769ce5d27",
+    "evidence/tui/ACCEPTANCE-LEDGER.md": "0e4014e157404e27148ea36fd7f8727dc18467d8c069352fe5696c5be4703827",
+    "evidence/tui/EVIDENCE-INDEX.md": "2b97ac99a0993e6f6bc313703b36762e27dc6e63e22bf700839e2dfa245bfecf",
+    "packages/mpd-tui-plugin/README.md": "f7ed1ec33731dc3e9fc53f46de23f4a33d16ce68d04a19813ce3f63abe4304d4",
+    "packages/mpd-tui-plugin/README.zh-CN.md": "563a9b0602672c624e4eb0e5f453db49590f2916a48612a607a8f20582691fea",
+    "packages/mpd-config-plugin/README.md": "2a0adbd193c5e02331f2c4e550826276826b8cc94e2459300d4beab9e57e3541",
+    "packages/mpd-config-plugin/README.zh-CN.md": "f381e5ede05260ad740e9a442e0a460b989b98a6da9e37c1c26b7dcd67c1f201",
+    "evidence/mpd-bridge/integration/REPORT.md": "41a81a1fee26db067381ca6a2c0ce70e13d1f991faa9c58b19b1826ce6f74560",
+    "evidence/mpd-bridge/integration/result.json": "e5b5d6c072a89bab6639d4d95bc7f930f27a980cb69b2b389b1c0aaa93a1ca64",
+    "evidence/mpd-bridge/integration/AMENDMENT-3.md": "9a41b03f42beb21c3b4f088b03110c5cf55e70d69f8be95c6129d12f87014d84",
+    "evidence/mpd-bridge/integration/LEDGER-AMENDMENT-T50.md": "95eed193c6f58177567130798d0515ca912eb42275c3606033a90312f1b729b0",
+    "evidence/mpd-bridge/integration/INDEX-SECTION-T50.md": "f0632b1c29546df16945603cf2c64d87e780889aa93d005235a51448323764bb"
+  },
+  "sizes": {
+    "docs/tui.md": 36097,
+    "docs/tui.zh-CN.md": 34794,
+    "docs/tui-edition-report.md": 28263,
+    ".mpd/plans/dsh-tui-edition-report.md": 27333,
+    "evidence/tui/ACCEPTANCE-LEDGER.md": 17472,
+    "evidence/tui/EVIDENCE-INDEX.md": 15491,
+    "packages/mpd-tui-plugin/README.md": 9811,
+    "packages/mpd-tui-plugin/README.zh-CN.md": 9222,
+    "packages/mpd-config-plugin/README.md": 3449,
+    "packages/mpd-config-plugin/README.zh-CN.md": 3437
+  },
+  "acceptance": [
+    {
+      "criterion": "docs/tui.md §6.2 + docs/tui.zh-CN.md describe the BRIDGED behaviour in both languages (front doors, persistence, precedence, write-back semantics with comment preservation, workspace-target rule incl. the ambiguous case, applies:'restart'), and no sentence anywhere still claims the settings screen is unbridged — incl. both mpd-tui-plugin READMEs",
+      "status": "passed",
+      "evidence": "docs/tui.md:202-241 §6.2 (precedence L0<L1<L2<L3; comment/key-order/trailing-comma preservation; one/zero/many live roots with `no-live-session` / `ambiguous-multi-root` + never-lost clause; applies:'restart'); zh twin docs/tui.zh-CN.md:179-233. The only surviving 'not bridged' strings are the two quotations that mark the OLD text as superseded (docs/tui.md:238, docs/tui.zh-CN.md:209). Stale marker scan over docs/ + packages/*/README*: 0 live hits; packages/mpd-tui-plugin/README.zh-CN.md's '**未与文件打通**' row corrected (was the last stale README sentence)."
+    },
+    {
+      "criterion": "Duplicate-key semantics documented exactly as the captain's final table (SET=last occurrence, UNSET=every occurrence, refusal only for unprovable spans and duplicated intermediates) in both languages, with the projection rationale",
+      "status": "passed",
+      "evidence": "docs/tui.md:269-283 §6.5 + docs/tui.zh-CN.md §6.5 (three-row table: SET / UNSET / refusal classes incl. `ambiguous-intermediate`) with the durable-projection rationale and citation of `evidence/mpd-bridge/captain/RULING-duplicate-unset-FINAL.md` (+ the same rule restated in packages/mpd-config-plugin/README{,.zh-CN}.md)."
+    },
+    {
+      "criterion": "The web settings card is documented as the Web GUI path (Settings → Plugins, the host's own card mechanism) with an honest evidence level (registration + built bytes witnessed, a real browser render NOT witnessed) and human repro steps",
+      "status": "passed",
+      "evidence": "docs/tui.md:75-91 §3.1 + zh twin: `ctx.slots.inject(\"settings.plugin.item\", …)` → `ctx.slots.register({…, key: \"mpd\"})`, the `settingsScope.bind(...).mutate(...)` seam, read-only scope behaviour, field parity with the TUI descriptor; 'Evidence level: Observed for registration + built bytes' with `packages/mpd-bundle-plugin/client.js` sha256 `dd9c88933a316277…` (282453 bytes), 'a real browser render was NOT witnessed', and the repro steps (start `dsh web`, Settings → Plugins, expect the `mpd` card)."
+    },
+    {
+      "criterion": "The acceptance ledger and the delivery report are amended (dated, attribution stated, originals kept) and EVIDENCE-INDEX.md indexes the bridge evidence dirs claim by claim, negative controls included",
+      "status": "passed",
+      "evidence": "evidence/tui/ACCEPTANCE-LEDGER.md 'Third amendment — the settings-bridge wave (t50, 2026-09-15)' (7 numbered items, no AC status changed); docs/tui-edition-report.md '+ .mpd/plans twin' now carry 'Amendment 3' + §9 (report hash 560b29ec…, working copy 06856df6…, differing only by the committed copy's 9-line header); EVIDENCE-INDEX.md §7.1 indexes requirements/design/implementation/review/captain/consumer-activation/dual-path/web-card/integration + the two bridge lanes + the ruling + REREVIEW-t49 + the two boots + evidence/mpd-ext-debranding (t33) + the negative controls (lane-web-noskip, the panels lane's allPatterns, the one-root/two-root boot contrast) + re-run commands."
+    },
+    {
+      "criterion": "Every path cited by the edited documents exists on disk (the expanding path-existence check re-run and recorded), both languages of every edited document are in sync, and no document claims a capability or verification level the evidence does not support",
+      "status": "passed",
+      "evidence": "`node evidence/tui/delivery/20260915T072355Z/cited-paths-exist.mjs` over all 13 edited/created files → `total missing: 0`, exit 0 (raw/cited-paths-t50.log; it previously flagged 11 misses — bare .mpd/mpd.jsonc tokens are workspace-relative, so they now read `<workspace>/.mpd/mpd.jsonc`, the package-local skill path is repo-relative, and the protocol-checkout command path is marked `<protocol-repo>/…`). Bilingual sync: heading-numbering parity exactly 20/20; the shipped checker `evidence/tui/docs/20260915T070743Z/doc-assertion.mjs` re-run on the amended pair → verdict passed, 28/28 checks, exit 0 (raw/doc-assertion-t27-t50.log; digests docs/tui.md ee99c11e…, docs/tui.zh-CN.md 63f282fa…). Claim levels: the bridge is `Observed` (two real boots), the card is registration+bytes only, and the two skip cases + the renderer/decision-event NOT-CLAIMED items stay unclaimed."
+    },
+    {
+      "criterion": "The integration ends with the merge-ready summary: changed paths, gates run with results, the single VENDOR_LOCK re-pin the captain owes (tool-printed tree=<count>/<sha>), and anything still outstanding",
+      "status": "passed",
+      "evidence": "evidence/mpd-bridge/integration/REPORT.md §1-§4 and this file's `mergeReady` block: changed paths listed with hashes; gates run with results (t27 checker PASS 28/28, cited-paths PASS 0 missing, heading parity PASS, verify-vendor EXIT 1, test:qa EXIT 1); the outstanding re-pin with the tool's own print `tree=310/8ec53287296e` vs the lock's `307/ba0c39228896`; and the not-claimed list."
+    }
+  ],
+  "commandsRun": [
+    {
+      "command": "node evidence/tui/docs/20260915T070743Z/doc-assertion.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "verdict passed, 28/28 checks on docs/tui.md ee99c11e… / docs/tui.zh-CN.md 63f282fa… → raw/doc-assertion-t27-t50.log"
+    },
+    {
+      "command": "node evidence/tui/delivery/20260915T072355Z/cited-paths-exist.mjs <13 edited files>",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "total missing: 0 → raw/cited-paths-t50.log"
+    },
+    {
+      "command": "EN/zh heading-numbering parity check (python3)",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "20 headings each, identical numbering incl. new §3.1 / §6.5 / §11.1"
+    },
+    {
+      "command": "node evidence/tui/composition/20260915T071619Z-docs-mpd-command/doc-assertion-t29.mjs",
+      "status": "failed",
+      "exitCode": 1,
+      "evidence": "2 failures, neither from this pass's text: the recorded predicate residual (item3.docs/tui.zh-CN.md) + entry-unmoved, because that frozen script pins the superseded TUI-edition digest 5dce2563…; script left untouched as another task's evidence → raw/doc-assertion-t29-t50.log"
+    },
+    {
+      "command": "node scripts/verify-vendor.mjs",
+      "status": "failed",
+      "exitCode": 1,
+      "evidence": "FAIL - asset skills count drifted: 310 vs 307 + treeSha mismatch (three untracked skills/ lane scripts added after the wave's re-pin) → raw/verify-vendor-t50.log"
+    },
+    {
+      "command": "bun run test:qa",
+      "status": "failed",
+      "exitCode": 1,
+      "evidence": "agent-teams-messaging FAIL: VENDOR_LOCK skills asset is stale: lock=307/ba0c39228896 tree=310/8ec53287296e; all earlier cases passed → raw/test-qa-t50.log"
+    }
+  ],
+  "mergeReady": {
+    "changedPaths": [
+      "docs/tui.md",
+      "docs/tui.zh-CN.md",
+      "docs/tui-edition-report.md",
+      ".mpd/plans/dsh-tui-edition-report.md",
+      "evidence/tui/ACCEPTANCE-LEDGER.md",
+      "evidence/tui/EVIDENCE-INDEX.md",
+      "packages/mpd-tui-plugin/README.md",
+      "packages/mpd-tui-plugin/README.zh-CN.md",
+      "packages/mpd-config-plugin/README.md",
+      "packages/mpd-config-plugin/README.zh-CN.md",
+      "evidence/mpd-bridge/integration/REPORT.md",
+      "evidence/mpd-bridge/integration/result.json",
+      "evidence/mpd-bridge/integration/AMENDMENT-3.md",
+      "evidence/mpd-bridge/integration/LEDGER-AMENDMENT-T50.md",
+      "evidence/mpd-bridge/integration/INDEX-SECTION-T50.md"
+    ],
+    "gatesRun": [
+      {
+        "gate": "shipped bilingual doc checker",
+        "result": "PASS 28/28",
+        "exit": 0
+      },
+      {
+        "gate": "cited-path existence over every edited file",
+        "result": "PASS, 0 missing",
+        "exit": 0
+      },
+      {
+        "gate": "EN/zh structural parity",
+        "result": "PASS 20/20 headings",
+        "exit": 0
+      },
+      {
+        "gate": "t29 frozen checker",
+        "result": "2 failures, stale-pin + known predicate residual, not this pass",
+        "exit": 1
+      },
+      {
+        "gate": "node scripts/verify-vendor.mjs",
+        "result": "FAIL on the working tree — skills 310 vs pinned 307",
+        "exit": 1
+      },
+      {
+        "gate": "bun run test:qa",
+        "result": "FAIL on the working tree — agent-teams-messaging stale lock 307/ba0c39228896 vs tree 310/8ec53287296e",
+        "exit": 1
+      }
+    ],
+    "vendorLockRePinOwed": {
+      "owner": "captain (VENDOR_LOCK.json is outside t50's scope)",
+      "toolPrinted": "tree=310/8ec53287296e",
+      "pinnedValue": "307/ba0c39228896",
+      "newSkillsFiles": [
+        "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs",
+        "skills/dsh-qa/scripts/tui-settings-bridge.mjs",
+        "skills/dsh-qa/scripts/web-settings-bridge.mjs"
+      ],
+      "modifiedSkillsFiles": [
+        "skills/dsh-qa/SKILL.md",
+        "skills/dsh-qa/scripts/tui-panels.mjs",
+        "skills/dsh-qa/scripts/extension-isolation.mjs"
+      ],
+      "rule": "AGENTS.md §9/§11 — the re-pin rides in the SAME commit as the skills/** change"
+    },
+    "outstanding": [
+      "captain's single VENDOR_LOCK re-pin (unblocks verify-vendor + test:qa)",
+      "Web card real-browser render not witnessed",
+      "AC-4 6/7 (NOT-CLAIMED #10), AC-20 blocked host gates, packed-install e2e boot — unchanged",
+      "t29 checker's stale entry pin (left untouched by design)"
+    ]
+  },
+  "artifacts": {
+    "report": "evidence/mpd-bridge/integration/REPORT.md",
+    "amendments": [
+      "evidence/mpd-bridge/integration/AMENDMENT-3.md",
+      "evidence/mpd-bridge/integration/LEDGER-AMENDMENT-T50.md",
+      "evidence/mpd-bridge/integration/INDEX-SECTION-T50.md"
+    ],
+    "raw": [
+      "evidence/mpd-bridge/integration/raw/doc-assertion-t27-t50.log",
+      "evidence/mpd-bridge/integration/raw/doc-assertion-t29-t50.log",
+      "evidence/mpd-bridge/integration/raw/cited-paths-t50.log",
+      "evidence/mpd-bridge/integration/raw/verify-vendor-t50.log",
+      "evidence/mpd-bridge/integration/raw/test-qa-t50.log",
+      "evidence/mpd-bridge/integration/raw/changed-files-hashes.txt"
+    ]
+  }
+}

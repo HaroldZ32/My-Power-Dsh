@@ -8,15 +8,15 @@
     "flows": [{ "dir": "flows", "rank": 300 }],
     "roles": [
       {
-        "name": "Example Reviewer",
-        "description": "Reference extension role: reviews a change against the extension contract and reports findings without editing files.",
+        "name": "Code Reviewer",
+        "description": "Reference extension role: reviews a change read-only against the extension contract and reports findings without editing files.",
         "readonly": true,
-        "persona": "personas/example-reviewer.md"
+        "persona": "personas/code-reviewer.md"
       }
     ],
     "mcp": [
       {
-        "serverName": "example",
+        "serverName": "lint-mcp",
         "transport": "stdio",
         "command": "node",
         "args": ["server.mjs"],

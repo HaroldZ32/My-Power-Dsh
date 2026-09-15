@@ -61,7 +61,7 @@ The bundle's former web-only faces have TUI **equivalents**, not parity:
 | AgentTeams sidebar panel | `tuiScenes` full-screen board + `tuiStatus` keyed status line | Rendered in the live lane — `evidence/tui/live/20260915T063140Z/result.json` (t8; 6 of 7 surfaces) |
 | Workmate library tab | `tuiCommandTrees` (`/mpd …`) + `tuiDialogs` | same lane evidence |
 | Bundle floater | `tuiStatus` status line; the `tuiRenderers` transcript row is **not projected by the host** | status line rendered; renderer row **does not render** — see NOT-CLAIMED #10 |
-| — | `tuiSettingsSections` (`/settings` section for the mpd.jsonc knobs) | rendered — same lane evidence, with the limitation in §6.2 |
+| — | `tuiSettingsSections` (`/settings` section for the mpd.jsonc knobs) | rendered — same lane evidence; the section states the **bridge** to `<workspace>/.mpd/mpd.jsonc`, its restart caveat and the never-lost clause (§6.2), and the lane asserts that disclosure text (`allPatterns`) |
 | — | `tuiShortcuts` | rendered — same lane evidence |
 
 Thirteen seams were in scope. Eight are built by this wave (settings sections, scenes, dialogs,
@@ -71,6 +71,33 @@ asset, system-prompt section, profile composition); **one (`tuiPrompt`) is host-
 not claimed at all**; and **one (`tuiRenderers`) registers while the host projects no transcript
 row, so its transcript line is not claimed either** — the same explicit treatment as `tuiPrompt`,
 recorded as NOT-CLAIMED #10.
+
+### 3.1 The Web GUI settings card (Settings → Plugins)
+
+The same six knobs are editable in the Web GUI: **Settings → Plugins → the `mpd` card**. The card is
+registered the way the host's own plugins register it (`ctx.slots.inject("settings.plugin.item", …)` →
+`ctx.slots.register({ name, key: "mpd", locale, inject }, Card)`, the shape measured from
+`dsh-client-ui-settings-plugins/lib/client.js`), so it appears in the Plugins tab keyed by the settings
+namespace; a served namespace with no card renders nothing — which is why the six knobs were invisible
+before. Writes use the public `ctx.settingsScope.bind({ namespace: 'mpd' }).mutate(ops, revision)` seam
+(nested paths; `unset` for reset), and a non-writable scope renders read-only with the reason and never
+attempts a write. The card's fields, labels and zh descriptions are asserted against the TUI section's
+descriptor by its own test, so the two front doors cannot drift.
+
+**Evidence level — witnessed:** the registration contract in the **built and served** client bytes
+(`packages/mpd-bundle-plugin/client.js`, sha256 `dd9c88933a316277…`, 282453 bytes; the lane re-hashes
+the artifact it judged), the card's registration shape and field parity in its own test suite, the card
+module's behaviour — render, scope write with the right path/value/revision, refusal of an invalid
+draft, and read-only rendering with its reason — in the **offline hook harness**, and the **write path
+end to end** through the host's own authenticated settings API (`web-settings-bridge.mjs` W1–W13).
+
+**Evidence level — NOT witnessed here:** a **real browser render** (the host dispatching this key in a
+live page) and a **click-driven save**. No browser binary exists in this environment; the lane records
+`cardClaim.W3.witnessed === false` with the reason, and this page repeats that instead of implying
+otherwise. To see it yourself: start `dsh web`, open the GUI, go to **Settings → Plugins → Plugin
+configuration**, expect the `mpd` card with the six fields, edit one and Save — with exactly one live
+session the workspace's `<workspace>/.mpd/mpd.jsonc` changes with comments intact; otherwise the bridge
+refuses loudly (`no-live-session` / `ambiguous-multi-root`) and states that the value is not lost.
 
 ## 4. Admission and distribution artifacts
 
@@ -131,7 +158,7 @@ Honest boundaries of that descriptor:
   empty would be a structurally valid way of saying nothing.
 - Its validation by the protocol's own conformance CLI is now delivered: the distribution lane
   (`t9`) copied the protocol repo into the sandbox, built it (`pnpm install --frozen-lockfile` and
-  `pnpm build`, both exit 0) and ran `packages/conformance/lib/cli.js dsh-distribution.json`
+  `pnpm build`, both exit 0) and ran the protocol copy's own `<protocol-repo>/packages/conformance/lib/cli.js dsh-distribution.json`
   (exit 0) — the descriptor is validated by the protocol's own tooling, not by a re-implementation
   (`evidence/tui/conformance/20260915T064521Z/03-distribution.log`). Passing that CLI still proves
   format/consistency only, never data safety. A local structural check against the protocol's schema
@@ -181,20 +208,63 @@ documented in the research record (`.mpd/recon/UPSTREAM-RESEARCH.md`).
 Related: `trusted-in-process` is a **compatibility/audit label, not a security boundary**. A
 SHA-256 digest proves byte identity only — never publisher identity.
 
-### 6.2 The `/settings` section is not bridged to `.mpd/mpd.jsonc`
+### 6.2 The `/settings` section IS bridged to `<workspace>/.mpd/mpd.jsonc` — with a restart and two named skip cases
 
-The section declares the real mpd.jsonc knobs (`hashline.maxDiffChars`,
-`commentChecker.autoCheck`, `ulw.maxRounds`, `memory.vcs`, `team.stateDir`, `boulder.dir`) and
-edits them under the harness settings namespace `mpd`. The mpd plugins read `.mpd/mpd.jsonc`
-through `packages/mpd-config-plugin`, **not** the harness settings document: a saved edit persists
-in the settings document and does **not** rewrite `.mpd/mpd.jsonc`. Every field hint says so on
-screen (`mpd.jsonc <key> — not bridged: a save here does not rewrite .mpd/mpd.jsonc`, all six
-hints, present in the delivered artifact `dist/index.js` sha256 `5dce2563fd0e3b20…`). The bridge is a
-named follow-up (`mpd-settings-bridge`), not a shipped behaviour. The on-screen disclosure was
-verified by the follow-up task: `evidence/tui/plugin-followup/20260915T060032Z/` (`disclosure.json`
-prints the six registered hints; `result.json` records the acceptance rows). **Backed at:**
-`Observed` for the built artifact's hint text — not a claim that editing the screen writes the
-config file, which it does not.
+The section declares the real mpd.jsonc knobs (`hashline.maxDiffChars`, `commentChecker.autoCheck`,
+`ulw.maxRounds`, `memory.vcs`, `team.stateDir`, `boulder.dir`) under the harness settings namespace
+`mpd`, and that namespace is **served by `packages/mpd-config-plugin`** (this package is a pure
+consumer and registers only a guarded fallback when no config plugin is composed). What a save does
+today:
+
+**The base is a rule, not a lookup.** The serving package derives the namespace base itself
+(`baseForNamespace()`, `packages/mpd-config-plugin/src/index.ts:511`, registered through the adapter)
+under a cardinality rule:
+
+| Live session roots | The namespace base |
+|---|---|
+| **exactly one** | that workspace's `<workspace>/.mpd/mpd.jsonc` — the normal path |
+| **zero** | the **mount-time** (exec-less) root — `DSH_WORKSPACE_ROOT` or the process cwd — the only root that exists before any session does; an absent file there yields an **empty base**, i.e. effectively the schema defaults. Because `mpd-config`'s row position usually precedes any live session, this is the **normal boot path** |
+| **more than one** | **no file base is invented**: `base: undefined`, reason `ambiguous-multi-root`, a warn naming every candidate, surfaced by `states()`. The namespace shows the schema defaults until exactly one workspace is live; a save in that state is REFUSED (below), so the ambiguity cannot reach disk |
+
+**The base is fixed for the process lifetime** — the host exposes **no disposal handle** for a live
+registration, and its own settings installers keep their base fixed the same way. That is exactly why
+the shipped sentence is "takes effect for the mpd plugins **after a restart**": it is the honest
+consequence, not a hedge. What the plugins actually use is the **resolved value** plus the config
+layer's **per-call file reads**: the L1/L2 file layers are re-read on every resolution, so the
+**per-workspace read-in still resolves each session's own file** even while the base is frozen. No
+sentence on this page promises a live-refreshed base.
+
+- **Read-in precedence** — L0 schema defaults < L1 `$DSH_HOME/mpd.jsonc` < L2
+  `<workspace>/.mpd/mpd.jsonc` < **L3 the settings user section**, which is authoritative at runtime; a
+  later FILE edit **unsets** the overlapping settings leaf, so the file's new value wins again and
+  neither direction silently loses.
+- **Write-back** — owned by `packages/mpd-config-plugin` (never by this TUI package, which keeps its
+  verified zero-write property). It triggers on the host's `settings/document-updated(ns, revision)`
+  event filtered to `source === 'update'` (the raw-section event, so the deep-equal gate cannot drop a
+  change) and writes the live session workspace's `<workspace>/.mpd/mpd.jsonc` under a lock plus a
+  compare-and-swap on the raw bytes, a sibling temp file and an atomic rename. **Comments, key order and
+  trailing commas survive**: a real boot rewrote `hashline.maxDiffChars` 20000 → 31415 in a JSONC file
+  and the comment, the key order and the trailing comma were unchanged.
+- **Workspace target** — the settings path carries no identity, so the target set is the **live session
+  workspaces at event time**: exactly one ⇒ that file is written; **zero ⇒ `no-live-session`**; **more
+  than one ⇒ `ambiguous-multi-root`**, with every candidate named. In both skip cases **no file is
+  changed** and the edit is **not lost**: it is stored in the host-global settings document and the
+  config layer applies it to every workspace immediately — only the FILE WRITE waits for exactly one
+  live session. The TUI status line and the Web card both carry that clause.
+- **Timing** — the mpd consumers capture their config at plugin `apply()` (`applies: 'restart'`), so a
+  saved edit **takes effect for the plugins after a restart**; the on-screen hint says exactly that.
+- **Degenerate targets are loud** — missing (created with a header comment), read-only (`denied` + path +
+  errno, the settings edit still succeeds), concurrent (retry ×3 then `conflict`, the human's file left
+  untouched), unparsable (`unparsable`, never repaired).
+
+**Evidence level:** `Observed` — two real boots in the sandbox (ok: true) at
+`evidence/mpd-bridge/implementation/20260915T080138Z/`, plus the lane
+`skills/dsh-qa/scripts/tui-settings-bridge.mjs` and the re-review PASS at
+`evidence/mpd-bridge/review/REREVIEW-t49.md`. The PRE-bridge revision
+(`packages/mpd-tui-plugin/dist/index.js` sha256 `5dce2563fd0e3b20…`) carried the old on-screen text
+(`mpd.jsonc <key> — not bridged: a save here does not rewrite .mpd/mpd.jsonc`); that text and the
+"named follow-up" framing are **no longer true** at the current revision
+(`dist/index.js` sha256 `cf4b3813a344c9d5…`).
 
 ### 6.3 The packaged skill is an asset only
 
@@ -222,6 +292,42 @@ surfaces (NOT-CLAIMED #10 covers the seventh). The alternative reading — decla
 the manifest — would require a granted `commands.invoke` permission and an admission path a
 profile-installed plugin cannot reach (§6.1), so it is not the chosen reading. Which reading the
 ecosystem takes is stated in the delivery report.
+
+### 6.5 Duplicate keys in `mpd.jsonc` — the settled rule
+
+`JSON.parse` is last-wins, so a path declared more than once has exactly one observable value. The
+bridge edits the durable projection with that in mind, and the rule is the captain's final table
+(`evidence/mpd-bridge/captain/RULING-duplicate-unset-FINAL.md`):
+
+| Operation | A path declared more than once | Why |
+|---|---|---|
+| **SET** | edit the **LAST** occurrence, succeed, and warn naming **every** occurrence line | the last occurrence is the only one `JSON.parse` can observe |
+| **UNSET** (direct call or the `DELETE` sentinel) | remove **EVERY** occurrence of that exact path, in one descending-span pass | after an unset the key must be ABSENT: leaving an earlier occurrence would keep it effective in the file while the settings layer reports it unset — the silent divergence this bridge exists to remove |
+| **refusal** | only unprovable spans, a duplicated **INTERMEDIATE** key (`ambiguous-intermediate`, both directions), an unparsable document, or a `read-only` target | in those cases the target span cannot be proven, so nothing is written and the reason is named |
+
+The projection rationale, in one line: the file is the **durable projection** of the settings layer,
+not an untouchable user original — which is why UNSET deletes all occurrences and SET only the one the
+runtime reads.
+
+### 6.6 Where state lives — the scopes and the cross-home boundary
+
+The bridge spans four scopes, and naming them by mechanism is what makes the two front doors
+predictable (`evidence/mpd-bridge/dual-path/REPORT.md`, finding D1):
+
+| Scope | State | Shared when |
+|---|---|---|
+| **DSH-HOME** (`$DSH_HOME/settings.yaml` + user `mpd.jsonc`) | the host's settings document | both front doors live in the **same DSH home** |
+| **workspace** (`<workspace>/.mpd/**`) | `mpd.jsonc` (the bridge's durable projection), `memory.json`, team/plan/boulder state | both doors run in the **same workspace** — by construction |
+| **HOME** (`~/.mpd/workmate`) | the user's cross-project workmate library | same `HOME`, i.e. across profiles of one user; distinct for two users |
+| **bundle** (`<bundle>/…`) | the `mpd` preset/roster and the skill corpus (served, not copied) | both doors **are the same install**, independent of any home |
+
+**The boundary to know:** with ONE DSH home the settings document is shared, so a settings edit is
+visible to both front doors at once. With SEPARATE DSH homes there are **two** settings documents —
+`settings.yaml` is DSH-HOME-scoped — so an edit made in one door is **invisible as a settings VALUE**
+to the other. The durable state still converges: the write-back target is the **workspace** file, and
+both doors write that same `<workspace>/.mpd/mpd.jsonc`. In one sentence: *same DSH home ⇒ the settings
+value is shared; separate homes ⇒ the settings values differ, but the workspace `<workspace>/.mpd/mpd.jsonc` still
+converges.* This is the one place where the two doors can legitimately disagree on an inherited value.
 
 ## 7. Deliberate deviations from ecosystem convention
 
@@ -330,8 +436,10 @@ Nothing in this section is a working feature.
    automated lanes cannot witness a TUI screen.
 8. **No published conformance claim, and no data-safety certification** — descriptor validity is
    not a safety guarantee, and our lanes are not a certificate (`TUI-DEP-001`).
-9. **The `/settings` bridge, the package-local skill asset, and the deliberate deviations** —
-   §6.2, §6.3 and §7.
+9. **The package-local skill asset and the deliberate deviations** — §6.3 and §7. (The
+   `/settings` bridge stood here until the bridge wave; it is now a claimed, evidenced
+   capability — `Observed`, two real boots — documented in §6.2 and recorded as superseded in
+   §11.1.)
 10. **The `tuiRenderers` transcript row is not projected by the host.** The plugin registers a
    renderer for its log-only `mpd-tui/board-opened` event and the event is provably in the durable
    store, but **no transcript row appears**, while the other six activation-gated surfaces render:
@@ -378,3 +486,19 @@ The mapping from this bundle to the admitted requirement suite exists and the la
 executed against the pinned inputs with a per-requirement status per row; the outstanding items are
 the recorded spec-suite blocker, the web-profile boot, and the captain's single re-pin — none of
 which this page turns into a pass.
+
+### 11.1 Amendments after the bridge wave (t50, 2026-09-15)
+
+The rows above are the records of the TUI-edition revision and stay as written. The settings-bridge
+wave (t35–t50) moved two of the artifacts they name and closed one of their residuals, so the
+following supersedes them. Every number below was re-measured with `sha256sum` / `stat -c %s` in the
+same step that wrote this block — never derived, never remembered:
+
+| Superseded statement | Was | Is (measured 2026-09-15, t50) |
+|---|---|---|
+| §11 revision binding, entry digest | `packages/mpd-tui-plugin/dist/index.js` sha256 `5dce2563…`, 98883 bytes | sha256 `cf4b3813a344c9d5…`, **105305 bytes** — the bridge wave reworded the `/settings` disclosure, so the package was rebuilt. `dsh-plugin.json` sha256 `84ed4a5d…` is unchanged (8088 bytes), and the two artifacts that wave adds are `packages/mpd-config-plugin/dist/index.js` sha256 `15733c1e…` (99868 bytes) and `packages/mpd-bundle-plugin/client.js` sha256 `dd9c8893…` (282453 bytes) |
+| §11 R3 row | `bun run test:qa` "fails by design" until the captain's single `VENDOR_LOCK` re-pin lands | **PASSES** — the single re-pin landed (`VENDOR_LOCK.json` `assets/skills`: 307 files, treeSha `ba0c3922…`) and the suite reports all self-tests passed, exit 0 |
+| NOT-CLAIMED #9 (it led with the `/settings` bridge) | "the `/settings` bridge, the package-local skill asset, and the deliberate deviations" | the **bridge is a claimed, evidenced capability** (§6.2, `Observed`, two real boots); #9 now covers the package-local skill asset and the deliberate deviations (§6.3, §7) |
+| §3 settings row | "with the limitation in §6.2" | a bridged behaviour with a restart caveat and two named skip cases (§6.2), the duplicate-key rule (§6.5) and the Web card's evidence level (§3.1) |
+
+The earlier statements were not rewritten — they are superseded here, in place, under this heading.
