@@ -1,0 +1,2 @@
+extension-mcp-bridge exit=0 start=2026-09-16T04:54:23Z end=2026-09-16T04:54:42Z cmd=bun skills/dsh-qa/scripts/extension-mcp-bridge.mjs --no-skip
+extension-lifecycle exit=0 start=2026-09-16T04:54:42Z end=2026-09-16T04:55:39Z cmd=bun skills/dsh-qa/scripts/extension-lifecycle.mjs --no-skip

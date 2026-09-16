@@ -1,0 +1,92 @@
+{
+  "task": "t13 — Repair the two RED arms: packer PLUGIN_PKGS omission (F-T7-1) and the stale mcp-bridge schema arm (F-T7-2), with the skills re-pin",
+  "wave": "external-plugin adaptation audit (CL4 side-fix + CL3 gate restoration)",
+  "member": "Deep Worker",
+  "attemptId": "048bf746-990d-421c-89f2-89afc23b8920",
+  "date": "2026-09-16T04:53:24Z",
+  "verdict": "BOTH RED ARMS CLOSED; the wave's two real lanes now exit 0",
+  "revision": {
+    "head": "8777e4340f8b4cd0a8d0c0ac683054523d4b5739 (unchanged: this task made no commit — the captain is the only git writer)",
+    "changedTrackedFiles": [
+      "scripts/pack-mpd.mjs",
+      "skills/dsh-qa/scripts/extension-mcp-bridge.mjs",
+      "skills/dsh-qa/SKILL.md",
+      "VENDOR_LOCK.json"
+    ],
+    "sha256": {
+      "VENDOR_LOCK.json": "d226534d3b2f9708699e6afae3e56490cb7b2ce9346bbd0813dd4b70dfb9fad6",
+      "scripts/pack-mpd.mjs": "8beb91c3f62640b5b72ad383d1d28809435a77fb50f9291db6b5412bada9458b",
+      "skills/dsh-qa/SKILL.md": "b20d73118f4db8cecf4b3c5f2a5260743f579ab99c28953140788b53dfb4bf76",
+      "skills/dsh-qa/scripts/extension-mcp-bridge.mjs": "3f2169889bc536b1bbb1e1702486a3ec717c2a85d7b9bd1dab63c944ec1c2fd9"
+    },
+    "singleSkillsWriter": "I am the wave's ONE skills/** writer. `git diff --stat -- skills/` lists exactly the two files this task owns (SKILL.md + extension-mcp-bridge.mjs) and nothing else — no other task touched skills/** during this turn."
+  },
+  "fixes": [
+    {
+      "id": "F-T7-1",
+      "file": "scripts/pack-mpd.mjs",
+      "change": "Added \"mpd-team-watchdog-plugin\" to PLUGIN_PKGS (now line 62) with a comment in the established class-recording style: MOUNTED by the bundle patch (row `mpd-team-watchdog`, cordis.patch.yml:227-228), FOURTH occurrence of the silent-omission class recorded for mpd-team-compact-plugin / mpd-ext-plugin / mpd-tui-plugin, and the measured line that caught it. No other edit in the file.",
+      "proof": "node scripts/pack-mpd.mjs -> exit 0; dist/mpd-package/packages/mpd-team-watchdog-plugin/dist/index.js exists and is byte-identical to the source (sha256 09ee67120f80eb2ca4663e7fa70320d06b6b9eab28ec8a115505bf23517dd0a4 both sides); dist/mpd-package/cordis.patch.yml exists (31524 bytes) and carries the row at its lines 227-228; the class assertion R11 prints ok for 17 patch rows."
+    },
+    {
+      "id": "F-T7-2",
+      "file": "skills/dsh-qa/scripts/extension-mcp-bridge.mjs",
+      "change": "Aligned the `schema` arm with the deliberately shipped F1 rule (product untouched): `steps.schema.ok` now requires mcp__qa_mcp_schema__bad_output to be OFFERED (offeredBoth — header AND stub request) and requires BOTH per-tool reasons to be reported by mpd_ext_show — 'tool \"bad_input\" skipped' (an unprojectable inputSchema still costs its tool) and 'tool \"bad_output\": its outputSchema would have to be rewritten' + 'registered WITHOUT structuredContent' (the schema is dropped, never the tool). New fields badOutputOffered / badOutputSchemaDropped replace the retired badOutputSkipped; reportedReason now demands both texts instead of a bare /skipped/; stateText widened 400 -> 700 chars so the decisive note is legible in result.json. The ARMS header comment documents both rules. The self-test gained an F1 premise check that bad_output pairs a VALID inputSchema with its foreign outputSchema, so the keep-the-tool assertion cannot pass for the wrong reason.",
+      "anchors": "packages/mpd-ext-plugin/src/mcp.ts:354-375 (keep-or-drop on the SCHEMA) + packages/mpd-ext-plugin/test/mcp.test.ts:642 (pins it) + packages/mpd-ext-plugin/src/mcp.ts:367-371 (the exact note text assertions key on)",
+      "nonVacuity": "vacuous:!liveOk is unchanged; the arm still requires offeredBoth(good_tool) and the live control mcp__qa_mcp_live__status is still offered AND really called (containment.control.liveCallSucceeded=true).",
+      "proof": "bun skills/dsh-qa/scripts/extension-mcp-bridge.mjs --no-skip -> exit 0; result.json steps.schema = {vacuous:false, ok:true, goodToolOffered:true, badInputSkipped:true, badOutputOffered:true, badOutputSchemaDropped:true, reportedReason:true}."
+    },
+    {
+      "id": "SKILL.md packed-arm narrative",
+      "file": "skills/dsh-qa/SKILL.md",
+      "change": "extension-lifecycle row (line 77): the stale 'this wave expects a RED because the packed tree lacks packages/mpd-ext-plugin and extensions/' text is replaced with the current behaviour — PLUGIN_PKGS lists mpd-ext-plugin (scripts/pack-mpd.mjs:42) and cpAssets() copies <bundle>/extensions/ (scripts/pack-mpd.mjs:98), so the arm reports GREEN and the case exits 0 (extension-lifecycle.mjs:385). extension-mcp-bridge row (line 78): the `schema` arm description now states the two shipped F1 rules instead of only the input-side one.",
+      "proof": "the corrected text is in place and the re-run lifecycle lane's packed arm reports status GREEN (evidence/extensions/extension-lifecycle/2026-09-16T04-54-42.210Z/result.json steps.packed)."
+    },
+    {
+      "id": "skills corpus re-pin",
+      "file": "VENDOR_LOCK.json",
+      "change": "assets.skills.fileCount stays 317 (no file added or removed) and assets.skills.treeSha moved 9e643d07192fe8bd9cc2bc5e252bb5c031a2444fa958cd10a19c5043e8b6be89 -> 7a48fdad90cc30f9c1e71009be216aeb8b2a1de797eb2bb1897032c41f6b51aa, in the SAME change as the two skills/** edits (AGENTS.md §9/§11 single re-pin).",
+      "algorithm": "Recomputed with the exact algorithm of scripts/verify-vendor.mjs (listFiles skips node_modules/__pycache__/.pyc/.pyo; sorted relative paths; sha256 over \"relpath\\n\" + sha256(LF-normalized bytes) + \"\\n\"; sha256 of that) by the standalone helper evidence/extensions/t13-repair/20260916T045324Z/repin.mjs, run AFTER the two skills/** edits: 317 files / 7a48fdad… . The negative control is the verify-vendor run made before the lock was updated, which failed with 'asset skills treeSha mismatch' — proof the re-pin was required and that the lock, not the gate, moved.",
+      "proof": "node scripts/verify-vendor.mjs -> exit 0, '[verify-vendor] asset OK: skills 317 files' + '[verify-vendor] PASS'."
+    }
+  ],
+  "commands": [
+    { "command": "node scripts/verify-vendor.mjs", "exitCode": 0, "when": "after the re-pin", "decisiveLine": "[verify-vendor] asset OK: skills 317 files / [verify-vendor] PASS", "log": "evidence/extensions/t13-repair/20260916T045324Z/verify-vendor.log" },
+    { "command": "node scripts/verify-vendor.mjs", "exitCode": 1, "when": "BEFORE the lock update (negative control proving the re-pin was required)", "decisiveLine": "[verify-vendor] FAIL - asset skills treeSha mismatch" },
+    { "command": "node scripts/pack-mpd.mjs", "exitCode": 0, "when": "after the PLUGIN_PKGS entry", "decisiveLine": "[pack-mpd] staged package -> <repo>/dist/mpd-package", "log": "evidence/extensions/t13-repair/20260916T045324Z/pack-mpd.log" },
+    { "command": "bun skills/dsh-qa/scripts/extension-mcp-bridge.mjs --no-skip", "exitCode": 0, "decisiveLine": "output.log:34 '[mpd-ext] extension \"qa-mcp-schema\" mcp server \"qa_mcp_schema\": 2 tool(s) published, 1 skipped, 1 downgraded' + result.json steps.schema.ok=true", "log": "evidence/extensions/extension-mcp-bridge/2026-09-16T04-54-24.090Z/output.log" },
+    { "command": "bun skills/dsh-qa/scripts/extension-lifecycle.mjs --no-skip", "exitCode": 0, "decisiveLine": "result.json steps.packed={ok:true, packExit:0, rows.mpduExtRowInPackedPatch:true, assets:{pluginDist:true, extensionsAsset:true}}", "log": "evidence/extensions/extension-lifecycle/2026-09-16T04-54-42.210Z/output.log" },
+    { "command": "node -e '<R11 class assertion>'", "exitCode": 0, "decisiveLine": "R11 ok: 17 patch rows present in pack-mpd PLUGIN_PKGS" },
+    { "command": "git status --porcelain", "exitCode": 0, "decisiveLine": "exactly 4 modified tracked files, all in scope: VENDOR_LOCK.json, scripts/pack-mpd.mjs, skills/dsh-qa/SKILL.md, skills/dsh-qa/scripts/extension-mcp-bridge.mjs; everything else is untracked evidence/extensions/**", "log": "evidence/extensions/t13-repair/20260916T045324Z/final-state.txt" }
+  ],
+  "residualFindings": [
+    {
+      "id": "T13-R1",
+      "severity": "low",
+      "file": "skills/dsh-qa/scripts/extension-lifecycle.mjs",
+      "line": 35,
+      "problem": "The case's own ARMS header comment (lines 35-42) still says 'This wave's expectation is a RED … THE FIX IS t11's and t11 must produce the GREEN packed boot'. That is the same stale narrative SKILL.md just had corrected, and the packed arm now reports GREEN. The file is NOT in this task's declared inScope list, so it was left untouched rather than edited out of scope.",
+      "requiredFix": "Rewrite lines 35-42 to the current behaviour (the packed tree ships the plugin and extensions/, so the arm reports GREEN) — a one-paragraph comment edit in skills/** that must ride the wave's single skills writer and re-pin (audit §9 keeps one skills writer per wave, so a second writer would force a second VENDOR_LOCK re-pin)."
+    }
+  ],
+  "evidencePaths": [
+    "evidence/extensions/t13-repair/20260916T045324Z/result.json",
+    "evidence/extensions/t13-repair/20260916T045324Z/output.log",
+    "evidence/extensions/t13-repair/20260916T045324Z/repin.mjs",
+    "evidence/extensions/t13-repair/20260916T045324Z/repin.txt",
+    "evidence/extensions/t13-repair/20260916T045324Z/pack-mpd.log",
+    "evidence/extensions/t13-repair/20260916T045324Z/packed-paths.txt",
+    "evidence/extensions/t13-repair/20260916T045324Z/header-proof.txt",
+    "evidence/extensions/t13-repair/20260916T045324Z/exit-codes.txt",
+    "evidence/extensions/t13-repair/20260916T045324Z/final-state.txt",
+    "evidence/extensions/t13-repair/20260916T045324Z/head-post.txt",
+    "evidence/extensions/t13-repair/20260916T045324Z/run-lanes.sh",
+    "evidence/extensions/t13-repair/20260916T045324Z/extension-mcp-bridge.console.log",
+    "evidence/extensions/t13-repair/20260916T045324Z/extension-lifecycle.console.log",
+    "evidence/extensions/extension-mcp-bridge/2026-09-16T04-54-24.090Z/result.json",
+    "evidence/extensions/extension-mcp-bridge/2026-09-16T04-54-24.090Z/output.log",
+    "evidence/extensions/extension-mcp-bridge/2026-09-16T04-54-24.090Z/raw/mcp.session.decoded.jsonl",
+    "evidence/extensions/extension-lifecycle/2026-09-16T04-54-42.210Z/result.json",
+    "evidence/extensions/extension-lifecycle/2026-09-16T04-54-42.210Z/output.log"
+  ]
+}

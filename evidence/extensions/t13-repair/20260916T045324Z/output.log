@@ -1,0 +1,106 @@
+t13 repair console — 2026-09-16T04:56:34Z
+
+=== exit codes ===
+extension-mcp-bridge exit=0 start=2026-09-16T04:54:23Z end=2026-09-16T04:54:42Z cmd=bun skills/dsh-qa/scripts/extension-mcp-bridge.mjs --no-skip
+extension-lifecycle exit=0 start=2026-09-16T04:54:42Z end=2026-09-16T04:55:39Z cmd=bun skills/dsh-qa/scripts/extension-lifecycle.mjs --no-skip
+
+=== verify-vendor (post re-pin) ===
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] asset OK: skills 317 files
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+verify-vendor EXIT=0
+
+=== pack-mpd ===
+[pack-mpd] modes normalized: 1135 files (644: 1123, 755: 12)
+[pack-mpd] staged package -> /root/dshProj/my-power-dsh/dist/mpd-package
+pack-mpd EXIT=0
+
+=== packed paths ===
+=== packed paths on disk ===
+-rw-r--r-- 1 root root  31524 Sep 16 12:54 dist/mpd-package/cordis.patch.yml
+-rw-r--r-- 1 root root 125566 Sep 16 12:54 dist/mpd-package/packages/mpd-team-watchdog-plugin/dist/index.js
+
+=== the watchdog row in the PACKED patch ===
+227:    - id: mpd-team-watchdog
+228-      name: '@mpd-dsh/mpd/packages/mpd-team-watchdog-plugin/dist/index.js'
+
+=== extension assets still shipped ===
+dist/mpd-package/extensions
+dist/mpd-package/packages/mpd-ext-plugin/dist
+
+=== sha256 ===
+09ee67120f80eb2ca4663e7fa70320d06b6b9eab28ec8a115505bf23517dd0a4  dist/mpd-package/packages/mpd-team-watchdog-plugin/dist/index.js
+09ee67120f80eb2ca4663e7fa70320d06b6b9eab28ec8a115505bf23517dd0a4  packages/mpd-team-watchdog-plugin/dist/index.js
+
+=== R11 ===
+R11 ok: 17 patch rows present in pack-mpd PLUGIN_PKGS (exit 0)
+
+=== header proof (offered tool list) ===
+{
+  "headerLine": 13,
+  "headerToolCount": 109,
+  "badOutputOffered": true,
+  "badInputOffered": false,
+  "goodToolOffered": true,
+  "liveCallLine": 39,
+  "liveResultLine": 40
+}
+
+=== lane consoles ===
+[extension-mcp-bridge] ok=true -> /root/dshProj/my-power-dsh/evidence/extensions/extension-mcp-bridge/2026-09-16T04-54-24.090Z
+  install: {"ok":true,"exit":0}
+  live: {"ok":true,"offered":true,"called":true,"succeeded":true,"reason":"","resultHead":"Configured LSP servers: 42\nInstalled LSP servers: 1\n\n- typescript: missing; source=builtin; extensions=.ts, .tsx, .js, .jsx, .mjs, .cjs, .mts, .cts\n- deno: missing; source=builtin; extensions=.ts, .tsx, .js, .jsx,
+  dead: {"vacuous":false,"ok":true,"offeredNoTool":true,"headerSawNoTool":true,"reported":true,"stateText":"extension qa-mcp-dead [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-IbZAzW/run-home/.mpd/extensions/qa-mcp-dead\nsource: /tmp/mpd-extension-mcp-bridge-IbZAzW/run-home/.mpd/extensions/q
+  hang: {"vacuous":false,"ok":true,"connectTimeoutMs":1500,"durationMs":17852,"offeredNoTool":true,"reported":true,"stateText":"extension qa-mcp-hang [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-IbZAzW/run-home/.mpd/extensions/qa-mcp-hang\nsource: /tmp/mpd-extension-mcp-bridge-IbZAzW/run-ho
+  schema: {"vacuous":false,"ok":true,"goodToolOffered":true,"badInputSkipped":true,"badOutputOffered":true,"badOutputSchemaDropped":true,"reportedReason":true,"stateText":"extension qa-mcp-schema [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-IbZAzW/run-home/.mpd/extensions/qa-mcp-schema\nsourc
+  dup: {"vacuous":false,"ok":true,"zeroTools":true,"headerZeroTools":true,"stateText":"extension qa-mcp-dup [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-IbZAzW/run-home/.mpd/extensions/qa-mcp-dup\nsource: /tmp/mpd-extension-mcp-bridge-IbZAzW/run-home/.mpd/extensions/qa-mcp-dup/mpd-ext.json
+  containment: {"ok":true,"exit":0,"control":{"liveToolOffered":true,"liveCallSucceeded":true},"showCallOrder":["qa-mcp-dead","qa-mcp-schema","qa-mcp-dup","qa-mcp-hang"],"crashSignatures":[],"offeredMcp":["mcp__ast_grep__rewrite","mcp__ast_grep__scan","mcp__ast_grep__search","mcp__codegraph__codegraph_explore","mc
+
+[extension-lifecycle] ok=true -> /root/dshProj/my-power-dsh/evidence/extensions/extension-lifecycle/2026-09-16T04-54-42.210Z
+  install: {"ok":true,"exit":0,"tail":"fallback: { provider: deepseek-official, model: deepseek-v4-flash }\n              executionPrompt: \"Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny.\"\n\n[install-profile] wrote profile/ home patch/ presets(1) + web-compat s
+  main: {"ok":true,"exit":0,"durationMs":7657,"offeredExtTools":["mpd_ext_list","mpd_ext_show","mpd_flow_list","mpd_flow_show"],"recordedTools":["mpd_ext_list","mpd_ext_show","mpd_flow_list","mpd_flow_show","skill","mpd_role_persona","mpd_role_spawn"],"calls":{"mpd_ext_list":{"succeeded":true,"reason":"","r
+  failure: {"ok":true,"exit":0,"sessionCompleted":true,"listedHealthy":true,"flowToolStillWorks":true,"reportedProjectRejection":true,"reportedRejections":["qa-bad-json","qa-bad-version"],"cliChecks":{"qa-bad-json":{"exit":1,"tail":"  extension \"unnamed\": REJECTED |   error descriptor: descriptor must be a J
+  isolation: {"ok":true,"sessions":{"session-a":{"ok":true,"exit":0,"cwd":"/tmp/mpd-extension-lifecycle-IjqU8c/ws-a","recorded":true,"succeeded":true,"sawExpected":true,"sawForbidden":[],"offeredExtTools":["mpd_ext_list","mpd_ext_show","mpd_flow_list","mpd_flow_show"],"isolation":{"ok":true,"checked":2,"keys":["
+  packed: {"ok":true,"packExit":0,"packedRoot":"/root/dshProj/my-power-dsh/dist/mpd-package","rows":{"mpdExtRowInPackedPatch":true},"assets":{"pluginDist":true,"extensionsAsset":true},"status":"GREEN (t11's pack fix has landed: the packed tree carries the plugin and extensions/)","greenOwner":"t11","note":"no
+  isolationFinal: {"ok":true,"checked":4,"keys":["--tmp-mpd-extension-lifecycle-IjqU8c-decoy--","--tmp-mpd-extension-lifecycle-IjqU8c-ws-b--","--tmp-mpd-extension-lifecycle-IjqU8c-ws-a--","--tmp-mpd-extension-lifecycle-IjqU8c-ws--"]}
+
+=== final state ===
+t13 final state — 2026-09-16T04:56:01Z
+HEAD: 8777e4340f8b4cd0a8d0c0ac683054523d4b5739
+
+=== git status --porcelain ===
+ M VENDOR_LOCK.json
+ M scripts/pack-mpd.mjs
+ M skills/dsh-qa/SKILL.md
+ M skills/dsh-qa/scripts/extension-mcp-bridge.mjs
+?? evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/
+?? evidence/extensions/extension-lifecycle/2026-09-16T04-54-42.210Z/
+?? evidence/extensions/extension-mcp-bridge/2026-09-16T04-44-32.737Z/
+?? evidence/extensions/extension-mcp-bridge/2026-09-16T04-54-24.090Z/
+?? evidence/extensions/t13-repair/
+?? evidence/extensions/t7-verify/20260916T044344Z/
+
+=== sha256 of the four changed tracked files ===
+d226534d3b2f9708699e6afae3e56490cb7b2ce9346bbd0813dd4b70dfb9fad6  VENDOR_LOCK.json
+8beb91c3f62640b5b72ad383d1d28809435a77fb50f9291db6b5412bada9458b  scripts/pack-mpd.mjs
+b20d73118f4db8cecf4b3c5f2a5260743f579ab99c28953140788b53dfb4bf76  skills/dsh-qa/SKILL.md
+3f2169889bc536b1bbb1e1702486a3ec717c2a85d7b9bd1dab63c944ec1c2fd9  skills/dsh-qa/scripts/extension-mcp-bridge.mjs
+
+=== the SKILL.md diff of the corpus (single skills writer) ===
+ skills/dsh-qa/SKILL.md                         |  4 +--
+ skills/dsh-qa/scripts/extension-mcp-bridge.mjs | 41 +++++++++++++++++++-------
+ 2 files changed, 32 insertions(+), 13 deletions(-)
+
+=== repin ===
+{
+  "asset": "skills",
+  "fileCount": 317,
+  "treeSha": "7a48fdad90cc30f9c1e71009be216aeb8b2a1de797eb2bb1897032c41f6b51aa"
+}

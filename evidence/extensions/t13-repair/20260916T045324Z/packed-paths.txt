@@ -1,0 +1,15 @@
+=== packed paths on disk ===
+-rw-r--r-- 1 root root  31524 Sep 16 12:54 dist/mpd-package/cordis.patch.yml
+-rw-r--r-- 1 root root 125566 Sep 16 12:54 dist/mpd-package/packages/mpd-team-watchdog-plugin/dist/index.js
+
+=== the watchdog row in the PACKED patch ===
+227:    - id: mpd-team-watchdog
+228-      name: '@mpd-dsh/mpd/packages/mpd-team-watchdog-plugin/dist/index.js'
+
+=== extension assets still shipped ===
+dist/mpd-package/extensions
+dist/mpd-package/packages/mpd-ext-plugin/dist
+
+=== sha256 ===
+09ee67120f80eb2ca4663e7fa70320d06b6b9eab28ec8a115505bf23517dd0a4  dist/mpd-package/packages/mpd-team-watchdog-plugin/dist/index.js
+09ee67120f80eb2ca4663e7fa70320d06b6b9eab28ec8a115505bf23517dd0a4  packages/mpd-team-watchdog-plugin/dist/index.js

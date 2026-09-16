@@ -1,0 +1,9 @@
+{
+  "headerLine": 13,
+  "headerToolCount": 109,
+  "badOutputOffered": true,
+  "badInputOffered": false,
+  "goodToolOffered": true,
+  "liveCallLine": 39,
+  "liveResultLine": 40
+}

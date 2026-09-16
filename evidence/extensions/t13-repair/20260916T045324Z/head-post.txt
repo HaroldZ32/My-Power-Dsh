@@ -1,0 +1,11 @@
+8777e4340f8b4cd0a8d0c0ac683054523d4b5739
+ M VENDOR_LOCK.json
+ M scripts/pack-mpd.mjs
+ M skills/dsh-qa/SKILL.md
+ M skills/dsh-qa/scripts/extension-mcp-bridge.mjs
+?? evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/
+?? evidence/extensions/extension-lifecycle/2026-09-16T04-54-42.210Z/
+?? evidence/extensions/extension-mcp-bridge/2026-09-16T04-44-32.737Z/
+?? evidence/extensions/extension-mcp-bridge/2026-09-16T04-54-24.090Z/
+?? evidence/extensions/t13-repair/
+?? evidence/extensions/t7-verify/20260916T044344Z/
