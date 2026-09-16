@@ -32,14 +32,19 @@
 //                     two-sided control (a decoy extension in the LAUNCHER cwd is
 //                     visible to no session; the same decoy IS listed when a
 //                     session's own cwd is that directory).
-//   packed          — runs `node scripts/pack-mpd.mjs` and records the state of
-//                     the packed tree. This wave's expectation is a RED: the
-//                     packed tree does not yet carry `packages/mpd-ext-plugin` or
-//                     `extensions/`, so the packed boot cannot resolve the row.
-//                     THE FIX IS t11's (`PLUGIN_PKGS` + the `extensions/` asset +
-//                     the packed manifest `files`/`exports`) and t11 must produce
-//                     the GREEN packed boot; this case only RECORDS which of the
-//                     two states the tree is in, with the observable evidence.
+//   packed          — runs `node scripts/pack-mpd.mjs` and asserts the packed
+//                     tree is CLOSED: `PLUGIN_PKGS` carries `mpd-ext-plugin`
+//                     (scripts/pack-mpd.mjs:42), `cpAssets()` copies
+//                     `<bundle>/extensions/` (scripts/pack-mpd.mjs:93-98) and the
+//                     packed patch carries the `mpd-ext` row. The arm's `ok` is
+//                     the pure predicate `packedStateOk()` — FALSE when the row,
+//                     the plugin or the discovery root is missing, so a green
+//                     exit can never accompany a red packed state. Because the
+//                     archived RED this lane once recorded was a property of that
+//                     older tree (not of this case), the predicate is proven
+//                     falsifiable on every run by a NEGATIVE CONTROL over fixture
+//                     packed trees (closed vs. each asset removed), recorded in
+//                     result.json and re-run in --self-test.
 //
 // PREREQ: absent-dsh-binary dsh "install DeepSeek Harness (dsh) on PATH"
 // PREREQ: absent-runtime packages/mpd-ext-plugin/dist/index.js "bun build packages/mpd-ext-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ext-plugin/dist/index.js"
@@ -186,11 +191,19 @@ async function selfTest() {
     rmSync(mutateDir, { recursive: true, force: true })
   }
 
+  // 6) F9 FALSIFIABILITY (offline, temp dirs only): the packed-tree predicate the
+  //    real arm gates on must be FALSE for every broken fixture tree — otherwise
+  //    "the packed tree is closed" would be a claim no tree could contradict.
+  const negative = packedNegativeDriver()
+  check(negative.falsifiable, "the packed predicate is not falsifiable: " + JSON.stringify(negative.trees))
+  check(negative.packerExitGated, "a non-zero packer exit must fail the packed predicate")
+  check(negative.trees.closed.ok === true && Object.keys(negative.trees).length === 4, "the negative driver must build one closed tree and three broken ones")
+
   if (problems.length > 0) {
     for (const problem of problems) console.error("[" + SLUG + " self-test] FAIL: " + problem)
     process.exit(1)
   }
-  console.log("[" + SLUG + " self-test] ok: composed row + validator rejections (incl. NaN rank via the code plane) + CLI oracle + seam regression (inject declared, failure LOUD, no false success) + fixtures verified")
+  console.log("[" + SLUG + " self-test] ok: composed row + validator rejections (incl. NaN rank via the code plane) + CLI oracle + seam regression (inject declared, failure LOUD, no false success) + packed predicate falsifiable (closed vs. three broken fixture trees) + fixtures verified")
 }
 
 // ── arms ────────────────────────────────────────────────────────────────────
@@ -362,30 +375,97 @@ async function failureArm({ box, outDir, logs }) {
 async function packedArm({ outDir, logs }) {
   const packRun = await runAsync(process.execPath, [join(REPO, "scripts", "pack-mpd.mjs")], { cwd: REPO, timeoutMs: 900000 })
   const packed = join(REPO, "dist", "mpd-package")
-  const packedPlugin = join(packed, "packages", "mpd-ext-plugin")
-  const packedExtensions = join(packed, "extensions")
-  const packedPatch = join(packed, "cordis.patch.yml")
-  const patchText = existsSync(packedPatch) ? readFileSync(packedPatch, "utf8") : ""
-  const hasRow = /- id: mpd-ext\b/.test(patchText)
-  const hasPlugin = existsSync(packedPlugin)
-  const hasExtensions = existsSync(packedExtensions)
-  // Import-time artifact of the reference extension: the packed tree must carry it
-  // BEFORE the row can contribute anything, which is exactly what t11 fixes.
-  const red = hasRow && (!hasPlugin || !hasExtensions)
+  const facts = packedStateOf(packed)
+  const negative = packedNegativeDriver()
   logs.push("=== packed arm (pack exit " + packRun.status + ") ===\n" + packRun.out.slice(-3000))
+  logs.push("=== packed negative control (fixture trees) ===\n" + JSON.stringify(negative.trees, null, 2))
   return {
-    ok: packRun.status === 0 && hasRow && (hasPlugin && hasExtensions ? true : red),
+    ok: packedStateOk({ packExit: packRun.status, hasRow: facts.hasRow, hasPlugin: facts.hasPlugin, hasExtensions: facts.hasExtensions })
+      && negative.falsifiable,
     packExit: packRun.status,
     packedRoot: packed,
-    rows: { mpdExtRowInPackedPatch: hasRow },
-    assets: { pluginDist: hasPlugin, extensionsAsset: hasExtensions },
-    // The RED is a PROPERTY OF THE TREE, not of this case: t11 owns the fix and
-    // the GREEN packed boot (PLUGIN_PKGS + the extensions/ asset + the packed
-    // manifest files/exports). This case records which state the tree is in.
-    status: hasPlugin && hasExtensions ? "GREEN (t11's pack fix has landed: the packed tree carries the plugin and extensions/)" : "RED (expected for this wave: the packed tree cannot resolve the mpd-ext row / discover <bundle>/extensions; the GREEN is t11's)",
-    greenOwner: "t11",
-    note: "no packed-tree file was modified by this case; the expectation is recorded, never patched",
+    rows: { mpdExtRowInPackedPatch: facts.hasRow },
+    assets: { pluginDist: facts.hasPlugin, extensionsAsset: facts.hasExtensions },
+    // The predicate above is the gate: FALSIFIABLE by construction, because the
+    // same function is driven over fixture trees that each miss one fact.
+    negativeControl: negative,
+    status: facts.hasRow && facts.hasPlugin && facts.hasExtensions
+      ? "GREEN (the packed tree carries the mpd-ext row, the plugin and the extensions/ discovery root)"
+      : "RED (the packed tree is missing the mpd-ext row, the plugin and/or the extensions/ discovery root — scripts/pack-mpd.mjs must never exit 0 for such a tree, and this case now exits 1 with it)",
+    note: "no packed-tree file was modified by this case; the three facts are re-derived from disk on every run",
     packTail: packRun.out.trim().split("\n").slice(-3).join(" | ").slice(0, 300),
+  }
+}
+
+// ── packed-tree contract + its negative driver ──────────────────────────────
+
+/**
+ * The packed-tree contract as a PURE predicate (F9): a packed tree is closed only
+ * when the packer exited 0 AND the packed patch carries the `mpd-ext` row AND the
+ * plugin package AND the `<bundle>/extensions/` discovery root are both present.
+ *
+ * It is a function of facts, never of this case's expectation: the archived `ok`
+ * used to be `... && (hasPlugin && hasExtensions ? true : red)`, which was TRUE in
+ * BOTH states, so exit 0 could accompany a red packed tree. Exported so the
+ * negative driver below (and the offline `--self-test`) can falsify it directly.
+ */
+export function packedStateOk({ packExit, hasRow, hasPlugin, hasExtensions }) {
+  return packExit === 0 && hasRow === true && hasPlugin === true && hasExtensions === true
+}
+
+/** The three facts the predicate reads, derived from ONE tree on disk. */
+export function packedStateOf(root) {
+  const patchPath = join(root, "cordis.patch.yml")
+  const hasRow = existsSync(patchPath) && /- id: mpd-ext\b/.test(readFileSync(patchPath, "utf8"))
+  return {
+    hasRow,
+    hasPlugin: existsSync(join(root, "packages", "mpd-ext-plugin")),
+    hasExtensions: existsSync(join(root, "extensions")),
+  }
+}
+
+/**
+ * NEGATIVE DRIVER: build fixture packed trees in a temp dir — one CLOSED tree and
+ * one per missing fact (no plugin package, no `extensions/` root, no `mpd-ext`
+ * row) — and drive the SAME predicate the real arm uses over each. `falsifiable`
+ * is true only when the closed tree passes and EVERY broken tree fails, so the
+ * real arm's green cannot be a predicate that is true regardless of the tree.
+ * Called from the real packed arm AND from `--self-test` (offline, temp dirs only).
+ */
+export function packedNegativeDriver() {
+  const root = mkdtempSync(join(tmpdir(), "mpd-packed-fixture-"))
+  const trees = {}
+  try {
+    const build = (name, { row = true, plugin = true, extensions = true } = {}) => {
+      const dir = join(root, name)
+      mkdirSync(dir, { recursive: true })
+      const line = row
+        ? "    - id: mpd-ext\n      name: '@mpd-dsh/mpd/packages/mpd-ext-plugin/dist/index.js'\n"
+        : "    - id: mpd-tools\n      name: '@mpd-dsh/mpd/packages/mpd-tools-plugin/dist/index.js'\n"
+      writeFileSync(join(dir, "cordis.patch.yml"), "- insert:\n" + line)
+      if (plugin) mkdirSync(join(dir, "packages", "mpd-ext-plugin", "dist"), { recursive: true })
+      if (extensions) mkdirSync(join(dir, "extensions"), { recursive: true })
+      return dir
+    }
+    const fixtures = {
+      closed: build("closed"),
+      "no-plugin-package": build("no-plugin-package", { plugin: false }),
+      "no-extensions-root": build("no-extensions-root", { extensions: false }),
+      "no-mpd-ext-row": build("no-mpd-ext-row", { row: false }),
+    }
+    for (const [name, dir] of Object.entries(fixtures)) {
+      const facts = packedStateOf(dir)
+      trees[name] = { ...facts, ok: packedStateOk({ packExit: 0, ...facts }) }
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+  const broken = ["no-plugin-package", "no-extensions-root", "no-mpd-ext-row"]
+  return {
+    falsifiable: trees.closed?.ok === true && broken.every((name) => trees[name]?.ok === false),
+    // A packer that exited non-zero must also fail the predicate (the fourth fact).
+    packerExitGated: packedStateOk({ packExit: 1, hasRow: true, hasPlugin: true, hasExtensions: true }) === false,
+    trees,
   }
 }
 
@@ -417,7 +497,7 @@ async function runReal() {
   const wrote = writeEvidence(outDir, SLUG, {
     ok,
     sandbox: box.sandbox,
-    arms: "main (mount + list + flow + skill + role persona/spawn) | failure (broken of each kind beside a healthy one, CLI oracle) | isolation (two sessions, one host, decoy control) | packed (t5 records the state; t11 owns the GREEN)",
+    arms: "main (mount + list + flow + skill + role persona/spawn) | failure (broken of each kind beside a healthy one, CLI oracle) | isolation (two sessions, one host, decoy control) | packed (the packed tree is closed: row + plugin + extensions/ asset, with a negative control over fixture trees)",
     rankLadder: "100 project-dsh < 200 project-agents < 250 runtime < 300 ours < 400 user-dsh < 500 user-agents < 600 bundled; lower wins inside a layer, nearest layer wins outright",
     steps,
   }, logs.join("\n\n"))
