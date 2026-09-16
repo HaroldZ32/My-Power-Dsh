@@ -1,0 +1,255 @@
+{
+  "task": "AC-12 / AC-13 / AC-14 (notify: web banner+record+replay+ack, TUI status+dialog+watermark, both readers)",
+  "lane": "team-watchdog-notify",
+  "surface": "both",
+  "readerKeys": {
+    "web": "web-panel",
+    "tui": "mpd-tui"
+  },
+  "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T171218Z-notify-both/raw/sandbox/notify/ws",
+  "storeFiles": {
+    "before": {
+      "hold/notify-probe.json": {
+        "sha256": "77f24c9c32059888239a5bc470e02dee913d7f24fdbb45b09f48deb6812e2cd6",
+        "bytes": 184
+      },
+      "incidents.jsonl": {
+        "sha256": "1c4fd2ab4787ae695e4c6b9fb08301ddb7ae9711848045a11bbf532679cf8802",
+        "bytes": 199
+      },
+      "read-watermark.json": {
+        "sha256": "6d40e91772ed6aa12b2a1be197355ffc02bbc8b06e636f55da43e0df079f91a8",
+        "bytes": 37
+      },
+      "scene/notify-probe/latest.json": {
+        "sha256": "32077b511e0026cfbf6fd073365375950e63a11c4c150bed9b1c81614c95651a",
+        "bytes": 39
+      }
+    },
+    "after": {
+      "hold/notify-probe.json": {
+        "sha256": "77f24c9c32059888239a5bc470e02dee913d7f24fdbb45b09f48deb6812e2cd6",
+        "bytes": 184
+      },
+      "incidents.jsonl": {
+        "sha256": "37961cd51b9d4a32ad9c511dc98df2181db0023f1087227b8a7c142b6b5c9902",
+        "bytes": 400
+      },
+      "read-watermark.json": {
+        "sha256": "b7fb1d8c8c2ef0fa5a7cb928fdfc0db1bd67ed2525cd486f726e65aa49c4b456",
+        "bytes": 49
+      },
+      "scene/notify-probe/latest.json": {
+        "sha256": "32077b511e0026cfbf6fd073365375950e63a11c4c150bed9b1c81614c95651a",
+        "bytes": 39
+      }
+    }
+  },
+  "observed": {
+    "fallbackStated": "Without an acknowledge the replay is PERMANENT RE-DISPLAY BY DESIGN (the payload's `replay` flag and the on-screen line say so).",
+    "watermarkBeforeSha": "6d40e91772ed6aa12b2a1be197355ffc02bbc8b06e636f55da43e0df079f91a8",
+    "web": {
+      "payload": {
+        "ok": true,
+        "reader": "web-panel",
+        "generatedAt": "2026-09-15T17:12:19.020Z",
+        "stateDir": ".mpd/team",
+        "workspaces": [
+          "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T171218Z-notify-both/raw/sandbox/notify/ws"
+        ],
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T171218Z-notify-both/raw/sandbox/notify/ws",
+        "stuck": true,
+        "held": [
+          {
+            "id": "hold-notify-1",
+            "teamId": "notify-probe",
+            "since": 1789400000000,
+            "cause": "silence 120000 ms",
+            "taskId": "t9",
+            "attemptId": "att-1",
+            "sceneAt": 1789400000000
+          }
+        ],
+        "banner": {
+          "kind": "held",
+          "teamId": "notify-probe",
+          "holdId": "hold-notify-1",
+          "incidentId": "inc-1",
+          "cause": "silence for 120000 ms",
+          "since": 1789400000000,
+          "taskId": "t9",
+          "attemptId": "att-1",
+          "scene": null,
+          "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T171218Z-notify-both/raw/sandbox/notify/ws"
+        },
+        "activity": [
+          {
+            "id": "inc-1",
+            "teamId": "notify-probe",
+            "kind": "escalate",
+            "at": 1789400000000,
+            "label": "escalated",
+            "cause": "silence for 120000 ms",
+            "ms": 120000,
+            "taskId": "t9",
+            "attemptId": "att-1",
+            "scene": null,
+            "hold": "applied",
+            "acknowledgedBy": [],
+            "ackRequired": true,
+            "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T171218Z-notify-both/raw/sandbox/notify/ws"
+          }
+        ],
+        "unread": [
+          "inc-1"
+        ],
+        "watermarks": {
+          "mpd-tui": 0,
+          "web-panel": 0
+        },
+        "replay": true,
+        "errors": []
+      },
+      "incidentId": "inc-1",
+      "fetchedWithoutUserAction": 1,
+      "renderedStuck": "1",
+      "topChildAttr": "incident",
+      "topChildIsBanner": true,
+      "recordCount": 1,
+      "recordId": "inc-1",
+      "ackAdvanced": true,
+      "watermarkAfter": {
+        "mpd-tui": 0,
+        "web-panel": 1789400000000
+      },
+      "replayAfterAck": false,
+      "recordsAfterAck": 0,
+      "replayStoppedAfterAck": true,
+      "newIncidentReplays": true
+    },
+    "tui": {
+      "readerKey": "mpd-tui",
+      "unreadBefore": 1,
+      "noticeBefore": "watchdog: held notify-probe · 1 unread incident",
+      "dialogOptionIds": [
+        "acknowledge",
+        "later"
+      ],
+      "composedLine": "saved to settings · watchdog: held notify-probe · 1 unread incident",
+      "bridgeNotice": "saved to settings",
+      "ackUpTo": 1789400000000,
+      "ackAdvanced": true,
+      "acknowledgedHook": 1,
+      "watermarkAfter": {
+        "mpd-tui": 1789400000000,
+        "web-panel": 0
+      },
+      "unreadAfter": 0,
+      "noticeAfter": "watchdog: held notify-probe",
+      "newIncidentNotice": "watchdog: held notify-probe · 1 unread incident",
+      "builtBytesWired": true
+    },
+    "watermarkAfterSha": "b7fb1d8c8c2ef0fa5a7cb928fdfc0db1bd67ed2525cd486f726e65aa49c4b456",
+    "watermarkBeforeText": "{\n  \"mpd-tui\": 0,\n  \"web-panel\": 0\n}\n",
+    "watermarkAfterText": "{\n  \"mpd-tui\": 1789400000000,\n  \"web-panel\": 0\n}\n"
+  },
+  "checks": [
+    {
+      "id": "W1",
+      "ok": true,
+      "detail": "the web payload's banner names the unacknowledged incident and marks the replay ({\"banner\":\"inc-1\",\"replay\":true})"
+    },
+    {
+      "id": "W2",
+      "ok": true,
+      "detail": "ONE activity record rides the payload the panel consumes (1)"
+    },
+    {
+      "id": "W3",
+      "ok": true,
+      "detail": "the panel's FIRST poll fetches the route with no user action (1 fetch(es))"
+    },
+    {
+      "id": "W4",
+      "ok": true,
+      "detail": "the RENDERED panel's first child is the banner (stuck=\"1\", topChild=\"incident\")"
+    },
+    {
+      "id": "W5",
+      "ok": true,
+      "detail": "the rendered body carries exactly one record for that incident (1)"
+    },
+    {
+      "id": "W6",
+      "ok": true,
+      "detail": "the web acknowledge advanced ONLY its own reader key (web-panel → 1789400000000, the TUI reader untouched at 0)"
+    },
+    {
+      "id": "W7",
+      "ok": true,
+      "detail": "after the acknowledge the web replay stops (replay=false, records=0)"
+    },
+    {
+      "id": "W8",
+      "ok": true,
+      "detail": "a SECOND unacknowledged incident replays on the next start (permanent re-display by design)"
+    },
+    {
+      "id": "T1",
+      "ok": true,
+      "detail": "the TUI front door owns the reader key mpd-tui (\"mpd-tui\")"
+    },
+    {
+      "id": "T2",
+      "ok": true,
+      "detail": "the TUI status notice is composed while an incident is unread (\"watchdog: held notify-probe · 1 unread incident\")"
+    },
+    {
+      "id": "T3",
+      "ok": true,
+      "detail": "the notice reaches the COMPOSED status line the TUI renders (\"saved to settings · watchdog: held notify-probe · 1 unread incident\")"
+    },
+    {
+      "id": "T4",
+      "ok": true,
+      "detail": "the replay dialog offers the acknowledge action ([\"acknowledge\",\"later\"])"
+    },
+    {
+      "id": "T5",
+      "ok": true,
+      "detail": "the TUI acknowledge advanced the mpd-tui watermark through the REAL service up to 1789400000000, leaving the web reader's key untouched ({\"mpd-tui\":1789400000000,\"web-panel\":0})"
+    },
+    {
+      "id": "T6",
+      "ok": true,
+      "detail": "after acknowledging the whole replay the TUI reads NOTHING unread and its notice no longer replays incidents — it still shows the DURABLE hold, which is current state, not a replay (unread=0, notice=\"watchdog: held notify-probe\")"
+    },
+    {
+      "id": "T7",
+      "ok": true,
+      "detail": "the BUILT TUI bytes carry the notice prefix, the reader key and the acknowledge option"
+    },
+    {
+      "id": "T8",
+      "ok": true,
+      "detail": "a SECOND unacknowledged incident shows again on the next start (permanent re-display by design): \"watchdog: held notify-probe · 1 unread incident\""
+    },
+    {
+      "id": "N1",
+      "ok": true,
+      "detail": "the watermark file's BYTES changed across the acknowledges (6d40e91772ed → b7fb1d8c8c2e)"
+    },
+    {
+      "id": "N2",
+      "ok": true,
+      "detail": "the honest fallback is stated verbatim in the result: \"Without an acknowledge the replay is PERMANENT RE-DISPLAY BY DESIGN (the payload's `replay` flag and the on-screen line say so).\""
+    }
+  ],
+  "ok": true,
+  "notClaimed": [
+    "No real browser render and no real TTY: the web arm asserts the RENDERED TREE through the offline hook runtime driving the REAL built client against the REAL route's payload; the TUI arm asserts the composed status value, the dialog request and the REAL watermark file (a keystroke drive is tui-panels' job).",
+    "The fallback is stated, never hidden: without an acknowledge the replay is permanent re-display by design."
+  ],
+  "evidenceDir": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T171218Z-notify-both",
+  "finishedAt": "2026-09-15T17:12:19.055Z"
+}

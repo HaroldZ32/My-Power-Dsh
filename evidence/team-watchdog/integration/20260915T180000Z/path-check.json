@@ -1,0 +1,447 @@
+{
+  "task": "t78 — ledger path-existence check",
+  "reportPath": "/root/dshProj/my-power-dsh/.mpd/plans/team-watchdog-report.md",
+  "cited": 70,
+  "checked": 69,
+  "skipped": 7,
+  "missing": [],
+  "skippedTokens": [
+    ".mpd/plans/*.md",
+    "docs/**",
+    "evidence/team-watchdog/integration/<ts>/",
+    "evidence/tui/docs-parity-gate/…",
+    "evidence/…",
+    "packages/**",
+    "skills/**"
+  ],
+  "ok": true,
+  "checkedAt": "2026-09-16T01:23:28.816Z",
+  "checks": [
+    {
+      "token": ".mpd/plans/team-watchdog.md",
+      "pathToken": ".mpd/plans/team-watchdog.md",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "docs/",
+      "pathToken": "docs/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/release/v0.9.1/delta-registry.log",
+      "pathToken": "evidence/release/v0.9.1/delta-registry.log",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/boot/",
+      "pathToken": "evidence/team-watchdog/boot/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/boot/20260916T012131Z/",
+      "pathToken": "evidence/team-watchdog/boot/20260916T012131Z/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/boot/20260916T012131Z/result.json",
+      "pathToken": "evidence/team-watchdog/boot/20260916T012131Z/result.json",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/config/20260915T162158Z/",
+      "pathToken": "evidence/team-watchdog/config/20260915T162158Z/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/config/20260915T162158Z/result.json",
+      "pathToken": "evidence/team-watchdog/config/20260915T162158Z/result.json",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/design/",
+      "pathToken": "evidence/team-watchdog/design/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/design/DESIGN.md",
+      "pathToken": "evidence/team-watchdog/design/DESIGN.md",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/fault/20260915T165635Z/",
+      "pathToken": "evidence/team-watchdog/fault/20260915T165635Z/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/fault/20260915T165635Z/raw/tests-watchdog.log",
+      "pathToken": "evidence/team-watchdog/fault/20260915T165635Z/raw/tests-watchdog.log",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/fault/20260915T165635Z/result.json",
+      "pathToken": "evidence/team-watchdog/fault/20260915T165635Z/result.json",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/integration/",
+      "pathToken": "evidence/team-watchdog/integration/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/integration/20260915T180000Z/check-paths.mjs",
+      "pathToken": "evidence/team-watchdog/integration/20260915T180000Z/check-paths.mjs",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/integration/20260915T180000Z/raw/check-paths.log",
+      "pathToken": "evidence/team-watchdog/integration/20260915T180000Z/raw/check-paths.log",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/lanes/",
+      "pathToken": "evidence/team-watchdog/lanes/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/lanes/20260915T171218Z-config/result.json",
+      "pathToken": "evidence/team-watchdog/lanes/20260915T171218Z-config/result.json",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/lanes/20260915T171218Z-fault/result.json",
+      "pathToken": "evidence/team-watchdog/lanes/20260915T171218Z-fault/result.json",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/lanes/20260915T171218Z-heartbeat/result.json",
+      "pathToken": "evidence/team-watchdog/lanes/20260915T171218Z-heartbeat/result.json",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/lanes/20260915T171218Z-scene/result.json",
+      "pathToken": "evidence/team-watchdog/lanes/20260915T171218Z-scene/result.json",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/lanes/20260915T173500Z-repin-verified/",
+      "pathToken": "evidence/team-watchdog/lanes/20260915T173500Z-repin-verified/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/lanes/20260915T173500Z-repin-verified/raw/test-qa.log",
+      "pathToken": "evidence/team-watchdog/lanes/20260915T173500Z-repin-verified/raw/test-qa.log",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/live/20260915T171438Z/",
+      "pathToken": "evidence/team-watchdog/live/20260915T171438Z/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/notify/tui/",
+      "pathToken": "evidence/team-watchdog/notify/tui/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/notify/tui/20260915T163453Z/",
+      "pathToken": "evidence/team-watchdog/notify/tui/20260915T163453Z/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/notify/tui/20260915T164827Z/",
+      "pathToken": "evidence/team-watchdog/notify/tui/20260915T164827Z/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/notify/web/20260915T163907Z/",
+      "pathToken": "evidence/team-watchdog/notify/web/20260915T163907Z/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/pause/",
+      "pathToken": "evidence/team-watchdog/pause/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/pause/20260915T163526Z/",
+      "pathToken": "evidence/team-watchdog/pause/20260915T163526Z/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/pause/20260915T163526Z/RESULT.md:136",
+      "pathToken": "evidence/team-watchdog/pause/20260915T163526Z/RESULT.md",
+      "line": 136,
+      "exists": true,
+      "lineOk": true,
+      "lineText": "- Re-arm is NOT claimed for an attempt the parked map considers currently parked with the same i",
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/pause/20260915T164700Z/",
+      "pathToken": "evidence/team-watchdog/pause/20260915T164700Z/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/pause/20260915T164700Z/RESULT.md:115",
+      "pathToken": "evidence/team-watchdog/pause/20260915T164700Z/RESULT.md",
+      "line": 115,
+      "exists": true,
+      "lineOk": true,
+      "lineText": "- No re-arm claim for an attempt the parked map considers currently parked with the same id",
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/pause/20260915T164700Z/AMENDMENT-NOTE.md",
+      "pathToken": "evidence/team-watchdog/pause/20260915T164700Z/AMENDMENT-NOTE.md",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/pause/20260915T164700Z/README-supersedes.txt",
+      "pathToken": "evidence/team-watchdog/pause/20260915T164700Z/README-supersedes.txt",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/pause/20260915T164700Z/RESULT.md",
+      "pathToken": "evidence/team-watchdog/pause/20260915T164700Z/RESULT.md",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/pause/20260915T164700Z/result.json",
+      "pathToken": "evidence/team-watchdog/pause/20260915T164700Z/result.json",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/pause/20260915T172352Z/",
+      "pathToken": "evidence/team-watchdog/pause/20260915T172352Z/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/plugin/",
+      "pathToken": "evidence/team-watchdog/plugin/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/plugin/20260915T160657Z/",
+      "pathToken": "evidence/team-watchdog/plugin/20260915T160657Z/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/plugin/20260915T160657Z/result.json",
+      "pathToken": "evidence/team-watchdog/plugin/20260915T160657Z/result.json",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/plugin/20260915T162351Z/RESULT.md",
+      "pathToken": "evidence/team-watchdog/plugin/20260915T162351Z/RESULT.md",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/plugin/20260915T162351Z/result.json",
+      "pathToken": "evidence/team-watchdog/plugin/20260915T162351Z/result.json",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/plugin/20260915T173114Z/",
+      "pathToken": "evidence/team-watchdog/plugin/20260915T173114Z/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/plugin/20260915T173604Z/",
+      "pathToken": "evidence/team-watchdog/plugin/20260915T173604Z/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/pool-guard-readers/REPORT.md",
+      "pathToken": "evidence/team-watchdog/pool-guard-readers/REPORT.md",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/pool-guard/",
+      "pathToken": "evidence/team-watchdog/pool-guard/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/pool-guard/20260915T1745Z/",
+      "pathToken": "evidence/team-watchdog/pool-guard/20260915T1745Z/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/pre-step-waterfall/20260916T010000Z/",
+      "pathToken": "evidence/team-watchdog/pre-step-waterfall/20260916T010000Z/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/pre-step-waterfall/20260916T010000Z/drive.mjs",
+      "pathToken": "evidence/team-watchdog/pre-step-waterfall/20260916T010000Z/drive.mjs",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/pre-step-waterfall/20260916T010000Z/result.json",
+      "pathToken": "evidence/team-watchdog/pre-step-waterfall/20260916T010000Z/result.json",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/pre-step-waterfall/20260916T010000Z/before-fix/",
+      "pathToken": "evidence/team-watchdog/pre-step-waterfall/20260916T010000Z/before-fix/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/requirements/20260915T090440Z/",
+      "pathToken": "evidence/team-watchdog/requirements/20260915T090440Z/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/review/",
+      "pathToken": "evidence/team-watchdog/review/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/review/20260915T171918Z/REPORT.md",
+      "pathToken": "evidence/team-watchdog/review/20260915T171918Z/REPORT.md",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/review/20260915T173532Z/REPORT.md",
+      "pathToken": "evidence/team-watchdog/review/20260915T173532Z/REPORT.md",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/seam-audit/20260915T154132Z/",
+      "pathToken": "evidence/team-watchdog/seam-audit/20260915T154132Z/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/team-watchdog/seam-audit/20260915T154132Z/REPORT.md",
+      "pathToken": "evidence/team-watchdog/seam-audit/20260915T154132Z/REPORT.md",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/tui/docs-parity-gate/",
+      "pathToken": "evidence/tui/docs-parity-gate/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/tui/docs-parity-gate/20260915T155030Z/",
+      "pathToken": "evidence/tui/docs-parity-gate/20260915T155030Z/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "evidence/tui/docs-parity-gate/20260915T172817Z/",
+      "pathToken": "evidence/tui/docs-parity-gate/20260915T172817Z/",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+      "pathToken": "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "packages/mpd-team-watchdog-plugin/src/engine.ts",
+      "pathToken": "packages/mpd-team-watchdog-plugin/src/engine.ts",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "packages/mpd-team-watchdog-plugin/test/failsafe.test.ts:216",
+      "pathToken": "packages/mpd-team-watchdog-plugin/test/failsafe.test.ts",
+      "line": 216,
+      "exists": true,
+      "lineOk": true,
+      "lineText": "test(\"a row config kill switch also disables the engine\", async () => {",
+      "ok": true
+    },
+    {
+      "token": "packages/mpd-team-watchdog-plugin/test/pre-step-waterfall.test.ts",
+      "pathToken": "packages/mpd-team-watchdog-plugin/test/pre-step-waterfall.test.ts",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "packages/mpd-team-watchdog-plugin/test/scene.test.ts:92",
+      "pathToken": "packages/mpd-team-watchdog-plugin/test/scene.test.ts",
+      "line": 92,
+      "exists": true,
+      "lineOk": true,
+      "lineText": "test(\"write -> read round-trips byte-identically and a second identical write changes no bytes\",",
+      "ok": true
+    },
+    {
+      "token": "scripts/verify-docs-parity.mjs",
+      "pathToken": "scripts/verify-docs-parity.mjs",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "skills/dsh-qa/scripts/team-watchdog-boot.mjs",
+      "pathToken": "skills/dsh-qa/scripts/team-watchdog-boot.mjs",
+      "exists": true,
+      "ok": true
+    },
+    {
+      "token": "skills/dsh-qa/scripts/tui-settings-bridge.mjs",
+      "pathToken": "skills/dsh-qa/scripts/tui-settings-bridge.mjs",
+      "exists": true,
+      "ok": true
+    }
+  ]
+}

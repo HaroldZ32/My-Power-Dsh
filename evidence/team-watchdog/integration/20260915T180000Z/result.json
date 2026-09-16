@@ -1,0 +1,73 @@
+{
+  "task": "t78 — w13 integration: the wave's acceptance ledger, evidence index and honest NOT-CLAIMED list",
+  "producedBy": "Lead (integration)",
+  "report": ".mpd/plans/team-watchdog-report.md",
+  "reportBytes": 33361,
+  "reportSha256": "5286350adb1985a1cba7e9e641f16d9d0c9d364fb5770ad576216f1c28421efb",
+  "acRows": 17,
+  "acStatuses": {
+    "passed": 12,
+    "passedWithCarriedLimit": 4,
+    "notClaimed": 0,
+    "failed": 0,
+    "carriedLimits": [
+      "AC-1 live-turn leg",
+      "AC-6 crash-injection leg",
+      "AC-7 second-team window leg",
+      "AC-8 same-attemptId leg",
+      "AC-10 fixture-level disabled arm",
+      "AC-16 strip→heal re-run"
+    ]
+  },
+  "pathCheck": {
+    "command": "node evidence/team-watchdog/integration/20260915T180000Z/check-paths.mjs",
+    "exitCode": 0,
+    "cited": 62,
+    "checked": 60,
+    "skipped": 6,
+    "missing": [],
+    "log": "evidence/team-watchdog/integration/20260915T180000Z/raw/check-paths.log",
+    "json": "evidence/team-watchdog/integration/20260915T180000Z/path-check.json"
+  },
+  "amendments": [
+    "t54 amendment 1 (mpdWatchdog hold service) — evidence/team-watchdog/plugin/20260915T162351Z/",
+    "t62 amendment 1 (service-primary enforcement; superseded the file-read variant at evidence/team-watchdog/pause/20260915T163526Z/)"
+  ],
+  "reviewHistory": {
+    "needsRevision": [
+      "t69 (w12 ESCALATE-1/-2, TEST-1) → t71",
+      "t70 (w11-1/-2) → t73",
+      "t75 (doc-pair gate) → t76"
+    ],
+    "pass": [
+      "t72",
+      "t74",
+      "t77",
+      "t68 (independent verification: PASS, no finding)"
+    ]
+  },
+  "registryAccounting": {
+    "before": "48 regions / 9 files (evidence/release/v0.9.1/delta-registry.log)",
+    "after": "53 regions / 9 files (--check clean, exit 0)"
+  },
+  "vendorAccounting": {
+    "before": "310/8ec53287296e",
+    "after": "316/10c945f47a5e645e0ecd9e4bce198b3a314389407f4681fd8906b988f8e7f3bb",
+    "repinnedBy": "the captain, same commit"
+  },
+  "gaps": [
+    "four delivery shapes (pooled-unassigned→read-only seat; assigned-while-busy never delivered; terminal re-offered; stale READ by the captain) — root cause reproduced by t58",
+    "captain-takeover-return-to-pool variant (t71 posted on the author's behalf)",
+    "scope-defect class 1: an implementation task whose acceptance needs a rebuilt dist/ or a package server half not in inScope (t63, t65)",
+    "contract-defect class the captain owned: a required failing verify command vs a required PASSED commandsRun entry (t67), resolved by landing the re-pin first"
+  ],
+  "notClaimedVerbatim": [
+    "W-3: a GENUINE provider wedge is not reproducible here. Every case injects SILENCE (the absence of new heartbeats); no case may claim that a real wedge was caught.",
+    "No LIVE member turn was driven: this sandbox has no dsh host, no model credential and no network (the fixture's own NOT_CLAIMED #3).",
+    "No real browser render and no real TTY: the web arm asserts the RENDERED TREE through the offline hook runtime; the TUI arm asserts the composed status value, the dialog request and the REAL watermark file.",
+    "Without an acknowledge the replay is PERMANENT RE-DISPLAY BY DESIGN.",
+    "No re-arm claim for an attempt the parked map considers currently parked with the same id.",
+    "`--check` proves the registry matches the files — it is not window integrity."
+  ],
+  "reportLines": 315
+}

@@ -1,0 +1,72 @@
+{
+  "task": "the watchdog's row mounted in a REAL dsh does not veto the turn machinery (pre-step waterfall)",
+  "lane": "team-watchdog-boot",
+  "heavy": true,
+  "workspace": "/tmp/mpd-wdboot-9A0Ven/ws",
+  "dshHome": "/tmp/mpd-wdboot-9A0Ven/home",
+  "copiedFiles": [
+    ".credentials.yaml",
+    ".anonymous-user-id",
+    "settings.yaml"
+  ],
+  "observed": {
+    "rowLine": "[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0",
+    "preset": "mpd",
+    "createOk": true,
+    "promptAccepted": true,
+    "copied": [
+      ".credentials.yaml",
+      ".anonymous-user-id",
+      "settings.yaml"
+    ],
+    "settingsPresent": true,
+    "turnEnds": [
+      "{\"type\":\"turn/end\",\"seq\":17,\"time\":1789521707654,\"data\":{\"turn\":1,\"reason\":{\"kind\":\"error\",\"error\":{\"message\":\"llm-deepseek: no API key for provider route \\\"deepseek-official\\\"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment\",\"code\":\"MISSING_CREDENTIAL\"}}}}"
+    ],
+    "assistantMessages": []
+  },
+  "outcome": "model-error",
+  "reason": "the turn reached the MODEL call and failed there (not at pre-step): llm-deepseek: no API key for provider route \\",
+  "checks": [
+    {
+      "id": "B1",
+      "ok": true,
+      "detail": "the watchdog row APPLIED in the real boot ({\"enabled\":\"true\",\"disposers\":5,\"holdService\":\"mpdWatchdog\"})"
+    },
+    {
+      "id": "B2",
+      "ok": true,
+      "detail": "the session was created on agentPreset mpd (\"mpd\")"
+    },
+    {
+      "id": "B3",
+      "ok": true,
+      "detail": "session/create and session/prompt were both accepted ({\"create\":true,\"prompt\":true})"
+    },
+    {
+      "id": "B4",
+      "ok": true,
+      "detail": "the sandbox home received BOTH `.credentials.yaml` and `settings.yaml` when present ([\".credentials.yaml\",\".anonymous-user-id\",\"settings.yaml\"])"
+    },
+    {
+      "id": "B5",
+      "ok": true,
+      "detail": "the harness's own session log recorded at least one turn/end (1 turn/end line(s))"
+    },
+    {
+      "id": "B6",
+      "ok": true,
+      "detail": "NO turn/end carries the pre-step veto signature (map/findLastIndex/length)"
+    },
+    {
+      "id": "B7",
+      "ok": true,
+      "detail": "outcome=model-error — PASSED FOR THIS INVARIANT (the pre-step veto is gone; the turn reached the model call) and explicitly NOT a completed turn: the turn reached the MODEL call and failed there (not at pre-step): llm-deepseek: no API key for provider route \\"
+    }
+  ],
+  "ok": true,
+  "notClaimed": [
+    "This lane witnesses the INVARIANT (the row mounts and the turn machinery survives it). A `model-error` outcome (e.g. MISSING_CREDENTIAL — measured in this sandbox while the task was written) proves the turn reached the model call but is NOT a completed turn.",
+    "No genuine provider wedge is claimed; this lane drives one normal prompt, not a wedge."
+  ]
+}

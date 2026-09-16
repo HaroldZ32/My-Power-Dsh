@@ -1,0 +1,81 @@
+{
+  "task": "w9 — the five watchdog QA lanes + SKILL.md rows + the deferred W14/W15 lane half",
+  "lane": "team-watchdog-lanes (integration record)",
+  "producedBy": "Lead",
+  "lanes": {
+    "heartbeat": {
+      "dir": "evidence/team-watchdog/lanes/20260915T170900Z-heartbeat",
+      "ok": true,
+      "checks": 13,
+      "failed": [],
+      "resultSha256": "73b02a51df2b7e3e052e23d9"
+    },
+    "fault": {
+      "dir": "evidence/team-watchdog/lanes/20260915T170900Z-fault",
+      "ok": true,
+      "checks": 11,
+      "failed": [],
+      "resultSha256": "6c0c31e2bb4869c61ebd4c55"
+    },
+    "scene": {
+      "dir": "evidence/team-watchdog/lanes/20260915T170900Z-scene",
+      "ok": true,
+      "checks": 10,
+      "failed": [],
+      "resultSha256": "0b6cdf31d5cb79ac4a56da32"
+    },
+    "config": {
+      "dir": "evidence/team-watchdog/lanes/20260915T170900Z-config",
+      "ok": true,
+      "checks": 10,
+      "failed": [],
+      "resultSha256": "467205727c968dbdbcc0d166"
+    },
+    "notify": {
+      "dir": "evidence/team-watchdog/lanes/20260915T170900Z-notify-both",
+      "ok": true,
+      "checks": 18,
+      "failed": [],
+      "resultSha256": "2cb31e8cb4579c2b0ce47a28"
+    }
+  },
+  "skillsFiles": [
+    "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs",
+    "skills/dsh-qa/scripts/team-watchdog-fault.mjs",
+    "skills/dsh-qa/scripts/team-watchdog-scene.mjs",
+    "skills/dsh-qa/scripts/team-watchdog-config.mjs",
+    "skills/dsh-qa/scripts/team-watchdog-notify.mjs",
+    "skills/dsh-qa/scripts/lib/watchdog-lane.mjs",
+    "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs",
+    "skills/dsh-qa/SKILL.md"
+  ],
+  "vendorState": {
+    "toolPrinted": "tree=316/10c945f47a5e",
+    "pinned": "310/8ec53287296e",
+    "verifyVendor": "FAIL (asset skills count drifted: 316 vs 310 + treeSha mismatch)",
+    "expectedByContract": true,
+    "note": "the wave's skills/** edits invalidate the corpus treeSha by construction; VENDOR_LOCK.json is OUT of this task's scope, so the captain's re-pin must ride the SAME commit (AGENTS.md §9/§11)"
+  },
+  "selfTestSweep": {
+    "command": "each skills/dsh-qa/scripts/*.mjs --self-test, run individually",
+    "pass": 40,
+    "fail": 1,
+    "onlyFailure": "skills/dsh-qa/scripts/agent-teams-messaging.mjs (the owed VENDOR_LOCK pairing, not a code failure)",
+    "whyIndividual": "the aggregate `bun run test:qa` aborts at the FIRST failure, which is that same case, so the aggregate never reaches the watchdog lanes; the individual sweep is the complete picture and is recorded raw/selftests-individual.log"
+  },
+  "gates": [
+    {
+      "command": "bun run verify:docs",
+      "exitCode": 0
+    },
+    {
+      "command": "bun run typecheck",
+      "exitCode": 0
+    },
+    {
+      "command": "node scripts/verify-vendor.mjs",
+      "exitCode": 1,
+      "expected": true
+    }
+  ]
+}

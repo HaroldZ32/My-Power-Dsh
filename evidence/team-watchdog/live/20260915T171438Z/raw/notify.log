@@ -1,0 +1,6 @@
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=60000 tickIntervalMs=5000 warnStreakToEscalate=2 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[team-watchdog-notify] web: state route status=200 banner="inc-1" replay=true
+[team-watchdog-notify] tui: reader=mpd-tui unread=1 notice="watchdog: held notify-probe · 1 unread incident"
+[team-watchdog-notify] PASS — 18 checks, 0 failed (evidence: /root/dshProj/my-power-dsh/evidence/team-watchdog/live/20260915T171438Z/notify/result.json)
+[team-watchdog-notify] NOT CLAIMED: No real browser render and no real TTY: the web arm asserts the RENDERED TREE through the offline hook runtime driving the REAL built client against the REAL route's payload; the TUI arm asserts the composed status value, the dialog request and the REAL watermark file (a keystroke drive is tui-panels' job).
+[team-watchdog-notify] NOT CLAIMED: The fallback is stated, never hidden: without an acknowledge the replay is permanent re-display by design.
