@@ -1,0 +1,165 @@
+{
+  "revision": {
+    "path": "packages/mpd-tui-plugin/dist/index.js",
+    "sha256": "b49e081dc152399b492b36b7869055ca3da3cdd0818374efc37d4051fd88e8bc",
+    "bytes": 147623,
+    "mtimeLocal": "2026-09-16T13:50:18.356Z",
+    "mtimeUtc": "2026-09-16T13:50:18.356Z"
+  },
+  "revisionDelta": {
+    "changed": false,
+    "before": "b49e081dc152399b492b36b7869055ca3da3cdd0818374efc37d4051fd88e8bc",
+    "after": "b49e081dc152399b492b36b7869055ca3da3cdd0818374efc37d4051fd88e8bc",
+    "reason": "unchanged across the run"
+  },
+  "manifestDigest": "84ed4a5d5aac3fb07949f0f62bb7e7afdfa1e96de2c19de02974381eeb1201c9",
+  "ok": true,
+  "steps": {
+    "digests": {
+      "revision": "d28c267",
+      "runJs": "sha256:9457dee33b5888b60b704d3dc39e415460e925bdd037e504c26282df6401dbfb",
+      "admissionCore": "sha256:2bb23f225fbe68d148ec6c63185e64999613ba6e2d2c19916ffc1d1243880b2b",
+      "stdModules": "sha256:1586b1995bc78e44a06355922dd449279ecb4dc4354cf67a9df0bf883d2e4ec6",
+      "cliTest": "sha256:35d65a44f562642f1fab0b969c3d23c38a146517fcb1489447d6666ced965c0d",
+      "requirements": "sha256:2fc668d19a77679af9dcf7be24ace8db2a24ea7ce3aceafb667a1127f0048e34",
+      "registry": "sha256:c3090dd129aadb06f87b56ad148dfbcec2ce4eed2404dda5eed9cf1dbae51f54",
+      "permissions": "sha256:1e2cfeaa860936f1608cb8a8bffdf6343de6f513645eb98f6765d72157d5a1a7",
+      "manifest": "sha256:84ed4a5d5aac3fb07949f0f62bb7e7afdfa1e96de2c19de02974381eeb1201c9"
+    },
+    "identity": {
+      "ok": true,
+      "results": [
+        {
+          "relative": "registry/registry-0.15.json",
+          "expectedPrefix": "c3090dd129aadb06",
+          "installedDigest": "c3090dd129aadb06",
+          "checkoutDigest": "c3090dd129aadb06",
+          "matches": true
+        },
+        {
+          "relative": "schemas/conformance-claim.schema.json",
+          "expectedPrefix": "447940843bd9324a",
+          "installedDigest": "447940843bd9324a",
+          "checkoutDigest": "447940843bd9324a",
+          "matches": true
+        },
+        {
+          "relative": "schemas/effect-ledger-record.schema.json",
+          "expectedPrefix": "bfa0ea159daa1ab8",
+          "installedDigest": "bfa0ea159daa1ab8",
+          "checkoutDigest": "bfa0ea159daa1ab8",
+          "matches": true
+        },
+        {
+          "relative": "schemas/host-descriptor.schema.json",
+          "expectedPrefix": "4b76c43de2d7f8d0",
+          "installedDigest": "4b76c43de2d7f8d0",
+          "checkoutDigest": "4b76c43de2d7f8d0",
+          "matches": true
+        },
+        {
+          "relative": "registry/permissions-0.1.json",
+          "expectedPrefix": "1e2cfeaa860936f1",
+          "installedDigest": "1e2cfeaa860936f1",
+          "checkoutDigest": "1e2cfeaa860936f1",
+          "matches": true
+        },
+        {
+          "relative": "registry/contracts/decision-events-v1alpha1.json",
+          "expectedPrefix": "56440dde1b00c210",
+          "installedDigest": "56440dde1b00c210",
+          "checkoutDigest": "56440dde1b00c210",
+          "matches": true
+        },
+        {
+          "relative": "protocols/tui-channel.js",
+          "expectedPrefix": "2f9512d3c415fa1b",
+          "installedDigest": "2f9512d3c415fa1b",
+          "checkoutDigest": "2f9512d3c415fa1b",
+          "matches": true
+        },
+        {
+          "relative": "protocols/profile-definitions.js",
+          "expectedPrefix": "2c0eead58688abaa",
+          "installedDigest": "2c0eead58688abaa",
+          "checkoutDigest": "2c0eead58688abaa",
+          "matches": true
+        }
+      ]
+    },
+    "suite": {
+      "fullyRun": false,
+      "attempts": [
+        {
+          "label": "pinned-cli",
+          "command": "node /root/dshProj/my-power-dsh/.mpd/recon/qa/tui-lanes/tui-spec-conformance/spec-suite/scripts/validate-manifest.mjs --manifest /root/dshProj/my-power-dsh/dsh-plugin.json",
+          "status": 1,
+          "stdout": "",
+          "stderr": "node:internal/modules/esm/resolve:271\n    throw new ERR_MODULE_NOT_FOUND(\n          ^\n\nError [ERR_MODULE_NOT_FOUND]: Cannot find module '/root/dshProj/tui/dsh-TUI/dsh-ecosystem-spec/vendor/dsh-std/packages/core/lib/index.js' imported from /root/dshProj/my-power-dsh/.mpd/recon/qa/tui-lanes/tui-spec-conformance/spec-suite/conformance/tests/std-modules.js\n    at finalizeResolution (node:internal/modules/esm/resolve:271:11)\n    at moduleResolve (node:internal/modules/esm/resolve:865:10)\n    at defaultResolve (node:internal/modules/esm/resolve:992:11)\n    at #cachedDefaultResolve (node:internal/modules/esm/loader:691:20)\n    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:708:38)\n    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:740:52)\n    at #resolve (node:internal/modules/esm/loader:673:17)\n    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:593:35)\n    at node:internal/modules/esm/loader:622:32\n    at TracingChannel.tracePromise (node:diagnostics_channel:362:14) {\n  code: 'ERR_MODULE_NOT_FOUND',\n  url: 'file:///root/dshProj/tui/dsh-TUI/dsh-ecosystem-spec/vendor/dsh-std/packages/core/lib/index.js'\n}\n\nNode.js v24.16.0\n"
+        },
+        {
+          "label": "pinned-suite",
+          "command": "node /root/dshProj/my-power-dsh/.mpd/recon/qa/tui-lanes/tui-spec-conformance/spec-suite/scripts/conformance.mjs --manifest /root/dshProj/my-power-dsh/dsh-plugin.json --host /root/dshProj/tui/dsh-TUI/dsh-ecosystem-spec/registry/host-descriptor.tui.example.json",
+          "status": 1,
+          "stdout": "",
+          "stderr": "error: pathspec 'vendor/dsh-std' did not match any file(s) known to git\n"
+        }
+      ],
+      "blocker": "  url: 'file:///root/dshProj/tui/dsh-TUI/dsh-ecosystem-spec/vendor/dsh-std/packages/core/lib/index.js' | } | Node.js v24.16.0"
+    },
+    "requirements": [
+      {
+        "id": "BASE-STD-001",
+        "evidenceKind": "automated",
+        "test": "installed package loading and pinned submodule fallback availability",
+        "status": "pass",
+        "artifact": "installed payload node_modules/@dsh-std + /root/dshProj/tui/dsh-TUI/dsh-ecosystem-spec/vendor/dsh-std"
+      },
+      {
+        "id": "TUI-PKG-001",
+        "evidenceKind": "automated",
+        "test": "Community v0.15 parse and projection",
+        "status": "pass",
+        "artifact": "dsh-plugin.json"
+      },
+      {
+        "id": "TUI-PKG-002",
+        "evidenceKind": "automated",
+        "test": "profile definition closure and fallback policy",
+        "status": "pass",
+        "artifact": "dsh-plugin.json structural + projection"
+      },
+      {
+        "id": "TUI-PRIVATE-001",
+        "evidenceKind": "automated",
+        "test": "private definition registration and rejection when the Host has no live support",
+        "status": "pass",
+        "artifact": "[\"tui.dsh/v1alpha1#DecisionEvents\"]"
+      },
+      {
+        "id": "TUI-HOST-001",
+        "evidenceKind": "automated",
+        "test": "Host protocol support and definition provenance",
+        "status": "pass",
+        "artifact": "registry/host-descriptor.tui.example.json (the live descriptor pane is captured by tui-admission)"
+      },
+      {
+        "id": "TUI-OBS-001",
+        "evidenceKind": "automated",
+        "test": "effect ownership record shape",
+        "status": "pass",
+        "artifact": "evidence/tui/plugin/<ts>/ (ctx.effect ownership in t4's gate results)"
+      },
+      {
+        "id": "TUI-TRUST-001",
+        "evidenceKind": "review",
+        "test": "trusted-in-process disclosure review",
+        "status": "pass",
+        "artifact": "docs/tui.md, docs/tui.zh-CN.md"
+      }
+    ],
+    "suiteExistsOnlyInCheckout": true
+  },
+  "sandboxRoot": "/root/dshProj/my-power-dsh/.mpd/recon/qa/tui-lanes/tui-spec-conformance",
+  "evidenceNote": "evidence/tui/lanes/<ts>/ (this directory)"
+}

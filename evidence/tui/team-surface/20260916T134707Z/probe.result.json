@@ -1,0 +1,429 @@
+{
+  "slug": "tui-team-surface",
+  "task": "t2",
+  "producedAt": "2026-09-16T13:50:18.453Z",
+  "repoRoot": "/root/dshProj/my-power-dsh",
+  "realRecord": {
+    "path": ".mpd/team/mpd-default-8d65a2b2/team.json",
+    "id": "mpd-default-8d65a2b2",
+    "name": "MPD Default",
+    "phase": "running",
+    "members": 11,
+    "tasks": 5
+  },
+  "existingTeamRecords": [
+    "mpd-default-d92bc69a",
+    "mpd-default-e1f54e18",
+    "mpd-default-db53f0d4",
+    "mpd-default-8d65a2b2",
+    "mpd-default-84e50f06"
+  ],
+  "watchdog": {
+    "holdDir": ".mpd/team/watchdog/hold",
+    "holdFiles": [],
+    "heldTeams": []
+  },
+  "projection": {
+    "team": {
+      "id": "mpd-default-8d65a2b2",
+      "name": "MPD Default",
+      "phase": "running",
+      "description": "Auto-routed by the complexity gate (sessionTeamPolicy.autoRoute; staged — the captain designs the roster/DAG, then the user reviews and approves the plan in the",
+      "captainSessionId": "session-93044e50-7a3d-44a9-938c-de42cd6d1939",
+      "stagedAt": "1789565310417",
+      "staged": false,
+      "runnable": true,
+      "links": 5
+    },
+    "members": [
+      {
+        "name": "Architect",
+        "role": "architecture review / deep debugging / self-review",
+        "route": "deepseek-official/deepseek-v4-flash",
+        "status": "idle",
+        "done": 1,
+        "total": 1,
+        "progress": 100,
+        "unread": 0
+      },
+      {
+        "name": "Researcher",
+        "role": "code / open-source evidence search",
+        "route": "deepseek-official/deepseek-v4-flash",
+        "status": "idle",
+        "done": 0,
+        "total": 0,
+        "progress": 0,
+        "unread": 0
+      },
+      {
+        "name": "Planner",
+        "role": "planning / task decomposition",
+        "route": "deepseek-official/deepseek-v4-flash",
+        "status": "idle",
+        "done": 0,
+        "total": 0,
+        "progress": 0,
+        "unread": 0
+      },
+      {
+        "name": "Explorer",
+        "role": "read-only codebase exploration",
+        "route": "deepseek-official/deepseek-v4-flash",
+        "status": "idle",
+        "done": 0,
+        "total": 0,
+        "progress": 0,
+        "unread": 0
+      },
+      {
+        "name": "Reviewer",
+        "role": "correctness / risk review",
+        "route": "deepseek-official/deepseek-v4-flash",
+        "status": "idle",
+        "done": 0,
+        "total": 1,
+        "progress": 0,
+        "unread": 0
+      },
+      {
+        "name": "Plan Reviewer",
+        "role": "work-plan QA review / UI-UX critique",
+        "route": "deepseek-official/deepseek-v4-flash",
+        "status": "idle",
+        "done": 0,
+        "total": 1,
+        "progress": 0,
+        "unread": 0
+      },
+      {
+        "name": "Vision Analyst",
+        "role": "image / diagram analysis",
+        "route": "deepseek-official/deepseek-v4-flash-vision-exp",
+        "status": "idle",
+        "done": 0,
+        "total": 0,
+        "progress": 0,
+        "unread": 0
+      },
+      {
+        "name": "Lead",
+        "role": "orchestration / integration",
+        "route": "deepseek-official/deepseek-v4-flash",
+        "status": "idle",
+        "done": 0,
+        "total": 1,
+        "progress": 0,
+        "unread": 0
+      },
+      {
+        "name": "Deep Worker",
+        "role": "autonomous goal-driven implementation",
+        "route": "deepseek-official/deepseek-v4-flash",
+        "status": "idle",
+        "done": 0,
+        "total": 0,
+        "progress": 0,
+        "unread": 0
+      },
+      {
+        "name": "Senior Engineer",
+        "role": "primary implementation",
+        "route": "deepseek-official/deepseek-v4-flash",
+        "status": "working",
+        "done": 0,
+        "total": 1,
+        "progress": 0,
+        "currentTask": "t2",
+        "unread": 0
+      },
+      {
+        "name": "Junior Engineer",
+        "role": "small mechanical changes",
+        "route": "deepseek-official/deepseek-v4-flash",
+        "status": "idle",
+        "done": 0,
+        "total": 0,
+        "progress": 0,
+        "unread": 0
+      }
+    ],
+    "tasks": [
+      {
+        "id": "t1",
+        "subject": "t1 Freeze the TUI team-workflow + approval SURFACE contract (an interface, not a command)",
+        "kind": "requirements",
+        "status": "completed",
+        "visual": "completed",
+        "assignee": "Architect",
+        "attempt": 1,
+        "round": 1,
+        "verdict": "pass",
+        "dependencies": [],
+        "failedDependencies": [],
+        "depth": 0
+      },
+      {
+        "id": "t2",
+        "subject": "t2 Implement the TUI team-workflow scene and the plan-approval interface",
+        "kind": "implementation",
+        "status": "in_progress",
+        "visual": "running",
+        "assignee": "Senior Engineer",
+        "attempt": 1,
+        "round": 1,
+        "dependencies": [
+          "t1"
+        ],
+        "failedDependencies": [],
+        "depth": 1
+      },
+      {
+        "id": "t3",
+        "subject": "t3 Verify the TUI approval surface on a real host, with a negative control that must redden",
+        "kind": "verification",
+        "status": "pending",
+        "visual": "blocked",
+        "assignee": "Reviewer",
+        "attempt": 0,
+        "round": 1,
+        "dependencies": [
+          "t2"
+        ],
+        "failedDependencies": [],
+        "depth": 2
+      },
+      {
+        "id": "t4",
+        "subject": "t4 Independent review of the TUI approval surfaces (accidental-approval and seam risks)",
+        "kind": "review",
+        "status": "pending",
+        "visual": "blocked",
+        "assignee": "Plan Reviewer",
+        "attempt": 0,
+        "round": 1,
+        "dependencies": [
+          "t2"
+        ],
+        "failedDependencies": [],
+        "depth": 2
+      },
+      {
+        "id": "t5",
+        "subject": "t5 Integrate: bilingual surface-parity ledger + docs + the wave's gate sweep",
+        "kind": "integration",
+        "status": "pending",
+        "visual": "blocked",
+        "assignee": "Lead",
+        "attempt": 0,
+        "round": 1,
+        "dependencies": [
+          "t3",
+          "t4"
+        ],
+        "failedDependencies": [],
+        "depth": 3
+      }
+    ],
+    "counts": {
+      "total": 5,
+      "completed": 1,
+      "inProgress": 1,
+      "pending": 3,
+      "claimed": 0,
+      "failed": 0,
+      "cancelled": 0,
+      "other": 0
+    },
+    "mail": {
+      "unread": 0,
+      "captainInbox": [
+        {
+          "from": "Plan Reviewer",
+          "content": "Plan Reviewer standing by — no work started, no blocker. State: t4 (review of the TUI approval surfaces, accidental-approval and seam risks) is still `pending` with deps t2; t1 is `claimed` by Archite"
+        },
+        {
+          "from": "Vision Analyst",
+          "content": "Vision Analyst online — idle/ready, no task assigned to me yet (team has 5 tasks: t1 requirements→Architect, t2 impl→Senior Engineer, t3 verify→Reviewer, t4 review→Plan Reviewer, t5 integration→Lead)."
+        },
+        {
+          "from": "Reviewer",
+          "content": "Reviewer online. No work started this turn. My lane: t3 [verification, pending] \"Verify the TUI approval surface on a real host, with a negative control that must redden\" — deps t2 (Senior Engineer, p"
+        },
+        {
+          "from": "Senior Engineer",
+          "content": "Senior Engineer standing by. No work started this turn: my only task, t2 (Implement the TUI team-workflow scene and the plan-approval interface), is still gated on t1 (requirements/contract freeze, cl"
+        },
+        {
+          "from": "Architect",
+          "content": "t1 (requirements, round 1) COMPLETED — verdict=pass. Deliverable: `.mpd/plans/tui-team-surface.md` (532 lines), the frozen contract t2 implements and t4 reviews. WHAT IT FREEZES - Two NEW full-screen "
+        }
+      ]
+    },
+    "holds": [],
+    "problems": [
+      "team archive: unreadable",
+      "team watchdog: unreadable"
+    ]
+  },
+  "rows": {
+    "team": [
+      "team       MPD Default (mpd-default-8d65a2b2)",
+      "phase      running",
+      "captain    session-93044e50-7a3d-44a9-938c-de42cd6d1939",
+      "",
+      "roster",
+      "  Architect · architecture review / deep debugging / self-review · deepseek-official/deepseek-v4-flash · idle · 1/1",
+      "  Researcher · code / open-source evidence search · deepseek-official/deepseek-v4-flash · idle · 0/0",
+      "  Planner · planning / task decomposition · deepseek-official/deepseek-v4-flash · idle · 0/0",
+      "  Explorer · read-only codebase exploration · deepseek-official/deepseek-v4-flash · idle · 0/0",
+      "  Reviewer · correctness / risk review · deepseek-official/deepseek-v4-flash · idle · 0/1",
+      "  Plan Reviewer · work-plan QA review / UI-UX critique · deepseek-official/deepseek-v4-flash · idle · 0/1",
+      "  Vision Analyst · image / diagram analysis · deepseek-official/deepseek-v4-flash-vision-exp · idle · 0/0",
+      "  Lead · orchestration / integration · deepseek-official/deepseek-v4-flash · idle · 0/1",
+      "  Deep Worker · autonomous goal-driven implementation · deepseek-official/deepseek-v4-flash · idle · 0/0",
+      "  Senior Engineer · primary implementation · deepseek-official/deepseek-v4-flash · working · 0/1 · t2",
+      "  Junior Engineer · small mechanical changes · deepseek-official/deepseek-v4-flash · idle · 0/0",
+      "",
+      "tasks",
+      "t1 [requirements] t1 Freeze the TUI team-workflow + approval SURFACE contract (an interface, not a command) · completed @Architect attempt 1 r1 verdict pass",
+      "  t2 [implementation] t2 Implement the TUI team-workflow scene and the plan-approval interface · in_progress @Senior Engineer attempt 1 r1 deps=t1",
+      "    t3 [verification] t3 Verify the TUI approval surface on a real host, with a negative control that must redden · pending @Reviewer attempt 0 r1 deps=t2 BLOCKED",
+      "    t4 [review] t4 Independent review of the TUI approval surfaces (accidental-approval and seam risks) · pending @Plan Reviewer attempt 0 r1 deps=t2 BLOCKED",
+      "      t5 [integration] t5 Integrate: bilingual surface-parity ledger + docs + the wave's gate sweep · pending @Lead attempt 0 r1 deps=t3,t4 BLOCKED",
+      "",
+      "tasks      5 total · 1 completed · 1 in progress · 3 pending · 0 claimed · 0 failed",
+      "mail       0 unread",
+      "  Plan Reviewer: Plan Reviewer standing by — no work started, no blocker. State: t4 (review of the TUI approval surfaces, accidental-approval and seam risks) is still `pending` with deps t2; t1 is `claimed` by Archite",
+      "  Vision Analyst: Vision Analyst online — idle/ready, no task assigned to me yet (team has 5 tasks: t1 requirements→Architect, t2 impl→Senior Engineer, t3 verify→Reviewer, t4 review→Plan Reviewer, t5 integration→Lead).",
+      "  Reviewer: Reviewer online. No work started this turn. My lane: t3 [verification, pending] \"Verify the TUI approval surface on a real host, with a negative control that must redden\" — deps t2 (Senior Engineer, p",
+      "  Senior Engineer: Senior Engineer standing by. No work started this turn: my only task, t2 (Implement the TUI team-workflow scene and the plan-approval interface), is still gated on t1 (requirements/contract freeze, cl",
+      "  Architect: t1 (requirements, round 1) COMPLETED — verdict=pass. Deliverable: `.mpd/plans/tui-team-surface.md` (532 lines), the frozen contract t2 implements and t4 reviews. WHAT IT FREEZES - Two NEW full-screen ",
+      "",
+      "note       team archive: unreadable",
+      "note       team watchdog: unreadable"
+    ],
+    "plan": [
+      "team       MPD Default (mpd-default-8d65a2b2) · phase running · review -",
+      "members    11 · tasks 5 · links 5",
+      "runnable   yes",
+      "edits      none (the TUI has no inline plan editors)",
+      "",
+      "roster",
+      "  Architect · architecture review / deep debugging / self-review · deepseek-official/deepseek-v4-flash · idle · 1/1",
+      "  Researcher · code / open-source evidence search · deepseek-official/deepseek-v4-flash · idle · 0/0",
+      "  Planner · planning / task decomposition · deepseek-official/deepseek-v4-flash · idle · 0/0",
+      "  Explorer · read-only codebase exploration · deepseek-official/deepseek-v4-flash · idle · 0/0",
+      "  Reviewer · correctness / risk review · deepseek-official/deepseek-v4-flash · idle · 0/1",
+      "  Plan Reviewer · work-plan QA review / UI-UX critique · deepseek-official/deepseek-v4-flash · idle · 0/1",
+      "  Vision Analyst · image / diagram analysis · deepseek-official/deepseek-v4-flash-vision-exp · idle · 0/0",
+      "  Lead · orchestration / integration · deepseek-official/deepseek-v4-flash · idle · 0/1",
+      "  Deep Worker · autonomous goal-driven implementation · deepseek-official/deepseek-v4-flash · idle · 0/0",
+      "  Senior Engineer · primary implementation · deepseek-official/deepseek-v4-flash · working · 0/1",
+      "  Junior Engineer · small mechanical changes · deepseek-official/deepseek-v4-flash · idle · 0/0",
+      "",
+      "tasks",
+      "t1 [requirements] t1 Freeze the TUI team-workflow + approval SURFACE contract (an interface, not a command) · completed @Architect",
+      "  t2 [implementation] t2 Implement the TUI team-workflow scene and the plan-approval interface · in_progress @Senior Engineer deps=t1",
+      "    t3 [verification] t3 Verify the TUI approval surface on a real host, with a negative control that must redden · pending @Reviewer deps=t2 BLOCKED",
+      "    t4 [review] t4 Independent review of the TUI approval surfaces (accidental-approval and seam risks) · pending @Plan Reviewer deps=t2 BLOCKED",
+      "      t5 [integration] t5 Integrate: bilingual surface-parity ledger + docs + the wave's gate sweep · pending @Lead deps=t3,t4 BLOCKED"
+    ],
+    "boardExtra": []
+  },
+  "approvalPhrase": "approve mpd-default-8d65a2b2",
+  "builtBytes": {
+    "distPath": "packages/mpd-tui-plugin/dist/index.js",
+    "scenes": [
+      {
+        "id": "mpd-tui-board",
+        "title": "MPD board"
+      },
+      {
+        "id": "mpd-tui-team",
+        "title": "MPD team"
+      },
+      {
+        "id": "mpd-tui-plan",
+        "title": "MPD plan approval"
+      }
+    ],
+    "commandRoot": [
+      "mpd"
+    ],
+    "treeChildren": [
+      "board",
+      "team",
+      "plan",
+      "workmates",
+      "status"
+    ],
+    "outcomes": [
+      {
+        "id": "tuiStatus",
+        "outcome": {
+          "state": "absent",
+          "detail": "tuiStatus was not injected"
+        }
+      },
+      {
+        "id": "tuiRenderers",
+        "outcome": {
+          "state": "absent",
+          "detail": "tuiRenderers was not injected"
+        }
+      },
+      {
+        "id": "tuiSettingsSections",
+        "outcome": {
+          "state": "absent",
+          "detail": "tuiSettingsSections was not injected · namespace mpd: absent (settings was not injected)"
+        }
+      },
+      {
+        "id": "tuiScenes",
+        "outcome": {
+          "state": "requested",
+          "detail": "mpd-tui-board, mpd-tui-team, mpd-tui-plan requested (no host read-back)"
+        }
+      },
+      {
+        "id": "tuiCommandTrees",
+        "outcome": {
+          "state": "requested",
+          "detail": "provider for /mpd requested (no host read-back)"
+        }
+      },
+      {
+        "id": "tuiShortcuts",
+        "outcome": {
+          "state": "absent",
+          "detail": "tuiShortcuts was not injected"
+        }
+      },
+      {
+        "id": "tuiDialogs",
+        "outcome": {
+          "state": "absent",
+          "detail": "tuiDialogs was not injected"
+        }
+      },
+      {
+        "id": "commands",
+        "outcome": {
+          "state": "requested",
+          "detail": "/mpd requested (no host read-back at apply time)"
+        }
+      },
+      {
+        "id": "decisionEvents",
+        "outcome": {
+          "state": "absent",
+          "detail": "tuiPluginHost was not injected"
+        }
+      }
+    ],
+    "sceneIdsPresent": true
+  },
+  "ok": true
+}

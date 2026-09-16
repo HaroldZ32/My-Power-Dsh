@@ -1,0 +1,170 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-tui-plugin/test/state.test.ts:
+(pass) state projection > reads the newest team record, the task ledger, boulder, plans and workmates [3.90ms]
+(pass) state projection > a missing state tree degrades to empty sections without throwing [0.70ms]
+(pass) state projection > a broken team record is reported as a note, not as a crash [0.78ms]
+(pass) state projection > the status line is one bounded line [0.69ms]
+(pass) sanitizer > accepts scalars only and drops everything else [0.32ms]
+(pass) sanitizer > strips control characters and collapses whitespace [0.08ms]
+(pass) sanitizer > clamps by terminal cell, not by code-unit count [0.22ms]
+(pass) sanitizer > scalarLines bounds the line count and per-line width [1.16ms]
+(pass) transcript renderers > every declared type has a renderer and maps a payload to text rows [0.44ms]
+(pass) transcript renderers > renderers never throw and always emit strings, whatever the payload [0.90ms]
+(pass) transcript renderers > renderer output is clamped (a huge payload cannot flood the transcript) [0.42ms]
+(pass) log-only event registration > registerInto reports and mutates truthfully [0.15ms]
+(pass) log-only event registration > candidateAnchors is deduplicated and never empty [0.40ms]
+(pass) log-only event registration > appendBoardOpened refuses to write an unregistered type [0.37ms]
+(pass) log-only event registration > a throwing session.append is contained [0.13ms]
+[mpd-tui-test] info
+[mpd-tui-test] warn
+(pass) logging > never writes to stdout and falls back to stderr only for info/warn [2.91ms]
+
+packages/mpd-tui-plugin/test/watchdog-frontdoor.test.ts:
+(pass) watchdog front door — notice composition > the notice is COMPOSED into the value the status publisher emits, and disappears once the team is resumed [5.12ms]
+(pass) watchdog front door — notice composition > watchdogNotice states the live condition and the replay separately; composeNotices joins providers [0.17ms]
+(pass) watchdog front door — notice composition > heldTeams reads the durable hold index through the service, not a cache [0.76ms]
+(pass) watchdog front door — dialog and acknowledge > the dialog carries the notice text and an acknowledge option, and acknowledging advances the watermark [1.46ms]
+(pass) watchdog front door — dialog and acknowledge > a second start does not surface an acknowledged incident (the replay is watermark-driven) [1.15ms]
+(pass) watchdog front door — dialog and acknowledge > choosing Later keeps the incident unread: the replay is permanent re-display BY DESIGN [0.98ms]
+(pass) watchdog front door — dialog and acknowledge > the attach-time replay runs once, when BOTH the service and the dialog seam are composed [0.69ms]
+(pass) watchdog front door — dialog and acknowledge > no dialog service and nothing unread are both no-ops (never a hang, never a phantom dialog) [0.61ms]
+(pass) watchdog front door — dialog and acknowledge > readWatchdogView is a live read through the service (and empty without one) [0.66ms]
+(pass) watchdog front door — the absent-service path > with no mpdWatchdog service: no notice, no dialog, no fake acknowledge, one warning — and apply does not throw [1.12ms]
+
+packages/mpd-tui-plugin/test/team-surface.test.ts:
+(pass) team-workflow projection (read-only, from a real record on disk) > renders the staged roster, the task DAG, counts and mail from the file [4.86ms]
+(pass) team-workflow projection (read-only, from a real record on disk) > the depth walk and the failed-dependency marking match the panel's own semantics [0.80ms]
+(pass) team-workflow projection (read-only, from a real record on disk) > a pending task behind an UNFINISHED dependency renders BLOCKED [0.43ms]
+(pass) team-workflow projection (read-only, from a real record on disk) > a corrupt / absent / cyclic record renders an empty state and never throws [0.96ms]
+(pass) team-workflow projection (read-only, from a real record on disk) > the REAL record of this session's own team projects without a hand-built object [15.26ms]
+(pass) team-workflow projection (read-only, from a real record on disk) > the board gains exactly the two T3 rows [0.97ms]
+(pass) the two surfaces register through the existing tuiScenes seam > all three scene ids are registered with their frozen titles [0.86ms]
+(pass) the two surfaces register through the existing tuiScenes seam > a scene renders null instead of crashing when the host kit is absent [1.19ms]
+(pass) surface T1 — the team workflow > renders the real record's header, roster, DAG and counts [1.81ms]
+(pass) surface T1 — the team workflow > a team that is NOT staged refuses the approval hop with a notice and opens nothing [0.94ms]
+(pass) surface T1 — the team workflow > a staged team opens the plan surface and `p` reaches the board [1.27ms]
+(pass) surface T1 — the team workflow > a bare `r` refresh re-reads the record without throwing [1.38ms]
+(pass) surface T1 — the team workflow > N3 — Ctrl+X in the WORKFLOW scene does nothing (the key does not exist there) [1.08ms]
+(pass) surface T1 — the team workflow > the watchdog HOLD is rendered only when the watchdog reports it [2.37ms]
+(pass) surface T2 — the plan approval > shows the staged plan, the action block and an EMPTY confirmation echo [1.48ms]
+(pass) surface T2 — the plan approval > the precondition failure states the phase and offers only Esc [0.53ms]
+(pass) surface T2 — the plan approval > the precondition failure is READ-ONLY: no chord can mutate a non-staged team [1.14ms]
+(pass) surface T2 — the plan approval > N2 — Ctrl+X with an EMPTY echo performs no tool call [1.56ms]
+(pass) surface T2 — the plan approval > N1 — the phrase for a DIFFERENT team id is inert [4.22ms]
+(pass) surface T2 — the plan approval > the exact phrase approves through the injected executor and reports the tool's own result [4.62ms]
+(pass) surface T2 — the plan approval > a REFUSED tool result is rendered as a refusal, never as a success [4.45ms]
+(pass) surface T2 — the plan approval > an unavailable executor reports the tool as not registered [4.40ms]
+(pass) surface T2 — the plan approval > B5 — while a call is in flight EVERY key is ignored (single-flight) [3.62ms]
+(pass) surface T2 — the plan approval > the echo is empty again after an `r` refresh (no prefill, no carry-over) [2.54ms]
+(pass) surface T2 — the plan approval > contract reconciliation: `r` refreshes while the echo is EMPTY, and never eats the phrase [2.59ms]
+(pass) surface T2 — the plan approval > BSpace is the only editing key [0.99ms]
+(pass) surface T2 — the plan approval > discard is two-step: one Ctrl+D arms, a second inside the window calls the tool [1.86ms]
+(pass) surface T2 — the plan approval > any other key clears the discard arm [1.91ms]
+(pass) surface T2 — the plan approval > Esc mutates nothing and returns to the workflow when it was the entry point [2.16ms]
+(pass) surface T2 — the plan approval > Esc from the command entry point leaves the scene instead of hopping [0.71ms]
+(pass) surface T2 — the plan approval > Escape/keys never select a printable character as an action [0.50ms]
+(pass) §9.4 — the ONE render boundary strips control characters (finding F1) > safeLine strips C0/C1 (ESC, BEL, OSC) and clamps cells WITHOUT collapsing indentation [0.36ms]
+(pass) §9.4 — the ONE render boundary strips control characters (finding F1) > a tool error carrying ESC/OSC does NOT survive into the rendered row [2.53ms]
+(pass) §9.4 — the ONE render boundary strips control characters (finding F1) > a control character in a team DIRECTORY name cannot reach a rendered row [0.96ms]
+(pass) §3.1 item 4 — the DAG order (finding F2) > tasks come out ordered by depth, with creation order as the tiebreak [1.03ms]
+(pass) §4.5 — the consent echo is consumed only by a SUCCESSFUL approve (finding F3) > a refused approve KEEPS the echo [2.57ms]
+(pass) §4.5 — the consent echo is consumed only by a SUCCESSFUL approve (finding F3) > a successful approve CONSUMES the echo [2.64ms]
+(pass) t8 — a COMMITTED approval is confirmed on screen (t3's F1) > the verdict renders even though the record has LEFT the staged phase [3.85ms]
+(pass) t8 — a COMMITTED approval is confirmed on screen (t3's F1) > a COMMITTED discard reports its own verdict [2.96ms]
+(pass) t8 — a COMMITTED approval is confirmed on screen (t3's F1) > with NO settled outcome the precondition failure is UNCHANGED (no verdict row) [0.47ms]
+(pass) t8 — a COMMITTED approval is confirmed on screen (t3's F1) > a REFUSED call in the non-usable branch reports the refusal, never a success [2.58ms]
+(pass) package invariants > no source file in this package imports a filesystem WRITE primitive [0.65ms]
+(pass) package invariants > the built dist carries the two scene ids and no write primitive [1.09ms]
+(pass) package invariants > the frozen tool names are the adopted ones [0.05ms]
+(pass) package invariants > the mailbox key normalization matches the adopted reader [0.56ms]
+
+packages/mpd-tui-plugin/test/plugin.test.ts:
+(pass) plugin contract > exports name / Config (type + schema) / apply and NO default export [0.05ms]
+(pass) plugin contract > every config key has a default in the schema [0.79ms]
+(pass) plugin contract > the schema rejects a wrong type instead of silently dropping it [0.30ms]
+(pass) plugin contract > resolveConfig defaults every key and repairs an invalid interval [0.26ms]
+(pass) T4-INERT-1: activation requires the inject form > a ctx WITHOUT inject registers nothing, even when get() would answer [21.33ms]
+(pass) T4-INERT-1: activation requires the inject form > with inject supported but no service composed, nothing is registered and nothing throws [0.51ms]
+(pass) T4-INERT-1: activation requires the inject form > apply survives a throwing ctx.get and a ctx without effect() [0.38ms]
+(pass) full composition (every service injected) > every seam activates through ctx.inject and reports an honest outcome [12.20ms]
+(pass) full composition (every service injected) > cleanup runs on the injected scope: status cleared, registrations released [9.86ms]
+(pass) full composition (every service injected) > each seam can be disabled by config, and disabling keeps apply inert [0.30ms]
+(pass) honest outcomes (no disposer-type inference) > a refused shortcut registration is reported refused, never confirmed [0.60ms]
+(pass) honest outcomes (no disposer-type inference) > a refused renderer registration is reported requested, never confirmed [0.36ms]
+(pass) honest outcomes (no disposer-type inference) > a missing decision grant with a no-op disposer is refused, and the disposer is not called as a probe [0.48ms]
+(pass) honest outcomes (no disposer-type inference) > a granted decision subscription is confirmed [0.39ms]
+(pass) honest outcomes (no disposer-type inference) > without tuiPluginHost the seam is absent and no refusal is claimed [9.41ms]
+(pass) honest outcomes (no disposer-type inference) > admin: the four intercept points are the only decision attempts [0.17ms]
+(pass) /mpd command grammar (bare = picker, value = direct, status = print) > bare /mpd uses the picker, then applies the chosen action [20.60ms]
+(pass) /mpd command grammar (bare = picker, value = direct, status = print) > bare /mpd falls back to the board when no dialog seam is composed [10.57ms]
+(pass) /mpd command grammar (bare = picker, value = direct, status = print) > direct actions and the unknown-action error [27.32ms]
+(pass) settings section disclosure (t21) > every mpd.jsonc-referencing hint states that a save is NOT bridged [0.17ms]
+(pass) settings section disclosure (t21) > the marker itself says the save does not rewrite the config file [0.09ms]
+(pass) the §D.2 runtime notice (a save with no live session workspace) > the notice constant is the design's exact sentence and matches the exported one [7.09ms]
+(pass) the §D.2 runtime notice (a save with no live session workspace) > the status line publishes the notice only while the last write-back was skipped for no-live-session [25.04ms]
+
+packages/mpd-tui-plugin/test/two-plugin-ownership.test.ts:
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+(pass) exactly ONE successful registration per composition (design §10.1) > mpd-config present: it registers, the TUI skips its fallback and says so [3.29ms]
+(pass) exactly ONE successful registration per composition (design §10.1) > mpd-config present but its registration still pending: the fallback still yields (deterministic owner check) [0.49ms]
+(pass) exactly ONE successful registration per composition (design §10.1) > mpd-config absent: the TUI's fallback registers the namespace (the composition still works) [0.47ms]
+[mpd-config] settings bridge: could not register the "mpd" namespace (settings namespace "mpd" is already registered) — the TUI fallback owns it now.
+(pass) exactly ONE successful registration per composition (design §10.1) > both plugins in ONE composition: still exactly one registration, whoever runs first [0.63ms]
+
+packages/mpd-dsh-adapter-plugin/test/adapter.test.ts:
+(pass) capabilities > reports every seam of a full harness [0.45ms]
+(pass) capabilities > reports absent seams without throwing [0.09ms]
+(pass) tool plane > registerTool normalizes schema, render and the (args, exec) call shape [0.52ms]
+(pass) tool plane > registerTool keeps a caller-supplied schema and render [0.11ms]
+(pass) tool plane > services resolve through ctx.get OR a plain ctx property [0.13ms]
+(pass) tool plane > registerTools registers every definition and disposes them together [0.17ms]
+(pass) tool plane > registerTool without a tools service fails with an actionable error [0.14ms]
+(pass) tool plane > guardTool passes the exec through and installs on the tools service [0.15ms]
+(pass) tool plane > onPostToolExecute owns next() and passes the downstream decision through [0.48ms]
+(pass) tool plane > onPostToolExecute lets a listener replace the decision [0.19ms]
+(pass) tool plane > onPostToolExecute is a no-op when the harness has no event bus [0.06ms]
+(pass) tool plane > onPreToolExecute OWNS next(): the observer sees the gate and the gate is passed through [0.39ms]
+(pass) tool plane > onPreToolExecute cannot alter or veto a call: deny survives, a returned decision is ignored, a throw is contained [0.42ms]
+(pass) tool plane > onPreToolExecute hands the observer a FROZEN COPY: the live execution cannot be changed [0.27ms]
+(pass) tool plane > onPreToolExecute is a no-op when the harness has no event bus, and capabilities() reports the seam [0.12ms]
+(pass) tool plane > hasTool + toolRuntime expose internal tool calls without raw ctx access [0.72ms]
+(pass) tool plane > executeTool normalizes success, tool error, thrown error and a missing runtime [0.41ms]
+(pass) tool plane > executeTool forwards the optional calling agent VERBATIM as exec.agent, and stays absent when not given [0.25ms]
+(pass) agent plane > spawnAgent normalizes prompt, flat route and the result shape [0.55ms]
+(pass) agent plane > spawnAgent accepts pre-built prompt blocks and agentOptions [0.16ms]
+(pass) agent plane > spawnAgent tolerates a harness that returns no result [0.18ms]
+(pass) agent plane > spawnAgent without a subagent service fails with an actionable error [0.15ms]
+(pass) skill + preset plane > skill provider registration, catalog read and body load [0.47ms]
+(pass) skill + preset plane > skill calls without a skills service fail with actionable errors [0.23ms]
+(pass) skill + preset plane > resolvePreset returns a normalized preset record [0.29ms]
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+(pass) row entry > apply provides the mpdDsh service [0.14ms]
+(pass) row entry > decision helpers use the harness feedback key [0.08ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > the source of the SAME change is delivered, not the previous one's [3.86ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > a raw-section change whose RESOLVED value did not change reports source undefined [1.39ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > another namespace is ignored, and the disposer stops delivery [2.39ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > a throwing listener never escapes into the host's emit [1.22ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > settingsReader describes the namespace and degrades when it is absent [0.36ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > settingsMutate writes through the service with the revision fence [0.54ms]
+(pass) workspaceRootsAll(): the design's stated-unverified facts (§A.1, measured here) > duplicates collapse, relative cwds resolve, a cwd-less agent is skipped, no registry is [] [0.34ms]
+(pass) onPreToolExecute on the real cordis waterfall (observe-only, proven by a real call) > a REAL tool call returns the same result with and without the hook, and the gate is unchanged [553.10ms]
+(pass) onPreToolExecute on the real cordis waterfall (observe-only, proven by a real call) > a downstream DENY still denies: the observer cannot upgrade a blocked call [1.24ms]
+(pass) onPreToolExecute on the real cordis waterfall (observe-only, proven by a real call) > NEGATIVE CONTROL: a listener that returns without delegating DOES veto the gate [1.47ms]
+
+packages/mpd-tui-plugin/test/state.test.ts:
+
+packages/mpd-tui-plugin/test/watchdog-frontdoor.test.ts:
+
+packages/mpd-tui-plugin/test/team-surface.test.ts:
+
+packages/mpd-tui-plugin/test/plugin.test.ts:
+
+packages/mpd-tui-plugin/test/two-plugin-ownership.test.ts:
+
+packages/mpd-dsh-adapter-plugin/test/adapter.test.ts:
+
+ 135 pass
+ 0 fail
+ 779 expect() calls
+Ran 135 tests across 12 files. [1045.00ms]

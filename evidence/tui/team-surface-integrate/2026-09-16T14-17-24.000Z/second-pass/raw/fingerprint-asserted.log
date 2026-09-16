@@ -1,0 +1,17 @@
+{
+  "skillsDir": "/root/dshProj/my-power-dsh/skills",
+  "actual": {
+    "fileCount": 319,
+    "treeSha": "303e163148afc07e7dad10775d3de7e96b4caa1cfae9c1a91575ae906d8cc27d"
+  },
+  "pinned": {
+    "fileCount": 319,
+    "treeSha": "303e163148afc07e7dad10775d3de7e96b4caa1cfae9c1a91575ae906d8cc27d"
+  },
+  "drift": false
+}
+
+ASSERT fileCount 319 === 319: PASS
+ASSERT treeSha  303e163148afc07e7dad10775d3de7e96b4caa1cfae9c1a91575ae906d8cc27d === 303e163148afc07e7dad10775d3de7e96b4caa1cfae9c1a91575ae906d8cc27d: PASS
+
+[fingerprint] PASS — the reported corpus values are the MEASURED values

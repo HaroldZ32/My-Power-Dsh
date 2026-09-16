@@ -1,0 +1,26 @@
+{
+  "at": "2026-09-16T14:30:31.995Z",
+  "files": {
+    "packages/mpd-tui-plugin/dist/index.js": "39af7ab1088468c7376854d8631bf9359c1b6a3339cb09a5c8bb4e665c886308",
+    "packages/mpd-tui-plugin/src/scenes.ts": "242c889882b5b8f3136c5cfb299427b784b9094ce5cdf8e09ef35fa219b38ddb",
+    "packages/mpd-tui-plugin/src/team-state.ts": "79bef0d2553414f39ccf096c749ef06b0abbda366740d71806b2f155c06f5b12",
+    "packages/mpd-tui-plugin/src/state.ts": "48d686bfadcc544418248d936933aa3806bc9569f802fb41a5ac62c5ec3c5581",
+    "packages/mpd-tui-plugin/src/sanitize.ts": "510706da455651a9c863ae0f23ca8964647ce29303a3820a40522017f0b112ea",
+    "packages/mpd-tui-plugin/src/commands.ts": "c0cb983cc4cb45adc6a929fcec129fc7c71860ab08bcf371df2c1cef89ed0ef9",
+    "packages/mpd-tui-plugin/src/command-trees.ts": "beb8b530165208a6d6ee1ea9a08b8c4420b3014bd595754bfb563ac418a66fd6",
+    "packages/mpd-dsh-adapter-plugin/src/index.ts": "cfc735153c77ff1c907e75e8eff103b526afa75ffcbd2757e3060789ebddd8af",
+    "packages/mpd-dsh-adapter-plugin/dist/index.js": "f8b5613121f5af40a748e2333684d73d307eecf25610f1bfcb78b8727f265b84",
+    "skills/dsh-qa/scripts/tui-team-surface.mjs": "91a05314c38f263cc8c481174dfa3debd6b7e6914512dc94857c1064f792cf2f",
+    "skills/dsh-qa/scripts/lib/tui-lane.mjs": "95ff34cbf27b4a6620827fa96d02aed7dd9e0bea2f35c7c3928e3e604e36ac44",
+    "skills/dsh-qa/SKILL.md": "47b82bddbe24521efcf6900a0ad3dae3b4cf74046e801d76c39804387b3bd242",
+    "VENDOR_LOCK.json": "3ac57ad24f96d21fc69d061666d0140f33fda7775b13075da0a92aef21599a65",
+    "docs/tui-parity.md": "9b7baa80c22342e3a9e334f1afbfb8a0fe6edb3ee1f99cf1d8a472051c90ef0a",
+    "docs/tui-parity.zh-CN.md": "8e604caad48e7a70a8b37db28f543e710cec0ad3b97c2e4a713fa315bc985aca",
+    "docs/tui.md": "297674d42074af33da7032fabcb807b38c3c04b6a11563e88b5c16f63d450655",
+    "docs/tui.zh-CN.md": "7fcc06f3bbb23ef18a260531c6aaec4c5aebe839c49f1aa1e72877d60968de3e",
+    "README.md": "d919c89020394221896630c8ffa7e2f022283c8ae493d82307b137ba30152351",
+    "README.zh-CN.md": "081891f9279ab2ee139c8936ffb7cee5261c6412334d9d83357f86a4a8a4a95b",
+    "packages/mpd-tui-plugin/README.md": "f80196c98655905fed42c07abba1e04586bf954f6f043555cd0fc8a208f399f3",
+    "packages/mpd-tui-plugin/README.zh-CN.md": "3fe0a5d337de111ba7764921329525e32e23c07d800dc50407f64c1a37ccd9c4"
+  }
+}

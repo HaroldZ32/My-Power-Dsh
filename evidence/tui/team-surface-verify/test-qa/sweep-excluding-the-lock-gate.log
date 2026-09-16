@@ -1,0 +1,3 @@
+# re-run after the final gate edit (prerequisite gate moved ahead of all output)
+[skip] skills/dsh-qa/scripts/agent-teams-messaging.mjs (VENDOR_LOCK pin — awaiting the captain's re-pin)
+SWEEP DONE (excluding agent-teams-messaging): no FAILED lines above = every other self-test green

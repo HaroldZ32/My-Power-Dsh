@@ -1,0 +1,12 @@
+{
+  "note": "findings measured by the lane; the owner repairs, this lane does not",
+  "findings": [
+    {
+      "id": "F1-approval-verdict-not-visible",
+      "severity": "medium",
+      "problem": "The approval COMMITTED for real (record: phase staged→running, approvedAt set, planReviewState DELETED) but the surface never rendered the frozen §4.5 verdict line `approved: <teamId> running · members <n> · tasks <n>`: the approve path sets that message, then its `finally` re-reads the record — which is no longer staged — so `usable` is false and the whole action block (the only place the message is rendered) is dropped. What the user sees after a SUCCESSFUL approval is `MPD plan approval — no staged plan for team mpd-fixture-1 (phase running)` + `esc back`, which reads as 'nothing to approve' rather than 'approved'. §4.5 row 1 and §4.2 barrier 5 ('after it settles the record is re-read and the verdict is rendered') both promise the verdict.",
+      "requiredFix": "Render the last verdict (or a one-line `approved: <id> running · members <n> · tasks <n>` banner) in the non-usable branch of the plan scene, so a committed approval is confirmed on screen. Owner: t2 (packages/mpd-tui-plugin/src/scenes.ts, out of this lane's scope).",
+      "evidence": "panes/approve-attempt.pane.txt (only the post-commit empty state) vs the record flip in result.json arm2.record"
+    }
+  ]
+}

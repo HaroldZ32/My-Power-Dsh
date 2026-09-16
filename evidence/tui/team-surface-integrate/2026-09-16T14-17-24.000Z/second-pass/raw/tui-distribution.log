@@ -1,0 +1,6 @@
+[tui-distribution] structural findings=[]
+[tui-distribution] protocol repo copied to .mpd/recon/qa/tui-lanes/tui-distribution/distribution-protocol
+[tui-distribution] install -> status=127
+[tui-distribution] fullyValidated=false blocker=/root/dshProj/my-power-dsh/.mpd/recon/qa/tui-lanes/tui-distribution/pnpm-home/store/v11/links/@pnpm/exe/11.21.0/14840bab9ff4b8ee042fbed23004afe9d5ee9f7909673a32db14ec562fec1dda/bin/../node_modules/@pn
+[tui-distribution] ok=true -> /root/dshProj/my-power-dsh/evidence/tui/lanes/2026-09-16T14-28-57.330Z
+[tui-distribution] PASS: structural rules hold; protocol CLI blocked and recorded

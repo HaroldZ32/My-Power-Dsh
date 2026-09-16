@@ -1,0 +1,50 @@
+
+   MPD board — 12 line(s) · 216x48
+   0 transcript row(s)                                        
+   workspace  /root/dshProj/my-power-dsh/.mpd/recon/qa/tui-lanes/tui-team-surface/ws       
+   team       Fixture Team (mpd-fixture-1) · phase staged                                
+   members    2                                                                         
+   tasks      2 total · 1 completed · 0 in progress · 1 pending · 0 claimed · 0 failed   
+   team-plan  awaiting_review                                                              
+   boulder    (no work ledger)                                                       
+   plans      0                                                                  
+   workmates  0                                                                      
+   note       team watchdog: unreadable                                              
+   esc/q close · r refresh · a team workflow                                         
+                                                                       
+                                                                                                                  
+                                                                                                           
+                                                                                                                                                                                                      
+
+                            
+
+
+                                                                                            
+
+
+
+
+
+
+
+
+
+                                                                
+
+                                                                                                                                                                                                                          
+       
+
+           
+                                            
+          
+                                            
+          
+                                                                                                                                                                                                                          
+                                                                                                                                                                                                                          
+                                                                                                                                                                                                                          
+                                                                                                                                                                                                                          
+                                                                                                                                                                                                                          
+                                                                                                                                                                                                                          
+                            
+
+

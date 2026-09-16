@@ -1,0 +1,21 @@
+{
+  "pinnedAt": "2026-09-16T14:18:55.896Z",
+  "repoRoot": "/root/dshProj/my-power-dsh",
+  "branch": "dev",
+  "files": {
+    "packages/mpd-tui-plugin/dist/index.js": "409a5c21c6ea41af64d32573fd010cb7bcb85092d71b1727f9d1b5dc199b7184",
+    "packages/mpd-tui-plugin/src/scenes.ts": "1ab4529a8f43776383fbee62b7169c25dbafb19645f3a751cc900fb71223dfd0",
+    "packages/mpd-tui-plugin/src/team-state.ts": "79bef0d2553414f39ccf096c749ef06b0abbda366740d71806b2f155c06f5b12",
+    "packages/mpd-tui-plugin/src/state.ts": "48d686bfadcc544418248d936933aa3806bc9569f802fb41a5ac62c5ec3c5581",
+    "packages/mpd-tui-plugin/src/sanitize.ts": "510706da455651a9c863ae0f23ca8964647ce29303a3820a40522017f0b112ea",
+    "packages/mpd-tui-plugin/src/commands.ts": "c0cb983cc4cb45adc6a929fcec129fc7c71860ab08bcf371df2c1cef89ed0ef9",
+    "packages/mpd-tui-plugin/src/command-trees.ts": "beb8b530165208a6d6ee1ea9a08b8c4420b3014bd595754bfb563ac418a66fd6",
+    "packages/mpd-tui-plugin/src/shortcuts.ts": "a98e8541f2dd74d6029a75d42fd6d1281c34b2be85b961bb0b85da68e8b048b5",
+    "packages/mpd-dsh-adapter-plugin/src/index.ts": "cfc735153c77ff1c907e75e8eff103b526afa75ffcbd2757e3060789ebddd8af",
+    "packages/mpd-dsh-adapter-plugin/dist/index.js": "f8b5613121f5af40a748e2333684d73d307eecf25610f1bfcb78b8727f265b84",
+    "skills/dsh-qa/scripts/tui-team-surface.mjs": "91a05314c38f263cc8c481174dfa3debd6b7e6914512dc94857c1064f792cf2f",
+    "skills/dsh-qa/scripts/lib/tui-lane.mjs": "95ff34cbf27b4a6620827fa96d02aed7dd9e0bea2f35c7c3928e3e604e36ac44",
+    "skills/dsh-qa/SKILL.md": "47b82bddbe24521efcf6900a0ad3dae3b4cf74046e801d76c39804387b3bd242",
+    "VENDOR_LOCK.json": "3ac57ad24f96d21fc69d061666d0140f33fda7775b13075da0a92aef21599a65"
+  }
+}

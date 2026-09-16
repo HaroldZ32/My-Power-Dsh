@@ -1,0 +1,44 @@
+{
+  "slug": "tui-team-surface-verify-t8-negative-control",
+  "task": "t8",
+  "producedAt": "2026-09-16T14:22:05.262Z",
+  "target": "packages/mpd-tui-plugin/src/scenes.ts",
+  "originalDigest": "sha256:242c889882b5b8f3136c5cfb299427b784b9094ce5cdf8e09ef35fa219b38ddb",
+  "mutation": {
+    "id": "T8-remove-the-verdict-render",
+    "removes": "the non-usable branch's verdict render (the `if (verdict)` arm)",
+    "from": "      if (verdict) {",
+    "to": "      if (false) {"
+  },
+  "suite": "packages/mpd-tui-plugin/test/team-surface.test.ts",
+  "before": {
+    "exitCode": 0,
+    "failureCount": 0,
+    "failing": [],
+    "passCount": 45
+  },
+  "afterMutation": {
+    "exitCode": 1,
+    "failureCount": 2,
+    "failing": [
+      "t8 — a COMMITTED approval is confirmed on screen (t3's F1) > the verdict renders even though the record has LEFT the staged phase",
+      "t8 — a COMMITTED approval is confirmed on screen (t3's F1) > a REFUSED call in the non-usable branch reports the refusal, never a success"
+    ],
+    "passCount": 43
+  },
+  "restored": {
+    "exitCode": 0,
+    "failureCount": 0,
+    "passCount": 45,
+    "byteIdentical": true
+  },
+  "verdictTestsReddened": [
+    "t8 — a COMMITTED approval is confirmed on screen (t3's F1) > the verdict renders even though the record has LEFT the staged phase",
+    "t8 — a COMMITTED approval is confirmed on screen (t3's F1) > a REFUSED call in the non-usable branch reports the refusal, never a success"
+  ],
+  "unrelatedTestsReddened": [],
+  "redCountBefore": 0,
+  "redCountAfter": 2,
+  "ok": true,
+  "note": "The mutation must redden ONLY the new t8 verdict tests; the restored tree must be green and byte-identical."
+}

@@ -1,0 +1,50 @@
+
+   MPD plan approval — Fixture Team · 216x48
+   team       Fixture Team (mpd-fixture-1) · phase staged · review awaiting_review
+   members    2 · tasks 2 · links 1                                                        
+   runnable   yes                                                                        
+   edits      none (the TUI has no inline plan editors)                                 
+   roster                                                                                
+     Architect · architecture review · deepseek-official/deepseek-v4-flash · idle · 1/1    
+     Senior Engineer · primary implementation · deepseek-official/deepseek-v4-flash · idle · 0/1
+   tasks                                                                         
+   t1 [requirements] freeze the contract · completed @Architect                      
+     t2 [implementation] build it · pending @Senior Engineer deps=t1                 
+   approval needs the exact team id typed below, then Ctrl+X                         
+   confirm    approve mpd-fixture-1                                    
+   required   approve mpd-fixture-1                                                                               
+   runnable   yes                                                                                                    
+   to change this plan: press Esc and tell the captain what to change in the chat                                                                                                                     
+   Ctrl+X approve · Ctrl+D discard ×2 · Ctrl+R re-read · esc back
+                            
+
+
+                                                                                            
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                                                                                                                                                                                          
+                                                                                                                                                                                                                          
+                                                                                                                                                                                                                          
+                                                                                                                                                                                                                          
+                                                                                                                                                                                                                          
+                                                                                                                                                                                                                          
+                            
+
+

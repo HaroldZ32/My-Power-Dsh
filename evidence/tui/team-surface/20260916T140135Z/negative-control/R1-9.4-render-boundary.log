@@ -1,0 +1,95 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-tui-plugin/test/team-surface.test.ts:
+(pass) team-workflow projection (read-only, from a real record on disk) > renders the staged roster, the task DAG, counts and mail from the file [9.90ms]
+(pass) team-workflow projection (read-only, from a real record on disk) > the depth walk and the failed-dependency marking match the panel's own semantics [0.91ms]
+(pass) team-workflow projection (read-only, from a real record on disk) > a pending task behind an UNFINISHED dependency renders BLOCKED [0.52ms]
+(pass) team-workflow projection (read-only, from a real record on disk) > a corrupt / absent / cyclic record renders an empty state and never throws [1.06ms]
+(pass) team-workflow projection (read-only, from a real record on disk) > the REAL record of this session's own team projects without a hand-built object [14.38ms]
+(pass) team-workflow projection (read-only, from a real record on disk) > the board gains exactly the two T3 rows [2.16ms]
+(pass) the two surfaces register through the existing tuiScenes seam > all three scene ids are registered with their frozen titles [0.97ms]
+(pass) the two surfaces register through the existing tuiScenes seam > a scene renders null instead of crashing when the host kit is absent [1.19ms]
+(pass) surface T1 — the team workflow > renders the real record's header, roster, DAG and counts [1.82ms]
+(pass) surface T1 — the team workflow > a team that is NOT staged refuses the approval hop with a notice and opens nothing [0.88ms]
+(pass) surface T1 — the team workflow > a staged team opens the plan surface and `p` reaches the board [1.01ms]
+(pass) surface T1 — the team workflow > a bare `r` refresh re-reads the record without throwing [1.25ms]
+(pass) surface T1 — the team workflow > N3 — Ctrl+X in the WORKFLOW scene does nothing (the key does not exist there) [1.04ms]
+(pass) surface T1 — the team workflow > the watchdog HOLD is rendered only when the watchdog reports it [2.55ms]
+(pass) surface T2 — the plan approval > shows the staged plan, the action block and an EMPTY confirmation echo [1.32ms]
+(pass) surface T2 — the plan approval > the precondition failure states the phase and offers only Esc [0.47ms]
+(pass) surface T2 — the plan approval > the precondition failure is READ-ONLY: no chord can mutate a non-staged team [1.04ms]
+(pass) surface T2 — the plan approval > N2 — Ctrl+X with an EMPTY echo performs no tool call [1.48ms]
+(pass) surface T2 — the plan approval > N1 — the phrase for a DIFFERENT team id is inert [2.42ms]
+(pass) surface T2 — the plan approval > the exact phrase approves through the injected executor and reports the tool's own result [2.34ms]
+(pass) surface T2 — the plan approval > a REFUSED tool result is rendered as a refusal, never as a success [2.26ms]
+(pass) surface T2 — the plan approval > an unavailable executor reports the tool as not registered [1.84ms]
+(pass) surface T2 — the plan approval > B5 — while a call is in flight EVERY key is ignored (single-flight) [2.60ms]
+(pass) surface T2 — the plan approval > the echo is empty again after an `r` refresh (no prefill, no carry-over) [1.80ms]
+(pass) surface T2 — the plan approval > contract reconciliation: `r` refreshes while the echo is EMPTY, and never eats the phrase [1.73ms]
+(pass) surface T2 — the plan approval > BSpace is the only editing key [0.83ms]
+(pass) surface T2 — the plan approval > discard is two-step: one Ctrl+D arms, a second inside the window calls the tool [1.73ms]
+(pass) surface T2 — the plan approval > any other key clears the discard arm [2.06ms]
+(pass) surface T2 — the plan approval > Esc mutates nothing and returns to the workflow when it was the entry point [1.29ms]
+(pass) surface T2 — the plan approval > Esc from the command entry point leaves the scene instead of hopping [0.66ms]
+(pass) surface T2 — the plan approval > Escape/keys never select a printable character as an action [0.54ms]
+837 | // ── repair round 2 (t4's findings F1/F2/F3) ─────────────────────────────────
+838 | 
+839 | describe("§9.4 — the ONE render boundary strips control characters (finding F1)", () => {
+840 |   test("safeLine strips C0/C1 (ESC, BEL, OSC) and clamps cells WITHOUT collapsing indentation", () => {
+841 |     // The escape bytes are gone; the visible remainder is harmless text.
+842 |     expect(safeLine("\u001b[31mRED\u001b[0m")).not.toContain("\u001b")
+                                                         ^
+error: expect(received).not.toContain(expected)
+
+Expected to not contain: "\u001B"
+Received: "\u001B[31mRED\u001B[0m"
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-tui-plugin/test/team-surface.test.ts:842:52)
+(fail) §9.4 — the ONE render boundary strips control characters (finding F1) > safeLine strips C0/C1 (ESC, BEL, OSC) and clamps cells WITHOUT collapsing indentation [0.26ms]
+872 |     expect(text).toContain("approve failed:")
+873 |     // The visible remainder is kept (the message is still readable)...
+874 |     expect(text).toContain("pwned")
+875 |     expect(text).toContain("plain")
+876 |     // ...but no escape sequence reached the host's Text element.
+877 |     for (const control of ["\u001b", "\u0007", "\u009b", "\u001b]"]) expect(text).not.toContain(control)
+                                                                                            ^
+error: expect(received).not.toContain(expected)
+
+Expected to not contain: "\u001B"
+Received: "MPD plan approval — Fixture Team · 100x30\nteam       Fixture Team (mpd-fixture-1) · phase staged · review awaiting_review\nmembers    2 · tasks 3 · links 1\nrunnable   yes\nedits      none (the TUI has no inline plan editors)\n\nroster\n  Architect · architecture review · deepseek-official/deepseek-v4-flash · idle · 1/2\n  Reviewer · correctness review · deepseek-official/deepseek-v4-flash · idle · 0/0\n\ntasks\nt1 [requirements] freeze the contract · completed @Architect\nt3 [-] no kind here · failed\n  t2 [implementation] build it · pending @Architect deps=t1\n\napproval needs the exact team id typed below, then Ctrl+X\nconfirm    approve mpd-fixture-1\nrequired   approve mpd-fixture-1\nrunnable   yes\napprove failed: \u001b[31mRED\u001b[0m\u001b]0;pwned\u0007 plain\n\nto change this plan: press Esc and tell the captain what to change in the chat\nCtrl+X approve · Ctrl+D discard ×2 · Ctrl+R re-read · esc back"
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-tui-plugin/test/team-surface.test.ts:877:87)
+(fail) §9.4 — the ONE render boundary strips control characters (finding F1) > a tool error carrying ESC/OSC does NOT survive into the rendered row [1.91ms]
+890 |     )
+891 |     // The board (which renders the problem notes) goes through the same boundary.
+892 |     const { kit, components } = mountScenes(workspace)
+893 |     const text = render(kit, components[BOARD_SCENE_ID])
+894 |     expect(text).toContain("bad")
+895 |     for (const control of ["\u001b", "\u0007", "\u009b"]) expect(text).not.toContain(control)
+                                                                                 ^
+error: expect(received).not.toContain(expected)
+
+Expected to not contain: "\u001B"
+Received: "MPD board — 11 line(s) · 100x30\n0 transcript row(s)\nworkspace  /tmp/mpd-tui-hostile-dir-SCOPlO/workspace\n\nteam       ok (ok) · phase running\nmembers    0\ntasks      0 total · 0 completed · 0 in progress · 0 pending · 0 claimed · 0 failed\n\nboulder    (no work ledger)\nplans      0\nworkmates  0\n\nnote       team bad\u001bname\u0007: unreadable\nesc/q close · r refresh · a team workflow"
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-tui-plugin/test/team-surface.test.ts:895:76)
+(fail) §9.4 — the ONE render boundary strips control characters (finding F1) > a control character in a team DIRECTORY name cannot reach a rendered row [1.40ms]
+(pass) §3.1 item 4 — the DAG order (finding F2) > tasks come out ordered by depth, with creation order as the tiebreak [1.16ms]
+(pass) §4.5 — the consent echo is consumed only by a SUCCESSFUL approve (finding F3) > a refused approve KEEPS the echo [1.73ms]
+(pass) §4.5 — the consent echo is consumed only by a SUCCESSFUL approve (finding F3) > a successful approve CONSUMES the echo [1.65ms]
+(pass) package invariants > no source file in this package imports a filesystem WRITE primitive [0.72ms]
+(pass) package invariants > the built dist carries the two scene ids and no write primitive [1.10ms]
+(pass) package invariants > the frozen tool names are the adopted ones [0.05ms]
+(pass) package invariants > the mailbox key normalization matches the adopted reader [0.59ms]
+
+packages/mpd-tui-plugin/test/team-surface.test.ts:
+
+3 tests failed:
+(fail) §9.4 — the ONE render boundary strips control characters (finding F1) > safeLine strips C0/C1 (ESC, BEL, OSC) and clamps cells WITHOUT collapsing indentation [0.26ms]
+(fail) §9.4 — the ONE render boundary strips control characters (finding F1) > a tool error carrying ESC/OSC does NOT survive into the rendered row [1.91ms]
+(fail) §9.4 — the ONE render boundary strips control characters (finding F1) > a control character in a team DIRECTORY name cannot reach a rendered row [1.40ms]
+
+ 38 pass
+ 3 fail
+ 194 expect() calls
+Ran 41 tests across 2 files. [228.00ms]

@@ -1,0 +1,36 @@
+{
+  "slug": "tui-distribution",
+  "ok": true,
+  "revision": {
+    "path": "packages/mpd-tui-plugin/dist/index.js",
+    "sha256": "39af7ab1088468c7376854d8631bf9359c1b6a3339cb09a5c8bb4e665c886308",
+    "bytes": 148563,
+    "mtimeLocal": "2026-09-16T14:22:21.196Z",
+    "mtimeUtc": "2026-09-16T14:22:21.196Z"
+  },
+  "revisionDelta": {
+    "changed": false,
+    "before": "39af7ab1088468c7376854d8631bf9359c1b6a3339cb09a5c8bb4e665c886308",
+    "after": "39af7ab1088468c7376854d8631bf9359c1b6a3339cb09a5c8bb4e665c886308",
+    "reason": "unchanged across the run"
+  },
+  "manifestDigest": "84ed4a5d5aac3fb07949f0f62bb7e7afdfa1e96de2c19de02974381eeb1201c9",
+  "steps": {
+    "findings": [],
+    "steps": [
+      {
+        "name": "install",
+        "command": "pnpm install --frozen-lockfile",
+        "status": 127
+      }
+    ],
+    "fullyValidated": false,
+    "blocker": "/root/dshProj/my-power-dsh/.mpd/recon/qa/tui-lanes/tui-distribution/pnpm-home/store/v11/links/@pnpm/exe/11.21.0/14840bab9ff4b8ee042fbed23004afe9d5ee9f7909673a32db14ec562fec1dda/bin/../node_modules/@pnpm/exe/pnpm: 1: This: not found"
+  },
+  "descriptor": {
+    "path": "dsh-distribution.json",
+    "id": "urn:dsh:distribution:mpd:my-power-dsh",
+    "version": "0.9.1"
+  },
+  "validation": "NOT fully validated — blocker recorded in distribution-cli.json"
+}

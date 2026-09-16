@@ -1,0 +1,66 @@
+watchdog hold store /root/dshProj/my-power-dsh/.mpd/team/watchdog/hold: 0 hold file(s) -> heldTeams()=[]
+── surface T1 (mpd-tui-team) rows ──
+team       MPD Default (mpd-default-8d65a2b2)
+phase      running
+captain    session-93044e50-7a3d-44a9-938c-de42cd6d1939
+
+roster
+  Architect · architecture review / deep debugging / self-review · deepseek-official/deepseek-v4-flash · idle · 1/1
+  Researcher · code / open-source evidence search · deepseek-official/deepseek-v4-flash · idle · 0/0
+  Planner · planning / task decomposition · deepseek-official/deepseek-v4-flash · idle · 0/0
+  Explorer · read-only codebase exploration · deepseek-official/deepseek-v4-flash · idle · 0/0
+  Reviewer · correctness / risk review · deepseek-official/deepseek-v4-flash · idle · 0/1
+  Plan Reviewer · work-plan QA review / UI-UX critique · deepseek-official/deepseek-v4-flash · idle · 0/1
+  Vision Analyst · image / diagram analysis · deepseek-official/deepseek-v4-flash-vision-exp · idle · 0/0
+  Lead · orchestration / integration · deepseek-official/deepseek-v4-flash · idle · 0/1
+  Deep Worker · autonomous goal-driven implementation · deepseek-official/deepseek-v4-flash · idle · 0/0
+  Senior Engineer · primary implementation · deepseek-official/deepseek-v4-flash · working · 0/1 · t2
+  Junior Engineer · small mechanical changes · deepseek-official/deepseek-v4-flash · idle · 0/0
+
+tasks
+t1 [requirements] t1 Freeze the TUI team-workflow + approval SURFACE contract (an interface, not a command) · completed @Architect attempt 1 r1 verdict pass
+  t2 [implementation] t2 Implement the TUI team-workflow scene and the plan-approval interface · in_progress @Senior Engineer attempt 1 r1 deps=t1
+    t3 [verification] t3 Verify the TUI approval surface on a real host, with a negative control that must redden · pending @Reviewer attempt 0 r1 deps=t2 BLOCKED
+    t4 [review] t4 Independent review of the TUI approval surfaces (accidental-approval and seam risks) · pending @Plan Reviewer attempt 0 r1 deps=t2 BLOCKED
+      t5 [integration] t5 Integrate: bilingual surface-parity ledger + docs + the wave's gate sweep · pending @Lead attempt 0 r1 deps=t3,t4 BLOCKED
+
+tasks      5 total · 1 completed · 1 in progress · 3 pending · 0 claimed · 0 failed
+mail       0 unread
+  Plan Reviewer: Plan Reviewer standing by — no work started, no blocker. State: t4 (review of the TUI approval surfaces, accidental-approval and seam risks) is still `pending` with deps t2; t1 is `claimed` by Archite
+  Vision Analyst: Vision Analyst online — idle/ready, no task assigned to me yet (team has 5 tasks: t1 requirements→Architect, t2 impl→Senior Engineer, t3 verify→Reviewer, t4 review→Plan Reviewer, t5 integration→Lead).
+  Reviewer: Reviewer online. No work started this turn. My lane: t3 [verification, pending] "Verify the TUI approval surface on a real host, with a negative control that must redden" — deps t2 (Senior Engineer, p
+  Senior Engineer: Senior Engineer standing by. No work started this turn: my only task, t2 (Implement the TUI team-workflow scene and the plan-approval interface), is still gated on t1 (requirements/contract freeze, cl
+  Architect: t1 (requirements, round 1) COMPLETED — verdict=pass. Deliverable: `.mpd/plans/tui-team-surface.md` (532 lines), the frozen contract t2 implements and t4 reviews. WHAT IT FREEZES - Two NEW full-screen 
+
+note       team archive: unreadable
+note       team watchdog: unreadable
+── surface T2 (mpd-tui-plan) projection rows ──
+team       MPD Default (mpd-default-8d65a2b2) · phase running · review -
+members    11 · tasks 5 · links 5
+runnable   yes
+edits      none (the TUI has no inline plan editors)
+
+roster
+  Architect · architecture review / deep debugging / self-review · deepseek-official/deepseek-v4-flash · idle · 1/1
+  Researcher · code / open-source evidence search · deepseek-official/deepseek-v4-flash · idle · 0/0
+  Planner · planning / task decomposition · deepseek-official/deepseek-v4-flash · idle · 0/0
+  Explorer · read-only codebase exploration · deepseek-official/deepseek-v4-flash · idle · 0/0
+  Reviewer · correctness / risk review · deepseek-official/deepseek-v4-flash · idle · 0/1
+  Plan Reviewer · work-plan QA review / UI-UX critique · deepseek-official/deepseek-v4-flash · idle · 0/1
+  Vision Analyst · image / diagram analysis · deepseek-official/deepseek-v4-flash-vision-exp · idle · 0/0
+  Lead · orchestration / integration · deepseek-official/deepseek-v4-flash · idle · 0/1
+  Deep Worker · autonomous goal-driven implementation · deepseek-official/deepseek-v4-flash · idle · 0/0
+  Senior Engineer · primary implementation · deepseek-official/deepseek-v4-flash · working · 0/1
+  Junior Engineer · small mechanical changes · deepseek-official/deepseek-v4-flash · idle · 0/0
+
+tasks
+t1 [requirements] t1 Freeze the TUI team-workflow + approval SURFACE contract (an interface, not a command) · completed @Architect
+  t2 [implementation] t2 Implement the TUI team-workflow scene and the plan-approval interface · in_progress @Senior Engineer deps=t1
+    t3 [verification] t3 Verify the TUI approval surface on a real host, with a negative control that must redden · pending @Reviewer deps=t2 BLOCKED
+    t4 [review] t4 Independent review of the TUI approval surfaces (accidental-approval and seam risks) · pending @Plan Reviewer deps=t2 BLOCKED
+      t5 [integration] t5 Integrate: bilingual surface-parity ledger + docs + the wave's gate sweep · pending @Lead deps=t3,t4 BLOCKED
+approval phrase for this team: "approve mpd-default-8d65a2b2"
+board T3 rows: []
+dist.apply outcomes: tuiStatus(absent) · tuiRenderers(absent) · tuiSettingsSections(absent) · tuiScenes(requested) · tuiCommandTrees(requested) · tuiShortcuts(absent) · tuiDialogs(absent) · commands(requested) · decisionEvents(absent)
+dist registered scenes: [{"id":"mpd-tui-board","title":"MPD board"},{"id":"mpd-tui-team","title":"MPD team"},{"id":"mpd-tui-plan","title":"MPD plan approval"}]
+dist /mpd tree children: ["board","team","plan","workmates","status"]

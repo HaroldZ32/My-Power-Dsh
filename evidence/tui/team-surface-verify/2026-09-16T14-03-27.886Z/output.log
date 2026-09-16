@@ -1,0 +1,22 @@
+fixture written to .mpd/recon/qa/tui-lanes/tui-team-surface/ws/.mpd/team/mpd-fixture-1/team.json (sha256 8c3273ec2bb6)
+arm1 A1-apply ok — the REAL plugin apply() registered mpd-tui-board,mpd-tui-team,mpd-tui-plan
+arm1 A2-plan-scene ok — registered scene "mpd-tui-plan" title "MPD plan approval"
+arm1 A3-entry-points ok — command registrations: ["mpd"]
+arm1 A4-real-fixture-read ok — the surface rendered the record on disk: team       Fixture Team (mpd-fixture-1) · phase staged · review awaiting_review
+arm1 A5-confirm-step-requested ok — verbatim instruction present, required phrase "approve mpd-fixture-1", echo at entry ""
+arm1 A6-echo-carries-phrase ok — the echo after typing is "approve mpd-fixture-1"
+arm1 A7-approval-attempt ok — boundary call {"name":"agent_teams_approve","confirmation":"approve mpd-fixture-1","agentId":"fixture-captain-session","callIdPresent":true} (the harness boundary recorded 1 call(s) to agent_teams_approve)
+arm1 A8-tool-result-rendered ok — the scene rendered the tool's own structured result: "approved: mpd-fixture-1 running · members 2 · tasks 2"
+arm1 B1-bypassed-runs-refuse ok — every bypassed run failed the approval assertion (the required red): [{"mode":"empty","pass":false,"message":"confirmation does not match this team"},{"mode":"wrong-id","pass":false,"message":"confirmation does not match this team"},{"mode":"cancelled","pass":false,"message":"confirmation does not match this team"}]
+arm1 B2-gate-is-what-refused ok — each bypassed run rendered the phrase-gate refusal: ["confirmation does not match this team","confirmation does not match this team","confirmation does not match this team"]
+arm1 B3-observation-discriminates ok — approvalHappened true with the phrase typed, false in all 3 bypassed runs
+arm1 A10-empty-state-no-throw ok — malformed / non-staged / absent records each rendered the empty state and threw nothing: [{"name":"malformed-record","emptyState":"no staged plan for team (none)","title":"MPD plan approval — (none) · 216x48"},{"name":"non-staged-record","emptyState":"no staged plan for team mpd-fixture-1 (phase running)","title":"MPD plan approval — no staged plan for team mpd-fixture-1 (phase running) · 216x48"},{"name":"absent-record","emptyState":"no staged plan for team (none)","title":"MPD plan approval — (none) · 216x48"}]
+arm1 A9-no-write-primitive-in-own-code ok — fixture sha256 unchanged
+host: fixture captainSessionId := "20bb36d4-7204-4859-af13-88097f98a968" (record 557069365f48)
+arm2 H1-host-renders-surface FAIL — the real host rendered the plan surface for the sandbox record: (no title line)
+arm2 H2-host-dialog-request ok — the bare /mpd managed dialog listed the Plan entry: Plan | review and approve a staged plan
+arm2 H3-host-confirm-step FAIL — the host rendered the confirmation step and echoed the typed phrase
+arm2 H4-host-outcome-honest FAIL — the real host refused LOUDLY: (no refusal line)
+arm2 H5-record-is-the-truth-source ok — pane claims approved=false; record phase="staged" approvedAt=undefined
+arm2 H6-real-keystroke-drive ok — tmux captured 6 panes for 5 driven steps (real keystrokes)
+non-interference: real team state / contract / VENDOR_LOCK unchanged=true
