@@ -249,9 +249,12 @@
     # lazily at tool-execute time; the dependency mechanism that exists is `inject`), so the
     # row works anywhere in this band and the band documents the intended direction:
     #   · ABOVE mpd-dsh-adapter the row's apply-time `ctx.get("mpdDsh")` finds no mounted
-    #     adapter and silently falls back to `createDshAdapter(ctx)` — a SECOND adapter
-    #     instance beside the one the tree mounts, breaking the one-contact-surface rule
-    #     (AGENTS.md §6) and doubling any per-instance guard/waterfall state.
+    #     adapter and takes the `?? createDshAdapter(ctx)` fallback — the hazard, and the fix
+    #     for it, are described ONCE in the canonical note at
+    #     packages/mpd-ext-plugin/src/index.ts (resolveAdapter) and are NOT restated here; this
+    #     bullet only states the placement rule. The branch now warns once per apply
+    #     (`adapterIdentity=fallback:createDshAdapter`) instead of staying silent, so a
+    #     misordered composition is visible in a boot log.
     #   · BELOW mpd-roles inverts the direction: today mpd-roles resolves the service with a
     #     per-call `ctx.get("mpdExtensions")`, but any later conversion of that lazy get into
     #     a hard `inject: ["mpdExtensions"]` would make mpd-roles a FATAL `pending` loader

@@ -17,7 +17,7 @@ import { existsSync, readFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { ROLES, ROLE_BY_ID, type MpdRoleSpec } from "./roles.data.ts"
-import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { createDshAdapter, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-roles"
 export const inject = ["tools", "subagents"]
@@ -313,15 +313,54 @@ export function extensionRoles(ctx: Ctx, exec: unknown, warn: (line: string) => 
   return { roles, refused }
 }
 
+/**
+ * Adapter identity of THIS row's resolution — the assertable half of F1, mirrored
+ * from mpd-ext so both rows report one vocabulary.
+ * CROSS-REFERENCE (F5): the CANONICAL NOTE on the second-adapter hazard (what the
+ * `?? createDshAdapter(ctx)` fallback really costs, and why it is loud now) lives in
+ * `packages/mpd-ext-plugin/src/index.ts` next to its `resolveAdapter`. It is NOT
+ * restated here on purpose — read it there before touching this line.
+ */
+export const ADAPTER_IDENTITY_MOUNTED = "mounted:mpdDsh"
+export const ADAPTER_IDENTITY_FALLBACK = "fallback:createDshAdapter"
+
+/** Resolve the ONE shared adapter this row must use (same rule as every other row). */
+function resolveAdapter(ctx: Ctx): { dsh: DshAdapter; adapterIdentity: string; usedFallback: boolean } {
+  const mounted = typeof ctx?.get === "function" ? ctx.get("mpdDsh") : undefined
+  if (mounted !== undefined && mounted !== null) {
+    return { dsh: mounted as DshAdapter, adapterIdentity: ADAPTER_IDENTITY_MOUNTED, usedFallback: false }
+  }
+  return { dsh: createDshAdapter(ctx), adapterIdentity: ADAPTER_IDENTITY_FALLBACK, usedFallback: true }
+}
+
 export function apply(ctx: Ctx, config: Config = {}): void {
-  // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
-  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
   const warn = (line: string): void => {
     const message = "[mpd-roles] " + line
     try {
       if (ctx?.logger && typeof ctx.logger.warn === "function") ctx.logger.warn(message)
       else console.log(message)
     } catch { /* logging must never take the roster down */ }
+  }
+  // The adapter-identity warning must be visible in a HEADLESS boot as well:
+  // `ctx.logger.warn` has no sink there (the same measured reason mpd-ext writes
+  // every line to stdout), so this one line always reaches stdout AND the logger.
+  const adapterWarn = (line: string): void => {
+    const message = "[mpd-roles] " + line
+    try {
+      console.log(message)
+      if (ctx?.logger && typeof ctx.logger.warn === "function") ctx.logger.warn(message)
+    } catch { /* logging must never take the roster down */ }
+  }
+
+  // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
+  const { dsh, adapterIdentity, usedFallback } = resolveAdapter(ctx)
+  if (usedFallback) {
+    adapterWarn("ADAPTER FALLBACK (adapterIdentity=" + adapterIdentity
+      + "): ctx.get(\"mpdDsh\") found no mounted mpdDsh service, so this row built its OWN adapter beside"
+      + " the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does"
+      + " NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches"
+      + " (the per-agent compaction-engine memo). Compose mpd-roles BELOW mpd-dsh-adapter; the canonical note"
+      + " lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).")
   }
   // A refusal or a failed lookup is reported ONCE per process+reason: mpd_roles_list is
   // polled, and a repeating warning is noise. Never fatal.
@@ -373,6 +412,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   const roleNameListOf = (surface: RoleSurface): string => surface.roles.map((role) => role.name).join(", ")
 
   ctx.provide("mpdRoles", {
+    /** Which adapter branch this row resolved — the assertable half of F1. */
+    adapterIdentity,
     list: () => roleSurface(undefined).roles.map((r) => ({ id: r.id, name: r.name, description: r.description, readonly: r.readonly, chain: r.chain.map((c) => ({ ...c })), personaFile: r.personaFile, persona: r.persona, extension: r.extension })),
     get: (key: string) => {
       const spec = roleOf(roleSurface(undefined), key)
@@ -435,4 +476,11 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       return { role: spec.name, persona: spec.persona, chars: spec.persona.length }
     }
   })
+
+  // The apply-time identity line: on the healthy path this is the row's ONLY new
+  // output, and it carries the same `adapterIdentity=` field the `mpdRoles` service
+  // exposes, so a mount lane can assert WHICH adapter branch this row really took.
+  try {
+    console.log("[mpd-roles] mpdRoles provided (base roles: " + ROLES.length + ") | adapterIdentity=" + adapterIdentity)
+  } catch { /* logging must never take the roster down */ }
 }
