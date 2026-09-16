@@ -94,7 +94,7 @@ describe("heartbeat store", () => {
     }
   })
 
-  test("the POST tool hook stamps a completed tool call, never a pre-dispatch one", () => {
+  test("the tool pair: the PRE hook opens the call (tool-start), the POST hook closes it (tool)", () => {
     const box = sandbox()
     try {
       writeTeam(box, {
@@ -105,8 +105,11 @@ describe("heartbeat store", () => {
       const stub = stubAdapter({ workspace: box.workspace })
       const engine = new WatchdogEngine(stub.adapter, stubCtx(), testConfig({ stateDir: box.stateDir }))
       engine.install()
+      // r6 installs BOTH halves; the POST half keeps its W-9 completion semantics.
+      expect(stub.pre.length).toBe(1)
       expect(stub.post.length).toBe(1)
 
+      // The POST hook stamps a COMPLETED call and nothing else.
       const returned = stub.post[0]({ name: "read", callId: "call-7", agent: agent("a1", box.workspace) }, { isError: false }, { kind: "accept" })
       expect(returned).toBeUndefined()
 
@@ -116,6 +119,19 @@ describe("heartbeat store", () => {
       expect(stamps[0].tool).toBe("read")
       expect(stamps[0].callId).toBe("call-7")
       expect(stamps[0].taskId).toBe("t1")
+
+      // The PRE hook stamps the OPEN call: same call id, so the pair is readable.
+      stub.pre[0]({ name: "read", callId: "call-8", agent: agent("a1", box.workspace) }, { kind: "allow" })
+      const afterPre = readHeartbeats(box.workspace, box.stateDir, "Architect")
+      expect(afterPre.length).toBe(2)
+      expect(afterPre[1].kind).toBe("tool-start")
+      expect(afterPre[1].tool).toBe("read")
+      expect(afterPre[1].callId).toBe("call-8")
+      expect(afterPre[1].taskId).toBe("t1")
+      // A DENIED call is never dispatched, so nothing is opened for it.
+      stub.pre[0]({ name: "write", callId: "call-9", agent: agent("a1", box.workspace) }, { kind: "deny", reason: "scope" })
+      expect(readHeartbeats(box.workspace, box.stateDir, "Architect").length).toBe(2)
+      expect(engine.getStats().toolStarts).toBe(1)
     } finally {
       box.cleanup()
     }

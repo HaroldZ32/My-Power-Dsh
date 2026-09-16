@@ -1,0 +1,19 @@
+revision: dd1f0d2 + working tree
+started : 2026-09-16T02:55:08Z
+
+typecheck            exit=0      0s  $ tsgo --noEmit
+vendor               exit=0      1s  [verify-vendor] PASS
+unit-tests           exit=0     24s  Ran 732 tests across 138 files. [23.51s]
+qa-self-tests        exit=0      5s  [test:qa] all self-tests passed
+docs-pair-gate       exit=0      0s  [verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=34 failed=0 violations=0 exempt=16 â
+rows-parity          exit=0      0s  [verify-rows-parity] ok: 25 row ids match the bundle patch insert list (agent-teams, mcp-astgre
+adopted-delta        exit=0      0s  [patch-agent-teams-fixes] already applied: 53 mpd delta region(s) across 9 adopted file(s)
+installer-dry        exit=0      0s  [install-profile] DRY-RUN done (nothing written); add --yes to actually install, and --dsh-home
+ext-cli-selftest     exit=0      0s  [mpd-ext] --self-test passed (19 checks)
+ext-cli-validate     exit=0      0s  [mpd-ext] ok
+boot-rows            exit=0     17s  [bundle-lifecycle] PASS
+preset-mount         exit=0     32s  [preset-conformance] PASS
+lane-heartbeat       exit=0      1s  [team-watchdog-heartbeat] NOT CLAIMED: The observe-only property is witnessed on the vendored c
+
+finished: 2026-09-16T02:56:28Z
+reds    : 0

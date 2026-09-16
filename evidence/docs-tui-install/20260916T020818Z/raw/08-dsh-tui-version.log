@@ -1,0 +1,4 @@
+$ dsh-tui version
+@deepseek-harness-tui/dsh-tui 0.10.1 (launcher)
+profile: 0.10.1  /root/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui
+exit=0

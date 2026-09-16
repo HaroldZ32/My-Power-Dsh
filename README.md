@@ -82,13 +82,14 @@ tab strip. Team work also runs entirely through the `agent_teams_*` tools if you
 
 ### DSH-TUI edition
 
-The same bundle mounts under the host's `dsh-tui` profile (`dsh plugin --profile dsh-tui add
-/path/to/my-power-dsh`), where the terminal UI hosts the equivalents of the web tabs: a keyed status
-line, a full-screen board, the `/mpd` command tree, managed dialogs, shortcuts and a `/settings`
-section for the six `mpd.jsonc` knobs — the section is bridged to `<workspace>/.mpd/mpd.jsonc` and
-takes effect **after a restart**. The deep detail (surfaces, admission and distribution artifacts,
-per-package compatibility ledger, explicit NOT-CLAIMED list) is in
-[`docs/tui.md`](./docs/tui.md), with the Chinese twin at
+The same bundle mounts under the host's `dsh-tui` profile, where the terminal UI hosts the
+equivalents of the web tabs: a keyed status line, a full-screen board, the `/mpd` command tree,
+managed dialogs, shortcuts and a `/settings` section for the six `mpd.jsonc` knobs — the section is
+bridged to `<workspace>/.mpd/mpd.jsonc` and takes effect **after a restart**. **The install steps
+live in ONE place: [Install → Terminal UI (`dsh-tui`)](#terminal-ui-dsh-tui)** — the command, the
+third-patch-layer composition and the launcher are documented there. The deep detail (surfaces,
+admission and distribution artifacts, per-package compatibility ledger, explicit NOT-CLAIMED list)
+is in [`docs/tui.md`](./docs/tui.md), with the Chinese twin at
 [`docs/tui.zh-CN.md`](./docs/tui.zh-CN.md).
 
 ### Skills
@@ -138,17 +139,49 @@ The repository root **is** the bundle package, so this installs every plugin row
 preset, the skill corpus and the extension root in one step — no pack step, no copy step.
 Restart `dsh`, then pick the **MPD (Main Working Agent)** preset in a session.
 
-For a published or tarball install, pack first and add the artifact:
+### Terminal UI (`dsh-tui`)
+
+The same bundle installs into the terminal-UI profile — one command, same checkout:
+
+```bash
+cd <repo> && dsh plugin --profile dsh-tui add .
+```
+
+Our bundle joins that profile as the **THIRD patch layer**, on top of the TUI package:
+`dsh.profile.bundles` becomes
+`["@deepseek-ai/dsh-base", "@deepseek-harness-tui/dsh-tui", "@mpd-dsh/mpd"]`, and
+`dsh --profile dsh-tui --dump-config` puts our rows in a layer of their own
+(`# == @deepseek-harness-tui/dsh-tui, patched by @mpd-dsh/mpd`). A TUI session defaults to the
+**mpd** preset. Start it with the `dsh-tui` launcher (alias `dst`):
+
+```bash
+dsh-tui            # boot in the current directory
+dsh-tui --resume   # continue the previous session (-c is the shorthand)
+dsh-tui --help     # update | doctor | version | help; other arguments pass through to `dsh --profile dsh-tui`
+```
+
+`dsh-tui` needs a real terminal: with piped output it refuses to boot with
+`Error: dsh-tui requires an interactive terminal (stdout must be a TTY).` Run `dsh-tui doctor`
+if the profile or the toolchain looks wrong. The edition's surfaces, limits and verification live
+in [docs/tui.md](./docs/tui.md) (§2 has the layer stack) and
+[user-guide §7](./docs/user-guide.md#7-dsh-tui-edition-the-terminal-ui).
+
+For a published or tarball install, pack first and add the artifact to whichever profile you run:
 
 ```bash
 node scripts/pack-mpd.mjs                       # -> dist/mpd-package/ (relocatable)
 dsh plugin --profile web add dist/mpd-package
+dsh plugin --profile dsh-tui add dist/mpd-package
 ```
 
 ### Uninstall
 
+`--profile` is **required** on every `dsh plugin` command — without it the CLI stops with
+`error: required option '--profile <name>' not specified`:
+
 ```bash
-dsh plugin remove @mpd-dsh/mpd
+dsh plugin --profile web remove @mpd-dsh/mpd
+dsh plugin --profile dsh-tui remove @mpd-dsh/mpd
 ```
 
 The bundle uninstalls as one unit, skills included, and leaves no residue in your DSH home. Your

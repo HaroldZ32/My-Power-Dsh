@@ -1,18 +1,19 @@
-// t35 web card: the `mpd` settings card in the Web Settings → Plugins tab.
+// t35 web card / w14 top-level section: the `mpd` settings UI in the Web Settings dialog.
 //
-// WHAT IS ASSERTED HERE: (a) the registration shape the host dispatches — the keyed slot entry
-// `{ name: "settings.plugin.item", key: "mpd", locale, inject }` behind a generator
-// `ctx.slots.inject`, exactly the pattern the host's own four cards use; (b) the mount is DEFERRED
-// through `ctx.inject(["settingsScope"])` and never a declared dependency; (c) the card's form
-// behaviour: it reads what the namespace reports, stages edits, writes `mutate(ops, revision)` with
-// NESTED paths, and renders read-only with a reason when the scope says `writable === false`;
-// (d) the isolation rules; (e) the six fields/labels/zh descriptions are IDENTICAL to the TUI
-// section's, so the two front doors cannot drift.
+// WHAT IS ASSERTED HERE: (a) the registration shape the host dispatches for a top-level SECTION —
+// `{ name: "settings.section", id: "mpd", order, label, locale, inject }` behind
+// `ctx.slots.inject`, exactly the pattern the host's own settings-models section uses — and the
+// ABSENCE of the old keyed Plugins-tab item registration (w14 moved the section out of that tab);
+// (b) the mount is DEFERRED through `ctx.inject(["settingsScope"])` and never a declared
+// dependency; (c) the form behaviour: it reads what the namespace reports, stages edits, writes
+// `mutate(ops, revision)` with NESTED paths, and renders read-only with a reason when the scope
+// says `writable === false`; (d) the isolation rules; (e) the eleven fields/labels/zh descriptions
+// are IDENTICAL to the TUI section's, so the two front doors cannot drift.
 //
-// WHAT IS NOT ASSERTED: that a real browser renders the card or that a click produces the mutate.
-// No browser binary exists in this environment; that claim is NOT-CLAIMED and the user sees it in
-// their own GUI. The rendered-state assertions below run in the offline hook runtime, which is a
-// different thing and is labelled as such.
+// WHAT IS NOT ASSERTED: that a real browser renders the section or that a click produces the
+// mutate. No browser binary exists in this environment; that claim is NOT-CLAIMED and the user sees
+// it in their own GUI. The rendered-state assertions below run in the offline hook runtime, which is
+// a different thing and is labelled as such.
 import { describe, expect, test } from "bun:test"
 import { existsSync, readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
@@ -59,7 +60,7 @@ const READY = {
 function mountedCard(scope) {
   const client = loadMpdClient({ services: { settingsScope: scope } })
   client.exports.apply(client.ctx)
-  const registration = (client.calls.slotsRegistered ?? []).find((definition) => definition.key === "mpd")
+  const registration = (client.calls.slotsRegistered ?? []).find((definition) => definition.name === "settings.section")
   return { client, registration }
 }
 
@@ -70,12 +71,52 @@ function textOf(tree) {
   return textOf(tree.props?.children)
 }
 
-describe("W2 (static): the BUILT and served client carries the registration", () => {
-  test("the shipped client registers the card into the keyed slot with key 'mpd' and a locale", () => {
-    expect(ARTIFACT).toContain('ctx.slots.register({ name: SLOT, key: NS, locale: LOCALE_NS, inject: () => controller.inject() }, Card)')
+/** The descriptor a top-level section must carry, as one predicate so a mutant can be judged. */
+function sectionDescriptorProblems(definition) {
+  const problems = []
+  if (definition === undefined || definition === null) return ["no registration"]
+  if (definition.name !== "settings.section") problems.push(`name=${String(definition.name)}`)
+  if (definition.id !== "mpd") problems.push(`id=${String(definition.id)}`)
+  if (typeof definition.order !== "number") problems.push(`order=${String(definition.order)}`)
+  if (typeof definition.label !== "function") problems.push("label is not a function")
+  else if (definition.label() !== "MPD") problems.push(`label()=${String(definition.label())}`)
+  if (typeof definition.locale !== "string") problems.push("locale is not a string")
+  if (definition.key !== undefined) problems.push("carries the retired keyed-item field `key`")
+  return problems
+}
+
+/** The retired Plugins-tab registration shapes a text carries (empty when the move held). */
+function pluginItemRegistrations(text) {
+  const found = []
+  if (text.includes('slots.inject("settings.plugin.item"')) found.push("slots.inject(settings.plugin.item)")
+  if (text.includes('slots.register({ name: "settings.plugin.item"')) found.push("slots.register(settings.plugin.item)")
+  return found
+}
+
+describe("W2 (static): the BUILT and served client carries the SECTION registration", () => {
+  test("the shipped client registers a settings.section with id 'mpd', an explicit order and a label", () => {
+    expect(CARD_SOURCE).toContain(
+      '{ name: SECTION_SLOT, id: SECTION_ID, order: SECTION_ORDER, label: () => dicts.en.nav, locale: LOCALE_NS, inject: () => controller.inject() },',
+    )
     expect(ARTIFACT).toContain('const NS = "mpd"')
-    expect(ARTIFACT).toContain('const SLOT = "settings.plugin.item"')
+    expect(ARTIFACT).toContain('const SECTION_ID = "mpd"')
+    expect(ARTIFACT).toContain("const SECTION_ORDER = 20")
+    expect(ARTIFACT).toContain('const SECTION_SLOT = "settings.section"')
     expect(ARTIFACT).toContain("@mpd-dsh/settings-card")
+  })
+
+  test("the Plugins tab's keyed item registration is GONE from the built client (the user's request)", () => {
+    expect(pluginItemRegistrations(ARTIFACT)).toEqual([])
+    expect(ARTIFACT).not.toContain("settings.plugin.item")
+    expect(CARD_SOURCE).not.toContain("settings.plugin.item")
+  })
+
+  test("NEGATIVE CONTROL: the absence predicate reddens the moment the retired registration returns", () => {
+    const injectForm = 'ctx.slots.inject("settings.plugin.item", function* () { yield ctx.slots.register({ name: "settings.plugin.item", key: "mpd" }, Card) })'
+    const registerForm = 'ctx.slots.register({ name: "settings.plugin.item", key: NS, locale: LOCALE_NS }, Card)'
+    expect(pluginItemRegistrations(injectForm)).toEqual(["slots.inject(settings.plugin.item)", "slots.register(settings.plugin.item)"])
+    expect(pluginItemRegistrations(registerForm)).toEqual(["slots.register(settings.plugin.item)"])
+    expect(pluginItemRegistrations(ARTIFACT)).toEqual([])
   })
 
   test("the mount is DEFERRED (ctx.inject) and the client still declares only the stable seams", () => {
@@ -96,15 +137,20 @@ describe("the registration only happens when the settings scope is served", () =
   test("no settingsScope -> no entry, one warning-free degrade, no throw out of apply", () => {
     const client = loadMpdClient()
     expect(() => client.exports.apply(client.ctx)).not.toThrow()
-    expect((client.calls.slotsRegistered ?? []).some((definition) => definition.key === "mpd")).toBe(false)
-    expect(client.calls.slots).toContain("settings.plugin.item")
+    expect((client.calls.slotsRegistered ?? []).some((definition) => definition.name === "settings.section")).toBe(false)
+    expect(client.calls.slots).toContain("settings.section")
+    expect(client.calls.slots).not.toContain("settings.plugin.item")
   })
 
-  test("settingsScope at apply -> one entry keyed by the namespace, carrying a locale and an inject face", () => {
+  test("settingsScope at apply -> one SECTION entry, and its descriptor passes the whole predicate", () => {
     const { registration } = mountedCard(fakeScope(READY))
-    expect(registration).toBeDefined()
-    expect(registration.name).toBe("settings.plugin.item")
-    expect(registration.key).toBe("mpd")
+    expect(sectionDescriptorProblems(registration)).toEqual([])
+    expect(registration.name).toBe("settings.section")
+    expect(registration.id).toBe("mpd")
+    expect(registration.order).toBe(20)
+    expect(registration.label()).toBe("MPD")
+    expect(registration.children).toBeUndefined() // this section renders no nested slot
+    expect(registration.key).toBeUndefined() // the retired keyed-item field is gone
     expect(typeof registration.locale).toBe("string")
     expect(typeof registration.inject).toBe("function")
     expect(typeof registration.component).toBe("function")
@@ -114,12 +160,24 @@ describe("the registration only happens when the settings scope is served", () =
     for (const action of ["edit", "resetField", "save", "discard"]) expect(typeof face[action]).toBe("function")
   })
 
-  test("a late-served settingsScope still mounts the card (provideService wakes the fiber)", () => {
+  test("NEGATIVE CONTROL: the descriptor predicate reddens on every mutant that matters", () => {
+    const good = { name: "settings.section", id: "mpd", order: 20, label: () => "MPD", locale: "mpdSettings", inject: () => ({}) }
+    expect(sectionDescriptorProblems(good)).toEqual([])
+    expect(sectionDescriptorProblems({ ...good, order: undefined })).toContain("order=undefined")
+    expect(sectionDescriptorProblems({ ...good, id: "plugins" })).toContain("id=plugins")
+    expect(sectionDescriptorProblems({ ...good, label: "MPD" })).toContain("label is not a function")
+    expect(sectionDescriptorProblems({ ...good, locale: undefined })).toContain("locale is not a string")
+    expect(sectionDescriptorProblems({ ...good, key: "mpd" })).toContain("carries the retired keyed-item field `key`")
+    expect(sectionDescriptorProblems(undefined)).toEqual(["no registration"])
+  })
+
+  test("a late-served settingsScope still mounts the section (provideService wakes the fiber)", () => {
     const client = loadMpdClient()
     client.exports.apply(client.ctx)
-    expect((client.calls.slotsRegistered ?? []).some((definition) => definition.key === "mpd")).toBe(false)
+    expect((client.calls.slotsRegistered ?? []).some((definition) => definition.name === "settings.section")).toBe(false)
     client.provideService("settingsScope", fakeScope(READY))
-    expect((client.calls.slotsRegistered ?? []).some((definition) => definition.name === "settings.plugin.item" && definition.key === "mpd")).toBe(true)
+    const late = (client.calls.slotsRegistered ?? []).find((definition) => definition.name === "settings.section")
+    expect(sectionDescriptorProblems(late)).toEqual([])
   })
 })
 
@@ -198,17 +256,20 @@ describe("isolation and front-door parity", () => {
     expect(readFileSync(join(REPO, "scripts", "build-mpd-client.mjs"), "utf8")).toContain("@mpd-dsh/settings-card")
   })
 
-  test("the card's eleven fields/labels/zh descriptions are IDENTICAL to the ONE shared declaration (no drift)", () => {
+  test("the card's twelve fields/labels/zh descriptions are IDENTICAL to the ONE shared declaration (no drift)", () => {
     // Both front doors now read the knob list from `packages/mpd-config-plugin/src/settings-schema.ts`
     // (the TUI imports it; the card mirrors it), so this compares the card against that single source.
     const shared = readFileSync(join(REPO, "packages", "mpd-config-plugin", "src", "settings-schema.ts"), "utf8")
     const { FIELDS } = (0, eval)("(" + CARD_SOURCE + ")")((name) => ({ react: {}, locales: {} })[name] ?? {})
     expect(Array.isArray(FIELDS)).toBe(true)
-    expect(FIELDS).toHaveLength(11)
+    expect(FIELDS).toHaveLength(12)
     for (const field of FIELDS) {
       expect(shared).toContain(`path: ["${field.path[0]}", "${field.path[1]}"]`)
       expect(shared).toContain(`label: "${field.label}"`)
       expect(shared).toContain(`zh: "${field.zh}"`)
+      // w16: a knob that carries a semantics sentence must carry the SAME one in the shared
+      // declaration, so the second line a user reads cannot drift from the schema.
+      if (field.semantics !== undefined) expect(shared).toContain(`hint: "${field.semantics}"`)
     }
     // and the TUI builds its section from that list rather than restating it
     const tuiSource = readFileSync(join(REPO, "packages", "mpd-tui-plugin", "src", "settings.ts"), "utf8")

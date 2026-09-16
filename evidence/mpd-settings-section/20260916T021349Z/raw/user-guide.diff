@@ -1,0 +1,26 @@
+diff --git a/docs/user-guide.md b/docs/user-guide.md
+index 82e72a3..f19111b 100644
+--- a/docs/user-guide.md
++++ b/docs/user-guide.md
+@@ -227,7 +227,7 @@ pipe.
+ | AgentTeams sidebar tab | the `tuiScenes` full-screen board plus the keyed `tuiStatus` line |
+ | Workmates sidebar tab | the `/mpd` command tree (`tuiCommandTrees`) plus `tuiDialogs` |
+ | Bundle floater | the `tuiStatus` line |
+-| Settings → Plugins card | the `/settings` section (`tuiSettingsSections`) |
++| Settings → MPD section | the `/settings` section (`tuiSettingsSections`) |
+ | — | `tuiShortcuts` keyboard shortcuts |
+ 
+ These are **equivalents, not parity**: each surface is rebuilt on the host's own TUI seams, and two
+diff --git a/docs/user-guide.zh-CN.md b/docs/user-guide.zh-CN.md
+index 2379cef..e848fb9 100644
+--- a/docs/user-guide.zh-CN.md
++++ b/docs/user-guide.zh-CN.md
+@@ -208,7 +208,7 @@ stdout 不是 TTY 时 `dsh-tui` 拒绝启动
+ | AgentTeams 侧边栏标签页 | `tuiScenes` 全屏看板 + 带 key 的 `tuiStatus` 状态行 |
+ | Workmates 侧边栏标签页 | `/mpd` 命令树（`tuiCommandTrees`）+ `tuiDialogs` |
+ | bundle 悬浮面板 | `tuiStatus` 状态行 |
+-| Settings → Plugins 卡片 | `/settings` 分区（`tuiSettingsSections`） |
++| 设置 → MPD 栏 | `/settings` 分区（`tuiSettingsSections`） |
+ | — | `tuiShortcuts` 快捷键 |
+ 
+ 这些是**等价物，不是等价功能（parity）**：每个界面都重建在宿主自身的 TUI 接缝上，且有两个接缝被明确

@@ -1,0 +1,68 @@
+{
+  "task": "t86 / w16 — close r6's handover: the heartbeat lane's H5 proxy + the toolInFlightMaxMs declaration",
+  "items": [
+    {
+      "item": "1 — heartbeats lane H5 (skills)",
+      "file": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs",
+      "what": "the retired proxy `!dist.includes(\"tools/pre-execute\")` is REPLACED by the presence check (both waterfalls are in the dist BY DESIGN because it inlines the adapter) PLUS the observe-only property measured on a REAL tool call; the header/not-claimed text and the negative controls follow",
+      "negativeControls": ["pre-hook-absent", "pre-hook-not-subscribed", "observe-only-veto", "observe-only-mutates", "observe-only-write-lands", "observe-only-throws", "observe-only-after-body"]
+    },
+    {
+      "item": "2 — declare watchdog.toolInFlightMaxMs",
+      "files": [
+        "packages/mpd-config-plugin/src/settings-schema.ts (SettingsSchema + SETTINGS_KNOBS, default 900000, kind number, hint = the semantics sentence)",
+        "packages/mpd-bundle-plugin/src/settings-card.js (the card's own FIELDS row + `semantics` rendered into the row's hint)"
+      ],
+      "countAssertionsMoved": ["packages/mpd-bundle-plugin/test/settings-card.test.mjs 11 -> 12", "packages/mpd-tui-plugin/test/plugin.test.ts 11 -> 12"],
+      "derivedArtifactsRebuilt": ["packages/mpd-tui-plugin/dist/index.js", "packages/mpd-config-plugin/dist/index.js", "packages/mpd-bundle-plugin/client.js"]
+    }
+  ],
+  "artifacts": {
+    "before": [
+      { "path": "packages/mpd-config-plugin/dist/index.js", "bytes": 100368, "sha256": "15377543b30a28502d814a1996538339bf62d628d5964273afcf3bb6719f3b28" },
+      { "path": "packages/mpd-tui-plugin/dist/index.js", "bytes": 111398, "sha256": "09935e228256b65c4e176edfa8546f3fc39c2295cc26bd6340538bf5a79d7867" },
+      { "path": "packages/mpd-bundle-plugin/client.js", "bytes": 298301, "sha256": "34f1976ffef5efa5464059ed11bff787916024f74e298010b775592bd13a3ce1" }
+    ],
+    "after": [
+      { "path": "packages/mpd-config-plugin/dist/index.js", "bytes": 100885, "sha256": "86135267b301e678e1ddfc59a2765e77156d7d104cc6206df5fbac19997b64d8" },
+      { "path": "packages/mpd-tui-plugin/dist/index.js", "bytes": 112338, "sha256": "99f743a9b05dbfce6efb162714ce90a6081742eaac84331054ce502b6a75214a" },
+      { "path": "packages/mpd-bundle-plugin/client.js", "bytes": 298914, "sha256": "9d62b69c431df8b3b0643d73e764ea89d60f59e5aec198bf33e1ac305fa7a928" }
+    ],
+    "clientIdempotent": true
+  },
+  "visibility": {
+    "declaration": "settings-schema.ts: knobCount 12, schema default 900000, hint === the semantics sentence",
+    "tuiFrontDoor": "the dist inlines the SETTINGS_KNOBS entry (path/label/zh/hint) and the section is built by SETTINGS_KNOBS.map(...); test/plugin.test.ts asserts 12 fields",
+    "webFrontDoor": "the card renders 12/12 rows through the real harness: the knob's label, its zh row in the zh dictionary, the semantics sentence and the '0 = no bound' clause are all present, and the row's hint keeps the shared bridge disclosure"
+  },
+  "lane": {
+    "command": "bun skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs --out <evidence>/heartbeat",
+    "result": "PASS — 13 checks, 0 failed",
+    "h5": "both waterfalls present + the row subscribed tools/pre-execute + the observe-only proof all true",
+    "alsoPositive": ["--self-test PASS (13 checks)", "the real run subscribed 6 disposers including tools/pre-execute"]
+  },
+  "gates": [
+    { "command": "bun test packages", "status": "passed", "exitCode": 0, "evidence": "732 pass / 0 fail / 5253 expect() calls across 138 files" },
+    { "command": "bun run typecheck", "status": "passed", "exitCode": 0, "evidence": "tsgo --noEmit, no diagnostics" },
+    { "command": "bun run verify:docs", "status": "passed", "exitCode": 0, "evidence": "pairs=34 failed=0 violations=0 exempt=16 — PASS" },
+    { "command": "node scripts/patch-agent-teams-fixes.mjs --check", "status": "passed", "exitCode": 0, "evidence": "already applied: 53 mpd delta region(s) across 9 adopted file(s)" }
+  ],
+  "corpus": {
+    "asset": "skills",
+    "fileCount": 317,
+    "treeSha": "9e643d07192fe8bd9cc2bc5e252bb5c031a2444fa958cd10a19c5043e8b6be89",
+    "previousLockTreeSha": "5aec4b643065891082c8c6b072f85e30488585a42b25a2184dead30221c40ce3",
+    "countUnchanged": true,
+    "note": "for the captain's same-commit re-pin (AGENTS.md §9/§11). The treeSha replication was validated by recomputing the unchanged `_deps` asset, which still matches its lock value."
+  },
+  "expectedReds": [
+    "node scripts/verify-vendor.mjs exits 1 with exactly one failure — 'asset skills treeSha mismatch' — because VENDOR_LOCK.json is deliberately NOT touched by this task",
+    "bun run test:qa exits 1 at skills/dsh-qa/scripts/agent-teams-messaging.mjs for the same reason (lock=317/5aec4b643065 tree=317/9e643d07192f); every other --self-test passed"
+  ],
+  "notClaimed": [
+    "The observe-only property is witnessed on the vendored cordis waterfall with the REAL adapter dist and a REAL child-process tool body — not inside a live dsh session (the lane records this itself)."
+  ],
+  "reportedFollowUps": [
+    "The TUI row's `hint` is built in packages/mpd-tui-plugin/src/settings.ts (outside this task's inScope), so the long `tool-expired` semantics sentence is rendered by the Web card; the TUI row carries the label/zh (including '0 表示不设上限') and the shared bridge disclosure. A TUI-src change would be needed to render the sentence there too."
+  ]
+}

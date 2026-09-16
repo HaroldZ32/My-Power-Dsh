@@ -41,7 +41,8 @@ hold 生效的 adopted 派发闸门、以及展示它的 Web/TUI 界面，属于
 | 时机 | 宿主信号 | 记录 |
 |---|---|---|
 | 每个模型步 | `agent/pre-step` | `{kind:'step', at, member, taskId, attemptId, …}` |
-| 每次工具调用完成 | adapter 的 POST 钩子（`onPostToolExecute`） | `{kind:'tool', at, tool, callId, …}` |
+| 工具调用**被派发** | adapter 的 PRE 钩子（`onPreToolExecute` → `tools/pre-execute`） | `{kind:'tool-start', at, tool, callId, …}` |
+| 工具调用**完成** | adapter 的 POST 钩子（`onPostToolExecute`） | `{kind:'tool', at, tool, callId, ok, …}` |
 | 回合开始 | `agent/session-start`（或首个 step） | `{kind:'turn-start', …}` |
 | 回合结束 | `agent/turn-stopping` | `{kind:'turn-end', …}` |
 
@@ -59,15 +60,48 @@ hold 生效的 adopted 派发闸门、以及展示它的 Web/TUI 界面，属于
 如实写出而不是隐藏；静默判断取**任意类型**的最新记录，而真正卡死的回合同样不会再产生新的
 step。
 
-工具记录**只在调用完成后**写入。本包没有派发前记录：adapter 的 `onPostToolExecute` 在调用
-返回后触发，而派发前记录需要在 adapter 里包装 `tools/execute`（属于后续任务）。
+工具心跳是**一对**记录，正是这一对让长时间的调用变得可读：
+
+* `tool-start` 由 adapter 的 PRE 钩子（`onPreToolExecute`，即宿主的 `tools/pre-execute`
+  瀑布）在调用派发**之前**写入，携带工具名与宿主 `callId`。该钩子是**只观察**的：adapter 自己
+  调用 `next()` 并原样返回闸门决策，因此安装它对调用没有任何影响——已由
+  `packages/mpd-dsh-adapter-plugin/test/adapter.test.ts` 在真实 cordis 瀑布 + 真实命令上证明，
+  并在 `evidence/team-watchdog/long-tool-false-positive/`（`observe-only-real-call.mjs`）再次证明。
+  没有事件总线的宿主会降级为空操作并给出告警，绝不会让整行挂载失败。
+* `tool` 由 `onPostToolExecute` 在调用**完成**时写入（W-9 语义不变：完成时写入，绝不在派发前）。
+  两者通过 `callId` 配对。
+
+只有 `tool-start` 而没有配对的 `tool` 就是一次**未关闭的调用**：静默规则在最多
+`toolInFlightMaxMs` 之内把它视为“已解释的活动”（r6），超过后适用于下面的诚实边界。
+
+### 在途上界（r6）及其代价
+
+成员处于一次长时间调用之中——真实的构建、启动 `dsh` 的 lane、慢测试——过去与卡死无法区分，
+因为从派发到完成之间没有任何记录。于是 tick 会 WARN，并在第三次观察时**暂停一个健康的团队**
+（实测：看门狗在本仓库自己的 lane 运行时暂停了本团队）。
+
+只要未关闭的调用比 `toolInFlightMaxMs`（默认 `900000`，即冻结阈值的 10 倍）更年轻，候选既不
+WARN 也不 ESCALATE，且连续计数被重置；调用一完成成员立即恢复被观察。超过上界后该条目**不再
+抑制**，并按任务+尝试**只上报一次** `tool-expired` 事件记录——仅属 WARN 级别：不写快照、不施加
+hold、绝不上升级，因为“非常长的调用”和“卡在工具里”从记录流上无法区分，靠猜测暂停正是这个上界
+要修掉的缺陷。
+
+* 生命周期：由 `tool-start` 打开，由同一 `callId` 的 `tool` 关闭。`deny` 不打开任何东西（该调用
+  从未派发）。抛错的调用仍会收到 POST（宿主把工具失败也送进 `tools/post-execute`）并自行清除；
+  进程死亡、派发前取消或流水线失败导致的“无 POST”则由 `toolInFlightMaxMs` 兜底。
+* 该状态是**持久化**的（就在同一个 JSONL 心跳文件里），因此能跨进程重启存活——进程死亡时仍处于
+  打开状态的调用会在超过上界后被上报一次，而不是被遗忘。
+* `toolInFlightMaxMs: 0` 完全关闭该抑制（即 r6 之前的、只有 POST 的行为）；它也是 fixture 自带的
+  反证开关。
 
 ## WARN → ESCALATE 状态机
 
 ```
 OBSERVE（每个 tickIntervalMs）
   silence = now - newestStamp(owner, task)
-  若该 owner 的回合仍在进行中 且 silence > warnSilenceMs：
+  若该任务存在未关闭的工具调用且其年龄小于 toolInFlightMaxMs：
+      已解释 -> 不 WARN、不 ESCALATE、重置连续计数（超过上界则只写一条 tool-expired 记录）
+  否则若该 owner 的回合仍在进行中 且 silence > warnSilenceMs：
       WARN(task, attemptId)     -> 现场快照 + 事件记录
       streak[task+attempt] += 1
       若 streak >= warnStreakToEscalate：
@@ -84,7 +118,7 @@ streak 以 `<taskId>\0<attemptId>` 为键，因此换用新 attempt 的重试从
 
 ### 旋钮
 
-`mpd` settings 命名空间是实时权威，本行配置是默认层。五项都会在**每个 tick**以及
+`mpd` settings 命名空间是实时权威，本行配置是默认层。全部旋钮都会在**每个 tick**以及
 `settings/document-updated` 时重新读取，因此热修改无需重启宿主即可生效，而改变节奏会替换
 那唯一的定时器。之所以按 tick 重读是有意为之：`mpd` 命名空间是**延迟注册**的（mpd-config
 把注册挂在 settings 服务上），若本行先完成 apply，在此之前就只能停留在自身默认值上，直到
@@ -97,10 +131,12 @@ streak 以 `<taskId>\0<attemptId>` 为键，因此换用新 attempt 的重试从
 | `watchdog.warnStreakToEscalate` | `3` | 同一 task+attempt 连续 WARN 次数达到即 ESCALATE |
 | `watchdog.actionOnEscalate` | `pause` | `pause` 写 hold；`warn-only` 只记录 |
 | `watchdog.enabled` | `true` | 总开关（`MPD_DSH_TEAM_WATCHDOG=off` 可强制关闭） |
+| `watchdog.toolInFlightMaxMs` | `900000` | 未关闭的工具调用最多能解释多久的静默；`0` 关闭该抑制（r6） |
 
-这些旋钮在 `mpd-config` schema 与 Web 卡片自身 `FIELDS` 列表中的声明属于**那些包**，不在
-本包。由于 schemastery 会保留未知键，在该声明落地之前，`watchdog` 段就已经可以经由命名空间
-读取；那项声明的作用只是让两个前端能显示与编辑它。
+前五项在 `mpd-config` schema 与 Web 卡片自身 `FIELDS` 列表中的声明属于**那些包**，不在
+本包；`toolInFlightMaxMs` 同样经由命名空间读取，但**尚未**进入那份声明——由于 schemastery
+会保留未知键，它照旧可以从命名空间（以及本行配置）读取和设置，只是在该声明落地之前不会出现
+在两个前端界面上。
 
 ## 现场快照
 
@@ -133,7 +169,9 @@ streak 以 `<taskId>\0<attemptId>` 为键，因此换用新 attempt 的重试从
   临时文件 + rename，以 `id` 幂等，并且是一个**保留式** hold：它的存在是为阻止向某一个团队
   派发**新**工作，绝不用于取消已有工作。它不是 `agent_teams_halt`（后者会取消所有未终结任务）。
 * `incidents.jsonl` = 每个 WARN/ESCALATE 一条记录，含原因、task/attempt、所写快照路径，以及
-  `hold: 'applied' | 'not-applied' | 'not-requested'`。
+  `hold: 'applied' | 'not-applied' | 'not-requested'`。WARN 级别的观察 `never-started` 与
+  `tool-expired`（r6）落在同一份文件上，带有 `scene: null` 与 `hold: 'not-requested'`——它们由
+  同一批读取者重放，并且永远不会产生 hold。
 * `read-watermark.json` = `{<reader>: <lastAckedIncidentTs>}`。只有显式确认才会推进水位，因此
   没有确认时就是永久重放——这是设计使然，并且明确写出。
 
@@ -205,7 +243,11 @@ tick 在 ESCALATE 时经由 adapter 的内部工具接缝调用 `session-watchdo
   adopted 树中没有被修改。
 * **不做通知界面。** Web 横幅/活动记录与 TUI 状态行、对话框属于后续任务。这里的“记录即通知”
   就是持久事件记录，供那三个读取者消费。
-* **没有派发前的工具记录**（只有 POST，见上文）。
+* **不检测“卡在工具内部”的卡死。** r6 的在途规则会把长时间调用解释掉；真正卡在工具**内部**的
+  成员只会被上报（超过上界后写一条 `tool-expired` 事件记录），绝不被升级或暂停。这一点已在上文
+  的上界一节写明，也是“不为正常干活的团队误暂停”所付出的代价。
+* **`toolInFlightMaxMs` 尚未进入前端声明。** 它与其他旋钮一样经由 `mpd` 命名空间和本行配置读取，
+  但 `mpd-config` 的 schema/`FIELDS` 属于那个包，因此在该声明落地之前两个前端不会渲染它。
 * **不中止正在进行的回合。** hold 只阻止新派发；只有真正的聊天打断才能结束卡死的回合。ESCALATE
   之后恢复过来的成员会发现团队处于 hold、无法推进——这正是预期结果。
 * **这里不做真实卡死验证。** 单元测试用注入时钟与 stub adapter 驱动机器；故障注入与真实卡死

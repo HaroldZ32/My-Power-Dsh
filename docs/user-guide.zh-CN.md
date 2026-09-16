@@ -10,7 +10,8 @@
 ### 一条命令，直接在检出目录中执行
 
 ```bash
-cd <repo> && dsh plugin --profile <mpd|web> add .
+cd <repo> && dsh plugin --profile web add .        # Web GUI
+cd <repo> && dsh plugin --profile dsh-tui add .    # 终端界面（DSH-TUI）
 ```
 
 仓库根目录 **就是** bundle 包本身（`@mpd-dsh/mpd`）：`dsh.bundle.patch`、`dsh.client` 与
@@ -18,11 +19,38 @@ cd <repo> && dsh plugin --profile <mpd|web> add .
 语料库以及扩展根目录。没有别的步骤 —— 不需要打包，也不需要复制。重启 `dsh`，然后在
 **MPD（Main Working Agent）** preset 上开启会话。
 
+**每条 `dsh plugin` 命令都必须带 `--profile`**，`--help` 与 `remove` 也不例外：不带时 CLI 会直接
+停下并提示 `error: required option '--profile <name>' not specified`。profile 名就是你实际运行的
+那个 —— Web GUI 用 `web`，终端界面用 `dsh-tui`（脚本化运行用 `headless`）。
+
+### DSH-TUI profile（`dsh-tui`）
+
+```bash
+cd <repo> && dsh plugin --profile dsh-tui add .
+```
+
+同一个 bundle 会以**第三层 patch** 的身份装进终端界面，叠在 TUI 包之上：安装后
+`dsh.profile.bundles` 为 `["@deepseek-ai/dsh-base", "@deepseek-harness-tui/dsh-tui", "@mpd-dsh/mpd"]`，
+`dsh --profile dsh-tui --dump-config` 会把我们的行显示在独立的一层里
+（`# == @deepseek-harness-tui/dsh-tui, patched by @mpd-dsh/mpd`），并把 `mpd` preset 作为会话默认。
+用 `dsh-tui` 启动器（别名 `dst`）启动：
+
+```bash
+dsh-tui            # 在当前目录启动
+dsh-tui --resume   # 继续上一个会话（简写 -c）
+dsh-tui --help     # update | doctor | version | help；其余参数原样转发给 `dsh --profile dsh-tui`
+```
+
+`dsh-tui` 需要真实终端：输出被重定向到管道时它会拒绝启动并提示
+`Error: dsh-tui requires an interactive terminal (stdout must be a TTY).` 该版本的界面、
+明确不声明清单与验证记录见 [tui.zh-CN.md](./tui.zh-CN.md)（分层结构见 §2）以及下方 §7。
+
 ### 打包产物（发布 / 分发）
 
 ```bash
 node scripts/pack-mpd.mjs                          # -> dist/mpd-package/（可迁移）
-dsh plugin --profile <mpd|web> add dist/mpd-package
+dsh plugin --profile web add dist/mpd-package
+dsh plugin --profile dsh-tui add dist/mpd-package
 # 或者从任何已发布位置
 dsh plugin --profile web add <path-or-name-of-@mpd-dsh/mpd>
 ```
@@ -34,7 +62,8 @@ dsh plugin --profile web add <path-or-name-of-@mpd-dsh/mpd>
 ### 卸载（一条命令，无残留）
 
 ```bash
-dsh plugin --profile <mpd|web> remove @mpd-dsh/mpd
+dsh plugin --profile web remove @mpd-dsh/mpd
+dsh plugin --profile dsh-tui remove @mpd-dsh/mpd
 ```
 
 本 bundle 整体安装、整体卸载，skills 也包含在内：插件行来自 bundle patch，`mpd` preset 从
@@ -208,7 +237,7 @@ stdout 不是 TTY 时 `dsh-tui` 拒绝启动
 | AgentTeams 侧边栏标签页 | `tuiScenes` 全屏看板 + 带 key 的 `tuiStatus` 状态行 |
 | Workmates 侧边栏标签页 | `/mpd` 命令树（`tuiCommandTrees`）+ `tuiDialogs` |
 | bundle 悬浮面板 | `tuiStatus` 状态行 |
-| Settings → Plugins 卡片 | `/settings` 分区（`tuiSettingsSections`） |
+| 设置 → MPD 栏 | `/settings` 分区（`tuiSettingsSections`） |
 | — | `tuiShortcuts` 快捷键 |
 
 这些是**等价物，不是等价功能（parity）**：每个界面都重建在宿主自身的 TUI 接缝上，且有两个接缝被明确

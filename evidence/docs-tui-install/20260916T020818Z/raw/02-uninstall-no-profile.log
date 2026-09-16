@@ -1,0 +1,3 @@
+$ dsh plugin remove @mpd-dsh/mpd
+error: required option '--profile <name>' not specified
+exit=1

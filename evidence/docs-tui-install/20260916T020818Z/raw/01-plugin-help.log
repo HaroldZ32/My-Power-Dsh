@@ -1,0 +1,3 @@
+$ dsh plugin --help
+error: required option '--profile <name>' not specified
+exit=1

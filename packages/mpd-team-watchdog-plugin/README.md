@@ -48,7 +48,8 @@ configurable on the row.
 | Moment | Harness signal | Stamp |
 |---|---|---|
 | every model step | `agent/pre-step` | `{kind:'step', at, member, taskId, attemptId, …}` |
-| every completed tool call | the adapter's POST hook (`onPostToolExecute`) | `{kind:'tool', at, tool, callId, …}` |
+| a tool call is DISPATCHED | the adapter's PRE hook (`onPreToolExecute` → `tools/pre-execute`) | `{kind:'tool-start', at, tool, callId, …}` |
+| a tool call COMPLETED | the adapter's POST hook (`onPostToolExecute`) | `{kind:'tool', at, tool, callId, ok, …}` |
 | turn start | `agent/session-start` (or the first step) | `{kind:'turn-start', …}` |
 | turn end | `agent/turn-stopping` | `{kind:'turn-end', …}` |
 
@@ -68,16 +69,54 @@ recent stamp. The residual blind spot is one step wide and is stated rather than
 staleness is computed from the newest stamp of ANY kind, and a genuinely wedged turn
 produces no further step either.
 
-The tool stamp is **POST-completion only**. There is no pre-dispatch stamp in this
-package: the adapter's `onPostToolExecute` fires after the call returns, and a
-pre-dispatch stamp would need a `tools/execute` wrapper in the adapter (a later task).
+The tool heartbeat is a **PAIR**, and the pair is what makes a long call readable:
+
+* `tool-start` is stamped by the adapter's PRE hook (`onPreToolExecute`, the harness's
+  `tools/pre-execute` waterfall) **before the call dispatches**, and carries the tool name and
+  the harness `callId`. The hook is **observe-only**: the adapter owns `next()` and returns the
+  gate decision verbatim, so installing it changes nothing about the call — proven in
+  `packages/mpd-dsh-adapter-plugin/test/adapter.test.ts` on a real cordis waterfall and a real
+  command, and again in `evidence/team-watchdog/long-tool-false-positive/` (`observe-only-real-call.mjs`).
+  A harness without the event bus degrades to a no-op with a warning, never a failed row.
+* `tool` is stamped by `onPostToolExecute` when the call **completes** (the W-9 semantics are
+  unchanged: completion, never before dispatch). The two are matched by `callId`.
+
+A `tool-start` with no matching `tool` is an **OPEN call**: the silence rule treats it as
+explained activity (r6) for at most `toolInFlightMaxMs`, and the honest limit below applies.
+
+### The in-flight bound (r6) and what it costs
+
+A member inside one long call — a real build, a lane that boots a `dsh`, a slow test — used to be
+indistinguishable from a wedged one, because nothing stamps between the call's dispatch and its
+completion. The tick then WARNed and, on the third observation, **paused a healthy team**
+(measured: the watchdog held this repository's own team while a lane ran).
+
+While an open call is younger than `toolInFlightMaxMs` (default `900000`, i.e. 10× the frozen
+threshold) the candidate is neither WARNed nor ESCALATED and the streak is reset; the member is
+watched again the moment the call completes. Past the bound the entry **stops suppressing** and is
+reported **once** per task+attempt as a `tool-expired` incident — WARN-class only: no scene, no
+hold, never an escalate, because a very long call and a hang inside a tool are indistinguishable
+from the stamp stream and pausing on a guess is the defect this bound exists to fix.
+
+* Lifecycle: opened by `tool-start`, closed by the `tool` stamp of the same `callId`. A `deny`
+  opens nothing (the call never dispatches). A call that throws still gets a POST (the harness
+  routes tool failures through `tools/post-execute`) and clears itself; a call killed by a process
+  death, a pre-dispatch cancellation or a pipeline failure leaves no POST and is bounded by
+  `toolInFlightMaxMs`.
+* The state is **durable** (it lives in the same JSONL heartbeat file), so it survives a restart —
+  a call that was open when the process died is reported once when the bound passes, instead of
+  being forgotten.
+* `toolInFlightMaxMs: 0` disables the suppression entirely (the pre-r6, POST-only behaviour); it is
+  the fixture's own falsifier.
 
 ## The WARN → ESCALATE machine
 
 ```
 OBSERVE (every tickIntervalMs)
   silence = now - newestStamp(owner, task)
-  if the owner's turn is expected in flight AND silence > warnSilenceMs:
+  if an OPEN tool call for this task is younger than toolInFlightMaxMs:
+      EXPLAINED -> no WARN, no ESCALATE, streak reset (past the bound: ONE tool-expired record)
+  else if the owner's turn is expected in flight AND silence > warnSilenceMs:
       WARN(task, attemptId)     -> scene snapshot + incident
       streak[task+attempt] += 1
       if streak >= warnStreakToEscalate:
@@ -97,7 +136,7 @@ that task at least once; a claimed task with no stamp at all is reported
 ### The knobs
 
 The `mpd` settings namespace is the live authority; the row config is the defaults
-layer. All five are re-read **on every tick** and on `settings/document-updated`, so a
+layer. All of them are re-read **on every tick** and on `settings/document-updated`, so a
 live edit takes effect without a host restart, and a cadence change replaces the single
 tick interval. The per-tick re-read is deliberate: the `mpd` namespace is registered
 *deferred* (mpd-config parks its registration on the settings service), so a row that
@@ -110,11 +149,13 @@ applied first would otherwise sit on its own defaults until somebody edited sett
 | `watchdog.warnStreakToEscalate` | `3` | consecutive WARNs for one task+attempt before ESCALATE |
 | `watchdog.actionOnEscalate` | `pause` | `pause` persists the hold; `warn-only` only records |
 | `watchdog.enabled` | `true` | kill switch (`MPD_DSH_TEAM_WATCHDOG=off` forces it off) |
+| `watchdog.toolInFlightMaxMs` | `900000` | how long an OPEN tool call explains silence away; `0` disables the suppression (r6) |
 
-The declaration of these knobs in `mpd-config`'s schema and in the Web card's own
-`FIELDS` list lives in **those packages**, not here. Because schemastery keeps unknown
-keys, the `watchdog` section is readable through the namespace before that declaration
-lands; the declaration only makes it visible and editable in the two front doors.
+The first five are declared in `mpd-config`'s schema and in the Web card's own
+`FIELDS` list, **in those packages, not here**; `toolInFlightMaxMs` is read through the same
+namespace and is *not* in that declaration yet — because schemastery keeps unknown
+keys it is readable and settable from the namespace (and from the row config) regardless,
+and it simply is not rendered in the two front doors until the declaration lands.
 
 ## The scene snapshot
 
@@ -153,6 +194,9 @@ Two fields are honest projections rather than the adopted plugin's own state:
   (which cancels every non-terminal task).
 * `incidents.jsonl` = one record per WARN/ESCALATE with its cause, its task/attempt and
   the path of the scene it wrote, plus `hold: 'applied' | 'not-applied' | 'not-requested'`.
+  The WARN-class observations `never-started` and `tool-expired` (r6) live on the same
+  surface, with `scene: null` and `hold: 'not-requested'` — they are replayed by the same
+  readers and can never produce a hold.
 * `read-watermark.json` = `{<reader>: <lastAckedIncidentTs>}`. Only an explicit
   acknowledgement moves a watermark forward, so without one the replay is permanent
   re-display — by design, and stated.
@@ -237,7 +281,13 @@ unreachable).
 * **No notification surface.** The Web banner/activity record and the TUI status row and
   dialog are later tasks. The notice-of-record here is the durable incident record, which
   those three readers consume.
-* **No pre-dispatch tool stamp** (POST only, see above).
+* **No wedge detection INSIDE a hanging tool.** The r6 in-flight rule explains a long call away;
+  a member wedged *inside* one is reported (a `tool-expired` incident once the bound passes) and
+  never escalated or paused. Stated in the bound section above, and it is the price of not pausing
+  healthy teams for running real work.
+* **`toolInFlightMaxMs` is not in the front-door declaration yet.** It is read through the `mpd`
+  namespace and the row config like the other knobs, but `mpd-config`'s schema/`FIELDS` row lives in
+  that package, so the two front doors do not render it until that declaration lands.
 * **An in-flight turn is not aborted.** The hold stops new dispatch; only a real chat
   interrupt ends a wedged turn. A member that recovers after ESCALATE finds the team held
   and cannot advance it — which is the intended outcome.

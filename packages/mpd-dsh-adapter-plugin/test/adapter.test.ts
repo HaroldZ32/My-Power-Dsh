@@ -2,13 +2,16 @@
 // feature-detected, so a harness build that lacks a seam degrades with an
 // actionable error instead of crashing the plugin tree.
 import { describe, expect, test } from "bun:test"
+import { spawnSync } from "node:child_process"
 
+import { Context } from "../../mpd-agent-teams-plugin/_deps/cordis/lib/index.js"
 import { apply, createDshAdapter, decision, SERVICE_NAME, textBlock } from "../src/index"
 
 function fakeHarness(overrides: Record<string, unknown> = {}) {
   const registered: any[] = []
   const guards: any[] = []
   const listeners: any[] = []
+  const preListeners: any[] = []
   const provided: Record<string, unknown> = {}
   const started: Array<{ mode: string; spec: any }> = []
   const executed: any[] = []
@@ -42,11 +45,15 @@ function fakeHarness(overrides: Record<string, unknown> = {}) {
   const agents = { list: () => [sampleAgent], get: (id: string) => (id === sampleAgent.id ? sampleAgent : undefined) }
   const ctx = {
     get: (serviceName: string) => ({ tools, subagents, skills, agentPresets, agents, compaction } as Record<string, unknown>)[serviceName],
-    on: (event: string, listener: any) => { if (event === "tools/post-execute") listeners.push(listener); return () => { listeners.splice(listeners.indexOf(listener), 1) } },
+    on: (event: string, listener: any) => {
+      if (event === "tools/post-execute") listeners.push(listener)
+      if (event === "tools/pre-execute") preListeners.push(listener)
+      return () => { listeners.splice(listeners.indexOf(listener), 1); preListeners.splice(preListeners.indexOf(listener), 1) }
+    },
     provide: (serviceName: string, value: unknown) => { provided[serviceName] = value },
     ...overrides,
   }
-  return { ctx, registered, guards, listeners, provided, started, executed }
+  return { ctx, registered, guards, listeners, preListeners, provided, started, executed }
 }
 
 describe("capabilities", () => {
@@ -155,6 +162,77 @@ describe("tool plane", () => {
     const dispose = createDshAdapter({ get: () => undefined }).onPostToolExecute(() => undefined)
     expect(typeof dispose).toBe("function")
     expect(dispose()).toBeUndefined()
+  })
+
+  test("onPreToolExecute OWNS next(): the observer sees the gate and the gate is passed through", async () => {
+    const { ctx, preListeners } = fakeHarness()
+    const seen: string[] = []
+    createDshAdapter(ctx).onPreToolExecute((exec, decision) => {
+      seen.push(String(exec.name) + ":" + String(decision?.kind))
+    })
+    let nextCalls = 0
+    const gate = { kind: "allow" as const }
+    const passed = await preListeners[0]({ name: "bash", callId: "call-1" }, async () => { nextCalls += 1; return gate })
+    expect(nextCalls).toBe(1)
+    // BY REFERENCE: the observer cannot build a different decision, because it never
+    // produces one — the adapter returns what `next()` resolved.
+    expect(passed).toBe(gate)
+    expect(seen).toEqual(["bash:allow"])
+  })
+
+  test("onPreToolExecute cannot alter or veto a call: deny survives, a returned decision is ignored, a throw is contained", async () => {
+    // (1) A DENY from a downstream listener must stay a DENY.
+    const denyBox = fakeHarness()
+    createDshAdapter(denyBox.ctx).onPreToolExecute(() => { throw new Error("observer exploded") })
+    const deny = { kind: "deny" as const, reason: "read-only member" }
+    expect(await denyBox.preListeners[0]({ name: "write" }, async () => deny)).toBe(deny)
+    // (2) A listener that RETURNS a decision cannot install it: the wrapper discards it.
+    const returnBox = fakeHarness()
+    createDshAdapter(returnBox.ctx).onPreToolExecute((() => ({ kind: "deny", reason: "observer opinion" })) as any)
+    const allow = { kind: "allow" as const }
+    expect(await returnBox.preListeners[0]({ name: "read" }, async () => allow)).toBe(allow)
+    // (3) `next` absent (a harness that dispatches the event without a chain): still no throw,
+    // no invented decision — the observer runs and nothing is fabricated for the caller.
+    const noNext = fakeHarness()
+    const observed: unknown[] = []
+    createDshAdapter(noNext.ctx).onPreToolExecute((_exec, decision) => { observed.push(decision) })
+    expect(await noNext.preListeners[0]({ name: "read" }, undefined)).toBeUndefined()
+    expect(observed).toEqual([undefined])
+  })
+
+  test("onPreToolExecute hands the observer a FROZEN COPY: the live execution cannot be changed", async () => {
+    const { ctx, preListeners } = fakeHarness()
+    const live: any = { name: "bash", callId: "call-live-1", arguments: { command: "rm -rf /" } }
+    let received: any = null
+    let mutationThrew = false
+    createDshAdapter(ctx).onPreToolExecute((exec) => {
+      received = exec
+      try {
+        exec.name = "hijacked"
+        exec.signal = undefined
+      } catch {
+        mutationThrew = true
+      }
+    })
+    const gate = { kind: "allow" as const }
+    expect(await preListeners[0](live, async () => gate)).toBe(gate)
+    // The observer saw a copy that is not the harness's object, and its writes could not land.
+    expect(received).not.toBe(live)
+    expect(Object.isFrozen(received)).toBe(true)
+    expect(mutationThrew).toBe(true)
+    expect(live.name).toBe("bash")
+    expect(live.signal).toBeUndefined()
+    // The nested values the observer may READ are still the live ones (a shallow copy).
+    expect(received.arguments).toBe(live.arguments)
+  })
+
+  test("onPreToolExecute is a no-op when the harness has no event bus, and capabilities() reports the seam", () => {
+    const absent = createDshAdapter({ get: () => undefined })
+    const dispose = absent.onPreToolExecute(() => {})
+    expect(typeof dispose).toBe("function")
+    expect(dispose()).toBeUndefined()
+    expect(absent.capabilities().toolsPreExecute).toBe(false)
+    expect(createDshAdapter(fakeHarness().ctx).capabilities().toolsPreExecute).toBe(true)
   })
 
   test("hasTool + toolRuntime expose internal tool calls without raw ctx access", async () => {
@@ -374,5 +452,81 @@ describe("workspaceRootsAll(): the design's stated-unverified facts (§A.1, meas
     expect(createDshAdapter({ get: () => undefined }).workspaceRootsAll()).toEqual([])
     expect(createDshAdapter({ get: () => ({ list: () => "not-an-array" }) }).workspaceRootsAll()).toEqual([])
     expect(createDshAdapter({ get: () => ({ list: () => { throw new Error("registry exploded") } }) }).workspaceRootsAll()).toEqual([])
+  })
+})
+
+// ── the PRE hook against the REAL cordis waterfall, and a REAL tool call ──────
+//
+// The fake harness above proves the wrapper's SHAPE. These tests prove its CONTRACT on the
+// implementation that actually dispatches it: the vendored `@deepseek-ai/cordis` EventsService
+// (`waterfall` = `(cbs.shift() ?? inner)(...args)` with `next` appended), which is what makes a
+// non-delegating listener able to VETO the chain — the exact failure mode this hook must not
+// have. A NEGATIVE CONTROL re-enacts the veto shape, so the assertion is falsifiable.
+describe("onPreToolExecute on the real cordis waterfall (observe-only, proven by a real call)", () => {
+  /** Run one dispatch through the real waterfall and a REAL child process tool body. */
+  async function dispatch(install: (adapter: ReturnType<typeof createDshAdapter>) => void, ms: number) {
+    const ctx = new Context()
+    const adapter = createDshAdapter(ctx as any)
+    install(adapter)
+    const exec = { name: "bash", callId: "call-real-1", arguments: { command: "sleep " + ms + "ms" } }
+    const gate = await ctx.waterfall(ctx, "tools/pre-execute", exec, () => Promise.resolve({ kind: "allow" as const }))
+    if (gate.kind !== "allow") return { gate, result: null }
+    // The tool body: a GENUINE child process that really takes `ms` wall-clock milliseconds.
+    const started = Date.now()
+    const child = spawnSync(process.execPath, ["-e", "setTimeout(() => {}, " + ms + ")"], { encoding: "utf8" })
+    const elapsed = Date.now() - started
+    const result = { status: child.status, stdout: child.stdout, stderr: child.stderr, pid: child.pid !== undefined }
+    // The harness's post-execute waterfall, driven the same way.
+    const decision = await ctx.waterfall(ctx, "tools/post-execute", exec, result, () => Promise.resolve({ kind: "accept" as const }))
+    return { gate, result, elapsed, started, accepted: decision.kind, value: (decision as any).value ?? result }
+  }
+
+  test("a REAL tool call returns the same result with and without the hook, and the gate is unchanged", async () => {
+    const without = await dispatch(() => {}, 250)
+    let observed: { kind: string | undefined; execName: string | undefined } | null = null
+    let stampedAt = 0
+    const with1 = await dispatch((adapter) => {
+      adapter.onPreToolExecute((exec, decision) => {
+        stampedAt = Date.now()
+        observed = { kind: decision?.kind, execName: exec.name }
+      })
+    }, 250)
+    // Same gate, same real command outcome, same accepted decision.
+    expect(without.gate).toEqual({ kind: "allow" })
+    expect(with1.gate).toEqual({ kind: "allow" })
+    expect(with1.result).toEqual(without.result)
+    expect(with1.result?.status).toBe(0)
+    expect(with1.accepted).toBe("accept")
+    // The command is REAL (it really burned the wall clock it was told to), and the observer
+    // ran BEFORE it: that is the whole point of a pre-dispatch stamp.
+    expect(with1.elapsed).toBeGreaterThanOrEqual(200)
+    expect(stampedAt).toBeLessThanOrEqual(with1.started)
+    expect(observed).not.toBeNull()
+    expect((observed as any).kind).toBe("allow")
+    expect((observed as any).execName).toBe("bash")
+  })
+
+  test("a downstream DENY still denies: the observer cannot upgrade a blocked call", async () => {
+    const ctx = new Context()
+    const seen: string[] = []
+    createDshAdapter(ctx as any).onPreToolExecute((_exec, decision) => { seen.push(String(decision?.kind)) })
+    const gate = await ctx.waterfall(ctx, "tools/pre-execute", { name: "write" }, () => Promise.resolve({ kind: "deny" as const, reason: "scope" }))
+    expect(gate).toEqual({ kind: "deny", reason: "scope" })
+    expect(seen).toEqual(["deny"])
+  })
+
+  test("NEGATIVE CONTROL: a listener that returns without delegating DOES veto the gate", async () => {
+    // The retired `agent/pre-step` shape, re-enacted on `tools/pre-execute`: this is what the
+    // adapter's wrapper exists to prevent, and it proves the cordis semantics above are real.
+    const ctx = new Context()
+    ctx.on("tools/pre-execute", (() => ({ kind: "allow", hijacked: true })) as any)
+    const gate = await ctx.waterfall(ctx, "tools/pre-execute", { name: "bash" }, () => Promise.resolve({ kind: "allow" as const }))
+    expect(gate).toEqual({ kind: "allow", hijacked: true })
+    // …while the ADAPTER's own hook, registered on the same event, passes the harness's
+    // decision through untouched.
+    const clean = new Context()
+    createDshAdapter(clean as any).onPreToolExecute(() => {})
+    const passed = await clean.waterfall(clean, "tools/pre-execute", { name: "bash" }, () => Promise.resolve({ kind: "allow" as const }))
+    expect(passed).toEqual({ kind: "allow" })
   })
 })

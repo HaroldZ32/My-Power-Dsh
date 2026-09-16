@@ -1,0 +1,149 @@
+{
+  "task": "t84",
+  "wave": "r6",
+  "title": "A long tool call must not look like silence: observe-only PRE hook + tool-in-flight state",
+  "attempt_id": "97ac0a80-8acb-49dd-8a93-17ae7bc334e3",
+  "member": "Deep Worker",
+  "evidence_dir": "evidence/team-watchdog/long-tool-false-positive/20260916T015821Z",
+  "defect": {
+    "observed": "the watchdog HELD the mpd-default team with cause {kind:'silence', ms:131049} on an in_progress task whose owner was running a real-boot lane, not wedged",
+    "mechanism": "the heartbeat stamped on model steps and on tool COMPLETION only (W-9), so any tool call longer than warnSilenceMs was indistinguishable from a wedge",
+    "class": "false positive (a healthy team paused), the same class as the t71/t73/t79 repairs, reached through a different door"
+  },
+  "dists": {
+    "adapter": {
+      "path": "packages/mpd-dsh-adapter-plugin/dist/index.js",
+      "before": { "bytes": 17031, "sha256": "ea232983e5571af4e56a4a1d0e177f98f23f6872b0b4527a23188886af3498cb" },
+      "after": { "bytes": 17472, "sha256": "d98cc6984d8d85c72931c258b9b7b32851bcfba8691bbcf2dc59ecd86c891125" },
+      "before_copy": "raw/dist-before/adapter-index.js"
+    },
+    "watchdog": {
+      "path": "packages/mpd-team-watchdog-plugin/dist/index.js",
+      "before": { "bytes": 119753, "sha256": "54f1f41ce60629651d96320cffe573e5c0079d742f1a024213c07e733681935b" },
+      "after": { "bytes": 125754, "sha256": "810e0fb315e968ac897d44e297d073cb30063df8a5b8b0569d7effce2cb8d269" },
+      "before_copy": "raw/dist-before/watchdog-index.js"
+    },
+    "note": "the pre-fix bytes were COPIED into the evidence directory BEFORE the rebuild, so the BEFORE half of the measurement runs the real pre-fix plugin, not a reconstruction; both dists are newer than every source file under their packages (checked with find -newer)"
+  },
+  "design": {
+    "pre_hook": "adapter.onPreToolExecute(listener) wraps the harness's tools/pre-execute WATERFALL, owns next(), returns the downstream decision VERBATIM and discards the listener's return value; the listener observes a FROZEN SHALLOW COPY of the execution, so it can neither mutate what will be dispatched nor affect the gate; a throwing listener is contained; no event bus -> no-op",
+    "stamps": "tool-start (PRE, carries tool + callId) opens a call; tool (POST, completion, unchanged W-9 semantics) closes it; matched by callId",
+    "state": "the in-flight fact is derived from the durable heartbeat JSONL, so it survives a process restart",
+    "predicate": "machine.observe treats an OPEN call younger than toolInFlightMaxMs as explained activity (no WARN, no ESCALATE, streak reset); past the bound it emits ONE tool-expired decision per task+attempt",
+    "tool_expired_action": "durable WARN-class incident only: scene null, hold not-requested, never a scene, never a hold, never an escalate",
+    "knob": { "name": "watchdog.toolInFlightMaxMs", "default_ms": 900000, "zero_means": "suppression disabled (pre-r6 behaviour) - the falsifier" },
+    "failure_mode": "a member wedged INSIDE a hanging tool is reported once past the bound and never escalated/paused; stated in the README and the plugin source",
+    "cross_scope_edits": "none: packages/mpd-agent-teams-plugin, packages/mpd-bundle-plugin, skills/**, docs/**, VENDOR_LOCK.json and .mpd/** are untouched (--check still reports 53 regions across 9 adopted files)"
+  },
+  "measurements": {
+    "real_long_command": {
+      "what": "a genuine child process (the runtime already running the fixture) that really burns the wall clock",
+      "before": {
+        "dist": "pre-fix, raw/dist-before/watchdog-index.js",
+        "driver": "raw/long-tool-before-after.mjs",
+        "pre_hook_subscribed": false,
+        "stamp_stream": ["step"],
+        "real_command_ms": 1622,
+        "tick_decisions": ["warn", "warn", "escalate"],
+        "hold": "applied (cause silence)",
+        "silence_ms_at_ticks": [1026, 1433, 1835]
+      },
+      "after": {
+        "dist": "fixed, packages/mpd-team-watchdog-plugin/dist/index.js",
+        "driver": "raw/long-tool-before-after.mjs",
+        "pre_hook_subscribed": true,
+        "stamp_stream": ["step", "tool-start"],
+        "real_command_ms": 1620,
+        "tick_decisions": ["", "", ""],
+        "hold": null,
+        "silence_ms_at_ticks": [1029, 1432, 1833]
+      },
+      "verdict": {
+        "beforeHeldTheTeam": true,
+        "afterHeldNothing": true,
+        "beforeHadNoPreHook": true,
+        "afterHasThePreHook": true,
+        "sameRealCommandDuration": true
+      }
+    },
+    "fixture_cases": {
+      "fixture": "packages/mpd-team-watchdog-plugin/test/fixtures/inject.mjs",
+      "cases_total": 18,
+      "r6_cases": {
+        "long-tool-no-hold": "PASS - real command (1623/1619 ms in the driver; the fixture case measures its own, >=1200 ms) inside ONE tool call; fixture ticks at 509/912/1313 ms after the call opened, the last beyond 3x300 ms; decisions [], [], []; holds 0; scenes 0; incidents 0; inFlightSuppressed 3; stream step,tool-start,tool",
+        "long-tool-bound-disabled-control": "PASS (FALSIFIER) - the SAME real command with toolInFlightMaxMs: 0 gives warn, warn, escalate + a hold",
+        "completed-tool-not-in-flight": "PASS - a tool-start PAIRED with its completion is closed: warn, warn, escalate + a hold",
+        "tool-inflight-expired": "PASS - inside the bound nothing; past it exactly ONE tool-expired incident (scene null, hold not-requested), no scene, no hold, no repeat, hold file absent"
+      },
+      "driver": "raw/run-new-cases.mjs",
+      "capture": "raw/new-cases.json"
+    },
+    "observe_only": {
+      "driver": "raw/observe-only-real-call.mjs",
+      "what": "the same REAL 250 ms tool call dispatched through the real cordis waterfall twice: without the hook and with it",
+      "result": "identical gate ({kind:'allow'}), identical command outcome, identical post-execute decision; the hook observed the call BEFORE the command started; no hook -> no observation",
+      "unit_tests": "packages/mpd-dsh-adapter-plugin/test/adapter.test.ts, including a NEGATIVE CONTROL that re-enacts the veto shape on the real cordis waterfall",
+      "verdict": {
+        "gateIdentical": true,
+        "resultIdentical": true,
+        "postDecisionIdentical": true,
+        "commandRanForReal": true,
+        "hookActuallyRan": true,
+        "observedBeforeTheCommandRan": true,
+        "noHookNoObservation": true
+      }
+    }
+  },
+  "gates": {
+    "bun test packages/mpd-team-watchdog-plugin packages/mpd-dsh-adapter-plugin": { "exit": 0, "result": "114 pass / 0 fail (18 files, 473 expect)", "log": "raw/gates/1-package-suites.log" },
+    "bun test packages": { "exit": 1, "result": "730 pass / 2 fail (732 tests, 138 files)", "log": "raw/gates/2-full-suite.log", "attribution": "both failures are packages/mpd-config-plugin/test/settings-wiring.test.ts reading THIS workspace's .mpd/mpd.jsonc via process.cwd(); proven in raw/gates/2c-mpd-config-attribution.log and by the clean-cwd run below; not caused by t84" },
+    "bun test --root <repo>/packages from a clean cwd": { "exit": 0, "result": "732 pass / 0 fail (5243 expect)", "log": "raw/gates/2b-full-suite-clean-cwd.log" },
+    "bun run typecheck": { "exit": 0, "result": "tsgo --noEmit clean", "log": "raw/gates/3-typecheck.log" },
+    "node scripts/patch-agent-teams-fixes.mjs --check": { "exit": 0, "result": "already applied: 53 mpd delta region(s) across 9 adopted file(s)", "log": "raw/gates/4-adopted-check.log" },
+    "bun run verify:docs": { "exit": 0, "result": "pairs=34 failed=0 violations=0 exempt=16 - PASS", "log": "raw/gates/5-docs-parity.log" },
+    "bun run test:qa": { "exit": 1, "result": "41 of 42 self-tests pass individually", "log": "raw/gates/6-qa-self-tests.log", "individual": "raw/gates/6b-qa-self-tests-individual.log", "attribution": "the single failure is agent-teams-messaging.mjs --self-test: VENDOR_LOCK skills asset is stale (lock=317/5aec4b643065 tree=317/3c0c2bdf5418; re-pin in the same commit, AGENTS.md 9) - caused by ANOTHER task's skills/** edits (git status: M skills/dsh-qa/SKILL.md, M skills/dsh-qa/scripts/team-watchdog-boot.mjs). t84 touched no skills/** and VENDOR_LOCK.json is out of its inScope; the single re-pin is the captain's item" }
+  },
+  "lanes": {
+    "team-watchdog-fault": { "exit": 0, "result": "PASS - 11 checks, 0 failed over all 18 fixture cases", "out": "raw/lane-fault.out", "evidence": "raw/lane-fault/result.json", "redirected": "--out into this evidence dir (skills/** untouched, no foreign evidence dir written)" },
+    "team-watchdog-config": { "exit": 0, "result": "PASS - 10 checks, 0 failed (AC-11's five declared knobs undisturbed by the sixth)", "out": "raw/lane-config.out", "evidence": "raw/lane-config/result.json" },
+    "team-watchdog-heartbeat": { "exit": 1, "result": "13 checks, 1 failed: H5 ONLY", "out": "raw/lane-heartbeat.out", "evidence": "raw/lane-heartbeat/result.json", "cause": "H5 asserts !dist.includes('tools/pre-execute') on the watchdog dist, which INLINES the adapter; r6 makes that byte present by design", "handover": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:124 (and the H5 detail at :57-58) must be restated: the check should assert the PRE hook EXISTS and is observe-only, not that it is absent" }
+  },
+  "handover_out_of_scope": [
+    {
+      "path": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs",
+      "line": 124,
+      "current": "postOnly: !dist.includes(\"tools/pre-execute\") && dist.includes(\"tools/post-execute\"),",
+      "proposed": "preAndPostHooksPresent: dist.includes(\"tools/pre-execute\") && dist.includes(\"tools/post-execute\"),",
+      "also": "the H5 detail text at :57-58 ('the built bytes expose NO pre-dispatch hook') must be replaced with the r6 semantics: the built bytes expose an OBSERVE-ONLY pre hook AND the POST hook; the observe-only property is proven by packages/mpd-dsh-adapter-plugin/test/adapter.test.ts and evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/observe-only-real-call.mjs (a check that cannot be made from a byte scan)",
+      "why": "skills/** is out of this task's inScope; the lane is another task's file"
+    },
+    {
+      "path": ".mpd/plans/team-watchdog-report.md",
+      "what": "the AC-2 row and the NOT-CLAIMED list still say the pre-dispatch stamp is explicitly NOT claimed",
+      "line_101_current": "- **No pre-dispatch tool stamp** - \"No pre-dispatch tool stamp exists or is claimed (W-9): the tool stamp is POST-completion only.\" (line 101, section 3.2)",
+      "proposed": "- **The pre-dispatch tool stamp EXISTS and is observe-only (r6)** - the adapter's `onPreToolExecute` wraps `tools/pre-execute`, owns `next()` and returns the gate decision verbatim, so it can neither alter nor veto a call (proof: `packages/mpd-dsh-adapter-plugin/test/adapter.test.ts` on the real cordis waterfall; `evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/observe-only-real-call.mjs` on a real command). The POST stamp keeps its W-9 completion-only semantics; the pair is matched by `callId` and an unmatched `tool-start` is the durable in-flight fact the silence rule reads.",
+      "note": "the AC-2 cell ALSO cites H5 as evidence (H5 = no tools/pre-execute in the built bytes), which is the same obsolete assertion as skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:124 - the lane check and the ledger citation must be restated together",
+      "line_61_current": "| **AC-2** heartbeat also advances on TOOL calls, members AND captain; POST-only semantics | `passed` | same artifact (`data-watchdog...` no - the lane's `H4` tool stamp with `tool`/`callId`/`ok:true`, `H8` captain stamp, `H5` = no `tools/pre-execute` in the built bytes) | t67, t54, t68 | The captain's tool-less turn is the \"no-tool\" witness (its `step` stamp exists without any `tool` stamp). The pre-dispatch stamp is explicitly NOT claimed (W-9). |",
+      "line_61_proposed": "the cell should read: \"The POST stamp is completion-only (W-9); the PRE stamp (`tool-start`) is landed by the observe-only `tools/pre-execute` hook in r6 and is proven observe-only on the real cordis waterfall and on a real tool call.\"",
+      "why": ".mpd/** is outside this task's inScope; the captain records ledger text"
+    },
+    {
+      "path": "AGENTS.md",
+      "what": "the troubleshooting table has no row for the r6 false positive",
+      "proposed_row": "| a healthy team is paused ~90 s after a member starts a long tool call (a build, a lane that boots `dsh`, a slow test) | r6: the heartbeat stamped on tool COMPLETION only, so a call longer than `warnSilenceMs` was indistinguishable from a wedge. The adapter's observe-only PRE hook (`onPreToolExecute` → `tools/pre-execute`) now stamps `tool-start` with the harness `callId`, the POST stamp closes it, and the silence predicate treats an OPEN call younger than `watchdog.toolInFlightMaxMs` (default 15 min, `0` disables) as explained activity. Past the bound the call is reported ONCE as a `tool-expired` incident (WARN-class: no scene, no hold, no escalate) - a member wedged INSIDE a tool is therefore reported, never paused |",
+      "why": "AGENTS.md is outside this task's inScope"
+    },
+    {
+      "path": "packages/mpd-config-plugin (SETTINGS_KNOBS + the Web card FIELDS)",
+      "what": "`watchdog.toolInFlightMaxMs` is readable through the `mpd` namespace and the row config (schemastery keeps unknown keys) but is NOT in the front-door declaration, so the two front doors do not render it",
+      "why": "another package's file, outside this task's inScope; same status the other five knobs had before that declaration landed"
+    }
+  ],
+  "not_claimed": [
+    "No live `dsh` host and no model turn were booted here: the real long command is a genuine child process dispatched through the real cordis waterfall and the real adapter, but the surrounding harness tool registry is modelled on the dispatch order measured in dsh-tools (gate -> body -> post-execute).",
+    "The THROW/CANCEL lifecycle claim rests on the installed harness source, not on a live host: `dsh-tools/lib/index.js:3203-3207` states tool and unknown-tool failures still receive post-execute (so a throwing tool clears its own entry) while pipeline failures are final (no POST -> the bound applies). The fixture proves the POST-clears-it half; the no-POST half is proven by the bound case.",
+    "The 15-minute default is a chosen bound, not a measured optimum; the knob is live-tunable and `0` disables the rule.",
+    "The 2 failures in the in-repo `bun test packages` run are NOT this task's: they are mpd-config tests asserting on this workspace's `.mpd/mpd.jsonc` (the captain's temporary file); the same 731 tests are green from a clean cwd, and the failing file alone is 21/2 in-repo vs 23/0 from a clean cwd.",
+    "W-3 stands: no genuine provider wedge is reproduced anywhere in this evidence."
+  ]
+}

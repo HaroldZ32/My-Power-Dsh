@@ -162,6 +162,7 @@ function createDshAdapter(ctx, config = {}) {
         toolsGuard: typeof tools?.guard === "function",
         toolsGet: typeof tools?.get === "function",
         toolsExecute: typeof tools?.execute === "function",
+        toolsPreExecute: typeof ctx?.on === "function",
         toolsPostExecute: typeof ctx?.on === "function",
         subagents: subagents !== undefined,
         subagentsSpawn: typeof subagents?.start === "function",
@@ -208,6 +209,17 @@ function createDshAdapter(ctx, config = {}) {
       if (typeof tools.guard !== "function")
         throw new Error("mpd-dsh-adapter: the harness tools service exposes no guard()");
       return tools.guard((exec) => guard(exec ?? {}));
+    },
+    onPreToolExecute(listener) {
+      if (typeof ctx?.on !== "function")
+        return noop;
+      return ctx.on("tools/pre-execute", async (exec, next) => {
+        const downstream = typeof next === "function" ? await next() : undefined;
+        try {
+          listener(Object.freeze({ ...exec ?? {} }), downstream);
+        } catch {}
+        return downstream;
+      });
     },
     onPostToolExecute(listener) {
       if (typeof ctx?.on !== "function")

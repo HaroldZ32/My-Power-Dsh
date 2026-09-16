@@ -1,0 +1,3 @@
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=60000 tickIntervalMs=5000 warnStreakToEscalate=2 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000
+[team-watchdog-heartbeat] mounted: applied=true disposers=6 events=agent/pre-step,agent/session-start,agent/turn-stopping,tools/post-execute,tools/pre-execute,settings/updated,settings/document-updated
+[team-watchdog-heartbeat] tools registered: session-watchdog-hold,session-watchdog-resume,session-watchdog-status

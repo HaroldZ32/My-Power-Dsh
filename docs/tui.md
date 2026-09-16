@@ -72,30 +72,36 @@ not claimed at all**; and **one (`tuiRenderers`) registers while the host projec
 row, so its transcript line is not claimed either** — the same explicit treatment as `tuiPrompt`,
 recorded as NOT-CLAIMED #10.
 
-### 3.1 The Web GUI settings card (Settings → Plugins)
+### 3.1 The Web GUI settings UI (Settings → MPD)
 
-The same six knobs are editable in the Web GUI: **Settings → Plugins → the `mpd` card**. The card is
-registered the way the host's own plugins register it (`ctx.slots.inject("settings.plugin.item", …)` →
-`ctx.slots.register({ name, key: "mpd", locale, inject }, Card)`, the shape measured from
-`dsh-client-ui-settings-plugins/lib/client.js`), so it appears in the Plugins tab keyed by the settings
-namespace; a served namespace with no card renders nothing — which is why the six knobs were invisible
-before. Writes use the public `ctx.settingsScope.bind({ namespace: 'mpd' }).mutate(ops, revision)` seam
-(nested paths; `unset` for reset), and a non-writable scope renders read-only with the reason and never
-attempts a write. The card's fields, labels and zh descriptions are asserted against the TUI section's
-descriptor by its own test, so the two front doors cannot drift.
+The same eleven knobs are editable in the Web GUI: **Settings → MPD**, its own top-level section of
+the settings dialog — it no longer lives inside the Plugins tab. The section registers the way the
+host's own sections do (`ctx.slots.inject("settings.section", …)` →
+`ctx.slots.register({ name: "settings.section", id: "mpd", order: 20, label: () => t("nav"), locale, inject }, Section)`,
+the shape measured from `dsh-client-ui-settings-models/lib/client.js:2936`): the settings shell
+collects that list slot, sorts it by `order` and renders the active one, so `order: 20` places MPD
+after `general` (0), `models` (10) and `plugins` (15) and moves no existing section. The section
+renders the card as-is, declares no nested `children`, and a namespace with no registration renders
+nothing — which is why the knobs were invisible before. Writes use the public
+`ctx.settingsScope.bind({ namespace: 'mpd' }).mutate(ops, revision)` seam (nested paths; `unset` for
+reset), and a non-writable scope renders read-only with the reason and never attempts a write. The
+card's fields, labels and zh descriptions are asserted against the TUI section's descriptor by its own
+test, so the two front doors cannot drift.
 
 **Evidence level — witnessed:** the registration contract in the **built and served** client bytes
-(`packages/mpd-bundle-plugin/client.js`, sha256 `dd9c88933a316277…`, 282453 bytes; the lane re-hashes
-the artifact it judged), the card's registration shape and field parity in its own test suite, the card
-module's behaviour — render, scope write with the right path/value/revision, refusal of an invalid
-draft, and read-only rendering with its reason — in the **offline hook harness**, and the **write path
-end to end** through the host's own authenticated settings API (`web-settings-bridge.mjs` W1–W13).
+(`packages/mpd-bundle-plugin/client.js`; the lane re-hashes the artifact it judged and the evidence
+records the size + sha256 before and after this move), the section's descriptor — id, order, label,
+locale, no `children` — recorded by the **offline hook harness** when the registration is CALLED, the
+card's field parity with the TUI descriptor in its own test suite, the module's behaviour — render,
+scope write with the right path/value/revision, refusal of an invalid draft, and read-only rendering
+with its reason — in the same harness, and the **write path end to end** through the host's own
+authenticated settings API (`web-settings-bridge.mjs` W1–W13).
 
 **Evidence level — NOT witnessed here:** a **real browser render** (the host dispatching this key in a
 live page) and a **click-driven save**. No browser binary exists in this environment; the lane records
 `cardClaim.W3.witnessed === false` with the reason, and this page repeats that instead of implying
-otherwise. To see it yourself: start `dsh web`, open the GUI, go to **Settings → Plugins → Plugin
-configuration**, expect the `mpd` card with the six fields, edit one and Save — with exactly one live
+otherwise. To see it yourself: start `dsh web`, open the GUI, go to **Settings → MPD**, expect the
+`mpd` section with the eleven knobs, edit one and Save — with exactly one live
 session the workspace's `<workspace>/.mpd/mpd.jsonc` changes with comments intact; otherwise the bridge
 refuses loudly (`no-live-session` / `ambiguous-multi-root`) and states that the value is not lost.
 

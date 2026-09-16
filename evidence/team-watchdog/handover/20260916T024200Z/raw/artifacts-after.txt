@@ -1,0 +1,4 @@
+AFTER 86135267b301e678e1ddfc59a2765e77156d7d104cc6206df5fbac19997b64d8 100885 packages/mpd-config-plugin/dist/index.js
+AFTER 99f743a9b05dbfce6efb162714ce90a6081742eaac84331054ce502b6a75214a 112338 packages/mpd-tui-plugin/dist/index.js
+AFTER 9d62b69c431df8b3b0643d73e764ea89d60f59e5aec198bf33e1ac305fa7a928 298914 packages/mpd-bundle-plugin/client.js
+clientIdempotent yes (build1=9d62b69c431df8b3 build2=9d62b69c431df8b3)

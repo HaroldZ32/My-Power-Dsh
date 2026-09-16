@@ -21,13 +21,26 @@ export interface HoldRecord {
   sceneAt: number
 }
 
-/** One incident record: a WARN or an ESCALATE, durably logged. */
+/** The durable incident vocabulary (ONE definition, shared with the scene's incident rows). */
+export type IncidentKind = "warn" | "escalate" | "never-started" | "tool-expired"
+
+/** Why an incident was recorded; `ms` is the silence window, the in-flight age or 0. */
+export type IncidentCause = { kind: "silence" | "never-started" | "tool-expired"; ms: number; tool?: string }
+
+/**
+ * One incident record: a WARN or an ESCALATE, durably logged.
+ *
+ * `never-started` (a claimed task whose owner never stamped) and `tool-expired` (r6: an
+ * open tool call past `toolInFlightMaxMs`) are recorded on this SAME durable surface and
+ * replayed by the same readers — they are WARN-class records by design, so every reader
+ * that shows an incident shows them, and neither can ever produce a hold.
+ */
 export interface IncidentRecord {
   id: string
   teamId: string
-  kind: "warn" | "escalate"
+  kind: IncidentKind
   at: number
-  cause: { kind: "silence"; ms: number }
+  cause: IncidentCause
   taskId: string | null
   attemptId: string | null
   /** The immutable scene file path, when it was written. */

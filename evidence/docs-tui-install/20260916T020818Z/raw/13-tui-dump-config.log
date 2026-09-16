@@ -1,0 +1,14 @@
+$ DSH_HOME=<sandbox>/home HOME=<sandbox>/userhome dsh --profile dsh-tui --dump-config | grep -E 'mpd-|dsh-tui|layers|bundles' | head -12
+43:# == @deepseek-ai/dsh-base, patched by @deepseek-harness-tui/dsh-tui
+64:# == @deepseek-ai/dsh-base, patched by @deepseek-harness-tui/dsh-tui
+94:# == @deepseek-ai/dsh-base, patched by @deepseek-harness-tui/dsh-tui
+116:# == @deepseek-ai/dsh-base, patched by @deepseek-harness-tui/dsh-tui
+133:# == @deepseek-ai/dsh-base, patched by @deepseek-harness-tui/dsh-tui
+156:# == @deepseek-ai/dsh-base, patched by @deepseek-harness-tui/dsh-tui
+169:# == @deepseek-ai/dsh-base, patched by @deepseek-harness-tui/dsh-tui
+186:# == @deepseek-ai/dsh-base, patched by @deepseek-harness-tui/dsh-tui
+194:# == @deepseek-ai/dsh-base, patched by @deepseek-harness-tui/dsh-tui
+207:# == @deepseek-ai/dsh-base, patched by @deepseek-harness-tui/dsh-tui
+279:# == @deepseek-ai/dsh-base, patched by @deepseek-harness-tui/dsh-tui
+297:# == @deepseek-ai/dsh-base, patched by @deepseek-harness-tui/dsh-tui
+exit=0

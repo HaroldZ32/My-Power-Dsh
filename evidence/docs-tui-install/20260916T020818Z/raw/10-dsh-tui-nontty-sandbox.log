@@ -1,0 +1,12 @@
+$ DSH_HOME=<sandbox>/home HOME=<sandbox>/userhome dsh-tui   # stdout piped: NOT a TTY
+[dsh-tui] 首次运行，正在初始化 dsh-tui profile（@deepseek-harness-tui/dsh-tui@0.10.1）…
+[ERR_SQLITE_ERROR] unable to open database file
+
+pnpm: unable to open database file
+    at file:///root/.local/share/pnpm/store/v11/links/@pnpm/exe/directory/20b9161868dfcb34012541056dc285b85dc8643375010c6ae414d8552fbfaaaa/node_modules/@pnpm/exe/dist/pnpm.mjs:102565:19
+    at sqliteRetry (file:///root/.local/share/pnpm/store/v11/links/@pnpm/exe/directory/20b9161868dfcb34012541056dc285b85dc8643375010c6ae414d8552fbfaaaa/node_modules/@pnpm/exe/dist/pnpm.mjs:102475:14)
+    at StoreIndex.openDatabase (file:///root/.local/share/pnpm/store/v11/links/@pnpm/exe/directory/20b9161868dfcb34012541056dc285b85dc8643375010c6ae414d8552fbfaaaa/node_modules/@pnpm/exe/dist/pnpm.mjs:102564:9)
+    at new StoreIndex (file:///root/.local/share/pnpm/store/v11/links/@pnpm/exe/directory/20b9161868dfcb34012541056dc285b85dc8643375010c6ae414d8552fbfaaaa/node_modules/@pnpm/exe/dist/pnpm.mjs:102549:14)
+    at createNewStoreController (file:///root/.local/share/pnpm/store/v11/links/@pnpm/exe/directory/20b9161868dfcb34012541056dc285b85dc8643375010c6ae414d8552fbfaaaa/node_modules/@pnpm/exe/dist/pnpm.mjs:184222:83)
+    at async installDeps (file:///root/.local/share/pnpm/store/v11/links/@pnpm/exe/directory/20b9161868dfcb34012541056dc285b85dc8643375010c6ae414d8552fbfaaaa/node_modules/@pnpm/exe/dist/pnpm.mjs:221462:17)
+exit=1

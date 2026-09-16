@@ -1,0 +1,9 @@
+$ dsh --profile dsh-tui --dump-config | grep -nE 'patched by|id: mpd-web-compat|mpd-team-watchdog'
+# == @deepseek-ai/dsh-base
+# == @deepseek-ai/dsh-base, patched by @deepseek-harness-tui/dsh-tui
+# == @deepseek-ai/dsh-base
+# == @deepseek-ai/dsh-base, patched by @deepseek-harness-tui/dsh-tui
+# == @deepseek-ai/dsh-base
+# == @deepseek-ai/dsh-base, patched by @deepseek-harness-tui/dsh-tui
+# == @deepseek-ai/dsh-base
+# == @deepseek-ai/dsh-base, patched by @deepseek-harness-tui/dsh-tui

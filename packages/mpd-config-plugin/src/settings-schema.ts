@@ -4,7 +4,7 @@
 // §10.1 places the REGISTRATION in this package (it is the only module that can supply the
 // file-derived `base`); the TUI package keeps a guarded fallback for compositions without this
 // plugin. Both therefore read the schema and the field list from HERE, so the two front doors
-// cannot drift and the eleven knobs stay one declaration.
+// cannot drift and the twelve knobs stay one declaration.
 import z from "../../mpd-agent-teams-plugin/_deps/schemastery"
 
 /** The settings namespace the section and the Web card both edit. */
@@ -27,6 +27,7 @@ export const SettingsSchema = z.object({
     tickIntervalMs: z.number().default(15000),
     warnStreakToEscalate: z.number().default(3),
     actionOnEscalate: z.union([z.const("pause"), z.const("warn-only")]).default("pause"),
+    toolInFlightMaxMs: z.number().default(900000),
   }),
 })
 
@@ -54,9 +55,15 @@ export interface SettingsKnob {
   readonly zh: string
   readonly kind: "number" | "boolean" | "select" | "text"
   readonly options?: readonly string[]
+  /**
+   * One sentence of SEMANTICS for a knob whose effect is not self-evident from its label
+   * (w16). A front door renders it next to the row when it has room for a second line; the
+   * label/zh above stay short because they are the row's title.
+   */
+  readonly hint?: string
 }
 
-/** The eleven knobs, in display order. */
+/** The twelve knobs, in display order. */
 export const SETTINGS_KNOBS: readonly SettingsKnob[] = [
   { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
   { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
@@ -69,4 +76,5 @@ export const SETTINGS_KNOBS: readonly SettingsKnob[] = [
   { path: ["watchdog", "tickIntervalMs"], label: "Watchdog tick interval (ms)", zh: "看门狗轮询间隔（毫秒）", kind: "number" },
   { path: ["watchdog", "warnStreakToEscalate"], label: "Warn streak before escalation", zh: "升级前连续告警次数", kind: "number" },
   { path: ["watchdog", "actionOnEscalate"], label: "Action on escalation", zh: "升级时的动作", kind: "select", options: ["pause", "warn-only"] },
+  { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", hint: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
 ]

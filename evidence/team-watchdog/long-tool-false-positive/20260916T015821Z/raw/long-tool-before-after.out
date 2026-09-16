@@ -1,0 +1,11 @@
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=300 tickIntervalMs=100 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000
+[r6-probe] WARN r6-probe task=t1 member=Architect silence=1026ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/ws-BEFORE/.mpd/team/watchdog/scene/r6-probe/20260916T023141Z-warn.json
+[r6-probe] WARN r6-probe task=t1 member=Architect silence=1433ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/ws-BEFORE/.mpd/team/watchdog/scene/r6-probe/20260916T023142Z-warn.json
+[r6-probe] ESCALATE r6-probe task=t1 member=Architect silence=1835ms streak=3 hold=applied scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/ws-BEFORE/.mpd/team/watchdog/scene/r6-probe/20260916T023142Z-escalate.json
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=300 tickIntervalMs=100 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=5000
+BEFORE dist 119753 B 54f1f41ce606 pre-hook subscribed: false
+BEFORE stamp stream: ["step"] decisions: ["warn","warn","escalate"] hold: "silence"
+AFTER  dist 125754 B 810e0fb315e9 pre-hook subscribed: true
+AFTER  stamp stream: ["step","tool-start"] decisions: ["","",""] hold: null
+real command (before/after): 1622 / 1620 ms; beyond 3 windows at the last tick: true / true
+verdict: {"beforeHeldTheTeam":true,"afterHeldNothing":true,"beforeHadNoPreHook":true,"afterHasThePreHook":true,"sameRealCommandDuration":true} ok=true

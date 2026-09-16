@@ -70,6 +70,11 @@ describe("the machine", () => {
     // finished its turn and is between turns, so it is never a silence candidate.
     lastKind: "step",
     everStampedForTask: true,
+    // r6: NO tool call is in flight in these silence cases. The in-flight rule only engages
+    // on a `number` start time, so `null` here means "the member is not inside a tool call"
+    // and every case below exercises the pre-r6 silence path unchanged.
+    inFlightSince: null,
+    inFlightTool: null,
     ...overrides,
   })
 

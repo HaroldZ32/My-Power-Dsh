@@ -67,27 +67,29 @@ profile 组合）；**1 个（`tuiPrompt`）宿主不提供，完全不声明**�
 但宿主不投影任何转写行，因此其转写行同样不声明**——与 `tuiPrompt` 采用同一种明确处理，记为明确不
 声明第 10 条。
 
-### 3.1 Web 界面的设置卡片（设置 → 插件）
+### 3.1 Web 界面的设置界面（设置 → MPD）
 
-同样的六个可调项也能在 Web 界面里编辑：**设置 → 插件 → `mpd` 卡片**。该卡片按宿主自有插件的注册方式
-注册（`ctx.slots.inject("settings.plugin.item", …)` → `ctx.slots.register({ name, key: "mpd", locale, inject }, Card)`，
-形状取自 `dsh-client-ui-settings-plugins/lib/client.js` 的实测），因此它以 settings 命名空间为键出现在
-"插件"标签页中；一个被服务、但没有卡片的命名空间什么也不渲染——这正是此前六个可调项不可见的原因。写入走
-公开的 `ctx.settingsScope.bind({ namespace: 'mpd' }).mutate(ops, revision)` 接缝（支持嵌套路径；复位用
-`unset`），不可写的 scope 会带原因渲染为只读，并且绝不尝试写入。卡片的字段、标签与中文描述由它自己的测试
-与 TUI 区块的描述符逐一比对，因此两扇门不会各自漂移。
+同样的十一个可调项也能在 Web 界面里编辑：**设置 → MPD**，即设置对话框中独立的一栏——它不再位于"插件"
+标签页内。该栏按宿主自有栏目（section）的注册方式注册（`ctx.slots.inject("settings.section", …)` →
+`ctx.slots.register({ name: "settings.section", id: "mpd", order: 20, label: () => t("nav"), locale, inject }, Section)`，
+形状取自 `dsh-client-ui-settings-models/lib/client.js:2936` 的实测）：设置外壳收集该列表槽位、按 `order`
+排序并渲染当前激活项，因此 `order: 20` 让 MPD 排在 `general`（0）、`models`（10）、`plugins`（15）之后，
+且不移动任何既有栏目。该栏原样渲染卡片，不声明任何嵌套 `children`；没有被注册的命名空间什么也不渲染——这
+正是此前可调项不可见的原因。写入走公开的 `ctx.settingsScope.bind({ namespace: 'mpd' }).mutate(ops, revision)`
+接缝（支持嵌套路径；复位用 `unset`），不可写的 scope 会带原因渲染为只读，并且绝不尝试写入。卡片的字段、
+标签与中文描述由它自己的测试与 TUI 区块的描述符逐一比对，因此两扇门不会各自漂移。
 
 **证据级别——已见证：** **已构建且已服务**的客户端字节中的注册契约
-（`packages/mpd-bundle-plugin/client.js`，sha256 `dd9c88933a316277…`，282453 字节；通道会重新哈希它所
-判定的那份产物）、该卡片自身测试套件中的注册形状与字段一致性、卡片模块在**离线钩子测试台（offline hook
-harness）**中的行为——渲染六个字段、以正确的路径/值/revision 驱动 scope 写入、拒绝非法草稿、以及带原因
-渲染为只读——以及经由宿主自身带认证的 settings API 完成的**端到端写入路径**
-（`web-settings-bridge.mjs` W1–W13）。
+（`packages/mpd-bundle-plugin/client.js`；通道会重新哈希它所判定的那份产物，本次移动前后的大小与 sha256
+都记录在证据中）、**离线钩子测试台（offline hook harness）**在注册被**调用**时记录下的该栏描述符——id、
+order、label、locale、无 `children`、其字段与 TUI 描述符的一致性、以及模块行为——渲染、以正确的路径/值/
+revision 驱动 scope 写入、拒绝非法草稿、带原因渲染为只读——以及经由宿主自身带认证的 settings API 完成的
+**端到端写入路径**（`web-settings-bridge.mjs` W1–W13）。
 
 **证据级别——本环境未见证：** **真实浏览器渲染**（宿主在真实页面中分发该 key）与**点击驱动的保存**。
 本环境没有浏览器可执行文件；通道以 `cardClaim.W3.witnessed === false` 记录这一点及原因，本页重复该结论，
-绝不暗示相反。要自己看到它：启动 `dsh web`，打开界面，进入 **设置 → 插件 → 插件配置**，应看到带六个字段的
-`mpd` 卡片，编辑一项并保存——恰好一个活动会话时，工作区的 `<workspace>/.mpd/mpd.jsonc` 会在保留注释的
+绝不暗示相反。要自己看到它：启动 `dsh web`，打开界面，进入 **设置 → MPD**，应看到带十一个可调项的
+`mpd` 栏，编辑一项并保存——恰好一个活动会话时，工作区的 `<workspace>/.mpd/mpd.jsonc` 会在保留注释的
 前提下改变；否则打通功能会大声拒绝（`no-live-session` / `ambiguous-multi-root`）并说明取值并未丢失。
 
 ## 4. 准入与分发产物

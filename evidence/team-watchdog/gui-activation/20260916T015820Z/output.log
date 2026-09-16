@@ -1,0 +1,2 @@
+[team-watchdog-boot] boot=dsh web: http://127.0.0.1:38115/?token=<redacted> session=session-90f6dba9-abcb-495b-b530-bf2a95cf0a89 preset=mpd
+[team-watchdog-boot] gui: the served client could not be fetched: Unable to connect. Is the computer able to access the url?

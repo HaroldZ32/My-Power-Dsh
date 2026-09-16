@@ -1,0 +1,6 @@
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=60000 tickIntervalMs=5000 warnStreakToEscalate=2 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000
+[team-watchdog-heartbeat] mounted: applied=true disposers=6 events=agent/pre-step,agent/session-start,agent/turn-stopping,tools/post-execute,tools/pre-execute,settings/updated,settings/document-updated
+[team-watchdog-heartbeat] tools registered: session-watchdog-hold,session-watchdog-resume,session-watchdog-status
+[team-watchdog-heartbeat] FAIL — 13 checks, 1 failed (evidence: /root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/lane-heartbeat/result.json)
+[team-watchdog-heartbeat] NOT CLAIMED: No LIVE member turn was driven: this sandbox has no dsh host, no model credential and no network (the fixture's own NOT_CLAIMED #3). The witness is the mounted boot plus the events the host would fire, read back by a fresh process.
+[team-watchdog-heartbeat] NOT CLAIMED: No pre-dispatch tool stamp exists or is claimed (W-9): the tool stamp is POST-completion only.

@@ -11,7 +11,8 @@ For the short version, see the [README](../README.md); for how it works inside, 
 ### One command, from the checkout
 
 ```bash
-cd <repo> && dsh plugin --profile <mpd|web> add .
+cd <repo> && dsh plugin --profile web add .        # Web GUI
+cd <repo> && dsh plugin --profile dsh-tui add .    # terminal UI (DSH-TUI)
 ```
 
 The repository root **is** the bundle package (`@mpd-dsh/mpd`): `dsh.bundle.patch`, `dsh.client`
@@ -19,11 +20,41 @@ and the `exports` map live in its manifest, so this one command installs every p
 `mpd` preset, the whole skill corpus and the extension root. Nothing else to run — no pack step,
 no copy step. Restart `dsh`, then start a session on the **MPD (Main Working Agent)** preset.
 
+`--profile` is **required on every `dsh plugin` command**, including `--help` and `remove`:
+without it the CLI stops with `error: required option '--profile <name>' not specified`. The
+profile names are the ones you actually run — `web` for the Web GUI and `dsh-tui` for the
+terminal UI (`headless` for a scripted run).
+
+### DSH-TUI profile (`dsh-tui`)
+
+```bash
+cd <repo> && dsh plugin --profile dsh-tui add .
+```
+
+The same bundle installs into the terminal UI as the **THIRD patch layer**, on top of the TUI
+package: after the install `dsh.profile.bundles` is
+`["@deepseek-ai/dsh-base", "@deepseek-harness-tui/dsh-tui", "@mpd-dsh/mpd"]`, and
+`dsh --profile dsh-tui --dump-config` shows our rows in a layer of their own
+(`# == @deepseek-harness-tui/dsh-tui, patched by @mpd-dsh/mpd`) with the `mpd` preset as the
+session default. Start the TUI with the `dsh-tui` launcher (alias `dst`):
+
+```bash
+dsh-tui            # boot in the current directory
+dsh-tui --resume   # continue the previous session (-c is the shorthand)
+dsh-tui --help     # update | doctor | version | help; other arguments pass through to `dsh --profile dsh-tui`
+```
+
+`dsh-tui` requires a real terminal: with piped output it refuses to boot with
+`Error: dsh-tui requires an interactive terminal (stdout must be a TTY).` The edition's surfaces,
+its NOT-CLAIMED list and its verification record are in
+[tui.md](./tui.md) (see §2 for the layer stack) and §7 below.
+
 ### Packed package (release / publishing)
 
 ```bash
 node scripts/pack-mpd.mjs                          # -> dist/mpd-package/ (relocatable)
-dsh plugin --profile <mpd|web> add dist/mpd-package
+dsh plugin --profile web add dist/mpd-package
+dsh plugin --profile dsh-tui add dist/mpd-package
 # or from any published location
 dsh plugin --profile web add <path-or-name-of-@mpd-dsh/mpd>
 ```
@@ -36,7 +67,8 @@ shipping a tarball, or testing relocation; a local install never needs it.
 ### Uninstall (one command, no residue)
 
 ```bash
-dsh plugin --profile <mpd|web> remove @mpd-dsh/mpd
+dsh plugin --profile web remove @mpd-dsh/mpd
+dsh plugin --profile dsh-tui remove @mpd-dsh/mpd
 ```
 
 The bundle installs as ONE unit and uninstalls as ONE unit, skills included: the plugin rows come
@@ -227,7 +259,7 @@ pipe.
 | AgentTeams sidebar tab | the `tuiScenes` full-screen board plus the keyed `tuiStatus` line |
 | Workmates sidebar tab | the `/mpd` command tree (`tuiCommandTrees`) plus `tuiDialogs` |
 | Bundle floater | the `tuiStatus` line |
-| Settings → Plugins card | the `/settings` section (`tuiSettingsSections`) |
+| Settings → MPD section | the `/settings` section (`tuiSettingsSections`) |
 | — | `tuiShortcuts` keyboard shortcuts |
 
 These are **equivalents, not parity**: each surface is rebuilt on the host's own TUI seams, and two

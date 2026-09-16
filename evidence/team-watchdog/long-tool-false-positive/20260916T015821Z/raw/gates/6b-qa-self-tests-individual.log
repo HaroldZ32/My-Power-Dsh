@@ -1,0 +1,77 @@
+### the shipped gate, verbatim (stops at the first failure) ###
+$ for f in skills/dsh-qa/scripts/*.mjs; do echo "[test:qa] $f"; bun "$f" --self-test || { echo "[test:qa] FAILED: $f"; exit 1; }; done; bun scripts/mpd-ext.mjs --self-test || { echo "[test:qa] FAILED: scripts/mpd-ext.mjs --self-test"; exit 1; }; bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example || { echo "[test:qa] FAILED: scripts/mpd-ext.mjs validate extensions/mpd-ext-example"; exit 1; }; echo "[test:qa] all self-tests passed"
+[test:qa] skills/dsh-qa/scripts/agent-teams-adopt.mjs
+[agent-teams-adopt self-test] ok: notice + adopted LICENSE + 0.1.16-rc.3-mpd + _deps + AGENTS.md + installer self-test verified
+[test:qa] skills/dsh-qa/scripts/agent-teams-dispatch.mjs
+  ok   installed host exposes no subagent followup member
+  ok   installed host owns the public subagent prompt seam
+  ok   installed host face declares the prompt request/receipt contract
+  ok   member delivery uses the audited boundary
+  ok   no call site uses ctx.subagents.followup
+  ok   modern delivery prefers the public prompt seam
+  ok   modern member setup receives the live Agent instead of reading childCtx.agent
+  ok   legacy followup/queue remain only as older-generation fallbacks
+  ok   task mutations kick the whole team
+  ok   member idle edges kick that member
+  ok   delivery failure rolls the claim back instead of stranding it
+  ok   capabilities deny all captain-only tools for members
+  ok   members receive member instructions, not the captain protocol
+  ok   real run asserts the wake on the dependent task's assignee only
+[agent-teams-dispatch self-test] ok: 14 checks
+[test:qa] skills/dsh-qa/scripts/agent-teams-messaging.mjs
+[agent-teams-messaging] FAIL: VENDOR_LOCK skills asset is stale: lock=317/5aec4b643065 tree=317/3c0c2bdf5418 (re-pin in the same commit, AGENTS.md §9)
+[test:qa] FAILED: skills/dsh-qa/scripts/agent-teams-messaging.mjs
+error: script "test:qa" exited with code 1
+exit=1
+
+### every self-test run individually ###
+ok   skills/dsh-qa/scripts/agent-teams-adopt.mjs
+ok   skills/dsh-qa/scripts/agent-teams-dispatch.mjs
+FAIL skills/dsh-qa/scripts/agent-teams-messaging.mjs (exit 1) :: [agent-teams-messaging] FAIL: VENDOR_LOCK skills asset is stale: lock=317/5aec4b643065 tree=317/3c0c2bdf5418 (re-pin in the same commit, AGENTS.md §9)
+ok   skills/dsh-qa/scripts/agent-teams-sidebar.mjs
+ok   skills/dsh-qa/scripts/bundle-lifecycle.mjs
+ok   skills/dsh-qa/scripts/codegraph-smoke.mjs
+ok   skills/dsh-qa/scripts/dual-track-smoke.mjs
+ok   skills/dsh-qa/scripts/explicit-team-trigger.mjs
+ok   skills/dsh-qa/scripts/extension-isolation.mjs
+ok   skills/dsh-qa/scripts/extension-lifecycle.mjs
+ok   skills/dsh-qa/scripts/extension-mcp-bridge.mjs
+ok   skills/dsh-qa/scripts/mcp-call.mjs
+ok   skills/dsh-qa/scripts/memory-smoke.mjs
+ok   skills/dsh-qa/scripts/mount-assert.mjs
+ok   skills/dsh-qa/scripts/plan-c-smoke.mjs
+ok   skills/dsh-qa/scripts/preset-conformance.mjs
+ok   skills/dsh-qa/scripts/preset-register.mjs
+ok   skills/dsh-qa/scripts/readonly-deny.mjs
+ok   skills/dsh-qa/scripts/relocate-smoke.mjs
+ok   skills/dsh-qa/scripts/session-start-team.mjs
+ok   skills/dsh-qa/scripts/skill-catalog-probe.mjs
+ok   skills/dsh-qa/scripts/software-smoke.mjs
+ok   skills/dsh-qa/scripts/team-route-rewire.mjs
+ok   skills/dsh-qa/scripts/team-watchdog-boot.mjs
+ok   skills/dsh-qa/scripts/team-watchdog-config.mjs
+ok   skills/dsh-qa/scripts/team-watchdog-fault.mjs
+ok   skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs
+ok   skills/dsh-qa/scripts/team-watchdog-notify.mjs
+ok   skills/dsh-qa/scripts/team-watchdog-scene.mjs
+ok   skills/dsh-qa/scripts/tool-output-validation.mjs
+ok   skills/dsh-qa/scripts/tui-admission.mjs
+ok   skills/dsh-qa/scripts/tui-distribution.mjs
+ok   skills/dsh-qa/scripts/tui-mount.mjs
+ok   skills/dsh-qa/scripts/tui-panels.mjs
+ok   skills/dsh-qa/scripts/tui-settings-bridge.mjs
+ok   skills/dsh-qa/scripts/tui-spec-conformance.mjs
+ok   skills/dsh-qa/scripts/ultrawork-smoke.mjs
+ok   skills/dsh-qa/scripts/vision-smoke.mjs
+ok   skills/dsh-qa/scripts/web-client-adapt.mjs
+ok   skills/dsh-qa/scripts/web-settings-bridge.mjs
+ok   skills/dsh-qa/scripts/workmate-library.mjs
+ok   skills/dsh-qa/scripts/workmate-team-member.mjs
+
+### scripts/mpd-ext.mjs --self-test ###
+  ok no command prints usage or fails
+[mpd-ext] --self-test passed (19 checks)
+
+### attribution: who changed skills/** (read-only git status) ###
+ M skills/dsh-qa/SKILL.md
+ M skills/dsh-qa/scripts/team-watchdog-boot.mjs

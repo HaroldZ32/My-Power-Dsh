@@ -1,0 +1,13 @@
+== FRESH sandbox profile (hardlinked from the real dsh-tui profile) + FRESH PNPM_HOME
+$ dsh plugin --profile dsh-tui add /root/dshProj/my-power-dsh
+dsh: initialized profile dsh-tui at /root/dshProj/my-power-dsh/evidence/docs-tui-install/20260916T020818Z/sandbox2/home/profiles/dsh-tui
+Done in 261ms using pnpm v11.23.0
+add-exit=0
+bundles AFTER add: ['@deepseek-ai/dsh-base', '@mpd-dsh/mpd']
+deps AFTER add: {'@mpd-dsh/mpd': 'link:/root/dshProj/my-power-dsh'}
+
+$ dsh plugin --profile dsh-tui remove @mpd-dsh/mpd
+Done in 166ms using pnpm v11.23.0
+remove-exit=0
+bundles AFTER remove: ['@deepseek-ai/dsh-base']
+deps AFTER remove: None
