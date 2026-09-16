@@ -11,7 +11,9 @@
 //   validate <dir|mpd-ext.json>   exit 0 when the extension loads, exit 1 with one
 //                                 line per item otherwise (CI-safe)
 //   scaffold <name> [--dir <path>] [--with-mcp]
-//                                 write a minimal, loadable extension
+//                                 COPY templates/mpd-extension and rewrite its
+//                                 placeholder names; --with-mcp keeps the stdio MCP
+//                                 server (without it the copy drops that kind)
 //   list                          what this host would discover, plane by plane
 //   --self-test                   the CLI's own checks (temp dirs only)
 //
@@ -21,9 +23,9 @@
 //
 // Lives under scripts/ rather than skills/** on purpose: skills/** is
 // VENDOR_LOCK-fingerprinted, and touching it would force a treeSha re-pin.
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { dirname, join, resolve } from "node:path"
+import { dirname, extname, join, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { spawnSync } from "node:child_process"
 
@@ -33,6 +35,11 @@ const repoRoot = dirname(dirname(scriptPath))
 const registry = await import(new URL("../packages/mpd-ext-plugin/src/registry.ts", import.meta.url).href)
 const sdk = await import(new URL("../packages/mpd-ext-plugin/src/sdk.ts", import.meta.url).href)
 const manifest = await import(new URL("../packages/mpd-ext-plugin/src/manifest.ts", import.meta.url).href)
+// The base-roster name table the runtime screens extension roles against: `registry.ts`
+// builds its private BASE_ROLE_NAME_KEYS from this same module, so the CLI screens with
+// the same table and the same `roleNameKey`, not with a re-implementation of either.
+const rosterData = await import(new URL("../packages/mpd-roles-plugin/src/roles.data.ts", import.meta.url).href)
+const BASE_ROLE_NAME_KEYS = new Set(rosterData.ROLES.map((role) => registry.roleNameKey(role.name)))
 
 const MANIFEST_FILE = sdk.MPD_EXT_CONTRACT.manifestFile
 const PLANES = ["project", "user", "bundle"]
@@ -44,6 +51,11 @@ function line(text) {
 function fail(text) {
   process.stderr.write(text + "\n")
   process.exitCode = 1
+}
+
+/** A non-fatal problem: reported on stderr, and it never changes the exit code. */
+function warn(text) {
+  process.stderr.write(text + "\n")
 }
 
 /** Resolve `<dir>` (an extension directory) or a direct manifest path to {root, manifestPath}. */
@@ -156,48 +168,183 @@ function runList() {
   }
 }
 
-const SCAFFOLD_SERVER = `#!/usr/bin/env node
-// Minimal dependency-free stdio MCP server (newline-delimited JSON-RPC 2.0).
-import { stdin, stdout, stderr } from "node:process"
-
-const TOOLS = [{ name: "hello", description: "Say hello.", inputSchema: { type: "object", properties: { name: { type: "string" } }, additionalProperties: false } }]
-const send = (message) => stdout.write(JSON.stringify(message) + "\\n")
-
-function handle(message) {
-  const method = message.method
-  if (method === "initialize") {
-    send({ jsonrpc: "2.0", id: message.id, result: { protocolVersion: typeof message.params?.protocolVersion === "string" ? message.params.protocolVersion : "2024-11-05", capabilities: { tools: { listChanged: false } }, serverInfo: { name: "scaffold", version: "0.1.0" } } })
-    return
-  }
-  if (method === "notifications/initialized") return
-  if (method === "tools/list") { send({ jsonrpc: "2.0", id: message.id, result: { tools: TOOLS } }); return }
-  if (method === "tools/call") {
-    const name = message.params?.name
-    const text = name === "hello" ? \`hello \${String(message.params?.arguments?.name ?? "world")}\` : \`unknown tool "\${String(name)}"\`
-    send({ jsonrpc: "2.0", id: message.id, result: { content: [{ type: "text", text }] } })
-    return
-  }
-  if (message.id !== undefined) send({ jsonrpc: "2.0", id: message.id, error: { code: -32601, message: \`Method not found: \${String(method)}\` } })
-}
-
-let buffer = ""
-stdin.setEncoding("utf8")
-stdin.on("data", (chunk) => {
-  buffer += chunk
-  let index
-  while ((index = buffer.indexOf("\\n")) !== -1) {
-    const text = buffer.slice(0, index).replace(/\\r$/, "")
-    buffer = buffer.slice(index + 1)
-    if (text.trim() === "") continue
-    try { handle(JSON.parse(text)) } catch (error) { stderr.write(String(error) + "\\n") }
-  }
-})
-process.on("SIGTERM", () => process.exit(0))
-`
+/**
+ * The generic template — the ONLY source of truth for what `scaffold` emits.
+ *
+ * The placeholder to rewrite is the template manifest's OWN `id`, so this CLI
+ * knows no derived-name pattern at all: it renames paths and rewrites text.
+ */
+const TEMPLATE_DIR = join(repoRoot, "templates", "mpd-extension")
+const TEXT_EXTENSIONS = [".json", ".md", ".mjs"]
 
 /**
- * `scaffold <name> --dir <path>` — write a minimal extension that the SAME
- * validator then accepts (asserted here, not merely claimed).
+ * The contract's own `serverName` bound, parsed OUT of the contract pattern — never the
+ * literal 32 — so widening the contract widens this CLI with it.
+ */
+function serverNameMaxLength() {
+  const match = /\{1,(\d+)\}/.exec(sdk.MPD_EXT_CONTRACT.serverNamePattern)
+  if (match === null) {
+    fail(`mpd-ext: cannot read a maximum length out of the contract's serverName pattern ${sdk.MPD_EXT_CONTRACT.serverNamePattern}`)
+    return undefined
+  }
+  return Number(match[1])
+}
+
+/** The derived `serverName`: the extension name, capped by the contract's own bound. */
+function serverNameFor(name) {
+  return name.slice(0, serverNameMaxLength() ?? name.length)
+}
+
+/** The placeholder token, read FROM the template (never hard-coded here). */
+function templateToken() {
+  return JSON.parse(readFileSync(join(TEMPLATE_DIR, MANIFEST_FILE), "utf8")).id
+}
+
+/** The derived names the copy will carry, read from the template's OWN paths and manifest. */
+function templateDerivedNames(token, name) {
+  const rename = (value) => value.split(token).join(name)
+  const skillsRoot = join(TEMPLATE_DIR, "skills")
+  const flowsRoot = join(TEMPLATE_DIR, "flows")
+  const skillDirs = existsSync(skillsRoot)
+    ? readdirSync(skillsRoot, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => rename(entry.name))
+    : []
+  const flowIds = existsSync(flowsRoot)
+    ? readdirSync(flowsRoot)
+        .filter((entry) => entry.endsWith(".json"))
+        .map((entry) => rename(entry.slice(0, -".json".length)))
+    : []
+  const templateManifest = JSON.parse(readFileSync(join(TEMPLATE_DIR, MANIFEST_FILE), "utf8"))
+  const roleNames = (templateManifest.contributes?.roles ?? []).map((item) => rename(String(item.name)))
+  return { skillDirs, flowIds, roleNames }
+}
+
+/**
+ * The base roster screens an extension role by its collapsed name key and always wins
+ * (`packages/mpd-ext-plugin/src/registry.ts:746-748`). Screen it HERE, before a single
+ * byte is written, and report it with the roster's own sentence
+ * (`roleNameCollisionReason`, `registry.ts:236-238`) instead of as a CLI defect.
+ */
+function baseRosterRoleConflicts(name, roleNames) {
+  const conflicts = []
+  roleNames.forEach((roleName, index) => {
+    if (BASE_ROLE_NAME_KEYS.has(registry.roleNameKey(roleName))) {
+      conflicts.push(registry.roleNameCollisionReason(name, roleName, `contributes.roles[${index}]`, "the base roster"))
+    }
+  })
+  return conflicts
+}
+
+/** Copy the template tree, renaming every path segment and rewriting every text body. */
+function copyTemplateTree(sourceRoot, targetRoot, token, name) {
+  const copied = []
+  const walk = (relative) => {
+    const sourceDir = relative === "" ? sourceRoot : join(sourceRoot, relative)
+    for (const entry of readdirSync(sourceDir, { withFileTypes: true })) {
+      const child = relative === "" ? entry.name : join(relative, entry.name)
+      const renamed = child
+        .split(sep)
+        .map((segment) => segment.split(token).join(name))
+        .join(sep)
+      const destination = join(targetRoot, renamed)
+      if (entry.isDirectory()) {
+        mkdirSync(destination, { recursive: true })
+        walk(child)
+        continue
+      }
+      const body = readFileSync(join(sourceRoot, child), "utf8")
+      writeFileSync(destination, TEXT_EXTENSIONS.includes(extname(entry.name)) ? body.split(token).join(name) : body)
+      copied.push(renamed)
+    }
+  }
+  walk("")
+  return copied
+}
+
+/**
+ * The two documented manifest edits on top of the copy: the contract caps
+ * `serverName` at 32 characters, and WITHOUT `--with-mcp` the `mcp` contribution
+ * (and its server file) is dropped, so the default copy contributes three kinds.
+ */
+function finishManifest(target, name, withMcp) {
+  const manifestPath = join(target, MANIFEST_FILE)
+  const parsed = JSON.parse(readFileSync(manifestPath, "utf8"))
+  const contributes = parsed.contributes ?? {}
+  if (!withMcp) delete contributes.mcp
+  if (Array.isArray(contributes.mcp)) {
+    contributes.mcp = contributes.mcp.map((item) => ({ ...item, serverName: serverNameFor(name) }))
+  }
+  parsed.contributes = contributes
+  writeFileSync(manifestPath, JSON.stringify(parsed, null, 2) + "\n")
+  if (!withMcp) rmSync(join(target, "server.mjs"), { force: true })
+}
+
+/**
+ * The per-file comparison A3 requires: a copy is the template modulo the token
+ * rewrite and the documented `--with-mcp` drop — proven file by file, never
+ * asserted in prose. Returns one line per difference (empty means equivalent).
+ */
+function compareCopyToTemplate(templateRoot, copyRoot, token, name, withMcp) {
+  const problems = []
+  const rename = (value) => value.split(token).join(name)
+  const expected = new Set()
+  const walk = (relative) => {
+    const sourceDir = relative === "" ? templateRoot : join(templateRoot, relative)
+    for (const entry of readdirSync(sourceDir, { withFileTypes: true })) {
+      const child = relative === "" ? entry.name : join(relative, entry.name)
+      if (entry.isDirectory()) {
+        walk(child)
+        continue
+      }
+      const target = child.split(sep).map(rename).join(sep)
+      expected.add(target)
+      const source = readFileSync(join(templateRoot, child), "utf8")
+      if (!withMcp && child === "server.mjs") {
+        if (existsSync(join(copyRoot, target))) problems.push(`${target}: the default copy must drop the mcp server`)
+        continue
+      }
+      if (!existsSync(join(copyRoot, target))) {
+        problems.push(`${target}: missing from the copy`)
+        continue
+      }
+      const wantText = TEXT_EXTENSIONS.includes(extname(child)) ? source.split(token).join(name) : source
+      const gotText = readFileSync(join(copyRoot, target), "utf8")
+      if (child === MANIFEST_FILE) {
+        const wantObject = JSON.parse(wantText)
+        const wantContributes = wantObject.contributes ?? {}
+        if (!withMcp) delete wantContributes.mcp
+        if (Array.isArray(wantContributes.mcp)) {
+          wantContributes.mcp = wantContributes.mcp.map((item) => ({ ...item, serverName: serverNameFor(name) }))
+        }
+        wantObject.contributes = wantContributes
+        if (gotText !== JSON.stringify(wantObject, null, 2) + "\n") {
+          problems.push(`${target}: manifest bytes differ from the canonical token-rewritten template (mcp ${withMcp ? "kept" : "dropped"})`)
+        }
+        continue
+      }
+      if (gotText !== wantText) problems.push(`${target}: bytes differ from the template modulo the token rewrite`)
+    }
+  }
+  walk("")
+  const extra = []
+  const walkCopy = (relative) => {
+    const dir = relative === "" ? copyRoot : join(copyRoot, relative)
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const child = relative === "" ? entry.name : join(relative, entry.name)
+      if (entry.isDirectory()) walkCopy(child)
+      else if (!expected.has(child)) extra.push(child)
+    }
+  }
+  walkCopy("")
+  for (const path of extra) problems.push(`${path}: not part of the template`)
+  return problems
+}
+
+/**
+ * `scaffold <name> --dir <path> [--with-mcp]` — COPY `templates/mpd-extension/`
+ * and rewrite its placeholder (the template manifest's own id). The template is
+ * the single source of truth: this CLI emits no code of its own.
  */
 function runScaffold(name, options) {
   if (typeof name !== "string" || name.length === 0) {
@@ -208,12 +355,22 @@ function runScaffold(name, options) {
     fail(`mpd-ext scaffold: "${name}" must match ${sdk.MPD_EXT_CONTRACT.idPattern}`)
     return
   }
-  const skillName = `${name}-skill`
-  const flowId = `${name}-flow`
-  for (const [label, value] of [["skill name", skillName], ["flow id", flowId]]) {
-    if (!new RegExp(sdk.MPD_EXT_CONTRACT.skillNamePattern).test(value)) {
-      fail(`mpd-ext scaffold: the derived ${label} "${value}" violates the skill-name grammar ${sdk.MPD_EXT_CONTRACT.skillNamePattern} — pick a name without a trailing dash`)
-      return
+  if (!existsSync(join(TEMPLATE_DIR, MANIFEST_FILE))) {
+    fail(`mpd-ext scaffold: the template "${TEMPLATE_DIR}" is missing — it is the only source of this command's output`)
+    return
+  }
+  const token = templateToken()
+  if (typeof token !== "string" || token.length === 0) {
+    fail("mpd-ext scaffold: the template manifest carries no placeholder id, so a copy cannot be named")
+    return
+  }
+  const derived = templateDerivedNames(token, name)
+  for (const [label, values] of [["skill name", derived.skillDirs], ["flow id", derived.flowIds]]) {
+    for (const value of values) {
+      if (!new RegExp(sdk.MPD_EXT_CONTRACT.skillNamePattern).test(value)) {
+        fail(`mpd-ext scaffold: the derived ${label} "${value}" violates the skill-name grammar ${sdk.MPD_EXT_CONTRACT.skillNamePattern} — pick a name without a trailing dash`)
+        return
+      }
     }
   }
   const parent = resolve(options.dir ?? ".")
@@ -222,53 +379,46 @@ function runScaffold(name, options) {
     fail(`mpd-ext scaffold: "${target}" already exists — scaffolding never overwrites`)
     return
   }
-  const withMcp = options.withMcp === true
-  mkdirSync(join(target, "skills", skillName), { recursive: true })
-  mkdirSync(join(target, "flows"), { recursive: true })
-  mkdirSync(join(target, "personas"), { recursive: true })
-  const descriptor = {
-    apiVersion: sdk.MPD_EXT_CONTRACT.apiVersion,
-    id: name,
-    description: `The ${name} extension (scaffolded by scripts/mpd-ext.mjs).`,
-    enabled: false,
-    contributes: {
-      skills: [{ root: "skills", rank: sdk.MPD_EXT_CONTRACT.defaultRank }],
-      flows: [{ dir: "flows", rank: sdk.MPD_EXT_CONTRACT.defaultRank }],
-      roles: [{ name: `${name} reviewer`, description: `Reviewer contributed by the ${name} extension.`, readonly: true, persona: `personas/${name}-reviewer.md` }],
-      ...(withMcp ? { mcp: [{ serverName: name.slice(0, 32), transport: "stdio", command: "node", args: ["server.mjs"], cwd: ".", connectTimeoutMs: sdk.MPD_EXT_CONTRACT.defaultConnectTimeoutMs, toolCallTimeoutMs: sdk.MPD_EXT_CONTRACT.defaultToolCallTimeoutMs }] } : {}),
-    },
-  }
-  writeFileSync(join(target, MANIFEST_FILE), JSON.stringify(descriptor, null, 2) + "\n")
-  writeFileSync(
-    join(target, "skills", skillName, "SKILL.md"),
-    `---\nname: ${skillName}\ndescription: "The ${name} extension's first skill: describe what it does, then how to run it. Use whenever a ${name} task needs a repeatable procedure."\n---\n\n# ${skillName}\n\nReplace this paragraph with the procedure. Keep the load-bearing sentence first:\nthe model-facing catalog truncates a description at 500 characters.\n`,
-  )
-  writeFileSync(
-    join(target, "flows", `${flowId}.json`),
-    JSON.stringify(
-      {
-        id: flowId,
-        title: `${name} flow`,
-        description: `The ${name} extension's first flow. Use when the ${name} procedure needs an ordered checklist.`,
-        whenToUse: `Use when a ${name} task needs a step-by-step pass.`,
-        steps: [{ title: "First step", detail: "Describe the action.", tool: "read", output: "What this step produces." }],
-      },
-      null,
-      2,
-    ) + "\n",
-  )
-  writeFileSync(join(target, "personas", `${name}-reviewer.md`), `You are the ${name} reviewer.\n\nReview the change, report findings with file and line, and never edit files.\n`)
-  if (withMcp) writeFileSync(join(target, "server.mjs"), SCAFFOLD_SERVER)
-
-  const result = loadExtension(target, "user")
-  if (result.errors.length > 0 || result.entry === undefined) {
-    fail(`mpd-ext scaffold: the generated extension does not load — this is a CLI defect, please report it`)
-    for (const error of result.errors) line(`  error ${error.item}: ${error.reason}`)
+  const roleConflicts = baseRosterRoleConflicts(name, derived.roleNames)
+  if (roleConflicts.length > 0) {
+    fail(`mpd-ext scaffold: refused — "${name}" would declare a role name the base roster already owns`)
+    warn(`  nothing was written to ${target}`)
+    for (const reason of roleConflicts) line(`  refused: ${reason}`)
     return
   }
-  line(`[mpd-ext] scaffolded "${name}" at ${target}`)
-  line(`  contributes: ${describeEntry(result.entry)}`)
-  line(`  next: bun scripts/mpd-ext.mjs validate ${target}`)
+  const withMcp = options.withMcp === true
+  const maxServerName = serverNameMaxLength() ?? name.length
+  if (name.length > maxServerName) {
+    warn(`mpd-ext scaffold: warning: ${sdk.MPD_EXT_CONTRACT.serverNamePattern} caps serverName at ${maxServerName} characters, so the copy declares "${serverNameFor(name)}" instead of "${name}"`)
+  }
+
+  // Build in a STAGING container beside the target and move it into place only after the
+  // runtime validator accepts it: a refusal (a CONTRACT refusal, never a CLI defect) can
+  // then never leave a half-written, unloadable extension behind. The container level is
+  // deliberate — discovery inspects only a root's IMMEDIATE children for `mpd-ext.json`,
+  // so an extension staged one level down is never discoverable while it is being built.
+  const stagingContainer = join(parent, `.mpd-ext-scaffold-${process.pid}-${Date.now()}`)
+  const stagingTarget = join(stagingContainer, name)
+  try {
+    mkdirSync(stagingTarget, { recursive: true })
+    const copied = copyTemplateTree(TEMPLATE_DIR, stagingTarget, token, name)
+    finishManifest(stagingTarget, name, withMcp)
+
+    const result = loadExtension(stagingTarget, "user")
+    if (result.errors.length > 0 || result.entry === undefined) {
+      fail(`mpd-ext scaffold: refused — the copy would not load as "${name}"; nothing was written to ${target}`)
+      for (const error of result.errors) line(`  error ${error.item}: ${error.reason}`)
+      return
+    }
+    renameSync(stagingTarget, target)
+    line(`[mpd-ext] scaffolded "${name}" at ${target}`)
+    line(`  copied ${copied.length} file(s) from templates/mpd-extension${withMcp ? "" : " (the mcp contribution and server.mjs were dropped)"}`)
+    line(`  contributes: ${describeEntry(result.entry)}`)
+    line(`  next: bun scripts/mpd-ext.mjs validate ${target}`)
+  } finally {
+    // a no-op after a successful rename; the only tree it removes is a refused staging one
+    rmSync(stagingContainer, { recursive: true, force: true })
+  }
 }
 
 // ── self-test ───────────────────────────────────────────────────────────────
@@ -287,9 +437,14 @@ function selfTest() {
     else fail(`  FAIL ${label}`)
   }
   try {
-    // 1. scaffold -> the same validator accepts it, and the CLI exits 0.
+    // 1. the template is the source of truth, so it must load with all four kinds.
+    const template = runChild(["validate", TEMPLATE_DIR])
+    expect(template.status === 0, `validate accepts templates/mpd-extension (got ${template.status}): ${template.stderr.trim()}`)
+    expect(template.stdout.includes("1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)"), "the template declares all four contribution kinds")
+
+    // 2. --with-mcp: the copy keeps all four kinds and IS the template, file by file.
     const scaffold = runChild(["scaffold", "demo-ext", "--dir", sandbox, "--with-mcp"])
-    expect(scaffold.status === 0, `scaffold exits 0 (got ${scaffold.status}): ${scaffold.stderr.trim()}`)
+    expect(scaffold.status === 0, `scaffold --with-mcp exits 0 (got ${scaffold.status}): ${scaffold.stderr.trim()}`)
     const scaffolded = join(sandbox, "demo-ext")
     expect(existsSync(join(scaffolded, MANIFEST_FILE)), "scaffold wrote mpd-ext.json")
     for (const asset of ["skills/demo-ext-skill/SKILL.md", "flows/demo-ext-flow.json", "personas/demo-ext-reviewer.md", "server.mjs"]) {
@@ -297,8 +452,57 @@ function selfTest() {
     }
     const validated = runChild(["validate", scaffolded])
     expect(validated.status === 0, `validate accepts the scaffold (got ${validated.status}): ${validated.stderr.trim()}`)
+    const withMcpProblems = compareCopyToTemplate(TEMPLATE_DIR, scaffolded, templateToken(), "demo-ext", true)
+    expect(withMcpProblems.length === 0, `the --with-mcp copy is the template modulo the token rewrite, file by file${withMcpProblems.length > 0 ? `: ${withMcpProblems.join("; ")}` : ""}`)
 
-    // 2. a deliberately broken extension: every defect is reported, exit is 1.
+    // 3. the default arm: the copy DROPS the mcp contribution and its server file, and still loads.
+    const plain = runChild(["scaffold", "demo-ext-plain", "--dir", sandbox])
+    expect(plain.status === 0, `scaffold (no flag) exits 0 (got ${plain.status}): ${plain.stderr.trim()}`)
+    const plainRoot = join(sandbox, "demo-ext-plain")
+    expect(!existsSync(join(plainRoot, "server.mjs")), "the default copy drops server.mjs")
+    expect(JSON.parse(readFileSync(join(plainRoot, MANIFEST_FILE), "utf8")).contributes.mcp === undefined, "the default copy drops the manifest mcp entry")
+    for (const asset of ["skills/demo-ext-plain-skill/SKILL.md", "flows/demo-ext-plain-flow.json", "personas/demo-ext-plain-reviewer.md"]) {
+      expect(existsSync(join(plainRoot, asset)), `the default copy wrote ${asset}`)
+    }
+    const plainValidated = runChild(["validate", plainRoot])
+    expect(plainValidated.status === 0, `validate accepts the default copy (got ${plainValidated.status}): ${plainValidated.stderr.trim()}`)
+    expect(plainValidated.stdout.includes("1 skill(s), 1 flow(s), 1 role(s), 0 mcp server(s)"), "the default copy contributes three kinds")
+    const plainProblems = compareCopyToTemplate(TEMPLATE_DIR, plainRoot, templateToken(), "demo-ext-plain", false)
+    expect(plainProblems.length === 0, `the default copy is the template modulo the token rewrite and the mcp drop, file by file${plainProblems.length > 0 ? `: ${plainProblems.join("; ")}` : ""}`)
+
+    // 3b. an id longer than the contract's serverName bound: the cap comes from the contract
+    //     pattern, it is WARNED rather than silent, and the copy still validates.
+    const longId = "demo-ext-with-a-very-long-identifier-1234"
+    const bound = serverNameMaxLength()
+    const longRun = runChild(["scaffold", longId, "--dir", sandbox, "--with-mcp"])
+    expect(longRun.status === 0, `scaffold accepts an id longer than the serverName bound (got ${longRun.status}): ${longRun.stderr.trim()}`)
+    const longManifest = JSON.parse(readFileSync(join(sandbox, longId, MANIFEST_FILE), "utf8"))
+    expect(longId.length > bound, `the long-id fixture (${longId.length} chars) really is longer than the contract bound (${bound})`)
+    expect(longManifest.contributes.mcp[0].serverName === longId.slice(0, bound), `the copied serverName is capped at the contract bound (${bound}), not at a literal`)
+    expect(longRun.stderr.includes("caps serverName at"), "the cap is WARNED on stderr, never silent")
+    expect(runChild(["validate", join(sandbox, longId)]).status === 0, "the long-id copy still validates")
+
+    // 4. the refusals: a bad id, an existing target, and a DERIVED ROLE NAME the base roster owns.
+    const badName = runChild(["scaffold", "Bad Name", "--dir", sandbox])
+    expect(badName.status === 1, "scaffold refuses an id that violates the id grammar")
+    expect(badName.stderr.includes("must match"), "the refusal names the id grammar")
+    const existing = runChild(["scaffold", "demo-ext", "--dir", sandbox])
+    expect(existing.status === 1, "scaffold refuses an existing target")
+    expect(existing.stderr.includes("already exists"), "the refusal says the target exists")
+
+    // "plan" is the one reachable id whose derived role name ("plan reviewer") collapses onto a
+    // base-roster name key (roleNameKey("Plan Reviewer")); it is refused BEFORE anything is written,
+    // with the roster's own sentence, and it leaves nothing behind at the target.
+    const collidingId = "plan"
+    const collision = runChild(["scaffold", collidingId, "--dir", sandbox])
+    expect(collision.status === 1, `scaffold refuses the base-roster role collision for id "plan" (got ${collision.status})`)
+    expect(collision.stderr.includes("would declare a role name the base roster already owns"), "the refusal is a CONTRACT refusal, not a CLI-defect message")
+    expect(collision.stdout.includes("is already taken by the base roster"), "the refusal quotes the roster's own collision sentence")
+    expect(collision.stderr.includes("nothing was written"), "the refusal states that nothing was written")
+    expect(!existsSync(join(sandbox, collidingId)), "a refused scaffold leaves nothing at the target")
+    expect(!readdirSync(sandbox).some((entry) => entry.startsWith(".mpd-ext-scaffold")), "a refused scaffold leaves no staging container behind")
+
+    // 5. a deliberately broken extension: every defect is reported, exit is 1.
     const broken = join(sandbox, "broken-ext")
     mkdirSync(broken, { recursive: true })
     writeFileSync(
@@ -320,17 +524,40 @@ function selfTest() {
       expect(brokenRun.stdout.includes(needle), `the broken run reports "${needle}"`)
     }
 
-    // 3. the shipped example validates.
+    // 6. the negative control on a COPY of the template: per-item errors, exit 1.
+    const brokenCopy = join(sandbox, "broken-copy")
+    cpSync(scaffolded, brokenCopy, { recursive: true })
+    writeFileSync(
+      join(brokenCopy, MANIFEST_FILE),
+      JSON.stringify({
+        apiVersion: 1,
+        id: "broken-copy",
+        typoKey: true,
+        contributes: {
+          skills: [{ root: "skills" }],
+          mcp: [{ serverName: "not a name!", transport: "stdio", command: "node", surprise: 1 }],
+          roles: [{ name: "Missing persona", persona: "personas/absent.md" }],
+        },
+      }),
+    )
+    writeFileSync(join(brokenCopy, "skills", "demo-ext-skill", "SKILL.md"), "this file lost its YAML frontmatter\n")
+    const brokenCopyRun = runChild(["validate", brokenCopy])
+    expect(brokenCopyRun.status === 1, `validate exits 1 on a deliberately broken copy of the template (got ${brokenCopyRun.status})`)
+    for (const needle of ["typoKey", "surprise", "serverName", "persona file does not exist", "frontmatter"]) {
+      expect(brokenCopyRun.stdout.includes(needle), `the broken copy reports "${needle}"`)
+    }
+
+    // 7. the shipped example validates.
     const example = runChild(["validate", join(repoRoot, "extensions", "mpd-ext-example")])
     expect(example.status === 0, `validate accepts extensions/mpd-ext-example (got ${example.status}): ${example.stderr.trim()}`)
 
-    // 4. list never throws and sees the bundle plane.
+    // 8. list never throws and sees the bundle plane.
     const listed = runChild(["list"])
     expect(listed.status === 0, `list exits 0 (got ${listed.status})`)
     expect(listed.stdout.includes("bundle plane"), "list names the bundle plane")
     expect(listed.stdout.includes("mpd-ext-example"), "list sees the shipped example")
 
-    // 5. usage guard.
+    // 9. usage guard.
     const usage = runChild([])
     expect(usage.stdout.includes("usage") || usage.status !== 0, "no command prints usage or fails")
 
