@@ -1,0 +1,78 @@
+{
+  "what": "t83/w14 — the Web Settings dialog's own top-level MPD section, as the offline hook harness observes it",
+  "artifact": {
+    "path": "packages/mpd-bundle-plugin/client.js",
+    "bytes": 298301,
+    "sha256": "34f1976ffef5efa5464059ed11bff787916024f74e298010b775592bd13a3ce1"
+  },
+  "registration_called": true,
+  "slot_injected": [
+    "conversation.chat.commandview",
+    "settings.section"
+  ],
+  "registration_count": 2,
+  "section_descriptor": {
+    "name": "settings.section",
+    "id": "mpd",
+    "order": 20,
+    "label_is_function": true,
+    "label": "MPD",
+    "locale": "mpdSettings",
+    "has_children": false,
+    "has_retired_key": false,
+    "component_type": "function",
+    "inject_type": "function"
+  },
+  "inject_face": {
+    "hook_store_keys": [
+      "mpdCard"
+    ],
+    "getSnapshot_type": "function",
+    "actions": [
+      "edit",
+      "resetField",
+      "save",
+      "discard"
+    ]
+  },
+  "retired_plugin_item_registration": {
+    "in_artifact": false,
+    "in_card_source": false,
+    "occurrences_in_artifact": 0
+  },
+  "knobs": {
+    "declared": [
+      "hashline.maxDiffChars",
+      "commentChecker.autoCheck",
+      "ulw.maxRounds",
+      "memory.vcs",
+      "team.stateDir",
+      "boulder.dir",
+      "watchdog.enabled",
+      "watchdog.warnSilenceMs",
+      "watchdog.tickIntervalMs",
+      "watchdog.warnStreakToEscalate",
+      "watchdog.actionOnEscalate"
+    ],
+    "rendered_rows": [
+      "hashline.maxDiffChars",
+      "commentChecker.autoCheck",
+      "ulw.maxRounds",
+      "memory.vcs",
+      "team.stateDir",
+      "boulder.dir",
+      "watchdog.enabled",
+      "watchdog.warnSilenceMs",
+      "watchdog.tickIntervalMs",
+      "watchdog.warnStreakToEscalate",
+      "watchdog.actionOnEscalate"
+    ],
+    "rendered_count": 11
+  },
+  "scope_writes_during_mount_and_render": [],
+  "not_claimed": [
+    "a real browser render of the section in the settings dialog (no browser binary in this environment)",
+    "a click-driven save through the GUI"
+  ]
+}
+PROBE-OK

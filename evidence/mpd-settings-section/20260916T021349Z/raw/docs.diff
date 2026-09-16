@@ -1,0 +1,109 @@
+diff --git a/docs/tui.md b/docs/tui.md
+index 41884cd..065dd2f 100644
+--- a/docs/tui.md
++++ b/docs/tui.md
+@@ -72,30 +72,36 @@ not claimed at all**; and **one (`tuiRenderers`) registers while the host projec
+ row, so its transcript line is not claimed either** — the same explicit treatment as `tuiPrompt`,
+ recorded as NOT-CLAIMED #10.
+ 
+-### 3.1 The Web GUI settings card (Settings → Plugins)
+-
+-The same six knobs are editable in the Web GUI: **Settings → Plugins → the `mpd` card**. The card is
+-registered the way the host's own plugins register it (`ctx.slots.inject("settings.plugin.item", …)` →
+-`ctx.slots.register({ name, key: "mpd", locale, inject }, Card)`, the shape measured from
+-`dsh-client-ui-settings-plugins/lib/client.js`), so it appears in the Plugins tab keyed by the settings
+-namespace; a served namespace with no card renders nothing — which is why the six knobs were invisible
+-before. Writes use the public `ctx.settingsScope.bind({ namespace: 'mpd' }).mutate(ops, revision)` seam
+-(nested paths; `unset` for reset), and a non-writable scope renders read-only with the reason and never
+-attempts a write. The card's fields, labels and zh descriptions are asserted against the TUI section's
+-descriptor by its own test, so the two front doors cannot drift.
++### 3.1 The Web GUI settings UI (Settings → MPD)
++
++The same eleven knobs are editable in the Web GUI: **Settings → MPD**, its own top-level section of
++the settings dialog — it no longer lives inside the Plugins tab. The section registers the way the
++host's own sections do (`ctx.slots.inject("settings.section", …)` →
++`ctx.slots.register({ name: "settings.section", id: "mpd", order: 20, label: () => t("nav"), locale, inject }, Section)`,
++the shape measured from `dsh-client-ui-settings-models/lib/client.js:2936`): the settings shell
++collects that list slot, sorts it by `order` and renders the active one, so `order: 20` places MPD
++after `general` (0), `models` (10) and `plugins` (15) and moves no existing section. The section
++renders the card as-is, declares no nested `children`, and a namespace with no registration renders
++nothing — which is why the knobs were invisible before. Writes use the public
++`ctx.settingsScope.bind({ namespace: 'mpd' }).mutate(ops, revision)` seam (nested paths; `unset` for
++reset), and a non-writable scope renders read-only with the reason and never attempts a write. The
++card's fields, labels and zh descriptions are asserted against the TUI section's descriptor by its own
++test, so the two front doors cannot drift.
+ 
+ **Evidence level — witnessed:** the registration contract in the **built and served** client bytes
+-(`packages/mpd-bundle-plugin/client.js`, sha256 `dd9c88933a316277…`, 282453 bytes; the lane re-hashes
+-the artifact it judged), the card's registration shape and field parity in its own test suite, the card
+-module's behaviour — render, scope write with the right path/value/revision, refusal of an invalid
+-draft, and read-only rendering with its reason — in the **offline hook harness**, and the **write path
+-end to end** through the host's own authenticated settings API (`web-settings-bridge.mjs` W1–W13).
++(`packages/mpd-bundle-plugin/client.js`; the lane re-hashes the artifact it judged and the evidence
++records the size + sha256 before and after this move), the section's descriptor — id, order, label,
++locale, no `children` — recorded by the **offline hook harness** when the registration is CALLED, the
++card's field parity with the TUI descriptor in its own test suite, the module's behaviour — render,
++scope write with the right path/value/revision, refusal of an invalid draft, and read-only rendering
++with its reason — in the same harness, and the **write path end to end** through the host's own
++authenticated settings API (`web-settings-bridge.mjs` W1–W13).
+ 
+ **Evidence level — NOT witnessed here:** a **real browser render** (the host dispatching this key in a
+ live page) and a **click-driven save**. No browser binary exists in this environment; the lane records
+ `cardClaim.W3.witnessed === false` with the reason, and this page repeats that instead of implying
+-otherwise. To see it yourself: start `dsh web`, open the GUI, go to **Settings → Plugins → Plugin
+-configuration**, expect the `mpd` card with the six fields, edit one and Save — with exactly one live
++otherwise. To see it yourself: start `dsh web`, open the GUI, go to **Settings → MPD**, expect the
++`mpd` section with the eleven knobs, edit one and Save — with exactly one live
+ session the workspace's `<workspace>/.mpd/mpd.jsonc` changes with comments intact; otherwise the bridge
+ refuses loudly (`no-live-session` / `ambiguous-multi-root`) and states that the value is not lost.
+ 
+diff --git a/docs/tui.zh-CN.md b/docs/tui.zh-CN.md
+index f3f54d9..ac77dce 100644
+--- a/docs/tui.zh-CN.md
++++ b/docs/tui.zh-CN.md
+@@ -67,27 +67,29 @@ profile 组合）；**1 个（`tuiPrompt`）宿主不提供，完全不声明**
+ 但宿主不投影任何转写行，因此其转写行同样不声明**——与 `tuiPrompt` 采用同一种明确处理，记为明确不
+ 声明第 10 条。
+ 
+-### 3.1 Web 界面的设置卡片（设置 → 插件）
+-
+-同样的六个可调项也能在 Web 界面里编辑：**设置 → 插件 → `mpd` 卡片**。该卡片按宿主自有插件的注册方式
+-注册（`ctx.slots.inject("settings.plugin.item", …)` → `ctx.slots.register({ name, key: "mpd", locale, inject }, Card)`，
+-形状取自 `dsh-client-ui-settings-plugins/lib/client.js` 的实测），因此它以 settings 命名空间为键出现在
+-"插件"标签页中；一个被服务、但没有卡片的命名空间什么也不渲染——这正是此前六个可调项不可见的原因。写入走
+-公开的 `ctx.settingsScope.bind({ namespace: 'mpd' }).mutate(ops, revision)` 接缝（支持嵌套路径；复位用
+-`unset`），不可写的 scope 会带原因渲染为只读，并且绝不尝试写入。卡片的字段、标签与中文描述由它自己的测试
+-与 TUI 区块的描述符逐一比对，因此两扇门不会各自漂移。
++### 3.1 Web 界面的设置界面（设置 → MPD）
++
++同样的十一个可调项也能在 Web 界面里编辑：**设置 → MPD**，即设置对话框中独立的一栏——它不再位于"插件"
++标签页内。该栏按宿主自有栏目（section）的注册方式注册（`ctx.slots.inject("settings.section", …)` →
++`ctx.slots.register({ name: "settings.section", id: "mpd", order: 20, label: () => t("nav"), locale, inject }, Section)`，
++形状取自 `dsh-client-ui-settings-models/lib/client.js:2936` 的实测）：设置外壳收集该列表槽位、按 `order`
++排序并渲染当前激活项，因此 `order: 20` 让 MPD 排在 `general`（0）、`models`（10）、`plugins`（15）之后，
++且不移动任何既有栏目。该栏原样渲染卡片，不声明任何嵌套 `children`；没有被注册的命名空间什么也不渲染——这
++正是此前可调项不可见的原因。写入走公开的 `ctx.settingsScope.bind({ namespace: 'mpd' }).mutate(ops, revision)`
++接缝（支持嵌套路径；复位用 `unset`），不可写的 scope 会带原因渲染为只读，并且绝不尝试写入。卡片的字段、
++标签与中文描述由它自己的测试与 TUI 区块的描述符逐一比对，因此两扇门不会各自漂移。
+ 
+ **证据级别——已见证：** **已构建且已服务**的客户端字节中的注册契约
+-（`packages/mpd-bundle-plugin/client.js`，sha256 `dd9c88933a316277…`，282453 字节；通道会重新哈希它所
+-判定的那份产物）、该卡片自身测试套件中的注册形状与字段一致性、卡片模块在**离线钩子测试台（offline hook
+-harness）**中的行为——渲染六个字段、以正确的路径/值/revision 驱动 scope 写入、拒绝非法草稿、以及带原因
+-渲染为只读——以及经由宿主自身带认证的 settings API 完成的**端到端写入路径**
+-（`web-settings-bridge.mjs` W1–W13）。
++（`packages/mpd-bundle-plugin/client.js`；通道会重新哈希它所判定的那份产物，本次移动前后的大小与 sha256
++都记录在证据中）、**离线钩子测试台（offline hook harness）**在注册被**调用**时记录下的该栏描述符——id、
++order、label、locale、无 `children`、其字段与 TUI 描述符的一致性、以及模块行为——渲染、以正确的路径/值/
++revision 驱动 scope 写入、拒绝非法草稿、带原因渲染为只读——以及经由宿主自身带认证的 settings API 完成的
++**端到端写入路径**（`web-settings-bridge.mjs` W1–W13）。
+ 
+ **证据级别——本环境未见证：** **真实浏览器渲染**（宿主在真实页面中分发该 key）与**点击驱动的保存**。
+ 本环境没有浏览器可执行文件；通道以 `cardClaim.W3.witnessed === false` 记录这一点及原因，本页重复该结论，
+-绝不暗示相反。要自己看到它：启动 `dsh web`，打开界面，进入 **设置 → 插件 → 插件配置**，应看到带六个字段的
+-`mpd` 卡片，编辑一项并保存——恰好一个活动会话时，工作区的 `<workspace>/.mpd/mpd.jsonc` 会在保留注释的
++绝不暗示相反。要自己看到它：启动 `dsh web`，打开界面，进入 **设置 → MPD**，应看到带十一个可调项的
++`mpd` 栏，编辑一项并保存——恰好一个活动会话时，工作区的 `<workspace>/.mpd/mpd.jsonc` 会在保留注释的
+ 前提下改变；否则打通功能会大声拒绝（`no-live-session` / `ambiguous-multi-root`）并说明取值并未丢失。
+ 
+ ## 4. 准入与分发产物

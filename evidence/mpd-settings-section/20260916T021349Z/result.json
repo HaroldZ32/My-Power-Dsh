@@ -1,0 +1,60 @@
+{
+  "task": "t83 / w14 — give MPD its own top-level settings section (move the card out of the Plugins tab)",
+  "userRequestVerbatim": "web的设置栏请单开一栏MPD设置，别混在插件栏里",
+  "verdict": "implemented; all gates green",
+  "changed": [
+    "packages/mpd-bundle-plugin/src/settings-card.js",
+    "packages/mpd-bundle-plugin/src/web-client.js",
+    "packages/mpd-bundle-plugin/test/settings-card.test.mjs",
+    "packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs (OUTSIDE declared inScope — required for a green suite)",
+    "packages/mpd-bundle-plugin/client.js (rebuilt)",
+    "docs/tui.md",
+    "docs/tui.zh-CN.md",
+    "docs/user-guide.md (OUTSIDE declared inScope — required by acceptance item 6's 'any README/user-guide mention')",
+    "docs/user-guide.zh-CN.md (same)",
+    "evidence/mpd-settings-section/20260916T021349Z/"
+  ],
+  "registration": {
+    "slot": "settings.section",
+    "id": "mpd",
+    "order": 20,
+    "label": "MPD (a function resolved through the mpdSettings dictionaries, key `nav`)",
+    "locale": "mpdSettings",
+    "children": "deliberately omitted",
+    "retiredRegistration": "settings.plugin.item (0 occurrences in the built and in the served client)"
+  },
+  "artifact": {
+    "before": { "bytes": 296735, "sha256": "f98aa30541fbe4f8b9c3dedadd71a187b8dee4ea8afe4ae6666fed356ecf8035", "note": "built from the HEAD sources; reproduces HEAD's committed artifact byte-for-byte" },
+    "after": { "bytes": 298301, "sha256": "34f1976ffef5efa5464059ed11bff787916024f74e298010b775592bd13a3ce1", "note": "two builds from the final sources are byte-identical" }
+  },
+  "gates": [
+    { "command": "bun test packages/mpd-bundle-plugin", "status": "passed", "evidence": "71 pass / 0 fail / 587 expect() calls" },
+    { "command": "node scripts/build-mpd-client.mjs (twice)", "status": "passed", "evidence": "exit 0, byte-identical 34f1976f…/298301" },
+    { "command": "bun run typecheck", "status": "passed", "evidence": "tsgo --noEmit, exit 0" },
+    { "command": "bun run verify:docs", "status": "passed", "evidence": "pairs=34 failed=0 violations=0 exempt=16 — PASS (re-run after the user-guide rows)" },
+    { "command": "node evidence/mpd-settings-section/20260916T021349Z/raw/descriptor-probe.mjs", "status": "passed", "evidence": "PROBE-OK" },
+    { "command": "node evidence/mpd-settings-section/20260916T021349Z/raw/served-bytes-boot.mjs", "status": "passed", "evidence": "ok:true, served bytes carry the section, 0 retired registrations, no activation faults" }
+  ],
+  "realBoot": {
+    "mode": "real dsh web boot in a sandbox DSH_HOME + sandbox HOME + sandbox workspace",
+    "servedUrlContains": "@mpd-dsh/mpd",
+    "servedBytes": 298386,
+    "servedEqualsArtifactPlusSourcemapTrailer": true,
+    "carriesSectionSlot": true,
+    "carriesSectionId": true,
+    "carriesSectionOrder": true,
+    "carriesNavLabel": true,
+    "retiredPluginItemOccurrences": 0,
+    "activationFaults": []
+  },
+  "notClaimed": [
+    "a real browser render of the section in the settings dialog (no browser binary in this environment)",
+    "a click-driven save through the GUI"
+  ],
+  "reportedNotEdited": [
+    "docs/tui-edition-report.md §9 still describes the retired settings.plugin.item registration (exempt prior-phase process record, AGENTS.md §3)",
+    "packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs is outside the declared inScope but the suite cannot be green without it",
+    "docs/user-guide.md:230 + docs/user-guide.zh-CN.md:211 are outside the declared inScope although acceptance item 6 names 'any README/user-guide mention' — edited anyway (one table row each), scope amendment requested"
+  ],
+  "scopeDefect": "acceptance item 6 requires paths the inScope omits (the two user-guide files), and the green-suite requirement needs test/sidebar-tab.test.mjs — the same 'acceptance names a path the scope omits' class the captain flagged"
+}

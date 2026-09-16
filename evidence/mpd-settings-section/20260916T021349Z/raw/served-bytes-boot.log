@@ -1,0 +1,47 @@
+{
+  "what": "t83/w14 — the served web client bytes carry the top-level MPD settings section",
+  "artifact": {
+    "path": "packages/mpd-bundle-plugin/client.js",
+    "bytes": 298301,
+    "sha256": "34f1976ffef5efa5464059ed11bff787916024f74e298010b775592bd13a3ce1"
+  },
+  "not_claimed": [
+    "a real browser render (no browser binary in this environment)"
+  ],
+  "sandbox": "/tmp/mpd-mpdset-pRaPjj",
+  "dshHome": "/tmp/mpd-mpdset-pRaPjj/dsh-home",
+  "userHome": "/tmp/mpd-mpdset-pRaPjj/user-home",
+  "workspace": "/tmp/mpd-mpdset-pRaPjj/ws",
+  "port": 3199,
+  "servedClient": {
+    "url": "/plugins/??@mpd-dsh/mpd/client.js&rev=3e35fd01bc33baf7-46",
+    "status": 200,
+    "bytes": 298386,
+    "sha256": "541a27af4447fbd8a7dccc2ab62f49ef907472909ed47b09e276c0ab0c2b1c52",
+    "identicalToRepoArtifact": false,
+    "deltaVsRepoArtifact": {
+      "servedLines": 5725,
+      "repoLines": 5723,
+      "firstDifferenceLine": 5723,
+      "sameLength": false
+    },
+    "carriesSectionSlot": true,
+    "carriesSectionId": true,
+    "carriesSectionOrder": true,
+    "registersSectionSlot": true,
+    "carriesNavLabel": true,
+    "retiredPluginItemOccurrences": 0
+  },
+  "activationFaults": [],
+  "ok": true,
+  "authorize": {
+    "status": 303,
+    "hasCookie": true
+  },
+  "sessionsSandboxed": {
+    "ok": true,
+    "checked": 0,
+    "keys": []
+  },
+  "logTail": "m /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)\n[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000\n[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)\n[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged \"Shared daemon connection lost … serving this session in-process\"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)\n[mpd-config] settings bridge: registered the \"mpd\" namespace with the file-derived base (applies:'restart', design §10.1)\n[CodeGraph MCP] File watcher active — graph will auto-sync on changes\ndsh web: http://127.0.0.1:3199/?token=ViQqIpzq4QrtWtVNRVAcHtdHSyg9DQk6k0mNgK_YA5s\n"
+}

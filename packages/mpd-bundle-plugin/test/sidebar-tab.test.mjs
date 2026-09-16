@@ -122,8 +122,9 @@ describe("with DSH-better-sidebar installed", () => {
     expect(definitions.some((definition) => definition.id === "agent-teams-activity")).toBe(false);
     expect(definitions.some((definition) => definition.name === "conversation.chat.node")).toBe(false);
     // Non-sidebar surfaces: the slash-command admission row (never a GUI panel) and the t35
-    // settings card, which the Plugins tab dispatches by settings namespace.
-    expect(client.calls.slots ?? []).toEqual(["conversation.chat.commandview", "settings.plugin.item"]);
+    // settings UI, which since w14 targets its OWN top-level settings section instead of the
+    // Plugins tab's keyed item slot.
+    expect(client.calls.slots ?? []).toEqual(["conversation.chat.commandview", "settings.section"]);
   });
   test("the adopted client half is never applied (it would re-register the removed surfaces)", () => {
     expect(client.calls.agentTeamsApplied).toBeUndefined();
@@ -573,11 +574,11 @@ describe("without DSH-better-sidebar", () => {
     }
     expect(client.calls.registerTab.length).toBe(0);
     // No overlay, no footer toggle: the registrations left are the non-GUI slash-command
-    // admission row and the t35 settings card (which targets the Plugins tab's keyed slot, not
-    // the sidebar) — a profile without the sidebar still gets both. The card's own ACTUAL
-    // registration additionally needs the `settingsScope` service, which this harness does not
-    // mount; the card's own test file provides it and asserts the keyed registration.
-    expect(client.calls.slots ?? []).toEqual(["conversation.chat.commandview", "settings.plugin.item"]);
+    // admission row and the t35 settings UI (which since w14 targets its OWN top-level settings
+    // section, not the sidebar) — a profile without the sidebar still gets both. The section's own
+    // ACTUAL registration additionally needs the `settingsScope` service, which this harness does
+    // not mount; its own test file provides it and asserts that registration.
+    expect(client.calls.slots ?? []).toEqual(["conversation.chat.commandview", "settings.section"]);
     const definitions = client.calls.slotsRegistered ?? [];
     expect(definitions.map((definition) => definition.name)).toEqual(["conversation.chat.commandview"]);
     // Nothing is registered, and nothing is warned about either: the injection simply never

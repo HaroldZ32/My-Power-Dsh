@@ -55,9 +55,8 @@
   const NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session"
 
   /**
-   * The twelve knobs — the SAME fields the TUI `/settings` section declares. `hint` is the knob's
-   * mpd.jsonc key + the shared disclosure, exactly as the TUI builds it; a knob whose effect is
-   * not self-evident from its label also carries a `semantics` sentence the row renders (w16).
+   * The eleven knobs — the SAME fields the TUI `/settings` section declares. `hint` is the knob's
+   * mpd.jsonc key + the shared disclosure, exactly as the TUI builds it.
    */
   const FIELDS = [
     { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
@@ -71,10 +70,9 @@
     { path: ["watchdog", "tickIntervalMs"], label: "Watchdog tick interval (ms)", zh: "看门狗轮询间隔（毫秒）", kind: "number" },
     { path: ["watchdog", "warnStreakToEscalate"], label: "Warn streak before escalation", zh: "升级前连续告警次数", kind: "number" },
     { path: ["watchdog", "actionOnEscalate"], label: "Action on escalation", zh: "升级时的动作", kind: "select", options: ["pause", "warn-only"] },
-    { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", semantics: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
   ]
 
-  const hintOf = (field) => `mpd.jsonc ${field.path.join(".")} — ${BRIDGE_DISCLOSURE}${field.semantics === undefined ? "" : " — " + field.semantics}`
+  const hintOf = (field) => `mpd.jsonc ${field.path.join(".")} — ${BRIDGE_DISCLOSURE}`
   const fieldKey = (field) => field.path.join(".")
   const leafOf = (value, path) => path.reduce((acc, part) => (acc === null || acc === undefined ? undefined : acc[part]), value)
 

@@ -1,0 +1,2 @@
+id: SECTION_ID, order: SECTION_ORDER, label: () => dicts.en.nav
+settings.plugin.item occurrences in served body: 0

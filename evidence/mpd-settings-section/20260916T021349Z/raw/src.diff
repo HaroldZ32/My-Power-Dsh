@@ -1,0 +1,167 @@
+diff --git a/packages/mpd-bundle-plugin/src/settings-card.js b/packages/mpd-bundle-plugin/src/settings-card.js
+index 8d91c34..c8842ed 100644
+--- a/packages/mpd-bundle-plugin/src/settings-card.js
++++ b/packages/mpd-bundle-plugin/src/settings-card.js
+@@ -1,39 +1,51 @@
+-// mpd settings card — the browser half of the `mpd` settings namespace (t35).
++// mpd settings section — the browser half of the `mpd` settings namespace (t35; moved to its own
++// top-level section by w14/t83 at the user's request: "web的设置栏请单开一栏MPD设置，别混在插件栏里").
+ //
+-// THE PATTERN IS THE HOST'S OWN, MEASURED in
+-// `@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-settings-plugins/lib/client.js`:
+-//   • `ctx.slots.inject("settings.plugin.item", function* () { yield ctx.slots.register({ name,
+-//     key: <settings namespace>, locale: <dict ns>, inject: () => <controller>.inject() }, Card) })`
+-//     — a GENERATOR yielding the registrations (`:1785-1810`), the same shape BashCard /
+-//     AgentLoopCard / SubagentModelSelectionCard / WebSearchCard use;
+-//   • the Plugins tab renders that slot KEYED BY NAMESPACE
+-//     (`namespaces.map(ns => renderSlot("settings.plugin.item", {}, { entryKey: ns }))`), so a
+-//     served namespace with no card renders nothing — which is why the six mpd.jsonc knobs were
+-//     invisible in the Web GUI before this file existed;
++// WHERE THIS MOUNTS: its OWN top-level `MPD` section of the Web settings dialog. The same eleven
++// mpd.jsonc knobs used to ride the Plugins tab's keyed per-namespace item slot; this file no longer
++// registers anything there, so the Plugins tab shows no mpd card.
++//
++// THE PATTERN IS THE HOST'S OWN, MEASURED in the host's settings-models section
++// (`@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-settings-models/lib/client.js:2936-2952`):
++//   • `ctx.slots.inject("settings.section", () => ctx.slots.register({ name: "settings.section",
++//     id, order, label: () => t("nav"), inject, children }, Component))` — the settings shell
++//     collects that LIST slot (`ctx.slots.entries("settings.section")`, sorted by `order`) and
++//     renders the ACTIVE one (`dsh-client-ui-settings/lib/client.js:561-572`, `:167`);
++//   • `label` is a FUNCTION resolved through the registration's locale dictionaries, so the nav
++//     text lives in the `mpdSettings` dictionaries below (key `nav`);
++//   • the host's own sections are `general` 0, `models` 10 and `plugins` 15; this section takes
++//     `order: 20`, i.e. AFTER them, so no existing section moves;
++//   • `children` is DELIBERATELY OMITTED: this section renders no nested slot (the host's `models`
++//     section declares its provider card + footer there; ours has none), which is a declared
++//     absence rather than a copy of their list;
+ //   • the component receives `{ t, edit, resetField, save, discard, use<X>Card }`, where `t` comes
+ //     from the registered `locale` dictionaries and `use<X>Card` is the hook the registration's
+ //     `inject()` result provides;
+ //   • the write goes through the PUBLIC client seam `ctx.settingsScope.bind({namespace})`, whose
+ //     actions are `set`/`unset`/`mutate(ops, expectedRevision)` — i.e. the `settings/mutate` RPC
+ //     the bridge consumes. The client performs NO filesystem I/O and cannot.
+-// `PluginCard`/`ValueField` are that package's PRIVATE components and are NOT imported here: this
+-// card is self-contained markup.
++// The host's `PluginCard`/`ValueField` are that package's PRIVATE components and are NOT imported
++// here: this component is self-contained markup.
+ //
+-// WHAT IS CLAIMED (recorded in the lane/evidence): the registration is present in the BUILT
+-// client, and the write path it drives (settings namespace -> bridge -> `<workspace>/.mpd/mpd.jsonc`)
+-// is proven by `web-settings-bridge.mjs` over the host's own authenticated API. WHAT IS NOT CLAIMED:
+-// that a browser renders this card or that a click produces the mutate — no browser exists in this
+-// environment; the user sees that in their own GUI.
++// WHAT IS CLAIMED (recorded in the lane/evidence): the registration is present in the BUILT and
++// SERVED client, and the write path it drives (settings namespace -> bridge ->
++// `<workspace>/.mpd/mpd.jsonc`) is proven by `web-settings-bridge.mjs` over the host's own
++// authenticated API. WHAT IS NOT CLAIMED: that a browser renders this section or that a click
++// produces the mutate — no browser exists in this environment; the user sees that in their own GUI.
+ //
+ // Labels/hints/zh descriptions are MIRRORED from the TUI section
+ // (`packages/mpd-tui-plugin/src/settings.ts`) and a test asserts the two lists stay identical, so
+ // the two front doors cannot drift.
+ (require) => {
+   const NS = "mpd"
+-  /** The locale namespace the card's own labels live in. */
++  /** The locale namespace the section's own labels live in. */
+   const LOCALE_NS = "mpdSettings"
+-  /** The keyed slot the Plugins tab dispatches by settings namespace. */
+-  const SLOT = "settings.plugin.item"
++  /** The LIST slot the settings shell renders as top-level sections. */
++  const SECTION_SLOT = "settings.section"
++  /** This section's stable id (the shell keys the active section by it). */
++  const SECTION_ID = "mpd"
++  /** After `general` 0, `models` 10 and `plugins` 15 — so no existing section moves. */
++  const SECTION_ORDER = 20
+ 
+   /** The disclosure both front doors state (byte-identical to the TUI's BRIDGE_DISCLOSURE). */
+   const BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount)"
+@@ -310,6 +322,7 @@
+   /** The zh/en dictionaries: the TUI section's labels and zh descriptions, plus the card's copy. */
+   function dictionaries(fields = FIELDS) {
+     const en = {
++      nav: "MPD",
+       title: "MPD bundle",
+       intro: "The mpd.jsonc knobs this bundle's plugins read. namespace mpd · applies after a restart",
+       save: "Save",
+@@ -321,6 +334,7 @@
+       memoryMode: "This page is not loopback: settings writes stay process-local and never reach the host document.",
+     }
+     const zh = {
++      nav: "MPD",
+       title: "MPD 插件包",
+       intro: "本插件包读取的 mpd.jsonc 配置项。命名空间 mpd · 重启后对插件生效",
+       save: "保存",
+@@ -342,7 +356,7 @@
+   }
+ 
+   /**
+-   * Mount the card. `settingsScope` is a PLUGIN-provided service, so it is reached through
++   * Mount the section. `settingsScope` is a PLUGIN-provided service, so it is reached through
+    * `ctx.inject` — never a declared dependency (a declared-but-absent service makes the whole page
+    * fail as `entry: pending`; `web-client-adapt --self-test` asserts this rule against the built
+    * client). One warning on absence, never a throw.
+@@ -357,20 +371,26 @@
+       try {
+         if (ctx.locale !== undefined && typeof ctx.locale.register === "function") ctx.locale.register(LOCALE_NS, dicts)
+       } catch (error) {
+-        console.warn("[mpd] settings card: locale registration failed: " + String(error))
++        console.warn("[mpd] settings section: locale registration failed: " + String(error))
+       }
+-      ctx.slots.inject(SLOT, function* () {
++      ctx.slots.inject(SECTION_SLOT, function* () {
+         try {
+           ctx.inject(["settingsScope"], (scoped) => {
+             const service = typeof scoped.get === "function" ? scoped.get("settingsScope") : scoped.settingsScope
+             if (service === undefined || service === null || typeof service.bind !== "function") {
+-              console.warn("[mpd] settings card: the settings scope is unavailable — the mpd card is not registered")
++              console.warn("[mpd] settings section: the settings scope is unavailable — the mpd section is not registered")
+               return
+             }
+             const scope = service.bind({ namespace: NS })
+             const controller = createMpdCardController(scope, fields)
+-            const Card = createCardComponent(require("react"), fields)
+-            const unregister = ctx.slots.register({ name: SLOT, key: NS, locale: LOCALE_NS, inject: () => controller.inject() }, Card)
++            const Section = createCardComponent(require("react"), fields)
++            // The host's descriptor: id + explicit order + a label resolved through this
++            // registration's locale dictionaries. `children` is omitted because this section
++            // renders no nested slot of its own.
++            const unregister = ctx.slots.register(
++              { name: SECTION_SLOT, id: SECTION_ID, order: SECTION_ORDER, label: () => dicts.en.nav, locale: LOCALE_NS, inject: () => controller.inject() },
++              Section,
++            )
+             return () => {
+               try {
+                 unregister()
+@@ -381,16 +401,29 @@
+             }
+           })
+         } catch (error) {
+-          console.warn("[mpd] settings card: could not mount the mpd card: " + String(error))
++          console.warn("[mpd] settings section: could not mount the mpd section: " + String(error))
+         }
+         yield undefined
+       })
+       return true
+     } catch (error) {
+-      console.warn("[mpd] settings card: slot registration failed: " + String(error))
++      console.warn("[mpd] settings section: slot registration failed: " + String(error))
+       return false
+     }
+   }
+ 
+-  return { mountSettingsCard, createMpdCardController, createCardComponent, dictionaries, FIELDS, SETTINGS_NS: NS, LOCALE_NS, SLOT, BRIDGE_DISCLOSURE, NO_WORKSPACE_NOTICE }
++  return {
++    mountSettingsCard,
++    createMpdCardController,
++    createCardComponent,
++    dictionaries,
++    FIELDS,
++    SETTINGS_NS: NS,
++    LOCALE_NS,
++    SECTION_SLOT,
++    SECTION_ID,
++    SECTION_ORDER,
++    BRIDGE_DISCLOSURE,
++    NO_WORKSPACE_NOTICE,
++  }
+ }
