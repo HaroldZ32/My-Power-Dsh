@@ -1,0 +1,48 @@
+{
+  "what": "w16/t86 — watchdog.toolInFlightMaxMs declared once and rendered by both front doors",
+  "declaration": {
+    "path": "packages/mpd-config-plugin/src/settings-schema.ts",
+    "sha256": "50f5ae9d27509995ffab745b07db94306f1c0b817b831bfb2bd85af74d6d4fbc",
+    "knobCount": 12,
+    "knobPresent": true,
+    "knob": {
+      "path": "watchdog.toolInFlightMaxMs",
+      "label": "Tool-in-flight bound (ms, 0 = no bound)",
+      "zh": "工具在飞上限（毫秒，0 表示不设上限）",
+      "kind": "number",
+      "hint": "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound"
+    },
+    "schemaDefault": 900000,
+    "schemaDeclaration": true,
+    "hintIsTheSemanticsSentence": true,
+    "semanticsAppearsInSchema": true
+  },
+  "tuiFrontDoor": {
+    "artifact": "packages/mpd-tui-plugin/dist/index.js",
+    "bytes": 112338,
+    "sha256": "99f743a9b05dbfce6efb162714ce90a6081742eaac84331054ce502b6a75214a",
+    "carriesTheEntry": true,
+    "entryCarriesLabelAndZh": true,
+    "entryCarriesTheSemanticsSentence": true,
+    "derivesFromTheOneList": true,
+    "fieldCount": 12,
+    "fieldCountEvidence": "packages/mpd-tui-plugin/test/plugin.test.ts asserts calls.sections[0].fields has length 12 on the real plugin"
+  },
+  "webFrontDoor": {
+    "artifact": "packages/mpd-bundle-plugin/client.js",
+    "bytes": 298914,
+    "sha256": "9d62b69c431df8b3b0643d73e764ea89d60f59e5aec198bf33e1ac305fa7a928",
+    "renderedRows": 12,
+    "rendersTheKnob": true,
+    "renderedLabel": true,
+    "renderedZhRowInTheZhDictionary": true,
+    "renderedSemantics": true,
+    "zeroIsDocumented": true,
+    "hintCarriesTheBridgeDisclosure": true
+  },
+  "zeroDisablesTheBound": {
+    "engineReads": "packages/mpd-team-watchdog-plugin/src/machine.ts only applies the bound when knobs.toolInFlightMaxMs > 0",
+    "toolExpiredOnce": "reported ONCE per task+attempt as a WARN-class `tool-expired` incident (no scene, no hold, no escalate)"
+  },
+  "nothingElseChanged": "no other assertion loosened: the two hard-coded counts moved 11 -> 12 (settings-card.test.mjs, mpd-tui-plugin/test/plugin.test.ts); every existing knob assertion is untouched"
+}

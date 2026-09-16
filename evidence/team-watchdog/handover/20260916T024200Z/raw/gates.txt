@@ -1,0 +1,12 @@
+$ bun run typecheck
+$ tsgo --noEmit
+exit=0
+
+$ bun run verify:docs
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=34 failed=0 violations=0 exempt=16 — PASS
+exit=0
+
+$ node scripts/patch-agent-teams-fixes.mjs --check
+[patch-agent-teams-fixes] already applied: 53 mpd delta region(s) across 9 adopted file(s)
+exit=0

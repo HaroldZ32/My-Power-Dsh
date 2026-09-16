@@ -1,0 +1,2 @@
+[team-watchdog-boot] boot=dsh web: http://127.0.0.1:37507/?token=<redacted> session=session-2648b455-f12f-400f-bcac-cf1c02ffb35b preset=mpd
+[team-watchdog-boot] gui: index=200 clientUrls=63 ours=3 served=/plugins/??@mpd-dsh/mpd/client.js&rev=8cbe89c7aea258ac-46 status=200 bytes=291843
