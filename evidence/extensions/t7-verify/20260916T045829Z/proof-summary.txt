@@ -1,0 +1,97 @@
+{
+  "runDirs": {
+    "lifecycle": "/root/dshProj/my-power-dsh/evidence/extensions/extension-lifecycle/2026-09-16T04-58-41.378Z",
+    "mcpBridge": "/root/dshProj/my-power-dsh/evidence/extensions/extension-mcp-bridge/2026-09-16T04-59-18.173Z"
+  },
+  "lifecycle": {
+    "mountLine": 37,
+    "header": {
+      "line": 13,
+      "count": 99
+    },
+    "calls": {
+      "extList": {
+        "call": 18,
+        "result": 20,
+        "isError": false
+      },
+      "extShow": {
+        "call": 24,
+        "result": 25,
+        "isError": false
+      },
+      "flowShow": {
+        "call": 34,
+        "result": 35,
+        "isError": false
+      },
+      "skill": {
+        "call": 39,
+        "result": 40,
+        "isError": false
+      },
+      "rolePersona": {
+        "call": 44,
+        "result": 45,
+        "isError": false
+      },
+      "roleSpawn": {
+        "call": 49,
+        "result": 51,
+        "isError": false
+      }
+    },
+    "markers": {
+      "projectId": 20,
+      "userId": 12,
+      "projectRejection": 20,
+      "flowMarker": 35,
+      "skillMarker": 40,
+      "personaMarker": 45,
+      "roleChild": 51
+    },
+    "isolation": {
+      "sessionA": 12,
+      "sessionB": 12,
+      "decoyControl": 12
+    },
+    "offered": {
+      "headerToolCount": 99,
+      "mpdExtList": true,
+      "mpdExtShow": true,
+      "mpdFlowList": true,
+      "mpdFlowShow": true,
+      "mpdRolePersona": true,
+      "mpdRoleSpawn": true
+    }
+  },
+  "mcpBridge": {
+    "mountLine": 35,
+    "schemaPublishLine": 31,
+    "liveCall": {
+      "call": 39,
+      "result": 40,
+      "isError": false,
+      "head": "Configured LSP servers: 42 | Installed LSP servers: 1 |  | -"
+    },
+    "schemaShowText": {
+      "artifact": "/root/dshProj/my-power-dsh/evidence/extensions/extension-mcp-bridge/2026-09-16T04-59-18.173Z/raw/mcp.session.decoded.jsonl",
+      "callLine": 24,
+      "found": true,
+      "hasBadInputSkip": true,
+      "hasBadOutputRewrite": true,
+      "hasWithoutStructuredContent": true,
+      "tail": "error contributes.mcp[0]: tool \"bad_input\" skipped: its inputSchema cannot be projected onto the harness subset (schema: a schema must be an object) | error contributes.mcp[0]: tool \"bad_output\": its outputSchema would have to be rewritten for the harness subset (schema.properties.a: dropped unsuppo"
+    },
+    "offered": {
+      "headerToolCount": 109,
+      "liveStatus": true,
+      "schemaBadOutput": true,
+      "schemaBadInput": false,
+      "schemaGoodTool": true,
+      "deadServerTools": 0,
+      "hangServerTools": 0,
+      "dupServerTools": 0
+    }
+  }
+}

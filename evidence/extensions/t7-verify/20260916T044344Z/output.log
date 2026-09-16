@@ -1,0 +1,58 @@
+t7 verification console (external-plugin adaptation audit)
+run: 2026-09-16T04:47:44Z
+
+=== exit codes ===
+extension-lifecycle exit=1 start=2026-09-16T04:43:51Z end=2026-09-16T04:44:32Z cmd=bun skills/dsh-qa/scripts/extension-lifecycle.mjs --no-skip
+extension-mcp-bridge exit=1 start=2026-09-16T04:44:32Z end=2026-09-16T04:44:39Z cmd=bun skills/dsh-qa/scripts/extension-mcp-bridge.mjs --no-skip
+extension-isolation-self-test exit=0 start=2026-09-16T04:44:39Z end=2026-09-16T04:44:39Z cmd=bun skills/dsh-qa/scripts/extension-isolation.mjs --self-test
+
+=== lane console output ===
+[extension-lifecycle] ok=false -> /root/dshProj/my-power-dsh/evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z
+  install: {"ok":true,"exit":0,"tail":"fallback: { provider: deepseek-official, model: deepseek-v4-flash }\n              executionPrompt: \"Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny.\"\n\n[install-profile] wrote profile/ home patch/ presets(1) + web-compat s
+  main: {"ok":true,"exit":0,"durationMs":10371,"offeredExtTools":["mpd_ext_list","mpd_ext_show","mpd_flow_list","mpd_flow_show"],"recordedTools":["mpd_ext_list","mpd_ext_show","mpd_flow_list","mpd_flow_show","skill","mpd_role_persona","mpd_role_spawn"],"calls":{"mpd_ext_list":{"succeeded":true,"reason":"","
+  failure: {"ok":true,"exit":0,"sessionCompleted":true,"listedHealthy":true,"flowToolStillWorks":true,"reportedProjectRejection":true,"reportedRejections":["qa-bad-json","qa-bad-version"],"cliChecks":{"qa-bad-json":{"exit":1,"tail":"  extension \"unnamed\": REJECTED |   error descriptor: descriptor must be a J
+  isolation: {"ok":true,"sessions":{"session-a":{"ok":true,"exit":0,"cwd":"/tmp/mpd-extension-lifecycle-f804p7/ws-a","recorded":true,"succeeded":true,"sawExpected":true,"sawForbidden":[],"offeredExtTools":["mpd_ext_list","mpd_ext_show","mpd_flow_list","mpd_flow_show"],"isolation":{"ok":true,"checked":2,"keys":["
+  packed: {"ok":false,"packExit":1,"packedRoot":"/root/dshProj/my-power-dsh/dist/mpd-package","rows":{"mpdExtRowInPackedPatch":false},"assets":{"pluginDist":true,"extensionsAsset":true},"status":"GREEN (t11's pack fix has landed: the packed tree carries the plugin and extensions/)","greenOwner":"t11","note":"
+  isolationFinal: {"ok":true,"checked":4,"keys":["--tmp-mpd-extension-lifecycle-f804p7-decoy--","--tmp-mpd-extension-lifecycle-f804p7-ws-b--","--tmp-mpd-extension-lifecycle-f804p7-ws-a--","--tmp-mpd-extension-lifecycle-f804p7-ws--"]}
+
+---
+[extension-mcp-bridge] ok=false -> /root/dshProj/my-power-dsh/evidence/extensions/extension-mcp-bridge/2026-09-16T04-44-32.737Z
+  install: {"ok":true,"exit":0}
+  live: {"ok":true,"offered":true,"called":true,"succeeded":true,"reason":"","resultHead":"Configured LSP servers: 42\nInstalled LSP servers: 1\n\n- typescript: missing; source=builtin; extensions=.ts, .tsx, .js, .jsx, .mjs, .cjs, .mts, .cts\n- deno: missing; source=builtin; extensions=.ts, .tsx, .js, .jsx,
+  dead: {"vacuous":false,"ok":true,"offeredNoTool":true,"headerSawNoTool":true,"reported":true,"stateText":"extension qa-mcp-dead [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-e8oiDu/run-home/.mpd/extensions/qa-mcp-dead\nsource: /tmp/mpd-extension-mcp-bridge-e8oiDu/run-home/.mpd/extensions/q
+  hang: {"vacuous":false,"ok":true,"connectTimeoutMs":1500,"durationMs":6949,"offeredNoTool":true,"reported":true,"stateText":"extension qa-mcp-hang [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-e8oiDu/run-home/.mpd/extensions/qa-mcp-hang\nsource: /tmp/mpd-extension-mcp-bridge-e8oiDu/run-hom
+  schema: {"vacuous":false,"ok":false,"goodToolOffered":true,"badInputSkipped":true,"badOutputSkipped":false,"reportedReason":true,"stateText":"extension qa-mcp-schema [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-e8oiDu/run-home/.mpd/extensions/qa-mcp-schema\nsource: /tmp/mpd-extension-mcp-br
+  dup: {"vacuous":false,"ok":true,"zeroTools":true,"headerZeroTools":true,"stateText":"extension qa-mcp-dup [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-e8oiDu/run-home/.mpd/extensions/qa-mcp-dup\nsource: /tmp/mpd-extension-mcp-bridge-e8oiDu/run-home/.mpd/extensions/qa-mcp-dup/mpd-ext.json
+  containment: {"ok":true,"exit":0,"control":{"liveToolOffered":true,"liveCallSucceeded":true},"showCallOrder":["qa-mcp-dead","qa-mcp-schema","qa-mcp-dup","qa-mcp-hang"],"crashSignatures":[],"offeredMcp":["mcp__ast_grep__rewrite","mcp__ast_grep__scan","mcp__ast_grep__search","mcp__codegraph__codegraph_explore","mc
+
+---
+[extension-isolation self-test] ok: stub protocol (tool call, advance, child marker, no-tools text) + descriptor contract + shipped example + boot recipe verified
+
+=== revision pins ===
+command: git rev-parse HEAD
+8777e4340f8b4cd0a8d0c0ac683054523d4b5739
+command: git status --porcelain
+?? evidence/extensions/t7-verify/.last-ts
+?? evidence/extensions/t7-verify/20260916T044344Z/
+command: ls -d dist/mpd-package
+dist/mpd-package
+
+command: git rev-parse HEAD
+8777e4340f8b4cd0a8d0c0ac683054523d4b5739
+command: git status --porcelain
+?? evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/
+?? evidence/extensions/extension-mcp-bridge/2026-09-16T04-44-32.737Z/
+?? evidence/extensions/t7-verify/.last-ts
+?? evidence/extensions/t7-verify/20260916T044344Z/
+
+=== derived proof (file:line per claim) ===
+lifecycle main extList: {"artifact":"/root/dshProj/my-power-dsh/evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/raw/main.session.decoded.jsonl","found":true,"tool":"mpd_ext_list","callLine":18,"callId":"call_lifecycle-main_0","resultLine":20,"isError":false,"textHead":"mpd extensions: 3 (0 shadowed, 0 rejected) | - qa-ext-proj [project/directory] enabled skills=1 flows=1 mcp=0 roles=0 |     error contributes.roles[0]: project-level extensions may contribute skills and f"}
+lifecycle main flowShow: {"artifact":"/root/dshProj/my-power-dsh/evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/raw/main.session.decoded.jsonl","found":true,"tool":"mpd_flow_show","callLine":34,"callId":"call_lifecycle-main_3","resultLine":35,"isError":false,"textHead":"QA extension flow (qa-ext-flow, extension qa-ext-proj) | QA extension flow qa-ext-flow | when to use: Use when the extension QA case asks for this flow. | 1. Read the input [tool: read] |    QA-MARKER-FLOW:QA"}
+lifecycle main skill: {"artifact":"/root/dshProj/my-power-dsh/evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/raw/main.session.decoded.jsonl","found":true,"tool":"skill","callLine":39,"callId":"call_lifecycle-main_4","resultLine":40,"isError":false,"textHead":"<skill_content name=\"qa-ext-skill\"> | <skill_resources> | Base directory for this skill: /tmp/mpd-extension-lifecycle-f804p7/ws/.mpd/extensions/qa-ext-proj/skills/qa-ext-skill | Resolve relative paths menti"}
+lifecycle main rolePersona: {"artifact":"/root/dshProj/my-power-dsh/evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/raw/main.session.decoded.jsonl","found":true,"tool":"mpd_role_persona","callLine":44,"callId":"call_lifecycle-main_5","resultLine":45,"isError":false,"textHead":"persona QA Extension Reviewer (69 chars): | You are a QA extension role. QA-MARKER-PERSONA:QA-MARKER-PERSONA-USER"}
+lifecycle main roleSpawn: {"artifact":"/root/dshProj/my-power-dsh/evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/raw/main.session.decoded.jsonl","found":true,"tool":"mpd_role_spawn","callLine":49,"callId":"call_lifecycle-main_6","resultLine":51,"isError":false,"textHead":"role QA Extension Reviewer (complete) | summary: QA-CHILD-MARKER-ROLE-OK | recommendation: none | details: extension-lifecycle QA | evidence: | - mpd_role_spawn"}
+lifecycle main header: {"line":13,"count":99}
+lifecycle isolation keys: {"sessionA":{"artifact":"/root/dshProj/my-power-dsh/evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/raw/session-a.session.decoded.jsonl","line":12,"needle":"qa-iso-a","found":true},"sessionB":{"artifact":"/root/dshProj/my-power-dsh/evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/raw/session-b.session.decoded.jsonl","line":12,"needle":"qa-iso-b","found":true},"decoyControl":{"artifact":"/root/dshProj/my-power-dsh/evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/raw/decoy-cwd-control.session.decoded.jsonl","line":12,"needle":"qa-iso-decoy","found":true}}
+mcp liveCall: {"artifact":"/root/dshProj/my-power-dsh/evidence/extensions/extension-mcp-bridge/2026-09-16T04-44-32.737Z/raw/mcp.session.decoded.jsonl","found":true,"tool":"mcp__qa_mcp_live__status","callLine":39,"callId":"call_mcp-bridge_4","resultLine":40,"isError":false,"textHead":"Configured LSP servers: 42 | Installed LSP servers: 1 |  | - typescript: missing; source=builtin; extensions=.ts, .tsx, .js, .jsx, .mjs, .cjs, .mts, .cts | - deno: missing; source=builtin; extensions=.ts, .ts"}
+mcp header: {"line":13,"count":109}
+mcp offered: {"liveToolInHeader":true,"badOutputInHeader":true,"badInputInHeader":false,"deadServerToolsInHeader":0,"headerToolCount":109}

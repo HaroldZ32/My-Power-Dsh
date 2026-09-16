@@ -1,0 +1,7 @@
+command: git rev-parse HEAD
+8777e4340f8b4cd0a8d0c0ac683054523d4b5739
+command: git status --porcelain
+?? evidence/extensions/t7-verify/.last-ts
+?? evidence/extensions/t7-verify/20260916T044344Z/
+command: ls -d dist/mpd-package
+dist/mpd-package

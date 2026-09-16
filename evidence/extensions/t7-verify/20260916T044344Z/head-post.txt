@@ -1,0 +1,7 @@
+command: git rev-parse HEAD
+8777e4340f8b4cd0a8d0c0ac683054523d4b5739
+command: git status --porcelain
+?? evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/
+?? evidence/extensions/extension-mcp-bridge/2026-09-16T04-44-32.737Z/
+?? evidence/extensions/t7-verify/.last-ts
+?? evidence/extensions/t7-verify/20260916T044344Z/
