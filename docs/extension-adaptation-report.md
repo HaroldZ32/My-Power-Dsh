@@ -149,7 +149,7 @@ Basis: evidence-on-disk (t7 attempt 2, verdict PASS; repairs reviewed PASS by t1
 
 - **Runs, all `--no-skip`, exit 0**: `extension-lifecycle.mjs` (arms install / main / failure /
   isolation / packed), `extension-mcp-bridge.mjs` (arms install / live / dead / hang / schema / dup /
-  containment), `extension-isolation.mjs --self-test`. No `[mpd-qa] SKIP` marker was printed.
+  stderr / containment), `extension-isolation.mjs --self-test`. No `[mpd-qa] SKIP` marker was printed.
 - **Mount, not composition**: the boot log prints
   `[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: …`
   (`output.log:40` lifecycle, `output.log:38` bridge), the harness's own `request/header` record
@@ -327,6 +327,7 @@ by t14).
 # the two real lanes (real mounted dsh, sandboxed DSH_HOME + HOME + session cwd)
 bun skills/dsh-qa/scripts/extension-lifecycle.mjs --no-skip
 bun skills/dsh-qa/scripts/extension-mcp-bridge.mjs --no-skip
+bun skills/dsh-qa/scripts/extension-template.mjs --no-skip
 # the shared proof helper's own offline guard (NOT a case lane)
 bun skills/dsh-qa/scripts/extension-isolation.mjs --self-test
 # the interface's own test suite
@@ -348,6 +349,9 @@ node scripts/verify-docs-parity.mjs
 | `evidence/extensions/t7-verify/20260916T045829Z/` | the wave's live verification: mount, extension E2E, the real MCP call, isolation, anchoring | current (HEAD `8777e43` + lane-subject sha256) |
 | `evidence/extensions/extension-lifecycle/2026-09-16T04-58-41.378Z/` | lifecycle lane, all arms green | current |
 | `evidence/extensions/extension-mcp-bridge/2026-09-16T04-59-18.173Z/` | bridge lane, all arms green incl. the corrected schema arm | current |
+| `evidence/extensions/extension-lifecycle/2026-09-16T06-31-40.371Z/` | the skills pass: F8/F9 fixed, the packed predicate's negative control, and the wave's single re-pin record (`t8-skills-pass-summary.json`) | current |
+| `evidence/extensions/extension-mcp-bridge/2026-09-16T06-31-25.127Z/` | the F10 stderr arm: a real bounded tail (cap 2000) from a failing child | current |
+| `evidence/extensions/extension-template/2026-09-16T06-31-12.171Z/` | the template lane's GREEN: all four kinds of a scaffolded copy live, read from the session log (the two earlier stamps are noted above) | current |
 | `evidence/extensions/t13-repair/20260916T045324Z/` | the two red-arm repairs, the re-pin script and its result | current |
 | `evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/`, `…04-54-42.210Z/`, `…04-58-47.578Z/`, `evidence/extensions/extension-mcp-bridge/2026-09-16T04-44-32.737Z/`, `…04-54-24.090Z/`, `…04-56-15.636Z/`, `…04-58-11.355Z/` | lane runs before and after the repairs (the pre-repair ones are red on one arm each) | superseded by the green runs above |
 | `evidence/extensions/t7-verify/20260916T044344Z/` | attempt 1 of the verification (FAILED) | superseded |
@@ -359,3 +363,66 @@ the repair outcomes of §8, and the first three back every live claim of §5. Th
 listed for completeness only — the pre-repair run (`extension-mcp-bridge/2026-09-16T04-44-32.737Z/`,
 `ok:false`), the verification's failed attempt 1 and the concurrent lane runs of other reviewers are
 **superseded** and are cited as support nowhere in this guide or in the docs it reviews.
+
+## 12. Status after the follow-up wave (2026-09-16)
+
+Basis: the fix tasks' own artifacts on disk, read at the time of writing. Nothing below is inferred
+from a task description, and no row claims a fix whose evidence does not exist. The register in §6 is
+left unchanged on purpose — it is this audit's own record of what it found; this section is the
+follow-up mapping on top of it.
+
+| Item | Status | Where the fix lives | Evidence |
+|---|---|---|---|
+| F1 — the adapter-identity fallback is silent | **fixed** | the canonical note (hint `:58-92`) plus (`resolveAdapter`, `packages/mpd-ext-plugin/src/index.ts:102`), carried into the rebuilt `packages/mpd-ext-plugin/dist/index.js`; `mpd-roles-plugin` cross-references it | `evidence/extensions/f1-adapter-identity/20260916T061318Z/` |
+| F5 — one hazard, two half-comments | **fixed** | the single canonical note (`"CANONICAL NOTE"`, `packages/mpd-ext-plugin/src/index.ts:59`), which `packages/mpd-roles-plugin/src/index.ts` points at instead of restating | `evidence/extensions/f1-adapter-identity/20260916T061318Z/` |
+| F7 — an evidence checker over-claims | **fixed** | the corrected prober `evidence/extensions/debranding-probe/20260916T061807Z/verify-debranding-full.mjs` (a NEW directory; `evidence/mpd-ext-debranding/20260915T074904Z/` is left byte-untouched as the record of the narrow probe) | `evidence/extensions/debranding-probe/20260916T061807Z/` |
+| F11 — the R11 class assertion has no test-suite home | **fixed** | `scripts/verify-pack-closure.mjs` — it runs alone, parses the packer's real lists, and replays red on a temp fixture — wired into `package.json` `test:qa:all` | `evidence/extensions/pack-closure-check/20260916T061527Z/` |
+| F8 — the lifecycle lane still narrates the pre-repair expectation | **fixed** | `skills/dsh-qa/scripts/extension-lifecycle.mjs`: the packed-arm narration states the current invariant and `greenOwner: "t11"` is gone | `evidence/extensions/extension-lifecycle/2026-09-16T06-31-40.371Z/` (the real lane run: `result.json` + `output.log`), summarised in `…/t8-skills-pass-summary.json` |
+| F9 — one row's citation is not what gates the arm | **fixed** | the arm's `ok` is now the pure predicate `packedStateOk()` in `skills/dsh-qa/scripts/extension-lifecycle.mjs` (hints `:412`, used `:383`), with `packedNegativeDriver()` (`:435`) over four fixture packed trees; `skills/dsh-qa/SKILL.md` cites those anchors instead of the old "exits 0 (`:385`)" sentence | `evidence/extensions/extension-lifecycle/2026-09-16T06-31-40.371Z/` — `steps.packed.negativeControl`: `falsifiable: true`, `packerExitGated: true`, the three broken fixture trees `ok: false` |
+| F10 — the child-stderr-tail clause has no lane arm | **fixed** | `skills/dsh-qa/scripts/extension-mcp-bridge.mjs` gained a `stderr` arm: a fixture child floods 3053 marked stderr bytes and dies before the handshake; the arm asserts the reported tail keeps the tail markers, drops the head marker, and equals the cap read from `packages/mpd-ext-plugin/src/mcp-client.ts` | `evidence/extensions/extension-mcp-bridge/2026-09-16T06-31-25.127Z/` — `steps.stderr`: `cap 2000`, `reportedTailLength 2000`, `headDropped true`, `tailKept true`, `vacuous false` |
+| F2 — no single plane-selection rule | **absorbed by the guides** | `docs/extension-authoring-guide.md` §2 carries the one rule, and the zh-CN twin carries the same one | this guide pair, linked from `docs/index.md` |
+| F3 — the isolation posture and its residuals are undocumented | **absorbed by the guides** | `docs/extension-authoring-guide.md` §3 states the posture and names its four accepted residuals, anchored to (`INHERITED_ENV_VARS`, `packages/mpd-ext-plugin/src/mcp-client.ts:69-85`) and `:87-97` | this guide pair |
+| F4 — restart asymmetry | **absorbed by the guides** | `docs/extension-authoring-guide.md` §4 is the lifecycle-and-restart matrix that juxtaposes the two modes | this guide pair |
+| F6 — evidence freshness | **deferred, boundary-marked** | the pre-`c239407` directories are inventoried and neither re-run, edited nor deleted | `evidence/extensions/boundary-index/INDEX.md` |
+
+Two things this table deliberately does not say. It does not claim F8/F9/F10 as verified from a task
+description: each of the three rows above names the lane run that delivered it, none of them is
+inferred, and all three lanes were independently re-run and re-read by the wave's verification task
+(`evidence/extensions/verify-skills/20260916T064350Z/`). The wave's new template lane `skills/dsh-qa/scripts/extension-template.mjs` (case row
+`extension-template`) is the fourth entry in the extension gate list, and it recorded a green real
+mount under `evidence/extensions/extension-template/2026-09-16T06-31-12.171Z/` (skill, flow, role and
+the template's own MCP tool, every claim read from the harness session log). And the wave's single
+skills re-pin has LANDED: `VENDOR_LOCK.json` now reads `fileCount 318` /
+`treeSha a8ba96b8108b2df3cce707e7b69d038f71514cea9e0c488683ba79012efc8d12`, replacing the before value
+(`fileCount 317` / `treeSha 7a48fdad90cc30f9c1e71009be216aeb8b2a1de797eb2bb1897032c41f6b51aa`) — one
+re-pin, in the same change set as the F8/F9/F10 edits (AGENTS.md §9/§11), verified by
+`node scripts/verify-vendor.mjs` (PASS). The packed-tree CLI deviation below is disclosed, measured and
+**not** fixed in this wave.
+
+### One measured deviation: the developer CLI is RED inside a packed artifact
+
+**Not fixed in this wave** (tracked as `.mpd/TODO.md` T-51). The packer copies only
+`packages/<pkg>/dist` (`cpDist`, `scripts/pack-mpd.mjs:67-77`) and never `src`, while the developer CLI
+imports its validator from `src` (`"../packages/mpd-ext-plugin/src/registry.ts"`, `scripts/mpd-ext.mjs:35`).
+Inside a packed tree every CLI entry point therefore exits 1 with
+`Cannot find module '<packed>/packages/mpd-ext-plugin/src/registry.ts'`. Measured on a probe tree built
+from the packer's own output (`evidence/extensions/template-scaffold/20260916T063710Z/raw/packed-tree-probe.json`,
+arms A and B): as packed, `validate`, `scaffold` and `--self-test` are all exit 1; with `packages/*/src`
+restored, `validate` returns 0 while `scaffold` and `--self-test` still fail, because no `templates/`
+entry is packed either. AGENTS.md §4's Extension-CLI gate therefore holds in a CHECKOUT (where both
+`src` and `templates/` exist) and is RED in a packed artifact until the packer ships them. The agent
+contract's own copy of this limit is in `EXTENSIONS-FOR-AGENTS.md` §9.
+
+
+### Evidence note: the template lane's three stamps
+
+`evidence/extensions/extension-template/` holds three runs from one hour — `2026-09-16T06-30-30.275Z/`
+(RED), `2026-09-16T06-31-12.171Z/` (GREEN) and the independent verifier's GREEN later that hour in a
+different sandbox. The lane was EDITED between the first two runs and it is an untracked file, so its
+pre-fix expectation is **not reconstructible from the repository alone**: a third party cannot re-derive
+why the first stamp was red. What the reviewer established from the recorded artifacts is precise — the
+first run's MCP `tool/result` ALREADY carried the copy's id, its own root, `enabled:true` and all four
+kind strings, and the `server process exited (code=0)` teardown line is identical in all three runs — so
+the RED was the CASE's own expectation (its `mcp` step read `ok:false` and that step lacked the
+`servedOwnRoot` / `servedFourKinds` keys), **not** a product defect, and there is no flakiness signal.
+The expectation was corrected in the next stamp; the product result was already correct.
