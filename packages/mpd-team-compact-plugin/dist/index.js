@@ -161,6 +161,7 @@ function createDshAdapter(ctx, config = {}) {
         toolsGuard: typeof tools?.guard === "function",
         toolsGet: typeof tools?.get === "function",
         toolsExecute: typeof tools?.execute === "function",
+        toolsPreExecute: typeof ctx?.on === "function",
         toolsPostExecute: typeof ctx?.on === "function",
         subagents: subagents !== undefined,
         subagentsSpawn: typeof subagents?.start === "function",
@@ -207,6 +208,17 @@ function createDshAdapter(ctx, config = {}) {
       if (typeof tools.guard !== "function")
         throw new Error("mpd-dsh-adapter: the harness tools service exposes no guard()");
       return tools.guard((exec) => guard(exec ?? {}));
+    },
+    onPreToolExecute(listener) {
+      if (typeof ctx?.on !== "function")
+        return noop;
+      return ctx.on("tools/pre-execute", async (exec, next) => {
+        const downstream = typeof next === "function" ? await next() : undefined;
+        try {
+          listener(Object.freeze({ ...exec ?? {} }), downstream);
+        } catch {}
+        return downstream;
+      });
     },
     onPostToolExecute(listener) {
       if (typeof ctx?.on !== "function")
@@ -315,6 +327,126 @@ function createDshAdapter(ctx, config = {}) {
         ...preset?.broken === undefined ? {} : { broken: String(preset.broken) }
       };
     },
+    settingsReader(namespace) {
+      const settings = service("settings");
+      if (settings === undefined || settings === null)
+        return;
+      return {
+        get() {
+          try {
+            return typeof settings.get === "function" ? settings.get(namespace) : undefined;
+          } catch {
+            return;
+          }
+        },
+        describe() {
+          try {
+            if (typeof settings.describe !== "function")
+              return;
+            const list = settings.describe();
+            if (!Array.isArray(list))
+              return;
+            const found = list.find((entry) => entry?.ns === namespace);
+            if (found === undefined)
+              return;
+            return {
+              value: found.value,
+              revision: typeof found.revision === "number" ? found.revision : undefined,
+              user: found.user,
+              base: found.base,
+              applies: typeof found.applies === "string" ? found.applies : undefined
+            };
+          } catch {
+            return;
+          }
+        }
+      };
+    },
+    onSettingsDocumentUpdated(namespace, listener) {
+      let pendingRevision;
+      let pendingSource;
+      let hasPending = false;
+      let scheduled = false;
+      const flush = () => {
+        scheduled = false;
+        if (!hasPending)
+          return;
+        const revision = pendingRevision;
+        const source = pendingSource;
+        pendingRevision = undefined;
+        pendingSource = undefined;
+        hasPending = false;
+        try {
+          listener(revision, source);
+        } catch {}
+      };
+      const offUpdated = adapter.onEvent("settings/updated", (ns, _next, _prev, from) => {
+        if (String(ns) !== namespace)
+          return;
+        pendingSource = from === undefined ? undefined : String(from);
+        return;
+      });
+      const offDocument = adapter.onEvent("settings/document-updated", (ns, revision) => {
+        if (String(ns) !== namespace)
+          return;
+        pendingRevision = typeof revision === "number" ? revision : undefined;
+        hasPending = true;
+        if (!scheduled) {
+          scheduled = true;
+          Promise.resolve().then(flush);
+        }
+        return;
+      });
+      return () => {
+        try {
+          offUpdated?.();
+        } catch {}
+        try {
+          offDocument?.();
+        } catch {}
+      };
+    },
+    whenSettingsAvailable(callback) {
+      if (typeof ctx?.inject !== "function") {
+        try {
+          callback();
+        } catch {}
+        return;
+      }
+      try {
+        ctx.inject(["settings"], () => {
+          try {
+            callback();
+          } catch {}
+        });
+      } catch {}
+    },
+    settingsRegister(namespace, schema, options) {
+      const settings = service("settings");
+      if (settings === undefined || settings === null || typeof settings.register !== "function") {
+        return { ok: false, error: "settings service is unavailable" };
+      }
+      try {
+        settings.register(namespace, schema, { ...options?.base === undefined ? {} : { base: options.base }, ...options?.applies === undefined ? {} : { applies: options.applies } });
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, error: String(error?.message ?? error) };
+      }
+    },
+    async settingsMutate(namespace, ops, expectedRevision) {
+      const settings = service("settings");
+      if (settings === undefined || settings === null || typeof settings.mutate !== "function") {
+        return { ok: false, error: "settings service is unavailable" };
+      }
+      try {
+        await settings.mutate(namespace, ops.map((op) => op.op === "unset" ? { op: "unset", path: [...op.path] } : { op: "set", path: [...op.path], value: op.value }), expectedRevision);
+        return { ok: true };
+      } catch (error) {
+        const name = String(error?.name ?? "");
+        const conflict = name === "SettingsConflictError" || /conflict/i.test(String(error?.message ?? ""));
+        return { ok: false, error: String(error?.message ?? error), ...conflict ? { conflict: true } : {} };
+      }
+    },
     text: textBlock
   };
   return adapter;
@@ -337,6 +469,22 @@ async function terminalTaskStatuses() {
   return statuses;
 }
 var COMPACTION_FAILURE_CODES = ["busy", "cancelled", "changed", "summary", "commit", "persistence"];
+function sameAuditOutcome(previous, next) {
+  if (previous === undefined)
+    return false;
+  if (previous.outcome !== next.outcome)
+    return false;
+  if ((previous.refusedReason ?? "") !== (next.refusedReason ?? ""))
+    return false;
+  if (previous.members.length !== next.members.length)
+    return false;
+  return previous.members.every((member, index) => {
+    const other = next.members[index];
+    if (other === undefined)
+      return false;
+    return member.member === other.member && member.outcome === other.outcome && (member.reason ?? "") === (other.reason ?? "") && (member.failureCode ?? "") === (other.failureCode ?? "");
+  });
+}
 function readTeamRecord(workspace, teamId) {
   const file = join(workspace, TEAM_STATE_DIR, teamId, "team.json");
   if (!existsSync(file))
@@ -534,10 +682,33 @@ function apply(ctx) {
     terminal = await terminalTaskStatuses();
     return terminal;
   }
-  async function runPass(workspace, teamId) {
+  const suppressedSinceWrite = new Map;
+  function writeOrSkip(workspace, teamId, audit, caller, force) {
+    if (audit.outcome === "not-live") {
+      try {
+        audit.liveAgentIds = dsh.liveAgents().map((agent) => String(agent?.id ?? "")).filter((id) => id !== "").slice(0, 20);
+      } catch {}
+    }
+    if (caller !== undefined)
+      audit.caller = caller;
+    const previous = readAudits(workspace, teamId).pop();
+    if (!force && sameAuditOutcome(previous, audit)) {
+      const collapsed = (suppressedSinceWrite.get(teamId) ?? 0) + 1;
+      suppressedSinceWrite.set(teamId, collapsed);
+      audit.suppressed = collapsed;
+      return audit;
+    }
+    const carried = suppressedSinceWrite.get(teamId) ?? 0;
+    if (carried > 0)
+      audit.suppressed = carried;
+    suppressedSinceWrite.set(teamId, 0);
+    writeAudit(workspace, audit);
+    return audit;
+  }
+  async function runPass(workspace, teamId, caller, force = false) {
     const team = readTeamRecord(workspace, teamId);
     if (team === undefined) {
-      const audit2 = {
+      return writeOrSkip(workspace, teamId, {
         schema: "mpd/team-compact@1",
         teamId,
         teamName: "",
@@ -546,13 +717,10 @@ function apply(ctx) {
         refusedReason: "no readable team record",
         members: [],
         engineResolution: "agent-scoped"
-      };
-      writeAudit(workspace, audit2);
-      return audit2;
+      }, caller, force);
     }
     const audit = await compactTeamPass(dsh, team, { terminal: await terminalStatuses() });
-    writeAudit(workspace, audit);
-    return audit;
+    return writeOrSkip(workspace, teamId, audit, caller, force);
   }
   dsh.onEvent?.("agent/status", async () => {
     try {
@@ -565,11 +733,42 @@ function apply(ctx) {
           continue;
         if (!teamIsFinished(team, await terminalStatuses()))
           continue;
-        await runPass(workspace, teamId);
+        await runPass(workspace, teamId, { via: "status" });
       }
     } catch (error) {
       log.warn?.(`mpd-team-compact: trigger pass failed: ${error instanceof Error ? error.message : String(error)}`);
     }
+  });
+  dsh.onEvent?.("agent/turn-stopping", (payload) => {
+    try {
+      const agent = payload?.agent;
+      const sessionId = String(agent?.session?.id ?? "");
+      if (sessionId === "")
+        return;
+      const cwd = String(agent?.session?.header?.cwd ?? "");
+      const workspace = cwd !== "" ? cwd : dsh.workspaceRoot();
+      if (workspace === undefined || workspace === "")
+        return;
+      (async () => {
+        try {
+          for (const teamId of listTeamIds(workspace)) {
+            const team = readTeamRecord(workspace, teamId);
+            if (team === undefined)
+              continue;
+            if (!compactableMembers(team).some((member) => member.id === sessionId))
+              continue;
+            if (!teamIsFinished(team, await terminalStatuses()))
+              continue;
+            await runPass(workspace, teamId, { via: "turn-end", sessionId, cwd });
+          }
+        } catch (error) {
+          log.warn?.(`mpd-team-compact: turn-boundary pass failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      })();
+    } catch (error) {
+      log.warn?.(`mpd-team-compact: turn-boundary listener failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    return;
   });
   dsh.registerTool({
     name: "mpd_team_compact_run",
@@ -577,7 +776,8 @@ function apply(ctx) {
     parameters: {
       type: "object",
       properties: {
-        team_id: { type: "string", description: "The team to compact. Defaults to every finished team in this workspace." }
+        team_id: { type: "string", description: "The team to compact. Defaults to every finished team in this workspace." },
+        force: { type: "boolean", description: `Write an audit record even when the outcome is identical to the previous one (repeats are otherwise collapsed by the write-on-change rule and counted in the next record's "suppressed").` }
       },
       additionalProperties: false
     },
@@ -592,9 +792,15 @@ function apply(ctx) {
     async execute(args, exec) {
       const workspace = dsh.workspaceRoot(exec);
       const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(workspace) : [args.team_id];
+      const sessionId = String(exec?.agent?.session?.id ?? "");
+      const caller = {
+        via: "tool",
+        ...sessionId === "" ? {} : { sessionId },
+        ...exec?.agent?.session?.header?.cwd === undefined ? {} : { cwd: String(exec.agent.session.header.cwd) }
+      };
       const passes = [];
       for (const teamId of ids)
-        passes.push(await runPass(workspace, teamId));
+        passes.push(await runPass(workspace, teamId, caller, args?.force === true));
       return { passes };
     }
   });
@@ -631,6 +837,7 @@ export {
   writeAudit,
   terminalTaskStatuses,
   teamIsFinished,
+  sameAuditOutcome,
   readTeamRecord,
   readAudits,
   name,

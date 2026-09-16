@@ -12,6 +12,7 @@ import { join } from "node:path"
 import {
   apply,
   auditDir,
+  sameAuditOutcome,
   classifyCompactionError,
   compactTeamPass,
   compactableMembers,
@@ -357,20 +358,44 @@ test("t48 NO SILENT NOTIFICATION: the pass writes an audit and returns; it never
   } finally { cleanup() }
 })
 
-test("t48 plugin: apply() registers both tools and subscribes to the status edge", () => {
+test("t48 plugin: apply() registers both tools and subscribes to BOTH triggers", () => {
   const registered = []
-  let subscribed
+  const subscribed = []
   const listeners = []
   const dsh = {
     registerTool: (definition) => { registered.push(definition.name); return () => {} },
-    onEvent: (event) => { subscribed = event; return () => {} },
+    onEvent: (event) => { subscribed.push(event); return () => {} },
     workspaceRoot: () => "/tmp/none",
   }
   const ctx = { get: (key) => (key === "mpdDsh" ? dsh : undefined), logger: { warn: () => {}, info: () => {} }, on: (e) => { listeners.push(e) } }
   apply(ctx)
   expect(registered.sort()).toEqual(["mpd_team_compact_run", "mpd_team_compact_status"])
-  expect(subscribed).toBe("agent/status")
+  // TWO triggers, deliberately: the status edge (kept for the record; it fires too late to reach
+  // a released member) and the member's own turn boundary (the one that can still reach it).
+  expect(subscribed.sort()).toEqual(["agent/status", "agent/turn-stopping"])
   expect(listeners).toEqual([])
+})
+
+test("t48 TURN BOUNDARY: the serial-dispatch listener is non-bailing and non-throwing", () => {
+  const handlers = new Map()
+  const dsh = {
+    registerTool: () => () => {},
+    onEvent: (event, handler) => { handlers.set(event, handler); return () => {} },
+    workspaceRoot: () => "/tmp/none",
+    liveAgents: () => [{ id: "session-a" }],
+  }
+  const warnings = []
+  const ctx = { get: (key) => (key === "mpdDsh" ? dsh : undefined), logger: { warn: (m) => warnings.push(String(m)), info: () => {} }, on: () => () => {} }
+  apply(ctx)
+  const turnStopping = handlers.get("agent/turn-stopping")
+  expect(typeof turnStopping).toBe("function")
+  // SERIAL dispatch: a returned value BAILS the chain and a returned promise is awaited, so the
+  // listener must answer `undefined` for EVERY payload — including a hostile one. Same rule the
+  // pre-step waterfall defect taught (AGENTS.md §12).
+  expect(turnStopping({ agent: { session: { id: "not-a-member", header: { cwd: "/tmp/none" } } } })).toBeUndefined()
+  expect(turnStopping({})).toBeUndefined()
+  expect(turnStopping({ get agent() { throw new Error("hostile payload") } })).toBeUndefined()
+  expect(warnings.some((line) => line.includes("turn-boundary listener failed"))).toBe(true)
 })
 
 // REGRESSION (defect measured 2026-09-14): both tools shipped a BARE property map as
@@ -398,10 +423,31 @@ test("t48 plugin: every registered tool declares an OBJECT-ROOTED parameters sch
     // which is exactly how it reached the wire as `type: null`.
     expect({ tool: definition.name, type: parameters?.type }).toEqual({ tool: definition.name, type: "object" })
     expect(typeof parameters.properties).toBe("object")
-    expect(Object.keys(parameters.properties)).toEqual(["team_id"])
+    // `force` is declared on the RUN tool only; the status tool stays a pure read.
+    expect(Object.keys(parameters.properties).sort()).toEqual(definition.name === "mpd_team_compact_run" ? ["force", "team_id"] : ["team_id"])
     expect(parameters.properties.team_id.type).toBe("string")
+    if (definition.name === "mpd_team_compact_run") expect(parameters.properties.force.type).toBe("boolean")
     expect(parameters.additionalProperties).toBe(false)
     // team_id is optional on BOTH tools: the pass defaults to every finished team.
     expect(parameters.required ?? []).toEqual([])
   }
+})
+
+// ── write-on-change (2026-09-16) ─────────────────────────────────────────────
+//
+// MEASURED before this rule: 235 audit records across 7 teams, 2260 member entries, every one
+// `skipped-not-live` and ZERO successes, because the automatic trigger kept re-running its pass
+// on teams whose members had already been released. This predicate collapses those repeats; the
+// count of collapsed attempts rides onto the next WRITTEN record.
+test("write-on-change: sameAuditOutcome is true only for an identical outcome", () => {
+  const member = { member: "Junior Engineer", sessionId: "s1", outcome: "skipped-not-live", reason: "no live Agent for this session id" }
+  const base = { schema: "mpd/team-compact@1", teamId: "t", teamName: "T", at: 1, outcome: "not-live", refusedReason: "no live member Agents in this process", members: [member], engineResolution: "agent-scoped" }
+  expect(sameAuditOutcome(undefined, base)).toBe(false)
+  expect(sameAuditOutcome(base, { ...base, at: 99 })).toBe(true)
+  expect(sameAuditOutcome(base, { ...base, outcome: "compacted" })).toBe(false)
+  expect(sameAuditOutcome(base, { ...base, refusedReason: "other" })).toBe(false)
+  expect(sameAuditOutcome(base, { ...base, members: [{ ...member, outcome: "compacted" }] })).toBe(false)
+  expect(sameAuditOutcome(base, { ...base, members: [{ ...member, reason: "busy" }] })).toBe(false)
+  expect(sameAuditOutcome(base, { ...base, members: [] })).toBe(false)
+  expect(sameAuditOutcome(base, { ...base, members: [member, member] })).toBe(false)
 })

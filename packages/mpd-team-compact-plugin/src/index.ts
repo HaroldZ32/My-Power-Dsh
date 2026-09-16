@@ -125,6 +125,33 @@ export interface CompactAudit {
   members: CompactMemberRecord[]
   /** engineKey is always "agent-scoped" — the only engine this plugin may drive. */
   engineResolution: "agent-scoped"
+  /** Who asked for this pass: the tool call, or one of the two automatic triggers. */
+  caller?: { via: "tool" | "turn-end" | "status"; sessionId?: string; cwd?: string }
+  /** The ids the live registry ACTUALLY exposed when a pass found nobody resident. */
+  liveAgentIds?: string[]
+  /** Identical repeats collapsed into this record by the write-on-change rule. */
+  suppressed?: number
+}
+
+/**
+ * The write-on-change predicate: true when two audits describe the SAME outcome for the same
+ * team. Compared: the outcome, the refusal reason, and each member name/outcome/reason/failure
+ * code in order — so a new member, a new reason or a success makes it false and is never
+ * swallowed.
+ */
+export function sameAuditOutcome(previous: CompactAudit | undefined, next: CompactAudit): boolean {
+  if (previous === undefined) return false
+  if (previous.outcome !== next.outcome) return false
+  if ((previous.refusedReason ?? "") !== (next.refusedReason ?? "")) return false
+  if (previous.members.length !== next.members.length) return false
+  return previous.members.every((member, index) => {
+    const other = next.members[index]
+    if (other === undefined) return false
+    return member.member === other.member
+      && member.outcome === other.outcome
+      && (member.reason ?? "") === (other.reason ?? "")
+      && (member.failureCode ?? "") === (other.failureCode ?? "")
+  })
 }
 
 // ── team state (read-only) ───────────────────────────────────────────────────
@@ -428,26 +455,55 @@ export function apply(ctx: Ctx): void {
     return terminal
   }
 
-  /** Run one pass for one team and persist its audit. Returns the audit. */
-  async function runPass(workspace: string, teamId: string): Promise<CompactAudit> {
-    const team = readTeamRecord(workspace, teamId)
-    if (team === undefined) {
-      const audit: CompactAudit = {
-        schema: "mpd/team-compact@1", teamId, teamName: "", at: Date.now(),
-        outcome: "refused", refusedReason: "no readable team record", members: [], engineResolution: "agent-scoped",
-      }
-      writeAudit(workspace, audit)
+  /** Identical-outcome attempts collapsed since the last WRITTEN record, per team. */
+  const suppressedSinceWrite = new Map<string, number>()
+
+  /**
+   * WRITE-ON-CHANGE. Every pass used to leave a record, so one finished team that could never be
+   * compacted produced 73 identical files in a day and a half (measured 2026-09-16: 235 records,
+   * 2260 member entries, every single one `skipped-not-live`, zero successes) — the audit became
+   * unreadable and the churn endless. A record is now written when the outcome CHANGES; identical
+   * repeats are counted and carried onto the next written record as `suppressed`, and the manual
+   * tool can force a write with `force: true`. Nothing is hidden: the count is on disk.
+   */
+  function writeOrSkip(workspace: string, teamId: string, audit: CompactAudit, caller: CompactAudit["caller"] | undefined, force: boolean): CompactAudit {
+    if (audit.outcome === "not-live") {
+      try {
+        audit.liveAgentIds = dsh.liveAgents().map((agent: { id?: unknown }) => String(agent?.id ?? "")).filter((id: string) => id !== "").slice(0, 20)
+      } catch { /* diagnostics are best-effort; a pass never fails for them */ }
+    }
+    if (caller !== undefined) audit.caller = caller
+    const previous = readAudits(workspace, teamId).pop()
+    if (!force && sameAuditOutcome(previous, audit)) {
+      const collapsed = (suppressedSinceWrite.get(teamId) ?? 0) + 1
+      suppressedSinceWrite.set(teamId, collapsed)
+      audit.suppressed = collapsed
       return audit
     }
-    const audit = await compactTeamPass(dsh, team, { terminal: await terminalStatuses() })
-    // EVERY pass is persisted, including a refusal: the user asked for nothing silent, and
-    // "why did it not compact my finished team" is exactly what this file answers.
+    const carried = suppressedSinceWrite.get(teamId) ?? 0
+    if (carried > 0) audit.suppressed = carried
+    suppressedSinceWrite.set(teamId, 0)
     writeAudit(workspace, audit)
     return audit
   }
 
-  // The trigger. `agent/status` is the harness's own status edge; the pass is
-  // idempotent-by-refusal (it re-reads the team record and refuses a team with work).
+  /** Run one pass for one team and persist its audit (write-on-change). Returns the audit. */
+  async function runPass(workspace: string, teamId: string, caller?: CompactAudit["caller"], force = false): Promise<CompactAudit> {
+    const team = readTeamRecord(workspace, teamId)
+    if (team === undefined) {
+      return writeOrSkip(workspace, teamId, {
+        schema: "mpd/team-compact@1", teamId, teamName: "", at: Date.now(),
+        outcome: "refused", refusedReason: "no readable team record", members: [], engineResolution: "agent-scoped",
+      }, caller, force)
+    }
+    const audit = await compactTeamPass(dsh, team, { terminal: await terminalStatuses() })
+    return writeOrSkip(workspace, teamId, audit, caller, force)
+  }
+
+  // TRIGGER 1 — the status edge. `agent/status` is the harness's own status edge; the pass is
+  // idempotent-by-refusal (it re-reads the team record and refuses a team with work) and now
+  // idempotent-by-write too (write-on-change), so a finished team that cannot be reached leaves
+  // ONE record instead of one per edge.
   dsh.onEvent?.("agent/status", async () => {
     try {
       const workspace = dsh.workspaceRoot()
@@ -456,11 +512,55 @@ export function apply(ctx: Ctx): void {
         const team = readTeamRecord(workspace, teamId)
         if (team === undefined) continue
         if (!teamIsFinished(team, await terminalStatuses())) continue
-        await runPass(workspace, teamId)
+        await runPass(workspace, teamId, { via: "status" })
       }
     } catch (error) {
       log.warn?.(`mpd-team-compact: trigger pass failed: ${error instanceof Error ? error.message : String(error)}`)
     }
+  })
+
+  // TRIGGER 2 — the member's own TURN BOUNDARY, and the only one that can actually reach a member.
+  //
+  // A continuable child's Activation is PROCESS-LOCAL and is released when the child settles
+  // (`@deepseek-ai/dsh-subagent`: "Child session id → its live Activation. Process-local, never
+  // durable"), so a member is resolvable exactly while it is running or finishing a turn. Driving
+  // the pass from outside that window can only ever answer `not-live` — which is precisely what
+  // was measured: 235 automatic passes, 2260 member entries, every one `skipped-not-live`, zero
+  // successes. This trigger therefore runs the pass the moment a member of a FINISHED team stops
+  // its turn, while its Agent is still resident. The other members are then handled by the same
+  // barrier as before: a resident one is compacted, a released one is recorded as
+  // `skipped-not-live` (it cannot be reached without materializing it, which the silence rule
+  // forbids).
+  //
+  // SERIAL-DISPATCH SAFETY (binding): `agent/turn-stopping` is a `serial` dispatch — a listener
+  // that RETURNS a value BAILS the rest of the chain, and a returned promise is awaited. This
+  // handler therefore returns NOTHING (never a promise), contains its own failures, and does the
+  // real work in a detached async block. Same rule as the watchdog's turn-end stamp.
+  dsh.onEvent?.("agent/turn-stopping", (payload: unknown) => {
+    try {
+      const agent = (payload as { agent?: { session?: { id?: unknown; header?: { cwd?: unknown } } } } | undefined)?.agent
+      const sessionId = String(agent?.session?.id ?? "")
+      if (sessionId === "") return undefined
+      const cwd = String(agent?.session?.header?.cwd ?? "")
+      const workspace = cwd !== "" ? cwd : dsh.workspaceRoot()
+      if (workspace === undefined || workspace === "") return undefined
+      void (async () => {
+        try {
+          for (const teamId of listTeamIds(workspace)) {
+            const team = readTeamRecord(workspace, teamId)
+            if (team === undefined) continue
+            if (!compactableMembers(team).some((member) => member.id === sessionId)) continue
+            if (!teamIsFinished(team, await terminalStatuses())) continue
+            await runPass(workspace, teamId, { via: "turn-end", sessionId, cwd })
+          }
+        } catch (error) {
+          log.warn?.(`mpd-team-compact: turn-boundary pass failed: ${error instanceof Error ? error.message : String(error)}`)
+        }
+      })()
+    } catch (error) {
+      log.warn?.(`mpd-team-compact: turn-boundary listener failed: ${error instanceof Error ? error.message : String(error)}`)
+    }
+    return undefined
   })
 
   // TOOL PARAMETERS ARE OBJECT-ROOTED JSON SCHEMA — both tools below.
@@ -483,6 +583,7 @@ export function apply(ctx: Ctx): void {
       type: "object",
       properties: {
         team_id: { type: "string", description: "The team to compact. Defaults to every finished team in this workspace." },
+        force: { type: "boolean", description: "Write an audit record even when the outcome is identical to the previous one (repeats are otherwise collapsed by the write-on-change rule and counted in the next record\'s \"suppressed\")." },
       },
       additionalProperties: false,
     },
@@ -495,11 +596,17 @@ export function apply(ctx: Ctx): void {
           : value.passes.map((audit) => `${audit.teamId}: ${audit.outcome}${audit.refusedReason === undefined ? "" : ` (${audit.refusedReason})`} — ${audit.members.map((m) => `${m.member}=${m.outcome}`).join(", ") || "no members"}`).join("\n"),
       }],
     },
-    async execute(args: { team_id?: string }, exec: { agent?: { session?: { header?: { cwd?: string } } } }) {
+    async execute(args: { team_id?: string; force?: boolean }, exec: { agent?: { session?: { id?: string; header?: { cwd?: string } } } }) {
       const workspace = dsh.workspaceRoot(exec as never)
       const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(workspace) : [args.team_id]
+      const sessionId = String(exec?.agent?.session?.id ?? "")
+      const caller: CompactAudit["caller"] = {
+        via: "tool",
+        ...sessionId === "" ? {} : { sessionId },
+        ...exec?.agent?.session?.header?.cwd === undefined ? {} : { cwd: String(exec.agent.session.header.cwd) },
+      }
       const passes: CompactAudit[] = []
-      for (const teamId of ids) passes.push(await runPass(workspace, teamId))
+      for (const teamId of ids) passes.push(await runPass(workspace, teamId, caller, args?.force === true))
       return { passes }
     },
   })

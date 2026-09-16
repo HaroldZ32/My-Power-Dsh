@@ -11,7 +11,7 @@ compacted.
 
 | Tool | Inputs | Result |
 |---|---|---|
-| `mpd_team_compact_run` | `team_id?` — defaults to every finished team in this workspace | one audit pass per team: the team outcome plus each member's outcome |
+| `mpd_team_compact_run` | `team_id?`, `force?` — defaults to every finished team in this workspace | one audit pass per team: the team outcome plus each member's outcome. A record is written only when the outcome CHANGES; `force: true` overrides |
 | `mpd_team_compact_status` | `team_id?` — defaults to every team with an audit | read-only: the recorded passes (newest last), including skipped members and the reason each was skipped |
 
 ## Semantics
@@ -24,6 +24,14 @@ compacted.
 - **Audit** — `<workspace>/.mpd/team-compact/<teamId>/`, accumulated and never overwritten. It is
   never `.mpd/team`: that state belongs to the agent-teams plugin.
 - **Silence** — audit only. A member is never notified; a notification would push context back in.
+- **Triggers** — TWO, and only one of them can reach a member. (1) `agent/status`, the harness's own
+  status edge, which re-checks every finished team but fires when a released member is already gone;
+  (2) the member's own turn boundary (`agent/turn-stopping`, the edge the team watchdog stamps
+  `turn-end` from), which is the only moment a continuable child is still resident — its Activation
+  is process-local and released on settlement. Measured 2026-09-16: 235 status-edge passes produced
+  2260 `skipped-not-live` member entries and ZERO successes, which is why (2) exists. A member that
+  has already been released is recorded as `skipped-not-live`: reaching it would mean materializing
+  it, and that would push context back in.
 
 ## Design constraints (each one measured)
 
@@ -50,7 +58,7 @@ compacted.
 
 | Path | Notes |
 |---|---|
-| `<workspace>/.mpd/team-compact/<teamId>/` | the audit ledger: one record per pass, accumulated |
+| `<workspace>/.mpd/team-compact/<teamId>/` | the audit ledger: one record per CHANGED outcome, accumulated (identical repeats are counted in the next record's `suppressed`) |
 
 ## Gates
 
