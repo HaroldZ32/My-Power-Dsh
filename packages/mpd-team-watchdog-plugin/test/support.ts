@@ -74,6 +74,8 @@ export interface StubOptions {
 export interface StubAdapter {
   adapter: DshAdapter
   tools: Map<string, DshToolDef>
+  /** The PRE-dispatch observers (`tools/pre-execute`), in registration order. */
+  pre: Array<(exec: any, decision: any) => void>
   post: Array<(exec: any, result: any, downstream: any) => unknown>
   settingsListeners: Array<(revision?: number, source?: string) => void>
   /** The tool names executed through `toolRuntime().execute`, in order. */
@@ -90,6 +92,7 @@ export interface StubAdapter {
  */
 export function stubAdapter(options: StubOptions): StubAdapter {
   const tools = new Map<string, DshToolDef>()
+  const pre: Array<(exec: any, decision: any) => void> = []
   const post: Array<(exec: any, result: any, downstream: any) => unknown> = []
   const settingsListeners: Array<(revision?: number, source?: string) => void> = []
   const toolExecutes: string[] = []
@@ -112,6 +115,13 @@ export function stubAdapter(options: StubOptions): StubAdapter {
       tools.set(definition.name, definition)
       return () => tools.delete(definition.name)
     },
+    onPreToolExecute: (listener: (exec: any, decision: any) => void) => {
+      pre.push(listener)
+      return () => {
+        const index = pre.indexOf(listener)
+        if (index >= 0) pre.splice(index, 1)
+      }
+    },
     onPostToolExecute: (listener: (exec: any, result: any, downstream: any) => unknown) => {
       post.push(listener)
       return () => {
@@ -133,6 +143,7 @@ export function stubAdapter(options: StubOptions): StubAdapter {
   return {
     adapter,
     tools,
+    pre,
     post,
     settingsListeners,
     toolExecutes,
@@ -157,6 +168,7 @@ export function testConfig(overrides: Partial<EngineConfig> = {}): EngineConfig 
     teamCacheMs: 0,
     keepGenerations: 3,
     logPrefix: "mpd-team-watchdog-test",
+    toolInFlightMaxMs: 900_000,
     ...overrides,
   }
 }

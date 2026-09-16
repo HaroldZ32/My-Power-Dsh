@@ -1,0 +1,4 @@
+17031 packages/mpd-dsh-adapter-plugin/dist/index.js
+119753 packages/mpd-team-watchdog-plugin/dist/index.js
+ea232983e5571af4e56a4a1d0e177f98f23f6872b0b4527a23188886af3498cb  packages/mpd-dsh-adapter-plugin/dist/index.js
+54f1f41ce60629651d96320cffe573e5c0079d742f1a024213c07e733681935b  packages/mpd-team-watchdog-plugin/dist/index.js

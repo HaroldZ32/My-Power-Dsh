@@ -1,0 +1,35 @@
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=300 tickIntervalMs=100 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=5000
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=300 tickIntervalMs=100 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=off
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=401ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/ws-new-cases/fault-jhuztn/.mpd/team/watchdog/scene/fault-probe/20260916T023147Z-warn.json
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=805ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/ws-new-cases/fault-jhuztn/.mpd/team/watchdog/scene/fault-probe/20260916T023147Z-warn-2.json
+[watchdog-fixture] ESCALATE fault-probe task=t1 member=Architect silence=1207ms streak=3 hold=applied scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/ws-new-cases/fault-jhuztn/.mpd/team/watchdog/scene/fault-probe/20260916T023148Z-escalate.json
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/ws-new-cases/fault-w715td/.mpd/team/watchdog/scene/fault-probe/20231114T221511Z-warn.json
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=180001ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/ws-new-cases/fault-w715td/.mpd/team/watchdog/scene/fault-probe/20231114T221641Z-warn.json
+[watchdog-fixture] ESCALATE fault-probe task=t1 member=Architect silence=270001ms streak=3 hold=applied scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/ws-new-cases/fault-w715td/.mpd/team/watchdog/scene/fault-probe/20231114T221811Z-escalate.json
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=600
+[watchdog-fixture] TOOL-EXPIRED fault-probe task=t1 member=Architect tool=bash inFlight=700ms (since 1700000000000, bound=600ms) — the call outlived the in-flight bound; reported ONCE, NO hold, NO escalation, the team is left alone record=/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/ws-new-cases/fault-tcgyw9/.mpd/team/watchdog/incidents.jsonl
+ok   long-tool-no-hold
+       a REAL command ran 1622 ms (exit 0) inside ONE tool call
+       the pre hook stamped ["step","tool-start"] and the POST closed it: ["step","tool-start","tool"]
+       ticks (silence from the member's last real stamp => decisions): [[509,[]],[912,[]],[1313,[]]]
+       the LAST tick is 1313 ms past the last stamp, i.e. beyond 3 windows (900 ms): true
+       WARNs/ESCALATEs/holds/scenes/incidents: {"holdsApplied":0,"scenes":0,"incidents":0,"toolStarts":1} — hold file: null
+       observations the in-flight rule explained away: 3
+       => r6: a member working inside a long tool call is NO LONGER PAUSED
+ok   long-tool-bound-disabled-control
+       the pre hook STILL stamps tool-start (["step","tool-start"]) — the rule is what is disabled, not the observation
+       ticks => ["warn","warn","escalate"] (warn, warn, escalate) and a hold: {"id":"793d1941-8b42-4cc2-ae9a-ab518d59c693","taskId":"t1","attemptId":"att-1"}
+       => FALSIFIER: with the bound disabled the same scenario holds the team, so the silence in `long-tool-no-hold` is the RULE, not a vacuous fixture
+ok   completed-tool-not-in-flight
+       the newest stamp is the COMPLETION of call-done-1, so nothing is in flight
+       ticks => ["warn","warn","escalate"] + a hold: {"id":"826c4b0f-0df1-464a-b1b0-a19737d7ccdd","taskId":"t1"}
+       => a completed tool call buys no silence: the wedge rule still fires (in-flight suppressions: 0)
+ok   tool-inflight-expired
+       inside the bound (500 ms): {"decisions":[],"holds":0} — still explained activity
+       past the bound (700 ms > 600 ms): {"decisions":[],"scenes":0,"holds":0} — the entry STOPS suppressing
+       durable report: [{"kind":"tool-expired","taskId":"t1","attemptId":"att-1","scene":null,"hold":"not-requested","cause":{"kind":"tool-expired","ms":700,"tool":"bash"}}]
+       reported ONCE (a later tick at 60 s adds nothing): true
+       holds/scenes: {"holdsApplied":0,"scenes":0,"toolStarts":0} hold file: null
+       => the handover is bounded and fail-open: a killed tool can never leave a member permanently un-watchable, and the bound never PAUSES a team
+casesInFixture=18 allR6CasesOk=true

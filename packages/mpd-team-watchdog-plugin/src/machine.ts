@@ -5,7 +5,11 @@
 //
 //   OBSERVE (every tickIntervalMs)
 //     silence = now - newestStamp(owner, task)
-//     if the owner has a turn expected in flight AND silence > warnSilenceMs:
+//     if a tool call for the owner's task is IN FLIGHT (r6) and younger than
+//     toolInFlightMaxMs:
+//         EXPLAINED: no WARN, no ESCALATE, streak reset
+//         past the bound: ONE `tool-expired` record, never a hold, never an escalate
+//     else if the owner has a turn expected in flight AND silence > warnSilenceMs:
 //         WARN(task, attemptId)   -> snapshot + notice
 //         streak[task] += 1
 //         if streak[task] >= warnStreakToEscalate:
@@ -23,7 +27,7 @@
 import type { HeartbeatKind, HeartbeatStamp } from "./store.js"
 import { TERMINAL_STATUSES } from "./team.js"
 
-/** The five `mpd`-namespace watchdog knobs, resolved. */
+/** The `mpd`-namespace watchdog knobs, resolved. */
 export interface WatchdogKnobs {
   /** The kill switch (AC-10); `MPD_DSH_TEAM_WATCHDOG=off` also forces it off. */
   enabled: boolean
@@ -35,15 +39,27 @@ export interface WatchdogKnobs {
   warnStreakToEscalate: number
   /** What ESCALATE does: persist a hold (`pause`) or only record it (`warn-only`). */
   actionOnEscalate: "pause" | "warn-only"
+  /**
+   * THE SECONDARY BOUND (r6). A tool call in flight suppresses the silence rule for at
+   * most this long; past it the entry stops suppressing and is reported ONCE as a
+   * `tool-expired` WARN-class incident (never a scene, never a hold, never an escalate).
+   * `0` disables the whole in-flight suppression, i.e. the pre-r6 behaviour — which is
+   * also this feature's falsifier.
+   */
+  toolInFlightMaxMs: number
 }
 
-/** The frozen defaults (plan §2.1 / D2). */
+/** The frozen defaults (plan §2.1 / D2; r6 adds the in-flight bound). */
 export const WATCHDOG_DEFAULTS: WatchdogKnobs = {
   enabled: true,
   warnSilenceMs: 90_000,
   tickIntervalMs: 15_000,
   warnStreakToEscalate: 3,
   actionOnEscalate: "pause",
+  // 10x the frozen 90 s threshold: long enough for any real build/boot/lane this
+  // workspace runs, short enough that a genuinely hung tool is reported inside a
+  // quarter of an hour. The knobs are live-tunable, so a slower workflow raises it.
+  toolInFlightMaxMs: 900_000,
 }
 
 /** A knob that had to be rejected or clamped, with the reason. */
@@ -126,6 +142,10 @@ export function readKnobs(
     }
   }
 
+  // The r6 in-flight bound. 0 is a MEANINGFUL value (suppression disabled), so the
+  // floor is 0 rather than 1 — and it is read through the same guarded path as the rest.
+  const toolInFlightMaxMs = number("toolInFlightMaxMs", 0)
+
   let enabled = defaults.enabled
   if (section.enabled !== undefined) {
     if (typeof section.enabled === "boolean") enabled = section.enabled
@@ -137,7 +157,7 @@ export function readKnobs(
     enabled = false
   }
 
-  return { enabled, warnSilenceMs, tickIntervalMs, warnStreakToEscalate, actionOnEscalate, issues }
+  return { enabled, warnSilenceMs, tickIntervalMs, warnStreakToEscalate, actionOnEscalate, toolInFlightMaxMs, issues }
 }
 
 /** One silence candidate: a live task whose owner is expected to be stepping. */
@@ -164,6 +184,16 @@ export interface SilenceCandidate {
    * This is the precondition that separates `never-started` from `silence`.
    */
   everStampedForTask: boolean
+  /**
+   * EXPLAINED ACTIVITY (r6): the `at` of an unmatched PRE stamp — a tool call this member
+   * started and has not reported completing — or `null` when no call is in flight.
+   *
+   * This is the whole point of r6: a member that spends 20 minutes inside ONE `bash` call
+   * is WORKING, not wedged, and the POST-only stamp stream cannot tell the difference.
+   */
+  inFlightSince: number | null
+  /** The tool name of that in-flight call (diagnostics), or null. */
+  inFlightTool: string | null
 }
 
 /** What one observation concluded about one candidate. */
@@ -171,6 +201,13 @@ export type Decision =
   | { type: "warn"; teamId: string; taskId: string; attemptId: string; assignee: string; memberKey: string; silenceMs: number; lastSeen: number; streak: number }
   | { type: "escalate"; teamId: string; taskId: string; attemptId: string; assignee: string; memberKey: string; silenceMs: number; lastSeen: number; streak: number }
   | { type: "never-started"; teamId: string; taskId: string; attemptId: string; assignee: string; memberKey: string }
+  /**
+   * The in-flight entry outlived `toolInFlightMaxMs`: reported ONCE per task+attempt as a
+   * WARN-class record and NOTHING else — no scene, no hold, no escalate, ever. A tool call
+   * that runs for a quarter of an hour and a hang inside one are indistinguishable by
+   * construction, so the conservative action (report, do not pause) is the only honest one.
+   */
+  | { type: "tool-expired"; teamId: string; taskId: string; attemptId: string; assignee: string; memberKey: string; inFlightMs: number; since: number; tool: string | null }
 
 /**
  * The streak key: per TEAM, per task AND per attempt.
@@ -201,6 +238,10 @@ export class WatchdogMachine {
   private readonly escalated = new Set<string>()
   /** Keys already reported `never-started` (reported once per generation). */
   private readonly neverStarted = new Set<string>()
+  /** Keys already reported `tool-expired` (one report per task+attempt generation). */
+  private readonly toolExpired = new Set<string>()
+  /** How many observations the in-flight rule explained away (r6 evidence). */
+  private inFlightSuppressed = 0
 
   /**
    * Observe every candidate once.
@@ -240,6 +281,44 @@ export class WatchdogMachine {
         this.streaks.delete(key)
         continue
       }
+      // EXPLAINED ACTIVITY (r6 — the long-tool false positive). A member inside ONE tool
+      // call is WORKING, not wedged: our own lanes boot a real `dsh` for minutes, so the
+      // POST-only stamp stream made a healthy team look silent and the tick PAUSED it.
+      // While the entry is inside the bound the candidate is neither warned nor escalated,
+      // and the streak is reset so a stale count cannot be spent the moment the call ends.
+      //
+      // The bound is the honest half of the trade: past `toolInFlightMaxMs` the entry STOPS
+      // suppressing and is reported once as a WARN-class `tool-expired` record (never a
+      // hold, never a scene, never an escalate), and `toolInFlightMaxMs: 0` disables the
+      // suppression entirely — the pre-r6 behaviour, which is what makes this rule
+      // falsifiable rather than assumed.
+      // A non-number `inFlightSince` (a candidate built by an older caller, or one whose
+      // stamps carried no start) is NOT an in-flight observation: the silence rule applies,
+      // which is the fail-safe direction for a watchdog — better a WARN than a silent member.
+      if (typeof candidate.inFlightSince === "number" && knobs.toolInFlightMaxMs > 0) {
+        const inFlightMs = now - candidate.inFlightSince
+        if (inFlightMs <= knobs.toolInFlightMaxMs) {
+          this.inFlightSuppressed += 1
+          this.streaks.delete(key)
+          continue
+        }
+        if (!this.toolExpired.has(key)) {
+          this.toolExpired.add(key)
+          decisions.push({
+            type: "tool-expired",
+            teamId: candidate.teamId,
+            taskId: candidate.taskId,
+            attemptId: candidate.attemptId,
+            assignee: candidate.assignee,
+            memberKey: candidate.memberKey,
+            inFlightMs,
+            since: candidate.inFlightSince,
+            tool: candidate.inFlightTool,
+          })
+        }
+        this.streaks.delete(key)
+        continue
+      }
       const silenceMs = now - candidate.lastSeen
       if (silenceMs <= knobs.warnSilenceMs) {
         this.streaks.delete(key)
@@ -273,6 +352,7 @@ export class WatchdogMachine {
     const key = streakKey(teamId, taskId, attemptId)
     this.streaks.delete(key)
     this.neverStarted.delete(key)
+    this.toolExpired.delete(key)
   }
 
   /** Whether a TEAM's task+attempt already escalated (the tick's idempotence check). */
@@ -281,9 +361,54 @@ export class WatchdogMachine {
   }
 
   /** The current streak map, for diagnostics and assertions. */
-  snapshot(): { streaks: Record<string, number>; escalated: string[] } {
-    return { streaks: Object.fromEntries(this.streaks), escalated: [...this.escalated].sort() }
+  snapshot(): { streaks: Record<string, number>; escalated: string[]; toolExpired: string[]; inFlightSuppressed: number } {
+    return {
+      streaks: Object.fromEntries(this.streaks),
+      escalated: [...this.escalated].sort(),
+      toolExpired: [...this.toolExpired].sort(),
+      inFlightSuppressed: this.inFlightSuppressed,
+    }
   }
+}
+
+/**
+ * The tool call a member has open for one task, derived from its stamps (r6).
+ *
+ * A call is IN FLIGHT from its PRE stamp (`tool-start`) to its POST stamp (`tool` of the
+ * SAME `callId`). The `callId` pairing — not "the newest stamp is a start" — is what keeps
+ * this right when two calls overlap: a completed sibling cannot clear a still-running one,
+ * and a start whose completion arrived under a DIFFERENT task id (the task moved while the
+ * call ran) stays in flight until the bound reports it.
+ *
+ * A harness build that stamps no `callId` falls back to the newest-stamp rule, which is
+ * exactly right for the sequential call pattern every real turn has.
+ *
+ * @param stamps - the stamps already filtered to ONE task+attempt (+ team).
+ * @returns the newest unmatched start, or null when nothing is in flight.
+ */
+export function inFlightFor(stamps: readonly HeartbeatStamp[]): { since: number; tool: string | null } | null {
+  const completed = new Set<string>()
+  const starts: HeartbeatStamp[] = []
+  for (const stamp of stamps) {
+    if (stamp.kind === "tool" && typeof stamp.callId === "string" && stamp.callId !== "") completed.add(stamp.callId)
+    if (stamp.kind === "tool-start") starts.push(stamp)
+  }
+  // A harness build that stamps no `callId` at all cannot be paired: fall back to the
+  // newest-stamp rule, which is exactly right for the sequential call pattern a real turn has.
+  const pairable = starts.some((stamp) => typeof stamp.callId === "string" && stamp.callId !== "")
+  if (pairable) {
+    let newestStart: HeartbeatStamp | undefined
+    for (const stamp of starts) {
+      const callId = typeof stamp.callId === "string" && stamp.callId !== "" ? stamp.callId : null
+      if (callId !== null && completed.has(callId)) continue
+      if (newestStart === undefined || stamp.at >= newestStart.at) newestStart = stamp
+    }
+    return newestStart === undefined ? null : { since: newestStart.at, tool: newestStart.tool ?? null }
+  }
+  let newest: HeartbeatStamp | undefined
+  for (const stamp of stamps) if (newest === undefined || stamp.at >= newest.at) newest = stamp
+  if (newest === undefined || newest.kind !== "tool-start") return null
+  return { since: newest.at, tool: newest.tool ?? null }
 }
 
 /** A candidate's silence, derived from its heartbeat file (the tick's input). */
@@ -320,6 +445,9 @@ export function candidateFor(
       return stampAttempt === taskAttempt
     })
     const newest = forTask.reduce<HeartbeatStamp | undefined>((best, stamp) => (best === undefined || stamp.at >= best.at ? stamp : best), undefined)
+    // r6: the SAME filtered slice answers the in-flight question, so a start recorded
+    // against another team/attempt can never explain THIS candidate's silence away.
+    const inFlight = inFlightFor(forTask)
     candidates.push({
       teamId: team.id,
       taskId: task.id,
@@ -329,6 +457,8 @@ export function candidateFor(
       lastSeen: newest === undefined ? null : newest.at,
       lastKind: newest === undefined ? null : newest.kind,
       everStampedForTask: forTask.length > 0,
+      inFlightSince: inFlight === null ? null : inFlight.since,
+      inFlightTool: inFlight === null ? null : inFlight.tool,
     })
   }
   return candidates

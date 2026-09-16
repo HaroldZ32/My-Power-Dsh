@@ -13,6 +13,7 @@ instead of across every plugin.
 |---|---|---|
 | `ctx.tools.register` | `registerTool(def)` / `registerTools(defs)` | default object-rooted `parameters`, default `output.render` (text block), always-object `(args, exec)` call shape, disposer pass-through |
 | `ctx.tools.guard` | `guardTool(fn)` | always-object `exec`, disposer |
+| `ctx.on("tools/pre-execute")` | `onPreToolExecute(listener)` | **OBSERVE-ONLY**: the adapter owns `next()`, returns the downstream gate decision VERBATIM (so a listener can neither alter nor veto a call) and discards the listener's own return value; the listener gets `(exec, decision)` with the `{kind:'allow'\|'ask'\|'deny'}` the harness will use; a throwing listener is contained; no event bus → no-op |
 | `ctx.on("tools/post-execute")` | `onPostToolExecute(listener)` | the adapter owns `next()`; the listener receives `(exec, result, downstream)` and returns a decision or `undefined` to pass through; no event bus → no-op |
 | `ctx.tools.get` / `ctx.tools.execute` | `hasTool(name)`, `toolRuntime()`, `executeTool({name, arguments, callId?, signal?})` | feature detection, default callId + timeout signal, `{ok, isError, value, error}` result |
 | `ctx.subagents.start("spawn", …)` | `spawnAgent(spec)` | string prompt → content blocks, flat `provider`/`model` or `agentOptions`, `run.result` awaited whether it is a promise or an object, normalized `{output, structured, stopReason}` |
@@ -49,6 +50,8 @@ export function apply(ctx) {
   const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
   dsh.registerTool({ name: "mpd_x", description: "…", execute: async (args, exec) => ({ ok: true }) })
   dsh.guardTool((exec) => (exec.name === "write" ? "denied" : undefined))
+  // observe-only: the gate decision is returned unchanged, whatever this listener does
+  dsh.onPreToolExecute((exec, decision) => { if (decision?.kind === "allow") started(exec.name, exec.callId) })
   dsh.onPostToolExecute((exec, result, downstream) => (exec.name === "bash" ? { ...downstream, content: trimmed } : undefined))
   const run = await dsh.spawnAgent({ label: "role-oracle-1", prompt: "…", provider: "deepseek-official", model: "deepseek-v4-pro" })
   const call = await dsh.executeTool({ name: "mpd_config_get", arguments: {} })

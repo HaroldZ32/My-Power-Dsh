@@ -26,7 +26,7 @@ import { safeSegment, sceneDir, teamDir } from "./paths.js"
 import { message, readHeartbeats, writeFileAtomic } from "./store.js"
 import type { HeartbeatStamp } from "./store.js"
 import { TERMINAL_STATUSES, type TeamRecord, type TeamTask } from "./team.js"
-import type { HoldRecord } from "./sidecars.js"
+import type { HoldRecord, IncidentKind } from "./sidecars.js"
 
 /** The mailbox delivery lease the adopted plugin uses (`state.js` MAILBOX_DELIVERY_LEASE_MS). */
 export const MAILBOX_DELIVERY_LEASE_MS = 60_000
@@ -67,7 +67,12 @@ export interface SceneMember {
 /** One incident row carried inside a scene. */
 export interface SceneIncident {
   id: string
-  kind: "warn" | "escalate"
+  /**
+   * The durable incident vocabulary (r6 widens it): a scene is written for a WARN or an
+   * ESCALATE, and its incident list is the team's recent history — which now also carries the
+   * WARN-class `never-started` and `tool-expired` records.
+   */
+  kind: IncidentKind
   at: number
   taskId: string | null
   attemptId: string | null

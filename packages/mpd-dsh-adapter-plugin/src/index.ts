@@ -4,7 +4,7 @@
 // HERE — one file, one rebuild — instead of across every plugin.
 //
 // Wrapped seams (each feature-detected, never assumed):
-//   tools.register / tools.guard / tools.get / tools.execute / tools/post-execute
+//   tools.register / tools.guard / tools.get / tools.execute / tools/pre-execute / tools/post-execute
 //   subagents.start (spawn)                       -> spawnAgent
 //   skills.registerProvider / skills.list / skills.get
 //   agentPresets.resolve
@@ -58,6 +58,21 @@ export interface DshPostDecision {
   value?: unknown
   feedback?: unknown
   additionalContexts?: unknown[]
+  [key: string]: unknown
+}
+
+/**
+ * The `tools/pre-execute` decision the harness's own gate consumes.
+ *
+ * Measured in the installed harness (`dsh-tools/lib/index.js:3116`,
+ * `types/index.d.ts:38`): the pre-execute waterfall resolves to this object and the
+ * registry then reads `gate.kind` (`allow` dispatches, `ask` goes through approval,
+ * `deny` is turned into an error result). A listener that returns without delegating
+ * REPLACES it — the same veto shape `agent/pre-step` has.
+ */
+export interface DshPreDecision {
+  kind: "allow" | "ask" | "deny"
+  reason?: unknown
   [key: string]: unknown
 }
 
@@ -122,6 +137,7 @@ export interface DshCapabilities {
   toolsGuard: boolean
   toolsGet: boolean
   toolsExecute: boolean
+  toolsPreExecute: boolean
   toolsPostExecute: boolean
   subagents: boolean
   subagentsSpawn: boolean
@@ -271,6 +287,27 @@ export interface DshAdapter {
   registerTool(definition: DshToolDef): () => void
   registerTools(definitions: DshToolDef[]): () => void
   guardTool(guard: (exec: DshToolExec) => string | undefined): () => void
+  /**
+   * Observe a tool call BEFORE dispatch — the `tools/pre-execute` waterfall.
+   *
+   * **OBSERVE-ONLY, by construction.** The adapter owns `next()` exactly like
+   * {@link DshAdapter.onPostToolExecute} does: it awaits the downstream decision, hands it
+   * to the listener (whose return value is IGNORED) and returns the downstream
+   * decision object itself, so this hook can neither alter nor veto a call. The listener
+   * observes a **frozen shallow copy** of the execution — it cannot mutate what will be
+   * dispatched — and a listener that throws is contained. A harness build with no event bus
+   * makes this a no-op (`() => {}`), never a boot failure; `capabilities().toolsPreExecute`
+   * reports it.
+   *
+   * The listener runs AFTER `next()` resolves but still BEFORE the tool body dispatches
+   * (the harness awaits the whole waterfall before it executes, `dsh-tools/lib/index.js:3116`),
+   * so it sees the decision that will actually be used.
+   *
+   * @param listener - `(exec, decision)`; the decision is the harness's own
+   *   `{kind:'allow'|'ask'|'deny'}` gate value (see {@link DshPreDecision}).
+   * @returns a disposer (a no-op when the seam does not exist).
+   */
+  onPreToolExecute(listener: (exec: DshToolExec, decision: DshPreDecision | undefined) => void): () => void
   onPostToolExecute(
     listener: (exec: DshToolExec, result: DshPostResult, downstream: DshPostDecision) => DshPostDecision | undefined | Promise<DshPostDecision | undefined>,
   ): () => void
@@ -479,6 +516,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         toolsGuard: typeof tools?.guard === "function",
         toolsGet: typeof tools?.get === "function",
         toolsExecute: typeof tools?.execute === "function",
+        toolsPreExecute: typeof ctx?.on === "function",
         toolsPostExecute: typeof ctx?.on === "function",
         subagents: subagents !== undefined,
         subagentsSpawn: typeof subagents?.start === "function",
@@ -530,6 +568,31 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       const tools = requireService("tools", "cannot install a tool guard")
       if (typeof tools.guard !== "function") throw new Error("mpd-dsh-adapter: the harness tools service exposes no guard()")
       return tools.guard((exec: DshToolExec) => guard(exec ?? {}))
+    },
+
+    onPreToolExecute(
+      listener: (exec: DshToolExec, decision: DshPreDecision | undefined) => void,
+    ): () => void {
+      if (typeof ctx?.on !== "function") return noop
+      // `tools/pre-execute` is a WATERFALL with the same veto shape as `agent/pre-step`:
+      // cordis runs the listeners outermost-first with `next` appended, so a listener
+      // that returns without delegating REPLACES the gate decision. This wrapper owns
+      // `next()` and RETURNS THE DOWNSTREAM OBJECT VERBATIM, so the listener's own
+      // return value is discarded by construction and the gate is bit-identical to a
+      // composition without this hook. A listener that throws changes nothing either.
+      return ctx.on("tools/pre-execute", async (exec: DshToolExec, next: () => Promise<DshPreDecision>) => {
+        const downstream = typeof next === "function" ? await next() : undefined
+        try {
+          // The listener observes a FROZEN SHALLOW COPY, never the live execution object: it
+          // cannot mutate what the harness will dispatch (`dsh-tools` re-fuses `exec.signal`
+          // around this waterfall, so freezing the original would break the harness itself),
+          // and an attempted write throws inside the listener — which is contained below.
+          listener(Object.freeze({ ...(exec ?? {}) }), downstream)
+        } catch {
+          // observe-only: a broken observer must never affect the call it observes
+        }
+        return downstream
+      })
     },
 
     onPostToolExecute(

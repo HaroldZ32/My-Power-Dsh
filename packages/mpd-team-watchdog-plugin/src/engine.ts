@@ -1,6 +1,13 @@
 // The watchdog engine: the writers (heartbeat + turn boundaries), the tick, and
 // the WARN/ESCALATE fan-out (scene, hold, incident).
 //
+// r6 adds the OTHER half of the tool heartbeat: a PRE-dispatch stamp (`tool-start`) from the
+// adapter's observe-only `tools/pre-execute` hook, which marks a member's tool call IN FLIGHT
+// until its POST stamp arrives. A member that spends longer than `warnSilenceMs` inside ONE
+// call is then EXPLAINED activity — before r6 it looked exactly like a wedge and the tick
+// paused a healthy team (measured on our own team). The POST stamp keeps its W-9 semantics
+// (completion, never before dispatch); the PRE stamp is what makes the pair readable.
+//
 // Everything the engine touches goes through the adapter or the plugin's own
 // store; nothing here reaches a harness service directly (AGENTS.md §6). The
 // engine is a plain class so a test or a lane can drive `tickOnce(now)` with an
@@ -32,6 +39,12 @@ export interface EngineConfig {
    * live-agent registry cannot answer. 0 disables the bound (tick everything, the status quo).
    */
   deadTeamGraceMs: number
+  /**
+   * THE SECONDARY BOUND on the r6 in-flight rule: how long ONE open tool call may suppress the
+   * silence rule. Past it the entry stops suppressing and is reported once as `tool-expired`
+   * (WARN-class only). 0 disables the suppression entirely — the pre-r6 behaviour.
+   */
+  toolInFlightMaxMs: number
   /** Print skipped-team reasons to the console as well as the debug channel. */
   verboseSkips: boolean
   logPrefix: string
@@ -54,6 +67,10 @@ export interface EngineStats {
   neverStarted: number
   /** Teams a tick skipped because they cannot dispatch (r4). */
   skippedTeams: number
+  /** PRE-dispatch tool stamps written (r6) — proof the observe-only hook reached the store. */
+  toolStarts: number
+  /** `tool-expired` reports recorded (r6's secondary bound fired). */
+  toolExpired: number
   lastError: string | null
 }
 
@@ -168,6 +185,8 @@ export class WatchdogEngine {
     incidentFailures: 0,
     neverStarted: 0,
     skippedTeams: 0,
+    toolStarts: 0,
+    toolExpired: 0,
     lastError: null,
   }
 
@@ -195,8 +214,8 @@ export class WatchdogEngine {
     return { ...this.stats }
   }
 
-  /** The current streak/escalate state (diagnostics). */
-  getMachineState(): { streaks: Record<string, number>; escalated: string[] } {
+  /** The current streak/escalate/in-flight state (diagnostics). */
+  getMachineState(): ReturnType<WatchdogMachine["snapshot"]> {
     return this.machine.snapshot()
   }
 
@@ -236,6 +255,7 @@ export class WatchdogEngine {
       tickIntervalMs: this.config.tickIntervalMs,
       warnStreakToEscalate: this.config.warnStreakToEscalate,
       actionOnEscalate: this.config.actionOnEscalate,
+      toolInFlightMaxMs: this.config.toolInFlightMaxMs,
     }
   }
 
@@ -306,8 +326,10 @@ export class WatchdogEngine {
       workspace,
     }
     const written = appendHeartbeat(workspace, this.config.stateDir, memberKey, stamp)
-    if (written.ok) this.stats.heartbeatWrites += 1
-    else {
+    if (written.ok) {
+      this.stats.heartbeatWrites += 1
+      if (kind === "tool-start") this.stats.toolStarts += 1
+    } else {
       this.stats.heartbeatFailures += 1
       this.stats.lastError = written.error ?? "heartbeat write failed"
       this.warn("heartbeat write failed at " + written.path + ": " + String(written.error))
@@ -376,7 +398,9 @@ export class WatchdogEngine {
       this.warn("this context exposes no event seam — heartbeat writers not installed")
     }
 
-    // The POST hook stamps on COMPLETION only (W-9: there is no pre-dispatch stamp).
+    // The POST hook stamps on COMPLETION only (W-9: it is the COMPLETION half of the pair —
+    // the PRE half is the `tool-start` stamp installed above from the observe-only
+    // `tools/pre-execute` hook, and the two are matched by `callId`).
     const post = this.dsh.onPostToolExecute((exec) => {
       const name = typeof exec?.name === "string" ? exec.name : undefined
       const rawCallId = (exec as { callId?: unknown } | undefined)?.callId
@@ -389,6 +413,32 @@ export class WatchdogEngine {
       return undefined
     })
     if (typeof post === "function") disposers.push(post)
+
+    // The PRE hook (r6): mark a tool call IN FLIGHT before it dispatches, so a call that
+    // outlives `warnSilenceMs` is EXPLAINED activity instead of silence. The adapter owns
+    // `next()` and returns the gate decision verbatim, so this observer can neither change
+    // nor veto the call (proven in the adapter's own test on a real cordis waterfall).
+    //
+    // Soft-probed on BOTH sides: an adapter without the method, or a harness without the
+    // event bus, degrades to a warning here and the pre-r6 behaviour (POST-only stamps),
+    // never a failed row.
+    if (typeof this.dsh.onPreToolExecute === "function") {
+      const pre = this.dsh.onPreToolExecute((exec, decision) => {
+        // A DENIED call is never dispatched, so there is nothing to hold open. `allow` and
+        // `ask` both continue (an approved `ask` dispatches, and a denied one still gets a
+        // POST stamp through the harness's post-result path, which clears the entry).
+        if (decision !== undefined && decision.kind === "deny") return
+        const name = typeof exec?.name === "string" ? exec.name : undefined
+        const rawCallId = (exec as { callId?: unknown } | undefined)?.callId
+        this.stamp("tool-start", exec?.agent, {
+          ...(name === undefined ? {} : { tool: name }),
+          ...(typeof rawCallId === "string" ? { callId: rawCallId } : {}),
+        })
+      })
+      if (typeof pre === "function") disposers.push(pre)
+    } else {
+      this.warn("the adapter exposes no pre-tool hook — a long tool call stays indistinguishable from silence (r6 unavailable)")
+    }
 
     if (typeof this.dsh.onSettingsDocumentUpdated === "function") {
       disposers.push(
@@ -453,6 +503,15 @@ export class WatchdogEngine {
           for (const decision of this.machine.observe(this.candidates(workspace, team), now, this.knobs)) {
             if (decision.type === "never-started") {
               await this.recordNeverStarted(workspace, team, decision, now)
+              continue
+            }
+            // r6's secondary bound. Recorded, NOT acted on: a `tool-expired` observation must
+            // never write a scene, apply a hold or enter the escalate path — the whole point of
+            // the bound is that a very long tool call and a hang are indistinguishable, so the
+            // conservative action is to REPORT (durably, unread until acknowledged) and leave
+            // the team alone.
+            if (decision.type === "tool-expired") {
+              await this.recordToolExpired(workspace, team, decision, now)
               continue
             }
             decisions.push(decision)
@@ -570,7 +629,7 @@ export class WatchdogEngine {
   private async act(
     workspace: string,
     team: TeamRecord,
-    decision: Exclude<Decision, { type: "never-started" }>,
+    decision: Exclude<Decision, { type: "never-started" } | { type: "tool-expired" }>,
     now: number,
   ): Promise<{ scene: string | null; held: boolean }> {
     const alreadyHeld = readHold(workspace, this.config.stateDir, team.id)
@@ -681,20 +740,16 @@ export class WatchdogEngine {
     now: number,
   ): Promise<void> {
     this.stats.neverStarted += 1
-    const incident = {
+    const incident: IncidentRecord = {
       id: decision.taskId + "@" + decision.attemptId + "#never-started#" + now,
       teamId: team.id,
-      // The durable kind vocabulary lives in sidecars.ts (`IncidentRecord.kind`), which is
-      // outside this task's scope; the value is added here and the reader treats it as an
-      // opaque string, so the cast is the honest record of that boundary rather than a
-      // silent widening of an out-of-scope union.
-      kind: "never-started" as unknown as IncidentRecord["kind"],
+      kind: "never-started",
       at: now,
-      cause: { kind: "never-started" as unknown as "silence", ms: 0 },
+      cause: { kind: "never-started", ms: 0 },
       taskId: decision.taskId,
       attemptId: decision.attemptId,
       scene: null,
-      hold: "not-requested" as IncidentRecord["hold"],
+      hold: "not-requested",
       acknowledgedBy: [],
     }
     const logged = appendIncident(workspace, this.config.stateDir, incident)
@@ -713,11 +768,65 @@ export class WatchdogEngine {
     )
   }
 
+  /**
+   * Record the r6 secondary bound: an OPEN tool call older than `toolInFlightMaxMs`.
+   *
+   * WHY IT IS A RECORD AND NOT A PAUSE. At this point the watchdog knows only that a tool
+   * call has been running for `toolInFlightMaxMs` — a legitimately slow build/boot/lane and a
+   * hang inside the tool are indistinguishable from the stamp stream, and the pre-r6 design
+   * proved the cost of guessing wrong: it PAUSED our own team for running a lane. So the
+   * observation takes the durable WARN-class path (incident with the tool name, the age and
+   * the start time, scene null because nothing was snapshotted, hold `not-requested` because
+   * nothing was paused), it is reported ONCE per task+attempt, and it never escalates.
+   *
+   * The honest limit this leaves: a member wedged INSIDE a tool is not escalated, only
+   * reported. That is stated in the ledger and in the README, not hidden here.
+   */
+  private async recordToolExpired(
+    workspace: string,
+    team: TeamRecord,
+    decision: Extract<Decision, { type: "tool-expired" }>,
+    now: number,
+  ): Promise<void> {
+    this.stats.toolExpired += 1
+    const incident: IncidentRecord = {
+      id: decision.taskId + "@" + decision.attemptId + "#tool-expired#" + now,
+      teamId: team.id,
+      kind: "tool-expired",
+      at: now,
+      cause: {
+        kind: "tool-expired",
+        ms: decision.inFlightMs,
+        ...(decision.tool === null ? {} : { tool: decision.tool }),
+      },
+      taskId: decision.taskId,
+      attemptId: decision.attemptId,
+      scene: null,
+      hold: "not-requested",
+      acknowledgedBy: [],
+    }
+    const logged = appendIncident(workspace, this.config.stateDir, incident)
+    if (logged.ok) this.stats.incidents += 1
+    else {
+      this.stats.incidentFailures += 1
+      this.warn("tool-expired record append failed at " + logged.path + ": " + String(logged.error))
+    }
+    this.info(
+      "TOOL-EXPIRED " + team.id +
+        " task=" + decision.taskId +
+        " member=" + decision.assignee +
+        " tool=" + (decision.tool ?? "(unnamed)") +
+        " inFlight=" + decision.inFlightMs + "ms (since " + decision.since + ", bound=" + this.knobs.toolInFlightMaxMs + "ms)" +
+        " — the call outlived the in-flight bound; reported ONCE, NO hold, NO escalation, the team is left alone" +
+        (logged.ok ? " record=" + logged.path : " record=FAILED"),
+    )
+  }
+
   /** Persist the hold through the plugin's own action, preferring the tool seam. */
   private async performHold(
     workspace: string,
     teamId: string,
-    decision: Exclude<Decision, { type: "never-started" }>,
+    decision: Exclude<Decision, { type: "never-started" } | { type: "tool-expired" }>,
     now: number,
   ): Promise<{ applied: boolean; via: string; error?: string }> {
     const args = {

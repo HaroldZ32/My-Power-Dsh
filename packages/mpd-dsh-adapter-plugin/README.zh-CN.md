@@ -10,6 +10,7 @@
 |---|---|---|
 | `ctx.tools.register` | `registerTool(def)` / `registerTools(defs)` | 缺省的对象根 `parameters`、缺省 `output.render`（文本块）、始终传入对象形态的 `(args, exec)`、disposer 透传 |
 | `ctx.tools.guard` | `guardTool(fn)` | 始终对象化的 `exec`、disposer |
+| `ctx.on("tools/pre-execute")` | `onPreToolExecute(listener)` | **只观察**：由适配器调用 `next()`，并**原样**返回下游闸门决策（因此 listener 既不能改变也不能否决调用），listener 自身的返回值被丢弃；listener 收到 `(exec, decision)`，其中 `decision` 是宿主将采用的 `{kind:'allow'\|'ask'\|'deny'}`；listener 抛错会被兜住；无事件总线时为空操作 |
 | `ctx.on("tools/post-execute")` | `onPostToolExecute(listener)` | 由适配器调用 `next()`；listener 收到 `(exec, result, downstream)`，返回决策或 `undefined` 表示放行；无事件总线时为空操作 |
 | `ctx.tools.get` / `ctx.tools.execute` | `hasTool(name)`、`toolRuntime()`、`executeTool({name, arguments, callId?, signal?})` | 能力探测、缺省 callId + 超时 signal、归一化 `{ok, isError, value, error}` 结果 |
 | `ctx.subagents.start("spawn", …)` | `spawnAgent(spec)` | 字符串 prompt → 内容块；扁平 `provider`/`model` 或 `agentOptions`；`run.result` 无论是 Promise 还是对象都会 await；归一化 `{output, structured, stopReason}` |
@@ -36,6 +37,8 @@ export function apply(ctx) {
   const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
   dsh.registerTool({ name: "mpd_x", description: "…", execute: async (args, exec) => ({ ok: true }) })
   dsh.guardTool((exec) => (exec.name === "write" ? "denied" : undefined))
+  // 只观察：无论这个 listener 做什么，闸门决策都会原样返回
+  dsh.onPreToolExecute((exec, decision) => { if (decision?.kind === "allow") started(exec.name, exec.callId) })
   dsh.onPostToolExecute((exec, result, downstream) => (exec.name === "bash" ? { ...downstream, content: trimmed } : undefined))
   const run = await dsh.spawnAgent({ label: "role-oracle-1", prompt: "…", provider: "deepseek-official", model: "deepseek-v4-pro" })
   const call = await dsh.executeTool({ name: "mpd_config_get", arguments: {} })

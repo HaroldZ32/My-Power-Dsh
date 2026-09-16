@@ -62,7 +62,7 @@ var __export = (target, all) => {
 };
 var __esm = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
 
-// packages/mpd-agent-teams-plugin/_deps/cosmokit/lib/index.js
+// ../mpd-agent-teams-plugin/_deps/cosmokit/lib/index.js
 var exports_lib = {};
 __export(exports_lib, {
   valueMap: () => mapValues,
@@ -430,7 +430,7 @@ var init_lib = __esm(() => {
   })(Time || (Time = {}));
 });
 
-// packages/mpd-agent-teams-plugin/_deps/schemastery/lib/index.cjs
+// ../mpd-agent-teams-plugin/_deps/schemastery/lib/index.cjs
 var require_lib = __commonJS((exports, module) => {
   var _deepseek_ai_cosmokit = (init_lib(), __toCommonJS(exports_lib));
   var kSchema = Symbol.for("schemastery");
@@ -1125,10 +1125,10 @@ var require_lib = __commonJS((exports, module) => {
   module.exports = Schema;
 });
 
-// packages/mpd-team-watchdog-plugin/src/index.ts
+// src/index.ts
 var import_schemastery = __toESM(require_lib(), 1);
 
-// packages/mpd-dsh-adapter-plugin/src/index.ts
+// ../mpd-dsh-adapter-plugin/src/index.ts
 import { resolve } from "node:path";
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
@@ -1286,7 +1286,6 @@ function createDshAdapter(ctx, config = {}) {
         toolsGuard: typeof tools?.guard === "function",
         toolsGet: typeof tools?.get === "function",
         toolsExecute: typeof tools?.execute === "function",
-        toolsPreExecute: typeof ctx?.on === "function",
         toolsPostExecute: typeof ctx?.on === "function",
         subagents: subagents !== undefined,
         subagentsSpawn: typeof subagents?.start === "function",
@@ -1333,17 +1332,6 @@ function createDshAdapter(ctx, config = {}) {
       if (typeof tools.guard !== "function")
         throw new Error("mpd-dsh-adapter: the harness tools service exposes no guard()");
       return tools.guard((exec) => guard(exec ?? {}));
-    },
-    onPreToolExecute(listener) {
-      if (typeof ctx?.on !== "function")
-        return noop2;
-      return ctx.on("tools/pre-execute", async (exec, next) => {
-        const downstream = typeof next === "function" ? await next() : undefined;
-        try {
-          listener(Object.freeze({ ...exec ?? {} }), downstream);
-        } catch {}
-        return downstream;
-      });
     },
     onPostToolExecute(listener) {
       if (typeof ctx?.on !== "function")
@@ -1577,11 +1565,11 @@ function createDshAdapter(ctx, config = {}) {
   return adapter;
 }
 
-// packages/mpd-team-watchdog-plugin/src/actions.ts
+// src/actions.ts
 import { randomUUID } from "node:crypto";
 import { join as join4 } from "node:path";
 
-// packages/mpd-team-watchdog-plugin/src/paths.ts
+// src/paths.ts
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 var DEFAULT_STATE_DIR = join(".mpd", "team");
@@ -1634,11 +1622,11 @@ function watermarkPath(workspace, stateDir = DEFAULT_STATE_DIR) {
   return join(watchdogRoot(workspace, stateDir), "read-watermark.json");
 }
 
-// packages/mpd-team-watchdog-plugin/src/sidecars.ts
+// src/sidecars.ts
 import { appendFileSync as appendFileSync2, existsSync as existsSync2, mkdirSync as mkdirSync2, readFileSync as readFileSync2, rmSync } from "node:fs";
 import { dirname as dirname2 } from "node:path";
 
-// packages/mpd-team-watchdog-plugin/src/store.ts
+// src/store.ts
 import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from "node:fs";
 import { basename, dirname, join as join2 } from "node:path";
 function appendHeartbeat(workspace, stateDir, memberKey, stamp) {
@@ -1774,7 +1762,7 @@ function message2(error) {
   return error instanceof Error ? error.message : String(error);
 }
 
-// packages/mpd-team-watchdog-plugin/src/sidecars.ts
+// src/sidecars.ts
 function readHold(workspace, stateDir, teamId) {
   let text;
   try {
@@ -1873,7 +1861,7 @@ function ackIncidents(workspace, stateDir, reader, upTo) {
   return { ok: true, watermark: next, path };
 }
 
-// packages/mpd-team-watchdog-plugin/src/team.ts
+// src/team.ts
 import { readFileSync as readFileSync3, readdirSync as readdirSync2, statSync } from "node:fs";
 import { join as join3 } from "node:path";
 var TERMINAL_STATUSES = ["completed", "failed", "cancelled"];
@@ -2013,7 +2001,7 @@ function teamOf(teams, agent) {
   return;
 }
 
-// packages/mpd-team-watchdog-plugin/src/actions.ts
+// src/actions.ts
 var HOLD_TOOL = "session-watchdog-hold";
 var RESUME_TOOL = "session-watchdog-resume";
 var STATUS_TOOL = "session-watchdog-status";
@@ -2153,14 +2141,13 @@ function registerWatchdogActions(dsh, stateDir, registry) {
   });
 }
 
-// packages/mpd-team-watchdog-plugin/src/machine.ts
+// src/machine.ts
 var WATCHDOG_DEFAULTS = {
   enabled: true,
   warnSilenceMs: 90000,
   tickIntervalMs: 15000,
   warnStreakToEscalate: 3,
-  actionOnEscalate: "pause",
-  toolInFlightMaxMs: 900000
+  actionOnEscalate: "pause"
 };
 function readKnobs(namespaceValue, env = process.env, defaults = WATCHDOG_DEFAULTS) {
   const issues = [];
@@ -2202,7 +2189,6 @@ function readKnobs(namespaceValue, env = process.env, defaults = WATCHDOG_DEFAUL
       issues.push({ path: "watchdog.actionOnEscalate", problem: "expected 'pause' | 'warn-only'", fallback: defaults.actionOnEscalate });
     }
   }
-  const toolInFlightMaxMs = number("toolInFlightMaxMs", 0);
   let enabled = defaults.enabled;
   if (section.enabled !== undefined) {
     if (typeof section.enabled === "boolean")
@@ -2214,7 +2200,7 @@ function readKnobs(namespaceValue, env = process.env, defaults = WATCHDOG_DEFAUL
   if (env.MPD_DSH_TEAM_WATCHDOG === "off" || env.MPD_DSH_TEAM_WATCHDOG === "0" || env.MPD_DSH_TEAM_WATCHDOG === "false") {
     enabled = false;
   }
-  return { enabled, warnSilenceMs, tickIntervalMs, warnStreakToEscalate, actionOnEscalate, toolInFlightMaxMs, issues };
+  return { enabled, warnSilenceMs, tickIntervalMs, warnStreakToEscalate, actionOnEscalate, issues };
 }
 function streakKey(teamId, taskId, attemptId) {
   return teamId + "\x00" + taskId + "\x00" + attemptId;
@@ -2224,8 +2210,6 @@ class WatchdogMachine {
   streaks = new Map;
   escalated = new Set;
   neverStarted = new Set;
-  toolExpired = new Set;
-  inFlightSuppressed = 0;
   observe(candidates, now, knobs) {
     if (!knobs.enabled)
       return [];
@@ -2248,30 +2232,6 @@ class WatchdogMachine {
             attemptId: candidate.attemptId,
             assignee: candidate.assignee,
             memberKey: candidate.memberKey
-          });
-        }
-        this.streaks.delete(key);
-        continue;
-      }
-      if (typeof candidate.inFlightSince === "number" && knobs.toolInFlightMaxMs > 0) {
-        const inFlightMs = now - candidate.inFlightSince;
-        if (inFlightMs <= knobs.toolInFlightMaxMs) {
-          this.inFlightSuppressed += 1;
-          this.streaks.delete(key);
-          continue;
-        }
-        if (!this.toolExpired.has(key)) {
-          this.toolExpired.add(key);
-          decisions.push({
-            type: "tool-expired",
-            teamId: candidate.teamId,
-            taskId: candidate.taskId,
-            attemptId: candidate.attemptId,
-            assignee: candidate.assignee,
-            memberKey: candidate.memberKey,
-            inFlightMs,
-            since: candidate.inFlightSince,
-            tool: candidate.inFlightTool
           });
         }
         this.streaks.delete(key);
@@ -2308,48 +2268,13 @@ class WatchdogMachine {
     const key = streakKey(teamId, taskId, attemptId);
     this.streaks.delete(key);
     this.neverStarted.delete(key);
-    this.toolExpired.delete(key);
   }
   hasEscalated(teamId, taskId, attemptId) {
     return this.escalated.has(streakKey(teamId, taskId, attemptId));
   }
   snapshot() {
-    return {
-      streaks: Object.fromEntries(this.streaks),
-      escalated: [...this.escalated].sort(),
-      toolExpired: [...this.toolExpired].sort(),
-      inFlightSuppressed: this.inFlightSuppressed
-    };
+    return { streaks: Object.fromEntries(this.streaks), escalated: [...this.escalated].sort() };
   }
-}
-function inFlightFor(stamps) {
-  const completed = new Set;
-  const starts = [];
-  for (const stamp of stamps) {
-    if (stamp.kind === "tool" && typeof stamp.callId === "string" && stamp.callId !== "")
-      completed.add(stamp.callId);
-    if (stamp.kind === "tool-start")
-      starts.push(stamp);
-  }
-  const pairable = starts.some((stamp) => typeof stamp.callId === "string" && stamp.callId !== "");
-  if (pairable) {
-    let newestStart;
-    for (const stamp of starts) {
-      const callId = typeof stamp.callId === "string" && stamp.callId !== "" ? stamp.callId : null;
-      if (callId !== null && completed.has(callId))
-        continue;
-      if (newestStart === undefined || stamp.at >= newestStart.at)
-        newestStart = stamp;
-    }
-    return newestStart === undefined ? null : { since: newestStart.at, tool: newestStart.tool ?? null };
-  }
-  let newest;
-  for (const stamp of stamps)
-    if (newest === undefined || stamp.at >= newest.at)
-      newest = stamp;
-  if (newest === undefined || newest.kind !== "tool-start")
-    return null;
-  return { since: newest.at, tool: newest.tool ?? null };
 }
 function candidateFor(team, stampSource, memberKeyOf) {
   const candidates = [];
@@ -2372,7 +2297,6 @@ function candidateFor(team, stampSource, memberKeyOf) {
       return stampAttempt === taskAttempt;
     });
     const newest = forTask.reduce((best, stamp) => best === undefined || stamp.at >= best.at ? stamp : best, undefined);
-    const inFlight = inFlightFor(forTask);
     candidates.push({
       teamId: team.id,
       taskId: task.id,
@@ -2381,15 +2305,13 @@ function candidateFor(team, stampSource, memberKeyOf) {
       memberKey,
       lastSeen: newest === undefined ? null : newest.at,
       lastKind: newest === undefined ? null : newest.kind,
-      everStampedForTask: forTask.length > 0,
-      inFlightSince: inFlight === null ? null : inFlight.since,
-      inFlightTool: inFlight === null ? null : inFlight.tool
+      everStampedForTask: forTask.length > 0
     });
   }
   return candidates;
 }
 
-// packages/mpd-team-watchdog-plugin/src/scene.ts
+// src/scene.ts
 import { existsSync as existsSync3, readFileSync as readFileSync4 } from "node:fs";
 import { join as join5 } from "node:path";
 var MAILBOX_DELIVERY_LEASE_MS = 60000;
@@ -2533,7 +2455,7 @@ function mailboxUnread(workspace, stateDir, teamId, agentKey, now, leaseMs = MAI
   return count;
 }
 
-// packages/mpd-team-watchdog-plugin/src/engine.ts
+// src/engine.ts
 function readNamespaceKnobs(dsh, env, defaults) {
   try {
     const reader = dsh.settingsReader("mpd");
@@ -2608,8 +2530,6 @@ class WatchdogEngine {
     incidentFailures: 0,
     neverStarted: 0,
     skippedTeams: 0,
-    toolStarts: 0,
-    toolExpired: 0,
     lastError: null
   };
   constructor(dsh, ctx, config, registry) {
@@ -2650,8 +2570,7 @@ class WatchdogEngine {
       warnSilenceMs: this.config.warnSilenceMs,
       tickIntervalMs: this.config.tickIntervalMs,
       warnStreakToEscalate: this.config.warnStreakToEscalate,
-      actionOnEscalate: this.config.actionOnEscalate,
-      toolInFlightMaxMs: this.config.toolInFlightMaxMs
+      actionOnEscalate: this.config.actionOnEscalate
     };
   }
   invalidate() {
@@ -2705,11 +2624,9 @@ class WatchdogEngine {
       workspace
     };
     const written = appendHeartbeat(workspace, this.config.stateDir, memberKey, stamp);
-    if (written.ok) {
+    if (written.ok)
       this.stats.heartbeatWrites += 1;
-      if (kind === "tool-start")
-        this.stats.toolStarts += 1;
-    } else {
+    else {
       this.stats.heartbeatFailures += 1;
       this.stats.lastError = written.error ?? "heartbeat write failed";
       this.warn("heartbeat write failed at " + written.path + ": " + String(written.error));
@@ -2752,22 +2669,6 @@ class WatchdogEngine {
     });
     if (typeof post === "function")
       disposers.push(post);
-    if (typeof this.dsh.onPreToolExecute === "function") {
-      const pre = this.dsh.onPreToolExecute((exec, decision) => {
-        if (decision !== undefined && decision.kind === "deny")
-          return;
-        const name = typeof exec?.name === "string" ? exec.name : undefined;
-        const rawCallId = exec?.callId;
-        this.stamp("tool-start", exec?.agent, {
-          ...name === undefined ? {} : { tool: name },
-          ...typeof rawCallId === "string" ? { callId: rawCallId } : {}
-        });
-      });
-      if (typeof pre === "function")
-        disposers.push(pre);
-    } else {
-      this.warn("the adapter exposes no pre-tool hook — a long tool call stays indistinguishable from silence (r6 unavailable)");
-    }
     if (typeof this.dsh.onSettingsDocumentUpdated === "function") {
       disposers.push(this.dsh.onSettingsDocumentUpdated("mpd", () => {
         try {
@@ -2812,10 +2713,6 @@ class WatchdogEngine {
           for (const decision of this.machine.observe(this.candidates(workspace, team), now, this.knobs)) {
             if (decision.type === "never-started") {
               await this.recordNeverStarted(workspace, team, decision, now);
-              continue;
-            }
-            if (decision.type === "tool-expired") {
-              await this.recordToolExpired(workspace, team, decision, now);
               continue;
             }
             decisions.push(decision);
@@ -2988,33 +2885,6 @@ class WatchdogEngine {
     }
     this.info("NEVER-STARTED " + team.id + " task=" + decision.taskId + " member=" + decision.assignee + " attempt=" + (decision.attemptId === "" ? "(none)" : decision.attemptId) + " — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation" + (logged.ok ? " record=" + logged.path : " record=FAILED"));
   }
-  async recordToolExpired(workspace, team, decision, now) {
-    this.stats.toolExpired += 1;
-    const incident = {
-      id: decision.taskId + "@" + decision.attemptId + "#tool-expired#" + now,
-      teamId: team.id,
-      kind: "tool-expired",
-      at: now,
-      cause: {
-        kind: "tool-expired",
-        ms: decision.inFlightMs,
-        ...decision.tool === null ? {} : { tool: decision.tool }
-      },
-      taskId: decision.taskId,
-      attemptId: decision.attemptId,
-      scene: null,
-      hold: "not-requested",
-      acknowledgedBy: []
-    };
-    const logged = appendIncident(workspace, this.config.stateDir, incident);
-    if (logged.ok)
-      this.stats.incidents += 1;
-    else {
-      this.stats.incidentFailures += 1;
-      this.warn("tool-expired record append failed at " + logged.path + ": " + String(logged.error));
-    }
-    this.info("TOOL-EXPIRED " + team.id + " task=" + decision.taskId + " member=" + decision.assignee + " tool=" + (decision.tool ?? "(unnamed)") + " inFlight=" + decision.inFlightMs + "ms (since " + decision.since + ", bound=" + this.knobs.toolInFlightMaxMs + "ms)" + " — the call outlived the in-flight bound; reported ONCE, NO hold, NO escalation, the team is left alone" + (logged.ok ? " record=" + logged.path : " record=FAILED"));
-  }
   async performHold(workspace, teamId, decision, now) {
     const args = {
       team_id: teamId,
@@ -3064,7 +2934,7 @@ class WatchdogEngine {
   }
 }
 
-// packages/mpd-team-watchdog-plugin/src/holds.ts
+// src/holds.ts
 import { existsSync as existsSync4, readFileSync as readFileSync5, readdirSync as readdirSync3, statSync as statSync2 } from "node:fs";
 import { join as join6, resolve as resolve2 } from "node:path";
 var HOLD_SERVICE = "mpdWatchdog";
@@ -3254,7 +3124,7 @@ class HoldRegistry {
 }
 var HOLD_GATE_CALL = 'ctx.get("mpdWatchdog", false)?.isHeld(teamId, workspace)?.held === true';
 
-// packages/mpd-team-watchdog-plugin/src/index.ts
+// src/index.ts
 var name = "mpd-team-watchdog";
 var inject = ["tools", "agents"];
 var Config = import_schemastery.default.object({
@@ -3267,7 +3137,6 @@ var Config = import_schemastery.default.object({
   teamCacheMs: import_schemastery.default.number().default(2000),
   keepGenerations: import_schemastery.default.number().default(3),
   deadTeamGraceMs: import_schemastery.default.number().default(86400000),
-  toolInFlightMaxMs: import_schemastery.default.number().default(WATCHDOG_DEFAULTS.toolInFlightMaxMs),
   verboseSkips: import_schemastery.default.boolean().default(false),
   logPrefix: import_schemastery.default.string().default("mpd-team-watchdog")
 });
@@ -3284,7 +3153,6 @@ function resolveConfig(config = {}) {
     teamCacheMs: num(config.teamCacheMs, 2000, 0),
     keepGenerations: num(config.keepGenerations, 3, 1),
     deadTeamGraceMs: num(config.deadTeamGraceMs, 86400000, 0),
-    toolInFlightMaxMs: num(config.toolInFlightMaxMs, WATCHDOG_DEFAULTS.toolInFlightMaxMs, 0),
     verboseSkips: bool(config.verboseSkips, false),
     logPrefix: typeof config.logPrefix === "string" && config.logPrefix !== "" ? config.logPrefix : "mpd-team-watchdog"
   };
@@ -3406,7 +3274,7 @@ function apply(ctx, config = {}) {
   for (const issue of issues)
     warn(resolved.logPrefix, "knob " + issue.path + ": " + issue.problem + " — using " + JSON.stringify(issue.fallback));
   try {
-    console.log("[mpd-team-watchdog] applied: enabled=" + engine.getKnobs().enabled + " warnSilenceMs=" + engine.getKnobs().warnSilenceMs + " tickIntervalMs=" + intervalMs + " warnStreakToEscalate=" + engine.getKnobs().warnStreakToEscalate + " actionOnEscalate=" + engine.getKnobs().actionOnEscalate + " stateDir=" + resolved.stateDir + " disposers=" + disposers.length + " holdService=" + (holdService ?? "none") + " hydratedHolds=" + hydratedHolds + " deadTeamGraceMs=" + (resolved.deadTeamGraceMs === 0 ? "off" : resolved.deadTeamGraceMs) + " toolInFlightMaxMs=" + (resolved.toolInFlightMaxMs === 0 ? "off" : resolved.toolInFlightMaxMs));
+    console.log("[mpd-team-watchdog] applied: enabled=" + engine.getKnobs().enabled + " warnSilenceMs=" + engine.getKnobs().warnSilenceMs + " tickIntervalMs=" + intervalMs + " warnStreakToEscalate=" + engine.getKnobs().warnStreakToEscalate + " actionOnEscalate=" + engine.getKnobs().actionOnEscalate + " stateDir=" + resolved.stateDir + " disposers=" + disposers.length + " holdService=" + (holdService ?? "none") + " hydratedHolds=" + hydratedHolds + " deadTeamGraceMs=" + (resolved.deadTeamGraceMs === 0 ? "off" : resolved.deadTeamGraceMs));
   } catch {}
   return { applied: true, engine, knobs: engine.getKnobs(), intervalMs, disposers: disposers.length, holdService, hydratedHolds };
 }

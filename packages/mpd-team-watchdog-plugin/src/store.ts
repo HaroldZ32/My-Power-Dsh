@@ -1,6 +1,6 @@
 // The heartbeat store: one append-only JSONL file per member (the captain
-// included, under its own key), holding one stamp per model step, per completed
-// tool call, and per turn boundary.
+// included, under its own key), holding one stamp per model step, per tool call
+// (its START and its completion) and per turn boundary.
 //
 // Ownership rules this module implements:
 //   * The file belongs to the WATCHDOG, not to `team.json`: the adopted
@@ -16,8 +16,14 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renam
 import { basename, dirname, join } from "node:path"
 import { DEFAULT_KEEP_GENERATIONS, heartbeatDir, heartbeatPath } from "./paths.js"
 
-/** The four heartbeat moments (design §1.2). */
-export type HeartbeatKind = "step" | "tool" | "turn-start" | "turn-end"
+/**
+ * The five heartbeat moments (design §1.2; `tool-start` added by r6).
+ *
+ * `tool-start` is the PRE-dispatch stamp (`tools/pre-execute`), `tool` the POST-completion
+ * one. They are two moments of ONE call, matched by `callId`: an unmatched `tool-start` is
+ * the durable "this member is inside a tool call right now" fact the silence rule reads.
+ */
+export type HeartbeatKind = "step" | "tool-start" | "tool" | "turn-start" | "turn-end"
 
 /** One heartbeat stamp, one JSON object per line on disk. */
 export interface HeartbeatStamp {
@@ -38,9 +44,9 @@ export interface HeartbeatStamp {
   turnId: string | null
   /** Tool name (tool stamps only). */
   tool?: string
-  /** Harness call id (tool stamps only). */
+  /** Harness call id (tool stamps only) — the key that pairs a start with its completion. */
   callId?: string
-  /** Whether the tool call succeeded (tool stamps only). */
+  /** Whether the tool call succeeded (the completion stamp only). */
   ok?: boolean
   /** The workspace the stamp belongs to. */
   workspace: string

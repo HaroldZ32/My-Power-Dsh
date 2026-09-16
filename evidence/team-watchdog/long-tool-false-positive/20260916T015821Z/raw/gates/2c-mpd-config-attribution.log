@@ -1,0 +1,13 @@
+### isolated: repo cwd (the captain's TEMPORARY .mpd/mpd.jsonc exists) ###
+
+ 21 pass
+ 2 fail
+ 96 expect() calls
+Ran 23 tests across 2 files. [164.00ms]
+
+### isolated: clean cwd (no .mpd/mpd.jsonc; same file, same code) ###
+
+ 23 pass
+ 0 fail
+ 97 expect() calls
+Ran 23 tests across 1 file. [76.00ms]

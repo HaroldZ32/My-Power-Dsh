@@ -8,8 +8,9 @@
 //
 // What this row owns (design of record: `evidence/team-watchdog/design/DESIGN.md`):
 //   * the heartbeat store (`<stateDir>/watchdog/heartbeat/<key>.jsonl`), written on
-//     `agent/pre-step`, on the adapter's POST tool hook (COMPLETION, never before
-//     dispatch — W-9), and on the turn boundaries;
+//     `agent/pre-step`, on the adapter's PRE tool hook (the `tool-start` stamp that opens a
+//     call, r6) and its POST hook (COMPLETION, never before dispatch — W-9), and on the
+//     turn boundaries;
 //   * the WARN→ESCALATE machine over the `mpd`-namespace knobs, re-read live;
 //   * the atomic, restorable scene snapshot;
 //   * the durable `watchdogHold` + incident/read-watermark sidecars beside `team.json`;
@@ -75,6 +76,12 @@ export type Config = {
    * when the live-agent registry cannot answer. 0 disables the bound (tick everything).
    */
   deadTeamGraceMs?: number
+  /**
+   * The r6 secondary bound: how long ONE open tool call explains silence away. Past it the entry
+   * is reported once as `tool-expired` (WARN-class only — never a scene, never a hold).
+   * 0 disables the in-flight suppression entirely (the pre-r6, POST-only behaviour).
+   */
+  toolInFlightMaxMs?: number
   /** Print skipped-team reasons to the console as well as the debug channel (default false). */
   verboseSkips?: boolean
   /** Diagnostic prefix. */
@@ -92,6 +99,7 @@ export const Config: Schemastery<Config> = z.object({
   teamCacheMs: z.number().default(2000),
   keepGenerations: z.number().default(3),
   deadTeamGraceMs: z.number().default(86_400_000),
+  toolInFlightMaxMs: z.number().default(WATCHDOG_DEFAULTS.toolInFlightMaxMs),
   verboseSkips: z.boolean().default(false),
   logPrefix: z.string().default("mpd-team-watchdog"),
 })
@@ -125,6 +133,7 @@ export function resolveConfig(config: Config = {}): EngineConfig {
     teamCacheMs: num(config.teamCacheMs, 2000, 0),
     keepGenerations: num(config.keepGenerations, 3, 1),
     deadTeamGraceMs: num(config.deadTeamGraceMs, 86_400_000, 0),
+    toolInFlightMaxMs: num(config.toolInFlightMaxMs, WATCHDOG_DEFAULTS.toolInFlightMaxMs, 0),
     verboseSkips: bool(config.verboseSkips, false),
     logPrefix: typeof config.logPrefix === "string" && config.logPrefix !== "" ? config.logPrefix : "mpd-team-watchdog",
   }
@@ -290,7 +299,8 @@ export function apply(ctx: unknown, config: Config = {}): ApplyReport {
         " disposers=" + disposers.length +
         " holdService=" + (holdService ?? "none") +
         " hydratedHolds=" + hydratedHolds +
-        " deadTeamGraceMs=" + (resolved.deadTeamGraceMs === 0 ? "off" : resolved.deadTeamGraceMs),
+        " deadTeamGraceMs=" + (resolved.deadTeamGraceMs === 0 ? "off" : resolved.deadTeamGraceMs) +
+        " toolInFlightMaxMs=" + (resolved.toolInFlightMaxMs === 0 ? "off" : resolved.toolInFlightMaxMs),
     )
   } catch {
     // stdout closed

@@ -36,7 +36,14 @@
 // HONEST LIMIT (W-3, binding): a GENUINE provider wedge is NOT reproducible here. These
 // cases inject SILENCE — the absence of new heartbeats. No case may claim "a real wedge was
 // caught"; every observation says `injected: "silence"`. See `NOT_CLAIMED` at the bottom.
+//
+// r6 ADDS A REAL-TIME PAIR (`long-tool-no-hold` / `long-tool-bound-disabled-control`):
+// a GENUINE child process really burns the wall clock while the mounted row ticks through it, and
+// the pre/post hooks are driven through the handlers the plugin itself registered on the harness
+// event bus. Nothing about the predicate is simulated; the harness's tool registry (the caller of
+// those waterfalls) is the only stubbed layer, and it is stubbed exactly as cordis calls it.
 import { createHash } from "node:crypto"
+import { spawn } from "node:child_process"
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -112,6 +119,16 @@ function makeHarness(workspace, { liveAgentsVisible = false } = {}) {
   const services = new Map()
   const tools = new Map()
   const live = new Map()
+  // The event bus, recorded the way cordis dispatches it: a handler subscribed with `on` is
+  // invoked as `(…args, next)` for a waterfall. Before r6 nothing subscribed, so this was a
+  // no-op; the pre/post tool hooks need it, and recording instead of dropping is the smallest
+  // change that makes a waterfall reachable from a case.
+  const handlers = new Map()
+  // The row's `ctx.effect` cleanup, kept so a case can DISPOSE the mounted row explicitly. The
+  // r6 real-time cases need this: their knobs force a 100 ms cadence (the clamp), so the row's own
+  // interval would otherwise tick concurrently with the case's manual ticks and make the streak
+  // arithmetic non-deterministic.
+  const effects = []
   const captain = { id: CAPTAIN_ID, status: "idle", session: { header: { cwd: workspace } }, cancel: () => {} }
   const member = { id: MEMBER_ID, status: "idle", session: { header: { cwd: workspace } } }
   // The AC-7 leg needs a NEIGHBOUR team with its own dispatchable member in the SAME workspace.
@@ -131,8 +148,13 @@ function makeHarness(workspace, { liveAgentsVisible = false } = {}) {
       error: () => {},
       debug: (...args) => debugLines.push(args.map(String).join(" ")),
     },
-    on: () => () => {},
-    effect: () => {},
+    on: (event, handler) => {
+      handlers.set(event, handler)
+      return () => handlers.delete(event)
+    },
+    effect: (callback) => {
+      effects.push(callback)
+    },
     inject: () => () => {},
     llm: { resolveCallConfig: async (request) => request, listModels: async () => [] },
     systemPrompt: { section: () => {} },
@@ -156,7 +178,28 @@ function makeHarness(workspace, { liveAgentsVisible = false } = {}) {
   // `list()` is empty by default (the adopted plugin attaches to every live agent at apply and
   // these stubs carry no session log); a liveness case opts in to exposing them.
   ctx.agents.list = () => (liveAgentsVisible ? [...live.values()] : [])
-  return { ctx, captain, member, deliveries, warnings, debugLines, services, tools }
+  return {
+    ctx,
+    captain,
+    member,
+    deliveries,
+    warnings,
+    debugLines,
+    services,
+    tools,
+    handlers,
+    /** Run the mounted row's `ctx.effect` cleanups (stops its interval, disposes its listeners). */
+    disposeRow: () => {
+      for (const callback of effects.splice(0)) {
+        try {
+          const result = callback()
+          if (typeof result === "function") result()
+        } catch {
+          // a cleanup that throws must not take the case down
+        }
+      }
+    },
+  }
 }
 const memberExec = (workspace) => ({ agent: { id: MEMBER_ID, session: { header: { cwd: workspace } } } })
 const captainExec = (workspace) => ({ agent: { id: CAPTAIN_ID, session: { header: { cwd: workspace } } } })
@@ -169,6 +212,41 @@ const callTool = async (harness, name, args, exec) => {
     return { ok: false, error: error instanceof Error ? error.message : String(error) }
   }
 }
+
+// ── the r6 tool-call drivers: the harness's two waterfalls, called as cordis calls them ──
+/**
+ * Fire `tools/pre-execute` through the handler the mounted row registered.
+ *
+ * CORDIS SEMANTICS: a waterfall listener is invoked as `(…args, next)`; the adapter's wrapper
+ * awaits `next()` (the rest of the chain) and returns that decision verbatim. The stub supplies
+ * the same inner fallback the harness does (`{kind:'allow'}`), so the gate a case observes is
+ * the gate the real registry would consume.
+ */
+const firePre = async (harness, exec, gate = { kind: "allow" }) => {
+  const handler = harness.handlers.get("tools/pre-execute")
+  if (handler === undefined) throw new Error("the mounted row did not subscribe tools/pre-execute")
+  return await handler(exec, async () => gate)
+}
+/** Fire `tools/post-execute` the same way (the completion half of the pair). */
+const firePost = async (harness, exec, result = { isError: false }) => {
+  const handler = harness.handlers.get("tools/post-execute")
+  if (handler === undefined) throw new Error("the mounted row did not subscribe tools/post-execute")
+  return await handler(exec, result, async () => ({ kind: "accept" }))
+}
+/**
+ * A REAL long-running command: a genuine child process that really burns `ms` of wall clock.
+ *
+ * `setTimeout` in a child of the runtime already running this fixture — no shell, no external
+ * binary, no busy loop. The elapsed time is measured, never assumed, so a case can assert that
+ * the call really outlived the threshold it claims to have outlived.
+ */
+const runRealCommand = (ms) =>
+  new Promise((resolve) => {
+    const started = Date.now()
+    const child = spawn(process.execPath, ["-e", "setTimeout(() => {}, " + ms + ")"], { stdio: "ignore" })
+    child.on("exit", (status) => resolve({ elapsed: Date.now() - started, status }))
+  })
+const sleepMs = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 // ── on-disk injection (the fault input) ────────────────────────────────────
 /**
@@ -259,6 +337,7 @@ function injectStamps(workspace, memberName, stamps) {
       attemptId: stamp.attemptId ?? null,
       turnId: memberKey + "#1",
       ...(stamp.tool === undefined ? {} : { tool: stamp.tool }),
+      ...(stamp.callId === undefined ? {} : { callId: stamp.callId }),
       ...(stamp.ok === undefined ? {} : { ok: stamp.ok }),
       workspace,
     }),
@@ -384,6 +463,11 @@ export const CASES = [
   "pause-preserves",
   "pause-preserves-halt-control",
   "scene-restore",
+  // r6: the real long-tool pair (with its falsifier), the completed-call boundary, and the bound.
+  "long-tool-no-hold",
+  "long-tool-bound-disabled-control",
+  "completed-tool-not-in-flight",
+  "tool-inflight-expired",
 ]
 
 /** The boundary pair, so a lane can assert the CONTRAST explicitly (falsifiable both ways). */
@@ -1129,6 +1213,260 @@ async function caseLiveTeamNeverStarted(root) {
   }
 }
 
+/**
+ * r6, THE ORIGINAL SCENARIO. A member inside ONE long tool call must produce NO WARN, NO ESCALATE
+ * and NO HOLD — before r6 this exact shape PAUSED our own team.
+ *
+ * REAL: the child process really runs for `LONG.commandMs` wall-clock ms, the ticks land inside
+ * it, the pre/post hooks are the handlers the mounted row registered on the event bus, and the
+ * stamps are written by the plugin's own engine to its own JSONL store.
+ * MODELLED: only the harness's tool registry (the caller of the waterfall).
+ */
+const LONG = { warnSilenceMs: 300, tickIntervalMs: 100, toolInFlightMaxMs: 5_000, commandMs: 1_600, tickWaits: [400, 400, 400] }
+
+async function longToolScenario(root, { boundDisabled }) {
+  const workspace = newWorkspace(root)
+  // The record's newest activity is NOW (the ticks below use the real clock), so the r4 liveness
+  // gate cannot skip it — this case is about silence, not about dead teams.
+  injectTeam(workspace, [{ id: "t1", status: "in_progress", assignee: MEMBER_NAME, attempt: 1, attemptId: "att-1" }], { activityAt: Date.now() })
+  // The member's last REAL stamp: a `step` two silence windows old, so every tick below would
+  // WARN on the pre-r6 rules — the in-flight rule is the ONLY thing that can explain it away.
+  const opened = Date.now()
+  injectStamps(workspace, MEMBER_NAME, [{ at: opened - LONG.warnSilenceMs * 2, taskId: "t1", attemptId: "att-1" }])
+  const harness = makeHarness(workspace)
+  const report = await mountWatchdogWith(harness, {
+    warnSilenceMs: LONG.warnSilenceMs,
+    tickIntervalMs: LONG.tickIntervalMs,
+    ...(boundDisabled ? { toolInFlightMaxMs: 0 } : { toolInFlightMaxMs: LONG.toolInFlightMaxMs }),
+  })
+  const exec = { name: "bash", callId: "call-lane-1", agent: { id: MEMBER_ID, session: { header: { cwd: workspace } } } }
+  // The harness's gate: the observe-only hook must pass it AND open the call.
+  const gate = await firePre(harness, exec)
+  const stampsAfterPre = readJsonl(join(workspace, STATE_DIR, "watchdog", "heartbeat", sanitizeKeyLikePlugin(MEMBER_NAME) + ".jsonl"))
+  // Take the handlers, then DISPOSE the row: the case's knobs force a 100 ms cadence (the clamp),
+  // so the row's own interval must not race the manual ticks below. The captured handlers stay
+  // callable (the disposer only removes them from the bus).
+  const preHandler = harness.handlers.get("tools/pre-execute")
+  const postHandler = harness.handlers.get("tools/post-execute")
+  harness.disposeRow()
+  const running = runRealCommand(LONG.commandMs)
+  const ticks = []
+  for (const wait of LONG.tickWaits) {
+    await sleepMs(wait)
+    const now = Date.now()
+    const tick = await report.engine.tickOnce(now)
+    ticks.push({ silenceFromLastStamp: now - opened, decisions: tick.decisions.map((d) => d.type), scenes: tick.scenes.length, holds: tick.holds.length })
+  }
+  const command = await running
+  const closed = await postHandler(exec, { isError: false, value: { ok: true } }, async () => ({ kind: "accept" }))
+  const stats = report.engine.getStats()
+  const machine = report.engine.getMachineState()
+  const hold = existsSync(holdPath(workspace)) ? JSON.parse(readFileSync(holdPath(workspace), "utf8")) : null
+  report.engine.stop()
+  const kinds = ticks.map((tick) => tick.decisions.join("|"))
+  return {
+    workspace,
+    harness,
+    report,
+    gate,
+    closed,
+    command,
+    ticks,
+    kinds,
+    stats,
+    machine,
+    hold,
+    stampedKinds: stampsAfterPre.map((stamp) => stamp.kind),
+    lastStampKinds: readJsonl(join(workspace, STATE_DIR, "watchdog", "heartbeat", sanitizeKeyLikePlugin(MEMBER_NAME) + ".jsonl")).map((stamp) => stamp.kind),
+  }
+}
+
+async function caseLongToolNoHold(root) {
+  const run = await longToolScenario(root, { boundDisabled: false })
+  const observation = {
+    injected: "a REAL 1.6 s command inside ONE tool call, with the member's last stamp 2 windows old",
+    hammeredWith: "the frozen arithmetic, at " + LONG.warnSilenceMs + " ms per window",
+    reproduced: "the r6 defect: before the fix this SAME shape escalated and PAUSED our own team",
+    gatePassedThrough: run.gate,
+    realCommand: { elapsedMs: run.command.elapsed, exitStatus: run.command.status },
+    ticks: run.ticks,
+    kinds: run.kinds,
+    silenceMsAtLastTick: run.ticks[run.ticks.length - 1].silenceFromLastStamp,
+    beyondThreeWindows: run.ticks[run.ticks.length - 1].silenceFromLastStamp > LONG.warnSilenceMs * 3,
+    stampWrittenByThePreHook: run.stampedKinds,
+    stampStreamAfterCompletion: run.lastStampKinds,
+    inFlightSuppressed: run.machine.inFlightSuppressed,
+    stats: { holdsApplied: run.stats.holdsApplied, scenes: run.stats.scenes, incidents: run.stats.incidents, toolStarts: run.stats.toolStarts },
+    hold: run.hold === null ? null : { id: run.hold.id, taskId: run.hold.taskId },
+  }
+  const ok =
+    observation.realCommand.elapsedMs >= 1_200 &&
+    observation.beyondThreeWindows === true &&
+    observation.ticks.every((tick) => tick.decisions.length === 0) &&
+    observation.stats.holdsApplied === 0 &&
+    observation.stats.scenes === 0 &&
+    observation.stats.incidents === 0 &&
+    observation.hold === null &&
+    observation.stampWrittenByThePreHook.join(",") === "step,tool-start" &&
+    observation.stampStreamAfterCompletion.join(",") === "step,tool-start,tool" &&
+    observation.inFlightSuppressed >= 3
+  return {
+    ok,
+    observation,
+    lines: [
+      "a REAL command ran " + observation.realCommand.elapsedMs + " ms (exit " + observation.realCommand.exitStatus + ") inside ONE tool call",
+      "the pre hook stamped " + JSON.stringify(observation.stampWrittenByThePreHook) + " and the POST closed it: " + JSON.stringify(observation.stampStreamAfterCompletion),
+      "ticks (silence from the member's last real stamp => decisions): " + JSON.stringify(observation.ticks.map((tick) => [tick.silenceFromLastStamp, tick.decisions])),
+      "the LAST tick is " + observation.silenceMsAtLastTick + " ms past the last stamp, i.e. beyond 3 windows (" + LONG.warnSilenceMs * 3 + " ms): " + observation.beyondThreeWindows,
+      "WARNs/ESCALATEs/holds/scenes/incidents: " + JSON.stringify(observation.stats) + " — hold file: " + String(observation.hold),
+      "observations the in-flight rule explained away: " + observation.inFlightSuppressed,
+      "=> r6: a member working inside a long tool call is NO LONGER PAUSED",
+    ],
+  }
+}
+
+/**
+ * THE FALSIFIER for the case above: the SAME fixture, the SAME real command, the SAME ticks, with
+ * `toolInFlightMaxMs: 0` (the pre-r6 behaviour). It MUST escalate and hold, or the silence in
+ * `long-tool-no-hold` would be vacuous rather than earned.
+ */
+async function caseLongToolBoundDisabled(root) {
+  const run = await longToolScenario(root, { boundDisabled: true })
+  const observation = {
+    injected: "the SAME real 1.6 s tool call, with the r6 in-flight bound DISABLED (toolInFlightMaxMs: 0)",
+    gatePassedThrough: run.gate,
+    realCommand: { elapsedMs: run.command.elapsed, exitStatus: run.command.status },
+    ticks: run.ticks,
+    kinds: run.kinds,
+    stampWrittenByThePreHook: run.stampedKinds,
+    inFlightSuppressed: run.machine.inFlightSuppressed,
+    stats: { holdsApplied: run.stats.holdsApplied, scenes: run.stats.scenes },
+    hold: run.hold === null ? null : { id: run.hold.id, taskId: run.hold.taskId, attemptId: run.hold.attemptId },
+  }
+  const ok =
+    observation.kinds.join(",") === "warn,warn,escalate" &&
+    observation.stats.holdsApplied === 1 &&
+    observation.hold !== null &&
+    observation.hold.taskId === "t1" &&
+    observation.inFlightSuppressed === 0
+  return {
+    ok,
+    observation,
+    lines: [
+      "the pre hook STILL stamps tool-start (" + JSON.stringify(observation.stampWrittenByThePreHook) + ") — the rule is what is disabled, not the observation",
+      "ticks => " + JSON.stringify(observation.kinds) + " (warn, warn, escalate) and a hold: " + JSON.stringify(observation.hold),
+      "=> FALSIFIER: with the bound disabled the same scenario holds the team, so the silence in `long-tool-no-hold` is the RULE, not a vacuous fixture",
+    ],
+  }
+}
+
+/**
+ * The other side of the boundary: a tool call that COMPLETED is not in flight. A member that
+ * finished a tool and then went silent must still WARN and ESCALATE — otherwise "a tool was used"
+ * would silently become a permission to wedge.
+ */
+async function caseCompletedToolNotInFlight(root) {
+  const workspace = newWorkspace(root)
+  injectTeam(workspace, [{ id: "t1", status: "in_progress", assignee: MEMBER_NAME, attempt: 1, attemptId: "att-1" }])
+  injectStamps(workspace, MEMBER_NAME, [
+    { at: CLOCK.at(0), taskId: "t1", attemptId: "att-1" },
+    { kind: "tool-start", tool: "bash", callId: "call-done-1", at: CLOCK.at(1_000), taskId: "t1", attemptId: "att-1" },
+    // …and its completion 20 s later: the call is CLOSED, so nothing is in flight.
+    { kind: "tool", tool: "bash", callId: "call-done-1", ok: true, at: CLOCK.at(21_000), taskId: "t1", attemptId: "att-1" },
+  ])
+  const harness = makeHarness(workspace)
+  const report = await mountWatchdogWith(harness)
+  const ticks = []
+  for (const offset of [21_000 + FROZEN.warnSilenceMs + 1, 21_000 + FROZEN.warnSilenceMs * 2 + 1, 21_000 + FROZEN.warnSilenceMs * 3 + 1]) {
+    const tick = await report.engine.tickOnce(CLOCK.at(offset))
+    ticks.push({ decisions: tick.decisions.map((d) => d.type), holds: tick.holds.length })
+  }
+  const stats = report.engine.getStats()
+  const machine = report.engine.getMachineState()
+  const hold = existsSync(holdPath(workspace)) ? JSON.parse(readFileSync(holdPath(workspace), "utf8")) : null
+  report.engine.stop()
+  const kinds = ticks.map((tick) => tick.decisions.join("|"))
+  const observation = {
+    injected: "a tool-start PAIRED with its tool completion (the call is closed), then silence",
+    kinds,
+    inFlightSuppressed: machine.inFlightSuppressed,
+    stats: { holdsApplied: stats.holdsApplied, scenes: stats.scenes },
+    hold: hold === null ? null : { id: hold.id, taskId: hold.taskId },
+  }
+  const ok = observation.kinds.join(",") === "warn,warn,escalate" && observation.stats.holdsApplied === 1 && observation.inFlightSuppressed === 0
+  return {
+    ok,
+    observation,
+    lines: [
+      "the newest stamp is the COMPLETION of call-done-1, so nothing is in flight",
+      "ticks => " + JSON.stringify(observation.kinds) + " + a hold: " + JSON.stringify(observation.hold),
+      "=> a completed tool call buys no silence: the wedge rule still fires (in-flight suppressions: " + observation.inFlightSuppressed + ")",
+    ],
+  }
+}
+
+/**
+ * THE BOUND (r6's honest half): a PRE stamp whose POST never arrives (a killed tool, a pipeline
+ * failure, a process that died mid-call) must not leave the member unwatchable forever. Past
+ * `toolInFlightMaxMs` the entry stops suppressing and is recorded ONCE — a WARN-class incident,
+ * never a scene, never a hold, never an escalate.
+ */
+async function caseToolInFlightExpired(root) {
+  const workspace = newWorkspace(root)
+  injectTeam(workspace, [{ id: "t1", status: "in_progress", assignee: MEMBER_NAME, attempt: 1, attemptId: "att-1" }])
+  injectStamps(workspace, MEMBER_NAME, [
+    { at: CLOCK.base - 10_000, taskId: "t1", attemptId: "att-1" },
+    // An OPEN call: no completion stamp for this callId exists anywhere.
+    { kind: "tool-start", tool: "bash", callId: "call-killed-1", at: CLOCK.base, taskId: "t1", attemptId: "att-1" },
+  ])
+  const harness = makeHarness(workspace)
+  const report = await mountWatchdogWith(harness, { toolInFlightMaxMs: 600 })
+  const inside = await report.engine.tickOnce(CLOCK.at(500))
+  const expired = await report.engine.tickOnce(CLOCK.at(700))
+  const repeated = await report.engine.tickOnce(CLOCK.at(60_000))
+  const stats = report.engine.getStats()
+  const machine = report.engine.getMachineState()
+  report.engine.stop()
+  const incidents = readJsonl(join(workspace, STATE_DIR, "watchdog", "incidents.jsonl"))
+  const hold = existsSync(holdPath(workspace)) ? JSON.parse(readFileSync(holdPath(workspace), "utf8")) : null
+  const observation = {
+    injected: "a `tool-start` with NO completion at all, bound toolInFlightMaxMs=600",
+    insideBound: { decisions: inside.decisions.map((d) => d.type), holds: inside.holds.length },
+    pastBound: { decisions: expired.decisions.map((d) => d.type), scenes: expired.scenes.length, holds: expired.holds.length },
+    incidentCount: incidents.length,
+    incidents: incidents.map((incident) => ({ kind: incident.kind, taskId: incident.taskId, attemptId: incident.attemptId, scene: incident.scene, hold: incident.hold, cause: incident.cause })),
+    noRepeatOnALaterTick: incidents.length === 1,
+    toolExpiredReports: stats.toolExpired,
+    stats: { holdsApplied: stats.holdsApplied, scenes: stats.scenes, toolStarts: stats.toolStarts },
+    machine: { toolExpired: machine.toolExpired, inFlightSuppressed: machine.inFlightSuppressed },
+    hold: hold === null ? null : { id: hold.id },
+  }
+  const ok =
+    observation.insideBound.decisions.length === 0 &&
+    observation.insideBound.holds === 0 &&
+    observation.pastBound.decisions.length === 0 &&
+    observation.pastBound.scenes === 0 &&
+    observation.pastBound.holds === 0 &&
+    observation.incidentCount === 1 &&
+    observation.incidents[0].kind === "tool-expired" &&
+    observation.incidents[0].scene === null &&
+    observation.incidents[0].hold === "not-requested" &&
+    observation.toolExpiredReports === 1 &&
+    observation.hold === null
+  return {
+    ok,
+    observation,
+    lines: [
+      "inside the bound (500 ms): " + JSON.stringify(observation.insideBound) + " — still explained activity",
+      "past the bound (700 ms > 600 ms): " + JSON.stringify(observation.pastBound) + " — the entry STOPS suppressing",
+      "durable report: " + JSON.stringify(observation.incidents),
+      "reported ONCE (a later tick at 60 s adds nothing): " + observation.noRepeatOnALaterTick,
+      "holds/scenes: " + JSON.stringify(observation.stats) + " hold file: " + String(observation.hold),
+      "=> the handover is bounded and fail-open: a killed tool can never leave a member permanently un-watchable, and the bound never PAUSES a team",
+    ],
+  }
+}
+
 function readdirSafe(dir) {
   try {
     return readdirSync(dir).sort()
@@ -1152,6 +1490,10 @@ const RUNNERS = {
   "pause-preserves": casePausePreserves,
   "pause-preserves-halt-control": casePausePreservesHaltControl,
   "scene-restore": caseSceneRestore,
+  "long-tool-no-hold": caseLongToolNoHold,
+  "long-tool-bound-disabled-control": caseLongToolBoundDisabled,
+  "completed-tool-not-in-flight": caseCompletedToolNotInFlight,
+  "tool-inflight-expired": caseToolInFlightExpired,
 }
 
 // ── the public entry points ────────────────────────────────────────────────
