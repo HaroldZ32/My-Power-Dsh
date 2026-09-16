@@ -13,7 +13,7 @@
 1. **冻结契约**（`src/sdk.ts`）：所有贡献者用同一种方式声明能力，并用同一套校验、命名空间与失败策略；
 2. **数据面**：包含 `mpd-ext.json` 及其资源的目录——无需打包、无需 `dsh plugin add`、无需改 profile；
 3. **流程（flows）**：以 JSON 声明的过程，渲染成内存中的技能文档（因为 harness 本身没有 flow 接口）；
-4. （后续任务）**运行时 stdio MCP 桥**：用于那些不该变成 profile 补丁行的服务器。
+4. **运行时 stdio MCP 桥**：用于那些不该变成 profile 补丁行的服务器——声明的服务器在 apply 时连接：并行、按 `connectTimeoutMs` 限时、绝不惰性连接（`connectExtensionMcpServers` 在 `apply` 中被 await；`src/index.ts`、`src/mcp.ts`），每台服务器的实时状态由 `mpd_ext_show` 报告。
 
 ## 契约
 
@@ -102,14 +102,14 @@
 
 ## 失败策略（强制）
 
-扩展、它的某个条目、某个流程文件、某台 MCP 服务器或某个角色都可以失败，而**不影响**其他任何东西：失败会附带一行原因被记录，并由 `mpd_ext_list` / `mpd_ext_show` 呈现。本插件不会让异常抛出 `apply`，任何失败也不会中止其他扩展的激活。有三处接口需要显式护栏，且都已具备：技能 provider（一个畸形候选会破坏每个会话的 pre-step，因此每个候选都会被预校验，违规者按条目**跳过并告警**）、技能 provider 注册（重名会抛异常，因此名字在构造上唯一且注册被包裹）、MCP 工具代际切换（部分注册必须回滚——随 MCP 桥任务落地）。
+扩展、它的某个条目、某个流程文件、某台 MCP 服务器或某个角色都可以失败，而**不影响**其他任何东西：失败会附带一行原因被记录，并由 `mpd_ext_list` / `mpd_ext_show` 呈现。本插件不会让异常抛出 `apply`，任何失败也不会中止其他扩展的激活。有三处接口需要显式护栏，且都已具备：技能 provider（一个畸形候选会破坏每个会话的 pre-step，因此每个候选都会被预校验，违规者按条目**跳过并告警**）、技能 provider 注册（重名会抛异常，因此名字在构造上唯一且注册被包裹）、MCP 工具代际切换（部分代际由 `src/mcp.ts` 的两阶段 fetch/swap 完整回滚）——三处护栏在 v1 中均已落地。
 
 第三方 schema 遵循两条不同的规则，且都不会改写作者的 schema：MCP 工具的 `inputSchema` 会被投影到 harness 子集，且**根会被归一化到 object**（工具调用携带的永远是一个参数对象）；而超出子集的 `outputSchema` 只让该工具失去 **schema**、不会失去工具本身——它会在没有 `structuredContent` 的情况下注册并记录原因，这正是 harness 自带 `supportedOutputSchema` 的姿态。只有连**参数**都无法描述的工具才会被跳过。
 
 ## 状态与已记录的 v1 限制
 
 - **与更低 rank 的 provider 同名的技能会被其遮蔽。** harness 会按 rank 告警并丢弃落败的候选。这是正确的优先级行为（project-dsh 100、project-agents 200、runtime 250 都高于我们默认的 300），不是错误——而且它不再不可见：两个**扩展**之间的相撞会标注在落败方（其载入错误里出现 `skill surface:`，写明赢家与双方 rank），两个工具还会把每个声明拿去与 harness 自身的目录（`ctx.skills.list`）比对，报成 `served` / `notServed`。这次目录读取是唯一能看见**非扩展** provider（语料库、用户技能根）投下遮蔽的方式；读取失败时报告会给出 `checked: false` 与原因，而不是下断言。
-- `mcp` 种类已经**声明并校验**，但尚未真正连接——在运行时 stdio 桥任务落地前，`mpd_ext_show` 会把每台服务器报告为 pending。角色在此声明，待角色表的“每次调用解析”函数落地后即可使用。
+- **两种宿主级种类在 v1 中均已落地。** 声明的 `mcp` 服务器在 apply 时连接（`connectExtensionMcpServers`，`src/mcp.ts`），`mpd_ext_show` 报告每台服务器的状态（`connecting` / `connected` / `unavailable` / `failed` / `disabled`），失败时还附上截断后的子进程 stderr 片段——只有当服务器不是 `connected` 时才会保留一条 `pending` 记录。声明的 role 由 `mpd-roles-plugin` **每次调用**解析（`extensionRoles`），因此 `mpd_roles_list` 会以命名空间 id `ext-<extension-id>-<slug>` 列出它，`mpd_role_spawn` 也能启动它。项目级 `mcp` 或 `roles` 条目仍按条目被拒绝。
 - 仅 stdio MCP；仅 JSON 流程文件（YAML 为后续项）；无 MCP resources/prompts；无 GUI 面板；无市场/注册表/远程下载/版本求解；扩展不能贡献 agent preset；扩展角色不会成为 agent-teams 队友（该成员列表是静态补丁配置）。
 
 ## 测试

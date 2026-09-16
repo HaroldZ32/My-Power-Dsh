@@ -49,6 +49,17 @@ const PLUGIN_PKGS = [
   // regression command R11 in .mpd/plans/dsh-tui-edition.md, which asserts every
   // `@mpd-dsh/mpd/packages/<pkg>/dist/index.js` row of the bundle patch is listed here.
   "mpd-tui-plugin",
+  // mpd-team-watchdog-plugin is MOUNTED by the bundle patch (row `mpd-team-watchdog`,
+  // packages/mpd-bundle/cordis.patch.yml:227-228, which landed AFTER this list was last
+  // touched) and was missing from it — the FOURTH occurrence of the silent-omission
+  // class the comments above record for mpd-team-compact-plugin, mpd-ext-plugin and
+  // mpd-tui-plugin. Unlike those three it never reached a shipped tree: the positive
+  // closure check below caught it and printed `[pack-mpd] FAIL: the patch mounts
+  // packages/mpd-team-watchdog-plugin/dist/index.js but the packed tree has no such
+  // file` (measured 2026-09-16 by the extension wave's QA lane:
+  // evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/output.log:97).
+  // Adding the entry is the whole fix; R11 (see above) covers the class.
+  "mpd-team-watchdog-plugin",
   "mpd-bundle-plugin"
 ]
 const MCP_PKGS = ["mpd-mcp-astgrep", "mpd-mcp-gitbash", "mpd-mcp-lsp", "mpd-mcp-codegraph"]

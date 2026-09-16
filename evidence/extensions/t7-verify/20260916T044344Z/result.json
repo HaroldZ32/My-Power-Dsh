@@ -1,0 +1,155 @@
+{
+  "task": "t7 — Real end-to-end verification: mounted sandbox boot, enabled extension, live MCP call",
+  "wave": "external-plugin adaptation audit (CL3: one REAL end-to-end verification round)",
+  "member": "Deep Worker",
+  "attemptId": "3805ed6e-028d-4e05-ae8e-6a79cddbdc7f",
+  "date": "2026-09-16T04:43:44Z",
+  "verdict": "VERIFIED WITH TWO RED LANE ARMS (both diagnosed, neither is an extension-interface regression)",
+  "revision": {
+    "headBefore": "8777e4340f8b4cd0a8d0c0ac683054523d4b5739",
+    "headAfter": "8777e4340f8b4cd0a8d0c0ac683054523d4b5739",
+    "settleRepin": "2026-09-16T04:47:04Z (2m25s after the run ended at 04:44:39Z; house rule asks >= 50s) — HEAD unchanged",
+    "worktree": "clean except the evidence/extensions/* paths this run created; the exercised artifacts are TRACKED and byte-unmodified (git status --porcelain lists nothing under packages/ or skills/)",
+    "artifactHashes": "artifact-hashes.txt — sha256 of packages/mpd-ext-plugin/dist/index.js (7a91509e...), packages/mpd-mcp-lsp/dist/cli.js (a7cebcf9...), packages/mpd-bundle/cordis.patch.yml (11da3e4a...), scripts/pack-mpd.mjs (8422f82d...), the three lane scripts, and the two lane evidence pairs",
+    "note": "the lanes exercise the COMMITTED built dist, not src; the dist is not ignored and not modified, so dist === HEAD"
+  },
+  "commands": [
+    {
+      "command": "bun skills/dsh-qa/scripts/extension-lifecycle.mjs --no-skip",
+      "exitCode": 1,
+      "started": "2026-09-16T04:43:51Z",
+      "ended": "2026-09-16T04:44:32Z",
+      "result": "FAIL (one of four arms red: `packed`); install/main/failure/isolation all GREEN",
+      "resultJson": "evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/result.json",
+      "outputLog": "evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/output.log",
+      "consoleCopy": "extension-lifecycle.console.log",
+      "failingArm": {
+        "arm": "packed",
+        "decisiveLine": "output.log:97  [pack-mpd] FAIL: the patch mounts packages/mpd-team-watchdog-plugin/dist/index.js but the packed tree has no such file",
+        "packExit": 1,
+        "packTail": "[pack-mpd] FAIL: the patch mounts packages/mpd-team-watchdog-plugin/dist/index.js but the packed tree has no such file",
+        "diagnosis": "tree drift OUTSIDE the extension interface: the team-watchdog wave added the row `mpd-team-watchdog` (packages/mpd-bundle/cordis.patch.yml:227-228, commit b53a651, 2026-09-16 00:53 +0800) but scripts/pack-mpd.mjs PLUGIN_PKGS (lines 21-53) never gained `mpd-team-watchdog-plugin` (grep count 0). The packer's own positive closure check (scripts/pack-mpd.mjs:202-209) now catches exactly the silent-omission class its comments describe three times, and aborts BEFORE writing dist/mpd-package/cordis.patch.yml.",
+        "sideEffect": "dist/mpd-package/ is gitignored; the lane re-ran pack-mpd.mjs, so the previously complete packed tree was rebuilt and left WITHOUT cordis.patch.yml (the pack aborts before the patch is written). No tracked file changed.",
+        "owner": "the wave that mounts a row must extend PLUGIN_PKGS (not the extension interface, not this audit)"
+      }
+    },
+    {
+      "command": "bun skills/dsh-qa/scripts/extension-mcp-bridge.mjs --no-skip",
+      "exitCode": 1,
+      "started": "2026-09-16T04:44:32Z",
+      "ended": "2026-09-16T04:44:39Z",
+      "result": "FAIL (one of six arms red: `schema`); install/live/dead/hang/dup/containment all GREEN",
+      "resultJson": "evidence/extensions/extension-mcp-bridge/2026-09-16T04-44-32.737Z/result.json",
+      "outputLog": "evidence/extensions/extension-mcp-bridge/2026-09-16T04-44-32.737Z/output.log",
+      "consoleCopy": "extension-mcp-bridge.console.log",
+      "failingArm": {
+        "arm": "schema",
+        "decisiveLine": "output.log:34  [mpd-ext] extension \"qa-mcp-schema\" mcp server \"qa_mcp_schema\": 2 tool(s) published, 1 skipped, 1 downgraded",
+        "assertion": "steps.schema.badOutputSkipped === true expected; measured false — result.json steps.schema = {goodToolOffered:true, badInputSkipped:true, badOutputSkipped:false, reportedReason:true}",
+        "liveControl": "steps.schema.vacuous === false (the live control `mcp__qa_mcp_live__status` was offered AND called — the arm is not vacuously failing)",
+        "diagnosis": "QA-CASE DRIFT, not a product regression. The F1 fix (commit c239407, 2026-09-15 09:17 +0800) deliberately retired the REV4 'drop the tool' wording for a foreign `outputSchema`: the tool is now KEPT and only the SCHEMA is dropped (packages/mpd-ext-plugin/src/mcp.ts:354-375), and that behavior is pinned by packages/mpd-ext-plugin/test/mcp.test.ts:642 ('an unsupported outputSchema drops the SCHEMA and keeps the tool'). The fixture's `bad_output` carries inputSchema {type:object,...} plus outputSchema {type:object, properties:{a:{type:string, pattern:\"^x\"}}} (extension-mcp-bridge.mjs:78), so post-F1 it is registered WITHOUT structuredContent = '1 downgraded'. The case's own assertion still encodes the pre-F1 expectation; c239407 touched NO skills/** file and the case's only commit is 90de6cb (2026-09-15 02:21 +0800), i.e. BEFORE the fix.",
+        "corroboration": "the offered tool list read from the harness request header (raw/mcp.session.decoded.jsonl:13, 109 tools) contains mcp__qa_mcp_schema__bad_output and NOT mcp__qa_mcp_schema__bad_input",
+        "owner": "the extension QA case (skills/dsh-qa/scripts/extension-mcp-bridge.mjs) — NOT edited by this task, per the standing instruction that a lane is never edited into passing"
+      }
+    },
+    {
+      "command": "bun skills/dsh-qa/scripts/extension-isolation.mjs --self-test",
+      "exitCode": 0,
+      "started": "2026-09-16T04:44:39Z",
+      "ended": "2026-09-16T04:44:39Z",
+      "result": "PASS",
+      "consoleCopy": "extension-isolation-self-test.console.log",
+      "decisiveLine": "console: '[extension-isolation self-test] ok: stub protocol (tool call, advance, child marker, no-tools text) + descriptor contract + shipped example + boot recipe verified'"
+    }
+  ],
+  "mountEvidence": {
+    "claim": "the mpd-ext row was genuinely MOUNTED by a real dsh boot (registration/apply evidence, never a composed --dump-config)",
+    "mpdExtRowInBundlePatchAndInstaller": "gatePrereqs found packages/mpd-ext-plugin/dist/index.js and the installer wrote the row; no SKIP marker was printed by either lane",
+    "applyLineLifecycleMain": "evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/output.log:40  [mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: ... | project plane: <session workspace>/.mpd/extensions (per call)",
+    "applyLineMCPBridge": "evidence/extensions/extension-mcp-bridge/2026-09-16T04-44-32.737Z/output.log:38  (same line, 5 boots in the lifecycle lane printed it too: output.log lines 40, 51, 71, 81, 91)",
+    "registrationWitnessInSessionLog": "raw/main.session.decoded.jsonl:13 is the request/header record whose header.tools[] carries mpd_ext_list/mpd_ext_show/mpd_flow_list/mpd_flow_show (99 offered tools); raw/mcp.session.decoded.jsonl:13 carries 109 offered tools",
+    "applyCrashSignatures": "crashSignatures([]) recorded in both result.json files; grep for 'unsupported JSON schema|JsonSchemaError|plugin tree failed to load|failed to apply loader entry' over both output.log files = 0 hits"
+  },
+  "mcpToolCall": {
+    "claim": "a real bridged MCP tool call of the form mcp__<serverName>__<rawName>",
+    "tool": "mcp__qa_mcp_live__status",
+    "callRecord": "raw/mcp.session.decoded.jsonl:39 (tool/call, callId call_mcp-bridge_4)",
+    "resultRecord": "raw/mcp.session.decoded.jsonl:40 (tool/result, isError=false)",
+    "resultEvidence": "'Configured LSP servers: 42 / Installed LSP servers: 1 / - typescript: missing ...' — the real repo stdio server packages/mpd-mcp-lsp/dist/cli.js answered",
+    "offeredInBothReadings": "stub request tools[] (steps.live.offered=true) AND the harness header raw/mcp.session.decoded.jsonl:13 (offered.liveToolInHeader=true)",
+    "serverPublishLine": "output.log:33  [mpd-ext] extension \"qa-mcp-live\" mcp server \"qa_mcp_live\": 8 tool(s) published",
+    "derivation": "proof.json (produced by derive-proof.mjs) records artifact+line for every claim above"
+  },
+  "isolation": {
+    "claim": "isolation is asserted, not assumed",
+    "mechanism": "each lane boots dsh with DSH_HOME=<sandbox>/dsh-home, HOME=<sandbox>/run-home, cwd=<sandbox>/ws (plus ws-a/ws-b/decoy) and calls assertSessionsSandboxed(<sandbox dshHome>, <sandbox>) (skills/dsh-qa/scripts/lib/workspace-isolation.mjs:72-85), whose own --self-test proves it REJECTS a repo-keyed store",
+    "sandboxPathsUsed": {
+      "lifecycle": "/tmp/mpd-extension-lifecycle-f804p7 (dsh-home, run-home, decoy, ws, ws-a, ws-b)",
+      "mcpBridge": "/tmp/mpd-extension-mcp-bridge-e8oiDu (dsh-home, run-home, ws)"
+    },
+    "recordedAssertions": {
+      "lifecycle.main.isolation": "{ok:true, checked:1, keys:[\"--tmp-mpd-extension-lifecycle-f804p7-ws--\"]}",
+      "lifecycle.failure.isolation": "{ok:true, checked:1}",
+      "lifecycle.isolationFinal": "{ok:true, checked:4, keys:[\"--tmp-...-decoy--\",\"--tmp-...-ws-b--\",\"--tmp-...-ws-a--\",\"--tmp-...-ws--\"]}",
+      "mcpBridge.steps.containment.isolation": "{ok:true, checked:1, keys:[\"--tmp-mpd-extension-mcp-bridge-e8oiDu-ws--\"]}"
+    },
+    "multiSessionArm": "three sessions on ONE host root (ws-a, ws-b, decoy-cwd) each saw only their own extension: raw/session-a.session.decoded.jsonl:12 'qa-iso-a', session-b:12 'qa-iso-b', decoy-cwd-control:12 'qa-iso-decoy' — the decoy control makes the negative arm non-vacuous",
+    "noRealWorkspaceWrite": "the only untracked paths the run created are the evidence/extensions/* dirs reported in artifact-hashes.txt; no tracked file under packages/, skills/, docs/ or scripts/ changed (git status --porcelain)",
+    "honestLimit": "a file-mtime scan of the REAL home/workspace is NOT decisive in this deployment: the live session that ran the lanes itself keeps writing .mpd/team (team heartbeat/state) and /root/.dsh, so mtime evidence there is polluted by the live host. The falsifiable assertion used instead is the sandbox-scoped session-store key check above."
+  },
+  "passed": [
+    "extension-isolation.mjs --self-test: exit 0",
+    "lifecycle install arm: exit 0 (install-profile --profile mpd-headless --skip-toolchain, checkout-absolute rows)",
+    "lifecycle main arm: exit 0 — raw/main.session.decoded.jsonl:20 (the mpd_ext_list result) reads 'mpd extensions: 3 (0 shadowed, 0 rejected)' = qa-ext-proj [project/directory] enabled skills=1 flows=1, qa-ext-user [user/directory] enabled skills=1 roles=1, mpd-ext-example [bundle/directory] disabled; project-plane roles/mcp rejected per item with the exact reason, flow body served, skill content served through the catalog, user-plane role persona answered, role REALLY spawned (child turn answered by the stub): raw/main.session.decoded.jsonl calls at lines 18/24/34/39/44/49 with non-error results at 20/25/35/40/45/51",
+    "lifecycle failure arm: exit 0 — a broken extension of each kind beside a healthy one; boot stayed green, session completed, qa-bad-json and qa-bad-version rejected per item, CLI oracle agreed (evidence in result.json steps.failure)",
+    "lifecycle isolation arm: exit 0 — two sessions + decoy control",
+    "mcp-bridge install/live/dead/hang/dup/containment arms: green; dead = ENOENT reported (output.log:32), hang = 'initialize timed out after 1500ms' (output.log:37), dup = 'listed tool \"dup_tool\" more than once — invalid tool list' → ZERO tools (output.log:36), crashSignatures []"
+  ],
+  "failed": [
+    "lifecycle packed arm — pack-mpd.mjs exit 1, PLUGIN_PKGS missing mpd-team-watchdog-plugin (see commands[0])",
+    "mcp-bridge schema arm — badOutputSkipped expected true, measured false; QA-case drift versus the F1 keep-or-drop policy (see commands[1])"
+  ],
+  "skipped": [
+    "nothing was skipped: both real lanes ran with --no-skip and printed no '[mpd-qa] SKIP' marker; all declared prerequisites (dsh 0.1.5-rc.1 on PATH, packages/mpd-ext-plugin/dist/index.js, packages/mpd-mcp-lsp/dist/cli.js) were present"
+  ],
+  "evidencePaths": [
+    "evidence/extensions/t7-verify/20260916T044344Z/result.json",
+    "evidence/extensions/t7-verify/20260916T044344Z/output.log",
+    "evidence/extensions/t7-verify/20260916T044344Z/run-lanes.sh",
+    "evidence/extensions/t7-verify/20260916T044344Z/exit-codes.txt",
+    "evidence/extensions/t7-verify/20260916T044344Z/head-pre.txt",
+    "evidence/extensions/t7-verify/20260916T044344Z/head-post.txt",
+    "evidence/extensions/t7-verify/20260916T044344Z/artifact-hashes.txt",
+    "evidence/extensions/t7-verify/20260916T044344Z/derive-proof.mjs",
+    "evidence/extensions/t7-verify/20260916T044344Z/proof.json",
+    "evidence/extensions/t7-verify/20260916T044344Z/extension-lifecycle.console.log",
+    "evidence/extensions/t7-verify/20260916T044344Z/extension-mcp-bridge.console.log",
+    "evidence/extensions/t7-verify/20260916T044344Z/extension-isolation-self-test.console.log",
+    "evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/result.json",
+    "evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/output.log",
+    "evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/raw/main.session.decoded.jsonl",
+    "evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/raw/failure.session.decoded.jsonl",
+    "evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/raw/session-a.session.decoded.jsonl",
+    "evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/raw/session-b.session.decoded.jsonl",
+    "evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/raw/decoy-cwd-control.session.decoded.jsonl",
+    "evidence/extensions/extension-mcp-bridge/2026-09-16T04-44-32.737Z/result.json",
+    "evidence/extensions/extension-mcp-bridge/2026-09-16T04-44-32.737Z/output.log",
+    "evidence/extensions/extension-mcp-bridge/2026-09-16T04-44-32.737Z/raw/mcp.session.decoded.jsonl"
+  ],
+  "findingsForTheReport": [
+    {
+      "id": "T7-1",
+      "severity": "high",
+      "subject": "pack-mpd.mjs PLUGIN_PKGS vs the bundle patch (a mounted row that the packed tree cannot resolve)",
+      "problem": "The team-watchdog wave mounted `mpd-team-watchdog` (cordis.patch.yml:227-228) without adding `mpd-team-watchdog-plugin` to scripts/pack-mpd.mjs PLUGIN_PKGS; `node scripts/pack-mpd.mjs` now exits 1 and a packed/registry install would lose that package. This is the FOURTH occurrence of the class the file's own comments document (team-compact, ext, tui, watchdog).",
+      "evidence": "evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/output.log:97 + result.json steps.packed"
+    },
+    {
+      "id": "T7-2",
+      "severity": "medium",
+      "subject": "extension-mcp-bridge schema arm encodes the pre-F1 expectation",
+      "problem": "The case asserts a foreign `outputSchema` must make the TOOL disappear; the F1 fix (c239407) deliberately switched to keep-the-tool/drop-the-schema, and the behavior is pinned by packages/mpd-ext-plugin/test/mcp.test.ts:642. The lane is therefore RED on every run of the current tree, and a future reader may mistake it for a product regression.",
+      "evidence": "evidence/extensions/extension-mcp-bridge/2026-09-16T04-44-32.737Z/result.json steps.schema + output.log:34"
+    }
+  ]
+}

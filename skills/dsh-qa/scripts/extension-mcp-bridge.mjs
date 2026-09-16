@@ -24,10 +24,13 @@
 //             the child's reason), contributes no tool, boot stays green.
 //   hang    — a server that never answers `initialize` is time-boxed by
 //             connectTimeoutMs: no tool, boot neither blocked nor failed.
-//   schema  — a tool whose inputSchema cannot be projected onto the harness
-//             subset is skipped LOUDLY (reported by `mpd_ext_show`) while its
-//             valid sibling on the SAME server still registers (keep-or-drop,
-//             never a rewrite).
+//   schema  — TWO rules, both the shipped ones (F1: src/mcp.ts:354-375, pinned by
+//             test/mcp.test.ts:642). A tool whose inputSchema cannot be projected
+//             onto the harness subset is SKIPPED loudly; a tool whose OUTPUT schema
+//             is outside the subset KEEPS its registration and loses only the schema
+//             (it is registered WITHOUT structuredContent). The valid sibling on the
+//             SAME server registers either way, and both per-tool reasons are
+//             reported by `mpd_ext_show` (keep-or-drop, never a rewrite).
 //   dup     — two raw tool names that map to the SAME public name make the tool
 //             list invalid: ZERO tools from that server survive.
 //
@@ -158,6 +161,13 @@ function selfTest() {
   check(publicName(SCHEMA_SERVER, "bad_input") !== publicName(SCHEMA_SERVER, "good_tool"), "the schema arm premise failed")
   check(FIXTURE_SOURCE.includes('inputSchema: "not-a-schema"'), "the schema arm must advertise a NON-OBJECT inputSchema (measured: a string/number/array rejects, a boolean is treated as unconstrained)")
   check(FIXTURE_SOURCE.includes("outputSchema:"), "the schema arm must advertise an outputSchema outside the subset (keep-or-drop)")
+  // F1 premise: `bad_output` must pair a VALID inputSchema with a FOREIGN outputSchema —
+  // otherwise it would be skipped by the input rule and the keep-the-tool assertion
+  // could pass for the wrong reason.
+  check(
+    FIXTURE_SOURCE.includes('{ name: "bad_output", description: "an output schema outside the subset", inputSchema: { type: "object", properties: { text: { type: "string" } } }, outputSchema:'),
+    "bad_output must carry a VALID inputSchema next to its foreign outputSchema (F1: keep the tool, drop the schema)",
+  )
 
   // The fixture really carries an unsupported keyword for the schema arm and a
   // valid sibling, so "skipped loudly" cannot pass vacuously.
@@ -300,18 +310,27 @@ async function runReal() {
     }
     steps.schema = {
       vacuous: !liveOk,
+      // F1 (packages/mpd-ext-plugin/src/mcp.ts:354-375, pinned by
+      // packages/mpd-ext-plugin/test/mcp.test.ts:642): KEEP-OR-DROP ON THE SCHEMA,
+      // NEVER THE TOOL. An unprojectable `inputSchema` still costs its tool; an
+      // `outputSchema` outside the subset leaves the tool REGISTERED without
+      // `structuredContent`. Both reasons are surfaced per tool by `mpd_ext_show`.
       ok: run.status === 0 && liveOk
         && offeredBoth("mcp__" + SCHEMA_SERVER + "__good_tool")
         && !offered.has("mcp__" + SCHEMA_SERVER + "__bad_input")
-        && !offered.has("mcp__" + SCHEMA_SERVER + "__bad_output")
-        // "loudly": the per-tool skip reason is recorded on the extension and
-        // surfaced by mpd_ext_show.
-        && /skipped/.test(showTexts[SCHEMA_EXT]),
+        && offeredBoth("mcp__" + SCHEMA_SERVER + "__bad_output")
+        // "loudly": the input-schema SKIP and the output-schema DOWNGRADE are each
+        // recorded on the extension keyed to their own tool name.
+        && /tool "bad_input" skipped/.test(showTexts[SCHEMA_EXT])
+        && /tool "bad_output": its outputSchema would have to be rewritten/.test(showTexts[SCHEMA_EXT])
+        && /registered WITHOUT structuredContent/.test(showTexts[SCHEMA_EXT]),
       goodToolOffered: offeredBoth("mcp__" + SCHEMA_SERVER + "__good_tool"),
       badInputSkipped: !offered.has("mcp__" + SCHEMA_SERVER + "__bad_input"),
-      badOutputSkipped: !offered.has("mcp__" + SCHEMA_SERVER + "__bad_output"),
-      reportedReason: /skipped/.test(showTexts[SCHEMA_EXT]),
-      stateText: showTexts[SCHEMA_EXT].slice(0, 400),
+      badOutputOffered: offeredBoth("mcp__" + SCHEMA_SERVER + "__bad_output"),
+      badOutputSchemaDropped: /registered WITHOUT structuredContent/.test(showTexts[SCHEMA_EXT]),
+      reportedReason: /tool "bad_input" skipped/.test(showTexts[SCHEMA_EXT])
+        && /tool "bad_output": its outputSchema would have to be rewritten/.test(showTexts[SCHEMA_EXT]),
+      stateText: showTexts[SCHEMA_EXT].slice(0, 700),
     }
     steps.dup = {
       vacuous: !liveOk,

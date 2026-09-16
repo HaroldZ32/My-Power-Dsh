@@ -1,0 +1,289 @@
+{
+  "task": "t12",
+  "kind": "integration",
+  "wave": "external-plugin adaptation wave (extension interface PLANE 2 + install plane PLANE 1)",
+  "member": "Lead",
+  "attemptId": "fb883675-75f7-4407-b6ff-f01afffc9581",
+  "date": "2026-09-16T05:32:00Z",
+  "head": "8777e4340f8b4cd0a8d0c0ac683054523d4b5739",
+  "worktree": "DIRTY/UNCOMMITTED — the whole wave lives in the shared working tree; the captain is the only git writer; t12 committed nothing",
+  "settledRevision": {
+    "docs/extension-adaptation-report.md": "0ebfadb5e3b4f3adcb289a2d8dcf3bff85c280582aa9697c28428824beb64b37",
+    "docs/extension-adaptation-report.zh-CN.md": "b5adfbda661adef78e5d6d0068abb4adddaa75e0010b2329570c259a7b133751",
+    "settleProof": "identical at 13:30:18 and 13:32:2x local (55 s window) and identical immediately before/after gate sweep B"
+  },
+  "movingTargetEvent": {
+    "atIntegrationStart": {
+      "docs/extension-adaptation-report.md": "eb3d385b75d75e14fbb7e675e89d10d8b5eec242a01909cc0b08bb6600d69d74",
+      "docs/extension-adaptation-report.zh-CN.md": "a4906c5b1a9e6cb623dba9d58c5a9024b0f5ac0397f19b882b7b188f096d6fc0",
+      "note": "exactly the revision t24 reviewed PASS"
+    },
+    "writesDuringIntegration": [
+      {
+        "mtime": "2026-09-16 13:28:57 / 13:29:08 +0800",
+        "docs/extension-adaptation-report.md": "336042670f927ad919c61342b71b4ac81fddf297bbea2a6fac07c2e0fd328382",
+        "docs/extension-adaptation-report.zh-CN.md": "c308fd6c0f6aff44795f6d58fe01cca738b294186f6612ad1658fc6f76e3b945"
+      },
+      {
+        "mtime": "2026-09-16 13:30:18 +0800",
+        "docs/extension-adaptation-report.md": "0ebfadb5e3b4f3adcb289a2d8dcf3bff85c280582aa9697c28428824beb64b37",
+        "docs/extension-adaptation-report.zh-CN.md": "b5adfbda661adef78e5d6d0068abb4adddaa75e0010b2329570c259a7b133751"
+      }
+    ],
+    "author": "t21 (Senior Engineer, the report's residual/waiver record)",
+    "handling": "sweep A ran on the t24-reviewed revision, sweep B on the settled revision; no gate result is attributed to a revision it did not run on; every other deliverable was byte-identical across both sweeps"
+  },
+  "gates": [
+    {
+      "command": "bun test packages/mpd-ext-plugin",
+      "exitCode": 0,
+      "sweepA_exitCode": 0,
+      "sweepB_exitCode": 0,
+      "evidence": "66 pass / 0 fail / 531 expect() calls — Ran 66 tests across 4 files (both sweeps)"
+    },
+    {
+      "command": "bun scripts/mpd-ext.mjs --self-test",
+      "exitCode": 0,
+      "sweepA_exitCode": 0,
+      "sweepB_exitCode": 0,
+      "evidence": "[mpd-ext] --self-test passed (19 checks)"
+    },
+    {
+      "command": "bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example",
+      "exitCode": 0,
+      "sweepA_exitCode": 0,
+      "sweepB_exitCode": 0,
+      "evidence": "[mpd-ext] ok"
+    },
+    {
+      "command": "node scripts/verify-docs-parity.mjs",
+      "exitCode": 0,
+      "sweepA_exitCode": 0,
+      "sweepB_exitCode": 0,
+      "evidence": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=35 failed=0 violations=0 exempt=16 — PASS (includes the report pair)"
+    },
+    {
+      "command": "node scripts/verify-vendor.mjs",
+      "exitCode": 0,
+      "sweepA_exitCode": 0,
+      "sweepB_exitCode": 0,
+      "evidence": "[verify-vendor] PASS — proves the skills corpus treeSha 7a48fdad90cc30f9c1e71009be216aeb8b2a1de797eb2bb1897032c41f6b51aa matches the t13-modified corpus, i.e. the wave's SINGLE re-pin"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "docs/extension-adaptation-report.md",
+      "sha256": "0ebfadb5e3b4f3adcb289a2d8dcf3bff85c280582aa9697c28428824beb64b37",
+      "proves": "the wave's bilingual current-state report (EN, 361 lines): §1 verdict, §2 two planes + who should use which, §3 capability inventory, §4 runtime/isolation posture, §5 live-verified claims, §6 F1-F11 risks/gaps, §7 P0/P1/P2 recommendations, §8 drift, §9 unverified list, §10 reproduction, §11 evidence index",
+      "producedBy": "t8, repaired by t23, residual record by t21",
+      "review": "t24 PASS pinned to the PRE-t21 revision eb3d385b…; the settled revision awaits t22"
+    },
+    {
+      "path": "docs/extension-adaptation-report.zh-CN.md",
+      "sha256": "b5adfbda661adef78e5d6d0068abb4adddaa75e0010b2329570c259a7b133751",
+      "proves": "zh-CN twin, identical heading tree + switch link (gate 4)",
+      "producedBy": "t8 / t23 / t21",
+      "review": "t24 PASS pinned to a4906c5b…; settled revision awaits t22"
+    },
+    {
+      "path": "docs/index.md",
+      "sha256": "4d0ba0e5127040fce68be1da87c1e20b5b16b7ea2ced07811e97a61cde01032e",
+      "proves": "hub 'Reading order' row linking the report pair (EN)",
+      "producedBy": "t8",
+      "review": "byte-identical across both sweeps"
+    },
+    {
+      "path": "docs/index.zh-CN.md",
+      "sha256": "df82aa364d790cd0de4ff100af434a3ded7e826b6787e7ba6bb5c5a1d3912fb4",
+      "proves": "zh hub row for the report pair",
+      "producedBy": "t8",
+      "review": "byte-identical across both sweeps"
+    },
+    {
+      "path": "docs/extensions.md",
+      "sha256": "f860593aedb45974fa1063be187d5f1dddf82fb75f0a4b97c030f068f24e80a1",
+      "proves": "D4/D5 example-field corrections (serverName lint-mcp, personas/code-reviewer.md) + the role-refusal bullet and §6 table row",
+      "producedBy": "t9 (D1-D5), t17 (role refusal)",
+      "review": "t11 PASS, t18 PASS"
+    },
+    {
+      "path": "docs/extensions.zh-CN.md",
+      "sha256": "be0a8814aadf1f6b987c9237262fb524b0b3cbb0674f02cb0778d66a64edece5",
+      "proves": "zh twin of the D4/D5 + role-refusal corrections",
+      "producedBy": "t9, t17",
+      "review": "t11 PASS, t18 PASS"
+    },
+    {
+      "path": "packages/mpd-ext-plugin/README.md",
+      "sha256": "b60b960ccaf41444b11eb9704e1e65d8b68fde758e548f4623cf9c2d0166609a",
+      "proves": "D1/D2/D3: bridge connects at apply (never lazily), two-phase fetch/swap with full rollback, both host-wide kinds (mcp + roles) live in v1 with the five-state machine",
+      "producedBy": "t9",
+      "review": "t11 PASS"
+    },
+    {
+      "path": "packages/mpd-ext-plugin/README.zh-CN.md",
+      "sha256": "5e4a1b174a6b70cdff3b05da79b8b376844444a69050141ac3a0fb8cf69f4110",
+      "proves": "zh twin of D1/D2/D3",
+      "producedBy": "t9",
+      "review": "t11 PASS"
+    },
+    {
+      "path": "docs/development.md",
+      "sha256": "5c49dcaf2628e973555294f059f13745031aaf7b0482b07a87c0ce505e5420ef",
+      "proves": "D6 + T16-F1: extension-isolation is the shared proof helper, not a case lane, and has no lane mode (no --self-test => does nothing, exits 0)",
+      "producedBy": "t15 (D6), t19 (wording)",
+      "review": "t16 PASS, t20 PASS"
+    },
+    {
+      "path": "docs/development.zh-CN.md",
+      "sha256": "64391712a2b0dab36f8324bf9264fb9392bd34854d3a50228b0f55db3643510c",
+      "proves": "zh twin of D6 + T16-F1",
+      "producedBy": "t15, t19",
+      "review": "t16 PASS, t20 PASS"
+    },
+    {
+      "path": "package.json",
+      "sha256": "039d222f5de0593d89d705c7e446beed0f6afb7549c54db2be34a4f7b8a584b4",
+      "proves": "t19 item 2: the vacuous extension-isolation member is gone from test:qa:all (26 members, each resolving to a real case script)",
+      "producedBy": "t19",
+      "review": "t20 PASS"
+    },
+    {
+      "path": "skills/dsh-qa/SKILL.md",
+      "sha256": "b20d73118f4db8cecf4b3c5f2a5260743f579ab99c28953140788b53dfb4bf76",
+      "proves": "t13 skills/** repair: the extension rows no longer promise a packed arm that must be red",
+      "producedBy": "t13 (the wave's single skills writer)",
+      "review": "t14 PASS"
+    },
+    {
+      "path": "skills/dsh-qa/scripts/extension-mcp-bridge.mjs",
+      "sha256": "3f2169889bc536b1bbb1e1702486a3ec717c2a85d7b9bd1dab63c944ec1c2fd9",
+      "proves": "t13 repair: the bridge lane's schema arm asserts the shipped keep-or-drop rule",
+      "producedBy": "t13",
+      "review": "t14 PASS"
+    },
+    {
+      "path": "VENDOR_LOCK.json",
+      "sha256": "d226534d3b2f9708699e6afae3e56490cb7b2ce9346bbd0813dd4b70dfb9fad6",
+      "skillsTreeSha": "7a48fdad90cc30f9c1e71009be216aeb8b2a1de797eb2bb1897032c41f6b51aa",
+      "proves": "the wave's SINGLE corpus re-pin, riding the same change as the skills/** edit that invalidated it (AGENTS.md §9/§11)",
+      "producedBy": "t13",
+      "review": "gate 5 PASS"
+    },
+    {
+      "path": "scripts/pack-mpd.mjs",
+      "sha256": "8beb91c3f62640b5b72ad383d1d28809435a77fb50f9291db6b5412bada9458b",
+      "proves": "the packer's positive-closure check caught a MISSING mpd-team-watchdog-plugin in PLUGIN_PKGS (4th occurrence of the silent-omission class, measured at evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/output.log:97); the entry was added",
+      "producedBy": "the wave's repair round (t7/t13 lane) - NOT t12",
+      "review": "bytes are exactly the scripts/pack-mpd.mjs sha256 8beb91c3… that t7 pinned in its lane-subject hash set"
+    },
+    {
+      "path": "extensions/mpd-ext-example/mpd-ext.json",
+      "sha256": "72b395d6b9e388b42c4d58861ff1a77838fecc4867e0251360e7c44eaa82d3e6",
+      "proves": "the shipped 4-kind example - the source of truth D4/D5 were corrected TO",
+      "producedBy": "pre-existing (a647d47), untouched this wave",
+      "review": "n/a"
+    },
+    {
+      "path": "extensions/mpd-ext-example/server.mjs",
+      "sha256": "6e8a2bde3d9c42d3fd378c055bcdcb60f314f9c66e63d5605560ab1fa1671a3b",
+      "proves": "its stdio server publishing mcp__lint-mcp__describe_extension",
+      "producedBy": "pre-existing (4bc2157), untouched this wave",
+      "review": "n/a"
+    }
+  ],
+  "evidenceCited": [
+    {
+      "path": "evidence/extensions/t7-verify/20260916T045829Z/",
+      "proves": "the wave's ONLY live evidence: real mounted sandbox boot, extension E2E, the real MCP tool call read from the harness session log, isolation; verdict PASS, anchored to HEAD 8777e43 plus the lane-subject sha256 pre/post/settle (HEAD alone insufficient - the repair is uncommitted)",
+      "producedBy": "t7 attempt 2",
+      "reran": false
+    },
+    {
+      "path": "evidence/extensions/extension-lifecycle/2026-09-16T04-58-41.378Z/",
+      "proves": "lifecycle lane, all arms green",
+      "producedBy": "t7",
+      "reran": false
+    },
+    {
+      "path": "evidence/extensions/extension-mcp-bridge/2026-09-16T04-59-18.173Z/",
+      "proves": "bridge lane, all arms green incl. the corrected schema arm",
+      "producedBy": "t7",
+      "reran": false
+    },
+    {
+      "path": "evidence/extensions/t13-repair/20260916T045324Z/",
+      "proves": "the two red-arm repairs, the re-pin script/result, verify-vendor.log, the architect re-run",
+      "producedBy": "t13",
+      "reran": false
+    },
+    {
+      "path": "evidence/extensions/t12-integration/20260916T052836Z/output.log",
+      "proves": "gate sweep A on the t24-reviewed revision (5/5 exit 0)",
+      "producedBy": "t12",
+      "reran": true
+    },
+    {
+      "path": "evidence/extensions/t12-integration/20260916T053019Z/{output.log,delivery-ledger.md,result.json}",
+      "proves": "gate sweep B on the settled revision (5/5 exit 0) + this ledger",
+      "producedBy": "t12",
+      "reran": true
+    }
+  ],
+  "reviewChain": [
+    "t1 requirements -> PASS (terminal)",
+    "t2/t3/t4/t5 inventories + t6 architecture assessment -> terminal",
+    "t7 real end-to-end verification -> PASS (attempt 2; attempt 1 FAILED and is superseded)",
+    "t8 report -> t10 review FAILED with findings -> t23 repair -> t24 review PASS (terminal, on eb3d385b…/a4906c5b…)",
+    "t9 drift fix -> t11 review PASS (terminal)",
+    "t13 skills repair -> t14 review PASS (terminal)",
+    "t15 D6 fix -> t16 review PASS -> t19 follow-ups -> t20 review PASS (terminal)",
+    "t17 role-refusal fix -> t18 review PASS (terminal)",
+    "t21 residual record -> t22 review PENDING (the ONLY non-terminal chain)",
+    "t12 integration (this task) -> terminal at this update"
+  ],
+  "openItems": [
+    {
+      "id": "A",
+      "title": "DELIVERY CONDITION — the settled report revision is unreviewed",
+      "detail": "t21's writes landed AFTER t24's PASS (pinned to eb3d385b…/a4906c5b…), so the settled revision 0ebfadb5…/b5adfbda… is not covered by any review; t22 is pending. Before delivering: wait for t22. If t22 passes, the pair is review-covered at the settled revision; if t22 triggers further writes, gate 4 (verify-docs-parity) must be re-run on the new bytes. Substance at the settled revision is sound: t23's code-read caveats survive (EN:20/:23, ZH:11/:13), no --dump-config evidence is cited, and t24-F1's one-word citation fix IS applied (EN:221 / ZH:97 now cite extension-lifecycle.mjs:377, and the lane's ok: expression really is on :377)."
+    },
+    {
+      "id": "B",
+      "title": "Waived skills/** drift (F8, F9) - deliberately not fixed this wave",
+      "detail": "F8: skills/dsh-qa/scripts/extension-lifecycle.mjs:35-42 still narrates the pre-repair expectation and its packed arm returns greenOwner \"t11\" (:386). F9: skills/dsh-qa/SKILL.md:77 cites extension-lifecycle.mjs:385 for 'the case exits 0' while the arm's ok is true in both GREEN and RED. Waived because the corpus has ONE writer per wave and a second skills/** edit would force a second VENDOR_LOCK re-pin; this wave's single re-pin is spent on t13's schema-arm fix. Fold both into the next wave's single re-pin."
+    },
+    {
+      "id": "C",
+      "title": "Report §9 unverified / open questions (6)",
+      "detail": "1) F1 (silent adapter fallback) reasoned from code, never reproduced live in a boot missing mpdDsh. 2) win32 branch of the child-env allowlist is code-read only; all live runs were linux. 3) §4 residuals (disk-readable credentials, author-declared env secrets, filesystem trust) are posture assessments, not executed exploits. 4) The eight stale evidence directories (F6) were inventoried, not re-run. 5) No test asserts a CHANGED extension directory is re-read only per call in the project plane. 6) The packed layout for extensions is asserted by the packer's closure check + the lane's packed arm, not by a fresh install of dist/mpd-package/ into a clean profile in this wave."
+    },
+    {
+      "id": "D",
+      "title": "Recommendations NOT implemented this wave (report §7 states so explicitly)",
+      "detail": "P0 instrument the adapter fallback; P1 one plane-selection rule; P1 document the child-env isolation posture + residuals; P2 juxtapose the two liveness modes; P2 cross-reference the adapter-mount hazard; P2 retire or re-run the stale evidence directories (F6); P2 give R11 a test-suite home."
+    },
+    {
+      "id": "E",
+      "title": "Other reported-not-fixed findings",
+      "detail": "F6: eight evidence directories predate extension code c239407 (mcp-bridge-framing, mcp-bridge-gates, registered-tool-schemas, sanitizer-crosscheck, roles-wiring ×2, v0.9.1-defect-fixes, extensions-repair/t16-pins-and-plane-guard, mpd-ext-repair/roles-report). F7: evidence/mpd-ext-debranding/20260915T074904Z/verify-debranding.mjs:40-49 prints a claim broader than its probe. F2/F3/F4/F5/F10/F11 remain open risks/gaps as described in report §6."
+    },
+    {
+      "id": "F",
+      "title": "Nothing is committed",
+      "detail": "The whole wave is uncommitted in the shared worktree; the captain performs the commit(s) and branch work (AGENTS.md §5). Delivered set = the 12 modified paths above + the two untracked report files + the untracked evidence/extensions/** directories."
+    }
+  ],
+  "notDone": [
+    "No source-code change of any kind; no edits to artifacts owned by other tasks.",
+    "Did NOT re-run the two real extension lanes (owned by t7/t13 - cited, not re-derived).",
+    "Did not touch skills/** or VENDOR_LOCK.json; did not commit, branch, checkout, reset or stash.",
+    "Did not fix F6/F7/F8/F9 or any report §4 item - reported for the captain."
+  ],
+  "evidencePaths": [
+    "evidence/extensions/t12-integration/20260916T052836Z/output.log",
+    "evidence/extensions/t12-integration/20260916T053019Z/output.log",
+    "evidence/extensions/t12-integration/20260916T053019Z/delivery-ledger.md",
+    "evidence/extensions/t12-integration/20260916T053019Z/result.json"
+  ]
+}

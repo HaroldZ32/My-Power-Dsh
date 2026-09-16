@@ -1,0 +1,153 @@
+{
+  "runDirs": {
+    "lifecycle": "/root/dshProj/my-power-dsh/evidence/extensions/extension-lifecycle/2026-09-16T05-03-47.115Z",
+    "mcpBridge": "/root/dshProj/my-power-dsh/evidence/extensions/extension-mcp-bridge/2026-09-16T05-04-23.876Z"
+  },
+  "lifecycle": {
+    "mountLine": {
+      "line": 37,
+      "needle": "[mpd-ext] mpdExtensions provided",
+      "found": true
+    },
+    "header": {
+      "line": 13,
+      "count": 99
+    },
+    "calls": {
+      "mpd_ext_list": {
+        "tool": "mpd_ext_list",
+        "found": true,
+        "callLine": 18,
+        "resultLine": 20,
+        "isError": false,
+        "textHead": "mpd extensions: 3 (0 shadowed, 0 rejected) | - qa-ext-proj [project/directory] enabled skills=1 flows=1 mcp=0 roles=0 |     error contributes.roles[0]: pr"
+      },
+      "mpd_ext_show": {
+        "tool": "mpd_ext_show",
+        "found": true,
+        "callLine": 24,
+        "resultLine": 25,
+        "isError": false,
+        "textHead": "extension qa-ext-proj [project/directory] enabled | root: /tmp/mpd-extension-lifecycle-AnVvy8/ws/.mpd/extensions/qa-ext-proj | source: /tmp/mpd-extension-"
+      },
+      "mpd_flow_show": {
+        "tool": "mpd_flow_show",
+        "found": true,
+        "callLine": 34,
+        "resultLine": 35,
+        "isError": false,
+        "textHead": "QA extension flow (qa-ext-flow, extension qa-ext-proj) | QA extension flow qa-ext-flow | when to use: Use when the extension QA case asks for this flow. | 1"
+      },
+      "skill": {
+        "tool": "skill",
+        "found": true,
+        "callLine": 39,
+        "resultLine": 40,
+        "isError": false,
+        "textHead": "<skill_content name=\"qa-ext-skill\"> | <skill_resources> | Base directory for this skill: /tmp/mpd-extension-lifecycle-AnVvy8/ws/.mpd/extensions/qa-ext-pro"
+      },
+      "mpd_role_persona": {
+        "tool": "mpd_role_persona",
+        "found": true,
+        "callLine": 44,
+        "resultLine": 45,
+        "isError": false,
+        "textHead": "persona QA Extension Reviewer (69 chars): | You are a QA extension role. QA-MARKER-PERSONA:QA-MARKER-PERSONA-USER"
+      },
+      "mpd_role_spawn": {
+        "tool": "mpd_role_spawn",
+        "found": true,
+        "callLine": 49,
+        "resultLine": 51,
+        "isError": false,
+        "textHead": "role QA Extension Reviewer (complete) | summary: QA-CHILD-MARKER-ROLE-OK | recommendation: none | details: extension-lifecycle QA | evidence: | - mpd_role_spawn"
+      }
+    },
+    "markers": {
+      "projectId": {
+        "line": 20,
+        "needle": "qa-ext-proj",
+        "found": true
+      },
+      "userId": {
+        "line": 12,
+        "needle": "qa-ext-user",
+        "found": true
+      },
+      "projectRejection": {
+        "line": 20,
+        "needle": "project-level extensions may contribute skills and flows only",
+        "found": true
+      },
+      "flowMarker": {
+        "line": 35,
+        "needle": "QA-MARKER-FLOW-PROJ",
+        "found": true
+      },
+      "skillMarker": {
+        "line": 40,
+        "needle": "QA-MARKER-SKILL-PROJ",
+        "found": true
+      },
+      "personaMarker": {
+        "line": 45,
+        "needle": "QA-MARKER-PERSONA-USER",
+        "found": true
+      },
+      "roleChild": {
+        "line": 51,
+        "needle": "QA-CHILD-MARKER-ROLE-OK",
+        "found": true
+      }
+    },
+    "isolation": {
+      "sessionA": {
+        "line": 12,
+        "needle": "qa-iso-a",
+        "found": true
+      },
+      "sessionB": {
+        "line": 12,
+        "needle": "qa-iso-b",
+        "found": true
+      },
+      "decoyControl": {
+        "line": 12,
+        "needle": "qa-iso-decoy",
+        "found": true
+      }
+    }
+  },
+  "mcpBridge": {
+    "mountLine": {
+      "line": 35,
+      "needle": "[mpd-ext] mpdExtensions provided",
+      "found": true
+    },
+    "schemaPublishLine": {
+      "line": 31,
+      "needle": "1 skipped, 1 downgraded",
+      "found": true
+    },
+    "liveCall": {
+      "tool": "mcp__qa_mcp_live__status",
+      "found": true,
+      "callLine": 39,
+      "resultLine": 40,
+      "isError": false,
+      "textHead": "Configured LSP servers: 42 | Installed LSP servers: 1 |  | - typescript: missing; source=builtin; extensions=.ts, .tsx, .js, .jsx, .mjs, .cjs, .mts, .cts | - "
+    },
+    "header": {
+      "line": 13,
+      "count": 109
+    },
+    "offered": {
+      "liveStatus": true,
+      "schemaBadOutput": true,
+      "schemaBadInput": false,
+      "deadServerTools": 0,
+      "hangServerTools": 0,
+      "dupServerTools": 0
+    }
+  }
+}

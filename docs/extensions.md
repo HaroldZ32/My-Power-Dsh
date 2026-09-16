@@ -311,7 +311,7 @@ Manifest item (`extensions/mpd-ext-example/mpd-ext.json`):
 {
   "mcp": [
     {
-      "serverName": "example",
+      "serverName": "lint-mcp",
       "transport": "stdio",
       "command": "node",
       "args": ["server.mjs"],
@@ -341,16 +341,16 @@ Two details authors get wrong:
 
 ### 5.4 A role (`roles`)
 
-Manifest item plus its persona file (`extensions/mpd-ext-example/personas/example-reviewer.md`):
+Manifest item plus its persona file (`extensions/mpd-ext-example/personas/code-reviewer.md`):
 
 ```json
 {
   "roles": [
     {
-      "name": "Example Reviewer",
-      "description": "Reference extension role: reviews a change against the extension contract and reports findings without editing files.",
+      "name": "Code Reviewer",
+      "description": "Reference extension role: reviews a change read-only against the extension contract and reports findings without editing files.",
       "readonly": true,
-      "persona": "personas/example-reviewer.md"
+      "persona": "personas/code-reviewer.md"
     }
   ]
 }
@@ -391,7 +391,7 @@ surfaced by `mpd_ext_list` / `mpd_ext_show`. Nothing in the extension interface 
 | a skill name colliding with a lower-ranked provider | the rank ladder decides; the losing candidate is dropped by the harness. Both surfaces are now reported: a collision between two EXTENSIONS is annotated on the loser (`skill surface:` in its error list, naming the winner and both ranks), and every claimed name is checked against the harness's own catalog by `mpd_ext_list` / `mpd_ext_show` (`skillServing.served` / `.notServed`) |
 | an MCP tool name colliding with a live tool | that tool is skipped and recorded; the number of tools that survive from a failed swap is **zero**, never a half-mounted server |
 | an MCP server that is unreachable, hangs or dies | per-server state `connecting`/`connected`/`unavailable`/`failed`/`disabled` plus a stderr tail in `mpd_ext_show`; the boot is neither blocked nor failed |
-| a role name already taken by a base role or by another extension | refused per role, reported in `mpd_roles_list`'s `refused` list and logged once; the roster and the boot keep working |
+| a role name already taken by a base role or by another extension | refused per role and reported on **both** surfaces (a `refused: …` line in the extension's `errors`, and an entry in `mpd_roles_list`'s `refused` list), logged once; the roster and the boot keep working |
 | a role persona file that cannot be read | refused per role, with the path in the reason |
 | two extensions with the same id | first plane wins, the shadowed one is recorded (`shadowed`) |
 
@@ -528,9 +528,10 @@ Stated plainly, so nobody discovers them from a failure:
   compare extensions, so `mpd_ext_list` / `mpd_ext_show` ask the harness's catalog
   (`ctx.skills.list`) and report each claim as `served` or `notServed`. If that read fails, the
   report says `checked: false` with the reason instead of guessing.
-- **A role refused by the roster is still listed by `mpd_ext_list` as declared** — the roster
-  reports the refusal (`mpd_roles_list.refused`), the extension registry does not; making the two
-  surfaces agree is a follow-up.
+- **A role the roster refuses is reported by both surfaces.** `mpd_ext_list` re-derives the same
+  refusals (`refused: …` lines in the extension's `errors`, produced by `annotateRoleSurfaces` in
+  `src/registry.ts`) and lists only the usable names, so its view matches `mpd_roles_list.refused` —
+  the former follow-up is closed.
 - **No GUI panel, no marketplace, no remote download, no version solving.**
 - Language- and domain-specific capability surfaces are **not** built here: this release ships the
   interface that lets them arrive as separate extensions or packages.

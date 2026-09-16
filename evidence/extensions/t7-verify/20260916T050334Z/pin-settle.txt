@@ -1,0 +1,8 @@
+settle re-pin of the FOUR repair files (>=50s after the run ended 2026-09-16T05:04:31Z)
+2026-09-16T05:05:40Z
+HEAD: 8777e4340f8b4cd0a8d0c0ac683054523d4b5739
+sha256:
+8beb91c3f62640b5b72ad383d1d28809435a77fb50f9291db6b5412bada9458b  scripts/pack-mpd.mjs
+b20d73118f4db8cecf4b3c5f2a5260743f579ab99c28953140788b53dfb4bf76  skills/dsh-qa/SKILL.md
+3f2169889bc536b1bbb1e1702486a3ec717c2a85d7b9bd1dab63c944ec1c2fd9  skills/dsh-qa/scripts/extension-mcp-bridge.mjs
+d226534d3b2f9708699e6afae3e56490cb7b2ce9346bbd0813dd4b70dfb9fad6  VENDOR_LOCK.json
