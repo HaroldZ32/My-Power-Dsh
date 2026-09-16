@@ -7,15 +7,17 @@
 //     disclosure and the §D.2 `no-live-session` RUNTIME NOTICE on the status line.
 // Both arms prove the same subject: the `mpd` settings namespace really drives
 // `<workspace>/.mpd/mpd.jsonc` (t34 design §1/§2/§A.1/§D; t35 acceptance A1-A4/A6).
-// No lane here drives TUI KEYSTROKES (tui-panels owns that) and none renders a card
-// (the card was cut by the user; no browser exists in this environment).
+// No lane here drives TUI KEYSTROKES (tui-panels owns that) and none renders the WEB surface
+// (this client mounts its own top-level `settings.section`; the pre-move Plugins-tab CARD was cut
+// by the user), because no browser exists in this environment.
 //
 // WHAT THIS LANE DRIVES, stated exactly: the host's own `settings/mutate` RPC over the
-// gateway (the SAME wire call the card and the TUI section emit), against a REAL boot of
+// gateway (the SAME wire call the web section and the TUI section emit), against a REAL boot of
 // the bundle in an isolated DSH_HOME + sandbox HOME + sandbox WORKSPACE. It does NOT send
 // TUI keystrokes (a keystroke drive needs a TTY; tui-panels owns that surface and this lane
 // only asserts the reworded disclosure is in the built TUI bytes) and it does NOT render
-// the web card (no browser exists here — the card's rendered state is NOT-CLAIMED).
+// the web settings SECTION (no browser exists here — its rendered state is NOT-CLAIMED); the
+// SECTION's registration shape is asserted against the BUILT client bytes instead (W2a-W2f).
 //
 // Falsifiers this lane must be able to catch (design §9.3 F1/F2/F4/F5, plus the disabled
 // negative control of §10.2):
@@ -27,10 +29,13 @@
 //      is also honoured) did not disable the FILE write
 //      while the settings value still landed.
 //
-// NEGATIVE CONTROLS (both recorded, both required): (1) the switch-off boot must show the file
+// NEGATIVE CONTROLS (recorded, all required): (1) the switch-off boot must show the file
 // byte-identical while the mutate still succeeds — if that assertion cannot fail, the lane is
 // void; (2) the assertion engine is re-run with an injected fault against the SAME artifacts
-// (`negative/control.json`) and must go red.
+// (`negative/control.json`) and must go red; (3) the W2 section-shape checks are re-run with the
+// PRE-MOVE `settings.plugin.item` card registration re-injected into the REAL built client bytes
+// (`raw/card-shape-control.json`) and W2a/W2b must go red — a mutation that does not land is
+// recorded as VOID and fails the run.
 //
 // PREREQ: absent-dsh-binary dsh "npm i -g @deepseek-ai/dsh (or run inside a checkout install)"
 // PREREQ: absent-bundle-dist packages/mpd-config-plugin/dist/index.js "bun build packages/mpd-config-plugin/src/index.ts --target node --format esm --outfile packages/mpd-config-plugin/dist/index.js"
@@ -458,6 +463,47 @@ export async function runTuiArm(argv) {
   return result.ok ? 0 : 1
 }
 
+// ──────────────────── the SHIPPED web registration shape (W2) ────────────────────
+
+/**
+ * The descriptor the built client hands to the host's `settings.section` LIST slot: the slot name,
+ * this section's stable id, its explicit order and the locale namespace its labels resolve through.
+ */
+const SECTION_DESCRIPTOR = /\{ name: SECTION_SLOT, id: SECTION_ID, order: SECTION_ORDER, label: \(\) => dicts\.en\.nav, locale: LOCALE_NS, inject: \(\) => controller\.inject\(\) \}/
+
+/**
+ * Judge the web registration from the BUILT client bytes (pure, so the self-test and the lane's own
+ * negative control can falsify it). The SHIPPED shape is this client's OWN top-level
+ * `settings.section` LIST slot — `id "mpd"`, `order 20`, locale `mpdSettings` — because w14/t83 moved
+ * the knobs off the Plugins tab's per-namespace `settings.plugin.item` CARD into their own section.
+ * The bytes are read from the built/served artifact (the bundle serves `exports["./client"]`), never
+ * from a source string, because the built bytes are what a browser actually loads.
+ * @param clientBytes - the BUILT client text (`packages/mpd-bundle-plugin/client.js`).
+ * @param cardSource - the registration's source text (the disclosure cross-check).
+ * @returns per-check results and the overall verdict.
+ */
+export function evaluateSettingsSectionShape(clientBytes, cardSource) {
+  const bytes = String(clientBytes ?? "")
+  const src = String(cardSource ?? "")
+  const constant = (name) => {
+    const match = new RegExp("const " + name + " = ([^\\n]+)").exec(bytes)
+    return match === null ? undefined : match[1].trim().replace(/[;,]\s*$/, "")
+  }
+  const slot = constant("SECTION_SLOT")
+  const id = constant("SECTION_ID")
+  const order = constant("SECTION_ORDER")
+  const locale = constant("LOCALE_NS")
+  const checks = []
+  const add = (checkId, ok, detail) => checks.push({ id: checkId, ok: Boolean(ok), detail: String(detail) })
+  add("W2a", bytes.includes("ctx.slots.inject(SECTION_SLOT, function* () {") && SECTION_DESCRIPTOR.test(bytes), "the BUILT client injects the `settings.section` LIST slot and registers the shipped descriptor (name/id/order/label/locale/inject)")
+  add("W2b", slot === '"settings.section"' && id === '"mpd"' && order === "20" && locale === '"mpdSettings"', "the built client names the slot " + String(slot) + " with id " + String(id) + ", order " + String(order) + ", locale " + String(locale) + ' (want "settings.section" / "mpd" / 20 / "mpdSettings")')
+  add("W2c", bytes.includes('ctx.inject(["settingsScope"]'), "the section's mount is DEFERRED through ctx.inject (never a declared dependency)")
+  add("W2d", bytes.includes('const REQUIRED_SERVICES = ["slots", "locale"]') && !bytes.includes('REQUIRED_SERVICES = ["slots", "locale", "settingsScope"]'), "the client still declares only the stable seams")
+  add("W2e", src.includes("a save writes <workspace>/.mpd/mpd.jsonc"), "the section's copy is the same disclosure the TUI states")
+  add("W2f", !bytes.includes("settings.plugin.item"), "the PRE-MOVE `settings.plugin.item` card slot is ABSENT from the built client (the move to its own section is complete)")
+  return { ok: checks.every((check) => check.ok), checks }
+}
+
 // ─────────────────────────────── evidence helpers ───────────────────────────────
 
 function timestamp() {
@@ -558,13 +604,44 @@ export function selfTest(arm = "web") {
     else if (check.ok) problems.push("self-test: injected TUI fault is INVISIBLE — " + label + " did not flip " + id)
     if (verdict.ok) problems.push("self-test: injected TUI fault left the verdict GREEN — " + label)
   }
+  // The W2 arm's own evaluator, falsified against a synthetic GREEN built-client fixture: every
+  // injected fault must flip its own check. W2a/W2b are the two checks that were stale (they read
+  // the PRE-MOVE `settings.plugin.item` card shape); W2f is the absence half of the same claim.
+  const greenClient = [
+    'const LOCALE_NS = "mpdSettings"',
+    'const SECTION_SLOT = "settings.section"',
+    'const SECTION_ID = "mpd"',
+    'const SECTION_ORDER = 20',
+    "ctx.slots.inject(SECTION_SLOT, function* () {",
+    "{ name: SECTION_SLOT, id: SECTION_ID, order: SECTION_ORDER, label: () => dicts.en.nav, locale: LOCALE_NS, inject: () => controller.inject() },",
+    'ctx.inject(["settingsScope"], (scoped) => {',
+    'const REQUIRED_SERVICES = ["slots", "locale"]',
+  ].join("\n")
+  const greenCardSource = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s)"
+  const greenShape = evaluateSettingsSectionShape(greenClient, greenCardSource)
+  if (!greenShape.ok) problems.push("self-test: the synthetic GREEN built-client shape must pass, failed: " + JSON.stringify(greenShape.checks.filter((check) => !check.ok)))
+  const shapeFaults = [
+    ["W2a", (copy) => { copy.client = copy.client.replace("{ name: SECTION_SLOT, id: SECTION_ID, order: SECTION_ORDER, label: () => dicts.en.nav, locale: LOCALE_NS, inject: () => controller.inject() },", "{ name: SECTION_SLOT, key: NS, locale: LOCALE_NS, inject: () => controller.inject() },") }, "the PRE-MOVE card descriptor instead of the settings.section one"],
+    ["W2b", (copy) => { copy.client = copy.client.replace('const SECTION_SLOT = "settings.section"', 'const SECTION_SLOT = "settings.plugin.item"') }, "a client whose slot is the pre-move `settings.plugin.item`"],
+    ["W2b", (copy) => { copy.client = copy.client.replace("const SECTION_ORDER = 20", "const SECTION_ORDER = 15") }, "a client that names the wrong section order"],
+    ["W2f", (copy) => { copy.client = copy.client + '\nctx.slots.register({ name: "settings.plugin.item", key: NS }, Card)' }, "the pre-move card slot back in the built client"],
+  ]
+  for (const [id, inject, label] of shapeFaults) {
+    const copy = { client: greenClient, cardSource: greenCardSource }
+    inject(copy)
+    const verdict = evaluateSettingsSectionShape(copy.client, copy.cardSource)
+    const check = verdict.checks.find((entry) => entry.id === id)
+    if (check === undefined) problems.push("self-test: injected client-shape fault " + label + " has no check " + id)
+    else if (check.ok) problems.push("self-test: injected client-shape fault is INVISIBLE — " + label + " did not flip " + id)
+    if (verdict.ok) problems.push("self-test: injected client-shape fault left the verdict GREEN — " + label)
+  }
   const armSlug = arm === "tui" ? TUI_ARM_SLUG : WEB_ARM_SLUG
   if (problems.length > 0) {
     console.error("[" + armSlug + " self-test] FAIL:")
     for (const problem of problems) console.error("  - " + problem)
     process.exit(1)
   }
-  console.log("[" + armSlug + " self-test] ok: " + String(faults.length) + " web-arm + " + String(tuiFaults.length) + " TUI-arm injected faults each flip their own check; both synthetic green artifacts pass")
+  console.log("[" + armSlug + " self-test] ok: " + String(faults.length) + " web-arm + " + String(tuiFaults.length) + " TUI-arm + " + String(shapeFaults.length) + " client-shape injected faults each flip their own check; all three synthetic green artifacts pass")
   process.exit(0)
 }
 
@@ -594,23 +671,38 @@ export async function runWebArm(argv) {
     return 2
   }
   result.surface.tuiDistScanned = "packages/mpd-tui-plugin/dist/index.js"
-  // W2 — the card's registration in the BUILT and SERVED client (the bundle serves exports["./client"]).
+  // W2 — the settings SECTION's registration in the BUILT and SERVED client (the bundle serves
+  // exports["./client"]). The shape asserted is the SHIPPED one: this client's own top-level
+  // `settings.section` LIST slot (`id "mpd"`, `order 20`, locale `mpdSettings`).
   const clientPath = join(REPO, "packages", "mpd-bundle-plugin", "client.js")
   const cardSourcePath = join(REPO, "packages", "mpd-bundle-plugin", "src", "settings-card.js")
   const clientBytes = existsSync(clientPath) ? readFileSync(clientPath, "utf8") : ""
   const cardSource = existsSync(cardSourcePath) ? readFileSync(cardSourcePath, "utf8") : ""
-  const w2 = [
-    ["W2a", clientBytes.includes('ctx.slots.register({ name: SLOT, key: NS, locale: LOCALE_NS, inject: () => controller.inject() }, Card)'), "the BUILT client registers into `settings.plugin.item` with `key: 'mpd'` and a locale"],
-    ["W2b", clientBytes.includes('const SLOT = "settings.plugin.item"') && clientBytes.includes('const NS = "mpd"'), "the built client names the slot and the namespace"],
-    ["W2c", clientBytes.includes('ctx.inject(["settingsScope"]'), "the card's mount is DEFERRED through ctx.inject (never a declared dependency)"],
-    ["W2d", clientBytes.includes('const REQUIRED_SERVICES = ["slots", "locale"]') && !clientBytes.includes('REQUIRED_SERVICES = ["slots", "locale", "settingsScope"]'), "the client still declares only the stable seams"],
-    ["W2e", cardSource.length > 0 && cardSource.includes("a save writes <workspace>/.mpd/mpd.jsonc"), "the card's copy is the same disclosure the TUI states"],
-  ]
-  const w2Checks = w2.map(([id, ok, detail]) => ({ id, ok: Boolean(ok), detail }))
+  const w2Checks = evaluateSettingsSectionShape(clientBytes, cardSource).checks
+  // THE NEGATIVE CONTROL for W2: re-inject the PRE-MOVE card shape into the REAL built bytes and
+  // require the SAME checks to redden. A control whose mutation does not land is VOID, so the
+  // replacement is asserted to have changed the bytes (else the whole verdict fails below).
+  const preMoveBytes = clientBytes
+    .replace('const SECTION_SLOT = "settings.section"', 'const SECTION_SLOT = "settings.plugin.item"')
+    .replace("{ name: SECTION_SLOT, id: SECTION_ID, order: SECTION_ORDER, label: () => dicts.en.nav, locale: LOCALE_NS, inject: () => controller.inject() }", "{ name: SECTION_SLOT, key: NS, locale: LOCALE_NS, inject: () => controller.inject() }")
+  const preMoveChecks = evaluateSettingsSectionShape(preMoveBytes, cardSource).checks
+  const controlMoved = preMoveBytes !== clientBytes
+  const flipped = ["W2a", "W2b"]
+  const controlReddened = controlMoved && flipped.every((checkId) => w2Checks.find((check) => check.id === checkId)?.ok === true && preMoveChecks.find((check) => check.id === checkId)?.ok === false)
+  result.controls.sectionShape = {
+    control: "the PRE-MOVE `settings.plugin.item` card registration re-injected into the REAL built client bytes (the defect this lane was red on)",
+    mutationLanded: controlMoved,
+    flippedChecks: flipped,
+    verdictGoesRed: controlReddened,
+    greenChecks: w2Checks,
+    redChecks: preMoveChecks,
+  }
+  say("[negative control/card-shape] pre-move card shape re-injected into the built client -> " + (controlReddened ? "W2a/W2b red as required" : "CONTROL VOID (did not redden)") + " mutationLanded=" + String(controlMoved))
+
   // W3 is NOT witnessed: no browser exists here. Recorded, never implied.
-  result.cardClaim = {
-    W2: { witnessed: w2Checks.every((check) => check.ok), checks: w2Checks, artifact: { path: "packages/mpd-bundle-plugin/client.js", bytes: Buffer.byteLength(clientBytes), sha256: createHash("sha256").update(clientBytes).digest("hex") } },
-    W3: { witnessed: false, claim: "NOT-CLAIMED: no browser binary exists in this environment, so the rendered card and a click that produces the mutate are the user's own GUI check" },
+  result.sectionClaim = {
+    W2: { witnessed: w2Checks.every((check) => check.ok), shape: "the client's own top-level `settings.section` LIST slot (id \"mpd\", order 20, locale \"mpdSettings\")", checks: w2Checks, artifact: { path: "packages/mpd-bundle-plugin/client.js", bytes: Buffer.byteLength(clientBytes), sha256: createHash("sha256").update(clientBytes).digest("hex") } },
+    W3: { witnessed: false, claim: "NOT-CLAIMED: no browser binary exists in this environment, so the rendered settings SECTION and a click that produces the mutate are the user's own GUI check" },
   }
   say("[card] " + w2Checks.map((check) => check.id + (check.ok ? "=ok" : "=FAIL")).join(" ") + " | W3 NOT-CLAIMED (no browser)")
   const tuiDist = existsSync(join(REPO, "packages", "mpd-tui-plugin", "dist", "index.js")) ? readFileSync(join(REPO, "packages", "mpd-tui-plugin", "dist", "index.js"), "utf8") : ""
@@ -724,6 +816,7 @@ export async function runWebArm(argv) {
   controlCopy.files[1].after = fixture(VALUE_AMBIGUOUS)
   const controlVerdict = evaluateBridge(controlCopy)
   result.controls = {
+    ...result.controls,
     injectedFault: "the second live root's file changed (a fan-out)",
     verdictGoesRed: controlVerdict.ok === false,
     checks: controlVerdict.checks,
@@ -731,10 +824,14 @@ export async function runWebArm(argv) {
   say("[negative control] injected fan-out fault -> verdict " + (controlVerdict.ok ? "GREEN (INVALID)" : "red as required"))
 
   const allVerdicts = [result.verdicts.write, result.verdicts.ambiguous, result.verdicts.disabled, staticVerdict]
-  result.ok = allVerdicts.every((verdict) => verdict.ok) && w2Checks.every((check) => check.ok) && result.controls.verdictGoesRed === true && result.isolation.sessionsSandboxed === true
+  result.ok = allVerdicts.every((verdict) => verdict.ok) && w2Checks.every((check) => check.ok) && result.controls.verdictGoesRed === true && result.controls.sectionShape.verdictGoesRed === true && result.isolation.sessionsSandboxed === true
   result.elapsedMs = Date.now() - started
   result.notes.push("A green run proves: the front door accepted the write, the ONE live workspace file changed with comments/order intact, the log reported writtenTo + applies:'restart', two live roots refused with both candidates and wrote nothing, and the writeBack:false composition left the file byte-identical.")
-  result.notes.push("It does NOT prove: the TUI keystroke path (not driven here — no TTY) or the RENDERED web card (no browser; W3 NOT-CLAIMED). It DOES prove W2: the built/served client registers the card for namespace `mpd` through the host's keyed slot, with the mount deferred behind ctx.inject.")
+  result.notes.push("It does NOT prove: the TUI keystroke path (not driven here — no TTY) or the RENDERED web surface (no browser; W3 NOT-CLAIMED). It DOES prove W2: the built/served client mounts its own top-level `settings.section` LIST slot (id \"mpd\", order 20, locale \"mpdSettings\") for namespace `mpd`, with the mount deferred behind ctx.inject, and the pre-move `settings.plugin.item` card slot is GONE.")
+  result.notes.push("The W2 checks carry their own measured negative control: the PRE-MOVE card registration is re-injected into the REAL built bytes and W2a/W2b must redden (controls.sectionShape.redChecks); a mutation that does not land is recorded as void and fails the run.")
+  // The RAW lane stdout and the raw control reading, next to result.json + output.log.
+  writeFileSync(join(outDir, "raw", "lane-output.txt"), lines.join("\n") + "\n")
+  writeFileSync(join(outDir, "raw", "card-shape-control.json"), JSON.stringify({ control: result.controls.sectionShape.control, mutationLanded: result.controls.sectionShape.mutationLanded, flippedChecks: result.controls.sectionShape.flippedChecks, greenChecks: result.controls.sectionShape.greenChecks, redChecks: result.controls.sectionShape.redChecks }, null, 2) + "\n")
   writeEvidence(outDir, result, lines.join("\n"))
   say("[" + LANE_SLUG + "] " + (result.ok ? "PASS" : "FAIL") + " -> " + relative(REPO, outDir))
   if (!keep) {

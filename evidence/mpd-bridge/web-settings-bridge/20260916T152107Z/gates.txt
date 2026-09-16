@@ -1,0 +1,51 @@
+settings-bridge lane re-point (stale `settings.plugin.item` card shape -> shipped `settings.section`) — gate readings
+=====================================================================================================================
+Runner: Junior Engineer (skills/** only; no git write; VENDOR_LOCK.json NOT touched).
+
+BEFORE (unmodified lane, out dir a /tmp scratch, no evidence written):
+  $ node skills/dsh-qa/scripts/web-settings-bridge.mjs --out <tmp>
+  [card] W2a=FAIL W2b=FAIL W2c=ok W2d=ok W2e=ok | W3 NOT-CLAIMED (no browser)
+  (raw copy: raw/lane-output-before-fix.txt)
+
+AFTER (this run, evidence dir evidence/mpd-bridge/web-settings-bridge/20260916T152107Z/):
+  $ node skills/dsh-qa/scripts/web-settings-bridge.mjs --out evidence/mpd-bridge/web-settings-bridge/20260916T152107Z
+  [negative control/card-shape] pre-move card shape re-injected into the built client -> W2a/W2b red as required mutationLanded=true
+  [card] W2a=ok W2b=ok W2c=ok W2d=ok W2e=ok W2f=ok | W3 NOT-CLAIMED (no browser)
+  [negative control] injected fan-out fault -> verdict red as required
+  [settings-bridge] PASS -> evidence/mpd-bridge/web-settings-bridge/20260916T152107Z
+  exit=0
+  measured negative control (result.json controls.sectionShape): mutationLanded=true, verdictGoesRed=true,
+    flippedChecks=[W2a,W2b], redChecks failing=[W2a,W2b,W2f], greenChecks failing=[none]
+
+SELF-TESTS:
+  $ node skills/dsh-qa/scripts/web-settings-bridge.mjs --self-test
+  [web-settings-bridge self-test] ok: 18 web-arm + 7 TUI-arm + 4 client-shape injected faults each flip their own check; all three synthetic green artifacts pass   (exit 0)
+  $ node skills/dsh-qa/scripts/tui-settings-bridge.mjs --self-test
+  [tui-settings-bridge self-test] ok: 18 web-arm + 7 TUI-arm + 4 client-shape injected faults each flip their own check; all three synthetic green artifacts pass   (exit 0)
+
+GATES:
+  $ bun run test:qa      -> RED at skills/dsh-qa/scripts/agent-teams-messaging.mjs:
+      "[agent-teams-messaging] FAIL: VENDOR_LOCK skills asset is stale: lock=319/303e163148af tree=319/c0dab8641697 (re-pin in the same commit, AGENTS.md §9)".
+      This is the §9/§11 same-commit re-pin pairing by design: the lock still carries the PRE-EDIT skills treeSha,
+      and this skills-only change is forbidden to touch VENDOR_LOCK.json. Every other script in the test:qa loop
+      was run individually and is green (44 scripts + `bun scripts/mpd-ext.mjs --self-test` + validate extensions/mpd-ext-example).
+  $ lock-coupled lanes against a SCRATCH MIRROR whose VENDOR_LOCK.json carries the new pin (skills/ copied, other
+    repo dirs symlinked; the real VENDOR_LOCK.json untouched):
+      bun <mirror>/skills/dsh-qa/scripts/agent-teams-messaging.mjs --self-test
+        [agent-teams-messaging self-test] ok: ... + VENDOR_LOCK skills pin current (319 files/c0dab8641697) + SKILL.md row + test:qa glob   (exit 0)
+      bun <mirror>/skills/dsh-qa/scripts/tui-team-surface.mjs --self-test -> ok (exit 0)
+    => `bun run test:qa` is green once the captain re-pins VENDOR_LOCK.json in the same commit.
+  $ bun test packages    -> 799 pass / 2 fail, both in packages/mpd-config-plugin/test/settings-wiring.test.ts (the recorded WAIVER pair):
+      repo cwd  (real <repo>/.mpd/mpd.jsonc present): 21 pass / 2 fail
+      clean cwd (/tmp, no .mpd/mpd.jsonc):            23 pass / 0 fail
+    Neither test touches skills/**; the failure is the workspace-state waiver, not this change.
+
+VENDOR_LOCK.json re-pin values (recomputed with scripts/verify-vendor.mjs' own algorithm):
+  assets.skills.fileCount = 319
+  assets.skills.treeSha   = c0dab8641697b481e11379e084375721ceeea5b2f6beefc3c1d73196a21d61ff
+  (was fileCount 319 / treeSha 303e163148afc07e7dad10775d3de7e96b4caa1cfae9c1a91575ae906d8cc27d)
+
+NO EXISTING EVIDENCE DIR MODIFIED — `git status --porcelain` (read-only) lists exactly:
+   M skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs
+   M skills/dsh-qa/SKILL.md
+  ?? evidence/mpd-bridge/web-settings-bridge/20260916T152107Z/
