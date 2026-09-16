@@ -76,8 +76,13 @@ captain 设计名册与任务 DAG，你在 AgentTeams 标签页中审阅并批�
 ### DSH-TUI 版本
 
 同一个 bundle 也可挂载在宿主 `dsh-tui` profile 下：由终端界面承载与 Web 标签页等价的界面 ——
-带 key 的状态行、全屏看板、`/mpd` 命令树、受管对话框、快捷键，以及编辑六个 `mpd.jsonc` 旋钮的
-`/settings` 分区；该分区桥接到 `<workspace>/.mpd/mpd.jsonc`，并在**重启之后**生效。**安装步骤只写在
+带 key 的状态行、全屏看板、`/mpd` 命令树、受管对话框、快捷键，以及编辑十二个 `mpd.jsonc` 旋钮的
+`/settings` 分区；该分区桥接到 `<workspace>/.mpd/mpd.jsonc`，并在**重启之后**生效。已路由的团队也能从
+同一个命令进入：**`/mpd team`** 打开团队工作流界面（id/名称/阶段、计划审阅状态、成员表、任务 DAG、
+邮箱尾部），**`/mpd plan`** 打开计划批准界面 —— 逐字输入 `approve <teamId>` 后按 `Ctrl+X`；十秒内按两次
+`Ctrl+D` 丢弃，`Esc` 永不产生变更。Web 版每一个界面与 TUI 对应物的逐行对照（含仍未修复的偏差）见
+[`docs/tui-parity.zh-CN.md`](./docs/tui-parity.zh-CN.md)（英文版为
+[`docs/tui-parity.md`](./docs/tui-parity.md)）。**安装步骤只写在
 一处：[安装 → 终端界面（`dsh-tui`）](#终端界面dsh-tui)** —— 命令、第三层 patch 的组合结果与启动器都在
 那里。深入细节（界面清单、准入与分发产物、逐包兼容性台账、明确的 NOT-CLAIMED 清单）见
 [`docs/tui.zh-CN.md`](./docs/tui.zh-CN.md)，英文版为

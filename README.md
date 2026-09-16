@@ -84,9 +84,15 @@ tab strip. Team work also runs entirely through the `agent_teams_*` tools if you
 
 The same bundle mounts under the host's `dsh-tui` profile, where the terminal UI hosts the
 equivalents of the web tabs: a keyed status line, a full-screen board, the `/mpd` command tree,
-managed dialogs, shortcuts and a `/settings` section for the six `mpd.jsonc` knobs — the section is
-bridged to `<workspace>/.mpd/mpd.jsonc` and takes effect **after a restart**. **The install steps
-live in ONE place: [Install → Terminal UI (`dsh-tui`)](#terminal-ui-dsh-tui)** — the command, the
+managed dialogs, shortcuts and a `/settings` section for the twelve `mpd.jsonc` knobs — the section is
+bridged to `<workspace>/.mpd/mpd.jsonc` and takes effect **after a restart**. A routed team is
+reachable from the same command: **`/mpd team`** opens the team-workflow surface (id/name/phase,
+plan-review state, roster, task DAG, mailbox tail) and **`/mpd plan`** the plan-approval surface —
+type `approve <teamId>` exactly, then `Ctrl+X`; `Ctrl+D` twice inside ten seconds discards, and `Esc`
+never mutates. The row-by-row parity of every Web-edition surface against its TUI counterpart,
+including the still-open deviations, is in [`docs/tui-parity.md`](./docs/tui-parity.md) (Chinese twin:
+[`docs/tui-parity.zh-CN.md`](./docs/tui-parity.zh-CN.md)). **The install steps live in ONE place:
+[Install → Terminal UI (`dsh-tui`)](#terminal-ui-dsh-tui)** — the command, the
 third-patch-layer composition and the launcher are documented there. The deep detail (surfaces,
 admission and distribution artifacts, per-package compatibility ledger, explicit NOT-CLAIMED list)
 is in [`docs/tui.md`](./docs/tui.md), with the Chinese twin at
