@@ -1,0 +1,22 @@
+{
+  "reader": "web-panel",
+  "beforePayload": {
+    "stuck": true,
+    "replay": true,
+    "unread": 42,
+    "banner": {
+      "kind": "warned"
+    },
+    "holds": 0
+  },
+  "afterPayload": {
+    "stuck": false,
+    "replay": false,
+    "unread": 0,
+    "banner": null,
+    "holds": 0
+  },
+  "afterWatermark": {
+    "web-panel": 1789525136074
+  }
+}

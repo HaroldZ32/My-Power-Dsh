@@ -62,7 +62,7 @@ var __export = (target, all) => {
 };
 var __esm = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
 
-// ../mpd-agent-teams-plugin/_deps/cosmokit/lib/index.js
+// packages/mpd-agent-teams-plugin/_deps/cosmokit/lib/index.js
 var exports_lib = {};
 __export(exports_lib, {
   valueMap: () => mapValues,
@@ -430,7 +430,7 @@ var init_lib = __esm(() => {
   })(Time || (Time = {}));
 });
 
-// ../mpd-agent-teams-plugin/_deps/schemastery/lib/index.cjs
+// packages/mpd-agent-teams-plugin/_deps/schemastery/lib/index.cjs
 var require_lib = __commonJS((exports, module) => {
   var _deepseek_ai_cosmokit = (init_lib(), __toCommonJS(exports_lib));
   var kSchema = Symbol.for("schemastery");
@@ -1125,10 +1125,10 @@ var require_lib = __commonJS((exports, module) => {
   module.exports = Schema;
 });
 
-// src/index.ts
+// packages/mpd-team-watchdog-plugin/src/index.ts
 var import_schemastery = __toESM(require_lib(), 1);
 
-// ../mpd-dsh-adapter-plugin/src/index.ts
+// packages/mpd-dsh-adapter-plugin/src/index.ts
 import { resolve } from "node:path";
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
@@ -1577,11 +1577,11 @@ function createDshAdapter(ctx, config = {}) {
   return adapter;
 }
 
-// src/actions.ts
+// packages/mpd-team-watchdog-plugin/src/actions.ts
 import { randomUUID } from "node:crypto";
 import { join as join4 } from "node:path";
 
-// src/paths.ts
+// packages/mpd-team-watchdog-plugin/src/paths.ts
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 var DEFAULT_STATE_DIR = join(".mpd", "team");
@@ -1634,11 +1634,11 @@ function watermarkPath(workspace, stateDir = DEFAULT_STATE_DIR) {
   return join(watchdogRoot(workspace, stateDir), "read-watermark.json");
 }
 
-// src/sidecars.ts
+// packages/mpd-team-watchdog-plugin/src/sidecars.ts
 import { appendFileSync as appendFileSync2, existsSync as existsSync2, mkdirSync as mkdirSync2, readFileSync as readFileSync2, rmSync } from "node:fs";
 import { dirname as dirname2 } from "node:path";
 
-// src/store.ts
+// packages/mpd-team-watchdog-plugin/src/store.ts
 import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from "node:fs";
 import { basename, dirname, join as join2 } from "node:path";
 function appendHeartbeat(workspace, stateDir, memberKey, stamp) {
@@ -1774,7 +1774,7 @@ function message2(error) {
   return error instanceof Error ? error.message : String(error);
 }
 
-// src/sidecars.ts
+// packages/mpd-team-watchdog-plugin/src/sidecars.ts
 function readHold(workspace, stateDir, teamId) {
   let text;
   try {
@@ -1873,7 +1873,7 @@ function ackIncidents(workspace, stateDir, reader, upTo) {
   return { ok: true, watermark: next, path };
 }
 
-// src/team.ts
+// packages/mpd-team-watchdog-plugin/src/team.ts
 import { readFileSync as readFileSync3, readdirSync as readdirSync2, statSync } from "node:fs";
 import { join as join3 } from "node:path";
 var TERMINAL_STATUSES = ["completed", "failed", "cancelled"];
@@ -2013,7 +2013,7 @@ function teamOf(teams, agent) {
   return;
 }
 
-// src/actions.ts
+// packages/mpd-team-watchdog-plugin/src/actions.ts
 var HOLD_TOOL = "session-watchdog-hold";
 var RESUME_TOOL = "session-watchdog-resume";
 var STATUS_TOOL = "session-watchdog-status";
@@ -2153,7 +2153,7 @@ function registerWatchdogActions(dsh, stateDir, registry) {
   });
 }
 
-// src/machine.ts
+// packages/mpd-team-watchdog-plugin/src/machine.ts
 var WATCHDOG_DEFAULTS = {
   enabled: true,
   warnSilenceMs: 90000,
@@ -2371,10 +2371,6 @@ function candidateFor(team, stampSource, memberKeyOf) {
         return true;
       return stampAttempt === taskAttempt;
     });
-    const dispatched = taskAttempt !== "";
-    const workedOn = stamps.some((stamp) => stamp.taskId === task.id && (stamp.teamId === undefined || stamp.teamId === null || stamp.teamId === "" || stamp.teamId === team.id));
-    if (!dispatched && !workedOn)
-      continue;
     const newest = forTask.reduce((best, stamp) => best === undefined || stamp.at >= best.at ? stamp : best, undefined);
     const inFlight = inFlightFor(forTask);
     candidates.push({
@@ -2393,7 +2389,7 @@ function candidateFor(team, stampSource, memberKeyOf) {
   return candidates;
 }
 
-// src/scene.ts
+// packages/mpd-team-watchdog-plugin/src/scene.ts
 import { existsSync as existsSync3, readFileSync as readFileSync4 } from "node:fs";
 import { join as join5 } from "node:path";
 var MAILBOX_DELIVERY_LEASE_MS = 60000;
@@ -2537,7 +2533,7 @@ function mailboxUnread(workspace, stateDir, teamId, agentKey, now, leaseMs = MAI
   return count;
 }
 
-// src/engine.ts
+// packages/mpd-team-watchdog-plugin/src/engine.ts
 function readNamespaceKnobs(dsh, env, defaults) {
   try {
     const reader = dsh.settingsReader("mpd");
@@ -3068,7 +3064,7 @@ class WatchdogEngine {
   }
 }
 
-// src/holds.ts
+// packages/mpd-team-watchdog-plugin/src/holds.ts
 import { existsSync as existsSync4, readFileSync as readFileSync5, readdirSync as readdirSync3, statSync as statSync2 } from "node:fs";
 import { join as join6, resolve as resolve2 } from "node:path";
 var HOLD_SERVICE = "mpdWatchdog";
@@ -3258,7 +3254,7 @@ class HoldRegistry {
 }
 var HOLD_GATE_CALL = 'ctx.get("mpdWatchdog", false)?.isHeld(teamId, workspace)?.held === true';
 
-// src/index.ts
+// packages/mpd-team-watchdog-plugin/src/index.ts
 var name = "mpd-team-watchdog";
 var inject = ["tools", "agents"];
 var Config = import_schemastery.default.object({

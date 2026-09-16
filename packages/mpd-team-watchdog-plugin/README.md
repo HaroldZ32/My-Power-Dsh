@@ -127,11 +127,32 @@ OBSERVE (every tickIntervalMs)
 ```
 
 The streak is keyed `<taskId>\0<attemptId>`, so a retry with a fresh attempt starts
-clean. **A silence candidate is not every non-terminal task**: a `claimed` task whose
-owner is legitimately between turns is silent by design, and three WARNs against it
-would escalate a healthy team. A candidate therefore requires that the owner stamped
-that task at least once; a claimed task with no stamp at all is reported
-`never-started` — a dispatch observation that never escalates.
+clean. **A silence candidate is not every non-terminal task.** Candidacy is ONE
+disjunction — *the task was handed to somebody at some point*:
+
+* **a dispatch is on record** — a non-empty `attemptId`, written by the adopted scheduler at
+  dispatch (`beginTaskAttempt(task, member)` in `lib/scheduler.js`, before the ticket reaches
+  the member) and reused by the member's own `claim_task`; or
+* **the task carries a stamp of its own**, of ANY generation, because a stamped task WAS
+  worked on. This half reads the team-scoped stamps *unfiltered* on purpose: the W11-2 slice
+  described below answers "is the CURRENT generation silent", not "was this task ever handed
+  out", so a task whose attempt was revoked after it had been worked on stays observable. A
+  stamp naming ANOTHER team says nothing about this task and cannot make it a candidate.
+
+A task with neither was never handed to anybody: the normal state of a plan still `staged` and
+awaiting the user's approval in the Web panel, of a task correctly blocked on unfinished
+dependencies, and of one the scheduler has not reached yet. It is not observed at all —
+`never-started` is DEFINED as a *claimed* task whose owner never stamped, and a task nobody
+owns cannot be a wedge either. Without this rule a 12-task staged plan wrote **12**
+`never-started` incidents and printed **12** console lines on EVERY host start (measured
+2026-09-16); with it, zero, while a dispatched task whose owner never stamped is still
+reported.
+
+**The machine then reads the candidate**: a `claimed` task whose owner is legitimately between
+turns is silent by design, and three WARNs against it would escalate a healthy team, so the
+newest stamp decides — a `turn-end` newest stamp withholds the observation, no stamp for the
+CURRENT generation is reported `never-started` (a dispatch observation that never escalates),
+and anything else is measured against `warnSilenceMs`.
 
 ### The knobs
 

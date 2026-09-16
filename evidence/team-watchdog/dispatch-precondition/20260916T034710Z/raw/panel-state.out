@@ -1,0 +1,3 @@
+reader=web-panel
+BEFORE {"stuck":true,"replay":true,"unread":42,"banner":{"kind":"warned"},"holds":0}
+AFTER  {"stuck":false,"replay":false,"unread":0,"banner":null,"holds":0}
