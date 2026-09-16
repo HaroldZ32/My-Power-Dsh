@@ -264,7 +264,7 @@ manifest 条目（`extensions/mpd-ext-example/mpd-ext.json`）：
 {
   "mcp": [
     {
-      "serverName": "example",
+      "serverName": "lint-mcp",
       "transport": "stdio",
       "command": "node",
       "args": ["server.mjs"],
@@ -286,16 +286,16 @@ server 必须在 stdio 上说换行分隔的 JSON-RPC 2.0（`initialize`、`tool
 
 ### 5.4 role（`roles`）
 
-manifest 条目及其 persona 文件（`extensions/mpd-ext-example/personas/example-reviewer.md`）：
+manifest 条目及其 persona 文件（`extensions/mpd-ext-example/personas/code-reviewer.md`）：
 
 ```json
 {
   "roles": [
     {
-      "name": "Example Reviewer",
-      "description": "Reference extension role: reviews a change against the extension contract and reports findings without editing files.",
+      "name": "Code Reviewer",
+      "description": "Reference extension role: reviews a change read-only against the extension contract and reports findings without editing files.",
       "readonly": true,
-      "persona": "personas/example-reviewer.md"
+      "persona": "personas/code-reviewer.md"
     }
   ]
 }
@@ -325,7 +325,7 @@ manifest 条目及其 persona 文件（`extensions/mpd-ext-example/personas/exam
 | skill 名与更低 rank 的 provider 相撞 | 由 rank 阶梯裁定，落败的候选会被 harness 丢弃；现在两种情形都会被报告：两个**扩展**之间的相撞会标注在落败方（其错误列表里出现 `skill surface:`，写明赢家与双方的 rank），而每个被声明的名字都会由 `mpd_ext_list` / `mpd_ext_show` 与 harness 自身的目录比对（`skillServing.served` / `.notServed`） |
 | MCP 工具名与已存在的工具相撞 | 该工具被跳过并记录；一次失败的 swap 之后存活的工具数是 **零**，绝不会是半挂载的 server |
 | MCP server 不可达、卡住或退出 | `mpd_ext_show` 给出每个 server 的状态 `connecting`/`connected`/`unavailable`/`failed`/`disabled` 以及 stderr 尾部；启动既不被阻塞也不失败 |
-| role 名已被基础 role 或另一个扩展占用 | 逐个 role 拒绝，出现在 `mpd_roles_list` 的 `refused` 列表并记录一次日志；名册与启动照常工作 |
+| role 名已被基础 role 或另一个扩展占用 | 逐个 role 拒绝，且**两侧都会报告**（扩展 `errors` 中的 `refused: …` 行，以及 `mpd_roles_list` 的 `refused` 列表），并记录一次日志；名册与启动照常工作 |
 | role 的 persona 文件无法读取 | 逐个 role 拒绝，理由中带上路径 |
 | 两个扩展 id 相同 | 先到的 plane 胜出，被遮蔽者被记录（`shadowed`） |
 
@@ -420,7 +420,7 @@ bun scripts/mpd-ext.mjs --self-test   # scaffold -> validate -> list，仅使用
 - **没有 reload**——重启 dsh；失败的 MCP server 会在下次启动时重试。
 - **`extensions.*` 配置是进程级、不是按会话的**（§4.3），因为 `mpdConfig` 是 apply 期的进程级快照。
 - **跨 provider 的 skill 遮蔽需要读一次目录才可见**——我们自己的注册表只能比较扩展之间，因此 `mpd_ext_list` / `mpd_ext_show` 会去问 harness 的目录（`ctx.skills.list`），并把每个声明报成 `served` 或 `notServed`；若这次读取失败，报告会给出 `checked: false` 与原因，而不是猜测。
-- **被名册拒绝的 role 仍会被 `mpd_ext_list` 列为已声明**——名册侧报告拒绝（`mpd_roles_list.refused`），扩展 registry 侧不会；让两个 surface 一致属于后续项。
+- **被名册拒绝的 role 现在两侧都会报告。** `mpd_ext_list` 会重新推导出相同的拒绝原因（扩展 `errors` 中的 `refused: …` 行，由 `src/registry.ts` 的 `annotateRoleSurfaces` 生成），并且只列出可用的 role 名，因此其视图与 `mpd_roles_list.refused` 一致——原先的后续项已经关闭。
 - **没有 GUI 面板、没有市场、没有远程下载、没有版本求解。**
 - 特定语言与领域的能力面**本身不在此构建**：本版本交付的是让它们作为独立扩展或独立包到来的接口。
 

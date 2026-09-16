@@ -23,7 +23,10 @@ This plugin adds four things on top:
    `dsh plugin add`, no profile change;
 3. **flows**: a declarative procedure (JSON) rendered into an in-memory skill document, because the
    harness has no flow seam of its own;
-4. (a later task) a **runtime stdio MCP bridge** for servers that must not become a profile patch row.
+4. the **runtime stdio MCP bridge** for servers that must not become a profile patch row: declared
+   servers connect at apply — in parallel and time-boxed by `connectTimeoutMs`, never lazily
+   (`connectExtensionMcpServers`, awaited in `apply`; `src/index.ts`, `src/mcp.ts`) — and a server's
+   live state is reported by `mpd_ext_show`.
 
 ## The contract
 
@@ -146,7 +149,8 @@ violating one is **skipped and warned** per item — deliberately **stricter tha
 treats `invocation` as optional and then dereferences it unguarded in the pre-step: here `invocation`
 with both booleans is REQUIRED and always emitted), skills-provider registration (a duplicate name
 throws, so names are unique by construction and registration is wrapped), and the MCP tool-generation
-swap (a partial registration rolls back) — the last one lands with the MCP bridge task.
+swap (a partial generation is rolled back by the two-phase fetch/swap in `src/mcp.ts`) — all three
+guards are live in v1.
 
 Third-party schemas follow two different rules, and neither rewrites the author's schema (an MCP
 tool's `inputSchema` is projected onto the harness subset and its **root normalized onto an object**,
@@ -165,9 +169,13 @@ is recorded, which is the harness's own `supportedOutputSchema` posture). Only a
   (`ctx.skills.list`) and report it as `served` / `notServed`. That read is the only way to see a
   shadow cast by a NON-extension provider (the corpus, a user skills root); when it fails, the
   report says `checked: false` with the reason instead of asserting anything.
-- The `mcp` kind is **declared and validated** but not yet connected — `mpd_ext_show` reports each
-  server as pending until the runtime stdio bridge task lands. Roles are declared here and become
-  usable when the roster's per-call resolution function lands.
+- Both host-wide kinds are **live in v1**. A declared `mcp` server is connected at apply
+  (`connectExtensionMcpServers`, `src/mcp.ts`), and `mpd_ext_show` reports its state
+  (`connecting` / `connected` / `unavailable` / `failed` / `disabled`) plus a bounded child-stderr
+  tail on failure — a `pending` line survives only while the server is not `connected`. A declared
+  role is resolved **per call** by `mpd-roles-plugin` (`extensionRoles`), so `mpd_roles_list` lists
+  it under the namespaced id `ext-<extension-id>-<slug>` and `mpd_role_spawn` can start it. A
+  project-plane `mcp` or `roles` item is still rejected per item.
 - stdio MCP only; JSON flow files only (YAML is a follow-up); no MCP resources/prompts; no GUI panel;
   no marketplace/registry/remote download/version solving; no extension-contributed agent presets;
   extension roles never become agent-teams teammates (that member list is static patch config).
