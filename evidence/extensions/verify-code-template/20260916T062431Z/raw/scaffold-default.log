@@ -1,0 +1,8 @@
+[mpd-ext] scaffolded "demo-two" at /root/dshProj/my-power-dsh/evidence/extensions/verify-code-template/20260916T062431Z/raw/scaffold/default/demo-two
+  copied 7 file(s) from templates/mpd-extension (the mcp contribution and server.mjs were dropped)
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 0 mcp server(s)
+  next: bun scripts/mpd-ext.mjs validate /root/dshProj/my-power-dsh/evidence/extensions/verify-code-template/20260916T062431Z/raw/scaffold/default/demo-two
+[mpd-ext] validate /root/dshProj/my-power-dsh/evidence/extensions/verify-code-template/20260916T062431Z/raw/scaffold/default/demo-two (plane=user)
+  extension "demo-two": loadable
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 0 mcp server(s)
+[mpd-ext] ok

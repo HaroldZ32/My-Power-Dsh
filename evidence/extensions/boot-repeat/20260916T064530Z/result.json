@@ -1,0 +1,287 @@
+{
+  "task": "t24",
+  "driver": "repeat-boot.sh (this task's own) + parse-boot-readings.mjs",
+  "question": "On a CORRECTLY ORDERED tree, is the adapter fallback branch reachable?",
+  "howEachBootRan": "Each run copies a FRESHLY INSTALLED but never-booted pristine sandbox (byte copy, same directory depth so the profile's relative bundle symlink resolves), gets a fresh empty workspace cwd, and boots `dsh --profile rp \"say ok\"` with its own sandboxed DSH_HOME + HOME. The driver waits for BOTH rows' summary lines (a fallback warning is always emitted before its row's summary) and then stops the boot.",
+  "runsRequested": 6,
+  "validBoots": 6,
+  "invalidBoots": [],
+  "fallbackBoots": 0,
+  "cleanBoots": 6,
+  "frequency": "0/6 boots took the fallback branch",
+  "readings": [
+    {
+      "run": 1,
+      "log": "logs/boot-1.log",
+      "valid": true,
+      "why": "both rows printed their summary line, so both rows applied",
+      "adapterLine": "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)",
+      "adapterLineIndex": 1,
+      "extRow": "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+      "extLineIndex": 5,
+      "rolesRow": "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh",
+      "rolesLineIndex": 6,
+      "adapterProvidedBeforeExtApplied": true,
+      "extIdentity": "adapterIdentity=mounted:mpdDsh",
+      "rolesIdentity": "adapterIdentity=mounted:mpdDsh",
+      "identityLines": [
+        "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+        "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh"
+      ],
+      "identityLineCount": 2,
+      "fallbackLines": [],
+      "fallbackCount": 0,
+      "fallbackFired": false
+    },
+    {
+      "run": 2,
+      "log": "logs/boot-2.log",
+      "valid": true,
+      "why": "both rows printed their summary line, so both rows applied",
+      "adapterLine": "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)",
+      "adapterLineIndex": 1,
+      "extRow": "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+      "extLineIndex": 5,
+      "rolesRow": "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh",
+      "rolesLineIndex": 6,
+      "adapterProvidedBeforeExtApplied": true,
+      "extIdentity": "adapterIdentity=mounted:mpdDsh",
+      "rolesIdentity": "adapterIdentity=mounted:mpdDsh",
+      "identityLines": [
+        "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+        "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh"
+      ],
+      "identityLineCount": 2,
+      "fallbackLines": [],
+      "fallbackCount": 0,
+      "fallbackFired": false
+    },
+    {
+      "run": 3,
+      "log": "logs/boot-3.log",
+      "valid": true,
+      "why": "both rows printed their summary line, so both rows applied",
+      "adapterLine": "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)",
+      "adapterLineIndex": 1,
+      "extRow": "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+      "extLineIndex": 5,
+      "rolesRow": "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh",
+      "rolesLineIndex": 6,
+      "adapterProvidedBeforeExtApplied": true,
+      "extIdentity": "adapterIdentity=mounted:mpdDsh",
+      "rolesIdentity": "adapterIdentity=mounted:mpdDsh",
+      "identityLines": [
+        "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+        "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh"
+      ],
+      "identityLineCount": 2,
+      "fallbackLines": [],
+      "fallbackCount": 0,
+      "fallbackFired": false
+    },
+    {
+      "run": 4,
+      "log": "logs/boot-4.log",
+      "valid": true,
+      "why": "both rows printed their summary line, so both rows applied",
+      "adapterLine": "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)",
+      "adapterLineIndex": 1,
+      "extRow": "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+      "extLineIndex": 5,
+      "rolesRow": "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh",
+      "rolesLineIndex": 6,
+      "adapterProvidedBeforeExtApplied": true,
+      "extIdentity": "adapterIdentity=mounted:mpdDsh",
+      "rolesIdentity": "adapterIdentity=mounted:mpdDsh",
+      "identityLines": [
+        "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+        "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh"
+      ],
+      "identityLineCount": 2,
+      "fallbackLines": [],
+      "fallbackCount": 0,
+      "fallbackFired": false
+    },
+    {
+      "run": 5,
+      "log": "logs/boot-5.log",
+      "valid": true,
+      "why": "both rows printed their summary line, so both rows applied",
+      "adapterLine": "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)",
+      "adapterLineIndex": 1,
+      "extRow": "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+      "extLineIndex": 5,
+      "rolesRow": "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh",
+      "rolesLineIndex": 6,
+      "adapterProvidedBeforeExtApplied": true,
+      "extIdentity": "adapterIdentity=mounted:mpdDsh",
+      "rolesIdentity": "adapterIdentity=mounted:mpdDsh",
+      "identityLines": [
+        "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+        "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh"
+      ],
+      "identityLineCount": 2,
+      "fallbackLines": [],
+      "fallbackCount": 0,
+      "fallbackFired": false
+    },
+    {
+      "run": 6,
+      "log": "logs/boot-6.log",
+      "valid": true,
+      "why": "both rows printed their summary line, so both rows applied",
+      "adapterLine": "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)",
+      "adapterLineIndex": 1,
+      "extRow": "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+      "extLineIndex": 5,
+      "rolesRow": "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh",
+      "rolesLineIndex": 6,
+      "adapterProvidedBeforeExtApplied": true,
+      "extIdentity": "adapterIdentity=mounted:mpdDsh",
+      "rolesIdentity": "adapterIdentity=mounted:mpdDsh",
+      "identityLines": [
+        "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+        "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh"
+      ],
+      "identityLineCount": 2,
+      "fallbackLines": [],
+      "fallbackCount": 0,
+      "fallbackFired": false
+    }
+  ],
+  "answer": "0/6 BOOTS TOOK THE FALLBACK BRANCH. On this correctly ordered tree the fallback was NOT reachable in six consecutive clean boots. That is a 6-sample reading, not a proof of unreachability -- the concurrency window the reviewer pointed at is REAL in the loader (see citations); what the reading shows is that with this row order and these apply bodies it did not open in 6/6 boots.",
+  "frequencyFraction": "0/6 fallback boots (6/6 clean, 2 adapterIdentity readings per boot, 0 ADAPTER FALLBACK lines in all six logs)",
+  "observedPerBoot": "every boot: `[mpd-dsh-adapter] mpdDsh provided` is line 1, `[mpd-ext] mpdExtensions provided ... adapterIdentity=mounted:mpdDsh ...` is line 5, `[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh` is line 6. Two adapterIdentity readings, zero fallback lines, identical in all six runs.",
+  "citations": [
+    {
+      "claim": "the loader creates sibling rows CONCURRENTLY, so apply() completion order is NOT guaranteed by config order",
+      "file": "cordis-plugin-loader/lib/index.js",
+      "line": 97,
+      "code": "const outcomes = await Promise.allSettled(config.map((options) => this.create(options)))",
+      "note": "This is the window t13 cited. It is real: every entry's create() is kicked off before any of them is awaited."
+    },
+    {
+      "claim": "cordis treats a NON-ACTIVE provider as ABSENT and returns undefined rather than throwing, which is what makes the fallback reachable instead of fatal",
+      "file": "cordis/lib/index.js",
+      "line": 762,
+      "code": "get(name, strict = true) { return getTraceable(this.ctx, this._getImpl(name, strict)?.value) }  +  _getImpl: if (strict && impl.fiber.state !== 2) return;",
+      "note": "The doc comment above it states: 'strict - when true, only return implementations whose providing fiber is currently active ... or undefined when not (yet) provided'. State 2 is the active state."
+    },
+    {
+      "claim": "the inject-declared path IS fatal, which is why mpdDsh was deliberately left out of inject and degrades to the fallback instead of failing the row",
+      "file": "cordis/lib/index.js",
+      "line": 687,
+      "code": "error.message = `cannot get required service \"${prop}\" in inactive context`; throw error",
+      "note": "Contrast with the inject-free ctx.get() lookup the adapter-identity fix uses."
+    },
+    {
+      "claim": "the bundle patch lists the adapter row BEFORE the two rows that resolve it, which is consistent with the measured line order",
+      "file": "packages/mpd-bundle/cordis.patch.yml",
+      "line": 213,
+      "code": "mpd-dsh-adapter row at :213; mpd-ext row at :263; mpd-roles row at :267",
+      "note": "create() is invoked synchronously in array order by config.map(), so the adapter's synchronous ctx.provide() completes before mpd-ext's apply is reached."
+    }
+  ],
+  "ifItHadFired": {
+    "whatTheOperatorSees": "a warning on stdout AND through ctx.logger.warn, prefixed `[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): ...` (and the same for `[mpd-roles]`), and the row's own summary line would read `adapterIdentity=fallback:createDshAdapter` instead of `mounted:mpdDsh`. The wording was read verbatim from t4's real fallback boot.",
+    "doesTheRowKeepThePrivateAdapterForTheWholeSession": "YES. `resolveAdapter(ctx)` is called exactly ONCE per apply and its result is captured: packages/mpd-ext-plugin/src/index.ts:261 (`const resolved = resolveAdapter(ctx)`, inside `mount`) assigns the local `dsh`, and every later registration goes through that captured value; there is no re-resolution anywhere later in the session. mpd-roles has the identical single call at packages/mpd-roles-plugin/src/index.ts:356. So a fallback taken at apply time is permanent for that session, not self-healing."
+  },
+  "honestBound": "Six boots cannot prove unreachability. The loader's Promise.allSettled window is genuine, and whether it can open depends on interleaving inside apply bodies I did not instrument. Proving it CANNOT open would need instrumentation inside the loader or a much larger N; proving it CAN open would need a boot in which the adapter row's fiber is still pre-ACTIVE when mpd-ext applies. Neither was attempted (packages/** is out of scope, and this task is findings-only).",
+  "driverArtifactNote": "The LSP `LspRequestContextParseError` noise visible in raw/pristine-boot.log comes from a MANUAL pilot in which I passed a RELATIVE sandbox root; it is an artifact of that pilot, not a product finding. The six driver boots pass absolute paths and contain ZERO LspRequestContextParseError lines (9 log lines each).",
+  "commands": [
+    {
+      "command": "bash evidence/extensions/boot-repeat/20260916T064530Z/repeat-boot.sh 6 150",
+      "exitCode": 0,
+      "reading": "install exit=0; 6/6 runs reported both-summary-lines=1, adapterIdentity-lines=2, fallback-lines=0; ~6.0s per boot"
+    },
+    {
+      "command": "dsh plugin --profile rp add --store-dir <sandbox>/dsh/store <repo>  (inside the driver)",
+      "exitCode": 0,
+      "reading": "profile rp created with bundles [@deepseek-ai/dsh-base, @mpd-dsh/mpd], dependency link:<repo>"
+    },
+    {
+      "command": "dsh --profile rp \"say ok\"  (x6, each with sandboxed DSH_HOME + HOME + a fresh empty workspace cwd)",
+      "exitCode": 0,
+      "reading": "each boot reached the apply stage and printed both rows' summary lines with adapterIdentity=mounted:mpdDsh"
+    },
+    {
+      "command": "node evidence/extensions/boot-repeat/20260916T064530Z/parse-boot-readings.mjs --runs 6",
+      "exitCode": 0,
+      "reading": "valid boots: 6/6; fallback: 0/6; clean: 6/6"
+    }
+  ],
+  "findings": [
+    {
+      "id": "t24-F1",
+      "severity": "info",
+      "class": "measurement",
+      "problem": "The fallback branch did not fire in 6/6 boots on the correctly ordered tree, and in every boot the adapter's provide line strictly preceded both resolving rows' apply lines.",
+      "status": "FINDING ONLY - no fix attempted, per the contract. The residual risk is not disproved: the loader's concurrent create() window exists in code; 6 samples bound the frequency but cannot establish impossibility."
+    }
+  ],
+  "artifacts": {
+    "driver": "repeat-boot.sh (owned by this task)",
+    "parser": "parse-boot-readings.mjs (owned by this task)",
+    "driverSha256": "f448bf3da562da738b48685c997ca9663f960e03bee1c3b9fb29d70078fea935",
+    "parserSha256": "02814183961fac46d7d77d99d90c49c8ce5bbf014e67e0975bb10987c409b561",
+    "bootLogs": [
+      "logs/boot-1.log",
+      "logs/boot-2.log",
+      "logs/boot-3.log",
+      "logs/boot-4.log",
+      "logs/boot-5.log",
+      "logs/boot-6.log"
+    ],
+    "bootLogSha256": [
+      {
+        "log": "logs/boot-1.log",
+        "sha256": "2e9b645cdd9a099948e613fc8890dfa83a302931a8cc86e5bc421e793bc67f4e"
+      },
+      {
+        "log": "logs/boot-2.log",
+        "sha256": "d996b04658bd7c6a6dca3c90e7d749eb5ca332e939c2a4f74ded0fa5821dd3a6"
+      },
+      {
+        "log": "logs/boot-3.log",
+        "sha256": "edfaa72f0cd1615827bd2fdcc45ccc5c27586a00ae725e6ea965dd56051e09ea"
+      },
+      {
+        "log": "logs/boot-4.log",
+        "sha256": "e2d8a99efcc85b289aa4eeb7fc52e20cbe20a1be2fd452fdc58333be18b7eee3"
+      },
+      {
+        "log": "logs/boot-5.log",
+        "sha256": "92bb9b830c9e68c25be32a58cb3434ded416eed6bc858b14414b7af13d7c7893"
+      },
+      {
+        "log": "logs/boot-6.log",
+        "sha256": "001ef969c255f7408789f535f12c646f0ceb00ef9bad776db2b00f85adae075c"
+      }
+    ],
+    "treeUnderTest": {
+      "head": "1f38e3c1b8149cecc68f54fae1979f56e1ff2b0f",
+      "extSrcSha256": "dd3bdd00579d8d7aa56a70cb18af6a0bfd4ce3bae400c730d0f35bc40f662ec0",
+      "rolesSrcSha256": "9a54bf7d6620a2d437ebafd15bda5f7592e9e1cce2d997fe2c6170a71d6ab18c",
+      "extDistSha256": "0ebad6573abac96a5e0599208ba1d948c5e6ff315b5f47671ebfe82939acba55",
+      "rolesDistSha256": "22595b921903286873855185bbf05a5a06aba8d80201eadcb036d174d4778deb",
+      "note": "the dist hashes are the t4-repair values recorded in the t22 handoff (ext 0ebad657..., roles 22595b92...), so the reading IS taken on the tree WITH the repair applied"
+    }
+  },
+  "inScopeRespected": [
+    "evidence/extensions/boot-repeat"
+  ],
+  "notTouched": [
+    "packages/**",
+    "skills/**",
+    "docs/**",
+    "scripts/**",
+    "templates/**",
+    "package.json",
+    "VENDOR_LOCK.json",
+    "evidence/extensions/f1-adapter-identity",
+    "evidence/extensions/verify-code-template",
+    "evidence/dsh-qa/bundle-lifecycle"
+  ],
+  "gitVerbsUsed": "read-only only (rev-parse); no commit/add/checkout/switch/reset/stash/merge/branch/rebase/tag.",
+  "sandboxRetentionNote": "The 7 installed sandboxes (~34 MB) were PRUNED after the run so this evidence dir does not carry build trees. They are deterministic: repeat-boot.sh recreates the pristine install and the six run copies from the repo in ~5 s. The retained evidence of what the sandboxes contained is raw/pristine-tree.txt (a listing taken before the first boot, 21 entries), raw/profile-rp.package.json (the profile manifest: dependency link:<repo>, bundles [dsh-base, mpd]) and raw/install.log. With DSH_HOME/HOME sandboxed and a fresh empty workspace cwd per run, the six boot logs are the readings."
+}

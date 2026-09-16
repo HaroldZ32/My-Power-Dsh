@@ -1,0 +1,20 @@
+verify-f9-and-repin — item 4 (F9 falsifiability, verifier-owned fixtures)
+  ok   closed-tree-is-green — verifier fixture with all four facts: ok=true facts={"hasRow":true,"hasPlugin":true,"hasExtensions":true}
+  ok   every-missing-fact-is-red — missing-plugin-package=false facts={"hasRow":true,"hasPlugin":false,"hasExtensions":true} | missing-extensions-root=false facts={"hasRow":true,"hasPlugin":true,"hasExtensions":false} | missing-mpd-ext-row=false facts={"hasRow":false,"hasPlugin":true,"hasExtensions":true}
+  ok   packer-exit-gated — a non-zero packer exit fails the predicate even when every asset is present
+  ok   old-shape-was-vacuous — retired shape on the no-extensions tree: true (truthy) while the shipped predicate returns false — the fix is real, not cosmetic
+  ok   lane-driver-falsifiable — packedNegativeDriver(): falsifiable=true packerExitGated=true trees={"closed":{"hasRow":true,"hasPlugin":true,"hasExtensions":true,"ok":true},"no-plugin-package":{"hasRow":true,"hasPlugin":false,"hasExtensions":true,"ok":false},"no-extensions-root":{"hasRow":true,"hasPlugin":true,"hasExtensions":false,"ok":false},"no-mpd-ext-row":{"hasRow":false,"hasPlugin":true,"hasExtensions":true,"ok":false}}
+verify-f9-and-repin — item 5 (single re-pin)
+  ok   verify-vendor — exit 0; [verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files | [verify-vendor] PASS
+  ok   exactly-one-asset-entry-changed — changed asset entries: [skills] (1)
+  ok   skills-before-values — before: fileCount=317 treeSha=7a48fdad90cc30f9c1e7…
+  ok   skills-after-values — after: fileCount=318 treeSha=a8ba96b8108b2df3cce7… (one re-pin: one before value, one after value)
+  ok   no-second-repin — no other asset entry changed: []
+  ok   same-change-set — 4 skills/** path(s) modified and VENDOR_LOCK.json modified in the SAME working-tree change set: M skills/dsh-qa/SKILL.md ; M skills/dsh-qa/scripts/extension-lifecycle.mjs ; M skills/dsh-qa/scripts/extension-mcp-bridge.mjs ; ?? skills/dsh-qa/scripts/extension-template.mjs
+verify-f9-and-repin — item 6 (lane --self-tests, clean runs)
+  ok   selftest:extension-isolation.mjs --self-test — exit 0; [extension-isolation self-test] ok: stub protocol (tool call, advance, child marker, no-tools text) + descriptor contract + shipped example + boot recipe verifi
+  ok   selftest:extension-lifecycle.mjs --self-test — exit 0; [extension-lifecycle self-test] ok: composed row + validator rejections (incl. NaN rank via the code plane) + CLI oracle + seam regression (inject declared, fai
+  ok   selftest:extension-mcp-bridge.mjs --self-test — exit 0; [extension-mcp-bridge self-test] ok: lsp server + row + public-name collision premise + fixture scenarios (incl. the stderr flood and the cap it must exceed) + 
+  ok   selftest:extension-template.mjs --self-test — exit 0; [extension-template self-test] ok: shipped template loads with all four kinds + ships disabled + scaffold emits the four-kind copy this case boots (ids, flow cr
+  ok   selftest:verify-pack-closure.mjs --self-test — exit 0; [verify-pack-closure] self-test PASS: 6/6 arms
+  ok   selftest:verify-debranding-full.mjs --self-test — exit 0; [verify-debranding-full] self-test PASS: 5/5 arms

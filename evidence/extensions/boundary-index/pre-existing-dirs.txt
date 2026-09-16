@@ -1,0 +1,13 @@
+evidence/extensions/extension-lifecycle/
+evidence/extensions/extension-mcp-bridge/
+evidence/extensions/mcp-bridge-framing/
+evidence/extensions/mcp-bridge-gates/
+evidence/extensions/registered-tool-schemas/
+evidence/extensions/roles-wiring/
+evidence/extensions/sanitizer-crosscheck/
+evidence/extensions/t12-integration/
+evidence/extensions/t13-repair/
+evidence/extensions/t7-verify/
+evidence/extensions/v0.9.1-defect-fixes/
+evidence/mpd-ext-debranding/20260915T074904Z/
+evidence/mpd-ext-debranding/captain-verify/

@@ -1,0 +1,85 @@
+{
+  "ok": true,
+  "subject": "F1 adapter identity (mpd-ext + mpd-roles) on a real mounted boot",
+  "beforeBootLog": "evidence/dsh-qa/bundle-lifecycle/2026-09-16T02-55-38.803Z/boot.log",
+  "afterBootLog": "evidence/dsh-qa/bundle-lifecycle/2026-09-16T06-16-02.409Z/boot.log",
+  "beforeResult": "evidence/dsh-qa/bundle-lifecycle/2026-09-16T02-55-38.803Z/result.json",
+  "afterResult": "evidence/dsh-qa/bundle-lifecycle/2026-09-16T06-16-02.409Z/result.json",
+  "checks": [
+    {
+      "id": "boot.mpdd-ext-identity-line-present",
+      "ok": true,
+      "detail": "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)"
+    },
+    {
+      "id": "boot.mpd-roles-identity-line-present",
+      "ok": true,
+      "detail": "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh"
+    },
+    {
+      "id": "boot.mpd-ext-identity-mounted",
+      "ok": true,
+      "detail": "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)"
+    },
+    {
+      "id": "boot.mpd-roles-identity-mounted",
+      "ok": true,
+      "detail": "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh"
+    },
+    {
+      "id": "boot.no-fallback-warning",
+      "ok": true,
+      "detail": "ADAPTER FALLBACK lines: 0"
+    },
+    {
+      "id": "boot.no-fallback-identity",
+      "ok": true,
+      "detail": "fallback identity lines: 0"
+    },
+    {
+      "id": "boot.four-inspection-tools-registered",
+      "ok": true,
+      "detail": "missing: []"
+    },
+    {
+      "id": "boot.mpd-ext-line-otherwise-byte-identical",
+      "ok": true,
+      "detail": "{\"before\":\"[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)\",\"afterWithoutIdentity\":\"[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)\"}"
+    },
+    {
+      "id": "boot.discovery-providers-unchanged",
+      "ok": true,
+      "detail": "{\"before\":\"mpd-ext:mpd-ext-example, mpd-ext:project-plane\",\"after\":\"mpd-ext:mpd-ext-example, mpd-ext:project-plane\"}"
+    },
+    {
+      "id": "lane.overall-ok",
+      "ok": true,
+      "detail": "after.ok=true"
+    },
+    {
+      "id": "lane.step-ok-flags-identical",
+      "ok": true,
+      "detail": "differing steps: []"
+    },
+    {
+      "id": "lane.every-step-ok",
+      "ok": true,
+      "detail": "failing steps: []"
+    },
+    {
+      "id": "lane.adapter-seams-identical",
+      "ok": true,
+      "detail": "{\"before\":\"tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,agents,events\",\"after\":\"tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,agents,events\"}"
+    },
+    {
+      "id": "lane.boot-correct-adapter-probe",
+      "ok": true,
+      "detail": "ADAPTER_TOOL_CALL=ok + roles-probe PASS present"
+    }
+  ],
+  "readings": {
+    "extSummary": "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+    "rolesSummary": "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh",
+    "extSummaryBefore": "[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)"
+  }
+}

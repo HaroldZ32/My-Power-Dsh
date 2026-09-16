@@ -1,0 +1,7 @@
+$ bun scripts/mpd-ext.mjs validate templates/mpd-extension
+[mpd-ext] validate /root/dshProj/my-power-dsh/templates/mpd-extension (plane=user)
+  extension "mpd-extension-template": loadable
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  pending contributes.mcp[0]: pending: server "mpd-extension-template" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+[mpd-ext] ok
+exit=0

@@ -1,0 +1,34 @@
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-c6-wdGcrI/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+All three steps succeeded.
+
+**1. Write** — saved note `qa-note` (`kind: note`, content `alpha beta gamma`):
+- Path: `.mpd/memory/agents/agent-ws/repo/memory/qa-note-mu3sqiqg.md`
+- vcs=git, committed, `reflectionDue=false`
+
+**2. Read (`query: "alpha"`)** — **1 entry matched**:
+```
+memory entries: 1
+- [note] qa-note: alpha beta gamma
+```
+
+**3. Status**:
+```
+vcs=git  root=/tmp/mpd-c6-wdGcrI/ws/.mpd/memory/agents/agent-ws
+entries=1  journal=1
+reflection: steps=1, reflected_completed_steps=0, steps_since_last_successful_reflection=1,
+            reservation=null, triggered=false
+```
+
+Summary: 1 memory entry stored, 1 entry matches the `alpha` query, and the memory store is on git-backed VCS with no reflection currently due.
+dsh: reasoning:
+The user wants a simple sequence: write a memory note, read with query, report status. Let me do it. The write and read are dependent (write first, then read), so sequential. Actually read depends on write, so I should do write first.
+
+Let me call mpd_memory_write first.
+dsh: reasoning:
+Now read with query 'alpha', and also status. These two are independent, can call in parallel.

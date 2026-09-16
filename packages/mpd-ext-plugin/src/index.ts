@@ -55,6 +55,58 @@ export const name = "mpd-ext"
 export const REQUIRED_SEAMS = ["tools", "skills"] as const
 export const inject: string[] = [...REQUIRED_SEAMS]
 
+/**
+ * CANONICAL NOTE — the second-adapter hazard. This is the ONE place that
+ * describes it; the sites THIS FIX touched CROSS-REFERENCE it instead of
+ * half-repeating it — mpd-roles (`packages/mpd-roles-plugin/src/index.ts`,
+ * `resolveAdapter` and the comment above it) and the bundle patch's row-order
+ * bullet (`packages/mpd-bundle/cordis.patch.yml:251-257`).
+ * RESIDUAL, recorded honestly: the OTHER rows that carry the same
+ * `ctx.get("mpdDsh") ?? createDshAdapter(ctx)` fallback (the rest of the mpd
+ * plugin rows) are OUTSIDE this fix's scope and stay silent — only mpd-ext and
+ * mpd-roles warn today.
+ *
+ * Every mpd row resolves the shared adapter as
+ * `ctx.get("mpdDsh") ?? createDshAdapter(ctx)`. The nullish branch is a HAZARD,
+ * not a convenience: when the mounted lookup misses — e.g. this row is composed
+ * ABOVE the adapter row — the row builds a SECOND adapter beside the tree's,
+ * whose real cost is that it BYPASSES the mounted adapter (the one-contact-surface
+ * rule, AGENTS.md §6): it does NOT inherit the adapter ROW's config
+ * (`defaultTimeoutMs`, so tool calls silently run on the built-in default —
+ * `packages/mpd-dsh-adapter-plugin/src/index.ts:390`) and it carries its OWN
+ * per-instance caches (the per-agent compaction-engine memo,
+ * `…/src/index.ts:464`), while the row and all four of its tools keep working, so
+ * nothing looks wrong. It does NOT double the tree's guard/waterfall
+ * registrations: those are registered THROUGH the harness seams, so they still
+ * happen exactly once each. The same swallowed-error class already
+ * un-registered this row's four tools once (the inject defect measured
+ * 2026-09-14, see the REQUIRED_SEAMS note above), which is why this branch is
+ * LOUD and ASSERTABLE now instead of silent:
+ *   · it warns exactly ONCE per apply and names the resolved identity
+ *     (`adapterIdentity=fallback:createDshAdapter`);
+ *   · the identity also lands on surfaces a lane can read — the apply-time boot
+ *     line, and the `adapterIdentity` field of the `mpdExtensions` service.
+ * The healthy mounted path is unchanged: it emits NO warning and reports
+ * `adapterIdentity=mounted:mpdDsh`. The real fix for a fallback warning is the
+ * ROW ORDER — `mpd-ext` must be composed BELOW `mpd-dsh-adapter`.
+ */
+export const ADAPTER_IDENTITY_MOUNTED = "mounted:mpdDsh"
+export const ADAPTER_IDENTITY_FALLBACK = "fallback:createDshAdapter"
+
+/**
+ * Resolve the ONE shared adapter and its identity in a single place, so the
+ * warning, the boot line and the `adapterIdentity` service field can never
+ * disagree about which branch was taken. Throws exactly where the old inline
+ * expression did (`ctx.get` itself throwing stays fatal for this row).
+ */
+function resolveAdapter(ctx: any): { dsh: DshAdapter; adapterIdentity: string; usedFallback: boolean } {
+  const mounted = typeof ctx?.get === "function" ? ctx.get("mpdDsh") : undefined
+  if (mounted !== undefined && mounted !== null) {
+    return { dsh: mounted as DshAdapter, adapterIdentity: ADAPTER_IDENTITY_MOUNTED, usedFallback: false }
+  }
+  return { dsh: createDshAdapter(ctx), adapterIdentity: ADAPTER_IDENTITY_FALLBACK, usedFallback: true }
+}
+
 export interface MpdExtPluginConfig {
   /** Do not print the one-line apply summary. */
   quiet?: boolean
@@ -203,11 +255,28 @@ async function mount(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
   }
 
   let dsh: DshAdapter
+  let adapterIdentity = ""
+  let usedFallbackAdapter = false
   try {
-    dsh = (typeof ctx?.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
+    const resolved = resolveAdapter(ctx)
+    dsh = resolved.dsh
+    adapterIdentity = resolved.adapterIdentity
+    usedFallbackAdapter = resolved.usedFallback
   } catch (error) {
     warn("adapter unavailable, extension interface not mounted: " + message(error))
     return
+  }
+
+  // The fallback branch warns exactly ONCE per apply — the whole point of the
+  // fix (see the CANONICAL NOTE on the second-adapter hazard above).
+  if (usedFallbackAdapter) {
+    warn("ADAPTER FALLBACK (adapterIdentity=" + adapterIdentity
+      + "): ctx.get(\"mpdDsh\") found no mounted mpdDsh service, so this row built its OWN adapter beside"
+      + " the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does"
+      + " NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches"
+      + " (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is"
+      + " loud now — fix the ROW ORDER (mpd-ext must sit BELOW mpd-dsh-adapter); the canonical note lives in"
+      + " this file (resolveAdapter).")
   }
 
   // Seam self-check: the row declares `inject: ["tools","skills"]`, so a missing
@@ -440,6 +509,8 @@ async function mount(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
 
   const service = {
     apiVersion: MPD_EXT_API_VERSION,
+    /** Which adapter branch this row resolved — the assertable half of F1. */
+    adapterIdentity,
     register,
     list: (options: { exec?: unknown } = {}) => snapshot(options?.exec),
     describe: (id: string, options: { exec?: unknown } = {}) => snapshot(options?.exec).extensions.find((entry) => entry.id === String(id ?? "")),
@@ -1013,6 +1084,7 @@ async function mount(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
   } else if (config.quiet !== true) {
     console.log(
       "[mpd-ext] mpdExtensions provided (apiVersion " + MPD_EXT_API_VERSION + ")"
+      + " | adapterIdentity=" + adapterIdentity
       + " | tools: " + registeredToolNames.join(", ")
       + " | skill providers: " + (registeredProviderNames.length === 0 ? "(none: no extension contributes skills or flows)" : registeredProviderNames.join(", "))
       + " | project plane: <session workspace>/.mpd/extensions (per call)",

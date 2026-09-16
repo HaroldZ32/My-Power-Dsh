@@ -1,0 +1,82 @@
+[
+  {
+    "command": "node evidence/extensions/verify-code-template/20260916T062431Z/arms-adapter-identity.mjs",
+    "exitCode": 0,
+    "reading": "[t10-arms] PASS: 20/20 checks"
+  },
+  {
+    "command": "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs",
+    "exitCode": 0,
+    "reading": "[bundle-lifecycle] PASS; every step ok=true; boot.log carries adapterIdentity=mounted:mpdDsh on both rows and 0 fallback markers"
+  },
+  {
+    "command": "node evidence/extensions/verify-code-template/20260916T062431Z/invariance-and-discovery.mjs <pre> <mine>",
+    "exitCode": 0,
+    "reading": "[t10-invariance] PASS: 17/17 checks (6 real lane steps compared)"
+  },
+  {
+    "command": "node evidence/extensions/verify-code-template/20260916T062431Z/falsify-preset-rewrite.mjs",
+    "exitCode": 0,
+    "reading": "[t10-rewrite] PASS: 13/13 checks (one tampered byte detected; missing template fails loudly)"
+  },
+  {
+    "command": "bun build packages/mpd-ext-plugin/src/index.ts --target node --format esm --outfile <tmp> && diff <tmp> packages/mpd-ext-plugin/dist/index.js",
+    "exitCode": 0,
+    "reading": "byte-identical (sha256 c5c6f9e0619e36c4e59a283a9feaf3eaa0654d93efc4d4219059fde28c4a9bbe)"
+  },
+  {
+    "command": "bun build packages/mpd-roles-plugin/src/index.ts --target node --format esm --outfile <tmp> && diff <tmp> packages/mpd-roles-plugin/dist/index.js",
+    "exitCode": 0,
+    "reading": "byte-identical (sha256 dc803f5b98c2d2c51f062d4122c7b6a60e21ac075f055e6164220357369da5f0)"
+  },
+  {
+    "command": "bun scripts/mpd-ext.mjs validate templates/mpd-extension",
+    "exitCode": 0,
+    "reading": "contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s); [mpd-ext] ok"
+  },
+  {
+    "command": "bun scripts/mpd-ext.mjs scaffold demo-ext --dir <tmp> --with-mcp && bun scripts/mpd-ext.mjs validate <tmp>/demo-ext",
+    "exitCode": 0,
+    "reading": "7 files, 4 kinds, validate ok"
+  },
+  {
+    "command": "bun scripts/mpd-ext.mjs scaffold demo-two --dir <tmp> && bun scripts/mpd-ext.mjs validate <tmp>/demo-two",
+    "exitCode": 0,
+    "reading": "6 files, 3 kinds (mcp block and server.mjs dropped), validate ok"
+  },
+  {
+    "command": "bun scripts/mpd-ext.mjs validate <three broken manifests>",
+    "exitCode": 1,
+    "reading": "each exits 1 with per-item errors naming the exact problem"
+  },
+  {
+    "command": "bun evidence/extensions/template-scaffold/20260916T061238Z/compare-arms.mjs --out <my dir>",
+    "exitCode": 0,
+    "reading": "39/39 checks passed"
+  },
+  {
+    "command": "bun scripts/mpd-ext.mjs --self-test",
+    "exitCode": 0,
+    "reading": "--self-test passed (41 checks)"
+  },
+  {
+    "command": "bun test packages/mpd-ext-plugin",
+    "exitCode": 0,
+    "reading": "72 pass, 0 fail"
+  },
+  {
+    "command": "bun test packages/mpd-roles-plugin",
+    "exitCode": 0,
+    "reading": "30 pass, 0 fail"
+  },
+  {
+    "command": "node scripts/verify-docs-parity.mjs",
+    "exitCode": 0,
+    "reading": "pairs=36 failed=0 violations=0 exempt=16 - PASS"
+  },
+  {
+    "command": "node scripts/verify-rows-parity.mjs",
+    "exitCode": 0,
+    "reading": "ok: 25 row ids match the bundle patch insert list"
+  }
+]

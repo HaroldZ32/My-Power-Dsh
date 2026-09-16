@@ -1,0 +1,52 @@
+t22 — REPAIR ROUND 2 on t4's F1/F5 fix — EVIDENCE INDEX
+attempt_id ca90b9b0-9e6f-426f-9622-7bc37ddfef8d · t13 finding: the "doubles every per-instance
+guard/waterfall state" clause was not code-grounded (medium).
+
+WHAT THE NOTE AND BOTH WARNINGS NOW SAY (code-grounded cost, identity wording unchanged)
+  "... it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT
+   inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches
+   (the per-agent compaction-engine memo)."
+  + one explicit denial: it does NOT double the tree's guard/waterfall registrations (those go
+    through the harness seams, so they still happen once each).
+
+CODE BASIS (each claim read from the shipped source)
+  bypass        packages/mpd-ext-plugin/src/index.ts resolveAdapter(); packages/mpd-roles-plugin/src/index.ts resolveAdapter()
+  defaultTimeoutMs  packages/mpd-dsh-adapter-plugin/src/index.ts:870-871 (row forwards its OWN config)
+                    vs the bare createDshAdapter(ctx) fallback; :390 `config.defaultTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS`
+                    (:27 = 120_000) used at :623 and :633 for tool calls
+  per-instance cache `const engineCache = new Map<string, unknown>()` INSIDE createDshAdapter (:464), the only
+                    per-instance cache in that closure, used by compactionEngineForAgent (:466-472)
+
+STANDING ASSERTIONS ADDED (inside the two plugin packages)
+  packages/mpd-roles-plugin/test/adapter-identity.test.ts  "F1 vocabulary (standing pin)": both literals pinned
+  packages/mpd-ext-plugin/test/adapter-identity.test.ts    same literal pins + a CROSS-PACKAGE equality
+                                                           assertion against the sibling row's constants
+
+READINGS
+  old clause gone : grep 'guard/waterfall' -> 0 in ext src, 0 in roles src, 0 in BOTH dists, 0 in the real fallback boot
+  new clause      : grep "does NOT inherit the adapter row's config" -> 1 in each dist, 2 in the real fallback boot
+  healthy boot    : evidence/dsh-qa/bundle-lifecycle/2026-09-16T06-37-56.922Z (PASS, every step ok=true)
+                    boot.log:5-6 = adapterIdentity=mounted:mpdDsh on both rows, 'ADAPTER FALLBACK' count 0
+  fallback boot   : raw/fallback-boot.result.json (passed=true) — adapter_row_applied=0, 1 warning per row,
+                    4 identity readings, four tools still registered, 0 apply-crash signatures, boot_exit=124
+  tests           : ext 74 pass / 0 fail (was 72) · roles 31 pass / 0 fail (was 30)
+  dist hashes     : ext  c5c6f9e0… -> 0ebad6573abac96a5e0599208ba1d948c5e6ff315b5f47671ebfe82939acba55
+                    roles dc803f5b… -> 22595b921903286873855185bbf05a5a06aba8d80201eadcb036d174d4778deb
+                    (t10's dist-freshness reading must be pinned to the AFTER hashes)
+
+COMMANDS / EXIT CODES (raw logs in raw/)
+  bun test packages/mpd-ext-plugin                                     -> 0   raw/ext.test.log
+  bun test packages/mpd-roles-plugin                                   -> 0   raw/roles.test.log
+  bun build .../mpd-ext-plugin/src/index.ts -> dist/index.js           -> 0   raw/build-ext.log
+  bun build .../mpd-roles-plugin/src/index.ts -> dist/index.js         -> 0   raw/build-roles.log
+  bun scripts/mpd-ext.mjs --self-test                                  -> 0   raw/mpd-ext-selftest.log (52 checks)
+  node scripts/verify-rows-parity.mjs                                  -> 0   raw/rows-parity.log
+  bun skills/dsh-qa/scripts/bundle-lifecycle.mjs                       -> 0   PASS (evidence/dsh-qa/bundle-lifecycle/2026-09-16T06-37-56.922Z)
+  bash .../20260916T063737Z-repair2/live-fallback-boot.sh              -> 0   raw/fallback-boot.result.json
+
+BOUNDARIES
+  t4's evidence dir (…/20260916T061318Z) is IMMUTABLE and untouched: the fallback driver was COPIED here with
+  only its EV path re-pointed, so the reworded strings are re-proven live instead of citing an archived log.
+  Not touched: skills/**, docs/**, templates/**, scripts/**, package.json, VENDOR_LOCK.json, the README pairs,
+  cordis.patch.yml, and the TWELVE other rows that carry the same fallback (now named as a residual in the note).
+  No git verbs.

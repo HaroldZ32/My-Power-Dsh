@@ -1,0 +1,42 @@
+{
+  "apiVersion": 1,
+  "id": "demo-ext",
+  "description": "The demo-ext extension. Replace this sentence with what the extension contributes and when an agent should reach for it.",
+  "enabled": false,
+  "contributes": {
+    "skills": [
+      {
+        "root": "skills",
+        "rank": 300
+      }
+    ],
+    "flows": [
+      {
+        "dir": "flows",
+        "rank": 300
+      }
+    ],
+    "roles": [
+      {
+        "name": "demo-ext reviewer",
+        "description": "Read-only reviewer contributed by the demo-ext extension: checks a change against this extension's own contract and reports findings with evidence.",
+        "readonly": true,
+        "persona": "personas/demo-ext-reviewer.md"
+      }
+    ],
+    "mcp": [
+      {
+        "serverName": "demo-ext",
+        "transport": "stdio",
+        "command": "node",
+        "args": [
+          "server.mjs"
+        ],
+        "cwd": ".",
+        "env": {},
+        "connectTimeoutMs": 10000,
+        "toolCallTimeoutMs": 60000
+      }
+    ]
+  }
+}

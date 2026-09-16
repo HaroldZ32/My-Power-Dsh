@@ -1,0 +1,6 @@
+8fcbe3c82e1acca6afbc40d18177cd34abb9a803ad3d36a318d7c02425a744f2  docs/extension-adaptation-report.md
+cde40e8a17ee2135196c365ce52a779ae5e7dde159c0e8ae2541d56b2abd9a64  docs/extension-adaptation-report.zh-CN.md
+04fdadf7f2688490e12ac6fb26d38a0ede3f6795ba87a213a37db853bfe869f1  docs/extension-authoring-guide.md
+1a93b52aebc4f2d8eb53e5e2a3864a4a9db356f991b3e967314c01e7624cbc2e  docs/extension-authoring-guide.zh-CN.md
+a82c66e6ffb94bb3e7ac58ee8b01c0d99fee42587807e6edd20b8805dda637c8  EXTENSIONS-FOR-AGENTS.md
+471aec42e0644ad28ce7bc3716ead64bffaef58bcc1b94ce9945c85597d6578e  evidence/extensions/docs-claims/check-citations.mjs

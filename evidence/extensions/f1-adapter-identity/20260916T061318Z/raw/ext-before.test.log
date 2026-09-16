@@ -1,0 +1,106 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-ext-plugin/test/core.test.ts:
+(pass) apply registers exactly the four tools, no reload, and provides the mpdExtensions service [10.49ms]
+[mpd-ext] FATAL: the harness seams this row registers through are unavailable (toolsRegister=false, skillsProvider=false) — the four tools and the skills provider will NOT be registered in this session. This row must declare inject: ["tools","skills"].
+[mpd-ext] skill provider for "mpd-ext-example" not registered: mpd-dsh-adapter: harness service "skills" is unavailable — cannot register a skill provider
+[mpd-ext] project-plane skill provider not registered: mpd-dsh-adapter: harness service "skills" is unavailable — cannot register a skill provider
+[mpd-ext] tool "mpd_ext_list" not registered: mpd-dsh-adapter: harness service "tools" is unavailable — cannot register tool "mpd_ext_list"
+[mpd-ext] tool "mpd_ext_show" not registered: mpd-dsh-adapter: harness service "tools" is unavailable — cannot register tool "mpd_ext_show"
+[mpd-ext] tool "mpd_flow_list" not registered: mpd-dsh-adapter: harness service "tools" is unavailable — cannot register tool "mpd_flow_list"
+[mpd-ext] tool "mpd_flow_show" not registered: mpd-dsh-adapter: harness service "tools" is unavailable — cannot register tool "mpd_flow_show"
+[mpd-ext] FATAL: only 0/4 tools registered (missing: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show) — the extension interface is NOT usable in this session; the row declares inject: ["tools","skills"], so check the harness seams above
+[mpd-ext] skill provider for "hostile" not registered: skills seam gone
+[mpd-ext] skill provider for "mpd-ext-example" not registered: skills seam gone
+[mpd-ext] project-plane skill provider not registered: skills seam gone
+[mpd-ext] tool "mpd_ext_list" not registered: tools seam gone
+[mpd-ext] tool "mpd_ext_show" not registered: tools seam gone
+[mpd-ext] tool "mpd_flow_list" not registered: tools seam gone
+[mpd-ext] tool "mpd_flow_show" not registered: tools seam gone
+[mpd-ext] FATAL: only 0/4 tools registered (missing: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show) — the extension interface is NOT usable in this session; the row declares inject: ["tools","skills"], so check the harness seams above
+(pass) apply contains a hostile harness: a throwing tool or skill seam never escapes apply [3.90ms]
+(pass) the four tools emit values that satisfy their own output schemas [9.60ms]
+(pass) mpd_ext_show and mpd_flow_show report an unknown id as an error naming the known ids [1.29ms]
+(pass) descriptor validation rejects unknown keys, bad apiVersion, missing id, escapes and bad rank [1.81ms]
+(pass) role provider/model must be paired and persona must stay inside the root [0.19ms]
+(pass) effectiveEnabled follows disable > enable > descriptor [0.18ms]
+(pass) discovery precedence is project > user > bundle and shadowing is recorded, never fatal [3.45ms]
+[mpd-ext] bad-json (/tmp/mpd-ext-ws-jPWjUR/.mpd/extensions/bad-json/mpd-ext.json) rejected: invalid JSON: JSON Parse error: Expected '}'
+[mpd-ext] bad-version (/tmp/mpd-ext-ws-jPWjUR/.mpd/extensions/bad-version/mpd-ext.json) rejected: apiVersion must equal 1 (got 9)
+[mpd-ext] no-id (/tmp/mpd-ext-ws-jPWjUR/.mpd/extensions/no-id/mpd-ext.json) rejected: id is required and must match ^[a-z0-9][a-z0-9-]{0,63}$
+[mpd-ext] bad-json (/tmp/mpd-ext-ws-jPWjUR/.mpd/extensions/bad-json/mpd-ext.json) rejected: invalid JSON: JSON Parse error: Expected '}'
+[mpd-ext] bad-version (/tmp/mpd-ext-ws-jPWjUR/.mpd/extensions/bad-version/mpd-ext.json) rejected: apiVersion must equal 1 (got 9)
+[mpd-ext] no-id (/tmp/mpd-ext-ws-jPWjUR/.mpd/extensions/no-id/mpd-ext.json) rejected: id is required and must match ^[a-z0-9][a-z0-9-]{0,63}$
+(pass) a malformed manifest is reported per item and never aborts apply or another extension [2.58ms]
+(pass) the project plane is re-read per call and never leaks across workspaces [1.88ms]
+(pass) skill candidates are pre-validated: a bad candidate is skipped, warned and never emitted [1.85ms]
+(pass) the provider pre-validates at emit time too, and reports the skip to the owner [0.38ms]
+(pass) a loaded candidate is recorded on the extension when its items are unusable [0.62ms]
+(pass) the project-plane skill provider resolves per call from provider.list({ cwd }) [1.61ms]
+(pass) a skill provider never throws out of list()/get() when discovery fails [0.61ms]
+(pass) provider names are unique by construction [0.13ms]
+(pass) flows render into skill candidates and a flow id outside the skill grammar is rejected loudly [0.35ms]
+(pass) a broken flow file is skipped and recorded while its siblings keep working [0.91ms]
+(pass) config is read lazily per use: disable/enable are honoured after apply [3.24ms]
+(pass) extensionConfig reads every extensions.* key lazily from mpdConfig (declared process-level limit) [0.26ms]
+(pass) mcp.enabled=false is honoured per call and surfaced instead of silently pending [10.35ms]
+(pass) a missing mpdConfig degrades to the documented defaults [1.89ms]
+(pass) the code plane registers through ctx.get("mpdExtensions") and shares the same validation [2.25ms]
+(pass) describe() answers the frozen descriptor shape for a known extension [1.59ms]
+(pass) one broken extension of each kind leaves the good ones working [2.88ms]
+(pass) mcp is pending until the bridge connects it, while roles are NEVER pending (t14/F3) [3.36ms]
+(pass) t14/F3: a live roles contribution reports no pending item and no 'not yet exposed' claim [2.77ms]
+(pass) t14/F4: a role colliding with a BASE roster name is refused with the roster's reason, in both paths [1.99ms]
+(pass) t14/F4: an unreadable OR empty persona is refused, and the empty case is no longer accepted [2.00ms]
+(pass) t14/F4: a CROSS-extension name collision refuses the LATER extension and names the holder [2.03ms]
+(pass) t14: a disabled extension's declared roles are reported as not exposed, never as usable [1.71ms]
+(pass) t14: refusal notes are idempotent — repeated calls neither duplicate nor lose them [1.86ms]
+(pass) t14: the ext report and the ROSTER agree about every role (parity, measured against the resolver) [2.86ms]
+(pass) t14: every spelling of a base roster name collides (case- and separator-insensitive) [1.51ms]
+(pass) discoverPlane never throws for a missing root [0.18ms]
+(pass) t16: the ext report and the ROSTER agree about a PROJECT-plane role (nothing usable, same reason) [1.86ms]
+(pass) F4: a same-name skill claimed by two extensions is reported on the loser WITH the winner and both ranks [2.21ms]
+(pass) F4: a claim the catalog resolves to a NON-extension provider is reported as not served [2.32ms]
+[mpd-ext] skill candidate skipped: duplicate name "style-check" inside provider "mpd-ext:project-plane"
+(pass) F4: a duplicate project-plane skill name is attributed to the PROJECT entry that claims it [2.13ms]
+(pass) F5: a provider call with NO cwd serves nothing from the project plane (never process.cwd()) [1.19ms]
+(pass) F5: a host-wide extension is still served when the caller names no workspace [1.01ms]
+(pass) F6: mpd_ext_show redacts author-declared env VALUES in the echoed descriptor [1.58ms]
+(pass) F7: a CONFIG-disabled extension claims no role name, so the next claimant is exposed [2.17ms]
+(pass) F3: an enumeration failure is reported as an INCOMPLETE observation, never a cacheable empty catalog [0.41ms]
+(pass) F5: with no cwd a host-wide extension is SERVED, not silently shadowed by a guessed workspace [2.67ms]
+
+packages/mpd-ext-plugin/test/mcp.test.ts:
+(pass) publicToolName replicates the harness algorithm: verbatim, sanitized+hashed, truncated+hashed [1.73ms]
+(pass) childEnv inherits only the SDK safe list and never a credential-shaped parent variable [0.26ms]
+(pass) the client completes initialize -> initialized -> tools/list against the repo's own stdio MCP server [101.48ms]
+(pass) the client reports a non-JSON stdout line as a protocol error instead of dying [72.31ms]
+[mpd-ext] extension "fixture-ext" mcp server "fixture": 1 tool(s) published
+(pass) apply connects declared servers, publishes their tools before activation completes, and mpd_ext_show reports the state [68.93ms]
+[mpd-ext] extension "half-ext" mcp server "fixture" unavailable: mcp-client(fixture): the server process exited (code=3, signal=null)
+(pass) apply keeps the extension's pending line truthful while a server is disconnected [104.56ms]
+[mpd-ext] extension "with-mcp" mcp server "srv" unavailable: mcp-client(srv): initialize timed out after 500ms
+(pass) startup failure is contained: a dead server is unavailable with its stderr tail while its sibling still connects [135.04ms]
+(pass) a hanging server is time-boxed and the others still publish in parallel [467.29ms]
+(pass) a later tool-list change is swapped in, and a mid-list conflict rolls back to ZERO tools [84.51ms]
+(pass) a server-initiated tools/list_changed notification triggers a re-sync [105.14ms]
+(pass) a foreign inputSchema is projected for parameters while the wire schema stays untouched [81.19ms]
+(pass) an unsupported outputSchema drops the SCHEMA and keeps the tool, while an unprojectable inputSchema skips its tool [75.74ms]
+(pass) a non-object-rooted inputSchema is normalized onto an object root instead of being passed through [91.75ms]
+(pass) a public-name collision with an existing tool skips that tool and is recorded [73.81ms]
+(pass) tools/call maps content, structured content and isError onto the harness result contract [329.83ms]
+(pass) the child env carries no credential-shaped variable inherited from the parent, and the child is reaped on dispose [72.91ms]
+(pass) a disabled extension never spawns a child and reports state disabled [0.87ms]
+(pass) extensions.mcp.enabled=false connects nothing even for an enabled extension [0.60ms]
+(pass) a server's relative args and cwd resolve against the EXTENSION ROOT, not the dsh process cwd [84.37ms]
+(pass) the shipped example's stdio MCP server starts, lists its tool and answers a real call [77.37ms]
+(pass) the shipped example extension is discoverable, disabled, and contributes all four kinds [0.84ms]
+
+packages/mpd-ext-plugin/test/core.test.ts:
+
+packages/mpd-ext-plugin/test/mcp.test.ts:
+
+ 66 pass
+ 0 fail
+ 531 expect() calls
+Ran 66 tests across 4 files. [2.29s]

@@ -1,0 +1,258 @@
+{
+  "total": 36,
+  "flagged": 0,
+  "rows": [
+    {
+      "doc": "docs/extension-authoring-guide.md",
+      "docLine": 49,
+      "token": "packages/mpd-ext-plugin/src/registry.ts:678-685",
+      "status": "resolves",
+      "first": "  const refuseHostKind = (kind: \"mcp\" | \"roles\", index: number): boolean => {"
+    },
+    {
+      "doc": "docs/extension-authoring-guide.md",
+      "docLine": 61,
+      "token": "packages/mpd-ext-plugin/src/mcp-client.ts:69-85",
+      "status": "resolves",
+      "first": "export const INHERITED_ENV_VARS: readonly string[] ="
+    },
+    {
+      "doc": "docs/extension-authoring-guide.md",
+      "docLine": 63,
+      "token": "packages/mpd-ext-plugin/src/mcp-client.ts:87-97",
+      "status": "resolves",
+      "first": "/**"
+    },
+    {
+      "doc": "docs/extension-authoring-guide.md",
+      "docLine": 65,
+      "token": "packages/mpd-ext-plugin/src/mcp-client.ts:99-117",
+      "status": "resolves",
+      "first": "/**"
+    },
+    {
+      "doc": "docs/extension-authoring-guide.md",
+      "docLine": 75,
+      "token": "packages/mpd-ext-plugin/src/index.ts:641-658",
+      "status": "resolves",
+      "first": "        type: \"array\","
+    },
+    {
+      "doc": "docs/extension-authoring-guide.md",
+      "docLine": 95,
+      "token": "docs/extensions.md:524",
+      "status": "resolves",
+      "first": "- **No reload** — restart dsh; a failed MCP server is retried on the next boot."
+    },
+    {
+      "doc": "docs/extension-authoring-guide.md",
+      "docLine": 104,
+      "token": "packages/mpd-ext-plugin/src/index.ts:1041-1053",
+      "status": "resolves",
+      "first": "          steps: flow.steps.map((step) => ({"
+    },
+    {
+      "doc": "docs/extension-authoring-guide.md",
+      "docLine": 105,
+      "token": "packages/mpd-roles-plugin/src/index.ts:225-292",
+      "status": "resolves",
+      "first": "export function extensionRoles(ctx: Ctx, exec: unknown, warn: (line: string) => void): { roles: ResolvedRole[]; refused:"
+    },
+    {
+      "doc": "docs/extension-authoring-guide.md",
+      "docLine": 112,
+      "token": "packages/mpd-ext-plugin/src/mcp.ts:34",
+      "status": "resolves",
+      "first": "export type McpServerState = \"connecting\" | \"connected\" | \"unavailable\" | \"failed\" | \"disabled\""
+    },
+    {
+      "doc": "docs/extension-authoring-guide.zh-CN.md",
+      "docLine": 42,
+      "token": "packages/mpd-ext-plugin/src/registry.ts:678-685",
+      "status": "resolves",
+      "first": "  const refuseHostKind = (kind: \"mcp\" | \"roles\", index: number): boolean => {"
+    },
+    {
+      "doc": "docs/extension-authoring-guide.zh-CN.md",
+      "docLine": 54,
+      "token": "packages/mpd-ext-plugin/src/mcp-client.ts:69-85",
+      "status": "resolves",
+      "first": "export const INHERITED_ENV_VARS: readonly string[] ="
+    },
+    {
+      "doc": "docs/extension-authoring-guide.zh-CN.md",
+      "docLine": 55,
+      "token": "packages/mpd-ext-plugin/src/mcp-client.ts:87-97",
+      "status": "resolves",
+      "first": "/**"
+    },
+    {
+      "doc": "docs/extension-authoring-guide.zh-CN.md",
+      "docLine": 57,
+      "token": "packages/mpd-ext-plugin/src/mcp-client.ts:99-117",
+      "status": "resolves",
+      "first": "/**"
+    },
+    {
+      "doc": "docs/extension-authoring-guide.zh-CN.md",
+      "docLine": 66,
+      "token": "packages/mpd-ext-plugin/src/index.ts:641-658",
+      "status": "resolves",
+      "first": "        type: \"array\","
+    },
+    {
+      "doc": "docs/extension-authoring-guide.zh-CN.md",
+      "docLine": 82,
+      "token": "docs/extensions.md:524",
+      "status": "resolves",
+      "first": "- **No reload** — restart dsh; a failed MCP server is retried on the next boot."
+    },
+    {
+      "doc": "docs/extension-authoring-guide.zh-CN.md",
+      "docLine": 90,
+      "token": "packages/mpd-ext-plugin/src/index.ts:1041-1053",
+      "status": "resolves",
+      "first": "          steps: flow.steps.map((step) => ({"
+    },
+    {
+      "doc": "docs/extension-authoring-guide.zh-CN.md",
+      "docLine": 91,
+      "token": "packages/mpd-roles-plugin/src/index.ts:225-292",
+      "status": "resolves",
+      "first": "export function extensionRoles(ctx: Ctx, exec: unknown, warn: (line: string) => void): { roles: ResolvedRole[]; refused:"
+    },
+    {
+      "doc": "docs/extension-authoring-guide.zh-CN.md",
+      "docLine": 98,
+      "token": "packages/mpd-ext-plugin/src/mcp.ts:34",
+      "status": "resolves",
+      "first": "export type McpServerState = \"connecting\" | \"connected\" | \"unavailable\" | \"failed\" | \"disabled\""
+    },
+    {
+      "doc": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 12,
+      "token": "packages/mpd-ext-plugin/src/sdk.ts:113-146",
+      "status": "resolves",
+      "first": "export const MPD_EXT_CONTRACT = {"
+    },
+    {
+      "doc": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 22,
+      "token": "packages/mpd-ext-plugin/src/index.ts:701",
+      "status": "resolves",
+      "first": "      kept: { plane: record.kept.plane, root: record.kept.root },"
+    },
+    {
+      "doc": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 22,
+      "token": "packages/mpd-ext-plugin/src/index.ts:793",
+      "status": "resolves",
+      "first": "        for (const rejected of value.rejected) lines.push(`! rejected ${rejected.id} (${rejected.plane}): ${rejected.err"
+    },
+    {
+      "doc": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 22,
+      "token": "packages/mpd-ext-plugin/src/index.ts:916",
+      "status": "resolves",
+      "first": "        mcp: entry.mcp.map((server) => ({"
+    },
+    {
+      "doc": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 22,
+      "token": "packages/mpd-ext-plugin/src/index.ts:970",
+      "status": "resolves",
+      "first": "            id: flow.id,"
+    },
+    {
+      "doc": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 30,
+      "token": "packages/mpd-ext-plugin/src/mcp-client.ts:99-117",
+      "status": "resolves",
+      "first": "/**"
+    },
+    {
+      "doc": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 107,
+      "token": "packages/mpd-ext-plugin/src/sdk.ts:144-145",
+      "status": "resolves",
+      "first": "  projectRejectionReason:"
+    },
+    {
+      "doc": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 108,
+      "token": "packages/mpd-ext-plugin/src/registry.ts:678-685",
+      "status": "resolves",
+      "first": "  const refuseHostKind = (kind: \"mcp\" | \"roles\", index: number): boolean => {"
+    },
+    {
+      "doc": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 132,
+      "token": "packages/mpd-ext-plugin/src/mcp.ts:34",
+      "status": "resolves",
+      "first": "export type McpServerState = \"connecting\" | \"connected\" | \"unavailable\" | \"failed\" | \"disabled\""
+    },
+    {
+      "doc": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 216,
+      "token": "docs/extensions.md:524",
+      "status": "resolves",
+      "first": "- **No reload** — restart dsh; a failed MCP server is retried on the next boot."
+    },
+    {
+      "doc": "docs/extension-adaptation-report.md",
+      "docLine": 372,
+      "token": "packages/mpd-ext-plugin/src/index.ts:59-95",
+      "status": "resolves",
+      "first": " * CANONICAL NOTE — the second-adapter hazard. This is the ONE place that"
+    },
+    {
+      "doc": "docs/extension-adaptation-report.md",
+      "docLine": 373,
+      "token": "packages/mpd-ext-plugin/src/index.ts:59-80",
+      "status": "resolves",
+      "first": " * CANONICAL NOTE — the second-adapter hazard. This is the ONE place that"
+    },
+    {
+      "doc": "docs/extension-adaptation-report.md",
+      "docLine": 380,
+      "token": "packages/mpd-ext-plugin/src/mcp-client.ts:69-85",
+      "status": "resolves",
+      "first": "export const INHERITED_ENV_VARS: readonly string[] ="
+    },
+    {
+      "doc": "docs/extension-adaptation-report.md",
+      "docLine": 380,
+      "token": "packages/mpd-ext-plugin/src/mcp-client.ts:87-97",
+      "status": "resolves",
+      "first": "/**"
+    },
+    {
+      "doc": "docs/extension-adaptation-report.zh-CN.md",
+      "docLine": 176,
+      "token": "packages/mpd-ext-plugin/src/index.ts:59-95",
+      "status": "resolves",
+      "first": " * CANONICAL NOTE — the second-adapter hazard. This is the ONE place that"
+    },
+    {
+      "doc": "docs/extension-adaptation-report.zh-CN.md",
+      "docLine": 177,
+      "token": "packages/mpd-ext-plugin/src/index.ts:59-80",
+      "status": "resolves",
+      "first": " * CANONICAL NOTE — the second-adapter hazard. This is the ONE place that"
+    },
+    {
+      "doc": "docs/extension-adaptation-report.zh-CN.md",
+      "docLine": 184,
+      "token": "packages/mpd-ext-plugin/src/mcp-client.ts:69-85",
+      "status": "resolves",
+      "first": "export const INHERITED_ENV_VARS: readonly string[] ="
+    },
+    {
+      "doc": "docs/extension-adaptation-report.zh-CN.md",
+      "docLine": 184,
+      "token": "packages/mpd-ext-plugin/src/mcp-client.ts:87-97",
+      "status": "resolves",
+      "first": "/**"
+    }
+  ]
+}

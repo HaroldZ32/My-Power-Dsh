@@ -1,0 +1,36 @@
+### TODO items cited by the ledger
+196:- **T-53 [trap] A lane driver re-run without its output flag OVERWRITES another task's evidence.**
+273:- **T-51 [gap] The PACKED artifact ships a CLI that cannot run (reproduced by the captain 2026-09-16).**
+323:- **T-52 [trap] A terminal task's `output` cannot be repaired afterwards.** Measured 2026-09-16 (t19,
+
+### plan section 7 (deferred to next wave)
+## 7. Deferred to the NEXT wave (user directive, 2026-09-16)
+
+The user asked for these to be RECORDED now and HANDLED in the next wave — they are deliberately NOT
+in this wave's scope. Reproduce and fix them as the next wave's own deliverable, with the same
+evidence discipline (a real boot/run, never prose).
+
+**D-1 — the ready ENTRY task of a freshly approved team is not dispatched (t1 was never claimed).**
+Measured 2026-09-16: right after approval, `t1` (requirements, assignee Planner, ZERO dependencies,
+therefore ready) stayed `pending` with **attempt 0** across the captain's snapshots, while SEVEN
+members each woke, found nothing claimable and reported "no task assigned this turn" (Plan Reviewer,
+Reviewer, Senior Engineer, Architect, Deep Worker, Lead, Junior Engineer — one wasted turn each, zero
+claims). So the wave's entry point was never started by the scheduler, and the whole DAG stayed
+frozen behind it.
+Open questions for the next wave: does the scheduler dispatch a ready task at member-spawn time, or
+only on an idle edge? Is the FIRST wave of a team special (nothing has been dispatched yet, so no
+idle edge has ever fired)? Instrument the scheduler's ready-set and per-wake reason, then pin the
+behaviour with a self-test: approve a team holding ONE ready task and assert that a claim happens
+within N seconds WITHOUT any captain nudge. Fix direction: dispatch the ready set at approval/spawn
+time (not only on idle edges).
+
+**D-2 — a silence hold can latch BEFORE the first attempt and then refuses that first claim.**
+`f5dafd08…` latched with cause `silence` at 06:01:29Z — about a minute after approval, while every
+member was legitimately waiting on the entry task — and `claim_task` for t1 was refused with the
+watchdog's text. A PRESERVING hold that gates a team with ZERO attempts converts "nobody has started
+yet" into a wedge. Fix direction: require at least one attempt (or one heartbeat) before a silence
+hold can latch, or auto-release on a first-claim refusal, so the entry task of a new wave can never be
+blocked by it. (Same family as hold #6 in the memory store; the in-process config knob is not live —
+`.mpd/mpd.jsonc` only applies at the next dsh boot.)
+
+**D-3 — wake noise: members with nothing ready burn a turn each.** Seven idle wakes for zero work.

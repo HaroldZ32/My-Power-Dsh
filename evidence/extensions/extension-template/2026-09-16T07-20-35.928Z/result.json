@@ -1,0 +1,99 @@
+{
+  "ok": true,
+  "slug": "extension-template",
+  "sandbox": "/tmp/mpd-extension-template-JalSgq",
+  "subject": "templates/mpd-extension copied by `bun scripts/mpd-ext.mjs scaffold qa-template --with-mcp` into the sandbox host plane",
+  "arms": "scaffold (the copy, its file tree and the recorded enabled flip) | skill (the `skill` tool answers with the copy's SKILL.md) | flow (mpd_flow_show answers with the copy's flow, cross-referencing the copy's skill) | role (mpd_role_persona answers AND mpd_role_spawn really starts a child) | mcp (the copy's own stdio server publishes mcp__qa-template__describe_extension and answers a real call) | containment (no apply-crash signature, session + workspace isolation)",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0,
+      "tail": "fallback: { provider: deepseek-official, model: deepseek-v4-flash }\n              executionPrompt: \"Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny.\"\n\n[install-profile] wrote profile/ home patch/ presets(1) + web-compat shim @mpd-dsh/mpd\n[install-profile] done. Start with: dsh --profile mpd-headless   (the web preset selector will show the mpd preset)\n"
+    },
+    "scaffold": {
+      "ok": true,
+      "exit": 0,
+      "root": "/tmp/mpd-extension-template-JalSgq/run-home/.mpd/extensions/qa-template",
+      "templateId": "mpd-extension-template",
+      "templateEnabledFlagInRepo": false,
+      "sandboxEnabledFlag": true,
+      "copyFiles": [
+        "README.md",
+        "README.zh-CN.md",
+        "flows/qa-template-flow.json",
+        "mpd-ext.json",
+        "personas/qa-template-reviewer.md",
+        "server.mjs",
+        "skills/qa-template-skill/SKILL.md"
+      ],
+      "cliStdout": "[mpd-ext] scaffolded \"qa-template\" at /tmp/mpd-extension-template-JalSgq/run-home/.mpd/extensions/qa-template\n  copied 7 file(s) from templates/mpd-extension\n  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)\n  next: bun scripts/mpd-ext.mjs validate /tmp/mpd-extension-template-JalSgq/run-home/.mpd/extensions/qa-template",
+      "note": "the repo template is never modified: the copy is written into the sandbox HOME plane and only its `enabled` flag is flipped (the template ships enabled:false so it can never be discovered from the repo)"
+    },
+    "skill": {
+      "ok": true,
+      "called": true,
+      "succeeded": true,
+      "sawHeading": true,
+      "resultHead": "<skill_content name=\"qa-template-skill\">\n<skill_resources>\nBase directory for this skill: /tmp/mpd-extension-template-JalSgq/run-home/.mpd/extensions/qa-template/skills/qa-template-skill\nResolve relat"
+    },
+    "flow": {
+      "ok": true,
+      "called": true,
+      "succeeded": true,
+      "sawFlowId": true,
+      "sawSkillCrossReference": true,
+      "resultHead": "qa-template flow (qa-template-flow, extension qa-template)\nThe qa-template extension's first flow. Replace this procedure with the real one, or delete the flows directory and the flows entry in mpd-ext.json.\nwhen to use: Use when a task nee"
+    },
+    "role": {
+      "ok": true,
+      "personaCalled": true,
+      "personaSucceeded": true,
+      "spawnCalled": true,
+      "spawnSucceeded": true,
+      "sawRoleName": true,
+      "childAnswered": true,
+      "personaHead": "persona qa-template reviewer (1358 chars):\nYou are the qa-template reviewer, a read-only role contributed by the\nqa-template extension. You exist to check a change against this\nextension's own contrac"
+    },
+    "mcp": {
+      "ok": true,
+      "tool": "mcp__qa-template__describe_extension",
+      "offeredInRequest": true,
+      "offeredInHeader": true,
+      "called": true,
+      "succeeded": true,
+      "servedManifest": true,
+      "servedOwnRoot": true,
+      "servedFourKinds": true,
+      "resultHead": "{\n  \"id\": \"qa-template\",\n  \"root\": \"/tmp/mpd-extension-template-JalSgq/run-home/.mpd/extensions/qa-template\",\n  \"enabled\": true,\n  \"kinds\": [\n    \"skills\",\n    \"flows\",\n    \"mcp\",\n    \"roles\"\n  ]\n}",
+      "manifestHead": "{\n  \"apiVersion\": 1,\n  \"id\": \"qa-template\",\n  \"description\": \"The qa-template extension. Replace this sentence with what the extension contributes and when an agent should reach for it.\",\n  \"enabled\":"
+    },
+    "listed": {
+      "ok": true,
+      "sawCopy": true,
+      "resultHead": "mpd extensions: 2 (0 shadowed, 0 rejected)\n- qa-template [user/directory] enabled skills=1 flows=1 mcp=1 roles=1 (roles: qa-template reviewer)\n- mpd-ext-example [bundle/directory] disabled skills=1 flows=1 mcp=1 roles=0\n    not served: change-triage, change-triage-flow\n    pending contributes.mcp[0]"
+    },
+    "containment": {
+      "ok": true,
+      "exit": 0,
+      "durationMs": 5493,
+      "crashSignatures": [],
+      "offeredTemplateTools": [
+        "mcp__qa-template__describe_extension"
+      ],
+      "isolation": {
+        "ok": true,
+        "checked": 1,
+        "keys": [
+          "--tmp-mpd-extension-template-JalSgq-ws--"
+        ]
+      }
+    },
+    "isolationFinal": {
+      "ok": true,
+      "checked": 1,
+      "keys": [
+        "--tmp-mpd-extension-template-JalSgq-ws--"
+      ]
+    }
+  }
+}

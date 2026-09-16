@@ -1,0 +1,8 @@
+[agent-teams-dispatch] ok=true -> /root/dshProj/my-power-dsh/evidence/dsh-qa/agent-teams-dispatch/2026-09-16T07-37-01.195Z
+  installer: {"ok":true,"exit":0}
+  captainRun: {"ok":true,"exit":0,"tail":" team? The protocol says present results and delete the team unless the user wants to keep working. But the user said do exactly this and nothing else, and the probe may want the team to stay for inspection. Given \"nothing else\", I will not delete the team. I'll just re
+  tasks: {"a":"completed","b":"completed","total":2}
+  memberAssignments: {"count":2,"sessions":12,"labels":["agent-teams:dispatch-probe:Planner","agent-teams:dispatch-probe:Researcher"]}
+  secondBatchDispatched: {"ok":true}
+  assignmentDelivery: {"ok":true,"dependentAssignee":"Researcher"}
+[agent-teams-dispatch] PASS

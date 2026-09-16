@@ -1,0 +1,107 @@
+sandbox HOME=/tmp/tmp.K7zCyD7Pm2/home
+
+### guide §5 arm A: scaffold (no --with-mcp)
+  copied 7 file(s) from templates/mpd-extension (the mcp contribution and server.mjs were dropped)
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 0 mcp server(s)
+  next: bun scripts/mpd-ext.mjs validate /tmp/tmp.K7zCyD7Pm2/home/.mpd/extensions/my-extension
+exit=0
+
+### guide §5 step 1: validate
+[mpd-ext] validate /tmp/tmp.K7zCyD7Pm2/home/.mpd/extensions/my-extension (plane=user)
+  extension "my-extension": loadable
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 0 mcp server(s)
+[mpd-ext] ok
+exit=0
+
+### guide §5 step 2: list
+[mpd-ext] project plane: /root/dshProj/my-power-dsh/.mpd/extensions
+  (none)
+[mpd-ext] user plane: /tmp/tmp.K7zCyD7Pm2/home/.mpd/extensions
+  my-extension: disabled — 1 skill(s), 1 flow(s), 1 role(s), 0 mcp server(s)
+[mpd-ext] bundle plane: /root/dshProj/my-power-dsh/extensions
+  mpd-ext-example: disabled — 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+exit=0
+
+### guide §5 server smoke on the DEFAULT (three-kind) copy — server.mjs is expected to be absent by §5's own flag semantics
+node:internal/modules/cjs/loader:1503
+  throw err;
+  ^
+
+Error: Cannot find module '/tmp/tmp.K7zCyD7Pm2/home/.mpd/extensions/my-extension/server.mjs'
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1500:15)
+    at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)
+    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1116:12)
+    at Module._load (node:internal/modules/cjs/loader:1285:25)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+
+Node.js v24.16.0
+exit=1
+
+### guide §5 arm A': scaffold with --with-mcp
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  next: bun scripts/mpd-ext.mjs validate /tmp/tmp.K7zCyD7Pm2/home/.mpd/extensions/my-extension-mcp
+exit=0
+
+### guide §5 arm A': validate the four-kind copy
+  extension "my-extension-mcp": loadable
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  pending contributes.mcp[0]: pending: server "my-extension-mcp" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+[mpd-ext] ok
+exit=0
+
+### guide §5 server smoke on the four-kind copy
+{"jsonrpc":"2.0","id":1,"result":{"tools":[{"name":"describe_extension","description":"Report the id, root and contributed kinds of the extension that hosts this server, read live from its mpd-ext.json manifest.","inputSchema":{"type":"object","properties":{},"additionalProperties":false}}]}}
+exit=0
+
+### guide §5 arm B: cp -r templates/mpd-extension ~/.mpd/extensions/my-extension-copy + validate
+  extension "mpd-extension-template": loadable
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  pending contributes.mcp[0]: pending: server "mpd-extension-template" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+[mpd-ext] ok
+exit=0
+
+### AI doc §6 step 1-2: scaffold for-agents-skeleton --with-mcp + validate
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  next: bun scripts/mpd-ext.mjs validate /tmp/tmp.K7zCyD7Pm2/home/.mpd/extensions/for-agents-skeleton
+exit=0
+  extension "for-agents-skeleton": loadable
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  pending contributes.mcp[0]: pending: server "for-agents-skeleton" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+[mpd-ext] ok
+exit=0
+
+### AI doc §6 step 5: project-plane variant, run from a sandbox cwd so <repo>/.mpd is untouched
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 0 mcp server(s)
+  next: bun scripts/mpd-ext.mjs validate /tmp/tmp.K7zCyD7Pm2/proj/.mpd/extensions/for-agents-proj
+exit=0
+[mpd-ext] validate /tmp/tmp.K7zCyD7Pm2/proj/.mpd/extensions/for-agents-proj (plane=user)
+  extension "for-agents-proj": loadable
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 0 mcp server(s)
+[mpd-ext] ok
+exit=0
+/tmp/tmp.K7zCyD7Pm2/proj/.mpd/extensions/for-agents-proj
+
+### guide §6 / AI doc §7 offline gate commands
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  pending contributes.mcp[0]: pending: server "mpd-extension-template" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+[mpd-ext] ok
+exit=0
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  pending contributes.mcp[0]: pending: server "lint-mcp" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+[mpd-ext] ok
+exit=0
+  ok list sees the shipped example
+  ok no command prints usage or fails
+[mpd-ext] --self-test passed (52 checks)
+exit=0
+
+### leftovers check: <repo>/.mpd/extensions must not exist
+ls: cannot access '/root/dshProj/my-power-dsh/.mpd/extensions': No such file or directory
+
+walkthrough done

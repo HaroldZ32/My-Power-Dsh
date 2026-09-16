@@ -1,0 +1,10 @@
+# final hashes (src/dist unchanged since the run that produced the boot logs; the patch yml
+# was trimmed comment-only afterwards — rows re-verified by verify-rows-parity, exit 0)
+HEAD 1f38e3c1b8149cecc68f54fae1979f56e1ff2b0f
+eaf4b11816382250fd2887b54e73e8b7c88ad6ff886eac9314a0af3abc5e4eb3  packages/mpd-ext-plugin/src/index.ts
+96f3e530dbaef271482c4d79ea58cb3d7547476a4d0be9dd7c640d958ea0649c  packages/mpd-roles-plugin/src/index.ts
+c5c6f9e0619e36c4e59a283a9feaf3eaa0654d93efc4d4219059fde28c4a9bbe  packages/mpd-ext-plugin/dist/index.js
+dc803f5b98c2d2c51f062d4122c7b6a60e21ac075f055e6164220357369da5f0  packages/mpd-roles-plugin/dist/index.js
+3aef18d6c715246b77cee87bcacf98d32ec948e647201d05ac87de4583fc918b  packages/mpd-bundle/cordis.patch.yml
+88971bbe25b6397dbcc9270392f8fc3400c95f25c9290def3e0aa8a479aa7271  packages/mpd-ext-plugin/test/adapter-identity.test.ts
+da076b3673f7d17fdfabe603cca0ecf4e97aa8eb007a153152196a3e59b8a3fd  packages/mpd-roles-plugin/test/adapter-identity.test.ts

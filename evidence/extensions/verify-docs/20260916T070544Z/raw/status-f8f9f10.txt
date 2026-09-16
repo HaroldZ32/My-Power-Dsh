@@ -1,0 +1,73 @@
+### F8: greenOwner/t11 narration gone from the lifecycle lane
+no greenOwner token in extension-lifecycle.mjs
+
+### F9: the packed arm's own recorded facts
+{
+ "ok": true,
+ "packed": {
+  "ok": true,
+  "negativeControl": {
+   "falsifiable": true,
+   "packerExitGated": true,
+   "trees": {
+    "closed": {
+     "hasRow": true,
+     "hasPlugin": true,
+     "hasExtensions": true,
+     "ok": true
+    },
+    "no-plugin-package": {
+     "hasRow": true,
+     "hasPlugin": false,
+     "hasExtensions": true,
+     "ok": false
+    },
+    "no-extensions-root": {
+     "hasRow": true,
+     "hasPlugin": true,
+     "hasExtensions": false,
+     "ok": false
+    },
+    "no-mpd-ext-row": {
+     "hasRow": false,
+     "hasPlugin": true,
+     "hasExtensions": true,
+     "ok": false
+    }
+   }
+  }
+ }
+}
+
+### F10: the stderr arm's own recorded facts
+{
+ "ok": true,
+ "stderr": {
+  "vacuous": false,
+  "ok": true,
+  "cap": 2000,
+  "floodLength": 3053,
+  "reportedTailLength": 2000,
+  "headDropped": true,
+  "tailKept": true,
+  "reported": true,
+  "tailHead": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "stateHead": "extension qa-mcp-stderr [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-MimUIg/run-home/.mpd/extensions/qa-mcp-stderr\nsource: /tmp/mpd-extension-mcp-bridge-MimUIg/run-home/.mpd/extensions"
+ }
+}
+
+### the verification re-read the three lanes
+output.log
+raw
+result.json
+verify-closure.mjs
+verify-f9-and-repin.mjs
+verify-immutability.mjs
+verify-prober.mjs
+verify-template-lane.mjs
+
+### the template lane's green run
+{
+ "ok": true,
+ "arms": "scaffold (the copy, its file tree and the recorded enabled flip) | skill (the `skill` tool answers with the copy's SKILL.md) | flow (mpd_flow_show answers with the copy's flow, cross-referencing the copy's skill) | role (mpd_role_persona answers AND mpd_role_spawn really starts a child) | mcp (the copy's own stdio server publishes mcp__qa-template__describe_extension and answers a real call) | containment (no apply-crash signature, session + workspace isolation)"
+}

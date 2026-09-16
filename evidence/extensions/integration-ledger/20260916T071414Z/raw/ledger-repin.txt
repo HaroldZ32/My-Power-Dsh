@@ -1,0 +1,29 @@
+### VENDOR_LOCK diff: hunk + changed-line count
+@@ -20,3 +20,3 @@
+changed lines: 6
+
+### the skills change set (same commit as the re-pin)
+ M VENDOR_LOCK.json
+ M skills/dsh-qa/SKILL.md
+ M skills/dsh-qa/scripts/extension-lifecycle.mjs
+ M skills/dsh-qa/scripts/extension-mcp-bridge.mjs
+?? skills/dsh-qa/scripts/extension-template.mjs
+
+### plan section 5 gate table
+## 5. Gates (run on the frozen tree; the captain re-runs them on the merged tip)
+
+| Gate | Command | Expected |
+|---|---|---|
+| Vendor | `node scripts/verify-vendor.mjs` | exit 0, skills `treeSha` matches the single re-pin |
+| Docs parity | `node scripts/verify-docs-parity.mjs` | exit 0, `failed=0 violations=0` |
+| Rows | `node scripts/verify-rows-parity.mjs` | exit 0 |
+| Unit | `bun test packages` | 0 failures |
+| QA lanes | `bun run test:qa:all` | every lane exits 0, including the new template lane and the closure checker |
+| Extension CLI | `bun scripts/mpd-ext.mjs --self-test` + `validate templates/mpd-extension` + `validate extensions/mpd-ext-example` | exit 0; the negative control exits 1 |
+| Packer | `node scripts/pack-mpd.mjs` | exit 0; the closure check stays green and the template is NOT in the packed tree |
+| Mount | a real boot (sandboxed `DSH_HOME` + `HOME` + session cwd) | the F1 warn is ABSENT in a healthy boot; the template's four kinds load |
+| Evidence (D6) | `node evidence/extensions/debranding-probe/<UTC>/verify-debranding-full.mjs` | positive arm exits 0 listing every probed field; the mutated-snippet arm reports the mismatch instead of a green |
+
+`--dump-config` is never cited as load evidence (AGENTS.md §4).
+
+## 6. Evidence rules

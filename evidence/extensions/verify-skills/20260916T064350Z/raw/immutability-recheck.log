@@ -1,0 +1,9 @@
+verify-immutability — t7's snapshot, recomputed by the verifier
+  archived hashes-before.txt digest: 441c5ba89620c937f2908c1e9543cb2a063c2a14f32ecee36372b8f3e42d4124
+  archived hashes-after.txt  digest: 441c5ba89620c937f2908c1e9543cb2a063c2a14f32ecee36372b8f3e42d4124
+  expected (captain-quoted)         : 441c5ba89620c937f2908c1e9543cb2a063c2a14f32ecee36372b8f3e42d4124
+  files in the archived set: 356 (from 13 pre-existing directories)
+  recomputed digest         : 441c5ba89620c937f2908c1e9543cb2a063c2a14f32ecee36372b8f3e42d4124
+  modified=0 missing=0 added-since=17
+  digest matches the archive and the captain-quoted value: true
+  VERDICT: no pre-existing evidence file was modified or deleted by this verification pass

@@ -1,0 +1,12 @@
+$ bun scripts/mpd-ext.mjs scaffold demo-ext-with-a-very-long-identifier-1234 --dir /tmp/tmp.XbxG6tx8bY --with-mcp
+mpd-ext scaffold: warning: ^[A-Za-z0-9_-]{1,32}$ caps serverName at 32 characters, so the copy declares "demo-ext-with-a-very-long-identi" instead of "demo-ext-with-a-very-long-identifier-1234"
+[mpd-ext] scaffolded "demo-ext-with-a-very-long-identifier-1234" at /tmp/tmp.XbxG6tx8bY/demo-ext-with-a-very-long-identifier-1234
+  copied 7 file(s) from templates/mpd-extension
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  next: bun scripts/mpd-ext.mjs validate /tmp/tmp.XbxG6tx8bY/demo-ext-with-a-very-long-identifier-1234
+exit=0
+--- declared serverName ---
+demo-ext-with-a-very-long-identi
+--- validate the long-id copy ---
+  pending contributes.mcp[0]: pending: server "demo-ext-with-a-very-long-identi" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+[mpd-ext] ok

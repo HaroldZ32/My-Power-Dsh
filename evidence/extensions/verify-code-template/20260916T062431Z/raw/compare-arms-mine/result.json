@@ -1,0 +1,430 @@
+{
+  "task": "t5",
+  "attempt_id": "4bc52344-36d3-459e-852c-208122732a36",
+  "stamp": "20260916T061238Z",
+  "repo": "/root/dshProj/my-power-dsh",
+  "template_dir": "/root/dshProj/my-power-dsh/templates/mpd-extension",
+  "placeholder_token": "mpd-extension-template",
+  "arms": {
+    "with_mcp": {
+      "root": "/tmp/t5-evidence-QlFt8W/demo-ext",
+      "with_mcp": true,
+      "files": [
+        {
+          "path": "README.md",
+          "bytes": 5914,
+          "equal_to_template_modulo_rewrite": true
+        },
+        {
+          "path": "README.zh-CN.md",
+          "bytes": 5798,
+          "equal_to_template_modulo_rewrite": true
+        },
+        {
+          "path": "flows/demo-ext-flow.json",
+          "bytes": 1210,
+          "equal_to_template_modulo_rewrite": true
+        },
+        {
+          "path": "mpd-ext.json",
+          "bytes": 1007,
+          "equal_to_template_modulo_rewrite": true
+        },
+        {
+          "path": "personas/demo-ext-reviewer.md",
+          "bytes": 1361,
+          "equal_to_template_modulo_rewrite": true
+        },
+        {
+          "path": "server.mjs",
+          "bytes": 4243,
+          "equal_to_template_modulo_rewrite": true
+        },
+        {
+          "path": "skills/demo-ext-skill/SKILL.md",
+          "bytes": 802,
+          "equal_to_template_modulo_rewrite": true
+        }
+      ],
+      "missing": [],
+      "extra": [],
+      "differing": 0,
+      "leftover_token_files": [],
+      "tree_sha256": "234ba9118fe3146abcac2249567ca51fcf8b933caaf2046900196615939bf61c"
+    },
+    "plain": {
+      "root": "/tmp/t5-evidence-QlFt8W/demo-ext-plain",
+      "with_mcp": false,
+      "files": [
+        {
+          "path": "README.md",
+          "bytes": 5914,
+          "equal_to_template_modulo_rewrite": true
+        },
+        {
+          "path": "README.zh-CN.md",
+          "bytes": 5798,
+          "equal_to_template_modulo_rewrite": true
+        },
+        {
+          "path": "flows/demo-ext-plain-flow.json",
+          "bytes": 1234,
+          "equal_to_template_modulo_rewrite": true
+        },
+        {
+          "path": "mpd-ext.json",
+          "bytes": 749,
+          "equal_to_template_modulo_rewrite": true
+        },
+        {
+          "path": "personas/demo-ext-plain-reviewer.md",
+          "bytes": 1373,
+          "equal_to_template_modulo_rewrite": true
+        },
+        {
+          "path": "skills/demo-ext-plain-skill/SKILL.md",
+          "bytes": 820,
+          "equal_to_template_modulo_rewrite": true
+        }
+      ],
+      "missing": [],
+      "extra": [],
+      "differing": 0,
+      "leftover_token_files": [],
+      "tree_sha256": "fcc8514bd5cd5d908459f08b89f0dab543e6f109d339d90bf627ad431b7595e7"
+    }
+  },
+  "gates": [
+    {
+      "command": "bun scripts/mpd-ext.mjs --self-test",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "[mpd-ext] --self-test passed (41 checks)"
+    },
+    {
+      "command": "bun scripts/mpd-ext.mjs validate templates/mpd-extension",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)"
+    },
+    {
+      "command": "bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)"
+    },
+    {
+      "command": "node scripts/verify-docs-parity.mjs",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=36 failed=0 violations=0 exempt=16 — PASS"
+    }
+  ],
+  "checks": [
+    {
+      "id": "template-presence",
+      "label": "templates/mpd-extension exists and declares a placeholder id",
+      "status": "passed",
+      "detail": "id=\"mpd-extension-template\""
+    },
+    {
+      "id": "template-canonical",
+      "label": "the template manifest is in canonical JSON.stringify(…, 2) form (so both copy arms can be byte-compared)",
+      "status": "passed",
+      "detail": ""
+    },
+    {
+      "id": "template-four-kinds",
+      "label": "the template manifest declares all four contribution kinds",
+      "status": "passed",
+      "detail": "kinds=[skills,flows,roles,mcp]"
+    },
+    {
+      "id": "template-assets",
+      "label": "every declared asset exists on disk",
+      "status": "passed",
+      "detail": ""
+    },
+    {
+      "id": "template-validates",
+      "label": "validate templates/mpd-extension exits 0 with four kinds",
+      "status": "passed",
+      "detail": "exit=0"
+    },
+    {
+      "id": "example-unbroken",
+      "label": "the shipped example still validates (the template did not collide with it)",
+      "status": "passed",
+      "detail": "exit=0"
+    },
+    {
+      "id": "with-mcp-exit",
+      "label": "scaffold --with-mcp exits 0",
+      "status": "passed",
+      "detail": "exit=0 "
+    },
+    {
+      "id": "with-mcp-validates",
+      "label": "the --with-mcp copy passes validate",
+      "status": "passed",
+      "detail": "exit=0"
+    },
+    {
+      "id": "with-mcp-files",
+      "label": "with-mcp: the copy's file set is the template's, renamed",
+      "status": "passed",
+      "detail": "missing=[] extra=[]"
+    },
+    {
+      "id": "with-mcp-bytes",
+      "label": "with-mcp: every file byte-equal to the template modulo the token rewrite (7 files)",
+      "status": "passed",
+      "detail": "differing=0"
+    },
+    {
+      "id": "with-mcp-no-placeholder",
+      "label": "with-mcp: no file still carries the placeholder token",
+      "status": "passed",
+      "detail": "leftovers=[]"
+    },
+    {
+      "id": "plain-exit",
+      "label": "scaffold without the flag exits 0",
+      "status": "passed",
+      "detail": "exit=0 "
+    },
+    {
+      "id": "plain-validates",
+      "label": "the default copy passes validate",
+      "status": "passed",
+      "detail": "exit=0"
+    },
+    {
+      "id": "plain-three-kinds",
+      "label": "the default copy contributes three kinds and zero mcp servers",
+      "status": "passed",
+      "detail": ""
+    },
+    {
+      "id": "plain-drops-server",
+      "label": "the default copy drops server.mjs",
+      "status": "passed",
+      "detail": ""
+    },
+    {
+      "id": "plain-drops-manifest-block",
+      "label": "the default copy has no mcp block in its manifest",
+      "status": "passed",
+      "detail": ""
+    },
+    {
+      "id": "plain-keeps-server",
+      "label": "the --with-mcp copy keeps server.mjs",
+      "status": "passed",
+      "detail": ""
+    },
+    {
+      "id": "plain-files",
+      "label": "plain: the copy's file set is the template's, renamed",
+      "status": "passed",
+      "detail": "missing=[] extra=[]"
+    },
+    {
+      "id": "plain-bytes",
+      "label": "plain: every file byte-equal to the template modulo the token rewrite (6 files)",
+      "status": "passed",
+      "detail": "differing=0"
+    },
+    {
+      "id": "plain-no-placeholder",
+      "label": "plain: no file still carries the placeholder token",
+      "status": "passed",
+      "detail": "leftovers=[]"
+    },
+    {
+      "id": "derived-names",
+      "label": "every derived name is rewritten (id, serverName, skill dir, flow file, persona, role name, description)",
+      "status": "passed",
+      "detail": "id=demo-ext serverName=demo-ext"
+    },
+    {
+      "id": "negative-control",
+      "label": "a deliberately broken copy makes validate exit 1 with per-item errors",
+      "status": "passed",
+      "detail": "exit=1 reported=[typoKey,surprise,serverName,persona file does not exist,frontmatter] missing=[]"
+    },
+    {
+      "id": "not-a-discovery-root",
+      "label": "templates/ is not equal to and not under any of the three discovery roots",
+      "status": "passed",
+      "detail": "roots=[/root/dshProj/my-power-dsh/.mpd/extensions,/root/.mpd/extensions,/root/dshProj/my-power-dsh/extensions]"
+    },
+    {
+      "id": "list-unchanged",
+      "label": "`mpd-ext list` output is byte-identical to the pre-template baseline",
+      "status": "passed",
+      "detail": "baseline=/root/dshProj/my-power-dsh/evidence/extensions/template-scaffold/20260916T061238Z/raw/list-before-template.txt"
+    },
+    {
+      "id": "list-sees-example-only",
+      "label": "the bundle plane still discovers exactly the shipped example",
+      "status": "passed",
+      "detail": ""
+    },
+    {
+      "id": "packer-untouched",
+      "label": "scripts/pack-mpd.mjs is byte-unchanged (md5 vs the pre-change reading)",
+      "status": "passed",
+      "detail": "before=48423930ff3e7f2b17ec2176936e4ce9 after=48423930ff3e7f2b17ec2176936e4ce9"
+    },
+    {
+      "id": "packer-no-template-entry",
+      "label": "the packer's copy list carries no templates/ entry, so the template cannot be packed",
+      "status": "passed",
+      "detail": ""
+    },
+    {
+      "id": "inline-generator-gone",
+      "label": "the CLI carries no inline generator (no SCAFFOLD_SERVER, no inline asset writes)",
+      "status": "passed",
+      "detail": ""
+    },
+    {
+      "id": "template-is-the-source",
+      "label": "the CLI resolves the template directory as its only source",
+      "status": "passed",
+      "detail": ""
+    },
+    {
+      "id": "cli-self-test-negative",
+      "label": "the CLI self-test covers both arms and the negative control",
+      "status": "passed",
+      "detail": ""
+    },
+    {
+      "id": "server-stdlib-only",
+      "label": "server.mjs imports node stdlib only (no package.json, no dependency)",
+      "status": "passed",
+      "detail": "imports=[node:fs,node:path,node:url]"
+    },
+    {
+      "id": "server-answers",
+      "label": "server.mjs answers initialize / tools/list / tools/call over newline-delimited JSON-RPC",
+      "status": "passed",
+      "detail": "exit=0 lines=3"
+    },
+    {
+      "id": "copy-server-answers",
+      "label": "the scaffolded copy's server answers with the COPY id (the source carries no placeholder)",
+      "status": "passed",
+      "detail": "exit=0"
+    },
+    {
+      "id": "readme-pair",
+      "label": "the template README pair exists, switches both ways and the zh file carries real CJK",
+      "status": "passed",
+      "detail": ""
+    },
+    {
+      "id": "readme-states-flag",
+      "label": "the README pair states the --with-mcp semantics and that the default copy is a three-kind extension",
+      "status": "passed",
+      "detail": ""
+    },
+    {
+      "id": "gate:bun scripts/mpd-ext.mjs --self-test",
+      "label": "bun scripts/mpd-ext.mjs --self-test exits 0",
+      "status": "passed",
+      "detail": "[mpd-ext] --self-test passed (41 checks)"
+    },
+    {
+      "id": "gate:bun scripts/mpd-ext.mjs validate templates/mpd-extension",
+      "label": "bun scripts/mpd-ext.mjs validate templates/mpd-extension exits 0",
+      "status": "passed",
+      "detail": "  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)"
+    },
+    {
+      "id": "gate:bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example",
+      "label": "bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example exits 0",
+      "status": "passed",
+      "detail": "  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)"
+    },
+    {
+      "id": "gate:node scripts/verify-docs-parity.mjs",
+      "label": "node scripts/verify-docs-parity.mjs exits 0",
+      "status": "passed",
+      "detail": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=36 failed=0 violations=0 exempt=16 — PASS"
+    }
+  ],
+  "commands": [
+    {
+      "command": "bun scripts/mpd-ext.mjs validate /root/dshProj/my-power-dsh/templates/mpd-extension",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "[mpd-ext] validate /root/dshProj/my-power-dsh/templates/mpd-extension (plane=user) |   extension \"mpd-extension-template\": loadable |   contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s) |   pending contributes.mcp[0]: pending: server \"mpd-extension-template\" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state | [mpd-ext] ok"
+    },
+    {
+      "command": "bun scripts/mpd-ext.mjs validate /root/dshProj/my-power-dsh/extensions/mpd-ext-example",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "[mpd-ext] validate /root/dshProj/my-power-dsh/extensions/mpd-ext-example (plane=user) |   extension \"mpd-ext-example\": loadable |   contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s) |   pending contributes.mcp[0]: pending: server \"lint-mcp\" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state | [mpd-ext] ok"
+    },
+    {
+      "command": "bun scripts/mpd-ext.mjs scaffold demo-ext --dir /tmp/t5-evidence-QlFt8W --with-mcp",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "[mpd-ext] scaffolded \"demo-ext\" at /tmp/t5-evidence-QlFt8W/demo-ext |   copied 7 file(s) from templates/mpd-extension |   contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s) |   next: bun scripts/mpd-ext.mjs validate /tmp/t5-evidence-QlFt8W/demo-ext"
+    },
+    {
+      "command": "bun scripts/mpd-ext.mjs validate /tmp/t5-evidence-QlFt8W/demo-ext",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "[mpd-ext] validate /tmp/t5-evidence-QlFt8W/demo-ext (plane=user) |   extension \"demo-ext\": loadable |   contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s) |   pending contributes.mcp[0]: pending: server \"demo-ext\" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state | [mpd-ext] ok"
+    },
+    {
+      "command": "bun scripts/mpd-ext.mjs scaffold demo-ext-plain --dir /tmp/t5-evidence-QlFt8W",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "[mpd-ext] scaffolded \"demo-ext-plain\" at /tmp/t5-evidence-QlFt8W/demo-ext-plain |   copied 7 file(s) from templates/mpd-extension (the mcp contribution and server.mjs were dropped) |   contributes: 1 skill(s), 1 flow(s), 1 role(s), 0 mcp server(s) |   next: bun scripts/mpd-ext.mjs validate /tmp/t5-evidence-QlFt8W/demo-ext-plain"
+    },
+    {
+      "command": "bun scripts/mpd-ext.mjs validate /tmp/t5-evidence-QlFt8W/demo-ext-plain",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "[mpd-ext] validate /tmp/t5-evidence-QlFt8W/demo-ext-plain (plane=user) |   extension \"demo-ext-plain\": loadable |   contributes: 1 skill(s), 1 flow(s), 1 role(s), 0 mcp server(s) | [mpd-ext] ok"
+    },
+    {
+      "command": "bun scripts/mpd-ext.mjs validate /tmp/t5-evidence-QlFt8W/broken-copy",
+      "exitCode": 1,
+      "status": "failed",
+      "evidence": "[mpd-ext] validate /tmp/t5-evidence-QlFt8W/broken-copy (plane=user) |   extension \"broken-copy\": loadable |   contributes: 0 skill(s), 0 flow(s), 0 role(s), 0 mcp server(s) |   error descriptor.typoKey: unknown key \"typoKey\" |   error contributes.mcp[0].surprise: unknown key \"surprise\" |   error contributes.mcp[0].serverName: serverName is required and must match ^[A-Za-z0-9_-]{1,32}$"
+    },
+    {
+      "command": "bun scripts/mpd-ext.mjs list",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "[mpd-ext] project plane: /root/dshProj/my-power-dsh/.mpd/extensions |   (none) | [mpd-ext] user plane: /root/.mpd/extensions |   (none) | [mpd-ext] bundle plane: /root/dshProj/my-power-dsh/extensions |   mpd-ext-example: disabled — 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)"
+    },
+    {
+      "command": "bun scripts/mpd-ext.mjs --self-test",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "ok validate accepts templates/mpd-extension (got 0):  |   ok the template declares all four contribution kinds |   ok scaffold --with-mcp exits 0 (got 0):  |   ok scaffold wrote mpd-ext.json |   ok scaffold wrote skills/demo-ext-skill/SKILL.md |   ok scaffold wrote flows/demo-ext-flow.json"
+    },
+    {
+      "command": "bun scripts/mpd-ext.mjs validate /root/dshProj/my-power-dsh/templates/mpd-extension",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "[mpd-ext] validate /root/dshProj/my-power-dsh/templates/mpd-extension (plane=user) |   extension \"mpd-extension-template\": loadable |   contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s) |   pending contributes.mcp[0]: pending: server \"mpd-extension-template\" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state | [mpd-ext] ok"
+    },
+    {
+      "command": "bun scripts/mpd-ext.mjs validate /root/dshProj/my-power-dsh/extensions/mpd-ext-example",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "[mpd-ext] validate /root/dshProj/my-power-dsh/extensions/mpd-ext-example (plane=user) |   extension \"mpd-ext-example\": loadable |   contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s) |   pending contributes.mcp[0]: pending: server \"lint-mcp\" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state | [mpd-ext] ok"
+    }
+  ],
+  "failed": [],
+  "passed": 39,
+  "total": 39
+}

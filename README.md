@@ -117,7 +117,14 @@ A standardized way for **other packages** to add capability without touching thi
 - a developer CLI — `bun scripts/mpd-ext.mjs validate|scaffold|list`.
 
 A disabled reference extension ships in
-[`extensions/mpd-ext-example/`](./extensions/README.md).
+[`extensions/mpd-ext-example/`](./extensions/README.md), and the copy-me skeleton — all four kinds,
+with a placeholder id the scaffold rewrites — lives in
+[`templates/mpd-extension/`](./templates/mpd-extension/README.md).
+
+**Start here:** [the extension authoring guide](./docs/extension-authoring-guide.md) answers when to
+write an extension, where it goes and how to verify it;
+[`EXTENSIONS-FOR-AGENTS.md`](./EXTENSIONS-FOR-AGENTS.md) is the machine contract for an agent that
+writes one; the field-level reference stays in [`docs/extensions.md`](./docs/extensions.md).
 
 ### Built to stay maintainable
 
@@ -215,6 +222,8 @@ workmate library (`~/.mpd/workmate/`) and each workspace's `.mpd/` state stay yo
 | Doc | For |
 |---|---|
 | [`docs/user-guide.md`](./docs/user-guide.md) | Install/uninstall, the preset, tools, specialists, workmates, teams, the GUI, configuration, extensions, troubleshooting |
+| [`docs/extension-authoring-guide.md`](./docs/extension-authoring-guide.md) | Writing an extension: when it is the right instrument, the one plane-selection rule, the isolation posture, the lifecycle matrix, the template walkthrough, distribution, troubleshooting |
+| [`EXTENSIONS-FOR-AGENTS.md`](./EXTENSIONS-FOR-AGENTS.md) | The machine contract for an agent: kind-by-kind requirements, a validated manifest skeleton, error signatures, refusals |
 | [`docs/extensions.md`](./docs/extensions.md) | The extension developer guide: the contract, the four kinds, the CLI |
 | [`docs/tui.md`](./docs/tui.md) | The DSH-TUI edition: install, TUI-native surfaces, admission + distribution artifacts, compatibility ledger, NOT-CLAIMED list |
 | [`docs/architecture.md`](./docs/architecture.md) | How the bundle is assembled and mounts: boot chain, plugin inventory, state layout |

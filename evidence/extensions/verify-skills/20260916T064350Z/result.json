@@ -1,0 +1,99 @@
+{
+  "task": "t11",
+  "kind": "verification",
+  "attempt_id": "f488e6cf-997c-4899-b5bc-897ae67d869c",
+  "stamp": "20260916T064350Z",
+  "subject": "adversarial verification of t6 (packer closure), t7 (F7 prober + F6 boundary index) and t8 (skills pass: F8/F9/F10 + template lane + the single re-pin)",
+  "method": "every claim re-run in a FRESH sandbox by the verifier; no author transcript was accepted as evidence; the two falsifiability fixtures were built by the VERIFIER (an omission fixture cut from the real packer, a one-byte mutation of one probed field in a temp copy of the shipped example); the template lane's live claims were re-read from the RAW concatenated-zstd session container, bound per call id",
+  "result": "all seven acceptance items reproduced; zero unreproducible claims",
+
+  "item_1_closure_controls": {
+    "verdict": "passed",
+    "checks": "7/7 (raw/verify-closure.json)",
+    "positive_control": "the real tree: exit 0 — '17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; allowlist carries no templates/ entry'",
+    "verifier_fixture": "a temp copy of the REAL scripts/pack-mpd.mjs with the single entry \"mpd-ext-plugin\", removed (17 bytes; array anchor intact) — the historical F-T7-1 omission class",
+    "negative_control": "exit 1, names mpd-ext-plugin AND the OMISSION class (raw/closure-negative-omission.txt)",
+    "isolation_of_the_red": "the same bytes restored into another temp copy are green (exit 0) — the red came from the omission, not from the fixture path",
+    "checkers_own_arms": "exit 0, 6/6 arms (raw/closure-selftest.txt)"
+  },
+  "item_2_prober": {
+    "verdict": "passed",
+    "checks": "7/7 (raw/verify-prober.json)",
+    "positive_arm": "exit 0, findings=0; probe list length 26 == totals.probes 26, covering skills[name,description] flows[id,title,description,whenToUse] roles[name,description,persona] mcp[serverName,transport,command,args] (raw/prober-positive.json)",
+    "verifier_mutation": "a TEMP copy of extensions/mpd-ext-example with ONE byte added to roles[0].name ('Code Reviewer' -> 'Code ReviewerX')",
+    "negative_arm": "exit 1, findings=1, the finding names the mutated value AND the field roles.name (raw/prober-mutated.json + raw/prober-mutated.stdout.txt)",
+    "probers_own_mutation_arm": "exit 0, self-test PASS over 5 arms including the mcp.serverName mutation the OLD prober never probed"
+  },
+  "item_3_template_lane": {
+    "verdict": "passed",
+    "checks": "9/9 (raw/verify-template-lane.json)",
+    "lane_rerun": "bun skills/dsh-qa/scripts/extension-template.mjs -> exit 0, fresh evidence dir evidence/extensions/extension-template/2026-09-16T06-44-38.506Z/ (sandbox workspace key --tmp-mpd-extension-template-fCsF3O-ws--, crashSignatures [], isolation ok)",
+    "session_log_read": "decoded the RAW container raw/template.session.jsonl.zstd with the repo's own session-evidence.mjs: 25 zstd frames -> 51 records, tornStart undefined; every claim bound to its OWN call id",
+    "claims": {
+      "skill_load": "call_template_1, non-error; head `<skill_content name=\"qa-template-skill\">`",
+      "flow": "call_template_2, non-error; 'qa-template flow (qa-template-flow, extension qa-template)'",
+      "role_persona": "call_template_3, non-error; 'persona qa-template reviewer (1358 chars)'",
+      "role_spawn": "call_template_4, non-error; the spawned child's own result carries QA-TEMPLATE-CHILD-OK",
+      "mcp_tool_call": "call_template_5, non-error result carrying the extension's own describe payload (id qa-template, root <sandbox>/.mpd/extensions/qa-template, enabled)",
+      "mcp_tool_offered": "mcp__qa-template__describe_extension appears in the harness request/header tool list (100 tools offered)",
+      "ext_list": "mpd_ext_list non-error, names qa-template"
+    },
+    "prose_is_not_evidence": "the verdicts come from tool/call + non-error tool/result records only; the lane's own result.json was NOT read for the verdict"
+  },
+  "item_4_f9_falsifiability": {
+    "verdict": "passed",
+    "checks": "part of 17/17 in raw/verify-f9-and-repin.json",
+    "verifier_fixtures": "four packed trees built by the VERIFIER (closed; missing plugin package; missing extensions root; missing mpd-ext row), facts derived with the shipped packedStateOf(), verdicts from the shipped packedStateOk()",
+    "results": "closed=true; every missing fact=false; packExit=1=false even with all assets present",
+    "vacuity_of_the_retired_shape": "re-enacting the archived predicate `packRun.status === 0 && hasRow && (hasPlugin && hasExtensions ? true : red)` returns a TRUTHY value on the no-extensions tree while the shipped predicate returns false — the F9 fix is real, not cosmetic",
+    "lane_driver": "packedNegativeDriver() -> falsifiable=true, packerExitGated=true, all four fixture trees as expected"
+  },
+  "item_5_single_repin": {
+    "verdict": "passed",
+    "verify_vendor": "node scripts/verify-vendor.mjs -> exit 0 '[verify-vendor] PASS' (raw/repin-verify-vendor.txt)",
+    "entry_level_diff": "working tree vs `git show HEAD:VENDOR_LOCK.json`: exactly ONE asset entry changed — assets.skills, fileCount 317 -> 318, treeSha 7a48fdad90cc30f9c1e7… -> a8ba96b8108b2df3cce7…; every other asset entry byte-identical (raw/repin-entry-diff.json)",
+    "no_second_repin": "no other asset entry changed; one before value and one after value for the skills asset = one re-pin",
+    "same_change_set": "the uncommitted working tree carries the 4 skills/** paths (M skills/dsh-qa/SKILL.md, M skills/dsh-qa/scripts/extension-lifecycle.mjs, M skills/dsh-qa/scripts/extension-mcp-bridge.mjs, ?? skills/dsh-qa/scripts/extension-template.mjs) together with M VENDOR_LOCK.json"
+  },
+  "item_6_lane_self_tests": {
+    "verdict": "passed",
+    "runs": [
+      { "lane": "extension-isolation.mjs --self-test", "exit": 0 },
+      { "lane": "extension-lifecycle.mjs --self-test", "exit": 0 },
+      { "lane": "extension-mcp-bridge.mjs --self-test", "exit": 0 },
+      { "lane": "extension-template.mjs --self-test", "exit": 0 },
+      { "lane": "verify-pack-closure.mjs --self-test", "exit": 0 },
+      { "lane": "verify-debranding-full.mjs --self-test", "exit": 0 }
+    ],
+    "raw": "raw/selftest-*.txt"
+  },
+
+  "probe_report_overwrite_incident": {
+    "what_happened": "while starting item 2 I ran the prober WITHOUT --json-out; the prober defaults its probe-list target to its own evidence dir, so my run rewrote evidence/extensions/debranding-probe/20260916T061807Z/probe-report.json (mtime 14:43:27; t7's other files 14:20-14:21)",
+    "rule_breached": "the wave's 'pre-existing evidence is immutable' rule",
+    "impact_bounds_measured": [
+      "the report has NO timestamp/metadata keys (top-level: prober, supersedes, supersededProberCoverage, fieldInventory, kinds, targets, probeList, totals, findings, claim), so its content is a pure function of its inputs",
+      "my run's STDOUT is byte-identical to t7's archived raw-probe.out (diff clean apart from the json-out path line): same 26 probes / 15 quoted / 11 not-quoted / 0 findings on the same 2 targets",
+      "the probed inputs are untouched: templates/mpd-extension/{mpd-ext.json,skills/*/SKILL.md,flows/*.json,personas/*.md} all carry mtime 14:13:18 (t5's creation; t19 edited only the two README files) and extensions/mpd-ext-example/** is git-clean",
+      "two consecutive runs into different --json-out paths produced byte-identical JSON (raw/prober-positive.json vs raw/prober-determinism-2.json)"
+    ],
+    "residual_honestly_stated": "t7 recorded the prober's SOURCE hash (a8d1673c…) but not the original probe-report.json bytes, so byte-identity with the original cannot be demonstrated; content identity follows from the four bounds above",
+    "corrective_action": "every remaining prober invocation in t11 used --json-out into this evidence dir; the recomputation below proves no OTHER pre-existing evidence file changed",
+    "captain_ruling": "accepted as disclosed, no rollback, recorded as friction item T-53 in .mpd/TODO.md (drivers should refuse to overwrite an existing path or default to a temp target; every evidence artifact should carry its digest in the task result)"
+  },
+  "evidence_immutability_recheck": {
+    "verdict": "passed",
+    "basis": "t7's own snapshot files in evidence/extensions/boundary-index/ (hashes-before.txt, hashes-after.txt, pre-existing-dirs.txt)",
+    "archive_digests": "hashes-before.txt and hashes-after.txt BOTH hash to 441c5ba89620c937f2908c1e9543cb2a063c2a14f32ecee36372b8f3e42d4124 — the value the captain quoted",
+    "recomputed": "re-hashing the 356 snapshot files and re-serializing the same order reproduces 441c5ba89620c937f2908c1e9543cb2a063c2a14f32ecee36372b8f3e42d4124 exactly: modified=0, missing=0",
+    "added_since_snapshot": "17 new files (legitimate new sub-run directories written by the owning tasks, e.g. the fresh template-lane and lifecycle/bridge runs); reported, not a violation",
+    "raw": "raw/immutability-recheck.json + raw/immutability-recheck.log"
+  },
+  "verifier_side_notes": [
+    "My first closure/prober driver runs aborted on my own import typo (spawnSync imported from node:fs); fixed and re-run — no author-side artefact was involved.",
+    "My first re-enactment of the RETIRED F9 predicate used the no-mpd-ext-row tree, where it is correctly false; the vacuity lives on the no-extensions/no-plugin trees, where the `&& \"red\"` branch is truthy. The corrected contrast is the one recorded above.",
+    "The environment-level finding from t19/t21 (the AGENTS.md §4 Extension-CLI gate is RED in a packed tree: the packer ships packages/<pkg>/dist and never src/) is NOT re-verified here; it is already measured in evidence/extensions/template-scaffold/20260916T063710Z/raw/packed-tree-probe.json and is routed to the docs task."
+  ],
+  "findings": [],
+  "unreproducible_claims": []
+}

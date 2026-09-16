@@ -1,0 +1,154 @@
+# t7 evidence — F7 corrected debranding prober + F6 boundary index
+# utc: 20260916T061807Z
+
+===== evidence/extensions/boundary-index/INDEX.md (9101 bytes) =====
+# Boundary index — evidence produced before `c239407`
+
+**Written:** 2026-09-16 (extension wave, task t7, F6).
+**Scope:** every evidence directory under `evidence/extensions/` plus the neighbouring
+`evidence/mpd-ext-debranding/`.
+
+## Why this file exists (F6)
+
+The extension interface was rewritten by commit
+`c239407186e93a8c1d975caad5888a45f72dfc43` — *"fix(ext): close the v0.9.1 review findings F1-F7
+in the extension interface"*, committed **2026-09-15T09:17:55+08:00**
+(= `2026-09-15T01:17:55Z`).
+
+Evidence recorded **before** that commit was measured against the *previous* extension code. Its
+PASS verdicts are therefore **not present-day claims**: they are historical records of a code
+revision that no longer exists. Nothing in this wave re-ran them, and **nothing inside them was
+edited, moved or deleted** — they are immutable for the whole wave, and a correction belongs
+beside an original, never inside it. This index exists so a later reader can tell, from disk
+alone, which directories carry a claim that is still load-bearing today and which carry only a
+historical one.
+
+## The immutability rule, stated plainly
+
+- **The stale directories were NOT re-run in this wave.** No command in this wave executed any
+  script inside them. The only operation performed on them was *reading* (for this index) and
+  *hashing* (for the before/after proof).
+- **Nothing inside them was edited, rewritten, moved or deleted.** The proof is the before/after
+  file-hash pair recorded in `evidence/extensions/debranding-probe/<UTC>/result.json`
+  (`boundaryProof.before` / `boundaryProof.after`, plus the raw snapshots
+  `hashes-before.txt` / `hashes-after.txt` in this directory): every file that existed in these
+  directories when t7 started still exists with the same sha256 when t7 finished.
+- Files that *appear* inside a listed directory during the wave belong to a **new, separately
+  timestamped sub-run** written by that directory's owning task. A new sub-run is not a rewrite
+  of an existing record; the pre-existing files are what the hash pair covers.
+
+## How "predates `c239407`" was measured
+
+Two independent facts are recorded per directory, because they can disagree:
+
+1. **Git tree test (authoritative).** `git ls-tree -r c239407 -- <dir>` — does the directory exist
+   in the boundary commit's tree at all? `absent` means the directory entered the repository
+   *after* `c239407` and therefore describes code at or after the rewrite.
+2. **Directory-name timestamp.** The UTC stamp the directory is named after (or, for the
+   narrative-named directories, the newest commit that touched it).
+
+Where the two disagree, the disagreement is called out explicitly below rather than smoothed
+over: a directory can be *named* before the boundary and still have *entered git* after it.
+
+## The inventory
+
+### A. Pre-existing directories that EXIST in `c239407`'s tree
+
+These were present when the extension interface was rewritten, so their sub-runs at or before the
+boundary describe the pre-rewrite code.
+
+| Directory | Timestamp(s) | Files now | Sub-runs inside `c239407` | Present-day claim it can still support |
+|---|---|---|---|---|
+| `evidence/extensions/extension-lifecycle/` | 8 sub-runs `2026-09-14T17:29…18:14Z`, 1 `2026-09-15T01:16:15Z`, 6 `2026-09-16T04:43…05:03Z` | 158 | the 8 `2026-09-14` sub-runs (12,12,2,12,12,12,12,12 files). The `2026-09-15T01:16:15Z` sub-run is **named** before the boundary but is **absent** from `c239407`'s tree — it entered git after it | **Historical only** for the 9 pre-boundary sub-runs: they show the interface's lifecycle lane as it behaved on 2026-09-14 plus one run 90 s before the rewrite. The `2026-09-16` sub-runs post-date the rewrite and are separate records |
+| `evidence/extensions/extension-mcp-bridge/` | 8 sub-runs `2026-09-14T17:31…17:58Z`, 6 `2026-09-16T04:44…05:04Z` | 56 | the 8 `2026-09-14` sub-runs (4 files each) | **Historical only** for the 8 pre-boundary sub-runs: the MCP bridge as it behaved before the rewrite. Several carry `"ok": false` — that is the pre-rewrite state, not a present-day defect |
+| `evidence/extensions/mcp-bridge-framing/` | `20260914T171058Z` | 4 | 4 files | **Still usable as a record of the framing contract** measured on 2026-09-14; it is frozen (untouched since `4bc2157`) and was never re-verified against the post-rewrite code |
+| `evidence/extensions/mcp-bridge-gates/` | `20260914T171058Z` | 4 | 4 files | **Still usable** for the same reason; carries `"verdict": "pass"` from 2026-09-14 — a historical verdict, NOT a present-day one |
+| `evidence/extensions/registered-tool-schemas/` | `20260914T171058Z` | 3 | 3 files | **Still usable** as the pre-rewrite tool-schema snapshot (`verdict: pass, failed: 0`); frozen, not re-run |
+| `evidence/extensions/roles-wiring/` | `2026-09-14T170418Z`, `2026-09-14T171119Z-parity` | 7 | 7 files | **Still usable** as the record that extension roles joined the specialist roster (`subject: "Mount mpd-ext in the bundle patch and let extension roles join the specialist roster"`); pre-rewrite, frozen |
+| `evidence/extensions/sanitizer-crosscheck/` | `20260914T171058Z` | 3 | 3 files | **Still usable** as the pre-rewrite sanitizer cross-check (`verdict: pass`); frozen, not re-run |
+| `evidence/extensions/t7-verify/` | `20260914T174828Z`, `20260916T044344Z`, `20260916T045829Z`, `20260916T050334Z` | 67 | only `20260914T174828Z` (26 files) | **Historical only** for `20260914T174828Z`. The three `2026-09-16` sub-runs post-date the rewrite and are separate records |
+
+### B. Directories ABSENT from `c239407`'s tree (they post-date the boundary)
+
+| Directory | Timestamp(s) | Files | Newest commit | What it is |
+|---|---|---|---|---|
+| `evidence/extensions/v0.9.1-defect-fixes/` | `20260915T011354Z` | 18 | `49828bf` @ `2026-09-15T09:18:14+08:00` | Recorded **19 seconds after** `c239407` and named for the same work: this is the evidence *of* the rewrite, not evidence invalidated by it. Present-day-usable as a description of that change |
+| `evidence/extensions/t12-integration/` | `20260916T052836Z`, `20260916T053019Z` | 7 | `79b9b1c` | A **previous** wave's integration record. Post-boundary; not invalidated by it |
+| `evidence/extensions/t13-repair/` | `20260916T045324Z` | 16 | `f90ad6c` | A **previous** wave's repair record (`verdict: "BOTH RED ARMS CLOSED; the wave's two real lanes now exit 0"`). Post-boundary |
+| `evidence/mpd-ext-debranding/20260915T074904Z/` | `20260915T074904Z` | 11 | `a647d47` @ `2026-09-15T17:57:07+08:00` | The **superseded de-branding prober** (`verdict: "passed"`). This is F7's subject: its printed claim ("quoted snippets match the shipped example verbatim") was broader than its probe — it read only 6 fields (skill name/description, four flow fields) and never touched the role/persona or mcp snippets. **Left byte-identical**; the correction lives in `evidence/extensions/debranding-probe/<UTC>/` |
+| `evidence/mpd-ext-debranding/captain-verify/` | narrative (2 logs) | 2 | `a647d47` | The captain's own re-verification of that prober. Post-boundary, immutable, not re-run |
+
+### C. Directories created BY THIS WAVE (not pre-existing)
+
+| Directory | Owner | Notes |
+|---|---|---|
+| `evidence/extensions/f1-adapter-identity/` | t4 / t10 | this wave |
+| `evidence/extensions/template-scaffold/` | t5 | this wave |
+| `evidence/extensions/pack-closure-check/` | t6 | this wave |
+| `evidence/extensions/debranding-probe/` | t7 | this wave (F7 correction) |
+| `evidence/extensions/boundary-index/` | t7 | this wave (this index) |
+
+These are excluded from the before/after immutability proof by definition: they did not exist
+before the wave, so they are not "pre-existing evidence directories". They are listed here only
+so that the inventory above is complete.
+
+## Two traps a later reader should not fall into
+
+1. **`evidence/extensions/t7-verify/`, `t12-integration/` and `t13-repair/` are NOT this wave's
+   t7, t12 and t13.** They are records of a *previous* wave, kept under task-id-like names. This
+   wave's t7 owns `debranding-probe/` and `boundary-index/`; this wave's t12 and t13 own
+   `verify-docs/` and (a review with no write scope) respectively. Do not read a task id off a
+   directory name.
+2. **A sub-run's own UTC stamp is not its commit date.** `evidence/extensions/extension-lifecycle/2026-09-15T01-16-15.149Z`
+   is stamped ~90 seconds *before* `c239407`, yet it is absent from that commit's tree — it was
+   written to disk first and committed afterwards. The git tree test is the authoritative one.
+
+## What this index does NOT claim
+
+- It does **not** re-verify anything. No stale directory was re-run, and no verdict in them is
+  restated as a present-day result.
+- It does **not** claim the pre-boundary runs would fail today. It claims only that they describe
+  a code revision that `c239407` replaced, so a present-day claim needs a present-day run.
+- It does **not** assert the file counts are final: a directory's owning task may add a new,
+  separately stamped sub-run later in the wave. The hash proof covers the files that existed when
+  t7 ran.
+
+===== boundary hash proof =====
+pre-existing dirs:
+evidence/extensions/extension-lifecycle/
+evidence/extensions/extension-mcp-bridge/
+evidence/extensions/mcp-bridge-framing/
+evidence/extensions/mcp-bridge-gates/
+evidence/extensions/registered-tool-schemas/
+evidence/extensions/roles-wiring/
+evidence/extensions/sanitizer-crosscheck/
+evidence/extensions/t12-integration/
+evidence/extensions/t13-repair/
+evidence/extensions/t7-verify/
+evidence/extensions/v0.9.1-defect-fixes/
+evidence/mpd-ext-debranding/20260915T074904Z/
+evidence/mpd-ext-debranding/captain-verify/
+before snapshot sha256: 441c5ba89620c937f2908c1e9543cb2a063c2a14f32ecee36372b8f3e42d4124  files: 356
+after  snapshot sha256: 441c5ba89620c937f2908c1e9543cb2a063c2a14f32ecee36372b8f3e42d4124  files: 356
+comparison (BEFORE file set only): modified=0 deleted=0 added=0 -> PROOF: no pre-existing evidence file was modified or deleted
+
+===== prober: positive run (exit 0) =====
+[verify-debranding-full] field inventory: skills(name/description)  flows(id/title/description/whenToUse)  roles(name/description/persona)  mcp(serverName/transport/command/args)
+[verify-debranding-full] target mpd-ext-example [extensions/mpd-ext-example] artifacts: skills=1 flows=1 roles=1 mcp=1
+[verify-debranding-full]   field-probes: 13  quoted-verbatim: 13  not-quoted: 0  (all fields must be quoted)
+[verify-debranding-full] target mpd-extension-template [templates/mpd-extension] artifacts: skills=1 flows=1 roles=1 mcp=1
+[verify-debranding-full]   field-probes: 13  quoted-verbatim: 2  not-quoted: 11  (unquoted fields are reported, not claimed)
+[verify-debranding-full]   not-quoted: skills.name [templates/mpd-extension/skills/mpd-extension-template-skill/SKILL.md], skills.description [templates/mpd-extension/skills/mpd-extension-template-skill/SKILL.md], flows.id [templates/mpd-extension/flows/mpd-extension-template-flow.json], flows.title [templates/mpd-extension/flows/mpd-extension-template-flow.json], flows.description [templates/mpd-extension/flows/mpd-extension-template-flow.json], flows.whenToUse [templates/mpd-extension/flows/mpd-extension-template-flow.json], roles.name [templates/mpd-extension/mpd-ext.json], roles.description [templates/mpd-extension/mpd-ext.json], roles.persona [templates/mpd-extension/mpd-ext.json], mcp.serverName [templates/mpd-extension/mpd-ext.json], mcp.args [templates/mpd-extension/mpd-ext.json]
+[verify-debranding-full] probed 26 field-probes (skills, flows, roles, mcp) on 2 targets; 15 quoted verbatim, 11 reported not-quoted; 0 finding(s). No claim is made about a field this prober did not probe.
+[verify-debranding-full] probe list written to evidence/extensions/debranding-probe/20260916T061807Z/probe-report.json
+===== prober: --self-test (exit 0) =====
+[verify-debranding-full] self-test PASS - positive-control (real example + template) :: 26 field-probes, 0 findings
+[verify-debranding-full] self-test PASS - F7 coverage arm (superseded prober's probe scope) :: old probe = [flows.description, flows.id, flows.title, flows.whenToUse, skills.description, skills.name] ; uncovered by the old probe = [mcp.args, mcp.command, mcp.serverName, mcp.transport, roles.description, roles.name, roles.persona]
+[verify-debranding-full] self-test PASS - mutation (flow.whenToUse) :: findings=1 names-the-field=true example-quoted 13 -> 12 (expected -1)
+[verify-debranding-full] self-test PASS - mutation (role.description — NEVER probed by the old prober) :: findings=1 names-the-field=true example-quoted 13 -> 12 (expected -1)
+[verify-debranding-full] self-test PASS - mutation (mcp.serverName — NEVER probed by the old prober) :: findings=1 names-the-field=true example-quoted 13 -> 12 (expected -1)
+[verify-debranding-full] self-test PASS: 5/5 arms
+===== verify commands =====
+1) node evidence/extensions/debranding-probe/20260916T061807Z/verify-debranding-full.mjs -> exit 0
+2) node -e '...INDEX.md exists + length...' -> exit 0 (9075 bytes)
+3) node scripts/verify-docs-parity.mjs -> exit 0 ([verify-docs-parity] pairs=35 failed=0 violations=0 exempt=16 - PASS)

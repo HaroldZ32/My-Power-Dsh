@@ -1,0 +1,4 @@
+DRIFT evidence/extensions/extension-template/: 5b94803bff6eed4cedc44b6a424c6effe563abe658e49ffc40bc6ca1f00deda9 -> c782ec405eb5a9aca7d6972d23d3d789596cc74c5acd892a20f48deff4239db6
+DRIFT evidence/extensions/integration-ledger/: 3e7652c86b56888d8bdef3eaa44c543d30f6322677e00d0561edc9a3edcb1378 -> 56889022ace980983f05b00b9e4a575671e5f6747ad6697410f5a9c47a49be1c
+baseline entries compared: 42, drifted: 2
+new entries since baseline: evidence/dsh-qa/bundle-lifecycle/2026-09-16T07-19-44.444Z/, evidence/dsh-qa/preset-conformance/2026-09-16T07-20-00.878Z/, evidence/extensions/extension-lifecycle/2026-09-16T07-20-41.691Z/, evidence/plan-c/c1-team/2026-09-16T07-16-22.160Z/

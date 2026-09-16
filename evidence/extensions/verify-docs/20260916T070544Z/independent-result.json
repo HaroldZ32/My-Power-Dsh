@@ -1,0 +1,458 @@
+{
+  "task": "t12",
+  "attempt": 2,
+  "role": "independent verifier (logic re-implemented, not the author's checker)",
+  "repo": "/root/dshProj/my-power-dsh",
+  "hashes": {
+    "README.md": "8367a10e8cb938ee8b689df2259a85c38992fb1b373f78985a32e86612fe3718",
+    "README.zh-CN.md": "4cbda5db79aa17dfa74671604afc74878237d11870ed8517a2092d7f96807a03",
+    "docs/index.md": "f90ea958bf11b0532ff9efd5a7eb92a2647239b460e6e8c1520f614ec081df81",
+    "docs/index.zh-CN.md": "f8715202b4182f0e2ef8a30c3a3f29f83d036ccdb44adee9f3e91df366ea3b93",
+    "docs/extension-authoring-guide.md": "f8f771e83790f17998e5ba39ba0e0070bca21e706e28a48c4df3b8bf297887ce",
+    "docs/extension-authoring-guide.zh-CN.md": "07f7f9ff6b20739070beb9996222cf954614daa1cf2a0dd2c72fa470d457da68",
+    "EXTENSIONS-FOR-AGENTS.md": "9a34622cc2843eddc10bcda810efbfa027f676dfa32108ff92d504e2985edf18",
+    "docs/extension-adaptation-report.md": "ed903aaf42a39a189694f0cd14d9391040ccc528465a70c1b1c28e7d27dccb5f",
+    "docs/extension-adaptation-report.zh-CN.md": "34daae0118897dbdbe4ae7455d8e6155863a92a8fcfc90f6ab8168e049a764e8",
+    "packages/mpd-ext-plugin/src/index.ts": "dd3bdd00579d8d7aa56a70cb18af6a0bfd4ce3bae400c730d0f35bc40f662ec0",
+    "packages/mpd-roles-plugin/src/index.ts": "9a54bf7d6620a2d437ebafd15bda5f7592e9e1cce2d997fe2c6170a71d6ab18c",
+    "packages/mpd-ext-plugin/src/mcp-client.ts": "48af2daf060041d2ebd0dd0c6791ef5e66457caedabe84ddc1a52fdf97c31de4",
+    "packages/mpd-ext-plugin/src/registry.ts": "6001c29ca93fe50c09f3a94ad7b7ddb48f644a8b38b7edd0ce35ef06ef977c1b",
+    "packages/mpd-ext-plugin/src/sdk.ts": "f42941d53ffedf3c243afeb3414a59a6a767d03981b7c3c522a4b7c3d9cef686",
+    "packages/mpd-ext-plugin/src/mcp.ts": "f44de6a1153dfefc9722897446032ff6bb7b26d9b01917f153bfb0424f13195a",
+    "docs/extensions.md": "f860593aedb45974fa1063be187d5f1dddf82fb75f0a4b97c030f068f24e80a1",
+    "scripts/mpd-ext.mjs": "60d7901245381d9874094604de4b05b9d8c07b14f766b8adb8a8a40eea2618af",
+    "templates/mpd-extension/mpd-ext.json": "9d4d6ad8b52354cad02adaa7bb7e3a5b38e18192b01d646080d637230313f773",
+    "skills/dsh-qa/scripts/extension-lifecycle.mjs": "f8a4af525f4b86591b913390c2e008f9f6b32bef8e6193b6f70dca74407a0ac2"
+  },
+  "links": {
+    "checked": 112,
+    "anchored": 6,
+    "problems": []
+  },
+  "citations": {
+    "anchors": 56,
+    "problems": [],
+    "quoted": [
+      {
+        "where": "docs/extension-adaptation-report.md:381",
+        "token": "skills/dsh-qa/SKILL.md:385"
+      },
+      {
+        "where": "docs/extension-adaptation-report.zh-CN.md:185",
+        "token": "skills/dsh-qa/SKILL.md:385"
+      }
+    ],
+    "orphans": [
+      {
+        "where": "docs/extension-authoring-guide.md:167",
+        "token": "(leading) :1"
+      },
+      {
+        "where": "docs/extension-authoring-guide.zh-CN.md:148",
+        "token": "(leading) :1"
+      },
+      {
+        "where": "docs/extension-adaptation-report.md:376",
+        "token": "(leading) :58"
+      },
+      {
+        "where": "docs/extension-adaptation-report.zh-CN.md:180",
+        "token": "(leading) :58"
+      }
+    ],
+    "rows": [
+      {
+        "where": "docs/extension-authoring-guide.md:49",
+        "token": "packages/mpd-ext-plugin/src/registry.ts:678-685",
+        "status": "resolves",
+        "first": "const refuseHostKind = (kind: \"mcp\" | \"roles\", index: number): boolean => {"
+      },
+      {
+        "where": "docs/extension-authoring-guide.md:61",
+        "token": "packages/mpd-ext-plugin/src/mcp-client.ts:69-85",
+        "status": "resolves",
+        "first": "export const INHERITED_ENV_VARS: readonly string[] ="
+      },
+      {
+        "where": "docs/extension-authoring-guide.md:63",
+        "token": "packages/mpd-ext-plugin/src/mcp-client.ts:87-97",
+        "status": "resolves",
+        "first": "/**"
+      },
+      {
+        "where": "docs/extension-authoring-guide.md:65",
+        "token": "packages/mpd-ext-plugin/src/mcp-client.ts:99-117",
+        "status": "resolves",
+        "first": "/**"
+      },
+      {
+        "where": "docs/extension-authoring-guide.md:75",
+        "token": "packages/mpd-ext-plugin/src/index.ts:659",
+        "status": "resolves",
+        "first": "const redactedDescriptor = (entry: ExtensionView): Record<string, unknown> => {"
+      },
+      {
+        "where": "docs/extension-authoring-guide.md:95",
+        "token": "docs/extensions.md:524",
+        "status": "resolves",
+        "first": "- **No reload** — restart dsh; a failed MCP server is retried on the next boot."
+      },
+      {
+        "where": "docs/extension-authoring-guide.md:104",
+        "token": "packages/mpd-ext-plugin/src/index.ts:1062",
+        "status": "resolves",
+        "first": "bridge = await connectExtensionMcpServers({"
+      },
+      {
+        "where": "docs/extension-authoring-guide.md:105",
+        "token": "packages/mpd-roles-plugin/src/index.ts:225-292",
+        "status": "resolves",
+        "first": "export function extensionRoles(ctx: Ctx, exec: unknown, warn: (line: string) => void): { roles: ResolvedRole[]"
+      },
+      {
+        "where": "docs/extension-authoring-guide.md:112",
+        "token": "packages/mpd-ext-plugin/src/mcp.ts:42",
+        "status": "resolves",
+        "first": "stderrTail?: string"
+      },
+      {
+        "where": "docs/extension-authoring-guide.md:158",
+        "token": "packages/mpd-ext-plugin/src/mcp-client.ts:129-135",
+        "status": "resolves",
+        "first": "export function publicToolName(serverName: string, rawName: string): string {"
+      },
+      {
+        "where": "docs/extension-authoring-guide.md:215",
+        "token": "scripts/pack-mpd.mjs:67-77",
+        "status": "resolves",
+        "first": "function cpDist() {"
+      },
+      {
+        "where": "docs/extension-authoring-guide.md:216",
+        "token": "scripts/mpd-ext.mjs:35",
+        "status": "resolves",
+        "first": "const registry = await import(new URL(\"../packages/mpd-ext-plugin/src/registry.ts\", import.meta.url).href)"
+      },
+      {
+        "where": "docs/extension-authoring-guide.zh-CN.md:42",
+        "token": "packages/mpd-ext-plugin/src/registry.ts:678-685",
+        "status": "resolves",
+        "first": "const refuseHostKind = (kind: \"mcp\" | \"roles\", index: number): boolean => {"
+      },
+      {
+        "where": "docs/extension-authoring-guide.zh-CN.md:54",
+        "token": "packages/mpd-ext-plugin/src/mcp-client.ts:69-85",
+        "status": "resolves",
+        "first": "export const INHERITED_ENV_VARS: readonly string[] ="
+      },
+      {
+        "where": "docs/extension-authoring-guide.zh-CN.md:55",
+        "token": "packages/mpd-ext-plugin/src/mcp-client.ts:87-97",
+        "status": "resolves",
+        "first": "/**"
+      },
+      {
+        "where": "docs/extension-authoring-guide.zh-CN.md:57",
+        "token": "packages/mpd-ext-plugin/src/mcp-client.ts:99-117",
+        "status": "resolves",
+        "first": "/**"
+      },
+      {
+        "where": "docs/extension-authoring-guide.zh-CN.md:66",
+        "token": "packages/mpd-ext-plugin/src/index.ts:659",
+        "status": "resolves",
+        "first": "const redactedDescriptor = (entry: ExtensionView): Record<string, unknown> => {"
+      },
+      {
+        "where": "docs/extension-authoring-guide.zh-CN.md:82",
+        "token": "docs/extensions.md:524",
+        "status": "resolves",
+        "first": "- **No reload** — restart dsh; a failed MCP server is retried on the next boot."
+      },
+      {
+        "where": "docs/extension-authoring-guide.zh-CN.md:90",
+        "token": "packages/mpd-ext-plugin/src/index.ts:1062",
+        "status": "resolves",
+        "first": "bridge = await connectExtensionMcpServers({"
+      },
+      {
+        "where": "docs/extension-authoring-guide.zh-CN.md:91",
+        "token": "packages/mpd-roles-plugin/src/index.ts:225-292",
+        "status": "resolves",
+        "first": "export function extensionRoles(ctx: Ctx, exec: unknown, warn: (line: string) => void): { roles: ResolvedRole[]"
+      },
+      {
+        "where": "docs/extension-authoring-guide.zh-CN.md:98",
+        "token": "packages/mpd-ext-plugin/src/mcp.ts:42",
+        "status": "resolves",
+        "first": "stderrTail?: string"
+      },
+      {
+        "where": "docs/extension-authoring-guide.zh-CN.md:140",
+        "token": "packages/mpd-ext-plugin/src/mcp-client.ts:129-135",
+        "status": "resolves",
+        "first": "export function publicToolName(serverName: string, rawName: string): string {"
+      },
+      {
+        "where": "docs/extension-authoring-guide.zh-CN.md:191",
+        "token": "scripts/pack-mpd.mjs:67-77",
+        "status": "resolves",
+        "first": "function cpDist() {"
+      },
+      {
+        "where": "docs/extension-authoring-guide.zh-CN.md:192",
+        "token": "scripts/mpd-ext.mjs:35",
+        "status": "resolves",
+        "first": "const registry = await import(new URL(\"../packages/mpd-ext-plugin/src/registry.ts\", import.meta.url).href)"
+      },
+      {
+        "where": "EXTENSIONS-FOR-AGENTS.md:12",
+        "token": "packages/mpd-ext-plugin/src/sdk.ts:113-146",
+        "status": "resolves",
+        "first": "export const MPD_EXT_CONTRACT = {"
+      },
+      {
+        "where": "EXTENSIONS-FOR-AGENTS.md:23",
+        "token": "packages/mpd-ext-plugin/src/index.ts:537",
+        "status": "resolves",
+        "first": "const safeRegisterTool = (definition: any, onError: (line: string) => void): boolean => {"
+      },
+      {
+        "where": "EXTENSIONS-FOR-AGENTS.md:23",
+        "token": "packages/mpd-ext-plugin/src/index.ts:715",
+        "status": "resolves",
+        "first": "name: \"mpd_ext_list\","
+      },
+      {
+        "where": "EXTENSIONS-FOR-AGENTS.md:23",
+        "token": "packages/mpd-ext-plugin/src/index.ts:807",
+        "status": "resolves",
+        "first": "name: \"mpd_ext_show\","
+      },
+      {
+        "where": "EXTENSIONS-FOR-AGENTS.md:24",
+        "token": "packages/mpd-ext-plugin/src/index.ts:930",
+        "status": "resolves",
+        "first": "name: \"mpd_flow_list\","
+      },
+      {
+        "where": "EXTENSIONS-FOR-AGENTS.md:24",
+        "token": "packages/mpd-ext-plugin/src/index.ts:984",
+        "status": "resolves",
+        "first": "name: \"mpd_flow_show\","
+      },
+      {
+        "where": "EXTENSIONS-FOR-AGENTS.md:24",
+        "token": "packages/mpd-ext-plugin/src/index.ts:548",
+        "status": "resolves",
+        "first": "const EXPECTED_TOOLS = [\"mpd_ext_list\", \"mpd_ext_show\", \"mpd_flow_list\", \"mpd_flow_show\"]"
+      },
+      {
+        "where": "EXTENSIONS-FOR-AGENTS.md:33",
+        "token": "packages/mpd-ext-plugin/src/mcp-client.ts:99-117",
+        "status": "resolves",
+        "first": "/**"
+      },
+      {
+        "where": "EXTENSIONS-FOR-AGENTS.md:33",
+        "token": "packages/mpd-ext-plugin/src/mcp-client.ts:129-135",
+        "status": "resolves",
+        "first": "export function publicToolName(serverName: string, rawName: string): string {"
+      },
+      {
+        "where": "EXTENSIONS-FOR-AGENTS.md:39",
+        "token": "packages/mpd-ext-plugin/src/registry.ts:583",
+        "status": "resolves",
+        "first": "enabled: input.enabled !== false,"
+      },
+      {
+        "where": "EXTENSIONS-FOR-AGENTS.md:113",
+        "token": "packages/mpd-ext-plugin/src/sdk.ts:144-145",
+        "status": "resolves",
+        "first": "projectRejectionReason:"
+      },
+      {
+        "where": "EXTENSIONS-FOR-AGENTS.md:114",
+        "token": "packages/mpd-ext-plugin/src/registry.ts:678-685",
+        "status": "resolves",
+        "first": "const refuseHostKind = (kind: \"mcp\" | \"roles\", index: number): boolean => {"
+      },
+      {
+        "where": "EXTENSIONS-FOR-AGENTS.md:138",
+        "token": "packages/mpd-ext-plugin/src/mcp.ts:34",
+        "status": "resolves",
+        "first": "export type McpServerState = \"connecting\" | \"connected\" | \"unavailable\" | \"failed\" | \"disabled\""
+      },
+      {
+        "where": "EXTENSIONS-FOR-AGENTS.md:225",
+        "token": "docs/extensions.md:524",
+        "status": "resolves",
+        "first": "- **No reload** — restart dsh; a failed MCP server is retried on the next boot."
+      },
+      {
+        "where": "docs/extension-adaptation-report.md:376",
+        "token": "packages/mpd-ext-plugin/src/index.ts:102",
+        "status": "resolves",
+        "first": "function resolveAdapter(ctx: any): { dsh: DshAdapter; adapterIdentity: string; usedFallback: boolean } {"
+      },
+      {
+        "where": "docs/extension-adaptation-report.md:377",
+        "token": "packages/mpd-ext-plugin/src/index.ts:59",
+        "status": "resolves",
+        "first": "* CANONICAL NOTE — the second-adapter hazard. This is the ONE place that"
+      },
+      {
+        "where": "docs/extension-adaptation-report.md:381",
+        "token": "skills/dsh-qa/scripts/extension-lifecycle.mjs:412",
+        "status": "resolves",
+        "first": "export function packedStateOk({ packExit, hasRow, hasPlugin, hasExtensions }) {"
+      },
+      {
+        "where": "docs/extension-adaptation-report.md:381",
+        "token": "skills/dsh-qa/scripts/extension-lifecycle.mjs:383",
+        "status": "resolves",
+        "first": "ok: packedStateOk({ packExit: packRun.status, hasRow: facts.hasRow, hasPlugin: facts.hasPlugin, hasExtensions:"
+      },
+      {
+        "where": "docs/extension-adaptation-report.md:381",
+        "token": "skills/dsh-qa/scripts/extension-lifecycle.mjs:435",
+        "status": "resolves",
+        "first": "export function packedNegativeDriver() {"
+      },
+      {
+        "where": "docs/extension-adaptation-report.md:384",
+        "token": "packages/mpd-ext-plugin/src/mcp-client.ts:69-85",
+        "status": "resolves",
+        "first": "export const INHERITED_ENV_VARS: readonly string[] ="
+      },
+      {
+        "where": "docs/extension-adaptation-report.md:384",
+        "token": "packages/mpd-ext-plugin/src/mcp-client.ts:87-97",
+        "status": "resolves",
+        "first": "/**"
+      },
+      {
+        "where": "docs/extension-adaptation-report.md:405",
+        "token": "scripts/pack-mpd.mjs:67-77",
+        "status": "resolves",
+        "first": "function cpDist() {"
+      },
+      {
+        "where": "docs/extension-adaptation-report.md:406",
+        "token": "scripts/mpd-ext.mjs:35",
+        "status": "resolves",
+        "first": "const registry = await import(new URL(\"../packages/mpd-ext-plugin/src/registry.ts\", import.meta.url).href)"
+      },
+      {
+        "where": "docs/extension-adaptation-report.zh-CN.md:180",
+        "token": "packages/mpd-ext-plugin/src/index.ts:102",
+        "status": "resolves",
+        "first": "function resolveAdapter(ctx: any): { dsh: DshAdapter; adapterIdentity: string; usedFallback: boolean } {"
+      },
+      {
+        "where": "docs/extension-adaptation-report.zh-CN.md:181",
+        "token": "packages/mpd-ext-plugin/src/index.ts:59",
+        "status": "resolves",
+        "first": "* CANONICAL NOTE — the second-adapter hazard. This is the ONE place that"
+      },
+      {
+        "where": "docs/extension-adaptation-report.zh-CN.md:185",
+        "token": "skills/dsh-qa/scripts/extension-lifecycle.mjs:412",
+        "status": "resolves",
+        "first": "export function packedStateOk({ packExit, hasRow, hasPlugin, hasExtensions }) {"
+      },
+      {
+        "where": "docs/extension-adaptation-report.zh-CN.md:185",
+        "token": "skills/dsh-qa/scripts/extension-lifecycle.mjs:383",
+        "status": "resolves",
+        "first": "ok: packedStateOk({ packExit: packRun.status, hasRow: facts.hasRow, hasPlugin: facts.hasPlugin, hasExtensions:"
+      },
+      {
+        "where": "docs/extension-adaptation-report.zh-CN.md:185",
+        "token": "skills/dsh-qa/scripts/extension-lifecycle.mjs:435",
+        "status": "resolves",
+        "first": "export function packedNegativeDriver() {"
+      },
+      {
+        "where": "docs/extension-adaptation-report.zh-CN.md:188",
+        "token": "packages/mpd-ext-plugin/src/mcp-client.ts:69-85",
+        "status": "resolves",
+        "first": "export const INHERITED_ENV_VARS: readonly string[] ="
+      },
+      {
+        "where": "docs/extension-adaptation-report.zh-CN.md:188",
+        "token": "packages/mpd-ext-plugin/src/mcp-client.ts:87-97",
+        "status": "resolves",
+        "first": "/**"
+      },
+      {
+        "where": "docs/extension-adaptation-report.zh-CN.md:207",
+        "token": "scripts/pack-mpd.mjs:67-77",
+        "status": "resolves",
+        "first": "function cpDist() {"
+      },
+      {
+        "where": "docs/extension-adaptation-report.zh-CN.md:208",
+        "token": "scripts/mpd-ext.mjs:35",
+        "status": "resolves",
+        "first": "const registry = await import(new URL(\"../packages/mpd-ext-plugin/src/registry.ts\", import.meta.url).href)"
+      }
+    ]
+  },
+  "semantic": {
+    "samples": 41,
+    "problems": []
+  },
+  "split": {
+    "sharedHeadings": [],
+    "sharedBlocks": []
+  },
+  "skeleton": {
+    "extracted": true
+  },
+  "checks": [
+    {
+      "id": "links:targets+anchors",
+      "status": "passed",
+      "detail": "112 relative link(s), 6 with an anchor, 0 unresolved"
+    },
+    {
+      "id": "citations:independent-scan",
+      "status": "passed",
+      "detail": "56 live line-anchor citation(s) in scope, 2 quoted-historical token(s) recorded separately, 4 unattributed continuation(s), 0 flagged"
+    },
+    {
+      "id": "citations:semantic-samples",
+      "status": "passed",
+      "detail": "41 hand-picked anchor(s) checked against their cited line content, 0 mismatch(es)"
+    },
+    {
+      "id": "split:headings",
+      "status": "passed",
+      "detail": "20 machine heading(s) vs 27 human heading(s), 0 shared"
+    },
+    {
+      "id": "split:paragraphs",
+      "status": "passed",
+      "detail": "17 machine paragraph(s) (>= 80 chars) vs 27 human paragraph(s), 0 duplicated"
+    },
+    {
+      "id": "skeleton:extracted",
+      "status": "passed",
+      "detail": "json block with id \"for-agents-skeleton\" parsed (31 lines)"
+    },
+    {
+      "id": "skeleton:validates",
+      "status": "passed",
+      "detail": "mpd-ext validate over the extracted skeleton → exit 0; [mpd-ext] validate /tmp/t12b-verify-OQODQi/for-agents-skeleton (plane=user) |   contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s) | [mpd-ext] ok"
+    },
+    {
+      "id": "skeleton:negative-control",
+      "status": "passed",
+      "detail": "same skeleton with its declared persona file deleted → exit 1 (must be non-zero);   pending contributes.mcp[0]: pending: server \"for-agents-skeleton\" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state | [mpd-ext] 2 problem(s) — this extension would not load"
+    }
+  ],
+  "failed": [],
+  "passed": 8,
+  "total": 8
+}

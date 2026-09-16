@@ -1,0 +1,15 @@
+unit-clean-cwd|exit=0|cmd=bash -c cd "$(mktemp -d)" && bun test /root/dshProj/my-power-dsh/packages
+verify-vendor|exit=0|cmd=node scripts/verify-vendor.mjs
+verify-docs-parity|exit=0|cmd=node scripts/verify-docs-parity.mjs
+verify-rows-parity|exit=0|cmd=node scripts/verify-rows-parity.mjs
+mpd-ext-selftest|exit=0|cmd=bun scripts/mpd-ext.mjs --self-test
+validate-example|exit=0|cmd=bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example
+validate-template|exit=0|cmd=bun scripts/mpd-ext.mjs validate templates/mpd-extension
+pack-closure-selftest|exit=0|cmd=node scripts/verify-pack-closure.mjs --self-test
+pack-closure|exit=0|cmd=node scripts/verify-pack-closure.mjs
+pack-mpd|exit=0|cmd=node scripts/pack-mpd.mjs
+prober|exit=0|cmd=node evidence/extensions/debranding-probe/20260916T061807Z/verify-debranding-full.mjs --json-out evidence/extensions/integration-ledger/20260916T071414Z/raw/prober-positive.json
+lane-bundle-lifecycle|exit=0
+lane-extension-template|exit=0
+lane-extension-lifecycle|exit=0
+lane-extension-mcp-bridge|exit=0

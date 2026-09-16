@@ -1,0 +1,6 @@
+[mpd-ext] project plane: /root/dshProj/my-power-dsh/.mpd/extensions
+  (none)
+[mpd-ext] user plane: /root/.mpd/extensions
+  (none)
+[mpd-ext] bundle plane: /root/dshProj/my-power-dsh/extensions
+  mpd-ext-example: disabled — 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)

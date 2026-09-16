@@ -1,0 +1,47 @@
+t11 independent verification — evidence log
+stamp 20260916T064350Z · attempt f488e6cf-997c-4899-b5bc-897ae67d869c
+
+SUBJECTS
+  t6 = scripts/verify-pack-closure.mjs + package.json wiring      -> item 1
+  t7 = the corrected debranding prober + the F6 boundary index    -> item 2 (+ the immutability recheck)
+  t8 = the skills pass (F8/F9/F10 + the template lane + 1 re-pin) -> items 3, 4, 5, 6
+
+VERIFIER-OWNED FIXTURES (no author fixture was reused)
+  item 1: a temp copy of the REAL scripts/pack-mpd.mjs with `"mpd-ext-plugin",` removed, plus the
+          same bytes restored into a second copy as the isolation control
+  item 2: a temp copy of extensions/mpd-ext-example with ONE byte added to roles[0].name
+  item 4: four packed trees built by me (closed / no plugin package / no extensions root / no row)
+
+RESULTS (all reproduced)
+  item 1  closure controls                     7/7   exit 0   raw/verify-closure.json
+  item 2  prober, both arms                    7/7   exit 0   raw/verify-prober.json
+  item 3  template lane re-read from the log   9/9   exit 0   raw/verify-template-lane.json
+  item 4  F9 falsifiability                    4/4   exit 0   raw/verify-f9-and-repin.json
+  item 5  single re-pin                        6/6   exit 0   raw/repin-entry-diff.json
+  item 6  six lane --self-tests                6/6   exit 0   raw/selftest-*.txt
+  TOTAL                                       41/41 checks, 0 failed, 0 unreproducible claims
+
+KEY RAW READINGS
+  closure positive : "17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the
+                     bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist;
+                     allowlist carries no templates/ entry"
+  closure negative : exit 1, names mpd-ext-plugin + the OMISSION class
+  prober positive  : probes=26 list=26 findings=0, four kinds covered
+  prober negative  : exit 1, findings=1, names roles.name and the mutated value
+  lane claims      : call_template_1..5 all non-error; skill heading, flow id, persona, child
+                     QA-TEMPLATE-CHILD-OK, and the MCP tool call + header offer (100 tools)
+  F9               : closed=true, all three broken trees=false, packExit=1=false; the retired
+                     predicate is proven VACUOUS on the no-extensions tree
+  re-pin           : skills fileCount 317 -> 318, treeSha 7a48fdad… -> a8ba96b8…; exactly ONE asset
+                     entry changed; verify-vendor exit 0; skills edits in the same change set
+
+INCIDENT (disclosed, captain-accepted, friction T-53)
+  my first prober run overwrote t7's probe-report.json (no --json-out). Impact bounded and recorded
+  in result.json -> probe_report_overwrite_incident. Every later run used --json-out.
+
+CORRECTIVE ACTION RESULT
+  evidence/extensions/boundary-index snapshots both hash to 441c5ba89620c937f2908c1e9543cb2a063c2a14f32ecee36372b8f3e42d4124;
+  re-hashing the 356 snapshot files reproduces that digest exactly (modified=0, missing=0). The
+  17 files added since the snapshot are legitimate new sub-run directories.
+
+FINDINGS: none. Every claim was reproduced; nothing is reported as unreproducible.

@@ -1,0 +1,7 @@
+[mpd-ext] validate /root/dshProj/my-power-dsh/evidence/extensions/verify-code-template/20260916T062431Z/raw/scaffold/neg-persona (plane=user)
+  extension "demo-ext": loadable
+  contributes: 1 skill(s), 1 flow(s), 0 role(s), 1 mcp server(s)
+  error contributes.roles[0].persona: persona file does not exist: /root/dshProj/my-power-dsh/evidence/extensions/verify-code-template/20260916T062431Z/raw/scaffold/neg-persona/personas/nope.md
+  error contributes.roles[0]: refused: persona file is not readable: /root/dshProj/my-power-dsh/evidence/extensions/verify-code-template/20260916T062431Z/raw/scaffold/neg-persona/personas/nope.md
+  pending contributes.mcp[0]: pending: server "demo-ext" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+[mpd-ext] 2 problem(s) — this extension would not load

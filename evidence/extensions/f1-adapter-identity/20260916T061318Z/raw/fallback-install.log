@@ -1,0 +1,16 @@
+dsh: initialized profile mb at /tmp/mpd-f1-dsh-hrIz0p/profiles/mb
+
+dependencies:
++ @mpd-dsh/mpd link:/root/dshProj/my-power-dsh
+
+Already up to date
+Done in 145ms using pnpm v11.23.0
+
+   ╭─────────────────────────────────────────╮
+   │                                         │
+   │   Update available! 11.23.0 → 12.4.2.   │
+   │   Changelog: https://pnpm.io/v/12.4.2   │
+   │    To update, run: pnpm self-update     │
+   │                                         │
+   ╰─────────────────────────────────────────╯
+

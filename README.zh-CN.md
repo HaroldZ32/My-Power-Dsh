@@ -106,7 +106,13 @@ captain 设计名册与任务 DAG，你在 AgentTeams 标签页中审阅并批�
 - 一个开发者 CLI —— `bun scripts/mpd-ext.mjs validate|scaffold|list`。
 
 一个默认禁用的参考扩展随包提供：
-[`extensions/mpd-ext-example/`](./extensions/README.zh-CN.md)。
+[`extensions/mpd-ext-example/`](./extensions/README.zh-CN.md)；可直接拷贝的骨架——包含全部四种
+类型、id 是占位符并由脚手架改写——位于
+[`templates/mpd-extension/`](./templates/mpd-extension/README.zh-CN.md)。
+
+**从这里开始：**[扩展编写指南](./docs/extension-authoring-guide.zh-CN.md) 回答何时该写扩展、放在
+哪里、如何验证；[`EXTENSIONS-FOR-AGENTS.md`](./EXTENSIONS-FOR-AGENTS.md) 是供智能体写扩展使用的
+机器契约（英文）；逐字段参考仍在 [`docs/extensions.zh-CN.md`](./docs/extensions.zh-CN.md)。
 
 ### 面向长期可维护
 
@@ -200,6 +206,8 @@ dsh plugin --profile dsh-tui remove @mpd-dsh/mpd
 | 文档 | 适合谁 |
 |---|---|
 | [`docs/user-guide.zh-CN.md`](./docs/user-guide.zh-CN.md) | 安装/卸载、preset、工具、专家、workmate、团队、GUI、配置、扩展、故障排查 |
+| [`docs/extension-authoring-guide.zh-CN.md`](./docs/extension-authoring-guide.zh-CN.md) | 编写扩展：什么时候它才是对的工具、唯一的一条平面选择规则、隔离姿态、生命周期矩阵、模板实操、分发、故障排查 |
+| [`EXTENSIONS-FOR-AGENTS.md`](./EXTENSIONS-FOR-AGENTS.md) | 面向智能体的机器契约（英文）：逐类型要求、一份可校验的清单骨架、错误特征、拒绝清单 |
 | [`docs/extensions.zh-CN.md`](./docs/extensions.zh-CN.md) | 扩展开发者指南：契约、四种贡献种类、CLI |
 | [`docs/tui.zh-CN.md`](./docs/tui.zh-CN.md) | DSH-TUI 版本：安装、TUI 原生界面、准入与分发产物、兼容性台账、NOT-CLAIMED 清单 |
 | [`docs/architecture.zh-CN.md`](./docs/architecture.zh-CN.md) | bundle 如何组装与挂载：启动链、插件清单、状态布局 |

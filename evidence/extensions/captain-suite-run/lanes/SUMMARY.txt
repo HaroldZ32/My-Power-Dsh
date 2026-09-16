@@ -1,0 +1,26 @@
+PASS agent-teams-dispatch
+PASS agent-teams-sidebar
+PASS bundle-lifecycle
+PASS codegraph-smoke
+PASS dual-track-smoke
+PASS extension-lifecycle
+PASS extension-mcp-bridge
+PASS extension-template
+PASS mcp-call
+PASS memory-smoke
+FAIL mount-assert (exit 2)
+PASS plan-c-smoke
+PASS preset-conformance
+PASS preset-register
+PASS relocate-smoke
+FAIL session-start-team (exit 1)
+PASS skill-catalog-probe
+PASS software-smoke
+PASS team-route-rewire
+PASS tool-output-validation
+PASS ultrawork-smoke
+FAIL vision-smoke (exit 1)
+PASS web-client-adapt
+FAIL web-settings-bridge (exit 1)
+FAIL workmate-library (exit 1)
+PASS workmate-team-member

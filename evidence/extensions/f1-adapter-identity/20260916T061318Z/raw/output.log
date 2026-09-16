@@ -1,0 +1,22 @@
+checks:
+  ok   boot.mpdd-ext-identity-line-present :: [mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+  ok   boot.mpd-roles-identity-line-present :: [mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+  ok   boot.mpd-ext-identity-mounted :: [mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+  ok   boot.mpd-roles-identity-mounted :: [mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+  ok   boot.no-fallback-warning :: ADAPTER FALLBACK lines: 0
+  ok   boot.no-fallback-identity :: fallback identity lines: 0
+  ok   boot.four-inspection-tools-registered :: missing: []
+  ok   boot.mpd-ext-line-otherwise-byte-identical :: {"before":"[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)","afterWithoutIdentity":"[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)"}
+  ok   boot.discovery-providers-unchanged :: {"before":"mpd-ext:mpd-ext-example, mpd-ext:project-plane","after":"mpd-ext:mpd-ext-example, mpd-ext:project-plane"}
+  ok   lane.overall-ok :: after.ok=true
+  ok   lane.step-ok-flags-identical :: differing steps: []
+  ok   lane.every-step-ok :: failing steps: []
+  ok   lane.adapter-seams-identical :: {"before":"tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,agents,events","after":"tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,agents,events"}
+  ok   lane.boot-correct-adapter-probe :: ADAPTER_TOOL_CALL=ok + roles-probe PASS present
+
+after boot (identity lines):
+  [mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+  [mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+
+before boot (same row):
+  [mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)

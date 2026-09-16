@@ -1,0 +1,133 @@
+{
+  "task": "t11",
+  "item": "4 + 5 + 6",
+  "attempt_id": "f488e6cf-997c-4899-b5bc-897ae67d869c",
+  "selfTests": [
+    {
+      "lane": "extension-isolation.mjs --self-test",
+      "exitCode": 0,
+      "status": "passed",
+      "tail": "[extension-isolation self-test] ok: stub protocol (tool call, advance, child marker, no-tools text) + descriptor contract + shipped example + boot recipe verifi"
+    },
+    {
+      "lane": "extension-lifecycle.mjs --self-test",
+      "exitCode": 0,
+      "status": "passed",
+      "tail": "[extension-lifecycle self-test] ok: composed row + validator rejections (incl. NaN rank via the code plane) + CLI oracle + seam regression (inject declared, fai"
+    },
+    {
+      "lane": "extension-mcp-bridge.mjs --self-test",
+      "exitCode": 0,
+      "status": "passed",
+      "tail": "[extension-mcp-bridge self-test] ok: lsp server + row + public-name collision premise + fixture scenarios (incl. the stderr flood and the cap it must exceed) + "
+    },
+    {
+      "lane": "extension-template.mjs --self-test",
+      "exitCode": 0,
+      "status": "passed",
+      "tail": "[extension-template self-test] ok: shipped template loads with all four kinds + ships disabled + scaffold emits the four-kind copy this case boots (ids, flow cr"
+    },
+    {
+      "lane": "verify-pack-closure.mjs --self-test",
+      "exitCode": 0,
+      "status": "passed",
+      "tail": "[verify-pack-closure] self-test PASS: 6/6 arms"
+    },
+    {
+      "lane": "verify-debranding-full.mjs --self-test",
+      "exitCode": 0,
+      "status": "passed",
+      "tail": "[verify-debranding-full] self-test PASS: 5/5 arms"
+    }
+  ],
+  "checks": [
+    {
+      "id": "closed-tree-is-green",
+      "status": "passed",
+      "detail": "verifier fixture with all four facts: ok=true facts={\"hasRow\":true,\"hasPlugin\":true,\"hasExtensions\":true}"
+    },
+    {
+      "id": "every-missing-fact-is-red",
+      "status": "passed",
+      "detail": "missing-plugin-package=false facts={\"hasRow\":true,\"hasPlugin\":false,\"hasExtensions\":true} | missing-extensions-root=false facts={\"hasRow\":true,\"hasPlugin\":true,\"hasExtensions\":false} | missing-mpd-ext-row=false facts={\"hasRow\":false,\"hasPlugin\":true,\"hasExtensions\":true}"
+    },
+    {
+      "id": "packer-exit-gated",
+      "status": "passed",
+      "detail": "a non-zero packer exit fails the predicate even when every asset is present"
+    },
+    {
+      "id": "old-shape-was-vacuous",
+      "status": "passed",
+      "detail": "retired shape on the no-extensions tree: true (truthy) while the shipped predicate returns false — the fix is real, not cosmetic"
+    },
+    {
+      "id": "lane-driver-falsifiable",
+      "status": "passed",
+      "detail": "packedNegativeDriver(): falsifiable=true packerExitGated=true trees={\"closed\":{\"hasRow\":true,\"hasPlugin\":true,\"hasExtensions\":true,\"ok\":true},\"no-plugin-package\":{\"hasRow\":true,\"hasPlugin\":false,\"hasExtensions\":true,\"ok\":false},\"no-extensions-root\":{\"hasRow\":true,\"hasPlugin\":true,\"hasExtensions\":false,\"ok\":false},\"no-mpd-ext-row\":{\"hasRow\":false,\"hasPlugin\":true,\"hasExtensions\":true,\"ok\":false}}"
+    },
+    {
+      "id": "verify-vendor",
+      "status": "passed",
+      "detail": "exit 0; [verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files | [verify-vendor] PASS"
+    },
+    {
+      "id": "exactly-one-asset-entry-changed",
+      "status": "passed",
+      "detail": "changed asset entries: [skills] (1)"
+    },
+    {
+      "id": "skills-before-values",
+      "status": "passed",
+      "detail": "before: fileCount=317 treeSha=7a48fdad90cc30f9c1e7…"
+    },
+    {
+      "id": "skills-after-values",
+      "status": "passed",
+      "detail": "after: fileCount=318 treeSha=a8ba96b8108b2df3cce7… (one re-pin: one before value, one after value)"
+    },
+    {
+      "id": "no-second-repin",
+      "status": "passed",
+      "detail": "no other asset entry changed: []"
+    },
+    {
+      "id": "same-change-set",
+      "status": "passed",
+      "detail": "4 skills/** path(s) modified and VENDOR_LOCK.json modified in the SAME working-tree change set: M skills/dsh-qa/SKILL.md ; M skills/dsh-qa/scripts/extension-lifecycle.mjs ; M skills/dsh-qa/scripts/extension-mcp-bridge.mjs ; ?? skills/dsh-qa/scripts/extension-template.mjs"
+    },
+    {
+      "id": "selftest:extension-isolation.mjs --self-test",
+      "status": "passed",
+      "detail": "exit 0; [extension-isolation self-test] ok: stub protocol (tool call, advance, child marker, no-tools text) + descriptor contract + shipped example + boot recipe verifi"
+    },
+    {
+      "id": "selftest:extension-lifecycle.mjs --self-test",
+      "status": "passed",
+      "detail": "exit 0; [extension-lifecycle self-test] ok: composed row + validator rejections (incl. NaN rank via the code plane) + CLI oracle + seam regression (inject declared, fai"
+    },
+    {
+      "id": "selftest:extension-mcp-bridge.mjs --self-test",
+      "status": "passed",
+      "detail": "exit 0; [extension-mcp-bridge self-test] ok: lsp server + row + public-name collision premise + fixture scenarios (incl. the stderr flood and the cap it must exceed) + "
+    },
+    {
+      "id": "selftest:extension-template.mjs --self-test",
+      "status": "passed",
+      "detail": "exit 0; [extension-template self-test] ok: shipped template loads with all four kinds + ships disabled + scaffold emits the four-kind copy this case boots (ids, flow cr"
+    },
+    {
+      "id": "selftest:verify-pack-closure.mjs --self-test",
+      "status": "passed",
+      "detail": "exit 0; [verify-pack-closure] self-test PASS: 6/6 arms"
+    },
+    {
+      "id": "selftest:verify-debranding-full.mjs --self-test",
+      "status": "passed",
+      "detail": "exit 0; [verify-debranding-full] self-test PASS: 5/5 arms"
+    }
+  ],
+  "failed": [],
+  "passed": 17,
+  "total": 17
+}

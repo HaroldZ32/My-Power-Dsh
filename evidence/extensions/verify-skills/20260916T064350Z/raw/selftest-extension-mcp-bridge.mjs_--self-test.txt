@@ -1,0 +1,1 @@
+[extension-mcp-bridge self-test] ok: lsp server + row + public-name collision premise + fixture scenarios (incl. the stderr flood and the cap it must exceed) + example server verified

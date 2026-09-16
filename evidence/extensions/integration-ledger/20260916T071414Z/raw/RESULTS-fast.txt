@@ -1,0 +1,11 @@
+verify-vendor|exit=0|cmd=node scripts/verify-vendor.mjs
+verify-docs-parity|exit=0|cmd=node scripts/verify-docs-parity.mjs
+verify-rows-parity|exit=0|cmd=node scripts/verify-rows-parity.mjs
+mpd-ext-selftest|exit=0|cmd=bun scripts/mpd-ext.mjs --self-test
+validate-example|exit=0|cmd=bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example
+validate-template|exit=0|cmd=bun scripts/mpd-ext.mjs validate templates/mpd-extension
+bun-test-packages|exit=1
+debranding-probe|exit=0
+debranding-probe-selftest|exit=0
+test-qa-all|exit=1
+clean-cwd-full-suite|exit=0

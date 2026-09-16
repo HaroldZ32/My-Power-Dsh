@@ -1,0 +1,186 @@
+[
+  {
+    "doc": "docs/extension-authoring-guide.md:49",
+    "file": "packages/mpd-ext-plugin/src/registry.ts",
+    "start": 678,
+    "end": 685,
+    "mustMatch": ["refuseHostKind", "projectRejectionReason"],
+    "claim": "a project-plane manifest that declares mcp/roles is refused per item with a stated reason"
+  },
+  {
+    "doc": "docs/extension-authoring-guide.md:61",
+    "file": "packages/mpd-ext-plugin/src/mcp-client.ts",
+    "start": 69,
+    "end": 85,
+    "mustMatch": ["INHERITED_ENV_VARS", "\"HOME\"", "PROGRAMFILES"],
+    "claim": "the SDK's measured safe inherit list (POSIX and win32)"
+  },
+  {
+    "doc": "docs/extension-authoring-guide.md:63",
+    "file": "packages/mpd-ext-plugin/src/mcp-client.ts",
+    "start": 87,
+    "end": 97,
+    "mustMatch": ["CREDENTIAL_SHAPED"],
+    "claim": "credential-shaped env names are dropped even when on the inherit list"
+  },
+  {
+    "doc": "docs/extension-authoring-guide.md:65",
+    "file": "packages/mpd-ext-plugin/src/mcp-client.ts",
+    "start": 99,
+    "end": 117,
+    "mustMatch": ["childEnv", "declared"],
+    "claim": "what the manifest declares in env IS passed on top of the inherit list"
+  },
+  {
+    "doc": "docs/extension-authoring-guide.md:75",
+    "file": "packages/mpd-ext-plugin/src/index.ts",
+    "start": 641,
+    "end": 658,
+    "mustMatch": ["redactedDescriptor", "<redacted>"],
+    "claim": "mpd_ext_show redacts the env VALUES (keys stay visible)"
+  },
+  {
+    "doc": "docs/extension-authoring-guide.md:95",
+    "file": "docs/extensions.md",
+    "start": 524,
+    "end": 524,
+    "mustMatch": ["No reload"],
+    "claim": "a restart is the reload"
+  },
+  {
+    "doc": "docs/extension-authoring-guide.md:104",
+    "file": "packages/mpd-ext-plugin/src/index.ts",
+    "start": 1041,
+    "end": 1053,
+    "mustMatch": ["connectExtensionMcpServers", "connectTimeoutMs"],
+    "claim": "servers are connected at apply, in parallel and time-boxed by connectTimeoutMs"
+  },
+  {
+    "doc": "docs/extension-authoring-guide.md:105",
+    "file": "packages/mpd-roles-plugin/src/index.ts",
+    "start": 225,
+    "end": 292,
+    "mustMatch": ["extensionRoles", "readExtensionPersona"],
+    "claim": "the role is resolved per call by the roster plane, which re-reads the persona text"
+  },
+  {
+    "doc": "docs/extension-authoring-guide.zh-CN.md:91",
+    "file": "packages/mpd-roles-plugin/src/index.ts",
+    "start": 225,
+    "end": 292,
+    "mustMatch": ["extensionRoles", "readExtensionPersona"],
+    "claim": "zh twin: per-call role resolution re-reads the persona"
+  },
+  {
+    "doc": "docs/extension-authoring-guide.zh-CN.md:66",
+    "file": "packages/mpd-ext-plugin/src/index.ts",
+    "start": 641,
+    "end": 658,
+    "mustMatch": ["redactedDescriptor", "<redacted>"],
+    "claim": "zh twin: mpd_ext_show redacts env values"
+  },
+  {
+    "doc": "EXTENSIONS-FOR-AGENTS.md:12",
+    "file": "packages/mpd-ext-plugin/src/sdk.ts",
+    "start": 113,
+    "end": 146,
+    "mustMatch": ["MPD_EXT_CONTRACT", "projectKinds", "hostKinds"],
+    "claim": "the frozen constants (grammars, defaults, key sets)"
+  },
+  {
+    "doc": "EXTENSIONS-FOR-AGENTS.md:22",
+    "file": "packages/mpd-ext-plugin/src/index.ts",
+    "start": 701,
+    "end": 701,
+    "mustMatch": ["mpd_ext_list"],
+    "claim": "the registration of the mpd_ext_list inspection tool"
+  },
+  {
+    "doc": "EXTENSIONS-FOR-AGENTS.md:22",
+    "file": "packages/mpd-ext-plugin/src/index.ts",
+    "start": 793,
+    "end": 793,
+    "mustMatch": ["mpd_ext_show"],
+    "claim": "the registration of the mpd_ext_show inspection tool"
+  },
+  {
+    "doc": "EXTENSIONS-FOR-AGENTS.md:22",
+    "file": "packages/mpd-ext-plugin/src/index.ts",
+    "start": 916,
+    "end": 916,
+    "mustMatch": ["mpd_flow_list"],
+    "claim": "the registration of the mpd_flow_list inspection tool"
+  },
+  {
+    "doc": "EXTENSIONS-FOR-AGENTS.md:22",
+    "file": "packages/mpd-ext-plugin/src/index.ts",
+    "start": 970,
+    "end": 970,
+    "mustMatch": ["mpd_flow_show"],
+    "claim": "the registration of the mpd_flow_show inspection tool"
+  },
+  {
+    "doc": "EXTENSIONS-FOR-AGENTS.md:30",
+    "file": "packages/mpd-ext-plugin/src/mcp-client.ts",
+    "start": 99,
+    "end": 117,
+    "mustMatch": ["childEnv"],
+    "claim": "the declared server is spawned with the safe inherit list plus the manifest env"
+  },
+  {
+    "doc": "EXTENSIONS-FOR-AGENTS.md:107",
+    "file": "packages/mpd-ext-plugin/src/sdk.ts",
+    "start": 144,
+    "end": 145,
+    "mustMatch": ["projectRejectionReason"],
+    "claim": "the project-plane refusal reason text"
+  },
+  {
+    "doc": "EXTENSIONS-FOR-AGENTS.md:108",
+    "file": "packages/mpd-ext-plugin/src/registry.ts",
+    "start": 678,
+    "end": 685,
+    "mustMatch": ["refuseHostKind"],
+    "claim": "the refusal site for a host-wide kind in a project-plane manifest"
+  },
+  {
+    "doc": "EXTENSIONS-FOR-AGENTS.md:132",
+    "file": "packages/mpd-ext-plugin/src/mcp.ts",
+    "start": 34,
+    "end": 34,
+    "mustMatch": ["McpServerState"],
+    "claim": "the live MCP state vocabulary connecting/connected/unavailable/failed/disabled"
+  },
+  {
+    "doc": "docs/extension-adaptation-report.md:372",
+    "file": "packages/mpd-ext-plugin/src/index.ts",
+    "start": 59,
+    "end": 95,
+    "mustMatch": ["CANONICAL NOTE", "resolveAdapter"],
+    "claim": "F1's fix: the canonical note plus resolveAdapter"
+  },
+  {
+    "doc": "docs/extension-adaptation-report.md:373",
+    "file": "packages/mpd-ext-plugin/src/index.ts",
+    "start": 59,
+    "end": 80,
+    "mustMatch": ["CANONICAL NOTE"],
+    "claim": "F5's fix: the single canonical note"
+  },
+  {
+    "doc": "docs/extension-adaptation-report.md:380",
+    "file": "packages/mpd-ext-plugin/src/mcp-client.ts",
+    "start": 69,
+    "end": 85,
+    "mustMatch": ["INHERITED_ENV_VARS"],
+    "claim": "F3: the isolation posture is anchored to the inherit list"
+  },
+  {
+    "doc": "docs/extension-adaptation-report.zh-CN.md:176",
+    "file": "packages/mpd-ext-plugin/src/index.ts",
+    "start": 59,
+    "end": 95,
+    "mustMatch": ["CANONICAL NOTE", "resolveAdapter"],
+    "claim": "zh twin of F1's fix anchor"
+  }
+]

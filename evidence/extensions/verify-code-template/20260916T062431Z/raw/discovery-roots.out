@@ -1,0 +1,3 @@
+discovery roots: ["/root/dshProj/my-power-dsh/.mpd/extensions","/root/.mpd/extensions","/root/dshProj/my-power-dsh/extensions"]
+template: /root/dshProj/my-power-dsh/templates/mpd-extension
+template inside a discovery root: false []

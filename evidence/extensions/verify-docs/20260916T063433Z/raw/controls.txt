@@ -1,0 +1,10 @@
+  ok   control:anchor-readme-own — README.md #terminal-ui-dsh-tui matches a real heading
+  ok   control:anchor-readme-crossfile — docs/user-guide.md carries the heading README.md links to
+  ok   control:anchor-zh-own — README.zh-CN.md #终端界面dsh-tui matches a real heading
+  ok   control:anchor-zh-crossfile — docs/user-guide.zh-CN.md carries the heading README.zh-CN.md links to
+  ok   control:anchor-invented-must-fail — an invented anchor is reported as unresolved (the comparator is falsifiable)
+  ok   control:split-self-comparison — guide vs itself reports 25 shared paragraph(s) (a real comparison, not an empty one)
+  ok   control:split-headings-self — guide heading slug(s): 26 unique of 26
+  ok   control:split-real-pair — machine doc vs guide: 0 shared paragraph(s)
+
+[controls] 8/8 control(s) passed

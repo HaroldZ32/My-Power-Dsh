@@ -1,0 +1,6 @@
+dd3bdd00579d8d7aa56a70cb18af6a0bfd4ce3bae400c730d0f35bc40f662ec0  packages/mpd-ext-plugin/src/index.ts
+9a54bf7d6620a2d437ebafd15bda5f7592e9e1cce2d997fe2c6170a71d6ab18c  packages/mpd-roles-plugin/src/index.ts
+70af7a5098d4025b4716506dfbc467dc7435a3885683fefe1e7b07ac3e12b4d5  scripts/mpd-ext.mjs
+2943a10c46ab80a8f117ac19e7d44541e5a8a968d1af0006f24e4b114ac708d1  templates/mpd-extension/README.md
+df231162f849ab2ac712084a8b0c08ccb515dfb9884104229c0b4767ba6bb6c5  docs/extension-authoring-guide.md
+dbdb9d144f61bf5718fcbbab21830b7647253063c8505a7ff0f0aafa5c64f2b0  EXTENSIONS-FOR-AGENTS.md

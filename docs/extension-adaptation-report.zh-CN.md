@@ -136,6 +136,7 @@
 # 两条真实 lane（真实挂载 dsh，沙箱 DSH_HOME + HOME + 会话 cwd）
 bun skills/dsh-qa/scripts/extension-lifecycle.mjs --no-skip
 bun skills/dsh-qa/scripts/extension-mcp-bridge.mjs --no-skip
+bun skills/dsh-qa/scripts/extension-template.mjs --no-skip
 # 共享证据辅助模块自身的离线守卫（不是 case 通道）
 bun skills/dsh-qa/scripts/extension-isolation.mjs --self-test
 # 接口自身的测试套件
@@ -157,6 +158,9 @@ node scripts/verify-docs-parity.mjs
 | `evidence/extensions/t7-verify/20260916T045829Z/` | 本波的真实验证：挂载、扩展端到端、真实 MCP 调用、隔离、锚定 | 当前（HEAD `8777e43` + lane 对象 sha256） |
 | `evidence/extensions/extension-lifecycle/2026-09-16T04-58-41.378Z/` | lifecycle lane，全部分支绿色 | 当前 |
 | `evidence/extensions/extension-mcp-bridge/2026-09-16T04-59-18.173Z/` | bridge lane，全部分支绿色（含修正后的 schema 分支） | 当前 |
+| `evidence/extensions/extension-lifecycle/2026-09-16T06-31-40.371Z/` | skills pass：F8/F9 已修、打包谓词的反向控制，以及本 wave 唯一一次重新钉版的记录（`t8-skills-pass-summary.json`） | 当前 |
+| `evidence/extensions/extension-mcp-bridge/2026-09-16T06-31-25.127Z/` | F10 stderr 分支：来自失败子进程的真实有界尾部（上限 2000） | 当前 |
+| `evidence/extensions/extension-template/2026-09-16T06-31-12.171Z/` | 模板 lane 的 GREEN：脚手架拷贝的四种 kind 全部可用，读自 session log（前两次留痕见上文说明） | 当前 |
 | `evidence/extensions/t13-repair/20260916T045324Z/` | 两条红色分支的修复、重新钉版脚本及其结果 | 当前 |
 | `evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/`、`…04-54-42.210Z/`、`…04-58-47.578Z/`、`evidence/extensions/extension-mcp-bridge/2026-09-16T04-44-32.737Z/`、`…04-54-24.090Z/`、`…04-56-15.636Z/`、`…04-58-11.355Z/` | 修复前后各次 lane 运行（修复前各有一条红色分支） | 已被上面的绿色运行取代 |
 | `evidence/extensions/t7-verify/20260916T044344Z/` | 验证的第 1 次尝试（FAILED） | 已被取代 |
@@ -164,3 +168,60 @@ node scripts/verify-docs-parity.mjs
 | `evidence/extensions/{mcp-bridge-framing,mcp-bridge-gates,registered-tool-schemas,sanitizer-crosscheck,roles-wiring×2,v0.9.1-defect-fixes}`、`evidence/extensions-repair/t16-pins-and-plane-guard/`、`evidence/mpd-ext-repair/roles-report/` | 更早的接口工作 | **过期**——全部早于 `c239407`，不能用于现状断言 |
 
 只有前四行支撑本报告的当前文本：第三行（`t13-repair`）支撑 §8 的修复结论，前三行支撑 §5 的每一条 live 断言。其余各行仅为完整性而列出——修复前的那次运行（`extension-mcp-bridge/2026-09-16T04-44-32.737Z/`，`ok:false`）、验证失败的第 1 次尝试，以及其他复核者的并发 lane 运行，都**已被取代**，且在本指南（以及它所复核的文档）中没有任何一处把它们当作支撑引用。
+
+## 12. 后续 wave 之后的状态（2026-09-16）
+
+依据：修复任务自己在磁盘上的产物，在写作时读取。以下没有任何一行是从任务描述推断出来的，也没有任何
+一行宣称一个证据尚不存在的修复。§6 的登记表刻意保持原样——它是本次审计对"当时发现了什么"的记录；
+本节是在它之上的后续映射。
+
+| 条目 | 状态 | 修复所在位置 | 证据 |
+|---|---|---|---|
+| F1 —— 适配器身份回退是静默的 | **已修复** | 规范注释（提示 `:58-92`）与（`resolveAdapter`, `packages/mpd-ext-plugin/src/index.ts:102`），并已进入重新构建的 `packages/mpd-ext-plugin/dist/index.js`；`mpd-roles-plugin` 交叉引用它 | `evidence/extensions/f1-adapter-identity/20260916T061318Z/` |
+| F5 —— 同一个隐患被写成两处半截注释 | **已修复** | （`"CANONICAL NOTE"`, `packages/mpd-ext-plugin/src/index.ts:59`）的唯一规范注释，`packages/mpd-roles-plugin/src/index.ts` 改为指向它而不是复述 | `evidence/extensions/f1-adapter-identity/20260916T061318Z/` |
+| F7 —— 一个证据检查器宣称过宽 | **已修复** | 修正后的探测器 `evidence/extensions/debranding-probe/20260916T061807Z/verify-debranding-full.mjs`（新目录；`evidence/mpd-ext-debranding/20260915T074904Z/` 按字节保持原样，作为那次窄探测的记录） | `evidence/extensions/debranding-probe/20260916T061807Z/` |
+| F11 —— R11 这类断言没有测试套件归属 | **已修复** | `scripts/verify-pack-closure.mjs`——单独运行、解析打包器真实的列表、并在临时夹具上重放红色——已接入 `package.json` 的 `test:qa:all` | `evidence/extensions/pack-closure-check/20260916T061527Z/` |
+| F8 —— lifecycle lane 仍在叙述修复前的预期 | **已修复** | `skills/dsh-qa/scripts/extension-lifecycle.mjs`：打包分支的叙述改为当前不变量，`greenOwner: "t11"` 已删除 | `evidence/extensions/extension-lifecycle/2026-09-16T06-31-40.371Z/`（真实 lane 运行：`result.json` + `output.log`），并在 `…/t8-skills-pass-summary.json` 汇总 |
+| F9 —— 某一行的引用并不是真正把关该分支的条件 | **已修复** | 分支的 `ok` 现在是纯谓词 `packedStateOk()`（位于 `skills/dsh-qa/scripts/extension-lifecycle.mjs`，提示 `:412`、使用点 `:383`），并由 `packedNegativeDriver()`（`:435`）在四棵夹具打包树上证明其可证伪；`skills/dsh-qa/SKILL.md` 改为引用这些锚点，不再写旧的“exits 0 (`:385`)” | `evidence/extensions/extension-lifecycle/2026-09-16T06-31-40.371Z/` —— `steps.packed.negativeControl`：`falsifiable: true`、`packerExitGated: true`，三棵破损夹具树 `ok: false` |
+| F10 —— 子进程 stderr 尾部这一条没有 lane 分支 | **已修复** | `skills/dsh-qa/scripts/extension-mcp-bridge.mjs` 新增 `stderr` 分支：夹具子进程向 stderr 洪泛 3053 字节带标记内容并在握手前退出；该分支断言报告的尾部保留尾部标记、丢弃头部标记，且长度等于从 `packages/mpd-ext-plugin/src/mcp-client.ts` 读出的上限 | `evidence/extensions/extension-mcp-bridge/2026-09-16T06-31-25.127Z/` —— `steps.stderr`：`cap 2000`、`reportedTailLength 2000`、`headDropped true`、`tailKept true`、`vacuous false` |
+| F2 —— 没有唯一的平面选择规则 | **已由指南吸收** | `docs/extension-authoring-guide.zh-CN.md` §2 承载唯一的那条规则，英文版承载同一条 | 本指南对，已从 `docs/index.zh-CN.md` 链接 |
+| F3 —— 隔离姿态及其残余风险没有文档 | **已由指南吸收** | `docs/extension-authoring-guide.zh-CN.md` §3 陈述该姿态并列出四项已接受的残余风险，锚定（`INHERITED_ENV_VARS`, `packages/mpd-ext-plugin/src/mcp-client.ts:69-85`）与 `:87-97` | 本指南对 |
+| F4 —— 重启行为不对称 | **已由指南吸收** | `docs/extension-authoring-guide.zh-CN.md` §4 即把两种模式并列的生命周期与重启矩阵 | 本指南对 |
+| F6 —— 证据新鲜度 | **延后，并已标记边界** | 早于 `c239407` 的各目录仅被清点，既未重跑、也未编辑或删除 | `evidence/extensions/boundary-index/INDEX.md` |
+
+有两点本表刻意不说：它不从任务描述推断 F8/F9/F10 已被验证——上表三行各自都写明了交付它的那次 lane
+运行，没有任何一行是推断来的；而且这三条 lane 都由本 wave 的验证任务
+（`evidence/extensions/verify-skills/20260916T064350Z/`）独立重跑并重新读取过。本 wave 新的模板 lane `skills/dsh-qa/scripts/extension-template.mjs`
+（case 行 `extension-template`）是扩展 gate 列表中的第四项，并且已在
+`evidence/extensions/extension-template/2026-09-16T06-31-12.171Z/` 记录了一次绿色的真实挂载
+（技能、流程、角色以及模板自带的 MCP 工具，每一条结论都读自 harness 的 session log）。而本 wave
+唯一的一次 skills 重新钉版已经落地：`VENDOR_LOCK.json` 现在读作 `fileCount 318` /
+`treeSha a8ba96b8108b2df3cce707e7b69d038f71514cea9e0c488683ba79012efc8d12`，取代修复前的值
+（`fileCount 317` / `treeSha 7a48fdad90cc30f9c1e71009be216aeb8b2a1de797eb2bb1897032c41f6b51aa`）——
+同一次改动、与 F8/F9/F10 的修改在同一变更集内（AGENTS.md §9/§11），并由 `node scripts/verify-vendor.mjs`
+验证（PASS）。下文披露的打包树 CLI 偏差已被测量，且在本 wave **未**修复。
+
+### 一处已测量的偏差：开发者在打包产物内是红的
+
+**本 wave 未修复**（记录为 `.mpd/TODO.md` T-51）。打包器只复制 `packages/<pkg>/dist`
+（`cpDist`, `scripts/pack-mpd.mjs:67-77`），从不复制 `src`；而开发者 CLI 从 `src` 导入其校验器
+（`"../packages/mpd-ext-plugin/src/registry.ts"`, `scripts/mpd-ext.mjs:35`）。因此在打包树内，每一个 CLI
+入口都以 `Cannot find module '<packed>/packages/mpd-ext-plugin/src/registry.ts'` 退出 1。该结论在一棵由
+打包器自身产物构建的探针树上测得
+（`evidence/extensions/template-scaffold/20260916T063710Z/raw/packed-tree-probe.json`，分支 A 与 B）：
+按打包原样，`validate`、`scaffold`、`--self-test` 全部退出 1；还原 `packages/*/src` 后 `validate` 返回 0，
+而 `scaffold` 与 `--self-test` 仍失败，因为 `templates/` 也没有被打包。因此 AGENTS.md §4 的
+Extension-CLI gate 在 CHECKOUT 中成立（那里 `src` 与 `templates/` 都在），而在打包产物中是红的，
+直到打包器把它们一起交付。该限制在 agent 契约中的副本见 `EXTENSIONS-FOR-AGENTS.md` §9。
+
+
+### 证据说明：模板 lane 的三次留痕
+
+`evidence/extensions/extension-template/` 保存着同一小时内的三次运行——`2026-09-16T06-30-30.275Z/`
+（RED）、`2026-09-16T06-31-12.171Z/`（GREEN），以及独立验证者当小时后段在另一个沙箱里得到的 GREEN。
+lane 在前两次运行之间被修改过，且它是未跟踪文件，因此它修复前的预期**无法仅凭仓库重建**：第三方
+无法重新推导出第一次留痕为何是红的。复核者从已记录产物中得到的事实是精确的——首次运行的 MCP
+`tool/result` 已经带有拷贝自身的 id、它自己的根、`enabled:true` 以及全部四种 kind 字符串，而且
+`server process exited (code=0)` 这一正常收尾行在三次运行中完全相同——因此 RED 来自 **case 自身的
+预期**（它的 `mcp` 步骤读到 `ok:false`，且该步骤缺少 `servedOwnRoot` / `servedFourKinds` 两个键），
+**不是**产品缺陷，也没有抖动信号。预期在下一次留痕中被修正；产品结果本来就是正确的。

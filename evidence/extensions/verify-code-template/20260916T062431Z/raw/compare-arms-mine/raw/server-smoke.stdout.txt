@@ -1,0 +1,3 @@
+{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{"listChanged":false}},"serverInfo":{"name":"mpd-extension-template","version":"0.1.0"}}}
+{"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"describe_extension","description":"Report the id, root and contributed kinds of the extension that hosts this server, read live from its mpd-ext.json manifest.","inputSchema":{"type":"object","properties":{},"additionalProperties":false}}]}}
+{"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"{\n  \"id\": \"mpd-extension-template\",\n  \"root\": \"/root/dshProj/my-power-dsh/templates/mpd-extension\",\n  \"enabled\": false,\n  \"kinds\": [\n    \"skills\",\n    \"flows\",\n    \"mcp\",\n    \"roles\"\n  ]\n}"}]}}

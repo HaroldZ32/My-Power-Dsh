@@ -1,0 +1,148 @@
+{
+  "task": "t22 \u2014 repair round 2 on t4's F1/F5 fix (t13 verdict needs_revision, 1 medium finding)",
+  "attempt_id": "ca90b9b0-9e6f-426f-9622-7bc37ddfef8d",
+  "agent": "Senior Engineer",
+  "verdict": "PASS",
+  "finding_addressed": {
+    "id": "t13-F1-cost-clause",
+    "severity": "medium",
+    "problem": "the canonical note and BOTH runtime warning strings claimed the fallback adapter 'doubles every per-instance guard/waterfall state' \u2014 the adapter refutes that: guards and waterfalls are registered THROUGH the harness seams, so they still happen once each",
+    "repair": "that clause is replaced by the code-grounded cost, and the note now also records the residual explicitly"
+  },
+  "code_grounded_claims": [
+    {
+      "claim": "the fallback instance BYPASSES the mounted adapter (one-contact-surface rule, AGENTS.md \u00a76)",
+      "basis": "the fallback branch builds its own adapter object instead of using the mounted service: packages/mpd-ext-plugin/src/index.ts resolveAdapter(), packages/mpd-roles-plugin/src/index.ts resolveAdapter()"
+    },
+    {
+      "claim": "it does NOT inherit the adapter ROW's config (defaultTimeoutMs)",
+      "basis": "the row's apply forwards its own config (packages/mpd-dsh-adapter-plugin/src/index.ts:870-871) while the fallback call is bare createDshAdapter(ctx); the adapter resolves `const defaultTimeoutMs = config.defaultTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS` (:390, DEFAULT 120_000 at :27) and uses it for tool calls (:623, :633) \u2014 so the private instance always runs on the built-in default"
+    },
+    {
+      "claim": "it keeps its own per-instance caches (the per-agent compaction-engine memo)",
+      "basis": "`const engineCache = new Map<string, unknown>()` lives INSIDE createDshAdapter (:464) and is the only per-instance cache in that closure; compactionEngineForAgent() reads/writes it (:466-472)"
+    },
+    {
+      "claim": "the guard/waterfall 'doubling' story was FALSE and is now explicitly denied",
+      "basis": "guards/waterfalls are registered through the harness seams (dsh.guardTool / dsh.onPostToolExecute -> ctx.tools), not held as adapter instance state; the note now says so in one sentence"
+    }
+  ],
+  "edits": [
+    {
+      "file": "packages/mpd-ext-plugin/src/index.ts",
+      "what": "canonical note (opening cross-reference paragraph + the cost clause); the fallback warning string",
+      "lines_after_edit": "note :58-92, warning :260-267",
+      "new_note_opening": "the sites THIS FIX touched CROSS-REFERENCE it \u2014 mpd-roles (resolveAdapter + its comment) and the bundle patch's row-order bullet (packages/mpd-bundle/cordis.patch.yml:251-257); RESIDUAL recorded: the OTHER rows carrying the same fallback stay silent (outside this fix's scope)",
+      "new_cost_clause": "BYPASSES the mounted adapter (one-contact-surface rule, AGENTS.md \u00a76); does NOT inherit the adapter ROW's config (defaultTimeoutMs -> built-in default); carries its OWN per-instance caches (the per-agent compaction-engine memo); explicitly NOT doubling guard/waterfall registrations"
+    },
+    {
+      "file": "packages/mpd-roles-plugin/src/index.ts",
+      "what": "the fallback warning string (:357-364) \u2014 same cost clause, same identity wording, same row-order prescription"
+    },
+    {
+      "file": "packages/mpd-ext-plugin/test/adapter-identity.test.ts",
+      "what": "NEW standing vocabulary pin: literal pins for both constants + a CROSS-PACKAGE equality assertion importing the sibling row's constants"
+    },
+    {
+      "file": "packages/mpd-roles-plugin/test/adapter-identity.test.ts",
+      "what": "NEW standing vocabulary pin: literal pins for both constants"
+    },
+    {
+      "file": "packages/mpd-ext-plugin/dist/index.js, packages/mpd-roles-plugin/dist/index.js",
+      "what": "rebuilt with the contract's exact bun build lines (both warnings ship INSIDE the dist)"
+    }
+  ],
+  "unchanged_by_this_repair": {
+    "identity_wording": "mounted:mpdDsh / fallback:createDshAdapter verbatim",
+    "exactly_once_per_apply": "the single warn call per row is untouched",
+    "row_order_prescription": "both strings still prescribe composing the row BELOW mpd-dsh-adapter",
+    "out_of_scope_files": "the twelve OTHER rows carrying the same `?? createDshAdapter(ctx)` fallback were NOT edited (named residual in the note)",
+    "cordis_patch_yml": "untouched in this repair (its row-order bullet already cross-references the canonical note)"
+  },
+  "readings": {
+    "old_clause_gone": {
+      "grep_guard_waterfall_in_src": 0,
+      "grep_guard_waterfall_in_dist": 0,
+      "grep_guard_waterfall_in_real_fallback_boot": 0
+    },
+    "new_clause_present": {
+      "grep_new_clause_in_ext_dist": 1,
+      "grep_new_clause_in_roles_dist": 1,
+      "grep_new_clause_in_real_fallback_boot": 2
+    },
+    "live_fallback_boot": "raw/fallback-boot.result.json: adapter_row_applied=0, mpd_ext_fallback_warnings=1, mpd_roles_fallback_warnings=1, four_tool_summary_present=true, apply_crash_signatures=0, passed=true (boot_exit=124 = still serving at the cap)",
+    "healthy_mounted_boot": "evidence/dsh-qa/bundle-lifecycle/2026-09-16T06-37-56.922Z/boot.log:5-6 -> adapterIdentity=mounted:mpdDsh on BOTH rows; 'ADAPTER FALLBACK' count = 0; lane PASS with every step ok=true",
+    "tests": {
+      "mpd_ext": "74 pass / 0 fail / 560 expect calls (was 72 before the 2 new pins)",
+      "mpd_roles": "31 pass / 0 fail / 485 expect calls (was 30 before the 1 new pin)"
+    },
+    "verbatim_runtime_sentence": "it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md \u00a76), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo)",
+    "verbatim_sentence_sources": {
+      "in_fallback_boot": "the sentence appears verbatim in BOTH rows' real warnings (raw/fallback-boot.raw.log, 2 occurrences)",
+      "absent_from_healthy_boot": "evidence/dsh-qa/bundle-lifecycle/2026-09-16T06-37-56.922Z/boot.log carries it 0 times",
+      "src_grep_trap": "in the SOURCE the sentence is split across concatenated string literals, so grep for the joined phrase matches the DIST and the boot log but not the .ts; grep 'NOT inherit the adapter row' matches once in each src file"
+    },
+    "preserved_elements": {
+      "identity_literals": "mounted:mpdDsh / fallback:createDshAdapter still the only two values (src grep)",
+      "exactly_one_warning_per_apply": "the real fallback boot still records 1 warning per row",
+      "row_order_prescription": "'must sit BELOW mpd-dsh-adapter' (mpd-ext) and 'BELOW mpd-dsh-adapter' (mpd-roles) still present"
+    }
+  },
+  "hashes": {
+    "before": "raw/before-hashes.txt",
+    "after": "raw/after-hashes.txt",
+    "dist_ext_before": "c5c6f9e0619e36c4e59a283a9feaf3eaa0654d93efc4d4219059fde28c4a9bbe",
+    "dist_ext_after": "0ebad6573abac96a5e0599208ba1d948c5e6ff315b5f47671ebfe82939acba55",
+    "dist_roles_before": "dc803f5b98c2d2c51f062d4122c7b6a60e21ac075f055e6164220357369da5f0",
+    "dist_roles_after": "22595b921903286873855185bbf05a5a06aba8d80201eadcb036d174d4778deb",
+    "note": "t10's dist-freshness reading must be pinned to the AFTER hashes: both dists were rebuilt from the reworded sources in this repair"
+  },
+  "commands": [
+    {
+      "command": "bun test packages/mpd-ext-plugin",
+      "exit": 0,
+      "reading": "74 pass, 0 fail"
+    },
+    {
+      "command": "bun test packages/mpd-roles-plugin",
+      "exit": 0,
+      "reading": "31 pass, 0 fail"
+    },
+    {
+      "command": "bun build packages/mpd-ext-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ext-plugin/dist/index.js",
+      "exit": 0,
+      "reading": "index.js 151.1 KB"
+    },
+    {
+      "command": "bun build packages/mpd-roles-plugin/src/index.ts --target node --format esm --outfile packages/mpd-roles-plugin/dist/index.js",
+      "exit": 0,
+      "reading": "index.js 37.80 KB"
+    },
+    {
+      "command": "bun scripts/mpd-ext.mjs --self-test",
+      "exit": 0,
+      "reading": "passed (52 checks; the CLI grew with t5's scaffold self-tests)"
+    },
+    {
+      "command": "node scripts/verify-rows-parity.mjs",
+      "exit": 0,
+      "reading": "25 row ids match the bundle patch insert list"
+    },
+    {
+      "command": "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs",
+      "exit": 0,
+      "reading": "[bundle-lifecycle] PASS; boot.log:5-6 carry adapterIdentity=mounted:mpdDsh, 0 fallback markers"
+    },
+    {
+      "command": "bash evidence/extensions/f1-adapter-identity/20260916T063737Z-repair2/live-fallback-boot.sh",
+      "exit": 0,
+      "reading": "passed=true; 1 warning per row; the reworded cost clause appears in both real warnings"
+    }
+  ],
+  "notes": [
+    "The t4 evidence dir (20260916T061318Z) is IMMUTABLE and was not modified: the re-run driver was copied into this repair's dir and its EV path re-pointed before running.",
+    "live-fallback-boot.sh in this dir is a byte-adapted copy (stamp only) of the t4 driver, so the fallback path is re-proven against the reworded strings rather than against the archived log.",
+    "Out of scope and untouched: skills/**, docs/**, templates/**, scripts/**, package.json, VENDOR_LOCK.json, the README pairs, and the twelve other rows that carry the same fallback (now named as a residual in the note).",
+    "The cost sentence is SPLIT across string literals in the .ts sources and joined in the built dist: grep the joined phrase against dist/ or the boot log, and 'NOT inherit the adapter row' against the sources."
+  ]
+}

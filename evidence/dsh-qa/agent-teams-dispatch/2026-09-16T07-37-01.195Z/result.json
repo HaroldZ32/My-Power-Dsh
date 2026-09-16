@@ -1,0 +1,35 @@
+{
+  "ok": true,
+  "sandbox": "/tmp/mpd-dispatch-IjdwEl",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "captainRun": {
+      "ok": true,
+      "exit": 0,
+      "tail": " team? The protocol says present results and delete the team unless the user wants to keep working. But the user said do exactly this and nothing else, and the probe may want the team to stay for inspection. Given \"nothing else\", I will not delete the team. I'll just report.\n\nReport: the probe results — tasks dispatched and completed with A-OK / B-OK.\n\nI should note the deviations: no staged team existed, so I created one with mpd profile; first approve failed (no team), second approve failed (no tasks); final approve succeeded with both tasks staged.\n\nLet me write the final answer concisely.\n"
+    },
+    "tasks": {
+      "a": "completed",
+      "b": "completed",
+      "total": 2
+    },
+    "memberAssignments": {
+      "count": 2,
+      "sessions": 12,
+      "labels": [
+        "agent-teams:dispatch-probe:Planner",
+        "agent-teams:dispatch-probe:Researcher"
+      ]
+    },
+    "secondBatchDispatched": {
+      "ok": true
+    },
+    "assignmentDelivery": {
+      "ok": true,
+      "dependentAssignee": "Researcher"
+    }
+  }
+}

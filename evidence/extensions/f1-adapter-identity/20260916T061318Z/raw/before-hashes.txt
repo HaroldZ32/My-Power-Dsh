@@ -1,0 +1,5 @@
+04a3925195296565a0ebece83757a24c388b138899747dbd4f73a9105a1d76fd  packages/mpd-ext-plugin/src/index.ts
+54f804847e02fbb1ead8c584dbfdb6cc3ac5f4a7053e1bebd003422513f08223  packages/mpd-roles-plugin/src/index.ts
+7a91509eed2c40a263b018c970c28a7a30f8d47697ff658c2cf90d19f7a4ea65  packages/mpd-ext-plugin/dist/index.js
+898ebf8bccb04f488a86717c4afc1c1c095653eb4e0107295edb7d8773f0b13f  packages/mpd-roles-plugin/dist/index.js
+11da3e4a4b68721336f2e0de8149ffc6b77d6c6e2577a9277958bd5bfa33d615  packages/mpd-bundle/cordis.patch.yml

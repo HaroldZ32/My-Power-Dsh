@@ -156,6 +156,7 @@ function createDshAdapter(ctx, config = {}) {
         toolsGuard: typeof tools?.guard === "function",
         toolsGet: typeof tools?.get === "function",
         toolsExecute: typeof tools?.execute === "function",
+        toolsPreExecute: typeof ctx?.on === "function",
         toolsPostExecute: typeof ctx?.on === "function",
         subagents: subagents !== undefined,
         subagentsSpawn: typeof subagents?.start === "function",
@@ -202,6 +203,17 @@ function createDshAdapter(ctx, config = {}) {
       if (typeof tools.guard !== "function")
         throw new Error("mpd-dsh-adapter: the harness tools service exposes no guard()");
       return tools.guard((exec) => guard(exec ?? {}));
+    },
+    onPreToolExecute(listener) {
+      if (typeof ctx?.on !== "function")
+        return noop;
+      return ctx.on("tools/pre-execute", async (exec, next) => {
+        const downstream = typeof next === "function" ? await next() : undefined;
+        try {
+          listener(Object.freeze({ ...exec ?? {} }), downstream);
+        } catch {}
+        return downstream;
+      });
     },
     onPostToolExecute(listener) {
       if (typeof ctx?.on !== "function")
@@ -309,6 +321,126 @@ function createDshAdapter(ctx, config = {}) {
         ...preset?.trust === undefined ? {} : { trust: String(preset.trust) },
         ...preset?.broken === undefined ? {} : { broken: String(preset.broken) }
       };
+    },
+    settingsReader(namespace) {
+      const settings = service("settings");
+      if (settings === undefined || settings === null)
+        return;
+      return {
+        get() {
+          try {
+            return typeof settings.get === "function" ? settings.get(namespace) : undefined;
+          } catch {
+            return;
+          }
+        },
+        describe() {
+          try {
+            if (typeof settings.describe !== "function")
+              return;
+            const list = settings.describe();
+            if (!Array.isArray(list))
+              return;
+            const found = list.find((entry) => entry?.ns === namespace);
+            if (found === undefined)
+              return;
+            return {
+              value: found.value,
+              revision: typeof found.revision === "number" ? found.revision : undefined,
+              user: found.user,
+              base: found.base,
+              applies: typeof found.applies === "string" ? found.applies : undefined
+            };
+          } catch {
+            return;
+          }
+        }
+      };
+    },
+    onSettingsDocumentUpdated(namespace, listener) {
+      let pendingRevision;
+      let pendingSource;
+      let hasPending = false;
+      let scheduled = false;
+      const flush = () => {
+        scheduled = false;
+        if (!hasPending)
+          return;
+        const revision = pendingRevision;
+        const source = pendingSource;
+        pendingRevision = undefined;
+        pendingSource = undefined;
+        hasPending = false;
+        try {
+          listener(revision, source);
+        } catch {}
+      };
+      const offUpdated = adapter.onEvent("settings/updated", (ns, _next, _prev, from) => {
+        if (String(ns) !== namespace)
+          return;
+        pendingSource = from === undefined ? undefined : String(from);
+        return;
+      });
+      const offDocument = adapter.onEvent("settings/document-updated", (ns, revision) => {
+        if (String(ns) !== namespace)
+          return;
+        pendingRevision = typeof revision === "number" ? revision : undefined;
+        hasPending = true;
+        if (!scheduled) {
+          scheduled = true;
+          Promise.resolve().then(flush);
+        }
+        return;
+      });
+      return () => {
+        try {
+          offUpdated?.();
+        } catch {}
+        try {
+          offDocument?.();
+        } catch {}
+      };
+    },
+    whenSettingsAvailable(callback) {
+      if (typeof ctx?.inject !== "function") {
+        try {
+          callback();
+        } catch {}
+        return;
+      }
+      try {
+        ctx.inject(["settings"], () => {
+          try {
+            callback();
+          } catch {}
+        });
+      } catch {}
+    },
+    settingsRegister(namespace, schema, options) {
+      const settings = service("settings");
+      if (settings === undefined || settings === null || typeof settings.register !== "function") {
+        return { ok: false, error: "settings service is unavailable" };
+      }
+      try {
+        settings.register(namespace, schema, { ...options?.base === undefined ? {} : { base: options.base }, ...options?.applies === undefined ? {} : { applies: options.applies } });
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, error: String(error?.message ?? error) };
+      }
+    },
+    async settingsMutate(namespace, ops, expectedRevision) {
+      const settings = service("settings");
+      if (settings === undefined || settings === null || typeof settings.mutate !== "function") {
+        return { ok: false, error: "settings service is unavailable" };
+      }
+      try {
+        await settings.mutate(namespace, ops.map((op) => op.op === "unset" ? { op: "unset", path: [...op.path] } : { op: "set", path: [...op.path], value: op.value }), expectedRevision);
+        return { ok: true };
+      } catch (error) {
+        const name = String(error?.name ?? "");
+        const conflict = name === "SettingsConflictError" || /conflict/i.test(String(error?.message ?? ""));
+        return { ok: false, error: String(error?.message ?? error), ...conflict ? { conflict: true } : {} };
+      }
     },
     text: textBlock
   };
@@ -2931,6 +3063,15 @@ async function connectExtensionMcpServers(options) {
 var name = "mpd-ext";
 var REQUIRED_SEAMS = ["tools", "skills"];
 var inject = [...REQUIRED_SEAMS];
+var ADAPTER_IDENTITY_MOUNTED = "mounted:mpdDsh";
+var ADAPTER_IDENTITY_FALLBACK = "fallback:createDshAdapter";
+function resolveAdapter(ctx) {
+  const mounted = typeof ctx?.get === "function" ? ctx.get("mpdDsh") : undefined;
+  if (mounted !== undefined && mounted !== null) {
+    return { dsh: mounted, adapterIdentity: ADAPTER_IDENTITY_MOUNTED, usedFallback: false };
+  }
+  return { dsh: createDshAdapter(ctx), adapterIdentity: ADAPTER_IDENTITY_FALLBACK, usedFallback: true };
+}
 var ERROR_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -3017,11 +3158,19 @@ async function mount(ctx, config = {}) {
     } catch {}
   };
   let dsh;
+  let adapterIdentity = "";
+  let usedFallbackAdapter = false;
   try {
-    dsh = (typeof ctx?.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx);
+    const resolved = resolveAdapter(ctx);
+    dsh = resolved.dsh;
+    adapterIdentity = resolved.adapterIdentity;
+    usedFallbackAdapter = resolved.usedFallback;
   } catch (error) {
     warn("adapter unavailable, extension interface not mounted: " + message7(error));
     return;
+  }
+  if (usedFallbackAdapter) {
+    warn("ADAPTER FALLBACK (adapterIdentity=" + adapterIdentity + '): ctx.get("mpdDsh") found no mounted mpdDsh service, so this row built its OWN adapter beside' + " the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does" + " NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches" + " (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is" + " loud now — fix the ROW ORDER (mpd-ext must sit BELOW mpd-dsh-adapter); the canonical note lives in" + " this file (resolveAdapter).");
   }
   const seams = (() => {
     try {
@@ -3206,6 +3355,7 @@ async function mount(ctx, config = {}) {
   };
   const service = {
     apiVersion: MPD_EXT_API_VERSION,
+    adapterIdentity,
     register,
     list: (options = {}) => snapshot(options?.exec),
     describe: (id, options = {}) => snapshot(options?.exec).extensions.find((entry) => entry.id === String(id ?? "")),
@@ -3705,12 +3855,14 @@ async function mount(ctx, config = {}) {
   if (missingTools.length > 0) {
     warn("FATAL: only " + registeredToolNames.length + "/" + EXPECTED_TOOLS.length + " tools registered (missing: " + missingTools.join(", ") + ") — the extension interface is NOT usable in this session;" + " the row declares inject: " + JSON.stringify([...REQUIRED_SEAMS]) + ", so check the harness seams above");
   } else if (config.quiet !== true) {
-    console.log("[mpd-ext] mpdExtensions provided (apiVersion " + MPD_EXT_API_VERSION + ")" + " | tools: " + registeredToolNames.join(", ") + " | skill providers: " + (registeredProviderNames.length === 0 ? "(none: no extension contributes skills or flows)" : registeredProviderNames.join(", ")) + " | project plane: <session workspace>/.mpd/extensions (per call)");
+    console.log("[mpd-ext] mpdExtensions provided (apiVersion " + MPD_EXT_API_VERSION + ")" + " | adapterIdentity=" + adapterIdentity + " | tools: " + registeredToolNames.join(", ") + " | skill providers: " + (registeredProviderNames.length === 0 ? "(none: no extension contributes skills or flows)" : registeredProviderNames.join(", ")) + " | project plane: <session workspace>/.mpd/extensions (per call)");
   }
 }
 export {
   name,
   inject,
   apply,
-  REQUIRED_SEAMS
+  REQUIRED_SEAMS,
+  ADAPTER_IDENTITY_MOUNTED,
+  ADAPTER_IDENTITY_FALLBACK
 };

@@ -68,12 +68,35 @@ const SCHEMA_EXT = "qa-mcp-schema"
 const SCHEMA_SERVER = "qa_mcp_schema"
 const DUP_EXT = "qa-mcp-dup"
 const DUP_SERVER = "qa_mcp_dup"
+// F10 — the bounded child-stderr tail. No lane asserted it before this case: the
+// state record carries `stderrTail`, and the failure ERROR entry carries
+// `…; child stderr tail: <tail>` (packages/mpd-ext-plugin/src/mcp.ts:216-224),
+// which is what `mpd_ext_show` renders — so the tail IS observable from a tool
+// result, and this arm asserts its EXACT bound, not merely its presence.
+const STDERR_EXT = "qa-mcp-stderr"
+const STDERR_SERVER = "qa_mcp_stderr"
+const STDERR_HEAD_MARK = "MPD-QA-STDERR-HEAD"
+const STDERR_MID_MARK = "MPD-QA-STDERR-MID"
+const STDERR_END_MARK = "MPD-QA-STDERR-END"
+const STDERR_FLOOD_RUN = 1500
+const STDERR_FLOOD_LENGTH = STDERR_HEAD_MARK.length + 1 + STDERR_FLOOD_RUN + STDERR_MID_MARK.length + STDERR_FLOOD_RUN + STDERR_END_MARK.length
 const HANG_TIMEOUT_MS = 1500
 
 // One scenario-driven fixture server, written into the sandbox: it exercises the
 // real wire (JSON-RPC 2.0 over stdio), never a mock of the bridge.
 const FIXTURE_SOURCE = `import { readFileSync } from "node:fs"
 const mode = process.env.MPD_QA_FIXTURE_MODE ?? "ok"
+// The stderr arm (F10): a child that floods stderr with marked bytes and then dies
+// BEFORE answering \`initialize\`. The marks let a lane prove truncation-to-tail
+// without knowing the cap: HEAD is written first and must be GONE from the report,
+// MID/END are written last and must be present.
+const STDERR_HEAD = "MPD-QA-STDERR-HEAD"
+const STDERR_MID = "MPD-QA-STDERR-MID"
+const STDERR_END = "MPD-QA-STDERR-END"
+const FLOOD = STDERR_HEAD + "-" + "A".repeat(1500) + STDERR_MID + "B".repeat(1500) + STDERR_END
+if (mode === "stderr") {
+  process.stderr.write(FLOOD, () => process.exit(1))
+} else {
 const TOOLSETS = {
   ok: [{ name: "echo", description: "Echo the arguments back", inputSchema: { type: "object", properties: { text: { type: "string" } } } }],
   schema: [
@@ -122,7 +145,20 @@ process.stdin.on("data", (chunk) => {
   }
 })
 process.on("SIGTERM", () => process.exit(0))
+}
 `
+
+/**
+ * The stderr-tail cap, read from the SHIPPED adapter source rather than hard-coded:
+ * the assertion "the reported tail is BOUNDED by the documented cap" must track the
+ * implementation (packages/mpd-ext-plugin/src/mcp-client.ts, `.slice(-STDERR_TAIL_CHARS)`),
+ * and reading it keeps this arm honest if the cap ever moves.
+ */
+function stderrTailCap() {
+  const source = readFileSync(join(REPO, "packages", "mpd-ext-plugin", "src", "mcp-client.ts"), "utf8")
+  const match = /STDERR_TAIL_CHARS\s*=\s*(\d+)/.exec(source)
+  return match === null ? null : Number(match[1])
+}
 
 function selfTest() {
   const problems = []
@@ -145,6 +181,21 @@ function selfTest() {
     return normalized.slice(0, 51) + "_" + "0123456789ab"
   }
   check(FIXTURE_SOURCE.includes('name: "dup_tool", description: "the same raw name advertised twice"'), "the dup arm must advertise the SAME raw name twice")
+
+  // F10 premise: the stderr arm can only be non-vacuous if (a) the fixture really
+  // floods stderr with MORE than the cap, in marks that let truncation be proven,
+  // (b) the cap is documented in the shipped source this lane reads, and (c) the
+  // failure ERROR entry really carries the tail into what `mpd_ext_show` renders.
+  const cap = stderrTailCap()
+  check(cap !== null, "the stderr-tail cap (STDERR_TAIL_CHARS) is no longer declared in packages/mpd-ext-plugin/src/mcp-client.ts")
+  check(FIXTURE_SOURCE.includes('mode === "stderr"'), "the fixture no longer carries the stderr flood mode")
+  for (const mark of [STDERR_HEAD_MARK, STDERR_MID_MARK, STDERR_END_MARK]) {
+    check(FIXTURE_SOURCE.includes(mark), "the fixture floods no " + mark + " mark")
+  }
+  check(FIXTURE_SOURCE.includes('"A".repeat(' + STDERR_FLOOD_RUN + ')') && FIXTURE_SOURCE.includes('"B".repeat(' + STDERR_FLOOD_RUN + ')'), "the fixture no longer floods the two marked runs this lane measures")
+  check(cap !== null && STDERR_FLOOD_LENGTH > cap, "the flood (" + STDERR_FLOOD_LENGTH + " bytes) must EXCEED the cap (" + String(cap) + ") so truncation is observable")
+  const mcpSource = readFileSync(join(REPO, "packages", "mpd-ext-plugin", "src", "mcp.ts"), "utf8")
+  check(mcpSource.includes("child stderr tail: "), "the failure error entry no longer carries the child stderr tail, so this arm could not observe it from a tool result")
   // The lossy-hash rule keeps DIFFERENT raw names apart — assert that property, so
   // a future change that dropped the hash would be caught here.
   check(publicName(DUP_SERVER, "two.name") !== publicName(DUP_SERVER, "two_name"), "two different lossy raw names must NOT share a public name")
@@ -183,7 +234,7 @@ function selfTest() {
     for (const problem of problems) console.error("[" + SLUG + " self-test] FAIL: " + problem)
     process.exit(1)
   }
-  console.log("[" + SLUG + " self-test] ok: lsp server + row + public-name collision premise + fixture scenarios + example server verified")
+  console.log("[" + SLUG + " self-test] ok: lsp server + row + public-name collision premise + fixture scenarios (incl. the stderr flood and the cap it must exceed) + example server verified")
 }
 
 // ── the real lane ───────────────────────────────────────────────────────────
@@ -233,6 +284,11 @@ async function runReal() {
     writeExtension(hostPlane, DUP_EXT, manifest(DUP_EXT, {
       mcp: [{ serverName: DUP_SERVER, transport: "stdio", command: process.execPath, args: [fixtureServer], env: { MPD_QA_FIXTURE_MODE: "dup" }, connectTimeoutMs: 8000 }],
     }))
+    // F10: a child that floods stderr with marked bytes and dies before the
+    // handshake — the one shape that makes the tail visible in state reporting.
+    writeExtension(hostPlane, STDERR_EXT, manifest(STDERR_EXT, {
+      mcp: [{ serverName: STDERR_SERVER, transport: "stdio", command: process.execPath, args: [fixtureServer], env: { MPD_QA_FIXTURE_MODE: "stderr" }, connectTimeoutMs: 8000 }],
+    }))
 
     const stub = makeStubModel({
       script: [
@@ -240,6 +296,7 @@ async function runReal() {
         { tool: "mpd_ext_show", args: { id: SCHEMA_EXT } },
         { tool: "mpd_ext_show", args: { id: DUP_EXT } },
         { tool: "mpd_ext_show", args: { id: HANG_EXT } },
+        { tool: "mpd_ext_show", args: { id: STDERR_EXT } },
         { tool: LIVE_TOOL, args: {} },
         { text: "mcp-bridge-done" },
       ],
@@ -261,7 +318,7 @@ async function runReal() {
     // assertion).
     const results = toolResultsByCallId(evidence.store)
     const showTexts = {}
-    for (const id of [DEAD_EXT, HANG_EXT, SCHEMA_EXT, DUP_EXT]) {
+    for (const id of [DEAD_EXT, HANG_EXT, SCHEMA_EXT, DUP_EXT, STDERR_EXT]) {
       const call = callsOf(evidence.store, "mpd_ext_show").find((entry) => entry.arguments?.id === id)
       showTexts[id] = call === undefined ? "" : (results.get(call.callId)?.text ?? "")
     }
@@ -341,6 +398,37 @@ async function runReal() {
       headerZeroTools: [...headerTools].filter((name) => name.startsWith("mcp__" + DUP_SERVER + "__")).length === 0,
       stateText: showTexts[DUP_EXT].slice(0, 300),
       collisionPremise: "the SAME raw name (dup_tool) advertised twice makes the tool list invalid (\"listed tool ... more than once\"), which rolls the whole generation back to ZERO tools; two DIFFERENT raw names can never collide because any lossy transformation gains a hash suffix",
+    }
+    // F10 — the bounded child-stderr tail in the state reporting. The channel is
+    // the failure error entry (`mpd.ts` fail(): `…; child stderr tail: <tail>`),
+    // which `mpd_ext_show` renders; the MARKED flood proves truncation-to-tail:
+    // HEAD was written first and must be gone, MID/END last and must survive, and
+    // the reported length must equal the cap declared in the shipped source.
+    const tailMatch = /child stderr tail: (.*)$/m.exec(showTexts[STDERR_EXT])
+    const reportedTail = tailMatch === null ? "" : tailMatch[1]
+    const cap = stderrTailCap()
+    steps.stderr = {
+      vacuous: !liveOk,
+      ok: run.status === 0 && liveOk
+        && /unavailable|failed/.test(showTexts[STDERR_EXT])
+        // no tool from a child that never completed the handshake
+        && [...offered].filter((name) => name.startsWith("mcp__" + STDERR_SERVER + "__")).length === 0
+        && [...headerTools].filter((name) => name.startsWith("mcp__" + STDERR_SERVER + "__")).length === 0
+        // NON-VACUOUS: a REAL tail from the failing child, bounded by the cap
+        && cap !== null
+        && reportedTail.length === cap
+        && STDERR_FLOOD_LENGTH > cap
+        && reportedTail.includes(STDERR_MID_MARK)
+        && reportedTail.includes(STDERR_END_MARK)
+        && !reportedTail.includes(STDERR_HEAD_MARK),
+      cap,
+      floodLength: STDERR_FLOOD_LENGTH,
+      reportedTailLength: reportedTail.length,
+      headDropped: !reportedTail.includes(STDERR_HEAD_MARK),
+      tailKept: reportedTail.includes(STDERR_MID_MARK) && reportedTail.includes(STDERR_END_MARK),
+      reported: /unavailable|failed/.test(showTexts[STDERR_EXT]),
+      tailHead: reportedTail.slice(0, 80),
+      stateHead: showTexts[STDERR_EXT].slice(0, 200),
     }
     steps.containment = {
       ok: run.status === 0 && crashSignatures(run.out).length === 0 && liveOk,

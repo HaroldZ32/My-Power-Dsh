@@ -1,0 +1,47 @@
+t25 repair round 2 — evidence log
+stamp 20260916T070327Z · attempt 6d35a9e5-98ea-4309-87c5-21be89c5af1f
+
+CONTEXT
+  t9 shipped the docs; t21 (Senior Engineer) re-anchored the citations and strengthened the
+  checker; t16 reviewed the result and returned needs_revision (the `enabled` default claim +
+  nine stale anchors). This task closes that round.
+
+VERIFIED AS DELIVERED (independently re-checked, not taken from t21's summary)
+  * every re-anchored citation I spot-checked carries its claimed symbol on the cited line:
+      registry.ts:583  enabled: input.enabled !== false
+      index.ts:659     const redactedDescriptor = ...
+      index.ts:1062    bridge = await connectExtensionMcpServers({
+      index.ts:102     function resolveAdapter(
+      index.ts:59      CANONICAL NOTE — the second-adapter hazard
+      index.ts:537     const safeRegisterTool = ...   (+ name: 715 / 807 / 930 / 984, EXPECTED_TOOLS 548)
+      mcp-client.ts:129-135  export function publicToolName( ... ) { ... }
+      mcp.ts:42        stderrTail?: string
+  * check-citations.mjs now asserts CONTENT, not just existence/range (`contentClaimProblem`), and
+    ships a falsifiable negative control: `--self-test` → 14/14, the mis-anchored fixture exits 1
+    with "the cited line/range does not carry the claim `alphaSymbol`".
+  * the zh twins carry all of it; the cited evidence paths all exist; F6 is untouched.
+
+GAPS FOUND AND CLOSED HERE (each one was a real acceptance item left open)
+  1. guide §5 note (EN:143 / zh:127): still blamed the copy, not the TEMPLATE's flag. Rewritten:
+     the copy is dark because the template ships "enabled": false; the runtime default is the
+     opposite, so an extension that omits the key is live.
+  2. EXTENSIONS-FOR-AGENTS.md §2: the default was already correct but lacked the actionable
+     sentence; it now reads "set it to `false` — as the template does — to keep the extension dark",
+     with the `enabled` claim still on the anchored line.
+  3. report closing paragraph (EN/zh): now records that the three F8/F9/F10 lanes were independently
+     re-run and re-read by the wave's verification task
+     (`evidence/extensions/verify-skills/20260916T064350Z/`).
+
+GATES (final run, after every edit above — all exit 0)
+  node scripts/verify-docs-parity.mjs                    pairs=36 failed=0 violations=0 — PASS
+  node evidence/extensions/docs-claims/check-citations.mjs  12/12, 219 citations resolved,
+                                                        43 anchors content-verified, 0 claims missing
+  bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example  loadable 1/1/1/1
+
+RAW
+  raw/gate-docs-parity.txt, raw/gate-check-citations.txt, raw/gate-validate-example.txt,
+  raw/check-citations.result.json, raw/check-citations.output.log
+
+NOTES
+  no code change; no git verbs; the superseded intermediate run lives in the sibling stamp dir
+  20260916T070219Z/; a stray root marker I created was removed in the same turn.
