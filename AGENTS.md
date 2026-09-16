@@ -222,10 +222,15 @@ gates pass and their evidence is committed with the change.
      accumulating is what inflates the session's context and erases the wave boundary: the measured
      case reached **86 tasks across four waves**, after which one wave's seven fixes read as
      unrelated chores. Keep ONE team per wave, and end it when the wave lands.
-  2. **Dispatch by WORKLOAD SIZE, not by a rigid gate.** A small mechanical change is the captain's
-     own work; a change that touches plugin code plus derived artifacts, or that needs independent
-     verification, or that runs beside other work, is worth a member. Size is the criterion — do
-     not invent extra conditions on top of it.
+  2. **Dispatch by WORKLOAD SIZE — size picks the EXECUTOR, it never decides "do it myself".**
+     Team mode is NOT a precondition for using specialists: outside a team the MPD-native path is
+     always available — `mpd_role_spawn` for a one-shot specialist and the workmate library
+     (`mpd_workmate_*`) for an instance that accumulates across sessions. Size chooses WHICH
+     executor: a small mechanical change goes to a Junior Engineer, a bounded independent piece to
+     a Senior Engineer or Deep Worker, an evidence question to a Researcher or Explorer, a verdict
+     to a Reviewer. The captain executes only what must not be delegated by rule — the single git
+     writer, contract amendments and plan/roster shaping, releasing a watchdog hold, and the final
+     integration — and does so without framing it as "working solo".
   3. **Keep requirement / task / review SEPARATE.** A dispatched piece of work gets a requirement
      task (the frozen acceptance contract), a work task and a review task rather than one lumped
      implementation task; finding-driven work uses `kind=repair` + `sourceTaskId`/
