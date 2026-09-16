@@ -1,0 +1,96 @@
+{
+  "registered": [
+    {
+      "id": "mpd-tui-board",
+      "title": "MPD board"
+    },
+    {
+      "id": "mpd-tui-team",
+      "title": "MPD team"
+    },
+    {
+      "id": "mpd-tui-plan",
+      "title": "MPD plan approval"
+    }
+  ],
+  "commands": [
+    "mpd"
+  ],
+  "installErrors": [],
+  "green": {
+    "message": "",
+    "attempts": [
+      {
+        "name": "agent_teams_approve",
+        "confirmation": "approve mpd-fixture-1",
+        "agentId": "fixture-captain-session",
+        "callIdPresent": true
+      }
+    ],
+    "facts": {
+      "titleLine": "MPD plan approval — Fixture Team · working… · 216x48",
+      "teamLine": "team       Fixture Team (mpd-fixture-1) · phase staged · review awaiting_review",
+      "instruction": "approval needs the exact team id typed below, then Ctrl+X",
+      "requiredLine": "required   approve mpd-fixture-1",
+      "requiredPhrase": "approve mpd-fixture-1",
+      "echoLine": "confirm    approve mpd-fixture-1",
+      "confirmEcho": "approve mpd-fixture-1",
+      "runnableLine": "runnable   yes",
+      "message": "",
+      "emptyState": ""
+    }
+  },
+  "reds": [
+    {
+      "mode": "empty",
+      "message": "confirmation does not match this team",
+      "attempts": [],
+      "facts": {
+        "titleLine": "MPD plan approval — Fixture Team · 216x48",
+        "teamLine": "team       Fixture Team (mpd-fixture-1) · phase staged · review awaiting_review",
+        "instruction": "approval needs the exact team id typed below, then Ctrl+X",
+        "requiredLine": "required   approve mpd-fixture-1",
+        "requiredPhrase": "approve mpd-fixture-1",
+        "echoLine": "confirm",
+        "confirmEcho": "",
+        "runnableLine": "runnable   yes",
+        "message": "confirmation does not match this team",
+        "emptyState": ""
+      }
+    },
+    {
+      "mode": "wrong-id",
+      "message": "confirmation does not match this team",
+      "attempts": [],
+      "facts": {
+        "titleLine": "MPD plan approval — Fixture Team · 216x48",
+        "teamLine": "team       Fixture Team (mpd-fixture-1) · phase staged · review awaiting_review",
+        "instruction": "approval needs the exact team id typed below, then Ctrl+X",
+        "requiredLine": "required   approve mpd-fixture-1",
+        "requiredPhrase": "approve mpd-fixture-1",
+        "echoLine": "confirm    approve some-other-team",
+        "confirmEcho": "approve some-other-team",
+        "runnableLine": "runnable   yes",
+        "message": "confirmation does not match this team",
+        "emptyState": ""
+      }
+    },
+    {
+      "mode": "cancelled",
+      "message": "confirmation does not match this team",
+      "attempts": [],
+      "facts": {
+        "titleLine": "MPD plan approval — Fixture Team · 216x48",
+        "teamLine": "team       Fixture Team (mpd-fixture-1) · phase staged · review awaiting_review",
+        "instruction": "approval needs the exact team id typed below, then Ctrl+X",
+        "requiredLine": "required   approve mpd-fixture-1",
+        "requiredPhrase": "approve mpd-fixture-1",
+        "echoLine": "confirm",
+        "confirmEcho": "",
+        "runnableLine": "runnable   yes",
+        "message": "confirmation does not match this team",
+        "emptyState": ""
+      }
+    }
+  ]
+}

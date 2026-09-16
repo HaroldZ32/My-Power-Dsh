@@ -1,0 +1,1 @@
+[mpd-qa] SKIP case=tui-mount lane=real reason=absent-fixture prereq=tui profile in the sandbox root remedy="bun skills/dsh-qa/scripts/tui-mount.mjs --sandbox-root <root> --install"

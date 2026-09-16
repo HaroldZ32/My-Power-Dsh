@@ -256,6 +256,22 @@ describe("tool plane", () => {
     const bare = createDshAdapter({ get: () => undefined })
     expect(await bare.executeTool({ name: "x" })).toMatchObject({ ok: false, isError: true })
   })
+
+  test("executeTool forwards the optional calling agent VERBATIM as exec.agent, and stays absent when not given", async () => {
+    const { ctx, executed } = fakeHarness()
+    const adapter = createDshAdapter(ctx)
+    const liveAgent = { id: "captain-session", session: { header: { cwd: "/ws" } } }
+    await adapter.executeTool({ name: "agent_teams_approve", arguments: { confirmation: "approve t" }, agent: liveAgent })
+    await adapter.executeTool({ name: "agent_teams_approve", arguments: { confirmation: "approve t" } })
+    await adapter.toolRuntime().execute({ name: "agent_teams_approve", arguments: {}, agent: liveAgent })
+    expect(executed).toHaveLength(3)
+    // Identity, not a copy: the adopted write tools read exec.agent.session.header.cwd.
+    expect(executed[0].agent).toBe(liveAgent)
+    expect(executed[0].agent.session.header.cwd).toBe("/ws")
+    // Absent stays absent: every pre-existing caller keeps its exact meaning.
+    expect("agent" in executed[1]).toBe(false)
+    expect(executed[2].agent).toBe(liveAgent)
+  })
 })
 
 describe("agent plane", () => {

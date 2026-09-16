@@ -402,6 +402,14 @@ export function runTuiSession({ lane, root, outDir, steps = [], bootWaitMs = 90_
   const bootPane = capture("boot")
 
   for (const step of steps) {
+    // Additive (tui-team-surface): a step may need to change the SANDBOX between the
+    // boot and its own keystrokes — e.g. write the staged team record with the live
+    // session id this boot just produced, so the surface meets a record that names a
+    // captain which is actually attached. Absent for every other lane: no behaviour
+    // change. A throwing hook is contained so it can never kill the tmux lifecycle.
+    if (typeof step.before === "function") {
+      try { step.before() } catch (error) { failures.push("step " + step.name + " before() failed: " + String(error?.message ?? error)) }
+    }
     for (const key of step.keys) tmux(socket, ["send-keys", "-t", "tui", key])
     sleepMs(step.waitMs ?? 4000)
     capture(step.name)

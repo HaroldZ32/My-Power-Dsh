@@ -1,0 +1,5 @@
+PRIMARY suite root /root/dshProj/tui/dsh-TUI/dsh-ecosystem-spec @ d28c267
+three-way identity reproduced=true
+pinned-cli -> status=1 (module not found)
+pinned-suite -> status=1
+requirements: BASE-STD-001=pass TUI-PKG-001=pass TUI-PKG-002=pass TUI-PRIVATE-001=pass TUI-HOST-001=pass TUI-OBS-001=pass TUI-TRUST-001=pass

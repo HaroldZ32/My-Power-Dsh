@@ -1,0 +1,68 @@
+{
+  "probe": "preboot",
+  "sandboxRoot": "/root/dshProj/my-power-dsh/.mpd/recon/qa/tui-lanes/tui-team-surface-probe",
+  "profileSeededBy": "symlink -> /root/dshProj/my-power-dsh/.mpd/recon/qa/dshhome/profiles/dsh-tui",
+  "env": {
+    "DSH_HOME": "/root/dshProj/my-power-dsh/.mpd/recon/qa/tui-lanes/tui-team-surface-probe/dshhome",
+    "HOME": "/root/dshProj/my-power-dsh/.mpd/recon/qa/tui-lanes/tui-team-surface-probe/home"
+  },
+  "fixture": "/root/dshProj/my-power-dsh/.mpd/recon/qa/tui-lanes/tui-team-surface-probe/ws/.mpd/team/mpd-fixture-1/team.json",
+  "phrase": "approve mpd-fixture-1",
+  "failures": [],
+  "panes": [
+    {
+      "name": "boot",
+      "chars": 2249,
+      "lines": [
+        "  ❯                                                                                                                                                                                                                      ⛶"
+      ]
+    },
+    {
+      "name": "plan-open",
+      "chars": 3079,
+      "lines": [
+        "   MPD plan approval — Fixture Team · 216x48",
+        "   team       Fixture Team (mpd-fixture-1) · phase staged · review awaiting_review",
+        "   runnable   yes                                                                        ",
+        "   confirm                                                             ",
+        "   required   approve mpd-fixture-1                                                                                     ",
+        "   runnable   yes                                                                                                ",
+        "   Ctrl+X approve · Ctrl+D discard ×2 · Ctrl+R re-read · esc back"
+      ]
+    },
+    {
+      "name": "phrase-typed",
+      "chars": 3079,
+      "lines": [
+        "   MPD plan approval — Fixture Team · 216x48",
+        "   team       Fixture Team (mpd-fixture-1) · phase staged · review awaiting_review",
+        "   runnable   yes                                                                        ",
+        "   confirm    approve mpd-fixture-1                                    ",
+        "   required   approve mpd-fixture-1                                                                                     ",
+        "   runnable   yes                                                                                                ",
+        "   Ctrl+X approve · Ctrl+D discard ×2 · Ctrl+R re-read · esc back"
+      ]
+    },
+    {
+      "name": "approve-attempt",
+      "chars": 3132,
+      "lines": [
+        "   MPD plan approval — Fixture Team · 216x48",
+        "   team       Fixture Team (mpd-fixture-1) · phase staged · review awaiting_review",
+        "   runnable   yes                                                                        ",
+        "   confirm                                                             ",
+        "   required   approve mpd-fixture-1                                                                                     ",
+        "   runnable   yes                                                                                                ",
+        "   approve failed: the captain session sess-fixture-captain is not attached in this process                                                                                                           ",
+        "   Ctrl+X approve · Ctrl+D discard ×2 · Ctrl+R re-read · esc back"
+      ]
+    },
+    {
+      "name": "after-esc",
+      "chars": 3041,
+      "lines": [
+        "  ❯                                                                                                                                                                                                                      ⛶"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "slug": "tui-settings-bridge",
+  "arm": "tui (built bytes: the hint disclosure, the §D.2 runtime notice, zero-write)",
+  "startedAt": "2026-09-16T14:28:59.718Z",
+  "repo": "/root/dshProj/my-power-dsh",
+  "outDir": "/root/dshProj/my-power-dsh/evidence/mpd-bridge/tui-settings-bridge/20260916T142859Z",
+  "surface": {
+    "drives": "the built TUI bytes + the status-line notice path; NOT TUI keystrokes (tui-panels owns that)",
+    "tuiKeystrokes": "not-run: a keystroke drive needs a real TTY",
+    "webCardRendered": "NOT-CLAIMED: the card was cut by the user and no browser exists here"
+  },
+  "checks": [
+    {
+      "id": "T1",
+      "ok": true,
+      "detail": "the built bytes carry the bridge+restart disclosure"
+    },
+    {
+      "id": "T2",
+      "ok": true,
+      "detail": "the built bytes carry the restart half of the disclosure"
+    },
+    {
+      "id": "T3",
+      "ok": true,
+      "detail": "the old 'not bridged' claim is DELETED from the built bytes"
+    },
+    {
+      "id": "T4",
+      "ok": true,
+      "detail": "the built bytes carry the §D.2 no-live-session runtime notice"
+    },
+    {
+      "id": "T5",
+      "ok": true,
+      "detail": "the notice is WIRED into the status-line composition, not merely defined"
+    },
+    {
+      "id": "T6",
+      "ok": true,
+      "detail": "the notice is a single exported constant in the source (one source of truth)"
+    },
+    {
+      "id": "T8",
+      "ok": true,
+      "detail": "the hint carries the \"never lost\" clause (a settings-only save is not a lost save)"
+    },
+    {
+      "id": "T7",
+      "ok": true,
+      "detail": "the TUI dist performs ZERO filesystem writes (offenders: [])"
+    }
+  ],
+  "ok": true,
+  "distPath": "packages/mpd-tui-plugin/dist/index.js",
+  "elapsedMs": 2,
+  "notes": [
+    "This arm proves the TUI SURFACE (words on screen + the notice path + the zero-write invariant).",
+    "It does NOT prove a keystroke edit in /settings (tui-panels drives keystrokes with a real TTY) and it does NOT render a card.",
+    "The write path itself is proven by `web-settings-bridge.mjs` (the host's own authenticated API), which is the same settings/mutate the TUI section emits."
+  ]
+}

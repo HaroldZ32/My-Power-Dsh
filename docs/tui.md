@@ -63,6 +63,8 @@ The bundle's former web-only faces have TUI **equivalents**, not parity:
 | Bundle floater | `tuiStatus` status line; the `tuiRenderers` transcript row is **not projected by the host** | status line rendered; renderer row **does not render** — see NOT-CLAIMED #10 |
 | — | `tuiSettingsSections` (`/settings` section for the mpd.jsonc knobs) | rendered — same lane evidence; the section states the **bridge** to `<workspace>/.mpd/mpd.jsonc`, its restart caveat and the never-lost clause (§6.2), and the lane asserts that disclosure text (`allPatterns`) |
 | — | `tuiShortcuts` | rendered — same lane evidence |
+| AgentTeams team-workflow panel (id/name/phase, plan-review state, roster, task DAG with `failed-dep=` marking, mailbox tail) | `mpd-tui-team` scene — `/mpd team` | rendered from the same durable record; the surface contract, the full row list and the evidence level of every row are in the parity ledger `docs/tui-parity.md` (§3.2 below for the openers) |
+| AgentTeams plan-approval panel (approve / discard) | `mpd-tui-plan` scene — `/mpd plan` | same ledger; approval needs the exact phrase typed and `Ctrl+X`, never a bare key (§3.2 below) |
 
 Thirteen seams were in scope. Eight are built by this wave (settings sections, scenes, dialogs,
 status, shortcuts, the renderer **registration**, the decision-event attempt, and the composition
@@ -74,7 +76,7 @@ recorded as NOT-CLAIMED #10.
 
 ### 3.1 The Web GUI settings UI (Settings → MPD)
 
-The same eleven knobs are editable in the Web GUI: **Settings → MPD**, its own top-level section of
+The same twelve knobs are editable in the Web GUI: **Settings → MPD**, its own top-level section of
 the settings dialog — it no longer lives inside the Plugins tab. The section registers the way the
 host's own sections do (`ctx.slots.inject("settings.section", …)` →
 `ctx.slots.register({ name: "settings.section", id: "mpd", order: 20, label: () => t("nav"), locale, inject }, Section)`,
@@ -101,9 +103,34 @@ authenticated settings API (`web-settings-bridge.mjs` W1–W13).
 live page) and a **click-driven save**. No browser binary exists in this environment; the lane records
 `cardClaim.W3.witnessed === false` with the reason, and this page repeats that instead of implying
 otherwise. To see it yourself: start `dsh web`, open the GUI, go to **Settings → MPD**, expect the
-`mpd` section with the eleven knobs, edit one and Save — with exactly one live
+`mpd` section with the twelve knobs, edit one and Save — with exactly one live
 session the workspace's `<workspace>/.mpd/mpd.jsonc` changes with comments intact; otherwise the bridge
 refuses loudly (`no-live-session` / `ambiguous-multi-root`) and states that the value is not lost.
+
+### 3.2 The team-workflow and plan-approval surfaces (wave `tui-team-surface`)
+
+The two surfaces the Web edition renders for a routed team now have TUI counterparts, and they are
+opened by the documented command rather than a hidden gesture:
+
+| What you want | Type this | Then |
+|---|---|---|
+| See the team workflow (id/name/phase, plan-review state, roster, task DAG with `failed-dep=` marking, mailbox tail) | `/mpd team`, or `a` while the board is open | `p` hops to the board; `a` hops to the plan surface for the same team; `r` re-reads |
+| Approve a staged plan | `/mpd plan`, or `a` inside the team workflow | type `approve <teamId>` EXACTLY (the id shown on the surface, which is the record's own id), then press `Ctrl+X`; `Ctrl+R` re-reads unconditionally |
+| Discard a staged plan | `/mpd plan` | `Ctrl+D` twice inside the 10-second arm window |
+| Leave for chat | `/mpd plan` | `Esc` — it never mutates |
+
+Three facts about this pair are load-bearing and are stated here rather than implied. **An
+accidental approval is impossible by construction**: the echo line starts empty and is cleared on
+every refresh, only `Ctrl+X` mutates, it mutates only on an exact phrase built from the record's own
+id, and a non-staged team accepts only `Esc`. **The TUI never writes team state itself**: approve and
+discard are tool calls (`agent_teams_approve`, `agent_teams_delete`) made through the adapter, and
+the package contains no write primitive. **The limits are recorded, not hidden**: one deviation was
+measured open and then CLOSED inside the wave (the §4.5 verdict line was invisible after a real
+commit; the t8 repair now renders it), one verified-lane drift was RESOLVED by the captain's
+same-commit re-pin plus a retry of the verification task, and the contract's dependency-residual
+limit together with one unlocatable contract row label stay OPEN in `docs/tui-parity.md` §4–§5 —
+read that page before quoting a status from this one. `alt+t` is a
+best-effort shortcut; `/mpd team` is the guaranteed entry point.
 
 ## 4. Admission and distribution artifacts
 
@@ -508,3 +535,15 @@ same step that wrote this block — never derived, never remembered:
 | §3 settings row | "with the limitation in §6.2" | a bridged behaviour with a restart caveat and two named skip cases (§6.2), the duplicate-key rule (§6.5) and the Web card's evidence level (§3.1) |
 
 The earlier statements were not rewritten — they are superseded here, in place, under this heading.
+
+### 11.2 Amendment after the team-surface wave (t5, 2026-09-16)
+
+The rows above stay as written for the revision they measured. This wave adds the two team surfaces
+and re-measures what they touched:
+
+| Superseded statement | Was | Is (measured 2026-09-16, t5) |
+|---|---|---|
+| §3 surface list | the board, the `/settings` section and the command tree were the whole TUI surface set | adds `mpd-tui-team` (`/mpd team`) and `mpd-tui-plan` (`/mpd plan`), plus two board rows `team-plan` / `team-hold` (§3.2) |
+| §11 revision binding, entry digest | `packages/mpd-tui-plugin/dist/index.js` sha256 `cf4b3813…`, 105305 bytes | re-pinned by digest in `evidence/tui/team-surface-integrate/2026-09-16T14-17-24.000Z/REVISION.json` — the delivered entry plus every source file this wave touched |
+| §11 R3 row | `bun run test:qa` PASSES | **PASSES again** — the captain re-pinned `VENDOR_LOCK.json` `assets.skills` (319 files / treeSha `303e1631…`) together with the corpus change in one commit, and the verification task was retried green. Both the re-pin value and the sweep are in `evidence/tui/team-surface-integrate/2026-09-16T14-17-24.000Z/`; `docs/tui-parity.md` §7 repeats them |
+| The parity question itself | the surface set was described per lane | answered row by row for every Web-edition surface in `docs/tui-parity.md` (+ zh-CN): status, reason, and the evidence level of each row |

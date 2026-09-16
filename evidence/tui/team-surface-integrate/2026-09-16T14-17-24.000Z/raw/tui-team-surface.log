@@ -1,0 +1,26 @@
+[tui-team-surface] fixture written to .mpd/recon/qa/tui-lanes/tui-team-surface/ws/.mpd/team/mpd-fixture-1/team.json (sha256 d18bcdb49c16)
+[tui-team-surface] arm1 A1-apply ok — the REAL plugin apply() registered mpd-tui-board,mpd-tui-team,mpd-tui-plan
+[tui-team-surface] arm1 A2-plan-scene ok — registered scene "mpd-tui-plan" title "MPD plan approval"
+[tui-team-surface] arm1 A3-entry-points ok — command registrations: ["mpd"]
+[tui-team-surface] arm1 A4-real-fixture-read ok — the surface rendered the record on disk: team       Fixture Team (mpd-fixture-1) · phase staged · review awaiting_review
+[tui-team-surface] arm1 A5-confirm-step-requested ok — verbatim instruction present, required phrase "approve mpd-fixture-1", echo at entry ""
+[tui-team-surface] arm1 A6-echo-carries-phrase ok — the echo after typing is "approve mpd-fixture-1"
+[tui-team-surface] arm1 A7-approval-attempt ok — boundary call {"name":"agent_teams_approve","confirmation":"approve mpd-fixture-1","agentId":"fixture-captain-session","callIdPresent":true} (the harness boundary recorded 1 call(s) to agent_teams_approve)
+[tui-team-surface] arm1 A8-tool-result-rendered ok — the scene rendered the tool's own structured result: "approved: mpd-fixture-1 running · members 2 · tasks 2"
+[tui-team-surface] arm1 B1-bypassed-runs-refuse ok — every bypassed run failed the approval assertion (the required red): [{"mode":"empty","pass":false,"message":"confirmation does not match this team"},{"mode":"wrong-id","pass":false,"message":"confirmation does not match this team"},{"mode":"cancelled","pass":false,"message":"confirmation does not match this team"}]
+[tui-team-surface] arm1 B2-gate-is-what-refused ok — each bypassed run rendered the phrase-gate refusal: ["confirmation does not match this team","confirmation does not match this team","confirmation does not match this team"]
+[tui-team-surface] arm1 B3-observation-discriminates ok — approvalHappened true with the phrase typed, false in all 3 bypassed runs
+[tui-team-surface] arm1 A10-empty-state-no-throw ok — malformed / non-staged / absent records each rendered the empty state and threw nothing: [{"name":"malformed-record","emptyState":"no staged plan for team (none)","title":"MPD plan approval — (none) · 216x48"},{"name":"non-staged-record","emptyState":"no staged plan for team mpd-fixture-1 (phase running)","title":"MPD plan approval — no staged plan for team mpd-fixture-1 (phase running) · 216x48"},{"name":"absent-record","emptyState":"no staged plan for team (none)","title":"MPD plan approval — (none) · 216x48"}]
+[tui-team-surface] arm1 A9-no-write-primitive-in-own-code ok — fixture sha256 unchanged
+[tui-team-surface] host: fixture captainSessionId := "993264c5-1bac-4c51-8570-9482bf0b93a2" (record 7be1a90a7664)
+[tui-team-surface] arm2 H1-host-renders-surface ok — the real host rendered the plan surface for the sandbox record: MPD plan approval — Fixture Team · 216x48
+[tui-team-surface] arm2 H2-host-dialog-request ok — the bare /mpd managed dialog listed the Plan entry: Plan | review and approve a staged plan
+[tui-team-surface] arm2 H3-host-confirm-step ok — the host rendered the confirmation step and echoed the typed phrase
+[tui-team-surface] arm2 H4-real-mutation-via-the-adopted-runtime ok — the RECORD was committed by the adopted runtime (phase="running", approvedAt=1789568681194, planReviewState=undefined DELETED — a signature only approveStagedTeam writes); pane outcome: approved-by-the-adopted-runtime/verdict-visible
+[tui-team-surface] arm2 H4b-outcome-reported-honestly ok — the pane did not deny an approval that committed (verdict line "approved: mpd-fixture-1 running · members 2 · tasks 2", post-commit empty state false)
+[tui-team-surface] arm2 H5-pane-and-record-agree ok — pane claims approved=true, refusal=false, post-commit empty state=false; record phase="running" approvedAt=1789568681194
+[tui-team-surface] arm2 H6-real-keystroke-drive ok — tmux captured 6 panes for 5 driven steps (real keystrokes)
+[tui-team-surface] non-interference: contract + VENDOR_LOCK unchanged=true
+[tui-team-surface] observation: the workspace's OWN live team record changed during the run=false
+[tui-team-surface] PASS -> evidence/tui/team-surface-verify/2026-09-16T14-24-22.312Z
+[tui-team-surface] PASS: arm1 gate+adapter green, negative control red as required, arm2=approved-by-the-adopted-runtime/verdict-visible

@@ -1,0 +1,131 @@
+{
+  "slug": "tui-team-surface-negative-control-repair2",
+  "task": "t6",
+  "producedAt": "2026-09-16T14:04:12.529Z",
+  "targets": {
+    "scenes": "packages/mpd-tui-plugin/src/scenes.ts",
+    "teamState": "packages/mpd-tui-plugin/src/team-state.ts"
+  },
+  "originalDigests": {
+    "scenes": "sha256:1ab4529a8f43776383fbee62b7169c25dbafb19645f3a751cc900fb71223dfd0",
+    "teamState": "sha256:79bef0d2553414f39ccf096c749ef06b0abbda366740d71806b2f155c06f5b12"
+  },
+  "restoredDigests": {
+    "scenes": "sha256:1ab4529a8f43776383fbee62b7169c25dbafb19645f3a751cc900fb71223dfd0",
+    "teamState": "sha256:79bef0d2553414f39ccf096c749ef06b0abbda366740d71806b2f155c06f5b12"
+  },
+  "suite": "packages/mpd-tui-plugin/test/team-surface.test.ts",
+  "mutations": [
+    {
+      "id": "B1-separate-surface",
+      "family": "barrier",
+      "file": "scenes",
+      "barrier": "§4.2 barrier 1 / §3.1 — the workflow scene refuses the approval hop for a non-staged team",
+      "applied": true,
+      "suiteStatus": 1,
+      "failingTests": 2,
+      "reddened": true,
+      "restoredByteIdentical": true,
+      "note": "the suite REDDENED as required"
+    },
+    {
+      "id": "B2-phrase-gate",
+      "family": "barrier",
+      "file": "scenes",
+      "barrier": "§4.2 barrier 2 — Ctrl+X is inert until the echo exactly equals `approve <teamId>`",
+      "applied": true,
+      "suiteStatus": 1,
+      "failingTests": 4,
+      "reddened": true,
+      "restoredByteIdentical": true,
+      "note": "the suite REDDENED as required"
+    },
+    {
+      "id": "B3-no-prefill",
+      "family": "barrier",
+      "file": "scenes",
+      "barrier": "§4.2 barrier 3 — the echo is EMPTY on every entry and on every refresh",
+      "applied": true,
+      "suiteStatus": 1,
+      "failingTests": 2,
+      "reddened": true,
+      "restoredByteIdentical": true,
+      "note": "the suite REDDENED as required"
+    },
+    {
+      "id": "B4-chord-only",
+      "family": "barrier",
+      "file": "scenes",
+      "barrier": "§4.2 barrier 4 — mutations are chords; a bare printable key is consent input",
+      "applied": true,
+      "suiteStatus": 1,
+      "failingTests": 16,
+      "reddened": true,
+      "restoredByteIdentical": true,
+      "note": "the suite REDDENED as required"
+    },
+    {
+      "id": "B5-single-flight",
+      "family": "barrier",
+      "file": "scenes",
+      "barrier": "§4.2 barrier 5 — every key is ignored while a call is in flight",
+      "applied": true,
+      "suiteStatus": 1,
+      "failingTests": 2,
+      "reddened": true,
+      "restoredByteIdentical": true,
+      "note": "the suite REDDENED as required"
+    },
+    {
+      "id": "B6-precondition-read-only",
+      "family": "barrier",
+      "file": "scenes",
+      "barrier": "§3.2 — the precondition failure accepts ONLY Esc (a non-staged team is never archivable)",
+      "applied": true,
+      "suiteStatus": 1,
+      "failingTests": 2,
+      "reddened": true,
+      "restoredByteIdentical": true,
+      "note": "the suite REDDENED as required"
+    },
+    {
+      "id": "R1-9.4-render-boundary",
+      "family": "repair",
+      "file": "scenes",
+      "barrier": "F1 / §9.4 — the ONE render boundary strips control characters and clamps cells",
+      "applied": true,
+      "suiteStatus": 1,
+      "failingTests": 6,
+      "reddened": true,
+      "restoredByteIdentical": true,
+      "note": "the suite REDDENED as required"
+    },
+    {
+      "id": "R2-dag-depth-order",
+      "family": "repair",
+      "file": "teamState",
+      "barrier": "F2 / §3.1 item 4 — the DAG is ordered by depth then creation order",
+      "applied": true,
+      "suiteStatus": 1,
+      "failingTests": 6,
+      "reddened": true,
+      "restoredByteIdentical": true,
+      "note": "the suite REDDENED as required"
+    },
+    {
+      "id": "R3-echo-kept-on-refusal",
+      "family": "repair",
+      "file": "scenes",
+      "barrier": "F3 / §4.5 — a refused approve keeps the consent echo",
+      "applied": true,
+      "suiteStatus": 1,
+      "failingTests": 2,
+      "reddened": true,
+      "restoredByteIdentical": true,
+      "note": "the suite REDDENED as required"
+    }
+  ],
+  "finalSuiteStatus": 0,
+  "ok": true,
+  "note": "Every barrier AND every repaired behaviour must make the surface suite red when removed, and the source must come back byte-identical."
+}

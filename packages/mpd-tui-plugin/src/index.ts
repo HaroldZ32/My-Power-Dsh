@@ -52,7 +52,7 @@ import { AMBIGUOUS_MULTI_ROOT_NOTICE, NO_LIVE_SESSION_NOTICE, readBoardState } f
 import { registerStatus } from "./status.js"
 import { registerRenderers } from "./renderers.js"
 import { registerSettingsSection } from "./settings.js"
-import { boardSummary, registerScene } from "./scenes.js"
+import { boardSummary, APPROVE_TOOL, DISCARD_TOOL, registerScene, type PlanActions } from "./scenes.js"
 import { registerCommandTrees } from "./command-trees.js"
 import { registerShortcuts } from "./shortcuts.js"
 import { createDialogs } from "./dialogs.js"
@@ -154,32 +154,121 @@ export function resolveConfig(config: Config = {}): ResolvedConfig {
 }
 
 /**
+ * The one adapter this row uses, resolved once at apply.
+ *
+ * `ctx.get("mpdDsh")` is the mounted instance (the normal case); the fallback keeps
+ * this row standalone in unit tests. Every harness seam this package needs — the
+ * workspace roots, the live-agent registry and the internal tool call — goes
+ * through this ONE object (AGENTS.md §6).
+ * @param ctx - the plugin context.
+ * @returns the adapter.
+ */
+function resolveAdapter(ctx: PluginContextLike): ReturnType<typeof createDshAdapter> {
+  try {
+    const mounted = serviceOf<ReturnType<typeof createDshAdapter>>(ctx, "mpdDsh")
+    if (mounted !== undefined) return mounted
+  } catch {
+    // fall through to a standalone adapter
+  }
+  return createDshAdapter(ctx)
+}
+
+/**
  * Resolve the workspace root per call, never cached.
  *
  * The live session cwd is the authoritative workspace (AGENTS.md §6). This row is
  * agentless (a TUI surface, no tool exec), so it asks the adapter for the union
  * of live session workspaces and falls back to the adapter's exec-less
  * resolution (`DSH_WORKSPACE_ROOT` → process cwd).
+ * @param ctx - the plugin context.
+ * @param adapter - the resolved adapter (created here when omitted, for standalone use).
+ * @returns the per-call workspace resolver.
  */
-export function workspaceResolver(ctx: PluginContextLike): () => string {
-  let adapter: ReturnType<typeof createDshAdapter> | undefined
-  try {
-    adapter = serviceOf<ReturnType<typeof createDshAdapter>>(ctx, "mpdDsh") ?? createDshAdapter(ctx)
-  } catch {
-    adapter = undefined
+export function workspaceResolver(ctx: PluginContextLike, adapter?: ReturnType<typeof createDshAdapter>): () => string {
+  let resolved = adapter
+  if (resolved === undefined) {
+    try {
+      resolved = resolveAdapter(ctx)
+    } catch {
+      resolved = undefined
+    }
   }
   return () => {
     try {
-      const roots = adapter?.workspaceRootsAll() ?? []
+      const roots = resolved?.workspaceRootsAll() ?? []
       if (roots.length > 0) return roots[0]
     } catch {
       // fall through to the exec-less resolution
     }
     try {
-      return adapter?.workspaceRoot() ?? process.cwd()
+      return resolved?.workspaceRoot() ?? process.cwd()
     } catch {
       return process.cwd()
     }
+  }
+}
+
+/**
+ * Build the approval executor: the plan surface's ONLY mutation path.
+ *
+ * Both mutations are ADOPTED tool calls through the adapter (frozen §6.1) — the TUI
+ * never re-implements the runtime the Web route drives and never writes team state.
+ * The calling agent is sourced from the adapter's own live registry
+ * (`liveAgent(captainSessionId)`, else `liveAgents()[0]` when the record carries no
+ * id) and passed as the adapter's optional `agent`, which forwards it verbatim as
+ * `exec.agent` — the adopted write tools require one (`lib/tools.js:65-71`).
+ *
+ * Every refusal is LOUD and never a fabricated success: an unregistered tool, an
+ * unattached captain session (the Web route's own 409 case) and a tool error all
+ * come back as `{ok:false, error}`.
+ * @param adapter - the resolved adapter.
+ * @param log - diagnostics.
+ * @returns the executor.
+ */
+export function createPlanActions(adapter: ReturnType<typeof createDshAdapter>, log: Log): PlanActions {
+  const registered = (toolName: string): boolean => {
+    try {
+      return adapter.hasTool(toolName) === true
+    } catch {
+      return false
+    }
+  }
+  const agentFor = (captainSessionId?: string): unknown => {
+    try {
+      if (typeof captainSessionId === "string" && captainSessionId.length > 0) return adapter.liveAgent(captainSessionId)
+      return adapter.liveAgents()[0]
+    } catch {
+      return undefined
+    }
+  }
+  const errorText = (error: unknown): string => {
+    if (typeof error === "string") return error
+    const message = (error as { message?: unknown } | undefined)?.message
+    return typeof message === "string" && message.length > 0 ? message : "the tool call failed"
+  }
+  const run = async (toolName: string, args: Record<string, unknown>, captainSessionId?: string): Promise<{ ok: boolean; value?: unknown; error?: string }> => {
+    if (!registered(toolName)) return { ok: false, error: `${toolName} is not registered in this composition` }
+    const agent = agentFor(captainSessionId)
+    if (agent === undefined || agent === null) {
+      const id = typeof captainSessionId === "string" ? captainSessionId : ""
+      return {
+        ok: false,
+        error: id === "" ? `no live session is attached in this process, so ${toolName} cannot be called` : `the captain session ${id} is not attached in this process`,
+      }
+    }
+    try {
+      const result = await adapter.executeTool({ name: toolName, arguments: args, agent })
+      if (result.ok !== true) return { ok: false, error: errorText(result.error) }
+      return { ok: true, value: result.value }
+    } catch (error) {
+      log.debug(`${toolName} call failed: ${String((error as Error)?.message ?? error)}`)
+      return { ok: false, error: errorText(error) }
+    }
+  }
+  return {
+    available: () => registered(APPROVE_TOOL) && registered(DISCARD_TOOL),
+    approve: (input) => run(APPROVE_TOOL, { confirmation: input.confirmation }, input.captainSessionId),
+    discard: (input) => run(DISCARD_TOOL, {}, input.captainSessionId),
   }
 }
 
@@ -211,7 +300,8 @@ export interface ApplyReport {
 export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport {
   const resolved = resolveConfig(config)
   const log: Log = createLog(ctx?.logger, resolved.logPrefix)
-  const workspaceRoot = workspaceResolver(ctx)
+  const adapter = resolveAdapter(ctx)
+  const workspaceRoot = workspaceResolver(ctx, adapter)
   const home = (): string => homeDir()
 
   // Measured once, at apply: an append is only safe when the event type is known
@@ -264,7 +354,18 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   status = resolved.statusLine
     ? registerStatus(ctx, log, workspaceRoot, home, resolved.statusIntervalMs, noticeRead)
     : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }), refresh: () => {} }
-  const scene = resolved.scene ? registerScene(ctx, log, workspaceRoot, home) : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }), open: () => false }
+  // The two team surfaces (frozen §3): registered on the SAME `tuiScenes` seam as the
+  // board. The hold row reads the watchdog's own durable view (never a fabricated "ok"),
+  // and the plan surface mutates only through the adapter-backed executor.
+  const scene = resolved.scene
+    ? registerScene(ctx, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log))
+    : {
+        outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }),
+        open: () => false,
+        openScene: () => false,
+        openTeam: () => false,
+        openPlan: () => false,
+      }
   const renderers = resolved.renderers ? registerRenderers(ctx, log) : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }) }
   const settings = resolved.settingsSection ? registerSettingsSection(ctx, log) : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }) }
   const trees = resolved.commandTrees ? registerCommandTrees(ctx, log) : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }) }
@@ -273,6 +374,7 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   const shortcuts = resolved.shortcuts
     ? registerShortcuts(ctx, log, {
         openBoard: () => scene.open(),
+        openTeam: () => scene.openTeam(),
         refreshStatus: () => status.refresh(),
         pickWorkmate: () => {
           void pickWorkmate(log, dialogs, workspaceRoot, home, scene)
@@ -283,6 +385,8 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   const commands = resolved.commands
     ? registerCommands(ctx, log, {
         openBoard: () => scene.open(),
+        openTeam: () => scene.openTeam(),
+        openPlan: () => scene.openPlan(),
         statusText: () => boardSummary(workspaceRoot, home),
         workmatesText: () => {
           const state = readBoardState(workspaceRoot(), home())
@@ -337,6 +441,8 @@ async function pickAction(log: Log, dialogs: ReturnType<typeof createDialogs>): 
   if (!dialogs.available()) return undefined
   const choice = await dialogs.select("mpd", [
     { id: "board", label: "Board", description: "team, tasks, boulder, plans, workmates" },
+    { id: "team", label: "Team", description: "team workflow: phase, roster, task DAG" },
+    { id: "plan", label: "Plan", description: "review and approve a staged plan" },
     { id: "workmates", label: "Workmates", description: "list the durable workmate library" },
     { id: "status", label: "Status", description: "print the mpd status line" },
   ])

@@ -1,0 +1,78 @@
+{
+  "slug": "tui-team-surface-gates",
+  "task": "t2",
+  "producedAt": "2026-09-16T14:05:00.738Z",
+  "repoRoot": "/root/dshProj/my-power-dsh",
+  "gates": [
+    {
+      "id": "bun-test-packages",
+      "command": "bun test packages",
+      "bin": "bun",
+      "args": [
+        "test",
+        "packages"
+      ],
+      "exitCode": 1,
+      "tail": "(fail) the file-derived base under the captain's cardinality rule (§10.1 + ruling) > ZERO live roots: the mount-time root is used, and no file there means an empty base (schema defaults) [0.47ms]\n\n 795 pass\n 2 fail\n 5556 expect() calls\nRan 797 tests across 146 files. [23.42s]"
+    },
+    {
+      "id": "typecheck",
+      "command": "bun run typecheck",
+      "bin": "bun",
+      "args": [
+        "run",
+        "typecheck"
+      ],
+      "exitCode": 0,
+      "tail": "$ tsgo --noEmit"
+    },
+    {
+      "id": "tui-mount",
+      "command": "node skills/dsh-qa/scripts/tui-mount.mjs",
+      "bin": "node",
+      "args": [
+        "skills/dsh-qa/scripts/tui-mount.mjs"
+      ],
+      "exitCode": 0,
+      "tail": "[mpd-qa] SKIP case=tui-mount lane=real reason=absent-fixture prereq=tui profile in the sandbox root remedy=\"bun skills/dsh-qa/scripts/tui-mount.mjs --sandbox-root <root> --install\""
+    },
+    {
+      "id": "tui-panels",
+      "command": "node skills/dsh-qa/scripts/tui-panels.mjs",
+      "bin": "node",
+      "args": [
+        "skills/dsh-qa/scripts/tui-panels.mjs"
+      ],
+      "exitCode": 0,
+      "tail": "[mpd-qa] SKIP case=tui-panels lane=real reason=absent-fixture prereq=tui profile in the sandbox root remedy=\"bun skills/dsh-qa/scripts/tui-mount.mjs --sandbox-root <root> --install\""
+    },
+    {
+      "id": "tui-spec-conformance",
+      "command": "node skills/dsh-qa/scripts/tui-spec-conformance.mjs",
+      "bin": "node",
+      "args": [
+        "skills/dsh-qa/scripts/tui-spec-conformance.mjs"
+      ],
+      "exitCode": 0,
+      "tail": "[tui-spec-conformance] three-way identity reproduced=true\n[tui-spec-conformance] pinned-cli -> status=1 (module not found)\n[tui-spec-conformance] pinned-suite -> status=1\n[tui-spec-conformance] requirements: BASE-STD-001=pass TUI-PKG-001=pass TUI-PKG-002=pass TUI-PRIVATE-001=pass TUI-HOST-001=pass TUI-OBS-001=pass TUI-TRUST-001=pass\n[tui-spec-conformance] ok=true -> /root/dshProj/my-power-dsh/evidence/tui/lanes/2026-09-16T14-04-36.835Z\n[tui-spec-conformance] PASS: pinned inputs digested; suite blocker recorded; per-requirement statuses recorded"
+    }
+  ],
+  "control": {
+    "why": "the two repo-cwd `bun test packages` failures are in packages/mpd-config-plugin, which this task did not touch",
+    "command": "cd /tmp/mpd-t2-clean-cwd && bun test /root/dshProj/my-power-dsh/packages/mpd-config-plugin/test/settings-wiring.test.ts",
+    "exitCode": 0,
+    "tail": " 23 pass\n 0 fail\n 97 expect() calls\nRan 23 tests across 1 file. [75.00ms]"
+  },
+  "cleanCwdFullSuite": {
+    "command": "cd /tmp/mpd-t2-clean-cwd && bun test /root/dshProj/my-power-dsh/packages",
+    "exitCode": 0,
+    "tail": "\n 797 pass\n 0 fail\n 5557 expect() calls\nRan 797 tests across 73 files. [23.60s]",
+    "sameTestCount": false
+  },
+  "waiver": {
+    "ruling": "WAIVED GATE (a): `bun test packages` from the REPO cwd is excluded from the verify list; the clean-cwd invocation replaces it",
+    "source": "evidence/extensions/integration-ledger/20260916T071414Z/delivery-ledger.md §10 (captain ruling)",
+    "reason": "two PRE-EXISTING, non-hermetic assertions in packages/mpd-config-plugin/test/settings-wiring.test.ts assume <cwd>/.mpd/mpd.jsonc does not exist, while this workspace deliberately HAS that gitignored file"
+  },
+  "ok": true
+}

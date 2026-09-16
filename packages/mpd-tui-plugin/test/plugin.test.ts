@@ -315,7 +315,7 @@ describe("full composition (every service injected)", () => {
     // tuiCommandTrees + commands: the tree root matches the registered command.
     expect(calls.maps).toHaveLength(1)
     expect(calls.maps[0].root).toBe("mpd")
-    expect(calls.maps[0].children(["mpd"]).map((node: { name: string }) => node.name)).toEqual(["board", "workmates", "status"])
+    expect(calls.maps[0].children(["mpd"]).map((node: { name: string }) => node.name)).toEqual(["board", "team", "plan", "workmates", "status"])
     expect(calls.commands).toHaveLength(1)
     expect(calls.commands[0].name).toBe("mpd")
 

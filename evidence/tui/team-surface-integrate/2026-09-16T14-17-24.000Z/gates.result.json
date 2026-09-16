@@ -1,0 +1,231 @@
+{
+  "slug": "tui-team-surface-integrate-gates",
+  "task": "t5",
+  "producedAt": "2026-09-16T14:25:00.233Z",
+  "revision": {
+    "pinnedAt": "2026-09-16T14:18:55.896Z",
+    "repoRoot": "/root/dshProj/my-power-dsh",
+    "branch": "dev",
+    "files": {
+      "packages/mpd-tui-plugin/dist/index.js": "409a5c21c6ea41af64d32573fd010cb7bcb85092d71b1727f9d1b5dc199b7184",
+      "packages/mpd-tui-plugin/src/scenes.ts": "1ab4529a8f43776383fbee62b7169c25dbafb19645f3a751cc900fb71223dfd0",
+      "packages/mpd-tui-plugin/src/team-state.ts": "79bef0d2553414f39ccf096c749ef06b0abbda366740d71806b2f155c06f5b12",
+      "packages/mpd-tui-plugin/src/state.ts": "48d686bfadcc544418248d936933aa3806bc9569f802fb41a5ac62c5ec3c5581",
+      "packages/mpd-tui-plugin/src/sanitize.ts": "510706da455651a9c863ae0f23ca8964647ce29303a3820a40522017f0b112ea",
+      "packages/mpd-tui-plugin/src/commands.ts": "c0cb983cc4cb45adc6a929fcec129fc7c71860ab08bcf371df2c1cef89ed0ef9",
+      "packages/mpd-tui-plugin/src/command-trees.ts": "beb8b530165208a6d6ee1ea9a08b8c4420b3014bd595754bfb563ac418a66fd6",
+      "packages/mpd-tui-plugin/src/shortcuts.ts": "a98e8541f2dd74d6029a75d42fd6d1281c34b2be85b961bb0b85da68e8b048b5",
+      "packages/mpd-dsh-adapter-plugin/src/index.ts": "cfc735153c77ff1c907e75e8eff103b526afa75ffcbd2757e3060789ebddd8af",
+      "packages/mpd-dsh-adapter-plugin/dist/index.js": "f8b5613121f5af40a748e2333684d73d307eecf25610f1bfcb78b8727f265b84",
+      "skills/dsh-qa/scripts/tui-team-surface.mjs": "91a05314c38f263cc8c481174dfa3debd6b7e6914512dc94857c1064f792cf2f",
+      "skills/dsh-qa/scripts/lib/tui-lane.mjs": "95ff34cbf27b4a6620827fa96d02aed7dd9e0bea2f35c7c3928e3e604e36ac44",
+      "skills/dsh-qa/SKILL.md": "47b82bddbe24521efcf6900a0ad3dae3b4cf74046e801d76c39804387b3bd242",
+      "VENDOR_LOCK.json": "3ac57ad24f96d21fc69d061666d0140f33fda7775b13075da0a92aef21599a65"
+    }
+  },
+  "gates": [
+    {
+      "id": "typecheck",
+      "command": "bun run typecheck",
+      "exitCode": 0,
+      "ms": 579,
+      "log": "raw/typecheck.log"
+    },
+    {
+      "id": "verify-docs",
+      "command": "bun run verify:docs",
+      "exitCode": 1,
+      "ms": 83,
+      "log": "raw/verify-docs.log"
+    },
+    {
+      "id": "bun-test-packages",
+      "command": "bun test packages",
+      "exitCode": 1,
+      "ms": 25245,
+      "log": "raw/bun-test-packages.log"
+    },
+    {
+      "id": "delta-check",
+      "command": "node scripts/patch-agent-teams-fixes.mjs --check",
+      "exitCode": 0,
+      "ms": 84,
+      "log": "raw/delta-check.log"
+    },
+    {
+      "id": "verify-vendor",
+      "command": "node scripts/verify-vendor.mjs",
+      "exitCode": 0,
+      "ms": 1130,
+      "log": "raw/verify-vendor.log"
+    },
+    {
+      "id": "fingerprint",
+      "command": "node evidence/tui/team-surface-integrate/2026-09-16T14-17-24.000Z/fingerprint.mjs",
+      "exitCode": 0,
+      "ms": 91,
+      "log": "raw/fingerprint.log"
+    },
+    {
+      "id": "test-qa",
+      "command": "bun run test:qa",
+      "exitCode": 0,
+      "ms": 5823,
+      "log": "raw/test-qa.log"
+    },
+    {
+      "id": "bun-test-packages-clean-cwd",
+      "command": "cd <clean-cwd> && bun test /root/dshProj/my-power-dsh/packages",
+      "exitCode": 0,
+      "ms": 23689,
+      "log": "raw/bun-test-packages-clean-cwd.log"
+    },
+    {
+      "id": "tui-mount",
+      "command": "node skills/dsh-qa/scripts/tui-mount.mjs",
+      "exitCode": 0,
+      "ms": 132,
+      "log": "raw/tui-mount.log"
+    },
+    {
+      "id": "tui-panels",
+      "command": "node skills/dsh-qa/scripts/tui-panels.mjs",
+      "exitCode": 0,
+      "ms": 129,
+      "log": "raw/tui-panels.log"
+    },
+    {
+      "id": "tui-admission",
+      "command": "node skills/dsh-qa/scripts/tui-admission.mjs",
+      "exitCode": 0,
+      "ms": 232,
+      "log": "raw/tui-admission.log"
+    },
+    {
+      "id": "tui-distribution",
+      "command": "node skills/dsh-qa/scripts/tui-distribution.mjs",
+      "exitCode": 1,
+      "ms": 212820,
+      "log": "raw/tui-distribution.log"
+    },
+    {
+      "id": "tui-spec-conformance",
+      "command": "node skills/dsh-qa/scripts/tui-spec-conformance.mjs",
+      "exitCode": 0,
+      "ms": 256,
+      "log": "raw/tui-spec-conformance.log"
+    },
+    {
+      "id": "tui-settings-bridge",
+      "command": "node skills/dsh-qa/scripts/tui-settings-bridge.mjs",
+      "exitCode": 0,
+      "ms": 54,
+      "log": "raw/tui-settings-bridge.log"
+    },
+    {
+      "id": "web-settings-bridge",
+      "command": "node skills/dsh-qa/scripts/web-settings-bridge.mjs",
+      "exitCode": 1,
+      "ms": 51332,
+      "log": "raw/web-settings-bridge.log"
+    },
+    {
+      "id": "tui-team-surface",
+      "command": "node skills/dsh-qa/scripts/tui-team-surface.mjs",
+      "exitCode": 0,
+      "ms": 37976,
+      "log": "raw/tui-team-surface.log"
+    }
+  ],
+  "bunTestPackages": {
+    "repoCwd": {
+      "command": "bun test packages",
+      "exitCode": 1,
+      "tail": "2 tests failed:\n(fail) migration (design §6, U15) > with no live root the migration is DEFERRED and nothing is written to process.cwd() [2.83ms]\n(fail) the file-derived base under the captain's cardinality rule (§10.1 + ruling) > ZERO live roots: the mount-time root is used, and no file there means an empty base (schema defaults) [0.69ms]\n\n 795 pass\n 2 fail\n 5556 expect() calls\nRan 797 tests across 146 files. [25.21s]"
+    },
+    "cleanCwd": {
+      "command": "cd <mktemp> && bun test /root/dshProj/my-power-dsh/packages",
+      "exitCode": 0,
+      "tail": "(pass) binary resolves from toolchain [1.42ms]\n(pass) comment file triggers detection (exit 2) [4.61ms]\n(pass) clean file passes (exit 0) [6.16ms]\n\n 797 pass\n 0 fail\n 5557 expect() calls\nRan 797 tests across 73 files. [23.67s]"
+    },
+    "whyBoth": "the captain's standing waiver records the clean-cwd reading as the replacement; both readings are reported together, never the green one alone"
+  },
+  "verifyVendor": {
+    "command": "node scripts/verify-vendor.mjs",
+    "exitCode": 0,
+    "driftLines": [
+      "[verify-vendor] PASS"
+    ],
+    "expectedBecause": "the wave's skills/** change invalidates the corpus treeSha; VENDOR_LOCK.json is out of this task's scope and must be re-pinned by the captain in the same commit (AGENTS.md §9/§11)",
+    "otherAssetFailures": []
+  },
+  "testQa": {
+    "command": "bun run test:qa",
+    "exitCode": 0,
+    "lastLines": "  extension \"mpd-ext-example\": loadable\n  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)\n  pending contributes.mcp[0]: pending: server \"lint-mcp\" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state\n[mpd-ext] ok\n[test:qa] all self-tests passed\n$ for f in skills/dsh-qa/scripts/*.mjs; do echo \"[test:qa] $f\"; bun \"$f\" --self-test || { echo \"[test:qa] FAILED: $f\"; exit 1; }; done; bun scripts/mpd-ext.mjs --self-test || { echo \"[test:qa] FAILED: scripts/mpd-ext.mjs --self-test\"; exit 1; }; bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example || { echo \"[test:qa] FAILED: scripts/mpd-ext.mjs validate extensions/mpd-ext-example\"; exit 1; }; echo \"[test:qa] all self-tests passed\""
+  },
+  "selfTestSweep": {
+    "total": 44,
+    "failed": [],
+    "note": "test:qa aborts at its first failing self-test; this sweep ran EVERY self-test so 'the corpus gate is the only red' is measured"
+  },
+  "tuiLanes": [
+    {
+      "id": "tui-mount",
+      "command": "node skills/dsh-qa/scripts/tui-mount.mjs",
+      "exitCode": 0,
+      "ms": 132,
+      "log": "raw/tui-mount.log"
+    },
+    {
+      "id": "tui-panels",
+      "command": "node skills/dsh-qa/scripts/tui-panels.mjs",
+      "exitCode": 0,
+      "ms": 129,
+      "log": "raw/tui-panels.log"
+    },
+    {
+      "id": "tui-admission",
+      "command": "node skills/dsh-qa/scripts/tui-admission.mjs",
+      "exitCode": 0,
+      "ms": 232,
+      "log": "raw/tui-admission.log"
+    },
+    {
+      "id": "tui-distribution",
+      "command": "node skills/dsh-qa/scripts/tui-distribution.mjs",
+      "exitCode": 1,
+      "ms": 212820,
+      "log": "raw/tui-distribution.log"
+    },
+    {
+      "id": "tui-spec-conformance",
+      "command": "node skills/dsh-qa/scripts/tui-spec-conformance.mjs",
+      "exitCode": 0,
+      "ms": 256,
+      "log": "raw/tui-spec-conformance.log"
+    },
+    {
+      "id": "tui-settings-bridge",
+      "command": "node skills/dsh-qa/scripts/tui-settings-bridge.mjs",
+      "exitCode": 0,
+      "ms": 54,
+      "log": "raw/tui-settings-bridge.log"
+    },
+    {
+      "id": "web-settings-bridge",
+      "command": "node skills/dsh-qa/scripts/web-settings-bridge.mjs",
+      "exitCode": 1,
+      "ms": 51332,
+      "log": "raw/web-settings-bridge.log"
+    },
+    {
+      "id": "tui-team-surface",
+      "command": "node skills/dsh-qa/scripts/tui-team-surface.mjs",
+      "exitCode": 0,
+      "ms": 37976,
+      "log": "raw/tui-team-surface.log"
+    }
+  ],
+  "cleanCwdUsed": "/tmp/mpd-t5-clean-cwd-zTLg70"
+}

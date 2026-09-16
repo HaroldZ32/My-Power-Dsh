@@ -1,9 +1,14 @@
 // The `/mpd` command — the documented entry point for the mpd surfaces.
 //
-// Grammar (t3 brief §c, uniform with the host's own commands):
+// Grammar (t3 brief §c + frozen contract `.mpd/plans/tui-team-surface.md` §5.1):
 //   `/mpd`             -> picker (the host dialog supplies the labels)
 //   `/mpd <value>`     -> apply that action directly
+//   `/mpd team`        -> open the team-workflow scene
+//   `/mpd plan`        -> open the plan-approval scene
 //   `/mpd status`      -> print the current state
+//
+// A command is an ENTRY POINT, never the deliverable: the surfaces themselves are
+// the full-screen scenes (frozen §1).
 //
 // The command registry is the HARNESS command service (`ctx.commands`,
 // dsh-commands): it is not one of the four harness seams owned by
@@ -28,6 +33,10 @@ import { COMMAND_ACTIONS, COMMAND_ROOT } from "./command-trees.js"
 /** What the command needs from the rest of the plugin. */
 export interface CommandActions {
   openBoard(via: "command" | "shortcut"): boolean
+  /** Open the team-workflow surface (frozen §3.1). */
+  openTeam(): boolean
+  /** Open the plan-approval surface (frozen §3.2). */
+  openPlan(): boolean
   statusText(): string
   workmatesText(): string
   /** Picker for the bare form; undefined when no dialog seam is available. */
@@ -59,7 +68,7 @@ export function registerCommands(ctx: PluginContextLike, log: Log, actions: Comm
     try {
       commands.register({
         name: COMMAND_ROOT,
-        description: "MPD: open the board, list the workmate library, or print the status line",
+        description: "MPD: open the board or the team surfaces, list the workmate library, or print the status line",
         handler: async (invocation): Promise<CommandResult> => {
           const raw = typeof invocation?.rawInput === "string" ? invocation.rawInput.trim().toLowerCase() : ""
           const session = invocation?.agent?.session
@@ -98,6 +107,16 @@ function runAction(action: string, actions: CommandActions, session: SessionLike
   }
   if (action === "workmates") return { kind: "success", text: clamp(actions.workmatesText()) }
   if (action === "status") return { kind: "success", text: clamp(actions.statusText()) }
+  if (action === "team") {
+    return actions.openTeam()
+      ? { kind: "success" }
+      : { kind: "error", text: "mpd: the team workflow scene is not available in this composition" }
+  }
+  if (action === "plan") {
+    return actions.openPlan()
+      ? { kind: "success" }
+      : { kind: "error", text: "mpd: the plan approval scene is not available in this composition" }
+  }
   return { kind: "error", text: `mpd: unknown action "${clamp(action, 40)}" — usage: ${USAGE}` }
 }
 

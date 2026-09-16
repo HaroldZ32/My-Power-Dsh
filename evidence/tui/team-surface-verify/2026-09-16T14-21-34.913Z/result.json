@@ -1,0 +1,59 @@
+{
+  "slug": "tui-team-surface-verify-t8-commit-verdict",
+  "task": "t8 (repair, round 1)",
+  "title": "A COMMITTED approval is visible on the plan surface (t3's F1)",
+  "producedAt": "2026-09-16T14:21:34.913Z",
+  "finding": {
+    "id": "F1-approval-verdict-not-visible",
+    "severity": "medium",
+    "measuredBy": "t3 on the REAL tmux TUI — evidence/tui/team-surface-verify/2026-09-16T14-16-27.925Z/panes/approve-attempt.pane.txt (the pre-fix pane shows only `MPD plan approval — no staged plan for team mpd-fixture-1 (phase running)` + `esc back`)",
+    "rootCause": "runApprove sets `approved: <id> running · members <n> · tasks <n>`, then its `finally` re-reads the record. The adopted tool has flipped phase staged -> running, so `usable` is false and the ENTIRE action block — the only place that message renders — is dropped."
+  },
+  "fix": {
+    "file": "packages/mpd-tui-plugin/src/scenes.ts",
+    "shape": "ONE branch added to the plan scene's non-usable path, no barrier weakened and no new mutation path. `message` is the last SETTLED outcome of a call started while the plan was actionable (`approved: …` / `discarded: …` / a tool refusal / `working…`). When it is non-empty the surface now renders, in order: a neutral title `MPD plan approval — <team name>`, the verdict row itself (bold, byte-identical to the frozen §4.5 row 1 string), a dim `team <id> · phase <phase>` context row, and `esc back`. When it is EMPTY the precondition-failure rendering is byte-identical to before (title + `no staged plan for team …` + `esc back`) — which is exactly what the lane's malformed/non-staged/absent arms assert.",
+    "whyNotTheEchoOrTheGate": "The verdict is a DISPLAY of an outcome that already happened; it touches neither the confirmation phrase, the echo lifecycle (§4.5 still keeps the echo on a refusal), the chords, single-flight nor the precondition gate (the non-usable branch still ignores every key except Esc)."
+  },
+  "revision": {
+    "note": "sha256 of every artifact this repair produced or changed, measured after the final rebuild",
+    "files": {
+      "packages/mpd-tui-plugin/src/scenes.ts": "sha256:242c889882b5b8f3136c5cfb299427b784b9094ce5cdf8e09ef35fa219b38ddb",
+      "packages/mpd-tui-plugin/dist/index.js": "sha256:39af7ab1088468c7376854d8631bf9359c1b6a3339cb09a5c8bb4e665c886308",
+      "packages/mpd-tui-plugin/test/team-surface.test.ts": "sha256:edf852d8ef0d1715da0c14c3cd6f6e246cf2014d46487be5683f3ae9111f22a0",
+      "packages/mpd-dsh-adapter-plugin/dist/index.js": "sha256:f8b5613121f5af40a748e2333684d73d307eecf25610f1bfcb78b8727f265b84"
+    },
+    "note2": "the tui dist sha256 39af7ab1… is the exact revision the tui-team-surface lane measured (its result.json.revision.sha256), so the live lane verdict is anchored to this build"
+  },
+  "acceptance": [
+    {
+      "criterion": "after a SUCCESSFUL approval the plan surface renders a verdict line naming what happened (team id + resulting phase + the member/task counts), never the bare empty state",
+      "evidence": "REAL HOST (the same lane t3 used): evidence/tui/team-surface-verify/2026-09-16T14-22-36.219Z — arm2 H4 `pane outcome: approved-by-the-adopted-runtime/verdict-visible`, H4b `verdict line \"approved: mpd-fixture-1 running · members 2 · tasks 2\", post-commit empty state false`, H5 pane-and-record agree, and `findings: []` (the finding this repair closes). IN-PROCESS: test/team-surface.test.ts `t8 — the verdict renders even though the record has LEFT the staged phase` drives the real component with an executor that rewrites team.json (phase -> running, approvedAt set, planReviewState deleted), then asserts the verdict row is the FIRST body row, that `no staged plan for team mpd-fixture-1` is absent, and that the verdict survives a re-render."
+    },
+    {
+      "criterion": "the refusal path is untouched: a refused/mismatched confirmation still keeps the echo and shows 'confirmation does not match this team' (t6's F3 behaviour stays intact)",
+      "evidence": "t6's tests still pass unchanged: `§4.5 — a refused approve KEEPS the echo` and `a successful approve CONSUMES the echo` are green in the 45-test suite, and the lane's arm1 B1/B2/B3 (empty echo / wrong id / cancelled) each still fail the approval assertion and each render `confirmation does not match this team`. New coverage for the one interaction this repair could have disturbed: `a REFUSED call in the non-usable branch reports the refusal, never a success` (the plan approved elsewhere -> the tool refuses -> the surface shows the refusal, not a success)."
+    },
+    {
+      "criterion": "a NEGATIVE CONTROL reddens on the new assertion only; report the red count before/after",
+      "evidence": "evidence/tui/team-surface-verify/2026-09-16T14-21-34.913Z/negative-control/result.json — mutation `T8-remove-the-verdict-render` (`if (verdict) {` -> `if (false) {`): RED COUNT BEFORE = 0, AFTER = 2, and the two red tests are exactly the new ones: `t8 … > the verdict renders even though the record has LEFT the staged phase` and `t8 … > a REFUSED call in the non-usable branch reports the refusal, never a success`. `unrelatedTestsReddened: []`, source restored byte-identical (sha256), restored suite green."
+    },
+    {
+      "criterion": "the tui-team-surface lane run and tui-spec-conformance stay green, the touched packages' suite stays 0-fail, and both dists are rebuilt",
+      "evidence": "gates/tui-team-surface.log = the lane PASS (arm1 gate+adapter green, negative control red as required, arm2 verdict-visible) with its own record at evidence/tui/team-surface-verify/2026-09-16T14-22-36.219Z; gates/tui-spec-conformance.log = PASS (ok=true, all 7 pinned requirements); gates/bun-test-scoped.log = 135 pass / 0 fail for the two touched packages; gates/typecheck.log exit 0; gates/dist.sha256 + gates/dist-mtime.log record BOTH rebuilt dists, and the lane's own `revision.sha256` equals the tui dist sha 39af7ab1…, i.e. the live verdict measured the rebuilt bytes (not a stale dist)."
+    }
+  ],
+  "notClaimed": [
+    "No parity/layout claim beyond the one verdict row plus one context row.",
+    "The captain model's reaction to a TUI approval is still not claimed (contract §6.3).",
+    "No live-TTY drive was performed BY THIS TASK: the live verdict is t3's lane re-run, anchored to this build by the dist sha256."
+  ],
+  "gates": {
+    "dir": "evidence/tui/team-surface-verify/2026-09-16T14-21-34.913Z/gates/",
+    "scopedSuite": "bun test packages/mpd-tui-plugin packages/mpd-dsh-adapter-plugin -> 135 pass / 0 fail (bun-test-scoped.log)",
+    "typecheck": "exit 0 (typecheck.log)",
+    "specConformance": "PASS, ok=true, 7/7 requirements (tui-spec-conformance.log)",
+    "teamSurfaceLane": "PASS, exit 0 (tui-team-surface.log); its own record: evidence/tui/team-surface-verify/2026-09-16T14-22-36.219Z",
+    "fullSuite": "bun test packages = 801 tests: repo-cwd 799 pass / 2 fail, clean-cwd 801 pass / 0 fail (bun-test-packages.log red, bun-test-packages.clean-cwd.log green). The 2 reds are the PRE-EXISTING non-hermetic mpd-config assertions on <cwd>/.mpd/mpd.jsonc in a package this task did not touch — the gate the captain already ruled WAIVED with the clean-cwd invocation as the recorded replacement.",
+    "distsRebuilt": "gates/dist.sha256 + gates/dist-mtime.log; the lane's own revision.sha256 equals the rebuilt tui dist sha256 39af7ab1…, proving the live verdict measured the rebuilt bytes"
+  }
+}
