@@ -1,0 +1,2 @@
+{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{"listChanged":false}},"serverInfo":{"name":"demo-ext","version":"0.1.0"}}}
+{"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"{\n  \"id\": \"demo-ext\",\n  \"root\": \"/tmp/t5-evidence-QlFt8W/demo-ext\",\n  \"enabled\": false,\n  \"kinds\": [\n    \"skills\",\n    \"flows\",\n    \"mcp\",\n    \"roles\"\n  ]\n}"}]}}

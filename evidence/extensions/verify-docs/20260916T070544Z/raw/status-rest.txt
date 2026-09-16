@@ -1,0 +1,29 @@
+### parity negative controls with their reason lines
+FAIL docs/extension-authoring-guide.md — missing zh-CN file
+[verify-docs-parity] root=/tmp/tmp.XZLTLIMeor pairs=1 failed=1 violations=0 exempt=0 — FAIL
+FAIL docs/extension-authoring-guide.md — EN switch link missing/not under the title
+[verify-docs-parity] root=/tmp/tmp.XZLTLIMeor pairs=1 failed=1 violations=0 exempt=0 — FAIL
+[verify-docs-parity] root=/tmp/tmp.XZLTLIMeor pairs=1 failed=0 violations=0 exempt=0 — PASS
+
+### the packed-tree deviation: the cited probe exists and says what the docs say
+-rw-r--r-- 1 root root 3747 Sep 16 14:40 evidence/extensions/template-scaffold/20260916T063710Z/raw/packed-tree-probe.json
+arms A/B present: true
+{"probe":"packed-tree-probe","repo":"/root/dshProj/my-power-dsh","packer_facts":{"ships scripts/mpd-ext.mjs":true,"copies templates/":false,"copies packages/*/src":false},"arms":[{"arm":"A — packed exactly as the packer builds it","layout":{"scripts/mpd-ext.mjs":true,"packages/mpd-ext-plugin/src":false,"packages/mpd-roles-plugin/src":false,"templates/mpd-extension":false},"runs":[{"args":["validate","extensions/mpd-ext-example"],"exitCode":1,"firstLine":"error: Cannot find module '/tmp/t19-packed-tree-XSQkOb/A-packed/packages/mpd-ext-plugin/src/registry.ts' from '/tmp/t19-packed-tree-XSQkOb/A-packed/scripts/mpd-ext.mjs'","stderrTail":"error: Cannot find module '/tmp/t19-packed-tree-XSQkOb/A-
+
+### the tracker the docs cite
+268:- **T-51 [gap] The PACKED artifact ships a CLI that cannot run (reproduced by the captain 2026-09-16).**
+
+### F1/F5/F7/F11 evidence still resolves
+OK   evidence/extensions/f1-adapter-identity/20260916T061318Z/result.json
+OK   evidence/extensions/debranding-probe/20260916T061807Z/verify-debranding-full.mjs
+OK   evidence/extensions/pack-closure-check/20260916T061527Z/result.json
+OK   scripts/verify-pack-closure.mjs
+OK   evidence/extensions/boundary-index/INDEX.md
+
+### F6 deferred: the pre-c239407 dirs are still absent from the change set
+none present (untouched)
+
+### VENDOR_LOCK as the docs now claim
+{"fileCount":318,"treeSha":"a8ba96b8108b2df3cce707e7b69d038f71514cea9e0c488683ba79012efc8d12"}
+verify-vendor exit=0
+[verify-vendor] PASS

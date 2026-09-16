@@ -1,0 +1,7 @@
+dsh: initialized profile mb at /tmp/mpd-f1-dsh-WtPUJE/profiles/mb
+
+dependencies:
++ @mpd-dsh/mpd link:/root/dshProj/my-power-dsh
+
+Already up to date
+Done in 178ms using pnpm v11.23.0

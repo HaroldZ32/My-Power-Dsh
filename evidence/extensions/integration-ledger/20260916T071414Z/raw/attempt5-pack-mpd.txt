@@ -1,0 +1,2 @@
+[pack-mpd] modes normalized: 1136 files (644: 1124, 755: 12)
+[pack-mpd] staged package -> /root/dshProj/my-power-dsh/dist/mpd-package

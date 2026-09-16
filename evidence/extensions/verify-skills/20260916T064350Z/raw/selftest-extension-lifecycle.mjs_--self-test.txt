@@ -1,0 +1,1 @@
+[extension-lifecycle self-test] ok: composed row + validator rejections (incl. NaN rank via the code plane) + CLI oracle + seam regression (inject declared, failure LOUD, no false success) + packed predicate falsifiable (closed vs. three broken fixture trees) + fixtures verified

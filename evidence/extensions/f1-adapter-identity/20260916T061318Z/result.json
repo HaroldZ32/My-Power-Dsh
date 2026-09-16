@@ -1,0 +1,114 @@
+{
+  "task": "t4 — F1 + F5: make the silent adapter fallback loud and assertable in mpd-ext and mpd-roles",
+  "attempt_id": "b3031e50-6d5b-44ff-912d-5f52764a6f4b",
+  "agent": "Senior Engineer",
+  "head": "1f38e3c1b8149cecc68f54fae1979f56e1ff2b0f",
+  "verdict": "PASS",
+  "subject": {
+    "fix": "Both rows now resolve the shared adapter through ONE local `resolveAdapter(ctx)` that also returns an identity string: `mounted:mpdDsh` when `ctx.get(\"mpdDsh\")` resolves, `fallback:createDshAdapter` when the private adapter is built.",
+    "surfaces": {
+      "warning": "exactly ONE per apply, only on the fallback branch: `<tag> ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): ...` — written to stdout AND ctx.logger.warn so a headless boot shows it",
+      "boot line": "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=<identity> | tools: ... (existing line, one field inserted) and [mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=<identity>",
+      "service field": "`mpdExtensions.adapterIdentity` and `mpdRoles.adapterIdentity` — the field name is `adapterIdentity`"
+    },
+    "field_name": "adapterIdentity",
+    "identity_values": ["mounted:mpdDsh", "fallback:createDshAdapter"]
+  },
+  "claims": [
+    {
+      "claim": "the fallback branch emits exactly ONE warning per apply and names the identity",
+      "basis": "unit test on a fake ctx WITHOUT mpdDsh (both packages)",
+      "artifact": "packages/mpd-ext-plugin/test/adapter-identity.test.ts, packages/mpd-roles-plugin/test/adapter-identity.test.ts"
+    },
+    {
+      "claim": "a real fallback boot warns exactly once per row and the tree keeps working",
+      "basis": "REAL mounted boot with the mpd-dsh-adapter row disabled by a --patch id-target (`disabled: true`)",
+      "artifact": "raw/fallback-boot.result.json, raw/fallback-boot.log, raw/fallback-boot.raw.log, raw/disable-adapter.yml"
+    },
+    {
+      "claim": "a healthy mounted boot emits NO warning and reports the mounted identity in the boot log",
+      "basis": "REAL mounted boot of the installed bundle (`bun skills/dsh-qa/scripts/bundle-lifecycle.mjs`, exit 0)",
+      "artifact": "raw/result.json, raw/output.log (checker over evidence/dsh-qa/bundle-lifecycle/2026-09-16T06-16-02.409Z/boot.log)"
+    },
+    {
+      "claim": "the healthy path's service surface, four inspection tools and discovery results are unchanged",
+      "basis": "the mpd-ext boot line from the PRE-change boot log vs the post-change line: byte-identical after removing the ONE inserted field; the discovery-derived `skill providers:` list is identical; the lane's per-step ok-flags are identical to the pre-change run",
+      "artifact": "raw/result.json (checks boot.mpd-ext-line-otherwise-byte-identical, boot.discovery-providers-unchanged, lane.step-ok-flags-identical)"
+    },
+    {
+      "claim": "F5 dedupe left the canonical note as the only full description",
+      "basis": "final trim (comment-only) of the bundle patch's row-order bullet to a placement rule + pointer; verify-rows-parity re-run exit 0 on the trimmed file; src/dist hashes untouched by the trim",
+      "artifact": "packages/mpd-bundle/cordis.patch.yml:251-257 + raw/rows-parity.log + raw/after-hashes.txt"
+    },
+    {
+      "claim": "the fallback arm is assertable on a surface a lane can read",
+      "basis": "boot-line identity + `mpdExtensions.adapterIdentity` / `mpdRoles.adapterIdentity`; the healthy arm additionally proves the mounted adapter is really the one used (tools registered THROUGH the stub, nothing registered beside it)",
+      "artifact": "packages/*/test/adapter-identity.test.ts (both arms) + raw/fallback-boot.log"
+    },
+    {
+      "claim": "the hazard comment exists ONCE (canonical) with the other sites cross-referencing it (F5)",
+      "basis": "canonical note in packages/mpd-ext-plugin/src/index.ts next to resolveAdapter; mpd-roles cross-references it and does not restate it; the bundle patch's row-order bullet points at the canonical note and no longer says `silently falls back` (untrue after the fix)",
+      "artifact": "packages/mpd-ext-plugin/src/index.ts:59-92 (CANONICAL NOTE + resolveAdapter), packages/mpd-roles-plugin/src/index.ts:316-334, packages/mpd-bundle/cordis.patch.yml:251-257"
+    },
+    {
+      "claim": "the changed plugins ship a rebuilt dist/ that the real boot loads",
+      "basis": "both dists rebuilt with the contract's bun build lines; a dist-marker test fails on a stale dist; the real mount lane's boot log shows the NEW identity field only the rebuilt dist carries",
+      "artifact": "raw/after-hashes.txt, raw/result.json, packages/*/test/adapter-identity.test.ts (\u00a7F1 shipped artifact)"
+    }
+  ],
+  "acceptance_evidence": [
+    {
+      "criterion": "fallback path emits exactly ONE warning per plugin apply, naming the identity (unit test, fake ctx WITHOUT mpdDsh)",
+      "result": "passed",
+      "evidence": "ext: raw/ext-after.test.log \u2014 72 pass / 0 fail (6 new); roles: raw/roles-after.test.log \u2014 30 pass / 0 fail (6 new). The fallback tests count `ADAPTER FALLBACK` lines per sink == 1 and assert the line contains adapterIdentity=fallback:createDshAdapter. Bonus: the SAME reading on a real boot (raw/fallback-boot.result.json: mpd_ext_fallback_warnings=1, mpd_roles_fallback_warnings=1)."
+    },
+    {
+      "criterion": "healthy mounted boot emits NO warning and the mounted identity is observable in the boot log",
+      "result": "passed",
+      "evidence": "raw/result.json checks boot.no-fallback-warning (0 `ADAPTER FALLBACK` lines) and boot.no-fallback-identity (0 `adapterIdentity=fallback:` lines) over evidence/dsh-qa/bundle-lifecycle/2026-09-16T06-16-02.409Z/boot.log; boot.mpd-ext-identity-mounted + boot.mpd-roles-identity-mounted read `adapterIdentity=mounted:mpdDsh` from that real boot log."
+    },
+    {
+      "criterion": "the fallback arm is assertable, with the field name stated",
+      "result": "passed",
+      "evidence": "field name `adapterIdentity`, values `mounted:mpdDsh` / `fallback:createDshAdapter`. Read from a boot line (raw/fallback-boot.log) and from the plugin's own service (unit tests assert `mpdExtensions.adapterIdentity` / `mpdRoles.adapterIdentity`)."
+    },
+    {
+      "criterion": "healthy mounted behaviour unchanged (service surface, four inspection tools, discovery results) vs the pre-change tree",
+      "result": "passed",
+      "evidence": "raw/result.json: boot.mpd-ext-line-otherwise-byte-identical (pre-change line == post-change line with the single inserted field removed), boot.four-inspection-tools-registered (all four names in the real boot's summary), boot.discovery-providers-unchanged (`mpd-ext:mpd-ext-example, mpd-ext:project-plane` identical), lane.step-ok-flags-identical + lane.every-step-ok + lane.adapter-seams-identical vs evidence/dsh-qa/bundle-lifecycle/2026-09-16T02-55-38.803Z/result.json."
+    },
+    {
+      "criterion": "hazard comment exists ONCE canonically, other site cross-references it (F5)",
+      "result": "passed",
+      "evidence": "`grep -rn \"SECOND adapter|one-contact-surface\"` over the three files: the canonical note is mpd-ext src only; mpd-roles carries the cross-reference; cordis.patch.yml:251-257 points at the canonical note. Other descriptions are runtime warning text, not comments."
+    },
+    {
+      "criterion": "every changed plugin ships a rebuilt dist/ the real boot actually loads",
+      "result": "passed",
+      "evidence": "raw/after-hashes.txt (dist sha256 differs from raw/before-hashes.txt) + the dist-marker tests + the mount lane's boot log carrying `adapterIdentity=` (a string that exists only in the rebuilt dist)."
+    },
+    {
+      "criterion": "bun test packages/mpd-ext-plugin and bun test packages/mpd-roles-plugin exit 0",
+      "result": "passed",
+      "evidence": "ext exit 0 (72 pass / 0 fail / 556 expect) and roles exit 0 (30 pass / 0 fail / 483 expect); pre-change baselines 66 and 24 in raw/*-before.test.log."
+    }
+  ],
+  "commands": [
+    { "command": "bun test packages/mpd-ext-plugin", "exit": 0, "reading": "72 pass, 0 fail (baseline 66 -> +6)" },
+    { "command": "bun test packages/mpd-roles-plugin", "exit": 0, "reading": "30 pass, 0 fail (baseline 24 -> +6)" },
+    { "command": "bun build packages/mpd-ext-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ext-plugin/dist/index.js", "exit": 0, "reading": "Bundled 11 modules, dist 150.97 KB" },
+    { "command": "bun build packages/mpd-roles-plugin/src/index.ts --target node --format esm --outfile packages/mpd-roles-plugin/dist/index.js", "exit": 0, "reading": "Bundled 3 modules, dist 37.68 KB" },
+    { "command": "bun scripts/mpd-ext.mjs --self-test", "exit": 0, "reading": "passed (41 checks)" },
+    { "command": "node scripts/verify-rows-parity.mjs", "exit": 0, "reading": "25 row ids match the bundle patch insert list" },
+    { "command": "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs", "exit": 0, "reading": "[bundle-lifecycle] PASS; every step ok=true; boot.log carries adapterIdentity=mounted:mpdDsh for both rows and 0 fallback markers" },
+    { "command": "node evidence/extensions/f1-adapter-identity/20260916T061318Z/check-boot-identity.mjs <before> <after>", "exit": 0, "reading": "14/14 checks ok" },
+    { "command": "bash evidence/extensions/f1-adapter-identity/20260916T061318Z/live-fallback-boot.sh", "exit": 0, "reading": "adapter_row_applied=0, 1 warning per row, 4 identity readings, 0 apply-crash signatures, boot_exit=124 (still serving at the 180 s cap)" },
+    { "command": "bun run typecheck", "exit": 0, "reading": "tsgo --noEmit clean" }
+  ],
+  "notes": [
+    "F5 scope decision: the canonical comment lives in mpd-ext (the file with the measured precedent and the CANONICAL NOTE); mpd-roles and the bundle patch cross-reference it. Not documented in README.md (out of scope for this task).",
+    "The live fallback boot disables ONLY the `mpd-dsh-adapter` row, so the other rows also take the unsilent `??` branch — they are instrumented by no task in this wave (t4's inScope is exactly these two rows); that residual is stated here, not hidden.",
+    "The pre-change boot-log baseline used for the byte-identical comparison is evidence/dsh-qa/bundle-lifecycle/2026-09-16T02-55-38.803Z (immutable, written before this change).",
+    "Concurrent wave edits (templates/, scripts/verify-pack-closure.mjs, package.json, scripts/mpd-ext.mjs) were present in the tree while these lanes ran; none of them is loaded by the mount lane's boot and none was touched by this task."
+  ]
+}

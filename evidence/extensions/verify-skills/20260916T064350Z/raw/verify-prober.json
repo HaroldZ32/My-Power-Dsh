@@ -1,0 +1,45 @@
+{
+  "task": "t11",
+  "item": "2 — corrected prober, both arms",
+  "attempt_id": "f488e6cf-997c-4899-b5bc-897ae67d869c",
+  "checks": [
+    {
+      "id": "positive-exit",
+      "status": "passed",
+      "detail": "exit 0; [verify-debranding-full] probe list written to evidence/extensions/verify-skills/20260916T064350Z/raw/prober-positive.json"
+    },
+    {
+      "id": "positive-probe-list-complete",
+      "status": "passed",
+      "detail": "probes=26 list=26 findings=0 kinds=[skills,flows,roles,mcp] fields/kinds={\"skills\":[\"name\",\"description\"],\"flows\":[\"id\",\"title\",\"description\",\"whenToUse\"],\"roles\":[\"name\",\"description\",\"persona\"],\"mcp\":[\"serverName\",\"transport\",\"command\",\"args\"]}"
+    },
+    {
+      "id": "mutation-applied",
+      "status": "passed",
+      "detail": "roles[0].name \"Code Reviewer\" -> \"Code ReviewerX\" (exactly one byte added) in a TEMP copy; the real example is untouched"
+    },
+    {
+      "id": "negative-exit",
+      "status": "passed",
+      "detail": "mutated example: exit 1 (must be 1)"
+    },
+    {
+      "id": "negative-reported-as-finding",
+      "status": "passed",
+      "detail": "findings=1; the finding names the mutated value: true"
+    },
+    {
+      "id": "negative-names-field",
+      "status": "passed",
+      "detail": "the finding names roles.name: true"
+    },
+    {
+      "id": "prober-selftest",
+      "status": "passed",
+      "detail": "exit 0; [verify-debranding-full] self-test PASS - mutation (mcp.serverName — NEVER probed by the old prober) :: findings=1 names-the-field=true example-quoted 13 -> 12 (expected -1) | [verify-debranding-full]"
+    }
+  ],
+  "failed": [],
+  "passed": 7,
+  "total": 7
+}

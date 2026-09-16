@@ -1,0 +1,8 @@
+verify-closure — item 1 (verifier-owned fixture)
+  ok   positive-control — real tree: exit 0; [verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; allowlist carries no templates/ entry
+  ok   fixture-built — removed 17 byte(s) from a temp copy of the real packer; the entry is gone and the array anchor survives
+  ok   negative-control-exit — fixture (mpd-ext-plugin omitted): exit 1
+  ok   negative-control-names-package — the failure names mpd-ext-plugin: true
+  ok   negative-control-class — the failure names the OMISSION class: true;   packer: /tmp/t11-closure-YaorZT/pack-mpd-omission.mjs |   packages dir: /root/dshProj/my-power-dsh/packages |   patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml
+  ok   negative-control-isolated — the unmodified copy of the same file is green (exit 0) — the red came from the omission, not from the fixture path
+  ok   checker-selftest — exit 0; 6/6 arms

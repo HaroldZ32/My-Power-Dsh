@@ -1,0 +1,86 @@
+{
+  "task": "t19",
+  "kind": "repair (round 2)",
+  "attempt_id": "5e9fb1f2-67a2-4e83-8da5-5326f656ee76",
+  "stamp": "20260916T063710Z",
+  "subject": "t14 round-1 findings against t5: role-name guard + atomic write, README copy-context/unpacked/serverName-bound/roles-pair corrections",
+  "changed_paths": [
+    "scripts/mpd-ext.mjs",
+    "templates/mpd-extension/README.md",
+    "templates/mpd-extension/README.zh-CN.md",
+    "evidence/extensions/template-scaffold/20260916T063710Z/packed-tree-probe.mjs",
+    "evidence/extensions/template-scaffold/20260916T063710Z/result.json",
+    "evidence/extensions/template-scaffold/20260916T063710Z/output.log"
+  ],
+  "findings_addressed": [
+    {
+      "id": "R1-role-name-guard",
+      "fix": "`baseRosterRoleConflicts()` screens every derived role name with the runtime's own `registry.roleNameKey` against a key set built from the runtime's own roster table (`packages/mpd-roles-plugin/src/roles.data.ts`, the module `registry.ts` itself builds BASE_ROLE_NAME_KEYS from), and refuses with `registry.roleNameCollisionReason` (registry.ts:236-238) BEFORE anything is written. Measured: `scaffold plan` -> exit 1, stderr `refused — \"plan\" would declare a role name the base roster already owns` + `nothing was written to <target>`, stdout `refused: role name \"plan reviewer\" (contributes.roles[0] of extension \"plan\") is already taken by the base roster — this extension role is not exposed`, and the target directory does not exist afterwards (raw/refusal-plan.txt)."
+    },
+    {
+      "id": "R1-atomic-write",
+      "fix": "runScaffold now builds in a staging CONTAINER beside the target (`<parent>/.mpd-ext-scaffold-<pid>-<Date.now()>/<name>`), validates THAT tree with the runtime validator, and only then `renameSync`s the extension root onto the target (same filesystem, one atomic move). The container LEVEL is deliberate: discovery inspects only a root's immediate children for `mpd-ext.json`, so an extension staged one level down is never discoverable while it is being built. Any refusal removes the whole container in a `finally`, so a refused scaffold cannot leave a partially written extension. The old text `the generated extension does not load — this is a CLI defect` is gone: the post-validate failure path now reads `refused — the copy would not load as \"<name>\"; nothing was written to <target>` plus the per-item reasons. `grep -n \"CLI defect\" scripts/mpd-ext.mjs` returns only two COMMENTS that say the opposite (\":227 instead of as a CLI defect.\", \":396 a CONTRACT refusal, never a CLI defect\")."
+    },
+    {
+      "id": "R1-self-test-coverage",
+      "fix": "selfTest section 4 covers the reachable collision id `plan` with six assertions: exit 1, the contract-refusal headline on stderr, the roster's own sentence on stdout, the `nothing was written` guarantee, no target directory, and no staging container left in the sandbox. `--self-test` is now 52 checks, exit 0."
+    },
+    {
+      "id": "R2-unpacked-readme",
+      "fix": "Both template READMEs now say the template is deliberately NOT packed and state the consequence. MEASURED, and NARROWER THAN THE FINDING ASSUMED: the criterion said `validate`/`list` still work from a packed install, but the packer ships `packages/<pkg>/dist` and never `packages/<pkg>/src` (scripts/pack-mpd.mjs:69-73) while the CLI imports its validator from `src/`, so in a packed tree the CLI cannot run at all; with `src/` restored, `validate` runs and `scaffold` (plus `--self-test`'s template arm) fail on the absent template. Both arms are measured in raw/packed-tree-probe.json; the READMEs state the measured version."
+    },
+    {
+      "id": "R3-copy-accurate-readme",
+      "fix": "Option B from the finding (location-neutral rewrite) was chosen over a third documented rewrite pass: the problematic sentences now describe `templates/mpd-extension/` as the upstream template directory and define \"your copy\" explicitly, and §6 says `templates/` is neither discovered nor packed while your copy is. §7 is retitled `The stdio MCP server (--with-mcp copies only)` and its smoke command uses `<extension-root>/server.mjs`. READMEs remain placeholder-free, so the t5 byte-comparison still holds (regression 39/39)."
+    },
+    {
+      "id": "R4-serverName-bound",
+      "fix": "ONE helper pair now owns the bound: `serverNameMaxLength()` parses `{1,32}` out of `MPD_EXT_CONTRACT.serverNamePattern` (no literal 32 anywhere), and `serverNameFor(name)` is used by BOTH `finishManifest` and `compareCopyToTemplate`. A truncating id is no longer silent: runScaffold prints `warning: ^[A-Za-z0-9_-]{1,32}$ caps serverName at 32 characters, so the copy declares \"…\" instead of \"…\"` on stderr (new `warn()` helper, no exit-code change). `--self-test` 3b pins the behaviour with a 41-character id: exit 0, the declared serverName equals the 32-char bound, the warning is asserted, and the copy still validates (raw/long-id.txt)."
+    },
+    {
+      "id": "R5-roles-pair",
+      "fix": "The README's roles row now states the pair rule (\"`provider`/`model` are optional and must be supplied together or not at all — the template keeps the default route, so it declares neither\") in both languages. The template manifest itself is unchanged: it keeps the default route rather than pinning a provider into a copy-me skeleton."
+    },
+    {
+      "id": "BONUS-doc-accuracy",
+      "fix": "The READMEs claimed the skill directory name must match the frontmatter name; that is wrong (the frontmatter `name` is the identity, the directory name is free — skills.ts reads the frontmatter, and the flow/skill rows in EXTENSIONS-FOR-AGENTS.md already said so). Both READMEs corrected in the same change."
+    }
+  ],
+  "commands": [
+    { "command": "bun scripts/mpd-ext.mjs --self-test", "exitCode": 0, "status": "passed", "evidence": "[mpd-ext] --self-test passed (52 checks) — was 41 before this repair; raw/gate-selftest.txt" },
+    { "command": "bun scripts/mpd-ext.mjs validate templates/mpd-extension", "exitCode": 0, "status": "passed", "evidence": "loadable, contributes 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s); raw/gate-validate-template.txt" },
+    { "command": "bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example", "exitCode": 0, "status": "passed", "evidence": "loadable, 1/1/1/1; raw/gate-validate-example.txt" },
+    { "command": "node scripts/verify-docs-parity.mjs", "exitCode": 0, "status": "passed", "evidence": "pairs=36 failed=0 violations=0 exempt=16 — PASS; raw/gate-docs-parity.txt" },
+    { "command": "bun evidence/extensions/template-scaffold/20260916T061238Z/compare-arms.mjs --out evidence/extensions/template-scaffold/20260916T063710Z/raw/regression-compare-arms", "exitCode": 0, "status": "passed", "evidence": "the t5 driver re-run as a regression INTO THIS STAMP DIR (the t5 dir is byte-untouched, mtime 14:16:54 vs 14:38:53): 39/39 checks, including the per-file byte comparison of both arms against the edited README pair; raw/regression-compare-arms/result.json" },
+    { "command": "node evidence/extensions/template-scaffold/20260916T063710Z/packed-tree-probe.mjs", "exitCode": 0, "status": "passed", "evidence": "the probe itself exits 0; its two arms are the measurement (raw/packed-tree-probe.json)" }
+  ],
+  "packed_tree_probe": {
+    "arm_A_packed_as_the_packer_builds_it": {
+      "layout": { "scripts/mpd-ext.mjs": true, "packages/mpd-ext-plugin/src": false, "packages/mpd-roles-plugin/src": false, "templates/mpd-extension": false },
+      "validate_exit": 1,
+      "scaffold_exit": 1,
+      "self_test_exit": 1,
+      "first_line": "error: Cannot find module '<packed>/packages/mpd-ext-plugin/src/registry.ts' from '<packed>/scripts/mpd-ext.mjs'"
+    },
+    "arm_B_packed_with_src_restored": {
+      "layout": { "scripts/mpd-ext.mjs": true, "packages/mpd-ext-plugin/src": true, "packages/mpd-roles-plugin/src": true, "templates/mpd-extension": false },
+      "validate_exit": 0,
+      "scaffold_exit": 1,
+      "scaffold_first_line": "mpd-ext scaffold: the template \"<packed>/templates/mpd-extension\" is missing — it is the only source of this command's output",
+      "self_test_exit": 1,
+      "self_test_first_line": "FAIL validate accepts templates/mpd-extension (got 1)"
+    },
+    "packer_source_facts": { "ships_scripts_mpd_ext_mjs": true, "copies_templates": false }
+  },
+  "cross_task_requirement": {
+    "owner": "the report task (t9's status section) — docs/** is OUT OF SCOPE for t19, so this was NOT written by this task",
+    "requirement": "docs/extension-adaptation-report.md §12 (and its zh twin) must disclose that the AGENTS.md §4 Extension-CLI gate is red in a packed tree.",
+    "ready_to_paste_sentence": "The AGENTS.md §4 Extension-CLI gate is a CHECKOUT gate, not a packed-tree gate: the packer ships `scripts/mpd-ext.mjs` but ships `packages/<pkg>/dist` and never `packages/<pkg>/src` (scripts/pack-mpd.mjs:69-73) while the CLI imports its validator from `src/`, and it ships no `templates/` entry — so from a packed tree the CLI cannot run at all, and with `src/` restored `validate` runs while `scaffold` and `--self-test`'s template arm still fail. Measured: evidence/extensions/template-scaffold/20260916T063710Z/raw/packed-tree-probe.json (arm A: validate/scaffold/--self-test all exit 1; arm B: validate exits 0, scaffold exits 1 with the missing-template reason).",
+    "evidence": "evidence/extensions/template-scaffold/20260916T063710Z/raw/packed-tree-probe.json + this task's README pair §6"
+  },
+  "honest_notes": [
+    "The criterion's premise that `validate`/`list` work from a packed install does NOT hold as written; the probe measured the stronger fact (the CLI cannot run there at all). The READMEs and this record state the measured version, not the premise.",
+    "The `scaffold` refusal path still cannot prove that NO contract rule remains unchecked: the staging validator catches anything the pre-write guards miss, and reports it as a refusal with per-item reasons — but if such a case occurred the CLI would have no way to tell a hand-broken template from a bug, which is exactly why the headline says `refused` and names the target that was left untouched.",
+    "No dsh boot was run (no behaviour change to the plugin/runtime was made: this task touches the dev CLI and two README files only)."
+  ]
+}

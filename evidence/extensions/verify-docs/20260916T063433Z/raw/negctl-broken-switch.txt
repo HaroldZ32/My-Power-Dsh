@@ -1,0 +1,3 @@
+FAIL docs/extension-authoring-guide.md — EN switch link missing/not under the title
+
+[verify-docs-parity] root=/tmp/tmp.PcZuccqJPm pairs=1 failed=1 violations=0 exempt=0 — FAIL

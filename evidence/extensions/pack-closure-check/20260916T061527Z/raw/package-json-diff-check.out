@@ -1,0 +1,5 @@
+script keys before=12 after=12
+keys identical (no add/remove): true
+test:qa unchanged: true
+test:qa:strict unchanged: true
+changed script entries: ["test:qa:all"]

@@ -1,0 +1,152 @@
+{
+  "task": "t24",
+  "driver": "repeat-boot.sh (this task's own) + parse-boot-readings.mjs",
+  "question": "On a CORRECTLY ORDERED tree, is the adapter fallback branch reachable?",
+  "howEachBootRan": "Each run copies a FRESHLY INSTALLED but never-booted pristine sandbox (byte copy, same directory depth so the profile's relative bundle symlink resolves), gets a fresh empty workspace cwd, and boots `dsh --profile rp \"say ok\"` with its own sandboxed DSH_HOME + HOME. The driver waits for BOTH rows' summary lines (a fallback warning is always emitted before its row's summary) and then stops the boot.",
+  "runsRequested": 6,
+  "validBoots": 6,
+  "invalidBoots": [],
+  "fallbackBoots": 0,
+  "cleanBoots": 6,
+  "frequency": "0/6 boots took the fallback branch",
+  "readings": [
+    {
+      "run": 1,
+      "log": "logs/boot-1.log",
+      "valid": true,
+      "why": "both rows printed their summary line, so both rows applied",
+      "adapterLine": "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)",
+      "adapterLineIndex": 1,
+      "extRow": "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+      "extLineIndex": 5,
+      "rolesRow": "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh",
+      "rolesLineIndex": 6,
+      "adapterProvidedBeforeExtApplied": true,
+      "extIdentity": "adapterIdentity=mounted:mpdDsh",
+      "rolesIdentity": "adapterIdentity=mounted:mpdDsh",
+      "identityLines": [
+        "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+        "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh"
+      ],
+      "identityLineCount": 2,
+      "fallbackLines": [],
+      "fallbackCount": 0,
+      "fallbackFired": false
+    },
+    {
+      "run": 2,
+      "log": "logs/boot-2.log",
+      "valid": true,
+      "why": "both rows printed their summary line, so both rows applied",
+      "adapterLine": "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)",
+      "adapterLineIndex": 1,
+      "extRow": "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+      "extLineIndex": 5,
+      "rolesRow": "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh",
+      "rolesLineIndex": 6,
+      "adapterProvidedBeforeExtApplied": true,
+      "extIdentity": "adapterIdentity=mounted:mpdDsh",
+      "rolesIdentity": "adapterIdentity=mounted:mpdDsh",
+      "identityLines": [
+        "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+        "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh"
+      ],
+      "identityLineCount": 2,
+      "fallbackLines": [],
+      "fallbackCount": 0,
+      "fallbackFired": false
+    },
+    {
+      "run": 3,
+      "log": "logs/boot-3.log",
+      "valid": true,
+      "why": "both rows printed their summary line, so both rows applied",
+      "adapterLine": "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)",
+      "adapterLineIndex": 1,
+      "extRow": "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+      "extLineIndex": 5,
+      "rolesRow": "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh",
+      "rolesLineIndex": 6,
+      "adapterProvidedBeforeExtApplied": true,
+      "extIdentity": "adapterIdentity=mounted:mpdDsh",
+      "rolesIdentity": "adapterIdentity=mounted:mpdDsh",
+      "identityLines": [
+        "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+        "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh"
+      ],
+      "identityLineCount": 2,
+      "fallbackLines": [],
+      "fallbackCount": 0,
+      "fallbackFired": false
+    },
+    {
+      "run": 4,
+      "log": "logs/boot-4.log",
+      "valid": true,
+      "why": "both rows printed their summary line, so both rows applied",
+      "adapterLine": "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)",
+      "adapterLineIndex": 1,
+      "extRow": "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+      "extLineIndex": 5,
+      "rolesRow": "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh",
+      "rolesLineIndex": 6,
+      "adapterProvidedBeforeExtApplied": true,
+      "extIdentity": "adapterIdentity=mounted:mpdDsh",
+      "rolesIdentity": "adapterIdentity=mounted:mpdDsh",
+      "identityLines": [
+        "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+        "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh"
+      ],
+      "identityLineCount": 2,
+      "fallbackLines": [],
+      "fallbackCount": 0,
+      "fallbackFired": false
+    },
+    {
+      "run": 5,
+      "log": "logs/boot-5.log",
+      "valid": true,
+      "why": "both rows printed their summary line, so both rows applied",
+      "adapterLine": "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)",
+      "adapterLineIndex": 1,
+      "extRow": "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+      "extLineIndex": 5,
+      "rolesRow": "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh",
+      "rolesLineIndex": 6,
+      "adapterProvidedBeforeExtApplied": true,
+      "extIdentity": "adapterIdentity=mounted:mpdDsh",
+      "rolesIdentity": "adapterIdentity=mounted:mpdDsh",
+      "identityLines": [
+        "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+        "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh"
+      ],
+      "identityLineCount": 2,
+      "fallbackLines": [],
+      "fallbackCount": 0,
+      "fallbackFired": false
+    },
+    {
+      "run": 6,
+      "log": "logs/boot-6.log",
+      "valid": true,
+      "why": "both rows printed their summary line, so both rows applied",
+      "adapterLine": "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)",
+      "adapterLineIndex": 1,
+      "extRow": "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+      "extLineIndex": 5,
+      "rolesRow": "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh",
+      "rolesLineIndex": 6,
+      "adapterProvidedBeforeExtApplied": true,
+      "extIdentity": "adapterIdentity=mounted:mpdDsh",
+      "rolesIdentity": "adapterIdentity=mounted:mpdDsh",
+      "identityLines": [
+        "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+        "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh"
+      ],
+      "identityLineCount": 2,
+      "fallbackLines": [],
+      "fallbackCount": 0,
+      "fallbackFired": false
+    }
+  ]
+}

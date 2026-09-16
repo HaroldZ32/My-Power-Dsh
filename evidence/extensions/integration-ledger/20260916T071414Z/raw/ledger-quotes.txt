@@ -1,0 +1,32 @@
+### t11 incident + immutability recheck (quoted fields)
+{
+ "probe_report_overwrite_incident": {
+  "what_happened": "while starting item 2 I ran the prober WITHOUT --json-out; the prober defaults its probe-list target to its own evidence dir, so my run rewrote evidence/extensions/debranding-probe/20260916T061807Z/probe-report.json (mtime 14:43:27; t7's other files 14:20-14:21)",
+  "rule_breached": "the wave's 'pre-existing evidence is immutable' rule",
+  "impact_bounds_measured": [
+   "the report has NO timestamp/metadata keys (top-level: prober, supersedes, supersededProberCoverage, fieldInventory, kinds, targets, probeList, totals, findings, claim), so its content is a pure function of its inputs",
+   "my run's STDOUT is byte-identical to t7's archived raw-probe.out (diff clean apart from the json-out path line): same 26 probes / 15 quoted / 11 not-quoted / 0 findings on the same 2 targets",
+   "the probed inputs are untouched: templates/mpd-extension/{mpd-ext.json,skills/*/SKILL.md,flows/*.json,personas/*.md} all carry mtime 14:13:18 (t5's creation; t19 edited only the two README files) and extensions/mpd-ext-example/** is git-clean",
+   "two consecutive runs into different --json-out paths produced byte-identical JSON (raw/prober-positive.json vs raw/prober-determinism-2.json)"
+  ],
+  "residual_honestly_stated": "t7 recorded the prober's SOURCE hash (a8d1673c…) but not the original probe-report.json bytes, so byte-identity with the original cannot be demonstrated; content identity follows from the four bounds above",
+  "corrective_action": "every remaining prober invocation in t11 used --json-out into this evidence dir; the recomputation below proves no OTHER pre-existing evidence file changed",
+  "captain_ruling": "accepted as disclosed, no rollback, recorded as friction item T-53 in .mpd/TODO.md (drivers should refuse to overwrite an existing path or default to a temp target; every evidence artifact should carry its digest in the task result)"
+ },
+ "evidence_immutability_recheck": {
+  "verdict": "passed",
+  "basis": "t7's own snapshot files in evidence/extensions/boundary-index/ (hashes-before.txt, hashes-after.txt, pre-existing-dirs.txt)",
+  "archive_digests": "hashes-before.txt and hashes-after.txt BOTH hash to 441c5ba89620c937f2908c1e9543cb2a063c2a14f32ecee36372b8f3e42d4124 — the value the captain quoted",
+  "recomputed": "re-hashing the 356 snapshot files and re-serializing the same order reproduces 441c5ba89620c937f2908c1e9543cb2a063c2a14f32ecee36372b8f3e42d4124 exactly: modified=0, missing=0",
+  "added_since_snapshot": "17 new files (legitimate new sub-run directories written by the owning tasks, e.g. the fresh template-lane and lifecycle/bridge runs); reported, not a violation",
+  "raw": "raw/immutability-recheck.json + raw/immutability-recheck.log"
+ }
+}
+
+### INDEX.md byte reading in the F7 evidence
+:9075,
+9075 bytes
+actual INDEX.md bytes: 9101
+sha256 INDEX.md: 37c1208d41b0b56513b0ba9ad516ffabb95a1fc07520faf36f1d4d79ecd6b06f
+
+### INDEX.md section C snapshot

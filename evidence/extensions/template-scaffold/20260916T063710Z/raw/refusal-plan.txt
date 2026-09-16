@@ -1,0 +1,8 @@
+$ bun scripts/mpd-ext.mjs scaffold plan --dir /tmp/tmp.QrtzRUOszC
+mpd-ext scaffold: refused — "plan" would declare a role name the base roster already owns
+  nothing was written to /tmp/tmp.QrtzRUOszC/plan
+  refused: role name "plan reviewer" (contributes.roles[0] of extension "plan") is already taken by the base roster — this extension role is not exposed
+exit=1
+--- target dir listing after the refusal ---
+.
+..

@@ -1,0 +1,11 @@
+[verify-debranding-full] field inventory: skills(name/description)  flows(id/title/description/whenToUse)  roles(name/description/persona)  mcp(serverName/transport/command/args)
+[verify-debranding-full] target mpd-ext-example [../../../tmp/t11-prober-2jDUF5/mutated-example] artifacts: skills=1 flows=1 roles=1 mcp=1
+[verify-debranding-full]   field-probes: 13  quoted-verbatim: 12  not-quoted: 1  (all fields must be quoted)
+[verify-debranding-full]   not-quoted: roles.name [../../../tmp/t11-prober-2jDUF5/mutated-example/mpd-ext.json]
+[verify-debranding-full] target mpd-extension-template [templates/mpd-extension] artifacts: skills=1 flows=1 roles=1 mcp=1
+[verify-debranding-full]   field-probes: 13  quoted-verbatim: 2  not-quoted: 11  (unquoted fields are reported, not claimed)
+[verify-debranding-full]   not-quoted: skills.name [templates/mpd-extension/skills/mpd-extension-template-skill/SKILL.md], skills.description [templates/mpd-extension/skills/mpd-extension-template-skill/SKILL.md], flows.id [templates/mpd-extension/flows/mpd-extension-template-flow.json], flows.title [templates/mpd-extension/flows/mpd-extension-template-flow.json], flows.description [templates/mpd-extension/flows/mpd-extension-template-flow.json], flows.whenToUse [templates/mpd-extension/flows/mpd-extension-template-flow.json], roles.name [templates/mpd-extension/mpd-ext.json], roles.description [templates/mpd-extension/mpd-ext.json], roles.persona [templates/mpd-extension/mpd-ext.json], mcp.serverName [templates/mpd-extension/mpd-ext.json], mcp.args [templates/mpd-extension/mpd-ext.json]
+[verify-debranding-full] probed 26 field-probes (skills, flows, roles, mcp) on 2 targets; 14 quoted verbatim, 12 reported not-quoted; 1 finding(s). No claim is made about a field this prober did not probe.
+[verify-debranding-full] probe list written to evidence/extensions/verify-skills/20260916T064350Z/raw/prober-mutated.json
+[verify-debranding-full] FAIL - 1 finding(s)
+  [mpd-ext-example] quotes.not-quoted - roles.name is not quoted verbatim in any of docs/extensions.md, docs/extensions.zh-CN.md (value: "Code ReviewerX")

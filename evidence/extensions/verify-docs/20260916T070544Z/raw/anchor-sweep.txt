@@ -1,0 +1,60 @@
+anchor sweep: 56 line-anchor citation(s) in scope, 2 flagged
+
+OUT_OF_RANGE	docs/extension-adaptation-report.md:381	skills/dsh-qa/SKILL.md:385	
+OUT_OF_RANGE	docs/extension-adaptation-report.zh-CN.md:185	skills/dsh-qa/SKILL.md:385	
+
+--- in-scope anchors that resolve ---
+ok	docs/extension-authoring-guide.md:49	packages/mpd-ext-plugin/src/registry.ts:678-685	  const refuseHostKind = (kind: "mcp" | "roles", index: number): boolean => {
+ok	docs/extension-authoring-guide.md:61	packages/mpd-ext-plugin/src/mcp-client.ts:69-85	export const INHERITED_ENV_VARS: readonly string[] =
+ok	docs/extension-authoring-guide.md:63	packages/mpd-ext-plugin/src/mcp-client.ts:87-97	/**
+ok	docs/extension-authoring-guide.md:65	packages/mpd-ext-plugin/src/mcp-client.ts:99-117	/**
+ok	docs/extension-authoring-guide.md:75	packages/mpd-ext-plugin/src/index.ts:659	  const redactedDescriptor = (entry: ExtensionView): Record<string, unknown> => {
+ok	docs/extension-authoring-guide.md:95	docs/extensions.md:524	- **No reload** — restart dsh; a failed MCP server is retried on the next boot.
+ok	docs/extension-authoring-guide.md:104	packages/mpd-ext-plugin/src/index.ts:1062	    bridge = await connectExtensionMcpServers({
+ok	docs/extension-authoring-guide.md:105	packages/mpd-roles-plugin/src/index.ts:225-292	export function extensionRoles(ctx: Ctx, exec: unknown, warn: (line: string) => void): { roles: ResolvedRole[]; refused:
+ok	docs/extension-authoring-guide.md:112	packages/mpd-ext-plugin/src/mcp.ts:42	  stderrTail?: string
+ok	docs/extension-authoring-guide.md:158	packages/mpd-ext-plugin/src/mcp-client.ts:129-135	export function publicToolName(serverName: string, rawName: string): string {
+ok	docs/extension-authoring-guide.md:215	scripts/pack-mpd.mjs:67-77	function cpDist() {
+ok	docs/extension-authoring-guide.md:216	scripts/mpd-ext.mjs:35	const registry = await import(new URL("../packages/mpd-ext-plugin/src/registry.ts", import.meta.url).href)
+ok	docs/extension-authoring-guide.zh-CN.md:42	packages/mpd-ext-plugin/src/registry.ts:678-685	  const refuseHostKind = (kind: "mcp" | "roles", index: number): boolean => {
+ok	docs/extension-authoring-guide.zh-CN.md:54	packages/mpd-ext-plugin/src/mcp-client.ts:69-85	export const INHERITED_ENV_VARS: readonly string[] =
+ok	docs/extension-authoring-guide.zh-CN.md:55	packages/mpd-ext-plugin/src/mcp-client.ts:87-97	/**
+ok	docs/extension-authoring-guide.zh-CN.md:57	packages/mpd-ext-plugin/src/mcp-client.ts:99-117	/**
+ok	docs/extension-authoring-guide.zh-CN.md:66	packages/mpd-ext-plugin/src/index.ts:659	  const redactedDescriptor = (entry: ExtensionView): Record<string, unknown> => {
+ok	docs/extension-authoring-guide.zh-CN.md:82	docs/extensions.md:524	- **No reload** — restart dsh; a failed MCP server is retried on the next boot.
+ok	docs/extension-authoring-guide.zh-CN.md:90	packages/mpd-ext-plugin/src/index.ts:1062	    bridge = await connectExtensionMcpServers({
+ok	docs/extension-authoring-guide.zh-CN.md:91	packages/mpd-roles-plugin/src/index.ts:225-292	export function extensionRoles(ctx: Ctx, exec: unknown, warn: (line: string) => void): { roles: ResolvedRole[]; refused:
+ok	docs/extension-authoring-guide.zh-CN.md:98	packages/mpd-ext-plugin/src/mcp.ts:42	  stderrTail?: string
+ok	docs/extension-authoring-guide.zh-CN.md:140	packages/mpd-ext-plugin/src/mcp-client.ts:129-135	export function publicToolName(serverName: string, rawName: string): string {
+ok	docs/extension-authoring-guide.zh-CN.md:191	scripts/pack-mpd.mjs:67-77	function cpDist() {
+ok	docs/extension-authoring-guide.zh-CN.md:192	scripts/mpd-ext.mjs:35	const registry = await import(new URL("../packages/mpd-ext-plugin/src/registry.ts", import.meta.url).href)
+ok	EXTENSIONS-FOR-AGENTS.md:12	packages/mpd-ext-plugin/src/sdk.ts:113-146	export const MPD_EXT_CONTRACT = {
+ok	EXTENSIONS-FOR-AGENTS.md:23	packages/mpd-ext-plugin/src/index.ts:537	  const safeRegisterTool = (definition: any, onError: (line: string) => void): boolean => {
+ok	EXTENSIONS-FOR-AGENTS.md:23	packages/mpd-ext-plugin/src/index.ts:715	    name: "mpd_ext_list",
+ok	EXTENSIONS-FOR-AGENTS.md:23	packages/mpd-ext-plugin/src/index.ts:807	    name: "mpd_ext_show",
+ok	EXTENSIONS-FOR-AGENTS.md:24	packages/mpd-ext-plugin/src/index.ts:548	  const EXPECTED_TOOLS = ["mpd_ext_list", "mpd_ext_show", "mpd_flow_list", "mpd_flow_show"]
+ok	EXTENSIONS-FOR-AGENTS.md:33	packages/mpd-ext-plugin/src/mcp-client.ts:99-117	/**
+ok	EXTENSIONS-FOR-AGENTS.md:33	packages/mpd-ext-plugin/src/mcp-client.ts:129-135	export function publicToolName(serverName: string, rawName: string): string {
+ok	EXTENSIONS-FOR-AGENTS.md:39	packages/mpd-ext-plugin/src/registry.ts:583	      enabled: input.enabled !== false,
+ok	EXTENSIONS-FOR-AGENTS.md:113	packages/mpd-ext-plugin/src/sdk.ts:144-145	  projectRejectionReason:
+ok	EXTENSIONS-FOR-AGENTS.md:114	packages/mpd-ext-plugin/src/registry.ts:678-685	  const refuseHostKind = (kind: "mcp" | "roles", index: number): boolean => {
+ok	EXTENSIONS-FOR-AGENTS.md:138	packages/mpd-ext-plugin/src/mcp.ts:34	export type McpServerState = "connecting" | "connected" | "unavailable" | "failed" | "disabled"
+ok	EXTENSIONS-FOR-AGENTS.md:225	docs/extensions.md:524	- **No reload** — restart dsh; a failed MCP server is retried on the next boot.
+ok	docs/extension-adaptation-report.md:376	packages/mpd-ext-plugin/src/index.ts:102	function resolveAdapter(ctx: any): { dsh: DshAdapter; adapterIdentity: string; usedFallback: boolean } {
+ok	docs/extension-adaptation-report.md:377	packages/mpd-ext-plugin/src/index.ts:59	 * CANONICAL NOTE — the second-adapter hazard. This is the ONE place that
+ok	docs/extension-adaptation-report.md:381	skills/dsh-qa/scripts/extension-lifecycle.mjs:412	export function packedStateOk({ packExit, hasRow, hasPlugin, hasExtensions }) {
+ok	docs/extension-adaptation-report.md:381	skills/dsh-qa/scripts/extension-lifecycle.mjs:383	    ok: packedStateOk({ packExit: packRun.status, hasRow: facts.hasRow, hasPlugin: facts.hasPlugin, hasExtensions: facts
+ok	docs/extension-adaptation-report.md:381	skills/dsh-qa/scripts/extension-lifecycle.mjs:435	export function packedNegativeDriver() {
+ok	docs/extension-adaptation-report.md:384	packages/mpd-ext-plugin/src/mcp-client.ts:69-85	export const INHERITED_ENV_VARS: readonly string[] =
+ok	docs/extension-adaptation-report.md:384	packages/mpd-ext-plugin/src/mcp-client.ts:87-97	/**
+ok	docs/extension-adaptation-report.md:405	scripts/pack-mpd.mjs:67-77	function cpDist() {
+ok	docs/extension-adaptation-report.md:406	scripts/mpd-ext.mjs:35	const registry = await import(new URL("../packages/mpd-ext-plugin/src/registry.ts", import.meta.url).href)
+ok	docs/extension-adaptation-report.zh-CN.md:180	packages/mpd-ext-plugin/src/index.ts:102	function resolveAdapter(ctx: any): { dsh: DshAdapter; adapterIdentity: string; usedFallback: boolean } {
+ok	docs/extension-adaptation-report.zh-CN.md:181	packages/mpd-ext-plugin/src/index.ts:59	 * CANONICAL NOTE — the second-adapter hazard. This is the ONE place that
+ok	docs/extension-adaptation-report.zh-CN.md:185	skills/dsh-qa/scripts/extension-lifecycle.mjs:412	export function packedStateOk({ packExit, hasRow, hasPlugin, hasExtensions }) {
+ok	docs/extension-adaptation-report.zh-CN.md:185	skills/dsh-qa/scripts/extension-lifecycle.mjs:383	    ok: packedStateOk({ packExit: packRun.status, hasRow: facts.hasRow, hasPlugin: facts.hasPlugin, hasExtensions: facts
+ok	docs/extension-adaptation-report.zh-CN.md:185	skills/dsh-qa/scripts/extension-lifecycle.mjs:435	export function packedNegativeDriver() {
+ok	docs/extension-adaptation-report.zh-CN.md:188	packages/mpd-ext-plugin/src/mcp-client.ts:69-85	export const INHERITED_ENV_VARS: readonly string[] =
+ok	docs/extension-adaptation-report.zh-CN.md:188	packages/mpd-ext-plugin/src/mcp-client.ts:87-97	/**
+ok	docs/extension-adaptation-report.zh-CN.md:207	scripts/pack-mpd.mjs:67-77	function cpDist() {
+ok	docs/extension-adaptation-report.zh-CN.md:208	scripts/mpd-ext.mjs:35	const registry = await import(new URL("../packages/mpd-ext-plugin/src/registry.ts", import.meta.url).href)

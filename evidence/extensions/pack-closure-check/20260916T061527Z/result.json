@@ -1,0 +1,130 @@
+{
+  "task": "t6",
+  "subject": "F11: a permanent packer-closure check with a replayable negative control, wired into the QA suite",
+  "attempt": 1,
+  "attemptId": "56df31ae-a0be-480e-a1fc-24f4d1b3399d",
+  "member": "Junior Engineer",
+  "utc": "20260916T061527Z",
+  "captainAddendumApplied": {
+    "source": "captain message 2026-09-16 + .mpd/plans/ext-template-and-guides.md §8 \"Captain addendum\" (renumbered §9) - APPLIED and recorded here as required",
+    "A1_package_json_single_writer": "ALL THREE QA-suite additions landed in ONE change to test:qa:all: (i) node scripts/verify-pack-closure.mjs, (ii) bun scripts/mpd-ext.mjs validate templates/mpd-extension, (iii) the case name extension-template inside the existing lane for-loop. Exactly ONE script entry changed out of 12 (test:qa:all); test:qa and test:qa:strict are byte-unchanged; no script key added or removed.",
+    "A4_acceptance": "The checker RUNS ALONE (exit 0 on the current tree, no packer invocation) and replays RED (exit 1) on deliberately omitted/mutated assets in TEMP fixtures. It also records the static assertion that the packer allowlist carries no templates path literal (a one-line source check); the empirical packed-tree proof stays with t17.",
+    "ratifiedRule": "The closure rule is the R11 PATCH-ROW rule, NEVER a packages/*-plugin glob: every @mpd-dsh/mpd/packages/<pkg>/dist/index.js row of packages/mpd-bundle/cordis.patch.yml must be in PLUGIN_PKGS ∪ MCP_PKGS, and every list entry must have a real packages/<pkg> directory.",
+    "ratifiedReason": "packages/mpd-agent-teams-plugin is deliberately absent from PLUGIN_PKGS because it is adopted first-class main code copied wholesale by cpSync(..., {recursive:true}) at scripts/pack-mpd.mjs:111 and mounted as .../lib/index.js; a glob rule would be born broken and read as a regression. Recorded verbatim in the checker header comment.",
+    "overridesApproved": "--packer / --packages-dir / --patch, so the negative control replays the historical F-T7-1 defect on a TEMP fixture without touching the real packer."
+  },
+  "ACKNOWLEDGED_ACCEPTED_RED_WINDOW": "test:qa:all is RED on the three newly-registered entries until t5 (templates/mpd-extension) and t8 (skills/dsh-qa/scripts/extension-template.mjs) land. ACCEPTED by captain ruling (A1) because no gate runs the suite inside that window (t10 does not; t11 and t17 run after t8). The suite was deliberately NOT run here (t6 non-goal). No entry will be removed later to fix it.",
+  "beforeBaseline_expectedStartingState": {
+    "patchPackageRefs": 22,
+    "classA_dist_index_js": 17,
+    "classB_adopted_lib_index_js": 1,
+    "classC_mcp_rows": 4,
+    "pluginPkgsEntries": 18,
+    "mcpPkgsEntries": 4,
+    "bothDirections": "GREEN"
+  },
+  "commands": [
+    {
+      "command": "node scripts/verify-pack-closure.mjs --self-test",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "[verify-pack-closure] self-test PASS: 6/6 arms"
+    },
+    {
+      "command": "node scripts/verify-pack-closure.mjs",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "[verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; allowlist carries no templates/ entry"
+    },
+    {
+      "command": "node -e JSON.parse(readFileSync(package.json))",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "package.json parses"
+    },
+    {
+      "command": "node scripts/verify-rows-parity.mjs",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "[verify-rows-parity] ok: 25 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)"
+    }
+  ],
+  "extraChecks": [
+    {
+      "command": "determinism: 3 check runs + 2 self-test runs byte-identical",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "3 check runs + 2 self-test runs byte-identical"
+    },
+    {
+      "command": "test:qa:all wiring probe",
+      "exitCode": null,
+      "status": "failed",
+      "evidence": "extension-template lane entry: true\nvalidate templates/mpd-extension: true\nnode scripts/verify-pack-closure.mjs: true"
+    }
+  ],
+  "negativeControls_rawEvidence": [
+    {
+      "arm": "F-T7-1 omission replay (mpd-team-watchdog-plugin removed)",
+      "exitCode": 1,
+      "evidence": "[verify-pack-closure] FAIL - 1 closure violation(s)\n  OMISSION [mpd-team-watchdog-plugin] - the bundle patch mounts packages/mpd-team-watchdog-plugin/dist/index.js but the packer's PLUGIN_PKGS/MCP_PKGS does not list mpd-team-watchdog-plugin\n  offending packages: mpd-team-watchdog-plugin\n  packer: /root/dshProj/my-power-dsh/evidence/extensions/pack-closure-check/20260916T061527Z/raw/packer-omitting-watchdog.mjs\n  packages dir: /root/dshProj/my-power-dsh/packages\n  patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml"
+    },
+    {
+      "arm": "two offenders at once, BOTH named",
+      "exitCode": 1,
+      "evidence": "[verify-pack-closure] FAIL - 2 closure violation(s)\n  OMISSION [mpd-team-watchdog-plugin] - the bundle patch mounts packages/mpd-team-watchdog-plugin/dist/index.js but the packer's PLUGIN_PKGS/MCP_PKGS does not list mpd-team-watchdog-plugin\n  OMISSION [mpd-tui-plugin] - the bundle patch mounts packages/mpd-tui-plugin/dist/index.js but the packer's PLUGIN_PKGS/MCP_PKGS does not list mpd-tui-plugin\n  offending packages: mpd-team-watchdog-plugin, mpd-tui-plugin\n  packer: /root/dshProj/my-power-dsh/evidence/extensions/pack-closure-check/20260916T061527Z/raw/packer-omitting-two.mjs\n  packages dir: /root/dshProj/my-power-dsh/packages\n  patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml"
+    },
+    {
+      "arm": "inverse drift (phantom allowlist entry)",
+      "exitCode": 1,
+      "evidence": "[verify-pack-closure] FAIL - 1 closure violation(s)\n  INVERSE [mpd-phantom-plugin] - the packer lists mpd-phantom-plugin but packages/mpd-phantom-plugin does not exist\n  offending packages: mpd-phantom-plugin\n  packer: /root/dshProj/my-power-dsh/evidence/extensions/pack-closure-check/20260916T061527Z/raw/packer-with-phantom-entry.mjs\n  packages dir: /root/dshProj/my-power-dsh/packages\n  patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml"
+    },
+    {
+      "arm": "templates path literal (static-assertion falsifier)",
+      "exitCode": 1,
+      "evidence": "[verify-pack-closure] FAIL - 1 closure violation(s)\n  TEMPLATES - /root/dshProj/my-power-dsh/evidence/extensions/pack-closure-check/20260916T061527Z/raw/packer-referencing-templates.mjs:65 carries a `templates` path literal - the generic template must never be packed\n  packer: /root/dshProj/my-power-dsh/evidence/extensions/pack-closure-check/20260916T061527Z/raw/packer-referencing-templates.mjs\n  packages dir: /root/dshProj/my-power-dsh/packages\n  patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml"
+    }
+  ],
+  "selfTestArms": [
+    "[verify-pack-closure] self-test PASS - positive-control (real tree, exit 0) (exit 0) :: [verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; allowlist carries no templates/ entry",
+    "[verify-pack-closure] self-test PASS - negative-control (F-T7-1 omission, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s)",
+    "[verify-pack-closure] self-test PASS - negative-control (inverse drift, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s)",
+    "[verify-pack-closure] self-test PASS - negative-control (two offenders, both named) (exit 1) :: [verify-pack-closure] FAIL - 2 closure violation(s)",
+    "[verify-pack-closure] self-test PASS - negative-control (zero-subject degraded run, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 18 closure violation(s)",
+    "[verify-pack-closure] self-test PASS - negative-control (templates path literal, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s)",
+    "[verify-pack-closure] self-test PASS: 6/6 arms"
+  ],
+  "packageJsonPrint": "script keys before=12 after=12\nkeys identical (no add/remove): true\ntest:qa unchanged: true\ntest:qa:strict unchanged: true\nchanged script entries: [\"test:qa:all\"]",
+  "readsPackerRealList": "scripts/verify-pack-closure.mjs parses const PLUGIN_PKGS / const MCP_PKGS out of scripts/pack-mpd.mjs with a mini-lexer; it holds no copy of either list.",
+  "editsNothing": {
+    "packerSha256": "8beb91c3f62640b5b72ad383d1d28809435a77fb50f9291db6b5412bada9458b",
+    "packerState": "UNCHANGED vs HEAD (git status --porcelain scripts/pack-mpd.mjs is empty)",
+    "checkerSha256": "9decb0830f327f6d220e7738aafb9237cc0cc318f2356c66433d5b10b61135df",
+    "checkerWriteSurface": "none outside os.tmpdir(): --self-test builds fixtures in mkdtempSync(tmpdir()) and rmSync()s them; the check itself only reads."
+  },
+  "defectsFoundAndFixedDuringImplementation": [
+    "Naive quote tracking: an apostrophe inside a packer COMMENT (the extension wave s QA lane) was read as a string opener, so the scan ran past the array literal and reported 37 phantom entries (LICENSE, dist, utf8, ...). The positive-control arm caught it immediately (exit 1 on a healthy tree). Fixed with a real mini-lexer that consumes // comments and single/backtick strings as units.",
+    "A blanket pre-strip of // comments was rejected as the fix because it would truncate the real regex literal on pack-mpd.mjs:16; the lexer never rewrites string or regex bodies.",
+    "The templates static assertion was first written in a mandatory-slash form, which MISSED the realistic spelling join(repoRoot, \"templates\", \"mpd-extension\") - the quoted segment there is just the word templates with no slash. Arm 6, added for exactly this, failed and exposed the gap; the regex now accepts the bare quoted segment, a leading prefix, and a trailing suffix.",
+    "After that fix, arm 6 s own predicate (which still required the old literal) failed and the self-test went RED - the falsifier caught the diagnostic drift too; the predicate now asserts the TEMPLATES kind plus the word templates in the output."
+  ],
+  "inScopeRespected": [
+    "scripts/verify-pack-closure.mjs",
+    "package.json",
+    "evidence/extensions/pack-closure-check"
+  ],
+  "notTouched": [
+    "skills/**",
+    "docs/**",
+    "packages/**",
+    "templates/**",
+    "scripts/pack-mpd.mjs",
+    "scripts/mpd-ext.mjs",
+    "VENDOR_LOCK.json",
+    "README.md",
+    "README.zh-CN.md",
+    "evidence/extensions/extension-lifecycle",
+    "evidence/extensions/extension-mcp-bridge"
+  ],
+  "gitVerbsUsed": "read-only only (git status --porcelain, git show HEAD:package.json); no commit/add/checkout/switch/reset/stash/merge/branch/rebase/tag."
+}

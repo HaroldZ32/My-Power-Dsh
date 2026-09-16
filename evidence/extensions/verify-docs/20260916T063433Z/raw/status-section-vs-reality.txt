@@ -1,0 +1,69 @@
+### FIXED rows: the evidence path each row names, resolved on disk
+--- evidence/extensions/f1-adapter-identity/20260916T061318Z
+total 48
+drwxr-xr-x 3 root root  4096 Sep 16 14:22 .
+drwxr-xr-x 4 root root  4096 Sep 16 14:37 ..
+-rw------- 1 root root  6031 Sep 16 14:16 check-boot-identity.mjs
+-rw------- 1 root root  5987 Sep 16 14:18 live-fallback-boot.sh
+-rw------- 1 root root  4429 Sep 16 14:22 output.log
+drwxr-xr-x 2 root root  4096 Sep 16 14:21 raw
+-rw------- 1 root root 10573 Sep 16 14:22 result.json
+--- evidence/extensions/debranding-probe/20260916T061807Z
+total 88
+drwxr-xr-x 2 root root  4096 Sep 16 14:21 .
+drwxr-xr-x 3 root root  4096 Sep 16 14:18 ..
+-rw-r--r-- 1 root root 13329 Sep 16 14:21 output.log
+-rw-r--r-- 1 root root 11607 Sep 16 14:22 probe-report.json
+-rw-r--r-- 1 root root  1779 Sep 16 14:20 raw-probe.out
+-rw-r--r-- 1 root root   993 Sep 16 14:20 raw-selftest.out
+-rw-r--r-- 1 root root 18021 Sep 16 14:21 result.json
+--- evidence/extensions/pack-closure-check/20260916T061527Z
+total 40
+drwxr-xr-x 3 root root  4096 Sep 16 14:15 .
+drwxr-xr-x 3 root root  4096 Sep 16 14:15 ..
+-rw-r--r-- 1 root root 12436 Sep 16 14:15 output.log
+drwxr-xr-x 2 root root  4096 Sep 16 14:15 raw
+-rw-r--r-- 1 root root 11120 Sep 16 14:15 result.json
+--- evidence/extensions/boundary-index
+total 128
+drwxr-xr-x  2 root root  4096 Sep 16 14:21 .
+drwxr-xr-x 22 root root  4096 Sep 16 14:35 ..
+-rw-r--r--  1 root root 53246 Sep 16 14:21 hashes-after.txt
+-rw-r--r--  1 root root 53246 Sep 16 14:18 hashes-before.txt
+-rw-r--r--  1 root root  9101 Sep 16 14:20 INDEX.md
+-rw-r--r--  1 root root   513 Sep 16 14:18 pre-existing-dirs.txt
+
+### F7 row names this exact file
+-rw-r--r-- 1 root root 21480 Sep 16 14:20 evidence/extensions/debranding-probe/20260916T061807Z/verify-debranding-full.mjs
+
+### F11 row names this script
+-rw------- 1 root root 18740 Sep 16 14:15 scripts/verify-pack-closure.mjs
+
+### F6 boundary commit
+commit
+c239407 fix(ext): close the v0.9.1 review findings F1-F7 in the extension interface
+
+### F6 deferred: the pre-c239407 evidence dirs must be ABSENT from the change set
+none of the stale dirs is in the change set (untouched, as F6 requires)
+
+### F6 deferred: the boundary index
+# Boundary index — evidence produced before `c239407`
+
+**Written:** 2026-09-16 (extension wave, task t7, F6).
+**Scope:** every evidence directory under `evidence/extensions/` plus the neighbouring
+`evidence/mpd-ext-debranding/`.
+
+## Why this file exists (F6)
+
+The extension interface was rewritten by commit
+`c239407186e93a8c1d975caad5888a45f72dfc43` — *"fix(ext): close the v0.9.1 review findings F1-F7
+in the extension interface"*, committed **2026-09-15T09:17:55+08:00**
+(= `2026-09-15T01:17:55Z`).
+
+### F2/F3/F4 absorbed: guide sections exist
+docs/extension-authoring-guide.md:35:## 2. The one plane-selection rule
+docs/extension-authoring-guide.md:55:## 3. The isolation posture, and the residuals we accept
+docs/extension-authoring-guide.md:93:## 4. Lifecycle and restart matrix
+docs/extension-authoring-guide.zh-CN.md:30:## 2. 唯一的一条平面选择规则
+docs/extension-authoring-guide.zh-CN.md:48:## 3. 隔离姿态，以及我们接受的残余风险
+docs/extension-authoring-guide.zh-CN.md:80:## 4. 生命周期与重启矩阵

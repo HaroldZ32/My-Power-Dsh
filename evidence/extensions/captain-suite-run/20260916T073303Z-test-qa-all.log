@@ -1,0 +1,15 @@
+$ for c in agent-teams-adopt agent-teams-dispatch agent-teams-sidebar bundle-lifecycle codegraph-smoke dual-track-smoke extension-lifecycle extension-mcp-bridge extension-template mcp-call memory-smoke mount-assert plan-c-smoke preset-conformance preset-register relocate-smoke session-start-team skill-catalog-probe software-smoke team-route-rewire tool-output-validation ultrawork-smoke vision-smoke web-client-adapt web-settings-bridge workmate-library workmate-team-member; do echo "[test:qa:all] $c"; bun "skills/dsh-qa/scripts/$c.mjs" --no-skip || { echo "[test:qa:all] FAILED: $c"; exit 1; }; done; bun scripts/mpd-ext.mjs --self-test || { echo "[test:qa:all] FAILED: scripts/mpd-ext.mjs --self-test"; exit 1; }; bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example || { echo "[test:qa:all] FAILED: scripts/mpd-ext.mjs validate extensions/mpd-ext-example"; exit 1; }; bun scripts/mpd-ext.mjs validate templates/mpd-extension || { echo "[test:qa:all] FAILED: scripts/mpd-ext.mjs validate templates/mpd-extension"; exit 1; }; node scripts/verify-pack-closure.mjs || { echo "[test:qa:all] FAILED: scripts/verify-pack-closure.mjs"; exit 1; }; echo "[test:qa:all] real-lane subset passed (real headless boot and/or live provider)"
+[test:qa:all] agent-teams-adopt
+[agent-teams-adopt] ok=false -> /root/dshProj/my-power-dsh/evidence/plan-c/c1-team/2026-09-16T07-33-03.770Z
+  installer: {"ok":true,"exit":0}
+  bundleRow: {"ok":true,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-headless"]}
+  override: {"ok":true,"hasPatch":true}
+  compose: {"ok":true,"exit":0}
+  live: {"ok":true,"exit":0}
+  teamState: {"ok":true,"teamIds":["c1qa"],"inbox":[["captain.jsonl"]],"teamJson":[{"name":"c1qa","id":"c1qa","description":"C1 adoption QA","captainSessionId":"session-6c479948-d282-46a0-9ce8-57151d987c73","createdAt":1789544002579,"members":[{"id":"e0c3611a-f8e5-4f52-a89f-67a34f132ebc","name":"librarian","role
+  archive: {"ok":true,"archiveIds":["c1qa"]}
+  taskTerminal: {"ok":true,"tasks":2,"taskTerminal":true}
+  webInstaller: {"ok":true,"exit":0}
+  webRoute: {"ok":false,"status":401,"body":"{\"error\":\"unauthorized\"}","webLog":"/root/dshProj/my-power-dsh/evidence/plan-c/c1-team/2026-09-16T07-33-03.770Z/web.log"}
+[test:qa:all] FAILED: agent-teams-adopt
+error: script "test:qa:all" exited with code 1

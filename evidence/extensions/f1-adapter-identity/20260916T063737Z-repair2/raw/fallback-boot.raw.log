@@ -1,0 +1,23 @@
+[mpd-codegraph] init status=marker binary=/root/dshProj/my-power-dsh/node_modules/.bun/@colbymchenry+codegraph@1.5.0/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/root/dshProj/my-power-dsh
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): ctx.get("mpdDsh") found no mounted mpdDsh service, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud now — fix the ROW ORDER (mpd-ext must sit BELOW mpd-dsh-adapter); the canonical note lives in this file (resolveAdapter).
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=fallback:createDshAdapter | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): ctx.get("mpdDsh") found no mounted mpdDsh service, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). Compose mpd-roles BELOW mpd-dsh-adapter; the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=fallback:createDshAdapter
+[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[CodeGraph MCP] File watcher active — graph will auto-sync on changes
+[mpd-team-watchdog] WARN mpd-default task=t16 member=Reviewer silence=606268ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/.mpd/team/watchdog/scene/mpd-default/20260916T063938Z-warn.json
+[mpd-team-watchdog] WARN mpd-default task=t18 member=Architect silence=606538ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/.mpd/team/watchdog/scene/mpd-default/20260916T063938Z-warn-2.json
+[mpd-team-watchdog] WARN mpd-default task=t16 member=Reviewer silence=621275ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/.mpd/team/watchdog/scene/mpd-default/20260916T063953Z-warn.json
+[mpd-team-watchdog] WARN mpd-default task=t18 member=Architect silence=621545ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/.mpd/team/watchdog/scene/mpd-default/20260916T063953Z-warn-2.json
+[mpd-team-watchdog] WARN mpd-default task=t16 member=Reviewer silence=636289ms streak=3 hold=not-requested scene=/root/dshProj/my-power-dsh/.mpd/team/watchdog/scene/mpd-default/20260916T064008Z-warn.json
+[mpd-team-watchdog] WARN mpd-default task=t18 member=Architect silence=636559ms streak=3 hold=not-requested scene=/root/dshProj/my-power-dsh/.mpd/team/watchdog/scene/mpd-default/20260916T064008Z-warn-2.json
+[mpd-team-watchdog] WARN mpd-default task=t16 member=Reviewer silence=651304ms streak=4 hold=applied scene=none
+[mpd-team-watchdog] WARN mpd-default task=t18 member=Architect silence=651574ms streak=4 hold=applied scene=none
+[mpd-team-watchdog] WARN mpd-default task=t16 member=Reviewer silence=666321ms streak=5 hold=applied scene=none
+[mpd-team-watchdog] WARN mpd-default task=t18 member=Architect silence=666591ms streak=5 hold=applied scene=none
+[CodeGraph MCP] Auto-synced 1 file(s) in 690ms
+[mpd-team-watchdog] ESCALATE mpd-default task=t16 member=Reviewer silence=681335ms streak=6 hold=applied scene=none
+[mpd-team-watchdog] ESCALATE mpd-default task=t18 member=Architect silence=681605ms streak=6 hold=applied scene=none

@@ -1,0 +1,83 @@
+{
+  "task": "t21 — finalize the report's status section: F8/F9/F10 rows with real evidence, the lane citation, the AFTER re-pin values, the packed-CLI disclosure, and the CONTENT-checking checker with a negative control (folded in: t16's F2/F3 and t12's citation findings)",
+  "attempt_id": "d1cf78ee-43ed-4ec3-8bdc-5d1aee8c6740",
+  "agent": "Senior Engineer",
+  "verdict": "PASS",
+  "digests": {
+    "docs/extension-adaptation-report.md": "8fcbe3c82e1acca6afbc40d18177cd34abb9a803ad3d36a318d7c02425a744f2",
+    "docs/extension-adaptation-report.zh-CN.md": "cde40e8a17ee2135196c365ce52a779ae5e7dde159c0e8ae2541d56b2abd9a64",
+    "docs/extension-authoring-guide.md": "04fdadf7f2688490e12ac6fb26d38a0ede3f6795ba87a213a37db853bfe869f1",
+    "docs/extension-authoring-guide.zh-CN.md": "1a93b52aebc4f2d8eb53e5e2a3864a4a9db356f991b3e967314c01e7624cbc2e",
+    "EXTENSIONS-FOR-AGENTS.md": "a82c66e6ffb94bb3e7ac58ee8b01c0d99fee42587807e6edd20b8805dda637c8",
+    "evidence/extensions/docs-claims/check-citations.mjs": "471aec42e0644ad28ce7bc3716ead64bffaef58bcc1b94ce9945c85597d6578e"
+  },
+  "anchor_findings_fixed": {
+    "re_measured_on_the_settled_tree": true,
+    "measurement": {
+      "index.ts tool registrations": "safeRegisterTool wrapper :537; the four `name:` lines :715, :807, :930, :984; EXPECTED_TOOLS :548",
+      "redactedDescriptor": "packages/mpd-ext-plugin/src/index.ts:659 (was cited as 641-658)",
+      "connectExtensionMcpServers": "packages/mpd-ext-plugin/src/index.ts:1062 (the call; was cited as 1041-1053)",
+      "resolveAdapter": "packages/mpd-ext-plugin/src/index.ts:102; the canonical note spans :58-92 (was cited as 59-95 / 59-80)",
+      "mcp-client.ts chain": "INHERITED_ENV_VARS :69, isCredentialShapedEnvName :95, childEnv :103, publicToolName :129",
+      "stderrTail": "packages/mpd-ext-plugin/src/mcp.ts:42 (was cited as :34 = McpServerState)",
+      "registry.ts": "refuseHostKind :678, `enabled` default :583",
+      "sdk.ts": "MPD_EXT_CONTRACT :113, projectRejectionReason :144"
+    },
+    "style": "every anchored citation now carries a CONTENT CLAIM in the checkable form `SYMBOL`, `path:line` (or `\"quoted phrase\"`, `path:line`); bare `:NNN` hints are kept as hints only, which is what survives a source edit",
+    "counts": { "anchored_citations": 43, "content_verified": 43, "without_a_claim": 0 }
+  },
+  "t16_findings_folded_in": {
+    "F2_enabled_default": {
+      "problem": "the agent contract said `enabled` defaults to false",
+      "fix": "EXTENSIONS-FOR-AGENTS.md now states the real rule: an OMITTED key means a LIVE extension, only an explicit `false` disables one (`enabled`, `packages/mpd-ext-plugin/src/registry.ts:583` — the runtime reads `enabled: input.enabled !== false`), and the shipped template is the one thing that ships false",
+      "basis": "packages/mpd-ext-plugin/src/registry.ts:583 + docs/extensions.md:110 (agrees with the code)"
+    },
+    "F3_tool_name_exception": {
+      "problem": "both guides stated the public MCP tool name as `mcp__<serverName>__<t>` absolutely",
+      "fix": "both guides (+ the agent contract) now state the rule AND the exception: an illegal character or a name longer than 64 becomes `_`, is truncated, and gains a `_<12-hex sha256(serverName NUL rawName)>` suffix (`publicToolName`, `packages/mpd-ext-plugin/src/mcp-client.ts:129-135`)"
+    },
+    "F1_anchors": "see anchor_findings_fixed",
+    "F4_stale_rows": "see report_status_finalized"
+  },
+  "report_status_finalized": {
+    "rows": {
+      "F8": "**fixed** + `evidence/extensions/extension-lifecycle/2026-09-16T06-31-40.371Z/` (real lane run) and `…/t8-skills-pass-summary.json`",
+      "F9": "**fixed** + the same evidence dir (`steps.packed.negativeControl`: falsifiable true, packerExitGated true, three broken fixture trees ok:false); the row names `packedStateOk()` / `packedNegativeDriver()` as symbols with line hints",
+      "F10": "**fixed** + `evidence/extensions/extension-mcp-bridge/2026-09-16T06-31-25.127Z/` (`steps.stderr`: cap 2000, reportedTailLength 2000, headDropped true, tailKept true, vacuous false)"
+    },
+    "new_lane_cited_in_the_gate_list": "docs/extension-adaptation-report.md §5 runs list now includes the bridge `stderr` arm and Appendix A carries `bun skills/dsh-qa/scripts/extension-template.mjs --no-skip`; both languages",
+    "repin_values": {
+      "before": { "fileCount": 317, "treeSha": "7a48fdad90cc30f9c1e71009be216aeb8b2a1de797eb2bb1897032c41f6b51aa" },
+      "after": { "fileCount": 318, "treeSha": "a8ba96b8108b2df3cce707e7b69d038f71514cea9e0c488683ba79012efc8d12" },
+      "closing_paragraph": "both languages now state that the re-pin has LANDED, with the AFTER values beside the BEFORE ones and `node scripts/verify-vendor.mjs` cited; the sentence claiming the lock still reads the before value is gone"
+    },
+    "template_lane_three_stamps_note": "a new §12 subsection in BOTH languages records the three stamps (06-30-30.275Z RED, 06-31-12.171Z GREEN, plus the independent verifier's later GREEN), states that the lane was edited between the first two runs and is untracked so its pre-fix expectation is NOT reconstructible from the repository, and records the verified reading: the first run's MCP tool/result already carried the copy's id, its own root, enabled:true and all four kinds, the `server process exited (code=0)` teardown line is identical in all three runs, so the RED was the CASE's own expectation (its mcp step read ok:false and lacked servedOwnRoot/servedFourKinds) and NOT a product defect, with no flakiness signal",
+    "evidence_index_rows": "Appendix B (both languages) gained rows for the 06-31-40.371Z lifecycle dir, the 06-31-25.127Z bridge dir and the 06-31-12.171Z template dir"
+  },
+  "packed_tree_cli_disclosure": {
+    "where": "docs/extension-adaptation-report.md §12 ('One measured deviation…') and docs/extension-authoring-guide.md §7 (EN + zh)",
+    "cause_chain": "the packer copies only `packages/<pkg>/dist` (`cpDist`, scripts/pack-mpd.mjs:67-77) and never `src`, while the CLI imports its validator from `src` (`\"../packages/mpd-ext-plugin/src/registry.ts\"`, scripts/mpd-ext.mjs:35) → every CLI entry point exits 1 with `Cannot find module '<packed>/packages/mpd-ext-plugin/src/registry.ts'`; with `src` restored, `validate` passes while `scaffold` and `--self-test` still fail because no `templates/` entry is packed",
+    "raw_probe": "evidence/extensions/template-scaffold/20260916T063710Z/raw/packed-tree-probe.json (arms A and B)",
+    "fixed_this_wave": false,
+    "tracked_as": ".mpd/TODO.md T-51"
+  },
+  "checker_upgrade": {
+    "file": "evidence/extensions/docs-claims/check-citations.mjs",
+    "content_arm": "every ANCHORED citation must carry a claim written immediately before it (`SYMBOL`, `path:line` or `\"phrase\"`, `path:line`) and the cited line/range must actually CONTAIN that token; claims are extracted over the whole subject text so a wrapped claim still counts; a missing claim is a FAILURE, not a pass",
+    "why": "t12/t16 measured the old existence+range check staying green (14/14, 173 citations) while nine anchor instances pointed at the wrong line",
+    "negative_control": "two FIXTURE repos run through this SAME checker via DOCS_CLAIMS_REPO: a correct anchor (exit 0) and a mis-anchored one (exit 1, 'the cited line/range does not carry the claim') — both arms recorded in result.json.negative_control",
+    "fixture_runs_never_write_this_dir": "a child run under DOCS_CLAIMS_REPO reports on stdout only",
+    "arms_recorded": { "green": "exit 0", "red": "exit 1 + the mismatch message", "green_plus_real": "17/17 checks, 217 citations resolved, 43 anchored citations content-verified, 0 without a claim" }
+  },
+  "commands": [
+    { "command": "node scripts/verify-docs-parity.mjs", "exit": 0, "reading": "PASS — pairs=36 failed=0 violations=0 exempt=16" },
+    { "command": "node evidence/extensions/docs-claims/check-citations.mjs --self-test --gates", "exit": 0, "reading": "17/17 checks passed, 0 failed, 217 citation(s) resolved, 43 anchors content-verified, 0 without a claim; negative-control green exit 0 / red exit 1; gate arms docs-parity, example-validates, cli-self-test all exit 0" },
+    { "command": "bun scripts/mpd-ext.mjs validate templates/mpd-extension", "exit": 0, "reading": "loadable; contributes 1 skill, 1 flow, 1 role, 1 mcp server" },
+    { "command": "node scripts/verify-vendor.mjs", "exit": 0, "reading": "PASS (the skills corpus is untouched by this task)" }
+  ],
+  "notes": [
+    "One writer per path: only the five in-scope docs, the checker under evidence/extensions/docs-claims and this evidence dir were touched.",
+    "No unrelated row or section changed in substance: the §12 rows F2/F3/F4/F6/F7/F11 and the §1-§11 text are untouched apart from the three re-anchored citations and the gate-list additions.",
+    "`src/` inside the new disclosure is written without a trailing slash (`src`, not `src/`) on purpose: the checker's directory grammar treats a backticked trailing-slash token as a repo directory, and this repo has no top-level `src/`."
+  ]
+}

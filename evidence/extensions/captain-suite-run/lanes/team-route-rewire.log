@@ -1,0 +1,10 @@
+[team-route-rewire] ok=true -> /root/dshProj/my-power-dsh/evidence/plan-e/e4-team-vendor/2026-09-16T07-55-27.564Z
+  install: {"ok":true,"exit":0}
+  dump: {"ok":true,"exit":0,"leaked":false}
+  resolution: {"ok":true,"out":"MAINCODE_OK /root/dshProj/my-power-dsh/.qa-reloc/mpd-pkg-relocated/packages/mpd-agent-teams-plugin/package.json\nPKG_ABSENT"}
+  live: {"ok":true,"exit":0}
+  bootstrap: {"ok":true}
+  installedTexts: {"ok":true,"files":3}
+  noHomeCopy: {"ok":true,"skills":[],"presets":[]}
+  webRoute: {"ok":true,"status":200,"authExchange":303,"cookieMinted":true,"addExit":0}
+[team-route-rewire] PASS

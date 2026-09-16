@@ -1,0 +1,348 @@
+{
+  "task": "t17",
+  "attempt": 5,
+  "attempt_id": "e5452a1a-b12e-434a-81fb-8fb0c5cb0dfa",
+  "kind": "integration",
+  "status": "completed",
+  "verdict_summary": "All six deliverables D1-D6 complete, digested, owned and cleared by a terminal PASS review. The AMENDED 15-command gate list is GREEN on the frozen tree, including the clean-cwd unit invocation (755 pass / 0 fail). The packed tree is proven correct; exactly one VENDOR_LOCK re-pin. TWO commands are WAIVED with evidence (the repo-cwd unit run, made red by a pre-existing non-hermetic test plus this workspace's deliberate gitignored .mpd/mpd.jsonc; and bun run test:qa:all, which cannot authenticate on this host) - neither is claimed as passed.",
+  "frozen_state": {
+    "branch": "dev",
+    "head": "1f38e3c1b8149cecc68f54fae1979f56e1ff2b0f",
+    "manifest_written_utc": "2026-09-16T07:14:14Z",
+    "sweep_window_utc": "07:14Z-07:22Z",
+    "change_set_size": 42,
+    "manifest": "freeze-manifest.json + raw/freeze-manifest.txt",
+    "no_drift_after_gates": "17/17 tracked modified files unchanged; all frozen evidence dirs kept their tree digests; only extension-template/ (new lane sub-run) and this ledger dir moved"
+  },
+  "deliverables": {
+    "D1": {
+      "subject": "F1 adapter identity + F5 hazard comment; both dists rebuilt",
+      "paths": {
+        "packages/mpd-ext-plugin/src/index.ts": "dd3bdd00579d8d7aa56a70cb18af6a0bfd4ce3bae400c730d0f35bc40f662ec0",
+        "packages/mpd-ext-plugin/dist/index.js": "0ebad6573abac96a5e0599208ba1d948c5e6ff315b5f47671ebfe82939acba55",
+        "packages/mpd-ext-plugin/test/adapter-identity.test.ts": "e631d8096f4d688ca3498d264509e0337b889fe136b4a046b187b453deedd6c4",
+        "packages/mpd-roles-plugin/src/index.ts": "9a54bf7d6620a2d437ebafd15bda5f7592e9e1cce2d997fe2c6170a71d6ab18c",
+        "packages/mpd-roles-plugin/dist/index.js": "22595b921903286873855185bbf05a5a06aba8d80201eadcb036d174d4778deb",
+        "packages/mpd-roles-plugin/test/adapter-identity.test.ts": "b1bd5a94fef7737ff997e5428838ac1c5b82f010610cd68a3a85109e8e0cf25f",
+        "packages/mpd-bundle/cordis.patch.yml": "3aef18d6c715246b77cee87bcacf98d32ec948e647201d05ac87de4583fc918b",
+        "evidence/extensions/f1-adapter-identity/ (tree)": "8935c7549b5c411b9e4e15e996fde0375d610363575f408f141711760a39d8ab",
+        "evidence/extensions/boot-repeat/ (tree)": "62bde6c2c339298a34b6038c6045ce392f4b29877509f470bbc36e2859217337"
+      },
+      "owning_task": "t4 (Senior Engineer) -> repair t22 (round 2)",
+      "clearing_review": "t23 (Reviewer, verdict=pass, round 2; 0 blockers, 1 low nit)",
+      "also": "verified by t10; repeat-boot insurance by t24 (6 real boots, dists 0ebad657../22595b92.. loaded)"
+    },
+    "D2": {
+      "subject": "templates/mpd-extension/** + scaffold copying it + negative control",
+      "paths": {
+        "templates/ (tree, 7 files)": "e2778e16c490057a3ddb0529679b0c542913fce07eba53160770258130bba1c3",
+        "scripts/mpd-ext.mjs": "60d7901245381d9874094604de4b05b9d8c07b14f766b8adb8a8a40eea2618af",
+        "evidence/extensions/template-scaffold/ (tree)": "42b4780426b8b899049330bb7953df9c99f4cab8a20c10ffb350b731eb09edea"
+      },
+      "owning_task": "t5 (Deep Worker) -> repair t19 (round 2)",
+      "clearing_review": "t20 (Architect, verdict=pass, round 2); round 1 t14 was needs_revision"
+    },
+    "D3": {
+      "subject": "scripts/verify-pack-closure.mjs (F11) + wiring into test:qa:all",
+      "paths": {
+        "scripts/verify-pack-closure.mjs": "9decb0830f327f6d220e7738aafb9237cc0cc318f2356c66433d5b10b61135df",
+        "package.json": "ea608ea2b39b2c9494a2d741bb2bcbf669a304830b6ba75713d8f8f3f719d723",
+        "evidence/extensions/pack-closure-check/ (tree)": "5d8457bb18215517fe171f84405fdfbf1de5a534f3c5123c930b62e4fb95003e"
+      },
+      "owning_task": "t6 (Junior Engineer)",
+      "clearing_review": "t18 (Architect, verdict=pass)"
+    },
+    "D4": {
+      "subject": "skills pass F8/F9/F10 + the new real-mount template lane + exactly ONE VENDOR_LOCK re-pin",
+      "paths": {
+        "skills/dsh-qa/SKILL.md": "843b7f0cba4253ee02551aa4c56d31fe686064f9a57912127664b8f850b1b1f7",
+        "skills/dsh-qa/scripts/extension-lifecycle.mjs": "f8a4af525f4b86591b913390c2e008f9f6b32bef8e6193b6f70dca74407a0ac2",
+        "skills/dsh-qa/scripts/extension-mcp-bridge.mjs": "42cfd27d731d14663e4cd65ba9c665241e2767700c5057bc6e1afbc408c89a87",
+        "skills/dsh-qa/scripts/extension-template.mjs (new)": "42a46bf16b766d2d909fb1fec989b9544722a868a6af991729f6afed2467336c",
+        "VENDOR_LOCK.json": "6b65176a935f573eaf4c9766c9a42d6ad3c48d3fc4d5e6a0797bade6992449ff",
+        "evidence/extensions/verify-skills/ (tree)": "c22310a85337e96abe4c069448ce847c1691f695f16f1006d54b2ad1e1576af9"
+      },
+      "owning_task": "t8 (Senior Engineer)",
+      "clearing_review": "t15 (Architect, verdict=pass)",
+      "also": "independent verification t11 (Deep Worker)"
+    },
+    "D5": {
+      "subject": "the human guide pair, the root AI contract, README/hub links, the report status section",
+      "paths": {
+        "docs/extension-authoring-guide.md": "f8f771e83790f17998e5ba39ba0e0070bca21e706e28a48c4df3b8bf297887ce",
+        "docs/extension-authoring-guide.zh-CN.md": "07f7f9ff6b20739070beb9996222cf954614daa1cf2a0dd2c72fa470d457da68",
+        "EXTENSIONS-FOR-AGENTS.md": "9a34622cc2843eddc10bcda810efbfa027f676dfa32108ff92d504e2985edf18",
+        "docs/extension-adaptation-report.md": "ed903aaf42a39a189694f0cd14d9391040ccc528465a70c1b1c28e7d27dccb5f",
+        "docs/extension-adaptation-report.zh-CN.md": "34daae0118897dbdbe4ae7455d8e6155863a92a8fcfc90f6ab8168e049a764e8",
+        "README.md": "8367a10e8cb938ee8b689df2259a85c38992fb1b373f78985a32e86612fe3718",
+        "README.zh-CN.md": "4cbda5db79aa17dfa74671604afc74878237d11870ed8517a2092d7f96807a03",
+        "docs/index.md": "f90ea958bf11b0532ff9efd5a7eb92a2647239b460e6e8c1520f614ec081df81",
+        "docs/index.zh-CN.md": "f8715202b4182f0e2ef8a30c3a3f29f83d036ccdb44adee9f3e91df366ea3b93",
+        "evidence/extensions/docs-claims/ (tree)": "45f939e59b04b40d01886ab51a521431736be948ac35feb58d7601bf39d548bc"
+      },
+      "owning_task": "t9 (Deep Worker) -> repairs t21 (symbol re-anchoring + content-checking checker) and t25 (t16 findings)",
+      "clearing_review": "t26 (Reviewer, verdict=pass, round 2)",
+      "also": "independent verification t12 (Lead, attempt 2, PASS 7/7; attempt 1 FAILED and the repair re-earned the verdict)"
+    },
+    "D6": {
+      "subject": "F6 boundary index + the corrected F7 debranding prober",
+      "paths": {
+        "evidence/extensions/boundary-index/ (tree)": "9644ed01e898d4f3389053b9e6cda0536d1e4ec18bcd60baa34aeef06119939f",
+        "evidence/extensions/debranding-probe/ (tree)": "52653e7cf2a989a57f7f73043bbc91983843c60e78ea2a2bb0b286562a96bb24"
+      },
+      "owning_task": "t7 (Junior Engineer)",
+      "clearing_review": "t18 (Architect, verdict=pass)",
+      "also": "independent verification t11"
+    }
+  },
+  "gates": [
+    {
+      "gate": "unit (clean cwd)",
+      "command": "bash -c 'cd \"$(mktemp -d)\" && bun test /root/dshProj/my-power-dsh/packages'",
+      "exit": 0,
+      "status": "passed",
+      "detail": "755 pass / 0 fail, 5343 expect calls",
+      "raw": "raw/attempt5-unit-clean-cwd.txt"
+    },
+    {
+      "gate": "verify-vendor",
+      "command": "node scripts/verify-vendor.mjs",
+      "exit": 0,
+      "status": "passed",
+      "raw": "raw/attempt5-verify-vendor.txt"
+    },
+    {
+      "gate": "verify-docs-parity",
+      "command": "node scripts/verify-docs-parity.mjs",
+      "exit": 0,
+      "status": "passed",
+      "detail": "pairs=36 failed=0 violations=0 exempt=16",
+      "raw": "raw/attempt5-verify-docs-parity.txt"
+    },
+    {
+      "gate": "verify-rows-parity",
+      "command": "node scripts/verify-rows-parity.mjs",
+      "exit": 0,
+      "status": "passed",
+      "detail": "25 row ids match",
+      "raw": "raw/attempt5-verify-rows-parity.txt"
+    },
+    {
+      "gate": "ext-cli-self-test",
+      "command": "bun scripts/mpd-ext.mjs --self-test",
+      "exit": 0,
+      "status": "passed",
+      "detail": "52 checks",
+      "raw": "raw/attempt5-mpd-ext-selftest.txt"
+    },
+    {
+      "gate": "validate-example",
+      "command": "bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example",
+      "exit": 0,
+      "status": "passed",
+      "raw": "raw/attempt5-validate-example.txt"
+    },
+    {
+      "gate": "validate-template",
+      "command": "bun scripts/mpd-ext.mjs validate templates/mpd-extension",
+      "exit": 0,
+      "status": "passed",
+      "raw": "raw/attempt5-validate-template.txt"
+    },
+    {
+      "gate": "pack-closure-self-test",
+      "command": "node scripts/verify-pack-closure.mjs --self-test",
+      "exit": 0,
+      "status": "passed",
+      "detail": "6/6 arms",
+      "raw": "raw/attempt5-pack-closure-selftest.txt"
+    },
+    {
+      "gate": "pack-closure",
+      "command": "node scripts/verify-pack-closure.mjs",
+      "exit": 0,
+      "status": "passed",
+      "detail": "17 dist rows + 1 adopted lib row + 4 mcp rows; allowlist carries no templates/ entry",
+      "raw": "raw/attempt5-pack-closure.txt"
+    },
+    {
+      "gate": "packer",
+      "command": "node scripts/pack-mpd.mjs",
+      "exit": 0,
+      "status": "passed",
+      "detail": "dist/mpd-package staged",
+      "raw": "raw/attempt5-pack-mpd.txt"
+    },
+    {
+      "gate": "lane-bundle-lifecycle",
+      "command": "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs",
+      "exit": 0,
+      "status": "passed",
+      "detail": "ok:true - evidence/dsh-qa/bundle-lifecycle/2026-09-16T07-27-41.147Z/",
+      "raw": "raw/attempt5-lane-bundle-lifecycle.txt"
+    },
+    {
+      "gate": "lane-extension-template",
+      "command": "bun skills/dsh-qa/scripts/extension-template.mjs",
+      "exit": 0,
+      "status": "passed",
+      "detail": "ok:true - evidence/extensions/extension-template/2026-09-16T07-27-58.479Z/",
+      "raw": "raw/attempt5-lane-extension-template.txt"
+    },
+    {
+      "gate": "lane-extension-lifecycle",
+      "command": "bun skills/dsh-qa/scripts/extension-lifecycle.mjs",
+      "exit": 0,
+      "status": "passed",
+      "detail": "ok:true - evidence/extensions/extension-lifecycle/2026-09-16T07-28-04.884Z/",
+      "raw": "raw/attempt5-lane-extension-lifecycle.txt"
+    },
+    {
+      "gate": "lane-extension-mcp-bridge",
+      "command": "bun skills/dsh-qa/scripts/extension-mcp-bridge.mjs",
+      "exit": 0,
+      "status": "passed",
+      "detail": "ok:true - evidence/extensions/extension-mcp-bridge/2026-09-16T07-28-37.428Z/",
+      "raw": "raw/attempt5-lane-extension-mcp-bridge.txt"
+    },
+    {
+      "gate": "evidence-d6-row",
+      "command": "node evidence/extensions/debranding-probe/20260916T061807Z/verify-debranding-full.mjs --json-out <ledger dir>/raw/prober-positive.json",
+      "exit": 0,
+      "status": "passed",
+      "detail": "26 field probes, 0 findings",
+      "raw": "raw/attempt5-prober.txt"
+    }
+  ],
+  "packed_tree": {
+    "root": "dist/mpd-package",
+    "absent": [
+      "templates/",
+      "templates/mpd-extension/"
+    ],
+    "present": [
+      "packages/ (24 dirs)",
+      "packages/mpd-ext-plugin/ + dist/index.js",
+      "packages/mpd-roles-plugin/dist/index.js",
+      "extensions/ (3 entries)",
+      "extensions/mpd-ext-example/mpd-ext.json"
+    ],
+    "file_count": 1136
+  },
+  "single_repin": {
+    "asserted": true,
+    "hunks": 1,
+    "changed_lines": 6,
+    "before": "317 / 7a48fdad90cc30f9c1e71009be216aeb8b2a1de797eb2bb1897032c41f6b51aa",
+    "after": "318 / a8ba96b8108b2df3cce707e7b69d038f71514cea9e0c488683ba79012efc8d12",
+    "same_change_set_as_skills": [
+      "skills/dsh-qa/SKILL.md",
+      "skills/dsh-qa/scripts/extension-lifecycle.mjs",
+      "skills/dsh-qa/scripts/extension-mcp-bridge.mjs",
+      "skills/dsh-qa/scripts/extension-template.mjs (new)",
+      "VENDOR_LOCK.json"
+    ],
+    "verify_vendor_exit": 0
+  },
+  "deferred_or_waived": [
+    {
+      "item": "F6 - the eight pre-c239407 evidence directories were NOT re-run",
+      "reason": "inventoried + boundary-marked by evidence/extensions/boundary-index/INDEX.md; re-running would replace historical evidence; INDEX.md section C is a 14:20 snapshot so six later dirs are deliberately unlisted"
+    },
+    {
+      "item": "the packed-tree CLI is broken BY DESIGN this wave and NOT fixed",
+      "reason": "packer read-only (scripts/pack-mpd.mjs sha256 8beb91c3f62640b5.. identical to HEAD); tracked as .mpd/TODO.md T-51; disclosed in report section 12 + guide section 7; measured by evidence/extensions/template-scaffold/20260916T063710Z/raw/packed-tree-probe.json (arms A/B)"
+    },
+    {
+      "item": "plan section 7 D-1..D-4 + the wider .mpd/TODO.md friction register",
+      "reason": "out of this wave's scope by the user directive; recorded for the next wave"
+    },
+    {
+      "item": "skills/** single writer + exactly one VENDOR_LOCK re-pin",
+      "reason": "AGENTS.md section 9/11; one writer, one re-pin, verified by the single hunk + verify-vendor exit 0"
+    },
+    {
+      "item": "t22 residual: the other twelve adapter rows stay silent",
+      "reason": "recorded residual; only mpd-ext and mpd-roles warn; out of the fix's scope and unedited"
+    },
+    {
+      "item": "T-47: 11 of the template's 13 snippet fields are not quoted in its own README pair",
+      "reason": "recorded by t7, deferred by the captain, NOT opened; a drift in those snippets would be invisible to a doc-parity check"
+    },
+    {
+      "item": "T-52: t19's task record has an EMPTY output field",
+      "reason": "first completing call rejected for a missing per-item status, corrected call omitted the summary, later update refused because a terminal task is immutable; t19's summary is therefore taken from evidence/extensions/template-scaffold/20260916T063710Z/result.json"
+    },
+    {
+      "item": "t24-F1 honest bound: the loader window is not proven unreachable",
+      "reason": "six boots are a MEASUREMENT, not a guarantee; stated by t24 itself"
+    },
+    {
+      "item": "report section 6 vs section 12 wording (F8/F9 'WAIVED this wave' vs fixed)",
+      "reason": "intended: section 12's preamble states the section 6 register is left unchanged on purpose"
+    }
+  ],
+  "recorded_readings": [
+    "evidence/extensions/debranding-probe/20260916T061807Z/result.json records boundary INDEX.md as '9075 bytes' while the frozen artifact is 9101 bytes (sha256 37c1208d41b0b56513b0ba9ad516ffabb95a1fc07520faf36f1d4d79ecd6b06f); the informational reading predates the final write, the digest is what is pinned",
+    "INDEX.md section C is a 14:20 snapshot; the six evidence directories created later in the wave are not listed there, so the inventory is complete only up to its snapshot time (this ledger's freeze manifest is the later census)"
+  ],
+  "evidence_overwrite_incident_quoted": {
+    "source": "evidence/extensions/verify-skills/20260916T064350Z/result.json",
+    "probe_report_overwrite_incident.what_happened": "while starting item 2 I ran the prober WITHOUT --json-out; the prober defaults its probe-list target to its own evidence dir, so my run rewrote evidence/extensions/debranding-probe/20260916T061807Z/probe-report.json (mtime 14:43:27; t7's other files 14:20-14:21)",
+    "probe_report_overwrite_incident.residual_honestly_stated": "t7 recorded the prober's SOURCE hash (a8d1673c...) but not the original probe-report.json bytes, so byte-identity with the original cannot be demonstrated; content identity follows from the four bounds above",
+    "probe_report_overwrite_incident.captain_ruling": "accepted as disclosed, no rollback, recorded as friction item T-53 in .mpd/TODO.md",
+    "evidence_immutability_recheck.verdict": "passed",
+    "evidence_immutability_recheck.archive_digests": "hashes-before.txt and hashes-after.txt BOTH hash to 441c5ba89620c937f2908c1e9543cb2a063c2a14f32ecee36372b8f3e42d4124",
+    "evidence_immutability_recheck.recomputed": "re-hashing the 356 snapshot files and re-serializing the same order reproduces 441c5ba89620c937f2908c1e9543cb2a063c2a14f32ecee36372b8f3e42d4124 exactly: modified=0, missing=0",
+    "evidence_immutability_recheck.added_since_snapshot": "17 new files (legitimate new sub-run directories written by the owning tasks)"
+  },
+  "scope_and_side_effects": {
+    "git_writes": "none (no add/commit/checkout/reset/merge/branch/tag/stash)",
+    "member_files_edited": "none",
+    "written_by_t17": [
+      "evidence/extensions/integration-ledger/20260916T071414Z/"
+    ],
+    "created_by_the_mandated_gates": [
+      "evidence/plan-c/c1-team/2026-09-16T07-16-22.160Z/ (attempt 2, test:qa:all lane 1)",
+      "evidence/dsh-qa/bundle-lifecycle/2026-09-16T07-19-44.444Z/ (attempt 2)",
+      "evidence/dsh-qa/preset-conformance/2026-09-16T07-20-00.878Z/ (attempt 2)",
+      "evidence/extensions/extension-template/2026-09-16T07-20-35.928Z/ (attempt 2)",
+      "evidence/extensions/extension-lifecycle/2026-09-16T07-20-41.691Z/ (attempt 2)",
+      "evidence/dsh-qa/bundle-lifecycle/2026-09-16T07-27-41.147Z/ (attempt 5, row 11)",
+      "evidence/extensions/extension-template/2026-09-16T07-27-58.479Z/ (attempt 5, row 12)",
+      "evidence/extensions/extension-lifecycle/2026-09-16T07-28-04.884Z/ (attempt 5, row 13)",
+      "evidence/extensions/extension-mcp-bridge/2026-09-16T07-28-37.428Z/ (attempt 5, row 14)"
+    ],
+    "no_deliverable_moved": "17/17 tracked modified files identical after the sweep; frozen evidence dirs kept their tree digests",
+    "attempt5_reverification": "branch dev, HEAD 1f38e3c1b8149cecc68f54fae1979f56e1ff2b0f; the 42-entry baseline compared against a fresh manifest: 17/17 tracked modified files unchanged, all frozen evidence dirs stable; only the lane dirs above and this ledger dir moved (raw/attempt5-freeze-manifest.txt)"
+  },
+  "amendment": "Captain amendment (attempt 5): the gate list uses the CLEAN-CWD unit invocation; `bun test packages` (repo cwd) and `bun run test:qa:all` are WAIVED items with their evidence, not run.",
+  "waived_gates": [
+    {
+      "id": "waived-a",
+      "command": "bun test packages (from the REPO cwd)",
+      "reason": "PRE-EXISTING, non-hermetic test: packages/mpd-config-plugin/test/settings-wiring.test.ts:352 and :419 assert that <cwd>/.mpd/mpd.jsonc does not exist, while this workspace deliberately HAS that gitignored file (the captain's watchdog tuning). The plugin and its tests are outside this wave's change set and unchanged since a647d47.",
+      "readings": {
+        "repo_cwd": "753 pass / 2 fail",
+        "same_file_clean_cwd": "23 pass / 0 fail",
+        "whole_suite_clean_cwd": "755 pass / 0 fail (exit 0)"
+      },
+      "evidence": [
+        "raw/gate-bun-test-packages.txt",
+        "raw/control-config-test-clean-cwd.txt",
+        "raw/control-bun-test-packages-clean-cwd.txt",
+        "raw/attempt5-unit-clean-cwd.txt"
+      ],
+      "replacement": "the clean-cwd invocation is row 1 of the amended gate list and exited 0"
+    },
+    {
+      "id": "waived-b",
+      "command": "bun run test:qa:all",
+      "reason": "NOT runnable on this host: aborts at lane 1 of 27 (agent-teams-adopt) with MISSING_CREDENTIAL: llm-deepseek: no API key for provider route \"deepseek-official\"; DEEPSEEK_API_KEY is unset and ~/.dsh/.credentials.yaml carries no entry for that route. The aborting lane is untouched by this wave and its boot log shows every wave row mounting correctly. THE SUITE IS NOT CLAIMED AS PASSED.",
+      "evidence": [
+        "raw/gate-test-qa-all.txt"
+      ],
+      "replacement": "the four wave lanes were run individually (rows 11-14), all exit 0 / ok:true"
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "task": "t25",
+  "kind": "repair (round 2)",
+  "attempt_id": "6d35a9e5-98ea-4309-87c5-21be89c5af1f",
+  "stamp": "20260916T070327Z",
+  "supersedes_run": "evidence/extensions/docs-claims/20260916T070219Z/ (gates green there too, but it predates the two final wording edits below)",
+  "subject": "t16 round-1 findings against t9/t21: the `enabled` default claim, the nine stale anchors, the tool-name exception, the report status rows and the re-pin value",
+  "what_t21_had_already_delivered_and_i_verified": [
+    "all the stale anchors are re-anchored as SYMBOL + hint, and every one I spot-checked carries exactly the claimed text on the cited line: registry.ts:583 `enabled: input.enabled !== false`; index.ts:659 `const redactedDescriptor =`; index.ts:1062 `bridge = await connectExtensionMcpServers({`; index.ts:102 `function resolveAdapter(`; index.ts:59 `CANONICAL NOTE — the second-adapter hazard`; mcp-client.ts:129-135 `export function publicToolName(` through its closing brace; mcp.ts:42 `stderrTail?: string`; the four tool registrations are symbol-cited with the hints 537 (the `safeRegisterTool` wrapper) and the four `name:` lines 715 / 807 / 930 / 984, plus EXPECTED_TOOLS at 548 — all five hints verified by reading the lines",
+    "check-citations.mjs is strengthened: an anchored citation must now carry a CLAIM and the cited line must carry that symbol/phrase (`contentClaimProblem`, t21 CONTENT CLAIMS section), and it ships a falsifiable negative control over two fixture repos (`--self-test`): the correct fixture exits 0 and the mis-anchored fixture exits 1 with 'the cited line/range does not carry the claim `alphaSymbol` (src/probe.ts:3)' — I re-ran it: 14/14 checks",
+    "EXTENSIONS-FOR-AGENTS.md §2 states the TRUE default with the code anchor, the mcp row carries the tool-name exception with `publicToolName` + `packages/mpd-ext-plugin/src/mcp-client.ts:129-135`, and the guide pair carries the same exception sentence",
+    "the report rows for F1/F5/F8/F9/F10 are fixed/final with real lane evidence paths that all exist (extension-lifecycle/2026-09-16T06-31-40.371Z incl. `t8-skills-pass-summary.json`, extension-mcp-bridge/2026-09-16T06-31-25.127Z, extension-template/2026-09-16T06-31-12.171Z, f1-adapter-identity/20260916T061318Z), F6 is untouched as 'deferred, boundary-marked' with `evidence/extensions/boundary-index/INDEX.md`, and the closing paragraph records the LANDED re-pin (318 / a8ba96b8108b2df3cce707e7b69d038f71514cea9e0c488683ba79012efc8d12) beside the before value — both languages",
+    "the zh twins carry every one of those corrections (guide zh `redactedDescriptor` :659 and `connectExtensionMcpServers` :1062; report zh F1 hint :58-92 + `resolveAdapter` :102, F5 `\"CANONICAL NOTE\"` :59, F8/F9/F10 fixed with the same paths, F6 deferred, re-pin 318/a8ba96b8…)"
+  ],
+  "gaps_found_and_closed_by_this_task": [
+    {
+      "id": "t25-A2-guide-note",
+      "finding": "acceptance item 2's second half was NOT satisfied by the previous pass: the guide's §5 walkthrough still said '(a scaffolded or copied extension starts disabled on purpose, so a fresh tree starts nothing)' (zh: '脚手架或拷贝出来的扩展默认是禁用的'), which attributes the dark start to the copy rather than to the TEMPLATE's flag — the same class of confusion t16-F2 raised for `enabled`.",
+      "fix": "both languages rewritten to name the cause: the copy starts disabled because the TEMPLATE ships \"enabled\": false, while the runtime default is the opposite (an omitted key is live). docs/extension-authoring-guide.md:143 and docs/extension-authoring-guide.zh-CN.md:127."
+    },
+    {
+      "id": "t25-A2-ai-doc-wording",
+      "finding": "the AI doc stated the default correctly but did not carry the acceptance's actionable sentence ('set it to false - as the template does - to keep the extension dark').",
+      "fix": "the sentence now reads exactly that, keeping the `enabled` claim on the anchored line so the content check still passes. EXTENSIONS-FOR-AGENTS.md §2."
+    },
+    {
+      "id": "t25-A4-verification-signal",
+      "finding": "the report's closing paragraph said the F8/F9/F10 rows are not inferred but did not yet record that the three lanes were independently re-run and re-read — which the wave's verification task (t11) has now done.",
+      "fix": "both languages now cite `evidence/extensions/verify-skills/20260916T064350Z/` as the independent verification of those three lanes. F6 row untouched."
+    }
+  ],
+  "commands": [
+    { "command": "node scripts/verify-docs-parity.mjs", "exitCode": 0, "status": "passed", "evidence": "pairs=36 failed=0 violations=0 exempt=16 — PASS (raw/gate-docs-parity.txt)" },
+    { "command": "node evidence/extensions/docs-claims/check-citations.mjs", "exitCode": 0, "status": "passed", "evidence": "12/12 checks, 219 citation(s) resolved, 0 unresolved, 0 pending, 4 illustrative; `content:anchors` = 43 anchored citations verified against their claimed symbol/phrase, 0 without a claim (raw/gate-check-citations.txt, raw/check-citations.result.json)" },
+    { "command": "bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example", "exitCode": 0, "status": "passed", "evidence": "[mpd-ext] ok — loadable, 1 skill / 1 flow / 1 role / 1 mcp server (raw/gate-validate-example.txt)" },
+    { "command": "node evidence/extensions/docs-claims/check-citations.mjs --self-test", "exitCode": 0, "status": "passed", "evidence": "14/14 checks including both negative-control arms: the correct fixture exits 0 and the mis-anchored fixture exits 1 with 'does not carry the claim `alphaSymbol`'" },
+    { "command": "spot-check of every re-anchored code citation", "exitCode": 0, "status": "passed", "evidence": "sed of registry.ts:583, index.ts:59/102/537/548/659/715/807/930/984/1062, mcp-client.ts:129/135, mcp.ts:42 — each line carries the claimed symbol/text" }
+  ],
+  "findings": [],
+  "notes": [
+    "No code change was made: the runtime already defaults `enabled` to TRUE (registry.ts:583) and docs/extensions.md:110 agrees; this repair is documentation + the checker only.",
+    "A stray temp marker I wrote at the repo root (`.t25stamp.tmp`) was removed in the same turn; `git status` shows no stray dotfiles at the root.",
+    "The earlier run recorded at evidence/extensions/docs-claims/20260916T070219Z/ is left in place as a superseded intermediate; this stamp dir is the final record."
+  ]
+}

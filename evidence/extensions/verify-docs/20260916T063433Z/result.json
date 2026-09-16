@@ -1,0 +1,120 @@
+{
+  "task": "t12",
+  "attempt_id": "01fb25ee-215c-4359-abed-df6d84cfe9ea",
+  "verifier": "Lead",
+  "status": "failed",
+  "verdict_summary": "criterion 2 is not satisfied: 7 hand-checked line anchors do not carry the symbol they are cited for (4 of them never did). Every other criterion passed; the repair is a small re-anchoring pass.",
+  "revision_pinned": {
+    "pinned_at_utc": "2026-09-16T06:41:02Z",
+    "settle_recheck_utc": "2026-09-16T06:41:52Z",
+    "settle_result": "no hash moved across the 50 s window",
+    "hashes": {
+      "docs/extension-authoring-guide.md": "df231162f849ab2ac712084a8b0c08ccb515dfb9884104229c0b4767ba6bb6c5",
+      "docs/extension-authoring-guide.zh-CN.md": "a6bbe90ee1a4fec9304deceeddcb96e2339982a96dcfee481f0103f61729b996",
+      "EXTENSIONS-FOR-AGENTS.md": "dbdb9d144f61bf5718fcbbab21830b7647253063c8505a7ff0f0aafa5c64f2b0",
+      "docs/extension-adaptation-report.md": "4bf61adec14adb0037aa79ccf117ddead6389c5248a4a713d06f5e1b13d0a0c2",
+      "docs/extension-adaptation-report.zh-CN.md": "f2c4e0ef1b17cc477760b9c9e4ecdf9f195d5667ebaf43234f23b19b3e11f467",
+      "README.md": "8367a10e8cb938ee8b689df2259a85c38992fb1b373f78985a32e86612fe3718",
+      "README.zh-CN.md": "4cbda5db79aa17dfa74671604afc74878237d11870ed8517a2092d7f96807a03",
+      "docs/index.md": "f90ea958bf11b0532ff9efd5a7eb92a2647239b460e6e8c1520f614ec081df81",
+      "docs/index.zh-CN.md": "f8715202b4182f0e2ef8a30c3a3f29f83d036ccdb44adee9f3e91df366ea3b93",
+      "packages/mpd-ext-plugin/src/index.ts": "dd3bdd00579d8d7aa56a70cb18af6a0bfd4ce3bae400c730d0f35bc40f662ec0",
+      "packages/mpd-roles-plugin/src/index.ts": "9a54bf7d6620a2d437ebafd15bda5f7592e9e1cce2d997fe2c6170a71d6ab18c",
+      "scripts/mpd-ext.mjs": "60d7901245381d9874094604de4b05b9d8c07b14f766b8adb8a8a40eea2618af"
+    }
+  },
+  "drift": {
+    "docs_moved": false,
+    "source_moved_during_verification": true,
+    "timeline": [
+      "14:13 local — t4 records the F1/F5 artifact as index.ts:59-92 (CANONICAL NOTE + resolveAdapter)",
+      "14:30:36-14:31:53 — t9 writes the AI doc and the guide pair",
+      "14:34 — verifier baseline: index.ts 1081 lines; 701/793/916/970 all EMPTY; registrations at 703/795/918/972",
+      "14:36:40-14:37:42 — in-flight repair (evidence/extensions/f1-adapter-identity/20260916T063737Z-repair2/) rewrites mpd-ext and mpd-roles index.ts; index.ts 1081 -> 1093 (+12)",
+      "14:41:02 + 50 s — pinned and re-checked: no hash moved"
+    ]
+  },
+  "acceptanceResults": [
+    {
+      "criterion": "`node scripts/verify-docs-parity.mjs` exits 0 with the new pairs discovered (the human guide pair is checked, not exempt)",
+      "status": "passed",
+      "evidence": "exit 0, pairs=36 failed=0 violations=0 exempt=16; the run prints `ok docs/extension-authoring-guide.md` and no exemption mentions it. Controls under --root <tmp>: zh twin deleted -> exit 1 `FAIL docs/extension-authoring-guide.md - missing zh-CN file`; switch link deleted -> exit 1 `EN switch link missing/not under the title`; faithful copy -> exit 0. raw/gate-docs-parity.txt, raw/negctl-missing-twin.txt, raw/negctl-broken-switch.txt, raw/negctl-faithful.txt"
+    },
+    {
+      "criterion": "the citation checker is re-run by the verifier and every repo path, line anchor and command cited by the three docs resolves; a citation that no longer resolves is a FAIL with the token named",
+      "status": "failed",
+      "evidence": "The author's checker was re-run on the settled revision (byte-identical copy sha256 c090fc99...): 14/14 checks, 173 citations, 0 unresolved — but it verifies existence and line RANGE only, never line CONTENT. Independent re-implementation (anchor-sweep2.mjs + verify-docs-independent2.mjs with samples.json): all 36 in-scope anchors exist and are in range (0 missing/out-of-range/blank), and of 23 hand-checked semantic samples 7 do NOT carry the cited symbol: EXTENSIONS-FOR-AGENTS.md:22 -> index.ts:701/:793/:916/:970 (registrations are at 715/807/930/984; at the 14:34 baseline those lines were EMPTY and the registrations sat at 703/795/918/972); docs/extension-authoring-guide.md:75 (+zh:66) -> index.ts:641-658 (redactedDescriptor is at 659); docs/extension-authoring-guide.md:104 -> index.ts:1041-1053 (connectExtensionMcpServers call is at 1062); docs/extension-adaptation-report.md:372 (+zh:176) -> index.ts:59-95 no longer brackets resolveAdapter (declared at 102). raw/anchor-sweep.txt, raw/independent-run1.txt, independent-result.json"
+    },
+    {
+      "criterion": "every relative link in README.md/README.zh-CN.md that points at a doc or directory in this repo is resolved by the verifier (target exists; a heading anchor matches a real heading)",
+      "status": "passed",
+      "evidence": "112 relative links over README.md, README.zh-CN.md, docs/index.md, docs/index.zh-CN.md, the guide pair and the AI doc; 6 carry heading anchors; 0 unresolved (every t9-added link included). Controls (controls.mjs, 8/8): #terminal-ui-dsh-tui, docs/user-guide.md#7-dsh-tui-edition-the-terminal-ui, the CJK #终端界面dsh-tui and docs/user-guide.zh-CN.md#7-dsh-tui-版本终端界面 all match real headings; an invented anchor is reported unresolved. raw/independent-run1.txt, raw/controls.txt"
+    },
+    {
+      "criterion": "the report's status section is checked against reality: every F-item it calls fixed has a corresponding evidence dir with a result, and every item it calls deferred is genuinely absent from the change set",
+      "status": "passed",
+      "evidence": "F1/F5 -> evidence/extensions/f1-adapter-identity/20260916T061318Z/ (result.json present); F7 -> evidence/extensions/debranding-probe/20260916T061807Z/ with the exact verify-debranding-full.mjs; F11 -> evidence/extensions/pack-closure-check/20260916T061527Z/ + scripts/verify-pack-closure.mjs; F2/F3/F4 -> guide sections 2/3/4 exist in both languages; F6 -> git cat-file -t c239407 = commit, evidence/extensions/boundary-index/INDEX.md exists, and NONE of the eight pre-c239407 dirs appears in `git status --porcelain`. The F8/F9/F10 rows are the captain-ruled tracked deviation: they say `pending`, and t8 has now landed (evidence/extensions/extension-template/{06-30-30,06-31-12}, extension-lifecycle/2026-09-16T06-31-40.371Z, extension-mcp-bridge/2026-09-16T06-31-25.127Z all ok:true; skills/dsh-qa/scripts/extension-template.mjs exists; VENDOR_LOCK 317/7a48fdad -> 318/a8ba96b8 in ONE hunk, verify-vendor exit 0) — the closing paragraph's `still reads the before value` sentence is therefore stale, reported with the deviation, not as a finding. raw/status-section-vs-reality.txt, raw/gate-verify-vendor.txt"
+    },
+    {
+      "criterion": "the AI doc's manifest skeleton is validated for real (`mpd-ext validate` over an extracted copy) and the human guide's walkthrough commands are executable as written",
+      "status": "passed",
+      "evidence": "Independent extraction of the `for-agents-skeleton` json block, materialized next to the template's four assets: `bun scripts/mpd-ext.mjs validate <tmp>` exit 0, `contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)`; NEGATIVE control (declared persona deleted) exit 1 `2 problem(s) - this extension would not load`. walkthrough.sh executed verbatim with a sandboxed HOME: scaffold (default, 3 kinds) exit 0, validate exit 0 `loadable`, list exit 0, `cp -r` arm validate exit 0, `--with-mcp` arm validate exit 0 and the server smoke answered tools/list; AI doc section 6 worked copy (user plane and the project-plane variant run from a sandbox cwd) exit 0. The single non-zero step is the server smoke against the DEFAULT copy, whose server.mjs the guide itself documents as dropped without --with-mcp. raw/walkthrough.txt, raw/independent-run1.txt"
+    },
+    {
+      "criterion": "the structural split is tested, not asserted: no heading is shared between the human and AI docs and no paragraph is duplicated (a mechanical comparison recorded in the evidence)",
+      "status": "passed",
+      "evidence": "Mechanical comparison re-implemented independently: 20 machine headings vs 26 human headings, 0 shared; 17 machine paragraphs (>= 80 normalised chars, fence- and table-excluded) vs 25 human, 0 duplicated. Control: the same comparator run guide-vs-guide reports 25 shared paragraphs, so the zero is a measurement and not an empty function. raw/independent-run1.txt, raw/controls.txt"
+    },
+    {
+      "criterion": "the verifier's record (commands, exit codes, raw readings) lives under its own evidence dir, and unreproducible claims are reported as findings",
+      "status": "passed",
+      "evidence": "evidence/extensions/verify-docs/20260916T063433Z/ carries report.md, result.json, independent-result.json, anchor-sweep.json, samples.json, the four scripts, the author-checker copies with their result JSONs, and raw/ (gate outputs, negative controls, anchor sweep, independent run, controls, walkthrough, status-vs-reality, hashes t0..t3). Unreproducible/reproducibly-wrong claims are reported as findings F-t12-1..3 with the token named."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F-t12-1",
+      "severity": "medium",
+      "file": "EXTENSIONS-FOR-AGENTS.md",
+      "line": 22,
+      "problem": "The four inspection-tool anchors `packages/mpd-ext-plugin/src/index.ts:701`/`:793`/`:916`/`:970` do not point at the registrations of mpd_ext_list / mpd_ext_show / mpd_flow_list / mpd_flow_show. At the revision t9 wrote against (measured 14:34, before the concurrent repair) those four lines were EMPTY and the registrations sat at 703/795/918/972; at the settled revision the registrations are at 715/807/930/984. The cited numbers equal HEAD's 644/736/859/913 + 57 while the revision that existed when t9 wrote was HEAD + 59, so the anchors were already two lines early at authoring time. Three of the four are written as bare continuations (`:793`, `:916`, `:970`), so no path:line scanner - including the author's own checker - extracts them at all.",
+      "requiredFix": "Re-anchor the four tokens to the settled lines (715/807/930/984), or replace the line numbers with the four tool names (a symbol citation cannot rot). If the continuation form stays, write the path once and name every token explicitly so a scanner can see all four."
+    },
+    {
+      "id": "F-t12-2",
+      "severity": "low",
+      "file": "docs/extension-authoring-guide.md",
+      "line": 75,
+      "problem": "`:75` (and the zh twin at `docs/extension-authoring-guide.zh-CN.md:66`) cites index.ts:641-658 for the mpd_ext_show env-value redaction, and `:104` cites index.ts:1041-1053 for connect-at-apply. Both were exact at the 14:34 baseline (redactedDescriptor 641-658, the connectExtensionMcpServers call 1041-1053) and were invalidated by the in-flight repair2 edit at 14:36:40-14:37:42, which shifted index.ts by +12 lines (1081 -> 1093): the symbols are now at 659 and 1062.",
+      "requiredFix": "Re-anchor these two tokens (both languages) once the in-flight repair settles, or cite the symbols (redactedDescriptor / connectExtensionMcpServers) instead of line ranges."
+    },
+    {
+      "id": "F-t12-3",
+      "severity": "low",
+      "file": "docs/extension-adaptation-report.md",
+      "line": 372,
+      "problem": "The F1 row (and zh `:176`) cites index.ts:59-95 as 'the canonical note plus resolveAdapter'. True when written (t4's own evidence records 59-92), but the repair extended the note: at the settled revision the note plus identity constants span 58-94 and resolveAdapter is declared at 102, so the anchor no longer contains it. A text-level check still passes only because the note itself mentions the identifier.",
+      "requiredFix": "Re-anchor to a range that brackets the declaration (e.g. 58-110) after the repair settles, or cite `resolveAdapter` by name."
+    }
+  ],
+  "observations": [
+    {
+      "id": "O-t12-1",
+      "severity": "low",
+      "file": "packages/mpd-ext-plugin/src/mcp.ts",
+      "line": 34,
+      "problem": "docs/extension-authoring-guide.md:112, EXTENSIONS-FOR-AGENTS.md:132 and docs/extension-adaptation-report.md:113 cite mcp.ts:34 for the MCP state vocabulary. Line 34 is `export type McpServerState = ...` - resolved - but the 'bounded child-stderr tail' in the same sentence is typed at mcp.ts:42. Precision note only, not a failure."
+    }
+  ],
+  "accepted_tracked_deviation": {
+    "source": "captain ruling, 2026-09-16 (this turn)",
+    "rows": ["F8", "F9", "F10"],
+    "what": "The report's section-12 rows for F8/F9/F10 read 'delivered by t8 - evidence pending at the time of writing (task t8)', and the closing paragraph (EN:388-391, ZH:191-193) says the wave's skills re-pin had not landed. t8 has landed since, so that paragraph is now contradicted by VENDOR_LOCK.json (318 / a8ba96b8...; t8: 317/7a48fdad -> 318/a8ba96b8, one hunk, verify-vendor exit 0).",
+    "judgement": "Honest pending marking, no false 'fixed' claim; finalising the three rows and that paragraph is the captain-created follow-up task for the docs author. NOT a t12 finding."
+  },
+  "task_level_notes": {
+    "author_checker_reproducible": "yes - 14/14 on the settled revision, 173 citations, 0 unresolved; its --self-test gate now reports 52 checks where t9's record says 41 (scripts/mpd-ext.mjs was edited by the in-flight work), and it still asserts exit 0 only",
+    "evidence_dir": "evidence/extensions/verify-docs/20260916T063433Z",
+    "scope_discipline": "only evidence/extensions/verify-docs was written; every other path was read-only; the walkthrough ran with a sandbox HOME and a sandbox cwd, and <repo>/.mpd/extensions does not exist"
+  }
+}

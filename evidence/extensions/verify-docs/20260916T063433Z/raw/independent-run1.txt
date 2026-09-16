@@ -1,0 +1,13 @@
+t12 independent docs verifier
+repo /root/dshProj/my-power-dsh
+
+  ok   links:targets+anchors — 112 relative link(s), 6 with an anchor, 0 unresolved
+  ok   citations:independent-scan — 36 line-anchor citation(s) in scope, 0 flagged
+  FAIL citations:semantic-samples — 23 hand-picked anchor(s) checked against their cited line content, 7 mismatch(es): docs/extension-authoring-guide.md:75 cites packages/mpd-ext-plugin/src/index.ts:641-658 for mpd_ext_show redacts the env VALUES (keys stay visible) — the cited line(s) do not carry redactedDescriptor / <redacted> | docs/extension-authoring-guide.md:104 cites packages/mpd-ext-plugin/src/index.ts:1041-1053 for servers are connected at apply, in parallel and time-boxed by connectTimeoutMs — the cited line(s) do not carry connectExtensionMcpServers / connectTimeoutMs | docs/extension-authoring-guide.zh-CN.md:66 cites packages/mpd-ext-plugin/src/index.ts:641-658 for zh twin: mpd_ext_show redacts env values — the cited line(s) do not carry redactedDescriptor / <redacted> | EXTENSIONS-FOR-AGENTS.md:22 cites packages/mpd-ext-plugin/src/index.ts:701-701 for the registration of the mpd_ext_list inspection tool — the cited line(s) do not carry mpd_ext_list | EXTENSIONS-FOR-AGENTS.md:22 cites packages/mpd-ext-plugin/src/index.ts:793-793 for the registration of the mpd_ext_show inspection tool — the cited line(s) do not carry mpd_ext_show | EXTENSIONS-FOR-AGENTS.md:22 cites packages/mpd-ext-plugin/src/index.ts:916-916 for the registration of the mpd_flow_list inspection tool — the cited line(s) do not carry mpd_flow_list
+  ok   split:headings — 20 machine heading(s) vs 26 human heading(s), 0 shared
+  ok   split:paragraphs — 17 machine paragraph(s) (>= 80 chars) vs 25 human paragraph(s), 0 duplicated
+  ok   skeleton:extracted — json block with id "for-agents-skeleton" parsed (31 lines)
+  ok   skeleton:validates — mpd-ext validate over the extracted skeleton → exit 0; [mpd-ext] validate /tmp/t12-verify-QkGHvt/for-agents-skeleton (plane=user) |   contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s) | [mpd-ext] ok
+  ok   skeleton:negative-control — same skeleton with its declared persona file deleted → exit 1 (must be non-zero);   pending contributes.mcp[0]: pending: server "for-agents-skeleton" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state | [mpd-ext] 2 problem(s) — this extension would not load
+
+[t12 independent] 7/8 checks passed

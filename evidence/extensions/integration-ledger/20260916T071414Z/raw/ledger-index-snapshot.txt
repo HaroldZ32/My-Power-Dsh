@@ -1,0 +1,28 @@
+### INDEX.md headings
+1:# Boundary index — evidence produced before `c239407`
+7:## Why this file exists (F6)
+22:## The immutability rule, stated plainly
+36:## How "predates `c239407`" was measured
+49:## The inventory
+51:### A. Pre-existing directories that EXIST in `c239407`'s tree
+67:### B. Directories ABSENT from `c239407`'s tree (they post-date the boundary)
+77:### C. Directories created BY THIS WAVE (not pre-existing)
+91:## Two traps a later reader should not fall into
+102:## What this index does NOT claim
+
+### the snapshot statement
+27-- **Nothing inside them was edited, rewritten, moved or deleted.** The proof is the before/after
+28-  file-hash pair recorded in `evidence/extensions/debranding-probe/<UTC>/result.json`
+29:  (`boundaryProof.before` / `boundaryProof.after`, plus the raw snapshots
+30-  `hashes-before.txt` / `hashes-after.txt` in this directory): every file that existed in these
+31-  directories when t7 started still exists with the same sha256 when t7 finished.
+32-- Files that *appear* inside a listed directory during the wave belong to a **new, separately
+33-  timestamped sub-run** written by that directory's owning task. A new sub-run is not a rewrite
+--
+60-| `evidence/extensions/mcp-bridge-framing/` | `20260914T171058Z` | 4 | 4 files | **Still usable as a record of the framing contract** measured on 2026-09-14; it is frozen (untouched since `4bc2157`) and was never re-verified against the post-rewrite code |
+61-| `evidence/extensions/mcp-bridge-gates/` | `20260914T171058Z` | 4 | 4 files | **Still usable** for the same reason; carries `"verdict": "pass"` from 2026-09-14 — a historical verdict, NOT a present-day one |
+62:| `evidence/extensions/registered-tool-schemas/` | `20260914T171058Z` | 3 | 3 files | **Still usable** as the pre-rewrite tool-schema snapshot (`verdict: pass, failed: 0`); frozen, not re-run |
+63-| `evidence/extensions/roles-wiring/` | `2026-09-14T170418Z`, `2026-09-14T171119Z-parity` | 7 | 7 files | **Still usable** as the record that extension roles joined the specialist roster (`subject: "Mount mpd-ext in the bundle patch and let extension roles join the specialist roster"`); pre-rewrite, frozen |
+64-| `evidence/extensions/sanitizer-crosscheck/` | `20260914T171058Z` | 3 | 3 files | **Still usable** as the pre-rewrite sanitizer cross-check (`verdict: pass`); frozen, not re-run |
+65-| `evidence/extensions/t7-verify/` | `20260914T174828Z`, `20260916T044344Z`, `20260916T045829Z`, `20260916T050334Z` | 67 | only `20260914T174828Z` (26 files) | **Historical only** for `20260914T174828Z`. The three `2026-09-16` sub-runs post-date the rewrite and are separate records |
+66-

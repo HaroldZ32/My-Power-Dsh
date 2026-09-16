@@ -1,0 +1,87 @@
+t21 — FINALIZE THE REPORT STATUS SECTION (docs writer, second pass) — EVIDENCE INDEX
+attempt_id d1cf78ee-43ed-4ec3-8bdc-5d1aee8c6740
+
+SCOPE WRITTEN (one writer per path)
+  docs/extension-adaptation-report.md (+ .zh-CN.md)
+  docs/extension-authoring-guide.md (+ .zh-CN.md)
+  EXTENSIONS-FOR-AGENTS.md
+  evidence/extensions/docs-claims/check-citations.mjs (the checker) + this evidence dir
+
+1) ANCHORS RE-ANCHORED BY CONTENT (t12 + t16-F1), re-measured on the settled tree
+   AI doc `:22`   four inspection tools -> SYMBOL-based: four `safeRegisterTool` calls, wrapper :537,
+                  `name:` lines 715/807/930/984 (3 of the 4 are continuation lines no scanner can
+                  extract), gated list `EXPECTED_TOOLS` :548
+   guide EN:75 / zh:66   redaction -> `redactedDescriptor`, index.ts:659   (was 641-658)
+   guide EN:104 / zh:90  connect-at-apply -> `connectExtensionMcpServers`, index.ts:1062 (was 1041-1053)
+   report EN:372/373, zh:176/177  F1/F5 -> `resolveAdapter`, index.ts:102 (note spans 58-92) and the
+                  phrase `"CANONICAL NOTE"` at index.ts:59
+   also: INHERITED_ENV_VARS :69, isCredentialShapedEnvName :95, childEnv :103, extensionRoles (roles
+   src:225-292), stderrTail (mcp.ts:42, was :34 = McpServerState), MPD_EXT_CONTRACT :113,
+   projectRejectionReason :144, refuseHostKind :678, publicToolName :129-135
+   FORM: every anchored citation now carries a checkable claim `SYMBOL`, `path:line` (or `"phrase"`,
+   `path:line`); bare `:NNN` hints stay hints. THE CHECKER VERIFIES IT: 43/43 anchored citations
+   content-verified, 0 without a claim.
+
+2) t16 FINDINGS FOLDED IN
+   F2 (medium, factual): `enabled` now documented as defaulting to **true** — an omitted key is a LIVE
+     extension, only an explicit `false` disables (`enabled`, registry.ts:583 = `input.enabled !== false`;
+     docs/extensions.md:110 agrees); the template is the one thing shipping false.
+   F3 (low): the public MCP tool name rule AND its exception are now in both guides and the agent
+     contract (`publicToolName`, mcp-client.ts:129-135: illegal chars -> `_`, >64 chars -> truncated,
+     `_<12-hex sha256(serverName NUL rawName)>` suffix).
+   F1: see 1).   F4: see 3).
+
+3) §12 STATUS SECTION FINALIZED (both languages)
+   F8/F9/F10 are now **fixed** with real resolving evidence:
+     F8/F9 -> evidence/extensions/extension-lifecycle/2026-09-16T06-31-40.371Z/ (+ t8-skills-pass-summary.json)
+     F10   -> evidence/extensions/extension-mcp-bridge/2026-09-16T06-31-25.127Z/
+   The new lane is cited where the gates are listed (report §5 runs list + Appendix A
+   `bun skills/dsh-qa/scripts/extension-template.mjs --no-skip`).
+   The closing paragraph no longer claims the lock reads the before values; it records the AFTER re-pin
+   beside the BEFORE one: 318 / a8ba96b8108b2df3cce707e7b69d038f71514cea9e0c488683ba79012efc8d12
+   (was 317 / 7a48fdad90cc30f9c1e71009be216aeb8b2a1de797eb2bb1897032c41f6b51aa), verify-vendor PASS.
+   NEW note (captain's t15 addition): the template lane's THREE stamps — 06-30-30.275Z (RED),
+   06-31-12.171Z (GREEN) and the verifier's later GREEN — with the verified reading that the RED was the
+   CASE's expectation (its mcp step read ok:false and lacked servedOwnRoot/servedFourKinds) while the
+   recorded MCP result already carried the copy's id/root/enabled/four kinds and the
+   `server process exited (code=0)` teardown line is identical in all three runs: NOT a product defect,
+   no flakiness signal, and the pre-fix expectation is NOT reconstructible from the repository.
+   Appendix B (both languages) gained rows for the three new evidence dirs.
+
+4) PACKED-TREE CLI DISCLOSURE (report §12 + guide §7, both languages)
+   cause chain: packer ships only `packages/<pkg>/dist` (`cpDist`, scripts/pack-mpd.mjs:67-77), no `src`;
+   CLI imports its validator from `src` (`"../packages/mpd-ext-plugin/src/registry.ts"`,
+   scripts/mpd-ext.mjs:35) -> exit 1 `Cannot find module '<packed>/packages/mpd-ext-plugin/src/registry.ts'`;
+   with `src` restored `validate` passes, `scaffold`/`--self-test` still fail (no `templates/` packed).
+   raw probe: evidence/extensions/template-scaffold/20260916T063710Z/raw/packed-tree-probe.json.
+   Stated plainly as NOT fixed this wave (`.mpd/TODO.md` T-51).
+
+5) CHECKER UPGRADED (content + negative control)
+   `check-citations.mjs` asserts CONTENT (the cited line/range must carry the claimed symbol/phrase;
+   a missing claim FAILS), extracts claims over the whole text (wrapped claims count), supports a
+   `DOCS_CLAIMS_REPO` override and `--citations-only` for fixture runs, and ships the NEGATIVE CONTROL:
+   a correct fixture exits 0, a deliberately mis-anchored fixture exits 1 with
+   "the cited line/range does not carry the claim `alphaSymbol` (src/probe.ts:3)".
+   Both arms recorded in result.json.negative_control.
+
+COMMANDS / EXIT CODES
+  node scripts/verify-docs-parity.mjs                                  -> 0  (pairs=36 failed=0 violations=0)
+  node evidence/extensions/docs-claims/check-citations.mjs --self-test --gates
+                                                                       -> 0  17/17 checks, 0 failed,
+                                                                             217 citations resolved,
+                                                                             43 anchors content-verified,
+                                                                             negative control green 0 / red 1
+  bun scripts/mpd-ext.mjs validate templates/mpd-extension             -> 0  (loadable, four kinds)
+  node scripts/verify-vendor.mjs                                       -> 0  PASS
+  raw/checker-result.json, raw/checker-output.log, raw/gates/, raw/digests.txt
+
+DIGESTS (raw/digests.txt)
+  report EN  8fcbe3c82e1acca6afbc40d18177cd34abb9a803ad3d36a318d7c02425a744f2
+  report zh  cde40e8a17ee2135196c365ce52a779ae5e7dde159c0e8ae2541d56b2abd9a64
+  guide  EN  04fdadf7f2688490e12ac6fb26d38a0ede3f6795ba87a213a37db853bfe869f1
+  guide  zh  1a93b52aebc4f2d8eb53e5e2a3864a4a9db356f991b3e967314c01e7624cbc2e
+  AI doc     a82c66e6ffb94bb3e7ac58ee8b01c0d99fee42587807e6edd20b8805dda637c8
+  checker    471aec42e0644ad28ce7bc3716ead64bffaef58bcc1b94ce9945c85597d6578e
+
+BOUNDARIES: skills/**, packages/**, scripts/**, templates/**, VENDOR_LOCK.json, package.json and the
+out-of-scope docs (docs/extensions.md, docs/index.md, README pairs) were NOT touched. No git verbs.

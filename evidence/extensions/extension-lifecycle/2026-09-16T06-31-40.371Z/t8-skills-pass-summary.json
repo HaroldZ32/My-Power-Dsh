@@ -1,0 +1,276 @@
+{
+  "task": "t8 - the wave's single skills pass: F8 + F9 + F10 + the real-mount template lane + ONE VENDOR_LOCK re-pin",
+  "attempt_id": "c541fe17-8559-4092-9cb8-99087d910db3",
+  "agent": "Senior Engineer",
+  "verdict": "PASS",
+  "single_skills_writer": "this task is the ONLY writer of skills/** and VENDOR_LOCK.json in the wave: the skills content was frozen before the three lane runs and the single re-pin followed them",
+  "findings_closed": {
+    "F8": {
+      "subject": "skills/dsh-qa/scripts/extension-lifecycle.mjs (narration + greenOwner)",
+      "what": "the packed-arm narration now states the CURRENT invariant (the packed tree must be closed: mpd-ext row + PLUGIN_PKGS entry + <bundle>/extensions asset) and the stale RED expectation plus greenOwner:\"t11\" are gone; grep for t11/greenOwner over the lane returns nothing",
+      "readings": {
+        "greenOwner_present": false,
+        "t11_references": 0
+      }
+    },
+    "F9": {
+      "subject": "skills/dsh-qa/scripts/extension-lifecycle.mjs packed arm + the skills/dsh-qa/SKILL.md citation",
+      "what": "the arm's ok is now the pure predicate packedStateOk() (extension-lifecycle.mjs:412, used at :383): TRUE only when the packer exited 0 AND the row AND the plugin AND the extensions asset are present; the archived (hasPlugin && hasExtensions ? true : red) shape that was TRUE in both states is gone",
+      "negative_driver": {
+        "function": "packedNegativeDriver() (extension-lifecycle.mjs:435)",
+        "fixture_trees": {
+          "closed": {
+            "hasRow": true,
+            "hasPlugin": true,
+            "hasExtensions": true,
+            "ok": true
+          },
+          "no-plugin-package": {
+            "hasRow": true,
+            "hasPlugin": false,
+            "hasExtensions": true,
+            "ok": false
+          },
+          "no-extensions-root": {
+            "hasRow": true,
+            "hasPlugin": true,
+            "hasExtensions": false,
+            "ok": false
+          },
+          "no-mpd-ext-row": {
+            "hasRow": false,
+            "hasPlugin": true,
+            "hasExtensions": true,
+            "ok": false
+          }
+        },
+        "falsifiable": true,
+        "packer_exit_gated": true,
+        "runs_in": "the real packed arm AND the offline --self-test"
+      },
+      "real_arm": {
+        "ok": true,
+        "packExit": 0,
+        "packedRoot": "/root/dshProj/my-power-dsh/dist/mpd-package",
+        "rows": {
+          "mpdExtRowInPackedPatch": true
+        },
+        "assets": {
+          "pluginDist": true,
+          "extensionsAsset": true
+        },
+        "negativeControl": {
+          "falsifiable": true,
+          "packerExitGated": true,
+          "trees": {
+            "closed": {
+              "hasRow": true,
+              "hasPlugin": true,
+              "hasExtensions": true,
+              "ok": true
+            },
+            "no-plugin-package": {
+              "hasRow": true,
+              "hasPlugin": false,
+              "hasExtensions": true,
+              "ok": false
+            },
+            "no-extensions-root": {
+              "hasRow": true,
+              "hasPlugin": true,
+              "hasExtensions": false,
+              "ok": false
+            },
+            "no-mpd-ext-row": {
+              "hasRow": false,
+              "hasPlugin": true,
+              "hasExtensions": true,
+              "ok": false
+            }
+          }
+        },
+        "status": "GREEN (the packed tree carries the mpd-ext row, the plugin and the extensions/ discovery root)",
+        "note": "no packed-tree file was modified by this case; the three facts are re-derived from disk on every run",
+        "packTail": "[pack-mpd] modes normalized: 1136 files (644: 1124, 755: 12) | [pack-mpd] staged package -> /root/dshProj/my-power-dsh/dist/mpd-package"
+      },
+      "citation": "the SKILL.md extension-lifecycle row now cites packedStateOk() (extension-lifecycle.mjs:412, used at :383) and packedNegativeDriver() (:435), not the old 'exits 0 (extension-lifecycle.mjs:385)' sentence"
+    },
+    "F10": {
+      "subject": "skills/dsh-qa/scripts/extension-mcp-bridge.mjs (stderr arm)",
+      "what": "a new live arm: a fixture child floods stderr with MARKED bytes (HEAD first, MID/END last) and dies before the handshake; the arm reads the failure error entry out of the mpd_ext_show tool result (mcp.ts fail(): '...; child stderr tail: <tail>') and asserts a REAL, BOUNDED tail",
+      "readings": {
+        "vacuous": false,
+        "ok": true,
+        "cap": 2000,
+        "floodLength": 3053,
+        "reportedTailLength": 2000,
+        "headDropped": true,
+        "tailKept": true,
+        "reported": true,
+        "tailHead": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "stateHead": "extension qa-mcp-stderr [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-MimUIg/run-home/.mpd/extensions/qa-mcp-stderr\nsource: /tmp/mpd-extension-mcp-bridge-MimUIg/run-home/.mpd/extensions"
+      },
+      "cap_source": "STDERR_TAIL_CHARS read from packages/mpd-ext-plugin/src/mcp-client.ts (never hard-coded); the self-test fails if the constant disappears, if the flood stops exceeding it, or if the error entry stops carrying the tail"
+    },
+    "D4d_new_lane": {
+      "subject": "skills/dsh-qa/scripts/extension-template.mjs (NEW, exact name)",
+      "real_boot_readings": {
+        "scaffold": {
+          "ok": true,
+          "exit": 0,
+          "root": "/tmp/mpd-extension-template-msW2Mw/run-home/.mpd/extensions/qa-template",
+          "templateId": "mpd-extension-template",
+          "templateEnabledFlagInRepo": false,
+          "sandboxEnabledFlag": true,
+          "copyFiles": [
+            "README.md",
+            "README.zh-CN.md",
+            "flows/qa-template-flow.json",
+            "mpd-ext.json",
+            "personas/qa-template-reviewer.md",
+            "server.mjs",
+            "skills/qa-template-skill/SKILL.md"
+          ],
+          "cliStdout": "[mpd-ext] scaffolded \"qa-template\" at /tmp/mpd-extension-template-msW2Mw/run-home/.mpd/extensions/qa-template\n  copied 7 file(s) from templates/mpd-extension\n  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)\n  next: bun scripts/mpd-ext.mjs validate /tmp/mpd-extension-template-msW2Mw/run-home/.mpd/extensions/qa-template",
+          "note": "the repo template is never modified: the copy is written into the sandbox HOME plane and only its `enabled` flag is flipped (the template ships enabled:false so it can never be discovered from the repo)"
+        },
+        "skill": {
+          "ok": true,
+          "called": true,
+          "succeeded": true,
+          "sawHeading": true,
+          "resultHead": "<skill_content name=\"qa-template-skill\">\n<skill_resources>\nBase directory for this skill: /tmp/mpd-extension-template-msW2Mw/run-home/.mpd/extensions/qa-template/skills/qa-template-skill\nResolve relat"
+        },
+        "flow": {
+          "ok": true,
+          "called": true,
+          "succeeded": true,
+          "sawFlowId": true,
+          "sawSkillCrossReference": true,
+          "resultHead": "qa-template flow (qa-template-flow, extension qa-template)\nThe qa-template extension's first flow. Replace this procedure with the real one, or delete the flows directory and the flows entry in mpd-ext.json.\nwhen to use: Use when a task nee"
+        },
+        "role": {
+          "ok": true,
+          "personaCalled": true,
+          "personaSucceeded": true,
+          "spawnCalled": true,
+          "spawnSucceeded": true,
+          "sawRoleName": true,
+          "childAnswered": true,
+          "personaHead": "persona qa-template reviewer (1358 chars):\nYou are the qa-template reviewer, a read-only role contributed by the\nqa-template extension. You exist to check a change against this\nextension's own contrac"
+        },
+        "mcp": {
+          "ok": true,
+          "tool": "mcp__qa-template__describe_extension",
+          "offeredInRequest": true,
+          "offeredInHeader": true,
+          "called": true,
+          "succeeded": true,
+          "servedManifest": true,
+          "servedOwnRoot": true,
+          "servedFourKinds": true,
+          "resultHead": "{\n  \"id\": \"qa-template\",\n  \"root\": \"/tmp/mpd-extension-template-msW2Mw/run-home/.mpd/extensions/qa-template\",\n  \"enabled\": true,\n  \"kinds\": [\n    \"skills\",\n    \"flows\",\n    \"mcp\",\n    \"roles\"\n  ]\n}",
+          "manifestHead": "{\n  \"apiVersion\": 1,\n  \"id\": \"qa-template\",\n  \"description\": \"The qa-template extension. Replace this sentence with what the extension contributes and when an agent should reach for it.\",\n  \"enabled\":"
+        },
+        "listed": {
+          "ok": true,
+          "sawCopy": true,
+          "resultHead": "mpd extensions: 2 (0 shadowed, 0 rejected)\n- qa-template [user/directory] enabled skills=1 flows=1 mcp=1 roles=1 (roles: qa-template reviewer)\n- mpd-ext-example [bundle/directory] disabled skills=1 flows=1 mcp=1 roles=0\n    not served: change-triage, change-triage-flow\n    pending contributes.mcp[0]"
+        },
+        "containment": {
+          "ok": true,
+          "exit": 0,
+          "durationMs": 7154,
+          "crashSignatures": [],
+          "offeredTemplateTools": [
+            "mcp__qa-template__describe_extension"
+          ],
+          "isolation": {
+            "ok": true,
+            "checked": 1,
+            "keys": [
+              "--tmp-mpd-extension-template-msW2Mw-ws--"
+            ]
+          }
+        },
+        "isolationFinal": {
+          "ok": true,
+          "checked": 1,
+          "keys": [
+            "--tmp-mpd-extension-template-msW2Mw-ws--"
+          ]
+        }
+      },
+      "first_run_failed_beside_original": "evidence/extensions/extension-template/2026-09-16T06-30-30.275Z",
+      "note": "the first real run is kept beside the fixed one: it went red on the MCP assertion because the copy's own server reports {id, root, enabled, kinds} rather than the raw manifest; the assertion was corrected to the observed shape (the copy's id + its OWN root + enabled + all four kinds)"
+    },
+    "vendor_repin": {
+      "file": "VENDOR_LOCK.json",
+      "entry": "assets.skills",
+      "method": "scripts/verify-vendor.mjs tree hashing (sorted relpath + per-file sha256 over LF-normalized bytes; node_modules/__pycache__/*.pyc skipped)",
+      "before": {
+        "fileCount": 317,
+        "treeSha": "7a48fdad90cc30f9c1e71009be216aeb8b2a1de797eb2bb1897032c41f6b51aa"
+      },
+      "after": {
+        "fileCount": 318,
+        "treeSha": "a8ba96b8108b2df3cce707e7b69d038f71514cea9e0c488683ba79012efc8d12"
+      },
+      "repin_count_in_wave": 1,
+      "source_prose_updated": "the corpus description now names extension-template alongside the other extension QA cases"
+    }
+  },
+  "gates": [
+    {
+      "command": "node scripts/verify-vendor.mjs",
+      "exit": 0,
+      "reading": "[verify-vendor] PASS after the single re-pin; RED before it, as expected (asset skills treeSha mismatch)"
+    },
+    {
+      "command": "bun scripts/mpd-ext.mjs --self-test",
+      "exit": 0,
+      "reading": "passed (41 checks)"
+    },
+    {
+      "command": "bun skills/dsh-qa/scripts/extension-lifecycle.mjs --self-test",
+      "exit": 0,
+      "reading": "ok, incl. packed predicate falsifiable (closed vs. three broken fixture trees)"
+    },
+    {
+      "command": "bun skills/dsh-qa/scripts/extension-mcp-bridge.mjs --self-test",
+      "exit": 0,
+      "reading": "ok, incl. the stderr flood and the cap it must exceed"
+    },
+    {
+      "command": "bun skills/dsh-qa/scripts/extension-template.mjs --self-test",
+      "exit": 0,
+      "reading": "ok: shipped template loads with all four kinds + ships disabled + scaffold emits the four-kind copy this case boots + SKILL.md row present"
+    },
+    {
+      "command": "bun skills/dsh-qa/scripts/extension-isolation.mjs --self-test",
+      "exit": 0,
+      "reading": "ok (shared helper unchanged, still green)"
+    },
+    {
+      "command": "bun skills/dsh-qa/scripts/extension-template.mjs",
+      "exit": 0,
+      "reading": "ok=true; all four kinds live from the session log; isolation ok"
+    },
+    {
+      "command": "bun skills/dsh-qa/scripts/extension-mcp-bridge.mjs",
+      "exit": 0,
+      "reading": "ok=true; stderr arm cap=2000, floodLength=3053, reportedTailLength=2000, headDropped=true, tailKept=true"
+    },
+    {
+      "command": "bun skills/dsh-qa/scripts/extension-lifecycle.mjs",
+      "exit": 0,
+      "reading": "ok=true; packed ok=true with negativeControl.falsifiable=true"
+    }
+  ],
+  "evidence_dirs": [
+    "evidence/extensions/extension-lifecycle/2026-09-16T06-31-40.371Z",
+    "evidence/extensions/extension-mcp-bridge/2026-09-16T06-31-25.127Z",
+    "evidence/extensions/extension-template/2026-09-16T06-31-12.171Z",
+    "evidence/extensions/extension-template/2026-09-16T06-30-30.275Z"
+  ]
+}

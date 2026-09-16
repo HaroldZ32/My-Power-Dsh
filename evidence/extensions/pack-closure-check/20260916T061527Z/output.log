@@ -1,0 +1,197 @@
+# t6 evidence - F11 packer-closure check - evidence/extensions/pack-closure-check/20260916T061527Z
+
+===== raw/package.json.before =====
+{
+  "name": "@mpd-dsh/mpd",
+  "private": true,
+  "type": "module",
+  "version": "0.9.1",
+  "description": "my-power-dsh: a DeepSeek Harness plugin bundle (@mpd-dsh/mpd) carrying the specialist roster and the model-chain vocabulary on DSH-native plumbing (upstream baseline: oh-my-openagent 8c57e46, pinned)",
+  "main": "packages/mpd-bundle-plugin/dist/index.js",
+  "exports": {
+    ".": "./packages/mpd-bundle-plugin/dist/index.js",
+    "./package.json": "./package.json",
+    "./packages/*": "./packages/*",
+    "./skills/*": "./skills/*",
+    "./presets/*": "./presets/*",
+    "./extensions/*": "./extensions/*",
+    "./client": "./packages/mpd-bundle-plugin/client.js"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./packages/mpd-bundle/cordis.patch.yml"
+    },
+    "client": {
+      "inject": [],
+      "platform": "web"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsgo --noEmit",
+    "test": "bun test packages",
+    "test:fast": "bun test packages --test-timeout 30000",
+    "test:qa": "for f in skills/dsh-qa/scripts/*.mjs; do echo \"[test:qa] $f\"; bun \"$f\" --self-test || { echo \"[test:qa] FAILED: $f\"; exit 1; }; done; bun scripts/mpd-ext.mjs --self-test || { echo \"[test:qa] FAILED: scripts/mpd-ext.mjs --self-test\"; exit 1; }; bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example || { echo \"[test:qa] FAILED: scripts/mpd-ext.mjs validate extensions/mpd-ext-example\"; exit 1; }; echo \"[test:qa] all self-tests passed\"",
+    "test:qa:strict": "for f in skills/dsh-qa/scripts/*.mjs; do echo \"[test:qa:strict] $f\"; bun \"$f\" --self-test --no-skip || { echo \"[test:qa:strict] FAILED: $f\"; exit 1; }; done; echo \"[test:qa:strict] all self-tests passed with no skips\"",
+    "test:qa:all": "for c in agent-teams-adopt agent-teams-dispatch agent-teams-sidebar bundle-lifecycle codegraph-smoke dual-track-smoke extension-lifecycle extension-mcp-bridge mcp-call memory-smoke mount-assert plan-c-smoke preset-conformance preset-register relocate-smoke session-start-team skill-catalog-probe software-smoke team-route-rewire tool-output-validation ultrawork-smoke vision-smoke web-client-adapt web-settings-bridge workmate-library workmate-team-member; do echo \"[test:qa:all] $c\"; bun \"skills/dsh-qa/scripts/$c.mjs\" --no-skip || { echo \"[test:qa:all] FAILED: $c\"; exit 1; }; done; bun scripts/mpd-ext.mjs --self-test || { echo \"[test:qa:all] FAILED: scripts/mpd-ext.mjs --self-test\"; exit 1; }; bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example || { echo \"[test:qa:all] FAILED: scripts/mpd-ext.mjs validate extensions/mpd-ext-example\"; exit 1; }; echo \"[test:qa:all] real-lane subset passed (real headless boot and/or live provider)\"",
+    "verify:vendor": "node scripts/verify-vendor.mjs",
+    "verify:rows": "node scripts/verify-rows-parity.mjs",
+    "verify:docs": "node scripts/verify-docs-parity.mjs",
+    "bootstrap": "node scripts/bootstrap.mjs",
+    "evidence:mount": "node skills/dsh-qa/scripts/mount-assert.mjs --expect \"name: '@deepseek-ai/dsh-llm'\"",
+    "pack": "node scripts/pack-mpd.mjs"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "optionalDependencies": {
+    "@ast-grep/cli": "0.45.2",
+    "@colbymchenry/codegraph": "1.5.0",
+    "@code-yeongyu/comment-checker": "0.8.0"
+  },
+  "devDependencies": {
+    "@typescript/native-preview": "^7.0.0-dev.20260707.2",
+    "bun-types": "^1.4.0"
+  }
+}
+
+===== raw/package.json.after =====
+{
+  "name": "@mpd-dsh/mpd",
+  "private": true,
+  "type": "module",
+  "version": "0.9.1",
+  "description": "my-power-dsh: a DeepSeek Harness plugin bundle (@mpd-dsh/mpd) carrying the specialist roster and the model-chain vocabulary on DSH-native plumbing (upstream baseline: oh-my-openagent 8c57e46, pinned)",
+  "main": "packages/mpd-bundle-plugin/dist/index.js",
+  "exports": {
+    ".": "./packages/mpd-bundle-plugin/dist/index.js",
+    "./package.json": "./package.json",
+    "./packages/*": "./packages/*",
+    "./skills/*": "./skills/*",
+    "./presets/*": "./presets/*",
+    "./extensions/*": "./extensions/*",
+    "./client": "./packages/mpd-bundle-plugin/client.js"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./packages/mpd-bundle/cordis.patch.yml"
+    },
+    "client": {
+      "inject": [],
+      "platform": "web"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsgo --noEmit",
+    "test": "bun test packages",
+    "test:fast": "bun test packages --test-timeout 30000",
+    "test:qa": "for f in skills/dsh-qa/scripts/*.mjs; do echo \"[test:qa] $f\"; bun \"$f\" --self-test || { echo \"[test:qa] FAILED: $f\"; exit 1; }; done; bun scripts/mpd-ext.mjs --self-test || { echo \"[test:qa] FAILED: scripts/mpd-ext.mjs --self-test\"; exit 1; }; bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example || { echo \"[test:qa] FAILED: scripts/mpd-ext.mjs validate extensions/mpd-ext-example\"; exit 1; }; echo \"[test:qa] all self-tests passed\"",
+    "test:qa:strict": "for f in skills/dsh-qa/scripts/*.mjs; do echo \"[test:qa:strict] $f\"; bun \"$f\" --self-test --no-skip || { echo \"[test:qa:strict] FAILED: $f\"; exit 1; }; done; echo \"[test:qa:strict] all self-tests passed with no skips\"",
+    "test:qa:all": "for c in agent-teams-adopt agent-teams-dispatch agent-teams-sidebar bundle-lifecycle codegraph-smoke dual-track-smoke extension-lifecycle extension-mcp-bridge extension-template mcp-call memory-smoke mount-assert plan-c-smoke preset-conformance preset-register relocate-smoke session-start-team skill-catalog-probe software-smoke team-route-rewire tool-output-validation ultrawork-smoke vision-smoke web-client-adapt web-settings-bridge workmate-library workmate-team-member; do echo \"[test:qa:all] $c\"; bun \"skills/dsh-qa/scripts/$c.mjs\" --no-skip || { echo \"[test:qa:all] FAILED: $c\"; exit 1; }; done; bun scripts/mpd-ext.mjs --self-test || { echo \"[test:qa:all] FAILED: scripts/mpd-ext.mjs --self-test\"; exit 1; }; bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example || { echo \"[test:qa:all] FAILED: scripts/mpd-ext.mjs validate extensions/mpd-ext-example\"; exit 1; }; bun scripts/mpd-ext.mjs validate templates/mpd-extension || { echo \"[test:qa:all] FAILED: scripts/mpd-ext.mjs validate templates/mpd-extension\"; exit 1; }; node scripts/verify-pack-closure.mjs || { echo \"[test:qa:all] FAILED: scripts/verify-pack-closure.mjs\"; exit 1; }; echo \"[test:qa:all] real-lane subset passed (real headless boot and/or live provider)\"",
+    "verify:vendor": "node scripts/verify-vendor.mjs",
+    "verify:rows": "node scripts/verify-rows-parity.mjs",
+    "verify:docs": "node scripts/verify-docs-parity.mjs",
+    "bootstrap": "node scripts/bootstrap.mjs",
+    "evidence:mount": "node skills/dsh-qa/scripts/mount-assert.mjs --expect \"name: '@deepseek-ai/dsh-llm'\"",
+    "pack": "node scripts/pack-mpd.mjs"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "optionalDependencies": {
+    "@ast-grep/cli": "0.45.2",
+    "@colbymchenry/codegraph": "1.5.0",
+    "@code-yeongyu/comment-checker": "0.8.0"
+  },
+  "devDependencies": {
+    "@typescript/native-preview": "^7.0.0-dev.20260707.2",
+    "bun-types": "^1.4.0"
+  }
+}
+
+===== raw/no-write-proof.out =====
+## git status --porcelain (my inScope paths)
+ M package.json
+?? scripts/verify-pack-closure.mjs
+
+scripts/pack-mpd.mjs: UNCHANGED vs HEAD (READ-ONLY respected)
+
+## sha256
+8beb91c3f62640b5b72ad383d1d28809435a77fb50f9291db6b5412bada9458b  scripts/pack-mpd.mjs
+9decb0830f327f6d220e7738aafb9237cc0cc318f2356c66433d5b10b61135df  scripts/verify-pack-closure.mjs
+
+===== raw/package-json-diff-check.out =====
+script keys before=12 after=12
+keys identical (no add/remove): true
+test:qa unchanged: true
+test:qa:strict unchanged: true
+changed script entries: ["test:qa:all"]
+
+===== raw/check.out =====
+[verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; allowlist carries no templates/ entry
+
+===== raw/self-test.out =====
+[verify-pack-closure] self-test PASS - positive-control (real tree, exit 0) (exit 0) :: [verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; allowlist carries no templates/ entry
+[verify-pack-closure] self-test PASS - negative-control (F-T7-1 omission, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (inverse drift, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (two offenders, both named) (exit 1) :: [verify-pack-closure] FAIL - 2 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (zero-subject degraded run, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 18 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (templates path literal, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s)
+[verify-pack-closure] self-test PASS: 6/6 arms
+
+===== raw/neg-omission.out =====
+[verify-pack-closure] FAIL - 1 closure violation(s)
+  OMISSION [mpd-team-watchdog-plugin] - the bundle patch mounts packages/mpd-team-watchdog-plugin/dist/index.js but the packer's PLUGIN_PKGS/MCP_PKGS does not list mpd-team-watchdog-plugin
+  offending packages: mpd-team-watchdog-plugin
+  packer: /root/dshProj/my-power-dsh/evidence/extensions/pack-closure-check/20260916T061527Z/raw/packer-omitting-watchdog.mjs
+  packages dir: /root/dshProj/my-power-dsh/packages
+  patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml
+
+===== raw/neg-two.out =====
+[verify-pack-closure] FAIL - 2 closure violation(s)
+  OMISSION [mpd-team-watchdog-plugin] - the bundle patch mounts packages/mpd-team-watchdog-plugin/dist/index.js but the packer's PLUGIN_PKGS/MCP_PKGS does not list mpd-team-watchdog-plugin
+  OMISSION [mpd-tui-plugin] - the bundle patch mounts packages/mpd-tui-plugin/dist/index.js but the packer's PLUGIN_PKGS/MCP_PKGS does not list mpd-tui-plugin
+  offending packages: mpd-team-watchdog-plugin, mpd-tui-plugin
+  packer: /root/dshProj/my-power-dsh/evidence/extensions/pack-closure-check/20260916T061527Z/raw/packer-omitting-two.mjs
+  packages dir: /root/dshProj/my-power-dsh/packages
+  patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml
+
+===== raw/neg-inverse.out =====
+[verify-pack-closure] FAIL - 1 closure violation(s)
+  INVERSE [mpd-phantom-plugin] - the packer lists mpd-phantom-plugin but packages/mpd-phantom-plugin does not exist
+  offending packages: mpd-phantom-plugin
+  packer: /root/dshProj/my-power-dsh/evidence/extensions/pack-closure-check/20260916T061527Z/raw/packer-with-phantom-entry.mjs
+  packages dir: /root/dshProj/my-power-dsh/packages
+  patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml
+
+===== raw/neg-templates.out =====
+[verify-pack-closure] FAIL - 1 closure violation(s)
+  TEMPLATES - /root/dshProj/my-power-dsh/evidence/extensions/pack-closure-check/20260916T061527Z/raw/packer-referencing-templates.mjs:65 carries a `templates` path literal - the generic template must never be packed
+  packer: /root/dshProj/my-power-dsh/evidence/extensions/pack-closure-check/20260916T061527Z/raw/packer-referencing-templates.mjs
+  packages dir: /root/dshProj/my-power-dsh/packages
+  patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml
+
+===== raw/determinism.out =====
+3 check runs + 2 self-test runs byte-identical
+
+===== raw/json-parse.out =====
+package.json parses
+
+===== raw/rows-parity.out =====
+[verify-rows-parity] ok: 25 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)
+
+===== raw/test-qa-all-wiring.out =====
+extension-template lane entry: true
+validate templates/mpd-extension: true
+node scripts/verify-pack-closure.mjs: true
+
+===== exit codes =====
+check = 0
+determinism = 0
+json-parse = 0
+neg-inverse = 1
+neg-omission = 1
+neg-templates = 1
+neg-two = 1
+rows-parity = 0
+self-test = 0
+test-qa-all-wiring = 0

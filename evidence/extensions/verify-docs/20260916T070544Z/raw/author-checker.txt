@@ -1,0 +1,20 @@
+docs-claims checker (t21: existence + range + CONTENT claims + negative control)
+repo /root/dshProj/my-power-dsh
+
+  ok   citations:docs/extension-authoring-guide.md — 49 citation(s) (checked 49: path 41, dir 1, command 7; pending 0, illustrative 0), 0 unresolved
+  ok   citations:docs/extension-authoring-guide.zh-CN.md — 49 citation(s) (checked 49: path 41, dir 1, command 7; pending 0, illustrative 0), 0 unresolved
+  ok   citations:EXTENSIONS-FOR-AGENTS.md — 51 citation(s) (checked 47: path 34, dir 1, command 12; pending 0, illustrative 4), 0 unresolved
+  ok   citations:docs/extension-adaptation-report.md — 37 citation(s) (checked 37: path 24, dir 13, command 0; pending 0, illustrative 0), 0 unresolved
+  ok   citations:docs/extension-adaptation-report.zh-CN.md — 37 citation(s) (checked 37: path 24, dir 13, command 0; pending 0, illustrative 0), 0 unresolved
+  ok   annotations:pending — none
+  ok   annotations:illustrative — 4 illustrative citation(s) (extension-root-relative, not repo paths): EXTENSIONS-FOR-AGENTS.md:64 path personas/for-agents-skeleton-reviewer.md — the skeleton's own extension-root-relative asset paths | EXTENSIONS-FOR-AGENTS.md:89 path skills/for-agents-skeleton-skill/SKILL.md — paths inside the extension root, not repo paths | EXTENSIONS-FOR-AGENTS.md:90 path flows/for-agents-skeleton-flow.json — paths inside the extension root, not repo paths | EXTENSIONS-FOR-AGENTS.md:91 path personas/for-agents-skeleton-reviewer.md — paths inside the extension root, not repo paths
+  ok   content:anchors — 43 anchored citation(s) verified against their claimed symbol/phrase on the cited line; 0 anchor(s) without a content claim
+  ok   guide-heading-tree — 10 EN heading(s) vs 10 zh-CN heading(s), levels identical
+  ok   split-headings — no heading text is shared between the human guide and the agent contract
+  ok   split-prose — no prose line (>= 60 chars, outside code fences) is reused
+  ok   skeleton-validates — the extracted manifest + the template's four assets: validate exit 0;   contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  ok   gate:docs-parity — node scripts/verify-docs-parity.mjs — exit 0; skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up | [verify-docs-parity] root=/root/dshProj/
+  ok   gate:example-validates — bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example — exit 0;   pending contributes.mcp[0]: pending: server "lint-mcp" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the run
+  ok   gate:cli-self-test — bun scripts/mpd-ext.mjs --self-test — exit 0;   ok no command prints usage or fails | [mpd-ext] --self-test passed (52 checks)
+
+[docs-claims] 15/15 checks passed, 0 failed, 219 citation(s) resolved, 0 pending, 4 illustrative

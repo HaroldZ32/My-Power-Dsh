@@ -1,0 +1,129 @@
+{
+  "task": "t21 (upgraded from the t9 checker: CONTENT claims + negative control)",
+  "attempt_id": "d1cf78ee-43ed-4ec3-8bdc-5d1aee8c6740",
+  "subjects": [
+    "docs/extension-authoring-guide.md",
+    "docs/extension-authoring-guide.zh-CN.md",
+    "EXTENSIONS-FOR-AGENTS.md",
+    "docs/extension-adaptation-report.md",
+    "docs/extension-adaptation-report.zh-CN.md"
+  ],
+  "citations_checked": 219,
+  "anchored_citations_content_verified": 43,
+  "anchored_citations_without_a_claim": 0,
+  "citations_pending": 0,
+  "citations_illustrative": 4,
+  "pending": [],
+  "illustrative": [
+    "EXTENSIONS-FOR-AGENTS.md:64 path personas/for-agents-skeleton-reviewer.md — the skeleton's own extension-root-relative asset paths",
+    "EXTENSIONS-FOR-AGENTS.md:89 path skills/for-agents-skeleton-skill/SKILL.md — paths inside the extension root, not repo paths",
+    "EXTENSIONS-FOR-AGENTS.md:90 path flows/for-agents-skeleton-flow.json — paths inside the extension root, not repo paths",
+    "EXTENSIONS-FOR-AGENTS.md:91 path personas/for-agents-skeleton-reviewer.md — paths inside the extension root, not repo paths"
+  ],
+  "gates": [
+    {
+      "id": "docs-parity",
+      "command": "node scripts/verify-docs-parity.mjs",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up | [verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=36 failed=0 violations=0 exempt=16 — PASS",
+      "raw": "raw/gate-docs-parity.txt"
+    },
+    {
+      "id": "example-validates",
+      "command": "bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "  pending contributes.mcp[0]: pending: server \"lint-mcp\" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state | [mpd-ext] ok",
+      "raw": "raw/gate-validate-example.txt"
+    },
+    {
+      "id": "cli-self-test",
+      "command": "bun scripts/mpd-ext.mjs --self-test",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "  ok no command prints usage or fails | [mpd-ext] --self-test passed (52 checks)",
+      "raw": "raw/gate-selftest.txt"
+    }
+  ],
+  "checks": [
+    {
+      "id": "citations:docs/extension-authoring-guide.md",
+      "status": "passed",
+      "detail": "49 citation(s) (checked 49: path 41, dir 1, command 7; pending 0, illustrative 0), 0 unresolved"
+    },
+    {
+      "id": "citations:docs/extension-authoring-guide.zh-CN.md",
+      "status": "passed",
+      "detail": "49 citation(s) (checked 49: path 41, dir 1, command 7; pending 0, illustrative 0), 0 unresolved"
+    },
+    {
+      "id": "citations:EXTENSIONS-FOR-AGENTS.md",
+      "status": "passed",
+      "detail": "51 citation(s) (checked 47: path 34, dir 1, command 12; pending 0, illustrative 4), 0 unresolved"
+    },
+    {
+      "id": "citations:docs/extension-adaptation-report.md",
+      "status": "passed",
+      "detail": "37 citation(s) (checked 37: path 24, dir 13, command 0; pending 0, illustrative 0), 0 unresolved"
+    },
+    {
+      "id": "citations:docs/extension-adaptation-report.zh-CN.md",
+      "status": "passed",
+      "detail": "37 citation(s) (checked 37: path 24, dir 13, command 0; pending 0, illustrative 0), 0 unresolved"
+    },
+    {
+      "id": "annotations:pending",
+      "status": "passed",
+      "detail": "none"
+    },
+    {
+      "id": "annotations:illustrative",
+      "status": "passed",
+      "detail": "4 illustrative citation(s) (extension-root-relative, not repo paths): EXTENSIONS-FOR-AGENTS.md:64 path personas/for-agents-skeleton-reviewer.md — the skeleton's own extension-root-relative asset paths | EXTENSIONS-FOR-AGENTS.md:89 path skills/for-agents-skeleton-skill/SKILL.md — paths inside the extension root, not repo paths | EXTENSIONS-FOR-AGENTS.md:90 path flows/for-agents-skeleton-flow.json — paths inside the extension root, not repo paths | EXTENSIONS-FOR-AGENTS.md:91 path personas/for-agents-skeleton-reviewer.md — paths inside the extension root, not repo paths"
+    },
+    {
+      "id": "content:anchors",
+      "status": "passed",
+      "detail": "43 anchored citation(s) verified against their claimed symbol/phrase on the cited line; 0 anchor(s) without a content claim"
+    },
+    {
+      "id": "guide-heading-tree",
+      "status": "passed",
+      "detail": "10 EN heading(s) vs 10 zh-CN heading(s), levels identical"
+    },
+    {
+      "id": "split-headings",
+      "status": "passed",
+      "detail": "no heading text is shared between the human guide and the agent contract"
+    },
+    {
+      "id": "split-prose",
+      "status": "passed",
+      "detail": "no prose line (>= 60 chars, outside code fences) is reused"
+    },
+    {
+      "id": "skeleton-validates",
+      "status": "passed",
+      "detail": "the extracted manifest + the template's four assets: validate exit 0;   contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)"
+    },
+    {
+      "id": "gate:docs-parity",
+      "status": "passed",
+      "detail": "node scripts/verify-docs-parity.mjs — exit 0; skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up | [verify-docs-parity] root=/root/dshProj/"
+    },
+    {
+      "id": "gate:example-validates",
+      "status": "passed",
+      "detail": "bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example — exit 0;   pending contributes.mcp[0]: pending: server \"lint-mcp\" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the run"
+    },
+    {
+      "id": "gate:cli-self-test",
+      "status": "passed",
+      "detail": "bun scripts/mpd-ext.mjs --self-test — exit 0;   ok no command prints usage or fails | [mpd-ext] --self-test passed (52 checks)"
+    }
+  ],
+  "failed": [],
+  "passed": 15,
+  "total": 15
+}

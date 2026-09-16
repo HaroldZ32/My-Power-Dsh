@@ -1,0 +1,128 @@
+{
+  "ok": false,
+  "sandbox": "/tmp/mpd-c1-FKrJiT",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "bundleRow": {
+      "ok": true,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-headless"
+      ]
+    },
+    "override": {
+      "ok": true,
+      "hasPatch": true
+    },
+    "compose": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "teamState": {
+      "ok": true,
+      "teamIds": [
+        "c1qa"
+      ],
+      "inbox": [
+        [
+          "captain.jsonl"
+        ]
+      ],
+      "teamJson": [
+        {
+          "name": "c1qa",
+          "id": "c1qa",
+          "description": "C1 adoption QA",
+          "captainSessionId": "session-6c479948-d282-46a0-9ce8-57151d987c73",
+          "createdAt": 1789544002579,
+          "members": [
+            {
+              "id": "e0c3611a-f8e5-4f52-a89f-67a34f132ebc",
+              "name": "librarian",
+              "role": "researcher",
+              "provider": "deepseek-official",
+              "model": "deepseek-flash",
+              "reasoningEffort": "max",
+              "joinedAt": 1789544003924,
+              "status": "removed"
+            },
+            {
+              "id": "3a0e3aec-ecf1-4ce5-953d-fc497ed77071",
+              "name": "oracle",
+              "role": "reviewer",
+              "provider": "deepseek-official",
+              "model": "deepseek-flash",
+              "reasoningEffort": "max",
+              "joinedAt": 1789544003963,
+              "status": "removed"
+            }
+          ],
+          "tasks": [
+            {
+              "id": "t1",
+              "subject": "Summarize the QA goal in one line",
+              "description": "Read the team goal (\"C1 adoption QA\") and write a single-sentence summary of it as your task output. Keep it to one line. Do not edit any files.",
+              "status": "completed",
+              "assignee": "librarian",
+              "dependencies": [],
+              "attempt": 1,
+              "createdAt": 1789544005232,
+              "updatedAt": 1789544014279,
+              "kind": "work",
+              "attemptId": "681c3cdc-a356-429c-83e3-6bc7c515307b",
+              "reassigning": false,
+              "output": "C1 adoption QA verifies that the C1 changes are correctly adopted and working end-to-end through hands-on validation."
+            },
+            {
+              "id": "t2",
+              "subject": "Approve or reject the summary",
+              "description": "Wait for t1 to complete, read librarian's one-line summary, and state in your output whether you APPROVE or REJECT it, with a one-sentence reason. Do not edit any files.",
+              "status": "completed",
+              "assignee": "oracle",
+              "dependencies": [
+                "t1"
+              ],
+              "attempt": 1,
+              "createdAt": 1789544007505,
+              "updatedAt": 1789544028416,
+              "kind": "work",
+              "attemptId": "525df8ca-b998-4896-a125-0730974cdc45",
+              "reassigning": false,
+              "output": "APPROVE — librarian's t1 summary (\"C1 adoption QA verifies that the C1 changes are correctly adopted and working end-to-end through hands-on validation.\") accurately and concisely captures the team goal \"C1 adoption QA\": it names the subject (C1 changes), the adoption criterion, and the hands-on end-to-end verification mechanism, so it is safe to use as the shared QA objective. Reason: it is one line, unambiguous, and scopes downstream QA work correctly. No files were edited; evidence = t1 output as shown in team state (t1 completed, attempt 1)."
+            }
+          ],
+          "taskSeq": 2
+        }
+      ]
+    },
+    "archive": {
+      "ok": true,
+      "archiveIds": [
+        "c1qa"
+      ]
+    },
+    "taskTerminal": {
+      "ok": true,
+      "tasks": 2,
+      "taskTerminal": true
+    },
+    "webInstaller": {
+      "ok": true,
+      "exit": 0
+    },
+    "webRoute": {
+      "ok": false,
+      "status": 401,
+      "body": "{\"error\":\"unauthorized\"}",
+      "webLog": "/root/dshProj/my-power-dsh/evidence/plan-c/c1-team/2026-09-16T07-33-03.770Z/web.log"
+    }
+  },
+  "totalSteps": 10
+}

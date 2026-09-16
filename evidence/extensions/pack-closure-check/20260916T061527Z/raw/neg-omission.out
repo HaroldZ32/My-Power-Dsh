@@ -1,0 +1,6 @@
+[verify-pack-closure] FAIL - 1 closure violation(s)
+  OMISSION [mpd-team-watchdog-plugin] - the bundle patch mounts packages/mpd-team-watchdog-plugin/dist/index.js but the packer's PLUGIN_PKGS/MCP_PKGS does not list mpd-team-watchdog-plugin
+  offending packages: mpd-team-watchdog-plugin
+  packer: /root/dshProj/my-power-dsh/evidence/extensions/pack-closure-check/20260916T061527Z/raw/packer-omitting-watchdog.mjs
+  packages dir: /root/dshProj/my-power-dsh/packages
+  patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml

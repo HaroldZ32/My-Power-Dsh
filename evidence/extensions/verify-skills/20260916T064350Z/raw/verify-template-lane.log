@@ -1,0 +1,10 @@
+verify-template-lane — lane evidence dir /root/dshProj/my-power-dsh/evidence/extensions/extension-template/2026-09-16T06-44-38.506Z
+  ok   container-decoded — 25 zstd frame(s) -> 51 record(s); tornStart=undefined
+  ok   claim-skill-load — callIds=["call_template_1"] succeeded=true head="<skill_content name=\"qa-template-skill\">\n<skill_resources>\nBase directory for this skill: "
+  ok   claim-flow — callIds=["call_template_2"] succeeded=true head="qa-template flow (qa-template-flow, extension qa-template)\nThe qa-template extension's fir"
+  ok   claim-role-persona — callIds=["call_template_3"] succeeded=true head="persona qa-template reviewer (1358 chars):\nYou are the qa-template reviewer, a read-only r"
+  ok   claim-role-spawn — callIds=["call_template_4"] succeeded=true markerSeen=true
+  ok   claim-mcp-tool-call — callIds=["call_template_5"] succeeded=true reason="" head="{\n  \"id\": \"qa-template\",\n  \"root\": \"/tmp/mpd-extension-template-fCsF3O/run-home/.mpd/extensions/qa-template\",\n  \"enabled"
+  ok   claim-mcp-tool-offered — request/header tools include mcp__qa-template__describe_extension: true; offered count=100
+  ok   claim-ext-list — succeeded=true
+  ok   log-not-vacuous — 51 records, 100 tools offered

@@ -1,0 +1,66 @@
+# t24 evidence - repeat-boot insurance: is the adapter fallback reachable on a correctly ordered tree?
+# utc: 20260916T064530Z   HEAD: 1f38e3c1b8149cecc68f54fae1979f56e1ff2b0f
+
+===== driver progress log =====
+[06:49:28Z] driver start: repo=/root/dshProj/my-power-dsh runs=6 wait=150s
+[06:49:28Z] HEAD=1f38e3c1b8149cecc68f54fae1979f56e1ff2b0f
+[06:49:28Z] src sha256: dd3bdd00579d8d7aa56a70cb18af6a0bfd4ce3bae400c730d0f35bc40f662ec0  /root/dshProj/my-power-dsh/packages/mpd-ext-plugin/src/index.ts 9a54bf7d6620a2d437ebafd15bda5f7592e9e1cce2d997fe2c6170a71d6ab18c  /root/dshProj/my-power-dsh/packages/mpd-roles-plugin/src/index.ts 
+[06:49:28Z] dist sha256: 0ebad6573abac96a5e0599208ba1d948c5e6ff315b5f47671ebfe82939acba55  /root/dshProj/my-power-dsh/packages/mpd-ext-plugin/dist/index.js 22595b921903286873855185bbf05a5a06aba8d80201eadcb036d174d4778deb  /root/dshProj/my-power-dsh/packages/mpd-roles-plugin/dist/index.js 
+[06:49:28Z] credentials copied into the sandbox: .credentials.yaml settings.yaml
+[06:49:32Z] install exit=0 (dsh plugin --profile rp add <repo>)
+rp
+[06:49:32Z] pristine tree entries: 21
+[06:49:39Z] run 1: both-summary-lines=1 elapsed=6.0s adapterIdentity-lines=2 fallback-lines=0
+[06:49:45Z] run 2: both-summary-lines=1 elapsed=6.0s adapterIdentity-lines=2 fallback-lines=0
+[06:49:51Z] run 3: both-summary-lines=1 elapsed=6.0s adapterIdentity-lines=2 fallback-lines=0
+[06:49:57Z] run 4: both-summary-lines=1 elapsed=6.0s adapterIdentity-lines=2 fallback-lines=0
+[06:50:03Z] run 5: both-summary-lines=1 elapsed=6.0s adapterIdentity-lines=2 fallback-lines=0
+[06:50:09Z] run 6: both-summary-lines=1 elapsed=6.0s adapterIdentity-lines=2 fallback-lines=0
+[06:50:09Z] driver done
+
+===== per-boot raw readings (the ONLY adapterIdentity / ADAPTER FALLBACK lines in each boot) =====
+--- logs/boot-1.log  (9 lines) ---
+1:[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+5:[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+6:[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+--- logs/boot-2.log  (9 lines) ---
+1:[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+5:[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+6:[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+--- logs/boot-3.log  (9 lines) ---
+1:[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+5:[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+6:[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+--- logs/boot-4.log  (9 lines) ---
+1:[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+5:[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+6:[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+--- logs/boot-5.log  (9 lines) ---
+1:[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+5:[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+6:[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+--- logs/boot-6.log  (9 lines) ---
+1:[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+5:[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+6:[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+
+===== FREQUENCY =====
+  0/6 boots took the fallback branch; 6/6 clean; 2 adapterIdentity readings per boot; 0 ADAPTER FALLBACK lines total
+
+===== row apply order per boot =====
+  boot-1: adapter=line 1, ext=line 5, roles=line 6
+  boot-2: adapter=line 1, ext=line 5, roles=line 6
+  boot-3: adapter=line 1, ext=line 5, roles=line 6
+  boot-4: adapter=line 1, ext=line 5, roles=line 6
+  boot-5: adapter=line 1, ext=line 5, roles=line 6
+  boot-6: adapter=line 1, ext=line 5, roles=line 6
+
+===== install (once, into the pristine sandbox) =====
+   │                                         │
+   ╰─────────────────────────────────────────╯
+
+
+===== parse run =====
+[t24-parse] run 6: ext=adapterIdentity=mounted:mpdDsh roles=adapterIdentity=mounted:mpdDsh adapterIdentity-lines=2 ADAPTER-FALLBACK-lines=0
+[t24-parse] valid boots: 6/6; fallback: 0/6; clean: 6/6
+[t24-parse] wrote /root/dshProj/my-power-dsh/evidence/extensions/boot-repeat/20260916T064530Z/result.json

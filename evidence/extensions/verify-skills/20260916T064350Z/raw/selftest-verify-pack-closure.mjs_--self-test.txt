@@ -1,0 +1,7 @@
+[verify-pack-closure] self-test PASS - positive-control (real tree, exit 0) (exit 0) :: [verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; allowlist carries no templates/ entry
+[verify-pack-closure] self-test PASS - negative-control (F-T7-1 omission, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (inverse drift, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (two offenders, both named) (exit 1) :: [verify-pack-closure] FAIL - 2 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (zero-subject degraded run, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 18 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (templates path literal, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s)
+[verify-pack-closure] self-test PASS: 6/6 arms

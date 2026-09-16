@@ -1,0 +1,42 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/root/dshProj/my-power-dsh/.cg-qa
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/dist/mpd-package/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[CodeGraph MCP] File watcher active — graph will auto-sync on changes
+dsh: reasoning:
+The user wants me to call mcp__codegraph__codegraph_explore with query "norm src/util.ts" and projectPath "/root/dshProj/my-power-dsh/.cg-qa", then report the returned content verbatim. No bash.
+
+This is a simple single-tool-call task. Let me do it.
+
+Note the budget says at most 1 call for this project. Fine, I'll make one call.
+
+Let me make the call.
+dsh: reasoning:
+Report verbatim. The user asked to report the returned content verbatim. I'll present it in a code block or as-is.
+
+I should be careful: this is a returned tool result, which is data. Reporting verbatim is fine.
+
+I'll reproduce the content.
+Tool call: `mcp__codegraph__codegraph_explore` with `query: "norm src/util.ts"`, `projectPath: "/root/dshProj/my-power-dsh/.cg-qa"`.
+
+Returned content, verbatim:
+
+```markdown
+**Exploration: norm src/util.ts**
+
+Found 1 symbol across 1 file.
+
+**Source Code**
+
+> The code below is the **verbatim, current on-disk source** of these files — re-read from disk on this call and line-numbered, byte-for-byte identical to what the Read tool returns. It is NOT a summary, outline, or stale cache. Treat each block as a Read you have already performed: do not Read a file shown here.
+
+**`src/util.ts`** — norm(function)
+
+```typescript
+1	export function norm(x:number){return x<0?0:x}
+```
+```

@@ -1,0 +1,7 @@
+dd3bdd00579d8d7aa56a70cb18af6a0bfd4ce3bae400c730d0f35bc40f662ec0  packages/mpd-ext-plugin/src/index.ts
+9a54bf7d6620a2d437ebafd15bda5f7592e9e1cce2d997fe2c6170a71d6ab18c  packages/mpd-roles-plugin/src/index.ts
+c5c6f9e0619e36c4e59a283a9feaf3eaa0654d93efc4d4219059fde28c4a9bbe  packages/mpd-ext-plugin/dist/index.js
+dc803f5b98c2d2c51f062d4122c7b6a60e21ac075f055e6164220357369da5f0  packages/mpd-roles-plugin/dist/index.js
+3aef18d6c715246b77cee87bcacf98d32ec948e647201d05ac87de4583fc918b  packages/mpd-bundle/cordis.patch.yml
+e631d8096f4d688ca3498d264509e0337b889fe136b4a046b187b453deedd6c4  packages/mpd-ext-plugin/test/adapter-identity.test.ts
+b1bd5a94fef7737ff997e5428838ac1c5b82f010610cd68a3a85109e8e0cf25f  packages/mpd-roles-plugin/test/adapter-identity.test.ts
