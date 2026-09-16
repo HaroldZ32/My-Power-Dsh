@@ -20,8 +20,10 @@ Cordis 插件行（`mpd-tui`），其模块说明符由 bundle patch 持有：
 | 状态行 | `ctx.tuiStatus` | 提示框上方一个键控的 `mpd` 贡献：`mpd: team … · boulder … · plans … · workmates …` |
 | 条目渲染器 | `ctx.tuiRenderers` | 本包的 log-only 会话事件（`agent-teams/*`、`mpd-tui/board-opened`）渲染为纯文本行，实时与回放同路径 |
 | 设置区块 | `ctx.tuiSettingsSections` | 把 mpd.jsonc 的可调项声明为 `/settings` 中可编辑的字段 —— **已与 `<workspace>/.mpd/mpd.jsonc` 打通**（保存会写入文件；插件行为需重启后生效）；每个字段的提示在界面上直接写明（见"明确不声明"第 2 条） |
-| 全屏场景 | `ctx.tuiScenes` | 团队与任务账本、boulder 工作账本、计划、workmate 库 |
-| 命令树 | `ctx.tuiCommandTrees` | `/mpd board`、`/mpd status`、`/mpd workmates` 补全 |
+| 全屏场景 | `ctx.tuiScenes` | 团队与任务账本、boulder 工作账本、计划、workmate 库；已路由团队在面板上多两行：`team-plan …`（仅 staged 时）与 `team-hold held (…)`（仅看门狗 hold 持续期间） |
+| 团队工作流场景 | `ctx.tuiScenes` | `mpd-tui-team` —— 用 `/mpd team` 打开，或在面板中按 `a`：团队 id/名称/阶段、计划审阅状态、看门狗 hold、成员表（角色/模型/状态/进度/当前任务）以及任务 DAG（kind/状态/负责人/尝试/轮次/判定/依赖，按深度缩进，标 `failed-dep=`）与邮箱尾部 |
+| 计划批准场景 | `ctx.tuiScenes` | `mpd-tui-plan` —— 用 `/mpd plan` 打开，或在团队工作流中按 `a`：逐字输入 `approve <teamId>`（界面上显示的 id），然后按 `Ctrl+X`；10 秒窗口内按两次 `Ctrl+D` 丢弃；`Esc` 永不产生变更；`Ctrl+R` 重新读取 |
+| 命令树 | `ctx.tuiCommandTrees` | `/mpd board`、`/mpd team`、`/mpd plan`、`/mpd status`、`/mpd workmates` 补全 |
 | 快捷键 | `ctx.tuiShortcuts` | `alt+m` 打开面板 · `alt+w` workmate 选择器 · `alt+r` 立即刷新状态行 |
 | 对话框 | `ctx.tuiDialogs` | 托管式 workmate 选择器（`select`） |
 | 决策事件 | `tuiPluginHost.subscribeDecision` | 已尝试注册、预期被拒绝、**未激活**（见下） |
@@ -40,6 +42,15 @@ TUI 原生等价物。它**只读**状态：
 所有路径每次调用都解析到**发起会话的工作区**（
 `packages/mpd-dsh-adapter-plugin` 的 `workspaceRoot` / `workspaceRootsAll`），
 绝不使用 dsh 进程的 cwd。
+
+这里的只读规则不是一句政策声明，而是构建产物自身的属性：包内不含任何写原语，
+两个计划动作都是经由适配器发起的工具调用（`agent_teams_approve`、
+`agent_teams_delete`）——适配器会透传发起调用的 agent，因此采用的运行时自身的
+captain 校验依然生效。
+
+**Web 版每一个界面与 TUI 对应物的关系**，在 `docs/tui-parity.md`
+（+ `docs/tui-parity.zh-CN.md`）中逐行回答：每个界面的状态、原因与证据层级，
+仍处于未修复状态的偏差如实记录而不做平滑。引用本文件中的一致性主张之前请先读那一页。
 
 ## 静态资产
 

@@ -12,11 +12,13 @@ import { onService } from "./host.js"
 export const COMMAND_ROOT = "mpd"
 
 /** Actions the `/mpd` grammar accepts (bare = picker, `<value>` = direct, `status` = print). */
-export const COMMAND_ACTIONS: readonly string[] = ["board", "workmates", "status"]
+export const COMMAND_ACTIONS: readonly string[] = ["board", "team", "plan", "workmates", "status"]
 
 /** Children advertised for `/mpd <child>`. */
 export const COMMAND_CHILDREN: readonly { name: string; description: string; descriptions?: Record<string, string> }[] = [
   { name: "board", description: "Open the mpd board scene", descriptions: { zh: "打开 MPD 面板" } },
+  { name: "team", description: "Open the team workflow scene", descriptions: { zh: "打开团队工作流面板" } },
+  { name: "plan", description: "Review and approve a staged plan", descriptions: { zh: "审阅并批准待定计划" } },
   { name: "workmates", description: "List the durable workmate library", descriptions: { zh: "列出 workmate 库" } },
   { name: "status", description: "Print the mpd status line", descriptions: { zh: "输出 MPD 状态行" } },
 ]

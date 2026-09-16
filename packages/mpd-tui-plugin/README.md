@@ -21,8 +21,10 @@ would duplicate a loader entry id (the loader rejects duplicates outright).
 | Status line | `ctx.tuiStatus` | one keyed `mpd` contribution above the prompt: `mpd: team … · boulder … · plans … · workmates …` |
 | Transcript renderers | `ctx.tuiRenderers` | the bundle's log-only session events (`agent-teams/*`, `mpd-tui/board-opened`) as plain text rows, live and on replay |
 | Settings section | `ctx.tuiSettingsSections` | the mpd.jsonc knobs declared as editable `/settings` fields — **bridged** to `<workspace>/.mpd/mpd.jsonc` (a save writes the file; the plugin behaviour needs a restart); every field hint says so on screen (see NOT CLAIMED #2) |
-| Full-screen board | `ctx.tuiScenes` | team + task ledger, boulder work ledger, plans, workmate library |
-| Command tree | `ctx.tuiCommandTrees` | `/mpd board`, `/mpd status`, `/mpd workmates` completion |
+| Full-screen board | `ctx.tuiScenes` | team + task ledger, boulder work ledger, plans, workmate library; two extra rows for a routed team: `team-plan …` (staged only) and `team-hold held (…)` (only while a watchdog hold lasts) |
+| Team workflow scene | `ctx.tuiScenes` | `mpd-tui-team` — open with `/mpd team`, or `a` while the board is open: team id/name/phase, plan-review state, the watchdog hold, the roster (role/model/status/progress/current task) and the task DAG (kind/status/assignee/attempt/round/verdict/deps, depth-indented, `failed-dep=` marked) plus the mailbox tail |
+| Plan-approval scene | `ctx.tuiScenes` | `mpd-tui-plan` — open with `/mpd plan`, or `a` inside the team workflow: type `approve <teamId>` EXACTLY (the id shown on the surface), then `Ctrl+X`; `Ctrl+D` twice inside the 10-second window discards; `Esc` never mutates; `Ctrl+R` re-reads |
+| Command tree | `ctx.tuiCommandTrees` | `/mpd board`, `/mpd team`, `/mpd plan`, `/mpd status`, `/mpd workmates` completion |
 | Shortcuts | `ctx.tuiShortcuts` | `alt+m` board · `alt+w` workmate picker · `alt+r` refresh the status line |
 | Dialogs | `ctx.tuiDialogs` | the mediated workmate picker (`select`) |
 | Decision events | `tuiPluginHost.subscribeDecision` | attempted, expected to be refused, **not activated** (see below) |
@@ -41,6 +43,17 @@ sidebar, workmate tab, bundle floater). It reads state — it never writes:
 Every path is resolved per call under the **calling session's workspace**
 (`packages/mpd-dsh-adapter-plugin`'s `workspaceRoot` / `workspaceRootsAll`),
 never the dsh process cwd.
+
+The read-only rule is not a policy statement here, it is a property of the built
+bytes: the package contains no write primitive, and the two plan actions are tool
+calls made through the adapter (`agent_teams_approve`, `agent_teams_delete`) — the
+adapter forwards the calling agent, so the adopted runtime's own captain check
+still runs.
+
+**Where each Web-edition surface stands against its TUI counterpart** is answered
+row by row in `docs/tui-parity.md` (+ `docs/tui-parity.zh-CN.md`): status, reason
+and evidence level per surface, with the still-open deviations recorded rather than
+smoothed over. Read it before quoting a parity claim from this file.
 
 ## Static assets
 

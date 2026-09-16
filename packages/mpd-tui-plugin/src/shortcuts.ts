@@ -17,6 +17,8 @@ import { effectOn, onService } from "./host.js"
 /** What a shortcut handler needs from the rest of the plugin. */
 export interface ShortcutActions {
   openBoard(via: "shortcut"): boolean
+  /** Open the team-workflow surface (frozen §5.3: best-effort, the command is the guarantee). */
+  openTeam(): boolean
   refreshStatus(): void
   pickWorkmate(): void
 }
@@ -24,6 +26,7 @@ export interface ShortcutActions {
 /** The bindings this plugin requests, in registration order. */
 export const SHORTCUT_BINDINGS: readonly { combo: string; description: string; action: keyof ShortcutActions }[] = [
   { combo: "alt+m", description: "mpd: open the board", action: "openBoard" },
+  { combo: "alt+t", description: "mpd: open the team workflow", action: "openTeam" },
   { combo: "alt+w", description: "mpd: pick a workmate", action: "pickWorkmate" },
   { combo: "alt+r", description: "mpd: refresh the status line", action: "refreshStatus" },
 ]
@@ -54,6 +57,7 @@ export function registerShortcuts(ctx: PluginContextLike, log: Log, actions: Sho
             handler: () => {
               try {
                 if (binding.action === "openBoard") actions.openBoard("shortcut")
+                else if (binding.action === "openTeam") actions.openTeam()
                 else if (binding.action === "refreshStatus") actions.refreshStatus()
                 else actions.pickWorkmate()
               } catch (error) {

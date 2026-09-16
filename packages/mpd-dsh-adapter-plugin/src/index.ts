@@ -312,8 +312,26 @@ export interface DshAdapter {
     listener: (exec: DshToolExec, result: DshPostResult, downstream: DshPostDecision) => DshPostDecision | undefined | Promise<DshPostDecision | undefined>,
   ): () => void
   hasTool(name: string): boolean
-  toolRuntime(): { get(name: string): unknown; execute(input: { name: string; arguments?: unknown; callId?: string; signal?: AbortSignal }): Promise<unknown> }
-  executeTool(input: { name: string; arguments?: unknown; callId?: string; signal?: AbortSignal; timeoutMs?: number }): Promise<DshToolCallResult>
+  /**
+   * Structural view of the tool runtime for internal tool calls.
+   *
+   * `execute`'s optional `agent` is forwarded verbatim as the harness execution's
+   * `exec.agent` (measured contract: `dsh-tools/lib/index.js:3025-3045` reads
+   * `exec.agent` and `:3190-3192` resolves the tool against it). It stays OPTIONAL
+   * so every existing caller keeps its exact meaning: absent = no agent (the
+   * pre-existing behaviour).
+   */
+  toolRuntime(): { get(name: string): unknown; execute(input: { name: string; arguments?: unknown; callId?: string; signal?: AbortSignal; agent?: unknown }): Promise<unknown> }
+  /**
+   * Call one registered tool in-process and normalize the result.
+   *
+   * The optional `agent` is the ONE way an agentless surface (a TUI scene, a web
+   * route) can drive an agent-scoped tool: the adopted agent-teams write tools
+   * begin with `requireCaptain(exec)` and throw without it. Pass the object the
+   * live registry returned (`liveAgent(id)` / `liveAgents()[0]`) — never a
+   * hand-built Agent-like object.
+   */
+  executeTool(input: { name: string; arguments?: unknown; callId?: string; signal?: AbortSignal; timeoutMs?: number; agent?: unknown }): Promise<DshToolCallResult>
   spawnAgent(spec: DshSpawnSpec): Promise<DshSpawnResult>
   registerSkillProvider(provider: unknown): () => void
   listSkills(options?: { cwd?: string }): Promise<DshSkillSummary[]>
@@ -619,7 +637,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       const tools = service("tools")
       return {
         get: (toolName: string) => (typeof tools?.get === "function" ? tools.get(toolName) : undefined),
-        execute: (input: { name: string; arguments?: unknown; callId?: string; signal?: AbortSignal }) =>
+        execute: (input: { name: string; arguments?: unknown; callId?: string; signal?: AbortSignal; agent?: unknown }) =>
           adapter.executeTool({ ...input, timeoutMs: defaultTimeoutMs }).then((result) => result.raw),
       }
     },
@@ -637,6 +655,9 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
           arguments: input.arguments ?? {},
           callId,
           ...(signal === undefined ? {} : { signal }),
+          // The calling agent rides the execution only when the caller supplied one:
+          // absent stays absent, so no existing call site changes meaning.
+          ...(input.agent === undefined ? {} : { agent: input.agent }),
         })
         const isError = (raw as DshPostResult | undefined)?.isError === true
         if (isError) {

@@ -25,6 +25,8 @@ export interface TeamSummary {
   name: string
   phase: string
   description?: string
+  /** `awaiting_review` | `awaiting_feedback` — present only while the team is staged. */
+  planReviewState?: string
   members: number
   tasks: {
     total: number
@@ -137,11 +139,14 @@ function readTeam(root: string, problems: string[]): TeamSummary | undefined {
         counts.other += 1
     }
   }
+  const phase = scalarText(record.phase, 40) ?? "unknown"
+  const planReviewState = scalarText(record.planReviewState, 40) ?? (phase === "staged" ? "awaiting_review" : undefined)
   return {
     id: scalarText(record.id, 60) ?? "?",
     name: scalarText(record.name, 80) ?? "?",
-    phase: scalarText(record.phase, 40) ?? "unknown",
+    phase,
     description: scalarText(record.description, 160),
+    ...(planReviewState === undefined ? {} : { planReviewState }),
     members: asArray(record.members).length,
     tasks: counts,
   }
@@ -277,7 +282,7 @@ export function statusLine(state: BoardState, notice?: string): string {
 }
 
 /** Body lines for the board scene, already sanitized and bounded. */
-export function boardLines(state: BoardState): string[] {
+export function boardLines(state: BoardState, holds: readonly string[] = []): string[] {
   const lines: string[] = []
   lines.push(`workspace  ${state.workspace}`)
   if (state.team !== undefined) {
@@ -288,10 +293,17 @@ export function boardLines(state: BoardState): string[] {
     lines.push(
       `tasks      ${tasks.total} total · ${tasks.completed} completed · ${tasks.inProgress} in progress · ${tasks.pending} pending · ${tasks.claimed} claimed · ${tasks.failed} failed`,
     )
+    // T3 (frozen §3.3): the staged state without opening a scene. Omitted, never faked, when
+    // the team is not staged.
+    if (state.team.phase === "staged" && state.team.planReviewState !== undefined) {
+      lines.push(`team-plan  ${state.team.planReviewState}`)
+    }
   } else {
     lines.push("")
     lines.push("team       (none in this workspace)")
   }
+  // T3: the team watchdog's own HOLD, a different fact from `halted` (snapshot.js:94).
+  if (holds.length > 0) lines.push(`team-hold  held (${holds.join(", ")})`)
   lines.push("")
   if (state.boulder !== undefined && state.boulder.works > 0) {
     lines.push(
