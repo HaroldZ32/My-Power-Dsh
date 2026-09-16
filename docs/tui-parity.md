@@ -257,14 +257,18 @@ Web column cites source, exactly as the contract's §2 does).
 - **Bilingual pairing** — this file and `docs/tui-parity.zh-CN.md` are linked by the switch link
   directly under the title and carry the same heading tree, enforced by `bun run verify:docs`:
   **PASS** (37 pairs, 0 failed).
-- **The corpus fingerprint** — `skills/**` was measured with `verify-vendor`'s own algorithm
-  (recomputed, never quoted) and the result is **319 files /
-  `303e163148afc07e7dad10775d3de7e96b4caa1cfae9c1a91575ae906d8cc27d`**, asserted by
-  `evidence/tui/team-surface-integrate/2026-09-16T14-17-24.000Z/fingerprint.mjs`. **This is NOT the
-  value t3's attempt-1 report asked for** (`319 / 4f02b398…`) — see deviation D3, which records why
-  and how it was resolved: the captain re-pinned `VENDOR_LOCK.json` with THIS value in the same
-  commit as the `skills/**` change, `verify-vendor` then reported PASS, and t3 was retried green on
-  the current lane bytes. The reading remains valid only if no further `skills/**` edit lands before
+- **The corpus fingerprint** — the authoritative value is the pin in `VENDOR_LOCK.json`
+  `assets.skills`, read on 2026-09-16: **`fileCount 319` / `treeSha
+  303e163148afc07e7dad10775d3de7e96b4caa1cfae9c1a91575ae906d8cc27d`**. DERIVE it rather than trust
+  prose: `node evidence/tui/team-surface-integrate/2026-09-16T14-17-24.000Z/fingerprint.mjs`
+  recomputes `skills/**` with `verify-vendor`'s own algorithm (never quoted from another member's
+  message), prints the recomputed value, the pin and the `drift` flag side by side — currently
+  `drift: false` — and, given the two literals, ASSERTS them
+  (`second-pass/raw/fingerprint-asserted.log`). The value t3's attempt-1 report asked the captain to
+  pin was a DIFFERENT, stale treeSha (see deviation D3, which also says where that value is
+  recorded); acting on it would have left `verify-vendor` RED — as it stands, `verify-vendor` reports
+  PASS and `bun run test:qa` (which includes `agent-teams-messaging.mjs --self-test`) agrees on the
+  same bytes. The reading remains valid only if no further `skills/**` edit lands before
   the commit; a later edit supersedes it, and the captain re-measures at commit time regardless.
 - **The two in-repo test readings** are recorded TOGETHER, never singly. On the settled revision
   (801 tests, after the t8 repair added its cases) the repo cwd reads **799 pass / 2 fail** and a
