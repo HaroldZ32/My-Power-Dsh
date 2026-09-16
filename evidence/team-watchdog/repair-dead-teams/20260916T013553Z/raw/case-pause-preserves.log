@@ -1,0 +1,5 @@
+[pause-preserves] the hold landed through the plugin's own action while t1 was in flight: true
+[pause-preserves] sha256(team.json) unchanged across the held kicks: true (after the resume it is changed (the re-arm minted the next attempt))
+[pause-preserves] deliveries while held: 0 (each decline says: agent-teams: dispatch declined for fault-probe/*: the team is held by the team watchdog (hold 0d23fc62-9900-43fe-b47f-1123d11aba35 since 2026-09-16T01:37:12.160Z: silence))
+[pause-preserves] task after the hold: {"status":"in_progress","attemptId":"att-live","attempt":3,"output":"partial result","handoffId":"handoff-1"}
+[pause-preserves] resume cleared the hold and dispatch resumed: true / deliveries 1

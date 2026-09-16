@@ -1,0 +1,13 @@
+## evaluateTuiSurface on the REBUILT dist
+arm ok = true
+ok   T1 — the built bytes carry the bridge+restart disclosure
+ok   T2 — the built bytes carry the restart half of the disclosure
+ok   T3 — the old 'not bridged' claim is DELETED from the built bytes
+ok   T4 — the built bytes carry the §D.2 no-live-session runtime notice
+ok   T5 — the notice is WIRED into the status-line composition, not merely defined
+ok   T6 — the notice is a single exported constant in the source (one source of truth)
+ok   T8 — the hint carries the "never lost" clause (a settings-only save is not a lost save)
+ok   T7 — the TUI dist performs ZERO filesystem writes (offenders: [])
+
+## grep -c write APIs on the rebuilt TUI dist
+0

@@ -1,0 +1,20 @@
+=== regression test for W11-1 ===
+packages/mpd-team-watchdog-plugin/test/machine.test.ts:138:  test("W11-1 REGRESSION (the Reviewer's exact probe shape): two teams, both tasks t1, BOTH with an empty attemptId, each observed once per tick", () => {
+
+=== the stale docstring (3-part key?) ===
+196:  */
+197: export class WatchdogMachine {
+198:   /** Consecutive WARN counts, keyed `taskId\0attemptId`. */
+199:   private readonly streaks = new Map<string, number>()
+200:   /** Keys that already escalated: exactly one ESCALATE, and no fourth WARN. */
+
+=== bun test ===
+ 59 pass
+ 0 fail
+ 274 expect() calls
+Ran 59 tests across 12 files. [204.00ms]
+=== typecheck ===
+$ tsgo --noEmit
+=== verify-vendor ===
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS

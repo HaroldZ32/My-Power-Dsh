@@ -1,0 +1,67 @@
+{
+  "task": "t64 — w6 TUI front door: status-line row + dialog + unread replay with acknowledge",
+  "producedBy": "Junior Engineer (attempt 1)",
+  "measuredAt": "2026-09-15T16:34:53Z",
+  "verdict": "passed",
+  "implementation": {
+    "newModule": "packages/mpd-tui-plugin/src/watchdog.ts — the read side of the front door: heldTeams() (the durable hold index), readWatchdogView() (holds + this reader's unacknowledged incidents), watchdogNotice() (the status-line text), composeNotices() (joins providers), watchdogDialog() (the replay dialog request), attachWatchdogFrontDoor() (notice + offer() + acknowledge() + the once-only attach-time replay). READER = \"mpd-tui\".",
+    "wiring": "packages/mpd-tui-plugin/src/index.ts — the front door is built BEFORE the status seam so the FIRST publish already carries the notice, and its notice is composed into the SAME `tuiStatus.set(...)` value as the settings-bridge notice; the acknowledge callback refreshes the status line.",
+    "writeDiscipline": "src/watchdog.ts contains NO filesystem write API (grep for writeFile/appendFile/mkdirSync/rmSync/unlink/createWriteStream returns nothing — gates.log). The only mutation is the per-reader watermark, performed by the OWNING package's ackIncidents(), never by this package.",
+    "hostState": "no change under packages/mpd-agent-teams-plugin/** was made by this task (w7 owns the wave's single delta-registry re-run)."
+  },
+  "rebuiltArtifact": {
+    "path": "packages/mpd-tui-plugin/dist/index.js",
+    "command": "bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js",
+    "bytesBefore": 106479,
+    "bytesAfter": 115371,
+    "sha256Before": "81266559273acb3831a4b4789c979bbbf60339ee064bd1ffa7e529f24c1e2c60",
+    "sha256After": "72c55f34d5c9493846e8bb0d1cb48bd6aaa85a3e5ff5ce61db19b8ccf11ed4de"
+  },
+  "sourceDigests": {
+    "packages/mpd-tui-plugin/src/watchdog.ts": "8064509566837199c1ce8ebf13a37e6fd20d8a69d76e655471ff70fee477b8c5",
+    "packages/mpd-tui-plugin/src/index.ts": "ab9e6a303f0c7bf8024084d3118f214b4cba90c83b82d7eb39b3dce690ec7a8e",
+    "packages/mpd-tui-plugin/test/watchdog-frontdoor.test.ts": "aa39c2d7d0a9d586feddccc3ff146a31ce740e225c4e2d8902fa4044af8e3fb4"
+  },
+  "probe": {
+    "script": "probe-tui-frontdoor.mjs (real modules + two FRESH bun processes)",
+    "verdict": "6/6 checks passed",
+    "statusLineHeld": "mpd: team - · plans 0 · workmates 0 · notes 1 · watchdog: held mpd-default-1 · 2 unread incidents",
+    "statusLineAfterResume": "mpd: team - · plans 0 · workmates 0 · notes 1",
+    "dialogTitle": "watchdog: held mpd-default-1 · 2 unread incidents — Team mpd-default-1 is held by the team watchdog (a member went silent).",
+    "dialogOptions": ["acknowledge", "later"],
+    "freshProcessBefore": { "unread": [1000, 2000], "watermarks": {} },
+    "freshProcessAfter": { "unread": [], "watermarks": { "mpd-tui": 2000 } },
+    "storeBytes": {
+      "incidents": "two JSON lines (warn@1000, escalate@2000) — shown verbatim in probe.json",
+      "watermarkFile": "{\n  \"mpd-tui\": 2000\n}"
+    }
+  },
+  "notClaimed": {
+    "interactivePane": "A real interactive TTY/tmux pane or keystroke leg was NOT driven in this environment (no TTY to attach to from this session). The assertions are made on the value the status publisher EMITS (`tuiStatus.set`) and on the dialog request the host was handed; the pane/keystroke leg is NOT-CLAIMED with this reason and is never reported as passed."
+  },
+  "honestFallback": {
+    "rule": "Choosing `later` (or never acknowledging) leaves the incident unread forever: the replay is PERMANENT RE-DISPLAY BY DESIGN (design §5.3). The watermark only moves on an explicit acknowledge — asserted by the `choosing Later keeps the incident unread` test and the `freshProcessBefore` leg (unread 2 before, watermark {})."
+  },
+  "gates": {
+    "bun test packages/mpd-tui-plugin": "52 pass / 0 fail / 415 expect() calls across 8 files, exit 0 (includes the 9 new front-door tests)",
+    "bun run typecheck": "exit 0",
+    "bun run verify:docs": "pairs=34 failed=0 exempt=15 — PASS, exit 0",
+    "bun skills/dsh-qa/scripts/tui-panels.mjs --self-test": "exit 0 — 7 surfaces asserted, negative controls fail as required",
+    "bun skills/dsh-qa/scripts/tui-settings-bridge.mjs --self-test": "exit 0 — 16 web-arm + 7 TUI-arm injected faults each flip their own check"
+  },
+  "changedPaths": [
+    "packages/mpd-tui-plugin/src/watchdog.ts",
+    "packages/mpd-tui-plugin/src/index.ts",
+    "packages/mpd-tui-plugin/test/watchdog-frontdoor.test.ts",
+    "packages/mpd-tui-plugin/dist/index.js",
+    "evidence/team-watchdog/notify/tui/20260915T163453Z/probe-tui-frontdoor.mjs",
+    "evidence/team-watchdog/notify/tui/20260915T163453Z/probe.json",
+    "evidence/team-watchdog/notify/tui/20260915T163453Z/probe.stdout.log",
+    "evidence/team-watchdog/notify/tui/20260915T163453Z/probe.err",
+    "evidence/team-watchdog/notify/tui/20260915T163453Z/build.log",
+    "evidence/team-watchdog/notify/tui/20260915T163453Z/gates.log",
+    "evidence/team-watchdog/notify/tui/20260915T163453Z/ws/**",
+    "evidence/team-watchdog/notify/tui/20260915T163453Z/result.json",
+    "evidence/team-watchdog/notify/tui/20260915T163453Z/README.md"
+  ]
+}

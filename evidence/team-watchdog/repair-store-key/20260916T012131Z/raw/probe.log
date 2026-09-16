@@ -1,0 +1,183 @@
+[mpd-team-watchdog] knob watchdog.tickIntervalMs: must be < watchdog.warnSilenceMs (90000); clamped — using 30000
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=30000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[mpd-team-watchdog] WARN team-beta task=t1 member=Architect silence=900001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/repair-store-key/20260916T012131Z/raw/ws/.mpd/team/watchdog/scene/team-beta/20010909T014640Z-warn.json
+{
+  "task": "t79",
+  "defect": "the heartbeat FILE is keyed by member NAME per workspace, so two teams whose members share a name share one file; the candidate filter was by task+attempt but NOT by team, so the other team's stamp satisfied this candidate and a WEDGED member looked alive (false negative)",
+  "fix": "read-side: the candidate's stamps are now filtered by the stamp's own teamId (permissive when the stamp carries none) — no store migration",
+  "structuralCause": {
+    "file": "evidence/team-watchdog/repair-store-key/20260916T012131Z/raw/ws/.mpd/team/watchdog/heartbeat/architect.jsonl",
+    "teamsSharingIt": [
+      "team-alpha",
+      "team-beta"
+    ]
+  },
+  "removedPredicateModel": {
+    "stampsKeptForTeamB": [
+      {
+        "teamId": "team-alpha",
+        "at": 1000000000000
+      },
+      {
+        "teamId": "team-beta",
+        "at": 999999100000
+      }
+    ],
+    "newestAt": 1000000000000,
+    "newestTeam": "team-alpha",
+    "silenceMs": 0,
+    "wouldWarn": false
+  },
+  "realCandidateTeamB": {
+    "teamId": "team-beta",
+    "taskId": "t1",
+    "attemptId": "att-1",
+    "assignee": "Architect",
+    "memberKey": "Architect",
+    "lastSeen": 999999100000,
+    "lastKind": "step",
+    "everStampedForTask": true
+  },
+  "realCandidateTeamA": {
+    "teamId": "team-alpha",
+    "taskId": "t1",
+    "attemptId": "att-1",
+    "assignee": "Architect",
+    "memberKey": "Architect",
+    "lastSeen": 1000000000000,
+    "lastKind": "step",
+    "everStampedForTask": true
+  },
+  "shippedEngineDecisions": [
+    {
+      "type": "warn",
+      "teamId": "team-beta",
+      "taskId": "t1",
+      "silenceMs": 900001
+    }
+  ],
+  "sameTeamControl": {
+    "teamId": "team-beta",
+    "taskId": "t1",
+    "attemptId": "att-1",
+    "assignee": "Architect",
+    "memberKey": "Architect",
+    "lastSeen": 1000000000000,
+    "lastKind": "step",
+    "everStampedForTask": true
+  },
+  "teamlessStampControl": {
+    "teamId": "team-beta",
+    "taskId": "t1",
+    "attemptId": "att-1",
+    "assignee": "Architect",
+    "memberKey": "Architect",
+    "lastSeen": 1000000000000,
+    "lastKind": "step",
+    "everStampedForTask": true
+  },
+  "checks": [
+    {
+      "id": "A1 ONE heartbeat file holds BOTH teams' stamps (the structural cause)",
+      "ok": true,
+      "detail": {
+        "path": "evidence/team-watchdog/repair-store-key/20260916T012131Z/raw/ws/.mpd/team/watchdog/heartbeat/architect.jsonl",
+        "teams": [
+          "team-alpha",
+          "team-beta"
+        ]
+      }
+    },
+    {
+      "id": "B1 FALSE NEGATIVE reproduced by the removed predicate: team-beta's wedged member looks ALIVE",
+      "ok": true,
+      "detail": {
+        "stampsKeptForTeamB": [
+          {
+            "teamId": "team-alpha",
+            "at": 1000000000000
+          },
+          {
+            "teamId": "team-beta",
+            "at": 999999100000
+          }
+        ],
+        "newestAt": 1000000000000,
+        "newestTeam": "team-alpha",
+        "silenceMs": 0,
+        "wouldWarn": false
+      }
+    },
+    {
+      "id": "C1 team-beta's candidate is now judged on ITS OWN stamp: the wedge is SILENT (a WARN is due)",
+      "ok": true,
+      "detail": {
+        "teamId": "team-beta",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "assignee": "Architect",
+        "memberKey": "Architect",
+        "lastSeen": 999999100000,
+        "lastKind": "step",
+        "everStampedForTask": true
+      }
+    },
+    {
+      "id": "C2 team-alpha's candidate still sees its own recent stamp (alive, no WARN)",
+      "ok": true,
+      "detail": {
+        "teamId": "team-alpha",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "assignee": "Architect",
+        "memberKey": "Architect",
+        "lastSeen": 1000000000000,
+        "lastKind": "step",
+        "everStampedForTask": true
+      }
+    },
+    {
+      "id": "C3 the shipped engine WARNS for the wedged team and stays silent for the live one",
+      "ok": true,
+      "detail": {
+        "decisions": [
+          {
+            "type": "warn",
+            "teamId": "team-beta",
+            "taskId": "t1",
+            "silenceMs": 900001
+          }
+        ]
+      }
+    },
+    {
+      "id": "D1 a member's OWN recent stamp in the SAME team still suppresses the WARN",
+      "ok": true,
+      "detail": {
+        "teamId": "team-beta",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "assignee": "Architect",
+        "memberKey": "Architect",
+        "lastSeen": 1000000000000,
+        "lastKind": "step",
+        "everStampedForTask": true
+      }
+    },
+    {
+      "id": "D2 the permissive convention holds: a stamp with NO team is still counted",
+      "ok": true,
+      "detail": {
+        "teamId": "team-beta",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "assignee": "Architect",
+        "memberKey": "Architect",
+        "lastSeen": 1000000000000,
+        "lastKind": "step",
+        "everStampedForTask": true
+      }
+    }
+  ],
+  "ok": true
+}

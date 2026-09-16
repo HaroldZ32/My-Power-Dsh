@@ -1,0 +1,29 @@
+ M packages/mpd-bundle-plugin/client.js
+ M packages/mpd-bundle-plugin/src/settings-card.js
+ M packages/mpd-bundle-plugin/test/settings-card.test.mjs
+ M packages/mpd-bundle/cordis.patch.yml
+ M packages/mpd-config-plugin/dist/index.js
+ M packages/mpd-config-plugin/src/settings-schema.ts
+ M packages/mpd-tui-plugin/dist/index.js
+ M packages/mpd-tui-plugin/test/plugin.test.ts
+ M scripts/install-profile.mjs
+?? evidence/dsh-qa/bundle-lifecycle/2026-09-15T16-08-41.937Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-09-15T16-13-53.727Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-09-15T16-15-32.464Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-09-15T16-17-06.305Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-09-15T16-25-39.120Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-09-15T16-28-35.255Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-15T16-08-49.137Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-15T16-13-15.694Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-15T16-14-57.427Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-15T16-16-26.802Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-15T16-25-07.106Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-15T16-28-00.042Z/
+?? evidence/team-watchdog/config/
+?? evidence/team-watchdog/design/
+?? evidence/team-watchdog/plugin/
+?? evidence/team-watchdog/pool-guard-readers/
+?? evidence/team-watchdog/pool-guard/
+?? evidence/team-watchdog/seam-audit/
+?? packages/mpd-team-watchdog-plugin/
+exit=0

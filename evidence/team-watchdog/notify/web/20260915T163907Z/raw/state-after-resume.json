@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "reader": "web-panel",
+  "generatedAt": "2026-09-15T16:46:34.256Z",
+  "stateDir": ".mpd/team",
+  "workspaces": [
+    "/root/dshProj/my-power-dsh/evidence/team-watchdog/notify/web/20260915T163907Z/raw/ws"
+  ],
+  "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/notify/web/20260915T163907Z/raw/ws",
+  "stuck": false,
+  "held": [],
+  "banner": null,
+  "activity": [],
+  "unread": [],
+  "watermarks": {
+    "tui-panel": 5,
+    "web-panel": 1789460000000
+  },
+  "replay": false,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "input": {
+    "lines": 13,
+    "teamBetaStamps": 1
+  },
+  "removedRuleModelled": {
+    "note": "a MODEL of the rule this repair replaced (global keep-last-N turn-starts) — NOT the old code",
+    "kept": 9,
+    "teamBetaStampsKept": 0,
+    "evictsTheOtherTeamsEvidence": true
+  },
+  "currentRuleCalled": {
+    "note": "the REAL `rotateHeartbeats` from src/store.ts — per-team groups",
+    "rotated": true,
+    "kept": 10,
+    "teamBetaStampsKept": 1,
+    "teamAlphaGenerations": 3,
+    "preservesTheOtherTeamsEvidence": true
+  }
+}

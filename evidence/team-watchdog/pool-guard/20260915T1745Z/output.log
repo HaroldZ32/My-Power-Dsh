@@ -1,0 +1,40 @@
+{
+ "task": {
+  "id": "t55",
+  "kind": "implementation",
+  "status": "pending",
+  "subject": "pooled implementation task",
+  "dependencies": []
+ },
+ "shapeA_profileShapedMember": {
+  "memberKeys": "name,toolDeny",
+  "toolDeny": [
+   "write",
+   "edit",
+   "mpd_hashline_edit",
+   "bash",
+   "mcp__ast_grep__rewrite",
+   "mcp__ast_grep__scan",
+   "mcp__lsp__rename"
+  ],
+  "picked": null,
+  "withheld": [
+   {
+    "id": "t55",
+    "gap": [
+     "write",
+     "edit",
+     "mpd_hashline_edit"
+    ],
+    "explicit": false
+   }
+  ]
+ },
+ "shapeB_liveTeamRecordMember": {
+  "memberKeys": "id,name,role,provider,model,reasoningEffort,executionPrompt,fallback,joinedAt,status",
+  "toolDeny": null,
+  "picked": "t55",
+  "withheld": []
+ },
+ "verdict": "MISS REPRODUCED: the guard withholds the pooled implementation task ONLY when the member carries toolDeny; the live team record does not carry it, so the task is delivered to the read-only member."
+}

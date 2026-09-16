@@ -1,0 +1,5 @@
+[mid-turn-stall] the member STALLED mid-turn: the newest stamp for t1/att-1 is still a `step` at 1700000002000
+[mid-turn-stall] ticks at silence 90001/180001/270001 ms
+[mid-turn-stall] decisions: ["warn","warn","escalate"] — the wedge STILL escalates
+[mid-turn-stall] hold applied: 1 {"id":"12bc9c8a-d8b4-4e95-9a9f-954f1286fd6e","taskId":"t1","attemptId":"att-1"}
+[mid-turn-stall] => the boundary fix does not silence the fault the wave exists for

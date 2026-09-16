@@ -1,0 +1,81 @@
+{
+  "task": "t65 — w6b: restore the TUI's zero-filesystem-write invariant by routing every watchdog-store access through the mpdWatchdog service",
+  "producedBy": "Junior Engineer (attempt 1)",
+  "measuredAt": "2026-09-15T16:48:27Z",
+  "verdict": "passed",
+  "reproduction": {
+    "before": "grep -c 'writeFileSync|appendFileSync|mkdirSync|cpSync|rmSync|unlinkSync|createWriteStream' packages/mpd-tui-plugin/dist/index.js -> 4; evaluateTuiSurface -> arm ok = false, FAIL T7 offenders [writeFileSync, appendFileSync, mkdirSync, rmSync]",
+    "cause": "packages/mpd-tui-plugin/src/watchdog.ts imported the watchdog package's sidecar readers/writers at RUNTIME, so bun inlined them (writers included) into the TUI dist."
+  },
+  "fix": {
+    "service": "packages/mpd-team-watchdog-plugin/src/holds.ts — HoldRegistry gains heldTeams(workspace), unread(reader, workspace), acknowledge(reader, upTo, workspace) and view(reader, workspace); every member is synchronous and non-throwing, and the acknowledge performs the write INSIDE the owning package. The pre-existing isHeld/holds/list/hydratedRoots/hydrate/gateCall are unchanged (w7 depends on them). Published on the mpdWatchdog service by src/index.ts.",
+    "tui": "packages/mpd-tui-plugin/src/watchdog.ts now resolves mpdWatchdog through the deferred inject form and uses it for EVERY store access; the sidecar/paths imports are gone except `import type { IncidentRecord }` (erased at build time).",
+    "absentService": "With no mpdWatchdog service the TUI does NOT throw at apply: the status line stays the plain board line (no watchdog text), no replay dialog is offered, and acknowledge() returns { ok: false, error: 'the mpdWatchdog service is not mounted — the watchdog store was not written' } instead of pretending. The absence is warned ONCE.",
+    "buildNote": "The watchdog package's OWN dist had to be rebuilt as well (it is the module a real bundle row loads, and the new methods live there). That path is outside this task's declared inScope and is listed in the completion output for the captain."
+  },
+  "rebuiltArtifacts": [
+    { "path": "packages/mpd-tui-plugin/dist/index.js", "command": "bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js", "bytesBefore": 115371, "bytesAfter": 111398, "sha256After": "09935e228256b65c4e176edfa8546f3fc39c2295cc26bd6340538bf5a79d7867" },
+    { "path": "packages/mpd-team-watchdog-plugin/dist/index.js", "command": "bun build packages/mpd-team-watchdog-plugin/src/index.ts --target node --format esm --outfile packages/mpd-team-watchdog-plugin/dist/index.js", "bytesBefore": 110774, "bytesAfter": 113919, "sha256After": "6e2fab05bad6bf9c53f901675fc908f856d8168206737a8fec0c9839f8545d5d" }
+  ],
+  "t7": {
+    "command": "node -e \"import('./skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs').then(m => …evaluateTuiSurface({dist, src}))\"",
+    "armOk": true,
+    "checks": [
+      { "id": "T1", "ok": true, "detail": "the built bytes carry the bridge+restart disclosure" },
+      { "id": "T2", "ok": true, "detail": "the built bytes carry the restart half of the disclosure" },
+      { "id": "T3", "ok": true, "detail": "the old 'not bridged' claim is DELETED from the built bytes" },
+      { "id": "T4", "ok": true, "detail": "the built bytes carry the §D.2 no-live-session runtime notice" },
+      { "id": "T5", "ok": true, "detail": "the notice is WIRED into the status-line composition, not merely defined" },
+      { "id": "T6", "ok": true, "detail": "the notice is a single exported constant in the source (one source of truth)" },
+      { "id": "T8", "ok": true, "detail": "the hint carries the \"never lost\" clause" },
+      { "id": "T7", "ok": true, "detail": "the TUI dist performs ZERO filesystem writes (offenders: [])" }
+    ],
+    "grepCount": 0
+  },
+  "behaviourReproof": {
+    "probe": "probe-tui-frontdoor.mjs — 9/9 checks passed, exit 0 (real modules; the service object is the published shape over a real HoldRegistry)",
+    "statusLineHeld": "mpd: team - · plans 0 · workmates 0 · notes 1 · watchdog: held mpd-default-1 · 2 unread incidents",
+    "statusLineAfterResume": "mpd: team - · plans 0 · workmates 0 · notes 1",
+    "dialogTitle": "watchdog: held mpd-default-1 · 2 unread incidents — Team mpd-default-1 is held by the team watchdog (a member went silent).",
+    "dialogOptions": ["acknowledge", "later"],
+    "freshProcessBefore": { "unread": [1000, 2000], "watermarks": {} },
+    "freshProcessAfter": { "unread": [], "watermarks": { "mpd-tui": 2000 } },
+    "laterArm": { "choice": "later", "watermarkUnchanged": true, "unreadAfterRestart": [3000] },
+    "absentServiceArm": { "available": false, "statusLine": "mpd: team - · plans 0 · workmates 0 · notes 1", "offer": null, "acknowledge": { "ok": false, "watermark": 0, "error": "the mpdWatchdog service is not mounted — the watchdog store was not written" } },
+    "storeBytes": "ws/.mpd/team/watchdog/{incidents.jsonl,read-watermark.json} kept in this evidence directory"
+  },
+  "watchdogSuite": {
+    "result": "55 pass / 0 fail (was 52; three new tests cover heldTeams, view/unread/acknowledge at byte level including the per-reader isolation and the non-throwing paths, and the published service object)",
+    "applyLog": "[mpd-team-watchdog] applied: … holdService=mpdWatchdog — from the suite run of the current tree (gates.log), corroborated by w7's driver log (evidence/team-watchdog/pause/20260915T164700Z/raw/driver.log) and the earlier mount evidence evidence/team-watchdog/plugin/20260915T162351Z/",
+    "honestLimit": "A fresh full dsh HOST mount was not re-run for this task: the change is additive to the service object and the boot line content is unchanged. The mount-level claim therefore rests on the apply-level assertion above plus those existing boot logs."
+  },
+  "gates": {
+    "bun test packages/mpd-tui-plugin packages/mpd-team-watchdog-plugin": "108 pass / 0 fail / 680 expect() calls across 20 files, exit 0",
+    "bun test packages": "699 pass / 0 fail / 5080 expect() calls across 134 files, exit 0",
+    "bun run typecheck": "exit 0",
+    "bun run verify:docs": "exit 0 — pairs=34 failed=0 exempt=15 — PASS"
+  },
+  "notClaimed": {
+    "pane": "No interactive TTY/tmux pane or keystroke leg was driven in this environment; the assertions are the emitted status value, the captured dialog request and the store bytes."
+  },
+  "changedPaths": [
+    "packages/mpd-tui-plugin/src/watchdog.ts",
+    "packages/mpd-tui-plugin/test/watchdog-frontdoor.test.ts",
+    "packages/mpd-tui-plugin/dist/index.js",
+    "packages/mpd-team-watchdog-plugin/src/holds.ts",
+    "packages/mpd-team-watchdog-plugin/src/index.ts",
+    "packages/mpd-team-watchdog-plugin/test/holds.test.ts",
+    "packages/mpd-team-watchdog-plugin/dist/index.js",
+    "evidence/team-watchdog/notify/tui/20260915T164827Z/probe-tui-frontdoor.mjs",
+    "evidence/team-watchdog/notify/tui/20260915T164827Z/probe.json",
+    "evidence/team-watchdog/notify/tui/20260915T164827Z/probe.stdout.log",
+    "evidence/team-watchdog/notify/tui/20260915T164827Z/probe.err",
+    "evidence/team-watchdog/notify/tui/20260915T164827Z/build.log",
+    "evidence/team-watchdog/notify/tui/20260915T164827Z/gates.log",
+    "evidence/team-watchdog/notify/tui/20260915T164827Z/t7.log",
+    "evidence/team-watchdog/notify/tui/20260915T164827Z/result.json",
+    "evidence/team-watchdog/notify/tui/20260915T164827Z/README.md",
+    "evidence/team-watchdog/notify/tui/20260915T164827Z/ws/.mpd/team/watchdog/incidents.jsonl",
+    "evidence/team-watchdog/notify/tui/20260915T164827Z/ws/.mpd/team/watchdog/read-watermark.json"
+  ]
+}

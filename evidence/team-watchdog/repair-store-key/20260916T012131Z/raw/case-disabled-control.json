@@ -1,0 +1,59 @@
+{
+  "case": "disabled-control",
+  "ok": true,
+  "observation": {
+    "injected": "silence, watchdog DISABLED (row config enabled:false)",
+    "knobsEnabled": false,
+    "ticks": [
+      {
+        "silenceMs": 90001,
+        "skipped": "disabled",
+        "decisions": [],
+        "scenes": 0,
+        "holds": 0
+      },
+      {
+        "silenceMs": 180001,
+        "skipped": "disabled",
+        "decisions": [],
+        "scenes": 0,
+        "holds": 0
+      },
+      {
+        "silenceMs": 270001,
+        "skipped": "disabled",
+        "decisions": [],
+        "scenes": 0,
+        "holds": 0
+      },
+      {
+        "silenceMs": 360001,
+        "skipped": "disabled",
+        "decisions": [],
+        "scenes": 0,
+        "holds": 0
+      }
+    ],
+    "everyTickSkippedDisabled": true,
+    "stats": {
+      "ticks": 4,
+      "scenes": 0,
+      "incidents": 0,
+      "holdsApplied": 0,
+      "neverStarted": 0
+    },
+    "sceneDirExists": false,
+    "holdDirContents": [],
+    "incidentsFileExists": false,
+    "heartbeatStillWritten": 1,
+    "recordByteIdentical": true
+  },
+  "lines": [
+    "the watchdog row is DISABLED (knobs.enabled=false): every tick reports skipped=[\"disabled\",\"disabled\",\"disabled\",\"disabled\"]",
+    "no WARN, no ESCALATE: [[],[],[],[]]",
+    "scenes 0, incidents 0, holds 0",
+    "on disk: scene dir exists=false, holds=[], incidents file=false",
+    "the team record is byte-identical: true",
+    "=> the negative control is falsifiable at the FIXTURE level (AC-10)"
+  ]
+}

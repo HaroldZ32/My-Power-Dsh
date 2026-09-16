@@ -1,0 +1,8 @@
+[self-test] ok   healthy-observation: 10 checks passed on the healthy observation
+[self-test] ok   negative:field-set: the mutated observation FAILED its own check(s) ["S2","S5"] — a snapshot missing a contracted field
+[self-test] ok   negative:member-fields: the mutated observation FAILED its own check(s) ["S6"] — a member row without its liveness field
+[self-test] ok   negative:hold-mismatch: the mutated observation FAILED its own check(s) ["S4"] — a snapshot hold that disagrees with the sidecar
+[self-test] ok   negative:log-shorter: the mutated observation FAILED its own check(s) ["S7"] — an incident log with fewer records than the snapshot claims
+[self-test] ok   negative:pointer: the mutated observation FAILED its own check(s) ["S9"] — a latest.json pointer that is not the newest scene
+[self-test] ok   negative:fresh-process: the mutated observation FAILED its own check(s) ["S1"] — a read that was not made from a fresh process
+[self-test] PASS — team-watchdog-scene (7 checks, 0 failed)

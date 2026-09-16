@@ -48,6 +48,17 @@
   /** Page-settle window: teams restored on page load must never auto-open the panel. */
   const AUTO_OPEN_SETTLE_MS = 2500;
 
+  // ── Stuck-team front door (the watchdog store's web reader) ────────────────
+  // Both routes are served by OUR bundle package (src/watchdog-web.ts reads the watchdog
+  // package's documented store contract; neither the adopted plugin nor the watchdog
+  // package is edited). WATCHDOG_WEB_READER is the per-reader watermark key: it is stable,
+  // and an acknowledge advances exactly this key in read-watermark.json.
+  const WATCHDOG_STATE_URL = "/plugins/mpd-team-watchdog/state";
+  const WATCHDOG_ACK_URL = "/plugins/mpd-team-watchdog/ack";
+  const WATCHDOG_WEB_READER = "web-panel";
+  /** Mirror of the adopted poll cadence; the FIRST poll happens on mount, without user action. */
+  const WATCHDOG_POLL_MS = 15000;
+
   // Page-owned keys only. Everything the panel itself shows (title, empty hint,
   // collapse, panel aria) resolves through the adopted dictionaries, so the sidebar page
   // says exactly what the floater said.
@@ -57,6 +68,18 @@
     "page.unavailable": "团队视图不可用：{reason}",
     "settings.autoOpen.title": "团队出现时自动打开",
     "settings.autoOpen.desc": "本对话新建团队或有团队开始工作时，自动在侧栏打开 AgentTeams 页面。",
+    "watchdog.banner.held": "团队已被看门狗暂停：{teamId}（{cause}）",
+    "watchdog.banner.warned": "看门狗告警：{teamId}（{cause}）",
+    "watchdog.banner.detail": "任务 {taskId} · 尝试 {attemptId} · 起始于 {since}",
+    "watchdog.banner.ack": "确认",
+    "watchdog.banner.acked": "已确认，不再重复显示",
+    "watchdog.banner.error": "确认失败：{message}",
+    "watchdog.record.title": "活动记录",
+    "watchdog.record.escalate": "已升级（暂停）",
+    "watchdog.record.warn": "告警",
+    "watchdog.record.hold": "已暂停",
+    "watchdog.record.meta": "{teamId} · {cause}",
+    "watchdog.unacknowledged": "未确认：每次载入都会重新显示，直到你确认。",
   };
   const en = {
     "tab.title": "AgentTeams",
@@ -64,6 +87,18 @@
     "page.unavailable": "Team view unavailable: {reason}",
     "settings.autoOpen.title": "Auto-open when a team appears",
     "settings.autoOpen.desc": "Open the AgentTeams page in the sidebar when this conversation creates a team or a team starts working.",
+    "watchdog.banner.held": "Team paused by the watchdog: {teamId} ({cause})",
+    "watchdog.banner.warned": "Watchdog warning: {teamId} ({cause})",
+    "watchdog.banner.detail": "task {taskId} · attempt {attemptId} · since {since}",
+    "watchdog.banner.ack": "Acknowledge",
+    "watchdog.banner.acked": "Acknowledged — it will not be shown again",
+    "watchdog.banner.error": "Acknowledge failed: {message}",
+    "watchdog.record.title": "Activity record",
+    "watchdog.record.escalate": "escalated (paused)",
+    "watchdog.record.warn": "warned",
+    "watchdog.record.hold": "held",
+    "watchdog.record.meta": "{teamId} · {cause}",
+    "watchdog.unacknowledged": "Unacknowledged: it replays on every load until you acknowledge it.",
   };
   /** Inline SVG path of the platform's `IconChevronDownOutline14` (see chevronDown14). */
   const CHEVRON_DOWN_14_PATH = "M11.8486 5.5L11.4238 5.92383L8.69727 8.65137C8.44157 8.90706 8.21562 9.13382 8.01172 9.29785C7.79912 9.46883 7.55595 9.61756 7.25 9.66602C7.08435 9.69222 6.91565 9.69222 6.75 9.66602C6.44405 9.61756 6.20088 9.46883 5.98828 9.29785C5.78438 9.13382 5.55843 8.90706 5.30273 8.65137L2.57617 5.92383L2.15137 5.5L3 4.65137L3.42383 5.07617L6.15137 7.80273C6.42595 8.07732 6.59876 8.24849 6.74023 8.3623C6.87291 8.46904 6.92272 8.47813 6.9375 8.48047C6.97895 8.48703 7.02105 8.48703 7.0625 8.48047C7.07728 8.47813 7.12709 8.46904 7.25977 8.3623C7.40124 8.24849 7.57405 8.07732 7.84863 7.80273L10.5762 5.07617L11 4.65137L11.8486 5.5Z";
@@ -102,7 +137,10 @@
   // NOT reference counted, so a second caller would double every request. The store is
   // also what the tab badge reads — the badge runs on every tab-bar render, including
   // while the sidebar is collapsed, so it must never fetch.
-  let store = { teams: [], archivedTeams: [], error: undefined, sessionId: undefined };
+  // `watchdog` is the stuck-team slice: the payload the banner and the activity record
+  // render from, plus the last error/ack outcome. It survives a failed poll (the previous
+  // banner is kept) so a route blip can never hide a stuck team.
+  let store = { teams: [], archivedTeams: [], error: undefined, sessionId: undefined, watchdog: { payload: null, error: undefined } };
   const storeListeners = new Set();
   let pollController = null;
   let pollSessionId = undefined;
@@ -135,6 +173,89 @@
     return store;
   }
 
+  // ── Stuck-team state: fetch, publish, acknowledge ──────────────────────────
+  // The watchdog slice rides the SAME store object as the team snapshot, so one render
+  // subscription covers both and no second React store is introduced.
+  let watchdogTimer = null;
+  let watchdogInFlight = false;
+
+  /** The state URL for THIS reader — the query names the watermark key, never a session. */
+  function watchdogStateUrl() {
+    return WATCHDOG_STATE_URL + "?reader=" + encodeURIComponent(WATCHDOG_WEB_READER);
+  }
+
+  function publishWatchdog(patch) {
+    store = { ...store, watchdog: { ...(store.watchdog || {}), ...patch } };
+    for (const listener of storeListeners) listener();
+  }
+
+  /**
+   * One watchdog poll. A failure is recorded in the slice (and the previous banner is
+   * KEPT, never cleared) so a transient route error cannot silently hide a stuck team.
+   */
+  async function refreshWatchdog() {
+    if (watchdogInFlight) return store.watchdog;
+    watchdogInFlight = true;
+    try {
+      const response = await globalThis.fetch(watchdogStateUrl(), { cache: "no-store" });
+      if (response === undefined || response.ok !== true) {
+        publishWatchdog({ error: "HTTP " + String(response === undefined ? "?" : response.status) });
+        return store.watchdog;
+      }
+      const payload = await response.json();
+      publishWatchdog({ payload, error: undefined, fetchedAt: Date.now() });
+      return store.watchdog;
+    } catch (error) {
+      publishWatchdog({ error: String(error && error.message ? error.message : error) });
+      return store.watchdog;
+    } finally {
+      watchdogInFlight = false;
+    }
+  }
+
+  /** The FIRST poll is immediate: a user who was not watching still sees the replay. */
+  function startWatchdogPolling() {
+    void refreshWatchdog();
+    if (watchdogTimer !== null) return;
+    watchdogTimer = setInterval(() => { void refreshWatchdog(); }, WATCHDOG_POLL_MS);
+    if (typeof watchdogTimer === "object" && watchdogTimer !== null && typeof watchdogTimer.unref === "function") {
+      watchdogTimer.unref();
+    }
+  }
+
+  function stopWatchdogPolling() {
+    if (watchdogTimer === null) return;
+    try { clearInterval(watchdogTimer); } catch { /* already cleared */ }
+    watchdogTimer = null;
+  }
+
+  /**
+   * The explicit acknowledge. It POSTs the incident timestamp, then re-polls: the banner
+   * and the record disappear only because the SERVER's unread set is now empty for this
+   * reader — never because the client hid them locally.
+   */
+  async function acknowledgeIncident(incidentTs) {
+    try {
+      const response = await globalThis.fetch(WATCHDOG_ACK_URL, {
+        method: "POST",
+        cache: "no-store",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ reader: WATCHDOG_WEB_READER, incidentTs }),
+      });
+      const body = response !== undefined && typeof response.json === "function" ? await response.json() : {};
+      if (response === undefined || response.ok !== true || body.ok !== true) {
+        publishWatchdog({ ackError: String(body && body.error ? body.error : "HTTP " + String(response === undefined ? "?" : response.status)) });
+        return false;
+      }
+      publishWatchdog({ ackError: undefined, lastAck: { reader: WATCHDOG_WEB_READER, watermark: body.after } });
+      await refreshWatchdog();
+      return true;
+    } catch (error) {
+      publishWatchdog({ ackError: String(error && error.message ? error.message : error) });
+      return false;
+    }
+  }
+
   function stopPolling() {
     if (pollController !== null) {
       try { pollController.stop(); } catch { /* already stopped */ }
@@ -144,6 +265,7 @@
       try { pollUnsubscribe(); } catch { /* already disposed */ }
       pollUnsubscribe = null;
     }
+    stopWatchdogPolling();
     pollSessionId = undefined;
   }
 
@@ -162,6 +284,10 @@
       pollUnsubscribe = adopted.subscribeActivitySnapshots(() => { publishSnapshot(); });
       pollController = adopted.startActivityPolling([], { discoverySessionId: id });
       store = { ...store, sessionId: id };
+      // The stuck-team front door polls alongside the activity controller: the FIRST
+      // fetch happens here, on mount, so a user who was not watching still gets the
+      // unread replay without any interaction.
+      startWatchdogPolling();
       void pollController.firstTick.then(
         () => { publishSnapshot(); armAutoOpen(); },
         (error) => {
@@ -344,6 +470,44 @@
     padding: 10, fontSize: 12, lineHeight: 1.5, color: "rgba(128,128,128,0.95)",
     fontFamily: "system-ui, sans-serif", boxSizing: "border-box",
   };
+  // The banner and the activity record reuse the panel's own class names where the adopted
+  // CSS has one, and carry their own inline look otherwise: the stack is a
+  // better-sidebar tab, so nothing here may depend on a floater frame.
+  const WATCHDOG_BANNER_STYLE = {
+    display: "flex", flexDirection: "column", gap: 4, padding: "8px 10px",
+    borderBottom: "1px solid rgba(220,120,60,0.45)", background: "rgba(220,120,60,0.14)",
+    fontSize: 12, lineHeight: 1.45, fontFamily: "system-ui, sans-serif", color: "inherit",
+  };
+  const WATCHDOG_RECORD_STYLE = {
+    display: "flex", flexDirection: "column", gap: 2, padding: "6px 10px",
+    borderLeft: "3px solid rgba(220,120,60,0.7)", background: "rgba(220,120,60,0.07)",
+    fontSize: 12, lineHeight: 1.4, fontFamily: "system-ui, sans-serif", color: "inherit",
+  };
+  const WATCHDOG_BUTTON_STYLE = {
+    alignSelf: "flex-start", marginTop: 2, padding: "2px 8px", fontSize: 12, cursor: "pointer",
+    border: "1px solid rgba(220,120,60,0.6)", borderRadius: 4, background: "transparent", color: "inherit",
+  };
+
+  /** `12:34:56` in the reader's own zone; the raw epoch stays on the element's data attribute. */
+  function clockOf(at) {
+    try {
+      return new Date(at).toLocaleTimeString();
+    } catch {
+      return String(at);
+    }
+  }
+
+  /** The stuck-team banner's inputs: the payload's banner plus the reader's ack outcome. */
+  function watchdogBannerModel(watchdog) {
+    const payload = watchdog && watchdog.payload;
+    if (payload === null || payload === undefined || payload.banner === null || payload.banner === undefined) return null;
+    return {
+      banner: payload.banner,
+      reader: payload.reader,
+      replay: payload.replay === true,
+      unread: Array.isArray(payload.unread) ? payload.unread.length : 0,
+    };
+  }
 
   /**
    * The AgentTeams sidebar page: the adopted panel's interior, in the conversation the
@@ -373,6 +537,72 @@
       team.captainSessionId === sessionId && !live.some((candidate) => candidate.teamId === team.teamId));
     const busy = live.some((team) => Array.isArray(team.members)
       && team.members.some((member) => member.activity === "working"));
+
+    // ── Stuck-team surface ───────────────────────────────────────────────────
+    // Both pieces are driven by the payload the route returned (never by a local flag):
+    // the BANNER is the first child of the panel root, and ONE activity record per
+    // unacknowledged incident heads the body. An acknowledge POSTs the record's own
+    // timestamp and then re-polls, so the record disappears because the reader's unread
+    // set is empty server-side — the honest fallback stays visible until then
+    // (t("watchdog.unacknowledged")).
+    const watchdog = state.watchdog || { payload: null, error: undefined };
+    const watchdogPayload = watchdog.payload;
+    const bannerModel = watchdogBannerModel(watchdog);
+    const activity = watchdogPayload !== null && watchdogPayload !== undefined && Array.isArray(watchdogPayload.activity)
+      ? watchdogPayload.activity
+      : [];
+
+    const recordElements = activity.map((record) => react.createElement("div", {
+      key: "watchdog-record:" + String(record.id),
+      style: WATCHDOG_RECORD_STYLE,
+      "data-watchdog-activity": String(record.id),
+      "data-watchdog-team": String(record.teamId),
+      "data-watchdog-kind": String(record.kind),
+      "data-watchdog-cause": String(record.cause),
+      "data-watchdog-at": String(record.at),
+      "data-watchdog-ack-required": record.ackRequired === true ? "1" : "0",
+    },
+      react.createElement("span", { style: { fontWeight: 600 } },
+        t("watchdog.record.title") + " — " + t(record.kind === "escalate" ? "watchdog.record.escalate"
+          : record.kind === "hold" ? "watchdog.record.hold" : "watchdog.record.warn")),
+      react.createElement("span", null, t("watchdog.record.meta", { teamId: record.teamId, cause: record.cause })),
+      react.createElement("span", { style: { opacity: 0.75 } },
+        clockOf(record.at) + " · " + t("watchdog.unacknowledged")),
+    ));
+
+    const bannerElement = bannerModel === null ? null : react.createElement("div", {
+      style: WATCHDOG_BANNER_STYLE,
+      "data-watchdog-banner": bannerModel.banner.incidentId === null ? "hold" : "incident",
+      "data-watchdog-stuck": "1",
+      "data-watchdog-team": String(bannerModel.banner.teamId),
+      "data-watchdog-kind": String(bannerModel.banner.kind),
+      "data-watchdog-cause": String(bannerModel.banner.cause),
+      "data-watchdog-hold": String(bannerModel.banner.holdId === null ? "" : bannerModel.banner.holdId),
+      "data-watchdog-incident": String(bannerModel.banner.incidentId === null ? "" : bannerModel.banner.incidentId),
+      "data-watchdog-reader": String(bannerModel.reader),
+      "data-watchdog-replay": bannerModel.replay === true ? "1" : "0",
+      "data-watchdog-unread": String(bannerModel.unread),
+      role: "status",
+    },
+      react.createElement("span", { style: { fontWeight: 600 } },
+        t(bannerModel.banner.kind === "warned" ? "watchdog.banner.warned" : "watchdog.banner.held",
+          { teamId: bannerModel.banner.teamId, cause: bannerModel.banner.cause })),
+      react.createElement("span", null, t("watchdog.banner.detail", {
+        taskId: bannerModel.banner.taskId === null ? "—" : bannerModel.banner.taskId,
+        attemptId: bannerModel.banner.attemptId === null ? "—" : bannerModel.banner.attemptId,
+        since: clockOf(bannerModel.banner.since),
+      })),
+      watchdog.ackError !== undefined
+        ? react.createElement("span", { "data-watchdog-ack-error": true },
+          t("watchdog.banner.error", { message: watchdog.ackError }))
+        : null,
+      react.createElement("button", {
+        type: "button",
+        style: WATCHDOG_BUTTON_STYLE,
+        "data-watchdog-ack": "1",
+        onClick: () => { void acknowledgeIncident(bannerModel.banner.since); },
+      }, t("watchdog.banner.ack")),
+    );
 
     const body = [];
     if (state.error !== undefined) {
@@ -424,16 +654,29 @@
       }
     }
 
+    // The activity record heads the body (it is the same incident the banner announces),
+    // so a stuck team is visible even when the conversation currently lists no teams.
+    if (recordElements.length > 0) body.unshift(...recordElements);
+
     return react.createElement("aside", {
       className: css.panel,
       style: PANE_STYLE,
       "data-agent-teams-page": true,
       "data-agent-teams-activity": true,
       "data-team-count": String(live.length),
+      // The stuck-team state as the panel itself sees it: asserted by the offline driver
+      // from the RENDERED tree (a string in the source is not evidence).
+      "data-watchdog-stuck": bannerModel === null ? "0" : "1",
+      "data-watchdog-reader": WATCHDOG_WEB_READER,
+      "data-watchdog-replay": bannerModel !== null && bannerModel.replay === true ? "1" : "0",
       // The floater's head is a drag handle; here it must not advertise a drag.
       "data-compact": true,
       "aria-label": t("activity.panelAria"),
     },
+      // TOP of the panel, before the head: the banner is the first child by construction,
+      // and when there is nothing stuck the children shape is EXACTLY the pre-banner one
+      // (`aside > [head, teams body]`), so the page's visual parity is untouched.
+      ...(bannerElement === null ? [] : [bannerElement]),
       react.createElement("header", { className: css.panelHead },
         react.createElement("span", { className: css.panelTitle },
           t("activity.title"),
@@ -562,7 +805,9 @@
       try { clearTimeout(autoOpenTimer); } catch { /* ignore */ }
     }
     stopPolling();
-    store = { teams: [], archivedTeams: [], error: undefined, sessionId: undefined };
+    stopWatchdogPolling();
+    watchdogInFlight = false;
+    store = { teams: [], archivedTeams: [], error: undefined, sessionId: undefined, watchdog: { payload: null, error: undefined } };
     autoOpenArmed = false;
     autoOpenTimer = null;
     autoOpenSeen.clear();
@@ -572,5 +817,13 @@
   };
   exports.__armAutoOpen = armAutoOpen;
   exports.__maybeAutoOpen = maybeAutoOpen;
+  // Stuck-team test seams: the offline driver polls and acknowledges through these
+  // instead of reaching into module internals.
+  exports.__watchdogState = () => store.watchdog;
+  exports.__watchdogPoll = () => refreshWatchdog();
+  exports.__watchdogAck = (incidentTs) => acknowledgeIncident(incidentTs);
+  exports.WATCHDOG_STATE_URL = WATCHDOG_STATE_URL;
+  exports.WATCHDOG_ACK_URL = WATCHDOG_ACK_URL;
+  exports.WATCHDOG_WEB_READER = WATCHDOG_WEB_READER;
   return module.exports;
 }

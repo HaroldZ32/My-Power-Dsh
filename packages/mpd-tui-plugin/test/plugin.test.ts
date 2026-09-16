@@ -296,7 +296,7 @@ describe("full composition (every service injected)", () => {
     // tuiSettingsSections: the mpd.jsonc section, with the on-screen disclosure.
     expect(calls.sections).toHaveLength(1)
     expect(calls.sections[0].ns).toBe("mpd")
-    expect(calls.sections[0].fields).toHaveLength(6)
+    expect(calls.sections[0].fields).toHaveLength(11)
     for (const field of calls.sections[0].fields) {
       expect(field.hint).toContain("mpd.jsonc")
       expect(field.hint).toContain(BRIDGE_DISCLOSURE)

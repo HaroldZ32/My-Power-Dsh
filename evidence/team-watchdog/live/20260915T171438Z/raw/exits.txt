@@ -1,0 +1,5 @@
+notify exit=0
+heartbeat exit=0
+config exit=0
+fault exit=0
+scene exit=0

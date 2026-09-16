@@ -1,0 +1,16 @@
+[self-test] ok   healthy-observation: 18 checks passed on the healthy observation
+[self-test] ok   negative:web-record-missing: the mutated observation FAILED its own check(s) ["W2"] — a payload with no activity record
+[self-test] ok   negative:web-not-top: the mutated observation FAILED its own check(s) ["W4"] — a banner that is not the panel's first child
+[self-test] ok   negative:web-no-first-poll: the mutated observation FAILED its own check(s) ["W3"] — a replay that needed a user action
+[self-test] ok   negative:web-ack-other-reader: the mutated observation FAILED its own check(s) ["W6"] — an acknowledge that clobbered the OTHER reader's key
+[self-test] ok   negative:web-replay-continues: the mutated observation FAILED its own check(s) ["W7"] — a replay that survived the acknowledge
+[self-test] ok   negative:tui-reader: the mutated observation FAILED its own check(s) ["T1","T5"] — a TUI front door using the web reader key
+[self-test] ok   negative:tui-dialog: the mutated observation FAILED its own check(s) ["T4"] — a dialog with no acknowledge action
+[self-test] ok   negative:tui-compose: the mutated observation FAILED its own check(s) ["T3"] — a notice that never reaches the status line
+[self-test] ok   negative:tui-ack: the mutated observation FAILED its own check(s) ["T5"] — a TUI acknowledge that did not advance its watermark
+[self-test] ok   negative:tui-ack-other: the mutated observation FAILED its own check(s) ["T5"] — a TUI acknowledge that clobbered the web reader's key
+[self-test] ok   negative:tui-replay-continues: the mutated observation FAILED its own check(s) ["T6"] — a TUI replay that survived the acknowledge
+[self-test] ok   negative:bytes: the mutated observation FAILED its own check(s) ["T7"] — built TUI bytes with no notice/dialog wiring
+[self-test] ok   negative:bytes-unchanged: the mutated observation FAILED its own check(s) ["N1"] — a watermark file whose bytes never changed
+[self-test] ok   negative:fallback-hidden: the mutated observation FAILED its own check(s) ["N2"] — a lane that hides the permanent-redisplay fallback
+[self-test] PASS — team-watchdog-notify (15 checks, 0 failed)

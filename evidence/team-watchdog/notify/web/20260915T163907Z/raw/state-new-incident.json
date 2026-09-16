@@ -1,0 +1,51 @@
+{
+  "ok": true,
+  "reader": "web-panel",
+  "generatedAt": "2026-09-15T16:46:34.266Z",
+  "stateDir": ".mpd/team",
+  "workspaces": [
+    "/root/dshProj/my-power-dsh/evidence/team-watchdog/notify/web/20260915T163907Z/raw/ws"
+  ],
+  "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/notify/web/20260915T163907Z/raw/ws",
+  "stuck": true,
+  "held": [],
+  "banner": {
+    "kind": "warned",
+    "teamId": "beta",
+    "holdId": null,
+    "incidentId": "inc-2",
+    "cause": "silence for 90000 ms",
+    "since": 1789460060000,
+    "taskId": "t10",
+    "attemptId": "a2",
+    "scene": null,
+    "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/notify/web/20260915T163907Z/raw/ws"
+  },
+  "activity": [
+    {
+      "id": "inc-2",
+      "teamId": "beta",
+      "kind": "warn",
+      "at": 1789460060000,
+      "label": "warned",
+      "cause": "silence for 90000 ms",
+      "ms": 90000,
+      "taskId": "t10",
+      "attemptId": "a2",
+      "scene": null,
+      "hold": "not-requested",
+      "acknowledgedBy": [],
+      "ackRequired": true,
+      "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/notify/web/20260915T163907Z/raw/ws"
+    }
+  ],
+  "unread": [
+    "inc-2"
+  ],
+  "watermarks": {
+    "tui-panel": 5,
+    "web-panel": 1789460000000
+  },
+  "replay": true,
+  "errors": []
+}

@@ -1,0 +1,8 @@
+[self-test] ok   healthy-observation: 13 checks passed on the healthy observation
+[self-test] ok   negative:install: the mutated observation FAILED its own check(s) ["H1"] — a row that installed no writers
+[self-test] ok   negative:event: the mutated observation FAILED its own check(s) ["H2:tools/post-execute"] — a missing tool hook
+[self-test] ok   negative:tool-stamp: the mutated observation FAILED its own check(s) ["H4"] — a tool stamp that is not post-completion-success
+[self-test] ok   negative:captain: the mutated observation FAILED its own check(s) ["H8"] — no captain stamp (AC-2 needs both)
+[self-test] ok   negative:fresh-read: the mutated observation FAILED its own check(s) ["H9"] — a read that did not come from a fresh process
+[self-test] ok   negative:pre-dispatch: the mutated observation FAILED its own check(s) ["H5"] — a claim of a pre-dispatch stamp (W-9)
+[self-test] PASS — team-watchdog-heartbeat (7 checks, 0 failed)

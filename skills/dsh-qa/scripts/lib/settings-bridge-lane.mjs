@@ -62,6 +62,37 @@ const VALUE_AMBIGUOUS = 27182
  *  (t39 acceptance 4). */
 export const VALUE_INITIAL = 35000
 
+/**
+ * Find one namespace descriptor anywhere in a describe response. The RPC envelope's nesting is the
+ * HOST's business (measured: `settings/mutate` answers `{ok, value:<descriptor>}`), so the lane
+ * searches structurally instead of assuming a shape — and records the observed envelope keys.
+ */
+function findNamespaceDescriptor(payload, ns) {
+  const seen = new Set()
+  const stack = [payload]
+  while (stack.length > 0) {
+    const node = stack.pop()
+    if (node === null || node === undefined || typeof node !== "object" || seen.has(node)) continue
+    seen.add(node)
+    if (Array.isArray(node)) {
+      for (const item of node) if (item !== null && typeof item === "object") stack.push(item)
+      continue
+    }
+    if (String(node.ns ?? "") === ns) return node
+    for (const value of Object.values(node)) if (value !== null && typeof value === "object") stack.push(value)
+  }
+  return undefined
+}
+
+/** Minimal JSONC read for the lane's own two-surface agreement check (comments + trailing commas). */
+function readJsoncLike(text) {
+  const stripped = String(text)
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/[^\n]*/g, "$1")
+    .replace(/,(\s*[}\]])/g, "$1")
+  return JSON.parse(stripped)
+}
+
 /** The fixture: comments, a trailing comma and a non-alphabetical order — all must survive. */
 export function fixture(value) {
   return `{\n  // human comment: must survive the write-back\n  "hashline": {\n    "maxDiffChars": ${value},\n  },\n  "ulw": { "maxRounds": 6 },\n}\n`
@@ -136,6 +167,22 @@ export function evaluateBridge(observed) {
     // §10.1: THIS is why `mpd-config` owns the registration — the namespace serves the FILE-DERIVED
     // base, so a front door shows the real inherited value instead of a schema default (the fixture's
     // file value differs from the schema default on purpose).
+    // AGREEMENT (W14/W15): the namespace's resolved value (the settings surface) must equal the
+    // value the durable file carries, read INDEPENDENTLY through the minimal JSONC reader below.
+    // W15 names the authoritative read-back surface (`settings/describe`), so a reviewer can see
+    // WHICH surface the resolved value came from.
+    const fileValueAtRead = (() => {
+      try {
+        const parsed = readJsoncLike(String(observed.fileAfter))
+        return parsed?.hashline?.maxDiffChars
+      } catch {
+        return undefined
+      }
+    })()
+    add("W15", observed.describedValue === observed.expectedValue,
+      "the AUTHORITATIVE read surface (settings/describe) agrees: its resolved value is " + observed.expectedValue + " (read " + JSON.stringify(observed.describedValue) + ")")
+    add("W14", fileValueAtRead === observed.expectedValue && observed.mutate?.resolved === observed.expectedValue,
+      "the TWO SURFACES AGREE: the settings namespace's resolved value (" + JSON.stringify(observed.mutate?.resolved) + ") equals the value the file on disk carries (" + JSON.stringify(fileValueAtRead) + ")")
     add("W13", observed.mutate?.base === observed.initialValue, "the namespace's BASE is the FILE value " + String(observed.initialValue) + " (" + JSON.stringify(observed.mutate?.base) + "), not the schema default 20000 — §10.1's reason for mpd-config owning the registration, and the falsifier t39 asks for")
   }
 
@@ -434,6 +481,8 @@ export function selfTest(arm = "web") {
       mutate: { ok: true, detail: "status 200 revision 3", resolved: VALUE_WRITE, user: VALUE_WRITE, base: VALUE_INITIAL },
       expectedValue: VALUE_WRITE,
       initialValue: VALUE_INITIAL,
+      describedValue: VALUE_WRITE,
+      describedBase: VALUE_INITIAL,
       fileBefore: fixture(VALUE_INITIAL),
       fileAfter: fixture(VALUE_WRITE),
       log: 'x\n[mpd-config] settings bridge WROTE: {"writtenTo":["/ws/.mpd/mpd.jsonc"],"skipped":null,"candidates":[],"results":[{"root":"/ws","file":"/ws/.mpd/mpd.jsonc","outcome":"written"}],"applies":"restart","source":"update","revision":3}\n',
@@ -466,6 +515,8 @@ export function selfTest(arm = "web") {
     ["W9", "write", (copy) => { copy.log = copy.log.replace('"applies":"restart"', '"applies":"immediate"') }, "a wrong applies timing"],
     ["W11", "write", (copy) => { copy.mutate.resolved = 20000 }, "a resolved value the config layer never saw (the file changed but the value did not)"],
     ["W12", "write", (copy) => { copy.mutate.user = undefined }, "an empty user section (nothing for the L3 layer to merge)"],
+    ["W15", "write", (copy) => { copy.describedValue = 20000 }, "a describe surface that disagrees with the written value"],
+    ["W14", "write", (copy) => { copy.fileAfter = copy.fileAfter.replace(String(copy.expectedValue), "1") }, "a file whose value disagrees with the namespace (the two-surface agreement check)"],
     ["W13", "write", (copy) => { copy.mutate.base = 20000 }, "a base carrying the schema default instead of the file value (§10.1's whole point)"],
     ["D2", "disabled", (copy) => { copy.fileAfter = fixture(VALUE_WRITE) }, "the disabled switch writing anyway (A6)"],
     ["D3", "disabled", (copy) => { copy.log = "no report" }, "a disabled run with no report"],
@@ -592,7 +643,19 @@ export async function runWebArm(argv) {
   say("[mutate] one root: status=" + String(mutateOne.status) + " " + JSON.stringify(mutateOne.error ?? mutateOne.result ?? mutateOne.transport ?? {}))
   await sleep(2500)
   const afterWrite = readFileSync(one.file, "utf8")
+  // ── THE AUTHORITATIVE READ-BACK SURFACE, named and exercised directly ──
+  // `settings/describe` is the namespace's own read surface — the same one the Web card and the TUI
+  // screen go through; the mutation response is derived from it. Reading it explicitly means a
+  // reviewer can see WHICH surface the resolved value came from, and W14/W15 assert it AGREES with
+  // the durable file.
+  const describeCall = await rpc(PORT_MAIN, mainBoot.cookie, "settings/describe", {})
+  const mpdDescriptor = findNamespaceDescriptor(describeCall.result, NS)
+  const describeShape = describeCall.result === null || describeCall.result === undefined ? "null" : (Array.isArray(describeCall.result) ? "array[" + String(describeCall.result.length) + "]" : Object.keys(describeCall.result).join(","))
+  const described = KNOB.reduce((acc, part) => (acc === null || acc === undefined ? undefined : acc[part]), mpdDescriptor?.value)
+  say("[read-back] settings/describe: status=" + String(describeCall.status) + " envelope=" + describeShape + " ns=" + String(mpdDescriptor?.ns ?? "MISSING") + " resolved=" + JSON.stringify(described) + " base=" + JSON.stringify(mpdDescriptor?.base))
   const writeObserved = {
+    describedValue: described,
+    describedBase: mpdDescriptor?.base,
     mode: "write",
     mutate: mutateOutcome(mutateOne, VALUE_WRITE),
     expectedValue: VALUE_WRITE,
@@ -601,7 +664,7 @@ export async function runWebArm(argv) {
     fileAfter: afterWrite,
     log: mainBoot.readLog(),
   }
-  result.boots.write = { file: one.file, value: VALUE_WRITE, initialValue: VALUE_INITIAL, fileBefore: beforeWrite, fileAfter: afterWrite, mutate: mutateOne.result }
+  result.boots.write = { file: one.file, value: VALUE_WRITE, initialValue: VALUE_INITIAL, fileBefore: beforeWrite, fileAfter: afterWrite, mutate: mutateOne.result, describeStatus: describeCall.status, describeEnvelope: describeShape, describeNamespace: mpdDescriptor?.ns }
   result.verdicts.write = evaluateBridge(writeObserved)
   say("[write] " + result.verdicts.write.checks.map((check) => check.id + (check.ok ? "=ok" : "=FAIL")).join(" "))
 

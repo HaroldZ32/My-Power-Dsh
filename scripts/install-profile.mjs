@@ -165,6 +165,14 @@ function buildPlan(o) {
       config: {}
     },
     {
+      // The watchdog core (w3): mirrors the bundle patch row, DEFAULTS INCLUDED —
+      // these four are the frozen values until a settings edit lands, and the tick
+      // re-reads them on settings/document-updated (the `mpd` namespace is
+      // applies:"restart", so apply-time caching would defeat live tuning).
+      id: "mpd-team-watchdog", name: p("packages/mpd-team-watchdog-plugin/dist/index.js"),
+      config: { stateDir: ".mpd/team", warnSilenceMs: 90000, tickIntervalMs: 15000, warnStreakToEscalate: 3, actionOnEscalate: "pause" }
+    },
+    {
       id: "mpd-bootstrap", name: p("packages/mpd-bootstrap-plugin/dist/index.js"),
       config: {}
     },

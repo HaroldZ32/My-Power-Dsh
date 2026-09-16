@@ -43,7 +43,7 @@
   const NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session"
 
   /**
-   * The six knobs — the SAME fields the TUI `/settings` section declares. `hint` is the knob's
+   * The eleven knobs — the SAME fields the TUI `/settings` section declares. `hint` is the knob's
    * mpd.jsonc key + the shared disclosure, exactly as the TUI builds it.
    */
   const FIELDS = [
@@ -53,6 +53,11 @@
     { path: ["memory", "vcs"], label: "Memory backend", zh: "记忆后端", kind: "select", options: ["git", "svn"] },
     { path: ["team", "stateDir"], label: "Team state directory", zh: "团队状态目录", kind: "text" },
     { path: ["boulder", "dir"], label: "Boulder directory", zh: "Boulder 目录", kind: "text" },
+    { path: ["watchdog", "enabled"], label: "Watchdog enabled", zh: "看门狗启用", kind: "boolean" },
+    { path: ["watchdog", "warnSilenceMs"], label: "Silence warning threshold (ms)", zh: "静默告警阈值（毫秒）", kind: "number" },
+    { path: ["watchdog", "tickIntervalMs"], label: "Watchdog tick interval (ms)", zh: "看门狗轮询间隔（毫秒）", kind: "number" },
+    { path: ["watchdog", "warnStreakToEscalate"], label: "Warn streak before escalation", zh: "升级前连续告警次数", kind: "number" },
+    { path: ["watchdog", "actionOnEscalate"], label: "Action on escalation", zh: "升级时的动作", kind: "select", options: ["pause", "warn-only"] },
   ]
 
   const hintOf = (field) => `mpd.jsonc ${field.path.join(".")} — ${BRIDGE_DISCLOSURE}`

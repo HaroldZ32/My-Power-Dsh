@@ -1,0 +1,80 @@
+[check-paths] report=/root/dshProj/my-power-dsh/.mpd/plans/team-watchdog-report.md
+[check-paths] repo=/root/dshProj/my-power-dsh
+[check-paths] cited repo-relative tokens=70 · checked=69 · skipped(placeholders)=7 · missing=0
+  SKIPPED (placeholder/glob): .mpd/plans/*.md
+  SKIPPED (placeholder/glob): docs/**
+  SKIPPED (placeholder/glob): evidence/team-watchdog/integration/<ts>/
+  SKIPPED (placeholder/glob): evidence/tui/docs-parity-gate/…
+  SKIPPED (placeholder/glob): evidence/…
+  SKIPPED (placeholder/glob): packages/**
+  SKIPPED (placeholder/glob): skills/**
+  OK   .mpd/plans/team-watchdog.md
+  OK   docs/
+  OK   evidence/release/v0.9.1/delta-registry.log
+  OK   evidence/team-watchdog/boot/
+  OK   evidence/team-watchdog/boot/20260916T012131Z/
+  OK   evidence/team-watchdog/boot/20260916T012131Z/result.json
+  OK   evidence/team-watchdog/config/20260915T162158Z/
+  OK   evidence/team-watchdog/config/20260915T162158Z/result.json
+  OK   evidence/team-watchdog/design/
+  OK   evidence/team-watchdog/design/DESIGN.md
+  OK   evidence/team-watchdog/fault/20260915T165635Z/
+  OK   evidence/team-watchdog/fault/20260915T165635Z/raw/tests-watchdog.log
+  OK   evidence/team-watchdog/fault/20260915T165635Z/result.json
+  OK   evidence/team-watchdog/integration/
+  OK   evidence/team-watchdog/integration/20260915T180000Z/check-paths.mjs
+  OK   evidence/team-watchdog/integration/20260915T180000Z/raw/check-paths.log
+  OK   evidence/team-watchdog/lanes/
+  OK   evidence/team-watchdog/lanes/20260915T171218Z-config/result.json
+  OK   evidence/team-watchdog/lanes/20260915T171218Z-fault/result.json
+  OK   evidence/team-watchdog/lanes/20260915T171218Z-heartbeat/result.json
+  OK   evidence/team-watchdog/lanes/20260915T171218Z-scene/result.json
+  OK   evidence/team-watchdog/lanes/20260915T173500Z-repin-verified/
+  OK   evidence/team-watchdog/lanes/20260915T173500Z-repin-verified/raw/test-qa.log
+  OK   evidence/team-watchdog/live/20260915T171438Z/
+  OK   evidence/team-watchdog/notify/tui/
+  OK   evidence/team-watchdog/notify/tui/20260915T163453Z/
+  OK   evidence/team-watchdog/notify/tui/20260915T164827Z/
+  OK   evidence/team-watchdog/notify/web/20260915T163907Z/
+  OK   evidence/team-watchdog/pause/
+  OK   evidence/team-watchdog/pause/20260915T163526Z/
+  OK   evidence/team-watchdog/pause/20260915T163526Z/RESULT.md:136 (line 136 present: "- Re-arm is NOT claimed for an attempt the parked map considers currently parked with the same i")
+  OK   evidence/team-watchdog/pause/20260915T164700Z/
+  OK   evidence/team-watchdog/pause/20260915T164700Z/RESULT.md:115 (line 115 present: "- No re-arm claim for an attempt the parked map considers currently parked with the same id")
+  OK   evidence/team-watchdog/pause/20260915T164700Z/AMENDMENT-NOTE.md
+  OK   evidence/team-watchdog/pause/20260915T164700Z/README-supersedes.txt
+  OK   evidence/team-watchdog/pause/20260915T164700Z/RESULT.md
+  OK   evidence/team-watchdog/pause/20260915T164700Z/result.json
+  OK   evidence/team-watchdog/pause/20260915T172352Z/
+  OK   evidence/team-watchdog/plugin/
+  OK   evidence/team-watchdog/plugin/20260915T160657Z/
+  OK   evidence/team-watchdog/plugin/20260915T160657Z/result.json
+  OK   evidence/team-watchdog/plugin/20260915T162351Z/RESULT.md
+  OK   evidence/team-watchdog/plugin/20260915T162351Z/result.json
+  OK   evidence/team-watchdog/plugin/20260915T173114Z/
+  OK   evidence/team-watchdog/plugin/20260915T173604Z/
+  OK   evidence/team-watchdog/pool-guard-readers/REPORT.md
+  OK   evidence/team-watchdog/pool-guard/
+  OK   evidence/team-watchdog/pool-guard/20260915T1745Z/
+  OK   evidence/team-watchdog/pre-step-waterfall/20260916T010000Z/
+  OK   evidence/team-watchdog/pre-step-waterfall/20260916T010000Z/drive.mjs
+  OK   evidence/team-watchdog/pre-step-waterfall/20260916T010000Z/result.json
+  OK   evidence/team-watchdog/pre-step-waterfall/20260916T010000Z/before-fix/
+  OK   evidence/team-watchdog/requirements/20260915T090440Z/
+  OK   evidence/team-watchdog/review/
+  OK   evidence/team-watchdog/review/20260915T171918Z/REPORT.md
+  OK   evidence/team-watchdog/review/20260915T173532Z/REPORT.md
+  OK   evidence/team-watchdog/seam-audit/20260915T154132Z/
+  OK   evidence/team-watchdog/seam-audit/20260915T154132Z/REPORT.md
+  OK   evidence/tui/docs-parity-gate/
+  OK   evidence/tui/docs-parity-gate/20260915T155030Z/
+  OK   evidence/tui/docs-parity-gate/20260915T172817Z/
+  OK   packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+  OK   packages/mpd-team-watchdog-plugin/src/engine.ts
+  OK   packages/mpd-team-watchdog-plugin/test/failsafe.test.ts:216 (line 216 present: "test(\"a row config kill switch also disables the engine\", async () => {")
+  OK   packages/mpd-team-watchdog-plugin/test/pre-step-waterfall.test.ts
+  OK   packages/mpd-team-watchdog-plugin/test/scene.test.ts:92 (line 92 present: "test(\"write -> read round-trips byte-identically and a second identical write changes no bytes\",")
+  OK   scripts/verify-docs-parity.mjs
+  OK   skills/dsh-qa/scripts/team-watchdog-boot.mjs
+  OK   skills/dsh-qa/scripts/tui-settings-bridge.mjs
+[check-paths] PASS — every cited path exists

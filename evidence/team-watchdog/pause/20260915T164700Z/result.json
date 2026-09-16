@@ -1,0 +1,82 @@
+{
+  "task": "t62",
+  "kind": "post-terminal amendment to t62 (w7) — the gate read is now SERVICE-PRIMARY, as the captain's re-dispatch instructed",
+  "assignee": "Deep Worker",
+  "revision": "3dec3bd2994d78ae64c30e33118642987a0401cf",
+  "boardNote": "t62 was already `completed` (attempt 2, attempt_id 528dcfea-…) when the re-dispatch arrived carrying this binding instruction; the task is terminal, so this revision is recorded as evidence plus a captain report rather than a status change. The captain's own instruction for the earlier t54 amendment was 'leave it completed; it lands in the wave's integration report and acceptance ledger', and the same route is offered here.",
+  "whatChanged": {
+    "before": "each gate read the durable file itself (`<stateRoot>/watchdog/hold/<teamId>.json`, tolerating both field spellings, mtime-keyed cache)",
+    "after": "each gate consults the watchdog's own service: `ctx.get(\"mpdWatchdog\", false)?.isHeld(teamId, workspace)?.held === true`; the FILE remains the durable record the SERVICE falls back to, so cross-process knowledge lives in exactly one place",
+    "whyItIsSound": "cordis's `Context#get(name, strict)` is documented and implemented as an INJECT-FREE lookup — `_deps/cordis/lib/index.js`: `/** Read a service from the store without the inject requirement. */ get(name, strict = true) { return getTraceable(this.ctx, this._getImpl(name, strict)?.value) }`. A host-plane adopted row can therefore resolve another host-plane row's service without an `inject` declaration, which matters because this gate lives in adopted code whose `inject` list is not ours to change.",
+    "regionIds": "unchanged ids, new bodies — `mpd-delta watchdog-hold-reader` in BOTH scheduler.js and tools.js (the two module-scope readers), plus the same five call sites: kickTeam (in-region), kickMember (new region), the in-lock re-read (in-region), claim_task and update_task (new regions)",
+    "registry": "ONE `--write-registry` run (still 53 regions across 9 files); `--check` clean",
+    "diff": "scheduler.js 58 insertions / 0 deletions, tools.js 60 / 0 (both smaller than the file-reading version because the fs import and the cache are gone), mpd-deltas.js 63 / 2 where both deletions are that GENERATED file's regenerated `block:` strings"
+  },
+  "acceptance": [
+    {
+      "criterion": "the SERVICE is the gate's read, per the captain's instruction, and a held team is declined with a named log line",
+      "status": "passed",
+      "evidence": "raw/driver.result.json checks B0/C1/C2/C3/C4/C7. B0: mounting the watchdog row publishes `mpdWatchdog` (`holdService: \"mpdWatchdog\"`). C1: the service reports the hold. C2: held => 0 deliveries. C3: two named lines, one from the team gate and one from the member gate: `agent-teams: dispatch declined for pause-probe/*: the team is held by the team watchdog (hold 57d055e7-… since …: silence)` and its `/Architect` twin. C4: the line names the same hold id the service returned. C7: the IN-LOCK gate (third call site) refuses a hold that lands while the kick waits — driven deterministically by a service that answers 'not held' to the member gate and 'held' afterwards; `serviceAsked: 2`, `deliveries: 0`, line names `hold-locked`."
+    },
+    {
+      "criterion": "FAIL-OPEN proven explicitly: service absent => a hold-looking FILE alone changes nothing",
+      "status": "passed",
+      "evidence": "check E0/E1. With NO watchdog row mounted, `ctx.get(\"mpdWatchdog\", false)` is undefined, a complete, well-formed hold record is written to `<stateRoot>/watchdog/hold/pause-probe.json`, and the very same kick that declines in C2 DELIVERS: `deliveries: 1`, `watchdogLines: 0`. The gate reads nothing but the service, so a stray file cannot stop a team. K2 adds the kernel-level half: on a REAL cordis root an absent service reads as `undefined`, never a throw."
+    },
+    {
+      "criterion": "the service resolves from the adopted plugin's own context on the real kernel (no inject declaration needed)",
+      "status": "passed",
+      "evidence": "checks K1/K2 run on the REAL vendored cordis (`_deps/cordis/lib/index.js`, the same kernel the host loads): a sibling row's `ctx.get(\"mpdWatchdog\", false)` returns the provider row's service — `consumerGotService: true`, `crossRowHeld: true`, `crossRowNotHeld: false→true` (a non-held team answers held:false), `absentService: \"undefined (fail-open)\"`, no throw. Source citation for the semantics is in the reader docstring."
+    },
+    {
+      "criterion": "the cross-process caveat is MEASURED on the service, not asserted",
+      "status": "passed",
+      "evidence": "checks D1/D2/D3. The row hydrates at apply with no hold, another process then writes the durable record, and the service's own view reports `source: \"file\"` on the FIRST read and `source: \"memory\"` on the second (cached), with the gate declining on that foreign hold (0 deliveries, 2 named lines)."
+    },
+    {
+      "criterion": "preservation (AC-17 substance): a claimed/running attempt survives the hold byte-for-byte",
+      "status": "passed",
+      "evidence": "checks F1/F2/F3 with the hold raised through the service: sha256 of the adopted team.json is UNCHANGED, and `status: in_progress`, `attemptId: att-live`, `attempt: 3`, `output: partial result`, `handoffId: handoff-1` all survive; no `cancelled` anywhere. H5 adds the re-arm case: attempt 2/`att-live-2`/`kept` frozen while held, then re-armed to attempt 3 by the existing `beginTaskAttempt`/park machinery after the resume. `haltTeamWork` is never called."
+    },
+    {
+      "criterion": "the tool boundary refuses claim_task/update_task loudly while held, and the refusal writes nothing",
+      "status": "passed",
+      "evidence": "checks G1/G2/G3/G4 with the hold coming from the service: both tools throw the same named refusal (`team pause-probe is held by the team watchdog (hold …): … must be released with the watchdog's own session-watchdog-resume action …`), the adopted record's sha256 is unchanged by both refusals, and after the resume neither call reports the hold."
+    },
+    {
+      "criterion": "resume clears the hold and dispatch resumes; idempotence both ways",
+      "status": "passed",
+      "evidence": "checks H1/H2/H3/H4 (resume => file gone, the SERVICE agrees the team is free, the next kick delivers, the resumed task carries a live attempt), I1 (a second hold leaves the file byte- AND mtime-identical and the record unchanged) and I2 (`{resumed:false, reason:'not-held'}`)."
+    },
+    {
+      "criterion": "a THROWING reader can never stop a team",
+      "status": "passed",
+      "evidence": "check J1: with `mpdWatchdog.isHeld` replaced by a function that throws, the kick still delivers (1 delivery) — the reader's try/catch is what makes the gate safe to call on every dispatch."
+    },
+    {
+      "criterion": "delta discipline: ADDITIVE only, ONE registry re-run, no reformat, and the four declared verify commands green",
+      "status": "passed",
+      "evidence": "raw/delta-check.log exit 0 (`already applied: 53 mpd delta region(s) across 9 adopted file(s)`) after exactly one `--write-registry`; raw/adopted-diff-numstat.log (scheduler.js 58/0, tools.js 60/0, mpd-deltas.js 63/2) and raw/adopted-diff-deletions.log (both deletions are that GENERATED file's `block:` strings). raw/tests-adopted.log 220/0, raw/tests-all.log 699/0, raw/typecheck.log exit 0."
+    }
+  ],
+  "verify": [
+    { "command": "node scripts/patch-agent-teams-fixes.mjs --check", "status": "passed", "exitCode": 0, "evidence": "raw/delta-check.log — already applied: 53 mpd delta region(s) across 9 adopted file(s)" },
+    { "command": "bun test packages/mpd-agent-teams-plugin", "status": "passed", "exitCode": 0, "evidence": "raw/tests-adopted.log — 220 pass / 0 fail / 1615 expect() calls / 60 files" },
+    { "command": "bun test packages", "status": "passed", "exitCode": 0, "evidence": "raw/tests-all.log — 699 pass / 0 fail / 134 files" },
+    { "command": "bun run typecheck", "status": "passed", "exitCode": 0, "evidence": "raw/typecheck.log — `$ tsgo --noEmit`, no diagnostics" },
+    { "command": "bun evidence/team-watchdog/pause/20260915T164700Z/driver.mjs", "status": "passed", "exitCode": 0, "evidence": "raw/driver.result.json — 33/33 checks green, including the real-cordis resolution experiment" }
+  ],
+  "changedPaths": [
+    "packages/mpd-agent-teams-plugin/lib/scheduler.js",
+    "packages/mpd-agent-teams-plugin/lib/tools.js",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+    "evidence/team-watchdog/pause/20260915T164700Z/"
+  ],
+  "supersedes": "evidence/team-watchdog/pause/20260915T163526Z/ documents the earlier FILE-READ gate path for the same regions; it is left untouched as a record.",
+  "notClaimed": [
+    "No `haltTeamWork` negative control (w8's fault-injection lane) and `haltTeamWork` is never called.",
+    "No live `dsh` boot: the gates run against the REAL adopted scheduler/plugin and the REAL watchdog dist through stub harness contexts, and the service-resolution semantics are proven on the REAL cordis kernel — but 'the gates fire inside a full host process' is not claimed here.",
+    "The FIELD-SCHEMA discrepancy reported earlier is now moot for ENFORCEMENT (the gate reads the service view, not the file), but it stands for anyone reading the file directly: the dispatch text described the reader-view spelling `{teamId,holdId,at,reason,actor,source}`, while w3 writes `{id,teamId,since,cause,taskId,attemptId,sceneAt}`. w3 remains out of scope and unchanged.",
+    "No re-arm claim for an attempt the parked map considers CURRENTLY parked with the same id (`scheduler.js:515-518` deliberately does not re-dispatch it); H5 measures the recovery branch the design's §3.2 names."
+  ]
+}

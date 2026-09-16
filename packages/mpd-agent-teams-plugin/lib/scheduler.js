@@ -126,6 +126,49 @@ function stateRootOf(workspace, config) {
 function teamLockKey(stateRoot, teamId) {
     return `team:${stateRoot}:${teamId}`;
 }
+//#region mpd-delta watchdog-hold-reader (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/**
+ * The team watchdog's PRESERVING hold, read through the watchdog's OWN service.
+ *
+ * `ctx.get(name, false)` is cordis's inject-free lookup (`Context#get`: "Read a
+ * service from the store without the inject requirement"), so a host-plane row can
+ * consult another host-plane row's service without declaring it — which matters here,
+ * because this gate lives in adopted code whose `inject` list is not ours to change.
+ *
+ * The SERVICE is the only read this gate performs:
+ *   * synchronous and non-throwing;
+ *   * hydrated at its own row's apply and updated on every hold/resume THAT process
+ *     performs, and it falls back to the durable `watchdog/hold/<teamId>.json` record
+ *     itself for a hold another process wrote (the view reports which it used).
+ *
+ * FAIL-OPEN (binding): with the watchdog row absent the service is undefined, so this
+ * gate reads NOTHING — a hold-looking file on disk alone changes no dispatch decision —
+ * and a throwing reader is swallowed. Dispatch then behaves exactly as it does today.
+ *
+ * @param ctx - the plugin context (the service store).
+ * @param teamId - the team to ask about.
+ * @param workspace - that team's workspace (one host serves many sessions).
+ * @returns the hold view, or undefined when the team is not held.
+ */
+const WATCHDOG_HOLD_SERVICE = "mpdWatchdog";
+function watchdogHoldOf(ctx, teamId, workspace) {
+    try {
+        const watchdog = typeof ctx?.get === 'function' ? ctx.get(WATCHDOG_HOLD_SERVICE, false) : undefined;
+        const view = typeof watchdog?.isHeld === 'function' ? watchdog.isHeld(teamId, workspace) : undefined;
+        if (view === undefined || view === null || view.held !== true)
+            return undefined;
+        return {
+            holdId: String(view.holdId ?? ''),
+            at: typeof view.at === 'number' ? view.at : 0,
+            reason: String(view.reason ?? ''),
+            source: view.source === undefined ? null : String(view.source),
+        };
+    }
+    catch {
+        return undefined;
+    }
+}
+//#endregion mpd-delta watchdog-hold-reader
 function liveCaptain(ctx, captainSessionId, supplied) {
     if (supplied !== undefined && supplied.id === captainSessionId)
         return supplied;
@@ -423,6 +466,9 @@ export function installTeamScheduler(ctx, config) {
                 return noteDispatchDecline(ctx.logger, teamId, '*', 'the team is halted');
             if (team.phase === 'staged')
                 return noteDispatchDecline(ctx.logger, teamId, '*', 'the team is still staged; approval has not committed yet');
+            const teamHold = watchdogHoldOf(ctx, teamId, workspace);
+            if (teamHold !== undefined)
+                return noteDispatchDecline(ctx.logger, teamId, '*', `the team is held by the team watchdog (hold ${teamHold.holdId} since ${new Date(teamHold.at).toISOString()}: ${teamHold.reason})`);
             const captain = liveCaptain(ctx, team.captainSessionId, suppliedCaptain);
             if (captain === undefined)
                 return noteDispatchDecline(ctx.logger, teamId, '*', 'no live captain session is resolvable, so no member turn can be authorized');
@@ -453,6 +499,15 @@ export function installTeamScheduler(ctx, config) {
                 let team = await readTeam(stateRoot, teamId);
                 if (team === undefined || team.halted === true || team.phase === 'staged')
                     return;
+                //#region mpd-delta kick-member-hold-decline (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                // The team watchdog's PRESERVING hold, honoured where every other
+                // dispatch decline is honoured. It stops NEW work and touches nothing.
+                const memberHold = watchdogHoldOf(ctx, teamId, workspace);
+                if (memberHold !== undefined) {
+                    noteDispatchDecline(ctx.logger, teamId, memberName, `the team is held by the team watchdog (hold ${memberHold.holdId} since ${new Date(memberHold.at).toISOString()}: ${memberHold.reason})`);
+                    return;
+                }
+                //#endregion mpd-delta kick-member-hold-decline
                 const captain = liveCaptain(ctx, team.captainSessionId, suppliedCaptain);
                 if (captain === undefined)
                     return;
@@ -491,6 +546,9 @@ export function installTeamScheduler(ctx, config) {
                         return noteDispatchDecline(ctx.logger, team.id, memberName, 'the team was halted while this kick waited for the lock');
                     if (fresh.phase === 'staged')
                         return noteDispatchDecline(ctx.logger, team.id, memberName, 'the team returned to staged while this kick waited for the lock');
+                        const lockedHold = watchdogHoldOf(ctx, team.id, workspace);
+                        if (lockedHold !== undefined)
+                            return noteDispatchDecline(ctx.logger, team.id, memberName, `the team is held by the team watchdog (hold ${lockedHold.holdId} since ${new Date(lockedHold.at).toISOString()}: ${lockedHold.reason})`);
                     const currentMember = fresh.members.find(candidate => candidate.name === memberName && candidate.status !== 'removed');
                     if (currentMember === undefined)
                         return noteDispatchDecline(ctx.logger, team.id, memberName, 'the member left the team while this kick waited for the lock');

@@ -1,0 +1,36 @@
+{
+  "case": "never-started-recorded",
+  "ok": true,
+  "observation": {
+    "injected": "no heartbeat ever written for the claimed task",
+    "decisions": [],
+    "decisionsOnSecondTick": [],
+    "incidents": [
+      {
+        "kind": "never-started",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "scene": null,
+        "hold": "not-requested"
+      }
+    ],
+    "recordedKind": "never-started",
+    "recordedSceneIsNull": true,
+    "noticeLines": [
+      "[watchdog-fixture] NEVER-STARTED fault-probe task=t1 member=Architect attempt=att-1 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/root/dshProj/my-power-dsh/evidence/team-watchdog/repair-dead-teams/20260916T013553Z/raw/ws-cases/fault-iul84m/.mpd/team/watchdog/incidents.jsonl"
+    ],
+    "noticeIsNotOnlyALogLine": true,
+    "scenesWritten": 0,
+    "holdsApplied": 0,
+    "neverStartedCounted": 1,
+    "recordByteIdentical": true
+  },
+  "lines": [
+    "the claimed task was never picked up: no heartbeat file exists for its owner",
+    "tick => [] (recorded once; the second tick repeats nothing: [])",
+    "durable incident: [{\"kind\":\"never-started\",\"taskId\":\"t1\",\"attemptId\":\"att-1\",\"scene\":null,\"hold\":\"not-requested\"}]",
+    "notice: [watchdog-fixture] NEVER-STARTED fault-probe task=t1 member=Architect attempt=att-1 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/root/dshProj/my-power-dsh/evidence/team-watchdog/repair-dead-teams/20260916T013553Z/raw/ws-cases/fault-iul84m/.mpd/team/watchdog/incidents.jsonl",
+    "no scene (0), no hold (0), record byte-identical: true",
+    "=> T69-ESCALATE-2: the dispatch problem is now RECORDED and NOTICED, not silent — while still never pausing the team"
+  ]
+}

@@ -1,0 +1,61 @@
+{
+ "recordedInstances": [
+  {
+   "id": "t55",
+   "observed": "pool → Researcher (read-only), attempt 1; revoked to Deep Worker",
+   "measured": {
+    "member": "Researcher",
+    "memberKeys": "id,name,role,provider,model,reasoningEffort,executionPrompt,fallback,joinedAt,status",
+    "toolDeny": null,
+    "picked": "t55",
+    "withheld": []
+   }
+  },
+  {
+   "id": "t57",
+   "observed": "pool → Architect (read-only), attempt 1; revoked to Junior Engineer",
+   "measured": {
+    "member": "Architect",
+    "memberKeys": "id,name,role,provider,model,reasoningEffort,executionPrompt,fallback,joinedAt,status",
+    "toolDeny": null,
+    "picked": "t57",
+    "withheld": []
+   }
+  }
+ ],
+ "controls": {
+  "profileShapedReadOnly_withheld": {
+   "member": "Researcher",
+   "memberKeys": "name,toolDeny",
+   "toolDeny": [
+    "write",
+    "edit",
+    "mpd_hashline_edit",
+    "bash",
+    "mcp__ast_grep__rewrite",
+    "mcp__ast_grep__scan",
+    "mcp__lsp__rename"
+   ],
+   "picked": null,
+   "withheld": [
+    {
+     "id": "t55",
+     "gap": [
+      "write",
+      "edit",
+      "mpd_hashline_edit"
+     ],
+     "explicit": false
+    }
+   ]
+  },
+  "writeCapableMember_receives": {
+   "member": "Deep Worker",
+   "memberKeys": "name,toolDeny",
+   "toolDeny": [],
+   "picked": "t55",
+   "withheld": []
+  }
+ },
+ "verdict": "BOTH RECORDED INSTANCES REPRODUCE: each live team record yields the pooled implementation task to the read-only member (toolDeny absent → empty deny set), while the profile-shaped read-only shape is withheld and a write-capable member receives it — so the task was never short of a capable recipient."
+}

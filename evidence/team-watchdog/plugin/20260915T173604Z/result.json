@@ -1,0 +1,135 @@
+{
+  "task": "t73",
+  "amendment": "post-terminal re-run of the two boundary fixtures after the team-scoped streakKey change",
+  "why": "t71's boundary fix (lastKind / withhold+reset on turn-end) and t73's key fix touch the same functions, so the boundary expectations had to be re-measured on the tree carrying BOTH.",
+  "fixture": "packages/mpd-team-watchdog-plugin/test/fixtures/inject.mjs",
+  "fixtureSha256": "34c9efc8c845d3d93890d9e6af8e8c308a8f8b79f8ad56f2ba214b2fda25640c",
+  "boundaryCases": [
+    "completed-turn-idle",
+    "mid-turn-stall"
+  ],
+  "clock": {
+    "base": 1700000000000,
+    "frozen": {
+      "warnSilenceMs": 90000,
+      "tickIntervalMs": 15000,
+      "warnStreakToEscalate": 3,
+      "actionOnEscalate": "pause"
+    }
+  },
+  "contrast": {
+    "completedTurnIdle": {
+      "decisions": [],
+      "scenesWritten": 0,
+      "incidents": 0,
+      "holdsApplied": 0,
+      "beyondTwiceTheThreshold": true,
+      "recordByteIdentical": true
+    },
+    "midTurnStall": {
+      "decisions": [
+        "warn",
+        "warn",
+        "escalate"
+      ],
+      "scenesWritten": 3,
+      "holdsApplied": 1,
+      "hold": {
+        "id": "ce91c2c6-318e-4a2d-b7ad-01cc1ada7464",
+        "taskId": "t1",
+        "attemptId": "att-1"
+      }
+    },
+    "ok": true
+  },
+  "results": [
+    {
+      "case": "completed-turn-idle",
+      "ok": true,
+      "observation": {
+        "injected": "silence",
+        "newestStampKind": "turn-end",
+        "ticks": [
+          {
+            "silenceMs": 90001,
+            "decisions": [],
+            "scenes": 0,
+            "holds": 0
+          },
+          {
+            "silenceMs": 180001,
+            "decisions": [],
+            "scenes": 0,
+            "holds": 0
+          },
+          {
+            "silenceMs": 270001,
+            "decisions": [],
+            "scenes": 0,
+            "holds": 0
+          }
+        ],
+        "beyondTwiceTheThreshold": true,
+        "decisions": [],
+        "scenesWritten": 0,
+        "incidents": 0,
+        "holdsApplied": 0,
+        "recordByteIdentical": true
+      }
+    },
+    {
+      "case": "mid-turn-stall",
+      "ok": true,
+      "observation": {
+        "injected": "silence",
+        "newestStampKind": "step",
+        "ticks": [
+          {
+            "silenceMs": 90001,
+            "decisions": [
+              "warn"
+            ],
+            "scenes": 1,
+            "holds": 0
+          },
+          {
+            "silenceMs": 180001,
+            "decisions": [
+              "warn"
+            ],
+            "scenes": 1,
+            "holds": 0
+          },
+          {
+            "silenceMs": 270001,
+            "decisions": [
+              "escalate"
+            ],
+            "scenes": 1,
+            "holds": 1
+          }
+        ],
+        "decisions": [
+          "warn",
+          "warn",
+          "escalate"
+        ],
+        "scenesWritten": 3,
+        "incidents": 3,
+        "holdsApplied": 1,
+        "hold": {
+          "id": "ce91c2c6-318e-4a2d-b7ad-01cc1ada7464",
+          "taskId": "t1",
+          "attemptId": "att-1"
+        }
+      }
+    }
+  ],
+  "ok": true,
+  "notClaimed": [
+    "W-3: a GENUINE provider wedge is not reproducible here. Every case injects SILENCE (the absence of new heartbeats); no case may claim that a real wedge was caught.",
+    "The harness is stubbed (ctx services, agents, subagents, logger). The scheduler, the watchdog engine/machine/store and the halt path are the REAL modules; the surrounding host is not.",
+    "No live dsh host, no model credential, no network: the fixture never boots a session.",
+    "`haltTeamWork` cancels; the fixture does not claim that the halt path is ever the RIGHT mechanism — it exists to show that AC-17 goes RED when the pause is built on it."
+  ]
+}

@@ -1,0 +1,5 @@
+[escalate-3x] tick sequence => ["warn","warn","escalate",""] (warn, warn, escalate, NOTHING)
+[escalate-3x] exactly one ESCALATE for the task+attempt, no fourth WARN: true
+[escalate-3x] predecessors recorded as WARNs with snapshot paths: true
+[escalate-3x] hold applied once: true {"id":"35216631-2e0c-4938-ab7c-2d5c8f9048e7","taskId":"t1","attemptId":"att-1"}
+[escalate-3x] retry with a NEW attemptId starts a clean streak: [{"type":"warn","streak":1}]

@@ -1,0 +1,125 @@
+{
+ "oneEscalateNoFourthWarn": {
+  "seq": [
+   [
+    "warn:1"
+   ],
+   [
+    "warn:2"
+   ],
+   [
+    "escalate:3"
+   ],
+   [],
+   []
+  ],
+  "snapshot": {
+   "streaks": {},
+   "escalated": [
+    "t1\u0000attempt-1"
+   ]
+  }
+ },
+ "newAttemptStartsClean": {
+  "firstAttempt": [
+   "warn:1"
+  ],
+  "secondAttempt": [
+   "warn:1"
+  ]
+ },
+ "flapping": {
+  "seq": [
+   "warn",
+   "none",
+   "warn",
+   "none",
+   "warn",
+   "none",
+   "warn",
+   "none",
+   "warn",
+   "none",
+   "warn",
+   "none"
+  ],
+  "escalated": []
+ },
+ "frozenThresholds": {
+  "thresholdMs": 90000,
+  "streakToEscalate": 3,
+  "underKinds": [],
+  "justOverKinds": [
+   "warn"
+  ],
+  "escalateAtIndex": [
+   {
+    "at": 1,
+    "kinds": [
+     "warn"
+    ]
+   },
+   {
+    "at": 2,
+    "kinds": [
+     "warn"
+    ]
+   },
+   {
+    "at": 3,
+    "kinds": [
+     "escalate"
+    ]
+   },
+   {
+    "at": 4,
+    "kinds": []
+   }
+  ]
+ },
+ "crossTeamCollision": {
+  "keyForEmptyAttempt": "t1\u0000",
+  "seq": [
+   {
+    "tick": 0,
+    "A": [
+     "warn:1:teamA"
+    ]
+   },
+   {
+    "tick": 0,
+    "B": [
+     "warn:2:teamB"
+    ]
+   },
+   {
+    "tick": 1,
+    "A": [
+     "escalate:3:teamA"
+    ]
+   },
+   {
+    "tick": 1,
+    "B": []
+   },
+   {
+    "tick": 2,
+    "A": []
+   },
+   {
+    "tick": 2,
+    "B": []
+   }
+  ],
+  "escalated": [
+   "t1\u0000"
+  ],
+  "note": "each team observed its own task ONCE per tick; a per-team machine would never escalate either"
+ },
+ "neverStarted": [
+  [
+   "never-started"
+  ],
+  []
+ ]
+}

@@ -1,0 +1,351 @@
+{
+  "task": "t62",
+  "revision": null,
+  "gateRead": "ctx.get('mpdWatchdog', false)?.isHeld(teamId, workspace)?.held === true",
+  "fixture": {
+    "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/pause/20260915T164700Z/raw/ws",
+    "stateDir": ".mpd/team",
+    "team": "pause-probe"
+  },
+  "lockedGate": {
+    "serviceAsked": 2,
+    "deliveries": 0,
+    "line": "agent-teams: dispatch declined for pause-probe/Architect: the team is held by the team watchdog (hold hold-locked since 2026-09-15T16:50:52.777Z: silence)"
+  },
+  "gateLines": [
+    "agent-teams: dispatch declined for pause-probe/*: the team is held by the team watchdog (hold 73547127-2d7a-435e-89c5-c43bdeaa8a9c since 2026-09-15T16:50:52.777Z: silence)",
+    "agent-teams: dispatch declined for pause-probe/Architect: the team is held by the team watchdog (hold 73547127-2d7a-435e-89c5-c43bdeaa8a9c since 2026-09-15T16:50:52.777Z: silence)"
+  ],
+  "serviceView": {
+    "held": false
+  },
+  "crossProcess": {
+    "first": "file",
+    "second": "memory",
+    "holdId": "hold-foreign"
+  },
+  "preservation": {
+    "before": {
+      "status": "in_progress",
+      "attemptId": "att-live",
+      "attempt": 3
+    },
+    "after": {
+      "status": "in_progress",
+      "attemptId": "att-live",
+      "attempt": 3
+    }
+  },
+  "reArm": {
+    "whileHeld": {
+      "status": "in_progress",
+      "attemptId": "att-live-2",
+      "attempt": 2,
+      "output": "kept"
+    },
+    "afterResume": {
+      "status": "claimed",
+      "attemptId": "3e851fec-bbc5-488e-8779-fa25ecc782f4",
+      "attempt": 3
+    }
+  },
+  "toolRefusals": {
+    "claim": "team pause-probe is held by the team watchdog (hold 372442be-2d85-4efc-8f4e-2076721c4db5 since 2026-09-15T16:50:52.793Z: silence); the team must be released with the watchdog's own session-watchdog-resume action before any further work",
+    "update": "team pause-probe is held by the team watchdog (hold 372442be-2d85-4efc-8f4e-2076721c4db5 since 2026-09-15T16:50:52.793Z: silence); the team must be released with the watchdog's own session-watchdog-resume action before any further work"
+  },
+  "idempotence": {
+    "secondHoldChanged": false,
+    "secondResume": {
+      "resumed": false,
+      "reason": "not-held",
+      "path": "/root/dshProj/my-power-dsh/evidence/team-watchdog/pause/20260915T164700Z/raw/ws/.mpd/team/watchdog/hold/pause-probe.json"
+    }
+  },
+  "cordisResolution": {
+    "providerSawConsumer": null,
+    "consumerGotService": true,
+    "absentService": "undefined (fail-open)",
+    "threw": null,
+    "crossRowHeld": true,
+    "crossRowNotHeld": true
+  },
+  "checks": [
+    {
+      "id": "A control: no watchdog row, no hold => the member IS dispatched",
+      "ok": true,
+      "detail": {
+        "deliveries": 1
+      }
+    },
+    {
+      "id": "B0 the watchdog row publishes mpdWatchdog",
+      "ok": true,
+      "detail": {
+        "holdService": "mpdWatchdog"
+      }
+    },
+    {
+      "id": "B service present, not held => dispatch proceeds",
+      "ok": true,
+      "detail": {
+        "deliveries": 1
+      }
+    },
+    {
+      "id": "C1 the service reports the hold it was given",
+      "ok": true,
+      "detail": {
+        "held": true,
+        "holdId": "73547127-2d7a-435e-89c5-c43bdeaa8a9c",
+        "at": 1789491052777,
+        "reason": "silence",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/pause/20260915T164700Z/raw/ws",
+        "source": "memory"
+      }
+    },
+    {
+      "id": "C2 held => NOTHING is dispatched",
+      "ok": true,
+      "detail": {
+        "deliveries": 0
+      }
+    },
+    {
+      "id": "C3 the decline is a named watchdog line from BOTH the team gate and the member gate",
+      "ok": true,
+      "detail": {
+        "count": 2,
+        "lines": [
+          "agent-teams: dispatch declined for pause-probe/*: the team is held by the team watchdog (hold 73547127-2d7a-435e-89c5-c43bdeaa8a9c since 2026-09-15T16:50:52.777Z: silence)",
+          "agent-teams: dispatch declined for pause-probe/Architect: the team is held by the team watchdog (hold 73547127-2d7a-435e-89c5-c43bdeaa8a9c since 2026-09-15T16:50:52.777Z: silence)"
+        ]
+      }
+    },
+    {
+      "id": "C4 the decline names the hold id the service returned",
+      "ok": true,
+      "detail": {
+        "holdId": "73547127-2d7a-435e-89c5-c43bdeaa8a9c",
+        "first": "agent-teams: dispatch declined for pause-probe/*: the team is held by the team watchdog (hold 73547127-2d7a-435e-89c5-c43bdeaa8a9c since 2026-09-15T16:50:52.777Z: silence)"
+      }
+    },
+    {
+      "id": "C5 the record is byte-identical after the decline",
+      "ok": true
+    },
+    {
+      "id": "C6 the pooled task is left in the pool",
+      "ok": true
+    },
+    {
+      "id": "C7 the IN-LOCK gate refuses a hold that lands while the kick waits",
+      "ok": true,
+      "detail": {
+        "asked": 2,
+        "deliveries": 0,
+        "line": "agent-teams: dispatch declined for pause-probe/Architect: the team is held by the team watchdog (hold hold-locked since 2026-09-15T16:50:52.777Z: silence)"
+      }
+    },
+    {
+      "id": "D1 the SERVICE answers a foreign hold with source:'file' on the first read",
+      "ok": true,
+      "detail": {
+        "held": true,
+        "holdId": "hold-foreign",
+        "at": 1789491052787,
+        "reason": "silence",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/pause/20260915T164700Z/raw/ws",
+        "source": "file"
+      }
+    },
+    {
+      "id": "D2 the same read is then served from memory (cross-process caveat)",
+      "ok": true,
+      "detail": {
+        "held": true,
+        "holdId": "hold-foreign",
+        "at": 1789491052787,
+        "reason": "silence",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/pause/20260915T164700Z/raw/ws",
+        "source": "memory"
+      }
+    },
+    {
+      "id": "D3 the gate declines on the foreign hold too",
+      "ok": true,
+      "detail": {
+        "deliveries": 0
+      }
+    },
+    {
+      "id": "E0 no watchdog row => no mpdWatchdog service",
+      "ok": true
+    },
+    {
+      "id": "E1 FAIL-OPEN: with the service absent a hold-looking FILE alone changes nothing",
+      "ok": true,
+      "detail": {
+        "deliveries": 1,
+        "watchdogLines": 0
+      }
+    },
+    {
+      "id": "F1 the adopted record's bytes are unchanged while held",
+      "ok": true
+    },
+    {
+      "id": "F2 status/attemptId/attempt/output/handoffId all survive the hold",
+      "ok": true,
+      "detail": {
+        "before": {
+          "status": "in_progress",
+          "attemptId": "att-live"
+        },
+        "after": {
+          "status": "in_progress",
+          "attemptId": "att-live"
+        }
+      }
+    },
+    {
+      "id": "F3 nothing was cancelled",
+      "ok": true
+    },
+    {
+      "id": "G0 claim/update/hold/resume are all registered",
+      "ok": true
+    },
+    {
+      "id": "G1 claim_task is refused with a named watchdog reason",
+      "ok": true,
+      "detail": {
+        "error": "team pause-probe is held by the team watchdog (hold 372442be-2d85-4efc-8f4e-2076721c4db5 since 2026-09-15T16:50:52.793Z: silence); the team must be released with the watchdog's own session-watchdog-resume action before any further work"
+      }
+    },
+    {
+      "id": "G2 update_task is refused with a named watchdog reason",
+      "ok": true,
+      "detail": {
+        "error": "team pause-probe is held by the team watchdog (hold 372442be-2d85-4efc-8f4e-2076721c4db5 since 2026-09-15T16:50:52.793Z: silence); the team must be released with the watchdog's own session-watchdog-resume action before any further work"
+      }
+    },
+    {
+      "id": "G3 the refusals changed NO record byte",
+      "ok": true
+    },
+    {
+      "id": "I1 a second hold writes no second hold and interrupts nothing",
+      "ok": true,
+      "detail": {
+        "changed": false
+      }
+    },
+    {
+      "id": "H1 session-watchdog-resume clears the hold",
+      "ok": true,
+      "detail": {
+        "resumed": true,
+        "hold": {
+          "id": "372442be-2d85-4efc-8f4e-2076721c4db5",
+          "teamId": "pause-probe",
+          "since": 1789491052793,
+          "cause": "silence",
+          "taskId": "t1",
+          "attemptId": "att-1",
+          "sceneAt": 0
+        },
+        "path": "/root/dshProj/my-power-dsh/evidence/team-watchdog/pause/20260915T164700Z/raw/ws/.mpd/team/watchdog/hold/pause-probe.json"
+      }
+    },
+    {
+      "id": "H2 the service agrees the team is free",
+      "ok": true
+    },
+    {
+      "id": "H3 dispatch resumes through the existing kick machinery",
+      "ok": true,
+      "detail": {
+        "deliveries": 1
+      }
+    },
+    {
+      "id": "H4 the resumed task carries a live attempt of its own",
+      "ok": true,
+      "detail": {
+        "attemptId": "b18a2a24-9c40-489b-85a0-062e5f3441ba",
+        "status": "claimed"
+      }
+    },
+    {
+      "id": "G4 after the resume the boundary no longer reports the hold",
+      "ok": true,
+      "detail": {
+        "error": "(allowed)"
+      }
+    },
+    {
+      "id": "I2 a resume for a non-held team is a {resumed:false, reason:'not-held'} no-op",
+      "ok": true,
+      "detail": {
+        "resumed": false,
+        "reason": "not-held",
+        "path": "/root/dshProj/my-power-dsh/evidence/team-watchdog/pause/20260915T164700Z/raw/ws/.mpd/team/watchdog/hold/pause-probe.json"
+      }
+    },
+    {
+      "id": "H5 a still-claimed attempt is frozen while held and RE-ARMED by the resume",
+      "ok": true,
+      "detail": {
+        "whileHeld": {
+          "status": "in_progress",
+          "attemptId": "att-live-2",
+          "attempt": 2,
+          "output": "kept"
+        },
+        "afterReArm": {
+          "status": "claimed",
+          "attemptId": "3e851fec-bbc5-488e-8779-fa25ecc782f4",
+          "attempt": 3
+        }
+      }
+    },
+    {
+      "id": "J1 a THROWING service reader is swallowed and dispatch proceeds",
+      "ok": true,
+      "detail": {
+        "deliveries": 1
+      }
+    },
+    {
+      "id": "K1 REAL cordis: a sibling row resolves the service with NO inject declaration",
+      "ok": true,
+      "detail": {
+        "providerSawConsumer": null,
+        "consumerGotService": true,
+        "absentService": "undefined (fail-open)",
+        "threw": null,
+        "crossRowHeld": true,
+        "crossRowNotHeld": true
+      }
+    },
+    {
+      "id": "K2 REAL cordis: an absent service reads as undefined, not a throw",
+      "ok": true,
+      "detail": {
+        "providerSawConsumer": null,
+        "consumerGotService": true,
+        "absentService": "undefined (fail-open)",
+        "threw": null,
+        "crossRowHeld": true,
+        "crossRowNotHeld": true
+      }
+    }
+  ],
+  "ok": true
+}

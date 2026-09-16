@@ -1,0 +1,41 @@
+{
+  "case": "completed-turn-idle",
+  "ok": true,
+  "observation": {
+    "injected": "silence",
+    "newestStampKind": "turn-end",
+    "ticks": [
+      {
+        "silenceMs": 90001,
+        "decisions": [],
+        "scenes": 0,
+        "holds": 0
+      },
+      {
+        "silenceMs": 180001,
+        "decisions": [],
+        "scenes": 0,
+        "holds": 0
+      },
+      {
+        "silenceMs": 270001,
+        "decisions": [],
+        "scenes": 0,
+        "holds": 0
+      }
+    ],
+    "beyondTwiceTheThreshold": true,
+    "decisions": [],
+    "scenesWritten": 0,
+    "incidents": 0,
+    "holdsApplied": 0,
+    "recordByteIdentical": true
+  },
+  "lines": [
+    "the member COMPLETED its turn: the newest stamp for t1/att-1 is `turn-end` at 1700000002500",
+    "ticks at silence 90001/180001/270001 ms (the last is > 2x the frozen 90000)",
+    "decisions: [] — NO WARN, NO ESCALATE",
+    "scenes 0, incidents 0, holds 0, record byte-identical: true",
+    "=> a completed turn with no re-dispatch is a healthy idle member, not a wedge (T69-ESCALATE-1 fixed)"
+  ]
+}

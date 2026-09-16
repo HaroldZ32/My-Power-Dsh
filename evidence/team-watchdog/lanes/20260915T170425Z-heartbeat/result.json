@@ -1,0 +1,169 @@
+{
+  "task": "AC-1 / AC-2 (per-step and per-tool heartbeats for members and the captain)",
+  "lane": "team-watchdog-heartbeat",
+  "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T170425Z-heartbeat/raw/sandbox/heartbeat/ws",
+  "heartbeatFiles": {
+    "member": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T170425Z-heartbeat/raw/sandbox/heartbeat/ws/.mpd/team/watchdog/heartbeat/architect.jsonl",
+    "captain": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T170425Z-heartbeat/raw/sandbox/heartbeat/ws/.mpd/team/watchdog/heartbeat/captain.jsonl",
+    "memberSha256": "0f4760dace4d0339c1e2d75c44f5afd56347fc9aa9bbf94fdc1048832e265dd1",
+    "captainSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "observed": {
+    "applied": true,
+    "disposers": 5,
+    "events": [
+      "agent/pre-step",
+      "agent/session-start",
+      "agent/turn-stopping",
+      "tools/post-execute",
+      "settings/updated",
+      "settings/document-updated"
+    ],
+    "memberKinds": [
+      "turn-start",
+      "step",
+      "step",
+      "tool",
+      "turn-end"
+    ],
+    "memberStamps": [
+      {
+        "kind": "turn-start",
+        "at": 1789491865834,
+        "member": "Architect",
+        "memberKey": "Architect",
+        "teamId": "heartbeat-probe",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "turnId": "Architect#1",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T170425Z-heartbeat/raw/sandbox/heartbeat/ws"
+      },
+      {
+        "kind": "step",
+        "at": 1789491865835,
+        "member": "Architect",
+        "memberKey": "Architect",
+        "teamId": "heartbeat-probe",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "turnId": "Architect#1",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T170425Z-heartbeat/raw/sandbox/heartbeat/ws"
+      },
+      {
+        "kind": "step",
+        "at": 1789491865835,
+        "member": "Architect",
+        "memberKey": "Architect",
+        "teamId": "heartbeat-probe",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "turnId": "Architect#1",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T170425Z-heartbeat/raw/sandbox/heartbeat/ws"
+      },
+      {
+        "kind": "tool",
+        "at": 1789491865836,
+        "member": "Architect",
+        "memberKey": "Architect",
+        "teamId": "heartbeat-probe",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "turnId": "Architect#1",
+        "tool": "bash",
+        "callId": "call-1",
+        "ok": true,
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T170425Z-heartbeat/raw/sandbox/heartbeat/ws"
+      },
+      {
+        "kind": "turn-end",
+        "at": 1789491865836,
+        "member": "Architect",
+        "memberKey": "Architect",
+        "teamId": "heartbeat-probe",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "turnId": "Architect#1",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T170425Z-heartbeat/raw/sandbox/heartbeat/ws"
+      }
+    ],
+    "captainStamps": [],
+    "freshProcessPid": 21,
+    "freshProcessRead": false,
+    "postOnly": true,
+    "turnIdsDistinct": true
+  },
+  "checks": [
+    {
+      "id": "H1",
+      "ok": true,
+      "detail": "the mounted row installed its writers (applied=true, disposers=5)"
+    },
+    {
+      "id": "H2:agent/pre-step",
+      "ok": true,
+      "detail": "the row subscribed agent/pre-step"
+    },
+    {
+      "id": "H2:agent/session-start",
+      "ok": true,
+      "detail": "the row subscribed agent/session-start"
+    },
+    {
+      "id": "H2:agent/turn-stopping",
+      "ok": true,
+      "detail": "the row subscribed agent/turn-stopping"
+    },
+    {
+      "id": "H2:tools/post-execute",
+      "ok": true,
+      "detail": "the row subscribed tools/post-execute"
+    },
+    {
+      "id": "H3",
+      "ok": true,
+      "detail": "the member's heartbeat file carries every stamped kind [\"turn-start\",\"step\",\"step\",\"tool\",\"turn-end\"]"
+    },
+    {
+      "id": "H4",
+      "ok": true,
+      "detail": "the TOOL stamp is post-completion and carries the tool name + call id ({\"kind\":\"tool\",\"at\":1789491865836,\"member\":\"Architect\",\"memberKey\":\"Architect\",\"teamId\":\"heartbeat-probe\",\"taskId\":\"t1\",\"attemptId\":\"att-1\",\"turnId\":\"Architect#1\",\"tool\":\"bash\",\"callId\":\"call-1\",\"ok\":true,\"workspace\":\"/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T170425Z-heartbeat/raw/sandbox/heartbeat/ws\"})"
+    },
+    {
+      "id": "H5",
+      "ok": true,
+      "detail": "the built bytes expose NO pre-dispatch hook (the tool waterfall subscribed is tools/post-execute; 'tools/pre-execute' absent)"
+    },
+    {
+      "id": "H6",
+      "ok": false,
+      "detail": "the member's step stamp resolves the MEMBER identity ({\"member\":\"Architect\",\"memberKey\":\"Architect\"})"
+    },
+    {
+      "id": "H7",
+      "ok": true,
+      "detail": "the member's stamp binds the team, the current task and the attempt ({\"teamId\":\"heartbeat-probe\",\"taskId\":\"t1\",\"attemptId\":\"att-1\"})"
+    },
+    {
+      "id": "H8",
+      "ok": false,
+      "detail": "the CAPTAIN's own turn is stamped under memberKey 'captain' (undefined)"
+    },
+    {
+      "id": "H9",
+      "ok": false,
+      "detail": "the stamps were read back by a FRESH process (pid 21 vs lane pid 12)"
+    },
+    {
+      "id": "H10",
+      "ok": true,
+      "detail": "each stamp carries its generation's turnId (member keys stay disjoint)"
+    }
+  ],
+  "ok": false,
+  "notClaimed": [
+    "No LIVE member turn was driven: this sandbox has no dsh host, no model credential and no network (the fixture's own NOT_CLAIMED #3). The witness is the mounted boot plus the events the host would fire, read back by a fresh process.",
+    "No pre-dispatch tool stamp exists or is claimed (W-9): the tool stamp is POST-completion only."
+  ],
+  "evidenceDir": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T170425Z-heartbeat",
+  "finishedAt": "2026-09-15T17:04:25.874Z"
+}

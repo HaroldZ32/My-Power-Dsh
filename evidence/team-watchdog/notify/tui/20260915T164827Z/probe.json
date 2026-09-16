@@ -1,0 +1,133 @@
+{
+  "task": "t65 — every watchdog-store access behind the mpdWatchdog service",
+  "measuredAt": "2026-09-15T16:49:12.402Z",
+  "legs": {
+    "seed": {
+      "holds": 1,
+      "incidents": 2,
+      "watermarkFileExists": false
+    },
+    "freshProcessBefore": {
+      "exit": 0,
+      "stderr": "",
+      "pid": 21,
+      "holds": [
+        "mpd-default-1.json"
+      ],
+      "unread": [
+        1000,
+        2000
+      ],
+      "watermarks": {}
+    },
+    "serviceAvailable": true,
+    "statusLineHeld": {
+      "key": "mpd-tui",
+      "expectedKey": "mpd-tui",
+      "text": "mpd: team - · plans 0 · workmates 0 · notes 1 · watchdog: held mpd-default-1 · 2 unread incidents"
+    },
+    "dialog": {
+      "choice": "acknowledge",
+      "request": {
+        "title": "watchdog: held mpd-default-1 · 2 unread incidents — Team mpd-default-1 is held by the team watchdog (a member went silent).",
+        "options": [
+          {
+            "id": "acknowledge",
+            "label": "Acknowledge",
+            "description": "mark these incidents as read so they stop being replayed"
+          },
+          {
+            "id": "later",
+            "label": "Later",
+            "description": "keep them unread; they will be shown again on the next start"
+          }
+        ],
+        "timeoutMs": 30000
+      }
+    },
+    "statusLineAfterAck": "mpd: team - · plans 0 · workmates 0 · notes 1 · watchdog: held mpd-default-1",
+    "statusLineAfterResume": "mpd: team - · plans 0 · workmates 0 · notes 1",
+    "freshProcessAfter": {
+      "exit": 0,
+      "stderr": "",
+      "pid": 30,
+      "holds": [],
+      "unread": [],
+      "watermarks": {
+        "mpd-tui": 2000
+      }
+    },
+    "storeBytes": {
+      "incidents": "{\"id\":\"inc-1000\",\"teamId\":\"mpd-default-1\",\"kind\":\"warn\",\"at\":1000,\"cause\":{\"kind\":\"silence\",\"ms\":90000},\"taskId\":\"t1\",\"attemptId\":null,\"scene\":null,\"hold\":\"not-requested\",\"acknowledgedBy\":[]}\n{\"id\":\"inc-2000\",\"teamId\":\"mpd-default-1\",\"kind\":\"escalate\",\"at\":2000,\"cause\":{\"kind\":\"silence\",\"ms\":90000},\"taskId\":\"t1\",\"attemptId\":null,\"scene\":null,\"hold\":\"applied\",\"acknowledgedBy\":[]}",
+      "watermark": "{\n  \"mpd-tui\": 2000\n}"
+    },
+    "later": {
+      "choice": "later",
+      "watermarkUnchanged": true,
+      "watermark": "{\n  \"mpd-tui\": 2000\n}",
+      "unreadAfterRestart": [
+        3000
+      ]
+    },
+    "absentService": {
+      "available": false,
+      "statusLine": "mpd: team - · plans 0 · workmates 0 · notes 1",
+      "acknowledge": {
+        "ok": false,
+        "watermark": 0,
+        "error": "the mpdWatchdog service is not mounted — the watchdog store was not written"
+      }
+    },
+    "notClaimed": {
+      "pane": "NOT-CLAIMED — no interactive TTY/tmux pane or keystroke leg was driven in this environment; the assertions are the value the status publisher emits, the dialog request the host was handed, and the store bytes."
+    }
+  },
+  "checks": [
+    {
+      "id": "service-available",
+      "status": "passed",
+      "detail": "true"
+    },
+    {
+      "id": "fresh-read-before",
+      "status": "passed",
+      "detail": "[1000,2000]"
+    },
+    {
+      "id": "status-composed",
+      "status": "passed",
+      "detail": "mpd: team - · plans 0 · workmates 0 · notes 1 · watchdog: held mpd-default-1 · 2 unread incidents"
+    },
+    {
+      "id": "dialog-text",
+      "status": "passed",
+      "detail": "watchdog: held mpd-default-1 · 2 unread incidents — Team mpd-default-1 is held by the team watchdog (a member went silent)."
+    },
+    {
+      "id": "status-resumed",
+      "status": "passed",
+      "detail": "mpd: team - · plans 0 · workmates 0 · notes 1"
+    },
+    {
+      "id": "ack-advanced-watermark",
+      "status": "passed",
+      "detail": "{\"mpd-tui\":2000}"
+    },
+    {
+      "id": "fresh-read-after",
+      "status": "passed",
+      "detail": "[]"
+    },
+    {
+      "id": "later-writes-nothing",
+      "status": "passed",
+      "detail": "{\"choice\":\"later\",\"watermarkUnchanged\":true,\"watermark\":\"{\\n  \\\"mpd-tui\\\": 2000\\n}\",\"unreadAfterRestart\":[3000]}"
+    },
+    {
+      "id": "absent-service-safe",
+      "status": "passed",
+      "detail": "{\"available\":false,\"statusLine\":\"mpd: team - · plans 0 · workmates 0 · notes 1\",\"acknowledge\":{\"ok\":false,\"watermark\":0,\"error\":\"the mpdWatchdog service is not mounted — the watchdog store was not written\"}}"
+    }
+  ],
+  "verdict": "passed"
+}

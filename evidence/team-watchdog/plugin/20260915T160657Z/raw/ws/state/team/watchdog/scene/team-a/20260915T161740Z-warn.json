@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "at": 1789489060861,
+  "reason": "warn",
+  "cause": {
+    "kind": "silence",
+    "ms": 90001
+  },
+  "team": {
+    "id": "team-a",
+    "name": "Team A",
+    "phase": "running",
+    "halted": null,
+    "haltedAt": null,
+    "hold": null
+  },
+  "tasks": [
+    {
+      "id": "t1",
+      "status": "in_progress",
+      "assignee": "Architect",
+      "attempt": 1,
+      "attemptId": "att-1",
+      "lastSeen": 1789488970860,
+      "streak": 1
+    },
+    {
+      "id": "t2",
+      "status": "claimed",
+      "assignee": "Senior Engineer",
+      "attempt": 1,
+      "attemptId": "att-2",
+      "lastSeen": null,
+      "streak": 0
+    }
+  ],
+  "members": [
+    {
+      "id": "agent-architect",
+      "name": "Architect",
+      "status": "working",
+      "unread": 1,
+      "currentTask": "t1",
+      "lastSeen": 1789488970860
+    },
+    {
+      "id": "agent-senior",
+      "name": "Senior Engineer",
+      "status": "working",
+      "unread": 0,
+      "currentTask": "t2",
+      "lastSeen": null
+    }
+  ],
+  "mailbox": {},
+  "parkedAttempts": {
+    "agent-architect": "att-1",
+    "agent-senior": "att-2"
+  },
+  "incidents": []
+}

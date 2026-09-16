@@ -1,0 +1,9 @@
+[team-watchdog-config] declaration: /root/dshProj/my-power-dsh/packages/mpd-config-plugin/src/settings-schema.ts
+[team-watchdog-config] built bytes: tui=111179 B, web=291758 B
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=60000 tickIntervalMs=5000 warnStreakToEscalate=2 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[team-watchdog-config] mounted with the row config — knobs: {"enabled":true,"warnSilenceMs":60000,"tickIntervalMs":5000,"warnStreakToEscalate":2,"actionOnEscalate":"pause","issues":[]}
+[mpd-team-watchdog] knobs re-read (enabled=true, warnSilenceMs=30000, tickIntervalMs=10000, warnStreakToEscalate=3, actionOnEscalate=pause)
+[team-watchdog-config] settings/document-updated listeners fired: 1 — live knobs: {"enabled":true,"warnSilenceMs":30000,"tickIntervalMs":10000,"warnStreakToEscalate":3,"actionOnEscalate":"pause","issues":[{"path":"watchdog.tickIntervalMs","problem":"must be < watchdog.warnSilenceMs (30000); clamped","fallback":10000}]}
+[team-watchdog-config] PASS — 10 checks, 0 failed (evidence: /root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T171218Z-config/result.json)
+[team-watchdog-config] NOT CLAIMED: The live re-read is driven through the adapter's own `settings/document-updated` bridge on a stub harness (the host's event, the real row) — not through a live GUI session.
+[team-watchdog-config] NOT CLAIMED: The clamp is asserted from the running engine's reported knobs, not from a source string.

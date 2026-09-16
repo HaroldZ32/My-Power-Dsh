@@ -1,0 +1,3 @@
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=60000 tickIntervalMs=5000 warnStreakToEscalate=2 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[team-watchdog-notify] web: state route status=200 banner="inc-1" replay=true
+[team-watchdog-notify] tui: reader=mpd-tui unread=2 notice="watchdog: held notify-probe · 2 unread incidents"

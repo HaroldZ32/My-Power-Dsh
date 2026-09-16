@@ -1,0 +1,5 @@
+[probe] 6/6 checks passed — passed
+status line (held): mpd: team - · plans 0 · workmates 0 · notes 1 · watchdog: held mpd-default-1 · 2 unread incidents
+status line (after resume): mpd: team - · plans 0 · workmates 0 · notes 1
+dialog title: watchdog: held mpd-default-1 · 2 unread incidents — Team mpd-default-1 is held by the team watchdog (a member went silent).
+fresh processes: before=[1000,2000] after=[] watermarks-after={"mpd-tui":2000}

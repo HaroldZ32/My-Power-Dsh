@@ -1576,7 +1576,14 @@ var SettingsSchema = import_schemastery.default.object({
   ulw: import_schemastery.default.object({ maxRounds: import_schemastery.default.number().default(6) }),
   memory: import_schemastery.default.object({ vcs: import_schemastery.default.union([import_schemastery.default.const("git"), import_schemastery.default.const("svn")]).default("git") }),
   team: import_schemastery.default.object({ stateDir: import_schemastery.default.string().default(".mpd/team") }),
-  boulder: import_schemastery.default.object({ dir: import_schemastery.default.string().default(".mpd") })
+  boulder: import_schemastery.default.object({ dir: import_schemastery.default.string().default(".mpd") }),
+  watchdog: import_schemastery.default.object({
+    enabled: import_schemastery.default.boolean().default(true),
+    warnSilenceMs: import_schemastery.default.number().default(90000),
+    tickIntervalMs: import_schemastery.default.number().default(15000),
+    warnStreakToEscalate: import_schemastery.default.number().default(3),
+    actionOnEscalate: import_schemastery.default.union([import_schemastery.default.const("pause"), import_schemastery.default.const("warn-only")]).default("pause")
+  })
 });
 
 // packages/mpd-config-plugin/src/bridge.ts
