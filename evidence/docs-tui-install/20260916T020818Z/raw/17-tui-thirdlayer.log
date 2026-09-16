@@ -1,0 +1,9 @@
+$ dsh --profile dsh-tui --dump-config | grep -E '@mpd-dsh/mpd|default: mpd|mpd-web-compat'
+1:dsh: [@mpd-dsh/mpd] patch: entry "agent-presets" not found
+480:# == @deepseek-harness-tui/dsh-tui, patched by @mpd-dsh/mpd
+488:    default: mpd
+492:          "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/presets"
+531:# == @mpd-dsh/mpd
+542:        "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-astgrep/launch.mjs")
+555:        "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-gitbash/dist/cli.js")
+567:        "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-lsp/dist/cli.js")

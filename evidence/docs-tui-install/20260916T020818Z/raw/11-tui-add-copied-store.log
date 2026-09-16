@@ -1,0 +1,1 @@
+$ DSH_HOME=<sandbox>/home HOME=<sandbox>/userhome PNPM_HOME=<sandbox>/pnpm-home npm_config_store_dir=<sandbox>/pnpm-store dsh plugin --profile dsh-tui add /root/dshProj/my-power-dsh

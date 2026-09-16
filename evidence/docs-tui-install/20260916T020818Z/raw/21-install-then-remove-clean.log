@@ -1,0 +1,13 @@
+$ dsh plugin --profile dsh-tui add /root/dshProj/my-power-dsh
+[ERR_PNPM_UNEXPECTED_STORE] Unexpected store location
+dsh: pnpm failed in profile directory /root/dshProj/my-power-dsh/evidence/docs-tui-install/20260916T020818Z/sandbox2/home/profiles/dsh-tui
+add-exit=1
+bundles AFTER add: ['@deepseek-ai/dsh-base', '@deepseek-harness-tui/dsh-tui']
+deps AFTER add: {'@deepseek-harness-tui/dsh-tui': '0.10.1'}
+
+$ dsh plugin --profile dsh-tui remove @mpd-dsh/mpd
+[ERR_PNPM_CANNOT_REMOVE_MISSING_DEPS] Cannot remove '@mpd-dsh/mpd': no such dependency found
+dsh: pnpm failed in profile directory /root/dshProj/my-power-dsh/evidence/docs-tui-install/20260916T020818Z/sandbox2/home/profiles/dsh-tui
+remove-exit=1
+bundles AFTER remove: ['@deepseek-ai/dsh-base', '@deepseek-harness-tui/dsh-tui']
+deps AFTER remove: {'@deepseek-harness-tui/dsh-tui': '0.10.1'}

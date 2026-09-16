@@ -1,0 +1,107 @@
+{
+  "task": "t85 — document the TUI install path in both READMEs and the user-guide §1, and correct the uninstall command",
+  "producedBy": "Lead",
+  "measuredAt": "2026-09-16T02:30:52Z",
+  "changedPaths": [
+    "README.md",
+    "README.zh-CN.md",
+    "docs/user-guide.md",
+    "docs/user-guide.zh-CN.md",
+    "evidence/docs-tui-install/20260916T020818Z/raw/26-typecheck.log"
+  ],
+  "hashes": {
+    "README.md": {
+      "sha256": "c3a7ad92f606c7e97f1a8ea09116ed03da0afee42cd33363fe332a83f820e928",
+      "bytes": 13600
+    },
+    "README.zh-CN.md": {
+      "sha256": "4be09e930bcee1358d9e2c15e8fed5bcfbc9f724d4ebde56291c25d272c234e2",
+      "bytes": 13725
+    },
+    "docs/user-guide.md": {
+      "sha256": "eba6e8fe2a1bebe2c2ace0534f212d5dcedbfeb15eea7dcb6942ff14e72e2b7f",
+      "bytes": 28342
+    },
+    "docs/user-guide.zh-CN.md": {
+      "sha256": "3f96c2f646d0faaef10c86d67b5040d87b16816a1b06893b69019ad593aeb0ea",
+      "bytes": 28236
+    }
+  },
+  "measuredCommands": [
+    {
+      "command": "dsh plugin --help",
+      "exitCode": 1,
+      "result": "error: required option '--profile <name>' not specified",
+      "log": "evidence/docs-tui-install/20260916T020818Z/raw/01-plugin-help.log"
+    },
+    {
+      "command": "dsh plugin remove @mpd-dsh/mpd  (THE OLD README FORM)",
+      "exitCode": 1,
+      "result": "error: required option '--profile <name>' not specified",
+      "log": "evidence/docs-tui-install/20260916T020818Z/raw/02-uninstall-no-profile.log",
+      "why": "this is the second half of the user's complaint: the documented uninstall did not work"
+    },
+    {
+      "command": "dsh-tui --help",
+      "exitCode": 0,
+      "result": "update | doctor | version | help; --resume/-c; path|URL; forwards to `dsh --profile dsh-tui`; alias dst",
+      "log": "evidence/docs-tui-install/20260916T020818Z/raw/03-dsh-tui-help.log"
+    },
+    {
+      "command": "dsh plugin --profile dsh-tui add <repo>",
+      "exitCode": 0,
+      "result": "installed: dsh.profile.bundles = [@deepseek-ai/dsh-base, @deepseek-harness-tui/dsh-tui, @mpd-dsh/mpd]; deps add @mpd-dsh/mpd: link:<repo>",
+      "log": "evidence/docs-tui-install/20260916T020818Z/raw/23-install-remove-redirected-store.log"
+    },
+    {
+      "command": "dsh --profile dsh-tui --dump-config",
+      "exitCode": 0,
+      "result": "layer line `# == @deepseek-harness-tui/dsh-tui, patched by @mpd-dsh/mpd`; `default: mpd`; a recorded warning `dsh: [@mpd-dsh/mpd] patch: entry \"agent-presets\" not found`",
+      "log": "evidence/docs-tui-install/20260916T020818Z/raw/17-tui-thirdlayer.log"
+    },
+    {
+      "command": "dsh-tui version",
+      "exitCode": 0,
+      "result": "@deepseek-harness-tui/dsh-tui 0.10.1 (launcher) + profile line",
+      "log": "evidence/docs-tui-install/20260916T020818Z/raw/09-dsh-tui-version-sandbox.log"
+    },
+    {
+      "command": "dsh-tui   (stdout piped: NOT a TTY)",
+      "exitCode": 1,
+      "result": "Error: dsh-tui requires an interactive terminal (stdout must be a TTY).",
+      "log": "evidence/docs-tui-install/20260916T020818Z/raw/16-tty-message.log"
+    },
+    {
+      "command": "dsh plugin --profile dsh-tui remove @mpd-dsh/mpd  (THE CORRECTED FORM)",
+      "exitCode": 0,
+      "result": "removed: dsh.profile.bundles back to [@deepseek-ai/dsh-base, @deepseek-harness-tui/dsh-tui]",
+      "log": "evidence/docs-tui-install/20260916T020818Z/raw/23-install-remove-redirected-store.log"
+    },
+    {
+      "command": "bun run verify:docs",
+      "exitCode": 0,
+      "result": "pairs=34 failed=0 violations=0 exempt=16 — PASS",
+      "log": "evidence/docs-tui-install/20260916T020818Z/raw/25-verify-docs.log"
+    },
+    {
+      "command": "bun run typecheck",
+      "exitCode": 0,
+      "result": "tsgo --noEmit clean",
+      "log": "evidence/docs-tui-install/20260916T020818Z/raw/26-typecheck.log"
+    }
+  ],
+  "isolation": {
+    "dshHome": "sandbox copies of the real `~/.dsh/profiles/dsh-tui` (hardlink/copy) + sandbox HOME; the real home was never written (an early probe hit EROFS on `/root/.dsh/profiles/dsh-tui/cordis.yml`, proving the read-only boundary)",
+    "note": "the 1.6 GB of sandbox working state (a pnpm store copy + two profile copies) was deleted after the measurements; only the raw logs and the post-remove profile snapshot are kept as evidence"
+  },
+  "findings": [
+    "`dsh plugin --help` ALSO requires `--profile` (it is a pnpm forwarder), so the documented uninstall failed for the same reason as any other call: measured `error: required option '--profile <name>' not specified`.",
+    "In the `dsh-tui` profile our patch logs `dsh: [@mpd-dsh/mpd] patch: entry \"agent-presets\" not found` at dump-config time, yet the composition still composes and the preset default IS `mpd` (measured two lines later). Worth a look: our bundle patch's `agent-presets` row is id-targeted, and that id does not exist in the TUI layer stack (it is inserted instead).",
+    "`dsh plugin ... add/remove` reconciles `dsh.profile.bundles` only when pnpm EXITS 0: a killed run leaves the manifest half-updated (observed once: the dependency removed while the bundle entry stayed)."
+  ],
+  "notClaimed": [
+    "No browser or TTY session was driven: the TUI boot refusal is measured, but the TUI's rendered screens are not (tui-panels owns that).",
+    "The install/remove measurements ran against sandbox profile copies with a redirected, writable pnpm store; the commands themselves are the user-facing ones, unchanged."
+  ],
+  "skillsCorpus": "untouched by this task (README/docs/evidence only) — the existing VENDOR_LOCK skills pin stands"
+}

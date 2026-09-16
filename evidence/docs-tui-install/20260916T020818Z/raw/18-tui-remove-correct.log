@@ -1,0 +1,8 @@
+$ DSH_HOME=<sandbox>/home HOME=<sandbox>/userhome PNPM_HOME=<sandbox>/pnpm-home dsh plugin --profile dsh-tui remove @mpd-dsh/mpd
+[ERR_PNPM_CANNOT_REMOVE_MISSING_DEPS] Cannot remove '@mpd-dsh/mpd': no such dependency found
+
+Available dependencies: @deepseek-harness-tui/dsh-tui
+dsh: pnpm failed in profile directory /root/dshProj/my-power-dsh/evidence/docs-tui-install/20260916T020818Z/sandbox/home/profiles/dsh-tui
+exit=1
+bundles AFTER remove: ['@deepseek-ai/dsh-base', '@deepseek-harness-tui/dsh-tui', '@mpd-dsh/mpd']
+deps AFTER remove: {'@deepseek-harness-tui/dsh-tui': '0.10.1'}

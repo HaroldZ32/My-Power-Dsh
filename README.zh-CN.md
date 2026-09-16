@@ -75,11 +75,12 @@ captain 设计名册与任务 DAG，你在 AgentTeams 标签页中审阅并批�
 
 ### DSH-TUI 版本
 
-同一个 bundle 也可挂载在宿主 `dsh-tui` profile 下（`dsh plugin --profile dsh-tui add
-/path/to/my-power-dsh`）：由终端界面承载与 Web 标签页等价的界面 —— 带 key 的状态行、全屏看板、`/mpd`
-命令树、受管对话框、快捷键，以及编辑六个 `mpd.jsonc` 旋钮的 `/settings` 分区；该分区桥接到
-`<workspace>/.mpd/mpd.jsonc`，并在**重启之后**生效。深入细节（界面清单、准入与分发产物、逐包兼容性
-台账、明确的 NOT-CLAIMED 清单）见 [`docs/tui.zh-CN.md`](./docs/tui.zh-CN.md)，英文版为
+同一个 bundle 也可挂载在宿主 `dsh-tui` profile 下：由终端界面承载与 Web 标签页等价的界面 ——
+带 key 的状态行、全屏看板、`/mpd` 命令树、受管对话框、快捷键，以及编辑六个 `mpd.jsonc` 旋钮的
+`/settings` 分区；该分区桥接到 `<workspace>/.mpd/mpd.jsonc`，并在**重启之后**生效。**安装步骤只写在
+一处：[安装 → 终端界面（`dsh-tui`）](#终端界面dsh-tui)** —— 命令、第三层 patch 的组合结果与启动器都在
+那里。深入细节（界面清单、准入与分发产物、逐包兼容性台账、明确的 NOT-CLAIMED 清单）见
+[`docs/tui.zh-CN.md`](./docs/tui.zh-CN.md)，英文版为
 [`docs/tui.md`](./docs/tui.md)。
 
 ### Skills
@@ -126,17 +127,48 @@ cd <repo> && dsh plugin --profile web add .
 与扩展根目录 —— 不需要打包步骤，也不需要复制步骤。重启 `dsh`，然后在会话中选择
 **MPD（Main Working Agent）** preset。
 
-如果要使用已发布产物或 tarball 安装，先打包再加入：
+### 终端界面（`dsh-tui`）
+
+同一个 bundle 也能装进终端界面 profile —— 同样是检出目录里的一条命令：
+
+```bash
+cd <repo> && dsh plugin --profile dsh-tui add .
+```
+
+安装后，本 bundle 成为该 profile 的**第三层 patch**，叠在 TUI 包之上：`dsh.profile.bundles`
+变为 `["@deepseek-ai/dsh-base", "@deepseek-harness-tui/dsh-tui", "@mpd-dsh/mpd"]`，
+`dsh --profile dsh-tui --dump-config` 会把我们的行显示在独立的一层里
+（`# == @deepseek-harness-tui/dsh-tui, patched by @mpd-dsh/mpd`）。TUI 会话默认使用 **mpd**
+preset。用 `dsh-tui` 启动器（别名 `dst`）启动：
+
+```bash
+dsh-tui            # 在当前目录启动
+dsh-tui --resume   # 继续上一个会话（简写 -c）
+dsh-tui --help     # update | doctor | version | help；其余参数原样转发给 `dsh --profile dsh-tui`
+```
+
+`dsh-tui` 需要真实终端：如果输出被重定向到管道，它会拒绝启动并提示
+`Error: dsh-tui requires an interactive terminal (stdout must be a TTY).`。profile 或工具链
+看起来不对时运行 `dsh-tui doctor`。该版本的界面、限制与验证记录见
+[docs/tui.zh-CN.md](./docs/tui.zh-CN.md)（§2 是分层结构）与
+[使用者指南 §7](./docs/user-guide.zh-CN.md#7-dsh-tui-版本终端界面)。
+
+如果要使用已发布产物或 tarball 安装，先打包，再加入你实际使用的那个 profile：
 
 ```bash
 node scripts/pack-mpd.mjs                       # -> dist/mpd-package/（可迁移）
 dsh plugin --profile web add dist/mpd-package
+dsh plugin --profile dsh-tui add dist/mpd-package
 ```
 
 ### 卸载
 
+每条 `dsh plugin` 命令都必须带 `--profile` —— 不带时 CLI 会直接停下并提示
+`error: required option '--profile <name>' not specified`：
+
 ```bash
-dsh plugin remove @mpd-dsh/mpd
+dsh plugin --profile web remove @mpd-dsh/mpd
+dsh plugin --profile dsh-tui remove @mpd-dsh/mpd
 ```
 
 本 bundle 作为一个整体卸载，skills 也包含在内，并在你的 DSH home 中不留残留。你的 workmate 库

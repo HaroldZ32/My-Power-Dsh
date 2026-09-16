@@ -1,0 +1,13 @@
+== clean sequence: install (offline) then the corrected remove, both in ONE sandbox profile
+$ DSH_HOME=<sandbox>/home HOME=<sandbox>/userhome PNPM_HOME=<sandbox>/pnpm-home dsh plugin --profile dsh-tui add /root/dshProj/my-power-dsh
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Progress: resolved 98, reused 31, downloaded 0, added 13, done
+add-exit=124
+bundles AFTER add: ['@deepseek-ai/dsh-base', '@deepseek-harness-tui/dsh-tui']
+deps AFTER add: {'@deepseek-harness-tui/dsh-tui': '0.10.1'}
+
+$ DSH_HOME=<sandbox>/home HOME=<sandbox>/userhome PNPM_HOME=<sandbox>/pnpm-home dsh plugin --profile dsh-tui remove @mpd-dsh/mpd
+[ERR_PNPM_CANNOT_REMOVE_MISSING_DEPS] Cannot remove '@mpd-dsh/mpd': no such dependency found
+remove-exit=1
+bundles AFTER remove: ['@deepseek-ai/dsh-base', '@deepseek-harness-tui/dsh-tui']
+deps AFTER remove: {'@deepseek-harness-tui/dsh-tui': '0.10.1'}
