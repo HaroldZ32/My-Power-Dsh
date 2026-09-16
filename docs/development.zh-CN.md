@@ -102,7 +102,10 @@ QA skill 是 `skills/dsh-qa`（`SKILL.md`）。每个 case 脚本都带 `--self-
 | `tui-settings-bridge` | settings 桥接的 TUI 分支，判定对象是**构建后的字节**：每条 `/settings` 提示都带桥接后的真实披露（`a save writes <workspace>/.mpd/mpd.jsonc … after a restart`）、桥接前那句 "not bridged" 已**删除**、`no-live-session` 运行时提示既存在又已接入状态行组合，且 TUI dist **零**文件系统写入 | `bun skills/dsh-qa/scripts/tui-settings-bridge.mjs` |
 
 | `agent-teams-adopt`（历史 C1） | MIT 声明 + 采纳接线 | `node skills/dsh-qa/scripts/agent-teams-adopt.mjs` |
-| `extension-lifecycle` / `extension-mcp-bridge` / `extension-isolation`（**新增**） | 在**真实挂载启动**上验证扩展接口：放进 `<sandbox-ws>/.mpd/extensions/` 的数据面扩展出现在 `mpd_ext_list` 中、它的 flow 可加载、它的 role 可 spawn；运行时 stdio MCP 桥发布 `mcp__<server>__<tool>` 且真实工具调用成功；每一种坏扩展都不会影响正常扩展，且同一主机上两个 cwd 不同的会话只看到各自工作区的工程扩展 | `bun skills/dsh-qa/scripts/extension-lifecycle.mjs`（以及两个同级 case；各自都带 `--self-test`） |
+| `extension-lifecycle`（**新增**） | 在**真实挂载启动**上验证扩展接口（沙箱 `DSH_HOME` + `HOME` + 会话 cwd；各行均从**本检出**组合，且模型步骤由本地 OpenAI 形状的 stub 应答，因此不需要 provider 凭据）：放进 `<sandbox-ws>/.mpd/extensions/` 的数据面扩展出现在 `mpd_ext_list` 中、它的 flow 可加载、它的 role 可 spawn；每一种坏扩展都不会影响正常扩展，且同一主机上两个 cwd 不同的会话只看到各自工作区的工程扩展 | `bun skills/dsh-qa/scripts/extension-lifecycle.mjs` |
+| `extension-mcp-bridge`（**新增**） | 在同一套**真实挂载启动** + stub 配方上验证运行时 stdio MCP 桥：声明的服务器在两次工具列表读取中都出现 `mcp__<server>__<tool>`，且真实工具调用成功；dead/hang/schema/dup 四个分支证明单台服务器失败不会影响其他服务器 | `bun skills/dsh-qa/scripts/extension-mcp-bridge.mjs` |
+
+两个 case 都引用同一个共享证据辅助模块 `skills/dsh-qa/scripts/extension-isolation.mjs`——本地 OpenAI 形状的 stub 模型、沙箱/启动配方、会话证据读取器，以及多会话隔离分支。它**故意不是一个 case 行**（`skills/dsh-qa/SKILL.md` 原文如此）：它**没有 lane 模式**——不带 `--self-test` 调用时它什么都不做并以 0 退出——它唯一的离线证明是自身的 `--self-test`，即 `bun skills/dsh-qa/scripts/extension-isolation.mjs --self-test`；该自检只校验 stub 协议、描述符契约、随包示例与启动配方，不启动任何会话。这也是它没有被列入 `package.json` 的 `test:qa:all` case 枚举的原因。
 
 两个 npm 脚本，两条通道（t8）：`bun run test:qa` 运行**每个** case 的离线 `--self-test`；
 `bun run test:qa:all` 运行“重量/联机子集”的**真实通道**，其成员在 `package.json` 中按名字逐一列举
