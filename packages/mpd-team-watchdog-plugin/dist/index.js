@@ -62,7 +62,7 @@ var __export = (target, all) => {
 };
 var __esm = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
 
-// packages/mpd-agent-teams-plugin/_deps/cosmokit/lib/index.js
+// ../mpd-agent-teams-plugin/_deps/cosmokit/lib/index.js
 var exports_lib = {};
 __export(exports_lib, {
   valueMap: () => mapValues,
@@ -430,7 +430,7 @@ var init_lib = __esm(() => {
   })(Time || (Time = {}));
 });
 
-// packages/mpd-agent-teams-plugin/_deps/schemastery/lib/index.cjs
+// ../mpd-agent-teams-plugin/_deps/schemastery/lib/index.cjs
 var require_lib = __commonJS((exports, module) => {
   var _deepseek_ai_cosmokit = (init_lib(), __toCommonJS(exports_lib));
   var kSchema = Symbol.for("schemastery");
@@ -1125,10 +1125,10 @@ var require_lib = __commonJS((exports, module) => {
   module.exports = Schema;
 });
 
-// packages/mpd-team-watchdog-plugin/src/index.ts
+// src/index.ts
 var import_schemastery = __toESM(require_lib(), 1);
 
-// packages/mpd-dsh-adapter-plugin/src/index.ts
+// ../mpd-dsh-adapter-plugin/src/index.ts
 import { resolve } from "node:path";
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
@@ -1565,11 +1565,11 @@ function createDshAdapter(ctx, config = {}) {
   return adapter;
 }
 
-// packages/mpd-team-watchdog-plugin/src/actions.ts
+// src/actions.ts
 import { randomUUID } from "node:crypto";
 import { join as join4 } from "node:path";
 
-// packages/mpd-team-watchdog-plugin/src/paths.ts
+// src/paths.ts
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 var DEFAULT_STATE_DIR = join(".mpd", "team");
@@ -1622,11 +1622,11 @@ function watermarkPath(workspace, stateDir = DEFAULT_STATE_DIR) {
   return join(watchdogRoot(workspace, stateDir), "read-watermark.json");
 }
 
-// packages/mpd-team-watchdog-plugin/src/sidecars.ts
+// src/sidecars.ts
 import { appendFileSync as appendFileSync2, existsSync as existsSync2, mkdirSync as mkdirSync2, readFileSync as readFileSync2, rmSync } from "node:fs";
 import { dirname as dirname2 } from "node:path";
 
-// packages/mpd-team-watchdog-plugin/src/store.ts
+// src/store.ts
 import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from "node:fs";
 import { basename, dirname, join as join2 } from "node:path";
 function appendHeartbeat(workspace, stateDir, memberKey, stamp) {
@@ -1690,18 +1690,44 @@ function rotateHeartbeats(workspace, stateDir, memberKey, keep = DEFAULT_KEEP_GE
   }
   const lines = text.split(`
 `).filter((line) => line.trim() !== "");
-  const starts = [];
-  for (let index = 0;index < lines.length; index += 1) {
+  const teamOfLine = (line) => {
     try {
-      const parsed = JSON.parse(lines[index]);
-      if (parsed?.kind === "turn-start")
-        starts.push(index);
-    } catch {}
+      const parsed = JSON.parse(line);
+      const team = parsed?.teamId;
+      return team === undefined || team === null || team === "" ? "\x00no-team" : String(team);
+    } catch {
+      return "\x00unparseable";
+    }
+  };
+  const groups = new Map;
+  for (let index = 0;index < lines.length; index += 1) {
+    const key = teamOfLine(lines[index]);
+    const bucket = groups.get(key);
+    if (bucket === undefined)
+      groups.set(key, [index]);
+    else
+      bucket.push(index);
   }
-  if (starts.length <= keep)
+  const dropped = new Set;
+  for (const indices of groups.values()) {
+    const starts = [];
+    for (const index of indices) {
+      try {
+        const parsed = JSON.parse(lines[index]);
+        if (parsed?.kind === "turn-start")
+          starts.push(index);
+      } catch {}
+    }
+    if (starts.length <= keep)
+      continue;
+    const cut = starts[starts.length - keep];
+    for (const index of indices)
+      if (index < cut)
+        dropped.add(index);
+  }
+  if (dropped.size === 0)
     return { rotated: false, before: lines.length, after: lines.length, path };
-  const cut = starts[starts.length - keep];
-  const kept = lines.slice(cut);
+  const kept = lines.filter((_line, index) => !dropped.has(index));
   try {
     writeFileSync(path, kept.join(`
 `) + `
@@ -1736,7 +1762,7 @@ function message2(error) {
   return error instanceof Error ? error.message : String(error);
 }
 
-// packages/mpd-team-watchdog-plugin/src/sidecars.ts
+// src/sidecars.ts
 function readHold(workspace, stateDir, teamId) {
   let text;
   try {
@@ -1835,7 +1861,7 @@ function ackIncidents(workspace, stateDir, reader, upTo) {
   return { ok: true, watermark: next, path };
 }
 
-// packages/mpd-team-watchdog-plugin/src/team.ts
+// src/team.ts
 import { readFileSync as readFileSync3, readdirSync as readdirSync2, statSync } from "node:fs";
 import { join as join3 } from "node:path";
 var TERMINAL_STATUSES = ["completed", "failed", "cancelled"];
@@ -1846,6 +1872,23 @@ function agentIds(agent) {
   const sessionId = typeof candidate.session?.id === "string" ? candidate.session.id : "";
   const cwd = typeof candidate.session?.header?.cwd === "string" ? candidate.session.header.cwd : undefined;
   return { agentId: id, sessionId, cwd };
+}
+function recordActivityAt(raw) {
+  const candidates = [];
+  if (Array.isArray(raw.tasks)) {
+    for (const task of raw.tasks) {
+      if (task !== null && typeof task === "object" && typeof task.updatedAt === "number")
+        candidates.push(task.updatedAt);
+    }
+  }
+  for (const field of ["updatedAt", "approvedAt", "createdAt"]) {
+    const value = raw[field];
+    if (typeof value === "number")
+      candidates.push(value);
+  }
+  if (candidates.length === 0)
+    return null;
+  return Math.max(...candidates);
 }
 function readTeam(workspace, stateDir, teamId) {
   let text;
@@ -1880,6 +1923,7 @@ function readTeam(workspace, stateDir, teamId) {
         ...typeof task.attemptId === "string" ? { attemptId: task.attemptId } : {},
         ...typeof task.updatedAt === "number" ? { updatedAt: task.updatedAt } : {}
       })),
+      activityAt: recordActivityAt(raw),
       raw
     };
   } catch {
@@ -1957,7 +2001,7 @@ function teamOf(teams, agent) {
   return;
 }
 
-// packages/mpd-team-watchdog-plugin/src/actions.ts
+// src/actions.ts
 var HOLD_TOOL = "session-watchdog-hold";
 var RESUME_TOOL = "session-watchdog-resume";
 var STATUS_TOOL = "session-watchdog-status";
@@ -2097,7 +2141,7 @@ function registerWatchdogActions(dsh, stateDir, registry) {
   });
 }
 
-// packages/mpd-team-watchdog-plugin/src/machine.ts
+// src/machine.ts
 var WATCHDOG_DEFAULTS = {
   enabled: true,
   warnSilenceMs: 90000,
@@ -2158,8 +2202,8 @@ function readKnobs(namespaceValue, env = process.env, defaults = WATCHDOG_DEFAUL
   }
   return { enabled, warnSilenceMs, tickIntervalMs, warnStreakToEscalate, actionOnEscalate, issues };
 }
-function streakKey(taskId, attemptId) {
-  return taskId + "\x00" + attemptId;
+function streakKey(teamId, taskId, attemptId) {
+  return teamId + "\x00" + taskId + "\x00" + attemptId;
 }
 
 class WatchdogMachine {
@@ -2171,10 +2215,14 @@ class WatchdogMachine {
       return [];
     const decisions = [];
     for (const candidate of candidates) {
-      const key = streakKey(candidate.taskId, candidate.attemptId);
+      const key = streakKey(candidate.teamId, candidate.taskId, candidate.attemptId);
       if (this.escalated.has(key))
         continue;
-      if (candidate.lastSeen === null || !candidate.stampedThisGeneration) {
+      if (candidate.lastKind === "turn-end") {
+        this.streaks.delete(key);
+        continue;
+      }
+      if (candidate.lastSeen === null || !candidate.everStampedForTask) {
         if (!this.neverStarted.has(key)) {
           this.neverStarted.add(key);
           decisions.push({
@@ -2216,13 +2264,13 @@ class WatchdogMachine {
     }
     return decisions;
   }
-  clear(taskId, attemptId) {
-    const key = streakKey(taskId, attemptId);
+  clear(teamId, taskId, attemptId) {
+    const key = streakKey(teamId, taskId, attemptId);
     this.streaks.delete(key);
     this.neverStarted.delete(key);
   }
-  hasEscalated(taskId, attemptId) {
-    return this.escalated.has(streakKey(taskId, attemptId));
+  hasEscalated(teamId, taskId, attemptId) {
+    return this.escalated.has(streakKey(teamId, taskId, attemptId));
   }
   snapshot() {
     return { streaks: Object.fromEntries(this.streaks), escalated: [...this.escalated].sort() };
@@ -2236,7 +2284,18 @@ function candidateFor(team, stampSource, memberKeyOf) {
     const memberKey = memberKeyOf(task.assignee);
     const attemptId = task.attemptId ?? "";
     const stamps = stampSource(memberKey);
-    const forTask = stamps.filter((stamp) => stamp.taskId === task.id);
+    const taskAttempt = task.attemptId ?? "";
+    const forTask = stamps.filter((stamp) => {
+      if (stamp.taskId !== task.id)
+        return false;
+      const stampTeam = stamp.teamId;
+      if (stampTeam !== undefined && stampTeam !== null && stampTeam !== "" && stampTeam !== team.id)
+        return false;
+      const stampAttempt = stamp.attemptId;
+      if (stampAttempt === undefined || stampAttempt === null || stampAttempt === "")
+        return true;
+      return stampAttempt === taskAttempt;
+    });
     const newest = forTask.reduce((best, stamp) => best === undefined || stamp.at >= best.at ? stamp : best, undefined);
     candidates.push({
       teamId: team.id,
@@ -2245,21 +2304,24 @@ function candidateFor(team, stampSource, memberKeyOf) {
       assignee: task.assignee,
       memberKey,
       lastSeen: newest === undefined ? null : newest.at,
-      stampedThisGeneration: forTask.length > 0
+      lastKind: newest === undefined ? null : newest.kind,
+      everStampedForTask: forTask.length > 0
     });
   }
   return candidates;
 }
 
-// packages/mpd-team-watchdog-plugin/src/scene.ts
+// src/scene.ts
 import { existsSync as existsSync3, readFileSync as readFileSync4 } from "node:fs";
 import { join as join5 } from "node:path";
 var MAILBOX_DELIVERY_LEASE_MS = 60000;
 var SCENE_SCHEMA_VERSION = 1;
-function newestForTask(stamps, taskId, attemptId) {
+function newestForTask(stamps, taskId, attemptId, teamId) {
   let newest = null;
   for (const stamp of stamps) {
     if (stamp.taskId !== taskId)
+      continue;
+    if (teamId !== undefined && stamp.teamId !== undefined && stamp.teamId !== null && stamp.teamId !== "" && stamp.teamId !== teamId)
       continue;
     if (attemptId !== null && stamp.attemptId !== null && stamp.attemptId !== attemptId)
       continue;
@@ -2283,8 +2345,8 @@ function buildScene(input) {
     assignee: task.assignee ?? null,
     attempt: task.attempt ?? null,
     attemptId: task.attemptId ?? null,
-    lastSeen: newestForTask(input.heartbeat(safeSegment(task.assignee ?? "")), task.id, task.attemptId ?? null),
-    streak: input.streaks[task.id + "\x00" + (task.attemptId ?? "")] ?? 0
+    lastSeen: newestForTask(input.heartbeat(safeSegment(task.assignee ?? "")), task.id, task.attemptId ?? null, team.id),
+    streak: input.streaks[team.id + "\x00" + task.id + "\x00" + (task.attemptId ?? "")] ?? 0
   }));
   const members = team.members.map((member) => {
     const key = safeSegment(member.name);
@@ -2393,7 +2455,7 @@ function mailboxUnread(workspace, stateDir, teamId, agentKey, now, leaseMs = MAI
   return count;
 }
 
-// packages/mpd-team-watchdog-plugin/src/engine.ts
+// src/engine.ts
 function readNamespaceKnobs(dsh, env, defaults) {
   try {
     const reader = dsh.settingsReader("mpd");
@@ -2467,6 +2529,7 @@ class WatchdogEngine {
     incidents: 0,
     incidentFailures: 0,
     neverStarted: 0,
+    skippedTeams: 0,
     lastError: null
   };
   constructor(dsh, ctx, config, registry) {
@@ -2574,8 +2637,17 @@ class WatchdogEngine {
     const disposers = [];
     const agentOf = (payload) => payload?.agent;
     if (typeof this.ctx.on === "function") {
-      disposers.push(subscribe(this.ctx, "agent/pre-step", (payload) => this.stamp("step", agentOf(payload))));
-      disposers.push(subscribe(this.ctx, "agent/session-start", (payload) => this.stamp("turn-start", agentOf(payload) ?? payload)));
+      disposers.push(subscribe(this.ctx, "agent/pre-step", (payload, next) => {
+        try {
+          this.stamp("step", agentOf(payload));
+        } catch (error) {
+          this.warn("pre-step heartbeat failed (the step decision is unaffected): " + message2(error));
+        }
+        return typeof next === "function" ? next() : undefined;
+      }));
+      disposers.push(subscribe(this.ctx, "agent/session-start", (payload) => {
+        this.stamp("turn-start", agentOf(payload) ?? payload);
+      }));
       disposers.push(subscribe(this.ctx, "agent/turn-stopping", (payload) => {
         const stamp = this.stamp("turn-end", agentOf(payload) ?? payload);
         const rotated = rotateHeartbeats(stamp.workspace, this.config.stateDir, stamp.memberKey, this.config.keepGenerations);
@@ -2632,10 +2704,15 @@ class WatchdogEngine {
         return { decisions, scenes, holds, skipped: "disabled" };
       for (const workspace of this.knownRoots()) {
         for (const team of this.teams(workspace, now)) {
+          const liveness = this.liveness(team, now);
+          if (!liveness.tickable) {
+            this.stats.skippedTeams += 1;
+            this.skipNote(team, liveness.reason);
+            continue;
+          }
           for (const decision of this.machine.observe(this.candidates(workspace, team), now, this.knobs)) {
             if (decision.type === "never-started") {
-              this.stats.neverStarted += 1;
-              this.info("task " + decision.taskId + " (member " + decision.assignee + ") never started — a dispatch problem, not an escalation");
+              await this.recordNeverStarted(workspace, team, decision, now);
               continue;
             }
             decisions.push(decision);
@@ -2655,6 +2732,58 @@ class WatchdogEngine {
       return { decisions, scenes, holds, skipped: "tick error: " + message2(error) };
     } finally {
       this.ticking = false;
+    }
+  }
+  liveness(team, now) {
+    const desc = "team " + team.id + " (phase " + (team.phase ?? "?") + ", " + team.tasks.length + " task(s))";
+    let agentsKnown = false;
+    const live = new Set;
+    try {
+      const capabilities = this.dsh.capabilities?.();
+      agentsKnown = capabilities?.agents === true;
+      if (agentsKnown) {
+        for (const agent of this.dsh.liveAgents() ?? []) {
+          const id = agent?.id;
+          if (typeof id === "string" && id !== "")
+            live.add(id);
+        }
+      }
+    } catch {
+      agentsKnown = false;
+    }
+    if (agentsKnown && live.size > 0) {
+      if (team.captainSessionId !== undefined && live.has(team.captainSessionId))
+        return { tickable: true, reason: desc + " has a LIVE captain session" };
+      const member = team.members.find((entry) => entry.id !== "" && live.has(entry.id));
+      if (member !== undefined)
+        return { tickable: true, reason: desc + " has the LIVE member " + member.name };
+      return {
+        tickable: false,
+        reason: desc + " has NO live agent: neither the captain session nor any of its " + team.members.length + " member id(s) is in this process's live registry (" + live.size + " live agent(s))"
+      };
+    }
+    const grace = this.config.deadTeamGraceMs;
+    if (grace <= 0 || team.activityAt === null) {
+      return { tickable: true, reason: desc + " ticked: no usable liveness signal (registry " + (agentsKnown ? "empty" : "absent") + ", bound " + grace + "ms) — the pre-r4 behaviour" };
+    }
+    const age = now - team.activityAt;
+    if (age <= grace)
+      return { tickable: true, reason: desc + " activity " + age + "ms ago is within the " + grace + "ms grace window" };
+    return {
+      tickable: false,
+      reason: desc + " has no live agent and its newest activity is " + age + "ms old (> " + grace + "ms grace): a dead record, not a dispatch problem"
+    };
+  }
+  skipNote(team, reason) {
+    try {
+      const logger = this.ctx.logger;
+      if (typeof logger?.debug === "function")
+        logger.debug("[mpd-team-watchdog] skipping " + reason);
+    } catch {}
+    if (this.config.verboseSkips) {
+      try {
+        console.log("[" + this.config.logPrefix + "] skipped " + reason);
+      } catch {}
     }
   }
   candidates(workspace, team) {
@@ -2733,6 +2862,29 @@ class WatchdogEngine {
     this.info(decision.type.toUpperCase() + " " + team.id + " task=" + decision.taskId + " member=" + decision.assignee + " silence=" + decision.silenceMs + "ms" + " streak=" + decision.streak + " hold=" + holdState + (scenePath === null ? " scene=none" : " scene=" + scenePath));
     return { scene: scenePath, held };
   }
+  async recordNeverStarted(workspace, team, decision, now) {
+    this.stats.neverStarted += 1;
+    const incident = {
+      id: decision.taskId + "@" + decision.attemptId + "#never-started#" + now,
+      teamId: team.id,
+      kind: "never-started",
+      at: now,
+      cause: { kind: "never-started", ms: 0 },
+      taskId: decision.taskId,
+      attemptId: decision.attemptId,
+      scene: null,
+      hold: "not-requested",
+      acknowledgedBy: []
+    };
+    const logged = appendIncident(workspace, this.config.stateDir, incident);
+    if (logged.ok)
+      this.stats.incidents += 1;
+    else {
+      this.stats.incidentFailures += 1;
+      this.warn("never-started record append failed at " + logged.path + ": " + String(logged.error));
+    }
+    this.info("NEVER-STARTED " + team.id + " task=" + decision.taskId + " member=" + decision.assignee + " attempt=" + (decision.attemptId === "" ? "(none)" : decision.attemptId) + " — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation" + (logged.ok ? " record=" + logged.path : " record=FAILED"));
+  }
   async performHold(workspace, teamId, decision, now) {
     const args = {
       team_id: teamId,
@@ -2782,7 +2934,7 @@ class WatchdogEngine {
   }
 }
 
-// packages/mpd-team-watchdog-plugin/src/holds.ts
+// src/holds.ts
 import { existsSync as existsSync4, readFileSync as readFileSync5, readdirSync as readdirSync3, statSync as statSync2 } from "node:fs";
 import { join as join6, resolve as resolve2 } from "node:path";
 var HOLD_SERVICE = "mpdWatchdog";
@@ -2972,7 +3124,7 @@ class HoldRegistry {
 }
 var HOLD_GATE_CALL = 'ctx.get("mpdWatchdog", false)?.isHeld(teamId, workspace)?.held === true';
 
-// packages/mpd-team-watchdog-plugin/src/index.ts
+// src/index.ts
 var name = "mpd-team-watchdog";
 var inject = ["tools", "agents"];
 var Config = import_schemastery.default.object({
@@ -2984,6 +3136,8 @@ var Config = import_schemastery.default.object({
   stateDir: import_schemastery.default.string().default(DEFAULT_STATE_DIR),
   teamCacheMs: import_schemastery.default.number().default(2000),
   keepGenerations: import_schemastery.default.number().default(3),
+  deadTeamGraceMs: import_schemastery.default.number().default(86400000),
+  verboseSkips: import_schemastery.default.boolean().default(false),
   logPrefix: import_schemastery.default.string().default("mpd-team-watchdog")
 });
 function resolveConfig(config = {}) {
@@ -2998,6 +3152,8 @@ function resolveConfig(config = {}) {
     stateDir: typeof config.stateDir === "string" && config.stateDir !== "" ? config.stateDir : DEFAULT_STATE_DIR,
     teamCacheMs: num(config.teamCacheMs, 2000, 0),
     keepGenerations: num(config.keepGenerations, 3, 1),
+    deadTeamGraceMs: num(config.deadTeamGraceMs, 86400000, 0),
+    verboseSkips: bool(config.verboseSkips, false),
     logPrefix: typeof config.logPrefix === "string" && config.logPrefix !== "" ? config.logPrefix : "mpd-team-watchdog"
   };
 }
@@ -3118,7 +3274,7 @@ function apply(ctx, config = {}) {
   for (const issue of issues)
     warn(resolved.logPrefix, "knob " + issue.path + ": " + issue.problem + " — using " + JSON.stringify(issue.fallback));
   try {
-    console.log("[mpd-team-watchdog] applied: enabled=" + engine.getKnobs().enabled + " warnSilenceMs=" + engine.getKnobs().warnSilenceMs + " tickIntervalMs=" + intervalMs + " warnStreakToEscalate=" + engine.getKnobs().warnStreakToEscalate + " actionOnEscalate=" + engine.getKnobs().actionOnEscalate + " stateDir=" + resolved.stateDir + " disposers=" + disposers.length + " holdService=" + (holdService ?? "none") + " hydratedHolds=" + hydratedHolds);
+    console.log("[mpd-team-watchdog] applied: enabled=" + engine.getKnobs().enabled + " warnSilenceMs=" + engine.getKnobs().warnSilenceMs + " tickIntervalMs=" + intervalMs + " warnStreakToEscalate=" + engine.getKnobs().warnStreakToEscalate + " actionOnEscalate=" + engine.getKnobs().actionOnEscalate + " stateDir=" + resolved.stateDir + " disposers=" + disposers.length + " holdService=" + (holdService ?? "none") + " hydratedHolds=" + hydratedHolds + " deadTeamGraceMs=" + (resolved.deadTeamGraceMs === 0 ? "off" : resolved.deadTeamGraceMs));
   } catch {}
   return { applied: true, engine, knobs: engine.getKnobs(), intervalMs, disposers: disposers.length, holdService, hydratedHolds };
 }

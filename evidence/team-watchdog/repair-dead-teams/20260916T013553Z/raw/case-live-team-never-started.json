@@ -1,0 +1,28 @@
+{
+  "case": "live-team-never-started",
+  "ok": true,
+  "observation": {
+    "injected": "a stale record whose member IS live, with a claimed task that never stamped",
+    "recordActivityAgeMs": 864000000,
+    "skippedTeams": 0,
+    "neverStartedCounted": 1,
+    "warnDecisions": [],
+    "incidents": [
+      {
+        "kind": "never-started",
+        "taskId": "t1",
+        "scene": null,
+        "hold": "not-requested"
+      }
+    ],
+    "notices": 1,
+    "debugLines": []
+  },
+  "lines": [
+    "the record is STALE (ten days) but its member resolves to a LIVE agent, so the team IS ticked (skippedTeams 0)",
+    "a claimed task that never stamped is still recorded ONCE: [{\"kind\":\"never-started\",\"taskId\":\"t1\",\"scene\":null,\"hold\":\"not-requested\"}] with 1 notice line(s)",
+    "no WARN/ESCALATE was manufactured: []",
+    "debug skip lines (expected none): []",
+    "=> AC-2's never-started record path is intact (r4)"
+  ]
+}

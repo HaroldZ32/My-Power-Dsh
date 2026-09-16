@@ -1,0 +1,31 @@
+{
+  "case": "member-stops-stepping",
+  "ok": true,
+  "observation": {
+    "injected": "silence",
+    "stamps": [
+      1700000000000,
+      1700000001000,
+      1700000002000
+    ],
+    "distinctStampTimes": 3,
+    "lastStampAt": 1700000002000,
+    "tickBelowThreshold": {
+      "silenceMs": 89000,
+      "decisions": []
+    },
+    "tickAboveThreshold": {
+      "silenceMs": 90001,
+      "decisions": [
+        "warn"
+      ]
+    },
+    "measuredFromLastStamp": true
+  },
+  "lines": [
+    "the member's turn produced 3 step stamps at 1700000000000, 1700000001000, 1700000002000 and then stopped stepping",
+    "silence is measured from the LAST stamp (1700000002000)",
+    "tick at +89 000 => decisions [] (below the frozen 90 000 threshold)",
+    "tick at +90 001 => decisions [\"warn\"] (the fault is observed)"
+  ]
+}

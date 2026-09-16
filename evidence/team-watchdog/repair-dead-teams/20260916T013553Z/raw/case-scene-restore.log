@@ -1,0 +1,4 @@
+[scene-restore] scene files on disk: ["20231114T221450Z-warn.json","20231114T221505Z-warn.json","20231114T221520Z-escalate.json","latest.json"]
+[scene-restore] latest.json (parsed with plain fs): reason=escalate, team.hold={"id":"d8cc11b8-49f2-48a6-abd7-c6efb5eb42f1","since":1789522632170,"cause":"silence","taskId":"t1","attemptId":"att-1"}
+[scene-restore] hold record: {"id":"d8cc11b8-49f2-48a6-abd7-c6efb5eb42f1","since":1789522632170,"cause":"silence","taskId":"t1","attemptId":"att-1"}
+[scene-restore] incident log: warn, warn, escalate

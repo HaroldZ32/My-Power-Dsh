@@ -1,0 +1,78 @@
+{
+  "case": "scene-restore",
+  "ok": true,
+  "observation": {
+    "injected": "silence",
+    "readWith": "plain fs + JSON.parse (no plugin reader) — the fresh-process shape",
+    "sceneFiles": [
+      "20231114T221450Z-warn.json",
+      "20231114T221505Z-warn.json",
+      "20231114T221520Z-escalate.json",
+      "latest.json"
+    ],
+    "latest": {
+      "schemaVersion": 1,
+      "at": 1700000120001,
+      "reason": "escalate",
+      "cause": {
+        "kind": "silence",
+        "ms": 120001
+      },
+      "team": {
+        "id": "fault-probe",
+        "name": "Fault probe",
+        "phase": "running",
+        "halted": null,
+        "haltedAt": null,
+        "hold": {
+          "id": "b74170fc-4468-4dc7-b42e-0e4116d452c1",
+          "since": 1789491456019,
+          "cause": "silence",
+          "taskId": "t1",
+          "attemptId": "att-1"
+        }
+      },
+      "taskCount": 1,
+      "memberCount": 1,
+      "parkedAttempts": {
+        "child-architect-fault": "att-1"
+      }
+    },
+    "hold": {
+      "id": "b74170fc-4468-4dc7-b42e-0e4116d452c1",
+      "since": 1789491456019,
+      "cause": "silence",
+      "taskId": "t1",
+      "attemptId": "att-1"
+    },
+    "incidents": [
+      {
+        "kind": "warn",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "scene": "/root/dshProj/my-power-dsh/evidence/team-watchdog/fault/20260915T165635Z/raw/ws/fault-n5hom0/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json",
+        "hold": "not-requested"
+      },
+      {
+        "kind": "warn",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "scene": "/root/dshProj/my-power-dsh/evidence/team-watchdog/fault/20260915T165635Z/raw/ws/fault-n5hom0/.mpd/team/watchdog/scene/fault-probe/20231114T221505Z-warn.json",
+        "hold": "not-requested"
+      },
+      {
+        "kind": "escalate",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "scene": "/root/dshProj/my-power-dsh/evidence/team-watchdog/fault/20260915T165635Z/raw/ws/fault-n5hom0/.mpd/team/watchdog/scene/fault-probe/20231114T221520Z-escalate.json",
+        "hold": "applied"
+      }
+    ]
+  },
+  "lines": [
+    "scene files on disk: [\"20231114T221450Z-warn.json\",\"20231114T221505Z-warn.json\",\"20231114T221520Z-escalate.json\",\"latest.json\"]",
+    "latest.json (parsed with plain fs): reason=escalate, team.hold={\"id\":\"b74170fc-4468-4dc7-b42e-0e4116d452c1\",\"since\":1789491456019,\"cause\":\"silence\",\"taskId\":\"t1\",\"attemptId\":\"att-1\"}",
+    "hold record: {\"id\":\"b74170fc-4468-4dc7-b42e-0e4116d452c1\",\"since\":1789491456019,\"cause\":\"silence\",\"taskId\":\"t1\",\"attemptId\":\"att-1\"}",
+    "incident log: warn, warn, escalate"
+  ]
+}

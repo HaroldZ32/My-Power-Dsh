@@ -1,0 +1,5 @@
+[second-team-dispatch] team fault-probe is HELD through the plugin's own action: true (holds on disk: ["fault-probe.json"])
+[second-team-dispatch] deliveries in the same window — held team: 0, NEIGHBOUR team: 1
+[second-team-dispatch] the held team's decline: agent-teams: dispatch declined for fault-probe/*: the team is held by the team watchdog (hold 978ac47d-72fa-4e6c-baee-7c6aa1744fb1 since 2026-09-16T01:25:46.822Z: silence)
+[second-team-dispatch] the neighbour kept dispatching: task status claimed, halted=false
+[second-team-dispatch] => the hold is TEAM-scoped: a neighbour in the same workspace is untouched (AC-7)

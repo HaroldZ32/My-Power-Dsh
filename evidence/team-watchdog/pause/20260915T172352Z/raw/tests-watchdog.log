@@ -1,0 +1,116 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-team-watchdog-plugin/test/heartbeat.test.ts:
+(pass) heartbeat store > a model step stamps the member AND the task the member owns [4.75ms]
+(pass) heartbeat store > the captain is stamped under its own key by the same code path [0.59ms]
+(pass) heartbeat store > an agent outside every team still stamps, under a per-session key [0.63ms]
+(pass) heartbeat store > the POST tool hook stamps a completed tool call, never a pre-dispatch one [0.94ms]
+(pass) heartbeat store > turn boundaries are stamped and an old generation is rotated away [2.52ms]
+(pass) heartbeat store > timestamps advance across a turn (>= 3 distinct lastSeen values) [14.44ms]
+(pass) heartbeat store > a torn last line does not hide the stamps before it [0.63ms]
+
+packages/mpd-team-watchdog-plugin/test/holds.test.ts:
+(pass) the mpdWatchdog reader (A2-1 option (b)) > an unknown team is not held, and a recorded hold makes it held [0.85ms]
+(pass) the mpdWatchdog reader (A2-1 option (b)) > the file fallback answers for a hold ANOTHER process wrote (the cross-process caveat) [0.69ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=1
+(pass) the mpdWatchdog reader (A2-1 option (b)) > hydrate at apply loads the holds that already exist on disk [1.80ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+(pass) the mpdWatchdog reader (A2-1 option (b)) > the documented gate call shape returns exactly what a decline gate branches on [1.28ms]
+[mpd-team-watchdog] ctx.provide is unavailable — the hold reader is not published and the w7 gates stay fail-open
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=none hydratedHolds=0
+(pass) the mpdWatchdog reader (A2-1 option (b)) > FAIL-OPEN: a context without ctx.provide publishes no service, and the gate expression is simply false [0.34ms]
+(pass) the mpdWatchdog reader (A2-1 option (b)) > never throws on a hostile path: the gates call it on every dispatch [0.29ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+(pass) the mpdWatchdog reader (A2-1 option (b)) > a mutation through the plugin's own actions keeps the reader in step, both ways [0.89ms]
+(pass) the mpdWatchdog reader (A2-1 option (b)) > a direct applyResume with no registry argument still works (the registry is optional) [0.31ms]
+[mpd-team-watchdog] knob watchdog.tickIntervalMs: must be < watchdog.warnSilenceMs (90000); clamped — using 30000
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=30000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[mpd-team-watchdog] WARN team-a task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-e9z5aZ/.mpd/team/watchdog/scene/team-a/20260915T173000Z-warn.json
+[mpd-team-watchdog] WARN team-a task=t1 member=Architect silence=90002ms streak=2 hold=not-requested scene=/tmp/watchdog-test-e9z5aZ/.mpd/team/watchdog/scene/team-a/20260915T173000Z-warn-2.json
+[mpd-team-watchdog] ESCALATE team-a task=t1 member=Architect silence=90003ms streak=3 hold=applied scene=/tmp/watchdog-test-e9z5aZ/.mpd/team/watchdog/scene/team-a/20260915T173000Z-escalate.json
+(pass) the engine keeps the reader in step with its own hold > an ESCALATE hold lands in the registry through the plugin's own tool action [6.49ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[mpd-team-watchdog] WARN team-a task=t1 member=Architect silence=30001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-gwq5SJ/.mpd/team/watchdog/scene/team-a/20260915T172900Z-warn.json
+(pass) the engine keeps the reader in step with its own hold > a namespace that registers AFTER apply still tunes the tick (per-tick knob re-read) [1.50ms]
+(pass) the mpdWatchdog service's front-door reads (w6b) > heldTeams lists the live hold index from disk, sorted, and answers [] with no store [0.61ms]
+(pass) the mpdWatchdog service's front-door reads (w6b) > view / unread / acknowledge drive the durable watermark (byte-level) and never throw [1.68ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+(pass) the mpdWatchdog service's front-door reads (w6b) > the published service carries every front-door member, and holdService is still mpdWatchdog [0.61ms]
+
+packages/mpd-team-watchdog-plugin/test/failsafe.test.ts:
+(pass) AC-15 fail-safe > a throwing tick body is caught and counted, and the tick still returns [2.28ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=120000 tickIntervalMs=60000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+(pass) AC-15 fail-safe > exactly ONE interval owns the cadence, and a live cadence change replaces it [0.48ms]
+(pass) AC-15 fail-safe > a tick with no state change writes nothing (no write loop) [1.58ms]
+(pass) AC-15 fail-safe > an unwritable heartbeat location degrades to a counted failure [0.64ms]
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-3RjB9l/.mpd/team/watchdog/scene/team-a/20260915T173000Z-warn.json
+(pass) AC-15 fail-safe > a tick that starts while the previous one runs is skipped, never queued [1.09ms]
+(pass) AC-15 fail-safe > the env kill switch makes the tick observe nothing at all [0.82ms]
+[mpd-team-watchdog] disabled by configuration — no heartbeat tick will run
+[mpd-team-watchdog] applied: enabled=false warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+(pass) AC-15 fail-safe > a row config kill switch also disables the engine [0.34ms]
+
+packages/mpd-team-watchdog-plugin/test/sidecars.test.ts:
+(pass) the hold sidecar > lives beside team.json and never changes a byte of it [0.60ms]
+(pass) the hold sidecar > is idempotent by id: a second identical write changes no bytes [0.26ms]
+(pass) the hold sidecar > re-applying a hold keeps the original id and since (the hold is not restarted) [0.31ms]
+(pass) the hold sidecar > a resume of a non-held team is a no-op, and a second resume is a no-op [0.38ms]
+(pass) the hold sidecar > a hold without a team_id is refused with a reason, never thrown [0.30ms]
+(pass) incidents and the read watermark > a record per incident plus a watermark per reader [0.72ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+(pass) the plugin's own actions > apply() registers exactly the three actions on the adapter [0.53ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+(pass) the plugin's own actions > the hold and resume actions are reachable through the adapter's internal tool seam [0.88ms]
+
+packages/mpd-team-watchdog-plugin/test/machine.test.ts:
+(pass) knobs > an absent namespace resolves to the frozen defaults [0.09ms]
+(pass) knobs > the watchdog section is read from the mpd namespace by its exact paths [0.09ms]
+(pass) knobs > a cadence at or beyond the silence threshold is clamped loudly, not thrown [0.06ms]
+(pass) knobs > a bad knob type falls back with a recorded issue [0.07ms]
+(pass) knobs > the env kill switch forces the watchdog off [0.03ms]
+(pass) the machine > exactly one WARN per silent tick, and the third WARN escalates once [0.23ms]
+(pass) the machine > a new attemptId starts a clean streak [0.10ms]
+(pass) the machine > any recent stamp resets the streak [0.05ms]
+(pass) the machine > a claimed task whose owner never stamped is never-started, and never escalates [0.08ms]
+(pass) the machine > a COMPLETED turn is not a wedge: a turn-end newest stamp never warns or escalates [0.10ms]
+(pass) the machine > a stale streak is RESET by the boundary (the completed turn cannot spend it later) [0.11ms]
+(pass) the machine > a disabled watchdog observes nothing [0.03ms]
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-uP21tk/.mpd/team/watchdog/scene/team-a/20260915T173000Z-warn.json
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect silence=90002ms streak=2 hold=not-requested scene=/tmp/watchdog-test-uP21tk/.mpd/team/watchdog/scene/team-a/20260915T173000Z-warn-2.json
+[mpd-team-watchdog-test] the hold action was unreachable through the tool seam (unknown tool session-watchdog-hold) — falling back to a direct write
+[mpd-team-watchdog-test] ESCALATE team-a task=t1 member=Architect silence=90003ms streak=3 hold=applied scene=/tmp/watchdog-test-uP21tk/.mpd/team/watchdog/scene/team-a/20260915T173000Z-escalate.json
+(pass) the machine over a real team record > WARN then ESCALATE land on disk with the hold applied through the tool seam [2.90ms]
+[mpd-team-watchdog-test] knobs re-read (enabled=true, warnSilenceMs=20000, tickIntervalMs=15000, warnStreakToEscalate=3, actionOnEscalate=pause)
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect silence=30001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-3wZZIY/.mpd/team/watchdog/scene/team-a/20260915T172900Z-warn.json
+(pass) the machine over a real team record > a live knob change is picked up without a restart [1.48ms]
+
+packages/mpd-team-watchdog-plugin/test/scene.test.ts:
+(pass) the scene document > carries exactly the AC-5 field set [0.62ms]
+(pass) the scene document > a halted team's adopted flags are carried verbatim beside the watchdog's own hold [0.31ms]
+(pass) the scene document > write -> read round-trips byte-identically and a second identical write changes no bytes [0.68ms]
+(pass) the scene document > a scene file name is unique per incident even inside one millisecond [0.42ms]
+(pass) the scene document > isoBasic is a file-safe timestamp [0.06ms]
+(pass) the scene document > mailboxUnread mirrors the adopted predicate (tombstones and read records are not unread) [0.34ms]
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=none
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect silence=90002ms streak=2 hold=not-requested scene=none
+[mpd-team-watchdog-test] ESCALATE team-a task=t1 member=Architect silence=90003ms streak=3 hold=applied scene=none
+(pass) an unwritable scene location > degrades LOUDLY, still attempts the hold and still records the incident [2.32ms]
+(pass) an unwritable scene location > writeScene returns ok:false instead of throwing [0.30ms]
+
+packages/mpd-team-watchdog-plugin/test/heartbeat.test.ts:
+
+packages/mpd-team-watchdog-plugin/test/holds.test.ts:
+
+packages/mpd-team-watchdog-plugin/test/failsafe.test.ts:
+
+packages/mpd-team-watchdog-plugin/test/sidecars.test.ts:
+
+packages/mpd-team-watchdog-plugin/test/machine.test.ts:
+
+packages/mpd-team-watchdog-plugin/test/scene.test.ts:
+
+ 57 pass
+ 0 fail
+ 259 expect() calls
+Ran 57 tests across 12 files. [211.00ms]
+exit=0

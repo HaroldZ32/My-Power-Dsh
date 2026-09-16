@@ -41,6 +41,12 @@ export interface TeamRecord {
   captainSessionId?: string
   members: TeamMember[]
   tasks: TeamTask[]
+  /**
+   * The newest activity timestamp in the record: the latest task `updatedAt`, else the record's
+   * own `updatedAt`/`approvedAt`/`createdAt`. This is the input to the DEAD-TEAM fallback (r4): a
+   * record nobody has touched for days cannot dispatch, so ticking it only manufactures noise.
+   */
+  activityAt: number | null
   /** The raw parsed record, kept for byte-level honesty checks in tests/lanes. */
   raw: Record<string, unknown>
 }
@@ -71,6 +77,22 @@ export function agentIds(agent: unknown): AgentIds {
   const sessionId = typeof candidate.session?.id === "string" ? candidate.session.id : ""
   const cwd = typeof candidate.session?.header?.cwd === "string" ? candidate.session.header.cwd : undefined
   return { agentId: id, sessionId, cwd }
+}
+
+/** The newest activity timestamp a raw record carries, or null when it carries none. */
+function recordActivityAt(raw: Record<string, unknown>): number | null {
+  const candidates: number[] = []
+  if (Array.isArray(raw.tasks)) {
+    for (const task of raw.tasks as Record<string, unknown>[]) {
+      if (task !== null && typeof task === "object" && typeof task.updatedAt === "number") candidates.push(task.updatedAt)
+    }
+  }
+  for (const field of ["updatedAt", "approvedAt", "createdAt"]) {
+    const value = raw[field]
+    if (typeof value === "number") candidates.push(value)
+  }
+  if (candidates.length === 0) return null
+  return Math.max(...candidates)
 }
 
 /** Parse one team record; `undefined` when it is absent or unreadable. */
@@ -110,6 +132,7 @@ export function readTeam(workspace: string, stateDir: string, teamId: string): T
           ...(typeof task.attemptId === "string" ? { attemptId: task.attemptId } : {}),
           ...(typeof task.updatedAt === "number" ? { updatedAt: task.updatedAt } : {}),
         })),
+      activityAt: recordActivityAt(raw),
       raw,
     }
   } catch {

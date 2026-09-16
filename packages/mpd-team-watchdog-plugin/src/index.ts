@@ -70,6 +70,13 @@ export type Config = {
   teamCacheMs?: number
   /** How many heartbeat generations to keep per member file. */
   keepGenerations?: number
+  /**
+   * Dead-team fallback bound (r4): how long a team record may go untouched before a tick skips it
+   * when the live-agent registry cannot answer. 0 disables the bound (tick everything).
+   */
+  deadTeamGraceMs?: number
+  /** Print skipped-team reasons to the console as well as the debug channel (default false). */
+  verboseSkips?: boolean
   /** Diagnostic prefix. */
   logPrefix?: string
 }
@@ -84,6 +91,8 @@ export const Config: Schemastery<Config> = z.object({
   stateDir: z.string().default(DEFAULT_STATE_DIR),
   teamCacheMs: z.number().default(2000),
   keepGenerations: z.number().default(3),
+  deadTeamGraceMs: z.number().default(86_400_000),
+  verboseSkips: z.boolean().default(false),
   logPrefix: z.string().default("mpd-team-watchdog"),
 })
 
@@ -115,6 +124,8 @@ export function resolveConfig(config: Config = {}): EngineConfig {
     stateDir: typeof config.stateDir === "string" && config.stateDir !== "" ? config.stateDir : DEFAULT_STATE_DIR,
     teamCacheMs: num(config.teamCacheMs, 2000, 0),
     keepGenerations: num(config.keepGenerations, 3, 1),
+    deadTeamGraceMs: num(config.deadTeamGraceMs, 86_400_000, 0),
+    verboseSkips: bool(config.verboseSkips, false),
     logPrefix: typeof config.logPrefix === "string" && config.logPrefix !== "" ? config.logPrefix : "mpd-team-watchdog",
   }
 }
@@ -278,7 +289,8 @@ export function apply(ctx: unknown, config: Config = {}): ApplyReport {
         " stateDir=" + resolved.stateDir +
         " disposers=" + disposers.length +
         " holdService=" + (holdService ?? "none") +
-        " hydratedHolds=" + hydratedHolds,
+        " hydratedHolds=" + hydratedHolds +
+        " deadTeamGraceMs=" + (resolved.deadTeamGraceMs === 0 ? "off" : resolved.deadTeamGraceMs),
     )
   } catch {
     // stdout closed

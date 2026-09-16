@@ -1,0 +1,6 @@
+[dead-team-suppressed] the record's newest activity is 864000000 ms old (ten days) and no live agent exists for it
+[dead-team-suppressed] decisions [] · incidents [] · scenes 0 · holds 0
+[dead-team-suppressed] CONSOLE lines emitted during the tick: [] (silent to the user)
+[dead-team-suppressed] debug channel: ["[mpd-team-watchdog] skipping team fault-probe (phase running, 1 task(s)) has no live agent and its newest activity is 864000000ms old (> 86400000ms grace): a dead record, not a dispatch problem"]
+[dead-team-suppressed] FALSIFIER: with the bound disabled (deadTeamGraceMs 0) the SAME record is ticked and warns: ["warn"] — so the silence above is the gate, not a vacuous fixture
+[dead-team-suppressed] => a dead record is skipped, not reported, on EVERY decision path (r4)

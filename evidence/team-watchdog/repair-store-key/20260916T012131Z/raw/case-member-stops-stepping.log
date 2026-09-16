@@ -1,0 +1,4 @@
+[member-stops-stepping] the member's turn produced 3 step stamps at 1700000000000, 1700000001000, 1700000002000 and then stopped stepping
+[member-stops-stepping] silence is measured from the LAST stamp (1700000002000)
+[member-stops-stepping] tick at +89 000 => decisions [] (below the frozen 90 000 threshold)
+[member-stops-stepping] tick at +90 001 => decisions ["warn"] (the fault is observed)

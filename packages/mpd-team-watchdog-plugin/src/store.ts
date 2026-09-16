@@ -178,18 +178,45 @@ export function rotateHeartbeats(
     return { rotated: false, before: 0, after: 0, path }
   }
   const lines = text.split("\n").filter((line) => line.trim() !== "")
-  const starts: number[] = []
-  for (let index = 0; index < lines.length; index += 1) {
+  // PER-TEAM rotation (r2). The file is keyed by MEMBER NAME per workspace, so same-named members
+  // of DIFFERENT teams share it. A global "keep the last N generations" rule then lets one team's
+  // turnover EVICT the other team's evidence: measured, team-beta's only stamp disappeared after
+  // team-alpha turned over four times, which turns that team's `silence` into `never-started` — a
+  // missed wedge. Grouping by the stamp's own `teamId` keeps the bound per owner instead, and a
+  // stamp with no team forms its own group (it cannot be attributed).
+  const teamOfLine = (line: string): string => {
     try {
-      const parsed = JSON.parse(lines[index]) as HeartbeatStamp
-      if (parsed?.kind === "turn-start") starts.push(index)
+      const parsed = JSON.parse(line) as HeartbeatStamp
+      const team = parsed?.teamId
+      return team === undefined || team === null || team === "" ? "\u0000no-team" : String(team)
     } catch {
-      // an unparseable line cannot be a generation boundary
+      return "\u0000unparseable"
     }
   }
-  if (starts.length <= keep) return { rotated: false, before: lines.length, after: lines.length, path }
-  const cut = starts[starts.length - keep]
-  const kept = lines.slice(cut)
+  const groups = new Map<string, number[]>()
+  for (let index = 0; index < lines.length; index += 1) {
+    const key = teamOfLine(lines[index])
+    const bucket = groups.get(key)
+    if (bucket === undefined) groups.set(key, [index])
+    else bucket.push(index)
+  }
+  const dropped = new Set<number>()
+  for (const indices of groups.values()) {
+    const starts: number[] = []
+    for (const index of indices) {
+      try {
+        const parsed = JSON.parse(lines[index]) as HeartbeatStamp
+        if (parsed?.kind === "turn-start") starts.push(index)
+      } catch {
+        // an unparseable line cannot be a generation boundary
+      }
+    }
+    if (starts.length <= keep) continue
+    const cut = starts[starts.length - keep]
+    for (const index of indices) if (index < cut) dropped.add(index)
+  }
+  if (dropped.size === 0) return { rotated: false, before: lines.length, after: lines.length, path }
+  const kept = lines.filter((_line, index) => !dropped.has(index))
   try {
     writeFileSync(path, kept.join("\n") + "\n", "utf8")
     return { rotated: true, before: lines.length, after: kept.length, path }

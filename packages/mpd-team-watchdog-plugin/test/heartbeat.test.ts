@@ -7,7 +7,8 @@
 // imports the built dist in a separate node process; here the disk is read back
 // through the module's own reader so a regression in the writer fails fast.
 import { describe, expect, test } from "bun:test"
-import { appendFileSync } from "node:fs"
+import { appendFileSync, mkdirSync, writeFileSync } from "node:fs"
+import { dirname, join } from "node:path"
 import { appendHeartbeat, listHeartbeatKeys, newestForTask, newestOverall, readHeartbeats, rotateHeartbeats } from "../src/store"
 import { WatchdogEngine } from "../src/engine"
 import { agent, sandbox, stubAdapter, testConfig, writeTeam } from "./support"
@@ -168,6 +169,44 @@ describe("heartbeat store", () => {
       const distinct = [...new Set(seen)]
       expect(distinct.length).toBeGreaterThanOrEqual(3)
       expect([...distinct].sort((a, b) => a - b)).toEqual(distinct)
+    } finally {
+      box.cleanup()
+    }
+  })
+
+  test("r2: rotation is PER TEAM, so one team's turnover cannot evict the other team's evidence", () => {
+    const box = sandbox()
+    try {
+      // Two teams share ONE heartbeat file (the file key is the member NAME per workspace).
+      // team-beta never turns over; team-alpha turns over four times.
+      const stamp = (teamId: string, kind: string, at: number) => ({
+        kind: kind as "step",
+        at,
+        member: "Architect",
+        memberKey: "Architect",
+        teamId,
+        taskId: "t1",
+        attemptId: "att-1",
+        turnId: teamId + "#" + at,
+        workspace: box.workspace,
+      })
+      const lines: string[] = [JSON.stringify(stamp("team-beta", "step", 1_000))]
+      for (let generation = 0; generation < 4; generation += 1) {
+        lines.push(JSON.stringify(stamp("team-alpha", "turn-start", 10_000 + generation * 100)))
+        lines.push(JSON.stringify(stamp("team-alpha", "step", 10_050 + generation * 100)))
+        lines.push(JSON.stringify(stamp("team-alpha", "turn-end", 10_099 + generation * 100)))
+      }
+      const path = join(box.workspace, box.stateDir, "watchdog", "heartbeat", "architect.jsonl")
+      mkdirSync(dirname(path), { recursive: true })
+      writeFileSync(path, lines.join("\n") + "\n")
+
+      const rotated = rotateHeartbeats(box.workspace, box.stateDir, "Architect", 3)
+      expect(rotated.rotated).toBe(true)
+      const after = readHeartbeats(box.workspace, box.stateDir, "Architect")
+      // team-beta's only stamp SURVIVES: its wedge stays observable as SILENCE, not as never-started.
+      expect(after.some((entry) => entry.teamId === "team-beta")).toBe(true)
+      // team-alpha is still bounded to `keep` generations.
+      expect(after.filter((entry) => entry.teamId === "team-alpha" && entry.kind === "turn-start").length).toBe(3)
     } finally {
       box.cleanup()
     }

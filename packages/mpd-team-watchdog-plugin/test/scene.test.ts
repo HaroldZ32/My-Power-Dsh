@@ -36,7 +36,9 @@ describe("the scene document", () => {
         hold: { id: "h1", teamId: "team-a", since: 1, cause: "silence", taskId: "t1", attemptId: "att-1", sceneAt: 1_700_000_000_000 },
         mailbox: { web: 12 },
         incidents: [],
-        streaks: { "t1\u0000att-1": 3 },
+        // The streak map is keyed by `streakKey(teamId, taskId, attemptId)` — the team id is
+        // part of the key because task ids are per-team (w11/W11-1).
+        streaks: { "team-a\u0000t1\u0000att-1": 3 },
         heartbeat: () => [],
         unread: () => 2,
       })

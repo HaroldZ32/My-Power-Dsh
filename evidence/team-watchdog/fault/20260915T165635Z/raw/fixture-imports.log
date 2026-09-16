@@ -1,0 +1,29 @@
+== every import in the fixture module ==
+39:import { createHash } from "node:crypto"
+40:import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
+41:import { dirname, join, resolve } from "node:path"
+42:import { fileURLToPath } from "node:url"
+90:    scheduler: await import(join(ADOPTED_LIB, "scheduler.js")),
+91:    tools: await import(join(ADOPTED_LIB, "tools.js")),
+92:    watchdog: await import(WATCHDOG_DIST),
+674:  const root = options.root ?? (await import("node:os")).tmpdir()
+
+== ACTUAL references to skills/** or docs/** (import specifiers only) ==
+NONE — zero import specifiers touch skills/** or docs/**
+
+== credentials / host spawn ==
+NONE — no credential read, no child process, no dsh spawn
+
+== the module's public surface ==
+46:export const REPO = resolve(HERE, "..", "..", "..", "..")
+48:export const ADOPTED_LIB = join(REPO, "packages", "mpd-agent-teams-plugin", "lib")
+50:export const WATCHDOG_DIST = join(REPO, "packages", "mpd-team-watchdog-plugin", "dist", "index.js")
+54:export const FROZEN = { warnSilenceMs: 90_000, tickIntervalMs: 15_000, warnStreakToEscalate: 3, actionOnEscalate: "pause" }
+56:export const CLOCK = {
+63:export const ROW_CONFIG = {
+261:export function sanitizeKeyLikePlugin(name) {
+284:export function scenarios() {
+325:export const CASES = ["member-stops-stepping", "captain-wedge", "warn-90s", "escalate-3x", "pause-preserves", "pause-preserves-halt-control", "scene-restore"]
+669:export async function runCase(name, options = {}) {
+698:export async function runAll(options = {}) {
+706:export const NOT_CLAIMED = [

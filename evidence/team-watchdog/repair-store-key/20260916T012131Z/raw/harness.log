@@ -1,0 +1,98 @@
+================ t79: the w8 harness, every case ================
+fixture sha256: 3ee2bbdb0368d9e17c54bf93f7dbd20d27ca8b130d2c926c3df2035560270962
+
+── second-team-dispatch ── ok=true ──
+  team fault-probe is HELD through the plugin's own action: true (holds on disk: ["fault-probe.json"])
+  deliveries in the same window — held team: 0, NEIGHBOUR team: 1
+  the held team's decline: agent-teams: dispatch declined for fault-probe/*: the team is held by the team watchdog (hold 978ac47d-72fa-4e6c-baee-7c6aa1744fb1 since 2026-09-16T01:25:46.822Z: silence)
+  the neighbour kept dispatching: task status claimed, halted=false
+  => the hold is TEAM-scoped: a neighbour in the same workspace is untouched (AC-7)
+
+── disabled-control ── ok=true ──
+  the watchdog row is DISABLED (knobs.enabled=false): every tick reports skipped=["disabled","disabled","disabled","disabled"]
+  no WARN, no ESCALATE: [[],[],[],[]]
+  scenes 0, incidents 0, holds 0
+  on disk: scene dir exists=false, holds=[], incidents file=false
+  the team record is byte-identical: true
+  => the negative control is falsifiable at the FIXTURE level (AC-10)
+
+── never-started-recorded ── ok=true ──
+  the claimed task was never picked up: no heartbeat file exists for its owner
+  tick => [] (recorded once; the second tick repeats nothing: [])
+  durable incident: [{"kind":"never-started","taskId":"t1","attemptId":"att-1","scene":null,"hold":"not-requested"}]
+  notice: [watchdog-fixture] NEVER-STARTED fault-probe task=t1 member=Architect attempt=att-1 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/root/dshProj/my-power-dsh/evidence/team-watchdog/repair-store-key/20260916T012131Z/raw/ws-cases/fault-f0ck8b/.mpd/team/watchdog/incidents.jsonl
+  no scene (0), no hold (0), record byte-identical: true
+  => T69-ESCALATE-2: the dispatch problem is now RECORDED and NOTICED, not silent — while still never pausing the team
+
+── completed-turn-idle ── ok=true ──
+  the member COMPLETED its turn: the newest stamp for t1/att-1 is `turn-end` at 1700000002500
+  ticks at silence 90001/180001/270001 ms (the last is > 2x the frozen 90000)
+  decisions: [] — NO WARN, NO ESCALATE
+  scenes 0, incidents 0, holds 0, record byte-identical: true
+  => a completed turn with no re-dispatch is a healthy idle member, not a wedge (T69-ESCALATE-1 fixed)
+
+── mid-turn-stall ── ok=true ──
+  the member STALLED mid-turn: the newest stamp for t1/att-1 is still a `step` at 1700000002000
+  ticks at silence 90001/180001/270001 ms
+  decisions: ["warn","warn","escalate"] — the wedge STILL escalates
+  hold applied: 1 {"id":"12bc9c8a-d8b4-4e95-9a9f-954f1286fd6e","taskId":"t1","attemptId":"att-1"}
+  => the boundary fix does not silence the fault the wave exists for
+
+── member-stops-stepping ── ok=true ──
+  the member's turn produced 3 step stamps at 1700000000000, 1700000001000, 1700000002000 and then stopped stepping
+  silence is measured from the LAST stamp (1700000002000)
+  tick at +89 000 => decisions [] (below the frozen 90 000 threshold)
+  tick at +90 001 => decisions ["warn"] (the fault is observed)
+
+── captain-wedge ── ok=true ──
+  NO agent turn was driven: nothing but the process-level tick runs (agentTurnsDriven 0)
+  the captain's own silence is flagged: [{"type":"warn","assignee":"captain","memberKey":"captain","taskId":"t9","silenceMs":90001}]
+  the member is untouched (its stamp at 50 000 keeps it alive): memberFlagged=false
+  scene written: 1, incident recorded: 1
+
+── warn-90s ── ok=true ──
+  frozen knobs used: warnSilenceMs=90000, warnStreakToEscalate=3
+  tick at silence 89999 ms => 0 decision(s)
+  tick at silence 90001 ms => exactly 1 WARN
+  snapshot: /root/dshProj/my-power-dsh/evidence/team-watchdog/repair-store-key/20260916T012131Z/raw/ws-cases/fault-avvpw1/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json
+  snapshot fields: {"schemaVersion":1,"reason":"warn","cause":{"kind":"silence","ms":90001},"tasks":1,"members":1}
+
+── escalate-3x ── ok=true ──
+  tick sequence => ["warn","warn","escalate",""] (warn, warn, escalate, NOTHING)
+  exactly one ESCALATE for the task+attempt, no fourth WARN: true
+  predecessors recorded as WARNs with snapshot paths: true
+  hold applied once: true {"id":"9d5bc4f1-5708-4cb7-91ef-4fbdd3f6354e","taskId":"t1","attemptId":"att-1"}
+  retry with a NEW attemptId starts a clean streak: [{"type":"warn","streak":1}]
+
+── pause-preserves ── ok=true ──
+  the hold landed through the plugin's own action while t1 was in flight: true
+  sha256(team.json) unchanged across the held kicks: true (after the resume it is changed (the re-arm minted the next attempt))
+  deliveries while held: 0 (each decline says: agent-teams: dispatch declined for fault-probe/*: the team is held by the team watchdog (hold 1af35585-9f72-4075-a6a3-9611c80e0583 since 2026-09-16T01:25:46.859Z: silence))
+  task after the hold: {"status":"in_progress","attemptId":"att-live","attempt":3,"output":"partial result","handoffId":"handoff-1"}
+  resume cleared the hold and dispatch resumed: true / deliveries 1
+
+── pause-preserves-halt-control ── ok=true ──
+  the SAME fixture, paused by the REAL haltTeamWork: cancelledTasks=1
+  t1: {"status":"in_progress","attemptId":"att-live","output":"partial result","handoffId":"handoff-1"}  =>  {"status":"cancelled","attemptId":null,"output":"Stopped from the captain chat.","handoffId":null}
+  sha256(team.json) CHANGED: true (this is what reddens AC-17)
+  AC-17 is falsifiable: the wrong mechanism leaves the task cancelled with cancelledTasks >= 1
+
+── scene-restore ── ok=true ──
+  scene files on disk: ["20231114T221450Z-warn.json","20231114T221505Z-warn.json","20231114T221520Z-escalate.json","latest.json"]
+  latest.json (parsed with plain fs): reason=escalate, team.hold={"id":"2de6a166-42e5-4901-9055-393f9c9b68f1","since":1789521946869,"cause":"silence","taskId":"t1","attemptId":"att-1"}
+  hold record: {"id":"2de6a166-42e5-4901-9055-393f9c9b68f1","since":1789521946869,"cause":"silence","taskId":"t1","attemptId":"att-1"}
+  incident log: warn, warn, escalate
+
+── verdicts ──
+  PASS  second-team-dispatch
+  PASS  disabled-control
+  PASS  never-started-recorded
+  PASS  completed-turn-idle
+  PASS  mid-turn-stall
+  PASS  member-stops-stepping
+  PASS  captain-wedge
+  PASS  warn-90s
+  PASS  escalate-3x
+  PASS  pause-preserves
+  PASS  pause-preserves-halt-control
+  PASS  scene-restore

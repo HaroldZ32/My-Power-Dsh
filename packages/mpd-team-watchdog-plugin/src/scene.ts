@@ -113,10 +113,14 @@ export interface SceneInput {
 }
 
 /** The heartbeats' newest stamp among the ones attributed to one task. */
-function newestForTask(stamps: readonly HeartbeatStamp[], taskId: string, attemptId: string | null): number | null {
+function newestForTask(stamps: readonly HeartbeatStamp[], taskId: string, attemptId: string | null, teamId?: string): number | null {
   let newest: number | null = null
   for (const stamp of stamps) {
     if (stamp.taskId !== taskId) continue
+    // TEAM SCOPE (r2): the file is shared by same-named members of different teams, so the
+    // scene's per-task `lastSeen` must not report the other team's activity. A stamp with no
+    // team cannot contradict and is kept.
+    if (teamId !== undefined && stamp.teamId !== undefined && stamp.teamId !== null && stamp.teamId !== "" && stamp.teamId !== teamId) continue
     if (attemptId !== null && stamp.attemptId !== null && stamp.attemptId !== attemptId) continue
     if (newest === null || stamp.at >= newest) newest = stamp.at
   }
@@ -139,8 +143,10 @@ export function buildScene(input: SceneInput): Scene {
     assignee: task.assignee ?? null,
     attempt: task.attempt ?? null,
     attemptId: task.attemptId ?? null,
-    lastSeen: newestForTask(input.heartbeat(safeSegment(task.assignee ?? "")), task.id, task.attemptId ?? null),
-    streak: input.streaks[task.id + "\u0000" + (task.attemptId ?? "")] ?? 0,
+    lastSeen: newestForTask(input.heartbeat(safeSegment(task.assignee ?? "")), task.id, task.attemptId ?? null, team.id),
+    // The streak map is keyed by `streakKey(teamId, taskId, attemptId)`; the team id is part of
+    // the key because task ids are per-team (w11/W11-1).
+    streak: input.streaks[team.id + "\u0000" + task.id + "\u0000" + (task.attemptId ?? "")] ?? 0,
   }))
   const members: SceneMember[] = team.members.map((member) => {
     const key = safeSegment(member.name)

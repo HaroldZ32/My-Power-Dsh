@@ -1,0 +1,402 @@
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/fault/20260915T165635Z/raw/ws/fault-7dhmdp/.mpd/team/watchdog/scene/fault-probe/20231114T221452Z-warn.json
+[member-stops-stepping] the member's turn produced 3 step stamps at 1700000000000, 1700000001000, 1700000002000 and then stopped stepping
+[member-stops-stepping] silence is measured from the LAST stamp (1700000002000)
+[member-stops-stepping] tick at +89 000 => decisions [] (below the frozen 90 000 threshold)
+[member-stops-stepping] tick at +90 001 => decisions ["warn"] (the fault is observed)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[watchdog-fixture] WARN fault-probe task=t9 member=captain silence=90001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/fault/20260915T165635Z/raw/ws/fault-4t85q4/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json
+[captain-wedge] NO agent turn was driven: nothing but the process-level tick runs (agentTurnsDriven 0)
+[captain-wedge] the captain's own silence is flagged: [{"type":"warn","assignee":"captain","memberKey":"captain","taskId":"t9","silenceMs":90001}]
+[captain-wedge] the member is untouched (its stamp at 50 000 keeps it alive): memberFlagged=false
+[captain-wedge] scene written: 1, incident recorded: 1
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/fault/20260915T165635Z/raw/ws/fault-g670f1/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json
+[warn-90s] frozen knobs used: warnSilenceMs=90000, warnStreakToEscalate=3
+[warn-90s] tick at silence 89999 ms => 0 decision(s)
+[warn-90s] tick at silence 90001 ms => exactly 1 WARN
+[warn-90s] snapshot: /root/dshProj/my-power-dsh/evidence/team-watchdog/fault/20260915T165635Z/raw/ws/fault-g670f1/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json
+[warn-90s] snapshot fields: {"schemaVersion":1,"reason":"warn","cause":{"kind":"silence","ms":90001},"tasks":1,"members":1}
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/fault/20260915T165635Z/raw/ws/fault-n4dhtf/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=105001ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/fault/20260915T165635Z/raw/ws/fault-n4dhtf/.mpd/team/watchdog/scene/fault-probe/20231114T221505Z-warn.json
+[watchdog-fixture] ESCALATE fault-probe task=t1 member=Architect silence=120001ms streak=3 hold=applied scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/fault/20260915T165635Z/raw/ws/fault-n4dhtf/.mpd/team/watchdog/scene/fault-probe/20231114T221520Z-escalate.json
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=90001ms streak=1 hold=applied scene=none
+[escalate-3x] tick sequence => ["warn","warn","escalate",""] (warn, warn, escalate, NOTHING)
+[escalate-3x] exactly one ESCALATE for the task+attempt, no fourth WARN: true
+[escalate-3x] predecessors recorded as WARNs with snapshot paths: true
+[escalate-3x] hold applied once: true {"id":"e353df6d-d825-4a0a-beea-4bb18b820fa2","taskId":"t1","attemptId":"att-1"}
+[escalate-3x] retry with a NEW attemptId starts a clean streak: [{"type":"warn","streak":1}]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[pause-preserves] the hold landed through the plugin's own action while t1 was in flight: true
+[pause-preserves] sha256(team.json) unchanged across the held kicks: true (after the resume it is changed (the re-arm minted the next attempt))
+[pause-preserves] deliveries while held: 0 (each decline says: agent-teams: dispatch declined for fault-probe/*: the team is held by the team watchdog (hold 435297b3-70e6-431d-a431-aaa7681ab81e since 2026-09-15T16:57:36.002Z: silence))
+[pause-preserves] task after the hold: {"status":"in_progress","attemptId":"att-live","attempt":3,"output":"partial result","handoffId":"handoff-1"}
+[pause-preserves] resume cleared the hold and dispatch resumed: true / deliveries 1
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[pause-preserves-halt-control] the SAME fixture, paused by the REAL haltTeamWork: cancelledTasks=1
+[pause-preserves-halt-control] t1: {"status":"in_progress","attemptId":"att-live","output":"partial result","handoffId":"handoff-1"}  =>  {"status":"cancelled","attemptId":null,"output":"Stopped from the captain chat.","handoffId":null}
+[pause-preserves-halt-control] sha256(team.json) CHANGED: true (this is what reddens AC-17)
+[pause-preserves-halt-control] AC-17 is falsifiable: the wrong mechanism leaves the task cancelled with cancelledTasks >= 1
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/fault/20260915T165635Z/raw/ws/fault-n5hom0/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=105001ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/fault/20260915T165635Z/raw/ws/fault-n5hom0/.mpd/team/watchdog/scene/fault-probe/20231114T221505Z-warn.json
+[watchdog-fixture] ESCALATE fault-probe task=t1 member=Architect silence=120001ms streak=3 hold=applied scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/fault/20260915T165635Z/raw/ws/fault-n5hom0/.mpd/team/watchdog/scene/fault-probe/20231114T221520Z-escalate.json
+[scene-restore] scene files on disk: ["20231114T221450Z-warn.json","20231114T221505Z-warn.json","20231114T221520Z-escalate.json","latest.json"]
+[scene-restore] latest.json (parsed with plain fs): reason=escalate, team.hold={"id":"b74170fc-4468-4dc7-b42e-0e4116d452c1","since":1789491456019,"cause":"silence","taskId":"t1","attemptId":"att-1"}
+[scene-restore] hold record: {"id":"b74170fc-4468-4dc7-b42e-0e4116d452c1","since":1789491456019,"cause":"silence","taskId":"t1","attemptId":"att-1"}
+[scene-restore] incident log: warn, warn, escalate
+================================================================
+t66 (w8) fault-injection fixture — case run
+repo: /root/dshProj/my-power-dsh
+fixture: /root/dshProj/my-power-dsh/packages/mpd-team-watchdog-plugin/test/fixtures/inject.mjs
+fixture sha256: 7039cd8dfdc85ec750135fed9aa815736447034f39a2532aff8ef30995282af7
+clock: base 1700000000000 (injected); frozen warnSilenceMs 90000 / warnStreakToEscalate 3
+================================================================
+
+── case member-stops-stepping ── ok=true ──
+  the member's turn produced 3 step stamps at 1700000000000, 1700000001000, 1700000002000 and then stopped stepping
+  silence is measured from the LAST stamp (1700000002000)
+  tick at +89 000 => decisions [] (below the frozen 90 000 threshold)
+  tick at +90 001 => decisions ["warn"] (the fault is observed)
+  observation: {
+    "injected": "silence",
+    "stamps": [
+      1700000000000,
+      1700000001000,
+      1700000002000
+    ],
+    "distinctStampTimes": 3,
+    "lastStampAt": 1700000002000,
+    "tickBelowThreshold": {
+      "silenceMs": 89000,
+      "decisions": []
+    },
+    "tickAboveThreshold": {
+      "silenceMs": 90001,
+      "decisions": [
+        "warn"
+      ]
+    },
+    "measuredFromLastStamp": true
+  }
+
+── case captain-wedge ── ok=true ──
+  NO agent turn was driven: nothing but the process-level tick runs (agentTurnsDriven 0)
+  the captain's own silence is flagged: [{"type":"warn","assignee":"captain","memberKey":"captain","taskId":"t9","silenceMs":90001}]
+  the member is untouched (its stamp at 50 000 keeps it alive): memberFlagged=false
+  scene written: 1, incident recorded: 1
+  observation: {
+    "injected": "silence",
+    "agentTurnsDriven": 0,
+    "decisions": [
+      {
+        "type": "warn",
+        "assignee": "captain",
+        "memberKey": "captain",
+        "taskId": "t9",
+        "silenceMs": 90001
+      }
+    ],
+    "captainFlagged": true,
+    "memberFlagged": false,
+    "scenesWritten": 1,
+    "incidents": 1,
+    "holdServicePublished": true
+  }
+
+── case warn-90s ── ok=true ──
+  frozen knobs used: warnSilenceMs=90000, warnStreakToEscalate=3
+  tick at silence 89999 ms => 0 decision(s)
+  tick at silence 90001 ms => exactly 1 WARN
+  snapshot: /root/dshProj/my-power-dsh/evidence/team-watchdog/fault/20260915T165635Z/raw/ws/fault-g670f1/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json
+  snapshot fields: {"schemaVersion":1,"reason":"warn","cause":{"kind":"silence","ms":90001},"tasks":1,"members":1}
+  observation: {
+    "injected": "silence",
+    "rootsTicked": [
+      "/root/dshProj/my-power-dsh/evidence/team-watchdog/fault/20260915T165635Z/raw/ws/fault-g670f1"
+    ],
+    "heartbeatFiles": [
+      "architect.jsonl"
+    ],
+    "frozenKnobsUsed": {
+      "warnSilenceMs": 90000,
+      "warnStreakToEscalate": 3
+    },
+    "knobsAreTheFrozenDefaults": true,
+    "belowThreshold": {
+      "at": 1700000089999,
+      "decisions": 0
+    },
+    "aboveThreshold": {
+      "at": 1700000090001,
+      "warnCount": 1,
+      "silenceMs": 90001
+    },
+    "warnLatencyWithinThresholdPlus5s": true,
+    "snapshot": "/root/dshProj/my-power-dsh/evidence/team-watchdog/fault/20260915T165635Z/raw/ws/fault-g670f1/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json",
+    "snapshotFields": {
+      "schemaVersion": 1,
+      "reason": "warn",
+      "cause": {
+        "kind": "silence",
+        "ms": 90001
+      },
+      "tasks": 1,
+      "members": 1
+    },
+    "scenesWritten": 1
+  }
+
+── case escalate-3x ── ok=true ──
+  tick sequence => ["warn","warn","escalate",""] (warn, warn, escalate, NOTHING)
+  exactly one ESCALATE for the task+attempt, no fourth WARN: true
+  predecessors recorded as WARNs with snapshot paths: true
+  hold applied once: true {"id":"e353df6d-d825-4a0a-beea-4bb18b820fa2","taskId":"t1","attemptId":"att-1"}
+  retry with a NEW attemptId starts a clean streak: [{"type":"warn","streak":1}]
+  observation: {
+    "injected": "silence",
+    "ticks": [
+      {
+        "at": 1700000090001,
+        "decisions": [
+          {
+            "type": "warn",
+            "streak": 1,
+            "silenceMs": 90001
+          }
+        ],
+        "scenes": 1,
+        "holds": 0
+      },
+      {
+        "at": 1700000105001,
+        "decisions": [
+          {
+            "type": "warn",
+            "streak": 2,
+            "silenceMs": 105001
+          }
+        ],
+        "scenes": 1,
+        "holds": 0
+      },
+      {
+        "at": 1700000120001,
+        "decisions": [
+          {
+            "type": "escalate",
+            "streak": 3,
+            "silenceMs": 120001
+          }
+        ],
+        "scenes": 1,
+        "holds": 1
+      },
+      {
+        "at": 1700000135001,
+        "decisions": [],
+        "scenes": 0,
+        "holds": 0
+      }
+    ],
+    "kinds": [
+      "warn",
+      "warn",
+      "escalate",
+      ""
+    ],
+    "exactlyOneEscalatePerTaskAttempt": true,
+    "noFourthWarn": true,
+    "warnPredecessorsRecordedWithSnapshots": true,
+    "incidents": [
+      {
+        "kind": "warn",
+        "scene": "/root/dshProj/my-power-dsh/evidence/team-watchdog/fault/20260915T165635Z/raw/ws/fault-n4dhtf/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json",
+        "hold": "not-requested"
+      },
+      {
+        "kind": "warn",
+        "scene": "/root/dshProj/my-power-dsh/evidence/team-watchdog/fault/20260915T165635Z/raw/ws/fault-n4dhtf/.mpd/team/watchdog/scene/fault-probe/20231114T221505Z-warn.json",
+        "hold": "not-requested"
+      },
+      {
+        "kind": "escalate",
+        "scene": "/root/dshProj/my-power-dsh/evidence/team-watchdog/fault/20260915T165635Z/raw/ws/fault-n4dhtf/.mpd/team/watchdog/scene/fault-probe/20231114T221520Z-escalate.json",
+        "hold": "applied"
+      }
+    ],
+    "hold": {
+      "id": "e353df6d-d825-4a0a-beea-4bb18b820fa2",
+      "taskId": "t1",
+      "attemptId": "att-1"
+    },
+    "holdAppliedOnce": true,
+    "stats": {
+      "scenes": 3,
+      "incidents": 3,
+      "holdsApplied": 1
+    },
+    "retryWithNewAttemptId": {
+      "stamps": 1,
+      "decisions": [
+        {
+          "type": "warn",
+          "streak": 1
+        }
+      ]
+    }
+  }
+
+── case pause-preserves ── ok=true ──
+  the hold landed through the plugin's own action while t1 was in flight: true
+  sha256(team.json) unchanged across the held kicks: true (after the resume it is changed (the re-arm minted the next attempt))
+  deliveries while held: 0 (each decline says: agent-teams: dispatch declined for fault-probe/*: the team is held by the team watchdog (hold 435297b3-70e6-431d-a431-aaa7681ab81e since 2026-09-15T16:57:36.002Z: silence))
+  task after the hold: {"status":"in_progress","attemptId":"att-live","attempt":3,"output":"partial result","handoffId":"handoff-1"}
+  resume cleared the hold and dispatch resumed: true / deliveries 1
+  observation: {
+    "injected": "silence",
+    "holdApplied": true,
+    "sha256UnchangedAcrossHeldKicks": true,
+    "sha256AfterResume": "changed (the re-arm minted the next attempt)",
+    "deliveriesWhileHeld": 0,
+    "declineLines": [
+      "agent-teams: dispatch declined for fault-probe/*: the team is held by the team watchdog (hold 435297b3-70e6-431d-a431-aaa7681ab81e since 2026-09-15T16:57:36.002Z: silence)",
+      "agent-teams: dispatch declined for fault-probe/Architect: the team is held by the team watchdog (hold 435297b3-70e6-431d-a431-aaa7681ab81e since 2026-09-15T16:57:36.002Z: silence)"
+    ],
+    "before": {
+      "status": "in_progress",
+      "attemptId": "att-live",
+      "attempt": 3,
+      "output": "partial result",
+      "handoffId": "handoff-1"
+    },
+    "after": {
+      "status": "in_progress",
+      "attemptId": "att-live",
+      "attempt": 3,
+      "output": "partial result",
+      "handoffId": "handoff-1"
+    },
+    "cancelled": false,
+    "resumed": true,
+    "deliveriesAfterResume": 1,
+    "preserved": true
+  }
+
+── case pause-preserves-halt-control ── ok=true ──
+  the SAME fixture, paused by the REAL haltTeamWork: cancelledTasks=1
+  t1: {"status":"in_progress","attemptId":"att-live","output":"partial result","handoffId":"handoff-1"}  =>  {"status":"cancelled","attemptId":null,"output":"Stopped from the captain chat.","handoffId":null}
+  sha256(team.json) CHANGED: true (this is what reddens AC-17)
+  AC-17 is falsifiable: the wrong mechanism leaves the task cancelled with cancelledTasks >= 1
+  observation: {
+    "injected": "silence",
+    "mechanism": "haltTeamWork (the adopted mass-cancel path), imported from packages/mpd-agent-teams-plugin/lib/tools.js and CALLED — never stubbed",
+    "cancelledTasks": 1,
+    "alreadyHalted": false,
+    "halted": true,
+    "sha256Changed": true,
+    "before": {
+      "status": "in_progress",
+      "attemptId": "att-live",
+      "output": "partial result",
+      "handoffId": "handoff-1"
+    },
+    "after": {
+      "status": "cancelled",
+      "attemptId": null,
+      "output": "Stopped from the captain chat.",
+      "handoffId": null
+    },
+    "cancelled": true,
+    "wouldReddenAC17": true
+  }
+
+── case scene-restore ── ok=true ──
+  scene files on disk: ["20231114T221450Z-warn.json","20231114T221505Z-warn.json","20231114T221520Z-escalate.json","latest.json"]
+  latest.json (parsed with plain fs): reason=escalate, team.hold={"id":"b74170fc-4468-4dc7-b42e-0e4116d452c1","since":1789491456019,"cause":"silence","taskId":"t1","attemptId":"att-1"}
+  hold record: {"id":"b74170fc-4468-4dc7-b42e-0e4116d452c1","since":1789491456019,"cause":"silence","taskId":"t1","attemptId":"att-1"}
+  incident log: warn, warn, escalate
+  observation: {
+    "injected": "silence",
+    "readWith": "plain fs + JSON.parse (no plugin reader) — the fresh-process shape",
+    "sceneFiles": [
+      "20231114T221450Z-warn.json",
+      "20231114T221505Z-warn.json",
+      "20231114T221520Z-escalate.json",
+      "latest.json"
+    ],
+    "latest": {
+      "schemaVersion": 1,
+      "at": 1700000120001,
+      "reason": "escalate",
+      "cause": {
+        "kind": "silence",
+        "ms": 120001
+      },
+      "team": {
+        "id": "fault-probe",
+        "name": "Fault probe",
+        "phase": "running",
+        "halted": null,
+        "haltedAt": null,
+        "hold": {
+          "id": "b74170fc-4468-4dc7-b42e-0e4116d452c1",
+          "since": 1789491456019,
+          "cause": "silence",
+          "taskId": "t1",
+          "attemptId": "att-1"
+        }
+      },
+      "taskCount": 1,
+      "memberCount": 1,
+      "parkedAttempts": {
+        "child-architect-fault": "att-1"
+      }
+    },
+    "hold": {
+      "id": "b74170fc-4468-4dc7-b42e-0e4116d452c1",
+      "since": 1789491456019,
+      "cause": "silence",
+      "taskId": "t1",
+      "attemptId": "att-1"
+    },
+    "incidents": [
+      {
+        "kind": "warn",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "scene": "/root/dshProj/my-power-dsh/evidence/team-watchdog/fault/20260915T165635Z/raw/ws/fault-n5hom0/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json",
+        "hold": "not-requested"
+      },
+      {
+        "kind": "warn",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "scene": "/root/dshProj/my-power-dsh/evidence/team-watchdog/fault/20260915T165635Z/raw/ws/fault-n5hom0/.mpd/team/watchdog/scene/fault-probe/20231114T221505Z-warn.json",
+        "hold": "not-requested"
+      },
+      {
+        "kind": "escalate",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "scene": "/root/dshProj/my-power-dsh/evidence/team-watchdog/fault/20260915T165635Z/raw/ws/fault-n5hom0/.mpd/team/watchdog/scene/fault-probe/20231114T221520Z-escalate.json",
+        "hold": "applied"
+      }
+    ]
+  }
+
+── verdicts ──
+  PASS  member-stops-stepping
+  PASS  captain-wedge
+  PASS  warn-90s
+  PASS  escalate-3x
+  PASS  pause-preserves
+  PASS  pause-preserves-halt-control
+  PASS  scene-restore
+
+── NOT CLAIMED (W-3 and friends) ──
+  - W-3: a GENUINE provider wedge is not reproducible here. Every case injects SILENCE (the absence of new heartbeats); no case may claim that a real wedge was caught.
+  - The harness is stubbed (ctx services, agents, subagents, logger). The scheduler, the watchdog engine/machine/store and the halt path are the REAL modules; the surrounding host is not.
+  - No live dsh host, no model credential, no network: the fixture never boots a session.
+  - `haltTeamWork` cancels; the fixture does not claim that the halt path is ever the RIGHT mechanism — it exists to show that AC-17 goes RED when the pause is built on it.

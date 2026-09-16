@@ -20,7 +20,7 @@
 // that the owner has actually stamped this task at least once in this generation
 // — a claimed task that never stamped is reported `never-started`, a dispatch
 // observation that never escalates.
-import type { HeartbeatStamp } from "./store.js"
+import type { HeartbeatKind, HeartbeatStamp } from "./store.js"
 import { TERMINAL_STATUSES } from "./team.js"
 
 /** The five `mpd`-namespace watchdog knobs, resolved. */
@@ -150,8 +150,20 @@ export interface SilenceCandidate {
   memberKey: string
   /** The newest stamp for this task+attempt, or null when none was ever written. */
   lastSeen: number | null
-  /** Whether the owner has produced any stamp in this generation. */
-  stampedThisGeneration: boolean
+  /**
+   * The KIND of that newest stamp — the field the boundary predicate reads.
+   *
+   * A `turn-end` newest stamp means the owner FINISHED its turn and is between turns,
+   * which is a healthy idle member, not a wedge (T69-ESCALATE-1). `null` when no stamp
+   * was ever written, i.e. the `never-started` case.
+   */
+  lastKind: HeartbeatKind | null
+  /**
+   * Whether ANY stamp for this task+attempt was ever written (not "in this generation":
+   * heartbeat rotation keeps the last generations, so a historical stamp still counts).
+   * This is the precondition that separates `never-started` from `silence`.
+   */
+  everStampedForTask: boolean
 }
 
 /** What one observation concluded about one candidate. */
@@ -160,9 +172,19 @@ export type Decision =
   | { type: "escalate"; teamId: string; taskId: string; attemptId: string; assignee: string; memberKey: string; silenceMs: number; lastSeen: number; streak: number }
   | { type: "never-started"; teamId: string; taskId: string; attemptId: string; assignee: string; memberKey: string }
 
-/** The streak key: per task AND per attempt, so a retry starts clean. */
-export function streakKey(taskId: string, attemptId: string): string {
-  return taskId + "\u0000" + attemptId
+/**
+ * The streak key: per TEAM, per task AND per attempt.
+ *
+ * The TEAM is part of the key because task ids are per-team (`t1`, `t2`, … are allocated by
+ * each team's own `taskSeq`), so two teams in one workspace both have a `t1` — and a `pending`
+ * task can carry an assignee with NO attemptId at all. Keying on `taskId\0attemptId` alone made
+ * those two tasks share one streak: three single WARNs spread across TWO healthy teams summed
+ * into one ESCALATE attributed to the first team, which then took a SPURIOUS HOLD while the
+ * second team was silently never observed (w11/T70 finding W11-1, reproduced on the real
+ * machine). A retry still starts clean, because the attemptId stays in the key.
+ */
+export function streakKey(teamId: string, taskId: string, attemptId: string): string {
+  return teamId + "\u0000" + taskId + "\u0000" + attemptId
 }
 
 /**
@@ -192,9 +214,18 @@ export class WatchdogMachine {
     if (!knobs.enabled) return []
     const decisions: Decision[] = []
     for (const candidate of candidates) {
-      const key = streakKey(candidate.taskId, candidate.attemptId)
+      const key = streakKey(candidate.teamId, candidate.taskId, candidate.attemptId)
       if (this.escalated.has(key)) continue
-      if (candidate.lastSeen === null || !candidate.stampedThisGeneration) {
+      // BETWEEN TURNS IS NOT A WEDGE (T69-ESCALATE-1). The newest stamp being a
+      // `turn-end` means the member completed its turn and has simply not been
+      // re-dispatched: escalating that would hold a healthy team ~120 s after every
+      // finished turn with no ready task. Withhold the observation AND reset the streak,
+      // so a stale streak can never be spent once the member starts working again.
+      if (candidate.lastKind === "turn-end") {
+        this.streaks.delete(key)
+        continue
+      }
+      if (candidate.lastSeen === null || !candidate.everStampedForTask) {
         if (!this.neverStarted.has(key)) {
           this.neverStarted.add(key)
           decisions.push({
@@ -238,15 +269,15 @@ export class WatchdogMachine {
   }
 
   /** A stamp arrived for a key: the streak resets and the key is not escalated. */
-  clear(taskId: string, attemptId: string): void {
-    const key = streakKey(taskId, attemptId)
+  clear(teamId: string, taskId: string, attemptId: string): void {
+    const key = streakKey(teamId, taskId, attemptId)
     this.streaks.delete(key)
     this.neverStarted.delete(key)
   }
 
-  /** Whether a key already escalated (the tick's idempotence check). */
-  hasEscalated(taskId: string, attemptId: string): boolean {
-    return this.escalated.has(streakKey(taskId, attemptId))
+  /** Whether a TEAM's task+attempt already escalated (the tick's idempotence check). */
+  hasEscalated(teamId: string, taskId: string, attemptId: string): boolean {
+    return this.escalated.has(streakKey(teamId, taskId, attemptId))
   }
 
   /** The current streak map, for diagnostics and assertions. */
@@ -267,7 +298,27 @@ export function candidateFor(
     const memberKey = memberKeyOf(task.assignee)
     const attemptId = task.attemptId ?? ""
     const stamps = stampSource(memberKey)
-    const forTask = stamps.filter((stamp) => stamp.taskId === task.id)
+    // W11-2: the filter is by task id AND, when the stamp CARRIES one, by attempt id. A stamp
+    // with no attempt information (undefined/null/empty) cannot contradict this generation and
+    // is kept; a stamp that names a DIFFERENT attempt belongs to an earlier generation and must
+    // not satisfy the precondition (it used to, so an old generation's stamp made a task with no
+    // current stamp look "silent" instead of "never started").
+    const taskAttempt = task.attemptId ?? ""
+    const forTask = stamps.filter((stamp) => {
+      if (stamp.taskId !== task.id) return false
+      // TEAM SCOPE (r2, the false-negative repair): the heartbeat FILE is keyed by MEMBER NAME
+      // per workspace (`heartbeatPath`), and roster names repeat across teams, so two teams whose
+      // members share a name append to ONE file. Without this test the other team's stamp
+      // satisfies this candidate and a WEDGED member looks alive — the watchdog stays silent,
+      // which is the one failure mode this whole wave exists to prevent. A stamp that carries NO
+      // team cannot contradict this team and is kept, the same permissive convention the attempt
+      // rule below uses (and the reason the writer records `teamId` on every stamp).
+      const stampTeam = stamp.teamId
+      if (stampTeam !== undefined && stampTeam !== null && stampTeam !== "" && stampTeam !== team.id) return false
+      const stampAttempt = stamp.attemptId
+      if (stampAttempt === undefined || stampAttempt === null || stampAttempt === "") return true
+      return stampAttempt === taskAttempt
+    })
     const newest = forTask.reduce<HeartbeatStamp | undefined>((best, stamp) => (best === undefined || stamp.at >= best.at ? stamp : best), undefined)
     candidates.push({
       teamId: team.id,
@@ -276,7 +327,8 @@ export function candidateFor(
       assignee: task.assignee,
       memberKey,
       lastSeen: newest === undefined ? null : newest.at,
-      stampedThisGeneration: forTask.length > 0,
+      lastKind: newest === undefined ? null : newest.kind,
+      everStampedForTask: forTask.length > 0,
     })
   }
   return candidates

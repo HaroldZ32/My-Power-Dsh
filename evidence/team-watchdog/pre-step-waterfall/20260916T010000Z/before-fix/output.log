@@ -1,0 +1,49 @@
+### empty
+{
+  "tag": "empty",
+  "copyState": false,
+  "workspace": "/tmp/mxw-empty-dAxxdf/ws",
+  "bootLine": "dsh web: http://127.0.0.1:3251/?token=<redacted>",
+  "create": {
+    "status": 200,
+    "ok": true,
+    "agentPreset": "mpd"
+  },
+  "prompt": {
+    "status": 200,
+    "accepted": true
+  },
+  "turnEnd": [
+    "{\"type\":\"turn/end\",\"seq\":6,\"time\":1789520711920,\"data\":{\"turn\":1,\"reason\":{\"kind\":\"error\",\"error\":{\"message\":\"Cannot read properties of undefined (reading 'map')\",\"code\":\"UNKNOWN\"}}}}"
+  ],
+  "assistantText": [],
+  "crashSignatures": [
+    "{\"type\":\"turn/end\",\"seq\":6,\"time\":1789520711920,\"data\":{\"turn\":1,\"reason\":{\"kind\":\"error\",\"error\":{\"message\":\"Cannot read properties of undefined (reading 'map')\",\"code\":\"UNKNOWN\"}}}}"
+  ],
+  "watchdogBootLine": "[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0"
+}
+
+### copied
+{
+  "tag": "copied",
+  "copyState": true,
+  "workspace": "/tmp/mxw-copied-mHZsFZ/ws",
+  "bootLine": "dsh web: http://127.0.0.1:3252/?token=<redacted>",
+  "create": {
+    "status": 200,
+    "ok": true,
+    "agentPreset": "mpd"
+  },
+  "prompt": {
+    "status": 200,
+    "accepted": true
+  },
+  "turnEnd": [
+    "{\"type\":\"turn/end\",\"seq\":6,\"time\":1789520729054,\"data\":{\"turn\":1,\"reason\":{\"kind\":\"error\",\"error\":{\"message\":\"Cannot read properties of undefined (reading 'findLastIndex')\",\"code\":\"UNKNOWN\"}}}}"
+  ],
+  "assistantText": [],
+  "crashSignatures": [
+    "{\"type\":\"turn/end\",\"seq\":6,\"time\":1789520729054,\"data\":{\"turn\":1,\"reason\":{\"kind\":\"error\",\"error\":{\"message\":\"Cannot read properties of undefined (reading 'findLastIndex')\",\"code\":\"UNKNOWN\"}}}}"
+  ],
+  "watchdogBootLine": "[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0"
+}

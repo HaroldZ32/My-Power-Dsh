@@ -1,0 +1,28 @@
+{
+  "case": "captain-wedge",
+  "ok": true,
+  "observation": {
+    "injected": "silence",
+    "agentTurnsDriven": 0,
+    "decisions": [
+      {
+        "type": "warn",
+        "assignee": "captain",
+        "memberKey": "captain",
+        "taskId": "t9",
+        "silenceMs": 90001
+      }
+    ],
+    "captainFlagged": true,
+    "memberFlagged": false,
+    "scenesWritten": 1,
+    "incidents": 1,
+    "holdServicePublished": true
+  },
+  "lines": [
+    "NO agent turn was driven: nothing but the process-level tick runs (agentTurnsDriven 0)",
+    "the captain's own silence is flagged: [{\"type\":\"warn\",\"assignee\":\"captain\",\"memberKey\":\"captain\",\"taskId\":\"t9\",\"silenceMs\":90001}]",
+    "the member is untouched (its stamp at 50 000 keeps it alive): memberFlagged=false",
+    "scene written: 1, incident recorded: 1"
+  ]
+}

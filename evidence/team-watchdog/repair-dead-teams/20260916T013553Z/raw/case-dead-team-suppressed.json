@@ -1,0 +1,30 @@
+{
+  "case": "dead-team-suppressed",
+  "ok": true,
+  "observation": {
+    "injected": "a record ten days stale (with a ten-day-old stamp), no live agent for it",
+    "boundDisabledWouldWarn": [
+      "warn"
+    ],
+    "boundDisabledSkippedTeams": 0,
+    "recordActivityAgeMs": 864000000,
+    "decisions": [],
+    "decisionsRecorded": [],
+    "scenesWritten": 0,
+    "holdsApplied": 0,
+    "neverStartedCounted": 0,
+    "skippedTeams": 1,
+    "consoleLinesEmitted": [],
+    "debugLines": [
+      "[mpd-team-watchdog] skipping team fault-probe (phase running, 1 task(s)) has no live agent and its newest activity is 864000000ms old (> 86400000ms grace): a dead record, not a dispatch problem"
+    ]
+  },
+  "lines": [
+    "the record's newest activity is 864000000 ms old (ten days) and no live agent exists for it",
+    "decisions [] · incidents [] · scenes 0 · holds 0",
+    "CONSOLE lines emitted during the tick: [] (silent to the user)",
+    "debug channel: [\"[mpd-team-watchdog] skipping team fault-probe (phase running, 1 task(s)) has no live agent and its newest activity is 864000000ms old (> 86400000ms grace): a dead record, not a dispatch problem\"]",
+    "FALSIFIER: with the bound disabled (deadTeamGraceMs 0) the SAME record is ticked and warns: [\"warn\"] — so the silence above is the gate, not a vacuous fixture",
+    "=> a dead record is skipped, not reported, on EVERY decision path (r4)"
+  ]
+}

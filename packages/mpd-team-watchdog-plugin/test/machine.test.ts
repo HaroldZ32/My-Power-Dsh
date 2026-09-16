@@ -66,7 +66,10 @@ describe("the machine", () => {
     assignee: "Architect",
     memberKey: "Architect",
     lastSeen: 1_000,
-    stampedThisGeneration: true,
+    // The KIND of the newest stamp is part of the predicate: `turn-end` means the member
+    // finished its turn and is between turns, so it is never a silence candidate.
+    lastKind: "step",
+    everStampedForTask: true,
     ...overrides,
   })
 
@@ -81,7 +84,7 @@ describe("the machine", () => {
     // No fourth WARN, no second ESCALATE, ever.
     const fourth = machine.observe([candidate()], 1_000 + knobs.warnSilenceMs + 4, knobs)
     expect(fourth).toEqual([])
-    expect(machine.hasEscalated("t1", "att-1")).toBe(true)
+    expect(machine.hasEscalated("team-a", "t1", "att-1")).toBe(true)
   })
 
   test("a new attemptId starts a clean streak", () => {
@@ -90,7 +93,7 @@ describe("the machine", () => {
     machine.observe([candidate()], 200_001, knobs)
     const retry = machine.observe([candidate({ attemptId: "att-2" })], 200_002, knobs)
     expect(retry.map((d) => d.type)).toEqual(["warn"])
-    expect(machine.snapshot().streaks[streakKey("t1", "att-2")]).toBe(1)
+    expect(machine.snapshot().streaks[streakKey("team-a", "t1", "att-2")]).toBe(1)
   })
 
   test("any recent stamp resets the streak", () => {
@@ -102,10 +105,82 @@ describe("the machine", () => {
 
   test("a claimed task whose owner never stamped is never-started, and never escalates", () => {
     const machine = new WatchdogMachine()
-    const decisions = machine.observe([candidate({ lastSeen: null, stampedThisGeneration: false })], 999_999, knobs)
+    const decisions = machine.observe([candidate({ lastSeen: null, lastKind: null, everStampedForTask: false })], 999_999, knobs)
     expect(decisions.map((d) => d.type)).toEqual(["never-started"])
-    const again = machine.observe([candidate({ lastSeen: null, stampedThisGeneration: false })], 1_000_000, knobs)
+    const again = machine.observe([candidate({ lastSeen: null, lastKind: null, everStampedForTask: false })], 1_000_000, knobs)
     expect(again).toEqual([])
+  })
+
+  test("a COMPLETED turn is not a wedge: a turn-end newest stamp never warns or escalates", () => {
+    const machine = new WatchdogMachine()
+    const completed = candidate({ lastKind: "turn-end", lastSeen: 1_000 })
+    // Well past the threshold, and for far longer than the 3-WARN streak would need.
+    expect(machine.observe([completed], 1_000 + knobs.warnSilenceMs * 10, knobs)).toEqual([])
+    expect(machine.observe([completed], 1_000 + knobs.warnSilenceMs * 20, knobs)).toEqual([])
+    expect(machine.snapshot().escalated).toEqual([])
+    // A stale streak must not survive the boundary and be spent on the next turn.
+    expect(machine.snapshot().streaks).toEqual({})
+  })
+
+  test("a stale streak is RESET by the boundary (the completed turn cannot spend it later)", () => {
+    const machine = new WatchdogMachine()
+    machine.observe([candidate()], 1_000 + knobs.warnSilenceMs + 1, knobs)
+    machine.observe([candidate()], 1_000 + knobs.warnSilenceMs + 2, knobs)
+    expect(machine.snapshot().streaks[streakKey("team-a", "t1", "att-1")]).toBe(2)
+    // The turn ends...
+    expect(machine.observe([candidate({ lastKind: "turn-end" })], 1_000 + knobs.warnSilenceMs + 3, knobs)).toEqual([])
+    // ...and the streak is gone, so the next silent tick is a FIRST warn, not an escalate.
+    const resumed = machine.observe([candidate()], 1_000 + knobs.warnSilenceMs + 4, knobs)
+    expect(resumed.map((d) => d.type)).toEqual(["warn"])
+    expect(resumed[0].streak).toBe(1)
+  })
+
+  test("W11-1 REGRESSION (the Reviewer's exact probe shape): two teams, both tasks t1, BOTH with an empty attemptId, each observed once per tick", () => {
+    // The finding, reproduced exactly: task ids are per-team, so BOTH teams have a `t1`, and a
+    // `pending` task that carries an assignee with NO attemptId is reachable (the adopted amend
+    // path). Under the removed `taskId\0attemptId` key BOTH tasks hashed to the SAME key
+    // (`"t1\u0000"`), so their observations summed:
+    //     removed key : tick1 A warn:1, B warn:2 -> tick2 A ESCALATE:3, B [] (and B never again)
+    // A correct per-team machine escalates NEITHER team in that scenario — that is the falsifier.
+    const machine = new WatchdogMachine()
+    const teamA = candidate({ teamId: "team-a", taskId: "t1", attemptId: "" })
+    const teamB = candidate({ teamId: "team-b", taskId: "t1", attemptId: "" })
+    const now = 1_000 + knobs.warnSilenceMs + 1
+
+    // (0) the two candidates must NOT share a key any more — the collision WAS the defect.
+    expect(streakKey("team-a", "t1", "")).not.toBe(streakKey("team-b", "t1", ""))
+    expect(streakKey("team-a", "t1", "")).toBe("team-a\u0000t1\u0000")
+    // The single key the removed code produced for this scenario is no longer produced at all.
+    expect([streakKey("team-a", "t1", ""), streakKey("team-b", "t1", "")]).not.toContain("t1\u0000")
+
+    // (1) the reviewer's two ticks: both teams observed once per tick.
+    const tick1 = machine.observe([teamA, teamB], now, knobs)
+    const tick2 = machine.observe([teamA, teamB], now + 1, knobs)
+    expect(tick1.map((d) => `${d.teamId}:${d.type}:${d.streak}`)).toEqual(["team-a:warn:1", "team-b:warn:1"])
+    expect(tick2.map((d) => `${d.teamId}:${d.type}:${d.streak}`)).toEqual(["team-a:warn:2", "team-b:warn:2"])
+    // THE FALSIFIER: in the reviewer's scenario a correct per-team machine escalates NOBODY.
+    // (The removed key produced exactly one ESCALATE here, for the wrong team.)
+    expect(tick1.some((d) => d.type === "escalate")).toBe(false)
+    expect(tick2.some((d) => d.type === "escalate")).toBe(false)
+    expect(machine.snapshot().escalated).toEqual([])
+
+    // (2) only a team's OWN third consecutive warn escalates, and the keys stay distinct.
+    const tick3 = machine.observe([teamA], now + 2, knobs)
+    expect(tick3.map((d) => `${d.teamId}:${d.type}:${d.streak}`)).toEqual(["team-a:escalate:3"])
+    expect(machine.hasEscalated("team-a", "t1", "")).toBe(true)
+    expect(machine.hasEscalated("team-b", "t1", "")).toBe(false)
+    expect(machine.snapshot().streaks[streakKey("team-b", "t1", "")]).toBe(2)
+
+    const tick4 = machine.observe([teamB], now + 3, knobs)
+    expect(tick4.map((d) => `${d.teamId}:${d.type}:${d.streak}`)).toEqual(["team-b:escalate:3"])
+    expect(machine.snapshot().escalated.sort()).toEqual(["team-a\u0000t1\u0000", "team-b\u0000t1\u0000"].sort())
+  })
+
+  test("W11-2: a stamp from ANOTHER attempt does not satisfy the precondition (it is never-started, not silent)", () => {
+    const machine = new WatchdogMachine()
+    const fromAnotherAttempt = candidate({ taskId: "t1", attemptId: "", lastSeen: null, lastKind: null, everStampedForTask: false })
+    // candidateFor() is what decides that; this asserts the OBSERVE half of the contract.
+    expect(machine.observe([fromAnotherAttempt], 999_999, knobs).map((d) => d.type)).toEqual(["never-started"])
   })
 
   test("a disabled watchdog observes nothing", () => {
