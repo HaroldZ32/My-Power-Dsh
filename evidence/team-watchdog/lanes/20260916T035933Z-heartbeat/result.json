@@ -1,0 +1,210 @@
+{
+  "task": "AC-1 / AC-2 (per-step and per-tool heartbeats for members and the captain)",
+  "lane": "team-watchdog-heartbeat",
+  "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T035933Z-heartbeat/raw/sandbox/heartbeat/ws",
+  "heartbeatFiles": {
+    "member": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T035933Z-heartbeat/raw/sandbox/heartbeat/ws/.mpd/team/watchdog/heartbeat/architect.jsonl",
+    "captain": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T035933Z-heartbeat/raw/sandbox/heartbeat/ws/.mpd/team/watchdog/heartbeat/captain.jsonl",
+    "memberSha256": "1c6dc5888ddd228382287e76c5922d371add0b7b439183bba77b38b84f528f76",
+    "captainSha256": "378077eaf7855a77f4cbfb05fe01a6f73d3bef5557ba34abb5621070f5fc49f5"
+  },
+  "observed": {
+    "applied": true,
+    "disposers": 6,
+    "events": [
+      "agent/pre-step",
+      "agent/session-start",
+      "agent/turn-stopping",
+      "tools/post-execute",
+      "tools/pre-execute",
+      "settings/updated",
+      "settings/document-updated"
+    ],
+    "memberKinds": [
+      "turn-start",
+      "step",
+      "step",
+      "tool",
+      "turn-end"
+    ],
+    "memberStamps": [
+      {
+        "kind": "turn-start",
+        "at": 1789531173737,
+        "member": "Architect",
+        "memberKey": "Architect",
+        "teamId": "heartbeat-probe",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "turnId": "Architect#1",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T035933Z-heartbeat/raw/sandbox/heartbeat/ws"
+      },
+      {
+        "kind": "step",
+        "at": 1789531173739,
+        "member": "Architect",
+        "memberKey": "Architect",
+        "teamId": "heartbeat-probe",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "turnId": "Architect#1",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T035933Z-heartbeat/raw/sandbox/heartbeat/ws"
+      },
+      {
+        "kind": "step",
+        "at": 1789531173739,
+        "member": "Architect",
+        "memberKey": "Architect",
+        "teamId": "heartbeat-probe",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "turnId": "Architect#1",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T035933Z-heartbeat/raw/sandbox/heartbeat/ws"
+      },
+      {
+        "kind": "tool",
+        "at": 1789531173739,
+        "member": "Architect",
+        "memberKey": "Architect",
+        "teamId": "heartbeat-probe",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "turnId": "Architect#1",
+        "tool": "bash",
+        "callId": "call-1",
+        "ok": true,
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T035933Z-heartbeat/raw/sandbox/heartbeat/ws"
+      },
+      {
+        "kind": "turn-end",
+        "at": 1789531173739,
+        "member": "Architect",
+        "memberKey": "Architect",
+        "teamId": "heartbeat-probe",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "turnId": "Architect#1",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T035933Z-heartbeat/raw/sandbox/heartbeat/ws"
+      }
+    ],
+    "memberFile": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T035933Z-heartbeat/raw/sandbox/heartbeat/ws/.mpd/team/watchdog/heartbeat/architect.jsonl",
+    "captainStamps": [
+      {
+        "kind": "turn-start",
+        "at": 1789531173740,
+        "member": "captain",
+        "memberKey": "captain",
+        "teamId": "heartbeat-probe",
+        "taskId": null,
+        "attemptId": null,
+        "turnId": "captain#2",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T035933Z-heartbeat/raw/sandbox/heartbeat/ws"
+      },
+      {
+        "kind": "step",
+        "at": 1789531173740,
+        "member": "captain",
+        "memberKey": "captain",
+        "teamId": "heartbeat-probe",
+        "taskId": null,
+        "attemptId": null,
+        "turnId": "captain#2",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T035933Z-heartbeat/raw/sandbox/heartbeat/ws"
+      }
+    ],
+    "freshProcessPid": 827,
+    "freshProcessRead": true,
+    "preHookPresent": true,
+    "postHookPresent": true,
+    "preHookSubscribed": true,
+    "observeOnly": {
+      "gateVerbatim": true,
+      "resultVerbatim": true,
+      "postDecisionVerbatim": true,
+      "commandRanForReal": true,
+      "hookRan": true,
+      "hookSawTheGateDecision": true,
+      "frozenCopy": true,
+      "mutationRejected": true,
+      "observedBeforeTheBody": true,
+      "noHookNoObservation": true,
+      "throwingListenerContained": true,
+      "execUntouched": true
+    },
+    "turnIdsDistinct": true
+  },
+  "checks": [
+    {
+      "id": "H1",
+      "ok": true,
+      "detail": "the mounted row installed its writers (applied=true, disposers=6)"
+    },
+    {
+      "id": "H2:agent/pre-step",
+      "ok": true,
+      "detail": "the row subscribed agent/pre-step"
+    },
+    {
+      "id": "H2:agent/session-start",
+      "ok": true,
+      "detail": "the row subscribed agent/session-start"
+    },
+    {
+      "id": "H2:agent/turn-stopping",
+      "ok": true,
+      "detail": "the row subscribed agent/turn-stopping"
+    },
+    {
+      "id": "H2:tools/post-execute",
+      "ok": true,
+      "detail": "the row subscribed tools/post-execute"
+    },
+    {
+      "id": "H3",
+      "ok": true,
+      "detail": "the member's heartbeat file carries every stamped kind [\"turn-start\",\"step\",\"step\",\"tool\",\"turn-end\"]"
+    },
+    {
+      "id": "H4",
+      "ok": true,
+      "detail": "the TOOL stamp is post-completion and carries the tool name + call id ({\"kind\":\"tool\",\"at\":1789531173739,\"member\":\"Architect\",\"memberKey\":\"Architect\",\"teamId\":\"heartbeat-probe\",\"taskId\":\"t1\",\"attemptId\":\"att-1\",\"turnId\":\"Architect#1\",\"tool\":\"bash\",\"callId\":\"call-1\",\"ok\":true,\"workspace\":\"/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T035933Z-heartbeat/raw/sandbox/heartbeat/ws\"})"
+    },
+    {
+      "id": "H5",
+      "ok": true,
+      "detail": "the built bytes expose BOTH waterfalls ('tools/pre-execute' present BY DESIGN — the dist inlines the adapter — and 'tools/post-execute') AND the row subscribed the PRE hook, which is OBSERVE-ONLY on the REAL cordis waterfall: the same real tool call with and without the hook yields an identical gate decision, an identical command result and an identical post decision, the listener receives a FROZEN copy and its write is rejected, a THROWING listener still leaves the gate verbatim, and the stamp happened before the tool body ran ({\"gateVerbatim\":true,\"resultVerbatim\":true,\"postDecisionVerbatim\":true,\"commandRanForReal\":true,\"hookRan\":true,\"hookSawTheGateDecision\":true,\"frozenCopy\":true,\"mutationRejected\":true,\"observedBeforeTheBody\":true,\"noHookNoObservation\":true,\"throwingListenerContained\":true,\"execUntouched\":true})"
+    },
+    {
+      "id": "H6",
+      "ok": true,
+      "detail": "the member's step stamp resolves the MEMBER identity, and its file name is the plugin's own sanitized segment ({\"member\":\"Architect\",\"memberKey\":\"Architect\"}, file=architect.jsonl)"
+    },
+    {
+      "id": "H7",
+      "ok": true,
+      "detail": "the member's stamp binds the team, the current task and the attempt ({\"teamId\":\"heartbeat-probe\",\"taskId\":\"t1\",\"attemptId\":\"att-1\"})"
+    },
+    {
+      "id": "H8",
+      "ok": true,
+      "detail": "the CAPTAIN's own turn is stamped under memberKey 'captain' ({\"member\":\"captain\",\"memberKey\":\"captain\"})"
+    },
+    {
+      "id": "H9",
+      "ok": true,
+      "detail": "the stamps were read back by a FRESH process (pid 827 vs lane pid 819)"
+    },
+    {
+      "id": "H10",
+      "ok": true,
+      "detail": "each stamp carries its generation's turnId (member keys stay disjoint)"
+    }
+  ],
+  "ok": true,
+  "notClaimed": [
+    "No LIVE member turn was driven: this sandbox has no dsh host, no model credential and no network (the fixture's own NOT_CLAIMED #3). The witness is the mounted boot plus the events the host would fire, read back by a fresh process.",
+    "The observe-only property is witnessed on the vendored cordis waterfall with the REAL adapter dist and a REAL child-process tool body, but NOT inside a live dsh session: the harness's own dispatch was not driven here."
+  ],
+  "evidenceDir": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T035933Z-heartbeat",
+  "finishedAt": "2026-09-16T03:59:34.453Z"
+}

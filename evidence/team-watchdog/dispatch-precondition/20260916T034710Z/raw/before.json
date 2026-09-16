@@ -1,0 +1,146 @@
+{
+  "label": "before",
+  "dist": {
+    "path": "/root/dshProj/my-power-dsh/evidence/team-watchdog/dispatch-precondition/20260916T034710Z/raw/dist-before/index.js",
+    "bytes": 125754,
+    "sha256": "810e0fb315e968ac897d44e297d073cb30063df8a5b8b0569d7effce2cb8d269"
+  },
+  "record": "/root/dshProj/my-power-dsh/.mpd/team/mpd-default/team.json",
+  "runs": [
+    {
+      "shape": "staged",
+      "workspace": "/tmp/watchdog-r7-mAN2Ph",
+      "recordBytes": 43964,
+      "tasks": 12,
+      "tasksWithAttempt": 0,
+      "tick": {
+        "decisions": 0,
+        "scenes": 0,
+        "holds": 0,
+        "skipped": null
+      },
+      "incidents": 12,
+      "neverStarted": 12,
+      "neverStartedTasks": [
+        "t1",
+        "t2",
+        "t3",
+        "t4",
+        "t5",
+        "t6",
+        "t7",
+        "t8",
+        "t9",
+        "t10",
+        "t11",
+        "t12"
+      ],
+      "holds": 0,
+      "consoleLines": 12,
+      "lines": [
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t1 member=Planner attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t2 member=Explorer attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t3 member=Researcher attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t4 member=Researcher attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t5 member=Explorer attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t6 member=Architect attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t7 member=Deep Worker attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t8 member=Senior Engineer attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t9 member=Senior Engineer attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t10 member=Reviewer attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t11 member=Reviewer attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t12 member=Lead attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl"
+      ]
+    },
+    {
+      "shape": "dispatched",
+      "workspace": "/tmp/watchdog-r7-cF2LO5",
+      "recordBytes": 43964,
+      "tasks": 12,
+      "tasksWithAttempt": 12,
+      "tick": {
+        "decisions": 0,
+        "scenes": 0,
+        "holds": 0,
+        "skipped": null
+      },
+      "incidents": 12,
+      "neverStarted": 12,
+      "neverStartedTasks": [
+        "t1",
+        "t2",
+        "t3",
+        "t4",
+        "t5",
+        "t6",
+        "t7",
+        "t8",
+        "t9",
+        "t10",
+        "t11",
+        "t12"
+      ],
+      "holds": 0,
+      "consoleLines": 12,
+      "lines": [
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t1 member=Planner attempt=att-t1-1 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t2 member=Explorer attempt=att-t2-2 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t3 member=Researcher attempt=att-t3-3 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t4 member=Researcher attempt=att-t4-4 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t5 member=Explorer attempt=att-t5-5 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t6 member=Architect attempt=att-t6-6 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t7 member=Deep Worker attempt=att-t7-7 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t8 member=Senior Engineer attempt=att-t8-8 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t9 member=Senior Engineer attempt=att-t9-9 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t10 member=Reviewer attempt=att-t10-10 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t11 member=Reviewer attempt=att-t11-11 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t12 member=Lead attempt=att-t12-12 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl"
+      ]
+    },
+    {
+      "shape": "revoked",
+      "workspace": "/tmp/watchdog-r7-V6ZHj7",
+      "recordBytes": 43964,
+      "tasks": 12,
+      "tasksWithAttempt": 0,
+      "tick": {
+        "decisions": 0,
+        "scenes": 0,
+        "holds": 0,
+        "skipped": null
+      },
+      "incidents": 12,
+      "neverStarted": 12,
+      "neverStartedTasks": [
+        "t1",
+        "t2",
+        "t3",
+        "t4",
+        "t5",
+        "t6",
+        "t7",
+        "t8",
+        "t9",
+        "t10",
+        "t11",
+        "t12"
+      ],
+      "holds": 0,
+      "consoleLines": 12,
+      "lines": [
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t1 member=Planner attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t2 member=Explorer attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t3 member=Researcher attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t4 member=Researcher attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t5 member=Explorer attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t6 member=Architect attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t7 member=Deep Worker attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t8 member=Senior Engineer attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t9 member=Senior Engineer attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t10 member=Reviewer attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t11 member=Reviewer attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl",
+        "[mpd-team-watchdog] NEVER-STARTED mpd-default task=t12 member=Lead attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<sandbox>/.mpd/team/watchdog/incidents.jsonl"
+      ]
+    }
+  ]
+}

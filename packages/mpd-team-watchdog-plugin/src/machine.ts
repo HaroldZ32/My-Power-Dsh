@@ -444,6 +444,35 @@ export function candidateFor(
       if (stampAttempt === undefined || stampAttempt === null || stampAttempt === "") return true
       return stampAttempt === taskAttempt
     })
+    // THE DISPATCH PRECONDITION (r7 — the staged-plan flood). A task is observed only once
+    // somebody was actually HANDED it, and the record of that is a DISJUNCTION:
+    //
+    //   * a non-empty `attemptId` — the adopted scheduler writes it at dispatch
+    //     (`beginTaskAttempt(task, member)` in lib/scheduler.js, before the ticket is delivered)
+    //     and the member's own `claim_task` reuses it; or
+    //   * ANY stamp for this task in this team, of ANY generation — a stamped task WAS worked on,
+    //     even when its attempt has since been revoked/amended and the id cleared, which is why
+    //     this test is deliberately NOT the W11-2-filtered slice: that slice answers "is the
+    //     CURRENT generation silent", not "was this task ever handed out".
+    //
+    // A task with neither has never been given to anybody — the normal state of a plan that is
+    // still `staged` (awaiting the user's approval in the Web panel), of a task correctly blocked
+    // on unfinished dependencies, or of one the scheduler has simply not reached yet. Reported,
+    // the first two are pure noise, and a 12-task staged plan emitted 12 `never-started` records
+    // plus 12 console lines on EVERY host start (measured 2026-09-16) — for a plan nothing had
+    // been dispatched into and nothing should have been. `never-started` is DEFINED as a CLAIMED
+    // task whose owner never stamped; an unclaimed task is not one, and silence/escalation must
+    // not be spent on it either (a task nobody owns cannot be a wedge).
+    const dispatched = taskAttempt !== ""
+    const workedOn = stamps.some(
+      (stamp) =>
+        stamp.taskId === task.id &&
+        // The r2 team scope, the same permissive convention the slice below uses: a stamp that
+        // carries NO team cannot contradict this team, a stamp naming ANOTHER team says nothing
+        // about this task at all.
+        (stamp.teamId === undefined || stamp.teamId === null || stamp.teamId === "" || stamp.teamId === team.id),
+    )
+    if (!dispatched && !workedOn) continue
     const newest = forTask.reduce<HeartbeatStamp | undefined>((best, stamp) => (best === undefined || stamp.at >= best.at ? stamp : best), undefined)
     // r6: the SAME filtered slice answers the in-flight question, so a start recorded
     // against another team/attempt can never explain THIS candidate's silence away.

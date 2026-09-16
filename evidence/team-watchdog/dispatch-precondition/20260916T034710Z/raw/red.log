@@ -1,0 +1,253 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-team-watchdog-plugin/test/dispatch-precondition.test.ts:
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t1 member=Planner attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-IXQibp/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t2 member=Planner attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-IXQibp/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t3 member=Planner attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-IXQibp/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t4 member=Planner attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-IXQibp/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t5 member=Planner attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-IXQibp/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t6 member=Planner attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-IXQibp/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t7 member=Planner attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-IXQibp/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t8 member=Planner attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-IXQibp/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t9 member=Planner attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-IXQibp/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t10 member=Planner attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-IXQibp/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t11 member=Planner attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-IXQibp/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t12 member=Planner attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-IXQibp/.mpd/team/watchdog/incidents.jsonl
+72 | describe("a staged plan is never a dispatch problem", () => {
+73 |   test("12 pending assigned tasks, no attempt and no stamp: NO record, NO console line, NO hold", async () => {
+74 |     const box = sandbox()
+75 |     try {
+76 |       const observed = await tick(box, planFixture(false), 1_789_530_153_225)
+77 |       expect(observed.incidents).toEqual([])
+                                      ^
+error: expect(received).toEqual(expected)
+
+- []
++ [
++   {
++     "acknowledgedBy": [],
++     "at": 1789530153225,
++     "attemptId": "",
++     "cause": {
++       "kind": "never-started",
++       "ms": 0,
++     },
++     "hold": "not-requested",
++     "id": "t1@#never-started#1789530153225",
++     "kind": "never-started",
++     "scene": null,
++     "taskId": "t1",
++     "teamId": "mpd-default",
++   },
++   {
++     "acknowledgedBy": [],
++     "at": 1789530153225,
++     "attemptId": "",
++     "cause": {
++       "kind": "never-started",
++       "ms": 0,
++     },
++     "hold": "not-requested",
++     "id": "t2@#never-started#1789530153225",
++     "kind": "never-started",
++     "scene": null,
++     "taskId": "t2",
++     "teamId": "mpd-default",
++   },
++   {
++     "acknowledgedBy": [],
++     "at": 1789530153225,
++     "attemptId": "",
++     "cause": {
++       "kind": "never-started",
++       "ms": 0,
++     },
++     "hold": "not-requested",
++     "id": "t3@#never-started#1789530153225",
++     "kind": "never-started",
++     "scene": null,
++     "taskId": "t3",
++     "teamId": "mpd-default",
++   },
++   {
++     "acknowledgedBy": [],
++     "at": 1789530153225,
++     "attemptId": "",
++     "cause": {
++       "kind": "never-started",
++       "ms": 0,
++     },
++     "hold": "not-requested",
++     "id": "t4@#never-started#1789530153225",
++     "kind": "never-started",
++     "scene": null,
++     "taskId": "t4",
++     "teamId": "mpd-default",
++   },
++   {
++     "acknowledgedBy": [],
++     "at": 1789530153225,
++     "attemptId": "",
++     "cause": {
++       "kind": "never-started",
++       "ms": 0,
++     },
++     "hold": "not-requested",
++     "id": "t5@#never-started#1789530153225",
++     "kind": "never-started",
++     "scene": null,
++     "taskId": "t5",
++     "teamId": "mpd-default",
++   },
++   {
++     "acknowledgedBy": [],
++     "at": 1789530153225,
++     "attemptId": "",
++     "cause": {
++       "kind": "never-started",
++       "ms": 0,
++     },
++     "hold": "not-requested",
++     "id": "t6@#never-started#1789530153225",
++     "kind": "never-started",
++     "scene": null,
++     "taskId": "t6",
++     "teamId": "mpd-default",
++   },
++   {
++     "acknowledgedBy": [],
++     "at": 1789530153225,
++     "attemptId": "",
++     "cause": {
++       "kind": "never-started",
++       "ms": 0,
++     },
++     "hold": "not-requested",
++     "id": "t7@#never-started#1789530153225",
++     "kind": "never-started",
++     "scene": null,
++     "taskId": "t7",
++     "teamId": "mpd-default",
++   },
++   {
++     "acknowledgedBy": [],
++     "at": 1789530153225,
++     "attemptId": "",
++     "cause": {
++       "kind": "never-started",
++       "ms": 0,
++     },
++     "hold": "not-requested",
++     "id": "t8@#never-started#1789530153225",
++     "kind": "never-started",
++     "scene": null,
++     "taskId": "t8",
++     "teamId": "mpd-default",
++   },
++   {
++     "acknowledgedBy": [],
++     "at": 1789530153225,
++     "attemptId": "",
++     "cause": {
++       "kind": "never-started",
++       "ms": 0,
++     },
++     "hold": "not-requested",
++     "id": "t9@#never-started#1789530153225",
++     "kind": "never-started",
++     "scene": null,
++     "taskId": "t9",
++     "teamId": "mpd-default",
++   },
++   {
++     "acknowledgedBy": [],
++     "at": 1789530153225,
++     "attemptId": "",
++     "cause": {
++       "kind": "never-started",
++       "ms": 0,
++     },
++     "hold": "not-requested",
++     "id": "t10@#never-started#1789530153225",
++     "kind": "never-started",
++     "scene": null,
++     "taskId": "t10",
++     "teamId": "mpd-default",
++   },
++   {
++     "acknowledgedBy": [],
++     "at": 1789530153225,
++     "attemptId": "",
++     "cause": {
++       "kind": "never-started",
++       "ms": 0,
++     },
++     "hold": "not-requested",
++     "id": "t11@#never-started#1789530153225",
++     "kind": "never-started",
++     "scene": null,
++     "taskId": "t11",
++     "teamId": "mpd-default",
++   },
++   {
++     "acknowledgedBy": [],
++     "at": 1789530153225,
++     "attemptId": "",
++     "cause": {
++       "kind": "never-started",
++       "ms": 0,
++     },
++     "hold": "not-requested",
++     "id": "t12@#never-started#1789530153225",
++     "kind": "never-started",
++     "scene": null,
++     "taskId": "t12",
++     "teamId": "mpd-default",
++   },
++ ]
+
+- Expected  - 1
++ Received  + 182
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-team-watchdog-plugin/test/dispatch-precondition.test.ts:77:34)
+(fail) a staged plan is never a dispatch problem > 12 pending assigned tasks, no attempt and no stamp: NO record, NO console line, NO hold [7.31ms]
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t1 member=Planner attempt=att-t1 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-Y3xPYA/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t2 member=Planner attempt=att-t2 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-Y3xPYA/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t3 member=Planner attempt=att-t3 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-Y3xPYA/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t4 member=Planner attempt=att-t4 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-Y3xPYA/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t5 member=Planner attempt=att-t5 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-Y3xPYA/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t6 member=Planner attempt=att-t6 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-Y3xPYA/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t7 member=Planner attempt=att-t7 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-Y3xPYA/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t8 member=Planner attempt=att-t8 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-Y3xPYA/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t9 member=Planner attempt=att-t9 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-Y3xPYA/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t10 member=Planner attempt=att-t10 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-Y3xPYA/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t11 member=Planner attempt=att-t11 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-Y3xPYA/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t12 member=Planner attempt=att-t12 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-Y3xPYA/.mpd/team/watchdog/incidents.jsonl
+(pass) a staged plan is never a dispatch problem > CONTROL: the same record WITH dispatch attempts still reports every never-started task [1.74ms]
+109 |     { id: "t2", status: "pending", assignee: "Planner", attemptId: "att-t2" },
+110 |   ]
+111 | 
+112 |   test("an un-dispatched task is not a candidate; a dispatched one is", () => {
+113 |     const candidates = candidateFor({ id: "mpd-default", tasks }, () => [], (assignee) => assignee)
+114 |     expect(candidates.map((candidate) => candidate.taskId)).toEqual(["t2"])
+                                                                  ^
+error: expect(received).toEqual(expected)
+
+  [
++   "t1",
+    "t2",
+  ]
+
+- Expected  - 0
++ Received  + 1
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-team-watchdog-plugin/test/dispatch-precondition.test.ts:114:61)
+(fail) candidateFor applies the precondition > an un-dispatched task is not a candidate; a dispatched one is [0.23ms]
+(pass) candidateFor applies the precondition > a stamp for the task keeps it observable even without a live attempt [0.23ms]
+
+packages/mpd-team-watchdog-plugin/test/dispatch-precondition.test.ts:
+
+ 2 pass
+ 2 fail
+ 11 expect() calls
+Ran 4 tests across 2 files. [138.00ms]

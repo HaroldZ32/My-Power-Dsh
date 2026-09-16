@@ -1,0 +1,15 @@
+The console lines the pre-fix watchdog printed on the 2026-09-16 host start (the user report),
+one per task of a plan that was STAGED (phase=staged, planReviewState=awaiting_review, approvedAt absent):
+
+[mpd-team-watchdog] NEVER-STARTED mpd-default task=t1 member=? attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<workspace>/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog] NEVER-STARTED mpd-default task=t2 member=? attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<workspace>/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog] NEVER-STARTED mpd-default task=t3 member=? attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<workspace>/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog] NEVER-STARTED mpd-default task=t4 member=? attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<workspace>/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog] NEVER-STARTED mpd-default task=t5 member=? attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<workspace>/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog] NEVER-STARTED mpd-default task=t6 member=? attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<workspace>/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog] NEVER-STARTED mpd-default task=t7 member=? attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<workspace>/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog] NEVER-STARTED mpd-default task=t8 member=? attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<workspace>/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog] NEVER-STARTED mpd-default task=t9 member=? attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<workspace>/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog] NEVER-STARTED mpd-default task=t10 member=? attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<workspace>/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog] NEVER-STARTED mpd-default task=t11 member=? attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<workspace>/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog] NEVER-STARTED mpd-default task=t12 member=? attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=<workspace>/.mpd/team/watchdog/incidents.jsonl
