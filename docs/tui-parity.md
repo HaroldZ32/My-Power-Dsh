@@ -38,7 +38,7 @@ what each one can and cannot prove:
 
 | Label | Path | What it proves |
 |---|---|---|
-| **E1** | `evidence/tui/team-surface-verify/2026-09-16T14-12-48.394Z/` | t3's accepted verdict run. Arm 1 drives the plugin's REAL `apply()` out of `dist/` and renders the registered scenes with a host double; arm 2 drives the REAL `dsh` TUI over real tmux keystrokes in a sandbox and the real adopted runtime COMMITS an approval. Its negative control bypasses the confirmation three ways and every run must fail. |
+| **E1** | `evidence/tui/team-surface-verify/2026-09-16T14-19-18.574Z/` | **the accepted verdict run** (t3, attempt 2 — green on both of its verify commands: arm 1 13/13, arm 2 7/7, and the negative control red three ways). Arm 1 drives the plugin's REAL `apply()` out of `dist/` and renders the registered scenes with a host double; arm 2 drives the REAL `dsh` TUI over real tmux keystrokes in a sandbox and the real adopted runtime COMMITS an approval. The earlier run `…14-12-48.394Z/` is SUPERSEDED and is cited nowhere on this page. E1 is the PRE-repair measurement: it still records the verdict-line finding F1, and its own `panes/approve-attempt.pane.txt` shows the post-commit empty state; the post-repair re-measurement is the settled-revision lane run named in §4 D1. |
 | **E2** | `evidence/tui/team-surface/20260916T140135Z/` | t6's repair suite plus its round-2 negative control: nine mutations applied to the real source, each reddening a named set of tests, every file restored byte-identical (sha256), final suite green. This is the falsifiability witness for the row-level assertions. |
 | **E3** | `evidence/tui/live/20260915T063140Z/result.json` | the edition's live lane (t8): six of the seven TUI seams rendered on a reviewer-owned fresh root — status line, commands, tree, scene, settings section, dialog. |
 | **E4** | `evidence/tui/plugin/20260915T060934Z/mount/` | real-TUI pane captures: `02-mpd-status`, `04-board-scene`, `11-board-by-command`, `14-workmate-dialog`, `15-settings`, `16-command-completion`. |
@@ -141,10 +141,17 @@ did render the tool's structured result, which is why this was a real-host devia
 rendering bug. **Repair (t8, `repair`, Senior Engineer):** a settled record that is no longer usable
 now renders the message the runtime produced, as the first body row
 (`packages/mpd-tui-plugin/src/scenes.ts:731-750`), and the package dist was rebuilt.
-**Re-measured after the repair:** the wave's own lane re-run reports
+**The OPEN state is evidenced by the ACCEPTED run's own pane**, not by a superseded artifact:
+`evidence/tui/team-surface-verify/2026-09-16T14-19-18.574Z/panes/approve-attempt.pane.txt` shows
+`MPD plan approval — no staged plan for team mpd-fixture-1 (phase running)` with zero occurrences of
+the verdict line, beside the same run's `result.json`
+(`arm2.outcome = approved-by-the-adopted-runtime/verdict-NOT-visible-after-commit`, finding
+`F1-approval-verdict-not-visible`).
+**Re-measured after the repair:** the lane re-run on this wave's settled revision reports
 `arm2.outcome = approved-by-the-adopted-runtime/verdict-visible`, `outcomeLines.approved = "approved:
 mpd-fixture-1 running · members 2 · tasks 2"` and `findings: []`
-(`evidence/tui/team-surface-verify/2026-09-16T14-24-22.312Z/result.json`). The first reading stays
+(`evidence/tui/team-surface-verify/2026-09-16T14-29-54.081Z/result.json`, from gate pass 2 in E5; the
+lane's earlier post-repair run `…14-24-22.312Z` agrees). The first reading stays
 in this ledger as the history of the measurement, not as a current status.
 
 **D2 — one frozen row label has no locatable Web anchor (severity low; owner: the frozen contract;
@@ -162,14 +169,20 @@ RESOLVED inside the same wave).** t3's attempt-1 verdict run recorded the digest
 measured it, `skills/dsh-qa/scripts/tui-team-surface.mjs` → `21a9eb5c14a30410…`. The file on disk
 hashed to `91a05314c38f263cc8c481174dfa3debd6b7e6914512dc94857c1064f792cf2f`, and its mtime
 (14:16:22 UTC) was LATER than t3's own last update (14:14:56 UTC). The corpus fingerprint recomputed
-on the live tree was therefore `303e1631…`, **not** the `4f02b398…` that t3's report asked the
-captain to pin. Two consequences were recorded at the time: pinning `4f02b398…` would have left
+on the live tree was therefore `303e1631…`, **not** the treeSha that attempt-1's report asked the
+captain to pin — that stale value is recorded verbatim in the attempting run's own `result.json` and
+is deliberately NOT restated here, because a stale hash literal in prose is exactly the trap this row
+describes. Two consequences were recorded at the time: pinning that stale value would have left
 `verify-vendor` RED, and the verdict run no longer described the lane bytes on disk. **Resolution
-(measured, not assumed):** this page's independent recomputation was used — the captain re-pinned
-`VENDOR_LOCK.json` `assets.skills` to `fileCount 319 / treeSha 303e1631…` in the same commit as the
-`skills/**` change, `verify-vendor` now reports PASS on the frozen tree, and t3 was RETRIED
-(attempt 2) green on the current lane bytes. What survives is the rule, not a defect: a lane digest
-in a verdict run binds that verdict to the bytes which measured it, and a later edit invalidates the
+(measured, not assumed):** this page's independent recomputation was used. The pinned value is read
+from `VENDOR_LOCK.json` `assets.skills` on 2026-09-16: `fileCount 319` / `treeSha
+303e163148afc07e7dad10775d3de7e96b4caa1cfae9c1a91575ae906d8cc27d`, and the deriving check is
+`node evidence/tui/team-surface-integrate/2026-09-16T14-17-24.000Z/fingerprint.mjs`, which recomputes
+the corpus with `verify-vendor`'s own algorithm and prints the pin beside it (currently
+`drift: false`). `verify-vendor` reports PASS and the QA self-test sweep (incl.
+`agent-teams-messaging.mjs --self-test`) agrees on the same bytes, and t3 was RETRIED
+(attempt 2, accepted run `…14-19-18.574Z`) green on the current lane bytes. What survives is the rule,
+not a defect: a lane digest in a verdict run binds that verdict to the bytes which measured it, and a later edit invalidates the
 binding. Evidence: `evidence/tui/team-surface-integrate/2026-09-16T14-17-24.000Z/raw/fingerprint.log`,
 `REVISION.json`, and `gates.result.json` (`verifyVendor.exitCode = 0`) in the same directory.
 
