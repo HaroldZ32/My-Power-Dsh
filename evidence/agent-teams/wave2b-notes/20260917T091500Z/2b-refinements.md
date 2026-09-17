@@ -45,6 +45,43 @@ grep OVER-reports it (16 lines, 4 of them the captain log's own rulings quoting 
 Durable pointer set = **the three stale sites + §A-28 + row T-79**, cited by section and sha — never by line
 (the delta table's count sentence rotted twice today while the sha-anchored citations did not).
 
+### 4a. Exhibit material for the report's methods table — the AC-12 row (PREPARED TEXT; the rule's home is the register row T-92 + lane B3's clause (d), never here)
+
+**Three rungs in one sentence.** `.mpd/plans/dsh-tui-edition.md`, row **AC-12**, count clause byte-exact
+(289 chars, one em dash — extracted from the file, not retyped, not re-wrapped):
+
+> `packages/node_modules` is **excluded**, and the **count must be stated explicitly with the revision classified**: 24 pre-existing package dirs (the number the t2 review measured) plus `packages/mpd-tui-plugin`, which `t4` creates — 25 measured in the tree on 2026-09-15 after `t4` landed.
+
+| rung | the words that carry it |
+|---|---|
+| 1 · CURRENT value | "**25** measured in the tree" |
+| 2 · REVISION it was taken at | "with the **revision classified**" → "on **2026-09-15** after **`t4`** landed" |
+| 3 · SUPERSEDED reading, WITH ITS OWNER and the CAUSE of the delta | "**24** pre-existing package dirs (**the number the t2 review measured**) plus `packages/mpd-tui-plugin`, **which `t4` creates**" |
+
+**Anchor precision, MEASURED** (this is the table's own subject, so the anchor cannot be a line number):
+durable form **(a) row id + FILE** — `AC-12` **+ `.mpd/plans/dsh-tui-edition.md`** — or **(b) the quoted
+sentence** above. The FILE is not decoration, and that is measured twice: the same sentence is carried by
+**15 files** (1 live plan, 1 `docs/` twin, 1 packed `dist/mpd-package/`, **12** sandbox/evidence copies), so an
+anchor naming only `AC-12` can be satisfied by a stale pack; and `AC-12` alone is ambiguous **inside
+`.mpd/plans/` itself** — **3** rows carry that id (`dsh-tui-edition.md`: package classification, the exhibit;
+`team-watchdog.md` and `team-watchdog-report.md`: a Web banner). The row id is the same citing form we use for
+D-rows; it needs the file for exactly this reason. The `docs/` twin's row is byte-identical to the live row (996 B).
+
+**Second exhibit — the revision rung, this lane's own readings.** Same FILE census, different count, one revision apart:
+
+| revision | evidence file (sha256 prefix) | `self-fix-tests/` | whole plugin |
+|---|---|---|---|
+| `t31`'s revision (before the seeded lane) | `terminal-redispatch/20260917T072501Z/t31-verify.log` (`3bf9cfe732d4a14e…`) | **108 pass** / 0 fail / 1466 expects / **15 files** | **265 pass** / 0 fail / 2207 expects / **39 files** |
+| after `t37`'s seeded lane | `seeded-negative-control/20260917T085849Z/verify.log` (`ec2a60c1bc675916…`) | **109 pass** / 0 fail / 1478 expects / **15 files** | **266 pass** / 0 fail / 2219 expects / **39 files** |
+
+The FILE census is **identical on both sides** (15 and 39), so the delta (+1 test / +12 expects in each scope) is
+the added lane, not discovered files — the same tree yields 265 and 266 one revision apart, which is why a count is
+quoted WITH its revision. An independent intermediate run re-measured the lower whole-plugin pair exactly
+(`pause-surface/20260917T082935Z/final-verify.log`, `96162ac5b8ece44d…`: 265 pass / 0 fail / 2207 expects / 39 files).
+
+TIE-IN: this is also the row that §4's census counts TWICE (measured: **2** occurrences of the token on that one
+line) — the line whose token disputed our census is the line that carries the revision rung.
+
 ## 5. The count sentence's citation form (for any 2b copy of it)
 
 `agent-references/agent-teams-deltas.md`: cite the count by **row id + region ids + the registry sha**
@@ -93,3 +130,32 @@ TWO SCOPE TRAPS, both paid by me today on this very audit, and both are the clas
    used only `*.mjs` in both directories and read **32**; the true count over both directories (all files,
    including `test/**`'s `.ts`) is **42 = 25 + 17**. The number was right for ITS scope and wrong for the one
    being quoted — the same predicate/scope class as the census/executed-set instance, now in the audit itself.
+
+### 8a. Raw evidence for the packed-artifact census (the measurement §A-52 cites)
+
+Command, then its verbatim output:
+
+```
+$ find dist/mpd-package -name '*.test.*' -type f | sort
+dist/mpd-package/skills/programming/scripts/typescript/check-no-excuse-rules.test.ts
+dist/mpd-package/skills/visual-qa/scripts/ansi.test.ts
+dist/mpd-package/skills/visual-qa/scripts/cli.test.ts
+dist/mpd-package/skills/visual-qa/scripts/east-asian-width.test.ts
+dist/mpd-package/skills/visual-qa/scripts/image-diff.test.ts
+dist/mpd-package/skills/visual-qa/scripts/png-decode.test.ts
+dist/mpd-package/skills/visual-qa/scripts/tui-grid.test.ts
+
+$ find dist/mpd-package -name '*.test.*' -type f | wc -l
+7
+
+$ find dist/mpd-package/packages -name '*.test.*' -type f | wc -l
+0
+```
+
+SPLIT: **1** under `skills/programming`, **6** under `skills/visual-qa`; **0** anywhere under `dist/mpd-package/packages/`.
+READING: the corpus ships its own script tests; no PLUGIN ARM travels. So a sentence of the form "no test ships in
+the artifact" is FALSE as measured, while "no plugin arm travels" is true — and lane C re-measured the same seven
+independently (its A21). This is the measurement captain log **§A-52** records and report §6 will cite in the
+post-`t39` addendum; the RULE (artifact-behaviour vs repo-arm reading) lives there, not here. My own mislabel on
+the first run — I labelled this output "(empty = no instrument travels)" — is the reason the raw form is filed
+beside the audit rather than summarised.
