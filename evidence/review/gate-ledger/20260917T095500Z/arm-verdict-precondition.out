@@ -1,0 +1,4 @@
+review         kindOf=review         withVerdict={"ok":true} noVerdict={"ok":false,"error":"review cannot complete without verdict=pass"} failedCmd={"ok":true}
+requirements   kindOf=requirements   withVerdict={"ok":true} noVerdict={"ok":false,"error":"requirements cannot complete without verdict=pass"} failedCmd={"ok":true}
+work           kindOf=work           withVerdict={"ok":true} noVerdict={"ok":true} failedCmd={"ok":true}
+plan           kindOf=plan           withVerdict={"ok":true} noVerdict={"ok":true} failedCmd={"ok":true}

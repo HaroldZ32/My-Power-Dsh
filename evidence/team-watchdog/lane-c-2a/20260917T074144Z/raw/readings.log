@@ -541,3 +541,28 @@ THE GUARD THAT TRAVELS WITH THE NUMBERS (lane A's, accepted): any sentence of th
 FALSE as measured — seven corpus script tests DO ship under `dist/mpd-package/skills/**` — so the report's
 wording must carry the corpus exception explicitly: "no plugin ARM travels; the skills corpus ships its own
 seven script tests."
+
+== ADDENDUM 23 (appended): the wave archived under me — how to cite an archived task, and lane C's live status ==
+
+MEASURED 2026-09-17T09:40Z (read-only), because the previous few messages of mine quoted state that had
+already moved:
+  * `agent_teams_status` wave line: "Wave: w2 (open since 2026-09-17T09:28:54.223Z) · archived:
+    w1-wave-2a-closed -> 42 task(s) at 2026-09-17T09:28:54.223Z". So wave 2a is CLOSED and archived; my
+    earlier "t42 in_progress, the only open item" was a read of a wave that then closed.
+  * the ARCHIVE `.mpd/team/friction-p2-wave/waves/w1-wave-2a-closed.json` (742,953 B, keys team_id ..
+    closedBy, 42 tasks) carries the loop's final states: t32 completed/pass · t34 failed/needs_revision ·
+    t37 completed · t38 completed · t39 failed/needs_revision · t40 completed/pass · t41 completed ·
+    t42 completed/pass. So the 2a review loop ended with t42 PASS.
+  * LIVE list in w2: t1 completed (the 2b plan), t2 FAILED/needs_revision (plan review, 2 findings),
+    t3 claimed (repair-round-2, Planner), t4 pending (review-round-2, Plan Reviewer). Lane C has NO live
+    task in w2: the open work is planning/plan-review, and the scheduler assigns lane-C work if the captain
+    creates it.
+
+THE CITATION RULE (lane A's formulation, accepted; four instances now, all in ~40 minutes and all the same
+shape): cite an ARCHIVED task by **id + wave label + archive file** — e.g. `t42` + `w1-wave-2a-closed` +
+`.mpd/team/friction-p2-wave/waves/w1-wave-2a-closed.json` — and re-verify its STATUS from the archive rather
+than from the quote, because `agent_teams_task_contract` on an archived id answers only the LIVE list
+("known tasks: t1") and no surface redirects a reader to the archive. Instances: mine (t42 as "in_progress,
+the only open item"), lane A's (t42 as in_progress), the Architect's (corrected by lane A), and — measured
+while writing this — lane A's own latest message's "t2 in_progress" is already superseded (t2 is now
+FAILED with 2 findings, t3 claimed, t4 pending). Four seats, four instances, no disagreement about any FILE.

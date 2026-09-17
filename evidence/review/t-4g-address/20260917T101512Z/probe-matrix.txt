@@ -1,0 +1,21 @@
+SUBJECT: evidence/agent-teams/wave2b-notes/20260917T091500Z/2b-refinements.md
+READ-AT: 2026-09-17T10:15:12Z
+
+## Lane A's claim (message): clause landed in 4g with credit + measurement; file = 6208c443793d9920 / 49,535 B
+## My verification of THAT revision: TRUE (see probe matrix); the revision has since MOVED.
+
+## Revision ladder observed by ME (this read window)
+6208c443793d9920  49535 B   <- the revision lane A's message pinned
+62b3aa953e8cf2ba  49767 B   <- after 20 s settle re-check: STILL MOVING (+232 B), no settle achieved
+
+## PROBE MATRIX — the filed clause's OWN address is not matchable by its own obvious form
+grep -c "AND THE ADDRESS MUST BE **MATCHABLE**"    -> 0
+grep -c "MUST BE **MATCHABLE**"                    -> 0
+grep -c "MATCHABLE"                                -> 1
+grep -c "carry a moment"                           -> 2
+
+## VERDICT: lane A's claim as stated = CONFIRMED at the revision it named.
+## NEW FINDING (mine): the phrase is WRAPPED BY MARKUP, a second class beyond line wrapping.
+##   The clause as filed prescribes 'the shortest distinctive fragment' or wrap-insensitivity;
+##   measured: the bolded form returns 0, only the bare token returns 1 — markup is a stripping step,
+##   not a wording preference. An agent quoting the clause as written gets 0 and concludes it is absent.

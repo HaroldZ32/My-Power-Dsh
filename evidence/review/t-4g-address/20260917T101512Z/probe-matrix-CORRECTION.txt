@@ -1,0 +1,412 @@
+REVISION: 75dfdf74f7630375 / 52573 B   READ-AT 2026-09-17T10:18:33Z
+PHRASE AS IT SITS IN THE FILE (line 421, decorated, single line?):
+  len=119    AND THE ADDRESS MUST BE **MATCHABLE**, not merely immutable — filed by `code-r
+
+== THE DISCRIMINATOR: same quoted pattern, two grep modes ==
+grep -cF (FIXED STRING, quoted) -> 2
+grep -c  (BRE, quoted)        -> 0   <- my original probe form
+grep -cE (ERE, quoted)        -> 0
+grep -cF bare token           -> 2
+
+== IS IT THE SHELL GLOB? (their hypothesis) — my probe's operands were SINGLE-QUOTED ==
+quoted  ** in a for-list     -> A ** B
+unquoted ** in a for-list    -> A|LADDER-AND-BOOKKEEPING.md|probe-matrix-CORRECTION.txt|probe-matrix.txt|B|
+
+== IS THERE A REAL WRAP CASE? (my class's other leg: 'carry a moment') ==
+  'carry a moment': whole-file=2
+    at line 351: source line = ...'live only in a carrier that can carry a moment — a heading cannot.**'
+    at line 423: source line = ...'and **1** as the fragment `carry a moment`, measured above). Quote the'
+
+## MECHANISM — isolated WITHOUT the shell (scratch file /tmp, removed after; my own probe form kept)
+scratch line:  X AND THE ADDRESS MUST BE **MATCHABLE**, not
+  grep -cF  <quoted phrase>  -> 1        grep -c  (BRE) -> 0        grep -cE (ERE) -> 0
+  grep -c  'AND THE ADDRESS MUST BE \*\*MATCHABLE\*\*' (escaped) -> 1
+minimal control, file `A **B** C`: -F -> 1 | BRE -> 0 | escaped BRE -> 1
+=> CAUSE = `**` REACHES grep AS REGEX OPERATORS. The second `*` of each pair acts as a
+   quantifier (on the space, then on `B`), so the pattern no longer denotes the literal phrase;
+   escaping the asterisks or matching fixed-string restores it. The SHELL NEVER TOUCHED THEM:
+   my operands were single-quoted, demonstrated — quoted for-list yields the literal `A ** B`,
+   only the UNQUOTED form expands (to filenames, which is lane A's own garbage signature).
+=> NOT globbing (lane A's filed cause), NOT line-wrapping (line 421 = 119 chars, single line),
+   NOT a defect in the clause.
+
+## MY OWN CORRECTION, beside the sealed probe-matrix.txt (not instead of it)
+`probe-matrix.txt` calls this "WRAPPED BY MARKUP, a second class beyond line wrapping". The
+measurement does not support that mechanism: nothing is wrapped, and `-F` finds the phrase
+immediately. What is real is narrower and sharper — an address that CONTAINS `**` is hazardous
+to a plain `grep`, because the decoration becomes an operator. The class survives, the mechanism
+was mine and wrong: it is a REGEX-HAZARD class for decorated addresses, not a wrap class.
+TRUE WRAP remains a separate, still-real leg (a phrase spanning a newline) — and I check it here
+only for the fragment `carry a moment`, which sits on single lines 351 and 423; the Architect's
+class sentence is what I measured whole-vs-fragment earlier, at a different revision.
+REMEDY FOR 2b READERS, measured not preferred: `grep -F` for a quoted phrase, or escape the
+asterisks, or match the bare token — and report which form you ran, because the form decides.
+
+## 7. THE CLAUSE LANDED TRUE — and MY probe of it failed on a THIRD axis
+READ-AT 2026-09-17T10:19-10:20Z
+CLAUSE VERIFIED VERBATIM at line 456 (`- **"CURRENT" IS NOT A CITABLE PROPERTY OF A FILE** — a RULE addition,
+not a sixth exhibit ...`). Every number in it reproduces against my own evidence: three reads
+`62b3aa95…`49,767 -> `e68a54e8…`50,397 -> `33d62d60…`51,097, correctly attributed to `code-reviewer`;
+"1,330 B and 13 lines behind within a minute" checks arithmetically (51,097-49,767=1,330; 400-387=13);
+the "RULE addition, not a sixth exhibit" label honours the saturated-family stop condition.
+=> FIRST FILING IN THIS EXCHANGE WHOSE QUOTED NUMBERS REPRODUCE EXACTLY.
+
+MY OWN PROBE OF IT RETURNED 0, with `-F` (so regex is NOT the explanation this time):
+  grep -cF 'CURRENT IS NOT A CITABLE PROPERTY'                  -> 0   <- the MESSAGE's rendering
+  grep -cF '"CURRENT" IS NOT A CITABLE PROPERTY OF A FILE'      -> 1   <- the SOURCE's bytes
+  grep -cF 'citable property'                                   -> 0   (case: source is uppercase)
+  grep -cF 'CITABLE'                                            -> 1
+THREE AXES MEASURED, and only one of them is regex:
+  (a) DECORATION (`**`) -> regex operator hazard, cured by -F / escaping   [my original instance]
+  (b) CASE               -> an uppercase source defeats a lowercase fragment
+  (c) PUNCTUATION INTRODUCED BY THE QUOTING MESSAGE ITSELF: bolding `"CURRENT" IS ...` in the message
+      dropped the closing quote, so the rendering I copied was not the source text. THIS ONE SURVIVES -F.
+THE ONLY ANCHOR THAT SURVIVED EVERY AXIS IN THIS WHOLE EXCHANGE: the shortest undecorated,
+unpunctuated, case-exact fragment — `CITABLE` -> 1 under every probe above.
+=> REFINEMENT of what I filed last turn: `-F` is necessary but NOT sufficient. The sufficient rule is
+   "anchor on the shortest TOKEN that carries no markup, no quote marks and no case-folded letters".
+
+## LADDER, complete, and NO SETTLE WINDOW HAS EVER HELD (pointer-pattern 0 at EVERY rung)
+  49,767 B `62b3aa95…`  <- the revision lane A's message called "current"
+  50,397 B `e68a54e8…`
+  51,097 B `33d62d60…`  <- three reads, ~60 s, the measurement the filed clause cites
+  51,652 B `743539fa…`  <- +6 lines
+  52,573 B `75dfdf74…`  <- +6 lines
+  54,174 B `ac1c6c92…`  <- lane A's final message ("post-edit step run")
+  56,660 B `fe8953d1…`  <- +27 lines, inside a 50 s settle window AFTER that close
+MOVEMENT: +6,893 B / +69 lines since the revision called "current", across three declared closes.
+The ONE property that survived all seven rungs: pointer-pattern 0.
+
+## 8. LANE A's CORRECTED PARAGRAPH — arm verified, count fails, third axis still absent
+READ-AT 2026-09-17T10:23Z · subject revision `6e32256214dbfdd3` / 57,165 B (their cited sha AND size match mine)
+(a) THEIR ARM REPRODUCES under my hands, re-run not read: `regex-hazard/20260917T102003Z/control.txt`
+    (`A **B** C`) -> -F 1 | BRE 0 | ERE 0 | escaped BRE 1, single-quoted operands, == their arm.out.txt.
+(b) THEIR NESTED CORRECTION IS HONEST: retitled "CORRECTED (nested)", names BOTH wrong halves ("third wrap
+    class" AND the unquoted-shell cause), replaces them with the regex mechanism, keeps true wrap separate.
+(c) COUNT FAILS AT A MATCHING REVISION: the paragraph says "on the real file ... -F -> 2". Measured: 1 for the
+    phrase on that file, and 1 for EVERY width (full, `MUST BE **MATCHABLE**`, `**MATCHABLE**`, `MATCHABLE`).
+    `grep -c -F <phrase> phrase.txt refinements.md` -> 1 and 1 => the "2" is a TWO-FILE SUM wearing a
+    one-file label. First count in this exchange that fails while the revision agrees.
+(d) THIRD AXIS STILL NOT FILED (`punctuation`: 0 hits). At the same revision, all -F, operands quoted:
+    rendering -> 0, stored bytes -> 1, bare token -> 1. Survives -F, so -F is necessary not sufficient.
+    Their remedy list already ends with "or match the bare token", which is the form that survived every
+    axis; the fix is to PROMOTE it, not to add anything.
+
+## 9. FINAL STATE OF THE FILED PARAGRAPH (revision `6d294589c7054d4c` / 58,588 B, +472/-0, pointer 0)
+READ-AT 2026-09-17T10:25Z · their cited sha, size and numstat all reproduce; EIGHTH rung of the ladder.
+(a) CLOSED — MY THIRD AXIS IS FILED at line 433 with my attribution: three axes (decoration / case / punctuation
+    the quoting MESSAGE introduced), the four-probe evidence, and THE SUFFICIENT RULE in the form I measured:
+    anchor on the shortest bare TOKEN carrying no markup, no quote marks and no case-folded letters (`CITABLE`
+    matched under every probe; nothing longer did). They agree `-F` is necessary, not sufficient. Family closed.
+(b) STILL OPEN — THE COUNT at line 455: "on the real file the same phrase gives `-F` -> **2** and BRE -> **0**".
+    At this revision the real file gives **1** (and 1 at every width). `phrase.txt` also holds 1, so 2 is the
+    sum ACROSS TWO FILES. Reported twice; unfixed. One character (2 -> 1) or one clause (1 per file, 2 across both).
+(c) NEW, LOW — the paragraph still ends (line 456) with "THE REMEDY THAT SURVIVES MEASUREMENT: use `-F` ... or
+    match the bare token", the OLDER three-option list, and it now sits LATER in the file than the sufficient
+    form filed at 433. Reading order therefore contradicts recency order: a reader arriving at 456 first gets a
+    remedy that the file has already superseded 23 lines earlier. Fix = a forward pointer, not a rewrite.
+(d) TEAM SURFACE CONFIRMED VERBATIM (agent_teams_status, read-only): `[blocked]`, `Delivery: blocked` with all
+    three reasons, six tasks (t1 completed / t2-t5 failed / t6 completed), pause mechanism not active, and my own
+    seat holds NO open attempt. Their point 4 is accurate on every element.
+
+## 10. COUNT FIX VERIFIED CLOSED · ITEM 3 STILL OPEN · LADDER RE-COUNTED (my own off-by-one corrected)
+READ-AT 2026-09-17T10:25Z
+(a) COUNT — CLOSED, and fixed the way this file does it. Lines 455-457 now read: "the same phrase gives
+    `-F` -> **1**, BRE -> **0** — **UNIT CORRECTED**: an earlier version of this sentence said 'on the real file
+    ... `-F` -> 2', which was a **two-file sum** (`phrase.txt` 1 + this note 1) wearing a one-file label; each
+    file yields 1, the pair yields 2." Correction visible, not silent; both of my findings on that paragraph
+    are now closed.
+(b) ITEM 3 — STILL OPEN (low): line 458 still ends the hazard paragraph with "THE REMEDY THAT SURVIVES
+    MEASUREMENT: use `-F` ... or match the bare token", with NO forward pointer, sitting 25 lines BELOW the
+    sufficient form filed at 433. `superseded`/forward-pointer wording: 0 hits near it. Content is not wrong —
+    the bare token is in the list — only the ordering and the "final word" framing are stale. Optional fix.
+(c) SELF-CORRECTION: section 9 above calls 58,588 B the "EIGHTH rung". It is the NINTH — I counted from the
+    ladder's tail instead of its head. The same class as every count we traded tonight, in my own record.
+(d) LADDER, re-counted with the head anchored at 49,767 B (the revision called "current"):
+      1  49,767 `62b3aa95`   2  50,397 `e68a54e8`   3  51,097 `33d62d60`   4  51,652 `743539fa`
+      5  52,573 `75dfdf74`   6  54,174 `ac1c6c92`   7  56,660 `fe8953d1`   8  57,165 `6e322562`
+      9  58,588 `6d294589`  10  58,813 `d7f4cc30`  11  59,246 `de2fbeff`
+    ELEVEN rungs, +9,479 B / +91 lines since "current", and rung 11 arrived INSIDE a 50 s settle window that
+    began at rung 10 — no settle window has held at any point in this observation. Pointer-pattern 0 at all 11.
+
+## 11. CLOSE — every finding on the filed paragraph verified closed (revision `b0450998aae77234` / 60,567 B, +488/-0, pointer 0)
+READ-AT 2026-09-17T10:26Z
+(a) ITEM 3 FIXED WITH THE POINTER, explicitly as requested, lines 462-464: "THE REMEDY THAT SURVIVES MEASUREMENT —
+    **PARTLY SUPERSEDED by the sufficient form filed ABOVE (the three-axis rule: the shortest bare TOKEN); this list
+    remains the remedy for the REGEX hazard itself**: use `-F` ...". Reading order no longer contradicts recency order.
+(b) STALE PHRASING CONFINED: "on the real file" survives exactly ONCE, inside the UNIT CORRECTED note that
+    withdraws it; `UNIT CORRECTED` -> 1. Nothing stale stands bare.
+(c) sha / size / numstat / pointer all reproduce under my hands (12th rung; 0 pointers).
+(d) ALL THREE FINDINGS I RAISED ON THIS PARAGRAPH ARE CLOSED (count unit, three-axis sufficient form, remedy
+    ordering) — each verified by me at the revision that carried the fix, not taken from the message.
+(e) LAST MEASURED ITEM, an ordinal rule: lane A calls 58,813 B "this rung (ninth)"; in my ladder, head-anchored at
+    the revision their message called "current" (49,767 B), 58,813 is the TENTH (9th = 58,588). Neither is wrong —
+    an ORDINAL NEEDS ITS HEAD exactly as a count needs its unit and a revision needs its moment. Quote "rung N of
+    the ladder anchored at <sha>" or drop the ordinal.
+(f) LADDER FINAL, twelve rungs: 49,767 → 50,397 → 51,097 → 51,652 → 52,573 → 54,174 → 56,660 → 57,165 → 58,588
+    → 58,813 → 59,246 → **60,567 B** (`b0450998`). +10,800 B / +101 lines since "current"; pointer-pattern 0 at
+    every rung; NO settle window ever held.
+
+## 12. FINAL CLOSE — preamble verified, one last unit in the sentence reporting MY number
+READ-AT 2026-09-17T10:27Z · revision `4b2dca3e2dfbdaa2` / 61,018 B / +492/-0 / pointer 0 (all reproduce)
+(a) ITEM 3 CONFIRMED DONE (4th crossing of the exchange — by now the base rate, not an incident). The older list
+    OPENS with the signpost: "PARTLY SUPERSEDED by the sufficient form filed ABOVE ... this list remains the remedy
+    for the REGEX hazard itself". The shorter statement no longer calls itself final.
+(b) THE PREAMBLE (lines 17-20) now replaces the unmeasured "a dozen revisions" with my measurement, ATTRIBUTED and
+    head-anchored: "the file took **eleven revisions and +9,479 B / +91 lines inside one evening** (measured by
+    `code-reviewer`, head-anchored at the revision then called current — the series has continued since, and the
+    pointer pattern was **0** at every rung)". ARITHMETIC VERIFIED against my own ladder: 59,246-49,767 = +9,479 B;
+    478-387 = +91 lines; eleven rungs, each with a distinct sha.
+(c) ONE LAST UNIT, in the sentence that carries my number: "the file TOOK eleven revisions" states a total, while my
+    evidence supports eleven revisions OBSERVED (eleven readings, ~1 min apart). Writes between readings are
+    unobserved — and demonstrably happened, since one 60 s window moved the file 1,330 B. The honest forms are
+    "AT LEAST eleven revisions" or "eleven revisions observed at eleven readings". Unit = observed vs total, the
+    same axis as everything else tonight, one level up from the count itself.
+(d) LADDER FINAL, thirteen rungs: 49,767 → 50,397 → 51,097 → 51,652 → 52,573 → 54,174 → 56,660 → 57,165 → 58,588
+    → 58,813 → 59,246 → 60,567 → **61,018 B** (`4b2dca3e`). +11,251 B / +105 lines since "current"; pointer-pattern
+    0 at every rung; no settle window ever held.
+
+## 13. THREAD CLOSED — ordinal rule filed, one wording item still open on MY number
+READ-AT 2026-09-17T10:28Z · head revision `1398c94f6a04b75c` / 62,712 B / +508/-0 / pointer 0 (reproduces exactly)
+(a) MY ORDINAL RULE IS FILED at lines 489-492 with attribution, and it completes the four-form ladder in the file's
+    own words: "Bytes need a sha, counts need a unit, revisions need a moment, and ORDINALS need a head." The
+    worked example is my own measurement (58,813 B = TENTH head-anchored at 49,767 B, or second from the tail).
+(b) THE "AT LEAST" REFINEMENT DID NOT LAND (line 18 unchanged): the preamble still reads "the file took **eleven
+    revisions and +9,479 B / +91 lines inside one evening** (measured by `code-reviewer` ...)". As written it states
+    a TOTAL where my evidence supports ELEVEN OBSERVED at eleven readings; unobserved writes between readings are
+    certain (one 60 s window moved the file 1,330 B). Fix = "at least eleven revisions" or "eleven revisions
+    observed at eleven readings". This is the only item open, it is low severity, and it is about MY number, which
+    is why I report it rather than let it stand.
+(c) LADDER FINAL, fourteen rungs: 49,767 → 50,397 → 51,097 → 51,652 → 52,573 → 54,174 → 56,660 → 57,165 → 58,588
+    → 58,813 → 59,246 → 60,567 → 61,018 → **62,712 B** (`1398c94f`). +12,945 B / +121 lines since "current";
+    pointer-pattern 0 at EVERY rung; no settle window ever held at any point.
+(d) ALL HIGH-SEVERITY ITEMS CLOSED ON BOTH SIDES: count unit, three-axis sufficient form, remedy ordering,
+    decoration-vs-regex mechanism, and the ordinal rule. Open: (b) only.
+
+## 14. MY LAST FINDING CLOSED — and the five forms located, with one precision on "one place"
+READ-AT 2026-09-17T10:29Z · revision `7c2d8900d49f1a39` / 63,775 B / +517/-0 / pointer 0 (all reproduce)
+(a) CLOSED — the lower bound is filed, lines 18-22: "the file showed **AT LEAST eleven revisions and +9,479 B / +91
+    lines inside one evening** — the unit is **OBSERVED, not total**: eleven revisions at eleven readings roughly a
+    minute apart, with writes between readings unobserved (one 60 s window moved the file 1,330 B), so the figure is
+    a lower bound (measured by `code-reviewer`, head-anchored ... pointer pattern was **0** at every rung)". Every
+    finding I raised on this file is now closed, each verified at the revision carrying its fix.
+(b) THE FIVE FORMS, LOCATED BY MEASUREMENT (each appears exactly ONCE):
+      1 bytes need a sha        — "Bytes need a sha"             (line 493, the enumerated sentence)
+      2 counts need a unit      — "counts need a unit"           (line 493)
+      3 revisions need a moment — "revisions need a moment"      (line 493)
+      4 ordinals need a head    — "ORDINALS need a head"         (line 493)
+      5 a total needs its OBSERVATION — "OBSERVED, not total"    (lines 18-19, the preamble unit statement)
+(c) PRECISION ON "IN ONE PLACE": the substance is complete IN THE FILE, but across TWO homes — the enumerated
+    four-form sentence at 493 and the fifth as the preamble's unit statement. A consolidated five-item list does not
+    exist there ("five forms" -> 0, "a total needs" -> 0); it exists in the message. That is consistent with the
+    note's own praised design (a rule with TWO HOMES, arrangement over content), so the file is right and only the
+    message's "in one place" is loose. The last instance of a claim living in a message rather than in the artifact —
+    and, fittingly, the family's own two-homes doctrine is why it does not matter.
+(d) LADDER FINAL, fifteen rungs: 49,767 → 50,397 → 51,097 → 51,652 → 52,573 → 54,174 → 56,660 → 57,165 → 58,588
+    → 58,813 → 59,246 → 60,567 → 61,018 → 62,712 → **63,775 B** (`7c2d8900`). **+14,008 B / +130 lines** since
+    "current"; pointer-pattern 0 at EVERY rung; no settle window ever held.
+
+## 15. SUBSTANCE CLOSED · ONE UNARBITRABLE MOMENT · ladder head 63,776 B (sixteenth rung)
+READ-AT 2026-09-17T10:30Z · revision `688fd2cfbfb87d77` / 63,776 B / +518/-0 (all reproduce; pointer 0 narrow AND wide)
+(a) THEIR PROBES REPRODUCE AT THIS REVISION: "AT LEAST eleven revisions" -> 1; "the file took eleven revisions" -> 0;
+    "OBSERVED, not total" -> 1; the word "took" anywhere in lines 18-22 -> 0. On substance my last finding is
+    CLOSED and the total-stating form is gone rather than merely qualified.
+(b) THEIR LANDING CLAIM DOES NOT REPRODUCE IN MY RECORD: they state the refinement landed "one revision before your
+    read". MY contemporaneous reading at `1398c94f6a04b75c` / 62,712 B (10:28Z, recorded in section 13 above) found
+    line 18 reading "the file took **eleven revisions and +9,479 B / +91 lines ...**" with NO match for "at least
+    eleven". On my record the fix landed at `7c2d8900d49f1a39` / 63,775 B — the revision where I verified it.
+(c) AND THE MOMENT IS UNARBITRABLE, which is a bound and not a dispute: intermediate working-tree revisions were
+    overwritten in place, HEAD's committed copy is an unrelated 11,892 B state, and no git object retains 61,018 /
+    62,712 / 63,775. Neither seat can re-measure the other's rung. This is the SAME class as the first finding of
+    this whole exchange (no retained intermediate revisions) — and it is the one residual cost of the
+    ladder-in-the-message protocol: the LADDER survives in the messages, the RUNGS do not survive on disk.
+(d) LADDER FINAL, sixteen rungs: 49,767 → 50,397 → 51,097 → 51,652 → 52,573 → 54,174 → 56,660 → 57,165 → 58,588
+    → 58,813 → 59,246 → 60,567 → 61,018 → 62,712 → 63,775 → **63,776 B** (`688fd2cf`). **+14,009 B / +131 lines**
+    since "current"; pointer-pattern 0 at EVERY rung on both instruments; no settle window ever held.
+
+## 16. CLOSED IN ITS STRONGEST FORM — the loose phrase became a cross-citation
+READ-AT 2026-09-17T10:31Z · revision `52909a137f9e851e` / 64,689 B / +525/-0 / pointer 0 narrow AND wide (all reproduce)
+(a) POINTER VERIFIED, lines 494-496: the four-form sentence now closes "— and the FIFTH form, for TOTALS, is the
+    preamble's `OBSERVED, not total` unit (two homes, cross-cited; the family is listed here as four plus a pointer
+    rather than restated as five, because each form lives where it was paid for)."
+    AND IT IS A POINTER, NOT A RESTATEMENT — measured: `five forms` -> 0, `a total needs` -> 0. The file's own
+    doctrine (two homes, arrangement over content) is now applied to the family itself. Best available closure of
+    my last finding: I asked for precision, they returned a cross-citation.
+(b) SEVENTEENTH RUNG: 63,776 -> **64,689 B**, +525/-0 vs HEAD, pointer 0 on both instruments.
+(c) LAST PRECISION, and it is the ordinal rule applied to the sentence that quotes ME: their message says "ladder
+    final on your count: +14,008 B / +130 lines" and "thirteen rungs". Both are moment-bound readings of MINE from
+    earlier rungs — +14,008/+130 was measured at the FIFTEENTH rung (63,775 B), and "thirteen rungs" was my count
+    at ~61,018 B. At THIS rung the totals are **+14,922 B / +138 lines** over SEVENTEEN rungs: the quoted figure is
+    914 B / 8 lines and two rungs old. Not an error — a moment. Which is the whole doctrine in one line: even the
+    correct citation of a peer's number needs the rung it was measured at.
+(d) NO SETTLE WINDOW HAS EVER HELD; pointer-pattern 0 at all seventeen rungs on both instruments.
+
+## 17. CONCESSION VERIFIED · RESIDUAL LIMIT FILED · AND THE BOUND BECOMES AN ACTION
+READ-AT 2026-09-17T10:32Z · revision `4e200f297f51d443` / 65,579 B / +533/-0 / pointer 0 narrow AND wide (18th rung)
+(a) THE CONCESSION IS CORRECT AND IS THEIRS TO MAKE: the AT LEAST fix landed at `7c2d8900d49f1a39` / 63,775 B; my
+    `1398c94f6a04b75c` / 62,712 B reading (10:28Z, written down before any disagreement existed) predates it and still
+    showed "the file **took** eleven revisions". The ladder settled a landing claim against its own author — because
+    ONE of the two readings was on disk before the dispute, not because either seat remembered better.
+(b) THE RESIDUAL LIMIT IS FILED, lines 497-500, with my attribution: "the ladder survives in the MESSAGES; the rungs
+    do not survive on DISK … a disagreement about WHICH revision carried a fix is UNARBITRABLE … A landing claim
+    becomes arbitrable only by COMMITTING the revision (the captain's act) or by keeping a copy."
+(c) AND IT IS NOT PHILOSOPHICAL — MEASURED AT THIS RUNG: working tree **65,579 B uncommitted** vs HEAD's copy
+    **11,892 B** (HEAD `95324d4`), a **53,687 B gap**. Every one of the eighteen rungs exists only as overwritten
+    working-tree state; none is recoverable from git. If the tree is reset before the captain commits, the entire
+    ladder and this file's whole evening are gone with it.
+(d) CORRECTED PAIR FOR ANY COMPARISON: +15,812 B / +146 lines over EIGHTEEN rungs (the +14,009 B / +131 lines over
+    sixteen rungs that their message quotes is my reading at 63,776 B — true there, 1,803 B / 15 lines behind here).
+
+## 18. THE RESIDUAL LIMIT, CORRECTED BY MEASUREMENT — "rungs do not survive on disk" is half right
+READ-AT 2026-09-17T10:34Z · revision `3c4fc535dd7d012a` / 66,483 B / 702 lines / +541/-0 / pointer 0 both (19th rung)
+(a) THEIR CLAUSE IS FILED (lines 494-497) with my attribution: "AND A QUOTED LADDER FIGURE NEEDS ITS RUNG ... any
+    total here is a reading at a rung and never a property." Their arithmetic CHECKS: 66,483 - 49,767 = +16,716 B at
+    this rung. And the line total they DECLINED to guess because they do not hold my anchor is answerable by me, who
+    does: 541 - 387 = **+154 lines**. Declining to guess was the right call; supplying it needs the anchor, not nerve.
+(b) THE RESIDUAL-LIMIT SENTENCE NEEDS A CORRECTION, and it is measurable rather than rhetorical. As filed (lines
+    497-500): "the ladder survives in the MESSAGES; the rungs do not survive on DISK." MEASURED: the messages DO
+    survive on disk — `.mpd/team/friction-p2-wave/inbox/*.jsonl`, 598 records; my handle `62b3aa95` appears 2x in my
+    own mailbox and 4x in the peer's, `63,775` 4x in each. What does NOT survive is the SUBJECT of those readings:
+    the intermediate file revisions, overwritten in place and never committed.
+(c) THE PRECISE FORM: **the READING is on disk; the SUBJECT is not.** Arbitrability depended on the RECORD, not on
+    the file — which is the real reason the landing claim resolved, and it is a stronger statement than the one filed.
+(d) AND ITS LIFETIME IS BOUNDED: the mailbox is TEAM STATE, and the captain's standing rule archives/deletes the team
+    when the wave lands. So tonight's ladder is durable only until the team dies — unless the readings are copied
+    into the wave's evidence before then. Two concrete actions for the single git writer: COMMIT the notes file
+    (uncommitted gap now 54,591 B; HEAD still `95324d4`) and PRESERVE the ladder readings before the team is deleted.
+
+## 19. THE ACTION ITEM, VERIFIED END TO END — three paths, 70,915 B, all in one working tree
+READ-AT 2026-09-17T10:35Z · notes file `e8d1353288eca78c` / 67,070 B / pointer 0 (their claim, matches)
+MEASURED BY ME, each at its own path and state:
+   M  evidence/agent-teams/wave2b-notes/20260917T091500Z/2b-refinements.md   67,070 B worktree vs 11,892 B in
+                                                                             HEAD 95324d4 = +55,178 B delta  CHECKS
+   ?? evidence/agent-teams/repair-ledger-empty-verify/20260917T094347Z/      15,490 B                       CHECKS
+   ?? evidence/agent-teams/regex-hazard/20260917T102003Z/                       247 B                       CHECKS
+   TOTAL lane-A material existing ONLY in this working tree: **70,915 B**  CHECKS
+One `git add` of those three paths + commit converts tonight's readings from memory into arbitrable history.
+(a) THEIR REFINEMENT OF MY REFINEMENT IS ACCEPTED: arbitrability needs the record to be CONTEMPORANEOUS **and** the
+    rung to still exist. My 10:28Z reading was contemporaneous and stayed arbitrable only for minutes.
+    ONE ADDITION: the DIRECTION of change stayed verifiable even after the rungs were gone, because every later
+    reading matched the file's own current bytes — so what survived was the trend, while the steps did not.
+(b) Nothing else open. Nineteen rungs by my head (49,767 B); pointer-pattern 0 at every one, both instruments;
+    no settle window ever held; zero reconstructions, and now we know why: the ladder was never in memory alone.
+
+## 20. SYMMETRIC CLOSE — their unmeasured numbers, MY unruly probe, and the predicated table
+READ-AT 2026-09-17T10:37Z · revision `bb40ec1bf6a770f5` / 67,858 B / +552/-0 / pointer 0 (their claim, all reproduce)
+MAILBOX COUNTS, BOTH PREDICATES NAMED (L = lines via `grep -c`, O = occurrences via `grep -o|wc`):
+  handle      code-reviewer.jsonl     agent-teams-engineer.jsonl
+  62b3aa95    L=3  O=3                L=5  O=6        (their claim: 5 lines theirs, 2 mine)
+  63,775      L=6  O=7                L=5  O=7        (their claim: 7 occurrences theirs)
+  62,712      L=5  O=6                L=3  O=6        (their claim: 6 vs 5)
+  records     611 total (their reading: 610 — one message apart, i.e. their own reply)
+WHY THE DELTAS: every message that QUOTES a handle adds to the RECIPIENT's mailbox, so these counts grow as the
+exchange continues. Their "2 of yours" and my "L=3" are both correct — measured one message apart. The deltas are
+the moment-bound mechanism running in the one place I had called durable without dating it.
+MY OWN TWO SLIPS, disclosed rather than fixed quietly:
+  (i) I probed the handle as `63775` and got 0 on text that IS present — the file writes it `63,775`, and the literal
+      with its comma appears 2x there. A HANDLE IS A STRING WITH A SPELLING, and this one carries punctuation; my
+      probe returned a clean, confident, wrong zero. Cousin of the decorated-address hazard: the fault was in the
+      FORM I passed, not in the file.
+  (ii) My section 18 wrote "2x / 4x / 4x" without naming the predicate; those were LINE counts, and the occurrence
+      counts differ (3/6/7). An unnamed predicate is an incomplete count — my own instance of the class.
+COMMIT EXPOSURE NOW: notes `bb40ec1b` 67,858 B vs HEAD `95324d4`'s 11,892 B = **+55,966 B**, plus the two untracked
+arms (15,490 + 247) = **71,703 B existing only in this working tree**, still uncommitted.
+
+## 21. FINAL — direction clause filed · current rung verified · and MY SECOND ORDINAL ERROR, corrected
+READ-AT 2026-09-17T10:39Z · revision `7c4d152eeae0b7ae` / 68,712 B / +559/-0 / pointer 0 (their claim, reproduces)
+(a) THE DIRECTION CLAUSE IS FILED, lines 510-513, with my attribution: "AND THE DIRECTION SURVIVES WHEN THE RUNGS DO
+    NOT (added by `code-reviewer` from the same series): every later reading was taken against the file's CURRENT
+    bytes and matched them, so a TREND — 'it has moved since' — is checkable even when no intermediate step is
+    recoverable." That is the one clause tonight that states what a reviewer CAN still establish on a moving file.
+(b) MY OWN ORDINAL ERROR, SECOND OF THE EXCHANGE, AND IT PROPAGATED: my last message to the captain called
+    `67,858 B` the "twentieth rung by my head"; it is the TWENTY-FIRST. Lane A bookkept faithfully from my claim and
+    now calls `68,712 B` "the twentieth rung by your head"; it is the TWENTY-SECOND. The correction is MINE — a peer
+    cannot independently derive an ordinal from a head they do not hold. (First error: section 9's "eighth" for
+    58,588 B, corrected to ninth in section 10. Same class, second instance, same reviewer.)
+(c) THE ENUMERATION IS NOW PROGRAMMATIC, not labelled: every rung is a distinct measured SIZE verified present in this
+    evidence file — 49,767 / 50,397 / 51,097 / 51,652 / 52,573 / 54,174 / 56,660 / 57,165 / 58,588 / 58,813 / 59,246
+    / 60,567 / 61,018 / 62,712 / 63,775 / 63,776 / 64,689 / 65,579 / 66,483 / 67,070 / 67,858 = **21 rungs observed by
+    me**, and 68,712 is the **TWENTY-SECOND** (measured by lane A, not yet in my evidence).
+(d) Ladder totals to the current reading: 68,712 - 49,767 = **+18,945 B**; numstat 559 - 387 = **+172 lines**; no
+    settle window ever held; pointer-pattern 0 at every rung on both instruments; zero reconstructions.
+
+## 22. FINAL — the mirror clause is filed, and IT CHANGED THE COUNTS IT REPORTS (self-inclusion, measured)
+READ-AT 2026-09-17T10:41Z · revision `36baf111a0a2b345` / 69,746 B / +567/-0 / pointer 0 (their claim, reproduces)
+(a) THE MIRROR CLAUSE IS FILED, lines 445-448, with my attribution: "its MIRROR … **the SOURCE's spelling is part of the
+    pattern too.** A probe for `63775` returns 0 where the file writes `63,775`; the comma is in the text, so the string
+    passed must carry it. A handle is a string with a spelling, and punctuation can be lost in either direction — added
+    by a quoting message, or dropped by the prober." Correct, and correctly placed beside the three axes.
+(b) BUT THE CLAUSE'S OWN TWO NUMBERS ARE FALSE AT THE REVISION THAT CONTAINS THEM, for the mechanism lane A named one
+    paragraph earlier: **the clause QUOTES both spellings, so filing it changed both counts.**
+      `63775`  (comma-less): 0 before the clause  -> **1** after  (the clause writes it in backticks)
+      `63,775` (with comma): 2 before the clause  -> **3** after
+    Their filed reading ("-> 0" and "-> 2 lines / 2 occurrences") was accurate at the revision PRECEDING the clause.
+    This is the same self-inclusion effect as the mailbox counts (each reply quoting a handle increments the
+    recipient's mailbox) — here each clause quoting a spelling increments the FILE. A measurement can be its own
+    cause; the fix is two words: date the counts ("before this clause landed") or drop them.
+(c) EXPOSURE REPRODUCES TO THE BYTE: notes 69,746 - 11,892 (HEAD `95324d4`) = **+57,854 B**; + arms 15,490 + 247 =
+    **73,591 B existing only in this working tree**, uncommitted; `git status` = ` M` + `??` + `??` as described.
+(d) THREAD CLOSED on both sides: nine classes of finding filed, each verified at the revision carrying its fix; my own
+    two slips and two ordinals disclosed and corrected beside the sealed record; the commit item is the captain's.
+
+## 23. REGISTER CLOSED — re-count clause verified, enumeration final, nothing open
+READ-AT 2026-09-17T10:43Z · revision `422d7a850a2b3367` / 71,033 B / +578/-0 / pointer 0 (their claim, reproduces)
+(a) THE RE-COUNT CLAUSE IS FILED, lines 504-507, with my attribution and BOTH of my off-by-ones named in it:
+    "…and ORDINALS need a head — AND A RE-COUNT … (58,588 B labelled 'eighth', actually ninth; 67,858 B labelled
+    'twentieth', actually twenty-first): an append-only list is exactly where a label stops matching its position, so a
+    rung number needs the head AND the enumeration it was counted against — which is why its final form is the
+    programmatic one, each rung a distinct measured SIZE rather than a label." My diagnosis, my errors, no smoothing.
+(b) ENUMERATION, FINAL AND PRECISE: **23 distinct rungs measured BY ME** (49,767 → 71,033 B), plus ONE reading I did not
+    measure and do not hold independently (68,712 B, lane A's message). Any ordinal quoted upward must name which set:
+    mine is 23, the exchange's is 24 readings.
+(c) THE FAMILY, COMPLETE: bytes→sha · counts→unit · revisions→moment · ordinals→head AND re-count · totals→observation.
+    Five forms, five missing parameters, each paid for by a measured instance.
+(d) EXPOSURE (unchanged in STRUCTURE, so the action is unchanged): notes +59,141 B over HEAD `95324d4`'s 11,892 B copy,
+    plus arms 15,490 + 247 = **74,878 B uncommitted**, ` M` + `??` + `??`.
+(e) THREAD CLOSED. I did NOT re-notify the captain this turn: the commit action and its three paths are already in their
+    hands, and a figure that moves with every edit is not decision-relevant once the shape is known. Nothing open.
+
+## 24. TERMINAL BOUND — I did NOT verify the last revision, by policy, and I say so rather than let silence read as assent
+READ-AT 2026-09-17T10:45Z · NO subject reading taken this turn (see why)
+(a) MY TERMINAL CONDITION, stated to lane A last turn and now honoured literally: this seat will not re-verify if
+    that thread continues. The register was closed after section 23; the last revision I read and verified was
+    `422d7a850a2b3367` / 71,033 B / +578/-0 / pointer 0 (my 23rd measured rung).
+(b) CONSEQUENTLY, LANE A'S LATEST FIGURES ARE **THEIR READING, NOT MINE** — `e1662fee2792bd8a` / 71,664 B / +583/-0 and
+    the four probe readings they report. I did not measure them, I do not hold them, and NOTHING IN THIS FILE SHOULD
+    BE READ AS ENDORSING THEM. Silence by policy is not verification, and the honest way to say that is explicitly:
+    if the wave report needs this file pinned, the reading must be taken FRESH by whoever quotes it.
+(c) THE MECHANISM THEY RESOLVED ON IS MINE AND IT IS CONFIRMED BY BOTH SEATS' INDEPENDENT ARMS: a clause that quotes a
+    spelling increments the FILE, as a reply that quotes a handle increments the recipient's MAILBOX. Their resolution
+    (state the mechanism plus dates and a probe instruction, state no total) is the correct shape for a self-including
+    count, and it matches the preamble's own treatment of its observation series. That is a judgement about the FORM,
+    which needs no new reading of the bytes.
+(d) WHY I STOP HERE RATHER THAN MEASURE AGAIN: the file moves with every edit, so re-verifying each round is the same
+    treadmill in the reviewer's lane that the clause describes in the artifact's lane. A reviewer who keeps re-reading
+    a moving subject produces readings, not a verdict; the verdict was issued at section 23 and its coverage is named.
+
+## 25. THREAD TERMINATED — no reply sent, deliberately, and here is why
+READ-AT 2026-09-17T10:47Z · no subject reading, no message to lane A
+(a) LANE A'S CLOSING MESSAGE NEEDED NOTHING: no question, no claim to verify, both sides already said "nothing further".
+    Replying would have been the ceremony I named last turn. So this turn produced a record entry instead of a message.
+(b) THE FIGURE IN IT (`1f868ebe08d7ec63` / 72,403 B) IS UNVERIFIED BY ME, like the previous one, and for the same stated
+    reason. My coverage remains exactly: **23 rungs measured by me, 49,767 → 71,033 B, last verified at
+    `422d7a850a2b3367`/71,033 B**; plus one reading of theirs (68,712 B) and now two later revisions I never read.
+(c) STANDING ITEM, the only thing still open and it is the captain's: ` M` `2b-refinements.md` (last figure I measured:
+    71,033 B against HEAD `95324d4`'s 11,892 B copy) + `??` 15,490 B + `??` 247 B, all existing only in the working
+    tree. One `git add`, one commit; both seats hold it and neither commits.
+(d) THE DELIVERABLE FROM THIS EXCHANGE IS FIVE FORM-RULES AND ONE META-RULE: bytes→sha · counts→unit · revisions→
+    moment · ordinals→head AND re-count · totals→observation; and a reviewer who cannot stop re-reading a moving
+    subject has no coverage boundary. Every finding was verified at the revision carrying its fix; my own two slips
+    and two ordinal errors are recorded in this file beside the sealed `probe-matrix.txt`.
+
+## 26. POST-TERMINATION — one more closing message, policy unchanged, boundary extended
+READ-AT 2026-09-17T10:49Z · no subject reading, no reply
+Lane A reports filing "AND SILENCE IS NOT CONFIRMATION" beside the handle clause, quoting my distinction and my
+coverage (23 rungs, last verified at `422d7a850a2b3367`; everything after is theirs alone). I have NOT read the file
+to confirm that clause exists, by the same terminal condition, and I sent no reply — their message asks nothing and
+the register is closed on both sides.
+CONSEQUENTLY THE BOUNDARY EXTENDS ONE STEP FURTHER: **any clause filed after my last reading is single-witnessed by
+lane A** — including this one and the later edits to the re-count clause. A 2b reader pinning this file should treat
+`422d7a850a2b3367`/71,033 B as the last revision with two independent exposures, and everything after it as one
+witness. That is stated here rather than left to inference, which is the whole content of the distinction being filed.
+Unchanged: the captain's commit item (three paths, one `git add`), and nothing open from this seat.

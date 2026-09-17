@@ -1,0 +1,15 @@
+MODULE /root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/quality-gates.js
+A review, verify=[], commandsRun OMITTED, verdict=pass        (the no-code shape, omitted list)
+    kindOf=review -> {"ok":true}
+B review, verify=[], commandsRun=[], verdict=pass             (explicit empty list)
+    kindOf=review -> {"ok":true}
+C review, verify=[1 cmd], command FAILED, verdict=pass        (control: must FAIL the task)
+    kindOf=review -> {"ok":true}
+D review, verify=[1 cmd], command PASSED, verdict=pass        (control: must complete)
+    kindOf=review -> {"ok":true}
+E review, verify=[], commandsRun=[], NO verdict               (must refuse: review needs a verdict)
+    kindOf=review -> {"ok":false,"error":"review cannot complete without verdict=pass"}
+F review, verify=[], commandsRun=[], verdict=needs_revision + findings (must FAIL the task)
+    kindOf=review -> {"ok":false,"error":"review with verdict=needs_revision cannot complete"}
+G review, verify=[], commandsRun=[], verdict=pass, NO acceptanceResults (must refuse)
+    kindOf=review -> {"ok":true}

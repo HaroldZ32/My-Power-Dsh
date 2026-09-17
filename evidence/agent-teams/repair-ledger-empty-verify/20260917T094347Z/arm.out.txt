@@ -1,0 +1,12 @@
+MODULE /root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/quality-gates.js (resolved from this script, not from cwd)
+
+A  verify=[]      + commandsRun OMITTED   (the t3 shape)
+    -> {"ok":false,"error":"repair completion requires a passed commandsRun entry for every verify command"}
+B  verify=[]      + commandsRun=[]        (same shape, explicit empty list)
+    -> {"ok":true}
+C  verify=[1 cmd] + commandsRun OMITTED   (control: the message SHOULD be about a command)
+    -> {"ok":false,"error":"repair completion requires a passed commandsRun entry for every verify command"}
+D  verify=[1 cmd] + that command FAILED   (control: must fail the task)
+    -> {"ok":false,"error":"verify failure must fail the task","requiredStatus":"failed"}
+E  verify=[1 cmd] + that command PASSED   (control: must complete)
+    -> {"ok":true}
